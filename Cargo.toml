@@ -2,6 +2,13 @@
 name = "snarkvm"
 version = "0.1.0"
 authors = ["The Aleo Team <hello@aleo.org"]
+description = "Decentralized private computations"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = ["cryptography", "blockchain", "decentralized", "record", "zkSNARK"]
+categories = ["cryptography"]
+include = ["Cargo.toml", "src", "README.md", "LICENSE.md"]
+license = "GPL-3.0"
 edition = "2018"
 
 [workspace]

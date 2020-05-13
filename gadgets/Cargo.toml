@@ -1,7 +1,26 @@
 [package]
 name = "snarkvm-gadgets"
-version = "0.1.0"
-authors = ["The Aleo Team <hello@aleo.org"]
+version = "0.8.0"
+description = "Gadgets for decentralized private computations"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = ["cryptography", "blockchain", "decentralized", "record", "zkSNARK"]
+categories = ["cryptography"]
+include = ["Cargo.toml", "src", "README.md", "LICENSE.md"]
+license = "GPL-3.0"
 edition = "2018"
 
 [dependencies]
+snarkvm-algorithms = { path = "../algorithms", version = "0.8.0" }
+snarkvm-curves = { path = "../curves", version = "0.8.0" }
+snarkvm-errors = { path = "../errors", version = "0.8.0" }
+snarkvm-models = { path = "../models", version = "0.8.0" }
+snarkvm-utilities = { path = "../utilities", version = "0.8.0" }
+
+derivative = { version = "1" }
+digest = { version = "0.7" }
+
+[dev-dependencies]
+blake2 = { version = "0.7" }
+rand = { version = "0.7" }
+rand_xorshift = { version = "0.2" }
