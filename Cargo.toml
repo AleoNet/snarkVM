@@ -1,0 +1,10 @@
+[package]
+name = "snarkvm"
+version = "0.1.0"
+authors = ["The Aleo Team <hello@aleo.org"]
+edition = "2018"
+
+[workspace]
+members = ["gadgets"]
+
+[dependencies]
