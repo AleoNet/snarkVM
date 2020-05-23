@@ -19,3 +19,27 @@ path = "snarkVM/main.rs"
 members = ["errors", "models", "utilities"]
 
 [dependencies]
+
+[dev-dependencies]
+rusty-hook = { version = "0.10.3" }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+incremental = true
+
+[profile.bench]
+opt-level = 3
+debug = false
+rpath = false
+lto = "thin"
+incremental = true
+debug-assertions = false
+
+[profile.dev]
+opt-level = 0
+
+[profile.test]
+opt-level = 0
+debug-assertions = true
+debug = true

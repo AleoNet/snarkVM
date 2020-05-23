@@ -2,17 +2,15 @@
 
 #[derive(Debug, Error)]
 pub enum SNARKError {
-//     #[error("{}", _0)]
-//     ConstraintFieldError(ConstraintFieldError),
-
+    //     #[error("{}", _0)]
+    //     ConstraintFieldError(ConstraintFieldError),
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
     #[error("{}", _0)]
     Message(String),
-
-//     #[error("{}", _0)]
-//     SynthesisError(SynthesisError),
+    //     #[error("{}", _0)]
+    //     SynthesisError(SynthesisError),
 }
 
 // impl From<ConstraintFieldError> for SNARKError {
