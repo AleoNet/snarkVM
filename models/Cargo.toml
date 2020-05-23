@@ -5,3 +5,7 @@ authors = ["The Aleo Team <hello@aleo.org>"]
 edition = "2018"
 
 [dependencies]
+snarkvm-errors = { path = "../errors", version = "0.9.0" }
+snarkvm-utilities = { path = "../utilities", version = "0.9.0" }
+
+rand = { version = "0.7", default-features = false }

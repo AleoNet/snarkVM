@@ -16,6 +16,6 @@ name = "snarkvm"
 path = "snarkVM/main.rs"
 
 [workspace]
-members = ["errors"]
+members = ["errors", "models", "utilities"]
 
 [dependencies]
