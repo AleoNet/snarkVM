@@ -11,7 +11,11 @@ include = ["Cargo.toml", "src", "README.md", "LICENSE.md"]
 license = "GPL-3.0"
 edition = "2018"
 
+[[bin]]
+name = "snarkvm"
+path = "snarkVM/main.rs"
+
 [workspace]
-members = []
+members = ["errors"]
 
 [dependencies]

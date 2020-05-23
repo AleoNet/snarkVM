@@ -1,0 +1,8 @@
+[package]
+name = "snarkvm-errors"
+version = "0.9.0"
+authors = ["The Aleo Team <hello@aleo.org>"]
+edition = "2018"
+
+[dependencies]
+thiserror = { version = "1.0" }
