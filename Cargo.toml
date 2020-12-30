@@ -1,10 +1,30 @@
 [package]
 name = "snarkvm"
 version = "0.0.1"
-authors = ["howardwu <howardwu@berkeley.edu>"]
+authors = ["The Aleo Team <hello@aleo.org>"]
+description = "A decentralized virtual machine"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = ["aleo", "cryptography", "blockchain", "decentralized", "zero-knowledge"]
+categories = ["cryptography::cryptocurrencies", "operating-systems"]
+include = ["Cargo.toml", "snarkvm", "README.md", "LICENSE.md"]
+license = "GPL-3.0"
 edition = "2018"
 
 [workspace]
-members = ["algorithms", "curves", "dpc", "errors", "gadgets", "models", "objects", "parameters", "polycommit", "storage", "testing", "utilities"]
+members = [
+    "algorithms",
+    "curves",
+    "dpc",
+    "errors",
+    "gadgets",
+    "models",
+    "objects",
+    "parameters",
+    "polycommit",
+    "storage",
+    "testing",
+    "utilities"
+]
 
 [dependencies]
