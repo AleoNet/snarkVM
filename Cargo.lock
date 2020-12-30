@@ -1490,6 +1490,7 @@ dependencies = [
 name = "snarkvm-dpc"
 version = "0.0.1"
 dependencies = [
+ "anyhow",
  "blake2",
  "criterion",
  "derivative",
