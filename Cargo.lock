@@ -1389,6 +1389,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "snarkvm-polycommit"
+version = "1.1.4"
+dependencies = [
+ "blake2",
+ "derivative",
+ "digest 0.8.1",
+ "rand",
+ "rand_core",
+ "rayon",
+ "snarkvm-algorithms",
+ "snarkvm-curves",
+ "snarkvm-errors",
+ "snarkvm-models",
+ "snarkvm-profiler",
+ "snarkvm-utilities",
+]
+
+[[package]]
 name = "snarkvm-profiler"
 version = "0.0.1"
 dependencies = [

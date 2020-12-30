@@ -5,6 +5,6 @@ authors = ["howardwu <howardwu@berkeley.edu>"]
 edition = "2018"
 
 [workspace]
-members = ["algorithms", "curves", "dpc", "errors", "gadgets", "models", "objects", "parameters", "storage", "testing", "utilities"]
+members = ["algorithms", "curves", "dpc", "errors", "gadgets", "models", "objects", "parameters", "polycommit", "storage", "testing", "utilities"]
 
 [dependencies]
