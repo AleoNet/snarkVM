@@ -19,7 +19,7 @@ license = "GPL-3.0"
 edition = "2018"
 
 [dependencies]
-snarkvm-algorithms = { path = "../algorithms", version = "0.0.1"}
+snarkvm-algorithms = { path = "../algorithms", version = "0.0.1" }
 snarkvm-errors = { path = "../errors", version = "0.0.1" }
 snarkvm-models = { path = "../models", version = "0.0.1" }
 snarkvm-polycommit = { path = "../polycommit", version = "0.0.1", default-features = false }

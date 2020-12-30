@@ -14,14 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// use crate::consensus::TestTx;
+pub use snarkos_storage::Ledger;
 use snarkvm_dpc::base_dpc::instantiated::{CommitmentMerkleParameters, Tx};
 use snarkvm_models::{
     algorithms::merkle_tree::LoadableMerkleParameters,
     objects::{LedgerScheme, Transaction},
 };
 use snarkvm_objects::Block;
-pub use snarkvm_storage::Ledger;
 
 use rand::{thread_rng, Rng};
 use std::{path::PathBuf, sync::Arc};
@@ -47,7 +46,8 @@ pub fn initialize_test_blockchain<T: Transaction, P: LoadableMerkleParameters>(
 }
 
 // Open a test blockchain from stored genesis attributes
-pub fn open_test_blockchain<T: Transaction, P: LoadableMerkleParameters>() -> (Arc<Ledger<T, P>>, PathBuf) {
+pub fn open_test_blockchain<T: Transaction, P: LoadableMerkleParameters>(
+) -> (Arc<Ledger<T, P>>, PathBuf) {
     let mut path = std::env::temp_dir();
     path.push(random_storage_path());
 

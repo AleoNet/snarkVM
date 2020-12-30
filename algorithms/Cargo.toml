@@ -18,7 +18,7 @@ path = "examples/snark/gm17.rs"
 [dependencies]
 snarkvm-errors = { path = "../errors", version = "0.0.1", default-features = false }
 snarkvm-models = { path = "../models", version = "0.0.1", default-features = false }
-snarkvm-profiler = { path = "../profiler", version = "0.0.1"}
+snarkvm-profiler = { path = "../profiler", version = "0.0.1" }
 snarkvm-utilities = { path = "../utilities", version = "0.0.1", default-features = false }
 
 blake2 = { version = "0.8.1" }

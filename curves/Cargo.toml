@@ -14,7 +14,7 @@ edition = "2018"
 [dependencies]
 snarkvm-errors = { path = "../errors", version = "0.0.1", default-features = false }
 snarkvm-models = { path = "../models", version = "0.0.1", default-features = false }
-snarkvm-utilities = { path = "../utilities", version = "0.0.1"} # TODO: Add default-features=false back in.
+snarkvm-utilities = { path = "../utilities", version = "0.0.1" } # TODO: Add default-features=false back in.
 
 derivative = { version = "2" }
 rand = { version = "0.7" }
