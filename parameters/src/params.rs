@@ -28,7 +28,7 @@ use std::{
 use curl::easy::Easy;
 
 #[cfg(any(test, feature = "remote"))]
-pub const REMOTE_URL: &str = "https://snarkvm-testnet.s3-us-west-2.amazonaws.com";
+pub const REMOTE_URL: &str = "https://snarkos-testnet.s3-us-west-2.amazonaws.com";
 
 macro_rules! impl_params {
     ($name: ident, $test_name: ident, $fname: tt, $size: tt) => {
@@ -44,7 +44,10 @@ macro_rules! impl_params {
                 let checksum = hex::encode(sha256(buffer));
                 match Self::CHECKSUM == checksum {
                     true => Ok(buffer.to_vec()),
-                    false => Err(ParametersError::ChecksumMismatch(Self::CHECKSUM.into(), checksum)),
+                    false => Err(ParametersError::ChecksumMismatch(
+                        Self::CHECKSUM.into(),
+                        checksum,
+                    )),
                 }
             }
         }
@@ -238,8 +241,18 @@ impl_params!(
     "inner_snark_vk_crh",
     3581604
 );
-impl_params!(LocalDataCRHParameters, local_data_crh_test, "local_data_crh", 65604);
-impl_params!(ProgramVKCRHParameters, program_vk_crh_test, "program_vk_crh", 1742404);
+impl_params!(
+    LocalDataCRHParameters,
+    local_data_crh_test,
+    "local_data_crh",
+    65604
+);
+impl_params!(
+    ProgramVKCRHParameters,
+    program_vk_crh_test,
+    "program_vk_crh",
+    1742404
+);
 
 impl_params!(
     SerialNumberNonceCRHParameters,
@@ -258,7 +271,12 @@ impl_params!(
 
 // POSW SNARK
 impl_params_remote!(PoswSNARKPKParameters, "posw_snark_pk", 171163800);
-impl_params!(PoswSNARKVKParameters, posw_snark_vk_test, "posw_snark_vk", 40807);
+impl_params!(
+    PoswSNARKVKParameters,
+    posw_snark_vk_test,
+    "posw_snark_vk",
+    40807
+);
 
 // Program SNARK
 impl_params!(
@@ -276,8 +294,18 @@ impl_params!(
 
 // Inner SNARK
 impl_params_remote!(InnerSNARKPKParameters, "inner_snark_pk", 250108401);
-impl_params!(InnerSNARKVKParameters, inner_snark_vk_test, "inner_snark_vk", 2329);
+impl_params!(
+    InnerSNARKVKParameters,
+    inner_snark_vk_test,
+    "inner_snark_vk",
+    2329
+);
 
 // Outer SNARK
 impl_params_remote!(OuterSNARKPKParameters, "outer_snark_pk", 502942005);
-impl_params!(OuterSNARKVKParameters, outer_snark_vk_test, "outer_snark_vk", 4443);
+impl_params!(
+    OuterSNARKVKParameters,
+    outer_snark_vk_test,
+    "outer_snark_vk",
+    4443
+);

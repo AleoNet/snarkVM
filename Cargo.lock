@@ -935,6 +935,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c917123afa01924fc84bb20c4c03f004d9c38e5127e3c039bbf7f4b9c76a2f6b"
 
 [[package]]
+name = "pin-project-lite"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b063f57ec186e6140e2b8b6921e5f1bd89c7356dda5b33acc5401203ca6131c"
+
+[[package]]
 name = "pkg-config"
 version = "0.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1243,6 +1249,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae524f056d7d770e174287294f562e95044c68e88dec909a00d2094805db9d75"
 
 [[package]]
+name = "snarkos-consensus"
+version = "1.1.4"
+source = "git+https://github.com/AleoHQ/snarkOS.git?rev=12e71ec#12e71ec30d9fbd315549473268307730fe7455e8"
+dependencies = [
+ "bincode",
+ "chrono",
+ "hex",
+ "rand",
+ "serde",
+ "snarkos-posw",
+ "snarkos-profiler",
+ "snarkos-storage",
+ "snarkvm-algorithms 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-curves 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-dpc 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-models 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-objects 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-utilities 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "snarkos-parameters"
 version = "1.1.4"
 source = "git+https://github.com/AleoHQ/snarkOS.git?rev=12e71ec#12e71ec30d9fbd315549473268307730fe7455e8"
@@ -1253,6 +1282,32 @@ dependencies = [
  "snarkvm-models 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
  "snarkvm-utilities 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
 ]
+
+[[package]]
+name = "snarkos-posw"
+version = "1.1.4"
+source = "git+https://github.com/AleoHQ/snarkOS.git?rev=12e71ec#12e71ec30d9fbd315549473268307730fe7455e8"
+dependencies = [
+ "blake2",
+ "rand",
+ "snarkos-parameters",
+ "snarkos-profiler",
+ "snarkvm-algorithms 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-curves 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-errors 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-gadgets 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-marlin 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-models 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-objects 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-polycommit 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-utilities 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "thiserror",
+]
+
+[[package]]
+name = "snarkos-profiler"
+version = "1.1.4"
+source = "git+https://github.com/AleoHQ/snarkOS.git?rev=12e71ec#12e71ec30d9fbd315549473268307730fe7455e8"
 
 [[package]]
 name = "snarkos-storage"
@@ -1334,7 +1389,7 @@ dependencies = [
  "smallvec",
  "snarkvm-algorithms 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
  "snarkvm-curves 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
- "snarkvm-marlin",
+ "snarkvm-marlin 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
  "snarkvm-models 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
  "snarkvm-utilities 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
 ]
@@ -1370,6 +1425,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "snarkvm-curves"
+version = "0.0.1"
+source = "git+https://github.com/AleoHQ/snarkVM.git?rev=fc971b1#fc971b16a572315576590a5d1a1553ee2f2f6fe7"
+dependencies = [
+ "derivative",
+ "rand",
+ "rand_xorshift",
+ "rustc_version",
+ "serde",
+ "snarkvm-errors 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=fc971b1)",
+ "snarkvm-models 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=fc971b1)",
+ "snarkvm-utilities 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=fc971b1)",
+]
+
+[[package]]
 name = "snarkvm-derives"
 version = "0.0.1"
 dependencies = [
@@ -1382,6 +1452,16 @@ dependencies = [
 name = "snarkvm-derives"
 version = "0.0.1"
 source = "git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949#ce049493c44cff62f3b12c2ca440835fd7fdb68e"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "snarkvm-derives"
+version = "0.0.1"
+source = "git+https://github.com/AleoHQ/snarkVM.git?rev=fc971b1#fc971b16a572315576590a5d1a1553ee2f2f6fe7"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1402,13 +1482,34 @@ dependencies = [
  "snarkvm-algorithms 0.0.1",
  "snarkvm-curves 0.0.1",
  "snarkvm-errors 0.0.1",
- "snarkvm-gadgets",
+ "snarkvm-gadgets 0.0.1",
  "snarkvm-models 0.0.1",
  "snarkvm-objects 0.0.1",
- "snarkvm-parameters",
+ "snarkvm-parameters 0.0.1",
  "snarkvm-profiler 0.0.1",
  "snarkvm-testing",
  "snarkvm-utilities 0.0.1",
+]
+
+[[package]]
+name = "snarkvm-dpc"
+version = "0.0.1"
+source = "git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949#ce049493c44cff62f3b12c2ca440835fd7fdb68e"
+dependencies = [
+ "blake2",
+ "derivative",
+ "hex",
+ "itertools",
+ "rand",
+ "snarkvm-algorithms 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-curves 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-errors 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-gadgets 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-models 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-objects 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-parameters 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-profiler 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-utilities 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
 ]
 
 [[package]]
@@ -1430,6 +1531,22 @@ dependencies = [
 name = "snarkvm-errors"
 version = "0.0.1"
 source = "git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949#ce049493c44cff62f3b12c2ca440835fd7fdb68e"
+dependencies = [
+ "base58",
+ "bech32",
+ "bincode",
+ "curl",
+ "hex",
+ "jsonrpc-core",
+ "rocksdb",
+ "thiserror",
+ "toml",
+]
+
+[[package]]
+name = "snarkvm-errors"
+version = "0.0.1"
+source = "git+https://github.com/AleoHQ/snarkVM.git?rev=fc971b1#fc971b16a572315576590a5d1a1553ee2f2f6fe7"
 dependencies = [
  "base58",
  "bech32",
@@ -1456,6 +1573,40 @@ dependencies = [
  "snarkvm-curves 0.0.1",
  "snarkvm-errors 0.0.1",
  "snarkvm-models 0.0.1",
+ "snarkvm-utilities 0.0.1",
+]
+
+[[package]]
+name = "snarkvm-gadgets"
+version = "0.0.1"
+source = "git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949#ce049493c44cff62f3b12c2ca440835fd7fdb68e"
+dependencies = [
+ "derivative",
+ "digest 0.8.1",
+ "itertools",
+ "snarkvm-algorithms 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-curves 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-errors 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-models 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-utilities 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+]
+
+[[package]]
+name = "snarkvm-marlin"
+version = "0.0.1"
+dependencies = [
+ "blake2",
+ "derivative",
+ "digest 0.8.1",
+ "rand_chacha",
+ "rand_core",
+ "rayon",
+ "snarkvm-algorithms 0.0.1",
+ "snarkvm-curves 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=fc971b1)",
+ "snarkvm-errors 0.0.1",
+ "snarkvm-models 0.0.1",
+ "snarkvm-polycommit 0.0.1",
+ "snarkvm-profiler 0.0.1",
  "snarkvm-utilities 0.0.1",
 ]
 
@@ -1515,6 +1666,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "snarkvm-models"
+version = "0.0.1"
+source = "git+https://github.com/AleoHQ/snarkVM.git?rev=fc971b1#fc971b16a572315576590a5d1a1553ee2f2f6fe7"
+dependencies = [
+ "bincode",
+ "cfg-if 0.1.10",
+ "derivative",
+ "fxhash",
+ "indexmap",
+ "itertools",
+ "rand",
+ "rand_xorshift",
+ "serde",
+ "snarkvm-errors 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=fc971b1)",
+ "snarkvm-utilities 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=fc971b1)",
+]
+
+[[package]]
 name = "snarkvm-objects"
 version = "0.0.1"
 dependencies = [
@@ -1530,7 +1699,7 @@ dependencies = [
  "sha2",
  "snarkvm-algorithms 0.0.1",
  "snarkvm-curves 0.0.1",
- "snarkvm-dpc",
+ "snarkvm-dpc 0.0.1",
  "snarkvm-errors 0.0.1",
  "snarkvm-models 0.0.1",
  "snarkvm-utilities 0.0.1",
@@ -1566,13 +1735,30 @@ dependencies = [
  "hex",
  "parking_lot",
  "rand",
+ "snarkos-consensus",
+ "snarkos-posw",
+ "snarkos-storage",
  "snarkvm-algorithms 0.0.1",
  "snarkvm-curves 0.0.1",
- "snarkvm-dpc",
+ "snarkvm-dpc 0.0.1",
  "snarkvm-errors 0.0.1",
+ "snarkvm-marlin 0.0.1",
  "snarkvm-models 0.0.1",
  "snarkvm-objects 0.0.1",
  "snarkvm-utilities 0.0.1",
+]
+
+[[package]]
+name = "snarkvm-parameters"
+version = "0.0.1"
+source = "git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949#ce049493c44cff62f3b12c2ca440835fd7fdb68e"
+dependencies = [
+ "curl",
+ "hex",
+ "snarkvm-algorithms 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-errors 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-models 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-utilities 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
 ]
 
 [[package]]
@@ -1635,7 +1821,7 @@ dependencies = [
  "snarkvm-errors 0.0.1",
  "snarkvm-models 0.0.1",
  "snarkvm-objects 0.0.1",
- "snarkvm-parameters",
+ "snarkvm-parameters 0.0.1",
  "snarkvm-testing",
  "snarkvm-utilities 0.0.1",
 ]
@@ -1650,11 +1836,11 @@ dependencies = [
  "snarkos-storage",
  "snarkvm-algorithms 0.0.1",
  "snarkvm-curves 0.0.1",
- "snarkvm-dpc",
+ "snarkvm-dpc 0.0.1",
  "snarkvm-errors 0.0.1",
  "snarkvm-models 0.0.1",
  "snarkvm-objects 0.0.1",
- "snarkvm-parameters",
+ "snarkvm-parameters 0.0.1",
  "snarkvm-utilities 0.0.1",
  "tokio",
 ]
@@ -1679,6 +1865,17 @@ dependencies = [
  "rand",
  "snarkvm-derives 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
  "snarkvm-errors 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+]
+
+[[package]]
+name = "snarkvm-utilities"
+version = "0.0.1"
+source = "git+https://github.com/AleoHQ/snarkVM.git?rev=fc971b1#fc971b16a572315576590a5d1a1553ee2f2f6fe7"
+dependencies = [
+ "bincode",
+ "rand",
+ "snarkvm-derives 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=fc971b1)",
+ "snarkvm-errors 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=fc971b1)",
 ]
 
 [[package]]
@@ -1800,7 +1997,7 @@ dependencies = [
  "mio-named-pipes",
  "mio-uds",
  "num_cpus",
- "pin-project-lite",
+ "pin-project-lite 0.1.11",
  "signal-hook-registry",
  "slab",
  "tokio-macros",
@@ -1826,6 +2023,24 @@ checksum = "a31142970826733df8241ef35dc040ef98c679ab14d7c3e54d827099b3acecaa"
 dependencies = [
  "serde",
 ]
+
+[[package]]
+name = "tracing"
+version = "0.1.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f47026cdc4080c07e49b37087de021820269d996f581aac150ef9e5583eefe3"
+dependencies = [
+ "cfg-if 1.0.0",
+ "log",
+ "pin-project-lite 0.2.0",
+ "tracing-core",
+]
+
+[[package]]
+name = "tracing-core"
+version = "0.1.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f50de3927f93d202783f4513cda820ab47ef17f624b03c096e86ef00c67e6b5f"
 
 [[package]]
 name = "typenum"
