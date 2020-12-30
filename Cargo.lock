@@ -1390,7 +1390,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-polycommit"
-version = "1.1.4"
+version = "0.0.1"
 dependencies = [
  "blake2",
  "derivative",
