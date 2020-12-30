@@ -14,13 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkos_testing::{dpc::*, storage::*};
 use snarkvm_dpc::base_dpc::{
-    instantiated::*,
-    program::NoopProgram,
-    record::record_encryption::RecordEncryption,
-    record_payload::RecordPayload,
-    BaseDPCComponents,
-    DPC,
+    instantiated::*, program::NoopProgram, record::record_encryption::RecordEncryption,
+    record_payload::RecordPayload, BaseDPCComponents, DPC,
 };
 use snarkvm_models::{
     algorithms::CRH,
@@ -28,17 +25,9 @@ use snarkvm_models::{
     objects::{LedgerScheme, Transaction},
 };
 use snarkvm_objects::{
-    dpc::DPCTransactions,
-    merkle_root,
-    AccountViewKey,
-    Block,
-    BlockHeader,
-    BlockHeaderHash,
-    MerkleRootHash,
-    PedersenMerkleRootHash,
-    ProofOfSuccinctWork,
+    dpc::DPCTransactions, merkle_root, AccountViewKey, Block, BlockHeader, BlockHeaderHash,
+    MerkleRootHash, PedersenMerkleRootHash, ProofOfSuccinctWork,
 };
-use snarkvm_testing::{dpc::*, storage::*};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     to_bytes,
@@ -78,15 +67,16 @@ fn base_dpc_integration_test() {
         transactions: DPCTransactions::new(),
     };
 
-    let ledger = initialize_test_blockchain::<Tx, CommitmentMerkleParameters>(ledger_parameters, genesis_block);
+    let ledger = initialize_test_blockchain::<Tx, CommitmentMerkleParameters>(
+        ledger_parameters,
+        genesis_block,
+    );
 
-    let noop_program_id = to_bytes![
-        ProgramVerificationKeyCRH::hash(
-            &parameters.system_parameters.program_verification_key_crh,
-            &to_bytes![parameters.noop_program_snark_parameters().verification_key].unwrap()
-        )
-        .unwrap()
-    ]
+    let noop_program_id = to_bytes![ProgramVerificationKeyCRH::hash(
+        &parameters.system_parameters.program_verification_key_crh,
+        &to_bytes![parameters.noop_program_snark_parameters().verification_key].unwrap()
+    )
+    .unwrap()]
     .unwrap();
 
     // Generate dummy input records having as address the genesis address.
@@ -146,7 +136,8 @@ fn base_dpc_integration_test() {
 
     // Generate the program proofs
 
-    let noop_program = NoopProgram::<_, <Components as BaseDPCComponents>::NoopProgramSNARK>::new(noop_program_id);
+    let noop_program =
+        NoopProgram::<_, <Components as BaseDPCComponents>::NoopProgramSNARK>::new(noop_program_id);
 
     let mut old_death_program_proofs = vec![];
     for i in 0..NUM_INPUT_RECORDS {
@@ -200,8 +191,10 @@ fn base_dpc_integration_test() {
         let encrypted_records = transaction.encrypted_records();
         let new_account_private_keys = vec![recipient.private_key; NUM_OUTPUT_RECORDS];
 
-        for ((encrypted_record, private_key), new_record) in
-            encrypted_records.iter().zip(new_account_private_keys).zip(new_records)
+        for ((encrypted_record, private_key), new_record) in encrypted_records
+            .iter()
+            .zip(new_account_private_keys)
+            .zip(new_records)
         {
             let account_view_key = AccountViewKey::from_private_key(
                 &parameters.system_parameters.account_signature,
@@ -210,9 +203,12 @@ fn base_dpc_integration_test() {
             )
             .unwrap();
 
-            let decrypted_record =
-                RecordEncryption::decrypt_record(&parameters.system_parameters, &account_view_key, encrypted_record)
-                    .unwrap();
+            let decrypted_record = RecordEncryption::decrypt_record(
+                &parameters.system_parameters,
+                &account_view_key,
+                encrypted_record,
+            )
+            .unwrap();
 
             assert_eq!(decrypted_record, new_record);
         }
@@ -247,7 +243,10 @@ fn base_dpc_integration_test() {
 
     assert!(InstantiatedDPC::verify_transactions(&parameters, &transactions.0, &ledger).unwrap());
 
-    let block = Block { header, transactions };
+    let block = Block {
+        header,
+        transactions,
+    };
 
     ledger.insert_and_commit(&block).unwrap();
     assert_eq!(ledger.len(), 2);
