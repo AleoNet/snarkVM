@@ -1,0 +1,43 @@
+[package]
+name = "snarkvm-marlin"
+version = "0.0.1"
+authors = [
+  "Alessandro Chiesa <alexch@berkeley.edu>",
+  "Mary Maller <mary.maller.15@ucl.ac.uk>",
+  "Yuncong Hu <huyuncongh@gmail.com>",
+  "Pratyush Mishra <pratyush@berkeley.edu>",
+  "Noah Vesely <noah.vesely.18@ucl.ac.uk>",
+  "Nicholas Ward <npward@berkeley.edu>",
+  "The Aleo Team <hello@aleo.org>",
+]
+description = "A library for the Marlin preprocessing zkSNARK"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = ["aleo", "cryptography", "blockchain", "decentralized", "zero-knowledge"]
+categories = ["cryptography::cryptocurrencies", "operating-systems"]
+include = ["Cargo.toml", "src", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+license = "GPL-3.0"
+edition = "2018"
+
+[dependencies]
+snarkvm-algorithms = { path = "../algorithms", version = "0.0.1"}
+snarkvm-errors = { path = "../errors", version = "0.0.1" }
+snarkvm-models = { path = "../models", version = "0.0.1" }
+snarkvm-polycommit = { path = "../polycommit", version = "0.0.1", default-features = false }
+snarkvm-profiler = { path = "../profiler", version = "0.0.1" }
+snarkvm-utilities = { path = "../utilities", version = "0.0.1" }
+
+blake2 = { version = "0.8", default-features = false }
+derivative = { version = "2", features = ["use_core"] }
+digest = { version = "0.8" }
+rand_chacha = { version = "0.2.1", default-features = false }
+rand_core = { version = "0.5" }
+rayon = { version = "1", optional = true }
+
+[dev-dependencies]
+snarkvm-curves = { git = "https://github.com/AleoHQ/snarkVM.git", rev = "fc971b1", version = "0.0.1" }
+
+[features]
+default = [ "std", "parallel" ]
+std = [ "snarkvm-polycommit/std" ]
+print-trace = [ "snarkvm-profiler/print-trace" ]
+parallel = [ "std", "rayon" ]
