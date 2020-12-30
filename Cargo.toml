@@ -1,0 +1,10 @@
+[package]
+name = "snarkvm"
+version = "0.1.0"
+authors = ["howardwu <howardwu@berkeley.edu>"]
+edition = "2018"
+
+[workspace]
+members = ["algorithms", "curves", "dpc", "errors", "gadgets", "models", "objects", "parameters", "storage", "testing", "utilities"]
+
+[dependencies]

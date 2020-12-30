@@ -1,0 +1,37 @@
+[package]
+name = "snarkvm-gadgets"
+version = "1.1.4"
+authors = ["The Aleo Team <hello@aleo.org>"]
+description = "Gadgets for a decentralized virtual machine"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = ["aleo", "cryptography", "blockchain", "decentralized", "zero-knowledge"]
+categories = ["cryptography::cryptocurrencies", "operating-systems"]
+include = ["Cargo.toml", "src", "README.md", "LICENSE.md"]
+license = "GPL-3.0"
+edition = "2018"
+
+[dependencies]
+snarkvm-algorithms = { path = "../algorithms", version = "1.1.4", default-features = false }
+snarkvm-curves = { path = "../curves", version = "1.1.4", default-features = false }
+snarkvm-errors = { path = "../errors", version = "1.1.4", default-features = false }
+snarkvm-models = { path = "../models", version = "1.1.4", default-features = false }
+snarkvm-utilities = { path = "../utilities", version = "1.1.4", default-features = false }
+
+derivative = { version = "2" }
+digest = { version = "0.8.1" }
+itertools = { version = "0.9.0" }
+
+[dev-dependencies]
+blake2 = { version = "0.8.1" }
+rand = { version = "0.7" }
+rand_xorshift = { version = "0.2" }
+
+[features]
+default = [
+    "snarkvm-algorithms/default",
+    "snarkvm-curves/default",
+    "snarkvm-errors/default",
+    "snarkvm-models/default",
+    "snarkvm-utilities/default",
+]

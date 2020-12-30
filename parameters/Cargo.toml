@@ -1,0 +1,37 @@
+[package]
+name = "snarkvm-parameters"
+version = "1.1.4"
+authors = ["The Aleo Team <hello@aleo.org>"]
+description = "Parameters for a decentralized virtual machine"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = ["aleo", "cryptography", "blockchain", "decentralized", "zero-knowledge"]
+categories = ["cryptography::cryptocurrencies", "operating-systems"]
+include = ["Cargo.toml", "src", "README.md", "LICENSE.md"]
+license = "GPL-3.0"
+edition = "2018"
+
+[dependencies]
+snarkvm-algorithms = { path = "../algorithms", version = "1.1.4", default-features = false }
+snarkvm-errors = { path = "../errors", version = "1.1.4", default-features = false }
+snarkvm-models = { path = "../models", version = "1.1.4", default-features = false }
+snarkvm-utilities = { path = "../utilities", version = "1.1.4", default-features = false }
+
+curl = { version = "0.4.34", optional = true }
+hex = { version = "0.4.2" }
+
+[dev-dependencies]
+snarkvm-algorithms = { path = "../algorithms" ,version = "1.1.4"}
+snarkvm-curves = { path = "../curves" }
+snarkvm-dpc = { path = "../dpc" }
+snarkvm-objects = { path = "../objects" }
+
+chrono = { version = "0.4", features = ["serde"] }
+curl = { version = "0.4.34" }
+hex = { version = "0.4.2" }
+parking_lot = { version = "0.11.1" }
+rand = { version = "0.7" }
+
+[features]
+default = [ "remote", "snarkvm-algorithms/default", "snarkvm-errors/default", "snarkvm-models/default" ]
+remote = [ "curl", "snarkvm-errors/remote" ]

@@ -1,0 +1,44 @@
+[package]
+name = "snarkvm-algorithms"
+version = "1.1.4"
+authors = ["The Aleo Team <hello@aleo.org>"]
+description = "Algorithms for a decentralized virtual machine"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = ["aleo", "cryptography", "blockchain", "decentralized", "zero-knowledge"]
+categories = ["cryptography::cryptocurrencies", "operating-systems"]
+include = ["Cargo.toml", "src", "README.md", "LICENSE.md"]
+license = "GPL-3.0"
+edition = "2018"
+
+[[example]]
+name = "gm17"
+path = "examples/snark/gm17.rs"
+
+[dependencies]
+snarkvm-errors = { path = "../errors", version = "1.1.4", default-features = false }
+snarkvm-models = { path = "../models", version = "1.1.4", default-features = false }
+snarkvm-profiler = { path = "../profiler", version = "1.1.4"}
+snarkvm-utilities = { path = "../utilities", version = "1.1.4", default-features = false }
+
+blake2 = { version = "0.8.1" }
+derivative = { version = "2" }
+digest = { version = "0.8.1" }
+itertools = { version = "0.9.0" }
+rand = { version = "0.7" }
+rand_chacha = { version = "0.2.2" }
+rayon = { version = "1" }
+sha2 = { version = "0.9" }
+smallvec = { version = "1.4" }
+
+[dev-dependencies]
+snarkvm-curves = { path = "../curves", version = "1.1.4"}
+
+criterion = { version = "0.3.3" }
+csv = { version = "1" }
+rand_xorshift = { version = "0.2" }
+
+[features]
+default = [ "pedersen-parallel", "snarkvm-errors/default", "snarkvm-models/default", "snarkvm-utilities/default", ]
+pedersen-parallel = []
+print-trace = [ "snarkvm-profiler/print-trace" ]
