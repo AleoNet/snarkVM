@@ -14,6 +14,7 @@ edition = "2018"
 [workspace]
 members = [
     "algorithms",
+    "benchmarks",
     "curves",
     "dpc",
     "errors",
