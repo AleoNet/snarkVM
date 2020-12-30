@@ -35,10 +35,16 @@ pub trait DPCScheme<L: LedgerScheme> {
     type ExecuteContext;
 
     /// Returns public parameters for the DPC.
-    fn setup<R: Rng>(ledger_parameters: &L::MerkleParameters, rng: &mut R) -> Result<Self::Parameters, DPCError>;
+    fn setup<R: Rng>(
+        ledger_parameters: &L::MerkleParameters,
+        rng: &mut R,
+    ) -> anyhow::Result<Self::Parameters>;
 
     /// Returns an account, given the public parameters, metadata, and an rng.
-    fn create_account<R: Rng>(parameters: &Self::Parameters, rng: &mut R) -> Result<Self::Account, DPCError>;
+    fn create_account<R: Rng>(
+        parameters: &Self::Parameters,
+        rng: &mut R,
+    ) -> anyhow::Result<Self::Account>;
 
     /// Returns the execution context required for program snark and DPC transaction generation.
     #[allow(clippy::too_many_arguments)]
@@ -55,7 +61,7 @@ pub trait DPCScheme<L: LedgerScheme> {
         memorandum: <Self::Transaction as Transaction>::Memorandum,
         network_id: u8,
         rng: &mut R,
-    ) -> Result<Self::ExecuteContext, DPCError>;
+    ) -> anyhow::Result<Self::ExecuteContext>;
 
     /// Returns new records and a transaction based on the authorized
     /// consumption of old records.
@@ -66,15 +72,19 @@ pub trait DPCScheme<L: LedgerScheme> {
         new_birth_program_proofs: Vec<Self::PrivateProgramInput>,
         ledger: &L,
         rng: &mut R,
-    ) -> Result<(Vec<Self::Record>, Self::Transaction), DPCError>;
+    ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)>;
 
     /// Returns true iff the transaction is valid according to the ledger.
-    fn verify(parameters: &Self::Parameters, transaction: &Self::Transaction, ledger: &L) -> Result<bool, DPCError>;
+    fn verify(
+        parameters: &Self::Parameters,
+        transaction: &Self::Transaction,
+        ledger: &L,
+    ) -> anyhow::Result<bool>;
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
     fn verify_transactions(
         parameters: &Self::Parameters,
         block: &[Self::Transaction],
         ledger: &L,
-    ) -> Result<bool, DPCError>;
+    ) -> anyhow::Result<bool>;
 }
