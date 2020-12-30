@@ -833,7 +833,7 @@ where
 
             let inner_snark_parameters = match &parameters.inner_snark_parameters.0 {
                 Some(inner_snark_parameters) => inner_snark_parameters,
-                None => return Err(DPCError::MissingInnerSnarkProvingParameters),
+                None => return Err(DPCError::MissingInnerSnarkProvingParameters.into()),
             };
 
             Components::InnerSNARK::prove(&inner_snark_parameters, &circuit, rng)?
