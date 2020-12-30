@@ -28,6 +28,10 @@ members = [
     "utilities"
 ]
 
+[[bin]]
+name = "snarkvm"
+path = "snarkvm/main.rs"
+
 [dependencies]
 
 [profile.release]

@@ -403,6 +403,15 @@ dependencies = [
 
 [[package]]
 name = "digest"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03b072242a8cbaf9c145665af9d250c59af3b958f83ed6824e13533cf76d5b90"
+dependencies = [
+ "generic-array 0.9.0",
+]
+
+[[package]]
+name = "digest"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3d0c8c8752312f9713efd397ff63acb9f85585afbf179282e720e7704954dd5"
@@ -479,6 +488,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
 dependencies = [
  "byteorder",
+]
+
+[[package]]
+name = "generic-array"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef25c5683767570c2bbd7deba372926a55eaae9982d7726ee2a1050239d45b9d"
+dependencies = [
+ "typenum",
 ]
 
 [[package]]
@@ -1244,11 +1262,51 @@ dependencies = [
  "rayon",
  "sha2",
  "smallvec",
- "snarkvm-curves",
- "snarkvm-errors",
- "snarkvm-models",
- "snarkvm-profiler",
- "snarkvm-utilities",
+ "snarkvm-curves 0.0.1",
+ "snarkvm-errors 0.0.1",
+ "snarkvm-models 0.0.1",
+ "snarkvm-profiler 0.0.1",
+ "snarkvm-utilities 0.0.1",
+]
+
+[[package]]
+name = "snarkvm-algorithms"
+version = "0.0.1"
+source = "git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949#ce049493c44cff62f3b12c2ca440835fd7fdb68e"
+dependencies = [
+ "blake2",
+ "derivative",
+ "digest 0.8.1",
+ "itertools",
+ "rand",
+ "rand_chacha",
+ "rayon",
+ "sha2",
+ "smallvec",
+ "snarkvm-errors 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-models 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-profiler 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-utilities 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+]
+
+[[package]]
+name = "snarkvm-benchmarks"
+version = "0.0.1"
+dependencies = [
+ "criterion",
+ "csv",
+ "derivative",
+ "digest 0.7.6",
+ "rand",
+ "rand_xorshift",
+ "rayon",
+ "sha2",
+ "smallvec",
+ "snarkvm-algorithms 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-curves 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-marlin",
+ "snarkvm-models 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-utilities 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
 ]
 
 [[package]]
@@ -1261,14 +1319,39 @@ dependencies = [
  "rand_xorshift",
  "rustc_version",
  "serde",
- "snarkvm-errors",
- "snarkvm-models",
- "snarkvm-utilities",
+ "snarkvm-errors 0.0.1",
+ "snarkvm-models 0.0.1",
+ "snarkvm-utilities 0.0.1",
+]
+
+[[package]]
+name = "snarkvm-curves"
+version = "0.0.1"
+source = "git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949#ce049493c44cff62f3b12c2ca440835fd7fdb68e"
+dependencies = [
+ "derivative",
+ "rand",
+ "rand_xorshift",
+ "rustc_version",
+ "serde",
+ "snarkvm-errors 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-models 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-utilities 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
 ]
 
 [[package]]
 name = "snarkvm-derives"
 version = "0.0.1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "snarkvm-derives"
+version = "0.0.1"
+source = "git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949#ce049493c44cff62f3b12c2ca440835fd7fdb68e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1286,21 +1369,37 @@ dependencies = [
  "itertools",
  "rand",
  "rand_xorshift",
- "snarkvm-algorithms",
- "snarkvm-curves",
- "snarkvm-errors",
+ "snarkvm-algorithms 0.0.1",
+ "snarkvm-curves 0.0.1",
+ "snarkvm-errors 0.0.1",
  "snarkvm-gadgets",
- "snarkvm-models",
+ "snarkvm-models 0.0.1",
  "snarkvm-objects",
  "snarkvm-parameters",
- "snarkvm-profiler",
+ "snarkvm-profiler 0.0.1",
  "snarkvm-testing",
- "snarkvm-utilities",
+ "snarkvm-utilities 0.0.1",
 ]
 
 [[package]]
 name = "snarkvm-errors"
 version = "0.0.1"
+dependencies = [
+ "base58",
+ "bech32",
+ "bincode",
+ "curl",
+ "hex",
+ "jsonrpc-core",
+ "rocksdb",
+ "thiserror",
+ "toml",
+]
+
+[[package]]
+name = "snarkvm-errors"
+version = "0.0.1"
+source = "git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949#ce049493c44cff62f3b12c2ca440835fd7fdb68e"
 dependencies = [
  "base58",
  "bech32",
@@ -1323,11 +1422,30 @@ dependencies = [
  "itertools",
  "rand",
  "rand_xorshift",
- "snarkvm-algorithms",
- "snarkvm-curves",
- "snarkvm-errors",
- "snarkvm-models",
- "snarkvm-utilities",
+ "snarkvm-algorithms 0.0.1",
+ "snarkvm-curves 0.0.1",
+ "snarkvm-errors 0.0.1",
+ "snarkvm-models 0.0.1",
+ "snarkvm-utilities 0.0.1",
+]
+
+[[package]]
+name = "snarkvm-marlin"
+version = "0.0.1"
+source = "git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949#ce049493c44cff62f3b12c2ca440835fd7fdb68e"
+dependencies = [
+ "blake2",
+ "derivative",
+ "digest 0.8.1",
+ "rand_chacha",
+ "rand_core",
+ "rayon",
+ "snarkvm-algorithms 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-errors 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-models 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-polycommit 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-profiler 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-utilities 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
 ]
 
 [[package]]
@@ -1344,8 +1462,26 @@ dependencies = [
  "rand",
  "rand_xorshift",
  "serde",
- "snarkvm-errors",
- "snarkvm-utilities",
+ "snarkvm-errors 0.0.1",
+ "snarkvm-utilities 0.0.1",
+]
+
+[[package]]
+name = "snarkvm-models"
+version = "0.0.1"
+source = "git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949#ce049493c44cff62f3b12c2ca440835fd7fdb68e"
+dependencies = [
+ "bincode",
+ "cfg-if 0.1.10",
+ "derivative",
+ "fxhash",
+ "indexmap",
+ "itertools",
+ "rand",
+ "rand_xorshift",
+ "serde",
+ "snarkvm-errors 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-utilities 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
 ]
 
 [[package]]
@@ -1362,12 +1498,12 @@ dependencies = [
  "rand",
  "serde",
  "sha2",
- "snarkvm-algorithms",
- "snarkvm-curves",
+ "snarkvm-algorithms 0.0.1",
+ "snarkvm-curves 0.0.1",
  "snarkvm-dpc",
- "snarkvm-errors",
- "snarkvm-models",
- "snarkvm-utilities",
+ "snarkvm-errors 0.0.1",
+ "snarkvm-models 0.0.1",
+ "snarkvm-utilities 0.0.1",
 ]
 
 [[package]]
@@ -1379,13 +1515,13 @@ dependencies = [
  "hex",
  "parking_lot",
  "rand",
- "snarkvm-algorithms",
- "snarkvm-curves",
+ "snarkvm-algorithms 0.0.1",
+ "snarkvm-curves 0.0.1",
  "snarkvm-dpc",
- "snarkvm-errors",
- "snarkvm-models",
+ "snarkvm-errors 0.0.1",
+ "snarkvm-models 0.0.1",
  "snarkvm-objects",
- "snarkvm-utilities",
+ "snarkvm-utilities 0.0.1",
 ]
 
 [[package]]
@@ -1398,12 +1534,27 @@ dependencies = [
  "rand",
  "rand_core",
  "rayon",
- "snarkvm-algorithms",
- "snarkvm-curves",
- "snarkvm-errors",
- "snarkvm-models",
- "snarkvm-profiler",
- "snarkvm-utilities",
+ "snarkvm-algorithms 0.0.1",
+ "snarkvm-curves 0.0.1",
+ "snarkvm-errors 0.0.1",
+ "snarkvm-models 0.0.1",
+ "snarkvm-profiler 0.0.1",
+ "snarkvm-utilities 0.0.1",
+]
+
+[[package]]
+name = "snarkvm-polycommit"
+version = "0.0.1"
+source = "git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949#ce049493c44cff62f3b12c2ca440835fd7fdb68e"
+dependencies = [
+ "derivative",
+ "digest 0.8.1",
+ "rand_core",
+ "snarkvm-algorithms 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-errors 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-models 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-profiler 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-utilities 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
 ]
 
 [[package]]
@@ -1412,6 +1563,11 @@ version = "0.0.1"
 dependencies = [
  "colored",
 ]
+
+[[package]]
+name = "snarkvm-profiler"
+version = "0.0.1"
+source = "git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949#ce049493c44cff62f3b12c2ca440835fd7fdb68e"
 
 [[package]]
 name = "snarkvm-storage"
@@ -1423,14 +1579,14 @@ dependencies = [
  "rand",
  "rocksdb",
  "serde",
- "snarkvm-algorithms",
- "snarkvm-curves",
- "snarkvm-errors",
- "snarkvm-models",
+ "snarkvm-algorithms 0.0.1",
+ "snarkvm-curves 0.0.1",
+ "snarkvm-errors 0.0.1",
+ "snarkvm-models 0.0.1",
  "snarkvm-objects",
  "snarkvm-parameters",
  "snarkvm-testing",
- "snarkvm-utilities",
+ "snarkvm-utilities 0.0.1",
 ]
 
 [[package]]
@@ -1440,15 +1596,15 @@ dependencies = [
  "once_cell",
  "rand",
  "rand_xorshift",
- "snarkvm-algorithms",
- "snarkvm-curves",
+ "snarkvm-algorithms 0.0.1",
+ "snarkvm-curves 0.0.1",
  "snarkvm-dpc",
- "snarkvm-errors",
- "snarkvm-models",
+ "snarkvm-errors 0.0.1",
+ "snarkvm-models 0.0.1",
  "snarkvm-objects",
  "snarkvm-parameters",
  "snarkvm-storage",
- "snarkvm-utilities",
+ "snarkvm-utilities 0.0.1",
  "tokio",
 ]
 
@@ -1459,8 +1615,19 @@ dependencies = [
  "bincode",
  "rand",
  "rand_xorshift",
- "snarkvm-derives",
- "snarkvm-errors",
+ "snarkvm-derives 0.0.1",
+ "snarkvm-errors 0.0.1",
+]
+
+[[package]]
+name = "snarkvm-utilities"
+version = "0.0.1"
+source = "git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949#ce049493c44cff62f3b12c2ca440835fd7fdb68e"
+dependencies = [
+ "bincode",
+ "rand",
+ "snarkvm-derives 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
+ "snarkvm-errors 0.0.1 (git+https://github.com/AleoHQ/snarkVM.git?rev=ce04949)",
 ]
 
 [[package]]
