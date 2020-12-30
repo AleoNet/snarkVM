@@ -16,11 +16,6 @@ name = "snark"
 path = "algorithms/snark/snark.rs"
 harness = false
 
-[[bench]]
-name = "posw"
-path = "posw/posw.rs"
-harness = false
-
 [dependencies]
 snarkvm-algorithms = { git = "https://github.com/AleoHQ/snarkVM.git", rev = "ce04949", version = "0.0.1" }
 snarkvm-curves = { git = "https://github.com/AleoHQ/snarkVM.git", rev = "ce04949", version = "0.0.1" }
