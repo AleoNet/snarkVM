@@ -26,9 +26,9 @@ snarkvm-dpc = { path = "../dpc", version = "0.0.1" }
 snarkvm-marlin = { path = "../marlin", version = "0.0.1" }
 snarkvm-objects = { path = "../objects", version = "0.0.1" }
 
-snarkos-consensus = { git = "https://github.com/AleoHQ/snarkOS.git", rev = "47045f2", version = "1.1.4" }
-snarkos-posw = { git = "https://github.com/AleoHQ/snarkOS.git", rev = "47045f2", version = "1.1.4", features = ["test-helpers"] }
-snarkos-storage = { git = "https://github.com/AleoHQ/snarkOS.git", rev = "47045f2", version = "1.1.4" }
+snarkos-consensus = { git = "https://github.com/AleoHQ/snarkOS.git", rev = "9d90d0a", version = "1.1.4" }
+snarkos-posw = { git = "https://github.com/AleoHQ/snarkOS.git", rev = "9d90d0a", version = "1.1.4", features = ["test-helpers"] }
+snarkos-storage = { git = "https://github.com/AleoHQ/snarkOS.git", rev = "9d90d0a", version = "1.1.4" }
 
 chrono = { version = "0.4", features = ["serde"] }
 curl = { version = "0.4.34" }
