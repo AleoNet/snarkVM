@@ -30,8 +30,11 @@ pub trait LedgerScheme: Sized {
     type Transaction: Transaction;
 
     /// Instantiates a new ledger with a genesis block.
-    fn new(path: &PathBuf, parameters: Self::MerkleParameters, genesis_block: Self::Block)
-    -> Result<Self, LedgerError>;
+    fn new(
+        path: &PathBuf,
+        parameters: Self::MerkleParameters,
+        genesis_block: Self::Block,
+    ) -> anyhow::Result<Self>;
 
     /// Returns the number of blocks including the genesis block
     fn len(&self) -> usize;
@@ -56,7 +59,7 @@ pub trait LedgerScheme: Sized {
 
     /// Returns the Merkle path to the latest ledger digest
     /// for a given commitment, if it exists in the ledger.
-    fn prove_cm(&self, cm: &Self::Commitment) -> Result<Self::MerklePath, LedgerError>;
+    fn prove_cm(&self, cm: &Self::Commitment) -> anyhow::Result<Self::MerklePath>;
 
     /// Returns true if the given Merkle path is a valid witness for
     /// the given ledger digest and commitment.

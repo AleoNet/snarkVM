@@ -19,6 +19,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.37"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee67c11feeac938fae061b232e38e0b6d94f97a9df10e6271319325ac4c56a86"
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1663,6 +1669,7 @@ dependencies = [
 name = "snarkvm-models"
 version = "0.0.1"
 dependencies = [
+ "anyhow",
  "bincode",
  "cfg-if 0.1.10",
  "criterion",
