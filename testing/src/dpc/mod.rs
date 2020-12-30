@@ -23,12 +23,10 @@ use snarkvm_models::{
 };
 use snarkvm_objects::Account;
 use snarkvm_parameters::LedgerMerkleTreeParameters;
+use snarkvm_storage::Ledger;
 use snarkvm_utilities::bytes::FromBytes;
 
 use rand::Rng;
-
-// use snarkvm_dpc::base_dpc::instantiated::{CommitmentMerkleParameters, Tx};
-use snarkvm_storage::Ledger;
 
 pub type MerkleTreeLedger = Ledger<Tx, CommitmentMerkleParameters>;
 
