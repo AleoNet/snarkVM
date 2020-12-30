@@ -1226,11 +1226,11 @@ checksum = "ae524f056d7d770e174287294f562e95044c68e88dec909a00d2094805db9d75"
 
 [[package]]
 name = "snarkvm"
-version = "0.1.0"
+version = "0.0.0"
 
 [[package]]
 name = "snarkvm-algorithms"
-version = "1.1.4"
+version = "0.0.0"
 dependencies = [
  "blake2",
  "criterion",
@@ -1253,7 +1253,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-curves"
-version = "1.1.4"
+version = "0.0.0"
 dependencies = [
  "criterion",
  "derivative",
@@ -1268,7 +1268,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-derives"
-version = "1.1.4"
+version = "0.0.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1277,7 +1277,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-dpc"
-version = "1.1.4"
+version = "0.0.0"
 dependencies = [
  "blake2",
  "criterion",
@@ -1300,7 +1300,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-errors"
-version = "1.1.4"
+version = "0.0.0"
 dependencies = [
  "base58",
  "bech32",
@@ -1315,7 +1315,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-gadgets"
-version = "1.1.4"
+version = "0.0.0"
 dependencies = [
  "blake2",
  "derivative",
@@ -1332,7 +1332,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-models"
-version = "1.1.4"
+version = "0.0.0"
 dependencies = [
  "bincode",
  "cfg-if 0.1.10",
@@ -1350,7 +1350,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-objects"
-version = "1.1.4"
+version = "0.0.0"
 dependencies = [
  "base58",
  "bech32",
@@ -1372,7 +1372,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-parameters"
-version = "1.1.4"
+version = "0.0.0"
 dependencies = [
  "chrono",
  "curl",
@@ -1390,14 +1390,14 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-profiler"
-version = "1.1.4"
+version = "0.0.0"
 dependencies = [
  "colored",
 ]
 
 [[package]]
 name = "snarkvm-storage"
-version = "1.1.4"
+version = "0.0.0"
 dependencies = [
  "bincode",
  "hex",
@@ -1417,7 +1417,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-testing"
-version = "1.1.4"
+version = "0.0.0"
 dependencies = [
  "once_cell",
  "rand",
@@ -1436,7 +1436,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-utilities"
-version = "1.1.4"
+version = "0.0.0"
 dependencies = [
  "bincode",
  "rand",

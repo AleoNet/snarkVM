@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-parameters"
-version = "1.1.4"
+version = "0.0.0"
 authors = ["The Aleo Team <hello@aleo.org>"]
 description = "Parameters for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -12,16 +12,16 @@ license = "GPL-3.0"
 edition = "2018"
 
 [dependencies]
-snarkvm-algorithms = { path = "../algorithms", version = "1.1.4", default-features = false }
-snarkvm-errors = { path = "../errors", version = "1.1.4", default-features = false }
-snarkvm-models = { path = "../models", version = "1.1.4", default-features = false }
-snarkvm-utilities = { path = "../utilities", version = "1.1.4", default-features = false }
+snarkvm-algorithms = { path = "../algorithms", version = "0.0.0", default-features = false }
+snarkvm-errors = { path = "../errors", version = "0.0.0", default-features = false }
+snarkvm-models = { path = "../models", version = "0.0.0", default-features = false }
+snarkvm-utilities = { path = "../utilities", version = "0.0.0", default-features = false }
 
 curl = { version = "0.4.34", optional = true }
 hex = { version = "0.4.2" }
 
 [dev-dependencies]
-snarkvm-algorithms = { path = "../algorithms" ,version = "1.1.4"}
+snarkvm-algorithms = { path = "../algorithms" ,version = "0.0.0"}
 snarkvm-curves = { path = "../curves" }
 snarkvm-dpc = { path = "../dpc" }
 snarkvm-objects = { path = "../objects" }
