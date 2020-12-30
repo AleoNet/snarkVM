@@ -897,7 +897,7 @@ where
 
             let outer_snark_parameters = match &parameters.outer_snark_parameters.0 {
                 Some(outer_snark_parameters) => outer_snark_parameters,
-                None => return Err(DPCError::MissingOuterSnarkProvingParameters),
+                None => return Err(DPCError::MissingOuterSnarkProvingParameters.into()),
             };
 
             Components::OuterSNARK::prove(&outer_snark_parameters, &circuit, rng)?
