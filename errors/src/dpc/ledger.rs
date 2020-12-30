@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{algorithms::MerkleError, objects::TransactionError, storage::StorageError};
+use crate::{algorithms::MerkleError, objects::TransactionError};
 
 #[derive(Debug, Error)]
 pub enum LedgerError {
@@ -43,9 +43,6 @@ pub enum LedgerError {
     Message(String),
 
     #[error("{}", _0)]
-    StorageError(StorageError),
-
-    #[error("{}", _0)]
     TransactionError(TransactionError),
 }
 
@@ -58,12 +55,6 @@ impl From<std::io::Error> for LedgerError {
 impl From<MerkleError> for LedgerError {
     fn from(error: MerkleError) -> Self {
         LedgerError::MerkleError(error)
-    }
-}
-
-impl From<StorageError> for LedgerError {
-    fn from(error: StorageError) -> Self {
-        LedgerError::StorageError(error)
     }
 }
 

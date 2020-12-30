@@ -26,4 +26,3 @@ pub mod gadgets;
 pub mod objects;
 pub mod parameters;
 pub mod serialization;
-pub mod storage;
