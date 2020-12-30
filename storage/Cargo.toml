@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-storage"
-version = "0.0.0"
+version = "0.0.1"
 authors = ["The Aleo Team <hello@aleo.org>"]
 description = "Storage for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -12,12 +12,12 @@ license = "GPL-3.0"
 edition = "2018"
 
 [dependencies]
-snarkvm-algorithms = { path = "../algorithms", version = "0.0.0"}
-snarkvm-errors = { path = "../errors", version = "0.0.0"}
-snarkvm-models = { path = "../models", version = "0.0.0"}
-snarkvm-objects = { path = "../objects", version = "0.0.0"}
-snarkvm-parameters = { path = "../parameters", version = "0.0.0"}
-snarkvm-utilities = { path = "../utilities", version = "0.0.0"}
+snarkvm-algorithms = { path = "../algorithms", version = "0.0.1"}
+snarkvm-errors = { path = "../errors", version = "0.0.1"}
+snarkvm-models = { path = "../models", version = "0.0.1"}
+snarkvm-objects = { path = "../objects", version = "0.0.1"}
+snarkvm-parameters = { path = "../parameters", version = "0.0.1"}
+snarkvm-utilities = { path = "../utilities", version = "0.0.1"}
 
 bincode = { version = "1.3.1" }
 hex = { version = "0.4.2" }

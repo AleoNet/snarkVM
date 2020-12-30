@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-algorithms"
-version = "0.0.0"
+version = "0.0.1"
 authors = ["The Aleo Team <hello@aleo.org>"]
 description = "Algorithms for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -16,10 +16,10 @@ name = "gm17"
 path = "examples/snark/gm17.rs"
 
 [dependencies]
-snarkvm-errors = { path = "../errors", version = "0.0.0", default-features = false }
-snarkvm-models = { path = "../models", version = "0.0.0", default-features = false }
-snarkvm-profiler = { path = "../profiler", version = "0.0.0"}
-snarkvm-utilities = { path = "../utilities", version = "0.0.0", default-features = false }
+snarkvm-errors = { path = "../errors", version = "0.0.1", default-features = false }
+snarkvm-models = { path = "../models", version = "0.0.1", default-features = false }
+snarkvm-profiler = { path = "../profiler", version = "0.0.1"}
+snarkvm-utilities = { path = "../utilities", version = "0.0.1", default-features = false }
 
 blake2 = { version = "0.8.1" }
 derivative = { version = "2" }
@@ -32,7 +32,7 @@ sha2 = { version = "0.9" }
 smallvec = { version = "1.4" }
 
 [dev-dependencies]
-snarkvm-curves = { path = "../curves", version = "0.0.0"}
+snarkvm-curves = { path = "../curves", version = "0.0.1"}
 
 criterion = { version = "0.3.3" }
 csv = { version = "1" }

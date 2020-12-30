@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-errors"
-version = "0.0.0"
+version = "0.0.1"
 authors = ["The Aleo Team <hello@aleo.org>"]
 description = "Errors for a decentralized virtual machine"
 homepage = "https://aleo.org"
