@@ -10,7 +10,5 @@
 
 ## Diffs to Resolve
 
-- `snarkvm-errors` - consensus, network, node, posw, rpc
-- `snarkvm-parameters` - examples and scripts
-- `snarkvm-testing` - only dpc, no examples, scripts, or others
 - Remove `snarkvm-storage` by reintroducing a virtualized/in-memory ledger
+- Unify `snarkvm-parameters` with `snarkos-parameters` - examples and scripts
