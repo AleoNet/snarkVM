@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::objects::{BlockScheme, Transaction};
-use snarkvm_errors::dpc::LedgerError;
 
 use std::path::PathBuf;
 

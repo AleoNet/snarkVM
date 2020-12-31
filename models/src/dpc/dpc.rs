@@ -18,7 +18,6 @@ use crate::{
     dpc::Record,
     objects::{AccountScheme, LedgerScheme, Transaction},
 };
-use snarkvm_errors::dpc::DPCError;
 
 use rand::Rng;
 
