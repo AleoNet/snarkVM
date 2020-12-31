@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::error::StorageError;
 use crate::{Ledger, TransactionLocation, COL_TRANSACTION_LOCATION};
-use snarkvm_errors::storage::StorageError;
 use snarkvm_models::{
     algorithms::LoadableMerkleParameters,
     objects::{LedgerScheme, Transaction},
@@ -23,14 +23,19 @@ use snarkvm_models::{
 use snarkvm_objects::BlockHeaderHash;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
-    has_duplicates,
-    to_bytes,
+    has_duplicates, to_bytes,
 };
 
 impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
     /// Returns a transaction location given the transaction ID if it exists. Returns `None` otherwise.
-    pub fn get_transaction_location(&self, transaction_id: &[u8]) -> Result<Option<TransactionLocation>, StorageError> {
-        match self.storage.get(COL_TRANSACTION_LOCATION, &transaction_id)? {
+    pub fn get_transaction_location(
+        &self,
+        transaction_id: &[u8],
+    ) -> Result<Option<TransactionLocation>, StorageError> {
+        match self
+            .storage
+            .get(COL_TRANSACTION_LOCATION, &transaction_id)?
+        {
             Some(transaction_locator) => {
                 let transaction_location = TransactionLocation::read(&transaction_locator[..])?;
                 Ok(Some(transaction_location))
@@ -45,7 +50,9 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
             Some(transaction_location) => {
                 let block_transactions =
                     self.get_block_transactions(&BlockHeaderHash(transaction_location.block_hash))?;
-                Ok(Some(block_transactions.0[transaction_location.index as usize].clone()))
+                Ok(Some(
+                    block_transactions.0[transaction_location.index as usize].clone(),
+                ))
             }
             None => Ok(None),
         }
@@ -55,7 +62,9 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
     pub fn get_transaction_bytes(&self, transaction_id: &[u8]) -> Result<Vec<u8>, StorageError> {
         match self.get_transaction(transaction_id)? {
             Some(transaction) => Ok(to_bytes![transaction]?),
-            None => Err(StorageError::InvalidTransactionId(hex::encode(&transaction_id))),
+            None => Err(StorageError::InvalidTransactionId(hex::encode(
+                &transaction_id,
+            ))),
         }
     }
 

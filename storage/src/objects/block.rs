@@ -14,8 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::error::StorageError;
 use crate::*;
-use snarkvm_errors::{objects::BlockError, storage::StorageError};
+use snarkvm_errors::objects::BlockError;
 use snarkvm_models::{algorithms::LoadableMerkleParameters, objects::Transaction};
 use snarkvm_objects::{Block, BlockHeaderHash, DPCTransactions};
 use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
@@ -37,7 +38,9 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
     /// Get a block given the block number.
     pub fn get_block_from_block_number(&self, block_number: u32) -> Result<Block<T>, StorageError> {
         if block_number > self.get_latest_block_height() {
-            return Err(StorageError::BlockError(BlockError::InvalidBlockNumber(block_number)));
+            return Err(StorageError::BlockError(BlockError::InvalidBlockNumber(
+                block_number,
+            )));
         }
 
         let block_hash = self.get_block_hash(block_number)?;
@@ -47,7 +50,10 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
 
     /// Get the block hash given a block number.
     pub fn get_block_hash(&self, block_number: u32) -> Result<BlockHeaderHash, StorageError> {
-        match self.storage.get(COL_BLOCK_LOCATOR, &block_number.to_le_bytes())? {
+        match self
+            .storage
+            .get(COL_BLOCK_LOCATOR, &block_number.to_le_bytes())?
+        {
             Some(block_header_hash) => Ok(BlockHeaderHash::new(block_header_hash)),
             None => Err(StorageError::MissingBlockHash(block_number)),
         }
@@ -62,10 +68,17 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
     }
 
     /// Get the list of transaction ids given a block hash.
-    pub fn get_block_transactions(&self, block_hash: &BlockHeaderHash) -> Result<DPCTransactions<T>, StorageError> {
+    pub fn get_block_transactions(
+        &self,
+        block_hash: &BlockHeaderHash,
+    ) -> Result<DPCTransactions<T>, StorageError> {
         match self.storage.get(COL_BLOCK_TRANSACTIONS, &block_hash.0)? {
-            Some(encoded_block_transactions) => Ok(DPCTransactions::read(&encoded_block_transactions[..])?),
-            None => Err(StorageError::MissingBlockTransactions(block_hash.to_string())),
+            Some(encoded_block_transactions) => {
+                Ok(DPCTransactions::read(&encoded_block_transactions[..])?)
+            }
+            None => Err(StorageError::MissingBlockTransactions(
+                block_hash.to_string(),
+            )),
         }
     }
 
@@ -75,7 +88,9 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
         parent_header: &BlockHeaderHash,
     ) -> Result<Vec<BlockHeaderHash>, StorageError> {
         match self.storage.get(COL_CHILD_HASHES, &parent_header.0)? {
-            Some(encoded_child_block_hashes) => Ok(bincode::deserialize(&encoded_child_block_hashes[..])?),
+            Some(encoded_child_block_hashes) => {
+                Ok(bincode::deserialize(&encoded_child_block_hashes[..])?)
+            }
             None => Ok(vec![]),
         }
     }
@@ -88,7 +103,10 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
 
         let existing_block_number = previous_block_number + 1;
 
-        if self.get_block_from_block_number(existing_block_number).is_ok() {
+        if self
+            .get_block_from_block_number(existing_block_number)
+            .is_ok()
+        {
             // the storage has a conflicting block with the same previous_block_hash
             Ok(Some(existing_block_number))
         } else {
@@ -100,7 +118,9 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
     /// Remove a block and it's related data from the storage.
     pub fn remove_block(&self, block_hash: BlockHeaderHash) -> Result<(), StorageError> {
         if self.is_canon(&block_hash) {
-            return Err(StorageError::InvalidBlockRemovalCanon(block_hash.to_string()));
+            return Err(StorageError::InvalidBlockRemovalCanon(
+                block_hash.to_string(),
+            ));
         }
 
         let mut database_transaction = DatabaseTransaction::new();
@@ -245,7 +265,10 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
     pub fn remove_latest_blocks(&self, num_blocks: u32) -> Result<(), StorageError> {
         let latest_block_height = self.get_latest_block_height();
         if num_blocks > latest_block_height {
-            return Err(StorageError::InvalidBlockRemovalNum(num_blocks, latest_block_height));
+            return Err(StorageError::InvalidBlockRemovalNum(
+                num_blocks,
+                latest_block_height,
+            ));
         }
 
         for _ in 0..num_blocks {

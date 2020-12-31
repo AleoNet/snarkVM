@@ -20,7 +20,6 @@ use crate::base_dpc::{
     program::*, record::record_encryption::*, record_payload::RecordPayload, BaseDPCComponents,
     ExecuteContext, DPC,
 };
-use snarkos_testing::storage::*;
 use snarkvm_algorithms::merkle_tree::MerklePath;
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_models::{
@@ -33,6 +32,7 @@ use snarkvm_objects::{
     dpc::DPCTransactions, Account, Block, BlockHeader, BlockHeaderHash, MerkleRootHash,
     PedersenMerkleRootHash, ProofOfSuccinctWork,
 };
+use snarkvm_testing::storage::*;
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
 use itertools::Itertools;

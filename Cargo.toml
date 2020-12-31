@@ -23,6 +23,7 @@ members = [
     "objects",
     "parameters",
     "polycommit",
+    "testing",
     "utilities"
 ]
 

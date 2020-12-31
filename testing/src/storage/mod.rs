@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub use snarkos_storage::Ledger;
 use snarkvm_dpc::base_dpc::instantiated::{CommitmentMerkleParameters, Tx};
 use snarkvm_models::{
     algorithms::merkle_tree::LoadableMerkleParameters,
     objects::{LedgerScheme, Transaction},
 };
 use snarkvm_objects::Block;
+pub use snarkvm_storage::Ledger;
 
 use rand::{thread_rng, Rng};
 use std::{path::PathBuf, sync::Arc};
