@@ -24,7 +24,7 @@
 
 <!--
     If this PR adds or changes functionality,
-    please take some time to update the docs at https://github.com/AleoHQ/snarkOS,
+    please take some time to update the docs at https://github.com/AleoHQ/snarkVM,
     and link to your PR here.
 -->
 
