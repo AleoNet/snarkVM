@@ -1,0 +1,82 @@
+version: 2.1
+commands:
+  setup_environment:
+    description: "Setup testing environment"
+    parameters:
+      cache_key:
+        type: string
+        default: snark-cache-main
+    steps:
+      - run: set -e
+      - setup_remote_docker
+      - run:
+          name: Prepare envrionment and install dependencies
+          command: |
+            export SCCACHE_CACHE_SIZE=200M
+            export WORK_DIR="$CIRCLE_WORKING_DIRECTORY/.cache/sccache"
+            export SCCACHE_DIR="$CIRCLE_WORKING_DIRECTORY/.cache/sccache"
+            mkdir -p "$CIRCLE_WORKING_DIRECTORY/.bin"
+            wget https://github.com/mozilla/sccache/releases/download/0.2.13/sccache-0.2.13-x86_64-unknown-linux-musl.tar.gz
+            tar -C "$CIRCLE_WORKING_DIRECTORY/.bin" -xvf sccache-0.2.13-x86_64-unknown-linux-musl.tar.gz
+            mv $CIRCLE_WORKING_DIRECTORY/.bin/sccache-0.2.13-x86_64-unknown-linux-musl/sccache $CIRCLE_WORKING_DIRECTORY/.bin/sccache
+            export PATH="$PATH:$CIRCLE_WORKING_DIRECTORY/.bin"
+            export RUSTC_WRAPPER="sccache"
+            rm -rf "$CIRCLE_WORKING_DIRECTORY/.cargo/registry"
+            sudo apt-get update && sudo apt-get install -y clang llvm-dev llvm pkg-config xz-utils make libssl-dev libssl-dev
+      - restore_cache:
+          keys:
+            - << parameters.cache_key >>
+  clear_environment:
+    description: "Clear environment"
+    parameters:
+      cache_key:
+        type: string
+        default: snark-main
+    steps:
+      - run: (sccache -s||true)
+      - run: set +e
+      - save_cache:
+          key: << parameters.cache_key >>
+          paths:
+            - .cache/sccache
+            - .cargo
+jobs:
+  rust_stable:
+    docker:
+      - image: cimg/rust:1.43.0
+    resource_class: 2xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snark-main
+      - run:
+          name: Build and run tests
+          command: RUST_MIN_STACK=8388608 cargo test --all -- --skip dpc --skip dpc_integration_test
+      - persist_to_workspace:
+          root: ~/
+          paths: project/
+      - clear_environment:
+          cache_key: snark-main
+  analyse_and_store_coverage:
+    machine:
+      image: ubuntu-1604:202004-01
+      docker_layer_caching: true
+    resource_class: 2xlarge
+    steps:
+      - attach_workspace:
+          at: /home/circleci/project/
+      - run:
+          name: Run kcov
+          command: >
+            cd ~/project/project/ &&
+            docker run --security-opt seccomp=unconfined -v ~/project/project/:/home/circleci/project/
+            daniilr/kcov bash /home/circleci/project/ci/kcov.sh
+      - run: cd ./project/ && bash <(curl -s https://codecov.io/bash)
+workflows:
+  version: 2
+  main-workflow:
+    jobs:
+      - rust_stable
+      - analyse_and_store_coverage:
+          requires:
+            - rust_stable
