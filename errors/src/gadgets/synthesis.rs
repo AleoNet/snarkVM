@@ -67,7 +67,7 @@ impl fmt::Display for SynthesisError {
             write!(f, "I/O error: ")?;
             e.fmt(f)
         } else {
-            write!(f, "{}", self.to_string())
+            write!(f, "{}", self)
         }
     }
 }
