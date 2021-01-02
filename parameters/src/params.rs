@@ -76,13 +76,17 @@ macro_rules! impl_params_remote {
                 file_path.push(&filename);
 
                 // Compute the relative path.
-                let relative_path = file_path.strip_prefix("parameters");
+                let relative_path = if file_path.strip_prefix("parameters").is_ok() {
+                    file_path.strip_prefix("parameters")?
+                } else {
+                    &file_path
+                };
 
                 // Compute the absolute path.
                 let mut absolute_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
                 absolute_path.push(&relative_path);
 
-                let buffer = if relative_path.is_ok() && relative_path?.exists() {
+                let buffer = if relative_path.exists() {
                     // Attempts to load the parameter file locally with a relative path.
                     fs::read(relative_path)?
                 } else if absolute_path.exists() {

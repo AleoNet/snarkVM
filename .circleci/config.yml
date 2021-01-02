@@ -10,7 +10,7 @@ commands:
       - run: set -e
       - setup_remote_docker
       - run:
-          name: Prepare envrionment and install dependencies
+          name: Prepare environment and install dependencies
           command: |
             export SCCACHE_CACHE_SIZE=200M
             export WORK_DIR="$CIRCLE_WORKING_DIRECTORY/.cache/sccache"
