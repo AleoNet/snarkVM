@@ -33,6 +33,9 @@ path = "snarkvm/main.rs"
 
 [dependencies]
 
+[dev-dependencies]
+rusty-hook = { version = "0.11.2" }
+
 [profile.release]
 opt-level = 3
 lto = "thin"
