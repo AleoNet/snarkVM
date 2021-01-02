@@ -86,13 +86,8 @@ impl<F: PrimeField> AHPForR1CS<F> {
     /// of this protocol.
     /// The number of the variables must include the "one" variable. That is, it
     /// must be with respect to the number of formatted public inputs.
-    pub fn max_degree(
-        num_constraints: usize,
-        num_variables: usize,
-        num_non_zero: usize,
-    ) -> Result<usize, Error> {
-        let padded_matrix_dim =
-            constraint_systems::padded_matrix_dim(num_variables, num_constraints);
+    pub fn max_degree(num_constraints: usize, num_variables: usize, num_non_zero: usize) -> Result<usize, Error> {
+        let padded_matrix_dim = constraint_systems::padded_matrix_dim(num_variables, num_constraints);
         let zk_bound = 1;
         let domain_h_size = EvaluationDomain::<F>::compute_size_of_domain(padded_matrix_dim)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
@@ -138,13 +133,11 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let domain_k = state.domain_k;
         let k_size = domain_k.size_as_field_element;
 
-        let public_input =
-            constraint_systems::ProverConstraintSystem::format_public_input(public_input);
+        let public_input = constraint_systems::ProverConstraintSystem::format_public_input(public_input);
         if !Self::formatted_public_input_is_admissible(&public_input) {
             return Err(Error::InvalidPublicInputLength);
         }
-        let x_domain = EvaluationDomain::new(public_input.len())
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let x_domain = EvaluationDomain::new(public_input.len()).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let first_round_msg = state.first_round_msg.unwrap();
         let alpha = first_round_msg.alpha;
@@ -205,35 +198,26 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let beta_alpha = beta * &alpha;
         let g_2 = LinearCombination::new("g_2", vec![(F::one(), "g_2")]);
 
-        let a_denom = LinearCombination::new(
-            "a_denom",
-            vec![
-                (beta_alpha, LCTerm::One),
-                (-alpha, "a_row".into()),
-                (-beta, "a_col".into()),
-                (F::one(), "a_row_col".into()),
-            ],
-        );
+        let a_denom = LinearCombination::new("a_denom", vec![
+            (beta_alpha, LCTerm::One),
+            (-alpha, "a_row".into()),
+            (-beta, "a_col".into()),
+            (F::one(), "a_row_col".into()),
+        ]);
 
-        let b_denom = LinearCombination::new(
-            "b_denom",
-            vec![
-                (beta_alpha, LCTerm::One),
-                (-alpha, "b_row".into()),
-                (-beta, "b_col".into()),
-                (F::one(), "b_row_col".into()),
-            ],
-        );
+        let b_denom = LinearCombination::new("b_denom", vec![
+            (beta_alpha, LCTerm::One),
+            (-alpha, "b_row".into()),
+            (-beta, "b_col".into()),
+            (F::one(), "b_row_col".into()),
+        ]);
 
-        let c_denom = LinearCombination::new(
-            "c_denom",
-            vec![
-                (beta_alpha, LCTerm::One),
-                (-alpha, "c_row".into()),
-                (-beta, "c_col".into()),
-                (F::one(), "c_row_col".into()),
-            ],
-        );
+        let c_denom = LinearCombination::new("c_denom", vec![
+            (beta_alpha, LCTerm::One),
+            (-alpha, "c_row".into()),
+            (-beta, "c_col".into()),
+            (F::one(), "c_row_col".into()),
+        ]);
 
         let a_denom_at_gamma = evals.get_lc_eval(&a_denom, gamma)?;
         let b_denom_at_gamma = evals.get_lc_eval(&b_denom, gamma)?;
@@ -242,14 +226,11 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
         let v_K_at_gamma = domain_k.evaluate_vanishing_polynomial(gamma);
 
-        let mut a = LinearCombination::new(
-            "a_poly",
-            vec![
-                (eta_a * &b_denom_at_gamma * &c_denom_at_gamma, "a_val"),
-                (eta_b * &a_denom_at_gamma * &c_denom_at_gamma, "b_val"),
-                (eta_c * &b_denom_at_gamma * &a_denom_at_gamma, "c_val"),
-            ],
-        );
+        let mut a = LinearCombination::new("a_poly", vec![
+            (eta_a * &b_denom_at_gamma * &c_denom_at_gamma, "a_val"),
+            (eta_b * &a_denom_at_gamma * &c_denom_at_gamma, "b_val"),
+            (eta_c * &b_denom_at_gamma * &a_denom_at_gamma, "c_val"),
+        ]);
 
         a *= v_H_at_alpha * &v_H_at_beta;
         let b_at_gamma = a_denom_at_gamma * &b_denom_at_gamma * &c_denom_at_gamma;
@@ -301,9 +282,7 @@ impl<'a, F: Field, T: Borrow<LabeledPolynomial<'a, F>>> EvaluationsProvider<F> f
                         let p: &LabeledPolynomial<F> = (*p).borrow();
                         p.label() == label
                     })
-                    .ok_or_else(|| {
-                        Error::MissingEval(format!("Missing {} for {}", label, lc.label))
-                    })?
+                    .ok_or_else(|| Error::MissingEval(format!("Missing {} for {}", label, lc.label)))?
                     .borrow()
                     .evaluate(point)
             } else {
@@ -352,8 +331,7 @@ pub trait UnnormalizedBivariateLagrangePoly<F: PrimeField> {
 impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F> {
     fn eval_unnormalized_bivariate_lagrange_poly(&self, x: F, y: F) -> F {
         if x != y {
-            (self.evaluate_vanishing_polynomial(x) - &self.evaluate_vanishing_polynomial(y))
-                / &(x - &y)
+            (self.evaluate_vanishing_polynomial(x) - &self.evaluate_vanishing_polynomial(y)) / &(x - &y)
         } else {
             self.size_as_field_element * &x.pow(&[(self.size() - 1) as u64])
         }
@@ -369,10 +347,7 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
     }
 
     fn batch_eval_unnormalized_bivariate_lagrange_poly_with_same_inputs(&self) -> Vec<F> {
-        let mut elems: Vec<F> = self
-            .elements()
-            .map(|e| e * &self.size_as_field_element)
-            .collect();
+        let mut elems: Vec<F> = self.elements().map(|e| e * &self.size_as_field_element).collect();
         elems[1..].reverse();
         elems
     }
@@ -440,9 +415,7 @@ mod tests {
         use snarkvm_algorithms::fft::Evaluations;
         let domain_k = EvaluationDomain::<Fr>::new(1 << 4).unwrap();
         let domain_h = EvaluationDomain::<Fr>::new(1 << 3).unwrap();
-        let domain_h_elems = domain_h
-            .elements()
-            .collect::<std::collections::HashSet<_>>();
+        let domain_h_elems = domain_h.elements().collect::<std::collections::HashSet<_>>();
         let alternator_poly_evals = domain_k
             .elements()
             .map(|e| {
@@ -463,11 +436,7 @@ mod tests {
             divisor
                 .coeffs
                 .iter()
-                .filter_map(|f| if !f.is_zero() {
-                    Some(f.into_repr())
-                } else {
-                    None
-                })
+                .filter_map(|f| if !f.is_zero() { Some(f.into_repr()) } else { None })
                 .collect::<Vec<_>>()
         );
 
@@ -483,8 +452,7 @@ mod tests {
         //
         // Q: what is the constant c? Why is p(h) constant? What is the easiest
         // way to calculate c?
-        let alternator_poly =
-            Evaluations::from_vec_and_domain(alternator_poly_evals, domain_k).interpolate();
+        let alternator_poly = Evaluations::from_vec_and_domain(alternator_poly_evals, domain_k).interpolate();
         let (quotient, remainder) = DenseOrSparsePolynomial::from(alternator_poly.clone())
             .divide_with_q_and_r(&DenseOrSparsePolynomial::from(divisor))
             .unwrap();
@@ -495,11 +463,7 @@ mod tests {
             quotient
                 .coeffs
                 .iter()
-                .filter_map(|f| if !f.is_zero() {
-                    Some(f.into_repr())
-                } else {
-                    None
-                })
+                .filter_map(|f| if !f.is_zero() { Some(f.into_repr()) } else { None })
                 .collect::<Vec<_>>()
         );
 

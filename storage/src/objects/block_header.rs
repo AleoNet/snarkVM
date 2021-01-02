@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::error::StorageError;
-use crate::{Ledger, COL_BLOCK_HEADER};
+use crate::{error::StorageError, Ledger, COL_BLOCK_HEADER};
 use snarkvm_models::{algorithms::LoadableMerkleParameters, objects::Transaction};
 use snarkvm_objects::{Block, BlockHeader, BlockHeaderHash};
 use snarkvm_utilities::FromBytes;
@@ -34,10 +33,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
     }
 
     /// Get a block header given the block hash.
-    pub fn get_block_header(
-        &self,
-        block_hash: &BlockHeaderHash,
-    ) -> Result<BlockHeader, StorageError> {
+    pub fn get_block_header(&self, block_hash: &BlockHeaderHash) -> Result<BlockHeader, StorageError> {
         match self.storage.get(COL_BLOCK_HEADER, &block_hash.0)? {
             Some(block_header_bytes) => Ok(BlockHeader::read(&block_header_bytes[..])?),
             None => Err(StorageError::MissingBlockHeader(block_hash.to_string())),

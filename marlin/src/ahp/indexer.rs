@@ -24,11 +24,11 @@ use crate::{
     },
     Vec,
 };
+use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_errors::{gadgets::SynthesisError, serialization::SerializationError};
 use snarkvm_models::{curves::PrimeField, gadgets::r1cs::ConstraintSynthesizer};
-use snarkvm_utilities::serialize::*;
-use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_polycommit::LabeledPolynomial;
+use snarkvm_utilities::serialize::*;
 
 use core::marker::PhantomData;
 use derivative::Derivative;

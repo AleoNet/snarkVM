@@ -38,8 +38,8 @@ use core::marker::PhantomData;
 use digest::Digest;
 use rand_core::RngCore;
 use snarkvm_models::{curves::PrimeField, gadgets::r1cs::ConstraintSynthesizer};
-use snarkvm_utilities::{bytes::ToBytes, rand::UniformRand, to_bytes};
 use snarkvm_polycommit::{Evaluations, LabeledCommitment, PCUniversalParams, PolynomialCommitment};
+use snarkvm_utilities::{bytes::ToBytes, rand::UniformRand, to_bytes};
 
 #[cfg(not(feature = "std"))]
 #[macro_use]

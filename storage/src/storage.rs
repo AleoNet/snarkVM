@@ -14,12 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::error::StorageError;
-use crate::{DatabaseTransaction, Op};
+use crate::{error::StorageError, DatabaseTransaction, Op};
 
-use rocksdb::{
-    ColumnFamily, ColumnFamilyDescriptor, DBIterator, IteratorMode, Options, WriteBatch, DB,
-};
+use rocksdb::{ColumnFamily, ColumnFamilyDescriptor, DBIterator, IteratorMode, Options, WriteBatch, DB};
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
@@ -57,10 +54,7 @@ impl Storage {
 
         let storage = Arc::new(DB::open_cf_descriptors(&storage_opts, path, cfs)?);
 
-        Ok(Self {
-            db: storage,
-            cf_names,
-        })
+        Ok(Self { db: storage, cf_names })
     }
 
     /// Opens a secondary storage instance from the given path with its given names.
@@ -90,10 +84,7 @@ impl Storage {
 
         storage.try_catch_up_with_primary()?;
 
-        Ok(Self {
-            db: storage,
-            cf_names,
-        })
+        Ok(Self { db: storage, cf_names })
     }
 
     /// Returns the column family reference from a given index.
@@ -113,9 +104,7 @@ impl Storage {
     /// Returns the iterator from a given col.
     /// If the given key does not exist, returns [StorageError](snarkvm_errors::storage::StorageError).
     pub(crate) fn get_iter(&self, col: u32) -> Result<DBIterator, StorageError> {
-        Ok(self
-            .db
-            .iterator_cf(self.get_cf_ref(col), IteratorMode::Start))
+        Ok(self.db.iterator_cf(self.get_cf_ref(col), IteratorMode::Start))
     }
 
     /// Returns `Ok(())` after executing a database transaction

@@ -40,11 +40,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> LedgerScheme for Ledger<T, P> 
     type Transaction = T;
 
     /// Instantiates a new ledger with a genesis block.
-    fn new(
-        path: &PathBuf,
-        parameters: Self::MerkleParameters,
-        genesis_block: Self::Block,
-    ) -> anyhow::Result<Self> {
+    fn new(path: &PathBuf, parameters: Self::MerkleParameters, genesis_block: Self::Block) -> anyhow::Result<Self> {
         fs::create_dir_all(&path).map_err(|err| LedgerError::Message(err.to_string()))?;
         let storage = match Storage::open_cf(path, NUM_COLS) {
             Ok(storage) => storage,
@@ -58,8 +54,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> LedgerScheme for Ledger<T, P> 
         }
 
         let leaves: Vec<[u8; 32]> = vec![];
-        let empty_cm_merkle_tree =
-            MerkleTree::<Self::MerkleParameters>::new(parameters.clone(), &leaves)?;
+        let empty_cm_merkle_tree = MerkleTree::<Self::MerkleParameters>::new(parameters.clone(), &leaves)?;
 
         let ledger_storage = Self {
             latest_block_height: RwLock::new(0),
@@ -86,8 +81,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> LedgerScheme for Ledger<T, P> 
 
     /// Return a digest of the latest ledger Merkle tree.
     fn digest(&self) -> Option<Self::MerkleTreeDigest> {
-        let digest: Self::MerkleTreeDigest =
-            FromBytes::read(&self.current_digest().unwrap()[..]).unwrap();
+        let digest: Self::MerkleTreeDigest = FromBytes::read(&self.current_digest().unwrap()[..]).unwrap();
         Some(digest)
     }
 
@@ -103,8 +97,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> LedgerScheme for Ledger<T, P> 
 
     /// Returns true if the given serial number exists in the ledger.
     fn contains_sn(&self, sn: &Self::SerialNumber) -> bool {
-        self.storage
-            .exists(COL_SERIAL_NUMBER, &to_bytes![sn].unwrap())
+        self.storage.exists(COL_SERIAL_NUMBER, &to_bytes![sn].unwrap())
     }
 
     /// Returns true if the given memo exists in the ledger.
@@ -115,9 +108,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> LedgerScheme for Ledger<T, P> 
     /// Returns the Merkle path to the latest ledger digest
     /// for a given commitment, if it exists in the ledger.
     fn prove_cm(&self, cm: &Self::Commitment) -> anyhow::Result<Self::MerklePath> {
-        let cm_index = self
-            .get_cm_index(&to_bytes![cm]?)?
-            .ok_or(LedgerError::InvalidCmIndex)?;
+        let cm_index = self.get_cm_index(&to_bytes![cm]?)?.ok_or(LedgerError::InvalidCmIndex)?;
         let result = self.cm_merkle_tree.read().generate_proof(cm_index, cm)?;
 
         Ok(result)

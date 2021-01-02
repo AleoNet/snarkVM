@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::error::StorageError;
-use crate::*;
+use crate::{error::StorageError, *};
 use snarkvm_models::{algorithms::LoadableMerkleParameters, dpc::Record, objects::Transaction};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
@@ -26,10 +25,7 @@ use snarkvm_utilities::{
 //  This is merely for local node / miner functionality.
 impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
     /// Get all stored record commitments of the node
-    pub fn get_record_commitments(
-        &self,
-        limit: Option<usize>,
-    ) -> Result<Vec<Vec<u8>>, StorageError> {
+    pub fn get_record_commitments(&self, limit: Option<usize>) -> Result<Vec<Vec<u8>>, StorageError> {
         let mut record_commitments = vec![];
 
         for (commitment_key, _record) in self.storage.get_iter(COL_RECORDS)? {
@@ -46,10 +42,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
     }
 
     /// Get a transaction bytes given the transaction id.
-    pub fn get_record<R: Record>(
-        &self,
-        record_commitment: &[u8],
-    ) -> Result<Option<R>, StorageError> {
+    pub fn get_record<R: Record>(&self, record_commitment: &[u8]) -> Result<Option<R>, StorageError> {
         match self.storage.get(COL_RECORDS, &record_commitment)? {
             Some(record_bytes) => {
                 let record: R = FromBytes::read(&record_bytes[..])?;

@@ -17,8 +17,8 @@
 #![allow(non_snake_case)]
 
 use crate::ahp::{indexer::IndexInfo, *};
-use snarkvm_models::{curves::PrimeField, gadgets::r1cs::ConstraintSynthesizer};
 use snarkvm_algorithms::fft::EvaluationDomain;
+use snarkvm_models::{curves::PrimeField, gadgets::r1cs::ConstraintSynthesizer};
 use snarkvm_polycommit::QuerySet;
 
 use rand_core::RngCore;

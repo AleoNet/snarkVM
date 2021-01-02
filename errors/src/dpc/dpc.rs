@@ -16,8 +16,14 @@
 
 use crate::{
     algorithms::{
-        CRHError, CommitmentError, EncodingError, EncryptionError, MerkleError, PRFError,
-        SNARKError, SignatureError,
+        CRHError,
+        CommitmentError,
+        EncodingError,
+        EncryptionError,
+        MerkleError,
+        PRFError,
+        SNARKError,
+        SignatureError,
     },
     dpc::LedgerError,
     objects::AccountError,

@@ -22,14 +22,14 @@ use crate::{
     Cow,
     ToString,
 };
+use snarkvm_algorithms::{cfg_iter_mut, fft::Evaluations as EvaluationsOnDomain};
 use snarkvm_errors::{gadgets::SynthesisError, serialization::SerializationError};
 use snarkvm_models::{
     curves::{batch_inversion, Field, PrimeField},
     gadgets::r1cs::{ConstraintSystem, Index as VarIndex, LinearCombination, Variable},
 };
-use snarkvm_utilities::serialize::*;
-use snarkvm_algorithms::{cfg_iter_mut, fft::Evaluations as EvaluationsOnDomain};
 use snarkvm_polycommit::LabeledPolynomial;
+use snarkvm_utilities::serialize::*;
 
 use derivative::Derivative;
 

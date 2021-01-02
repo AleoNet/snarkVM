@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::error::StorageError;
-use crate::*;
+use crate::{error::StorageError, *};
 use snarkvm_algorithms::merkle_tree::MerkleTree;
 use snarkvm_models::{algorithms::LoadableMerkleParameters, objects::Transaction};
 use snarkvm_utilities::{
@@ -123,15 +122,9 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
         }
 
         cm_and_indices.sort_by(|&(_, i), &(_, j)| i.cmp(&j));
-        let commitments = cm_and_indices
-            .into_iter()
-            .map(|(cm, _)| cm)
-            .collect::<Vec<_>>();
+        let commitments = cm_and_indices.into_iter().map(|(cm, _)| cm).collect::<Vec<_>>();
 
-        Ok(MerkleTree::new(
-            self.ledger_parameters.clone(),
-            &commitments,
-        )?)
+        Ok(MerkleTree::new(self.ledger_parameters.clone(), &commitments)?)
     }
 
     /// Rebuild the stored merkle tree with the current stored commitments

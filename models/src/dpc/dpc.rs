@@ -34,16 +34,10 @@ pub trait DPCScheme<L: LedgerScheme> {
     type ExecuteContext;
 
     /// Returns public parameters for the DPC.
-    fn setup<R: Rng>(
-        ledger_parameters: &L::MerkleParameters,
-        rng: &mut R,
-    ) -> anyhow::Result<Self::Parameters>;
+    fn setup<R: Rng>(ledger_parameters: &L::MerkleParameters, rng: &mut R) -> anyhow::Result<Self::Parameters>;
 
     /// Returns an account, given the public parameters, metadata, and an rng.
-    fn create_account<R: Rng>(
-        parameters: &Self::Parameters,
-        rng: &mut R,
-    ) -> anyhow::Result<Self::Account>;
+    fn create_account<R: Rng>(parameters: &Self::Parameters, rng: &mut R) -> anyhow::Result<Self::Account>;
 
     /// Returns the execution context required for program snark and DPC transaction generation.
     #[allow(clippy::too_many_arguments)]
@@ -74,11 +68,7 @@ pub trait DPCScheme<L: LedgerScheme> {
     ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)>;
 
     /// Returns true iff the transaction is valid according to the ledger.
-    fn verify(
-        parameters: &Self::Parameters,
-        transaction: &Self::Transaction,
-        ledger: &L,
-    ) -> anyhow::Result<bool>;
+    fn verify(parameters: &Self::Parameters, transaction: &Self::Transaction, ledger: &L) -> anyhow::Result<bool>;
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
     fn verify_transactions(

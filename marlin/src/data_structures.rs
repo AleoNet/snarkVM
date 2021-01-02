@@ -20,12 +20,12 @@ use crate::{
 };
 use snarkvm_errors::serialization::SerializationError;
 use snarkvm_models::{curves::PrimeField, gadgets::r1cs::ConstraintSynthesizer};
+use snarkvm_polycommit::{BatchLCProof, PolynomialCommitment};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     error,
     serialize::*,
 };
-use snarkvm_polycommit::{BatchLCProof, PolynomialCommitment};
 
 use core::marker::PhantomData;
 use derivative::Derivative;

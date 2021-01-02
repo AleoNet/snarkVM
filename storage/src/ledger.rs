@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::error::StorageError;
-use crate::*;
+use crate::{error::StorageError, *};
 use snarkvm_algorithms::merkle_tree::MerkleTree;
 use snarkvm_models::{
     algorithms::LoadableMerkleParameters,
@@ -95,10 +94,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
 
     /// Returns a `Ledger` with the latest state loaded from storage at a given path as
     /// a primary or secondary ledger. A secondary ledger runs as a read-only instance.
-    fn load_ledger_state<PATH: AsRef<Path>>(
-        path: PATH,
-        primary: bool,
-    ) -> Result<Self, StorageError> {
+    fn load_ledger_state<PATH: AsRef<Path>>(path: PATH, primary: bool) -> Result<Self, StorageError> {
         let mut secondary_path_os_string = path.as_ref().to_path_buf().into_os_string();
         secondary_path_os_string.push("_secondary");
 
@@ -112,9 +108,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
             storage.get(COL_META, KEY_BEST_BLOCK_NUMBER.as_bytes())?
         };
 
-        let crh = P::H::from(FromBytes::read(
-            &LedgerMerkleTreeParameters::load_bytes()?[..],
-        )?);
+        let crh = P::H::from(FromBytes::read(&LedgerMerkleTreeParameters::load_bytes()?[..])?);
         let ledger_parameters = P::from(crh);
 
         match latest_block_number {
@@ -136,10 +130,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
                 }
 
                 cm_and_indices.sort_by(|&(_, i), &(_, j)| i.cmp(&j));
-                let commitments = cm_and_indices
-                    .into_iter()
-                    .map(|(cm, _)| cm)
-                    .collect::<Vec<_>>();
+                let commitments = cm_and_indices.into_iter().map(|(cm, _)| cm).collect::<Vec<_>>();
 
                 let merkle_tree = MerkleTree::new(ledger_parameters.clone(), &commitments)?;
 
@@ -154,15 +145,10 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
             None => {
                 // Add genesis block to database
 
-                let genesis_block: Block<T> =
-                    FromBytes::read(GenesisBlock::load_bytes().as_slice())?;
+                let genesis_block: Block<T> = FromBytes::read(GenesisBlock::load_bytes().as_slice())?;
 
-                let ledger_storage = Self::new(
-                    &path.as_ref().to_path_buf(),
-                    ledger_parameters,
-                    genesis_block,
-                )
-                .expect("Ledger could not be instantiated");
+                let ledger_storage = Self::new(&path.as_ref().to_path_buf(), ledger_parameters, genesis_block)
+                    .expect("Ledger could not be instantiated");
 
                 // If there did not exist a primary ledger at the path,
                 // then create one and then open the secondary instance.
@@ -179,8 +165,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
     pub fn catch_up_secondary(&self, update_merkle_tree: bool) -> Result<(), StorageError> {
         // Sync the secondary and primary instances
         if self.storage.db.try_catch_up_with_primary().is_ok() {
-            let latest_block_height_bytes =
-                self.get(COL_META, &KEY_BEST_BLOCK_NUMBER.as_bytes().to_vec())?;
+            let latest_block_height_bytes = self.get(COL_META, &KEY_BEST_BLOCK_NUMBER.as_bytes().to_vec())?;
             let new_latest_block_height = bytes_to_u32(latest_block_height_bytes);
             let mut latest_block_height = self.latest_block_height.write();
 

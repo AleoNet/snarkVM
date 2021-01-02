@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::error::StorageError;
-use crate::{DatabaseTransaction, Ledger, Op, COL_META, KEY_MEMORY_POOL};
+use crate::{error::StorageError, DatabaseTransaction, Ledger, Op, COL_META, KEY_MEMORY_POOL};
 use snarkvm_models::{algorithms::LoadableMerkleParameters, objects::Transaction};
 
 impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
@@ -25,10 +24,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
     }
 
     /// Store the memory pool transactions.
-    pub fn store_to_memory_pool(
-        &self,
-        transactions_serialized: Vec<u8>,
-    ) -> Result<(), StorageError> {
+    pub fn store_to_memory_pool(&self, transactions_serialized: Vec<u8>) -> Result<(), StorageError> {
         let op = Op::Insert {
             col: COL_META,
             key: KEY_MEMORY_POOL.as_bytes().to_vec(),

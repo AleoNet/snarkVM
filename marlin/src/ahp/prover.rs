@@ -21,19 +21,19 @@ use crate::{
     ToString,
     Vec,
 };
-use snarkvm_errors::{gadgets::SynthesisError, serialization::SerializationError};
-use snarkvm_models::{
-    curves::{batch_inversion, Field, PrimeField},
-    gadgets::r1cs::ConstraintSynthesizer,
-};
-use snarkvm_utilities::{bytes::ToBytes, error, serialize::*};
 use snarkvm_algorithms::{
     cfg_into_iter,
     cfg_iter,
     cfg_iter_mut,
     fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain},
 };
+use snarkvm_errors::{gadgets::SynthesisError, serialization::SerializationError};
+use snarkvm_models::{
+    curves::{batch_inversion, Field, PrimeField},
+    gadgets::r1cs::ConstraintSynthesizer,
+};
 use snarkvm_polycommit::{LabeledPolynomial, Polynomial};
+use snarkvm_utilities::{bytes::ToBytes, error, serialize::*};
 
 use core::marker::PhantomData;
 use rand_core::RngCore;

@@ -25,12 +25,12 @@ use crate::{Error, LabeledPolynomial, PCRandomness, Polynomial, ToString, Vec};
 use rand_core::RngCore;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
-use snarkvm_models::curves::{AffineCurve, Group, One, PairingCurve, PairingEngine, PrimeField, ProjectiveCurve, Zero};
-use snarkvm_utilities::rand::UniformRand;
 use snarkvm_algorithms::{
     cfg_iter,
     msm::{FixedBaseMSM, VariableBaseMSM},
 };
+use snarkvm_models::curves::{AffineCurve, Group, One, PairingCurve, PairingEngine, PrimeField, ProjectiveCurve, Zero};
+use snarkvm_utilities::rand::UniformRand;
 
 use core::marker::PhantomData;
 
@@ -450,8 +450,8 @@ mod tests {
     #![allow(non_camel_case_types)]
     use crate::{kzg10::*, *};
 
-    use snarkvm_utilities::rand::test_rng;
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
+    use snarkvm_utilities::rand::test_rng;
 
     type KZG_Bls12_377 = KZG10<Bls12_377>;
 

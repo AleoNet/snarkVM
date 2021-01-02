@@ -16,9 +16,15 @@
 
 use super::instantiated::*;
 use crate::base_dpc::{
-    execute_inner_proof_gadget, execute_outer_proof_gadget, inner_circuit::InnerCircuit,
-    program::*, record::record_encryption::*, record_payload::RecordPayload, BaseDPCComponents,
-    ExecuteContext, DPC,
+    execute_inner_proof_gadget,
+    execute_outer_proof_gadget,
+    inner_circuit::InnerCircuit,
+    program::*,
+    record::record_encryption::*,
+    record_payload::RecordPayload,
+    BaseDPCComponents,
+    ExecuteContext,
+    DPC,
 };
 use snarkvm_algorithms::merkle_tree::MerklePath;
 use snarkvm_curves::bls12_377::{Fq, Fr};
@@ -29,8 +35,14 @@ use snarkvm_models::{
     objects::{AccountScheme, LedgerScheme},
 };
 use snarkvm_objects::{
-    dpc::DPCTransactions, Account, Block, BlockHeader, BlockHeaderHash, MerkleRootHash,
-    PedersenMerkleRootHash, ProofOfSuccinctWork,
+    dpc::DPCTransactions,
+    Account,
+    Block,
+    BlockHeader,
+    BlockHeaderHash,
+    MerkleRootHash,
+    PedersenMerkleRootHash,
+    ProofOfSuccinctWork,
 };
 use snarkvm_testing::storage::*;
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
@@ -53,24 +65,26 @@ fn test_execute_base_dpc_constraints() {
     let ledger_parameters = CommitmentMerkleParameters::setup(&mut rng);
     let system_parameters = InstantiatedDPC::generate_system_parameters(&mut rng).unwrap();
     let noop_program_snark_pp =
-        InstantiatedDPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng)
-            .unwrap();
+        InstantiatedDPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
     let alternate_noop_program_snark_pp =
-        InstantiatedDPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng)
-            .unwrap();
+        InstantiatedDPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
 
-    let noop_program_id = to_bytes![ProgramVerificationKeyCRH::hash(
-        &system_parameters.program_verification_key_crh,
-        &to_bytes![noop_program_snark_pp.verification_key].unwrap()
-    )
-    .unwrap()]
+    let noop_program_id = to_bytes![
+        ProgramVerificationKeyCRH::hash(
+            &system_parameters.program_verification_key_crh,
+            &to_bytes![noop_program_snark_pp.verification_key].unwrap()
+        )
+        .unwrap()
+    ]
     .unwrap();
 
-    let alternate_noop_program_id = to_bytes![ProgramVerificationKeyCRH::hash(
-        &system_parameters.program_verification_key_crh,
-        &to_bytes![alternate_noop_program_snark_pp.verification_key].unwrap()
-    )
-    .unwrap()]
+    let alternate_noop_program_id = to_bytes![
+        ProgramVerificationKeyCRH::hash(
+            &system_parameters.program_verification_key_crh,
+            &to_bytes![alternate_noop_program_snark_pp.verification_key].unwrap()
+        )
+        .unwrap()
+    ]
     .unwrap();
 
     let signature_parameters = &system_parameters.account_signature;
@@ -100,13 +114,9 @@ fn test_execute_base_dpc_constraints() {
     };
 
     // Use genesis record, serial number, and memo to initialize the ledger.
-    let ledger = initialize_test_blockchain::<Tx, CommitmentMerkleParameters>(
-        ledger_parameters,
-        genesis_block,
-    );
+    let ledger = initialize_test_blockchain::<Tx, CommitmentMerkleParameters>(ledger_parameters, genesis_block);
 
-    let sn_nonce =
-        SerialNumberNonce::hash(&system_parameters.serial_number_nonce, &[0u8; 1]).unwrap();
+    let sn_nonce = SerialNumberNonce::hash(&system_parameters.serial_number_nonce, &[0u8; 1]).unwrap();
     let old_record = DPC::generate_record(
         system_parameters.clone(),
         sn_nonce,
@@ -166,12 +176,9 @@ fn test_execute_base_dpc_constraints() {
 
     // Generate the program proofs
 
-    let noop_program =
-        NoopProgram::<_, <Components as BaseDPCComponents>::NoopProgramSNARK>::new(noop_program_id);
-    let alternate_noop_program = NoopProgram::<
-        _,
-        <Components as BaseDPCComponents>::NoopProgramSNARK,
-    >::new(alternate_noop_program_id);
+    let noop_program = NoopProgram::<_, <Components as BaseDPCComponents>::NoopProgramSNARK>::new(noop_program_id);
+    let alternate_noop_program =
+        NoopProgram::<_, <Components as BaseDPCComponents>::NoopProgramSNARK>::new(alternate_noop_program_id);
 
     let mut old_proof_and_vk = vec![];
     for i in 0..NUM_INPUT_RECORDS {
@@ -248,17 +255,10 @@ fn test_execute_base_dpc_constraints() {
 
     // Prepare record encryption components used in the inner SNARK
     let mut new_records_encryption_gadget_components = Vec::with_capacity(NUM_OUTPUT_RECORDS);
-    for (record, ciphertext_randomness) in new_records
-        .iter()
-        .zip_eq(&new_records_encryption_randomness)
-    {
+    for (record, ciphertext_randomness) in new_records.iter().zip_eq(&new_records_encryption_randomness) {
         let record_encryption_gadget_components =
-            RecordEncryption::prepare_encryption_gadget_components(
-                &system_parameters,
-                &record,
-                ciphertext_randomness,
-            )
-            .unwrap();
+            RecordEncryption::prepare_encryption_gadget_components(&system_parameters, &record, ciphertext_randomness)
+                .unwrap();
 
         new_records_encryption_gadget_components.push(record_encryption_gadget_components);
     }

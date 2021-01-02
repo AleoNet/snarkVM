@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::error::StorageError;
-use crate::*;
+use crate::{error::StorageError, *};
 use snarkvm_errors::objects::BlockError;
 use snarkvm_models::{algorithms::LoadableMerkleParameters, objects::Transaction};
 use snarkvm_objects::{Block, BlockHeader, BlockHeaderHash};
@@ -174,9 +173,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
 
         // Check if the block is already in the canon chain
         if self.is_canon(block_header_hash) {
-            return Err(StorageError::ExistingCanonBlock(
-                block_header_hash.to_string(),
-            ));
+            return Err(StorageError::ExistingCanonBlock(block_header_hash.to_string()));
         }
 
         let mut database_transaction = DatabaseTransaction::new();
@@ -217,12 +214,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
         let mut transaction_cms = vec![];
 
         for transaction in block.transactions.0.iter() {
-            let (tx_ops, cms) = self.commit_transaction(
-                &mut sn_index,
-                &mut cm_index,
-                &mut memo_index,
-                transaction,
-            )?;
+            let (tx_ops, cms) = self.commit_transaction(&mut sn_index, &mut cm_index, &mut memo_index, transaction)?;
             database_transaction.push_vec(tx_ops);
             transaction_cms.extend(cms);
         }
