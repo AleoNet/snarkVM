@@ -18,7 +18,7 @@ path = "examples/snark/gm17.rs"
 [dependencies]
 snarkvm-errors = { path = "../errors", version = "0.0.1", default-features = false }
 snarkvm-models = { path = "../models", version = "0.0.1", default-features = false }
-snarkvm-profiler = { path = "../profiler", version = "0.0.1" }
+snarkvm-profiler = { path = "../profiler", version = "0.0.1", default-features = false }
 snarkvm-utilities = { path = "../utilities", version = "0.0.1", default-features = false }
 
 blake2 = { version = "0.8.1" }
@@ -32,13 +32,13 @@ sha2 = { version = "0.9" }
 smallvec = { version = "1.4" }
 
 [dev-dependencies]
-snarkvm-curves = { path = "../curves", version = "0.0.1"}
+snarkvm-curves = { path = "../curves", version = "0.0.1", default-features = false }
 
 criterion = { version = "0.3.3" }
 csv = { version = "1" }
 rand_xorshift = { version = "0.2" }
 
 [features]
-default = [ "pedersen-parallel", "snarkvm-errors/default", "snarkvm-models/default", "snarkvm-utilities/default", ]
+default = [ "pedersen-parallel", "snarkvm-errors/default", "snarkvm-models/default", "snarkvm-utilities/default", "snarkvm-curves/default" ]
 pedersen-parallel = []
 print-trace = [ "snarkvm-profiler/print-trace" ]
