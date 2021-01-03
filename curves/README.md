@@ -10,7 +10,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE.md)
 
 ## Overview
-Aleo uses a tailored set of pairing-friendly elliptic curves to perform efficient proof verification.
+Aleo uses a tailored set of pairing-friendly elliptic curves to perform efficient proof generation and verification.
 
 |                     |  Edwards BLS12  |     BLS12-377      |   Edwards BW6   |   BW6-761    |
 |:------------------- |:---------------:|:------------------:|:---------------:|:------------:|
@@ -20,7 +20,7 @@ Aleo uses a tailored set of pairing-friendly elliptic curves to perform efficien
 | G1 Compressed Size* |    32 bytes     |      48 bytes      |    48 bytes     |   96 bytes   |
 | G2 Compressed Size* |       N/A       |      96 bytes      |       N/A       |   96 bytes   |
 
-\* rounded to multiples of 8 bytes
+\* rounded to multiples of 8 bytes.
 
 ## Edwards BLS12
 ### Scalar Field
