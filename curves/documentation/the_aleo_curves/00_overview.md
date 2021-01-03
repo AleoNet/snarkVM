@@ -8,4 +8,4 @@ Aleo uses a tailored set of pairing-friendly elliptic curves to perform efficien
 | G1 Compressed Size* |    32 bytes     |      48 bytes      |    48 bytes     |   96 bytes   |
 | G2 Compressed Size* |       N/A       |      96 bytes      |       N/A       |   96 bytes   |
 
-\* rounded to multiples of 8 bytes
+\* rounded to multiples of 8 bytes.
