@@ -1,4 +1,4 @@
-Aleo uses a tailored set of pairing-friendly elliptic curves to perform efficient proof verification.
+Aleo uses a tailored set of pairing-friendly elliptic curves to perform efficient proof generation and verification.
 
 |                     |  Edwards BLS12  |     BLS12-377      |   Edwards BW6   |   BW6-761    |
 |:------------------- |:---------------:|:------------------:|:---------------:|:------------:|
