@@ -16,6 +16,7 @@ members = [
     "algorithms",
     "benchmarks",
     "curves",
+    "derives",
     "dpc",
     "errors",
     "gadgets",
