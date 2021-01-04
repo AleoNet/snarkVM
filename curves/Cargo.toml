@@ -62,4 +62,5 @@ criterion = "0.3"
 
 [[bench]]
 name = "curve_and_field_benches"
+path = "benches/curve_and_field_benches.rs"
 harness = false
