@@ -26,6 +26,7 @@ members = [
     "parameters",
     "polycommit",
     "profiler",
+    "storage",
     "testing",
     "utilities"
 ]
