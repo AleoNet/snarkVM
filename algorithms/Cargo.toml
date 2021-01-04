@@ -32,7 +32,7 @@ sha2 = { version = "0.9" }
 smallvec = { version = "1.4" }
 
 [dev-dependencies]
-snarkvm-curves = { path = "../curves", version = "0.0.1" }
+snarkvm-curves = { path = "../curves" }
 
 criterion = { version = "0.3.3" }
 csv = { version = "1" }

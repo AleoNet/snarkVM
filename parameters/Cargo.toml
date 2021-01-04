@@ -21,10 +21,10 @@ curl = { version = "0.4.34", optional = true }
 hex = { version = "0.4.2" }
 
 [dev-dependencies]
-snarkvm-curves = { path = "../curves", version = "0.0.1" }
-snarkvm-dpc = { path = "../dpc", version = "0.0.1" }
-snarkvm-marlin = { path = "../marlin", version = "0.0.1" }
-snarkvm-objects = { path = "../objects", version = "0.0.1" }
+snarkvm-curves = { path = "../curves" }
+snarkvm-dpc = { path = "../dpc" }
+snarkvm-marlin = { path = "../marlin" }
+snarkvm-objects = { path = "../objects" }
 
 snarkos-consensus = { git = "https://github.com/AleoHQ/snarkOS.git", rev = "20a8495", version = "1.1.4" }
 snarkos-posw = { git = "https://github.com/AleoHQ/snarkOS.git", rev = "20a8495", version = "1.1.4", features = ["test-helpers"] }
