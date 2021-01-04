@@ -1,44 +1,50 @@
+dependencies = { }
+
 [package]
 name = "snarkvm"
-version = "0.0.1"
-authors = ["The Aleo Team <hello@aleo.org>"]
+version = "0.0.2"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized virtual machine"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkVM"
-keywords = ["aleo", "cryptography", "blockchain", "decentralized", "zero-knowledge"]
-categories = ["cryptography::cryptocurrencies", "operating-systems"]
-include = ["Cargo.toml", "snarkvm", "README.md", "LICENSE.md"]
+keywords = [
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
+]
+categories = [ "cryptography::cryptocurrencies", "operating-systems" ]
+include = [ "Cargo.toml", "snarkvm", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2018"
 
 [workspace]
 members = [
-    "algorithms",
-    "benchmarks",
-    "curves",
-    "derives",
-    "dpc",
-    "errors",
-    "gadgets",
-    "marlin",
-    "models",
-    "objects",
-    "parameters",
-    "polycommit",
-    "profiler",
-    "storage",
-    "testing",
-    "utilities"
+  "algorithms",
+  "benchmarks",
+  "curves",
+  "derives",
+  "dpc",
+  "errors",
+  "gadgets",
+  "marlin",
+  "models",
+  "objects",
+  "parameters",
+  "polycommit",
+  "profiler",
+  "storage",
+  "testing",
+  "utilities"
 ]
 
 [[bin]]
 name = "snarkvm"
 path = "snarkvm/main.rs"
 
-[dependencies]
-
-[dev-dependencies]
-rusty-hook = { version = "0.11.2" }
+[dev-dependencies.rusty-hook]
+version = "0.11.2"
 
 [profile.release]
 opt-level = 3
@@ -57,7 +63,7 @@ debug-assertions = false
 opt-level = 0
 
 [profile.test]
-opt-level = 3 # necessary for DPC testing
+opt-level = 3
 lto = "thin"
 incremental = true
 debug-assertions = true

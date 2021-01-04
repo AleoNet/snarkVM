@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-marlin"
-version = "0.0.1"
+version = "0.0.2"
 authors = [
   "Alessandro Chiesa <alexch@berkeley.edu>",
   "Mary Maller <mary.maller.15@ucl.ac.uk>",
@@ -8,33 +8,77 @@ authors = [
   "Pratyush Mishra <pratyush@berkeley.edu>",
   "Noah Vesely <noah.vesely.18@ucl.ac.uk>",
   "Nicholas Ward <npward@berkeley.edu>",
-  "The Aleo Team <hello@aleo.org>",
+  "The Aleo Team <hello@aleo.org>"
 ]
 description = "A library for the Marlin preprocessing zkSNARK"
 repository = "https://github.com/AleoHQ/snarkVM"
-keywords = ["aleo", "cryptography", "blockchain", "decentralized", "zero-knowledge"]
-categories = ["cryptography::cryptocurrencies", "operating-systems"]
-include = ["Cargo.toml", "src", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+keywords = [
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
+]
+categories = [ "cryptography::cryptocurrencies", "operating-systems" ]
+include = [
+  "Cargo.toml",
+  "src",
+  "README.md",
+  "LICENSE-APACHE",
+  "LICENSE-MIT"
+]
 license = "GPL-3.0"
 edition = "2018"
 
-[dependencies]
-snarkvm-algorithms = { path = "../algorithms", version = "0.0.1" }
-snarkvm-errors = { path = "../errors", version = "0.0.1" }
-snarkvm-models = { path = "../models", version = "0.0.1" }
-snarkvm-polycommit = { path = "../polycommit", version = "0.0.1", default-features = false }
-snarkvm-profiler = { path = "../profiler", version = "0.0.1" }
-snarkvm-utilities = { path = "../utilities", version = "0.0.1" }
+[dependencies.snarkvm-algorithms]
+path = "../algorithms"
+version = "0.0.2"
 
-blake2 = { version = "0.8", default-features = false }
-derivative = { version = "2", features = ["use_core"] }
-digest = { version = "0.8" }
-rand_chacha = { version = "0.2.1", default-features = false }
-rand_core = { version = "0.5" }
-rayon = { version = "1", optional = true }
+[dependencies.snarkvm-errors]
+path = "../errors"
+version = "0.0.2"
 
-[dev-dependencies]
-snarkvm-curves = { path = "../curves" }
+[dependencies.snarkvm-models]
+path = "../models"
+version = "0.0.2"
+
+[dependencies.snarkvm-polycommit]
+path = "../polycommit"
+version = "0.0.2"
+default-features = false
+
+[dependencies.snarkvm-profiler]
+path = "../profiler"
+version = "0.0.2"
+
+[dependencies.snarkvm-utilities]
+path = "../utilities"
+version = "0.0.2"
+
+[dependencies.blake2]
+version = "0.8"
+default-features = false
+
+[dependencies.derivative]
+version = "2"
+features = [ "use_core" ]
+
+[dependencies.digest]
+version = "0.8"
+
+[dependencies.rand_chacha]
+version = "0.2.1"
+default-features = false
+
+[dependencies.rand_core]
+version = "0.5"
+
+[dependencies.rayon]
+version = "1"
+optional = true
+
+[dev-dependencies.snarkvm-curves]
+path = "../curves"
 
 [features]
 default = [ "std", "parallel" ]

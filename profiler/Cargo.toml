@@ -1,18 +1,25 @@
 [package]
 name = "snarkvm-profiler"
-version = "0.0.1"
-authors = ["The Aleo Team <hello@aleo.org>"]
+version = "0.0.2"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Profiler for a decentralized virtual machine"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkVM"
-keywords = ["aleo", "cryptography", "blockchain", "decentralized", "zero-knowledge"]
-categories = ["cryptography::cryptocurrencies", "operating-systems"]
-include = ["Cargo.toml", "src", "README.md", "LICENSE.md"]
+keywords = [
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
+]
+categories = [ "cryptography::cryptocurrencies", "operating-systems" ]
+include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2018"
 
-[dependencies]
-colored = { version = "2", optional = true }
+[dependencies.colored]
+version = "2"
+optional = true
 
 [features]
 print-trace = [ "colored" ]

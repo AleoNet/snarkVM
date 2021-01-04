@@ -1,41 +1,97 @@
 [package]
 name = "snarkvm-parameters"
-version = "0.0.1"
-authors = ["The Aleo Team <hello@aleo.org>"]
+version = "0.0.2"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Parameters for a decentralized virtual machine"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkVM"
-keywords = ["aleo", "cryptography", "blockchain", "decentralized", "zero-knowledge"]
-categories = ["cryptography::cryptocurrencies", "operating-systems"]
-include = ["Cargo.toml", "src", "README.md", "LICENSE.md"]
+keywords = [
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
+]
+categories = [ "cryptography::cryptocurrencies", "operating-systems" ]
+include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2018"
 
-[dependencies]
-snarkvm-algorithms = { path = "../algorithms", version = "0.0.1", default-features = false }
-snarkvm-errors = { path = "../errors", version = "0.0.1", default-features = false }
-snarkvm-models = { path = "../models", version = "0.0.1", default-features = false }
-snarkvm-utilities = { path = "../utilities", version = "0.0.1", default-features = false }
+[dependencies.snarkvm-algorithms]
+path = "../algorithms"
+version = "0.0.2"
+default-features = false
 
-curl = { version = "0.4.34", optional = true }
-hex = { version = "0.4.2" }
+[dependencies.snarkvm-errors]
+path = "../errors"
+version = "0.0.2"
+default-features = false
 
-[dev-dependencies]
-snarkvm-curves = { path = "../curves" }
-snarkvm-dpc = { path = "../dpc" }
-snarkvm-marlin = { path = "../marlin" }
-snarkvm-objects = { path = "../objects" }
+[dependencies.snarkvm-models]
+path = "../models"
+version = "0.0.2"
+default-features = false
 
-snarkos-consensus = { git = "https://github.com/AleoHQ/snarkOS.git", rev = "20a8495", version = "1.1.4" }
-snarkos-posw = { git = "https://github.com/AleoHQ/snarkOS.git", rev = "20a8495", version = "1.1.4", features = ["test-helpers"] }
-snarkos-storage = { git = "https://github.com/AleoHQ/snarkOS.git", rev = "20a8495", version = "1.1.4" }
+[dependencies.snarkvm-utilities]
+path = "../utilities"
+version = "0.0.2"
+default-features = false
 
-chrono = { version = "0.4", features = ["serde"] }
-curl = { version = "0.4.34" }
-hex = { version = "0.4.2" }
-parking_lot = { version = "0.11.1" }
-rand = { version = "0.7" }
+[dependencies.curl]
+version = "0.4.34"
+optional = true
+
+[dependencies.hex]
+version = "0.4.2"
+
+[dev-dependencies.snarkvm-curves]
+path = "../curves"
+
+[dev-dependencies.snarkvm-dpc]
+path = "../dpc"
+
+[dev-dependencies.snarkvm-marlin]
+path = "../marlin"
+
+[dev-dependencies.snarkvm-objects]
+path = "../objects"
+
+[dev-dependencies.snarkos-consensus]
+git = "https://github.com/AleoHQ/snarkOS.git"
+rev = "20a8495"
+version = "1.1.4"
+
+[dev-dependencies.snarkos-posw]
+git = "https://github.com/AleoHQ/snarkOS.git"
+rev = "20a8495"
+version = "1.1.4"
+features = [ "test-helpers" ]
+
+[dev-dependencies.snarkos-storage]
+git = "https://github.com/AleoHQ/snarkOS.git"
+rev = "20a8495"
+version = "1.1.4"
+
+[dev-dependencies.chrono]
+version = "0.4"
+features = [ "serde" ]
+
+[dev-dependencies.curl]
+version = "0.4.34"
+
+[dev-dependencies.hex]
+version = "0.4.2"
+
+[dev-dependencies.parking_lot]
+version = "0.11.1"
+
+[dev-dependencies.rand]
+version = "0.7"
 
 [features]
-default = [ "remote", "snarkvm-algorithms/default", "snarkvm-models/default" ]
+default = [
+  "remote",
+  "snarkvm-algorithms/default",
+  "snarkvm-models/default"
+]
 remote = [ "curl" ]
