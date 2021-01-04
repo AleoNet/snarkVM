@@ -20,6 +20,7 @@ members = [
     "dpc",
     "errors",
     "gadgets",
+    "marlin",
     "models",
     "objects",
     "parameters",
