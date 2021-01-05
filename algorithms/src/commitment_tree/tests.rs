@@ -101,6 +101,21 @@ fn commitment_tree_bad_root_test() {
 }
 
 #[test]
+fn test_serialize_commitment_merkle_tree() {
+    let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
+
+    let commitment = C::setup(rng);
+    let crh = H::setup(rng);
+
+    let merkle_tree = generate_merkle_tree(&commitment, &crh, rng);
+
+    let merkle_tree_bytes = to_bytes![merkle_tree].unwrap();
+    let recovered_merkle_tree = CommitmentMerkleTree::<C, H>::from_bytes(&merkle_tree_bytes[..], crh).unwrap();
+
+    assert!(merkle_tree == recovered_merkle_tree);
+}
+
+#[test]
 fn test_serialize_commitment_path() {
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
 
