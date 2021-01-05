@@ -259,7 +259,7 @@ impl<Components: BaseDPCComponents> FromBytes for TransactionKernel<Components> 
                 &system_parameters.account_commitment,
                 &private_key_seed,
             )
-                .expect("could not load private key");
+            .expect("could not load private key");
             old_account_private_keys.push(old_account_private_key);
         }
 
@@ -340,7 +340,7 @@ impl<Components: BaseDPCComponents> FromBytes for TransactionKernel<Components> 
                 &mut reader,
                 system_parameters.local_data_crh.clone(),
             )
-                .expect("Could not load local data merkle tree");
+            .expect("Could not load local data merkle tree");
 
         let mut local_data_commitment_randomizers = vec![];
         for _ in 0..4 {
@@ -558,7 +558,6 @@ where
     >,
 {
     type Account = Account<Components>;
-    type TransactionKernel = TransactionKernel<Components>;
     type LocalData = LocalData<Components>;
     type Metadata = [u8; 32];
     type Parameters = PublicParameters<Components>;
@@ -567,6 +566,7 @@ where
     type Record = DPCRecord<Components>;
     type SystemParameters = SystemParameters<Components>;
     type Transaction = DPCTransaction<Components>;
+    type TransactionKernel = TransactionKernel<Components>;
 
     fn setup<R: Rng>(
         ledger_parameters: &Components::MerkleParameters,
