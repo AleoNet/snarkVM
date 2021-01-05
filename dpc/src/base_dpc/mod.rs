@@ -124,7 +124,7 @@ pub struct DPC<Components: BaseDPCComponents> {
 /// final transaction after `execute_offline` has created old serial numbers,
 /// new records and commitments. For convenience, it also
 /// stores references to existing information like old records and secret keys.
-pub struct ExecuteContext<Components: BaseDPCComponents> {
+pub struct TransactionKernel<Components: BaseDPCComponents> {
     system_parameters: SystemParameters<Components>,
 
     // Old record stuff
@@ -154,7 +154,7 @@ pub struct ExecuteContext<Components: BaseDPCComponents> {
     network_id: u8,
 }
 
-impl<Components: BaseDPCComponents> ExecuteContext<Components> {
+impl<Components: BaseDPCComponents> TransactionKernel<Components> {
     #[allow(clippy::wrong_self_convention)]
     pub fn into_local_data(&self) -> LocalData<Components> {
         LocalData {
@@ -352,7 +352,7 @@ where
     >,
 {
     type Account = Account<Components>;
-    type ExecuteContext = ExecuteContext<Components>;
+    type TransactionKernel = TransactionKernel<Components>;
     type LocalData = LocalData<Components>;
     type Metadata = [u8; 32];
     type Parameters = PublicParameters<Components>;
@@ -448,7 +448,7 @@ where
         memorandum: <Self::Transaction as Transaction>::Memorandum,
         network_id: u8,
         rng: &mut R,
-    ) -> anyhow::Result<Self::ExecuteContext> {
+    ) -> anyhow::Result<Self::TransactionKernel> {
         assert_eq!(Components::NUM_INPUT_RECORDS, old_records.len());
         assert_eq!(Components::NUM_INPUT_RECORDS, old_account_private_keys.len());
 
@@ -617,7 +617,7 @@ where
             new_encrypted_record_hashes.push(encrypted_record_hash);
         }
 
-        let context = ExecuteContext {
+        let context = TransactionKernel {
             system_parameters: parameters,
 
             old_records,
@@ -647,7 +647,7 @@ where
 
     fn execute_online<R: Rng>(
         parameters: &Self::Parameters,
-        context: Self::ExecuteContext,
+        context: Self::TransactionKernel,
         old_death_program_proofs: Vec<Self::PrivateProgramInput>,
         new_birth_program_proofs: Vec<Self::PrivateProgramInput>,
         ledger: &L,
@@ -658,7 +658,7 @@ where
 
         let exec_time = start_timer!(|| "BaseDPC::execute_online");
 
-        let ExecuteContext {
+        let TransactionKernel {
             system_parameters,
 
             old_records,

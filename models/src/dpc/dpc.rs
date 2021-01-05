@@ -31,7 +31,7 @@ pub trait DPCScheme<L: LedgerScheme> {
     type SystemParameters;
     type Transaction: Transaction<SerialNumber = <Self::Record as Record>::SerialNumber>;
     type LocalData;
-    type ExecuteContext;
+    type TransactionKernel;
 
     /// Returns public parameters for the DPC.
     fn setup<R: Rng>(ledger_parameters: &L::MerkleParameters, rng: &mut R) -> anyhow::Result<Self::Parameters>;
@@ -54,13 +54,13 @@ pub trait DPCScheme<L: LedgerScheme> {
         memorandum: <Self::Transaction as Transaction>::Memorandum,
         network_id: u8,
         rng: &mut R,
-    ) -> anyhow::Result<Self::ExecuteContext>;
+    ) -> anyhow::Result<Self::TransactionKernel>;
 
     /// Returns new records and a transaction based on the authorized
     /// consumption of old records.
     fn execute_online<R: Rng>(
         parameters: &Self::Parameters,
-        execute_context: Self::ExecuteContext,
+        transaction_kernel: Self::TransactionKernel,
         old_death_program_proofs: Vec<Self::PrivateProgramInput>,
         new_birth_program_proofs: Vec<Self::PrivateProgramInput>,
         ledger: &L,
