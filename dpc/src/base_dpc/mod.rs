@@ -128,7 +128,15 @@ pub struct DPC<Components: BaseDPCComponents> {
 /// final transaction after `execute_offline` has created old serial numbers,
 /// new records and commitments. For convenience, it also
 /// stores references to existing information like old records and secret keys.
+#[derive(Derivative)]
+#[derivative(
+    Clone(bound = "Components: BaseDPCComponents"),
+    PartialEq(bound = "Components: BaseDPCComponents"),
+    Eq(bound = "Components: BaseDPCComponents"),
+    Debug(bound = "Components: BaseDPCComponents")
+)]
 pub struct TransactionKernel<Components: BaseDPCComponents> {
+    #[derivative(PartialEq = "ignore", Debug = "ignore")]
     system_parameters: SystemParameters<Components>,
 
     // Old record stuff
@@ -184,7 +192,9 @@ impl<Components: BaseDPCComponents> ToBytes for TransactionKernel<Components> {
         // Write old record components
 
         for old_account_private_key in &self.old_account_private_keys {
+            let r_pk_counter = old_account_private_key.r_pk_counter;
             let private_key_seed = old_account_private_key.seed;
+            r_pk_counter.write(&mut writer)?;
             private_key_seed.write(&mut writer)?;
         }
 
@@ -253,13 +263,15 @@ impl<Components: BaseDPCComponents> FromBytes for TransactionKernel<Components> 
 
         let mut old_account_private_keys = vec![];
         for _ in 0..Components::NUM_INPUT_RECORDS {
+            let r_pk_counter_bytes: [u8; 2] = FromBytes::read(&mut reader)?;
             let private_key_seed: [u8; 32] = FromBytes::read(&mut reader)?;
-            let old_account_private_key = AccountPrivateKey::<Components>::from_seed(
-                &system_parameters.account_signature,
-                &system_parameters.account_commitment,
+
+            let old_account_private_key = AccountPrivateKey::<Components>::from_seed_and_counter_unchecked(
                 &private_key_seed,
+                u16::from_le_bytes(r_pk_counter_bytes),
             )
             .expect("could not load private key");
+
             old_account_private_keys.push(old_account_private_key);
         }
 
@@ -823,7 +835,7 @@ where
             new_encrypted_record_hashes.push(encrypted_record_hash);
         }
 
-        let context = TransactionKernel {
+        let transaction_kernel = TransactionKernel {
             system_parameters: parameters,
 
             old_records,
@@ -848,12 +860,12 @@ where
             memorandum,
             network_id,
         };
-        Ok(context)
+        Ok(transaction_kernel)
     }
 
     fn execute_online<R: Rng>(
         parameters: &Self::Parameters,
-        context: Self::TransactionKernel,
+        transaction_kernel: Self::TransactionKernel,
         old_death_program_proofs: Vec<Self::PrivateProgramInput>,
         new_birth_program_proofs: Vec<Self::PrivateProgramInput>,
         ledger: &L,
@@ -887,7 +899,7 @@ where
             value_balance,
             memorandum,
             network_id,
-        } = context;
+        } = transaction_kernel;
 
         let local_data_root = local_data_merkle_tree.root();
 
