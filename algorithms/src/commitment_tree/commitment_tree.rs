@@ -25,7 +25,8 @@ use std::io::{Read, Result as IoResult, Write};
 #[derivative(
     Clone(bound = "C: CommitmentScheme, H: CRH"),
     PartialEq(bound = "C: CommitmentScheme, H: CRH"),
-    Eq(bound = "C: CommitmentScheme, H: CRH")
+    Eq(bound = "C: CommitmentScheme, H: CRH"),
+    Debug(bound = "C: CommitmentScheme, H: CRH")
 )]
 pub struct CommitmentMerkleTree<C: CommitmentScheme, H: CRH> {
     /// The computed root of the full Merkle tree.
@@ -38,7 +39,7 @@ pub struct CommitmentMerkleTree<C: CommitmentScheme, H: CRH> {
     leaves: [<C as CommitmentScheme>::Output; 4],
 
     /// The CRH parameters used to construct the Merkle tree
-    #[derivative(PartialEq = "ignore")]
+    #[derivative(PartialEq = "ignore", Debug = "ignore")]
     parameters: H,
 }
 
