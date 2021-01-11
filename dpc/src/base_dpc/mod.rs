@@ -42,11 +42,15 @@ use snarkvm_utilities::{
     has_duplicates,
     rand::UniformRand,
     to_bytes,
+    variable_length_integer::*,
 };
 
 use itertools::{izip, Itertools};
 use rand::Rng;
-use std::marker::PhantomData;
+use std::{
+    io::{Read, Result as IoResult, Write},
+    marker::PhantomData,
+};
 
 pub mod inner_circuit;
 pub use inner_circuit::*;
@@ -124,7 +128,15 @@ pub struct DPC<Components: BaseDPCComponents> {
 /// final transaction after `execute_offline` has created old serial numbers,
 /// new records and commitments. For convenience, it also
 /// stores references to existing information like old records and secret keys.
-pub struct ExecuteContext<Components: BaseDPCComponents> {
+#[derive(Derivative)]
+#[derivative(
+    Clone(bound = "Components: BaseDPCComponents"),
+    PartialEq(bound = "Components: BaseDPCComponents"),
+    Eq(bound = "Components: BaseDPCComponents"),
+    Debug(bound = "Components: BaseDPCComponents")
+)]
+pub struct TransactionKernel<Components: BaseDPCComponents> {
+    #[derivative(PartialEq = "ignore", Debug = "ignore")]
     system_parameters: SystemParameters<Components>,
 
     // Old record stuff
@@ -154,7 +166,7 @@ pub struct ExecuteContext<Components: BaseDPCComponents> {
     network_id: u8,
 }
 
-impl<Components: BaseDPCComponents> ExecuteContext<Components> {
+impl<Components: BaseDPCComponents> TransactionKernel<Components> {
     #[allow(clippy::wrong_self_convention)]
     pub fn into_local_data(&self) -> LocalData<Components> {
         LocalData {
@@ -171,6 +183,212 @@ impl<Components: BaseDPCComponents> ExecuteContext<Components> {
             memorandum: self.memorandum,
             network_id: self.network_id,
         }
+    }
+}
+
+impl<Components: BaseDPCComponents> ToBytes for TransactionKernel<Components> {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // Write old record components
+
+        for old_account_private_key in &self.old_account_private_keys {
+            let r_pk_counter = old_account_private_key.r_pk_counter;
+            let private_key_seed = old_account_private_key.seed;
+            r_pk_counter.write(&mut writer)?;
+            private_key_seed.write(&mut writer)?;
+        }
+
+        for old_record in &self.old_records {
+            old_record.write(&mut writer)?;
+        }
+
+        for old_serial_number in &self.old_serial_numbers {
+            old_serial_number.write(&mut writer)?;
+        }
+
+        for old_randomizer in &self.old_randomizers {
+            variable_length_integer(old_randomizer.len() as u64).write(&mut writer)?;
+            old_randomizer.write(&mut writer)?;
+        }
+
+        // Write new record components
+
+        for new_record in &self.new_records {
+            new_record.write(&mut writer)?;
+        }
+
+        for new_sn_nonce_randomness in &self.new_sn_nonce_randomness {
+            new_sn_nonce_randomness.write(&mut writer)?;
+        }
+
+        for new_commitment in &self.new_commitments {
+            new_commitment.write(&mut writer)?;
+        }
+
+        for new_records_encryption_randomness in &self.new_records_encryption_randomness {
+            new_records_encryption_randomness.write(&mut writer)?;
+        }
+
+        for new_encrypted_record in &self.new_encrypted_records {
+            new_encrypted_record.write(&mut writer)?;
+        }
+
+        for new_encrypted_record_hash in &self.new_encrypted_record_hashes {
+            new_encrypted_record_hash.write(&mut writer)?;
+        }
+
+        // Write transaction components
+
+        self.program_commitment.write(&mut writer)?;
+        self.program_randomness.write(&mut writer)?;
+
+        self.local_data_merkle_tree.write(&mut writer)?;
+
+        for local_data_commitment_randomizer in &self.local_data_commitment_randomizers {
+            local_data_commitment_randomizer.write(&mut writer)?;
+        }
+
+        self.value_balance.write(&mut writer)?;
+        self.memorandum.write(&mut writer)?;
+        self.network_id.write(&mut writer)
+    }
+}
+
+impl<Components: BaseDPCComponents> FromBytes for TransactionKernel<Components> {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let system_parameters = SystemParameters::<Components>::load().expect("Could not load system parameters");
+
+        // Read old record components
+
+        let mut old_account_private_keys = vec![];
+        for _ in 0..Components::NUM_INPUT_RECORDS {
+            let r_pk_counter_bytes: [u8; 2] = FromBytes::read(&mut reader)?;
+            let private_key_seed: [u8; 32] = FromBytes::read(&mut reader)?;
+
+            let old_account_private_key = AccountPrivateKey::<Components>::from_seed_and_counter_unchecked(
+                &private_key_seed,
+                u16::from_le_bytes(r_pk_counter_bytes),
+            )
+            .expect("could not load private key");
+
+            old_account_private_keys.push(old_account_private_key);
+        }
+
+        let mut old_records = vec![];
+        for _ in 0..Components::NUM_INPUT_RECORDS {
+            let old_record: DPCRecord<Components> = FromBytes::read(&mut reader)?;
+            old_records.push(old_record);
+        }
+
+        let mut old_serial_numbers = vec![];
+        for _ in 0..Components::NUM_INPUT_RECORDS {
+            let old_serial_number: <Components::AccountSignature as SignatureScheme>::PublicKey =
+                FromBytes::read(&mut reader)?;
+            old_serial_numbers.push(old_serial_number);
+        }
+
+        let mut old_randomizers = vec![];
+        for _ in 0..Components::NUM_INPUT_RECORDS {
+            let num_bytes = read_variable_length_integer(&mut reader)?;
+            let mut randomizer = vec![];
+            for _ in 0..num_bytes {
+                let byte: u8 = FromBytes::read(&mut reader)?;
+                randomizer.push(byte);
+            }
+
+            old_randomizers.push(randomizer);
+        }
+
+        // Read new record components
+
+        let mut new_records = vec![];
+        for _ in 0..Components::NUM_OUTPUT_RECORDS {
+            let new_record: DPCRecord<Components> = FromBytes::read(&mut reader)?;
+            new_records.push(new_record);
+        }
+
+        let mut new_sn_nonce_randomness = vec![];
+        for _ in 0..Components::NUM_OUTPUT_RECORDS {
+            let randomness: [u8; 32] = FromBytes::read(&mut reader)?;
+            new_sn_nonce_randomness.push(randomness);
+        }
+
+        let mut new_commitments = vec![];
+        for _ in 0..Components::NUM_OUTPUT_RECORDS {
+            let new_commitment: <Components::RecordCommitment as CommitmentScheme>::Output =
+                FromBytes::read(&mut reader)?;
+            new_commitments.push(new_commitment);
+        }
+
+        let mut new_records_encryption_randomness = vec![];
+        for _ in 0..Components::NUM_OUTPUT_RECORDS {
+            let encryption_randomness: <Components::AccountEncryption as EncryptionScheme>::Randomness =
+                FromBytes::read(&mut reader)?;
+            new_records_encryption_randomness.push(encryption_randomness);
+        }
+
+        let mut new_encrypted_records = vec![];
+        for _ in 0..Components::NUM_OUTPUT_RECORDS {
+            let encrypted_record: EncryptedRecord<Components> = FromBytes::read(&mut reader)?;
+            new_encrypted_records.push(encrypted_record);
+        }
+
+        let mut new_encrypted_record_hashes = vec![];
+        for _ in 0..Components::NUM_OUTPUT_RECORDS {
+            let encrypted_record_hash: <Components::EncryptedRecordCRH as CRH>::Output = FromBytes::read(&mut reader)?;
+            new_encrypted_record_hashes.push(encrypted_record_hash);
+        }
+
+        // Read transaction components
+
+        let program_commitment: <Components::ProgramVerificationKeyCommitment as CommitmentScheme>::Output =
+            FromBytes::read(&mut reader)?;
+        let program_randomness: <Components::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness =
+            FromBytes::read(&mut reader)?;
+
+        let local_data_merkle_tree =
+            CommitmentMerkleTree::<Components::LocalDataCommitment, Components::LocalDataCRH>::from_bytes(
+                &mut reader,
+                system_parameters.local_data_crh.clone(),
+            )
+            .expect("Could not load local data merkle tree");
+
+        let mut local_data_commitment_randomizers = vec![];
+        for _ in 0..4 {
+            let local_data_commitment_randomizer: <Components::LocalDataCommitment as CommitmentScheme>::Randomness =
+                FromBytes::read(&mut reader)?;
+            local_data_commitment_randomizers.push(local_data_commitment_randomizer);
+        }
+
+        let value_balance: AleoAmount = FromBytes::read(&mut reader)?;
+        let memorandum: <DPCTransaction<Components> as Transaction>::Memorandum = FromBytes::read(&mut reader)?;
+        let network_id: u8 = FromBytes::read(&mut reader)?;
+
+        Ok(Self {
+            system_parameters,
+
+            old_records,
+            old_account_private_keys,
+            old_serial_numbers,
+            old_randomizers,
+
+            new_records,
+            new_sn_nonce_randomness,
+            new_commitments,
+
+            new_records_encryption_randomness,
+            new_encrypted_records,
+            new_encrypted_record_hashes,
+
+            program_commitment,
+            program_randomness,
+            local_data_merkle_tree,
+            local_data_commitment_randomizers,
+            value_balance,
+            memorandum,
+            network_id,
+        })
     }
 }
 
@@ -292,7 +510,7 @@ impl<Components: BaseDPCComponents> DPC<Components> {
 
     #[allow(clippy::too_many_arguments)]
     pub fn generate_record<R: Rng>(
-        system_parameters: SystemParameters<Components>,
+        system_parameters: &SystemParameters<Components>,
         sn_nonce: <Components::SerialNumberNonceCRH as CRH>::Output,
         owner: AccountAddress<Components>,
         is_dummy: bool,
@@ -352,7 +570,6 @@ where
     >,
 {
     type Account = Account<Components>;
-    type ExecuteContext = ExecuteContext<Components>;
     type LocalData = LocalData<Components>;
     type Metadata = [u8; 32];
     type Parameters = PublicParameters<Components>;
@@ -361,6 +578,7 @@ where
     type Record = DPCRecord<Components>;
     type SystemParameters = SystemParameters<Components>;
     type Transaction = DPCTransaction<Components>;
+    type TransactionKernel = TransactionKernel<Components>;
 
     fn setup<R: Rng>(
         ledger_parameters: &Components::MerkleParameters,
@@ -448,7 +666,7 @@ where
         memorandum: <Self::Transaction as Transaction>::Memorandum,
         network_id: u8,
         rng: &mut R,
-    ) -> anyhow::Result<Self::ExecuteContext> {
+    ) -> anyhow::Result<Self::TransactionKernel> {
         assert_eq!(Components::NUM_INPUT_RECORDS, old_records.len());
         assert_eq!(Components::NUM_INPUT_RECORDS, old_account_private_keys.len());
 
@@ -506,7 +724,7 @@ where
             end_timer!(sn_nonce_time);
 
             let record = Self::generate_record(
-                parameters.clone(),
+                &parameters,
                 sn_nonce,
                 new_record_owner,
                 new_is_dummy_flags[j],
@@ -617,7 +835,7 @@ where
             new_encrypted_record_hashes.push(encrypted_record_hash);
         }
 
-        let context = ExecuteContext {
+        let transaction_kernel = TransactionKernel {
             system_parameters: parameters,
 
             old_records,
@@ -642,12 +860,12 @@ where
             memorandum,
             network_id,
         };
-        Ok(context)
+        Ok(transaction_kernel)
     }
 
     fn execute_online<R: Rng>(
         parameters: &Self::Parameters,
-        context: Self::ExecuteContext,
+        transaction_kernel: Self::TransactionKernel,
         old_death_program_proofs: Vec<Self::PrivateProgramInput>,
         new_birth_program_proofs: Vec<Self::PrivateProgramInput>,
         ledger: &L,
@@ -658,7 +876,7 @@ where
 
         let exec_time = start_timer!(|| "BaseDPC::execute_online");
 
-        let ExecuteContext {
+        let TransactionKernel {
             system_parameters,
 
             old_records,
@@ -681,7 +899,7 @@ where
             value_balance,
             memorandum,
             network_id,
-        } = context;
+        } = transaction_kernel;
 
         let local_data_root = local_data_merkle_tree.root();
 

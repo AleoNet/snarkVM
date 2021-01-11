@@ -30,7 +30,8 @@ use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
 #[derivative(
     Clone(bound = "C: BaseDPCComponents"),
     PartialEq(bound = "C: BaseDPCComponents"),
-    Eq(bound = "C: BaseDPCComponents")
+    Eq(bound = "C: BaseDPCComponents"),
+    Debug(bound = "C: BaseDPCComponents")
 )]
 pub struct EncryptedRecord<C: BaseDPCComponents> {
     pub encrypted_record: Vec<<<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Text>,
