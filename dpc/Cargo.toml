@@ -63,7 +63,7 @@ version = "0.0.2"
 default-features = false
 
 [dependencies.anyhow]
-version = "1.0.37"
+version = "1.0.38"
 
 [dependencies.blake2]
 version = "0.8.1"
