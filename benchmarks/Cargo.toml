@@ -61,7 +61,7 @@ criterion = "0.3.3"
   version = "0.9"
 
   [dependencies.smallvec]
-  version = "1.4"
+  version = "1.6"
 
 [dev-dependencies]
 criterion = "0.3.3"
