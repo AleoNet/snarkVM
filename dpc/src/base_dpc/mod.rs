@@ -635,19 +635,14 @@ where
         })
     }
 
-    fn create_account<R: Rng>(parameters: &Self::NetworkParameters, rng: &mut R) -> anyhow::Result<Self::Account> {
+    fn create_account<R: Rng>(parameters: &Self::SystemParameters, rng: &mut R) -> anyhow::Result<Self::Account> {
         let time = start_timer!(|| "BaseDPC::create_account");
-
-        let account_signature_parameters = &parameters.system_parameters.account_signature;
-        let commitment_parameters = &parameters.system_parameters.account_commitment;
-        let encryption_parameters = &parameters.system_parameters.account_encryption;
         let account = Account::new(
-            account_signature_parameters,
-            commitment_parameters,
-            encryption_parameters,
+            &parameters.account_signature,
+            &parameters.account_commitment,
+            &parameters.account_encryption,
             rng,
         )?;
-
         end_timer!(time);
 
         Ok(account)

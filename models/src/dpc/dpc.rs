@@ -36,8 +36,8 @@ pub trait DPCScheme<L: LedgerScheme> {
     /// Returns public parameters for the DPC.
     fn setup<R: Rng>(ledger_parameters: &L::MerkleParameters, rng: &mut R) -> anyhow::Result<Self::NetworkParameters>;
 
-    /// Returns an account, given the public parameters, metadata, and an rng.
-    fn create_account<R: Rng>(parameters: &Self::NetworkParameters, rng: &mut R) -> anyhow::Result<Self::Account>;
+    /// Returns an account, given the system parameters, metadata, and an RNG.
+    fn create_account<R: Rng>(parameters: &Self::SystemParameters, rng: &mut R) -> anyhow::Result<Self::Account>;
 
     /// Returns the execution context required for program snark and DPC transaction generation.
     #[allow(clippy::too_many_arguments)]
