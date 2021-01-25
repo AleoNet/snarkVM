@@ -27,7 +27,7 @@ use crate::{
     },
     dpc::LedgerError,
     objects::AccountError,
-    parameters::ParametersError,
+    parameters::ParameterError,
 };
 
 #[derive(Debug, Error)]
@@ -66,7 +66,7 @@ pub enum DPCError {
     MissingOuterSnarkProvingParameters,
 
     #[error("{}", _0)]
-    ParametersError(ParametersError),
+    ParameterError(ParameterError),
 
     #[error("{}", _0)]
     PRFError(PRFError),
@@ -132,9 +132,9 @@ impl From<SignatureError> for DPCError {
     }
 }
 
-impl From<ParametersError> for DPCError {
-    fn from(error: ParametersError) -> Self {
-        DPCError::ParametersError(error)
+impl From<ParameterError> for DPCError {
+    fn from(error: ParameterError) -> Self {
+        DPCError::ParameterError(error)
     }
 }
 
