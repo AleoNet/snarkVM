@@ -19,7 +19,7 @@ use snarkvm_models::{
     algorithms::{MerkleParameters, CRH},
     dpc::DPCScheme,
     objects::AccountScheme,
-    parameters::Parameters,
+    parameters::Parameter,
 };
 use snarkvm_objects::Account;
 use snarkvm_parameters::LedgerMerkleTreeParameters;

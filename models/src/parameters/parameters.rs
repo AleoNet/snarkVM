@@ -16,7 +16,7 @@
 
 use snarkvm_errors::parameters::ParameterError;
 
-pub trait Parameters {
+pub trait Parameter {
     const CHECKSUM: &'static str;
     const SIZE: u64;
 

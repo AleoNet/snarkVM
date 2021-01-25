@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::crh::sha256::sha256;
 use snarkvm_errors::parameters::ParameterError;
-use snarkvm_models::parameters::Parameters;
+use snarkvm_models::parameters::Parameter;
 
 use std::{
     fs::{self, File},
@@ -35,7 +35,7 @@ macro_rules! impl_params {
         #[derive(Clone, Debug, PartialEq, Eq)]
         pub struct $name;
 
-        impl Parameters for $name {
+        impl Parameter for $name {
             const CHECKSUM: &'static str = include_str!(concat!("params/", $fname, ".checksum"));
             const SIZE: u64 = $size;
 
@@ -63,7 +63,7 @@ macro_rules! impl_params_remote {
 
         pub struct $name;
 
-        impl Parameters for $name {
+        impl Parameter for $name {
             const CHECKSUM: &'static str = include_str!(concat!("params/", $fname, ".checksum"));
             const SIZE: u64 = $size;
 
