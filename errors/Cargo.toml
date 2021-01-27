@@ -34,7 +34,7 @@ optional = true
 version = "0.4.2"
 
 [dependencies.jsonrpc-core]
-version = "14.2.0"
+version = "17.0.0"
 
 [dependencies.rocksdb]
 version = "0.15.0"
