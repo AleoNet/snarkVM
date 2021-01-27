@@ -572,7 +572,7 @@ where
     type Account = Account<Components>;
     type LocalData = LocalData<Components>;
     type Metadata = [u8; 32];
-    type Parameters = PublicParameters<Components>;
+    type NetworkParameters = PublicParameters<Components>;
     type Payload = <Self::Record as Record>::Payload;
     type PrivateProgramInput = PrivateProgramInput;
     type Record = DPCRecord<Components>;
@@ -583,7 +583,7 @@ where
     fn setup<R: Rng>(
         ledger_parameters: &Components::MerkleParameters,
         rng: &mut R,
-    ) -> anyhow::Result<Self::Parameters> {
+    ) -> anyhow::Result<Self::NetworkParameters> {
         let setup_time = start_timer!(|| "BaseDPC::setup");
         let system_parameters = Self::generate_system_parameters(rng)?;
 
@@ -635,19 +635,14 @@ where
         })
     }
 
-    fn create_account<R: Rng>(parameters: &Self::Parameters, rng: &mut R) -> anyhow::Result<Self::Account> {
+    fn create_account<R: Rng>(parameters: &Self::SystemParameters, rng: &mut R) -> anyhow::Result<Self::Account> {
         let time = start_timer!(|| "BaseDPC::create_account");
-
-        let account_signature_parameters = &parameters.system_parameters.account_signature;
-        let commitment_parameters = &parameters.system_parameters.account_commitment;
-        let encryption_parameters = &parameters.system_parameters.account_encryption;
         let account = Account::new(
-            account_signature_parameters,
-            commitment_parameters,
-            encryption_parameters,
+            &parameters.account_signature,
+            &parameters.account_commitment,
+            &parameters.account_encryption,
             rng,
         )?;
-
         end_timer!(time);
 
         Ok(account)
@@ -864,7 +859,7 @@ where
     }
 
     fn execute_online<R: Rng>(
-        parameters: &Self::Parameters,
+        parameters: &Self::NetworkParameters,
         transaction_kernel: Self::TransactionKernel,
         old_death_program_proofs: Vec<Self::PrivateProgramInput>,
         new_birth_program_proofs: Vec<Self::PrivateProgramInput>,
@@ -1087,7 +1082,11 @@ where
         Ok((new_records, transaction))
     }
 
-    fn verify(parameters: &Self::Parameters, transaction: &Self::Transaction, ledger: &L) -> anyhow::Result<bool> {
+    fn verify(
+        parameters: &Self::NetworkParameters,
+        transaction: &Self::Transaction,
+        ledger: &L,
+    ) -> anyhow::Result<bool> {
         let verify_time = start_timer!(|| "BaseDPC::verify");
 
         // Returns false if there are duplicate serial numbers in the transaction.
@@ -1210,7 +1209,7 @@ where
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
     fn verify_transactions(
-        parameters: &Self::Parameters,
+        parameters: &Self::NetworkParameters,
         transactions: &[Self::Transaction],
         ledger: &L,
     ) -> anyhow::Result<bool> {

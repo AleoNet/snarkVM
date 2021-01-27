@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::crh::sha256::sha256;
-use snarkvm_errors::parameters::ParametersError;
-use snarkvm_models::parameters::Parameters;
+use snarkvm_errors::parameters::ParameterError;
+use snarkvm_models::parameters::Parameter;
 
 use std::{
     fs::{self, File},
@@ -35,16 +35,16 @@ macro_rules! impl_params {
         #[derive(Clone, Debug, PartialEq, Eq)]
         pub struct $name;
 
-        impl Parameters for $name {
+        impl Parameter for $name {
             const CHECKSUM: &'static str = include_str!(concat!("params/", $fname, ".checksum"));
             const SIZE: u64 = $size;
 
-            fn load_bytes() -> Result<Vec<u8>, ParametersError> {
+            fn load_bytes() -> Result<Vec<u8>, ParameterError> {
                 let buffer = include_bytes!(concat!("params/", $fname, ".params"));
                 let checksum = hex::encode(sha256(buffer));
                 match Self::CHECKSUM == checksum {
                     true => Ok(buffer.to_vec()),
-                    false => Err(ParametersError::ChecksumMismatch(Self::CHECKSUM.into(), checksum)),
+                    false => Err(ParameterError::ChecksumMismatch(Self::CHECKSUM.into(), checksum)),
                 }
             }
         }
@@ -63,11 +63,11 @@ macro_rules! impl_params_remote {
 
         pub struct $name;
 
-        impl Parameters for $name {
+        impl Parameter for $name {
             const CHECKSUM: &'static str = include_str!(concat!("params/", $fname, ".checksum"));
             const SIZE: u64 = $size;
 
-            fn load_bytes() -> Result<Vec<u8>, ParametersError> {
+            fn load_bytes() -> Result<Vec<u8>, ParameterError> {
                 // Compose the correct file path for the parameter file.
                 let filename = Self::versioned_filename();
                 let mut file_path = PathBuf::from(file!());
@@ -114,14 +114,14 @@ macro_rules! impl_params_remote {
                 let checksum = hex::encode(sha256(&buffer));
                 match Self::CHECKSUM == checksum {
                     true => Ok(buffer),
-                    false => Err(ParametersError::ChecksumMismatch(Self::CHECKSUM.into(), checksum)),
+                    false => Err(ParameterError::ChecksumMismatch(Self::CHECKSUM.into(), checksum)),
                 }
             }
         }
 
         impl $name {
             #[cfg(any(test, feature = "remote"))]
-            pub fn load_remote() -> Result<Vec<u8>, ParametersError> {
+            pub fn load_remote() -> Result<Vec<u8>, ParameterError> {
                 println!("{} - Downloading parameters...", module_path!());
                 let mut buffer = vec![];
                 let url = Self::remote_url();
@@ -132,13 +132,13 @@ macro_rules! impl_params_remote {
                 let checksum = hex::encode(sha256(&buffer));
                 match Self::CHECKSUM == checksum {
                     true => Ok(buffer),
-                    false => Err(ParametersError::ChecksumMismatch(Self::CHECKSUM.into(), checksum)),
+                    false => Err(ParameterError::ChecksumMismatch(Self::CHECKSUM.into(), checksum)),
                 }
             }
 
             #[cfg(not(any(test, feature = "remote")))]
-            pub fn load_remote() -> Result<Vec<u8>, ParametersError> {
-                Err(ParametersError::RemoteFetchDisabled)
+            pub fn load_remote() -> Result<Vec<u8>, ParameterError> {
+                Err(ParameterError::RemoteFetchDisabled)
             }
 
             fn versioned_filename() -> String {
@@ -158,7 +158,7 @@ macro_rules! impl_params_remote {
                 relative_path: &Path,
                 absolute_path: &Path,
                 file_path: &Path,
-            ) -> Result<(), ParametersError> {
+            ) -> Result<(), ParameterError> {
                 println!("{} - Storing parameters ({:?})", module_path!(), file_path);
                 // Attempt to write the parameter buffer to a file.
                 if let Ok(mut file) = File::create(relative_path) {
@@ -170,7 +170,7 @@ macro_rules! impl_params_remote {
             }
 
             #[cfg(any(test, feature = "remote"))]
-            fn remote_fetch(buffer: &mut Vec<u8>, url: &str) -> Result<(), ParametersError> {
+            fn remote_fetch(buffer: &mut Vec<u8>, url: &str) -> Result<(), ParameterError> {
                 let mut easy = Easy::new();
                 easy.url(url)?;
                 easy.progress(true)?;

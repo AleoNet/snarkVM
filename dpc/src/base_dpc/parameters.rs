@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::base_dpc::BaseDPCComponents;
-use snarkvm_models::{algorithms::SNARK, parameters::Parameters};
+use snarkvm_models::{algorithms::SNARK, parameters::Parameter};
 use snarkvm_parameters::*;
 use snarkvm_utilities::bytes::FromBytes;
 
