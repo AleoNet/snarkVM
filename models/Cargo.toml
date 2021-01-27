@@ -57,7 +57,7 @@ version = "0.2"
 default-features = false
 
 [dependencies.serde]
-version = "1.0.117"
+version = "1.0.123"
 default-features = false
 features = [ "derive" ]
 
