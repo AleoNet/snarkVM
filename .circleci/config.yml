@@ -92,6 +92,7 @@ workflows:
   main-workflow:
     jobs:
       - rust_stable
+      - rust_nightly
       - codecov:
           requires:
             - rust_stable
