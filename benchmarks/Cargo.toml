@@ -23,7 +23,7 @@ path = "algorithms/snark/snark.rs"
 harness = false
 
 [dependencies]
-criterion = "0.3.3"
+criterion = "0.3.4"
 
   [dependencies.snarkvm-algorithms]
   path = "../algorithms"
@@ -64,7 +64,7 @@ criterion = "0.3.3"
   version = "1.6"
 
 [dev-dependencies]
-criterion = "0.3.3"
+criterion = "0.3.4"
 
   [dev-dependencies.csv]
   version = "1"

@@ -72,7 +72,7 @@ version = "1.6"
 path = "../curves"
 
 [dev-dependencies.criterion]
-version = "0.3.3"
+version = "0.3.4"
 
 [dev-dependencies.csv]
 version = "1"
