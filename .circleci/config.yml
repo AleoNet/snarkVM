@@ -5,7 +5,7 @@ commands:
     parameters:
       cache_key:
         type: string
-        default: snark-cache-main
+        default: snarkvm-stable-cache
     steps:
       - run: set -e
       - setup_remote_docker
@@ -31,7 +31,7 @@ commands:
     parameters:
       cache_key:
         type: string
-        default: snark-main
+        default: snarkvm-stable-cache
     steps:
       - run: (sccache -s||true)
       - run: set +e
@@ -43,40 +43,55 @@ commands:
 jobs:
   rust_stable:
     docker:
-      - image: cimg/rust:1.43.0
+      - image: cimg/rust:1.46.0
     resource_class: xlarge
     steps:
       - checkout
       - setup_environment:
-          cache_key: snark-main
+          cache_key: snarkvm-stable-cache
       - run:
           name: Build and run tests
+          no_output_timeout: 30m
           command: RUST_MIN_STACK=8388608 cargo test --all -- --skip dpc --skip dpc_integration_test
       - persist_to_workspace:
           root: ~/
           paths: project/
       - clear_environment:
-          cache_key: snark-main
-#  codecov:
-#    machine:
-#      image: ubuntu-1604:202004-01
-#      docker_layer_caching: true
-#    resource_class: xlarge
-#    steps:
-#      - attach_workspace:
-#          at: /home/circleci/project/
-#      - run:
-#          name: Run kcov
-#          command: >
-#            cd ~/project/project/ &&
-#            docker run --security-opt seccomp=unconfined -v ~/project/project/:/home/circleci/project/
-#            daniilr/kcov bash /home/circleci/project/ci/kcov.sh
-#      - run: cd ./project/ && bash <(curl -s https://codecov.io/bash)
+          cache_key: snarkvm-stable-cache
+  codecov:
+    machine:
+      image: ubuntu-1604:202004-01
+      docker_layer_caching: true
+    resource_class: xlarge
+    steps:
+      - attach_workspace:
+          at: /home/circleci/project/
+      - run:
+          name: Run kcov
+          command: >
+            cd ~/project/project/ &&
+            docker run --security-opt seccomp=unconfined -v ~/project/project/:/home/circleci/project/
+            howardwu/snarkos-codecov:2020-09-06 bash /home/circleci/project/ci/kcov.sh
+      - run: cd ./project/ && bash <(curl -s https://codecov.io/bash)
+  rust_nightly:
+    docker:
+      - image: howardwu/snarkos-ci:2020-08-27
+    resource_class: xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-nightly-cache
+      - run:
+          name: Build and test
+          no_output_timeout: 30m
+          command: RUST_MIN_STACK=8388608 cargo test --all -- --skip dpc --skip dpc_integration_test
+      - clear_environment:
+          cache_key: snarkvm-nightly-cache
 workflows:
   version: 2
   main-workflow:
     jobs:
       - rust_stable
-#      - analyse_and_store_coverage:
-#          requires:
-#            - rust_stable
+      - codecov:
+          requires:
+            - rust_stable
