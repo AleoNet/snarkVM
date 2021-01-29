@@ -57,7 +57,7 @@ jobs:
           paths: project/
       - clear_environment:
           cache_key: snark-main
-#  analyse_and_store_coverage:
+#  codecov:
 #    machine:
 #      image: ubuntu-1604:202004-01
 #      docker_layer_caching: true
