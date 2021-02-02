@@ -20,6 +20,7 @@ use snarkvm_utilities::rand::UniformRand;
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 
+#[allow(clippy::eq_op)]
 pub fn group_test<G: Group>(a: G, mut b: G) {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
     let zero = G::zero();

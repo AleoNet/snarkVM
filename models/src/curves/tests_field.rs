@@ -269,6 +269,7 @@ pub fn from_str_test<F: PrimeField>() {
     assert!(F::from_str("00000000000").is_err());
 }
 
+#[allow(clippy::eq_op)]
 pub fn field_test<F: Field>(a: F, b: F) {
     let zero = F::zero();
     assert!(zero == zero);
