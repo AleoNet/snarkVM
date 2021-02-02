@@ -64,7 +64,7 @@ pub trait PairingEngine: Sized + 'static + Copy + Debug + Sync + Send {
 
     /// Perform a miller loop with some number of (G1, G2) pairs.
     #[must_use]
-    fn miller_loop<'a, I>(i: &'a I) -> Self::Fqk
+    fn miller_loop<'a, I>(i: I) -> Self::Fqk
     where
         I: Iterator<
             Item = (
