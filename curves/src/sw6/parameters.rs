@@ -43,10 +43,10 @@ impl PairingEngine for SW6 {
     type G2Affine = G2Affine;
     type G2Projective = G2Projective;
 
-    fn miller_loop<'a, I>(i: I) -> Self::Fqk
+    fn miller_loop<'a, I>(i: &'a I) -> Self::Fqk
     where
         I: IntoIterator<
-            Item = &'a (
+            Item = (
                 &'a <Self::G1Affine as PairingCurve>::Prepared,
                 &'a <Self::G2Affine as PairingCurve>::Prepared,
             ),
