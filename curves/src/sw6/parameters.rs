@@ -53,7 +53,7 @@ impl PairingEngine for SW6 {
         >,
     {
         let mut result = Self::Fqk::one();
-        for &(ref p, ref q) in i {
+        for (ref p, ref q) in i {
             result *= &SW6::ate_miller_loop(p, q);
         }
         result
