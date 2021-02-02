@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2020 Aleo Systems Inc.
+// Copyright (C) 2019-2021 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -18,8 +18,7 @@ mod g1 {
     use algebra::{
         curves::sw6::{G1Affine, G1Projective as G1},
         fields::sw6::Fr,
-        ProjectiveCurve,
-        UniformRand,
+        ProjectiveCurve, UniformRand,
     };
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
@@ -106,8 +105,7 @@ mod g2 {
     use algebra::{
         curves::sw6::{G2Affine, G2Projective as G2},
         fields::sw6::Fr,
-        ProjectiveCurve,
-        UniformRand,
+        ProjectiveCurve, UniformRand,
     };
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;

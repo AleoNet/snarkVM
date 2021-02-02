@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2020 Aleo Systems Inc.
+// Copyright (C) 2019-2021 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -18,8 +18,7 @@ mod pairing {
     use algebra::{
         curves::{
             sw6::{G1Affine, G1Projective as G1, G2Affine, G2Projective as G2, SW6},
-            PairingCurve,
-            PairingEngine,
+            PairingCurve, PairingEngine,
         },
         fields::sw6::Fq6,
         UniformRand,
