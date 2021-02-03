@@ -17,9 +17,9 @@
 //! An implementation of the [Groth-Maller][GM17] simulation extractable zkSNARK.
 //! [GM17]: https://eprint.iacr.org/2017/540
 
-use snarkvm_errors::gadgets::SynthesisResult;
+use snarkvm_errors::{gadgets::SynthesisResult, serialization::SerializationError};
 use snarkvm_models::curves::pairing_engine::{AffineCurve, PairingCurve, PairingEngine};
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{serialize::*, FromBytes, ToBytes};
 
 use std::io::{self, Read, Result as IoResult, Write};
 
@@ -47,7 +47,7 @@ pub use prover::*;
 pub use verifier::*;
 
 /// A proof in the GM17 SNARK.
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Proof<E: PairingEngine> {
     pub a: E::G1Affine,
     pub b: E::G2Affine,
@@ -85,16 +85,29 @@ impl<E: PairingEngine> Default for Proof<E> {
 }
 
 impl<E: PairingEngine> Proof<E> {
-    /// Serialize the proof into bytes, for storage on disk or transmission
-    /// over the network.
+    /// Serialize the proof into bytes in compressed form, for storage
+    /// on disk or transmission over the network.
     pub fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        CanonicalSerialize::serialize(self, &mut writer)?;
+
+        Ok(())
+    }
+
+    /// Serialize the proof into bytes in uncompressed form, for storage
+    /// on disk or transmission over the network.
+    pub fn write_uncompressed<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.a.write(&mut writer)?;
         self.b.write(&mut writer)?;
         self.c.write(&mut writer)
     }
 
-    /// Deserialize the proof from bytes.
+    /// Deserialize the proof from compressed bytes.
     pub fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(CanonicalDeserialize::deserialize(&mut reader)?)
+    }
+
+    /// Deserialize the proof from uncompressed bytes.
+    pub fn read_uncompressed<R: Read>(mut reader: R) -> IoResult<Self> {
         let a: E::G1Affine = FromBytes::read(&mut reader)?;
         let b: E::G2Affine = FromBytes::read(&mut reader)?;
         let c: E::G1Affine = FromBytes::read(&mut reader)?;

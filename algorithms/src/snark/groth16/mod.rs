@@ -56,19 +56,20 @@ pub struct Proof<E: PairingEngine> {
     pub a: E::G1Affine,
     pub b: E::G2Affine,
     pub c: E::G1Affine,
+    compressed: bool,
 }
 
 impl<E: PairingEngine> ToBytes for Proof<E> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.write(&mut writer)
+        self.write_compressed(&mut writer)
     }
 }
 
 impl<E: PairingEngine> FromBytes for Proof<E> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        Self::read(&mut reader)
+        Self::read_compressed(&mut reader)
     }
 }
 
@@ -89,16 +90,29 @@ impl<E: PairingEngine> Default for Proof<E> {
 }
 
 impl<E: PairingEngine> Proof<E> {
-    /// Serialize the proof into bytes, for storage on disk or transmission
-    /// over the network.
-    pub fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    /// Serialize the proof into bytes in compressed form, for storage
+    /// on disk or transmission over the network.
+    pub fn write_compressed<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        CanonicalSerialize::serialize(self, &mut writer)?;
+
+        Ok(())
+    }
+
+    /// Serialize the proof into bytes in uncompressed form, for storage
+    /// on disk or transmission over the network.
+    pub fn write_uncompressed<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.a.write(&mut writer)?;
         self.b.write(&mut writer)?;
         self.c.write(&mut writer)
     }
 
-    /// Deserialize the proof from bytes.
-    pub fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    /// Deserialize the proof from compressed bytes.
+    pub fn read_compressed<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(CanonicalDeserialize::deserialize(&mut reader)?)
+    }
+
+    /// Deserialize the proof from uncompressed bytes.
+    pub fn read_uncompressed<R: Read>(mut reader: R) -> IoResult<Self> {
         let a: E::G1Affine = FromBytes::read(&mut reader)?;
         let b: E::G2Affine = FromBytes::read(&mut reader)?;
         let c: E::G1Affine = FromBytes::read(&mut reader)?;
