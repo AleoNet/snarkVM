@@ -145,7 +145,7 @@ impl<E: PairingEngine> Proof<E> {
         // Construct the uncompressed reader.
         let uncompressed_proof_size = Self::uncompressed_proof_size()?;
         let mut uncompressed_reader = vec![0u8; uncompressed_proof_size - compressed_proof_size];
-        reader.read(&mut compressed_reader)?;
+        reader.read(&mut uncompressed_reader)?;
         uncompressed_reader = [duplicate_compressed_reader, uncompressed_reader].concat();
 
         // Attempt to read the uncompressed proof.
