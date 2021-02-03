@@ -56,20 +56,23 @@ pub struct Proof<E: PairingEngine> {
     pub a: E::G1Affine,
     pub b: E::G2Affine,
     pub c: E::G1Affine,
-    compressed: bool,
+    pub(crate) compressed: bool,
 }
 
 impl<E: PairingEngine> ToBytes for Proof<E> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.write_compressed(&mut writer)
+        match self.compressed {
+            true => self.write_compressed(&mut writer),
+            false => self.write_uncompressed(&mut writer),
+        }
     }
 }
 
 impl<E: PairingEngine> FromBytes for Proof<E> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        Self::read_compressed(&mut reader)
+        Self::read(&mut reader)
     }
 }
 
@@ -85,6 +88,7 @@ impl<E: PairingEngine> Default for Proof<E> {
             a: E::G1Affine::default(),
             b: E::G2Affine::default(),
             c: E::G1Affine::default(),
+            compressed: true,
         }
     }
 }
@@ -117,7 +121,49 @@ impl<E: PairingEngine> Proof<E> {
         let b: E::G2Affine = FromBytes::read(&mut reader)?;
         let c: E::G1Affine = FromBytes::read(&mut reader)?;
 
-        Ok(Self { a, b, c })
+        Ok(Self {
+            a,
+            b,
+            c,
+            compressed: false,
+        })
+    }
+
+    /// Deserialize a proof from compressed or uncompressed bytes.
+    pub fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Construct the compressed reader
+        let compressed_proof_size = Self::compressed_proof_size()?;
+        let mut compressed_reader = vec![0u8; compressed_proof_size];
+        reader.read(&mut compressed_reader)?;
+        let duplicate_compressed_reader = compressed_reader.clone();
+
+        // Attempt to read the compressed the proof.
+        if let Ok(proof) = Self::read_compressed(&compressed_reader[..]) {
+            return Ok(proof);
+        }
+
+        // Construct the uncompressed reader.
+        let uncompressed_proof_size = Self::uncompressed_proof_size()?;
+        let mut uncompressed_reader = vec![0u8; uncompressed_proof_size - compressed_proof_size];
+        reader.read(&mut compressed_reader)?;
+        uncompressed_reader = [duplicate_compressed_reader, uncompressed_reader].concat();
+
+        // Attempt to read the uncompressed proof.
+        Self::read_uncompressed(&uncompressed_reader[..])
+    }
+
+    /// Returns the number of bytes in a (compressed) serialized proof.
+    pub fn compressed_proof_size() -> IoResult<usize> {
+        let mut buffer = Vec::new();
+        Self::default().write_compressed(&mut buffer)?;
+        Ok(buffer.len())
+    }
+
+    /// Returns the number of bytes in a (compressed) serialized proof.
+    pub fn uncompressed_proof_size() -> IoResult<usize> {
+        let mut buffer = Vec::new();
+        Self::default().write_uncompressed(&mut buffer)?;
+        Ok(buffer.len())
     }
 }
 

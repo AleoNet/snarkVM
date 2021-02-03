@@ -225,6 +225,7 @@ where
         a: g_a.into_affine(),
         b: g2_b.into_affine(),
         c: g_c.into_affine(),
+        compressed: true,
     })
 }
 
