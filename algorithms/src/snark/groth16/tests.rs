@@ -53,10 +53,20 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for MySillyCircuit<C
 
 mod bls12_377 {
     use super::*;
-    use crate::snark::groth16::{create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof};
+    use crate::snark::groth16::{
+        create_random_proof,
+        generate_random_parameters,
+        prepare_verifying_key,
+        verify_proof,
+        Proof,
+    };
     use core::ops::MulAssign;
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-    use snarkvm_utilities::rand::{test_rng, UniformRand};
+    use snarkvm_utilities::{
+        bytes::{FromBytes, ToBytes},
+        rand::{test_rng, UniformRand},
+        to_bytes,
+    };
 
     #[test]
     fn prove_and_verify() {
@@ -76,6 +86,53 @@ mod bls12_377 {
             assert!(verify_proof(&pvk, &proof, &[c]).unwrap());
             assert!(!verify_proof(&pvk, &proof, &[a]).unwrap());
         }
+    }
+
+    #[test]
+    fn test_compressed_serialization() {
+        let rng = &mut test_rng();
+
+        let params = generate_random_parameters::<Bls12_377, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
+
+        let a = Fr::rand(rng);
+        let b = Fr::rand(rng);
+
+        let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &params, rng).unwrap();
+
+        let compressed_serialization = to_bytes![proof].unwrap();
+
+        assert_eq!(
+            Proof::<Bls12_377>::compressed_proof_size().unwrap(),
+            compressed_serialization.len()
+        );
+        assert!(Proof::<Bls12_377>::read_uncompressed(&compressed_serialization[..]).is_err());
+
+        let recovered_proof: Proof<Bls12_377> = FromBytes::read(&compressed_serialization[..]).unwrap();
+        assert_eq!(recovered_proof.compressed, true);
+    }
+
+    #[test]
+    fn test_uncompressed_serialization() {
+        let rng = &mut test_rng();
+
+        let params = generate_random_parameters::<Bls12_377, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
+
+        let a = Fr::rand(rng);
+        let b = Fr::rand(rng);
+
+        let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &params, rng).unwrap();
+
+        let mut uncompressed_serialization = Vec::new();
+        proof.write_uncompressed(&mut uncompressed_serialization).unwrap();
+
+        assert_eq!(
+            Proof::<Bls12_377>::uncompressed_proof_size().unwrap(),
+            uncompressed_serialization.len()
+        );
+        assert!(Proof::<Bls12_377>::read_compressed(&uncompressed_serialization[..]).is_err());
+
+        let recovered_proof: Proof<Bls12_377> = FromBytes::read(&uncompressed_serialization[..]).unwrap();
+        assert_eq!(recovered_proof.compressed, false);
     }
 }
 
