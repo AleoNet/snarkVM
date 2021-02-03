@@ -53,20 +53,10 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for MySillyCircuit<C
 
 mod bls12_377 {
     use super::*;
-    use crate::snark::groth16::{
-        create_random_proof,
-        generate_random_parameters,
-        prepare_verifying_key,
-        verify_proof,
-        Proof,
-    };
+    use crate::snark::groth16::{create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof};
     use core::ops::MulAssign;
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-    use snarkvm_utilities::{
-        bytes::{FromBytes, ToBytes},
-        rand::{test_rng, UniformRand},
-        to_bytes,
-    };
+    use snarkvm_utilities::rand::{test_rng, UniformRand};
 
     #[test]
     fn prove_and_verify() {
@@ -87,6 +77,42 @@ mod bls12_377 {
             assert!(!verify_proof(&pvk, &proof, &[a]).unwrap());
         }
     }
+}
+
+mod bw6_761 {
+    use super::*;
+    use crate::snark::groth16::{create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof};
+
+    use snarkvm_curves::bw6_761::{Fr, BW6_761};
+    use snarkvm_utilities::rand::{test_rng, UniformRand};
+
+    #[test]
+    fn prove_and_verify() {
+        let rng = &mut test_rng();
+
+        let params = generate_random_parameters::<BW6_761, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
+
+        let a = Fr::rand(rng);
+        let b = Fr::rand(rng);
+        let c = a * &b;
+
+        let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &params, rng).unwrap();
+        let pvk = prepare_verifying_key::<BW6_761>(params.vk);
+
+        assert!(verify_proof(&pvk, &proof, &[c]).unwrap());
+        assert!(!verify_proof(&pvk, &proof, &[Fr::zero()]).unwrap());
+    }
+}
+
+mod proof_serialization {
+    use super::*;
+    use crate::snark::groth16::{create_random_proof, generate_random_parameters, Proof};
+    use snarkvm_curves::bls12_377::{Bls12_377, Fr};
+    use snarkvm_utilities::{
+        bytes::{FromBytes, ToBytes},
+        rand::{test_rng, UniformRand},
+        to_bytes,
+    };
 
     #[test]
     fn test_compressed_serialization() {
@@ -133,30 +159,5 @@ mod bls12_377 {
 
         let recovered_proof: Proof<Bls12_377> = FromBytes::read(&uncompressed_serialization[..]).unwrap();
         assert_eq!(recovered_proof.compressed, false);
-    }
-}
-
-mod bw6_761 {
-    use super::*;
-    use crate::snark::groth16::{create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof};
-
-    use snarkvm_curves::bw6_761::{Fr, BW6_761};
-    use snarkvm_utilities::rand::{test_rng, UniformRand};
-
-    #[test]
-    fn prove_and_verify() {
-        let rng = &mut test_rng();
-
-        let params = generate_random_parameters::<BW6_761, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
-
-        let a = Fr::rand(rng);
-        let b = Fr::rand(rng);
-        let c = a * &b;
-
-        let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &params, rng).unwrap();
-        let pvk = prepare_verifying_key::<BW6_761>(params.vk);
-
-        assert!(verify_proof(&pvk, &proof, &[c]).unwrap());
-        assert!(!verify_proof(&pvk, &proof, &[Fr::zero()]).unwrap());
     }
 }

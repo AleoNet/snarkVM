@@ -152,14 +152,14 @@ impl<E: PairingEngine> Proof<E> {
         Self::read_uncompressed(&uncompressed_reader[..])
     }
 
-    /// Returns the number of bytes in a (compressed) serialized proof.
+    /// Returns the number of bytes in a compressed proof serialization.
     pub fn compressed_proof_size() -> IoResult<usize> {
         let mut buffer = Vec::new();
         Self::default().write_compressed(&mut buffer)?;
         Ok(buffer.len())
     }
 
-    /// Returns the number of bytes in a (compressed) serialized proof.
+    /// Returns the number of bytes in an uncompressed proof serialization.
     pub fn uncompressed_proof_size() -> IoResult<usize> {
         let mut buffer = Vec::new();
         Self::default().write_uncompressed(&mut buffer)?;
