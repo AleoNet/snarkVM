@@ -137,7 +137,7 @@ impl<E: PairingEngine> Proof<E> {
         reader.read(&mut compressed_reader)?;
         let duplicate_compressed_reader = compressed_reader.clone();
 
-        // Attempt to read the compressed the proof.
+        // Attempt to read the compressed proof.
         if let Ok(proof) = Self::read_compressed(&compressed_reader[..]) {
             return Ok(proof);
         }
