@@ -1594,7 +1594,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "rusty-hook",
 ]
@@ -1621,7 +1621,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-algorithms"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "blake2",
  "criterion",
@@ -1635,16 +1635,16 @@ dependencies = [
  "rayon",
  "sha2",
  "smallvec",
- "snarkvm-curves 0.0.2",
- "snarkvm-errors 0.0.2",
- "snarkvm-models 0.0.2",
- "snarkvm-profiler 0.0.2",
- "snarkvm-utilities 0.0.2",
+ "snarkvm-curves 0.0.3",
+ "snarkvm-errors 0.0.3",
+ "snarkvm-models 0.0.3",
+ "snarkvm-profiler 0.0.3",
+ "snarkvm-utilities 0.0.3",
 ]
 
 [[package]]
 name = "snarkvm-benchmarks"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "criterion",
  "csv",
@@ -1655,12 +1655,12 @@ dependencies = [
  "rayon",
  "sha2",
  "smallvec",
- "snarkvm-algorithms 0.0.2",
- "snarkvm-curves 0.0.2",
- "snarkvm-errors 0.0.2",
- "snarkvm-marlin 0.0.2",
- "snarkvm-models 0.0.2",
- "snarkvm-utilities 0.0.2",
+ "snarkvm-algorithms 0.0.3",
+ "snarkvm-curves 0.0.3",
+ "snarkvm-errors 0.0.3",
+ "snarkvm-marlin 0.0.3",
+ "snarkvm-models 0.0.3",
+ "snarkvm-utilities 0.0.3",
 ]
 
 [[package]]
@@ -1680,7 +1680,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-curves"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "criterion",
  "derivative",
@@ -1688,9 +1688,9 @@ dependencies = [
  "rand_xorshift",
  "rustc_version 0.3.3",
  "serde",
- "snarkvm-errors 0.0.2",
- "snarkvm-models 0.0.2",
- "snarkvm-utilities 0.0.2",
+ "snarkvm-errors 0.0.3",
+ "snarkvm-models 0.0.3",
+ "snarkvm-utilities 0.0.3",
 ]
 
 [[package]]
@@ -1705,7 +1705,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-derives"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "proc-macro-crate",
  "proc-macro-error",
@@ -1738,7 +1738,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-dpc"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "anyhow",
  "blake2",
@@ -1748,16 +1748,16 @@ dependencies = [
  "itertools 0.10.0",
  "rand",
  "rand_xorshift",
- "snarkvm-algorithms 0.0.2",
- "snarkvm-curves 0.0.2",
- "snarkvm-errors 0.0.2",
- "snarkvm-gadgets 0.0.2",
- "snarkvm-models 0.0.2",
- "snarkvm-objects 0.0.2",
- "snarkvm-parameters 0.0.2",
- "snarkvm-profiler 0.0.2",
+ "snarkvm-algorithms 0.0.3",
+ "snarkvm-curves 0.0.3",
+ "snarkvm-errors 0.0.3",
+ "snarkvm-gadgets 0.0.3",
+ "snarkvm-models 0.0.3",
+ "snarkvm-objects 0.0.3",
+ "snarkvm-parameters 0.0.3",
+ "snarkvm-profiler 0.0.3",
  "snarkvm-testing",
- "snarkvm-utilities 0.0.2",
+ "snarkvm-utilities 0.0.3",
 ]
 
 [[package]]
@@ -1778,7 +1778,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-errors"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "base58",
  "bech32",
@@ -1808,7 +1808,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-gadgets"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "blake2",
  "derivative",
@@ -1816,11 +1816,11 @@ dependencies = [
  "itertools 0.10.0",
  "rand",
  "rand_xorshift",
- "snarkvm-algorithms 0.0.2",
- "snarkvm-curves 0.0.2",
- "snarkvm-errors 0.0.2",
- "snarkvm-models 0.0.2",
- "snarkvm-utilities 0.0.2",
+ "snarkvm-algorithms 0.0.3",
+ "snarkvm-curves 0.0.3",
+ "snarkvm-errors 0.0.3",
+ "snarkvm-models 0.0.3",
+ "snarkvm-utilities 0.0.3",
 ]
 
 [[package]]
@@ -1844,7 +1844,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-marlin"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "blake2",
  "derivative",
@@ -1852,13 +1852,13 @@ dependencies = [
  "rand_chacha",
  "rand_core",
  "rayon",
- "snarkvm-algorithms 0.0.2",
- "snarkvm-curves 0.0.2",
- "snarkvm-errors 0.0.2",
- "snarkvm-models 0.0.2",
- "snarkvm-polycommit 0.0.2",
- "snarkvm-profiler 0.0.2",
- "snarkvm-utilities 0.0.2",
+ "snarkvm-algorithms 0.0.3",
+ "snarkvm-curves 0.0.3",
+ "snarkvm-errors 0.0.3",
+ "snarkvm-models 0.0.3",
+ "snarkvm-polycommit 0.0.3",
+ "snarkvm-profiler 0.0.3",
+ "snarkvm-utilities 0.0.3",
 ]
 
 [[package]]
@@ -1882,7 +1882,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-models"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1895,8 +1895,8 @@ dependencies = [
  "rand",
  "rand_xorshift",
  "serde",
- "snarkvm-errors 0.0.2",
- "snarkvm-utilities 0.0.2",
+ "snarkvm-errors 0.0.3",
+ "snarkvm-utilities 0.0.3",
 ]
 
 [[package]]
@@ -1922,7 +1922,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-objects"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "base58",
  "bech32",
@@ -1934,12 +1934,12 @@ dependencies = [
  "rand",
  "serde",
  "sha2",
- "snarkvm-algorithms 0.0.2",
- "snarkvm-curves 0.0.2",
- "snarkvm-dpc 0.0.2",
- "snarkvm-errors 0.0.2",
- "snarkvm-models 0.0.2",
- "snarkvm-utilities 0.0.2",
+ "snarkvm-algorithms 0.0.3",
+ "snarkvm-curves 0.0.3",
+ "snarkvm-dpc 0.0.3",
+ "snarkvm-errors 0.0.3",
+ "snarkvm-models 0.0.3",
+ "snarkvm-utilities 0.0.3",
 ]
 
 [[package]]
@@ -1957,7 +1957,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-parameters"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "chrono",
  "curl",
@@ -1967,14 +1967,14 @@ dependencies = [
  "snarkos-consensus",
  "snarkos-posw",
  "snarkos-storage",
- "snarkvm-algorithms 0.0.2",
- "snarkvm-curves 0.0.2",
- "snarkvm-dpc 0.0.2",
- "snarkvm-errors 0.0.2",
- "snarkvm-marlin 0.0.2",
- "snarkvm-models 0.0.2",
- "snarkvm-objects 0.0.2",
- "snarkvm-utilities 0.0.2",
+ "snarkvm-algorithms 0.0.3",
+ "snarkvm-curves 0.0.3",
+ "snarkvm-dpc 0.0.3",
+ "snarkvm-errors 0.0.3",
+ "snarkvm-marlin 0.0.3",
+ "snarkvm-models 0.0.3",
+ "snarkvm-objects 0.0.3",
+ "snarkvm-utilities 0.0.3",
 ]
 
 [[package]]
@@ -1994,7 +1994,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-polycommit"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "blake2",
  "derivative",
@@ -2002,12 +2002,12 @@ dependencies = [
  "rand",
  "rand_core",
  "rayon",
- "snarkvm-algorithms 0.0.2",
- "snarkvm-curves 0.0.2",
- "snarkvm-errors 0.0.2",
- "snarkvm-models 0.0.2",
- "snarkvm-profiler 0.0.2",
- "snarkvm-utilities 0.0.2",
+ "snarkvm-algorithms 0.0.3",
+ "snarkvm-curves 0.0.3",
+ "snarkvm-errors 0.0.3",
+ "snarkvm-models 0.0.3",
+ "snarkvm-profiler 0.0.3",
+ "snarkvm-utilities 0.0.3",
 ]
 
 [[package]]
@@ -2017,14 +2017,14 @@ source = "git+https://github.com/AleoHQ/snarkVM.git?rev=81d225a#81d225aca0cdede1
 
 [[package]]
 name = "snarkvm-profiler"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "colored",
 ]
 
 [[package]]
 name = "snarkvm-storage"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "anyhow",
  "bincode",
@@ -2033,33 +2033,33 @@ dependencies = [
  "rand",
  "rocksdb",
  "serde",
- "snarkvm-algorithms 0.0.2",
- "snarkvm-curves 0.0.2",
- "snarkvm-errors 0.0.2",
- "snarkvm-models 0.0.2",
- "snarkvm-objects 0.0.2",
- "snarkvm-parameters 0.0.2",
+ "snarkvm-algorithms 0.0.3",
+ "snarkvm-curves 0.0.3",
+ "snarkvm-errors 0.0.3",
+ "snarkvm-models 0.0.3",
+ "snarkvm-objects 0.0.3",
+ "snarkvm-parameters 0.0.3",
  "snarkvm-testing",
- "snarkvm-utilities 0.0.2",
+ "snarkvm-utilities 0.0.3",
  "thiserror",
 ]
 
 [[package]]
 name = "snarkvm-testing"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "once_cell",
  "rand",
  "rand_xorshift",
- "snarkvm-algorithms 0.0.2",
- "snarkvm-curves 0.0.2",
- "snarkvm-dpc 0.0.2",
- "snarkvm-errors 0.0.2",
- "snarkvm-models 0.0.2",
- "snarkvm-objects 0.0.2",
- "snarkvm-parameters 0.0.2",
+ "snarkvm-algorithms 0.0.3",
+ "snarkvm-curves 0.0.3",
+ "snarkvm-dpc 0.0.3",
+ "snarkvm-errors 0.0.3",
+ "snarkvm-models 0.0.3",
+ "snarkvm-objects 0.0.3",
+ "snarkvm-parameters 0.0.3",
  "snarkvm-storage",
- "snarkvm-utilities 0.0.2",
+ "snarkvm-utilities 0.0.3",
  "tokio",
 ]
 
@@ -2076,13 +2076,13 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-utilities"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "bincode",
  "rand",
  "rand_xorshift",
- "snarkvm-derives 0.0.2",
- "snarkvm-errors 0.0.2",
+ "snarkvm-derives 0.0.3",
+ "snarkvm-errors 0.0.3",
 ]
 
 [[package]]

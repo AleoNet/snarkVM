@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-algorithms"
-version = "0.0.2"
+version = "0.0.3"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Algorithms for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -23,22 +23,22 @@ path = "examples/snark/gm17.rs"
 
 [dependencies.snarkvm-errors]
 path = "../errors"
-version = "0.0.2"
+version = "0.0.3"
 default-features = false
 
 [dependencies.snarkvm-models]
 path = "../models"
-version = "0.0.2"
+version = "0.0.3"
 default-features = false
 
 [dependencies.snarkvm-profiler]
 path = "../profiler"
-version = "0.0.2"
+version = "0.0.3"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.0.2"
+version = "0.0.3"
 default-features = false
 
 [dependencies.blake2]

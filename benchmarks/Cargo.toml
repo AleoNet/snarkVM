@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-benchmarks"
-version = "0.0.2"
+version = "0.0.3"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Benchmarks for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -27,27 +27,27 @@ criterion = "0.3.4"
 
   [dependencies.snarkvm-algorithms]
   path = "../algorithms"
-  version = "0.0.2"
+  version = "0.0.3"
 
   [dependencies.snarkvm-curves]
   path = "../curves"
-  version = "0.0.2"
+  version = "0.0.3"
 
   [dependencies.snarkvm-errors]
   path = "../errors"
-  version = "0.0.2"
+  version = "0.0.3"
 
   [dependencies.snarkvm-marlin]
   path = "../marlin"
-  version = "0.0.2"
+  version = "0.0.3"
 
   [dependencies.snarkvm-models]
   path = "../models"
-  version = "0.0.2"
+  version = "0.0.3"
 
   [dependencies.snarkvm-utilities]
   path = "../utilities"
-  version = "0.0.2"
+  version = "0.0.3"
 
   [dependencies.derivative]
   version = "2"
