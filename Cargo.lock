@@ -1657,6 +1657,7 @@ dependencies = [
  "smallvec",
  "snarkvm-algorithms 0.0.2",
  "snarkvm-curves 0.0.2",
+ "snarkvm-errors 0.0.2",
  "snarkvm-marlin 0.0.2",
  "snarkvm-models 0.0.2",
  "snarkvm-utilities 0.0.2",
