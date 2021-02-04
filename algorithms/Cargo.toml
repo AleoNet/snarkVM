@@ -51,7 +51,7 @@ version = "2"
 version = "0.8.1"
 
 [dependencies.itertools]
-version = "0.9.0"
+version = "0.10.0"
 
 [dependencies.rand]
 version = "0.7"
@@ -72,7 +72,7 @@ version = "1.6"
 path = "../curves"
 
 [dev-dependencies.criterion]
-version = "0.3.3"
+version = "0.3.4"
 
 [dev-dependencies.csv]
 version = "1"

@@ -316,7 +316,7 @@ where
         T: Borrow<Proof<PairingE>>,
     {
         value_gen().and_then(|proof| {
-            let Proof { a, b, c } = proof.borrow();
+            let Proof { a, b, c, .. } = proof.borrow();
             let a = P::G1Gadget::alloc_checked(cs.ns(|| "a"), || Ok(a.into_projective()))?;
             let b = P::G2Gadget::alloc_checked(cs.ns(|| "b"), || Ok(b.into_projective()))?;
             let c = P::G1Gadget::alloc_checked(cs.ns(|| "c"), || Ok(c.into_projective()))?;
@@ -331,7 +331,7 @@ where
         T: Borrow<Proof<PairingE>>,
     {
         value_gen().and_then(|proof| {
-            let Proof { a, b, c } = proof.borrow();
+            let Proof { a, b, c, .. } = proof.borrow();
             // We don't need to check here because the prime order check can be performed
             // in plain.
             let a = P::G1Gadget::alloc_input(cs.ns(|| "a"), || Ok(a.into_projective()))?;
