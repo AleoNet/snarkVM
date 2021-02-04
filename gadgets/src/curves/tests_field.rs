@@ -27,6 +27,7 @@ use snarkvm_utilities::{bititerator::BitIterator, rand::UniformRand};
 use rand::{self, thread_rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
+#[allow(clippy::eq_op)]
 fn field_test<NativeF: Field, F: Field, FG: FieldGadget<NativeF, F>, CS: ConstraintSystem<F>>(
     mut cs: CS,
     a: FG,
@@ -38,11 +39,11 @@ fn field_test<NativeF: Field, F: Field, FG: FieldGadget<NativeF, F>, CS: Constra
     let zero = FG::zero(cs.ns(|| "zero")).unwrap();
     let zero_native = zero.get_value().unwrap();
     zero.enforce_equal(&mut cs.ns(|| "zero_equals?"), &zero).unwrap();
-    assert_eq!(zero, zero);
+    assert!(zero == zero);
 
     let one = FG::one(cs.ns(|| "one")).unwrap();
     let one_native = one.get_value().unwrap();
-    assert_eq!(one, one);
+    assert!(one == one);
     one.enforce_equal(&mut cs.ns(|| "one_equals?"), &one).unwrap();
     assert_ne!(one, zero);
 
@@ -54,12 +55,12 @@ fn field_test<NativeF: Field, F: Field, FG: FieldGadget<NativeF, F>, CS: Constra
 
     let two = one.add(cs.ns(|| "one_plus_one"), &one).unwrap();
     two.enforce_equal(&mut cs.ns(|| "two_equals?"), &two).unwrap();
-    assert_eq!(two, two);
+    assert!(two == two);
     assert_ne!(zero, two);
     assert_ne!(one, two);
 
     // a == a
-    assert_eq!(a, a);
+    assert!(a == a);
 
     // a + 0 = a
     let a_plus_zero = a.add(cs.ns(|| "a_plus_zero"), &zero).unwrap();
