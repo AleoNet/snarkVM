@@ -22,13 +22,13 @@ use rand_xorshift::XorShiftRng;
 #[allow(clippy::eq_op)]
 fn biginteger_arithmetic_test<B: BigInteger>(a: B, b: B, zero: B) {
     // zero == zero
-    assert_eq!(zero == zero);
+    assert!(zero == zero);
 
     // zero.is_zero() == true
     assert_eq!(zero.is_zero(), true);
 
     // a == a
-    assert_eq!(a == a);
+    assert!(a == a);
 
     // a + 0 = a
     let mut a0_add = a;
