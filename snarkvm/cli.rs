@@ -14,28 +14,33 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#[macro_use]
-extern crate thiserror;
-
-pub mod cli;
-pub mod commands;
-pub mod errors;
-pub mod updater;
-
-use crate::{cli::CLI, commands::parse, updater::Updater};
-
 use structopt::StructOpt;
 
-fn main() -> anyhow::Result<()> {
-    let cli = CLI::from_args();
+#[derive(StructOpt, Debug)]
+#[structopt(name = "snarkVM", author = "The Aleo Team <hello@aleo.org>", setting = structopt::clap::AppSettings::ColoredHelp)]
+pub struct CLI {
+    /// Enable debug mode
+    #[structopt(short, long)]
+    pub debug: bool,
 
-    if cli.debug {
-        println!("\n{:#?}\n", cli);
-    }
+    /// Enable verbose mode
+    #[structopt(short, long, parse(from_occurrences))]
+    pub verbose: u8,
 
-    println!("{}", Updater::print_cli());
+    #[structopt(subcommand)]
+    pub command: Command,
+}
 
-    println!("{}", parse(cli.command)?);
+#[derive(StructOpt, Debug)]
+pub enum Command {
+    /// Update snarkVM to the latest version
+    Update {
+        /// Lists all available versions of snarkVM
+        #[structopt(short = "l", long)]
+        list: bool,
 
-    Ok(())
+        /// Suppress outputs to terminal
+        #[structopt(short = "q", long)]
+        quiet: bool,
+    },
 }

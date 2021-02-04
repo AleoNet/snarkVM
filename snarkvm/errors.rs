@@ -14,28 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#[macro_use]
-extern crate thiserror;
+#[derive(Debug, Error)]
+pub enum UpdaterError {
+    #[error("{}: {}", _0, _1)]
+    Crate(&'static str, String),
 
-pub mod cli;
-pub mod commands;
-pub mod errors;
-pub mod updater;
+    #[error("The current version {} is more recent than the release version {}", _0, _1)]
+    OldReleaseVersion(String, String),
+}
 
-use crate::{cli::CLI, commands::parse, updater::Updater};
-
-use structopt::StructOpt;
-
-fn main() -> anyhow::Result<()> {
-    let cli = CLI::from_args();
-
-    if cli.debug {
-        println!("\n{:#?}\n", cli);
+impl From<self_update::errors::Error> for UpdaterError {
+    fn from(error: self_update::errors::Error) -> Self {
+        UpdaterError::Crate("self_update", error.to_string())
     }
-
-    println!("{}", Updater::print_cli());
-
-    println!("{}", parse(cli.command)?);
-
-    Ok(())
 }
