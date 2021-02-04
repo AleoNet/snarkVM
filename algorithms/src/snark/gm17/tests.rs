@@ -176,7 +176,7 @@ mod serialization {
     use rand_xorshift::XorShiftRng;
 
     #[test]
-    fn proof_serialization() {
+    fn test_compressed_proof_serialization() {
         let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
 
         let parameters =
@@ -187,10 +187,41 @@ mod serialization {
 
         let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters, rng).unwrap();
 
-        let proof_bytes = to_bytes![proof].unwrap();
-        let recovered_proof: Proof<Bls12_377> = FromBytes::read(&proof_bytes[..]).unwrap();
+        let compressed_serialization = to_bytes![proof].unwrap();
 
-        assert_eq!(proof, recovered_proof);
+        assert_eq!(
+            Proof::<Bls12_377>::compressed_proof_size().unwrap(),
+            compressed_serialization.len()
+        );
+        assert!(Proof::<Bls12_377>::read_uncompressed(&compressed_serialization[..]).is_err());
+
+        let recovered_proof: Proof<Bls12_377> = FromBytes::read(&compressed_serialization[..]).unwrap();
+        assert_eq!(recovered_proof.compressed, true);
+    }
+
+    #[test]
+    fn test_uncompressed_proof_serialization() {
+        let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
+
+        let parameters =
+            generate_random_parameters::<Bls12_377, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
+
+        let a = Fr::rand(rng);
+        let b = Fr::rand(rng);
+
+        let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters, rng).unwrap();
+
+        let mut uncompressed_serialization = Vec::new();
+        proof.write_uncompressed(&mut uncompressed_serialization).unwrap();
+
+        assert_eq!(
+            Proof::<Bls12_377>::uncompressed_proof_size().unwrap(),
+            uncompressed_serialization.len()
+        );
+        assert!(Proof::<Bls12_377>::read_compressed(&uncompressed_serialization[..]).is_err());
+
+        let recovered_proof: Proof<Bls12_377> = FromBytes::read(&uncompressed_serialization[..]).unwrap();
+        assert_eq!(recovered_proof.compressed, false);
     }
 
     #[test]

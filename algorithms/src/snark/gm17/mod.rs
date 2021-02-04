@@ -17,9 +17,9 @@
 //! An implementation of the [Groth-Maller][GM17] simulation extractable zkSNARK.
 //! [GM17]: https://eprint.iacr.org/2017/540
 
-use snarkvm_errors::gadgets::SynthesisResult;
+use snarkvm_errors::{gadgets::SynthesisResult, serialization::SerializationError};
 use snarkvm_models::curves::pairing_engine::{AffineCurve, PairingCurve, PairingEngine};
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{serialize::*, FromBytes, ToBytes};
 
 use std::io::{self, Read, Result as IoResult, Write};
 
@@ -47,17 +47,21 @@ pub use prover::*;
 pub use verifier::*;
 
 /// A proof in the GM17 SNARK.
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Proof<E: PairingEngine> {
     pub a: E::G1Affine,
     pub b: E::G2Affine,
     pub c: E::G1Affine,
+    pub(crate) compressed: bool,
 }
 
 impl<E: PairingEngine> ToBytes for Proof<E> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.write(&mut writer)
+        match self.compressed {
+            true => self.write_compressed(&mut writer),
+            false => self.write_uncompressed(&mut writer),
+        }
     }
 }
 
@@ -80,26 +84,82 @@ impl<E: PairingEngine> Default for Proof<E> {
             a: E::G1Affine::default(),
             b: E::G2Affine::default(),
             c: E::G1Affine::default(),
+            compressed: true,
         }
     }
 }
 
 impl<E: PairingEngine> Proof<E> {
-    /// Serialize the proof into bytes, for storage on disk or transmission
-    /// over the network.
-    pub fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    /// Serialize the proof into bytes in compressed form, for storage
+    /// on disk or transmission over the network.
+    pub fn write_compressed<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        CanonicalSerialize::serialize(self, &mut writer)?;
+
+        Ok(())
+    }
+
+    /// Serialize the proof into bytes in uncompressed form, for storage
+    /// on disk or transmission over the network.
+    pub fn write_uncompressed<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.a.write(&mut writer)?;
         self.b.write(&mut writer)?;
         self.c.write(&mut writer)
     }
 
-    /// Deserialize the proof from bytes.
-    pub fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    /// Deserialize the proof from compressed bytes.
+    pub fn read_compressed<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(CanonicalDeserialize::deserialize(&mut reader)?)
+    }
+
+    /// Deserialize the proof from uncompressed bytes.
+    pub fn read_uncompressed<R: Read>(mut reader: R) -> IoResult<Self> {
         let a: E::G1Affine = FromBytes::read(&mut reader)?;
         let b: E::G2Affine = FromBytes::read(&mut reader)?;
         let c: E::G1Affine = FromBytes::read(&mut reader)?;
 
-        Ok(Self { a, b, c })
+        Ok(Self {
+            a,
+            b,
+            c,
+            compressed: false,
+        })
+    }
+
+    /// Deserialize a proof from compressed or uncompressed bytes.
+    pub fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Construct the compressed reader
+        let compressed_proof_size = Self::compressed_proof_size()?;
+        let mut compressed_reader = vec![0u8; compressed_proof_size];
+        reader.read(&mut compressed_reader)?;
+        let duplicate_compressed_reader = compressed_reader.clone();
+
+        // Attempt to read the compressed proof.
+        if let Ok(proof) = Self::read_compressed(&compressed_reader[..]) {
+            return Ok(proof);
+        }
+
+        // Construct the uncompressed reader.
+        let uncompressed_proof_size = Self::uncompressed_proof_size()?;
+        let mut uncompressed_reader = vec![0u8; uncompressed_proof_size - compressed_proof_size];
+        reader.read(&mut uncompressed_reader)?;
+        uncompressed_reader = [duplicate_compressed_reader, uncompressed_reader].concat();
+
+        // Attempt to read the uncompressed proof.
+        Self::read_uncompressed(&uncompressed_reader[..])
+    }
+
+    /// Returns the number of bytes in a compressed proof serialization.
+    pub fn compressed_proof_size() -> IoResult<usize> {
+        let mut buffer = Vec::new();
+        Self::default().write_compressed(&mut buffer)?;
+        Ok(buffer.len())
+    }
+
+    /// Returns the number of bytes in an uncompressed proof serialization.
+    pub fn uncompressed_proof_size() -> IoResult<usize> {
+        let mut buffer = Vec::new();
+        Self::default().write_uncompressed(&mut buffer)?;
+        Ok(buffer.len())
     }
 }
 

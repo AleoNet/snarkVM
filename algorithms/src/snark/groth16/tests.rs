@@ -62,7 +62,8 @@ mod bls12_377 {
     fn prove_and_verify() {
         let rng = &mut test_rng();
 
-        let params = generate_random_parameters::<Bls12_377, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
+        let parameters =
+            generate_random_parameters::<Bls12_377, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
 
         for _ in 0..100 {
             let a = Fr::rand(rng);
@@ -70,8 +71,8 @@ mod bls12_377 {
             let mut c = a;
             c.mul_assign(&b);
 
-            let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &params, rng).unwrap();
-            let pvk = prepare_verifying_key::<Bls12_377>(params.vk.clone());
+            let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters, rng).unwrap();
+            let pvk = prepare_verifying_key::<Bls12_377>(parameters.vk.clone());
 
             assert!(verify_proof(&pvk, &proof, &[c]).unwrap());
             assert!(!verify_proof(&pvk, &proof, &[a]).unwrap());
@@ -90,16 +91,77 @@ mod bw6_761 {
     fn prove_and_verify() {
         let rng = &mut test_rng();
 
-        let params = generate_random_parameters::<BW6_761, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
+        let parameters =
+            generate_random_parameters::<BW6_761, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
 
         let a = Fr::rand(rng);
         let b = Fr::rand(rng);
         let c = a * &b;
 
-        let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &params, rng).unwrap();
-        let pvk = prepare_verifying_key::<BW6_761>(params.vk);
+        let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters, rng).unwrap();
+        let pvk = prepare_verifying_key::<BW6_761>(parameters.vk);
 
         assert!(verify_proof(&pvk, &proof, &[c]).unwrap());
         assert!(!verify_proof(&pvk, &proof, &[Fr::zero()]).unwrap());
+    }
+}
+
+mod serialization {
+    use super::*;
+    use crate::snark::groth16::{create_random_proof, generate_random_parameters, Proof};
+    use snarkvm_curves::bls12_377::{Bls12_377, Fr};
+    use snarkvm_utilities::{
+        bytes::{FromBytes, ToBytes},
+        rand::{test_rng, UniformRand},
+        to_bytes,
+    };
+
+    #[test]
+    fn test_compressed_proof_serialization() {
+        let rng = &mut test_rng();
+
+        let parameters =
+            generate_random_parameters::<Bls12_377, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
+
+        let a = Fr::rand(rng);
+        let b = Fr::rand(rng);
+
+        let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters, rng).unwrap();
+
+        let compressed_serialization = to_bytes![proof].unwrap();
+
+        assert_eq!(
+            Proof::<Bls12_377>::compressed_proof_size().unwrap(),
+            compressed_serialization.len()
+        );
+        assert!(Proof::<Bls12_377>::read_uncompressed(&compressed_serialization[..]).is_err());
+
+        let recovered_proof: Proof<Bls12_377> = FromBytes::read(&compressed_serialization[..]).unwrap();
+        assert_eq!(recovered_proof.compressed, true);
+    }
+
+    #[test]
+    fn test_uncompressed_proof_serialization() {
+        let rng = &mut test_rng();
+
+        let parameters =
+            generate_random_parameters::<Bls12_377, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
+
+        let a = Fr::rand(rng);
+        let b = Fr::rand(rng);
+
+        let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters, rng).unwrap();
+
+        let mut uncompressed_serialization = Vec::new();
+        proof.write_uncompressed(&mut uncompressed_serialization).unwrap();
+
+        assert_eq!(
+            Proof::<Bls12_377>::uncompressed_proof_size().unwrap(),
+            uncompressed_serialization.len()
+        );
+        assert!(Proof::<Bls12_377>::read_compressed(&uncompressed_serialization[..]).is_err());
+
+        let recovered_proof: Proof<Bls12_377> = FromBytes::read(&uncompressed_serialization[..]).unwrap();
+        assert_eq!(recovered_proof.compressed, false);
     }
 }
