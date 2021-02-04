@@ -33,6 +33,10 @@ criterion = "0.3.4"
   path = "../curves"
   version = "0.0.2"
 
+  [dependencies.snarkvm-errors]
+  path = "../errors"
+  version = "0.0.2"
+
   [dependencies.snarkvm-marlin]
   path = "../marlin"
   version = "0.0.2"
