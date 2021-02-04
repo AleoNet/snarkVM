@@ -33,20 +33,14 @@ pub struct CLI {
 
 #[derive(StructOpt, Debug)]
 pub enum Command {
-    // /// Generates a new Aleo account
-// New {
-//     /// Seed the RNG with a numeric value
-//     #[structopt(short = "s", long)]
-//     seed: Option<u64>,
-// },
-// /// Update Aleo to the latest version
-// Update {
-//     /// Lists all available versions of Aleo
-//     #[structopt(short = "l", long)]
-//     list: bool,
-//
-//     /// Suppress outputs to terminal
-//     #[structopt(short = "q", long)]
-//     quiet: bool,
-// },
+    /// Update snarkVM to the latest version
+    Update {
+        /// Lists all available versions of snarkVM
+        #[structopt(short = "l", long)]
+        list: bool,
+
+        /// Suppress outputs to terminal
+        #[structopt(short = "q", long)]
+        quiet: bool,
+    },
 }

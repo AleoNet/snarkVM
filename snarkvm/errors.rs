@@ -14,4 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod cli;
+#[derive(Debug, Error)]
+pub enum UpdaterError {
+    #[error("{}: {}", _0, _1)]
+    Crate(&'static str, String),
+
+    #[error("The current version {} is more recent than the release version {}", _0, _1)]
+    OldReleaseVersion(String, String),
+}
+
+impl From<self_update::errors::Error> for UpdaterError {
+    fn from(error: self_update::errors::Error) -> Self {
+        UpdaterError::Crate("self_update", error.to_string())
+    }
+}
