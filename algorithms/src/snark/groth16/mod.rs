@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2020 Aleo Systems Inc.
+// Copyright (C) 2019-2021 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -131,10 +131,10 @@ impl<E: PairingEngine> Proof<E> {
 
     /// Deserialize a proof from compressed or uncompressed bytes.
     pub fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Construct the compressed reader
+        // Construct the compressed reader.
         let compressed_proof_size = Self::compressed_proof_size()?;
         let mut compressed_reader = vec![0u8; compressed_proof_size];
-        reader.read(&mut compressed_reader)?;
+        reader.read_exact(&mut compressed_reader)?;
         let duplicate_compressed_reader = compressed_reader.clone();
 
         // Attempt to read the compressed proof.
@@ -145,7 +145,7 @@ impl<E: PairingEngine> Proof<E> {
         // Construct the uncompressed reader.
         let uncompressed_proof_size = Self::uncompressed_proof_size()?;
         let mut uncompressed_reader = vec![0u8; uncompressed_proof_size - compressed_proof_size];
-        reader.read(&mut uncompressed_reader)?;
+        reader.read_exact(&mut uncompressed_reader)?;
         uncompressed_reader = [duplicate_compressed_reader, uncompressed_reader].concat();
 
         // Attempt to read the uncompressed proof.

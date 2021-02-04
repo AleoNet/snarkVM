@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2020 Aleo Systems Inc.
+// Copyright (C) 2019-2021 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -20,13 +20,14 @@ use snarkvm_utilities::rand::UniformRand;
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 
+#[allow(clippy::eq_op)]
 pub fn group_test<G: Group>(a: G, mut b: G) {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
     let zero = G::zero();
     let fr_zero = G::ScalarField::zero();
     let fr_one = G::ScalarField::one();
     let fr_two = fr_one + &fr_one;
-    assert_eq!(zero, zero);
+    assert!(zero == zero);
     assert_eq!(zero.is_zero(), true);
     assert_eq!(a.mul(&fr_one), a);
     assert_eq!(a.mul(&fr_two), a + &a);
@@ -36,7 +37,7 @@ pub fn group_test<G: Group>(a: G, mut b: G) {
     assert_eq!(a.mul(&fr_two) - &a, a);
 
     // a == a
-    assert_eq!(a, a);
+    assert!(a == a);
     // a + 0 = a
     assert_eq!(a + &zero, a);
     // a - 0 = a

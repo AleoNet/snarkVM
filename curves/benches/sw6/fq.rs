@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2020 Aleo Systems Inc.
+// Copyright (C) 2019-2021 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -19,12 +19,7 @@ use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 
 use algebra::{
-    biginteger::BigInteger832 as FqRepr,
-    fields::sw6::fq::Fq,
-    BigInteger,
-    Field,
-    PrimeField,
-    SquareRootField,
+    biginteger::BigInteger832 as FqRepr, fields::sw6::fq::Fq, BigInteger, Field, PrimeField, SquareRootField,
 };
 use std::ops::{AddAssign, MulAssign, SubAssign};
 

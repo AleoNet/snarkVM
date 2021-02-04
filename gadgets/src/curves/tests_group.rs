@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2020 Aleo Systems Inc.
+// Copyright (C) 2019-2021 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -25,12 +25,13 @@ use snarkvm_models::{
     },
 };
 
+#[allow(clippy::eq_op)]
 pub fn group_test<F: Field, G: Group, GG: GroupGadget<G, F>, CS: ConstraintSystem<F>>(cs: &mut CS, a: GG, b: GG) {
     let zero = GG::zero(cs.ns(|| "Zero")).unwrap();
-    assert_eq!(zero, zero);
+    assert!(zero == zero);
 
     // a == a
-    assert_eq!(a, a);
+    assert!(a == a);
     // a + 0 = a
     assert_eq!(a.add(cs.ns(|| "a_plus_zero"), &zero).unwrap(), a);
     // a - 0 = a

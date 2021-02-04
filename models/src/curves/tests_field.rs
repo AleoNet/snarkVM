@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2020 Aleo Systems Inc.
+// Copyright (C) 2019-2021 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -269,25 +269,26 @@ pub fn from_str_test<F: PrimeField>() {
     assert!(F::from_str("00000000000").is_err());
 }
 
+#[allow(clippy::eq_op)]
 pub fn field_test<F: Field>(a: F, b: F) {
     let zero = F::zero();
-    assert_eq!(zero, zero);
+    assert!(zero == zero);
     assert_eq!(zero.is_zero(), true);
     assert_eq!(zero.is_one(), false);
 
     let one = F::one();
-    assert_eq!(one, one);
+    assert!(one == one);
     assert_eq!(one.is_zero(), false);
     assert_eq!(one.is_one(), true);
     assert_eq!(zero + &one, one);
 
     let two = one + &one;
-    assert_eq!(two, two);
+    assert!(two == two);
     assert_ne!(zero, two);
     assert_ne!(one, two);
 
     // a == a
-    assert_eq!(a, a);
+    assert!(a == a);
     // a + 0 = a
     assert_eq!(a + &zero, a);
     // a - 0 = a

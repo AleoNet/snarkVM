@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2020 Aleo Systems Inc.
+// Copyright (C) 2019-2021 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -46,14 +46,14 @@ impl PairingEngine for SW6 {
     fn miller_loop<'a, I>(i: I) -> Self::Fqk
     where
         I: IntoIterator<
-            Item = &'a (
+            Item = (
                 &'a <Self::G1Affine as PairingCurve>::Prepared,
                 &'a <Self::G2Affine as PairingCurve>::Prepared,
             ),
         >,
     {
         let mut result = Self::Fqk::one();
-        for &(ref p, ref q) in i {
+        for (ref p, ref q) in i {
             result *= &SW6::ate_miller_loop(p, q);
         }
         result

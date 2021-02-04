@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2020 Aleo Systems Inc.
+// Copyright (C) 2019-2021 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -19,15 +19,16 @@ use crate::{biginteger::*, rand::UniformRand};
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 
+#[allow(clippy::eq_op)]
 fn biginteger_arithmetic_test<B: BigInteger>(a: B, b: B, zero: B) {
     // zero == zero
-    assert_eq!(zero, zero);
+    assert!(zero == zero);
 
     // zero.is_zero() == true
     assert_eq!(zero.is_zero(), true);
 
     // a == a
-    assert_eq!(a, a);
+    assert!(a == a);
 
     // a + 0 = a
     let mut a0_add = a;
