@@ -1,5 +1,3 @@
-dependencies = { }
-
 [package]
 name = "snarkvm"
 version = "0.0.3"
@@ -42,6 +40,9 @@ members = [
 [[bin]]
 name = "snarkvm"
 path = "snarkvm/main.rs"
+
+[dependencies]
+structopt = { version = "0.3" }
 
 [dev-dependencies.rusty-hook]
 version = "0.11.2"
