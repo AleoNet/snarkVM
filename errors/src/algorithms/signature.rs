@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::algorithms::EncryptionError;
+
 use std::io::{Error, ErrorKind};
 
 #[derive(Debug, Error)]
@@ -22,7 +24,16 @@ pub enum SignatureError {
     Crate(&'static str, String),
 
     #[error("{}", _0)]
+    EncryptionError(EncryptionError),
+
+    #[error("{}", _0)]
     Message(String),
+}
+
+impl From<EncryptionError> for SignatureError {
+    fn from(error: EncryptionError) -> Self {
+        SignatureError::EncryptionError(error)
+    }
 }
 
 impl From<Error> for SignatureError {
