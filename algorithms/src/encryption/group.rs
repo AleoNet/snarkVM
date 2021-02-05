@@ -15,21 +15,33 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::encryption::GroupEncryptionParameters;
-use snarkvm_errors::algorithms::EncryptionError;
+use snarkvm_errors::{algorithms::EncryptionError, serialization::SerializationError};
 use snarkvm_models::{
     algorithms::EncryptionScheme,
     curves::{AffineCurve, Field, Group, One, PrimeField, ProjectiveCurve, Zero},
 };
-use snarkvm_utilities::{bytes_to_bits, rand::UniformRand, to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{bytes_to_bits, rand::UniformRand, serialize::*, to_bytes, FromBytes, ToBytes};
 
+use digest::Digest;
 use itertools::Itertools;
 use rand::Rng;
-use std::io::{Read, Result as IoResult, Write};
+use std::{
+    io::{Read, Result as IoResult, Write},
+    marker::PhantomData,
+};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct GroupEncryptionPublicKey<G: Group + ProjectiveCurve>(pub G);
+#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
+#[derivative(
+    Copy(bound = "G: Group"),
+    Clone(bound = "G: Group"),
+    PartialEq(bound = "G: Group"),
+    Eq(bound = "G: Group"),
+    Debug(bound = "G: Group"),
+    Hash(bound = "G: Group")
+)]
+pub struct GroupEncryptionPublicKey<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize>(pub G);
 
-impl<G: Group + ProjectiveCurve> ToBytes for GroupEncryptionPublicKey<G> {
+impl<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> ToBytes for GroupEncryptionPublicKey<G> {
     /// Writes the x-coordinate of the encryption public key.
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -39,7 +51,7 @@ impl<G: Group + ProjectiveCurve> ToBytes for GroupEncryptionPublicKey<G> {
     }
 }
 
-impl<G: Group + ProjectiveCurve> FromBytes for GroupEncryptionPublicKey<G> {
+impl<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> FromBytes for GroupEncryptionPublicKey<G> {
     /// Reads the x-coordinate of the encryption public key.
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -61,18 +73,28 @@ impl<G: Group + ProjectiveCurve> FromBytes for GroupEncryptionPublicKey<G> {
     }
 }
 
-impl<G: Group + ProjectiveCurve> Default for GroupEncryptionPublicKey<G> {
+impl<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> Default for GroupEncryptionPublicKey<G> {
     fn default() -> Self {
         Self(G::default())
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GroupEncryption<G: Group + ProjectiveCurve> {
+#[derive(Derivative)]
+#[derivative(
+    Clone(bound = "G: Group, SG: Group, D: Digest"),
+    Debug(bound = "G: Group, SG: Group, D: Digest"),
+    PartialEq(bound = "G: Group, SG: Group, D: Digest"),
+    Eq(bound = "G: Group, SG: Group, D: Digest")
+)]
+pub struct GroupEncryption<G: Group + ProjectiveCurve, SG: Group, D: Digest> {
     pub parameters: GroupEncryptionParameters<G>,
+    pub _signature_group: PhantomData<SG>,
+    pub _hash: PhantomData<D>,
 }
 
-impl<G: Group + ProjectiveCurve> EncryptionScheme for GroupEncryption<G> {
+impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeserialize, D: Digest + Send + Sync>
+    EncryptionScheme for GroupEncryption<G, SG, D>
+{
     type BlindingExponent = <G as Group>::ScalarField;
     type Parameters = GroupEncryptionParameters<G>;
     type PrivateKey = <G as Group>::ScalarField;
@@ -82,11 +104,16 @@ impl<G: Group + ProjectiveCurve> EncryptionScheme for GroupEncryption<G> {
 
     fn setup<R: Rng>(rng: &mut R) -> Self {
         Self {
-            parameters: Self::Parameters::setup(rng, Self::PrivateKey::size_in_bits()),
+            parameters: <Self as EncryptionScheme>::Parameters::setup(
+                rng,
+                <Self as EncryptionScheme>::PrivateKey::size_in_bits(),
+            ),
+            _signature_group: PhantomData,
+            _hash: PhantomData,
         }
     }
 
-    fn generate_private_key<R: Rng>(&self, rng: &mut R) -> Self::PrivateKey {
+    fn generate_private_key<R: Rng>(&self, rng: &mut R) -> <Self as EncryptionScheme>::PrivateKey {
         let keygen_time = start_timer!(|| "GroupEncryption::generate_private_key");
         let private_key = <G as Group>::ScalarField::rand(rng);
         end_timer!(keygen_time);
@@ -94,7 +121,10 @@ impl<G: Group + ProjectiveCurve> EncryptionScheme for GroupEncryption<G> {
         private_key
     }
 
-    fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Result<Self::PublicKey, EncryptionError> {
+    fn generate_public_key(
+        &self,
+        private_key: &<Self as EncryptionScheme>::PrivateKey,
+    ) -> Result<<Self as EncryptionScheme>::PublicKey, EncryptionError> {
         let keygen_time = start_timer!(|| "GroupEncryption::generate_public_key");
 
         let mut public_key = G::zero();
@@ -110,7 +140,7 @@ impl<G: Group + ProjectiveCurve> EncryptionScheme for GroupEncryption<G> {
 
     fn generate_randomness<R: Rng>(
         &self,
-        public_key: &Self::PublicKey,
+        public_key: &<Self as EncryptionScheme>::PublicKey,
         rng: &mut R,
     ) -> Result<Self::Randomness, EncryptionError> {
         let mut y = Self::Randomness::zero();
@@ -129,7 +159,7 @@ impl<G: Group + ProjectiveCurve> EncryptionScheme for GroupEncryption<G> {
 
     fn generate_blinding_exponents(
         &self,
-        public_key: &Self::PublicKey,
+        public_key: &<Self as EncryptionScheme>::PublicKey,
         randomness: &Self::Randomness,
         message_length: usize,
     ) -> Result<Vec<Self::BlindingExponent>, EncryptionError> {
@@ -160,7 +190,7 @@ impl<G: Group + ProjectiveCurve> EncryptionScheme for GroupEncryption<G> {
 
     fn encrypt(
         &self,
-        public_key: &Self::PublicKey,
+        public_key: &<Self as EncryptionScheme>::PublicKey,
         randomness: &Self::Randomness,
         message: &[Self::Text],
     ) -> Result<Vec<Self::Text>, EncryptionError> {
@@ -195,7 +225,7 @@ impl<G: Group + ProjectiveCurve> EncryptionScheme for GroupEncryption<G> {
 
     fn decrypt(
         &self,
-        private_key: &Self::PrivateKey,
+        private_key: &<Self as EncryptionScheme>::PrivateKey,
         ciphertext: &[Self::Text],
     ) -> Result<Vec<Self::Text>, EncryptionError> {
         assert!(!ciphertext.is_empty());
@@ -230,17 +260,23 @@ impl<G: Group + ProjectiveCurve> EncryptionScheme for GroupEncryption<G> {
         Ok(plaintext)
     }
 
-    fn parameters(&self) -> &Self::Parameters {
+    fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters {
         &self.parameters
     }
 
     fn private_key_size_in_bits() -> usize {
-        Self::PrivateKey::size_in_bits()
+        <Self as EncryptionScheme>::PrivateKey::size_in_bits()
     }
 }
 
-impl<G: Group + ProjectiveCurve> From<GroupEncryptionParameters<G>> for GroupEncryption<G> {
+impl<G: Group + ProjectiveCurve, SG: Group, D: Digest> From<GroupEncryptionParameters<G>>
+    for GroupEncryption<G, SG, D>
+{
     fn from(parameters: GroupEncryptionParameters<G>) -> Self {
-        Self { parameters }
+        Self {
+            parameters,
+            _signature_group: PhantomData,
+            _hash: PhantomData,
+        }
     }
 }

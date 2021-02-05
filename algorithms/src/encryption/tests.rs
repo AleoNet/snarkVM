@@ -15,17 +15,18 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::encryption::GroupEncryption;
-use snarkvm_curves::edwards_bls12::EdwardsProjective;
+use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsProjective};
 use snarkvm_models::{
     algorithms::EncryptionScheme,
     curves::{Group, ProjectiveCurve},
 };
 use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
+use blake2::Blake2s;
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
-type TestEncryptionScheme = GroupEncryption<EdwardsProjective>;
+type TestEncryptionScheme = GroupEncryption<EdwardsProjective, EdwardsAffine, Blake2s>;
 
 pub const ITERATIONS: usize = 1000;
 
