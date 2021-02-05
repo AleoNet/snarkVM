@@ -15,7 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::base_dpc::BaseDPCComponents;
-use snarkvm_models::{algorithms::SNARK, parameters::Parameter};
+use snarkvm_models::{
+    algorithms::{EncryptionScheme, SNARK},
+    parameters::Parameter,
+};
 use snarkvm_parameters::*;
 use snarkvm_utilities::bytes::FromBytes;
 
@@ -42,8 +45,9 @@ impl<C: BaseDPCComponents> SystemParameters<C> {
     pub fn load() -> IoResult<Self> {
         let account_commitment: C::AccountCommitment =
             From::from(FromBytes::read(AccountCommitmentParameters::load_bytes()?.as_slice())?);
-        let account_encryption: C::AccountEncryption =
-            From::from(FromBytes::read(AccountEncryptionParameters::load_bytes()?.as_slice())?);
+        let account_encryption_parameters: <C::AccountEncryption as EncryptionScheme>::Parameters =
+            FromBytes::read(AccountEncryptionParameters::load_bytes()?.as_slice())?;
+        let account_encryption: C::AccountEncryption = From::from(account_encryption_parameters);
         let account_signature: C::AccountSignature =
             From::from(FromBytes::read(AccountSignatureParameters::load_bytes()?.as_slice())?);
         let encrypted_record_crh: C::EncryptedRecordCRH =
