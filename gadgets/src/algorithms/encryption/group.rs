@@ -31,8 +31,9 @@ use snarkvm_models::{
         },
     },
 };
-use snarkvm_utilities::{to_bytes, ToBytes};
+use snarkvm_utilities::{to_bytes, CanonicalDeserialize, CanonicalSerialize, ToBytes};
 
+use digest::Digest;
 use itertools::Itertools;
 use std::{borrow::Borrow, marker::PhantomData};
 
@@ -481,8 +482,13 @@ pub struct GroupEncryptionGadget<G: Group + ProjectiveCurve, F: PrimeField, GG: 
     _engine: PhantomData<F>,
 }
 
-impl<G: Group + ProjectiveCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>> EncryptionGadget<GroupEncryption<G>, F>
-    for GroupEncryptionGadget<G, F, GG>
+impl<
+    G: Group + ProjectiveCurve,
+    SG: Group + CanonicalSerialize + CanonicalDeserialize,
+    D: Digest + Send + Sync,
+    F: PrimeField,
+    GG: CompressedGroupGadget<G, F>,
+> EncryptionGadget<GroupEncryption<G, SG, D>, F> for GroupEncryptionGadget<G, F, GG>
 {
     type BlindingExponentGadget = GroupEncryptionBlindingExponentsGadget<G>;
     type CiphertextGadget = GroupEncryptionCiphertextGadget<G, F, GG>;
