@@ -257,7 +257,7 @@ impl_params!(
     AccountEncryptionParameters,
     account_encryption_test,
     "account_encryption",
-    32772
+    32804
 );
 
 // POSW SNARK
