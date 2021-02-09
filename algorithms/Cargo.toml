@@ -17,6 +17,11 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2018"
 
+[[bench]]
+name = "snark"
+path = "benches/snark/snark.rs"
+harness = false
+
 [[example]]
 name = "gm17"
 path = "examples/snark/gm17.rs"
