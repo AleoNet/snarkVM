@@ -461,15 +461,6 @@ dependencies = [
 
 [[package]]
 name = "digest"
-version = "0.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03b072242a8cbaf9c145665af9d250c59af3b958f83ed6824e13533cf76d5b90"
-dependencies = [
- "generic-array 0.9.0",
-]
-
-[[package]]
-name = "digest"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3d0c8c8752312f9713efd397ff63acb9f85585afbf179282e720e7704954dd5"
@@ -691,15 +682,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
 dependencies = [
  "byteorder",
-]
-
-[[package]]
-name = "generic-array"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef25c5683767570c2bbd7deba372926a55eaae9982d7726ee2a1050239d45b9d"
-dependencies = [
- "typenum",
 ]
 
 [[package]]
@@ -2139,27 +2121,6 @@ dependencies = [
  "snarkvm-errors 0.0.3",
  "snarkvm-models 0.0.3",
  "snarkvm-profiler 0.0.3",
- "snarkvm-utilities 0.0.3",
-]
-
-[[package]]
-name = "snarkvm-benchmarks"
-version = "0.0.3"
-dependencies = [
- "criterion",
- "csv",
- "derivative",
- "digest 0.7.6",
- "rand 0.7.3",
- "rand_xorshift",
- "rayon",
- "sha2",
- "smallvec",
- "snarkvm-algorithms 0.0.3",
- "snarkvm-curves 0.0.3",
- "snarkvm-errors 0.0.3",
- "snarkvm-marlin 0.0.3",
- "snarkvm-models 0.0.3",
  "snarkvm-utilities 0.0.3",
 ]
 
