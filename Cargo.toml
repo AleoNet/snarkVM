@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm"
-version = "0.0.3"
+version = "0.0.4"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -40,12 +40,20 @@ members = [
 name = "snarkvm"
 path = "snarkvm/main.rs"
 
-[dependencies]
-anyhow = { version = "1.0.38" }
-colored = { version = "2" }
-self_update = { version = "0.23" }
-structopt = { version = "0.3" }
-thiserror = { version = "1.0" }
+[dependencies.anyhow]
+version = "1.0.38"
+
+[dependencies.colored]
+version = "2"
+
+[dependencies.self_update]
+version = "0.23"
+
+[dependencies.structopt]
+version = "0.3"
+
+[dependencies.thiserror]
+version = "1.0"
 
 [dev-dependencies.rusty-hook]
 version = "0.11.2"

@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-polycommit"
-version = "0.0.3"
+version = "0.0.4"
 authors = [
   "Alessandro Chiesa <alexch@berkeley.edu>",
   "Mary Maller <mary.maller.15@ucl.ac.uk>",
@@ -33,23 +33,23 @@ edition = "2018"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.0.3"
+version = "0.0.4"
 
 [dependencies.snarkvm-errors]
 path = "../errors"
-version = "0.0.3"
+version = "0.0.4"
 
 [dependencies.snarkvm-models]
 path = "../models"
-version = "0.0.3"
+version = "0.0.4"
 
 [dependencies.snarkvm-profiler]
 path = "../profiler"
-version = "0.0.3"
+version = "0.0.4"
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.0.3"
+version = "0.0.4"
 
 [dependencies.derivative]
 version = "2"

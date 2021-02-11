@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-storage"
-version = "0.0.3"
+version = "0.0.4"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Storage for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -19,27 +19,27 @@ edition = "2018"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.0.3"
+version = "0.0.4"
 
 [dependencies.snarkvm-errors]
 path = "../errors"
-version = "0.0.3"
+version = "0.0.4"
 
 [dependencies.snarkvm-models]
 path = "../models"
-version = "0.0.3"
+version = "0.0.4"
 
 [dependencies.snarkvm-objects]
 path = "../objects"
-version = "0.0.3"
+version = "0.0.4"
 
 [dependencies.snarkvm-parameters]
 path = "../parameters"
-version = "0.0.3"
+version = "0.0.4"
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.0.3"
+version = "0.0.4"
 
 [dependencies.anyhow]
 version = "1.0.38"
