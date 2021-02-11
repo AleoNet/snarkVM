@@ -571,7 +571,6 @@ where
 {
     type Account = Account<Components>;
     type LocalData = LocalData<Components>;
-    type Metadata = [u8; 32];
     type NetworkParameters = PublicParameters<Components>;
     type Payload = <Self::Record as Record>::Payload;
     type PrivateProgramInput = PrivateProgramInput;

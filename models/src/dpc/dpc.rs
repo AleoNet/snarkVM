@@ -23,7 +23,6 @@ use rand::Rng;
 
 pub trait DPCScheme<L: LedgerScheme> {
     type Account: AccountScheme;
-    type Metadata: ?Sized;
     type Payload;
     type NetworkParameters;
     type PrivateProgramInput;
