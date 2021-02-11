@@ -33,23 +33,12 @@ optional = true
 [dependencies.hex]
 version = "0.4.2"
 
-[dependencies.jsonrpc-core]
-version = "17.0.0"
-
-[dependencies.rocksdb]
-version = "0.15.0"
-optional = true
-
 [dependencies.thiserror]
 version = "1.0"
-
-[dependencies.toml]
-version = "0.5.6"
 
 [dev-dependencies.curl]
 version = "0.4.34"
 
 [features]
-default = [ "librocksdb", "remote" ]
-librocksdb = [ "rocksdb" ]
+default = [ "remote" ]
 remote = [ "curl" ]
