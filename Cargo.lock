@@ -60,6 +60,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "58946044516aa9dc922182e0d6e9d124a31aafe6b421614654eb27cf90cec09c"
 
 [[package]]
+name = "bech32"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cdcf67bb7ba7797a081cd19009948ab533af7c355d5caf1d08c777582d351e9c"
+
+[[package]]
 name = "bincode"
 version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2227,7 +2233,7 @@ version = "0.0.1"
 source = "git+https://github.com/AleoHQ/snarkVM.git?rev=81d225a#81d225aca0cdede198a1ef5b30b798b02ced13cc"
 dependencies = [
  "base58",
- "bech32",
+ "bech32 0.6.0",
  "bincode",
  "curl",
  "hex",
@@ -2242,7 +2248,7 @@ name = "snarkvm-errors"
 version = "0.0.4"
 dependencies = [
  "base58",
- "bech32",
+ "bech32 0.7.2",
  "bincode",
  "curl",
  "hex",
@@ -2366,7 +2372,7 @@ version = "0.0.1"
 source = "git+https://github.com/AleoHQ/snarkVM.git?rev=81d225a#81d225aca0cdede198a1ef5b30b798b02ced13cc"
 dependencies = [
  "base58",
- "bech32",
+ "bech32 0.6.0",
  "chrono",
  "derivative",
  "hex",
@@ -2386,7 +2392,7 @@ name = "snarkvm-objects"
 version = "0.0.4"
 dependencies = [
  "base58",
- "bech32",
+ "bech32 0.7.2",
  "bincode",
  "chrono",
  "derivative",

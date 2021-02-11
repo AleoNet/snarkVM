@@ -46,7 +46,7 @@ default-features = false
 version = "0.1"
 
 [dependencies.bech32]
-version = "0.6"
+version = "0.7"
 
 [dependencies.chrono]
 version = "0.4"
