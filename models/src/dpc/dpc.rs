@@ -23,13 +23,13 @@ use rand::Rng;
 
 pub trait DPCScheme<L: LedgerScheme> {
     type Account: AccountScheme;
-    type Payload;
+    type LocalData;
     type NetworkParameters;
+    type Payload;
     type PrivateProgramInput;
     type Record: Record<Owner = <Self::Account as AccountScheme>::AccountAddress>;
     type SystemParameters;
     type Transaction: Transaction<SerialNumber = <Self::Record as Record>::SerialNumber>;
-    type LocalData;
     type TransactionKernel;
 
     /// Returns public parameters for the DPC.
