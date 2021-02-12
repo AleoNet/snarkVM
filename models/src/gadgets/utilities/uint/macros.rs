@@ -14,7 +14,225 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-macro_rules! uint_impl {
+macro_rules! alloc_int_fn_impl {
+    ($name: ident, $_type: ty, $size: expr, $fn_name: ident) => {
+        fn $fn_name<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<$_type>, CS: ConstraintSystem<F>>(
+            mut cs: CS,
+            value_gen: Fn,
+        ) -> Result<Self, SynthesisError> {
+            let value = value_gen().map(|val| *val.borrow());
+            let values = match value {
+                Ok(mut val) => {
+                    let mut v = Vec::with_capacity($size);
+                    for _ in 0..$size {
+                        v.push(Some(val & 1 == 1));
+                        val >>= 1;
+                    }
+
+                    v
+                }
+                _ => vec![None; $size],
+            };
+
+            let bits = values
+                .into_iter()
+                .enumerate()
+                .map(|(i, v)| {
+                    Ok(Boolean::from(AllocatedBit::$fn_name(
+                        &mut cs.ns(|| format!("allocated bit_gadget {}", i)),
+                        || v.ok_or(SynthesisError::AssignmentMissing),
+                    )?))
+                })
+                .collect::<Result<Vec<_>, SynthesisError>>()?;
+
+            Ok(Self {
+                bits,
+                negated: false,
+                value: value.ok(),
+            })
+        }
+    };
+}
+
+macro_rules! alloc_int_impl {
+    ($name: ident, $_type: ty, $size: expr) => {
+        impl<F: Field> AllocGadget<$_type, F> for $name {
+            alloc_int_fn_impl!($name, $_type, $size, alloc);
+
+            alloc_int_fn_impl!($name, $_type, $size, alloc_input);
+        }
+    };
+}
+
+macro_rules! to_bytes_int_impl {
+    ($name: ident, $_type: ty, $size: expr) => {
+        impl<F: Field> ToBytesGadget<F> for $name {
+            #[inline]
+            fn to_bytes<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+                const BYTES_SIZE: usize = if $size == 128 { 16 } else { 8 };
+
+                let value_chunks = match self.value.map(|val| {
+                    let mut bytes = [0u8; BYTES_SIZE];
+                    val.write(bytes.as_mut()).unwrap();
+                    bytes
+                }) {
+                    Some(chunks) => [Some(chunks[0]), Some(chunks[1]), Some(chunks[2]), Some(chunks[3])],
+                    None => [None, None, None, None],
+                };
+                let bits = self.to_bits_le();
+                let mut bytes = Vec::with_capacity(bits.len() / 8);
+                for (chunk8, value) in bits.chunks(8).into_iter().zip(value_chunks.iter()) {
+                    let byte = UInt8 {
+                        bits: chunk8.to_vec(),
+                        negated: false,
+                        value: *value,
+                    };
+                    bytes.push(byte);
+                }
+
+                Ok(bytes)
+            }
+
+            fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+                self.to_bytes(cs)
+            }
+        }
+    };
+}
+
+macro_rules! cond_select_int_impl {
+    ($name: ident, $_type: ty, $size: expr) => {
+        impl<F: PrimeField> CondSelectGadget<F> for $name {
+            fn conditionally_select<CS: ConstraintSystem<F>>(
+                mut cs: CS,
+                cond: &Boolean,
+                first: &Self,
+                second: &Self,
+            ) -> Result<Self, SynthesisError> {
+                if let Boolean::Constant(cond) = *cond {
+                    if cond {
+                        Ok(first.clone())
+                    } else {
+                        Ok(second.clone())
+                    }
+                } else {
+                    let mut is_negated = false;
+
+                    let result_val = cond.get_value().and_then(|c| {
+                        if c {
+                            is_negated = first.negated;
+                            first.value
+                        } else {
+                            is_negated = second.negated;
+                            second.value
+                        }
+                    });
+
+                    let mut result = Self::alloc(cs.ns(|| "cond_select_result"), || result_val.get().map(|v| v))?;
+
+                    result.negated = is_negated;
+
+                    for (i, (actual, (bit1, bit2))) in result
+                        .to_bits_le()
+                        .iter()
+                        .zip(first.bits.iter().zip(&second.bits))
+                        .enumerate()
+                    {
+                        let expected_bit = Boolean::conditionally_select(
+                            &mut cs.ns(|| format!("{}_cond_select_{}", $size, i)),
+                            cond,
+                            bit1,
+                            bit2,
+                        )
+                        .unwrap();
+                        actual.enforce_equal(&mut cs.ns(|| format!("selected_result_bit_{}", i)), &expected_bit)?;
+                    }
+
+                    Ok(result)
+                }
+            }
+
+            fn cost() -> usize {
+                $size * (<Boolean as ConditionalEqGadget<F>>::cost() + <Boolean as CondSelectGadget<F>>::cost())
+            }
+        }
+    };
+}
+
+macro_rules! uint_impl_eq_ord {
+    ($name: ident, $_type: ty, $size: expr) => {
+        impl PartialEq for $name {
+            fn eq(&self, other: &Self) -> bool {
+                self.value.is_some() && self.value == other.value
+            }
+        }
+
+        impl Eq for $name {}
+
+        impl PartialOrd for $name {
+            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                Option::from(self.value.cmp(&other.value))
+            }
+        }
+    };
+}
+
+macro_rules! uint_impl_eq_gadget {
+    ($name: ident, $_type: ty, $size: expr) => {
+        impl<F: PrimeField> EvaluateEqGadget<F> for $name {
+            fn evaluate_equal<CS: ConstraintSystem<F>>(
+                &self,
+                mut cs: CS,
+                other: &Self,
+            ) -> Result<Boolean, SynthesisError> {
+                let mut result = Boolean::constant(true);
+                for (i, (a, b)) in self.bits.iter().zip(&other.bits).enumerate() {
+                    let equal = a.evaluate_equal(
+                        &mut cs.ns(|| format!("{} evaluate equality for {}-th bit", $size, i)),
+                        b,
+                    )?;
+
+                    result = Boolean::and(
+                        &mut cs.ns(|| format!("{} and result for {}-th bit", $size, i)),
+                        &equal,
+                        &result,
+                    )?;
+                }
+
+                Ok(result)
+            }
+        }
+
+        impl<F: Field> EqGadget<F> for $name {}
+
+        impl<F: Field> ConditionalEqGadget<F> for $name {
+            fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
+                &self,
+                mut cs: CS,
+                other: &Self,
+                condition: &Boolean,
+            ) -> Result<(), SynthesisError> {
+                for (i, (a, b)) in self.bits.iter().zip(&other.bits).enumerate() {
+                    a.conditional_enforce_equal(
+                        &mut cs.ns(|| format!("{} equality check for {}-th bit", $size, i)),
+                        b,
+                        condition,
+                    )?;
+                }
+                Ok(())
+            }
+
+            fn cost() -> usize {
+                const MULTIPLIER: usize = if $size == 128 { 128 } else { 8 };
+
+                MULTIPLIER * <Boolean as ConditionalEqGadget<F>>::cost()
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! uint_impl_common {
     ($name: ident, $_type: ty, $size: expr) => {
         #[derive(Clone, Debug)]
         pub struct $name {
@@ -48,12 +266,24 @@ macro_rules! uint_impl {
             }
         }
 
+        alloc_int_impl!($name, $_type, $size);
+        cond_select_int_impl!($name, $_type, $size);
+        to_bytes_int_impl!($name, $_type, $size);
+        uint_impl_eq_ord!($name, $_type, $size);
+        uint_impl_eq_gadget!($name, $_type, $size);
+    };
+}
+
+macro_rules! uint_impl {
+    ($name: ident, $_type: ty, $size: expr) => {
+        uint_impl_common!($name, $_type, $size);
+
         impl UInt for $name {
             fn negate(&self) -> Self {
                 Self {
                     bits: self.bits.clone(),
                     negated: true,
-                    value: self.value.clone(),
+                    value: self.value,
                 }
             }
 
@@ -579,231 +809,6 @@ macro_rules! uint_impl {
                 }
 
                 Ok(result)
-            }
-        }
-
-        impl PartialEq for $name {
-            fn eq(&self, other: &Self) -> bool {
-                !self.value.is_none() && !other.value.is_none() && self.value == other.value
-            }
-        }
-
-        impl Eq for $name {}
-
-        impl PartialOrd for $name {
-            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-                Option::from(self.value.cmp(&other.value))
-            }
-        }
-
-        impl<F: PrimeField> EvaluateEqGadget<F> for $name {
-            fn evaluate_equal<CS: ConstraintSystem<F>>(
-                &self,
-                mut cs: CS,
-                other: &Self,
-            ) -> Result<Boolean, SynthesisError> {
-                let mut result = Boolean::constant(true);
-                for (i, (a, b)) in self.bits.iter().zip(&other.bits).enumerate() {
-                    let equal = a.evaluate_equal(
-                        &mut cs.ns(|| format!("{} evaluate equality for {}-th bit", $size, i)),
-                        b,
-                    )?;
-
-                    result = Boolean::and(
-                        &mut cs.ns(|| format!("{} and result for {}-th bit", $size, i)),
-                        &equal,
-                        &result,
-                    )?;
-                }
-
-                Ok(result)
-            }
-        }
-
-        impl<F: Field> EqGadget<F> for $name {}
-
-        impl<F: Field> ConditionalEqGadget<F> for $name {
-            fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
-                &self,
-                mut cs: CS,
-                other: &Self,
-                condition: &Boolean,
-            ) -> Result<(), SynthesisError> {
-                for (i, (a, b)) in self.bits.iter().zip(&other.bits).enumerate() {
-                    a.conditional_enforce_equal(
-                        &mut cs.ns(|| format!("{} equality check for {}-th bit", $size, i)),
-                        b,
-                        condition,
-                    )?;
-                }
-                Ok(())
-            }
-
-            fn cost() -> usize {
-                8 * <Boolean as ConditionalEqGadget<F>>::cost()
-            }
-        }
-
-        impl<F: Field> AllocGadget<$_type, F> for $name {
-            fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<$_type>, CS: ConstraintSystem<F>>(
-                mut cs: CS,
-                value_gen: Fn,
-            ) -> Result<Self, SynthesisError> {
-                let value = value_gen().map(|val| *val.borrow());
-                let values = match value {
-                    Ok(mut val) => {
-                        let mut v = Vec::with_capacity($size);
-
-                        for _ in 0..$size {
-                            v.push(Some(val & 1 == 1));
-                            val >>= 1;
-                        }
-
-                        v
-                    }
-                    _ => vec![None; $size],
-                };
-
-                let bits = values
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, v)| {
-                        Ok(Boolean::from(AllocatedBit::alloc(
-                            &mut cs.ns(|| format!("allocated bit_gadget {}", i)),
-                            || v.ok_or(SynthesisError::AssignmentMissing),
-                        )?))
-                    })
-                    .collect::<Result<Vec<_>, SynthesisError>>()?;
-
-                Ok(Self {
-                    bits,
-                    negated: false,
-                    value: value.ok(),
-                })
-            }
-
-            fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<$_type>, CS: ConstraintSystem<F>>(
-                mut cs: CS,
-                value_gen: Fn,
-            ) -> Result<Self, SynthesisError> {
-                let value = value_gen().map(|val| *val.borrow());
-                let values = match value {
-                    Ok(mut val) => {
-                        let mut v = Vec::with_capacity($size);
-                        for _ in 0..$size {
-                            v.push(Some(val & 1 == 1));
-                            val >>= 1;
-                        }
-
-                        v
-                    }
-                    _ => vec![None; $size],
-                };
-
-                let bits = values
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, v)| {
-                        Ok(Boolean::from(AllocatedBit::alloc_input(
-                            &mut cs.ns(|| format!("allocated bit_gadget {}", i)),
-                            || v.ok_or(SynthesisError::AssignmentMissing),
-                        )?))
-                    })
-                    .collect::<Result<Vec<_>, SynthesisError>>()?;
-
-                Ok(Self {
-                    bits,
-                    negated: false,
-                    value: value.ok(),
-                })
-            }
-        }
-
-        impl<F: PrimeField> CondSelectGadget<F> for $name {
-            fn conditionally_select<CS: ConstraintSystem<F>>(
-                mut cs: CS,
-                cond: &Boolean,
-                first: &Self,
-                second: &Self,
-            ) -> Result<Self, SynthesisError> {
-                if let Boolean::Constant(cond) = *cond {
-                    if cond {
-                        Ok(first.clone())
-                    } else {
-                        Ok(second.clone())
-                    }
-                } else {
-                    let mut is_negated = false;
-
-                    let result_val = cond.get_value().and_then(|c| {
-                        if c {
-                            is_negated = first.negated;
-                            first.value
-                        } else {
-                            is_negated = second.negated;
-                            second.value
-                        }
-                    });
-
-                    let mut result = Self::alloc(cs.ns(|| "cond_select_result"), || result_val.get().map(|v| v))?;
-
-                    result.negated = is_negated;
-
-                    let expected_bits = first
-                        .bits
-                        .iter()
-                        .zip(&second.bits)
-                        .enumerate()
-                        .map(|(i, (a, b))| {
-                            Boolean::conditionally_select(
-                                &mut cs.ns(|| format!("{}_cond_select_{}", $size, i)),
-                                cond,
-                                a,
-                                b,
-                            )
-                            .unwrap()
-                        })
-                        .collect::<Vec<Boolean>>();
-
-                    for (i, (actual, expected)) in result.to_bits_le().iter().zip(expected_bits.iter()).enumerate() {
-                        actual.enforce_equal(&mut cs.ns(|| format!("selected_result_bit_{}", i)), expected)?;
-                    }
-
-                    Ok(result)
-                }
-            }
-
-            fn cost() -> usize {
-                $size * (<Boolean as ConditionalEqGadget<F>>::cost() + <Boolean as CondSelectGadget<F>>::cost())
-            }
-        }
-
-        impl<F: Field> ToBytesGadget<F> for $name {
-            #[inline]
-            fn to_bytes<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-                let value_chunks = match self.value.map(|val| {
-                    let mut bytes = [0u8; 8];
-                    val.write(bytes.as_mut()).unwrap();
-                    bytes
-                }) {
-                    Some(chunks) => [Some(chunks[0]), Some(chunks[1]), Some(chunks[2]), Some(chunks[3])],
-                    None => [None, None, None, None],
-                };
-                let mut bytes = Vec::new();
-                for (i, chunk8) in self.to_bits_le().chunks(8).into_iter().enumerate() {
-                    let byte = UInt8 {
-                        bits: chunk8.to_vec(),
-                        negated: false,
-                        value: value_chunks[i],
-                    };
-                    bytes.push(byte);
-                }
-
-                Ok(bytes)
-            }
-
-            fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-                self.to_bytes(cs)
             }
         }
     };
