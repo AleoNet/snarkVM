@@ -60,4 +60,4 @@ version = "1.5.2"
 version = "0.7.0"
 
 [dependencies.rand_xorshift]
-version = "0.2.0"
+version = "0.3.0"

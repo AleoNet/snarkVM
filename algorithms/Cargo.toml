@@ -83,7 +83,7 @@ version = "0.3.4"
 version = "1"
 
 [dev-dependencies.rand_xorshift]
-version = "0.2"
+version = "0.3"
 
 [features]
 default = [
