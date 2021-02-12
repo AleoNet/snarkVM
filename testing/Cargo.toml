@@ -61,7 +61,3 @@ version = "0.7.0"
 
 [dependencies.rand_xorshift]
 version = "0.2.0"
-
-[dependencies.tokio]
-version = "1.2.0"
-features = [ "full" ]

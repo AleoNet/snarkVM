@@ -44,46 +44,11 @@ optional = true
 [dependencies.hex]
 version = "0.4.2"
 
-[dev-dependencies.snarkvm-curves]
-path = "../curves"
-
-[dev-dependencies.snarkvm-dpc]
-path = "../dpc"
-
-[dev-dependencies.snarkvm-marlin]
-path = "../marlin"
-
-[dev-dependencies.snarkvm-objects]
-path = "../objects"
-
-[dev-dependencies.snarkos-consensus]
-git = "https://github.com/AleoHQ/snarkOS.git"
-rev = "20a8495"
-version = "1.1.4"
-
-[dev-dependencies.snarkos-posw]
-git = "https://github.com/AleoHQ/snarkOS.git"
-rev = "20a8495"
-version = "1.1.4"
-features = [ "test-helpers" ]
-
-[dev-dependencies.snarkos-storage]
-git = "https://github.com/AleoHQ/snarkOS.git"
-rev = "20a8495"
-version = "1.1.4"
-
-[dev-dependencies.chrono]
-version = "0.4"
-features = [ "serde" ]
-
 [dev-dependencies.curl]
 version = "0.4.34"
 
 [dev-dependencies.hex]
 version = "0.4.2"
-
-[dev-dependencies.parking_lot]
-version = "0.11.1"
 
 [dev-dependencies.rand]
 version = "0.7"

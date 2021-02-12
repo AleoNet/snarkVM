@@ -83,9 +83,6 @@ version = "0.7"
 [dev-dependencies.snarkvm-testing]
 path = "../testing"
 
-[dev-dependencies.criterion]
-version = "0.3.4"
-
 [dev-dependencies.rand_xorshift]
 version = "0.2"
 
