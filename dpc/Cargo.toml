@@ -66,7 +66,7 @@ default-features = false
 version = "1.0.38"
 
 [dependencies.blake2]
-version = "0.8.1"
+version = "0.9.1"
 
 [dependencies.derivative]
 version = "2"

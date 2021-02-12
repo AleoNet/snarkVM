@@ -70,7 +70,7 @@ optional = true
 path = "../curves"
 
 [dev-dependencies.blake2]
-version = "0.8"
+version = "0.9"
 default-features = false
 
 [dev-dependencies.rand]
