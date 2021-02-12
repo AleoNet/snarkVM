@@ -13,7 +13,6 @@ members = [
   "polycommit",
   "profiler",
   "snarkvm",
-  "storage",
   "utilities"
 ]
 
