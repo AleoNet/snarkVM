@@ -1807,7 +1807,7 @@ dependencies = [
  "criterion",
  "csv",
  "derivative",
- "digest 0.8.1",
+ "digest 0.9.0",
  "itertools 0.10.0",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
@@ -1889,7 +1889,7 @@ version = "0.0.4"
 dependencies = [
  "blake2",
  "derivative",
- "digest 0.8.1",
+ "digest 0.9.0",
  "itertools 0.10.0",
  "rand 0.7.3",
  "rand_xorshift",
@@ -1906,7 +1906,7 @@ version = "0.0.4"
 dependencies = [
  "blake2",
  "derivative",
- "digest 0.8.1",
+ "digest 0.9.0",
  "rand_chacha 0.2.2",
  "rand_core 0.5.1",
  "rayon",
@@ -1979,7 +1979,7 @@ version = "0.0.4"
 dependencies = [
  "blake2",
  "derivative",
- "digest 0.8.1",
+ "digest 0.9.0",
  "rand 0.7.3",
  "rand_core 0.5.1",
  "rayon",
