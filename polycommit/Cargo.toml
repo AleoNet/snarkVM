@@ -59,7 +59,7 @@ features = [ "use_core" ]
 version = "0.8"
 
 [dependencies.rand_core]
-version = "0.5"
+version = "0.6"
 default-features = false
 
 [dependencies.rayon]
@@ -74,7 +74,7 @@ version = "0.8"
 default-features = false
 
 [dev-dependencies.rand]
-version = "0.7"
+version = "0.8"
 default-features = false
 
 [features]

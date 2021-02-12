@@ -57,7 +57,7 @@ version = "0.0.4"
 version = "1.5.2"
 
 [dependencies.rand]
-version = "0.7.0"
+version = "0.8"
 
 [dependencies.rand_xorshift]
-version = "0.2.0"
+version = "0.3"

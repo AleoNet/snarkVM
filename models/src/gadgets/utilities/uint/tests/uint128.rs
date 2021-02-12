@@ -227,8 +227,8 @@ fn test_uint128_sub_constants() {
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u128 = rng.gen_range(u128::max_value() / 2u128, u128::max_value());
-        let b: u128 = rng.gen_range(0u128, u128::max_value() / 2u128);
+        let a: u128 = rng.gen_range(u128::max_value() / 2u128..u128::max_value());
+        let b: u128 = rng.gen_range(0u128..u128::max_value() / 2u128);
 
         let a_bit = UInt128::constant(a);
         let b_bit = UInt128::constant(b);
@@ -250,8 +250,8 @@ fn test_uint128_sub() {
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u128 = rng.gen_range(u128::max_value() / 2u128, u128::max_value());
-        let b: u128 = rng.gen_range(0u128, u128::max_value() / 2u128);
+        let a: u128 = rng.gen_range(u128::max_value() / 2u128..u128::max_value());
+        let b: u128 = rng.gen_range(0u128..u128::max_value() / 2u128);
 
         let expected = a.wrapping_sub(b);
 
@@ -418,8 +418,8 @@ fn test_uint128_pow_constants() {
     for _ in 0..100 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u128 = rng.gen_range(0, u128::from(u32::max_value()));
-        let b: u128 = rng.gen_range(0, 4);
+        let a: u128 = rng.gen_range(0..u128::from(u32::max_value()));
+        let b: u128 = rng.gen_range(0..4);
 
         let a_bit = UInt128::constant(a);
         let b_bit = UInt128::constant(b);
@@ -441,8 +441,8 @@ fn test_uint128_pow() {
 
     let mut cs = TestConstraintSystem::<Fr>::new();
 
-    let a: u128 = rng.gen_range(0, u128::from(u32::max_value()));
-    let b: u128 = rng.gen_range(0, 4);
+    let a: u128 = rng.gen_range(0..u128::from(u32::max_value()));
+    let b: u128 = rng.gen_range(0..4);
 
     let expected = a.wrapping_pow(b.try_into().unwrap());
 

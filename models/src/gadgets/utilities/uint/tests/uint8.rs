@@ -256,8 +256,8 @@ fn test_uint8_sub_constants() {
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u8 = rng.gen_range(u8::max_value() / 2u8, u8::max_value());
-        let b: u8 = rng.gen_range(0u8, u8::max_value() / 2u8);
+        let a: u8 = rng.gen_range(u8::max_value() / 2u8..u8::max_value());
+        let b: u8 = rng.gen_range(0u8..u8::max_value() / 2u8);
 
         let a_bit = UInt8::constant(a);
         let b_bit = UInt8::constant(b);
@@ -279,8 +279,8 @@ fn test_uint8_sub() {
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u8 = rng.gen_range(u8::max_value() / 2u8, u8::max_value());
-        let b: u8 = rng.gen_range(0u8, u8::max_value() / 2u8);
+        let a: u8 = rng.gen_range(u8::max_value() / 2u8..u8::max_value());
+        let b: u8 = rng.gen_range(0u8..u8::max_value() / 2u8);
 
         let expected = a.wrapping_sub(b);
 
@@ -317,8 +317,8 @@ fn test_uint8_mul_constants() {
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u8 = rng.gen_range(0, u8::max_value());
-        let b: u8 = rng.gen_range(0, u8::max_value());
+        let a: u8 = rng.gen_range(0..u8::max_value());
+        let b: u8 = rng.gen_range(0..u8::max_value());
 
         let a_bit = UInt8::constant(a);
         let b_bit = UInt8::constant(b);
@@ -340,8 +340,8 @@ fn test_uint8_mul() {
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u8 = rng.gen_range(0, u8::max_value());
-        let b: u8 = rng.gen_range(0, u8::max_value());
+        let a: u8 = rng.gen_range(0..u8::max_value());
+        let b: u8 = rng.gen_range(0..u8::max_value());
 
         let expected = a.wrapping_mul(b);
 
@@ -385,7 +385,7 @@ fn test_uint8_div_constants() {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
         let a: u8 = rng.gen();
-        let b: u8 = rng.gen_range(1, u8::max_value());
+        let b: u8 = rng.gen_range(1..u8::max_value());
 
         let a_bit = UInt8::constant(a);
         let b_bit = UInt8::constant(b);
@@ -408,7 +408,7 @@ fn test_uint8_div() {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
         let a: u8 = rng.gen();
-        let b: u8 = rng.gen_range(1, u8::max_value());
+        let b: u8 = rng.gen_range(1..u8::max_value());
 
         let expected = a.wrapping_div(b);
 

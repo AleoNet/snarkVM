@@ -67,11 +67,11 @@ features = [ "use_core" ]
 version = "0.8"
 
 [dependencies.rand_chacha]
-version = "0.2.1"
+version = "0.3"
 default-features = false
 
 [dependencies.rand_core]
-version = "0.5"
+version = "0.6"
 
 [dependencies.rayon]
 version = "1"
