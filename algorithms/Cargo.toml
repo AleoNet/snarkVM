@@ -62,7 +62,7 @@ version = "0.10.0"
 version = "0.7"
 
 [dependencies.rand_chacha]
-version = "0.2.2"
+version = "0.3.0"
 
 [dependencies.rayon]
 version = "1"
