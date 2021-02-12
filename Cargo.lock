@@ -1867,7 +1867,6 @@ dependencies = [
  "snarkvm-objects",
  "snarkvm-parameters",
  "snarkvm-profiler",
- "snarkvm-testing",
  "snarkvm-utilities",
 ]
 
@@ -2015,27 +2014,8 @@ dependencies = [
  "snarkvm-models",
  "snarkvm-objects",
  "snarkvm-parameters",
- "snarkvm-testing",
  "snarkvm-utilities",
  "thiserror",
-]
-
-[[package]]
-name = "snarkvm-testing"
-version = "0.0.4"
-dependencies = [
- "once_cell",
- "rand 0.7.3",
- "rand_xorshift",
- "snarkvm-algorithms",
- "snarkvm-curves",
- "snarkvm-dpc",
- "snarkvm-errors",
- "snarkvm-models",
- "snarkvm-objects",
- "snarkvm-parameters",
- "snarkvm-storage",
- "snarkvm-utilities",
 ]
 
 [[package]]

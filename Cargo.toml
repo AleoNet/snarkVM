@@ -14,7 +14,6 @@ members = [
   "profiler",
   "snarkvm",
   "storage",
-  "testing",
   "utilities"
 ]
 
