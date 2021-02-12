@@ -30,7 +30,7 @@ jobs:
           args: --all -- --check
 
   clippy:
-    name: Clippy
+    name: Clippy and Test
     runs-on: ubuntu-latest
     #    env:
     #      RUSTFLAGS: -Dwarnings
@@ -46,23 +46,17 @@ jobs:
           override: true
           components: clippy
 
-      - name: Check examples
+      - name: Run clippy accross the workspace against all targets
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --examples --all
+          args: --workspace --all-targets
 
-      - name: Check examples with all features on stable
+      - name: Run tests
         uses: actions-rs/cargo@v1
         with:
-          command: clippy
-          args: --examples --all-features --all
-
-      - name: Check benchmarks on nightly
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-features --examples --all --benches
+          command: test
+          args: --workspace
 
 #  test-wasm:
 #    name: Check Tests (Wasm)
