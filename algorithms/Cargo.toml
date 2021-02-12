@@ -47,13 +47,13 @@ version = "0.0.4"
 default-features = false
 
 [dependencies.blake2]
-version = "0.8.1"
+version = "0.9"
 
 [dependencies.derivative]
 version = "2"
 
 [dependencies.digest]
-version = "0.8.1"
+version = "0.9"
 
 [dependencies.itertools]
 version = "0.10.0"

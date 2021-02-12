@@ -35,11 +35,11 @@ impl CommitmentScheme for Blake2sCommitment {
 
     fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
         let mut h = blake2s::new();
-        h.input(input);
-        h.input(randomness.as_ref());
+        h.update(input);
+        h.update(randomness.as_ref());
 
         let mut result = [0u8; 32];
-        result.copy_from_slice(&h.result());
+        result.copy_from_slice(&h.finalize());
         Ok(result)
     }
 

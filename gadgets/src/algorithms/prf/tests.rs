@@ -32,7 +32,7 @@ use snarkvm_models::{
 };
 
 use blake2::VarBlake2s;
-use digest::{Input, VariableOutput};
+use digest::{Update, VariableOutput};
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
@@ -116,10 +116,10 @@ fn test_blake2s() {
 
         let data: Vec<u8> = (0..input_len).map(|_| rng.gen()).collect();
 
-        h.input(&data);
+        h.update(&data);
 
         let mut hash_result = Vec::new();
-        h.variable_result(|output| hash_result.extend_from_slice(output));
+        h.finalize_variable(|output| hash_result.extend_from_slice(output));
 
         let mut cs = TestConstraintSystem::<Fr>::new();
 
