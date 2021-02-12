@@ -387,7 +387,7 @@ impl UInt for UInt128 {
 
         let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
         let constant_result = Self::constant(0u128);
-        let allocated_result = Self::alloc(&mut cs.ns(|| "allocated_1u128"), || Ok(0u128))?;
+        let allocated_result = Self::alloc(&mut cs.ns(|| "allocated_0u128"), || Ok(0u128))?;
         let zero_result = Self::conditionally_select(
             &mut cs.ns(|| "constant_or_allocated"),
             &is_constant,
