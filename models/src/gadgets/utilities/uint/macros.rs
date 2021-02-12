@@ -264,7 +264,10 @@ macro_rules! uint_impl {
                     // balance out
                     lc = lc - (coeff, b.get_variable());
 
-                    result_bits.push(b.into());
+                    // Discard carry bits that we don't care about
+                    if result_bits.len() < $size {
+                        result_bits.push(b.into());
+                    }
 
                     max_value >>= 1;
                     i += 1;
@@ -273,9 +276,6 @@ macro_rules! uint_impl {
 
                 // Enforce that the linear combination equals zero
                 cs.enforce(|| "modular addition", |lc| lc, |lc| lc, |_| lc);
-
-                // Discard carry bits that we don't care about
-                result_bits.truncate($size);
 
                 Ok(Self {
                     bits: result_bits,
@@ -342,9 +342,6 @@ macro_rules! uint_impl {
 
                                 // Enforce that the linear combination equals zero
                                 cs.enforce(|| "unsafe subtraction", |lc| lc, |lc| lc, |_| lc);
-
-                                // Discard carry bits that we don't care about
-                                result_bits.truncate($size);
 
                                 Ok(Self {
                                     bits: result_bits,
@@ -524,7 +521,7 @@ macro_rules! uint_impl {
                     let index = $size - 1 - i as usize;
                     let bit_value = (1 as $_type) << (index as $_type);
                     let mut new_quotient = quotient.clone();
-                    new_quotient.bits[index] = true_bit.clone();
+                    new_quotient.bits[index] = true_bit;
                     new_quotient.value = Some(new_quotient.value.unwrap() + bit_value);
 
                     quotient = Self::conditionally_select(
