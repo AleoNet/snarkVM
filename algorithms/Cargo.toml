@@ -18,6 +18,11 @@ license = "GPL-3.0"
 edition = "2018"
 
 [[bench]]
+name = "merkle_tree"
+path = "benches/merkle_tree/merkle_tree.rs"
+harness = false
+
+[[bench]]
 name = "snark"
 path = "benches/snark/snark.rs"
 harness = false
@@ -57,6 +62,9 @@ version = "0.8.1"
 
 [dependencies.itertools]
 version = "0.10.0"
+
+[dependencies.paste]
+version = "0.1.7"
 
 [dependencies.rand]
 version = "0.7"

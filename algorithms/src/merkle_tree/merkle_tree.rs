@@ -19,7 +19,7 @@ use snarkvm_errors::algorithms::MerkleError;
 use snarkvm_models::algorithms::{MerkleParameters, CRH};
 use snarkvm_utilities::ToBytes;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct MerkleTree<P: MerkleParameters> {
     /// The computed root of the full Merkle tree.
     root: Option<MerkleTreeDigest<P>>,
