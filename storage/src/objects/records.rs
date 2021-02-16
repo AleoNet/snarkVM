@@ -23,12 +23,12 @@ use snarkvm_utilities::{
 
 // TODO (howardwu): Remove this from `Ledger` as it is not used for ledger state.
 //  This is merely for local node / miner functionality.
-impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
+impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
     /// Get all stored record commitments of the node
     pub fn get_record_commitments(&self, limit: Option<usize>) -> Result<Vec<Vec<u8>>, StorageError> {
         let mut record_commitments = vec![];
 
-        for (commitment_key, _record) in self.storage.get_iter(COL_RECORDS)? {
+        for commitment_key in self.storage.get_keys(COL_RECORDS)? {
             if let Some(limit) = limit {
                 if record_commitments.len() >= limit {
                     break;

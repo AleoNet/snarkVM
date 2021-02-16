@@ -20,7 +20,7 @@ use snarkvm_models::{algorithms::LoadableMerkleParameters, objects::Transaction}
 use snarkvm_objects::{Block, BlockHeaderHash, DPCTransactions};
 use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
-impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
+impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
     /// Get the latest block in the chain.
     pub fn get_latest_block(&self) -> Result<Block<T>, StorageError> {
         self.get_block_from_block_number(self.get_latest_block_height())

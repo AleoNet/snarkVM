@@ -48,17 +48,17 @@ use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-type L = Ledger<Tx, CommitmentMerkleParameters>;
+type L = Ledger<Tx, CommitmentMerkleParameters, MemDb>;
 
 #[test]
 fn base_dpc_integration_test() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
     // Generate or load parameters for the ledger, commitment schemes, and CRH
-    let (ledger_parameters, parameters) = setup_or_load_parameters(false, &mut rng);
+    let (ledger_parameters, parameters) = setup_or_load_parameters::<XorShiftRng, MemDb>(false, &mut rng);
 
     // Generate accounts
-    let [genesis_account, recipient, _] = generate_test_accounts(&parameters, &mut rng);
+    let [genesis_account, recipient, _] = generate_test_accounts::<XorShiftRng, MemDb>(&parameters, &mut rng);
 
     // Specify network_id
     let network_id: u8 = 0;
@@ -78,7 +78,7 @@ fn base_dpc_integration_test() {
         transactions: DPCTransactions::new(),
     };
 
-    let ledger = initialize_test_blockchain::<Tx, CommitmentMerkleParameters>(ledger_parameters, genesis_block);
+    let ledger = initialize_test_blockchain::<Tx, CommitmentMerkleParameters, MemDb>(ledger_parameters, genesis_block);
 
     let noop_program_id = to_bytes![
         ProgramVerificationKeyCRH::hash(
@@ -251,6 +251,4 @@ fn base_dpc_integration_test() {
 
     ledger.insert_and_commit(&block).unwrap();
     assert_eq!(ledger.len(), 2);
-
-    kill_storage(ledger);
 }

@@ -31,18 +31,17 @@ use std::{
     fs,
     marker::PhantomData,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
-pub struct Ledger<T: Transaction, P: LoadableMerkleParameters> {
+pub struct Ledger<T: Transaction, P: LoadableMerkleParameters, S: Storage> {
     pub latest_block_height: RwLock<u32>,
     pub ledger_parameters: P,
     pub cm_merkle_tree: RwLock<MerkleTree<P>>,
-    pub storage: Arc<Storage>,
+    pub storage: S,
     pub _transaction: PhantomData<T>,
 }
 
-impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
+impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
     /// Open the blockchain storage at a particular path.
     pub fn open_at_path<PATH: AsRef<Path>>(path: PATH) -> Result<Self, StorageError> {
         fs::create_dir_all(path.as_ref()).map_err(|err| StorageError::Message(err.to_string()))?;
@@ -74,7 +73,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
 
     /// Get the stored old connected peers.
     pub fn get_peer_book(&self) -> Result<Vec<u8>, StorageError> {
-        Ok(self.get(COL_META, &KEY_PEER_BOOK.as_bytes().to_vec())?)
+        self.get(COL_META, &KEY_PEER_BOOK.as_bytes().to_vec())
     }
 
     /// Store the connected peers.
@@ -87,11 +86,6 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
         self.storage.write(DatabaseTransaction(vec![op]))
     }
 
-    /// Destroy the storage given a path.
-    pub fn destroy_storage(path: PathBuf) -> Result<(), StorageError> {
-        Storage::destroy_storage(path)
-    }
-
     /// Returns a `Ledger` with the latest state loaded from storage at a given path as
     /// a primary or secondary ledger. A secondary ledger runs as a read-only instance.
     fn load_ledger_state<PATH: AsRef<Path>>(path: PATH, primary: bool) -> Result<Self, StorageError> {
@@ -102,8 +96,8 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
 
         let latest_block_number = {
             let storage = match primary {
-                true => Storage::open_cf(path.as_ref(), NUM_COLS)?,
-                false => Storage::open_secondary_cf(path.as_ref(), &secondary_path, NUM_COLS)?,
+                true => S::open(Some(path.as_ref()), None)?,
+                false => S::open(Some(path.as_ref()), Some(&secondary_path))?,
             };
             storage.get(COL_META, KEY_BEST_BLOCK_NUMBER.as_bytes())?
         };
@@ -114,15 +108,15 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
         match latest_block_number {
             Some(val) => {
                 let storage = match primary {
-                    true => Storage::open_cf(path.as_ref(), NUM_COLS)?,
-                    false => Storage::open_secondary_cf(path.as_ref(), &secondary_path, NUM_COLS)?,
+                    true => S::open(Some(path.as_ref()), None)?,
+                    false => S::open(Some(path.as_ref()), Some(&secondary_path))?,
                 };
 
                 // Build commitment merkle tree
 
                 let mut cm_and_indices = vec![];
 
-                for (commitment_key, index_value) in storage.get_iter(COL_COMMITMENT)? {
+                for (commitment_key, index_value) in storage.get_col(COL_COMMITMENT)? {
                     let commitment: T::Commitment = FromBytes::read(&commitment_key[..])?;
                     let index = bytes_to_u32(index_value.to_vec()) as usize;
 
@@ -136,7 +130,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
 
                 Ok(Self {
                     latest_block_height: RwLock::new(bytes_to_u32(val)),
-                    storage: Arc::new(storage),
+                    storage,
                     cm_merkle_tree: RwLock::new(merkle_tree),
                     ledger_parameters,
                     _transaction: PhantomData,
@@ -159,33 +153,6 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
                 Ok(ledger_storage)
             }
         }
-    }
-
-    /// Attempt to catch the secondary read-only storage instance with the primary instance.
-    pub fn catch_up_secondary(&self, update_merkle_tree: bool) -> Result<(), StorageError> {
-        // Sync the secondary and primary instances
-        if self.storage.db.try_catch_up_with_primary().is_ok() {
-            let latest_block_height_bytes = self.get(COL_META, &KEY_BEST_BLOCK_NUMBER.as_bytes().to_vec())?;
-            let new_latest_block_height = bytes_to_u32(latest_block_height_bytes);
-            let mut latest_block_height = self.latest_block_height.write();
-
-            // If the new block height is greater than the stored block height,
-            // update the block height and merkle tree.
-            if new_latest_block_height > *latest_block_height {
-                // Update the latest block height of the secondary instance.
-                *latest_block_height = new_latest_block_height;
-
-                // Optional `cm_merkle_tree` regeneration because not all usages of
-                // the secondary instance requires it.
-                if update_merkle_tree {
-                    // Update the Merkle tree of the secondary instance.
-                    let mut merkle_tree = self.cm_merkle_tree.write();
-                    *merkle_tree = self.build_merkle_tree(vec![])?;
-                }
-            }
-        }
-
-        Ok(())
     }
 
     /// Retrieve a value given a key.

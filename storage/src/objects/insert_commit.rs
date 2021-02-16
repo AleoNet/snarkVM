@@ -20,7 +20,7 @@ use snarkvm_models::{algorithms::LoadableMerkleParameters, objects::Transaction}
 use snarkvm_objects::{Block, BlockHeader, BlockHeaderHash};
 use snarkvm_utilities::{bytes::ToBytes, has_duplicates, to_bytes};
 
-impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
+impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
     /// Commit a transaction to the canon chain
     #[allow(clippy::type_complexity)]
     pub(crate) fn commit_transaction(

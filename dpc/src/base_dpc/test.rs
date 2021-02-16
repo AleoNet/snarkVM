@@ -55,7 +55,7 @@ use itertools::Itertools;
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
-type L = Ledger<Tx, CommitmentMerkleParameters>;
+type L = Ledger<Tx, CommitmentMerkleParameters, MemDb>;
 
 /// Generates and returns noop program parameters and its corresponding program id.
 fn generate_test_noop_program_parameters<R: Rng>(
@@ -193,7 +193,7 @@ fn test_execute_base_dpc_constraints() {
     };
 
     // Use genesis record, serial number, and memo to initialize the ledger.
-    let ledger = initialize_test_blockchain::<Tx, CommitmentMerkleParameters>(ledger_parameters, genesis_block);
+    let ledger = initialize_test_blockchain::<Tx, CommitmentMerkleParameters, MemDb>(ledger_parameters, genesis_block);
 
     let sn_nonce = SerialNumberNonce::hash(&system_parameters.serial_number_nonce, &[0u8; 1]).unwrap();
     let old_record = DPC::generate_record(
@@ -476,6 +476,4 @@ fn test_execute_base_dpc_constraints() {
     println!("=========================================================");
 
     assert!(pf_check_cs.is_satisfied());
-
-    kill_storage(ledger);
 }

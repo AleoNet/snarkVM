@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{error::StorageError, Ledger};
+use crate::{error::StorageError, *};
 use snarkvm_errors::objects::BlockError;
 use snarkvm_models::{algorithms::LoadableMerkleParameters, objects::Transaction};
 use snarkvm_objects::{BlockHeader, BlockHeaderHash};
@@ -40,7 +40,7 @@ pub struct SideChainPath {
     pub path: Vec<BlockHeaderHash>,
 }
 
-impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
+impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
     /// Get the block's path/origin.
     pub fn get_block_path(&self, block_header: &BlockHeader) -> Result<BlockPath, StorageError> {
         let block_hash = block_header.get_hash();

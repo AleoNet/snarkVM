@@ -28,9 +28,9 @@ use snarkvm_utilities::{
 };
 
 use parking_lot::RwLock;
-use std::{fs, marker::PhantomData, path::Path, sync::Arc};
+use std::{fs, marker::PhantomData, path::Path};
 
-impl<T: Transaction, P: LoadableMerkleParameters> LedgerScheme for Ledger<T, P> {
+impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> LedgerScheme for Ledger<T, P, S> {
     type Block = Block<Self::Transaction>;
     type Commitment = T::Commitment;
     type MerkleParameters = P;
@@ -48,13 +48,10 @@ impl<T: Transaction, P: LoadableMerkleParameters> LedgerScheme for Ledger<T, P> 
         let storage = if let Some(path) = path {
             fs::create_dir_all(&path).map_err(|err| LedgerError::Message(err.to_string()))?;
 
-            match Storage::open_cf(path, NUM_COLS) {
-                Ok(storage) => storage,
-                Err(err) => return Err(err.into()),
-            }
+            S::open(Some(path), None)
         } else {
-            unimplemented!()
-        };
+            S::open(None, None) // this must mean we're using an in-memory storage
+        }?;
 
         if let Some(block_num) = storage.get(COL_META, KEY_BEST_BLOCK_NUMBER.as_bytes())? {
             if bytes_to_u32(block_num) != 0 {
@@ -67,7 +64,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> LedgerScheme for Ledger<T, P> 
 
         let ledger_storage = Self {
             latest_block_height: RwLock::new(0),
-            storage: Arc::new(storage),
+            storage,
             cm_merkle_tree: RwLock::new(empty_cm_merkle_tree),
             ledger_parameters: parameters,
             _transaction: PhantomData,
