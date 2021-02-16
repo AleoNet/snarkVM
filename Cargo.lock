@@ -1968,6 +1968,7 @@ dependencies = [
  "hex",
  "rand 0.7.3",
  "snarkvm-algorithms",
+ "snarkvm-dpc",
  "snarkvm-errors",
  "snarkvm-models",
  "snarkvm-utilities",
