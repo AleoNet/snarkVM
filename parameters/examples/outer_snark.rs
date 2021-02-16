@@ -26,7 +26,7 @@ use snarkvm_dpc::base_dpc::{
 use snarkvm_errors::dpc::DPCError;
 use snarkvm_models::{
     algorithms::{MerkleParameters, SNARK},
-    parameters::Parameters,
+    parameters::Parameter,
 };
 use snarkvm_parameters::{InnerSNARKPKParameters, InnerSNARKVKParameters, LedgerMerkleTreeParameters};
 use snarkvm_utilities::{

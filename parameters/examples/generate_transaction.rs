@@ -24,7 +24,7 @@ use snarkvm_models::{
     algorithms::{LoadableMerkleParameters, MerkleParameters, CRH},
     dpc::{DPCComponents, DPCScheme},
     objects::{account::AccountScheme, Transaction},
-    parameters::Parameters,
+    parameters::Parameter,
 };
 use snarkvm_objects::{Account, AccountAddress, Network};
 use snarkvm_parameters::LedgerMerkleTreeParameters;
