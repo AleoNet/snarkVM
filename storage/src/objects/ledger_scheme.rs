@@ -19,11 +19,12 @@ use snarkvm_algorithms::merkle_tree::*;
 use snarkvm_errors::dpc::LedgerError;
 use snarkvm_models::{
     algorithms::LoadableMerkleParameters,
-    objects::{LedgerScheme, Transaction},
+    objects::{LedgerScheme, Storage, Transaction},
 };
 use snarkvm_objects::Block;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
+    bytes_to_u32,
     to_bytes,
 };
 

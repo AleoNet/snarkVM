@@ -14,8 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{error::StorageError, *};
-use snarkvm_models::{algorithms::LoadableMerkleParameters, dpc::Record, objects::Transaction};
+use crate::*;
+use snarkvm_errors::objects::StorageError;
+use snarkvm_models::{
+    algorithms::LoadableMerkleParameters,
+    dpc::Record,
+    objects::{Storage, StorageBatchOp, StorageOp, Transaction},
+};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     to_bytes,
@@ -54,41 +59,41 @@ impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
 
     /// Get a transaction bytes given the transaction id.
     pub fn store_record<R: Record>(&self, record: &R) -> Result<(), StorageError> {
-        let mut database_transaction = DatabaseTransaction::new();
+        let mut database_transaction = StorageBatchOp::new();
 
-        database_transaction.push(Op::Insert {
+        database_transaction.push(StorageOp::Insert {
             col: COL_RECORDS,
             key: to_bytes![record.commitment()]?.to_vec(),
             value: to_bytes![record]?.to_vec(),
         });
 
-        self.storage.write(database_transaction)
+        self.storage.batch(database_transaction)
     }
 
     /// Get a transaction bytes given the transaction id.
     pub fn store_records<R: Record>(&self, records: &[R]) -> Result<(), StorageError> {
-        let mut database_transaction = DatabaseTransaction::new();
+        let mut database_transaction = StorageBatchOp::new();
 
         for record in records {
-            database_transaction.push(Op::Insert {
+            database_transaction.push(StorageOp::Insert {
                 col: COL_RECORDS,
                 key: to_bytes![record.commitment()]?.to_vec(),
                 value: to_bytes![record]?.to_vec(),
             });
         }
 
-        self.storage.write(database_transaction)
+        self.storage.batch(database_transaction)
     }
 
     /// Removes a record from storage.
     pub fn delete_record<R: Record>(&self, record: R) -> Result<(), StorageError> {
-        let mut database_transaction = DatabaseTransaction::new();
+        let mut database_transaction = StorageBatchOp::new();
 
-        database_transaction.push(Op::Delete {
+        database_transaction.push(StorageOp::Delete {
             col: COL_RECORDS,
             key: to_bytes![record.commitment()]?.to_vec(),
         });
 
-        self.storage.write(database_transaction)
+        Ok(self.storage.batch(database_transaction)?)
     }
 }

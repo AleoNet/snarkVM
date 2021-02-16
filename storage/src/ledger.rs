@@ -14,17 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{error::StorageError, *};
+use crate::*;
 use snarkvm_algorithms::merkle_tree::MerkleTree;
+use snarkvm_errors::objects::StorageError;
 use snarkvm_models::{
     algorithms::LoadableMerkleParameters,
     genesis::Genesis,
-    objects::{LedgerScheme, Transaction},
+    objects::{LedgerScheme, Storage, StorageBatchOp, StorageOp, Transaction},
     parameters::Parameter,
 };
 use snarkvm_objects::Block;
 use snarkvm_parameters::{GenesisBlock, LedgerMerkleTreeParameters};
-use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::{bytes::FromBytes, bytes_to_u32};
 
 use parking_lot::RwLock;
 use std::{
@@ -44,14 +45,14 @@ pub struct Ledger<T: Transaction, P: LoadableMerkleParameters, S: Storage> {
 impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
     /// Open the blockchain storage at a particular path.
     pub fn open_at_path<PATH: AsRef<Path>>(path: PATH) -> Result<Self, StorageError> {
-        fs::create_dir_all(path.as_ref()).map_err(|err| StorageError::Message(err.to_string()))?;
+        fs::create_dir_all(path.as_ref())?;
 
         Self::load_ledger_state(path, true)
     }
 
     /// Open the blockchain storage at a particular path as a secondary read-only instance.
     pub fn open_secondary_at_path<PATH: AsRef<Path>>(path: PATH) -> Result<Self, StorageError> {
-        fs::create_dir_all(path.as_ref()).map_err(|err| StorageError::Message(err.to_string()))?;
+        fs::create_dir_all(path.as_ref())?;
 
         Self::load_ledger_state(path, false)
     }
@@ -72,18 +73,18 @@ impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
     }
 
     /// Get the stored old connected peers.
-    pub fn get_peer_book(&self) -> Result<Vec<u8>, StorageError> {
-        self.get(COL_META, &KEY_PEER_BOOK.as_bytes().to_vec())
+    pub fn get_peer_book(&self) -> Result<Option<Vec<u8>>, StorageError> {
+        self.storage.get(COL_META, &KEY_PEER_BOOK.as_bytes().to_vec())
     }
 
     /// Store the connected peers.
     pub fn store_to_peer_book(&self, peers_serialized: Vec<u8>) -> Result<(), StorageError> {
-        let op = Op::Insert {
+        let op = StorageOp::Insert {
             col: COL_META,
             key: KEY_PEER_BOOK.as_bytes().to_vec(),
             value: peers_serialized,
         };
-        self.storage.write(DatabaseTransaction(vec![op]))
+        self.storage.batch(StorageBatchOp(vec![op]))
     }
 
     /// Returns a `Ledger` with the latest state loaded from storage at a given path as
@@ -152,14 +153,6 @@ impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
 
                 Ok(ledger_storage)
             }
-        }
-    }
-
-    /// Retrieve a value given a key.
-    pub(crate) fn get(&self, col: u32, key: &[u8]) -> Result<Vec<u8>, StorageError> {
-        match self.storage.get(col, key)? {
-            Some(data) => Ok(data),
-            None => Err(StorageError::MissingValue(hex::encode(key))),
         }
     }
 }

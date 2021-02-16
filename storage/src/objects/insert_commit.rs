@@ -14,9 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{error::StorageError, *};
-use snarkvm_errors::objects::BlockError;
-use snarkvm_models::{algorithms::LoadableMerkleParameters, objects::Transaction};
+use crate::*;
+use snarkvm_errors::objects::{BlockError, StorageError};
+use snarkvm_models::{
+    algorithms::LoadableMerkleParameters,
+    objects::{Storage, StorageBatchOp, StorageOp, Transaction},
+};
 use snarkvm_objects::{Block, BlockHeader, BlockHeaderHash};
 use snarkvm_utilities::{bytes::ToBytes, has_duplicates, to_bytes};
 
@@ -29,7 +32,7 @@ impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
         cm_index: &mut usize,
         memo_index: &mut usize,
         transaction: &T,
-    ) -> Result<(Vec<Op>, Vec<(T::Commitment, usize)>), StorageError> {
+    ) -> Result<(Vec<StorageOp>, Vec<(T::Commitment, usize)>), StorageError> {
         let old_serial_numbers = transaction.old_serial_numbers();
         let new_commitments = transaction.new_commitments();
 
@@ -42,7 +45,7 @@ impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
                 return Err(StorageError::ExistingSn(sn_bytes.to_vec()));
             }
 
-            ops.push(Op::Insert {
+            ops.push(StorageOp::Insert {
                 col: COL_SERIAL_NUMBER,
                 key: sn_bytes,
                 value: (*sn_index as u32).to_le_bytes().to_vec(),
@@ -56,7 +59,7 @@ impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
                 return Err(StorageError::ExistingCm(cm_bytes.to_vec()));
             }
 
-            ops.push(Op::Insert {
+            ops.push(StorageOp::Insert {
                 col: COL_COMMITMENT,
                 key: cm_bytes,
                 value: (*cm_index as u32).to_le_bytes().to_vec(),
@@ -70,7 +73,7 @@ impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
         if self.get_memo_index(&memo_bytes)?.is_some() {
             return Err(StorageError::ExistingMemo(memo_bytes.to_vec()));
         } else {
-            ops.push(Op::Insert {
+            ops.push(StorageOp::Insert {
                 col: COL_MEMO,
                 key: memo_bytes,
                 value: (*memo_index as u32).to_le_bytes().to_vec(),
@@ -92,7 +95,7 @@ impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
             )));
         }
 
-        let mut database_transaction = DatabaseTransaction::new();
+        let mut database_transaction = StorageBatchOp::new();
 
         let mut transaction_serial_numbers = Vec::with_capacity(block.transactions.0.len());
         let mut transaction_commitments = Vec::with_capacity(block.transactions.0.len());
@@ -126,19 +129,19 @@ impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
                 index: index as u32,
                 block_hash: block.header.get_hash().0,
             };
-            database_transaction.push(Op::Insert {
+            database_transaction.push(StorageOp::Insert {
                 col: COL_TRANSACTION_LOCATION,
                 key: transaction.transaction_id()?.to_vec(),
                 value: to_bytes![transaction_location]?.to_vec(),
             });
         }
 
-        database_transaction.push(Op::Insert {
+        database_transaction.push(StorageOp::Insert {
             col: COL_BLOCK_HEADER,
             key: block_hash.0.to_vec(),
             value: to_bytes![block.header]?.to_vec(),
         });
-        database_transaction.push(Op::Insert {
+        database_transaction.push(StorageOp::Insert {
             col: COL_BLOCK_TRANSACTIONS,
             key: block.header.get_hash().0.to_vec(),
             value: to_bytes![block.transactions]?.to_vec(),
@@ -149,20 +152,20 @@ impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
         if !child_hashes.contains(&block_hash) {
             child_hashes.push(block_hash);
 
-            database_transaction.push(Op::Insert {
+            database_transaction.push(StorageOp::Insert {
                 col: COL_CHILD_HASHES,
                 key: block.header.previous_block_hash.0.to_vec(),
                 value: bincode::serialize(&child_hashes)?,
             });
         }
 
-        database_transaction.push(Op::Insert {
+        database_transaction.push(StorageOp::Insert {
             col: COL_BLOCK_TRANSACTIONS,
             key: block.header.get_hash().0.to_vec(),
             value: to_bytes![block.transactions]?.to_vec(),
         });
 
-        self.storage.write(database_transaction)?;
+        self.storage.batch(database_transaction)?;
 
         Ok(())
     }
@@ -176,7 +179,7 @@ impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
             return Err(StorageError::ExistingCanonBlock(block_header_hash.to_string()));
         }
 
-        let mut database_transaction = DatabaseTransaction::new();
+        let mut database_transaction = StorageBatchOp::new();
 
         let mut transaction_serial_numbers = Vec::with_capacity(block.transactions.0.len());
         let mut transaction_commitments = Vec::with_capacity(block.transactions.0.len());
@@ -221,17 +224,17 @@ impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
 
         // Update the database state for current indexes
 
-        database_transaction.push(Op::Insert {
+        database_transaction.push(StorageOp::Insert {
             col: COL_META,
             key: KEY_CURR_SN_INDEX.as_bytes().to_vec(),
             value: (sn_index as u32).to_le_bytes().to_vec(),
         });
-        database_transaction.push(Op::Insert {
+        database_transaction.push(StorageOp::Insert {
             col: COL_META,
             key: KEY_CURR_CM_INDEX.as_bytes().to_vec(),
             value: (cm_index as u32).to_le_bytes().to_vec(),
         });
-        database_transaction.push(Op::Insert {
+        database_transaction.push(StorageOp::Insert {
             col: COL_META,
             key: KEY_CURR_MEMO_INDEX.as_bytes().to_vec(),
             value: (memo_index as u32).to_le_bytes().to_vec(),
@@ -249,7 +252,7 @@ impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
             new_best_block_number = *height + 1;
         }
 
-        database_transaction.push(Op::Insert {
+        database_transaction.push(StorageOp::Insert {
             col: COL_META,
             key: KEY_BEST_BLOCK_NUMBER.as_bytes().to_vec(),
             value: new_best_block_number.to_le_bytes().to_vec(),
@@ -257,12 +260,12 @@ impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
 
         // Update the block location
 
-        database_transaction.push(Op::Insert {
+        database_transaction.push(StorageOp::Insert {
             col: COL_BLOCK_LOCATOR,
             key: block.header.get_hash().0.to_vec(),
             value: new_best_block_number.to_le_bytes().to_vec(),
         });
-        database_transaction.push(Op::Insert {
+        database_transaction.push(StorageOp::Insert {
             col: COL_BLOCK_LOCATOR,
             key: new_best_block_number.to_le_bytes().to_vec(),
             value: block.header.get_hash().0.to_vec(),
@@ -272,12 +275,12 @@ impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
         let new_merkle_tree = self.build_merkle_tree(transaction_cms)?;
         let new_digest = new_merkle_tree.root();
 
-        database_transaction.push(Op::Insert {
+        database_transaction.push(StorageOp::Insert {
             col: COL_DIGEST,
             key: to_bytes![new_digest]?.to_vec(),
             value: new_best_block_number.to_le_bytes().to_vec(),
         });
-        database_transaction.push(Op::Insert {
+        database_transaction.push(StorageOp::Insert {
             col: COL_META,
             key: KEY_CURR_DIGEST.as_bytes().to_vec(),
             value: to_bytes![new_digest]?.to_vec(),
@@ -286,7 +289,7 @@ impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
         let mut cm_merkle_tree = self.cm_merkle_tree.write();
         *cm_merkle_tree = new_merkle_tree;
 
-        self.storage.write(database_transaction)?;
+        self.storage.batch(database_transaction)?;
 
         if !is_genesis {
             *height += 1;

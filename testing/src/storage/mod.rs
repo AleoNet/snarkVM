@@ -14,12 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod mem;
+pub use mem::MemDb;
+
+mod rocks;
+pub use rocks::RocksDb;
+
 use snarkvm_models::{
     algorithms::merkle_tree::LoadableMerkleParameters,
-    objects::{LedgerScheme, Transaction},
+    objects::{LedgerScheme, Storage, Transaction},
 };
 use snarkvm_objects::Block;
-pub use snarkvm_storage::{Ledger, MemDb, Storage};
+pub use snarkvm_storage::Ledger;
 
 // Initialize a test blockchain given genesis attributes
 pub fn initialize_test_blockchain<T: Transaction, P: LoadableMerkleParameters, S: Storage>(

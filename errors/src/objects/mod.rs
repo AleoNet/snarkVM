@@ -25,3 +25,6 @@ pub use block::*;
 
 pub mod transaction;
 pub use transaction::*;
+
+pub mod storage;
+pub use storage::*;

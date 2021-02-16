@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{error::StorageError, Ledger, Storage, TransactionLocation, COL_TRANSACTION_LOCATION};
+use crate::{Ledger, TransactionLocation, COL_TRANSACTION_LOCATION};
+use snarkvm_errors::objects::StorageError;
 use snarkvm_models::{
     algorithms::LoadableMerkleParameters,
-    objects::{LedgerScheme, Transaction},
+    objects::{LedgerScheme, Storage, Transaction},
 };
 use snarkvm_objects::BlockHeaderHash;
 use snarkvm_utilities::{

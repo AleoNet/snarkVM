@@ -14,9 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{error::StorageError, *};
-use snarkvm_errors::objects::BlockError;
-use snarkvm_models::{algorithms::LoadableMerkleParameters, objects::Transaction};
+use crate::*;
+use snarkvm_errors::objects::{BlockError, StorageError};
+use snarkvm_models::{
+    algorithms::LoadableMerkleParameters,
+    objects::{Storage, Transaction},
+};
 use snarkvm_objects::{BlockHeader, BlockHeaderHash};
 
 const OLDEST_FORK_THRESHOLD: u32 = 1024;

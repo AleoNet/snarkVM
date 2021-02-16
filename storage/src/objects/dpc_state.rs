@@ -14,11 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{error::StorageError, *};
+use crate::*;
 use snarkvm_algorithms::merkle_tree::MerkleTree;
-use snarkvm_models::{algorithms::LoadableMerkleParameters, objects::Transaction};
+use snarkvm_errors::objects::StorageError;
+use snarkvm_models::{
+    algorithms::LoadableMerkleParameters,
+    objects::{Storage, StorageBatchOp, StorageOp, Transaction},
+};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
+    bytes_to_u32,
     to_bytes,
 };
 
@@ -130,12 +135,12 @@ impl<T: Transaction, P: LoadableMerkleParameters, S: Storage> Ledger<T, P, S> {
         let mut merkle_tree = self.cm_merkle_tree.write();
         *merkle_tree = self.build_merkle_tree(vec![])?;
 
-        let update_current_digest = DatabaseTransaction(vec![Op::Insert {
+        let update_current_digest = StorageBatchOp(vec![StorageOp::Insert {
             col: COL_META,
             key: KEY_CURR_DIGEST.as_bytes().to_vec(),
             value: to_bytes![merkle_tree.root()]?.to_vec(),
         }]);
 
-        self.storage.write(update_current_digest)
+        self.storage.batch(update_current_digest)
     }
 }

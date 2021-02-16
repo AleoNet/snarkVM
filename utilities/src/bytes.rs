@@ -360,6 +360,13 @@ pub fn bits_to_bytes(bits: &[bool]) -> Vec<u8> {
     bytes
 }
 
+pub fn bytes_to_u32(bytes: Vec<u8>) -> u32 {
+    let mut num_bytes = [0u8; 4];
+    num_bytes.copy_from_slice(&bytes);
+
+    u32::from_le_bytes(num_bytes)
+}
+
 #[cfg(test)]
 mod test {
     use super::{bits_to_bytes, bytes_to_bits, ToBytes};

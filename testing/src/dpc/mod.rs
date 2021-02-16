@@ -18,12 +18,12 @@ use snarkvm_dpc::base_dpc::{instantiated::*, parameters::PublicParameters};
 use snarkvm_models::{
     algorithms::{MerkleParameters, CRH},
     dpc::DPCScheme,
-    objects::AccountScheme,
+    objects::{AccountScheme, Storage},
     parameters::Parameter,
 };
 use snarkvm_objects::Account;
 use snarkvm_parameters::LedgerMerkleTreeParameters;
-use snarkvm_storage::{Ledger, Storage};
+use snarkvm_storage::Ledger;
 use snarkvm_utilities::bytes::FromBytes;
 
 use rand::Rng;
