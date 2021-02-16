@@ -16,7 +16,7 @@
 
 use crate::objects::{BlockScheme, Transaction};
 
-use std::path::PathBuf;
+use std::path::Path;
 
 #[allow(clippy::len_without_is_empty)]
 pub trait LedgerScheme: Sized {
@@ -29,7 +29,8 @@ pub trait LedgerScheme: Sized {
     type Transaction: Transaction;
 
     /// Instantiates a new ledger with a genesis block.
-    fn new(path: &PathBuf, parameters: Self::MerkleParameters, genesis_block: Self::Block) -> anyhow::Result<Self>;
+    fn new(path: Option<&Path>, parameters: Self::MerkleParameters, genesis_block: Self::Block)
+    -> anyhow::Result<Self>;
 
     /// Returns the number of blocks including the genesis block
     fn len(&self) -> usize;

@@ -28,7 +28,7 @@ use snarkvm_utilities::{
 };
 
 use parking_lot::RwLock;
-use std::{fs, marker::PhantomData, path::PathBuf, sync::Arc};
+use std::{fs, marker::PhantomData, path::Path, sync::Arc};
 
 impl<T: Transaction, P: LoadableMerkleParameters> LedgerScheme for Ledger<T, P> {
     type Block = Block<Self::Transaction>;
@@ -40,11 +40,20 @@ impl<T: Transaction, P: LoadableMerkleParameters> LedgerScheme for Ledger<T, P> 
     type Transaction = T;
 
     /// Instantiates a new ledger with a genesis block.
-    fn new(path: &PathBuf, parameters: Self::MerkleParameters, genesis_block: Self::Block) -> anyhow::Result<Self> {
-        fs::create_dir_all(&path).map_err(|err| LedgerError::Message(err.to_string()))?;
-        let storage = match Storage::open_cf(path, NUM_COLS) {
-            Ok(storage) => storage,
-            Err(err) => return Err(err.into()),
+    fn new(
+        path: Option<&Path>,
+        parameters: Self::MerkleParameters,
+        genesis_block: Self::Block,
+    ) -> anyhow::Result<Self> {
+        let storage = if let Some(path) = path {
+            fs::create_dir_all(&path).map_err(|err| LedgerError::Message(err.to_string()))?;
+
+            match Storage::open_cf(path, NUM_COLS) {
+                Ok(storage) => storage,
+                Err(err) => return Err(err.into()),
+            }
+        } else {
+            unimplemented!()
         };
 
         if let Some(block_num) = storage.get(COL_META, KEY_BEST_BLOCK_NUMBER.as_bytes())? {

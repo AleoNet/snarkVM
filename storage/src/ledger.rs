@@ -147,7 +147,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
 
                 let genesis_block: Block<T> = FromBytes::read(GenesisBlock::load_bytes().as_slice())?;
 
-                let ledger_storage = Self::new(&path.as_ref().to_path_buf(), ledger_parameters, genesis_block)
+                let ledger_storage = Self::new(Some(path.as_ref()), ledger_parameters, genesis_block)
                     .expect("Ledger could not be instantiated");
 
                 // If there did not exist a primary ledger at the path,
