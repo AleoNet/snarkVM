@@ -54,5 +54,3 @@ mv serial_number_nonce_crh.checksum ../src/params
 ./outer_snark.sh
 
 ./posw_snark.sh
-
-./genesis_block_setup.sh
