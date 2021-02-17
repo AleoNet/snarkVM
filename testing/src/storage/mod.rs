@@ -17,9 +17,6 @@
 mod mem;
 pub use mem::MemDb;
 
-mod rocks;
-pub use rocks::RocksDb;
-
 use snarkvm_models::{
     algorithms::merkle_tree::LoadableMerkleParameters,
     objects::{LedgerScheme, Storage, Transaction},
