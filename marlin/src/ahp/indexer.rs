@@ -128,6 +128,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let mut ics = IndexerConstraintSystem::new();
         c.generate_constraints(&mut ics)?;
         end_timer!(constraint_time);
+
         let padding_time = start_timer!(|| "Padding matrices to make them square");
         ics.make_matrices_square();
         end_timer!(padding_time);

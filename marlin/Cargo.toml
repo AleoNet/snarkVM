@@ -30,6 +30,11 @@ include = [
 license = "GPL-3.0"
 edition = "2018"
 
+[[bench]]
+name = "snark"
+path = "benches/marlin.rs"
+harness = false
+
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
 version = "0.0.4"
@@ -76,6 +81,12 @@ version = "0.5"
 [dependencies.rayon]
 version = "1"
 optional = true
+
+[dev-dependencies.criterion]
+version = "0.3.4"
+
+[dev-dependencies.rand]
+version = "0.7"
 
 [dev-dependencies.snarkvm-curves]
 path = "../curves"

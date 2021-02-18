@@ -199,7 +199,7 @@ where
     /// Creates a new Parameters instance from a previously computed universal SRS
     pub fn new(circuit: &C, universal_srs: &SRS<E>) -> Result<Self, SNARKError> {
         let (prover_key, verifier_key) = Marlin::index(universal_srs, circuit)
-            .map_err(|_| SNARKError::Crate("marlin", "could not index".to_owned()))?;
+            .map_err(|error| SNARKError::Crate("marlin", format!("could not index: {:?}", error)))?;
         Ok(Self {
             prover_key,
             verifier_key,
