@@ -55,7 +55,7 @@ version = "0.10.0"
 version = "0.8.1"
 
 [dev-dependencies.rand]
-version = "0.7"
+version = "0.8"
 
 [dev-dependencies.rand_xorshift]
 version = "0.2"

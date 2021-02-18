@@ -78,7 +78,7 @@ version = "0.4.2"
 version = "0.10.0"
 
 [dependencies.rand]
-version = "0.7"
+version = "0.8"
 
 [dev-dependencies.snarkvm-testing]
 path = "../testing"

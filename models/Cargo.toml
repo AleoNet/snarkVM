@@ -49,7 +49,7 @@ version = "1.6.0"
 version = "0.10.0"
 
 [dependencies.rand]
-version = "0.7"
+version = "0.8"
 default-features = false
 
 [dependencies.rand_xorshift]
