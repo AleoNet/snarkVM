@@ -144,10 +144,10 @@ impl<C: BaseDPCComponents> Transaction for DPCTransaction<C> {
         pre_image_bytes.extend(self.memorandum());
 
         let mut h = b2s::new();
-        h.input(&pre_image_bytes);
+        h.update(&pre_image_bytes);
 
         let mut result = [0u8; 32];
-        result.copy_from_slice(&h.result());
+        result.copy_from_slice(&h.finalize());
         Ok(result)
     }
 

@@ -56,10 +56,10 @@ version = "2"
 features = [ "use_core" ]
 
 [dependencies.digest]
-version = "0.8"
+version = "0.9"
 
 [dependencies.rand_core]
-version = "0.5"
+version = "0.6"
 default-features = false
 
 [dependencies.rayon]
@@ -70,11 +70,11 @@ optional = true
 path = "../curves"
 
 [dev-dependencies.blake2]
-version = "0.8"
+version = "0.9"
 default-features = false
 
 [dev-dependencies.rand]
-version = "0.7"
+version = "0.8"
 default-features = false
 
 [features]

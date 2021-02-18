@@ -92,8 +92,8 @@ macro_rules! create_sub_bench {
     ($bench_name:ident, $bench_id:expr, $foo_name:ident, $std_type:ty, $bit_type:ty) => {
         fn $bench_name(c: &mut Criterion) {
             fn $foo_name(cs: &mut TestConstraintSystem<Fr>, rng: &mut XorShiftRng) {
-                let a: $std_type = rng.gen_range(<$std_type>::max_value() / 2, <$std_type>::max_value());
-                let b: $std_type = rng.gen_range(0, <$std_type>::max_value() / 2);
+                let a: $std_type = rng.gen_range(<$std_type>::max_value() / 2..<$std_type>::max_value());
+                let b: $std_type = rng.gen_range(0..<$std_type>::max_value() / 2);
 
                 let bench_run_id: u64 = rng.gen();
 
@@ -120,8 +120,8 @@ macro_rules! create_sub_const_bench {
     ($bench_name:ident, $bench_id:expr, $foo_name:ident, $std_type:ty, $bit_type:ty) => {
         fn $bench_name(c: &mut Criterion) {
             fn $foo_name(cs: &mut TestConstraintSystem<Fr>, rng: &mut XorShiftRng) {
-                let a: $std_type = rng.gen_range(<$std_type>::max_value() / 2, <$std_type>::max_value());
-                let b: $std_type = rng.gen_range(0, <$std_type>::max_value() / 2);
+                let a: $std_type = rng.gen_range(<$std_type>::max_value() / 2..<$std_type>::max_value());
+                let b: $std_type = rng.gen_range(0..<$std_type>::max_value() / 2);
 
                 let bench_run_id: u64 = rng.gen();
 
@@ -205,7 +205,7 @@ macro_rules! create_div_bench {
         fn $bench_name(c: &mut Criterion) {
             fn $foo_name(cs: &mut TestConstraintSystem<Fr>, rng: &mut XorShiftRng) {
                 let a: $std_type = rng.gen();
-                let b: $std_type = rng.gen_range(1, <$std_type>::max_value());
+                let b: $std_type = rng.gen_range(1..<$std_type>::max_value());
 
                 let bench_run_id: u64 = rng.gen();
 
@@ -233,7 +233,7 @@ macro_rules! create_div_const_bench {
         fn $bench_name(c: &mut Criterion) {
             fn $foo_name(cs: &mut TestConstraintSystem<Fr>, rng: &mut XorShiftRng) {
                 let a: $std_type = rng.gen();
-                let b: $std_type = rng.gen_range(1, <$std_type>::max_value());
+                let b: $std_type = rng.gen_range(1..<$std_type>::max_value());
 
                 let bench_run_id: u64 = rng.gen();
 
@@ -260,8 +260,8 @@ macro_rules! create_pow_bench {
     ($bench_name:ident, $bench_id:expr, $foo_name:ident, $std_type:ty, $bit_type:ty) => {
         fn $bench_name(c: &mut Criterion) {
             fn $foo_name(cs: &mut TestConstraintSystem<Fr>, rng: &mut XorShiftRng) {
-                let a: $std_type = rng.gen_range(0, <$std_type>::from(u8::max_value()));
-                let b: $std_type = rng.gen_range(0, 4);
+                let a: $std_type = rng.gen_range(0..<$std_type>::from(u8::max_value()));
+                let b: $std_type = rng.gen_range(0..4);
 
                 let bench_run_id: u64 = rng.gen();
 
@@ -288,8 +288,8 @@ macro_rules! create_pow_const_bench {
     ($bench_name:ident, $bench_id:expr, $foo_name:ident, $std_type:ty, $bit_type:ty) => {
         fn $bench_name(c: &mut Criterion) {
             fn $foo_name(cs: &mut TestConstraintSystem<Fr>, rng: &mut XorShiftRng) {
-                let a: $std_type = rng.gen_range(0, <$std_type>::from(u8::max_value()));
-                let b: $std_type = rng.gen_range(0, 4);
+                let a: $std_type = rng.gen_range(0..<$std_type>::from(u8::max_value()));
+                let b: $std_type = rng.gen_range(0..4);
 
                 let bench_run_id: u64 = rng.gen();
 

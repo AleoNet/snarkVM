@@ -148,9 +148,9 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
     root.write(&mut root_bytes[..]).unwrap();
 
     let mut h = Blake2s::new();
-    h.input(nonce.as_ref());
-    h.input(&root_bytes);
-    let mask = h.result().to_vec();
+    h.update(nonce.as_ref());
+    h.update(&root_bytes);
+    let mask = h.finalize().to_vec();
     let mask_bytes = UInt8::alloc_vec(cs.ns(|| "mask"), &mask).unwrap();
 
     let crh_parameters = <HG as CRHGadget<_, _>>::ParametersGadget::alloc(&mut cs.ns(|| "new_parameters"), || {

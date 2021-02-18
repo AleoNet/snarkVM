@@ -233,8 +233,8 @@ fn test_uint64_sub_constants() {
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u64 = rng.gen_range(u64::max_value() / 2u64, u64::max_value());
-        let b: u64 = rng.gen_range(0u64, u64::max_value() / 2u64);
+        let a: u64 = rng.gen_range(u64::max_value() / 2u64..u64::max_value());
+        let b: u64 = rng.gen_range(0u64..u64::max_value() / 2u64);
 
         let a_bit = UInt64::constant(a);
         let b_bit = UInt64::constant(b);
@@ -256,8 +256,8 @@ fn test_uint64_sub() {
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u64 = rng.gen_range(u64::max_value() / 2u64, u64::max_value());
-        let b: u64 = rng.gen_range(0u64, u64::max_value() / 2u64);
+        let a: u64 = rng.gen_range(u64::max_value() / 2u64..u64::max_value());
+        let b: u64 = rng.gen_range(0u64..u64::max_value() / 2u64);
 
         let expected = a.wrapping_sub(b);
 
@@ -425,8 +425,8 @@ fn test_uint64_pow_constants() {
     for _ in 0..100 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u64 = rng.gen_range(0, u64::from(u16::max_value()));
-        let b: u64 = rng.gen_range(0, 4);
+        let a: u64 = rng.gen_range(0..u64::from(u16::max_value()));
+        let b: u64 = rng.gen_range(0..4);
 
         let a_bit = UInt64::constant(a);
         let b_bit = UInt64::constant(b);
@@ -448,8 +448,8 @@ fn test_uint64_pow() {
     for _ in 0..4 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u64 = rng.gen_range(0, u64::from(u16::max_value()));
-        let b: u64 = rng.gen_range(0, 4);
+        let a: u64 = rng.gen_range(0..u64::from(u16::max_value()));
+        let b: u64 = rng.gen_range(0..4);
 
         let expected = a.wrapping_pow(b.try_into().unwrap());
 
