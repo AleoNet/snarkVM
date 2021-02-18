@@ -44,6 +44,11 @@ optional = true
 [dependencies.hex]
 version = "0.4.2"
 
+[dev-dependencies.snarkvm-dpc]
+path = "../dpc"
+version = "0.0.4"
+default-features = false
+
 [dev-dependencies.curl]
 version = "0.4.34"
 
