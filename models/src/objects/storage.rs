@@ -43,6 +43,9 @@ where
     /// Returns `true` if the given key exists in the speficied column.
     fn exists(&self, col: u32, key: &[u8]) -> bool;
 
+    // Attempts to catch up the read-only secondary instance with the primary one.
+    fn try_catch_up_with_primary(&self) -> Result<(), StorageError>;
+
     /// Used to remove any persistent objects associated with the storage.
     fn destroy(&self) -> Result<(), StorageError>;
 }

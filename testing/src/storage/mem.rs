@@ -79,6 +79,10 @@ impl Storage for MemDb {
         self.cols.read()[col as usize].contains_key(key)
     }
 
+    fn try_catch_up_with_primary(&self) -> Result<(), StorageError> {
+        Ok(()) // there's no secondary instance
+    }
+
     fn destroy(&self) -> Result<(), StorageError> {
         Ok(()) // nothing to do here: the Drop impl takes care of the associated in-memory objects
     }
