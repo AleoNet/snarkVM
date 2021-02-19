@@ -65,7 +65,7 @@ version = "0.8"
 version = "1.0.22"
 
 [dev-dependencies.rand_xorshift]
-version = "0.2"
+version = "0.3.0"
 
 [features]
 print-trace = [ "snarkvm-profiler/print-trace" ]

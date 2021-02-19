@@ -1372,7 +1372,7 @@ checksum = "0ef9e7e66b4468674bfcb0c81af8b7fa0bb154fa9f28eb840da5c447baeb8d7e"
 dependencies = [
  "libc",
  "rand_chacha",
- "rand_core 0.6.1",
+ "rand_core",
  "rand_hc",
 ]
 
@@ -1383,14 +1383,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e12735cf05c9e10bf21534da50a147b924d555dc7a547c42e6bb2d5b6017ae0d"
 dependencies = [
  "ppv-lite86",
- "rand_core 0.6.1",
+ "rand_core",
 ]
-
-[[package]]
-name = "rand_core"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90bde5296fc891b0cef12a6d03ddccc162ce7b2aff54160af9338f8d40df6d19"
 
 [[package]]
 name = "rand_core"
@@ -1407,16 +1401,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3190ef7066a446f2e7f42e239d161e905420ccab01eb967c9eb27d21b2322a73"
 dependencies = [
- "rand_core 0.6.1",
-]
-
-[[package]]
-name = "rand_xorshift"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77d416b86801d23dde1aa643023b775c3a462efc0ed96443add11546cdf1dca8"
-dependencies = [
- "rand_core 0.5.1",
+ "rand_core",
 ]
 
 [[package]]
@@ -1425,7 +1410,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d25bf25ec5ae4a3f1b92f929810509a2f53d7dca2f50b794ff57e3face536c8f"
 dependencies = [
- "rand_core 0.6.1",
+ "rand_core",
 ]
 
 [[package]]
@@ -1797,7 +1782,7 @@ dependencies = [
  "itertools 0.10.0",
  "rand",
  "rand_chacha",
- "rand_xorshift 0.3.0",
+ "rand_xorshift",
  "rayon",
  "sha2",
  "smallvec",
@@ -1815,7 +1800,7 @@ dependencies = [
  "criterion",
  "derivative",
  "rand",
- "rand_xorshift 0.3.0",
+ "rand_xorshift",
  "rustc_version 0.3.3",
  "serde",
  "snarkvm-errors",
@@ -1844,7 +1829,7 @@ dependencies = [
  "hex",
  "itertools 0.10.0",
  "rand",
- "rand_xorshift 0.3.0",
+ "rand_xorshift",
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-errors",
@@ -1878,7 +1863,7 @@ dependencies = [
  "digest 0.9.0",
  "itertools 0.10.0",
  "rand",
- "rand_xorshift 0.3.0",
+ "rand_xorshift",
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-errors",
@@ -1894,7 +1879,7 @@ dependencies = [
  "derivative",
  "digest 0.9.0",
  "rand_chacha",
- "rand_core 0.6.1",
+ "rand_core",
  "rayon",
  "snarkvm-algorithms",
  "snarkvm-curves",
@@ -1918,7 +1903,7 @@ dependencies = [
  "indexmap",
  "itertools 0.10.0",
  "rand",
- "rand_xorshift 0.3.0",
+ "rand_xorshift",
  "serde",
  "snarkvm-errors",
  "snarkvm-utilities",
@@ -1968,7 +1953,7 @@ dependencies = [
  "derivative",
  "digest 0.9.0",
  "rand",
- "rand_core 0.6.1",
+ "rand_core",
  "rayon",
  "snarkvm-algorithms",
  "snarkvm-curves",
@@ -1984,7 +1969,7 @@ version = "0.0.4"
 dependencies = [
  "blake2 0.8.1",
  "rand",
- "rand_xorshift 0.2.0",
+ "rand_xorshift",
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-errors",
@@ -2034,7 +2019,7 @@ version = "0.0.4"
 dependencies = [
  "once_cell",
  "rand",
- "rand_xorshift 0.3.0",
+ "rand_xorshift",
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-dpc",
@@ -2052,7 +2037,7 @@ version = "0.0.4"
 dependencies = [
  "bincode",
  "rand",
- "rand_xorshift 0.3.0",
+ "rand_xorshift",
  "snarkvm-derives",
  "snarkvm-errors",
 ]
