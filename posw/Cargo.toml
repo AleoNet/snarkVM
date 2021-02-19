@@ -11,26 +11,61 @@ include = ["Cargo.toml", "src", "README.md", "LICENSE.md"]
 license = "GPL-3.0"
 edition = "2018"
 
-[dependencies]
-snarkvm-algorithms = { version = "0.0.3" }
-snarkvm-curves = { version = "0.0.3" } # needed to instantiate with BLS12-377
-snarkvm-errors = { version = "0.0.3" }
-snarkvm-gadgets = { version = "0.0.3" }
-snarkvm-marlin = { version = "0.0.3" }
-snarkvm-models = { version = "0.0.3" }
-snarkvm-polycommit = { version = "0.0.3" }
-snarkvm-objects = { version = "0.0.3" } # needed to instantiate with BLS12-377
-snarkvm-parameters = { version = "0.0.3" }
-snarkvm-utilities = { version = "0.0.3" }
+[dependencies.snarkvm-algorithms]
+path = "../algorithms"
+version = "0.0.4"
 
-snarkvm-profiler = { path = "../profiler", version = "0.0.4"}
+[dependencies.snarkvm-curves]
+path = "../curves"
+version = "0.0.4"
 
-blake2 = { version = "0.8.1" }
-rand = { version = "0.7" }
-thiserror = "1.0.22"
+[dependencies.snarkvm-errors]
+path = "../errors"
+version = "0.0.4"
 
-[dev-dependencies]
-rand_xorshift = { version = "0.2" }
+[dependencies.snarkvm-gadgets]
+path = "../gadgets"
+version = "0.0.4"
+
+[dependencies.snarkvm-marlin]
+path = "../marlin"
+version = "0.0.4"
+
+[dependencies.snarkvm-models]
+path = "../models"
+version = "0.0.4"
+
+[dependencies.snarkvm-polycommit]
+path = "../polycommit"
+version = "0.0.4"
+
+[dependencies.snarkvm-objects]
+path = "../objects"
+version = "0.0.4"
+
+[dependencies.snarkvm-parameters]
+path = "../parameters"
+version = "0.0.4"
+
+[dependencies.snarkvm-profiler]
+path = "../profiler"
+version = "0.0.4"
+
+[dependencies.snarkvm-utilities]
+path = "../utilities"
+version = "0.0.4"
+
+[dependencies.blake2]
+version = "0.8.1"
+
+[dependencies.rand]
+version = "0.8"
+
+[dependencies.thiserror]
+version = "1.0.22"
+
+[dev-dependencies.rand_xorshift]
+version = "0.2"
 
 [features]
 print-trace = [ "snarkvm-profiler/print-trace" ]
