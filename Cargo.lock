@@ -1941,7 +1941,9 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-dpc",
  "snarkvm-errors",
+ "snarkvm-marlin",
  "snarkvm-models",
+ "snarkvm-posw",
  "snarkvm-utilities",
 ]
 
