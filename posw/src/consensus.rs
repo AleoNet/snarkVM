@@ -20,7 +20,6 @@ use crate::{
     circuit::{POSWCircuit, POSWCircuitParameters},
     error::PoswError,
 };
-use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_algorithms::crh::sha256d_to_u64;
 use snarkvm_curves::{
     bls12_377::Fr,
@@ -40,6 +39,7 @@ use snarkvm_objects::{
 };
 use snarkvm_parameters::{PoswSNARKPKParameters, PoswSNARKVKParameters};
 use snarkvm_polycommit::optional_rng::OptionalRng;
+use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     to_bytes,
@@ -210,7 +210,7 @@ where
         let mut proof;
         let mut serialized_proof;
         loop {
-            nonce = rng.gen_range(0, max_nonce);
+            nonce = rng.gen_range(0..max_nonce);
             proof = Self::prove(&pk, nonce, subroots, rng)?;
 
             serialized_proof = to_bytes!(proof)?;
