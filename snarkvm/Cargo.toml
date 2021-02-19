@@ -28,7 +28,7 @@ version = "1.0.38"
 version = "2"
 
 [dependencies.self_update]
-version = "0.23"
+version = "0.24"
 
 [dependencies.structopt]
 version = "0.3"
