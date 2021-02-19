@@ -1939,6 +1939,7 @@ dependencies = [
  "hex",
  "rand",
  "snarkvm-algorithms",
+ "snarkvm-curves",
  "snarkvm-dpc",
  "snarkvm-errors",
  "snarkvm-marlin",
