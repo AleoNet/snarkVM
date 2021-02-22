@@ -72,9 +72,6 @@ pub use transaction::*;
 
 pub mod instantiated;
 
-#[cfg(test)]
-mod test;
-
 ///////////////////////////////////////////////////////////////////////////////
 
 /// Trait that stores all information about the components of a Plain DPC
