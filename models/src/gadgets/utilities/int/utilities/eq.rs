@@ -57,4 +57,4 @@ macro_rules! cond_eq_int_impl {
     )*)
 }
 
-cond_eq_int_impl!(Int64);
+cond_eq_int_impl!(Int8, Int16, Int32, Int64, Int128);

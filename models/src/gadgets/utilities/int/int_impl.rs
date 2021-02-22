@@ -82,21 +82,15 @@ macro_rules! int_impl {
             }
 
             fn is_constant(&self) -> bool {
-                let mut constant = true;
-
                 // If any bits of self are allocated bits, return false
-                for bit in &self.bits {
-                    match *bit {
-                        Boolean::Is(ref _bit) => constant = false,
-                        Boolean::Not(ref _bit) => constant = false,
-                        Boolean::Constant(_bit) => {}
-                    }
-                }
-
-                constant
+                self.bits.iter().all(|bit| matches!(bit, Boolean::Constant(_)))
             }
         }
     };
 }
 
+int_impl!(Int8, i8, 8);
+int_impl!(Int16, i16, 16);
+int_impl!(Int32, i32, 32);
 int_impl!(Int64, i64, 64);
+int_impl!(Int128, i128, 128);
