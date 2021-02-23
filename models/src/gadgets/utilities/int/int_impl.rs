@@ -33,11 +33,15 @@ pub trait Int: Debug + Clone {
     fn result_is_constant(first: &Self, second: &Self) -> bool {
         first.is_constant() && second.is_constant()
     }
+
+    fn to_bits_le(&self) -> Vec<Boolean>;
+
+    fn from_bits_le(bits: &[Boolean]) -> Self;
 }
 
 /// Implements the base struct for a signed integer gadget
 macro_rules! int_impl {
-    ($name: ident, $type_: ty, $size: expr) => {
+    ($name: ident, $type_: ty, $utype_: ty, $size: expr) => {
         #[derive(Clone, Debug)]
         pub struct $name {
             pub bits: Vec<Boolean>,
@@ -85,12 +89,54 @@ macro_rules! int_impl {
                 // If any bits of self are allocated bits, return false
                 self.bits.iter().all(|bit| matches!(bit, Boolean::Constant(_)))
             }
+
+            fn to_bits_le(&self) -> Vec<Boolean> {
+                self.bits.clone()
+            }
+
+            fn from_bits_le(bits: &[Boolean]) -> Self {
+                assert_eq!(bits.len(), $size);
+
+                let bits = bits.to_vec();
+
+                let mut value = Some(0 as $utype_);
+                for b in bits.iter().rev() {
+                    value.as_mut().map(|v| *v <<= 1);
+
+                    match *b {
+                        Boolean::Constant(b) => {
+                            if b {
+                                value.as_mut().map(|v| *v |= 1);
+                            }
+                        }
+                        Boolean::Is(ref b) => match b.get_value() {
+                            Some(true) => {
+                                value.as_mut().map(|v| *v |= 1);
+                            }
+                            Some(false) => {}
+                            None => value = None,
+                        },
+                        Boolean::Not(ref b) => match b.get_value() {
+                            Some(false) => {
+                                value.as_mut().map(|v| *v |= 1);
+                            }
+                            Some(true) => {}
+                            None => value = None,
+                        },
+                    }
+                }
+
+                Self {
+                    value: value.map(|x| x as $type_),
+                    bits,
+                }
+            }
         }
     };
 }
 
-int_impl!(Int8, i8, 8);
-int_impl!(Int16, i16, 16);
-int_impl!(Int32, i32, 32);
-int_impl!(Int64, i64, 64);
-int_impl!(Int128, i128, 128);
+int_impl!(Int8, i8, u8, 8);
+int_impl!(Int16, i16, u16, 16);
+int_impl!(Int32, i32, u32, 32);
+int_impl!(Int64, i64, u64, 64);
+int_impl!(Int128, i128, u128, 128);
