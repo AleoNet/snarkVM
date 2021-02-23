@@ -32,8 +32,11 @@ pub mod bits;
 pub mod boolean;
 pub mod eq;
 pub mod int;
+pub mod optional_vec;
 pub mod select;
 pub mod uint;
+
+pub use optional_vec::OptionalVec;
 
 pub trait ToBitsGadget<F: Field> {
     fn to_bits<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError>;
