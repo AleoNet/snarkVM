@@ -46,10 +46,10 @@ use std::fmt::Debug;
 /// - `num_limbs`:              how many limbs are used
 /// - `bits_per_limb`:          the size of the limbs
 ///
-// pub mod params;
+pub mod params;
 /// a submodule for reducing the representations
-// #[doc(hidden)]
-// pub mod reduce;
+#[doc(hidden)]
+pub mod reduce;
 
 /// a macro for computing ceil(log2(x)) for a field element x
 #[doc(hidden)]
