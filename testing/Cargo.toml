@@ -54,7 +54,7 @@ path = "../storage"
 version = "0.0.4"
 
 [dependencies.once_cell]
-version = "1.5.2"
+version = "1.6.0"
 
 [dependencies.rand]
 version = "0.8"
