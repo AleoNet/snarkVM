@@ -59,7 +59,7 @@ version = "2"
 version = "0.4.2"
 
 [dependencies.once_cell]
-version = "1.6.0"
+version = "1.7.0"
 
 [dependencies.rand]
 version = "0.8"
