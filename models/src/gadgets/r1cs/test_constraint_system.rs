@@ -16,7 +16,10 @@
 
 use crate::{
     curves::Field,
-    gadgets::r1cs::{ConstraintSystem, Index, LinearCombination, Variable},
+    gadgets::{
+        r1cs::{ConstraintSystem, Index, LinearCombination, Variable},
+        utilities::OptionalVec,
+    },
 };
 use snarkvm_errors::gadgets::SynthesisError;
 
@@ -48,73 +51,6 @@ impl Namespace {
 type InternedField = usize;
 type InternedPathSegment = usize;
 type NamespaceIndex = usize;
-
-// a helper object containing a list of values that, when removed, leave a "hole" in their
-// place; this allows all the following indices to remain unperturbed; the holes take priority
-// when inserting new objects
-#[derive(Default)]
-pub struct OptionalVec<T> {
-    // a list of optional values
-    values: Vec<Option<T>>,
-    // a list of indices of the Nones in the values vector
-    holes: Vec<usize>,
-}
-
-impl<T> OptionalVec<T> {
-    // inserts a new value either into the first existing hole or extending the vector
-    // of values, i.e. pushing it to its end
-    #[inline]
-    pub fn insert(&mut self, elem: T) -> usize {
-        let idx = self.holes.pop().unwrap_or_else(|| self.values.len());
-        if idx < self.values.len() {
-            self.values[idx] = Some(elem);
-        } else {
-            self.values.push(Some(elem));
-        }
-        idx
-    }
-
-    // returns the index of the next value inserted into the OptionalVec
-    #[inline]
-    pub fn next_idx(&self) -> usize {
-        self.holes.last().copied().unwrap_or_else(|| self.values.len())
-    }
-
-    // removes a value at the specified index; assumes that the index points to
-    // an existing value that is a Some (i.e. not a hole)
-    #[allow(dead_code)]
-    pub fn remove(&mut self, idx: usize) -> T {
-        let val = self.values[idx].take();
-        self.holes.push(idx);
-        val.unwrap()
-    }
-
-    // iterates over all the Some values in the list
-    #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = &T> {
-        self.values.iter().filter(|v| v.is_some()).map(|v| v.as_ref().unwrap())
-    }
-
-    // returns the number of the Some values
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.values.len() - self.holes.len()
-    }
-}
-
-impl<T> std::ops::Index<usize> for OptionalVec<T> {
-    type Output = T;
-
-    fn index(&self, idx: usize) -> &Self::Output {
-        self.values[idx].as_ref().unwrap()
-    }
-}
-
-impl<T> std::ops::IndexMut<usize> for OptionalVec<T> {
-    fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
-        self.values[idx].as_mut().unwrap()
-    }
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct InternedPath {
@@ -199,10 +135,7 @@ impl<F: Field> Default for TestConstraintSystem<F> {
         let mut inputs: OptionalVec<InternedField> = Default::default();
         inputs.insert(interned_field);
 
-        let constraints = OptionalVec {
-            values: Default::default(),
-            holes: Default::default(),
-        };
+        let constraints = OptionalVec::default();
 
         TestConstraintSystem {
             interned_full_paths,
