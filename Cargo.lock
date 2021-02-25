@@ -1872,20 +1872,13 @@ dependencies = [
 name = "snarkvm-nonnative"
 version = "0.0.4"
 dependencies = [
- "blake2",
- "derivative",
- "digest",
  "num-bigint",
  "num-integer",
  "num-traits",
- "rand",
- "rand_core",
- "rayon",
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-errors",
  "snarkvm-models",
- "snarkvm-profiler",
  "snarkvm-utilities",
 ]
 
