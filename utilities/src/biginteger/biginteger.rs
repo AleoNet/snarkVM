@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    bititerator::BitIterator,
+    bititerator::{BitIterator, BitIteratorLE},
     bytes::{FromBytes, ToBytes},
     io::{Read, Result as IoResult, Write},
     rand::UniformRand,
@@ -99,6 +99,12 @@ pub trait BigInteger:
     /// Returns the bit representation in a big endian boolean array, without
     /// leading zeros.
     fn to_bits(&self) -> Vec<bool>;
+
+    /// Returns the bit representation in a little endian boolean array,
+    /// with trailing zeroes.
+    fn to_bits_le(&self) -> Vec<bool> {
+        BitIteratorLE::new(self).collect::<Vec<_>>()
+    }
 
     /// Returns a vector for wnaf.
     fn find_wnaf(&self) -> Vec<i64>;
