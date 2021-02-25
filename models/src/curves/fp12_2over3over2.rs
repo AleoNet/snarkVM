@@ -17,7 +17,7 @@
 use crate::curves::{fp6_3over2::*, Field, Fp2, Fp2Parameters, One, PrimeField, Zero};
 use snarkvm_errors::serialization::SerializationError;
 use snarkvm_utilities::{
-    bititerator::BitIterator,
+    bititerator::BitIteratorBE,
     bytes::{FromBytes, ToBytes},
     div_ceil,
     rand::UniformRand,
@@ -194,7 +194,7 @@ impl<P: Fp12Parameters> Fp12<P> {
 
         let mut found_one = false;
 
-        for i in BitIterator::new(exp) {
+        for i in BitIteratorBE::new(exp) {
             if !found_one {
                 if i {
                     found_one = true;

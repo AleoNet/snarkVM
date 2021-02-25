@@ -35,7 +35,7 @@ use snarkvm_models::{
         },
     },
 };
-use snarkvm_utilities::bititerator::BitIterator;
+use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::{borrow::Borrow, marker::PhantomData, ops::Neg};
 
@@ -462,10 +462,10 @@ impl<P: SWModelParameters, F: PrimeField, FG: FieldGadget<P::BaseField, F>> Allo
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<SWProjective<P>>,
     {
-        let cofactor_weight = BitIterator::new(P::COFACTOR).filter(|b| *b).count();
+        let cofactor_weight = BitIteratorBE::new(P::COFACTOR).filter(|b| *b).count();
         // If we multiply by r, we actually multiply by r - 2.
         let r_minus_1 = (-P::ScalarField::one()).into_repr();
-        let r_weight = BitIterator::new(&r_minus_1).filter(|b| *b).count();
+        let r_weight = BitIteratorBE::new(&r_minus_1).filter(|b| *b).count();
 
         // We pick the most efficient method of performing the prime order check:
         // If the cofactor has lower hamming weight than the scalar field's modulus,
@@ -480,7 +480,7 @@ impl<P: SWModelParameters, F: PrimeField, FG: FieldGadget<P::BaseField, F>> Allo
             })?;
             let mut seen_one = false;
             let mut result = Self::zero(cs.ns(|| "result"))?;
-            for (i, b) in BitIterator::new(P::COFACTOR).enumerate() {
+            for (i, b) in BitIteratorBE::new(P::COFACTOR).enumerate() {
                 let mut cs = cs.ns(|| format!("Iteration {}", i));
 
                 let old_seen_one = seen_one;
@@ -504,7 +504,7 @@ impl<P: SWModelParameters, F: PrimeField, FG: FieldGadget<P::BaseField, F>> Allo
             let mut seen_one = false;
             let mut result = Self::zero(cs.ns(|| "result"))?;
             // Returns bits in big-endian order
-            for (i, b) in BitIterator::new(r_minus_1).enumerate() {
+            for (i, b) in BitIteratorBE::new(r_minus_1).enumerate() {
                 let mut cs = cs.ns(|| format!("Iteration {}", i));
 
                 let old_seen_one = seen_one;

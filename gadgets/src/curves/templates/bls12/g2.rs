@@ -25,7 +25,7 @@ use snarkvm_models::{
         utilities::{eq::NEqGadget, uint::UInt8, ToBytesGadget},
     },
 };
-use snarkvm_utilities::bititerator::BitIterator;
+use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::fmt::Debug;
 
@@ -64,7 +64,7 @@ impl<P: Bls12Parameters> G2PreparedGadget<P> {
         let two_inv = P::Fp::one().double().inverse().unwrap();
         let zero = G2Gadget::<P>::zero(cs.ns(|| "zero"))?;
         q.enforce_not_equal(cs.ns(|| "enforce not zero"), &zero)?;
-        let bit_iterator = BitIterator::new(P::X);
+        let bit_iterator = BitIteratorBE::new(P::X);
         let mut ell_coeffs = Vec::with_capacity(bit_iterator.len());
         let mut r = q.clone();
 

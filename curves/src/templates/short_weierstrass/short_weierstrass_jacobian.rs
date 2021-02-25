@@ -26,7 +26,7 @@ use snarkvm_models::curves::{
     Zero,
 };
 use snarkvm_utilities::{
-    bititerator::BitIterator,
+    bititerator::BitIteratorBE,
     bytes::{FromBytes, ToBytes},
     rand::UniformRand,
     serialize::*,
@@ -82,10 +82,10 @@ impl<P: Parameters> GroupAffine<P> {
     }
 
     pub fn scale_by_cofactor(&self) -> GroupProjective<P> {
-        self.mul_bits(BitIterator::new(P::COFACTOR))
+        self.mul_bits(BitIteratorBE::new(P::COFACTOR))
     }
 
-    pub(crate) fn mul_bits<S: AsRef<[u64]>>(&self, bits: BitIterator<S>) -> GroupProjective<P> {
+    pub(crate) fn mul_bits<S: AsRef<[u64]>>(&self, bits: BitIteratorBE<S>) -> GroupProjective<P> {
         let mut res = GroupProjective::zero();
         for i in bits {
             res.double_in_place();
@@ -164,7 +164,7 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
 
     #[inline]
     fn mul<S: Into<<Self::ScalarField as PrimeField>::BigInteger>>(&self, by: S) -> GroupProjective<P> {
-        let bits = BitIterator::new(by.into());
+        let bits = BitIteratorBE::new(by.into());
         self.mul_bits(bits)
     }
 
@@ -182,7 +182,7 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
     }
 
     fn is_in_correct_subgroup_assuming_on_curve(&self) -> bool {
-        self.mul_bits(BitIterator::new(P::ScalarField::characteristic()))
+        self.mul_bits(BitIteratorBE::new(P::ScalarField::characteristic()))
             .is_zero()
     }
 
@@ -578,7 +578,7 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
 
         let mut found_one = false;
 
-        for i in BitIterator::new(other.into()) {
+        for i in BitIteratorBE::new(other.into()) {
             if found_one {
                 res.double_in_place();
             } else {

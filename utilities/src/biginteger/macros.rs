@@ -184,7 +184,7 @@ macro_rules! bigint_impl {
             #[inline]
             fn to_bits(&self) -> Vec<bool> {
                 let mut res = Vec::with_capacity(256);
-                for b in BitIterator::new(self.0) {
+                for b in BitIteratorBE::new(self.0) {
                     res.push(b);
                 }
                 res
