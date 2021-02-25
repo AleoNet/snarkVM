@@ -16,11 +16,12 @@
 
 /// Iterates over a slice of `u64` in *big-endian* order.
 #[derive(Debug)]
-pub struct BitIteratorBE<Slice: AsRef<[u64]>> {
+pub struct BitIteratorBE<Slice> {
     s: Slice,
     n: usize,
 }
 
+#[allow(clippy::len_without_is_empty)]
 impl<Slice: AsRef<[u64]>> BitIteratorBE<Slice> {
     pub fn new(s: Slice) -> Self {
         let n = s.as_ref().len() * 64;
@@ -29,8 +30,12 @@ impl<Slice: AsRef<[u64]>> BitIteratorBE<Slice> {
 
     /// Construct an iterator that automatically skips any leading zeros.
     /// That is, it skips all zeros before the most-significant one.
-    pub fn without_leading_zeros(s: Slice) -> impl Iterator<Item = bool> {
+    pub fn new_without_leading_zeros(s: Slice) -> impl Iterator<Item = bool> {
         Self::new(s).skip_while(|b| !b)
+    }
+
+    pub fn len(&self) -> usize {
+        self.n
     }
 }
 
@@ -67,7 +72,7 @@ impl<Slice: AsRef<[u64]>> BitIteratorLE<Slice> {
 
     /// Construct an iterator that automatically skips any trailing zeros.
     /// That is, it skips all zeros after the most-significant one.
-    pub fn without_trailing_zeros(s: Slice) -> impl Iterator<Item = bool> {
+    pub fn new_without_trailing_zeros(s: Slice) -> impl Iterator<Item = bool> {
         let mut first_trailing_zero = 0;
         for (i, limb) in s.as_ref().iter().enumerate().rev() {
             first_trailing_zero = i * 64 + (64 - limb.leading_zeros()) as usize;
@@ -115,6 +120,16 @@ mod tests {
     }
 
     #[test]
+    fn test_bititerator_be_without_leading_zeros() {
+        let mut five = BitIteratorBE::new_without_leading_zeros(&[5]);
+
+        assert_eq!(Some(true), five.next());
+        assert_eq!(Some(false), five.next());
+        assert_eq!(Some(true), five.next());
+        assert_eq!(None, five.next());
+    }
+
+    #[test]
     fn test_bititerator_le() {
         let mut five = BitIteratorLE::new(&[5]);
 
@@ -124,6 +139,16 @@ mod tests {
         for _ in 0..61 {
             assert_eq!(Some(false), five.next());
         }
+        assert_eq!(None, five.next());
+    }
+
+    #[test]
+    fn test_bititerator_le_without_trailing_zeros() {
+        let mut five = BitIteratorLE::new_without_trailing_zeros(&[5]);
+
+        assert_eq!(Some(true), five.next());
+        assert_eq!(Some(false), five.next());
+        assert_eq!(Some(true), five.next());
         assert_eq!(None, five.next());
     }
 }
