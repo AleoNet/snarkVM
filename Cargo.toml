@@ -11,6 +11,7 @@ members = [
   "objects",
   "parameters",
   "polycommit",
+  "posw",
   "profiler",
   "snarkvm",
   "storage",
