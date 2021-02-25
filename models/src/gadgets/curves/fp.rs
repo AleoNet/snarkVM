@@ -36,7 +36,7 @@ use crate::{
     },
 };
 use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_utilities::{bititerator::BitIterator, bytes::ToBytes, to_bytes};
+use snarkvm_utilities::{bititerator::BitIteratorBE, bytes::ToBytes, to_bytes};
 
 use std::borrow::Borrow;
 
@@ -329,10 +329,10 @@ impl<F: PrimeField> ToBitsGadget<F> for FpGadget<F> {
         let num_bits = F::Parameters::MODULUS_BITS;
         let bit_values = match self.value {
             Some(value) => {
-                let mut field_char = BitIterator::new(F::characteristic());
+                let mut field_char = BitIteratorBE::new(F::characteristic());
                 let mut tmp = Vec::with_capacity(num_bits as usize);
                 let mut found_one = false;
-                for b in BitIterator::new(value.into_repr()) {
+                for b in BitIteratorBE::new(value.into_repr()) {
                     // Skip leading bits
                     found_one |= field_char.next().unwrap();
                     if !found_one {

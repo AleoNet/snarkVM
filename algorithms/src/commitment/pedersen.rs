@@ -20,7 +20,7 @@ use snarkvm_models::{
     algorithms::{CommitmentScheme, CRH},
     curves::{Group, PrimeField},
 };
-use snarkvm_utilities::bititerator::BitIterator;
+use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use rand::Rng;
 
@@ -53,7 +53,7 @@ impl<G: Group, S: PedersenSize> CommitmentScheme for PedersenCommitment<G, S> {
         let mut output = self.parameters.crh.hash(&input)?;
 
         // Compute h^r.
-        let mut scalar_bits = BitIterator::new(randomness.into_repr()).collect::<Vec<_>>();
+        let mut scalar_bits = BitIteratorBE::new(randomness.into_repr()).collect::<Vec<_>>();
         scalar_bits.reverse();
         for (bit, power) in scalar_bits.into_iter().zip(&self.parameters.random_base) {
             if bit {

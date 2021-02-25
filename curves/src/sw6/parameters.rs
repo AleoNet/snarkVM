@@ -26,7 +26,7 @@ use snarkvm_models::{
     curves::{Field, FpParameters, One, PairingCurve, PairingEngine, SWModelParameters},
     field,
 };
-use snarkvm_utilities::{biginteger::BigInteger832, bititerator::BitIterator};
+use snarkvm_utilities::{biginteger::BigInteger832, bititerator::BitIteratorBE};
 
 pub type GT = Fq6;
 
@@ -86,7 +86,7 @@ impl SW6 {
         // The for loop is executed for all bits (EXCEPT the MSB itself) of
         // sw6_param_p (skipping leading zeros) in MSB to LSB order
         let mut found_one = false;
-        for bit in BitIterator::new(ATE_LOOP_COUNT) {
+        for bit in BitIteratorBE::new(ATE_LOOP_COUNT) {
             if !found_one && bit {
                 found_one = true;
                 continue;

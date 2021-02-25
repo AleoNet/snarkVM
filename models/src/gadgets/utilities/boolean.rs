@@ -28,7 +28,7 @@ use crate::{
     },
 };
 use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_utilities::bititerator::BitIterator;
+use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::borrow::Borrow;
 
@@ -576,7 +576,7 @@ impl Boolean {
             )?;
         }
 
-        for b in BitIterator::new(b) {
+        for b in BitIteratorBE::new(b) {
             // Skip over unset bits at the beginning
             found_one |= b;
             if !found_one {
@@ -776,7 +776,7 @@ mod test {
         curves::{Field, One, PrimeField, Zero},
         gadgets::r1cs::{Fr, TestConstraintSystem},
     };
-    use snarkvm_utilities::{bititerator::BitIterator, rand::UniformRand};
+    use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
 
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
@@ -1474,7 +1474,7 @@ mod test {
             let mut cs = TestConstraintSystem::<Fr>::new();
 
             let mut bits = vec![];
-            for (i, b) in BitIterator::new(Fr::characteristic()).skip(1).enumerate() {
+            for (i, b) in BitIteratorBE::new(Fr::characteristic()).skip(1).enumerate() {
                 bits.push(Boolean::from(
                     AllocatedBit::alloc(cs.ns(|| format!("bit_gadget {}", i)), || Ok(b)).unwrap(),
                 ));
@@ -1492,7 +1492,7 @@ mod test {
             let mut cs = TestConstraintSystem::<Fr>::new();
 
             let mut bits = vec![];
-            for (i, b) in BitIterator::new(r.into_repr()).skip(1).enumerate() {
+            for (i, b) in BitIteratorBE::new(r.into_repr()).skip(1).enumerate() {
                 bits.push(Boolean::from(
                     AllocatedBit::alloc(cs.ns(|| format!("bit_gadget {}", i)), || Ok(b)).unwrap(),
                 ));
@@ -1520,7 +1520,7 @@ mod test {
         //     let mut cs = TestConstraintSystem::<Fr>::new();
 
         //     let mut bits = vec![];
-        //     for (i, b) in BitIterator::new(r).skip(1).enumerate() {
+        //     for (i, b) in BitIteratorBE::new(r).skip(1).enumerate() {
         //         bits.push(Boolean::from(
         //             AllocatedBit::alloc(cs.ns(|| format!("bit_gadget {}",
         // i)), Some(b))                 .unwrap(),

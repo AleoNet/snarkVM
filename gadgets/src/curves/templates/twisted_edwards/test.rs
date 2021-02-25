@@ -28,7 +28,7 @@ use snarkvm_models::{
         },
     },
 };
-use snarkvm_utilities::{bititerator::BitIterator, rand::UniformRand};
+use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
 
 use rand::thread_rng;
 
@@ -51,7 +51,7 @@ where
     let scalar: <TEAffine<P> as Group>::ScalarField = UniformRand::rand(&mut thread_rng());
     let native_result = a.mul(&scalar);
 
-    let mut scalar: Vec<bool> = BitIterator::new(scalar.into_repr()).collect();
+    let mut scalar: Vec<bool> = BitIteratorBE::new(scalar.into_repr()).collect();
     // Get the scalar bits into little-endian form.
     scalar.reverse();
     let input = Vec::<Boolean>::alloc(cs.ns(|| "Input"), || Ok(scalar)).unwrap();

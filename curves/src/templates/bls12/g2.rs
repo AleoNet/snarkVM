@@ -20,7 +20,7 @@ use crate::templates::{
 };
 use snarkvm_errors::serialization::SerializationError;
 use snarkvm_models::curves::{AffineCurve, Field, Fp2, One, SWModelParameters, Zero};
-use snarkvm_utilities::{bititerator::BitIterator, bytes::ToBytes, serialize::*};
+use snarkvm_utilities::{bititerator::BitIteratorBE, bytes::ToBytes, serialize::*};
 
 use std::io::{Result as IoResult, Write};
 
@@ -91,7 +91,7 @@ impl<P: Bls12Parameters> G2Prepared<P> {
             z: Fp2::one(),
         };
 
-        let bit_iterator = BitIterator::new(P::X);
+        let bit_iterator = BitIteratorBE::new(P::X);
         let mut ell_coeffs = Vec::with_capacity(bit_iterator.len());
 
         for i in bit_iterator.skip(1) {

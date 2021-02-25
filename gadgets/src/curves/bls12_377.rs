@@ -51,7 +51,7 @@ mod test {
             },
         },
     };
-    use snarkvm_utilities::{bititerator::BitIterator, rand::UniformRand};
+    use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
 
     use rand::{self, SeedableRng};
     use rand_xorshift::XorShiftRng;
@@ -147,7 +147,7 @@ mod test {
         let native_result = aa.into_affine().mul(scalar) + &b;
         let native_result = native_result.into_affine();
 
-        let mut scalar: Vec<bool> = BitIterator::new(scalar.into_repr()).collect();
+        let mut scalar: Vec<bool> = BitIteratorBE::new(scalar.into_repr()).collect();
         // Get the scalar bits into little-endian form.
         scalar.reverse();
         let input = Vec::<Boolean>::alloc(cs.ns(|| "Input"), || Ok(scalar)).unwrap();

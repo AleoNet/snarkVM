@@ -31,7 +31,7 @@ use snarkvm_models::curves::{
     SWModelParameters,
     SquareRootField,
 };
-use snarkvm_utilities::bititerator::BitIterator;
+use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::marker::PhantomData;
 
@@ -268,7 +268,7 @@ where
         // f_{u+1,Q}(P)
         let mut f_1 = Self::Fqk::one();
 
-        for i in BitIterator::new(P::ATE_LOOP_COUNT_1).skip(1) {
+        for i in BitIteratorBE::new(P::ATE_LOOP_COUNT_1).skip(1) {
             f_1.square_in_place();
 
             for (p, ref mut coeffs) in &mut pairs_1 {

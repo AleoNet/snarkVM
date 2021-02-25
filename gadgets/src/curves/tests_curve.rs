@@ -27,7 +27,7 @@ use snarkvm_models::{
         utilities::{alloc::AllocGadget, boolean::Boolean, eq::EqGadget},
     },
 };
-use snarkvm_utilities::bititerator::BitIterator;
+use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::ops::Mul;
 
@@ -70,7 +70,7 @@ fn bls12_377_gadget_bilinearity_test() {
     };
 
     let (ans3_g, ans3_n) = {
-        let s_iter = BitIterator::new(s.into_repr())
+        let s_iter = BitIteratorBE::new(s.into_repr())
             .map(Boolean::constant)
             .collect::<Vec<_>>();
 
