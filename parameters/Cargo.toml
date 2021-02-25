@@ -46,22 +46,18 @@ version = "0.4.2"
 
 [dev-dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.0.4"
 default-features = false
 
 [dev-dependencies.snarkvm-dpc]
 path = "../dpc"
-version = "0.0.4"
 default-features = false
 
 [dev-dependencies.snarkvm-marlin]
 path = "../marlin"
-version = "0.0.4"
 default-features = false
 
 [dev-dependencies.snarkvm-posw]
 path = "../posw"
-version = "0.0.4"
 default-features = false
 
 [dev-dependencies.curl]
