@@ -18,11 +18,7 @@ use crate::{
     curves::PrimeField,
     gadgets::{
         r1cs::ConstraintSystem,
-        utilities::{
-            boolean::Boolean,
-            eq::EvaluateEqGadget,
-            int::{Int, Int64},
-        },
+        utilities::{boolean::Boolean, eq::EvaluateEqGadget, int::*},
     },
 };
 use snarkvm_errors::gadgets::SynthesisError;
@@ -63,4 +59,4 @@ macro_rules! eq_gadget_impl {
     )*)
 }
 
-eq_gadget_impl!(Int64);
+eq_gadget_impl!(Int8 Int16 Int32 Int64 Int128);

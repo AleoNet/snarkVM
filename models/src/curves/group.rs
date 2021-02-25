@@ -60,13 +60,13 @@ pub trait Group:
     fn double_in_place(&mut self) -> &mut Self;
 
     #[must_use]
-    fn mul<'a>(&self, other: &'a Self::ScalarField) -> Self {
+    fn mul(&self, other: &Self::ScalarField) -> Self {
         let mut copy = *self;
         copy.mul_assign(other);
         copy
     }
 
-    fn mul_assign<'a>(&mut self, other: &'a Self::ScalarField) {
+    fn mul_assign(&mut self, other: &Self::ScalarField) {
         let mut res = Self::zero();
         for i in BitIterator::new(other.into_repr()) {
             res.double_in_place();

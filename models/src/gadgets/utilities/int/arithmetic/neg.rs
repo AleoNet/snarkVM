@@ -54,4 +54,4 @@ macro_rules! neg_int_impl {
     )*)
 }
 
-neg_int_impl!(Int64);
+neg_int_impl!(Int8 Int16 Int32 Int64 Int128);

@@ -14,29 +14,102 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_errors::gadgets::SignedIntegerError;
+
 use crate::{
-    curves::{fp_parameters::FpParameters, PrimeField},
+    curves::{FpParameters, PrimeField},
     gadgets::{
         r1cs::{Assignment, ConstraintSystem, LinearCombination},
         utilities::{
             alloc::AllocGadget,
-            arithmetic::Add,
-            bits::RippleCarryAdder,
+            arithmetic::Mul,
+            bits::{RippleCarryAdder, SignExtend},
             boolean::{AllocatedBit, Boolean},
             int::*,
+            select::CondSelectGadget,
         },
     },
 };
-use snarkvm_errors::gadgets::SignedIntegerError;
 
-macro_rules! add_int_impl {
+use std::iter;
+
+macro_rules! mul_int_impl {
     ($($gadget: ident)*) => ($(
-        impl<F: PrimeField> Add<F> for $gadget {
+        /// Bitwise multiplication of two signed integer objects.
+        impl<F: PrimeField> Mul<F> for $gadget {
+
             type ErrorType = SignedIntegerError;
 
-            fn add<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, Self::ErrorType> {
+            fn mul<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, Self::ErrorType> {
+                // pseudocode:
+                //
+                // res = 0;
+                // for (i, bit) in other.bits.enumerate() {
+                //   shifted_self = self << i;
+                //
+                //   if bit {
+                //     res += shifted_self;
+                //   }
+                // }
+                // return res
+
+
+                // Conditionally select constant result
+                let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
+                let allocated_false = Boolean::from(AllocatedBit::alloc(&mut cs.ns(|| "false"), || Ok(false)).unwrap());
+                let false_bit = Boolean::conditionally_select(
+                    &mut cs.ns(|| "constant_or_allocated_false"),
+                    &is_constant,
+                    &Boolean::constant(false),
+                    &allocated_false,
+                )?;
+
+                // Sign extend to double precision
+                let size = <$gadget as Int>::SIZE * 2;
+
+                let a = Boolean::sign_extend(&self.bits, size);
+                let b = Boolean::sign_extend(&other.bits, size);
+
+                let mut bits = vec![false_bit; size];
+
+                // Compute double and add algorithm
+                let mut to_add = Vec::new();
+                let mut a_shifted = Vec::new();
+                for (i, b_bit) in b.iter().enumerate() {
+                    // double
+                    a_shifted.extend(iter::repeat(false_bit).take(i));
+                    a_shifted.extend(a.iter());
+                    a_shifted.truncate(size);
+
+                    // conditionally add
+                    to_add.reserve(a_shifted.len());
+                    for (j, a_bit) in a_shifted.iter().enumerate() {
+                        let selected_bit = Boolean::conditionally_select(
+                            &mut cs.ns(|| format!("select product bit {} {}", i, j)),
+                            b_bit,
+                            a_bit,
+                            &false_bit,
+                        )?;
+
+                        to_add.push(selected_bit);
+                    }
+
+                    bits = bits.add_bits(
+                        &mut cs.ns(|| format!("add bit {}", i)),
+                        &to_add
+                    )?;
+                    let _carry = bits.pop();
+                    to_add.clear();
+                    a_shifted.clear();
+                }
+                drop(to_add);
+                drop(a_shifted);
+
                 // Compute the maximum value of the sum
                 let max_bits = <$gadget as Int>::SIZE;
+
+                // Truncate the bits to the size of the integer
+                bits.truncate(max_bits);
 
                 // Make some arbitrary bounds for ourselves to avoid overflows
                 // in the scalar field
@@ -45,8 +118,8 @@ macro_rules! add_int_impl {
                 // Accumulate the value
                 let result_value = match (self.value, other.value) {
                     (Some(a), Some(b)) => {
-                         // check for addition overflow here
-                         let val = match a.checked_add(b) {
+                         // check for multiplication overflow here
+                         let val = match a.checked_mul(b) {
                             Some(val) => val,
                             None => return Err(SignedIntegerError::Overflow)
                          };
@@ -65,10 +138,6 @@ macro_rules! add_int_impl {
 
                 let mut all_constants = true;
 
-                let mut bits = self.add_bits(cs.ns(|| format!("bits")), other)?;
-
-                // we discard the carry since we check for overflow above
-                let _carry = bits.pop();
 
                 // Iterate over each bit_gadget of result and add each bit to
                 // the linear combination
@@ -96,7 +165,6 @@ macro_rules! add_int_impl {
 
                     coeff.double_in_place();
                 }
-
 
                 // The value of the actual result is modulo 2 ^ $size
                 let modular_value = result_value.map(|v| v as <$gadget as Int>::IntegerType);
@@ -132,7 +200,7 @@ macro_rules! add_int_impl {
                 }
 
                 // Enforce that the linear combination equals zero
-                cs.enforce(|| "modular addition", |lc| lc, |lc| lc, |_| lc);
+                cs.enforce(|| "modular multiplication", |lc| lc, |lc| lc, |_| lc);
 
                 // Discard carry bits we don't care about
                 result_bits.truncate(<$gadget as Int>::SIZE);
@@ -146,4 +214,4 @@ macro_rules! add_int_impl {
     )*)
 }
 
-add_int_impl!(Int8 Int16 Int32 Int64 Int128);
+mul_int_impl!(Int8 Int16 Int32 Int64 Int128);

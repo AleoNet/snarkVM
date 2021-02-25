@@ -125,9 +125,7 @@ impl<F: Field> Default for TestConstraintSystem<F> {
         }
 
         let mut named_objects = IndexMap::with_hasher(FxBuildHasher::default());
-        named_objects
-            .insert_full(interned_path, NamedObject::Var(TestConstraintSystem::<F>::one()))
-            .0;
+        named_objects.insert_full(interned_path, NamedObject::Var(TestConstraintSystem::<F>::one()));
 
         let mut interned_fields = IndexSet::with_hasher(FxBuildHasher::default());
         let interned_field = interned_fields.insert_full(F::one()).0;

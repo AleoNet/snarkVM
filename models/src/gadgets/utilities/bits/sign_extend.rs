@@ -14,15 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#[macro_use]
-pub mod adder;
-pub use self::adder::*;
+use crate::gadgets::utilities::boolean::Boolean;
 
-pub mod comparator;
-pub use self::comparator::*;
+use std::iter;
 
-pub mod rca;
-pub use self::rca::*;
+/// Sign extends an array of bits to the desired length.
+/// Expects least significant bit first
+pub trait SignExtend
+where
+    Self: std::marker::Sized,
+{
+    #[must_use]
+    fn sign_extend(bits: &[Boolean], length: usize) -> Vec<Boolean>;
+}
 
-pub mod sign_extend;
-pub use self::sign_extend::*;
+impl SignExtend for Boolean {
+    fn sign_extend(bits: &[Boolean], length: usize) -> Vec<Boolean> {
+        let msb = bits.last().expect("empty bit list");
+        let bits_needed = length - bits.len();
+
+        let mut result = Vec::with_capacity(length);
+        result.extend_from_slice(bits);
+        result.extend(iter::repeat(*msb).take(bits_needed));
+
+        result
+    }
+}

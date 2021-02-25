@@ -18,18 +18,18 @@ use crate::{
     curves::{One, Zero},
     gadgets::{
         r1cs::{ConstraintSystem, Fr, TestConstraintSystem},
-        utilities::{alloc::AllocGadget, arithmetic::*, boolean::Boolean, eq::EqGadget, int::*},
+        utilities::{alloc::AllocGadget, arithmetic::*, boolean::Boolean, int::*},
     },
 };
 
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
-use std::i64;
+use std::i128;
 
-fn check_all_constant_bits(expected: i64, actual: Int64) {
+fn check_all_constant_bits(expected: i128, actual: Int128) {
     for (i, b) in actual.bits.iter().enumerate() {
         // shift value by i
-        let mask = 1 << i as i64;
+        let mask = 1 << i as i128;
         let result = expected & mask;
 
         match *b {
@@ -43,10 +43,10 @@ fn check_all_constant_bits(expected: i64, actual: Int64) {
     }
 }
 
-fn check_all_allocated_bits(expected: i64, actual: Int64) {
+fn check_all_allocated_bits(expected: i128, actual: Int128) {
     for (i, b) in actual.bits.iter().enumerate() {
         // shift value by i
-        let mask = 1 << i as i64;
+        let mask = 1 << i as i128;
         let result = expected & mask;
 
         match *b {
@@ -64,53 +64,46 @@ fn check_all_allocated_bits(expected: i64, actual: Int64) {
 }
 
 #[test]
-fn test_int64_constant_and_alloc() {
+fn test_int128_constant_and_alloc() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: i64 = rng.gen();
+        let a: i128 = rng.gen();
 
-        let a_const = Int64::constant(a);
+        let a_const = Int128::constant(a);
 
         assert!(a_const.value == Some(a));
 
-        let a_bit = Int64::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
+        check_all_constant_bits(a, a_const);
+
+        let a_bit = Int128::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
 
         assert!(cs.is_satisfied());
         assert!(a_bit.value == Some(a));
 
-        let a_bit_fe = Int64::alloc_input_fe(cs.ns(|| "a_bit_fe"), a).unwrap();
-
-        a_bit_fe.enforce_equal(cs.ns(|| "a_bit_fe == a_bit"), &a_bit).unwrap();
-
-        assert!(cs.is_satisfied());
-        assert!(a_bit_fe.value == Some(a));
-
-        check_all_constant_bits(a, a_const);
         check_all_allocated_bits(a, a_bit);
-        check_all_allocated_bits(a, a_bit_fe);
     }
 }
 
 #[test]
-fn test_int64_add_constants() {
+fn test_int128_add_constants() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    for _ in 0..1000 {
+    for _ in 0..100 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: i64 = rng.gen();
-        let b: i64 = rng.gen();
-
-        let a_bit = Int64::constant(a);
-        let b_bit = Int64::constant(b);
+        let a: i128 = rng.gen();
+        let b: i128 = rng.gen();
 
         let expected = match a.checked_add(b) {
             Some(valid) => valid,
             None => continue,
         };
+
+        let a_bit = Int128::constant(a);
+        let b_bit = Int128::constant(b);
 
         let r = a_bit.add(cs.ns(|| "addition"), &b_bit).unwrap();
 
@@ -121,22 +114,22 @@ fn test_int64_add_constants() {
 }
 
 #[test]
-fn test_int64_add() {
+fn test_int128_add() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    for _ in 0..1000 {
+    for _ in 0..100 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: i64 = rng.gen();
-        let b: i64 = rng.gen();
+        let a: i128 = rng.gen();
+        let b: i128 = rng.gen();
 
         let expected = match a.checked_add(b) {
             Some(valid) => valid,
             None => continue,
         };
 
-        let a_bit = Int64::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = Int64::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap();
+        let a_bit = Int128::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
+        let b_bit = Int128::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap();
 
         let r = a_bit.add(cs.ns(|| "addition"), &b_bit).unwrap();
 
@@ -158,14 +151,14 @@ fn test_int64_add() {
 }
 
 #[test]
-fn test_int64_sub_constants() {
+fn test_int128_sub_constants() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    for _ in 0..1000 {
+    for _ in 0..100 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: i64 = rng.gen();
-        let b: i64 = rng.gen();
+        let a: i128 = rng.gen();
+        let b: i128 = rng.gen();
 
         if b.checked_neg().is_none() {
             // negate with overflows will fail: -128
@@ -177,8 +170,8 @@ fn test_int64_sub_constants() {
             None => continue,
         };
 
-        let a_bit = Int64::constant(a);
-        let b_bit = Int64::constant(b);
+        let a_bit = Int128::constant(a);
+        let b_bit = Int128::constant(b);
 
         let r = a_bit.sub(cs.ns(|| "subtraction"), &b_bit).unwrap();
 
@@ -189,17 +182,17 @@ fn test_int64_sub_constants() {
 }
 
 #[test]
-fn test_int64_sub() {
+fn test_int128_sub() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    for _ in 0..1000 {
+    for _ in 0..100 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: i64 = rng.gen();
-        let b: i64 = rng.gen();
+        let a: i128 = rng.gen();
+        let b: i128 = rng.gen();
 
         if b.checked_neg().is_none() {
-            // negate with overflows will fail: -9223372036854775808
+            // negate with overflows will fail: -128
             continue;
         }
         let expected = match a.checked_sub(b) {
@@ -208,8 +201,8 @@ fn test_int64_sub() {
             None => continue,
         };
 
-        let a_bit = Int64::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = Int64::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap();
+        let a_bit = Int128::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
+        let b_bit = Int128::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap();
 
         let r = a_bit.sub(cs.ns(|| "subtraction"), &b_bit).unwrap();
 
@@ -234,25 +227,25 @@ fn test_int64_sub() {
 }
 
 #[test]
-fn test_int64_mul_constants() {
+fn test_int128_mul_constants() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    for _ in 0..5 {
+    for _ in 0..3 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let max = i32::MAX as i64;
-        let min = i32::MIN as i64;
+        let max = i64::MAX as i128;
+        let min = i64::MIN as i128;
 
-        let a: i64 = rng.gen_range(min..max);
-        let b: i64 = rng.gen_range(min..max);
+        let a: i128 = rng.gen_range(min..max);
+        let b: i128 = rng.gen_range(min..max);
 
         let expected = match a.checked_mul(b) {
             Some(valid) => valid,
             None => continue,
         };
 
-        let a_bit = Int64::constant(a);
-        let b_bit = Int64::constant(b);
+        let a_bit = Int128::constant(a);
+        let b_bit = Int128::constant(b);
 
         let r = a_bit.mul(cs.ns(|| "multiplication"), &b_bit).unwrap();
 
@@ -263,25 +256,25 @@ fn test_int64_mul_constants() {
 }
 
 #[test]
-fn test_int64_mul() {
+fn test_int128_mul() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    for _ in 0..5 {
+    for _ in 0..2 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let max = i32::MAX as i64;
-        let min = i32::MIN as i64;
+        let max = i64::MAX as i128;
+        let min = i64::MIN as i128;
 
-        let a: i64 = rng.gen_range(min..max);
-        let b: i64 = rng.gen_range(min..max);
+        let a: i128 = rng.gen_range(min..max);
+        let b: i128 = rng.gen_range(min..max);
 
         let expected = match a.checked_mul(b) {
             Some(valid) => valid,
             None => continue,
         };
 
-        let a_bit = Int64::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = Int64::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap();
+        let a_bit = Int128::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
+        let b_bit = Int128::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap();
 
         let r = a_bit.mul(cs.ns(|| "multiplication"), &b_bit).unwrap();
 
@@ -303,14 +296,14 @@ fn test_int64_mul() {
 }
 
 #[test]
-fn test_int64_div_constants() {
+fn test_int128_div_constants() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
     for _ in 0..3 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: i64 = rng.gen();
-        let b: i64 = rng.gen();
+        let a: i128 = rng.gen();
+        let b: i128 = rng.gen();
 
         if a.checked_neg().is_none() {
             return;
@@ -321,8 +314,8 @@ fn test_int64_div_constants() {
             None => return,
         };
 
-        let a_bit = Int64::constant(a);
-        let b_bit = Int64::constant(b);
+        let a_bit = Int128::constant(a);
+        let b_bit = Int128::constant(b);
 
         let r = a_bit.div(cs.ns(|| "division"), &b_bit).unwrap();
 
@@ -333,14 +326,14 @@ fn test_int64_div_constants() {
 }
 
 #[test]
-fn test_int64_div() {
+fn test_int128_div() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    for _ in 0..3 {
+    for _ in 0..2 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: i64 = rng.gen();
-        let b: i64 = rng.gen();
+        let a: i128 = rng.gen();
+        let b: i128 = rng.gen();
 
         if a.checked_neg().is_none() {
             continue;
@@ -351,8 +344,8 @@ fn test_int64_div() {
             None => return,
         };
 
-        let a_bit = Int64::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = Int64::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap();
+        let a_bit = Int128::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
+        let b_bit = Int128::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap();
 
         let r = a_bit.div(cs.ns(|| "division"), &b_bit).unwrap();
 
@@ -362,68 +355,4 @@ fn test_int64_div() {
 
         check_all_allocated_bits(expected, r);
     }
-}
-
-#[ignore]
-#[test]
-fn test_int64_pow_constants() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
-
-    let mut cs = TestConstraintSystem::<Fr>::new();
-
-    let a: i64 = rng.gen_range(-16..16);
-    let b: i64 = rng.gen_range(-12..12);
-
-    let expected = a.checked_pow(b as u32).unwrap();
-
-    let a_bit = Int64::constant(a);
-    let b_bit = Int64::constant(b);
-
-    let r = a_bit.pow(cs.ns(|| "exponentiation"), &b_bit).unwrap();
-
-    assert!(r.value == Some(expected));
-
-    check_all_constant_bits(expected, r);
-}
-
-#[ignore]
-#[test]
-fn test_int64_pow() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
-
-    let mut cs = TestConstraintSystem::<Fr>::new();
-
-    let a: i64 = rng.gen_range(-16..16);
-    let b: i64 = rng.gen_range(-12..12);
-
-    let expected = a.checked_pow(b as u32).unwrap();
-
-    let a_bit = Int64::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-    let b_bit = Int64::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap();
-
-    let r = a_bit.pow(cs.ns(|| "exponentiation"), &b_bit).unwrap();
-
-    assert!(cs.is_satisfied());
-
-    assert!(r.value == Some(expected));
-
-    check_all_allocated_bits(expected, r);
-
-    // Flip a bit_gadget and see if the exponentiation constraint still works
-    if cs
-        .get("exponentiation/multiply_by_self_0/result bit_gadget 0/boolean")
-        .is_zero()
-    {
-        cs.set(
-            "exponentiation/multiply_by_self_0/result bit_gadget 0/boolean",
-            Fr::one(),
-        );
-    } else {
-        cs.set(
-            "exponentiation/multiply_by_self_0/result bit_gadget 0/boolean",
-            Fr::zero(),
-        );
-    }
-
-    assert!(!cs.is_satisfied());
 }
