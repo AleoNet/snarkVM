@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 //! The Marlin zkSNARK implementation
-use crate::{Marlin, Parameters, Proof, UniversalSRS};
+use crate::{CircuitParameters, Marlin, Proof, UniversalSRS};
 use snarkvm_errors::algorithms::SNARKError;
 use snarkvm_models::{
     algorithms::SNARK,
@@ -41,8 +41,8 @@ pub type ProverKey<E> = crate::CircuitProvingKey<<E as PairingEngine>::Fr, Multi
 /// A circuit-specific verification key.
 pub type VerifierKey<E> = crate::CircuitVerifyingKey<<E as PairingEngine>::Fr, MultiPC<E>>;
 
-impl<E: PairingEngine> From<Parameters<E>> for VerifierKey<E> {
-    fn from(params: Parameters<E>) -> Self {
+impl<E: PairingEngine> From<CircuitParameters<E>> for VerifierKey<E> {
+    fn from(params: CircuitParameters<E>) -> Self {
         params.verifier_key
     }
 }
@@ -72,7 +72,7 @@ where
     // Abuse the Circuit type to pass the SRS as well.
     type PreparedVerificationParameters = VerifierKey<E>;
     type Proof = Proof<<E as PairingEngine>::Fr, MultiPC<E>>;
-    type ProvingParameters = Parameters<E>;
+    type ProvingParameters = CircuitParameters<E>;
     type VerificationParameters = VerifierKey<E>;
     type VerifierInput = V;
 
@@ -81,7 +81,7 @@ where
         _rng: &mut R, // The Marlin Setup is deterministic
     ) -> Result<(Self::ProvingParameters, Self::PreparedVerificationParameters), SNARKError> {
         let setup_time = start_timer!(|| "{Marlin}::Setup");
-        let parameters = Parameters::<E>::new(circuit, srs)?;
+        let parameters = CircuitParameters::<E>::new(circuit, srs)?;
         end_timer!(setup_time);
         let verifier_key = parameters.verifier_key.clone();
         Ok((parameters, verifier_key))

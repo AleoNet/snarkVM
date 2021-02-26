@@ -39,14 +39,14 @@ use std::io::{Read, Write};
 /// The public parameters used for the circuit's instantiation.
 /// Generating the parameters is done via the `setup` function of the SNARK trait
 /// by providing it the previously-generated universal SRS.
-pub struct Parameters<E: PairingEngine> {
+pub struct CircuitParameters<E: PairingEngine> {
     /// The proving key
     pub prover_key: ProverKey<E>,
     /// The verifying key
     pub verifier_key: VerifierKey<E>,
 }
 
-impl<E: PairingEngine> Parameters<E> {
+impl<E: PairingEngine> CircuitParameters<E> {
     /// Creates an instance of `Parameters` from a given universal SRS.
     pub fn new<C: ConstraintSynthesizer<E::Fr>>(circuit: &C, universal_srs: &SRS<E>) -> Result<Self, SNARKError> {
         let (prover_key, verifier_key) = Marlin::circuit_setup(universal_srs, circuit)
@@ -58,13 +58,13 @@ impl<E: PairingEngine> Parameters<E> {
     }
 }
 
-impl<E: PairingEngine> ToBytes for Parameters<E> {
+impl<E: PairingEngine> ToBytes for CircuitParameters<E> {
     fn write<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize parameters"))
     }
 }
 
-impl<E: PairingEngine> FromBytes for Parameters<E> {
+impl<E: PairingEngine> FromBytes for CircuitParameters<E> {
     fn read<R: Read>(mut r: R) -> io::Result<Self> {
         use snarkvm_utilities::{PROCESSING_SNARK_PARAMS, SNARK_PARAMS_AFFINE_COUNT};
         use std::sync::atomic::{self, AtomicU64};
