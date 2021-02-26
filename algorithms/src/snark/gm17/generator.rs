@@ -45,8 +45,8 @@ where
 /// This is our assembly structure that we'll use to synthesize the
 /// circuit into a SAP.
 pub struct KeypairAssembly<E: PairingEngine> {
-    pub num_inputs: usize,
-    pub num_aux: usize,
+    pub num_public_variables: usize,
+    pub num_private_variables: usize,
     pub num_constraints: usize,
     pub at: Vec<Vec<(E::Fr, Index)>>,
     pub bt: Vec<Vec<(E::Fr, Index)>>,
@@ -66,10 +66,10 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         // There is no assignment, so we don't invoke the
         // function for obtaining one.
 
-        let index = self.num_aux;
-        self.num_aux += 1;
+        let index = self.num_private_variables;
+        self.num_private_variables += 1;
 
-        Ok(Variable::new_unchecked(Index::Aux(index)))
+        Ok(Variable::new_unchecked(Index::Private(index)))
     }
 
     #[inline]
@@ -82,10 +82,10 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         // There is no assignment, so we don't invoke the
         // function for obtaining one.
 
-        let index = self.num_inputs;
-        self.num_inputs += 1;
+        let index = self.num_public_variables;
+        self.num_public_variables += 1;
 
-        Ok(Variable::new_unchecked(Index::Input(index)))
+        Ok(Variable::new_unchecked(Index::Public(index)))
     }
 
     fn enforce<A, AR, LA, LB, LC>(&mut self, _: A, a: LA, b: LB, c: LC)
@@ -103,8 +103,8 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         ) {
             for (var, coeff) in l.as_ref() {
                 match var.get_unchecked() {
-                    Index::Input(i) => constraints[this_constraint].push((*coeff, Index::Input(i))),
-                    Index::Aux(i) => constraints[this_constraint].push((*coeff, Index::Aux(i))),
+                    Index::Public(i) => constraints[this_constraint].push((*coeff, Index::Public(i))),
+                    Index::Private(i) => constraints[this_constraint].push((*coeff, Index::Private(i))),
                 }
             }
         }
@@ -139,6 +139,14 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
     fn num_constraints(&self) -> usize {
         self.num_constraints
     }
+
+    fn num_public_variables(&self) -> usize {
+        self.num_public_variables
+    }
+
+    fn num_private_variables(&self) -> usize {
+        self.num_private_variables
+    }
 }
 
 /// Create parameters for a circuit, given some toxic waste.
@@ -158,8 +166,8 @@ where
     R: Rng,
 {
     let mut assembly = KeypairAssembly {
-        num_inputs: 0,
-        num_aux: 0,
+        num_public_variables: 0,
+        num_private_variables: 0,
         num_constraints: 0,
         at: vec![],
         bt: vec![],
@@ -177,7 +185,7 @@ where
     ///////////////////////////////////////////////////////////////////////////
     let domain_time = start_timer!(|| "Constructing evaluation domain");
 
-    let domain_size = 2 * assembly.num_constraints + 2 * assembly.num_inputs - 1;
+    let domain_size = 2 * assembly.num_constraints + 2 * assembly.num_public_variables - 1;
     let domain = EvaluationDomain::<E::Fr>::new(domain_size).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
     let t = domain.sample_element_outside_domain(rng);
 
@@ -198,11 +206,11 @@ where
     let g_window_time = start_timer!(|| "Compute G window table");
     let g_window = FixedBaseMSM::get_mul_window_size(
         // Verifier query
-        assembly.num_inputs
+        assembly.num_public_variables
         // A query
         + non_zero_a
         // C query 1
-        + (sap_num_variables - (assembly.num_inputs - 1))
+        + (sap_num_variables - (assembly.num_public_variables - 1))
         // C query 2
         + sap_num_variables + 1
         // G gamma2 Z t
@@ -258,7 +266,7 @@ where
             .map(|i| c[i] * &gamma + &(a[i] * &alpha_beta))
             .collect::<Vec<_>>(),
     );
-    let (verifier_query, c_query_1) = result.split_at_mut(assembly.num_inputs);
+    let (verifier_query, c_query_1) = result.split_at_mut(assembly.num_public_variables);
     end_timer!(c1_time);
 
     // Compute the C_2-query

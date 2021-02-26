@@ -14,15 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    curves::Field,
-    gadgets::r1cs::{LinearCombination, Variable},
-};
+use crate::{curves::Field, gadgets::r1cs::Variable};
 
 use std::{
     cmp::Ordering,
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub},
 };
+
+/// This represents a linear combination of some variables, with coefficients
+/// in the field `F`.
+/// The `(coeff, var)` pairs in a `LinearCombination` are kept sorted according
+/// to the index of the variable in its constraint system.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LinearCombination<F: Field>(pub Vec<(Variable, F)>);
 
 impl<F: Field> AsRef<[(Variable, F)]> for LinearCombination<F> {
     #[inline]

@@ -30,7 +30,7 @@ use std::ops::{AddAssign, MulAssign};
 type CoeffVec<T> = SmallVec<[T; 2]>;
 
 #[inline]
-fn eval<E: PairingEngine>(
+fn evaluate<E: PairingEngine>(
     lc: &LinearCombination<E::Fr>,
     constraints: &mut [CoeffVec<(E::Fr, Index)>],
     input_assignment: &[E::Fr],
@@ -43,12 +43,12 @@ fn eval<E: PairingEngine>(
         let mut tmp;
 
         match index.get_unchecked() {
-            Index::Input(i) => {
-                constraints[this_constraint].push((coeff, Index::Input(i)));
+            Index::Public(i) => {
+                constraints[this_constraint].push((coeff, Index::Public(i)));
                 tmp = input_assignment[i];
             }
-            Index::Aux(i) => {
-                constraints[this_constraint].push((coeff, Index::Aux(i)));
+            Index::Private(i) => {
+                constraints[this_constraint].push((coeff, Index::Private(i)));
                 tmp = aux_assignment[i];
             }
         }
@@ -77,10 +77,10 @@ pub struct ProvingAssignment<E: PairingEngine> {
     pub(crate) c: Vec<E::Fr>,
 
     // Assignments of variables
-    pub(crate) input_assignment: Vec<E::Fr>,
-    pub(crate) aux_assignment: Vec<E::Fr>,
-    pub(crate) num_inputs: usize,
-    pub(crate) num_aux: usize,
+    pub(crate) public_variables: Vec<E::Fr>,
+    pub(crate) private_variables: Vec<E::Fr>,
+    pub(crate) num_public_variables: usize,
+    pub(crate) num_private_variables: usize,
     pub(crate) num_constraints: usize,
 }
 
@@ -105,11 +105,11 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
         A: FnOnce() -> AR,
         AR: AsRef<str>,
     {
-        let index = self.num_aux;
-        self.num_aux += 1;
+        let index = self.num_private_variables;
+        self.num_private_variables += 1;
 
-        self.aux_assignment.push(f()?);
-        Ok(Variable::new_unchecked(Index::Aux(index)))
+        self.private_variables.push(f()?);
+        Ok(Variable::new_unchecked(Index::Private(index)))
     }
 
     #[inline]
@@ -119,11 +119,11 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
         A: FnOnce() -> AR,
         AR: AsRef<str>,
     {
-        let index = self.num_inputs;
-        self.num_inputs += 1;
+        let index = self.num_public_variables;
+        self.num_public_variables += 1;
 
-        self.input_assignment.push(f()?);
-        Ok(Variable::new_unchecked(Index::Input(index)))
+        self.public_variables.push(f()?);
+        Ok(Variable::new_unchecked(Index::Public(index)))
     }
 
     #[inline]
@@ -139,25 +139,25 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
         self.bt.push(CoeffVec::new());
         self.ct.push(CoeffVec::new());
 
-        self.a.push(eval::<E>(
+        self.a.push(evaluate::<E>(
             &a(LinearCombination::zero()),
             &mut self.at,
-            &self.input_assignment,
-            &self.aux_assignment,
+            &self.public_variables,
+            &self.private_variables,
             self.num_constraints,
         ));
-        self.b.push(eval::<E>(
+        self.b.push(evaluate::<E>(
             &b(LinearCombination::zero()),
             &mut self.bt,
-            &self.input_assignment,
-            &self.aux_assignment,
+            &self.public_variables,
+            &self.private_variables,
             self.num_constraints,
         ));
-        self.c.push(eval::<E>(
+        self.c.push(evaluate::<E>(
             &c(LinearCombination::zero()),
             &mut self.ct,
-            &self.input_assignment,
-            &self.aux_assignment,
+            &self.public_variables,
+            &self.private_variables,
             self.num_constraints,
         ));
 
@@ -182,6 +182,14 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
 
     fn num_constraints(&self) -> usize {
         self.a.len()
+    }
+
+    fn num_public_variables(&self) -> usize {
+        self.num_public_variables
+    }
+
+    fn num_private_variables(&self) -> usize {
+        self.num_private_variables
     }
 }
 
@@ -221,10 +229,10 @@ where
         a: vec![],
         b: vec![],
         c: vec![],
-        input_assignment: vec![],
-        aux_assignment: vec![],
-        num_inputs: 0,
-        num_aux: 0,
+        public_variables: vec![],
+        private_variables: vec![],
+        num_public_variables: 0,
+        num_private_variables: 0,
         num_constraints: 0,
     };
 
@@ -240,28 +248,28 @@ where
     let (full_input_assignment, h, _) = R1CStoSAP::witness_map::<E>(&prover, &d1, &d2)?;
     end_timer!(witness_map_time);
 
-    let input_assignment = full_input_assignment[1..prover.num_inputs]
+    let input_assignment = full_input_assignment[1..prover.num_public_variables]
         .iter()
         .map(|s| s.into_repr())
         .collect::<Vec<_>>();
 
-    let aux_assignment = cfg_into_iter!(full_input_assignment[prover.num_inputs..])
+    let aux_assignment = cfg_into_iter!(full_input_assignment[prover.num_public_variables..])
         .map(|s| s.into_repr())
         .collect::<Vec<_>>();
     drop(full_input_assignment);
 
-    let h_input = h[0..prover.num_inputs]
+    let h_input = h[0..prover.num_public_variables]
         .iter()
         .map(|s| s.into_repr())
         .collect::<Vec<_>>();
-    let h_aux = cfg_into_iter!(h[prover.num_inputs..])
+    let h_aux = cfg_into_iter!(h[prover.num_public_variables..])
         .map(|s| s.into_repr())
         .collect::<Vec<_>>();
     drop(h);
 
     // Compute A
     let a_acc_time = start_timer!(|| "Compute A");
-    let (a_inputs_source, a_aux_source) = params.get_a_query(prover.num_inputs)?;
+    let (a_inputs_source, a_aux_source) = params.get_a_query(prover.num_public_variables)?;
     let a_inputs_acc = VariableBaseMSM::multi_scalar_mul(a_inputs_source, &input_assignment);
     let a_aux_acc = VariableBaseMSM::multi_scalar_mul(a_aux_source, &aux_assignment);
 
@@ -278,7 +286,7 @@ where
     // Compute B
     let b_acc_time = start_timer!(|| "Compute B");
 
-    let (b_inputs_source, b_aux_source) = params.get_b_query(prover.num_inputs)?;
+    let (b_inputs_source, b_aux_source) = params.get_b_query(prover.num_public_variables)?;
     let b_inputs_acc = VariableBaseMSM::multi_scalar_mul(b_inputs_source, &input_assignment);
     let b_aux_acc = VariableBaseMSM::multi_scalar_mul(b_aux_source, &aux_assignment);
 
@@ -305,7 +313,7 @@ where
 
     let c2_acc_time = start_timer!(|| "Compute C2");
 
-    let (c2_inputs_source, c2_aux_source) = params.get_c_query_2(prover.num_inputs)?;
+    let (c2_inputs_source, c2_aux_source) = params.get_c_query_2(prover.num_public_variables)?;
     let c2_inputs_acc = VariableBaseMSM::multi_scalar_mul(c2_inputs_source, &input_assignment);
     let c2_aux_acc = VariableBaseMSM::multi_scalar_mul(c2_aux_source, &aux_assignment);
 
@@ -315,7 +323,7 @@ where
     // Compute G
     let g_acc_time = start_timer!(|| "Compute G");
 
-    let (g_inputs_source, g_aux_source) = params.get_g_gamma2_z_t(prover.num_inputs)?;
+    let (g_inputs_source, g_aux_source) = params.get_g_gamma2_z_t(prover.num_public_variables)?;
     let g_inputs_acc = VariableBaseMSM::multi_scalar_mul(g_inputs_source, &h_input);
     let g_aux_acc = VariableBaseMSM::multi_scalar_mul(g_aux_source, &h_aux);
 

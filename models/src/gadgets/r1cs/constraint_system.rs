@@ -16,11 +16,19 @@
 
 use crate::{
     curves::Field,
-    gadgets::r1cs::{Index, LinearCombination, Variable},
+    gadgets::r1cs::{Index, LinearCombination, Namespace, Variable},
 };
 use snarkvm_errors::gadgets::SynthesisError;
 
 use std::marker::PhantomData;
+
+/// Computations are expressed in terms of rank-1 constraint systems (R1CS).
+/// The `generate_constraints` method is called to generate constraints for
+/// both CRS generation and for proving.
+pub trait ConstraintSynthesizer<F: Field> {
+    /// Drives generation of new constraints inside `CS`.
+    fn generate_constraints<CS: ConstraintSystem<F>>(&self, cs: &mut CS) -> Result<(), SynthesisError>;
+}
 
 /// Represents a constraint system which can have new variables
 /// allocated and constrains between them formed.
@@ -31,7 +39,7 @@ pub trait ConstraintSystem<F: Field>: Sized {
 
     /// Return the "one" input variable
     fn one() -> Variable {
-        Variable::new_unchecked(Index::Input(0))
+        Variable::new_unchecked(Index::Public(0))
     }
 
     /// Allocate a private variable in the constraint system. The provided
@@ -91,95 +99,12 @@ pub trait ConstraintSystem<F: Field>: Sized {
 
     /// Output the number of constraints in the system.
     fn num_constraints(&self) -> usize;
-}
 
-/// This is a "namespaced" constraint system which borrows a constraint system
-/// (pushing a namespace context) and, when dropped, pops out of the namespace
-/// context.
-pub struct Namespace<'a, F: Field, CS: ConstraintSystem<F>>(&'a mut CS, PhantomData<F>);
+    /// Output the number of public input variables to the system.
+    fn num_public_variables(&self) -> usize;
 
-/// Computations are expressed in terms of rank-1 constraint systems (R1CS).
-/// The `generate_constraints` method is called to generate constraints for
-/// both CRS generation and for proving.
-pub trait ConstraintSynthesizer<F: Field> {
-    /// Drives generation of new constraints inside `CS`.
-    fn generate_constraints<CS: ConstraintSystem<F>>(&self, cs: &mut CS) -> Result<(), SynthesisError>;
-}
-
-impl<F: Field, CS: ConstraintSystem<F>> ConstraintSystem<F> for Namespace<'_, F, CS> {
-    type Root = CS::Root;
-
-    #[inline]
-    fn one() -> Variable {
-        CS::one()
-    }
-
-    #[inline]
-    fn alloc<FN, A, AR>(&mut self, annotation: A, f: FN) -> Result<Variable, SynthesisError>
-    where
-        FN: FnOnce() -> Result<F, SynthesisError>,
-        A: FnOnce() -> AR,
-        AR: AsRef<str>,
-    {
-        self.0.alloc(annotation, f)
-    }
-
-    #[inline]
-    fn alloc_input<FN, A, AR>(&mut self, annotation: A, f: FN) -> Result<Variable, SynthesisError>
-    where
-        FN: FnOnce() -> Result<F, SynthesisError>,
-        A: FnOnce() -> AR,
-        AR: AsRef<str>,
-    {
-        self.0.alloc_input(annotation, f)
-    }
-
-    #[inline]
-    fn enforce<A, AR, LA, LB, LC>(&mut self, annotation: A, a: LA, b: LB, c: LC)
-    where
-        A: FnOnce() -> AR,
-        AR: AsRef<str>,
-        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
-        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
-        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
-    {
-        self.0.enforce(annotation, a, b, c)
-    }
-
-    // Downstream users who use `namespace` will never interact with these
-    // functions and they will never be invoked because the namespace is
-    // never a root constraint system.
-
-    #[inline]
-    fn push_namespace<NR, N>(&mut self, _: N)
-    where
-        NR: AsRef<str>,
-        N: FnOnce() -> NR,
-    {
-        panic!("only the root's push_namespace should be called");
-    }
-
-    #[inline]
-    fn pop_namespace(&mut self) {
-        panic!("only the root's pop_namespace should be called");
-    }
-
-    #[inline]
-    fn get_root(&mut self) -> &mut Self::Root {
-        self.0.get_root()
-    }
-
-    #[inline]
-    fn num_constraints(&self) -> usize {
-        self.0.num_constraints()
-    }
-}
-
-impl<F: Field, CS: ConstraintSystem<F>> Drop for Namespace<'_, F, CS> {
-    #[inline]
-    fn drop(&mut self) {
-        self.get_root().pop_namespace()
-    }
+    /// Output the number of private input variables to the system.
+    fn num_private_variables(&self) -> usize;
 }
 
 /// Convenience implementation of ConstraintSystem<F> for mutable references to
@@ -246,5 +171,15 @@ impl<F: Field, CS: ConstraintSystem<F>> ConstraintSystem<F> for &mut CS {
     #[inline]
     fn num_constraints(&self) -> usize {
         (**self).num_constraints()
+    }
+
+    #[inline]
+    fn num_public_variables(&self) -> usize {
+        (**self).num_public_variables()
+    }
+
+    #[inline]
+    fn num_private_variables(&self) -> usize {
+        (**self).num_private_variables()
     }
 }

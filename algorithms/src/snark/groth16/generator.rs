@@ -49,8 +49,8 @@ where
 /// circuit into a QAP.
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct KeypairAssembly<E: PairingEngine> {
-    pub num_inputs: usize,
-    pub num_aux: usize,
+    pub num_public_variables: usize,
+    pub num_private_variables: usize,
     pub at: Vec<Vec<(E::Fr, Index)>>,
     pub bt: Vec<Vec<(E::Fr, Index)>>,
     pub ct: Vec<Vec<(E::Fr, Index)>>,
@@ -69,10 +69,10 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         // There is no assignment, so we don't invoke the
         // function for obtaining one.
 
-        let index = self.num_aux;
-        self.num_aux += 1;
+        let index = self.num_private_variables;
+        self.num_private_variables += 1;
 
-        Ok(Variable::new_unchecked(Index::Aux(index)))
+        Ok(Variable::new_unchecked(Index::Private(index)))
     }
 
     #[inline]
@@ -85,10 +85,10 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         // There is no assignment, so we don't invoke the
         // function for obtaining one.
 
-        let index = self.num_inputs;
-        self.num_inputs += 1;
+        let index = self.num_public_variables;
+        self.num_public_variables += 1;
 
-        Ok(Variable::new_unchecked(Index::Input(index)))
+        Ok(Variable::new_unchecked(Index::Public(index)))
     }
 
     #[inline]
@@ -124,6 +124,14 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
     fn num_constraints(&self) -> usize {
         self.at.len()
     }
+
+    fn num_public_variables(&self) -> usize {
+        self.num_public_variables
+    }
+
+    fn num_private_variables(&self) -> usize {
+        self.num_private_variables
+    }
 }
 
 /// Create parameters for a circuit, given some toxic waste.
@@ -142,8 +150,8 @@ where
     R: Rng,
 {
     let mut assembly = KeypairAssembly {
-        num_inputs: 0,
-        num_aux: 0,
+        num_public_variables: 0,
+        num_private_variables: 0,
         at: vec![],
         bt: vec![],
         ct: vec![],
@@ -160,7 +168,7 @@ where
     ///////////////////////////////////////////////////////////////////////////
     let domain_time = start_timer!(|| "Constructing evaluation domain");
 
-    let domain_size = assembly.num_constraints() + (assembly.num_inputs - 1) + 1;
+    let domain_size = assembly.num_constraints() + (assembly.num_public_variables - 1) + 1;
     let domain = EvaluationDomain::<E::Fr>::new(domain_size).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
     let t = domain.sample_element_outside_domain(rng);
 
@@ -185,9 +193,9 @@ where
     let gamma_inverse = gamma.inverse().ok_or(SynthesisError::UnexpectedIdentity)?;
     let delta_inverse = delta.inverse().ok_or(SynthesisError::UnexpectedIdentity)?;
 
-    let gamma_abc = cfg_iter!(a[0..assembly.num_inputs])
-        .zip(&b[0..assembly.num_inputs])
-        .zip(&c[0..assembly.num_inputs])
+    let gamma_abc = cfg_iter!(a[0..assembly.num_public_variables])
+        .zip(&b[0..assembly.num_public_variables])
+        .zip(&c[0..assembly.num_public_variables])
         .map(|((a, b), c)| (beta * a + &(alpha * b) + c) * &gamma_inverse)
         .collect::<Vec<_>>();
 
@@ -252,7 +260,7 @@ where
     // Compute the L-query
     let l_time = start_timer!(|| "Calculate L");
     let l_query = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, g1_window, &g1_table, &l);
-    let mut l_query = l_query[assembly.num_inputs..].to_vec();
+    let mut l_query = l_query[assembly.num_public_variables..].to_vec();
     end_timer!(l_time);
 
     end_timer!(proving_key_time);
