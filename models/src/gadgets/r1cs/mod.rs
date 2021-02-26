@@ -18,12 +18,13 @@ mod assignment;
 pub use assignment::*;
 
 mod constraint_counter;
-pub use constraint_counter::ConstraintCounter;
+pub use constraint_counter::*;
 
 mod constraint_system;
 pub use constraint_system::{ConstraintSynthesizer, ConstraintSystem};
 
-mod impl_constraint_var;
+mod constraint_variable;
+pub use constraint_variable::*;
 
 mod linear_combination;
 pub use linear_combination::*;
@@ -68,12 +69,12 @@ impl Variable {
     }
 }
 
-/// Represents the index of either an input variable or auxiliary variable.
+/// Represents the index of either a public variable (input) or a private variable (auxiliary).
 #[derive(Copy, Clone, PartialEq, Debug, Eq, Hash)]
 pub enum Index {
-    /// Index of an input variable.
+    /// Index of an public variable.
     Input(usize),
-    /// Index of an auxiliary (or private) variable.
+    /// Index of an private variable.
     Aux(usize),
 }
 
@@ -134,15 +135,6 @@ impl CanonicalDeserialize for Index {
             Index::Aux(inner)
         })
     }
-}
-
-/// Either a `Variable` or a `LinearCombination`.
-#[derive(Clone, Debug)]
-pub enum ConstraintVar<F: Field> {
-    /// A wrapper around a `LinearCombination`.
-    LC(LinearCombination<F>),
-    /// A wrapper around a `Variable`.
-    Var(Variable),
 }
 
 #[cfg(test)]

@@ -21,28 +21,37 @@ use crate::{
 
 use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub};
 
-impl<F: Field> From<Variable> for ConstraintVar<F> {
+/// Either a `Variable` or a `LinearCombination`.
+#[derive(Clone, Debug)]
+pub enum ConstraintVariable<F: Field> {
+    /// A wrapper around a `LinearCombination`.
+    LC(LinearCombination<F>),
+    /// A wrapper around a `Variable`.
+    Var(Variable),
+}
+
+impl<F: Field> From<Variable> for ConstraintVariable<F> {
     #[inline]
     fn from(var: Variable) -> Self {
         Var(var)
     }
 }
 
-impl<F: Field> From<(F, Variable)> for ConstraintVar<F> {
+impl<F: Field> From<(F, Variable)> for ConstraintVariable<F> {
     #[inline]
     fn from(coeff_var: (F, Variable)) -> Self {
         LC(coeff_var.into())
     }
 }
 
-impl<F: Field> From<LinearCombination<F>> for ConstraintVar<F> {
+impl<F: Field> From<LinearCombination<F>> for ConstraintVariable<F> {
     #[inline]
     fn from(lc: LinearCombination<F>) -> Self {
         LC(lc)
     }
 }
 
-impl<F: Field> From<(F, LinearCombination<F>)> for ConstraintVar<F> {
+impl<F: Field> From<(F, LinearCombination<F>)> for ConstraintVariable<F> {
     #[inline]
     fn from((coeff, mut lc): (F, LinearCombination<F>)) -> Self {
         lc *= coeff;
@@ -50,9 +59,9 @@ impl<F: Field> From<(F, LinearCombination<F>)> for ConstraintVar<F> {
     }
 }
 
-impl<F: Field> From<(F, ConstraintVar<F>)> for ConstraintVar<F> {
+impl<F: Field> From<(F, ConstraintVariable<F>)> for ConstraintVariable<F> {
     #[inline]
-    fn from((coeff, var): (F, ConstraintVar<F>)) -> Self {
+    fn from((coeff, var): (F, ConstraintVariable<F>)) -> Self {
         match var {
             LC(lc) => (coeff, lc).into(),
             Var(var) => (coeff, var).into(),
@@ -60,7 +69,7 @@ impl<F: Field> From<(F, ConstraintVar<F>)> for ConstraintVar<F> {
     }
 }
 
-impl<F: Field> ConstraintVar<F> {
+impl<F: Field> ConstraintVariable<F> {
     /// Returns an empty linear combination.
     #[inline]
     pub fn zero() -> Self {
@@ -84,7 +93,7 @@ impl<F: Field> ConstraintVar<F> {
     }
 }
 
-impl<F: Field> Add<LinearCombination<F>> for ConstraintVar<F> {
+impl<F: Field> Add<LinearCombination<F>> for ConstraintVariable<F> {
     type Output = LinearCombination<F>;
 
     #[inline]
@@ -96,7 +105,7 @@ impl<F: Field> Add<LinearCombination<F>> for ConstraintVar<F> {
     }
 }
 
-impl<F: Field> Sub<LinearCombination<F>> for ConstraintVar<F> {
+impl<F: Field> Sub<LinearCombination<F>> for ConstraintVariable<F> {
     type Output = LinearCombination<F>;
 
     #[inline]
@@ -109,7 +118,7 @@ impl<F: Field> Sub<LinearCombination<F>> for ConstraintVar<F> {
     }
 }
 
-impl<F: Field> Add<LinearCombination<F>> for &ConstraintVar<F> {
+impl<F: Field> Add<LinearCombination<F>> for &ConstraintVariable<F> {
     type Output = LinearCombination<F>;
 
     #[inline]
@@ -121,7 +130,7 @@ impl<F: Field> Add<LinearCombination<F>> for &ConstraintVar<F> {
     }
 }
 
-impl<F: Field> Sub<LinearCombination<F>> for &ConstraintVar<F> {
+impl<F: Field> Sub<LinearCombination<F>> for &ConstraintVariable<F> {
     type Output = LinearCombination<F>;
 
     #[inline]
@@ -134,7 +143,7 @@ impl<F: Field> Sub<LinearCombination<F>> for &ConstraintVar<F> {
     }
 }
 
-impl<F: Field> Add<(F, Variable)> for ConstraintVar<F> {
+impl<F: Field> Add<(F, Variable)> for ConstraintVariable<F> {
     type Output = Self;
 
     #[inline]
@@ -147,7 +156,7 @@ impl<F: Field> Add<(F, Variable)> for ConstraintVar<F> {
     }
 }
 
-impl<F: Field> AddAssign<(F, Variable)> for ConstraintVar<F> {
+impl<F: Field> AddAssign<(F, Variable)> for ConstraintVariable<F> {
     #[inline]
     fn add_assign(&mut self, var: (F, Variable)) {
         match self {
@@ -157,7 +166,7 @@ impl<F: Field> AddAssign<(F, Variable)> for ConstraintVar<F> {
     }
 }
 
-impl<F: Field> Neg for ConstraintVar<F> {
+impl<F: Field> Neg for ConstraintVariable<F> {
     type Output = Self;
 
     #[inline]
@@ -167,7 +176,7 @@ impl<F: Field> Neg for ConstraintVar<F> {
     }
 }
 
-impl<F: Field> Mul<F> for ConstraintVar<F> {
+impl<F: Field> Mul<F> for ConstraintVariable<F> {
     type Output = Self;
 
     #[inline]
@@ -179,7 +188,7 @@ impl<F: Field> Mul<F> for ConstraintVar<F> {
     }
 }
 
-impl<F: Field> MulAssign<F> for ConstraintVar<F> {
+impl<F: Field> MulAssign<F> for ConstraintVariable<F> {
     #[inline]
     fn mul_assign(&mut self, scalar: F) {
         match self {
@@ -189,7 +198,7 @@ impl<F: Field> MulAssign<F> for ConstraintVar<F> {
     }
 }
 
-impl<F: Field> Sub<(F, Variable)> for ConstraintVar<F> {
+impl<F: Field> Sub<(F, Variable)> for ConstraintVariable<F> {
     type Output = Self;
 
     #[inline]
@@ -198,7 +207,7 @@ impl<F: Field> Sub<(F, Variable)> for ConstraintVar<F> {
     }
 }
 
-impl<F: Field> Add<Variable> for ConstraintVar<F> {
+impl<F: Field> Add<Variable> for ConstraintVariable<F> {
     type Output = Self;
 
     fn add(self, other: Variable) -> Self {
@@ -206,7 +215,7 @@ impl<F: Field> Add<Variable> for ConstraintVar<F> {
     }
 }
 
-impl<F: Field> Sub<Variable> for ConstraintVar<F> {
+impl<F: Field> Sub<Variable> for ConstraintVariable<F> {
     type Output = Self;
 
     #[inline]
@@ -215,7 +224,7 @@ impl<F: Field> Sub<Variable> for ConstraintVar<F> {
     }
 }
 
-impl<'a, F: Field> Add<&'a Self> for ConstraintVar<F> {
+impl<'a, F: Field> Add<&'a Self> for ConstraintVariable<F> {
     type Output = Self;
 
     #[inline]
@@ -232,7 +241,7 @@ impl<'a, F: Field> Add<&'a Self> for ConstraintVar<F> {
     }
 }
 
-impl<'a, F: Field> Sub<&'a Self> for ConstraintVar<F> {
+impl<'a, F: Field> Sub<&'a Self> for ConstraintVariable<F> {
     type Output = Self;
 
     #[inline]
@@ -249,25 +258,25 @@ impl<'a, F: Field> Sub<&'a Self> for ConstraintVar<F> {
     }
 }
 
-impl<F: Field> Add<&ConstraintVar<F>> for &ConstraintVar<F> {
-    type Output = ConstraintVar<F>;
+impl<F: Field> Add<&ConstraintVariable<F>> for &ConstraintVariable<F> {
+    type Output = ConstraintVariable<F>;
 
     #[inline]
-    fn add(self, other: &ConstraintVar<F>) -> Self::Output {
-        (ConstraintVar::zero() + self) + other
+    fn add(self, other: &ConstraintVariable<F>) -> Self::Output {
+        (ConstraintVariable::zero() + self) + other
     }
 }
 
-impl<F: Field> Sub<&ConstraintVar<F>> for &ConstraintVar<F> {
-    type Output = ConstraintVar<F>;
+impl<F: Field> Sub<&ConstraintVariable<F>> for &ConstraintVariable<F> {
+    type Output = ConstraintVariable<F>;
 
     #[inline]
-    fn sub(self, other: &ConstraintVar<F>) -> Self::Output {
-        (ConstraintVar::zero() + self) - other
+    fn sub(self, other: &ConstraintVariable<F>) -> Self::Output {
+        (ConstraintVariable::zero() + self) - other
     }
 }
 
-impl<'a, F: Field> Add<(F, &'a Self)> for ConstraintVar<F> {
+impl<'a, F: Field> Add<(F, &'a Self)> for ConstraintVariable<F> {
     type Output = Self;
 
     #[inline]
@@ -285,7 +294,7 @@ impl<'a, F: Field> Add<(F, &'a Self)> for ConstraintVar<F> {
     }
 }
 
-impl<'a, F: Field> Sub<(F, &'a Self)> for ConstraintVar<F> {
+impl<'a, F: Field> Sub<(F, &'a Self)> for ConstraintVariable<F> {
     type Output = Self;
 
     #[inline]
