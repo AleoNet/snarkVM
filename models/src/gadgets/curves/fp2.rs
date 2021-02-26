@@ -18,7 +18,7 @@ use crate::{
     curves::{Field, Fp2, Fp2Parameters, PrimeField},
     gadgets::{
         curves::{FieldGadget, FpGadget},
-        r1cs::{Assignment, ConstraintSystem, ConstraintVar},
+        r1cs::{Assignment, ConstraintSystem, ConstraintVariable},
         utilities::{
             alloc::AllocGadget,
             boolean::Boolean,
@@ -84,7 +84,7 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> Fp2Gadget<P, F> {
 }
 
 impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FieldGadget<Fp2<P>, F> for Fp2Gadget<P, F> {
-    type Variable = (ConstraintVar<F>, ConstraintVar<F>);
+    type Variable = (ConstraintVariable<F>, ConstraintVariable<F>);
 
     #[inline]
     fn get_value(&self) -> Option<Fp2<P>> {

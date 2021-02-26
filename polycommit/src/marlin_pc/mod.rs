@@ -227,8 +227,11 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
                 if enforced_degree_bounds.is_empty() {
                     (None, None)
                 } else {
+                    let mut sorted_enforced_degree_bounds = enforced_degree_bounds.clone();
+                    sorted_enforced_degree_bounds.sort();
+
                     let lowest_shifted_power =
-                        max_degree - enforced_degree_bounds.last().ok_or(Error::EmptyDegreeBounds)?;
+                        max_degree - sorted_enforced_degree_bounds.last().ok_or(Error::EmptyDegreeBounds)?;
 
                     let shifted_ck_time = start_timer!(|| format!(
                         "Constructing `shifted_powers` of size {}",

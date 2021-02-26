@@ -28,7 +28,7 @@ use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_errors::{gadgets::SynthesisError, serialization::SerializationError};
 use snarkvm_models::{curves::PrimeField, gadgets::r1cs::ConstraintSynthesizer};
 use snarkvm_polycommit::LabeledPolynomial;
-use snarkvm_utilities::serialize::*;
+use snarkvm_utilities::{serialize::*, ToBytes};
 
 use core::marker::PhantomData;
 use derivative::Derivative;
@@ -58,6 +58,14 @@ impl<F: PrimeField, C> IndexInfo<F, C> {
     /// the AHP.
     pub fn max_degree(&self) -> usize {
         AHPForR1CS::<F>::max_degree(self.num_constraints, self.num_variables, self.num_non_zero).unwrap()
+    }
+}
+
+impl<F: PrimeField, C> ToBytes for IndexInfo<F, C> {
+    fn write<W: Write>(&self, mut w: W) -> Result<(), std::io::Error> {
+        (self.num_variables as u64).write(&mut w)?;
+        (self.num_constraints as u64).write(&mut w)?;
+        (self.num_non_zero as u64).write(&mut w)
     }
 }
 
@@ -128,12 +136,13 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let mut ics = IndexerConstraintSystem::new();
         c.generate_constraints(&mut ics)?;
         end_timer!(constraint_time);
+
         let padding_time = start_timer!(|| "Padding matrices to make them square");
         ics.make_matrices_square();
         end_timer!(padding_time);
 
-        let num_formatted_input_variables = ics.num_input_variables;
-        let num_witness_variables = ics.num_witness_variables;
+        let num_formatted_input_variables = ics.num_public_variables;
+        let num_witness_variables = ics.num_private_variables;
         let num_constraints = ics.num_constraints;
         let num_non_zero = ics.num_non_zero();
         let num_variables = num_formatted_input_variables + num_witness_variables;

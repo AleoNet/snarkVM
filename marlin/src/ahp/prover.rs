@@ -167,8 +167,8 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let num_non_zero = index.index_info.num_non_zero;
 
         let ProverConstraintSystem {
-            input_assignment: formatted_input_assignment,
-            witness_assignment,
+            public_variables: formatted_input_assignment,
+            private_variables: witness_assignment,
             num_constraints,
             ..
         } = pcs;

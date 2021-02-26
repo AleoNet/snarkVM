@@ -21,7 +21,7 @@ use crate::{
         r1cs::{
             Assignment,
             ConstraintSystem,
-            ConstraintVar::{self, *},
+            ConstraintVariable::{self, *},
             LinearCombination,
         },
         utilities::{
@@ -45,7 +45,7 @@ use std::borrow::Borrow;
 #[derive(Debug)]
 pub struct AllocatedFp<F: PrimeField> {
     pub value: Option<F>,
-    pub variable: ConstraintVar<F>,
+    pub variable: ConstraintVariable<F>,
 }
 
 impl<F: PrimeField> AllocatedFp<F> {
@@ -86,7 +86,7 @@ impl<F: PrimeField> AllocatedFp<F> {
     }
 
     #[inline]
-    fn get_variable(&self) -> ConstraintVar<F> {
+    fn get_variable(&self) -> ConstraintVariable<F> {
         self.variable.clone()
     }
 
@@ -95,7 +95,7 @@ impl<F: PrimeField> AllocatedFp<F> {
         let value = Some(F::zero());
         Ok(AllocatedFp {
             value,
-            variable: ConstraintVar::zero(),
+            variable: ConstraintVariable::zero(),
         })
     }
 
@@ -641,7 +641,7 @@ impl<F: PrimeField> AllocGadget<F, F> for AllocatedFp<F> {
 // FpGadget Impl
 
 impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
-    type Variable = ConstraintVar<F>;
+    type Variable = ConstraintVariable<F>;
 
     #[inline]
     fn get_value(&self) -> Option<F> {

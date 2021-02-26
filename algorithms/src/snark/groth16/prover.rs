@@ -36,8 +36,8 @@ pub struct ProvingAssignment<E: PairingEngine> {
     pub(crate) ct: Vec<Vec<(E::Fr, Index)>>,
 
     // Assignments of variables
-    pub(crate) input_assignment: Vec<E::Fr>,
-    pub(crate) aux_assignment: Vec<E::Fr>,
+    pub(crate) public_variables: Vec<E::Fr>,
+    pub(crate) private_variables: Vec<E::Fr>,
 }
 
 impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
@@ -50,9 +50,9 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
         A: FnOnce() -> AR,
         AR: AsRef<str>,
     {
-        let index = self.aux_assignment.len();
-        self.aux_assignment.push(f()?);
-        Ok(Variable::new_unchecked(Index::Aux(index)))
+        let index = self.private_variables.len();
+        self.private_variables.push(f()?);
+        Ok(Variable::new_unchecked(Index::Private(index)))
     }
 
     #[inline]
@@ -62,9 +62,9 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
         A: FnOnce() -> AR,
         AR: AsRef<str>,
     {
-        let index = self.input_assignment.len();
-        self.input_assignment.push(f()?);
-        Ok(Variable::new_unchecked(Index::Input(index)))
+        let index = self.public_variables.len();
+        self.public_variables.push(f()?);
+        Ok(Variable::new_unchecked(Index::Public(index)))
     }
 
     #[inline]
@@ -99,6 +99,14 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
 
     fn num_constraints(&self) -> usize {
         self.at.len()
+    }
+
+    fn num_public_variables(&self) -> usize {
+        self.public_variables.len()
+    }
+
+    fn num_private_variables(&self) -> usize {
+        self.private_variables.len()
     }
 }
 
@@ -136,8 +144,8 @@ where
         at: vec![],
         bt: vec![],
         ct: vec![],
-        input_assignment: vec![],
-        aux_assignment: vec![],
+        public_variables: vec![],
+        private_variables: vec![],
     };
 
     // Allocate the "one" input variable
@@ -153,13 +161,13 @@ where
     end_timer!(witness_map_time);
 
     let input_assignment = prover
-        .input_assignment
+        .public_variables
         .iter()
         .skip(1)
         .map(|s| s.into_repr())
         .collect::<Vec<_>>();
 
-    let aux_assignment = cfg_into_iter!(prover.aux_assignment)
+    let aux_assignment = cfg_into_iter!(prover.private_variables)
         .map(|s| s.into_repr())
         .collect::<Vec<_>>();
 

@@ -427,8 +427,8 @@ fn push_constraints<F: Field>(l: LinearCombination<F>, constraints: &mut Vec<Vec
 
     for (var, coeff) in vars_and_coeffs {
         match var.get_unchecked() {
-            Index::Input(i) => vec.push((*coeff, Index::Input(i))),
-            Index::Aux(i) => vec.push((*coeff, Index::Aux(i))),
+            Index::Public(i) => vec.push((*coeff, Index::Public(i))),
+            Index::Private(i) => vec.push((*coeff, Index::Private(i))),
         }
     }
     constraints.push(vec);
