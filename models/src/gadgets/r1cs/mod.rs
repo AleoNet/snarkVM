@@ -15,20 +15,29 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod assignment;
-mod constraint_counter;
-mod constraint_system;
-mod impl_constraint_var;
-mod impl_lc;
-mod test_constraint_system;
-mod test_fr;
-
-pub use crate::curves::to_field_vec::ToConstraintField;
 pub use assignment::*;
+
+mod constraint_counter;
 pub use constraint_counter::ConstraintCounter;
-pub use constraint_system::{ConstraintSynthesizer, ConstraintSystem, Namespace};
+
+mod constraint_system;
+pub use constraint_system::{ConstraintSynthesizer, ConstraintSystem};
+
+mod impl_constraint_var;
+
+mod linear_combination;
+pub use linear_combination::*;
+
+mod namespace;
+pub use namespace::*;
+
+mod test_constraint_system;
 pub use test_constraint_system::TestConstraintSystem;
+
+mod test_fr;
 pub use test_fr::*;
 
+pub use crate::curves::to_field_vec::ToConstraintField;
 use crate::curves::Field;
 
 use snarkvm_errors::serialization::SerializationError;
@@ -126,13 +135,6 @@ impl CanonicalDeserialize for Index {
         })
     }
 }
-
-/// This represents a linear combination of some variables, with coefficients
-/// in the field `F`.
-/// The `(coeff, var)` pairs in a `LinearCombination` are kept sorted according
-/// to the index of the variable in its constraint system.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct LinearCombination<F: Field>(pub Vec<(Variable, F)>);
 
 /// Either a `Variable` or a `LinearCombination`.
 #[derive(Clone, Debug)]

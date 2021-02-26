@@ -42,8 +42,8 @@ use derivative::Derivative;
 
 /// Stores constraints during index generation.
 pub(crate) struct IndexerConstraintSystem<F: Field> {
-    pub(crate) num_input_variables: usize,
-    pub(crate) num_witness_variables: usize,
+    pub(crate) num_public_variables: usize,
+    pub(crate) num_private_variables: usize,
     pub(crate) num_constraints: usize,
     pub(crate) a: Vec<Vec<(F, VarIndex)>>,
     pub(crate) b: Vec<Vec<(F, VarIndex)>>,
@@ -79,8 +79,8 @@ impl<F: Field> IndexerConstraintSystem<F> {
 
     pub(crate) fn new() -> Self {
         Self {
-            num_input_variables: 1,
-            num_witness_variables: 0,
+            num_public_variables: 1,
+            num_private_variables: 0,
             num_constraints: 0,
             a: Vec::new(),
             b: Vec::new(),
@@ -89,15 +89,15 @@ impl<F: Field> IndexerConstraintSystem<F> {
     }
 
     pub(crate) fn a_matrix(&self) -> Vec<Vec<(F, usize)>> {
-        to_matrix_helper(&self.a, self.num_input_variables)
+        to_matrix_helper(&self.a, self.num_public_variables)
     }
 
     pub(crate) fn b_matrix(&self) -> Vec<Vec<(F, usize)>> {
-        to_matrix_helper(&self.b, self.num_input_variables)
+        to_matrix_helper(&self.b, self.num_public_variables)
     }
 
     pub(crate) fn c_matrix(&self) -> Vec<Vec<(F, usize)>> {
-        to_matrix_helper(&self.c, self.num_input_variables)
+        to_matrix_helper(&self.c, self.num_public_variables)
     }
 
     pub(crate) fn num_non_zero(&self) -> usize {
@@ -113,17 +113,17 @@ impl<F: Field> IndexerConstraintSystem<F> {
     }
 
     pub(crate) fn make_matrices_square(&mut self) {
-        let num_variables = self.num_input_variables + self.num_witness_variables;
+        let num_variables = self.num_public_variables + self.num_private_variables;
         let num_non_zero = self.num_non_zero();
         let matrix_dim = padded_matrix_dim(num_variables, self.num_constraints);
         make_matrices_square(self, num_variables);
         assert_eq!(
-            self.num_input_variables + self.num_witness_variables,
+            self.num_public_variables + self.num_private_variables,
             self.num_constraints,
             "padding failed!"
         );
         assert_eq!(
-            self.num_input_variables + self.num_witness_variables,
+            self.num_public_variables + self.num_private_variables,
             matrix_dim,
             "padding does not result in expected matrix size!"
         );
@@ -144,8 +144,8 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for IndexerConstraintSyst
         // There is no assignment, so we don't invoke the
         // function for obtaining one.
 
-        let index = self.num_witness_variables;
-        self.num_witness_variables += 1;
+        let index = self.num_private_variables;
+        self.num_private_variables += 1;
 
         Ok(Variable::new_unchecked(VarIndex::Aux(index)))
     }
@@ -160,8 +160,8 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for IndexerConstraintSyst
         // There is no assignment, so we don't invoke the
         // function for obtaining one.
 
-        let index = self.num_input_variables;
-        self.num_input_variables += 1;
+        let index = self.num_public_variables;
+        self.num_public_variables += 1;
 
         Ok(Variable::new_unchecked(VarIndex::Input(index)))
     }
@@ -199,6 +199,14 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for IndexerConstraintSyst
 
     fn num_constraints(&self) -> usize {
         self.num_constraints
+    }
+
+    fn num_public_variables(&self) -> usize {
+        self.num_public_variables
+    }
+
+    fn num_private_variables(&self) -> usize {
+        self.num_private_variables
     }
 }
 
@@ -390,20 +398,20 @@ fn is_in_ascending_order<T: Ord>(x_s: &[T], is_less_than: impl Fn(&T, &T) -> boo
 
 pub(crate) struct ProverConstraintSystem<F: Field> {
     // Assignments of variables
-    pub(crate) input_assignment: Vec<F>,
-    pub(crate) witness_assignment: Vec<F>,
-    pub(crate) num_input_variables: usize,
-    pub(crate) num_witness_variables: usize,
+    pub(crate) public_variables: Vec<F>,
+    pub(crate) private_variables: Vec<F>,
+    pub(crate) num_public_variables: usize,
+    pub(crate) num_private_variables: usize,
     pub(crate) num_constraints: usize,
 }
 
 impl<F: Field> ProverConstraintSystem<F> {
     pub(crate) fn new() -> Self {
         Self {
-            input_assignment: vec![F::one()],
-            witness_assignment: Vec::new(),
-            num_input_variables: 1usize,
-            num_witness_variables: 0usize,
+            public_variables: vec![F::one()],
+            private_variables: Vec::new(),
+            num_public_variables: 1usize,
+            num_private_variables: 0usize,
             num_constraints: 0usize,
         }
     }
@@ -423,10 +431,10 @@ impl<F: Field> ProverConstraintSystem<F> {
     }
 
     pub(crate) fn make_matrices_square(&mut self) {
-        let num_variables = self.num_input_variables + self.num_witness_variables;
+        let num_variables = self.num_public_variables + self.num_private_variables;
         make_matrices_square(self, num_variables);
         assert_eq!(
-            self.num_input_variables + self.num_witness_variables,
+            self.num_public_variables + self.num_private_variables,
             self.num_constraints,
             "padding failed!"
         );
@@ -443,10 +451,10 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ProverConstraintSyste
         A: FnOnce() -> AR,
         AR: AsRef<str>,
     {
-        let index = self.num_witness_variables;
-        self.num_witness_variables += 1;
+        let index = self.num_private_variables;
+        self.num_private_variables += 1;
 
-        self.witness_assignment.push(f()?);
+        self.private_variables.push(f()?);
         Ok(Variable::new_unchecked(VarIndex::Aux(index)))
     }
 
@@ -457,10 +465,10 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ProverConstraintSyste
         A: FnOnce() -> AR,
         AR: AsRef<str>,
     {
-        let index = self.num_input_variables;
-        self.num_input_variables += 1;
+        let index = self.num_public_variables;
+        self.num_public_variables += 1;
 
-        self.input_assignment.push(f()?);
+        self.public_variables.push(f()?);
         Ok(Variable::new_unchecked(VarIndex::Input(index)))
     }
 
@@ -494,5 +502,13 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ProverConstraintSyste
 
     fn num_constraints(&self) -> usize {
         self.num_constraints
+    }
+
+    fn num_public_variables(&self) -> usize {
+        self.num_public_variables
+    }
+
+    fn num_private_variables(&self) -> usize {
+        self.num_private_variables
     }
 }

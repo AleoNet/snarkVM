@@ -141,8 +141,8 @@ impl<F: PrimeField> AHPForR1CS<F> {
         ics.make_matrices_square();
         end_timer!(padding_time);
 
-        let num_formatted_input_variables = ics.num_input_variables;
-        let num_witness_variables = ics.num_witness_variables;
+        let num_formatted_input_variables = ics.num_public_variables;
+        let num_witness_variables = ics.num_private_variables;
         let num_constraints = ics.num_constraints;
         let num_non_zero = ics.num_non_zero();
         let num_variables = num_formatted_input_variables + num_witness_variables;

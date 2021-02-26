@@ -34,7 +34,7 @@ impl R1CStoSAP {
         assembly: &KeypairAssembly<E>,
         t: &E::Fr,
     ) -> SynthesisResult<(Vec<E::Fr>, Vec<E::Fr>, E::Fr, usize, usize)> {
-        let domain_size = 2 * assembly.num_constraints + 2 * (assembly.num_inputs - 1) + 1;
+        let domain_size = 2 * assembly.num_constraints + 2 * (assembly.num_public_variables - 1) + 1;
         let domain = EvaluationDomain::<E::Fr>::new(domain_size).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let domain_size = domain.size();
 
@@ -45,10 +45,12 @@ impl R1CStoSAP {
         let u = domain.evaluate_all_lagrange_coefficients(*t);
         end_timer!(coefficients_time);
 
-        let sap_num_variables = 2 * (assembly.num_inputs - 1) + assembly.num_aux + assembly.num_constraints;
-        let extra_var_offset = (assembly.num_inputs - 1) + assembly.num_aux + 1;
+        let sap_num_variables =
+            2 * (assembly.num_public_variables - 1) + assembly.num_private_variables + assembly.num_constraints;
+        let extra_var_offset = (assembly.num_public_variables - 1) + assembly.num_private_variables + 1;
         let extra_constr_offset = 2 * assembly.num_constraints;
-        let extra_var_offset2 = (assembly.num_inputs - 1) + assembly.num_aux + assembly.num_constraints;
+        let extra_var_offset2 =
+            (assembly.num_public_variables - 1) + assembly.num_private_variables + assembly.num_constraints;
 
         let mut a = vec![E::Fr::zero(); sap_num_variables + 1];
         let mut c = vec![E::Fr::zero(); sap_num_variables + 1];
@@ -62,7 +64,7 @@ impl R1CStoSAP {
             for &(ref coeff, index) in assembly.at[i].iter() {
                 let index = match index {
                     Index::Input(i) => i,
-                    Index::Aux(i) => assembly.num_inputs + i,
+                    Index::Aux(i) => assembly.num_public_variables + i,
                 };
 
                 a[index] += &(u_add * coeff);
@@ -71,7 +73,7 @@ impl R1CStoSAP {
             for &(ref coeff, index) in assembly.bt[i].iter() {
                 let index = match index {
                     Index::Input(i) => i,
-                    Index::Aux(i) => assembly.num_inputs + i,
+                    Index::Aux(i) => assembly.num_public_variables + i,
                 };
 
                 a[index] += &(u_sub * coeff);
@@ -80,7 +82,7 @@ impl R1CStoSAP {
             for &(ref coeff, index) in assembly.ct[i].iter() {
                 let index = match index {
                     Index::Input(i) => i,
-                    Index::Aux(i) => assembly.num_inputs + i,
+                    Index::Aux(i) => assembly.num_public_variables + i,
                 };
 
                 c[index] += &((u_2i * coeff).double().double());
@@ -91,7 +93,7 @@ impl R1CStoSAP {
         a[0].add_assign(&u[extra_constr_offset]);
         c[0].add_assign(&u[extra_constr_offset]);
 
-        for i in 1..assembly.num_inputs {
+        for i in 1..assembly.num_public_variables {
             // First extra constraint
 
             a[i].add_assign(&u[extra_constr_offset + 2 * i - 1]);
@@ -139,17 +141,18 @@ impl R1CStoSAP {
         let zero = E::Fr::zero();
         let one = E::Fr::one();
 
-        let mut full_input_assignment = prover.input_assignment.clone();
-        full_input_assignment.extend(prover.aux_assignment.clone());
+        let mut full_input_assignment = prover.public_variables.clone();
+        full_input_assignment.extend(prover.private_variables.clone());
 
         let temp = cfg_iter!(prover.at)
             .zip(&prover.bt)
             .map(|(a_i, b_i)| {
-                let mut extra_var: E::Fr = evaluate_constraint::<E>(&a_i, &full_input_assignment, prover.num_inputs);
+                let mut extra_var: E::Fr =
+                    evaluate_constraint::<E>(&a_i, &full_input_assignment, prover.num_public_variables);
                 extra_var.sub_assign(&evaluate_constraint::<E>(
                     &b_i,
                     &full_input_assignment,
-                    prover.num_inputs,
+                    prover.num_public_variables,
                 ));
                 extra_var.square_in_place();
                 extra_var
@@ -157,42 +160,43 @@ impl R1CStoSAP {
             .collect::<Vec<_>>();
         full_input_assignment.extend(temp);
 
-        for i in 1..prover.num_inputs {
+        for i in 1..prover.num_public_variables {
             let mut extra_var = full_input_assignment[i];
             extra_var.sub_assign(&one);
             extra_var.square_in_place();
             full_input_assignment.push(extra_var);
         }
 
-        let domain = EvaluationDomain::<E::Fr>::new(2 * prover.num_constraints + 2 * (prover.num_inputs - 1) + 1)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let domain =
+            EvaluationDomain::<E::Fr>::new(2 * prover.num_constraints + 2 * (prover.num_public_variables - 1) + 1)
+                .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let domain_size = domain.size();
 
         let extra_constr_offset = 2 * prover.num_constraints;
-        let extra_var_offset = prover.num_inputs + prover.num_aux;
-        let extra_var_offset2 = prover.num_inputs + prover.num_aux + prover.num_constraints - 1;
+        let extra_var_offset = prover.num_public_variables + prover.num_private_variables;
+        let extra_var_offset2 = prover.num_public_variables + prover.num_private_variables + prover.num_constraints - 1;
 
         let mut a = vec![zero; domain_size];
         cfg_chunks_mut!(a[..2 * prover.num_constraints], 2)
             .zip(&prover.at)
             .zip(&prover.bt)
             .for_each(|((chunk, at_i), bt_i)| {
-                chunk[0] = evaluate_constraint::<E>(&at_i, &full_input_assignment, prover.num_inputs);
+                chunk[0] = evaluate_constraint::<E>(&at_i, &full_input_assignment, prover.num_public_variables);
                 chunk[0].add_assign(&evaluate_constraint::<E>(
                     &bt_i,
                     &full_input_assignment,
-                    prover.num_inputs,
+                    prover.num_public_variables,
                 ));
 
-                chunk[1] = evaluate_constraint::<E>(&at_i, &full_input_assignment, prover.num_inputs);
+                chunk[1] = evaluate_constraint::<E>(&at_i, &full_input_assignment, prover.num_public_variables);
                 chunk[1].sub_assign(&evaluate_constraint::<E>(
                     &bt_i,
                     &full_input_assignment,
-                    prover.num_inputs,
+                    prover.num_public_variables,
                 ));
             });
         a[extra_constr_offset] = one;
-        for i in 1..prover.num_inputs {
+        for i in 1..prover.num_public_variables {
             a[extra_constr_offset + 2 * i - 1] = full_input_assignment[i] + &one;
             a[extra_constr_offset + 2 * i] = full_input_assignment[i] - &one;
         }
@@ -216,7 +220,8 @@ impl R1CStoSAP {
         cfg_chunks_mut!(c[..2 * prover.num_constraints], 2)
             .enumerate()
             .for_each(|(i, chunk)| {
-                let mut tmp: E::Fr = evaluate_constraint::<E>(&prover.ct[i], &full_input_assignment, prover.num_inputs);
+                let mut tmp: E::Fr =
+                    evaluate_constraint::<E>(&prover.ct[i], &full_input_assignment, prover.num_public_variables);
                 tmp.double_in_place();
                 tmp.double_in_place();
 
@@ -225,7 +230,7 @@ impl R1CStoSAP {
                 chunk[1] = assignment;
             });
         c[extra_constr_offset] = one;
-        for i in 1..prover.num_inputs {
+        for i in 1..prover.num_public_variables {
             let mut tmp = full_input_assignment[i];
             tmp.double_in_place();
             tmp.double_in_place();
