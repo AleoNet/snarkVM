@@ -214,6 +214,13 @@ impl<F: PrimeField> AllocatedFp<F> {
         Ok(self)
     }
 
+    /// Output `self - other`
+    ///
+    /// This does not create any constraints.
+    fn sub_constant<CS: ConstraintSystem<F>>(&self, _cs: CS, other: &F) -> Result<Self, SynthesisError> {
+        self.add_constant(_cs, &other.neg())
+    }
+
     #[inline]
     fn mul_by_constant<CS: ConstraintSystem<F>>(&self, cs: CS, other: &F) -> Result<Self, SynthesisError> {
         let mut result = self.clone();
@@ -648,19 +655,25 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
     #[inline]
     fn get_variable(&self) -> <Self as FieldGadget<F, F>>::Variable {
         match self {
-            FpGadget::Constant(v) => panic!(),
+            FpGadget::Constant(v) => unimplemented!(),
             FpGadget::Variable(v) => v.variable.clone(),
         }
     }
 
     #[inline]
     fn zero<CS: ConstraintSystem<F>>(_cs: CS) -> Result<Self, SynthesisError> {
-        Ok(Self::Constant(F::zero()))
+        // println!("constant zero");
+        // Ok(Self::Constant(F::zero()))
+
+        (AllocatedFp::zero(_cs)).map(Self::Variable)
     }
 
     #[inline]
     fn one<CS: ConstraintSystem<F>>(_cs: CS) -> Result<Self, SynthesisError> {
-        Ok(Self::Constant(F::one()))
+        // println!("constant one");
+        // Ok(Self::Constant(F::one()))
+
+        (AllocatedFp::one(_cs)).map(Self::Variable)
     }
 
     #[inline]
@@ -670,25 +683,68 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         bit: &Boolean,
         coeff: F,
     ) -> Result<Self, SynthesisError> {
-        unimplemented!()
+        match self {
+            Self::Constant(c) => {
+                let value = match bit.get_value() {
+                    Some(b) => {
+                        if b {
+                            *c + &coeff
+                        } else {
+                            *c
+                        }
+                    }
+                    _ => *c,
+                };
+                Ok(Self::Constant(value))
+            }
+            Self::Variable(v) => Ok(Self::Variable(v.conditionally_add_constant(_cs, bit, coeff)?)),
+        }
     }
 
     #[inline]
-    fn add<CS: ConstraintSystem<F>>(&self, mut _cs: CS, other: &Self) -> Result<Self, SynthesisError> {
-        unimplemented!()
+    fn add<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, SynthesisError> {
+        match (self, other) {
+            (Self::Constant(c1), Self::Constant(c2)) => Ok(Self::Constant(*c1 + &*c2)),
+            (Self::Constant(c), Self::Variable(v)) | (Self::Variable(v), Self::Constant(c)) => {
+                Ok(Self::Variable(v.add_constant(cs, &*c)?))
+            }
+            (Self::Variable(v1), Self::Variable(v2)) => Ok(Self::Variable(v1.add(cs, v2)?)),
+        }
     }
 
     fn double<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
+        match self {
+            Self::Constant(c) => Ok(Self::Constant(c.double())),
+            Self::Variable(v) => Ok(Self::Variable(v.double(_cs)?)),
+        }
     }
 
     fn double_in_place<CS: ConstraintSystem<F>>(&mut self, _cs: CS) -> Result<&mut Self, SynthesisError> {
-        unimplemented!()
+        match self {
+            Self::Constant(c) => {
+                c.double_in_place();
+            }
+            Self::Variable(v) => {
+                v.double_in_place(_cs)?;
+            }
+        }
+
+        Ok(self)
     }
 
     #[inline]
-    fn sub<CS: ConstraintSystem<F>>(&self, mut _cs: CS, other: &Self) -> Result<Self, SynthesisError> {
-        unimplemented!()
+    fn sub<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, SynthesisError> {
+        match (self, other) {
+            (Self::Constant(c1), Self::Constant(c2)) => Ok(Self::Constant(*c1 - &*c2)),
+            (Self::Variable(v), Self::Constant(c)) => {
+                Ok(Self::Variable(v.sub_constant(cs.ns(|| "sub_constant"), &*c)?))
+            }
+            (Self::Constant(c), Self::Variable(v)) => Ok(Self::Variable(
+                v.sub_constant(cs.ns(|| "sub_constant"), &*c)?
+                    .negate(cs.ns(|| "negate"))?,
+            )),
+            (Self::Variable(v1), Self::Variable(v2)) => Ok(Self::Variable(v1.sub(cs.ns(|| "sub"), v2)?)),
+        }
     }
 
     #[inline]
@@ -701,26 +757,32 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
 
     #[inline]
     fn negate_in_place<CS: ConstraintSystem<F>>(&mut self, _cs: CS) -> Result<&mut Self, SynthesisError> {
-        // match self {
-        //     Self::Constant(c) => c = &-*c;
-        //     Self::Variable(v) => {
-        //         v.negate_in_place(_cs);
-        //     }
-        // }
-        //
-        // Ok(self)
+        match self {
+            Self::Constant(c) => {
+                *c = c.neg();
+            }
+            Self::Variable(v) => {
+                v.negate_in_place(_cs)?;
+            }
+        }
 
-        unimplemented!()
+        Ok(self)
     }
 
     #[inline]
     fn mul<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, SynthesisError> {
-        unimplemented!()
+        match (self, other) {
+            (Self::Constant(c1), Self::Constant(c2)) => Ok(Self::Constant(*c1 * &*c2)),
+            (Self::Variable(v), Self::Constant(c)) | (Self::Constant(c), Self::Variable(v)) => {
+                Ok(Self::Variable(v.mul_by_constant(cs.ns(|| "mul_by_constant"), &*c)?))
+            }
+            (Self::Variable(v1), Self::Variable(v2)) => Ok(Self::Variable(v1.mul(cs.ns(|| "mul"), v2)?)),
+        }
     }
 
     #[inline]
     fn add_constant<CS: ConstraintSystem<F>>(&self, _cs: CS, other: &F) -> Result<Self, SynthesisError> {
-        unimplemented!()
+        self.add(_cs, &Self::Constant(*other))
     }
 
     #[inline]
@@ -729,12 +791,13 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         _cs: CS,
         other: &F,
     ) -> Result<&mut Self, SynthesisError> {
-        unimplemented!()
+        *self = self.add_constant(_cs, other)?;
+        Ok(self)
     }
 
     #[inline]
     fn mul_by_constant<CS: ConstraintSystem<F>>(&self, cs: CS, other: &F) -> Result<Self, SynthesisError> {
-        unimplemented!()
+        self.mul(cs, &Self::Constant(*other))
     }
 
     #[inline]
@@ -743,24 +806,36 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         mut _cs: CS,
         other: &F,
     ) -> Result<&mut Self, SynthesisError> {
-        unimplemented!()
+        *self = self.mul_by_constant(_cs, other)?;
+        Ok(self)
     }
 
     #[inline]
     fn inverse<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Self, SynthesisError> {
-        unimplemented!()
+        match self {
+            Self::Constant(f) => f.inverse().get().map(Self::Constant),
+            Self::Variable(v) => v.inverse(cs).map(Self::Variable),
+        }
     }
 
-    fn frobenius_map<CS: ConstraintSystem<F>>(&self, _: CS, _: usize) -> Result<Self, SynthesisError> {
-        unimplemented!()
+    fn frobenius_map<CS: ConstraintSystem<F>>(&self, _cs: CS, _power: usize) -> Result<Self, SynthesisError> {
+        match self {
+            Self::Constant(f) => {
+                let mut f = *f;
+                f.frobenius_map(_power);
+                Ok(FpGadget::Constant(f))
+            }
+            Self::Variable(v) => v.frobenius_map(_cs, _power).map(Self::Variable),
+        }
     }
 
     fn frobenius_map_in_place<CS: ConstraintSystem<F>>(
         &mut self,
-        _: CS,
-        _: usize,
+        _cs: CS,
+        _power: usize,
     ) -> Result<&mut Self, SynthesisError> {
-        unimplemented!()
+        *self = self.frobenius_map(_cs, _power)?;
+        Ok(self)
     }
 
     fn mul_equals<CS: ConstraintSystem<F>>(
@@ -769,7 +844,22 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         other: &Self,
         result: &Self,
     ) -> Result<(), SynthesisError> {
-        unimplemented!()
+        match (self, other, result) {
+            (Self::Constant(_), Self::Constant(_), Self::Constant(_)) => Ok(()),
+            (Self::Constant(_), Self::Constant(_), _)
+            | (Self::Constant(_), Self::Variable(_), _)
+            | (Self::Variable(_), Self::Constant(_), _) => {
+                let mul_other = self.mul(cs.ns(|| "mul"), other)?;
+                result.enforce_equal(cs.ns(|| "encorce_equal"), &mul_other)
+            } // this multiplication should be free
+            (Self::Variable(v1), Self::Variable(v2), Self::Variable(v3)) => {
+                v1.mul_equals(cs.ns(|| "mul_equals"), v2, v3)
+            }
+            (Self::Variable(v1), Self::Variable(v2), Self::Constant(f)) => {
+                let v3 = AllocatedFp::alloc(cs.ns(|| "alloc_constant"), || Ok(f)).unwrap();
+                v1.mul_equals(cs, v2, &v3)
+            }
+        }
     }
 
     fn square_equals<CS: ConstraintSystem<F>>(&self, mut cs: CS, result: &Self) -> Result<(), SynthesisError> {
@@ -824,7 +914,11 @@ impl<F: PrimeField> ConditionalEqGadget<F> for FpGadget<F> {
     ) -> Result<(), SynthesisError> {
         match (self, other) {
             (Self::Constant(_), Self::Constant(_)) => Ok(()),
-            (Self::Constant(c), Self::Variable(v)) | (Self::Variable(v), Self::Constant(c)) => {
+            (Self::Variable(v), Self::Constant(c)) => {
+                let c = AllocatedFp::alloc_constant(cs.ns(|| "alloc_constant"), || Ok(c))?;
+                c.conditional_enforce_equal(cs, v, condition)
+            }
+            (Self::Constant(c), Self::Variable(v)) => {
                 let c = AllocatedFp::alloc_constant(cs.ns(|| "alloc_constant"), || Ok(c))?;
                 c.conditional_enforce_equal(cs, v, condition)
             }
@@ -843,7 +937,7 @@ impl<F: PrimeField> NEqGadget<F> for FpGadget<F> {
         match (self, other) {
             (Self::Constant(_), Self::Constant(_)) => Ok(()),
             (Self::Constant(c), Self::Variable(v)) | (Self::Variable(v), Self::Constant(c)) => {
-                let c = AllocatedFp::alloc_constant(cs.ns(|| "alloc_constant"), || Ok(c))?;
+                let c = AllocatedFp::alloc_constant(cs.ns(|| "alloc_constant"), || Ok(c))?; // change to alloc_constant
                 c.enforce_not_equal(cs, v)
             }
             (Self::Variable(v1), Self::Variable(v2)) => v1.enforce_not_equal(cs, v2),
@@ -918,15 +1012,11 @@ impl<F: PrimeField> CondSelectGadget<F> for FpGadget<F> {
                     }
                     (..) => {
                         let first = match first {
-                            Self::Constant(f) => {
-                                AllocatedFp::alloc_constant(cs.ns(|| "alloc_constant_first"), || Ok(f))?
-                            }
+                            Self::Constant(f) => AllocatedFp::alloc(cs.ns(|| "alloc_constant_first"), || Ok(f))?,
                             Self::Variable(v) => v.clone(),
                         };
                         let second = match second {
-                            Self::Constant(f) => {
-                                AllocatedFp::alloc_constant(cs.ns(|| "alloc_constant_second"), || Ok(f))?
-                            }
+                            Self::Constant(f) => AllocatedFp::alloc(cs.ns(|| "alloc_constant_second"), || Ok(f))?,
                             Self::Variable(v) => v.clone(),
                         };
                         AllocatedFp::conditionally_select(cs.ns(|| "conditionally_select"), &cond, &first, &second)
@@ -954,24 +1044,27 @@ impl<F: PrimeField> TwoBitLookupGadget<F> for FpGadget<F> {
     ) -> Result<Self, SynthesisError> {
         debug_assert!(b.len() == 2);
         debug_assert!(c.len() == 4);
+        //
+        // // Check if the inputs are constant
+        // let mut constant = true;
+        // for bit in b {
+        //     match bit {
+        //         Boolean::Constant(_) => {}
+        //         _ => constant = false,
+        //     }
+        // }
+        //
+        // if constant {
+        //     let lsb = usize::from(b[0].get_value().get()?);
+        //     let msb = usize::from(b[1].get_value().get()?);
+        //     let index = lsb + (msb << 1);
+        //     println!("two-bit-lookup");
+        //     Ok(Self::Constant(c[index]))
+        // } else {
+        //     AllocatedFp::two_bit_lookup(cs, b, c).map(Self::Variable)
+        // }
 
-        // Check if the inputs are constant
-        let mut constant = true;
-        for bit in b {
-            match bit {
-                Boolean::Constant(_) => {}
-                _ => constant = false,
-            }
-        }
-
-        if constant {
-            let lsb = usize::from(b[0].get_value().get()?);
-            let msb = usize::from(b[1].get_value().get()?);
-            let index = lsb + (msb << 1);
-            Ok(Self::Constant(c[index]))
-        } else {
-            AllocatedFp::two_bit_lookup(cs, b, c).map(Self::Variable)
-        }
+        AllocatedFp::two_bit_lookup(cs, b, c).map(Self::Variable)
     }
 
     fn cost() -> usize {
@@ -991,34 +1084,39 @@ impl<F: PrimeField> ThreeBitCondNegLookupGadget<F> for FpGadget<F> {
         debug_assert_eq!(b.len(), 3);
         debug_assert_eq!(c.len(), 4);
 
-        // Chck if the inputs are constant
-        let mut constant = true;
-        for bit in b {
-            match bit {
-                Boolean::Constant(_) => {}
-                _ => constant = false,
-            }
-        }
+        // // Chck if the inputs are constant
+        // let mut constant = true;
+        // for bit in b {
+        //     match bit {
+        //         Boolean::Constant(_) => {}
+        //         _ => constant = false,
+        //     }
+        // }
+        //
+        // match b0b1 {
+        //     Boolean::Constant(_) => {}
+        //     _ => constant = false,
+        // }
+        //
+        // if constant {
+        //     // We only have constants
+        //
+        //     let lsb = usize::from(b[0].get_value().get()?);
+        //     let msb = usize::from(b[1].get_value().get()?);
+        //     let index = lsb + (msb << 1);
+        //     let intermediate = c[index];
+        //
+        //     let is_negative = b[2].get_value().get()?;
+        //     let y = if is_negative { -intermediate } else { intermediate };
+        //
+        //     println!("three-bit-cond-neg-lookup");
+        //
+        //     Ok(Self::Constant(y))
+        // } else {
+        //     AllocatedFp::three_bit_cond_neg_lookup(cs, b, b0b1, c).map(Self::Variable)
+        // }
 
-        match b0b1 {
-            Boolean::Constant(_) => {}
-            _ => constant = false,
-        }
-
-        if constant {
-            // We only have constants
-
-            let lsb = usize::from(b[0].get_value().get()?);
-            let msb = usize::from(b[1].get_value().get()?);
-            let index = lsb + (msb << 1);
-            let intermediate = c[index];
-
-            let is_negative = b[2].get_value().get()?;
-            let y = if is_negative { -intermediate } else { intermediate };
-            Ok(Self::Constant(y))
-        } else {
-            AllocatedFp::three_bit_cond_neg_lookup(cs, b, b0b1, c).map(Self::Variable)
-        }
+        AllocatedFp::three_bit_cond_neg_lookup(cs, b, b0b1, c).map(Self::Variable)
     }
 
     fn cost() -> usize {
