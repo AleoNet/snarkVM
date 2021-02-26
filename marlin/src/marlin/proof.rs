@@ -17,7 +17,7 @@
 use crate::{ahp::prover::ProverMsg, Vec};
 use snarkvm_errors::serialization::SerializationError;
 use snarkvm_models::curves::PrimeField;
-use snarkvm_polycommit::{BatchLCProof, PolynomialCommitment};
+use snarkvm_polycommit::{BatchLCProof, PCCommitment, PolynomialCommitment};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     error,
@@ -60,8 +60,6 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> Proof<F, PC> {
 
     /// Prints information about the size of the proof.
     pub fn print_size_info(&self) {
-        use snarkvm_polycommit::PCCommitment;
-
         let size_of_fe_in_bytes = F::zero().into_repr().as_ref().len() * 8;
         let mut num_comms_without_degree_bounds = 0;
         let mut num_comms_with_degree_bounds = 0;
@@ -84,16 +82,16 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> Proof<F, PC> {
             size_bytes_proofs += proof.serialized_size();
         }
 
-        let num_evals = self.evaluations.len();
-        let evals_size_in_bytes = num_evals * size_of_fe_in_bytes;
+        let num_evaluations = self.evaluations.len();
+        let evaluation_size_in_bytes = num_evaluations * size_of_fe_in_bytes;
         let num_prover_messages: usize = self.prover_messages.iter().map(|v| v.field_elements.len()).sum();
-        let prover_msg_size_in_bytes = num_prover_messages * size_of_fe_in_bytes;
-        let arg_size = size_bytes_comms_with_degree_bounds
+        let prover_message_size_in_bytes = num_prover_messages * size_of_fe_in_bytes;
+        let argument_size = size_bytes_comms_with_degree_bounds
             + size_bytes_comms_without_degree_bounds
             + size_bytes_proofs
-            + prover_msg_size_in_bytes
-            + evals_size_in_bytes;
-        let stats = format!(
+            + prover_message_size_in_bytes
+            + evaluation_size_in_bytes;
+        let statistics = format!(
             "Argument size in bytes: {}\n\n\
              Number of commitments without degree bounds: {}\n\
              Size (in bytes) of commitments without degree bounds: {}\n\
@@ -105,19 +103,19 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> Proof<F, PC> {
              Size (in bytes) of evaluations: {}\n\n\
              Number of field elements in prover messages: {}\n\
              Size (in bytes) of prover message: {}\n",
-            arg_size,
+            argument_size,
             num_comms_without_degree_bounds,
             size_bytes_comms_without_degree_bounds,
             num_comms_with_degree_bounds,
             size_bytes_comms_with_degree_bounds,
             num_proofs,
             size_bytes_proofs,
-            num_evals,
-            evals_size_in_bytes,
+            num_evaluations,
+            evaluation_size_in_bytes,
             num_prover_messages,
-            prover_msg_size_in_bytes,
+            prover_message_size_in_bytes,
         );
-        add_to_trace!(|| "Statistics about proof", || stats);
+        add_to_trace!(|| "Statistics about proof", || statistics);
     }
 }
 

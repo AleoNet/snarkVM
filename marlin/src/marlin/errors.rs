@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-/// A `enum` specifying the possible failure modes of the `SNARK`.
+/// A `enum` specifying the possible failure modes of `Marlin`.
 #[derive(Debug)]
 pub enum MarlinError<E> {
     /// The index is too large for the universal public parameters.

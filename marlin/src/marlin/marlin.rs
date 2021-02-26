@@ -91,8 +91,8 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
 
         let index_comms = index_comms.into_iter().map(|c| c.commitment().clone()).collect();
         let circuit_verifying_key = CircuitVerifyingKey {
-            index_info: index.index_info,
-            index_comms,
+            circuit_info: index.index_info,
+            circuit_commitments: index_comms,
             verifier_key,
         };
 
@@ -146,7 +146,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         fs_rng.absorb(&to_bytes![first_comms, prover_first_msg].unwrap());
 
         let (verifier_first_msg, verifier_state) =
-            AHPForR1CS::verifier_first_round(circuit_proving_key.circuit_verifying_key.index_info, &mut fs_rng)?;
+            AHPForR1CS::verifier_first_round(circuit_proving_key.circuit_verifying_key.circuit_info, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
@@ -287,7 +287,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         let first_comms = &proof.commitments[0];
         fs_rng.absorb(&to_bytes![first_comms, proof.prover_messages[0]].unwrap());
 
-        let (_, verifier_state) = AHPForR1CS::verifier_first_round(circuit_verifying_key.index_info, &mut fs_rng)?;
+        let (_, verifier_state) = AHPForR1CS::verifier_first_round(circuit_verifying_key.circuit_info, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
@@ -309,8 +309,8 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         // Collect degree bounds for commitments. Indexed polynomials have *no*
         // degree bounds because we know the committed index polynomial has the
         // correct degree.
-        let index_info = circuit_verifying_key.index_info;
-        let degree_bounds = vec![None; circuit_verifying_key.index_comms.len()]
+        let index_info = circuit_verifying_key.circuit_info;
+        let degree_bounds = vec![None; circuit_verifying_key.circuit_commitments.len()]
             .into_iter()
             .chain(AHPForR1CS::prover_first_round_degree_bounds(&index_info))
             .chain(AHPForR1CS::prover_second_round_degree_bounds(&index_info))

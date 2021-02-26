@@ -32,30 +32,29 @@ use std::io::{self, Read, Write};
 #[derivative(Clone(bound = ""))]
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CircuitVerifyingKey<F: PrimeField, PC: PolynomialCommitment<F>> {
-    /// Stores information about the size of the index, as well as its field of
-    /// definition.
-    pub index_info: CircuitInfo<F>,
+    /// Stores information about the size of the circuit, as well as its defined field.
+    pub circuit_info: CircuitInfo<F>,
     /// Commitments to the indexed polynomials.
-    pub index_comms: Vec<PC::Commitment>,
+    pub circuit_commitments: Vec<PC::Commitment>,
     /// The verifier key for this index, trimmed from the universal SRS.
     pub verifier_key: PC::VerifierKey,
 }
 
 impl<F: PrimeField, PC: PolynomialCommitment<F>> ToBytes for CircuitVerifyingKey<F, PC> {
     fn write<W: Write>(&self, mut w: W) -> io::Result<()> {
-        CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize IndexVerifierKey"))
+        CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize CircuitVerifyingKey"))
     }
 }
 
 impl<F: PrimeField, PC: PolynomialCommitment<F>> FromBytes for CircuitVerifyingKey<F, PC> {
     fn read<R: Read>(mut r: R) -> io::Result<Self> {
-        CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize IndexVerifierKey"))
+        CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize CircuitVerifyingKey"))
     }
 }
 
 impl<F: PrimeField, PC: PolynomialCommitment<F>> CircuitVerifyingKey<F, PC> {
     /// Iterate over the commitments to indexed polynomials in `self`.
     pub fn iter(&self) -> impl Iterator<Item = &PC::Commitment> {
-        self.index_comms.iter()
+        self.circuit_commitments.iter()
     }
 }

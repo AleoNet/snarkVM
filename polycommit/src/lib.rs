@@ -124,7 +124,7 @@ pub struct BatchLCProof<F: Field, PC: PolynomialCommitment<F>> {
     /// Evaluation proof.
     pub proof: PC::BatchProof,
     /// Evaluations required to verify the proof.
-    pub evals: Option<Vec<F>>,
+    pub evaluations: Option<Vec<F>>,
 }
 
 impl<F: Field, PC: PolynomialCommitment<F>> FromBytes for BatchLCProof<F, PC> {
@@ -383,7 +383,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
         )?;
         Ok(BatchLCProof {
             proof,
-            evals: Some(poly_evals.values().copied().collect()),
+            evaluations: Some(poly_evals.values().copied().collect()),
         })
     }
 
@@ -403,7 +403,10 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     where
         Self::Commitment: 'a,
     {
-        let BatchLCProof { proof, evals } = proof;
+        let BatchLCProof {
+            proof,
+            evaluations: evals,
+        } = proof;
 
         let lc_s = BTreeMap::from_iter(linear_combinations.into_iter().map(|lc| (lc.label(), lc)));
 

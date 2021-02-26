@@ -580,7 +580,10 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
             rng,
         )?;
 
-        Ok(BatchLCProof { proof, evals: None })
+        Ok(BatchLCProof {
+            proof,
+            evaluations: None,
+        })
     }
 
     /// Checks that `values` are the true evaluations at `query_set` of the polynomials
