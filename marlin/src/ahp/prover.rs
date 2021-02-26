@@ -52,7 +52,7 @@ pub struct ProverState<'a, F: PrimeField> {
     w_poly: Option<LabeledPolynomial<F>>,
     mz_polys: Option<(LabeledPolynomial<F>, LabeledPolynomial<F>)>,
 
-    index: &'a Index<F>,
+    index: &'a Circuit<F>,
 
     /// the random values sent by the verifier in the first round
     verifier_first_msg: Option<VerifierFirstMsg<F>>,
@@ -145,7 +145,7 @@ impl<F: Field> ProverThirdOracles<F> {
 impl<F: PrimeField> AHPForR1CS<F> {
     /// Initialize the AHP prover.
     pub fn prover_init<'a, C: ConstraintSynthesizer<F>>(
-        index: &'a Index<F>,
+        index: &'a Circuit<F>,
         c: &C,
     ) -> Result<ProverState<'a, F>, Error> {
         let init_time = start_timer!(|| "AHP::Prover::Init");
@@ -345,7 +345,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
     }
 
     /// Output the degree bounds of oracles in the first round.
-    pub fn prover_first_round_degree_bounds(_info: &IndexInfo<F>) -> impl Iterator<Item = Option<usize>> {
+    pub fn prover_first_round_degree_bounds(_info: &CircuitInfo<F>) -> impl Iterator<Item = Option<usize>> {
         vec![None; 4].into_iter()
     }
 
@@ -483,7 +483,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
     }
 
     /// Output the degree bounds of oracles in the second round.
-    pub fn prover_second_round_degree_bounds(info: &IndexInfo<F>) -> impl Iterator<Item = Option<usize>> {
+    pub fn prover_second_round_degree_bounds(info: &CircuitInfo<F>) -> impl Iterator<Item = Option<usize>> {
         let h_domain_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_constraints).unwrap();
 
         vec![None, Some(h_domain_size - 2), None].into_iter()
@@ -623,7 +623,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
     }
 
     /// Output the degree bounds of oracles in the third round.
-    pub fn prover_third_round_degree_bounds(info: &IndexInfo<F>) -> impl Iterator<Item = Option<usize>> {
+    pub fn prover_third_round_degree_bounds(info: &CircuitInfo<F>) -> impl Iterator<Item = Option<usize>> {
         let num_non_zero = info.num_non_zero;
         let k_size = EvaluationDomain::<F>::compute_size_of_domain(num_non_zero).unwrap();
 

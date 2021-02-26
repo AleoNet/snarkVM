@@ -95,7 +95,7 @@ mod marlin {
                             num_variables,
                         };
 
-                        let (index_pk, index_vk) = $marlin_inst::index(&universal_srs, &circ).unwrap();
+                        let (index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
                         println!("Called index");
 
                         let proof = $marlin_inst::prove(&index_pk, &circ, rng).unwrap();

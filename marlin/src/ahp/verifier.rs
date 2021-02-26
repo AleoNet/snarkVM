@@ -16,7 +16,7 @@
 
 #![allow(non_snake_case)]
 
-use crate::ahp::{indexer::IndexInfo, *};
+use crate::ahp::{indexer::CircuitInfo, *};
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_models::curves::PrimeField;
 use snarkvm_polycommit::QuerySet;
@@ -57,7 +57,7 @@ pub struct VerifierSecondMsg<F> {
 impl<F: PrimeField> AHPForR1CS<F> {
     /// Output the first message and next round state.
     pub fn verifier_first_round<R: RngCore>(
-        index_info: IndexInfo<F>,
+        index_info: CircuitInfo<F>,
         rng: &mut R,
     ) -> Result<(VerifierFirstMsg<F>, VerifierState<F>), Error> {
         if index_info.num_constraints != index_info.num_variables {

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::snark::{Marlin, ProverKey, VerifierKey, SRS};
+use crate::{Marlin, ProverKey, VerifierKey};
 use snarkvm_errors::{algorithms::SNARKError, serialization::SerializationError};
 use snarkvm_models::{
     curves::{AffineCurve, PairingEngine},
@@ -44,6 +44,24 @@ pub struct Parameters<E: PairingEngine> {
     pub prover_key: ProverKey<E>,
     /// The verifying key
     pub verifier_key: VerifierKey<E>,
+}
+
+impl<E: PairingEngine> Parameters<E> {
+    /// Creates an instance of `Parameters` from a given universal SRS.
+    pub fn new<C: ConstraintSynthesizer<E::Fr>>(circuit: &C, universal_srs: &SRS<E>) -> Result<Self, SNARKError> {
+        let (prover_key, verifier_key) = Marlin::circuit_setup(universal_srs, circuit)
+            .map_err(|_| SNARKError::Crate("marlin", "could not index".to_owned()))?;
+        Ok(Self {
+            prover_key,
+            verifier_key,
+        })
+    }
+}
+
+impl<E: PairingEngine> ToBytes for Parameters<E> {
+    fn write<W: Write>(&self, mut w: W) -> io::Result<()> {
+        CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize parameters"))
+    }
 }
 
 impl<E: PairingEngine> FromBytes for Parameters<E> {
@@ -102,7 +120,7 @@ impl<E: PairingEngine> FromBytes for Parameters<E> {
         })?;
 
         // there are 2 IndexVerifierKeys in the Parameters
-        for vk in &[&ret.prover_key.index_vk, &ret.verifier_key] {
+        for vk in &[&ret.prover_key.circuit_verifying_key, &ret.verifier_key] {
             // check the affine values for marlin::IndexVerifierKey
             for comm in &vk.index_comms {
                 num_affines_to_verify.fetch_sub(1, atomic::Ordering::Relaxed);
@@ -145,23 +163,5 @@ impl<E: PairingEngine> FromBytes for Parameters<E> {
         debug_assert_eq!(num_affines_to_verify.load(atomic::Ordering::Relaxed), 0);
 
         Ok(ret)
-    }
-}
-
-impl<E: PairingEngine> ToBytes for Parameters<E> {
-    fn write<W: Write>(&self, mut w: W) -> io::Result<()> {
-        CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize parameters"))
-    }
-}
-
-impl<E: PairingEngine> Parameters<E> {
-    /// Creates a new Parameters instance from a previously computed universal SRS
-    pub fn new<C: ConstraintSynthesizer<E::Fr>>(circuit: &C, universal_srs: &SRS<E>) -> Result<Self, SNARKError> {
-        let (prover_key, verifier_key) = Marlin::index(universal_srs, circuit)
-            .map_err(|_| SNARKError::Crate("marlin", "could not index".to_owned()))?;
-        Ok(Self {
-            prover_key,
-            verifier_key,
-        })
     }
 }

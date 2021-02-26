@@ -18,7 +18,7 @@ use crate::ahp::Error as AHPError;
 
 /// A `enum` specifying the possible failure modes of the `SNARK`.
 #[derive(Debug)]
-pub enum Error<E> {
+pub enum MarlinError<E> {
     /// The index is too large for the universal public parameters.
     IndexTooLarge,
     /// There was an error in the underlying holographic IOP.
@@ -27,16 +27,16 @@ pub enum Error<E> {
     PolynomialCommitmentError(E),
 }
 
-impl<E> From<AHPError> for Error<E> {
+impl<E> From<AHPError> for MarlinError<E> {
     fn from(err: AHPError) -> Self {
-        Error::AHPError(err)
+        MarlinError::AHPError(err)
     }
 }
 
-impl<E> Error<E> {
+impl<E> MarlinError<E> {
     /// Convert an error in the underlying polynomial commitment scheme
     /// to a `Error`.
     pub fn from_pc_err(err: E) -> Self {
-        Error::PolynomialCommitmentError(err)
+        MarlinError::PolynomialCommitmentError(err)
     }
 }

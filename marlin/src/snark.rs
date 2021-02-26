@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 //! The Marlin zkSNARK implementation
-use crate::parameters::Parameters;
+use crate::{Marlin, Parameters, Proof, UniversalSRS};
 use snarkvm_errors::algorithms::SNARKError;
 use snarkvm_models::{
     algorithms::SNARK,
@@ -27,25 +27,19 @@ use snarkvm_profiler::{end_timer, start_timer};
 pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PCCommitment};
 
 use blake2::Blake2s;
+use core::marker::PhantomData;
 use rand_core::RngCore;
-use std::marker::PhantomData;
 
-// Instantiated type aliases for convenience
-/// A structured reference string which will be used to derive a circuit-specific
-/// common reference string
-pub type SRS<E> = crate::UniversalSRS<<E as PairingEngine>::Fr, MultiPC<E>>;
+// A structured reference string which will be used to derive a circuit-specific
+// common reference string
 
-/// Type alias for a Marlin instance using the KZG10 polynomial commitment and Blake2s
-pub type Marlin<E> = crate::Marlin<<E as PairingEngine>::Fr, MultiPC<E>, Blake2s>;
+// Type alias for a Marlin instance using the KZG10 polynomial commitment and Blake2s
 
 /// A circuit-specific proving key.
-pub type ProverKey<E> = crate::IndexProverKey<<E as PairingEngine>::Fr, MultiPC<E>>;
-
-/// A Marlin proof.
-pub type Proof<E> = crate::Proof<<E as PairingEngine>::Fr, MultiPC<E>>;
+pub type ProverKey<E> = crate::CircuitProvingKey<<E as PairingEngine>::Fr, MultiPC<E>>;
 
 /// A circuit-specific verification key.
-pub type VerifierKey<E> = crate::IndexVerifierKey<<E as PairingEngine>::Fr, MultiPC<E>>;
+pub type VerifierKey<E> = crate::CircuitVerifyingKey<<E as PairingEngine>::Fr, MultiPC<E>>;
 
 impl<E: PairingEngine> From<Parameters<E>> for VerifierKey<E> {
     fn from(params: Parameters<E>) -> Self {
@@ -74,10 +68,10 @@ where
     V: ToConstraintField<E::Fr>,
 {
     type AssignedCircuit = C;
-    type Circuit = (C, SRS<E>);
+    type Circuit = (C, UniversalSRS<<E as PairingEngine>::Fr, MultiPC<E>>);
     // Abuse the Circuit type to pass the SRS as well.
     type PreparedVerificationParameters = VerifierKey<E>;
-    type Proof = Proof<E>;
+    type Proof = Proof<<E as PairingEngine>::Fr, MultiPC<E>>;
     type ProvingParameters = Parameters<E>;
     type VerificationParameters = VerifierKey<E>;
     type VerifierInput = V;
@@ -99,7 +93,7 @@ where
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         let proving_time = start_timer!(|| "{Marlin}::Proving");
-        let proof = Marlin::prove(&pp.prover_key, circuit, rng)
+        let proof = Marlin::<<E as PairingEngine>::Fr, MultiPC<E>, Blake2s>::prove(&pp.prover_key, circuit, rng)
             .map_err(|_| SNARKError::Crate("marlin", "Could not generate proof".to_owned()))?;
         end_timer!(proving_time);
         Ok(proof)
@@ -111,8 +105,13 @@ where
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
         let verification_time = start_timer!(|| "{Marlin}::Verifying");
-        let res = Marlin::verify(&vk, &input.to_field_elements()?, &proof, &mut rand_core::OsRng)
-            .map_err(|_| SNARKError::Crate("marlin", "Could not verify proof".to_owned()))?;
+        let res = Marlin::<<E as PairingEngine>::Fr, MultiPC<E>, Blake2s>::verify(
+            &vk,
+            &input.to_field_elements()?,
+            &proof,
+            &mut rand_core::OsRng,
+        )
+        .map_err(|_| SNARKError::Crate("marlin", "Could not verify proof".to_owned()))?;
         end_timer!(verification_time);
 
         Ok(res)

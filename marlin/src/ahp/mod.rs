@@ -103,7 +103,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
     }
 
     /// Get all the strict degree bounds enforced in the AHP.
-    pub fn get_degree_bounds(info: &indexer::IndexInfo<F>) -> [usize; 2] {
+    pub fn get_degree_bounds(info: &indexer::CircuitInfo<F>) -> [usize; 2] {
         let mut degree_bounds = [0usize; 2];
         let num_constraints = info.num_constraints;
         let num_non_zero = info.num_non_zero;
