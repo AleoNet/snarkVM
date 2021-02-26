@@ -19,7 +19,6 @@
 use crate::{
     ahp::{indexer::Matrix, *},
     BTreeMap,
-    Cow,
     ToString,
 };
 use snarkvm_algorithms::{cfg_iter_mut, fft::Evaluations as EvaluationsOnDomain};
@@ -238,13 +237,13 @@ pub(crate) fn make_matrices_square<F: Field, CS: ConstraintSystem<F>>(cs: &mut C
 #[derive(Derivative)]
 #[derivative(Clone(bound = "F: PrimeField"))]
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct MatrixEvals<'a, F: PrimeField> {
+pub struct MatrixEvals<F: PrimeField> {
     /// Evaluations of the LDE of row.
-    pub row: Cow<'a, EvaluationsOnDomain<F>>,
+    pub row: EvaluationsOnDomain<F>,
     /// Evaluations of the LDE of col.
-    pub col: Cow<'a, EvaluationsOnDomain<F>>,
+    pub col: EvaluationsOnDomain<F>,
     /// Evaluations of the LDE of val.
-    pub val: Cow<'a, EvaluationsOnDomain<F>>,
+    pub val: EvaluationsOnDomain<F>,
 }
 
 /// Contains information about the arithmetization of the matrix M^*.
@@ -252,38 +251,38 @@ pub struct MatrixEvals<'a, F: PrimeField> {
 #[derive(Derivative)]
 #[derivative(Clone(bound = "F: PrimeField"))]
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct MatrixArithmetization<'a, F: PrimeField> {
+pub struct MatrixArithmetization<F: PrimeField> {
     /// LDE of the row indices of M^*.
-    pub row: LabeledPolynomial<'a, F>,
+    pub row: LabeledPolynomial<F>,
     /// LDE of the column indices of M^*.
-    pub col: LabeledPolynomial<'a, F>,
+    pub col: LabeledPolynomial<F>,
     /// LDE of the non-zero entries of M^*.
-    pub val: LabeledPolynomial<'a, F>,
+    pub val: LabeledPolynomial<F>,
     /// LDE of the vector containing entry-wise products of `row` and `col`,
     /// where `row` and `col` are as above.
-    pub row_col: LabeledPolynomial<'a, F>,
+    pub row_col: LabeledPolynomial<F>,
 
     /// Evaluation of `self.row`, `self.col`, and `self.val` on the domain `K`.
-    pub evals_on_K: MatrixEvals<'a, F>,
+    pub evals_on_K: MatrixEvals<F>,
 
     /// Evaluation of `self.row`, `self.col`, and, `self.val` on
     /// an extended domain B (of size > `3K`).
     // TODO: rename B everywhere.
-    pub evals_on_B: MatrixEvals<'a, F>,
+    pub evals_on_B: MatrixEvals<F>,
 
     /// Evaluation of `self.row_col` on an extended domain B (of size > `3K`).
-    pub row_col_evals_on_B: Cow<'a, EvaluationsOnDomain<F>>,
+    pub row_col_evals_on_B: EvaluationsOnDomain<F>,
 }
 
 // TODO for debugging: add test that checks result of arithmetize_matrix(M).
-pub(crate) fn arithmetize_matrix<'a, F: PrimeField>(
+pub(crate) fn arithmetize_matrix<F: PrimeField>(
     matrix_name: &str,
     matrix: &mut Matrix<F>,
     interpolation_domain: EvaluationDomain<F>,
     output_domain: EvaluationDomain<F>,
     input_domain: EvaluationDomain<F>,
     expanded_domain: EvaluationDomain<F>,
-) -> MatrixArithmetization<'a, F> {
+) -> MatrixArithmetization<F> {
     let matrix_time = start_timer!(|| "Computing row, col, and val LDEs");
 
     let elems: Vec<_> = output_domain.elements().collect();
@@ -356,14 +355,14 @@ pub(crate) fn arithmetize_matrix<'a, F: PrimeField>(
 
     end_timer!(matrix_time);
     let evals_on_K = MatrixEvals {
-        row: Cow::Owned(row_evals_on_K),
-        col: Cow::Owned(col_evals_on_K),
-        val: Cow::Owned(val_evals_on_K),
+        row: row_evals_on_K,
+        col: col_evals_on_K,
+        val: val_evals_on_K,
     };
     let evals_on_B = MatrixEvals {
-        row: Cow::Owned(row_evals_on_B),
-        col: Cow::Owned(col_evals_on_B),
-        val: Cow::Owned(val_evals_on_B),
+        row: row_evals_on_B,
+        col: col_evals_on_B,
+        val: val_evals_on_B,
     };
 
     let m_name = matrix_name.to_string();
@@ -374,7 +373,7 @@ pub(crate) fn arithmetize_matrix<'a, F: PrimeField>(
         row_col: LabeledPolynomial::new_owned(m_name + "_row_col", row_col, None, None),
         evals_on_K,
         evals_on_B,
-        row_col_evals_on_B: Cow::Owned(row_col_evals_on_B),
+        row_col_evals_on_B,
     }
 }
 

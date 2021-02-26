@@ -47,7 +47,6 @@ extern crate alloc;
 
 #[cfg(not(feature = "std"))]
 use alloc::{
-    borrow::Cow,
     collections::BTreeMap,
     string::{String, ToString},
     vec::Vec,
@@ -55,7 +54,6 @@ use alloc::{
 
 #[cfg(feature = "std")]
 use std::{
-    borrow::Cow,
     collections::BTreeMap,
     string::{String, ToString},
     vec::Vec,
@@ -124,10 +122,10 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> Marlin<F, PC, D> {
     /// Generate the index-specific (i.e., circuit-specific) prover and verifier
     /// keys. This is a deterministic algorithm that anyone can rerun.
     #[allow(clippy::type_complexity)]
-    pub fn index<'a, C: ConstraintSynthesizer<F>>(
+    pub fn index<C: ConstraintSynthesizer<F>>(
         srs: &UniversalSRS<F, PC>,
         c: &C,
-    ) -> Result<(IndexProverKey<'a, F, PC, C>, IndexVerifierKey<F, PC, C>), Error<PC::Error>> {
+    ) -> Result<(IndexProverKey<F, PC>, IndexVerifierKey<F, PC>), Error<PC::Error>> {
         let index_time = start_timer!(|| "Marlin::Index");
 
         // TODO: Add check that c is in the correct mode.
@@ -136,7 +134,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> Marlin<F, PC, D> {
             return Err(Error::IndexTooLarge);
         }
 
-        let coeff_support = AHPForR1CS::get_degree_bounds::<C>(&index.index_info);
+        let coeff_support = AHPForR1CS::get_degree_bounds(&index.index_info);
         // Marlin only needs degree 2 random polynomials
         let supported_hiding_bound = 1;
         let (committer_key, verifier_key) =
@@ -169,10 +167,10 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> Marlin<F, PC, D> {
 
     /// Create a zkSNARK asserting that the constraint system is satisfied.
     pub fn prove<C: ConstraintSynthesizer<F>, R: RngCore>(
-        index_pk: &IndexProverKey<F, PC, C>,
+        index_pk: &IndexProverKey<F, PC>,
         c: &C,
         zk_rng: &mut R,
-    ) -> Result<Proof<F, PC, C>, Error<PC::Error>> {
+    ) -> Result<Proof<F, PC>, Error<PC::Error>> {
         let prover_time = start_timer!(|| "Marlin::Prover");
         // Add check that c is in the correct mode.
 
@@ -313,10 +311,10 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> Marlin<F, PC, D> {
 
     /// Verify that a proof for the constrain system defined by `C` asserts that
     /// all constraints are satisfied.
-    pub fn verify<C: ConstraintSynthesizer<F>, R: RngCore>(
-        index_vk: &IndexVerifierKey<F, PC, C>,
+    pub fn verify<R: RngCore>(
+        index_vk: &IndexVerifierKey<F, PC>,
         public_input: &[F],
-        proof: &Proof<F, PC, C>,
+        proof: &Proof<F, PC>,
         rng: &mut R,
     ) -> Result<bool, Error<PC::Error>> {
         let verifier_time = start_timer!(|| "Marlin::Verify");

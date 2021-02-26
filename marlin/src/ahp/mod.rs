@@ -17,10 +17,7 @@
 use crate::{String, ToString, Vec};
 use snarkvm_algorithms::{cfg_iter_mut, fft::EvaluationDomain};
 use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    curves::{batch_inversion, Field, PrimeField},
-    gadgets::r1cs::ConstraintSynthesizer,
-};
+use snarkvm_models::curves::{batch_inversion, Field, PrimeField};
 use snarkvm_polycommit::{LCTerm, LabeledPolynomial, LinearCombination};
 
 use core::{borrow::Borrow, marker::PhantomData};
@@ -106,7 +103,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
     }
 
     /// Get all the strict degree bounds enforced in the AHP.
-    pub fn get_degree_bounds<C>(info: &indexer::IndexInfo<F, C>) -> [usize; 2] {
+    pub fn get_degree_bounds(info: &indexer::IndexInfo<F>) -> [usize; 2] {
         let mut degree_bounds = [0usize; 2];
         let num_constraints = info.num_constraints;
         let num_non_zero = info.num_non_zero;
@@ -120,15 +117,11 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
     /// Construct the linear combinations that are checked by the AHP.
     #[allow(non_snake_case)]
-    pub fn construct_linear_combinations<C, E>(
+    pub fn construct_linear_combinations<E: EvaluationsProvider<F>>(
         public_input: &[F],
         evals: &E,
-        state: &verifier::VerifierState<F, C>,
-    ) -> Result<Vec<LinearCombination<F>>, Error>
-    where
-        C: ConstraintSynthesizer<F>,
-        E: EvaluationsProvider<F>,
-    {
+        state: &verifier::VerifierState<F>,
+    ) -> Result<Vec<LinearCombination<F>>, Error> {
         let domain_h = state.domain_h;
         let domain_k = state.domain_k;
         let k_size = domain_k.size_as_field_element;
@@ -272,7 +265,7 @@ impl<'a, F: Field> EvaluationsProvider<F> for snarkvm_polycommit::Evaluations<'a
     }
 }
 
-impl<'a, F: Field, T: Borrow<LabeledPolynomial<'a, F>>> EvaluationsProvider<F> for Vec<T> {
+impl<F: Field, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F> for Vec<T> {
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, Error> {
         let mut eval = F::zero();
         for (coeff, term) in lc.iter() {

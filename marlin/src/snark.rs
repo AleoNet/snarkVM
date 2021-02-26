@@ -48,42 +48,31 @@ pub type SRS<E> = crate::UniversalSRS<<E as PairingEngine>::Fr, MultiPC<E>>;
 /// Type alias for a Marlin instance using the KZG10 polynomial commitment and Blake2s
 pub type Marlin<E> = crate::Marlin<<E as PairingEngine>::Fr, MultiPC<E>, Blake2s>;
 
-type VerifierKey<E, C> = crate::IndexVerifierKey<<E as PairingEngine>::Fr, MultiPC<E>, C>;
-type ProverKey<'a, E, C> = crate::IndexProverKey<'a, <E as PairingEngine>::Fr, MultiPC<E>, C>;
-type Proof<E, C> = crate::Proof<<E as PairingEngine>::Fr, MultiPC<E>, C>;
+type ProverKey<E> = crate::IndexProverKey<<E as PairingEngine>::Fr, MultiPC<E>>;
+type Proof<E> = crate::Proof<<E as PairingEngine>::Fr, MultiPC<E>>;
 
-/// SnarkOS-compatible Marlin
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct MarlinSnark<'a, E, C, V>
-where
-    E: PairingEngine,
-    C: ConstraintSynthesizer<E::Fr>,
-    V: ToConstraintField<E::Fr>,
-{
-    _engine: PhantomData<E>,
-    _circuit: PhantomData<C>,
-    _verifier_input: PhantomData<V>,
-    _key_lifetime: PhantomData<&'a ProverKey<'a, E, C>>,
+type VerifierKey<E> = crate::IndexVerifierKey<<E as PairingEngine>::Fr, MultiPC<E>>;
+
+impl<E: PairingEngine> From<Parameters<E>> for VerifierKey<E> {
+    fn from(params: Parameters<E>) -> Self {
+        params.verifier_key
+    }
 }
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: 'a"))]
+#[derivative(Clone(bound = ""))]
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 /// The public parameters used for the circuit's instantiation.
 /// Generating the parameters is done via the `setup` function of the SNARK trait
-/// by providing it the previously generated universal srs.
-pub struct Parameters<'a, E, C>
-where
-    E: PairingEngine,
-    C: ConstraintSynthesizer<E::Fr>,
-{
+/// by providing it the previously-generated universal SRS.
+pub struct Parameters<E: PairingEngine> {
     /// The proving key
-    pub prover_key: ProverKey<'a, E, C>,
+    pub prover_key: ProverKey<E>,
     /// The verifying key
-    pub verifier_key: VerifierKey<E, C>,
+    pub verifier_key: VerifierKey<E>,
 }
 
-impl<'a, E: PairingEngine, C: ConstraintSynthesizer<E::Fr>> FromBytes for Parameters<'a, E, C> {
+impl<E: PairingEngine> FromBytes for Parameters<E> {
     fn read<R: Read>(mut r: R) -> io::Result<Self> {
         use snarkvm_utilities::{PROCESSING_SNARK_PARAMS, SNARK_PARAMS_AFFINE_COUNT};
         use std::sync::atomic::{self, AtomicU64};
@@ -185,19 +174,15 @@ impl<'a, E: PairingEngine, C: ConstraintSynthesizer<E::Fr>> FromBytes for Parame
     }
 }
 
-impl<'a, E: PairingEngine, C: ConstraintSynthesizer<E::Fr>> ToBytes for Parameters<'a, E, C> {
+impl<E: PairingEngine> ToBytes for Parameters<E> {
     fn write<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize parameters"))
     }
 }
 
-impl<'a, E, C> Parameters<'a, E, C>
-where
-    E: PairingEngine,
-    C: ConstraintSynthesizer<E::Fr>,
-{
+impl<E: PairingEngine> Parameters<E> {
     /// Creates a new Parameters instance from a previously computed universal SRS
-    pub fn new(circuit: &C, universal_srs: &SRS<E>) -> Result<Self, SNARKError> {
+    pub fn new<C: ConstraintSynthesizer<E::Fr>>(circuit: &C, universal_srs: &SRS<E>) -> Result<Self, SNARKError> {
         let (prover_key, verifier_key) = Marlin::index(universal_srs, circuit)
             .map_err(|_| SNARKError::Crate("marlin", "could not index".to_owned()))?;
         Ok(Self {
@@ -207,14 +192,18 @@ where
     }
 }
 
-impl<'a, E, C> From<Parameters<'a, E, C>> for VerifierKey<E, C>
+/// The Marlin zkSNARK implementation
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MarlinSnark<'a, E, C, V>
 where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
+    V: ToConstraintField<E::Fr>,
 {
-    fn from(params: Parameters<'a, E, C>) -> Self {
-        params.verifier_key
-    }
+    _engine: PhantomData<E>,
+    _circuit: PhantomData<C>,
+    _verifier_input: PhantomData<V>,
+    _key_lifetime: PhantomData<&'a ProverKey<E>>,
 }
 
 impl<'a, E, C, V> SNARK for MarlinSnark<'a, E, C, V>
@@ -226,10 +215,10 @@ where
     type AssignedCircuit = C;
     type Circuit = (C, SRS<E>);
     // Abuse the Circuit type to pass the SRS as well.
-    type PreparedVerificationParameters = VerifierKey<E, C>;
-    type Proof = Proof<E, C>;
-    type ProvingParameters = Parameters<'a, E, C>;
-    type VerificationParameters = VerifierKey<E, C>;
+    type PreparedVerificationParameters = VerifierKey<E>;
+    type Proof = Proof<E>;
+    type ProvingParameters = Parameters<E>;
+    type VerificationParameters = VerifierKey<E>;
     type VerifierInput = V;
 
     fn setup<R: RngCore>(
@@ -237,7 +226,7 @@ where
         _rng: &mut R, // The Marlin Setup is deterministic
     ) -> Result<(Self::ProvingParameters, Self::PreparedVerificationParameters), SNARKError> {
         let setup_time = start_timer!(|| "{Marlin}::Setup");
-        let parameters = Parameters::<E, C>::new(circuit, srs)?;
+        let parameters = Parameters::<E>::new(circuit, srs)?;
         end_timer!(setup_time);
         let verifier_key = parameters.verifier_key.clone();
         Ok((parameters, verifier_key))
