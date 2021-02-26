@@ -22,6 +22,7 @@ pub use circuit_proving_key::*;
 mod circuit_verifying_key;
 pub use circuit_verifying_key::*;
 
+/// Errors.
 mod errors;
 pub use errors::*;
 
