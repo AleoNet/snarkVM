@@ -72,7 +72,7 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         let index = self.num_private_variables;
         self.num_private_variables += 1;
 
-        Ok(Variable::new_unchecked(Index::Aux(index)))
+        Ok(Variable::new_unchecked(Index::Private(index)))
     }
 
     #[inline]
@@ -88,7 +88,7 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         let index = self.num_public_variables;
         self.num_public_variables += 1;
 
-        Ok(Variable::new_unchecked(Index::Input(index)))
+        Ok(Variable::new_unchecked(Index::Public(index)))
     }
 
     #[inline]

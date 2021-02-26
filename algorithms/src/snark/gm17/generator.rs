@@ -69,7 +69,7 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         let index = self.num_private_variables;
         self.num_private_variables += 1;
 
-        Ok(Variable::new_unchecked(Index::Aux(index)))
+        Ok(Variable::new_unchecked(Index::Private(index)))
     }
 
     #[inline]
@@ -85,7 +85,7 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         let index = self.num_public_variables;
         self.num_public_variables += 1;
 
-        Ok(Variable::new_unchecked(Index::Input(index)))
+        Ok(Variable::new_unchecked(Index::Public(index)))
     }
 
     fn enforce<A, AR, LA, LB, LC>(&mut self, _: A, a: LA, b: LB, c: LC)
@@ -103,8 +103,8 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         ) {
             for (var, coeff) in l.as_ref() {
                 match var.get_unchecked() {
-                    Index::Input(i) => constraints[this_constraint].push((*coeff, Index::Input(i))),
-                    Index::Aux(i) => constraints[this_constraint].push((*coeff, Index::Aux(i))),
+                    Index::Public(i) => constraints[this_constraint].push((*coeff, Index::Public(i))),
+                    Index::Private(i) => constraints[this_constraint].push((*coeff, Index::Private(i))),
                 }
             }
         }

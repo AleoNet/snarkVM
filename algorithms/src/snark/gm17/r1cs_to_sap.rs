@@ -63,8 +63,8 @@ impl R1CStoSAP {
 
             for &(ref coeff, index) in assembly.at[i].iter() {
                 let index = match index {
-                    Index::Input(i) => i,
-                    Index::Aux(i) => assembly.num_public_variables + i,
+                    Index::Public(i) => i,
+                    Index::Private(i) => assembly.num_public_variables + i,
                 };
 
                 a[index] += &(u_add * coeff);
@@ -72,8 +72,8 @@ impl R1CStoSAP {
 
             for &(ref coeff, index) in assembly.bt[i].iter() {
                 let index = match index {
-                    Index::Input(i) => i,
-                    Index::Aux(i) => assembly.num_public_variables + i,
+                    Index::Public(i) => i,
+                    Index::Private(i) => assembly.num_public_variables + i,
                 };
 
                 a[index] += &(u_sub * coeff);
@@ -81,8 +81,8 @@ impl R1CStoSAP {
 
             for &(ref coeff, index) in assembly.ct[i].iter() {
                 let index = match index {
-                    Index::Input(i) => i,
-                    Index::Aux(i) => assembly.num_public_variables + i,
+                    Index::Public(i) => i,
+                    Index::Private(i) => assembly.num_public_variables + i,
                 };
 
                 c[index] += &((u_2i * coeff).double().double());
@@ -130,8 +130,8 @@ impl R1CStoSAP {
             let mut acc = E::Fr::zero();
             for &(coeff, index) in terms {
                 let val = match index {
-                    Index::Input(i) => assignment[i],
-                    Index::Aux(i) => assignment[num_input + i],
+                    Index::Public(i) => assignment[i],
+                    Index::Private(i) => assignment[num_input + i],
                 };
                 acc += &(val * &coeff);
             }
