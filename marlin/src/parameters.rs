@@ -125,7 +125,7 @@ impl<E: PairingEngine> FromBytes for Parameters<E> {
         // There are 2 CircuitVerifyingKey in the Parameters
         for vk in &[&ret.proving_key.circuit_verifying_key, &ret.verifying_key] {
             // check the affine values for marlin::CircuitVerifyingKey
-            for comm in &vk.index_comms {
+            for comm in &vk.circuit_commitments {
                 num_affines_to_verify.fetch_sub(1, atomic::Ordering::Relaxed);
                 if !comm.is_in_correct_subgroup_assuming_on_curve() {
                     return Err(error("invalid parameter data"));
