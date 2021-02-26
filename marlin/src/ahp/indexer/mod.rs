@@ -16,9 +16,13 @@
 
 #![allow(non_snake_case)]
 
+mod constraint_system;
+pub(crate) use constraint_system::*;
+
 use crate::{
     ahp::{
-        constraint_systems::{arithmetize_matrix, IndexerConstraintSystem, MatrixArithmetization},
+        indexer::IndexerConstraintSystem,
+        matrices::{arithmetize_matrix, MatrixArithmetization},
         AHPError,
         AHPForR1CS,
     },

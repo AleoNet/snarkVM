@@ -16,43 +16,22 @@
 
 #![allow(non_snake_case)]
 
-use crate::ahp::{indexer::CircuitInfo, *};
+mod first_message;
+pub(crate) use first_message::*;
+
+mod second_message;
+pub(crate) use second_message::*;
+
+mod state;
+pub(crate) use state::*;
+
+use crate::ahp::{indexer::CircuitInfo, AHPError, AHPForR1CS};
 use snarkvm_algorithms::fft::EvaluationDomain;
+use snarkvm_errors::gadgets::SynthesisError;
 use snarkvm_models::curves::PrimeField;
 use snarkvm_polycommit::QuerySet;
 
 use rand_core::RngCore;
-
-/// State of the AHP verifier
-pub struct VerifierState<F: PrimeField> {
-    pub(crate) domain_h: EvaluationDomain<F>,
-    pub(crate) domain_k: EvaluationDomain<F>,
-
-    pub(crate) first_round_msg: Option<VerifierFirstMsg<F>>,
-    pub(crate) second_round_msg: Option<VerifierSecondMsg<F>>,
-
-    pub(crate) gamma: Option<F>,
-}
-
-/// First message of the verifier.
-#[derive(Copy, Clone)]
-pub struct VerifierFirstMsg<F> {
-    /// Query for the random polynomial.
-    pub alpha: F,
-    /// Randomizer for the lincheck for `A`.
-    pub eta_a: F,
-    /// Randomizer for the lincheck for `B`.
-    pub eta_b: F,
-    /// Randomizer for the lincheck for `C`.
-    pub eta_c: F,
-}
-
-/// Second verifier message.
-#[derive(Copy, Clone)]
-pub struct VerifierSecondMsg<F> {
-    /// Query for the second round of polynomials.
-    pub beta: F,
-}
 
 impl<F: PrimeField> AHPForR1CS<F> {
     /// Output the first message and next round state.

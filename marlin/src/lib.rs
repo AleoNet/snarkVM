@@ -60,6 +60,7 @@ macro_rules! eprintln {
 
 /// Implements an Algebraic Holographic Proof (AHP) for the R1CS indexed relation.
 pub mod ahp;
+pub use ahp::*;
 
 /// Implements the base Marlin zkSNARK proof system.
 pub mod marlin;

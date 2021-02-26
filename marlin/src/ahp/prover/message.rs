@@ -14,20 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod ahp;
-pub use ahp::*;
+use crate::Vec;
+use snarkvm_errors::serialization::SerializationError;
+use snarkvm_models::curves::Field;
+use snarkvm_utilities::{bytes::ToBytes, error, serialize::*, Write};
 
-pub mod errors;
-pub use errors::*;
+/// Each prover message that is not a list of oracles is a list of field elements.
+#[repr(transparent)]
+#[derive(Clone, Debug, Default, CanonicalSerialize, CanonicalDeserialize)]
+pub struct ProverMessage<F: Field> {
+    /// The field elements that make up the message
+    pub field_elements: Vec<F>,
+}
 
-/// Describes data structures and the algorithms used by the AHP indexer.
-pub mod indexer;
-pub use indexer::*;
-
-pub(crate) mod matrices;
-
-/// Describes data structures and the algorithms used by the AHP prover.
-pub mod prover;
-
-/// Describes data structures and the algorithms used by the AHP verifier.
-pub mod verifier;
+impl<F: Field> ToBytes for ProverMessage<F> {
+    fn write<W: Write>(&self, mut w: W) -> io::Result<()> {
+        CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("Could not serialize ProverMsg"))
+    }
+}

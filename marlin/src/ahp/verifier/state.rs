@@ -14,20 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod ahp;
-pub use ahp::*;
+use crate::ahp::verifier::{VerifierFirstMsg, VerifierSecondMsg};
+use snarkvm_algorithms::fft::EvaluationDomain;
+use snarkvm_models::curves::PrimeField;
 
-pub mod errors;
-pub use errors::*;
+/// State of the AHP verifier.
+pub struct VerifierState<F: PrimeField> {
+    pub(crate) domain_h: EvaluationDomain<F>,
+    pub(crate) domain_k: EvaluationDomain<F>,
 
-/// Describes data structures and the algorithms used by the AHP indexer.
-pub mod indexer;
-pub use indexer::*;
+    pub(crate) first_round_msg: Option<VerifierFirstMsg<F>>,
+    pub(crate) second_round_msg: Option<VerifierSecondMsg<F>>,
 
-pub(crate) mod matrices;
-
-/// Describes data structures and the algorithms used by the AHP prover.
-pub mod prover;
-
-/// Describes data structures and the algorithms used by the AHP verifier.
-pub mod verifier;
+    pub(crate) gamma: Option<F>,
+}

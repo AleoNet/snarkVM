@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ahp::prover::ProverMsg, Vec};
+use crate::{ahp::prover::ProverMessage, Vec};
 use snarkvm_errors::serialization::SerializationError;
 use snarkvm_models::curves::PrimeField;
 use snarkvm_polycommit::{BatchLCProof, PCCommitment, PolynomialCommitment};
@@ -37,7 +37,7 @@ pub struct Proof<F: PrimeField, PC: PolynomialCommitment<F>> {
     /// Evaluations of these polynomials.
     pub evaluations: Vec<F>,
     /// The field elements sent by the prover.
-    pub prover_messages: Vec<ProverMsg<F>>,
+    pub prover_messages: Vec<ProverMessage<F>>,
     /// An evaluation proof from the polynomial commitment.
     pub pc_proof: BatchLCProof<F, PC>,
 }
@@ -47,7 +47,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> Proof<F, PC> {
     pub fn new(
         commitments: Vec<Vec<PC::Commitment>>,
         evaluations: Vec<F>,
-        prover_messages: Vec<ProverMsg<F>>,
+        prover_messages: Vec<ProverMessage<F>>,
         pc_proof: BatchLCProof<F, PC>,
     ) -> Self {
         Self {

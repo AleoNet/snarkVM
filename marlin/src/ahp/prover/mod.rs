@@ -14,20 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod ahp;
-pub use ahp::*;
+#![allow(non_snake_case)]
 
-pub mod errors;
-pub use errors::*;
+mod constraint_system;
+pub(crate) use constraint_system::*;
 
-/// Describes data structures and the algorithms used by the AHP indexer.
-pub mod indexer;
-pub use indexer::*;
+mod message;
+pub(crate) use message::*;
 
-pub(crate) mod matrices;
+mod prover;
 
-/// Describes data structures and the algorithms used by the AHP prover.
-pub mod prover;
-
-/// Describes data structures and the algorithms used by the AHP verifier.
-pub mod verifier;
+mod state;
