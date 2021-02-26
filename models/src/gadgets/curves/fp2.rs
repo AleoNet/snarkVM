@@ -88,7 +88,7 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FieldGadget<Fp2<P>, F> for Fp2Gadg
 
     #[inline]
     fn get_value(&self) -> Option<Fp2<P>> {
-        match (self.c0.value, self.c1.value) {
+        match (self.c0.get_value(), self.c1.get_value()) {
             (Some(c0), Some(c1)) => Some(Fp2::new(c0, c1)),
             (..) => None,
         }
