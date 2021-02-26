@@ -31,14 +31,27 @@ use derivative::Derivative;
 use std::io::{self, Read, Write};
 
 /* ************************************************************************* */
-/* ************************************************************************* */
-/* ************************************************************************* */
 
 /// The universal public parameters for the argument system.
 pub type UniversalSRS<F, PC> = <PC as PolynomialCommitment<F>>::UniversalParams;
 
 /* ************************************************************************* */
-/* ************************************************************************* */
+
+/// Proving key for a specific index (i.e., R1CS matrices).
+#[derive(Derivative)]
+#[derivative(Clone(bound = ""))]
+#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
+pub struct IndexProverKey<F: PrimeField, PC: PolynomialCommitment<F>> {
+    /// The index verifier key.
+    pub index_vk: IndexVerifierKey<F, PC>,
+    /// The randomness for the index polynomial commitments.
+    pub index_comm_rands: Vec<PC::Randomness>,
+    /// The index itself.
+    pub index: Index<F>,
+    /// The committer key for this index, trimmed from the universal SRS.
+    pub committer_key: PC::CommitterKey,
+}
+
 /* ************************************************************************* */
 
 /// Verification key for a specific index (i.e., R1CS matrices).
@@ -74,27 +87,6 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> IndexVerifierKey<F, PC> {
     }
 }
 
-/* ************************************************************************* */
-/* ************************************************************************* */
-/* ************************************************************************* */
-
-/// Proving key for a specific index (i.e., R1CS matrices).
-#[derive(Derivative)]
-#[derivative(Clone(bound = ""))]
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct IndexProverKey<F: PrimeField, PC: PolynomialCommitment<F>> {
-    /// The index verifier key.
-    pub index_vk: IndexVerifierKey<F, PC>,
-    /// The randomness for the index polynomial commitments.
-    pub index_comm_rands: Vec<PC::Randomness>,
-    /// The index itself.
-    pub index: Index<F>,
-    /// The committer key for this index, trimmed from the universal SRS.
-    pub committer_key: PC::CommitterKey,
-}
-
-/* ************************************************************************* */
-/* ************************************************************************* */
 /* ************************************************************************* */
 
 /// A zkSNARK proof.
