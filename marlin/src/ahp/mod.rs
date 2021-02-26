@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+/// Algebraic holographic proofs.
 pub mod ahp;
 pub use ahp::*;
 
+/// Errors.
 pub mod errors;
 pub use errors::*;
 
