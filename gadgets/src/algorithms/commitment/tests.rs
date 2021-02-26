@@ -26,6 +26,7 @@ use snarkvm_models::{
     curves::ProjectiveCurve,
     gadgets::{
         algorithms::CommitmentGadget,
+        curves::FieldGadget,
         r1cs::{ConstraintSystem, TestConstraintSystem},
         utilities::{alloc::AllocGadget, uint::UInt8},
     },
@@ -122,7 +123,7 @@ fn pedersen_commitment_gadget_test() {
     .unwrap();
 
     let native_output = native_output.into_affine();
-    assert_eq!(native_output.x, output_gadget.x.value.unwrap());
-    assert_eq!(native_output.y, output_gadget.y.value.unwrap());
+    assert_eq!(native_output.x, output_gadget.x.get_value().unwrap());
+    assert_eq!(native_output.y, output_gadget.y.get_value().unwrap());
     assert!(cs.is_satisfied());
 }

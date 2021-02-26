@@ -112,10 +112,10 @@ mod test {
         let b_affine = b.into_affine();
         let mut gadget_a = G1Gadget::alloc(&mut cs.ns(|| "a"), || Ok(a)).unwrap();
         let gadget_b = G1Gadget::alloc(&mut cs.ns(|| "b"), || Ok(b)).unwrap();
-        assert_eq!(gadget_a.x.value.unwrap(), a_affine.x);
-        assert_eq!(gadget_a.y.value.unwrap(), a_affine.y);
-        assert_eq!(gadget_b.x.value.unwrap(), b_affine.x);
-        assert_eq!(gadget_b.y.value.unwrap(), b_affine.y);
+        assert_eq!(gadget_a.x.get_value().unwrap(), a_affine.x);
+        assert_eq!(gadget_a.y.get_value().unwrap(), a_affine.y);
+        assert_eq!(gadget_b.x.get_value().unwrap(), b_affine.x);
+        assert_eq!(gadget_b.y.get_value().unwrap(), b_affine.y);
 
         // Check addition
         let ab = a + &b;

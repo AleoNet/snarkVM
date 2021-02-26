@@ -49,6 +49,13 @@ where
 }
 
 pub trait AllocGadget<V: ?Sized, F: Field>: Sized {
+    fn alloc_constant<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<V>, CS: ConstraintSystem<F>>(
+        _cs: CS,
+        _f: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<V>, CS: ConstraintSystem<F>>(
         cs: CS,
         f: Fn,
