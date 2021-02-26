@@ -35,12 +35,11 @@ use snarkvm_models::{
 use snarkvm_polycommit::{LabeledPolynomial, Polynomial};
 use snarkvm_utilities::{bytes::ToBytes, error, serialize::*};
 
-use core::marker::PhantomData;
 use rand_core::RngCore;
 use std::io::Write;
 
 /// State for the AHP prover.
-pub struct ProverState<'a, 'b, F: PrimeField, C> {
+pub struct ProverState<'a, F: PrimeField> {
     formatted_input_assignment: Vec<F>,
     witness_assignment: Vec<F>,
     /// Az
@@ -50,16 +49,16 @@ pub struct ProverState<'a, 'b, F: PrimeField, C> {
     /// query bound b
     zk_bound: usize,
 
-    w_poly: Option<LabeledPolynomial<'b, F>>,
-    mz_polys: Option<(LabeledPolynomial<'b, F>, LabeledPolynomial<'b, F>)>,
+    w_poly: Option<LabeledPolynomial<F>>,
+    mz_polys: Option<(LabeledPolynomial<F>, LabeledPolynomial<F>)>,
 
-    index: &'a Index<'a, F, C>,
+    index: &'a Index<F>,
 
     /// the random values sent by the verifier in the first round
     verifier_first_msg: Option<VerifierFirstMsg<F>>,
 
     /// the blinding polynomial for the first round
-    mask_poly: Option<LabeledPolynomial<'b, F>>,
+    mask_poly: Option<LabeledPolynomial<F>>,
 
     /// domain X, sized for the public input
     domain_x: EvaluationDomain<F>,
@@ -69,13 +68,9 @@ pub struct ProverState<'a, 'b, F: PrimeField, C> {
 
     /// domain K, sized for matrix nonzero elements
     domain_k: EvaluationDomain<F>,
-
-    #[doc(hidden)]
-    _field: PhantomData<C>,
-    _cs: PhantomData<C>,
 }
 
-impl<'a, 'b, F: PrimeField, C> ProverState<'a, 'b, F, C> {
+impl<'a, F: PrimeField> ProverState<'a, F> {
     /// Get the public input.
     pub fn public_input(&self) -> Vec<F> {
         ProverConstraintSystem::unformat_public_input(&self.formatted_input_assignment)
@@ -97,62 +92,62 @@ impl<F: Field> ToBytes for ProverMsg<F> {
 }
 
 /// The first set of prover oracles.
-pub struct ProverFirstOracles<'b, F: Field> {
+pub struct ProverFirstOracles<F: Field> {
     /// The LDE of `w`.
-    pub w: LabeledPolynomial<'b, F>,
+    pub w: LabeledPolynomial<F>,
     /// The LDE of `Az`.
-    pub z_a: LabeledPolynomial<'b, F>,
+    pub z_a: LabeledPolynomial<F>,
     /// The LDE of `Bz`.
-    pub z_b: LabeledPolynomial<'b, F>,
+    pub z_b: LabeledPolynomial<F>,
     /// The sum-check hiding polynomial.
-    pub mask_poly: LabeledPolynomial<'b, F>,
+    pub mask_poly: LabeledPolynomial<F>,
 }
 
-impl<'b, F: Field> ProverFirstOracles<'b, F> {
+impl<F: Field> ProverFirstOracles<F> {
     /// Iterate over the polynomials output by the prover in the first round.
-    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<'b, F>> {
+    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         vec![&self.w, &self.z_a, &self.z_b, &self.mask_poly].into_iter()
     }
 }
 
 /// The second set of prover oracles.
-pub struct ProverSecondOracles<'b, F: Field> {
+pub struct ProverSecondOracles<F: Field> {
     /// The polynomial `t` that is produced in the first round.
-    pub t: LabeledPolynomial<'b, F>,
+    pub t: LabeledPolynomial<F>,
     /// The polynomial `g` resulting from the first sumcheck.
-    pub g_1: LabeledPolynomial<'b, F>,
+    pub g_1: LabeledPolynomial<F>,
     /// The polynomial `h` resulting from the first sumcheck.
-    pub h_1: LabeledPolynomial<'b, F>,
+    pub h_1: LabeledPolynomial<F>,
 }
 
-impl<'b, F: Field> ProverSecondOracles<'b, F> {
+impl<F: Field> ProverSecondOracles<F> {
     /// Iterate over the polynomials output by the prover in the second round.
-    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<'b, F>> {
+    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         vec![&self.t, &self.g_1, &self.h_1].into_iter()
     }
 }
 
 /// The third set of prover oracles.
-pub struct ProverThirdOracles<'b, F: Field> {
+pub struct ProverThirdOracles<F: Field> {
     /// The polynomial `g` resulting from the second sumcheck.
-    pub g_2: LabeledPolynomial<'b, F>,
+    pub g_2: LabeledPolynomial<F>,
     /// The polynomial `h` resulting from the second sumcheck.
-    pub h_2: LabeledPolynomial<'b, F>,
+    pub h_2: LabeledPolynomial<F>,
 }
 
-impl<'b, F: Field> ProverThirdOracles<'b, F> {
+impl<F: Field> ProverThirdOracles<F> {
     /// Iterate over the polynomials output by the prover in the third round.
-    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<'b, F>> {
+    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         vec![&self.g_2, &self.h_2].into_iter()
     }
 }
 
 impl<F: PrimeField> AHPForR1CS<F> {
     /// Initialize the AHP prover.
-    pub fn prover_init<'a, 'b, C: ConstraintSynthesizer<F>>(
-        index: &'a Index<F, C>,
+    pub fn prover_init<'a, C: ConstraintSynthesizer<F>>(
+        index: &'a Index<F>,
         c: &C,
-    ) -> Result<ProverState<'a, 'b, F, C>, Error> {
+    ) -> Result<ProverState<'a, F>, Error> {
         let init_time = start_timer!(|| "AHP::Prover::Init");
 
         let constraint_time = start_timer!(|| "Generating constraints and witnesses");
@@ -167,8 +162,8 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let num_non_zero = index.index_info.num_non_zero;
 
         let ProverConstraintSystem {
-            input_assignment: formatted_input_assignment,
-            witness_assignment,
+            public_variables: formatted_input_assignment,
+            private_variables: witness_assignment,
             num_constraints,
             ..
         } = pcs;
@@ -232,17 +227,15 @@ impl<F: PrimeField> AHPForR1CS<F> {
             domain_h,
             domain_k,
             domain_x,
-            _field: PhantomData,
-            _cs: PhantomData,
         })
     }
 
     /// Output the first round message and the next state.
     #[allow(clippy::type_complexity)]
-    pub fn prover_first_round<'a, 'b, R: RngCore, C: ConstraintSynthesizer<F>>(
-        mut state: ProverState<'a, 'b, F, C>,
+    pub fn prover_first_round<'a, R: RngCore>(
+        mut state: ProverState<'a, F>,
         rng: &mut R,
-    ) -> Result<(ProverMsg<F>, ProverFirstOracles<'b, F>, ProverState<'a, 'b, F, C>), Error> {
+    ) -> Result<(ProverMsg<F>, ProverFirstOracles<F>, ProverState<'a, F>), Error> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
         let domain_h = state.domain_h;
         let zk_bound = state.zk_bound;
@@ -352,18 +345,16 @@ impl<F: PrimeField> AHPForR1CS<F> {
     }
 
     /// Output the degree bounds of oracles in the first round.
-    pub fn prover_first_round_degree_bounds<C: ConstraintSynthesizer<F>>(
-        _info: &IndexInfo<F, C>,
-    ) -> impl Iterator<Item = Option<usize>> {
+    pub fn prover_first_round_degree_bounds(_info: &IndexInfo<F>) -> impl Iterator<Item = Option<usize>> {
         vec![None; 4].into_iter()
     }
 
     /// Output the second round message and the next state.
-    pub fn prover_second_round<'a, 'b, R: RngCore, C: ConstraintSynthesizer<F>>(
+    pub fn prover_second_round<'a, R: RngCore>(
         ver_message: &VerifierFirstMsg<F>,
-        mut state: ProverState<'a, 'b, F, C>,
+        mut state: ProverState<'a, F>,
         _r: &mut R,
-    ) -> (ProverMsg<F>, ProverSecondOracles<'b, F>, ProverState<'a, 'b, F, C>) {
+    ) -> (ProverMsg<F>, ProverSecondOracles<F>, ProverState<'a, F>) {
         let round_time = start_timer!(|| "AHP::Prover::SecondRound");
 
         let domain_h = state.domain_h;
@@ -492,20 +483,18 @@ impl<F: PrimeField> AHPForR1CS<F> {
     }
 
     /// Output the degree bounds of oracles in the second round.
-    pub fn prover_second_round_degree_bounds<C: ConstraintSynthesizer<F>>(
-        info: &IndexInfo<F, C>,
-    ) -> impl Iterator<Item = Option<usize>> {
+    pub fn prover_second_round_degree_bounds(info: &IndexInfo<F>) -> impl Iterator<Item = Option<usize>> {
         let h_domain_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_constraints).unwrap();
 
         vec![None, Some(h_domain_size - 2), None].into_iter()
     }
 
     /// Output the third round message and the next state.
-    pub fn prover_third_round<'a, 'b, R: RngCore, C: ConstraintSynthesizer<F>>(
+    pub fn prover_third_round<'a, R: RngCore>(
         ver_message: &VerifierSecondMsg<F>,
-        prover_state: ProverState<'a, 'b, F, C>,
+        prover_state: ProverState<'a, F>,
         _r: &mut R,
-    ) -> Result<(ProverMsg<F>, ProverThirdOracles<'b, F>), Error> {
+    ) -> Result<(ProverMsg<F>, ProverThirdOracles<F>), Error> {
         let round_time = start_timer!(|| "AHP::Prover::ThirdRound");
 
         let ProverState {
@@ -634,9 +623,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
     }
 
     /// Output the degree bounds of oracles in the third round.
-    pub fn prover_third_round_degree_bounds<C: ConstraintSynthesizer<F>>(
-        info: &IndexInfo<F, C>,
-    ) -> impl Iterator<Item = Option<usize>> {
+    pub fn prover_third_round_degree_bounds(info: &IndexInfo<F>) -> impl Iterator<Item = Option<usize>> {
         let num_non_zero = info.num_non_zero;
         let k_size = EvaluationDomain::<F>::compute_size_of_domain(num_non_zero).unwrap();
 

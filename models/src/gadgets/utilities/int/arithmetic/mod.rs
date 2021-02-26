@@ -23,3 +23,12 @@ pub use self::neg::*;
 
 pub mod sub;
 pub use self::sub::*;
+
+pub mod div;
+pub use self::div::*;
+
+pub mod mul;
+pub use self::mul::*;
+
+pub mod pow;
+pub use self::pow::*;

@@ -193,7 +193,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     #[allow(clippy::type_complexity)]
     fn commit<'a>(
         ck: &Self::CommitterKey,
-        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<'a, F>>,
+        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
         rng: Option<&mut dyn RngCore>,
     ) -> Result<(Vec<LabeledCommitment<Self::Commitment>>, Vec<Self::Randomness>), Self::Error>;
 
@@ -201,7 +201,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     /// of the polynomials at the query point.
     fn open<'a>(
         ck: &Self::CommitterKey,
-        labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<'a, F>>,
+        labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
         point: F,
         opening_challenge: F,
@@ -216,7 +216,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     /// of the polynomials at the points in the query set.
     fn batch_open<'a>(
         ck: &Self::CommitterKey,
-        labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<'a, F>>,
+        labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
         query_set: &QuerySet<F>,
         opening_challenge: F,
@@ -357,7 +357,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     fn open_combinations<'a>(
         ck: &Self::CommitterKey,
         linear_combinations: impl IntoIterator<Item = &'a LinearCombination<F>>,
-        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<'a, F>>,
+        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
         query_set: &QuerySet<F>,
         opening_challenge: F,
@@ -457,7 +457,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
 
 /// Evaluate the given polynomials at `query_set`.
 pub fn evaluate_query_set<'a, F: Field>(
-    polys: impl IntoIterator<Item = &'a LabeledPolynomial<'a, F>>,
+    polys: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
     query_set: &QuerySet<'a, F>,
 ) -> Evaluations<'a, F> {
     let polys = BTreeMap::from_iter(polys.into_iter().map(|p| (p.label(), p)));

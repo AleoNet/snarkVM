@@ -27,6 +27,7 @@ use crate::{
             ToBytesGadget,
         },
     },
+    uint_impl_common,
 };
 use snarkvm_errors::gadgets::SynthesisError;
 use snarkvm_utilities::{
@@ -36,39 +37,7 @@ use snarkvm_utilities::{
 
 use std::{borrow::Borrow, cmp::Ordering};
 
-/// Represents an interpretation of 128 `Boolean` objects as an
-/// unsigned integer.
-#[derive(Clone, Debug)]
-pub struct UInt128 {
-    // Least significant bit_gadget first
-    pub bits: Vec<Boolean>,
-    pub negated: bool,
-    pub value: Option<u128>,
-}
-
-impl UInt128 {
-    /// Construct a constant `UInt128` from a `u128`
-    pub fn constant(value: u128) -> Self {
-        let mut bits = Vec::with_capacity(128);
-
-        let mut tmp = value;
-        for _ in 0..128 {
-            if tmp & 1 == 1 {
-                bits.push(Boolean::constant(true))
-            } else {
-                bits.push(Boolean::constant(false))
-            }
-
-            tmp >>= 1;
-        }
-
-        Self {
-            bits,
-            negated: false,
-            value: Some(value),
-        }
-    }
-}
+uint_impl_common!(UInt128, u128, 128);
 
 impl UInt for UInt128 {
     /// Returns the inverse UInt128
@@ -306,7 +275,10 @@ impl UInt for UInt128 {
             // balance out
             lc = lc - (coeff, b.get_variable());
 
-            result_bits.push(b.into());
+            // Discard carry bits that we don't care about
+            if result_bits.len() < 128 {
+                result_bits.push(b.into());
+            }
 
             max_value.div2();
             i += 1;
@@ -315,9 +287,6 @@ impl UInt for UInt128 {
 
         // Enforce that the linear combination equals zero
         cs.enforce(|| "modular addition", |lc| lc, |lc| lc, |_| lc);
-
-        // Discard carry bits that we don't care about
-        result_bits.truncate(128);
 
         Ok(Self {
             bits: result_bits,
@@ -382,9 +351,6 @@ impl UInt for UInt128 {
                         // Enforce that the linear combination equals zero
                         cs.enforce(|| "unsafe subtraction", |lc| lc, |lc| lc, |_| lc);
 
-                        // Discard carry bits that we don't care about
-                        result_bits.truncate(128);
-
                         Ok(Self {
                             bits: result_bits,
                             negated: false,
@@ -421,7 +387,7 @@ impl UInt for UInt128 {
 
         let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
         let constant_result = Self::constant(0u128);
-        let allocated_result = Self::alloc(&mut cs.ns(|| "allocated_1u128"), || Ok(0u128))?;
+        let allocated_result = Self::alloc(&mut cs.ns(|| "allocated_0u128"), || Ok(0u128))?;
         let zero_result = Self::conditionally_select(
             &mut cs.ns(|| "constant_or_allocated"),
             &is_constant,
@@ -580,7 +546,7 @@ impl UInt for UInt128 {
         //
         // let mut found_one = false;
         //
-        // for i in BitIterator::new(exp) {
+        // for i in BitIteratorBE::new(exp) {
         //     if !found_one {
         //         if i {
         //             found_one = true;
@@ -630,212 +596,5 @@ impl UInt for UInt128 {
         }
 
         Ok(result)
-    }
-}
-
-impl PartialEq for UInt128 {
-    fn eq(&self, other: &Self) -> bool {
-        self.value.is_some() && other.value.is_some() && self.value == other.value
-    }
-}
-
-impl Eq for UInt128 {}
-
-impl PartialOrd for UInt128 {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Option::from(self.value.cmp(&other.value))
-    }
-}
-
-impl<F: PrimeField> EvaluateEqGadget<F> for UInt128 {
-    fn evaluate_equal<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
-        let mut result = Boolean::constant(true);
-        for (i, (a, b)) in self.bits.iter().zip(&other.bits).enumerate() {
-            let equal = a.evaluate_equal(&mut cs.ns(|| format!("u128 evaluate equality for {}-th bit", i)), b)?;
-
-            result = Boolean::and(
-                &mut cs.ns(|| format!("u128 and result for {}-th bit", i)),
-                &equal,
-                &result,
-            )?;
-        }
-
-        Ok(result)
-    }
-}
-
-impl<F: Field> EqGadget<F> for UInt128 {}
-
-impl<F: Field> ConditionalEqGadget<F> for UInt128 {
-    fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
-        &self,
-        mut cs: CS,
-        other: &Self,
-        condition: &Boolean,
-    ) -> Result<(), SynthesisError> {
-        for (i, (a, b)) in self.bits.iter().zip(&other.bits).enumerate() {
-            a.conditional_enforce_equal(&mut cs.ns(|| format!("uint128_equal_{}", i)), b, condition)?;
-        }
-        Ok(())
-    }
-
-    fn cost() -> usize {
-        128 * <Boolean as ConditionalEqGadget<F>>::cost()
-    }
-}
-
-impl<F: PrimeField> CondSelectGadget<F> for UInt128 {
-    fn conditionally_select<CS: ConstraintSystem<F>>(
-        mut cs: CS,
-        cond: &Boolean,
-        first: &Self,
-        second: &Self,
-    ) -> Result<Self, SynthesisError> {
-        if let Boolean::Constant(cond) = *cond {
-            if cond { Ok(first.clone()) } else { Ok(second.clone()) }
-        } else {
-            let mut is_negated = false;
-
-            let result_val = cond.get_value().and_then(|c| {
-                if c {
-                    is_negated = first.negated;
-                    first.value
-                } else {
-                    is_negated = second.negated;
-                    second.value
-                }
-            });
-
-            let mut result = Self::alloc(cs.ns(|| "cond_select_result"), || result_val.get())?;
-
-            result.negated = is_negated;
-
-            let expected_bits = first
-                .bits
-                .iter()
-                .zip(&second.bits)
-                .enumerate()
-                .map(|(i, (a, b))| {
-                    Boolean::conditionally_select(&mut cs.ns(|| format!("uint128_cond_select_{}", i)), cond, a, b)
-                        .unwrap()
-                })
-                .collect::<Vec<Boolean>>();
-
-            for (i, (actual, expected)) in result.to_bits_le().iter().zip(expected_bits.iter()).enumerate() {
-                actual.enforce_equal(&mut cs.ns(|| format!("selected_result_bit_{}", i)), expected)?;
-            }
-
-            Ok(result)
-        }
-    }
-
-    fn cost() -> usize {
-        128 * (<Boolean as ConditionalEqGadget<F>>::cost() + <Boolean as CondSelectGadget<F>>::cost())
-    }
-}
-
-impl<F: Field> AllocGadget<u128, F> for UInt128 {
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<u128>, CS: ConstraintSystem<F>>(
-        mut cs: CS,
-        value_gen: Fn,
-    ) -> Result<Self, SynthesisError> {
-        let value = value_gen().map(|val| *val.borrow());
-        let values = match value {
-            Ok(mut val) => {
-                let mut v = Vec::with_capacity(128);
-
-                for _ in 0..128 {
-                    v.push(Some(val & 1 == 1));
-                    val >>= 1;
-                }
-
-                v
-            }
-            _ => vec![None; 128],
-        };
-
-        let bits = values
-            .into_iter()
-            .enumerate()
-            .map(|(i, v)| {
-                Ok(Boolean::from(AllocatedBit::alloc(
-                    &mut cs.ns(|| format!("allocated bit_gadget {}", i)),
-                    || v.ok_or(SynthesisError::AssignmentMissing),
-                )?))
-            })
-            .collect::<Result<Vec<_>, SynthesisError>>()?;
-
-        Ok(Self {
-            bits,
-            negated: false,
-            value: value.ok(),
-        })
-    }
-
-    fn alloc_input<Fn, T, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
-    where
-        Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<u128>,
-    {
-        let value = value_gen().map(|val| *val.borrow());
-        let values = match value {
-            Ok(mut val) => {
-                let mut v = Vec::with_capacity(128);
-
-                for _ in 0..128 {
-                    v.push(Some(val & 1 == 1));
-                    val >>= 1;
-                }
-
-                v
-            }
-            _ => vec![None; 128],
-        };
-
-        let bits = values
-            .into_iter()
-            .enumerate()
-            .map(|(i, v)| {
-                Ok(Boolean::from(AllocatedBit::alloc_input(
-                    &mut cs.ns(|| format!("allocated bit_gadget {}", i)),
-                    || v.ok_or(SynthesisError::AssignmentMissing),
-                )?))
-            })
-            .collect::<Result<Vec<_>, SynthesisError>>()?;
-
-        Ok(Self {
-            bits,
-            negated: false,
-            value: value.ok(),
-        })
-    }
-}
-
-impl<F: Field> ToBytesGadget<F> for UInt128 {
-    #[inline]
-    fn to_bytes<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        let value_chunks = match self.value.map(|val| {
-            let mut bytes = [0u8; 16];
-            val.write(bytes.as_mut()).unwrap();
-            bytes
-        }) {
-            Some(chunks) => [Some(chunks[0]), Some(chunks[1]), Some(chunks[2]), Some(chunks[3])],
-            None => [None, None, None, None],
-        };
-        let mut bytes = Vec::new();
-        for (i, chunk8) in self.to_bits_le().chunks(8).enumerate() {
-            let byte = UInt8 {
-                bits: chunk8.to_vec(),
-                negated: false,
-                value: value_chunks[i],
-            };
-            bytes.push(byte);
-        }
-
-        Ok(bytes)
-    }
-
-    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.to_bytes(cs)
     }
 }

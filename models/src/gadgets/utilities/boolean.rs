@@ -17,7 +17,7 @@
 use crate::{
     curves::{Field, FpParameters, PrimeField},
     gadgets::{
-        r1cs::{Assignment, ConstraintSystem, ConstraintVar, LinearCombination, Variable},
+        r1cs::{Assignment, ConstraintSystem, ConstraintVariable, LinearCombination, Variable},
         utilities::{
             alloc::AllocGadget,
             eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
@@ -28,7 +28,7 @@ use crate::{
     },
 };
 use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_utilities::bititerator::BitIterator;
+use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::borrow::Borrow;
 
@@ -256,7 +256,7 @@ impl AllocatedBit {
 
 impl PartialEq for AllocatedBit {
     fn eq(&self, other: &Self) -> bool {
-        self.value.is_some() && other.value.is_some() && self.value == other.value
+        self.value.is_some() && self.value == other.value
     }
 }
 
@@ -336,8 +336,8 @@ impl<F: PrimeField> CondSelectGadget<F> for AllocatedBit {
 fn cond_select_helper<F: PrimeField, CS: ConstraintSystem<F>>(
     mut cs: CS,
     cond: &Boolean,
-    first: (Option<bool>, impl Into<ConstraintVar<F>>),
-    second: (Option<bool>, impl Into<ConstraintVar<F>>),
+    first: (Option<bool>, impl Into<ConstraintVariable<F>>),
+    second: (Option<bool>, impl Into<ConstraintVariable<F>>),
 ) -> Result<AllocatedBit, SynthesisError> {
     let mut result_val = None;
     let result_var = cs.alloc(
@@ -361,7 +361,7 @@ fn cond_select_helper<F: PrimeField, CS: ConstraintSystem<F>>(
         || "conditionally_select",
         |_| cond.lc(one, F::one()),
         |lc| (&first_var - &second_var) + lc,
-        |lc| ConstraintVar::from(result_var) - &second_var + lc,
+        |lc| ConstraintVariable::from(result_var) - &second_var + lc,
     );
 
     Ok(AllocatedBit {
@@ -576,7 +576,7 @@ impl Boolean {
             )?;
         }
 
-        for b in BitIterator::new(b) {
+        for b in BitIteratorBE::new(b) {
             // Skip over unset bits at the beginning
             found_one |= b;
             if !found_one {
@@ -776,7 +776,7 @@ mod test {
         curves::{Field, One, PrimeField, Zero},
         gadgets::r1cs::{Fr, TestConstraintSystem},
     };
-    use snarkvm_utilities::{bititerator::BitIterator, rand::UniformRand};
+    use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
 
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
@@ -1474,7 +1474,7 @@ mod test {
             let mut cs = TestConstraintSystem::<Fr>::new();
 
             let mut bits = vec![];
-            for (i, b) in BitIterator::new(Fr::characteristic()).skip(1).enumerate() {
+            for (i, b) in BitIteratorBE::new(Fr::characteristic()).skip(1).enumerate() {
                 bits.push(Boolean::from(
                     AllocatedBit::alloc(cs.ns(|| format!("bit_gadget {}", i)), || Ok(b)).unwrap(),
                 ));
@@ -1492,7 +1492,7 @@ mod test {
             let mut cs = TestConstraintSystem::<Fr>::new();
 
             let mut bits = vec![];
-            for (i, b) in BitIterator::new(r.into_repr()).skip(1).enumerate() {
+            for (i, b) in BitIteratorBE::new(r.into_repr()).skip(1).enumerate() {
                 bits.push(Boolean::from(
                     AllocatedBit::alloc(cs.ns(|| format!("bit_gadget {}", i)), || Ok(b)).unwrap(),
                 ));
@@ -1520,7 +1520,7 @@ mod test {
         //     let mut cs = TestConstraintSystem::<Fr>::new();
 
         //     let mut bits = vec![];
-        //     for (i, b) in BitIterator::new(r).skip(1).enumerate() {
+        //     for (i, b) in BitIteratorBE::new(r).skip(1).enumerate() {
         //         bits.push(Boolean::from(
         //             AllocatedBit::alloc(cs.ns(|| format!("bit_gadget {}",
         // i)), Some(b))                 .unwrap(),

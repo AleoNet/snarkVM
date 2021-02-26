@@ -19,7 +19,6 @@
 use crate::{
     ahp::{indexer::Matrix, *},
     BTreeMap,
-    Cow,
     ToString,
 };
 use snarkvm_algorithms::{cfg_iter_mut, fft::Evaluations as EvaluationsOnDomain};
@@ -42,8 +41,8 @@ use derivative::Derivative;
 
 /// Stores constraints during index generation.
 pub(crate) struct IndexerConstraintSystem<F: Field> {
-    pub(crate) num_input_variables: usize,
-    pub(crate) num_witness_variables: usize,
+    pub(crate) num_public_variables: usize,
+    pub(crate) num_private_variables: usize,
     pub(crate) num_constraints: usize,
     pub(crate) a: Vec<Vec<(F, VarIndex)>>,
     pub(crate) b: Vec<Vec<(F, VarIndex)>>,
@@ -58,8 +57,8 @@ fn to_matrix_helper<F: Field>(matrix: &[Vec<(F, VarIndex)>], num_input_variables
         let mut new_row = Vec::with_capacity(row.len());
         for (fe, column) in row {
             let column = match column {
-                VarIndex::Input(i) => *i,
-                VarIndex::Aux(i) => num_input_variables + i,
+                VarIndex::Public(i) => *i,
+                VarIndex::Private(i) => num_input_variables + i,
             };
             new_row.push((*fe, column))
         }
@@ -79,8 +78,8 @@ impl<F: Field> IndexerConstraintSystem<F> {
 
     pub(crate) fn new() -> Self {
         Self {
-            num_input_variables: 1,
-            num_witness_variables: 0,
+            num_public_variables: 1,
+            num_private_variables: 0,
             num_constraints: 0,
             a: Vec::new(),
             b: Vec::new(),
@@ -89,15 +88,15 @@ impl<F: Field> IndexerConstraintSystem<F> {
     }
 
     pub(crate) fn a_matrix(&self) -> Vec<Vec<(F, usize)>> {
-        to_matrix_helper(&self.a, self.num_input_variables)
+        to_matrix_helper(&self.a, self.num_public_variables)
     }
 
     pub(crate) fn b_matrix(&self) -> Vec<Vec<(F, usize)>> {
-        to_matrix_helper(&self.b, self.num_input_variables)
+        to_matrix_helper(&self.b, self.num_public_variables)
     }
 
     pub(crate) fn c_matrix(&self) -> Vec<Vec<(F, usize)>> {
-        to_matrix_helper(&self.c, self.num_input_variables)
+        to_matrix_helper(&self.c, self.num_public_variables)
     }
 
     pub(crate) fn num_non_zero(&self) -> usize {
@@ -113,17 +112,17 @@ impl<F: Field> IndexerConstraintSystem<F> {
     }
 
     pub(crate) fn make_matrices_square(&mut self) {
-        let num_variables = self.num_input_variables + self.num_witness_variables;
+        let num_variables = self.num_public_variables + self.num_private_variables;
         let num_non_zero = self.num_non_zero();
         let matrix_dim = padded_matrix_dim(num_variables, self.num_constraints);
         make_matrices_square(self, num_variables);
         assert_eq!(
-            self.num_input_variables + self.num_witness_variables,
+            self.num_public_variables + self.num_private_variables,
             self.num_constraints,
             "padding failed!"
         );
         assert_eq!(
-            self.num_input_variables + self.num_witness_variables,
+            self.num_public_variables + self.num_private_variables,
             matrix_dim,
             "padding does not result in expected matrix size!"
         );
@@ -144,10 +143,10 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for IndexerConstraintSyst
         // There is no assignment, so we don't invoke the
         // function for obtaining one.
 
-        let index = self.num_witness_variables;
-        self.num_witness_variables += 1;
+        let index = self.num_private_variables;
+        self.num_private_variables += 1;
 
-        Ok(Variable::new_unchecked(VarIndex::Aux(index)))
+        Ok(Variable::new_unchecked(VarIndex::Private(index)))
     }
 
     #[inline]
@@ -160,10 +159,10 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for IndexerConstraintSyst
         // There is no assignment, so we don't invoke the
         // function for obtaining one.
 
-        let index = self.num_input_variables;
-        self.num_input_variables += 1;
+        let index = self.num_public_variables;
+        self.num_public_variables += 1;
 
-        Ok(Variable::new_unchecked(VarIndex::Input(index)))
+        Ok(Variable::new_unchecked(VarIndex::Public(index)))
     }
 
     fn enforce<A, AR, LA, LB, LC>(&mut self, _: A, a: LA, b: LB, c: LC)
@@ -200,6 +199,14 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for IndexerConstraintSyst
     fn num_constraints(&self) -> usize {
         self.num_constraints
     }
+
+    fn num_public_variables(&self) -> usize {
+        self.num_public_variables
+    }
+
+    fn num_private_variables(&self) -> usize {
+        self.num_private_variables
+    }
 }
 
 /// This must *always* be in sync with `make_matrices_square`.
@@ -230,13 +237,13 @@ pub(crate) fn make_matrices_square<F: Field, CS: ConstraintSystem<F>>(cs: &mut C
 #[derive(Derivative)]
 #[derivative(Clone(bound = "F: PrimeField"))]
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct MatrixEvals<'a, F: PrimeField> {
+pub struct MatrixEvals<F: PrimeField> {
     /// Evaluations of the LDE of row.
-    pub row: Cow<'a, EvaluationsOnDomain<F>>,
+    pub row: EvaluationsOnDomain<F>,
     /// Evaluations of the LDE of col.
-    pub col: Cow<'a, EvaluationsOnDomain<F>>,
+    pub col: EvaluationsOnDomain<F>,
     /// Evaluations of the LDE of val.
-    pub val: Cow<'a, EvaluationsOnDomain<F>>,
+    pub val: EvaluationsOnDomain<F>,
 }
 
 /// Contains information about the arithmetization of the matrix M^*.
@@ -244,38 +251,38 @@ pub struct MatrixEvals<'a, F: PrimeField> {
 #[derive(Derivative)]
 #[derivative(Clone(bound = "F: PrimeField"))]
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct MatrixArithmetization<'a, F: PrimeField> {
+pub struct MatrixArithmetization<F: PrimeField> {
     /// LDE of the row indices of M^*.
-    pub row: LabeledPolynomial<'a, F>,
+    pub row: LabeledPolynomial<F>,
     /// LDE of the column indices of M^*.
-    pub col: LabeledPolynomial<'a, F>,
+    pub col: LabeledPolynomial<F>,
     /// LDE of the non-zero entries of M^*.
-    pub val: LabeledPolynomial<'a, F>,
+    pub val: LabeledPolynomial<F>,
     /// LDE of the vector containing entry-wise products of `row` and `col`,
     /// where `row` and `col` are as above.
-    pub row_col: LabeledPolynomial<'a, F>,
+    pub row_col: LabeledPolynomial<F>,
 
     /// Evaluation of `self.row`, `self.col`, and `self.val` on the domain `K`.
-    pub evals_on_K: MatrixEvals<'a, F>,
+    pub evals_on_K: MatrixEvals<F>,
 
     /// Evaluation of `self.row`, `self.col`, and, `self.val` on
     /// an extended domain B (of size > `3K`).
     // TODO: rename B everywhere.
-    pub evals_on_B: MatrixEvals<'a, F>,
+    pub evals_on_B: MatrixEvals<F>,
 
     /// Evaluation of `self.row_col` on an extended domain B (of size > `3K`).
-    pub row_col_evals_on_B: Cow<'a, EvaluationsOnDomain<F>>,
+    pub row_col_evals_on_B: EvaluationsOnDomain<F>,
 }
 
 // TODO for debugging: add test that checks result of arithmetize_matrix(M).
-pub(crate) fn arithmetize_matrix<'a, F: PrimeField>(
+pub(crate) fn arithmetize_matrix<F: PrimeField>(
     matrix_name: &str,
     matrix: &mut Matrix<F>,
     interpolation_domain: EvaluationDomain<F>,
     output_domain: EvaluationDomain<F>,
     input_domain: EvaluationDomain<F>,
     expanded_domain: EvaluationDomain<F>,
-) -> MatrixArithmetization<'a, F> {
+) -> MatrixArithmetization<F> {
     let matrix_time = start_timer!(|| "Computing row, col, and val LDEs");
 
     let elems: Vec<_> = output_domain.elements().collect();
@@ -348,14 +355,14 @@ pub(crate) fn arithmetize_matrix<'a, F: PrimeField>(
 
     end_timer!(matrix_time);
     let evals_on_K = MatrixEvals {
-        row: Cow::Owned(row_evals_on_K),
-        col: Cow::Owned(col_evals_on_K),
-        val: Cow::Owned(val_evals_on_K),
+        row: row_evals_on_K,
+        col: col_evals_on_K,
+        val: val_evals_on_K,
     };
     let evals_on_B = MatrixEvals {
-        row: Cow::Owned(row_evals_on_B),
-        col: Cow::Owned(col_evals_on_B),
-        val: Cow::Owned(val_evals_on_B),
+        row: row_evals_on_B,
+        col: col_evals_on_B,
+        val: val_evals_on_B,
     };
 
     let m_name = matrix_name.to_string();
@@ -366,7 +373,7 @@ pub(crate) fn arithmetize_matrix<'a, F: PrimeField>(
         row_col: LabeledPolynomial::new_owned(m_name + "_row_col", row_col, None, None),
         evals_on_K,
         evals_on_B,
-        row_col_evals_on_B: Cow::Owned(row_col_evals_on_B),
+        row_col_evals_on_B,
     }
 }
 
@@ -390,20 +397,20 @@ fn is_in_ascending_order<T: Ord>(x_s: &[T], is_less_than: impl Fn(&T, &T) -> boo
 
 pub(crate) struct ProverConstraintSystem<F: Field> {
     // Assignments of variables
-    pub(crate) input_assignment: Vec<F>,
-    pub(crate) witness_assignment: Vec<F>,
-    pub(crate) num_input_variables: usize,
-    pub(crate) num_witness_variables: usize,
+    pub(crate) public_variables: Vec<F>,
+    pub(crate) private_variables: Vec<F>,
+    pub(crate) num_public_variables: usize,
+    pub(crate) num_private_variables: usize,
     pub(crate) num_constraints: usize,
 }
 
 impl<F: Field> ProverConstraintSystem<F> {
     pub(crate) fn new() -> Self {
         Self {
-            input_assignment: vec![F::one()],
-            witness_assignment: Vec::new(),
-            num_input_variables: 1usize,
-            num_witness_variables: 0usize,
+            public_variables: vec![F::one()],
+            private_variables: Vec::new(),
+            num_public_variables: 1usize,
+            num_private_variables: 0usize,
             num_constraints: 0usize,
         }
     }
@@ -423,10 +430,10 @@ impl<F: Field> ProverConstraintSystem<F> {
     }
 
     pub(crate) fn make_matrices_square(&mut self) {
-        let num_variables = self.num_input_variables + self.num_witness_variables;
+        let num_variables = self.num_public_variables + self.num_private_variables;
         make_matrices_square(self, num_variables);
         assert_eq!(
-            self.num_input_variables + self.num_witness_variables,
+            self.num_public_variables + self.num_private_variables,
             self.num_constraints,
             "padding failed!"
         );
@@ -443,11 +450,11 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ProverConstraintSyste
         A: FnOnce() -> AR,
         AR: AsRef<str>,
     {
-        let index = self.num_witness_variables;
-        self.num_witness_variables += 1;
+        let index = self.num_private_variables;
+        self.num_private_variables += 1;
 
-        self.witness_assignment.push(f()?);
-        Ok(Variable::new_unchecked(VarIndex::Aux(index)))
+        self.private_variables.push(f()?);
+        Ok(Variable::new_unchecked(VarIndex::Private(index)))
     }
 
     #[inline]
@@ -457,11 +464,11 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ProverConstraintSyste
         A: FnOnce() -> AR,
         AR: AsRef<str>,
     {
-        let index = self.num_input_variables;
-        self.num_input_variables += 1;
+        let index = self.num_public_variables;
+        self.num_public_variables += 1;
 
-        self.input_assignment.push(f()?);
-        Ok(Variable::new_unchecked(VarIndex::Input(index)))
+        self.public_variables.push(f()?);
+        Ok(Variable::new_unchecked(VarIndex::Public(index)))
     }
 
     #[inline]
@@ -494,5 +501,13 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ProverConstraintSyste
 
     fn num_constraints(&self) -> usize {
         self.num_constraints
+    }
+
+    fn num_public_variables(&self) -> usize {
+        self.num_public_variables
+    }
+
+    fn num_private_variables(&self) -> usize {
+        self.num_private_variables
     }
 }

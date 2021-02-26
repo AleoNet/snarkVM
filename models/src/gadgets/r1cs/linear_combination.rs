@@ -14,15 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    curves::Field,
-    gadgets::r1cs::{LinearCombination, Variable},
-};
+use crate::{curves::Field, gadgets::r1cs::Variable};
 
 use std::{
     cmp::Ordering,
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub},
 };
+
+/// This represents a linear combination of some variables, with coefficients
+/// in the field `F`.
+/// The `(coeff, var)` pairs in a `LinearCombination` are kept sorted according
+/// to the index of the variable in its constraint system.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LinearCombination<F: Field>(pub Vec<(Variable, F)>);
 
 impl<F: Field> AsRef<[(Variable, F)]> for LinearCombination<F> {
     #[inline]
@@ -185,7 +189,7 @@ where
         let other_cur = &other.0[j];
         match self_cur.0.cmp(&other_cur.0) {
             Ordering::Greater => {
-                new_vec.push((other.0[j].0, push_fn(other.0[j].1)));
+                new_vec.push((other_cur.0, push_fn(other_cur.1)));
                 j += 1;
             }
             Ordering::Less => {

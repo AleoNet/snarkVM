@@ -34,7 +34,7 @@ use snarkvm_models::{
         r1cs::ConstraintSystem,
     },
 };
-use snarkvm_utilities::bititerator::BitIterator;
+use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::marker::PhantomData;
 
@@ -124,7 +124,7 @@ where
         }
         let mut f = Self::GTGadget::one(cs.ns(|| "one"))?;
 
-        for (j, i) in BitIterator::new(P::X).skip(1).enumerate() {
+        for (j, i) in BitIteratorBE::new(P::X).skip(1).enumerate() {
             let mut cs = cs.ns(|| format!("Iteration {}", j));
             f.square_in_place(cs.ns(|| "square"))?;
 

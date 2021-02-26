@@ -51,7 +51,7 @@ mod test {
             },
         },
     };
-    use snarkvm_utilities::{bititerator::BitIterator, rand::UniformRand};
+    use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
 
     use rand::{self, SeedableRng};
     use rand_xorshift::XorShiftRng;
@@ -112,10 +112,10 @@ mod test {
         let b_affine = b.into_affine();
         let mut gadget_a = G1Gadget::alloc(&mut cs.ns(|| "a"), || Ok(a)).unwrap();
         let gadget_b = G1Gadget::alloc(&mut cs.ns(|| "b"), || Ok(b)).unwrap();
-        assert_eq!(gadget_a.x.value.unwrap(), a_affine.x);
-        assert_eq!(gadget_a.y.value.unwrap(), a_affine.y);
-        assert_eq!(gadget_b.x.value.unwrap(), b_affine.x);
-        assert_eq!(gadget_b.y.value.unwrap(), b_affine.y);
+        assert_eq!(gadget_a.x.get_value().unwrap(), a_affine.x);
+        assert_eq!(gadget_a.y.get_value().unwrap(), a_affine.y);
+        assert_eq!(gadget_b.x.get_value().unwrap(), b_affine.x);
+        assert_eq!(gadget_b.y.get_value().unwrap(), b_affine.y);
 
         // Check addition
         let ab = a + &b;
@@ -147,7 +147,7 @@ mod test {
         let native_result = aa.into_affine().mul(scalar) + &b;
         let native_result = native_result.into_affine();
 
-        let mut scalar: Vec<bool> = BitIterator::new(scalar.into_repr()).collect();
+        let mut scalar: Vec<bool> = BitIteratorBE::new(scalar.into_repr()).collect();
         // Get the scalar bits into little-endian form.
         scalar.reverse();
         let input = Vec::<Boolean>::alloc(cs.ns(|| "Input"), || Ok(scalar)).unwrap();
