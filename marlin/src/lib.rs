@@ -77,6 +77,10 @@ pub use ahp::AHPForR1CS;
 pub mod parameters;
 pub use parameters::*;
 
+/// The Marlin zkSNARK proof.
+pub mod proof;
+pub use proof::*;
+
 pub mod snark;
 
 #[cfg(test)]
