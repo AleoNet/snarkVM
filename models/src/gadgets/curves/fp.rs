@@ -638,7 +638,7 @@ impl<F: PrimeField> AllocGadget<F, F> for AllocatedFp<F> {
     }
 }
 
-// ------- FpGadget
+// FpGadget Impl
 
 impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
     type Variable = ConstraintVar<F>;
@@ -662,7 +662,7 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
 
     #[inline]
     fn zero<CS: ConstraintSystem<F>>(_cs: CS) -> Result<Self, SynthesisError> {
-        // println!("constant zero");
+        //TODO (raychu86): Use constant constraint optimization.
         // Ok(Self::Constant(F::zero()))
 
         (AllocatedFp::zero(_cs)).map(Self::Variable)
@@ -670,7 +670,7 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
 
     #[inline]
     fn one<CS: ConstraintSystem<F>>(_cs: CS) -> Result<Self, SynthesisError> {
-        // println!("constant one");
+        //TODO (raychu86): Use constant constraint optimization.
         // Ok(Self::Constant(F::one()))
 
         (AllocatedFp::one(_cs)).map(Self::Variable)
@@ -886,8 +886,6 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
     }
 }
 
-// -------- FP Gadget impls
-
 impl<F: PrimeField> PartialEq for FpGadget<F> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -1044,7 +1042,9 @@ impl<F: PrimeField> TwoBitLookupGadget<F> for FpGadget<F> {
     ) -> Result<Self, SynthesisError> {
         debug_assert!(b.len() == 2);
         debug_assert!(c.len() == 4);
-        //
+
+        //TODO (raychu86): Use constant constraint optimization.
+
         // // Check if the inputs are constant
         // let mut constant = true;
         // for bit in b {
@@ -1083,6 +1083,8 @@ impl<F: PrimeField> ThreeBitCondNegLookupGadget<F> for FpGadget<F> {
     ) -> Result<Self, SynthesisError> {
         debug_assert_eq!(b.len(), 3);
         debug_assert_eq!(c.len(), 4);
+
+        //TODO (raychu86): Use constant constraint optimization.
 
         // // Chck if the inputs are constant
         // let mut constant = true;
