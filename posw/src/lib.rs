@@ -24,7 +24,6 @@ pub mod error;
 use snarkvm_algorithms::snark;
 use snarkvm_curves::bls12_377::Bls12_377;
 use snarkvm_models::curves::PairingEngine;
-
 use snarkvm_objects::{
     merkle_root_with_subroots,
     pedersen_merkle_root,
@@ -41,13 +40,14 @@ pub type PoswMarlin = GenericPosw<Marlin<Bls12_377>, Bls12_377>;
 type GenericPosw<S, E> = consensus::Posw<S, <E as PairingEngine>::Fr, M, HG, params::PoSWParams>;
 
 /// GM17 type alias for the PoSW circuit
-pub type GM17<E> = snark::gm17::GM17<E, Circuit<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
+pub type GM17<E> = snark::gm17::GM17<E, POSW<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
 
+/// Marlin proof system on PoSW
 pub type Marlin<E> =
-    snarkvm_marlin::snark::Marlin<'static, E, Circuit<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
+    snarkvm_marlin::snark::MarlinSystem<E, POSW<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
 
 /// Instantiate the circuit with the CRH to Fq
-type Circuit<F> = circuit::POSWCircuit<F, M, HG, params::PoSWParams>;
+type POSW<F> = circuit::POSWCircuit<F, M, HG, params::PoSWParams>;
 
 // Do not leak private type
 mod params {
@@ -78,7 +78,10 @@ mod tests {
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
     use snarkvm_models::algorithms::SNARK;
+    use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
     use snarkvm_utilities::bytes::FromBytes;
+
+    use blake2::Blake2s;
 
     #[test]
     fn load_params_verify() {
@@ -117,8 +120,12 @@ mod tests {
         let rng = &mut XorShiftRng::seed_from_u64(1234567);
 
         // run the trusted setup
-        let universal_srs =
-            snarkvm_marlin::snark::Marlin::<Bls12_377>::universal_setup(10000, 10000, 100000, rng).unwrap();
+        let universal_srs = snarkvm_marlin::marlin::MarlinSNARK::<
+            <Bls12_377 as PairingEngine>::Fr,
+            MultiPC<Bls12_377>,
+            Blake2s,
+        >::universal_setup(10000, 10000, 100000, rng)
+        .unwrap();
 
         // run the deterministic setup
         let posw = PoswMarlin::index(universal_srs).unwrap();

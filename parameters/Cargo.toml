@@ -56,8 +56,17 @@ default-features = false
 path = "../marlin"
 default-features = false
 
+[dependencies.snarkvm-polycommit]
+path = "../polycommit"
+version = "0.0.5"
+default-features = false
+
 [dev-dependencies.snarkvm-posw]
 path = "../posw"
+default-features = false
+
+[dev-dependencies.blake2]
+version = "0.9"
 default-features = false
 
 [dev-dependencies.curl]
