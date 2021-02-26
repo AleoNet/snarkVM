@@ -17,7 +17,7 @@
 use crate::{
     curves::{Field, FpParameters, PrimeField},
     gadgets::{
-        r1cs::{Assignment, ConstraintSystem, ConstraintVar, LinearCombination, Variable},
+        r1cs::{Assignment, ConstraintSystem, ConstraintVariable, LinearCombination, Variable},
         utilities::{
             alloc::AllocGadget,
             eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
@@ -336,8 +336,8 @@ impl<F: PrimeField> CondSelectGadget<F> for AllocatedBit {
 fn cond_select_helper<F: PrimeField, CS: ConstraintSystem<F>>(
     mut cs: CS,
     cond: &Boolean,
-    first: (Option<bool>, impl Into<ConstraintVar<F>>),
-    second: (Option<bool>, impl Into<ConstraintVar<F>>),
+    first: (Option<bool>, impl Into<ConstraintVariable<F>>),
+    second: (Option<bool>, impl Into<ConstraintVariable<F>>),
 ) -> Result<AllocatedBit, SynthesisError> {
     let mut result_val = None;
     let result_var = cs.alloc(
@@ -361,7 +361,7 @@ fn cond_select_helper<F: PrimeField, CS: ConstraintSystem<F>>(
         || "conditionally_select",
         |_| cond.lc(one, F::one()),
         |lc| (&first_var - &second_var) + lc,
-        |lc| ConstraintVar::from(result_var) - &second_var + lc,
+        |lc| ConstraintVariable::from(result_var) - &second_var + lc,
     );
 
     Ok(AllocatedBit {

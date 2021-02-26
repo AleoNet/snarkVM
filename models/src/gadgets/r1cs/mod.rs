@@ -39,7 +39,6 @@ mod test_fr;
 pub use test_fr::*;
 
 pub use crate::curves::to_field_vec::ToConstraintField;
-use crate::curves::Field;
 
 use snarkvm_errors::serialization::SerializationError;
 use snarkvm_utilities::serialize::*;
