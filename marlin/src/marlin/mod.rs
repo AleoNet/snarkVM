@@ -42,3 +42,6 @@ pub use rng::*;
 /// The Marlin universal SRS.
 mod universal_srs;
 pub use universal_srs::*;
+
+#[cfg(test)]
+mod tests;

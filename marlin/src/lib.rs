@@ -72,6 +72,3 @@ pub use parameters::*;
 /// Implements the snarkVM-compatible Marlin SNARK interface.
 pub mod snark;
 pub use snark::*;
-
-#[cfg(test)]
-mod tests;
