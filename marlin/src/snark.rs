@@ -37,6 +37,9 @@ use rand_core::RngCore;
 /// common reference string
 pub type SRS<E> = UniversalSRS<<E as PairingEngine>::Fr, MultiPC<E>>;
 
+/// Type alias for a Marlin instance using the KZG10 polynomial commitment and Blake2s
+pub type Marlin<E> = MarlinSystem<<E as PairingEngine>::Fr, MultiPC<E>, Blake2s>;
+
 /// A circuit-specific proving key.
 pub type ProvingKey<E> = CircuitProvingKey<<E as PairingEngine>::Fr, MultiPC<E>>;
 
@@ -51,7 +54,7 @@ impl<E: PairingEngine> From<Parameters<E>> for VerifyingKey<E> {
 
 /// A Marlin instance using the KZG10 polynomial commitment and Blake2s
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Marlin<'a, E, C, V>
+pub struct MarlinSystem<E, C, V>
 where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
@@ -60,10 +63,9 @@ where
     _engine: PhantomData<E>,
     _circuit: PhantomData<C>,
     _verifier_input: PhantomData<V>,
-    _key_lifetime: PhantomData<&'a ProvingKey<E>>,
 }
 
-impl<'a, E, C, V> SNARK for Marlin<'a, E, C, V>
+impl<E, C, V> SNARK for MarlinSystem<E, C, V>
 where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
