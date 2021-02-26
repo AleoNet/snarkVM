@@ -34,13 +34,6 @@
 #[macro_use]
 extern crate snarkvm_profiler;
 
-use core::marker::PhantomData;
-use digest::Digest;
-use rand_core::RngCore;
-use snarkvm_models::{curves::PrimeField, gadgets::r1cs::ConstraintSynthesizer};
-use snarkvm_polycommit::{Evaluations, LabeledCommitment, PCUniversalParams, PolynomialCommitment};
-use snarkvm_utilities::{bytes::ToBytes, rand::UniformRand, to_bytes};
-
 #[cfg(not(feature = "std"))]
 #[macro_use]
 extern crate alloc;
@@ -79,12 +72,24 @@ pub use data_structures::*;
 /// Implements an Algebraic Holographic Proof (AHP) for the R1CS indexed relation.
 pub mod ahp;
 pub use ahp::AHPForR1CS;
-use ahp::EvaluationsProvider;
+
+/// The public parameters used for an instantiation of a circuit.
+pub mod parameters;
+pub use parameters::*;
 
 pub mod snark;
 
 #[cfg(test)]
 mod test;
+
+use crate::ahp::EvaluationsProvider;
+use snarkvm_models::{curves::PrimeField, gadgets::r1cs::ConstraintSynthesizer};
+use snarkvm_polycommit::{Evaluations, LabeledCommitment, PCUniversalParams, PolynomialCommitment};
+use snarkvm_utilities::{bytes::ToBytes, rand::UniformRand, to_bytes};
+
+use core::marker::PhantomData;
+use digest::Digest;
+use rand_core::RngCore;
 
 /// The compiled argument system.
 pub struct Marlin<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest>(
