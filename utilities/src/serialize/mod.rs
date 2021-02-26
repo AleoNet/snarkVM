@@ -20,7 +20,7 @@ pub use crate::{
     Vec,
 };
 use snarkvm_errors::serialization::SerializationError;
-use std::{borrow::Cow, collections::BTreeMap};
+use std::{borrow::Cow, collections::BTreeMap, rc::Rc, sync::Arc};
 
 mod flags;
 pub use flags::*;
@@ -246,6 +246,64 @@ impl<T> CanonicalDeserialize for std::marker::PhantomData<T> {
     #[inline]
     fn deserialize_uncompressed<R: Read>(_reader: &mut R) -> Result<Self, SerializationError> {
         Ok(std::marker::PhantomData)
+    }
+}
+
+impl<T: CanonicalSerialize + ToOwned> CanonicalSerialize for Rc<T> {
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
+        self.as_ref().serialize(writer)
+    }
+
+    #[inline]
+    fn serialized_size(&self) -> usize {
+        self.as_ref().serialized_size()
+    }
+
+    #[inline]
+    fn serialize_uncompressed<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
+        self.as_ref().serialize_uncompressed(writer)
+    }
+}
+
+impl<T: CanonicalDeserialize + ToOwned> CanonicalDeserialize for Rc<T> {
+    #[inline]
+    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
+        Ok(Rc::new(T::deserialize(reader)?))
+    }
+
+    #[inline]
+    fn deserialize_uncompressed<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
+        Ok(Rc::new(T::deserialize_uncompressed(reader)?))
+    }
+}
+
+impl<T: CanonicalSerialize + ToOwned> CanonicalSerialize for Arc<T> {
+    #[inline]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
+        self.as_ref().serialize(writer)
+    }
+
+    #[inline]
+    fn serialized_size(&self) -> usize {
+        self.as_ref().serialized_size()
+    }
+
+    #[inline]
+    fn serialize_uncompressed<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
+        self.as_ref().serialize_uncompressed(writer)
+    }
+}
+
+impl<T: CanonicalDeserialize + ToOwned> CanonicalDeserialize for Arc<T> {
+    #[inline]
+    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
+        Ok(Arc::new(T::deserialize(reader)?))
+    }
+
+    #[inline]
+    fn deserialize_uncompressed<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
+        Ok(Arc::new(T::deserialize_uncompressed(reader)?))
     }
 }
 

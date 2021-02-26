@@ -14,13 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Cow, String, Vec};
-use core::{
-    borrow::Borrow,
-    fmt::Debug,
-    ops::{AddAssign, MulAssign, SubAssign},
-};
-use rand_core::RngCore;
+use crate::{String, Vec};
 pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
 use snarkvm_errors::serialization::SerializationError;
 use snarkvm_models::curves::Field;
@@ -29,6 +23,14 @@ use snarkvm_utilities::{
     error as error_fn,
     serialize::*,
 };
+
+use core::{
+    borrow::Borrow,
+    fmt::Debug,
+    ops::{AddAssign, MulAssign, SubAssign},
+};
+use rand_core::RngCore;
+use std::sync::Arc;
 
 /// Labels a `LabeledPolynomial` or a `LabeledCommitment`.
 pub type PolynomialLabel = String;
@@ -96,14 +98,14 @@ pub trait PCProof: CanonicalSerialize + CanonicalDeserialize + Clone + ToBytes {
 /// maximum number of queries that will be made to it. This latter number determines
 /// the amount of protection that will be provided to a commitment for this polynomial.
 #[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize)]
-pub struct LabeledPolynomial<'a, F: Field> {
+pub struct LabeledPolynomial<F: Field> {
     label: PolynomialLabel,
-    polynomial: Cow<'a, Polynomial<F>>,
+    polynomial: Arc<Polynomial<F>>,
     degree_bound: Option<usize>,
     hiding_bound: Option<usize>,
 }
 
-impl<'a, F: Field> core::ops::Deref for LabeledPolynomial<'a, F> {
+impl<F: Field> core::ops::Deref for LabeledPolynomial<F> {
     type Target = Polynomial<F>;
 
     fn deref(&self) -> &Self::Target {
@@ -111,7 +113,7 @@ impl<'a, F: Field> core::ops::Deref for LabeledPolynomial<'a, F> {
     }
 }
 
-impl<'a, F: Field> LabeledPolynomial<'a, F> {
+impl<F: Field> LabeledPolynomial<F> {
     /// Construct a new labeled polynomial by consuming `polynomial`.
     pub fn new_owned(
         label: PolynomialLabel,
@@ -121,7 +123,7 @@ impl<'a, F: Field> LabeledPolynomial<'a, F> {
     ) -> Self {
         Self {
             label,
-            polynomial: Cow::Owned(polynomial),
+            polynomial: Arc::new(polynomial),
             degree_bound,
 
             hiding_bound,
@@ -131,13 +133,13 @@ impl<'a, F: Field> LabeledPolynomial<'a, F> {
     /// Construct a new labeled polynomial.
     pub fn new(
         label: PolynomialLabel,
-        polynomial: &'a Polynomial<F>,
+        polynomial: Polynomial<F>,
         degree_bound: Option<usize>,
         hiding_bound: Option<usize>,
     ) -> Self {
         Self {
             label,
-            polynomial: Cow::Borrowed(polynomial),
+            polynomial: Arc::new(polynomial),
             degree_bound,
             hiding_bound,
         }

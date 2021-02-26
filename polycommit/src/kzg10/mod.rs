@@ -406,7 +406,7 @@ impl<E: PairingEngine> KZG10<E> {
         supported_degree: usize,
         max_degree: usize,
         enforced_degree_bounds: Option<&[usize]>,
-        p: &'a LabeledPolynomial<'a, E::Fr>,
+        p: &'a LabeledPolynomial<E::Fr>,
     ) -> Result<(), Error> {
         if let Some(bound) = p.degree_bound() {
             let enforced_degree_bounds = enforced_degree_bounds.ok_or(Error::UnsupportedDegreeBound(bound))?;

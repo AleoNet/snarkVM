@@ -39,7 +39,7 @@ use derivative::Derivative;
 #[derive(Derivative)]
 #[derivative(Clone(bound = ""), Copy(bound = ""))]
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct IndexInfo<F, C> {
+pub struct IndexInfo<F> {
     /// The total number of variables in the constraint system.
     pub num_variables: usize,
     /// The number of constraints.
@@ -49,11 +49,9 @@ pub struct IndexInfo<F, C> {
 
     #[doc(hidden)]
     f: PhantomData<F>,
-    #[doc(hidden)]
-    cs: PhantomData<fn() -> C>,
 }
 
-impl<F: PrimeField, C> IndexInfo<F, C> {
+impl<F: PrimeField> IndexInfo<F> {
     /// The maximum degree of polynomial required to represent this index in the
     /// the AHP.
     pub fn max_degree(&self) -> usize {
@@ -61,7 +59,7 @@ impl<F: PrimeField, C> IndexInfo<F, C> {
     }
 }
 
-impl<F: PrimeField, C> ToBytes for IndexInfo<F, C> {
+impl<F: PrimeField> ToBytes for IndexInfo<F> {
     fn write<W: Write>(&self, mut w: W) -> Result<(), std::io::Error> {
         (self.num_variables as u64).write(&mut w)?;
         (self.num_constraints as u64).write(&mut w)?;
@@ -82,9 +80,9 @@ pub type Matrix<F> = Vec<Vec<(F, usize)>>;
 /// 2) `{a,b,c}` are the matrices defining the R1CS instance
 /// 3) `{a,b,c}_star_arith` are structs containing information about A^*, B^*, and C^*,
 /// which are matrices defined as `M^*(i, j) = M(j, i) * u_H(j, j)`.
-pub struct Index<'a, F: PrimeField, C> {
+pub struct Index<F: PrimeField> {
     /// Information about the index.
-    pub index_info: IndexInfo<F, C>,
+    pub index_info: IndexInfo<F>,
 
     /// The A matrix for the R1CS instance
     pub a: Matrix<F>,
@@ -94,21 +92,21 @@ pub struct Index<'a, F: PrimeField, C> {
     pub c: Matrix<F>,
 
     /// Arithmetization of the A* matrix.
-    pub a_star_arith: MatrixArithmetization<'a, F>,
+    pub a_star_arith: MatrixArithmetization<F>,
     /// Arithmetization of the B* matrix.
-    pub b_star_arith: MatrixArithmetization<'a, F>,
+    pub b_star_arith: MatrixArithmetization<F>,
     /// Arithmetization of the C* matrix.
-    pub c_star_arith: MatrixArithmetization<'a, F>,
+    pub c_star_arith: MatrixArithmetization<F>,
 }
 
-impl<'a, F: PrimeField, C: ConstraintSynthesizer<F>> Index<'a, F, C> {
+impl<F: PrimeField> Index<F> {
     /// The maximum degree required to represent polynomials of this index.
     pub fn max_degree(&self) -> usize {
         self.index_info.max_degree()
     }
 
     /// Iterate over the indexed polynomials.
-    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<'a, F>> {
+    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         vec![
             &self.a_star_arith.row,
             &self.a_star_arith.col,
@@ -129,7 +127,7 @@ impl<'a, F: PrimeField, C: ConstraintSynthesizer<F>> Index<'a, F, C> {
 
 impl<F: PrimeField> AHPForR1CS<F> {
     /// Generate the index for this constraint system.
-    pub fn index<'a, C: ConstraintSynthesizer<F>>(c: &C) -> Result<Index<'a, F, C>, Error> {
+    pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Index<F>, Error> {
         let index_time = start_timer!(|| "AHP::Index");
 
         let constraint_time = start_timer!(|| "Generating constraints");
@@ -166,9 +164,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
             num_variables,
             num_constraints,
             num_non_zero,
-
             f: PhantomData,
-            cs: PhantomData,
         };
 
         let domain_h = EvaluationDomain::new(num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
