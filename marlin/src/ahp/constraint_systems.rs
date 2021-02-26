@@ -58,8 +58,8 @@ fn to_matrix_helper<F: Field>(matrix: &[Vec<(F, VarIndex)>], num_input_variables
         let mut new_row = Vec::with_capacity(row.len());
         for (fe, column) in row {
             let column = match column {
-                VarIndex::Input(i) => *i,
-                VarIndex::Aux(i) => num_input_variables + i,
+                VarIndex::Public(i) => *i,
+                VarIndex::Private(i) => num_input_variables + i,
             };
             new_row.push((*fe, column))
         }
@@ -147,7 +147,7 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for IndexerConstraintSyst
         let index = self.num_private_variables;
         self.num_private_variables += 1;
 
-        Ok(Variable::new_unchecked(VarIndex::Aux(index)))
+        Ok(Variable::new_unchecked(VarIndex::Private(index)))
     }
 
     #[inline]
@@ -163,7 +163,7 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for IndexerConstraintSyst
         let index = self.num_public_variables;
         self.num_public_variables += 1;
 
-        Ok(Variable::new_unchecked(VarIndex::Input(index)))
+        Ok(Variable::new_unchecked(VarIndex::Public(index)))
     }
 
     fn enforce<A, AR, LA, LB, LC>(&mut self, _: A, a: LA, b: LB, c: LC)
@@ -455,7 +455,7 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ProverConstraintSyste
         self.num_private_variables += 1;
 
         self.private_variables.push(f()?);
-        Ok(Variable::new_unchecked(VarIndex::Aux(index)))
+        Ok(Variable::new_unchecked(VarIndex::Private(index)))
     }
 
     #[inline]
@@ -469,7 +469,7 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ProverConstraintSyste
         self.num_public_variables += 1;
 
         self.public_variables.push(f()?);
-        Ok(Variable::new_unchecked(VarIndex::Input(index)))
+        Ok(Variable::new_unchecked(VarIndex::Public(index)))
     }
 
     #[inline]

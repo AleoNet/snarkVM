@@ -39,7 +39,7 @@ pub trait ConstraintSystem<F: Field>: Sized {
 
     /// Return the "one" input variable
     fn one() -> Variable {
-        Variable::new_unchecked(Index::Input(0))
+        Variable::new_unchecked(Index::Public(0))
     }
 
     /// Allocate a private variable in the constraint system. The provided

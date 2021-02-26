@@ -52,7 +52,7 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
     {
         let index = self.private_variables.len();
         self.private_variables.push(f()?);
-        Ok(Variable::new_unchecked(Index::Aux(index)))
+        Ok(Variable::new_unchecked(Index::Private(index)))
     }
 
     #[inline]
@@ -64,7 +64,7 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
     {
         let index = self.public_variables.len();
         self.public_variables.push(f()?);
-        Ok(Variable::new_unchecked(Index::Input(index)))
+        Ok(Variable::new_unchecked(Index::Public(index)))
     }
 
     #[inline]

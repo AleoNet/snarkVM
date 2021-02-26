@@ -43,12 +43,12 @@ fn evaluate<E: PairingEngine>(
         let mut tmp;
 
         match index.get_unchecked() {
-            Index::Input(i) => {
-                constraints[this_constraint].push((coeff, Index::Input(i)));
+            Index::Public(i) => {
+                constraints[this_constraint].push((coeff, Index::Public(i)));
                 tmp = input_assignment[i];
             }
-            Index::Aux(i) => {
-                constraints[this_constraint].push((coeff, Index::Aux(i)));
+            Index::Private(i) => {
+                constraints[this_constraint].push((coeff, Index::Private(i)));
                 tmp = aux_assignment[i];
             }
         }
@@ -109,7 +109,7 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
         self.num_private_variables += 1;
 
         self.private_variables.push(f()?);
-        Ok(Variable::new_unchecked(Index::Aux(index)))
+        Ok(Variable::new_unchecked(Index::Private(index)))
     }
 
     #[inline]
@@ -123,7 +123,7 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
         self.num_public_variables += 1;
 
         self.public_variables.push(f()?);
-        Ok(Variable::new_unchecked(Index::Input(index)))
+        Ok(Variable::new_unchecked(Index::Public(index)))
     }
 
     #[inline]

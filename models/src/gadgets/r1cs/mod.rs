@@ -72,9 +72,9 @@ impl Variable {
 #[derive(Copy, Clone, PartialEq, Debug, Eq, Hash)]
 pub enum Index {
     /// Index of an public variable.
-    Input(usize),
+    Public(usize),
     /// Index of an private variable.
-    Aux(usize),
+    Private(usize),
 }
 
 impl PartialOrd for Index {
@@ -86,11 +86,10 @@ impl PartialOrd for Index {
 impl Ord for Index {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
-            (Index::Input(ref idx1), Index::Input(ref idx2)) | (Index::Aux(ref idx1), Index::Aux(ref idx2)) => {
-                idx1.cmp(idx2)
-            }
-            (Index::Input(_), Index::Aux(_)) => Ordering::Less,
-            (Index::Aux(_), Index::Input(_)) => Ordering::Greater,
+            (Index::Public(ref idx1), Index::Public(ref idx2))
+            | (Index::Private(ref idx1), Index::Private(ref idx2)) => idx1.cmp(idx2),
+            (Index::Public(_), Index::Private(_)) => Ordering::Less,
+            (Index::Private(_), Index::Public(_)) => Ordering::Greater,
         }
     }
 }
@@ -99,11 +98,11 @@ impl CanonicalSerialize for Index {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
         let inner = match *self {
-            Index::Input(inner) => {
+            Index::Public(inner) => {
                 true.serialize(writer)?;
                 inner
             }
-            Index::Aux(inner) => {
+            Index::Private(inner) => {
                 false.serialize(writer)?;
                 inner
             }
@@ -129,9 +128,9 @@ impl CanonicalDeserialize for Index {
         let is_input = bool::deserialize(reader)?;
         let inner = usize::deserialize(reader)?;
         Ok(if is_input {
-            Index::Input(inner)
+            Index::Public(inner)
         } else {
-            Index::Aux(inner)
+            Index::Private(inner)
         })
     }
 }
@@ -147,7 +146,7 @@ mod test {
     }
 
     fn serialize_index_test(input: bool) {
-        let idx = if input { Index::Input(32) } else { Index::Aux(32) };
+        let idx = if input { Index::Public(32) } else { Index::Private(32) };
 
         let mut v = vec![];
         idx.serialize(&mut v).unwrap();

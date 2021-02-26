@@ -28,12 +28,6 @@ pub struct ConstraintCounter {
     pub num_constraints: usize,
 }
 
-impl ConstraintCounter {
-    pub fn num_constraints(&self) -> usize {
-        self.num_constraints
-    }
-}
-
 impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ConstraintCounter {
     type Root = Self;
 
@@ -43,7 +37,7 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ConstraintCounter {
         A: FnOnce() -> AR,
         AR: AsRef<str>,
     {
-        let var = Variable::new_unchecked(Index::Aux(self.num_private_variables));
+        let var = Variable::new_unchecked(Index::Private(self.num_private_variables));
         self.num_private_variables += 1;
         Ok(var)
     }
@@ -54,7 +48,7 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ConstraintCounter {
         A: FnOnce() -> AR,
         AR: AsRef<str>,
     {
-        let var = Variable::new_unchecked(Index::Input(self.num_public_variables));
+        let var = Variable::new_unchecked(Index::Public(self.num_public_variables));
         self.num_public_variables += 1;
 
         Ok(var)
