@@ -59,9 +59,9 @@ impl<F: PrimeField> AHPForR1CS<F> {
     pub fn verifier_first_round<R: RngCore>(
         index_info: CircuitInfo<F>,
         rng: &mut R,
-    ) -> Result<(VerifierFirstMsg<F>, VerifierState<F>), Error> {
+    ) -> Result<(VerifierFirstMsg<F>, VerifierState<F>), AHPError> {
         if index_info.num_constraints != index_info.num_variables {
-            return Err(Error::NonSquareMatrix);
+            return Err(AHPError::NonSquareMatrix);
         }
 
         let domain_h =

@@ -147,7 +147,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
     pub fn prover_init<'a, C: ConstraintSynthesizer<F>>(
         index: &'a Circuit<F>,
         c: &C,
-    ) -> Result<ProverState<'a, F>, Error> {
+    ) -> Result<ProverState<'a, F>, AHPError> {
         let init_time = start_timer!(|| "AHP::Prover::Init");
 
         let constraint_time = start_timer!(|| "Generating constraints and witnesses");
@@ -173,11 +173,11 @@ impl<F: PrimeField> AHPForR1CS<F> {
         if index.index_info.num_constraints != num_constraints
             || num_input_variables + num_witness_variables != index.index_info.num_variables
         {
-            return Err(Error::InstanceDoesNotMatchIndex);
+            return Err(AHPError::InstanceDoesNotMatchIndex);
         }
 
         if !Self::formatted_public_input_is_admissible(&formatted_input_assignment) {
-            return Err(Error::InvalidPublicInputLength);
+            return Err(AHPError::InvalidPublicInputLength);
         }
 
         // Perform matrix multiplications
@@ -235,7 +235,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
     pub fn prover_first_round<'a, R: RngCore>(
         mut state: ProverState<'a, F>,
         rng: &mut R,
-    ) -> Result<(ProverMsg<F>, ProverFirstOracles<F>, ProverState<'a, F>), Error> {
+    ) -> Result<(ProverMsg<F>, ProverFirstOracles<F>, ProverState<'a, F>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
         let domain_h = state.domain_h;
         let zk_bound = state.zk_bound;
@@ -494,7 +494,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         ver_message: &VerifierSecondMsg<F>,
         prover_state: ProverState<'a, F>,
         _r: &mut R,
-    ) -> Result<(ProverMsg<F>, ProverThirdOracles<F>), Error> {
+    ) -> Result<(ProverMsg<F>, ProverThirdOracles<F>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::ThirdRound");
 
         let ProverState {

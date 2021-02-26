@@ -83,7 +83,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
     /// of this protocol.
     /// The number of the variables must include the "one" variable. That is, it
     /// must be with respect to the number of formatted public inputs.
-    pub fn max_degree(num_constraints: usize, num_variables: usize, num_non_zero: usize) -> Result<usize, Error> {
+    pub fn max_degree(num_constraints: usize, num_variables: usize, num_non_zero: usize) -> Result<usize, AHPError> {
         let padded_matrix_dim = constraint_systems::padded_matrix_dim(num_variables, num_constraints);
         let zk_bound = 1;
         let domain_h_size = EvaluationDomain::<F>::compute_size_of_domain(padded_matrix_dim)
@@ -121,14 +121,14 @@ impl<F: PrimeField> AHPForR1CS<F> {
         public_input: &[F],
         evals: &E,
         state: &verifier::VerifierState<F>,
-    ) -> Result<Vec<LinearCombination<F>>, Error> {
+    ) -> Result<Vec<LinearCombination<F>>, AHPError> {
         let domain_h = state.domain_h;
         let domain_k = state.domain_k;
         let k_size = domain_k.size_as_field_element;
 
         let public_input = constraint_systems::ProverConstraintSystem::format_public_input(public_input);
         if !Self::formatted_public_input_is_admissible(&public_input) {
-            return Err(Error::InvalidPublicInputLength);
+            return Err(AHPError::InvalidPublicInputLength);
         }
         let x_domain = EvaluationDomain::new(public_input.len()).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
@@ -253,20 +253,20 @@ impl<F: PrimeField> AHPForR1CS<F> {
 /// when constructing linear combinations via `AHPForR1CS::construct_linear_combinations`.
 pub trait EvaluationsProvider<F: Field> {
     /// Get the evaluation of linear combination `lc` at `point`.
-    fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, Error>;
+    fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError>;
 }
 
 impl<'a, F: Field> EvaluationsProvider<F> for snarkvm_polycommit::Evaluations<'a, F> {
-    fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, Error> {
+    fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError> {
         let key = (lc.label.clone(), point);
         self.get(&key)
             .copied()
-            .ok_or_else(|| Error::MissingEval(lc.label.clone()))
+            .ok_or_else(|| AHPError::MissingEval(lc.label.clone()))
     }
 }
 
 impl<F: Field, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F> for Vec<T> {
-    fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, Error> {
+    fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError> {
         let mut eval = F::zero();
         for (coeff, term) in lc.iter() {
             let value = if let LCTerm::PolyLabel(label) = term {
@@ -275,7 +275,7 @@ impl<F: Field, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F> for Vec<T
                         let p: &LabeledPolynomial<F> = (*p).borrow();
                         p.label() == label
                     })
-                    .ok_or_else(|| Error::MissingEval(format!("Missing {} for {}", label, lc.label)))?
+                    .ok_or_else(|| AHPError::MissingEval(format!("Missing {} for {}", label, lc.label)))?
                     .borrow()
                     .evaluate(point)
             } else {
@@ -290,7 +290,7 @@ impl<F: Field, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F> for Vec<T
 
 /// Describes the failure modes of the AHP scheme.
 #[derive(Debug)]
-pub enum Error {
+pub enum AHPError {
     /// During verification, a required evaluation is missing
     MissingEval(String),
     /// The number of public inputs is incorrect.
@@ -303,9 +303,9 @@ pub enum Error {
     ConstraintSystemError(SynthesisError),
 }
 
-impl From<SynthesisError> for Error {
+impl From<SynthesisError> for AHPError {
     fn from(other: SynthesisError) -> Self {
-        Error::ConstraintSystemError(other)
+        AHPError::ConstraintSystemError(other)
     }
 }
 

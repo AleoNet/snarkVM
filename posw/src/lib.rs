@@ -44,7 +44,7 @@ type GenericPosw<S, E> = consensus::Posw<S, <E as PairingEngine>::Fr, M, HG, par
 pub type GM17<E> = snark::gm17::GM17<E, Circuit<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
 
 pub type Marlin<E> =
-    snarkvm_marlin::snark::MarlinSnark<'static, E, Circuit<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
+    snarkvm_marlin::snark::Marlin<'static, E, Circuit<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
 
 /// Instantiate the circuit with the CRH to Fq
 type Circuit<F> = circuit::POSWCircuit<F, M, HG, params::PoSWParams>;

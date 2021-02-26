@@ -14,21 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ahp::Error as AHPError;
-
 /// A `enum` specifying the possible failure modes of the `SNARK`.
 #[derive(Debug)]
 pub enum MarlinError<E> {
     /// The index is too large for the universal public parameters.
     IndexTooLarge,
     /// There was an error in the underlying holographic IOP.
-    AHPError(AHPError),
+    AHPError(crate::ahp::AHPError),
     /// There was an error in the underlying polynomial commitment.
     PolynomialCommitmentError(E),
 }
 
-impl<E> From<AHPError> for MarlinError<E> {
-    fn from(err: AHPError) -> Self {
+impl<E> From<crate::ahp::AHPError> for MarlinError<E> {
+    fn from(err: crate::ahp::AHPError) -> Self {
         MarlinError::AHPError(err)
     }
 }

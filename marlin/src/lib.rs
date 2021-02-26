@@ -58,61 +58,17 @@ macro_rules! eprintln {
     ($($arg: tt)*) => {};
 }
 
-/// The Marlin public parameters for a given circuit.
-pub mod circuit_parameters;
-pub use circuit_parameters::*;
-
-/// The Marlin circuit proving key.
-pub mod circuit_proving_key;
-pub use circuit_proving_key::*;
-
-/// The Marlin circuit verifying key.
-pub mod circuit_verifying_key;
-pub use circuit_verifying_key::*;
-
-/// Implements a Fiat-Shamir based Rng that allows one to incrementally update
-/// the seed based on new messages in the proof transcript.
-pub mod rng;
-use rng::FiatShamirRng;
-
-mod errors;
-pub use errors::*;
-
 /// Implements an Algebraic Holographic Proof (AHP) for the R1CS indexed relation.
 pub mod ahp;
-pub use ahp::AHPForR1CS;
 
-/// A generic implementation of the Marlin proof system..
 pub mod marlin;
-pub use marlin::*;
 
-/// The Marlin zkSNARK proof.
-pub mod proof;
-pub use proof::*;
+/// The Marlin public parameters for a given circuit.
+pub mod parameters;
+pub use parameters::*;
 
 pub mod snark;
 pub use snark::*;
 
 #[cfg(test)]
-mod test;
-
-use snarkvm_polycommit::PolynomialCommitment;
-
-/// The universal public parameters for the argument system.
-pub type UniversalSRS<F, PC> = <PC as PolynomialCommitment<F>>::UniversalParams;
-
-// /// A structured reference string which will be used to derive a circuit-specific
-// /// common reference string
-// pub type SRS<E> = crate::UniversalSRS<<E as PairingEngine>::Fr, MultiPC<E>>;
-//
-// /// A circuit-specific proving key.
-// pub type ProverKey<E> = crate::CircuitProvingKey<<E as PairingEngine>::Fr, MultiPC<E>>;
-//
-// /// A circuit-specific verification key.
-// pub type VerifierKey<E> = crate::CircuitVerifyingKey<<E as PairingEngine>::Fr, MultiPC<E>>;
-//
-// impl<E: PairingEngine> From<Parameters<E>> for VerifierKey<E> {
-//     fn from(params: Parameters<E>) -> Self {
-//         params.verifier_key
-//     }
-// }
+mod tests;

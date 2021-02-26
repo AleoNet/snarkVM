@@ -15,14 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    ahp::EvaluationsProvider,
-    errors::MarlinError,
-    AHPForR1CS,
-    CircuitProvingKey,
-    CircuitVerifyingKey,
-    FiatShamirRng,
-    Proof,
-    UniversalSRS,
+    ahp::{AHPError, AHPForR1CS, EvaluationsProvider},
+    marlin::{CircuitProvingKey, CircuitVerifyingKey, FiatShamirRng, MarlinError, Proof, UniversalSRS},
 };
 use snarkvm_models::{curves::PrimeField, gadgets::r1cs::ConstraintSynthesizer};
 use snarkvm_polycommit::{Evaluations, LabeledCommitment, PCUniversalParams, PolynomialCommitment};
@@ -32,14 +26,14 @@ use core::marker::PhantomData;
 use digest::Digest;
 use rand_core::RngCore;
 
-/// The compiled argument system.
-pub struct Marlin<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest>(
+/// The Marlin proof system.
+pub struct MarlinSNARK<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest>(
     #[doc(hidden)] PhantomData<F>,
     #[doc(hidden)] PhantomData<PC>,
     #[doc(hidden)] PhantomData<D>,
 );
 
-impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> Marlin<F, PC, D> {
+impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D> {
     /// The personalization string for this protocol.
     /// Used to personalize the Fiat-Shamir RNG.
     pub const PROTOCOL_NAME: &'static [u8] = b"MARLIN-2019";
@@ -71,7 +65,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> Marlin<F, PC, D> {
         universal_srs: &UniversalSRS<F, PC>,
         circuit: &C,
     ) -> Result<(CircuitProvingKey<F, PC>, CircuitVerifyingKey<F, PC>), MarlinError<PC::Error>> {
-        let index_time = start_timer!(|| "Marlin::Index");
+        let index_time = start_timer!(|| "Marlin::CircuitSetup");
 
         // TODO: Add check that c is in the correct mode.
         let index = AHPForR1CS::index(circuit)?;
@@ -79,14 +73,14 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> Marlin<F, PC, D> {
             return Err(MarlinError::IndexTooLarge);
         }
 
-        let coeff_support = AHPForR1CS::get_degree_bounds(&index.index_info);
+        let coefficient_support = AHPForR1CS::get_degree_bounds(&index.index_info);
         // Marlin only needs degree 2 random polynomials
         let supported_hiding_bound = 1;
         let (committer_key, verifier_key) = PC::trim(
             &universal_srs,
             index.max_degree(),
             supported_hiding_bound,
-            Some(&coeff_support),
+            Some(&coefficient_support),
         )
         .map_err(MarlinError::from_pc_err)?;
 
@@ -102,7 +96,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> Marlin<F, PC, D> {
             verifier_key,
         };
 
-        let index_pk = CircuitProvingKey {
+        let circuit_proving_key = CircuitProvingKey {
             circuit: index,
             circuit_commitment_randomness: index_comm_rands,
             circuit_verifying_key: circuit_verifying_key.clone(),
@@ -111,7 +105,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> Marlin<F, PC, D> {
 
         end_timer!(index_time);
 
-        Ok((index_pk, circuit_verifying_key))
+        Ok((circuit_proving_key, circuit_verifying_key))
     }
 
     /// Create a zkSNARK asserting that the constraint system is satisfied.
@@ -241,10 +235,10 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> Marlin<F, PC, D> {
             let lc = lc_s
                 .iter()
                 .find(|lc| &lc.label == label)
-                .ok_or_else(|| ahp::Error::MissingEval(label.to_string()))?;
-            let eval = polynomials.get_lc_eval(&lc, *point)?;
+                .ok_or_else(|| AHPError::MissingEval(label.to_string()))?;
+            let evaluation = polynomials.get_lc_eval(&lc, *point)?;
             if !AHPForR1CS::<F>::LC_WITH_ZERO_EVAL.contains(&lc.label.as_ref()) {
-                evaluations.push(eval);
+                evaluations.push(evaluation);
             }
         }
         end_timer!(eval_time);

@@ -19,8 +19,8 @@
 use crate::{
     ahp::{
         constraint_systems::{arithmetize_matrix, IndexerConstraintSystem, MatrixArithmetization},
+        AHPError,
         AHPForR1CS,
-        Error,
     },
     Vec,
 };
@@ -126,7 +126,7 @@ impl<F: PrimeField> Circuit<F> {
 
 impl<F: PrimeField> AHPForR1CS<F> {
     /// Generate the index for this constraint system.
-    pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F>, Error> {
+    pub fn index<C: ConstraintSynthesizer<F>>(c: &C) -> Result<Circuit<F>, AHPError> {
         let index_time = start_timer!(|| "AHP::Index");
 
         let constraint_time = start_timer!(|| "Generating constraints");
@@ -152,11 +152,11 @@ impl<F: PrimeField> AHPForR1CS<F> {
             eprintln!("number of witness_variables: {}", num_witness_variables);
             eprintln!("number of num_constraints: {}", num_constraints);
             eprintln!("number of num_non_zero: {}", ics.num_non_zero());
-            return Err(Error::NonSquareMatrix);
+            return Err(AHPError::NonSquareMatrix);
         }
 
         if !Self::num_formatted_public_inputs_is_admissible(num_formatted_input_variables) {
-            return Err(Error::InvalidPublicInputLength);
+            return Err(AHPError::InvalidPublicInputLength);
         }
 
         let index_info = CircuitInfo {
