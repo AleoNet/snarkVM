@@ -94,54 +94,75 @@ pub struct Reducer<TargetField: PrimeField, BaseField: PrimeField> {
 }
 
 impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseField> {
-    // /// convert limbs to bits (take at most `BaseField::size_in_bits() - 1` bits)
-    // /// This implementation would be more efficient than the original `to_bits`
-    // /// or `to_non_unique_bits` since we enforce that some bits are always zero.
-    // #[tracing::instrument(target = "r1cs")]
-    // pub fn limb_to_bits<CS: ConstraintSystem<BaseField>>(
-    //     cs: &mut CS,
-    //     limb: &FpGadget<BaseField>,
-    //     num_bits: usize,
-    // ) -> Result<Vec<Boolean>, SynthesisError> {
-    //     // let cs = limb.cs();
-    //
-    //     let num_bits = min(BaseField::size_in_bits() - 1, num_bits);
-    //     let mut bits_considered = Vec::with_capacity(num_bits);
-    //     let limb_value = limb.get_value().unwrap_or_default();
-    //
-    //     for b in BitIteratorBE::new(limb_value.into_repr()).skip(
-    //         <<BaseField as PrimeField>::Parameters as FpParameters>::REPR_SHAVE_BITS as usize
-    //             + (BaseField::size_in_bits() - num_bits),
-    //     ) {
-    //         bits_considered.push(b);
-    //     }
-    //
-    //     if cs == ConstraintSystemRef::None {
-    //         let mut bits = vec![];
-    //         for b in bits_considered {
-    //             bits.push(Boolean::Constant(b));
-    //         }
-    //
-    //         Ok(bits)
-    //     } else {
-    //         let mut bits = vec![];
-    //         for b in bits_considered {
-    //             bits.push(Boolean::new_witness(ark_relations::ns!(cs, "bit"), || Ok(b))?);
-    //         }
-    //
-    //         let mut bit_sum = FpGadget::zero();
-    //         let mut coeff = BaseField::one();
-    //
-    //         for bit in bits.iter().rev() {
-    //             bit_sum += <FpGadget<BaseField> as From<Boolean>>::from(cs, (*bit).clone()) * coeff;
-    //             coeff.double_in_place();
-    //         }
-    //
-    //         bit_sum.enforce_equal(limb)?;
-    //
-    //         Ok(bits)
-    //     }
-    // }
+    /// convert limbs to bits (take at most `BaseField::size_in_bits() - 1` bits)
+    /// This implementation would be more efficient than the original `to_bits`
+    /// or `to_non_unique_bits` since we enforce that some bits are always zero.
+    pub fn limb_to_bits<CS: ConstraintSystem<BaseField>>(
+        cs: &mut CS,
+        limb: &FpGadget<BaseField>,
+        num_bits: usize,
+    ) -> Result<Vec<Boolean>, SynthesisError> {
+        // let cs = limb.cs();
+
+        let num_bits = min(BaseField::size_in_bits() - 1, num_bits);
+        let mut bits_considered = Vec::with_capacity(num_bits);
+        let limb_value = limb.get_value().unwrap_or_default();
+
+        for b in BitIteratorBE::new(limb_value.into_repr()).skip(
+            <<BaseField as PrimeField>::Parameters as FpParameters>::REPR_SHAVE_BITS as usize
+                + (BaseField::size_in_bits() - num_bits),
+        ) {
+            bits_considered.push(b);
+        }
+
+        // if cs == ConstraintSystemRef::None {
+        //     let mut bits = vec![];
+        //     for b in bits_considered {
+        //         bits.push(Boolean::Constant(b));
+        //     }
+        //
+        //     Ok(bits)
+        // } else {
+        //     let mut bits = vec![];
+        //     for b in bits_considered {
+        //         bits.push(Boolean::new_witness(ark_relations::ns!(cs, "bit"), || Ok(b))?);
+        //     }
+        //
+        //     let mut bit_sum = FpGadget::zero();
+        //     let mut coeff = BaseField::one();
+        //
+        //     for bit in bits.iter().rev() {
+        //         bit_sum += <FpGadget<BaseField> as From<Boolean>>::from(cs, (*bit).clone()) * coeff;
+        //         coeff.double_in_place();
+        //     }
+        //
+        //     bit_sum.enforce_equal(limb)?;
+        //
+        //     Ok(bits)
+        // }
+
+        // TODO (raychu86): Add support for constants.
+
+        let mut bits = vec![];
+        for b in bits_considered {
+            bits.push(Boolean::alloc(cs.ns(|| "bit"), || Ok(b))?);
+        }
+
+        let mut bit_sum = FpGadget::zero(cs.ns(|| "zero"))?;
+        let mut coeff = BaseField::one();
+
+        for bit in bits.iter().rev() {
+            let temp = (FpGadget::<BaseField>::from_boolean(cs.ns(|| "from_boolean"), (*bit).clone())?)
+                .mul_by_constant(cs.ns(|| "mul_by_coeff"), &coeff)?;
+
+            bit_sum = bit_sum.add(cs.ns(|| "add"), &temp)?;
+            coeff.double_in_place();
+        }
+
+        bit_sum.enforce_equal(cs.ns(|| "enforce_equal"), limb)?;
+
+        Ok(bits)
+    }
 
     // /// Reduction to the normal form
     // #[tracing::instrument(target = "r1cs")]
