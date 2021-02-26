@@ -61,12 +61,14 @@ macro_rules! eprintln {
 /// Implements an Algebraic Holographic Proof (AHP) for the R1CS indexed relation.
 pub mod ahp;
 
+/// Implements the base Marlin zkSNARK proof system.
 pub mod marlin;
 
 /// The Marlin public parameters for a given circuit.
 pub mod parameters;
 pub use parameters::*;
 
+/// Implements the snarkVM-compatible Marlin SNARK interface.
 pub mod snark;
 pub use snark::*;
 
