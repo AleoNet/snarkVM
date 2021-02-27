@@ -771,7 +771,7 @@ macro_rules! uint_impl {
             ) -> Result<Self, SynthesisError> {
                 // let mut res = Self::one();
                 //
-                // for i in BitIterator::new(exp) {
+                // for i in BitIteratorBE::new(exp) {
                 //     res.square_in_place();
                 //
                 //     if i {

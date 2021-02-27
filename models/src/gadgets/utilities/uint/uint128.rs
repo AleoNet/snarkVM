@@ -546,7 +546,7 @@ impl UInt for UInt128 {
         //
         // let mut found_one = false;
         //
-        // for i in BitIterator::new(exp) {
+        // for i in BitIteratorBE::new(exp) {
         //     if !found_one {
         //         if i {
         //             found_one = true;

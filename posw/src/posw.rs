@@ -49,7 +49,15 @@ use blake2::{digest::Digest, Blake2s};
 use rand::{rngs::OsRng, Rng};
 use std::marker::PhantomData;
 
-// We need to instantiate the Merkle Tree and the Gadget, but these should not be
+/// Commits to the nonce and pedersen merkle root
+pub fn commit(nonce: u32, root: &PedersenMerkleRootHash) -> Vec<u8> {
+    let mut h = Blake2s::new();
+    h.update(&nonce.to_le_bytes());
+    h.update(root.0.as_ref());
+    h.finalize().to_vec()
+}
+
+// We need to instantiate the Merkle tree and the Gadget, but these should not be
 // proving system specific
 pub type M = MaskedMerkleTreeParameters;
 pub type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fq, EdwardsBlsGadget>;
@@ -65,14 +73,14 @@ where
     HG: MaskedCRHGadget<M::H, F>,
     CP: POSWCircuitParameters,
 {
-    circuit: PhantomData<POSWCircuit<F, M, HG, CP>>,
+    /// The proving key. If not provided, the PoSW runner will work in verify-only
+    /// mode and the `mine` function will panic.
+    pub pk: Option<S::ProvingParameters>,
 
     /// The (prepared) verifying key.
     pub vk: S::PreparedVerificationParameters,
 
-    /// The proving key. If not provided, the PoSW runner will work in verify-only
-    /// mode and the `mine` function will panic.
-    pub pk: Option<S::ProvingParameters>,
+    _circuit: PhantomData<POSWCircuit<F, M, HG, CP>>,
 }
 
 impl<S, CP> Posw<S, F, M, HG, CP>
@@ -88,7 +96,7 @@ where
         Ok(Self {
             pk: None,
             vk: vk.into(),
-            circuit: PhantomData,
+            _circuit: PhantomData,
         })
     }
 
@@ -100,7 +108,7 @@ where
         Ok(Self {
             pk: Some(pk),
             vk: vk.into(),
-            circuit: PhantomData,
+            _circuit: PhantomData,
         })
     }
 
@@ -160,7 +168,7 @@ where
         Ok(Self {
             pk: Some(params.0),
             vk: params.1,
-            circuit: PhantomData,
+            _circuit: PhantomData,
         })
     }
 
@@ -191,7 +199,7 @@ where
         Ok(Self {
             pk: Some(params.0),
             vk: params.1,
-            circuit: PhantomData,
+            _circuit: PhantomData,
         })
     }
 
@@ -264,12 +272,4 @@ where
 
         Ok(())
     }
-}
-
-/// Commits to the nonce and pedersen merkle root
-pub fn commit(nonce: u32, root: &PedersenMerkleRootHash) -> Vec<u8> {
-    let mut h = Blake2s::new();
-    h.input(&nonce.to_le_bytes());
-    h.input(root.0.as_ref());
-    h.result().to_vec()
 }

@@ -40,7 +40,7 @@ macro_rules! pow_int_impl {
                 //
                 // let mut found_one = false;
                 //
-                // for i in BitIterator::new(exp) {
+                // for i in BitIteratorBE::new(exp) {
                 //
                 //     res.square_in_place();
                 //

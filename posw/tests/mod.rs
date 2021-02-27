@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_curves::bls12_377::Bls12_377;
-// use snarkvm_marlin::snark::Marlin;
 use snarkvm_models::algorithms::SNARK;
 use snarkvm_objects::PedersenMerkleRootHash;
 use snarkvm_posw::{txids_to_roots, Marlin, PoswMarlin};

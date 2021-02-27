@@ -14,55 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![allow(non_snake_case)]
-
-use crate::ahp::{indexer::IndexInfo, *};
+use crate::ahp::{
+    indexer::CircuitInfo,
+    verifier::{VerifierFirstMessage, VerifierSecondMessage, VerifierState},
+    AHPError,
+    AHPForR1CS,
+};
 use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_models::{curves::PrimeField, gadgets::r1cs::ConstraintSynthesizer};
+use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_models::curves::PrimeField;
 use snarkvm_polycommit::QuerySet;
 
 use rand_core::RngCore;
 
-/// State of the AHP verifier
-pub struct VerifierState<F: PrimeField, C> {
-    pub(crate) domain_h: EvaluationDomain<F>,
-    pub(crate) domain_k: EvaluationDomain<F>,
-
-    pub(crate) first_round_msg: Option<VerifierFirstMsg<F>>,
-    pub(crate) second_round_msg: Option<VerifierSecondMsg<F>>,
-
-    pub(crate) gamma: Option<F>,
-    _cs: PhantomData<fn() -> C>,
-}
-
-/// First message of the verifier.
-#[derive(Copy, Clone)]
-pub struct VerifierFirstMsg<F> {
-    /// Query for the random polynomial.
-    pub alpha: F,
-    /// Randomizer for the lincheck for `A`.
-    pub eta_a: F,
-    /// Randomizer for the lincheck for `B`.
-    pub eta_b: F,
-    /// Randomizer for the lincheck for `C`.
-    pub eta_c: F,
-}
-
-/// Second verifier message.
-#[derive(Copy, Clone)]
-pub struct VerifierSecondMsg<F> {
-    /// Query for the second round of polynomials.
-    pub beta: F,
-}
-
 impl<F: PrimeField> AHPForR1CS<F> {
     /// Output the first message and next round state.
-    pub fn verifier_first_round<R: RngCore, C: ConstraintSynthesizer<F>>(
-        index_info: IndexInfo<F, C>,
+    pub fn verifier_first_round<R: RngCore>(
+        index_info: CircuitInfo<F>,
         rng: &mut R,
-    ) -> Result<(VerifierFirstMsg<F>, VerifierState<F, C>), Error> {
+    ) -> Result<(VerifierFirstMessage<F>, VerifierState<F>), AHPError> {
+        // Check that the R1CS is a square matrix.
         if index_info.num_constraints != index_info.num_variables {
-            return Err(Error::NonSquareMatrix);
+            return Err(AHPError::NonSquareMatrix);
         }
 
         let domain_h =
@@ -76,7 +49,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let eta_b = F::rand(rng);
         let eta_c = F::rand(rng);
 
-        let msg = VerifierFirstMsg {
+        let message = VerifierFirstMessage {
             alpha,
             eta_a,
             eta_b,
@@ -86,42 +59,38 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let new_state = VerifierState {
             domain_h,
             domain_k,
-            first_round_msg: Some(msg),
-            second_round_msg: None,
+            first_round_message: Some(message),
+            second_round_message: None,
             gamma: None,
-            _cs: PhantomData,
         };
 
-        Ok((msg, new_state))
+        Ok((message, new_state))
     }
 
     /// Output the second message and next round state.
-    pub fn verifier_second_round<R: RngCore, C: ConstraintSynthesizer<F>>(
-        mut state: VerifierState<F, C>,
+    pub fn verifier_second_round<R: RngCore>(
+        mut state: VerifierState<F>,
         rng: &mut R,
-    ) -> (VerifierSecondMsg<F>, VerifierState<F, C>) {
+    ) -> (VerifierSecondMessage<F>, VerifierState<F>) {
         let beta = state.domain_h.sample_element_outside_domain(rng);
-        let msg = VerifierSecondMsg { beta };
-        state.second_round_msg = Some(msg);
+        let msg = VerifierSecondMessage { beta };
+        state.second_round_message = Some(msg);
 
         (msg, state)
     }
 
     /// Output the third message and next round state.
-    pub fn verifier_third_round<R: RngCore, C: ConstraintSynthesizer<F>>(
-        mut state: VerifierState<F, C>,
-        rng: &mut R,
-    ) -> VerifierState<F, C> {
+    pub fn verifier_third_round<R: RngCore>(mut state: VerifierState<F>, rng: &mut R) -> VerifierState<F> {
         state.gamma = Some(F::rand(rng));
         state
     }
 
     /// Output the query state and next round state.
-    pub fn verifier_query_set<'a, 'b, R: RngCore, C: ConstraintSynthesizer<F>>(
-        state: VerifierState<F, C>,
+    pub fn verifier_query_set<'a, 'b, R: RngCore>(
+        state: VerifierState<F>,
         _: &'a mut R,
-    ) -> (QuerySet<'b, F>, VerifierState<F, C>) {
-        let beta = state.second_round_msg.unwrap().beta;
+    ) -> (QuerySet<'b, F>, VerifierState<F>) {
+        let beta = state.second_round_message.unwrap().beta;
 
         let gamma = state.gamma.unwrap();
 

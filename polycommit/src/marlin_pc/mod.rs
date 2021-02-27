@@ -31,13 +31,14 @@ use crate::{
     PolynomialCommitment,
     QuerySet,
     String,
+    ToOwned,
     ToString,
     Vec,
 };
+use snarkvm_models::curves::{AffineCurve, Field, One, PairingEngine, PrimeField, ProjectiveCurve, Zero};
 
 use core::{convert::TryInto, marker::PhantomData};
 use rand_core::RngCore;
-use snarkvm_models::curves::{AffineCurve, Field, One, PairingEngine, PrimeField, ProjectiveCurve, Zero};
 
 mod data_structures;
 pub use data_structures::*;
@@ -227,8 +228,11 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
                 if enforced_degree_bounds.is_empty() {
                     (None, None)
                 } else {
+                    let mut sorted_enforced_degree_bounds = enforced_degree_bounds.clone();
+                    sorted_enforced_degree_bounds.sort();
+
                     let lowest_shifted_power =
-                        max_degree - enforced_degree_bounds.last().ok_or(Error::EmptyDegreeBounds)?;
+                        max_degree - sorted_enforced_degree_bounds.last().ok_or(Error::EmptyDegreeBounds)?;
 
                     let shifted_ck_time = start_timer!(|| format!(
                         "Constructing `shifted_powers` of size {}",
@@ -269,7 +273,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
     #[allow(clippy::type_complexity)]
     fn commit<'a>(
         ck: &Self::CommitterKey,
-        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<'a, E::Fr>>,
+        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
         rng: Option<&mut dyn RngCore>,
     ) -> Result<(Vec<LabeledCommitment<Self::Commitment>>, Vec<Self::Randomness>), Self::Error> {
         let rng = &mut crate::optional_rng::OptionalRng(rng);
@@ -325,7 +329,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
     /// On input a polynomial `p` and a point `point`, outputs a proof for the same.
     fn open<'a>(
         ck: &Self::CommitterKey,
-        labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<'a, E::Fr>>,
+        labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
         _commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
         point: E::Fr,
         opening_challenge: E::Fr,
@@ -493,7 +497,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
     fn open_combinations<'a>(
         ck: &Self::CommitterKey,
         lc_s: impl IntoIterator<Item = &'a LinearCombination<E::Fr>>,
-        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<'a, E::Fr>>,
+        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
         query_set: &QuerySet<E::Fr>,
         opening_challenge: E::Fr,
@@ -577,7 +581,10 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
             rng,
         )?;
 
-        Ok(BatchLCProof { proof, evals: None })
+        Ok(BatchLCProof {
+            proof,
+            evaluations: None,
+        })
     }
 
     /// Checks that `values` are the true evaluations at `query_set` of the polynomials

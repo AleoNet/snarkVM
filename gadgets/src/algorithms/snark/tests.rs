@@ -29,7 +29,7 @@ use snarkvm_models::{
         },
     },
 };
-use snarkvm_utilities::{bititerator::BitIterator, to_bytes, ToBytes};
+use snarkvm_utilities::{bititerator::BitIteratorBE, to_bytes, ToBytes};
 
 use rand::{thread_rng, Rng};
 
@@ -121,7 +121,7 @@ fn gm17_verifier_test() {
         {
             let mut cs = cs.ns(|| "Allocate Input");
             for (i, input) in inputs.into_iter().enumerate() {
-                let mut input_bits = BitIterator::new(input.into_repr()).collect::<Vec<_>>();
+                let mut input_bits = BitIteratorBE::new(input.into_repr()).collect::<Vec<_>>();
                 // Input must be in little-endian, but BitIterator outputs in big-endian.
                 input_bits.reverse();
 
@@ -194,7 +194,7 @@ fn gm17_verifier_bytes_test() {
         {
             let mut cs = cs.ns(|| "Allocate Input");
             for (i, input) in inputs.into_iter().enumerate() {
-                let mut input_bits = BitIterator::new(input.into_repr()).collect::<Vec<_>>();
+                let mut input_bits = BitIteratorBE::new(input.into_repr()).collect::<Vec<_>>();
                 // Input must be in little-endian, but BitIterator outputs in big-endian.
                 input_bits.reverse();
 

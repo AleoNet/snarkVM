@@ -32,7 +32,7 @@ use snarkvm_models::{
         },
     },
 };
-use snarkvm_utilities::bititerator::BitIterator;
+use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::{borrow::Borrow, marker::PhantomData};
 
@@ -498,10 +498,10 @@ mod affine_impl {
             mut cs: CS,
             value_gen: Fn,
         ) -> Result<Self, SynthesisError> {
-            let cofactor_weight = BitIterator::new(P::COFACTOR).filter(|b| *b).count();
+            let cofactor_weight = BitIteratorBE::new(P::COFACTOR).filter(|b| *b).count();
             // If we multiply by r, we actually multiply by r - 2.
             let r_minus_1 = (-P::ScalarField::one()).into_repr();
-            let r_weight = BitIterator::new(&r_minus_1).filter(|b| *b).count();
+            let r_weight = BitIteratorBE::new(&r_minus_1).filter(|b| *b).count();
 
             // We pick the most efficient method of performing the prime order check:
             // If the cofactor has lower hamming weight than the scalar field's modulus,
@@ -516,7 +516,7 @@ mod affine_impl {
                 })?;
                 let mut seen_one = false;
                 let mut result = Self::zero(cs.ns(|| "result"))?;
-                for (i, b) in BitIterator::new(P::COFACTOR).enumerate() {
+                for (i, b) in BitIteratorBE::new(P::COFACTOR).enumerate() {
                     let mut cs = cs.ns(|| format!("Iteration {}", i));
 
                     let old_seen_one = seen_one;
@@ -540,7 +540,7 @@ mod affine_impl {
                 let mut seen_one = false;
                 let mut result = Self::zero(cs.ns(|| "result"))?;
                 // Returns bits in big-endian order
-                for (i, b) in BitIterator::new(r_minus_1).enumerate() {
+                for (i, b) in BitIteratorBE::new(r_minus_1).enumerate() {
                     let mut cs = cs.ns(|| format!("Iteration {}", i));
 
                     let old_seen_one = seen_one;
@@ -1131,10 +1131,10 @@ mod projective_impl {
             FN: FnOnce() -> Result<T, SynthesisError>,
             T: Borrow<TEProjective<P>>,
         {
-            let cofactor_weight = BitIterator::new(P::COFACTOR).filter(|b| *b).count();
+            let cofactor_weight = BitIteratorBE::new(P::COFACTOR).filter(|b| *b).count();
             // If we multiply by r, we actually multiply by r - 2.
             let r_minus_1 = (-P::ScalarField::one()).into_repr();
-            let r_weight = BitIterator::new(&r_minus_1).filter(|b| *b).count();
+            let r_weight = BitIteratorBE::new(&r_minus_1).filter(|b| *b).count();
 
             // We pick the most efficient method of performing the prime order check:
             // If the cofactor has lower hamming weight than the scalar field's modulus,
@@ -1149,7 +1149,7 @@ mod projective_impl {
                 })?;
                 let mut seen_one = false;
                 let mut result = Self::zero(cs.ns(|| "result"))?;
-                for (i, b) in BitIterator::new(P::COFACTOR).enumerate() {
+                for (i, b) in BitIteratorBE::new(P::COFACTOR).enumerate() {
                     let mut cs = cs.ns(|| format!("Iteration {}", i));
 
                     let old_seen_one = seen_one;
@@ -1173,7 +1173,7 @@ mod projective_impl {
                 let mut seen_one = false;
                 let mut result = Self::zero(cs.ns(|| "result"))?;
                 // Returns bits in big-endian order
-                for (i, b) in BitIterator::new(r_minus_1).enumerate() {
+                for (i, b) in BitIteratorBE::new(r_minus_1).enumerate() {
                     let mut cs = cs.ns(|| format!("Iteration {}", i));
 
                     let old_seen_one = seen_one;

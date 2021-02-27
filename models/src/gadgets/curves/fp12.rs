@@ -38,7 +38,7 @@ use crate::{
     },
 };
 use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_utilities::bititerator::BitIterator;
+use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::{borrow::Borrow, marker::PhantomData};
 
@@ -270,7 +270,7 @@ where
     ) -> Result<Self, SynthesisError> {
         let mut res = Self::one(cs.ns(|| "one"))?;
         let mut found_one = false;
-        for (j, i) in BitIterator::new(exp).enumerate() {
+        for (j, i) in BitIteratorBE::new(exp).enumerate() {
             if found_one {
                 res = res.cyclotomic_square(cs.ns(|| format!("res_square_{:?}", j)))?;
             } else {

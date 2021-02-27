@@ -24,7 +24,7 @@ use crate::{
     },
     gadgets::{
         curves::FieldGadget,
-        r1cs::{Assignment, ConstraintSystem, ConstraintVar},
+        r1cs::{Assignment, ConstraintSystem, ConstraintVariable},
         utilities::{
             alloc::AllocGadget,
             boolean::Boolean,
@@ -165,7 +165,7 @@ where
     }
 }
 
-type ConstraintPair<T> = (ConstraintVar<T>, ConstraintVar<T>);
+type ConstraintPair<T> = (ConstraintVariable<T>, ConstraintVariable<T>);
 
 impl<P, F: PrimeField> FieldGadget<Fp6<P>, F> for Fp6Gadget<P, F>
 where

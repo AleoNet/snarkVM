@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    bititerator::BitIterator,
+    bititerator::BitIteratorBE,
     bytes::{FromBytes, ToBytes},
     io::{Read, Result as IoResult, Write},
     rand::UniformRand,

@@ -100,9 +100,9 @@ pub struct TestConstraintSystem<F: Field> {
     // the list of currently applicable constraints
     constraints: OptionalVec<TestConstraint>,
     // the list of currently applicable input variables
-    inputs: OptionalVec<InternedField>,
+    public_variables: OptionalVec<InternedField>,
     // the list of currently applicable auxiliary variables
-    aux: OptionalVec<InternedField>,
+    private_variables: OptionalVec<InternedField>,
 }
 
 impl<F: Field> Default for TestConstraintSystem<F> {
@@ -142,8 +142,8 @@ impl<F: Field> Default for TestConstraintSystem<F> {
             named_objects,
             current_namespace: Default::default(),
             constraints,
-            inputs,
-            aux: Default::default(),
+            public_variables: inputs,
+            private_variables: Default::default(),
         }
     }
 }
@@ -201,8 +201,8 @@ impl<F: Field> TestConstraintSystem<F> {
 
         for &(var, interned_coeff) in terms {
             let interned_tmp = match var.get_unchecked() {
-                Index::Input(index) => self.inputs[index],
-                Index::Aux(index) => self.aux[index],
+                Index::Public(index) => self.public_variables[index],
+                Index::Private(index) => self.private_variables[index],
             };
             let mut tmp = *self.interned_fields.get_index(interned_tmp).unwrap();
             let coeff = self.interned_fields.get_index(interned_coeff).unwrap();
@@ -246,8 +246,8 @@ impl<F: Field> TestConstraintSystem<F> {
 
         match self.named_objects.get(&interned_path) {
             Some(&NamedObject::Var(ref v)) => match v.get_unchecked() {
-                Index::Input(index) => self.inputs[index] = interned_field,
-                Index::Aux(index) => self.aux[index] = interned_field,
+                Index::Public(index) => self.public_variables[index] = interned_field,
+                Index::Private(index) => self.private_variables[index] = interned_field,
             },
             Some(e) => panic!(
                 "tried to set path `{}` to value, but `{:?}` already exists there.",
@@ -262,8 +262,8 @@ impl<F: Field> TestConstraintSystem<F> {
 
         let interned_field = match self.named_objects.get(&interned_path) {
             Some(&NamedObject::Var(ref v)) => match v.get_unchecked() {
-                Index::Input(index) => self.inputs[index],
-                Index::Aux(index) => self.aux[index],
+                Index::Public(index) => self.public_variables[index],
+                Index::Private(index) => self.private_variables[index],
             },
             Some(e) => panic!(
                 "tried to get value of path `{}`, but `{:?}` exists there (not a variable)",
@@ -325,11 +325,11 @@ impl<F: Field> TestConstraintSystem<F> {
         for child_obj in namespace.children {
             match child_obj {
                 NamedObject::Var(var) => match var.get_unchecked() {
-                    Index::Aux(idx) => {
-                        self.aux.remove(idx);
+                    Index::Private(idx) => {
+                        self.private_variables.remove(idx);
                     }
-                    Index::Input(idx) => {
-                        self.inputs.remove(idx);
+                    Index::Public(idx) => {
+                        self.public_variables.remove(idx);
                     }
                 },
                 NamedObject::Constraint(idx) => {
@@ -367,8 +367,8 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintSystem<F> {
     {
         let interned_path = self.compute_path(annotation().as_ref());
         let interned_field = self.interned_fields.insert_full(f()?).0;
-        let index = self.aux.insert(interned_field);
-        let var = Variable::new_unchecked(Index::Aux(index));
+        let index = self.private_variables.insert(interned_field);
+        let var = Variable::new_unchecked(Index::Private(index));
         let named_obj = NamedObject::Var(var);
         self.register_object_in_namespace(named_obj.clone());
         self.set_named_obj(interned_path, named_obj);
@@ -384,8 +384,8 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintSystem<F> {
     {
         let interned_path = self.compute_path(annotation().as_ref());
         let interned_field = self.interned_fields.insert_full(f()?).0;
-        let index = self.inputs.insert(interned_field);
-        let var = Variable::new_unchecked(Index::Input(index));
+        let index = self.public_variables.insert(interned_field);
+        let var = Variable::new_unchecked(Index::Public(index));
         let named_obj = NamedObject::Var(var);
         self.register_object_in_namespace(named_obj.clone());
         self.set_named_obj(interned_path, named_obj);
@@ -475,5 +475,15 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintSystem<F> {
     #[inline]
     fn num_constraints(&self) -> usize {
         self.num_constraints()
+    }
+
+    #[inline]
+    fn num_public_variables(&self) -> usize {
+        self.public_variables.len()
+    }
+
+    #[inline]
+    fn num_private_variables(&self) -> usize {
+        self.private_variables.len()
     }
 }

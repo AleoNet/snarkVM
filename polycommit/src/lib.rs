@@ -50,17 +50,19 @@ extern crate alloc;
 
 #[cfg(not(feature = "std"))]
 use alloc::{
-    borrow::Cow,
+    borrow::{Cow, ToOwned},
     collections::{BTreeMap, BTreeSet},
     string::{String, ToString},
+    sync::Arc,
     vec::Vec,
 };
 
 #[cfg(feature = "std")]
 use std::{
-    borrow::Cow,
+    borrow::{Cow, ToOwned},
     collections::{BTreeMap, BTreeSet},
     string::{String, ToString},
+    sync::Arc,
     vec::Vec,
 };
 
@@ -81,6 +83,7 @@ macro_rules! eprintln {
     () => {};
     ($($arg: tt)*) => {};
 }
+
 /// The core [[KZG10]][kzg] construction.
 ///
 /// [kzg]: http://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf
@@ -124,7 +127,7 @@ pub struct BatchLCProof<F: Field, PC: PolynomialCommitment<F>> {
     /// Evaluation proof.
     pub proof: PC::BatchProof,
     /// Evaluations required to verify the proof.
-    pub evals: Option<Vec<F>>,
+    pub evaluations: Option<Vec<F>>,
 }
 
 impl<F: Field, PC: PolynomialCommitment<F>> FromBytes for BatchLCProof<F, PC> {
@@ -193,7 +196,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     #[allow(clippy::type_complexity)]
     fn commit<'a>(
         ck: &Self::CommitterKey,
-        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<'a, F>>,
+        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
         rng: Option<&mut dyn RngCore>,
     ) -> Result<(Vec<LabeledCommitment<Self::Commitment>>, Vec<Self::Randomness>), Self::Error>;
 
@@ -201,7 +204,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     /// of the polynomials at the query point.
     fn open<'a>(
         ck: &Self::CommitterKey,
-        labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<'a, F>>,
+        labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
         point: F,
         opening_challenge: F,
@@ -216,7 +219,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     /// of the polynomials at the points in the query set.
     fn batch_open<'a>(
         ck: &Self::CommitterKey,
-        labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<'a, F>>,
+        labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
         query_set: &QuerySet<F>,
         opening_challenge: F,
@@ -357,7 +360,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     fn open_combinations<'a>(
         ck: &Self::CommitterKey,
         linear_combinations: impl IntoIterator<Item = &'a LinearCombination<F>>,
-        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<'a, F>>,
+        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
         query_set: &QuerySet<F>,
         opening_challenge: F,
@@ -383,7 +386,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
         )?;
         Ok(BatchLCProof {
             proof,
-            evals: Some(poly_evals.values().copied().collect()),
+            evaluations: Some(poly_evals.values().copied().collect()),
         })
     }
 
@@ -403,7 +406,10 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     where
         Self::Commitment: 'a,
     {
-        let BatchLCProof { proof, evals } = proof;
+        let BatchLCProof {
+            proof,
+            evaluations: evals,
+        } = proof;
 
         let lc_s = BTreeMap::from_iter(linear_combinations.into_iter().map(|lc| (lc.label(), lc)));
 
@@ -457,7 +463,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
 
 /// Evaluate the given polynomials at `query_set`.
 pub fn evaluate_query_set<'a, F: Field>(
-    polys: impl IntoIterator<Item = &'a LabeledPolynomial<'a, F>>,
+    polys: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
     query_set: &QuerySet<'a, F>,
 ) -> Evaluations<'a, F> {
     let polys = BTreeMap::from_iter(polys.into_iter().map(|p| (p.label(), p)));

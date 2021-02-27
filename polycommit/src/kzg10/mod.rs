@@ -21,10 +21,7 @@
 //! proposed by Kate, Zaverucha, and Goldberg ([KZG11](http://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf)).
 //! This construction achieves extractability in the algebraic group model (AGM).
 
-use crate::{Error, LabeledPolynomial, PCRandomness, Polynomial, ToString, Vec};
-use rand_core::RngCore;
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
+use crate::{BTreeMap, Error, LabeledPolynomial, PCRandomness, Polynomial, ToString, Vec};
 use snarkvm_algorithms::{
     cfg_iter,
     msm::{FixedBaseMSM, VariableBaseMSM},
@@ -33,10 +30,13 @@ use snarkvm_models::curves::{AffineCurve, Group, One, PairingCurve, PairingEngin
 use snarkvm_utilities::rand::UniformRand;
 
 use core::marker::PhantomData;
+use rand_core::RngCore;
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 mod data_structures;
 pub use data_structures::*;
-use std::collections::BTreeMap;
 
 /// `KZG10` is an implementation of the polynomial commitment scheme of
 /// [Kate, Zaverucha and Goldbgerg][kzg10]
@@ -406,7 +406,7 @@ impl<E: PairingEngine> KZG10<E> {
         supported_degree: usize,
         max_degree: usize,
         enforced_degree_bounds: Option<&[usize]>,
-        p: &'a LabeledPolynomial<'a, E::Fr>,
+        p: &'a LabeledPolynomial<E::Fr>,
     ) -> Result<(), Error> {
         if let Some(bound) = p.degree_bound() {
             let enforced_degree_bounds = enforced_degree_bounds.ok_or(Error::UnsupportedDegreeBound(bound))?;

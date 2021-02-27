@@ -14,29 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ahp::Error as AHPError;
+use crate::ahp::verifier::{VerifierFirstMessage, VerifierSecondMessage};
+use snarkvm_algorithms::fft::EvaluationDomain;
+use snarkvm_models::curves::PrimeField;
 
-/// A `enum` specifying the possible failure modes of the `SNARK`.
-#[derive(Debug)]
-pub enum Error<E> {
-    /// The index is too large for the universal public parameters.
-    IndexTooLarge,
-    /// There was an error in the underlying holographic IOP.
-    AHPError(AHPError),
-    /// There was an error in the underlying polynomial commitment.
-    PolynomialCommitmentError(E),
-}
+/// State of the AHP verifier.
+pub struct VerifierState<F: PrimeField> {
+    pub(crate) domain_h: EvaluationDomain<F>,
+    pub(crate) domain_k: EvaluationDomain<F>,
 
-impl<E> From<AHPError> for Error<E> {
-    fn from(err: AHPError) -> Self {
-        Error::AHPError(err)
-    }
-}
+    pub(crate) first_round_message: Option<VerifierFirstMessage<F>>,
+    pub(crate) second_round_message: Option<VerifierSecondMessage<F>>,
 
-impl<E> Error<E> {
-    /// Convert an error in the underlying polynomial commitment scheme
-    /// to a `Error`.
-    pub fn from_pc_err(err: E) -> Self {
-        Error::PolynomialCommitmentError(err)
-    }
+    pub(crate) gamma: Option<F>,
 }

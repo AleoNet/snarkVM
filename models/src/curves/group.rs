@@ -16,7 +16,7 @@
 
 use crate::curves::PrimeField;
 use snarkvm_utilities::{
-    bititerator::BitIterator,
+    bititerator::BitIteratorBE,
     bytes::{FromBytes, ToBytes},
     rand::UniformRand,
 };
@@ -68,7 +68,7 @@ pub trait Group:
 
     fn mul_assign(&mut self, other: &Self::ScalarField) {
         let mut res = Self::zero();
-        for i in BitIterator::new(other.into_repr()) {
+        for i in BitIteratorBE::new(other.into_repr()) {
             res.double_in_place();
             if i {
                 res += self;

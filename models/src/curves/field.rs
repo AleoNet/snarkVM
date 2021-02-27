@@ -16,7 +16,7 @@
 
 use crate::curves::{One, Zero};
 use snarkvm_utilities::{
-    bititerator::BitIterator,
+    bititerator::BitIteratorBE,
     bytes::{FromBytes, ToBytes},
     rand::UniformRand,
     serialize::{
@@ -112,7 +112,7 @@ pub trait Field:
 
         let mut found_one = false;
 
-        for i in BitIterator::new(exp) {
+        for i in BitIteratorBE::new(exp) {
             if !found_one {
                 if i {
                     found_one = true;

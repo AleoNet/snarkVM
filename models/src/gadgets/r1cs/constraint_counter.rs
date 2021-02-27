@@ -23,15 +23,9 @@ use snarkvm_errors::gadgets::SynthesisError;
 /// Constraint counter for testing purposes.
 #[derive(Default)]
 pub struct ConstraintCounter {
-    pub num_inputs: usize,
-    pub num_aux: usize,
+    pub num_public_variables: usize,
+    pub num_private_variables: usize,
     pub num_constraints: usize,
-}
-
-impl ConstraintCounter {
-    pub fn num_constraints(&self) -> usize {
-        self.num_constraints
-    }
 }
 
 impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ConstraintCounter {
@@ -43,8 +37,8 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ConstraintCounter {
         A: FnOnce() -> AR,
         AR: AsRef<str>,
     {
-        let var = Variable::new_unchecked(Index::Aux(self.num_aux));
-        self.num_aux += 1;
+        let var = Variable::new_unchecked(Index::Private(self.num_private_variables));
+        self.num_private_variables += 1;
         Ok(var)
     }
 
@@ -54,8 +48,8 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ConstraintCounter {
         A: FnOnce() -> AR,
         AR: AsRef<str>,
     {
-        let var = Variable::new_unchecked(Index::Input(self.num_inputs));
-        self.num_inputs += 1;
+        let var = Variable::new_unchecked(Index::Public(self.num_public_variables));
+        self.num_public_variables += 1;
 
         Ok(var)
     }
@@ -86,5 +80,13 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ConstraintCounter {
 
     fn num_constraints(&self) -> usize {
         self.num_constraints
+    }
+
+    fn num_public_variables(&self) -> usize {
+        self.num_public_variables
+    }
+
+    fn num_private_variables(&self) -> usize {
+        self.num_private_variables
     }
 }
