@@ -29,14 +29,26 @@ extern crate derivative;
 extern crate snarkvm_profiler;
 
 pub mod commitment;
+
 pub mod commitment_tree;
+
 pub mod crh;
+
 pub mod encoding;
+
 pub mod encryption;
+
 pub mod errors;
+pub use errors::*;
+
 pub mod fft;
+
 pub mod merkle_tree;
+
 pub mod msm;
+
 pub mod prf;
+
 pub mod signature;
+
 pub mod snark;
