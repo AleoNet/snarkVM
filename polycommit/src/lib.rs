@@ -33,7 +33,7 @@ extern crate derivative;
 extern crate snarkvm_profiler;
 
 pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
-use snarkvm_models::curves::Field;
+use snarkvm_curves::traits::Field;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     error as error_fn,
@@ -499,7 +499,7 @@ fn lc_query_set_to_poly_query_set<'a, F: 'a + Field>(
 pub mod tests {
     use crate::*;
     use rand::{distributions::Distribution, Rng};
-    use snarkvm_models::curves::Field;
+    use snarkvm_curves::traits::Field;
     use snarkvm_utilities::rand::test_rng;
 
     #[derive(Default)]

@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::bls12_377::Fq12;
-use snarkvm_models::curves::Field;
+use snarkvm_curves::{bls12_377::Fq12, traits::Field};
 use snarkvm_utilities::rand::UniformRand;
 
 use criterion::Criterion;

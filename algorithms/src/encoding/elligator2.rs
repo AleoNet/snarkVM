@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::EncodingError;
-use snarkvm_models::curves::{
+use snarkvm_curves::traits::{
     pairing_engine::{AffineCurve, ProjectiveCurve},
     Field,
     Group,

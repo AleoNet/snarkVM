@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::bls12_377::Fq;
-use snarkvm_models::curves::{Field, PrimeField, SquareRootField};
+use snarkvm_curves::{
+    bls12_377::Fq,
+    traits::{Field, PrimeField, SquareRootField},
+};
 use snarkvm_utilities::{
     biginteger::{BigInteger, BigInteger384 as FqRepr},
     rand::UniformRand,

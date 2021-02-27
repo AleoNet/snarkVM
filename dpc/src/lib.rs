@@ -66,6 +66,9 @@ pub use base_dpc::*;
 pub mod errors;
 pub use errors::*;
 
+pub mod traits;
+pub use traits::*;
+
 use snarkvm_gadgets::errors::SynthesisError;
 
 pub trait Assignment<T> {
