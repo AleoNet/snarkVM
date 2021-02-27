@@ -83,6 +83,7 @@ macro_rules! eprintln {
     () => {};
     ($($arg: tt)*) => {};
 }
+
 /// The core [[KZG10]][kzg] construction.
 ///
 /// [kzg]: http://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf
