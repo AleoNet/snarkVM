@@ -39,7 +39,7 @@ pub struct ProverState<'a, F: PrimeField> {
     pub(crate) index: &'a Circuit<F>,
 
     /// the random values sent by the verifier in the first round
-    pub(crate) verifier_first_msg: Option<VerifierFirstMessage<F>>,
+    pub(crate) verifier_first_message: Option<VerifierFirstMessage<F>>,
 
     /// the blinding polynomial for the first round
     pub(crate) mask_poly: Option<LabeledPolynomial<F>>,

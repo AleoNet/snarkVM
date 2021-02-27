@@ -183,7 +183,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
             mz_polys: None,
             zk_bound,
             index,
-            verifier_first_msg: None,
+            verifier_first_message: None,
             mask_poly: None,
             domain_h,
             domain_k,
@@ -312,7 +312,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
     /// Output the second round message and the next state.
     pub fn prover_second_round<'a, R: RngCore>(
-        ver_message: &VerifierFirstMessage<F>,
+        verifier_message: &VerifierFirstMessage<F>,
         mut state: ProverState<'a, F>,
         _r: &mut R,
     ) -> (ProverMessage<F>, ProverSecondOracles<F>, ProverState<'a, F>) {
@@ -331,7 +331,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
             eta_a,
             eta_b,
             eta_c,
-        } = *ver_message;
+        } = *verifier_message;
 
         let summed_z_m_poly_time = start_timer!(|| "Compute z_m poly");
         let (z_a_poly, z_b_poly) = state.mz_polys.as_ref().unwrap();
@@ -432,7 +432,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         };
 
         state.w_poly = None;
-        state.verifier_first_msg = Some(*ver_message);
+        state.verifier_first_message = Some(*verifier_message);
         end_timer!(round_time);
 
         (msg, oracles, state)
@@ -452,7 +452,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
     /// Output the third round message and the next state.
     pub fn prover_third_round<'a, R: RngCore>(
-        ver_message: &VerifierSecondMessage<F>,
+        verifier_message: &VerifierSecondMessage<F>,
         prover_state: ProverState<'a, F>,
         _r: &mut R,
     ) -> Result<(ProverMessage<F>, ProverThirdOracles<F>), AHPError> {
@@ -460,7 +460,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
         let ProverState {
             index,
-            verifier_first_msg,
+            verifier_first_message,
             domain_h,
             domain_k,
             ..
@@ -471,10 +471,10 @@ impl<F: PrimeField> AHPForR1CS<F> {
             eta_b,
             eta_c,
             alpha,
-        } = verifier_first_msg
+        } = verifier_first_message
             .expect("ProverState should include verifier_first_msg when prover_third_round is called");
 
-        let beta = ver_message.beta;
+        let beta = verifier_message.beta;
 
         let v_H_at_alpha = domain_h.evaluate_vanishing_polynomial(alpha);
         let v_H_at_beta = domain_h.evaluate_vanishing_polynomial(beta);
