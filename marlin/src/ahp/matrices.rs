@@ -268,21 +268,3 @@ fn is_in_ascending_order<T: Ord>(x_s: &[T], is_less_than: impl Fn(&T, &T) -> boo
         is_sorted
     }
 }
-
-/* ************************************************************************* */
-/* ************************************************************************* */
-/* ************************************************************************* */
-
-/// Formats the public input according to the requirements of the constraint
-/// system
-pub(crate) fn format_public_input<F: PrimeField>(public_input: &[F]) -> Vec<F> {
-    let mut input = vec![F::one()];
-    input.extend_from_slice(public_input);
-    input
-}
-
-/// Takes in a previously formatted public input and removes the formatting
-/// imposed by the constraint system.
-pub(crate) fn unformat_public_input<F: PrimeField>(input: &[F]) -> Vec<F> {
-    input[1..].to_vec()
-}
