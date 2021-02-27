@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{ahp::indexer::*, Vec};
-use snarkvm_errors::serialization::SerializationError;
 use snarkvm_models::curves::PrimeField;
 use snarkvm_polycommit::PolynomialCommitment;
+use snarkvm_serialization::errors::SerializationError;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     error,

@@ -43,6 +43,9 @@ pub use bytes::*;
 pub mod error;
 pub use error::*;
 
+pub mod errors;
+pub use errors::*;
+
 pub mod iterator;
 pub use iterator::*;
 

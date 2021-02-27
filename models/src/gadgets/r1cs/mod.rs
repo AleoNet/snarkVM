@@ -40,7 +40,7 @@ pub use test_fr::*;
 
 pub use crate::curves::to_field_vec::ToConstraintField;
 
-use snarkvm_errors::serialization::SerializationError;
+use snarkvm_serialization::errors::SerializationError;
 use snarkvm_utilities::serialize::*;
 use std::cmp::Ordering;
 

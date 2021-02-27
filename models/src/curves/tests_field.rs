@@ -434,7 +434,7 @@ pub fn field_serialization_test<F: Field>() {
             }
         }
 
-        use snarkvm_errors::serialization::SerializationError;
+        use snarkvm_serialization::errors::SerializationError;
         {
             let mut serialized = vec![0; buf_size];
             assert!(matches!(

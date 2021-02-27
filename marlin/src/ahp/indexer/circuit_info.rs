@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ahp::AHPForR1CS;
-use snarkvm_errors::serialization::SerializationError;
 use snarkvm_models::curves::PrimeField;
+use snarkvm_serialization::errors::SerializationError;
 use snarkvm_utilities::{serialize::*, ToBytes};
 
 use core::marker::PhantomData;

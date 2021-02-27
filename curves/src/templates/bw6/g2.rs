@@ -18,9 +18,8 @@ use crate::templates::{
     bw6::{BW6Parameters, TwistType},
     short_weierstrass::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
 };
-use snarkvm_errors::serialization::SerializationError;
 use snarkvm_models::curves::{AffineCurve, Field, One, SWModelParameters, Zero};
-use snarkvm_utilities::{bititerator::BitIteratorBE, bytes::ToBytes, serialize::*};
+use snarkvm_utilities::{bititerator::BitIteratorBE, bytes::ToBytes, errors::SerializationError, serialize::*};
 
 use std::{
     io::{Result as IoResult, Write},

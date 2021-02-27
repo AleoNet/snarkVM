@@ -15,15 +15,17 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::crh::sha256::sha256;
-use snarkvm_dpc::base_dpc::{
-    inner_circuit::InnerCircuit,
-    instantiated::Components,
-    outer_circuit::OuterCircuit,
-    parameters::{NoopProgramSNARKParameters, SystemParameters},
-    program::{NoopCircuit, PrivateProgramInput},
-    BaseDPCComponents,
+use snarkvm_dpc::{
+    base_dpc::{
+        inner_circuit::InnerCircuit,
+        instantiated::Components,
+        outer_circuit::OuterCircuit,
+        parameters::{NoopProgramSNARKParameters, SystemParameters},
+        program::{NoopCircuit, PrivateProgramInput},
+        BaseDPCComponents,
+    },
+    errors::DPCError,
 };
-use snarkvm_errors::dpc::DPCError;
 use snarkvm_models::{
     algorithms::{MerkleParameters, SNARK},
     parameters::Parameter,

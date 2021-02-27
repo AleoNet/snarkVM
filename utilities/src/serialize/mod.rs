@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::errors::SerializationError;
 pub use crate::{
     bytes::{FromBytes, ToBytes},
     io::{self, Read, Write},
     Vec,
 };
-use snarkvm_errors::serialization::SerializationError;
 use std::{borrow::Cow, collections::BTreeMap, rc::Rc, sync::Arc};
 
 mod flags;
@@ -48,7 +48,7 @@ pub trait ConstantSerializedSize: CanonicalSerialize {
 /// ```
 /// // The `derive` feature must be set for the derivation to work.
 /// use snarkvm_utilities::serialize::*;
-/// use snarkvm_errors::serialization::SerializationError;
+/// use crate::errors::SerializationError;
 ///
 /// # #[cfg(feature = "derive")]
 /// #[derive(CanonicalSerialize)]
@@ -91,7 +91,7 @@ pub trait CanonicalDeserializeWithFlags: Sized {
 /// ```
 /// // The `derive` feature must be set for the derivation to work.
 /// use snarkvm_utilities::serialize::*;
-/// use snarkvm_errors::serialization::SerializationError;
+/// use crate::errors::SerializationError;
 ///
 /// # #[cfg(feature = "derive")]
 /// #[derive(CanonicalDeserialize)]

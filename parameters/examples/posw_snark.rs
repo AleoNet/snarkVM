@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::crh::sha256;
 use snarkvm_curves::bls12_377::Bls12_377;
-use snarkvm_errors::dpc::DPCError;
+use snarkvm_dpc::errors::DPCError;
 use snarkvm_models::curves::PairingEngine;
 use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
 use snarkvm_posw::PoswMarlin;

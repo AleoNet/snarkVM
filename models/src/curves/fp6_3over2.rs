@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::curves::{Field, Fp2, Fp2Parameters, One, PrimeField, Zero};
-use snarkvm_errors::serialization::SerializationError;
+use snarkvm_serialization::errors::SerializationError;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     div_ceil,

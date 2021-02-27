@@ -24,12 +24,12 @@ use snarkvm_algorithms::{
     cfg_iter_mut,
     fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain},
 };
-use snarkvm_errors::serialization::SerializationError;
 use snarkvm_models::{
     curves::{batch_inversion, Field, PrimeField},
     gadgets::r1cs::{ConstraintSystem, Index as VarIndex},
 };
 use snarkvm_polycommit::LabeledPolynomial;
+use snarkvm_serialization::errors::SerializationError;
 use snarkvm_utilities::serialize::*;
 
 use derivative::Derivative;

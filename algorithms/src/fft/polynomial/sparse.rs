@@ -17,8 +17,8 @@
 //! A sparse polynomial represented in coefficient form.
 
 use crate::fft::{DenseOrSparsePolynomial, DensePolynomial, EvaluationDomain, Evaluations};
-use snarkvm_errors::serialization::SerializationError;
 use snarkvm_models::curves::{Field, PrimeField};
+use snarkvm_serialization::errors::SerializationError;
 use snarkvm_utilities::serialize::*;
 
 use std::fmt;
