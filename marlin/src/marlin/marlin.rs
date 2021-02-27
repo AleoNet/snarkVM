@@ -152,7 +152,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         // --------------------------------------------------------------------
         // Second round
 
-        let (prover_second_msg, prover_second_oracles, prover_state) =
+        let (prover_second_message, prover_second_oracles, prover_state) =
             AHPForR1CS::prover_second_round(&verifier_first_message, prover_state, zk_rng);
 
         let second_round_comm_time = start_timer!(|| "Committing to second round polys");
@@ -164,14 +164,14 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         .map_err(MarlinError::from_pc_err)?;
         end_timer!(second_round_comm_time);
 
-        fs_rng.absorb(&to_bytes![second_commitment, prover_second_msg].unwrap());
+        fs_rng.absorb(&to_bytes![second_commitment, prover_second_message].unwrap());
 
         let (verifier_second_msg, verifier_state) = AHPForR1CS::verifier_second_round(verifier_state, &mut fs_rng);
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Third round
-        let (prover_third_msg, prover_third_oracles) =
+        let (prover_third_message, prover_third_oracles) =
             AHPForR1CS::prover_third_round(&verifier_second_msg, prover_state, zk_rng)?;
 
         let third_round_comm_time = start_timer!(|| "Committing to third round polys");
@@ -183,7 +183,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         .map_err(MarlinError::from_pc_err)?;
         end_timer!(third_round_comm_time);
 
-        fs_rng.absorb(&to_bytes![third_commitment, prover_third_msg].unwrap());
+        fs_rng.absorb(&to_bytes![third_commitment, prover_third_message].unwrap());
 
         let verifier_state = AHPForR1CS::verifier_third_round(verifier_state, &mut fs_rng);
         // --------------------------------------------------------------------
@@ -259,7 +259,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         .map_err(MarlinError::from_pc_err)?;
 
         // Gather prover messages together.
-        let prover_messages = vec![prover_first_message, prover_second_msg, prover_third_msg];
+        let prover_messages = vec![prover_first_message, prover_second_message, prover_third_message];
 
         let proof = Proof::new(commitments, evaluations, prover_messages, pc_proof);
         proof.print_size_info();
