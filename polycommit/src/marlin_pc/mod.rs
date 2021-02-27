@@ -37,7 +37,8 @@ use crate::{
 };
 use snarkvm_curves::traits::{AffineCurve, Field, One, PairingEngine, PrimeField, ProjectiveCurve, Zero};
 
-use core::{convert::TryInto, marker::PhantomData};
+use core::convert::TryInto;
+use core::marker::PhantomData;
 use rand_core::RngCore;
 
 mod data_structures;

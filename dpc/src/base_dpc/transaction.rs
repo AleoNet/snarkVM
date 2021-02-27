@@ -14,24 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::base_dpc::{record::encrypted_record::*, BaseDPCComponents};
+use crate::base_dpc::record::encrypted_record::*;
+use crate::base_dpc::BaseDPCComponents;
 use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
-use snarkvm_models::{
-    algorithms::{CommitmentScheme, SignatureScheme, CRH, SNARK},
-    objects::Transaction,
-};
-use snarkvm_objects::{errors::TransactionError, AleoAmount, Network};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    serialize::{CanonicalDeserialize, CanonicalSerialize},
-    to_bytes,
-};
+use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH, SNARK};
+use snarkvm_objects::errors::TransactionError;
+use snarkvm_objects::traits::Transaction;
+use snarkvm_objects::{AleoAmount, Network};
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::serialize::{CanonicalDeserialize, CanonicalSerialize};
+use snarkvm_utilities::to_bytes;
 
-use blake2::{digest::Digest, Blake2s as b2s};
-use std::{
-    fmt,
-    io::{Read, Result as IoResult, Write},
-};
+use blake2::digest::Digest;
+use blake2::Blake2s as b2s;
+use std::fmt;
+use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Derivative)]
 #[derivative(

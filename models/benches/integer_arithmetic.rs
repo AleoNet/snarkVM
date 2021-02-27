@@ -14,13 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_models::gadgets::{
-    r1cs::{ConstraintSystem, Fr, TestConstraintSystem},
-    utilities::{
-        alloc::AllocGadget,
-        uint::{UInt, UInt128, UInt16, UInt32, UInt64, UInt8},
-    },
-};
+use snarkvm_gadgets::traits::r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
+use snarkvm_gadgets::traits::utilities::alloc::AllocGadget;
+use snarkvm_gadgets::traits::utilities::uint::{UInt, UInt128, UInt16, UInt32, UInt64, UInt8};
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::{Rng, SeedableRng};

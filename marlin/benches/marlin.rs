@@ -17,14 +17,12 @@
 #[macro_use]
 extern crate criterion;
 
+use snarkvm_algorithms::traits::SNARK;
 use snarkvm_curves::bls12_377::{Bls12_377, Fr};
+use snarkvm_curves::traits::{Field, PairingEngine};
 use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_marlin::snark::MarlinSystem;
-use snarkvm_models::{
-    algorithms::SNARK,
-    curves::{Field, PairingEngine},
-    gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem},
-};
 use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
 
 use blake2::Blake2s;

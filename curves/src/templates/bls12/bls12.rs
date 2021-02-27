@@ -14,25 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    templates::bls12::{
-        g1::{G1Affine, G1Prepared, G1Projective},
-        g2::{G2Affine, G2Prepared, G2Projective},
-    },
-    traits::{
-        fp12_2over3over2::{Fp12, Fp12Parameters},
-        fp2::Fp2Parameters,
-        fp6_3over2::Fp6Parameters,
-        Field,
-        Fp2,
-        ModelParameters,
-        One,
-        PairingCurve,
-        PairingEngine,
-        PrimeField,
-        SWModelParameters,
-        SquareRootField,
-    },
+use crate::templates::bls12::g1::{G1Affine, G1Prepared, G1Projective};
+use crate::templates::bls12::g2::{G2Affine, G2Prepared, G2Projective};
+use crate::traits::fp12_2over3over2::{Fp12, Fp12Parameters};
+use crate::traits::fp2::Fp2Parameters;
+use crate::traits::fp6_3over2::Fp6Parameters;
+use crate::traits::{
+    Field,
+    Fp2,
+    ModelParameters,
+    One,
+    PairingCurve,
+    PairingEngine,
+    PrimeField,
+    SWModelParameters,
+    SquareRootField,
 };
 use serde::{Deserialize, Serialize};
 use snarkvm_utilities::bititerator::BitIteratorBE;

@@ -15,20 +15,19 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::encryption::GroupEncryptionParameters;
-use snarkvm_errors::{algorithms::EncryptionError, serialization::SerializationError};
-use snarkvm_models::{
-    algorithms::EncryptionScheme,
-    curves::{AffineCurve, Field, Group, One, PrimeField, ProjectiveCurve, Zero},
-};
-use snarkvm_utilities::{bytes_to_bits, rand::UniformRand, serialize::*, to_bytes, FromBytes, ToBytes};
+use crate::traits::EncryptionScheme;
+use snarkvm_curves::traits::{AffineCurve, Field, Group, One, PrimeField, ProjectiveCurve, Zero};
+use snarkvm_errors::algorithms::EncryptionError;
+use snarkvm_errors::serialization::SerializationError;
+use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::serialize::*;
+use snarkvm_utilities::{bytes_to_bits, to_bytes, FromBytes, ToBytes};
 
 use digest::Digest;
 use itertools::Itertools;
 use rand::Rng;
-use std::{
-    io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
-};
+use std::io::{Read, Result as IoResult, Write};
+use std::marker::PhantomData;
 
 #[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(

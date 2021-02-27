@@ -16,18 +16,11 @@
 
 use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
-use serde::{
-    de::{Error as DeserializeError, SeqAccess, Visitor},
-    ser::SerializeTuple,
-    Deserialize,
-    Deserializer,
-    Serialize,
-    Serializer,
-};
-use std::{
-    fmt::{self, Debug, Display, Formatter},
-    io::{Read, Result as IoResult, Write},
-};
+use serde::de::{Error as DeserializeError, SeqAccess, Visitor};
+use serde::ser::SerializeTuple;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::fmt::{self, Debug, Display, Formatter};
+use std::io::{Read, Result as IoResult, Write};
 
 // Marlin PoSW proof size
 const PROOF_SIZE: usize = 972;

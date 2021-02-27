@@ -14,15 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    commitment::{PedersenCommitment, PedersenCommitmentParameters},
-    crh::PedersenSize,
-    errors::CommitmentError,
-};
-use snarkvm_models::{
-    algorithms::CommitmentScheme,
-    curves::{AffineCurve, Group, ProjectiveCurve},
-};
+use crate::commitment::{PedersenCommitment, PedersenCommitmentParameters};
+use crate::crh::PedersenSize;
+use crate::errors::CommitmentError;
+use crate::traits::CommitmentScheme;
+use snarkvm_curves::traits::{AffineCurve, Group, ProjectiveCurve};
 
 use rand::Rng;
 

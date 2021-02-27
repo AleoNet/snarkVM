@@ -14,22 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    algorithms::signature::{SchnorrParametersGadget, SchnorrPublicKeyGadget, SchnorrPublicKeyRandomizationGadget},
-    curves::edwards_bls12::EdwardsBlsGadget,
+use crate::algorithms::signature::{
+    SchnorrParametersGadget,
+    SchnorrPublicKeyGadget,
+    SchnorrPublicKeyRandomizationGadget,
 };
+use crate::curves::edwards_bls12::EdwardsBlsGadget;
+use crate::traits::algorithms::SignaturePublicKeyRandomizationGadget;
+use crate::traits::r1cs::{ConstraintSystem, TestConstraintSystem};
+use crate::traits::utilities::alloc::AllocGadget;
+use crate::traits::utilities::eq::EqGadget;
+use crate::traits::utilities::uint::UInt8;
 use snarkvm_algorithms::signature::SchnorrSignature;
-use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsAffine};
-use snarkvm_models::{
-    algorithms::SignatureScheme,
-    curves::Group,
-    gadgets::{
-        algorithms::SignaturePublicKeyRandomizationGadget,
-        r1cs::{ConstraintSystem, TestConstraintSystem},
-        utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8},
-    },
-};
-use snarkvm_utilities::{bytes::ToBytes, rand::UniformRand, to_bytes};
+use snarkvm_algorithms::traits::SignatureScheme;
+use snarkvm_curves::bls12_377::Fr;
+use snarkvm_curves::edwards_bls12::EdwardsAffine;
+use snarkvm_curves::traits::Group;
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::to_bytes;
 
 use blake2::Blake2s;
 use rand::{thread_rng, Rng};

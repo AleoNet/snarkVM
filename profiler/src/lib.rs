@@ -20,7 +20,8 @@ pub use inner::*;
 #[cfg(feature = "print-trace")]
 #[macro_use]
 pub mod inner {
-    use std::{sync::atomic::AtomicUsize, time::Instant};
+    use std::sync::atomic::AtomicUsize;
+    use std::time::Instant;
 
     pub use colored::Colorize;
 
@@ -35,7 +36,8 @@ pub mod inner {
     #[macro_export]
     macro_rules! start_timer {
         ($msg:expr) => {{
-            use std::{sync::atomic::Ordering, time::Instant};
+            use std::sync::atomic::Ordering;
+            use std::time::Instant;
             use $crate::{compute_indent, Colorize, NUM_INDENT, PAD_CHAR};
 
             let msg = $msg();

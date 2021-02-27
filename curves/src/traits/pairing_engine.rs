@@ -15,19 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::curves::{Field, Group, PrimeField, SquareRootField};
-use snarkvm_utilities::{
-    biginteger::BigInteger,
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    serialize::*,
-};
+use snarkvm_utilities::biginteger::BigInteger;
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::serialize::*;
 
-use std::{
-    fmt::{Debug, Display},
-    hash::Hash,
-    iter,
-    ops::{Add, AddAssign, Neg, Sub, SubAssign},
-};
+use std::fmt::{Debug, Display};
+use std::hash::Hash;
+use std::iter;
+use std::ops::{Add, AddAssign, Neg, Sub, SubAssign};
 
 use crate::curves::Zero;
 

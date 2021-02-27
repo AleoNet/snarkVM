@@ -19,7 +19,8 @@
 use crate::fft::{EvaluationDomain, Evaluations};
 use snarkvm_curves::traits::{Field, PrimeField};
 
-use std::{borrow::Cow, convert::TryInto};
+use std::borrow::Cow;
+use std::convert::TryInto;
 
 use DenseOrSparsePolynomial::*;
 

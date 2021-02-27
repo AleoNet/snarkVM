@@ -15,29 +15,24 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::SynthesisError;
+use crate::traits::curves::{FieldGadget, GroupGadget};
+use crate::traits::r1cs::{Assignment, ConstraintSystem};
+use crate::traits::utilities::alloc::AllocGadget;
+use crate::traits::utilities::boolean::Boolean;
+use crate::traits::utilities::eq::{ConditionalEqGadget, EqGadget, NEqGadget};
+use crate::traits::utilities::select::CondSelectGadget;
+use crate::traits::utilities::uint::UInt8;
+use crate::traits::utilities::{ToBitsGadget, ToBytesGadget};
 use snarkvm_curves::templates::short_weierstrass::short_weierstrass_jacobian::{
     GroupAffine as SWAffine,
     GroupProjective as SWProjective,
 };
-use snarkvm_models::{
-    curves::{AffineCurve, Field, One, PrimeField, ProjectiveCurve, SWModelParameters, Zero},
-    gadgets::{
-        curves::{FieldGadget, GroupGadget},
-        r1cs::{Assignment, ConstraintSystem},
-        utilities::{
-            alloc::AllocGadget,
-            boolean::Boolean,
-            eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-            select::CondSelectGadget,
-            uint::UInt8,
-            ToBitsGadget,
-            ToBytesGadget,
-        },
-    },
-};
+use snarkvm_curves::traits::{AffineCurve, Field, One, PrimeField, ProjectiveCurve, SWModelParameters, Zero};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
-use std::{borrow::Borrow, marker::PhantomData, ops::Neg};
+use std::borrow::Borrow;
+use std::marker::PhantomData;
+use std::ops::Neg;
 
 #[derive(Derivative)]
 #[derivative(Debug, Clone)]

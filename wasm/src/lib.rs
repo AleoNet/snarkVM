@@ -27,4 +27,7 @@
 //     signature::*,
 //     snark::*,
 // };
-pub use snarkvm_curves::{bls12_377::*, bw6_761::*, edwards_bls12::*, edwards_sw6::*};
+pub use snarkvm_curves::bls12_377::*;
+pub use snarkvm_curves::bw6_761::*;
+pub use snarkvm_curves::edwards_bls12::*;
+pub use snarkvm_curves::edwards_sw6::*;

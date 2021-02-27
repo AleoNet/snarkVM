@@ -15,11 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::encryption::GroupEncryption;
+use crate::traits::EncryptionScheme;
 use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsProjective};
-use snarkvm_models::{
-    algorithms::EncryptionScheme,
-    curves::{Group, ProjectiveCurve},
-};
+use snarkvm_curves::traits::{Group, ProjectiveCurve};
 use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
 use blake2::Blake2s;

@@ -25,11 +25,10 @@ use super::{
     VerifyingKey,
 };
 use crate::errors::SNARKError;
-use snarkvm_models::{
-    algorithms::SNARK,
-    curves::{to_field_vec::ToConstraintField, PairingEngine},
-    gadgets::r1cs::ConstraintSynthesizer,
-};
+use crate::traits::SNARK;
+use snarkvm_curves::traits::to_field_vec::ToConstraintField;
+use snarkvm_curves::traits::PairingEngine;
+use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
 
 use rand::Rng;
 use std::marker::PhantomData;

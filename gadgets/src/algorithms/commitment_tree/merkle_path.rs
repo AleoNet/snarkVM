@@ -15,21 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::SynthesisError;
+use crate::traits::algorithms::{CRHGadget, CommitmentGadget};
+use crate::traits::r1cs::ConstraintSystem;
+use crate::traits::utilities::alloc::AllocGadget;
+use crate::traits::utilities::boolean::{AllocatedBit, Boolean};
+use crate::traits::utilities::eq::{ConditionalEqGadget, ConditionalOrEqualsGadget};
+use crate::traits::utilities::ToBytesGadget;
 use snarkvm_algorithms::commitment_tree::CommitmentMerklePath;
-use snarkvm_models::{
-    algorithms::{CommitmentScheme, CRH},
-    curves::Field,
-    gadgets::{
-        algorithms::{CRHGadget, CommitmentGadget},
-        r1cs::ConstraintSystem,
-        utilities::{
-            alloc::AllocGadget,
-            boolean::{AllocatedBit, Boolean},
-            eq::{ConditionalEqGadget, ConditionalOrEqualsGadget},
-            ToBytesGadget,
-        },
-    },
-};
+use snarkvm_algorithms::traits::{CommitmentScheme, CRH};
+use snarkvm_curves::traits::Field;
 
 use std::borrow::Borrow;
 

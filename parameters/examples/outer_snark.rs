@@ -14,27 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::traits::Parameter;
 use snarkvm_algorithms::crh::sha256::sha256;
-use snarkvm_dpc::{
-    base_dpc::{
-        inner_circuit::InnerCircuit,
-        instantiated::Components,
-        outer_circuit::OuterCircuit,
-        parameters::{NoopProgramSNARKParameters, SystemParameters},
-        program::{NoopCircuit, PrivateProgramInput},
-        BaseDPCComponents,
-    },
-    errors::DPCError,
-};
-use snarkvm_models::{
-    algorithms::{MerkleParameters, SNARK},
-    parameters::Parameter,
-};
+use snarkvm_algorithms::traits::{MerkleParameters, SNARK};
+use snarkvm_dpc::base_dpc::inner_circuit::InnerCircuit;
+use snarkvm_dpc::base_dpc::instantiated::Components;
+use snarkvm_dpc::base_dpc::outer_circuit::OuterCircuit;
+use snarkvm_dpc::base_dpc::parameters::{NoopProgramSNARKParameters, SystemParameters};
+use snarkvm_dpc::base_dpc::program::{NoopCircuit, PrivateProgramInput};
+use snarkvm_dpc::base_dpc::BaseDPCComponents;
+use snarkvm_dpc::errors::DPCError;
 use snarkvm_parameters::{InnerSNARKPKParameters, InnerSNARKVKParameters, LedgerMerkleTreeParameters};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-};
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::to_bytes;
 
 use rand::thread_rng;
 use std::path::PathBuf;

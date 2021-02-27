@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_curves::traits::Field;
 use snarkvm_gadgets::errors::SynthesisError;
-use snarkvm_models::{
-    curves::Field,
-    gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem},
-};
+use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 
 #[derive(Copy, Clone)]
 struct Circuit<F: Field> {
@@ -61,7 +59,8 @@ mod marlin {
     use super::*;
     use crate::marlin::MarlinSNARK;
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-    use snarkvm_polycommit::{marlin_pc::MarlinKZG10, sonic_pc::SonicKZG10};
+    use snarkvm_polycommit::marlin_pc::MarlinKZG10;
+    use snarkvm_polycommit::sonic_pc::SonicKZG10;
     use snarkvm_utilities::rand::{test_rng, UniformRand};
 
     use blake2::Blake2s;

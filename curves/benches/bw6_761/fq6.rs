@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::{bw6_761::Fq6, traits::Field};
+use snarkvm_curves::bw6_761::Fq6;
+use snarkvm_curves::traits::Field;
 use snarkvm_utilities::rand::UniformRand;
 
 use rand::SeedableRng;

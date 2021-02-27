@@ -14,42 +14,34 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{base_dpc::record_payload::RecordPayload, errors::DPCError};
-use snarkvm_algorithms::{
-    commitment_tree::CommitmentMerkleTree,
-    merkle_tree::{MerklePath, MerkleTreeDigest},
+use crate::base_dpc::record_payload::RecordPayload;
+use crate::errors::DPCError;
+use crate::traits::{DPCComponents, DPCScheme, Record};
+use snarkvm_algorithms::commitment_tree::CommitmentMerkleTree;
+use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTreeDigest};
+use snarkvm_algorithms::traits::{
+    CommitmentScheme,
+    EncryptionScheme,
+    LoadableMerkleParameters,
+    MerkleParameters,
+    SignatureScheme,
+    CRH,
+    PRF,
+    SNARK,
 };
-use snarkvm_models::{
-    algorithms::{
-        CommitmentScheme,
-        EncryptionScheme,
-        LoadableMerkleParameters,
-        MerkleParameters,
-        SignatureScheme,
-        CRH,
-        PRF,
-        SNARK,
-    },
-    curves::{Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters},
-    dpc::{DPCComponents, DPCScheme, Record},
-    gadgets::algorithms::{CRHGadget, SNARKVerifierGadget},
-    objects::{AccountScheme, LedgerScheme, Transaction},
-};
+use snarkvm_curves::traits::{Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
+use snarkvm_gadgets::traits::algorithms::{CRHGadget, SNARKVerifierGadget};
+use snarkvm_objects::traits::{AccountScheme, LedgerScheme, Transaction};
 use snarkvm_objects::{Account, AccountAddress, AccountPrivateKey, AleoAmount, Network};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    has_duplicates,
-    rand::UniformRand,
-    to_bytes,
-    variable_length_integer::*,
-};
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::variable_length_integer::*;
+use snarkvm_utilities::{has_duplicates, to_bytes};
 
 use itertools::{izip, Itertools};
 use rand::Rng;
-use std::{
-    io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
-};
+use std::io::{Read, Result as IoResult, Write};
+use std::marker::PhantomData;
 
 pub mod inner_circuit;
 pub use inner_circuit::*;

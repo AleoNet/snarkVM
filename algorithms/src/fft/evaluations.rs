@@ -18,7 +18,8 @@
 
 use crate::fft::{DensePolynomial, EvaluationDomain};
 use snarkvm_curves::traits::PrimeField;
-use snarkvm_utilities::{errors::SerializationError, serialize::*};
+use snarkvm_utilities::errors::SerializationError;
+use snarkvm_utilities::serialize::*;
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 

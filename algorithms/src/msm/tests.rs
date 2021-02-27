@@ -15,10 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::msm::*;
-use snarkvm_curves::{
-    bls12_377::{Fr, G1Projective},
-    traits::{AffineCurve, PrimeField, ProjectiveCurve, Zero},
-};
+use snarkvm_curves::bls12_377::{Fr, G1Projective};
+use snarkvm_curves::traits::{AffineCurve, PrimeField, ProjectiveCurve, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
 use rand::SeedableRng;

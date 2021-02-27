@@ -21,8 +21,8 @@ use crate::curves::templates::bls12::{
     G2Gadget as Bls12G2Gadget,
     G2PreparedGadget as Bls12G2PreparedGadget,
 };
+use crate::traits::curves::{Fp12Gadget, Fp2Gadget, Fp6Gadget, FpGadget};
 use snarkvm_curves::bls12_377::{Bls12_377Parameters, Fq, Fq12Parameters, Fq2Parameters, Fq6Parameters};
-use snarkvm_models::gadgets::curves::{Fp12Gadget, Fp2Gadget, Fp6Gadget, FpGadget};
 
 pub type FqGadget = FpGadget<Fq>;
 pub type Fq2Gadget = Fp2Gadget<Fq2Parameters, Fq>;
@@ -37,21 +37,16 @@ pub type PairingGadget = Bls12PairingGadget<Bls12_377Parameters>;
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::traits::curves::{FieldGadget, GroupGadget};
+    use crate::traits::r1cs::{ConstraintSystem, TestConstraintSystem};
+    use crate::traits::utilities::alloc::AllocGadget;
+    use crate::traits::utilities::boolean::{AllocatedBit, Boolean};
+    use crate::traits::utilities::eq::EqGadget;
+    use crate::traits::utilities::select::CondSelectGadget;
     use snarkvm_curves::bls12_377::{Fq, Fr, G1Projective as G1, G2Projective as G2};
-    use snarkvm_models::{
-        curves::{AffineCurve, PrimeField, ProjectiveCurve},
-        gadgets::{
-            curves::{FieldGadget, GroupGadget},
-            r1cs::{ConstraintSystem, TestConstraintSystem},
-            utilities::{
-                alloc::AllocGadget,
-                boolean::{AllocatedBit, Boolean},
-                eq::EqGadget,
-                select::CondSelectGadget,
-            },
-        },
-    };
-    use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
+    use snarkvm_curves::traits::{AffineCurve, PrimeField, ProjectiveCurve};
+    use snarkvm_utilities::bititerator::BitIteratorBE;
+    use snarkvm_utilities::rand::UniformRand;
 
     use rand::{self, SeedableRng};
     use rand_xorshift::XorShiftRng;

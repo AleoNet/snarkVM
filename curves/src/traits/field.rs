@@ -15,24 +15,20 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::curves::{One, Zero};
-use snarkvm_utilities::{
-    bititerator::BitIteratorBE,
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    serialize::{
-        CanonicalDeserialize,
-        CanonicalDeserializeWithFlags,
-        CanonicalSerialize,
-        CanonicalSerializeWithFlags,
-        ConstantSerializedSize,
-    },
+use snarkvm_utilities::bititerator::BitIteratorBE;
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::serialize::{
+    CanonicalDeserialize,
+    CanonicalDeserializeWithFlags,
+    CanonicalSerialize,
+    CanonicalSerializeWithFlags,
+    ConstantSerializedSize,
 };
 
-use std::{
-    fmt::{Debug, Display},
-    hash::Hash,
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
-};
+use std::fmt::{Debug, Display};
+use std::hash::Hash;
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use serde::{Deserialize, Serialize};
 

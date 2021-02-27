@@ -16,21 +16,16 @@
 
 use super::*;
 use crate::curves::edwards_bls12::EdwardsBlsGadget;
-use snarkvm_algorithms::{
-    commitment::{Blake2sCommitment, PedersenCommitment},
-    crh::PedersenSize,
-};
+use crate::traits::algorithms::CommitmentGadget;
+use crate::traits::curves::FieldGadget;
+use crate::traits::r1cs::{ConstraintSystem, TestConstraintSystem};
+use crate::traits::utilities::alloc::AllocGadget;
+use crate::traits::utilities::uint::UInt8;
+use snarkvm_algorithms::commitment::{Blake2sCommitment, PedersenCommitment};
+use snarkvm_algorithms::crh::PedersenSize;
+use snarkvm_algorithms::traits::CommitmentScheme;
 use snarkvm_curves::edwards_bls12::{EdwardsProjective, Fq, Fr};
-use snarkvm_models::{
-    algorithms::CommitmentScheme,
-    curves::ProjectiveCurve,
-    gadgets::{
-        algorithms::CommitmentGadget,
-        curves::FieldGadget,
-        r1cs::{ConstraintSystem, TestConstraintSystem},
-        utilities::{alloc::AllocGadget, uint::UInt8},
-    },
-};
+use snarkvm_curves::traits::ProjectiveCurve;
 use snarkvm_utilities::rand::UniformRand;
 
 use rand::{thread_rng, Rng};

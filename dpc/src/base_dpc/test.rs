@@ -15,28 +15,26 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::instantiated::*;
+use crate::base_dpc::inner_circuit::InnerCircuit;
+use crate::base_dpc::parameters::{NoopProgramSNARKParameters, SystemParameters};
+use crate::base_dpc::program::*;
+use crate::base_dpc::record::record_encryption::*;
+use crate::base_dpc::record_payload::RecordPayload;
 use crate::base_dpc::{
     execute_inner_proof_gadget,
     execute_outer_proof_gadget,
-    inner_circuit::InnerCircuit,
-    parameters::{NoopProgramSNARKParameters, SystemParameters},
-    program::*,
-    record::record_encryption::*,
-    record_payload::RecordPayload,
     BaseDPCComponents,
     TransactionKernel,
     DPC,
 };
+use crate::traits::{DPCScheme, Program, Record};
 use snarkvm_algorithms::merkle_tree::MerklePath;
+use snarkvm_algorithms::traits::{MerkleParameters, CRH, SNARK};
 use snarkvm_curves::bls12_377::{Fq, Fr};
-use snarkvm_models::{
-    algorithms::{MerkleParameters, CRH, SNARK},
-    dpc::{DPCScheme, Program, Record},
-    gadgets::r1cs::{ConstraintSystem, TestConstraintSystem},
-    objects::{AccountScheme, LedgerScheme},
-};
+use snarkvm_gadgets::traits::r1cs::{ConstraintSystem, TestConstraintSystem};
+use snarkvm_objects::dpc::DPCTransactions;
+use snarkvm_objects::traits::{AccountScheme, LedgerScheme};
 use snarkvm_objects::{
-    dpc::DPCTransactions,
     Account,
     Block,
     BlockHeader,
@@ -46,10 +44,8 @@ use snarkvm_objects::{
     ProofOfSuccinctWork,
 };
 use snarkvm_testing::storage::*;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-};
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::to_bytes;
 
 use itertools::Itertools;
 use rand::{Rng, SeedableRng};

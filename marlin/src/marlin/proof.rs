@@ -14,15 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ahp::prover::ProverMessage, Vec};
+use crate::ahp::prover::ProverMessage;
+use crate::Vec;
 use snarkvm_curves::traits::PrimeField;
 use snarkvm_polycommit::{BatchLCProof, PCCommitment, PolynomialCommitment};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    error,
-    errors::SerializationError,
-    serialize::*,
-};
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::error;
+use snarkvm_utilities::errors::SerializationError;
+use snarkvm_utilities::serialize::*;
 
 use derivative::Derivative;
 use std::io::{self, Read, Write};

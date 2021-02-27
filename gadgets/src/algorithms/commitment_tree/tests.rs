@@ -14,29 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    algorithms::{
-        commitment::PedersenCompressedCommitmentGadget,
-        commitment_tree::*,
-        crh::BoweHopwoodPedersenCompressedCRHGadget,
-    },
-    curves::edwards_bls12::EdwardsBlsGadget,
-};
-use snarkvm_algorithms::{
-    commitment::PedersenCompressedCommitment,
-    commitment_tree::*,
-    crh::{BoweHopwoodPedersenCompressedCRH, PedersenSize},
-};
-use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective as EdwardsBls};
-use snarkvm_models::{
-    algorithms::{CommitmentScheme, CRH},
-    curves::Field,
-    gadgets::{
-        algorithms::{CRHGadget, CommitmentGadget},
-        r1cs::{ConstraintSystem, TestConstraintSystem},
-        utilities::alloc::AllocGadget,
-    },
-};
+use crate::algorithms::commitment::PedersenCompressedCommitmentGadget;
+use crate::algorithms::commitment_tree::*;
+use crate::algorithms::crh::BoweHopwoodPedersenCompressedCRHGadget;
+use crate::curves::edwards_bls12::EdwardsBlsGadget;
+use crate::traits::algorithms::{CRHGadget, CommitmentGadget};
+use crate::traits::r1cs::{ConstraintSystem, TestConstraintSystem};
+use crate::traits::utilities::alloc::AllocGadget;
+use snarkvm_algorithms::commitment::PedersenCompressedCommitment;
+use snarkvm_algorithms::commitment_tree::*;
+use snarkvm_algorithms::crh::{BoweHopwoodPedersenCompressedCRH, PedersenSize};
+use snarkvm_algorithms::traits::{CommitmentScheme, CRH};
+use snarkvm_curves::bls12_377::Fr;
+use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
+use snarkvm_curves::traits::Field;
 use snarkvm_utilities::rand::UniformRand;
 
 use rand::{Rng, SeedableRng};

@@ -16,20 +16,16 @@
 
 use crate::curves::{Field, FpParameters, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
 use snarkvm_curves::errors::FieldError;
-use snarkvm_utilities::{
-    biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger384 as BigInteger},
-    bytes::{FromBytes, ToBytes},
-    serialize::CanonicalDeserialize,
-};
+use snarkvm_utilities::biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger384 as BigInteger};
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::serialize::CanonicalDeserialize;
 
-use std::{
-    cmp::{Ord, Ordering, PartialOrd},
-    fmt::{Display, Formatter, Result as FmtResult},
-    io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
-    str::FromStr,
-};
+use std::cmp::{Ord, Ordering, PartialOrd};
+use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::io::{Read, Result as IoResult, Write};
+use std::marker::PhantomData;
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::str::FromStr;
 
 pub trait Fp384Parameters: FpParameters<BigInteger = BigInteger> {}
 

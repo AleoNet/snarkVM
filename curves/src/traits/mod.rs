@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_utilities::{
-    biginteger::*,
-    bytes::{FromBytes, ToBytes},
-    serialize::{
-        CanonicalDeserialize,
-        CanonicalDeserializeWithFlags,
-        CanonicalSerialize,
-        CanonicalSerializeWithFlags,
-        ConstantSerializedSize,
-    },
+use snarkvm_utilities::biginteger::*;
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::serialize::{
+    CanonicalDeserialize,
+    CanonicalDeserializeWithFlags,
+    CanonicalSerialize,
+    CanonicalSerializeWithFlags,
+    ConstantSerializedSize,
 };
 
 use std::fmt::Debug;

@@ -15,25 +15,20 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::SynthesisError;
+use crate::traits::algorithms::SNARKVerifierGadget;
+use crate::traits::curves::{FieldGadget, GroupGadget, PairingGadget};
+use crate::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem};
+use crate::traits::utilities::alloc::{AllocBytesGadget, AllocGadget};
+use crate::traits::utilities::eq::EqGadget;
+use crate::traits::utilities::uint::UInt8;
+use crate::traits::utilities::{ToBitsGadget, ToBytesGadget};
 use snarkvm_algorithms::snark::gm17::{Proof, VerifyingKey, GM17};
-use snarkvm_models::{
-    curves::{to_field_vec::ToConstraintField, AffineCurve, Field, PairingEngine},
-    gadgets::{
-        algorithms::SNARKVerifierGadget,
-        curves::{FieldGadget, GroupGadget, PairingGadget},
-        r1cs::{ConstraintSynthesizer, ConstraintSystem},
-        utilities::{
-            alloc::{AllocBytesGadget, AllocGadget},
-            eq::EqGadget,
-            uint::UInt8,
-            ToBitsGadget,
-            ToBytesGadget,
-        },
-    },
-};
+use snarkvm_curves::traits::to_field_vec::ToConstraintField;
+use snarkvm_curves::traits::{AffineCurve, Field, PairingEngine};
 use snarkvm_utilities::bytes::FromBytes;
 
-use std::{borrow::Borrow, marker::PhantomData};
+use std::borrow::Borrow;
+use std::marker::PhantomData;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "P::G1Gadget: Clone, P::G2Gadget: Clone"))]

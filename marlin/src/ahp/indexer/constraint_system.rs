@@ -15,11 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ahp::matrices::{make_matrices_square, padded_matrix_dim, to_matrix_helper};
+use snarkvm_curves::traits::Field;
 use snarkvm_gadgets::errors::SynthesisError;
-use snarkvm_models::{
-    curves::Field,
-    gadgets::r1cs::{ConstraintSystem, Index as VarIndex, LinearCombination, Variable},
-};
+use snarkvm_gadgets::traits::r1cs::{ConstraintSystem, Index as VarIndex, LinearCombination, Variable};
 use snarkvm_utilities::serialize::*;
 
 /// Stores constraints during index generation.

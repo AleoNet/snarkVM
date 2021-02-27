@@ -14,15 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    edwards_sw6::{Fq, Fr},
-    errors::GroupError,
-    templates::twisted_edwards_extended::{GroupAffine, GroupProjective},
-};
-use snarkvm_models::{
-    curves::{ModelParameters, MontgomeryModelParameters, TEModelParameters},
-    field,
-};
+use crate::edwards_sw6::{Fq, Fr};
+use crate::errors::GroupError;
+use crate::templates::twisted_edwards_extended::{GroupAffine, GroupProjective};
+use crate::traits::{ModelParameters, MontgomeryModelParameters, TEModelParameters};
+use snarkvm_models::field;
 use snarkvm_utilities::biginteger::BigInteger384 as BigInteger;
 
 use std::str::FromStr;

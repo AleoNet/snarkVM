@@ -15,7 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::encoding::Elligator2;
-use snarkvm_curves::{edwards_bls12::*, traits::Zero};
+use snarkvm_curves::edwards_bls12::*;
+use snarkvm_curves::traits::Zero;
 use snarkvm_utilities::rand::UniformRand;
 
 use rand::SeedableRng;

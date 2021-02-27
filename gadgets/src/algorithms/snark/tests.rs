@@ -14,21 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{algorithms::snark::*, curves::bls12_377::PairingGadget as Bls12_377PairingGadget, errors::SynthesisError};
+use crate::algorithms::snark::*;
+use crate::curves::bls12_377::PairingGadget as Bls12_377PairingGadget;
+use crate::errors::SynthesisError;
+use crate::traits::algorithms::snark::SNARKVerifierGadget;
+use crate::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
+use crate::traits::utilities::alloc::{AllocBytesGadget, AllocGadget};
+use crate::traits::utilities::boolean::Boolean;
 use snarkvm_algorithms::snark::gm17::{create_random_proof, generate_random_parameters, GM17};
 use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-use snarkvm_models::{
-    curves::{Field, PrimeField},
-    gadgets::{
-        algorithms::snark::SNARKVerifierGadget,
-        r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem},
-        utilities::{
-            alloc::{AllocBytesGadget, AllocGadget},
-            boolean::Boolean,
-        },
-    },
-};
-use snarkvm_utilities::{bititerator::BitIteratorBE, to_bytes, ToBytes};
+use snarkvm_curves::traits::{Field, PrimeField};
+use snarkvm_utilities::bititerator::BitIteratorBE;
+use snarkvm_utilities::{to_bytes, ToBytes};
 
 use rand::{thread_rng, Rng};
 

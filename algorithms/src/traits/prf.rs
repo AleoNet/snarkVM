@@ -17,7 +17,8 @@
 use crate::errors::PRFError;
 use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
-use std::{fmt::Debug, hash::Hash};
+use std::fmt::Debug;
+use std::hash::Hash;
 
 pub trait PRF {
     type Input: FromBytes + Default;

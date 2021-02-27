@@ -14,17 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    bititerator::BitIteratorBE,
-    bytes::{FromBytes, ToBytes},
-    io::{Read, Result as IoResult, Write},
-    rand::UniformRand,
-};
+use crate::bititerator::BitIteratorBE;
+use crate::bytes::{FromBytes, ToBytes};
+use crate::io::{Read, Result as IoResult, Write};
+use crate::rand::UniformRand;
 
-use rand::{
-    distributions::{Distribution, Standard},
-    Rng,
-};
+use rand::distributions::{Distribution, Standard};
+use rand::Rng;
 use std::fmt::{Debug, Display};
 
 bigint_impl!(BigInteger64, 1);

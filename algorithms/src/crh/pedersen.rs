@@ -15,12 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::crh::{PedersenCRHParameters, PedersenSize};
+use crate::traits::{CRHParameters, CRH};
 use snarkvm_algorithms::errors::CRHError;
 use snarkvm_curves::errors::ConstraintFieldError;
-use snarkvm_models::{
-    algorithms::{CRHParameters, CRH},
-    curves::{to_field_vec::ToConstraintField, Field, Group},
-};
+use snarkvm_curves::traits::to_field_vec::ToConstraintField;
+use snarkvm_curves::traits::{Field, Group};
 use snarkvm_utilities::bytes_to_bits;
 
 use rand::Rng;

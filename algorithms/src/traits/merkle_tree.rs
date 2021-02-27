@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{algorithms::CRH, errors::MerkleError};
+use crate::algorithms::CRH;
+use crate::errors::MerkleError;
 use snarkvm_utilities::bytes::ToBytes;
 
 use rand::Rng;

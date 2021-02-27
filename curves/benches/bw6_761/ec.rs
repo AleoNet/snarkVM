@@ -15,10 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub(crate) mod g1 {
-    use snarkvm_curves::{
-        bw6_761::{Fr, G1Affine, G1Projective as G1},
-        traits::ProjectiveCurve,
-    };
+    use snarkvm_curves::bw6_761::{Fr, G1Affine, G1Projective as G1};
+    use snarkvm_curves::traits::ProjectiveCurve;
     use snarkvm_utilities::rand::UniformRand;
 
     use criterion::Criterion;
@@ -107,10 +105,8 @@ pub(crate) mod g1 {
 }
 
 pub(crate) mod g2 {
-    use snarkvm_curves::{
-        bw6_761::{Fr, G2Affine, G2Projective as G2},
-        traits::ProjectiveCurve,
-    };
+    use snarkvm_curves::bw6_761::{Fr, G2Affine, G2Projective as G2};
+    use snarkvm_curves::traits::ProjectiveCurve;
     use snarkvm_utilities::rand::UniformRand;
 
     use criterion::Criterion;

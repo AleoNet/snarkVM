@@ -14,18 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ahp::{
-    indexer::{Circuit, CircuitInfo, IndexerConstraintSystem},
-    matrices::arithmetize_matrix,
-    AHPError,
-    AHPForR1CS,
-};
+use crate::ahp::indexer::{Circuit, CircuitInfo, IndexerConstraintSystem};
+use crate::ahp::matrices::arithmetize_matrix;
+use crate::ahp::{AHPError, AHPForR1CS};
 use snarkvm_algorithms::fft::EvaluationDomain;
+use snarkvm_curves::traits::PrimeField;
 use snarkvm_gadgets::errors::SynthesisError;
-use snarkvm_models::{
-    curves::PrimeField,
-    gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem},
-};
+use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 
 use core::marker::PhantomData;
 

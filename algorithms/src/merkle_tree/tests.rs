@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    crh::{PedersenCRH, PedersenCompressedCRH, PedersenSize},
-    define_merkle_tree_parameters,
-    merkle_tree::MerkleTree,
-    traits::{crh::CRH, merkle_tree::LoadableMerkleParameters},
-};
+use crate::crh::{PedersenCRH, PedersenCompressedCRH, PedersenSize};
+use crate::define_merkle_tree_parameters;
+use crate::merkle_tree::MerkleTree;
+use crate::traits::crh::CRH;
+use crate::traits::merkle_tree::LoadableMerkleParameters;
 use snarkvm_utilities::{to_bytes, ToBytes};
 
 /// Generates a valid Merkle tree and verifies the Merkle path witness for each leaf.

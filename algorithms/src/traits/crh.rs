@@ -18,10 +18,8 @@ use crate::errors::CRHError;
 use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
 use rand::Rng;
-use std::{
-    fmt::{Debug, Display},
-    hash::Hash,
-};
+use std::fmt::{Debug, Display};
+use std::hash::Hash;
 
 pub trait CRHParameters: Clone + Debug + ToBytes + FromBytes + Eq {
     fn setup<R: Rng>(r: &mut R) -> Self;

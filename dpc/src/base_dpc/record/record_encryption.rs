@@ -14,21 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    base_dpc::{
-        parameters::SystemParameters,
-        record::{encrypted_record::*, record_serializer::*, DPCRecord},
-        record_payload::RecordPayload,
-        BaseDPCComponents,
-    },
-    errors::DPCError,
-};
+use crate::base_dpc::parameters::SystemParameters;
+use crate::base_dpc::record::encrypted_record::*;
+use crate::base_dpc::record::record_serializer::*;
+use crate::base_dpc::record::DPCRecord;
+use crate::base_dpc::record_payload::RecordPayload;
+use crate::base_dpc::BaseDPCComponents;
+use crate::errors::DPCError;
+use crate::traits::{DPCComponents, Record, RecordSerializerScheme};
 use snarkvm_algorithms::encoding::Elligator2;
-use snarkvm_models::{
-    algorithms::{CommitmentScheme, EncryptionScheme, CRH},
-    curves::{AffineCurve, ModelParameters, One, ProjectiveCurve},
-    dpc::{DPCComponents, Record, RecordSerializerScheme},
-};
+use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, CRH};
+use snarkvm_curves::traits::{AffineCurve, ModelParameters, One, ProjectiveCurve};
 use snarkvm_objects::{AccountAddress, AccountViewKey};
 use snarkvm_utilities::{bits_to_bytes, bytes_to_bits, to_bytes, FromBytes, ToBytes};
 

@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_curves::traits::{Field, Zero};
 use snarkvm_gadgets::errors::SynthesisError;
-use snarkvm_models::{
-    curves::{Field, Zero},
-    gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem},
-};
+use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 
 struct MySillyCircuit<F: Field> {
     a: Option<F>,
@@ -110,11 +108,9 @@ mod serialization {
     use super::*;
     use crate::snark::groth16::{create_random_proof, generate_random_parameters, Proof};
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-    use snarkvm_utilities::{
-        bytes::{FromBytes, ToBytes},
-        rand::{test_rng, UniformRand},
-        to_bytes,
-    };
+    use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+    use snarkvm_utilities::rand::{test_rng, UniformRand};
+    use snarkvm_utilities::to_bytes;
 
     #[test]
     fn test_compressed_proof_serialization() {

@@ -18,11 +18,11 @@
 //!
 //! [`Groth16`]: https://eprint.iacr.org/2016/260.pdf
 
-use snarkvm_models::{
-    curves::{AffineCurve, Field, PairingCurve, PairingEngine},
-    gadgets::r1cs::{Index, LinearCombination},
-};
-use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes};
+use snarkvm_curves::traits::{AffineCurve, Field, PairingCurve, PairingEngine};
+use snarkvm_gadgets::traits::r1cs::{Index, LinearCombination};
+use snarkvm_utilities::errors::SerializationError;
+use snarkvm_utilities::serialize::*;
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::io::{self, Read, Result as IoResult, Write};
 

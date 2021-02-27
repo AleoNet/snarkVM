@@ -14,19 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::{
-    bls12_377::{G1Gadget, G1PreparedGadget, G2Gadget, G2PreparedGadget},
-    templates::bls12::Bls12PairingGadget,
-};
+use crate::curves::bls12_377::{G1Gadget, G1PreparedGadget, G2Gadget, G2PreparedGadget};
+use crate::curves::templates::bls12::Bls12PairingGadget;
+use crate::traits::curves::{FieldGadget, PairingGadget};
+use crate::traits::r1cs::{ConstraintSystem, TestConstraintSystem};
+use crate::traits::utilities::alloc::AllocGadget;
+use crate::traits::utilities::boolean::Boolean;
+use crate::traits::utilities::eq::EqGadget;
 use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr, G1Projective, G2Projective};
-use snarkvm_models::{
-    curves::{Field, One, PairingEngine, PrimeField, ProjectiveCurve},
-    gadgets::{
-        curves::{FieldGadget, PairingGadget},
-        r1cs::{ConstraintSystem, TestConstraintSystem},
-        utilities::{alloc::AllocGadget, boolean::Boolean, eq::EqGadget},
-    },
-};
+use snarkvm_curves::traits::{Field, One, PairingEngine, PrimeField, ProjectiveCurve};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::ops::Mul;

@@ -14,27 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::{fp6_3over2::*, Field, Fp2, Fp2Parameters, One, PrimeField, Zero};
-use snarkvm_utilities::{
-    bititerator::BitIteratorBE,
-    bytes::{FromBytes, ToBytes},
-    div_ceil,
-    errors::SerializationError,
-    rand::UniformRand,
-    serialize::*,
-};
+use crate::curves::fp6_3over2::*;
+use crate::curves::{Field, Fp2, Fp2Parameters, One, PrimeField, Zero};
+use snarkvm_utilities::bititerator::BitIteratorBE;
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::div_ceil;
+use snarkvm_utilities::errors::SerializationError;
+use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::serialize::*;
 
-use rand::{
-    distributions::{Distribution, Standard},
-    Rng,
-};
+use rand::distributions::{Distribution, Standard};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::{
-    cmp::Ordering,
-    io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
-};
+use std::cmp::Ordering;
+use std::io::{Read, Result as IoResult, Write};
+use std::marker::PhantomData;
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 pub trait Fp12Parameters: 'static + Send + Sync + Copy {
     type Fp6Params: Fp6Parameters;

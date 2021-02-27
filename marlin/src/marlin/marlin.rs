@@ -14,13 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    ahp::{AHPError, AHPForR1CS, EvaluationsProvider},
-    marlin::{CircuitProvingKey, CircuitVerifyingKey, FiatShamirRng, MarlinError, Proof, UniversalSRS},
-};
-use snarkvm_models::{curves::PrimeField, gadgets::r1cs::ConstraintSynthesizer};
+use crate::ahp::{AHPError, AHPForR1CS, EvaluationsProvider};
+use crate::marlin::{CircuitProvingKey, CircuitVerifyingKey, FiatShamirRng, MarlinError, Proof, UniversalSRS};
+use snarkvm_curves::traits::PrimeField;
+use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
 use snarkvm_polycommit::{Evaluations, LabeledCommitment, PCUniversalParams, PolynomialCommitment};
-use snarkvm_utilities::{bytes::ToBytes, rand::UniformRand, to_bytes};
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::to_bytes;
 
 use core::marker::PhantomData;
 use digest::Digest;

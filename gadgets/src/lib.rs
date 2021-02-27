@@ -48,3 +48,6 @@ pub mod curves;
 
 pub mod errors;
 pub use errors::*;
+
+pub mod traits;
+pub use traits::*;

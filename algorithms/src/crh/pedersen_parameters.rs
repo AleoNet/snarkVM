@@ -14,19 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::traits::crh::CRHParameters;
 use snarkvm_curves::errors::ConstraintFieldError;
-use snarkvm_models::{
-    algorithms::crh::CRHParameters,
-    curves::{to_field_vec::ToConstraintField, Field, Group},
-};
+use snarkvm_curves::traits::to_field_vec::ToConstraintField;
+use snarkvm_curves::traits::{Field, Group};
 use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
 use rand::Rng;
-use std::{
-    fmt::Debug,
-    io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
-};
+use std::fmt::Debug;
+use std::io::{Read, Result as IoResult, Write};
+use std::marker::PhantomData;
 
 pub trait PedersenSize: Clone + Debug + Eq {
     const NUM_WINDOWS: usize;

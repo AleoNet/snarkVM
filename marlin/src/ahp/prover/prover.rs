@@ -14,30 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    ahp::{
-        indexer::{Circuit, CircuitInfo, Matrix},
-        prover::ProverConstraintSystem,
-        verifier::{VerifierFirstMessage, VerifierSecondMessage},
-        AHPError,
-        AHPForR1CS,
-        UnnormalizedBivariateLagrangePoly,
-    },
-    prover::{state::ProverState, ProverMessage},
-    ToString,
-    Vec,
-};
-use snarkvm_algorithms::{
-    cfg_into_iter,
-    cfg_iter,
-    cfg_iter_mut,
-    fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain},
-};
+use crate::ahp::indexer::{Circuit, CircuitInfo, Matrix};
+use crate::ahp::prover::ProverConstraintSystem;
+use crate::ahp::verifier::{VerifierFirstMessage, VerifierSecondMessage};
+use crate::ahp::{AHPError, AHPForR1CS, UnnormalizedBivariateLagrangePoly};
+use crate::prover::state::ProverState;
+use crate::prover::ProverMessage;
+use crate::{ToString, Vec};
+use snarkvm_algorithms::fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain};
+use snarkvm_algorithms::{cfg_into_iter, cfg_iter, cfg_iter_mut};
+use snarkvm_curves::traits::{batch_inversion, Field, PrimeField};
 use snarkvm_gadgets::errors::SynthesisError;
-use snarkvm_models::{
-    curves::{batch_inversion, Field, PrimeField},
-    gadgets::r1cs::ConstraintSynthesizer,
-};
+use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
 use snarkvm_polycommit::{LabeledPolynomial, Polynomial};
 
 use rand_core::RngCore;

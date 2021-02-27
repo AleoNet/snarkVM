@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::EncodingError;
+use snarkvm_curves::traits::pairing_engine::{AffineCurve, ProjectiveCurve};
 use snarkvm_curves::traits::{
-    pairing_engine::{AffineCurve, ProjectiveCurve},
     Field,
     Group,
     LegendreSymbol,
@@ -28,7 +28,9 @@ use snarkvm_curves::traits::{
 };
 use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
-use std::{cmp, marker::PhantomData, ops::Neg};
+use std::cmp;
+use std::marker::PhantomData;
+use std::ops::Neg;
 
 pub struct Elligator2<P: MontgomeryModelParameters + TEModelParameters, G: Group + ProjectiveCurve> {
     _parameters: PhantomData<P>,

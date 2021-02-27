@@ -14,18 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    commitment::PedersenCompressedCommitment,
-    commitment_tree::*,
-    crh::{BoweHopwoodPedersenCompressedCRH, PedersenSize},
-    traits::{CommitmentScheme, CRH},
-};
+use crate::commitment::PedersenCompressedCommitment;
+use crate::commitment_tree::*;
+use crate::crh::{BoweHopwoodPedersenCompressedCRH, PedersenSize};
+use crate::traits::{CommitmentScheme, CRH};
 use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    to_bytes,
-};
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::to_bytes;
 
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;

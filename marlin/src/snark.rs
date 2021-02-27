@@ -15,19 +15,17 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 //! The Marlin zkSNARK implementation
-use crate::{
-    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinSNARK, Proof, UniversalSRS},
-    Parameters,
-};
+use crate::marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinSNARK, Proof, UniversalSRS};
+use crate::Parameters;
 use snarkvm_algorithms::errors::SNARKError;
-use snarkvm_models::{
-    algorithms::SNARK,
-    curves::{to_field_vec::ToConstraintField, PairingEngine},
-    gadgets::r1cs::ConstraintSynthesizer,
-};
+use snarkvm_algorithms::traits::SNARK;
+use snarkvm_curves::traits::to_field_vec::ToConstraintField;
+use snarkvm_curves::traits::PairingEngine;
+use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
 use snarkvm_profiler::{end_timer, start_timer};
 
-pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PolynomialCommitment};
+pub use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
+pub use snarkvm_polycommit::PolynomialCommitment;
 
 use blake2::Blake2s;
 use core::marker::PhantomData;

@@ -18,7 +18,8 @@ use crate::Vec;
 use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
 use core::marker::PhantomData;
-use digest::{generic_array::GenericArray, Digest};
+use digest::generic_array::GenericArray;
+use digest::Digest;
 use rand_chacha::ChaChaRng;
 use rand_core::{RngCore, SeedableRng};
 

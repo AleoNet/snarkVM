@@ -14,34 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    algorithms::{
-        crh::{BoweHopwoodPedersenCompressedCRHGadget, PedersenCRHGadget, PedersenCompressedCRHGadget},
-        merkle_tree::*,
-    },
-    curves::edwards_bls12::EdwardsBlsGadget,
-};
-use snarkvm_algorithms::{
-    crh::{BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH, PedersenSize},
-    define_masked_merkle_tree_parameters,
-    merkle_tree::MerkleTree,
-};
-use snarkvm_curves::{
-    bls12_377::Fr,
-    edwards_bls12::{EdwardsAffine, EdwardsProjective},
-};
-use snarkvm_models::{
-    algorithms::{MaskedMerkleParameters, MerkleParameters, CRH},
-    curves::PrimeField,
-    gadgets::{
-        algorithms::{CRHGadget, MaskedCRHGadget},
-        r1cs::{ConstraintSystem, TestConstraintSystem},
-        utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8},
-    },
-};
+use crate::algorithms::crh::{BoweHopwoodPedersenCompressedCRHGadget, PedersenCRHGadget, PedersenCompressedCRHGadget};
+use crate::algorithms::merkle_tree::*;
+use crate::curves::edwards_bls12::EdwardsBlsGadget;
+use crate::traits::algorithms::{CRHGadget, MaskedCRHGadget};
+use crate::traits::r1cs::{ConstraintSystem, TestConstraintSystem};
+use crate::traits::utilities::alloc::AllocGadget;
+use crate::traits::utilities::eq::EqGadget;
+use crate::traits::utilities::uint::UInt8;
+use snarkvm_algorithms::crh::{BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH, PedersenSize};
+use snarkvm_algorithms::define_masked_merkle_tree_parameters;
+use snarkvm_algorithms::merkle_tree::MerkleTree;
+use snarkvm_algorithms::traits::{MaskedMerkleParameters, MerkleParameters, CRH};
+use snarkvm_curves::bls12_377::Fr;
+use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsProjective};
+use snarkvm_curves::traits::PrimeField;
 use snarkvm_utilities::ToBytes;
 
-use blake2::{digest::Digest, Blake2s};
+use blake2::digest::Digest;
+use blake2::Blake2s;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Size;

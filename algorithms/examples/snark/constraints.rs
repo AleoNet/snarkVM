@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_curves::traits::Field;
 use snarkvm_gadgets::errors::SynthesisError;
-use snarkvm_models::{
-    curves::Field,
-    gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem, LinearCombination},
-};
+use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem, LinearCombination};
 
 use std::marker::PhantomData;
 

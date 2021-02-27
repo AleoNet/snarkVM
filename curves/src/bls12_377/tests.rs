@@ -15,55 +15,56 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #![allow(unused_imports)]
-use crate::{
-    bls12_377::{
-        g1::Bls12_377G1Parameters,
-        g2::Bls12_377G2Parameters,
-        Bls12_377,
-        Fq,
-        Fq12,
-        Fq2,
-        Fq2Parameters,
-        Fq6,
-        Fq6Parameters,
-        FqParameters,
-        Fr,
-        G1Affine,
-        G1Projective,
-        G2Affine,
-        G2Projective,
-    },
-    templates::{short_weierstrass::tests::sw_tests, twisted_edwards_extended::tests::edwards_test},
-    traits::{
-        fp6_3over2::Fp6Parameters,
-        tests_curve::curve_tests,
-        tests_field::{field_serialization_test, field_test, frobenius_test, primefield_test, sqrt_field_test},
-        tests_group::group_test,
-        AffineCurve,
-        Field,
-        Fp2Parameters,
-        FpParameters,
-        LegendreSymbol::*,
-        One,
-        PairingEngine,
-        PrimeField,
-        ProjectiveCurve,
-        SWModelParameters,
-        SquareRootField,
-        Zero,
-    },
+use crate::bls12_377::g1::Bls12_377G1Parameters;
+use crate::bls12_377::g2::Bls12_377G2Parameters;
+use crate::bls12_377::{
+    Bls12_377,
+    Fq,
+    Fq12,
+    Fq2,
+    Fq2Parameters,
+    Fq6,
+    Fq6Parameters,
+    FqParameters,
+    Fr,
+    G1Affine,
+    G1Projective,
+    G2Affine,
+    G2Projective,
 };
-use snarkvm_utilities::{
-    biginteger::{BigInteger, BigInteger384},
-    rand::UniformRand,
+use crate::templates::short_weierstrass::tests::sw_tests;
+use crate::templates::twisted_edwards_extended::tests::edwards_test;
+use crate::traits::fp6_3over2::Fp6Parameters;
+use crate::traits::tests_curve::curve_tests;
+use crate::traits::tests_field::{
+    field_serialization_test,
+    field_test,
+    frobenius_test,
+    primefield_test,
+    sqrt_field_test,
 };
+use crate::traits::tests_group::group_test;
+use crate::traits::LegendreSymbol::*;
+use crate::traits::{
+    AffineCurve,
+    Field,
+    Fp2Parameters,
+    FpParameters,
+    One,
+    PairingEngine,
+    PrimeField,
+    ProjectiveCurve,
+    SWModelParameters,
+    SquareRootField,
+    Zero,
+};
+use snarkvm_utilities::biginteger::{BigInteger, BigInteger384};
+use snarkvm_utilities::rand::UniformRand;
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
-use std::{
-    cmp::Ordering,
-    ops::{AddAssign, MulAssign, SubAssign},
-};
+use std::cmp::Ordering;
+use std::ops::{AddAssign, MulAssign, SubAssign};
 
 pub(crate) const ITERATIONS: usize = 5;
 

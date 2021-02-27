@@ -35,11 +35,9 @@ use std::time::{Duration, Instant};
 use snarkvm_curves::bls12_377::{Bls12_377, Fr};
 
 // We'll use these interfaces to construct our circuit.
+use snarkvm_curves::traits::Field;
 use snarkvm_gadgets::errors::SynthesisError;
-use snarkvm_models::{
-    curves::Field,
-    gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem},
-};
+use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 
 const MIMC_ROUNDS: usize = 322;
 

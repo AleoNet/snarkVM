@@ -15,26 +15,20 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::SynthesisError;
+use crate::traits::curves::{CompressedGroupGadget, FieldGadget, GroupGadget};
+use crate::traits::r1cs::{ConstraintSystem, Namespace};
+use crate::traits::utilities::alloc::AllocGadget;
+use crate::traits::utilities::boolean::Boolean;
+use crate::traits::utilities::eq::{ConditionalEqGadget, EqGadget, NEqGadget};
+use crate::traits::utilities::select::CondSelectGadget;
+use crate::traits::utilities::uint::UInt8;
+use crate::traits::utilities::{ToBitsGadget, ToBytesGadget};
 use snarkvm_curves::templates::twisted_edwards_extended::GroupAffine as TEAffine;
-use snarkvm_models::{
-    curves::{Field, MontgomeryModelParameters, TEModelParameters},
-    gadgets::{
-        curves::{CompressedGroupGadget, FieldGadget, GroupGadget},
-        r1cs::{ConstraintSystem, Namespace},
-        utilities::{
-            alloc::AllocGadget,
-            boolean::Boolean,
-            eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-            select::CondSelectGadget,
-            uint::UInt8,
-            ToBitsGadget,
-            ToBytesGadget,
-        },
-    },
-};
+use snarkvm_curves::traits::{Field, MontgomeryModelParameters, TEModelParameters};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
-use std::{borrow::Borrow, marker::PhantomData};
+use std::borrow::Borrow;
+use std::marker::PhantomData;
 
 #[cfg(test)]
 pub mod test;
@@ -54,11 +48,9 @@ pub struct MontgomeryAffineGadget<P: TEModelParameters, F: Field, FG: FieldGadge
 
 mod montgomery_affine_impl {
     use super::*;
+    use crate::traits::r1cs::Assignment;
     use snarkvm_curves::templates::twisted_edwards_extended::GroupAffine;
-    use snarkvm_models::{
-        curves::{Field, One, Zero},
-        gadgets::r1cs::Assignment,
-    };
+    use snarkvm_curves::traits::{Field, One, Zero};
     use std::ops::{AddAssign, MulAssign, SubAssign};
 
     impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> MontgomeryAffineGadget<P, F, FG> {
@@ -243,10 +235,8 @@ impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> Eq for Af
 
 mod affine_impl {
     use super::*;
-    use snarkvm_models::{
-        curves::{AffineCurve, Field, One, PrimeField},
-        gadgets::r1cs::Assignment,
-    };
+    use crate::traits::r1cs::Assignment;
+    use snarkvm_curves::traits::{AffineCurve, Field, One, PrimeField};
 
     use std::ops::Neg;
 
@@ -607,11 +597,9 @@ mod affine_impl {
 
 mod projective_impl {
     use super::*;
+    use crate::traits::r1cs::Assignment;
     use snarkvm_curves::templates::twisted_edwards_extended::GroupProjective as TEProjective;
-    use snarkvm_models::{
-        curves::{AffineCurve, Field, One, PrimeField, ProjectiveCurve, Zero},
-        gadgets::r1cs::Assignment,
-    };
+    use snarkvm_curves::traits::{AffineCurve, Field, One, PrimeField, ProjectiveCurve, Zero};
     use std::ops::Neg;
 
     /// Based on 2 input bits, output on a group element from a 4 element table.

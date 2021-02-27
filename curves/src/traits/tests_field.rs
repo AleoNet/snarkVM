@@ -15,10 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::curves::{Field, LegendreSymbol, PrimeField, SquareRootField};
-use snarkvm_utilities::{
-    io::Cursor,
-    serialize::{CanonicalDeserialize, CanonicalSerialize, Flags, SWFlags},
-};
+use snarkvm_utilities::io::Cursor;
+use snarkvm_utilities::serialize::{CanonicalDeserialize, CanonicalSerialize, Flags, SWFlags};
 
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;

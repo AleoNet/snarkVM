@@ -15,10 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::bw6_761::{Fq, Fq3, Fq3Parameters};
-use snarkvm_models::{
-    curves::fp6_2over3::{Fp6, Fp6Parameters},
-    field,
-};
+use crate::traits::fp6_2over3::{Fp6, Fp6Parameters};
+use snarkvm_models::field;
 use snarkvm_utilities::biginteger::BigInteger768 as BigInteger;
 
 pub type Fq6 = Fp6<Fq6Parameters>;

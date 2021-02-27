@@ -14,14 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::{
-    bw6_761::Fq,
-    traits::{Field, PrimeField, SquareRootField},
-};
-use snarkvm_utilities::{
-    biginteger::{BigInteger, BigInteger768 as FqRepr},
-    rand::UniformRand,
-};
+use snarkvm_curves::bw6_761::Fq;
+use snarkvm_curves::traits::{Field, PrimeField, SquareRootField};
+use snarkvm_utilities::biginteger::{BigInteger, BigInteger768 as FqRepr};
+use snarkvm_utilities::rand::UniformRand;
 
 use criterion::Criterion;
 use rand::SeedableRng;

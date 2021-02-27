@@ -15,27 +15,22 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::SynthesisError;
+use crate::traits::algorithms::SignaturePublicKeyRandomizationGadget;
+use crate::traits::curves::GroupGadget;
+use crate::traits::r1cs::ConstraintSystem;
+use crate::traits::utilities::alloc::AllocGadget;
+use crate::traits::utilities::boolean::Boolean;
+use crate::traits::utilities::eq::{ConditionalEqGadget, EqGadget};
+use crate::traits::utilities::uint::unsigned_integer::{UInt, UInt8};
+use crate::traits::utilities::ToBytesGadget;
 use snarkvm_algorithms::signature::{SchnorrParameters, SchnorrPublicKey, SchnorrSignature};
-use snarkvm_models::{
-    curves::{Field, Group},
-    gadgets::{
-        algorithms::SignaturePublicKeyRandomizationGadget,
-        curves::GroupGadget,
-        r1cs::ConstraintSystem,
-        utilities::{
-            alloc::AllocGadget,
-            boolean::Boolean,
-            eq::{ConditionalEqGadget, EqGadget},
-            uint::unsigned_integer::{UInt, UInt8},
-            ToBytesGadget,
-        },
-    },
-};
+use snarkvm_curves::traits::{Field, Group};
 use snarkvm_utilities::serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 use digest::Digest;
 use itertools::Itertools;
-use std::{borrow::Borrow, marker::PhantomData};
+use std::borrow::Borrow;
+use std::marker::PhantomData;
 
 #[derive(Clone)]
 pub struct SchnorrParametersGadget<G: Group, F: Field, D: Digest> {

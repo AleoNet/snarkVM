@@ -14,16 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{curves::templates::bls12::AffineGadget, errors::SynthesisError};
+use crate::curves::templates::bls12::AffineGadget;
+use crate::errors::SynthesisError;
+use crate::traits::curves::{FieldGadget, Fp2Gadget, GroupGadget};
+use crate::traits::r1cs::ConstraintSystem;
+use crate::traits::utilities::eq::NEqGadget;
+use crate::traits::utilities::uint::UInt8;
+use crate::traits::utilities::ToBytesGadget;
 use snarkvm_curves::templates::bls12::{Bls12Parameters, TwistType};
-use snarkvm_models::{
-    curves::{Field, One},
-    gadgets::{
-        curves::{FieldGadget, Fp2Gadget, GroupGadget},
-        r1cs::ConstraintSystem,
-        utilities::{eq::NEqGadget, uint::UInt8, ToBytesGadget},
-    },
-};
+use snarkvm_curves::traits::{Field, One};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::fmt::Debug;

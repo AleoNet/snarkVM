@@ -14,46 +14,37 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    base_dpc::{
-        inner_circuit::InnerCircuit,
-        inner_circuit_verifier_input::InnerCircuitVerifierInput,
-        outer_circuit::OuterCircuit,
-        outer_circuit_verifier_input::OuterCircuitVerifierInput,
-        program::{NoopCircuit, ProgramLocalData},
-        transaction::DPCTransaction,
-        BaseDPCComponents,
-        LocalData as DPCLocalData,
-        DPC,
-    },
-    traits::DPCComponents,
-};
-use snarkvm_algorithms::{
-    commitment::{Blake2sCommitment, PedersenCompressedCommitment},
-    crh::{BoweHopwoodPedersenCompressedCRH, PedersenSize},
-    define_merkle_tree_parameters,
-    encryption::GroupEncryption,
-    prf::Blake2s,
-    signature::SchnorrSignature,
-    snark::{gm17::GM17, groth16::Groth16},
-};
-use snarkvm_curves::{
-    bls12_377::{fq::Fq as Bls12_377Fq, fr::Fr as Bls12_377Fr, Bls12_377},
-    bw6_761::BW6_761,
-    edwards_bls12::{EdwardsAffine, EdwardsParameters, EdwardsProjective as EdwardsBls},
-    edwards_sw6::EdwardsProjective as EdwardsSW,
-};
-use snarkvm_gadgets::{
-    algorithms::{
-        commitment::{Blake2sCommitmentGadget, PedersenCompressedCommitmentGadget},
-        crh::BoweHopwoodPedersenCompressedCRHGadget,
-        encryption::GroupEncryptionGadget,
-        prf::Blake2sGadget,
-        signature::SchnorrPublicKeyRandomizationGadget,
-        snark::{GM17VerifierGadget, Groth16VerifierGadget},
-    },
-    curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBlsGadget, edwards_sw6::EdwardsSWGadget},
-};
+use crate::base_dpc::inner_circuit::InnerCircuit;
+use crate::base_dpc::inner_circuit_verifier_input::InnerCircuitVerifierInput;
+use crate::base_dpc::outer_circuit::OuterCircuit;
+use crate::base_dpc::outer_circuit_verifier_input::OuterCircuitVerifierInput;
+use crate::base_dpc::program::{NoopCircuit, ProgramLocalData};
+use crate::base_dpc::transaction::DPCTransaction;
+use crate::base_dpc::{BaseDPCComponents, LocalData as DPCLocalData, DPC};
+use crate::traits::DPCComponents;
+use snarkvm_algorithms::commitment::{Blake2sCommitment, PedersenCompressedCommitment};
+use snarkvm_algorithms::crh::{BoweHopwoodPedersenCompressedCRH, PedersenSize};
+use snarkvm_algorithms::define_merkle_tree_parameters;
+use snarkvm_algorithms::encryption::GroupEncryption;
+use snarkvm_algorithms::prf::Blake2s;
+use snarkvm_algorithms::signature::SchnorrSignature;
+use snarkvm_algorithms::snark::gm17::GM17;
+use snarkvm_algorithms::snark::groth16::Groth16;
+use snarkvm_curves::bls12_377::fq::Fq as Bls12_377Fq;
+use snarkvm_curves::bls12_377::fr::Fr as Bls12_377Fr;
+use snarkvm_curves::bls12_377::Bls12_377;
+use snarkvm_curves::bw6_761::BW6_761;
+use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsParameters, EdwardsProjective as EdwardsBls};
+use snarkvm_curves::edwards_sw6::EdwardsProjective as EdwardsSW;
+use snarkvm_gadgets::algorithms::commitment::{Blake2sCommitmentGadget, PedersenCompressedCommitmentGadget};
+use snarkvm_gadgets::algorithms::crh::BoweHopwoodPedersenCompressedCRHGadget;
+use snarkvm_gadgets::algorithms::encryption::GroupEncryptionGadget;
+use snarkvm_gadgets::algorithms::prf::Blake2sGadget;
+use snarkvm_gadgets::algorithms::signature::SchnorrPublicKeyRandomizationGadget;
+use snarkvm_gadgets::algorithms::snark::{GM17VerifierGadget, Groth16VerifierGadget};
+use snarkvm_gadgets::curves::bls12_377::PairingGadget;
+use snarkvm_gadgets::curves::edwards_bls12::EdwardsBlsGadget;
+use snarkvm_gadgets::curves::edwards_sw6::EdwardsSWGadget;
 
 use blake2::Blake2s as Blake2sHash;
 

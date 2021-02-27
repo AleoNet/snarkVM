@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{generator::KeypairAssembly, prover::ProvingAssignment};
+use super::generator::KeypairAssembly;
+use super::prover::ProvingAssignment;
 use crate::fft::EvaluationDomain;
+use snarkvm_curves::traits::{Field, One, PairingEngine, Zero};
 use snarkvm_gadgets::errors::{SynthesisError, SynthesisResult};
-use snarkvm_models::{
-    curves::{Field, One, PairingEngine, Zero},
-    gadgets::r1cs::Index,
-};
+use snarkvm_gadgets::traits::r1cs::Index;
 
 use std::ops::{AddAssign, SubAssign};
 

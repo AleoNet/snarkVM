@@ -14,11 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    error,
-    io::{Read, Result as IoResult, Write},
-    Vec,
-};
+use crate::io::{Read, Result as IoResult, Write};
+use crate::{error, Vec};
 
 pub trait ToBytes {
     /// Serializes `self` into `writer`.

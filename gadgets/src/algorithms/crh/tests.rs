@@ -14,15 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    algorithms::crh::{
-        BoweHopwoodPedersenCRHGadget,
-        BoweHopwoodPedersenCompressedCRHGadget,
-        PedersenCRHGadget,
-        PedersenCompressedCRHGadget,
-    },
-    curves::edwards_bls12::EdwardsBlsGadget,
+use crate::algorithms::crh::{
+    BoweHopwoodPedersenCRHGadget,
+    BoweHopwoodPedersenCompressedCRHGadget,
+    PedersenCRHGadget,
+    PedersenCompressedCRHGadget,
 };
+use crate::curves::edwards_bls12::EdwardsBlsGadget;
+use crate::traits::algorithms::{CRHGadget, MaskedCRHGadget};
+use crate::traits::r1cs::{ConstraintSystem, TestConstraintSystem};
+use crate::traits::utilities::alloc::AllocGadget;
+use crate::traits::utilities::eq::EqGadget;
+use crate::traits::utilities::uint::UInt8;
 use snarkvm_algorithms::crh::{
     BoweHopwoodPedersenCRH,
     BoweHopwoodPedersenCompressedCRH,
@@ -30,19 +33,10 @@ use snarkvm_algorithms::crh::{
     PedersenCompressedCRH,
     PedersenSize,
 };
-use snarkvm_curves::{
-    bls12_377::Fr,
-    edwards_bls12::{EdwardsAffine, EdwardsProjective},
-};
-use snarkvm_models::{
-    algorithms::{CRHParameters, CRH},
-    curves::{Field, PrimeField},
-    gadgets::{
-        algorithms::{CRHGadget, MaskedCRHGadget},
-        r1cs::{ConstraintSystem, TestConstraintSystem},
-        utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8},
-    },
-};
+use snarkvm_algorithms::traits::{CRHParameters, CRH};
+use snarkvm_curves::bls12_377::Fr;
+use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsProjective};
+use snarkvm_curves::traits::{Field, PrimeField};
 
 use rand::{thread_rng, Rng};
 

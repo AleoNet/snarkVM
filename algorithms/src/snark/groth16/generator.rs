@@ -14,15 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, VerifyingKey};
-use crate::{cfg_into_iter, cfg_iter, fft::EvaluationDomain, msm::FixedBaseMSM};
-use snarkvm_errors::{gadgets::SynthesisError, serialization::SerializationError};
-use snarkvm_models::{
-    curves::{Field, Group, One, PairingEngine, PrimeField, ProjectiveCurve, Zero},
-    gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable},
-};
+use super::r1cs_to_qap::R1CStoQAP;
+use super::{push_constraints, Parameters, VerifyingKey};
+use crate::fft::EvaluationDomain;
+use crate::msm::FixedBaseMSM;
+use crate::{cfg_into_iter, cfg_iter};
+use snarkvm_curves::traits::{Field, Group, One, PairingEngine, PrimeField, ProjectiveCurve, Zero};
+use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_errors::serialization::SerializationError;
+use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable};
 use snarkvm_profiler::{end_timer, start_timer};
-use snarkvm_utilities::{rand::UniformRand, serialize::*};
+use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::serialize::*;
 
 use rand::Rng;
 

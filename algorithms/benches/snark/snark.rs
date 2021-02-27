@@ -17,14 +17,12 @@
 #[macro_use]
 extern crate criterion;
 
+use crate::traits::SNARK;
 use snarkvm_algorithms::snark::gm17::GM17;
 use snarkvm_curves::bls12_377::{Bls12_377, Fr};
+use snarkvm_curves::traits::Field;
 use snarkvm_gadgets::errors::SynthesisError;
-use snarkvm_models::{
-    algorithms::SNARK,
-    curves::Field,
-    gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem},
-};
+use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 
 use criterion::Criterion;
 use rand::{self, thread_rng, Rng};

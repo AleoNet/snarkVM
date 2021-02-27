@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, Proof};
-use crate::{cfg_into_iter, msm::VariableBaseMSM};
+use super::r1cs_to_qap::R1CStoQAP;
+use super::{push_constraints, Parameters, Proof};
+use crate::cfg_into_iter;
+use crate::msm::VariableBaseMSM;
+use snarkvm_curves::traits::{AffineCurve, Group, One, PairingEngine, PrimeField, ProjectiveCurve, Zero};
 use snarkvm_gadgets::errors::SynthesisError;
-use snarkvm_models::{
-    curves::{AffineCurve, Group, One, PairingEngine, PrimeField, ProjectiveCurve, Zero},
-    gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable},
-};
+use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable};
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_utilities::rand::UniformRand;
 

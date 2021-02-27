@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    curves::templates::bls12::{G1Gadget, G1PreparedGadget, G2Gadget, G2PreparedGadget},
-    errors::SynthesisError,
-};
+use crate::curves::templates::bls12::{G1Gadget, G1PreparedGadget, G2Gadget, G2PreparedGadget};
+use crate::errors::SynthesisError;
+use crate::traits::curves::{FieldGadget, Fp12Gadget, Fp2Gadget, FpGadget, PairingGadget};
+use crate::traits::r1cs::ConstraintSystem;
 use snarkvm_curves::templates::bls12::{
     Bls12,
     Bls12Parameters,
@@ -29,13 +29,7 @@ use snarkvm_curves::templates::bls12::{
     G2Projective,
     TwistType,
 };
-use snarkvm_models::{
-    curves::{Fp12, ModelParameters, PairingCurve},
-    gadgets::{
-        curves::{FieldGadget, Fp12Gadget, Fp2Gadget, FpGadget, PairingGadget},
-        r1cs::ConstraintSystem,
-    },
-};
+use snarkvm_curves::traits::{Fp12, ModelParameters, PairingCurve};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::marker::PhantomData;

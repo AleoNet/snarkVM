@@ -18,10 +18,8 @@ use crate::snark::gm17::{PreparedVerifyingKey, Proof, VerifyingKey};
 use snarkvm_curves::traits::{AffineCurve, One, PairingCurve, PairingEngine, PrimeField, ProjectiveCurve};
 use snarkvm_gadgets::errors::SynthesisError;
 
-use std::{
-    iter,
-    ops::{AddAssign, MulAssign, Neg},
-};
+use std::iter;
+use std::ops::{AddAssign, MulAssign, Neg};
 
 pub fn prepare_verifying_key<E: PairingEngine>(vk: VerifyingKey<E>) -> PreparedVerifyingKey<E> {
     let g_alpha = vk.g_alpha_g1;

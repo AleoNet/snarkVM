@@ -34,14 +34,13 @@ extern crate snarkvm_profiler;
 
 pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
 use snarkvm_curves::traits::Field;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    error as error_fn,
-    errors::SerializationError,
-    serialize::*,
-};
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::error as error_fn;
+use snarkvm_utilities::errors::SerializationError;
+use snarkvm_utilities::serialize::*;
 
-use core::{fmt::Debug, iter::FromIterator};
+use core::fmt::Debug;
+use core::iter::FromIterator;
 use rand_core::RngCore;
 
 #[cfg(not(feature = "std"))]
@@ -498,7 +497,8 @@ fn lc_query_set_to_poly_query_set<'a, F: 'a + Field>(
 #[cfg(test)]
 pub mod tests {
     use crate::*;
-    use rand::{distributions::Distribution, Rng};
+    use rand::distributions::Distribution;
+    use rand::Rng;
     use snarkvm_curves::traits::Field;
     use snarkvm_utilities::rand::test_rng;
 

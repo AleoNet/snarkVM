@@ -15,17 +15,17 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::SynthesisError;
-use snarkvm_models::{
-    curves::{ModelParameters, MontgomeryModelParameters, PrimeField},
-    gadgets::{
-        curves::FpGadget,
-        r1cs::ConstraintSystem,
-        utilities::{alloc::AllocGadget, boolean::Boolean, uint::UInt8, ToBitsGadget, ToBytesGadget},
-    },
-};
+use crate::traits::curves::FpGadget;
+use crate::traits::r1cs::ConstraintSystem;
+use crate::traits::utilities::alloc::AllocGadget;
+use crate::traits::utilities::boolean::Boolean;
+use crate::traits::utilities::uint::UInt8;
+use crate::traits::utilities::{ToBitsGadget, ToBytesGadget};
+use snarkvm_curves::traits::{ModelParameters, MontgomeryModelParameters, PrimeField};
 use snarkvm_utilities::{to_bytes, ToBytes};
 
-use std::{borrow::Borrow, marker::PhantomData};
+use std::borrow::Borrow;
+use std::marker::PhantomData;
 
 #[derive(Clone, Debug)]
 pub struct Elligator2FieldGadget<P: MontgomeryModelParameters, F: PrimeField>(pub FpGadget<F>, PhantomData<P>);

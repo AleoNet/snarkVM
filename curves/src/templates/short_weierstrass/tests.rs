@@ -16,17 +16,12 @@
 
 use super::short_weierstrass_jacobian::{GroupAffine, GroupProjective};
 
-use snarkvm_utilities::{
-    io::Cursor,
-    rand::UniformRand,
-    serialize::{CanonicalDeserialize, CanonicalSerialize},
-};
+use snarkvm_utilities::io::Cursor;
+use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::serialize::{CanonicalDeserialize, CanonicalSerialize};
 
-use crate::traits::{
-    pairing_engine::{AffineCurve, ProjectiveCurve},
-    SWModelParameters,
-    Zero,
-};
+use crate::traits::pairing_engine::{AffineCurve, ProjectiveCurve};
+use crate::traits::{SWModelParameters, Zero};
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;

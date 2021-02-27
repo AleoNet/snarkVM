@@ -19,10 +19,8 @@ use snarkvm_algorithms::crh::{double_sha256, sha256d_to_u64};
 use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
 use serde::{Deserialize, Serialize};
-use std::{
-    io::{Read, Result as IoResult, Write},
-    mem::size_of,
-};
+use std::io::{Read, Result as IoResult, Write};
+use std::mem::size_of;
 
 /// Block header.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

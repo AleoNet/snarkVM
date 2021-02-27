@@ -14,21 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{algorithms::encryption::*, curves::edwards_bls12::EdwardsBlsGadget};
+use crate::algorithms::encryption::*;
+use crate::curves::edwards_bls12::EdwardsBlsGadget;
+use crate::traits::algorithms::EncryptionGadget;
+use crate::traits::r1cs::{ConstraintSystem, TestConstraintSystem};
+use crate::traits::utilities::alloc::AllocGadget;
+use crate::traits::utilities::eq::EqGadget;
 use snarkvm_algorithms::encryption::GroupEncryption;
-use snarkvm_curves::{
-    bls12_377::Fr,
-    edwards_bls12::{EdwardsAffine, EdwardsProjective},
-};
-use snarkvm_models::{
-    algorithms::EncryptionScheme,
-    curves::{Group, ProjectiveCurve},
-    gadgets::{
-        algorithms::EncryptionGadget,
-        r1cs::{ConstraintSystem, TestConstraintSystem},
-        utilities::{alloc::AllocGadget, eq::EqGadget},
-    },
-};
+use snarkvm_algorithms::traits::EncryptionScheme;
+use snarkvm_curves::bls12_377::Fr;
+use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsProjective};
+use snarkvm_curves::traits::{Group, ProjectiveCurve};
 
 use blake2::Blake2s;
 use rand::{Rng, SeedableRng};

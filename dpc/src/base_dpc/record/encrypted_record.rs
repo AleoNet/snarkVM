@@ -15,12 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::base_dpc::BaseDPCComponents;
-use snarkvm_models::{
-    algorithms::EncryptionScheme,
-    curves::{AffineCurve, ProjectiveCurve},
-    dpc::DPCComponents,
-};
-use snarkvm_utilities::{bits_to_bytes, bytes_to_bits, to_bytes, variable_length_integer::*, FromBytes, ToBytes};
+use crate::traits::DPCComponents;
+use snarkvm_algorithms::traits::EncryptionScheme;
+use snarkvm_curves::traits::{AffineCurve, ProjectiveCurve};
+use snarkvm_utilities::variable_length_integer::*;
+use snarkvm_utilities::{bits_to_bytes, bytes_to_bits, to_bytes, FromBytes, ToBytes};
 
 use itertools::Itertools;
 

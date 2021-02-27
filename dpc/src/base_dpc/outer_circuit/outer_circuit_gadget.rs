@@ -14,25 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::base_dpc::{parameters::SystemParameters, program::PrivateProgramInput, BaseDPCComponents};
+use crate::base_dpc::parameters::SystemParameters;
+use crate::base_dpc::program::PrivateProgramInput;
+use crate::base_dpc::BaseDPCComponents;
 use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
+use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, SNARK};
+use snarkvm_curves::traits::to_field_vec::ToConstraintField;
 use snarkvm_gadgets::errors::SynthesisError;
-use snarkvm_models::{
-    algorithms::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
-    curves::to_field_vec::ToConstraintField,
-    gadgets::{
-        algorithms::{CRHGadget, CommitmentGadget, SNARKVerifierGadget},
-        r1cs::ConstraintSystem,
-        utilities::{
-            alloc::{AllocBytesGadget, AllocGadget},
-            eq::EqGadget,
-            uint::unsigned_integer::{UInt, UInt8},
-            ToBytesGadget,
-        },
-    },
-};
+use snarkvm_gadgets::traits::algorithms::{CRHGadget, CommitmentGadget, SNARKVerifierGadget};
+use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
+use snarkvm_gadgets::traits::utilities::alloc::{AllocBytesGadget, AllocGadget};
+use snarkvm_gadgets::traits::utilities::eq::EqGadget;
+use snarkvm_gadgets::traits::utilities::uint::unsigned_integer::{UInt, UInt8};
+use snarkvm_gadgets::traits::utilities::ToBytesGadget;
 use snarkvm_objects::AleoAmount;
-use snarkvm_utilities::{bytes::ToBytes, to_bytes};
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::to_bytes;
 
 use itertools::Itertools;
 

@@ -14,54 +14,48 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::base_dpc::{
-    parameters::SystemParameters,
-    record::DPCRecord,
-    record_encryption::RecordEncryptionGadgetComponents,
-    BaseDPCComponents,
-};
+use crate::base_dpc::parameters::SystemParameters;
+use crate::base_dpc::record::DPCRecord;
+use crate::base_dpc::record_encryption::RecordEncryptionGadgetComponents;
+use crate::base_dpc::BaseDPCComponents;
+use crate::traits::Record;
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTreeDigest};
-use snarkvm_gadgets::{
-    algorithms::{encoding::Elligator2FieldGadget, merkle_tree::merkle_path::MerklePathGadget},
-    errors::SynthesisError,
+use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, PRF};
+use snarkvm_curves::traits::{
+    AffineCurve,
+    Field,
+    Group,
+    MontgomeryModelParameters,
+    One,
+    PrimeField,
+    ProjectiveCurve,
+    TEModelParameters,
 };
-use snarkvm_models::{
-    algorithms::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, PRF},
-    curves::{
-        AffineCurve,
-        Field,
-        Group,
-        MontgomeryModelParameters,
-        One,
-        PrimeField,
-        ProjectiveCurve,
-        TEModelParameters,
-    },
-    dpc::Record,
-    gadgets::{
-        algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignaturePublicKeyRandomizationGadget},
-        curves::{FieldGadget, FpGadget},
-        r1cs::ConstraintSystem,
-        utilities::{
-            alloc::AllocGadget,
-            arithmetic::{add::Add, sub::Sub},
-            boolean::Boolean,
-            eq::{ConditionalEqGadget, EqGadget},
-            int::{Int, Int64},
-            uint::UInt8,
-            ToBitsGadget,
-            ToBytesGadget,
-        },
-    },
+use snarkvm_gadgets::algorithms::encoding::Elligator2FieldGadget;
+use snarkvm_gadgets::algorithms::merkle_tree::merkle_path::MerklePathGadget;
+use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_gadgets::traits::algorithms::{
+    CRHGadget,
+    CommitmentGadget,
+    EncryptionGadget,
+    PRFGadget,
+    SignaturePublicKeyRandomizationGadget,
 };
+use snarkvm_gadgets::traits::curves::{FieldGadget, FpGadget};
+use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
+use snarkvm_gadgets::traits::utilities::alloc::AllocGadget;
+use snarkvm_gadgets::traits::utilities::arithmetic::add::Add;
+use snarkvm_gadgets::traits::utilities::arithmetic::sub::Sub;
+use snarkvm_gadgets::traits::utilities::boolean::Boolean;
+use snarkvm_gadgets::traits::utilities::eq::{ConditionalEqGadget, EqGadget};
+use snarkvm_gadgets::traits::utilities::int::{Int, Int64};
+use snarkvm_gadgets::traits::utilities::uint::UInt8;
+use snarkvm_gadgets::traits::utilities::{ToBitsGadget, ToBytesGadget};
 use snarkvm_objects::{AccountPrivateKey, AleoAmount};
-use snarkvm_utilities::{
-    bits_to_bytes,
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-};
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{bits_to_bytes, to_bytes};
 
-use snarkvm_models::gadgets::utilities::eq::NEqGadget;
+use snarkvm_gadgets::traits::utilities::eq::NEqGadget;
 use std::ops::Mul;
 
 #[allow(clippy::too_many_arguments)]

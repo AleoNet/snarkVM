@@ -16,15 +16,14 @@
 
 use crate::{account_format, AccountError};
 use snarkvm_algorithms::prf::Blake2s;
-use snarkvm_models::{
-    algorithms::{CommitmentScheme, EncryptionScheme, SignatureScheme, PRF},
-    dpc::DPCComponents,
-};
+use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, PRF};
+use snarkvm_dpc::traits::DPCComponents;
 use snarkvm_utilities::{bytes_to_bits, to_bytes, FromBytes, ToBytes};
 
 use base58::{FromBase58, ToBase58};
 use rand::Rng;
-use std::{fmt, str::FromStr};
+use std::fmt;
+use std::str::FromStr;
 
 #[derive(Derivative)]
 #[derivative(

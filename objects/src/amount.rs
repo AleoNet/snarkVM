@@ -17,10 +17,8 @@
 use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
 use serde::Serialize;
-use std::{
-    fmt,
-    io::{Read, Result as IoResult, Write},
-};
+use std::fmt;
+use std::io::{Read, Result as IoResult, Write};
 
 /// Represents the amount of ALEOs in UNITS
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]

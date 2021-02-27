@@ -14,18 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    ahp::{matrices, prover::ProverConstraintSystem, verifier, AHPError, CircuitInfo},
-    String,
-    ToString,
-    Vec,
-};
-use snarkvm_algorithms::{cfg_iter_mut, fft::EvaluationDomain};
+use crate::ahp::prover::ProverConstraintSystem;
+use crate::ahp::{matrices, verifier, AHPError, CircuitInfo};
+use crate::{String, ToString, Vec};
+use snarkvm_algorithms::cfg_iter_mut;
+use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_curves::traits::{batch_inversion, Field, PrimeField};
 use snarkvm_gadgets::errors::SynthesisError;
 use snarkvm_polycommit::{LCTerm, LabeledPolynomial, LinearCombination};
 
-use core::{borrow::Borrow, marker::PhantomData};
+use core::borrow::Borrow;
+use core::marker::PhantomData;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -326,10 +325,8 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
 mod tests {
     use super::*;
     use snarkvm_algorithms::fft::{DenseOrSparsePolynomial, DensePolynomial};
-    use snarkvm_curves::{
-        bls12_377::fr::Fr,
-        traits::{One, Zero},
-    };
+    use snarkvm_curves::bls12_377::fr::Fr;
+    use snarkvm_curves::traits::{One, Zero};
     use snarkvm_utilities::rand::{test_rng, UniformRand};
 
     #[test]

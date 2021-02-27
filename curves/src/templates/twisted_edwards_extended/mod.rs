@@ -14,37 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    impl_edwards_curve_serializer,
-    traits::{
-        AffineCurve,
-        Field,
-        MontgomeryModelParameters as MontgomeryParameters,
-        One,
-        PrimeField,
-        ProjectiveCurve,
-        SquareRootField,
-        TEModelParameters as Parameters,
-        Zero,
-    },
+use crate::impl_edwards_curve_serializer;
+use crate::traits::{
+    AffineCurve,
+    Field,
+    MontgomeryModelParameters as MontgomeryParameters,
+    One,
+    PrimeField,
+    ProjectiveCurve,
+    SquareRootField,
+    TEModelParameters as Parameters,
+    Zero,
 };
-use snarkvm_utilities::{
-    bititerator::BitIteratorBE,
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    serialize::*,
-};
+use snarkvm_utilities::bititerator::BitIteratorBE;
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::serialize::*;
 
-use rand::{
-    distributions::{Distribution, Standard},
-    Rng,
-};
-use std::{
-    fmt::{Display, Formatter, Result as FmtResult},
-    io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
-    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
-};
+use rand::distributions::{Distribution, Standard};
+use rand::Rng;
+use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::io::{Read, Result as IoResult, Write};
+use std::marker::PhantomData;
+use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 pub mod tests;
 use serde::{Deserialize, Serialize};

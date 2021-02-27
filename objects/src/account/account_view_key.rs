@@ -15,15 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{account_format, AccountError, AccountPrivateKey};
-use snarkvm_models::{algorithms::EncryptionScheme, dpc::DPCComponents};
+use snarkvm_algorithms::traits::EncryptionScheme;
+use snarkvm_dpc::traits::DPCComponents;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use base58::{FromBase58, ToBase58};
-use std::{
-    fmt,
-    io::{Read, Result as IoResult, Write},
-    str::FromStr,
-};
+use std::fmt;
+use std::io::{Read, Result as IoResult, Write};
+use std::str::FromStr;
 
 #[derive(Derivative)]
 #[derivative(

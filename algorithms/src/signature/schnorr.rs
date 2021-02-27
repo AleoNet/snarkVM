@@ -15,25 +15,22 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::signature::SchnorrParameters;
-use snarkvm_errors::{algorithms::SignatureError, curves::ConstraintFieldError, serialization::SerializationError};
-use snarkvm_models::{
-    algorithms::SignatureScheme,
-    curves::{to_field_vec::ToConstraintField, Field, Group, One, PrimeField, Zero},
-};
-use snarkvm_utilities::{
-    bytes::{bytes_to_bits, FromBytes, ToBytes},
-    rand::UniformRand,
-    serialize::*,
-    to_bytes,
-};
+use crate::traits::SignatureScheme;
+use snarkvm_curves::traits::to_field_vec::ToConstraintField;
+use snarkvm_curves::traits::{Field, Group, One, PrimeField, Zero};
+use snarkvm_errors::algorithms::SignatureError;
+use snarkvm_errors::curves::ConstraintFieldError;
+use snarkvm_errors::serialization::SerializationError;
+use snarkvm_utilities::bytes::{bytes_to_bits, FromBytes, ToBytes};
+use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::serialize::*;
+use snarkvm_utilities::to_bytes;
 
 use digest::Digest;
 use itertools::Itertools;
 use rand::Rng;
-use std::{
-    hash::Hash,
-    io::{Read, Result as IoResult, Write},
-};
+use std::hash::Hash;
+use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "G: Group"), Debug(bound = "G: Group"), Default(bound = "G: Group"))]

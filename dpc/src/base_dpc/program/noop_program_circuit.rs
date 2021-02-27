@@ -14,19 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    base_dpc::{parameters::SystemParameters, BaseDPCComponents},
-    Assignment,
-};
+use crate::base_dpc::parameters::SystemParameters;
+use crate::base_dpc::BaseDPCComponents;
+use crate::Assignment;
+use snarkvm_algorithms::traits::{CommitmentScheme, CRH};
 use snarkvm_gadgets::errors::SynthesisError;
-use snarkvm_models::{
-    algorithms::{CommitmentScheme, CRH},
-    gadgets::{
-        algorithms::{CRHGadget, CommitmentGadget},
-        r1cs::{ConstraintSynthesizer, ConstraintSystem},
-        utilities::{alloc::AllocGadget, uint::UInt8},
-    },
-};
+use snarkvm_gadgets::traits::algorithms::{CRHGadget, CommitmentGadget};
+use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem};
+use snarkvm_gadgets::traits::utilities::alloc::AllocGadget;
+use snarkvm_gadgets::traits::utilities::uint::UInt8;
 
 /// Always-accept program
 pub struct NoopCircuit<C: BaseDPCComponents> {

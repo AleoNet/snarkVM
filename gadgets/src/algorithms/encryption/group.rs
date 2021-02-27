@@ -15,27 +15,22 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::SynthesisError;
+use crate::traits::algorithms::EncryptionGadget;
+use crate::traits::curves::{CompressedGroupGadget, GroupGadget};
+use crate::traits::r1cs::ConstraintSystem;
+use crate::traits::utilities::alloc::AllocGadget;
+use crate::traits::utilities::boolean::Boolean;
+use crate::traits::utilities::eq::{ConditionalEqGadget, EqGadget};
+use crate::traits::utilities::uint::{UInt, UInt8};
+use crate::traits::utilities::ToBytesGadget;
 use snarkvm_algorithms::encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey};
-use snarkvm_models::{
-    curves::{Field, Group, PrimeField, ProjectiveCurve},
-    gadgets::{
-        algorithms::EncryptionGadget,
-        curves::{CompressedGroupGadget, GroupGadget},
-        r1cs::ConstraintSystem,
-        utilities::{
-            alloc::AllocGadget,
-            boolean::Boolean,
-            eq::{ConditionalEqGadget, EqGadget},
-            uint::{UInt, UInt8},
-            ToBytesGadget,
-        },
-    },
-};
+use snarkvm_curves::traits::{Field, Group, PrimeField, ProjectiveCurve};
 use snarkvm_utilities::{to_bytes, CanonicalDeserialize, CanonicalSerialize, ToBytes};
 
 use digest::Digest;
 use itertools::Itertools;
-use std::{borrow::Borrow, marker::PhantomData};
+use std::borrow::Borrow;
+use std::marker::PhantomData;
 
 /// Group encryption parameters gadget
 #[derive(Clone, Debug, PartialEq, Eq)]

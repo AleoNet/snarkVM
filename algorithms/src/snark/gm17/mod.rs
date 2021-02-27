@@ -18,8 +18,10 @@
 //! [GM17]: https://eprint.iacr.org/2017/540
 
 use snarkvm_curves::traits::pairing_engine::{AffineCurve, PairingCurve, PairingEngine};
-use snarkvm_errors::{gadgets::SynthesisResult, serialization::SerializationError};
-use snarkvm_utilities::{serialize::*, FromBytes, ToBytes};
+use snarkvm_errors::gadgets::SynthesisResult;
+use snarkvm_errors::serialization::SerializationError;
+use snarkvm_utilities::serialize::*;
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::io::{self, Read, Result as IoResult, Write};
 

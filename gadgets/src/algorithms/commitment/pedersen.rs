@@ -15,28 +15,19 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::SynthesisError;
-use snarkvm_algorithms::{
-    commitment::{PedersenCommitment, PedersenCommitmentParameters, PedersenCompressedCommitment},
-    crh::PedersenSize,
-};
-use snarkvm_models::{
-    curves::{Field, Group, PrimeField, ProjectiveCurve},
-    gadgets::{
-        algorithms::CommitmentGadget,
-        curves::{CompressedGroupGadget, GroupGadget},
-        r1cs::ConstraintSystem,
-        utilities::{
-            alloc::AllocGadget,
-            uint::unsigned_integer::{UInt, UInt8},
-        },
-    },
-};
-use snarkvm_utilities::{bytes::ToBytes, to_bytes};
+use crate::traits::algorithms::CommitmentGadget;
+use crate::traits::curves::{CompressedGroupGadget, GroupGadget};
+use crate::traits::r1cs::ConstraintSystem;
+use crate::traits::utilities::alloc::AllocGadget;
+use crate::traits::utilities::uint::unsigned_integer::{UInt, UInt8};
+use snarkvm_algorithms::commitment::{PedersenCommitment, PedersenCommitmentParameters, PedersenCompressedCommitment};
+use snarkvm_algorithms::crh::PedersenSize;
+use snarkvm_curves::traits::{Field, Group, PrimeField, ProjectiveCurve};
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::to_bytes;
 
-use std::{
-    borrow::{Borrow, Cow},
-    marker::PhantomData,
-};
+use std::borrow::{Borrow, Cow};
+use std::marker::PhantomData;
 
 #[derive(Clone)]
 pub struct PedersenCommitmentParametersGadget<G: Group, S: PedersenSize, F: Field> {

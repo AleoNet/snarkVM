@@ -22,10 +22,8 @@
 //! This construction achieves extractability in the algebraic group model (AGM).
 
 use crate::{BTreeMap, Error, LabeledPolynomial, PCRandomness, Polynomial, ToString, Vec};
-use snarkvm_algorithms::{
-    cfg_iter,
-    msm::{FixedBaseMSM, VariableBaseMSM},
-};
+use snarkvm_algorithms::cfg_iter;
+use snarkvm_algorithms::msm::{FixedBaseMSM, VariableBaseMSM};
 use snarkvm_curves::traits::{AffineCurve, Group, One, PairingCurve, PairingEngine, PrimeField, ProjectiveCurve, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
@@ -448,7 +446,8 @@ fn convert_to_bigints<F: PrimeField>(p: &[F]) -> Vec<F::BigInteger> {
 #[cfg(test)]
 mod tests {
     #![allow(non_camel_case_types)]
-    use crate::{kzg10::*, *};
+    use crate::kzg10::*;
+    use crate::*;
 
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
     use snarkvm_utilities::rand::test_rng;

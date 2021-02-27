@@ -16,23 +16,14 @@
 
 use super::{GroupAffine, GroupProjective};
 
-use snarkvm_utilities::{
-    bytes::ToBytes,
-    io::Cursor,
-    rand::UniformRand,
-    serialize::{CanonicalDeserialize, CanonicalSerialize},
-    to_bytes,
-};
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::io::Cursor;
+use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::serialize::{CanonicalDeserialize, CanonicalSerialize};
+use snarkvm_utilities::to_bytes;
 
-use crate::traits::{
-    pairing_engine::{AffineCurve, ProjectiveCurve},
-    Field,
-    MontgomeryModelParameters,
-    One,
-    PrimeField,
-    TEModelParameters,
-    Zero,
-};
+use crate::traits::pairing_engine::{AffineCurve, ProjectiveCurve};
+use crate::traits::{Field, MontgomeryModelParameters, One, PrimeField, TEModelParameters, Zero};
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;

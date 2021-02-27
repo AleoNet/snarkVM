@@ -14,17 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{encryption::GroupEncryption, signature::SchnorrSignature};
-use snarkvm_curves::{
-    edwards_bls12::{EdwardsAffine, EdwardsProjective},
-    edwards_sw6::EdwardsAffine as Edwards,
-};
-use snarkvm_models::{algorithms::SignatureScheme, curves::Group};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    to_bytes,
-};
+use crate::encryption::GroupEncryption;
+use crate::signature::SchnorrSignature;
+use crate::traits::SignatureScheme;
+use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsProjective};
+use snarkvm_curves::edwards_sw6::EdwardsAffine as Edwards;
+use snarkvm_curves::traits::Group;
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::to_bytes;
 
 use blake2::Blake2s;
 use rand::SeedableRng;

@@ -14,13 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub use crate::bytes::{FromBytes, ToBytes};
 use crate::errors::SerializationError;
-pub use crate::{
-    bytes::{FromBytes, ToBytes},
-    io::{self, Read, Write},
-    Vec,
-};
-use std::{borrow::Cow, collections::BTreeMap, rc::Rc, sync::Arc};
+pub use crate::io::{self, Read, Write};
+pub use crate::Vec;
+use std::borrow::Cow;
+use std::collections::BTreeMap;
+use std::rc::Rc;
+use std::sync::Arc;
 
 mod flags;
 pub use flags::*;

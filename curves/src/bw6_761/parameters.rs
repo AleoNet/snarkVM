@@ -14,21 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    bw6_761::{g1::BW6_761G1Parameters, g2::Bls12_377G2Parameters, Fq, Fq3Parameters, Fq6, Fq6Parameters},
-    templates::bw6::{
-        BW6Parameters,
-        G1Affine as BW6G1Affine,
-        G1Prepared,
-        G1Projective as BW6G1Projective,
-        G2Affine as BW6G2Affine,
-        G2Prepared,
-        G2Projective as BW6G2Projective,
-        TwistType,
-        BW6,
-    },
-    traits::{PairingCurve, PairingEngine},
+use crate::bw6_761::g1::BW6_761G1Parameters;
+use crate::bw6_761::g2::Bls12_377G2Parameters;
+use crate::bw6_761::{Fq, Fq3Parameters, Fq6, Fq6Parameters};
+use crate::templates::bw6::{
+    BW6Parameters,
+    G1Affine as BW6G1Affine,
+    G1Prepared,
+    G1Projective as BW6G1Projective,
+    G2Affine as BW6G2Affine,
+    G2Prepared,
+    G2Projective as BW6G2Projective,
+    TwistType,
+    BW6,
 };
+use crate::traits::{PairingCurve, PairingEngine};
 use snarkvm_utilities::biginteger::BigInteger768 as BigInteger;
 
 pub struct BW6_761Parameters;

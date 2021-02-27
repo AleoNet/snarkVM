@@ -16,10 +16,8 @@
 
 use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
-use std::{
-    fmt,
-    io::{Read, Result as IoResult, Write},
-};
+use std::fmt;
+use std::io::{Read, Result as IoResult, Write};
 
 /// Represents the network the node operating on
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]

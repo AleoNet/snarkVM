@@ -15,10 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::bw6_761::{Fq, Fr};
-use snarkvm_models::{
-    curves::{ModelParameters, SWModelParameters, Zero},
-    field,
-};
+use crate::traits::{ModelParameters, SWModelParameters, Zero};
+use snarkvm_models::field;
 use snarkvm_utilities::biginteger::{BigInteger384, BigInteger768};
 
 #[derive(Clone, Default, PartialEq, Eq)]

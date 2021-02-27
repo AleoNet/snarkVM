@@ -15,20 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::curves::tests_group::group_test;
+use crate::traits::curves::GroupGadget;
+use crate::traits::r1cs::ConstraintSystem;
+use crate::traits::utilities::alloc::AllocGadget;
+use crate::traits::utilities::boolean::{AllocatedBit, Boolean};
+use crate::traits::utilities::select::CondSelectGadget;
 use snarkvm_curves::templates::twisted_edwards_extended::GroupAffine as TEAffine;
-use snarkvm_models::{
-    curves::{Field, Group, PrimeField, TEModelParameters},
-    gadgets::{
-        curves::GroupGadget,
-        r1cs::ConstraintSystem,
-        utilities::{
-            alloc::AllocGadget,
-            boolean::{AllocatedBit, Boolean},
-            select::CondSelectGadget,
-        },
-    },
-};
-use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
+use snarkvm_curves::traits::{Field, Group, PrimeField, TEModelParameters};
+use snarkvm_utilities::bititerator::BitIteratorBE;
+use snarkvm_utilities::rand::UniformRand;
 
 use rand::thread_rng;
 

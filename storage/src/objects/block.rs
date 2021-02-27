@@ -14,9 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{error::StorageError, *};
-use snarkvm_models::{algorithms::LoadableMerkleParameters, objects::Transaction};
-use snarkvm_objects::{errors::BlockError, Block, BlockHeaderHash, DPCTransactions};
+use crate::error::StorageError;
+use crate::*;
+use snarkvm_algorithms::traits::LoadableMerkleParameters;
+use snarkvm_objects::errors::BlockError;
+use snarkvm_objects::traits::Transaction;
+use snarkvm_objects::{Block, BlockHeaderHash, DPCTransactions};
 use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
 impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {

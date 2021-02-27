@@ -15,10 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::bw6_761::Fq;
-use snarkvm_models::{
-    curves::{Fp3, Fp3Parameters},
-    field,
-};
+use crate::traits::{Fp3, Fp3Parameters};
+use snarkvm_models::field;
 use snarkvm_utilities::biginteger::BigInteger768 as BigInteger;
 
 use serde::{Deserialize, Serialize};

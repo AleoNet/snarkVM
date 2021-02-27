@@ -17,12 +17,10 @@
 use crate::{impl_bytes, BTreeMap, *};
 use core::ops::{Add, AddAssign};
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, PrimeField, ProjectiveCurve, Zero};
-use snarkvm_utilities::{
-    bytes::ToBytes,
-    error,
-    errors::SerializationError,
-    serialize::{CanonicalDeserialize, CanonicalSerialize},
-};
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::error;
+use snarkvm_utilities::errors::SerializationError;
+use snarkvm_utilities::serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 #[derive(Derivative)]

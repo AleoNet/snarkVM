@@ -14,38 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    impl_sw_curve_serializer,
-    impl_sw_from_random_bytes,
-    traits::{
-        AffineCurve,
-        Field,
-        One,
-        PrimeField,
-        ProjectiveCurve,
-        SWModelParameters as Parameters,
-        SquareRootField,
-        Zero,
-    },
+use crate::traits::{
+    AffineCurve,
+    Field,
+    One,
+    PrimeField,
+    ProjectiveCurve,
+    SWModelParameters as Parameters,
+    SquareRootField,
+    Zero,
 };
-use snarkvm_utilities::{
-    bititerator::BitIteratorBE,
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    serialize::*,
-};
+use crate::{impl_sw_curve_serializer, impl_sw_from_random_bytes};
+use snarkvm_utilities::bititerator::BitIteratorBE;
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::serialize::*;
 
-use rand::{
-    distributions::{Distribution, Standard},
-    Rng,
-};
+use rand::distributions::{Distribution, Standard};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt::{Display, Formatter, Result as FmtResult},
-    io::{Error, ErrorKind, Read, Result as IoResult, Write},
-    marker::PhantomData,
-    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
-};
+use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
+use std::marker::PhantomData;
+use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(Derivative, Serialize, Deserialize)]
 #[derivative(

@@ -14,15 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_models::{
-    curves::Field,
-    gadgets::{
-        curves::FieldGadget,
-        r1cs::{ConstraintSystem, TestConstraintSystem},
-        utilities::{alloc::AllocGadget, boolean::Boolean},
-    },
-};
-use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
+use crate::traits::curves::FieldGadget;
+use crate::traits::r1cs::{ConstraintSystem, TestConstraintSystem};
+use crate::traits::utilities::alloc::AllocGadget;
+use crate::traits::utilities::boolean::Boolean;
+use snarkvm_curves::traits::Field;
+use snarkvm_utilities::bititerator::BitIteratorBE;
+use snarkvm_utilities::rand::UniformRand;
 
 use rand::{self, thread_rng, SeedableRng};
 use rand_xorshift::XorShiftRng;

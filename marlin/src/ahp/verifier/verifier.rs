@@ -14,12 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ahp::{
-    indexer::CircuitInfo,
-    verifier::{VerifierFirstMessage, VerifierSecondMessage, VerifierState},
-    AHPError,
-    AHPForR1CS,
-};
+use crate::ahp::indexer::CircuitInfo;
+use crate::ahp::verifier::{VerifierFirstMessage, VerifierSecondMessage, VerifierState};
+use crate::ahp::{AHPError, AHPForR1CS};
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_curves::traits::PrimeField;
 use snarkvm_gadgets::errors::SynthesisError;

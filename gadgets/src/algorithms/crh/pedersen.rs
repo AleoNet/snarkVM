@@ -15,22 +15,17 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::SynthesisError;
+use crate::traits::algorithms::{CRHGadget, MaskedCRHGadget};
+use crate::traits::curves::{CompressedGroupGadget, GroupGadget};
+use crate::traits::r1cs::ConstraintSystem;
+use crate::traits::utilities::alloc::AllocGadget;
+use crate::traits::utilities::boolean::Boolean;
+use crate::traits::utilities::uint::unsigned_integer::{UInt, UInt8};
 use snarkvm_algorithms::crh::{PedersenCRH, PedersenCRHParameters, PedersenCompressedCRH, PedersenSize};
-use snarkvm_models::{
-    curves::{Field, Group, PrimeField, ProjectiveCurve},
-    gadgets::{
-        algorithms::{CRHGadget, MaskedCRHGadget},
-        curves::{CompressedGroupGadget, GroupGadget},
-        r1cs::ConstraintSystem,
-        utilities::{
-            alloc::AllocGadget,
-            boolean::Boolean,
-            uint::unsigned_integer::{UInt, UInt8},
-        },
-    },
-};
+use snarkvm_curves::traits::{Field, Group, PrimeField, ProjectiveCurve};
 
-use std::{borrow::Borrow, marker::PhantomData};
+use std::borrow::Borrow;
+use std::marker::PhantomData;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct PedersenCRHParametersGadget<G: Group, S: PedersenSize, F: Field, GG: GroupGadget<G, F>> {

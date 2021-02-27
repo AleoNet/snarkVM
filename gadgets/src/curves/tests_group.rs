@@ -15,15 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::curves::edwards_bls12::EdwardsBlsGadget;
+use crate::traits::curves::GroupGadget;
+use crate::traits::r1cs::{ConstraintSystem, TestConstraintSystem};
+use crate::traits::utilities::alloc::AllocGadget;
 use snarkvm_curves::edwards_bls12::{EdwardsProjective, Fq};
-use snarkvm_models::{
-    curves::{Field, Group},
-    gadgets::{
-        curves::GroupGadget,
-        r1cs::{ConstraintSystem, TestConstraintSystem},
-        utilities::alloc::AllocGadget,
-    },
-};
+use snarkvm_curves::traits::{Field, Group};
 
 #[allow(clippy::eq_op)]
 pub fn group_test<F: Field, G: Group, GG: GroupGadget<G, F>, CS: ConstraintSystem<F>>(cs: &mut CS, a: GG, b: GG) {
