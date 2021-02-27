@@ -14,18 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    crh::{PedersenCRH, PedersenCRHParameters, PedersenSize},
-    traits::CRH,
-};
-use snarkvm_curves::{
-    errors::ConstraintFieldError,
-    traits::{to_field_vec::ToConstraintField, Field, Group},
-};
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use crate::crh::PedersenCRH;
+use crate::crh::PedersenCRHParameters;
+use crate::crh::PedersenSize;
+use crate::traits::CRH;
+use snarkvm_curves::errors::ConstraintFieldError;
+use snarkvm_curves::traits::to_field_vec::ToConstraintField;
+use snarkvm_curves::traits::Field;
+use snarkvm_curves::traits::Group;
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
 
 use rand::Rng;
-use std::io::{Read, Result as IoResult, Write};
+use std::io::Read;
+use std::io::Result as IoResult;
+use std::io::Write;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PedersenCommitmentParameters<G: Group, S: PedersenSize> {

@@ -16,11 +16,20 @@
 
 //! A polynomial represented in evaluations form.
 
-use crate::fft::{DensePolynomial, EvaluationDomain};
+use crate::fft::DensePolynomial;
+use crate::fft::EvaluationDomain;
 use snarkvm_curves::traits::PrimeField;
-use snarkvm_utilities::{errors::SerializationError, serialize::*};
+use snarkvm_utilities::errors::SerializationError;
+use snarkvm_utilities::serialize::*;
 
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use std::ops::Add;
+use std::ops::AddAssign;
+use std::ops::Div;
+use std::ops::DivAssign;
+use std::ops::Mul;
+use std::ops::MulAssign;
+use std::ops::Sub;
+use std::ops::SubAssign;
 
 /// Stores a polynomial in evaluation form.
 #[derive(Clone, PartialEq, Eq, Hash, Debug, CanonicalSerialize, CanonicalDeserialize)]

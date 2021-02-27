@@ -14,19 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    dpc::DPCTransactions,
-    traits::{BlockScheme, Transaction},
-    BlockError,
-    BlockHeader,
-};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-    variable_length_integer::variable_length_integer,
-};
+use crate::dpc::DPCTransactions;
+use crate::traits::BlockScheme;
+use crate::traits::Transaction;
+use crate::BlockError;
+use crate::BlockHeader;
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::to_bytes;
+use snarkvm_utilities::variable_length_integer::variable_length_integer;
 
-use std::io::{Read, Result as IoResult, Write};
+use std::io::Read;
+use std::io::Result as IoResult;
+use std::io::Write;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Block<T: Transaction> {

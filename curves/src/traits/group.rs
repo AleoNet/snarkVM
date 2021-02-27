@@ -14,20 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::PrimeField;
-use snarkvm_utilities::{
-    bititerator::BitIteratorBE,
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-};
+use snarkvm_fields::PrimeField;
+use snarkvm_utilities::bititerator::BitIteratorBE;
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::rand::UniformRand;
 
-use std::{
-    fmt::{Debug, Display},
-    hash::Hash,
-    ops::{Add, AddAssign, Neg, Sub, SubAssign},
-};
+use std::fmt::Debug;
+use std::fmt::Display;
+use std::hash::Hash;
+use std::ops::Add;
+use std::ops::AddAssign;
+use std::ops::Neg;
+use std::ops::Sub;
+use std::ops::SubAssign;
 
-use crate::traits::Zero;
+use snarkvm_fields::Zero;
 
 pub trait Group:
     ToBytes

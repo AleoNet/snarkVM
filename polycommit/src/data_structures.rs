@@ -14,21 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Arc, String, Vec};
+use crate::Arc;
+use crate::String;
+use crate::Vec;
 pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
 use snarkvm_curves::traits::Field;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    error as error_fn,
-    errors::SerializationError,
-    serialize::*,
-};
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::error as error_fn;
+use snarkvm_utilities::errors::SerializationError;
+use snarkvm_utilities::serialize::*;
 
-use core::{
-    borrow::Borrow,
-    fmt::Debug,
-    ops::{AddAssign, MulAssign, SubAssign},
-};
+use core::borrow::Borrow;
+use core::fmt::Debug;
+use core::ops::AddAssign;
+use core::ops::MulAssign;
+use core::ops::SubAssign;
 use rand_core::RngCore;
 
 /// Labels a `LabeledPolynomial` or a `LabeledCommitment`.

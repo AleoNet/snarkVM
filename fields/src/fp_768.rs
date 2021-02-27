@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    errors::FieldError,
-    traits::{Field, FpParameters, LegendreSymbol, One, PrimeField, SquareRootField, Zero},
-};
+use crate::{errors::FieldError, Field, FpParameters, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
     biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger768 as BigInteger},
     bytes::{FromBytes, ToBytes},
@@ -736,7 +733,7 @@ impl<P: Fp768Parameters> PrimeField for Fp768<P> {
 impl<P: Fp768Parameters> SquareRootField for Fp768<P> {
     #[inline]
     fn legendre(&self) -> LegendreSymbol {
-        use crate::traits::LegendreSymbol::*;
+        use crate::LegendreSymbol::*;
 
         // s = self^((MODULUS - 1) // 2)
         let s = self.pow(P::MODULUS_MINUS_ONE_DIV_TWO);

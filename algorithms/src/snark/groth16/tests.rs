@@ -14,10 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::traits::{Field, Zero};
+use snarkvm_curves::traits::Field;
+use snarkvm_curves::traits::Zero;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem};
+use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
+use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
 
 struct MySillyCircuit<F: Field> {
     a: Option<F>,
@@ -52,10 +54,15 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for MySillyCircuit<C
 
 mod bls12_377 {
     use super::*;
-    use crate::snark::groth16::{create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof};
+    use crate::snark::groth16::create_random_proof;
+    use crate::snark::groth16::generate_random_parameters;
+    use crate::snark::groth16::prepare_verifying_key;
+    use crate::snark::groth16::verify_proof;
     use core::ops::MulAssign;
-    use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-    use snarkvm_utilities::rand::{test_rng, UniformRand};
+    use snarkvm_curves::bls12_377::Bls12_377;
+    use snarkvm_curves::bls12_377::Fr;
+    use snarkvm_utilities::rand::test_rng;
+    use snarkvm_utilities::rand::UniformRand;
 
     #[test]
     fn prove_and_verify() {
@@ -81,10 +88,15 @@ mod bls12_377 {
 
 mod bw6_761 {
     use super::*;
-    use crate::snark::groth16::{create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof};
+    use crate::snark::groth16::create_random_proof;
+    use crate::snark::groth16::generate_random_parameters;
+    use crate::snark::groth16::prepare_verifying_key;
+    use crate::snark::groth16::verify_proof;
 
-    use snarkvm_curves::bw6_761::{Fr, BW6_761};
-    use snarkvm_utilities::rand::{test_rng, UniformRand};
+    use snarkvm_curves::bw6_761::Fr;
+    use snarkvm_curves::bw6_761::BW6_761;
+    use snarkvm_utilities::rand::test_rng;
+    use snarkvm_utilities::rand::UniformRand;
 
     #[test]
     fn prove_and_verify() {
@@ -107,13 +119,16 @@ mod bw6_761 {
 
 mod serialization {
     use super::*;
-    use crate::snark::groth16::{create_random_proof, generate_random_parameters, Proof};
-    use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-    use snarkvm_utilities::{
-        bytes::{FromBytes, ToBytes},
-        rand::{test_rng, UniformRand},
-        to_bytes,
-    };
+    use crate::snark::groth16::create_random_proof;
+    use crate::snark::groth16::generate_random_parameters;
+    use crate::snark::groth16::Proof;
+    use snarkvm_curves::bls12_377::Bls12_377;
+    use snarkvm_curves::bls12_377::Fr;
+    use snarkvm_utilities::bytes::FromBytes;
+    use snarkvm_utilities::bytes::ToBytes;
+    use snarkvm_utilities::rand::test_rng;
+    use snarkvm_utilities::rand::UniformRand;
+    use snarkvm_utilities::to_bytes;
 
     #[test]
     fn test_compressed_proof_serialization() {

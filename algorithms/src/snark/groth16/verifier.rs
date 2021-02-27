@@ -14,11 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{PreparedVerifyingKey, Proof, VerifyingKey};
-use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, PrimeField, ProjectiveCurve};
+use super::PreparedVerifyingKey;
+use super::Proof;
+use super::VerifyingKey;
+use snarkvm_curves::traits::AffineCurve;
+use snarkvm_curves::traits::PairingCurve;
+use snarkvm_curves::traits::PairingEngine;
+use snarkvm_curves::traits::PrimeField;
+use snarkvm_curves::traits::ProjectiveCurve;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use core::ops::{AddAssign, Neg};
+use core::ops::AddAssign;
+use core::ops::Neg;
 
 pub fn prepare_verifying_key<E: PairingEngine>(vk: VerifyingKey<E>) -> PreparedVerifyingKey<E> {
     let alpha_g1_beta_g2 = E::pairing(vk.alpha_g1, vk.beta_g2);

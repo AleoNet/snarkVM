@@ -14,15 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BlockHeaderHash, MerkleRootHash, PedersenMerkleRootHash, ProofOfSuccinctWork};
-use snarkvm_algorithms::crh::{double_sha256, sha256d_to_u64};
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use crate::BlockHeaderHash;
+use crate::MerkleRootHash;
+use crate::PedersenMerkleRootHash;
+use crate::ProofOfSuccinctWork;
+use snarkvm_algorithms::crh::double_sha256;
+use snarkvm_algorithms::crh::sha256d_to_u64;
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
 
-use serde::{Deserialize, Serialize};
-use std::{
-    io::{Read, Result as IoResult, Write},
-    mem::size_of,
-};
+use serde::Deserialize;
+use serde::Serialize;
+use std::io::Read;
+use std::io::Result as IoResult;
+use std::io::Write;
+use std::mem::size_of;
 
 /// Block header.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

@@ -14,19 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    field,
-    sw6::{
-        fq::{Fq, FqParameters},
-        g1::{G1Affine, G1Projective},
-        g2::{G2Affine, G2Projective, SW6G2Parameters},
-        Fq3,
-        Fq6,
-        Fr,
-    },
-    traits::{Field, FpParameters, One, PairingCurve, PairingEngine, SWModelParameters},
-};
-use snarkvm_utilities::{biginteger::BigInteger832, bititerator::BitIteratorBE};
+use crate::sw6::fq::Fq;
+use crate::sw6::fq::FqParameters;
+use crate::sw6::g1::G1Affine;
+use crate::sw6::g1::G1Projective;
+use crate::sw6::g2::G2Affine;
+use crate::sw6::g2::G2Projective;
+use crate::sw6::g2::SW6G2Parameters;
+use crate::sw6::Fq3;
+use crate::sw6::Fq6;
+use crate::sw6::Fr;
+use crate::traits::PairingCurve;
+use crate::traits::PairingEngine;
+use crate::traits::SWModelParameters;
+use snarkvm_fields::field;
+use snarkvm_fields::Field;
+use snarkvm_fields::FpParameters;
+use snarkvm_fields::One;
+use snarkvm_utilities::biginteger::BigInteger832;
+use snarkvm_utilities::bititerator::BitIteratorBE;
 
 pub type GT = Fq6;
 

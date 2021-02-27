@@ -14,23 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{error::StorageError, *};
-use snarkvm_algorithms::{merkle_tree::MerkleTree, traits::LoadableMerkleParameters};
+use crate::error::StorageError;
+use crate::*;
+use snarkvm_algorithms::merkle_tree::MerkleTree;
+use snarkvm_algorithms::traits::LoadableMerkleParameters;
 use snarkvm_models::genesis::Genesis;
-use snarkvm_objects::{
-    traits::{LedgerScheme, Transaction},
-    Block,
-};
-use snarkvm_parameters::{traits::Parameter, GenesisBlock, LedgerMerkleTreeParameters};
+use snarkvm_objects::traits::LedgerScheme;
+use snarkvm_objects::traits::Transaction;
+use snarkvm_objects::Block;
+use snarkvm_parameters::traits::Parameter;
+use snarkvm_parameters::GenesisBlock;
+use snarkvm_parameters::LedgerMerkleTreeParameters;
 use snarkvm_utilities::bytes::FromBytes;
 
 use parking_lot::RwLock;
-use std::{
-    fs,
-    marker::PhantomData,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::fs;
+use std::marker::PhantomData;
+use std::path::Path;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 pub struct Ledger<T: Transaction, P: LoadableMerkleParameters> {
     pub latest_block_height: RwLock<u32>,

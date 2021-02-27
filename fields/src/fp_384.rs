@@ -14,12 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    errors::FieldError,
-    traits::{Field, FpParameters, LegendreSymbol, One, PrimeField, SquareRootField, Zero},
-};
+use crate::{errors::FieldError, Field, FpParameters, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
-    biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger320 as BigInteger},
+    biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger384 as BigInteger},
     bytes::{FromBytes, ToBytes},
     serialize::CanonicalDeserialize,
 };
@@ -33,33 +30,33 @@ use std::{
     str::FromStr,
 };
 
-pub trait Fp320Parameters: FpParameters<BigInteger = BigInteger> {}
+pub trait Fp384Parameters: FpParameters<BigInteger = BigInteger> {}
 
 #[derive(Derivative)]
 #[derivative(
-    Default(bound = "P: Fp320Parameters"),
-    Hash(bound = "P: Fp320Parameters"),
-    Clone(bound = "P: Fp320Parameters"),
-    Copy(bound = "P: Fp320Parameters"),
-    Debug(bound = "P: Fp320Parameters"),
-    PartialEq(bound = "P: Fp320Parameters"),
-    Eq(bound = "P: Fp320Parameters")
+    Default(bound = "P: Fp384Parameters"),
+    Hash(bound = "P: Fp384Parameters"),
+    Clone(bound = "P: Fp384Parameters"),
+    Copy(bound = "P: Fp384Parameters"),
+    Debug(bound = "P: Fp384Parameters"),
+    PartialEq(bound = "P: Fp384Parameters"),
+    Eq(bound = "P: Fp384Parameters")
 )]
-pub struct Fp320<P: Fp320Parameters>(
+pub struct Fp384<P: Fp384Parameters>(
     pub BigInteger,
     #[derivative(Debug = "ignore")]
     #[doc(hidden)]
     pub PhantomData<P>,
 );
 
-impl<P: Fp320Parameters> Fp320<P> {
+impl<P: Fp384Parameters> Fp384<P> {
     #[inline]
     pub fn new(element: BigInteger) -> Self {
-        Fp320::<P>(element, PhantomData)
+        Fp384::<P>(element, PhantomData)
     }
 
     #[inline]
-    fn is_valid(&self) -> bool {
+    pub fn is_valid(&self) -> bool {
         self.0 < P::MODULUS
     }
 
@@ -84,6 +81,8 @@ impl<P: Fp320Parameters> Fp320<P> {
         mut r7: u64,
         mut r8: u64,
         mut r9: u64,
+        mut r10: u64,
+        mut r11: u64,
     ) {
         // The Montgomery reduction here is based on Algorithm 14.32 in
         // Handbook of Applied Cryptography
@@ -96,7 +95,8 @@ impl<P: Fp320Parameters> Fp320<P> {
         r2 = fa::mac_with_carry(r2, k, P::MODULUS.0[2], &mut carry);
         r3 = fa::mac_with_carry(r3, k, P::MODULUS.0[3], &mut carry);
         r4 = fa::mac_with_carry(r4, k, P::MODULUS.0[4], &mut carry);
-        r5 = fa::adc(r5, 0, &mut carry);
+        r5 = fa::mac_with_carry(r5, k, P::MODULUS.0[5], &mut carry);
+        r6 = fa::adc(r6, 0, &mut carry);
         let carry2 = carry;
         let k = r1.wrapping_mul(P::INV);
         let mut carry = 0;
@@ -105,7 +105,8 @@ impl<P: Fp320Parameters> Fp320<P> {
         r3 = fa::mac_with_carry(r3, k, P::MODULUS.0[2], &mut carry);
         r4 = fa::mac_with_carry(r4, k, P::MODULUS.0[3], &mut carry);
         r5 = fa::mac_with_carry(r5, k, P::MODULUS.0[4], &mut carry);
-        r6 = fa::adc(r6, carry2, &mut carry);
+        r6 = fa::mac_with_carry(r6, k, P::MODULUS.0[5], &mut carry);
+        r7 = fa::adc(r7, carry2, &mut carry);
         let carry2 = carry;
         let k = r2.wrapping_mul(P::INV);
         let mut carry = 0;
@@ -114,7 +115,8 @@ impl<P: Fp320Parameters> Fp320<P> {
         r4 = fa::mac_with_carry(r4, k, P::MODULUS.0[2], &mut carry);
         r5 = fa::mac_with_carry(r5, k, P::MODULUS.0[3], &mut carry);
         r6 = fa::mac_with_carry(r6, k, P::MODULUS.0[4], &mut carry);
-        r7 = fa::adc(r7, carry2, &mut carry);
+        r7 = fa::mac_with_carry(r7, k, P::MODULUS.0[5], &mut carry);
+        r8 = fa::adc(r8, carry2, &mut carry);
         let carry2 = carry;
         let k = r3.wrapping_mul(P::INV);
         let mut carry = 0;
@@ -123,7 +125,8 @@ impl<P: Fp320Parameters> Fp320<P> {
         r5 = fa::mac_with_carry(r5, k, P::MODULUS.0[2], &mut carry);
         r6 = fa::mac_with_carry(r6, k, P::MODULUS.0[3], &mut carry);
         r7 = fa::mac_with_carry(r7, k, P::MODULUS.0[4], &mut carry);
-        r8 = fa::adc(r8, carry2, &mut carry);
+        r8 = fa::mac_with_carry(r8, k, P::MODULUS.0[5], &mut carry);
+        r9 = fa::adc(r9, carry2, &mut carry);
         let carry2 = carry;
         let k = r4.wrapping_mul(P::INV);
         let mut carry = 0;
@@ -132,20 +135,32 @@ impl<P: Fp320Parameters> Fp320<P> {
         r6 = fa::mac_with_carry(r6, k, P::MODULUS.0[2], &mut carry);
         r7 = fa::mac_with_carry(r7, k, P::MODULUS.0[3], &mut carry);
         r8 = fa::mac_with_carry(r8, k, P::MODULUS.0[4], &mut carry);
-        r9 = fa::adc(r9, carry2, &mut carry);
-        (self.0).0[0] = r5;
-        (self.0).0[1] = r6;
-        (self.0).0[2] = r7;
-        (self.0).0[3] = r8;
-        (self.0).0[4] = r9;
+        r9 = fa::mac_with_carry(r9, k, P::MODULUS.0[5], &mut carry);
+        r10 = fa::adc(r10, carry2, &mut carry);
+        let carry2 = carry;
+        let k = r5.wrapping_mul(P::INV);
+        let mut carry = 0;
+        fa::mac_with_carry(r5, k, P::MODULUS.0[0], &mut carry);
+        r6 = fa::mac_with_carry(r6, k, P::MODULUS.0[1], &mut carry);
+        r7 = fa::mac_with_carry(r7, k, P::MODULUS.0[2], &mut carry);
+        r8 = fa::mac_with_carry(r8, k, P::MODULUS.0[3], &mut carry);
+        r9 = fa::mac_with_carry(r9, k, P::MODULUS.0[4], &mut carry);
+        r10 = fa::mac_with_carry(r10, k, P::MODULUS.0[5], &mut carry);
+        r11 = fa::adc(r11, carry2, &mut carry);
+        (self.0).0[0] = r6;
+        (self.0).0[1] = r7;
+        (self.0).0[2] = r8;
+        (self.0).0[3] = r9;
+        (self.0).0[4] = r10;
+        (self.0).0[5] = r11;
         self.reduce();
     }
 }
 
-impl<P: Fp320Parameters> Zero for Fp320<P> {
+impl<P: Fp384Parameters> Zero for Fp384<P> {
     #[inline]
     fn zero() -> Self {
-        Fp320::<P>(BigInteger::from(0), PhantomData)
+        Fp384::<P>(BigInteger::from(0), PhantomData)
     }
 
     #[inline]
@@ -154,10 +169,10 @@ impl<P: Fp320Parameters> Zero for Fp320<P> {
     }
 }
 
-impl<P: Fp320Parameters> One for Fp320<P> {
+impl<P: Fp384Parameters> One for Fp384<P> {
     #[inline]
     fn one() -> Self {
-        Fp320::<P>(P::R, PhantomData)
+        Fp384::<P>(P::R, PhantomData)
     }
 
     #[inline]
@@ -166,9 +181,9 @@ impl<P: Fp320Parameters> One for Fp320<P> {
     }
 }
 
-impl<P: Fp320Parameters> Field for Fp320<P> {
-    // 320/64 = 5 limbs.
-    impl_field_from_random_bytes_with_flags!(5);
+impl<P: Fp384Parameters> Field for Fp384<P> {
+    // 384/64 = 6 limbs.
+    impl_field_from_random_bytes_with_flags!(6);
 
     #[inline]
     fn double(&self) -> Self {
@@ -205,21 +220,30 @@ impl<P: Fp320Parameters> Field for Fp320<P> {
         let r2 = fa::mac_with_carry(0, (self.0).0[0], (self.0).0[2], &mut carry);
         let r3 = fa::mac_with_carry(0, (self.0).0[0], (self.0).0[3], &mut carry);
         let r4 = fa::mac_with_carry(0, (self.0).0[0], (self.0).0[4], &mut carry);
-        let r5 = carry;
+        let r5 = fa::mac_with_carry(0, (self.0).0[0], (self.0).0[5], &mut carry);
+        let r6 = carry;
         let mut carry = 0;
         let r3 = fa::mac_with_carry(r3, (self.0).0[1], (self.0).0[2], &mut carry);
         let r4 = fa::mac_with_carry(r4, (self.0).0[1], (self.0).0[3], &mut carry);
         let r5 = fa::mac_with_carry(r5, (self.0).0[1], (self.0).0[4], &mut carry);
-        let r6 = carry;
+        let r6 = fa::mac_with_carry(r6, (self.0).0[1], (self.0).0[5], &mut carry);
+        let r7 = carry;
         let mut carry = 0;
         let r5 = fa::mac_with_carry(r5, (self.0).0[2], (self.0).0[3], &mut carry);
         let r6 = fa::mac_with_carry(r6, (self.0).0[2], (self.0).0[4], &mut carry);
-        let r7 = carry;
+        let r7 = fa::mac_with_carry(r7, (self.0).0[2], (self.0).0[5], &mut carry);
+        let r8 = carry;
         let mut carry = 0;
         let r7 = fa::mac_with_carry(r7, (self.0).0[3], (self.0).0[4], &mut carry);
-        let r8 = carry;
+        let r8 = fa::mac_with_carry(r8, (self.0).0[3], (self.0).0[5], &mut carry);
+        let r9 = carry;
+        let mut carry = 0;
+        let r9 = fa::mac_with_carry(r9, (self.0).0[4], (self.0).0[5], &mut carry);
+        let r10 = carry;
 
-        let r9 = r8 >> 63;
+        let r11 = r10 >> 63;
+        let r10 = (r10 << 1) | (r9 >> 63);
+        let r9 = (r9 << 1) | (r8 >> 63);
         let r8 = (r8 << 1) | (r7 >> 63);
         let r7 = (r7 << 1) | (r6 >> 63);
         let r6 = (r6 << 1) | (r5 >> 63);
@@ -240,7 +264,9 @@ impl<P: Fp320Parameters> Field for Fp320<P> {
         let r7 = fa::adc(r7, 0, &mut carry);
         let r8 = fa::mac_with_carry(r8, (self.0).0[4], (self.0).0[4], &mut carry);
         let r9 = fa::adc(r9, 0, &mut carry);
-        self.mont_reduce(r0, r1, r2, r3, r4, r5, r6, r7, r8, r9);
+        let r10 = fa::mac_with_carry(r10, (self.0).0[5], (self.0).0[5], &mut carry);
+        let r11 = fa::adc(r11, 0, &mut carry);
+        self.mont_reduce(r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11);
         self
     }
 
@@ -258,7 +284,7 @@ impl<P: Fp320Parameters> Field for Fp320<P> {
 
             let mut u = self.0;
             let mut v = P::MODULUS;
-            let mut b = Fp320::<P>(P::R2, PhantomData); // Avoids unnecessary reduction step.
+            let mut b = Fp384::<P>(P::R2, PhantomData); // Avoids unnecessary reduction step.
             let mut c = Self::zero();
 
             while u != one && v != one {
@@ -312,17 +338,17 @@ impl<P: Fp320Parameters> Field for Fp320<P> {
     }
 }
 
-impl<P: Fp320Parameters> PrimeField for Fp320<P> {
+impl<P: Fp384Parameters> PrimeField for Fp384<P> {
     type BigInteger = BigInteger;
     type Parameters = P;
 
     #[inline]
     fn from_repr(r: BigInteger) -> Option<Self> {
-        let mut r = Fp320(r, PhantomData);
+        let mut r = Fp384(r, PhantomData);
         if r.is_zero() {
             Some(r)
         } else if r.is_valid() {
-            r *= &Fp320(P::R2, PhantomData);
+            r *= &Fp384(P::R2, PhantomData);
             Some(r)
         } else {
             None
@@ -338,6 +364,8 @@ impl<P: Fp320Parameters> PrimeField for Fp320<P> {
             (self.0).0[2],
             (self.0).0[3],
             (self.0).0[4],
+            (self.0).0[5],
+            0,
             0,
             0,
             0,
@@ -349,31 +377,30 @@ impl<P: Fp320Parameters> PrimeField for Fp320<P> {
 
     #[inline]
     fn from_repr_raw(r: BigInteger) -> Self {
-        let r = Fp320(r, PhantomData);
+        let r = Fp384(r, PhantomData);
         if r.is_valid() { r } else { Self::zero() }
     }
 
     #[inline]
     fn into_repr_raw(&self) -> BigInteger {
-        let r = *self;
-        r.0
+        self.0
     }
 
     #[inline]
     fn multiplicative_generator() -> Self {
-        Fp320::<P>(P::GENERATOR, PhantomData)
+        Fp384::<P>(P::GENERATOR, PhantomData)
     }
 
     #[inline]
     fn root_of_unity() -> Self {
-        Fp320::<P>(P::ROOT_OF_UNITY, PhantomData)
+        Fp384::<P>(P::ROOT_OF_UNITY, PhantomData)
     }
 }
 
-impl<P: Fp320Parameters> SquareRootField for Fp320<P> {
+impl<P: Fp384Parameters> SquareRootField for Fp384<P> {
     #[inline]
     fn legendre(&self) -> LegendreSymbol {
-        use crate::traits::LegendreSymbol::*;
+        use crate::LegendreSymbol::*;
 
         // s = self^((MODULUS - 1) // 2)
         let s = self.pow(P::MODULUS_MINUS_ONE_DIV_TWO);
@@ -392,46 +419,43 @@ impl<P: Fp320Parameters> SquareRootField for Fp320<P> {
     }
 
     fn sqrt_in_place(&mut self) -> Option<&mut Self> {
-        if let Some(sqrt) = self.sqrt() {
+        (*self).sqrt().map(|sqrt| {
             *self = sqrt;
-            Some(self)
-        } else {
-            None
-        }
+            self
+        })
     }
 }
 
-/// `Fp` elements are ordered lexicographically.
-impl<P: Fp320Parameters> Ord for Fp320<P> {
+impl<P: Fp384Parameters> Ord for Fp384<P> {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
         self.into_repr().cmp(&other.into_repr())
     }
 }
 
-impl<P: Fp320Parameters> PartialOrd for Fp320<P> {
+impl<P: Fp384Parameters> PartialOrd for Fp384<P> {
     #[inline(always)]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl_prime_field_from_int!(Fp320, u128, Fp320Parameters);
-impl_prime_field_from_int!(Fp320, u64, Fp320Parameters);
-impl_prime_field_from_int!(Fp320, u32, Fp320Parameters);
-impl_prime_field_from_int!(Fp320, u16, Fp320Parameters);
-impl_prime_field_from_int!(Fp320, u8, Fp320Parameters);
+impl_prime_field_from_int!(Fp384, u128, Fp384Parameters);
+impl_prime_field_from_int!(Fp384, u64, Fp384Parameters);
+impl_prime_field_from_int!(Fp384, u32, Fp384Parameters);
+impl_prime_field_from_int!(Fp384, u16, Fp384Parameters);
+impl_prime_field_from_int!(Fp384, u8, Fp384Parameters);
 
-impl_prime_field_standard_sample!(Fp320, Fp320Parameters);
+impl_prime_field_standard_sample!(Fp384, Fp384Parameters);
 
-impl<P: Fp320Parameters> ToBytes for Fp320<P> {
+impl<P: Fp384Parameters> ToBytes for Fp384<P> {
     #[inline]
     fn write<W: Write>(&self, writer: W) -> IoResult<()> {
         self.into_repr().write(writer)
     }
 }
 
-impl<P: Fp320Parameters> FromBytes for Fp320<P> {
+impl<P: Fp384Parameters> FromBytes for Fp384<P> {
     #[inline]
     fn read<R: Read>(reader: R) -> IoResult<Self> {
         BigInteger::read(reader).and_then(|b| match Self::from_repr(b) {
@@ -441,7 +465,7 @@ impl<P: Fp320Parameters> FromBytes for Fp320<P> {
     }
 }
 
-impl<P: Fp320Parameters> FromStr for Fp320<P> {
+impl<P: Fp384Parameters> FromStr for Fp384<P> {
     type Err = FieldError;
 
     /// Interpret a string of numbers as a (congruent) prime field element.
@@ -492,14 +516,14 @@ impl<P: Fp320Parameters> FromStr for Fp320<P> {
     }
 }
 
-impl<P: Fp320Parameters> Display for Fp320<P> {
+impl<P: Fp384Parameters> Display for Fp384<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "Fp320({})", self.into_repr())
+        write!(f, "Fp384({})", self.into_repr())
     }
 }
 
-impl<P: Fp320Parameters> Neg for Fp320<P> {
+impl<P: Fp384Parameters> Neg for Fp384<P> {
     type Output = Self;
 
     #[inline]
@@ -508,14 +532,14 @@ impl<P: Fp320Parameters> Neg for Fp320<P> {
         if !self.is_zero() {
             let mut tmp = P::MODULUS;
             tmp.sub_noborrow(&self.0);
-            Fp320::<P>(tmp, PhantomData)
+            Fp384::<P>(tmp, PhantomData)
         } else {
             self
         }
     }
 }
 
-impl<'a, P: Fp320Parameters> Add<&'a Fp320<P>> for Fp320<P> {
+impl<'a, P: Fp384Parameters> Add<&'a Fp384<P>> for Fp384<P> {
     type Output = Self;
 
     #[inline]
@@ -526,7 +550,7 @@ impl<'a, P: Fp320Parameters> Add<&'a Fp320<P>> for Fp320<P> {
     }
 }
 
-impl<'a, P: Fp320Parameters> Sub<&'a Fp320<P>> for Fp320<P> {
+impl<'a, P: Fp384Parameters> Sub<&'a Fp384<P>> for Fp384<P> {
     type Output = Self;
 
     #[inline]
@@ -537,7 +561,7 @@ impl<'a, P: Fp320Parameters> Sub<&'a Fp320<P>> for Fp320<P> {
     }
 }
 
-impl<'a, P: Fp320Parameters> Mul<&'a Fp320<P>> for Fp320<P> {
+impl<'a, P: Fp384Parameters> Mul<&'a Fp384<P>> for Fp384<P> {
     type Output = Self;
 
     #[inline]
@@ -548,7 +572,7 @@ impl<'a, P: Fp320Parameters> Mul<&'a Fp320<P>> for Fp320<P> {
     }
 }
 
-impl<'a, P: Fp320Parameters> Div<&'a Fp320<P>> for Fp320<P> {
+impl<'a, P: Fp384Parameters> Div<&'a Fp384<P>> for Fp384<P> {
     type Output = Self;
 
     #[inline]
@@ -559,7 +583,7 @@ impl<'a, P: Fp320Parameters> Div<&'a Fp320<P>> for Fp320<P> {
     }
 }
 
-impl<'a, P: Fp320Parameters> AddAssign<&'a Self> for Fp320<P> {
+impl<'a, P: Fp384Parameters> AddAssign<&'a Self> for Fp384<P> {
     #[inline]
     fn add_assign(&mut self, other: &Self) {
         // This cannot exceed the backing capacity.
@@ -569,7 +593,7 @@ impl<'a, P: Fp320Parameters> AddAssign<&'a Self> for Fp320<P> {
     }
 }
 
-impl<'a, P: Fp320Parameters> SubAssign<&'a Self> for Fp320<P> {
+impl<'a, P: Fp384Parameters> SubAssign<&'a Self> for Fp384<P> {
     #[inline]
     fn sub_assign(&mut self, other: &Self) {
         // If `other` is larger than `self`, add the modulus to self first.
@@ -581,7 +605,7 @@ impl<'a, P: Fp320Parameters> SubAssign<&'a Self> for Fp320<P> {
     }
 }
 
-impl<'a, P: Fp320Parameters> MulAssign<&'a Self> for Fp320<P> {
+impl<'a, P: Fp384Parameters> MulAssign<&'a Self> for Fp384<P> {
     #[inline]
     fn mul_assign(&mut self, other: &Self) {
         let mut carry = 0;
@@ -590,40 +614,53 @@ impl<'a, P: Fp320Parameters> MulAssign<&'a Self> for Fp320<P> {
         let r2 = fa::mac_with_carry(0, (self.0).0[0], (other.0).0[2], &mut carry);
         let r3 = fa::mac_with_carry(0, (self.0).0[0], (other.0).0[3], &mut carry);
         let r4 = fa::mac_with_carry(0, (self.0).0[0], (other.0).0[4], &mut carry);
-        let r5 = carry;
+        let r5 = fa::mac_with_carry(0, (self.0).0[0], (other.0).0[5], &mut carry);
+        let r6 = carry;
         let mut carry = 0;
         let r1 = fa::mac_with_carry(r1, (self.0).0[1], (other.0).0[0], &mut carry);
         let r2 = fa::mac_with_carry(r2, (self.0).0[1], (other.0).0[1], &mut carry);
         let r3 = fa::mac_with_carry(r3, (self.0).0[1], (other.0).0[2], &mut carry);
         let r4 = fa::mac_with_carry(r4, (self.0).0[1], (other.0).0[3], &mut carry);
         let r5 = fa::mac_with_carry(r5, (self.0).0[1], (other.0).0[4], &mut carry);
-        let r6 = carry;
+        let r6 = fa::mac_with_carry(r6, (self.0).0[1], (other.0).0[5], &mut carry);
+        let r7 = carry;
         let mut carry = 0;
         let r2 = fa::mac_with_carry(r2, (self.0).0[2], (other.0).0[0], &mut carry);
         let r3 = fa::mac_with_carry(r3, (self.0).0[2], (other.0).0[1], &mut carry);
         let r4 = fa::mac_with_carry(r4, (self.0).0[2], (other.0).0[2], &mut carry);
         let r5 = fa::mac_with_carry(r5, (self.0).0[2], (other.0).0[3], &mut carry);
         let r6 = fa::mac_with_carry(r6, (self.0).0[2], (other.0).0[4], &mut carry);
-        let r7 = carry;
+        let r7 = fa::mac_with_carry(r7, (self.0).0[2], (other.0).0[5], &mut carry);
+        let r8 = carry;
         let mut carry = 0;
         let r3 = fa::mac_with_carry(r3, (self.0).0[3], (other.0).0[0], &mut carry);
         let r4 = fa::mac_with_carry(r4, (self.0).0[3], (other.0).0[1], &mut carry);
         let r5 = fa::mac_with_carry(r5, (self.0).0[3], (other.0).0[2], &mut carry);
         let r6 = fa::mac_with_carry(r6, (self.0).0[3], (other.0).0[3], &mut carry);
         let r7 = fa::mac_with_carry(r7, (self.0).0[3], (other.0).0[4], &mut carry);
-        let r8 = carry;
+        let r8 = fa::mac_with_carry(r8, (self.0).0[3], (other.0).0[5], &mut carry);
+        let r9 = carry;
         let mut carry = 0;
         let r4 = fa::mac_with_carry(r4, (self.0).0[4], (other.0).0[0], &mut carry);
         let r5 = fa::mac_with_carry(r5, (self.0).0[4], (other.0).0[1], &mut carry);
         let r6 = fa::mac_with_carry(r6, (self.0).0[4], (other.0).0[2], &mut carry);
         let r7 = fa::mac_with_carry(r7, (self.0).0[4], (other.0).0[3], &mut carry);
         let r8 = fa::mac_with_carry(r8, (self.0).0[4], (other.0).0[4], &mut carry);
-        let r9 = carry;
-        self.mont_reduce(r0, r1, r2, r3, r4, r5, r6, r7, r8, r9);
+        let r9 = fa::mac_with_carry(r9, (self.0).0[4], (other.0).0[5], &mut carry);
+        let r10 = carry;
+        let mut carry = 0;
+        let r5 = fa::mac_with_carry(r5, (self.0).0[5], (other.0).0[0], &mut carry);
+        let r6 = fa::mac_with_carry(r6, (self.0).0[5], (other.0).0[1], &mut carry);
+        let r7 = fa::mac_with_carry(r7, (self.0).0[5], (other.0).0[2], &mut carry);
+        let r8 = fa::mac_with_carry(r8, (self.0).0[5], (other.0).0[3], &mut carry);
+        let r9 = fa::mac_with_carry(r9, (self.0).0[5], (other.0).0[4], &mut carry);
+        let r10 = fa::mac_with_carry(r10, (self.0).0[5], (other.0).0[5], &mut carry);
+        let r11 = carry;
+        self.mont_reduce(r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11);
     }
 }
 
-impl<'a, P: Fp320Parameters> DivAssign<&'a Self> for Fp320<P> {
+impl<'a, P: Fp384Parameters> DivAssign<&'a Self> for Fp384<P> {
     #[inline]
     fn div_assign(&mut self, other: &Self) {
         self.mul_assign(&other.inverse().unwrap());

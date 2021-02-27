@@ -16,14 +16,12 @@
 
 use snarkvm_algorithms::crh::sha256::sha256;
 
-use std::{
-    fs::{
-        File,
-        {self},
-    },
-    io::{BufWriter, Result as IoResult, Write},
-    path::PathBuf,
-};
+use std::fs::File;
+use std::fs::{self};
+use std::io::BufWriter;
+use std::io::Result as IoResult;
+use std::io::Write;
+use std::path::PathBuf;
 
 pub fn store(file_path: &PathBuf, checksum_path: &PathBuf, bytes: &[u8]) -> IoResult<()> {
     // Save checksum to file

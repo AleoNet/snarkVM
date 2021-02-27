@@ -14,17 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{crh::PedersenCompressedCRH, define_masked_merkle_tree_parameters, merkle_tree::prng};
-use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective as EdwardsBls};
-use snarkvm_utilities::{bytes::ToBytes, to_bytes};
+use snarkvm_algorithms::crh::PedersenCompressedCRH;
+use snarkvm_algorithms::define_masked_merkle_tree_parameters;
+use snarkvm_algorithms::merkle_tree::prng;
+use snarkvm_curves::bls12_377::Fr;
+use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::to_bytes;
 
 use once_cell::sync::Lazy;
-use serde::{Deserialize, Serialize};
-use std::fmt::{
-    Display,
-    Formatter,
-    {self},
-};
+use serde::Deserialize;
+use serde::Serialize;
+use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt::{self};
 
 // Do not leak the type
 mod window {

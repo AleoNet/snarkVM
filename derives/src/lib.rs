@@ -14,12 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use proc_macro2::{Ident, Span, TokenStream};
+use proc_macro2::Ident;
+use proc_macro2::Span;
+use proc_macro2::TokenStream;
 use proc_macro_crate::crate_name;
-use proc_macro_error::{abort_call_site, proc_macro_error};
+use proc_macro_error::abort_call_site;
+use proc_macro_error::proc_macro_error;
 use syn::*;
 
-use quote::{quote, ToTokens};
+use quote::quote;
+use quote::ToTokens;
 
 #[proc_macro_derive(CanonicalSerialize)]
 pub fn derive_canonical_serialize(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

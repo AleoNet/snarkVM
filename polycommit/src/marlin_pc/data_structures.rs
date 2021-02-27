@@ -14,16 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{impl_bytes, PCCommitment, PCCommitterKey, PCRandomness, PCVerifierKey, Vec};
+use crate::impl_bytes;
+use crate::PCCommitment;
+use crate::PCCommitterKey;
+use crate::PCRandomness;
+use crate::PCVerifierKey;
+use crate::Vec;
 use snarkvm_curves::traits::PairingEngine;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    error,
-    errors::SerializationError,
-    serialize::*,
-};
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::error;
+use snarkvm_utilities::errors::SerializationError;
+use snarkvm_utilities::serialize::*;
 
-use core::ops::{Add, AddAssign};
+use core::ops::Add;
+use core::ops::AddAssign;
 use rand_core::RngCore;
 
 use crate::kzg10;

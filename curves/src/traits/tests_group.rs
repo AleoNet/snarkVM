@@ -14,7 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{Group, One, Zero};
+use crate::traits::Group;
+use snarkvm_fields::One;
+use snarkvm_fields::Zero;
 use snarkvm_utilities::rand::UniformRand;
 
 use rand::SeedableRng;

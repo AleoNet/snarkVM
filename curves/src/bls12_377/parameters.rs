@@ -14,29 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    bls12_377::{
-        g1::Bls12_377G1Parameters,
-        g2::Bls12_377G2Parameters,
-        Fq,
-        Fq12,
-        Fq12Parameters,
-        Fq2Parameters,
-        Fq6Parameters,
-    },
-    templates::bls12::{
-        Bls12,
-        Bls12Parameters,
-        G1Affine as Bls12G1Affine,
-        G1Prepared,
-        G1Projective as Bls12G1Projective,
-        G2Affine as Bls12G2Affine,
-        G2Prepared,
-        G2Projective as Bls12G2Projective,
-        TwistType,
-    },
-    traits::{PairingCurve, PairingEngine},
-};
+use crate::bls12_377::g1::Bls12_377G1Parameters;
+use crate::bls12_377::g2::Bls12_377G2Parameters;
+use crate::bls12_377::Fq;
+use crate::bls12_377::Fq12;
+use crate::bls12_377::Fq12Parameters;
+use crate::bls12_377::Fq2Parameters;
+use crate::bls12_377::Fq6Parameters;
+use crate::templates::bls12::Bls12;
+use crate::templates::bls12::Bls12Parameters;
+use crate::templates::bls12::G1Affine as Bls12G1Affine;
+use crate::templates::bls12::G1Prepared;
+use crate::templates::bls12::G1Projective as Bls12G1Projective;
+use crate::templates::bls12::G2Affine as Bls12G2Affine;
+use crate::templates::bls12::G2Prepared;
+use crate::templates::bls12::G2Projective as Bls12G2Projective;
+use crate::templates::bls12::TwistType;
+use crate::traits::PairingCurve;
+use crate::traits::PairingEngine;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Bls12_377Parameters;

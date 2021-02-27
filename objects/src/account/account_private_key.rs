@@ -14,17 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, AccountError};
-use snarkvm_algorithms::{
-    prf::Blake2s,
-    traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, PRF},
-};
+use crate::account_format;
+use crate::AccountError;
+use snarkvm_algorithms::prf::Blake2s;
+use snarkvm_algorithms::traits::CommitmentScheme;
+use snarkvm_algorithms::traits::EncryptionScheme;
+use snarkvm_algorithms::traits::SignatureScheme;
+use snarkvm_algorithms::traits::PRF;
 use snarkvm_dpc::traits::DPCComponents;
-use snarkvm_utilities::{bytes_to_bits, to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::bytes_to_bits;
+use snarkvm_utilities::to_bytes;
+use snarkvm_utilities::FromBytes;
+use snarkvm_utilities::ToBytes;
 
-use base58::{FromBase58, ToBase58};
+use base58::FromBase58;
+use base58::ToBase58;
 use rand::Rng;
-use std::{fmt, str::FromStr};
+use std::fmt;
+use std::str::FromStr;
 
 #[derive(Derivative)]
 #[derivative(

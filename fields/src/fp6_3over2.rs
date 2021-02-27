@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{Field, Fp2, Fp2Parameters, One, PrimeField, Zero};
+use crate::{Field, Fp2, Fp2Parameters, One, PrimeField, Zero};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     div_ceil,

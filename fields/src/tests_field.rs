@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{Field, LegendreSymbol, PrimeField, SquareRootField};
+use crate::{Field, LegendreSymbol, PrimeField, SquareRootField};
 use snarkvm_utilities::{
     io::Cursor,
     serialize::{CanonicalDeserialize, CanonicalSerialize, Flags, SWFlags},

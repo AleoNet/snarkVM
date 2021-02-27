@@ -14,16 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    templates::{
-        bls12::Bls12Parameters,
-        short_weierstrass::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
-    },
-    traits::{pairing_engine::AffineCurve, Zero},
-};
-use snarkvm_utilities::{bytes::ToBytes, errors::SerializationError, serialize::*};
+use crate::templates::bls12::Bls12Parameters;
+use crate::templates::short_weierstrass::short_weierstrass_jacobian::GroupAffine;
+use crate::templates::short_weierstrass::short_weierstrass_jacobian::GroupProjective;
+use crate::traits::pairing_engine::AffineCurve;
+use snarkvm_fields::Zero;
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::errors::SerializationError;
+use snarkvm_utilities::serialize::*;
 
-use std::io::{Result as IoResult, Write};
+use std::io::Result as IoResult;
+use std::io::Write;
 
 pub type G1Affine<P> = GroupAffine<<P as Bls12Parameters>::G1Parameters>;
 pub type G1Projective<P> = GroupProjective<<P as Bls12Parameters>::G1Parameters>;

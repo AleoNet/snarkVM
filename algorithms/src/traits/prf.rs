@@ -15,9 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::PRFError;
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
 
-use std::{fmt::Debug, hash::Hash};
+use std::fmt::Debug;
+use std::hash::Hash;
 
 pub trait PRF {
     type Input: FromBytes + Default;

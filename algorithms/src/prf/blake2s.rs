@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::PRFError, traits::PRF};
+use crate::errors::PRFError;
+use crate::traits::PRF;
 
 use blake2::Blake2s as blake2s;
 use digest::Digest;

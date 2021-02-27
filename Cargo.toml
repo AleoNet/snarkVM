@@ -23,6 +23,7 @@ members = [
   "curves",
   "derives",
   "dpc",
+  "fields",
   "gadgets",
   "marlin",
   "objects",

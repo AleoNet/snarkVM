@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{AffineCurve, PrimeField, ProjectiveCurve, Zero};
+use crate::traits::AffineCurve;
+use crate::traits::ProjectiveCurve;
+use snarkvm_fields::PrimeField;
+use snarkvm_fields::Zero;
 use snarkvm_utilities::rand::UniformRand;
 
 use rand::SeedableRng;
@@ -204,7 +207,8 @@ fn random_transformation_test<G: ProjectiveCurve>() {
             assert!(!i.is_normalized());
         }
 
-        use rand::distributions::{Distribution, Uniform};
+        use rand::distributions::Distribution;
+        use rand::distributions::Uniform;
         let between = Uniform::from(0..ITERATIONS);
         // Sprinkle in some normalized points
         for _ in 0..5 {

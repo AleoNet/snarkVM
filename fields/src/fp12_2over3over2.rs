@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{fp6_3over2::*, Field, Fp2, Fp2Parameters, One, PrimeField, Zero};
+use crate::{fp6_3over2::*, Field, Fp2, Fp2Parameters, One, PrimeField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
     bytes::{FromBytes, ToBytes},

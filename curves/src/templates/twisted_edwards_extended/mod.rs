@@ -14,40 +14,43 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    impl_edwards_curve_serializer,
-    traits::{
-        AffineCurve,
-        Field,
-        MontgomeryModelParameters as MontgomeryParameters,
-        One,
-        PrimeField,
-        ProjectiveCurve,
-        SquareRootField,
-        TEModelParameters as Parameters,
-        Zero,
-    },
-};
-use snarkvm_utilities::{
-    bititerator::BitIteratorBE,
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    serialize::*,
-};
+use crate::impl_edwards_curve_serializer;
+use crate::traits::AffineCurve;
+use crate::traits::MontgomeryModelParameters as MontgomeryParameters;
+use crate::traits::ProjectiveCurve;
+use crate::traits::TEModelParameters as Parameters;
+use snarkvm_fields::Field;
+use snarkvm_fields::One;
+use snarkvm_fields::PrimeField;
+use snarkvm_fields::SquareRootField;
+use snarkvm_fields::Zero;
+use snarkvm_utilities::bititerator::BitIteratorBE;
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::serialize::*;
 
-use rand::{
-    distributions::{Distribution, Standard},
-    Rng,
-};
-use std::{
-    fmt::{Display, Formatter, Result as FmtResult},
-    io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
-    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
-};
+use rand::distributions::Distribution;
+use rand::distributions::Standard;
+use rand::Rng;
+use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt::Result as FmtResult;
+use std::io::Read;
+use std::io::Result as IoResult;
+use std::io::Write;
+use std::marker::PhantomData;
+use std::ops::Add;
+use std::ops::AddAssign;
+use std::ops::Mul;
+use std::ops::MulAssign;
+use std::ops::Neg;
+use std::ops::Sub;
+use std::ops::SubAssign;
 
 pub mod tests;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 #[derive(Derivative, Serialize, Deserialize)]
 #[derivative(

@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::CommitmentError, traits::CommitmentScheme};
+use crate::errors::CommitmentError;
+use crate::traits::CommitmentScheme;
 
 use blake2::Blake2s as blake2s;
 use digest::Digest;

@@ -19,20 +19,18 @@ extern crate criterion;
 
 use crate::traits::SNARK;
 use snarkvm_algorithms::snark::gm17::GM17;
-use snarkvm_curves::{
-    bls12_377::{Bls12_377, Fr},
-    traits::Field,
-};
+use snarkvm_curves::bls12_377::Bls12_377;
+use snarkvm_curves::bls12_377::Fr;
+use snarkvm_curves::traits::Field;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem};
+use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
+use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
 
 use criterion::Criterion;
-use rand::{
-    thread_rng,
-    Rng,
-    {self},
-};
+use rand::thread_rng;
+use rand::Rng;
+use rand::{self};
 
 type GM17SNARK = GM17<Bls12_377, Benchmark<Fr>, Fr>;
 

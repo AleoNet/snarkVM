@@ -15,11 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::traits::SNARK;
-use snarkvm_dpc::{
-    base_dpc::{instantiated::Components, parameters::SystemParameters, BaseDPCComponents, DPC},
-    errors::DPCError,
-};
-use snarkvm_utilities::{bytes::ToBytes, to_bytes};
+use snarkvm_dpc::base_dpc::instantiated::Components;
+use snarkvm_dpc::base_dpc::parameters::SystemParameters;
+use snarkvm_dpc::base_dpc::BaseDPCComponents;
+use snarkvm_dpc::base_dpc::DPC;
+use snarkvm_dpc::errors::DPCError;
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::to_bytes;
 
 use rand::thread_rng;
 use std::path::PathBuf;

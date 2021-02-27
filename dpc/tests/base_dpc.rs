@@ -14,37 +14,36 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{DPCScheme, Program};
+use crate::traits::DPCScheme;
+use crate::traits::Program;
 use snarkvm_algorithms::traits::CRH;
-use snarkvm_dpc::base_dpc::{
-    instantiated::*,
-    program::NoopProgram,
-    record::record_encryption::RecordEncryption,
-    record_payload::RecordPayload,
-    BaseDPCComponents,
-    DPC,
-};
-use snarkvm_objects::{
-    dpc::DPCTransactions,
-    merkle_root,
-    traits::{LedgerScheme, Transaction},
-    AccountViewKey,
-    Block,
-    BlockHeader,
-    BlockHeaderHash,
-    MerkleRootHash,
-    PedersenMerkleRootHash,
-    ProofOfSuccinctWork,
-};
-use snarkvm_testing::{dpc::*, storage::*};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-};
+use snarkvm_dpc::base_dpc::instantiated::*;
+use snarkvm_dpc::base_dpc::program::NoopProgram;
+use snarkvm_dpc::base_dpc::record::record_encryption::RecordEncryption;
+use snarkvm_dpc::base_dpc::record_payload::RecordPayload;
+use snarkvm_dpc::base_dpc::BaseDPCComponents;
+use snarkvm_dpc::base_dpc::DPC;
+use snarkvm_objects::dpc::DPCTransactions;
+use snarkvm_objects::merkle_root;
+use snarkvm_objects::traits::LedgerScheme;
+use snarkvm_objects::traits::Transaction;
+use snarkvm_objects::AccountViewKey;
+use snarkvm_objects::Block;
+use snarkvm_objects::BlockHeader;
+use snarkvm_objects::BlockHeaderHash;
+use snarkvm_objects::MerkleRootHash;
+use snarkvm_objects::PedersenMerkleRootHash;
+use snarkvm_objects::ProofOfSuccinctWork;
+use snarkvm_testing::dpc::*;
+use snarkvm_testing::storage::*;
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::to_bytes;
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
 
 type L = Ledger<Tx, CommitmentMerkleParameters>;
 

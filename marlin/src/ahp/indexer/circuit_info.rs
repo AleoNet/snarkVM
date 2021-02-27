@@ -16,7 +16,9 @@
 
 use crate::ahp::AHPForR1CS;
 use snarkvm_curves::traits::PrimeField;
-use snarkvm_utilities::{errors::SerializationError, serialize::*, ToBytes};
+use snarkvm_utilities::errors::SerializationError;
+use snarkvm_utilities::serialize::*;
+use snarkvm_utilities::ToBytes;
 
 use core::marker::PhantomData;
 use derivative::Derivative;

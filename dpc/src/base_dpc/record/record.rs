@@ -14,22 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    base_dpc::{record_payload::RecordPayload, BaseDPCComponents},
-    traits::Record,
-};
-use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH};
+use crate::base_dpc::record_payload::RecordPayload;
+use crate::base_dpc::BaseDPCComponents;
+use crate::traits::Record;
+use snarkvm_algorithms::traits::CommitmentScheme;
+use snarkvm_algorithms::traits::SignatureScheme;
+use snarkvm_algorithms::traits::CRH;
 use snarkvm_objects::AccountAddress;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-    variable_length_integer::*,
-};
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::to_bytes;
+use snarkvm_utilities::variable_length_integer::*;
 
-use std::{
-    io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
-};
+use std::io::Read;
+use std::io::Result as IoResult;
+use std::io::Write;
+use std::marker::PhantomData;
 
 #[derive(Derivative)]
 #[derivative(

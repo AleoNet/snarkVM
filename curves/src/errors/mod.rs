@@ -14,11 +14,5 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod constraint_field;
-pub use constraint_field::*;
-
-pub mod field;
-pub use field::*;
-
 pub mod group;
 pub use group::*;

@@ -14,30 +14,32 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    ahp::{
-        indexer::{Circuit, CircuitInfo, Matrix},
-        prover::ProverConstraintSystem,
-        verifier::{VerifierFirstMessage, VerifierSecondMessage},
-        AHPError,
-        AHPForR1CS,
-        UnnormalizedBivariateLagrangePoly,
-    },
-    prover::{state::ProverState, ProverMessage},
-    ToString,
-    Vec,
-};
-use snarkvm_algorithms::{
-    cfg_into_iter,
-    cfg_iter,
-    cfg_iter_mut,
-    fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain},
-};
-use snarkvm_curves::traits::{batch_inversion, Field, PrimeField};
+use crate::ahp::indexer::Circuit;
+use crate::ahp::indexer::CircuitInfo;
+use crate::ahp::indexer::Matrix;
+use crate::ahp::prover::ProverConstraintSystem;
+use crate::ahp::verifier::VerifierFirstMessage;
+use crate::ahp::verifier::VerifierSecondMessage;
+use crate::ahp::AHPError;
+use crate::ahp::AHPForR1CS;
+use crate::ahp::UnnormalizedBivariateLagrangePoly;
+use crate::prover::state::ProverState;
+use crate::prover::ProverMessage;
+use crate::ToString;
+use crate::Vec;
+use snarkvm_algorithms::cfg_into_iter;
+use snarkvm_algorithms::cfg_iter;
+use snarkvm_algorithms::cfg_iter_mut;
+use snarkvm_algorithms::fft::EvaluationDomain;
+use snarkvm_algorithms::fft::Evaluations as EvaluationsOnDomain;
+use snarkvm_curves::traits::batch_inversion;
+use snarkvm_curves::traits::Field;
+use snarkvm_curves::traits::PrimeField;
 use snarkvm_r1cs::errors::SynthesisError;
 
 use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
-use snarkvm_polycommit::{LabeledPolynomial, Polynomial};
+use snarkvm_polycommit::LabeledPolynomial;
+use snarkvm_polycommit::Polynomial;
 
 use rand_core::RngCore;
 

@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::{collections::HashSet, hash::Hash};
+use std::collections::HashSet;
+use std::hash::Hash;
 
 /// Returns true if the given iterator has duplicate elements.
 pub fn has_duplicates<T>(iter: T) -> bool

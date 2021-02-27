@@ -15,13 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::CRHError;
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
 
 use rand::Rng;
-use std::{
-    fmt::{Debug, Display},
-    hash::Hash,
-};
+use std::fmt::Debug;
+use std::fmt::Display;
+use std::hash::Hash;
 
 pub trait CRHParameters: Clone + Debug + ToBytes + FromBytes + Eq {
     fn setup<R: Rng>(r: &mut R) -> Self;

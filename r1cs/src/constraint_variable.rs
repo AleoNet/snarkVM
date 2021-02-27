@@ -14,10 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{LinearCombination, Variable};
+use crate::LinearCombination;
+use crate::Variable;
 use snarkvm_curves::Field;
 
-use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub};
+use std::ops::Add;
+use std::ops::AddAssign;
+use std::ops::Mul;
+use std::ops::MulAssign;
+use std::ops::Neg;
+use std::ops::Sub;
 
 /// Either a `Variable` or a `LinearCombination`.
 #[derive(Clone, Debug)]

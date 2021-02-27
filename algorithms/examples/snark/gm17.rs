@@ -29,27 +29,26 @@
 use rand::thread_rng;
 
 // For benchmarking
-use std::{
-    error::Error,
-    time::{Duration, Instant},
-};
+use std::error::Error;
+use std::time::Duration;
+use std::time::Instant;
 
 // Bring in some tools for using pairing-friendly curves
 // We're going to use the BLS12-377 pairing-friendly elliptic curve.
-use snarkvm_curves::{
-    bls12_377::{Bls12_377, Fr},
-    traits::One,
-};
+use snarkvm_curves::bls12_377::Bls12_377;
+use snarkvm_curves::bls12_377::Fr;
+use snarkvm_curves::traits::One;
 
 // We're going to use the Groth-Maller 17 proving system.
-use snarkvm_algorithms::snark::gm17::{
-    create_random_proof,
-    generate_random_parameters,
-    prepare_verifying_key,
-    verify_proof,
-};
+use snarkvm_algorithms::snark::gm17::create_random_proof;
+use snarkvm_algorithms::snark::gm17::generate_random_parameters;
+use snarkvm_algorithms::snark::gm17::prepare_verifying_key;
+use snarkvm_algorithms::snark::gm17::verify_proof;
 
-use std::{env, fs::OpenOptions, path::PathBuf, process};
+use std::env;
+use std::fs::OpenOptions;
+use std::path::PathBuf;
+use std::process;
 
 mod constraints;
 use crate::constraints::Benchmark;

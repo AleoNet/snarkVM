@@ -14,17 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, AccountError, AccountPrivateKey, AccountViewKey};
+use crate::account_format;
+use crate::AccountError;
+use crate::AccountPrivateKey;
+use crate::AccountViewKey;
 use snarkvm_algorithms::traits::EncryptionScheme;
 use snarkvm_dpc::traits::DPCComponents;
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_utilities::FromBytes;
+use snarkvm_utilities::ToBytes;
 
-use bech32::{Bech32, FromBase32, ToBase32};
-use std::{
-    fmt,
-    io::{Read, Result as IoResult, Write},
-    str::FromStr,
-};
+use bech32::Bech32;
+use bech32::FromBase32;
+use bech32::ToBase32;
+use std::fmt;
+use std::io::Read;
+use std::io::Result as IoResult;
+use std::io::Write;
+use std::str::FromStr;
 
 #[derive(Derivative)]
 #[derivative(

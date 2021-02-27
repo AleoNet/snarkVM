@@ -1719,6 +1719,7 @@ dependencies = [
  "rand_xorshift",
  "rustc_version 0.3.3",
  "serde",
+ "snarkvm-fields",
  "snarkvm-utilities",
  "thiserror",
 ]
@@ -1752,6 +1753,18 @@ dependencies = [
  "snarkvm-parameters",
  "snarkvm-profiler",
  "snarkvm-testing",
+ "snarkvm-utilities",
+ "thiserror",
+]
+
+[[package]]
+name = "snarkvm-fields"
+version = "0.0.6"
+dependencies = [
+ "derivative",
+ "rand",
+ "rand_xorshift",
+ "serde",
  "snarkvm-utilities",
  "thiserror",
 ]

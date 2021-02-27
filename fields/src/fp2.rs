@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{Field, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
+use crate::{Field, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     div_ceil,
@@ -215,7 +215,7 @@ where
     }
 
     fn sqrt(&self) -> Option<Self> {
-        use crate::traits::LegendreSymbol::*;
+        use crate::LegendreSymbol::*;
         if self.c1.is_zero() {
             return self.c0.sqrt().map(|c0| Self::new(c0, P::Fp::zero()));
         }
