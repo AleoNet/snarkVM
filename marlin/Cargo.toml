@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-marlin"
-version = "0.0.5"
+version = "0.0.6"
 authors = [
   "Alessandro Chiesa <alexch@berkeley.edu>",
   "Mary Maller <mary.maller.15@ucl.ac.uk>",
@@ -20,12 +20,7 @@ keywords = [
   "zero-knowledge"
 ]
 categories = [ "cryptography::cryptocurrencies", "operating-systems" ]
-include = [
-  "Cargo.toml",
-  "src",
-  "README.md",
-  "LICENSE",
-]
+include = [ "Cargo.toml", "src", "README.md", "LICENSE" ]
 license = "GPL-3.0"
 edition = "2018"
 
@@ -36,28 +31,28 @@ harness = false
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.0.5"
+version = "0.0.6"
 
 [dependencies.snarkvm-errors]
 path = "../errors"
-version = "0.0.5"
+version = "0.0.6"
 
 [dependencies.snarkvm-models]
 path = "../models"
-version = "0.0.5"
+version = "0.0.6"
 
 [dependencies.snarkvm-polycommit]
 path = "../polycommit"
-version = "0.0.5"
+version = "0.0.6"
 default-features = false
 
 [dependencies.snarkvm-profiler]
 path = "../profiler"
-version = "0.0.5"
+version = "0.0.6"
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.0.5"
+version = "0.0.6"
 
 [dependencies.blake2]
 version = "0.9"
@@ -74,16 +69,16 @@ version = "0.9"
 version = "0.3"
 default-features = false
 
-[dev-dependencies.rand]
-version = "0.8"
-default-features = false
-
 [dependencies.rand_core]
 version = "0.6"
 
 [dependencies.rayon]
 version = "1"
 optional = true
+
+[dev-dependencies.rand]
+version = "0.8"
+default-features = false
 
 [dev-dependencies.criterion]
 version = "0.3.4"

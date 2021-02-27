@@ -1685,7 +1685,7 @@ checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
 
 [[package]]
 name = "snarkvm"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "anyhow",
  "colored",
@@ -1697,7 +1697,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-algorithms"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "blake2",
  "criterion",
@@ -1720,7 +1720,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-curves"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "criterion",
  "derivative",
@@ -1735,7 +1735,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-derives"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "proc-macro-crate",
  "proc-macro-error",
@@ -1746,7 +1746,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-dpc"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "anyhow",
  "blake2",
@@ -1769,7 +1769,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-errors"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "base58",
  "bech32",
@@ -1781,7 +1781,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-gadgets"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "blake2",
  "derivative",
@@ -1798,7 +1798,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-marlin"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "blake2",
  "criterion",
@@ -1819,7 +1819,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-models"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1838,7 +1838,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-objects"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "base58",
  "bech32",
@@ -1860,7 +1860,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-parameters"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "blake2",
  "curl",
@@ -1879,7 +1879,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-polycommit"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "blake2",
  "derivative",
@@ -1897,7 +1897,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-posw"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "blake2",
  "hex",
@@ -1920,14 +1920,14 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-profiler"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "colored",
 ]
 
 [[package]]
 name = "snarkvm-storage"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1949,7 +1949,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-testing"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "once_cell",
  "rand",
@@ -1967,7 +1967,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-utilities"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "bincode",
  "rand",
@@ -1978,7 +1978,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-wasm"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "derivative",
  "rand",

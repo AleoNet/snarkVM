@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-wasm"
-version = "0.0.5"
+version = "0.0.6"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "WASM for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -20,29 +20,24 @@ edition = "2018"
 [lib]
 crate-type = [ "cdylib", "rlib" ]
 
-#[dependencies.snarkvm-algorithms]
-#path = "../algorithms"
-#version = "0.0.5"
-#default-features = false
-
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.0.5"
+version = "0.0.6"
 default-features = false
 
 [dependencies.snarkvm-errors]
 path = "../errors"
-version = "0.0.5"
+version = "0.0.6"
 default-features = false
 
 [dependencies.snarkvm-models]
 path = "../models"
-version = "0.0.5"
+version = "0.0.6"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.0.5"
+version = "0.0.6"
 
 [dependencies.derivative]
 version = "2"
