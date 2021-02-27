@@ -588,6 +588,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fxhash"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1761,6 +1770,7 @@ dependencies = [
 name = "snarkvm-fields"
 version = "0.0.6"
 dependencies = [
+ "bincode",
  "derivative",
  "rand",
  "rand_xorshift",
@@ -1891,7 +1901,12 @@ dependencies = [
 name = "snarkvm-r1cs"
 version = "0.0.6"
 dependencies = [
+ "cfg-if 1.0.0",
+ "fxhash",
+ "indexmap",
+ "itertools 0.10.0",
  "snarkvm-curves",
+ "snarkvm-fields",
  "snarkvm-utilities",
  "thiserror",
 ]

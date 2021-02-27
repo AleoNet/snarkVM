@@ -81,8 +81,6 @@ pub use primefield::*;
 
 pub mod tests_field;
 
-pub mod to_field_vec;
-
 #[macro_export]
 macro_rules! field {
     ($name:ident, $c0:expr) => {

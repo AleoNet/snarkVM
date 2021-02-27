@@ -23,11 +23,11 @@ pub enum ConstraintFieldError {
     Message(String),
 
     #[error("{}", _0)]
-    SynthesisError(snarkvm_r1cs::errors::SynthesisError),
+    SynthesisError(crate::errors::SynthesisError),
 }
 
-impl From<snarkvm_r1cs::errors::SynthesisError> for ConstraintFieldError {
-    fn from(error: snarkvm_r1cs::errors::SynthesisError) -> Self {
+impl From<crate::errors::SynthesisError> for ConstraintFieldError {
+    fn from(error: crate::errors::SynthesisError) -> Self {
         ConstraintFieldError::SynthesisError(error)
     }
 }

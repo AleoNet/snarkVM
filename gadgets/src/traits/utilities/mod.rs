@@ -14,11 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::Field;
-use crate::gadgets::r1cs::ConstraintSystem;
-use crate::gadgets::utilities::boolean::Boolean;
-use crate::gadgets::utilities::uint::unsigned_integer::{UInt, UInt8};
-use snarkvm_r1cs::errors::SynthesisError;
+use crate::traits::utilities::{
+    boolean::Boolean,
+    uint::unsigned_integer::{UInt, UInt8},
+};
+use snarkvm_fields::Field;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 pub mod alloc;
 pub mod arithmetic;
@@ -26,7 +27,6 @@ pub mod bits;
 pub mod boolean;
 pub mod eq;
 pub mod int;
-pub mod optional_vec;
 pub mod select;
 pub mod uint;
 

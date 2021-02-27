@@ -21,9 +21,25 @@ edition = "2018"
 path = "../curves"
 version = "0.0.6"
 
+[dependencies.snarkvm-fields]
+path = "../fields"
+version = "0.0.6"
+
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.0.6"
+
+[dependencies.cfg-if]
+version = "1.0.0"
+
+[dependencies.fxhash]
+version = "0.2.1"
+
+[dependencies.indexmap]
+version = "1.6.0"
+
+[dependencies.itertools]
+version = "0.10.0"
 
 [dependencies.thiserror]
 version = "1.0"

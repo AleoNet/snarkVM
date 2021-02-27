@@ -20,7 +20,7 @@ pub enum GroupError {
     Crate(&'static str, String),
 
     #[error("{}", _0)]
-    FieldError(crate::errors::FieldError),
+    FieldError(snarkvm_fields::FieldError),
 
     #[error("Invalid group element")]
     InvalidGroupElement,
@@ -38,8 +38,8 @@ pub enum GroupError {
     ParsingNonDigitCharacter,
 }
 
-impl From<crate::errors::FieldError> for GroupError {
-    fn from(error: crate::errors::FieldError) -> Self {
+impl From<snarkvm_fields::FieldError> for GroupError {
+    fn from(error: snarkvm_fields::FieldError) -> Self {
         GroupError::FieldError(error)
     }
 }

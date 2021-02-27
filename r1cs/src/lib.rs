@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#[macro_use]
+extern crate thiserror;
+
 mod assignment;
 pub use assignment::*;
 
@@ -21,8 +24,7 @@ mod constraint_counter;
 pub use constraint_counter::*;
 
 mod constraint_system;
-pub use constraint_system::ConstraintSynthesizer;
-pub use constraint_system::ConstraintSystem;
+pub use constraint_system::{ConstraintSynthesizer, ConstraintSystem};
 
 mod constraint_variable;
 pub use constraint_variable::*;
@@ -36,16 +38,20 @@ pub use linear_combination::*;
 mod namespace;
 pub use namespace::*;
 
+mod optional_vec;
+pub use optional_vec::*;
+
 mod test_constraint_system;
 pub use test_constraint_system::TestConstraintSystem;
 
 mod test_fr;
 pub use test_fr::*;
 
+pub mod to_field_vec;
+
 pub use snarkvm_curves::to_field_vec::ToConstraintField;
 
-use snarkvm_utilities::errors::SerializationError;
-use snarkvm_utilities::serialize::*;
+use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use std::cmp::Ordering;
 
