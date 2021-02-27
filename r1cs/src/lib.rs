@@ -48,8 +48,7 @@ mod test_fr;
 pub use test_fr::*;
 
 pub mod to_field_vec;
-
-pub use snarkvm_curves::to_field_vec::ToConstraintField;
+pub use to_field_vec::ToConstraintField;
 
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
 

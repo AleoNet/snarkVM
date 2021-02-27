@@ -16,7 +16,6 @@
 
 use crate::{errors::SynthesisError, ConstraintSystem, Index, LinearCombination, OptionalVec, Variable};
 use snarkvm_fields::Field;
-use snarkvm_gadgets::utilities::OptionalVec;
 
 use cfg_if::cfg_if;
 use fxhash::{FxBuildHasher, FxHashMap};

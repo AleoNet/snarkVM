@@ -31,6 +31,60 @@ pub trait ToConstraintField<F: Field> {
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError>;
 }
 
+impl<M: TEModelParameters, F: Field> ToConstraintField<F> for TEAffine<M>
+where
+    M::BaseField: ToConstraintField<F>,
+{
+    #[inline]
+    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
+        let mut x_fe = self.x.to_field_elements()?;
+        let y_fe = self.y.to_field_elements()?;
+        x_fe.extend_from_slice(&y_fe);
+        Ok(x_fe)
+    }
+}
+
+impl<M: TEModelParameters, F: Field> ToConstraintField<F> for TEProjective<M>
+where
+    M::BaseField: ToConstraintField<F>,
+{
+    #[inline]
+    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
+        let affine = self.into_affine();
+        let mut x_fe = affine.x.to_field_elements()?;
+        let y_fe = affine.y.to_field_elements()?;
+        x_fe.extend_from_slice(&y_fe);
+        Ok(x_fe)
+    }
+}
+
+impl<M: SWModelParameters, F: Field> ToConstraintField<F> for SWAffine<M>
+where
+    M::BaseField: ToConstraintField<F>,
+{
+    #[inline]
+    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
+        let mut x_fe = self.x.to_field_elements()?;
+        let y_fe = self.y.to_field_elements()?;
+        x_fe.extend_from_slice(&y_fe);
+        Ok(x_fe)
+    }
+}
+
+impl<M: SWModelParameters, F: Field> ToConstraintField<F> for SWProjective<M>
+where
+    M::BaseField: ToConstraintField<F>,
+{
+    #[inline]
+    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
+        let affine = self.into_affine();
+        let mut x_fe = affine.x.to_field_elements()?;
+        let y_fe = affine.y.to_field_elements()?;
+        x_fe.extend_from_slice(&y_fe);
+        Ok(x_fe)
+    }
+}
+
 impl<F: PrimeField> ToConstraintField<F> for F {
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         Ok(vec![*self])
@@ -91,59 +145,5 @@ impl<F: PrimeField> ToConstraintField<F> for [u8; 32] {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         self.as_ref().to_field_elements()
-    }
-}
-
-impl<M: TEModelParameters, F: Field> ToConstraintField<F> for TEAffine<M>
-where
-    M::BaseField: ToConstraintField<F>,
-{
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        let mut x_fe = self.x.to_field_elements()?;
-        let y_fe = self.y.to_field_elements()?;
-        x_fe.extend_from_slice(&y_fe);
-        Ok(x_fe)
-    }
-}
-
-impl<M: TEModelParameters, F: Field> ToConstraintField<F> for TEProjective<M>
-where
-    M::BaseField: ToConstraintField<F>,
-{
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        let affine = self.into_affine();
-        let mut x_fe = affine.x.to_field_elements()?;
-        let y_fe = affine.y.to_field_elements()?;
-        x_fe.extend_from_slice(&y_fe);
-        Ok(x_fe)
-    }
-}
-
-impl<M: SWModelParameters, F: Field> ToConstraintField<F> for SWAffine<M>
-where
-    M::BaseField: ToConstraintField<F>,
-{
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        let mut x_fe = self.x.to_field_elements()?;
-        let y_fe = self.y.to_field_elements()?;
-        x_fe.extend_from_slice(&y_fe);
-        Ok(x_fe)
-    }
-}
-
-impl<M: SWModelParameters, F: Field> ToConstraintField<F> for SWProjective<M>
-where
-    M::BaseField: ToConstraintField<F>,
-{
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        let affine = self.into_affine();
-        let mut x_fe = affine.x.to_field_elements()?;
-        let y_fe = affine.y.to_field_elements()?;
-        x_fe.extend_from_slice(&y_fe);
-        Ok(x_fe)
     }
 }
