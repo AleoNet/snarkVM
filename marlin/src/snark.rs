@@ -100,7 +100,7 @@ where
         let proving_time = start_timer!(|| "{Marlin}::Proving");
         let proof =
             MarlinSNARK::<<E as PairingEngine>::Fr, MultiPC<E>, Blake2s>::prove(&parameters.proving_key, circuit, rng)
-                .map_err(|_| SNARKError::Crate("marlin", "Could not generate proof".to_owned()))?;
+                .map_err(|error| SNARKError::Crate("marlin", format!("Failed to generate proof - {:?}", error)))?;
         end_timer!(proving_time);
         Ok(proof)
     }

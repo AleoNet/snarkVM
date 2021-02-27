@@ -56,7 +56,7 @@ impl<E: PairingEngine> Parameters<E> {
     /// Creates an instance of `Parameters` from a given universal SRS.
     pub fn new<C: ConstraintSynthesizer<E::Fr>>(circuit: &C, universal_srs: &SRS<E>) -> Result<Self, SNARKError> {
         let (proving_key, verifying_key) = MarlinSNARK::<_, _, Blake2s>::circuit_setup(universal_srs, circuit)
-            .map_err(|_| SNARKError::Crate("marlin", "could not index".to_owned()))?;
+            .map_err(|error| SNARKError::Crate("marlin", format!("could not index - {:?}", error)))?;
         Ok(Self {
             proving_key,
             verifying_key,

@@ -30,7 +30,10 @@ use crate::{
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_errors::{gadgets::SynthesisError, serialization::SerializationError};
-use snarkvm_models::{curves::PrimeField, gadgets::r1cs::ConstraintSynthesizer};
+use snarkvm_models::{
+    curves::PrimeField,
+    gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem},
+};
 use snarkvm_polycommit::LabeledPolynomial;
 use snarkvm_utilities::{serialize::*, ToBytes};
 
@@ -52,7 +55,7 @@ pub struct CircuitInfo<F> {
     pub num_non_zero: usize,
 
     #[doc(hidden)]
-    f: PhantomData<F>,
+    pub f: PhantomData<F>,
 }
 
 impl<F: PrimeField> CircuitInfo<F> {
@@ -84,7 +87,7 @@ pub type Matrix<F> = Vec<Vec<(F, usize)>>;
 /// 3) `{a,b,c}_star_arith` are structs containing information about A^*, B^*, and C^*,
 /// which are matrices defined as `M^*(i, j) = M(j, i) * u_H(j, j)`.
 pub struct Circuit<F: PrimeField> {
-    /// Information about the index.
+    /// Information about the indexed circuit.
     pub index_info: CircuitInfo<F>,
 
     /// The A matrix for the R1CS instance
@@ -139,27 +142,30 @@ impl<F: PrimeField> AHPForR1CS<F> {
         end_timer!(constraint_time);
 
         let padding_time = start_timer!(|| "Padding matrices to make them square");
+        crate::ahp::matrices::pad_input_for_indexer_and_prover(&mut ics);
         ics.make_matrices_square();
+        // balance_matrices(&mut a, &mut b);
+        let mut a = ics.a_matrix();
+        let mut b = ics.b_matrix();
+        let mut c = ics.c_matrix();
+        crate::ahp::matrices::balance_matrices(&mut a, &mut b);
         end_timer!(padding_time);
 
-        let num_formatted_input_variables = ics.num_public_variables;
-        let num_witness_variables = ics.num_private_variables;
-        let num_constraints = ics.num_constraints;
+        let num_padded_public_variables = ics.num_public_variables();
+        let num_private_variables = ics.num_private_variables();
+        let num_constraints = ics.num_constraints();
         let num_non_zero = ics.num_non_zero();
-        let num_variables = num_formatted_input_variables + num_witness_variables;
+        let num_variables = num_padded_public_variables + num_private_variables;
 
-        if num_constraints != num_formatted_input_variables + num_witness_variables {
-            eprintln!(
-                "number of (formatted) input_variables: {}",
-                num_formatted_input_variables
-            );
-            eprintln!("number of witness_variables: {}", num_witness_variables);
+        if num_constraints != num_variables {
+            eprintln!("number of padded public variables: {}", num_padded_public_variables);
+            eprintln!("number of private variables: {}", num_private_variables);
             eprintln!("number of num_constraints: {}", num_constraints);
-            eprintln!("number of num_non_zero: {}", ics.num_non_zero());
+            eprintln!("number of num_non_zero: {}", num_non_zero);
             return Err(AHPError::NonSquareMatrix);
         }
 
-        if !Self::num_formatted_public_inputs_is_admissible(num_formatted_input_variables) {
+        if !Self::num_formatted_public_inputs_is_admissible(num_padded_public_variables) {
             return Err(AHPError::InvalidPublicInputLength);
         }
 
@@ -172,14 +178,10 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
         let domain_h = EvaluationDomain::new(num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let domain_k = EvaluationDomain::new(num_non_zero).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let x_domain = EvaluationDomain::<F>::new(num_formatted_input_variables)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let x_domain =
+            EvaluationDomain::<F>::new(num_padded_public_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let b_domain =
             EvaluationDomain::<F>::new(3 * domain_k.size() - 3).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-
-        let mut a = ics.a_matrix();
-        let mut b = ics.b_matrix();
-        let mut c = ics.c_matrix();
 
         let a_arithmetization_time = start_timer!(|| "Arithmetizing A");
         let a_star_arith = arithmetize_matrix("a", &mut a, domain_k, domain_h, x_domain, b_domain);

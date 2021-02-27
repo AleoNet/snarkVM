@@ -71,48 +71,22 @@ pub(crate) fn balance_matrices<F: Field>(a_matrix: &mut Matrix<F>, b_matrix: &mu
     }
 }
 
-// pub(crate) fn num_non_zero<F: PrimeField>(matrices: &ConstraintMatrices<F>) -> usize {
-//     *[
-//         matrices.a_num_non_zero,
-//         matrices.b_num_non_zero,
-//         matrices.c_num_non_zero,
-//     ]
-//     .iter()
-//     .max()
-//     .unwrap()
-// }
-
-pub(crate) fn make_matrices_square_for_indexer<F: PrimeField, CS: ConstraintSystem<F>>(cs: &mut CS) {
-    let num_variables = cs.num_public_variables() + cs.num_private_variables();
-    let matrix_dim = padded_matrix_dim(num_variables, cs.num_constraints());
-    make_matrices_square(cs, num_variables);
-    assert_eq!(
-        cs.num_public_variables() + cs.num_private_variables(),
-        cs.num_constraints(),
-        "padding failed!"
-    );
-    assert_eq!(
-        cs.num_public_variables() + cs.num_private_variables(),
-        matrix_dim,
-        "padding does not result in expected matrix size!"
-    );
-}
-
 /// This must *always* be in sync with `make_matrices_square`.
 pub(crate) fn padded_matrix_dim(num_formatted_variables: usize, num_constraints: usize) -> usize {
     core::cmp::max(num_formatted_variables, num_constraints)
 }
 
+/// Pads the public variables up to the closest power of two.
 pub(crate) fn pad_input_for_indexer_and_prover<F: PrimeField, CS: ConstraintSystem<F>>(cs: &mut CS) {
-    let formatted_input_size = cs.num_public_variables();
+    let num_public_variables = cs.num_public_variables();
 
-    let domain_x = EvaluationDomain::<F>::new(formatted_input_size);
-    assert!(domain_x.is_some());
+    let power_of_two = EvaluationDomain::<F>::new(num_public_variables);
+    assert!(power_of_two.is_some());
 
-    let padded_size = domain_x.unwrap().size();
-
-    if padded_size > formatted_input_size {
-        for i in 0..(padded_size - formatted_input_size) {
+    // Allocated `zero` variables to pad the public input up to the next power of two.
+    let padded_size = power_of_two.unwrap().size();
+    if padded_size > num_public_variables {
+        for i in 0..(padded_size - num_public_variables) {
             cs.alloc_input(|| format!("pad_input_{}", i), || Ok(F::zero())).unwrap();
         }
     }

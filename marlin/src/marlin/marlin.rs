@@ -70,7 +70,10 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         // TODO: Add check that c is in the correct mode.
         let index = AHPForR1CS::index(circuit)?;
         if universal_srs.max_degree() < index.max_degree() {
-            return Err(MarlinError::IndexTooLarge);
+            return Err(MarlinError::IndexTooLarge(
+                universal_srs.max_degree(),
+                index.max_degree(),
+            ));
         }
 
         let coefficient_support = AHPForR1CS::get_degree_bounds(&index.index_info);
