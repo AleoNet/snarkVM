@@ -32,7 +32,7 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
-use crate::params::get_params;
+use crate::{overhead, params::get_params, AllocatedNonNativeFieldVar};
 
 use snarkvm_errors::gadgets::SynthesisError;
 use snarkvm_models::{
@@ -164,35 +164,38 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
         Ok(bits)
     }
 
-    // /// Reduction to the normal form
-    // #[tracing::instrument(target = "r1cs")]
-    // pub fn reduce(elem: &mut AllocatedNonNativeFieldVar<TargetField, BaseField>) -> R1CSResult<()> {
-    //     let new_elem = AllocatedNonNativeFieldVar::new_witness(ns!(elem.cs(), "normal_form"), || {
-    //         Ok(elem.value().unwrap_or_default())
-    //     })?;
-    //     elem.conditional_enforce_equal(&new_elem, &Boolean::TRUE)?;
-    //     *elem = new_elem;
-    //
-    //     Ok(())
-    // }
-    //
-    // /// Reduction to be enforced after additions
-    // #[tracing::instrument(target = "r1cs")]
-    // pub fn post_add_reduce(elem: &mut AllocatedNonNativeFieldVar<TargetField, BaseField>) -> R1CSResult<()> {
-    //     let params = get_params(
-    //         TargetField::size_in_bits(),
-    //         BaseField::size_in_bits(),
-    //         elem.get_optimization_type(),
-    //     );
-    //     let surfeit = overhead!(elem.num_of_additions_over_normal_form + BaseField::one()) + 1;
-    //
-    //     if BaseField::size_in_bits() > 2 * params.bits_per_limb + surfeit + 1 {
-    //         Ok(())
-    //     } else {
-    //         Self::reduce(elem)
-    //     }
-    // }
-    //
+    /// Reduction to the normal form
+    pub fn reduce<CS: ConstraintSystem<BaseField>>(
+        cs: &mut CS,
+        elem: &mut AllocatedNonNativeFieldVar<TargetField, BaseField>,
+    ) -> Result<(), SynthesisError> {
+        let new_elem =
+            AllocatedNonNativeFieldVar::alloc(cs.ns(|| "normal_form"), || Ok(elem.value().unwrap_or_default()))?;
+        elem.conditional_enforce_equal(cs, &new_elem, &Boolean::Constant(true))?;
+        *elem = new_elem;
+
+        Ok(())
+    }
+
+    /// Reduction to be enforced after additions
+    pub fn post_add_reduce<CS: ConstraintSystem<BaseField>>(
+        cs: &mut CS,
+        elem: &mut AllocatedNonNativeFieldVar<TargetField, BaseField>,
+    ) -> Result<(), SynthesisError> {
+        let params = get_params(
+            TargetField::size_in_bits(),
+            BaseField::size_in_bits(),
+            elem.get_optimization_type(),
+        );
+        let surfeit = overhead!(elem.num_of_additions_over_normal_form + &BaseField::one()) + 1;
+
+        if BaseField::size_in_bits() > 2 * params.bits_per_limb + surfeit + 1 {
+            Ok(())
+        } else {
+            Self::reduce(cs, elem)
+        }
+    }
+
     // /// Reduction used before multiplication to reduce the representations in a way that allows efficient multiplication
     // #[tracing::instrument(target = "r1cs")]
     // pub fn pre_mul_reduce(

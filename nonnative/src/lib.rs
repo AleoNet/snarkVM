@@ -72,9 +72,9 @@ pub mod reduce;
 #[macro_export]
 macro_rules! overhead {
     ($x:expr) => {{
-        use ark_ff::BigInteger;
+        use snarkvm_utilities::biginteger::BigInteger;
         let num = $x;
-        let num_bits = num.into_repr().to_bits_be();
+        let num_bits = num.into_repr().to_bits();
         let mut skipped_bits = 0;
         for b in num_bits.iter() {
             if *b == false {
@@ -109,9 +109,9 @@ pub struct NonNativeFieldParams {
     pub bits_per_limb: usize,
 }
 
-// mod allocated_nonnative_field_var;
-// pub use allocated_nonnative_field_var::*;
-//
+mod allocated_nonnative_field_var;
+pub use allocated_nonnative_field_var::*;
+
 // mod nonnative_field_var;
 // pub use nonnative_field_var::*;
 //
