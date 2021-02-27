@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::base_dpc::{record::DPCRecord, record_payload::RecordPayload, BaseDPCComponents};
+use crate::{
+    base_dpc::{record::DPCRecord, record_payload::RecordPayload, BaseDPCComponents},
+    errors::DPCError,
+};
 use snarkvm_algorithms::encoding::Elligator2;
-use snarkvm_errors::dpc::DPCError;
 use snarkvm_models::{
     algorithms::{CommitmentScheme, CRH},
     curves::{AffineCurve, Group, MontgomeryModelParameters, PrimeField, ProjectiveCurve, TEModelParameters},

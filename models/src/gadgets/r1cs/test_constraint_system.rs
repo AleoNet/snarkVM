@@ -21,7 +21,7 @@ use crate::{
         utilities::OptionalVec,
     },
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 
 use cfg_if::cfg_if;
 use fxhash::{FxBuildHasher, FxHashMap};

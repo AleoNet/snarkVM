@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{curves::Field, gadgets::r1cs::ConstraintSystem};
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 
 use std::borrow::Borrow;
 

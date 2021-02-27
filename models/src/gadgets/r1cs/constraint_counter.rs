@@ -18,7 +18,7 @@ use crate::{
     curves::Field,
     gadgets::r1cs::{ConstraintSystem, Index, LinearCombination, Variable},
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 
 /// Constraint counter for testing purposes.
 #[derive(Default)]

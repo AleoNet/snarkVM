@@ -28,7 +28,7 @@ use crate::{
         },
     },
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 
 use itertools::Itertools;
 use std::{borrow::Borrow, fmt::Debug};

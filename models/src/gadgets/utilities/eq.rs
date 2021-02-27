@@ -21,7 +21,7 @@ use crate::{
         utilities::{boolean::Boolean, select::CondSelectGadget},
     },
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 
 pub trait EvaluateEqGadget<F: Field> {
     fn evaluate_equal<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Boolean, SynthesisError>;

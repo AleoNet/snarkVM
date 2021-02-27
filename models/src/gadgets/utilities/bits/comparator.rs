@@ -25,7 +25,7 @@ use crate::{
         },
     },
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 
 pub trait EvaluateLtGadget<F: Field> {
     fn less_than<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Boolean, SynthesisError>;

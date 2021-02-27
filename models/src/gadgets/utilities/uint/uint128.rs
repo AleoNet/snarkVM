@@ -29,7 +29,7 @@ use crate::{
     },
     uint_impl_common,
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 use snarkvm_utilities::{
     biginteger::{BigInteger, BigInteger256},
     bytes::ToBytes,

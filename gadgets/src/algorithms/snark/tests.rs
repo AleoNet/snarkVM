@@ -14,10 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{algorithms::snark::*, curves::bls12_377::PairingGadget as Bls12_377PairingGadget};
+use crate::{algorithms::snark::*, curves::bls12_377::PairingGadget as Bls12_377PairingGadget, errors::SynthesisError};
 use snarkvm_algorithms::snark::gm17::{create_random_proof, generate_random_parameters, GM17};
 use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-use snarkvm_errors::gadgets::SynthesisError;
 use snarkvm_models::{
     curves::{Field, PrimeField},
     gadgets::{

@@ -16,7 +16,7 @@
 
 use super::{r1cs_to_sap::R1CStoSAP, Parameters, VerifyingKey};
 use crate::{fft::EvaluationDomain, msm::FixedBaseMSM};
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 use snarkvm_models::{
     curves::{AffineCurve, Field, One, PairingEngine, PrimeField, ProjectiveCurve, Zero},
     gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable},

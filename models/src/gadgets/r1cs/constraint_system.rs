@@ -18,7 +18,7 @@ use crate::{
     curves::Field,
     gadgets::r1cs::{Index, LinearCombination, Namespace, Variable},
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 
 use std::marker::PhantomData;
 

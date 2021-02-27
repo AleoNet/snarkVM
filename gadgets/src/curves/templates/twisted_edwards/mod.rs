@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::errors::SynthesisError;
 use snarkvm_curves::templates::twisted_edwards_extended::GroupAffine as TEAffine;
-use snarkvm_errors::gadgets::SynthesisError;
 use snarkvm_models::{
     curves::{Field, MontgomeryModelParameters, TEModelParameters},
     gadgets::{

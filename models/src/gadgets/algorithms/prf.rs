@@ -22,7 +22,7 @@ use crate::{
         utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8, ToBytesGadget},
     },
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 
 use std::fmt::Debug;
 

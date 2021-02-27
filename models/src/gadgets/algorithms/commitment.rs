@@ -28,7 +28,7 @@ use crate::{
         },
     },
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 
 use std::fmt::Debug;
 

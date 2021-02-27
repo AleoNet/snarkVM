@@ -21,8 +21,10 @@ use crate::base_dpc::{
     BaseDPCComponents,
 };
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTreeDigest};
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_gadgets::algorithms::{encoding::Elligator2FieldGadget, merkle_tree::merkle_path::MerklePathGadget};
+use snarkvm_gadgets::{
+    algorithms::{encoding::Elligator2FieldGadget, merkle_tree::merkle_path::MerklePathGadget},
+    errors::SynthesisError,
+};
 use snarkvm_models::{
     algorithms::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, PRF},
     curves::{

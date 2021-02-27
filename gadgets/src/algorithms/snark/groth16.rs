@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::errors::SynthesisError;
 use snarkvm_algorithms::snark::groth16::{Groth16, Proof, VerifyingKey};
-use snarkvm_errors::gadgets::SynthesisError;
 use snarkvm_models::{
     curves::{to_field_vec::ToConstraintField, AffineCurve, Field, PairingEngine},
     gadgets::{

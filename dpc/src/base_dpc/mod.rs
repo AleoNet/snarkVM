@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::base_dpc::record_payload::RecordPayload;
+use crate::{base_dpc::record_payload::RecordPayload, errors::DPCError};
 use snarkvm_algorithms::{
     commitment_tree::CommitmentMerkleTree,
     merkle_tree::{MerklePath, MerkleTreeDigest},
 };
-use snarkvm_errors::dpc::DPCError;
 use snarkvm_models::{
     algorithms::{
         CommitmentScheme,

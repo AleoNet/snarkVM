@@ -21,7 +21,7 @@ use crate::{
         utilities::{bits::FullAdder, boolean::Boolean, int::*},
     },
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 
 /// Returns the bitwise sum of a n-bit number with carry bit
 pub trait RippleCarryAdder<F: Field, Rhs = Self>

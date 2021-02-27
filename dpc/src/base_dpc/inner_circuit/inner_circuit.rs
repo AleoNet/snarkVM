@@ -22,7 +22,7 @@ use crate::base_dpc::{
     BaseDPCComponents,
 };
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTreeDigest};
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 use snarkvm_models::{
     algorithms::{CommitmentScheme, EncryptionScheme, SignatureScheme, CRH},
     gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem},

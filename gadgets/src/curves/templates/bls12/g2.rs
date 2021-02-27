@@ -14,9 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::templates::bls12::AffineGadget;
+use crate::{curves::templates::bls12::AffineGadget, errors::SynthesisError};
 use snarkvm_curves::templates::bls12::{Bls12Parameters, TwistType};
-use snarkvm_errors::gadgets::SynthesisError;
 use snarkvm_models::{
     curves::{Field, One},
     gadgets::{

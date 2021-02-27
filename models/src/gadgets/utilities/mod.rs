@@ -24,7 +24,7 @@ use crate::{
         },
     },
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 
 pub mod alloc;
 pub mod arithmetic;

@@ -18,7 +18,7 @@ use crate::{
     base_dpc::{parameters::SystemParameters, BaseDPCComponents},
     Assignment,
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 use snarkvm_models::{
     algorithms::{CommitmentScheme, CRH},
     gadgets::{

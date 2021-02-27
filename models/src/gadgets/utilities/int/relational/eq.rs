@@ -21,7 +21,7 @@ use crate::{
         utilities::{boolean::Boolean, eq::EvaluateEqGadget, int::*},
     },
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 
 macro_rules! eq_gadget_impl {
     ($($gadget: ident)*) => ($(

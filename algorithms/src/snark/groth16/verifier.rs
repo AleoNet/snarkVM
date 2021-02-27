@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{PreparedVerifyingKey, Proof, VerifyingKey};
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 use snarkvm_models::curves::{AffineCurve, PairingCurve, PairingEngine, PrimeField, ProjectiveCurve};
 
 use core::ops::{AddAssign, Neg};

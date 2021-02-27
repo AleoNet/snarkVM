@@ -19,7 +19,7 @@ extern crate criterion;
 
 use snarkvm_algorithms::snark::gm17::GM17;
 use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 use snarkvm_models::{
     algorithms::SNARK,
     curves::Field,

@@ -29,7 +29,7 @@ use crate::{
         },
     },
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 use snarkvm_utilities::bytes::ToBytes;
 
 use core::borrow::Borrow;

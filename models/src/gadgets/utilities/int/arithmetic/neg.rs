@@ -21,7 +21,7 @@ use crate::{
         utilities::{arithmetic::Neg, int::*},
     },
 };
-use snarkvm_errors::gadgets::SignedIntegerError;
+use snarkvm_gadgets::errors::SignedIntegerError;
 
 macro_rules! neg_int_impl {
     ($($gadget: ident)*) => ($(

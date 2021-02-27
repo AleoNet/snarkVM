@@ -16,7 +16,7 @@
 
 use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, Proof};
 use crate::{cfg_into_iter, msm::VariableBaseMSM};
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 use snarkvm_models::{
     curves::{AffineCurve, Group, One, PairingEngine, PrimeField, ProjectiveCurve, Zero},
     gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable},

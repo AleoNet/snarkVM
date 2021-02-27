@@ -21,7 +21,7 @@ use crate::ahp::{
     AHPForR1CS,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 use snarkvm_models::{
     curves::PrimeField,
     gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem},

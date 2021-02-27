@@ -24,7 +24,7 @@ use crate::{
         },
     },
 };
-use snarkvm_errors::gadgets::SignedIntegerError;
+use snarkvm_gadgets::errors::SignedIntegerError;
 
 macro_rules! sub_int_impl {
     ($($gadget: ident)*) => ($(

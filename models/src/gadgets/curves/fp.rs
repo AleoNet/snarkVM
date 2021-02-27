@@ -35,7 +35,7 @@ use crate::{
         },
     },
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 use snarkvm_utilities::{bititerator::BitIteratorBE, bytes::ToBytes, to_bytes};
 
 use std::borrow::Borrow;

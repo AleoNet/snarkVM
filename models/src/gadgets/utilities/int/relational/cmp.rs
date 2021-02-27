@@ -26,7 +26,7 @@ use crate::{
         },
     },
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 use std::cmp::Ordering;
 
 macro_rules! cmp_gadget_impl {

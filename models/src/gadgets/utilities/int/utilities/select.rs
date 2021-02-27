@@ -21,7 +21,7 @@ use crate::{
         utilities::{alloc::AllocGadget, boolean::Boolean, eq::EqGadget, int::*, select::CondSelectGadget},
     },
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 
 macro_rules! select_int_impl {
     ($($gadget: ident)*) => ($(

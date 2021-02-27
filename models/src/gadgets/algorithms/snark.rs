@@ -26,7 +26,7 @@ use crate::{
         },
     },
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 
 pub trait SNARKVerifierGadget<N: SNARK, F: Field> {
     type VerificationKeyGadget: AllocGadget<N::VerificationParameters, F>

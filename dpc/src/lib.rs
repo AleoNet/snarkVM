@@ -61,9 +61,12 @@ extern crate snarkvm_profiler;
 extern crate derivative;
 
 pub mod base_dpc;
-pub use crate::base_dpc::*;
+pub use base_dpc::*;
 
-use snarkvm_errors::gadgets::SynthesisError;
+pub mod errors;
+pub use errors::*;
+
+use snarkvm_gadgets::errors::SynthesisError;
 
 pub trait Assignment<T> {
     fn get(&self) -> Result<&T, SynthesisError>;

@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::algorithms::prf::{blake2s_gadget, Blake2sOutputGadget};
+use crate::{
+    algorithms::prf::{blake2s_gadget, Blake2sOutputGadget},
+    errors::SynthesisError,
+};
 use snarkvm_algorithms::commitment::Blake2sCommitment;
-use snarkvm_errors::gadgets::SynthesisError;
 use snarkvm_models::{
     curves::{Field, PrimeField},
     gadgets::{
