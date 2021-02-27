@@ -1,8 +1,8 @@
 [package]
-name = "snarkvm-curves"
+name = "snarkvm-wasm"
 version = "0.0.5"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
-description = "Curves for a decentralized virtual machine"
+description = "WASM for a decentralized virtual machine"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkVM"
 keywords = [
@@ -16,6 +16,19 @@ categories = [ "cryptography::cryptocurrencies", "operating-systems" ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2018"
+
+[lib]
+crate-type = [ "cdylib", "rlib" ]
+
+#[dependencies.snarkvm-algorithms]
+#path = "../algorithms"
+#version = "0.0.5"
+#default-features = false
+
+[dependencies.snarkvm-curves]
+path = "../curves"
+version = "0.0.5"
+default-features = false
 
 [dependencies.snarkvm-errors]
 path = "../errors"
@@ -47,21 +60,9 @@ version = "1.0.123"
 default-features = false
 features = [ "derive" ]
 
-[features]
-default = [
-  "snarkvm-errors/default",
-  "snarkvm-models/default",
-  "snarkvm-utilities/default"
-]
-sw6 = [ ]
+[dependencies.wasm-bindgen]
+version = "0.2"
+features = [ "serde-serialize" ]
 
-[build-dependencies]
-rustc_version = "0.3"
-
-[dev-dependencies]
-criterion = "0.3"
-
-[[bench]]
-name = "curve_and_field_benches"
-path = "benches/curve_and_field_benches.rs"
-harness = false
+[dev-dependencies.wasm-bindgen-test]
+version = "0.3.20"
