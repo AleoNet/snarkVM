@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::Field;
 use crate::errors::SynthesisError;
-use crate::gadgets::r1cs::{Index, LinearCombination, Namespace, Variable};
+use crate::{Index, LinearCombination, Namespace, Variable};
+use snarkvm_curves::Field;
 
 use std::marker::PhantomData;
 

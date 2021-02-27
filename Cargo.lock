@@ -1712,9 +1712,9 @@ dependencies = [
  "sha2",
  "smallvec",
  "snarkvm-curves",
- "snarkvm-errors",
  "snarkvm-models",
  "snarkvm-profiler",
+ "snarkvm-r1cs",
  "snarkvm-utilities",
  "thiserror",
 ]
@@ -1794,7 +1794,7 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-errors",
- "snarkvm-models",
+ "snarkvm-r1cs",
  "snarkvm-utilities",
  "thiserror",
 ]
@@ -1927,6 +1927,15 @@ name = "snarkvm-profiler"
 version = "0.0.6"
 dependencies = [
  "colored",
+]
+
+[[package]]
+name = "snarkvm-r1cs"
+version = "0.0.6"
+dependencies = [
+ "snarkvm-curves",
+ "snarkvm-utilities",
+ "thiserror",
 ]
 
 [[package]]

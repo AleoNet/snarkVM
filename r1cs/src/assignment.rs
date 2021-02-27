@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::SynthesisError;
+
 pub trait Assignment<T> {
     fn get(self) -> Result<T, SynthesisError>;
 }
