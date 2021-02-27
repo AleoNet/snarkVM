@@ -23,8 +23,8 @@ pub struct VerifierState<F: PrimeField> {
     pub(crate) domain_h: EvaluationDomain<F>,
     pub(crate) domain_k: EvaluationDomain<F>,
 
-    pub(crate) first_round_msg: Option<VerifierFirstMessage<F>>,
-    pub(crate) second_round_msg: Option<VerifierSecondMessage<F>>,
+    pub(crate) first_round_message: Option<VerifierFirstMessage<F>>,
+    pub(crate) second_round_message: Option<VerifierSecondMessage<F>>,
 
     pub(crate) gamma: Option<F>,
 }

@@ -33,6 +33,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         index_info: CircuitInfo<F>,
         rng: &mut R,
     ) -> Result<(VerifierFirstMessage<F>, VerifierState<F>), AHPError> {
+        // Check that the R1CS is a square matrix.
         if index_info.num_constraints != index_info.num_variables {
             return Err(AHPError::NonSquareMatrix);
         }
@@ -48,7 +49,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let eta_b = F::rand(rng);
         let eta_c = F::rand(rng);
 
-        let msg = VerifierFirstMessage {
+        let message = VerifierFirstMessage {
             alpha,
             eta_a,
             eta_b,
@@ -58,12 +59,12 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let new_state = VerifierState {
             domain_h,
             domain_k,
-            first_round_msg: Some(msg),
-            second_round_msg: None,
+            first_round_message: Some(message),
+            second_round_message: None,
             gamma: None,
         };
 
-        Ok((msg, new_state))
+        Ok((message, new_state))
     }
 
     /// Output the second message and next round state.
@@ -73,7 +74,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
     ) -> (VerifierSecondMessage<F>, VerifierState<F>) {
         let beta = state.domain_h.sample_element_outside_domain(rng);
         let msg = VerifierSecondMessage { beta };
-        state.second_round_msg = Some(msg);
+        state.second_round_message = Some(msg);
 
         (msg, state)
     }
@@ -89,7 +90,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         state: VerifierState<F>,
         _: &'a mut R,
     ) -> (QuerySet<'b, F>, VerifierState<F>) {
-        let beta = state.second_round_msg.unwrap().beta;
+        let beta = state.second_round_message.unwrap().beta;
 
         let gamma = state.gamma.unwrap();
 
