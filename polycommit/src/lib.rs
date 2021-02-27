@@ -50,17 +50,19 @@ extern crate alloc;
 
 #[cfg(not(feature = "std"))]
 use alloc::{
-    borrow::Cow,
+    borrow::{Cow, ToOwned},
     collections::{BTreeMap, BTreeSet},
     string::{String, ToString},
+    sync::Arc,
     vec::Vec,
 };
 
 #[cfg(feature = "std")]
 use std::{
-    borrow::Cow,
+    borrow::{Cow, ToOwned},
     collections::{BTreeMap, BTreeSet},
     string::{String, ToString},
+    sync::Arc,
     vec::Vec,
 };
 
