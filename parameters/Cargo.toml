@@ -44,11 +44,6 @@ optional = true
 [dependencies.hex]
 version = "0.4.2"
 
-[dependencies.snarkvm-polycommit]
-path = "../polycommit"
-version = "0.0.6"
-default-features = false
-
 [dev-dependencies.snarkvm-curves]
 path = "../curves"
 default-features = false

@@ -1872,7 +1872,6 @@ dependencies = [
  "snarkvm-errors",
  "snarkvm-marlin",
  "snarkvm-models",
- "snarkvm-polycommit",
  "snarkvm-posw",
  "snarkvm-utilities",
 ]
