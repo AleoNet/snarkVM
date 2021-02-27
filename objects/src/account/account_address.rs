@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, AccountPrivateKey, AccountViewKey};
-use snarkvm_errors::objects::AccountError;
+use crate::{account_format, AccountError, AccountPrivateKey, AccountViewKey};
 use snarkvm_models::{algorithms::EncryptionScheme, dpc::DPCComponents};
 use snarkvm_utilities::{FromBytes, ToBytes};
 

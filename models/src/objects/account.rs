@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::algorithms::{CommitmentScheme, EncryptionScheme, SignatureScheme};
-use snarkvm_errors::objects::AccountError;
+use snarkvm_objects::errors::AccountError;
 
 use rand::Rng;
 

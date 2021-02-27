@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{dpc::DPCTransactions, BlockHeader};
-use snarkvm_errors::objects::BlockError;
+use crate::{dpc::DPCTransactions, BlockError, BlockHeader};
 use snarkvm_models::objects::{BlockScheme, Transaction};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},

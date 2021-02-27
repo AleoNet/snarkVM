@@ -35,6 +35,8 @@ pub use block_header_hash::*;
 pub mod dpc;
 pub use dpc::*;
 
+pub mod errors;
+
 pub mod merkle_root_hash;
 pub use merkle_root_hash::*;
 
