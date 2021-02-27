@@ -18,7 +18,7 @@ use crate::curves::{Field, PairingEngine};
 use crate::gadgets::curves::{FieldGadget, GroupGadget};
 use crate::gadgets::r1cs::ConstraintSystem;
 use crate::gadgets::utilities::ToBytesGadget;
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
 
 use std::fmt::Debug;
 

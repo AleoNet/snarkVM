@@ -20,7 +20,8 @@ use crate::gadgets::utilities::bits::{ComparatorGadget, EvaluateLtGadget};
 use crate::gadgets::utilities::boolean::Boolean;
 use crate::gadgets::utilities::int::*;
 use crate::gadgets::utilities::select::CondSelectGadget;
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
+
 use std::cmp::Ordering;
 
 macro_rules! cmp_gadget_impl {

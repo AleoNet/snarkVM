@@ -18,7 +18,7 @@ use crate::curves::Field;
 use crate::gadgets::r1cs::ConstraintSystem;
 use crate::gadgets::utilities::bits::RippleCarryAdder;
 use crate::gadgets::utilities::boolean::Boolean;
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
 
 /// Returns a negated representation of `self` in the constraint system.
 pub trait Neg<F: Field>

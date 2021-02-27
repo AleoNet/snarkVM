@@ -14,19 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![allow(clippy::module_inception)]
+use crate::errors::SynthesisError;
+pub trait Assignment<T> {
+    fn get(self) -> Result<T, SynthesisError>;
+}
 
-#[macro_use]
-extern crate thiserror;
-
-pub mod errors;
-pub use errors::*;
-
-pub mod genesis;
-pub use genesis::*;
-
-pub mod params;
-pub use params::*;
-
-pub mod traits;
-pub use traits::*;
+impl<T> Assignment<T> for Option<T> {
+    fn get(self) -> Result<T, SynthesisError> {
+        match self {
+            Some(v) => Ok(v),
+            None => Err(SynthesisError::AssignmentMissing),
+        }
+    }
+}

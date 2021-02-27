@@ -19,7 +19,7 @@ use crate::curves::Field;
 use crate::gadgets::r1cs::ConstraintSystem;
 use crate::gadgets::utilities::alloc::{AllocBytesGadget, AllocGadget};
 use crate::gadgets::utilities::{ToBitsGadget, ToBytesGadget};
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
 
 pub trait SNARKVerifierGadget<N: SNARK, F: Field> {
     type VerificationKeyGadget: AllocGadget<N::VerificationParameters, F>

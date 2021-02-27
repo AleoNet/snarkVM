@@ -24,7 +24,8 @@ use crate::gadgets::utilities::eq::{ConditionalEqGadget, EqGadget, NEqGadget};
 use crate::gadgets::utilities::select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget};
 use crate::gadgets::utilities::uint::unsigned_integer::{UInt, UInt8};
 use crate::gadgets::utilities::{ToBitsGadget, ToBytesGadget};
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
+
 use snarkvm_utilities::bititerator::BitIteratorBE;
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::to_bytes;

@@ -32,6 +32,7 @@ members = [
   "polycommit",
   "posw",
   "profiler",
+  "r1cs",
   "storage",
   "testing",
   "utilities",

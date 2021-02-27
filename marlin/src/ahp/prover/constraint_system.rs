@@ -16,7 +16,8 @@
 
 use crate::ahp::matrices::make_matrices_square;
 use snarkvm_curves::traits::Field;
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
+
 use snarkvm_gadgets::traits::r1cs::{ConstraintSystem, Index as VarIndex, LinearCombination, Variable};
 
 pub(crate) struct ProverConstraintSystem<F: Field> {

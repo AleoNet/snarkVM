@@ -21,9 +21,9 @@ use crate::msm::FixedBaseMSM;
 use crate::{cfg_into_iter, cfg_iter};
 use snarkvm_curves::traits::{Field, Group, One, PairingEngine, PrimeField, ProjectiveCurve, Zero};
 use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_errors::serialization::SerializationError;
 use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable};
 use snarkvm_profiler::{end_timer, start_timer};
+use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::rand::UniformRand;
 use snarkvm_utilities::serialize::*;
 

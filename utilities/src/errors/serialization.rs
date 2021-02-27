@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::io;
-
 #[derive(Error, Debug)]
 pub enum SerializationError {
     /// During serialization, we didn't have enough space to write extra info.
@@ -30,14 +28,14 @@ pub enum SerializationError {
     UnexpectedFlags,
     /// During serialization, we countered an I/O error.
     #[error("IoError: {0}")]
-    IoError(#[from] io::Error),
+    IoError(#[from] crate::io::Error),
     /// During serialization with bincode, we encountered a serialization issue
     #[error(transparent)]
     BincodeError(#[from] bincode::Error),
 }
 
-impl From<SerializationError> for std::io::Error {
+impl From<SerializationError> for crate::io::Error {
     fn from(error: SerializationError) -> Self {
-        std::io::Error::new(std::io::ErrorKind::Other, format!("{}", error))
+        crate::io::Error::new(crate::io::ErrorKind::Other, format!("{}", error))
     }
 }

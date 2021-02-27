@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::curves::Field;
+use crate::errors::SynthesisError;
 use crate::gadgets::r1cs::{ConstraintSystem, Index, LinearCombination, Variable};
 use crate::gadgets::utilities::OptionalVec;
-use snarkvm_gadgets::errors::SynthesisError;
 
 use cfg_if::cfg_if;
 use fxhash::{FxBuildHasher, FxHashMap};

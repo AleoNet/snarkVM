@@ -16,7 +16,7 @@
 
 use crate::curves::Field;
 use crate::gadgets::r1cs::ConstraintSystem;
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
 
 use std::borrow::Borrow;
 

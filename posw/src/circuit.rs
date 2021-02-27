@@ -20,7 +20,8 @@
 use snarkvm_algorithms::traits::{MaskedMerkleParameters, CRH};
 use snarkvm_curves::traits::PrimeField;
 use snarkvm_gadgets::algorithms::merkle_tree::compute_root;
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
+
 use snarkvm_gadgets::traits::algorithms::{CRHGadget, MaskedCRHGadget};
 use snarkvm_gadgets::traits::r1cs::{Assignment, ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_gadgets::traits::utilities::alloc::AllocGadget;

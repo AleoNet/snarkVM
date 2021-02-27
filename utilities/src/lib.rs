@@ -30,6 +30,9 @@ pub use alloc::{boxed::Box, format, vec, vec::Vec};
 #[doc(hidden)]
 pub use std::{boxed::Box, format, vec, vec::Vec};
 
+#[macro_use]
+extern crate thiserror;
+
 pub mod biginteger;
 pub use biginteger::*;
 

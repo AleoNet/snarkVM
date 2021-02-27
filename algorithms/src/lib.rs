@@ -28,6 +28,9 @@ extern crate derivative;
 #[macro_use]
 extern crate snarkvm_profiler;
 
+#[macro_use]
+extern crate thiserror;
+
 pub mod commitment;
 
 pub mod commitment_tree;

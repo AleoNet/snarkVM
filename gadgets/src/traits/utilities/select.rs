@@ -17,7 +17,7 @@
 use crate::curves::Field;
 use crate::gadgets::r1cs::ConstraintSystem;
 use crate::gadgets::utilities::boolean::Boolean;
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
 
 /// If condition is `true`, return `first`; else, select `second`.
 pub trait CondSelectGadget<F: Field>

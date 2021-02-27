@@ -18,7 +18,8 @@ use super::r1cs_to_sap::R1CStoSAP;
 use super::{Parameters, Proof};
 use crate::msm::VariableBaseMSM;
 use snarkvm_curves::traits::{AffineCurve, One, PairingEngine, PrimeField, ProjectiveCurve, Zero};
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
+
 use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable};
 use snarkvm_utilities::rand::UniformRand;
 

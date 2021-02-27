@@ -23,7 +23,7 @@ use crate::gadgets::utilities::boolean::{AllocatedBit, Boolean};
 use crate::gadgets::utilities::eq::EqGadget;
 use crate::gadgets::utilities::int::*;
 use crate::gadgets::utilities::ToBitsGadget;
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
 
 use core::borrow::Borrow;
 

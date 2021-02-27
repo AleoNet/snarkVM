@@ -22,7 +22,7 @@ use crate::gadgets::utilities::eq::{ConditionalEqGadget, EqGadget};
 use crate::gadgets::utilities::select::CondSelectGadget;
 use crate::gadgets::utilities::uint::UInt8;
 use crate::gadgets::utilities::ToBytesGadget;
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
 
 use std::fmt::Debug;
 

@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::curves::Field;
+use crate::errors::SynthesisError;
 use crate::gadgets::r1cs::{ConstraintSystem, Index, LinearCombination, Variable};
-use snarkvm_gadgets::errors::SynthesisError;
 
 /// Constraint counter for testing purposes.
 #[derive(Default)]

@@ -14,17 +14,5 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_gadgets::errors::SynthesisError;
-
-pub trait Assignment<T> {
-    fn get(self) -> Result<T, SynthesisError>;
-}
-
-impl<T> Assignment<T> for Option<T> {
-    fn get(self) -> Result<T, SynthesisError> {
-        match self {
-            Some(v) => Ok(v),
-            None => Err(SynthesisError::AssignmentMissing),
-        }
-    }
-}
+pub mod synthesis;
+pub use synthesis::*;

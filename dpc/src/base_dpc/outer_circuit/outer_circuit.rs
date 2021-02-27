@@ -21,7 +21,8 @@ use crate::base_dpc::BaseDPCComponents;
 use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
 use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, SNARK};
 use snarkvm_curves::traits::to_field_vec::ToConstraintField;
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
+
 use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_objects::AleoAmount;
 

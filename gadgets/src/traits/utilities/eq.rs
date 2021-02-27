@@ -18,7 +18,7 @@ use crate::curves::Field;
 use crate::gadgets::r1cs::ConstraintSystem;
 use crate::gadgets::utilities::boolean::Boolean;
 use crate::gadgets::utilities::select::CondSelectGadget;
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
 
 pub trait EvaluateEqGadget<F: Field> {
     fn evaluate_equal<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Boolean, SynthesisError>;

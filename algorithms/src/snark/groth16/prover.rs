@@ -19,7 +19,8 @@ use super::{push_constraints, Parameters, Proof};
 use crate::cfg_into_iter;
 use crate::msm::VariableBaseMSM;
 use snarkvm_curves::traits::{AffineCurve, Group, One, PairingEngine, PrimeField, ProjectiveCurve, Zero};
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
+
 use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable};
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_utilities::rand::UniformRand;

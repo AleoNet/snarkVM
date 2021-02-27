@@ -24,7 +24,8 @@ use crate::gadgets::utilities::boolean::{AllocatedBit, Boolean};
 use crate::gadgets::utilities::eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget};
 use crate::gadgets::utilities::select::CondSelectGadget;
 use crate::gadgets::utilities::{ToBitsGadget, ToBytesGadget};
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
+
 use snarkvm_utilities::bytes::ToBytes;
 
 use core::borrow::Borrow;

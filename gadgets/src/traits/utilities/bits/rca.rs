@@ -19,7 +19,7 @@ use crate::gadgets::r1cs::ConstraintSystem;
 use crate::gadgets::utilities::bits::FullAdder;
 use crate::gadgets::utilities::boolean::Boolean;
 use crate::gadgets::utilities::int::*;
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
 
 /// Returns the bitwise sum of a n-bit number with carry bit
 pub trait RippleCarryAdder<F: Field, Rhs = Self>

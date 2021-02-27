@@ -16,7 +16,7 @@
 
 use crate::snark::gm17::{PreparedVerifyingKey, Proof, VerifyingKey};
 use snarkvm_curves::traits::{AffineCurve, One, PairingCurve, PairingEngine, PrimeField, ProjectiveCurve};
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
 
 use std::iter;
 use std::ops::{AddAssign, MulAssign, Neg};

@@ -21,7 +21,8 @@ use crate::gadgets::utilities::eq::{ConditionalEqGadget, EqGadget, EvaluateEqGad
 use crate::gadgets::utilities::select::CondSelectGadget;
 use crate::gadgets::utilities::uint::UInt8;
 use crate::gadgets::utilities::ToBytesGadget;
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
+
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::borrow::Borrow;

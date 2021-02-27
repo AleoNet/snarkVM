@@ -21,7 +21,8 @@ use crate::base_dpc::record_encryption::RecordEncryptionGadgetComponents;
 use crate::base_dpc::BaseDPCComponents;
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTreeDigest};
 use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, CRH};
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
+
 use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_objects::{AccountPrivateKey, AleoAmount};
 

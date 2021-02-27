@@ -20,7 +20,7 @@ use crate::gadgets::r1cs::ConstraintSystem;
 use crate::gadgets::utilities::alloc::AllocGadget;
 use crate::gadgets::utilities::eq::EqGadget;
 use crate::gadgets::utilities::ToBytesGadget;
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
 
 use std::fmt::Debug;
 

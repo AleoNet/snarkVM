@@ -17,7 +17,7 @@
 use snarkvm_algorithms::errors::CRHError;
 use snarkvm_algorithms::traits::CRH;
 use snarkvm_dpc::base_dpc::instantiated::Components;
-use snarkvm_models::dpc::DPCComponents;
+use snarkvm_dpc::traits::DPCComponents;
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::to_bytes;
 

@@ -18,7 +18,7 @@ use crate::curves::Field;
 use crate::gadgets::r1cs::ConstraintSystem;
 use crate::gadgets::utilities::boolean::Boolean;
 use crate::gadgets::utilities::uint::unsigned_integer::{UInt, UInt8};
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
 
 pub mod alloc;
 pub mod arithmetic;

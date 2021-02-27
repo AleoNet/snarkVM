@@ -21,7 +21,7 @@ use crate::gadgets::utilities::boolean::Boolean;
 use crate::gadgets::utilities::eq::{ConditionalEqGadget, EqGadget, NEqGadget};
 use crate::gadgets::utilities::select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget};
 use crate::gadgets::utilities::{ToBitsGadget, ToBytesGadget};
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
 
 use std::fmt::Debug;
 

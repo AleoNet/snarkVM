@@ -16,7 +16,7 @@
 
 use super::{PreparedVerifyingKey, Proof, VerifyingKey};
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, PrimeField, ProjectiveCurve};
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
 
 use core::ops::{AddAssign, Neg};
 

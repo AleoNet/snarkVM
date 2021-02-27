@@ -21,7 +21,7 @@ use crate::gadgets::utilities::boolean::Boolean;
 use crate::gadgets::utilities::eq::{EqGadget, NEqGadget};
 use crate::gadgets::utilities::select::CondSelectGadget;
 use crate::gadgets::utilities::{ToBitsGadget, ToBytesGadget};
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
 
 use itertools::Itertools;
 use std::borrow::Borrow;

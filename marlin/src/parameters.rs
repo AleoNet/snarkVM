@@ -18,9 +18,9 @@ use crate::marlin::MarlinSNARK;
 use crate::{ProvingKey, VerifyingKey, SRS};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
 use snarkvm_errors::algorithms::SNARKError;
-use snarkvm_errors::serialization::SerializationError;
 use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::serialize::*;
 use snarkvm_utilities::{error, io, PROCESSING_SNARK_PARAMS, SNARK_PARAMS_AFFINE_COUNT};
 

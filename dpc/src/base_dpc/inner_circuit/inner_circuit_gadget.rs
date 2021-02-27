@@ -33,7 +33,8 @@ use snarkvm_curves::traits::{
 };
 use snarkvm_gadgets::algorithms::encoding::Elligator2FieldGadget;
 use snarkvm_gadgets::algorithms::merkle_tree::merkle_path::MerklePathGadget;
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
+
 use snarkvm_gadgets::traits::algorithms::{
     CRHGadget,
     CommitmentGadget,

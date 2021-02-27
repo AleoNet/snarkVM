@@ -19,7 +19,7 @@ use crate::gadgets::r1cs::ConstraintSystem;
 use crate::gadgets::utilities::boolean::Boolean;
 use crate::gadgets::utilities::select::CondSelectGadget;
 use crate::gadgets::utilities::uint::{UInt128, UInt16, UInt32, UInt64, UInt8};
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
 
 pub trait EvaluateLtGadget<F: Field> {
     fn less_than<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Boolean, SynthesisError>;

@@ -17,6 +17,9 @@
 #[macro_use]
 extern crate derivative;
 
+#[macro_use]
+extern crate thiserror;
+
 pub mod account;
 pub use account::*;
 

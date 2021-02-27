@@ -44,6 +44,9 @@
 #[macro_use]
 extern crate derivative;
 
+#[macro_use]
+extern crate thiserror;
+
 pub mod bls12_377;
 
 pub mod bw6_761;

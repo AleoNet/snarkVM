@@ -1,8 +1,8 @@
 [package]
-name = "snarkvm-curves"
+name = "snarkvm-r1cs"
 version = "0.0.6"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
-description = "Curves for a decentralized virtual machine"
+description = "R1CS for a decentralized virtual machine"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkVM"
 keywords = [
@@ -17,54 +17,60 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2018"
 
+[dependencies.snarkvm-algorithms]
+path = "../algorithms"
+version = "0.0.6"
+
 [dependencies.snarkvm-errors]
 path = "../errors"
 version = "0.0.6"
-default-features = false
 
 [dependencies.snarkvm-models]
 path = "../models"
 version = "0.0.6"
-default-features = false
+
+[dependencies.snarkvm-objects]
+path = "../objects"
+version = "0.0.6"
+
+[dependencies.snarkvm-parameters]
+path = "../parameters"
+version = "0.0.6"
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.0.6"
 
-[dependencies.derivative]
-version = "2"
+[dependencies.anyhow]
+version = "1.0.38"
+
+[dependencies.bincode]
+version = "1.3.2"
+
+[dependencies.hex]
+version = "0.4.2"
+
+[dependencies.parking_lot]
+version = "0.11.1"
 
 [dependencies.rand]
 version = "0.8"
-default-features = false
 
-[dependencies.rand_xorshift]
-version = "0.3"
-default-features = false
+[dependencies.rocksdb]
+version = "0.15.0"
 
 [dependencies.serde]
-version = "1.0.123"
-default-features = false
+version = "1.0"
 features = [ "derive" ]
 
 [dependencies.thiserror]
 version = "1.0"
 
+[dev-dependencies.snarkvm-curves]
+path = "../curves"
+
+[dev-dependencies.snarkvm-testing]
+path = "../testing"
+
 [features]
-default = [
-  "snarkvm-errors/default",
-  "snarkvm-models/default",
-  "snarkvm-utilities/default"
-]
-sw6 = [ ]
-
-[build-dependencies]
-rustc_version = "0.3"
-
-[dev-dependencies]
-criterion = "0.3"
-
-[[bench]]
-name = "curve_and_field_benches"
-path = "benches/curve_and_field_benches.rs"
-harness = false
+default = []

@@ -19,7 +19,7 @@
 
 use snarkvm_curves::traits::pairing_engine::{AffineCurve, PairingCurve, PairingEngine};
 use snarkvm_errors::gadgets::SynthesisResult;
-use snarkvm_errors::serialization::SerializationError;
+use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::serialize::*;
 use snarkvm_utilities::{FromBytes, ToBytes};
 

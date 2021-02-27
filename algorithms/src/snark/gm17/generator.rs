@@ -19,7 +19,8 @@ use super::{Parameters, VerifyingKey};
 use crate::fft::EvaluationDomain;
 use crate::msm::FixedBaseMSM;
 use snarkvm_curves::traits::{AffineCurve, Field, One, PairingEngine, PrimeField, ProjectiveCurve, Zero};
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
+
 use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable};
 use snarkvm_utilities::rand::UniformRand;
 

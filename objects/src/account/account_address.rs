@@ -16,7 +16,7 @@
 
 use crate::{account_format, AccountError, AccountPrivateKey, AccountViewKey};
 use snarkvm_algorithms::traits::EncryptionScheme;
-use snarkvm_models::dpc::DPCComponents;
+use snarkvm_dpc::traits::DPCComponents;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use bech32::{Bech32, FromBase32, ToBase32};

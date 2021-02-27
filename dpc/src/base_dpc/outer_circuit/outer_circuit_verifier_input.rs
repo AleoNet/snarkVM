@@ -20,7 +20,8 @@ use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
 use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH};
 use snarkvm_curves::errors::ConstraintFieldError;
 use snarkvm_curves::traits::to_field_vec::ToConstraintField;
-use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
+
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::to_bytes;
 

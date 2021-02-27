@@ -26,6 +26,9 @@ pub use constraint_system::{ConstraintSynthesizer, ConstraintSystem};
 mod constraint_variable;
 pub use constraint_variable::*;
 
+pub mod errors;
+pub use errors::*;
+
 mod linear_combination;
 pub use linear_combination::*;
 

@@ -1716,6 +1716,7 @@ dependencies = [
  "snarkvm-models",
  "snarkvm-profiler",
  "snarkvm-utilities",
+ "thiserror",
 ]
 
 [[package]]
@@ -1731,6 +1732,7 @@ dependencies = [
  "snarkvm-errors",
  "snarkvm-models",
  "snarkvm-utilities",
+ "thiserror",
 ]
 
 [[package]]
@@ -1765,6 +1767,7 @@ dependencies = [
  "snarkvm-profiler",
  "snarkvm-testing",
  "snarkvm-utilities",
+ "thiserror",
 ]
 
 [[package]]
@@ -1793,6 +1796,7 @@ dependencies = [
  "snarkvm-errors",
  "snarkvm-models",
  "snarkvm-utilities",
+ "thiserror",
 ]
 
 [[package]]
@@ -1855,6 +1859,7 @@ dependencies = [
  "snarkvm-errors",
  "snarkvm-models",
  "snarkvm-utilities",
+ "thiserror",
 ]
 
 [[package]]
@@ -1873,6 +1878,7 @@ dependencies = [
  "snarkvm-models",
  "snarkvm-posw",
  "snarkvm-utilities",
+ "thiserror",
 ]
 
 [[package]]
@@ -1972,6 +1978,7 @@ dependencies = [
  "rand_xorshift",
  "snarkvm-derives",
  "snarkvm-errors",
+ "thiserror",
 ]
 
 [[package]]
