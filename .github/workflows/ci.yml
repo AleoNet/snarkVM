@@ -93,6 +93,6 @@ jobs:
 
       - name: Test
         run: |
-          cd toolkit
+          cd wasm
           wasm-pack test --node
 #          cargo test --target wasm32-unknown-unknown --features wasm
