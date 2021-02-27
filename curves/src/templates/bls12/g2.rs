@@ -19,8 +19,7 @@ use crate::templates::{
     short_weierstrass::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
 };
 use snarkvm_models::curves::{AffineCurve, Field, Fp2, One, SWModelParameters, Zero};
-use snarkvm_serialization::errors::SerializationError;
-use snarkvm_utilities::{bititerator::BitIteratorBE, bytes::ToBytes, serialize::*};
+use snarkvm_utilities::{bititerator::BitIteratorBE, bytes::ToBytes, errors::SerializationError, serialize::*};
 
 use std::io::{Result as IoResult, Write};
 

@@ -22,8 +22,7 @@ use snarkvm_models::{
     curves::{AffineCurve, Field, PairingCurve, PairingEngine},
     gadgets::r1cs::{Index, LinearCombination},
 };
-use snarkvm_serialization::errors::SerializationError;
-use snarkvm_utilities::{serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 use std::io::{self, Read, Result as IoResult, Write};
 

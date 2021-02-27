@@ -15,7 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::crh::{PedersenCRH, PedersenCRHParameters, PedersenSize};
-use snarkvm_errors::{algorithms::CRHError, curves::ConstraintFieldError};
+use snarkvm_algorithms::errors::CRHError;
+use snarkvm_curves::errors::ConstraintFieldError;
 use snarkvm_models::{
     algorithms::CRH,
     curves::{to_field_vec::ToConstraintField, Field, Group, PrimeField},

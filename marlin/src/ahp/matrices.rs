@@ -29,8 +29,7 @@ use snarkvm_models::{
     gadgets::r1cs::{ConstraintSystem, Index as VarIndex},
 };
 use snarkvm_polycommit::LabeledPolynomial;
-use snarkvm_serialization::errors::SerializationError;
-use snarkvm_utilities::serialize::*;
+use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use derivative::Derivative;
 use rayon::prelude::*;

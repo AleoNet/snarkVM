@@ -18,8 +18,7 @@
 
 use crate::fft::{DenseOrSparsePolynomial, EvaluationDomain, Evaluations};
 use snarkvm_models::curves::{Field, PrimeField};
-use snarkvm_serialization::errors::SerializationError;
-use snarkvm_utilities::serialize::*;
+use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use rand::Rng;
 use rayon::prelude::*;

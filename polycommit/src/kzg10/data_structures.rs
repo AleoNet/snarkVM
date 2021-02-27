@@ -17,10 +17,10 @@
 use crate::{impl_bytes, BTreeMap, *};
 use core::ops::{Add, AddAssign};
 use snarkvm_models::curves::{AffineCurve, PairingCurve, PairingEngine, PrimeField, ProjectiveCurve, Zero};
-use snarkvm_serialization::errors::SerializationError;
 use snarkvm_utilities::{
     bytes::ToBytes,
     error,
+    errors::SerializationError,
     serialize::{CanonicalDeserialize, CanonicalSerialize},
 };
 

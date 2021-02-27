@@ -15,10 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::curves::{Field, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
-use snarkvm_serialization::errors::SerializationError;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     div_ceil,
+    errors::SerializationError,
     rand::UniformRand,
     serialize::*,
 };

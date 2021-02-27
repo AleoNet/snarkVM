@@ -28,8 +28,7 @@
 
 use crate::fft::{multicore::Worker, SparsePolynomial};
 use snarkvm_models::curves::{batch_inversion, FpParameters, PrimeField};
-use snarkvm_serialization::errors::SerializationError;
-use snarkvm_utilities::serialize::*;
+use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use rand::Rng;
 use rayon::prelude::*;

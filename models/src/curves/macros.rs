@@ -137,13 +137,13 @@ macro_rules! impl_prime_field_serializer {
                 &self,
                 writer: &mut W,
                 flags: F,
-            ) -> Result<(), snarkvm_serialization::errors::SerializationError> {
+            ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
                 const BYTE_SIZE: usize = $byte_size;
 
                 let (output_bit_size, output_byte_size) =
                     snarkvm_utilities::serialize::buffer_bit_byte_size($field::<P>::size_in_bits());
                 if F::len() > (output_bit_size - P::MODULUS_BITS as usize) {
-                    return Err(snarkvm_serialization::errors::SerializationError::NotEnoughSpace);
+                    return Err(snarkvm_utilities::errors::SerializationError::NotEnoughSpace);
                 }
 
                 let mut bytes = [0u8; BYTE_SIZE];
@@ -169,7 +169,7 @@ macro_rules! impl_prime_field_serializer {
             fn serialize<W: snarkvm_utilities::io::Write>(
                 &self,
                 writer: &mut W,
-            ) -> Result<(), snarkvm_serialization::errors::SerializationError> {
+            ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
                 self.serialize_with_flags(writer, snarkvm_utilities::serialize::EmptyFlags)
             }
 
@@ -183,13 +183,13 @@ macro_rules! impl_prime_field_serializer {
             #[allow(unused_qualifications)]
             fn deserialize_with_flags<R: snarkvm_utilities::io::Read, F: snarkvm_utilities::serialize::Flags>(
                 reader: &mut R,
-            ) -> Result<(Self, F), snarkvm_serialization::errors::SerializationError> {
+            ) -> Result<(Self, F), snarkvm_utilities::errors::SerializationError> {
                 const BYTE_SIZE: usize = $byte_size;
 
                 let (output_bit_size, output_byte_size) =
                     snarkvm_utilities::serialize::buffer_bit_byte_size($field::<P>::size_in_bits());
                 if F::len() > (output_bit_size - P::MODULUS_BITS as usize) {
-                    return Err(snarkvm_serialization::errors::SerializationError::NotEnoughSpace);
+                    return Err(snarkvm_utilities::errors::SerializationError::NotEnoughSpace);
                 }
 
                 let mut masked_bytes = [0; BYTE_SIZE];
@@ -205,7 +205,7 @@ macro_rules! impl_prime_field_serializer {
             #[allow(unused_qualifications)]
             fn deserialize<R: snarkvm_utilities::io::Read>(
                 reader: &mut R,
-            ) -> Result<Self, snarkvm_serialization::errors::SerializationError> {
+            ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
                 const BYTE_SIZE: usize = $byte_size;
 
                 let (_, output_byte_size) =

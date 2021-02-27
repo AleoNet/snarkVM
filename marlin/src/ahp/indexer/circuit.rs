@@ -17,8 +17,7 @@
 use crate::{ahp::matrices::MatrixArithmetization, CircuitInfo, Vec};
 use snarkvm_models::curves::PrimeField;
 use snarkvm_polycommit::LabeledPolynomial;
-use snarkvm_serialization::errors::SerializationError;
-use snarkvm_utilities::serialize::*;
+use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use derivative::Derivative;
 

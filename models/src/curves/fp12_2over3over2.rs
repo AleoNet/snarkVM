@@ -15,11 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::curves::{fp6_3over2::*, Field, Fp2, Fp2Parameters, One, PrimeField, Zero};
-use snarkvm_serialization::errors::SerializationError;
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
     bytes::{FromBytes, ToBytes},
     div_ceil,
+    errors::SerializationError,
     rand::UniformRand,
     serialize::*,
 };

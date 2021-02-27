@@ -16,10 +16,10 @@
 
 use crate::{impl_bytes, kzg10, BTreeMap, PCCommitterKey, PCVerifierKey, Vec};
 use snarkvm_models::curves::{PairingCurve, PairingEngine};
-use snarkvm_serialization::errors::SerializationError;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     error,
+    errors::SerializationError,
     serialize::*,
 };
 

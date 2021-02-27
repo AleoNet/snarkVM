@@ -40,8 +40,7 @@ pub use test_fr::*;
 
 pub use crate::curves::to_field_vec::ToConstraintField;
 
-use snarkvm_serialization::errors::SerializationError;
-use snarkvm_utilities::serialize::*;
+use snarkvm_utilities::{errors::SerializationError, serialize::*};
 use std::cmp::Ordering;
 
 /// Represents a variable in a constraint system.
