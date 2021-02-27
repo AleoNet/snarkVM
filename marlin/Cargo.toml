@@ -30,6 +30,9 @@ include = [
 license = "GPL-3.0"
 edition = "2018"
 
+[dependencies.aleo-std]
+path = "../../aleo-std"
+
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
 version = "0.0.5"
