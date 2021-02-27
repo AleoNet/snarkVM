@@ -1971,8 +1971,10 @@ name = "snarkvm-posw"
 version = "0.0.5"
 dependencies = [
  "blake2 0.8.1",
+ "hex",
  "rand",
  "rand_xorshift",
+ "serde",
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-errors",
