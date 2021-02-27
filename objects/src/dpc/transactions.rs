@@ -14,20 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::Transaction;
-use crate::TransactionError;
-use snarkvm_utilities::bytes::FromBytes;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::has_duplicates;
-use snarkvm_utilities::to_bytes;
-use snarkvm_utilities::variable_length_integer::read_variable_length_integer;
-use snarkvm_utilities::variable_length_integer::variable_length_integer;
+use crate::{traits::Transaction, TransactionError};
+use snarkvm_utilities::{
+    bytes::{FromBytes, ToBytes},
+    has_duplicates,
+    to_bytes,
+    variable_length_integer::{read_variable_length_integer, variable_length_integer},
+};
 
-use std::io::Read;
-use std::io::Result as IoResult;
-use std::io::Write;
-use std::ops::Deref;
-use std::ops::DerefMut;
+use std::{
+    io::{Read, Result as IoResult, Write},
+    ops::{Deref, DerefMut},
+};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DPCTransactions<T: Transaction>(pub Vec<T>);

@@ -14,15 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::ParameterError;
-use crate::traits::Parameter;
+use crate::{errors::ParameterError, traits::Parameter};
 use snarkvm_algorithms::crh::sha256::sha256;
 
-use std::fs::File;
-use std::fs::{self};
-use std::io::Write;
-use std::path::Path;
-use std::path::PathBuf;
+use std::{
+    fs::{
+        File,
+        {self},
+    },
+    io::Write,
+    path::{Path, PathBuf},
+};
 
 #[cfg(any(test, feature = "remote"))]
 use curl::easy::Easy;

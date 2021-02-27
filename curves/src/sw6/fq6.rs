@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::field;
-use crate::sw6::Fq;
-use crate::sw6::Fq3;
-use crate::sw6::Fq3Parameters;
-use crate::traits::fp6_2over3::Fp6;
-use crate::traits::fp6_2over3::Fp6Parameters;
+use crate::{
+    field,
+    sw6::{Fq, Fq3, Fq3Parameters},
+    traits::fp6_2over3::{Fp6, Fp6Parameters},
+};
 use snarkvm_utilities::biginteger::BigInteger832 as BigInteger;
 
 pub type Fq6 = Fp6<Fq6Parameters>;

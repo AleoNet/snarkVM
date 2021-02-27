@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::bls12_377::Fq;
-use crate::field;
-use crate::traits::Field;
-use crate::traits::Fp2;
-use crate::traits::Fp2Parameters;
-use serde::Deserialize;
-use serde::Serialize;
+use crate::{
+    bls12_377::Fq,
+    field,
+    traits::{Field, Fp2, Fp2Parameters},
+};
+use serde::{Deserialize, Serialize};
 use snarkvm_utilities::biginteger::BigInteger384 as BigInteger;
 
 pub type Fq2 = Fp2<Fq2Parameters>;

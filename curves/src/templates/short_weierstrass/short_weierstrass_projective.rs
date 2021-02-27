@@ -14,43 +14,38 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::impl_sw_curve_serializer;
-use crate::impl_sw_from_random_bytes;
-use crate::traits::AffineCurve;
-use crate::traits::Field;
-use crate::traits::One;
-use crate::traits::PrimeField;
-use crate::traits::ProjectiveCurve;
-use crate::traits::SWModelParameters as Parameters;
-use crate::traits::SquareRootField;
-use crate::traits::Zero;
-use snarkvm_utilities::bititerator::BitIteratorBE;
-use snarkvm_utilities::bytes::FromBytes;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::rand::UniformRand;
-use snarkvm_utilities::serialize::*;
+use crate::{
+    impl_sw_curve_serializer,
+    impl_sw_from_random_bytes,
+    traits::{
+        AffineCurve,
+        Field,
+        One,
+        PrimeField,
+        ProjectiveCurve,
+        SWModelParameters as Parameters,
+        SquareRootField,
+        Zero,
+    },
+};
+use snarkvm_utilities::{
+    bititerator::BitIteratorBE,
+    bytes::{FromBytes, ToBytes},
+    rand::UniformRand,
+    serialize::*,
+};
 
-use rand::distributions::Distribution;
-use rand::distributions::Standard;
-use rand::Rng;
-use serde::Deserialize;
-use serde::Serialize;
-use std::fmt::Display;
-use std::fmt::Formatter;
-use std::fmt::Result as FmtResult;
-use std::io::Error;
-use std::io::ErrorKind;
-use std::io::Read;
-use std::io::Result as IoResult;
-use std::io::Write;
-use std::marker::PhantomData;
-use std::ops::Add;
-use std::ops::AddAssign;
-use std::ops::Mul;
-use std::ops::MulAssign;
-use std::ops::Neg;
-use std::ops::Sub;
-use std::ops::SubAssign;
+use rand::{
+    distributions::{Distribution, Standard},
+    Rng,
+};
+use serde::{Deserialize, Serialize};
+use std::{
+    fmt::{Display, Formatter, Result as FmtResult},
+    io::{Error, ErrorKind, Read, Result as IoResult, Write},
+    marker::PhantomData,
+    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+};
 
 #[derive(Derivative, Serialize, Deserialize)]
 #[derivative(

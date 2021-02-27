@@ -588,15 +588,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fxhash"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
-dependencies = [
- "byteorder",
-]
-
-[[package]]
 name = "generic-array"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1712,7 +1703,6 @@ dependencies = [
  "sha2",
  "smallvec",
  "snarkvm-curves",
- "snarkvm-models",
  "snarkvm-profiler",
  "snarkvm-r1cs",
  "snarkvm-utilities",
@@ -1729,8 +1719,6 @@ dependencies = [
  "rand_xorshift",
  "rustc_version 0.3.3",
  "serde",
- "snarkvm-errors",
- "snarkvm-models",
  "snarkvm-utilities",
  "thiserror",
 ]
@@ -1759,26 +1747,13 @@ dependencies = [
  "rand_xorshift",
  "snarkvm-algorithms",
  "snarkvm-curves",
- "snarkvm-errors",
  "snarkvm-gadgets",
- "snarkvm-models",
  "snarkvm-objects",
  "snarkvm-parameters",
  "snarkvm-profiler",
  "snarkvm-testing",
  "snarkvm-utilities",
  "thiserror",
-]
-
-[[package]]
-name = "snarkvm-errors"
-version = "0.0.6"
-dependencies = [
- "base58",
- "bech32",
- "bincode",
- "curl",
- "hex",
 ]
 
 [[package]]
@@ -1793,7 +1768,6 @@ dependencies = [
  "rand_xorshift",
  "snarkvm-algorithms",
  "snarkvm-curves",
- "snarkvm-errors",
  "snarkvm-r1cs",
  "snarkvm-utilities",
  "thiserror",
@@ -1813,29 +1787,8 @@ dependencies = [
  "rayon",
  "snarkvm-algorithms",
  "snarkvm-curves",
- "snarkvm-errors",
- "snarkvm-models",
  "snarkvm-polycommit",
  "snarkvm-profiler",
- "snarkvm-utilities",
-]
-
-[[package]]
-name = "snarkvm-models"
-version = "0.0.6"
-dependencies = [
- "anyhow",
- "bincode",
- "cfg-if 1.0.0",
- "criterion",
- "derivative",
- "fxhash",
- "indexmap",
- "itertools 0.10.0",
- "rand",
- "rand_xorshift",
- "serde",
- "snarkvm-errors",
  "snarkvm-utilities",
 ]
 
@@ -1856,8 +1809,6 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-dpc",
- "snarkvm-errors",
- "snarkvm-models",
  "snarkvm-utilities",
  "thiserror",
 ]
@@ -1873,9 +1824,7 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-dpc",
- "snarkvm-errors",
  "snarkvm-marlin",
- "snarkvm-models",
  "snarkvm-posw",
  "snarkvm-utilities",
  "thiserror",
@@ -1893,8 +1842,6 @@ dependencies = [
  "rayon",
  "snarkvm-algorithms",
  "snarkvm-curves",
- "snarkvm-errors",
- "snarkvm-models",
  "snarkvm-profiler",
  "snarkvm-utilities",
 ]
@@ -1910,10 +1857,8 @@ dependencies = [
  "serde",
  "snarkvm-algorithms",
  "snarkvm-curves",
- "snarkvm-errors",
  "snarkvm-gadgets",
  "snarkvm-marlin",
- "snarkvm-models",
  "snarkvm-objects",
  "snarkvm-parameters",
  "snarkvm-polycommit",
@@ -1951,8 +1896,6 @@ dependencies = [
  "serde",
  "snarkvm-algorithms",
  "snarkvm-curves",
- "snarkvm-errors",
- "snarkvm-models",
  "snarkvm-objects",
  "snarkvm-parameters",
  "snarkvm-testing",
@@ -1970,8 +1913,6 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-dpc",
- "snarkvm-errors",
- "snarkvm-models",
  "snarkvm-objects",
  "snarkvm-parameters",
  "snarkvm-storage",
@@ -1986,7 +1927,6 @@ dependencies = [
  "rand",
  "rand_xorshift",
  "snarkvm-derives",
- "snarkvm-errors",
  "thiserror",
 ]
 
@@ -1999,8 +1939,6 @@ dependencies = [
  "rand_xorshift",
  "serde",
  "snarkvm-curves",
- "snarkvm-errors",
- "snarkvm-models",
  "snarkvm-utilities",
  "wasm-bindgen",
  "wasm-bindgen-test",

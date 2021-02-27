@@ -14,12 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::traits::AffineCurve;
-use snarkvm_curves::traits::FpParameters;
-use snarkvm_curves::traits::One;
-use snarkvm_curves::traits::PrimeField;
-use snarkvm_curves::traits::ProjectiveCurve;
-use snarkvm_curves::traits::Zero;
+use snarkvm_curves::traits::{AffineCurve, FpParameters, One, PrimeField, ProjectiveCurve, Zero};
 use snarkvm_utilities::biginteger::BigInteger;
 
 use rayon::prelude::*;

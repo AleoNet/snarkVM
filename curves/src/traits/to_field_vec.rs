@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::ConstraintFieldError;
-use crate::traits::Field;
-use crate::traits::Fp2;
-use crate::traits::Fp2Parameters;
-use crate::traits::FpParameters;
-use crate::traits::PrimeField;
+use crate::{
+    errors::ConstraintFieldError,
+    traits::{Field, Fp2, Fp2Parameters, FpParameters, PrimeField},
+};
 
 /// Types that can be converted to a vector of `F` elements. Useful for specifying
 /// how public inputs to a constraint system should be represented inside

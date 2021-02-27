@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use criterion::criterion_group;
-use criterion::criterion_main;
+use criterion::{criterion_group, criterion_main};
 
 mod bls12_377;
 mod bw6_761;

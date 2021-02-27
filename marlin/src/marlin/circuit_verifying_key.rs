@@ -14,20 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ahp::indexer::*;
-use crate::Vec;
+use crate::{ahp::indexer::*, Vec};
 use snarkvm_curves::traits::PrimeField;
 use snarkvm_polycommit::PolynomialCommitment;
-use snarkvm_utilities::bytes::FromBytes;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::error;
-use snarkvm_utilities::errors::SerializationError;
-use snarkvm_utilities::serialize::*;
+use snarkvm_utilities::{
+    bytes::{FromBytes, ToBytes},
+    error,
+    errors::SerializationError,
+    serialize::*,
+};
 
 use derivative::Derivative;
-use std::io::Read;
-use std::io::Write;
-use std::io::{self};
+use std::io::{
+    Read,
+    Write,
+    {self},
+};
 
 /// Verification key for a specific index (i.e., R1CS matrices).
 #[derive(Derivative)]

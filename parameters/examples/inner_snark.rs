@@ -15,18 +15,24 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::traits::Parameter;
-use snarkvm_algorithms::crh::sha256::sha256;
-use snarkvm_algorithms::traits::MerkleParameters;
-use snarkvm_algorithms::traits::SNARK;
-use snarkvm_dpc::base_dpc::inner_circuit::InnerCircuit;
-use snarkvm_dpc::base_dpc::instantiated::Components;
-use snarkvm_dpc::base_dpc::parameters::SystemParameters;
-use snarkvm_dpc::base_dpc::BaseDPCComponents;
-use snarkvm_dpc::errors::DPCError;
+use snarkvm_algorithms::{
+    crh::sha256::sha256,
+    traits::{MerkleParameters, SNARK},
+};
+use snarkvm_dpc::{
+    base_dpc::{
+        inner_circuit::InnerCircuit,
+        instantiated::Components,
+        parameters::SystemParameters,
+        BaseDPCComponents,
+    },
+    errors::DPCError,
+};
 use snarkvm_parameters::LedgerMerkleTreeParameters;
-use snarkvm_utilities::bytes::FromBytes;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::to_bytes;
+use snarkvm_utilities::{
+    bytes::{FromBytes, ToBytes},
+    to_bytes,
+};
 
 use rand::thread_rng;
 use std::path::PathBuf;

@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::gadgets::SynthesisError;
-
 #[derive(Debug, Error)]
 pub enum ConstraintFieldError {
     #[error("{}: {}", _0, _1)]
@@ -25,11 +23,11 @@ pub enum ConstraintFieldError {
     Message(String),
 
     #[error("{}", _0)]
-    SynthesisError(SynthesisError),
+    SynthesisError(snarkvm_r1cs::errors::SynthesisError),
 }
 
-impl From<SynthesisError> for ConstraintFieldError {
-    fn from(error: SynthesisError) -> Self {
+impl From<snarkvm_r1cs::errors::SynthesisError> for ConstraintFieldError {
+    fn from(error: snarkvm_r1cs::errors::SynthesisError) -> Self {
         ConstraintFieldError::SynthesisError(error)
     }
 }

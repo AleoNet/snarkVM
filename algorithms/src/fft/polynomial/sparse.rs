@@ -16,14 +16,9 @@
 
 //! A sparse polynomial represented in coefficient form.
 
-use crate::fft::DenseOrSparsePolynomial;
-use crate::fft::DensePolynomial;
-use crate::fft::EvaluationDomain;
-use crate::fft::Evaluations;
-use snarkvm_curves::traits::Field;
-use snarkvm_curves::traits::PrimeField;
-use snarkvm_utilities::errors::SerializationError;
-use snarkvm_utilities::serialize::*;
+use crate::fft::{DenseOrSparsePolynomial, DensePolynomial, EvaluationDomain, Evaluations};
+use snarkvm_curves::traits::{Field, PrimeField};
+use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use std::fmt;
 
@@ -147,11 +142,8 @@ impl<F: Field> Into<DensePolynomial<F>> for SparsePolynomial<F> {
 
 #[cfg(test)]
 mod tests {
-    use crate::fft::DensePolynomial;
-    use crate::fft::EvaluationDomain;
-    use crate::fft::SparsePolynomial;
-    use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_curves::traits::One;
+    use crate::fft::{DensePolynomial, EvaluationDomain, SparsePolynomial};
+    use snarkvm_curves::{bls12_377::Fr, traits::One};
 
     #[test]
     fn evaluate_over_domain() {

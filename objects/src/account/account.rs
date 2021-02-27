@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::AccountError;
-use crate::traits::AccountScheme;
-use crate::AccountAddress;
-use crate::AccountPrivateKey;
+use crate::{errors::AccountError, traits::AccountScheme, AccountAddress, AccountPrivateKey};
 use snarkvm_dpc::traits::DPCComponents;
 
 use rand::Rng;

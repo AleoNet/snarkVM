@@ -21,8 +21,7 @@ mod constraint_counter;
 pub use constraint_counter::*;
 
 mod constraint_system;
-pub use constraint_system::ConstraintSynthesizer;
-pub use constraint_system::ConstraintSystem;
+pub use constraint_system::{ConstraintSynthesizer, ConstraintSystem};
 
 mod constraint_variable;
 pub use constraint_variable::*;
@@ -44,8 +43,7 @@ pub use test_fr::*;
 
 pub use snarkvm_curves::to_field_vec::ToConstraintField;
 
-use snarkvm_utilities::errors::SerializationError;
-use snarkvm_utilities::serialize::*;
+use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use std::cmp::Ordering;
 

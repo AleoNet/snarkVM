@@ -26,11 +26,6 @@ harness = false
 name = "gm17"
 path = "examples/snark/gm17.rs"
 
-[dependencies.snarkvm-models]
-path = "../models"
-version = "0.0.6"
-default-features = false
-
 [dependencies.snarkvm-profiler]
 path = "../profiler"
 version = "0.0.6"
@@ -91,7 +86,6 @@ version = "0.3"
 [features]
 default = [
   "pedersen-parallel",
-  "snarkvm-models/default",
   "snarkvm-r1cs/default",
   "snarkvm-utilities/default"
 ]

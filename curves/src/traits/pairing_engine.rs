@@ -14,25 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::Field;
-use crate::traits::Group;
-use crate::traits::PrimeField;
-use crate::traits::SquareRootField;
-use snarkvm_utilities::biginteger::BigInteger;
-use snarkvm_utilities::bytes::FromBytes;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::rand::UniformRand;
-use snarkvm_utilities::serialize::*;
+use crate::traits::{Field, Group, PrimeField, SquareRootField};
+use snarkvm_utilities::{
+    biginteger::BigInteger,
+    bytes::{FromBytes, ToBytes},
+    rand::UniformRand,
+    serialize::*,
+};
 
-use std::fmt::Debug;
-use std::fmt::Display;
-use std::hash::Hash;
-use std::iter;
-use std::ops::Add;
-use std::ops::AddAssign;
-use std::ops::Neg;
-use std::ops::Sub;
-use std::ops::SubAssign;
+use std::{
+    fmt::{Debug, Display},
+    hash::Hash,
+    iter,
+    ops::{Add, AddAssign, Neg, Sub, SubAssign},
+};
 
 use crate::traits::Zero;
 

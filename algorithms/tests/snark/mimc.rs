@@ -26,23 +26,19 @@
 #![deny(unused_must_use, unused_mut, unused_unsafe, private_in_public, unsafe_code)]
 
 // For randomness (during paramgen and proof generation)
-use rand::thread_rng;
-use rand::Rng;
+use rand::{thread_rng, Rng};
 
 // For benchmarking
-use std::time::Duration;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 // We're going to use the BLS12-377 pairing-friendly elliptic curve.
-use snarkvm_curves::bls12_377::Bls12_377;
-use snarkvm_curves::bls12_377::Fr;
+use snarkvm_curves::bls12_377::{Bls12_377, Fr};
 
 // We'll use these interfaces to construct our circuit.
 use snarkvm_curves::traits::Field;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
-use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
+use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 
 const MIMC_ROUNDS: usize = 322;
 
@@ -159,10 +155,12 @@ impl<'a, F: Field> ConstraintSynthesizer<F> for MiMCDemo<'a, F> {
 #[test]
 fn test_mimc_groth_16() {
     // We're going to use the Groth16 proving system.
-    use snarkvm_algorithms::snark::groth16::create_random_proof;
-    use snarkvm_algorithms::snark::groth16::generate_random_parameters;
-    use snarkvm_algorithms::snark::groth16::prepare_verifying_key;
-    use snarkvm_algorithms::snark::groth16::verify_proof;
+    use snarkvm_algorithms::snark::groth16::{
+        create_random_proof,
+        generate_random_parameters,
+        prepare_verifying_key,
+        verify_proof,
+    };
 
     // This may not be cryptographically safe, use
     // `OsRng` (for example) in production software.
@@ -244,10 +242,12 @@ fn test_mimc_groth_16() {
 #[test]
 fn test_mimc_groth_maller_17() {
     // We're going to use the GM17 proving system.
-    use snarkvm_algorithms::snark::gm17::create_random_proof;
-    use snarkvm_algorithms::snark::gm17::generate_random_parameters;
-    use snarkvm_algorithms::snark::gm17::prepare_verifying_key;
-    use snarkvm_algorithms::snark::gm17::verify_proof;
+    use snarkvm_algorithms::snark::gm17::{
+        create_random_proof,
+        generate_random_parameters,
+        prepare_verifying_key,
+        verify_proof,
+    };
 
     // This may not be cryptographically safe, use
     // `OsRng` (for example) in production software.

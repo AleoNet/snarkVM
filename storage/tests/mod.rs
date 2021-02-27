@@ -15,13 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod test_storage {
-    use snarkvm_objects::Block;
-    use snarkvm_objects::BlockHeader;
-    use snarkvm_objects::BlockHeaderHash;
-    use snarkvm_objects::DPCTransactions;
-    use snarkvm_objects::MerkleRootHash;
-    use snarkvm_objects::PedersenMerkleRootHash;
-    use snarkvm_objects::ProofOfSuccinctWork;
+    use snarkvm_objects::{
+        Block,
+        BlockHeader,
+        BlockHeaderHash,
+        DPCTransactions,
+        MerkleRootHash,
+        PedersenMerkleRootHash,
+        ProofOfSuccinctWork,
+    };
     use snarkvm_testing::storage::*;
 
     use std::sync::Arc;

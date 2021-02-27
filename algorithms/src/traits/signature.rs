@@ -15,14 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::SignatureError;
-use snarkvm_utilities::bytes::FromBytes;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::serialize::CanonicalDeserialize;
-use snarkvm_utilities::serialize::CanonicalSerialize;
+use snarkvm_utilities::{
+    bytes::{FromBytes, ToBytes},
+    serialize::{CanonicalDeserialize, CanonicalSerialize},
+};
 
 use rand::Rng;
-use std::fmt::Debug;
-use std::hash::Hash;
+use std::{fmt::Debug, hash::Hash};
 
 pub trait SignatureScheme: Sized + Clone + From<<Self as SignatureScheme>::Parameters> {
     type Parameters: Clone + Debug + ToBytes + FromBytes + Eq + Send + Sync;

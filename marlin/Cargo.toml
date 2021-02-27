@@ -33,14 +33,6 @@ harness = false
 path = "../algorithms"
 version = "0.0.6"
 
-[dependencies.snarkvm-errors]
-path = "../errors"
-version = "0.0.6"
-
-[dependencies.snarkvm-models]
-path = "../models"
-version = "0.0.6"
-
 [dependencies.snarkvm-polycommit]
 path = "../polycommit"
 version = "0.0.6"

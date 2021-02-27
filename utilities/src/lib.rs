@@ -20,15 +20,15 @@
 #[macro_use]
 extern crate std;
 
-pub use alloc::boxed::Box;
-pub use alloc::format;
-pub use alloc::vec;
-pub use alloc::vec::Vec;
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)]
+#[doc(hidden)]
+pub use alloc::{boxed::Box, format, vec, vec::Vec};
 
-pub use std::boxed::Box;
-pub use std::format;
-pub use std::vec;
-pub use std::vec::Vec;
+#[cfg(feature = "std")]
+#[allow(unused_imports)]
+#[doc(hidden)]
+pub use std::{boxed::Box, format, vec, vec::Vec};
 
 #[macro_use]
 extern crate thiserror;
@@ -110,8 +110,7 @@ macro_rules! unwrap_option_or_error {
     };
 }
 
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicBool, AtomicU64};
 // A flag used for performance purposes in the process of loading SNARK parameters; it allows the
 // PairingEngine::GXAffine values contained in them to be verified using the computationally-heavy
 // AffineCurve::is_in_correct_subgroup_assuming_on_curve method in parallel after the deserialization

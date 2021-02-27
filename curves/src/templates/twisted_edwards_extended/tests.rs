@@ -14,24 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::GroupAffine;
-use super::GroupProjective;
+use super::{GroupAffine, GroupProjective};
 
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::io::Cursor;
-use snarkvm_utilities::rand::UniformRand;
-use snarkvm_utilities::serialize::CanonicalDeserialize;
-use snarkvm_utilities::serialize::CanonicalSerialize;
-use snarkvm_utilities::to_bytes;
+use snarkvm_utilities::{
+    bytes::ToBytes,
+    io::Cursor,
+    rand::UniformRand,
+    serialize::{CanonicalDeserialize, CanonicalSerialize},
+    to_bytes,
+};
 
-use crate::traits::pairing_engine::AffineCurve;
-use crate::traits::pairing_engine::ProjectiveCurve;
-use crate::traits::Field;
-use crate::traits::MontgomeryModelParameters;
-use crate::traits::One;
-use crate::traits::PrimeField;
-use crate::traits::TEModelParameters;
-use crate::traits::Zero;
+use crate::traits::{
+    pairing_engine::{AffineCurve, ProjectiveCurve},
+    Field,
+    MontgomeryModelParameters,
+    One,
+    PrimeField,
+    TEModelParameters,
+    Zero,
+};
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;

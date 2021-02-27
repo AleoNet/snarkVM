@@ -22,16 +22,6 @@ path = "../algorithms"
 version = "0.0.6"
 default-features = false
 
-[dependencies.snarkvm-errors]
-path = "../errors"
-version = "0.0.6"
-default-features = false
-
-[dependencies.snarkvm-models]
-path = "../models"
-version = "0.0.6"
-default-features = false
-
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.0.6"
@@ -79,7 +69,6 @@ version = "0.8"
 [features]
 default = [
   "remote",
-  "snarkvm-algorithms/default",
-  "snarkvm-models/default"
+  "snarkvm-algorithms/default"
 ]
 remote = [ "curl" ]

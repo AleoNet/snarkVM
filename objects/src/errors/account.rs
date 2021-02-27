@@ -14,11 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::algorithms::CRHError;
-use crate::algorithms::CommitmentError;
-use crate::algorithms::EncryptionError;
-use crate::algorithms::PRFError;
-use crate::algorithms::SignatureError;
+use crate::algorithms::{CRHError, CommitmentError, EncryptionError, PRFError, SignatureError};
 
 #[derive(Debug, Error)]
 pub enum AccountError {

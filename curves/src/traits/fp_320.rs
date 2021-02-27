@@ -14,41 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::FieldError;
-use crate::traits::Field;
-use crate::traits::FpParameters;
-use crate::traits::LegendreSymbol;
-use crate::traits::One;
-use crate::traits::PrimeField;
-use crate::traits::SquareRootField;
-use crate::traits::Zero;
-use snarkvm_utilities::biginteger::arithmetic as fa;
-use snarkvm_utilities::biginteger::BigInteger as _BigInteger;
-use snarkvm_utilities::biginteger::BigInteger320 as BigInteger;
-use snarkvm_utilities::bytes::FromBytes;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::serialize::CanonicalDeserialize;
+use crate::{
+    errors::FieldError,
+    traits::{Field, FpParameters, LegendreSymbol, One, PrimeField, SquareRootField, Zero},
+};
+use snarkvm_utilities::{
+    biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger320 as BigInteger},
+    bytes::{FromBytes, ToBytes},
+    serialize::CanonicalDeserialize,
+};
 
-use std::cmp::Ord;
-use std::cmp::Ordering;
-use std::cmp::PartialOrd;
-use std::fmt::Display;
-use std::fmt::Formatter;
-use std::fmt::Result as FmtResult;
-use std::io::Read;
-use std::io::Result as IoResult;
-use std::io::Write;
-use std::marker::PhantomData;
-use std::ops::Add;
-use std::ops::AddAssign;
-use std::ops::Div;
-use std::ops::DivAssign;
-use std::ops::Mul;
-use std::ops::MulAssign;
-use std::ops::Neg;
-use std::ops::Sub;
-use std::ops::SubAssign;
-use std::str::FromStr;
+use std::{
+    cmp::{Ord, Ordering, PartialOrd},
+    fmt::{Display, Formatter, Result as FmtResult},
+    io::{Read, Result as IoResult, Write},
+    marker::PhantomData,
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+    str::FromStr,
+};
 
 pub trait Fp320Parameters: FpParameters<BigInteger = BigInteger> {}
 

@@ -15,53 +15,55 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #![allow(unused_imports)]
-use crate::bls12_377::g1::Bls12_377G1Parameters;
-use crate::bls12_377::g2::Bls12_377G2Parameters;
-use crate::bls12_377::Bls12_377;
-use crate::bls12_377::Fq;
-use crate::bls12_377::Fq12;
-use crate::bls12_377::Fq2;
-use crate::bls12_377::Fq2Parameters;
-use crate::bls12_377::Fq6;
-use crate::bls12_377::Fq6Parameters;
-use crate::bls12_377::FqParameters;
-use crate::bls12_377::Fr;
-use crate::bls12_377::G1Affine;
-use crate::bls12_377::G1Projective;
-use crate::bls12_377::G2Affine;
-use crate::bls12_377::G2Projective;
-use crate::templates::short_weierstrass::tests::sw_tests;
-use crate::templates::twisted_edwards_extended::tests::edwards_test;
-use crate::traits::fp6_3over2::Fp6Parameters;
-use crate::traits::tests_curve::curve_tests;
-use crate::traits::tests_field::field_serialization_test;
-use crate::traits::tests_field::field_test;
-use crate::traits::tests_field::frobenius_test;
-use crate::traits::tests_field::primefield_test;
-use crate::traits::tests_field::sqrt_field_test;
-use crate::traits::tests_group::group_test;
-use crate::traits::AffineCurve;
-use crate::traits::Field;
-use crate::traits::Fp2Parameters;
-use crate::traits::FpParameters;
-use crate::traits::LegendreSymbol::*;
-use crate::traits::One;
-use crate::traits::PairingEngine;
-use crate::traits::PrimeField;
-use crate::traits::ProjectiveCurve;
-use crate::traits::SWModelParameters;
-use crate::traits::SquareRootField;
-use crate::traits::Zero;
-use snarkvm_utilities::biginteger::BigInteger;
-use snarkvm_utilities::biginteger::BigInteger384;
-use snarkvm_utilities::rand::UniformRand;
+use crate::{
+    bls12_377::{
+        g1::Bls12_377G1Parameters,
+        g2::Bls12_377G2Parameters,
+        Bls12_377,
+        Fq,
+        Fq12,
+        Fq2,
+        Fq2Parameters,
+        Fq6,
+        Fq6Parameters,
+        FqParameters,
+        Fr,
+        G1Affine,
+        G1Projective,
+        G2Affine,
+        G2Projective,
+    },
+    templates::{short_weierstrass::tests::sw_tests, twisted_edwards_extended::tests::edwards_test},
+    traits::{
+        fp6_3over2::Fp6Parameters,
+        tests_curve::curve_tests,
+        tests_field::{field_serialization_test, field_test, frobenius_test, primefield_test, sqrt_field_test},
+        tests_group::group_test,
+        AffineCurve,
+        Field,
+        Fp2Parameters,
+        FpParameters,
+        LegendreSymbol::*,
+        One,
+        PairingEngine,
+        PrimeField,
+        ProjectiveCurve,
+        SWModelParameters,
+        SquareRootField,
+        Zero,
+    },
+};
+use snarkvm_utilities::{
+    biginteger::{BigInteger, BigInteger384},
+    rand::UniformRand,
+};
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
-use std::cmp::Ordering;
-use std::ops::AddAssign;
-use std::ops::MulAssign;
-use std::ops::SubAssign;
+use std::{
+    cmp::Ordering,
+    ops::{AddAssign, MulAssign, SubAssign},
+};
 
 pub(crate) const ITERATIONS: usize = 5;
 

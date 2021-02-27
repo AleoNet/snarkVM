@@ -38,15 +38,17 @@ extern crate snarkvm_profiler;
 #[macro_use]
 extern crate alloc;
 
-use alloc::collections::BTreeMap;
-use alloc::string::String;
-use alloc::string::ToString;
-use alloc::vec::Vec;
+use alloc::{
+    collections::BTreeMap,
+    string::{String, ToString},
+    vec::Vec,
+};
 
-use std::collections::BTreeMap;
-use std::string::String;
-use std::string::ToString;
-use std::vec::Vec;
+use std::{
+    collections::BTreeMap,
+    string::{String, ToString},
+    vec::Vec,
+};
 
 #[cfg(not(feature = "std"))]
 macro_rules! eprintln {

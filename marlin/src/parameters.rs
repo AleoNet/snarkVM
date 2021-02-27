@@ -14,33 +14,32 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::marlin::MarlinSNARK;
-use crate::ProvingKey;
-use crate::VerifyingKey;
-use crate::SRS;
-use snarkvm_curves::traits::AffineCurve;
-use snarkvm_curves::traits::PairingEngine;
+use crate::{marlin::MarlinSNARK, ProvingKey, VerifyingKey, SRS};
+use snarkvm_curves::traits::{AffineCurve, PairingEngine};
 use snarkvm_errors::algorithms::SNARKError;
 use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
-use snarkvm_utilities::bytes::FromBytes;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::error;
-use snarkvm_utilities::errors::SerializationError;
-use snarkvm_utilities::io;
-use snarkvm_utilities::serialize::*;
-use snarkvm_utilities::PROCESSING_SNARK_PARAMS;
-use snarkvm_utilities::SNARK_PARAMS_AFFINE_COUNT;
+use snarkvm_utilities::{
+    bytes::{FromBytes, ToBytes},
+    error,
+    errors::SerializationError,
+    io,
+    serialize::*,
+    PROCESSING_SNARK_PARAMS,
+    SNARK_PARAMS_AFFINE_COUNT,
+};
 
-pub use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
-pub use snarkvm_polycommit::PCCommitment;
+pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PCCommitment};
 
 use blake2::Blake2s;
 use derivative::Derivative;
 use rayon::prelude::*;
-use std::io::Read;
-use std::io::Write;
-use std::sync::atomic::AtomicU64;
-use std::sync::atomic::{self};
+use std::{
+    io::{Read, Write},
+    sync::atomic::{
+        AtomicU64,
+        {self},
+    },
+};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = ""))]

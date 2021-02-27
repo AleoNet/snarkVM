@@ -14,20 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::bw6_761::Fq;
-use snarkvm_curves::traits::Field;
-use snarkvm_curves::traits::PrimeField;
-use snarkvm_curves::traits::SquareRootField;
-use snarkvm_utilities::biginteger::BigInteger;
-use snarkvm_utilities::biginteger::BigInteger768 as FqRepr;
-use snarkvm_utilities::rand::UniformRand;
+use snarkvm_curves::{
+    bw6_761::Fq,
+    traits::{Field, PrimeField, SquareRootField},
+};
+use snarkvm_utilities::{
+    biginteger::{BigInteger, BigInteger768 as FqRepr},
+    rand::UniformRand,
+};
 
 use criterion::Criterion;
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
-use std::ops::AddAssign;
-use std::ops::MulAssign;
-use std::ops::SubAssign;
+use std::ops::{AddAssign, MulAssign, SubAssign};
 
 pub fn bench_fq_repr_add_nocarry(c: &mut Criterion) {
     const SAMPLES: usize = 1000;

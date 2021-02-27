@@ -14,20 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::Field;
-use crate::errors::SynthesisError;
-use crate::gadgets::r1cs::ConstraintSystem;
-use crate::gadgets::r1cs::Index;
-use crate::gadgets::r1cs::LinearCombination;
-use crate::gadgets::r1cs::Variable;
-use crate::gadgets::utilities::OptionalVec;
+use crate::{errors::SynthesisError, ConstraintSystem, Index, LinearCombination, Variable};
+use snarkvm_curves::Field;
+use snarkvm_gadgets::utilities::OptionalVec;
 
 use cfg_if::cfg_if;
-use fxhash::FxBuildHasher;
-use fxhash::FxHashMap;
-use indexmap::map::Entry;
-use indexmap::IndexMap;
-use indexmap::IndexSet;
+use fxhash::{FxBuildHasher, FxHashMap};
+use indexmap::{map::Entry, IndexMap, IndexSet};
 use itertools::Itertools;
 
 #[derive(Debug, Clone)]

@@ -14,25 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::templates::bw6::g1::G1Affine;
-use crate::templates::bw6::g1::G1Prepared;
-use crate::templates::bw6::g1::G1Projective;
-use crate::templates::bw6::g2::G2Affine;
-use crate::templates::bw6::g2::G2Prepared;
-use crate::templates::bw6::g2::G2Projective;
-use crate::traits::fp3::Fp3Parameters;
-use crate::traits::fp6_2over3::Fp6;
-use crate::traits::fp6_2over3::Fp6Parameters;
-use crate::traits::Field;
-use crate::traits::ModelParameters;
-use crate::traits::One;
-use crate::traits::PairingCurve;
-use crate::traits::PairingEngine;
-use crate::traits::PrimeField;
-use crate::traits::SWModelParameters;
-use crate::traits::SquareRootField;
-use serde::Deserialize;
-use serde::Serialize;
+use crate::{
+    templates::bw6::{
+        g1::{G1Affine, G1Prepared, G1Projective},
+        g2::{G2Affine, G2Prepared, G2Projective},
+    },
+    traits::{
+        fp3::Fp3Parameters,
+        fp6_2over3::{Fp6, Fp6Parameters},
+        Field,
+        ModelParameters,
+        One,
+        PairingCurve,
+        PairingEngine,
+        PrimeField,
+        SWModelParameters,
+        SquareRootField,
+    },
+};
+use serde::{Deserialize, Serialize};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::marker::PhantomData;

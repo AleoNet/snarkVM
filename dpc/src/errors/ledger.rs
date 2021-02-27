@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::algorithms::MerkleError;
-use crate::objects::TransactionError;
+use crate::{algorithms::MerkleError, objects::TransactionError};
 
 #[derive(Debug, Error)]
 pub enum LedgerError {

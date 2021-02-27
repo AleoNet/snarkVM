@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::MerkleError;
-use crate::traits::MerkleParameters;
-use crate::traits::CRH;
+use crate::{
+    errors::MerkleError,
+    traits::{MerkleParameters, CRH},
+};
 use snarkvm_utilities::ToBytes;
 
 pub type MerkleTreeDigest<P> = <<P as MerkleParameters>::H as CRH>::Output;

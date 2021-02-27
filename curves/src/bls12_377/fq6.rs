@@ -14,13 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::bls12_377::Fq;
-use crate::bls12_377::Fq2;
-use crate::bls12_377::Fq2Parameters;
-use crate::field;
-use crate::traits::fp6_3over2::Fp6;
-use crate::traits::fp6_3over2::Fp6Parameters;
-use crate::traits::Fp2Parameters;
+use crate::{
+    bls12_377::{Fq, Fq2, Fq2Parameters},
+    field,
+    traits::{
+        fp6_3over2::{Fp6, Fp6Parameters},
+        Fp2Parameters,
+    },
+};
 use snarkvm_utilities::biginteger::BigInteger384;
 
 pub type Fq6 = Fp6<Fq6Parameters>;
@@ -256,8 +257,7 @@ impl Fp6Parameters for Fq6Parameters {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::traits::One;
-    use crate::traits::Zero;
+    use crate::traits::{One, Zero};
     use snarkvm_utilities::rand::UniformRand;
 
     use rand::SeedableRng;

@@ -27,11 +27,6 @@ path = "../curves"
 version = "0.0.6"
 default-features = false
 
-[dependencies.snarkvm-errors]
-path = "../errors"
-version = "0.0.6"
-default-features = false
-
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
 version = "0.0.6"
@@ -67,7 +62,6 @@ version = "0.3"
 default = [
   "snarkvm-algorithms/default",
   "snarkvm-curves/default",
-  "snarkvm-errors/default",
   "snarkvm-r1cs/default",
   "snarkvm-utilities/default"
 ]

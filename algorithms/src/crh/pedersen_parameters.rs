@@ -15,19 +15,18 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::traits::crh::CRHParameters;
-use snarkvm_curves::errors::ConstraintFieldError;
-use snarkvm_curves::traits::to_field_vec::ToConstraintField;
-use snarkvm_curves::traits::Field;
-use snarkvm_curves::traits::Group;
-use snarkvm_utilities::bytes::FromBytes;
-use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_curves::{
+    errors::ConstraintFieldError,
+    traits::{to_field_vec::ToConstraintField, Field, Group},
+};
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
 use rand::Rng;
-use std::fmt::Debug;
-use std::io::Read;
-use std::io::Result as IoResult;
-use std::io::Write;
-use std::marker::PhantomData;
+use std::{
+    fmt::Debug,
+    io::{Read, Result as IoResult, Write},
+    marker::PhantomData,
+};
 
 pub trait PedersenSize: Clone + Debug + Eq {
     const NUM_WINDOWS: usize;

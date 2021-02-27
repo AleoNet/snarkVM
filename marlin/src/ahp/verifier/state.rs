@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ahp::verifier::VerifierFirstMessage;
-use crate::ahp::verifier::VerifierSecondMessage;
+use crate::ahp::verifier::{VerifierFirstMessage, VerifierSecondMessage};
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_curves::traits::PrimeField;
 

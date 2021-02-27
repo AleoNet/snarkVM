@@ -27,11 +27,6 @@ path = "../curves"
 version = "0.0.6"
 default-features = false
 
-[dependencies.snarkvm-errors]
-path = "../errors"
-version = "0.0.6"
-default-features = false
-
 [dependencies.snarkvm-gadgets]
 path = "../gadgets"
 version = "0.0.6"
@@ -40,11 +35,6 @@ default-features = false
 [dependencies.snarkvm-marlin]
 path = "../marlin"
 version = "0.0.6"
-
-[dependencies.snarkvm-models]
-path = "../models"
-version = "0.0.6"
-default-features = false
 
 [dependencies.snarkvm-polycommit]
 path = "../polycommit"

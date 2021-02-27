@@ -14,15 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::FieldError;
-
 #[derive(Debug, Error)]
 pub enum GroupError {
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
     #[error("{}", _0)]
-    FieldError(FieldError),
+    FieldError(crate::errors::FieldError),
 
     #[error("Invalid group element")]
     InvalidGroupElement,
@@ -40,8 +38,8 @@ pub enum GroupError {
     ParsingNonDigitCharacter,
 }
 
-impl From<FieldError> for GroupError {
-    fn from(error: FieldError) -> Self {
+impl From<crate::errors::FieldError> for GroupError {
+    fn from(error: crate::errors::FieldError) -> Self {
         GroupError::FieldError(error)
     }
 }

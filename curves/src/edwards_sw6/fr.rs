@@ -14,9 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::Fp384;
-use crate::traits::Fp384Parameters;
-use crate::traits::FpParameters;
+use crate::traits::{Fp384, Fp384Parameters, FpParameters};
 use snarkvm_utilities::biginteger::BigInteger384 as BigInteger;
 
 pub type Fr = Fp384<FrParameters>;

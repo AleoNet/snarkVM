@@ -14,50 +14,49 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::base_dpc::record_payload::RecordPayload;
-use crate::errors::DPCError;
-use crate::traits::DPCComponents;
-use crate::traits::DPCScheme;
-use crate::traits::Record;
-use snarkvm_algorithms::commitment_tree::CommitmentMerkleTree;
-use snarkvm_algorithms::merkle_tree::MerklePath;
-use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
-use snarkvm_algorithms::traits::CommitmentScheme;
-use snarkvm_algorithms::traits::EncryptionScheme;
-use snarkvm_algorithms::traits::LoadableMerkleParameters;
-use snarkvm_algorithms::traits::MerkleParameters;
-use snarkvm_algorithms::traits::SignatureScheme;
-use snarkvm_algorithms::traits::CRH;
-use snarkvm_algorithms::traits::PRF;
-use snarkvm_algorithms::traits::SNARK;
-use snarkvm_curves::traits::Group;
-use snarkvm_curves::traits::MontgomeryModelParameters;
-use snarkvm_curves::traits::ProjectiveCurve;
-use snarkvm_curves::traits::TEModelParameters;
-use snarkvm_gadgets::traits::algorithms::CRHGadget;
-use snarkvm_gadgets::traits::algorithms::SNARKVerifierGadget;
-use snarkvm_objects::traits::AccountScheme;
-use snarkvm_objects::traits::LedgerScheme;
-use snarkvm_objects::traits::Transaction;
-use snarkvm_objects::Account;
-use snarkvm_objects::AccountAddress;
-use snarkvm_objects::AccountPrivateKey;
-use snarkvm_objects::AleoAmount;
-use snarkvm_objects::Network;
-use snarkvm_utilities::bytes::FromBytes;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::has_duplicates;
-use snarkvm_utilities::rand::UniformRand;
-use snarkvm_utilities::to_bytes;
-use snarkvm_utilities::variable_length_integer::*;
+use crate::{
+    base_dpc::record_payload::RecordPayload,
+    errors::DPCError,
+    traits::{DPCComponents, DPCScheme, Record},
+};
+use snarkvm_algorithms::{
+    commitment_tree::CommitmentMerkleTree,
+    merkle_tree::{MerklePath, MerkleTreeDigest},
+    traits::{
+        CommitmentScheme,
+        EncryptionScheme,
+        LoadableMerkleParameters,
+        MerkleParameters,
+        SignatureScheme,
+        CRH,
+        PRF,
+        SNARK,
+    },
+};
+use snarkvm_curves::traits::{Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
+use snarkvm_gadgets::traits::algorithms::{CRHGadget, SNARKVerifierGadget};
+use snarkvm_objects::{
+    traits::{AccountScheme, LedgerScheme, Transaction},
+    Account,
+    AccountAddress,
+    AccountPrivateKey,
+    AleoAmount,
+    Network,
+};
+use snarkvm_utilities::{
+    bytes::{FromBytes, ToBytes},
+    has_duplicates,
+    rand::UniformRand,
+    to_bytes,
+    variable_length_integer::*,
+};
 
-use itertools::izip;
-use itertools::Itertools;
+use itertools::{izip, Itertools};
 use rand::Rng;
-use std::io::Read;
-use std::io::Result as IoResult;
-use std::io::Write;
-use std::marker::PhantomData;
+use std::{
+    io::{Read, Result as IoResult, Write},
+    marker::PhantomData,
+};
 
 pub mod inner_circuit;
 pub use inner_circuit::*;

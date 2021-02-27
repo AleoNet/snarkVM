@@ -14,18 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::generator::KeypairAssembly;
-use super::prover::ProvingAssignment;
-use super::Vec;
-use crate::cfg_iter;
-use crate::cfg_iter_mut;
-use crate::fft::EvaluationDomain;
-use snarkvm_curves::traits::PairingEngine;
-use snarkvm_curves::traits::Zero;
-use snarkvm_gadgets::errors::SynthesisError;
-use snarkvm_gadgets::errors::SynthesisResult;
-use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
-use snarkvm_gadgets::traits::r1cs::Index;
+use super::{generator::KeypairAssembly, prover::ProvingAssignment, Vec};
+use crate::{cfg_iter, cfg_iter_mut, fft::EvaluationDomain};
+use snarkvm_curves::traits::{PairingEngine, Zero};
+use snarkvm_gadgets::{
+    errors::{SynthesisError, SynthesisResult},
+    traits::r1cs::{ConstraintSystem, Index},
+};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
