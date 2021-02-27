@@ -16,6 +16,9 @@
 
 #![allow(clippy::module_inception)]
 
+pub mod errors;
+pub use errors::*;
+
 pub mod genesis;
 pub use genesis::*;
 
