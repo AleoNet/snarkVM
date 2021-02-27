@@ -17,20 +17,19 @@
 pub mod circuit;
 
 mod posw;
-use posw::{HG, M};
+use posw::HG;
+use posw::M;
 
 pub mod error;
 
 use snarkvm_algorithms::snark;
 use snarkvm_curves::bls12_377::Bls12_377;
 use snarkvm_curves::traits::PairingEngine;
-use snarkvm_objects::{
-    merkle_root_with_subroots,
-    pedersen_merkle_root,
-    MerkleRootHash,
-    PedersenMerkleRootHash,
-    MASKED_TREE_DEPTH,
-};
+use snarkvm_objects::merkle_root_with_subroots;
+use snarkvm_objects::pedersen_merkle_root;
+use snarkvm_objects::MerkleRootHash;
+use snarkvm_objects::PedersenMerkleRootHash;
+use snarkvm_objects::MASKED_TREE_DEPTH;
 
 /// PoSW instantiated over BLS12-377 with GM17.
 pub type PoswGM17 = Posw<GM17<Bls12_377>, Bls12_377>;

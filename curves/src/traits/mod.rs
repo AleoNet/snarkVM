@@ -15,14 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_utilities::biginteger::*;
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
-use snarkvm_utilities::serialize::{
-    CanonicalDeserialize,
-    CanonicalDeserializeWithFlags,
-    CanonicalSerialize,
-    CanonicalSerializeWithFlags,
-    ConstantSerializedSize,
-};
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::serialize::CanonicalDeserialize;
+use snarkvm_utilities::serialize::CanonicalDeserializeWithFlags;
+use snarkvm_utilities::serialize::CanonicalSerialize;
+use snarkvm_utilities::serialize::CanonicalSerializeWithFlags;
+use snarkvm_utilities::serialize::ConstantSerializedSize;
 
 use std::fmt::Debug;
 

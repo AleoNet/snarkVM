@@ -16,18 +16,28 @@
 
 use crate::bw6_761::g1::BW6_761G1Parameters;
 use crate::bw6_761::g2::Bls12_377G2Parameters;
-use crate::bw6_761::{Fq, Fq3, Fq6, Fr, G1Affine, G1Projective, G2Affine, G2Projective, BW6_761};
+use crate::bw6_761::Fq;
+use crate::bw6_761::Fq3;
+use crate::bw6_761::Fq6;
+use crate::bw6_761::Fr;
+use crate::bw6_761::G1Affine;
+use crate::bw6_761::G1Projective;
+use crate::bw6_761::G2Affine;
+use crate::bw6_761::G2Projective;
+use crate::bw6_761::BW6_761;
 use crate::templates::short_weierstrass::tests::sw_tests;
 use crate::traits::tests_curve::curve_tests;
-use crate::traits::tests_field::{
-    field_serialization_test,
-    field_test,
-    frobenius_test,
-    primefield_test,
-    sqrt_field_test,
-};
+use crate::traits::tests_field::field_serialization_test;
+use crate::traits::tests_field::field_test;
+use crate::traits::tests_field::frobenius_test;
+use crate::traits::tests_field::primefield_test;
+use crate::traits::tests_field::sqrt_field_test;
 use crate::traits::tests_group::group_test;
-use crate::traits::{AffineCurve, Field, One, PairingEngine, PrimeField};
+use crate::traits::AffineCurve;
+use crate::traits::Field;
+use crate::traits::One;
+use crate::traits::PairingEngine;
+use crate::traits::PrimeField;
 
 #[test]
 fn test_bw6_761_fr() {

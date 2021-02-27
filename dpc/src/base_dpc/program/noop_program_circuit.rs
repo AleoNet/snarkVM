@@ -17,11 +17,14 @@
 use crate::base_dpc::parameters::SystemParameters;
 use crate::base_dpc::BaseDPCComponents;
 use crate::Assignment;
-use snarkvm_algorithms::traits::{CommitmentScheme, CRH};
+use snarkvm_algorithms::traits::CommitmentScheme;
+use snarkvm_algorithms::traits::CRH;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_gadgets::traits::algorithms::{CRHGadget, CommitmentGadget};
-use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem};
+use snarkvm_gadgets::traits::algorithms::CRHGadget;
+use snarkvm_gadgets::traits::algorithms::CommitmentGadget;
+use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
+use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
 use snarkvm_gadgets::traits::utilities::alloc::AllocGadget;
 use snarkvm_gadgets::traits::utilities::uint::UInt8;
 

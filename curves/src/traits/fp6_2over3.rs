@@ -14,21 +14,39 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::{Field, Fp3, Fp3Parameters, One, PrimeField, Zero};
+use crate::traits::Field;
+use crate::traits::Fp3;
+use crate::traits::Fp3Parameters;
+use crate::traits::One;
+use crate::traits::PrimeField;
+use crate::traits::Zero;
 use snarkvm_utilities::biginteger::BigInteger;
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::div_ceil;
 use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::rand::UniformRand;
 use snarkvm_utilities::serialize::*;
 
-use rand::distributions::{Distribution, Standard};
+use rand::distributions::Distribution;
+use rand::distributions::Standard;
 use rand::Rng;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use std::cmp::Ordering;
-use std::io::{Read, Result as IoResult, Write};
+use std::io::Read;
+use std::io::Result as IoResult;
+use std::io::Write;
 use std::marker::PhantomData;
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::ops::Add;
+use std::ops::AddAssign;
+use std::ops::Div;
+use std::ops::DivAssign;
+use std::ops::Mul;
+use std::ops::MulAssign;
+use std::ops::Neg;
+use std::ops::Sub;
+use std::ops::SubAssign;
 
 pub trait Fp6Parameters: 'static + Send + Sync {
     type Fp3Params: Fp3Parameters;

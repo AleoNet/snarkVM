@@ -15,18 +15,19 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::EncodingError;
-use snarkvm_curves::traits::pairing_engine::{AffineCurve, ProjectiveCurve};
-use snarkvm_curves::traits::{
-    Field,
-    Group,
-    LegendreSymbol,
-    MontgomeryModelParameters,
-    One,
-    SquareRootField,
-    TEModelParameters,
-    Zero,
-};
-use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
+use snarkvm_curves::traits::pairing_engine::AffineCurve;
+use snarkvm_curves::traits::pairing_engine::ProjectiveCurve;
+use snarkvm_curves::traits::Field;
+use snarkvm_curves::traits::Group;
+use snarkvm_curves::traits::LegendreSymbol;
+use snarkvm_curves::traits::MontgomeryModelParameters;
+use snarkvm_curves::traits::One;
+use snarkvm_curves::traits::SquareRootField;
+use snarkvm_curves::traits::TEModelParameters;
+use snarkvm_curves::traits::Zero;
+use snarkvm_utilities::to_bytes;
+use snarkvm_utilities::FromBytes;
+use snarkvm_utilities::ToBytes;
 
 use std::cmp;
 use std::marker::PhantomData;

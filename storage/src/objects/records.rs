@@ -19,7 +19,8 @@ use crate::*;
 use snarkvm_algorithms::traits::LoadableMerkleParameters;
 use snarkvm_dpc::traits::Record;
 use snarkvm_objects::traits::Transaction;
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::to_bytes;
 
 // TODO (howardwu): Remove this from `Ledger` as it is not used for ledger state.

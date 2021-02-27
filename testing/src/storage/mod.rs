@@ -15,12 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::traits::merkle_tree::LoadableMerkleParameters;
-use snarkvm_dpc::base_dpc::instantiated::{CommitmentMerkleParameters, Tx};
-use snarkvm_objects::traits::{LedgerScheme, Transaction};
+use snarkvm_dpc::base_dpc::instantiated::CommitmentMerkleParameters;
+use snarkvm_dpc::base_dpc::instantiated::Tx;
+use snarkvm_objects::traits::LedgerScheme;
+use snarkvm_objects::traits::Transaction;
 use snarkvm_objects::Block;
 pub use snarkvm_storage::Ledger;
 
-use rand::{thread_rng, Rng};
+use rand::thread_rng;
+use rand::Rng;
 use std::path::PathBuf;
 use std::sync::Arc;
 

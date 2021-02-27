@@ -15,17 +15,28 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::r1cs_to_sap::R1CStoSAP;
-use super::{Parameters, Proof};
+use super::Parameters;
+use super::Proof;
 use crate::msm::VariableBaseMSM;
-use snarkvm_curves::traits::{AffineCurve, One, PairingEngine, PrimeField, ProjectiveCurve, Zero};
+use snarkvm_curves::traits::AffineCurve;
+use snarkvm_curves::traits::One;
+use snarkvm_curves::traits::PairingEngine;
+use snarkvm_curves::traits::PrimeField;
+use snarkvm_curves::traits::ProjectiveCurve;
+use snarkvm_curves::traits::Zero;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable};
+use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
+use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
+use snarkvm_gadgets::traits::r1cs::Index;
+use snarkvm_gadgets::traits::r1cs::LinearCombination;
+use snarkvm_gadgets::traits::r1cs::Variable;
 use snarkvm_utilities::rand::UniformRand;
 
 use rand::Rng;
 use smallvec::SmallVec;
-use std::ops::{AddAssign, MulAssign};
+use std::ops::AddAssign;
+use std::ops::MulAssign;
 
 type CoeffVec<T> = SmallVec<[T; 2]>;
 

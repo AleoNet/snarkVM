@@ -15,14 +15,19 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_curves::bls12_377::Fq;
-use snarkvm_curves::traits::{Field, PrimeField, SquareRootField};
-use snarkvm_utilities::biginteger::{BigInteger, BigInteger384 as FqRepr};
+use snarkvm_curves::traits::Field;
+use snarkvm_curves::traits::PrimeField;
+use snarkvm_curves::traits::SquareRootField;
+use snarkvm_utilities::biginteger::BigInteger;
+use snarkvm_utilities::biginteger::BigInteger384 as FqRepr;
 use snarkvm_utilities::rand::UniformRand;
 
 use criterion::Criterion;
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
-use std::ops::{AddAssign, MulAssign, SubAssign};
+use std::ops::AddAssign;
+use std::ops::MulAssign;
+use std::ops::SubAssign;
 
 pub(crate) fn bench_fq_repr_add_nocarry(c: &mut Criterion) {
     const SAMPLES: usize = 1000;

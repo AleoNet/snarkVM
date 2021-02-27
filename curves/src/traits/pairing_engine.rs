@@ -14,18 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::{Field, Group, PrimeField, SquareRootField};
+use crate::traits::Field;
+use crate::traits::Group;
+use crate::traits::PrimeField;
+use crate::traits::SquareRootField;
 use snarkvm_utilities::biginteger::BigInteger;
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::rand::UniformRand;
 use snarkvm_utilities::serialize::*;
 
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
+use std::fmt::Display;
 use std::hash::Hash;
 use std::iter;
-use std::ops::{Add, AddAssign, Neg, Sub, SubAssign};
+use std::ops::Add;
+use std::ops::AddAssign;
+use std::ops::Neg;
+use std::ops::Sub;
+use std::ops::SubAssign;
 
-use crate::curves::Zero;
+use crate::traits::Zero;
 
 pub trait PairingEngine: Sized + 'static + Copy + Debug + Sync + Send {
     /// This is the scalar field of the G1/G2 groups.

@@ -17,7 +17,9 @@
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_curves::bls12_377::Bls12_377;
 use snarkvm_objects::PedersenMerkleRootHash;
-use snarkvm_posw::{txids_to_roots, Marlin, PoswMarlin};
+use snarkvm_posw::txids_to_roots;
+use snarkvm_posw::Marlin;
+use snarkvm_posw::PoswMarlin;
 use snarkvm_utilities::bytes::FromBytes;
 
 #[test]

@@ -18,13 +18,16 @@ use crate::ahp::indexer::*;
 use crate::Vec;
 use snarkvm_curves::traits::PrimeField;
 use snarkvm_polycommit::PolynomialCommitment;
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::error;
 use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::serialize::*;
 
 use derivative::Derivative;
-use std::io::{self, Read, Write};
+use std::io::Read;
+use std::io::Write;
+use std::io::{self};
 
 /// Verification key for a specific index (i.e., R1CS matrices).
 #[derive(Derivative)]

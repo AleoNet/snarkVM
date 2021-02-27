@@ -16,12 +16,17 @@
 
 use crate::encryption::GroupEncryption;
 use crate::traits::EncryptionScheme;
-use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsProjective};
-use snarkvm_curves::traits::{Group, ProjectiveCurve};
-use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
+use snarkvm_curves::edwards_bls12::EdwardsAffine;
+use snarkvm_curves::edwards_bls12::EdwardsProjective;
+use snarkvm_curves::traits::Group;
+use snarkvm_curves::traits::ProjectiveCurve;
+use snarkvm_utilities::to_bytes;
+use snarkvm_utilities::FromBytes;
+use snarkvm_utilities::ToBytes;
 
 use blake2::Blake2s;
-use rand::{Rng, SeedableRng};
+use rand::Rng;
+use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 
 type TestEncryptionScheme = GroupEncryption<EdwardsProjective, EdwardsAffine, Blake2s>;

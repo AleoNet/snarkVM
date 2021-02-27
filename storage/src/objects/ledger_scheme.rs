@@ -18,9 +18,11 @@ use crate::*;
 use snarkvm_algorithms::merkle_tree::*;
 use snarkvm_algorithms::traits::LoadableMerkleParameters;
 use snarkvm_dpc::errors::LedgerError;
-use snarkvm_objects::traits::{LedgerScheme, Transaction};
+use snarkvm_objects::traits::LedgerScheme;
+use snarkvm_objects::traits::Transaction;
 use snarkvm_objects::Block;
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::to_bytes;
 
 use parking_lot::RwLock;

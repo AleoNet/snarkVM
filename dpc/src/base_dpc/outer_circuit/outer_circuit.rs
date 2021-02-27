@@ -19,11 +19,17 @@ use crate::base_dpc::parameters::SystemParameters;
 use crate::base_dpc::program::PrivateProgramInput;
 use crate::base_dpc::BaseDPCComponents;
 use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
-use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, SNARK};
+use snarkvm_algorithms::traits::CommitmentScheme;
+use snarkvm_algorithms::traits::EncryptionScheme;
+use snarkvm_algorithms::traits::MerkleParameters;
+use snarkvm_algorithms::traits::SignatureScheme;
+use snarkvm_algorithms::traits::CRH;
+use snarkvm_algorithms::traits::SNARK;
 use snarkvm_curves::traits::to_field_vec::ToConstraintField;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem};
+use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
+use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
 use snarkvm_objects::AleoAmount;
 
 #[derive(Derivative)]

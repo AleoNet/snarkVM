@@ -21,7 +21,8 @@ mod constraint_counter;
 pub use constraint_counter::*;
 
 mod constraint_system;
-pub use constraint_system::{ConstraintSynthesizer, ConstraintSystem};
+pub use constraint_system::ConstraintSynthesizer;
+pub use constraint_system::ConstraintSystem;
 
 mod constraint_variable;
 pub use constraint_variable::*;

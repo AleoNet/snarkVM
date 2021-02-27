@@ -15,7 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_errors::algorithms::MerkleError;
-use snarkvm_errors::objects::{BlockError, TransactionError};
+use snarkvm_errors::objects::BlockError;
+use snarkvm_errors::objects::TransactionError;
 use snarkvm_errors::parameters::ParameterError;
 
 use std::fmt::Debug;

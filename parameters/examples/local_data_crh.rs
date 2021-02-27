@@ -23,8 +23,10 @@ use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::to_bytes;
 
 use rand::thread_rng;
-use std::fs::{self, File};
-use std::io::{Result as IoResult, Write};
+use std::fs::File;
+use std::fs::{self};
+use std::io::Result as IoResult;
+use std::io::Write;
 use std::path::PathBuf;
 
 pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, CRHError> {

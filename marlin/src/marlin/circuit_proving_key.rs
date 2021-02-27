@@ -23,7 +23,8 @@ use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::serialize::*;
 
 use derivative::Derivative;
-use std::io::{Read, Write};
+use std::io::Read;
+use std::io::Write;
 
 /// Proving key for a specific circuit (i.e., R1CS matrices).
 #[derive(Derivative)]

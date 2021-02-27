@@ -15,13 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::ConstraintFieldError;
-use crate::templates::short_weierstrass::short_weierstrass_jacobian::{
-    GroupAffine as SWAffine,
-    GroupProjective as SWProjective,
-};
-use crate::templates::twisted_edwards_extended::{GroupAffine as TEAffine, GroupProjective as TEProjective};
+use crate::templates::short_weierstrass::short_weierstrass_jacobian::GroupAffine as SWAffine;
+use crate::templates::short_weierstrass::short_weierstrass_jacobian::GroupProjective as SWProjective;
+use crate::templates::twisted_edwards_extended::GroupAffine as TEAffine;
+use crate::templates::twisted_edwards_extended::GroupProjective as TEProjective;
 use crate::traits::to_field_vec::ToConstraintField;
-use crate::traits::{Field, ProjectiveCurve, SWModelParameters, TEModelParameters};
+use crate::traits::Field;
+use crate::traits::ProjectiveCurve;
+use crate::traits::SWModelParameters;
+use crate::traits::TEModelParameters;
 
 impl<M: TEModelParameters, F: Field> ToConstraintField<F> for TEAffine<M>
 where

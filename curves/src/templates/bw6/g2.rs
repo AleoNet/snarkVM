@@ -14,15 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::templates::bw6::{BW6Parameters, TwistType};
-use crate::templates::short_weierstrass::short_weierstrass_jacobian::{GroupAffine, GroupProjective};
-use crate::traits::{AffineCurve, Field, One, SWModelParameters, Zero};
+use crate::templates::bw6::BW6Parameters;
+use crate::templates::bw6::TwistType;
+use crate::templates::short_weierstrass::short_weierstrass_jacobian::GroupAffine;
+use crate::templates::short_weierstrass::short_weierstrass_jacobian::GroupProjective;
+use crate::traits::AffineCurve;
+use crate::traits::Field;
+use crate::traits::One;
+use crate::traits::SWModelParameters;
+use crate::traits::Zero;
 use snarkvm_utilities::bititerator::BitIteratorBE;
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::serialize::*;
 
-use std::io::{Result as IoResult, Write};
+use std::io::Result as IoResult;
+use std::io::Write;
 use std::ops::Neg;
 
 pub type G2Affine<P> = GroupAffine<<P as BW6Parameters>::G2Parameters>;

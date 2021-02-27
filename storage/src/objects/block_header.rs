@@ -15,10 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::error::StorageError;
-use crate::{Ledger, COL_BLOCK_HEADER};
+use crate::Ledger;
+use crate::COL_BLOCK_HEADER;
 use snarkvm_algorithms::traits::LoadableMerkleParameters;
 use snarkvm_objects::traits::Transaction;
-use snarkvm_objects::{Block, BlockHeader, BlockHeaderHash};
+use snarkvm_objects::Block;
+use snarkvm_objects::BlockHeader;
+use snarkvm_objects::BlockHeaderHash;
 use snarkvm_utilities::FromBytes;
 
 impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {

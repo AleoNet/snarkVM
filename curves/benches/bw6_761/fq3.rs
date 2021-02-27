@@ -15,13 +15,16 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_curves::bw6_761::Fq3;
-use snarkvm_curves::traits::{Field, SquareRootField};
+use snarkvm_curves::traits::Field;
+use snarkvm_curves::traits::SquareRootField;
 use snarkvm_utilities::rand::UniformRand;
 
 use criterion::Criterion;
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
-use std::ops::{AddAssign, MulAssign, SubAssign};
+use std::ops::AddAssign;
+use std::ops::MulAssign;
+use std::ops::SubAssign;
 
 pub fn bench_fq3_add_assign(c: &mut Criterion) {
     const SAMPLES: usize = 1000;

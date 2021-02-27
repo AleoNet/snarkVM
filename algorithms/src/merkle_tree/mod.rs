@@ -25,7 +25,8 @@ pub use merkle_tree::*;
 #[cfg(test)]
 pub mod tests;
 
-use rand::{Rng, SeedableRng};
+use rand::Rng;
+use rand::SeedableRng;
 
 // TODO: How should this seed be chosen?
 const PRNG_SEED: [u8; 32] = [
@@ -41,8 +42,10 @@ pub fn prng() -> impl Rng {
 /// Defines a Merkle tree using the provided hash and depth.
 macro_rules! define_merkle_tree_parameters {
     ($struct_name:ident, $hash:ty, $depth:expr) => {
-        #[allow(unused_imports)]
-        use crate::traits::{LoadableMerkleParameters, MaskedMerkleParameters, MerkleParameters, CRH};
+        use crate::traits::LoadableMerkleParameters;
+        use crate::traits::MaskedMerkleParameters;
+        use crate::traits::MerkleParameters;
+        use crate::traits::CRH;
         #[allow(unused_imports)]
         use $crate::merkle_tree::MerkleTree;
 
@@ -91,8 +94,10 @@ macro_rules! define_merkle_tree_parameters {
 #[macro_export]
 macro_rules! define_masked_merkle_tree_parameters {
     ($struct_name:ident, $hash:ty, $depth:expr) => {
-        #[allow(unused_imports)]
-        use crate::traits::{CRHParameters, MaskedMerkleParameters, MerkleParameters, CRH};
+        use crate::traits::CRHParameters;
+        use crate::traits::MaskedMerkleParameters;
+        use crate::traits::MerkleParameters;
+        use crate::traits::CRH;
         #[allow(unused_imports)]
         use $crate::merkle_tree::MerkleTree;
 

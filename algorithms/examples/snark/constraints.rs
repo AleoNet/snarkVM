@@ -17,7 +17,9 @@
 use snarkvm_curves::traits::Field;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem, LinearCombination};
+use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
+use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
+use snarkvm_gadgets::traits::r1cs::LinearCombination;
 
 use std::marker::PhantomData;
 

@@ -14,13 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{impl_bytes, BTreeMap, *};
-use core::ops::{Add, AddAssign};
-use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, PrimeField, ProjectiveCurve, Zero};
+use crate::impl_bytes;
+use crate::BTreeMap;
+use crate::*;
+use core::ops::Add;
+use core::ops::AddAssign;
+use snarkvm_curves::traits::AffineCurve;
+use snarkvm_curves::traits::PairingCurve;
+use snarkvm_curves::traits::PairingEngine;
+use snarkvm_curves::traits::PrimeField;
+use snarkvm_curves::traits::ProjectiveCurve;
+use snarkvm_curves::traits::Zero;
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::error;
 use snarkvm_utilities::errors::SerializationError;
-use snarkvm_utilities::serialize::{CanonicalDeserialize, CanonicalSerialize};
+use snarkvm_utilities::serialize::CanonicalDeserialize;
+use snarkvm_utilities::serialize::CanonicalSerialize;
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 #[derive(Derivative)]

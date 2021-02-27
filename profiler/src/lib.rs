@@ -38,7 +38,10 @@ pub mod inner {
         ($msg:expr) => {{
             use std::sync::atomic::Ordering;
             use std::time::Instant;
-            use $crate::{compute_indent, Colorize, NUM_INDENT, PAD_CHAR};
+            use $crate::compute_indent;
+            use $crate::Colorize;
+            use $crate::NUM_INDENT;
+            use $crate::PAD_CHAR;
 
             let msg = $msg();
             let start_info = "Start:".yellow().bold();
@@ -61,7 +64,10 @@ pub mod inner {
         }};
         ($time:expr, $msg:expr) => {{
             use std::sync::atomic::Ordering;
-            use $crate::{compute_indent, Colorize, NUM_INDENT, PAD_CHAR};
+            use $crate::compute_indent;
+            use $crate::Colorize;
+            use $crate::NUM_INDENT;
+            use $crate::PAD_CHAR;
 
             let time = $time.time;
             let final_time = time.elapsed();
@@ -105,7 +111,11 @@ pub mod inner {
     macro_rules! add_to_trace {
         ($title:expr, $msg:expr) => {{
             use std::sync::atomic::Ordering;
-            use $crate::{compute_indent, compute_indent_whitespace, Colorize, NUM_INDENT, PAD_CHAR};
+            use $crate::compute_indent;
+            use $crate::compute_indent_whitespace;
+            use $crate::Colorize;
+            use $crate::NUM_INDENT;
+            use $crate::PAD_CHAR;
 
             let start_msg = "StartMsg".yellow().bold();
             let end_msg = "EndMsg".green().bold();

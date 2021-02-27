@@ -18,18 +18,24 @@ use crate::base_dpc::record::DPCRecord;
 use crate::base_dpc::record_payload::RecordPayload;
 use crate::base_dpc::BaseDPCComponents;
 use crate::errors::DPCError;
-use crate::traits::{DPCComponents, Record, RecordSerializerScheme};
+use crate::traits::DPCComponents;
+use crate::traits::Record;
+use crate::traits::RecordSerializerScheme;
 use snarkvm_algorithms::encoding::Elligator2;
-use snarkvm_algorithms::traits::{CommitmentScheme, CRH};
-use snarkvm_curves::traits::{
-    AffineCurve,
-    Group,
-    MontgomeryModelParameters,
-    PrimeField,
-    ProjectiveCurve,
-    TEModelParameters,
-};
-use snarkvm_utilities::{bits_to_bytes, bytes_to_bits, to_bytes, BigInteger, FromBytes, ToBytes};
+use snarkvm_algorithms::traits::CommitmentScheme;
+use snarkvm_algorithms::traits::CRH;
+use snarkvm_curves::traits::AffineCurve;
+use snarkvm_curves::traits::Group;
+use snarkvm_curves::traits::MontgomeryModelParameters;
+use snarkvm_curves::traits::PrimeField;
+use snarkvm_curves::traits::ProjectiveCurve;
+use snarkvm_curves::traits::TEModelParameters;
+use snarkvm_utilities::bits_to_bytes;
+use snarkvm_utilities::bytes_to_bits;
+use snarkvm_utilities::to_bytes;
+use snarkvm_utilities::BigInteger;
+use snarkvm_utilities::FromBytes;
+use snarkvm_utilities::ToBytes;
 
 use itertools::Itertools;
 use std::marker::PhantomData;

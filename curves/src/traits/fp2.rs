@@ -14,20 +14,40 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::{Field, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use crate::traits::Field;
+use crate::traits::LegendreSymbol;
+use crate::traits::One;
+use crate::traits::PrimeField;
+use crate::traits::SquareRootField;
+use crate::traits::Zero;
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::div_ceil;
 use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::rand::UniformRand;
 use snarkvm_utilities::serialize::*;
 
-use rand::distributions::{Distribution, Standard};
+use rand::distributions::Distribution;
+use rand::distributions::Standard;
 use rand::Rng;
-use serde::{Deserialize, Serialize};
-use std::cmp::{Ord, Ordering, PartialOrd};
-use std::io::{Read, Result as IoResult, Write};
+use serde::Deserialize;
+use serde::Serialize;
+use std::cmp::Ord;
+use std::cmp::Ordering;
+use std::cmp::PartialOrd;
+use std::io::Read;
+use std::io::Result as IoResult;
+use std::io::Write;
 use std::marker::PhantomData;
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::ops::Add;
+use std::ops::AddAssign;
+use std::ops::Div;
+use std::ops::DivAssign;
+use std::ops::Mul;
+use std::ops::MulAssign;
+use std::ops::Neg;
+use std::ops::Sub;
+use std::ops::SubAssign;
 
 pub trait Fp2Parameters: 'static + Send + Sync + Serialize + for<'a> Deserialize<'a> {
     type Fp: PrimeField;
@@ -209,7 +229,7 @@ where
     }
 
     fn sqrt(&self) -> Option<Self> {
-        use crate::curves::LegendreSymbol::*;
+        use crate::traits::LegendreSymbol::*;
         if self.c1.is_zero() {
             return self.c0.sqrt().map(|c0| Self::new(c0, P::Fp::zero()));
         }

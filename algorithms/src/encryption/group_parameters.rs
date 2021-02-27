@@ -16,11 +16,15 @@
 
 use snarkvm_curves::errors::ConstraintFieldError;
 use snarkvm_curves::traits::to_field_vec::ToConstraintField;
-use snarkvm_curves::traits::{Field, Group};
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_curves::traits::Field;
+use snarkvm_curves::traits::Group;
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
 
 use rand::Rng;
-use std::io::{Read, Result as IoResult, Write};
+use std::io::Read;
+use std::io::Result as IoResult;
+use std::io::Write;
 
 #[derive(Derivative)]
 #[derivative(

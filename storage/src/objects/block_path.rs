@@ -19,7 +19,8 @@ use crate::Ledger;
 use snarkvm_algorithms::traits::LoadableMerkleParameters;
 use snarkvm_objects::errors::BlockError;
 use snarkvm_objects::traits::Transaction;
-use snarkvm_objects::{BlockHeader, BlockHeaderHash};
+use snarkvm_objects::BlockHeader;
+use snarkvm_objects::BlockHeaderHash;
 
 const OLDEST_FORK_THRESHOLD: u32 = 1024;
 

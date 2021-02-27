@@ -16,17 +16,28 @@
 
 use crate::encryption::GroupEncryptionParameters;
 use crate::traits::EncryptionScheme;
-use snarkvm_curves::traits::{AffineCurve, Field, Group, One, PrimeField, ProjectiveCurve, Zero};
+use snarkvm_curves::traits::AffineCurve;
+use snarkvm_curves::traits::Field;
+use snarkvm_curves::traits::Group;
+use snarkvm_curves::traits::One;
+use snarkvm_curves::traits::PrimeField;
+use snarkvm_curves::traits::ProjectiveCurve;
+use snarkvm_curves::traits::Zero;
 use snarkvm_errors::algorithms::EncryptionError;
+use snarkvm_utilities::bytes_to_bits;
 use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::rand::UniformRand;
 use snarkvm_utilities::serialize::*;
-use snarkvm_utilities::{bytes_to_bits, to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::to_bytes;
+use snarkvm_utilities::FromBytes;
+use snarkvm_utilities::ToBytes;
 
 use digest::Digest;
 use itertools::Itertools;
 use rand::Rng;
-use std::io::{Read, Result as IoResult, Write};
+use std::io::Read;
+use std::io::Result as IoResult;
+use std::io::Write;
 use std::marker::PhantomData;
 
 #[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]

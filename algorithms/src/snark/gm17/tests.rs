@@ -14,10 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::traits::{Field, Zero};
+use snarkvm_curves::traits::Field;
+use snarkvm_curves::traits::Zero;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_gadgets::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem};
+use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
+use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
 
 struct MySillyCircuit<F: Field> {
     a: Option<F>,
@@ -47,9 +49,14 @@ impl<F: Field> ConstraintSynthesizer<F> for MySillyCircuit<F> {
 
 mod bls12_377 {
     use super::*;
-    use crate::snark::gm17::{create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof};
-    use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-    use snarkvm_utilities::rand::{test_rng, UniformRand};
+    use crate::snark::gm17::create_random_proof;
+    use crate::snark::gm17::generate_random_parameters;
+    use crate::snark::gm17::prepare_verifying_key;
+    use crate::snark::gm17::verify_proof;
+    use snarkvm_curves::bls12_377::Bls12_377;
+    use snarkvm_curves::bls12_377::Fr;
+    use snarkvm_utilities::rand::test_rng;
+    use snarkvm_utilities::rand::UniformRand;
 
     use std::ops::MulAssign;
 
@@ -77,9 +84,14 @@ mod bls12_377 {
 
 mod bw6 {
     use super::*;
-    use crate::snark::gm17::{create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof};
-    use snarkvm_curves::bw6_761::{Fr as BW6Fr, BW6_761};
-    use snarkvm_utilities::rand::{test_rng, UniformRand};
+    use crate::snark::gm17::create_random_proof;
+    use crate::snark::gm17::generate_random_parameters;
+    use crate::snark::gm17::prepare_verifying_key;
+    use crate::snark::gm17::verify_proof;
+    use snarkvm_curves::bw6_761::Fr as BW6Fr;
+    use snarkvm_curves::bw6_761::BW6_761;
+    use snarkvm_utilities::rand::test_rng;
+    use snarkvm_utilities::rand::UniformRand;
 
     #[test]
     fn prove_and_verify() {
@@ -110,7 +122,8 @@ mod gm17 {
     fn test_gm17() {
         use crate::snark::gm17::GM17;
         use crate::traits::SNARK;
-        use snarkvm_curves::bls12_377::{Bls12_377, Fr};
+        use snarkvm_curves::bls12_377::Bls12_377;
+        use snarkvm_curves::bls12_377::Fr;
 
         #[derive(Copy, Clone)]
         struct R1CSCircuit {
@@ -162,10 +175,16 @@ mod gm17 {
 
 mod serialization {
     use super::*;
-    use crate::snark::gm17::{create_random_proof, generate_random_parameters, Parameters, Proof, VerifyingKey};
+    use crate::snark::gm17::create_random_proof;
+    use crate::snark::gm17::generate_random_parameters;
+    use crate::snark::gm17::Parameters;
+    use crate::snark::gm17::Proof;
+    use crate::snark::gm17::VerifyingKey;
 
-    use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-    use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+    use snarkvm_curves::bls12_377::Bls12_377;
+    use snarkvm_curves::bls12_377::Fr;
+    use snarkvm_utilities::bytes::FromBytes;
+    use snarkvm_utilities::bytes::ToBytes;
     use snarkvm_utilities::rand::UniformRand;
     use snarkvm_utilities::to_bytes;
 

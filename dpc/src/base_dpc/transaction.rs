@@ -17,18 +17,26 @@
 use crate::base_dpc::record::encrypted_record::*;
 use crate::base_dpc::BaseDPCComponents;
 use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
-use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH, SNARK};
+use snarkvm_algorithms::traits::CommitmentScheme;
+use snarkvm_algorithms::traits::SignatureScheme;
+use snarkvm_algorithms::traits::CRH;
+use snarkvm_algorithms::traits::SNARK;
 use snarkvm_objects::errors::TransactionError;
 use snarkvm_objects::traits::Transaction;
-use snarkvm_objects::{AleoAmount, Network};
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
-use snarkvm_utilities::serialize::{CanonicalDeserialize, CanonicalSerialize};
+use snarkvm_objects::AleoAmount;
+use snarkvm_objects::Network;
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::serialize::CanonicalDeserialize;
+use snarkvm_utilities::serialize::CanonicalSerialize;
 use snarkvm_utilities::to_bytes;
 
 use blake2::digest::Digest;
 use blake2::Blake2s as b2s;
 use std::fmt;
-use std::io::{Read, Result as IoResult, Write};
+use std::io::Read;
+use std::io::Result as IoResult;
+use std::io::Write;
 
 #[derive(Derivative)]
 #[derivative(

@@ -15,7 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::SynthesisError;
-use crate::{Index, LinearCombination, Namespace, Variable};
+use crate::Index;
+use crate::LinearCombination;
+use crate::Namespace;
+use crate::Variable;
 use snarkvm_curves::Field;
 
 use std::marker::PhantomData;

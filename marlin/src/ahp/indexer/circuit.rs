@@ -15,7 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ahp::matrices::MatrixArithmetization;
-use crate::{CircuitInfo, Vec};
+use crate::CircuitInfo;
+use crate::Vec;
 use snarkvm_curves::traits::PrimeField;
 use snarkvm_polycommit::LabeledPolynomial;
 use snarkvm_utilities::errors::SerializationError;

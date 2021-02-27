@@ -17,10 +17,12 @@
 use crate::encryption::GroupEncryption;
 use crate::signature::SchnorrSignature;
 use crate::traits::SignatureScheme;
-use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsProjective};
+use snarkvm_curves::edwards_bls12::EdwardsAffine;
+use snarkvm_curves::edwards_bls12::EdwardsProjective;
 use snarkvm_curves::edwards_sw6::EdwardsAffine as Edwards;
 use snarkvm_curves::traits::Group;
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::rand::UniformRand;
 use snarkvm_utilities::to_bytes;
 

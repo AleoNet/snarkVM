@@ -14,11 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::{Field, LegendreSymbol, PrimeField, SquareRootField};
+use crate::traits::Field;
+use crate::traits::LegendreSymbol;
+use crate::traits::PrimeField;
+use crate::traits::SquareRootField;
 use snarkvm_utilities::io::Cursor;
-use snarkvm_utilities::serialize::{CanonicalDeserialize, CanonicalSerialize, Flags, SWFlags};
+use snarkvm_utilities::serialize::CanonicalDeserialize;
+use snarkvm_utilities::serialize::CanonicalSerialize;
+use snarkvm_utilities::serialize::Flags;
+use snarkvm_utilities::serialize::SWFlags;
 
-use rand::{Rng, SeedableRng};
+use rand::Rng;
+use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 
 pub const ITERATIONS: u32 = 10;

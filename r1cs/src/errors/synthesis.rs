@@ -15,7 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use std::error::Error;
-use std::{fmt, io};
+use std::fmt;
+use std::io;
 
 pub type SynthesisResult<T> = Result<T, SynthesisError>;
 

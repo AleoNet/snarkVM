@@ -18,9 +18,11 @@ use crate::errors::ParameterError;
 use crate::traits::Parameter;
 use snarkvm_algorithms::crh::sha256::sha256;
 
-use std::fs::{self, File};
+use std::fs::File;
+use std::fs::{self};
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 
 #[cfg(any(test, feature = "remote"))]
 use curl::easy::Easy;

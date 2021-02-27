@@ -14,13 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
 
-use serde::de::{Error as DeserializeError, SeqAccess, Visitor};
+use serde::de::Error as DeserializeError;
+use serde::de::SeqAccess;
+use serde::de::Visitor;
 use serde::ser::SerializeTuple;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::fmt::{self, Debug, Display, Formatter};
-use std::io::{Read, Result as IoResult, Write};
+use serde::Deserialize;
+use serde::Deserializer;
+use serde::Serialize;
+use serde::Serializer;
+use std::fmt::Debug;
+use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt::{self};
+use std::io::Read;
+use std::io::Result as IoResult;
+use std::io::Write;
 
 // Marlin PoSW proof size
 const PROOF_SIZE: usize = 972;

@@ -14,8 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::io::{Read, Result as IoResult, Write};
-use crate::{error, Vec};
+use crate::error;
+use crate::io::Read;
+use crate::io::Result as IoResult;
+use crate::io::Write;
+use crate::Vec;
 
 pub trait ToBytes {
     /// Serializes `self` into `writer`.
@@ -359,10 +362,13 @@ pub fn bits_to_bytes(bits: &[bool]) -> Vec<u8> {
 
 #[cfg(test)]
 mod test {
-    use super::{bits_to_bytes, bytes_to_bits, ToBytes};
+    use super::bits_to_bytes;
+    use super::bytes_to_bits;
+    use super::ToBytes;
     use crate::Vec;
 
-    use rand::{Rng, SeedableRng};
+    use rand::Rng;
+    use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
 
     const ITERATIONS: usize = 1000;

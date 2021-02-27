@@ -17,15 +17,17 @@
 use crate::sw6::*;
 use crate::templates::short_weierstrass::tests::sw_tests;
 use crate::traits::tests_curve::curve_tests;
-use crate::traits::tests_field::{
-    field_serialization_test,
-    field_test,
-    frobenius_test,
-    primefield_test,
-    sqrt_field_test,
-};
+use crate::traits::tests_field::field_serialization_test;
+use crate::traits::tests_field::field_test;
+use crate::traits::tests_field::frobenius_test;
+use crate::traits::tests_field::primefield_test;
+use crate::traits::tests_field::sqrt_field_test;
 use crate::traits::tests_group::group_test;
-use crate::traits::{AffineCurve, Field, One, PairingEngine, PrimeField};
+use crate::traits::AffineCurve;
+use crate::traits::Field;
+use crate::traits::One;
+use crate::traits::PairingEngine;
+use crate::traits::PrimeField;
 
 use rand;
 

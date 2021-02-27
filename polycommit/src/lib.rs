@@ -34,7 +34,8 @@ extern crate snarkvm_profiler;
 
 pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
 use snarkvm_curves::traits::Field;
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::error as error_fn;
 use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::serialize::*;
@@ -47,23 +48,23 @@ use rand_core::RngCore;
 #[macro_use]
 extern crate alloc;
 
-#[cfg(not(feature = "std"))]
-use alloc::{
-    borrow::{Cow, ToOwned},
-    collections::{BTreeMap, BTreeSet},
-    string::{String, ToString},
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::borrow::Cow;
+use alloc::borrow::ToOwned;
+use alloc::collections::BTreeMap;
+use alloc::collections::BTreeSet;
+use alloc::string::String;
+use alloc::string::ToString;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-#[cfg(feature = "std")]
-use std::{
-    borrow::{Cow, ToOwned},
-    collections::{BTreeMap, BTreeSet},
-    string::{String, ToString},
-    sync::Arc,
-    vec::Vec,
-};
+use std::borrow::Cow;
+use std::borrow::ToOwned;
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+use std::string::String;
+use std::string::ToString;
+use std::sync::Arc;
+use std::vec::Vec;
 
 /// Data structures used by a polynomial commitment scheme.
 pub mod data_structures;

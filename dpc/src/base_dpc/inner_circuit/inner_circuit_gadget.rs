@@ -19,42 +19,51 @@ use crate::base_dpc::record::DPCRecord;
 use crate::base_dpc::record_encryption::RecordEncryptionGadgetComponents;
 use crate::base_dpc::BaseDPCComponents;
 use crate::traits::Record;
-use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTreeDigest};
-use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, PRF};
-use snarkvm_curves::traits::{
-    AffineCurve,
-    Field,
-    Group,
-    MontgomeryModelParameters,
-    One,
-    PrimeField,
-    ProjectiveCurve,
-    TEModelParameters,
-};
+use snarkvm_algorithms::merkle_tree::MerklePath;
+use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
+use snarkvm_algorithms::traits::CommitmentScheme;
+use snarkvm_algorithms::traits::EncryptionScheme;
+use snarkvm_algorithms::traits::MerkleParameters;
+use snarkvm_algorithms::traits::SignatureScheme;
+use snarkvm_algorithms::traits::CRH;
+use snarkvm_algorithms::traits::PRF;
+use snarkvm_curves::traits::AffineCurve;
+use snarkvm_curves::traits::Field;
+use snarkvm_curves::traits::Group;
+use snarkvm_curves::traits::MontgomeryModelParameters;
+use snarkvm_curves::traits::One;
+use snarkvm_curves::traits::PrimeField;
+use snarkvm_curves::traits::ProjectiveCurve;
+use snarkvm_curves::traits::TEModelParameters;
 use snarkvm_gadgets::algorithms::encoding::Elligator2FieldGadget;
 use snarkvm_gadgets::algorithms::merkle_tree::merkle_path::MerklePathGadget;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_gadgets::traits::algorithms::{
-    CRHGadget,
-    CommitmentGadget,
-    EncryptionGadget,
-    PRFGadget,
-    SignaturePublicKeyRandomizationGadget,
-};
-use snarkvm_gadgets::traits::curves::{FieldGadget, FpGadget};
+use snarkvm_gadgets::traits::algorithms::CRHGadget;
+use snarkvm_gadgets::traits::algorithms::CommitmentGadget;
+use snarkvm_gadgets::traits::algorithms::EncryptionGadget;
+use snarkvm_gadgets::traits::algorithms::PRFGadget;
+use snarkvm_gadgets::traits::algorithms::SignaturePublicKeyRandomizationGadget;
+use snarkvm_gadgets::traits::curves::FieldGadget;
+use snarkvm_gadgets::traits::curves::FpGadget;
 use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
 use snarkvm_gadgets::traits::utilities::alloc::AllocGadget;
 use snarkvm_gadgets::traits::utilities::arithmetic::add::Add;
 use snarkvm_gadgets::traits::utilities::arithmetic::sub::Sub;
 use snarkvm_gadgets::traits::utilities::boolean::Boolean;
-use snarkvm_gadgets::traits::utilities::eq::{ConditionalEqGadget, EqGadget};
-use snarkvm_gadgets::traits::utilities::int::{Int, Int64};
+use snarkvm_gadgets::traits::utilities::eq::ConditionalEqGadget;
+use snarkvm_gadgets::traits::utilities::eq::EqGadget;
+use snarkvm_gadgets::traits::utilities::int::Int;
+use snarkvm_gadgets::traits::utilities::int::Int64;
 use snarkvm_gadgets::traits::utilities::uint::UInt8;
-use snarkvm_gadgets::traits::utilities::{ToBitsGadget, ToBytesGadget};
-use snarkvm_objects::{AccountPrivateKey, AleoAmount};
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
-use snarkvm_utilities::{bits_to_bytes, to_bytes};
+use snarkvm_gadgets::traits::utilities::ToBitsGadget;
+use snarkvm_gadgets::traits::utilities::ToBytesGadget;
+use snarkvm_objects::AccountPrivateKey;
+use snarkvm_objects::AleoAmount;
+use snarkvm_utilities::bits_to_bytes;
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::to_bytes;
 
 use snarkvm_gadgets::traits::utilities::eq::NEqGadget;
 use std::ops::Mul;

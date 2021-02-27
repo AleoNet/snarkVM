@@ -17,7 +17,8 @@
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_dpc::base_dpc::instantiated::Components;
 use snarkvm_dpc::base_dpc::parameters::SystemParameters;
-use snarkvm_dpc::base_dpc::{BaseDPCComponents, DPC};
+use snarkvm_dpc::base_dpc::BaseDPCComponents;
+use snarkvm_dpc::base_dpc::DPC;
 use snarkvm_dpc::errors::DPCError;
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::to_bytes;

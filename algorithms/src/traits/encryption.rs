@@ -16,7 +16,8 @@
 
 use crate::algorithms::signature::SignatureScheme;
 use crate::errors::EncryptionError;
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::rand::UniformRand;
 
 use rand::Rng;

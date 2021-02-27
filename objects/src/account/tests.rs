@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::account::{Account, AccountAddress, AccountPrivateKey, AccountViewKey};
+use crate::account::Account;
+use crate::account::AccountAddress;
+use crate::account::AccountPrivateKey;
+use crate::account::AccountViewKey;
 use crate::traits::account::AccountScheme;
 use snarkvm_dpc::base_dpc::instantiated::Components;
 use snarkvm_dpc::base_dpc::parameters::SystemParameters;

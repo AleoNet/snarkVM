@@ -15,10 +15,18 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::error::StorageError;
-use crate::{DatabaseTransaction, Op};
+use crate::DatabaseTransaction;
+use crate::Op;
 
-use rocksdb::{ColumnFamily, ColumnFamilyDescriptor, DBIterator, IteratorMode, Options, WriteBatch, DB};
-use std::path::{Path, PathBuf};
+use rocksdb::ColumnFamily;
+use rocksdb::ColumnFamilyDescriptor;
+use rocksdb::DBIterator;
+use rocksdb::IteratorMode;
+use rocksdb::Options;
+use rocksdb::WriteBatch;
+use rocksdb::DB;
+use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 /// A low-level struct for storing state used by the system.

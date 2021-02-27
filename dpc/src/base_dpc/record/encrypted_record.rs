@@ -17,13 +17,22 @@
 use crate::base_dpc::BaseDPCComponents;
 use crate::traits::DPCComponents;
 use snarkvm_algorithms::traits::EncryptionScheme;
-use snarkvm_curves::traits::{AffineCurve, ProjectiveCurve};
+use snarkvm_curves::traits::AffineCurve;
+use snarkvm_curves::traits::ProjectiveCurve;
+use snarkvm_utilities::bits_to_bytes;
+use snarkvm_utilities::bytes_to_bits;
+use snarkvm_utilities::to_bytes;
 use snarkvm_utilities::variable_length_integer::*;
-use snarkvm_utilities::{bits_to_bytes, bytes_to_bits, to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::FromBytes;
+use snarkvm_utilities::ToBytes;
 
 use itertools::Itertools;
 
-use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
+use std::io::Error;
+use std::io::ErrorKind;
+use std::io::Read;
+use std::io::Result as IoResult;
+use std::io::Write;
 
 #[derive(Derivative)]
 #[derivative(

@@ -16,31 +16,47 @@
 
 use crate::base_dpc::record_payload::RecordPayload;
 use crate::errors::DPCError;
-use crate::traits::{DPCComponents, DPCScheme, Record};
+use crate::traits::DPCComponents;
+use crate::traits::DPCScheme;
+use crate::traits::Record;
 use snarkvm_algorithms::commitment_tree::CommitmentMerkleTree;
-use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTreeDigest};
-use snarkvm_algorithms::traits::{
-    CommitmentScheme,
-    EncryptionScheme,
-    LoadableMerkleParameters,
-    MerkleParameters,
-    SignatureScheme,
-    CRH,
-    PRF,
-    SNARK,
-};
-use snarkvm_curves::traits::{Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
-use snarkvm_gadgets::traits::algorithms::{CRHGadget, SNARKVerifierGadget};
-use snarkvm_objects::traits::{AccountScheme, LedgerScheme, Transaction};
-use snarkvm_objects::{Account, AccountAddress, AccountPrivateKey, AleoAmount, Network};
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_algorithms::merkle_tree::MerklePath;
+use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
+use snarkvm_algorithms::traits::CommitmentScheme;
+use snarkvm_algorithms::traits::EncryptionScheme;
+use snarkvm_algorithms::traits::LoadableMerkleParameters;
+use snarkvm_algorithms::traits::MerkleParameters;
+use snarkvm_algorithms::traits::SignatureScheme;
+use snarkvm_algorithms::traits::CRH;
+use snarkvm_algorithms::traits::PRF;
+use snarkvm_algorithms::traits::SNARK;
+use snarkvm_curves::traits::Group;
+use snarkvm_curves::traits::MontgomeryModelParameters;
+use snarkvm_curves::traits::ProjectiveCurve;
+use snarkvm_curves::traits::TEModelParameters;
+use snarkvm_gadgets::traits::algorithms::CRHGadget;
+use snarkvm_gadgets::traits::algorithms::SNARKVerifierGadget;
+use snarkvm_objects::traits::AccountScheme;
+use snarkvm_objects::traits::LedgerScheme;
+use snarkvm_objects::traits::Transaction;
+use snarkvm_objects::Account;
+use snarkvm_objects::AccountAddress;
+use snarkvm_objects::AccountPrivateKey;
+use snarkvm_objects::AleoAmount;
+use snarkvm_objects::Network;
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::has_duplicates;
 use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::to_bytes;
 use snarkvm_utilities::variable_length_integer::*;
-use snarkvm_utilities::{has_duplicates, to_bytes};
 
-use itertools::{izip, Itertools};
+use itertools::izip;
+use itertools::Itertools;
 use rand::Rng;
-use std::io::{Read, Result as IoResult, Write};
+use std::io::Read;
+use std::io::Result as IoResult;
+use std::io::Write;
 use std::marker::PhantomData;
 
 pub mod inner_circuit;

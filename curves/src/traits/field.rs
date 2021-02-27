@@ -14,23 +14,33 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::{One, Zero};
+use crate::traits::One;
+use crate::traits::Zero;
 use snarkvm_utilities::bititerator::BitIteratorBE;
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::rand::UniformRand;
-use snarkvm_utilities::serialize::{
-    CanonicalDeserialize,
-    CanonicalDeserializeWithFlags,
-    CanonicalSerialize,
-    CanonicalSerializeWithFlags,
-    ConstantSerializedSize,
-};
+use snarkvm_utilities::serialize::CanonicalDeserialize;
+use snarkvm_utilities::serialize::CanonicalDeserializeWithFlags;
+use snarkvm_utilities::serialize::CanonicalSerialize;
+use snarkvm_utilities::serialize::CanonicalSerializeWithFlags;
+use snarkvm_utilities::serialize::ConstantSerializedSize;
 
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
+use std::fmt::Display;
 use std::hash::Hash;
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::ops::Add;
+use std::ops::AddAssign;
+use std::ops::Div;
+use std::ops::DivAssign;
+use std::ops::Mul;
+use std::ops::MulAssign;
+use std::ops::Neg;
+use std::ops::Sub;
+use std::ops::SubAssign;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// The interface for a generic field.
 pub trait Field:

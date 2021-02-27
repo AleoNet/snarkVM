@@ -15,17 +15,17 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub(crate) mod pairing {
-    use snarkvm_curves::bls12_377::{
-        Bls12_377,
-        Bls12_377Parameters,
-        Fq12,
-        G1Affine,
-        G1Projective as G1,
-        G2Affine,
-        G2Projective as G2,
-    };
-    use snarkvm_curves::templates::bls12::{G1Prepared, G2Prepared};
-    use snarkvm_curves::traits::{PairingCurve, PairingEngine};
+    use snarkvm_curves::bls12_377::Bls12_377;
+    use snarkvm_curves::bls12_377::Bls12_377Parameters;
+    use snarkvm_curves::bls12_377::Fq12;
+    use snarkvm_curves::bls12_377::G1Affine;
+    use snarkvm_curves::bls12_377::G1Projective as G1;
+    use snarkvm_curves::bls12_377::G2Affine;
+    use snarkvm_curves::bls12_377::G2Projective as G2;
+    use snarkvm_curves::templates::bls12::G1Prepared;
+    use snarkvm_curves::templates::bls12::G2Prepared;
+    use snarkvm_curves::traits::PairingCurve;
+    use snarkvm_curves::traits::PairingEngine;
     use snarkvm_utilities::rand::UniformRand;
 
     use criterion::Criterion;

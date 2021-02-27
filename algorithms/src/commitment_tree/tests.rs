@@ -16,14 +16,18 @@
 
 use crate::commitment::PedersenCompressedCommitment;
 use crate::commitment_tree::*;
-use crate::crh::{BoweHopwoodPedersenCompressedCRH, PedersenSize};
-use crate::traits::{CommitmentScheme, CRH};
+use crate::crh::BoweHopwoodPedersenCompressedCRH;
+use crate::crh::PedersenSize;
+use crate::traits::CommitmentScheme;
+use crate::traits::CRH;
 use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::rand::UniformRand;
 use snarkvm_utilities::to_bytes;
 
-use rand::{Rng, SeedableRng};
+use rand::Rng;
+use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

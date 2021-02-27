@@ -15,14 +15,16 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::templates::bw6::BW6Parameters;
-use crate::templates::short_weierstrass::short_weierstrass_jacobian::{GroupAffine, GroupProjective};
+use crate::templates::short_weierstrass::short_weierstrass_jacobian::GroupAffine;
+use crate::templates::short_weierstrass::short_weierstrass_jacobian::GroupProjective;
 use crate::traits::pairing_engine::AffineCurve;
 use crate::traits::Zero;
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::serialize::*;
 
-use std::io::{Result as IoResult, Write};
+use std::io::Result as IoResult;
+use std::io::Write;
 
 pub type G1Affine<P> = GroupAffine<<P as BW6Parameters>::G1Parameters>;
 pub type G1Projective<P> = GroupProjective<<P as BW6Parameters>::G1Parameters>;

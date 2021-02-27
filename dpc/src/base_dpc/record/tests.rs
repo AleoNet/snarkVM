@@ -21,15 +21,18 @@ use crate::base_dpc::record_payload::RecordPayload;
 use crate::base_dpc::DPC;
 use crate::traits::RecordSerializerScheme;
 use snarkvm_algorithms::traits::CRH;
-use snarkvm_curves::edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls};
+use snarkvm_curves::edwards_bls12::EdwardsParameters;
+use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
 use snarkvm_objects::traits::AccountScheme;
 
-use snarkvm_objects::{Account, AccountViewKey};
+use snarkvm_objects::Account;
+use snarkvm_objects::AccountViewKey;
 
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::to_bytes;
 
-use rand::{Rng, SeedableRng};
+use rand::Rng;
+use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 
 pub(crate) const ITERATIONS: usize = 5;

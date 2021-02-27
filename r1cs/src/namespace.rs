@@ -15,7 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::SynthesisError;
-use crate::{ConstraintSystem, LinearCombination, Variable};
+use crate::ConstraintSystem;
+use crate::LinearCombination;
+use crate::Variable;
 use snarkvm_curves::Field;
 
 use std::marker::PhantomData;

@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{
-    create_random_proof,
-    generate_random_parameters,
-    prepare_verifying_key,
-    verify_proof,
-    Parameters,
-    PreparedVerifyingKey,
-    Proof,
-    VerifyingKey,
-};
+use super::create_random_proof;
+use super::generate_random_parameters;
+use super::prepare_verifying_key;
+use super::verify_proof;
+use super::Parameters;
+use super::PreparedVerifyingKey;
+use super::Proof;
+use super::VerifyingKey;
 use crate::errors::SNARKError;
 use crate::traits::SNARK;
 use snarkvm_curves::traits::to_field_vec::ToConstraintField;

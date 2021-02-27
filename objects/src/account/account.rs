@@ -16,7 +16,8 @@
 
 use crate::errors::AccountError;
 use crate::traits::AccountScheme;
-use crate::{AccountAddress, AccountPrivateKey};
+use crate::AccountAddress;
+use crate::AccountPrivateKey;
 use snarkvm_dpc::traits::DPCComponents;
 
 use rand::Rng;

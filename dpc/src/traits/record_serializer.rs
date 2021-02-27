@@ -14,7 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::{FpParameters, Group, MontgomeryModelParameters, PrimeField, ProjectiveCurve, TEModelParameters};
+use crate::curves::FpParameters;
+use crate::curves::Group;
+use crate::curves::MontgomeryModelParameters;
+use crate::curves::PrimeField;
+use crate::curves::ProjectiveCurve;
+use crate::curves::TEModelParameters;
 use crate::dpc::Record;
 use crate::errors::DPCError;
 

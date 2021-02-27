@@ -14,13 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey};
+use crate::encryption::GroupEncryption;
+use crate::encryption::GroupEncryptionParameters;
+use crate::encryption::GroupEncryptionPublicKey;
 use crate::errors::SignatureError;
-use crate::signature::{SchnorrOutput, SchnorrParameters, SchnorrPublicKey, SchnorrSignature};
-use crate::traits::{EncryptionScheme, SignatureScheme};
-use snarkvm_curves::traits::{Group, PrimeField, ProjectiveCurve};
+use crate::signature::SchnorrOutput;
+use crate::signature::SchnorrParameters;
+use crate::signature::SchnorrPublicKey;
+use crate::signature::SchnorrSignature;
+use crate::traits::EncryptionScheme;
+use crate::traits::SignatureScheme;
+use snarkvm_curves::traits::Group;
+use snarkvm_curves::traits::PrimeField;
+use snarkvm_curves::traits::ProjectiveCurve;
 use snarkvm_utilities::serialize::*;
-use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::to_bytes;
+use snarkvm_utilities::FromBytes;
+use snarkvm_utilities::ToBytes;
 
 use digest::Digest;
 use rand::Rng;

@@ -17,8 +17,10 @@
 use crate::commitment::PedersenCommitmentParameters;
 use crate::crh::PedersenSize;
 use crate::errors::CommitmentError;
-use crate::traits::{CommitmentScheme, CRH};
-use snarkvm_curves::traits::{Group, PrimeField};
+use crate::traits::CommitmentScheme;
+use crate::traits::CRH;
+use snarkvm_curves::traits::Group;
+use snarkvm_curves::traits::PrimeField;
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use rand::Rng;

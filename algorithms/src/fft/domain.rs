@@ -28,7 +28,9 @@
 
 use crate::fft::multicore::Worker;
 use crate::fft::SparsePolynomial;
-use snarkvm_curves::traits::{batch_inversion, FpParameters, PrimeField};
+use snarkvm_curves::traits::batch_inversion;
+use snarkvm_curves::traits::FpParameters;
+use snarkvm_curves::traits::PrimeField;
 use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::serialize::*;
 
@@ -453,9 +455,11 @@ impl<F: PrimeField> Iterator for Elements<F> {
 mod tests {
     use crate::fft::EvaluationDomain;
     use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_curves::traits::{Field, Zero};
+    use snarkvm_curves::traits::Field;
+    use snarkvm_curves::traits::Zero;
 
-    use rand::{thread_rng, Rng};
+    use rand::thread_rng;
+    use rand::Rng;
 
     #[test]
     fn vanishing_polynomial_evaluation() {

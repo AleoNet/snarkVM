@@ -15,9 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::MerkleError;
-use crate::traits::{CommitmentScheme, CRH};
-use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
-use std::io::{Read, Result as IoResult, Write};
+use crate::traits::CommitmentScheme;
+use crate::traits::CRH;
+use snarkvm_utilities::to_bytes;
+use snarkvm_utilities::FromBytes;
+use snarkvm_utilities::ToBytes;
+use std::io::Read;
+use std::io::Result as IoResult;
+use std::io::Write;
 
 #[derive(Derivative)]
 #[derivative(

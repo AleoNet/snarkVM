@@ -23,8 +23,11 @@ use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::to_bytes;
 
 use once_cell::sync::Lazy;
-use serde::{Deserialize, Serialize};
-use std::fmt::{self, Display, Formatter};
+use serde::Deserialize;
+use serde::Serialize;
+use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt::{self};
 
 // Do not leak the type
 mod window {

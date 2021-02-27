@@ -74,7 +74,7 @@ macro_rules! impl_prime_field_from_int {
 
 macro_rules! sqrt_impl {
     ($Self:ident, $P:tt, $self:expr) => {{
-        use crate::curves::LegendreSymbol::*;
+        use crate::traits::LegendreSymbol::*;
         // https://eprint.iacr.org/2012/685.pdf (page 12, algorithm 5)
         // Actually this is just normal Tonelli-Shanks; since `P::Generator`
         // is a quadratic non-residue, `P::ROOT_OF_UNITY = P::GENERATOR ^ t`
@@ -158,7 +158,7 @@ macro_rules! impl_prime_field_serializer {
 
         impl<P: $params> ConstantSerializedSize for $field<P> {
             const SERIALIZED_SIZE: usize = snarkvm_utilities::serialize::buffer_byte_size(
-                <$field<P> as crate::curves::PrimeField>::Parameters::MODULUS_BITS as usize,
+                <$field<P> as crate::traits::PrimeField>::Parameters::MODULUS_BITS as usize,
             );
             const UNCOMPRESSED_SIZE: usize = Self::SERIALIZED_SIZE;
         }

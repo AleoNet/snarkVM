@@ -15,11 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::edwards_sw6::*;
-use crate::templates::twisted_edwards_extended::tests::{edwards_test, montgomery_conversion_test};
+use crate::templates::twisted_edwards_extended::tests::edwards_test;
+use crate::templates::twisted_edwards_extended::tests::montgomery_conversion_test;
 use crate::traits::tests_curve::curve_tests;
-use crate::traits::tests_field::{field_serialization_test, field_test, primefield_test};
+use crate::traits::tests_field::field_serialization_test;
+use crate::traits::tests_field::field_test;
+use crate::traits::tests_field::primefield_test;
 use crate::traits::tests_group::group_test;
-use crate::traits::{AffineCurve, ProjectiveCurve};
+use crate::traits::AffineCurve;
+use crate::traits::ProjectiveCurve;
 
 #[test]
 fn test_edwards_sw6_fr() {

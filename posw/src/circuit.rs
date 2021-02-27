@@ -17,13 +17,17 @@
 //! Implements a Proof of Succinct work circuit. The inputs are opaque leaves,
 //! which are then used to build a tree instantiated with a masked Pedersen hash. The prover
 //! inputs a mask computed as Blake2s(nonce || root), which the verifier also checks.
-use snarkvm_algorithms::traits::{MaskedMerkleParameters, CRH};
+use snarkvm_algorithms::traits::MaskedMerkleParameters;
+use snarkvm_algorithms::traits::CRH;
 use snarkvm_curves::traits::PrimeField;
 use snarkvm_gadgets::algorithms::merkle_tree::compute_root;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_gadgets::traits::algorithms::{CRHGadget, MaskedCRHGadget};
-use snarkvm_gadgets::traits::r1cs::{Assignment, ConstraintSynthesizer, ConstraintSystem};
+use snarkvm_gadgets::traits::algorithms::CRHGadget;
+use snarkvm_gadgets::traits::algorithms::MaskedCRHGadget;
+use snarkvm_gadgets::traits::r1cs::Assignment;
+use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
+use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
 use snarkvm_gadgets::traits::utilities::alloc::AllocGadget;
 use snarkvm_gadgets::traits::utilities::eq::EqGadget;
 use snarkvm_gadgets::traits::utilities::uint::UInt8;
@@ -114,17 +118,19 @@ impl<F: PrimeField, M: MaskedMerkleParameters, HG: MaskedCRHGadget<M::H, F>, CP:
 
 #[cfg(test)]
 mod test {
-    use super::{POSWCircuit, POSWCircuitParameters};
-    use snarkvm_algorithms::crh::{PedersenCompressedCRH, PedersenSize};
+    use super::POSWCircuit;
+    use super::POSWCircuitParameters;
+    use snarkvm_algorithms::crh::PedersenCompressedCRH;
+    use snarkvm_algorithms::crh::PedersenSize;
     use snarkvm_algorithms::define_masked_merkle_tree_parameters;
-    use snarkvm_algorithms::snark::gm17::{
-        create_random_proof,
-        generate_random_parameters,
-        prepare_verifying_key,
-        verify_proof,
-    };
-    use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-    use snarkvm_curves::edwards_bls12::{EdwardsProjective as Edwards, Fq};
+    use snarkvm_algorithms::snark::gm17::create_random_proof;
+    use snarkvm_algorithms::snark::gm17::generate_random_parameters;
+    use snarkvm_algorithms::snark::gm17::prepare_verifying_key;
+    use snarkvm_algorithms::snark::gm17::verify_proof;
+    use snarkvm_curves::bls12_377::Bls12_377;
+    use snarkvm_curves::bls12_377::Fr;
+    use snarkvm_curves::edwards_bls12::EdwardsProjective as Edwards;
+    use snarkvm_curves::edwards_bls12::Fq;
     use snarkvm_curves::traits::to_field_vec::ToConstraintField;
     use snarkvm_gadgets::algorithms::crh::PedersenCompressedCRHGadget;
     use snarkvm_gadgets::curves::edwards_bls12::EdwardsBlsGadget;

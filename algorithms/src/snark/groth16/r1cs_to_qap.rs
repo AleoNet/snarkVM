@@ -17,11 +17,15 @@
 use super::generator::KeypairAssembly;
 use super::prover::ProvingAssignment;
 use super::Vec;
+use crate::cfg_iter;
+use crate::cfg_iter_mut;
 use crate::fft::EvaluationDomain;
-use crate::{cfg_iter, cfg_iter_mut};
-use snarkvm_curves::traits::{PairingEngine, Zero};
-use snarkvm_gadgets::errors::{SynthesisError, SynthesisResult};
-use snarkvm_gadgets::traits::r1cs::{ConstraintSystem, Index};
+use snarkvm_curves::traits::PairingEngine;
+use snarkvm_curves::traits::Zero;
+use snarkvm_gadgets::errors::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisResult;
+use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
+use snarkvm_gadgets::traits::r1cs::Index;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;

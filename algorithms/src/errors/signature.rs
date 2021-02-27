@@ -16,7 +16,8 @@
 
 use crate::algorithms::EncryptionError;
 
-use std::io::{Error, ErrorKind};
+use std::io::Error;
+use std::io::ErrorKind;
 
 #[derive(Debug, Error)]
 pub enum SignatureError {

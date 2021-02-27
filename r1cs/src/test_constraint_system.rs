@@ -16,13 +16,18 @@
 
 use crate::curves::Field;
 use crate::errors::SynthesisError;
-use crate::gadgets::r1cs::{ConstraintSystem, Index, LinearCombination, Variable};
+use crate::gadgets::r1cs::ConstraintSystem;
+use crate::gadgets::r1cs::Index;
+use crate::gadgets::r1cs::LinearCombination;
+use crate::gadgets::r1cs::Variable;
 use crate::gadgets::utilities::OptionalVec;
 
 use cfg_if::cfg_if;
-use fxhash::{FxBuildHasher, FxHashMap};
+use fxhash::FxBuildHasher;
+use fxhash::FxHashMap;
 use indexmap::map::Entry;
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexMap;
+use indexmap::IndexSet;
 use itertools::Itertools;
 
 #[derive(Debug, Clone)]

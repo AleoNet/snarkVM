@@ -20,7 +20,9 @@ use snarkvm_utilities::rand::UniformRand;
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
-use std::ops::{AddAssign, MulAssign, SubAssign};
+use std::ops::AddAssign;
+use std::ops::MulAssign;
+use std::ops::SubAssign;
 
 use criterion::Criterion;
 pub fn bench_fq6_add_assign(c: &mut Criterion) {
