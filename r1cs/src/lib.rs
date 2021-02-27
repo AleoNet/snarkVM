@@ -41,7 +41,7 @@ pub use test_constraint_system::TestConstraintSystem;
 mod test_fr;
 pub use test_fr::*;
 
-pub use crate::curves::to_field_vec::ToConstraintField;
+pub use snarkvm_curves::to_field_vec::ToConstraintField;
 
 use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::serialize::*;
