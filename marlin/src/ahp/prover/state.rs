@@ -24,8 +24,8 @@ use snarkvm_polycommit::LabeledPolynomial;
 
 /// State for the AHP prover.
 pub struct ProverState<'a, F: PrimeField> {
-    pub(crate) formatted_input_assignment: Vec<F>,
-    pub(crate) witness_assignment: Vec<F>,
+    pub(crate) padded_public_variables: Vec<F>,
+    pub(crate) private_variables: Vec<F>,
     /// Az
     pub(crate) z_a: Option<Vec<F>>,
     /// Bz
@@ -57,6 +57,6 @@ pub struct ProverState<'a, F: PrimeField> {
 impl<'a, F: PrimeField> ProverState<'a, F> {
     /// Get the public input.
     pub fn public_input(&self) -> Vec<F> {
-        ProverConstraintSystem::unformat_public_input(&self.formatted_input_assignment)
+        ProverConstraintSystem::unformat_public_input(&self.padded_public_variables)
     }
 }

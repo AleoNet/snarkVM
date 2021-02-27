@@ -175,8 +175,8 @@ impl<F: PrimeField> AHPForR1CS<F> {
         end_timer!(init_time);
 
         Ok(ProverState {
-            formatted_input_assignment: padded_public_variables,
-            witness_assignment: private_variables,
+            padded_public_variables,
+            private_variables,
             z_a: Some(z_a),
             z_b: Some(z_b),
             w_poly: None,
@@ -206,16 +206,16 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let x_time = start_timer!(|| "Computing x polynomial and evals");
         let domain_x = state.domain_x;
         let x_poly =
-            EvaluationsOnDomain::from_vec_and_domain(state.formatted_input_assignment.clone(), domain_x).interpolate();
+            EvaluationsOnDomain::from_vec_and_domain(state.padded_public_variables.clone(), domain_x).interpolate();
         let x_evals = domain_h.fft(&x_poly);
         end_timer!(x_time);
 
         let ratio = domain_h.size() / domain_x.size();
 
-        let mut w_extended = state.witness_assignment.clone();
+        let mut w_extended = state.private_variables.clone();
         w_extended.extend(vec![
             F::zero();
-            domain_h.size() - domain_x.size() - state.witness_assignment.len()
+            domain_h.size() - domain_x.size() - state.private_variables.len()
         ]);
 
         let w_poly_time = start_timer!(|| "Computing w polynomial");
@@ -370,11 +370,11 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
         let z_poly_time = start_timer!(|| "Compute z poly");
 
-        let domain_x = EvaluationDomain::new(state.formatted_input_assignment.len())
+        let domain_x = EvaluationDomain::new(state.padded_public_variables.len())
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)
             .unwrap();
         let x_poly =
-            EvaluationsOnDomain::from_vec_and_domain(state.formatted_input_assignment.clone(), domain_x).interpolate();
+            EvaluationsOnDomain::from_vec_and_domain(state.padded_public_variables.clone(), domain_x).interpolate();
         let w_poly = state.w_poly.as_ref().unwrap();
         let mut z_poly = w_poly.polynomial().mul_by_vanishing_poly(domain_x);
         cfg_iter_mut!(z_poly.coeffs)
