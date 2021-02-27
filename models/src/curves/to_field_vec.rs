@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::curves::{Field, Fp2, Fp2Parameters, FpParameters, PrimeField};
-use snarkvm_errors::curves::ConstraintFieldError;
+use snarkvm_curves::errors::ConstraintFieldError;
 
 /// Types that can be converted to a vector of `F` elements. Useful for specifying
 /// how public inputs to a constraint system should be represented inside

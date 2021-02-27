@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::curves::{Field, FpParameters, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
-use snarkvm_errors::curves::FieldError;
+use snarkvm_curves::errors::FieldError;
 use snarkvm_utilities::{
     biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger384 as BigInteger},
     bytes::{FromBytes, ToBytes},

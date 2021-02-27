@@ -16,7 +16,7 @@
 
 use crate::base_dpc::{parameters::SystemParameters, BaseDPCComponents};
 use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
-use snarkvm_errors::curves::ConstraintFieldError;
+use snarkvm_curves::errors::ConstraintFieldError;
 use snarkvm_models::{
     algorithms::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH},
     curves::to_field_vec::ToConstraintField,

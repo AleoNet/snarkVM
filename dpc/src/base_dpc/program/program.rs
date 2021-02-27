@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::base_dpc::BaseDPCComponents;
-use snarkvm_errors::curves::ConstraintFieldError;
+use snarkvm_curves::errors::ConstraintFieldError;
 use snarkvm_models::{
     algorithms::{CommitmentScheme, CRH},
     curves::to_field_vec::ToConstraintField,

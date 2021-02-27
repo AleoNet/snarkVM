@@ -16,9 +16,9 @@
 
 use crate::{
     edwards_sw6::{Fq, Fr},
+    errors::GroupError,
     templates::twisted_edwards_extended::{GroupAffine, GroupProjective},
 };
-use snarkvm_errors::curves::GroupError;
 use snarkvm_models::{
     curves::{ModelParameters, MontgomeryModelParameters, TEModelParameters},
     field,
