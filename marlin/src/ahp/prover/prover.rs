@@ -100,61 +100,68 @@ impl<F: PrimeField> AHPForR1CS<F> {
     /// Initialize the AHP prover.
     pub fn prover_init<'a, C: ConstraintSynthesizer<F>>(
         index: &'a Circuit<F>,
-        c: &C,
+        circuit: &C,
     ) -> Result<ProverState<'a, F>, AHPError> {
         let init_time = start_timer!(|| "AHP::Prover::Init");
 
         let constraint_time = start_timer!(|| "Generating constraints and witnesses");
         let mut pcs = ProverConstraintSystem::new();
-        c.generate_constraints(&mut pcs)?;
+        circuit.generate_constraints(&mut pcs)?;
         end_timer!(constraint_time);
 
         let padding_time = start_timer!(|| "Padding matrices to make them square");
+        crate::ahp::matrices::pad_input_for_indexer_and_prover(&mut pcs);
         pcs.make_matrices_square();
         end_timer!(padding_time);
 
         let num_non_zero = index.index_info.num_non_zero;
 
         let ProverConstraintSystem {
-            public_variables: formatted_input_assignment,
-            private_variables: witness_assignment,
+            public_variables: padded_public_variables,
+            private_variables,
             num_constraints,
+            num_public_variables,
+            num_private_variables,
             ..
         } = pcs;
 
-        let num_input_variables = formatted_input_assignment.len();
-        let num_witness_variables = witness_assignment.len();
         if index.index_info.num_constraints != num_constraints
-            || num_input_variables + num_witness_variables != index.index_info.num_variables
+            || index.index_info.num_variables != (num_public_variables + num_private_variables)
         {
             return Err(AHPError::InstanceDoesNotMatchIndex);
         }
 
-        if !Self::formatted_public_input_is_admissible(&formatted_input_assignment) {
+        if !Self::formatted_public_input_is_admissible(&padded_public_variables) {
             return Err(AHPError::InvalidPublicInputLength);
         }
 
-        // Perform matrix multiplications
-        let inner_prod_fn = |row: &[(F, usize)]| {
-            let mut acc = F::zero();
-            for &(ref coeff, i) in row {
-                let tmp = if i < num_input_variables {
-                    formatted_input_assignment[i]
-                } else {
-                    witness_assignment[i - num_input_variables]
+        // Perform matrix multiplications.
+        let inner_product = |row: &[(F, usize)]| {
+            let mut result = F::zero();
+
+            for &(ref coefficient, i) in row {
+                // Fetch the variable.
+                let variable = match i < num_public_variables {
+                    true => padded_public_variables[i],
+                    false => private_variables[i - num_public_variables],
                 };
 
-                acc += &(if coeff.is_one() { tmp } else { tmp * coeff });
+                result += &(if coefficient.is_one() {
+                    variable
+                } else {
+                    variable * coefficient
+                });
             }
-            acc
+
+            result
         };
 
         let eval_z_a_time = start_timer!(|| "Evaluating z_A");
-        let z_a = index.a.iter().map(|row| inner_prod_fn(row)).collect();
+        let z_a = index.a.iter().map(|row| inner_product(row)).collect();
         end_timer!(eval_z_a_time);
 
         let eval_z_b_time = start_timer!(|| "Evaluating z_B");
-        let z_b = index.b.iter().map(|row| inner_prod_fn(row)).collect();
+        let z_b = index.b.iter().map(|row| inner_product(row)).collect();
         end_timer!(eval_z_b_time);
 
         let zk_bound = 1; // One query is sufficient for our desired soundness
@@ -163,13 +170,13 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
         let domain_k = EvaluationDomain::new(num_non_zero).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let domain_x = EvaluationDomain::new(num_input_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let domain_x = EvaluationDomain::new(num_public_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         end_timer!(init_time);
 
         Ok(ProverState {
-            formatted_input_assignment,
-            witness_assignment,
+            formatted_input_assignment: padded_public_variables,
+            witness_assignment: private_variables,
             z_a: Some(z_a),
             z_b: Some(z_b),
             w_poly: None,

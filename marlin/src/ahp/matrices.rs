@@ -286,13 +286,3 @@ pub(crate) fn format_public_input<F: PrimeField>(public_input: &[F]) -> Vec<F> {
 pub(crate) fn unformat_public_input<F: PrimeField>(input: &[F]) -> Vec<F> {
     input[1..].to_vec()
 }
-
-pub(crate) fn make_matrices_square_for_prover<F: PrimeField, CS: ConstraintSystem<F>>(cs: &mut CS) {
-    let num_variables = cs.num_public_variables() + cs.num_private_variables();
-    make_matrices_square(cs, num_variables);
-    assert_eq!(
-        cs.num_public_variables() + cs.num_private_variables(),
-        cs.num_constraints(),
-        "padding failed!"
-    );
-}
