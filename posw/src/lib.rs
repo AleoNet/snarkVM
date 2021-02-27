@@ -16,8 +16,8 @@
 
 pub mod circuit;
 
-mod consensus;
-use consensus::{HG, M};
+mod posw;
+use posw::{HG, M};
 
 pub mod error;
 
@@ -33,21 +33,23 @@ use snarkvm_objects::{
 };
 
 /// PoSW instantiated over BLS12-377 with GM17.
-pub type Posw = GenericPosw<GM17<Bls12_377>, Bls12_377>;
-pub type PoswMarlin = GenericPosw<Marlin<Bls12_377>, Bls12_377>;
+pub type PoswGM17 = Posw<GM17<Bls12_377>, Bls12_377>;
 
-/// Generic GM17 PoSW over any pairing curve
-type GenericPosw<S, E> = consensus::Posw<S, <E as PairingEngine>::Fr, M, HG, params::PoSWParams>;
+/// PoSW instantiated over BLS12-377 with Marlin.
+pub type PoswMarlin = Posw<Marlin<Bls12_377>, Bls12_377>;
 
 /// GM17 type alias for the PoSW circuit
-pub type GM17<E> = snark::gm17::GM17<E, POSW<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
+pub type GM17<E> = snark::gm17::GM17<E, PoswCircuit<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
 
 /// Marlin proof system on PoSW
 pub type Marlin<E> =
-    snarkvm_marlin::snark::MarlinSystem<E, POSW<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
+    snarkvm_marlin::snark::MarlinSystem<E, PoswCircuit<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
 
-/// Instantiate the circuit with the CRH to Fq
-type POSW<F> = circuit::POSWCircuit<F, M, HG, params::PoSWParams>;
+/// A generic PoSW.
+type Posw<S, E> = posw::Posw<S, <E as PairingEngine>::Fr, M, HG, params::PoSWParams>;
+
+/// Instantiate the circuit with the CRH to Fq.
+type PoswCircuit<F> = circuit::POSWCircuit<F, M, HG, params::PoSWParams>;
 
 // Do not leak private type
 mod params {
@@ -84,21 +86,21 @@ mod tests {
     use blake2::Blake2s;
 
     #[test]
-    fn load_params_verify() {
+    fn test_load_verify_only() {
         let _params = PoswMarlin::verify_only().unwrap();
     }
 
     #[test]
-    fn load_params() {
+    fn test_load() {
         let _params = PoswMarlin::load().unwrap();
     }
 
     #[test]
-    fn gm17_ok() {
+    fn test_posw_gm17() {
         let rng = &mut XorShiftRng::seed_from_u64(1234567);
 
         // run the trusted setup
-        let posw = Posw::setup(rng).unwrap();
+        let posw = PoswGM17::setup(rng).unwrap();
         // super low difficulty so we find a solution immediately
         let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
 
@@ -116,7 +118,7 @@ mod tests {
     }
 
     #[test]
-    fn marlin_ok() {
+    fn test_posw_marlin() {
         let rng = &mut XorShiftRng::seed_from_u64(1234567);
 
         // run the trusted setup
