@@ -14,22 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-/// Algebraic holographic proofs.
-pub mod ahp;
-pub use ahp::*;
+use snarkvm_polycommit::PolynomialCommitment;
 
-/// Errors.
-pub mod errors;
-pub use errors::*;
-
-/// Describes data structures and the algorithms used by the AHP indexer.
-pub mod indexer;
-pub use indexer::*;
-
-pub(crate) mod matrices;
-
-/// Describes data structures and the algorithms used by the AHP prover.
-pub mod prover;
-
-/// Describes data structures and the algorithms used by the AHP verifier.
-pub mod verifier;
+/// The universal public parameters for the argument system.
+pub type UniversalSRS<F, PC> = <PC as PolynomialCommitment<F>>::UniversalParams;

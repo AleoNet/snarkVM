@@ -14,22 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-/// Algebraic holographic proofs.
-pub mod ahp;
-pub use ahp::*;
-
-/// Errors.
-pub mod errors;
-pub use errors::*;
-
-/// Describes data structures and the algorithms used by the AHP indexer.
-pub mod indexer;
-pub use indexer::*;
-
-pub(crate) mod matrices;
-
-/// Describes data structures and the algorithms used by the AHP prover.
-pub mod prover;
-
-/// Describes data structures and the algorithms used by the AHP verifier.
-pub mod verifier;
+/// First message of the verifier.
+#[derive(Copy, Clone)]
+pub struct VerifierFirstMsg<F> {
+    /// Query for the random polynomial.
+    pub alpha: F,
+    /// Randomizer for the lincheck for `A`.
+    pub eta_a: F,
+    /// Randomizer for the lincheck for `B`.
+    pub eta_b: F,
+    /// Randomizer for the lincheck for `C`.
+    pub eta_c: F,
+}

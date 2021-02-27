@@ -59,19 +59,19 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
 
 mod marlin {
     use super::*;
-    use crate::Marlin;
-
-    use blake2::Blake2s;
-    use core::ops::MulAssign;
+    use crate::marlin::MarlinSNARK;
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
     use snarkvm_polycommit::{marlin_pc::MarlinKZG10, sonic_pc::SonicKZG10};
     use snarkvm_utilities::rand::{test_rng, UniformRand};
 
+    use blake2::Blake2s;
+    use core::ops::MulAssign;
+
     type MultiPC = MarlinKZG10<Bls12_377>;
-    type MarlinInst = Marlin<Fr, MultiPC, Blake2s>;
+    type MarlinInst = MarlinSNARK<Fr, MultiPC, Blake2s>;
 
     type MultiPCSonic = SonicKZG10<Bls12_377>;
-    type MarlinSonicInst = Marlin<Fr, MultiPCSonic, Blake2s>;
+    type MarlinSonicInst = MarlinSNARK<Fr, MultiPCSonic, Blake2s>;
 
     macro_rules! impl_marlin_test {
         ($test_struct: ident, $marlin_inst: tt) => {
@@ -95,7 +95,7 @@ mod marlin {
                             num_variables,
                         };
 
-                        let (index_pk, index_vk) = $marlin_inst::index(&universal_srs, &circ).unwrap();
+                        let (index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
                         println!("Called index");
 
                         let proof = $marlin_inst::prove(&index_pk, &circ, rng).unwrap();
