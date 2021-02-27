@@ -50,17 +50,19 @@ extern crate alloc;
 
 #[cfg(not(feature = "std"))]
 use alloc::{
-    borrow::Cow,
+    borrow::{Cow, ToOwned},
     collections::{BTreeMap, BTreeSet},
     string::{String, ToString},
+    sync::Arc,
     vec::Vec,
 };
 
 #[cfg(feature = "std")]
 use std::{
-    borrow::Cow,
+    borrow::{Cow, ToOwned},
     collections::{BTreeMap, BTreeSet},
     string::{String, ToString},
+    sync::Arc,
     vec::Vec,
 };
 
@@ -81,6 +83,7 @@ macro_rules! eprintln {
     () => {};
     ($($arg: tt)*) => {};
 }
+
 /// The core [[KZG10]][kzg] construction.
 ///
 /// [kzg]: http://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf

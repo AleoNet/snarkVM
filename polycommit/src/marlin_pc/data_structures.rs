@@ -15,8 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{impl_bytes, PCCommitment, PCCommitterKey, PCRandomness, PCVerifierKey, Vec};
-use core::ops::{Add, AddAssign};
-use rand_core::RngCore;
 use snarkvm_errors::serialization::SerializationError;
 use snarkvm_models::curves::PairingEngine;
 use snarkvm_utilities::{
@@ -24,6 +22,9 @@ use snarkvm_utilities::{
     error,
     serialize::*,
 };
+
+use core::ops::{Add, AddAssign};
+use rand_core::RngCore;
 
 use crate::kzg10;
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.

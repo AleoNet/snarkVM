@@ -1824,8 +1824,10 @@ name = "snarkvm-marlin"
 version = "0.0.5"
 dependencies = [
  "blake2",
+ "criterion",
  "derivative",
  "digest",
+ "rand",
  "rand_chacha",
  "rand_core",
  "rayon",

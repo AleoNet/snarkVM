@@ -24,7 +24,7 @@ pub use errors::*;
 
 /// Describes data structures and the algorithms used by the AHP indexer.
 pub mod indexer;
-pub use indexer::*;
+pub(crate) use indexer::*;
 
 pub(crate) mod matrices;
 

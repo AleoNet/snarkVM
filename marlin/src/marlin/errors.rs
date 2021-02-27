@@ -18,7 +18,7 @@
 #[derive(Debug)]
 pub enum MarlinError<E> {
     /// The index is too large for the universal public parameters.
-    IndexTooLarge,
+    IndexTooLarge(usize, usize),
     /// There was an error in the underlying holographic IOP.
     AHPError(crate::ahp::AHPError),
     /// There was an error in the underlying polynomial commitment.
