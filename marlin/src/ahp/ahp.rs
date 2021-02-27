@@ -21,8 +21,8 @@ use crate::{
     Vec,
 };
 use snarkvm_algorithms::{cfg_iter_mut, fft::EvaluationDomain};
+use snarkvm_curves::traits::{batch_inversion, Field, PrimeField};
 use snarkvm_gadgets::errors::SynthesisError;
-use snarkvm_models::curves::{batch_inversion, Field, PrimeField};
 use snarkvm_polycommit::{LCTerm, LabeledPolynomial, LinearCombination};
 
 use core::{borrow::Borrow, marker::PhantomData};
@@ -326,8 +326,10 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
 mod tests {
     use super::*;
     use snarkvm_algorithms::fft::{DenseOrSparsePolynomial, DensePolynomial};
-    use snarkvm_curves::bls12_377::fr::Fr;
-    use snarkvm_models::curves::{One, Zero};
+    use snarkvm_curves::{
+        bls12_377::fr::Fr,
+        traits::{One, Zero},
+    };
     use snarkvm_utilities::rand::{test_rng, UniformRand};
 
     #[test]

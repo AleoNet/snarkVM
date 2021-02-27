@@ -17,7 +17,7 @@
 //! A polynomial represented in evaluations form.
 
 use crate::fft::{DensePolynomial, EvaluationDomain};
-use snarkvm_models::curves::PrimeField;
+use snarkvm_curves::traits::PrimeField;
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};

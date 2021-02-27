@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::bw6_761::Fq3;
-use snarkvm_models::curves::{Field, SquareRootField};
+use snarkvm_curves::{
+    bw6_761::Fq3,
+    traits::{Field, SquareRootField},
+};
 use snarkvm_utilities::rand::UniformRand;
 
 use criterion::Criterion;

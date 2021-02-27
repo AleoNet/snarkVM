@@ -42,7 +42,7 @@ pub fn prng() -> impl Rng {
 macro_rules! define_merkle_tree_parameters {
     ($struct_name:ident, $hash:ty, $depth:expr) => {
         #[allow(unused_imports)]
-        use snarkvm_models::algorithms::{LoadableMerkleParameters, MaskedMerkleParameters, MerkleParameters, CRH};
+        use crate::traits::{LoadableMerkleParameters, MaskedMerkleParameters, MerkleParameters, CRH};
         #[allow(unused_imports)]
         use $crate::merkle_tree::MerkleTree;
 
@@ -92,7 +92,7 @@ macro_rules! define_merkle_tree_parameters {
 macro_rules! define_masked_merkle_tree_parameters {
     ($struct_name:ident, $hash:ty, $depth:expr) => {
         #[allow(unused_imports)]
-        use snarkvm_models::algorithms::{CRHParameters, MaskedMerkleParameters, MerkleParameters, CRH};
+        use crate::traits::{CRHParameters, MaskedMerkleParameters, MerkleParameters, CRH};
         #[allow(unused_imports)]
         use $crate::merkle_tree::MerkleTree;
 

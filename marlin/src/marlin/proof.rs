@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{ahp::prover::ProverMessage, Vec};
-use snarkvm_models::curves::PrimeField;
+use snarkvm_curves::traits::PrimeField;
 use snarkvm_polycommit::{BatchLCProof, PCCommitment, PolynomialCommitment};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},

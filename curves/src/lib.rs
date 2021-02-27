@@ -60,3 +60,7 @@ pub use errors::*;
 pub mod sw6;
 
 pub mod templates;
+
+#[cfg_attr(test, macro_use)]
+pub mod traits;
+pub use traits::*;

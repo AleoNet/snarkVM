@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::snark::gm17::{PreparedVerifyingKey, Proof, VerifyingKey};
+use snarkvm_curves::traits::{AffineCurve, One, PairingCurve, PairingEngine, PrimeField, ProjectiveCurve};
 use snarkvm_gadgets::errors::SynthesisError;
-use snarkvm_models::curves::{AffineCurve, One, PairingCurve, PairingEngine, PrimeField, ProjectiveCurve};
 
 use std::{
     iter,

@@ -17,13 +17,13 @@
 use crate::{
     edwards_sw6::*,
     templates::twisted_edwards_extended::tests::{edwards_test, montgomery_conversion_test},
-};
-use snarkvm_models::curves::{
-    tests_curve::curve_tests,
-    tests_field::{field_serialization_test, field_test, primefield_test},
-    tests_group::group_test,
-    AffineCurve,
-    ProjectiveCurve,
+    traits::{
+        tests_curve::curve_tests,
+        tests_field::{field_serialization_test, field_test, primefield_test},
+        tests_group::group_test,
+        AffineCurve,
+        ProjectiveCurve,
+    },
 };
 
 #[test]
@@ -80,7 +80,7 @@ fn test_conversion() {
     let a: EdwardsAffine = rand::random();
     let b: EdwardsAffine = rand::random();
     let a_b = {
-        use snarkvm_models::curves::Group;
+        use crate::traits::Group;
         (a + &b).double().double()
     };
     let a_b2 = (a.into_projective() + &b.into_projective()).double().double();

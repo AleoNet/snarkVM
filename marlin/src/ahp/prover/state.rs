@@ -19,7 +19,7 @@ use crate::{
     Vec,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_models::curves::PrimeField;
+use snarkvm_curves::traits::PrimeField;
 use snarkvm_polycommit::LabeledPolynomial;
 
 /// State for the AHP prover.

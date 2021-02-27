@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_models::curves::{Fp768, Fp768Parameters, FpParameters};
+use crate::traits::{Fp768, Fp768Parameters, FpParameters};
 use snarkvm_utilities::biginteger::BigInteger768 as BigInteger;
 
 pub type Fq = Fp768<FqParameters>;

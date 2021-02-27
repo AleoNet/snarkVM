@@ -104,7 +104,7 @@ mod gm17 {
     use super::*;
 
     use rand::thread_rng;
-    use snarkvm_models::curves::One;
+    use snarkvm_curves::traits::One;
     use std::ops::AddAssign;
 
     #[test]

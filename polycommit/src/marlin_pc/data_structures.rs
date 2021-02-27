@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{impl_bytes, PCCommitment, PCCommitterKey, PCRandomness, PCVerifierKey, Vec};
-use snarkvm_models::curves::PairingEngine;
+use snarkvm_curves::traits::PairingEngine;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     error,

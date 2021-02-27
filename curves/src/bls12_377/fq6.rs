@@ -257,7 +257,7 @@ impl Fp6Parameters for Fq6Parameters {
 #[cfg(test)]
 mod test {
     use super::*;
-    use snarkvm_models::curves::{One, Zero};
+    use crate::traits::{One, Zero};
     use snarkvm_utilities::rand::UniformRand;
 
     use rand::SeedableRng;

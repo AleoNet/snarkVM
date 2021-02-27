@@ -24,7 +24,7 @@ use snarkvm_utilities::{
     to_bytes,
 };
 
-use snarkvm_models::curves::{
+use crate::traits::{
     pairing_engine::{AffineCurve, ProjectiveCurve},
     Field,
     MontgomeryModelParameters,

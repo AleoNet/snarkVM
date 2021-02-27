@@ -14,16 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{impl_sw_curve_serializer, impl_sw_from_random_bytes};
-use snarkvm_models::curves::{
-    AffineCurve,
-    Field,
-    One,
-    PrimeField,
-    ProjectiveCurve,
-    SWModelParameters as Parameters,
-    SquareRootField,
-    Zero,
+use crate::{
+    impl_sw_curve_serializer,
+    impl_sw_from_random_bytes,
+    traits::{
+        AffineCurve,
+        Field,
+        One,
+        PrimeField,
+        ProjectiveCurve,
+        SWModelParameters as Parameters,
+        SquareRootField,
+        Zero,
+    },
 };
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,

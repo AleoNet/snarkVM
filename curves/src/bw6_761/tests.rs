@@ -29,16 +29,16 @@ use crate::{
         BW6_761,
     },
     templates::short_weierstrass::tests::sw_tests,
-};
-use snarkvm_models::curves::{
-    tests_curve::curve_tests,
-    tests_field::{field_serialization_test, field_test, frobenius_test, primefield_test, sqrt_field_test},
-    tests_group::group_test,
-    AffineCurve,
-    Field,
-    One,
-    PairingEngine,
-    PrimeField,
+    traits::{
+        tests_curve::curve_tests,
+        tests_field::{field_serialization_test, field_test, frobenius_test, primefield_test, sqrt_field_test},
+        tests_group::group_test,
+        AffineCurve,
+        Field,
+        One,
+        PairingEngine,
+        PrimeField,
+    },
 };
 
 #[test]

@@ -20,13 +20,7 @@ use crate::{
         short_weierstrass::short_weierstrass_jacobian::{GroupAffine as SWAffine, GroupProjective as SWProjective},
         twisted_edwards_extended::{GroupAffine as TEAffine, GroupProjective as TEProjective},
     },
-};
-use snarkvm_models::curves::{
-    to_field_vec::ToConstraintField,
-    Field,
-    ProjectiveCurve,
-    SWModelParameters,
-    TEModelParameters,
+    traits::{to_field_vec::ToConstraintField, Field, ProjectiveCurve, SWModelParameters, TEModelParameters},
 };
 
 impl<M: TEModelParameters, F: Field> ToConstraintField<F> for TEAffine<M>
