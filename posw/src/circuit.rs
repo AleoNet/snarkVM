@@ -179,9 +179,9 @@ mod test {
         root.write(&mut root_bytes[..]).unwrap();
 
         let mut h = Blake2s::new();
-        h.input(nonce.as_ref());
-        h.input(root_bytes.as_ref());
-        let mask = h.result().to_vec();
+        h.update(nonce.as_ref());
+        h.update(root_bytes.as_ref());
+        let mask = h.finalize().to_vec();
 
         let snark_leaves = tree.hashed_leaves().into_iter().map(Some).collect();
         let proof = create_random_proof(

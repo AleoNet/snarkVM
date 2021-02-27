@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::snark::{Marlin, ProverKey, VerifierKey, SRS};
+use crate::{marlin::MarlinSNARK, ProvingKey, VerifyingKey, SRS};
 use snarkvm_errors::{algorithms::SNARKError, serialization::SerializationError};
 use snarkvm_models::{
     curves::{AffineCurve, PairingEngine},
@@ -25,13 +25,19 @@ use snarkvm_utilities::{
     error,
     io,
     serialize::*,
+    PROCESSING_SNARK_PARAMS,
+    SNARK_PARAMS_AFFINE_COUNT,
 };
 
 pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PCCommitment};
 
+use blake2::Blake2s;
 use derivative::Derivative;
 use rayon::prelude::*;
-use std::io::{Read, Write};
+use std::{
+    io::{Read, Write},
+    sync::atomic::{self, AtomicU64},
+};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = ""))]
@@ -41,17 +47,32 @@ use std::io::{Read, Write};
 /// by providing it the previously-generated universal SRS.
 pub struct Parameters<E: PairingEngine> {
     /// The proving key
-    pub prover_key: ProverKey<E>,
+    pub proving_key: ProvingKey<E>,
     /// The verifying key
-    pub verifier_key: VerifierKey<E>,
+    pub verifying_key: VerifyingKey<E>,
+}
+
+impl<E: PairingEngine> Parameters<E> {
+    /// Creates an instance of `Parameters` from a given universal SRS.
+    pub fn new<C: ConstraintSynthesizer<E::Fr>>(circuit: &C, universal_srs: &SRS<E>) -> Result<Self, SNARKError> {
+        let (proving_key, verifying_key) = MarlinSNARK::<_, _, Blake2s>::circuit_setup(universal_srs, circuit)
+            .map_err(|_| SNARKError::Crate("marlin", "could not index".to_owned()))?;
+        Ok(Self {
+            proving_key,
+            verifying_key,
+        })
+    }
+}
+
+impl<E: PairingEngine> ToBytes for Parameters<E> {
+    fn write<W: Write>(&self, mut w: W) -> io::Result<()> {
+        CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize parameters"))
+    }
 }
 
 impl<E: PairingEngine> FromBytes for Parameters<E> {
     fn read<R: Read>(mut r: R) -> io::Result<Self> {
-        use snarkvm_utilities::{PROCESSING_SNARK_PARAMS, SNARK_PARAMS_AFFINE_COUNT};
-        use std::sync::atomic::{self, AtomicU64};
-
-        // signal that the SNARK params are being processed in order for the validation of affine values to be
+        // Signal that the SNARK params are being processed in order for the validation of affine values to be
         // deferred, while ensuring that this method is not called recursively; the expected number of entries is
         // counted with a thread-local SNARK_PARAMS_AFFINE_COUNT, which does not support recursion in its current form
         let only_entry = PROCESSING_SNARK_PARAMS
@@ -70,9 +91,9 @@ impl<E: PairingEngine> FromBytes for Parameters<E> {
             AtomicU64::new(SNARK_PARAMS_AFFINE_COUNT.with(|p| p.load(atomic::Ordering::Relaxed)));
 
         // check the affine values for the CommitterKey
-        let ck = &ret.prover_key.committer_key;
+        let committer_key = &ret.proving_key.committer_key;
 
-        ck.powers.par_iter().try_for_each(|p| {
+        committer_key.powers.par_iter().try_for_each(|p| {
             num_affines_to_verify.fetch_sub(1, atomic::Ordering::Relaxed);
             if !p.is_in_correct_subgroup_assuming_on_curve() {
                 Err(error("invalid parameter data"))
@@ -81,7 +102,7 @@ impl<E: PairingEngine> FromBytes for Parameters<E> {
             }
         })?;
 
-        if let Some(shifted_powers) = &ck.shifted_powers {
+        if let Some(shifted_powers) = &committer_key.shifted_powers {
             shifted_powers.par_iter().try_for_each(|p| {
                 num_affines_to_verify.fetch_sub(1, atomic::Ordering::Relaxed);
                 if !p.is_in_correct_subgroup_assuming_on_curve() {
@@ -92,7 +113,7 @@ impl<E: PairingEngine> FromBytes for Parameters<E> {
             })?;
         }
 
-        ck.powers_of_gamma_g.par_iter().try_for_each(|p| {
+        committer_key.powers_of_gamma_g.par_iter().try_for_each(|p| {
             num_affines_to_verify.fetch_sub(1, atomic::Ordering::Relaxed);
             if !p.is_in_correct_subgroup_assuming_on_curve() {
                 Err(error("invalid parameter data"))
@@ -101,10 +122,10 @@ impl<E: PairingEngine> FromBytes for Parameters<E> {
             }
         })?;
 
-        // there are 2 IndexVerifierKeys in the Parameters
-        for vk in &[&ret.prover_key.index_vk, &ret.verifier_key] {
-            // check the affine values for marlin::IndexVerifierKey
-            for comm in &vk.index_comms {
+        // There are 2 CircuitVerifyingKey in the Parameters
+        for vk in &[&ret.proving_key.circuit_verifying_key, &ret.verifying_key] {
+            // check the affine values for marlin::CircuitVerifyingKey
+            for comm in &vk.circuit_commitments {
                 num_affines_to_verify.fetch_sub(1, atomic::Ordering::Relaxed);
                 if !comm.is_in_correct_subgroup_assuming_on_curve() {
                     return Err(error("invalid parameter data"));
@@ -145,23 +166,5 @@ impl<E: PairingEngine> FromBytes for Parameters<E> {
         debug_assert_eq!(num_affines_to_verify.load(atomic::Ordering::Relaxed), 0);
 
         Ok(ret)
-    }
-}
-
-impl<E: PairingEngine> ToBytes for Parameters<E> {
-    fn write<W: Write>(&self, mut w: W) -> io::Result<()> {
-        CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize parameters"))
-    }
-}
-
-impl<E: PairingEngine> Parameters<E> {
-    /// Creates a new Parameters instance from a previously computed universal SRS
-    pub fn new<C: ConstraintSynthesizer<E::Fr>>(circuit: &C, universal_srs: &SRS<E>) -> Result<Self, SNARKError> {
-        let (prover_key, verifier_key) = Marlin::index(universal_srs, circuit)
-            .map_err(|_| SNARKError::Crate("marlin", "could not index".to_owned()))?;
-        Ok(Self {
-            prover_key,
-            verifier_key,
-        })
     }
 }

@@ -14,22 +14,34 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-/// Algebraic holographic proofs.
-pub mod ahp;
-pub use ahp::*;
+/// The Marlin circuit proving key.
+mod circuit_proving_key;
+pub use circuit_proving_key::*;
+
+/// The Marlin circuit verifying key.
+mod circuit_verifying_key;
+pub use circuit_verifying_key::*;
 
 /// Errors.
-pub mod errors;
+mod errors;
 pub use errors::*;
 
-/// Describes data structures and the algorithms used by the AHP indexer.
-pub mod indexer;
-pub use indexer::*;
+/// A generic implementation of the Marlin proof system..
+mod marlin;
+pub use marlin::*;
 
-pub(crate) mod matrices;
+/// The Marlin zkSNARK proof.
+mod proof;
+pub use proof::*;
 
-/// Describes data structures and the algorithms used by the AHP prover.
-pub mod prover;
+/// Implements a Fiat-Shamir based Rng that allows one to incrementally update
+/// the seed based on new messages in the proof transcript.
+mod rng;
+pub use rng::*;
 
-/// Describes data structures and the algorithms used by the AHP verifier.
-pub mod verifier;
+/// The Marlin universal SRS.
+mod universal_srs;
+pub use universal_srs::*;
+
+#[cfg(test)]
+mod tests;

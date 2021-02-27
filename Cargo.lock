@@ -103,25 +103,13 @@ checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
 
 [[package]]
 name = "blake2"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94cb07b0da6a73955f8fb85d24c466778e70cda767a568229b104f0264089330"
-dependencies = [
- "byte-tools",
- "crypto-mac 0.7.0",
- "digest 0.8.1",
- "opaque-debug 0.2.3",
-]
-
-[[package]]
-name = "blake2"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "10a5720225ef5daecf08657f23791354e1685a8c91a4c60c7f3d3b2892f978f4"
 dependencies = [
- "crypto-mac 0.8.0",
- "digest 0.9.0",
- "opaque-debug 0.3.0",
+ "crypto-mac",
+ "digest",
+ "opaque-debug",
 ]
 
 [[package]]
@@ -130,7 +118,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4152116fd6e9dadb291ae18fc1ec3575ed6d84c29642d97890f4b4a3417297e4"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array",
 ]
 
 [[package]]
@@ -150,12 +138,6 @@ name = "bumpalo"
 version = "3.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "099e596ef14349721d9016f6b80dd3419ea1bf289ab9b44df8e4dfd3a005d5d9"
-
-[[package]]
-name = "byte-tools"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3b5ca7a04898ad4bcd41c90c5285445ff5b791899bb1b0abdd2a2aa791211d7"
 
 [[package]]
 name = "byteorder"
@@ -395,22 +377,12 @@ dependencies = [
 
 [[package]]
 name = "crypto-mac"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4434400df11d95d556bac068ddfedd482915eb18fe8bea89bc80b6e4b1c179e5"
-dependencies = [
- "generic-array 0.12.3",
- "subtle 1.0.0",
-]
-
-[[package]]
-name = "crypto-mac"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b584a330336237c1eecd3e94266efb216c56ed91225d634cb2991c5f3fd1aeab"
 dependencies = [
- "generic-array 0.14.4",
- "subtle 2.4.0",
+ "generic-array",
+ "subtle",
 ]
 
 [[package]]
@@ -478,20 +450,11 @@ dependencies = [
 
 [[package]]
 name = "digest"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3d0c8c8752312f9713efd397ff63acb9f85585afbf179282e720e7704954dd5"
-dependencies = [
- "generic-array 0.12.3",
-]
-
-[[package]]
-name = "digest"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array",
 ]
 
 [[package]]
@@ -633,15 +596,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
 dependencies = [
  "byteorder",
-]
-
-[[package]]
-name = "generic-array"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c68f0274ae0e023facc3c97b2e00f076be70e254bc851d972503b328db79b2ec"
-dependencies = [
- "typenum",
 ]
 
 [[package]]
@@ -1114,12 +1068,6 @@ name = "oorandom"
 version = "11.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ab1bc2a289d34bd04a330323ac98a1b4bc82c9d9fcb1e66b63caa84da26b575"
-
-[[package]]
-name = "opaque-debug"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2839e79665f131bdb5782e51f2c6c9599c133c6098982a54c794358bf432529c"
 
 [[package]]
 name = "opaque-debug"
@@ -1736,8 +1684,8 @@ dependencies = [
  "block-buffer",
  "cfg-if 1.0.0",
  "cpuid-bool",
- "digest 0.9.0",
- "opaque-debug 0.3.0",
+ "digest",
+ "opaque-debug",
 ]
 
 [[package]]
@@ -1774,11 +1722,11 @@ dependencies = [
 name = "snarkvm-algorithms"
 version = "0.0.5"
 dependencies = [
- "blake2 0.9.1",
+ "blake2",
  "criterion",
  "csv",
  "derivative",
- "digest 0.9.0",
+ "digest",
  "itertools 0.10.0",
  "rand",
  "rand_chacha",
@@ -1824,7 +1772,7 @@ name = "snarkvm-dpc"
 version = "0.0.5"
 dependencies = [
  "anyhow",
- "blake2 0.9.1",
+ "blake2",
  "derivative",
  "hex",
  "itertools 0.10.0",
@@ -1858,9 +1806,9 @@ dependencies = [
 name = "snarkvm-gadgets"
 version = "0.0.5"
 dependencies = [
- "blake2 0.9.1",
+ "blake2",
  "derivative",
- "digest 0.9.0",
+ "digest",
  "itertools 0.10.0",
  "rand",
  "rand_xorshift",
@@ -1875,9 +1823,9 @@ dependencies = [
 name = "snarkvm-marlin"
 version = "0.0.5"
 dependencies = [
- "blake2 0.9.1",
+ "blake2",
  "derivative",
- "digest 0.9.0",
+ "digest",
  "rand_chacha",
  "rand_core",
  "rayon",
@@ -1935,6 +1883,7 @@ dependencies = [
 name = "snarkvm-parameters"
 version = "0.0.5"
 dependencies = [
+ "blake2",
  "curl",
  "hex",
  "rand",
@@ -1944,6 +1893,7 @@ dependencies = [
  "snarkvm-errors",
  "snarkvm-marlin",
  "snarkvm-models",
+ "snarkvm-polycommit",
  "snarkvm-posw",
  "snarkvm-utilities",
 ]
@@ -1952,9 +1902,9 @@ dependencies = [
 name = "snarkvm-polycommit"
 version = "0.0.5"
 dependencies = [
- "blake2 0.9.1",
+ "blake2",
  "derivative",
- "digest 0.9.0",
+ "digest",
  "rand",
  "rand_core",
  "rayon",
@@ -1970,7 +1920,7 @@ dependencies = [
 name = "snarkvm-posw"
 version = "0.0.5"
 dependencies = [
- "blake2 0.8.1",
+ "blake2",
  "rand",
  "rand_xorshift",
  "snarkvm-algorithms",
@@ -2085,12 +2035,6 @@ dependencies = [
  "quote",
  "syn",
 ]
-
-[[package]]
-name = "subtle"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d67a5a62ba6e01cb2192ff309324cb4875d0c451d55fe2319433abe7a05a8ee"
 
 [[package]]
 name = "subtle"

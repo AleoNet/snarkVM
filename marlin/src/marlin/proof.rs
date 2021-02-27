@@ -14,13 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    ahp::{indexer::*, prover::ProverMsg},
-    Vec,
-};
+use crate::{ahp::prover::ProverMessage, Vec};
 use snarkvm_errors::serialization::SerializationError;
 use snarkvm_models::curves::PrimeField;
-use snarkvm_polycommit::{BatchLCProof, PolynomialCommitment};
+use snarkvm_polycommit::{BatchLCProof, PCCommitment, PolynomialCommitment};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     error,
@@ -29,65 +26,6 @@ use snarkvm_utilities::{
 
 use derivative::Derivative;
 use std::io::{self, Read, Write};
-
-/* ************************************************************************* */
-
-/// The universal public parameters for the argument system.
-pub type UniversalSRS<F, PC> = <PC as PolynomialCommitment<F>>::UniversalParams;
-
-/* ************************************************************************* */
-
-/// Proving key for a specific index (i.e., R1CS matrices).
-#[derive(Derivative)]
-#[derivative(Clone(bound = ""))]
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct IndexProverKey<F: PrimeField, PC: PolynomialCommitment<F>> {
-    /// The index verifier key.
-    pub index_vk: IndexVerifierKey<F, PC>,
-    /// The randomness for the index polynomial commitments.
-    pub index_comm_rands: Vec<PC::Randomness>,
-    /// The index itself.
-    pub index: Index<F>,
-    /// The committer key for this index, trimmed from the universal SRS.
-    pub committer_key: PC::CommitterKey,
-}
-
-/* ************************************************************************* */
-
-/// Verification key for a specific index (i.e., R1CS matrices).
-#[derive(Derivative)]
-#[derivative(Clone(bound = ""))]
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct IndexVerifierKey<F: PrimeField, PC: PolynomialCommitment<F>> {
-    /// Stores information about the size of the index, as well as its field of
-    /// definition.
-    pub index_info: IndexInfo<F>,
-    /// Commitments to the indexed polynomials.
-    pub index_comms: Vec<PC::Commitment>,
-    /// The verifier key for this index, trimmed from the universal SRS.
-    pub verifier_key: PC::VerifierKey,
-}
-
-impl<F: PrimeField, PC: PolynomialCommitment<F>> ToBytes for IndexVerifierKey<F, PC> {
-    fn write<W: Write>(&self, mut w: W) -> io::Result<()> {
-        CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize IndexVerifierKey"))
-    }
-}
-
-impl<F: PrimeField, PC: PolynomialCommitment<F>> FromBytes for IndexVerifierKey<F, PC> {
-    fn read<R: Read>(mut r: R) -> io::Result<Self> {
-        CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize IndexVerifierKey"))
-    }
-}
-
-impl<F: PrimeField, PC: PolynomialCommitment<F>> IndexVerifierKey<F, PC> {
-    /// Iterate over the commitments to indexed polynomials in `self`.
-    pub fn iter(&self) -> impl Iterator<Item = &PC::Commitment> {
-        self.index_comms.iter()
-    }
-}
-
-/* ************************************************************************* */
 
 /// A zkSNARK proof.
 #[derive(Derivative)]
@@ -99,21 +37,9 @@ pub struct Proof<F: PrimeField, PC: PolynomialCommitment<F>> {
     /// Evaluations of these polynomials.
     pub evaluations: Vec<F>,
     /// The field elements sent by the prover.
-    pub prover_messages: Vec<ProverMsg<F>>,
+    pub prover_messages: Vec<ProverMessage<F>>,
     /// An evaluation proof from the polynomial commitment.
     pub pc_proof: BatchLCProof<F, PC>,
-}
-
-impl<F: PrimeField, PC: PolynomialCommitment<F>> ToBytes for Proof<F, PC> {
-    fn write<W: Write>(&self, mut w: W) -> io::Result<()> {
-        CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize IndexVerifierKey"))
-    }
-}
-
-impl<F: PrimeField, PC: PolynomialCommitment<F>> FromBytes for Proof<F, PC> {
-    fn read<R: Read>(mut r: R) -> io::Result<Self> {
-        CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize Proof"))
-    }
 }
 
 impl<F: PrimeField, PC: PolynomialCommitment<F>> Proof<F, PC> {
@@ -121,7 +47,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> Proof<F, PC> {
     pub fn new(
         commitments: Vec<Vec<PC::Commitment>>,
         evaluations: Vec<F>,
-        prover_messages: Vec<ProverMsg<F>>,
+        prover_messages: Vec<ProverMessage<F>>,
         pc_proof: BatchLCProof<F, PC>,
     ) -> Self {
         Self {
@@ -134,8 +60,6 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> Proof<F, PC> {
 
     /// Prints information about the size of the proof.
     pub fn print_size_info(&self) {
-        use snarkvm_polycommit::PCCommitment;
-
         let size_of_fe_in_bytes = F::zero().into_repr().as_ref().len() * 8;
         let mut num_comms_without_degree_bounds = 0;
         let mut num_comms_with_degree_bounds = 0;
@@ -158,16 +82,16 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> Proof<F, PC> {
             size_bytes_proofs += proof.serialized_size();
         }
 
-        let num_evals = self.evaluations.len();
-        let evals_size_in_bytes = num_evals * size_of_fe_in_bytes;
+        let num_evaluations = self.evaluations.len();
+        let evaluation_size_in_bytes = num_evaluations * size_of_fe_in_bytes;
         let num_prover_messages: usize = self.prover_messages.iter().map(|v| v.field_elements.len()).sum();
-        let prover_msg_size_in_bytes = num_prover_messages * size_of_fe_in_bytes;
-        let arg_size = size_bytes_comms_with_degree_bounds
+        let prover_message_size_in_bytes = num_prover_messages * size_of_fe_in_bytes;
+        let argument_size = size_bytes_comms_with_degree_bounds
             + size_bytes_comms_without_degree_bounds
             + size_bytes_proofs
-            + prover_msg_size_in_bytes
-            + evals_size_in_bytes;
-        let stats = format!(
+            + prover_message_size_in_bytes
+            + evaluation_size_in_bytes;
+        let statistics = format!(
             "Argument size in bytes: {}\n\n\
              Number of commitments without degree bounds: {}\n\
              Size (in bytes) of commitments without degree bounds: {}\n\
@@ -179,18 +103,30 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> Proof<F, PC> {
              Size (in bytes) of evaluations: {}\n\n\
              Number of field elements in prover messages: {}\n\
              Size (in bytes) of prover message: {}\n",
-            arg_size,
+            argument_size,
             num_comms_without_degree_bounds,
             size_bytes_comms_without_degree_bounds,
             num_comms_with_degree_bounds,
             size_bytes_comms_with_degree_bounds,
             num_proofs,
             size_bytes_proofs,
-            num_evals,
-            evals_size_in_bytes,
+            num_evaluations,
+            evaluation_size_in_bytes,
             num_prover_messages,
-            prover_msg_size_in_bytes,
+            prover_message_size_in_bytes,
         );
-        add_to_trace!(|| "Statistics about proof", || stats);
+        add_to_trace!(|| "Statistics about proof", || statistics);
+    }
+}
+
+impl<F: PrimeField, PC: PolynomialCommitment<F>> ToBytes for Proof<F, PC> {
+    fn write<W: Write>(&self, mut w: W) -> io::Result<()> {
+        CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize Proof"))
+    }
+}
+
+impl<F: PrimeField, PC: PolynomialCommitment<F>> FromBytes for Proof<F, PC> {
+    fn read<R: Read>(mut r: R) -> io::Result<Self> {
+        CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize Proof"))
     }
 }
