@@ -24,7 +24,7 @@ use super::{
     Proof,
     VerifyingKey,
 };
-use snarkvm_errors::algorithms::SNARKError;
+use crate::errors::SNARKError;
 use snarkvm_models::{
     algorithms::SNARK,
     curves::{to_field_vec::ToConstraintField, PairingEngine},

@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{commitment::PedersenCommitmentParameters, crh::PedersenSize};
-use snarkvm_errors::algorithms::CommitmentError;
+use crate::{commitment::PedersenCommitmentParameters, crh::PedersenSize, errors::CommitmentError};
 use snarkvm_models::{
     algorithms::{CommitmentScheme, CRH},
     curves::{Group, PrimeField},

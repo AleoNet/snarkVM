@@ -33,6 +33,7 @@ pub mod commitment_tree;
 pub mod crh;
 pub mod encoding;
 pub mod encryption;
+pub mod errors;
 pub mod fft;
 pub mod merkle_tree;
 pub mod msm;

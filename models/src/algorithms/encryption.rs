@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::algorithms::signature::SignatureScheme;
-use snarkvm_errors::algorithms::EncryptionError;
+use snarkvm_algorithms::errors::EncryptionError;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     rand::UniformRand,

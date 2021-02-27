@@ -16,7 +16,7 @@
 
 use crate::algorithms::CRH;
 
-use snarkvm_errors::algorithms::MerkleError;
+use snarkvm_algorithms::errors::MerkleError;
 use snarkvm_utilities::bytes::ToBytes;
 
 use rand::Rng;

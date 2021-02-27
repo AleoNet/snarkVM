@@ -14,9 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::crh::sha256::sha256;
+use snarkvm_algorithms::{crh::sha256::sha256, errors::CRHError};
 use snarkvm_dpc::base_dpc::instantiated::Components;
-use snarkvm_errors::algorithms::CRHError;
 use snarkvm_models::{algorithms::CRH, dpc::DPCComponents};
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 

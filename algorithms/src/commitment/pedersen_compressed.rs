@@ -17,8 +17,8 @@
 use crate::{
     commitment::{PedersenCommitment, PedersenCommitmentParameters},
     crh::PedersenSize,
+    errors::CommitmentError,
 };
-use snarkvm_errors::algorithms::CommitmentError;
 use snarkvm_models::{
     algorithms::CommitmentScheme,
     curves::{AffineCurve, Group, ProjectiveCurve},

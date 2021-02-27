@@ -19,7 +19,7 @@ use crate::{
     marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinSNARK, Proof, UniversalSRS},
     Parameters,
 };
-use snarkvm_errors::algorithms::SNARKError;
+use snarkvm_algorithms::errors::SNARKError;
 use snarkvm_models::{
     algorithms::SNARK,
     curves::{to_field_vec::ToConstraintField, PairingEngine},

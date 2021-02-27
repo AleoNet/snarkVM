@@ -16,9 +16,9 @@
 
 use crate::{
     encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey},
+    errors::SignatureError,
     signature::{SchnorrOutput, SchnorrParameters, SchnorrPublicKey, SchnorrSignature},
 };
-use snarkvm_errors::algorithms::SignatureError;
 use snarkvm_models::{
     algorithms::{EncryptionScheme, SignatureScheme},
     curves::{Group, PrimeField, ProjectiveCurve},

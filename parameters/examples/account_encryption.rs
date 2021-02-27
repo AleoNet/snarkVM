@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_algorithms::errors::EncryptionError;
 use snarkvm_dpc::base_dpc::instantiated::Components;
-use snarkvm_errors::algorithms::EncryptionError;
 use snarkvm_models::{algorithms::EncryptionScheme, dpc::DPCComponents};
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
