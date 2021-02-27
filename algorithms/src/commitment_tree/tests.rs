@@ -18,9 +18,9 @@ use crate::{
     commitment::PedersenCompressedCommitment,
     commitment_tree::*,
     crh::{BoweHopwoodPedersenCompressedCRH, PedersenSize},
+    traits::{CommitmentScheme, CRH},
 };
 use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
-use snarkvm_models::algorithms::{CommitmentScheme, CRH};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     rand::UniformRand,

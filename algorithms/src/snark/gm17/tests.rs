@@ -109,9 +109,8 @@ mod gm17 {
 
     #[test]
     fn test_gm17() {
-        use crate::snark::gm17::GM17;
+        use crate::{snark::gm17::GM17, traits::SNARK};
         use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-        use snarkvm_models::algorithms::SNARK;
 
         #[derive(Copy, Clone)]
         struct R1CSCircuit {

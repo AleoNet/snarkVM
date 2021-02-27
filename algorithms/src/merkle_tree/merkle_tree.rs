@@ -17,8 +17,8 @@
 use crate::{
     errors::MerkleError,
     merkle_tree::{MerklePath, MerkleTreeDigest},
+    traits::{MerkleParameters, CRH},
 };
-use snarkvm_models::algorithms::{MerkleParameters, CRH};
 use snarkvm_utilities::ToBytes;
 
 #[derive(Default)]

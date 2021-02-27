@@ -17,9 +17,9 @@
 use crate::{
     commitment::{PedersenCommitment, PedersenCompressedCommitment},
     crh::PedersenSize,
+    traits::CommitmentScheme,
 };
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
-use snarkvm_models::algorithms::CommitmentScheme;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     to_bytes,

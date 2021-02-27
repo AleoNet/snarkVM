@@ -79,7 +79,7 @@ mod tests {
     use super::*;
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
-    use snarkvm_models::algorithms::SNARK;
+    use snarkvm_algorithms::traits::SNARK;
     use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
     use snarkvm_utilities::bytes::FromBytes;
 

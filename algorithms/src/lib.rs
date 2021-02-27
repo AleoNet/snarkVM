@@ -52,3 +52,6 @@ pub mod prf;
 pub mod signature;
 
 pub mod snark;
+
+pub mod traits;
+pub use traits::*;
