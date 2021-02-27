@@ -38,7 +38,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
     pub fn verifier_first_round<R: RngCore>(
         index_info: CircuitInfo<F>,
         rng: &mut R,
-    ) -> Result<(VerifierFirstMsg<F>, VerifierState<F>), AHPError> {
+    ) -> Result<(VerifierFirstMessage<F>, VerifierState<F>), AHPError> {
         if index_info.num_constraints != index_info.num_variables {
             return Err(AHPError::NonSquareMatrix);
         }
@@ -54,7 +54,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let eta_b = F::rand(rng);
         let eta_c = F::rand(rng);
 
-        let msg = VerifierFirstMsg {
+        let msg = VerifierFirstMessage {
             alpha,
             eta_a,
             eta_b,
@@ -76,9 +76,9 @@ impl<F: PrimeField> AHPForR1CS<F> {
     pub fn verifier_second_round<R: RngCore>(
         mut state: VerifierState<F>,
         rng: &mut R,
-    ) -> (VerifierSecondMsg<F>, VerifierState<F>) {
+    ) -> (VerifierSecondMessage<F>, VerifierState<F>) {
         let beta = state.domain_h.sample_element_outside_domain(rng);
-        let msg = VerifierSecondMsg { beta };
+        let msg = VerifierSecondMessage { beta };
         state.second_round_msg = Some(msg);
 
         (msg, state)

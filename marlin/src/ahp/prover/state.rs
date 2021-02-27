@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    ahp::{indexer::Circuit, prover::ProverConstraintSystem, verifier::VerifierFirstMsg},
+    ahp::{indexer::Circuit, prover::ProverConstraintSystem, verifier::VerifierFirstMessage},
     Vec,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
@@ -39,7 +39,7 @@ pub struct ProverState<'a, F: PrimeField> {
     pub(crate) index: &'a Circuit<F>,
 
     /// the random values sent by the verifier in the first round
-    pub(crate) verifier_first_msg: Option<VerifierFirstMsg<F>>,
+    pub(crate) verifier_first_msg: Option<VerifierFirstMessage<F>>,
 
     /// the blinding polynomial for the first round
     pub(crate) mask_poly: Option<LabeledPolynomial<F>>,

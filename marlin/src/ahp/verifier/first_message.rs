@@ -16,7 +16,7 @@
 
 /// First message of the verifier.
 #[derive(Copy, Clone)]
-pub struct VerifierFirstMsg<F> {
+pub struct VerifierFirstMessage<F> {
     /// Query for the random polynomial.
     pub alpha: F,
     /// Randomizer for the lincheck for `A`.

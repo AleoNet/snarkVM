@@ -123,30 +123,3 @@ where
         Ok(res)
     }
 }
-//
-// impl<E, C, V> MarlinSystem<E, C, V>
-// where
-//     E: PairingEngine,
-//     C: ConstraintSynthesizer<E::Fr>,
-//     V: ToConstraintField<E::Fr>,
-// {
-//     /// Generates the universal proving and verifying keys for the argument system.
-//     pub fn universal_setup<R: RngCore>(
-//         num_constraints: usize,
-//         num_variables: usize,
-//         num_non_zero: usize,
-//         rng: &mut R,
-//     ) -> Result<SRS<E>, MarlinError<<MultiPC<E> as PolynomialCommitment<E::Fr>>::Error>> {
-//         let max_degree = crate::ahp::AHPForR1CS::<E::Fr>::max_degree(num_constraints, num_variables, num_non_zero)?;
-//         let setup_time = start_timer!(|| {
-//             format!(
-//                 "Marlin::UniversalSetup with max_degree {}, computed for a maximum of {} constraints, {} vars, {} non_zero",
-//                 max_degree, num_constraints, num_variables, num_non_zero,
-//             )
-//         });
-//
-//         let srs = MultiPC::<E>::setup(max_degree, rng).map_err(MarlinError::from_pc_err);
-//         end_timer!(setup_time);
-//         srs
-//     }
-// }

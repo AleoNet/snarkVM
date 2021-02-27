@@ -18,7 +18,7 @@ use crate::{
     ahp::{
         indexer::{Circuit, CircuitInfo, Matrix},
         prover::ProverConstraintSystem,
-        verifier::{VerifierFirstMsg, VerifierSecondMsg},
+        verifier::{VerifierFirstMessage, VerifierSecondMessage},
         AHPError,
         AHPForR1CS,
         UnnormalizedBivariateLagrangePoly,
@@ -312,7 +312,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
     /// Output the second round message and the next state.
     pub fn prover_second_round<'a, R: RngCore>(
-        ver_message: &VerifierFirstMsg<F>,
+        ver_message: &VerifierFirstMessage<F>,
         mut state: ProverState<'a, F>,
         _r: &mut R,
     ) -> (ProverMessage<F>, ProverSecondOracles<F>, ProverState<'a, F>) {
@@ -326,7 +326,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
             .as_ref()
             .expect("ProverState should include mask_poly when prover_second_round is called");
 
-        let VerifierFirstMsg {
+        let VerifierFirstMessage {
             alpha,
             eta_a,
             eta_b,
@@ -452,7 +452,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
     /// Output the third round message and the next state.
     pub fn prover_third_round<'a, R: RngCore>(
-        ver_message: &VerifierSecondMsg<F>,
+        ver_message: &VerifierSecondMessage<F>,
         prover_state: ProverState<'a, F>,
         _r: &mut R,
     ) -> Result<(ProverMessage<F>, ProverThirdOracles<F>), AHPError> {
@@ -466,7 +466,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
             ..
         } = prover_state;
 
-        let VerifierFirstMsg {
+        let VerifierFirstMessage {
             eta_a,
             eta_b,
             eta_c,

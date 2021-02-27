@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ahp::verifier::{VerifierFirstMsg, VerifierSecondMsg};
+use crate::ahp::verifier::{VerifierFirstMessage, VerifierSecondMessage};
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_models::curves::PrimeField;
 
@@ -23,8 +23,8 @@ pub struct VerifierState<F: PrimeField> {
     pub(crate) domain_h: EvaluationDomain<F>,
     pub(crate) domain_k: EvaluationDomain<F>,
 
-    pub(crate) first_round_msg: Option<VerifierFirstMsg<F>>,
-    pub(crate) second_round_msg: Option<VerifierSecondMsg<F>>,
+    pub(crate) first_round_msg: Option<VerifierFirstMessage<F>>,
+    pub(crate) second_round_msg: Option<VerifierSecondMessage<F>>,
 
     pub(crate) gamma: Option<F>,
 }
