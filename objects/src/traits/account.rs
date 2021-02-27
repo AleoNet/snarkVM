@@ -14,11 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_parameters::errors::ParameterError;
+use crate::{
+    algorithms::{CommitmentScheme, EncryptionScheme, SignatureScheme},
+    errors::AccountError,
+};
 
-pub trait Parameter {
-    const CHECKSUM: &'static str;
-    const SIZE: u64;
+use rand::Rng;
 
-    fn load_bytes() -> Result<Vec<u8>, ParameterError>;
+pub trait AccountScheme: Sized {
+    type AccountAddress: Default;
+    type AccountPrivateKey;
+    type CommitmentScheme: CommitmentScheme;
+    type EncryptionScheme: EncryptionScheme;
+    type SignatureScheme: SignatureScheme;
+
+    fn new<R: Rng>(
+        signature_parameters: &Self::SignatureScheme,
+        commitment_parameters: &Self::CommitmentScheme,
+        encryption_parameters: &Self::EncryptionScheme,
+        rng: &mut R,
+    ) -> Result<Self, AccountError>;
 }

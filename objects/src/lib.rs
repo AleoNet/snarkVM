@@ -52,3 +52,6 @@ pub use pedersen_merkle_tree::*;
 
 pub mod posw;
 pub use posw::ProofOfSuccinctWork;
+
+pub mod traits;
+pub use traits::*;

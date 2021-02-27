@@ -24,3 +24,6 @@ pub use genesis::*;
 
 pub mod params;
 pub use params::*;
+
+pub mod traits;
+pub use traits::*;

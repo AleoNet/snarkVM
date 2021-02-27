@@ -17,8 +17,8 @@
 use crate::{
     curves::{FpParameters, Group, MontgomeryModelParameters, PrimeField, ProjectiveCurve, TEModelParameters},
     dpc::Record,
+    errors::DPCError,
 };
-use snarkvm_dpc::errors::DPCError;
 
 pub trait RecordSerializerScheme {
     /// The group is composed of base field elements in `Self::InnerField`.
