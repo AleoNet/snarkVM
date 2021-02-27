@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::errors::SynthesisError;
 use snarkvm_algorithms::merkle_tree::MerklePath;
-use snarkvm_errors::gadgets::SynthesisError;
 use snarkvm_models::{
     algorithms::{MerkleParameters, CRH},
     curves::Field,

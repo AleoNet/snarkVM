@@ -21,7 +21,7 @@ use crate::{
         utilities::{bits::RippleCarryAdder, boolean::Boolean},
     },
 };
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_gadgets::errors::SynthesisError;
 
 /// Returns a negated representation of `self` in the constraint system.
 pub trait Neg<F: Field>

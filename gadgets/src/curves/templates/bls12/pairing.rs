@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::templates::bls12::{G1Gadget, G1PreparedGadget, G2Gadget, G2PreparedGadget};
+use crate::{
+    curves::templates::bls12::{G1Gadget, G1PreparedGadget, G2Gadget, G2PreparedGadget},
+    errors::SynthesisError,
+};
 use snarkvm_curves::templates::bls12::{
     Bls12,
     Bls12Parameters,
@@ -26,7 +29,6 @@ use snarkvm_curves::templates::bls12::{
     G2Projective,
     TwistType,
 };
-use snarkvm_errors::gadgets::SynthesisError;
 use snarkvm_models::{
     curves::{Fp12, ModelParameters, PairingCurve},
     gadgets::{

@@ -43,4 +43,8 @@
 extern crate derivative;
 
 pub mod algorithms;
+
 pub mod curves;
+
+pub mod errors;
+pub use errors::*;
