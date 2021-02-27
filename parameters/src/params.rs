@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::errors::ParameterError;
 use snarkvm_algorithms::crh::sha256::sha256;
-use snarkvm_errors::parameters::ParameterError;
 use snarkvm_models::parameters::Parameter;
 
 use std::{
