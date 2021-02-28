@@ -19,7 +19,7 @@ use crate::ahp::prover::ProverConstraintSystem;
 use crate::ahp::verifier::VerifierFirstMessage;
 use crate::Vec;
 use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_curves::traits::PrimeField;
+use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::LabeledPolynomial;
 
 /// State for the AHP prover.

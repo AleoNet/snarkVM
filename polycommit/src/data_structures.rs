@@ -18,7 +18,7 @@ use crate::Arc;
 use crate::String;
 use crate::Vec;
 pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
-use snarkvm_curves::traits::Field;
+use snarkvm_fields::Field;
 use snarkvm_utilities::bytes::FromBytes;
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::error as error_fn;

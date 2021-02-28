@@ -20,7 +20,7 @@ use crate::errors::CommitmentError;
 use crate::traits::CommitmentScheme;
 use crate::traits::CRH;
 use snarkvm_curves::traits::Group;
-use snarkvm_curves::traits::PrimeField;
+use snarkvm_fields::PrimeField;
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use rand::Rng;

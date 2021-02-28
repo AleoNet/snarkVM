@@ -16,7 +16,7 @@
 
 use crate::ahp::prover::ProverMessage;
 use crate::Vec;
-use snarkvm_curves::traits::PrimeField;
+use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::BatchLCProof;
 use snarkvm_polycommit::PCCommitment;
 use snarkvm_polycommit::PolynomialCommitment;

@@ -19,8 +19,8 @@
 use crate::fft::DenseOrSparsePolynomial;
 use crate::fft::EvaluationDomain;
 use crate::fft::Evaluations;
-use snarkvm_curves::traits::Field;
-use snarkvm_curves::traits::PrimeField;
+use snarkvm_fields::Field;
+use snarkvm_fields::PrimeField;
 use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::serialize::*;
 
@@ -382,9 +382,9 @@ impl<'a, 'b, F: PrimeField> Mul<&'a DensePolynomial<F>> for &'b DensePolynomial<
 mod tests {
     use crate::fft::polynomial::*;
     use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_curves::traits::Field;
-    use snarkvm_curves::traits::One;
-    use snarkvm_curves::traits::Zero;
+    use snarkvm_fields::Field;
+    use snarkvm_fields::One;
+    use snarkvm_fields::Zero;
     use snarkvm_utilities::rand::UniformRand;
 
     use rand::thread_rng;

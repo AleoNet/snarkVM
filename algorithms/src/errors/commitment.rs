@@ -17,7 +17,7 @@
 use std::io::Error;
 use std::io::ErrorKind;
 
-use crate::algorithms::CRHError;
+use crate::CRHError;
 
 #[derive(Debug, Error)]
 pub enum CommitmentError {

@@ -17,13 +17,13 @@
 use super::generator::KeypairAssembly;
 use super::prover::ProvingAssignment;
 use crate::fft::EvaluationDomain;
-use snarkvm_curves::traits::Field;
-use snarkvm_curves::traits::One;
 use snarkvm_curves::traits::PairingEngine;
-use snarkvm_curves::traits::Zero;
-use snarkvm_gadgets::errors::SynthesisError;
-use snarkvm_gadgets::errors::SynthesisResult;
-use snarkvm_gadgets::traits::r1cs::Index;
+use snarkvm_fields::Field;
+use snarkvm_fields::One;
+use snarkvm_fields::Zero;
+use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisResult;
+use snarkvm_r1cs::Index;
 
 use std::ops::AddAssign;
 use std::ops::SubAssign;

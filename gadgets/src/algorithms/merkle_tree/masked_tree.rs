@@ -14,13 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::SynthesisError;
-use crate::traits::algorithms::MaskedCRHGadget;
-use crate::traits::r1cs::ConstraintSystem;
-use crate::traits::utilities::uint::unsigned_integer::UInt8;
-use crate::traits::utilities::ToBytesGadget;
+use crate::{
+    errors::SynthesisError,
+    traits::{
+        algorithms::MaskedCRHGadget,
+        r1cs::ConstraintSystem,
+        utilities::{uint::unsigned_integer::UInt8, ToBytesGadget},
+    },
+};
 use snarkvm_algorithms::traits::CRH;
-use snarkvm_curves::traits::PrimeField;
+use snarkvm_fields::PrimeField;
 
 /// Computes a root given `leaves`. Uses a nonce to mask the computation,
 /// to ensure amortization resistance. Assumes the number of leaves is

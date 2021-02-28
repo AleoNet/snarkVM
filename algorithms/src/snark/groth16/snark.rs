@@ -24,9 +24,9 @@ use super::Proof;
 use super::VerifyingKey;
 use crate::errors::SNARKError;
 use crate::traits::SNARK;
-use snarkvm_curves::traits::to_field_vec::ToConstraintField;
 use snarkvm_curves::traits::PairingEngine;
-use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
+use snarkvm_fields::traits::ToConstraintField;
+use snarkvm_r1cs::ConstraintSynthesizer;
 
 use rand::Rng;
 use std::marker::PhantomData;

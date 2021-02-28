@@ -19,7 +19,7 @@
 //! inputs a mask computed as Blake2s(nonce || root), which the verifier also checks.
 use snarkvm_algorithms::traits::MaskedMerkleParameters;
 use snarkvm_algorithms::traits::CRH;
-use snarkvm_curves::traits::PrimeField;
+use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::algorithms::merkle_tree::compute_root;
 use snarkvm_r1cs::errors::SynthesisError;
 

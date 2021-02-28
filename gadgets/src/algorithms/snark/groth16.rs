@@ -14,21 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::SynthesisError;
-use crate::traits::algorithms::snark::SNARKVerifierGadget;
-use crate::traits::curves::{GroupGadget, PairingGadget};
-use crate::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem};
-use crate::traits::utilities::alloc::{AllocBytesGadget, AllocGadget};
-use crate::traits::utilities::eq::EqGadget;
-use crate::traits::utilities::uint::UInt8;
-use crate::traits::utilities::{ToBitsGadget, ToBytesGadget};
+use crate::{
+    errors::SynthesisError,
+    traits::{
+        algorithms::snark::SNARKVerifierGadget,
+        curves::{GroupGadget, PairingGadget},
+        r1cs::{ConstraintSynthesizer, ConstraintSystem},
+        utilities::{
+            alloc::{AllocBytesGadget, AllocGadget},
+            eq::EqGadget,
+            uint::UInt8,
+            ToBitsGadget,
+            ToBytesGadget,
+        },
+    },
+};
 use snarkvm_algorithms::snark::groth16::{Groth16, Proof, VerifyingKey};
-use snarkvm_curves::traits::to_field_vec::ToConstraintField;
-use snarkvm_curves::traits::{AffineCurve, Field, PairingEngine};
+use snarkvm_curves::traits::{to_field_vec::ToConstraintField, AffineCurve, Field, PairingEngine};
 use snarkvm_utilities::bytes::FromBytes;
 
-use std::borrow::Borrow;
-use std::marker::PhantomData;
+use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "P::G1Gadget: Clone, P::G2Gadget: Clone"))]
@@ -419,12 +424,16 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::curves::bls12_377::PairingGadget as Bls12_377PairingGadget;
-    use crate::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
-    use crate::traits::utilities::boolean::Boolean;
+    use crate::{
+        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
+        traits::{
+            r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem},
+            utilities::boolean::Boolean,
+        },
+    };
     use snarkvm_algorithms::snark::groth16::*;
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-    use snarkvm_curves::traits::PrimeField;
+    use snarkvm_fields::PrimeField;
     use snarkvm_utilities::{test_rng, to_bytes, BitIteratorBE, ToBytes};
 
     use rand::Rng;

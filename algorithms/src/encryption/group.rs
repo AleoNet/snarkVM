@@ -15,15 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::encryption::GroupEncryptionParameters;
+use crate::errors::EncryptionError;
 use crate::traits::EncryptionScheme;
 use snarkvm_curves::traits::AffineCurve;
-use snarkvm_curves::traits::Field;
 use snarkvm_curves::traits::Group;
-use snarkvm_curves::traits::One;
-use snarkvm_curves::traits::PrimeField;
 use snarkvm_curves::traits::ProjectiveCurve;
-use snarkvm_curves::traits::Zero;
-use snarkvm_errors::algorithms::EncryptionError;
+use snarkvm_fields::Field;
+use snarkvm_fields::One;
+use snarkvm_fields::PrimeField;
+use snarkvm_fields::Zero;
 use snarkvm_utilities::bytes_to_bits;
 use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::rand::UniformRand;

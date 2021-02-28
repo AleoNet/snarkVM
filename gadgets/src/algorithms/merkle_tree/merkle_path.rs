@@ -14,16 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::SynthesisError;
-use crate::traits::algorithms::CRHGadget;
-use crate::traits::r1cs::ConstraintSystem;
-use crate::traits::utilities::alloc::AllocGadget;
-use crate::traits::utilities::boolean::{AllocatedBit, Boolean};
-use crate::traits::utilities::eq::{ConditionalEqGadget, ConditionalOrEqualsGadget};
-use crate::traits::utilities::ToBytesGadget;
-use snarkvm_algorithms::merkle_tree::MerklePath;
-use snarkvm_algorithms::traits::{MerkleParameters, CRH};
-use snarkvm_curves::traits::Field;
+use crate::{
+    errors::SynthesisError,
+    traits::{
+        algorithms::CRHGadget,
+        r1cs::ConstraintSystem,
+        utilities::{
+            alloc::AllocGadget,
+            boolean::{AllocatedBit, Boolean},
+            eq::{ConditionalEqGadget, ConditionalOrEqualsGadget},
+            ToBytesGadget,
+        },
+    },
+};
+use snarkvm_algorithms::{
+    merkle_tree::MerklePath,
+    traits::{MerkleParameters, CRH},
+};
+use snarkvm_fields::Field;
 
 use std::borrow::Borrow;
 

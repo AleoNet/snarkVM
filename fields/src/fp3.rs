@@ -14,27 +14,41 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Field, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    div_ceil,
-    errors::SerializationError,
-    rand::UniformRand,
-    serialize::*,
-};
+use crate::Field;
+use crate::LegendreSymbol;
+use crate::One;
+use crate::PrimeField;
+use crate::SquareRootField;
+use crate::Zero;
+use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::div_ceil;
+use snarkvm_utilities::errors::SerializationError;
+use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::serialize::*;
 
-use rand::{
-    distributions::{Distribution, Standard},
-    Rng,
-};
-use serde::{Deserialize, Serialize};
-use std::{
-    cmp::{Ord, Ordering, PartialOrd},
-    io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
-    str::FromStr,
-};
+use rand::distributions::Distribution;
+use rand::distributions::Standard;
+use rand::Rng;
+use serde::Deserialize;
+use serde::Serialize;
+use std::cmp::Ord;
+use std::cmp::Ordering;
+use std::cmp::PartialOrd;
+use std::io::Read;
+use std::io::Result as IoResult;
+use std::io::Write;
+use std::marker::PhantomData;
+use std::ops::Add;
+use std::ops::AddAssign;
+use std::ops::Div;
+use std::ops::DivAssign;
+use std::ops::Mul;
+use std::ops::MulAssign;
+use std::ops::Neg;
+use std::ops::Sub;
+use std::ops::SubAssign;
+use std::str::FromStr;
 
 pub trait Fp3Parameters: 'static + Send + Sync {
     type Fp: PrimeField + SquareRootField;

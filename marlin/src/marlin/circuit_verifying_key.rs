@@ -16,7 +16,7 @@
 
 use crate::ahp::indexer::*;
 use crate::Vec;
-use snarkvm_curves::traits::PrimeField;
+use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::PolynomialCommitment;
 use snarkvm_utilities::bytes::FromBytes;
 use snarkvm_utilities::bytes::ToBytes;

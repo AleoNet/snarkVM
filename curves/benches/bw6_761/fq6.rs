@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_curves::bw6_761::Fq6;
-use snarkvm_curves::traits::Field;
+use snarkvm_fields::Field;
 use snarkvm_utilities::rand::UniformRand;
 
 use rand::SeedableRng;

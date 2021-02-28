@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_curves::bls12_377::Fq2;
-use snarkvm_curves::traits::Field;
-use snarkvm_curves::traits::SquareRootField;
+use snarkvm_fields::Field;
+use snarkvm_fields::SquareRootField;
 use snarkvm_utilities::rand::UniformRand;
 
 use criterion::Criterion;

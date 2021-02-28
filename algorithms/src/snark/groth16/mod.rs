@@ -19,11 +19,11 @@
 //! [`Groth16`]: https://eprint.iacr.org/2016/260.pdf
 
 use snarkvm_curves::traits::AffineCurve;
-use snarkvm_curves::traits::Field;
 use snarkvm_curves::traits::PairingCurve;
 use snarkvm_curves::traits::PairingEngine;
-use snarkvm_gadgets::traits::r1cs::Index;
-use snarkvm_gadgets::traits::r1cs::LinearCombination;
+use snarkvm_fields::Field;
+use snarkvm_r1cs::Index;
+use snarkvm_r1cs::LinearCombination;
 use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::serialize::*;
 use snarkvm_utilities::FromBytes;

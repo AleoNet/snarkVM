@@ -17,7 +17,7 @@
 use crate::ahp::matrices::make_matrices_square;
 use crate::ahp::matrices::padded_matrix_dim;
 use crate::ahp::matrices::to_matrix_helper;
-use snarkvm_curves::traits::Field;
+use snarkvm_fields::Field;
 use snarkvm_r1cs::errors::SynthesisError;
 
 use snarkvm_gadgets::traits::r1cs::ConstraintSystem;

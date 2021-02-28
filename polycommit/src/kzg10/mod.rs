@@ -33,12 +33,12 @@ use snarkvm_algorithms::msm::FixedBaseMSM;
 use snarkvm_algorithms::msm::VariableBaseMSM;
 use snarkvm_curves::traits::AffineCurve;
 use snarkvm_curves::traits::Group;
-use snarkvm_curves::traits::One;
 use snarkvm_curves::traits::PairingCurve;
 use snarkvm_curves::traits::PairingEngine;
 use snarkvm_curves::traits::PrimeField;
 use snarkvm_curves::traits::ProjectiveCurve;
-use snarkvm_curves::traits::Zero;
+use snarkvm_fields::One;
+use snarkvm_fields::Zero;
 use snarkvm_utilities::rand::UniformRand;
 
 use core::marker::PhantomData;

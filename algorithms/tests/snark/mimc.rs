@@ -38,7 +38,7 @@ use snarkvm_curves::bls12_377::Bls12_377;
 use snarkvm_curves::bls12_377::Fr;
 
 // We'll use these interfaces to construct our circuit.
-use snarkvm_curves::traits::Field;
+use snarkvm_fields::Field;
 use snarkvm_r1cs::errors::SynthesisError;
 
 use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;

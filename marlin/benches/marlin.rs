@@ -20,8 +20,8 @@ extern crate criterion;
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_curves::bls12_377::Bls12_377;
 use snarkvm_curves::bls12_377::Fr;
-use snarkvm_curves::traits::Field;
 use snarkvm_curves::traits::PairingEngine;
+use snarkvm_fields::Field;
 use snarkvm_r1cs::errors::SynthesisError;
 
 use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;

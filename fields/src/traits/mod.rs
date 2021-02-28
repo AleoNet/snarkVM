@@ -14,26 +14,5 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#[derive(Debug, Error)]
-pub enum ConstraintFieldError {
-    #[error("{}: {}", _0, _1)]
-    Crate(&'static str, String),
-
-    #[error("{}", _0)]
-    Message(String),
-
-    #[error("{}", _0)]
-    SynthesisError(crate::errors::SynthesisError),
-}
-
-impl From<crate::errors::SynthesisError> for ConstraintFieldError {
-    fn from(error: crate::errors::SynthesisError) -> Self {
-        ConstraintFieldError::SynthesisError(error)
-    }
-}
-
-impl From<std::io::Error> for ConstraintFieldError {
-    fn from(error: std::io::Error) -> Self {
-        ConstraintFieldError::Crate("std::io", format!("{:?}", error))
-    }
-}
+pub mod to_field_vec;
+pub use to_field_vec::*;

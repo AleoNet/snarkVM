@@ -15,75 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::ConstraintFieldError;
-use snarkvm_curves::{
-    templates::{
-        short_weierstrass::short_weierstrass_jacobian::{GroupAffine as SWAffine, GroupProjective as SWProjective},
-        twisted_edwards_extended::{GroupAffine as TEAffine, GroupProjective as TEProjective},
-    },
-    traits::{ProjectiveCurve, SWModelParameters, TEModelParameters},
-};
-use snarkvm_fields::{Field, Fp2, Fp2Parameters, FpParameters, PrimeField};
-
-/// Types that can be converted to a vector of `F` elements. Useful for specifying
-/// how public inputs to a constraint system should be represented inside
-/// that constraint system.
-pub trait ToConstraintField<F: Field> {
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError>;
-}
-
-impl<M: TEModelParameters, F: Field> ToConstraintField<F> for TEAffine<M>
-where
-    M::BaseField: ToConstraintField<F>,
-{
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        let mut x_fe = self.x.to_field_elements()?;
-        let y_fe = self.y.to_field_elements()?;
-        x_fe.extend_from_slice(&y_fe);
-        Ok(x_fe)
-    }
-}
-
-impl<M: TEModelParameters, F: Field> ToConstraintField<F> for TEProjective<M>
-where
-    M::BaseField: ToConstraintField<F>,
-{
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        let affine = self.into_affine();
-        let mut x_fe = affine.x.to_field_elements()?;
-        let y_fe = affine.y.to_field_elements()?;
-        x_fe.extend_from_slice(&y_fe);
-        Ok(x_fe)
-    }
-}
-
-impl<M: SWModelParameters, F: Field> ToConstraintField<F> for SWAffine<M>
-where
-    M::BaseField: ToConstraintField<F>,
-{
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        let mut x_fe = self.x.to_field_elements()?;
-        let y_fe = self.y.to_field_elements()?;
-        x_fe.extend_from_slice(&y_fe);
-        Ok(x_fe)
-    }
-}
-
-impl<M: SWModelParameters, F: Field> ToConstraintField<F> for SWProjective<M>
-where
-    M::BaseField: ToConstraintField<F>,
-{
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        let affine = self.into_affine();
-        let mut x_fe = affine.x.to_field_elements()?;
-        let y_fe = affine.y.to_field_elements()?;
-        x_fe.extend_from_slice(&y_fe);
-        Ok(x_fe)
-    }
-}
+use crate::Field;
+use crate::Fp2;
+use crate::Fp2Parameters;
+use crate::FpParameters;
+use crate::PrimeField;
+use crate::ToConstraintField;
 
 impl<F: PrimeField> ToConstraintField<F> for F {
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {

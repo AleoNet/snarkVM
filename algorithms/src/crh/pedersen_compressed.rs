@@ -17,15 +17,15 @@
 use crate::crh::PedersenCRH;
 use crate::crh::PedersenCRHParameters;
 use crate::crh::PedersenSize;
+use crate::errors::CRHError;
 use crate::traits::CRHParameters;
 use crate::traits::CRH;
-use snarkvm_algorithms::errors::CRHError;
-use snarkvm_curves::errors::ConstraintFieldError;
-use snarkvm_curves::traits::to_field_vec::ToConstraintField;
-use snarkvm_curves::traits::AffineCurve;
-use snarkvm_curves::traits::Field;
-use snarkvm_curves::traits::Group;
-use snarkvm_curves::traits::ProjectiveCurve;
+use snarkvm_curves::AffineCurve;
+use snarkvm_curves::Group;
+use snarkvm_curves::ProjectiveCurve;
+use snarkvm_fields::errors::ConstraintFieldError;
+use snarkvm_fields::traits::to_field_vec::ToConstraintField;
+use snarkvm_fields::Field;
 
 use rand::Rng;
 

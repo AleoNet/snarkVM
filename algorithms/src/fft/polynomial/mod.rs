@@ -18,8 +18,8 @@
 
 use crate::fft::EvaluationDomain;
 use crate::fft::Evaluations;
-use snarkvm_curves::traits::Field;
-use snarkvm_curves::traits::PrimeField;
+use snarkvm_fields::Field;
+use snarkvm_fields::PrimeField;
 
 use std::borrow::Cow;
 use std::convert::TryInto;

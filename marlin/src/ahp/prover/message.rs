@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Vec;
-use snarkvm_curves::traits::Field;
+use snarkvm_fields::Field;
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::error;
 use snarkvm_utilities::errors::SerializationError;

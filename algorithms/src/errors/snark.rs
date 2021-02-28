@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::ConstraintFieldError;
-use crate::gadgets::SynthesisError;
+use snarkvm_fields::errors::ConstraintFieldError;
+use snarkvm_r1cs::errors::SynthesisError;
 
 #[derive(Debug, Error)]
 pub enum SNARKError {

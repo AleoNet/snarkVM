@@ -22,20 +22,20 @@ use crate::cfg_into_iter;
 use crate::msm::VariableBaseMSM;
 use snarkvm_curves::traits::AffineCurve;
 use snarkvm_curves::traits::Group;
-use snarkvm_curves::traits::One;
 use snarkvm_curves::traits::PairingEngine;
-use snarkvm_curves::traits::PrimeField;
 use snarkvm_curves::traits::ProjectiveCurve;
-use snarkvm_curves::traits::Zero;
+use snarkvm_fields::One;
+use snarkvm_fields::PrimeField;
+use snarkvm_fields::Zero;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
-use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
-use snarkvm_gadgets::traits::r1cs::Index;
-use snarkvm_gadgets::traits::r1cs::LinearCombination;
-use snarkvm_gadgets::traits::r1cs::Variable;
 use snarkvm_profiler::end_timer;
 use snarkvm_profiler::start_timer;
+use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::Index;
+use snarkvm_r1cs::LinearCombination;
+use snarkvm_r1cs::Variable;
 use snarkvm_utilities::rand::UniformRand;
 
 use rand::Rng;

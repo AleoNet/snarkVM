@@ -25,8 +25,8 @@ use crate::Vec;
 use snarkvm_algorithms::cfg_iter_mut;
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_curves::traits::batch_inversion;
-use snarkvm_curves::traits::Field;
 use snarkvm_curves::traits::PrimeField;
+use snarkvm_fields::Field;
 use snarkvm_r1cs::errors::SynthesisError;
 
 use snarkvm_polycommit::LCTerm;
@@ -337,8 +337,8 @@ mod tests {
     use snarkvm_algorithms::fft::DenseOrSparsePolynomial;
     use snarkvm_algorithms::fft::DensePolynomial;
     use snarkvm_curves::bls12_377::fr::Fr;
-    use snarkvm_curves::traits::One;
-    use snarkvm_curves::traits::Zero;
+    use snarkvm_fields::One;
+    use snarkvm_fields::Zero;
     use snarkvm_utilities::rand::test_rng;
     use snarkvm_utilities::rand::UniformRand;
 

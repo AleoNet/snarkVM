@@ -37,7 +37,7 @@ use std::time::Instant;
 // We're going to use the BLS12-377 pairing-friendly elliptic curve.
 use snarkvm_curves::bls12_377::Bls12_377;
 use snarkvm_curves::bls12_377::Fr;
-use snarkvm_curves::traits::One;
+use snarkvm_fields::One;
 
 // We're going to use the Groth-Maller 17 proving system.
 use snarkvm_algorithms::snark::gm17::create_random_proof;

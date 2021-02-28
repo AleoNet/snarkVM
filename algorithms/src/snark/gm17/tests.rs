@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::traits::Field;
-use snarkvm_curves::traits::Zero;
+use snarkvm_fields::Field;
+use snarkvm_fields::Zero;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
-use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
+use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_r1cs::ConstraintSystem;
 
 struct MySillyCircuit<F: Field> {
     a: Option<F>,
@@ -115,7 +115,7 @@ mod gm17 {
     use super::*;
 
     use rand::thread_rng;
-    use snarkvm_curves::traits::One;
+    use snarkvm_fields::One;
     use std::ops::AddAssign;
 
     #[test]

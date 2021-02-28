@@ -14,29 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    bw6_761::{
-        g1::BW6_761G1Parameters,
-        g2::Bls12_377G2Parameters,
-        Fq,
-        Fq3,
-        Fq6,
-        Fr,
-        G1Affine,
-        G1Projective,
-        G2Affine,
-        G2Projective,
-        BW6_761,
-    },
-    templates::short_weierstrass::tests::sw_tests,
-    traits::{tests_curve::curve_tests, tests_group::group_test, AffineCurve, PairingEngine},
-};
-use snarkvm_fields::{
-    tests_field::{field_serialization_test, field_test, frobenius_test, primefield_test, sqrt_field_test},
-    Field,
-    One,
-    PrimeField,
-};
+use crate::bw6_761::g1::BW6_761G1Parameters;
+use crate::bw6_761::g2::Bls12_377G2Parameters;
+use crate::bw6_761::Fq;
+use crate::bw6_761::Fq3;
+use crate::bw6_761::Fq6;
+use crate::bw6_761::Fr;
+use crate::bw6_761::G1Affine;
+use crate::bw6_761::G1Projective;
+use crate::bw6_761::G2Affine;
+use crate::bw6_761::G2Projective;
+use crate::bw6_761::BW6_761;
+use crate::templates::short_weierstrass::tests::sw_tests;
+use crate::traits::tests_curve::curve_tests;
+use crate::traits::tests_group::group_test;
+use crate::traits::AffineCurve;
+use crate::traits::PairingEngine;
+use snarkvm_fields::tests_field::field_serialization_test;
+use snarkvm_fields::tests_field::field_test;
+use snarkvm_fields::tests_field::frobenius_test;
+use snarkvm_fields::tests_field::primefield_test;
+use snarkvm_fields::tests_field::sqrt_field_test;
+use snarkvm_fields::Field;
+use snarkvm_fields::One;
+use snarkvm_fields::PrimeField;
 
 #[test]
 fn test_bw6_761_fr() {

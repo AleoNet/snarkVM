@@ -14,43 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::CRHError;
-
 #[derive(Debug, Error)]
-pub enum MerkleError {
+pub enum ConstraintFieldError {
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
     #[error("{}", _0)]
-    CRHError(CRHError),
-
-    #[error("Incorrect leaf index: {}", _0)]
-    IncorrectLeafIndex(usize),
-
-    #[error("Incorrect path length: {}", _0)]
-    IncorrectPathLength(usize),
-
-    #[error("Invalid leaf")]
-    InvalidLeaf,
-
-    #[error("Invalid path length: {}. Must be less than or equal to: {}", _0, _1)]
-    InvalidPathLength(usize, usize),
-
-    #[error("Invalid tree depth: {}. Must be less than or equal to: {}", _0, _1)]
-    InvalidTreeDepth(usize, usize),
-
-    #[error("{}", _0)]
     Message(String),
+    // #[error("{}", _0)]
+    // SynthesisError(crate::errors::SynthesisError),
 }
 
-impl From<CRHError> for MerkleError {
-    fn from(error: CRHError) -> Self {
-        MerkleError::CRHError(error)
-    }
-}
+// impl From<crate::errors::SynthesisError> for ConstraintFieldError {
+//     fn from(error: crate::errors::SynthesisError) -> Self {
+//         ConstraintFieldError::SynthesisError(error)
+//     }
+// }
 
-impl From<std::io::Error> for MerkleError {
+impl From<std::io::Error> for ConstraintFieldError {
     fn from(error: std::io::Error) -> Self {
-        MerkleError::Crate("std::io", format!("{:?}", error))
+        ConstraintFieldError::Crate("std::io", format!("{:?}", error))
     }
 }

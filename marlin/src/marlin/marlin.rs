@@ -23,7 +23,7 @@ use crate::marlin::FiatShamirRng;
 use crate::marlin::MarlinError;
 use crate::marlin::Proof;
 use crate::marlin::UniversalSRS;
-use snarkvm_curves::traits::PrimeField;
+use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
 use snarkvm_polycommit::Evaluations;
 use snarkvm_polycommit::LabeledCommitment;

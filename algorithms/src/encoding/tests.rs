@@ -16,7 +16,7 @@
 
 use crate::encoding::Elligator2;
 use snarkvm_curves::edwards_bls12::*;
-use snarkvm_curves::traits::Zero;
+use snarkvm_fields::Zero;
 use snarkvm_utilities::rand::UniformRand;
 
 use rand::SeedableRng;

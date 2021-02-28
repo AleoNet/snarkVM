@@ -18,11 +18,11 @@ use crate::snark::gm17::PreparedVerifyingKey;
 use crate::snark::gm17::Proof;
 use crate::snark::gm17::VerifyingKey;
 use snarkvm_curves::traits::AffineCurve;
-use snarkvm_curves::traits::One;
 use snarkvm_curves::traits::PairingCurve;
 use snarkvm_curves::traits::PairingEngine;
-use snarkvm_curves::traits::PrimeField;
 use snarkvm_curves::traits::ProjectiveCurve;
+use snarkvm_fields::One;
+use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::errors::SynthesisError;
 
 use std::iter;

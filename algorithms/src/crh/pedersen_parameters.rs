@@ -15,10 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::traits::crh::CRHParameters;
-use snarkvm_curves::errors::ConstraintFieldError;
-use snarkvm_curves::traits::to_field_vec::ToConstraintField;
-use snarkvm_curves::traits::Field;
-use snarkvm_curves::traits::Group;
+use snarkvm_curves::Group;
+use snarkvm_fields::errors::ConstraintFieldError;
+use snarkvm_fields::traits::to_field_vec::ToConstraintField;
+use snarkvm_fields::Field;
 use snarkvm_utilities::bytes::FromBytes;
 use snarkvm_utilities::bytes::ToBytes;
 

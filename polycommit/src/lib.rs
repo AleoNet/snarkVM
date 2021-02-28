@@ -33,7 +33,7 @@ extern crate derivative;
 extern crate snarkvm_profiler;
 
 pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
-use snarkvm_curves::traits::Field;
+use snarkvm_fields::Field;
 use snarkvm_utilities::bytes::FromBytes;
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::error as error_fn;
@@ -500,7 +500,7 @@ pub mod tests {
     use crate::*;
     use rand::distributions::Distribution;
     use rand::Rng;
-    use snarkvm_curves::traits::Field;
+    use snarkvm_fields::Field;
     use snarkvm_utilities::rand::test_rng;
 
     #[derive(Default)]

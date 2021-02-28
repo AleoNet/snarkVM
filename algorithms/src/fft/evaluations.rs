@@ -18,7 +18,7 @@
 
 use crate::fft::DensePolynomial;
 use crate::fft::EvaluationDomain;
-use snarkvm_curves::traits::PrimeField;
+use snarkvm_fields::PrimeField;
 use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::serialize::*;
 

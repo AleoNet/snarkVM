@@ -14,7 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::{Fp256, Fp256Parameters, FpParameters};
+use snarkvm_fields::Fp256;
+use snarkvm_fields::Fp256Parameters;
+use snarkvm_fields::FpParameters;
 use snarkvm_utilities::biginteger::BigInteger256 as BigInteger;
 
 /// This field is the scalar field (Fr) of BLS12-377.

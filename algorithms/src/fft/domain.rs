@@ -28,9 +28,9 @@
 
 use crate::fft::multicore::Worker;
 use crate::fft::SparsePolynomial;
-use snarkvm_curves::traits::batch_inversion;
-use snarkvm_curves::traits::FpParameters;
-use snarkvm_curves::traits::PrimeField;
+use snarkvm_fields::batch_inversion;
+use snarkvm_fields::FpParameters;
+use snarkvm_fields::PrimeField;
 use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::serialize::*;
 
@@ -455,8 +455,8 @@ impl<F: PrimeField> Iterator for Elements<F> {
 mod tests {
     use crate::fft::EvaluationDomain;
     use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_curves::traits::Field;
-    use snarkvm_curves::traits::Zero;
+    use snarkvm_fields::Field;
+    use snarkvm_fields::Zero;
 
     use rand::thread_rng;
     use rand::Rng;

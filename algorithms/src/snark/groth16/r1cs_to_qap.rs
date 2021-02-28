@@ -21,11 +21,11 @@ use crate::cfg_iter;
 use crate::cfg_iter_mut;
 use crate::fft::EvaluationDomain;
 use snarkvm_curves::traits::PairingEngine;
-use snarkvm_curves::traits::Zero;
-use snarkvm_gadgets::errors::SynthesisError;
-use snarkvm_gadgets::errors::SynthesisResult;
-use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
-use snarkvm_gadgets::traits::r1cs::Index;
+use snarkvm_fields::Zero;
+use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisResult;
+use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::Index;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;

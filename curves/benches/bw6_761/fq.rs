@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_curves::bw6_761::Fq;
-use snarkvm_curves::traits::Field;
 use snarkvm_curves::traits::PrimeField;
-use snarkvm_curves::traits::SquareRootField;
+use snarkvm_fields::Field;
+use snarkvm_fields::SquareRootField;
 use snarkvm_utilities::biginteger::BigInteger;
 use snarkvm_utilities::biginteger::BigInteger768 as FqRepr;
 use snarkvm_utilities::rand::UniformRand;

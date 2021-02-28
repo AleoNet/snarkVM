@@ -18,9 +18,9 @@ use crate::msm::*;
 use snarkvm_curves::bls12_377::Fr;
 use snarkvm_curves::bls12_377::G1Projective;
 use snarkvm_curves::traits::AffineCurve;
-use snarkvm_curves::traits::PrimeField;
 use snarkvm_curves::traits::ProjectiveCurve;
-use snarkvm_curves::traits::Zero;
+use snarkvm_fields::PrimeField;
+use snarkvm_fields::Zero;
 use snarkvm_utilities::rand::UniformRand;
 
 use rand::SeedableRng;

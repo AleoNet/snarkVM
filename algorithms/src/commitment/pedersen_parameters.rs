@@ -18,10 +18,10 @@ use crate::crh::PedersenCRH;
 use crate::crh::PedersenCRHParameters;
 use crate::crh::PedersenSize;
 use crate::traits::CRH;
-use snarkvm_curves::errors::ConstraintFieldError;
-use snarkvm_curves::traits::to_field_vec::ToConstraintField;
-use snarkvm_curves::traits::Field;
 use snarkvm_curves::traits::Group;
+use snarkvm_fields::errors::ConstraintFieldError;
+use snarkvm_fields::traits::ToConstraintField;
+use snarkvm_fields::Field;
 use snarkvm_utilities::bytes::FromBytes;
 use snarkvm_utilities::bytes::ToBytes;
 

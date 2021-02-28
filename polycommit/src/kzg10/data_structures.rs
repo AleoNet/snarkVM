@@ -24,7 +24,7 @@ use snarkvm_curves::traits::PairingCurve;
 use snarkvm_curves::traits::PairingEngine;
 use snarkvm_curves::traits::PrimeField;
 use snarkvm_curves::traits::ProjectiveCurve;
-use snarkvm_curves::traits::Zero;
+use snarkvm_fields::Zero;
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::error;
 use snarkvm_utilities::errors::SerializationError;
