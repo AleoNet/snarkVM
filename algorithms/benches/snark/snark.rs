@@ -23,9 +23,8 @@ use snarkvm_curves::bls12_377::Bls12_377;
 use snarkvm_curves::bls12_377::Fr;
 use snarkvm_fields::Field;
 use snarkvm_r1cs::errors::SynthesisError;
-
-use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
-use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
+use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_r1cs::ConstraintSystem;
 
 use criterion::Criterion;
 use rand::thread_rng;

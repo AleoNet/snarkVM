@@ -41,10 +41,6 @@ version = "0.0.6"
 path = "../fields"
 version = "0.0.6"
 
-[dependencies.snarkvm-gadgets]
-path = "../gadgets"
-version = "0.0.6"
-
 [dependencies.snarkvm-polycommit]
 path = "../polycommit"
 version = "0.0.6"
@@ -90,9 +86,6 @@ default-features = false
 
 [dev-dependencies.criterion]
 version = "0.3.4"
-
-[dev-dependencies.snarkvm-curves]
-path = "../curves"
 
 [features]
 default = [ "std", "parallel" ]

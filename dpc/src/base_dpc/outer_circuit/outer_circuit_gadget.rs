@@ -28,7 +28,6 @@ use snarkvm_fields::traits::to_field_vec::ToConstraintField;
 use snarkvm_gadgets::traits::algorithms::CRHGadget;
 use snarkvm_gadgets::traits::algorithms::CommitmentGadget;
 use snarkvm_gadgets::traits::algorithms::SNARKVerifierGadget;
-use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
 use snarkvm_gadgets::traits::utilities::alloc::AllocBytesGadget;
 use snarkvm_gadgets::traits::utilities::alloc::AllocGadget;
 use snarkvm_gadgets::traits::utilities::eq::EqGadget;
@@ -37,6 +36,7 @@ use snarkvm_gadgets::traits::utilities::uint::unsigned_integer::UInt8;
 use snarkvm_gadgets::traits::utilities::ToBytesGadget;
 use snarkvm_objects::AleoAmount;
 use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::ConstraintSystem;
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::to_bytes;
 

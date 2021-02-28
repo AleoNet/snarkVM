@@ -16,10 +16,9 @@
 
 use snarkvm_fields::Field;
 use snarkvm_r1cs::errors::SynthesisError;
-
-use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
-use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
-use snarkvm_gadgets::traits::r1cs::LinearCombination;
+use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::LinearCombination;
 
 use std::marker::PhantomData;
 

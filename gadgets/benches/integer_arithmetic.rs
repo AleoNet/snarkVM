@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
-use snarkvm_gadgets::traits::r1cs::Fr;
-use snarkvm_gadgets::traits::r1cs::TestConstraintSystem;
 use snarkvm_gadgets::traits::utilities::alloc::AllocGadget;
 use snarkvm_gadgets::traits::utilities::uint::UInt;
 use snarkvm_gadgets::traits::utilities::uint::UInt128;
@@ -24,6 +21,9 @@ use snarkvm_gadgets::traits::utilities::uint::UInt16;
 use snarkvm_gadgets::traits::utilities::uint::UInt32;
 use snarkvm_gadgets::traits::utilities::uint::UInt64;
 use snarkvm_gadgets::traits::utilities::uint::UInt8;
+use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::Fr;
+use snarkvm_r1cs::TestConstraintSystem;
 
 use criterion::criterion_group;
 use criterion::criterion_main;

@@ -24,10 +24,10 @@ use snarkvm_curves::traits::PairingEngine;
 use snarkvm_fields::Field;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
-use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
 use snarkvm_marlin::snark::MarlinSystem;
 use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
+use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_r1cs::ConstraintSystem;
 
 use blake2::Blake2s;
 use criterion::Criterion;

@@ -15,9 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #[macro_use]
-extern crate derivative;
-
-#[macro_use]
 extern crate thiserror;
 
 pub mod amount;

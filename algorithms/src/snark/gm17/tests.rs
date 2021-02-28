@@ -17,7 +17,6 @@
 use snarkvm_fields::Field;
 use snarkvm_fields::Zero;
 use snarkvm_r1cs::errors::SynthesisError;
-
 use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_r1cs::ConstraintSystem;
 

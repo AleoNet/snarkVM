@@ -49,13 +49,12 @@ features = [ "derive" ]
 [dependencies.thiserror]
 version = "1.0"
 
-[features]
-default = ["snarkvm-fields/default", "snarkvm-utilities/default"]
-sw6 = [ ]
+[dev-dependencies]
+criterion = "0.3"
 
 [build-dependencies]
 rustc_version = "0.3"
 
-[dev-dependencies]
-criterion = "0.3"
-
+[features]
+default = ["snarkvm-fields/default", "snarkvm-utilities/default"]
+sw6 = [ ]

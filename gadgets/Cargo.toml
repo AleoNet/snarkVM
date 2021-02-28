@@ -17,6 +17,11 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2018"
 
+[[bench]]
+name = "integer_arithmetic"
+path = "benches/integer_arithmetic.rs"
+harness = false
+
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
 version = "0.0.6"
@@ -56,6 +61,9 @@ version = "1.0"
 
 [dev-dependencies.blake2]
 version = "0.9"
+
+[dev-dependencies.criterion]
+version = "0.3"
 
 [dev-dependencies.rand]
 version = "0.8"

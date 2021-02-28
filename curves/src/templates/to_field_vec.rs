@@ -23,10 +23,6 @@ use crate::traits::SWModelParameters;
 use crate::traits::TEModelParameters;
 use snarkvm_fields::errors::ConstraintFieldError;
 use snarkvm_fields::Field;
-use snarkvm_fields::Fp2;
-use snarkvm_fields::Fp2Parameters;
-use snarkvm_fields::FpParameters;
-use snarkvm_fields::PrimeField;
 use snarkvm_fields::ToConstraintField;
 
 impl<M: TEModelParameters, F: Field> ToConstraintField<F> for TEAffine<M>

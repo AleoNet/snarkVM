@@ -35,7 +35,7 @@ members = [
   "storage",
   "testing",
   "utilities",
-  "wasm"
+#  "wasm"
 ]
 
 [[bin]]

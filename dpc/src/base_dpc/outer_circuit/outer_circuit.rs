@@ -26,10 +26,10 @@ use snarkvm_algorithms::traits::SignatureScheme;
 use snarkvm_algorithms::traits::CRH;
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_fields::traits::to_field_vec::ToConstraintField;
-use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
-use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
 use snarkvm_objects::AleoAmount;
 use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_r1cs::ConstraintSystem;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: BaseDPCComponents"))]

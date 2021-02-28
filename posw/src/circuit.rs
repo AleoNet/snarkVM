@@ -25,12 +25,12 @@ use snarkvm_r1cs::errors::SynthesisError;
 
 use snarkvm_gadgets::traits::algorithms::CRHGadget;
 use snarkvm_gadgets::traits::algorithms::MaskedCRHGadget;
-use snarkvm_gadgets::traits::r1cs::Assignment;
-use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
-use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
 use snarkvm_gadgets::traits::utilities::alloc::AllocGadget;
 use snarkvm_gadgets::traits::utilities::eq::EqGadget;
 use snarkvm_gadgets::traits::utilities::uint::UInt8;
+use snarkvm_r1cs::Assignment;
+use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_r1cs::ConstraintSystem;
 
 use std::marker::PhantomData;
 

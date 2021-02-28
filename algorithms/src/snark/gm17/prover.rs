@@ -25,7 +25,6 @@ use snarkvm_fields::One;
 use snarkvm_fields::PrimeField;
 use snarkvm_fields::Zero;
 use snarkvm_r1cs::errors::SynthesisError;
-
 use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_r1cs::ConstraintSystem;
 use snarkvm_r1cs::Index;

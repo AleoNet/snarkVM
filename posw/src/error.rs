@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_errors::algorithms::SNARKError;
+use snarkvm_algorithms::errors::SNARKError;
 use snarkvm_errors::curves::constraint_field::ConstraintFieldError;
 use snarkvm_errors::parameters::ParameterError;
 

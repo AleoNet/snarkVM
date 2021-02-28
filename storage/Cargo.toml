@@ -21,6 +21,10 @@ edition = "2018"
 path = "../algorithms"
 version = "0.0.6"
 
+[dependencies.snarkvm-dpc]
+path = "../dpc"
+version = "0.0.6"
+
 [dependencies.snarkvm-objects]
 path = "../objects"
 version = "0.0.6"
