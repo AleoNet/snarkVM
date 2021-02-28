@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::FpParameters;
-use crate::curves::MontgomeryModelParameters;
-use crate::curves::PrimeField;
-use crate::curves::TEModelParameters;
 use crate::dpc::Record;
 use crate::errors::DPCError;
 use snarkvm_curves::traits::Group;
+use snarkvm_curves::traits::MontgomeryModelParameters;
+use snarkvm_curves::traits::TEModelParameters;
 use snarkvm_curves::ProjectiveCurve;
+use snarkvm_fields::FpParameters;
+use snarkvm_fields::PrimeField;
 
 pub trait RecordSerializerScheme {
     /// The group is composed of base field elements in `Self::InnerField`.

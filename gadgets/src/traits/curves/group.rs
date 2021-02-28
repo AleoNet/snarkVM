@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::AffineCurve;
 use crate::utilities::alloc::AllocGadget;
 use crate::utilities::boolean::Boolean;
 use crate::utilities::eq::EqGadget;
@@ -22,6 +21,7 @@ use crate::utilities::eq::NEqGadget;
 use crate::utilities::select::CondSelectGadget;
 use crate::utilities::ToBitsGadget;
 use crate::utilities::ToBytesGadget;
+use snarkvm_curves::traits::AffineCurve;
 use snarkvm_curves::traits::Group;
 use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::Field;

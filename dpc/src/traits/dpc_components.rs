@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::PrimeField;
 use crate::gadgets::algorithms::CRHGadget;
 use crate::gadgets::algorithms::CommitmentGadget;
 use crate::gadgets::algorithms::EncryptionGadget;
@@ -25,6 +24,7 @@ use snarkvm_algorithms::traits::EncryptionScheme;
 use snarkvm_algorithms::traits::SignatureScheme;
 use snarkvm_algorithms::traits::CRH;
 use snarkvm_algorithms::traits::PRF;
+use snarkvm_fields::PrimeField;
 
 pub trait DPCComponents: 'static + Sized {
     const NUM_INPUT_RECORDS: usize;
