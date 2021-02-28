@@ -27,7 +27,6 @@ use snarkvm_utilities::FromBytes;
 use snarkvm_utilities::ToBytes;
 
 use itertools::Itertools;
-
 use std::io::Error;
 use std::io::ErrorKind;
 use std::io::Read;

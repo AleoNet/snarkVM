@@ -24,10 +24,8 @@ use snarkvm_algorithms::traits::CRH;
 use snarkvm_curves::edwards_bls12::EdwardsParameters;
 use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
 use snarkvm_objects::traits::AccountScheme;
-
 use snarkvm_objects::Account;
 use snarkvm_objects::AccountViewKey;
-
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::to_bytes;
 

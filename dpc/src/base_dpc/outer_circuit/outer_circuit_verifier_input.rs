@@ -25,7 +25,6 @@ use snarkvm_algorithms::traits::CRH;
 use snarkvm_curves::errors::ConstraintFieldError;
 use snarkvm_fields::traits::to_field_vec::ToConstraintField;
 use snarkvm_r1cs::errors::SynthesisError;
-
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::to_bytes;
 

@@ -37,8 +37,6 @@ use snarkvm_fields::One;
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::algorithms::encoding::Elligator2FieldGadget;
 use snarkvm_gadgets::algorithms::merkle_tree::merkle_path::MerklePathGadget;
-use snarkvm_r1cs::errors::SynthesisError;
-
 use snarkvm_gadgets::traits::algorithms::CRHGadget;
 use snarkvm_gadgets::traits::algorithms::CommitmentGadget;
 use snarkvm_gadgets::traits::algorithms::EncryptionGadget;
@@ -60,6 +58,7 @@ use snarkvm_gadgets::traits::utilities::ToBitsGadget;
 use snarkvm_gadgets::traits::utilities::ToBytesGadget;
 use snarkvm_objects::AccountPrivateKey;
 use snarkvm_objects::AleoAmount;
+use snarkvm_r1cs::errors::SynthesisError;
 use snarkvm_utilities::bits_to_bytes;
 use snarkvm_utilities::bytes::FromBytes;
 use snarkvm_utilities::bytes::ToBytes;

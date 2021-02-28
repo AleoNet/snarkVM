@@ -25,12 +25,11 @@ use snarkvm_algorithms::traits::CommitmentScheme;
 use snarkvm_algorithms::traits::EncryptionScheme;
 use snarkvm_algorithms::traits::SignatureScheme;
 use snarkvm_algorithms::traits::CRH;
-use snarkvm_r1cs::errors::SynthesisError;
-
 use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
 use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
 use snarkvm_objects::AccountPrivateKey;
 use snarkvm_objects::AleoAmount;
+use snarkvm_r1cs::errors::SynthesisError;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: BaseDPCComponents"))]
