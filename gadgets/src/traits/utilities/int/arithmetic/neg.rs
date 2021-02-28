@@ -23,10 +23,10 @@ use snarkvm_r1cs::ConstraintSystem;
 
 macro_rules! neg_int_impl {
     ($($gadget: ident)*) => ($(
-        impl<F: PrimeField> Neg<F> for $gadget {
+        impl Neg for $gadget {
             type ErrorType = SignedIntegerError;
 
-            fn neg<CS: ConstraintSystem<F>>(
+            fn neg<F: PrimeField, CS: ConstraintSystem<F>>(
                 &self,
                 cs: CS
             ) -> Result<Self, Self::ErrorType> {

@@ -15,16 +15,17 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #[macro_use]
-mod macros;
+pub mod add;
+pub use self::add::*;
 
-pub mod unsigned_integer;
-pub use unsigned_integer::*;
+pub mod sub;
+pub use self::sub::*;
 
-pub mod uint128;
-pub use uint128::*;
+pub mod div;
+pub use self::div::*;
 
-pub mod arithmetic;
-pub mod relational;
+pub mod mul;
+pub use self::mul::*;
 
-#[cfg(test)]
-mod tests;
+pub mod pow;
+pub use self::pow::*;

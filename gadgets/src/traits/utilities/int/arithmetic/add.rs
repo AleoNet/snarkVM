@@ -22,6 +22,7 @@ use crate::{
         bits::RippleCarryAdder,
         boolean::{AllocatedBit, Boolean},
         int::*,
+        num::Number,
     },
 };
 use snarkvm_fields::{fp_parameters::FpParameters, PrimeField};
@@ -29,12 +30,12 @@ use snarkvm_r1cs::{Assignment, ConstraintSystem, LinearCombination};
 
 macro_rules! add_int_impl {
     ($($gadget: ident)*) => ($(
-        impl<F: PrimeField> Add<F> for $gadget {
+        impl Add for $gadget {
             type ErrorType = SignedIntegerError;
 
-            fn add<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, Self::ErrorType> {
+            fn add<F: PrimeField, CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, Self::ErrorType> {
                 // Compute the maximum value of the sum
-                let max_bits = <$gadget as Int>::SIZE;
+                let max_bits = <$gadget as Number>::SIZE;
 
                 // Make some arbitrary bounds for ourselves to avoid overflows
                 // in the scalar field
@@ -97,7 +98,7 @@ macro_rules! add_int_impl {
 
 
                 // The value of the actual result is modulo 2 ^ $size
-                let modular_value = result_value.map(|v| v as <$gadget as Int>::IntegerType);
+                let modular_value = result_value.map(|v| v as <$gadget as Number>::IntegerType);
 
                 if all_constants && modular_value.is_some() {
                     // We can just return a constant, rather than
@@ -113,7 +114,7 @@ macro_rules! add_int_impl {
                 let mut coeff = F::one();
                 for i in 0..max_bits {
                     // get bit value
-                    let mask = 1 << i as <$gadget as Int>::IntegerType;
+                    let mask = 1 << i as <$gadget as Number>::IntegerType;
 
                     // Allocate the bit_gadget
                     let b = AllocatedBit::alloc(cs.ns(|| format!("result bit_gadget {}", i)), || {

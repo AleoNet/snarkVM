@@ -19,7 +19,8 @@ use crate::traits::{
     curves::{CompressedGroupGadget, GroupGadget},
     utilities::{
         alloc::AllocGadget,
-        uint::unsigned_integer::{UInt, UInt8},
+        uint::unsigned_integer::UInt8,
+        num::Number,
     },
 };
 use snarkvm_algorithms::{

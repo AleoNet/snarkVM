@@ -20,7 +20,8 @@ use crate::traits::{
     utilities::{
         alloc::AllocGadget,
         boolean::Boolean,
-        uint::unsigned_integer::{UInt, UInt8},
+        uint::unsigned_integer::UInt8,
+        num::Number,
     },
 };
 use snarkvm_algorithms::crh::{PedersenCRH, PedersenCRHParameters, PedersenCompressedCRH, PedersenSize};

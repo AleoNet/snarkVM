@@ -14,15 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::Field;
+use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSystem;
 
 /// Returns division of `self` / `other` in the constraint system.
-pub trait Div<F: Field, Rhs = Self>
+pub trait Div<Rhs = Self>
 where
     Self: std::marker::Sized,
 {
     type ErrorType;
 
-    fn div<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, Self::ErrorType>;
+    fn div<F: PrimeField, CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, Self::ErrorType>;
 }

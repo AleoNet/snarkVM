@@ -22,16 +22,17 @@ use crate::utilities::{
     boolean::Boolean,
     int::*,
     select::CondSelectGadget,
+    num::Number,
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSystem;
 
 macro_rules! pow_int_impl {
     ($($gadget:ty)*) => ($(
-        impl<F: PrimeField> Pow<F> for $gadget {
+        impl Pow for $gadget {
             type ErrorType = SignedIntegerError;
 
-            fn pow<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, Self::ErrorType> {
+            fn pow<F: PrimeField, CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, Self::ErrorType> {
                 // let mut res = Self::one();
                 //
                 // let mut found_one = false;
@@ -47,8 +48,8 @@ macro_rules! pow_int_impl {
                 // res
 
                 let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
-                let one_const = Self::constant(1 as <$gadget as Int>::IntegerType);
-                let one_alloc = Self::alloc(&mut cs.ns(|| "allocated_1"), || Ok(1 as <$gadget as Int>::IntegerType))?;
+                let one_const = Self::constant(1 as <$gadget as Number>::IntegerType);
+                let one_alloc = Self::alloc(&mut cs.ns(|| "allocated_1"), || Ok(1 as <$gadget as Number>::IntegerType))?;
                 let mut result = Self::conditionally_select(
                     &mut cs.ns(|| "constant_or_allocated"),
                     &is_constant,

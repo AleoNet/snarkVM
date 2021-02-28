@@ -14,15 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::Field;
+use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSystem;
 
 /// Returns subtraction of `self` - `other` in the constraint system.
-pub trait Sub<F: Field, Rhs = Self>
+pub trait Sub<Rhs = Self>
 where
     Self: std::marker::Sized,
 {
     type ErrorType;
 
-    fn sub<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, Self::ErrorType>;
+    fn sub<F: PrimeField, CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, Self::ErrorType>;
 }

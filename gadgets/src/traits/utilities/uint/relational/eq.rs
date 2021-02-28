@@ -14,27 +14,34 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{num::Number, boolean::Boolean, eq::EvaluateEqGadget, int::*};
 use snarkvm_fields::PrimeField;
+
+use crate::{
+    utilities::{
+        boolean::Boolean,
+        eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
+        uint::*,
+    },
+};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
-macro_rules! eq_gadget_impl {
-    ($($gadget: ident)*) => ($(
+macro_rules! eq_uint_impl {
+    ($gadget: ident, $size: expr) => {
         impl<F: PrimeField> EvaluateEqGadget<F> for $gadget {
             fn evaluate_equal<CS: ConstraintSystem<F>>(
                 &self,
                 mut cs: CS,
-                other: &Self
+                other: &Self,
             ) -> Result<Boolean, SynthesisError> {
                 let mut result = Boolean::constant(true);
                 for (i, (a, b)) in self.bits.iter().zip(&other.bits).enumerate() {
                     let equal = a.evaluate_equal(
-                        &mut cs.ns(|| format!("{} evaluate equality for {}-th bit", <$gadget as Number>::SIZE, i)),
+                        &mut cs.ns(|| format!("{} evaluate equality for {}-th bit", $size, i)),
                         b,
                     )?;
 
                     result = Boolean::and(
-                        &mut cs.ns(|| format!("{} and result for {}-th bit", <$gadget as Number>::SIZE, i)),
+                        &mut cs.ns(|| format!("{} and result for {}-th bit", $size, i)),
                         &equal,
                         &result,
                     )?;
@@ -44,14 +51,36 @@ macro_rules! eq_gadget_impl {
             }
         }
 
-        impl PartialEq for $gadget {
-            fn eq(&self, other: &Self) -> bool {
-                !self.value.is_none() && self.value == other.value
+        impl<F: PrimeField> EqGadget<F> for $gadget {}
+
+        impl<F: PrimeField> ConditionalEqGadget<F> for $gadget {
+            fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
+                &self,
+                mut cs: CS,
+                other: &Self,
+                condition: &Boolean,
+            ) -> Result<(), SynthesisError> {
+                for (i, (a, b)) in self.bits.iter().zip(&other.bits).enumerate() {
+                    a.conditional_enforce_equal(
+                        &mut cs.ns(|| format!("{} equality check for {}-th bit", $size, i)),
+                        b,
+                        condition,
+                    )?;
+                }
+                Ok(())
+            }
+
+            fn cost() -> usize {
+                const MULTIPLIER: usize = if $size == 128 { 128 } else { 8 };
+
+                MULTIPLIER * <Boolean as ConditionalEqGadget<F>>::cost()
             }
         }
-
-        impl Eq for $gadget {}
-    )*)
+    };
 }
 
-eq_gadget_impl!(Int8 Int16 Int32 Int64 Int128);
+eq_uint_impl!(UInt8, 8);
+eq_uint_impl!(UInt16, 16);
+eq_uint_impl!(UInt32, 32);
+eq_uint_impl!(UInt64, 64);
+eq_uint_impl!(UInt128, 128);

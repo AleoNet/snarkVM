@@ -16,7 +16,8 @@
 
 use crate::traits::utilities::{
     boolean::Boolean,
-    uint::unsigned_integer::{UInt, UInt8},
+    uint::unsigned_integer::UInt8,
+    num::Number,
 };
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -27,8 +28,9 @@ pub mod bits;
 pub mod boolean;
 pub mod eq;
 pub mod int;
-pub mod select;
 pub mod uint;
+pub mod num;
+pub mod select;
 
 pub trait ToBitsGadget<F: Field> {
     fn to_bits<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError>;

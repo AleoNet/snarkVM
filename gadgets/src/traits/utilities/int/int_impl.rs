@@ -14,30 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::boolean::Boolean;
+use crate::utilities::{boolean::Boolean, num::Number};
 
 use std::fmt::Debug;
 
-pub trait Int: Debug + Clone {
-    type IntegerType;
-    const SIZE: usize;
-
-    fn one() -> Self;
-
-    fn zero() -> Self;
-
-    /// Returns true if all bits in this `Int` are constant
-    fn is_constant(&self) -> bool;
-
-    /// Returns true if both `Int` objects have constant bits
-    fn result_is_constant(first: &Self, second: &Self) -> bool {
-        first.is_constant() && second.is_constant()
-    }
-
-    fn to_bits_le(&self) -> Vec<Boolean>;
-
-    fn from_bits_le(bits: &[Boolean]) -> Self;
-}
+pub trait Int: Debug + Clone + Number {}
 
 /// Implements the base struct for a signed integer gadget
 macro_rules! int_impl {
@@ -72,7 +53,9 @@ macro_rules! int_impl {
             }
         }
 
-        impl Int for $name {
+        impl Int for $name {}
+
+        impl Number for $name {
             type IntegerType = $type_;
 
             const SIZE: usize = $size;

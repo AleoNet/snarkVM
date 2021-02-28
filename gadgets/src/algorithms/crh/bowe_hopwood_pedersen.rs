@@ -21,7 +21,8 @@ use crate::{
         curves::{CompressedGroupGadget, GroupGadget},
         utilities::{
             boolean::Boolean,
-            uint::unsigned_integer::{UInt, UInt8},
+            uint::unsigned_integer::UInt8,
+            num::Number,
         },
     },
 };

@@ -23,6 +23,7 @@ use crate::utilities::{
     boolean::{AllocatedBit, Boolean},
     int::*,
     select::CondSelectGadget,
+    num::Number,
 };
 use snarkvm_fields::{FpParameters, PrimeField};
 use snarkvm_r1cs::{Assignment, ConstraintSystem, LinearCombination};
@@ -32,11 +33,11 @@ use std::iter;
 macro_rules! mul_int_impl {
     ($($gadget: ident)*) => ($(
         /// Bitwise multiplication of two signed integer objects.
-        impl<F: PrimeField> Mul<F> for $gadget {
+        impl Mul for $gadget {
 
             type ErrorType = SignedIntegerError;
 
-            fn mul<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, Self::ErrorType> {
+            fn mul<F: PrimeField, CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, Self::ErrorType> {
                 // pseudocode:
                 //
                 // res = 0;
@@ -61,7 +62,7 @@ macro_rules! mul_int_impl {
                 )?;
 
                 // Sign extend to double precision
-                let size = <$gadget as Int>::SIZE * 2;
+                let size = <$gadget as Number>::SIZE * 2;
 
                 let a = Boolean::sign_extend(&self.bits, size);
                 let b = Boolean::sign_extend(&other.bits, size);
@@ -102,7 +103,7 @@ macro_rules! mul_int_impl {
                 drop(a_shifted);
 
                 // Compute the maximum value of the sum
-                let max_bits = <$gadget as Int>::SIZE;
+                let max_bits = <$gadget as Number>::SIZE;
 
                 // Truncate the bits to the size of the integer
                 bits.truncate(max_bits);
@@ -163,7 +164,7 @@ macro_rules! mul_int_impl {
                 }
 
                 // The value of the actual result is modulo 2 ^ $size
-                let modular_value = result_value.map(|v| v as <$gadget as Int>::IntegerType);
+                let modular_value = result_value.map(|v| v as <$gadget as Number>::IntegerType);
 
                 if all_constants && modular_value.is_some() {
                     // We can just return a constant, rather than
@@ -179,7 +180,7 @@ macro_rules! mul_int_impl {
                 let mut coeff = F::one();
                 for i in 0..max_bits {
                     // get bit value
-                    let mask = 1 << i as <$gadget as Int>::IntegerType;
+                    let mask = 1 << i as <$gadget as Number>::IntegerType;
 
                     // Allocate the bit_gadget
                     let b = AllocatedBit::alloc(cs.ns(|| format!("result bit_gadget {}", i)), || {
@@ -199,7 +200,7 @@ macro_rules! mul_int_impl {
                 cs.enforce(|| "modular multiplication", |lc| lc, |lc| lc, |_| lc);
 
                 // Discard carry bits we don't care about
-                result_bits.truncate(<$gadget as Int>::SIZE);
+                result_bits.truncate(<$gadget as Number>::SIZE);
 
                 Ok(Self {
                     bits: result_bits,

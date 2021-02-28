@@ -15,23 +15,23 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::utilities::{bits::RippleCarryAdder, boolean::Boolean};
-use snarkvm_fields::Field;
+use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 /// Returns a negated representation of `self` in the constraint system.
-pub trait Neg<F: Field>
+pub trait Neg
 where
     Self: std::marker::Sized,
 {
     type ErrorType;
 
-    fn neg<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Self, Self::ErrorType>;
+    fn neg<F: PrimeField, CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Self, Self::ErrorType>;
 }
 
-impl<F: Field> Neg<F> for Vec<Boolean> {
+impl Neg for Vec<Boolean> {
     type ErrorType = SynthesisError;
 
-    fn neg<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Self, SynthesisError> {
+    fn neg<F: PrimeField, CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Self, SynthesisError> {
         // flip all bits
         let flipped: Self = self.iter().map(|bit| bit.not()).collect();
 

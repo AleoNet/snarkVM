@@ -22,6 +22,7 @@ use crate::traits::{
         eq::{ConditionalEqGadget, EqGadget},
         select::CondSelectGadget,
         uint::unsigned_integer::{UInt, UInt32, UInt8},
+        num::Number,
         ToBytesGadget,
     },
 };

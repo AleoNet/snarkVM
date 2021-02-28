@@ -26,10 +26,10 @@ use snarkvm_r1cs::ConstraintSystem;
 
 macro_rules! sub_int_impl {
     ($($gadget: ident)*) => ($(
-        impl<F: PrimeField> Sub<F> for $gadget {
+        impl Sub for $gadget {
             type ErrorType = SignedIntegerError;
 
-            fn sub<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, Self::ErrorType> {
+            fn sub<F: PrimeField, CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, Self::ErrorType> {
                 // Negate other
                 let other_neg = other.neg(cs.ns(|| format!("negate")))?;
 

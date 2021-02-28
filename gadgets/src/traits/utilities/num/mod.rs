@@ -14,17 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#[macro_use]
-mod macros;
+use std::fmt::Debug;
 
-pub mod unsigned_integer;
-pub use unsigned_integer::*;
+use super::boolean::Boolean;
 
-pub mod uint128;
-pub use uint128::*;
+pub trait Number: Debug + Clone + PartialOrd + Eq + PartialEq {
+    type IntegerType;
+    const SIZE: usize;
 
-pub mod arithmetic;
-pub mod relational;
+    fn one() -> Self;
 
-#[cfg(test)]
-mod tests;
+    fn zero() -> Self;
+
+    /// Returns true if all bits in this `Number` are constant
+    fn is_constant(&self) -> bool;
+
+    /// Returns true if both `Number` objects have constant bits
+    fn result_is_constant(first: &Self, second: &Self) -> bool {
+        first.is_constant() && second.is_constant()
+    }
+
+    fn to_bits_le(&self) -> Vec<Boolean>;
+
+    fn from_bits_le(bits: &[Boolean]) -> Self;
+}
