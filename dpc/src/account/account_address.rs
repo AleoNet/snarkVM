@@ -15,11 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::account_format;
+use crate::traits::DPCComponents;
 use crate::AccountError;
 use crate::AccountPrivateKey;
 use crate::AccountViewKey;
 use snarkvm_algorithms::traits::EncryptionScheme;
-use snarkvm_dpc::traits::DPCComponents;
 use snarkvm_utilities::FromBytes;
 use snarkvm_utilities::ToBytes;
 

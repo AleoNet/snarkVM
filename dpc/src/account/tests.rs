@@ -18,9 +18,9 @@ use crate::account::Account;
 use crate::account::AccountAddress;
 use crate::account::AccountPrivateKey;
 use crate::account::AccountViewKey;
+use crate::base_dpc::instantiated::Components;
+use crate::base_dpc::parameters::SystemParameters;
 use crate::traits::account::AccountScheme;
-use snarkvm_dpc::base_dpc::instantiated::Components;
-use snarkvm_dpc::base_dpc::parameters::SystemParameters;
 
 use rand::thread_rng;
 use std::str::FromStr;

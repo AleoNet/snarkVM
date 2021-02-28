@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::curves::FieldGadget;
+use crate::traits::fields::FieldGadget;
 use crate::traits::utilities::alloc::AllocGadget;
 use crate::traits::utilities::boolean::Boolean;
 use snarkvm_fields::Field;
