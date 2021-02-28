@@ -14,17 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::algorithms::CRHError;
-use crate::algorithms::CommitmentError;
-use crate::algorithms::EncodingError;
-use crate::algorithms::EncryptionError;
-use crate::algorithms::MerkleError;
-use crate::algorithms::PRFError;
-use crate::algorithms::SNARKError;
-use crate::algorithms::SignatureError;
 use crate::dpc::LedgerError;
-use crate::objects::AccountError;
 use crate::parameters::ParameterError;
+use snarkvm_algorithms::errors::CRHError;
+use snarkvm_algorithms::errors::CommitmentError;
+use snarkvm_algorithms::errors::EncodingError;
+use snarkvm_algorithms::errors::EncryptionError;
+use snarkvm_algorithms::errors::MerkleError;
+use snarkvm_algorithms::errors::PRFError;
+use snarkvm_algorithms::errors::SNARKError;
+use snarkvm_algorithms::errors::SignatureError;
+use snarkvm_objects::errors::AccountError;
 
 #[derive(Debug, Error)]
 pub enum DPCError {

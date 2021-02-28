@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::dpc::Record;
-use crate::objects::AccountScheme;
-use crate::objects::LedgerScheme;
-use crate::objects::Transaction;
+use snarkvm_objects::traits::AccountScheme;
+use snarkvm_objects::traits::LedgerScheme;
+use snarkvm_objects::traits::Transaction;
 
 use rand::Rng;
 

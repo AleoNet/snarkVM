@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::curves::AffineCurve;
-use crate::curves::Group;
 use crate::utilities::alloc::AllocGadget;
 use crate::utilities::boolean::Boolean;
 use crate::utilities::eq::EqGadget;
@@ -23,8 +22,9 @@ use crate::utilities::eq::NEqGadget;
 use crate::utilities::select::CondSelectGadget;
 use crate::utilities::ToBitsGadget;
 use crate::utilities::ToBytesGadget;
+use snarkvm_curves::traits::Group;
+use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::Field;
-use snarkvm_groups::ProjectiveCurve;
 use snarkvm_r1cs::errors::SynthesisError;
 use snarkvm_r1cs::ConstraintSystem;
 

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::gadgets::SynthesisError;
+use snarkvm_r1cs::errors::SynthesisError;
 
 #[derive(Debug, Error)]
 pub enum SignedIntegerError {

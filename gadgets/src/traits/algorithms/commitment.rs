@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::algorithms::CommitmentScheme;
 use crate::utilities::alloc::AllocGadget;
 use crate::utilities::eq::ConditionalEqGadget;
 use crate::utilities::eq::EqGadget;
 use crate::utilities::select::CondSelectGadget;
 use crate::utilities::uint::UInt8;
 use crate::utilities::ToBytesGadget;
+use snarkvm_algorithms::traits::CommitmentScheme;
 use snarkvm_fields::Field;
 use snarkvm_r1cs::errors::SynthesisError;
 use snarkvm_r1cs::ConstraintSystem;
