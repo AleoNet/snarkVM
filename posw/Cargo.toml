@@ -56,6 +56,11 @@ path = "../profiler"
 version = "0.0.6"
 default-features = false
 
+[dependencies.snarkvm-r1cs]
+path = "../r1cs"
+version = "0.0.6"
+default-features = false
+
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.0.6"
