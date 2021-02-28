@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::instantiated::*;
 use crate::account::Account;
 use crate::base_dpc::execute_inner_proof_gadget;
 use crate::base_dpc::execute_outer_proof_gadget;
@@ -27,6 +26,7 @@ use crate::base_dpc::record_payload::RecordPayload;
 use crate::base_dpc::BaseDPCComponents;
 use crate::base_dpc::TransactionKernel;
 use crate::base_dpc::DPC;
+use crate::instantiated::*;
 use crate::traits::AccountScheme;
 use crate::traits::DPCScheme;
 use crate::traits::Program;
@@ -47,11 +47,10 @@ use snarkvm_objects::PedersenMerkleRootHash;
 use snarkvm_objects::ProofOfSuccinctWork;
 use snarkvm_r1cs::ConstraintSystem;
 use snarkvm_r1cs::TestConstraintSystem;
+use snarkvm_testing::storage::*;
 use snarkvm_utilities::bytes::FromBytes;
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::to_bytes;
-
-use snarkvm_testing::storage::*;
 
 use itertools::Itertools;
 use rand::Rng;

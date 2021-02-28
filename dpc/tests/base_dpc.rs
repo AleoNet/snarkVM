@@ -14,16 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::account::AccountViewKey;
-use crate::base_dpc::instantiated::*;
-use crate::base_dpc::program::NoopProgram;
-use crate::base_dpc::record::record_encryption::RecordEncryption;
-use crate::base_dpc::record_payload::RecordPayload;
-use crate::base_dpc::BaseDPCComponents;
-use crate::base_dpc::DPC;
-use crate::traits::DPCScheme;
-use crate::traits::Program;
 use snarkvm_algorithms::traits::CRH;
+use snarkvm_dpc::account::AccountViewKey;
+use snarkvm_dpc::base_dpc::instantiated::*;
+use snarkvm_dpc::base_dpc::program::NoopProgram;
+use snarkvm_dpc::base_dpc::record::record_encryption::RecordEncryption;
+use snarkvm_dpc::base_dpc::record_payload::RecordPayload;
+use snarkvm_dpc::base_dpc::BaseDPCComponents;
+use snarkvm_dpc::base_dpc::DPC;
+use snarkvm_dpc::traits::DPCScheme;
+use snarkvm_dpc::traits::Program;
 use snarkvm_objects::dpc::DPCTransactions;
 use snarkvm_objects::merkle_root;
 use snarkvm_objects::traits::LedgerScheme;

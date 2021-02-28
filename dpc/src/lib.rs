@@ -75,9 +75,6 @@ pub use errors::*;
 pub mod traits;
 pub use traits::*;
 
-#[cfg(test)]
-mod tests;
-
 use snarkvm_r1cs::errors::SynthesisError;
 
 pub trait Assignment<T> {
