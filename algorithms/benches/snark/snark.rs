@@ -17,8 +17,7 @@
 #[macro_use]
 extern crate criterion;
 
-use crate::traits::SNARK;
-use snarkvm_algorithms::snark::gm17::GM17;
+use snarkvm_algorithms::{snark::gm17::GM17, traits::SNARK};
 use snarkvm_curves::bls12_377::{Bls12_377, Fr};
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
