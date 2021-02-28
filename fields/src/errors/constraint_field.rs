@@ -21,15 +21,7 @@ pub enum ConstraintFieldError {
 
     #[error("{}", _0)]
     Message(String),
-    // #[error("{}", _0)]
-    // SynthesisError(crate::errors::SynthesisError),
 }
-
-// impl From<crate::errors::SynthesisError> for ConstraintFieldError {
-//     fn from(error: crate::errors::SynthesisError) -> Self {
-//         ConstraintFieldError::SynthesisError(error)
-//     }
-// }
 
 impl From<std::io::Error> for ConstraintFieldError {
     fn from(error: std::io::Error) -> Self {
