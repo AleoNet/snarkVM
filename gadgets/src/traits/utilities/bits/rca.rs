@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::{Field, PrimeField};
-use crate::gadgets::r1cs::ConstraintSystem;
-use crate::gadgets::utilities::bits::FullAdder;
-use crate::gadgets::utilities::boolean::Boolean;
-use crate::gadgets::utilities::int::*;
+use crate::utilities::bits::FullAdder;
+use crate::utilities::boolean::Boolean;
+use crate::utilities::int::*;
+use snarkvm_fields::Field;
+use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::ConstraintSystem;
 
 /// Returns the bitwise sum of a n-bit number with carry bit
 pub trait RippleCarryAdder<F: Field, Rhs = Self>

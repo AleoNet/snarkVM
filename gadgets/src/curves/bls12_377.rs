@@ -14,15 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::templates::bls12::{
-    Bls12PairingGadget,
-    G1Gadget as Bls12G1Gadget,
-    G1PreparedGadget as Bls12G1PreparedGadget,
-    G2Gadget as Bls12G2Gadget,
-    G2PreparedGadget as Bls12G2PreparedGadget,
-};
-use crate::traits::curves::{Fp12Gadget, Fp2Gadget, Fp6Gadget, FpGadget};
-use snarkvm_curves::bls12_377::{Bls12_377Parameters, Fq, Fq12Parameters, Fq2Parameters, Fq6Parameters};
+use crate::curves::templates::bls12::Bls12PairingGadget;
+use crate::curves::templates::bls12::G1Gadget as Bls12G1Gadget;
+use crate::curves::templates::bls12::G1PreparedGadget as Bls12G1PreparedGadget;
+use crate::curves::templates::bls12::G2Gadget as Bls12G2Gadget;
+use crate::curves::templates::bls12::G2PreparedGadget as Bls12G2PreparedGadget;
+use crate::fields::Fp12Gadget;
+use crate::fields::Fp2Gadget;
+use crate::fields::Fp6Gadget;
+use crate::fields::FpGadget;
+use snarkvm_curves::bls12_377::Bls12_377Parameters;
+use snarkvm_curves::bls12_377::Fq;
+use snarkvm_curves::bls12_377::Fq12Parameters;
+use snarkvm_curves::bls12_377::Fq2Parameters;
+use snarkvm_curves::bls12_377::Fq6Parameters;
 
 pub type FqGadget = FpGadget<Fq>;
 pub type Fq2Gadget = Fp2Gadget<Fq2Parameters, Fq>;
@@ -37,18 +42,27 @@ pub type PairingGadget = Bls12PairingGadget<Bls12_377Parameters>;
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::traits::curves::{FieldGadget, GroupGadget};
-    use crate::traits::r1cs::{ConstraintSystem, TestConstraintSystem};
+    use crate::traits::curves::GroupGadget;
+    use crate::traits::fields::FieldGadget;
     use crate::traits::utilities::alloc::AllocGadget;
-    use crate::traits::utilities::boolean::{AllocatedBit, Boolean};
+    use crate::traits::utilities::boolean::AllocatedBit;
+    use crate::traits::utilities::boolean::Boolean;
     use crate::traits::utilities::eq::EqGadget;
     use crate::traits::utilities::select::CondSelectGadget;
-    use snarkvm_curves::bls12_377::{Fq, Fr, G1Projective as G1, G2Projective as G2};
-    use snarkvm_curves::traits::{AffineCurve, PrimeField, ProjectiveCurve};
+    use snarkvm_curves::bls12_377::Fq;
+    use snarkvm_curves::bls12_377::Fr;
+    use snarkvm_curves::bls12_377::G1Projective as G1;
+    use snarkvm_curves::bls12_377::G2Projective as G2;
+    use snarkvm_curves::traits::AffineCurve;
+    use snarkvm_curves::traits::ProjectiveCurve;
+    use snarkvm_fields::PrimeField;
+    use snarkvm_r1cs::ConstraintSystem;
+    use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::bititerator::BitIteratorBE;
     use snarkvm_utilities::rand::UniformRand;
 
-    use rand::{self, SeedableRng};
+    use rand::SeedableRng;
+    use rand::{self};
     use rand_xorshift::XorShiftRng;
 
     #[test]

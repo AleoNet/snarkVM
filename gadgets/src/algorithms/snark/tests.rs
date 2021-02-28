@@ -16,18 +16,28 @@
 
 use crate::algorithms::snark::*;
 use crate::curves::bls12_377::PairingGadget as Bls12_377PairingGadget;
-use crate::errors::SynthesisError;
 use crate::traits::algorithms::snark::SNARKVerifierGadget;
-use crate::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
-use crate::traits::utilities::alloc::{AllocBytesGadget, AllocGadget};
+use crate::traits::utilities::alloc::AllocBytesGadget;
+use crate::traits::utilities::alloc::AllocGadget;
 use crate::traits::utilities::boolean::Boolean;
-use snarkvm_algorithms::snark::gm17::{create_random_proof, generate_random_parameters, GM17};
-use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-use snarkvm_curves::traits::{Field, PrimeField};
+use snarkvm_algorithms::snark::gm17::create_random_proof;
+use snarkvm_algorithms::snark::gm17::generate_random_parameters;
+use snarkvm_algorithms::snark::gm17::GM17;
+use snarkvm_curves::bls12_377::Bls12_377;
+use snarkvm_curves::bls12_377::Fq;
+use snarkvm_curves::bls12_377::Fr;
+use snarkvm_fields::Field;
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::TestConstraintSystem;
 use snarkvm_utilities::bititerator::BitIteratorBE;
-use snarkvm_utilities::{to_bytes, ToBytes};
+use snarkvm_utilities::to_bytes;
+use snarkvm_utilities::ToBytes;
 
-use rand::{thread_rng, Rng};
+use rand::thread_rng;
+use rand::Rng;
 
 type TestProofSystem = GM17<Bls12_377, Bench<Fr>, Fr>;
 type TestVerifierGadget = GM17VerifierGadget<Bls12_377, Fq, Bls12_377PairingGadget>;

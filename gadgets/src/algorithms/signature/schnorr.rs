@@ -14,18 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::SynthesisError;
 use crate::traits::algorithms::SignaturePublicKeyRandomizationGadget;
 use crate::traits::curves::GroupGadget;
-use crate::traits::r1cs::ConstraintSystem;
 use crate::traits::utilities::alloc::AllocGadget;
 use crate::traits::utilities::boolean::Boolean;
-use crate::traits::utilities::eq::{ConditionalEqGadget, EqGadget};
-use crate::traits::utilities::uint::unsigned_integer::{UInt, UInt8};
+use crate::traits::utilities::eq::ConditionalEqGadget;
+use crate::traits::utilities::eq::EqGadget;
+use crate::traits::utilities::uint::unsigned_integer::UInt;
+use crate::traits::utilities::uint::unsigned_integer::UInt8;
 use crate::traits::utilities::ToBytesGadget;
-use snarkvm_algorithms::signature::{SchnorrParameters, SchnorrPublicKey, SchnorrSignature};
-use snarkvm_curves::traits::{Field, Group};
-use snarkvm_utilities::serialize::{CanonicalDeserialize, CanonicalSerialize};
+use snarkvm_algorithms::signature::SchnorrParameters;
+use snarkvm_algorithms::signature::SchnorrPublicKey;
+use snarkvm_algorithms::signature::SchnorrSignature;
+use snarkvm_curves::traits::Group;
+use snarkvm_fields::Field;
+use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_utilities::serialize::CanonicalDeserialize;
+use snarkvm_utilities::serialize::CanonicalSerialize;
 
 use digest::Digest;
 use itertools::Itertools;

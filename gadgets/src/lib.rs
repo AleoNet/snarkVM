@@ -49,6 +49,8 @@ pub mod algorithms;
 
 pub mod curves;
 
+pub mod fields;
+
 pub mod errors;
 pub use errors::*;
 

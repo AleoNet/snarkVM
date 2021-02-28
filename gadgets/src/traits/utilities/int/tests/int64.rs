@@ -14,15 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::{One, Zero};
-use crate::gadgets::r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
-use crate::gadgets::utilities::alloc::AllocGadget;
-use crate::gadgets::utilities::arithmetic::*;
-use crate::gadgets::utilities::boolean::Boolean;
-use crate::gadgets::utilities::eq::EqGadget;
-use crate::gadgets::utilities::int::*;
+use crate::utilities::alloc::AllocGadget;
+use crate::utilities::arithmetic::*;
+use crate::utilities::boolean::Boolean;
+use crate::utilities::eq::EqGadget;
+use crate::utilities::int::*;
+use snarkvm_fields::One;
+use snarkvm_fields::Zero;
+use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::Fr;
+use snarkvm_r1cs::TestConstraintSystem;
 
-use rand::{Rng, SeedableRng};
+use rand::Rng;
+use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 use std::i64;
 

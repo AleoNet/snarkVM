@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::Field;
-use crate::gadgets::r1cs::ConstraintSystem;
+use snarkvm_fields::Field;
+use snarkvm_r1cs::ConstraintSystem;
 
 /// Returns multiplication of `self` * `other` in the constraint system.
 pub trait Mul<F: Field, Rhs = Self>

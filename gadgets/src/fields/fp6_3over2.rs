@@ -14,17 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::fp6_3over2::{Fp6, Fp6Parameters};
-use crate::curves::{batch_inversion, Field, Fp2Parameters, PrimeField};
-use crate::gadgets::curves::FieldGadget;
-use crate::gadgets::r1cs::{Assignment, ConstraintSystem, ConstraintVariable};
-use crate::gadgets::utilities::alloc::AllocGadget;
-use crate::gadgets::utilities::boolean::Boolean;
-use crate::gadgets::utilities::eq::{ConditionalEqGadget, EqGadget, NEqGadget};
-use crate::gadgets::utilities::select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget};
-use crate::gadgets::utilities::uint::UInt8;
-use crate::gadgets::utilities::{ToBitsGadget, ToBytesGadget};
+use crate::traits::fields::FieldGadget;
+use crate::utilities::alloc::AllocGadget;
+use crate::utilities::boolean::Boolean;
+use crate::utilities::eq::ConditionalEqGadget;
+use crate::utilities::eq::EqGadget;
+use crate::utilities::eq::NEqGadget;
+use crate::utilities::select::CondSelectGadget;
+use crate::utilities::select::ThreeBitCondNegLookupGadget;
+use crate::utilities::select::TwoBitLookupGadget;
+use crate::utilities::uint::UInt8;
+use crate::utilities::ToBitsGadget;
+use crate::utilities::ToBytesGadget;
+use snarkvm_fields::batch_inversion;
+use snarkvm_fields::fp6_3over2::Fp6;
+use snarkvm_fields::fp6_3over2::Fp6Parameters;
+use snarkvm_fields::Field;
+use snarkvm_fields::Fp2Parameters;
+use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::Assignment;
+use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::ConstraintVariable;
 
 use std::borrow::Borrow;
 use std::marker::PhantomData;

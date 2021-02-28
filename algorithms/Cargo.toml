@@ -81,8 +81,8 @@ version = "1.6"
 [dependencies.thiserror]
 version = "1.0"
 
-[dev-dependencies.snarkvm-curves]
-path = "../curves"
+[dev-dependencies.snarkvm-gadgets]
+path = "../gadgets"
 
 [dev-dependencies.criterion]
 version = "0.3.4"

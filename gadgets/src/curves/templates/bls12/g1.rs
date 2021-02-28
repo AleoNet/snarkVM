@@ -15,13 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::curves::templates::bls12::AffineGadget;
-use crate::errors::SynthesisError;
-use crate::traits::curves::{FpGadget, GroupGadget};
-use crate::traits::r1cs::ConstraintSystem;
+use crate::fields::FpGadget;
+use crate::traits::curves::GroupGadget;
 use crate::traits::utilities::uint::UInt8;
 use crate::traits::utilities::ToBytesGadget;
-use snarkvm_curves::templates::bls12::{Bls12Parameters, G1Prepared};
+use snarkvm_curves::templates::bls12::Bls12Parameters;
+use snarkvm_curves::templates::bls12::G1Prepared;
 use snarkvm_curves::traits::ProjectiveCurve;
+use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::ConstraintSystem;
 
 use std::fmt::Debug;
 

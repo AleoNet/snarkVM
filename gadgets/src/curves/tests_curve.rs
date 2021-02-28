@@ -14,15 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::bls12_377::{G1Gadget, G1PreparedGadget, G2Gadget, G2PreparedGadget};
+use crate::curves::bls12_377::G1Gadget;
+use crate::curves::bls12_377::G1PreparedGadget;
+use crate::curves::bls12_377::G2Gadget;
+use crate::curves::bls12_377::G2PreparedGadget;
 use crate::curves::templates::bls12::Bls12PairingGadget;
-use crate::traits::curves::{FieldGadget, PairingGadget};
-use crate::traits::r1cs::{ConstraintSystem, TestConstraintSystem};
+use crate::traits::curves::PairingGadget;
+use crate::traits::fields::FieldGadget;
 use crate::traits::utilities::alloc::AllocGadget;
 use crate::traits::utilities::boolean::Boolean;
 use crate::traits::utilities::eq::EqGadget;
-use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr, G1Projective, G2Projective};
-use snarkvm_curves::traits::{Field, One, PairingEngine, PrimeField, ProjectiveCurve};
+use snarkvm_curves::bls12_377::Bls12_377;
+use snarkvm_curves::bls12_377::Fq;
+use snarkvm_curves::bls12_377::Fr;
+use snarkvm_curves::bls12_377::G1Projective;
+use snarkvm_curves::bls12_377::G2Projective;
+use snarkvm_curves::traits::PairingEngine;
+use snarkvm_curves::traits::ProjectiveCurve;
+use snarkvm_fields::Field;
+use snarkvm_fields::One;
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::TestConstraintSystem;
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::ops::Mul;

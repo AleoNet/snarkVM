@@ -14,15 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{
-    curves::FieldGadget,
-    r1cs::{ConstraintSystem, TestConstraintSystem},
-    utilities::{alloc::AllocGadget, boolean::Boolean},
-};
+use crate::traits::curves::FieldGadget;
+use crate::traits::utilities::alloc::AllocGadget;
+use crate::traits::utilities::boolean::Boolean;
 use snarkvm_fields::Field;
-use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
+use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::TestConstraintSystem;
+use snarkvm_utilities::bititerator::BitIteratorBE;
+use snarkvm_utilities::rand::UniformRand;
 
-use rand::{self, thread_rng, SeedableRng};
+use rand::thread_rng;
+use rand::SeedableRng;
+use rand::{self};
 use rand_xorshift::XorShiftRng;
 
 #[allow(clippy::eq_op)]
@@ -219,8 +222,14 @@ fn random_frobenius_tests<NativeF: Field, F: Field, FG: FieldGadget<NativeF, F>,
 
 #[test]
 fn bls12_377_field_gadgets_test() {
-    use crate::curves::bls12_377::{Fq12Gadget, Fq2Gadget, Fq6Gadget, FqGadget};
-    use snarkvm_curves::bls12_377::{Fq, Fq12, Fq2, Fq6};
+    use crate::curves::bls12_377::Fq12Gadget;
+    use crate::curves::bls12_377::Fq2Gadget;
+    use crate::curves::bls12_377::Fq6Gadget;
+    use crate::curves::bls12_377::FqGadget;
+    use snarkvm_curves::bls12_377::Fq;
+    use snarkvm_curves::bls12_377::Fq12;
+    use snarkvm_curves::bls12_377::Fq2;
+    use snarkvm_curves::bls12_377::Fq6;
 
     let mut cs = TestConstraintSystem::<Fq>::new();
 

@@ -15,11 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::algorithms::SNARK;
-use crate::curves::Field;
-use crate::gadgets::r1cs::ConstraintSystem;
-use crate::gadgets::utilities::alloc::{AllocBytesGadget, AllocGadget};
-use crate::gadgets::utilities::{ToBitsGadget, ToBytesGadget};
+use crate::utilities::alloc::AllocBytesGadget;
+use crate::utilities::alloc::AllocGadget;
+use crate::utilities::ToBitsGadget;
+use crate::utilities::ToBytesGadget;
+use snarkvm_fields::Field;
 use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::ConstraintSystem;
 
 pub trait SNARKVerifierGadget<N: SNARK, F: Field> {
     type VerificationKeyGadget: AllocGadget<N::VerificationParameters, F>

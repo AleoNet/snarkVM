@@ -14,19 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::SynthesisError;
 use crate::traits::algorithms::CommitmentGadget;
-use crate::traits::curves::{CompressedGroupGadget, GroupGadget};
-use crate::traits::r1cs::ConstraintSystem;
+use crate::traits::curves::CompressedGroupGadget;
+use crate::traits::curves::GroupGadget;
 use crate::traits::utilities::alloc::AllocGadget;
-use crate::traits::utilities::uint::unsigned_integer::{UInt, UInt8};
-use snarkvm_algorithms::commitment::{PedersenCommitment, PedersenCommitmentParameters, PedersenCompressedCommitment};
+use crate::traits::utilities::uint::unsigned_integer::UInt;
+use crate::traits::utilities::uint::unsigned_integer::UInt8;
+use snarkvm_algorithms::commitment::PedersenCommitment;
+use snarkvm_algorithms::commitment::PedersenCommitmentParameters;
+use snarkvm_algorithms::commitment::PedersenCompressedCommitment;
 use snarkvm_algorithms::crh::PedersenSize;
-use snarkvm_curves::traits::{Field, Group, PrimeField, ProjectiveCurve};
+use snarkvm_curves::traits::Group;
+use snarkvm_curves::traits::ProjectiveCurve;
+use snarkvm_fields::Field;
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::ConstraintSystem;
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::to_bytes;
 
-use std::borrow::{Borrow, Cow};
+use std::borrow::Borrow;
+use std::borrow::Cow;
 use std::marker::PhantomData;
 
 #[derive(Clone)]

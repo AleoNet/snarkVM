@@ -14,18 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::SynthesisError;
 use crate::traits::algorithms::EncryptionGadget;
-use crate::traits::curves::{CompressedGroupGadget, GroupGadget};
-use crate::traits::r1cs::ConstraintSystem;
+use crate::traits::curves::CompressedGroupGadget;
+use crate::traits::curves::GroupGadget;
 use crate::traits::utilities::alloc::AllocGadget;
 use crate::traits::utilities::boolean::Boolean;
-use crate::traits::utilities::eq::{ConditionalEqGadget, EqGadget};
-use crate::traits::utilities::uint::{UInt, UInt8};
+use crate::traits::utilities::eq::ConditionalEqGadget;
+use crate::traits::utilities::eq::EqGadget;
+use crate::traits::utilities::uint::UInt;
+use crate::traits::utilities::uint::UInt8;
 use crate::traits::utilities::ToBytesGadget;
-use snarkvm_algorithms::encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey};
-use snarkvm_curves::traits::{Field, Group, PrimeField, ProjectiveCurve};
-use snarkvm_utilities::{to_bytes, CanonicalDeserialize, CanonicalSerialize, ToBytes};
+use snarkvm_algorithms::encryption::GroupEncryption;
+use snarkvm_algorithms::encryption::GroupEncryptionParameters;
+use snarkvm_algorithms::encryption::GroupEncryptionPublicKey;
+use snarkvm_curves::traits::Group;
+use snarkvm_curves::traits::ProjectiveCurve;
+use snarkvm_fields::Field;
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_utilities::to_bytes;
+use snarkvm_utilities::CanonicalDeserialize;
+use snarkvm_utilities::CanonicalSerialize;
+use snarkvm_utilities::ToBytes;
 
 use digest::Digest;
 use itertools::Itertools;

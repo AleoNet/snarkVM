@@ -14,30 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    algorithms::{
-        commitment::PedersenCompressedCommitmentGadget,
-        commitment_tree::*,
-        crh::BoweHopwoodPedersenCompressedCRHGadget,
-    },
-    curves::edwards_bls12::EdwardsBlsGadget,
-    traits::{
-        algorithms::{CRHGadget, CommitmentGadget},
-        r1cs::{ConstraintSystem, TestConstraintSystem},
-        utilities::alloc::AllocGadget,
-    },
-};
-use snarkvm_algorithms::{
-    commitment::PedersenCompressedCommitment,
-    commitment_tree::*,
-    crh::{BoweHopwoodPedersenCompressedCRH, PedersenSize},
-    traits::{CommitmentScheme, CRH},
-};
-use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective as EdwardsBls};
+use crate::algorithms::commitment::PedersenCompressedCommitmentGadget;
+use crate::algorithms::commitment_tree::*;
+use crate::algorithms::crh::BoweHopwoodPedersenCompressedCRHGadget;
+use crate::curves::edwards_bls12::EdwardsBlsGadget;
+use crate::traits::algorithms::CRHGadget;
+use crate::traits::algorithms::CommitmentGadget;
+use crate::traits::utilities::alloc::AllocGadget;
+use snarkvm_algorithms::commitment::PedersenCompressedCommitment;
+use snarkvm_algorithms::commitment_tree::*;
+use snarkvm_algorithms::crh::BoweHopwoodPedersenCompressedCRH;
+use snarkvm_algorithms::crh::PedersenSize;
+use snarkvm_algorithms::traits::CommitmentScheme;
+use snarkvm_algorithms::traits::CRH;
+use snarkvm_curves::bls12_377::Fr;
+use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
 use snarkvm_fields::Field;
+use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::TestConstraintSystem;
 use snarkvm_utilities::rand::UniformRand;
 
-use rand::{Rng, SeedableRng};
+use rand::Rng;
+use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::Field;
-use crate::gadgets::r1cs::ConstraintSystem;
-use crate::gadgets::utilities::boolean::Boolean;
+use crate::utilities::boolean::Boolean;
+use snarkvm_fields::Field;
 use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::ConstraintSystem;
 
 /// If condition is `true`, return `first`; else, select `second`.
 pub trait CondSelectGadget<F: Field>

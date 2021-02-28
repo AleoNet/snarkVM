@@ -18,10 +18,10 @@ use crate::curves::FpParameters;
 use crate::curves::Group;
 use crate::curves::MontgomeryModelParameters;
 use crate::curves::PrimeField;
-use crate::curves::ProjectiveCurve;
 use crate::curves::TEModelParameters;
 use crate::dpc::Record;
 use crate::errors::DPCError;
+use snarkvm_groups::ProjectiveCurve;
 
 pub trait RecordSerializerScheme {
     /// The group is composed of base field elements in `Self::InnerField`.

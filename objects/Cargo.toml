@@ -32,6 +32,9 @@ path = "../utilities"
 version = "0.0.6"
 default-features = false
 
+[dependencies.anyhow]
+version = "1.0"
+
 [dependencies.base58]
 version = "0.1"
 

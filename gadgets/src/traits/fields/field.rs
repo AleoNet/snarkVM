@@ -14,14 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::Field;
-use crate::gadgets::r1cs::ConstraintSystem;
-use crate::gadgets::utilities::alloc::AllocGadget;
-use crate::gadgets::utilities::boolean::Boolean;
-use crate::gadgets::utilities::eq::{ConditionalEqGadget, EqGadget, NEqGadget};
-use crate::gadgets::utilities::select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget};
-use crate::gadgets::utilities::{ToBitsGadget, ToBytesGadget};
+use crate::utilities::alloc::AllocGadget;
+use crate::utilities::boolean::Boolean;
+use crate::utilities::eq::ConditionalEqGadget;
+use crate::utilities::eq::EqGadget;
+use crate::utilities::eq::NEqGadget;
+use crate::utilities::select::CondSelectGadget;
+use crate::utilities::select::ThreeBitCondNegLookupGadget;
+use crate::utilities::select::TwoBitLookupGadget;
+use crate::utilities::ToBitsGadget;
+use crate::utilities::ToBytesGadget;
+use snarkvm_fields::Field;
 use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::ConstraintSystem;
 
 use std::fmt::Debug;
 

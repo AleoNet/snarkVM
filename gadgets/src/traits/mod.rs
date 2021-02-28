@@ -15,6 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod algorithms;
+
 pub mod curves;
-pub mod r1cs;
+
+pub mod fields;
+
 pub mod utilities;

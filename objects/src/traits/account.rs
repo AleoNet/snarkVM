@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::algorithms::CommitmentScheme;
-use crate::algorithms::EncryptionScheme;
-use crate::algorithms::SignatureScheme;
 use crate::errors::AccountError;
+use snarkvm_algorithms::traits::CommitmentScheme;
+use snarkvm_algorithms::traits::EncryptionScheme;
+use snarkvm_algorithms::traits::SignatureScheme;
 
 use rand::Rng;
 

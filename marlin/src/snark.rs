@@ -23,11 +23,11 @@ use crate::marlin::UniversalSRS;
 use crate::Parameters;
 use snarkvm_algorithms::errors::SNARKError;
 use snarkvm_algorithms::traits::SNARK;
-use snarkvm_curves::traits::to_field_vec::ToConstraintField;
 use snarkvm_curves::traits::PairingEngine;
-use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
+use snarkvm_fields::traits::to_field_vec::ToConstraintField;
 use snarkvm_profiler::end_timer;
 use snarkvm_profiler::start_timer;
+use snarkvm_r1cs::ConstraintSynthesizer;
 
 pub use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
 pub use snarkvm_polycommit::PolynomialCommitment;

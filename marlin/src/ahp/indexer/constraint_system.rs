@@ -20,10 +20,10 @@ use crate::ahp::matrices::to_matrix_helper;
 use snarkvm_fields::Field;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
-use snarkvm_gadgets::traits::r1cs::Index as VarIndex;
-use snarkvm_gadgets::traits::r1cs::LinearCombination;
-use snarkvm_gadgets::traits::r1cs::Variable;
+use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::Index as VarIndex;
+use snarkvm_r1cs::LinearCombination;
+use snarkvm_r1cs::Variable;
 use snarkvm_utilities::serialize::*;
 
 /// Stores constraints during index generation.

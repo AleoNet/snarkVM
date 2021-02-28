@@ -14,15 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_gadgets::errors::SignedIntegerError;
+use crate::errors::SignedIntegerError;
 
-use crate::curves::PrimeField;
-use crate::gadgets::r1cs::ConstraintSystem;
-use crate::gadgets::utilities::alloc::AllocGadget;
-use crate::gadgets::utilities::arithmetic::{Mul, Pow};
-use crate::gadgets::utilities::boolean::Boolean;
-use crate::gadgets::utilities::int::*;
-use crate::gadgets::utilities::select::CondSelectGadget;
+use crate::utilities::alloc::AllocGadget;
+use crate::utilities::arithmetic::Mul;
+use crate::utilities::arithmetic::Pow;
+use crate::utilities::boolean::Boolean;
+use crate::utilities::int::*;
+use crate::utilities::select::CondSelectGadget;
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::ConstraintSystem;
 
 macro_rules! pow_int_impl {
     ($($gadget:ty)*) => ($(

@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_curves::bls12_377::Fq;
-use snarkvm_curves::traits::PrimeField;
 use snarkvm_fields::Field;
+use snarkvm_fields::PrimeField;
 use snarkvm_fields::SquareRootField;
 use snarkvm_utilities::biginteger::BigInteger;
 use snarkvm_utilities::biginteger::BigInteger384 as FqRepr;

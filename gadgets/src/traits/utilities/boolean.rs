@@ -14,14 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::{Field, FpParameters, PrimeField};
-use crate::gadgets::r1cs::{Assignment, ConstraintSystem, ConstraintVariable, LinearCombination, Variable};
-use crate::gadgets::utilities::alloc::AllocGadget;
-use crate::gadgets::utilities::eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget};
-use crate::gadgets::utilities::select::CondSelectGadget;
-use crate::gadgets::utilities::uint::UInt8;
-use crate::gadgets::utilities::ToBytesGadget;
+use crate::utilities::alloc::AllocGadget;
+use crate::utilities::eq::ConditionalEqGadget;
+use crate::utilities::eq::EqGadget;
+use crate::utilities::eq::EvaluateEqGadget;
+use crate::utilities::select::CondSelectGadget;
+use crate::utilities::uint::UInt8;
+use crate::utilities::ToBytesGadget;
+use snarkvm_fields::Field;
+use snarkvm_fields::FpParameters;
+use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::Assignment;
+use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::ConstraintVariable;
+use snarkvm_r1cs::LinearCombination;
+use snarkvm_r1cs::Variable;
 
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
@@ -767,8 +775,12 @@ impl<F: PrimeField> CondSelectGadget<F> for Boolean {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::curves::{Field, One, PrimeField, Zero};
-    use crate::gadgets::r1cs::{Fr, TestConstraintSystem};
+    use snarkvm_fields::Field;
+    use snarkvm_fields::One;
+    use snarkvm_fields::PrimeField;
+    use snarkvm_fields::Zero;
+    use snarkvm_r1cs::Fr;
+    use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::bititerator::BitIteratorBE;
     use snarkvm_utilities::rand::UniformRand;
 

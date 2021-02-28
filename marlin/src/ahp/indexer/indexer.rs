@@ -24,8 +24,8 @@ use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_gadgets::traits::r1cs::ConstraintSynthesizer;
-use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
+use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_r1cs::ConstraintSystem;
 
 use core::marker::PhantomData;
 

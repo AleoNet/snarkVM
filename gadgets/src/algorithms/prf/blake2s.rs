@@ -14,23 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    errors::SynthesisError,
-    traits::{
-        algorithms::PRFGadget,
-        r1cs::ConstraintSystem,
-        utilities::{
-            alloc::AllocGadget,
-            boolean::Boolean,
-            eq::{ConditionalEqGadget, EqGadget},
-            select::CondSelectGadget,
-            uint::unsigned_integer::{UInt, UInt32, UInt8},
-            ToBytesGadget,
-        },
-    },
-};
+use crate::traits::algorithms::PRFGadget;
+use crate::traits::utilities::alloc::AllocGadget;
+use crate::traits::utilities::boolean::Boolean;
+use crate::traits::utilities::eq::ConditionalEqGadget;
+use crate::traits::utilities::eq::EqGadget;
+use crate::traits::utilities::select::CondSelectGadget;
+use crate::traits::utilities::uint::unsigned_integer::UInt;
+use crate::traits::utilities::uint::unsigned_integer::UInt32;
+use crate::traits::utilities::uint::unsigned_integer::UInt8;
+use crate::traits::utilities::ToBytesGadget;
 use snarkvm_algorithms::prf::Blake2s;
 use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::ConstraintSystem;
 
 use std::borrow::Borrow;
 

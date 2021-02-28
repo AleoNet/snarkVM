@@ -16,12 +16,16 @@
 
 use crate::curves::tests_group::group_test;
 use crate::traits::curves::GroupGadget;
-use crate::traits::r1cs::ConstraintSystem;
 use crate::traits::utilities::alloc::AllocGadget;
-use crate::traits::utilities::boolean::{AllocatedBit, Boolean};
+use crate::traits::utilities::boolean::AllocatedBit;
+use crate::traits::utilities::boolean::Boolean;
 use crate::traits::utilities::select::CondSelectGadget;
 use snarkvm_curves::templates::twisted_edwards_extended::GroupAffine as TEAffine;
-use snarkvm_curves::traits::{Field, Group, PrimeField, TEModelParameters};
+use snarkvm_curves::traits::Group;
+use snarkvm_curves::traits::TEModelParameters;
+use snarkvm_fields::Field;
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::ConstraintSystem;
 use snarkvm_utilities::bititerator::BitIteratorBE;
 use snarkvm_utilities::rand::UniformRand;
 

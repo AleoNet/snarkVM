@@ -14,17 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::fp_parameters::FpParameters;
 use crate::curves::to_field_vec::ToConstraintField;
-use crate::curves::{Field, PrimeField};
-use crate::gadgets::curves::FpGadget;
-use crate::gadgets::r1cs::{Assignment, ConstraintSystem, LinearCombination};
-use crate::gadgets::utilities::alloc::AllocGadget;
-use crate::gadgets::utilities::boolean::{AllocatedBit, Boolean};
-use crate::gadgets::utilities::eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget};
-use crate::gadgets::utilities::select::CondSelectGadget;
-use crate::gadgets::utilities::{ToBitsGadget, ToBytesGadget};
+use crate::fields::FpGadget;
+use crate::utilities::alloc::AllocGadget;
+use crate::utilities::boolean::AllocatedBit;
+use crate::utilities::boolean::Boolean;
+use crate::utilities::eq::ConditionalEqGadget;
+use crate::utilities::eq::EqGadget;
+use crate::utilities::eq::EvaluateEqGadget;
+use crate::utilities::select::CondSelectGadget;
+use crate::utilities::ToBitsGadget;
+use crate::utilities::ToBytesGadget;
+use snarkvm_fields::fp_parameters::FpParameters;
+use snarkvm_fields::Field;
+use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::Assignment;
+use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::LinearCombination;
 
 use snarkvm_utilities::bytes::ToBytes;
 

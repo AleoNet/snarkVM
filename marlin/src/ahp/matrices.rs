@@ -22,12 +22,12 @@ use crate::BTreeMap;
 use snarkvm_algorithms::cfg_iter_mut;
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_algorithms::fft::Evaluations as EvaluationsOnDomain;
-use snarkvm_curves::traits::batch_inversion;
-use snarkvm_curves::traits::PrimeField;
+use snarkvm_fields::batch_inversion;
 use snarkvm_fields::Field;
-use snarkvm_gadgets::traits::r1cs::ConstraintSystem;
-use snarkvm_gadgets::traits::r1cs::Index as VarIndex;
+use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::LabeledPolynomial;
+use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::Index as VarIndex;
 use snarkvm_utilities::errors::SerializationError;
 use snarkvm_utilities::serialize::*;
 

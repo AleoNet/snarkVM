@@ -16,18 +16,23 @@
 
 use crate::algorithms::prf::*;
 use crate::traits::algorithms::PRFGadget;
-use crate::traits::r1cs::{ConstraintSystem, TestConstraintSystem};
 use crate::traits::utilities::alloc::AllocGadget;
-use crate::traits::utilities::boolean::{AllocatedBit, Boolean};
+use crate::traits::utilities::boolean::AllocatedBit;
+use crate::traits::utilities::boolean::Boolean;
 use crate::traits::utilities::eq::EqGadget;
-use crate::traits::utilities::uint::unsigned_integer::{UInt, UInt8};
+use crate::traits::utilities::uint::unsigned_integer::UInt;
+use crate::traits::utilities::uint::unsigned_integer::UInt8;
 use snarkvm_algorithms::prf::blake2s::Blake2s as B2SPRF;
 use snarkvm_algorithms::traits::PRF;
 use snarkvm_curves::bls12_377::Fr;
+use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::TestConstraintSystem;
 
 use blake2::VarBlake2s;
-use digest::{Update, VariableOutput};
-use rand::{Rng, SeedableRng};
+use digest::Update;
+use digest::VariableOutput;
+use rand::Rng;
+use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 
 #[test]

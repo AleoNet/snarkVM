@@ -15,13 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::algorithms::PRF;
-use crate::curves::Field;
-use crate::gadgets::r1cs::ConstraintSystem;
-use crate::gadgets::utilities::alloc::AllocGadget;
-use crate::gadgets::utilities::eq::EqGadget;
-use crate::gadgets::utilities::uint::UInt8;
-use crate::gadgets::utilities::ToBytesGadget;
+use crate::utilities::alloc::AllocGadget;
+use crate::utilities::eq::EqGadget;
+use crate::utilities::uint::UInt8;
+use crate::utilities::ToBytesGadget;
+use snarkvm_fields::Field;
 use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::ConstraintSystem;
 
 use std::fmt::Debug;
 

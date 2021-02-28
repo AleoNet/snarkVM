@@ -14,20 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::SynthesisError;
-use crate::traits::curves::{FieldGadget, GroupGadget};
-use crate::traits::r1cs::{Assignment, ConstraintSystem};
+use crate::traits::curves::GroupGadget;
+use crate::traits::fields::FieldGadget;
 use crate::traits::utilities::alloc::AllocGadget;
 use crate::traits::utilities::boolean::Boolean;
-use crate::traits::utilities::eq::{ConditionalEqGadget, EqGadget, NEqGadget};
+use crate::traits::utilities::eq::ConditionalEqGadget;
+use crate::traits::utilities::eq::EqGadget;
+use crate::traits::utilities::eq::NEqGadget;
 use crate::traits::utilities::select::CondSelectGadget;
 use crate::traits::utilities::uint::UInt8;
-use crate::traits::utilities::{ToBitsGadget, ToBytesGadget};
-use snarkvm_curves::templates::short_weierstrass::short_weierstrass_jacobian::{
-    GroupAffine as SWAffine,
-    GroupProjective as SWProjective,
-};
-use snarkvm_curves::traits::{AffineCurve, Field, One, PrimeField, ProjectiveCurve, SWModelParameters, Zero};
+use crate::traits::utilities::ToBitsGadget;
+use crate::traits::utilities::ToBytesGadget;
+use snarkvm_curves::templates::short_weierstrass::short_weierstrass_jacobian::GroupAffine as SWAffine;
+use snarkvm_curves::templates::short_weierstrass::short_weierstrass_jacobian::GroupProjective as SWProjective;
+use snarkvm_curves::traits::AffineCurve;
+use snarkvm_curves::traits::ProjectiveCurve;
+use snarkvm_curves::traits::SWModelParameters;
+use snarkvm_fields::Field;
+use snarkvm_fields::One;
+use snarkvm_fields::PrimeField;
+use snarkvm_fields::Zero;
+use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::Assignment;
+use snarkvm_r1cs::ConstraintSystem;
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::borrow::Borrow;

@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_curves::bw6_761::Fr;
-use snarkvm_curves::traits::PrimeField;
 use snarkvm_fields::Field;
+use snarkvm_fields::PrimeField;
 use snarkvm_fields::SquareRootField;
 use snarkvm_utilities::biginteger::BigInteger;
 use snarkvm_utilities::biginteger::BigInteger384 as FrRepr;

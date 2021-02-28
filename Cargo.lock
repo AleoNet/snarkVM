@@ -1713,6 +1713,7 @@ dependencies = [
  "smallvec",
  "snarkvm-curves",
  "snarkvm-fields",
+ "snarkvm-gadgets",
  "snarkvm-profiler",
  "snarkvm-r1cs",
  "snarkvm-utilities",
@@ -1792,6 +1793,7 @@ dependencies = [
  "rand_xorshift",
  "snarkvm-algorithms",
  "snarkvm-curves",
+ "snarkvm-fields",
  "snarkvm-r1cs",
  "snarkvm-utilities",
  "thiserror",
@@ -1811,8 +1813,11 @@ dependencies = [
  "rayon",
  "snarkvm-algorithms",
  "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-gadgets",
  "snarkvm-polycommit",
  "snarkvm-profiler",
+ "snarkvm-r1cs",
  "snarkvm-utilities",
 ]
 
@@ -1820,6 +1825,7 @@ dependencies = [
 name = "snarkvm-objects"
 version = "0.0.6"
 dependencies = [
+ "anyhow",
  "base58",
  "bech32",
  "bincode",
@@ -1866,6 +1872,7 @@ dependencies = [
  "rayon",
  "snarkvm-algorithms",
  "snarkvm-curves",
+ "snarkvm-fields",
  "snarkvm-profiler",
  "snarkvm-utilities",
 ]

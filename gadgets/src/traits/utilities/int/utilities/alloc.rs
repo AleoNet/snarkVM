@@ -15,15 +15,18 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::curves::to_field_vec::ToConstraintField;
-use crate::curves::{Field, FpParameters, PrimeField};
-use crate::gadgets::curves::FpGadget;
-use crate::gadgets::r1cs::ConstraintSystem;
-use crate::gadgets::utilities::alloc::AllocGadget;
-use crate::gadgets::utilities::boolean::{AllocatedBit, Boolean};
-use crate::gadgets::utilities::eq::EqGadget;
-use crate::gadgets::utilities::int::*;
-use crate::gadgets::utilities::ToBitsGadget;
+use crate::fields::FpGadget;
+use crate::utilities::alloc::AllocGadget;
+use crate::utilities::boolean::AllocatedBit;
+use crate::utilities::boolean::Boolean;
+use crate::utilities::eq::EqGadget;
+use crate::utilities::int::*;
+use crate::utilities::ToBitsGadget;
+use snarkvm_fields::Field;
+use snarkvm_fields::FpParameters;
+use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::ConstraintSystem;
 
 use core::borrow::Borrow;
 

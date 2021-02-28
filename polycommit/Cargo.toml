@@ -35,6 +35,14 @@ edition = "2018"
 path = "../algorithms"
 version = "0.0.6"
 
+[dependencies.snarkvm-curves]
+path = "../curves"
+version = "0.0.6"
+
+[dependencies.snarkvm-fields]
+path = "../fields"
+version = "0.0.6"
+
 [dependencies.snarkvm-profiler]
 path = "../profiler"
 version = "0.0.6"
@@ -57,9 +65,6 @@ default-features = false
 [dependencies.rayon]
 version = "1"
 optional = true
-
-[dev-dependencies.snarkvm-curves]
-path = "../curves"
 
 [dev-dependencies.blake2]
 version = "0.9"

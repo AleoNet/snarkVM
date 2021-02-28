@@ -14,17 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::SynthesisError;
 use crate::traits::algorithms::SNARKVerifierGadget;
-use crate::traits::curves::{FieldGadget, GroupGadget, PairingGadget};
-use crate::traits::r1cs::{ConstraintSynthesizer, ConstraintSystem};
-use crate::traits::utilities::alloc::{AllocBytesGadget, AllocGadget};
+use crate::traits::curves::GroupGadget;
+use crate::traits::curves::PairingGadget;
+use crate::traits::fields::FieldGadget;
+use crate::traits::utilities::alloc::AllocBytesGadget;
+use crate::traits::utilities::alloc::AllocGadget;
 use crate::traits::utilities::eq::EqGadget;
 use crate::traits::utilities::uint::UInt8;
-use crate::traits::utilities::{ToBitsGadget, ToBytesGadget};
-use snarkvm_algorithms::snark::gm17::{Proof, VerifyingKey, GM17};
-use snarkvm_curves::traits::to_field_vec::ToConstraintField;
-use snarkvm_curves::traits::{AffineCurve, Field, PairingEngine};
+use crate::traits::utilities::ToBitsGadget;
+use crate::traits::utilities::ToBytesGadget;
+use snarkvm_algorithms::snark::gm17::Proof;
+use snarkvm_algorithms::snark::gm17::VerifyingKey;
+use snarkvm_algorithms::snark::gm17::GM17;
+use snarkvm_curves::traits::AffineCurve;
+use snarkvm_curves::traits::PairingEngine;
+use snarkvm_fields::traits::to_field_vec::ToConstraintField;
+use snarkvm_fields::Field;
+use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_r1cs::ConstraintSystem;
 use snarkvm_utilities::bytes::FromBytes;
 
 use std::borrow::Borrow;

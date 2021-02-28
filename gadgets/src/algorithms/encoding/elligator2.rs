@@ -14,15 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::SynthesisError;
-use crate::traits::curves::FpGadget;
-use crate::traits::r1cs::ConstraintSystem;
+use crate::fields::FpGadget;
 use crate::traits::utilities::alloc::AllocGadget;
 use crate::traits::utilities::boolean::Boolean;
 use crate::traits::utilities::uint::UInt8;
-use crate::traits::utilities::{ToBitsGadget, ToBytesGadget};
-use snarkvm_curves::traits::{ModelParameters, MontgomeryModelParameters, PrimeField};
-use snarkvm_utilities::{to_bytes, ToBytes};
+use crate::traits::utilities::ToBitsGadget;
+use crate::traits::utilities::ToBytesGadget;
+use snarkvm_curves::traits::ModelParameters;
+use snarkvm_curves::traits::MontgomeryModelParameters;
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_utilities::to_bytes;
+use snarkvm_utilities::ToBytes;
 
 use std::borrow::Borrow;
 use std::marker::PhantomData;

@@ -14,15 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::SynthesisError;
-use crate::traits::algorithms::{CRHGadget, MaskedCRHGadget};
-use crate::traits::curves::{CompressedGroupGadget, GroupGadget};
-use crate::traits::r1cs::ConstraintSystem;
+use crate::traits::algorithms::CRHGadget;
+use crate::traits::algorithms::MaskedCRHGadget;
+use crate::traits::curves::CompressedGroupGadget;
+use crate::traits::curves::GroupGadget;
 use crate::traits::utilities::alloc::AllocGadget;
 use crate::traits::utilities::boolean::Boolean;
-use crate::traits::utilities::uint::unsigned_integer::{UInt, UInt8};
-use snarkvm_algorithms::crh::{PedersenCRH, PedersenCRHParameters, PedersenCompressedCRH, PedersenSize};
-use snarkvm_curves::traits::{Field, Group, PrimeField, ProjectiveCurve};
+use crate::traits::utilities::uint::unsigned_integer::UInt;
+use crate::traits::utilities::uint::unsigned_integer::UInt8;
+use snarkvm_algorithms::crh::PedersenCRH;
+use snarkvm_algorithms::crh::PedersenCRHParameters;
+use snarkvm_algorithms::crh::PedersenCompressedCRH;
+use snarkvm_algorithms::crh::PedersenSize;
+use snarkvm_curves::traits::Group;
+use snarkvm_curves::traits::ProjectiveCurve;
+use snarkvm_fields::Field;
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::ConstraintSystem;
 
 use std::borrow::Borrow;
 use std::marker::PhantomData;

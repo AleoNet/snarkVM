@@ -23,7 +23,7 @@ use snarkvm_algorithms::traits::MerkleParameters;
 use snarkvm_algorithms::traits::SignatureScheme;
 use snarkvm_algorithms::traits::CRH;
 use snarkvm_curves::errors::ConstraintFieldError;
-use snarkvm_curves::traits::to_field_vec::ToConstraintField;
+use snarkvm_fields::traits::to_field_vec::ToConstraintField;
 use snarkvm_r1cs::errors::SynthesisError;
 
 use snarkvm_utilities::bytes::ToBytes;

@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::PrimeField;
-use crate::gadgets::r1cs::ConstraintSystem;
-use crate::gadgets::utilities::boolean::Boolean;
-use crate::gadgets::utilities::eq::EvaluateEqGadget;
-use crate::gadgets::utilities::int::*;
+use crate::utilities::boolean::Boolean;
+use crate::utilities::eq::EvaluateEqGadget;
+use crate::utilities::int::*;
+use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::ConstraintSystem;
 
 macro_rules! eq_gadget_impl {
     ($($gadget: ident)*) => ($(

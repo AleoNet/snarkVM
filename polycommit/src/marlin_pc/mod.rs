@@ -35,10 +35,10 @@ use crate::ToString;
 use crate::Vec;
 use snarkvm_curves::traits::AffineCurve;
 use snarkvm_curves::traits::PairingEngine;
-use snarkvm_curves::traits::PrimeField;
 use snarkvm_curves::traits::ProjectiveCurve;
 use snarkvm_fields::Field;
 use snarkvm_fields::One;
+use snarkvm_fields::PrimeField;
 use snarkvm_fields::Zero;
 
 use core::convert::TryInto;

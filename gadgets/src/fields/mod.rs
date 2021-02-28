@@ -14,8 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod group;
-pub use group::*;
+pub mod fp;
+pub use fp::*;
 
-pub mod pairing;
-pub use pairing::*;
+pub mod fp2;
+pub use fp2::*;
+
+pub mod fp6_3over2;
+pub use fp6_3over2::*;
+
+pub mod fp12;
+pub use fp12::*;
