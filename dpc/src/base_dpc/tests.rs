@@ -47,10 +47,11 @@ use snarkvm_objects::PedersenMerkleRootHash;
 use snarkvm_objects::ProofOfSuccinctWork;
 use snarkvm_r1cs::ConstraintSystem;
 use snarkvm_r1cs::TestConstraintSystem;
-use snarkvm_testing::storage::*;
 use snarkvm_utilities::bytes::FromBytes;
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::to_bytes;
+
+use snarkvm_testing::storage::*;
 
 use itertools::Itertools;
 use rand::Rng;
