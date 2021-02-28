@@ -26,11 +26,11 @@ pub enum AHPError {
     /// Currently we only support square constraint matrices.
     NonSquareMatrix,
     /// An error occurred during constraint generation.
-    ConstraintSystemError(snarkvm_errors::gadgets::SynthesisError),
+    ConstraintSystemError(snarkvm_r1cs::errors::SynthesisError),
 }
 
-impl From<snarkvm_errors::gadgets::SynthesisError> for AHPError {
-    fn from(other: snarkvm_errors::gadgets::SynthesisError) -> Self {
+impl From<snarkvm_r1cs::errors::SynthesisError> for AHPError {
+    fn from(other: snarkvm_r1cs::errors::SynthesisError) -> Self {
         AHPError::ConstraintSystemError(other)
     }
 }

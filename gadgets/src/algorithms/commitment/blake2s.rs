@@ -14,14 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::algorithms::prf::{blake2s_gadget, Blake2sOutputGadget};
-use snarkvm_algorithms::commitment::Blake2sCommitment;
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    curves::{Field, PrimeField},
-    gadgets::{
+use crate::{
+    algorithms::prf::{blake2s_gadget, Blake2sOutputGadget},
+    traits::{
         algorithms::CommitmentGadget,
-        r1cs::ConstraintSystem,
         utilities::{
             alloc::AllocGadget,
             uint::unsigned_integer::{UInt, UInt8},
@@ -29,6 +25,9 @@ use snarkvm_models::{
         },
     },
 };
+use snarkvm_algorithms::commitment::Blake2sCommitment;
+use snarkvm_fields::{Field, PrimeField};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use std::borrow::Borrow;
 

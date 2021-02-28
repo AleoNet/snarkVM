@@ -14,23 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::signature::{SchnorrParameters, SchnorrPublicKey, SchnorrSignature};
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    curves::{Field, Group},
-    gadgets::{
-        algorithms::SignaturePublicKeyRandomizationGadget,
-        curves::GroupGadget,
-        r1cs::ConstraintSystem,
-        utilities::{
-            alloc::AllocGadget,
-            boolean::Boolean,
-            eq::{ConditionalEqGadget, EqGadget},
-            uint::unsigned_integer::{UInt, UInt8},
-            ToBytesGadget,
-        },
+use crate::traits::{
+    algorithms::SignaturePublicKeyRandomizationGadget,
+    curves::GroupGadget,
+    utilities::{
+        alloc::AllocGadget,
+        boolean::Boolean,
+        eq::{ConditionalEqGadget, EqGadget},
+        uint::unsigned_integer::{UInt, UInt8},
+        ToBytesGadget,
     },
 };
+use snarkvm_algorithms::signature::{SchnorrParameters, SchnorrPublicKey, SchnorrSignature};
+use snarkvm_curves::traits::Group;
+use snarkvm_fields::Field;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 use digest::Digest;

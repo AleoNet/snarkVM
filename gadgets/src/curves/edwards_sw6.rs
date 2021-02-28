@@ -14,9 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::templates::twisted_edwards::AffineGadget;
+use crate::{curves::templates::twisted_edwards::AffineGadget, fields::FpGadget};
 use snarkvm_curves::edwards_sw6::{EdwardsParameters, Fq};
-use snarkvm_models::gadgets::curves::FpGadget;
 
 pub type FqGadget = FpGadget<Fq>;
 
@@ -27,7 +26,7 @@ mod test {
     use super::EdwardsSWGadget;
     use crate::curves::templates::twisted_edwards::test::{edwards_constraint_costs, edwards_test};
     use snarkvm_curves::edwards_sw6::{EdwardsParameters, Fq};
-    use snarkvm_models::gadgets::r1cs::TestConstraintSystem;
+    use snarkvm_r1cs::TestConstraintSystem;
 
     #[test]
     fn edwards_constraint_costs_test() {

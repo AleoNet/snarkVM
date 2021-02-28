@@ -16,13 +16,12 @@
 
 use crate::{
     encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey},
+    errors::SignatureError,
     signature::{SchnorrOutput, SchnorrParameters, SchnorrPublicKey, SchnorrSignature},
+    traits::{EncryptionScheme, SignatureScheme},
 };
-use snarkvm_errors::algorithms::SignatureError;
-use snarkvm_models::{
-    algorithms::{EncryptionScheme, SignatureScheme},
-    curves::{Group, PrimeField, ProjectiveCurve},
-};
+use snarkvm_curves::traits::{Group, ProjectiveCurve};
+use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{serialize::*, to_bytes, FromBytes, ToBytes};
 
 use digest::Digest;

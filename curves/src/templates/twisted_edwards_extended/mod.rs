@@ -14,18 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::impl_edwards_curve_serializer;
-use snarkvm_models::curves::{
-    AffineCurve,
-    Field,
-    MontgomeryModelParameters as MontgomeryParameters,
-    One,
-    PrimeField,
-    ProjectiveCurve,
-    SquareRootField,
-    TEModelParameters as Parameters,
-    Zero,
+use crate::{
+    impl_edwards_curve_serializer,
+    traits::{
+        AffineCurve,
+        MontgomeryModelParameters as MontgomeryParameters,
+        ProjectiveCurve,
+        TEModelParameters as Parameters,
+    },
 };
+use snarkvm_fields::{Field, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
     bytes::{FromBytes, ToBytes},
@@ -334,7 +332,7 @@ impl<P: Parameters> Distribution<GroupAffine<P>> for Standard {
 
 mod group_impl {
     use super::*;
-    use snarkvm_models::curves::Group;
+    use crate::traits::Group;
 
     impl<P: Parameters> Group for GroupAffine<P> {
         type ScalarField = P::ScalarField;

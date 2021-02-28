@@ -22,11 +22,11 @@ use snarkvm_utilities::{
     serialize::{CanonicalDeserialize, CanonicalSerialize},
 };
 
-use snarkvm_models::curves::{
+use crate::traits::{
     pairing_engine::{AffineCurve, ProjectiveCurve},
     SWModelParameters,
-    Zero,
 };
+use snarkvm_fields::Zero;
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;

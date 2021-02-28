@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{error::StorageError, *};
-use snarkvm_algorithms::merkle_tree::MerkleTree;
-use snarkvm_models::{algorithms::LoadableMerkleParameters, objects::Transaction};
+use snarkvm_algorithms::{merkle_tree::MerkleTree, traits::LoadableMerkleParameters};
+use snarkvm_objects::traits::Transaction;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     to_bytes,

@@ -15,7 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{error::StorageError, *};
-use snarkvm_models::{algorithms::LoadableMerkleParameters, dpc::Record, objects::Transaction};
+use snarkvm_algorithms::traits::LoadableMerkleParameters;
+use snarkvm_dpc::traits::Record;
+use snarkvm_objects::traits::Transaction;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     to_bytes,

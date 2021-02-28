@@ -18,15 +18,12 @@ use crate::{
     base_dpc::{parameters::SystemParameters, BaseDPCComponents},
     Assignment,
 };
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    algorithms::{CommitmentScheme, CRH},
-    gadgets::{
-        algorithms::{CRHGadget, CommitmentGadget},
-        r1cs::{ConstraintSynthesizer, ConstraintSystem},
-        utilities::{alloc::AllocGadget, uint::UInt8},
-    },
+use snarkvm_algorithms::traits::{CommitmentScheme, CRH};
+use snarkvm_gadgets::traits::{
+    algorithms::{CRHGadget, CommitmentGadget},
+    utilities::{alloc::AllocGadget, uint::UInt8},
 };
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
 /// Always-accept program
 pub struct NoopCircuit<C: BaseDPCComponents> {

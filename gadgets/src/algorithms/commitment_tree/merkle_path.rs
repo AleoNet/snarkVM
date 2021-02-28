@@ -14,22 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::commitment_tree::CommitmentMerklePath;
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    algorithms::{CommitmentScheme, CRH},
-    curves::Field,
-    gadgets::{
-        algorithms::{CRHGadget, CommitmentGadget},
-        r1cs::ConstraintSystem,
-        utilities::{
-            alloc::AllocGadget,
-            boolean::{AllocatedBit, Boolean},
-            eq::{ConditionalEqGadget, ConditionalOrEqualsGadget},
-            ToBytesGadget,
-        },
+use crate::traits::{
+    algorithms::{CRHGadget, CommitmentGadget},
+    utilities::{
+        alloc::AllocGadget,
+        boolean::{AllocatedBit, Boolean},
+        eq::{ConditionalEqGadget, ConditionalOrEqualsGadget},
+        ToBytesGadget,
     },
 };
+use snarkvm_algorithms::{
+    commitment_tree::CommitmentMerklePath,
+    traits::{CommitmentScheme, CRH},
+};
+use snarkvm_fields::Field;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use std::borrow::Borrow;
 

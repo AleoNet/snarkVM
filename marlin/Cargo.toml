@@ -33,12 +33,12 @@ harness = false
 path = "../algorithms"
 version = "0.0.6"
 
-[dependencies.snarkvm-errors]
-path = "../errors"
+[dependencies.snarkvm-curves]
+path = "../curves"
 version = "0.0.6"
 
-[dependencies.snarkvm-models]
-path = "../models"
+[dependencies.snarkvm-fields]
+path = "../fields"
 version = "0.0.6"
 
 [dependencies.snarkvm-polycommit]
@@ -48,6 +48,10 @@ default-features = false
 
 [dependencies.snarkvm-profiler]
 path = "../profiler"
+version = "0.0.6"
+
+[dependencies.snarkvm-r1cs]
+path = "../r1cs"
 version = "0.0.6"
 
 [dependencies.snarkvm-utilities]
@@ -82,9 +86,6 @@ default-features = false
 
 [dev-dependencies.criterion]
 version = "0.3.4"
-
-[dev-dependencies.snarkvm-curves]
-path = "../curves"
 
 [features]
 default = [ "std", "parallel" ]

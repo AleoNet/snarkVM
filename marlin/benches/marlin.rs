@@ -17,19 +17,25 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_marlin::snark::MarlinSystem;
-use snarkvm_models::{
-    algorithms::SNARK,
-    curves::{Field, PairingEngine},
-    gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem},
+use snarkvm_algorithms::traits::SNARK;
+use snarkvm_curves::{
+    bls12_377::{Bls12_377, Fr},
+    traits::PairingEngine,
 };
+use snarkvm_fields::Field;
+use snarkvm_r1cs::errors::SynthesisError;
+
+use snarkvm_marlin::snark::MarlinSystem;
 use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem};
 
 use blake2::Blake2s;
 use criterion::Criterion;
-use rand::{self, thread_rng, Rng};
+use rand::{
+    thread_rng,
+    Rng,
+    {self},
+};
 
 type Marlin = MarlinSystem<Bls12_377, Benchmark<Fr>, Fr>;
 

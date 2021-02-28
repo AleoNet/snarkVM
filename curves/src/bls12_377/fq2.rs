@@ -16,10 +16,7 @@
 
 use crate::bls12_377::Fq;
 use serde::{Deserialize, Serialize};
-use snarkvm_models::{
-    curves::{Field, Fp2, Fp2Parameters},
-    field,
-};
+use snarkvm_fields::{field, Field, Fp2, Fp2Parameters};
 use snarkvm_utilities::biginteger::BigInteger384 as BigInteger;
 
 pub type Fq2 = Fp2<Fq2Parameters>;

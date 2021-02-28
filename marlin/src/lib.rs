@@ -38,6 +38,7 @@ extern crate snarkvm_profiler;
 #[macro_use]
 extern crate alloc;
 
+#[rustfmt::skip]
 #[cfg(not(feature = "std"))]
 use alloc::{
     collections::BTreeMap,
@@ -45,6 +46,7 @@ use alloc::{
     vec::Vec,
 };
 
+#[rustfmt::skip]
 #[cfg(feature = "std")]
 use std::{
     collections::BTreeMap,

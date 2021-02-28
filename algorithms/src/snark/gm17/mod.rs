@@ -17,11 +17,16 @@
 //! An implementation of the [Groth-Maller][GM17] simulation extractable zkSNARK.
 //! [GM17]: https://eprint.iacr.org/2017/540
 
-use snarkvm_errors::{gadgets::SynthesisResult, serialization::SerializationError};
-use snarkvm_models::curves::pairing_engine::{AffineCurve, PairingCurve, PairingEngine};
-use snarkvm_utilities::{serialize::*, FromBytes, ToBytes};
+use snarkvm_curves::traits::pairing_engine::{AffineCurve, PairingCurve, PairingEngine};
+use snarkvm_r1cs::errors::SynthesisResult;
+use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
-use std::io::{self, Read, Result as IoResult, Write};
+use std::io::{
+    Read,
+    Result as IoResult,
+    Write,
+    {self},
+};
 
 /// GM17 zkSNARK construction.
 pub mod snark;

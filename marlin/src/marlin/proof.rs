@@ -15,17 +15,21 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{ahp::prover::ProverMessage, Vec};
-use snarkvm_errors::serialization::SerializationError;
-use snarkvm_models::curves::PrimeField;
+use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::{BatchLCProof, PCCommitment, PolynomialCommitment};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     error,
+    errors::SerializationError,
     serialize::*,
 };
 
 use derivative::Derivative;
-use std::io::{self, Read, Write};
+use std::io::{
+    Read,
+    Write,
+    {self},
+};
 
 /// A zkSNARK proof.
 #[derive(Derivative)]

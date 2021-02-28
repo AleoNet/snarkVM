@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_models::curves::{Fp256, Fp256Parameters, FpParameters};
+use snarkvm_fields::{Fp256, Fp256Parameters, FpParameters};
 use snarkvm_utilities::biginteger::BigInteger256 as BigInteger;
 
 pub type Fr = Fp256<FrParameters>;

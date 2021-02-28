@@ -17,15 +17,14 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2018"
 
-[dependencies.snarkvm-errors]
-path = "../errors"
-version = "0.0.6"
-default-features = false
+[[bench]]
+name = "curve_and_field_benches"
+path = "benches/curve_and_field_benches.rs"
+harness = false
 
-[dependencies.snarkvm-models]
-path = "../models"
+[dependencies.snarkvm-fields]
+path = "../fields"
 version = "0.0.6"
-default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
@@ -47,21 +46,15 @@ version = "1.0.123"
 default-features = false
 features = [ "derive" ]
 
-[features]
-default = [
-  "snarkvm-errors/default",
-  "snarkvm-models/default",
-  "snarkvm-utilities/default"
-]
-sw6 = [ ]
-
-[build-dependencies]
-rustc_version = "0.3"
+[dependencies.thiserror]
+version = "1.0"
 
 [dev-dependencies]
 criterion = "0.3"
 
-[[bench]]
-name = "curve_and_field_benches"
-path = "benches/curve_and_field_benches.rs"
-harness = false
+[build-dependencies]
+rustc_version = "0.3"
+
+[features]
+default = ["snarkvm-fields/default", "snarkvm-utilities/default"]
+sw6 = [ ]

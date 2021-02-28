@@ -14,14 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::signature::SchnorrParameters;
-use snarkvm_errors::{algorithms::SignatureError, curves::ConstraintFieldError, serialization::SerializationError};
-use snarkvm_models::{
-    algorithms::SignatureScheme,
-    curves::{to_field_vec::ToConstraintField, Field, Group, One, PrimeField, Zero},
-};
+use crate::{errors::SignatureError, signature::SchnorrParameters, traits::SignatureScheme};
+use snarkvm_curves::traits::Group;
+use snarkvm_fields::{traits::ToConstraintField, ConstraintFieldError, Field, One, PrimeField, Zero};
 use snarkvm_utilities::{
     bytes::{bytes_to_bits, FromBytes, ToBytes},
+    errors::SerializationError,
     rand::UniformRand,
     serialize::*,
     to_bytes,

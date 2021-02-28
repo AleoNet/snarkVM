@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_curves::bls12_377::Fr;
-use snarkvm_models::curves::{Field, PrimeField, SquareRootField};
+use snarkvm_fields::{Field, PrimeField, SquareRootField};
 use snarkvm_utilities::{
     biginteger::{BigInteger, BigInteger256 as FrRepr},
     rand::UniformRand,

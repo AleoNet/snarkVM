@@ -27,8 +27,8 @@ use crate::{
         TwistType,
         BW6,
     },
+    traits::{PairingCurve, PairingEngine},
 };
-use snarkvm_models::curves::{PairingCurve, PairingEngine};
 use snarkvm_utilities::biginteger::BigInteger768 as BigInteger;
 
 pub struct BW6_761Parameters;

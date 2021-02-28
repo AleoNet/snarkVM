@@ -22,8 +22,7 @@ use posw::{HG, M};
 pub mod error;
 
 use snarkvm_algorithms::snark;
-use snarkvm_curves::bls12_377::Bls12_377;
-use snarkvm_models::curves::PairingEngine;
+use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_objects::{
     merkle_root_with_subroots,
     pedersen_merkle_root,
@@ -79,7 +78,7 @@ mod tests {
     use super::*;
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
-    use snarkvm_models::algorithms::SNARK;
+    use snarkvm_algorithms::traits::SNARK;
     use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
     use snarkvm_utilities::bytes::FromBytes;
 

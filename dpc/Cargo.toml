@@ -27,18 +27,13 @@ path = "../curves"
 version = "0.0.6"
 default-features = false
 
-[dependencies.snarkvm-errors]
-path = "../errors"
+[dependencies.snarkvm-fields]
+path = "../fields"
 version = "0.0.6"
 default-features = false
 
 [dependencies.snarkvm-gadgets]
 path = "../gadgets"
-version = "0.0.6"
-default-features = false
-
-[dependencies.snarkvm-models]
-path = "../models"
 version = "0.0.6"
 default-features = false
 
@@ -57,6 +52,11 @@ path = "../profiler"
 version = "0.0.6"
 default-features = false
 
+[dependencies.snarkvm-r1cs]
+path = "../r1cs"
+version = "0.0.6"
+default-features = false
+
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.0.6"
@@ -64,6 +64,12 @@ default-features = false
 
 [dependencies.anyhow]
 version = "1.0.38"
+
+[dependencies.base58]
+version = "0.1"
+
+[dependencies.bech32]
+version = "0.6"
 
 [dependencies.blake2]
 version = "0.9"
@@ -80,6 +86,9 @@ version = "0.10.0"
 [dependencies.rand]
 version = "0.8"
 
+[dependencies.thiserror]
+version = "1.0"
+
 [dev-dependencies.snarkvm-testing]
 path = "../testing"
 
@@ -90,9 +99,7 @@ version = "0.3"
 default = [
   "snarkvm-algorithms/default",
   "snarkvm-curves/default",
-  "snarkvm-errors/default",
   "snarkvm-gadgets/default",
-  "snarkvm-models/default",
   "snarkvm-parameters/default",
   "snarkvm-utilities/default"
 ]

@@ -14,26 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::templates::bls12::{G1Gadget, G1PreparedGadget, G2Gadget, G2PreparedGadget};
-use snarkvm_curves::templates::bls12::{
-    Bls12,
-    Bls12Parameters,
-    G1Affine,
-    G1Prepared,
-    G1Projective,
-    G2Affine,
-    G2Prepared,
-    G2Projective,
-    TwistType,
+use crate::{
+    curves::templates::bls12::{G1Gadget, G1PreparedGadget, G2Gadget, G2PreparedGadget},
+    fields::{Fp12Gadget, Fp2Gadget, FpGadget},
+    traits::{curves::PairingGadget, fields::FieldGadget},
 };
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    curves::{Fp12, ModelParameters, PairingCurve},
-    gadgets::{
-        curves::{FieldGadget, Fp12Gadget, Fp2Gadget, FpGadget, PairingGadget},
-        r1cs::ConstraintSystem,
+use snarkvm_curves::{
+    templates::bls12::{
+        Bls12,
+        Bls12Parameters,
+        G1Affine,
+        G1Prepared,
+        G1Projective,
+        G2Affine,
+        G2Prepared,
+        G2Projective,
+        TwistType,
     },
+    traits::{ModelParameters, PairingCurve},
 };
+use snarkvm_fields::Fp12;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::marker::PhantomData;

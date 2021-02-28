@@ -14,18 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::templates::{
-    short_weierstrass::short_weierstrass_jacobian::{GroupAffine as SWAffine, GroupProjective as SWProjective},
-    twisted_edwards_extended::{GroupAffine as TEAffine, GroupProjective as TEProjective},
+use crate::{
+    templates::{
+        short_weierstrass::short_weierstrass_jacobian::{GroupAffine as SWAffine, GroupProjective as SWProjective},
+        twisted_edwards_extended::{GroupAffine as TEAffine, GroupProjective as TEProjective},
+    },
+    traits::{ProjectiveCurve, SWModelParameters, TEModelParameters},
 };
-use snarkvm_errors::curves::ConstraintFieldError;
-use snarkvm_models::curves::{
-    to_field_vec::ToConstraintField,
-    Field,
-    ProjectiveCurve,
-    SWModelParameters,
-    TEModelParameters,
-};
+use snarkvm_fields::{errors::ConstraintFieldError, Field, ToConstraintField};
 
 impl<M: TEModelParameters, F: Field> ToConstraintField<F> for TEAffine<M>
 where

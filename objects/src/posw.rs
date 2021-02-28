@@ -25,7 +25,12 @@ use serde::{
     Serializer,
 };
 use std::{
-    fmt::{self, Debug, Display, Formatter},
+    fmt::{
+        Debug,
+        Display,
+        Formatter,
+        {self},
+    },
     io::{Read, Result as IoResult, Write},
 };
 

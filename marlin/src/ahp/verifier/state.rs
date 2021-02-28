@@ -16,7 +16,7 @@
 
 use crate::ahp::verifier::{VerifierFirstMessage, VerifierSecondMessage};
 use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_models::curves::PrimeField;
+use snarkvm_fields::PrimeField;
 
 /// State of the AHP verifier.
 pub struct VerifierState<F: PrimeField> {

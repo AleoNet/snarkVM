@@ -21,8 +21,9 @@ use crate::ahp::{
     AHPForR1CS,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::curves::PrimeField;
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::errors::SynthesisError;
+
 use snarkvm_polycommit::QuerySet;
 
 use rand_core::RngCore;

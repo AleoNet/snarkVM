@@ -14,20 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::base_dpc::{
-    inner_circuit_gadget::execute_inner_proof_gadget,
-    parameters::SystemParameters,
-    record::DPCRecord,
-    record_encryption::RecordEncryptionGadgetComponents,
-    BaseDPCComponents,
+use crate::{
+    account::AccountPrivateKey,
+    base_dpc::{
+        inner_circuit_gadget::execute_inner_proof_gadget,
+        parameters::SystemParameters,
+        record::DPCRecord,
+        record_encryption::RecordEncryptionGadgetComponents,
+        BaseDPCComponents,
+    },
 };
-use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTreeDigest};
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    algorithms::{CommitmentScheme, EncryptionScheme, SignatureScheme, CRH},
-    gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem},
+use snarkvm_algorithms::{
+    merkle_tree::{MerklePath, MerkleTreeDigest},
+    traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, CRH},
 };
-use snarkvm_objects::{AccountPrivateKey, AleoAmount};
+use snarkvm_objects::AleoAmount;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: BaseDPCComponents"))]

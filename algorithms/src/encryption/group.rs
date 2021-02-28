@@ -14,13 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::encryption::GroupEncryptionParameters;
-use snarkvm_errors::{algorithms::EncryptionError, serialization::SerializationError};
-use snarkvm_models::{
-    algorithms::EncryptionScheme,
-    curves::{AffineCurve, Field, Group, One, PrimeField, ProjectiveCurve, Zero},
+use crate::{encryption::GroupEncryptionParameters, errors::EncryptionError, traits::EncryptionScheme};
+use snarkvm_curves::traits::{AffineCurve, Group, ProjectiveCurve};
+use snarkvm_fields::{Field, One, PrimeField, Zero};
+use snarkvm_utilities::{
+    bytes_to_bits,
+    errors::SerializationError,
+    rand::UniformRand,
+    serialize::*,
+    to_bytes,
+    FromBytes,
+    ToBytes,
 };
-use snarkvm_utilities::{bytes_to_bits, rand::UniformRand, serialize::*, to_bytes, FromBytes, ToBytes};
 
 use digest::Digest;
 use itertools::Itertools;

@@ -18,14 +18,17 @@
 //!
 //! [`Groth16`]: https://eprint.iacr.org/2016/260.pdf
 
-use snarkvm_errors::serialization::SerializationError;
-use snarkvm_models::{
-    curves::{AffineCurve, Field, PairingCurve, PairingEngine},
-    gadgets::r1cs::{Index, LinearCombination},
-};
-use snarkvm_utilities::{serialize::*, FromBytes, ToBytes};
+use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine};
+use snarkvm_fields::Field;
+use snarkvm_r1cs::{Index, LinearCombination};
+use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
-use std::io::{self, Read, Result as IoResult, Write};
+use std::io::{
+    Read,
+    Result as IoResult,
+    Write,
+    {self},
+};
 
 /// Reduce an R1CS instance to a *Quadratic Arithmetic Program* instance.
 mod r1cs_to_qap;

@@ -33,12 +33,11 @@ use snarkvm_algorithms::{
     cfg_iter_mut,
     fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain},
 };
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    curves::{batch_inversion, Field, PrimeField},
-    gadgets::r1cs::ConstraintSynthesizer,
-};
+use snarkvm_fields::{batch_inversion, Field, PrimeField};
+use snarkvm_r1cs::errors::SynthesisError;
+
 use snarkvm_polycommit::{LabeledPolynomial, Polynomial};
+use snarkvm_r1cs::ConstraintSynthesizer;
 
 use rand_core::RngCore;
 

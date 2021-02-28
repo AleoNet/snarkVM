@@ -17,17 +17,16 @@
 //! Implements a Proof of Succinct work circuit. The inputs are opaque leaves,
 //! which are then used to build a tree instantiated with a masked Pedersen hash. The prover
 //! inputs a mask computed as Blake2s(nonce || root), which the verifier also checks.
-use snarkvm_errors::gadgets::SynthesisError;
+use snarkvm_algorithms::traits::{MaskedMerkleParameters, CRH};
+use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::algorithms::merkle_tree::compute_root;
-use snarkvm_models::{
-    algorithms::{MaskedMerkleParameters, CRH},
-    curves::PrimeField,
-    gadgets::{
-        algorithms::{CRHGadget, MaskedCRHGadget},
-        r1cs::{Assignment, ConstraintSynthesizer, ConstraintSystem},
-        utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8},
-    },
+use snarkvm_r1cs::errors::SynthesisError;
+
+use snarkvm_gadgets::traits::{
+    algorithms::{CRHGadget, MaskedCRHGadget},
+    utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8},
 };
+use snarkvm_r1cs::{Assignment, ConstraintSynthesizer, ConstraintSystem};
 
 use std::marker::PhantomData;
 
@@ -125,8 +124,8 @@ mod test {
         bls12_377::{Bls12_377, Fr},
         edwards_bls12::{EdwardsProjective as Edwards, Fq},
     };
+    use snarkvm_fields::traits::to_field_vec::ToConstraintField;
     use snarkvm_gadgets::{algorithms::crh::PedersenCompressedCRHGadget, curves::edwards_bls12::EdwardsBlsGadget};
-    use snarkvm_models::curves::to_field_vec::ToConstraintField;
     use snarkvm_utilities::bytes::ToBytes;
 
     use blake2::{digest::Digest, Blake2s};

@@ -14,16 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::edwards_bls12::EdwardsBlsGadget;
-use snarkvm_curves::edwards_bls12::{EdwardsProjective, Fq};
-use snarkvm_models::{
-    curves::{Field, Group},
-    gadgets::{
-        curves::GroupGadget,
-        r1cs::{ConstraintSystem, TestConstraintSystem},
-        utilities::alloc::AllocGadget,
-    },
+use crate::{
+    curves::edwards_bls12::EdwardsBlsGadget,
+    traits::{curves::GroupGadget, utilities::alloc::AllocGadget},
 };
+use snarkvm_curves::{
+    edwards_bls12::{EdwardsProjective, Fq},
+    traits::Group,
+};
+use snarkvm_fields::Field;
+use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
 #[allow(clippy::eq_op)]
 pub fn group_test<F: Field, G: Group, GG: GroupGadget<G, F>, CS: ConstraintSystem<F>>(cs: &mut CS, a: GG, b: GG) {

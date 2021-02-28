@@ -15,11 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::base_dpc::BaseDPCComponents;
-use snarkvm_models::{
-    algorithms::{EncryptionScheme, SNARK},
-    parameters::Parameter,
-};
-use snarkvm_parameters::*;
+use snarkvm_algorithms::traits::{EncryptionScheme, SNARK};
+use snarkvm_parameters::{traits::Parameter, *};
 use snarkvm_utilities::bytes::FromBytes;
 
 use std::io::Result as IoResult;

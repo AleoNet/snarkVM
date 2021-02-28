@@ -14,23 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::snark::groth16::{Groth16, Proof, VerifyingKey};
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    curves::{to_field_vec::ToConstraintField, AffineCurve, Field, PairingEngine},
-    gadgets::{
-        algorithms::snark::SNARKVerifierGadget,
-        curves::{GroupGadget, PairingGadget},
-        r1cs::{ConstraintSynthesizer, ConstraintSystem},
-        utilities::{
-            alloc::{AllocBytesGadget, AllocGadget},
-            eq::EqGadget,
-            uint::UInt8,
-            ToBitsGadget,
-            ToBytesGadget,
-        },
+use crate::traits::{
+    algorithms::snark::SNARKVerifierGadget,
+    curves::{GroupGadget, PairingGadget},
+    utilities::{
+        alloc::{AllocBytesGadget, AllocGadget},
+        eq::EqGadget,
+        uint::UInt8,
+        ToBitsGadget,
+        ToBytesGadget,
     },
 };
+use snarkvm_algorithms::snark::groth16::{Groth16, Proof, VerifyingKey};
+use snarkvm_curves::traits::{AffineCurve, PairingEngine};
+use snarkvm_fields::{traits::to_field_vec::ToConstraintField, Field};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_utilities::bytes::FromBytes;
 
 use std::{borrow::Borrow, marker::PhantomData};
@@ -424,16 +422,11 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::curves::bls12_377::PairingGadget as Bls12_377PairingGadget;
+    use crate::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, traits::utilities::boolean::Boolean};
     use snarkvm_algorithms::snark::groth16::*;
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-    use snarkvm_models::{
-        curves::PrimeField,
-        gadgets::{
-            r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem},
-            utilities::boolean::Boolean,
-        },
-    };
+    use snarkvm_fields::PrimeField;
+    use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
     use snarkvm_utilities::{test_rng, to_bytes, BitIteratorBE, ToBytes};
 
     use rand::Rng;

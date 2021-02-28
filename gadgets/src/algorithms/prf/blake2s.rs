@@ -14,23 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::prf::Blake2s;
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    curves::PrimeField,
-    gadgets::{
-        algorithms::PRFGadget,
-        r1cs::ConstraintSystem,
-        utilities::{
-            alloc::AllocGadget,
-            boolean::Boolean,
-            eq::{ConditionalEqGadget, EqGadget},
-            select::CondSelectGadget,
-            uint::unsigned_integer::{UInt, UInt32, UInt8},
-            ToBytesGadget,
-        },
+use crate::traits::{
+    algorithms::PRFGadget,
+    utilities::{
+        alloc::AllocGadget,
+        boolean::Boolean,
+        eq::{ConditionalEqGadget, EqGadget},
+        select::CondSelectGadget,
+        uint::unsigned_integer::{UInt, UInt32, UInt8},
+        ToBytesGadget,
     },
 };
+use snarkvm_algorithms::prf::Blake2s;
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use std::borrow::Borrow;
 

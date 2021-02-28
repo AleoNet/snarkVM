@@ -20,25 +20,23 @@ use crate::{
         merkle_tree::*,
     },
     curves::edwards_bls12::EdwardsBlsGadget,
+    traits::{
+        algorithms::{CRHGadget, MaskedCRHGadget},
+        utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8},
+    },
 };
 use snarkvm_algorithms::{
     crh::{BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH, PedersenSize},
     define_masked_merkle_tree_parameters,
     merkle_tree::MerkleTree,
+    traits::{MaskedMerkleParameters, MerkleParameters, CRH},
 };
 use snarkvm_curves::{
     bls12_377::Fr,
     edwards_bls12::{EdwardsAffine, EdwardsProjective},
 };
-use snarkvm_models::{
-    algorithms::{MaskedMerkleParameters, MerkleParameters, CRH},
-    curves::PrimeField,
-    gadgets::{
-        algorithms::{CRHGadget, MaskedCRHGadget},
-        r1cs::{ConstraintSystem, TestConstraintSystem},
-        utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8},
-    },
-};
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::ToBytes;
 
 use blake2::{digest::Digest, Blake2s};

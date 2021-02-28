@@ -14,18 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::sw6::{
-    fq::{Fq, FqParameters},
-    g1::{G1Affine, G1Projective},
-    g2::{G2Affine, G2Projective, SW6G2Parameters},
-    Fq3,
-    Fq6,
-    Fr,
+use crate::{
+    sw6::{
+        fq::{Fq, FqParameters},
+        g1::{G1Affine, G1Projective},
+        g2::{G2Affine, G2Projective, SW6G2Parameters},
+        Fq3,
+        Fq6,
+        Fr,
+    },
+    traits::{PairingCurve, PairingEngine, SWModelParameters},
 };
-use snarkvm_models::{
-    curves::{Field, FpParameters, One, PairingCurve, PairingEngine, SWModelParameters},
-    field,
-};
+use snarkvm_fields::{field, Field, FpParameters, One};
 use snarkvm_utilities::{biginteger::BigInteger832, bititerator::BitIteratorBE};
 
 pub type GT = Fq6;

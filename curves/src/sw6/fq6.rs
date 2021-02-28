@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::sw6::{Fq, Fq3, Fq3Parameters};
-use snarkvm_models::{
-    curves::fp6_2over3::{Fp6, Fp6Parameters},
+use snarkvm_fields::{
     field,
+    fp6_2over3::{Fp6, Fp6Parameters},
 };
 use snarkvm_utilities::biginteger::BigInteger832 as BigInteger;
 

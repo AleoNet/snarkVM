@@ -14,18 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_errors::algorithms::EncodingError;
-use snarkvm_models::curves::{
+use crate::errors::EncodingError;
+use snarkvm_curves::traits::{
     pairing_engine::{AffineCurve, ProjectiveCurve},
-    Field,
     Group,
-    LegendreSymbol,
     MontgomeryModelParameters,
-    One,
-    SquareRootField,
     TEModelParameters,
-    Zero,
 };
+use snarkvm_fields::{Field, LegendreSymbol, One, SquareRootField, Zero};
 use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
 use std::{cmp, marker::PhantomData, ops::Neg};

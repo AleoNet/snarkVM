@@ -20,24 +20,27 @@ use crate::{
     circuit::{POSWCircuit, POSWCircuitParameters},
     error::PoswError,
 };
-use snarkvm_algorithms::crh::sha256d_to_u64;
+use snarkvm_algorithms::{
+    crh::sha256d_to_u64,
+    traits::{MaskedMerkleParameters, SNARK},
+};
 use snarkvm_curves::{
     bls12_377::Fr,
     edwards_bls12::{EdwardsProjective, Fq},
+    traits::PairingEngine,
 };
-use snarkvm_gadgets::{algorithms::crh::PedersenCompressedCRHGadget, curves::edwards_bls12::EdwardsBlsGadget};
+use snarkvm_fields::{traits::to_field_vec::ToConstraintField, PrimeField};
+use snarkvm_gadgets::{
+    algorithms::crh::PedersenCompressedCRHGadget,
+    curves::edwards_bls12::EdwardsBlsGadget,
+    traits::algorithms::MaskedCRHGadget,
+};
 use snarkvm_marlin::snark::SRS;
-use snarkvm_models::{
-    algorithms::{MaskedMerkleParameters, SNARK},
-    curves::{to_field_vec::ToConstraintField, PairingEngine, PrimeField},
-    gadgets::algorithms::MaskedCRHGadget,
-    parameters::Parameter,
-};
 use snarkvm_objects::{
     pedersen_merkle_tree::{pedersen_merkle_root_hash_with_leaves, PedersenMerkleRootHash, PARAMS},
     MaskedMerkleTreeParameters,
 };
-use snarkvm_parameters::{PoswSNARKPKParameters, PoswSNARKVKParameters};
+use snarkvm_parameters::{traits::Parameter, PoswSNARKPKParameters, PoswSNARKVKParameters};
 use snarkvm_polycommit::optional_rng::OptionalRng;
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_utilities::{

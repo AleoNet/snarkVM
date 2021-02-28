@@ -14,20 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::base_dpc::{
-    parameters::SystemParameters,
-    record::{encrypted_record::*, record_serializer::*, DPCRecord},
-    record_payload::RecordPayload,
-    BaseDPCComponents,
+use crate::{
+    account::{AccountAddress, AccountViewKey},
+    base_dpc::{
+        parameters::SystemParameters,
+        record::{encrypted_record::*, record_serializer::*, DPCRecord},
+        record_payload::RecordPayload,
+        BaseDPCComponents,
+    },
+    errors::DPCError,
+    traits::{DPCComponents, Record, RecordSerializerScheme},
 };
-use snarkvm_algorithms::encoding::Elligator2;
-use snarkvm_errors::dpc::DPCError;
-use snarkvm_models::{
-    algorithms::{CommitmentScheme, EncryptionScheme, CRH},
-    curves::{AffineCurve, ModelParameters, One, ProjectiveCurve},
-    dpc::{DPCComponents, Record, RecordSerializerScheme},
+use snarkvm_algorithms::{
+    encoding::Elligator2,
+    traits::{CommitmentScheme, EncryptionScheme, CRH},
 };
-use snarkvm_objects::{AccountAddress, AccountViewKey};
+use snarkvm_curves::traits::{AffineCurve, ModelParameters, ProjectiveCurve};
+use snarkvm_fields::One;
 use snarkvm_utilities::{bits_to_bytes, bytes_to_bits, to_bytes, FromBytes, ToBytes};
 
 use itertools::Itertools;

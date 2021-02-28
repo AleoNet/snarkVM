@@ -15,22 +15,24 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::curves::edwards_bls12::EdwardsBlsGadget;
-use snarkvm_algorithms::{
-    commitment::{Blake2sCommitment, PedersenCommitment},
-    crh::PedersenSize,
-};
-use snarkvm_curves::edwards_bls12::{EdwardsProjective, Fq, Fr};
-use snarkvm_models::{
-    algorithms::CommitmentScheme,
-    curves::ProjectiveCurve,
-    gadgets::{
+use crate::{
+    curves::edwards_bls12::EdwardsBlsGadget,
+    traits::{
         algorithms::CommitmentGadget,
-        curves::FieldGadget,
-        r1cs::{ConstraintSystem, TestConstraintSystem},
+        fields::FieldGadget,
         utilities::{alloc::AllocGadget, uint::UInt8},
     },
 };
+use snarkvm_algorithms::{
+    commitment::{Blake2sCommitment, PedersenCommitment},
+    crh::PedersenSize,
+    traits::CommitmentScheme,
+};
+use snarkvm_curves::{
+    edwards_bls12::{EdwardsProjective, Fq, Fr},
+    traits::ProjectiveCurve,
+};
+use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::rand::UniformRand;
 
 use rand::{thread_rng, Rng};

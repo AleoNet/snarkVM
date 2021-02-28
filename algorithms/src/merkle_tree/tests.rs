@@ -18,8 +18,8 @@ use crate::{
     crh::{PedersenCRH, PedersenCompressedCRH, PedersenSize},
     define_merkle_tree_parameters,
     merkle_tree::MerkleTree,
+    traits::{crh::CRH, merkle_tree::LoadableMerkleParameters},
 };
-use snarkvm_models::algorithms::{crh::CRH, merkle_tree::LoadableMerkleParameters};
 use snarkvm_utilities::{to_bytes, ToBytes};
 
 /// Generates a valid Merkle tree and verifies the Merkle path witness for each leaf.

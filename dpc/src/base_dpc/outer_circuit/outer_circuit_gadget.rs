@@ -15,23 +15,22 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::base_dpc::{parameters::SystemParameters, program::PrivateProgramInput, BaseDPCComponents};
-use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    algorithms::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
-    curves::to_field_vec::ToConstraintField,
-    gadgets::{
-        algorithms::{CRHGadget, CommitmentGadget, SNARKVerifierGadget},
-        r1cs::ConstraintSystem,
-        utilities::{
-            alloc::{AllocBytesGadget, AllocGadget},
-            eq::EqGadget,
-            uint::unsigned_integer::{UInt, UInt8},
-            ToBytesGadget,
-        },
+use snarkvm_algorithms::{
+    merkle_tree::MerkleTreeDigest,
+    traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
+};
+use snarkvm_fields::traits::to_field_vec::ToConstraintField;
+use snarkvm_gadgets::traits::{
+    algorithms::{CRHGadget, CommitmentGadget, SNARKVerifierGadget},
+    utilities::{
+        alloc::{AllocBytesGadget, AllocGadget},
+        eq::EqGadget,
+        uint::unsigned_integer::{UInt, UInt8},
+        ToBytesGadget,
     },
 };
 use snarkvm_objects::AleoAmount;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
 use itertools::Itertools;

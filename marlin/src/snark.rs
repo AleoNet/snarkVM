@@ -19,13 +19,11 @@ use crate::{
     marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinSNARK, Proof, UniversalSRS},
     Parameters,
 };
-use snarkvm_errors::algorithms::SNARKError;
-use snarkvm_models::{
-    algorithms::SNARK,
-    curves::{to_field_vec::ToConstraintField, PairingEngine},
-    gadgets::r1cs::ConstraintSynthesizer,
-};
+use snarkvm_algorithms::{errors::SNARKError, traits::SNARK};
+use snarkvm_curves::traits::PairingEngine;
+use snarkvm_fields::traits::to_field_vec::ToConstraintField;
 use snarkvm_profiler::{end_timer, start_timer};
+use snarkvm_r1cs::ConstraintSynthesizer;
 
 pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PolynomialCommitment};
 

@@ -14,24 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::templates::twisted_edwards_extended::GroupAffine as TEAffine;
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    curves::{Field, MontgomeryModelParameters, TEModelParameters},
-    gadgets::{
-        curves::{CompressedGroupGadget, FieldGadget, GroupGadget},
-        r1cs::{ConstraintSystem, Namespace},
-        utilities::{
-            alloc::AllocGadget,
-            boolean::Boolean,
-            eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-            select::CondSelectGadget,
-            uint::UInt8,
-            ToBitsGadget,
-            ToBytesGadget,
-        },
+use crate::traits::{
+    curves::{CompressedGroupGadget, GroupGadget},
+    fields::FieldGadget,
+    utilities::{
+        alloc::AllocGadget,
+        boolean::Boolean,
+        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+        select::CondSelectGadget,
+        uint::UInt8,
+        ToBitsGadget,
+        ToBytesGadget,
     },
 };
+use snarkvm_curves::{
+    templates::twisted_edwards_extended::GroupAffine as TEAffine,
+    traits::{MontgomeryModelParameters, TEModelParameters},
+};
+use snarkvm_fields::Field;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem, Namespace};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::{borrow::Borrow, marker::PhantomData};
@@ -55,10 +56,8 @@ pub struct MontgomeryAffineGadget<P: TEModelParameters, F: Field, FG: FieldGadge
 mod montgomery_affine_impl {
     use super::*;
     use snarkvm_curves::templates::twisted_edwards_extended::GroupAffine;
-    use snarkvm_models::{
-        curves::{Field, One, Zero},
-        gadgets::r1cs::Assignment,
-    };
+    use snarkvm_fields::{Field, One, Zero};
+    use snarkvm_r1cs::Assignment;
     use std::ops::{AddAssign, MulAssign, SubAssign};
 
     impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> MontgomeryAffineGadget<P, F, FG> {
@@ -243,10 +242,9 @@ impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> Eq for Af
 
 mod affine_impl {
     use super::*;
-    use snarkvm_models::{
-        curves::{AffineCurve, Field, One, PrimeField},
-        gadgets::r1cs::Assignment,
-    };
+    use snarkvm_curves::traits::AffineCurve;
+    use snarkvm_fields::{Field, One, PrimeField};
+    use snarkvm_r1cs::Assignment;
 
     use std::ops::Neg;
 
@@ -607,11 +605,12 @@ mod affine_impl {
 
 mod projective_impl {
     use super::*;
-    use snarkvm_curves::templates::twisted_edwards_extended::GroupProjective as TEProjective;
-    use snarkvm_models::{
-        curves::{AffineCurve, Field, One, PrimeField, ProjectiveCurve, Zero},
-        gadgets::r1cs::Assignment,
+    use snarkvm_curves::{
+        templates::twisted_edwards_extended::GroupProjective as TEProjective,
+        traits::{AffineCurve, ProjectiveCurve},
     };
+    use snarkvm_fields::{Field, One, PrimeField, Zero};
+    use snarkvm_r1cs::Assignment;
     use std::ops::Neg;
 
     /// Based on 2 input bits, output on a group element from a 4 element table.

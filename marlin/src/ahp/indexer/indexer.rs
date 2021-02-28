@@ -21,11 +21,10 @@ use crate::ahp::{
     AHPForR1CS,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    curves::PrimeField,
-    gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem},
-};
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::errors::SynthesisError;
+
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem};
 
 use core::marker::PhantomData;
 

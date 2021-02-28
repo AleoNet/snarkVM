@@ -15,9 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Vec;
-use snarkvm_errors::serialization::SerializationError;
-use snarkvm_models::curves::Field;
-use snarkvm_utilities::{bytes::ToBytes, error, serialize::*, Write};
+use snarkvm_fields::Field;
+use snarkvm_utilities::{bytes::ToBytes, error, errors::SerializationError, serialize::*, Write};
 
 /// Each prover message that is not a list of oracles is a list of field elements.
 #[repr(transparent)]

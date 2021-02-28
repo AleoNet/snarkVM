@@ -26,7 +26,8 @@ use snarkvm_algorithms::{
     cfg_iter,
     msm::{FixedBaseMSM, VariableBaseMSM},
 };
-use snarkvm_models::curves::{AffineCurve, Group, One, PairingCurve, PairingEngine, PrimeField, ProjectiveCurve, Zero};
+use snarkvm_curves::traits::{AffineCurve, Group, PairingCurve, PairingEngine, ProjectiveCurve};
+use snarkvm_fields::{One, PrimeField, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
 use core::marker::PhantomData;

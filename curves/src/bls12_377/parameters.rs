@@ -35,8 +35,8 @@ use crate::{
         G2Projective as Bls12G2Projective,
         TwistType,
     },
+    traits::{PairingCurve, PairingEngine},
 };
-use snarkvm_models::curves::{PairingCurve, PairingEngine};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Bls12_377Parameters;

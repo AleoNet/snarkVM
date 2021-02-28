@@ -16,13 +16,11 @@
 
 use crate::{
     edwards_bls12::{Fq, Fr},
+    errors::GroupError,
     templates::twisted_edwards_extended::{GroupAffine, GroupProjective},
+    traits::{ModelParameters, MontgomeryModelParameters, TEModelParameters},
 };
-use snarkvm_errors::curves::GroupError;
-use snarkvm_models::{
-    curves::{ModelParameters, MontgomeryModelParameters, TEModelParameters},
-    field,
-};
+use snarkvm_fields::field;
 use snarkvm_utilities::biginteger::BigInteger256;
 
 use std::str::FromStr;

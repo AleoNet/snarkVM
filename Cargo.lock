@@ -1712,10 +1712,11 @@ dependencies = [
  "sha2",
  "smallvec",
  "snarkvm-curves",
- "snarkvm-errors",
- "snarkvm-models",
+ "snarkvm-fields",
  "snarkvm-profiler",
+ "snarkvm-r1cs",
  "snarkvm-utilities",
+ "thiserror",
 ]
 
 [[package]]
@@ -1728,9 +1729,9 @@ dependencies = [
  "rand_xorshift",
  "rustc_version 0.3.3",
  "serde",
- "snarkvm-errors",
- "snarkvm-models",
+ "snarkvm-fields",
  "snarkvm-utilities",
+ "thiserror",
 ]
 
 [[package]]
@@ -1749,6 +1750,8 @@ name = "snarkvm-dpc"
 version = "0.0.6"
 dependencies = [
  "anyhow",
+ "base58",
+ "bech32",
  "blake2",
  "derivative",
  "hex",
@@ -1757,25 +1760,27 @@ dependencies = [
  "rand_xorshift",
  "snarkvm-algorithms",
  "snarkvm-curves",
- "snarkvm-errors",
+ "snarkvm-fields",
  "snarkvm-gadgets",
- "snarkvm-models",
  "snarkvm-objects",
  "snarkvm-parameters",
  "snarkvm-profiler",
+ "snarkvm-r1cs",
  "snarkvm-testing",
  "snarkvm-utilities",
+ "thiserror",
 ]
 
 [[package]]
-name = "snarkvm-errors"
+name = "snarkvm-fields"
 version = "0.0.6"
 dependencies = [
- "base58",
- "bech32",
  "bincode",
- "curl",
- "hex",
+ "derivative",
+ "rand",
+ "rand_xorshift",
+ "serde",
+ "snarkvm-utilities",
  "thiserror",
 ]
 
@@ -1784,6 +1789,7 @@ name = "snarkvm-gadgets"
 version = "0.0.6"
 dependencies = [
  "blake2",
+ "criterion",
  "derivative",
  "digest",
  "itertools 0.10.0",
@@ -1791,9 +1797,10 @@ dependencies = [
  "rand_xorshift",
  "snarkvm-algorithms",
  "snarkvm-curves",
- "snarkvm-errors",
- "snarkvm-models",
+ "snarkvm-fields",
+ "snarkvm-r1cs",
  "snarkvm-utilities",
+ "thiserror",
 ]
 
 [[package]]
@@ -1810,29 +1817,10 @@ dependencies = [
  "rayon",
  "snarkvm-algorithms",
  "snarkvm-curves",
- "snarkvm-errors",
- "snarkvm-models",
+ "snarkvm-fields",
  "snarkvm-polycommit",
  "snarkvm-profiler",
- "snarkvm-utilities",
-]
-
-[[package]]
-name = "snarkvm-models"
-version = "0.0.6"
-dependencies = [
- "anyhow",
- "bincode",
- "cfg-if 1.0.0",
- "criterion",
- "derivative",
- "fxhash",
- "indexmap",
- "itertools 0.10.0",
- "rand",
- "rand_xorshift",
- "serde",
- "snarkvm-errors",
+ "snarkvm-r1cs",
  "snarkvm-utilities",
 ]
 
@@ -1840,11 +1828,9 @@ dependencies = [
 name = "snarkvm-objects"
 version = "0.0.6"
 dependencies = [
- "base58",
- "bech32",
+ "anyhow",
  "bincode",
  "chrono",
- "derivative",
  "hex",
  "once_cell",
  "rand",
@@ -1853,9 +1839,8 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-dpc",
- "snarkvm-errors",
- "snarkvm-models",
  "snarkvm-utilities",
+ "thiserror",
 ]
 
 [[package]]
@@ -1869,12 +1854,11 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-dpc",
- "snarkvm-errors",
  "snarkvm-marlin",
- "snarkvm-models",
  "snarkvm-polycommit",
  "snarkvm-posw",
  "snarkvm-utilities",
+ "thiserror",
 ]
 
 [[package]]
@@ -1889,8 +1873,7 @@ dependencies = [
  "rayon",
  "snarkvm-algorithms",
  "snarkvm-curves",
- "snarkvm-errors",
- "snarkvm-models",
+ "snarkvm-fields",
  "snarkvm-profiler",
  "snarkvm-utilities",
 ]
@@ -1906,14 +1889,14 @@ dependencies = [
  "serde",
  "snarkvm-algorithms",
  "snarkvm-curves",
- "snarkvm-errors",
+ "snarkvm-fields",
  "snarkvm-gadgets",
  "snarkvm-marlin",
- "snarkvm-models",
  "snarkvm-objects",
  "snarkvm-parameters",
  "snarkvm-polycommit",
  "snarkvm-profiler",
+ "snarkvm-r1cs",
  "snarkvm-utilities",
  "thiserror",
 ]
@@ -1923,6 +1906,19 @@ name = "snarkvm-profiler"
 version = "0.0.6"
 dependencies = [
  "colored",
+]
+
+[[package]]
+name = "snarkvm-r1cs"
+version = "0.0.6"
+dependencies = [
+ "cfg-if 1.0.0",
+ "fxhash",
+ "indexmap",
+ "itertools 0.10.0",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-utilities",
 ]
 
 [[package]]
@@ -1938,8 +1934,7 @@ dependencies = [
  "serde",
  "snarkvm-algorithms",
  "snarkvm-curves",
- "snarkvm-errors",
- "snarkvm-models",
+ "snarkvm-dpc",
  "snarkvm-objects",
  "snarkvm-parameters",
  "snarkvm-testing",
@@ -1957,8 +1952,6 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-dpc",
- "snarkvm-errors",
- "snarkvm-models",
  "snarkvm-objects",
  "snarkvm-parameters",
  "snarkvm-storage",
@@ -1973,7 +1966,7 @@ dependencies = [
  "rand",
  "rand_xorshift",
  "snarkvm-derives",
- "snarkvm-errors",
+ "thiserror",
 ]
 
 [[package]]
@@ -1985,8 +1978,6 @@ dependencies = [
  "rand_xorshift",
  "serde",
  "snarkvm-curves",
- "snarkvm-errors",
- "snarkvm-models",
  "snarkvm-utilities",
  "wasm-bindgen",
  "wasm-bindgen-test",

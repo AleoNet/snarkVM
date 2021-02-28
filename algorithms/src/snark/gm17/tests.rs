@@ -14,11 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    curves::{Field, Zero},
-    gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem},
-};
+use snarkvm_fields::{Field, Zero};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
 struct MySillyCircuit<F: Field> {
     a: Option<F>,
@@ -104,14 +101,13 @@ mod gm17 {
     use super::*;
 
     use rand::thread_rng;
-    use snarkvm_models::curves::One;
+    use snarkvm_fields::One;
     use std::ops::AddAssign;
 
     #[test]
     fn test_gm17() {
-        use crate::snark::gm17::GM17;
+        use crate::{snark::gm17::GM17, traits::SNARK};
         use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-        use snarkvm_models::algorithms::SNARK;
 
         #[derive(Copy, Clone)]
         struct R1CSCircuit {

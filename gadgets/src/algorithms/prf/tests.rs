@@ -14,14 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::algorithms::prf::*;
-use snarkvm_algorithms::prf::blake2s::Blake2s as B2SPRF;
-use snarkvm_curves::bls12_377::Fr;
-use snarkvm_models::{
-    algorithms::PRF,
-    gadgets::{
+use crate::{
+    algorithms::prf::*,
+    traits::{
         algorithms::PRFGadget,
-        r1cs::{ConstraintSystem, TestConstraintSystem},
         utilities::{
             alloc::AllocGadget,
             boolean::{AllocatedBit, Boolean},
@@ -30,6 +26,9 @@ use snarkvm_models::{
         },
     },
 };
+use snarkvm_algorithms::{prf::blake2s::Blake2s as B2SPRF, traits::PRF};
+use snarkvm_curves::bls12_377::Fr;
+use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
 use blake2::VarBlake2s;
 use digest::{Update, VariableOutput};

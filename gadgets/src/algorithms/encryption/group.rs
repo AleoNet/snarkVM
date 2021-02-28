@@ -14,23 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey};
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    curves::{Field, Group, PrimeField, ProjectiveCurve},
-    gadgets::{
-        algorithms::EncryptionGadget,
-        curves::{CompressedGroupGadget, GroupGadget},
-        r1cs::ConstraintSystem,
-        utilities::{
-            alloc::AllocGadget,
-            boolean::Boolean,
-            eq::{ConditionalEqGadget, EqGadget},
-            uint::{UInt, UInt8},
-            ToBytesGadget,
-        },
+use crate::traits::{
+    algorithms::EncryptionGadget,
+    curves::{CompressedGroupGadget, GroupGadget},
+    utilities::{
+        alloc::AllocGadget,
+        boolean::Boolean,
+        eq::{ConditionalEqGadget, EqGadget},
+        uint::{UInt, UInt8},
+        ToBytesGadget,
     },
 };
+use snarkvm_algorithms::encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey};
+use snarkvm_curves::traits::{Group, ProjectiveCurve};
+use snarkvm_fields::{Field, PrimeField};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{to_bytes, CanonicalDeserialize, CanonicalSerialize, ToBytes};
 
 use digest::Digest;

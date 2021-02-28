@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::commitment_tree::CommitmentMerklePath;
-use snarkvm_errors::algorithms::MerkleError;
-use snarkvm_models::algorithms::{CommitmentScheme, CRH};
+use crate::{
+    commitment_tree::CommitmentMerklePath,
+    errors::MerkleError,
+    traits::{CommitmentScheme, CRH},
+};
 use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};

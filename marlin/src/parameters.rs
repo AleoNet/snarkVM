@@ -15,14 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{marlin::MarlinSNARK, ProvingKey, VerifyingKey, SRS};
-use snarkvm_errors::{algorithms::SNARKError, serialization::SerializationError};
-use snarkvm_models::{
-    curves::{AffineCurve, PairingEngine},
-    gadgets::r1cs::ConstraintSynthesizer,
-};
+use snarkvm_algorithms::errors::SNARKError;
+use snarkvm_curves::traits::{AffineCurve, PairingEngine};
+use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     error,
+    errors::SerializationError,
     io,
     serialize::*,
     PROCESSING_SNARK_PARAMS,
@@ -36,7 +35,10 @@ use derivative::Derivative;
 use rayon::prelude::*;
 use std::{
     io::{Read, Write},
-    sync::atomic::{self, AtomicU64},
+    sync::atomic::{
+        AtomicU64,
+        {self},
+    },
 };
 
 #[derive(Derivative)]

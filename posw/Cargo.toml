@@ -27,8 +27,8 @@ path = "../curves"
 version = "0.0.6"
 default-features = false
 
-[dependencies.snarkvm-errors]
-path = "../errors"
+[dependencies.snarkvm-fields]
+path = "../fields"
 version = "0.0.6"
 default-features = false
 
@@ -40,11 +40,6 @@ default-features = false
 [dependencies.snarkvm-marlin]
 path = "../marlin"
 version = "0.0.6"
-
-[dependencies.snarkvm-models]
-path = "../models"
-version = "0.0.6"
-default-features = false
 
 [dependencies.snarkvm-polycommit]
 path = "../polycommit"
@@ -66,6 +61,11 @@ path = "../profiler"
 version = "0.0.6"
 default-features = false
 
+[dependencies.snarkvm-r1cs]
+path = "../r1cs"
+version = "0.0.6"
+default-features = false
+
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.0.6"
@@ -76,7 +76,7 @@ version = "0.9"
 default-features = false
 
 [dependencies.thiserror]
-version = "1.0.24"
+version = "1.0"
 
 [dependencies.rand]
 version = "0.8"

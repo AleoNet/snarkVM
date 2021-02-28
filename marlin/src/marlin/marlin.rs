@@ -18,8 +18,9 @@ use crate::{
     ahp::{AHPError, AHPForR1CS, EvaluationsProvider},
     marlin::{CircuitProvingKey, CircuitVerifyingKey, FiatShamirRng, MarlinError, Proof, UniversalSRS},
 };
-use snarkvm_models::{curves::PrimeField, gadgets::r1cs::ConstraintSynthesizer};
+use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::{Evaluations, LabeledCommitment, PCUniversalParams, PolynomialCommitment};
+use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{bytes::ToBytes, rand::UniformRand, to_bytes};
 
 use core::marker::PhantomData;

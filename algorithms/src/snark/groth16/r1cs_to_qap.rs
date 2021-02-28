@@ -16,10 +16,12 @@
 
 use super::{generator::KeypairAssembly, prover::ProvingAssignment, Vec};
 use crate::{cfg_iter, cfg_iter_mut, fft::EvaluationDomain};
-use snarkvm_errors::gadgets::{SynthesisError, SynthesisResult};
-use snarkvm_models::{
-    curves::{PairingEngine, Zero},
-    gadgets::r1cs::{ConstraintSystem, Index},
+use snarkvm_curves::traits::PairingEngine;
+use snarkvm_fields::Zero;
+use snarkvm_r1cs::{
+    errors::{SynthesisError, SynthesisResult},
+    ConstraintSystem,
+    Index,
 };
 
 #[cfg(feature = "parallel")]
