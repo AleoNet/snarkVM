@@ -14,15 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::EncryptionError;
-use crate::traits::SignatureScheme;
-use snarkvm_utilities::bytes::FromBytes;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::rand::UniformRand;
+use crate::{errors::EncryptionError, traits::SignatureScheme};
+use snarkvm_utilities::{
+    bytes::{FromBytes, ToBytes},
+    rand::UniformRand,
+};
 
 use rand::Rng;
-use std::fmt::Debug;
-use std::hash::Hash;
+use std::{fmt::Debug, hash::Hash};
 
 pub trait EncryptionScheme: Sized + Clone + From<<Self as EncryptionScheme>::Parameters> + SignatureScheme {
     type Parameters: Clone + Debug + Eq + ToBytes + FromBytes;

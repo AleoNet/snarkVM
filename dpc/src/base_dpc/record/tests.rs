@@ -14,23 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::record_encryption::*;
-use super::record_serializer::*;
-use crate::account::Account;
-use crate::account::AccountViewKey;
-use crate::base_dpc::instantiated::*;
-use crate::base_dpc::record_payload::RecordPayload;
-use crate::base_dpc::DPC;
-use crate::traits::AccountScheme;
-use crate::traits::RecordSerializerScheme;
+use super::{record_encryption::*, record_serializer::*};
+use crate::{
+    account::{Account, AccountViewKey},
+    base_dpc::{instantiated::*, record_payload::RecordPayload, DPC},
+    traits::{AccountScheme, RecordSerializerScheme},
+};
 use snarkvm_algorithms::traits::CRH;
-use snarkvm_curves::edwards_bls12::EdwardsParameters;
-use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::to_bytes;
+use snarkvm_curves::edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls};
+use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
-use rand::Rng;
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
 pub(crate) const ITERATIONS: usize = 5;
@@ -46,11 +40,13 @@ fn test_record_serialization() {
         let noop_program_snark_pp =
             InstantiatedDPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
 
-        let program_snark_vk_bytes = to_bytes![ProgramVerificationKeyCRH::hash(
-            &system_parameters.program_verification_key_crh,
-            &to_bytes![noop_program_snark_pp.verification_key].unwrap()
-        )
-        .unwrap()]
+        let program_snark_vk_bytes = to_bytes![
+            ProgramVerificationKeyCRH::hash(
+                &system_parameters.program_verification_key_crh,
+                &to_bytes![noop_program_snark_pp.verification_key].unwrap()
+            )
+            .unwrap()
+        ]
         .unwrap();
 
         for _ in 0..ITERATIONS {
@@ -111,11 +107,13 @@ fn test_record_encryption() {
         let program_snark_pp =
             InstantiatedDPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
 
-        let program_snark_vk_bytes = to_bytes![ProgramVerificationKeyCRH::hash(
-            &system_parameters.program_verification_key_crh,
-            &to_bytes![program_snark_pp.verification_key].unwrap()
-        )
-        .unwrap()]
+        let program_snark_vk_bytes = to_bytes![
+            ProgramVerificationKeyCRH::hash(
+                &system_parameters.program_verification_key_crh,
+                &to_bytes![program_snark_pp.verification_key].unwrap()
+            )
+            .unwrap()
+        ]
         .unwrap();
 
         for _ in 0..ITERATIONS {

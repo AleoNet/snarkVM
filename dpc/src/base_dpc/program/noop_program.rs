@@ -14,18 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::base_dpc::BaseDPCComponents;
-use crate::base_dpc::LocalData;
-use crate::base_dpc::NoopCircuit;
-use crate::base_dpc::PrivateProgramInput;
-use crate::base_dpc::ProgramLocalData;
-use crate::errors::DPCError;
-use crate::traits::Program;
-use crate::traits::Record;
-use snarkvm_algorithms::traits::CommitmentScheme;
-use snarkvm_algorithms::traits::SNARK;
-use snarkvm_utilities::to_bytes;
-use snarkvm_utilities::ToBytes;
+use crate::{
+    base_dpc::{BaseDPCComponents, LocalData, NoopCircuit, PrivateProgramInput, ProgramLocalData},
+    errors::DPCError,
+    traits::{Program, Record},
+};
+use snarkvm_algorithms::traits::{CommitmentScheme, SNARK};
+use snarkvm_utilities::{to_bytes, ToBytes};
 
 use rand::Rng;
 use std::marker::PhantomData;

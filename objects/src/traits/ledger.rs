@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::BlockScheme;
-use crate::traits::Transaction;
+use crate::traits::{BlockScheme, Transaction};
 
 use std::path::PathBuf;
 

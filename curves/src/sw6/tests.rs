@@ -14,20 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::sw6::*;
-use crate::templates::short_weierstrass::tests::sw_tests;
-use crate::traits::tests_curve::curve_tests;
-use crate::traits::tests_group::group_test;
-use crate::traits::AffineCurve;
-use crate::traits::PairingEngine;
-use snarkvm_fields::tests_field::field_serialization_test;
-use snarkvm_fields::tests_field::field_test;
-use snarkvm_fields::tests_field::frobenius_test;
-use snarkvm_fields::tests_field::primefield_test;
-use snarkvm_fields::tests_field::sqrt_field_test;
-use snarkvm_fields::Field;
-use snarkvm_fields::One;
-use snarkvm_fields::PrimeField;
+use crate::{
+    sw6::*,
+    templates::short_weierstrass::tests::sw_tests,
+    traits::{tests_curve::curve_tests, tests_group::group_test, AffineCurve, PairingEngine},
+};
+use snarkvm_fields::{
+    tests_field::{field_serialization_test, field_test, frobenius_test, primefield_test, sqrt_field_test},
+    Field,
+    One,
+    PrimeField,
+};
 
 use rand;
 

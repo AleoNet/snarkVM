@@ -14,31 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::encryption::GroupEncryptionParameters;
-use crate::errors::EncryptionError;
-use crate::traits::EncryptionScheme;
-use snarkvm_curves::traits::AffineCurve;
-use snarkvm_curves::traits::Group;
-use snarkvm_curves::traits::ProjectiveCurve;
-use snarkvm_fields::Field;
-use snarkvm_fields::One;
-use snarkvm_fields::PrimeField;
-use snarkvm_fields::Zero;
-use snarkvm_utilities::bytes_to_bits;
-use snarkvm_utilities::errors::SerializationError;
-use snarkvm_utilities::rand::UniformRand;
-use snarkvm_utilities::serialize::*;
-use snarkvm_utilities::to_bytes;
-use snarkvm_utilities::FromBytes;
-use snarkvm_utilities::ToBytes;
+use crate::{encryption::GroupEncryptionParameters, errors::EncryptionError, traits::EncryptionScheme};
+use snarkvm_curves::traits::{AffineCurve, Group, ProjectiveCurve};
+use snarkvm_fields::{Field, One, PrimeField, Zero};
+use snarkvm_utilities::{
+    bytes_to_bits,
+    errors::SerializationError,
+    rand::UniformRand,
+    serialize::*,
+    to_bytes,
+    FromBytes,
+    ToBytes,
+};
 
 use digest::Digest;
 use itertools::Itertools;
 use rand::Rng;
-use std::io::Read;
-use std::io::Result as IoResult;
-use std::io::Write;
-use std::marker::PhantomData;
+use std::{
+    io::{Read, Result as IoResult, Write},
+    marker::PhantomData,
+};
 
 #[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(

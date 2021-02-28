@@ -14,24 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::algorithms::encryption::*;
-use crate::curves::edwards_bls12::EdwardsBlsGadget;
-use crate::traits::algorithms::EncryptionGadget;
-use crate::traits::utilities::alloc::AllocGadget;
-use crate::traits::utilities::eq::EqGadget;
-use snarkvm_algorithms::encryption::GroupEncryption;
-use snarkvm_algorithms::traits::EncryptionScheme;
-use snarkvm_curves::bls12_377::Fr;
-use snarkvm_curves::edwards_bls12::EdwardsAffine;
-use snarkvm_curves::edwards_bls12::EdwardsProjective;
-use snarkvm_curves::traits::Group;
-use snarkvm_curves::traits::ProjectiveCurve;
-use snarkvm_r1cs::ConstraintSystem;
-use snarkvm_r1cs::TestConstraintSystem;
+use crate::{
+    algorithms::encryption::*,
+    curves::edwards_bls12::EdwardsBlsGadget,
+    traits::{
+        algorithms::EncryptionGadget,
+        utilities::{alloc::AllocGadget, eq::EqGadget},
+    },
+};
+use snarkvm_algorithms::{encryption::GroupEncryption, traits::EncryptionScheme};
+use snarkvm_curves::{
+    bls12_377::Fr,
+    edwards_bls12::{EdwardsAffine, EdwardsProjective},
+    traits::{Group, ProjectiveCurve},
+};
+use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
 use blake2::Blake2s;
-use rand::Rng;
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
 type TestEncryptionScheme = GroupEncryption<EdwardsProjective, EdwardsAffine, Blake2s>;

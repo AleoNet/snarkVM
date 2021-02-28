@@ -16,8 +16,7 @@
 
 use crate::utilities::boolean::Boolean;
 use snarkvm_fields::Field;
-use snarkvm_r1cs::errors::SynthesisError;
-use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 /// If condition is `true`, return `first`; else, select `second`.
 pub trait CondSelectGadget<F: Field>

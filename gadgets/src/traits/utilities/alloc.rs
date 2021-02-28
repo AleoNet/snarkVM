@@ -15,8 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_fields::Field;
-use snarkvm_r1cs::errors::SynthesisError;
-use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use std::borrow::Borrow;
 

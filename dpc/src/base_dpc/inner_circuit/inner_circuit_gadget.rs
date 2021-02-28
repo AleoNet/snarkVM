@@ -14,55 +14,47 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::account::AccountPrivateKey;
-use crate::base_dpc::parameters::SystemParameters;
-use crate::base_dpc::record::DPCRecord;
-use crate::base_dpc::record_encryption::RecordEncryptionGadgetComponents;
-use crate::base_dpc::BaseDPCComponents;
-use crate::traits::Record;
-use snarkvm_algorithms::merkle_tree::MerklePath;
-use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
-use snarkvm_algorithms::traits::CommitmentScheme;
-use snarkvm_algorithms::traits::EncryptionScheme;
-use snarkvm_algorithms::traits::MerkleParameters;
-use snarkvm_algorithms::traits::SignatureScheme;
-use snarkvm_algorithms::traits::CRH;
-use snarkvm_algorithms::traits::PRF;
-use snarkvm_curves::traits::AffineCurve;
-use snarkvm_curves::traits::Group;
-use snarkvm_curves::traits::MontgomeryModelParameters;
-use snarkvm_curves::traits::ProjectiveCurve;
-use snarkvm_curves::traits::TEModelParameters;
-use snarkvm_fields::Field;
-use snarkvm_fields::One;
-use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::algorithms::encoding::Elligator2FieldGadget;
-use snarkvm_gadgets::algorithms::merkle_tree::merkle_path::MerklePathGadget;
-use snarkvm_gadgets::fields::FpGadget;
-use snarkvm_gadgets::traits::algorithms::CRHGadget;
-use snarkvm_gadgets::traits::algorithms::CommitmentGadget;
-use snarkvm_gadgets::traits::algorithms::EncryptionGadget;
-use snarkvm_gadgets::traits::algorithms::PRFGadget;
-use snarkvm_gadgets::traits::algorithms::SignaturePublicKeyRandomizationGadget;
-use snarkvm_gadgets::traits::fields::FieldGadget;
-use snarkvm_gadgets::traits::utilities::alloc::AllocGadget;
-use snarkvm_gadgets::traits::utilities::arithmetic::add::Add;
-use snarkvm_gadgets::traits::utilities::arithmetic::sub::Sub;
-use snarkvm_gadgets::traits::utilities::boolean::Boolean;
-use snarkvm_gadgets::traits::utilities::eq::ConditionalEqGadget;
-use snarkvm_gadgets::traits::utilities::eq::EqGadget;
-use snarkvm_gadgets::traits::utilities::int::Int;
-use snarkvm_gadgets::traits::utilities::int::Int64;
-use snarkvm_gadgets::traits::utilities::uint::UInt8;
-use snarkvm_gadgets::traits::utilities::ToBitsGadget;
-use snarkvm_gadgets::traits::utilities::ToBytesGadget;
+use crate::{
+    account::AccountPrivateKey,
+    base_dpc::{
+        parameters::SystemParameters,
+        record::DPCRecord,
+        record_encryption::RecordEncryptionGadgetComponents,
+        BaseDPCComponents,
+    },
+    traits::Record,
+};
+use snarkvm_algorithms::{
+    merkle_tree::{MerklePath, MerkleTreeDigest},
+    traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, PRF},
+};
+use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
+use snarkvm_fields::{Field, One, PrimeField};
+use snarkvm_gadgets::{
+    algorithms::{encoding::Elligator2FieldGadget, merkle_tree::merkle_path::MerklePathGadget},
+    fields::FpGadget,
+    traits::{
+        algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignaturePublicKeyRandomizationGadget},
+        fields::FieldGadget,
+        utilities::{
+            alloc::AllocGadget,
+            arithmetic::{add::Add, sub::Sub},
+            boolean::Boolean,
+            eq::{ConditionalEqGadget, EqGadget},
+            int::{Int, Int64},
+            uint::UInt8,
+            ToBitsGadget,
+            ToBytesGadget,
+        },
+    },
+};
 use snarkvm_objects::AleoAmount;
-use snarkvm_r1cs::errors::SynthesisError;
-use snarkvm_r1cs::ConstraintSystem;
-use snarkvm_utilities::bits_to_bytes;
-use snarkvm_utilities::bytes::FromBytes;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::to_bytes;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+use snarkvm_utilities::{
+    bits_to_bytes,
+    bytes::{FromBytes, ToBytes},
+    to_bytes,
+};
 
 use snarkvm_gadgets::traits::utilities::eq::NEqGadget;
 use std::ops::Mul;
@@ -839,10 +831,10 @@ where
             let serial_number_nonce_bits = serial_number_nonce_bytes
                 .to_bits(&mut encryption_cs.ns(|| "Convert serial_number_nonce_bytes to bits"))?;
 
-            let commitment_randomness_bytes = UInt8::alloc_vec(
-                encryption_cs.ns(|| "Allocate commitment randomness bytes"),
-                &to_bytes![record.commitment_randomness()]?,
-            )?;
+            let commitment_randomness_bytes =
+                UInt8::alloc_vec(encryption_cs.ns(|| "Allocate commitment randomness bytes"), &to_bytes![
+                    record.commitment_randomness()
+                ]?)?;
 
             let commitment_randomness_bits = commitment_randomness_bytes
                 .to_bits(&mut encryption_cs.ns(|| "Convert commitment_randomness_bytes to bits"))?;
@@ -1201,10 +1193,9 @@ where
             let ciphertext_and_fq_high_selectors_bytes = UInt8::alloc_vec(
                 &mut encryption_cs.ns(|| format!("ciphertext and fq_high selector bits to bytes {}", j)),
                 &bits_to_bytes(
-                    &[
-                        &ciphertext_selectors[..],
-                        &[fq_high_selectors[fq_high_selectors.len() - 1]],
-                    ]
+                    &[&ciphertext_selectors[..], &[
+                        fq_high_selectors[fq_high_selectors.len() - 1]
+                    ]]
                     .concat(),
                 ),
             )?;

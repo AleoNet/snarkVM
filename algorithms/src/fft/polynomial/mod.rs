@@ -16,13 +16,10 @@
 
 //! Work with sparse and dense polynomials.
 
-use crate::fft::EvaluationDomain;
-use crate::fft::Evaluations;
-use snarkvm_fields::Field;
-use snarkvm_fields::PrimeField;
+use crate::fft::{EvaluationDomain, Evaluations};
+use snarkvm_fields::{Field, PrimeField};
 
-use std::borrow::Cow;
-use std::convert::TryInto;
+use std::{borrow::Cow, convert::TryInto};
 
 use DenseOrSparsePolynomial::*;
 

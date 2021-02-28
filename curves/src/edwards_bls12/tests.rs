@@ -14,26 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::edwards_bls12::*;
-use crate::templates::twisted_edwards_extended::tests::edwards_test;
-use crate::templates::twisted_edwards_extended::tests::montgomery_conversion_test;
-use crate::traits::tests_curve::curve_tests;
-use crate::traits::tests_group::group_test;
-use crate::traits::AffineCurve;
-use crate::traits::MontgomeryModelParameters;
-use crate::traits::ProjectiveCurve;
-use crate::traits::TEModelParameters;
-use snarkvm_fields::tests_field::field_serialization_test;
-use snarkvm_fields::tests_field::field_test;
-use snarkvm_fields::tests_field::primefield_test;
-use snarkvm_fields::Field;
-use snarkvm_fields::LegendreSymbol;
-use snarkvm_fields::One;
-use snarkvm_fields::SquareRootField;
-use snarkvm_fields::Zero;
-use snarkvm_utilities::rand::UniformRand;
-use snarkvm_utilities::to_bytes;
-use snarkvm_utilities::ToBytes;
+use crate::{
+    edwards_bls12::*,
+    templates::twisted_edwards_extended::tests::{edwards_test, montgomery_conversion_test},
+    traits::{
+        tests_curve::curve_tests,
+        tests_group::group_test,
+        AffineCurve,
+        MontgomeryModelParameters,
+        ProjectiveCurve,
+        TEModelParameters,
+    },
+};
+use snarkvm_fields::{
+    tests_field::{field_serialization_test, field_test, primefield_test},
+    Field,
+    LegendreSymbol,
+    One,
+    SquareRootField,
+    Zero,
+};
+use snarkvm_utilities::{rand::UniformRand, to_bytes, ToBytes};
 
 use rand::thread_rng;
 

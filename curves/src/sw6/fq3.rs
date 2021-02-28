@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::sw6::Fq;
-use snarkvm_fields::field;
-use snarkvm_fields::Field;
-use snarkvm_fields::Fp3;
-use snarkvm_fields::Fp3Parameters;
+use snarkvm_fields::{field, Field, Fp3, Fp3Parameters};
 use snarkvm_utilities::biginteger::BigInteger832 as BigInteger;
 
 pub type Fq3 = Fp3<Fq3Parameters>;

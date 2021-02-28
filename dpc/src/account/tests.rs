@@ -14,13 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::account::Account;
-use crate::account::AccountAddress;
-use crate::account::AccountPrivateKey;
-use crate::account::AccountViewKey;
-use crate::base_dpc::instantiated::Components;
-use crate::base_dpc::parameters::SystemParameters;
-use crate::traits::account::AccountScheme;
+use crate::{
+    account::{Account, AccountAddress, AccountPrivateKey, AccountViewKey},
+    base_dpc::{instantiated::Components, parameters::SystemParameters},
+    traits::account::AccountScheme,
+};
 
 use rand::thread_rng;
 use std::str::FromStr;

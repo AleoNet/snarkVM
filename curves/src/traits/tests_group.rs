@@ -15,8 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::traits::Group;
-use snarkvm_fields::One;
-use snarkvm_fields::Zero;
+use snarkvm_fields::{One, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
 use rand::SeedableRng;

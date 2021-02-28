@@ -14,22 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::fields::FpGadget;
-use crate::traits::utilities::alloc::AllocGadget;
-use crate::traits::utilities::boolean::Boolean;
-use crate::traits::utilities::uint::UInt8;
-use crate::traits::utilities::ToBitsGadget;
-use crate::traits::utilities::ToBytesGadget;
-use snarkvm_curves::traits::ModelParameters;
-use snarkvm_curves::traits::MontgomeryModelParameters;
+use crate::{
+    fields::FpGadget,
+    traits::utilities::{alloc::AllocGadget, boolean::Boolean, uint::UInt8, ToBitsGadget, ToBytesGadget},
+};
+use snarkvm_curves::traits::{ModelParameters, MontgomeryModelParameters};
 use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::errors::SynthesisError;
-use snarkvm_r1cs::ConstraintSystem;
-use snarkvm_utilities::to_bytes;
-use snarkvm_utilities::ToBytes;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+use snarkvm_utilities::{to_bytes, ToBytes};
 
-use std::borrow::Borrow;
-use std::marker::PhantomData;
+use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone, Debug)]
 pub struct Elligator2FieldGadget<P: MontgomeryModelParameters, F: PrimeField>(pub FpGadget<F>, PhantomData<P>);

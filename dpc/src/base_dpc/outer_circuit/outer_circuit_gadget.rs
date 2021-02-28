@@ -14,31 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::base_dpc::parameters::SystemParameters;
-use crate::base_dpc::program::PrivateProgramInput;
-use crate::base_dpc::BaseDPCComponents;
-use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
-use snarkvm_algorithms::traits::CommitmentScheme;
-use snarkvm_algorithms::traits::EncryptionScheme;
-use snarkvm_algorithms::traits::MerkleParameters;
-use snarkvm_algorithms::traits::SignatureScheme;
-use snarkvm_algorithms::traits::CRH;
-use snarkvm_algorithms::traits::SNARK;
+use crate::base_dpc::{parameters::SystemParameters, program::PrivateProgramInput, BaseDPCComponents};
+use snarkvm_algorithms::{
+    merkle_tree::MerkleTreeDigest,
+    traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
+};
 use snarkvm_fields::traits::to_field_vec::ToConstraintField;
-use snarkvm_gadgets::traits::algorithms::CRHGadget;
-use snarkvm_gadgets::traits::algorithms::CommitmentGadget;
-use snarkvm_gadgets::traits::algorithms::SNARKVerifierGadget;
-use snarkvm_gadgets::traits::utilities::alloc::AllocBytesGadget;
-use snarkvm_gadgets::traits::utilities::alloc::AllocGadget;
-use snarkvm_gadgets::traits::utilities::eq::EqGadget;
-use snarkvm_gadgets::traits::utilities::uint::unsigned_integer::UInt;
-use snarkvm_gadgets::traits::utilities::uint::unsigned_integer::UInt8;
-use snarkvm_gadgets::traits::utilities::ToBytesGadget;
+use snarkvm_gadgets::traits::{
+    algorithms::{CRHGadget, CommitmentGadget, SNARKVerifierGadget},
+    utilities::{
+        alloc::{AllocBytesGadget, AllocGadget},
+        eq::EqGadget,
+        uint::unsigned_integer::{UInt, UInt8},
+        ToBytesGadget,
+    },
+};
 use snarkvm_objects::AleoAmount;
-use snarkvm_r1cs::errors::SynthesisError;
-use snarkvm_r1cs::ConstraintSystem;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::to_bytes;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
 use itertools::Itertools;
 

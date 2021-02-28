@@ -14,31 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::uint_impl_common;
-use crate::utilities::alloc::AllocGadget;
-use crate::utilities::boolean::AllocatedBit;
-use crate::utilities::boolean::Boolean;
-use crate::utilities::eq::ConditionalEqGadget;
-use crate::utilities::eq::EqGadget;
-use crate::utilities::eq::EvaluateEqGadget;
-use crate::utilities::select::CondSelectGadget;
-use crate::utilities::uint::unsigned_integer::UInt;
-use crate::utilities::uint::unsigned_integer::UInt8;
-use crate::utilities::ToBytesGadget;
-use snarkvm_fields::Field;
-use snarkvm_fields::FpParameters;
-use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::errors::SynthesisError;
-use snarkvm_r1cs::Assignment;
-use snarkvm_r1cs::ConstraintSystem;
-use snarkvm_r1cs::LinearCombination;
+use crate::{
+    uint_impl_common,
+    utilities::{
+        alloc::AllocGadget,
+        boolean::{AllocatedBit, Boolean},
+        eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
+        select::CondSelectGadget,
+        uint::unsigned_integer::{UInt, UInt8},
+        ToBytesGadget,
+    },
+};
+use snarkvm_fields::{Field, FpParameters, PrimeField};
+use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearCombination};
 
-use snarkvm_utilities::biginteger::BigInteger;
-use snarkvm_utilities::biginteger::BigInteger256;
-use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::{
+    biginteger::{BigInteger, BigInteger256},
+    bytes::ToBytes,
+};
 
-use std::borrow::Borrow;
-use std::cmp::Ordering;
+use std::{borrow::Borrow, cmp::Ordering};
 
 uint_impl_common!(UInt128, u128, 128);
 

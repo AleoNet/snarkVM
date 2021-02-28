@@ -14,28 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::base_dpc::record::DPCRecord;
-use crate::base_dpc::record_payload::RecordPayload;
-use crate::base_dpc::BaseDPCComponents;
-use crate::errors::DPCError;
-use crate::traits::DPCComponents;
-use crate::traits::Record;
-use crate::traits::RecordSerializerScheme;
-use snarkvm_algorithms::encoding::Elligator2;
-use snarkvm_algorithms::traits::CommitmentScheme;
-use snarkvm_algorithms::traits::CRH;
-use snarkvm_curves::traits::AffineCurve;
-use snarkvm_curves::traits::Group;
-use snarkvm_curves::traits::MontgomeryModelParameters;
-use snarkvm_curves::traits::ProjectiveCurve;
-use snarkvm_curves::traits::TEModelParameters;
+use crate::{
+    base_dpc::{record::DPCRecord, record_payload::RecordPayload, BaseDPCComponents},
+    errors::DPCError,
+    traits::{DPCComponents, Record, RecordSerializerScheme},
+};
+use snarkvm_algorithms::{
+    encoding::Elligator2,
+    traits::{CommitmentScheme, CRH},
+};
+use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::bits_to_bytes;
-use snarkvm_utilities::bytes_to_bits;
-use snarkvm_utilities::to_bytes;
-use snarkvm_utilities::BigInteger;
-use snarkvm_utilities::FromBytes;
-use snarkvm_utilities::ToBytes;
+use snarkvm_utilities::{bits_to_bytes, bytes_to_bits, to_bytes, BigInteger, FromBytes, ToBytes};
 
 use itertools::Itertools;
 use std::marker::PhantomData;

@@ -14,34 +14,31 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::curves::GroupGadget;
-use crate::traits::fields::FieldGadget;
-use crate::traits::utilities::alloc::AllocGadget;
-use crate::traits::utilities::boolean::Boolean;
-use crate::traits::utilities::eq::ConditionalEqGadget;
-use crate::traits::utilities::eq::EqGadget;
-use crate::traits::utilities::eq::NEqGadget;
-use crate::traits::utilities::select::CondSelectGadget;
-use crate::traits::utilities::uint::UInt8;
-use crate::traits::utilities::ToBitsGadget;
-use crate::traits::utilities::ToBytesGadget;
-use snarkvm_curves::templates::short_weierstrass::short_weierstrass_jacobian::GroupAffine as SWAffine;
-use snarkvm_curves::templates::short_weierstrass::short_weierstrass_jacobian::GroupProjective as SWProjective;
-use snarkvm_curves::traits::AffineCurve;
-use snarkvm_curves::traits::ProjectiveCurve;
-use snarkvm_curves::traits::SWModelParameters;
-use snarkvm_fields::Field;
-use snarkvm_fields::One;
-use snarkvm_fields::PrimeField;
-use snarkvm_fields::Zero;
-use snarkvm_r1cs::errors::SynthesisError;
-use snarkvm_r1cs::Assignment;
-use snarkvm_r1cs::ConstraintSystem;
+use crate::traits::{
+    curves::GroupGadget,
+    fields::FieldGadget,
+    utilities::{
+        alloc::AllocGadget,
+        boolean::Boolean,
+        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+        select::CondSelectGadget,
+        uint::UInt8,
+        ToBitsGadget,
+        ToBytesGadget,
+    },
+};
+use snarkvm_curves::{
+    templates::short_weierstrass::short_weierstrass_jacobian::{
+        GroupAffine as SWAffine,
+        GroupProjective as SWProjective,
+    },
+    traits::{AffineCurve, ProjectiveCurve, SWModelParameters},
+};
+use snarkvm_fields::{Field, One, PrimeField, Zero};
+use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
-use std::borrow::Borrow;
-use std::marker::PhantomData;
-use std::ops::Neg;
+use std::{borrow::Borrow, marker::PhantomData, ops::Neg};
 
 #[derive(Derivative)]
 #[derivative(Debug, Clone)]

@@ -14,18 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::SignedIntegerError;
-use crate::utilities::alloc::AllocGadget;
-use crate::utilities::arithmetic::Add;
-use crate::utilities::bits::RippleCarryAdder;
-use crate::utilities::boolean::AllocatedBit;
-use crate::utilities::boolean::Boolean;
-use crate::utilities::int::*;
-use snarkvm_fields::fp_parameters::FpParameters;
-use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::Assignment;
-use snarkvm_r1cs::ConstraintSystem;
-use snarkvm_r1cs::LinearCombination;
+use crate::{
+    errors::SignedIntegerError,
+    utilities::{
+        alloc::AllocGadget,
+        arithmetic::Add,
+        bits::RippleCarryAdder,
+        boolean::{AllocatedBit, Boolean},
+        int::*,
+    },
+};
+use snarkvm_fields::{fp_parameters::FpParameters, PrimeField};
+use snarkvm_r1cs::{Assignment, ConstraintSystem, LinearCombination};
 
 macro_rules! add_int_impl {
     ($($gadget: ident)*) => ($(

@@ -14,16 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ahp::matrices::make_matrices_square;
-use crate::ahp::matrices::padded_matrix_dim;
-use crate::ahp::matrices::to_matrix_helper;
+use crate::ahp::matrices::{make_matrices_square, padded_matrix_dim, to_matrix_helper};
 use snarkvm_fields::Field;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_r1cs::ConstraintSystem;
-use snarkvm_r1cs::Index as VarIndex;
-use snarkvm_r1cs::LinearCombination;
-use snarkvm_r1cs::Variable;
+use snarkvm_r1cs::{ConstraintSystem, Index as VarIndex, LinearCombination, Variable};
 use snarkvm_utilities::serialize::*;
 
 /// Stores constraints during index generation.

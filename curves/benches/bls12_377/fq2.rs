@@ -15,16 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_curves::bls12_377::Fq2;
-use snarkvm_fields::Field;
-use snarkvm_fields::SquareRootField;
+use snarkvm_fields::{Field, SquareRootField};
 use snarkvm_utilities::rand::UniformRand;
 
 use criterion::Criterion;
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
-use std::ops::AddAssign;
-use std::ops::MulAssign;
-use std::ops::SubAssign;
+use std::ops::{AddAssign, MulAssign, SubAssign};
 
 pub(crate) fn bench_fq2_add_assign(c: &mut Criterion) {
     const SAMPLES: usize = 1000;

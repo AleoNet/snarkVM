@@ -14,47 +14,47 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::account::Account;
-use crate::base_dpc::execute_inner_proof_gadget;
-use crate::base_dpc::execute_outer_proof_gadget;
-use crate::base_dpc::inner_circuit::InnerCircuit;
-use crate::base_dpc::parameters::NoopProgramSNARKParameters;
-use crate::base_dpc::parameters::SystemParameters;
-use crate::base_dpc::program::*;
-use crate::base_dpc::record::record_encryption::*;
-use crate::base_dpc::record_payload::RecordPayload;
-use crate::base_dpc::BaseDPCComponents;
-use crate::base_dpc::TransactionKernel;
-use crate::base_dpc::DPC;
-use crate::instantiated::*;
-use crate::traits::AccountScheme;
-use crate::traits::DPCScheme;
-use crate::traits::Program;
-use crate::traits::Record;
-use snarkvm_algorithms::merkle_tree::MerklePath;
-use snarkvm_algorithms::traits::MerkleParameters;
-use snarkvm_algorithms::traits::CRH;
-use snarkvm_algorithms::traits::SNARK;
-use snarkvm_curves::bls12_377::Fq;
-use snarkvm_curves::bls12_377::Fr;
-use snarkvm_objects::dpc::DPCTransactions;
-use snarkvm_objects::traits::LedgerScheme;
-use snarkvm_objects::Block;
-use snarkvm_objects::BlockHeader;
-use snarkvm_objects::BlockHeaderHash;
-use snarkvm_objects::MerkleRootHash;
-use snarkvm_objects::PedersenMerkleRootHash;
-use snarkvm_objects::ProofOfSuccinctWork;
-use snarkvm_r1cs::ConstraintSystem;
-use snarkvm_r1cs::TestConstraintSystem;
+use crate::{
+    account::Account,
+    base_dpc::{
+        execute_inner_proof_gadget,
+        execute_outer_proof_gadget,
+        inner_circuit::InnerCircuit,
+        parameters::{NoopProgramSNARKParameters, SystemParameters},
+        program::*,
+        record::record_encryption::*,
+        record_payload::RecordPayload,
+        BaseDPCComponents,
+        TransactionKernel,
+        DPC,
+    },
+    instantiated::*,
+    traits::{AccountScheme, DPCScheme, Program, Record},
+};
+use snarkvm_algorithms::{
+    merkle_tree::MerklePath,
+    traits::{MerkleParameters, CRH, SNARK},
+};
+use snarkvm_curves::bls12_377::{Fq, Fr};
+use snarkvm_objects::{
+    dpc::DPCTransactions,
+    traits::LedgerScheme,
+    Block,
+    BlockHeader,
+    BlockHeaderHash,
+    MerkleRootHash,
+    PedersenMerkleRootHash,
+    ProofOfSuccinctWork,
+};
+use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_testing::storage::*;
-use snarkvm_utilities::bytes::FromBytes;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::to_bytes;
+use snarkvm_utilities::{
+    bytes::{FromBytes, ToBytes},
+    to_bytes,
+};
 
 use itertools::Itertools;
-use rand::Rng;
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
 type L = Ledger<Tx, CommitmentMerkleParameters>;
@@ -67,11 +67,13 @@ fn generate_test_noop_program_parameters<R: Rng>(
     let noop_program_snark_pp =
         InstantiatedDPC::generate_noop_program_snark_parameters(&system_parameters, rng).unwrap();
 
-    let noop_program_id = to_bytes![ProgramVerificationKeyCRH::hash(
-        &system_parameters.program_verification_key_crh,
-        &to_bytes![noop_program_snark_pp.verification_key].unwrap()
-    )
-    .unwrap()]
+    let noop_program_id = to_bytes![
+        ProgramVerificationKeyCRH::hash(
+            &system_parameters.program_verification_key_crh,
+            &to_bytes![noop_program_snark_pp.verification_key].unwrap()
+        )
+        .unwrap()
+    ]
     .unwrap();
 
     (noop_program_snark_pp, noop_program_id)

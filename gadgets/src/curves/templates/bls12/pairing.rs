@@ -14,29 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::templates::bls12::G1Gadget;
-use crate::curves::templates::bls12::G1PreparedGadget;
-use crate::curves::templates::bls12::G2Gadget;
-use crate::curves::templates::bls12::G2PreparedGadget;
-use crate::fields::Fp12Gadget;
-use crate::fields::Fp2Gadget;
-use crate::fields::FpGadget;
-use crate::traits::curves::PairingGadget;
-use crate::traits::fields::FieldGadget;
-use snarkvm_curves::templates::bls12::Bls12;
-use snarkvm_curves::templates::bls12::Bls12Parameters;
-use snarkvm_curves::templates::bls12::G1Affine;
-use snarkvm_curves::templates::bls12::G1Prepared;
-use snarkvm_curves::templates::bls12::G1Projective;
-use snarkvm_curves::templates::bls12::G2Affine;
-use snarkvm_curves::templates::bls12::G2Prepared;
-use snarkvm_curves::templates::bls12::G2Projective;
-use snarkvm_curves::templates::bls12::TwistType;
-use snarkvm_curves::traits::ModelParameters;
-use snarkvm_curves::traits::PairingCurve;
+use crate::{
+    curves::templates::bls12::{G1Gadget, G1PreparedGadget, G2Gadget, G2PreparedGadget},
+    fields::{Fp12Gadget, Fp2Gadget, FpGadget},
+    traits::{curves::PairingGadget, fields::FieldGadget},
+};
+use snarkvm_curves::{
+    templates::bls12::{
+        Bls12,
+        Bls12Parameters,
+        G1Affine,
+        G1Prepared,
+        G1Projective,
+        G2Affine,
+        G2Prepared,
+        G2Projective,
+        TwistType,
+    },
+    traits::{ModelParameters, PairingCurve},
+};
 use snarkvm_fields::Fp12;
-use snarkvm_r1cs::errors::SynthesisError;
-use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::marker::PhantomData;

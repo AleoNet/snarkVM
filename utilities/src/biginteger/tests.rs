@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::biginteger::*;
-use crate::rand::UniformRand;
+use crate::{biginteger::*, rand::UniformRand};
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;

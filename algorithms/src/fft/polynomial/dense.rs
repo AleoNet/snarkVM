@@ -16,26 +16,16 @@
 
 //! A polynomial represented in coefficient form.
 
-use crate::fft::DenseOrSparsePolynomial;
-use crate::fft::EvaluationDomain;
-use crate::fft::Evaluations;
-use snarkvm_fields::Field;
-use snarkvm_fields::PrimeField;
-use snarkvm_utilities::errors::SerializationError;
-use snarkvm_utilities::serialize::*;
+use crate::fft::{DenseOrSparsePolynomial, EvaluationDomain, Evaluations};
+use snarkvm_fields::{Field, PrimeField};
+use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use rand::Rng;
 use rayon::prelude::*;
-use std::fmt;
-use std::ops::Add;
-use std::ops::AddAssign;
-use std::ops::Deref;
-use std::ops::DerefMut;
-use std::ops::Div;
-use std::ops::Mul;
-use std::ops::Neg;
-use std::ops::Sub;
-use std::ops::SubAssign;
+use std::{
+    fmt,
+    ops::{Add, AddAssign, Deref, DerefMut, Div, Mul, Neg, Sub, SubAssign},
+};
 
 /// Stores a polynomial in coefficient form.
 #[derive(Clone, PartialEq, Eq, Hash, Default, CanonicalSerialize, CanonicalDeserialize)]
@@ -382,9 +372,7 @@ impl<'a, 'b, F: PrimeField> Mul<&'a DensePolynomial<F>> for &'b DensePolynomial<
 mod tests {
     use crate::fft::polynomial::*;
     use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_fields::Field;
-    use snarkvm_fields::One;
-    use snarkvm_fields::Zero;
+    use snarkvm_fields::{Field, One, Zero};
     use snarkvm_utilities::rand::UniformRand;
 
     use rand::thread_rng;

@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::bits::ComparatorGadget;
-use crate::utilities::bits::EvaluateLtGadget;
-use crate::utilities::boolean::Boolean;
-use crate::utilities::int::*;
-use crate::utilities::select::CondSelectGadget;
+use crate::utilities::{
+    bits::{ComparatorGadget, EvaluateLtGadget},
+    boolean::Boolean,
+    int::*,
+    select::CondSelectGadget,
+};
 use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::errors::SynthesisError;
-use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use std::cmp::Ordering;
 

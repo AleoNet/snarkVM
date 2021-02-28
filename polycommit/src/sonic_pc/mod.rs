@@ -14,37 +14,33 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::kzg10;
-use crate::BTreeMap;
-use crate::BTreeSet;
-use crate::BatchLCProof;
-use crate::Error;
-use crate::Evaluations;
-use crate::LabeledCommitment;
-use crate::LabeledPolynomial;
-use crate::LinearCombination;
-use crate::PCCommitterKey;
-use crate::PCRandomness;
-use crate::PCUniversalParams;
-use crate::Polynomial;
-use crate::PolynomialCommitment;
-use crate::QuerySet;
-use crate::String;
-use crate::ToOwned;
-use crate::ToString;
-use crate::Vec;
+use crate::{
+    kzg10,
+    BTreeMap,
+    BTreeSet,
+    BatchLCProof,
+    Error,
+    Evaluations,
+    LabeledCommitment,
+    LabeledPolynomial,
+    LinearCombination,
+    PCCommitterKey,
+    PCRandomness,
+    PCUniversalParams,
+    Polynomial,
+    PolynomialCommitment,
+    QuerySet,
+    String,
+    ToOwned,
+    ToString,
+    Vec,
+};
 
-use snarkvm_curves::traits::AffineCurve;
-use snarkvm_curves::traits::Group;
-use snarkvm_curves::traits::PairingCurve;
-use snarkvm_curves::traits::PairingEngine;
-use snarkvm_curves::traits::ProjectiveCurve;
-use snarkvm_fields::One;
-use snarkvm_fields::Zero;
+use snarkvm_curves::traits::{AffineCurve, Group, PairingCurve, PairingEngine, ProjectiveCurve};
+use snarkvm_fields::{One, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
-use core::convert::TryInto;
-use core::marker::PhantomData;
+use core::{convert::TryInto, marker::PhantomData};
 use rand_core::RngCore;
 
 mod data_structures;

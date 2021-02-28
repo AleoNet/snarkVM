@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::SignedIntegerError;
-use crate::utilities::arithmetic::Neg;
-use crate::utilities::int::*;
+use crate::{
+    errors::SignedIntegerError,
+    utilities::{arithmetic::Neg, int::*},
+};
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSystem;
 

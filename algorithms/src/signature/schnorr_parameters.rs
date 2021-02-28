@@ -15,18 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_curves::traits::Group;
-use snarkvm_fields::errors::ConstraintFieldError;
-use snarkvm_fields::traits::ToConstraintField;
-use snarkvm_fields::Field;
-use snarkvm_utilities::bytes::FromBytes;
-use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_fields::{errors::ConstraintFieldError, traits::ToConstraintField, Field};
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
 use digest::Digest;
 use rand::Rng;
-use std::io::Read;
-use std::io::Result as IoResult;
-use std::io::Write;
-use std::marker::PhantomData;
+use std::{
+    io::{Read, Result as IoResult, Write},
+    marker::PhantomData,
+};
 
 #[derive(Derivative)]
 #[derivative(

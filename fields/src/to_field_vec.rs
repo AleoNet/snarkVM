@@ -14,13 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::ConstraintFieldError;
-use crate::Field;
-use crate::Fp2;
-use crate::Fp2Parameters;
-use crate::FpParameters;
-use crate::PrimeField;
-use crate::ToConstraintField;
+use crate::{errors::ConstraintFieldError, Field, Fp2, Fp2Parameters, FpParameters, PrimeField, ToConstraintField};
 
 impl<F: PrimeField> ToConstraintField<F> for F {
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {

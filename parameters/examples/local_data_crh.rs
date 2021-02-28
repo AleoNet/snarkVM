@@ -14,20 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::crh::sha256::sha256;
-use snarkvm_algorithms::errors::CRHError;
-use snarkvm_algorithms::traits::CRH;
-use snarkvm_dpc::base_dpc::instantiated::Components;
-use snarkvm_dpc::traits::DPCComponents;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::to_bytes;
+use snarkvm_algorithms::{crh::sha256::sha256, errors::CRHError, traits::CRH};
+use snarkvm_dpc::{base_dpc::instantiated::Components, traits::DPCComponents};
+use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
 use rand::thread_rng;
-use std::fs::File;
-use std::fs::{self};
-use std::io::Result as IoResult;
-use std::io::Write;
-use std::path::PathBuf;
+use std::{
+    fs::{
+        File,
+        {self},
+    },
+    io::{Result as IoResult, Write},
+    path::PathBuf,
+};
 
 pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, CRHError> {
     let rng = &mut thread_rng();

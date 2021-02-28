@@ -14,22 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_gadgets::traits::utilities::alloc::AllocGadget;
-use snarkvm_gadgets::traits::utilities::uint::UInt;
-use snarkvm_gadgets::traits::utilities::uint::UInt128;
-use snarkvm_gadgets::traits::utilities::uint::UInt16;
-use snarkvm_gadgets::traits::utilities::uint::UInt32;
-use snarkvm_gadgets::traits::utilities::uint::UInt64;
-use snarkvm_gadgets::traits::utilities::uint::UInt8;
-use snarkvm_r1cs::ConstraintSystem;
-use snarkvm_r1cs::Fr;
-use snarkvm_r1cs::TestConstraintSystem;
+use snarkvm_gadgets::traits::utilities::{
+    alloc::AllocGadget,
+    uint::{UInt, UInt128, UInt16, UInt32, UInt64, UInt8},
+};
+use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
 
-use criterion::criterion_group;
-use criterion::criterion_main;
-use criterion::Criterion;
-use rand::Rng;
-use rand::SeedableRng;
+use criterion::{criterion_group, criterion_main, Criterion};
+use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
 macro_rules! create_addmany_bench {

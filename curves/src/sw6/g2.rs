@@ -14,22 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::sw6::Fq;
-use crate::sw6::Fq3;
-use crate::sw6::Fq6;
-use crate::sw6::Fr;
-use crate::sw6::G1Affine;
-use crate::sw6::FQ_ZERO;
-use crate::sw6::SW6;
-use crate::templates::short_weierstrass::short_weierstrass_jacobian::GroupAffine;
-use crate::templates::short_weierstrass::short_weierstrass_jacobian::GroupProjective;
-use crate::traits::ModelParameters;
-use crate::traits::PairingCurve;
-use crate::traits::PairingEngine;
-use crate::traits::SWModelParameters;
+use crate::{
+    sw6::{Fq, Fq3, Fq6, Fr, G1Affine, FQ_ZERO, SW6},
+    templates::short_weierstrass::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
+    traits::{ModelParameters, PairingCurve, PairingEngine, SWModelParameters},
+};
 use snarkvm_fields::field;
-use snarkvm_utilities::biginteger::BigInteger384;
-use snarkvm_utilities::biginteger::BigInteger832;
+use snarkvm_utilities::biginteger::{BigInteger384, BigInteger832};
 
 pub type G2Affine = GroupAffine<SW6G2Parameters>;
 pub type G2Projective = GroupProjective<SW6G2Parameters>;

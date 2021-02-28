@@ -15,12 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::bls12_377::Fq;
-use serde::Deserialize;
-use serde::Serialize;
-use snarkvm_fields::field;
-use snarkvm_fields::Field;
-use snarkvm_fields::Fp2;
-use snarkvm_fields::Fp2Parameters;
+use serde::{Deserialize, Serialize};
+use snarkvm_fields::{field, Field, Fp2, Fp2Parameters};
 use snarkvm_utilities::biginteger::BigInteger384 as BigInteger;
 
 pub type Fq2 = Fp2<Fq2Parameters>;

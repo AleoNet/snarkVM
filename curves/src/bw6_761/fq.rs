@@ -14,9 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::Fp768;
-use snarkvm_fields::Fp768Parameters;
-use snarkvm_fields::FpParameters;
+use snarkvm_fields::{Fp768, Fp768Parameters, FpParameters};
 use snarkvm_utilities::biginteger::BigInteger768 as BigInteger;
 
 pub type Fq = Fp768<FqParameters>;

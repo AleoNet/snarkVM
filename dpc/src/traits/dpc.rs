@@ -14,10 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::AccountScheme;
-use crate::traits::Record;
-use snarkvm_objects::traits::LedgerScheme;
-use snarkvm_objects::traits::Transaction;
+use crate::traits::{AccountScheme, Record};
+use snarkvm_objects::traits::{LedgerScheme, Transaction};
 
 use rand::Rng;
 

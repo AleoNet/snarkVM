@@ -15,25 +15,27 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::curves::edwards_bls12::EdwardsBlsGadget;
-use crate::traits::algorithms::CommitmentGadget;
-use crate::traits::fields::FieldGadget;
-use crate::traits::utilities::alloc::AllocGadget;
-use crate::traits::utilities::uint::UInt8;
-use snarkvm_algorithms::commitment::Blake2sCommitment;
-use snarkvm_algorithms::commitment::PedersenCommitment;
-use snarkvm_algorithms::crh::PedersenSize;
-use snarkvm_algorithms::traits::CommitmentScheme;
-use snarkvm_curves::edwards_bls12::EdwardsProjective;
-use snarkvm_curves::edwards_bls12::Fq;
-use snarkvm_curves::edwards_bls12::Fr;
-use snarkvm_curves::traits::ProjectiveCurve;
-use snarkvm_r1cs::ConstraintSystem;
-use snarkvm_r1cs::TestConstraintSystem;
+use crate::{
+    curves::edwards_bls12::EdwardsBlsGadget,
+    traits::{
+        algorithms::CommitmentGadget,
+        fields::FieldGadget,
+        utilities::{alloc::AllocGadget, uint::UInt8},
+    },
+};
+use snarkvm_algorithms::{
+    commitment::{Blake2sCommitment, PedersenCommitment},
+    crh::PedersenSize,
+    traits::CommitmentScheme,
+};
+use snarkvm_curves::{
+    edwards_bls12::{EdwardsProjective, Fq, Fr},
+    traits::ProjectiveCurve,
+};
+use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::rand::UniformRand;
 
-use rand::thread_rng;
-use rand::Rng;
+use rand::{thread_rng, Rng};
 
 #[test]
 fn blake2s_commitment_gadget_test() {

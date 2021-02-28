@@ -14,14 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::edwards_bls12::Fq;
-use crate::edwards_bls12::Fr;
-use crate::errors::GroupError;
-use crate::templates::twisted_edwards_extended::GroupAffine;
-use crate::templates::twisted_edwards_extended::GroupProjective;
-use crate::traits::ModelParameters;
-use crate::traits::MontgomeryModelParameters;
-use crate::traits::TEModelParameters;
+use crate::{
+    edwards_bls12::{Fq, Fr},
+    errors::GroupError,
+    templates::twisted_edwards_extended::{GroupAffine, GroupProjective},
+    traits::{ModelParameters, MontgomeryModelParameters, TEModelParameters},
+};
 use snarkvm_fields::field;
 use snarkvm_utilities::biginteger::BigInteger256;
 

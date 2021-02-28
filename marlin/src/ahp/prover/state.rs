@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ahp::indexer::Circuit;
-use crate::ahp::prover::ProverConstraintSystem;
-use crate::ahp::verifier::VerifierFirstMessage;
-use crate::Vec;
+use crate::{
+    ahp::{indexer::Circuit, prover::ProverConstraintSystem, verifier::VerifierFirstMessage},
+    Vec,
+};
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::LabeledPolynomial;

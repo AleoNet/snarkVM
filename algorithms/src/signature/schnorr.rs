@@ -14,31 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::SignatureError;
-use crate::signature::SchnorrParameters;
-use crate::traits::SignatureScheme;
+use crate::{errors::SignatureError, signature::SchnorrParameters, traits::SignatureScheme};
 use snarkvm_curves::traits::Group;
-use snarkvm_fields::traits::ToConstraintField;
-use snarkvm_fields::ConstraintFieldError;
-use snarkvm_fields::Field;
-use snarkvm_fields::One;
-use snarkvm_fields::PrimeField;
-use snarkvm_fields::Zero;
-use snarkvm_utilities::bytes::bytes_to_bits;
-use snarkvm_utilities::bytes::FromBytes;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::errors::SerializationError;
-use snarkvm_utilities::rand::UniformRand;
-use snarkvm_utilities::serialize::*;
-use snarkvm_utilities::to_bytes;
+use snarkvm_fields::{traits::ToConstraintField, ConstraintFieldError, Field, One, PrimeField, Zero};
+use snarkvm_utilities::{
+    bytes::{bytes_to_bits, FromBytes, ToBytes},
+    errors::SerializationError,
+    rand::UniformRand,
+    serialize::*,
+    to_bytes,
+};
 
 use digest::Digest;
 use itertools::Itertools;
 use rand::Rng;
-use std::hash::Hash;
-use std::io::Read;
-use std::io::Result as IoResult;
-use std::io::Write;
+use std::{
+    hash::Hash,
+    io::{Read, Result as IoResult, Write},
+};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "G: Group"), Debug(bound = "G: Group"), Default(bound = "G: Group"))]

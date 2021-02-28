@@ -14,31 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::fields::FieldGadget;
-use crate::utilities::alloc::AllocGadget;
-use crate::utilities::boolean::Boolean;
-use crate::utilities::eq::ConditionalEqGadget;
-use crate::utilities::eq::EqGadget;
-use crate::utilities::eq::NEqGadget;
-use crate::utilities::select::CondSelectGadget;
-use crate::utilities::select::ThreeBitCondNegLookupGadget;
-use crate::utilities::select::TwoBitLookupGadget;
-use crate::utilities::uint::UInt8;
-use crate::utilities::ToBitsGadget;
-use crate::utilities::ToBytesGadget;
-use snarkvm_fields::batch_inversion;
-use snarkvm_fields::fp6_3over2::Fp6;
-use snarkvm_fields::fp6_3over2::Fp6Parameters;
-use snarkvm_fields::Field;
-use snarkvm_fields::Fp2Parameters;
-use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::errors::SynthesisError;
-use snarkvm_r1cs::Assignment;
-use snarkvm_r1cs::ConstraintSystem;
-use snarkvm_r1cs::ConstraintVariable;
+use crate::{
+    traits::fields::FieldGadget,
+    utilities::{
+        alloc::AllocGadget,
+        boolean::Boolean,
+        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+        select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
+        uint::UInt8,
+        ToBitsGadget,
+        ToBytesGadget,
+    },
+};
+use snarkvm_fields::{
+    batch_inversion,
+    fp6_3over2::{Fp6, Fp6Parameters},
+    Field,
+    Fp2Parameters,
+    PrimeField,
+};
+use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, ConstraintVariable};
 
-use std::borrow::Borrow;
-use std::marker::PhantomData;
+use std::{borrow::Borrow, marker::PhantomData};
 
 type Fp2Gadget<P, F> = super::fp2::Fp2Gadget<<P as Fp6Parameters>::Fp2Params, F>;
 

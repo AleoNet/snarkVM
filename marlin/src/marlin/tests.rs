@@ -17,8 +17,7 @@
 use snarkvm_fields::Field;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_r1cs::ConstraintSynthesizer;
-use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem};
 
 #[derive(Copy, Clone)]
 struct Circuit<F: Field> {
@@ -60,12 +59,9 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
 mod marlin {
     use super::*;
     use crate::marlin::MarlinSNARK;
-    use snarkvm_curves::bls12_377::Bls12_377;
-    use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_polycommit::marlin_pc::MarlinKZG10;
-    use snarkvm_polycommit::sonic_pc::SonicKZG10;
-    use snarkvm_utilities::rand::test_rng;
-    use snarkvm_utilities::rand::UniformRand;
+    use snarkvm_curves::bls12_377::{Bls12_377, Fr};
+    use snarkvm_polycommit::{marlin_pc::MarlinKZG10, sonic_pc::SonicKZG10};
+    use snarkvm_utilities::rand::{test_rng, UniformRand};
 
     use blake2::Blake2s;
     use core::ops::MulAssign;

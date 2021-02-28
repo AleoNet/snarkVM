@@ -14,14 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_utilities::bytes::FromBytes;
-use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
 use serde::Serialize;
-use std::fmt;
-use std::io::Read;
-use std::io::Result as IoResult;
-use std::io::Write;
+use std::{
+    fmt,
+    io::{Read, Result as IoResult, Write},
+};
 
 /// Represents the amount of ALEOs in UNITS
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]

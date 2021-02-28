@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use sha2::Digest;
-use sha2::Sha256;
+use sha2::{Digest, Sha256};
 
 pub fn sha256(data: &[u8]) -> [u8; 32] {
     let digest = Sha256::digest(&data);

@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::alloc::AllocBytesGadget;
-use crate::utilities::alloc::AllocGadget;
-use crate::utilities::ToBitsGadget;
-use crate::utilities::ToBytesGadget;
+use crate::utilities::{
+    alloc::{AllocBytesGadget, AllocGadget},
+    ToBitsGadget,
+    ToBytesGadget,
+};
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_fields::Field;
-use snarkvm_r1cs::errors::SynthesisError;
-use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 pub trait SNARKVerifierGadget<N: SNARK, F: Field> {
     type VerificationKeyGadget: AllocGadget<N::VerificationParameters, F>

@@ -14,10 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::fft::domain::*;
-use crate::fft::multicore::*;
-use snarkvm_curves::bls12_377::Bls12_377;
-use snarkvm_curves::traits::PairingEngine;
+use crate::fft::{domain::*, multicore::*};
+use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_utilities::rand::UniformRand;
 
 use std::cmp::min;

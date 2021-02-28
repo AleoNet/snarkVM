@@ -14,11 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::SynthesisError;
-use crate::ConstraintSystem;
-use crate::Index;
-use crate::LinearCombination;
-use crate::Variable;
+use crate::{errors::SynthesisError, ConstraintSystem, Index, LinearCombination, Variable};
 use snarkvm_fields::Field;
 
 /// Constraint counter for testing purposes.

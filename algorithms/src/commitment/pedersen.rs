@@ -14,11 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::commitment::PedersenCommitmentParameters;
-use crate::crh::PedersenSize;
-use crate::errors::CommitmentError;
-use crate::traits::CommitmentScheme;
-use crate::traits::CRH;
+use crate::{
+    commitment::PedersenCommitmentParameters,
+    crh::PedersenSize,
+    errors::CommitmentError,
+    traits::{CommitmentScheme, CRH},
+};
 use snarkvm_curves::traits::Group;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::bititerator::BitIteratorBE;

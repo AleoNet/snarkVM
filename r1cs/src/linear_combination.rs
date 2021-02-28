@@ -17,13 +17,10 @@
 use crate::Variable;
 use snarkvm_fields::Field;
 
-use std::cmp::Ordering;
-use std::ops::Add;
-use std::ops::AddAssign;
-use std::ops::Mul;
-use std::ops::MulAssign;
-use std::ops::Neg;
-use std::ops::Sub;
+use std::{
+    cmp::Ordering,
+    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub},
+};
 
 /// This represents a linear combination of some variables, with coefficients
 /// in the field `F`.

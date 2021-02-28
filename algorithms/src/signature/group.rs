@@ -14,28 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::encryption::GroupEncryption;
-use crate::encryption::GroupEncryptionParameters;
-use crate::encryption::GroupEncryptionPublicKey;
-use crate::errors::SignatureError;
-use crate::signature::SchnorrOutput;
-use crate::signature::SchnorrParameters;
-use crate::signature::SchnorrPublicKey;
-use crate::signature::SchnorrSignature;
-use crate::traits::EncryptionScheme;
-use crate::traits::SignatureScheme;
-use snarkvm_curves::traits::Group;
-use snarkvm_curves::traits::ProjectiveCurve;
+use crate::{
+    encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey},
+    errors::SignatureError,
+    signature::{SchnorrOutput, SchnorrParameters, SchnorrPublicKey, SchnorrSignature},
+    traits::{EncryptionScheme, SignatureScheme},
+};
+use snarkvm_curves::traits::{Group, ProjectiveCurve};
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::serialize::*;
-use snarkvm_utilities::to_bytes;
-use snarkvm_utilities::FromBytes;
-use snarkvm_utilities::ToBytes;
+use snarkvm_utilities::{serialize::*, to_bytes, FromBytes, ToBytes};
 
 use digest::Digest;
 use rand::Rng;
-use std::hash::Hash;
-use std::marker::PhantomData;
+use std::{hash::Hash, marker::PhantomData};
 
 /// Map the encryption group into the signature group.
 fn into_signature_group<G: Group + ProjectiveCurve + CanonicalSerialize, SG: Group + CanonicalDeserialize>(

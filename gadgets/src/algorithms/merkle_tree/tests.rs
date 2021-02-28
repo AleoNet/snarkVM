@@ -14,35 +14,32 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::algorithms::crh::BoweHopwoodPedersenCompressedCRHGadget;
-use crate::algorithms::crh::PedersenCRHGadget;
-use crate::algorithms::crh::PedersenCompressedCRHGadget;
-use crate::algorithms::merkle_tree::*;
-use crate::curves::edwards_bls12::EdwardsBlsGadget;
-use crate::traits::algorithms::CRHGadget;
-use crate::traits::algorithms::MaskedCRHGadget;
-use crate::traits::utilities::alloc::AllocGadget;
-use crate::traits::utilities::eq::EqGadget;
-use crate::traits::utilities::uint::UInt8;
-use snarkvm_algorithms::crh::BoweHopwoodPedersenCompressedCRH;
-use snarkvm_algorithms::crh::PedersenCRH;
-use snarkvm_algorithms::crh::PedersenCompressedCRH;
-use snarkvm_algorithms::crh::PedersenSize;
-use snarkvm_algorithms::define_masked_merkle_tree_parameters;
-use snarkvm_algorithms::merkle_tree::MerkleTree;
-use snarkvm_algorithms::traits::MaskedMerkleParameters;
-use snarkvm_algorithms::traits::MerkleParameters;
-use snarkvm_algorithms::traits::CRH;
-use snarkvm_curves::bls12_377::Fr;
-use snarkvm_curves::edwards_bls12::EdwardsAffine;
-use snarkvm_curves::edwards_bls12::EdwardsProjective;
+use crate::{
+    algorithms::{
+        crh::{BoweHopwoodPedersenCompressedCRHGadget, PedersenCRHGadget, PedersenCompressedCRHGadget},
+        merkle_tree::*,
+    },
+    curves::edwards_bls12::EdwardsBlsGadget,
+    traits::{
+        algorithms::{CRHGadget, MaskedCRHGadget},
+        utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8},
+    },
+};
+use snarkvm_algorithms::{
+    crh::{BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH, PedersenSize},
+    define_masked_merkle_tree_parameters,
+    merkle_tree::MerkleTree,
+    traits::{MaskedMerkleParameters, MerkleParameters, CRH},
+};
+use snarkvm_curves::{
+    bls12_377::Fr,
+    edwards_bls12::{EdwardsAffine, EdwardsProjective},
+};
 use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::ConstraintSystem;
-use snarkvm_r1cs::TestConstraintSystem;
+use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::ToBytes;
 
-use blake2::digest::Digest;
-use blake2::Blake2s;
+use blake2::{digest::Digest, Blake2s};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Size;

@@ -14,12 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::bls12_377::Fq;
-use crate::bls12_377::Fq2;
-use crate::bls12_377::Fq6Parameters;
-use snarkvm_fields::field;
-use snarkvm_fields::Fp12;
-use snarkvm_fields::Fp12Parameters;
+use crate::bls12_377::{Fq, Fq2, Fq6Parameters};
+use snarkvm_fields::{field, Fp12, Fp12Parameters};
 use snarkvm_utilities::biginteger::BigInteger384 as BigInteger;
 
 pub type Fq12 = Fp12<Fq12Parameters>;

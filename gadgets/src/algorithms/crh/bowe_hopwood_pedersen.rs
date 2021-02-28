@@ -14,22 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::algorithms::crh::pedersen::PedersenCRHParametersGadget;
-use crate::traits::algorithms::CRHGadget;
-use crate::traits::curves::CompressedGroupGadget;
-use crate::traits::curves::GroupGadget;
-use crate::traits::utilities::boolean::Boolean;
-use crate::traits::utilities::uint::unsigned_integer::UInt;
-use crate::traits::utilities::uint::unsigned_integer::UInt8;
-use snarkvm_algorithms::crh::BoweHopwoodPedersenCRH;
-use snarkvm_algorithms::crh::BoweHopwoodPedersenCompressedCRH;
-use snarkvm_algorithms::crh::PedersenSize;
-use snarkvm_algorithms::crh::BOWE_HOPWOOD_CHUNK_SIZE;
-use snarkvm_curves::traits::Group;
-use snarkvm_curves::traits::ProjectiveCurve;
+use crate::{
+    algorithms::crh::pedersen::PedersenCRHParametersGadget,
+    traits::{
+        algorithms::CRHGadget,
+        curves::{CompressedGroupGadget, GroupGadget},
+        utilities::{
+            boolean::Boolean,
+            uint::unsigned_integer::{UInt, UInt8},
+        },
+    },
+};
+use snarkvm_algorithms::crh::{
+    BoweHopwoodPedersenCRH,
+    BoweHopwoodPedersenCompressedCRH,
+    PedersenSize,
+    BOWE_HOPWOOD_CHUNK_SIZE,
+};
+use snarkvm_curves::traits::{Group, ProjectiveCurve};
 use snarkvm_fields::Field;
-use snarkvm_r1cs::errors::SynthesisError;
-use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use std::marker::PhantomData;
 

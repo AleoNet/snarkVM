@@ -14,15 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::crh::PedersenCRHParameters;
-use crate::crh::PedersenSize;
-use crate::errors::CRHError;
-use crate::traits::CRHParameters;
-use crate::traits::CRH;
+use crate::{
+    crh::{PedersenCRHParameters, PedersenSize},
+    errors::CRHError,
+    traits::{CRHParameters, CRH},
+};
 use snarkvm_curves::Group;
-use snarkvm_fields::errors::ConstraintFieldError;
-use snarkvm_fields::traits::to_field_vec::ToConstraintField;
-use snarkvm_fields::Field;
+use snarkvm_fields::{errors::ConstraintFieldError, traits::to_field_vec::ToConstraintField, Field};
 use snarkvm_utilities::bytes_to_bits;
 
 use rand::Rng;

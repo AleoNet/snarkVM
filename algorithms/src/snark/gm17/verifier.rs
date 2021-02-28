@@ -14,21 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::snark::gm17::PreparedVerifyingKey;
-use crate::snark::gm17::Proof;
-use crate::snark::gm17::VerifyingKey;
-use snarkvm_curves::traits::AffineCurve;
-use snarkvm_curves::traits::PairingCurve;
-use snarkvm_curves::traits::PairingEngine;
-use snarkvm_curves::traits::ProjectiveCurve;
-use snarkvm_fields::One;
-use snarkvm_fields::PrimeField;
+use crate::snark::gm17::{PreparedVerifyingKey, Proof, VerifyingKey};
+use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
+use snarkvm_fields::{One, PrimeField};
 use snarkvm_r1cs::errors::SynthesisError;
 
-use std::iter;
-use std::ops::AddAssign;
-use std::ops::MulAssign;
-use std::ops::Neg;
+use std::{
+    iter,
+    ops::{AddAssign, MulAssign, Neg},
+};
 
 pub fn prepare_verifying_key<E: PairingEngine>(vk: VerifyingKey<E>) -> PreparedVerifyingKey<E> {
     let g_alpha = vk.g_alpha_g1;

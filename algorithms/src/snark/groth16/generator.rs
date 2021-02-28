@@ -14,32 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::push_constraints;
-use super::r1cs_to_qap::R1CStoQAP;
-use super::Parameters;
-use super::VerifyingKey;
-use crate::cfg_into_iter;
-use crate::cfg_iter;
-use crate::fft::EvaluationDomain;
-use crate::msm::FixedBaseMSM;
-use snarkvm_curves::traits::Group;
-use snarkvm_curves::traits::PairingEngine;
-use snarkvm_curves::traits::ProjectiveCurve;
-use snarkvm_fields::Field;
-use snarkvm_fields::One;
-use snarkvm_fields::PrimeField;
-use snarkvm_fields::Zero;
-use snarkvm_profiler::end_timer;
-use snarkvm_profiler::start_timer;
-use snarkvm_r1cs::ConstraintSynthesizer;
-use snarkvm_r1cs::ConstraintSystem;
-use snarkvm_r1cs::Index;
-use snarkvm_r1cs::LinearCombination;
-use snarkvm_r1cs::SynthesisError;
-use snarkvm_r1cs::Variable;
-use snarkvm_utilities::errors::SerializationError;
-use snarkvm_utilities::rand::UniformRand;
-use snarkvm_utilities::serialize::*;
+use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, VerifyingKey};
+use crate::{cfg_into_iter, cfg_iter, fft::EvaluationDomain, msm::FixedBaseMSM};
+use snarkvm_curves::traits::{Group, PairingEngine, ProjectiveCurve};
+use snarkvm_fields::{Field, One, PrimeField, Zero};
+use snarkvm_profiler::{end_timer, start_timer};
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
+use snarkvm_utilities::{errors::SerializationError, rand::UniformRand, serialize::*};
 
 use rand::Rng;
 

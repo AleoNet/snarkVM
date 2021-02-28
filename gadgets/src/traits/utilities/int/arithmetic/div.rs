@@ -16,17 +16,15 @@
 
 use crate::errors::SignedIntegerError;
 
-use crate::utilities::alloc::AllocGadget;
-use crate::utilities::arithmetic::Add;
-use crate::utilities::arithmetic::Div;
-use crate::utilities::arithmetic::Neg;
-use crate::utilities::arithmetic::Sub;
-use crate::utilities::bits::ComparatorGadget;
-use crate::utilities::boolean::AllocatedBit;
-use crate::utilities::boolean::Boolean;
-use crate::utilities::eq::EvaluateEqGadget;
-use crate::utilities::int::*;
-use crate::utilities::select::CondSelectGadget;
+use crate::utilities::{
+    alloc::AllocGadget,
+    arithmetic::{Add, Div, Neg, Sub},
+    bits::ComparatorGadget,
+    boolean::{AllocatedBit, Boolean},
+    eq::EvaluateEqGadget,
+    int::*,
+    select::CondSelectGadget,
+};
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSystem;
 

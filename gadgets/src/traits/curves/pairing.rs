@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::curves::GroupGadget;
-use crate::traits::fields::FieldGadget;
-use crate::utilities::ToBytesGadget;
+use crate::{
+    traits::{curves::GroupGadget, fields::FieldGadget},
+    utilities::ToBytesGadget,
+};
 use snarkvm_curves::traits::PairingEngine;
 use snarkvm_fields::Field;
-use snarkvm_r1cs::errors::SynthesisError;
-use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use std::fmt::Debug;
 

@@ -25,8 +25,7 @@ pub use merkle_tree::*;
 #[cfg(test)]
 pub mod tests;
 
-use rand::Rng;
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 
 // TODO: How should this seed be chosen?
 const PRNG_SEED: [u8; 32] = [

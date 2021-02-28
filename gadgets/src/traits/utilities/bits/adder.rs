@@ -16,8 +16,7 @@
 
 use crate::utilities::boolean::Boolean;
 use snarkvm_fields::Field;
-use snarkvm_r1cs::errors::SynthesisError;
-use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 /// Single bit binary adder with carry bit
 /// https://en.wikipedia.org/wiki/Adder_(electronics)#Full_adder

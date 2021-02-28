@@ -22,9 +22,7 @@ pub mod commands;
 pub mod errors;
 pub mod updater;
 
-use crate::cli::CLI;
-use crate::commands::parse;
-use crate::updater::Updater;
+use crate::{cli::CLI, commands::parse, updater::Updater};
 
 use structopt::StructOpt;
 

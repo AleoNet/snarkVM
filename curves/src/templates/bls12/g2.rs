@@ -14,23 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::templates::bls12::Bls12Parameters;
-use crate::templates::bls12::TwistType;
-use crate::templates::short_weierstrass::short_weierstrass_jacobian::GroupAffine;
-use crate::templates::short_weierstrass::short_weierstrass_jacobian::GroupProjective;
-use crate::traits::AffineCurve;
-use crate::traits::SWModelParameters;
-use snarkvm_fields::Field;
-use snarkvm_fields::Fp2;
-use snarkvm_fields::One;
-use snarkvm_fields::Zero;
-use snarkvm_utilities::bititerator::BitIteratorBE;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::errors::SerializationError;
-use snarkvm_utilities::serialize::*;
+use crate::{
+    templates::{
+        bls12::{Bls12Parameters, TwistType},
+        short_weierstrass::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
+    },
+    traits::{AffineCurve, SWModelParameters},
+};
+use snarkvm_fields::{Field, Fp2, One, Zero};
+use snarkvm_utilities::{bititerator::BitIteratorBE, bytes::ToBytes, errors::SerializationError, serialize::*};
 
-use std::io::Result as IoResult;
-use std::io::Write;
+use std::io::{Result as IoResult, Write};
 
 pub type G2Affine<P> = GroupAffine<<P as Bls12Parameters>::G2Parameters>;
 pub type G2Projective<P> = GroupProjective<<P as Bls12Parameters>::G2Parameters>;

@@ -14,23 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::alloc::AllocGadget;
-use crate::utilities::boolean::Boolean;
-use crate::utilities::eq::EqGadget;
-use crate::utilities::eq::NEqGadget;
-use crate::utilities::select::CondSelectGadget;
-use crate::utilities::ToBitsGadget;
-use crate::utilities::ToBytesGadget;
-use snarkvm_curves::traits::AffineCurve;
-use snarkvm_curves::traits::Group;
-use snarkvm_curves::ProjectiveCurve;
+use crate::utilities::{
+    alloc::AllocGadget,
+    boolean::Boolean,
+    eq::{EqGadget, NEqGadget},
+    select::CondSelectGadget,
+    ToBitsGadget,
+    ToBytesGadget,
+};
+use snarkvm_curves::{
+    traits::{AffineCurve, Group},
+    ProjectiveCurve,
+};
 use snarkvm_fields::Field;
-use snarkvm_r1cs::errors::SynthesisError;
-use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use itertools::Itertools;
-use std::borrow::Borrow;
-use std::fmt::Debug;
+use std::{borrow::Borrow, fmt::Debug};
 
 pub trait GroupGadget<G: Group, F: Field>:
     Sized

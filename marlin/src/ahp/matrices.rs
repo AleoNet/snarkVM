@@ -16,20 +16,18 @@
 
 #![allow(non_snake_case)]
 
-use crate::ahp::indexer::Matrix;
-use crate::ahp::UnnormalizedBivariateLagrangePoly;
-use crate::BTreeMap;
-use snarkvm_algorithms::cfg_iter_mut;
-use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_algorithms::fft::Evaluations as EvaluationsOnDomain;
-use snarkvm_fields::batch_inversion;
-use snarkvm_fields::Field;
-use snarkvm_fields::PrimeField;
+use crate::{
+    ahp::{indexer::Matrix, UnnormalizedBivariateLagrangePoly},
+    BTreeMap,
+};
+use snarkvm_algorithms::{
+    cfg_iter_mut,
+    fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain},
+};
+use snarkvm_fields::{batch_inversion, Field, PrimeField};
 use snarkvm_polycommit::LabeledPolynomial;
-use snarkvm_r1cs::ConstraintSystem;
-use snarkvm_r1cs::Index as VarIndex;
-use snarkvm_utilities::errors::SerializationError;
-use snarkvm_utilities::serialize::*;
+use snarkvm_r1cs::{ConstraintSystem, Index as VarIndex};
+use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use derivative::Derivative;
 use rayon::prelude::*;

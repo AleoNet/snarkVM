@@ -15,10 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::base_dpc::BaseDPCComponents;
-use snarkvm_algorithms::traits::CommitmentScheme;
-use snarkvm_algorithms::traits::CRH;
-use snarkvm_fields::errors::ConstraintFieldError;
-use snarkvm_fields::traits::to_field_vec::ToConstraintField;
+use snarkvm_algorithms::traits::{CommitmentScheme, CRH};
+use snarkvm_fields::{errors::ConstraintFieldError, traits::to_field_vec::ToConstraintField};
 
 /// Program verification key and proof
 /// Represented as bytes to be generic for any Program SNARK

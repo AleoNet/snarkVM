@@ -15,15 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Vec;
-use snarkvm_utilities::bytes::FromBytes;
-use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
 use core::marker::PhantomData;
-use digest::generic_array::GenericArray;
-use digest::Digest;
+use digest::{generic_array::GenericArray, Digest};
 use rand_chacha::ChaChaRng;
-use rand_core::RngCore;
-use rand_core::SeedableRng;
+use rand_core::{RngCore, SeedableRng};
 
 /// A `SeedableRng` that refreshes its seed by hashing together the previous seed
 /// and the new seed material.

@@ -16,19 +16,16 @@
 
 use crate::errors::SignedIntegerError;
 
-use crate::utilities::alloc::AllocGadget;
-use crate::utilities::arithmetic::Mul;
-use crate::utilities::bits::RippleCarryAdder;
-use crate::utilities::bits::SignExtend;
-use crate::utilities::boolean::AllocatedBit;
-use crate::utilities::boolean::Boolean;
-use crate::utilities::int::*;
-use crate::utilities::select::CondSelectGadget;
-use snarkvm_fields::FpParameters;
-use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::Assignment;
-use snarkvm_r1cs::ConstraintSystem;
-use snarkvm_r1cs::LinearCombination;
+use crate::utilities::{
+    alloc::AllocGadget,
+    arithmetic::Mul,
+    bits::{RippleCarryAdder, SignExtend},
+    boolean::{AllocatedBit, Boolean},
+    int::*,
+    select::CondSelectGadget,
+};
+use snarkvm_fields::{FpParameters, PrimeField};
+use snarkvm_r1cs::{Assignment, ConstraintSystem, LinearCombination};
 
 use std::iter;
 

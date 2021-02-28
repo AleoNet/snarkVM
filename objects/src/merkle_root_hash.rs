@@ -14,11 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use serde::Deserialize;
-use serde::Serialize;
-use std::fmt::Display;
-use std::fmt::Formatter;
-use std::fmt::{self};
+use serde::{Deserialize, Serialize};
+use std::fmt::{
+    Display,
+    Formatter,
+    {self},
+};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct MerkleRootHash(pub [u8; 32]);

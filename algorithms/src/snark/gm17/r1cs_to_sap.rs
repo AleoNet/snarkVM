@@ -14,19 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::generator::KeypairAssembly;
-use super::prover::ProvingAssignment;
+use super::{generator::KeypairAssembly, prover::ProvingAssignment};
 use crate::fft::EvaluationDomain;
 use snarkvm_curves::traits::PairingEngine;
-use snarkvm_fields::Field;
-use snarkvm_fields::One;
-use snarkvm_fields::Zero;
-use snarkvm_r1cs::errors::SynthesisError;
-use snarkvm_r1cs::errors::SynthesisResult;
-use snarkvm_r1cs::Index;
+use snarkvm_fields::{Field, One, Zero};
+use snarkvm_r1cs::{
+    errors::{SynthesisError, SynthesisResult},
+    Index,
+};
 
-use std::ops::AddAssign;
-use std::ops::SubAssign;
+use std::ops::{AddAssign, SubAssign};
 
 pub(crate) struct R1CStoSAP;
 

@@ -112,8 +112,7 @@ macro_rules! unwrap_option_or_error {
     };
 }
 
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicBool, AtomicU64};
 // A flag used for performance purposes in the process of loading SNARK parameters; it allows the
 // PairingEngine::GXAffine values contained in them to be verified using the computationally-heavy
 // AffineCurve::is_in_correct_subgroup_assuming_on_curve method in parallel after the deserialization

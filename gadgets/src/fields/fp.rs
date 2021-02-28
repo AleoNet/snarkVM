@@ -14,32 +14,31 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::fields::FieldGadget;
-use crate::utilities::alloc::AllocGadget;
-use crate::utilities::boolean::AllocatedBit;
-use crate::utilities::boolean::Boolean;
-use crate::utilities::eq::ConditionalEqGadget;
-use crate::utilities::eq::EqGadget;
-use crate::utilities::eq::NEqGadget;
-use crate::utilities::select::CondSelectGadget;
-use crate::utilities::select::ThreeBitCondNegLookupGadget;
-use crate::utilities::select::TwoBitLookupGadget;
-use crate::utilities::uint::unsigned_integer::UInt;
-use crate::utilities::uint::unsigned_integer::UInt8;
-use crate::utilities::ToBitsGadget;
-use crate::utilities::ToBytesGadget;
-use snarkvm_fields::FpParameters;
-use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::errors::SynthesisError;
-use snarkvm_r1cs::Assignment;
-use snarkvm_r1cs::ConstraintSystem;
-use snarkvm_r1cs::ConstraintVariable::*;
-use snarkvm_r1cs::ConstraintVariable::{self};
-use snarkvm_r1cs::LinearCombination;
+use crate::{
+    traits::fields::FieldGadget,
+    utilities::{
+        alloc::AllocGadget,
+        boolean::{AllocatedBit, Boolean},
+        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+        select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
+        uint::unsigned_integer::{UInt, UInt8},
+        ToBitsGadget,
+        ToBytesGadget,
+    },
+};
+use snarkvm_fields::{FpParameters, PrimeField};
+use snarkvm_r1cs::{
+    errors::SynthesisError,
+    Assignment,
+    ConstraintSystem,
+    ConstraintVariable::{
+        *,
+        {self},
+    },
+    LinearCombination,
+};
 
-use snarkvm_utilities::bititerator::BitIteratorBE;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::to_bytes;
+use snarkvm_utilities::{bititerator::BitIteratorBE, bytes::ToBytes, to_bytes};
 
 use std::borrow::Borrow;
 

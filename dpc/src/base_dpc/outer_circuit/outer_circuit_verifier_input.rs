@@ -14,18 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::base_dpc::inner_circuit_verifier_input::InnerCircuitVerifierInput;
-use crate::base_dpc::BaseDPCComponents;
-use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
-use snarkvm_algorithms::traits::CommitmentScheme;
-use snarkvm_algorithms::traits::EncryptionScheme;
-use snarkvm_algorithms::traits::MerkleParameters;
-use snarkvm_algorithms::traits::SignatureScheme;
-use snarkvm_algorithms::traits::CRH;
-use snarkvm_fields::errors::ConstraintFieldError;
-use snarkvm_fields::traits::to_field_vec::ToConstraintField;
-use snarkvm_utilities::bytes::ToBytes;
-use snarkvm_utilities::to_bytes;
+use crate::base_dpc::{inner_circuit_verifier_input::InnerCircuitVerifierInput, BaseDPCComponents};
+use snarkvm_algorithms::{
+    merkle_tree::MerkleTreeDigest,
+    traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH},
+};
+use snarkvm_fields::{errors::ConstraintFieldError, traits::to_field_vec::ToConstraintField};
+use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: BaseDPCComponents"))]
