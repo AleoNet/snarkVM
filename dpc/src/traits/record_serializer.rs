@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::dpc::Record;
 use crate::errors::DPCError;
+use crate::traits::Record;
 use snarkvm_curves::traits::Group;
 use snarkvm_curves::traits::MontgomeryModelParameters;
 use snarkvm_curves::traits::TEModelParameters;

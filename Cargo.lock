@@ -1734,6 +1734,8 @@ name = "snarkvm-dpc"
 version = "0.0.6"
 dependencies = [
  "anyhow",
+ "base58",
+ "bech32",
  "blake2",
  "derivative",
  "hex",
@@ -1811,8 +1813,6 @@ name = "snarkvm-objects"
 version = "0.0.6"
 dependencies = [
  "anyhow",
- "base58",
- "bech32",
  "bincode",
  "chrono",
  "hex",
@@ -1839,6 +1839,7 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-dpc",
  "snarkvm-marlin",
+ "snarkvm-polycommit",
  "snarkvm-posw",
  "snarkvm-utilities",
  "thiserror",
@@ -1872,6 +1873,7 @@ dependencies = [
  "serde",
  "snarkvm-algorithms",
  "snarkvm-curves",
+ "snarkvm-fields",
  "snarkvm-gadgets",
  "snarkvm-marlin",
  "snarkvm-objects",

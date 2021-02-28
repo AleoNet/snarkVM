@@ -14,8 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::account::Account;
+use crate::account::AccountAddress;
+use crate::account::AccountPrivateKey;
 use crate::base_dpc::record_payload::RecordPayload;
 use crate::errors::DPCError;
+use crate::traits::AccountScheme;
 use crate::traits::DPCComponents;
 use crate::traits::DPCScheme;
 use crate::traits::Record;
@@ -36,12 +40,8 @@ use snarkvm_curves::traits::ProjectiveCurve;
 use snarkvm_curves::traits::TEModelParameters;
 use snarkvm_gadgets::traits::algorithms::CRHGadget;
 use snarkvm_gadgets::traits::algorithms::SNARKVerifierGadget;
-use snarkvm_objects::traits::AccountScheme;
 use snarkvm_objects::traits::LedgerScheme;
 use snarkvm_objects::traits::Transaction;
-use snarkvm_objects::Account;
-use snarkvm_objects::AccountAddress;
-use snarkvm_objects::AccountPrivateKey;
 use snarkvm_objects::AleoAmount;
 use snarkvm_objects::Network;
 use snarkvm_utilities::bytes::FromBytes;

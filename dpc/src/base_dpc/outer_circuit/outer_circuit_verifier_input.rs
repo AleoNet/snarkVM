@@ -22,9 +22,8 @@ use snarkvm_algorithms::traits::EncryptionScheme;
 use snarkvm_algorithms::traits::MerkleParameters;
 use snarkvm_algorithms::traits::SignatureScheme;
 use snarkvm_algorithms::traits::CRH;
-use snarkvm_curves::errors::ConstraintFieldError;
+use snarkvm_fields::errors::ConstraintFieldError;
 use snarkvm_fields::traits::to_field_vec::ToConstraintField;
-use snarkvm_r1cs::errors::SynthesisError;
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::to_bytes;
 
@@ -101,7 +100,7 @@ where
         let inner_snark_field_elements = &self.inner_snark_verifier_input.to_field_elements()?;
 
         for inner_snark_fe in inner_snark_field_elements {
-            let inner_snark_fe_bytes = to_bytes![inner_snark_fe].map_err(|_| SynthesisError::AssignmentMissing)?;
+            let inner_snark_fe_bytes = to_bytes![inner_snark_fe]?;
             v.extend_from_slice(&ToConstraintField::<C::OuterField>::to_field_elements(
                 inner_snark_fe_bytes.as_slice(),
             )?);

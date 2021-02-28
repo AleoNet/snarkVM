@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::account::AccountAddress;
 use crate::base_dpc::record_payload::RecordPayload;
 use crate::base_dpc::BaseDPCComponents;
 use crate::traits::Record;
 use snarkvm_algorithms::traits::CommitmentScheme;
 use snarkvm_algorithms::traits::SignatureScheme;
 use snarkvm_algorithms::traits::CRH;
-use snarkvm_objects::AccountAddress;
 use snarkvm_utilities::bytes::FromBytes;
 use snarkvm_utilities::bytes::ToBytes;
 use snarkvm_utilities::to_bytes;

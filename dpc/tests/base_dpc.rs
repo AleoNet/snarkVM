@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::account::AccountViewKey;
 use crate::traits::DPCScheme;
 use crate::traits::Program;
 use snarkvm_algorithms::traits::CRH;
@@ -27,7 +28,6 @@ use snarkvm_objects::dpc::DPCTransactions;
 use snarkvm_objects::merkle_root;
 use snarkvm_objects::traits::LedgerScheme;
 use snarkvm_objects::traits::Transaction;
-use snarkvm_objects::AccountViewKey;
 use snarkvm_objects::Block;
 use snarkvm_objects::BlockHeader;
 use snarkvm_objects::BlockHeaderHash;
@@ -77,13 +77,11 @@ fn base_dpc_integration_test() {
 
     let ledger = initialize_test_blockchain::<Tx, CommitmentMerkleParameters>(ledger_parameters, genesis_block);
 
-    let noop_program_id = to_bytes![
-        ProgramVerificationKeyCRH::hash(
-            &parameters.system_parameters.program_verification_key_crh,
-            &to_bytes![parameters.noop_program_snark_parameters().verification_key].unwrap()
-        )
-        .unwrap()
-    ]
+    let noop_program_id = to_bytes![ProgramVerificationKeyCRH::hash(
+        &parameters.system_parameters.program_verification_key_crh,
+        &to_bytes![parameters.noop_program_snark_parameters().verification_key].unwrap()
+    )
+    .unwrap()]
     .unwrap();
 
     // Generate dummy input records having as address the genesis address.

@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::account::AccountAddress;
+use crate::account::AccountViewKey;
 use crate::base_dpc::parameters::SystemParameters;
 use crate::base_dpc::record::encrypted_record::*;
 use crate::base_dpc::record::record_serializer::*;
@@ -32,8 +34,6 @@ use snarkvm_curves::traits::AffineCurve;
 use snarkvm_curves::traits::ModelParameters;
 use snarkvm_curves::traits::ProjectiveCurve;
 use snarkvm_fields::One;
-use snarkvm_objects::AccountAddress;
-use snarkvm_objects::AccountViewKey;
 use snarkvm_utilities::bits_to_bytes;
 use snarkvm_utilities::bytes_to_bits;
 use snarkvm_utilities::to_bytes;

@@ -49,6 +49,10 @@ default-features = false
 path = "../marlin"
 default-features = false
 
+[dependencies.snarkvm-polycommit]
+path = "../polycommit"
+default-features = false
+
 [dev-dependencies.snarkvm-posw]
 path = "../posw"
 default-features = false

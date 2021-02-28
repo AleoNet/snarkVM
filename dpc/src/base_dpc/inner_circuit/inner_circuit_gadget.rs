@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::account::AccountPrivateKey;
 use crate::base_dpc::parameters::SystemParameters;
 use crate::base_dpc::record::DPCRecord;
 use crate::base_dpc::record_encryption::RecordEncryptionGadgetComponents;
@@ -37,13 +38,13 @@ use snarkvm_fields::One;
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::algorithms::encoding::Elligator2FieldGadget;
 use snarkvm_gadgets::algorithms::merkle_tree::merkle_path::MerklePathGadget;
+use snarkvm_gadgets::fields::FpGadget;
 use snarkvm_gadgets::traits::algorithms::CRHGadget;
 use snarkvm_gadgets::traits::algorithms::CommitmentGadget;
 use snarkvm_gadgets::traits::algorithms::EncryptionGadget;
 use snarkvm_gadgets::traits::algorithms::PRFGadget;
 use snarkvm_gadgets::traits::algorithms::SignaturePublicKeyRandomizationGadget;
-use snarkvm_gadgets::traits::curves::FieldGadget;
-use snarkvm_gadgets::traits::curves::FpGadget;
+use snarkvm_gadgets::traits::fields::FieldGadget;
 use snarkvm_gadgets::traits::utilities::alloc::AllocGadget;
 use snarkvm_gadgets::traits::utilities::arithmetic::add::Add;
 use snarkvm_gadgets::traits::utilities::arithmetic::sub::Sub;
@@ -55,7 +56,6 @@ use snarkvm_gadgets::traits::utilities::int::Int64;
 use snarkvm_gadgets::traits::utilities::uint::UInt8;
 use snarkvm_gadgets::traits::utilities::ToBitsGadget;
 use snarkvm_gadgets::traits::utilities::ToBytesGadget;
-use snarkvm_objects::AccountPrivateKey;
 use snarkvm_objects::AleoAmount;
 use snarkvm_r1cs::errors::SynthesisError;
 use snarkvm_r1cs::ConstraintSystem;
@@ -839,10 +839,10 @@ where
             let serial_number_nonce_bits = serial_number_nonce_bytes
                 .to_bits(&mut encryption_cs.ns(|| "Convert serial_number_nonce_bytes to bits"))?;
 
-            let commitment_randomness_bytes =
-                UInt8::alloc_vec(encryption_cs.ns(|| "Allocate commitment randomness bytes"), &to_bytes![
-                    record.commitment_randomness()
-                ]?)?;
+            let commitment_randomness_bytes = UInt8::alloc_vec(
+                encryption_cs.ns(|| "Allocate commitment randomness bytes"),
+                &to_bytes![record.commitment_randomness()]?,
+            )?;
 
             let commitment_randomness_bits = commitment_randomness_bytes
                 .to_bits(&mut encryption_cs.ns(|| "Convert commitment_randomness_bytes to bits"))?;
@@ -1201,9 +1201,10 @@ where
             let ciphertext_and_fq_high_selectors_bytes = UInt8::alloc_vec(
                 &mut encryption_cs.ns(|| format!("ciphertext and fq_high selector bits to bytes {}", j)),
                 &bits_to_bytes(
-                    &[&ciphertext_selectors[..], &[
-                        fq_high_selectors[fq_high_selectors.len() - 1]
-                    ]]
+                    &[
+                        &ciphertext_selectors[..],
+                        &[fq_high_selectors[fq_high_selectors.len() - 1]],
+                    ]
                     .concat(),
                 ),
             )?;

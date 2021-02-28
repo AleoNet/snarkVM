@@ -27,6 +27,11 @@ path = "../curves"
 version = "0.0.6"
 default-features = false
 
+[dependencies.snarkvm-fields]
+path = "../fields"
+version = "0.0.6"
+default-features = false
+
 [dependencies.snarkvm-gadgets]
 path = "../gadgets"
 version = "0.0.6"

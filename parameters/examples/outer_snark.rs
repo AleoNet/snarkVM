@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::Parameter;
 use snarkvm_algorithms::crh::sha256::sha256;
 use snarkvm_algorithms::traits::MerkleParameters;
 use snarkvm_algorithms::traits::SNARK;
@@ -27,6 +26,7 @@ use snarkvm_dpc::base_dpc::program::NoopCircuit;
 use snarkvm_dpc::base_dpc::program::PrivateProgramInput;
 use snarkvm_dpc::base_dpc::BaseDPCComponents;
 use snarkvm_dpc::errors::DPCError;
+use snarkvm_parameters::traits::Parameter;
 use snarkvm_parameters::InnerSNARKPKParameters;
 use snarkvm_parameters::InnerSNARKVKParameters;
 use snarkvm_parameters::LedgerMerkleTreeParameters;

@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #![deny(unused_import_braces)]
-// #![deny(unused_mut, unused_qualifications, trivial_casts, trivial_numeric_casts)]
-#![deny(variant_size_differences, stable_features, unreachable_pub)]
+// #![deny(unused_mut, unused_qualifications, trivial_casts, trivial_numeric_casts, unreachable_pub)]
+#![deny(variant_size_differences, stable_features)]
 #![deny(
     non_shorthand_field_patterns,
     unused_attributes,

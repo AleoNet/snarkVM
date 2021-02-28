@@ -65,6 +65,12 @@ default-features = false
 [dependencies.anyhow]
 version = "1.0.38"
 
+[dependencies.base58]
+version = "0.1"
+
+[dependencies.bech32]
+version = "0.6"
+
 [dependencies.blake2]
 version = "0.9"
 

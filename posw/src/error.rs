@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::errors::SNARKError;
-use snarkvm_errors::curves::constraint_field::ConstraintFieldError;
-use snarkvm_errors::parameters::ParameterError;
+use snarkvm_fields::errors::ConstraintFieldError;
+use snarkvm_parameters::errors::ParameterError;
 
 use std::io::Error as IoError;
 use thiserror::Error;

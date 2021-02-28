@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::instantiated::*;
+use crate::account::Account;
 use crate::base_dpc::execute_inner_proof_gadget;
 use crate::base_dpc::execute_outer_proof_gadget;
 use crate::base_dpc::inner_circuit::InnerCircuit;
@@ -26,6 +27,7 @@ use crate::base_dpc::record_payload::RecordPayload;
 use crate::base_dpc::BaseDPCComponents;
 use crate::base_dpc::TransactionKernel;
 use crate::base_dpc::DPC;
+use crate::traits::AccountScheme;
 use crate::traits::DPCScheme;
 use crate::traits::Program;
 use crate::traits::Record;
@@ -36,9 +38,7 @@ use snarkvm_algorithms::traits::SNARK;
 use snarkvm_curves::bls12_377::Fq;
 use snarkvm_curves::bls12_377::Fr;
 use snarkvm_objects::dpc::DPCTransactions;
-use snarkvm_objects::traits::AccountScheme;
 use snarkvm_objects::traits::LedgerScheme;
-use snarkvm_objects::Account;
 use snarkvm_objects::Block;
 use snarkvm_objects::BlockHeader;
 use snarkvm_objects::BlockHeaderHash;
@@ -67,13 +67,11 @@ fn generate_test_noop_program_parameters<R: Rng>(
     let noop_program_snark_pp =
         InstantiatedDPC::generate_noop_program_snark_parameters(&system_parameters, rng).unwrap();
 
-    let noop_program_id = to_bytes![
-        ProgramVerificationKeyCRH::hash(
-            &system_parameters.program_verification_key_crh,
-            &to_bytes![noop_program_snark_pp.verification_key].unwrap()
-        )
-        .unwrap()
-    ]
+    let noop_program_id = to_bytes![ProgramVerificationKeyCRH::hash(
+        &system_parameters.program_verification_key_crh,
+        &to_bytes![noop_program_snark_pp.verification_key].unwrap()
+    )
+    .unwrap()]
     .unwrap();
 
     (noop_program_snark_pp, noop_program_id)
