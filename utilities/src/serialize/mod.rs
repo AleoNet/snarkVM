@@ -52,7 +52,7 @@ pub trait ConstantSerializedSize: CanonicalSerialize {
 /// ```
 /// // The `derive` feature must be set for the derivation to work.
 /// use snarkvm_utilities::serialize::*;
-/// use crate::errors::SerializationError;
+/// use snarkvm_utilities::errors::SerializationError;
 ///
 /// # #[cfg(feature = "derive")]
 /// #[derive(CanonicalSerialize)]
@@ -95,7 +95,7 @@ pub trait CanonicalDeserializeWithFlags: Sized {
 /// ```
 /// // The `derive` feature must be set for the derivation to work.
 /// use snarkvm_utilities::serialize::*;
-/// use crate::errors::SerializationError;
+/// use snarkvm_utilities::errors::SerializationError;
 ///
 /// # #[cfg(feature = "derive")]
 /// #[derive(CanonicalDeserialize)]
