@@ -22,27 +22,21 @@ use crate::{
         PedersenCompressedCRHGadget,
     },
     curves::edwards_bls12::EdwardsBlsGadget,
+    traits::{
+        algorithms::{CRHGadget, MaskedCRHGadget},
+        utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8},
+    },
 };
-use snarkvm_algorithms::crh::{
-    BoweHopwoodPedersenCRH,
-    BoweHopwoodPedersenCompressedCRH,
-    PedersenCRH,
-    PedersenCompressedCRH,
-    PedersenSize,
+use snarkvm_algorithms::{
+    crh::{BoweHopwoodPedersenCRH, BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH, PedersenSize},
+    traits::{CRHParameters, CRH},
 };
 use snarkvm_curves::{
     bls12_377::Fr,
     edwards_bls12::{EdwardsAffine, EdwardsProjective},
 };
-use snarkvm_models::{
-    algorithms::{CRHParameters, CRH},
-    curves::{Field, PrimeField},
-    gadgets::{
-        algorithms::{CRHGadget, MaskedCRHGadget},
-        r1cs::{ConstraintSystem, TestConstraintSystem},
-        utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8},
-    },
-};
+use snarkvm_fields::{Field, PrimeField};
+use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
 use rand::{thread_rng, Rng};
 

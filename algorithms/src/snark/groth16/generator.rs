@@ -16,13 +16,11 @@
 
 use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, VerifyingKey};
 use crate::{cfg_into_iter, cfg_iter, fft::EvaluationDomain, msm::FixedBaseMSM};
-use snarkvm_errors::{gadgets::SynthesisError, serialization::SerializationError};
-use snarkvm_models::{
-    curves::{Field, Group, One, PairingEngine, PrimeField, ProjectiveCurve, Zero},
-    gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable},
-};
+use snarkvm_curves::traits::{Group, PairingEngine, ProjectiveCurve};
+use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_profiler::{end_timer, start_timer};
-use snarkvm_utilities::{rand::UniformRand, serialize::*};
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
+use snarkvm_utilities::{errors::SerializationError, rand::UniformRand, serialize::*};
 
 use rand::Rng;
 

@@ -20,15 +20,20 @@
 #[macro_use]
 extern crate std;
 
+#[rustfmt::skip]
 #[cfg(not(feature = "std"))]
 #[allow(unused_imports)]
 #[doc(hidden)]
 pub use alloc::{boxed::Box, format, vec, vec::Vec};
 
+#[rustfmt::skip]
 #[cfg(feature = "std")]
 #[allow(unused_imports)]
 #[doc(hidden)]
 pub use std::{boxed::Box, format, vec, vec::Vec};
+
+#[macro_use]
+extern crate thiserror;
 
 pub mod biginteger;
 pub use biginteger::*;
@@ -42,6 +47,9 @@ pub use bytes::*;
 
 pub mod error;
 pub use error::*;
+
+pub mod errors;
+pub use errors::*;
 
 pub mod iterator;
 pub use iterator::*;

@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_errors::curves::ConstraintFieldError;
-use snarkvm_models::{
-    algorithms::crh::CRHParameters,
-    curves::{to_field_vec::ToConstraintField, Field, Group},
-};
+use crate::traits::crh::CRHParameters;
+use snarkvm_curves::Group;
+use snarkvm_fields::{errors::ConstraintFieldError, traits::to_field_vec::ToConstraintField, Field};
 use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
 use rand::Rng;

@@ -34,22 +34,24 @@ use crate::{
         G2Projective,
     },
     templates::{short_weierstrass::tests::sw_tests, twisted_edwards_extended::tests::edwards_test},
+    traits::{
+        tests_curve::curve_tests,
+        tests_group::group_test,
+        AffineCurve,
+        PairingEngine,
+        ProjectiveCurve,
+        SWModelParameters,
+    },
 };
-use snarkvm_models::curves::{
+use snarkvm_fields::{
     fp6_3over2::Fp6Parameters,
-    tests_curve::curve_tests,
     tests_field::{field_serialization_test, field_test, frobenius_test, primefield_test, sqrt_field_test},
-    tests_group::group_test,
-    AffineCurve,
     Field,
     Fp2Parameters,
     FpParameters,
     LegendreSymbol::*,
     One,
-    PairingEngine,
     PrimeField,
-    ProjectiveCurve,
-    SWModelParameters,
     SquareRootField,
     Zero,
 };

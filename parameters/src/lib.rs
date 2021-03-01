@@ -16,8 +16,17 @@
 
 #![allow(clippy::module_inception)]
 
+#[macro_use]
+extern crate thiserror;
+
+pub mod errors;
+pub use errors::*;
+
 pub mod genesis;
 pub use genesis::*;
 
 pub mod params;
 pub use params::*;
+
+pub mod traits;
+pub use traits::*;

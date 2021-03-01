@@ -15,13 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::base_dpc::{record::encrypted_record::*, BaseDPCComponents};
-use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
-use snarkvm_errors::objects::TransactionError;
-use snarkvm_models::{
-    algorithms::{CommitmentScheme, SignatureScheme, CRH, SNARK},
-    objects::Transaction,
+use snarkvm_algorithms::{
+    merkle_tree::MerkleTreeDigest,
+    traits::{CommitmentScheme, SignatureScheme, CRH, SNARK},
 };
-use snarkvm_objects::{AleoAmount, Network};
+use snarkvm_objects::{errors::TransactionError, traits::Transaction, AleoAmount, Network};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     serialize::{CanonicalDeserialize, CanonicalSerialize},

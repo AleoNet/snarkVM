@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::transaction_1::Transaction1;
-use snarkvm_models::genesis::Genesis;
+use crate::{traits::Genesis, transaction_1::Transaction1};
 
 #[test]
 fn test_transaction_1() {

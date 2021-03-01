@@ -14,9 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::base_dpc::instantiated::Components;
-use snarkvm_errors::algorithms::CRHError;
-use snarkvm_models::{algorithms::CRH, dpc::DPCComponents};
+use snarkvm_algorithms::{errors::CRHError, traits::CRH};
+use snarkvm_dpc::{base_dpc::instantiated::Components, traits::DPCComponents};
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
 use rand::thread_rng;

@@ -14,27 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::templates::short_weierstrass::short_weierstrass_jacobian::{
-    GroupAffine as SWAffine,
-    GroupProjective as SWProjective,
-};
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    curves::{AffineCurve, Field, One, PrimeField, ProjectiveCurve, SWModelParameters, Zero},
-    gadgets::{
-        curves::{FieldGadget, GroupGadget},
-        r1cs::{Assignment, ConstraintSystem},
-        utilities::{
-            alloc::AllocGadget,
-            boolean::Boolean,
-            eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-            select::CondSelectGadget,
-            uint::UInt8,
-            ToBitsGadget,
-            ToBytesGadget,
-        },
+use crate::traits::{
+    curves::GroupGadget,
+    fields::FieldGadget,
+    utilities::{
+        alloc::AllocGadget,
+        boolean::Boolean,
+        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+        select::CondSelectGadget,
+        uint::UInt8,
+        ToBitsGadget,
+        ToBytesGadget,
     },
 };
+use snarkvm_curves::{
+    templates::short_weierstrass::short_weierstrass_jacobian::{
+        GroupAffine as SWAffine,
+        GroupProjective as SWProjective,
+    },
+    traits::{AffineCurve, ProjectiveCurve, SWModelParameters},
+};
+use snarkvm_fields::{Field, One, PrimeField, Zero};
+use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
 use std::{borrow::Borrow, marker::PhantomData, ops::Neg};

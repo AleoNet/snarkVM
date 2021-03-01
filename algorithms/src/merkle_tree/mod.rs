@@ -41,10 +41,12 @@ pub fn prng() -> impl Rng {
 /// Defines a Merkle tree using the provided hash and depth.
 macro_rules! define_merkle_tree_parameters {
     ($struct_name:ident, $hash:ty, $depth:expr) => {
+#[rustfmt::skip]
         #[allow(unused_imports)]
-        use snarkvm_models::algorithms::{LoadableMerkleParameters, MaskedMerkleParameters, MerkleParameters, CRH};
-        #[allow(unused_imports)]
-        use $crate::merkle_tree::MerkleTree;
+        use $crate::{
+            merkle_tree::MerkleTree,
+            traits::{CRH, LoadableMerkleParameters, MaskedMerkleParameters, MerkleParameters},
+        };
 
         #[allow(unused_imports)]
         use rand::Rng;
@@ -91,10 +93,12 @@ macro_rules! define_merkle_tree_parameters {
 #[macro_export]
 macro_rules! define_masked_merkle_tree_parameters {
     ($struct_name:ident, $hash:ty, $depth:expr) => {
+#[rustfmt::skip]
         #[allow(unused_imports)]
-        use snarkvm_models::algorithms::{CRHParameters, MaskedMerkleParameters, MerkleParameters, CRH};
-        #[allow(unused_imports)]
-        use $crate::merkle_tree::MerkleTree;
+        use $crate::{
+            merkle_tree::MerkleTree,
+            traits::{CRH, CRHParameters, MaskedMerkleParameters, MerkleParameters},
+        };
 
         #[allow(unused_imports)]
         use rand::Rng;

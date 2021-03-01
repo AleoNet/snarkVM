@@ -17,12 +17,10 @@
 use crate::{
     commitment::{PedersenCommitment, PedersenCommitmentParameters},
     crh::PedersenSize,
+    errors::CommitmentError,
+    traits::CommitmentScheme,
 };
-use snarkvm_errors::algorithms::CommitmentError;
-use snarkvm_models::{
-    algorithms::CommitmentScheme,
-    curves::{AffineCurve, Group, ProjectiveCurve},
-};
+use snarkvm_curves::traits::{AffineCurve, Group, ProjectiveCurve};
 
 use rand::Rng;
 

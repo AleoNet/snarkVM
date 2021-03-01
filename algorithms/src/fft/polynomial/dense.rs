@@ -17,9 +17,8 @@
 //! A polynomial represented in coefficient form.
 
 use crate::fft::{DenseOrSparsePolynomial, EvaluationDomain, Evaluations};
-use snarkvm_errors::serialization::SerializationError;
-use snarkvm_models::curves::{Field, PrimeField};
-use snarkvm_utilities::serialize::*;
+use snarkvm_fields::{Field, PrimeField};
+use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use rand::Rng;
 use rayon::prelude::*;
@@ -373,7 +372,7 @@ impl<'a, 'b, F: PrimeField> Mul<&'a DensePolynomial<F>> for &'b DensePolynomial<
 mod tests {
     use crate::fft::polynomial::*;
     use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_models::curves::{Field, One, Zero};
+    use snarkvm_fields::{Field, One, Zero};
     use snarkvm_utilities::rand::UniformRand;
 
     use rand::thread_rng;

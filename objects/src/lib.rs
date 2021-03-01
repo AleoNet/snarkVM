@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #[macro_use]
-extern crate derivative;
-
-pub mod account;
-pub use account::*;
+extern crate thiserror;
 
 pub mod amount;
 pub use amount::*;
@@ -35,6 +32,9 @@ pub use block_header_hash::*;
 pub mod dpc;
 pub use dpc::*;
 
+pub mod errors;
+pub use errors::*;
+
 pub mod merkle_root_hash;
 pub use merkle_root_hash::*;
 
@@ -49,3 +49,6 @@ pub use pedersen_merkle_tree::*;
 
 pub mod posw;
 pub use posw::ProofOfSuccinctWork;
+
+pub mod traits;
+pub use traits::*;

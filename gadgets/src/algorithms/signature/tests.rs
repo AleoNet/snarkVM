@@ -17,18 +17,14 @@
 use crate::{
     algorithms::signature::{SchnorrParametersGadget, SchnorrPublicKeyGadget, SchnorrPublicKeyRandomizationGadget},
     curves::edwards_bls12::EdwardsBlsGadget,
-};
-use snarkvm_algorithms::signature::SchnorrSignature;
-use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsAffine};
-use snarkvm_models::{
-    algorithms::SignatureScheme,
-    curves::Group,
-    gadgets::{
+    traits::{
         algorithms::SignaturePublicKeyRandomizationGadget,
-        r1cs::{ConstraintSystem, TestConstraintSystem},
         utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8},
     },
 };
+use snarkvm_algorithms::{signature::SchnorrSignature, traits::SignatureScheme};
+use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsAffine, traits::Group};
+use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{bytes::ToBytes, rand::UniformRand, to_bytes};
 
 use blake2::Blake2s;

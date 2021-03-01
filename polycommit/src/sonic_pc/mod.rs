@@ -36,7 +36,8 @@ use crate::{
     Vec,
 };
 
-use snarkvm_models::curves::{AffineCurve, Group, One, PairingCurve, PairingEngine, ProjectiveCurve, Zero};
+use snarkvm_curves::traits::{AffineCurve, Group, PairingCurve, PairingEngine, ProjectiveCurve};
+use snarkvm_fields::{One, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
 use core::{convert::TryInto, marker::PhantomData};

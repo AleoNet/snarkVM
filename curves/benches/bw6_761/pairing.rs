@@ -18,8 +18,8 @@ pub(crate) mod pairing {
     use snarkvm_curves::{
         bw6_761::{BW6_761Parameters, Fq6, G1Affine, G1Projective as G1, G2Affine, G2Projective as G2, BW6_761},
         templates::bw6::{G1Prepared, G2Prepared},
+        traits::{PairingCurve, PairingEngine},
     };
-    use snarkvm_models::curves::{PairingCurve, PairingEngine};
     use snarkvm_utilities::rand::UniformRand;
 
     use criterion::Criterion;

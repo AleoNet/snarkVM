@@ -14,23 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::base_dpc::{
-    instantiated::*,
-    program::NoopProgram,
-    record::record_encryption::RecordEncryption,
-    record_payload::RecordPayload,
-    BaseDPCComponents,
-    DPC,
-};
-use snarkvm_models::{
-    algorithms::CRH,
-    dpc::{DPCScheme, Program},
-    objects::{LedgerScheme, Transaction},
+use snarkvm_algorithms::traits::CRH;
+use snarkvm_dpc::{
+    account::AccountViewKey,
+    base_dpc::{
+        instantiated::*,
+        program::NoopProgram,
+        record::record_encryption::RecordEncryption,
+        record_payload::RecordPayload,
+        BaseDPCComponents,
+        DPC,
+    },
+    traits::{DPCScheme, Program},
 };
 use snarkvm_objects::{
     dpc::DPCTransactions,
     merkle_root,
-    AccountViewKey,
+    traits::{LedgerScheme, Transaction},
     Block,
     BlockHeader,
     BlockHeaderHash,

@@ -14,13 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::templates::{
-    bls12::Bls12Parameters,
-    short_weierstrass::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
+use crate::{
+    templates::{
+        bls12::Bls12Parameters,
+        short_weierstrass::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
+    },
+    traits::pairing_engine::AffineCurve,
 };
-use snarkvm_errors::serialization::SerializationError;
-use snarkvm_models::curves::{pairing_engine::AffineCurve, Zero};
-use snarkvm_utilities::{bytes::ToBytes, serialize::*};
+use snarkvm_fields::Zero;
+use snarkvm_utilities::{bytes::ToBytes, errors::SerializationError, serialize::*};
 
 use std::io::{Result as IoResult, Write};
 

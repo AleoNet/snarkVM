@@ -14,15 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::crh::{
-    BoweHopwoodPedersenCRH,
-    BoweHopwoodPedersenCompressedCRH,
-    PedersenCRH,
-    PedersenCompressedCRH,
-    PedersenSize,
+use crate::{
+    crh::{BoweHopwoodPedersenCRH, BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH, PedersenSize},
+    traits::CRH,
 };
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
-use snarkvm_models::algorithms::CRH;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     to_bytes,

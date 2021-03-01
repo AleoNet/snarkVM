@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-algorithms"
-version = "0.0.5"
+version = "0.0.6"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Algorithms for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -26,24 +26,29 @@ harness = false
 name = "gm17"
 path = "examples/snark/gm17.rs"
 
-[dependencies.snarkvm-errors]
-path = "../errors"
-version = "0.0.5"
+[dependencies.snarkvm-curves]
+path = "../curves"
+version = "0.0.6"
 default-features = false
 
-[dependencies.snarkvm-models]
-path = "../models"
-version = "0.0.5"
+[dependencies.snarkvm-fields]
+path = "../fields"
+version = "0.0.6"
 default-features = false
 
 [dependencies.snarkvm-profiler]
 path = "../profiler"
-version = "0.0.5"
+version = "0.0.6"
+default-features = false
+
+[dependencies.snarkvm-r1cs]
+path = "../r1cs"
+version = "0.0.6"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.0.5"
+version = "0.0.6"
 default-features = false
 
 [dependencies.blake2]
@@ -73,8 +78,8 @@ version = "0.9"
 [dependencies.smallvec]
 version = "1.6"
 
-[dev-dependencies.snarkvm-curves]
-path = "../curves"
+[dependencies.thiserror]
+version = "1.0"
 
 [dev-dependencies.criterion]
 version = "0.3.4"
@@ -88,8 +93,7 @@ version = "0.3"
 [features]
 default = [
   "pedersen-parallel",
-  "snarkvm-errors/default",
-  "snarkvm-models/default",
+  "snarkvm-r1cs/default",
   "snarkvm-utilities/default"
 ]
 pedersen-parallel = [ ]

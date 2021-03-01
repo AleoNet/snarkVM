@@ -14,23 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::snark::gm17::{Proof, VerifyingKey, GM17};
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    curves::{to_field_vec::ToConstraintField, AffineCurve, Field, PairingEngine},
-    gadgets::{
-        algorithms::SNARKVerifierGadget,
-        curves::{FieldGadget, GroupGadget, PairingGadget},
-        r1cs::{ConstraintSynthesizer, ConstraintSystem},
-        utilities::{
-            alloc::{AllocBytesGadget, AllocGadget},
-            eq::EqGadget,
-            uint::UInt8,
-            ToBitsGadget,
-            ToBytesGadget,
-        },
+use crate::traits::{
+    algorithms::SNARKVerifierGadget,
+    curves::{GroupGadget, PairingGadget},
+    fields::FieldGadget,
+    utilities::{
+        alloc::{AllocBytesGadget, AllocGadget},
+        eq::EqGadget,
+        uint::UInt8,
+        ToBitsGadget,
+        ToBytesGadget,
     },
 };
+use snarkvm_algorithms::snark::gm17::{Proof, VerifyingKey, GM17};
+use snarkvm_curves::traits::{AffineCurve, PairingEngine};
+use snarkvm_fields::{traits::to_field_vec::ToConstraintField, Field};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_utilities::bytes::FromBytes;
 
 use std::{borrow::Borrow, marker::PhantomData};

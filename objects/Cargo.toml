@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-objects"
-version = "0.0.5"
+version = "0.0.6"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Objects for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -19,41 +19,25 @@ edition = "2018"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.0.5"
+version = "0.0.6"
 default-features = false
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.0.5"
-default-features = false
-
-[dependencies.snarkvm-errors]
-path = "../errors"
-version = "0.0.5"
-default-features = false
-
-[dependencies.snarkvm-models]
-path = "../models"
-version = "0.0.5"
+version = "0.0.6"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.0.5"
+version = "0.0.6"
 default-features = false
 
-[dependencies.base58]
-version = "0.1"
-
-[dependencies.bech32]
-version = "0.6"
+[dependencies.anyhow]
+version = "1.0"
 
 [dependencies.chrono]
 version = "0.4"
 features = [ "serde" ]
-
-[dependencies.derivative]
-version = "2"
 
 [dependencies.hex]
 version = "0.4.2"
@@ -71,6 +55,9 @@ features = [ "derive" ]
 [dependencies.sha2]
 version = "0.9"
 
+[dependencies.thiserror]
+version = "1.0"
+
 [dev-dependencies.snarkvm-dpc]
 path = "../dpc"
 
@@ -81,7 +68,5 @@ version = "1.3.2"
 default = [
   "snarkvm-algorithms/default",
   "snarkvm-curves/default",
-  "snarkvm-errors/default",
-  "snarkvm-models/default",
   "snarkvm-utilities/default"
 ]

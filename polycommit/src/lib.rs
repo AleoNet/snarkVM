@@ -33,11 +33,11 @@ extern crate derivative;
 extern crate snarkvm_profiler;
 
 pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
-use snarkvm_errors::serialization::SerializationError;
-use snarkvm_models::curves::Field;
+use snarkvm_fields::Field;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     error as error_fn,
+    errors::SerializationError,
     serialize::*,
 };
 
@@ -48,6 +48,7 @@ use rand_core::RngCore;
 #[macro_use]
 extern crate alloc;
 
+#[rustfmt::skip]
 #[cfg(not(feature = "std"))]
 use alloc::{
     borrow::{Cow, ToOwned},
@@ -57,6 +58,7 @@ use alloc::{
     vec::Vec,
 };
 
+#[rustfmt::skip]
 #[cfg(feature = "std")]
 use std::{
     borrow::{Cow, ToOwned},
@@ -499,7 +501,7 @@ fn lc_query_set_to_poly_query_set<'a, F: 'a + Field>(
 pub mod tests {
     use crate::*;
     use rand::{distributions::Distribution, Rng};
-    use snarkvm_models::curves::Field;
+    use snarkvm_fields::Field;
     use snarkvm_utilities::rand::test_rng;
 
     #[derive(Default)]

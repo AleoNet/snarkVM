@@ -17,7 +17,10 @@
 //! This is an interface for dealing with the kinds of
 //! parallel computations involved in `snark`. It's
 //! currently just a thin wrapper around `rayon`.
-use rayon::{self, Scope};
+use rayon::{
+    Scope,
+    {self},
+};
 
 #[derive(Copy, Clone)]
 pub(crate) struct Worker {

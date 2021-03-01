@@ -20,14 +20,13 @@ use crate::base_dpc::{
     program::PrivateProgramInput,
     BaseDPCComponents,
 };
-use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    algorithms::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
-    curves::to_field_vec::ToConstraintField,
-    gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem},
+use snarkvm_algorithms::{
+    merkle_tree::MerkleTreeDigest,
+    traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
 };
+use snarkvm_fields::traits::to_field_vec::ToConstraintField;
 use snarkvm_objects::AleoAmount;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: BaseDPCComponents"))]

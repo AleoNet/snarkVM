@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-curves"
-version = "0.0.5"
+version = "0.0.6"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Curves for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -17,50 +17,44 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2018"
 
-[dependencies.snarkvm-errors]
-path = "../errors"
-version = "0.0.5"
-default-features = false
+[[bench]]
+name = "curve_and_field_benches"
+path = "benches/curve_and_field_benches.rs"
+harness = false
 
-[dependencies.snarkvm-models]
-path = "../models"
-version = "0.0.5"
-default-features = false
+[dependencies.snarkvm-fields]
+path = "../fields"
+version = "0.0.6"
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.0.5"
+version = "0.0.6"
 
 [dependencies.derivative]
 version = "2"
 
 [dependencies.rand]
 version = "0.8"
+default-features = false
+
+[dependencies.rand_xorshift]
+version = "0.3"
+default-features = false
 
 [dependencies.serde]
 version = "1.0.123"
 default-features = false
 features = [ "derive" ]
 
-[dependencies.rand_xorshift]
-version = "0.3"
-default-features = false
-
-[features]
-default = [
-  "snarkvm-errors/default",
-  "snarkvm-models/default",
-  "snarkvm-utilities/default"
-]
-sw6 = [ ]
-
-[build-dependencies]
-rustc_version = "0.3"
+[dependencies.thiserror]
+version = "1.0"
 
 [dev-dependencies]
 criterion = "0.3"
 
-[[bench]]
-name = "curve_and_field_benches"
-path = "benches/curve_and_field_benches.rs"
-harness = false
+[build-dependencies]
+rustc_version = "0.3"
+
+[features]
+default = ["snarkvm-fields/default", "snarkvm-utilities/default"]
+sw6 = [ ]

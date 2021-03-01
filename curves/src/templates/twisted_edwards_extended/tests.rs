@@ -24,15 +24,12 @@ use snarkvm_utilities::{
     to_bytes,
 };
 
-use snarkvm_models::curves::{
+use crate::traits::{
     pairing_engine::{AffineCurve, ProjectiveCurve},
-    Field,
     MontgomeryModelParameters,
-    One,
-    PrimeField,
     TEModelParameters,
-    Zero,
 };
+use snarkvm_fields::{Field, One, PrimeField, Zero};
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;

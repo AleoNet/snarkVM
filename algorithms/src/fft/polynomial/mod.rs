@@ -17,7 +17,7 @@
 //! Work with sparse and dense polynomials.
 
 use crate::fft::{EvaluationDomain, Evaluations};
-use snarkvm_models::curves::{Field, PrimeField};
+use snarkvm_fields::{Field, PrimeField};
 
 use std::{borrow::Cow, convert::TryInto};
 

@@ -15,12 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::base_dpc::{inner_circuit_verifier_input::InnerCircuitVerifierInput, BaseDPCComponents};
-use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
-use snarkvm_errors::{curves::ConstraintFieldError, gadgets::SynthesisError};
-use snarkvm_models::{
-    algorithms::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH},
-    curves::to_field_vec::ToConstraintField,
+use snarkvm_algorithms::{
+    merkle_tree::MerkleTreeDigest,
+    traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH},
 };
+use snarkvm_fields::{errors::ConstraintFieldError, traits::to_field_vec::ToConstraintField};
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
 #[derive(Derivative)]
@@ -96,7 +95,7 @@ where
         let inner_snark_field_elements = &self.inner_snark_verifier_input.to_field_elements()?;
 
         for inner_snark_fe in inner_snark_field_elements {
-            let inner_snark_fe_bytes = to_bytes![inner_snark_fe].map_err(|_| SynthesisError::AssignmentMissing)?;
+            let inner_snark_fe_bytes = to_bytes![inner_snark_fe]?;
             v.extend_from_slice(&ToConstraintField::<C::OuterField>::to_field_elements(
                 inner_snark_fe_bytes.as_slice(),
             )?);

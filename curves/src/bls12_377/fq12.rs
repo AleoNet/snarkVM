@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::bls12_377::{Fq, Fq2, Fq6Parameters};
-use snarkvm_models::{
-    curves::{Fp12, Fp12Parameters},
-    field,
-};
+use snarkvm_fields::{field, Fp12, Fp12Parameters};
 use snarkvm_utilities::biginteger::BigInteger384 as BigInteger;
 
 pub type Fq12 = Fp12<Fq12Parameters>;

@@ -14,19 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::crh::sha256::sha256;
-use snarkvm_dpc::base_dpc::{
-    inner_circuit::InnerCircuit,
-    instantiated::Components,
-    parameters::SystemParameters,
-    BaseDPCComponents,
+use snarkvm_algorithms::{
+    crh::sha256::sha256,
+    traits::{MerkleParameters, SNARK},
 };
-use snarkvm_errors::dpc::DPCError;
-use snarkvm_models::{
-    algorithms::{MerkleParameters, SNARK},
-    parameters::Parameter,
+use snarkvm_dpc::{
+    base_dpc::{
+        inner_circuit::InnerCircuit,
+        instantiated::Components,
+        parameters::SystemParameters,
+        BaseDPCComponents,
+    },
+    errors::DPCError,
 };
-use snarkvm_parameters::LedgerMerkleTreeParameters;
+use snarkvm_parameters::{traits::Parameter, LedgerMerkleTreeParameters};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     to_bytes,

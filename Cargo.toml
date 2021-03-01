@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm"
-version = "0.0.5"
+version = "0.0.6"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -23,19 +23,20 @@ members = [
   "curves",
   "derives",
   "dpc",
-  "errors",
+  "fields",
   "gadgets",
   "marlin",
-  "models",
   "nonnative",
   "objects",
   "parameters",
   "polycommit",
   "posw",
   "profiler",
+  "r1cs",
   "storage",
   "testing",
-  "utilities"
+  "utilities",
+  "wasm"
 ]
 
 [[bin]]

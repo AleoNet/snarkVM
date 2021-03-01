@@ -37,7 +37,7 @@ use std::{
 // Bring in some tools for using pairing-friendly curves
 // We're going to use the BLS12-377 pairing-friendly elliptic curve.
 use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-use snarkvm_models::curves::One;
+use snarkvm_fields::One;
 
 // We're going to use the Groth-Maller 17 proving system.
 use snarkvm_algorithms::snark::gm17::{

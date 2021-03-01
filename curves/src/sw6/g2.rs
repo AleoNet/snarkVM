@@ -17,11 +17,9 @@
 use crate::{
     sw6::{Fq, Fq3, Fq6, Fr, G1Affine, FQ_ZERO, SW6},
     templates::short_weierstrass::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
+    traits::{ModelParameters, PairingCurve, PairingEngine, SWModelParameters},
 };
-use snarkvm_models::{
-    curves::{ModelParameters, PairingCurve, PairingEngine, SWModelParameters},
-    field,
-};
+use snarkvm_fields::field;
 use snarkvm_utilities::biginteger::{BigInteger384, BigInteger832};
 
 pub type G2Affine = GroupAffine<SW6G2Parameters>;

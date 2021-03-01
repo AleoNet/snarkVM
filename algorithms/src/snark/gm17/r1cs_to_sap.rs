@@ -16,10 +16,11 @@
 
 use super::{generator::KeypairAssembly, prover::ProvingAssignment};
 use crate::fft::EvaluationDomain;
-use snarkvm_errors::gadgets::{SynthesisError, SynthesisResult};
-use snarkvm_models::{
-    curves::{Field, One, PairingEngine, Zero},
-    gadgets::r1cs::Index,
+use snarkvm_curves::traits::PairingEngine;
+use snarkvm_fields::{Field, One, Zero};
+use snarkvm_r1cs::{
+    errors::{SynthesisError, SynthesisResult},
+    Index,
 };
 
 use std::ops::{AddAssign, SubAssign};

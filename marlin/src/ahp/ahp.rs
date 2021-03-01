@@ -21,8 +21,9 @@ use crate::{
     Vec,
 };
 use snarkvm_algorithms::{cfg_iter_mut, fft::EvaluationDomain};
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::curves::{batch_inversion, Field, PrimeField};
+use snarkvm_fields::{batch_inversion, Field, PrimeField};
+use snarkvm_r1cs::errors::SynthesisError;
+
 use snarkvm_polycommit::{LCTerm, LabeledPolynomial, LinearCombination};
 
 use core::{borrow::Borrow, marker::PhantomData};
@@ -327,7 +328,7 @@ mod tests {
     use super::*;
     use snarkvm_algorithms::fft::{DenseOrSparsePolynomial, DensePolynomial};
     use snarkvm_curves::bls12_377::fr::Fr;
-    use snarkvm_models::curves::{One, Zero};
+    use snarkvm_fields::{One, Zero};
     use snarkvm_utilities::rand::{test_rng, UniformRand};
 
     #[test]

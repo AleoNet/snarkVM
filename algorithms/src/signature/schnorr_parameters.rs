@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_errors::curves::ConstraintFieldError;
-use snarkvm_models::curves::{to_field_vec::ToConstraintField, Field, Group};
+use snarkvm_curves::traits::Group;
+use snarkvm_fields::{errors::ConstraintFieldError, traits::ToConstraintField, Field};
 use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
 use digest::Digest;

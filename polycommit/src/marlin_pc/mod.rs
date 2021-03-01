@@ -35,7 +35,8 @@ use crate::{
     ToString,
     Vec,
 };
-use snarkvm_models::curves::{AffineCurve, Field, One, PairingEngine, PrimeField, ProjectiveCurve, Zero};
+use snarkvm_curves::traits::{AffineCurve, PairingEngine, ProjectiveCurve};
+use snarkvm_fields::{Field, One, PrimeField, Zero};
 
 use core::{convert::TryInto, marker::PhantomData};
 use rand_core::RngCore;

@@ -14,32 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::base_dpc::{
-    parameters::SystemParameters,
-    record::DPCRecord,
-    record_encryption::RecordEncryptionGadgetComponents,
-    BaseDPCComponents,
-};
-use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTreeDigest};
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_gadgets::algorithms::{encoding::Elligator2FieldGadget, merkle_tree::merkle_path::MerklePathGadget};
-use snarkvm_models::{
-    algorithms::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, PRF},
-    curves::{
-        AffineCurve,
-        Field,
-        Group,
-        MontgomeryModelParameters,
-        One,
-        PrimeField,
-        ProjectiveCurve,
-        TEModelParameters,
+use crate::{
+    account::AccountPrivateKey,
+    base_dpc::{
+        parameters::SystemParameters,
+        record::DPCRecord,
+        record_encryption::RecordEncryptionGadgetComponents,
+        BaseDPCComponents,
     },
-    dpc::Record,
-    gadgets::{
+    traits::Record,
+};
+use snarkvm_algorithms::{
+    merkle_tree::{MerklePath, MerkleTreeDigest},
+    traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, PRF},
+};
+use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
+use snarkvm_fields::{Field, One, PrimeField};
+use snarkvm_gadgets::{
+    algorithms::{encoding::Elligator2FieldGadget, merkle_tree::merkle_path::MerklePathGadget},
+    fields::FpGadget,
+    traits::{
         algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignaturePublicKeyRandomizationGadget},
-        curves::{FieldGadget, FpGadget},
-        r1cs::ConstraintSystem,
+        fields::FieldGadget,
         utilities::{
             alloc::AllocGadget,
             arithmetic::{add::Add, sub::Sub},
@@ -52,14 +48,15 @@ use snarkvm_models::{
         },
     },
 };
-use snarkvm_objects::{AccountPrivateKey, AleoAmount};
+use snarkvm_objects::AleoAmount;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{
     bits_to_bytes,
     bytes::{FromBytes, ToBytes},
     to_bytes,
 };
 
-use snarkvm_models::gadgets::utilities::eq::NEqGadget;
+use snarkvm_gadgets::traits::utilities::eq::NEqGadget;
 use std::ops::Mul;
 
 #[allow(clippy::too_many_arguments)]

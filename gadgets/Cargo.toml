@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-gadgets"
-version = "0.0.5"
+version = "0.0.6"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Gadgets for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -17,29 +17,34 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2018"
 
+[[bench]]
+name = "integer_arithmetic"
+path = "benches/integer_arithmetic.rs"
+harness = false
+
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.0.5"
+version = "0.0.6"
 default-features = false
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.0.5"
+version = "0.0.6"
 default-features = false
 
-[dependencies.snarkvm-errors]
-path = "../errors"
-version = "0.0.5"
+[dependencies.snarkvm-fields]
+path = "../fields"
+version = "0.0.6"
 default-features = false
 
-[dependencies.snarkvm-models]
-path = "../models"
-version = "0.0.5"
+[dependencies.snarkvm-r1cs]
+path = "../r1cs"
+version = "0.0.6"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.0.5"
+version = "0.0.6"
 default-features = false
 
 [dependencies.derivative]
@@ -51,8 +56,14 @@ version = "0.9"
 [dependencies.itertools]
 version = "0.10.0"
 
+[dependencies.thiserror]
+version = "1.0"
+
 [dev-dependencies.blake2]
 version = "0.9"
+
+[dev-dependencies.criterion]
+version = "0.3"
 
 [dev-dependencies.rand]
 version = "0.8"
@@ -64,7 +75,7 @@ version = "0.3"
 default = [
   "snarkvm-algorithms/default",
   "snarkvm-curves/default",
-  "snarkvm-errors/default",
-  "snarkvm-models/default",
+  "snarkvm-fields/default",
+  "snarkvm-r1cs/default",
   "snarkvm-utilities/default"
 ]

@@ -15,8 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::fft::{domain::*, multicore::*};
-use snarkvm_curves::bls12_377::Bls12_377;
-use snarkvm_models::curves::PairingEngine;
+use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_utilities::rand::UniformRand;
 
 use std::cmp::min;

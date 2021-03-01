@@ -15,11 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ahp::matrices::make_matrices_square;
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    curves::Field,
-    gadgets::r1cs::{ConstraintSystem, Index as VarIndex, LinearCombination, Variable},
-};
+use snarkvm_fields::Field;
+use snarkvm_r1cs::errors::SynthesisError;
+
+use snarkvm_r1cs::{ConstraintSystem, Index as VarIndex, LinearCombination, Variable};
 
 pub(crate) struct ProverConstraintSystem<F: Field> {
     pub(crate) public_variables: Vec<F>,

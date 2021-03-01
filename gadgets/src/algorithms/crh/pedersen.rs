@@ -14,21 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::crh::{PedersenCRH, PedersenCRHParameters, PedersenCompressedCRH, PedersenSize};
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    curves::{Field, Group, PrimeField, ProjectiveCurve},
-    gadgets::{
-        algorithms::{CRHGadget, MaskedCRHGadget},
-        curves::{CompressedGroupGadget, GroupGadget},
-        r1cs::ConstraintSystem,
-        utilities::{
-            alloc::AllocGadget,
-            boolean::Boolean,
-            uint::unsigned_integer::{UInt, UInt8},
-        },
+use crate::traits::{
+    algorithms::{CRHGadget, MaskedCRHGadget},
+    curves::{CompressedGroupGadget, GroupGadget},
+    utilities::{
+        alloc::AllocGadget,
+        boolean::Boolean,
+        uint::unsigned_integer::{UInt, UInt8},
     },
 };
+use snarkvm_algorithms::crh::{PedersenCRH, PedersenCRHParameters, PedersenCompressedCRH, PedersenSize};
+use snarkvm_curves::traits::{Group, ProjectiveCurve};
+use snarkvm_fields::{Field, PrimeField};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use std::{borrow::Borrow, marker::PhantomData};
 

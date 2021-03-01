@@ -14,14 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::base_dpc::record_payload::RecordPayload;
+use crate::{
+    account::{Account, AccountAddress, AccountPrivateKey},
+    base_dpc::record_payload::RecordPayload,
+    errors::DPCError,
+    traits::{AccountScheme, DPCComponents, DPCScheme, Record},
+};
 use snarkvm_algorithms::{
     commitment_tree::CommitmentMerkleTree,
     merkle_tree::{MerklePath, MerkleTreeDigest},
-};
-use snarkvm_errors::dpc::DPCError;
-use snarkvm_models::{
-    algorithms::{
+    traits::{
         CommitmentScheme,
         EncryptionScheme,
         LoadableMerkleParameters,
@@ -31,12 +33,14 @@ use snarkvm_models::{
         PRF,
         SNARK,
     },
-    curves::{Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters},
-    dpc::{DPCComponents, DPCScheme, Record},
-    gadgets::algorithms::{CRHGadget, SNARKVerifierGadget},
-    objects::{AccountScheme, LedgerScheme, Transaction},
 };
-use snarkvm_objects::{Account, AccountAddress, AccountPrivateKey, AleoAmount, Network};
+use snarkvm_curves::traits::{Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
+use snarkvm_gadgets::traits::algorithms::{CRHGadget, SNARKVerifierGadget};
+use snarkvm_objects::{
+    traits::{LedgerScheme, Transaction},
+    AleoAmount,
+    Network,
+};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     has_duplicates,
@@ -73,7 +77,7 @@ pub use transaction::*;
 pub mod instantiated;
 
 #[cfg(test)]
-mod test;
+mod tests;
 
 ///////////////////////////////////////////////////////////////////////////////
 

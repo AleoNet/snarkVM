@@ -14,13 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::curves::tests_group::group_test;
-use snarkvm_curves::templates::twisted_edwards_extended::GroupAffine as TEAffine;
-use snarkvm_models::{
-    curves::{Field, Group, PrimeField, TEModelParameters},
-    gadgets::{
+use crate::{
+    curves::tests_group::group_test,
+    traits::{
         curves::GroupGadget,
-        r1cs::ConstraintSystem,
         utilities::{
             alloc::AllocGadget,
             boolean::{AllocatedBit, Boolean},
@@ -28,6 +25,12 @@ use snarkvm_models::{
         },
     },
 };
+use snarkvm_curves::{
+    templates::twisted_edwards_extended::GroupAffine as TEAffine,
+    traits::{Group, TEModelParameters},
+};
+use snarkvm_fields::{Field, PrimeField};
+use snarkvm_r1cs::ConstraintSystem;
 use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
 
 use rand::thread_rng;

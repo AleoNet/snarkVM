@@ -15,12 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::base_dpc::{parameters::SystemParameters, BaseDPCComponents};
-use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
-use snarkvm_errors::curves::ConstraintFieldError;
-use snarkvm_models::{
-    algorithms::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH},
-    curves::to_field_vec::ToConstraintField,
+use snarkvm_algorithms::{
+    merkle_tree::MerkleTreeDigest,
+    traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH},
 };
+use snarkvm_fields::{errors::ConstraintFieldError, traits::to_field_vec::ToConstraintField};
 use snarkvm_objects::AleoAmount;
 
 #[derive(Derivative)]

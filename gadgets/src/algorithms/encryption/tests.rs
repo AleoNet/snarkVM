@@ -14,21 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{algorithms::encryption::*, curves::edwards_bls12::EdwardsBlsGadget};
-use snarkvm_algorithms::encryption::GroupEncryption;
-use snarkvm_curves::{
-    bls12_377::Fr,
-    edwards_bls12::{EdwardsAffine, EdwardsProjective},
-};
-use snarkvm_models::{
-    algorithms::EncryptionScheme,
-    curves::{Group, ProjectiveCurve},
-    gadgets::{
+use crate::{
+    algorithms::encryption::*,
+    curves::edwards_bls12::EdwardsBlsGadget,
+    traits::{
         algorithms::EncryptionGadget,
-        r1cs::{ConstraintSystem, TestConstraintSystem},
         utilities::{alloc::AllocGadget, eq::EqGadget},
     },
 };
+use snarkvm_algorithms::{encryption::GroupEncryption, traits::EncryptionScheme};
+use snarkvm_curves::{
+    bls12_377::Fr,
+    edwards_bls12::{EdwardsAffine, EdwardsProjective},
+    traits::{Group, ProjectiveCurve},
+};
+use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
 use blake2::Blake2s;
 use rand::{Rng, SeedableRng};

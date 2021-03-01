@@ -15,12 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::bls12_377::{Fq, Fq2, Fq2Parameters};
-use snarkvm_models::{
-    curves::{
-        fp6_3over2::{Fp6, Fp6Parameters},
-        Fp2Parameters,
-    },
+use snarkvm_fields::{
     field,
+    fp6_3over2::{Fp6, Fp6Parameters},
+    Fp2Parameters,
 };
 use snarkvm_utilities::biginteger::BigInteger384;
 
@@ -257,7 +255,7 @@ impl Fp6Parameters for Fq6Parameters {
 #[cfg(test)]
 mod test {
     use super::*;
-    use snarkvm_models::curves::{One, Zero};
+    use snarkvm_fields::{One, Zero};
     use snarkvm_utilities::rand::UniformRand;
 
     use rand::SeedableRng;

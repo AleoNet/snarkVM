@@ -14,15 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::base_dpc::{instantiated::*, parameters::PublicParameters};
-use snarkvm_models::{
-    algorithms::{MerkleParameters, CRH},
-    dpc::DPCScheme,
-    objects::AccountScheme,
-    parameters::Parameter,
+use snarkvm_algorithms::traits::{MerkleParameters, CRH};
+use snarkvm_dpc::{
+    account::Account,
+    base_dpc::{instantiated::*, parameters::PublicParameters},
+    traits::{AccountScheme, DPCScheme},
 };
-use snarkvm_objects::Account;
-use snarkvm_parameters::LedgerMerkleTreeParameters;
+use snarkvm_parameters::{traits::Parameter, LedgerMerkleTreeParameters};
 use snarkvm_storage::Ledger;
 use snarkvm_utilities::bytes::FromBytes;
 
