@@ -34,15 +34,15 @@
 
 use crate::{overhead, params::get_params, AllocatedNonNativeFieldVar};
 
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    curves::{FpParameters, PrimeField},
-    gadgets::{
-        curves::{FieldGadget, FpGadget},
-        r1cs::ConstraintSystem,
+use snarkvm_fields::{FpParameters, PrimeField};
+use snarkvm_gadgets::{
+    fields::FpGadget,
+    traits::{
+        fields::FieldGadget,
         utilities::{alloc::AllocGadget, boolean::Boolean, eq::EqGadget},
     },
 };
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{biginteger::BigInteger, bititerator::BitIteratorBE};
 
 use num_bigint::BigUint;

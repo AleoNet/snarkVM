@@ -26,23 +26,17 @@ use crate::{
 //     ns,
 //     r1cs::{ConstraintSystemRef, Namespace, OptimizationGoal, Result as R1CSResult, SynthesisError},
 // };
-// use ark_std::{
-//     borrow::Borrow,
-//     cmp::{max, min},
-//     marker::PhantomData,
-//     vec,
-//     vec::Vec,
-// };
 
-use snarkvm_errors::gadgets::SynthesisError;
-use snarkvm_models::{
-    curves::{to_field_vec::ToConstraintField, FpParameters, PrimeField},
-    gadgets::{
-        curves::{FieldGadget, FpGadget},
-        r1cs::{Assignment, ConstraintSystem},
+use snarkvm_fields::{FpParameters, PrimeField, ToConstraintField};
+use snarkvm_gadgets::{
+    fields::FpGadget,
+    traits::{
+        fields::FieldGadget,
         utilities::{alloc::AllocGadget, boolean::Boolean, select::CondSelectGadget},
     },
 };
+use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
+
 use snarkvm_utilities::BigInteger;
 
 use std::{
@@ -177,7 +171,6 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
     }
 
     //     /// Add a constant
-    //     #[tracing::instrument(target = "r1cs")]
     //     pub fn add_constant(&self, other: &TargetField) -> R1CSResult<Self> {
     //         let other_limbs = Self::get_limbs_representations(other, self.get_optimization_type())?;
     //
@@ -830,10 +823,10 @@ impl<TargetField: PrimeField, BaseField: PrimeField> CondSelectGadget<BaseField>
 //     }
 // }
 //
-// impl<TargetField: PrimeField, BaseField: PrimeField> ToConstraintFieldGadget<BaseField>
+// impl<TargetField: PrimeField, BaseField: PrimeField> ToConstraintField<BaseField>
 //     for AllocatedNonNativeFieldVar<TargetField, BaseField>
 // {
-//     fn to_constraint_field(&self) -> R1CSResult<Vec<FpVar<BaseField>>> {
+//     fn to_field_elements(&self) -> Result<Vec<FpGadget<BaseField>>, SynthesisError> {
 //         // provide a unique representation of the nonnative variable
 //         // step 1: convert it into a bit sequence
 //         let bits = self.to_bits_le()?;

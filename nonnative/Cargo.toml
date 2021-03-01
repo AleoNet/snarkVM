@@ -30,27 +30,32 @@ edition = "2018"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.0.5"
+version = "0.0.6"
 default-features = false
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.0.5"
+version = "0.0.6"
 default-features = false
 
-[dependencies.snarkvm-errors]
-path = "../errors"
-version = "0.0.5"
+[dependencies.snarkvm-fields]
+path = "../fields"
+version = "0.0.6"
 default-features = false
 
-[dependencies.snarkvm-models]
-path = "../models"
-version = "0.0.5"
+[dependencies.snarkvm-gadgets]
+path = "../gadgets"
+version = "0.0.6"
+default-features = false
+
+[dependencies.snarkvm-r1cs]
+path = "../r1cs"
+version = "0.0.6"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.0.5"
+version = "0.0.6"
 default-features = false
 
 [dependencies]
