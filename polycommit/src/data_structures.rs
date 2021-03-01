@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{String, Vec};
+use crate::{Arc, String, Vec};
 pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
 use snarkvm_errors::serialization::SerializationError;
 use snarkvm_models::curves::Field;
@@ -30,7 +30,6 @@ use core::{
     ops::{AddAssign, MulAssign, SubAssign},
 };
 use rand_core::RngCore;
-use std::sync::Arc;
 
 /// Labels a `LabeledPolynomial` or a `LabeledCommitment`.
 pub type PolynomialLabel = String;

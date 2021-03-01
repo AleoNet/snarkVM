@@ -31,13 +31,14 @@ use crate::{
     PolynomialCommitment,
     QuerySet,
     String,
+    ToOwned,
     ToString,
     Vec,
 };
+use snarkvm_models::curves::{AffineCurve, Field, One, PairingEngine, PrimeField, ProjectiveCurve, Zero};
 
 use core::{convert::TryInto, marker::PhantomData};
 use rand_core::RngCore;
-use snarkvm_models::curves::{AffineCurve, Field, One, PairingEngine, PrimeField, ProjectiveCurve, Zero};
 
 mod data_structures;
 pub use data_structures::*;

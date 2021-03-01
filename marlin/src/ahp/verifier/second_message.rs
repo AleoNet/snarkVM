@@ -16,7 +16,7 @@
 
 /// Second verifier message.
 #[derive(Copy, Clone)]
-pub struct VerifierSecondMsg<F> {
+pub struct VerifierSecondMessage<F> {
     /// Query for the second round of polynomials.
     pub beta: F,
 }

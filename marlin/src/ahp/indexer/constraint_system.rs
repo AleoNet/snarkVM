@@ -34,13 +34,6 @@ pub(crate) struct IndexerConstraintSystem<F: Field> {
 
 impl<F: Field> IndexerConstraintSystem<F> {
     #[inline]
-    fn make_row(l: &LinearCombination<F>) -> Vec<(F, VarIndex)> {
-        l.as_ref()
-            .iter()
-            .map(|(var, coeff)| (*coeff, var.get_unchecked()))
-            .collect()
-    }
-
     pub(crate) fn new() -> Self {
         Self {
             a: Vec::new(),
@@ -52,18 +45,22 @@ impl<F: Field> IndexerConstraintSystem<F> {
         }
     }
 
+    #[inline]
     pub(crate) fn a_matrix(&self) -> Vec<Vec<(F, usize)>> {
         to_matrix_helper(&self.a, self.num_public_variables)
     }
 
+    #[inline]
     pub(crate) fn b_matrix(&self) -> Vec<Vec<(F, usize)>> {
         to_matrix_helper(&self.b, self.num_public_variables)
     }
 
+    #[inline]
     pub(crate) fn c_matrix(&self) -> Vec<Vec<(F, usize)>> {
         to_matrix_helper(&self.c, self.num_public_variables)
     }
 
+    #[inline]
     pub(crate) fn num_non_zero(&self) -> usize {
         let a_density = self.a.iter().map(|row| row.len()).sum();
         let b_density = self.b.iter().map(|row| row.len()).sum();
@@ -76,6 +73,7 @@ impl<F: Field> IndexerConstraintSystem<F> {
         max
     }
 
+    #[inline]
     pub(crate) fn make_matrices_square(&mut self) {
         let num_variables = self.num_public_variables + self.num_private_variables;
         let num_non_zero = self.num_non_zero();
@@ -92,6 +90,14 @@ impl<F: Field> IndexerConstraintSystem<F> {
             "padding does not result in expected matrix size!"
         );
         assert_eq!(self.num_non_zero(), num_non_zero, "padding changed matrix density");
+    }
+
+    #[inline]
+    fn make_row(l: &LinearCombination<F>) -> Vec<(F, VarIndex)> {
+        l.as_ref()
+            .iter()
+            .map(|(var, coeff)| (*coeff, var.get_unchecked()))
+            .collect()
     }
 }
 

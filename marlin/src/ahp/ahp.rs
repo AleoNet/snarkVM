@@ -129,13 +129,13 @@ impl<F: PrimeField> AHPForR1CS<F> {
         }
         let x_domain = EvaluationDomain::new(public_input.len()).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let first_round_msg = state.first_round_msg.unwrap();
+        let first_round_msg = state.first_round_message.unwrap();
         let alpha = first_round_msg.alpha;
         let eta_a = first_round_msg.eta_a;
         let eta_b = first_round_msg.eta_b;
         let eta_c = first_round_msg.eta_c;
 
-        let beta = state.second_round_msg.unwrap().beta;
+        let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
 
         let mut linear_combinations = Vec::with_capacity(9);

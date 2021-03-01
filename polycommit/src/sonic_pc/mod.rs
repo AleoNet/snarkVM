@@ -31,6 +31,7 @@ use crate::{
     PolynomialCommitment,
     QuerySet,
     String,
+    ToOwned,
     ToString,
     Vec,
 };

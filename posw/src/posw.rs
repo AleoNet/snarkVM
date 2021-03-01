@@ -49,7 +49,15 @@ use blake2::{digest::Digest, Blake2s};
 use rand::{rngs::OsRng, Rng};
 use std::marker::PhantomData;
 
-// We need to instantiate the Merkle Tree and the Gadget, but these should not be
+/// Commits to the nonce and pedersen merkle root
+pub fn commit(nonce: u32, root: &PedersenMerkleRootHash) -> Vec<u8> {
+    let mut h = Blake2s::new();
+    h.update(&nonce.to_le_bytes());
+    h.update(root.0.as_ref());
+    h.finalize().to_vec()
+}
+
+// We need to instantiate the Merkle tree and the Gadget, but these should not be
 // proving system specific
 pub type M = MaskedMerkleTreeParameters;
 pub type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fq, EdwardsBlsGadget>;
@@ -264,12 +272,4 @@ where
 
         Ok(())
     }
-}
-
-/// Commits to the nonce and pedersen merkle root
-pub fn commit(nonce: u32, root: &PedersenMerkleRootHash) -> Vec<u8> {
-    let mut h = Blake2s::new();
-    h.update(&nonce.to_le_bytes());
-    h.update(root.0.as_ref());
-    h.finalize().to_vec()
 }

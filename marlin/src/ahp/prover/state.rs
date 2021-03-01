@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    ahp::{indexer::Circuit, prover::ProverConstraintSystem, verifier::VerifierFirstMsg},
+    ahp::{indexer::Circuit, prover::ProverConstraintSystem, verifier::VerifierFirstMessage},
     Vec,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
@@ -24,8 +24,8 @@ use snarkvm_polycommit::LabeledPolynomial;
 
 /// State for the AHP prover.
 pub struct ProverState<'a, F: PrimeField> {
-    pub(crate) formatted_input_assignment: Vec<F>,
-    pub(crate) witness_assignment: Vec<F>,
+    pub(crate) padded_public_variables: Vec<F>,
+    pub(crate) private_variables: Vec<F>,
     /// Az
     pub(crate) z_a: Option<Vec<F>>,
     /// Bz
@@ -39,7 +39,7 @@ pub struct ProverState<'a, F: PrimeField> {
     pub(crate) index: &'a Circuit<F>,
 
     /// the random values sent by the verifier in the first round
-    pub(crate) verifier_first_msg: Option<VerifierFirstMsg<F>>,
+    pub(crate) verifier_first_message: Option<VerifierFirstMessage<F>>,
 
     /// the blinding polynomial for the first round
     pub(crate) mask_poly: Option<LabeledPolynomial<F>>,
@@ -57,6 +57,6 @@ pub struct ProverState<'a, F: PrimeField> {
 impl<'a, F: PrimeField> ProverState<'a, F> {
     /// Get the public input.
     pub fn public_input(&self) -> Vec<F> {
-        ProverConstraintSystem::unformat_public_input(&self.formatted_input_assignment)
+        ProverConstraintSystem::unformat_public_input(&self.padded_public_variables)
     }
 }

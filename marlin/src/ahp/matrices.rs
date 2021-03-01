@@ -53,9 +53,43 @@ pub(crate) fn to_matrix_helper<F: Field>(matrix: &[Vec<(F, VarIndex)>], num_inpu
     new_matrix
 }
 
+pub(crate) fn balance_matrices<F: Field>(a_matrix: &mut Matrix<F>, b_matrix: &mut Matrix<F>) {
+    let mut a_density: usize = a_matrix.iter().map(|row| row.len()).sum();
+    let mut b_density: usize = b_matrix.iter().map(|row| row.len()).sum();
+    let mut max_density = core::cmp::max(a_density, b_density);
+    let mut a_is_denser = a_density == max_density;
+    for (a_row, b_row) in a_matrix.iter_mut().zip(b_matrix) {
+        if a_is_denser {
+            let a_row_size = a_row.len();
+            let b_row_size = b_row.len();
+            core::mem::swap(a_row, b_row);
+            a_density = a_density - a_row_size + b_row_size;
+            b_density = b_density - b_row_size + a_row_size;
+            max_density = core::cmp::max(a_density, b_density);
+            a_is_denser = a_density == max_density;
+        }
+    }
+}
+
 /// This must *always* be in sync with `make_matrices_square`.
 pub(crate) fn padded_matrix_dim(num_formatted_variables: usize, num_constraints: usize) -> usize {
     core::cmp::max(num_formatted_variables, num_constraints)
+}
+
+/// Pads the public variables up to the closest power of two.
+pub(crate) fn pad_input_for_indexer_and_prover<F: PrimeField, CS: ConstraintSystem<F>>(cs: &mut CS) {
+    let num_public_variables = cs.num_public_variables();
+
+    let power_of_two = EvaluationDomain::<F>::new(num_public_variables);
+    assert!(power_of_two.is_some());
+
+    // Allocated `zero` variables to pad the public input up to the next power of two.
+    let padded_size = power_of_two.unwrap().size();
+    if padded_size > num_public_variables {
+        for i in 0..(padded_size - num_public_variables) {
+            cs.alloc_input(|| format!("pad_input_{}", i), || Ok(F::zero())).unwrap();
+        }
+    }
 }
 
 pub(crate) fn make_matrices_square<F: Field, CS: ConstraintSystem<F>>(cs: &mut CS, num_formatted_variables: usize) {
@@ -66,13 +100,13 @@ pub(crate) fn make_matrices_square<F: Field, CS: ConstraintSystem<F>>(cs: &mut C
         use core::convert::identity as iden;
         // Add dummy constraints of the form 0 * 0 == 0
         for i in 0..matrix_padding {
-            cs.enforce(|| format!("pad constraint {}", i), iden, iden, iden);
+            cs.enforce(|| format!("pad_constraint_{}", i), iden, iden, iden);
         }
     } else {
         // Add dummy unconstrained variables
         for i in 0..matrix_padding {
             let _ = cs
-                .alloc(|| format!("pad var {}", i), || Ok(F::one()))
+                .alloc(|| format!("pad_variable_{}", i), || Ok(F::one()))
                 .expect("alloc failed");
         }
     }
