@@ -756,73 +756,129 @@ impl<TargetField: PrimeField, BaseField: PrimeField> CondSelectGadget<BaseField>
 //         })
 //     }
 // }
-//
-// impl<TargetField: PrimeField, BaseField: PrimeField> AllocVar<TargetField, BaseField>
-//     for AllocatedNonNativeFieldVar<TargetField, BaseField>
-// {
-//     fn new_variable<T: Borrow<TargetField>>(
-//         cs: impl Into<Namespace<BaseField>>,
-//         f: impl FnOnce() -> Result<T, SynthesisError>,
-//         mode: AllocationMode,
-//     ) -> R1CSResult<Self> {
-//         let ns = cs.into();
-//         let cs = ns.cs();
-//
-//         let optimization_type = match cs.optimization_goal() {
-//             OptimizationGoal::None => OptimizationType::Constraints,
-//             OptimizationGoal::Constraints => OptimizationType::Constraints,
-//             OptimizationGoal::Weight => OptimizationType::Weight,
-//         };
-//
-//         let params = get_params(
-//             TargetField::size_in_bits(),
-//             BaseField::size_in_bits(),
-//             optimization_type,
-//         );
-//         let zero = TargetField::zero();
-//
-//         let elem = match f() {
-//             Ok(t) => *(t.borrow()),
-//             Err(_) => zero,
-//         };
-//         let elem_representations = Self::get_limbs_representations(&elem, optimization_type)?;
-//         let mut limbs = Vec::new();
-//
-//         for limb in elem_representations.iter() {
-//             limbs.push(FpVar::<BaseField>::new_variable(
-//                 ark_relations::ns!(cs, "alloc"),
-//                 || Ok(limb),
-//                 mode,
-//             )?);
-//         }
-//
-//         let num_of_additions_over_normal_form = if mode != AllocationMode::Witness {
-//             BaseField::zero()
-//         } else {
-//             BaseField::one()
-//         };
-//
-//         if mode == AllocationMode::Witness {
-//             for limb in limbs.iter().rev().take(params.num_limbs - 1) {
-//                 Reducer::<TargetField, BaseField>::limb_to_bits(limb, params.bits_per_limb)?;
-//             }
-//
-//             Reducer::<TargetField, BaseField>::limb_to_bits(
-//                 &limbs[0],
-//                 TargetField::size_in_bits() - (params.num_limbs - 1) * params.bits_per_limb,
-//             )?;
-//         }
-//
-//         Ok(Self {
-//             cs,
-//             limbs,
-//             num_of_additions_over_normal_form,
-//             is_in_the_normal_form: mode != AllocationMode::Witness,
-//             target_phantom: PhantomData,
-//         })
-//     }
-// }
-//
+
+impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, BaseField>
+    for AllocatedNonNativeFieldVar<TargetField, BaseField>
+{
+    #[inline]
+    fn alloc_constant<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<TargetField>,
+    {
+        let optimization_type = OptimizationType::Constraints;
+
+        let zero = TargetField::zero();
+
+        let elem = match value_gen() {
+            Ok(t) => *(t.borrow()),
+            Err(_) => zero,
+        };
+
+        let elem_representations = Self::get_limbs_representations(&elem, optimization_type)?;
+        let mut limbs = Vec::new();
+
+        for limb in elem_representations.iter() {
+            limbs.push(FpGadget::<BaseField>::alloc_constant(
+                cs.ns(|| "alloc_constant"),
+                || Ok(limb),
+            )?);
+        }
+
+        let num_of_additions_over_normal_form = BaseField::zero();
+
+        Ok(Self {
+            limbs,
+            num_of_additions_over_normal_form,
+            is_in_the_normal_form: true,
+            target_phantom: PhantomData,
+        })
+    }
+
+    #[inline]
+    fn alloc<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<TargetField>,
+    {
+        let optimization_type = OptimizationType::Constraints;
+
+        let zero = TargetField::zero();
+
+        let elem = match value_gen() {
+            Ok(t) => *(t.borrow()),
+            Err(_) => zero,
+        };
+
+        let elem_representations = Self::get_limbs_representations(&elem, optimization_type)?;
+        let mut limbs = Vec::new();
+
+        for limb in elem_representations.iter() {
+            limbs.push(FpGadget::<BaseField>::alloc(cs.ns(|| "alloc"), || Ok(limb))?);
+        }
+
+        let num_of_additions_over_normal_form = BaseField::zero();
+
+        Ok(Self {
+            limbs,
+            num_of_additions_over_normal_form,
+            is_in_the_normal_form: true,
+            target_phantom: PhantomData,
+        })
+    }
+
+    #[inline]
+    fn alloc_input<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<TargetField>,
+    {
+        let optimization_type = OptimizationType::Constraints;
+
+        let params = get_params(
+            TargetField::size_in_bits(),
+            BaseField::size_in_bits(),
+            optimization_type,
+        );
+        let zero = TargetField::zero();
+
+        let elem = match value_gen() {
+            Ok(t) => *(t.borrow()),
+            Err(_) => zero,
+        };
+
+        let elem_representations = Self::get_limbs_representations(&elem, optimization_type)?;
+        let mut limbs = Vec::new();
+
+        for limb in elem_representations.iter() {
+            limbs.push(FpGadget::<BaseField>::alloc_input(cs.ns(|| "alloc_input"), || {
+                Ok(limb)
+            })?);
+        }
+
+        let num_of_additions_over_normal_form = BaseField::one();
+
+        // Only run for `inputs`
+
+        for limb in limbs.iter().rev().take(params.num_limbs - 1) {
+            Reducer::<TargetField, BaseField>::limb_to_bits(&mut cs.ns(|| "limb_to_bits"), limb, params.bits_per_limb)?;
+        }
+
+        Reducer::<TargetField, BaseField>::limb_to_bits(
+            &mut cs,
+            &limbs[0],
+            TargetField::size_in_bits() - (params.num_limbs - 1) * params.bits_per_limb,
+        )?;
+
+        Ok(Self {
+            limbs,
+            num_of_additions_over_normal_form,
+            is_in_the_normal_form: false,
+            target_phantom: PhantomData,
+        })
+    }
+}
+
 // impl<TargetField: PrimeField, BaseField: PrimeField> ToConstraintField<BaseField>
 //     for AllocatedNonNativeFieldVar<TargetField, BaseField>
 // {
