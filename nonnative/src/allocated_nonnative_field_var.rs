@@ -14,18 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![allow(unused_imports)]
+#![allow(unused_imports, dead_code)]
 
 use crate::{
+    allocated_nonnative_field_mul_result_var::AllocatedNonNativeFieldMulResultVar,
     params::{get_params, OptimizationType},
     reduce::{bigint_to_basefield, limbs_to_bigint, Reducer},
 };
-// use ark_ff::{BigInteger, FpParameters, PrimeField};
-// use ark_r1cs_std::{fields::fp::FpVar, prelude::*, ToConstraintFieldGadget};
-// use ark_relations::{
-//     ns,
-//     r1cs::{ConstraintSystemRef, Namespace, OptimizationGoal, Result as R1CSResult, SynthesisError},
-// };
 
 use snarkvm_fields::{FpParameters, PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
@@ -35,6 +30,7 @@ use snarkvm_gadgets::{
         utilities::{
             alloc::AllocGadget,
             boolean::Boolean,
+            eq::EqGadget,
             select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
             uint::{UInt, UInt8},
             ToBitsGadget,
@@ -43,7 +39,6 @@ use snarkvm_gadgets::{
     },
 };
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
-
 use snarkvm_utilities::BigInteger;
 
 use std::{
@@ -306,23 +301,23 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         self.sub(&mut cs.ns(|| "sub"), &constant)
     }
 
-    // /// Multiply a nonnative field element
-    // pub fn mul<CS: ConstraintSystem<BaseField>>(&self, cs: &mut CS, other: &Self) -> Result<Self, SynthesisError> {
-    //     assert_eq!(self.get_optimization_type(), other.get_optimization_type());
-    //
-    //     self.mul_without_reduce(cs, &other)?.reduce()
-    // }
-    //
-    // /// Multiply a constant
-    // pub fn mul_constant<CS: ConstraintSystem<BaseField>>(
-    //     &self,
-    //     cs: &mut CS,
-    //     other: &TargetField,
-    // ) -> Result<Self, SynthesisError> {
-    //     let constant = Self::constant(&mut cs.ns(|| "constant"), *other)?;
-    //
-    //     self.mul(&mut cs.ns(|| "mul"), &constant)
-    // }
+    /// Multiply a nonnative field element
+    pub fn mul<CS: ConstraintSystem<BaseField>>(&self, cs: &mut CS, other: &Self) -> Result<Self, SynthesisError> {
+        assert_eq!(self.get_optimization_type(), other.get_optimization_type());
+
+        self.mul_without_reduce(cs, &other)?.reduce(&mut cs.ns(|| "reduce"))
+    }
+
+    /// Multiply a constant
+    pub fn mul_constant<CS: ConstraintSystem<BaseField>>(
+        &self,
+        cs: &mut CS,
+        other: &TargetField,
+    ) -> Result<Self, SynthesisError> {
+        let constant = Self::constant(&mut cs.ns(|| "constant"), *other)?;
+
+        self.mul(&mut cs.ns(|| "mul"), &constant)
+    }
 
     /// Compute the negate of a nonnative field element
     pub fn negate<CS: ConstraintSystem<BaseField>>(&self, cs: &mut CS) -> Result<Self, SynthesisError> {
@@ -330,22 +325,22 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         zero.sub(&mut cs.ns(|| "sub"), self)
     }
 
-    // /// Compute the inverse of a nonnative field element
-    // pub fn inverse<CS: ConstraintSystem<BaseField>>(&self, cs: &mut CS) -> Result<Self, SynthesisError> {
-    //     let inverse = Self::alloc_input(&mut cs.ns(|| "alloc_input"), || {
-    //         Ok(self.value()?.inverse().unwrap_or_else(TargetField::zero))
-    //     })?;
-    //
-    //     let one = &Self::one(&mut cs.ns(|| "one"))?;
-    //
-    //     let actual_result = self.mul(&mut cs.ns(|| "mul"), &inverse)?;
-    //     actual_result.conditional_enforce_equal(
-    //         &mut cs.ns(|| "conditional_enforce_equal"),
-    //         &one,
-    //         &Boolean::Constant(true),
-    //     )?;
-    //     Ok(inverse)
-    // }
+    /// Compute the inverse of a nonnative field element
+    pub fn inverse<CS: ConstraintSystem<BaseField>>(&self, cs: &mut CS) -> Result<Self, SynthesisError> {
+        let inverse = Self::alloc_input(&mut cs.ns(|| "alloc_input"), || {
+            Ok(self.value()?.inverse().unwrap_or_else(TargetField::zero))
+        })?;
+
+        let one = &Self::one(&mut cs.ns(|| "one"))?;
+
+        let actual_result = self.mul(&mut cs.ns(|| "mul"), &inverse)?;
+        actual_result.conditional_enforce_equal(
+            &mut cs.ns(|| "conditional_enforce_equal"),
+            &one,
+            &Boolean::Constant(true),
+        )?;
+        Ok(inverse)
+    }
 
     /// Convert a `TargetField` element into limbs (not constraints)
     /// This is an internal function that would be reused by a number of other functions
@@ -385,92 +380,105 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         Ok(limbs)
     }
 
-    // /// for advanced use, multiply and output the intermediate representations (without reduction)
-    // /// This intermediate representations can be added with each other, and they can later be reduced back to the `NonNativeFieldVar`.
-    // pub fn mul_without_reduce(
-    //     &self,
-    //     other: &Self,
-    // ) -> Result<AllocatedNonNativeFieldMulResultVar<TargetField, BaseField>, SynthesisError> {
-    //     assert_eq!(self.get_optimization_type(), other.get_optimization_type());
-    //
-    //     let params = get_params(
-    //         TargetField::size_in_bits(),
-    //         BaseField::size_in_bits(),
-    //         self.get_optimization_type(),
-    //     );
-    //
-    //     // Step 1: reduce `self` and `other` if neceessary
-    //     let mut self_reduced = self.clone();
-    //     let mut other_reduced = other.clone();
-    //     Reducer::<TargetField, BaseField>::pre_mul_reduce(&mut self_reduced, &mut other_reduced)?;
-    //
-    //     let mut prod_limbs = Vec::new();
-    //     if self.get_optimization_type() == OptimizationType::Weight {
-    //         let zero = FpVar::<BaseField>::zero();
-    //
-    //         for _ in 0..2 * params.num_limbs - 1 {
-    //             prod_limbs.push(zero.clone());
-    //         }
-    //
-    //         for i in 0..params.num_limbs {
-    //             for j in 0..params.num_limbs {
-    //                 prod_limbs[i + j] = &prod_limbs[i + j] + (&self_reduced.limbs[i] * &other_reduced.limbs[j]);
-    //             }
-    //         }
-    //     } else {
-    //         let cs = self.cs().or(other.cs());
-    //
-    //         for z_index in 0..2 * params.num_limbs - 1 {
-    //             prod_limbs.push(FpVar::new_witness(ns!(cs, "limb product"), || {
-    //                 let mut z_i = BaseField::zero();
-    //                 for i in 0..=min(params.num_limbs - 1, z_index) {
-    //                     let j = z_index - i;
-    //                     if j < params.num_limbs {
-    //                         z_i += &self_reduced.limbs[i].value()?.mul(&other_reduced.limbs[j].value()?);
-    //                     }
-    //                 }
-    //
-    //                 Ok(z_i)
-    //             })?);
-    //         }
-    //
-    //         for c in 0..(2 * params.num_limbs - 1) {
-    //             let c_pows: Vec<_> = (0..(2 * params.num_limbs - 1))
-    //                 .map(|i| BaseField::from((c + 1) as u128).pow(&vec![i as u64]))
-    //                 .collect();
-    //
-    //             let x = self_reduced
-    //                 .limbs
-    //                 .iter()
-    //                 .zip(c_pows.iter())
-    //                 .map(|(var, c_pow)| var * *c_pow)
-    //                 .fold(FpVar::zero(), |sum, i| sum + i);
-    //
-    //             let y = other_reduced
-    //                 .limbs
-    //                 .iter()
-    //                 .zip(c_pows.iter())
-    //                 .map(|(var, c_pow)| var * *c_pow)
-    //                 .fold(FpVar::zero(), |sum, i| sum + i);
-    //
-    //             let z = prod_limbs
-    //                 .iter()
-    //                 .zip(c_pows.iter())
-    //                 .map(|(var, c_pow)| var * *c_pow)
-    //                 .fold(FpVar::zero(), |sum, i| sum + i);
-    //
-    //             z.enforce_equal(&(x * y))?;
-    //         }
-    //     }
-    //
-    //     Ok(AllocatedNonNativeFieldMulResultVar {
-    //         cs: self.cs(),
-    //         limbs: prod_limbs,
-    //         prod_of_num_of_additions: (self_reduced.num_of_additions_over_normal_form + BaseField::one())
-    //             * (other_reduced.num_of_additions_over_normal_form + BaseField::one()),
-    //         target_phantom: PhantomData,
-    //     })
-    // }
+    /// for advanced use, multiply and output the intermediate representations (without reduction)
+    /// This intermediate representations can be added with each other, and they can later be reduced back to the `NonNativeFieldVar`.
+    pub fn mul_without_reduce<CS: ConstraintSystem<BaseField>>(
+        &self,
+        cs: &mut CS,
+        other: &Self,
+    ) -> Result<AllocatedNonNativeFieldMulResultVar<TargetField, BaseField>, SynthesisError> {
+        assert_eq!(self.get_optimization_type(), other.get_optimization_type());
+
+        let params = get_params(
+            TargetField::size_in_bits(),
+            BaseField::size_in_bits(),
+            self.get_optimization_type(),
+        );
+
+        // Step 1: reduce `self` and `other` if necessary
+        let mut self_reduced = self.clone();
+        let mut other_reduced = other.clone();
+        Reducer::<TargetField, BaseField>::pre_mul_reduce(
+            &mut cs.ns(|| "pre_mul_reduce"),
+            &mut self_reduced,
+            &mut other_reduced,
+        )?;
+
+        let mut prod_limbs = Vec::new();
+
+        // We currently only support constraint optimization
+
+        for z_index in 0..2 * params.num_limbs - 1 {
+            prod_limbs.push(FpGadget::alloc_input(cs.ns(|| "limb product"), || {
+                let mut z_i = BaseField::zero();
+                for i in 0..=min(params.num_limbs - 1, z_index) {
+                    let j = z_index - i;
+                    if j < params.num_limbs {
+                        z_i += &self_reduced.limbs[i]
+                            .get_value()
+                            .unwrap()
+                            .mul(&other_reduced.limbs[j].get_value().unwrap());
+                    }
+                }
+
+                Ok(z_i)
+            })?);
+        }
+
+        for c in 0..(2 * params.num_limbs - 1) {
+            let c_pows: Vec<_> = (0..(2 * params.num_limbs - 1))
+                .map(|i| BaseField::from((c + 1) as u128).pow(&vec![i as u64]))
+                .collect();
+
+            // TODO (raychu86): Clean up this syntax.
+
+            let x = self_reduced
+                .limbs
+                .iter()
+                .zip(c_pows.iter())
+                .map(|(var, c_pow)| {
+                    var.mul_by_constant(cs.ns(|| "var_mul_by_constant_c_pow"), c_pow)
+                        .unwrap()
+                })
+                .fold(FpGadget::zero(cs.ns(|| "zero"))?, |sum, i| {
+                    sum.add(cs.ns(|| "sum_add_i"), &i).unwrap()
+                });
+
+            let y = other_reduced
+                .limbs
+                .iter()
+                .zip(c_pows.iter())
+                .map(|(var, c_pow)| {
+                    var.mul_by_constant(cs.ns(|| "var_mul_by_constant_c_pow"), c_pow)
+                        .unwrap()
+                })
+                .fold(FpGadget::zero(cs.ns(|| "zero"))?, |sum, i| {
+                    sum.add(cs.ns(|| "sum_add_i"), &i).unwrap()
+                });
+
+            let z = prod_limbs
+                .iter()
+                .zip(c_pows.iter())
+                .map(|(var, c_pow)| {
+                    var.mul_by_constant(cs.ns(|| "var_mul_by_constant_c_pow"), c_pow)
+                        .unwrap()
+                })
+                .fold(FpGadget::zero(cs.ns(|| "zero"))?, |sum, i| {
+                    sum.add(cs.ns(|| "sum_add_i"), &i).unwrap()
+                });
+
+            let x_mul_y = x.mul(cs.ns(|| "x_mul_y"), &y)?;
+
+            z.enforce_equal(cs.ns(|| "enforce_equal"), &x_mul_y)?;
+        }
+
+        Ok(AllocatedNonNativeFieldMulResultVar {
+            limbs: prod_limbs,
+            prod_of_num_of_additions: (self_reduced.num_of_additions_over_normal_form + &BaseField::one())
+                * &(other_reduced.num_of_additions_over_normal_form + &BaseField::one()),
+            target_phantom: PhantomData,
+        })
+    }
 
     pub(crate) fn frobenius_map(&self, _power: usize) -> Result<Self, SynthesisError> {
         Ok(self.clone())
