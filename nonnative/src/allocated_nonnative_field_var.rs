@@ -249,10 +249,18 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         {
             if i != 0 {
                 let temp = pad_non_top_limb + &*pad_to_kp_limb;
-                limbs.push(this_limb.add_constant(cs, &temp)?.sub(cs, &other_limb)?);
+                limbs.push(
+                    this_limb
+                        .add_constant(cs.ns(|| format!("add_constant_{}", i)), &temp)?
+                        .sub(cs.ns(|| format!("sub_{}", i)), &other_limb)?,
+                );
             } else {
                 let temp = pad_top_limb + &*pad_to_kp_limb;
-                limbs.push(this_limb.add_constant(cs, &temp)?.sub(cs, &other_limb)?);
+                limbs.push(
+                    this_limb
+                        .add_constant(cs.ns(|| format!("add_constant_{}", i)), &temp)?
+                        .sub(cs.ns(|| format!("sub_{}", i)), &other_limb)?,
+                );
             }
         }
 
@@ -477,12 +485,9 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
             target_phantom: PhantomData,
         };
 
-        // Get delta = self - other
-        // let cs = self.cs().or(other.cs()).or(should_enforce.cs());
-        let mut delta = self.sub_without_reduce(cs, other)?;
-        delta = Self::conditionally_select(cs, should_enforce, &delta, &Self::zero(cs)?)?;
-
-        // should_enforce.select(&delta, &Self::zero(cs.clone())?)?;
+        let zero = Self::zero(&mut cs.ns(|| "zero"))?;
+        let mut delta = self.sub_without_reduce(&mut cs.ns(|| "sub_without_reduce"), other)?;
+        delta = Self::conditionally_select(&mut cs.ns(|| "cond_select"), should_enforce, &delta, &zero)?;
 
         // Allocate k = delta / p
         let k_gadget = FpGadget::<BaseField>::alloc(cs.ns(|| "k"), || {
@@ -497,16 +502,17 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         })?;
 
         let surfeit = overhead!(delta.num_of_additions_over_normal_form + &BaseField::one()) + 1;
-        Reducer::<TargetField, BaseField>::limb_to_bits(cs, &k_gadget, surfeit)?;
+        Reducer::<TargetField, BaseField>::limb_to_bits(&mut cs.ns(|| "limb_to_bits"), &k_gadget, surfeit)?;
 
         // Compute k * p
         let mut kp_gadget_limbs = Vec::new();
-        for limb in p_gadget.limbs.iter() {
-            kp_gadget_limbs.push(limb.mul(cs, &k_gadget)?);
+        for (i, limb) in p_gadget.limbs.iter().enumerate() {
+            kp_gadget_limbs.push(limb.mul(cs.ns(|| format!("mul_limb_{}", i)), &k_gadget)?);
         }
 
         // Enforce delta = kp
         Reducer::<TargetField, BaseField>::group_and_check_equality(
+            cs,
             surfeit,
             params.bits_per_limb,
             params.bits_per_limb,
@@ -620,8 +626,13 @@ impl<TargetField: PrimeField, BaseField: PrimeField> CondSelectGadget<BaseField>
 
         let mut limbs_sel = Vec::with_capacity(first.limbs.len());
 
-        for (x, y) in first.limbs.iter().zip(&second.limbs) {
-            limbs_sel.push(FpGadget::<BaseField>::conditionally_select(cs, cond, x, y)?);
+        for (i, (x, y)) in first.limbs.iter().zip(&second.limbs).enumerate() {
+            limbs_sel.push(FpGadget::<BaseField>::conditionally_select(
+                cs.ns(|| format!("cond_select_{}", i)),
+                cond,
+                x,
+                y,
+            )?);
         }
 
         Ok(Self {
