@@ -19,10 +19,10 @@ use crate::{
     utilities::{
         alloc::AllocGadget,
         boolean::{AllocatedBit, Boolean},
+        eq::EqGadget,
         int::*,
         num::Number,
         ToBitsGadget,
-        eq::EqGadget,
     },
 };
 use snarkvm_fields::{traits::to_field_vec::ToConstraintField, Field, FpParameters, PrimeField};

@@ -16,15 +16,13 @@
 
 use snarkvm_fields::PrimeField;
 
-use crate::{
-    utilities::{
-        alloc::AllocGadget,
-        arithmetic::Mul,
-        boolean::Boolean,
-        num::Number,
-        select::CondSelectGadget,
-        uint::*,
-},
+use crate::utilities::{
+    alloc::AllocGadget,
+    arithmetic::Mul,
+    boolean::Boolean,
+    num::Number,
+    select::CondSelectGadget,
+    uint::*,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 

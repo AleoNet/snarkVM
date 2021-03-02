@@ -19,11 +19,7 @@ use crate::{
     traits::{
         algorithms::CRHGadget,
         curves::{CompressedGroupGadget, GroupGadget},
-        utilities::{
-            boolean::Boolean,
-            uint::unsigned_integer::UInt8,
-            num::Number,
-        },
+        utilities::{boolean::Boolean, num::Number, uint::unsigned_integer::UInt8},
     },
 };
 use snarkvm_algorithms::crh::{

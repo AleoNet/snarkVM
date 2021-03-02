@@ -14,11 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::utilities::{
-    boolean::Boolean,
-    uint::unsigned_integer::UInt8,
-    num::Number,
-};
+use crate::traits::utilities::{boolean::Boolean, num::Number, uint::unsigned_integer::UInt8};
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
@@ -28,9 +24,9 @@ pub mod bits;
 pub mod boolean;
 pub mod eq;
 pub mod int;
-pub mod uint;
 pub mod num;
 pub mod select;
+pub mod uint;
 
 pub trait ToBitsGadget<F: Field> {
     fn to_bits<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError>;

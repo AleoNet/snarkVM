@@ -16,11 +16,9 @@
 
 use snarkvm_fields::PrimeField;
 
-use crate::{
-    utilities::{
-        arithmetic::Add,
-        uint::{UInt, UInt128, UInt16, UInt32, UInt64, UInt8},
-},
+use crate::utilities::{
+    arithmetic::Add,
+    uint::{UInt, UInt128, UInt16, UInt32, UInt64, UInt8},
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 

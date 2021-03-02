@@ -20,9 +20,9 @@ use crate::traits::{
         alloc::AllocGadget,
         boolean::Boolean,
         eq::{ConditionalEqGadget, EqGadget},
+        num::Number,
         select::CondSelectGadget,
         uint::unsigned_integer::{UInt, UInt32, UInt8},
-        num::Number,
         ToBytesGadget,
     },
 };

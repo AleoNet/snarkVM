@@ -16,12 +16,10 @@
 
 use snarkvm_fields::PrimeField;
 
-use crate::{
-    utilities::{
-        boolean::Boolean,
-        eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
-        uint::*,
-    },
+use crate::utilities::{
+    boolean::Boolean,
+    eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
+    uint::*,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 

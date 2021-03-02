@@ -23,8 +23,8 @@ use crate::utilities::{
     boolean::{AllocatedBit, Boolean},
     eq::EvaluateEqGadget,
     int::*,
-    select::CondSelectGadget,
     num::Number,
+    select::CondSelectGadget,
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSystem;

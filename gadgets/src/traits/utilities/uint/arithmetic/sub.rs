@@ -16,12 +16,7 @@
 
 use snarkvm_fields::PrimeField;
 
-use crate::{
-    utilities::{
-        arithmetic::Sub,
-        uint::*,
-    },
-};
+use crate::utilities::{arithmetic::Sub, uint::*};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 macro_rules! sub_uint_impl {

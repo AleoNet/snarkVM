@@ -14,7 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{fields::FpGadget, utilities::{ToBitsGadget, ToBytesGadget, alloc::AllocGadget, arithmetic::*, boolean::{AllocatedBit, Boolean}, eq::{ConditionalEqGadget, EqGadget}, num::Number, select::CondSelectGadget}};
+use crate::{
+    fields::FpGadget,
+    utilities::{
+        alloc::AllocGadget,
+        arithmetic::*,
+        boolean::{AllocatedBit, Boolean},
+        eq::{ConditionalEqGadget, EqGadget},
+        num::Number,
+        select::CondSelectGadget,
+        ToBitsGadget,
+        ToBytesGadget,
+    },
+};
 use snarkvm_fields::{fp_parameters::FpParameters, traits::to_field_vec::ToConstraintField, Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearCombination};
 

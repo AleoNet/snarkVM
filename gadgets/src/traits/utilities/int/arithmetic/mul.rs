@@ -22,8 +22,8 @@ use crate::utilities::{
     bits::{RippleCarryAdder, SignExtend},
     boolean::{AllocatedBit, Boolean},
     int::*,
-    select::CondSelectGadget,
     num::Number,
+    select::CondSelectGadget,
 };
 use snarkvm_fields::{FpParameters, PrimeField};
 use snarkvm_r1cs::{Assignment, ConstraintSystem, LinearCombination};

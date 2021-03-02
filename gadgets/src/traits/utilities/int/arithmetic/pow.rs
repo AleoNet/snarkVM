@@ -21,8 +21,8 @@ use crate::utilities::{
     arithmetic::{Mul, Pow},
     boolean::Boolean,
     int::*,
-    select::CondSelectGadget,
     num::Number,
+    select::CondSelectGadget,
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSystem;
