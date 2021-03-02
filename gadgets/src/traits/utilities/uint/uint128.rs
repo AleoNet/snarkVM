@@ -45,11 +45,11 @@ impl Number for UInt128 {
     const SIZE: usize = 128;
 
     fn zero() -> Self {
-        Self::constant(0 as u128)
+        Self::constant(0)
     }
 
     fn one() -> Self {
-        Self::constant(1 as u128)
+        Self::constant(1)
     }
 
     /// Returns true if all bits in this UInt128 are constant
