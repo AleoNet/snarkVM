@@ -55,6 +55,15 @@ use num_traits::identities::{One, Zero};
 
 use std::{cmp::min, marker::PhantomData, vec, vec::Vec};
 
+const fn num_bits<T>() -> usize {
+    std::mem::size_of::<T>() * 8
+}
+
+fn log_2(x: usize) -> u32 {
+    assert!(x > 0);
+    num_bits::<usize>() as u32 - x.leading_zeros() - 1
+}
+
 pub fn limbs_to_bigint<BaseField: PrimeField>(bits_per_limb: usize, limbs: &[BaseField]) -> BigUint {
     let mut val = BigUint::zero();
     let mut big_cur = BigUint::one();
@@ -200,55 +209,57 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
         }
     }
 
-    // /// Reduction used before multiplication to reduce the representations in a way that allows efficient multiplication
-    // #[tracing::instrument(target = "r1cs")]
-    // pub fn pre_mul_reduce(
-    //     elem: &mut AllocatedNonNativeFieldVar<TargetField, BaseField>,
-    //     elem_other: &mut AllocatedNonNativeFieldVar<TargetField, BaseField>,
-    // ) -> R1CSResult<()> {
-    //     assert_eq!(elem.get_optimization_type(), elem_other.get_optimization_type());
-    //
-    //     let params = get_params(
-    //         TargetField::size_in_bits(),
-    //         BaseField::size_in_bits(),
-    //         elem.get_optimization_type(),
-    //     );
-    //
-    //     if 2 * params.bits_per_limb + ark_std::log2(params.num_limbs) as usize > BaseField::size_in_bits() - 1 {
-    //         panic!("The current limb parameters do not support multiplication.");
-    //     }
-    //
-    //     loop {
-    //         let prod_of_num_of_additions = (elem.num_of_additions_over_normal_form + BaseField::one())
-    //             * (elem_other.num_of_additions_over_normal_form + BaseField::one());
-    //         let overhead_limb = overhead!(prod_of_num_of_additions.mul(
-    //             &BaseField::from_repr(<BaseField as PrimeField>::BigInt::from((params.num_limbs) as u64)).unwrap()
-    //         ));
-    //         let bits_per_mulresult_limb = 2 * (params.bits_per_limb + 1) + overhead_limb;
-    //
-    //         if bits_per_mulresult_limb < BaseField::size_in_bits() {
-    //             break;
-    //         }
-    //
-    //         if elem.num_of_additions_over_normal_form >= elem_other.num_of_additions_over_normal_form {
-    //             Self::reduce(elem)?;
-    //         } else {
-    //             Self::reduce(elem_other)?;
-    //         }
-    //     }
-    //
-    //     Ok(())
-    // }
-    //
-    // /// Reduction to the normal form
-    // #[tracing::instrument(target = "r1cs")]
-    // pub fn pre_eq_reduce(elem: &mut AllocatedNonNativeFieldVar<TargetField, BaseField>) -> R1CSResult<()> {
-    //     if elem.is_in_the_normal_form {
-    //         return Ok(());
-    //     }
-    //
-    //     Self::reduce(elem)
-    // }
+    /// Reduction used before multiplication to reduce the representations in a way that allows efficient multiplication
+    pub fn pre_mul_reduce<CS: ConstraintSystem<BaseField>>(
+        cs: &mut CS,
+        elem: &mut AllocatedNonNativeFieldVar<TargetField, BaseField>,
+        elem_other: &mut AllocatedNonNativeFieldVar<TargetField, BaseField>,
+    ) -> Result<(), SynthesisError> {
+        assert_eq!(elem.get_optimization_type(), elem_other.get_optimization_type());
+
+        let params = get_params(
+            TargetField::size_in_bits(),
+            BaseField::size_in_bits(),
+            elem.get_optimization_type(),
+        );
+
+        if 2 * params.bits_per_limb + log_2(params.num_limbs) as usize > BaseField::size_in_bits() - 1 {
+            panic!("The current limb parameters do not support multiplication.");
+        }
+
+        loop {
+            let prod_of_num_of_additions = (elem.num_of_additions_over_normal_form + &BaseField::one())
+                * &(elem_other.num_of_additions_over_normal_form + &BaseField::one());
+            let overhead_limb = overhead!(prod_of_num_of_additions.mul(
+                &BaseField::from_repr(<BaseField as PrimeField>::BigInteger::from((params.num_limbs) as u64)).unwrap()
+            ));
+            let bits_per_mulresult_limb = 2 * (params.bits_per_limb + 1) + overhead_limb;
+
+            if bits_per_mulresult_limb < BaseField::size_in_bits() {
+                break;
+            }
+
+            if elem.num_of_additions_over_normal_form >= elem_other.num_of_additions_over_normal_form {
+                Self::reduce(cs, elem)?;
+            } else {
+                Self::reduce(cs, elem_other)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Reduction to the normal form
+    pub fn pre_eq_reduce<CS: ConstraintSystem<BaseField>>(
+        cs: &mut CS,
+        elem: &mut AllocatedNonNativeFieldVar<TargetField, BaseField>,
+    ) -> Result<(), SynthesisError> {
+        if elem.is_in_the_normal_form {
+            return Ok(());
+        }
+
+        Self::reduce(cs, elem)
+    }
 
     /// Group and check equality
     pub fn group_and_check_equality<CS: ConstraintSystem<BaseField>>(

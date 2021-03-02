@@ -32,7 +32,14 @@ use snarkvm_gadgets::{
     fields::FpGadget,
     traits::{
         fields::FieldGadget,
-        utilities::{alloc::AllocGadget, boolean::Boolean, select::CondSelectGadget},
+        utilities::{
+            alloc::AllocGadget,
+            boolean::Boolean,
+            select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
+            uint::{UInt, UInt8},
+            ToBitsGadget,
+            ToBytesGadget,
+        },
     },
 };
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
@@ -170,28 +177,31 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         Ok(res)
     }
 
-    //     /// Add a constant
-    //     pub fn add_constant(&self, other: &TargetField) -> R1CSResult<Self> {
-    //         let other_limbs = Self::get_limbs_representations(other, self.get_optimization_type())?;
-    //
-    //         let mut limbs = Vec::new();
-    //         for (this_limb, other_limb) in self.limbs.iter().zip(other_limbs.iter()) {
-    //             limbs.push(this_limb + *other_limb);
-    //         }
-    //
-    //         let mut res = Self {
-    //             cs: self.cs(),
-    //             limbs,
-    //             num_of_additions_over_normal_form: self.num_of_additions_over_normal_form.add(&BaseField::one()),
-    //             is_in_the_normal_form: false,
-    //             target_phantom: PhantomData,
-    //         };
-    //
-    //         Reducer::<TargetField, BaseField>::post_add_reduce(&mut res)?;
-    //
-    //         Ok(res)
-    //     }
-    //
+    /// Add a constant
+    pub fn add_constant<CS: ConstraintSystem<BaseField>>(
+        &self,
+        cs: &mut CS,
+        other: &TargetField,
+    ) -> Result<Self, SynthesisError> {
+        let other_limbs = Self::get_limbs_representations(other, self.get_optimization_type())?;
+
+        let mut limbs = Vec::new();
+        for (i, (this_limb, other_limb)) in self.limbs.iter().zip(other_limbs.iter()).enumerate() {
+            limbs.push(this_limb.add_constant(cs.ns(|| format!("add_constant_{}", i)), other_limb)?);
+        }
+
+        let mut res = Self {
+            limbs,
+            num_of_additions_over_normal_form: self.num_of_additions_over_normal_form.add(&BaseField::one()),
+            is_in_the_normal_form: false,
+            target_phantom: PhantomData,
+        };
+
+        Reducer::<TargetField, BaseField>::post_add_reduce(cs, &mut res)?;
+
+        Ok(res)
+    }
+
     /// Subtract a nonnative field element, without the final reduction step
     pub fn sub_without_reduce<CS: ConstraintSystem<BaseField>>(
         &self,
@@ -276,52 +286,66 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         Ok(result)
     }
 
-    //     /// Subtract a nonnative field element
-    //     #[tracing::instrument(target = "r1cs")]
-    //     pub fn sub(&self, other: &Self) -> R1CSResult<Self> {
-    //         assert_eq!(self.get_optimization_type(), other.get_optimization_type());
+    /// Subtract a nonnative field element
+    pub fn sub<CS: ConstraintSystem<BaseField>>(&self, cs: &mut CS, other: &Self) -> Result<Self, SynthesisError> {
+        assert_eq!(self.get_optimization_type(), other.get_optimization_type());
+
+        let mut result = self.sub_without_reduce(&mut cs.ns(|| "sub_without_reduce"), other)?;
+        Reducer::<TargetField, BaseField>::post_add_reduce(cs, &mut result)?;
+        Ok(result)
+    }
+
+    /// Subtract a constant
+    pub fn sub_constant<CS: ConstraintSystem<BaseField>>(
+        &self,
+        cs: &mut CS,
+        other: &TargetField,
+    ) -> Result<Self, SynthesisError> {
+        let constant = Self::constant(&mut cs.ns(|| "constant"), *other)?;
+
+        self.sub(&mut cs.ns(|| "sub"), &constant)
+    }
+
+    // /// Multiply a nonnative field element
+    // pub fn mul<CS: ConstraintSystem<BaseField>>(&self, cs: &mut CS, other: &Self) -> Result<Self, SynthesisError> {
+    //     assert_eq!(self.get_optimization_type(), other.get_optimization_type());
     //
-    //         let mut result = self.sub_without_reduce(other)?;
-    //         Reducer::<TargetField, BaseField>::post_add_reduce(&mut result)?;
-    //         Ok(result)
-    //     }
+    //     self.mul_without_reduce(cs, &other)?.reduce()
+    // }
     //
-    //     /// Subtract a constant
-    //     #[tracing::instrument(target = "r1cs")]
-    //     pub fn sub_constant(&self, other: &TargetField) -> R1CSResult<Self> {
-    //         self.sub(&Self::constant(self.cs(), *other)?)
-    //     }
+    // /// Multiply a constant
+    // pub fn mul_constant<CS: ConstraintSystem<BaseField>>(
+    //     &self,
+    //     cs: &mut CS,
+    //     other: &TargetField,
+    // ) -> Result<Self, SynthesisError> {
+    //     let constant = Self::constant(&mut cs.ns(|| "constant"), *other)?;
     //
-    //     /// Multiply a nonnative field element
-    //     #[tracing::instrument(target = "r1cs")]
-    //     pub fn mul(&self, other: &Self) -> R1CSResult<Self> {
-    //         assert_eq!(self.get_optimization_type(), other.get_optimization_type());
+    //     self.mul(&mut cs.ns(|| "mul"), &constant)
+    // }
+
+    /// Compute the negate of a nonnative field element
+    pub fn negate<CS: ConstraintSystem<BaseField>>(&self, cs: &mut CS) -> Result<Self, SynthesisError> {
+        let zero = Self::zero(&mut cs.ns(|| "zero"))?;
+        zero.sub(&mut cs.ns(|| "sub"), self)
+    }
+
+    // /// Compute the inverse of a nonnative field element
+    // pub fn inverse<CS: ConstraintSystem<BaseField>>(&self, cs: &mut CS) -> Result<Self, SynthesisError> {
+    //     let inverse = Self::alloc_input(&mut cs.ns(|| "alloc_input"), || {
+    //         Ok(self.value()?.inverse().unwrap_or_else(TargetField::zero))
+    //     })?;
     //
-    //         self.mul_without_reduce(&other)?.reduce()
-    //     }
+    //     let one = &Self::one(&mut cs.ns(|| "one"))?;
     //
-    //     /// Multiply a constant
-    //     pub fn mul_constant(&self, other: &TargetField) -> R1CSResult<Self> {
-    //         self.mul(&Self::constant(self.cs(), *other)?)
-    //     }
-    //
-    //     /// Compute the negate of a nonnative field element
-    //     #[tracing::instrument(target = "r1cs")]
-    //     pub fn negate(&self) -> R1CSResult<Self> {
-    //         Self::zero(self.cs())?.sub(self)
-    //     }
-    //
-    //     /// Compute the inverse of a nonnative field element
-    //     #[tracing::instrument(target = "r1cs")]
-    //     pub fn inverse(&self) -> R1CSResult<Self> {
-    //         let inverse = Self::new_witness(self.cs(), || {
-    //             Ok(self.value()?.inverse().unwrap_or_else(TargetField::zero))
-    //         })?;
-    //
-    //         let actual_result = self.clone().mul(&inverse)?;
-    //         actual_result.conditional_enforce_equal(&Self::one(self.cs())?, &Boolean::TRUE)?;
-    //         Ok(inverse)
-    //     }
+    //     let actual_result = self.mul(&mut cs.ns(|| "mul"), &inverse)?;
+    //     actual_result.conditional_enforce_equal(
+    //         &mut cs.ns(|| "conditional_enforce_equal"),
+    //         &one,
+    //         &Boolean::Constant(true),
+    //     )?;
+    //     Ok(inverse)
+    // }
 
     /// Convert a `TargetField` element into limbs (not constraints)
     /// This is an internal function that would be reused by a number of other functions
@@ -523,21 +547,22 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         Ok(())
     }
 
+    // pub(crate) fn conditional_enforce_not_equal<CS: ConstraintSystem<BaseField>>(
+    //     &self,
+    //     cs: &mut CS,
+    //     other: &Self,
+    //     should_enforce: &Boolean,
+    // ) -> Result<(), SynthesisError> {
+    //     assert_eq!(self.get_optimization_type(), other.get_optimization_type());
     //
-    //     #[tracing::instrument(target = "r1cs")]
-    //     pub(crate) fn conditional_enforce_not_equal(
-    //         &self,
-    //         other: &Self,
-    //         should_enforce: &Boolean<BaseField>,
-    //     ) -> R1CSResult<()> {
-    //         assert_eq!(self.get_optimization_type(), other.get_optimization_type());
+    //     let one = Self::one(&mut cs.ns(|| "one"))?;
+    //     let subbed = &self.sub(&mut cs.ns(|| "sub"), other)?;
     //
-    //         let cs = self.cs().or(other.cs()).or(should_enforce.cs());
+    //     let selected = Self::conditionally_select(cs.ns(|| "conditionally_select"), should_enforce, subbed, &one)?;
+    //     selected.inverse(cs.ns(|| "inverse"));
     //
-    //         let _ = should_enforce.select(&self.sub(other)?, &Self::one(cs)?)?.inverse()?;
-    //
-    //         Ok(())
-    //     }
+    //     Ok(())
+    // }
 
     pub(crate) fn get_optimization_type(&self) -> OptimizationType {
         // TODO (raychu86): Implement optimization goal.
@@ -552,66 +577,73 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
     }
 }
 
-// impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsGadget<BaseField>
-//     for AllocatedNonNativeFieldVar<TargetField, BaseField>
-// {
-//     #[tracing::instrument(target = "r1cs")]
-//     fn to_bits_le(&self) -> R1CSResult<Vec<Boolean<BaseField>>> {
-//         let params = get_params(
-//             TargetField::size_in_bits(),
-//             BaseField::size_in_bits(),
-//             self.get_optimization_type(),
-//         );
-//
-//         // Reduce to the normal form
-//         // Though, a malicious prover can make it slightly larger than p
-//         let mut self_normal = self.clone();
-//         Reducer::<TargetField, BaseField>::pre_eq_reduce(&mut self_normal)?;
-//
-//         // Therefore, we convert it to bits and enforce that it is in the field
-//         let mut bits = Vec::<Boolean<BaseField>>::new();
-//         for limb in self_normal.limbs.iter() {
-//             bits.extend_from_slice(&Reducer::<TargetField, BaseField>::limb_to_bits(
-//                 &limb,
-//                 params.bits_per_limb,
-//             )?);
-//         }
-//         bits.reverse();
-//
-//         let mut b = TargetField::characteristic().to_vec();
-//         assert_eq!(b[0] % 2, 1);
-//         b[0] -= 1; // This works, because the LSB is one, so there's no borrows.
-//         let run = Boolean::<BaseField>::enforce_smaller_or_equal_than_le(&bits, b)?;
-//
-//         // We should always end in a "run" of zeros, because
-//         // the characteristic is an odd prime. So, this should
-//         // be empty.
-//         assert!(run.is_empty());
-//
-//         Ok(bits)
-//     }
-// }
-//
-// impl<TargetField: PrimeField, BaseField: PrimeField> ToBytesGadget<BaseField>
-//     for AllocatedNonNativeFieldVar<TargetField, BaseField>
-// {
-//     #[tracing::instrument(target = "r1cs")]
-//     fn to_bytes(&self) -> R1CSResult<Vec<UInt8<BaseField>>> {
-//         let bits = self.to_bits_le()?;
-//
-//         let mut bytes = Vec::<UInt8<BaseField>>::new();
-//         bits.chunks(8).for_each(|bits_per_byte| {
-//             let mut bits_per_byte: Vec<Boolean<BaseField>> = bits_per_byte.to_vec();
-//             if bits_per_byte.len() < 8 {
-//                 bits_per_byte.resize_with(8, || Boolean::<BaseField>::constant(false));
-//             }
-//
-//             bytes.push(UInt8::<BaseField>::from_bits_le(&bits_per_byte));
-//         });
-//
-//         Ok(bytes)
-//     }
-// }
+impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsGadget<BaseField>
+    for AllocatedNonNativeFieldVar<TargetField, BaseField>
+{
+    fn to_bits<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let params = get_params(
+            TargetField::size_in_bits(),
+            BaseField::size_in_bits(),
+            self.get_optimization_type(),
+        );
+
+        // Reduce to the normal form
+        // Though, a malicious prover can make it slightly larger than p
+        let mut self_normal = self.clone();
+        Reducer::<TargetField, BaseField>::pre_eq_reduce(&mut cs.ns(|| "pre_eq_reduce"), &mut self_normal)?;
+
+        // Therefore, we convert it to bits and enforce that it is in the field
+        let mut bits = Vec::<Boolean>::new();
+        for (i, limb) in self_normal.limbs.iter().enumerate() {
+            bits.extend_from_slice(&Reducer::<TargetField, BaseField>::limb_to_bits(
+                &mut cs.ns(|| format!("limb_to_bits_{}", i)),
+                &limb,
+                params.bits_per_limb,
+            )?);
+        }
+        bits.reverse();
+
+        let mut b = TargetField::characteristic().to_vec();
+        assert_eq!(b[0] % 2, 1);
+        b[0] -= 1; // This works, because the LSB is one, so there's no borrows.
+        let run = Boolean::enforce_smaller_or_equal_than_le(cs.ns(|| "enforce_smaller_or_equal_than_le"), &bits, b)?;
+
+        // We should always end in a "run" of zeros, because
+        // the characteristic is an odd prime. So, this should
+        // be empty.
+        assert!(run.is_empty());
+
+        Ok(bits)
+    }
+
+    fn to_bits_strict<CS: ConstraintSystem<BaseField>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.to_bits(cs)
+    }
+}
+
+impl<TargetField: PrimeField, BaseField: PrimeField> ToBytesGadget<BaseField>
+    for AllocatedNonNativeFieldVar<TargetField, BaseField>
+{
+    fn to_bytes<CS: ConstraintSystem<BaseField>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let bits = self.to_bits(cs)?;
+
+        let mut bytes = Vec::<UInt8>::new();
+        bits.chunks(8).for_each(|bits_per_byte| {
+            let mut bits_per_byte: Vec<Boolean> = bits_per_byte.to_vec();
+            if bits_per_byte.len() < 8 {
+                bits_per_byte.resize_with(8, || Boolean::constant(false));
+            }
+
+            bytes.push(UInt8::from_bits_le(&bits_per_byte));
+        });
+
+        Ok(bytes)
+    }
+
+    fn to_bytes_strict<CS: ConstraintSystem<BaseField>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes(cs)
+    }
+}
 
 impl<TargetField: PrimeField, BaseField: PrimeField> CondSelectGadget<BaseField>
     for AllocatedNonNativeFieldVar<TargetField, BaseField>
@@ -650,123 +682,125 @@ impl<TargetField: PrimeField, BaseField: PrimeField> CondSelectGadget<BaseField>
         1
     }
 }
-//
-// impl<TargetField: PrimeField, BaseField: PrimeField> TwoBitLookupGadget<BaseField>
-//     for AllocatedNonNativeFieldVar<TargetField, BaseField>
-// {
-//     type TableConstant = TargetField;
-//
-//     #[tracing::instrument(target = "r1cs")]
-//     fn two_bit_lookup(bits: &[Boolean<BaseField>], constants: &[Self::TableConstant]) -> R1CSResult<Self> {
-//         debug_assert!(bits.len() == 2);
-//         debug_assert!(constants.len() == 4);
-//
-//         let cs = bits.cs();
-//
-//         let optimization_type = match cs.optimization_goal() {
-//             OptimizationGoal::None => OptimizationType::Constraints,
-//             OptimizationGoal::Constraints => OptimizationType::Constraints,
-//             OptimizationGoal::Weight => OptimizationType::Weight,
-//         };
-//
-//         let params = get_params(
-//             TargetField::size_in_bits(),
-//             BaseField::size_in_bits(),
-//             optimization_type,
-//         );
-//         let mut limbs_constants = Vec::new();
-//         for _ in 0..params.num_limbs {
-//             limbs_constants.push(Vec::new());
-//         }
-//
-//         for constant in constants.iter() {
-//             let representations = AllocatedNonNativeFieldVar::<TargetField, BaseField>::get_limbs_representations(
-//                 constant,
-//                 optimization_type,
-//             )?;
-//
-//             for (i, representation) in representations.iter().enumerate() {
-//                 limbs_constants[i].push(*representation);
-//             }
-//         }
-//
-//         let mut limbs = Vec::new();
-//         for limbs_constant in limbs_constants.iter() {
-//             limbs.push(FpVar::<BaseField>::two_bit_lookup(bits, limbs_constant)?);
-//         }
-//
-//         Ok(AllocatedNonNativeFieldVar::<TargetField, BaseField> {
-//             cs,
-//             limbs,
-//             num_of_additions_over_normal_form: BaseField::zero(),
-//             is_in_the_normal_form: true,
-//             target_phantom: PhantomData,
-//         })
-//     }
-// }
-//
-// impl<TargetField: PrimeField, BaseField: PrimeField> ThreeBitCondNegLookupGadget<BaseField>
-//     for AllocatedNonNativeFieldVar<TargetField, BaseField>
-// {
-//     type TableConstant = TargetField;
-//
-//     #[tracing::instrument(target = "r1cs")]
-//     fn three_bit_cond_neg_lookup(
-//         bits: &[Boolean<BaseField>],
-//         b0b1: &Boolean<BaseField>,
-//         constants: &[Self::TableConstant],
-//     ) -> R1CSResult<Self> {
-//         debug_assert!(bits.len() == 3);
-//         debug_assert!(constants.len() == 4);
-//
-//         let cs = bits.cs().or(b0b1.cs());
-//
-//         let optimization_type = match cs.optimization_goal() {
-//             OptimizationGoal::None => OptimizationType::Constraints,
-//             OptimizationGoal::Constraints => OptimizationType::Constraints,
-//             OptimizationGoal::Weight => OptimizationType::Weight,
-//         };
-//
-//         let params = get_params(
-//             TargetField::size_in_bits(),
-//             BaseField::size_in_bits(),
-//             optimization_type,
-//         );
-//
-//         let mut limbs_constants = Vec::new();
-//         for _ in 0..params.num_limbs {
-//             limbs_constants.push(Vec::new());
-//         }
-//
-//         for constant in constants.iter() {
-//             let representations = AllocatedNonNativeFieldVar::<TargetField, BaseField>::get_limbs_representations(
-//                 constant,
-//                 optimization_type,
-//             )?;
-//
-//             for (i, representation) in representations.iter().enumerate() {
-//                 limbs_constants[i].push(*representation);
-//             }
-//         }
-//
-//         let mut limbs = Vec::new();
-//         for limbs_constant in limbs_constants.iter() {
-//             limbs.push(FpVar::<BaseField>::three_bit_cond_neg_lookup(
-//                 bits,
-//                 b0b1,
-//                 limbs_constant,
-//             )?);
-//         }
-//
-//         Ok(AllocatedNonNativeFieldVar::<TargetField, BaseField> {
-//             cs,
-//             limbs,
-//             num_of_additions_over_normal_form: BaseField::zero(),
-//             is_in_the_normal_form: true,
-//             target_phantom: PhantomData,
-//         })
-//     }
-// }
+
+impl<TargetField: PrimeField, BaseField: PrimeField> TwoBitLookupGadget<BaseField>
+    for AllocatedNonNativeFieldVar<TargetField, BaseField>
+{
+    type TableConstant = TargetField;
+
+    fn two_bit_lookup<CS: ConstraintSystem<BaseField>>(
+        mut cs: CS,
+        bits: &[Boolean],
+        constants: &[Self::TableConstant],
+    ) -> Result<Self, SynthesisError> {
+        debug_assert!(bits.len() == 2);
+        debug_assert!(constants.len() == 4);
+
+        let optimization_type = OptimizationType::Constraints;
+
+        let params = get_params(
+            TargetField::size_in_bits(),
+            BaseField::size_in_bits(),
+            optimization_type,
+        );
+        let mut limbs_constants = Vec::new();
+        for _ in 0..params.num_limbs {
+            limbs_constants.push(Vec::new());
+        }
+
+        for constant in constants.iter() {
+            let representations = AllocatedNonNativeFieldVar::<TargetField, BaseField>::get_limbs_representations(
+                constant,
+                optimization_type,
+            )?;
+
+            for (i, representation) in representations.iter().enumerate() {
+                limbs_constants[i].push(*representation);
+            }
+        }
+
+        let mut limbs = Vec::new();
+        for (i, limbs_constant) in limbs_constants.iter().enumerate() {
+            limbs.push(FpGadget::<BaseField>::two_bit_lookup(
+                &mut cs.ns(|| format!("two_bit_lookup_{}", i)),
+                bits,
+                limbs_constant,
+            )?);
+        }
+
+        Ok(AllocatedNonNativeFieldVar::<TargetField, BaseField> {
+            limbs,
+            num_of_additions_over_normal_form: BaseField::zero(),
+            is_in_the_normal_form: true,
+            target_phantom: PhantomData,
+        })
+    }
+
+    fn cost() -> usize {
+        unimplemented!()
+    }
+}
+
+impl<TargetField: PrimeField, BaseField: PrimeField> ThreeBitCondNegLookupGadget<BaseField>
+    for AllocatedNonNativeFieldVar<TargetField, BaseField>
+{
+    type TableConstant = TargetField;
+
+    fn three_bit_cond_neg_lookup<CS: ConstraintSystem<BaseField>>(
+        mut cs: CS,
+        bits: &[Boolean],
+        b0b1: &Boolean,
+        constants: &[Self::TableConstant],
+    ) -> Result<Self, SynthesisError> {
+        debug_assert!(bits.len() == 3);
+        debug_assert!(constants.len() == 4);
+
+        let optimization_type = OptimizationType::Constraints;
+
+        let params = get_params(
+            TargetField::size_in_bits(),
+            BaseField::size_in_bits(),
+            optimization_type,
+        );
+
+        let mut limbs_constants = Vec::new();
+        for _ in 0..params.num_limbs {
+            limbs_constants.push(Vec::new());
+        }
+
+        for constant in constants.iter() {
+            let representations = AllocatedNonNativeFieldVar::<TargetField, BaseField>::get_limbs_representations(
+                constant,
+                optimization_type,
+            )?;
+
+            for (i, representation) in representations.iter().enumerate() {
+                limbs_constants[i].push(*representation);
+            }
+        }
+
+        let mut limbs = Vec::new();
+        for (i, limbs_constant) in limbs_constants.iter().enumerate() {
+            limbs.push(FpGadget::<BaseField>::three_bit_cond_neg_lookup(
+                cs.ns(|| format!("three_bit_cond_neg_lookup_{}", i)),
+                bits,
+                b0b1,
+                limbs_constant,
+            )?);
+        }
+
+        Ok(AllocatedNonNativeFieldVar::<TargetField, BaseField> {
+            limbs,
+            num_of_additions_over_normal_form: BaseField::zero(),
+            is_in_the_normal_form: true,
+            target_phantom: PhantomData,
+        })
+    }
+
+    fn cost() -> usize {
+        unimplemented!()
+    }
+}
 
 impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, BaseField>
     for AllocatedNonNativeFieldVar<TargetField, BaseField>
@@ -893,10 +927,10 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, Ba
 // impl<TargetField: PrimeField, BaseField: PrimeField> ToConstraintField<BaseField>
 //     for AllocatedNonNativeFieldVar<TargetField, BaseField>
 // {
-//     fn to_field_elements(&self) -> Result<Vec<FpGadget<BaseField>>, SynthesisError> {
+//     fn to_field_elements(&self) -> Result<Vec<BaseField>, SynthesisError> {
 //         // provide a unique representation of the nonnative variable
 //         // step 1: convert it into a bit sequence
-//         let bits = self.to_bits_le()?;
+//         let bits = self.to_bits()?;
 //
 //         // step 2: obtain the parameters for weight-optimized (often, fewer limbs)
 //         let params = get_params(
@@ -909,15 +943,15 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, Ba
 //         let mut limbs = bits
 //             .chunks(params.bits_per_limb)
 //             .map(|chunk| {
-//                 let mut limb = FpVar::<BaseField>::zero();
+//                 let mut limb = FpGadget::<BaseField>::zero();
 //                 let mut w = BaseField::one();
 //                 for b in chunk.iter() {
-//                     limb += FpVar::from(b.clone()) * w;
+//                     limb += FpGadget::from_boolean(b.clone()) * w;
 //                     w.double_in_place();
 //                 }
 //                 limb
 //             })
-//             .collect::<Vec<FpVar<BaseField>>>();
+//             .collect::<Vec<BaseField>>();
 //
 //         limbs.reverse();
 //
