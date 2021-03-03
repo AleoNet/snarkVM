@@ -37,7 +37,6 @@ use std::marker::PhantomData;
 
 /// The allocated form of `NonNativeFieldMulResultVar` (introduced below)
 #[derive(Debug)]
-#[must_use]
 pub struct AllocatedNonNativeFieldMulResultVar<TargetField: PrimeField, BaseField: PrimeField> {
     // /// Constraint system reference
     // pub cs: ConstraintSystemRef<BaseField>,
@@ -50,7 +49,8 @@ pub struct AllocatedNonNativeFieldMulResultVar<TargetField: PrimeField, BaseFiel
 }
 
 impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulResultVar<TargetField, BaseField> {
-    fn from<CS: ConstraintSystem<BaseField>>(
+    /// Returns a `AllocatedNonNativeFieldMulResultVar` given a `AllocatedNonNativeFieldVar`.
+    pub fn from_allocated_nonnative_field_gadget<CS: ConstraintSystem<BaseField>>(
         cs: &mut CS,
         src: &AllocatedNonNativeFieldVar<TargetField, BaseField>,
     ) -> Result<Self, SynthesisError> {
