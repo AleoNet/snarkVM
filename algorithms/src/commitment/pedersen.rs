@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub use crate::crh::pedersen_parameters::PedersenSize;
+
 use crate::{
     commitment::PedersenCommitmentParameters,
-    crh::PedersenSize,
     errors::CommitmentError,
     traits::{CommitmentScheme, CRH},
 };

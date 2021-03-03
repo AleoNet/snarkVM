@@ -18,6 +18,11 @@ license = "GPL-3.0"
 edition = "2018"
 
 [[bench]]
+name = "commitment"
+path = "benches/commitment/pedersen.rs"
+harness = false
+
+[[bench]]
 name = "snark"
 path = "benches/snark/snark.rs"
 harness = false
