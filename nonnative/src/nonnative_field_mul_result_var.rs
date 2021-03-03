@@ -33,7 +33,7 @@ pub enum NonNativeFieldMulResultVar<TargetField: PrimeField, BaseField: PrimeFie
     /// as a constant
     Constant(TargetField),
     /// as an allocated gadget
-    Var(AllocatedNonNativeFieldMulResultVar<TargetField, BaseField>),
+    Variable(AllocatedNonNativeFieldMulResultVar<TargetField, BaseField>),
 }
 
 impl<TargetField: PrimeField, BaseField: PrimeField> NonNativeFieldMulResultVar<TargetField, BaseField> {
@@ -54,7 +54,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> NonNativeFieldMulResultVar<
     ) -> Result<NonNativeFieldVar<TargetField, BaseField>, SynthesisError> {
         match self {
             Self::Constant(c) => Ok(NonNativeFieldVar::Constant(*c)),
-            Self::Var(v) => Ok(NonNativeFieldVar::Var(v.reduce(cs)?)),
+            Self::Variable(v) => Ok(NonNativeFieldVar::Var(v.reduce(cs)?)),
         }
     }
 }
@@ -66,12 +66,22 @@ impl<TargetField: PrimeField, BaseField: PrimeField> NonNativeFieldMulResultVar<
     ) -> Result<Self, SynthesisError> {
         match src {
             NonNativeFieldVar::Constant(c) => Ok(NonNativeFieldMulResultVar::Constant(*c)),
-            NonNativeFieldVar::Var(v) => Ok(NonNativeFieldMulResultVar::Var(AllocatedNonNativeFieldMulResultVar::<
-                TargetField,
-                BaseField,
-            >::from_allocated_nonnative_field_gadget(
-                cs, v
-            )?)),
+            NonNativeFieldVar::Var(v) => Ok(NonNativeFieldMulResultVar::Variable(
+                AllocatedNonNativeFieldMulResultVar::<TargetField, BaseField>::from_allocated_nonnative_field_gadget(
+                    cs, v,
+                )?,
+            )),
+        }
+    }
+
+    /// Add `NonNativeFieldMulResultVar` elements.
+    pub fn add<CS: ConstraintSystem<BaseField>>(&self, cs: &mut CS, other: &Self) -> Result<Self, SynthesisError> {
+        match (self, other) {
+            (Self::Constant(c1), Self::Constant(c2)) => Ok(Self::Constant(*c1 + c2)),
+            (Self::Constant(c), Self::Variable(v)) | (Self::Variable(v), Self::Constant(c)) => {
+                Ok(Self::Variable(v.add_constant(cs, &c)?))
+            }
+            (Self::Variable(v1), Self::Variable(v2)) => Ok(Self::Variable(v1.add(cs, &v2)?)),
         }
     }
 }
