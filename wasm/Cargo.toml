@@ -23,12 +23,14 @@ crate-type = [ "cdylib", "rlib" ]
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
 version = "0.0.6"
+optional = true
 default-features = false
 features = ["wasm"]
 
 [dependencies.snarkvm-curves]
 path = "../curves"
 version = "0.0.6"
+optional = true
 default-features = false
 
 [dependencies.snarkvm-utilities]
@@ -57,3 +59,14 @@ features = [ "serde-serialize" ]
 
 [dev-dependencies.wasm-bindgen-test]
 version = "0.3.20"
+
+[features]
+default = ["full"]
+
+full = [
+    "algorithms",
+    "curves"
+]
+
+algorithms = ["snarkvm-algorithms"]
+curves = ["snarkvm-curves"]

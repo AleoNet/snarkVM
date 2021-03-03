@@ -113,11 +113,13 @@ version = "0.3"
 default = [
     "full",
     "parallel",
+    "snarkvm-curves/default",
+    "snarkvm-fields/default",
     "snarkvm-r1cs/default",
     "snarkvm-utilities/default"
 ]
 
-# Configurations
+# Configuration Modes
 
 full = [
     "commitment",
@@ -130,26 +132,38 @@ full = [
     "msm",
     "prf",
     "signature",
-    "snark"
+    "snark",
+    # We choose to enable parallelization here.
+    "parallel",
 ]
 wasm = [
-    "parallel"
+    "commitment",
+    "commitment_tree",
+    "crh",
+    "encoding",
+    "encryption",
+    "fft",
+    "merkle_tree",
+    "msm",
+    "prf",
+    "signature",
+    "snark",
+    # We choose to enable parallelization here.
+    "parallel",
 ]
-
-commitment = ["blake2"]
+commitment = ["blake2", "crh"]
 commitment_tree = []
 crh = []
 encoding = []
-encryption = []
+encryption = ["signature"]
 fft = []
 merkle_tree = []
 msm = []
 prf = ["blake2"]
-signature = []
-snark = []
+signature = ["encryption"]
+snark = ["fft", "msm"]
 
 # Internal
 
 parallel = []
-
 print-trace = [ "snarkvm-profiler/print-trace" ]

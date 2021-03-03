@@ -14,10 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// pub use snarkvm_algorithms::{
-//     commitment::*,
-//     commitment_tree::*,
-//     crh::*,
 //     encoding::*,
 //     encryption::*,
 //     fft::*,
@@ -26,5 +22,8 @@
 //     prf::*,
 //     signature::*,
 //     snark::*,
-// };
+// #[cfg(feature = "algorithms")]
+// pub use snarkvm_algorithms::{commitment::*, commitment_tree::*, crh::*};
+
+#[cfg(feature = "curves")]
 pub use snarkvm_curves::{bls12_377::*, bw6_761::*, edwards_bls12::*, edwards_sw6::*};
