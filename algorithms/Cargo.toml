@@ -118,6 +118,7 @@ full = [
     "snark"
 ]
 wasm = [
+    "parallel"
 ]
 
 commitment = ["blake2"]
