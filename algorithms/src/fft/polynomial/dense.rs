@@ -51,20 +51,6 @@ impl<F: Field> fmt::Debug for DensePolynomial<F> {
     }
 }
 
-impl<F: Field> Deref for DensePolynomial<F> {
-    type Target = [F];
-
-    fn deref(&self) -> &[F] {
-        &self.coeffs
-    }
-}
-
-impl<F: Field> DerefMut for DensePolynomial<F> {
-    fn deref_mut(&mut self) -> &mut [F] {
-        &mut self.coeffs
-    }
-}
-
 impl<F: Field> DensePolynomial<F> {
     /// Returns the zero polynomial.
     pub fn zero() -> Self {
@@ -107,6 +93,8 @@ impl<F: Field> DensePolynomial<F> {
     pub fn evaluate(&self, point: F) -> F {
         if self.is_zero() {
             return F::zero();
+        } else if point.is_zero() {
+            return self.coeffs[0];
         }
         let mut powers_of_point = vec![F::one()];
         let mut cur = point;
@@ -116,15 +104,15 @@ impl<F: Field> DensePolynomial<F> {
         }
         assert_eq!(powers_of_point.len(), self.coeffs.len());
         let zero = F::zero();
-        powers_of_point
-            .into_par_iter()
+        cfg_into_iter!(powers_of_point)
             .zip(&self.coeffs)
             .map(|(power, coeff)| power * coeff)
             .reduce(|| zero, |a, b| a + &b)
     }
 
-    /// Perform a naive n^2 multiplicatoin of `self` by `other`.
-    pub fn naive_mul(&self, other: &Self) -> Self {
+    /// Perform a naive n^2 multiplication of `self` by `other`.
+    #[deprecated]
+    fn naive_mul(&self, other: &Self) -> Self {
         if self.is_zero() || other.is_zero() {
             DensePolynomial::zero()
         } else {
@@ -144,6 +132,11 @@ impl<F: Field> DensePolynomial<F> {
         let random_coeffs = (0..(d + 1)).map(|_| F::rand(rng)).collect();
         Self::from_coefficients_vec(random_coeffs)
     }
+
+    /// Returns the coefficients of `self`.
+    pub fn coeffs(&self) -> &[F] {
+        &self.coeffs
+    }
 }
 
 impl<F: PrimeField> DensePolynomial<F> {
@@ -152,7 +145,7 @@ impl<F: PrimeField> DensePolynomial<F> {
     pub fn mul_by_vanishing_poly(&self, domain: EvaluationDomain<F>) -> DensePolynomial<F> {
         let mut shifted = vec![F::zero(); domain.size()];
         shifted.extend_from_slice(&self.coeffs);
-        shifted.par_iter_mut().zip(&self.coeffs).for_each(|(s, c)| *s -= c);
+        cfg_iter_mut!(shifted).zip(&self.coeffs).for_each(|(s, c)| *s -= c);
         DensePolynomial::from_coefficients_vec(shifted)
     }
 
@@ -162,8 +155,8 @@ impl<F: PrimeField> DensePolynomial<F> {
         &self,
         domain: EvaluationDomain<F>,
     ) -> Option<(DensePolynomial<F>, DensePolynomial<F>)> {
-        let self_poly: DenseOrSparsePolynomial<F> = self.into();
-        let vanishing_poly: DenseOrSparsePolynomial<F> = domain.vanishing_polynomial().into();
+        let self_poly = DenseOrSparsePolynomial::from(self);
+        let vanishing_poly = DenseOrSparsePolynomial::from(domain.vanishing_polynomial());
         self_poly.divide_with_q_and_r(&vanishing_poly)
     }
 }
@@ -367,6 +360,20 @@ impl<'a, 'b, F: PrimeField> Mul<&'a DensePolynomial<F>> for &'b DensePolynomial<
             self_evals *= &other_evals;
             self_evals.interpolate()
         }
+    }
+}
+
+impl<F: Field> Deref for DensePolynomial<F> {
+    type Target = [F];
+
+    fn deref(&self) -> &[F] {
+        &self.coeffs
+    }
+}
+
+impl<F: Field> DerefMut for DensePolynomial<F> {
+    fn deref_mut(&mut self) -> &mut [F] {
+        &mut self.coeffs
     }
 }
 

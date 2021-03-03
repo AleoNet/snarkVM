@@ -28,6 +28,11 @@ path = "benches/crh/pedersen.rs"
 harness = false
 
 [[bench]]
+name = "fft"
+path = "benches/fft/fft.rs"
+harness = false
+
+[[bench]]
 name = "prf-blake2s"
 path = "benches/prf/blake2s.rs"
 harness = false
