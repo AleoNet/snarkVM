@@ -131,7 +131,7 @@ fn snark_prove(c: &mut Criterion) {
 
 criterion_group! {
     name = gm17_snark;
-    config = Criterion::default().sample_size(10);
+    config = Criterion::default().sample_size(50);
     targets = snark_setup, snark_prove
 }
 

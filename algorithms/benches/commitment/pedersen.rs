@@ -67,13 +67,13 @@ fn pedersen_commitment_evaluation(c: &mut Criterion) {
 
 criterion_group! {
     name = commitment_setup;
-    config = Criterion::default().sample_size(10);
+    config = Criterion::default().sample_size(50);
     targets = pedersen_commitment_setup
 }
 
 criterion_group! {
     name = commitment_evaluation;
-    config = Criterion::default().sample_size(10);
+    config = Criterion::default().sample_size(50);
     targets = pedersen_commitment_evaluation
 }
 
