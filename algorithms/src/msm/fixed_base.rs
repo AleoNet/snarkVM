@@ -18,6 +18,7 @@ use snarkvm_curves::traits::ProjectiveCurve;
 use snarkvm_fields::{FpParameters, PrimeField};
 use snarkvm_utilities::biginteger::BigInteger;
 
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 pub struct FixedBaseMSM;

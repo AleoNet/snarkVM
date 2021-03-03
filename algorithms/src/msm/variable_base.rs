@@ -18,6 +18,7 @@ use snarkvm_curves::traits::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{FpParameters, One, PrimeField, Zero};
 use snarkvm_utilities::biginteger::BigInteger;
 
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 pub struct VariableBaseMSM;

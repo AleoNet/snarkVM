@@ -17,6 +17,7 @@
 //! This is an interface for dealing with the kinds of
 //! parallel computations involved in `snark`. It's
 //! currently just a thin wrapper around `rayon`.
+#[cfg(feature = "parallel")]
 use rayon::{
     Scope,
     {self},

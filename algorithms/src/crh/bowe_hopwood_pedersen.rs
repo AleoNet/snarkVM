@@ -25,7 +25,7 @@ use snarkvm_utilities::{biginteger::biginteger::BigInteger, bytes_to_bits};
 
 use rand::Rng;
 
-#[cfg(feature = "pedersen-parallel")]
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 /// Returns an iterator over `chunk_size` elements of the slice at a

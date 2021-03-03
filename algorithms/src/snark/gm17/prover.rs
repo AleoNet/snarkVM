@@ -32,6 +32,9 @@ use rand::Rng;
 use smallvec::SmallVec;
 use std::ops::{AddAssign, MulAssign};
 
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
+
 type CoeffVec<T> = SmallVec<[T; 2]>;
 
 #[inline]

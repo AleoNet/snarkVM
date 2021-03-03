@@ -31,8 +31,10 @@ use snarkvm_fields::{batch_inversion, FpParameters, PrimeField};
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use rand::Rng;
-use rayon::prelude::*;
 use std::fmt;
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 /// Defines a domain over which finite field (I)FFTs can be performed. Works
 /// only for fields that have a large multiplicative subgroup of size that is

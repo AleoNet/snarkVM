@@ -21,11 +21,13 @@ use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use rand::Rng;
-use rayon::prelude::*;
 use std::{
     fmt,
     ops::{Add, AddAssign, Deref, DerefMut, Div, Mul, Neg, Sub, SubAssign},
 };
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 /// Stores a polynomial in coefficient form.
 #[derive(Clone, PartialEq, Eq, Hash, Default, CanonicalSerialize, CanonicalDeserialize)]
