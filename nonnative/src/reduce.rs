@@ -157,18 +157,18 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
         // TODO (raychu86): Add support for constants.
 
         let mut bits = vec![];
-        for b in bits_considered {
-            bits.push(Boolean::alloc(cs.ns(|| "bit"), || Ok(b))?);
+        for (i, b) in bits_considered.iter().enumerate() {
+            bits.push(Boolean::alloc(cs.ns(|| format!("bit_{}", i)), || Ok(b))?);
         }
 
         let mut bit_sum = FpGadget::zero(cs.ns(|| "zero"))?;
         let mut coeff = BaseField::one();
 
-        for bit in bits.iter().rev() {
-            let temp = (FpGadget::<BaseField>::from_boolean(cs.ns(|| "from_boolean"), (*bit).clone())?)
-                .mul_by_constant(cs.ns(|| "mul_by_coeff"), &coeff)?;
+        for (i, bit) in bits.iter().rev().enumerate() {
+            let temp = (FpGadget::<BaseField>::from_boolean(cs.ns(|| format!("from_boolean_{}", i)), (*bit).clone())?)
+                .mul_by_constant(cs.ns(|| format!("mul_by_coeff_{}", i)), &coeff)?;
 
-            bit_sum = bit_sum.add(cs.ns(|| "add"), &temp)?;
+            bit_sum = bit_sum.add(cs.ns(|| format!("add_{}", i)), &temp)?;
             coeff.double_in_place();
         }
 
@@ -270,7 +270,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
         left: &[FpGadget<BaseField>],
         right: &[FpGadget<BaseField>],
     ) -> Result<(), SynthesisError> {
-        let zero = FpGadget::<BaseField>::zero(cs.ns(|| "zero"))?;
+        let zero = FpGadget::<BaseField>::zero(cs.ns(|| "group_and_check_equality_zero"))?;
 
         let mut limb_pairs = Vec::<(FpGadget<BaseField>, FpGadget<BaseField>)>::new();
         let num_limb_in_a_group =
@@ -294,18 +294,20 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
 
         let mut groupped_limb_pairs = Vec::<(FpGadget<BaseField>, FpGadget<BaseField>, usize)>::new();
 
-        for limb_pairs_in_a_group in limb_pairs.chunks(num_limb_in_a_group) {
-            let mut left_total_limb = zero.clone();
-            let mut right_total_limb = zero.clone();
+        for (i, limb_pairs_in_a_group) in limb_pairs.chunks(num_limb_in_a_group).enumerate() {
+            let mut left_total_limb = FpGadget::<BaseField>::zero(cs.ns(|| format!("left_zero_{}", i)))?;
+            let mut right_total_limb = FpGadget::<BaseField>::zero(cs.ns(|| format!("right_zero_{}", i)))?;
 
-            for (i, ((left_limb, right_limb), shift)) in
+            for (j, ((left_limb, right_limb), shift)) in
                 limb_pairs_in_a_group.iter().zip(shift_array.iter()).enumerate()
             {
-                let left = left_limb.mul_by_constant(cs.ns(|| "left_limb_mul_by_constant"), shift)?;
-                left_total_limb = left_total_limb.add(cs.ns(|| format!("add_left_limb_{}", i)), &left)?;
+                let left =
+                    left_limb.mul_by_constant(cs.ns(|| format!("left_limb_mul_by_constant_{}_{}", i, j)), shift)?;
+                left_total_limb = left_total_limb.add(cs.ns(|| format!("add_left_limb_{}_{}", i, j)), &left)?;
 
-                let right = right_limb.mul_by_constant(cs.ns(|| "right_limb_mul_by_constant"), shift)?;
-                right_total_limb = right_total_limb.add(cs.ns(|| format!("add_right_limb_{}", i)), &right)?;
+                let right =
+                    right_limb.mul_by_constant(cs.ns(|| format!("right_limb_mul_by_constant_{}_{}", i, j)), shift)?;
+                right_total_limb = right_total_limb.add(cs.ns(|| format!("add_right_limb_{}_{}", i, j)), &right)?;
             }
 
             groupped_limb_pairs.push((left_total_limb, right_total_limb, limb_pairs_in_a_group.len()));
@@ -355,10 +357,10 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
 
             let eqn_right = &carry
                 .mul_by_constant(
-                    cs.ns(|| "mul_by_constant"),
+                    cs.ns(|| format!("mul_by_constant_{}", group_id)),
                     &BaseField::from(2u64).pow(&[(shift_per_limb * num_limb_in_this_group) as u64]),
                 )?
-                .add_constant(cs.ns(|| "mul_by_constant"), &remainder_limb)?;
+                .add_constant(cs.ns(|| format!("add_by_constant_{}", group_id)), &remainder_limb)?;
 
             eqn_left.conditional_enforce_equal(
                 cs.ns(|| "conditional_enforce_equal"),

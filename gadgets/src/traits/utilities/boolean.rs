@@ -665,8 +665,12 @@ impl Boolean {
 
         if bits.len() > element_num_bits {
             let mut or_result = Boolean::constant(false);
-            for should_be_zero in &bits[element_num_bits..] {
-                or_result = Boolean::or(cs.ns(|| "or_result OR should_be_zero"), &or_result, &should_be_zero)?;
+            for (i, should_be_zero) in bits[element_num_bits..].iter().enumerate() {
+                or_result = Boolean::or(
+                    cs.ns(|| format!("or_result OR should_be_zero_{}", i)),
+                    &or_result,
+                    &should_be_zero,
+                )?;
                 let _ = bits_iter.next().unwrap();
             }
             or_result.enforce_equal(cs.ns(|| "enforce_equal"), &Boolean::constant(false))?;

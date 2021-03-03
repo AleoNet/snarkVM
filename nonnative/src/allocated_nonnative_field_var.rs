@@ -125,10 +125,11 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
 
         let mut limbs = Vec::new();
 
-        for limb_value in limbs_value.iter() {
-            limbs.push(FpGadget::<BaseField>::alloc_constant(cs.ns(|| "limb"), || {
-                Ok(limb_value)
-            })?);
+        for (i, limb_value) in limbs_value.iter().enumerate() {
+            limbs.push(FpGadget::<BaseField>::alloc_constant(
+                cs.ns(|| format!("alloc_constant_limb_{}", i)),
+                || Ok(limb_value),
+            )?);
         }
 
         Ok(Self {
@@ -154,8 +155,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         assert_eq!(self.get_optimization_type(), other.get_optimization_type());
 
         let mut limbs = Vec::new();
-        for (this_limb, other_limb) in self.limbs.iter().zip(other.limbs.iter()) {
-            limbs.push(this_limb.add(cs.ns(|| "add"), &other_limb)?);
+        for (i, (this_limb, other_limb)) in self.limbs.iter().zip(other.limbs.iter()).enumerate() {
+            limbs.push(this_limb.add(cs.ns(|| format!("add_limb_{}", i)), &other_limb)?);
         }
 
         let mut res = Self {
@@ -851,8 +852,10 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, Ba
         let elem_representations = Self::get_limbs_representations(&elem, optimization_type)?;
         let mut limbs = Vec::new();
 
-        for limb in elem_representations.iter() {
-            limbs.push(FpGadget::<BaseField>::alloc(cs.ns(|| "alloc"), || Ok(limb))?);
+        for (i, limb) in elem_representations.iter().enumerate() {
+            limbs.push(FpGadget::<BaseField>::alloc(cs.ns(|| format!("alloc_{}", i)), || {
+                Ok(limb)
+            })?);
         }
 
         let num_of_additions_over_normal_form = BaseField::zero();
@@ -888,18 +891,23 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, Ba
         let elem_representations = Self::get_limbs_representations(&elem, optimization_type)?;
         let mut limbs = Vec::new();
 
-        for limb in elem_representations.iter() {
-            limbs.push(FpGadget::<BaseField>::alloc_input(cs.ns(|| "alloc_input"), || {
-                Ok(limb)
-            })?);
+        for (i, limb) in elem_representations.iter().enumerate() {
+            limbs.push(FpGadget::<BaseField>::alloc_input(
+                cs.ns(|| format!("alloc_input_{}", i)),
+                || Ok(limb),
+            )?);
         }
 
         let num_of_additions_over_normal_form = BaseField::one();
 
         // Only run for `inputs`
 
-        for limb in limbs.iter().rev().take(params.num_limbs - 1) {
-            Reducer::<TargetField, BaseField>::limb_to_bits(&mut cs.ns(|| "limb_to_bits"), limb, params.bits_per_limb)?;
+        for (i, limb) in limbs.iter().rev().take(params.num_limbs - 1).enumerate() {
+            Reducer::<TargetField, BaseField>::limb_to_bits(
+                &mut cs.ns(|| format!("limb_to_bits_{}", i)),
+                limb,
+                params.bits_per_limb,
+            )?;
         }
 
         Reducer::<TargetField, BaseField>::limb_to_bits(

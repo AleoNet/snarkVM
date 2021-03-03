@@ -298,6 +298,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
     }
 
     pub(crate) fn get_optimization_type(&self) -> OptimizationType {
+        // TODO (raychu86): Implement optimization goal for constraint system.
+
         // match self.cs().optimization_goal() {
         //     OptimizationGoal::None => OptimizationType::Constraints,
         //     OptimizationGoal::Constraints => OptimizationType::Constraints,
