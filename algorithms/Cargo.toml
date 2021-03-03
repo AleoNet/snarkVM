@@ -23,6 +23,11 @@ path = "benches/commitment/pedersen.rs"
 harness = false
 
 [[bench]]
+name = "crh-pedersen"
+path = "benches/crh/pedersen.rs"
+harness = false
+
+[[bench]]
 name = "snark-gm17"
 path = "benches/snark/gm17.rs"
 harness = false

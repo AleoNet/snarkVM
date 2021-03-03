@@ -18,11 +18,10 @@
 extern crate criterion;
 
 use snarkvm_algorithms::{
-    commitment::pedersen::{PedersenCommitment, PedersenSize},
-    traits::CommitmentScheme,
+    crh::pedersen::{PedersenCRH, PedersenSize},
+    traits::CRH,
 };
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
-use snarkvm_utilities::rand::UniformRand;
 
 use criterion::Criterion;
 use rand::{
@@ -31,50 +30,41 @@ use rand::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CommitmentSize;
+pub struct CRHSize;
 
-impl PedersenSize for CommitmentSize {
+impl PedersenSize for CRHSize {
     const NUM_WINDOWS: usize = 8;
     const WINDOW_SIZE: usize = 256;
 }
 
-fn pedersen_commitment_setup(c: &mut Criterion) {
+fn pedersen_crh_setup(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
     c.bench_function("Pedersen Commitment Setup", move |b| {
-        b.iter(|| <PedersenCommitment<EdwardsProjective, CommitmentSize> as CommitmentScheme>::setup(rng))
+        b.iter(|| <PedersenCRH<EdwardsProjective, CRHSize> as CRH>::setup(rng))
     });
 }
 
-fn pedersen_commitment_evaluation(c: &mut Criterion) {
+fn pedersen_crh_hash(c: &mut Criterion) {
     let rng = &mut thread_rng();
-    let parameters = <PedersenCommitment<EdwardsProjective, CommitmentSize> as CommitmentScheme>::setup(rng);
+    let parameters = <PedersenCRH<EdwardsProjective, CRHSize> as CRH>::setup(rng);
     let input = vec![127u8; 256];
 
     c.bench_function("Pedersen Commitment Evaluation", move |b| {
-        b.iter(|| {
-            let randomness =
-                <PedersenCommitment<EdwardsProjective, CommitmentSize> as CommitmentScheme>::Randomness::rand(rng);
-            <PedersenCommitment<EdwardsProjective, CommitmentSize> as CommitmentScheme>::commit(
-                &parameters,
-                &input,
-                &randomness,
-            )
-            .unwrap()
-        })
+        b.iter(|| <PedersenCRH<EdwardsProjective, CRHSize> as CRH>::hash(&parameters, &input).unwrap())
     });
 }
 
 criterion_group! {
-    name = commitment_setup;
+    name = crh_setup;
     config = Criterion::default().sample_size(10);
-    targets = pedersen_commitment_setup
+    targets = pedersen_crh_setup
 }
 
 criterion_group! {
-    name = commitment_evaluation;
+    name = crh_hash;
     config = Criterion::default().sample_size(10);
-    targets = pedersen_commitment_evaluation
+    targets = pedersen_crh_hash
 }
 
-criterion_main!(commitment_setup, commitment_evaluation);
+criterion_main!(crh_setup, crh_hash);
