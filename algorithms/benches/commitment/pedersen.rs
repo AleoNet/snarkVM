@@ -26,7 +26,8 @@ use snarkvm_utilities::rand::UniformRand;
 
 use criterion::Criterion;
 use rand::{
-    thread_rng, {self},
+    thread_rng,
+    {self},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
