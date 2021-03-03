@@ -917,6 +917,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, Ba
     }
 }
 
+// TODO (raychu86): Find solution to pass through CS.
 // impl<TargetField: PrimeField, BaseField: PrimeField> ToConstraintField<BaseField>
 //     for AllocatedNonNativeFieldVar<TargetField, BaseField>
 // {

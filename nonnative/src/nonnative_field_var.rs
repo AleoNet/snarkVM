@@ -16,7 +16,7 @@
 
 #![allow(unused_imports, dead_code)]
 
-use crate::{params::OptimizationType, AllocatedNonNativeFieldVar};
+use crate::{params::OptimizationType, AllocatedNonNativeFieldVar, NonNativeFieldMulResultVar};
 
 use snarkvm_fields::{traits::ToConstraintField, FpParameters, PrimeField};
 use snarkvm_gadgets::{
@@ -120,6 +120,40 @@ impl<TargetField: PrimeField, BaseField: PrimeField> NonNativeFieldVar<TargetFie
             }
             (Self::Var(v1), Self::Var(v2)) => {
                 v1.conditional_enforce_not_equal(&mut cs.ns(|| "conditional_enforce_not_equal"), v2, should_enforce)
+            }
+        }
+    }
+
+    /// The `mul_without_reduce` for `NonNativeFieldVar`
+    pub fn mul_without_reduce<CS: ConstraintSystem<BaseField>>(
+        &self,
+        mut cs: CS,
+        other: &Self,
+    ) -> Result<NonNativeFieldMulResultVar<TargetField, BaseField>, SynthesisError> {
+        match self {
+            Self::Constant(c) => match other {
+                Self::Constant(other_c) => Ok(NonNativeFieldMulResultVar::Constant(*c * other_c)),
+                Self::Var(other_v) => {
+                    let self_v = AllocatedNonNativeFieldVar::<TargetField, BaseField>::alloc_constant(
+                        cs.ns(|| "alloc_constant"),
+                        || Ok(c),
+                    )?;
+                    Ok(NonNativeFieldMulResultVar::Variable(
+                        other_v.mul_without_reduce(&mut cs.ns(|| "mul_without_reduce"), &self_v)?,
+                    ))
+                }
+            },
+            Self::Var(v) => {
+                let other_v = match other {
+                    Self::Constant(other_c) => AllocatedNonNativeFieldVar::<TargetField, BaseField>::alloc_constant(
+                        &mut cs.ns(|| "alloc_constant"),
+                        || Ok(other_c),
+                    )?,
+                    Self::Var(other_v) => other_v.clone(),
+                };
+                Ok(NonNativeFieldMulResultVar::Variable(
+                    v.mul_without_reduce(&mut cs.ns(|| "mul_without_reduce"), &other_v)?,
+                ))
             }
         }
     }
@@ -505,30 +539,41 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ThreeBitCondNegLookupGadget
     }
 }
 
-// impl<TargetField: PrimeField, BaseField: PrimeField> AllocVar<TargetField, BaseField>
+impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, BaseField>
+    for NonNativeFieldVar<TargetField, BaseField>
+{
+    fn alloc_constant<FN, T, CS: ConstraintSystem<BaseField>>(_cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<TargetField>,
+    {
+        Ok(Self::Constant(*value_gen()?.borrow()))
+    }
+
+    #[inline]
+    fn alloc<FN, T, CS: ConstraintSystem<BaseField>>(cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<TargetField>,
+    {
+        AllocatedNonNativeFieldVar::alloc(cs, value_gen).map(Self::Var)
+    }
+
+    #[inline]
+    fn alloc_input<FN, T, CS: ConstraintSystem<BaseField>>(cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<TargetField>,
+    {
+        AllocatedNonNativeFieldVar::alloc_input(cs, value_gen).map(Self::Var)
+    }
+}
+
+// TODO (raychu86): Find solution to pass through CS.
+// impl<TargetField: PrimeField, BaseField: PrimeField> ToConstraintField<BaseField>
 //     for NonNativeFieldVar<TargetField, BaseField>
 // {
-//     fn new_variable<T: Borrow<TargetField>>(
-//         cs: impl Into<Namespace<BaseField>>,
-//         f: impl FnOnce() -> Result<T, SynthesisError>,
-//         mode: AllocationMode,
-//     ) -> R1CSResult<Self> {
-//         let ns = cs.into();
-//         let cs = ns.cs();
-//
-//         if cs == ConstraintSystemRef::None || mode == AllocationMode::Constant {
-//             Ok(Self::Constant(*f()?.borrow()))
-//         } else {
-//             AllocatedNonNativeFieldVar::new_variable(cs, f, mode).map(Self::Var)
-//         }
-//     }
-// }
-//
-// impl<TargetField: PrimeField, BaseField: PrimeField> ToConstraintFieldGadget<BaseField>
-//     for NonNativeFieldVar<TargetField, BaseField>
-// {
-//     #[tracing::instrument(target = "r1cs")]
-//     fn to_constraint_field(&self) -> R1CSResult<Vec<FpVar<BaseField>>> {
+//     fn to_field_elements(&self) -> R1CSResult<Vec<BaseField>> {
 //         // Use one group element to represent the optimization type.
 //         //
 //         // By default, the constant is converted in the weight-optimized type, because it results in fewer elements.
@@ -538,34 +583,9 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ThreeBitCondNegLookupGadget
 //                 OptimizationType::Weight,
 //             )?
 //             .into_iter()
-//             .map(FpVar::constant)
+//             .map(FpGadget::alloc_constant())
 //             .collect()),
 //             Self::Var(v) => v.to_constraint_field(),
-//         }
-//     }
-// }
-//
-// impl<TargetField: PrimeField, BaseField: PrimeField> NonNativeFieldVar<TargetField, BaseField> {
-//     /// The `mul_without_reduce` for `NonNativeFieldVar`
-//     #[tracing::instrument(target = "r1cs")]
-//     pub fn mul_without_reduce(&self, other: &Self) -> R1CSResult<NonNativeFieldMulResultVar<TargetField, BaseField>> {
-//         match self {
-//             Self::Constant(c) => match other {
-//                 Self::Constant(other_c) => Ok(NonNativeFieldMulResultVar::Constant(*c * other_c)),
-//                 Self::Var(other_v) => {
-//                     let self_v = AllocatedNonNativeFieldVar::<TargetField, BaseField>::new_constant(self.cs(), c)?;
-//                     Ok(NonNativeFieldMulResultVar::Var(other_v.mul_without_reduce(&self_v)?))
-//                 }
-//             },
-//             Self::Var(v) => {
-//                 let other_v = match other {
-//                     Self::Constant(other_c) => {
-//                         AllocatedNonNativeFieldVar::<TargetField, BaseField>::new_constant(self.cs(), other_c)?
-//                     }
-//                     Self::Var(other_v) => other_v.clone(),
-//                 };
-//                 Ok(NonNativeFieldMulResultVar::Var(v.mul_without_reduce(&other_v)?))
-//             }
 //         }
 //     }
 // }
