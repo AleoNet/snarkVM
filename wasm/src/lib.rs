@@ -31,3 +31,15 @@ pub use snarkvm_algorithms::{
 
 #[cfg(feature = "curves")]
 pub use snarkvm_curves::{bls12_377::*, bw6_761::*, edwards_bls12::*, edwards_sw6::*};
+
+#[cfg(feature = "fields")]
+pub use snarkvm_fields::*;
+
+#[cfg(feature = "gadgets")]
+pub use snarkvm_gadgets::*;
+
+#[cfg(feature = "polycommit")]
+pub use snarkvm_polycommit::*;
+
+#[cfg(feature = "r1cs")]
+pub use snarkvm_r1cs::*;
