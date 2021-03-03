@@ -430,42 +430,27 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
                 .map(|i| BaseField::from((c + 1) as u128).pow(&vec![i as u64]))
                 .collect();
 
-            // TODO (raychu86): Clean up this syntax.
+            let mut x = FpGadget::zero(&mut cs.ns(|| "zero_x"))?;
+            let mut y = FpGadget::zero(&mut cs.ns(|| "zero_y"))?;
+            let mut z = FpGadget::zero(&mut cs.ns(|| "zero_z"))?;
 
-            let x = self_reduced
-                .limbs
-                .iter()
-                .zip(c_pows.iter())
-                .map(|(var, c_pow)| {
-                    var.mul_by_constant(cs.ns(|| "var_mul_by_constant_c_pow"), c_pow)
-                        .unwrap()
-                })
-                .fold(FpGadget::zero(cs.ns(|| "zero"))?, |sum, i| {
-                    sum.add(cs.ns(|| "sum_add_i"), &i).unwrap()
-                });
+            for (i, (var, c_pow)) in self_reduced.limbs.iter().zip(c_pows.iter()).enumerate() {
+                let temp = var.mul_by_constant(&mut cs.ns(|| format!("var_mul_by_constant_c_pow_x_{}", i)), c_pow)?;
 
-            let y = other_reduced
-                .limbs
-                .iter()
-                .zip(c_pows.iter())
-                .map(|(var, c_pow)| {
-                    var.mul_by_constant(cs.ns(|| "var_mul_by_constant_c_pow"), c_pow)
-                        .unwrap()
-                })
-                .fold(FpGadget::zero(cs.ns(|| "zero"))?, |sum, i| {
-                    sum.add(cs.ns(|| "sum_add_i"), &i).unwrap()
-                });
+                x = x.add(&mut cs.ns(|| format!("sum_add_x_{}", i)), &temp)?
+            }
 
-            let z = prod_limbs
-                .iter()
-                .zip(c_pows.iter())
-                .map(|(var, c_pow)| {
-                    var.mul_by_constant(cs.ns(|| "var_mul_by_constant_c_pow"), c_pow)
-                        .unwrap()
-                })
-                .fold(FpGadget::zero(cs.ns(|| "zero"))?, |sum, i| {
-                    sum.add(cs.ns(|| "sum_add_i"), &i).unwrap()
-                });
+            for (i, (var, c_pow)) in other_reduced.limbs.iter().zip(c_pows.iter()).enumerate() {
+                let temp = var.mul_by_constant(&mut cs.ns(|| format!("var_mul_by_constant_c_pow_y_{}", i)), c_pow)?;
+
+                y = y.add(&mut cs.ns(|| format!("sum_add_y_{}", i)), &temp)?
+            }
+
+            for (i, (var, c_pow)) in prod_limbs.iter().zip(c_pows.iter()).enumerate() {
+                let temp = var.mul_by_constant(&mut cs.ns(|| format!("var_mul_by_constant_c_pow_z_{}", i)), c_pow)?;
+
+                z = z.add(&mut cs.ns(|| format!("sum_add_z_{}", i)), &temp)?
+            }
 
             let x_mul_y = x.mul(cs.ns(|| "x_mul_y"), &y)?;
 
@@ -555,22 +540,22 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         Ok(())
     }
 
-    // pub(crate) fn conditional_enforce_not_equal<CS: ConstraintSystem<BaseField>>(
-    //     &self,
-    //     cs: &mut CS,
-    //     other: &Self,
-    //     should_enforce: &Boolean,
-    // ) -> Result<(), SynthesisError> {
-    //     assert_eq!(self.get_optimization_type(), other.get_optimization_type());
-    //
-    //     let one = Self::one(&mut cs.ns(|| "one"))?;
-    //     let subbed = &self.sub(&mut cs.ns(|| "sub"), other)?;
-    //
-    //     let selected = Self::conditionally_select(cs.ns(|| "conditionally_select"), should_enforce, subbed, &one)?;
-    //     selected.inverse(cs.ns(|| "inverse"));
-    //
-    //     Ok(())
-    // }
+    pub(crate) fn conditional_enforce_not_equal<CS: ConstraintSystem<BaseField>>(
+        &self,
+        cs: &mut CS,
+        other: &Self,
+        should_enforce: &Boolean,
+    ) -> Result<(), SynthesisError> {
+        assert_eq!(self.get_optimization_type(), other.get_optimization_type());
+
+        let one = Self::one(&mut cs.ns(|| "one"))?;
+        let subbed = &self.sub(&mut cs.ns(|| "sub"), other)?;
+
+        let selected = Self::conditionally_select(cs.ns(|| "conditionally_select"), should_enforce, subbed, &one)?;
+        selected.inverse(&mut cs.ns(|| "inverse"))?;
+
+        Ok(())
+    }
 
     pub(crate) fn get_optimization_type(&self) -> OptimizationType {
         // TODO (raychu86): Implement optimization goal.
