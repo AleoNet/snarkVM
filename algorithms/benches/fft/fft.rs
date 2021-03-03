@@ -21,7 +21,7 @@ use snarkvm_curves::bls12_377::Fr as Bls12_377_Fr;
 use snarkvm_fields::PrimeField;
 
 use criterion::{criterion_group, criterion_main, Bencher, BenchmarkId, Criterion};
-use rand::{self, thread_rng, Rng};
+use rand::{self, thread_rng};
 use std::cmp::min;
 
 /// Degree bounds to benchmark on
@@ -107,14 +107,14 @@ fn bench_coset_ifft_in_place<F: PrimeField>(b: &mut Bencher, degree: &usize) {
     });
 }
 
-fn fft_benches<F: PrimeField>(c: &mut Criterion, name: &'static str) {
-    let description = format!("{:?} - subgroup_fft_in_place", name.clone());
+fn fft_benches<F: PrimeField>(c: &mut Criterion, name: &str) {
+    let description = format!("{:?} - subgroup_fft_in_place", name);
     setup_bench(c, &description, bench_fft_in_place::<F>);
-    let description = format!("{:?} - subgroup_ifft_in_place", name.clone());
+    let description = format!("{:?} - subgroup_ifft_in_place", name);
     setup_bench(c, &description, bench_ifft_in_place::<F>);
-    let description = format!("{:?} - coset_fft_in_place", name.clone());
+    let description = format!("{:?} - coset_fft_in_place", name);
     setup_bench(c, &description, bench_coset_fft_in_place::<F>);
-    let description = format!("{:?} - coset_ifft_in_place", name.clone());
+    let description = format!("{:?} - coset_ifft_in_place", name);
     setup_bench(c, &description, bench_coset_ifft_in_place::<F>);
 }
 
