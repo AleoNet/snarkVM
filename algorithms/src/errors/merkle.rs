@@ -14,15 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::CRHError;
-
 #[derive(Debug, Error)]
 pub enum MerkleError {
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
     #[error("{}", _0)]
-    CRHError(CRHError),
+    CRHError(crate::CRHError),
 
     #[error("Incorrect leaf index: {}", _0)]
     IncorrectLeafIndex(usize),
@@ -43,8 +41,8 @@ pub enum MerkleError {
     Message(String),
 }
 
-impl From<CRHError> for MerkleError {
-    fn from(error: CRHError) -> Self {
+impl From<crate::CRHError> for MerkleError {
+    fn from(error: crate::CRHError) -> Self {
         MerkleError::CRHError(error)
     }
 }
