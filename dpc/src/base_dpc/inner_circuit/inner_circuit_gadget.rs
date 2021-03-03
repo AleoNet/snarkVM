@@ -38,13 +38,14 @@ use snarkvm_gadgets::{
         fields::FieldGadget,
         utilities::{
             alloc::AllocGadget,
-            arithmetic::{add::Add, sub::Sub},
             boolean::Boolean,
             eq::{ConditionalEqGadget, EqGadget},
-            int::{Int, Int64},
+            int::Int64,
+            arithmetic::{Add, Sub},
             uint::UInt8,
             ToBitsGadget,
             ToBytesGadget,
+            num::Number,
         },
     },
 };
