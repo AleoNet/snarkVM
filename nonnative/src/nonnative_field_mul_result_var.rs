@@ -1,0 +1,96 @@
+// Copyright (C) 2019-2021 Aleo Systems Inc.
+// This file is part of the snarkVM library.
+
+// The snarkVM library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// The snarkVM library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+
+#![allow(unused_imports, dead_code)]
+
+use crate::{AllocatedNonNativeFieldMulResultVar, NonNativeFieldVar};
+
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+
+/// An intermediate representation especially for the result of a multiplication, containing more limbs.
+/// It is intended for advanced usage to improve the efficiency.
+///
+/// That is, instead of calling `mul`, one can call `mul_without_reduce` to
+/// obtain this intermediate representation, which can still be added.
+/// Then, one can call `reduce` to reduce it back to `NonNativeFieldVar`.
+/// This may help cut the number of reduce operations.
+#[derive(Debug)]
+pub enum NonNativeFieldMulResultVar<TargetField: PrimeField, BaseField: PrimeField> {
+    /// as a constant
+    Constant(TargetField),
+    /// as an allocated gadget
+    Var(AllocatedNonNativeFieldMulResultVar<TargetField, BaseField>),
+}
+
+impl<TargetField: PrimeField, BaseField: PrimeField> NonNativeFieldMulResultVar<TargetField, BaseField> {
+    /// Create a zero `NonNativeFieldMulResultVar` (used for additions)
+    pub fn zero() -> Self {
+        Self::Constant(TargetField::zero())
+    }
+
+    /// Create an `NonNativeFieldMulResultVar` from a constant
+    pub fn constant(v: TargetField) -> Self {
+        Self::Constant(v)
+    }
+
+    /// Reduce the `NonNativeFieldMulResultVar` back to NonNativeFieldVar
+    pub fn reduce<CS: ConstraintSystem<BaseField>>(
+        &self,
+        cs: &mut CS,
+    ) -> Result<NonNativeFieldVar<TargetField, BaseField>, SynthesisError> {
+        match self {
+            Self::Constant(c) => Ok(NonNativeFieldVar::Constant(*c)),
+            Self::Var(v) => Ok(NonNativeFieldVar::Var(v.reduce(cs)?)),
+        }
+    }
+}
+
+impl<TargetField: PrimeField, BaseField: PrimeField> NonNativeFieldMulResultVar<TargetField, BaseField> {
+    fn from_nonnative_field_gadget<CS: ConstraintSystem<BaseField>>(
+        cs: &mut CS,
+        src: &NonNativeFieldVar<TargetField, BaseField>,
+    ) -> Result<Self, SynthesisError> {
+        match src {
+            NonNativeFieldVar::Constant(c) => Ok(NonNativeFieldMulResultVar::Constant(*c)),
+            NonNativeFieldVar::Var(v) => Ok(NonNativeFieldMulResultVar::Var(AllocatedNonNativeFieldMulResultVar::<
+                TargetField,
+                BaseField,
+            >::from_allocated_nonnative_field_gadget(
+                cs, v
+            )?)),
+        }
+    }
+}
+
+// impl_bounded_ops!(
+//     NonNativeFieldMulResultVar<TargetField, BaseField>,
+//     TargetField,
+//     Add,
+//     add,
+//     AddAssign,
+//     add_assign,
+//     |this: &'a NonNativeFieldMulResultVar<TargetField, BaseField>, other: &'a NonNativeFieldMulResultVar<TargetField, BaseField>| {
+//         use NonNativeFieldMulResultVar::*;
+//         match (this, other) {
+//             (Constant(c1), Constant(c2)) => Constant(*c1 + c2),
+//             (Constant(c), Var(v)) | (Var(v), Constant(c)) => Var(v.add_constant(c).unwrap()),
+//             (Var(v1), Var(v2)) => Var(v1.add(v2).unwrap()),
+//         }
+//     },
+//     |this: &'a NonNativeFieldMulResultVar<TargetField, BaseField>, other: TargetField| { this + &NonNativeFieldMulResultVar::Constant(other) },
+//     (TargetField: PrimeField, BaseField: PrimeField),
+// );
