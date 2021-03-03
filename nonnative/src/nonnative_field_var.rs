@@ -19,9 +19,21 @@
 use crate::{params::OptimizationType, AllocatedNonNativeFieldVar};
 
 use snarkvm_fields::{traits::ToConstraintField, FpParameters, PrimeField};
-use snarkvm_gadgets::{fields::FpGadget, traits::fields::FieldGadget, utilities::boolean::Boolean};
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::to_bytes;
+use snarkvm_gadgets::{
+    fields::FpGadget,
+    traits::fields::FieldGadget,
+    utilities::{
+        alloc::AllocGadget,
+        boolean::Boolean,
+        eq::{ConditionalEqGadget, EqGadget},
+        select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
+        uint::{UInt, UInt8},
+        ToBitsGadget,
+        ToBytesGadget,
+    },
+};
+use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
+use snarkvm_utilities::{bititerator::BitIteratorLE, bytes::ToBytes, to_bytes};
 
 use std::{
     borrow::Borrow,
@@ -37,105 +49,161 @@ pub enum NonNativeFieldVar<TargetField: PrimeField, BaseField: PrimeField> {
     Var(AllocatedNonNativeFieldVar<TargetField, BaseField>),
 }
 
-// impl<TargetField: PrimeField, BaseField: PrimeField> PartialEq for NonNativeFieldVar<TargetField, BaseField> {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.value().unwrap_or_default().eq(&other.value().unwrap_or_default())
-//     }
-// }
+impl<TargetField: PrimeField, BaseField: PrimeField> PartialEq for NonNativeFieldVar<TargetField, BaseField> {
+    fn eq(&self, other: &Self) -> bool {
+        self.value().unwrap_or_default().eq(&other.value().unwrap_or_default())
+    }
+}
+
+impl<TargetField: PrimeField, BaseField: PrimeField> Eq for NonNativeFieldVar<TargetField, BaseField> {}
+
+impl<TargetField: PrimeField, BaseField: PrimeField> Hash for NonNativeFieldVar<TargetField, BaseField> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.value().unwrap_or_default().hash(state);
+    }
+}
+
+impl<TargetField: PrimeField, BaseField: PrimeField> NonNativeFieldVar<TargetField, BaseField> {
+    /// Get the value of the gadget.
+    pub fn value(&self) -> Result<TargetField, SynthesisError> {
+        match self {
+            Self::Constant(v) => Ok(*v),
+            Self::Var(v) => v.value(),
+        }
+    }
+
+    /// Constructs `Self` from a `Boolean`: if `other` is false, this outputs
+    /// `zero`, else it outputs `one`.
+    pub fn from_boolean<CS: ConstraintSystem<BaseField>>(cs: CS, other: Boolean) -> Result<Self, SynthesisError> {
+        if let Boolean::Constant(b) = other {
+            Ok(Self::Constant(<TargetField as From<u128>>::from(b as u128)))
+        } else {
+            // `other` is a variable
+            let one = Self::Constant(TargetField::one());
+            let zero = Self::Constant(TargetField::zero());
+            Self::conditionally_select(cs, &other, &one, &zero)
+        }
+    }
+
+    // /// Determine if two `NonNativeFieldVar` instances are equal.
+    // fn is_eq(&self, other: &Self) -> Result<Boolean, SynthesisError> {
+    //     let cs = self.cs().or(other.cs());
+    //
+    //     if cs == ConstraintSystemRef::None {
+    //         Ok(Boolean::Constant(self.value()? == other.value()?))
+    //     } else {
+    //         let should_enforce_equal = Boolean::new_witness(cs, || Ok(self.value()? == other.value()?))?;
+    //
+    //         self.conditional_enforce_equal(other, &should_enforce_equal)?;
+    //         self.conditional_enforce_not_equal(other, &should_enforce_equal.not())?;
+    //
+    //         Ok(should_enforce_equal)
+    //     }
+    // }
+
+    fn conditional_enforce_not_equal<CS: ConstraintSystem<BaseField>>(
+        &self,
+        mut cs: CS,
+        other: &Self,
+        should_enforce: &Boolean,
+    ) -> Result<(), SynthesisError> {
+        match (self, other) {
+            (Self::Constant(c1), Self::Constant(c2)) => {
+                if c1 == c2 {
+                    should_enforce.enforce_equal(cs.ns(|| "enforce_equal"), &Boolean::Constant(false))?;
+                }
+                Ok(())
+            }
+            (Self::Constant(c), Self::Var(v)) | (Self::Var(v), Self::Constant(c)) => {
+                let c = AllocatedNonNativeFieldVar::alloc_constant(cs.ns(|| "alloc_constant"), || Ok(c))?;
+                c.conditional_enforce_not_equal(&mut cs.ns(|| "conditional_enforce_not_equal"), v, should_enforce)
+            }
+            (Self::Var(v1), Self::Var(v2)) => {
+                v1.conditional_enforce_not_equal(&mut cs.ns(|| "conditional_enforce_not_equal"), v2, should_enforce)
+            }
+        }
+    }
+}
+
+impl<TargetField: PrimeField, BaseField: PrimeField> From<AllocatedNonNativeFieldVar<TargetField, BaseField>>
+    for NonNativeFieldVar<TargetField, BaseField>
+{
+    fn from(other: AllocatedNonNativeFieldVar<TargetField, BaseField>) -> Self {
+        Self::Var(other)
+    }
+}
 //
-// impl<TargetField: PrimeField, BaseField: PrimeField> Eq for NonNativeFieldVar<TargetField, BaseField> {}
+// impl<TargetField: PrimeField, BaseField: PrimeField> FieldGadget<TargetField, BaseField>
+//     for NonNativeFieldVar<TargetField, BaseField>
+// {
+//     type Variable = AllocatedNonNativeFieldVar<TargetField, BaseField>;
 //
-// impl<TargetField: PrimeField, BaseField: PrimeField> Hash for NonNativeFieldVar<TargetField, BaseField> {
-//     fn hash<H: Hasher>(&self, state: &mut H) {
-//         self.value().unwrap_or_default().hash(state);
-//     }
-// }
-//
-// impl<TargetField: PrimeField, BaseField: PrimeField> R1CSVar<BaseField> for NonNativeFieldVar<TargetField, BaseField> {
-//     type Value = TargetField;
-//
-//     fn cs(&self) -> ConstraintSystemRef<BaseField> {
+//     fn get_value(&self) -> Option<TargetField> {
 //         match self {
-//             Self::Constant(_) => ConstraintSystemRef::None,
-//             Self::Var(a) => a.cs(),
+//             Self::Constant(v) => Some(*v),
+//             Self::Var(v) => Some(v.value().unwrap()),
 //         }
 //     }
 //
-//     fn value(&self) -> R1CSResult<Self::Value> {
+//     fn get_variable(&self) -> Self::Variable {
 //         match self {
-//             Self::Constant(v) => Ok(*v),
-//             Self::Var(v) => v.value(),
+//             Self::Constant(_v) => unimplemented!(),
+//             Self::Var(v) => v.clone(),
 //         }
 //     }
-// }
 //
-// impl<TargetField: PrimeField, BaseField: PrimeField> From<Boolean<BaseField>>
-//     for NonNativeFieldVar<TargetField, BaseField>
-// {
-//     fn from(other: Boolean<BaseField>) -> Self {
-//         if let Boolean::Constant(b) = other {
-//             Self::Constant(<TargetField as From<u128>>::from(b as u128))
-//         } else {
-//             // `other` is a variable
-//             let one = Self::Constant(TargetField::one());
-//             let zero = Self::Constant(TargetField::zero());
-//             Self::conditionally_select(&other, &one, &zero).unwrap()
-//         }
-//     }
-// }
-//
-// impl<TargetField: PrimeField, BaseField: PrimeField> From<AllocatedNonNativeFieldVar<TargetField, BaseField>>
-//     for NonNativeFieldVar<TargetField, BaseField>
-// {
-//     fn from(other: AllocatedNonNativeFieldVar<TargetField, BaseField>) -> Self {
-//         Self::Var(other)
-//     }
-// }
-//
-// impl<'a, TargetField: PrimeField, BaseField: PrimeField> FieldOpsBounds<'a, TargetField, Self>
-//     for NonNativeFieldVar<TargetField, BaseField>
-// {
-// }
-//
-// impl<'a, TargetField: PrimeField, BaseField: PrimeField>
-//     FieldOpsBounds<'a, TargetField, NonNativeFieldVar<TargetField, BaseField>>
-//     for &'a NonNativeFieldVar<TargetField, BaseField>
-// {
-// }
-//
-// impl<TargetField: PrimeField, BaseField: PrimeField> FieldVar<TargetField, BaseField>
-//     for NonNativeFieldVar<TargetField, BaseField>
-// {
-//     fn zero() -> Self {
-//         Self::Constant(TargetField::zero())
+//     fn zero<CS: ConstraintSystem<F>>(_: CS) -> Result<Self, SynthesisError> {
+//         Ok(Self::Constant(TargetField::zero()))
 //     }
 //
-//     fn one() -> Self {
-//         Self::Constant(TargetField::one())
+//     fn one<CS: ConstraintSystem<F>>(_: CS) -> Result<Self, SynthesisError> {
+//         Ok(Self::Constant(TargetField::one()))
 //     }
 //
-//     fn constant(v: TargetField) -> Self {
-//         Self::Constant(v)
-//     }
-//
-//     #[tracing::instrument(target = "r1cs")]
-//     fn negate(&self) -> R1CSResult<Self> {
+//     fn negate<CS: ConstraintSystem<F>>(&self, _: CS) -> Result<Self, SynthesisError> {
 //         match self {
 //             Self::Constant(c) => Ok(Self::Constant(-*c)),
-//             Self::Var(v) => Ok(Self::Var(v.negate()?)),
+//             Self::Var(v) => Ok(Self::Var(v.negate(cs)?)),
 //         }
 //     }
 //
-//     #[tracing::instrument(target = "r1cs")]
-//     fn inverse(&self) -> R1CSResult<Self> {
+//     fn conditionally_add_constant<CS: ConstraintSystem<F>>(
+//         &self,
+//         _: CS,
+//         _: &Boolean,
+//         _: NativeF,
+//     ) -> Result<Self, SynthesisError> {
+//         unimplemented!()
+//     }
+//
+//     fn add<CS: ConstraintSystem<F>>(&self, _: CS, _: &Self) -> Result<Self, SynthesisError> {
+//         unimplemented!()
+//     }
+//
+//     fn add_constant<CS: ConstraintSystem<F>>(&self, _: CS, _: &Self) -> Result<Self, SynthesisError> {
+//         unimplemented!()
+//     }
+//
+//     fn sub<CS: ConstraintSystem<F>>(&self, _: CS, _: &Self) -> Result<Self, SynthesisError> {
+//         unimplemented!()
+//     }
+//
+//     fn mul<CS: ConstraintSystem<F>>(&self, _: CS, _: &Self) -> Result<Self, SynthesisError> {
+//         unimplemented!()
+//     }
+//
+//     fn mul_by_constant<CS: ConstraintSystem<F>>(&self, _: CS, _: &Self) -> Result<Self, SynthesisError> {
+//         unimplemented!()
+//     }
+//
+//     fn inverse<CS: ConstraintSystem<F>>(&self, _: CS) -> Result<Self, SynthesisError> {
 //         match self {
 //             Self::Constant(c) => Ok(Self::Constant(c.inverse().unwrap_or_default())),
-//             Self::Var(v) => Ok(Self::Var(v.inverse()?)),
+//             Self::Var(v) => Ok(Self::Var(v.inverse(cs)?)),
 //         }
 //     }
 //
-//     #[tracing::instrument(target = "r1cs")]
-//     fn frobenius_map(&self, power: usize) -> R1CSResult<Self> {
+//     fn frobenius_map<CS: ConstraintSystem<F>>(&self, _: CS, power: usize) -> Result<Self, SynthesisError> {
 //         match self {
 //             Self::Constant(c) => Ok(Self::Constant({
 //                 let mut tmp = *c;
@@ -145,11 +213,19 @@ pub enum NonNativeFieldVar<TargetField: PrimeField, BaseField: PrimeField> {
 //             Self::Var(v) => Ok(Self::Var(v.frobenius_map(power)?)),
 //         }
 //     }
+//
+//     fn cost_of_mul() -> usize {
+//         unimplemented!()
+//     }
+//
+//     fn cost_of_inv() -> usize {
+//         unimplemented!()
+//     }
 // }
-//
-// /****************************************************************************/
-// /****************************************************************************/
-//
+
+/****************************************************************************/
+/****************************************************************************/
+
 // impl_bounded_ops!(
 //     NonNativeFieldVar<TargetField, BaseField>,
 //     TargetField,
@@ -215,189 +291,220 @@ pub enum NonNativeFieldVar<TargetField: PrimeField, BaseField: PrimeField> {
 //     },
 //     (TargetField: PrimeField, BaseField: PrimeField),
 // );
-//
-// /****************************************************************************/
-// /****************************************************************************/
-//
-// impl<TargetField: PrimeField, BaseField: PrimeField> EqGadget<BaseField> for NonNativeFieldVar<TargetField, BaseField> {
-//     #[tracing::instrument(target = "r1cs")]
-//     fn is_eq(&self, other: &Self) -> R1CSResult<Boolean<BaseField>> {
-//         let cs = self.cs().or(other.cs());
-//
-//         if cs == ConstraintSystemRef::None {
-//             Ok(Boolean::Constant(self.value()? == other.value()?))
-//         } else {
-//             let should_enforce_equal = Boolean::new_witness(cs, || Ok(self.value()? == other.value()?))?;
-//
-//             self.conditional_enforce_equal(other, &should_enforce_equal)?;
-//             self.conditional_enforce_not_equal(other, &should_enforce_equal.not())?;
-//
-//             Ok(should_enforce_equal)
-//         }
-//     }
-//
-//     #[tracing::instrument(target = "r1cs")]
-//     fn conditional_enforce_equal(&self, other: &Self, should_enforce: &Boolean<BaseField>) -> R1CSResult<()> {
-//         match (self, other) {
-//             (Self::Constant(c1), Self::Constant(c2)) => {
-//                 if c1 != c2 {
-//                     should_enforce.enforce_equal(&Boolean::FALSE)?;
-//                 }
-//                 Ok(())
-//             }
-//             (Self::Constant(c), Self::Var(v)) | (Self::Var(v), Self::Constant(c)) => {
-//                 let cs = v.cs();
-//                 let c = AllocatedNonNativeFieldVar::new_constant(cs, c)?;
-//                 c.conditional_enforce_equal(v, should_enforce)
-//             }
-//             (Self::Var(v1), Self::Var(v2)) => v1.conditional_enforce_equal(v2, should_enforce),
-//         }
-//     }
-//
-//     #[tracing::instrument(target = "r1cs")]
-//     fn conditional_enforce_not_equal(&self, other: &Self, should_enforce: &Boolean<BaseField>) -> R1CSResult<()> {
-//         match (self, other) {
-//             (Self::Constant(c1), Self::Constant(c2)) => {
-//                 if c1 == c2 {
-//                     should_enforce.enforce_equal(&Boolean::FALSE)?;
-//                 }
-//                 Ok(())
-//             }
-//             (Self::Constant(c), Self::Var(v)) | (Self::Var(v), Self::Constant(c)) => {
-//                 let cs = v.cs();
-//                 let c = AllocatedNonNativeFieldVar::new_constant(cs, c)?;
-//                 c.conditional_enforce_not_equal(v, should_enforce)
-//             }
-//             (Self::Var(v1), Self::Var(v2)) => v1.conditional_enforce_not_equal(v2, should_enforce),
-//         }
-//     }
-// }
-//
-// impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsGadget<BaseField>
-//     for NonNativeFieldVar<TargetField, BaseField>
-// {
-//     #[tracing::instrument(target = "r1cs")]
-//     fn to_bits_le(&self) -> R1CSResult<Vec<Boolean<BaseField>>> {
-//         match self {
-//             Self::Constant(_) => self.to_non_unique_bits_le(),
-//             Self::Var(v) => v.to_bits_le(),
-//         }
-//     }
-//
-//     #[tracing::instrument(target = "r1cs")]
-//     fn to_non_unique_bits_le(&self) -> R1CSResult<Vec<Boolean<BaseField>>> {
-//         use ark_ff::BitIteratorLE;
-//         match self {
-//             Self::Constant(c) => Ok(BitIteratorLE::new(&c.into_repr())
-//                 .take((TargetField::Params::MODULUS_BITS) as usize)
-//                 .map(Boolean::constant)
-//                 .collect::<Vec<_>>()),
-//             Self::Var(v) => v.to_non_unique_bits_le(),
-//         }
-//     }
-// }
-//
-// impl<TargetField: PrimeField, BaseField: PrimeField> ToBytesGadget<BaseField>
-//     for NonNativeFieldVar<TargetField, BaseField>
-// {
-//     /// Outputs the unique byte decomposition of `self` in *little-endian*
-//     /// form.
-//     #[tracing::instrument(target = "r1cs")]
-//     fn to_bytes(&self) -> R1CSResult<Vec<UInt8<BaseField>>> {
-//         match self {
-//             Self::Constant(c) => Ok(UInt8::constant_vec(&to_bytes![c].unwrap())),
-//             Self::Var(v) => v.to_bytes(),
-//         }
-//     }
-//
-//     #[tracing::instrument(target = "r1cs")]
-//     fn to_non_unique_bytes(&self) -> R1CSResult<Vec<UInt8<BaseField>>> {
-//         match self {
-//             Self::Constant(c) => Ok(UInt8::constant_vec(&to_bytes![c].unwrap())),
-//             Self::Var(v) => v.to_non_unique_bytes(),
-//         }
-//     }
-// }
-//
-// impl<TargetField: PrimeField, BaseField: PrimeField> CondSelectGadget<BaseField>
-//     for NonNativeFieldVar<TargetField, BaseField>
-// {
-//     #[tracing::instrument(target = "r1cs")]
-//     fn conditionally_select(cond: &Boolean<BaseField>, true_value: &Self, false_value: &Self) -> R1CSResult<Self> {
-//         match cond {
-//             Boolean::Constant(true) => Ok(true_value.clone()),
-//             Boolean::Constant(false) => Ok(false_value.clone()),
-//             _ => {
-//                 let cs = cond.cs();
-//                 let true_value = match true_value {
-//                     Self::Constant(f) => AllocatedNonNativeFieldVar::new_constant(cs.clone(), f)?,
-//                     Self::Var(v) => v.clone(),
-//                 };
-//                 let false_value = match false_value {
-//                     Self::Constant(f) => AllocatedNonNativeFieldVar::new_constant(cs, f)?,
-//                     Self::Var(v) => v.clone(),
-//                 };
-//                 cond.select(&true_value, &false_value).map(Self::Var)
-//             }
-//         }
-//     }
-// }
-//
-// /// Uses two bits to perform a lookup into a table
-// /// `b` is little-endian: `b[0]` is LSB.
-// impl<TargetField: PrimeField, BaseField: PrimeField> TwoBitLookupGadget<BaseField>
-//     for NonNativeFieldVar<TargetField, BaseField>
-// {
-//     type TableConstant = TargetField;
-//
-//     #[tracing::instrument(target = "r1cs")]
-//     fn two_bit_lookup(b: &[Boolean<BaseField>], c: &[Self::TableConstant]) -> R1CSResult<Self> {
-//         debug_assert_eq!(b.len(), 2);
-//         debug_assert_eq!(c.len(), 4);
-//         if b.cs().is_none() {
-//             // We're in the constant case
-//
-//             let lsb = b[0].value()? as usize;
-//             let msb = b[1].value()? as usize;
-//             let index = lsb + (msb << 1);
-//             Ok(Self::Constant(c[index]))
-//         } else {
-//             AllocatedNonNativeFieldVar::two_bit_lookup(b, c).map(Self::Var)
-//         }
-//     }
-// }
-//
-// impl<TargetField: PrimeField, BaseField: PrimeField> ThreeBitCondNegLookupGadget<BaseField>
-//     for NonNativeFieldVar<TargetField, BaseField>
-// {
-//     type TableConstant = TargetField;
-//
-//     #[tracing::instrument(target = "r1cs")]
-//     fn three_bit_cond_neg_lookup(
-//         b: &[Boolean<BaseField>],
-//         b0b1: &Boolean<BaseField>,
-//         c: &[Self::TableConstant],
-//     ) -> R1CSResult<Self> {
-//         debug_assert_eq!(b.len(), 3);
-//         debug_assert_eq!(c.len(), 4);
-//
-//         if b.cs().or(b0b1.cs()).is_none() {
-//             // We're in the constant case
-//
-//             let lsb = b[0].value()? as usize;
-//             let msb = b[1].value()? as usize;
-//             let index = lsb + (msb << 1);
-//             let intermediate = c[index];
-//
-//             let is_negative = b[2].value()?;
-//             let y = if is_negative { -intermediate } else { intermediate };
-//             Ok(Self::Constant(y))
-//         } else {
-//             AllocatedNonNativeFieldVar::three_bit_cond_neg_lookup(b, b0b1, c).map(Self::Var)
-//         }
-//     }
-// }
-//
+
+/****************************************************************************/
+/****************************************************************************/
+
+impl<TargetField: PrimeField, BaseField: PrimeField> EqGadget<BaseField> for NonNativeFieldVar<TargetField, BaseField> {
+    fn enforce_equal<CS: ConstraintSystem<BaseField>>(&self, cs: CS, other: &Self) -> Result<(), SynthesisError> {
+        self.conditional_enforce_equal(cs, other, &Boolean::constant(true))
+    }
+}
+
+impl<TargetField: PrimeField, BaseField: PrimeField> ConditionalEqGadget<BaseField>
+    for NonNativeFieldVar<TargetField, BaseField>
+{
+    fn conditional_enforce_equal<CS: ConstraintSystem<BaseField>>(
+        &self,
+        mut cs: CS,
+        other: &Self,
+        condition: &Boolean,
+    ) -> Result<(), SynthesisError> {
+        match (self, other) {
+            (Self::Constant(c1), Self::Constant(c2)) => {
+                if c1 != c2 {
+                    condition.enforce_equal(cs.ns(|| "enforce_equal"), &Boolean::Constant(false))?;
+                }
+                Ok(())
+            }
+            (Self::Constant(c), Self::Var(v)) | (Self::Var(v), Self::Constant(c)) => {
+                let c = AllocatedNonNativeFieldVar::alloc_constant(cs.ns(|| "alloc_constant"), || Ok(c))?;
+                c.conditional_enforce_equal(&mut cs.ns(|| "conditional_enforce_equal"), v, condition)
+            }
+            (Self::Var(v1), Self::Var(v2)) => {
+                v1.conditional_enforce_equal(&mut cs.ns(|| "conditional_enforce_equal"), v2, condition)
+            }
+        }
+    }
+
+    fn cost() -> usize {
+        unimplemented!()
+    }
+}
+
+impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsGadget<BaseField>
+    for NonNativeFieldVar<TargetField, BaseField>
+{
+    fn to_bits<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        match self {
+            Self::Constant(_) => self.to_bits_strict(cs.ns(|| "to_bits_strict")),
+            Self::Var(v) => v.to_bits(cs.ns(|| "to_bits")),
+        }
+    }
+
+    fn to_bits_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        match self {
+            Self::Constant(c) => Ok(BitIteratorLE::new(&c.into_repr())
+                .take((TargetField::Parameters::MODULUS_BITS) as usize)
+                .map(Boolean::constant)
+                .collect::<Vec<_>>()),
+            Self::Var(v) => v.to_bits_strict(cs.ns(|| "to_bits_strict")),
+        }
+    }
+}
+
+impl<TargetField: PrimeField, BaseField: PrimeField> ToBytesGadget<BaseField>
+    for NonNativeFieldVar<TargetField, BaseField>
+{
+    /// Outputs the unique byte decomposition of `self` in *little-endian*
+    /// form.
+    fn to_bytes<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        match self {
+            Self::Constant(c) => Ok(UInt8::constant_vec(&to_bytes![c].unwrap())),
+            Self::Var(v) => v.to_bytes(cs.ns(|| "to_bytes")),
+        }
+    }
+
+    fn to_bytes_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        match self {
+            Self::Constant(c) => Ok(UInt8::constant_vec(&to_bytes![c].unwrap())),
+            Self::Var(v) => v.to_bytes_strict(cs.ns(|| "to_bytes_strict")),
+        }
+    }
+}
+
+impl<TargetField: PrimeField, BaseField: PrimeField> CondSelectGadget<BaseField>
+    for NonNativeFieldVar<TargetField, BaseField>
+{
+    fn conditionally_select<CS: ConstraintSystem<BaseField>>(
+        mut cs: CS,
+        cond: &Boolean,
+        first: &Self,
+        second: &Self,
+    ) -> Result<Self, SynthesisError> {
+        match cond {
+            Boolean::Constant(true) => Ok(first.clone()),
+            Boolean::Constant(false) => Ok(second.clone()),
+            _ => {
+                let first = match first {
+                    Self::Constant(f) => {
+                        AllocatedNonNativeFieldVar::alloc_constant(cs.ns(|| "alloc_constant_first"), || Ok(f))?
+                    }
+                    Self::Var(v) => v.clone(),
+                };
+                let second = match second {
+                    Self::Constant(f) => {
+                        AllocatedNonNativeFieldVar::alloc_constant(cs.ns(|| "alloc_constant_second"), || Ok(f))?
+                    }
+                    Self::Var(v) => v.clone(),
+                };
+
+                Ok(Self::Var(AllocatedNonNativeFieldVar::conditionally_select(
+                    cs, &cond, &first, &second,
+                )?))
+            }
+        }
+    }
+
+    fn cost() -> usize {
+        unimplemented!()
+    }
+}
+
+/// Uses two bits to perform a lookup into a table
+/// `b` is little-endian: `b[0]` is LSB.
+impl<TargetField: PrimeField, BaseField: PrimeField> TwoBitLookupGadget<BaseField>
+    for NonNativeFieldVar<TargetField, BaseField>
+{
+    type TableConstant = TargetField;
+
+    fn two_bit_lookup<CS: ConstraintSystem<BaseField>>(
+        mut cs: CS,
+        bits: &[Boolean],
+        constants: &[Self::TableConstant],
+    ) -> Result<Self, SynthesisError> {
+        debug_assert_eq!(bits.len(), 2);
+        debug_assert_eq!(constants.len(), 4);
+
+        let mut constant = true;
+
+        for b in bits {
+            match b {
+                Boolean::Is(_) | Boolean::Not(_) => constant = false,
+                _ => {}
+            }
+        }
+
+        if constant {
+            // We're in the constant case
+
+            let lsb = bits[0].get_value().get()? as usize;
+            let msb = bits[1].get_value().get()? as usize;
+            let index = lsb + (msb << 1);
+            Ok(Self::Constant(constants[index]))
+        } else {
+            AllocatedNonNativeFieldVar::two_bit_lookup(cs.ns(|| "two_bit_lookup"), bits, constants).map(Self::Var)
+        }
+    }
+
+    fn cost() -> usize {
+        unimplemented!()
+    }
+}
+
+impl<TargetField: PrimeField, BaseField: PrimeField> ThreeBitCondNegLookupGadget<BaseField>
+    for NonNativeFieldVar<TargetField, BaseField>
+{
+    type TableConstant = TargetField;
+
+    fn three_bit_cond_neg_lookup<CS: ConstraintSystem<BaseField>>(
+        mut cs: CS,
+        bits: &[Boolean],
+        b0b1: &Boolean,
+        constants: &[Self::TableConstant],
+    ) -> Result<Self, SynthesisError> {
+        debug_assert_eq!(bits.len(), 3);
+        debug_assert_eq!(constants.len(), 4);
+
+        let mut constant = match b0b1 {
+            Boolean::Constant(_) => true,
+            _ => false,
+        };
+
+        for b in bits {
+            match b {
+                Boolean::Is(_) | Boolean::Not(_) => constant = false,
+                _ => {}
+            }
+        }
+
+        if constant {
+            // We're in the constant case
+
+            let lsb = bits[0].get_value().get()? as usize;
+            let msb = bits[1].get_value().get()? as usize;
+            let index = lsb + (msb << 1);
+            let intermediate = constants[index];
+
+            let is_negative = bits[2].get_value().get()?;
+            let y = if is_negative { -intermediate } else { intermediate };
+            Ok(Self::Constant(y))
+        } else {
+            AllocatedNonNativeFieldVar::three_bit_cond_neg_lookup(
+                cs.ns(|| "three_bit_cond_neg_lookup"),
+                bits,
+                b0b1,
+                constants,
+            )
+            .map(Self::Var)
+        }
+    }
+
+    fn cost() -> usize {
+        unimplemented!()
+    }
+}
+
 // impl<TargetField: PrimeField, BaseField: PrimeField> AllocVar<TargetField, BaseField>
 //     for NonNativeFieldVar<TargetField, BaseField>
 // {

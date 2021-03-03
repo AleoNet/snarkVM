@@ -85,22 +85,3 @@ impl<TargetField: PrimeField, BaseField: PrimeField> NonNativeFieldMulResultVar<
         }
     }
 }
-
-// impl_bounded_ops!(
-//     NonNativeFieldMulResultVar<TargetField, BaseField>,
-//     TargetField,
-//     Add,
-//     add,
-//     AddAssign,
-//     add_assign,
-//     |this: &'a NonNativeFieldMulResultVar<TargetField, BaseField>, other: &'a NonNativeFieldMulResultVar<TargetField, BaseField>| {
-//         use NonNativeFieldMulResultVar::*;
-//         match (this, other) {
-//             (Constant(c1), Constant(c2)) => Constant(*c1 + c2),
-//             (Constant(c), Var(v)) | (Var(v), Constant(c)) => Var(v.add_constant(c).unwrap()),
-//             (Var(v1), Var(v2)) => Var(v1.add(v2).unwrap()),
-//         }
-//     },
-//     |this: &'a NonNativeFieldMulResultVar<TargetField, BaseField>, other: TargetField| { this + &NonNativeFieldMulResultVar::Constant(other) },
-//     (TargetField: PrimeField, BaseField: PrimeField),
-// );
