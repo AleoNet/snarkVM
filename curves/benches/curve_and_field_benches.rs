@@ -18,7 +18,6 @@ use criterion::{criterion_group, criterion_main};
 
 mod bls12_377;
 mod bw6_761;
-// mod sw6;
 
 criterion_group!(
     bls12_377_ec,
