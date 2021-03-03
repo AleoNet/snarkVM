@@ -56,6 +56,21 @@ macro_rules! cfg_into_iter {
     }};
 }
 
+/// Returns an iterator over `chunk_size` elements of the slice at a
+/// time.
+#[macro_export]
+macro_rules! cfg_chunks {
+    ($e: expr, $size: expr) => {{
+        #[cfg(feature = "parallel")]
+        let result = $e.par_chunks($size);
+
+        #[cfg(not(feature = "parallel"))]
+        let result = $e.chunks($size);
+
+        result
+    }};
+}
+
 /// Returns an iterator over `chunk_size` elements of the slice at a time.
 #[macro_export]
 macro_rules! cfg_chunks_mut {
@@ -65,6 +80,20 @@ macro_rules! cfg_chunks_mut {
 
         #[cfg(not(feature = "parallel"))]
         let result = $e.chunks_mut($size);
+
+        result
+    }};
+}
+
+/// Applies the reduce operation over an iterator.
+#[macro_export]
+macro_rules! cfg_reduce {
+    ($e: expr, $default: expr, $op: expr) => {{
+        #[cfg(feature = "parallel")]
+        let result = $e.reduce($default, $op);
+
+        #[cfg(not(feature = "parallel"))]
+        let result = $e.fold($default(), $op);
 
         result
     }};

@@ -14,9 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod ec;
-mod fq;
-mod fq3;
-mod fq6;
-mod fr;
-mod pairing;
+#[macro_use]
+extern crate criterion;
+
+use snarkvm_algorithms::{prf::blake2s::Blake2s, traits::PRF};
+
+use criterion::Criterion;
+use rand::{thread_rng, Rng};
+
+fn blake2s_prf_evaluation(c: &mut Criterion) {
+    let rng = &mut thread_rng();
+    let input: [u8; 32] = rng.gen();
+    let seed: [u8; 32] = rng.gen();
+
+    c.bench_function("Blake2s PRF evaluation", move |b| {
+        b.iter(|| Blake2s::evaluate(&seed, &input).unwrap())
+    });
+}
+
+criterion_group! {
+    name = prf_evaluation;
+    config = Criterion::default().sample_size(50);
+    targets = blake2s_prf_evaluation
+}
+
+criterion_main!(prf_evaluation);

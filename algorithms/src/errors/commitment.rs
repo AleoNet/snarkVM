@@ -16,8 +16,6 @@
 
 use std::io::{Error, ErrorKind};
 
-use crate::CRHError;
-
 #[derive(Debug, Error)]
 pub enum CommitmentError {
     #[error("{}: {}", _0, _1)]
@@ -27,14 +25,14 @@ pub enum CommitmentError {
     IncorrectInputLength(usize, usize, usize),
 
     #[error("{}", _0)]
-    CRHError(CRHError),
+    CRHError(crate::CRHError),
 
     #[error("{}", _0)]
     Message(String),
 }
 
-impl From<CRHError> for CommitmentError {
-    fn from(error: CRHError) -> Self {
+impl From<crate::CRHError> for CommitmentError {
+    fn from(error: crate::CRHError) -> Self {
         CommitmentError::CRHError(error)
     }
 }

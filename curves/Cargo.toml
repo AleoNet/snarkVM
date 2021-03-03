@@ -18,17 +18,19 @@ license = "GPL-3.0"
 edition = "2018"
 
 [[bench]]
-name = "curve_and_field_benches"
-path = "benches/curve_and_field_benches.rs"
+name = "curves"
+path = "benches/curves.rs"
 harness = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
 version = "0.0.6"
+default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.0.6"
+default-features = false
 
 [dependencies.derivative]
 version = "2"

@@ -26,25 +26,28 @@ use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 #[derive(Clone, PartialEq, Eq, Hash, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Evaluations<F: PrimeField> {
     /// The evaluations of a polynomial over the domain `D`
-    pub evals: Vec<F>,
+    pub evaluations: Vec<F>,
     #[doc(hidden)]
     domain: EvaluationDomain<F>,
 }
 
 impl<F: PrimeField> Evaluations<F> {
     /// Construct `Self` from evaluations and a domain.
-    pub fn from_vec_and_domain(evals: Vec<F>, domain: EvaluationDomain<F>) -> Self {
-        Self { evals, domain }
+    pub fn from_vec_and_domain(evaluations: Vec<F>, domain: EvaluationDomain<F>) -> Self {
+        Self { evaluations, domain }
     }
 
     /// Interpolate a polynomial from a list of evaluations
     pub fn interpolate_by_ref(&self) -> DensePolynomial<F> {
-        DensePolynomial::from_coefficients_vec(self.domain.ifft(&self.evals))
+        DensePolynomial::from_coefficients_vec(self.domain.ifft(&self.evaluations))
     }
 
     /// Interpolate a polynomial from a list of evaluations
     pub fn interpolate(self) -> DensePolynomial<F> {
-        let Self { mut evals, domain } = self;
+        let Self {
+            evaluations: mut evals,
+            domain,
+        } = self;
         domain.ifft_in_place(&mut evals);
         DensePolynomial::from_coefficients_vec(evals)
     }
@@ -54,7 +57,7 @@ impl<F: PrimeField> std::ops::Index<usize> for Evaluations<F> {
     type Output = F;
 
     fn index(&self, index: usize) -> &F {
-        &self.evals[index]
+        &self.evaluations[index]
     }
 }
 
@@ -73,7 +76,10 @@ impl<'a, F: PrimeField> MulAssign<&'a Evaluations<F>> for Evaluations<F> {
     #[inline]
     fn mul_assign(&mut self, other: &'a Evaluations<F>) {
         assert_eq!(self.domain, other.domain, "domains are unequal");
-        self.evals.iter_mut().zip(&other.evals).for_each(|(a, b)| *a *= b);
+        self.evaluations
+            .iter_mut()
+            .zip(&other.evaluations)
+            .for_each(|(a, b)| *a *= b);
     }
 }
 
@@ -92,7 +98,10 @@ impl<'a, F: PrimeField> AddAssign<&'a Evaluations<F>> for Evaluations<F> {
     #[inline]
     fn add_assign(&mut self, other: &'a Evaluations<F>) {
         assert_eq!(self.domain, other.domain, "domains are unequal");
-        self.evals.iter_mut().zip(&other.evals).for_each(|(a, b)| *a += b);
+        self.evaluations
+            .iter_mut()
+            .zip(&other.evaluations)
+            .for_each(|(a, b)| *a += b);
     }
 }
 
@@ -111,7 +120,10 @@ impl<'a, F: PrimeField> SubAssign<&'a Evaluations<F>> for Evaluations<F> {
     #[inline]
     fn sub_assign(&mut self, other: &'a Evaluations<F>) {
         assert_eq!(self.domain, other.domain, "domains are unequal");
-        self.evals.iter_mut().zip(&other.evals).for_each(|(a, b)| *a -= b);
+        self.evaluations
+            .iter_mut()
+            .zip(&other.evaluations)
+            .for_each(|(a, b)| *a -= b);
     }
 }
 
@@ -130,6 +142,9 @@ impl<'a, F: PrimeField> DivAssign<&'a Evaluations<F>> for Evaluations<F> {
     #[inline]
     fn div_assign(&mut self, other: &'a Evaluations<F>) {
         assert_eq!(self.domain, other.domain, "domains are unequal");
-        self.evals.iter_mut().zip(&other.evals).for_each(|(a, b)| *a /= b);
+        self.evaluations
+            .iter_mut()
+            .zip(&other.evaluations)
+            .for_each(|(a, b)| *a /= b);
     }
 }

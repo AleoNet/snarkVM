@@ -20,9 +20,47 @@ edition = "2018"
 [lib]
 crate-type = [ "cdylib", "rlib" ]
 
+[dependencies.snarkvm-algorithms]
+path = "../algorithms"
+version = "0.0.6"
+optional = true
+default-features = false
+features = ["wasm", "parallel"]
+
 [dependencies.snarkvm-curves]
 path = "../curves"
 version = "0.0.6"
+optional = true
+default-features = false
+
+[dependencies.snarkvm-fields]
+path = "../fields"
+version = "0.0.6"
+optional = true
+default-features = false
+
+[dependencies.snarkvm-gadgets]
+path = "../gadgets"
+version = "0.0.6"
+optional = true
+default-features = false
+
+#[dependencies.snarkvm-marlin]
+#path = "../marlin"
+#version = "0.0.6"
+#optional = true
+#default-features = false
+
+[dependencies.snarkvm-polycommit]
+path = "../polycommit"
+version = "0.0.6"
+optional = true
+default-features = false
+
+[dependencies.snarkvm-r1cs]
+path = "../r1cs"
+version = "0.0.6"
+optional = true
 default-features = false
 
 [dependencies.snarkvm-utilities]
@@ -51,3 +89,24 @@ features = [ "serde-serialize" ]
 
 [dev-dependencies.wasm-bindgen-test]
 version = "0.3.20"
+
+[features]
+default = ["full"]
+
+full = [
+    "algorithms",
+    "curves",
+    "fields",
+    "gadgets",
+#    "marlin",
+    "polycommit",
+    "r1cs"
+]
+
+algorithms = ["snarkvm-algorithms"]
+curves = ["snarkvm-curves"]
+fields = ["snarkvm-fields"]
+gadgets = ["snarkvm-gadgets"]
+#marlin = ["snarkvm-marlin"]
+polycommit = ["snarkvm-polycommit"]
+r1cs = ["snarkvm-r1cs"]

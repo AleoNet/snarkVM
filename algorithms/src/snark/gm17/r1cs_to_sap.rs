@@ -25,6 +25,9 @@ use snarkvm_r1cs::{
 
 use std::ops::{AddAssign, SubAssign};
 
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
+
 pub(crate) struct R1CStoSAP;
 
 impl R1CStoSAP {

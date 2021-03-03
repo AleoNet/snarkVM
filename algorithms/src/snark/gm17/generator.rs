@@ -30,6 +30,9 @@ use snarkvm_utilities::rand::UniformRand;
 
 use rand::Rng;
 
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
+
 /// Generates a random common reference string for
 /// a circuit.
 pub fn generate_random_parameters<E, C, R>(circuit: &C, rng: &mut R) -> Result<Parameters<E>, SynthesisError>

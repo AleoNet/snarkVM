@@ -18,8 +18,33 @@ license = "GPL-3.0"
 edition = "2018"
 
 [[bench]]
-name = "snark"
-path = "benches/snark/snark.rs"
+name = "commitment-pedersen"
+path = "benches/commitment/pedersen.rs"
+harness = false
+
+[[bench]]
+name = "crh-pedersen"
+path = "benches/crh/pedersen.rs"
+harness = false
+
+[[bench]]
+name = "fft"
+path = "benches/fft/fft.rs"
+harness = false
+
+[[bench]]
+name = "prf-blake2s"
+path = "benches/prf/blake2s.rs"
+harness = false
+
+[[bench]]
+name = "signature-schnorr"
+path = "benches/signature/schnorr.rs"
+harness = false
+
+[[bench]]
+name = "snark-gm17"
+path = "benches/snark/gm17.rs"
 harness = false
 
 [[example]]
@@ -53,6 +78,7 @@ default-features = false
 
 [dependencies.blake2]
 version = "0.9"
+optional = true
 
 [dependencies.derivative]
 version = "2"
@@ -65,15 +91,18 @@ version = "0.10.0"
 
 [dependencies.rand]
 version = "0.8"
+default-features = false
 
 [dependencies.rand_chacha]
 version = "0.3"
+default-features = false
 
 [dependencies.rayon]
 version = "1"
 
 [dependencies.sha2]
 version = "0.9"
+default-features = false
 
 [dependencies.smallvec]
 version = "1.6"
@@ -92,9 +121,55 @@ version = "0.3"
 
 [features]
 default = [
-  "pedersen-parallel",
-  "snarkvm-r1cs/default",
-  "snarkvm-utilities/default"
+    "full",
+    "parallel",
+    "snarkvm-curves/default",
+    "snarkvm-fields/default",
+    "snarkvm-r1cs/default",
+    "snarkvm-utilities/default"
 ]
-pedersen-parallel = [ ]
+
+# Configuration Modes
+
+full = [
+    "commitment",
+    "commitment_tree",
+    "crh",
+    "encoding",
+    "encryption",
+    "fft",
+    "merkle_tree",
+    "msm",
+    "prf",
+    "signature",
+    "snark",
+]
+wasm = [
+    "commitment",
+    "commitment_tree",
+    "crh",
+    "encoding",
+    "encryption",
+    "fft",
+    "merkle_tree",
+    "msm",
+    "prf",
+    "signature",
+    "snark",
+]
+commitment = ["blake2", "crh"]
+commitment_tree = []
+crh = []
+encoding = []
+encryption = ["signature"]
+fft = []
+merkle_tree = []
+msm = []
+prf = ["blake2"]
+signature = ["encryption"]
+snark = ["fft", "msm"]
+
+# Internal
+
+parallel = []
 print-trace = [ "snarkvm-profiler/print-trace" ]
