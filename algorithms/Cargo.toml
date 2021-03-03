@@ -143,8 +143,6 @@ full = [
     "prf",
     "signature",
     "snark",
-    # We choose to enable parallelization here.
-    "parallel",
 ]
 wasm = [
     "commitment",
@@ -158,8 +156,6 @@ wasm = [
     "prf",
     "signature",
     "snark",
-    # We choose to enable parallelization here.
-    "parallel",
 ]
 commitment = ["blake2", "crh"]
 commitment_tree = []

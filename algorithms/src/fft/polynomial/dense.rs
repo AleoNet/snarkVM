@@ -104,26 +104,10 @@ impl<F: Field> DensePolynomial<F> {
         }
         assert_eq!(powers_of_point.len(), self.coeffs.len());
         let zero = F::zero();
-        cfg_into_iter!(powers_of_point)
+        let mapping = cfg_into_iter!(powers_of_point)
             .zip(&self.coeffs)
-            .map(|(power, coeff)| power * coeff)
-            .reduce(|| zero, |a, b| a + &b)
-    }
-
-    /// Perform a naive n^2 multiplication of `self` by `other`.
-    #[deprecated]
-    fn naive_mul(&self, other: &Self) -> Self {
-        if self.is_zero() || other.is_zero() {
-            DensePolynomial::zero()
-        } else {
-            let mut result = vec![F::zero(); self.degree() + other.degree() + 1];
-            for (i, self_coeff) in self.coeffs.iter().enumerate() {
-                for (j, other_coeff) in other.coeffs.iter().enumerate() {
-                    result[i + j] += &(*self_coeff * other_coeff);
-                }
-            }
-            DensePolynomial::from_coefficients_vec(result)
-        }
+            .map(|(power, coeff)| power * coeff);
+        cfg_reduce!(mapping, || zero, |a, b| a + &b)
     }
 
     /// Outputs a polynomial of degree `d` where each coefficient is sampled uniformly at random
@@ -136,6 +120,22 @@ impl<F: Field> DensePolynomial<F> {
     /// Returns the coefficients of `self`.
     pub fn coeffs(&self) -> &[F] {
         &self.coeffs
+    }
+
+    /// Perform a naive n^2 multiplication of `self` by `other`.
+    #[cfg(test)]
+    fn naive_mul(&self, other: &Self) -> Self {
+        if self.is_zero() || other.is_zero() {
+            DensePolynomial::zero()
+        } else {
+            let mut result = vec![F::zero(); self.degree() + other.degree() + 1];
+            for (i, self_coeff) in self.coeffs.iter().enumerate() {
+                for (j, other_coeff) in other.coeffs.iter().enumerate() {
+                    result[i + j] += &(*self_coeff * other_coeff);
+                }
+            }
+            DensePolynomial::from_coefficients_vec(result)
+        }
     }
 }
 

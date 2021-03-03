@@ -168,20 +168,6 @@ impl<F: PrimeField> EvaluationDomain<F> {
         cfg_iter_mut!(evals).for_each(|val| *val *= &self.size_inv);
     }
 
-    fn distribute_powers(coeffs: &mut Vec<F>, g: F) {
-        Worker::new().scope(coeffs.len(), |scope, chunk| {
-            for (i, v) in coeffs.chunks_mut(chunk).enumerate() {
-                scope.spawn(move |_| {
-                    let mut u = g.pow(&[(i * chunk) as u64]);
-                    for v in v.iter_mut() {
-                        *v *= &u;
-                        u *= &g;
-                    }
-                });
-            }
-        });
-    }
-
     /// Compute a FFT over a coset of the domain.
     pub fn coset_fft(&self, coeffs: &[F]) -> Vec<F> {
         let mut coeffs = coeffs.to_vec();
@@ -207,6 +193,20 @@ impl<F: PrimeField> EvaluationDomain<F> {
     pub fn coset_ifft_in_place(&self, evals: &mut Vec<F>) {
         self.ifft_in_place(evals);
         Self::distribute_powers(evals, self.generator_inv);
+    }
+
+    fn distribute_powers(coeffs: &mut Vec<F>, g: F) {
+        Worker::new().scope(coeffs.len(), |scope, chunk| {
+            for (i, v) in coeffs.chunks_mut(chunk).enumerate() {
+                scope.spawn(move |_| {
+                    let mut u = g.pow(&[(i * chunk) as u64]);
+                    for v in v.iter_mut() {
+                        *v *= &u;
+                        u *= &g;
+                    }
+                });
+            }
+        });
     }
 
     /// Evaluate all the lagrange polynomials defined by this domain at the point
@@ -332,13 +332,13 @@ impl<F: PrimeField> EvaluationDomain<F> {
     /// e.g. for the domain [1, g, g^2, ..., g^{n - 1}], it computes
     // [1, g, g^2, ..., g^{(n/2) - 1}]
     #[cfg(not(feature = "parallel"))]
-    pub(super) fn roots_of_unity(&self, root: F) -> Vec<F> {
+    pub fn roots_of_unity(&self, root: F) -> Vec<F> {
         Self::compute_powers_serial((self.size as usize) / 2, root)
     }
 
     /// Computes the first `self.size / 2` roots of unity.
     #[cfg(feature = "parallel")]
-    pub(super) fn roots_of_unity(&self, root: F) -> Vec<F> {
+    pub fn roots_of_unity(&self, root: F) -> Vec<F> {
         // TODO: check if this method can replace parallel compute powers.
         let log_size = log2(self.size as usize);
 
@@ -413,9 +413,10 @@ impl<F: PrimeField> EvaluationDomain<F> {
     }
 }
 
+#[allow(unused_variables)]
 #[cfg(not(feature = "parallel"))]
 fn best_fft<F: PrimeField>(a: &mut [F], worker: &Worker, omega: F, log_n: u32) {
-    serial_fft(a, omega, log_n);
+    serial_radix2_fft(a, omega, log_n);
 }
 
 #[cfg(feature = "parallel")]
@@ -423,14 +424,14 @@ fn best_fft<F: PrimeField>(a: &mut [F], worker: &Worker, omega: F, log_n: u32) {
     let log_cpus = worker.log_num_cpus();
 
     if log_n <= log_cpus {
-        serial_fft(a, omega, log_n);
+        serial_radix2_fft(a, omega, log_n);
     } else {
-        parallel_fft(a, worker, omega, log_n, log_cpus);
+        parallel_radix2_fft(a, worker, omega, log_n, log_cpus);
     }
 }
 
 #[allow(clippy::many_single_char_names)]
-pub(crate) fn serial_fft<F: PrimeField>(a: &mut [F], omega: F, log_n: u32) {
+pub(crate) fn serial_radix2_fft<F: PrimeField>(a: &mut [F], omega: F, log_n: u32) {
     #[inline]
     fn bitreverse(mut n: u32, l: u32) -> u32 {
         let mut r = 0;
@@ -476,7 +477,7 @@ pub(crate) fn serial_fft<F: PrimeField>(a: &mut [F], omega: F, log_n: u32) {
 }
 
 #[cfg(feature = "parallel")]
-pub(crate) fn parallel_fft<F: PrimeField>(a: &mut [F], worker: &Worker, omega: F, log_n: u32, log_cpus: u32) {
+pub(crate) fn parallel_radix2_fft<F: PrimeField>(a: &mut [F], worker: &Worker, omega: F, log_n: u32, log_cpus: u32) {
     assert!(log_n >= log_cpus);
 
     let num_cpus = 1 << log_cpus;
@@ -506,7 +507,7 @@ pub(crate) fn parallel_fft<F: PrimeField>(a: &mut [F], worker: &Worker, omega: F
                 }
 
                 // Perform sub-FFT
-                serial_fft(tmp, new_omega, log_new_n);
+                serial_radix2_fft(tmp, new_omega, log_new_n);
             });
         }
     });
