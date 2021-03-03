@@ -28,35 +28,6 @@ use rand::Rng;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-/// Returns an iterator over `chunk_size` elements of the slice at a
-/// time.
-#[macro_export]
-macro_rules! cfg_chunks {
-    ($e: expr, $size: expr) => {{
-        #[cfg(feature = "pedersen-parallel")]
-        let result = $e.par_chunks($size);
-
-        #[cfg(not(feature = "pedersen-parallel"))]
-        let result = $e.chunks($size);
-
-        result
-    }};
-}
-
-/// Applies the reduce operation over an iterator.
-#[macro_export]
-macro_rules! cfg_reduce {
-    ($e: expr, $default: expr, $op: expr) => {{
-        #[cfg(feature = "pedersen-parallel")]
-        let result = $e.reduce($default, $op);
-
-        #[cfg(not(feature = "pedersen-parallel"))]
-        let result = $e.fold($default(), $op);
-
-        result
-    }};
-}
-
 pub const BOWE_HOPWOOD_CHUNK_SIZE: usize = 3;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -176,36 +147,30 @@ impl<G: Group, S: PedersenSize> CRH for BoweHopwoodPedersenCRH<G, S> {
         // (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}
         // for all i. Described in section 5.4.1.7 in the Zcash protocol
         // specification.
-
-        // TODO (howardwu): Are clever macros really better than repeating code for cfg?
-
-        let result = cfg_reduce!(
-            cfg_chunks!(padded_input, S::WINDOW_SIZE * BOWE_HOPWOOD_CHUNK_SIZE)
-                .zip(&self.parameters.bases)
-                .map(|(segment_bits, segment_generators)| {
-                    cfg_reduce!(
-                        cfg_chunks!(segment_bits, BOWE_HOPWOOD_CHUNK_SIZE)
-                            .zip(segment_generators)
-                            .map(|(chunk_bits, generator)| {
-                                let mut encoded = *generator;
-                                if chunk_bits[0] {
-                                    encoded += generator;
-                                }
-                                if chunk_bits[1] {
-                                    encoded += &generator.double();
-                                }
-                                if chunk_bits[2] {
-                                    encoded = encoded.neg();
-                                }
-                                encoded
-                            }),
-                        G::zero,
-                        |a, b| a + &b
-                    )
-                }),
-            G::zero,
-            |a, b| a + &b
-        );
+        let mapping = cfg_chunks!(padded_input, S::WINDOW_SIZE * BOWE_HOPWOOD_CHUNK_SIZE)
+            .zip(&self.parameters.bases)
+            .map(|(segment_bits, segment_generators)| {
+                cfg_reduce!(
+                    cfg_chunks!(segment_bits, BOWE_HOPWOOD_CHUNK_SIZE)
+                        .zip(segment_generators)
+                        .map(|(chunk_bits, generator)| {
+                            let mut encoded = *generator;
+                            if chunk_bits[0] {
+                                encoded += generator;
+                            }
+                            if chunk_bits[1] {
+                                encoded += &generator.double();
+                            }
+                            if chunk_bits[2] {
+                                encoded = encoded.neg();
+                            }
+                            encoded
+                        }),
+                    G::zero,
+                    |a, b| a + &b
+                )
+            });
+        let result = cfg_reduce!(mapping, G::zero, |a, b| a + &b);
 
         end_timer!(eval_time);
 

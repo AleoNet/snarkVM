@@ -98,7 +98,6 @@ version = "0.3"
 default = [
     "full",
     "parallel",
-    "pedersen-parallel",
     "snarkvm-r1cs/default",
     "snarkvm-utilities/default"
 ]
@@ -136,6 +135,5 @@ snark = []
 # Internal
 
 parallel = []
-pedersen-parallel = []
 
 print-trace = [ "snarkvm-profiler/print-trace" ]

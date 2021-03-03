@@ -25,7 +25,7 @@ use snarkvm_utilities::bytes_to_bits;
 
 use rand::Rng;
 
-#[cfg(feature = "pedersen-parallel")]
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -73,42 +73,19 @@ impl<G: Group, S: PedersenSize> CRH for PedersenCRH<G, S> {
         }
 
         // Compute sum of h_i^{m_i} for all i.
-        let result = {
-            #[cfg(feature = "pedersen-parallel")]
-            {
-                bytes_to_bits(input)
-                    .collect::<Vec<_>>()
-                    .par_chunks(S::WINDOW_SIZE)
-                    .zip(&self.parameters.bases)
-                    .map(|(bits, powers)| {
-                        let mut encoded = G::zero();
-                        for (bit, base) in bits.iter().zip(powers.iter()) {
-                            if *bit {
-                                encoded += base;
-                            }
-                        }
-                        encoded
-                    })
-                    .reduce(G::zero, |a, b| a + &b)
-            }
-            #[cfg(not(feature = "pedersen-parallel"))]
-            {
-                bytes_to_bits(input)
-                    .collect::<Vec<_>>()
-                    .chunks(S::WINDOW_SIZE)
-                    .zip(&self.parameters.bases)
-                    .map(|(bits, powers)| {
-                        let mut encoded = G::zero();
-                        for (bit, base) in bits.iter().zip(powers.iter()) {
-                            if *bit {
-                                encoded += base;
-                            }
-                        }
-                        encoded
-                    })
-                    .fold(G::zero(), |a, b| a + &b)
-            }
-        };
+        let bits = bytes_to_bits(input).collect::<Vec<_>>();
+        let mapping = cfg_chunks!(bits, S::WINDOW_SIZE)
+            .zip(&self.parameters.bases)
+            .map(|(bits, powers)| {
+                let mut encoded = G::zero();
+                for (bit, base) in bits.iter().zip(powers.iter()) {
+                    if *bit {
+                        encoded += base;
+                    }
+                }
+                encoded
+            });
+        let result = cfg_reduce!(mapping, G::zero, |a, b| a + &b);
 
         Ok(result)
     }
