@@ -1977,6 +1977,7 @@ dependencies = [
  "rand",
  "rand_xorshift",
  "serde",
+ "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-utilities",
  "wasm-bindgen",
