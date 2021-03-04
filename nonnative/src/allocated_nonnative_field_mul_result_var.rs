@@ -177,11 +177,13 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
                 let mut limb = zero.clone();
                 let mut cur = BaseField::one();
 
-                for (i, bit) in this_limb_bits.iter().enumerate() {
-                    let mut temp =
-                        FpGadget::<BaseField>::from_boolean(cs.ns(|| format!("from_boolean_{}", i)), bit.clone())?;
-                    temp = temp.mul_by_constant(cs.ns(|| format!("mul_by_constant_{}", i)), &cur)?;
-                    limb = limb.add(cs.ns(|| format!("add{}", i)), &temp)?;
+                for (j, bit) in this_limb_bits.iter().enumerate() {
+                    let mut temp = FpGadget::<BaseField>::from_boolean(
+                        cs.ns(|| format!("from_boolean_{}_{}", i, j)),
+                        bit.clone(),
+                    )?;
+                    temp = temp.mul_by_constant(cs.ns(|| format!("mul_by_constant_{}_{}", i, j)), &cur)?;
+                    limb = limb.add(cs.ns(|| format!("add_{}_{}", i, j)), &temp)?;
 
                     cur.double_in_place();
                 }

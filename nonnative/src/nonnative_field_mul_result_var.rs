@@ -57,10 +57,9 @@ impl<TargetField: PrimeField, BaseField: PrimeField> NonNativeFieldMulResultVar<
             Self::Variable(v) => Ok(NonNativeFieldVar::Var(v.reduce(cs)?)),
         }
     }
-}
 
-impl<TargetField: PrimeField, BaseField: PrimeField> NonNativeFieldMulResultVar<TargetField, BaseField> {
-    fn from_nonnative_field_gadget<CS: ConstraintSystem<BaseField>>(
+    /// Constructs a `NonNativeFieldMulResultVar` from a `NonNativeFieldVar`
+    pub fn from_nonnative_field_gadget<CS: ConstraintSystem<BaseField>>(
         cs: &mut CS,
         src: &NonNativeFieldVar<TargetField, BaseField>,
     ) -> Result<Self, SynthesisError> {

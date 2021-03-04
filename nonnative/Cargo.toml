@@ -58,10 +58,23 @@ path = "../utilities"
 version = "0.0.6"
 default-features = false
 
-[dependencies]
-num-traits = { version = "0.2", default-features = false }
-num-bigint = { version = "0.3.0", default-features = false }
-num-integer = { version = "0.1.44", default-features = false }
+[dependencies.num-bigint]
+version = "0.3.0"
+default-features = false
+
+[dependencies.num-integer]
+version = "0.1.44"
+default-features = false
+
+[dependencies.num-traits]
+version = "0.2"
+default-features = false
+
+[dev-dependencies.rand]
+version = "0.8"
+
+[dev-dependencies.rand_xorshift]
+version = "0.3"
 
 [features]
 default = [ "std" ]

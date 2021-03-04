@@ -1844,6 +1844,8 @@ dependencies = [
  "num-bigint",
  "num-integer",
  "num-traits",
+ "rand",
+ "rand_xorshift",
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",

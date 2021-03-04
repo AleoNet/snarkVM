@@ -338,7 +338,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
 
             carry_value = BaseField::from_repr(carry_repr).unwrap();
 
-            let carry = FpGadget::<BaseField>::alloc_input(cs.ns(|| "alloc_input"), || Ok(carry_value))?;
+            let carry =
+                FpGadget::<BaseField>::alloc_input(cs.ns(|| format!("alloc_input_{}", group_id)), || Ok(carry_value))?;
 
             accumulated_extra += limbs_to_bigint(bits_per_limb, &[pad_limb]);
 
@@ -351,9 +352,12 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
             //   =  carry shift by (shift_per_limb * num_limb_in_this_group) + remainder
 
             let eqn_left = left_total_limb
-                .add_constant(cs.ns(|| "add_constant"), &pad_limb)?
-                .add(cs.ns(|| "add_carry_in"), &carry_in)?
-                .sub(cs.ns(|| "sub_right_total_limb"), &right_total_limb)?;
+                .add_constant(cs.ns(|| format!("add_constant_{}", group_id)), &pad_limb)?
+                .add(cs.ns(|| format!("add_carry_in_{}", group_id)), &carry_in)?
+                .sub(
+                    cs.ns(|| format!("sub_right_total_limb_{}", group_id)),
+                    &right_total_limb,
+                )?;
 
             let eqn_right = &carry
                 .mul_by_constant(
@@ -363,7 +367,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
                 .add_constant(cs.ns(|| format!("add_by_constant_{}", group_id)), &remainder_limb)?;
 
             eqn_left.conditional_enforce_equal(
-                cs.ns(|| "conditional_enforce_equal"),
+                cs.ns(|| format!("conditional_enforce_equal_{}", group_id)),
                 &eqn_right,
                 &Boolean::Constant(true),
             )?;
@@ -374,12 +378,12 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
 
             if group_id == groupped_limb_pairs.len() - 1 {
                 carry.enforce_equal(
-                    cs.ns(|| "enforce_equal"),
+                    cs.ns(|| format!("enforce_equal_{}", group_id)),
                     &FpGadget::<BaseField>::Constant(bigint_to_basefield(&accumulated_extra)),
                 )?;
             } else {
                 Reducer::<TargetField, BaseField>::limb_to_bits(
-                    &mut cs.ns(|| "limb_to_bits"),
+                    &mut cs.ns(|| format!("limb_to_bits_{}", group_id)),
                     &carry,
                     surfeit + bits_per_limb,
                 )?;
