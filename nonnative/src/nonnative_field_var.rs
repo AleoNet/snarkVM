@@ -245,8 +245,10 @@ impl<TargetField: PrimeField, BaseField: PrimeField> FieldGadget<TargetField, Ba
     fn sub<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS, other: &Self) -> Result<Self, SynthesisError> {
         match (self, other) {
             (Self::Constant(c1), Self::Constant(c2)) => Ok(Self::Constant(*c1 - c2)),
-            (Self::Constant(c), Self::Var(v)) | (Self::Var(v), Self::Constant(c)) => {
-                Ok(Self::Var(v.sub_constant(&mut cs.ns(|| "sub_constant"), c)?))
+            (Self::Var(v), Self::Constant(c)) => Ok(Self::Var(v.sub_constant(&mut cs.ns(|| "sub_constant"), c)?)),
+            (Self::Constant(c), Self::Var(v)) => {
+                let temp = v.sub_constant(&mut cs.ns(|| "sub_constant"), c)?;
+                Ok(Self::Var(temp.negate(&mut cs.ns(|| "negate"))?))
             }
             (Self::Var(v1), Self::Var(v2)) => Ok(Self::Var(v1.sub(&mut cs.ns(|| "sub"), &v2)?)),
         }
