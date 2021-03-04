@@ -68,6 +68,25 @@ snarkvm
 
 ## 3. Usage Guide
 
+## Development
+
+|       Package      |                                    Crate.io                                   |        `std`       |   WASM-compatible  |    `no_std`    |
+|:------------------:|-------------------------------------------------------------------------------|:------------------:|:------------------:|:--------------:|
+| snarkvm-algorithms |![crates.io](https://img.shields.io/crates/v/snarkvm-algorithms.svg?color=neon)| :white_check_mark: | :white_check_mark: | :construction: |
+| snarkvm-curves     | ![crates.io](https://img.shields.io/crates/v/snarkvm-curves.svg?color=neon)   | :white_check_mark: | :white_check_mark: | :construction: |
+| snarkvm-derives    | ![crates.io](https://img.shields.io/crates/v/snarkvm-derives.svg?color=neon)  | :white_check_mark: | :white_check_mark: | :construction: |
+| snarkvm-dpc        | ![crates.io](https://img.shields.io/crates/v/snarkvm-dpc.svg?color=neon)      | :white_check_mark: | :white_check_mark: | :construction: |
+| snarkvm-fields     | ![crates.io](https://img.shields.io/crates/v/snarkvm-fields.svg?color=neon)   | :white_check_mark: | :white_check_mark: | :construction: |
+| snarkvm-gadgets    | ![crates.io](https://img.shields.io/crates/v/snarkvm-gadgets.svg?color=neon)  | :white_check_mark: | :white_check_mark: | :construction: |
+| snarkvm-marlin     | ![crates.io](https://img.shields.io/crates/v/snarkvm-marlin.svg?color=neon)   | :white_check_mark: | :white_check_mark: | :construction: |
+| snarkvm-objects    | ![crates.io](https://img.shields.io/crates/v/snarkvm-objects.svg?color=neon)  | :white_check_mark: | :white_check_mark: | :construction: |
+| snarkvm-parameters |![crates.io](https://img.shields.io/crates/v/snarkvm-parameters.svg?color=neon)| :white_check_mark: | :white_check_mark: | :construction: |
+| snarkvm-polycommit |![crates.io](https://img.shields.io/crates/v/snarkvm-polycommit.svg?color=neon)| :white_check_mark: | :white_check_mark: | :construction: |
+| snarkvm-posw       | ![crates.io](https://img.shields.io/crates/v/snarkvm-posw.svg?color=neon)     | :white_check_mark: | :white_check_mark: | :construction: |
+| snarkvm-profiler   | ![crates.io](https://img.shields.io/crates/v/snarkvm-profiler.svg?color=neon) | :white_check_mark: | :white_check_mark: | :construction: |
+| snarkvm-r1cs       | ![crates.io](https://img.shields.io/crates/v/snarkvm-r1cs.svg?color=neon)     | :white_check_mark: | :white_check_mark: | :construction: |
+| snarkvm-utilities  | ![crates.io](https://img.shields.io/crates/v/snarkvm-utilities.svg?color=neon)| :white_check_mark: | :white_check_mark: | :construction: |
+
 ## Diffs to Resolve
 
 - Remove `snarkvm-storage` by reintroducing a virtualized/in-memory ledger
