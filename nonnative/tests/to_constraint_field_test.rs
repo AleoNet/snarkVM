@@ -14,31 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// use ark_nonnative_field::NonNativeFieldVar;
-// use ark_r1cs_std::alloc::AllocVar;
-// use ark_r1cs_std::{R1CSVar, ToConstraintFieldGadget};
-// use ark_relations::r1cs::ConstraintSystem;
-//
+use snarkvm_gadgets::{traits::fields::FieldGadget, utilities::alloc::AllocGadget};
+use snarkvm_nonnative::NonNativeFieldVar;
+use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
+
+// TODO (raychu86): Add to_contraint_field impls.
+
 // #[test]
 // fn to_constraint_field_test() {
-//     type F = ark_bls12_377::Fr;
-//     type CF = ark_bls12_377::Fq;
+//     type F = snarkvm_curves::bls12_377::Fr;
+//     type CF = snarkvm_curves::bls12_377::Fq;
 //
-//     let cs = ConstraintSystem::<CF>::new_ref();
+//     let cs = TestConstraintSystem::<CF>::new_ref();
 //
 //     let a = NonNativeFieldVar::Constant(F::from(12u8));
-//     let b = NonNativeFieldVar::new_input(cs.clone(), || Ok(F::from(6u8))).unwrap();
+//     let b = NonNativeFieldVar::<F, CF>::alloc(cs.ns(|| "alloc"), || Ok(F::from(6u8))).unwrap();
 //
 //     let b2 = &b + &b;
+//     let b2 = b.double(cs.ns(|| "b_plus_b")).unwrap();
 //
 //     let a_to_constraint_field = a.to_constraint_field().unwrap();
 //     let b2_to_constraint_field = b2.to_constraint_field().unwrap();
 //
 //     assert_eq!(a_to_constraint_field.len(), b2_to_constraint_field.len());
-//     for (left, right) in a_to_constraint_field
-//         .iter()
-//         .zip(b2_to_constraint_field.iter())
-//     {
+//     for (left, right) in a_to_constraint_field.iter().zip(b2_to_constraint_field.iter()) {
 //         assert_eq!(left.value(), right.value());
 //     }
 // }

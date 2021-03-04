@@ -14,20 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// use ark_bls12_381::Bls12_381;
-// use ark_ec::PairingEngine;
-// use ark_ff::PrimeField;
-// use ark_mnt4_298::MNT4_298;
-// use ark_mnt4_753::MNT4_753;
-// use ark_mnt6_298::MNT6_298;
-// use ark_mnt6_753::MNT6_753;
-//
-// use ark_nonnative_field::NonNativeFieldVar;
-// use ark_r1cs_std::{alloc::AllocVar, eq::EqGadget, fields::FieldVar, R1CSVar};
-// use ark_relations::r1cs::{ConstraintSystem, ConstraintSystemRef};
-// use ark_std::rand::RngCore;
-//
-
 use snarkvm_curves::{bls12_377::Bls12_377, bw6_761::BW6_761, traits::PairingEngine};
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
@@ -623,6 +609,8 @@ macro_rules! nonnative_test {
     };
 }
 
+// TODO (raychu86): Add additional field pairs.
+
 // nonnative_test!(
 //     MNT46Small,
 //     <MNT4_298 as PairingEngine>::Fr,
@@ -677,15 +665,3 @@ nonnative_test! {
     <Bls12_377 as PairingEngine>::Fq,
     <Bls12_377 as PairingEngine>::Fr
 }
-
-// nonnative_test! {
-//     BLS12_BW6_761,
-//     <Bls12_377 as PairingEngine>::Fr,
-//     <BW6_761 as PairingEngine>::Fr
-// }
-//
-// nonnative_test! {
-//     BW6_761_BLS12,
-//     <BW6_761 as PairingEngine>::Fr,
-//     <Bls12_377 as PairingEngine>::Fr
-// }
