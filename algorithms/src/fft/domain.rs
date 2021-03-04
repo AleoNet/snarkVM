@@ -31,8 +31,21 @@ use snarkvm_fields::{batch_inversion, FpParameters, PrimeField};
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use rand::Rng;
-use rayon::prelude::*;
 use std::fmt;
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
+
+/// Defines the minimum size at which to parallelize.
+/// This is used as the base case in the recursive root of unity method.
+#[cfg(feature = "parallel")]
+const LOG_ROOTS_OF_UNITY_PARALLEL_SIZE: usize = 7;
+
+/// Returns the log2 value of the given number.
+#[cfg(feature = "parallel")]
+fn log2(number: usize) -> usize {
+    (number as f64).log2() as usize
+}
 
 /// Defines a domain over which finite field (I)FFTs can be performed. Works
 /// only for fields that have a large multiplicative subgroup of size that is
@@ -152,21 +165,7 @@ impl<F: PrimeField> EvaluationDomain<F> {
     pub fn ifft_in_place(&self, evals: &mut Vec<F>) {
         evals.resize(self.size(), F::zero());
         best_fft(evals, &Worker::new(), self.group_gen_inv, self.log_size_of_group);
-        evals.par_iter_mut().for_each(|val| *val *= &self.size_inv);
-    }
-
-    fn distribute_powers(coeffs: &mut Vec<F>, g: F) {
-        Worker::new().scope(coeffs.len(), |scope, chunk| {
-            for (i, v) in coeffs.chunks_mut(chunk).enumerate() {
-                scope.spawn(move |_| {
-                    let mut u = g.pow(&[(i * chunk) as u64]);
-                    for v in v.iter_mut() {
-                        *v *= &u;
-                        u *= &g;
-                    }
-                });
-            }
-        });
+        cfg_iter_mut!(evals).for_each(|val| *val *= &self.size_inv);
     }
 
     /// Compute a FFT over a coset of the domain.
@@ -194,6 +193,20 @@ impl<F: PrimeField> EvaluationDomain<F> {
     pub fn coset_ifft_in_place(&self, evals: &mut Vec<F>) {
         self.ifft_in_place(evals);
         Self::distribute_powers(evals, self.generator_inv);
+    }
+
+    fn distribute_powers(coeffs: &mut Vec<F>, g: F) {
+        Worker::new().scope(coeffs.len(), |scope, chunk| {
+            for (i, v) in coeffs.chunks_mut(chunk).enumerate() {
+                scope.spawn(move |_| {
+                    let mut u = g.pow(&[(i * chunk) as u64]);
+                    for v in v.iter_mut() {
+                        *v *= &u;
+                        u *= &g;
+                    }
+                });
+            }
+        });
     }
 
     /// Evaluate all the lagrange polynomials defined by this domain at the point
@@ -227,7 +240,7 @@ impl<F: PrimeField> EvaluationDomain<F> {
             }
 
             batch_inversion(u.as_mut_slice());
-            u.par_iter_mut().zip(ls).for_each(|(tau_minus_r, l)| {
+            cfg_iter_mut!(u).zip(ls).for_each(|(tau_minus_r, l)| {
                 *tau_minus_r = l * tau_minus_r;
             });
             u
@@ -305,9 +318,8 @@ impl<F: PrimeField> EvaluationDomain<F> {
         assert_eq!(self_evals.len(), other_evals.len());
         let mut result = self_evals.to_vec();
         let chunk_size = Self::calculate_chunk_size(self.size());
-        result
-            .par_chunks_mut(chunk_size)
-            .zip(other_evals.par_chunks(chunk_size))
+        cfg_chunks_mut!(result, chunk_size)
+            .zip(cfg_chunks!(other_evals, chunk_size))
             .for_each(|(a, b)| {
                 for (a, b) in a.iter_mut().zip(b) {
                     *a *= b;
@@ -315,20 +327,111 @@ impl<F: PrimeField> EvaluationDomain<F> {
             });
         result
     }
+
+    /// Computes the first `self.size / 2` roots of unity for the entire domain.
+    /// e.g. for the domain [1, g, g^2, ..., g^{n - 1}], it computes
+    // [1, g, g^2, ..., g^{(n/2) - 1}]
+    #[cfg(not(feature = "parallel"))]
+    pub fn roots_of_unity(&self, root: F) -> Vec<F> {
+        Self::compute_powers_serial((self.size as usize) / 2, root)
+    }
+
+    /// Computes the first `self.size / 2` roots of unity.
+    #[cfg(feature = "parallel")]
+    pub fn roots_of_unity(&self, root: F) -> Vec<F> {
+        // TODO: check if this method can replace parallel compute powers.
+        let log_size = log2(self.size as usize);
+
+        // Early exit for short inputs.
+        if log_size <= LOG_ROOTS_OF_UNITY_PARALLEL_SIZE {
+            Self::compute_powers_serial((self.size as usize) / 2, root)
+        } else {
+            let mut tmp = root;
+            // w, w^2, w^4, w^8, ..., w^(2^(log_size - 1))
+            let log_powers: Vec<F> = (0..(log_size - 1))
+                .map(|_| {
+                    let old_value = tmp;
+                    tmp.square_in_place();
+                    old_value
+                })
+                .collect();
+
+            // Allocate the return array and start the recursion.
+            let mut powers = vec![F::zero(); 1 << (log_size - 1)];
+            Self::roots_of_unity_recursive(&mut powers, &log_powers);
+            powers
+        }
+    }
+
+    #[cfg(feature = "parallel")]
+    fn roots_of_unity_recursive(powers: &mut [F], log_powers: &[F]) {
+        assert_eq!(powers.len(), 1 << log_powers.len());
+
+        // Base case: compute the powers sequentially,
+        // g = log_powers[0], out = [1, g, g^2, ...]
+        if log_powers.len() <= LOG_ROOTS_OF_UNITY_PARALLEL_SIZE {
+            powers[0] = F::one();
+            for i in 1..powers.len() {
+                powers[i] = powers[i - 1] * &log_powers[0];
+            }
+            return;
+        }
+
+        // Recursive case:
+        // 1. Split log_powers in half.
+        let (lr_low, lr_high) = log_powers.split_at((1 + log_powers.len()) / 2);
+        let mut scr_low = vec![F::default(); 1 << lr_low.len()];
+        let mut scr_high = vec![F::default(); 1 << lr_high.len()];
+
+        // 2. Compute each half individually
+        rayon::join(
+            || Self::roots_of_unity_recursive(&mut scr_low, lr_low),
+            || Self::roots_of_unity_recursive(&mut scr_high, lr_high),
+        );
+
+        // 3. Recombine the halves.
+        // At this point, out is a blank slice.
+        powers
+            .par_chunks_mut(scr_low.len())
+            .zip(&scr_high)
+            .for_each(|(power_chunk, scr_high)| {
+                for (power, scr_low) in power_chunk.iter_mut().zip(&scr_low) {
+                    *power = *scr_high * scr_low;
+                }
+            });
+    }
+
+    fn compute_powers_serial(size: usize, root: F) -> Vec<F> {
+        let mut value = F::one();
+        (0..size)
+            .map(|_| {
+                let old_value = value;
+                value *= &root;
+                old_value
+            })
+            .collect()
+    }
 }
 
+#[allow(unused_variables)]
+#[cfg(not(feature = "parallel"))]
+fn best_fft<F: PrimeField>(a: &mut [F], worker: &Worker, omega: F, log_n: u32) {
+    serial_radix2_fft(a, omega, log_n);
+}
+
+#[cfg(feature = "parallel")]
 fn best_fft<F: PrimeField>(a: &mut [F], worker: &Worker, omega: F, log_n: u32) {
     let log_cpus = worker.log_num_cpus();
 
     if log_n <= log_cpus {
-        serial_fft(a, omega, log_n);
+        serial_radix2_fft(a, omega, log_n);
     } else {
-        parallel_fft(a, worker, omega, log_n, log_cpus);
+        parallel_radix2_fft(a, worker, omega, log_n, log_cpus);
     }
 }
 
 #[allow(clippy::many_single_char_names)]
-pub(crate) fn serial_fft<F: PrimeField>(a: &mut [F], omega: F, log_n: u32) {
+pub(crate) fn serial_radix2_fft<F: PrimeField>(a: &mut [F], omega: F, log_n: u32) {
     #[inline]
     fn bitreverse(mut n: u32, l: u32) -> u32 {
         let mut r = 0;
@@ -373,7 +476,8 @@ pub(crate) fn serial_fft<F: PrimeField>(a: &mut [F], omega: F, log_n: u32) {
     }
 }
 
-pub(crate) fn parallel_fft<F: PrimeField>(a: &mut [F], worker: &Worker, omega: F, log_n: u32, log_cpus: u32) {
+#[cfg(feature = "parallel")]
+pub(crate) fn parallel_radix2_fft<F: PrimeField>(a: &mut [F], worker: &Worker, omega: F, log_n: u32, log_cpus: u32) {
     assert!(log_n >= log_cpus);
 
     let num_cpus = 1 << log_cpus;
@@ -403,7 +507,7 @@ pub(crate) fn parallel_fft<F: PrimeField>(a: &mut [F], worker: &Worker, omega: F
                 }
 
                 // Perform sub-FFT
-                serial_fft(tmp, new_omega, log_new_n);
+                serial_radix2_fft(tmp, new_omega, log_new_n);
             });
         }
     });
@@ -449,9 +553,10 @@ impl<F: PrimeField> Iterator for Elements<F> {
 
 #[cfg(test)]
 mod tests {
-    use crate::fft::EvaluationDomain;
+    use crate::fft::{DensePolynomial, EvaluationDomain};
     use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_fields::{Field, Zero};
+    use snarkvm_fields::{Field, One, PrimeField, Zero};
+    use snarkvm_utilities::UniformRand;
 
     use rand::{thread_rng, Rng};
 
@@ -497,6 +602,114 @@ mod tests {
             for (i, element) in domain.elements().enumerate() {
                 assert_eq!(element, domain.group_gen.pow([i as u64]));
             }
+        }
+    }
+
+    /// Test that lagrange interpolation for a random polynomial at a random point works.
+    #[test]
+    fn non_systematic_lagrange_coefficients_test() {
+        for domain_dimension in 1..10 {
+            let domain_size = 1 << domain_dimension;
+            let domain = EvaluationDomain::<Fr>::new(domain_size).unwrap();
+            // Get random point & lagrange coefficients
+            let random_point = Fr::rand(&mut thread_rng());
+            let lagrange_coefficients = domain.evaluate_all_lagrange_coefficients(random_point);
+
+            // Sample the random polynomial, evaluate it over the domain and the random point.
+            let random_polynomial = DensePolynomial::<Fr>::rand(domain_size - 1, &mut thread_rng());
+            let polynomial_evaluations = domain.fft(random_polynomial.coeffs());
+            let actual_evaluations = random_polynomial.evaluate(random_point);
+
+            // Do lagrange interpolation, and compare against the actual evaluation
+            let mut interpolated_evaluation = Fr::zero();
+            for i in 0..domain_size {
+                interpolated_evaluation += &(lagrange_coefficients[i] * &polynomial_evaluations[i]);
+            }
+            assert_eq!(actual_evaluations, interpolated_evaluation);
+        }
+    }
+
+    /// Test that lagrange coefficients for a point in the domain is correct.
+    #[test]
+    fn systematic_lagrange_coefficients_test() {
+        // This runs in time O(N^2) in the domain size, so keep the domain dimension low.
+        // We generate lagrange coefficients for each element in the domain.
+        for domain_dimension in 1..5 {
+            let domain_size = 1 << domain_dimension;
+            let domain = EvaluationDomain::<Fr>::new(domain_size).unwrap();
+            let all_domain_elements: Vec<Fr> = domain.elements().collect();
+            for (i, domain_element) in all_domain_elements.iter().enumerate().take(domain_size) {
+                let lagrange_coefficients = domain.evaluate_all_lagrange_coefficients(*domain_element);
+                for (j, lagrange_coefficient) in lagrange_coefficients.iter().enumerate().take(domain_size) {
+                    // Lagrange coefficient for the evaluation point, which should be 1
+                    if i == j {
+                        assert_eq!(*lagrange_coefficient, Fr::one());
+                    } else {
+                        assert_eq!(*lagrange_coefficient, Fr::zero());
+                    }
+                }
+            }
+        }
+    }
+
+    /// Tests that the roots of unity result is the same as domain.elements().
+    #[test]
+    fn test_roots_of_unity() {
+        let max_degree = 10;
+        for log_domain_size in 0..max_degree {
+            let domain_size = 1 << log_domain_size;
+            let domain = EvaluationDomain::<Fr>::new(domain_size).unwrap();
+            let actual_roots = domain.roots_of_unity(domain.group_gen);
+            for &value in &actual_roots {
+                assert!(domain.evaluate_vanishing_polynomial(value).is_zero());
+            }
+            let expected_roots_elements = domain.elements();
+            for (expected, &actual) in expected_roots_elements.zip(&actual_roots) {
+                assert_eq!(expected, actual);
+            }
+            assert_eq!(actual_roots.len(), domain_size / 2);
+        }
+    }
+
+    /// Tests that the FFTs output the correct result.
+    #[test]
+    fn test_fft_correctness() {
+        // This assumes a correct polynomial evaluation at point procedure.
+        // It tests consistency of FFT/IFFT, and coset_fft/coset_ifft,
+        // along with testing that each individual evaluation is correct.
+
+        // Runs in time O(degree^2)
+        let log_degree = 5;
+        let degree = 1 << log_degree;
+        let random_polynomial = DensePolynomial::<Fr>::rand(degree - 1, &mut thread_rng());
+
+        for log_domain_size in log_degree..(log_degree + 2) {
+            let domain_size = 1 << log_domain_size;
+            let domain = EvaluationDomain::<Fr>::new(domain_size).unwrap();
+            let polynomial_evaluations = domain.fft(&random_polynomial.coeffs);
+            let polynomial_coset_evaluations = domain.coset_fft(&random_polynomial.coeffs);
+            for (i, x) in domain.elements().enumerate() {
+                let coset_x = Fr::multiplicative_generator() * &x;
+
+                assert_eq!(polynomial_evaluations[i], random_polynomial.evaluate(x));
+                assert_eq!(polynomial_coset_evaluations[i], random_polynomial.evaluate(coset_x));
+            }
+
+            let randon_polynomial_from_subgroup =
+                DensePolynomial::from_coefficients_vec(domain.ifft(&polynomial_evaluations));
+            let random_polynomial_from_coset =
+                DensePolynomial::from_coefficients_vec(domain.coset_ifft(&polynomial_coset_evaluations));
+
+            assert_eq!(
+                random_polynomial, randon_polynomial_from_subgroup,
+                "degree = {}, domain size = {}",
+                degree, domain_size
+            );
+            assert_eq!(
+                random_polynomial, random_polynomial_from_coset,
+                "degree = {}, domain size = {}",
+                degree, domain_size
+            );
         }
     }
 }

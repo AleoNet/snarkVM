@@ -93,93 +93,88 @@ impl<F: PrimeField> AllocatedFp<F> {
     }
 
     #[inline]
-    fn zero<CS: ConstraintSystem<F>>(_cs: CS) -> Result<Self, SynthesisError> {
+    fn zero<CS: ConstraintSystem<F>>(_cs: CS) -> Self {
         let value = Some(F::zero());
-        Ok(AllocatedFp {
+        AllocatedFp {
             value,
             variable: ConstraintVariable::zero(),
-        })
+        }
     }
 
     #[inline]
-    fn one<CS: ConstraintSystem<F>>(_cs: CS) -> Result<Self, SynthesisError> {
+    fn one<CS: ConstraintSystem<F>>(_cs: CS) -> Self {
         let value = Some(F::one());
-        Ok(AllocatedFp {
+        AllocatedFp {
             value,
             variable: CS::one().into(),
-        })
+        }
     }
 
     #[inline]
-    fn conditionally_add_constant<CS: ConstraintSystem<F>>(
-        &self,
-        mut _cs: CS,
-        bit: &Boolean,
-        coeff: F,
-    ) -> Result<Self, SynthesisError> {
+    fn conditionally_add_constant<CS: ConstraintSystem<F>>(&self, mut _cs: CS, bit: &Boolean, coeff: F) -> Self {
         let value = match (self.value, bit.get_value()) {
             (Some(v), Some(b)) => Some(if b { v + &coeff } else { v }),
             (..) => None,
         };
-        Ok(AllocatedFp {
+        AllocatedFp {
             value,
             variable: LC(bit.lc(CS::one(), coeff)) + &self.variable,
-        })
+        }
     }
 
     #[inline]
-    fn add<CS: ConstraintSystem<F>>(&self, mut _cs: CS, other: &Self) -> Result<Self, SynthesisError> {
+    fn add<CS: ConstraintSystem<F>>(&self, mut _cs: CS, other: &Self) -> Self {
         let value = match (self.value, other.value) {
             (Some(val1), Some(val2)) => Some(val1 + &val2),
             (..) => None,
         };
 
-        Ok(AllocatedFp {
+        AllocatedFp {
             value,
             variable: &self.variable + &other.variable,
-        })
+        }
     }
 
-    fn double<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Self, SynthesisError> {
+    fn double<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Self {
         let value = self.value.map(|val| val.double());
         let mut variable = self.variable.clone();
         variable.double_in_place();
-        Ok(AllocatedFp { value, variable })
+        AllocatedFp { value, variable }
     }
 
-    fn double_in_place<CS: ConstraintSystem<F>>(&mut self, _cs: CS) -> Result<&mut Self, SynthesisError> {
+    fn double_in_place<CS: ConstraintSystem<F>>(&mut self, _cs: CS) -> &mut Self {
         self.value.as_mut().map(|val| val.double_in_place());
         self.variable.double_in_place();
-        Ok(self)
+        self
     }
 
     #[inline]
-    fn sub<CS: ConstraintSystem<F>>(&self, mut _cs: CS, other: &Self) -> Result<Self, SynthesisError> {
+    fn sub<CS: ConstraintSystem<F>>(&self, mut _cs: CS, other: &Self) -> Self {
         let value = match (self.value, other.value) {
             (Some(val1), Some(val2)) => Some(val1 - &val2),
             (..) => None,
         };
 
-        Ok(AllocatedFp {
+        AllocatedFp {
             value,
             variable: &self.variable - &other.variable,
-        })
+        }
     }
 
     #[inline]
-    fn negate<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Self, SynthesisError> {
+    fn negate<CS: ConstraintSystem<F>>(&self, cs: CS) -> Self {
         let mut result = self.clone();
-        result.negate_in_place(cs)?;
-        Ok(result)
+        result.negate_in_place(cs);
+        result
     }
 
     #[inline]
-    fn negate_in_place<CS: ConstraintSystem<F>>(&mut self, _cs: CS) -> Result<&mut Self, SynthesisError> {
+    fn negate_in_place<CS: ConstraintSystem<F>>(&mut self, _cs: CS) -> &mut Self {
         if let Some(val) = self.value.as_mut() {
             *val = -(*val);
         }
         self.variable.negate_in_place();
-        Ok(self)
+        self
     }
 
     #[inline]
@@ -195,53 +190,46 @@ impl<F: PrimeField> AllocatedFp<F> {
     }
 
     #[inline]
-    fn add_constant<CS: ConstraintSystem<F>>(&self, _cs: CS, other: &F) -> Result<Self, SynthesisError> {
+    fn add_constant<CS: ConstraintSystem<F>>(&self, _cs: CS, other: &F) -> Self {
         let value = self.value.map(|val| val + other);
-        Ok(AllocatedFp {
+        AllocatedFp {
             value,
             variable: self.variable.clone() + (*other, CS::one()),
-        })
+        }
     }
 
     #[allow(dead_code)]
     #[inline]
-    fn add_constant_in_place<CS: ConstraintSystem<F>>(
-        &mut self,
-        _cs: CS,
-        other: &F,
-    ) -> Result<&mut Self, SynthesisError> {
+    #[allow(dead_code)]
+    fn add_constant_in_place<CS: ConstraintSystem<F>>(&mut self, _cs: CS, other: &F) -> &mut Self {
         if let Some(val) = self.value.as_mut() {
             *val += other;
         }
         self.variable += (*other, CS::one());
-        Ok(self)
+        self
     }
 
     /// Output `self - other`
     ///
     /// This does not create any constraints.
-    fn sub_constant<CS: ConstraintSystem<F>>(&self, _cs: CS, other: &F) -> Result<Self, SynthesisError> {
+    fn sub_constant<CS: ConstraintSystem<F>>(&self, _cs: CS, other: &F) -> Self {
         self.add_constant(_cs, &other.neg())
     }
 
     #[inline]
-    fn mul_by_constant<CS: ConstraintSystem<F>>(&self, cs: CS, other: &F) -> Result<Self, SynthesisError> {
+    fn mul_by_constant<CS: ConstraintSystem<F>>(&self, cs: CS, other: &F) -> Self {
         let mut result = self.clone();
-        result.mul_by_constant_in_place(cs, other)?;
-        Ok(result)
+        result.mul_by_constant_in_place(cs, other);
+        result
     }
 
     #[inline]
-    fn mul_by_constant_in_place<CS: ConstraintSystem<F>>(
-        &mut self,
-        mut _cs: CS,
-        other: &F,
-    ) -> Result<&mut Self, SynthesisError> {
+    fn mul_by_constant_in_place<CS: ConstraintSystem<F>>(&mut self, mut _cs: CS, other: &F) -> &mut Self {
         if let Some(val) = self.value.as_mut() {
             *val *= other;
         }
         self.variable *= *other;
-        Ok(self)
+        self
     }
 
     #[inline]
@@ -271,29 +259,22 @@ impl<F: PrimeField> AllocatedFp<F> {
         self
     }
 
-    fn mul_equals<CS: ConstraintSystem<F>>(
-        &self,
-        mut cs: CS,
-        other: &Self,
-        result: &Self,
-    ) -> Result<(), SynthesisError> {
+    fn mul_equals<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self, result: &Self) {
         cs.enforce(
             || "mul_constraint",
             |lc| &self.variable + lc,
             |lc| &other.variable + lc,
             |lc| &result.variable + lc,
         );
-        Ok(())
     }
 
-    fn square_equals<CS: ConstraintSystem<F>>(&self, mut cs: CS, result: &Self) -> Result<(), SynthesisError> {
+    fn square_equals<CS: ConstraintSystem<F>>(&self, mut cs: CS, result: &Self) {
         cs.enforce(
             || "sqr_constraint",
             |lc| &self.variable + lc,
             |lc| &self.variable + lc,
             |lc| &result.variable + lc,
         );
-        Ok(())
     }
 
     #[allow(dead_code)]
@@ -325,7 +306,7 @@ impl<F: PrimeField> ConditionalEqGadget<F> for AllocatedFp<F> {
         other: &Self,
         condition: &Boolean,
     ) -> Result<(), SynthesisError> {
-        let difference = self.sub(cs.ns(|| "difference"), other)?;
+        let difference = self.sub(cs.ns(|| "difference"), other);
         let one = CS::one();
         let one_const = F::one();
         cs.enforce(
@@ -345,7 +326,7 @@ impl<F: PrimeField> ConditionalEqGadget<F> for AllocatedFp<F> {
 impl<F: PrimeField> NEqGadget<F> for AllocatedFp<F> {
     #[inline]
     fn enforce_not_equal<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<(), SynthesisError> {
-        let a_minus_b = self.sub(cs.ns(|| "A - B"), other)?;
+        let a_minus_b = self.sub(cs.ns(|| "A - B"), other);
         a_minus_b.inverse(cs.ns(|| "Enforce inverse exists"))?;
         Ok(())
     }
@@ -679,7 +660,7 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         //TODO (raychu86): Use constant constraint optimization.
         // Ok(Self::Constant(F::zero()))
 
-        (AllocatedFp::zero(_cs)).map(Self::Variable)
+        Ok(Self::Variable(AllocatedFp::zero(_cs)))
     }
 
     #[inline]
@@ -687,7 +668,7 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         //TODO (raychu86): Use constant constraint optimization.
         // Ok(Self::Constant(F::one()))
 
-        (AllocatedFp::one(_cs)).map(Self::Variable)
+        Ok(Self::Variable(AllocatedFp::one(_cs)))
     }
 
     #[inline]
@@ -711,7 +692,7 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
                 };
                 Ok(Self::Constant(value))
             }
-            Self::Variable(v) => Ok(Self::Variable(v.conditionally_add_constant(_cs, bit, coeff)?)),
+            Self::Variable(v) => Ok(Self::Variable(v.conditionally_add_constant(_cs, bit, coeff))),
         }
     }
 
@@ -720,16 +701,16 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         match (self, other) {
             (Self::Constant(c1), Self::Constant(c2)) => Ok(Self::Constant(*c1 + &*c2)),
             (Self::Constant(c), Self::Variable(v)) | (Self::Variable(v), Self::Constant(c)) => {
-                Ok(Self::Variable(v.add_constant(cs, &*c)?))
+                Ok(Self::Variable(v.add_constant(cs, &*c)))
             }
-            (Self::Variable(v1), Self::Variable(v2)) => Ok(Self::Variable(v1.add(cs, v2)?)),
+            (Self::Variable(v1), Self::Variable(v2)) => Ok(Self::Variable(v1.add(cs, v2))),
         }
     }
 
     fn double<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Self, SynthesisError> {
         match self {
             Self::Constant(c) => Ok(Self::Constant(c.double())),
-            Self::Variable(v) => Ok(Self::Variable(v.double(_cs)?)),
+            Self::Variable(v) => Ok(Self::Variable(v.double(_cs))),
         }
     }
 
@@ -739,7 +720,7 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
                 c.double_in_place();
             }
             Self::Variable(v) => {
-                v.double_in_place(_cs)?;
+                v.double_in_place(_cs);
             }
         }
 
@@ -750,14 +731,11 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
     fn sub<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, SynthesisError> {
         match (self, other) {
             (Self::Constant(c1), Self::Constant(c2)) => Ok(Self::Constant(*c1 - &*c2)),
-            (Self::Variable(v), Self::Constant(c)) => {
-                Ok(Self::Variable(v.sub_constant(cs.ns(|| "sub_constant"), &*c)?))
-            }
+            (Self::Variable(v), Self::Constant(c)) => Ok(Self::Variable(v.sub_constant(cs.ns(|| "sub_constant"), &*c))),
             (Self::Constant(c), Self::Variable(v)) => Ok(Self::Variable(
-                v.sub_constant(cs.ns(|| "sub_constant"), &*c)?
-                    .negate(cs.ns(|| "negate"))?,
+                v.sub_constant(cs.ns(|| "sub_constant"), &*c).negate(cs.ns(|| "negate")),
             )),
-            (Self::Variable(v1), Self::Variable(v2)) => Ok(Self::Variable(v1.sub(cs.ns(|| "sub"), v2)?)),
+            (Self::Variable(v1), Self::Variable(v2)) => Ok(Self::Variable(v1.sub(cs.ns(|| "sub"), v2))),
         }
     }
 
@@ -765,7 +743,7 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
     fn negate<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Self, SynthesisError> {
         match self {
             Self::Constant(c) => Ok(Self::Constant(-*c)),
-            Self::Variable(v) => Ok(Self::Variable(v.negate(cs)?)),
+            Self::Variable(v) => Ok(Self::Variable(v.negate(cs))),
         }
     }
 
@@ -776,7 +754,7 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
                 *c = c.neg();
             }
             Self::Variable(v) => {
-                v.negate_in_place(_cs)?;
+                v.negate_in_place(_cs);
             }
         }
 
@@ -788,7 +766,7 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
         match (self, other) {
             (Self::Constant(c1), Self::Constant(c2)) => Ok(Self::Constant(*c1 * &*c2)),
             (Self::Variable(v), Self::Constant(c)) | (Self::Constant(c), Self::Variable(v)) => {
-                Ok(Self::Variable(v.mul_by_constant(cs.ns(|| "mul_by_constant"), &*c)?))
+                Ok(Self::Variable(v.mul_by_constant(cs.ns(|| "mul_by_constant"), &*c)))
             }
             (Self::Variable(v1), Self::Variable(v2)) => Ok(Self::Variable(v1.mul(cs.ns(|| "mul"), v2)?)),
         }
@@ -867,11 +845,13 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
                 result.enforce_equal(cs.ns(|| "encorce_equal"), &mul_other)
             } // this multiplication should be free
             (Self::Variable(v1), Self::Variable(v2), Self::Variable(v3)) => {
-                v1.mul_equals(cs.ns(|| "mul_equals"), v2, v3)
+                v1.mul_equals(cs.ns(|| "mul_equals"), v2, v3);
+                Ok(())
             }
             (Self::Variable(v1), Self::Variable(v2), Self::Constant(f)) => {
                 let v3 = AllocatedFp::alloc(cs.ns(|| "alloc_constant"), || Ok(f)).unwrap();
-                v1.mul_equals(cs, v2, &v3)
+                v1.mul_equals(cs, v2, &v3);
+                Ok(())
             }
         }
     }
@@ -881,13 +861,18 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
             (Self::Constant(_), Self::Constant(_)) => Ok(()),
             (Self::Constant(f), Self::Variable(r)) => {
                 let v = AllocatedFp::alloc(cs.ns(|| "alloc_v"), || Ok(f))?;
-                v.square_equals(cs, &r)
+                v.square_equals(cs, &r);
+                Ok(())
             }
             (Self::Variable(v), Self::Constant(f)) => {
                 let r = AllocatedFp::alloc(cs.ns(|| "alloc_v"), || Ok(f))?;
-                v.square_equals(cs, &r)
+                v.square_equals(cs, &r);
+                Ok(())
             }
-            (Self::Variable(v1), Self::Variable(v2)) => v1.square_equals(cs, v2),
+            (Self::Variable(v1), Self::Variable(v2)) => {
+                v1.square_equals(cs, v2);
+                Ok(())
+            }
         }
     }
 
@@ -1013,13 +998,13 @@ impl<F: PrimeField> CondSelectGadget<F> for FpGadget<F> {
             _ => {
                 match (first, second) {
                     (Self::Constant(t), Self::Constant(f)) => {
-                        let is = AllocatedFp::from_boolean(cs.ns(|| "from_bool_is"), cond.clone())?;
+                        let is = AllocatedFp::from_boolean(cs.ns(|| "from_bool_is"), *cond)?;
                         let not = AllocatedFp::from_boolean(cs.ns(|| "from_bool_not"), cond.not())?;
                         // cond * t + (1 - cond) * f
-                        let not_f = &not.mul_by_constant(cs.ns(|| "mul_by_f"), &*f)?;
+                        let not_f = &not.mul_by_constant(cs.ns(|| "mul_by_f"), &*f);
                         Ok(is
-                            .mul_by_constant(cs.ns(|| "mul_by_t"), &*t)?
-                            .add(cs.ns(|| "add"), &not_f)?
+                            .mul_by_constant(cs.ns(|| "mul_by_t"), &*t)
+                            .add(cs.ns(|| "add"), &not_f)
                             .into())
                     }
                     (..) => {

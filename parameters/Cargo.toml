@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-parameters"
-version = "0.0.6"
+version = "0.2.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Parameters for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -19,12 +19,12 @@ edition = "2018"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.0.6"
+version = "0.2.0"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.0.6"
+version = "0.2.0"
 default-features = false
 
 [dependencies.curl]
@@ -32,7 +32,7 @@ version = "0.4.34"
 optional = true
 
 [dependencies.hex]
-version = "0.4.2"
+version = "0.4.3"
 
 [dependencies.thiserror]
 version = "1.0"
@@ -49,7 +49,7 @@ default-features = false
 path = "../marlin"
 default-features = false
 
-[dependencies.snarkvm-polycommit]
+[dev-dependencies.snarkvm-polycommit]
 path = "../polycommit"
 default-features = false
 
@@ -65,14 +65,11 @@ default-features = false
 version = "0.4.34"
 
 [dev-dependencies.hex]
-version = "0.4.2"
+version = "0.4.3"
 
 [dev-dependencies.rand]
 version = "0.8"
 
 [features]
-default = [
-  "remote",
-  "snarkvm-algorithms/default"
-]
+default = [ "remote", "snarkvm-algorithms/default" ]
 remote = [ "curl" ]

@@ -400,10 +400,10 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let z_poly_evals = z_poly.evaluate_over_domain_by_ref(mul_domain);
         let t_poly_m_evals = t_poly.evaluate_over_domain_by_ref(mul_domain);
 
-        cfg_iter_mut!(r_alpha_evals.evals)
-            .zip(&summed_z_m_evals.evals)
-            .zip(&z_poly_evals.evals)
-            .zip(&t_poly_m_evals.evals)
+        cfg_iter_mut!(r_alpha_evals.evaluations)
+            .zip(&summed_z_m_evals.evaluations)
+            .zip(&z_poly_evals.evaluations)
+            .zip(&t_poly_m_evals.evaluations)
             .for_each(|(((a, b), &c), d)| {
                 *a *= &b;
                 *a -= &(c * d);
@@ -514,21 +514,21 @@ impl<F: PrimeField> AHPForR1CS<F> {
             EvaluationDomain::<F>::new(3 * domain_k.size() - 3).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let denom_eval_time = start_timer!(|| "Computing denominator evals on B");
-        let a_denom: Vec<_> = cfg_iter!(a_star.evals_on_B.row.evals)
-            .zip(&a_star.evals_on_B.col.evals)
-            .zip(&a_star.row_col_evals_on_B.evals)
+        let a_denom: Vec<_> = cfg_iter!(a_star.evals_on_B.row.evaluations)
+            .zip(&a_star.evals_on_B.col.evaluations)
+            .zip(&a_star.row_col_evals_on_B.evaluations)
             .map(|((&r, c), r_c)| beta * &alpha - &(r * &alpha) - &(beta * c) + r_c)
             .collect();
 
-        let b_denom: Vec<_> = cfg_iter!(b_star.evals_on_B.row.evals)
-            .zip(&b_star.evals_on_B.col.evals)
-            .zip(&b_star.row_col_evals_on_B.evals)
+        let b_denom: Vec<_> = cfg_iter!(b_star.evals_on_B.row.evaluations)
+            .zip(&b_star.evals_on_B.col.evaluations)
+            .zip(&b_star.row_col_evals_on_B.evaluations)
             .map(|((&r, c), r_c)| beta * &alpha - &(r * &alpha) - &(beta * c) + r_c)
             .collect();
 
-        let c_denom: Vec<_> = cfg_iter!(c_star.evals_on_B.row.evals)
-            .zip(&c_star.evals_on_B.col.evals)
-            .zip(&c_star.row_col_evals_on_B.evals)
+        let c_denom: Vec<_> = cfg_iter!(c_star.evals_on_B.row.evaluations)
+            .zip(&c_star.evals_on_B.col.evaluations)
+            .zip(&c_star.row_col_evals_on_B.evaluations)
             .map(|((&r, c), r_c)| beta * &alpha - &(r * &alpha) - &(beta * c) + r_c)
             .collect();
         end_timer!(denom_eval_time);
@@ -536,9 +536,9 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let a_evals_time = start_timer!(|| "Computing a evals on B");
         let a_poly_on_B = cfg_into_iter!(0..domain_b.size())
             .map(|i| {
-                let t = eta_a * &a_star.evals_on_B.val.evals[i] * &b_denom[i] * &c_denom[i]
-                    + &(eta_b * &b_star.evals_on_B.val.evals[i] * &a_denom[i] * &c_denom[i])
-                    + &(eta_c * &c_star.evals_on_B.val.evals[i] * &a_denom[i] * &b_denom[i]);
+                let t = eta_a * &a_star.evals_on_B.val.evaluations[i] * &b_denom[i] * &c_denom[i]
+                    + &(eta_b * &b_star.evals_on_B.val.evaluations[i] * &a_denom[i] * &c_denom[i])
+                    + &(eta_c * &c_star.evals_on_B.val.evaluations[i] * &a_denom[i] * &b_denom[i]);
                 v_H_at_beta * &v_H_at_alpha * &t
             })
             .collect();

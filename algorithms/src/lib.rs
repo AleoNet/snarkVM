@@ -31,29 +31,43 @@ extern crate snarkvm_profiler;
 #[macro_use]
 extern crate thiserror;
 
+#[macro_use]
+pub mod macros;
+
+#[cfg(feature = "commitment")]
 pub mod commitment;
 
+#[cfg(feature = "commitment_tree")]
 pub mod commitment_tree;
 
+#[cfg(feature = "crh")]
 pub mod crh;
 
+#[cfg(feature = "encoding")]
 pub mod encoding;
 
+#[cfg(feature = "encryption")]
 pub mod encryption;
 
 pub mod errors;
 pub use errors::*;
 
+#[cfg(feature = "fft")]
 pub mod fft;
 
+#[cfg(feature = "merkle_tree")]
 pub mod merkle_tree;
 
+#[cfg(feature = "msm")]
 pub mod msm;
 
+#[cfg(feature = "prf")]
 pub mod prf;
 
+#[cfg(feature = "signature")]
 pub mod signature;
 
+#[cfg(feature = "snark")]
 pub mod snark;
 
 pub mod traits;

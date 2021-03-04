@@ -18,7 +18,6 @@ use criterion::{criterion_group, criterion_main};
 
 mod bls12_377;
 mod bw6_761;
-// mod sw6;
 
 criterion_group!(
     bls12_377_ec,
@@ -95,9 +94,9 @@ criterion_group!(
 
 criterion_group!(
     bls12_377_pairing,
-    bls12_377::pairing::pairing::bench_pairing_miller_loop,
-    bls12_377::pairing::pairing::bench_pairing_final_exponentiation,
-    bls12_377::pairing::pairing::bench_pairing_full,
+    bls12_377::pairing::bench_pairing_miller_loop,
+    bls12_377::pairing::bench_pairing_final_exponentiation,
+    bls12_377::pairing::bench_pairing_full,
 );
 
 criterion_group!(
@@ -175,9 +174,9 @@ criterion_group!(
 
 criterion_group!(
     bw6_761_pairing,
-    bw6_761::pairing::pairing::bench_pairing_miller_loop,
-    bw6_761::pairing::pairing::bench_pairing_final_exponentiation,
-    bw6_761::pairing::pairing::bench_pairing_full,
+    bw6_761::pairing::bench_pairing_miller_loop,
+    bw6_761::pairing::bench_pairing_final_exponentiation,
+    bw6_761::pairing::bench_pairing_full,
 );
 
 criterion_main!(

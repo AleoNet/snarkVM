@@ -18,6 +18,7 @@ use snarkvm_curves::traits::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{FpParameters, One, PrimeField, Zero};
 use snarkvm_utilities::biginteger::BigInteger;
 
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 pub struct VariableBaseMSM;
@@ -39,8 +40,7 @@ impl VariableBaseMSM {
         // Each window is of size `c`.
         // We divide up the bits 0..num_bits into windows of size `c`, and
         // in parallel process each such window.
-        let window_sums: Vec<_> = window_starts
-            .into_par_iter()
+        let window_sums: Vec<_> = cfg_into_iter!(window_starts)
             .map(|w_start| {
                 let mut res = zero;
                 // We don't need the "zero" bucket, so we only have 2^c - 1 buckets

@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-curves"
-version = "0.0.6"
+version = "0.2.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Curves for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -18,17 +18,19 @@ license = "GPL-3.0"
 edition = "2018"
 
 [[bench]]
-name = "curve_and_field_benches"
-path = "benches/curve_and_field_benches.rs"
+name = "curves"
+path = "benches/curves.rs"
 harness = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.0.6"
+version = "0.2.0"
+default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.0.6"
+version = "0.2.0"
+default-features = false
 
 [dependencies.derivative]
 version = "2"
@@ -56,5 +58,5 @@ criterion = "0.3"
 rustc_version = "0.3"
 
 [features]
-default = ["snarkvm-fields/default", "snarkvm-utilities/default"]
+default = [ "snarkvm-fields/default", "snarkvm-utilities/default" ]
 sw6 = [ ]

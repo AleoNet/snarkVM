@@ -18,6 +18,7 @@ use snarkvm_curves::traits::ProjectiveCurve;
 use snarkvm_fields::{FpParameters, PrimeField};
 use snarkvm_utilities::biginteger::BigInteger;
 
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 pub struct FixedBaseMSM;
@@ -86,7 +87,7 @@ impl FixedBaseMSM {
         let outerc = (scalar_size + window - 1) / window;
         assert!(outerc <= table.len());
 
-        v.par_iter()
+        cfg_iter!(v)
             .map(|e| Self::windowed_mul::<T>(outerc, window, table, e))
             .collect::<Vec<_>>()
     }
