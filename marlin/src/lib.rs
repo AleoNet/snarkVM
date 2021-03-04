@@ -75,3 +75,8 @@ pub use parameters::*;
 /// Implements the snarkVM-compatible Marlin SNARK interface.
 pub mod snark;
 pub use snark::*;
+
+// Implements a Fiat-Shamir based Rng that allows one to incrementally update
+// the seed based on new messages in the proof transcript.
+// pub mod fiat_shamir;
+// use crate::fiat_shamir::FiatShamirRng;
