@@ -41,7 +41,7 @@ use snarkvm_utilities::{
     serialize::*,
 };
 
-use core::{fmt::Debug, iter::FromIterator};
+use core::fmt::Debug;
 use rand_core::RngCore;
 
 #[cfg(not(feature = "std"))]
@@ -413,10 +413,10 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
             evaluations: evals,
         } = proof;
 
-        let lc_s = BTreeMap::from_iter(linear_combinations.into_iter().map(|lc| (lc.label(), lc)));
+        let lc_s: BTreeMap<_, _> = linear_combinations.into_iter().map(|lc| (lc.label(), lc)).collect();
 
         let poly_query_set = lc_query_set_to_poly_query_set(lc_s.values().copied(), eqn_query_set);
-        let poly_evals = Evaluations::from_iter(poly_query_set.iter().cloned().zip(evals.clone().unwrap()));
+        let poly_evals: Evaluations<_> = poly_query_set.iter().cloned().zip(evals.clone().unwrap()).collect();
 
         for &(ref lc_label, point) in eqn_query_set {
             if let Some(lc) = lc_s.get(lc_label) {
@@ -468,7 +468,7 @@ pub fn evaluate_query_set<'a, F: Field>(
     polys: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
     query_set: &QuerySet<'a, F>,
 ) -> Evaluations<'a, F> {
-    let polys = BTreeMap::from_iter(polys.into_iter().map(|p| (p.label(), p)));
+    let polys: BTreeMap<_, _> = polys.into_iter().map(|p| (p.label(), p)).collect();
     let mut evaluations = Evaluations::new();
     for (label, point) in query_set {
         let poly = polys.get(label).expect("polynomial in evaluated lc is not found");
@@ -484,7 +484,7 @@ fn lc_query_set_to_poly_query_set<'a, F: 'a + Field>(
 ) -> QuerySet<'a, F> {
     let mut poly_query_set = QuerySet::new();
     let lc_s = linear_combinations.into_iter().map(|lc| (lc.label(), lc));
-    let linear_combinations = BTreeMap::from_iter(lc_s);
+    let linear_combinations: BTreeMap<_, _> = lc_s.collect();
     for (lc_label, point) in query_set {
         if let Some(lc) = linear_combinations.get(lc_label) {
             for (_, poly_label) in lc.iter().filter(|(_, l)| !l.is_one()) {
@@ -646,10 +646,7 @@ pub mod tests {
             }
             let supported_hiding_bound = polynomials
                 .iter()
-                .map(|p| match p.hiding_bound() {
-                    Some(b) => b,
-                    None => 0,
-                })
+                .map(|p| p.hiding_bound().unwrap_or(0))
                 .max()
                 .unwrap_or(0);
             println!("supported degree: {:?}", supported_degree);
@@ -769,10 +766,7 @@ pub mod tests {
             }
             let supported_hiding_bound = polynomials
                 .iter()
-                .map(|p| match p.hiding_bound() {
-                    Some(b) => b,
-                    None => 0,
-                })
+                .map(|p| p.hiding_bound().unwrap_or(0))
                 .max()
                 .unwrap_or(0);
             println!("supported degree: {:?}", supported_degree);

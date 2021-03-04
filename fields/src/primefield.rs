@@ -20,6 +20,7 @@ use snarkvm_utilities::biginteger::BigInteger;
 use std::str::FromStr;
 
 /// The interface for a prime field.
+#[allow(clippy::wrong_self_convention)]
 pub trait PrimeField: Field + FromStr {
     type Parameters: FpParameters<BigInteger = Self::BigInteger>;
     type BigInteger: BigInteger;

@@ -207,7 +207,7 @@ where
             let delta_g2 = P::G2Gadget::alloc(cs.ns(|| "delta_g2"), || Ok(delta_g2.into_projective()))?;
 
             let gamma_abc_g1 = gamma_abc_g1
-                .into_iter()
+                .iter()
                 .enumerate()
                 .map(|(i, gamma_abc_i)| {
                     P::G1Gadget::alloc(cs.ns(|| format!("gamma_abc_{}", i)), || {
@@ -245,7 +245,7 @@ where
             let delta_g2 = P::G2Gadget::alloc_input(cs.ns(|| "delta_g2"), || Ok(delta_g2.into_projective()))?;
 
             let gamma_abc_g1 = gamma_abc_g1
-                .into_iter()
+                .iter()
                 .enumerate()
                 .map(|(i, gamma_abc_i)| {
                     P::G1Gadget::alloc_input(cs.ns(|| format!("gamma_abc_{}", i)), || {

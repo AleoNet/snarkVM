@@ -123,12 +123,12 @@ fn test_transaction_kernel_serialization() {
     let new_values = vec![10; NUM_OUTPUT_RECORDS];
     let new_payloads = vec![RecordPayload::default(); NUM_OUTPUT_RECORDS];
     let new_birth_program_ids = vec![noop_program_id.clone(); NUM_OUTPUT_RECORDS];
-    let new_death_program_ids = vec![noop_program_id.clone(); NUM_OUTPUT_RECORDS];
+    let new_death_program_ids = vec![noop_program_id; NUM_OUTPUT_RECORDS];
     let memo = [0u8; 32];
 
     // Generate transaction kernel
     let transaction_kernel = <InstantiatedDPC as DPCScheme<L>>::execute_offline(
-        system_parameters.clone(),
+        system_parameters,
         old_records,
         old_account_private_keys,
         new_record_owners,

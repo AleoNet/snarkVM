@@ -39,5 +39,6 @@ pub trait Program: Clone {
     fn evaluate(&self, primary: &Self::PublicInput, witness: &Self::PrivateWitness) -> bool;
 
     /// Returns the program identity
+    #[allow(clippy::wrong_self_convention)]
     fn into_compact_repr(&self) -> Vec<u8>;
 }

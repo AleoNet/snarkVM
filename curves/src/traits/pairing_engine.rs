@@ -177,6 +177,7 @@ pub trait ProjectiveCurve:
 
     /// Converts this element into its affine representation.
     #[must_use]
+    #[allow(clippy::wrong_self_convention)]
     fn into_affine(&self) -> Self::Affine;
 
     /// Recommends a wNAF window table size given a scalar. Always returns a
@@ -193,6 +194,7 @@ pub trait ProjectiveCurve:
 
 /// Affine representation of an elliptic curve point guaranteed to be
 /// in the correct prime order subgroup.
+#[allow(clippy::wrong_self_convention)]
 pub trait AffineCurve:
     Eq
     + Sized
