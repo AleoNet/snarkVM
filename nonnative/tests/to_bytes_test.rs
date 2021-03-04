@@ -20,7 +20,7 @@ use snarkvm_nonnative::NonNativeFieldVar;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
 // TODO (raychu86): Update field pair for the test.
-#[test]
+// #[test]
 // fn to_bytes_test() {
 //     let mut cs = TestConstraintSystem::<<MNT6_298 as PairingEngine>::Fr>::new();
 //
