@@ -70,7 +70,7 @@ snarkvm
 
 ## Development
 
-|       Package      |                                    Crate.io                                   |        `std`       |         WASM       |    `no_std`    |
+|       Package      |                                    Crate.io                                   |        `std`       |       `wasm`       |    `no_std`    |
 |:------------------:|-------------------------------------------------------------------------------|:------------------:|:------------------:|:--------------:|
 | snarkvm-algorithms |![crates.io](https://img.shields.io/crates/v/snarkvm-algorithms.svg?color=neon)| :white_check_mark: | :white_check_mark: | :construction: |
 | snarkvm-curves     | ![crates.io](https://img.shields.io/crates/v/snarkvm-curves.svg?color=neon)   | :white_check_mark: | :white_check_mark: | :construction: |
