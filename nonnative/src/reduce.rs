@@ -128,53 +128,37 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
             bits_considered.push(b);
         }
 
-        // if cs == ConstraintSystemRef::None {
-        //     let mut bits = vec![];
-        //     for b in bits_considered {
-        //         bits.push(Boolean::Constant(b));
-        //     }
-        //
-        //     Ok(bits)
-        // } else {
-        //     let mut bits = vec![];
-        //     for b in bits_considered {
-        //         bits.push(Boolean::new_witness(ark_relations::ns!(cs, "bit"), || Ok(b))?);
-        //     }
-        //
-        //     let mut bit_sum = FpGadget::zero();
-        //     let mut coeff = BaseField::one();
-        //
-        //     for bit in bits.iter().rev() {
-        //         bit_sum += <FpGadget<BaseField> as From<Boolean>>::from(cs, (*bit).clone()) * coeff;
-        //         coeff.double_in_place();
-        //     }
-        //
-        //     bit_sum.enforce_equal(limb)?;
-        //
-        //     Ok(bits)
-        // }
+        match limb {
+            FpGadget::Constant(_) => {
+                let mut bits = vec![];
+                for b in bits_considered {
+                    bits.push(Boolean::Constant(b));
+                }
 
-        // TODO (raychu86): Add support for constants.
+                Ok(bits)
+            }
+            _ => {
+                let mut bits = vec![];
+                for (i, b) in bits_considered.iter().enumerate() {
+                    bits.push(Boolean::alloc_input(cs.ns(|| format!("bit_{}", i)), || Ok(b))?);
+                }
 
-        let mut bits = vec![];
-        for (i, b) in bits_considered.iter().enumerate() {
-            bits.push(Boolean::alloc(cs.ns(|| format!("bit_{}", i)), || Ok(b))?);
+                let mut bit_sum = FpGadget::zero(cs.ns(|| "zero"))?;
+                let mut coeff = BaseField::one();
+
+                for (i, bit) in bits.iter().rev().enumerate() {
+                    let temp = (FpGadget::<BaseField>::from_boolean(cs.ns(|| format!("from_boolean_{}", i)), *bit)?)
+                        .mul_by_constant(cs.ns(|| format!("mul_by_coeff_{}", i)), &coeff)?;
+
+                    bit_sum = bit_sum.add(cs.ns(|| format!("add_{}", i)), &temp)?;
+                    coeff.double_in_place();
+                }
+
+                bit_sum.enforce_equal(cs.ns(|| "enforce_equal"), limb)?;
+
+                Ok(bits)
+            }
         }
-
-        let mut bit_sum = FpGadget::zero(cs.ns(|| "zero"))?;
-        let mut coeff = BaseField::one();
-
-        for (i, bit) in bits.iter().rev().enumerate() {
-            let temp = (FpGadget::<BaseField>::from_boolean(cs.ns(|| format!("from_boolean_{}", i)), *bit)?)
-                .mul_by_constant(cs.ns(|| format!("mul_by_coeff_{}", i)), &coeff)?;
-
-            bit_sum = bit_sum.add(cs.ns(|| format!("add_{}", i)), &temp)?;
-            coeff.double_in_place();
-        }
-
-        bit_sum.enforce_equal(cs.ns(|| "enforce_equal"), limb)?;
-
-        Ok(bits)
     }
 
     /// Reduction to the normal form
