@@ -1920,6 +1920,7 @@ name = "snarkvm-posw"
 version = "0.2.0"
 dependencies = [
  "blake2",
+ "criterion",
  "hex",
  "rand",
  "rand_xorshift",
