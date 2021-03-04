@@ -646,10 +646,7 @@ pub mod tests {
             }
             let supported_hiding_bound = polynomials
                 .iter()
-                .map(|p| match p.hiding_bound() {
-                    Some(b) => b,
-                    None => 0,
-                })
+                .map(|p| p.hiding_bound().unwrap_or(0))
                 .max()
                 .unwrap_or(0);
             println!("supported degree: {:?}", supported_degree);
@@ -769,10 +766,7 @@ pub mod tests {
             }
             let supported_hiding_bound = polynomials
                 .iter()
-                .map(|p| match p.hiding_bound() {
-                    Some(b) => b,
-                    None => 0,
-                })
+                .map(|p| p.hiding_bound().unwrap_or(0))
                 .max()
                 .unwrap_or(0);
             println!("supported degree: {:?}", supported_degree);

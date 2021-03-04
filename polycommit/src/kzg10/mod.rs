@@ -459,10 +459,7 @@ mod tests {
     impl<E: PairingEngine> KZG10<E> {
         /// Specializes the public parameters for a given maximum degree `d` for polynomials
         /// `d` should be less that `pp.max_degree()`.
-        pub(crate) fn trim(
-            pp: &UniversalParams<E>,
-            mut supported_degree: usize,
-        ) -> Result<(Powers<E>, VerifierKey<E>), Error> {
+        pub(crate) fn trim(pp: &UniversalParams<E>, mut supported_degree: usize) -> (Powers<E>, VerifierKey<E>) {
             if supported_degree == 1 {
                 supported_degree += 1;
             }
@@ -481,7 +478,7 @@ mod tests {
                 prepared_h: pp.prepared_h.clone(),
                 prepared_beta_h: pp.prepared_beta_h.clone(),
             };
-            Ok((powers, vk))
+            (powers, vk)
         }
     }
 
@@ -501,7 +498,7 @@ mod tests {
 
         let degree = 4;
         let pp = KZG_Bls12_377::setup(degree, false, rng).unwrap();
-        let (powers, _) = KZG_Bls12_377::trim(&pp, degree).unwrap();
+        let (powers, _) = KZG_Bls12_377::trim(&pp, degree);
 
         let hiding_bound = None;
         let (comm, _) = KZG10::commit(&powers, &p, hiding_bound, Some(rng)).unwrap();
@@ -520,7 +517,7 @@ mod tests {
                 degree = usize::rand(rng) % 20;
             }
             let pp = KZG10::<E>::setup(degree, false, rng)?;
-            let (ck, vk) = KZG10::trim(&pp, degree)?;
+            let (ck, vk) = KZG10::trim(&pp, degree);
             let p = Polynomial::rand(degree, rng);
             let hiding_bound = Some(1);
             let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, Some(rng))?;
@@ -543,7 +540,7 @@ mod tests {
         for _ in 0..100 {
             let degree = 50;
             let pp = KZG10::<E>::setup(degree, false, rng)?;
-            let (ck, vk) = KZG10::trim(&pp, 2)?;
+            let (ck, vk) = KZG10::trim(&pp, 2);
             let p = Polynomial::rand(1, rng);
             let hiding_bound = Some(1);
             let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, Some(rng))?;
@@ -569,7 +566,7 @@ mod tests {
                 degree = usize::rand(rng) % 20;
             }
             let pp = KZG10::<E>::setup(degree, false, rng)?;
-            let (ck, vk) = KZG10::trim(&pp, degree)?;
+            let (ck, vk) = KZG10::trim(&pp, degree);
             let mut comms = Vec::new();
             let mut values = Vec::new();
             let mut points = Vec::new();

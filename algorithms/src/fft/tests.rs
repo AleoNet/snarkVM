@@ -69,7 +69,7 @@ fn parallel_fft_consistency() {
         serial_radix2_fft(a, omega.inverse().unwrap(), log_n);
         let domain_size_inv = E::Fr::from(a.len() as u64).inverse().unwrap();
         for coeff in a.iter_mut() {
-            *coeff *= &E::Fr::from(domain_size_inv);
+            *coeff *= &domain_size_inv;
         }
     }
 

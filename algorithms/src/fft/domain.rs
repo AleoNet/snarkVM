@@ -638,14 +638,14 @@ mod tests {
             let domain_size = 1 << domain_dimension;
             let domain = EvaluationDomain::<Fr>::new(domain_size).unwrap();
             let all_domain_elements: Vec<Fr> = domain.elements().collect();
-            for i in 0..domain_size {
-                let lagrange_coefficients = domain.evaluate_all_lagrange_coefficients(all_domain_elements[i]);
-                for j in 0..domain_size {
+            for (i, domain_element) in all_domain_elements.iter().enumerate().take(domain_size) {
+                let lagrange_coefficients = domain.evaluate_all_lagrange_coefficients(*domain_element);
+                for (j, lagrange_coefficient) in lagrange_coefficients.iter().enumerate().take(domain_size) {
                     // Lagrange coefficient for the evaluation point, which should be 1
                     if i == j {
-                        assert_eq!(lagrange_coefficients[j], Fr::one());
+                        assert_eq!(*lagrange_coefficient, Fr::one());
                     } else {
-                        assert_eq!(lagrange_coefficients[j], Fr::zero());
+                        assert_eq!(*lagrange_coefficient, Fr::zero());
                     }
                 }
             }
