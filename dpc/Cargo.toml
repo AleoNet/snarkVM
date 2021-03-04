@@ -78,7 +78,7 @@ version = "0.9"
 version = "2"
 
 [dependencies.hex]
-version = "0.4.2"
+version = "0.4.3"
 
 [dependencies.itertools]
 version = "0.10.0"

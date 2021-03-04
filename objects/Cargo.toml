@@ -40,7 +40,7 @@ version = "0.4"
 features = [ "serde" ]
 
 [dependencies.hex]
-version = "0.4.2"
+version = "0.4.3"
 
 [dependencies.once_cell]
 version = "1.7.1"
