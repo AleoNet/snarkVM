@@ -198,7 +198,6 @@ impl<F: PrimeField> AllocatedFp<F> {
         }
     }
 
-    #[allow(dead_code)]
     #[inline]
     #[allow(dead_code)]
     fn add_constant_in_place<CS: ConstraintSystem<F>>(&mut self, _cs: CS, other: &F) -> &mut Self {
