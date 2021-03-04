@@ -262,17 +262,13 @@ impl<F: PrimeField> AllocatedFp<F> {
         Ok(inverse)
     }
 
-    fn frobenius_map<CS: ConstraintSystem<F>>(&self, _: CS, _: usize) -> Result<Self, SynthesisError> {
-        Ok(self.clone())
+    fn frobenius_map<CS: ConstraintSystem<F>>(&self, _: CS, _: usize) -> Self {
+        self.clone()
     }
 
     #[allow(dead_code)]
-    fn frobenius_map_in_place<CS: ConstraintSystem<F>>(
-        &mut self,
-        _: CS,
-        _: usize,
-    ) -> Result<&mut Self, SynthesisError> {
-        Ok(self)
+    fn frobenius_map_in_place<CS: ConstraintSystem<F>>(&mut self, _: CS, _: usize) -> &mut Self {
+        self
     }
 
     fn mul_equals<CS: ConstraintSystem<F>>(
@@ -843,7 +839,7 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
                 f.frobenius_map(_power);
                 Ok(FpGadget::Constant(f))
             }
-            Self::Variable(v) => v.frobenius_map(_cs, _power).map(Self::Variable),
+            Self::Variable(v) => Ok(Self::Variable(v.frobenius_map(_cs, _power))),
         }
     }
 

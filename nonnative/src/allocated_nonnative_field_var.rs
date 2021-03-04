@@ -472,8 +472,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         })
     }
 
-    pub(crate) fn frobenius_map(&self, _power: usize) -> Result<Self, SynthesisError> {
-        Ok(self.clone())
+    pub(crate) fn frobenius_map(&self, _power: usize) -> Self {
+        self.clone()
     }
 
     pub(crate) fn conditional_enforce_equal<CS: ConstraintSystem<BaseField>>(

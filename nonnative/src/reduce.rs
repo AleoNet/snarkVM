@@ -165,7 +165,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
         let mut coeff = BaseField::one();
 
         for (i, bit) in bits.iter().rev().enumerate() {
-            let temp = (FpGadget::<BaseField>::from_boolean(cs.ns(|| format!("from_boolean_{}", i)), (*bit).clone())?)
+            let temp = (FpGadget::<BaseField>::from_boolean(cs.ns(|| format!("from_boolean_{}", i)), *bit)?)
                 .mul_by_constant(cs.ns(|| format!("mul_by_coeff_{}", i)), &coeff)?;
 
             bit_sum = bit_sum.add(cs.ns(|| format!("add_{}", i)), &temp)?;

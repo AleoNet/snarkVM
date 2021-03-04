@@ -286,7 +286,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> FieldGadget<TargetField, Ba
                 tmp.frobenius_map(power);
                 tmp
             })),
-            Self::Var(v) => Ok(Self::Var(v.frobenius_map(power)?)),
+            Self::Var(v) => Ok(Self::Var(v.frobenius_map(power))),
         }
     }
 
