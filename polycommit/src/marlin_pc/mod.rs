@@ -230,7 +230,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
                     (None, None)
                 } else {
                     let mut sorted_enforced_degree_bounds = enforced_degree_bounds.clone();
-                    sorted_enforced_degree_bounds.sort();
+                    sorted_enforced_degree_bounds.sort_unstable();
 
                     let lowest_shifted_power =
                         max_degree - sorted_enforced_degree_bounds.last().ok_or(Error::EmptyDegreeBounds)?;

@@ -76,7 +76,7 @@ impl<F: PrimeField> From<AllocatedFp<F>> for FpGadget<F> {
 impl<F: PrimeField> AllocatedFp<F> {
     /// Constructs `Self` from a `Boolean`: if `other` is false, this outputs
     /// `zero`, else it outputs `one`.
-    pub fn from_boolean<CS: ConstraintSystem<F>>(mut cs: CS, other: Boolean) -> Result<Self, SynthesisError> {
+    pub fn from_boolean<CS: ConstraintSystem<F>>(cs: CS, other: Boolean) -> Result<Self, SynthesisError> {
         let value = F::from(other.get_value().get()? as u128);
 
         Self::alloc(cs, || Ok(value))
@@ -204,6 +204,7 @@ impl<F: PrimeField> AllocatedFp<F> {
     }
 
     #[inline]
+    #[allow(dead_code)]
     fn add_constant_in_place<CS: ConstraintSystem<F>>(
         &mut self,
         _cs: CS,
@@ -265,6 +266,7 @@ impl<F: PrimeField> AllocatedFp<F> {
         Ok(self.clone())
     }
 
+    #[allow(dead_code)]
     fn frobenius_map_in_place<CS: ConstraintSystem<F>>(
         &mut self,
         _: CS,
@@ -298,10 +300,12 @@ impl<F: PrimeField> AllocatedFp<F> {
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn cost_of_mul() -> usize {
         1
     }
 
+    #[allow(dead_code)]
     fn cost_of_inv() -> usize {
         1
     }
@@ -588,7 +592,7 @@ impl<F: PrimeField> Clone for AllocatedFp<F> {
 
 impl<F: PrimeField> AllocGadget<F, F> for AllocatedFp<F> {
     #[inline]
-    fn alloc_constant<FN, T, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    fn alloc_constant<FN, T, CS: ConstraintSystem<F>>(cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<F>,
@@ -657,7 +661,7 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
     #[inline]
     fn get_variable(&self) -> <Self as FieldGadget<F, F>>::Variable {
         match self {
-            FpGadget::Constant(v) => unimplemented!(),
+            FpGadget::Constant(_v) => unimplemented!(),
             FpGadget::Variable(v) => v.variable.clone(),
         }
     }
@@ -704,7 +708,7 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
     }
 
     #[inline]
-    fn add<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, SynthesisError> {
+    fn add<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, SynthesisError> {
         match (self, other) {
             (Self::Constant(c1), Self::Constant(c2)) => Ok(Self::Constant(*c1 + &*c2)),
             (Self::Constant(c), Self::Variable(v)) | (Self::Variable(v), Self::Constant(c)) => {
@@ -813,7 +817,7 @@ impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
     }
 
     #[inline]
-    fn inverse<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Self, SynthesisError> {
+    fn inverse<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Self, SynthesisError> {
         match self {
             Self::Constant(f) => f.inverse().get().map(Self::Constant),
             Self::Variable(v) => v.inverse(cs).map(Self::Variable),
@@ -952,14 +956,14 @@ impl<F: PrimeField> NEqGadget<F> for FpGadget<F> {
 impl<F: PrimeField> ToBitsGadget<F> for FpGadget<F> {
     /// Outputs the binary representation of the value in `self` in *big-endian*
     /// form.
-    fn to_bits<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+    fn to_bits<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         match self {
             Self::Constant(_) => self.to_bits_strict(cs),
             Self::Variable(v) => v.to_bits(cs),
         }
     }
 
-    fn to_bits_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+    fn to_bits_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         use snarkvm_utilities::bititerator::BitIteratorLE;
         match self {
             Self::Constant(c) => Ok(BitIteratorLE::new(&c.into_repr())
@@ -972,14 +976,14 @@ impl<F: PrimeField> ToBitsGadget<F> for FpGadget<F> {
 }
 
 impl<F: PrimeField> ToBytesGadget<F> for FpGadget<F> {
-    fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+    fn to_bytes<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         match self {
             Self::Constant(c) => Ok(UInt8::constant_vec(&to_bytes![c].unwrap())),
             Self::Variable(v) => v.to_bytes(cs),
         }
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         match self {
             Self::Constant(c) => Ok(UInt8::constant_vec(&to_bytes![c].unwrap())),
             Self::Variable(v) => v.to_bytes_strict(cs),
@@ -1001,7 +1005,7 @@ impl<F: PrimeField> CondSelectGadget<F> for FpGadget<F> {
             _ => {
                 match (first, second) {
                     (Self::Constant(t), Self::Constant(f)) => {
-                        let is = AllocatedFp::from_boolean(cs.ns(|| "from_bool_is"), cond.clone())?;
+                        let is = AllocatedFp::from_boolean(cs.ns(|| "from_bool_is"), *cond)?;
                         let not = AllocatedFp::from_boolean(cs.ns(|| "from_bool_not"), cond.not())?;
                         // cond * t + (1 - cond) * f
                         let not_f = &not.mul_by_constant(cs.ns(|| "mul_by_f"), &*f)?;
@@ -1038,7 +1042,7 @@ impl<F: PrimeField> TwoBitLookupGadget<F> for FpGadget<F> {
     type TableConstant = F;
 
     fn two_bit_lookup<CS: ConstraintSystem<F>>(
-        mut cs: CS,
+        cs: CS,
         b: &[Boolean],
         c: &[Self::TableConstant],
     ) -> Result<Self, SynthesisError> {
@@ -1078,7 +1082,7 @@ impl<F: PrimeField> ThreeBitCondNegLookupGadget<F> for FpGadget<F> {
     type TableConstant = F;
 
     fn three_bit_cond_neg_lookup<CS: ConstraintSystem<F>>(
-        mut cs: CS,
+        cs: CS,
         b: &[Boolean],
         b0b1: &Boolean,
         c: &[Self::TableConstant],
