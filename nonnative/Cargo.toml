@@ -31,7 +31,6 @@ edition = "2018"
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
 version = "0.2.0"
-default-features = false
 
 [dependencies.snarkvm-curves]
 path = "../curves"
@@ -56,7 +55,6 @@ default-features = false
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.2.0"
-default-features = false
 
 [dependencies.num-bigint]
 version = "0.3.0"

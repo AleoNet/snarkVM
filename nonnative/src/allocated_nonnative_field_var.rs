@@ -14,15 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![allow(unused_imports, dead_code)]
-
 use crate::{
     allocated_nonnative_field_mul_result_var::AllocatedNonNativeFieldMulResultVar,
     params::{get_params, OptimizationType},
     reduce::{bigint_to_basefield, limbs_to_bigint, Reducer},
 };
 
-use snarkvm_fields::{FpParameters, PrimeField, ToConstraintField};
+use snarkvm_fields::{FpParameters, PrimeField};
 use snarkvm_gadgets::{
     fields::FpGadget,
     traits::{

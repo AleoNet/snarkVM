@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![allow(unused_imports, dead_code)]
-
 use crate::{AllocatedNonNativeFieldMulResultVar, NonNativeFieldVar};
 
 use snarkvm_fields::PrimeField;
