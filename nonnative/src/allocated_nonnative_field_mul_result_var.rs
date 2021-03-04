@@ -147,7 +147,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
             let value_bigint = limbs_to_bigint(params.bits_per_limb, &limbs_values);
             let mut k_cur = value_bigint / p_bigint;
 
-            let total_len = TargetField::size_in_bits() + &surfeit;
+            let total_len = TargetField::size_in_bits() + surfeit;
 
             for i in 0..total_len {
                 res.push(Boolean::alloc_input(cs.ns(|| format!("alloc_input_{}", i)), || {
@@ -178,10 +178,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
                 let mut cur = BaseField::one();
 
                 for (j, bit) in this_limb_bits.iter().enumerate() {
-                    let mut temp = FpGadget::<BaseField>::from_boolean(
-                        cs.ns(|| format!("from_boolean_{}_{}", i, j)),
-                        bit.clone(),
-                    )?;
+                    let mut temp =
+                        FpGadget::<BaseField>::from_boolean(cs.ns(|| format!("from_boolean_{}_{}", i, j)), *bit)?;
                     temp = temp.mul_by_constant(cs.ns(|| format!("mul_by_constant_{}_{}", i, j)), &cur)?;
                     limb = limb.add(cs.ns(|| format!("add_{}_{}", i, j)), &temp)?;
 

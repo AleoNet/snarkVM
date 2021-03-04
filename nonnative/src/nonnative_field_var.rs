@@ -485,10 +485,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ThreeBitCondNegLookupGadget
         debug_assert_eq!(bits.len(), 3);
         debug_assert_eq!(constants.len(), 4);
 
-        let mut constant = match b0b1 {
-            Boolean::Constant(_) => true,
-            _ => false,
-        };
+        let mut constant = matches!(b0b1, Boolean::Constant(_));
 
         for b in bits {
             match b {
