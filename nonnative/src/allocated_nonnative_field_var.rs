@@ -410,20 +410,23 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         // We currently only support constraint optimization
 
         for z_index in 0..2 * params.num_limbs - 1 {
-            prod_limbs.push(FpGadget::alloc_input(cs.ns(|| "limb product"), || {
-                let mut z_i = BaseField::zero();
-                for i in 0..=min(params.num_limbs - 1, z_index) {
-                    let j = z_index - i;
-                    if j < params.num_limbs {
-                        z_i += &self_reduced.limbs[i]
-                            .get_value()
-                            .unwrap()
-                            .mul(&other_reduced.limbs[j].get_value().unwrap());
+            prod_limbs.push(FpGadget::alloc_input(
+                cs.ns(|| format!("limb product_{}", z_index)),
+                || {
+                    let mut z_i = BaseField::zero();
+                    for i in 0..=min(params.num_limbs - 1, z_index) {
+                        let j = z_index - i;
+                        if j < params.num_limbs {
+                            z_i += &self_reduced.limbs[i]
+                                .get_value()
+                                .unwrap()
+                                .mul(&other_reduced.limbs[j].get_value().unwrap());
+                        }
                     }
-                }
 
-                Ok(z_i)
-            })?);
+                    Ok(z_i)
+                },
+            )?);
         }
 
         for c in 0..(2 * params.num_limbs - 1) {
@@ -431,31 +434,34 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
                 .map(|i| BaseField::from((c + 1) as u128).pow(&vec![i as u64]))
                 .collect();
 
-            let mut x = FpGadget::zero(&mut cs.ns(|| "zero_x"))?;
-            let mut y = FpGadget::zero(&mut cs.ns(|| "zero_y"))?;
-            let mut z = FpGadget::zero(&mut cs.ns(|| "zero_z"))?;
+            let mut x = FpGadget::zero(&mut cs.ns(|| format!("zero_x_{}", c)))?;
+            let mut y = FpGadget::zero(&mut cs.ns(|| format!("zero_y_{}", c)))?;
+            let mut z = FpGadget::zero(&mut cs.ns(|| format!("zero_z_{}", c)))?;
 
             for (i, (var, c_pow)) in self_reduced.limbs.iter().zip(c_pows.iter()).enumerate() {
-                let temp = var.mul_by_constant(&mut cs.ns(|| format!("var_mul_by_constant_c_pow_x_{}", i)), c_pow)?;
+                let temp =
+                    var.mul_by_constant(&mut cs.ns(|| format!("var_mul_by_constant_c_pow_x_{}_{}", c, i)), c_pow)?;
 
-                x = x.add(&mut cs.ns(|| format!("sum_add_x_{}", i)), &temp)?
+                x = x.add(&mut cs.ns(|| format!("sum_add_x_{}_{}", c, i)), &temp)?
             }
 
             for (i, (var, c_pow)) in other_reduced.limbs.iter().zip(c_pows.iter()).enumerate() {
-                let temp = var.mul_by_constant(&mut cs.ns(|| format!("var_mul_by_constant_c_pow_y_{}", i)), c_pow)?;
+                let temp =
+                    var.mul_by_constant(&mut cs.ns(|| format!("var_mul_by_constant_c_pow_y_{}_{}", c, i)), c_pow)?;
 
-                y = y.add(&mut cs.ns(|| format!("sum_add_y_{}", i)), &temp)?
+                y = y.add(&mut cs.ns(|| format!("sum_add_y_{}_ {}", c, i)), &temp)?
             }
 
             for (i, (var, c_pow)) in prod_limbs.iter().zip(c_pows.iter()).enumerate() {
-                let temp = var.mul_by_constant(&mut cs.ns(|| format!("var_mul_by_constant_c_pow_z_{}", i)), c_pow)?;
+                let temp =
+                    var.mul_by_constant(&mut cs.ns(|| format!("var_mul_by_constant_c_pow_z_{}_{}", c, i)), c_pow)?;
 
-                z = z.add(&mut cs.ns(|| format!("sum_add_z_{}", i)), &temp)?
+                z = z.add(&mut cs.ns(|| format!("sum_add_z_{}_{}", c, i)), &temp)?
             }
 
-            let x_mul_y = x.mul(cs.ns(|| "x_mul_y"), &y)?;
+            let x_mul_y = x.mul(cs.ns(|| format!("x_mul_y_{}", c)), &y)?;
 
-            z.enforce_equal(cs.ns(|| "enforce_equal"), &x_mul_y)?;
+            z.enforce_equal(cs.ns(|| format!("enforce_equal_{}", c)), &x_mul_y)?;
         }
 
         Ok(AllocatedNonNativeFieldMulResultVar {
