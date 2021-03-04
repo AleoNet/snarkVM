@@ -149,7 +149,12 @@ where
     CP: POSWCircuitParameters,
 {
     /// Performs a trusted setup for the PoSW circuit and returns an instance of the runner
-    #[cfg(any(test, feature = "test-helpers"))]
+    // TODO (howardwu): Find a workaround to keeping this method disabled.
+    //  We need this method for benchmarking currently. There are two options:
+    //  (1) Remove the benchmark for GM17 (since it is outdated anyways)
+    //  (2) Update `Posw::setup` to take in an `OptionalRng` and account for the universal setup.
+    // #[cfg(any(test, feature = "test-helpers"))]
+    #[deprecated]
     pub fn setup<R: Rng>(rng: &mut R) -> Result<Self, PoswError>
     where
         S: SNARK<Circuit = POSWCircuit<F, M, HG, CP>>,
