@@ -86,6 +86,7 @@ snarkvm
 | snarkvm-profiler   | ![crates.io](https://img.shields.io/crates/v/snarkvm-profiler.svg?color=neon) | :white_check_mark: | :white_check_mark: | :construction: |
 | snarkvm-r1cs       | ![crates.io](https://img.shields.io/crates/v/snarkvm-r1cs.svg?color=neon)     | :white_check_mark: | :white_check_mark: | :construction: |
 | snarkvm-utilities  | ![crates.io](https://img.shields.io/crates/v/snarkvm-utilities.svg?color=neon)| :white_check_mark: | :white_check_mark: | :construction: |
+| snarkvm-wasm       | ![crates.io](https://img.shields.io/crates/v/snarkvm-wasm.svg?color=neon)     | :white_check_mark: | :white_check_mark: | :construction: |
 
 ## Diffs to Resolve
 
