@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-algorithms"
-version = "0.0.6"
+version = "0.2.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Algorithms for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -53,27 +53,27 @@ path = "examples/snark/gm17.rs"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.0.6"
+version = "0.2.0"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.0.6"
+version = "0.2.0"
 default-features = false
 
 [dependencies.snarkvm-profiler]
 path = "../profiler"
-version = "0.0.6"
+version = "0.2.0"
 default-features = false
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
-version = "0.0.6"
+version = "0.2.0"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.0.6"
+version = "0.2.0"
 default-features = false
 
 [dependencies.blake2]
@@ -121,55 +121,49 @@ version = "0.3"
 
 [features]
 default = [
-    "full",
-    "parallel",
-    "snarkvm-curves/default",
-    "snarkvm-fields/default",
-    "snarkvm-r1cs/default",
-    "snarkvm-utilities/default"
+  "full",
+  "parallel",
+  "snarkvm-curves/default",
+  "snarkvm-fields/default",
+  "snarkvm-r1cs/default",
+  "snarkvm-utilities/default"
 ]
-
-# Configuration Modes
-
 full = [
-    "commitment",
-    "commitment_tree",
-    "crh",
-    "encoding",
-    "encryption",
-    "fft",
-    "merkle_tree",
-    "msm",
-    "prf",
-    "signature",
-    "snark",
+  "commitment",
+  "commitment_tree",
+  "crh",
+  "encoding",
+  "encryption",
+  "fft",
+  "merkle_tree",
+  "msm",
+  "prf",
+  "signature",
+  "snark"
 ]
 wasm = [
-    "commitment",
-    "commitment_tree",
-    "crh",
-    "encoding",
-    "encryption",
-    "fft",
-    "merkle_tree",
-    "msm",
-    "prf",
-    "signature",
-    "snark",
+  "commitment",
+  "commitment_tree",
+  "crh",
+  "encoding",
+  "encryption",
+  "fft",
+  "merkle_tree",
+  "msm",
+  "prf",
+  "signature",
+  "snark"
 ]
-commitment = ["blake2", "crh"]
-commitment_tree = []
-crh = []
-encoding = []
-encryption = ["signature"]
-fft = []
-merkle_tree = []
-msm = []
-prf = ["blake2"]
-signature = ["encryption"]
-snark = ["fft", "msm"]
-
-# Internal
-
-parallel = []
+commitment = [ "blake2", "crh" ]
+commitment_tree = [ ]
+crh = [ ]
+encoding = [ ]
+encryption = [ "signature" ]
+fft = [ ]
+merkle_tree = [ ]
+msm = [ ]
+prf = [ "blake2" ]
+signature = [ "encryption" ]
+snark = [ "fft", "msm" ]
+parallel = [ ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
