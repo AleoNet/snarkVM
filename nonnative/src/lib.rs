@@ -74,7 +74,7 @@ macro_rules! overhead {
     ($x:expr) => {{
         use snarkvm_utilities::biginteger::BigInteger;
         let num = $x;
-        let num_bits = num.into_repr().to_bits();
+        let num_bits = num.into_repr().to_bits_be();
         let mut skipped_bits = 0;
         for b in num_bits.iter() {
             if *b == false {

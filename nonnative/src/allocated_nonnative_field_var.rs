@@ -85,7 +85,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
             let mut cur = TargetField::one();
 
             // Iterate over limb bits (big endian).
-            for bit in limb.into_repr().to_bits().iter().rev() {
+            for bit in limb.into_repr().to_bits_be().iter().rev() {
                 if *bit {
                     val += &cur;
                 }
@@ -365,8 +365,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         let mut limbs: Vec<BaseField> = Vec::new();
         let mut cur = *elem;
         for _ in 0..params.num_limbs {
-            let cur_bits = cur.to_bits(); // `to_bits` is big endian
-            let cur_mod_r = <BaseField as PrimeField>::BigInteger::from_bits(
+            let cur_bits = cur.to_bits_be(); // `to_bits` is big endian
+            let cur_mod_r = <BaseField as PrimeField>::BigInteger::from_bits_be(
                 cur_bits[cur_bits.len() - params.bits_per_limb..].to_vec(),
             ); // therefore, the lowest `bits_per_non_top_limb` bits is what we want.
             limbs.push(BaseField::from_repr(cur_mod_r).unwrap());

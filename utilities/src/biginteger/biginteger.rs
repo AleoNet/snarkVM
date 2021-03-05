@@ -94,13 +94,13 @@ pub trait BigInteger:
 
     /// Returns the big integer representation of a given big endian boolean
     /// array.
-    fn from_bits(bits: Vec<bool>) -> Self;
+    fn from_bits_be(bits: Vec<bool>) -> Self;
 
-    /// Returns the bit representation in a big endian boolean array, without
+    /// Returns the bit representation of the big integer in a big endian boolean array, without
     /// leading zeros.
-    fn to_bits(&self) -> Vec<bool>;
+    fn to_bits_be(&self) -> Vec<bool>;
 
-    /// Returns the bit representation in a little endian boolean array,
+    /// Returns the bit representation of the big integer in a little endian boolean array,
     /// with trailing zeroes.
     fn to_bits_le(&self) -> Vec<bool> {
         BitIteratorLE::new(self).collect::<Vec<_>>()
