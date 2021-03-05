@@ -468,7 +468,7 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
             cs.enforce(|| format!("enforce_constraint_{}", i), |lc| lc, |lc| lc, |_| lc);
         }
 
-        self.s.absorb(cs.ns(|| "abosorb"), &gadgets)
+        self.s.absorb(cs.ns(|| "absorb"), &gadgets)
     }
 
     fn squeeze_native_field_elements<CS: ConstraintSystem<CF>>(
