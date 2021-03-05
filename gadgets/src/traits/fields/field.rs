@@ -192,7 +192,7 @@ pub trait FieldGadget<NativeF: Field, F: Field>:
         for (index, i) in BitIteratorBE::new_without_leading_zeros(exp).enumerate() {
             res.square_in_place(cs.ns(|| format!("square_in_place_{}", index)))?;
             if i {
-                res.mul_in_place(cs.ns(|| format!("square_in_place_{}", index)), self)?;
+                res.mul_in_place(cs.ns(|| format!("mul_in_place_{}", index)), self)?;
             }
         }
         Ok(res)

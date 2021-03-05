@@ -57,6 +57,8 @@ macro_rules! alloc_int_fn_impl {
 macro_rules! alloc_int_impl {
     ($name: ident, $_type: ty, $size: expr) => {
         impl<F: Field> AllocGadget<$_type, F> for $name {
+            alloc_int_fn_impl!($name, $_type, $size, alloc_constant);
+
             alloc_int_fn_impl!($name, $_type, $size, alloc);
 
             alloc_int_fn_impl!($name, $_type, $size, alloc_input);
