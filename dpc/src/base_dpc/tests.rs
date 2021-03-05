@@ -402,7 +402,7 @@ fn test_execute_base_dpc_constraints() {
     let inner_snark_vk: <<Components as BaseDPCComponents>::InnerSNARK as SNARK>::VerificationParameters =
         inner_snark_parameters.1.clone().into();
 
-    let inner_snark_id = InnerSNARKVerificationKeyCRH::hash(
+    let inner_circuit_id = InnerSNARKVerificationKeyCRH::hash(
         &system_parameters.inner_snark_verification_key_crh,
         &to_bytes![inner_snark_vk].unwrap(),
     )
@@ -457,7 +457,7 @@ fn test_execute_base_dpc_constraints() {
         &program_commitment,
         &program_randomness,
         &local_data_root,
-        &inner_snark_id,
+        &inner_circuit_id,
     )
     .unwrap();
 
