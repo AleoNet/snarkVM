@@ -29,15 +29,19 @@ jobs:
           key: ${{ runner.os }}-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
 
       # Run benchmark and stores the output to a file
+#      - name: Benchmark
+#        run: |
+#          cargo +nightly bench --all | tee output.txt
+#      # Download previous benchmark result from cache (if exists)
+#      - name: Download previous benchmark data
+#        uses: actions/cache@v1
+#        with:
+#          path: ./cache
+#          key: ${{ runner.os }}-benchmark
+
       - name: Benchmark
         run: |
-          cargo +nightly bench --all | tee output.txt
-      # Download previous benchmark result from cache (if exists)
-      - name: Download previous benchmark data
-        uses: actions/cache@v1
-        with:
-          path: ./cache
-          key: ${{ runner.os }}-benchmark
+          touch output.txt
 
       - name: Load benchmark
         run: |
