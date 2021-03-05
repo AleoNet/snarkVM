@@ -146,7 +146,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
             let total_length = TargetField::size_in_bits() + surfeit;
 
             for i in 0..total_length {
-                res.push(Boolean::alloc(cs.ns(|| format!("alloc_{}", i)), || {
+                result.push(Boolean::alloc(cs.ns(|| format!("alloc_{}", i)), || {
                     Ok(&k_cur % 2u64 == BigUint::from(1u64))
                 })?);
                 k_cur /= 2u64;
