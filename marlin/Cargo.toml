@@ -72,6 +72,10 @@ features = [ "use_core" ]
 [dependencies.digest]
 version = "0.9"
 
+[dependencies.rand]
+version = "0.8"
+default-features = false
+
 [dependencies.rand_chacha]
 version = "0.3"
 default-features = false
@@ -83,10 +87,6 @@ features = ["getrandom"]
 [dependencies.rayon]
 version = "1"
 optional = true
-
-[dev-dependencies.rand]
-version = "0.8"
-default-features = false
 
 [dev-dependencies.criterion]
 version = "0.3.4"

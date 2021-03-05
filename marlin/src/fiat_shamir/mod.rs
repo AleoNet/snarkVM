@@ -96,7 +96,9 @@ pub trait AlgebraicSponge<CF: PrimeField>: Clone {
 /// use a ChaCha stream cipher to generate the actual pseudorandom bits
 /// use a digest funcion to do absorbing
 pub struct FiatShamirChaChaRng<F: PrimeField, CF: PrimeField, D: Digest> {
+    /// ChachaRng.
     pub r: ChaChaRng,
+    /// Seed used for randomness.
     pub seed: Vec<u8>,
     #[doc(hidden)]
     field: PhantomData<F>,
@@ -200,6 +202,7 @@ impl<F: PrimeField, CF: PrimeField, D: Digest> FiatShamirRng<F, CF> for FiatSham
 
 /// rng from any algebraic sponge
 pub struct FiatShamirAlgebraicSpongeRng<F: PrimeField, CF: PrimeField, S: AlgebraicSponge<CF>> {
+    /// Algebraic Sponge.
     pub s: S,
     #[doc(hidden)]
     f_phantom: PhantomData<F>,
@@ -385,7 +388,7 @@ impl<F: PrimeField, CF: PrimeField, S: AlgebraicSponge<CF>> RngCore for FiatSham
         });
     }
 
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), ark_std::rand::Error> {
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
         assert!(
             CF::size_in_bits() > 128,
             "The native field of the algebraic sponge is too small."
@@ -436,7 +439,7 @@ impl<F: PrimeField, CF: PrimeField, S: AlgebraicSponge<CF>> FiatShamirRng<F, CF>
         }
         let elements = bits
             .chunks(capacity)
-            .map(|bits| CF::from_repr(CF::BigInt::from_bits_be(bits)).unwrap())
+            .map(|bits| CF::from_repr(CF::BigInteger::from_bits_be(bits.to_vec())).unwrap())
             .collect::<Vec<CF>>();
 
         self.s.absorb(&elements);

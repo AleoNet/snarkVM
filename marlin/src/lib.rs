@@ -76,7 +76,7 @@ pub use parameters::*;
 pub mod snark;
 pub use snark::*;
 
-// Implements a Fiat-Shamir based Rng that allows one to incrementally update
-// the seed based on new messages in the proof transcript.
-// pub mod fiat_shamir;
+/// Implements a Fiat-Shamir based Rng that allows one to incrementally update
+/// the seed based on new messages in the proof transcript.
+pub mod fiat_shamir;
 // use crate::fiat_shamir::FiatShamirRng;
