@@ -22,6 +22,7 @@
  */
 
 use crate::fiat_shamir::AlgebraicSponge;
+
 use snarkvm_fields::PrimeField;
 
 use rand::SeedableRng;

@@ -21,8 +21,6 @@
  *      with small syntax changes.
  */
 
-#![allow(unused_imports)]
-
 use crate::fiat_shamir::{
     constraints::AlgebraicSpongeVar,
     poseidon::{PoseidonSponge, PoseidonSpongeState},
