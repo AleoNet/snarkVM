@@ -40,7 +40,7 @@ jobs:
           key: ${{ runner.os }}-benchmark
 
       - name: Store benchmark result
-        uses: rhysd/github-action-benchmark@v1
+        uses: rhysd/github-action-benchmark@v1.8.1
         with:
           name: snarkVM Benchmarks
           tool: 'criterion-rs'
