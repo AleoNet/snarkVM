@@ -165,7 +165,7 @@ macro_rules! bigint_impl {
             /// Constructs a `BigInteger` by parsing a vector of bits in big endian format
             /// and transforms it into a vector of little endian u64 elements.
             #[inline]
-            fn from_bits(mut bits: Vec<bool>) -> Self {
+            fn from_bits_be(mut bits: Vec<bool>) -> Self {
                 let mut res = Self::default();
                 let mut acc: u64 = 0;
 
@@ -182,7 +182,7 @@ macro_rules! bigint_impl {
             }
 
             #[inline]
-            fn to_bits(&self) -> Vec<bool> {
+            fn to_bits_be(&self) -> Vec<bool> {
                 let mut res = Vec::with_capacity(256);
                 for b in BitIteratorBE::new(self.0) {
                     res.push(b);

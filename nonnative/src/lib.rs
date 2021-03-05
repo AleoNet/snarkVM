@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-//! This library provides the non-native field gadget for the `arkworks` constraint-writing platform.
+//! This library provides the non-native field gadget for the `snarkVM` constraint-writing platform.
 //! The non-native field gadget can be used as a standard `FieldVar`, given
 //! reasonable non-native gadget parameters.
 //!
@@ -49,9 +49,6 @@
 )]
 #![forbid(unsafe_code)]
 
-// #[macro_use]
-// extern crate ark_r1cs_std;
-
 use std::fmt::Debug;
 
 /// example parameters of non-native field gadget
@@ -74,7 +71,7 @@ macro_rules! overhead {
     ($x:expr) => {{
         use snarkvm_utilities::biginteger::BigInteger;
         let num = $x;
-        let num_bits = num.into_repr().to_bits();
+        let num_bits = num.into_repr().to_bits_be();
         let mut skipped_bits = 0;
         for b in num_bits.iter() {
             if *b == false {

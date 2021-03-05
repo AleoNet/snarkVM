@@ -14,24 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// use crate::{overhead, params::get_params, AllocatedNonNativeFieldVar};
-// use ark_ff::{biginteger::BigInteger, fields::FpParameters, BitIteratorBE, One, PrimeField, Zero};
-// use ark_r1cs_std::{
-//     alloc::AllocVar,
-//     boolean::Boolean,
-//     eq::EqGadget,
-//     fields::{fp::FpVar, FieldVar},
-//     R1CSVar,
-// };
-// use ark_relations::{
-//     ns,
-//     r1cs::{ConstraintSystemRef, Result as R1CSResult},
-// };
-// use ark_std::{cmp::min, marker::PhantomData, vec, vec::Vec};
-
-#![allow(unused_imports)]
-#![allow(dead_code)]
-
 use crate::{overhead, params::get_params, AllocatedNonNativeFieldVar};
 
 use snarkvm_fields::{FpParameters, PrimeField};

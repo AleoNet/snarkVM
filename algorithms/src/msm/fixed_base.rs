@@ -60,7 +60,7 @@ impl FixedBaseMSM {
         multiples_of_g: &[Vec<T>],
         scalar: &T::ScalarField,
     ) -> T {
-        let mut scalar_val = scalar.into_repr().to_bits();
+        let mut scalar_val = scalar.into_repr().to_bits_be();
         scalar_val.reverse();
 
         let mut res = multiples_of_g[0][0];

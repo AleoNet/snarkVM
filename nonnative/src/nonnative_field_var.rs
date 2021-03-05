@@ -14,20 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![allow(unused_imports, dead_code)]
+use crate::{AllocatedNonNativeFieldVar, NonNativeFieldMulResultVar};
 
-use crate::{params::OptimizationType, AllocatedNonNativeFieldVar, NonNativeFieldMulResultVar};
-
-use snarkvm_fields::{traits::ToConstraintField, FpParameters, PrimeField};
+use snarkvm_fields::{FpParameters, PrimeField};
 use snarkvm_gadgets::{
-    fields::FpGadget,
     traits::fields::FieldGadget,
     utilities::{
         alloc::AllocGadget,
         boolean::Boolean,
         eq::{ConditionalEqGadget, EqGadget},
         select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
-        uint::{UInt, UInt8},
+        uint::UInt8,
         ToBitsGadget,
         ToBytesGadget,
     },
@@ -86,6 +83,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> NonNativeFieldVar<TargetFie
         }
     }
 
+    #[allow(dead_code)]
     /// Determine if two `NonNativeFieldVar` instances are equal.
     fn is_eq<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
         let mut constant = true;
