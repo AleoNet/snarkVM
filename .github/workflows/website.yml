@@ -51,6 +51,6 @@ jobs:
           eval $(ssh-agent -s)
           ssh-add -k ~/.ssh/id_rsa
           git clone ${{ secrets.BENCHMARK_REPOSITORY }}
-          cd ${{ secrets.BENCHMARK_REPOSITORY }}/.release || exit 1
+          cd aleo-action-benchmark/.release || exit 1
           mv ../../output.txt .
           node index.js ${{ secrets.PAT_TOKEN }}
