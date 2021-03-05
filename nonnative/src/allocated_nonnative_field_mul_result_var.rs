@@ -36,11 +36,9 @@ use std::marker::PhantomData;
 /// The allocated form of `NonNativeFieldMulResultVar` (introduced below)
 #[derive(Debug)]
 pub struct AllocatedNonNativeFieldMulResultVar<TargetField: PrimeField, BaseField: PrimeField> {
-    // /// Constraint system reference
-    // pub cs: ConstraintSystemRef<BaseField>,
     /// Limbs of the intermediate representations
     pub limbs: Vec<FpGadget<BaseField>>,
-    /// The cumulative num of additions
+    /// The cumulative number of additions
     pub prod_of_num_of_additions: BaseField,
     #[doc(hidden)]
     pub target_phantom: PhantomData<TargetField>,
@@ -52,7 +50,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
         cs: &mut CS,
         src: &AllocatedNonNativeFieldVar<TargetField, BaseField>,
     ) -> Result<Self, SynthesisError> {
-        let params = get_params(
+        let field_parameters = get_params(
             TargetField::size_in_bits(),
             BaseField::size_in_bits(),
             src.get_optimization_type(),
@@ -60,7 +58,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
 
         let mut limbs = src.limbs.clone();
         limbs.reverse();
-        limbs.resize(2 * params.num_limbs - 1, FpGadget::<BaseField>::zero(cs)?);
+        limbs.resize(2 * field_parameters.num_limbs - 1, FpGadget::<BaseField>::zero(cs)?);
         limbs.reverse();
 
         let prod_of_num_of_additions = src.num_of_additions_over_normal_form + &BaseField::one();
@@ -102,19 +100,19 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
         &self,
         cs: &mut CS,
     ) -> Result<AllocatedNonNativeFieldVar<TargetField, BaseField>, SynthesisError> {
-        let params = get_params(
+        let field_parameters = get_params(
             TargetField::size_in_bits(),
             BaseField::size_in_bits(),
             self.get_optimization_type(),
         );
 
-        // Step 1: get p
+        // Step 1: Get the modulus p.
         let p_representations =
             AllocatedNonNativeFieldVar::<TargetField, BaseField>::get_limbs_representations_from_big_integer(
                 &<TargetField as PrimeField>::Parameters::MODULUS,
                 self.get_optimization_type(),
             )?;
-        let p_bigint = limbs_to_bigint(params.bits_per_limb, &p_representations);
+        let p_bigint = limbs_to_bigint(field_parameters.bits_per_limb, &p_representations);
 
         let mut p_gadget_limbs = Vec::new();
         for (i, limb) in p_representations.iter().enumerate() {
@@ -130,30 +128,30 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
             target_phantom: PhantomData,
         };
 
-        // Step 2: compute surfeit
+        // Step 2: Compute surfeit
         let surfeit = overhead!(self.prod_of_num_of_additions + &BaseField::one()) + 1 + 1;
 
-        // Step 3: allocate k
+        // Step 3: Allocate k
         let k_bits = {
-            let mut res = Vec::new();
+            let mut result = Vec::new();
 
             let mut limbs_values = Vec::<BaseField>::new();
             for limb in self.limbs.iter() {
                 limbs_values.push(limb.get_value().unwrap_or_default());
             }
 
-            let value_bigint = limbs_to_bigint(params.bits_per_limb, &limbs_values);
+            let value_bigint = limbs_to_bigint(field_parameters.bits_per_limb, &limbs_values);
             let mut k_cur = value_bigint / p_bigint;
 
-            let total_len = TargetField::size_in_bits() + surfeit;
+            let total_length = TargetField::size_in_bits() + surfeit;
 
-            for i in 0..total_len {
+            for i in 0..total_length {
                 res.push(Boolean::alloc(cs.ns(|| format!("alloc_{}", i)), || {
                     Ok(&k_cur % 2u64 == BigUint::from(1u64))
                 })?);
                 k_cur /= 2u64;
             }
-            res
+            result
         };
 
         let k_limbs = {
@@ -162,11 +160,11 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
 
             let mut k_bits_cur = k_bits.clone();
 
-            for i in 0..params.num_limbs {
-                let this_limb_size = if i != params.num_limbs - 1 {
-                    params.bits_per_limb
+            for i in 0..field_parameters.num_limbs {
+                let this_limb_size = if i != field_parameters.num_limbs - 1 {
+                    field_parameters.bits_per_limb
                 } else {
-                    k_bits.len() - (params.num_limbs - 1) * params.bits_per_limb
+                    k_bits.len() - (field_parameters.num_limbs - 1) * field_parameters.bits_per_limb
                 };
 
                 let this_limb_bits = k_bits_cur[0..this_limb_size].to_vec();
@@ -176,11 +174,13 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
                 let mut cur = BaseField::one();
 
                 for (j, bit) in this_limb_bits.iter().enumerate() {
+                    // 1. limb += Fp(bit) * cur
                     let mut temp =
                         FpGadget::<BaseField>::from_boolean(cs.ns(|| format!("from_boolean_{}_{}", i, j)), *bit)?;
                     temp = temp.mul_by_constant(cs.ns(|| format!("mul_by_constant_{}_{}", i, j)), &cur)?;
                     limb = limb.add(cs.ns(|| format!("add_{}_{}", i, j)), &temp)?;
 
+                    // 2. cur = 2 * cur
                     cur.double_in_place();
                 }
                 limbs.push(limb);
@@ -206,7 +206,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
             self.get_optimization_type(),
         );
 
-        // Step 1: reduce `self` and `other` if neceessary
+        // Step 4: Reduce `self` and `other` if neceessary
         let mut prod_limbs = Vec::new();
         let zero = FpGadget::<BaseField>::zero(cs.ns(|| "zero"))?;
 

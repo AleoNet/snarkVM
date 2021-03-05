@@ -48,8 +48,6 @@ use std::{
 /// The allocated version of `NonNativeFieldVar` (introduced below)
 #[derive(Debug)]
 pub struct AllocatedNonNativeFieldVar<TargetField: PrimeField, BaseField: PrimeField> {
-    // /// Constraint system reference
-    // pub cs: ConstraintSystemRef<BaseField>,
     /// The limbs, each of which is a BaseField gadget.
     pub limbs: Vec<FpGadget<BaseField>>,
     /// Number of additions done over this gadget, using which the gadget decides when to reduce.
@@ -210,7 +208,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
             self.get_optimization_type(),
         );
 
-        // Step 1: reduce the `other` if needed
+        // Step 1: Reduce the `other` if needed
         let mut surfeit = overhead!(other.num_of_additions_over_normal_form + &BaseField::one()) + 1;
         let mut other = other.clone();
         if (surfeit + params.bits_per_limb > BaseField::size_in_bits() - 1)
@@ -221,7 +219,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
             surfeit = overhead!(other.num_of_additions_over_normal_form + &BaseField::one()) + 1;
         }
 
-        // Step 2: construct the padding
+        // Step 2: Construct the padding
         let mut pad_non_top_limb_repr: <BaseField as PrimeField>::BigInteger = BaseField::one().into_repr();
         let mut pad_top_limb_repr: <BaseField as PrimeField>::BigInteger = pad_non_top_limb_repr;
 
@@ -238,11 +236,11 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
             pad_limbs.push(pad_non_top_limb);
         }
 
-        // Step 3: prepare to pad the padding to k * p for some k
+        // Step 3: Prepare to pad the padding to k * p for some k
         let pad_to_kp_gap = Self::limbs_to_value(pad_limbs, self.get_optimization_type()).neg();
         let pad_to_kp_limbs = Self::get_limbs_representations(&pad_to_kp_gap, self.get_optimization_type())?;
 
-        // Step 4: the result is self + pad + pad_to_kp - other
+        // Step 4: The result is self + pad + pad_to_kp - other
         let mut limbs = Vec::new();
         for (i, ((this_limb, other_limb), pad_to_kp_limb)) in self
             .limbs
@@ -361,7 +359,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
             optimization_type,
         );
 
-        // push the lower limbs first
+        // Push the lower limbs first
         let mut limbs: Vec<BaseField> = Vec::new();
         let mut cur = *elem;
         for _ in 0..params.num_limbs {
@@ -379,7 +377,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         Ok(limbs)
     }
 
-    /// for advanced use, multiply and output the intermediate representations (without reduction)
+    /// For advanced use, multiply and output the intermediate representations (without reduction)
     /// This intermediate representations can be added with each other, and they can later be reduced back to the `NonNativeFieldVar`.
     pub fn mul_without_reduce<CS: ConstraintSystem<BaseField>>(
         &self,
@@ -394,7 +392,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
             self.get_optimization_type(),
         );
 
-        // Step 1: reduce `self` and `other` if necessary
+        // Step 1: Reduce `self` and `other` if necessary
         let mut self_reduced = self.clone();
         let mut other_reduced = other.clone();
         Reducer::<TargetField, BaseField>::pre_mul_reduce(
@@ -479,19 +477,19 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
     ) -> Result<(), SynthesisError> {
         assert_eq!(self.get_optimization_type(), other.get_optimization_type());
 
-        let params = get_params(
+        let field_parameters = get_params(
             TargetField::size_in_bits(),
             BaseField::size_in_bits(),
             self.get_optimization_type(),
         );
 
-        // Get p
+        // Step 1: Get modulus p
         let p_representations =
             AllocatedNonNativeFieldVar::<TargetField, BaseField>::get_limbs_representations_from_big_integer(
                 &<TargetField as PrimeField>::Parameters::MODULUS,
                 self.get_optimization_type(),
             )?;
-        let p_bigint = limbs_to_bigint(params.bits_per_limb, &p_representations);
+        let p_bigint = limbs_to_bigint(field_parameters.bits_per_limb, &p_representations);
 
         let mut p_gadget_limbs = Vec::new();
         for limb in p_representations.iter() {
@@ -504,18 +502,19 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
             target_phantom: PhantomData,
         };
 
+        // Step 2: Get delta = self - other
         let zero = Self::zero(&mut cs.ns(|| "zero"))?;
         let mut delta = self.sub_without_reduce(&mut cs.ns(|| "sub_without_reduce"), other)?;
         delta = Self::conditionally_select(&mut cs.ns(|| "cond_select"), should_enforce, &delta, &zero)?;
 
-        // Allocate k = delta / p
+        // Step 3: Allocate k = delta / p
         let k_gadget = FpGadget::<BaseField>::alloc(cs.ns(|| "k"), || {
             let mut delta_limbs_values = Vec::<BaseField>::new();
             for limb in delta.limbs.iter() {
                 delta_limbs_values.push(limb.get_value().get()?);
             }
 
-            let delta_bigint = limbs_to_bigint(params.bits_per_limb, &delta_limbs_values);
+            let delta_bigint = limbs_to_bigint(field_parameters.bits_per_limb, &delta_limbs_values);
 
             Ok(bigint_to_basefield::<BaseField>(&(delta_bigint / p_bigint)))
         })?;
@@ -523,18 +522,18 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         let surfeit = overhead!(delta.num_of_additions_over_normal_form + &BaseField::one()) + 1;
         Reducer::<TargetField, BaseField>::limb_to_bits(&mut cs.ns(|| "limb_to_bits"), &k_gadget, surfeit)?;
 
-        // Compute k * p
+        // Step 4: Compute k * p
         let mut kp_gadget_limbs = Vec::new();
         for (i, limb) in p_gadget.limbs.iter().enumerate() {
             kp_gadget_limbs.push(limb.mul(cs.ns(|| format!("mul_limb_{}", i)), &k_gadget)?);
         }
 
-        // Enforce delta = kp
+        // Step 5: Enforce delta = kp
         Reducer::<TargetField, BaseField>::group_and_check_equality(
             cs,
             surfeit,
-            params.bits_per_limb,
-            params.bits_per_limb,
+            field_parameters.bits_per_limb,
+            field_parameters.bits_per_limb,
             &delta.limbs,
             &kp_gadget_limbs,
         )?;
@@ -576,7 +575,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsGadget<BaseField>
     for AllocatedNonNativeFieldVar<TargetField, BaseField>
 {
     fn to_bits<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let params = get_params(
+        let field_parameters = get_params(
             TargetField::size_in_bits(),
             BaseField::size_in_bits(),
             self.get_optimization_type(),
@@ -593,7 +592,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsGadget<BaseField>
             bits.extend_from_slice(&Reducer::<TargetField, BaseField>::limb_to_bits(
                 &mut cs.ns(|| format!("limb_to_bits_{}", i)),
                 &limb,
-                params.bits_per_limb,
+                field_parameters.bits_per_limb,
             )?);
         }
         bits.reverse();
@@ -693,13 +692,13 @@ impl<TargetField: PrimeField, BaseField: PrimeField> TwoBitLookupGadget<BaseFiel
 
         let optimization_type = OptimizationType::Constraints;
 
-        let params = get_params(
+        let field_parameters = get_params(
             TargetField::size_in_bits(),
             BaseField::size_in_bits(),
             optimization_type,
         );
         let mut limbs_constants = Vec::new();
-        for _ in 0..params.num_limbs {
+        for _ in 0..field_parameters.num_limbs {
             limbs_constants.push(Vec::new());
         }
 
@@ -752,14 +751,14 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ThreeBitCondNegLookupGadget
 
         let optimization_type = OptimizationType::Constraints;
 
-        let params = get_params(
+        let field_parameters = get_params(
             TargetField::size_in_bits(),
             BaseField::size_in_bits(),
             optimization_type,
         );
 
         let mut limbs_constants = Vec::new();
-        for _ in 0..params.num_limbs {
+        for _ in 0..field_parameters.num_limbs {
             limbs_constants.push(Vec::new());
         }
 
