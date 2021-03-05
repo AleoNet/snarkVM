@@ -307,7 +307,8 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
         let mut dest_gadgets = Vec::<NonNativeFieldVar<F, CF>>::new();
         let mut dest_bits = Vec::<Vec<Boolean>>::new();
         bits.chunks_exact(num_bits_per_nonnative)
-            .for_each(|per_nonnative_bits| {
+            .enumerate()
+            .for_each(|(i, per_nonnative_bits)| {
                 let mut val = vec![CF::zero(); params.num_limbs];
                 let mut lc = vec![LinearCombination::<CF>::zero(); params.num_limbs];
 
@@ -335,7 +336,7 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
                 let mut limbs = Vec::new();
                 for k in 0..params.num_limbs {
                     let gadget =
-                        AllocatedFp::alloc_input(cs.ns(|| format!("alloc_input_{}", k)), || Ok(val[k])).unwrap();
+                        AllocatedFp::alloc_input(cs.ns(|| format!("alloc_input_{}_{}", i, k)), || Ok(val[k])).unwrap();
 
                     // TODO (raychu86): Confirm linear combination subtraction is equivalent:
                     // lc[k] = lc[k] - (CF::one(), &gadget.variable);
@@ -350,7 +351,12 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
 
                     // TODO (raychu86): Confirm CS enforcement is equivalent:
                     // cs.enforce_constraint(lc!(), lc!(), lc[k].clone()).unwrap();
-                    cs.enforce(|| "enforce_constraint", |lc| lc, |lc| lc, |_| lc[k].clone());
+                    cs.enforce(
+                        || format!("enforce_constraint_{}_{}", i, k),
+                        |lc| lc,
+                        |lc| lc,
+                        |_| lc[k].clone(),
+                    );
 
                     limbs.push(FpGadget::<CF>::from(gadget));
                 }
@@ -402,43 +408,57 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
         Ok(())
     }
 
-    fn absorb_bytes<CS: ConstraintSystem<CF>>(&mut self, cs: CS, elems: &[UInt8]) -> Result<(), SynthesisError> {
-        // let capacity = CF::size_in_bits() - 1;
-        // let mut bits = Vec::<Boolean>::new();
-        // for elem in elems.iter() {
-        //     let mut bits_le = elem.to_bits_le()?; // UInt8's to_bits is le, which is an exception in Zexe.
-        //     bits_le.reverse();
-        //     bits.extend_from_slice(&bits_le);
-        // }
-        //
-        // let mut adjustment_factors = Vec::<CF>::new();
-        // let mut cur = CF::one();
-        // for _ in 0..capacity {
-        //     adjustment_factors.push(cur);
-        //     cur.double_in_place();
-        // }
-        //
-        // let mut gadgets = Vec::<FpVar<CF>>::new();
-        // for elem_bits in bits.chunks(capacity) {
-        //     let mut elem = CF::zero();
-        //     let mut lc = LinearCombination::zero();
-        //     for (bit, adjustment_factor) in elem_bits.iter().rev().zip(adjustment_factors.iter()) {
-        //         if bit.value().unwrap_or_default() {
-        //             elem += adjustment_factor;
-        //         }
-        //         lc = &lc + bit.lc() * *adjustment_factor;
-        //     }
-        //
-        //     let gadget = AllocatedFp::new_witness(ark_relations::ns!(self.cs, "gadget"), || Ok(elem))?;
-        //     lc = lc.clone() - (CF::one(), gadget.variable);
-        //
-        //     gadgets.push(FpVar::from(gadget));
-        //     self.cs.enforce_constraint(lc!(), lc!(), lc)?;
-        // }
-        //
-        // self.s.absorb(&gadgets)
+    fn absorb_bytes<CS: ConstraintSystem<CF>>(&mut self, mut cs: CS, elems: &[UInt8]) -> Result<(), SynthesisError> {
+        let capacity = CF::size_in_bits() - 1;
+        let mut bits = Vec::<Boolean>::new();
+        for elem in elems.iter() {
+            let mut bits_le = elem.to_bits_le(); // UInt8's to_bits is le, which is an exception in Zexe.
+            bits_le.reverse();
+            bits.extend_from_slice(&bits_le);
+        }
 
-        unimplemented!()
+        let mut adjustment_factors = Vec::<CF>::new();
+        let mut cur = CF::one();
+        for _ in 0..capacity {
+            adjustment_factors.push(cur);
+            cur.double_in_place();
+        }
+
+        let mut gadgets = Vec::<FpGadget<CF>>::new();
+        for (i, elem_bits) in bits.chunks(capacity).enumerate() {
+            let mut elem = CF::zero();
+            let mut lc = LinearCombination::zero();
+            for (bit, adjustment_factor) in elem_bits.iter().rev().zip(adjustment_factors.iter()) {
+                if bit.get_value().unwrap_or_default() {
+                    elem += adjustment_factor;
+                }
+                // TODO (raychu86): Confirm linear combination is correct:
+                // lc = &lc + bit.lc() * *adjustment_factor;
+
+                lc = &lc + bit.lc(CS::one(), CF::one()) * *adjustment_factor;
+            }
+
+            let gadget = AllocatedFp::alloc_input(cs.ns(|| format!("alloc_input_{}", i)), || Ok(elem))?;
+
+            // TODO (raychu86): Confirm linear combination subtraction is equivalent:
+            // lc = lc.clone() - (CF::one(), gadget.variable);
+            match &gadget.variable {
+                ConstraintVariable::Var(var) => {
+                    lc = lc.clone() - (CF::one(), *var);
+                }
+                ConstraintVariable::LC(linear_combination) => {
+                    lc = &lc - (CF::one(), linear_combination);
+                }
+            }
+
+            gadgets.push(FpGadget::from(gadget));
+
+            // TODO (raychu86): Confirm CS enforcement is equivalent:
+            // ccs.enforce_constraint(lc!(), lc!(), lc)?;
+            cs.enforce(|| format!("enforce_constraint_{}", i), |lc| lc, |lc| lc, |_| lc);
+        }
+
+        self.s.absorb(&gadgets)
     }
 
     fn squeeze_native_field_elements(&mut self, num: usize) -> Result<Vec<FpGadget<CF>>, SynthesisError> {
