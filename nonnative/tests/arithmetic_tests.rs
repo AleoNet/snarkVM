@@ -41,9 +41,7 @@ fn allocation_test<TargetField: PrimeField, BaseField: PrimeField, CS: Constrain
     rng: &mut R,
 ) {
     let a_native = TargetField::rand(rng);
-    let a =
-        NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "alloc_input_a"), || Ok(a_native.clone()))
-            .unwrap();
+    let a = NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "alloc_a"), || Ok(a_native.clone())).unwrap();
 
     let a_actual = a.value().unwrap();
     let a_expected = a_native;
@@ -58,12 +56,10 @@ fn addition_test<TargetField: PrimeField, BaseField: PrimeField, CS: ConstraintS
     rng: &mut R,
 ) {
     let a_native = TargetField::rand(rng);
-    let a =
-        NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "alloc_input_a"), || Ok(a_native)).unwrap();
+    let a = NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "alloc_a"), || Ok(a_native)).unwrap();
 
     let b_native = TargetField::rand(rng);
-    let b =
-        NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "alloc_input_b"), || Ok(b_native)).unwrap();
+    let b = NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "alloc_b"), || Ok(b_native)).unwrap();
 
     let a_plus_b = a.add(cs.ns(|| "a_plus_b"), &b).unwrap();
 
@@ -77,12 +73,10 @@ fn multiplication_test<TargetField: PrimeField, BaseField: PrimeField, CS: Const
     rng: &mut R,
 ) {
     let a_native = TargetField::rand(rng);
-    let a =
-        NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "alloc_input_a"), || Ok(a_native)).unwrap();
+    let a = NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "alloc_a"), || Ok(a_native)).unwrap();
 
     let b_native = TargetField::rand(rng);
-    let b =
-        NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "alloc_input_b"), || Ok(b_native)).unwrap();
+    let b = NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "alloc_b"), || Ok(b_native)).unwrap();
 
     let a_times_b = a.mul(cs.ns(|| "a_times_b"), &b).unwrap();
 
@@ -103,19 +97,16 @@ fn equality_test<TargetField: PrimeField, BaseField: PrimeField, CS: ConstraintS
     rng: &mut R,
 ) {
     let a_native = TargetField::rand(rng);
-    let a =
-        NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "alloc_input_a"), || Ok(a_native)).unwrap();
+    let a = NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "alloc_a"), || Ok(a_native)).unwrap();
 
     let b_native = TargetField::rand(rng);
-    let b =
-        NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "alloc_input_b"), || Ok(b_native)).unwrap();
+    let b = NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "alloc_b"), || Ok(b_native)).unwrap();
 
     let a_times_b = a.mul(cs.ns(|| "a_times_b"), &b).unwrap();
 
     let a_times_b_expected = a_native * &b_native;
     let a_times_b_expected_gadget =
-        NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "alloc a * b"), || Ok(a_times_b_expected))
-            .unwrap();
+        NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "alloc a * b"), || Ok(a_times_b_expected)).unwrap();
 
     a_times_b
         .enforce_equal(cs.ns(|| "enforce_equal"), &a_times_b_expected_gadget)
@@ -132,8 +123,7 @@ fn edge_cases_test<TargetField: PrimeField, BaseField: PrimeField, CS: Constrain
 
     let a_native = TargetField::rand(rng);
     let minus_a_native = TargetField::zero() - &a_native;
-    let a =
-        NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "alloc_input_a"), || Ok(a_native)).unwrap();
+    let a = NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "alloc_a"), || Ok(a_native)).unwrap();
 
     let a_plus_zero = a.add(cs.ns(|| "a_plus_zero"), &zero).unwrap();
     let a_minus_zero = a.sub(cs.ns(|| "a_minus_zero"), &zero).unwrap();
@@ -230,9 +220,9 @@ fn distribution_law_test<
         "(a + b) * c doesn't equal (a * c) + (b * c)"
     );
 
-    let a = NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "a"), || Ok(a_native)).unwrap();
-    let b = NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "b"), || Ok(b_native)).unwrap();
-    let c = NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "c"), || Ok(c_native)).unwrap();
+    let a = NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "a"), || Ok(a_native)).unwrap();
+    let b = NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "b"), || Ok(b_native)).unwrap();
+    let c = NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "c"), || Ok(c_native)).unwrap();
 
     let a_plus_b = a.add(cs.ns(|| "a_plus_b"), &b).unwrap();
     let a_times_c = a.mul(cs.ns(|| "a_times_c"), &c).unwrap();
@@ -276,10 +266,10 @@ fn randomized_arithmetic_test<
 
     let mut num_native = TargetField::rand(rng);
     let mut num =
-        NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "initial num"), || Ok(num_native)).unwrap();
+        NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "initial num"), || Ok(num_native)).unwrap();
     for (i, op) in operations.iter().enumerate() {
         let next_native = TargetField::rand(rng);
-        let next = NonNativeFieldVar::<TargetField, BaseField>::alloc_input(
+        let next = NonNativeFieldVar::<TargetField, BaseField>::alloc(
             cs.ns(|| format!("next num for repetition_{}", i)),
             || Ok(next_native),
         )
@@ -313,10 +303,10 @@ fn addition_stress_test<TargetField: PrimeField, BaseField: PrimeField, CS: Cons
 ) {
     let mut num_native = TargetField::rand(rng);
     let mut num =
-        NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "initial num"), || Ok(num_native)).unwrap();
+        NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "initial num"), || Ok(num_native)).unwrap();
     for i in 0..TEST_COUNT {
         let next_native = TargetField::rand(rng);
-        let next = NonNativeFieldVar::<TargetField, BaseField>::alloc_input(
+        let next = NonNativeFieldVar::<TargetField, BaseField>::alloc(
             cs.ns(|| format!("next num for repetition_{}", i)),
             || Ok(next_native),
         )
@@ -339,10 +329,10 @@ fn multiplication_stress_test<
 ) {
     let mut num_native = TargetField::rand(rng);
     let mut num =
-        NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "initial num"), || Ok(num_native)).unwrap();
+        NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "initial num"), || Ok(num_native)).unwrap();
     for i in 0..TEST_COUNT {
         let next_native = TargetField::rand(rng);
-        let next = NonNativeFieldVar::<TargetField, BaseField>::alloc_input(
+        let next = NonNativeFieldVar::<TargetField, BaseField>::alloc(
             cs.ns(|| format!("next num for repetition_{}", i)),
             || Ok(next_native),
         )
@@ -365,16 +355,16 @@ fn mul_and_add_stress_test<
 ) {
     let mut num_native = TargetField::rand(rng);
     let mut num =
-        NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "initial num"), || Ok(num_native)).unwrap();
+        NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "initial num"), || Ok(num_native)).unwrap();
     for i in 0..TEST_COUNT {
         let next_add_native = TargetField::rand(rng);
-        let next_add = NonNativeFieldVar::<TargetField, BaseField>::alloc_input(
+        let next_add = NonNativeFieldVar::<TargetField, BaseField>::alloc(
             cs.ns(|| format!("next to add num for repetition_{}", i)),
             || Ok(next_add_native),
         )
         .unwrap();
         let next_mul_native = TargetField::rand(rng);
-        let next_mul = NonNativeFieldVar::<TargetField, BaseField>::alloc_input(
+        let next_mul = NonNativeFieldVar::<TargetField, BaseField>::alloc(
             cs.ns(|| format!("next to mul num for repetition_{}", i)),
             || Ok(next_mul_native),
         )
@@ -400,16 +390,16 @@ fn square_mul_add_stress_test<
 ) {
     let mut num_native = TargetField::rand(rng);
     let mut num =
-        NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "initial num"), || Ok(num_native)).unwrap();
+        NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "initial num"), || Ok(num_native)).unwrap();
     for i in 0..TEST_COUNT {
         let next_add_native = TargetField::rand(rng);
-        let next_add = NonNativeFieldVar::<TargetField, BaseField>::alloc_input(
+        let next_add = NonNativeFieldVar::<TargetField, BaseField>::alloc(
             cs.ns(|| format!("next to add num for repetition_{}", i)),
             || Ok(next_add_native),
         )
         .unwrap();
         let next_mul_native = TargetField::rand(rng);
-        let next_mul = NonNativeFieldVar::<TargetField, BaseField>::alloc_input(
+        let next_mul = NonNativeFieldVar::<TargetField, BaseField>::alloc(
             cs.ns(|| format!("next to mul num for repetition_{}", i)),
             || Ok(next_mul_native),
         )
@@ -435,7 +425,7 @@ fn double_stress_test_1<TargetField: PrimeField, BaseField: PrimeField, CS: Cons
 ) {
     let mut num_native = TargetField::rand(rng);
     let mut num =
-        NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "initial num"), || Ok(num_native)).unwrap();
+        NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "initial num"), || Ok(num_native)).unwrap();
     // Add to at least BaseField::size_in_bits() to ensure that we teat the overflowing
     for i in 0..TEST_COUNT + BaseField::size_in_bits() {
         // double
@@ -452,7 +442,7 @@ fn double_stress_test_2<TargetField: PrimeField, BaseField: PrimeField, CS: Cons
 ) {
     let mut num_native = TargetField::rand(rng);
     let mut num =
-        NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "initial num"), || Ok(num_native)).unwrap();
+        NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "initial num"), || Ok(num_native)).unwrap();
     for i in 0..TEST_COUNT {
         // double
         num_native = num_native + &num_native;
@@ -473,7 +463,7 @@ fn double_stress_test_3<TargetField: PrimeField, BaseField: PrimeField, CS: Cons
 ) {
     let mut num_native = TargetField::rand(rng);
     let mut num =
-        NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "initial num"), || Ok(num_native)).unwrap();
+        NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "initial num"), || Ok(num_native)).unwrap();
     for i in 0..TEST_COUNT {
         // double
         num_native = num_native + &num_native;
@@ -484,7 +474,7 @@ fn double_stress_test_3<TargetField: PrimeField, BaseField: PrimeField, CS: Cons
         // square
         let num_square_native = num_native * &num_native;
         let num_square = num.mul(cs.ns(|| format!("num_squared_{}", i)), &num).unwrap();
-        let num_square_native_gadget = NonNativeFieldVar::<TargetField, BaseField>::alloc_input(
+        let num_square_native_gadget = NonNativeFieldVar::<TargetField, BaseField>::alloc(
             cs.ns(|| format!("repetition_{}: alloc_native num", i)),
             || Ok(num_square_native),
         )
@@ -502,9 +492,8 @@ fn inverse_stress_test<TargetField: PrimeField, BaseField: PrimeField, CS: Const
 ) {
     for i in 0..TEST_COUNT {
         let num_native = TargetField::rand(rng);
-        let num =
-            NonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| format!("num_{}", i)), || Ok(num_native))
-                .unwrap();
+        let num = NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| format!("num_{}", i)), || Ok(num_native))
+            .unwrap();
 
         if num_native == TargetField::zero() {
             continue;

@@ -146,7 +146,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
             let total_length = TargetField::size_in_bits() + surfeit;
 
             for i in 0..total_length {
-                result.push(Boolean::alloc_input(cs.ns(|| format!("alloc_input_{}", i)), || {
+                result.push(Boolean::alloc(cs.ns(|| format!("alloc_{}", i)), || {
                     Ok(&k_cur % 2u64 == BigUint::from(1u64))
                 })?);
                 k_cur /= 2u64;
@@ -198,7 +198,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
         };
 
         let r_gadget =
-            AllocatedNonNativeFieldVar::<TargetField, BaseField>::alloc_input(cs.ns(|| "r"), || Ok(self.value()?))?;
+            AllocatedNonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "r"), || Ok(self.value()?))?;
 
         let params = get_params(
             TargetField::size_in_bits(),
