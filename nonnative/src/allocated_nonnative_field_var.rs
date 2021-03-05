@@ -892,9 +892,10 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, Ba
         let mut limbs = Vec::new();
 
         for (i, limb) in elem_representations.iter().enumerate() {
-            limbs.push(FpGadget::<BaseField>::alloc(cs.ns(|| format!("alloc_{}", i)), || {
-                Ok(limb)
-            })?);
+            limbs.push(FpGadget::<BaseField>::alloc_input(
+                cs.ns(|| format!("alloc_input_{}", i)),
+                || Ok(limb),
+            )?);
         }
 
         let num_of_additions_over_normal_form = BaseField::one();
