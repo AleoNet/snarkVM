@@ -202,7 +202,7 @@ impl<F: PrimeField, CF: PrimeField, D: Digest> FiatShamirRng<F, CF> for FiatSham
 
 /// rng from any algebraic sponge
 pub struct FiatShamirAlgebraicSpongeRng<F: PrimeField, CF: PrimeField, S: AlgebraicSponge<CF>> {
-    /// Algebraic Sponge.
+    /// Algebraic sponge.
     pub s: S,
     #[doc(hidden)]
     f_phantom: PhantomData<F>,

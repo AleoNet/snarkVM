@@ -41,6 +41,10 @@ version = "0.2.0"
 path = "../fields"
 version = "0.2.0"
 
+[dependencies.snarkvm-gadgets]
+path = "../gadgets"
+version = "0.2.0"
+
 [dependencies.snarkvm-nonnative]
 path = "../nonnative"
 version = "0.2.0"
