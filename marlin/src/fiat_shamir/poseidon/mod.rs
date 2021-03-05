@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// /*
-//  * credit:
-//  *      This implementation of Poseidon is entirely from Fractal's implementation
-//  *      ([COS20]: https://eprint.iacr.org/2019/1076)
-//  *      with small syntax changes.
-//  */
-//
+/*
+ * credit:
+ *      This implementation of Poseidon is entirely from Fractal's implementation
+ *      ([COS20]: https://eprint.iacr.org/2019/1076)
+ *      with small syntax changes.
+ */
+
 use crate::fiat_shamir::AlgebraicSponge;
 use snarkvm_fields::PrimeField;
 
@@ -36,9 +36,9 @@ enum PoseidonSpongeState {
 }
 
 #[derive(Clone)]
-/// the sponge for Poseidon
+/// The sponge for Poseidon
 pub struct PoseidonSponge<F: PrimeField> {
-    /// number of rounds in a full-round operation
+    /// Number of rounds in a full-round operation
     pub full_rounds: u32,
     /// number of rounds in a partial-round operation
     pub partial_rounds: u32,
@@ -50,13 +50,13 @@ pub struct PoseidonSponge<F: PrimeField> {
     /// Maximally Distance Separating Matrix.
     pub mds: Vec<Vec<F>>,
 
-    /// the sponge's state
+    /// The sponge's state
     pub state: Vec<F>,
-    /// the rate
+    /// The rate
     pub rate: usize,
-    /// the capacity
+    /// The capacity
     pub capacity: usize,
-    /// the mode
+    /// The mode
     mode: PoseidonSpongeState,
 }
 

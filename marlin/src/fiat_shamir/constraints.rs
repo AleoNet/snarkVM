@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![allow(unused_imports)]
-
 use crate::{
     fiat_shamir::{AlgebraicSponge, FiatShamirAlgebraicSpongeRng, FiatShamirRng},
     overhead,
@@ -38,7 +36,7 @@ use snarkvm_nonnative::{
     NonNativeFieldVar,
 };
 use snarkvm_r1cs::{ConstraintSystem, ConstraintVariable, LinearCombination, SynthesisError};
-use std::{marker::PhantomData, ops::Sub};
+use std::marker::PhantomData;
 
 /// Vars for a RNG for use in a Fiat-Shamir transform.
 pub trait FiatShamirRngVar<F: PrimeField, CF: PrimeField, PFS: FiatShamirRng<F, CF>>: Clone {
