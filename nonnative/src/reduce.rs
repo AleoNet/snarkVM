@@ -97,8 +97,6 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
         limb: &FpGadget<BaseField>,
         num_bits: usize,
     ) -> Result<Vec<Boolean>, SynthesisError> {
-        // let cs = limb.cs();
-
         let num_bits = min(BaseField::size_in_bits() - 1, num_bits);
         let mut bits_considered = Vec::with_capacity(num_bits);
         let limb_value = limb.get_value().unwrap_or_default();
@@ -183,13 +181,15 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
     ) -> Result<(), SynthesisError> {
         assert_eq!(elem.get_optimization_type(), elem_other.get_optimization_type());
 
-        let params = get_params(
+        let field_parameters = get_params(
             TargetField::size_in_bits(),
             BaseField::size_in_bits(),
             elem.get_optimization_type(),
         );
 
-        if 2 * params.bits_per_limb + log_2(params.num_limbs) as usize > BaseField::size_in_bits() - 1 {
+        if 2 * field_parameters.bits_per_limb + log_2(field_parameters.num_limbs) as usize
+            > BaseField::size_in_bits() - 1
+        {
             panic!("The current limb parameters do not support multiplication.");
         }
 
@@ -199,7 +199,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
             let overhead_limb = overhead!(prod_of_num_of_additions.mul(
                 &BaseField::from_repr(<BaseField as PrimeField>::BigInteger::from((params.num_limbs) as u64)).unwrap()
             ));
-            let bits_per_mulresult_limb = 2 * (params.bits_per_limb + 1) + overhead_limb;
+            let bits_per_mulresult_limb = 2 * (field_parameters.bits_per_limb + 1) + overhead_limb;
 
             if bits_per_mulresult_limb < BaseField::size_in_bits() {
                 break;
