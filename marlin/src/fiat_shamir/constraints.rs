@@ -49,8 +49,9 @@ pub trait FiatShamirRngVar<F: PrimeField, CF: PrimeField, PFS: FiatShamirRng<F, 
     fn constant<CS: ConstraintSystem<CF>>(cs: CS, pfs: &PFS) -> Self;
 
     /// Take in field elements.
-    fn absorb_nonnative_field_elements(
+    fn absorb_nonnative_field_elements<CS: ConstraintSystem<CF>>(
         &mut self,
+        cs: CS,
         elems: &[NonNativeFieldVar<F, CF>],
         ty: OptimizationType,
     ) -> Result<(), SynthesisError>;
@@ -59,29 +60,39 @@ pub trait FiatShamirRngVar<F: PrimeField, CF: PrimeField, PFS: FiatShamirRng<F, 
     fn absorb_native_field_elements(&mut self, elems: &[FpGadget<CF>]) -> Result<(), SynthesisError>;
 
     /// Take in bytes.
-    fn absorb_bytes(&mut self, elems: &[UInt8]) -> Result<(), SynthesisError>;
+    fn absorb_bytes<CS: ConstraintSystem<CF>>(&mut self, cs: CS, elems: &[UInt8]) -> Result<(), SynthesisError>;
 
     /// Output field elements.
     fn squeeze_native_field_elements(&mut self, num: usize) -> Result<Vec<FpGadget<CF>>, SynthesisError>;
 
     /// Output field elements.
-    fn squeeze_field_elements(&mut self, num: usize) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError>;
+    fn squeeze_field_elements<CS: ConstraintSystem<CF>>(
+        &mut self,
+        cs: CS,
+        num: usize,
+    ) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError>;
 
     /// Output field elements and the corresponding bits (this can reduce repeated computation).
     #[allow(clippy::type_complexity)]
-    fn squeeze_field_elements_and_bits(
+    fn squeeze_field_elements_and_bits<CS: ConstraintSystem<CF>>(
         &mut self,
+        cs: CS,
         num: usize,
     ) -> Result<(Vec<NonNativeFieldVar<F, CF>>, Vec<Vec<Boolean>>), SynthesisError>;
 
     /// Output field elements with only 128 bits.
-    fn squeeze_128_bits_field_elements(&mut self, num: usize) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError>;
+    fn squeeze_128_bits_field_elements<CS: ConstraintSystem<CF>>(
+        &mut self,
+        cs: CS,
+        num: usize,
+    ) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError>;
 
     /// Output field elements with only 128 bits, and the corresponding bits (this can reduce
     /// repeated computation).
     #[allow(clippy::type_complexity)]
-    fn squeeze_128_bits_field_elements_and_bits(
+    fn squeeze_128_bits_field_elements_and_bits<CS: ConstraintSystem<CF>>(
         &mut self,
+        cs: CS,
         num: usize,
     ) -> Result<(Vec<NonNativeFieldVar<F, CF>>, Vec<Vec<Boolean>>), SynthesisError>;
 }
@@ -356,111 +367,115 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
     }
 }
 
-// impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeVar<CF, PS>>
-//     FiatShamirRngVar<F, CF, FiatShamirAlgebraicSpongeRng<F, CF, PS>>
-//     for FiatShamirAlgebraicSpongeRngVar<F, CF, PS, S>
-// {
-//     fn new(cs: ConstraintSystemRef<CF>) -> Self {
-//         Self {
-//             cs: cs.clone(),
-//             s: S::new(cs),
-//             f_phantom: PhantomData,
-//             cf_phantom: PhantomData,
-//             ps_phantom: PhantomData,
-//         }
-//     }
-//
-//     fn constant(
-//         cs: ConstraintSystemRef<CF>,
-//         pfs: &FiatShamirAlgebraicSpongeRng<F, CF, PS>,
-//     ) -> Self {
-//         Self {
-//             cs: cs.clone(),
-//             s: S::constant(cs, &pfs.s.clone()),
-//             f_phantom: PhantomData,
-//             cf_phantom: PhantomData,
-//             ps_phantom: PhantomData,
-//         }
-//     }
-//
-//     #[tracing::instrument(target = "r1cs", skip(self))]
-//     fn absorb_nonnative_field_elements(
-//         &mut self,
-//         elems: &[NonNativeFieldVar<F, CF>],
-//         ty: OptimizationType,
-//     ) -> Result<(), SynthesisError> {
-//         Self::push_gadgets_to_sponge(&mut self.s, &elems.to_vec(), ty)
-//     }
-//
-//     #[tracing::instrument(target = "r1cs", skip(self))]
-//     fn absorb_native_field_elements(&mut self, elems: &[FpVar<CF>]) -> Result<(), SynthesisError> {
-//         self.s.absorb(elems)?;
-//         Ok(())
-//     }
-//
-//     #[tracing::instrument(target = "r1cs", skip(self))]
-//     fn absorb_bytes(&mut self, elems: &[UInt8]) -> Result<(), SynthesisError> {
-//         let capacity = CF::size_in_bits() - 1;
-//         let mut bits = Vec::<Boolean>::new();
-//         for elem in elems.iter() {
-//             let mut bits_le = elem.to_bits_le()?; // UInt8's to_bits is le, which is an exception in Zexe.
-//             bits_le.reverse();
-//             bits.extend_from_slice(&bits_le);
-//         }
-//
-//         let mut adjustment_factors = Vec::<CF>::new();
-//         let mut cur = CF::one();
-//         for _ in 0..capacity {
-//             adjustment_factors.push(cur);
-//             cur.double_in_place();
-//         }
-//
-//         let mut gadgets = Vec::<FpVar<CF>>::new();
-//         for elem_bits in bits.chunks(capacity) {
-//             let mut elem = CF::zero();
-//             let mut lc = LinearCombination::zero();
-//             for (bit, adjustment_factor) in elem_bits.iter().rev().zip(adjustment_factors.iter()) {
-//                 if bit.value().unwrap_or_default() {
-//                     elem += adjustment_factor;
-//                 }
-//                 lc = &lc + bit.lc() * *adjustment_factor;
-//             }
-//
-//             let gadget = AllocatedFp::new_witness(ark_relations::ns!(self.cs, "gadget"), || Ok(elem))?;
-//             lc = lc.clone() - (CF::one(), gadget.variable);
-//
-//             gadgets.push(FpVar::from(gadget));
-//             self.cs.enforce_constraint(lc!(), lc!(), lc)?;
-//         }
-//
-//         self.s.absorb(&gadgets)
-//     }
-//
-//     fn squeeze_native_field_elements(&mut self, num: usize) -> Result<Vec<FpVar<CF>>, SynthesisError> {
-//         self.s.squeeze(num)
-//     }
-//
-//     fn squeeze_field_elements(&mut self, num: usize) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError> {
-//         Self::get_gadgets_from_sponge(&mut self.s, num, false)
-//     }
-//
-//     #[allow(clippy::type_complexity)]
-//     fn squeeze_field_elements_and_bits(
-//         &mut self,
-//         num: usize,
-//     ) -> Result<(Vec<NonNativeFieldVar<F, CF>>, Vec<Vec<Boolean>>), SynthesisError> {
-//         Self::get_gadgets_and_bits_from_sponge(&mut self.s, num, false)
-//     }
-//
-//     fn squeeze_128_bits_field_elements(&mut self, num: usize) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError> {
-//         Self::get_gadgets_from_sponge(&mut self.s, num, true)
-//     }
-//
-//     #[allow(clippy::type_complexity)]
-//     fn squeeze_128_bits_field_elements_and_bits(
-//         &mut self,
-//         num: usize,
-//     ) -> Result<(Vec<NonNativeFieldVar<F, CF>>, Vec<Vec<Boolean>>), SynthesisError> {
-//         Self::get_gadgets_and_bits_from_sponge(&mut self.s, num, true)
-//     }
-// }
+impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeVar<CF, PS>>
+    FiatShamirRngVar<F, CF, FiatShamirAlgebraicSpongeRng<F, CF, PS>> for FiatShamirAlgebraicSpongeRngVar<F, CF, PS, S>
+{
+    fn new<CS: ConstraintSystem<CF>>(cs: CS) -> Self {
+        Self {
+            s: S::new(cs),
+            f_phantom: PhantomData,
+            cf_phantom: PhantomData,
+            ps_phantom: PhantomData,
+        }
+    }
+
+    fn constant<CS: ConstraintSystem<CF>>(cs: CS, pfs: &FiatShamirAlgebraicSpongeRng<F, CF, PS>) -> Self {
+        Self {
+            s: S::constant(cs, &pfs.s.clone()),
+            f_phantom: PhantomData,
+            cf_phantom: PhantomData,
+            ps_phantom: PhantomData,
+        }
+    }
+
+    fn absorb_nonnative_field_elements<CS: ConstraintSystem<CF>>(
+        &mut self,
+        cs: CS,
+        elems: &[NonNativeFieldVar<F, CF>],
+        ty: OptimizationType,
+    ) -> Result<(), SynthesisError> {
+        Self::push_gadgets_to_sponge(cs, &mut self.s, &elems.to_vec(), ty)
+    }
+
+    fn absorb_native_field_elements(&mut self, elems: &[FpGadget<CF>]) -> Result<(), SynthesisError> {
+        self.s.absorb(elems)?;
+        Ok(())
+    }
+
+    fn absorb_bytes<CS: ConstraintSystem<CF>>(&mut self, cs: CS, elems: &[UInt8]) -> Result<(), SynthesisError> {
+        // let capacity = CF::size_in_bits() - 1;
+        // let mut bits = Vec::<Boolean>::new();
+        // for elem in elems.iter() {
+        //     let mut bits_le = elem.to_bits_le()?; // UInt8's to_bits is le, which is an exception in Zexe.
+        //     bits_le.reverse();
+        //     bits.extend_from_slice(&bits_le);
+        // }
+        //
+        // let mut adjustment_factors = Vec::<CF>::new();
+        // let mut cur = CF::one();
+        // for _ in 0..capacity {
+        //     adjustment_factors.push(cur);
+        //     cur.double_in_place();
+        // }
+        //
+        // let mut gadgets = Vec::<FpVar<CF>>::new();
+        // for elem_bits in bits.chunks(capacity) {
+        //     let mut elem = CF::zero();
+        //     let mut lc = LinearCombination::zero();
+        //     for (bit, adjustment_factor) in elem_bits.iter().rev().zip(adjustment_factors.iter()) {
+        //         if bit.value().unwrap_or_default() {
+        //             elem += adjustment_factor;
+        //         }
+        //         lc = &lc + bit.lc() * *adjustment_factor;
+        //     }
+        //
+        //     let gadget = AllocatedFp::new_witness(ark_relations::ns!(self.cs, "gadget"), || Ok(elem))?;
+        //     lc = lc.clone() - (CF::one(), gadget.variable);
+        //
+        //     gadgets.push(FpVar::from(gadget));
+        //     self.cs.enforce_constraint(lc!(), lc!(), lc)?;
+        // }
+        //
+        // self.s.absorb(&gadgets)
+
+        unimplemented!()
+    }
+
+    fn squeeze_native_field_elements(&mut self, num: usize) -> Result<Vec<FpGadget<CF>>, SynthesisError> {
+        self.s.squeeze(num)
+    }
+
+    fn squeeze_field_elements<CS: ConstraintSystem<CF>>(
+        &mut self,
+        cs: CS,
+        num: usize,
+    ) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError> {
+        Self::get_gadgets_from_sponge(cs, &mut self.s, num, false)
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn squeeze_field_elements_and_bits<CS: ConstraintSystem<CF>>(
+        &mut self,
+        cs: CS,
+        num: usize,
+    ) -> Result<(Vec<NonNativeFieldVar<F, CF>>, Vec<Vec<Boolean>>), SynthesisError> {
+        Self::get_gadgets_and_bits_from_sponge(cs, &mut self.s, num, false)
+    }
+
+    fn squeeze_128_bits_field_elements<CS: ConstraintSystem<CF>>(
+        &mut self,
+        cs: CS,
+        num: usize,
+    ) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError> {
+        Self::get_gadgets_from_sponge(cs, &mut self.s, num, true)
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn squeeze_128_bits_field_elements_and_bits<CS: ConstraintSystem<CF>>(
+        &mut self,
+        cs: CS,
+        num: usize,
+    ) -> Result<(Vec<NonNativeFieldVar<F, CF>>, Vec<Vec<Boolean>>), SynthesisError> {
+        Self::get_gadgets_and_bits_from_sponge(cs, &mut self.s, num, true)
+    }
+}
