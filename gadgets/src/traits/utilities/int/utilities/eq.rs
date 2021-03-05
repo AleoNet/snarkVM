@@ -18,7 +18,7 @@ use crate::utilities::{
     boolean::Boolean,
     eq::{ConditionalEqGadget, EqGadget},
     int::*,
-    num::Number,
+    number::Number,
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};

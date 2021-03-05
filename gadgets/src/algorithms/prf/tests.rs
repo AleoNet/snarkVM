@@ -22,7 +22,7 @@ use crate::{
             alloc::AllocGadget,
             boolean::{AllocatedBit, Boolean},
             eq::EqGadget,
-            num::Number,
+            number::Number,
             uint::unsigned_integer::UInt8,
         },
     },

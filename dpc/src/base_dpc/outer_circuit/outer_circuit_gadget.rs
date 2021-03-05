@@ -25,7 +25,7 @@ use snarkvm_gadgets::traits::{
     utilities::{
         alloc::{AllocBytesGadget, AllocGadget},
         eq::EqGadget,
-        num::Number,
+        number::Number,
         uint::unsigned_integer::UInt8,
         ToBytesGadget,
     },

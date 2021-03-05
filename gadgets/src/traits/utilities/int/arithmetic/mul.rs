@@ -22,7 +22,7 @@ use crate::utilities::{
     bits::{RippleCarryAdder, SignExtend},
     boolean::{AllocatedBit, Boolean},
     int::*,
-    num::Number,
+    number::Number,
     select::CondSelectGadget,
 };
 use snarkvm_fields::{FpParameters, PrimeField};

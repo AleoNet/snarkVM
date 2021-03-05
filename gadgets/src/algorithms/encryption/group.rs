@@ -21,7 +21,7 @@ use crate::traits::{
         alloc::AllocGadget,
         boolean::Boolean,
         eq::{ConditionalEqGadget, EqGadget},
-        num::Number,
+        number::Number,
         uint::UInt8,
         ToBytesGadget,
     },

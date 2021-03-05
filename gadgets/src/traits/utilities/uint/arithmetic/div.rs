@@ -20,7 +20,7 @@ use crate::utilities::{
     alloc::AllocGadget,
     arithmetic::Div,
     boolean::{AllocatedBit, Boolean},
-    num::Number,
+    number::Number,
     select::CondSelectGadget,
     uint::*,
 };

@@ -21,7 +21,7 @@ use crate::{
         boolean::{AllocatedBit, Boolean},
         eq::EqGadget,
         int::*,
-        num::Number,
+        number::Number,
         ToBitsGadget,
     },
 };

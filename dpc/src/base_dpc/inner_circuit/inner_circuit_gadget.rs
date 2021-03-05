@@ -42,7 +42,7 @@ use snarkvm_gadgets::{
             boolean::Boolean,
             eq::{ConditionalEqGadget, EqGadget},
             int::Int64,
-            num::Number,
+            number::Number,
             uint::UInt8,
             ToBitsGadget,
             ToBytesGadget,

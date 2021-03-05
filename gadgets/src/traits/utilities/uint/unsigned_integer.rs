@@ -21,7 +21,7 @@ use crate::{
         arithmetic::*,
         boolean::{AllocatedBit, Boolean},
         eq::{ConditionalEqGadget, EqGadget},
-        num::Number,
+        number::Number,
         select::CondSelectGadget,
         ToBitsGadget,
         ToBytesGadget,

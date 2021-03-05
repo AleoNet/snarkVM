@@ -18,7 +18,7 @@ use crate::utilities::{
     alloc::AllocGadget,
     arithmetic::*,
     boolean::Boolean,
-    num::Number,
+    number::Number,
     uint::{UInt, UInt128},
 };
 use snarkvm_fields::{One, Zero};

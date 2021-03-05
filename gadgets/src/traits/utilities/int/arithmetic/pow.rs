@@ -21,7 +21,7 @@ use crate::utilities::{
     arithmetic::{Mul, Pow},
     boolean::Boolean,
     int::*,
-    num::Number,
+    number::Number,
     select::CondSelectGadget,
 };
 use snarkvm_fields::PrimeField;
