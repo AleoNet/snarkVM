@@ -39,15 +39,14 @@ jobs:
           path: ./cache
           key: ${{ runner.os }}-benchmark
 
-      - name: Store benchmark result
-        uses: rhysd/github-action-benchmark@a1dd29e2e4046a6c7ffe38910edda791117336e0
-        with:
-          name: snarkVM Benchmarks
-          tool: 'criterion-rs'
-          output-file-path: output.txt
-          github-token: ${{ secrets.PAT_TOKEN }}
-          auto-push: true
-          alert-threshold: '150%'
-          comment-on-alert: true
-          fail-on-alert: true
-          alert-comment-cc-users: '@howardwu'
+      - name: Load benchmark
+        run: |
+          mkdir ~/.ssh
+          echo "${{ secrets.BENCHMARK_DEPLOY_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          eval $(ssh-agent -s)
+          ssh-add -k ~/.ssh/id_rsa
+          git clone ${{ secrets.BENCHMARK_REPOSITORY }}
+          cp output.txt ${{ secrets.BENCHMARK_REPOSITORY }}/.release
+          cd ${{ secrets.BENCHMARK_REPOSITORY }}/.release || exit 1
+          node index.js ${{ secrets.PAT_TOKEN }}
