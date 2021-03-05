@@ -25,15 +25,20 @@ use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     fields::{AllocatedFp, FpGadget},
     traits::fields::FieldGadget,
-    utilities::{alloc::AllocGadget, boolean::Boolean, uint::UInt8, ToBitsGadget},
+    utilities::{
+        alloc::AllocGadget,
+        boolean::Boolean,
+        uint::{UInt, UInt8},
+        ToBitsGadget,
+    },
 };
 use snarkvm_nonnative::{
     params::{get_params, OptimizationType},
     AllocatedNonNativeFieldVar,
     NonNativeFieldVar,
 };
-use snarkvm_r1cs::{ConstraintSystem, LinearCombination, SynthesisError};
-use std::marker::PhantomData;
+use snarkvm_r1cs::{ConstraintSystem, ConstraintVariable, LinearCombination, SynthesisError};
+use std::{marker::PhantomData, ops::Sub};
 
 /// Vars for a RNG for use in a Fiat-Shamir transform.
 pub trait FiatShamirRngVar<F: PrimeField, CF: PrimeField, PFS: FiatShamirRng<F, CF>>: Clone {
@@ -177,169 +182,178 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
         Ok(dest_limbs)
     }
 
-    //     /// Push gadgets to sponge.
-    //     #[tracing::instrument(target = "r1cs", skip(sponge))]
-    //     pub fn push_gadgets_to_sponge(
-    //         sponge: &mut S,
-    //         src: &[NonNativeFieldVar<F, CF>],
-    //         ty: OptimizationType,
-    //     ) -> Result<(), SynthesisError> {
-    //         let mut src_limbs: Vec<(FpVar<CF>, CF)> = Vec::new();
-    //
-    //         for elem in src.iter() {
-    //             match elem {
-    //                 NonNativeFieldVar::Constant(c) => {
-    //                     let v = AllocatedNonNativeFieldVar::<F, CF>::new_constant(sponge.cs(), c)?;
-    //
-    //                     for limb in v.limbs.iter() {
-    //                         let num_of_additions_over_normal_form =
-    //                             if v.num_of_additions_over_normal_form == CF::zero() {
-    //                                 CF::one()
-    //                             } else {
-    //                                 v.num_of_additions_over_normal_form
-    //                             };
-    //                         src_limbs.push((limb.clone(), num_of_additions_over_normal_form));
-    //                     }
-    //                 }
-    //                 NonNativeFieldVar::Var(v) => {
-    //                     for limb in v.limbs.iter() {
-    //                         let num_of_additions_over_normal_form =
-    //                             if v.num_of_additions_over_normal_form == CF::zero() {
-    //                                 CF::one()
-    //                             } else {
-    //                                 v.num_of_additions_over_normal_form
-    //                             };
-    //                         src_limbs.push((limb.clone(), num_of_additions_over_normal_form));
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //
-    //         let dest_limbs = Self::compress_gadgets(&src_limbs, ty)?;
-    //         sponge.absorb(&dest_limbs)?;
-    //         Ok(())
-    //     }
-    //
-    //     /// Obtain random bits from hashchain gadget. (Not guaranteed to be uniformly distributed,
-    //     /// should only be used in certain situations.)
-    //     #[tracing::instrument(target = "r1cs", skip(sponge))]
-    //     pub fn get_booleans_from_sponge(
-    //         sponge: &mut S,
-    //         num_bits: usize,
-    //     ) -> Result<Vec<Boolean<CF>>, SynthesisError> {
-    //         let bits_per_element = CF::size_in_bits() - 1;
-    //         let num_elements = (num_bits + bits_per_element - 1) / bits_per_element;
-    //
-    //         let src_elements = sponge.squeeze(num_elements)?;
-    //         let mut dest_bits = Vec::<Boolean<CF>>::new();
-    //
-    //         for elem in src_elements.iter() {
-    //             let elem_bits = elem.to_bits_be()?;
-    //             dest_bits.extend_from_slice(&elem_bits[1..]); // discard the highest bit
-    //         }
-    //
-    //         Ok(dest_bits)
-    //     }
-    //
-    //     /// Obtain random elements from hashchain gadget. (Not guaranteed to be uniformly distributed,
-    //     /// should only be used in certain situations.)
-    //     #[tracing::instrument(target = "r1cs", skip(sponge))]
-    //     pub fn get_gadgets_from_sponge(
-    //         sponge: &mut S,
-    //         num_elements: usize,
-    //         outputs_short_elements: bool,
-    //     ) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError> {
-    //         let (dest_gadgets, _) =
-    //             Self::get_gadgets_and_bits_from_sponge(sponge, num_elements, outputs_short_elements)?;
-    //
-    //         Ok(dest_gadgets)
-    //     }
-    //
-    //     /// Obtain random elements, and the corresponding bits, from hashchain gadget. (Not guaranteed
-    //     /// to be uniformly distributed, should only be used in certain situations.)
-    //     #[tracing::instrument(target = "r1cs", skip(sponge))]
-    //     #[allow(clippy::type_complexity)]
-    //     pub fn get_gadgets_and_bits_from_sponge(
-    //         sponge: &mut S,
-    //         num_elements: usize,
-    //         outputs_short_elements: bool,
-    //     ) -> Result<(Vec<NonNativeFieldVar<F, CF>>, Vec<Vec<Boolean<CF>>>), SynthesisError> {
-    //         let cs = sponge.cs();
-    //
-    //         let optimization_type = match cs.optimization_goal() {
-    //             OptimizationGoal::None => OptimizationType::Constraints,
-    //             OptimizationGoal::Constraints => OptimizationType::Constraints,
-    //             OptimizationGoal::Weight => OptimizationType::Weight,
-    //         };
-    //
-    //         let params = get_params(F::size_in_bits(), CF::size_in_bits(), optimization_type);
-    //
-    //         let num_bits_per_nonnative = if outputs_short_elements {
-    //             128
-    //         } else {
-    //             F::size_in_bits() - 1 // also omit the highest bit
-    //         };
-    //         let bits = Self::get_booleans_from_sponge(sponge, num_bits_per_nonnative * num_elements)?;
-    //
-    //         let mut lookup_table = Vec::<Vec<CF>>::new();
-    //         let mut cur = F::one();
-    //         for _ in 0..num_bits_per_nonnative {
-    //             let repr = AllocatedNonNativeFieldVar::<F, CF>::get_limbs_representations(
-    //                 &cur,
-    //                 optimization_type,
-    //             )?;
-    //             lookup_table.push(repr);
-    //             cur.double_in_place();
-    //         }
-    //
-    //         let mut dest_gadgets = Vec::<NonNativeFieldVar<F, CF>>::new();
-    //         let mut dest_bits = Vec::<Vec<Boolean<CF>>>::new();
-    //         bits.chunks_exact(num_bits_per_nonnative)
-    //             .for_each(|per_nonnative_bits| {
-    //                 let mut val = vec![CF::zero(); params.num_limbs];
-    //                 let mut lc = vec![LinearCombination::<CF>::zero(); params.num_limbs];
-    //
-    //                 let mut per_nonnative_bits_le = per_nonnative_bits.to_vec();
-    //                 per_nonnative_bits_le.reverse();
-    //
-    //                 dest_bits.push(per_nonnative_bits_le.clone());
-    //
-    //                 for (j, bit) in per_nonnative_bits_le.iter().enumerate() {
-    //                     if bit.value().unwrap_or_default() {
-    //                         for (k, val) in val.iter_mut().enumerate().take(params.num_limbs) {
-    //                             *val += &lookup_table[j][k];
-    //                         }
-    //                     }
-    //
-    //                     #[allow(clippy::needless_range_loop)]
-    //                     for k in 0..params.num_limbs {
-    //                         lc[k] = &lc[k] + bit.lc() * lookup_table[j][k];
-    //                     }
-    //                 }
-    //
-    //                 let mut limbs = Vec::new();
-    //                 for k in 0..params.num_limbs {
-    //                     let gadget =
-    //                         AllocatedFp::new_witness(ark_relations::ns!(cs, "alloc"), || Ok(val[k]))
-    //                             .unwrap();
-    //                     lc[k] = lc[k].clone() - (CF::one(), gadget.variable);
-    //                     cs.enforce_constraint(lc!(), lc!(), lc[k].clone()).unwrap();
-    //                     limbs.push(FpVar::<CF>::from(gadget));
-    //                 }
-    //
-    //                 dest_gadgets.push(NonNativeFieldVar::<F, CF>::Var(
-    //                     AllocatedNonNativeFieldVar::<F, CF> {
-    //                         cs: cs.clone(),
-    //                         limbs,
-    //                         num_of_additions_over_normal_form: CF::zero(),
-    //                         is_in_the_normal_form: true,
-    //                         target_phantom: Default::default(),
-    //                     },
-    //                 ));
-    //             });
-    //
-    //         Ok((dest_gadgets, dest_bits))
-    //     }
+    /// Push gadgets to sponge.
+    pub fn push_gadgets_to_sponge<CS: ConstraintSystem<CF>>(
+        mut cs: CS,
+        sponge: &mut S,
+        src: &[NonNativeFieldVar<F, CF>],
+        ty: OptimizationType,
+    ) -> Result<(), SynthesisError> {
+        let mut src_limbs: Vec<(FpGadget<CF>, CF)> = Vec::new();
+
+        for (i, elem) in src.iter().enumerate() {
+            match elem {
+                NonNativeFieldVar::Constant(c) => {
+                    let v = AllocatedNonNativeFieldVar::<F, CF>::alloc_constant(
+                        cs.ns(|| format!("alloc_constant_{}", i)),
+                        || Ok(c),
+                    )?;
+
+                    for limb in v.limbs.iter() {
+                        let num_of_additions_over_normal_form = if v.num_of_additions_over_normal_form == CF::zero() {
+                            CF::one()
+                        } else {
+                            v.num_of_additions_over_normal_form
+                        };
+                        src_limbs.push((limb.clone(), num_of_additions_over_normal_form));
+                    }
+                }
+                NonNativeFieldVar::Var(v) => {
+                    for limb in v.limbs.iter() {
+                        let num_of_additions_over_normal_form = if v.num_of_additions_over_normal_form == CF::zero() {
+                            CF::one()
+                        } else {
+                            v.num_of_additions_over_normal_form
+                        };
+                        src_limbs.push((limb.clone(), num_of_additions_over_normal_form));
+                    }
+                }
+            }
+        }
+
+        let dest_limbs = Self::compress_gadgets(cs.ns(|| "compress_gadgets"), &src_limbs, ty)?;
+        sponge.absorb(&dest_limbs)?;
+        Ok(())
+    }
+
+    /// Obtain random bits from hashchain gadget. (Not guaranteed to be uniformly distributed,
+    /// should only be used in certain situations.)
+    pub fn get_booleans_from_sponge<CS: ConstraintSystem<CF>>(
+        mut cs: CS,
+        sponge: &mut S,
+        num_bits: usize,
+    ) -> Result<Vec<Boolean>, SynthesisError> {
+        let bits_per_element = CF::size_in_bits() - 1;
+        let num_elements = (num_bits + bits_per_element - 1) / bits_per_element;
+
+        let src_elements = sponge.squeeze(num_elements)?;
+        let mut dest_bits = Vec::<Boolean>::new();
+
+        for (i, elem) in src_elements.iter().enumerate() {
+            let elem_bits = elem.to_bits(cs.ns(|| format!("elem_to_bits_{}", i)))?;
+            dest_bits.extend_from_slice(&elem_bits[1..]); // discard the highest bit
+        }
+
+        Ok(dest_bits)
+    }
+
+    /// Obtain random elements from hashchain gadget. (Not guaranteed to be uniformly distributed,
+    /// should only be used in certain situations.)
+    pub fn get_gadgets_from_sponge<CS: ConstraintSystem<CF>>(
+        cs: CS,
+        sponge: &mut S,
+        num_elements: usize,
+        outputs_short_elements: bool,
+    ) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError> {
+        let (dest_gadgets, _) =
+            Self::get_gadgets_and_bits_from_sponge(cs, sponge, num_elements, outputs_short_elements)?;
+
+        Ok(dest_gadgets)
+    }
+
+    /// Obtain random elements, and the corresponding bits, from hashchain gadget. (Not guaranteed
+    /// to be uniformly distributed, should only be used in certain situations.)
+    #[allow(clippy::type_complexity)]
+    pub fn get_gadgets_and_bits_from_sponge<CS: ConstraintSystem<CF>>(
+        mut cs: CS,
+        sponge: &mut S,
+        num_elements: usize,
+        outputs_short_elements: bool,
+    ) -> Result<(Vec<NonNativeFieldVar<F, CF>>, Vec<Vec<Boolean>>), SynthesisError> {
+        let optimization_type = OptimizationType::Constraints;
+
+        let params = get_params(F::size_in_bits(), CF::size_in_bits(), optimization_type);
+
+        let num_bits_per_nonnative = if outputs_short_elements {
+            128
+        } else {
+            F::size_in_bits() - 1 // also omit the highest bit
+        };
+        let bits = Self::get_booleans_from_sponge(
+            cs.ns(|| "get_booleans_from_sponge"),
+            sponge,
+            num_bits_per_nonnative * num_elements,
+        )?;
+
+        let mut lookup_table = Vec::<Vec<CF>>::new();
+        let mut cur = F::one();
+        for _ in 0..num_bits_per_nonnative {
+            let repr = AllocatedNonNativeFieldVar::<F, CF>::get_limbs_representations(&cur, optimization_type)?;
+            lookup_table.push(repr);
+            cur.double_in_place();
+        }
+
+        let mut dest_gadgets = Vec::<NonNativeFieldVar<F, CF>>::new();
+        let mut dest_bits = Vec::<Vec<Boolean>>::new();
+        bits.chunks_exact(num_bits_per_nonnative)
+            .for_each(|per_nonnative_bits| {
+                let mut val = vec![CF::zero(); params.num_limbs];
+                let mut lc = vec![LinearCombination::<CF>::zero(); params.num_limbs];
+
+                let mut per_nonnative_bits_le = per_nonnative_bits.to_vec();
+                per_nonnative_bits_le.reverse();
+
+                dest_bits.push(per_nonnative_bits_le.clone());
+
+                for (j, bit) in per_nonnative_bits_le.iter().enumerate() {
+                    if bit.get_value().unwrap_or_default() {
+                        for (k, val) in val.iter_mut().enumerate().take(params.num_limbs) {
+                            *val += &lookup_table[j][k];
+                        }
+                    }
+
+                    #[allow(clippy::needless_range_loop)]
+                    for k in 0..params.num_limbs {
+                        // TODO (raychu86): Confirm linear combination is correct:
+                        // lc[k] = &lc[k] + bit.lc() * lookup_table[j][k];
+
+                        lc[k] = &lc[k] + bit.lc(CS::one(), CF::one()) * lookup_table[j][k];
+                    }
+                }
+
+                let mut limbs = Vec::new();
+                for k in 0..params.num_limbs {
+                    let gadget =
+                        AllocatedFp::alloc_input(cs.ns(|| format!("alloc_input_{}", k)), || Ok(val[k])).unwrap();
+
+                    // TODO (raychu86): Confirm linear combination subtraction is equivalent:
+                    // lc[k] = lc[k] - (CF::one(), &gadget.variable);
+                    match &gadget.variable {
+                        ConstraintVariable::Var(var) => {
+                            lc[k] = lc[k].clone() - (CF::one(), *var);
+                        }
+                        ConstraintVariable::LC(linear_combination) => {
+                            lc[k] = &lc[k] - (CF::one(), linear_combination);
+                        }
+                    }
+
+                    // TODO (raychu86): Confirm CS enforcement is equivalent:
+                    // cs.enforce_constraint(lc!(), lc!(), lc[k].clone()).unwrap();
+                    cs.enforce(|| "enforce_constraint", |lc| lc, |lc| lc, |_| lc[k].clone());
+
+                    limbs.push(FpGadget::<CF>::from(gadget));
+                }
+
+                dest_gadgets.push(NonNativeFieldVar::<F, CF>::Var(AllocatedNonNativeFieldVar::<F, CF> {
+                    limbs,
+                    num_of_additions_over_normal_form: CF::zero(),
+                    is_in_the_normal_form: true,
+                    target_phantom: Default::default(),
+                }));
+            });
+
+        Ok((dest_gadgets, dest_bits))
+    }
 }
 
 // impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeVar<CF, PS>>
@@ -385,9 +399,9 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
 //     }
 //
 //     #[tracing::instrument(target = "r1cs", skip(self))]
-//     fn absorb_bytes(&mut self, elems: &[UInt8<CF>]) -> Result<(), SynthesisError> {
+//     fn absorb_bytes(&mut self, elems: &[UInt8]) -> Result<(), SynthesisError> {
 //         let capacity = CF::size_in_bits() - 1;
-//         let mut bits = Vec::<Boolean<CF>>::new();
+//         let mut bits = Vec::<Boolean>::new();
 //         for elem in elems.iter() {
 //             let mut bits_le = elem.to_bits_le()?; // UInt8's to_bits is le, which is an exception in Zexe.
 //             bits_le.reverse();
@@ -412,8 +426,7 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
 //                 lc = &lc + bit.lc() * *adjustment_factor;
 //             }
 //
-//             let gadget =
-//                 AllocatedFp::new_witness(ark_relations::ns!(self.cs, "gadget"), || Ok(elem))?;
+//             let gadget = AllocatedFp::new_witness(ark_relations::ns!(self.cs, "gadget"), || Ok(elem))?;
 //             lc = lc.clone() - (CF::one(), gadget.variable);
 //
 //             gadgets.push(FpVar::from(gadget));
@@ -423,45 +436,31 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
 //         self.s.absorb(&gadgets)
 //     }
 //
-//     #[tracing::instrument(target = "r1cs", skip(self))]
-//     fn squeeze_native_field_elements(
-//         &mut self,
-//         num: usize,
-//     ) -> Result<Vec<FpVar<CF>>, SynthesisError> {
+//     fn squeeze_native_field_elements(&mut self, num: usize) -> Result<Vec<FpVar<CF>>, SynthesisError> {
 //         self.s.squeeze(num)
 //     }
 //
-//     #[tracing::instrument(target = "r1cs", skip(self))]
-//     fn squeeze_field_elements(
-//         &mut self,
-//         num: usize,
-//     ) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError> {
+//     fn squeeze_field_elements(&mut self, num: usize) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError> {
 //         Self::get_gadgets_from_sponge(&mut self.s, num, false)
 //     }
 //
-//     #[tracing::instrument(target = "r1cs", skip(self))]
 //     #[allow(clippy::type_complexity)]
 //     fn squeeze_field_elements_and_bits(
 //         &mut self,
 //         num: usize,
-//     ) -> Result<(Vec<NonNativeFieldVar<F, CF>>, Vec<Vec<Boolean<CF>>>), SynthesisError> {
+//     ) -> Result<(Vec<NonNativeFieldVar<F, CF>>, Vec<Vec<Boolean>>), SynthesisError> {
 //         Self::get_gadgets_and_bits_from_sponge(&mut self.s, num, false)
 //     }
 //
-//     #[tracing::instrument(target = "r1cs", skip(self))]
-//     fn squeeze_128_bits_field_elements(
-//         &mut self,
-//         num: usize,
-//     ) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError> {
+//     fn squeeze_128_bits_field_elements(&mut self, num: usize) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError> {
 //         Self::get_gadgets_from_sponge(&mut self.s, num, true)
 //     }
 //
-//     #[tracing::instrument(target = "r1cs", skip(self))]
 //     #[allow(clippy::type_complexity)]
 //     fn squeeze_128_bits_field_elements_and_bits(
 //         &mut self,
 //         num: usize,
-//     ) -> Result<(Vec<NonNativeFieldVar<F, CF>>, Vec<Vec<Boolean<CF>>>), SynthesisError> {
+//     ) -> Result<(Vec<NonNativeFieldVar<F, CF>>, Vec<Vec<Boolean>>), SynthesisError> {
 //         Self::get_gadgets_and_bits_from_sponge(&mut self.s, num, true)
 //     }
 // }
