@@ -122,7 +122,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
             _ => {
                 let mut bits = vec![];
                 for (i, b) in bits_considered.iter().enumerate() {
-                    bits.push(Boolean::alloc_input(cs.ns(|| format!("bit_{}", i)), || Ok(b))?);
+                    bits.push(Boolean::alloc(cs.ns(|| format!("bit_{}", i)), || Ok(b))?);
                 }
 
                 let mut bit_sum = FpGadget::zero(cs.ns(|| "zero"))?;
@@ -304,8 +304,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
 
             carry_value = BaseField::from_repr(carry_repr).unwrap();
 
-            let carry =
-                FpGadget::<BaseField>::alloc_input(cs.ns(|| format!("alloc_input_{}", group_id)), || Ok(carry_value))?;
+            let carry = FpGadget::<BaseField>::alloc(cs.ns(|| format!("alloc_{}", group_id)), || Ok(carry_value))?;
 
             accumulated_extra += limbs_to_bigint(bits_per_limb, &[pad_limb]);
 

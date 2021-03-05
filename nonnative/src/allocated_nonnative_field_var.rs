@@ -326,7 +326,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
 
     /// Compute the inverse of a nonnative field element
     pub fn inverse<CS: ConstraintSystem<BaseField>>(&self, cs: &mut CS) -> Result<Self, SynthesisError> {
-        let inverse = Self::alloc_input(&mut cs.ns(|| "alloc_input"), || {
+        let inverse = Self::alloc(&mut cs.ns(|| "alloc"), || {
             Ok(self.value()?.inverse().unwrap_or_else(TargetField::zero))
         })?;
 
@@ -408,23 +408,20 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         // We currently only support constraint optimization
 
         for z_index in 0..2 * params.num_limbs - 1 {
-            prod_limbs.push(FpGadget::alloc_input(
-                cs.ns(|| format!("limb product_{}", z_index)),
-                || {
-                    let mut z_i = BaseField::zero();
-                    for i in 0..=min(params.num_limbs - 1, z_index) {
-                        let j = z_index - i;
-                        if j < params.num_limbs {
-                            z_i += &self_reduced.limbs[i]
-                                .get_value()
-                                .unwrap()
-                                .mul(&other_reduced.limbs[j].get_value().unwrap());
-                        }
+            prod_limbs.push(FpGadget::alloc(cs.ns(|| format!("limb product_{}", z_index)), || {
+                let mut z_i = BaseField::zero();
+                for i in 0..=min(params.num_limbs - 1, z_index) {
+                    let j = z_index - i;
+                    if j < params.num_limbs {
+                        z_i += &self_reduced.limbs[i]
+                            .get_value()
+                            .unwrap()
+                            .mul(&other_reduced.limbs[j].get_value().unwrap());
                     }
+                }
 
-                    Ok(z_i)
-                },
-            )?);
+                Ok(z_i)
+            })?);
         }
 
         for c in 0..(2 * params.num_limbs - 1) {
@@ -896,10 +893,9 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, Ba
         let mut limbs = Vec::new();
 
         for (i, limb) in elem_representations.iter().enumerate() {
-            limbs.push(FpGadget::<BaseField>::alloc_input(
-                cs.ns(|| format!("alloc_input_{}", i)),
-                || Ok(limb),
-            )?);
+            limbs.push(FpGadget::<BaseField>::alloc(cs.ns(|| format!("alloc_{}", i)), || {
+                Ok(limb)
+            })?);
         }
 
         let num_of_additions_over_normal_form = BaseField::one();

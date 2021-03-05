@@ -99,8 +99,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> NonNativeFieldVar<TargetFie
         if constant {
             Ok(Boolean::Constant(self.value()? == other.value()?))
         } else {
-            let should_enforce_equal =
-                Boolean::alloc_input(cs.ns(|| "alloc_input"), || Ok(self.value()? == other.value()?))?;
+            let should_enforce_equal = Boolean::alloc(cs.ns(|| "alloc"), || Ok(self.value()? == other.value()?))?;
 
             self.conditional_enforce_equal(cs.ns(|| "conditional_enforce_equal"), other, &should_enforce_equal)?;
             self.conditional_enforce_not_equal(
