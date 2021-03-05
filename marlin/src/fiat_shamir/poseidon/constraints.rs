@@ -29,7 +29,7 @@ use crate::fiat_shamir::{
 };
 
 use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{fields::FpGadget, traits::fields::FieldGadget};
+use snarkvm_gadgets::{fields::FpGadget, traits::fields::FieldGadget, utilities::alloc::AllocGadget};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use rand::SeedableRng;
@@ -189,128 +189,115 @@ impl<F: PrimeField> PoseidonSpongeVar<F> {
     }
 }
 
-// impl<F: PrimeField> AlgebraicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpongeVar<F> {
-//     fn new(cs: ConstraintSystemRef<F>) -> Self {
-//         // Requires F to be Alt_Bn128Fr
-//         let full_rounds = 8;
-//         let partial_rounds = 31;
-//         let alpha = 17;
-//
-//         let mds = vec![
-//             vec![F::one(), F::zero(), F::one()],
-//             vec![F::one(), F::one(), F::zero()],
-//             vec![F::zero(), F::one(), F::one()],
-//         ];
-//
-//         let mut ark = Vec::new();
-//         let mut ark_rng = rand_chacha::ChaChaRng::seed_from_u64(123456789u64);
-//
-//         for _ in 0..(full_rounds + partial_rounds) {
-//             let mut res = Vec::new();
-//
-//             for _ in 0..3 {
-//                 res.push(F::rand(&mut ark_rng));
-//             }
-//             ark.push(res);
-//         }
-//
-//         let rate = 2;
-//         let capacity = 1;
-//         let zero = FpVar::<F>::zero();
-//         let state = vec![zero; rate + capacity];
-//         let mode = PoseidonSpongeState::Absorbing {
-//             next_absorb_index: 0,
-//         };
-//
-//         Self {
-//             cs,
-//             full_rounds,
-//             partial_rounds,
-//             alpha,
-//             ark,
-//             mds,
-//
-//             state,
-//             rate,
-//             capacity,
-//             mode,
-//         }
-//     }
-//
-//     fn constant(cs: ConstraintSystemRef<F>, pfs: &PoseidonSponge<F>) -> Self {
-//         let mut state_gadgets = Vec::new();
-//
-//         for state_elem in pfs.state.iter() {
-//             state_gadgets.push(
-//                 FpVar::<F>::new_constant(ark_relations::ns!(cs, "alloc_elems"), *state_elem)
-//                     .unwrap(),
-//             );
-//         }
-//
-//         Self {
-//             cs,
-//             full_rounds: pfs.full_rounds,
-//             partial_rounds: pfs.partial_rounds,
-//             alpha: pfs.alpha,
-//             ark: pfs.ark.clone(),
-//             mds: pfs.mds.clone(),
-//
-//             state: state_gadgets,
-//             rate: pfs.rate,
-//             capacity: pfs.capacity,
-//             mode: pfs.mode.clone(),
-//         }
-//     }
-//
-//     fn cs(&self) -> ConstraintSystemRef<F> {
-//         self.cs.clone()
-//     }
-//
-//     fn absorb(&mut self, elems: &[FpVar<F>]) -> Result<(), SynthesisError> {
-//         if elems.is_empty() {
-//             return Ok(());
-//         }
-//
-//         match self.mode {
-//             PoseidonSpongeState::Absorbing { next_absorb_index } => {
-//                 let mut absorb_index = next_absorb_index;
-//                 if absorb_index == self.rate {
-//                     self.permute()?;
-//                     absorb_index = 0;
-//                 }
-//                 self.absorb_internal(absorb_index, elems)?;
-//             }
-//             PoseidonSpongeState::Squeezing {
-//                 next_squeeze_index: _,
-//             } => {
-//                 self.permute()?;
-//                 self.absorb_internal(0, elems)?;
-//             }
-//         };
-//
-//         Ok(())
-//     }
-//
-//     fn squeeze(&mut self, num: usize) -> Result<Vec<FpVar<F>>, SynthesisError> {
-//         let zero = FpVar::zero();
-//         let mut squeezed_elems = vec![zero; num];
-//         match self.mode {
-//             PoseidonSpongeState::Absorbing {
-//                 next_absorb_index: _,
-//             } => {
-//                 self.permute()?;
-//                 self.squeeze_internal(0, &mut squeezed_elems)?;
-//             }
-//             PoseidonSpongeState::Squeezing { next_squeeze_index } => {
-//                 let mut squeeze_index = next_squeeze_index;
-//                 if squeeze_index == self.rate {
-//                     self.permute()?;
-//                     squeeze_index = 0;
-//                 }
-//                 self.squeeze_internal(squeeze_index, &mut squeezed_elems)?;
-//             }
-//         };
-//
-//         Ok(squeezed_elems)
-//     }
-// }
+impl<F: PrimeField> AlgebraicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpongeVar<F> {
+    fn new<CS: ConstraintSystem<F>>(mut cs: CS) -> Self {
+        // Requires F to be Alt_Bn128Fr
+        let full_rounds = 8;
+        let partial_rounds = 31;
+        let alpha = 17;
+
+        let mds = vec![
+            vec![F::one(), F::zero(), F::one()],
+            vec![F::one(), F::one(), F::zero()],
+            vec![F::zero(), F::one(), F::one()],
+        ];
+
+        let mut ark = Vec::new();
+        let mut ark_rng = rand_chacha::ChaChaRng::seed_from_u64(123456789u64);
+
+        for _ in 0..(full_rounds + partial_rounds) {
+            let mut res = Vec::new();
+
+            for _ in 0..3 {
+                res.push(F::rand(&mut ark_rng));
+            }
+            ark.push(res);
+        }
+
+        let rate = 2;
+        let capacity = 1;
+        let zero = FpGadget::<F>::zero(cs.ns(|| "zero")).unwrap();
+        let state = vec![zero; rate + capacity];
+        let mode = PoseidonSpongeState::Absorbing { next_absorb_index: 0 };
+
+        Self {
+            full_rounds,
+            partial_rounds,
+            alpha,
+            ark,
+            mds,
+
+            state,
+            rate,
+            capacity,
+            mode,
+        }
+    }
+
+    fn constant<CS: ConstraintSystem<F>>(mut cs: CS, pfs: &PoseidonSponge<F>) -> Self {
+        let mut state_gadgets = Vec::new();
+
+        for (i, state_elem) in pfs.state.iter().enumerate() {
+            state_gadgets.push(
+                FpGadget::<F>::alloc_constant(cs.ns(|| format!("alloc_elems_{}", i)), || Ok(*state_elem)).unwrap(),
+            );
+        }
+
+        Self {
+            full_rounds: pfs.full_rounds,
+            partial_rounds: pfs.partial_rounds,
+            alpha: pfs.alpha,
+            ark: pfs.ark.clone(),
+            mds: pfs.mds.clone(),
+
+            state: state_gadgets,
+            rate: pfs.rate,
+            capacity: pfs.capacity,
+            mode: pfs.mode.clone(),
+        }
+    }
+
+    fn absorb<CS: ConstraintSystem<F>>(&mut self, mut cs: CS, elems: &[FpGadget<F>]) -> Result<(), SynthesisError> {
+        if elems.is_empty() {
+            return Ok(());
+        }
+
+        match self.mode {
+            PoseidonSpongeState::Absorbing { next_absorb_index } => {
+                let mut absorb_index = next_absorb_index;
+                if absorb_index == self.rate {
+                    self.permute(cs.ns(|| "permute"))?;
+                    absorb_index = 0;
+                }
+                self.absorb_internal(cs.ns(|| "absorb_internal"), absorb_index, elems)?;
+            }
+            PoseidonSpongeState::Squeezing { next_squeeze_index: _ } => {
+                self.permute(cs.ns(|| "permute"))?;
+                self.absorb_internal(cs.ns(|| "absorb_internal"), 0, elems)?;
+            }
+        };
+
+        Ok(())
+    }
+
+    fn squeeze<CS: ConstraintSystem<F>>(&mut self, mut cs: CS, num: usize) -> Result<Vec<FpGadget<F>>, SynthesisError> {
+        let zero = FpGadget::zero(cs.ns(|| "zero"))?;
+        let mut squeezed_elems = vec![zero; num];
+        match self.mode {
+            PoseidonSpongeState::Absorbing { next_absorb_index: _ } => {
+                self.permute(cs.ns(|| "permute"))?;
+                self.squeeze_internal(cs.ns(|| "squeeze_internal"), 0, &mut squeezed_elems)?;
+            }
+            PoseidonSpongeState::Squeezing { next_squeeze_index } => {
+                let mut squeeze_index = next_squeeze_index;
+                if squeeze_index == self.rate {
+                    self.permute(cs.ns(|| "permute"))?;
+                    squeeze_index = 0;
+                }
+                self.squeeze_internal(cs.ns(|| "squeeze_internal"), squeeze_index, &mut squeezed_elems)?;
+            }
+        };
+
+        Ok(squeezed_elems)
+    }
+}

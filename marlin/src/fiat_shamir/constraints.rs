@@ -55,13 +55,21 @@ pub trait FiatShamirRngVar<F: PrimeField, CF: PrimeField, PFS: FiatShamirRng<F, 
     ) -> Result<(), SynthesisError>;
 
     /// Take in field elements.
-    fn absorb_native_field_elements(&mut self, elems: &[FpGadget<CF>]) -> Result<(), SynthesisError>;
+    fn absorb_native_field_elements<CS: ConstraintSystem<CF>>(
+        &mut self,
+        cs: CS,
+        elems: &[FpGadget<CF>],
+    ) -> Result<(), SynthesisError>;
 
     /// Take in bytes.
     fn absorb_bytes<CS: ConstraintSystem<CF>>(&mut self, cs: CS, elems: &[UInt8]) -> Result<(), SynthesisError>;
 
     /// Output field elements.
-    fn squeeze_native_field_elements(&mut self, num: usize) -> Result<Vec<FpGadget<CF>>, SynthesisError>;
+    fn squeeze_native_field_elements<CS: ConstraintSystem<CF>>(
+        &mut self,
+        cs: CS,
+        num: usize,
+    ) -> Result<Vec<FpGadget<CF>>, SynthesisError>;
 
     /// Output field elements.
     fn squeeze_field_elements<CS: ConstraintSystem<CF>>(
@@ -104,10 +112,10 @@ pub trait AlgebraicSpongeVar<CF: PrimeField, PS: AlgebraicSponge<CF>>: Clone {
     fn constant<CS: ConstraintSystem<CF>>(cs: CS, ps: &PS) -> Self;
 
     /// Take in field elements.
-    fn absorb(&mut self, elems: &[FpGadget<CF>]) -> Result<(), SynthesisError>;
+    fn absorb<CS: ConstraintSystem<CF>>(&mut self, cs: CS, elems: &[FpGadget<CF>]) -> Result<(), SynthesisError>;
 
     /// Output field elements.
-    fn squeeze(&mut self, num: usize) -> Result<Vec<FpGadget<CF>>, SynthesisError>;
+    fn squeeze<CS: ConstraintSystem<CF>>(&mut self, cs: CS, num: usize) -> Result<Vec<FpGadget<CF>>, SynthesisError>;
 }
 
 /// Building the Fiat-Shamir sponge's gadget from any algebraic sponge's gadget.
@@ -231,7 +239,7 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
         }
 
         let dest_limbs = Self::compress_gadgets(cs.ns(|| "compress_gadgets"), &src_limbs, ty)?;
-        sponge.absorb(&dest_limbs)?;
+        sponge.absorb(cs.ns(|| "absorb"), &dest_limbs)?;
         Ok(())
     }
 
@@ -245,7 +253,7 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
         let bits_per_element = CF::size_in_bits() - 1;
         let num_elements = (num_bits + bits_per_element - 1) / bits_per_element;
 
-        let src_elements = sponge.squeeze(num_elements)?;
+        let src_elements = sponge.squeeze(cs.ns(|| "squeeze"), num_elements)?;
         let mut dest_bits = Vec::<Boolean>::new();
 
         for (i, elem) in src_elements.iter().enumerate() {
@@ -401,8 +409,12 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
         Self::push_gadgets_to_sponge(cs, &mut self.s, &elems.to_vec(), ty)
     }
 
-    fn absorb_native_field_elements(&mut self, elems: &[FpGadget<CF>]) -> Result<(), SynthesisError> {
-        self.s.absorb(elems)?;
+    fn absorb_native_field_elements<CS: ConstraintSystem<CF>>(
+        &mut self,
+        cs: CS,
+        elems: &[FpGadget<CF>],
+    ) -> Result<(), SynthesisError> {
+        self.s.absorb(cs, elems)?;
         Ok(())
     }
 
@@ -456,11 +468,15 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
             cs.enforce(|| format!("enforce_constraint_{}", i), |lc| lc, |lc| lc, |_| lc);
         }
 
-        self.s.absorb(&gadgets)
+        self.s.absorb(cs.ns(|| "abosorb"), &gadgets)
     }
 
-    fn squeeze_native_field_elements(&mut self, num: usize) -> Result<Vec<FpGadget<CF>>, SynthesisError> {
-        self.s.squeeze(num)
+    fn squeeze_native_field_elements<CS: ConstraintSystem<CF>>(
+        &mut self,
+        cs: CS,
+        num: usize,
+    ) -> Result<Vec<FpGadget<CF>>, SynthesisError> {
+        self.s.squeeze(cs, num)
     }
 
     fn squeeze_field_elements<CS: ConstraintSystem<CF>>(
