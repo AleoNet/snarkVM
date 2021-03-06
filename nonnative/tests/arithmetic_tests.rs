@@ -598,57 +598,6 @@ macro_rules! nonnative_test {
     };
 }
 
-// TODO (raychu86): Add additional field pairs.
-
-// nonnative_test!(
-//     MNT46Small,
-//     <MNT4_298 as PairingEngine>::Fr,
-//     <MNT6_298 as PairingEngine>::Fr
-// );
-// nonnative_test!(
-//     MNT64Small,
-//     <MNT6_298 as PairingEngine>::Fr,
-//     <MNT4_298 as PairingEngine>::Fr
-// );
-// nonnative_test!(
-//     MNT46Big,
-//     <MNT4_753 as PairingEngine>::Fr,
-//     <MNT6_753 as PairingEngine>::Fr
-// );
-// nonnative_test!(
-//     MNT64Big,
-//     <MNT6_753 as PairingEngine>::Fr,
-//     <MNT4_753 as PairingEngine>::Fr
-// );
-// nonnative_test!(
-//     BLS12MNT4Small,
-//     <Bls12_381 as PairingEngine>::Fr,
-//     <MNT4_298 as PairingEngine>::Fr
-// );
-// nonnative_test!(
-//     BLS12,
-//     <Bls12_381 as PairingEngine>::Fq,
-//     <Bls12_381 as PairingEngine>::Fr
-// );
-// #[cfg(not(ci))]
-// nonnative_test!(
-//     MNT6BigMNT4Small,
-//     <MNT6_753 as PairingEngine>::Fr,
-//     <MNT4_298 as PairingEngine>::Fr
-// );
-// nonnative_test!(
-//     PallasFrMNT6Fr,
-//     ark_pallas::Fr,
-//     <MNT6_753 as PairingEngine>::Fr
-// );
-// nonnative_test!(
-//     MNT6FrPallasFr,
-//     <MNT6_753 as PairingEngine>::Fr,
-//     ark_pallas::Fr
-// );
-// nonnative_test!(PallasFqFr, ark_pallas::Fq, ark_pallas::Fr);
-// nonnative_test!(PallasFrFq, ark_pallas::Fr, ark_pallas::Fq);
-
 nonnative_test! {
     BLS12,
     <Bls12_377 as PairingEngine>::Fq,
