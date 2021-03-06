@@ -18,6 +18,7 @@
 
 |       Package      |                                    Crate.io                                   |        `std`       |       `wasm`       |    `no_std`    |
 |:------------------:|-------------------------------------------------------------------------------|:------------------:|:------------------:|:--------------:|
+| snarkvm            |![crates.io](https://img.shields.io/crates/v/snarkvm.svg?color=neon)           | :white_check_mark: | :white_check_mark: | :construction: |
 | snarkvm-algorithms |![crates.io](https://img.shields.io/crates/v/snarkvm-algorithms.svg?color=neon)| :white_check_mark: | :white_check_mark: | :construction: |
 | snarkvm-curves     | ![crates.io](https://img.shields.io/crates/v/snarkvm-curves.svg?color=neon)   | :white_check_mark: | :white_check_mark: | :construction: |
 | snarkvm-derives    | ![crates.io](https://img.shields.io/crates/v/snarkvm-derives.svg?color=neon)  | :white_check_mark: | :white_check_mark: | :construction: |
