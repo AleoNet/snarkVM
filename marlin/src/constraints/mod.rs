@@ -16,7 +16,9 @@
 
 // pub mod ahp;
 // pub mod data_structures;
-// pub mod lagrange_interpolation;
+
+/// Implementations of native and constraint Lagrange interpolation.
+pub mod lagrange_interpolation;
 
 /// Helper functions to compute vanishing polynomial equations.
 pub mod polynomial;

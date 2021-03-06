@@ -80,11 +80,8 @@ impl<
             )?);
         }
 
-        let verifier_key = PCG::VerifierKeyVar::new_variable(
-            ark_relations::ns!(cs, "verifier_key"),
-            || Ok(&ivk.verifier_key),
-            mode,
-        )?;
+        let verifier_key =
+            PCG::VerifierKeyVar::new_variable(ark_relations::ns!(cs, "verifier_key"), || Ok(&ivk.verifier_key), mode)?;
 
         let domain_h = GeneralEvaluationDomain::<F>::new(ivk.index_info.num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
@@ -229,8 +226,7 @@ where
         let cs = vk.cs();
 
         let mut fs_rng_raw = PR::new();
-        fs_rng_raw
-            .absorb_bytes(&to_bytes![&MarlinVerifierVar::<F, CF, PC, PCG>::PROTOCOL_NAME].unwrap());
+        fs_rng_raw.absorb_bytes(&to_bytes![&MarlinVerifierVar::<F, CF, PC, PCG>::PROTOCOL_NAME].unwrap());
 
         let index_vk_hash = {
             let mut vk_hash_rng = PR::new();
@@ -342,8 +338,7 @@ where
         };
 
         let mut fs_rng_raw = PR::new();
-        fs_rng_raw
-            .absorb_bytes(&to_bytes![&MarlinVerifierVar::<F, CF, PC, PCG>::PROTOCOL_NAME].unwrap());
+        fs_rng_raw.absorb_bytes(&to_bytes![&MarlinVerifierVar::<F, CF, PC, PCG>::PROTOCOL_NAME].unwrap());
 
         let fs_rng = {
             let mut fs_rng = R::constant(cs.clone(), &fs_rng_raw);
@@ -450,12 +445,8 @@ where
             .map(|lst| {
                 lst.iter()
                     .map(|comm| {
-                        PCG::CommitmentVar::new_variable(
-                            ark_relations::ns!(cs, "alloc#commitment"),
-                            || Ok(comm),
-                            mode,
-                        )
-                        .unwrap()
+                        PCG::CommitmentVar::new_variable(ark_relations::ns!(cs, "alloc#commitment"), || Ok(comm), mode)
+                            .unwrap()
                     })
                     .collect()
             })
@@ -464,12 +455,7 @@ where
         let evaluation_gadgets_vec: Vec<NonNativeFieldVar<F, CF>> = evaluations
             .iter()
             .map(|eval| {
-                NonNativeFieldVar::new_variable(
-                    ark_relations::ns!(cs, "alloc#evaluation"),
-                    || Ok(eval),
-                    mode,
-                )
-                .unwrap()
+                NonNativeFieldVar::new_variable(ark_relations::ns!(cs, "alloc#evaluation"), || Ok(eval), mode).unwrap()
             })
             .collect();
 
@@ -495,12 +481,8 @@ where
             })
             .collect();
 
-        let pc_batch_proof = PCG::BatchLCProofVar::new_variable(
-            ark_relations::ns!(cs, "alloc#proof"),
-            || Ok(pc_proof),
-            mode,
-        )
-        .unwrap();
+        let pc_batch_proof =
+            PCG::BatchLCProofVar::new_variable(ark_relations::ns!(cs, "alloc#proof"), || Ok(pc_proof), mode).unwrap();
 
         let mut evaluation_gadgets = HashMap::<String, NonNativeFieldVar<F, CF>>::new();
 
@@ -554,9 +536,7 @@ pub struct ProverMsgVar<TargetField: PrimeField, BaseField: PrimeField> {
     pub field_elements: Vec<NonNativeFieldVar<TargetField, BaseField>>,
 }
 
-impl<TargetField: PrimeField, BaseField: PrimeField> Clone
-    for ProverMsgVar<TargetField, BaseField>
-{
+impl<TargetField: PrimeField, BaseField: PrimeField> Clone for ProverMsgVar<TargetField, BaseField> {
     fn clone(&self) -> Self {
         ProverMsgVar {
             field_elements: self.field_elements.clone(),
