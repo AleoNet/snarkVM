@@ -159,14 +159,14 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
         cs: &mut CS,
         elem: &mut AllocatedNonNativeFieldVar<TargetField, BaseField>,
     ) -> Result<(), SynthesisError> {
-        let params = get_params(
+        let field_parameters = get_params(
             TargetField::size_in_bits(),
             BaseField::size_in_bits(),
             elem.get_optimization_type(),
         );
         let surfeit = overhead!(elem.num_of_additions_over_normal_form + &BaseField::one()) + 1;
 
-        if BaseField::size_in_bits() > 2 * params.bits_per_limb + surfeit + 1 {
+        if BaseField::size_in_bits() > 2 * field_parameters.bits_per_limb + surfeit + 1 {
             Ok(())
         } else {
             Self::reduce(cs, elem)
@@ -196,9 +196,14 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
         loop {
             let prod_of_num_of_additions = (elem.num_of_additions_over_normal_form + &BaseField::one())
                 * &(elem_other.num_of_additions_over_normal_form + &BaseField::one());
-            let overhead_limb = overhead!(prod_of_num_of_additions.mul(
-                &BaseField::from_repr(<BaseField as PrimeField>::BigInteger::from((params.num_limbs) as u64)).unwrap()
-            ));
+            let overhead_limb = overhead!(
+                prod_of_num_of_additions.mul(
+                    &BaseField::from_repr(<BaseField as PrimeField>::BigInteger::from(
+                        (field_parameters.num_limbs) as u64
+                    ))
+                    .unwrap()
+                )
+            );
             let bits_per_mulresult_limb = 2 * (field_parameters.bits_per_limb + 1) + overhead_limb;
 
             if bits_per_mulresult_limb < BaseField::size_in_bits() {

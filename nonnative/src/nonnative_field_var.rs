@@ -84,7 +84,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> NonNativeFieldVar<TargetFie
     }
 
     /// Determine if two `NonNativeFieldVar` instances are equal.
-    fn is_eq<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
+    pub fn is_eq<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
         let mut constant = true;
 
         if let Self::Constant(_) = self {
