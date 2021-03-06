@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// /// Implementation of an AHP gadget.
-// pub mod ahp;
+/// Implementation of an AHP gadget.
+pub mod ahp;
 
 /// TODO (howardwu): Refactor this mess of a file.
 /// Implementation of data structures.

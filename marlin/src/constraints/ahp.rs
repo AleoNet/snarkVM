@@ -22,7 +22,10 @@ use crate::{
         polynomial::AlgebraForAHP,
     },
     fiat_shamir::{constraints::FiatShamirRngVar, FiatShamirRng},
-    PhantomData, String, ToString, Vec,
+    PhantomData,
+    String,
+    ToString,
+    Vec,
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
@@ -31,20 +34,32 @@ use snarkvm_gadgets::{
         fields::{FieldGadget, ToConstraintFieldGadget},
         utilities::boolean::Boolean,
     },
-    utilities::{alloc::AllocGadget, eq::NEqGadget},
+    utilities::{
+        alloc::AllocGadget,
+        eq::{EqGadget, NEqGadget},
+        ToBitsLEGadget,
+    },
 };
 use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
 use snarkvm_polycommit::{
     constraints::{
-        EvaluationsVar, LabeledPointVar, LinearCombinationCoeffVar, LinearCombinationVar, PCCheckVar, PrepareGadget,
+        EvaluationsVar,
+        LabeledPointVar,
+        LinearCombinationCoeffVar,
+        LinearCombinationVar,
+        PCCheckVar,
+        PrepareGadget,
         QuerySetVar,
     },
-    LCTerm, PolynomialCommitment,
+    LCTerm,
+    PolynomialCommitment,
 };
 use snarkvm_r1cs::ConstraintSystem;
 
 use hashbrown::{HashMap, HashSet};
+use snarkvm_algorithms::fft::EvaluationDomain;
 
+/// The Marlin verifier round state gadget used to output the state of each round.
 #[derive(Clone)]
 pub struct VerifierStateVar<TargetField: PrimeField, BaseField: PrimeField> {
     domain_h_size: u64,
@@ -56,24 +71,34 @@ pub struct VerifierStateVar<TargetField: PrimeField, BaseField: PrimeField> {
     gamma: Option<NonNativeFieldVar<TargetField, BaseField>>,
 }
 
+/// The Marlin verifier first round message gadget.
 #[derive(Clone)]
 pub struct VerifierFirstMsgVar<TargetField: PrimeField, BaseField: PrimeField> {
+    /// Alpha
     pub alpha: NonNativeFieldVar<TargetField, BaseField>,
+    /// Eta a
     pub eta_a: NonNativeFieldVar<TargetField, BaseField>,
+    /// Eta b
     pub eta_b: NonNativeFieldVar<TargetField, BaseField>,
+    /// Eta c
     pub eta_c: NonNativeFieldVar<TargetField, BaseField>,
 }
 
+/// The Marlin verifier second round message gadget.
 #[derive(Clone)]
 pub struct VerifierSecondMsgVar<TargetField: PrimeField, BaseField: PrimeField> {
+    /// Beta
     pub beta: NonNativeFieldVar<TargetField, BaseField>,
 }
 
+/// The Marlin verifier third round message gadget.
 #[derive(Clone)]
 pub struct VerifierThirdMsgVar<TargetField: PrimeField, BaseField: PrimeField> {
+    /// Gamma
     pub gamma: NonNativeFieldVar<TargetField, BaseField>,
 }
 
+/// The AHP gadget.
 pub struct AHPForR1CS<
     TargetField: PrimeField,
     BaseField: PrimeField,
@@ -90,16 +115,16 @@ pub struct AHPForR1CS<
 }
 
 impl<
-        TargetField: PrimeField,
-        BaseField: PrimeField,
-        PC: PolynomialCommitment<TargetField>,
-        PCG: PCCheckVar<TargetField, PC, BaseField>,
-    > AHPForR1CS<TargetField, BaseField, PC, PCG>
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+> AHPForR1CS<TargetField, BaseField, PC, PCG>
 where
     PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
     PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
 {
-    /// Output the first message and next round state.
+    /// Returns the first message and next round state.
     #[allow(clippy::type_complexity)]
     pub fn verifier_first_round<
         CS: ConstraintSystem<BaseField>,
@@ -107,7 +132,7 @@ where
         PR: FiatShamirRng<TargetField, BaseField>,
         R: FiatShamirRngVar<TargetField, BaseField, PR>,
     >(
-        cs: CS,
+        mut cs: CS,
         domain_h_size: u64,
         domain_k_size: u64,
         fs_rng: &mut R,
@@ -156,6 +181,7 @@ where
         Ok((msg, new_state))
     }
 
+    /// Returns the second message and next round state.
     #[allow(clippy::type_complexity)]
     pub fn verifier_second_round<
         CS: ConstraintSystem<BaseField>,
@@ -163,7 +189,7 @@ where
         PR: FiatShamirRng<TargetField, BaseField>,
         R: FiatShamirRngVar<TargetField, BaseField, PR>,
     >(
-        cs: CS,
+        mut cs: CS,
         state: VerifierStateVar<TargetField, BaseField>,
         fs_rng: &mut R,
         comms: &[CommitmentVar],
@@ -210,13 +236,14 @@ where
         Ok((msg, new_state))
     }
 
+    /// Returns the third message and next round state.
     pub fn verifier_third_round<
         CS: ConstraintSystem<BaseField>,
         CommitmentVar: ToConstraintFieldGadget<BaseField>,
         PR: FiatShamirRng<TargetField, BaseField>,
         R: FiatShamirRngVar<TargetField, BaseField, PR>,
     >(
-        cs: CS,
+        mut cs: CS,
         state: VerifierStateVar<TargetField, BaseField>,
         fs_rng: &mut R,
         comms: &[CommitmentVar],
@@ -259,13 +286,14 @@ where
         Ok(new_state)
     }
 
+    /// Returns a vector of linear combination gadgets.
     pub fn verifier_decision<CS: ConstraintSystem<BaseField>>(
         mut cs: CS,
         public_input: &[NonNativeFieldVar<TargetField, BaseField>],
         evals: &HashMap<String, NonNativeFieldVar<TargetField, BaseField>>,
         state: VerifierStateVar<TargetField, BaseField>,
         domain_k_size_in_vk: &FpGadget<BaseField>,
-    ) -> anyhow::Result<Vec<LinearCombinationVar<TargetField, BaseField>>> {
+    ) -> Result<Vec<LinearCombinationVar<TargetField, BaseField>>, AHPError> {
         let VerifierStateVar {
             domain_k_size,
             first_round_msg,
@@ -291,25 +319,23 @@ where
 
         let v_h_at_alpha = evals
             .get("vanishing_poly_h_alpha")
-            .ok_or_else(|| AHPError::MissingEval("vanishing_poly_h_alpha".to_string()).into())?;
+            .ok_or_else(|| AHPError::MissingEval("vanishing_poly_h_alpha".to_string()))?;
 
         v_h_at_alpha.enforce_not_equal(cs.ns(|| "v_h_at_alpha_enforce_not_zero"), &zero)?;
 
         let v_h_at_beta = evals
             .get("vanishing_poly_h_beta")
-            .ok_or_else(|| AHPError::MissingEval("vanishing_poly_h_beta".to_string()).into())?;
+            .ok_or_else(|| AHPError::MissingEval("vanishing_poly_h_beta".to_string()))?;
         v_h_at_beta.enforce_not_equal(cs.ns(|| "v_h_at_beta_enforce_not_zero"), &zero)?;
 
         let gamma: NonNativeFieldVar<TargetField, BaseField> =
             gamma.expect("VerifierState should include gamma when verifier_decision is called");
 
-        let t_at_beta = evals
-            .get("t")
-            .ok_or_else(|| AHPError::MissingEval("t".to_string()).into())?;
+        let t_at_beta = evals.get("t").ok_or_else(|| AHPError::MissingEval("t".to_string()))?;
 
         let v_k_at_gamma = evals
             .get("vanishing_poly_k_gamma")
-            .ok_or_else(|| AHPError::MissingEval("vanishing_poly_k_gamma".to_string()).into())?;
+            .ok_or_else(|| AHPError::MissingEval("vanishing_poly_k_gamma".to_string()))?;
 
         let r_alpha_at_beta = AlgebraForAHP::prepared_eval_bivariable_vanishing_polynomial(
             cs.ns(|| "prepared_eval_bivariable_vanishing_polynomial"),
@@ -321,12 +347,14 @@ where
 
         let z_b_at_beta = evals
             .get("z_b")
-            .ok_or_else(|| AHPError::MissingEval("z_b".to_string()).into())?;
+            .ok_or_else(|| AHPError::MissingEval("z_b".to_string()))?;
 
         let x_padded_len = public_input.len().next_power_of_two() as u64;
 
         let mut interpolation_gadget = LagrangeInterpolationVar::<TargetField, BaseField>::new(
-            TargetField::get_root_of_unity(x_padded_len as usize).unwrap(),
+            EvaluationDomain::<TargetField>::new(x_padded_len as usize)
+                .unwrap()
+                .group_gen,
             x_padded_len,
             public_input,
         );
@@ -335,7 +363,7 @@ where
 
         let g_1_at_beta = evals
             .get("g_1")
-            .ok_or_else(|| AHPError::MissingEval("g_1".to_string()).into())?;
+            .ok_or_else(|| AHPError::MissingEval("g_1".to_string()))?;
 
         // Compute linear combinations
         let mut linear_combinations = Vec::new();
@@ -589,13 +617,14 @@ where
         Ok(linear_combinations)
     }
 
+    /// Verifier commitment query set and evaluations.
     #[allow(clippy::type_complexity)]
     pub fn verifier_comm_query_eval_set<
         CS: ConstraintSystem<BaseField>,
         PR: FiatShamirRng<TargetField, BaseField>,
         R: FiatShamirRngVar<TargetField, BaseField, PR>,
     >(
-        cs: CS,
+        mut cs: CS,
         index_pvk: &PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>,
         proof: &ProofVar<TargetField, BaseField, PC, PCG>,
         state: &VerifierStateVar<TargetField, BaseField>,
@@ -634,90 +663,64 @@ where
 
         let mut query_set_gadget = QuerySetVar::<TargetField, BaseField> { 0: HashSet::new() };
 
-        query_set_gadget.0.insert((
-            "g_1".to_string(),
-            LabeledPointVar {
+        query_set_gadget.0.insert(("g_1".to_string(), LabeledPointVar {
+            name: "beta".to_string(),
+            value: beta.clone(),
+        }));
+        query_set_gadget.0.insert(("z_b".to_string(), LabeledPointVar {
+            name: "beta".to_string(),
+            value: beta.clone(),
+        }));
+        query_set_gadget.0.insert(("t".to_string(), LabeledPointVar {
+            name: "beta".to_string(),
+            value: beta.clone(),
+        }));
+        query_set_gadget
+            .0
+            .insert(("outer_sumcheck".to_string(), LabeledPointVar {
                 name: "beta".to_string(),
                 value: beta.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "z_b".to_string(),
-            LabeledPointVar {
-                name: "beta".to_string(),
-                value: beta.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "t".to_string(),
-            LabeledPointVar {
-                name: "beta".to_string(),
-                value: beta.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "outer_sumcheck".to_string(),
-            LabeledPointVar {
-                name: "beta".to_string(),
-                value: beta.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "g_2".to_string(),
-            LabeledPointVar {
+            }));
+        query_set_gadget.0.insert(("g_2".to_string(), LabeledPointVar {
+            name: "gamma".to_string(),
+            value: gamma.clone(),
+        }));
+        query_set_gadget.0.insert(("a_denom".to_string(), LabeledPointVar {
+            name: "gamma".to_string(),
+            value: gamma.clone(),
+        }));
+        query_set_gadget.0.insert(("b_denom".to_string(), LabeledPointVar {
+            name: "gamma".to_string(),
+            value: gamma.clone(),
+        }));
+        query_set_gadget.0.insert(("c_denom".to_string(), LabeledPointVar {
+            name: "gamma".to_string(),
+            value: gamma.clone(),
+        }));
+        query_set_gadget
+            .0
+            .insert(("inner_sumcheck".to_string(), LabeledPointVar {
                 name: "gamma".to_string(),
                 value: gamma.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "a_denom".to_string(),
-            LabeledPointVar {
-                name: "gamma".to_string(),
-                value: gamma.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "b_denom".to_string(),
-            LabeledPointVar {
-                name: "gamma".to_string(),
-                value: gamma.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "c_denom".to_string(),
-            LabeledPointVar {
-                name: "gamma".to_string(),
-                value: gamma.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "inner_sumcheck".to_string(),
-            LabeledPointVar {
-                name: "gamma".to_string(),
-                value: gamma.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "vanishing_poly_h_alpha".to_string(),
-            LabeledPointVar {
+            }));
+        query_set_gadget
+            .0
+            .insert(("vanishing_poly_h_alpha".to_string(), LabeledPointVar {
                 name: "alpha".to_string(),
                 value: alpha.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "vanishing_poly_h_beta".to_string(),
-            LabeledPointVar {
+            }));
+        query_set_gadget
+            .0
+            .insert(("vanishing_poly_h_beta".to_string(), LabeledPointVar {
                 name: "beta".to_string(),
                 value: beta.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "vanishing_poly_k_gamma".to_string(),
-            LabeledPointVar {
+            }));
+        query_set_gadget
+            .0
+            .insert(("vanishing_poly_k_gamma".to_string(), LabeledPointVar {
                 name: "gamma".to_string(),
                 value: gamma.clone(),
-            },
-        ));
+            }));
 
         let mut evaluations_gadget = EvaluationsVar::<TargetField, BaseField> { 0: HashMap::new() };
 
@@ -884,7 +887,7 @@ where
             comms.push(PCG::create_prepared_labeled_commitment(
                 label.to_string(),
                 prepared_comm,
-                *bound,
+                bound.clone(),
             ));
         }
 
