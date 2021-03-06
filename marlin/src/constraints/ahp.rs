@@ -138,10 +138,13 @@ where
         fs_rng: &mut R,
         comms: &[CommitmentVar],
         message: &[NonNativeFieldVar<TargetField, BaseField>],
-    ) -> anyhow::Result<(
-        VerifierFirstMsgVar<TargetField, BaseField>,
-        VerifierStateVar<TargetField, BaseField>,
-    )> {
+    ) -> Result<
+        (
+            VerifierFirstMsgVar<TargetField, BaseField>,
+            VerifierStateVar<TargetField, BaseField>,
+        ),
+        AHPError,
+    > {
         // absorb the first commitments and messages
         {
             let mut elems = Vec::<FpGadget<BaseField>>::new();
@@ -194,10 +197,13 @@ where
         fs_rng: &mut R,
         comms: &[CommitmentVar],
         message: &[NonNativeFieldVar<TargetField, BaseField>],
-    ) -> anyhow::Result<(
-        VerifierSecondMsgVar<TargetField, BaseField>,
-        VerifierStateVar<TargetField, BaseField>,
-    )> {
+    ) -> Result<
+        (
+            VerifierSecondMsgVar<TargetField, BaseField>,
+            VerifierStateVar<TargetField, BaseField>,
+        ),
+        AHPError,
+    > {
         let VerifierStateVar {
             domain_h_size,
             domain_k_size,
@@ -248,7 +254,7 @@ where
         fs_rng: &mut R,
         comms: &[CommitmentVar],
         message: &[NonNativeFieldVar<TargetField, BaseField>],
-    ) -> anyhow::Result<VerifierStateVar<TargetField, BaseField>> {
+    ) -> Result<VerifierStateVar<TargetField, BaseField>, AHPError> {
         let VerifierStateVar {
             domain_h_size,
             domain_k_size,
@@ -628,13 +634,16 @@ where
         index_pvk: &PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>,
         proof: &ProofVar<TargetField, BaseField, PC, PCG>,
         state: &VerifierStateVar<TargetField, BaseField>,
-    ) -> anyhow::Result<(
-        usize,
-        usize,
-        Vec<PCG::PreparedLabeledCommitmentVar>,
-        QuerySetVar<TargetField, BaseField>,
-        EvaluationsVar<TargetField, BaseField>,
-    )> {
+    ) -> Result<
+        (
+            usize,
+            usize,
+            Vec<PCG::PreparedLabeledCommitmentVar>,
+            QuerySetVar<TargetField, BaseField>,
+            EvaluationsVar<TargetField, BaseField>,
+        ),
+        AHPError,
+    > {
         let VerifierStateVar {
             first_round_msg,
             second_round_msg,

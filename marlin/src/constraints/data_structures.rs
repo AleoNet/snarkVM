@@ -16,7 +16,7 @@
 
 use crate::{
     ahp::prover::ProverMessage,
-    constraints::verifier::Marlin as MarlinVerifierVar,
+    constraints::verifier::MarlinVerificationGadget as MarlinVerifierVar,
     fiat_shamir::{constraints::FiatShamirRngVar, FiatShamirRng},
     marlin::{CircuitVerifyingKey, PreparedCircuitVerifyingKey, Proof},
     PhantomData,

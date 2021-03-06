@@ -65,9 +65,6 @@ version = "0.2.0"
 path = "../utilities"
 version = "0.2.0"
 
-[dependencies.anyhow]
-version = "1"
-
 [dependencies.blake2]
 version = "0.9"
 default-features = false
