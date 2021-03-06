@@ -68,6 +68,9 @@ use std::{
     vec::Vec,
 };
 
+/// TODO (howardwu): Move this to snarkvm-gadgets.
+pub mod constraints;
+
 /// Data structures used by a polynomial commitment scheme.
 pub mod data_structures;
 pub use data_structures::*;
@@ -157,8 +160,12 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     type CommitterKey: PCCommitterKey + Clone;
     /// The verifier key for the scheme; used to check an evaluation proof.
     type VerifierKey: PCVerifierKey + Clone;
+    /// The prepared verifier key for the scheme; used to check an evaluation proof.
+    type PreparedVerifierKey: PCPreparedVerifierKey<Self::VerifierKey> + Clone;
     /// The commitment to a polynomial.
     type Commitment: PCCommitment + Clone;
+    /// The prepared commitment to a polynomial.
+    type PreparedCommitment: PCPreparedCommitment<Self::Commitment>;
     /// The commitment randomness.
     type Randomness: PCRandomness + Clone;
     /// The evaluation proof for a single point.

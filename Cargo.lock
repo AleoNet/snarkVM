@@ -1917,13 +1917,17 @@ dependencies = [
  "blake2",
  "derivative",
  "digest",
+ "hashbrown",
  "rand",
  "rand_core",
  "rayon",
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",
+ "snarkvm-gadgets",
+ "snarkvm-nonnative",
  "snarkvm-profiler",
+ "snarkvm-r1cs",
  "snarkvm-utilities",
 ]
 

@@ -63,6 +63,13 @@ pub trait PCVerifierKey: CanonicalSerialize + CanonicalDeserialize + Clone + Deb
     fn supported_degree(&self) -> usize;
 }
 
+/// Defines the minimal interface of prepared verifier keys for any polynomial
+/// commitment scheme.
+pub trait PCPreparedVerifierKey<Unprepared: PCVerifierKey> {
+    /// Prepare
+    fn prepare(vk: &Unprepared) -> Self;
+}
+
 /// Defines the minimal interface of commitments for any polynomial
 /// commitment scheme.
 pub trait PCCommitment: CanonicalDeserialize + CanonicalSerialize + Clone + Debug + ToBytes {
@@ -74,6 +81,13 @@ pub trait PCCommitment: CanonicalDeserialize + CanonicalSerialize + Clone + Debu
 
     /// Does this commitment's affine belong to the correct subgroup?
     fn is_in_correct_subgroup_assuming_on_curve(&self) -> bool;
+}
+
+/// Defines the minimal interface of prepared commitments for any polynomial
+/// commitment scheme.
+pub trait PCPreparedCommitment<UNPREPARED: PCCommitment>: Clone {
+    /// Prepare
+    fn prepare(commitment: &UNPREPARED) -> Self;
 }
 
 /// Defines the minimal interface of commitment randomness for any polynomial
@@ -183,10 +197,10 @@ pub struct LabeledCommitment<C: PCCommitment> {
     degree_bound: Option<usize>,
 }
 
-// NOTE: Serializing the LabeledCommitments struct is done by serializing
-// _WITHOUT_ the labels or the degree bound. Deserialization is _NOT_ supported,
-// and you should construct the struct via the `LabeledCommitment::new` method after
-// deserializing the Commitment.
+/// NOTE: Serializing the LabeledCommitments struct is done by serializing
+/// _WITHOUT_ the labels or the degree bound. Deserialization is _NOT_ supported,
+/// and you should construct the struct via the `LabeledCommitment::new` method after
+/// deserializing the Commitment.
 impl<C: PCCommitment> ToBytes for LabeledCommitment<C> {
     fn write<W: Write>(&self, mut writer: W) -> io::Result<()> {
         CanonicalSerialize::serialize(&self.commitment, &mut writer).map_err(|_| error_fn("could not serialize struct"))
@@ -285,7 +299,7 @@ pub struct LinearCombination<F> {
     /// The label.
     pub label: String,
     /// The linear combination of `(coeff, poly_label)` pairs.
-    terms: Vec<(F, LCTerm)>,
+    pub terms: Vec<(F, LCTerm)>,
 }
 
 impl<F: Field> LinearCombination<F> {

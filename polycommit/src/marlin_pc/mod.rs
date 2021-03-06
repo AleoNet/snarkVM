@@ -173,6 +173,8 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
     type Commitment = Commitment<E>;
     type CommitterKey = CommitterKey<E>;
     type Error = Error;
+    type PreparedCommitment = PreparedCommitment<E>;
+    type PreparedVerifierKey = PreparedVerifierKey<E>;
     type Proof = kzg10::Proof<E>;
     type Randomness = Randomness<E>;
     type UniversalParams = UniversalParams<E>;

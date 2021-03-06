@@ -43,8 +43,23 @@ version = "0.2.0"
 path = "../fields"
 version = "0.2.0"
 
+# TODO (howardwu): Remove this, move constraints in this crate to snarkvm-gadgets.
+[dependencies.snarkvm-gadgets]
+path = "../gadgets"
+version = "0.2.0"
+
+# TODO (howardwu): Remove this, move constraints in this crate to snarkvm-gadgets.
+[dependencies.snarkvm-nonnative]
+path = "../nonnative"
+version = "0.2.0"
+
 [dependencies.snarkvm-profiler]
 path = "../profiler"
+version = "0.2.0"
+
+# TODO (howardwu): Remove this, move constraints in this crate to snarkvm-gadgets.
+[dependencies.snarkvm-r1cs]
+path = "../r1cs"
 version = "0.2.0"
 
 [dependencies.snarkvm-utilities]
@@ -56,6 +71,10 @@ version = "2"
 features = [ "use_core" ]
 
 [dependencies.digest]
+version = "0.9"
+
+# TODO (howardwu): Reevaluate this decision from the migration.
+[dependencies.hashbrown]
 version = "0.9"
 
 [dependencies.rand_core]
