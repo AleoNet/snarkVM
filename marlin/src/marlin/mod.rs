@@ -30,6 +30,10 @@ pub use errors::*;
 mod marlin;
 pub use marlin::*;
 
+/// The Marlin prepared circuit verifying key.
+mod prepared_circuit_verifying_key;
+pub use prepared_circuit_verifying_key::*;
+
 /// The Marlin zkSNARK proof.
 mod proof;
 pub use proof::*;

@@ -253,7 +253,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         mask_poly[0] -= &scaled_sigma_1;
         end_timer!(mask_poly_time);
 
-        let msg = ProverMessage::default();
+        let msg = ProverMessage::EmptyMessage;
 
         assert!(w_poly.degree() < domain_h.size() - domain_x.size() + zk_bound);
         assert!(z_a_poly.degree() < domain_h.size() + zk_bound);
@@ -417,9 +417,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let g_1 = Polynomial::from_coefficients_slice(&x_g_1.coeffs[1..]);
         end_timer!(sumcheck_time);
 
-        let msg = ProverMessage {
-            field_elements: Vec::new(),
-        };
+        let msg = ProverMessage::EmptyMessage;
 
         assert!(g_1.degree() <= domain_h.size() - 2);
         assert!(h_1.degree() <= 2 * domain_h.size() + 2 * zk_bound - 2);
@@ -565,7 +563,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
             .0;
         end_timer!(h_2_poly_time);
 
-        let msg = ProverMessage::default();
+        let msg = ProverMessage::EmptyMessage;
 
         assert!(g_2.degree() <= domain_k.size() - 2);
         let oracles = ProverThirdOracles {

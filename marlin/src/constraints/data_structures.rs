@@ -1,106 +1,196 @@
-use crate::ahp::prover::ProverMsg;
+// Copyright (C) 2019-2021 Aleo Systems Inc.
+// This file is part of the snarkVM library.
+
+// The snarkVM library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// The snarkVM library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+
 use crate::{
+    ahp::prover::ProverMessage,
     constraints::verifier::Marlin as MarlinVerifierVar,
-    data_structures::{IndexVerifierKey, PreparedIndexVerifierKey, Proof},
     fiat_shamir::{constraints::FiatShamirRngVar, FiatShamirRng},
-    PhantomData, PrimeField, String, SynthesisError, ToString, Vec,
+    marlin::{CircuitVerifyingKey, PreparedCircuitVerifyingKey, Proof},
+    PhantomData,
+    String,
+    ToString,
+    Vec,
 };
-use ark_ff::{to_bytes, ToConstraintField};
-use ark_nonnative_field::NonNativeFieldVar;
-use ark_poly::univariate::DensePolynomial;
-use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
-use ark_poly_commit::{PCCheckVar, PolynomialCommitment, PrepareGadget};
-use ark_r1cs_std::{
-    alloc::{AllocVar, AllocationMode},
-    fields::fp::FpVar,
-    uint8::UInt8,
-    R1CSVar, ToBytesGadget, ToConstraintFieldGadget,
+use snarkvm_algorithms::fft::EvaluationDomain;
+use snarkvm_fields::{PrimeField, ToConstraintField};
+use snarkvm_gadgets::{
+    fields::FpGadget,
+    traits::{
+        fields::{FieldGadget, ToConstraintFieldGadget},
+        utilities::{alloc::AllocGadget, uint::UInt8},
+    },
+    utilities::ToBytesGadget,
 };
-use ark_relations::r1cs::{ConstraintSystemRef, Namespace};
-use ark_std::borrow::Borrow;
+use snarkvm_nonnative::NonNativeFieldVar;
+use snarkvm_polycommit::{
+    constraints::{PCCheckVar, PrepareGadget},
+    PolynomialCommitment,
+};
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+use snarkvm_utilities::{to_bytes, ToBytes};
+
 use hashbrown::HashMap;
+use std::borrow::Borrow;
 
-pub type UniversalSRS<F, PC> = <PC as PolynomialCommitment<F, DensePolynomial<F>>>::UniversalParams;
+/// Syntactic sugar for the universal SRS in this context.
+pub type UniversalSRS<F, PC> = <PC as PolynomialCommitment<F>>::UniversalParams;
 
-pub struct IndexVerifierKeyVar<
-    F: PrimeField,
-    CF: PrimeField,
-    PC: PolynomialCommitment<F, DensePolynomial<F>>,
-    PCG: PCCheckVar<F, DensePolynomial<F>, PC, CF>,
+/// The circuit verifying key gadget
+pub struct CircuitVerifyingKeyVar<
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
 > {
-    pub cs: ConstraintSystemRef<CF>,
+    /// The size of domain h
     pub domain_h_size: u64,
+    /// The size of domain k
     pub domain_k_size: u64,
-    pub domain_h_size_gadget: FpVar<CF>,
-    pub domain_k_size_gadget: FpVar<CF>,
+    /// The size of domain h in constraint form
+    pub domain_h_size_gadget: FpGadget<BaseField>,
+    /// The size of domain k in constraint form
+    pub domain_k_size_gadget: FpGadget<BaseField>,
+    /// The circuit commitments in constraint form
     pub index_comms: Vec<PCG::CommitmentVar>,
+    /// The verifying key in constraint form
     pub verifier_key: PCG::VerifierKeyVar,
 }
 
 impl<
-        F: PrimeField,
-        CF: PrimeField,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>,
-        PCG: PCCheckVar<F, DensePolynomial<F>, PC, CF>,
-    > IndexVerifierKeyVar<F, CF, PC, PCG>
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+> AllocGadget<CircuitVerifyingKey<TargetField, PC>, BaseField>
+    for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
 {
-    fn cs(&self) -> ConstraintSystemRef<CF> {
-        self.cs.clone()
-    }
-}
-
-impl<
-        F: PrimeField,
-        CF: PrimeField,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>,
-        PCG: PCCheckVar<F, DensePolynomial<F>, PC, CF>,
-    > AllocVar<IndexVerifierKey<F, PC>, CF> for IndexVerifierKeyVar<F, CF, PC, PCG>
-{
-    #[tracing::instrument(target = "r1cs", skip(cs, f))]
-    fn new_variable<T>(
-        cs: impl Into<Namespace<CF>>,
-        f: impl FnOnce() -> Result<T, SynthesisError>,
-        mode: AllocationMode,
-    ) -> Result<Self, SynthesisError>
+    #[inline]
+    fn alloc_constant<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
-        T: Borrow<IndexVerifierKey<F, PC>>,
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<CircuitVerifyingKey<TargetField, PC>>,
     {
-        let t = f()?;
-        let ivk = t.borrow();
-
-        let ns = cs.into();
-        let cs = ns.cs();
+        let tmp = value_gen()?;
+        let ivk = tmp.borrow();
 
         let mut index_comms = Vec::<PCG::CommitmentVar>::new();
-        for index_comm in ivk.index_comms.iter() {
-            index_comms.push(PCG::CommitmentVar::new_variable(
-                ark_relations::ns!(cs, "index_comm"),
+        for (i, index_comm) in ivk.circuit_commitments.iter().enumerate() {
+            index_comms.push(PCG::CommitmentVar::alloc_constant(
+                cs.ns(|| format!("index_comm_{}", i)),
                 || Ok(index_comm),
-                mode,
             )?);
         }
 
-        let verifier_key =
-            PCG::VerifierKeyVar::new_variable(ark_relations::ns!(cs, "verifier_key"), || Ok(&ivk.verifier_key), mode)?;
+        let verifier_key = PCG::VerifierKeyVar::alloc_constant(cs.ns(|| "verifier_key"), || Ok(&ivk.verifier_key))?;
 
-        let domain_h = GeneralEvaluationDomain::<F>::new(ivk.index_info.num_constraints)
+        let domain_h = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let domain_k = GeneralEvaluationDomain::<F>::new(ivk.index_info.num_non_zero)
+        let domain_k = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_non_zero)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let domain_h_size_gadget = FpVar::<CF>::new_variable(
-            ark_relations::ns!(cs, "domain_h_size"),
-            || Ok(CF::from(domain_h.size() as u128)),
-            mode,
-        )?;
-        let domain_k_size_gadget = FpVar::<CF>::new_variable(
-            ark_relations::ns!(cs, "domain_k_size"),
-            || Ok(CF::from(domain_k.size() as u128)),
-            mode,
-        )?;
+        let domain_h_size_gadget = FpGadget::<BaseField>::alloc_constant(cs.ns(|| "domain_h_size_gadget"), || {
+            Ok(BaseField::from(domain_h.size() as u128))
+        })?;
+        let domain_k_size_gadget = FpGadget::<BaseField>::alloc_constant(cs.ns(|| "domain_k_size_gadget"), || {
+            Ok(BaseField::from(domain_k.size() as u128))
+        })?;
 
-        Ok(IndexVerifierKeyVar {
-            cs,
+        Ok(CircuitVerifyingKeyVar {
+            domain_h_size: domain_h.size() as u64,
+            domain_k_size: domain_k.size() as u64,
+            domain_h_size_gadget,
+            domain_k_size_gadget,
+            index_comms,
+            verifier_key,
+        })
+    }
+
+    #[inline]
+    fn alloc<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<CircuitVerifyingKey<TargetField, PC>>,
+    {
+        let tmp = value_gen()?;
+        let ivk = tmp.borrow();
+
+        let mut index_comms = Vec::<PCG::CommitmentVar>::new();
+        for (i, index_comm) in ivk.circuit_commitments.iter().enumerate() {
+            index_comms.push(PCG::CommitmentVar::alloc(
+                cs.ns(|| format!("index_comm_{}", i)),
+                || Ok(index_comm),
+            )?);
+        }
+
+        let verifier_key = PCG::VerifierKeyVar::alloc(cs.ns(|| "verifier_key"), || Ok(&ivk.verifier_key))?;
+
+        let domain_h = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_constraints)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let domain_k = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_non_zero)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+
+        let domain_h_size_gadget = FpGadget::<BaseField>::alloc(cs.ns(|| "domain_h_size_gadget"), || {
+            Ok(BaseField::from(domain_h.size() as u128))
+        })?;
+        let domain_k_size_gadget = FpGadget::<BaseField>::alloc(cs.ns(|| "domain_k_size_gadget"), || {
+            Ok(BaseField::from(domain_k.size() as u128))
+        })?;
+
+        Ok(CircuitVerifyingKeyVar {
+            domain_h_size: domain_h.size() as u64,
+            domain_k_size: domain_k.size() as u64,
+            domain_h_size_gadget,
+            domain_k_size_gadget,
+            index_comms,
+            verifier_key,
+        })
+    }
+
+    #[inline]
+    fn alloc_input<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<CircuitVerifyingKey<TargetField, PC>>,
+    {
+        let tmp = value_gen()?;
+        let ivk = tmp.borrow();
+
+        let mut index_comms = Vec::<PCG::CommitmentVar>::new();
+        for (i, index_comm) in ivk.circuit_commitments.iter().enumerate() {
+            index_comms.push(PCG::CommitmentVar::alloc_input(
+                cs.ns(|| format!("index_comm_{}", i)),
+                || Ok(index_comm),
+            )?);
+        }
+
+        let verifier_key = PCG::VerifierKeyVar::alloc_input(cs.ns(|| "verifier_key"), || Ok(&ivk.verifier_key))?;
+
+        let domain_h = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_constraints)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let domain_k = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_non_zero)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+
+        let domain_h_size_gadget = FpGadget::<BaseField>::alloc_input(cs.ns(|| "domain_h_size_gadget"), || {
+            Ok(BaseField::from(domain_h.size() as u128))
+        })?;
+        let domain_k_size_gadget = FpGadget::<BaseField>::alloc_input(cs.ns(|| "domain_k_size_gadget"), || {
+            Ok(BaseField::from(domain_k.size() as u128))
+        })?;
+
+        Ok(CircuitVerifyingKeyVar {
             domain_h_size: domain_h.size() as u64,
             domain_k_size: domain_k.size() as u64,
             domain_h_size_gadget,
@@ -112,22 +202,35 @@ impl<
 }
 
 impl<
-        F: PrimeField,
-        CF: PrimeField,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>,
-        PCG: PCCheckVar<F, DensePolynomial<F>, PC, CF>,
-    > ToBytesGadget<CF> for IndexVerifierKeyVar<F, CF, PC, PCG>
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+> ToBytesGadget<BaseField> for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
 {
-    #[tracing::instrument(target = "r1cs", skip(self))]
-    fn to_bytes(&self) -> Result<Vec<UInt8<CF>>, SynthesisError> {
-        let mut res = Vec::<UInt8<CF>>::new();
+    fn to_bytes<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut res = Vec::<UInt8>::new();
 
-        res.append(&mut self.domain_h_size_gadget.to_bytes()?);
-        res.append(&mut self.domain_k_size_gadget.to_bytes()?);
-        res.append(&mut self.verifier_key.to_bytes()?);
+        res.append(&mut self.domain_h_size_gadget.to_bytes(cs.ns(|| "domain_h_size_gadget"))?);
+        res.append(&mut self.domain_k_size_gadget.to_bytes(cs.ns(|| "domain_k_size_gadget"))?);
+        res.append(&mut self.verifier_key.to_bytes(cs.ns(|| "verifier_key"))?);
 
-        for comm in self.index_comms.iter() {
-            res.append(&mut comm.to_bytes()?);
+        for (i, comm) in self.index_comms.iter().enumerate() {
+            res.append(&mut comm.to_bytes(cs.ns(|| format!("commitment_{}", i)))?);
+        }
+
+        Ok(res)
+    }
+
+    fn to_bytes_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut res = Vec::<UInt8>::new();
+
+        res.append(&mut self.domain_h_size_gadget.to_bytes(cs.ns(|| "domain_h_size_gadget"))?);
+        res.append(&mut self.domain_k_size_gadget.to_bytes(cs.ns(|| "domain_k_size_gadget"))?);
+        res.append(&mut self.verifier_key.to_bytes(cs.ns(|| "verifier_key"))?);
+
+        for (i, comm) in self.index_comms.iter().enumerate() {
+            res.append(&mut comm.to_bytes(cs.ns(|| format!("commitment_{}", i)))?);
         }
 
         Ok(res)
@@ -135,15 +238,14 @@ impl<
 }
 
 impl<
-        F: PrimeField,
-        CF: PrimeField,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>,
-        PCG: PCCheckVar<F, DensePolynomial<F>, PC, CF>,
-    > Clone for IndexVerifierKeyVar<F, CF, PC, PCG>
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+> Clone for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
 {
     fn clone(&self) -> Self {
         Self {
-            cs: self.cs.clone(),
             domain_h_size: self.domain_h_size,
             domain_k_size: self.domain_k_size,
             domain_h_size_gadget: self.domain_h_size_gadget.clone(),
@@ -155,49 +257,56 @@ impl<
 }
 
 impl<
-        F: PrimeField,
-        CF: PrimeField,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>,
-        PCG: PCCheckVar<F, DensePolynomial<F>, PC, CF>,
-    > IndexVerifierKeyVar<F, CF, PC, PCG>
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+> CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
 {
+    /// Returns an iterator of the circuit commitments.
     pub fn iter(&self) -> impl Iterator<Item = &PCG::CommitmentVar> {
         self.index_comms.iter()
     }
 }
 
-pub struct PreparedIndexVerifierKeyVar<
-    F: PrimeField,
-    CF: PrimeField,
-    PC: PolynomialCommitment<F, DensePolynomial<F>>,
-    PCG: PCCheckVar<F, DensePolynomial<F>, PC, CF>,
-    PR: FiatShamirRng<F, CF>,
-    R: FiatShamirRngVar<F, CF, PR>,
+/// The prepared circuit verifying key gadget
+pub struct PreparedCircuitVerifyingKeyVar<
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+    PR: FiatShamirRng<TargetField, BaseField>,
+    R: FiatShamirRngVar<TargetField, BaseField, PR>,
 > {
-    pub cs: ConstraintSystemRef<CF>,
+    /// The size of domain h
     pub domain_h_size: u64,
+    /// The size of domain k
     pub domain_k_size: u64,
-    pub domain_h_size_gadget: FpVar<CF>,
-    pub domain_k_size_gadget: FpVar<CF>,
+    /// The size of domain h in constraint form
+    pub domain_h_size_gadget: FpGadget<BaseField>,
+    /// The size of domain k in constraint form
+    pub domain_k_size_gadget: FpGadget<BaseField>,
+    /// The prepared circuit commitments in constraint form
     pub prepared_index_comms: Vec<PCG::PreparedCommitmentVar>,
+    /// The prepared verifying key in constraint form
     pub prepared_verifier_key: PCG::PreparedVerifierKeyVar,
+    /// The Fiat-Shamir Rng
     pub fs_rng: R,
 
     pr: PhantomData<PR>,
 }
 
 impl<
-        F: PrimeField,
-        CF: PrimeField,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>,
-        PCG: PCCheckVar<F, DensePolynomial<F>, PC, CF>,
-        PR: FiatShamirRng<F, CF>,
-        R: FiatShamirRngVar<F, CF, PR>,
-    > Clone for PreparedIndexVerifierKeyVar<F, CF, PC, PCG, PR, R>
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+    PR: FiatShamirRng<TargetField, BaseField>,
+    R: FiatShamirRngVar<TargetField, BaseField, PR>,
+> Clone for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 {
     fn clone(&self) -> Self {
-        PreparedIndexVerifierKeyVar {
-            cs: self.cs.clone(),
+        PreparedCircuitVerifyingKeyVar {
             domain_h_size: self.domain_h_size,
             domain_k_size: self.domain_k_size,
             domain_h_size_gadget: self.domain_h_size_gadget.clone(),
@@ -210,48 +319,50 @@ impl<
     }
 }
 
-impl<F, CF, PC, PCG, PR, R> PreparedIndexVerifierKeyVar<F, CF, PC, PCG, PR, R>
+impl<TargetField, BaseField, PC, PCG, PR, R> PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
-    F: PrimeField,
-    CF: PrimeField,
-    PC: PolynomialCommitment<F, DensePolynomial<F>>,
-    PCG: PCCheckVar<F, DensePolynomial<F>, PC, CF>,
-    PR: FiatShamirRng<F, CF>,
-    R: FiatShamirRngVar<F, CF, PR>,
-    PCG::VerifierKeyVar: ToConstraintFieldGadget<CF>,
-    PCG::CommitmentVar: ToConstraintFieldGadget<CF>,
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+    PR: FiatShamirRng<TargetField, BaseField>,
+    R: FiatShamirRngVar<TargetField, BaseField, PR>,
+    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
+    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
 {
-    #[tracing::instrument(target = "r1cs", skip(vk))]
-    pub fn prepare(vk: &IndexVerifierKeyVar<F, CF, PC, PCG>) -> Result<Self, SynthesisError> {
-        let cs = vk.cs();
-
+    /// Returns an instance of a `PreparedCircuitVerifyingKeyGadget`.
+    pub fn prepare<CS: ConstraintSystem<BaseField>>(
+        mut cs: CS,
+        vk: &CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>,
+    ) -> Result<Self, SynthesisError> {
         let mut fs_rng_raw = PR::new();
-        fs_rng_raw.absorb_bytes(&to_bytes![&MarlinVerifierVar::<F, CF, PC, PCG>::PROTOCOL_NAME].unwrap());
+        fs_rng_raw.absorb_bytes(&to_bytes![
+            &MarlinVerifierVar::<TargetField, BaseField, PC, PCG>::PROTOCOL_NAME
+        ]?);
 
         let index_vk_hash = {
             let mut vk_hash_rng = PR::new();
 
-            let mut vk_elems = Vec::<CF>::new();
+            let mut vk_elems = Vec::<BaseField>::new();
             vk.index_comms.iter().for_each(|index_comm| {
                 vk_elems.append(
                     &mut index_comm
                         .to_constraint_field()
                         .unwrap()
                         .iter()
-                        .map(|elem| elem.value().unwrap_or_default())
+                        .map(|elem| elem.get_value().unwrap_or_default())
                         .collect(),
                 );
             });
             vk_hash_rng.absorb_native_field_elements(&vk_elems);
-            FpVar::<CF>::new_witness(ark_relations::ns!(cs, "alloc#vk_hash"), || {
+            FpGadget::<BaseField>::alloc(cs.ns(|| "alloc_vk_hash"), || {
                 Ok(vk_hash_rng.squeeze_native_field_elements(1)[0])
-            })
-            .unwrap()
+            })?
         };
 
         let fs_rng = {
-            let mut fs_rng = R::constant(cs, &fs_rng_raw);
-            fs_rng.absorb_native_field_elements(&[index_vk_hash])?;
+            let mut fs_rng = R::constant(cs.ns(|| "fs_rng_raw"), &fs_rng_raw);
+            fs_rng.absorb_native_field_elements(cs.ns(|| "absorb"), &[index_vk_hash])?;
             fs_rng
         };
 
@@ -263,7 +374,6 @@ where
         let prepared_verifier_key = PCG::PreparedVerifierKeyVar::prepare(&vk.verifier_key)?;
 
         Ok(Self {
-            cs: vk.cs.clone(),
             domain_h_size: vk.domain_h_size,
             domain_k_size: vk.domain_k_size,
             domain_h_size_gadget: vk.domain_h_size_gadget.clone(),
@@ -276,52 +386,44 @@ where
     }
 }
 
-impl<F, CF, PC, PCG, PR, R> AllocVar<PreparedIndexVerifierKey<F, PC>, CF>
-    for PreparedIndexVerifierKeyVar<F, CF, PC, PCG, PR, R>
+impl<TargetField, BaseField, PC, PCG, PR, R> AllocGadget<PreparedCircuitVerifyingKey<TargetField, PC>, BaseField>
+    for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
-    F: PrimeField,
-    CF: PrimeField,
-    PC: PolynomialCommitment<F, DensePolynomial<F>>,
-    PCG: PCCheckVar<F, DensePolynomial<F>, PC, CF>,
-    PR: FiatShamirRng<F, CF>,
-    R: FiatShamirRngVar<F, CF, PR>,
-    PC::VerifierKey: ToConstraintField<CF>,
-    PC::Commitment: ToConstraintField<CF>,
-    PCG::VerifierKeyVar: ToConstraintFieldGadget<CF>,
-    PCG::CommitmentVar: ToConstraintFieldGadget<CF>,
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+    PR: FiatShamirRng<TargetField, BaseField>,
+    R: FiatShamirRngVar<TargetField, BaseField, PR>,
+    PC::VerifierKey: ToConstraintField<BaseField>,
+    PC::Commitment: ToConstraintField<BaseField>,
+    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
+    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
 {
-    #[tracing::instrument(target = "r1cs", skip(cs, f))]
-    fn new_variable<T>(
-        cs: impl Into<Namespace<CF>>,
-        f: impl FnOnce() -> Result<T, SynthesisError>,
-        mode: AllocationMode,
-    ) -> Result<Self, SynthesisError>
+    #[inline]
+    fn alloc_constant<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
-        T: Borrow<PreparedIndexVerifierKey<F, PC>>,
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PreparedCircuitVerifyingKey<TargetField, PC>>,
     {
-        let t = f()?;
-        let obj = t.borrow();
-
-        let ns = cs.into();
-        let cs = ns.cs();
+        let tmp = value_gen()?;
+        let obj = tmp.borrow();
 
         let mut prepared_index_comms = Vec::<PCG::PreparedCommitmentVar>::new();
-        for index_comm in obj.prepared_index_comms.iter() {
-            prepared_index_comms.push(PCG::PreparedCommitmentVar::new_variable(
-                ark_relations::ns!(cs, "index_comm"),
+        for (i, index_comm) in obj.prepared_index_comms.iter().enumerate() {
+            prepared_index_comms.push(PCG::PreparedCommitmentVar::alloc_constant(
+                cs.ns(|| format!("alloc_constant_index_commitment_{}", i)),
                 || Ok(index_comm),
-                mode,
             )?);
         }
 
-        let prepared_verifier_key = PCG::PreparedVerifierKeyVar::new_variable(
-            ark_relations::ns!(cs, "pvk"),
-            || Ok(&obj.prepared_verifier_key),
-            mode,
-        )?;
+        let prepared_verifier_key =
+            PCG::PreparedVerifierKeyVar::alloc_constant(cs.ns(|| "alloc_constant_pvk"), || {
+                Ok(&obj.prepared_verifier_key)
+            })?;
 
-        let mut vk_elems = Vec::<CF>::new();
-        obj.orig_vk.index_comms.iter().for_each(|index_comm| {
+        let mut vk_elems = Vec::<BaseField>::new();
+        obj.orig_vk.circuit_commitments.iter().for_each(|index_comm| {
             vk_elems.append(&mut index_comm.to_field_elements().unwrap());
         });
 
@@ -329,36 +431,158 @@ where
             let mut vk_hash_rng = PR::new();
 
             vk_hash_rng.absorb_native_field_elements(&vk_elems);
-            FpVar::<CF>::new_variable(
-                ark_relations::ns!(cs, "alloc#vk_hash"),
-                || Ok(vk_hash_rng.squeeze_native_field_elements(1)[0]),
-                mode,
-            )
-            .unwrap()
+            FpGadget::<BaseField>::alloc_constant(cs.ns(|| "alloc_constant_vk_hash"), || {
+                Ok(vk_hash_rng.squeeze_native_field_elements(1)[0])
+            })?
         };
 
         let mut fs_rng_raw = PR::new();
-        fs_rng_raw.absorb_bytes(&to_bytes![&MarlinVerifierVar::<F, CF, PC, PCG>::PROTOCOL_NAME].unwrap());
+        fs_rng_raw.absorb_bytes(&to_bytes![
+            &MarlinVerifierVar::<TargetField, BaseField, PC, PCG>::PROTOCOL_NAME
+        ]?);
 
         let fs_rng = {
-            let mut fs_rng = R::constant(cs.clone(), &fs_rng_raw);
-            fs_rng.absorb_native_field_elements(&[index_vk_hash])?;
+            let mut fs_rng = R::constant(cs.ns(|| "fs_rng_raw"), &fs_rng_raw);
+            fs_rng.absorb_native_field_elements(cs.ns(|| "absorb"), &[index_vk_hash])?;
             fs_rng
         };
 
-        let domain_h_size_gadget = FpVar::<CF>::new_variable(
-            ark_relations::ns!(cs, "domain_h_size"),
-            || Ok(CF::from(obj.domain_h_size as u128)),
-            mode,
-        )?;
-        let domain_k_size_gadget = FpVar::<CF>::new_variable(
-            ark_relations::ns!(cs, "domain_k_size"),
-            || Ok(CF::from(obj.domain_k_size as u128)),
-            mode,
-        )?;
+        let domain_h_size_gadget = FpGadget::<BaseField>::alloc_constant(cs.ns(|| "domain_h_size_gadget"), || {
+            Ok(BaseField::from(obj.domain_h_size as u128))
+        })?;
+        let domain_k_size_gadget = FpGadget::<BaseField>::alloc_constant(cs.ns(|| "domain_k_size_gadget"), || {
+            Ok(BaseField::from(obj.domain_k_size as u128))
+        })?;
 
         Ok(Self {
-            cs,
+            domain_h_size: obj.domain_h_size,
+            domain_k_size: obj.domain_k_size,
+            domain_h_size_gadget,
+            domain_k_size_gadget,
+            prepared_index_comms,
+            prepared_verifier_key,
+            fs_rng,
+            pr: PhantomData,
+        })
+    }
+
+    #[inline]
+    fn alloc<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PreparedCircuitVerifyingKey<TargetField, PC>>,
+    {
+        let tmp = value_gen()?;
+        let obj = tmp.borrow();
+
+        let mut prepared_index_comms = Vec::<PCG::PreparedCommitmentVar>::new();
+        for (i, index_comm) in obj.prepared_index_comms.iter().enumerate() {
+            prepared_index_comms.push(PCG::PreparedCommitmentVar::alloc(
+                cs.ns(|| format!("alloc_index_commitment_{}", i)),
+                || Ok(index_comm),
+            )?);
+        }
+
+        let prepared_verifier_key =
+            PCG::PreparedVerifierKeyVar::alloc(cs.ns(|| "alloc_pvk"), || Ok(&obj.prepared_verifier_key))?;
+
+        let mut vk_elems = Vec::<BaseField>::new();
+        obj.orig_vk.circuit_commitments.iter().for_each(|index_comm| {
+            vk_elems.append(&mut index_comm.to_field_elements().unwrap());
+        });
+
+        let index_vk_hash = {
+            let mut vk_hash_rng = PR::new();
+
+            vk_hash_rng.absorb_native_field_elements(&vk_elems);
+            FpGadget::<BaseField>::alloc(cs.ns(|| "alloc_vk_hash"), || {
+                Ok(vk_hash_rng.squeeze_native_field_elements(1)[0])
+            })?
+        };
+
+        let mut fs_rng_raw = PR::new();
+        fs_rng_raw.absorb_bytes(&to_bytes![
+            &MarlinVerifierVar::<TargetField, BaseField, PC, PCG>::PROTOCOL_NAME
+        ]?);
+
+        let fs_rng = {
+            let mut fs_rng = R::constant(cs.ns(|| "fs_rng_raw"), &fs_rng_raw);
+            fs_rng.absorb_native_field_elements(cs.ns(|| "absorb"), &[index_vk_hash])?;
+            fs_rng
+        };
+
+        let domain_h_size_gadget = FpGadget::<BaseField>::alloc(cs.ns(|| "domain_h_size_gadget"), || {
+            Ok(BaseField::from(obj.domain_h_size as u128))
+        })?;
+        let domain_k_size_gadget = FpGadget::<BaseField>::alloc(cs.ns(|| "domain_k_size_gadget"), || {
+            Ok(BaseField::from(obj.domain_k_size as u128))
+        })?;
+
+        Ok(Self {
+            domain_h_size: obj.domain_h_size,
+            domain_k_size: obj.domain_k_size,
+            domain_h_size_gadget,
+            domain_k_size_gadget,
+            prepared_index_comms,
+            prepared_verifier_key,
+            fs_rng,
+            pr: PhantomData,
+        })
+    }
+
+    #[inline]
+    fn alloc_input<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PreparedCircuitVerifyingKey<TargetField, PC>>,
+    {
+        let tmp = value_gen()?;
+        let obj = tmp.borrow();
+
+        let mut prepared_index_comms = Vec::<PCG::PreparedCommitmentVar>::new();
+        for (i, index_comm) in obj.prepared_index_comms.iter().enumerate() {
+            prepared_index_comms.push(PCG::PreparedCommitmentVar::alloc_input(
+                cs.ns(|| format!("alloc_input_index_commitment_{}", i)),
+                || Ok(index_comm),
+            )?);
+        }
+
+        let prepared_verifier_key =
+            PCG::PreparedVerifierKeyVar::alloc_input(cs.ns(|| "alloc_input_pvk"), || Ok(&obj.prepared_verifier_key))?;
+
+        let mut vk_elems = Vec::<BaseField>::new();
+        obj.orig_vk.circuit_commitments.iter().for_each(|index_comm| {
+            vk_elems.append(&mut index_comm.to_field_elements().unwrap());
+        });
+
+        let index_vk_hash = {
+            let mut vk_hash_rng = PR::new();
+
+            vk_hash_rng.absorb_native_field_elements(&vk_elems);
+            FpGadget::<BaseField>::alloc_input(cs.ns(|| "alloc_input_vk_hash"), || {
+                Ok(vk_hash_rng.squeeze_native_field_elements(1)[0])
+            })?
+        };
+
+        let mut fs_rng_raw = PR::new();
+        fs_rng_raw.absorb_bytes(&to_bytes![
+            &MarlinVerifierVar::<TargetField, BaseField, PC, PCG>::PROTOCOL_NAME
+        ]?);
+
+        let fs_rng = {
+            let mut fs_rng = R::constant(cs.ns(|| "fs_rng_raw"), &fs_rng_raw);
+            fs_rng.absorb_native_field_elements(cs.ns(|| "absorb"), &[index_vk_hash])?;
+            fs_rng
+        };
+
+        let domain_h_size_gadget = FpGadget::<BaseField>::alloc_input(cs.ns(|| "domain_h_size_gadget"), || {
+            Ok(BaseField::from(obj.domain_h_size as u128))
+        })?;
+        let domain_k_size_gadget = FpGadget::<BaseField>::alloc_input(cs.ns(|| "domain_k_size_gadget"), || {
+            Ok(BaseField::from(obj.domain_k_size as u128))
+        })?;
+
+        Ok(Self {
             domain_h_size: obj.domain_h_size,
             domain_k_size: obj.domain_k_size,
             domain_h_size_gadget,
@@ -371,35 +595,38 @@ where
     }
 }
 
+/// The Marlin proof gadget
 pub struct ProofVar<
-    F: PrimeField,
-    CF: PrimeField,
-    PC: PolynomialCommitment<F, DensePolynomial<F>>,
-    PCG: PCCheckVar<F, DensePolynomial<F>, PC, CF>,
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
 > {
-    pub cs: ConstraintSystemRef<CF>,
+    /// The commitments
     pub commitments: Vec<Vec<PCG::CommitmentVar>>,
-    pub evaluations: HashMap<String, NonNativeFieldVar<F, CF>>,
-    pub prover_messages: Vec<ProverMsgVar<F, CF>>,
+    /// The evaluations
+    pub evaluations: HashMap<String, NonNativeFieldVar<TargetField, BaseField>>,
+    /// The prover messages
+    pub prover_messages: Vec<ProverMessageVar<TargetField, BaseField>>,
+    /// The polynomial commitment batch proof
     pub pc_batch_proof: PCG::BatchLCProofVar,
 }
 
 impl<
-        F: PrimeField,
-        CF: PrimeField,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>,
-        PCG: PCCheckVar<F, DensePolynomial<F>, PC, CF>,
-    > ProofVar<F, CF, PC, PCG>
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+> ProofVar<TargetField, BaseField, PC, PCG>
 {
+    /// Instantiates a new instance of `ProofGadget`.
     pub fn new(
-        cs: ConstraintSystemRef<CF>,
         commitments: Vec<Vec<PCG::CommitmentVar>>,
-        evaluations: HashMap<String, NonNativeFieldVar<F, CF>>,
-        prover_messages: Vec<ProverMsgVar<F, CF>>,
+        evaluations: HashMap<String, NonNativeFieldVar<TargetField, BaseField>>,
+        prover_messages: Vec<ProverMessageVar<TargetField, BaseField>>,
         pc_batch_proof: PCG::BatchLCProofVar,
     ) -> Self {
         Self {
-            cs,
             commitments,
             evaluations,
             prover_messages,
@@ -408,83 +635,83 @@ impl<
     }
 }
 
-impl<F, CF, PC, PCG> AllocVar<Proof<F, PC>, CF> for ProofVar<F, CF, PC, PCG>
+impl<TargetField, BaseField, PC, PCG> AllocGadget<Proof<TargetField, PC>, BaseField>
+    for ProofVar<TargetField, BaseField, PC, PCG>
 where
-    F: PrimeField,
-    CF: PrimeField,
-    PC: PolynomialCommitment<F, DensePolynomial<F>>,
-    PCG: PCCheckVar<F, DensePolynomial<F>, PC, CF>,
-    PC::VerifierKey: ToConstraintField<CF>,
-    PC::Commitment: ToConstraintField<CF>,
-    PCG::VerifierKeyVar: ToConstraintFieldGadget<CF>,
-    PCG::CommitmentVar: ToConstraintFieldGadget<CF>,
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+    PC::VerifierKey: ToConstraintField<BaseField>,
+    PC::Commitment: ToConstraintField<BaseField>,
+    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
+    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
 {
-    #[tracing::instrument(target = "r1cs", skip(cs, f))]
-    fn new_variable<T>(
-        cs: impl Into<Namespace<CF>>,
-        f: impl FnOnce() -> Result<T, SynthesisError>,
-        mode: AllocationMode,
-    ) -> Result<Self, SynthesisError>
+    #[inline]
+    fn alloc_constant<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
-        T: Borrow<Proof<F, PC>>,
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Proof<TargetField, PC>>,
     {
-        let ns = cs.into();
-        let cs = ns.cs();
-
-        let t = f()?;
+        let tmp = value_gen()?;
         let Proof {
             commitments,
             evaluations,
             prover_messages,
             pc_proof,
             ..
-        } = t.borrow();
+        } = tmp.borrow();
 
         let commitment_gadgets: Vec<Vec<PCG::CommitmentVar>> = commitments
             .iter()
             .map(|lst| {
                 lst.iter()
-                    .map(|comm| {
-                        PCG::CommitmentVar::new_variable(ark_relations::ns!(cs, "alloc#commitment"), || Ok(comm), mode)
-                            .unwrap()
+                    .enumerate()
+                    .map(|(i, comm)| {
+                        PCG::CommitmentVar::alloc_constant(cs.ns(|| format!("alloc_constant_commitment_{}", i)), || {
+                            Ok(comm)
+                        })
+                        .unwrap()
                     })
                     .collect()
             })
             .collect();
 
-        let evaluation_gadgets_vec: Vec<NonNativeFieldVar<F, CF>> = evaluations
+        let evaluation_gadgets_vec: Vec<NonNativeFieldVar<TargetField, BaseField>> = evaluations
             .iter()
-            .map(|eval| {
-                NonNativeFieldVar::new_variable(ark_relations::ns!(cs, "alloc#evaluation"), || Ok(eval), mode).unwrap()
+            .enumerate()
+            .map(|(i, eval)| {
+                NonNativeFieldVar::alloc_constant(cs.ns(|| format!("alloc_constant_evaluations_{}", i)), || Ok(eval))
+                    .unwrap()
             })
             .collect();
 
-        let prover_message_gadgets: Vec<ProverMsgVar<F, CF>> = prover_messages
+        let prover_message_gadgets: Vec<ProverMessageVar<TargetField, BaseField>> = prover_messages
             .iter()
-            .map(|msg| {
-                let field_elements: Vec<NonNativeFieldVar<F, CF>> = match msg {
-                    ProverMsg::EmptyMessage => Vec::new(),
-                    ProverMsg::FieldElements(f) => f
+            .enumerate()
+            .map(|(i, msg)| {
+                let field_elements: Vec<NonNativeFieldVar<TargetField, BaseField>> = match msg {
+                    ProverMessage::EmptyMessage => Vec::new(),
+                    ProverMessage::FieldElements(f) => f
                         .iter()
-                        .map(|elem| {
-                            NonNativeFieldVar::new_variable(
-                                ark_relations::ns!(cs, "alloc#prover message"),
+                        .enumerate()
+                        .map(|(j, elem)| {
+                            NonNativeFieldVar::alloc_constant(
+                                cs.ns(|| format!("alloc_constant_prover_message_{}_{}", i, j)),
                                 || Ok(elem),
-                                mode,
                             )
                             .unwrap()
                         })
                         .collect(),
                 };
 
-                ProverMsgVar { field_elements }
+                ProverMessageVar { field_elements }
             })
             .collect();
 
-        let pc_batch_proof =
-            PCG::BatchLCProofVar::new_variable(ark_relations::ns!(cs, "alloc#proof"), || Ok(pc_proof), mode).unwrap();
+        let pc_batch_proof = PCG::BatchLCProofVar::alloc_constant(cs.ns(|| "alloc_constant_proof"), || Ok(pc_proof))?;
 
-        let mut evaluation_gadgets = HashMap::<String, NonNativeFieldVar<F, CF>>::new();
+        let mut evaluation_gadgets = HashMap::<String, NonNativeFieldVar<TargetField, BaseField>>::new();
 
         const ALL_POLYNOMIALS: [&str; 10] = [
             "a_denom",
@@ -504,7 +731,178 @@ where
         }
 
         Ok(ProofVar {
-            cs,
+            commitments: commitment_gadgets,
+            evaluations: evaluation_gadgets,
+            prover_messages: prover_message_gadgets,
+            pc_batch_proof,
+        })
+    }
+
+    #[inline]
+    fn alloc<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Proof<TargetField, PC>>,
+    {
+        let tmp = value_gen()?;
+        let Proof {
+            commitments,
+            evaluations,
+            prover_messages,
+            pc_proof,
+            ..
+        } = tmp.borrow();
+
+        let commitment_gadgets: Vec<Vec<PCG::CommitmentVar>> = commitments
+            .iter()
+            .map(|lst| {
+                lst.iter()
+                    .enumerate()
+                    .map(|(i, comm)| {
+                        PCG::CommitmentVar::alloc(cs.ns(|| format!("alloc_commitment_{}", i)), || Ok(comm)).unwrap()
+                    })
+                    .collect()
+            })
+            .collect();
+
+        let evaluation_gadgets_vec: Vec<NonNativeFieldVar<TargetField, BaseField>> = evaluations
+            .iter()
+            .enumerate()
+            .map(|(i, eval)| {
+                NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_evaluations_{}", i)), || Ok(eval)).unwrap()
+            })
+            .collect();
+
+        let prover_message_gadgets: Vec<ProverMessageVar<TargetField, BaseField>> = prover_messages
+            .iter()
+            .enumerate()
+            .map(|(i, msg)| {
+                let field_elements: Vec<NonNativeFieldVar<TargetField, BaseField>> = match msg {
+                    ProverMessage::EmptyMessage => Vec::new(),
+                    ProverMessage::FieldElements(f) => f
+                        .iter()
+                        .enumerate()
+                        .map(|(j, elem)| {
+                            NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_prover_message_{}_{}", i, j)), || Ok(elem))
+                                .unwrap()
+                        })
+                        .collect(),
+                };
+
+                ProverMessageVar { field_elements }
+            })
+            .collect();
+
+        let pc_batch_proof = PCG::BatchLCProofVar::alloc(cs.ns(|| "alloc_proof"), || Ok(pc_proof))?;
+
+        let mut evaluation_gadgets = HashMap::<String, NonNativeFieldVar<TargetField, BaseField>>::new();
+
+        const ALL_POLYNOMIALS: [&str; 10] = [
+            "a_denom",
+            "b_denom",
+            "c_denom",
+            "g_1",
+            "g_2",
+            "t",
+            "vanishing_poly_h_alpha",
+            "vanishing_poly_h_beta",
+            "vanishing_poly_k_gamma",
+            "z_b",
+        ];
+
+        for (s, eval) in ALL_POLYNOMIALS.iter().zip(evaluation_gadgets_vec.iter()) {
+            evaluation_gadgets.insert(s.to_string(), (*eval).clone());
+        }
+
+        Ok(ProofVar {
+            commitments: commitment_gadgets,
+            evaluations: evaluation_gadgets,
+            prover_messages: prover_message_gadgets,
+            pc_batch_proof,
+        })
+    }
+
+    #[inline]
+    fn alloc_input<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Proof<TargetField, PC>>,
+    {
+        let tmp = value_gen()?;
+        let Proof {
+            commitments,
+            evaluations,
+            prover_messages,
+            pc_proof,
+            ..
+        } = tmp.borrow();
+
+        let commitment_gadgets: Vec<Vec<PCG::CommitmentVar>> = commitments
+            .iter()
+            .map(|lst| {
+                lst.iter()
+                    .enumerate()
+                    .map(|(i, comm)| {
+                        PCG::CommitmentVar::alloc_input(cs.ns(|| format!("alloc_input_commitment_{}", i)), || Ok(comm))
+                            .unwrap()
+                    })
+                    .collect()
+            })
+            .collect();
+
+        let evaluation_gadgets_vec: Vec<NonNativeFieldVar<TargetField, BaseField>> = evaluations
+            .iter()
+            .enumerate()
+            .map(|(i, eval)| {
+                NonNativeFieldVar::alloc_input(cs.ns(|| format!("alloc_input_evaluations_{}", i)), || Ok(eval)).unwrap()
+            })
+            .collect();
+
+        let prover_message_gadgets: Vec<ProverMessageVar<TargetField, BaseField>> = prover_messages
+            .iter()
+            .enumerate()
+            .map(|(i, msg)| {
+                let field_elements: Vec<NonNativeFieldVar<TargetField, BaseField>> = match msg {
+                    ProverMessage::EmptyMessage => Vec::new(),
+                    ProverMessage::FieldElements(f) => f
+                        .iter()
+                        .enumerate()
+                        .map(|(j, elem)| {
+                            NonNativeFieldVar::alloc_input(
+                                cs.ns(|| format!("alloc_input_prover_message_{}_{}", i, j)),
+                                || Ok(elem),
+                            )
+                            .unwrap()
+                        })
+                        .collect(),
+                };
+
+                ProverMessageVar { field_elements }
+            })
+            .collect();
+
+        let pc_batch_proof = PCG::BatchLCProofVar::alloc_input(cs.ns(|| "alloc_input_proof"), || Ok(pc_proof))?;
+
+        let mut evaluation_gadgets = HashMap::<String, NonNativeFieldVar<TargetField, BaseField>>::new();
+
+        const ALL_POLYNOMIALS: [&str; 10] = [
+            "a_denom",
+            "b_denom",
+            "c_denom",
+            "g_1",
+            "g_2",
+            "t",
+            "vanishing_poly_h_alpha",
+            "vanishing_poly_h_beta",
+            "vanishing_poly_k_gamma",
+            "z_b",
+        ];
+
+        for (s, eval) in ALL_POLYNOMIALS.iter().zip(evaluation_gadgets_vec.iter()) {
+            evaluation_gadgets.insert(s.to_string(), (*eval).clone());
+        }
+
+        Ok(ProofVar {
             commitments: commitment_gadgets,
             evaluations: evaluation_gadgets,
             prover_messages: prover_message_gadgets,
@@ -514,15 +912,14 @@ where
 }
 
 impl<
-        F: PrimeField,
-        CF: PrimeField,
-        PC: PolynomialCommitment<F, DensePolynomial<F>>,
-        PCG: PCCheckVar<F, DensePolynomial<F>, PC, CF>,
-    > Clone for ProofVar<F, CF, PC, PCG>
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+> Clone for ProofVar<TargetField, BaseField, PC, PCG>
 {
     fn clone(&self) -> Self {
         ProofVar {
-            cs: self.cs.clone(),
             commitments: self.commitments.clone(),
             evaluations: self.evaluations.clone(),
             prover_messages: self.prover_messages.clone(),
@@ -531,14 +928,16 @@ impl<
     }
 }
 
+/// The prover message gadget
 #[repr(transparent)]
-pub struct ProverMsgVar<TargetField: PrimeField, BaseField: PrimeField> {
+pub struct ProverMessageVar<TargetField: PrimeField, BaseField: PrimeField> {
+    /// The field elements comprising the message in nonnative field gadgets.
     pub field_elements: Vec<NonNativeFieldVar<TargetField, BaseField>>,
 }
 
-impl<TargetField: PrimeField, BaseField: PrimeField> Clone for ProverMsgVar<TargetField, BaseField> {
+impl<TargetField: PrimeField, BaseField: PrimeField> Clone for ProverMessageVar<TargetField, BaseField> {
     fn clone(&self) -> Self {
-        ProverMsgVar {
+        ProverMessageVar {
             field_elements: self.field_elements.clone(),
         }
     }

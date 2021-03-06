@@ -76,6 +76,7 @@ features = [ "use_core" ]
 [dependencies.digest]
 version = "0.9"
 
+# TODO (howardwu): Reevaluate this decision from the migration.
 [dependencies.hashbrown]
 version = "0.9"
 

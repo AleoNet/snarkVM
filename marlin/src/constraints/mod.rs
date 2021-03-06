@@ -15,7 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 // pub mod ahp;
-// pub mod data_structures;
+
+/// TODO (howardwu): Refactor this mess of a file.
+/// Implementation of data structures.
+pub mod data_structures;
 
 /// Implementations of native and constraint Lagrange interpolation.
 pub mod lagrange_interpolation;
@@ -24,5 +27,8 @@ pub mod lagrange_interpolation;
 pub mod polynomial;
 
 // pub mod snark;
-// pub mod verifier;
+
+/// Implementation of the Marlin verification gadget.
+pub mod verifier;
+
 // pub mod verifier_test;
