@@ -92,7 +92,7 @@ fn snark_setup(c: &mut Criterion) {
 
     c.bench_function("snark_setup", move |b| {
         b.iter(|| {
-            let universal_srs = snarkvm_marlin::marlin::MarlinSNARK::<
+            let universal_srs = snarkvm_marlin::marlin::MarlinCore::<
                 <Bls12_377 as PairingEngine>::Fr,
                 MultiPC<Bls12_377>,
                 Blake2s,
@@ -118,7 +118,7 @@ fn snark_prove(c: &mut Criterion) {
         inputs.push(Some(rng.gen()));
     }
 
-    let universal_srs = snarkvm_marlin::marlin::MarlinSNARK::<
+    let universal_srs = snarkvm_marlin::marlin::MarlinCore::<
         <Bls12_377 as PairingEngine>::Fr,
         MultiPC<Bls12_377>,
         Blake2s,

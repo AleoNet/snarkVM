@@ -32,7 +32,7 @@ use utils::store;
 pub fn setup() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
-    let srs = snarkvm_marlin::marlin::MarlinSNARK::<
+    let srs = snarkvm_marlin::marlin::MarlinCore::<
         <Bls12_377 as PairingEngine>::Fr,
         MultiPC<Bls12_377>,
         Blake2s,

@@ -16,7 +16,7 @@
 
 //! The Marlin zkSNARK implementation
 use crate::{
-    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinSNARK, Proof, UniversalSRS},
+    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinCore, Proof, UniversalSRS},
     Parameters,
 };
 use snarkvm_algorithms::{errors::SNARKError, traits::SNARK};
@@ -69,19 +69,18 @@ where
     C: ConstraintSynthesizer<E::Fr>,
     V: ToConstraintField<E::Fr>,
 {
-    type AssignedCircuit = C;
+    type AllocatedCircuit = C;
     type Circuit = (C, SRS<E>);
-    // Abuse the Circuit type to pass the SRS as well.
-    type PreparedVerificationParameters = VerifyingKey<E>;
+    type PreparedVerifyingKey = VerifyingKey<E>;
     type Proof = Proof<<E as PairingEngine>::Fr, MultiPC<E>>;
-    type ProvingParameters = Parameters<E>;
-    type VerificationParameters = VerifyingKey<E>;
+    type ProvingKey = Parameters<E>;
     type VerifierInput = V;
+    type VerifyingKey = VerifyingKey<E>;
 
     fn setup<R: RngCore>(
         (circuit, srs): &Self::Circuit,
         _rng: &mut R, // The Marlin circuit setup is deterministic.
-    ) -> Result<(Self::ProvingParameters, Self::PreparedVerificationParameters), SNARKError> {
+    ) -> Result<(Self::ProvingKey, Self::PreparedVerifyingKey), SNARKError> {
         let setup_time = start_timer!(|| "{Marlin}::Setup");
         let parameters = Parameters::<E>::new(circuit, srs)?;
         end_timer!(setup_time);
@@ -91,25 +90,25 @@ where
     }
 
     fn prove<R: RngCore>(
-        parameters: &Self::ProvingParameters,
-        circuit: &Self::AssignedCircuit,
+        proving_key: &Self::ProvingKey,
+        circuit: &Self::AllocatedCircuit,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         let proving_time = start_timer!(|| "{Marlin}::Proving");
         let proof =
-            MarlinSNARK::<<E as PairingEngine>::Fr, MultiPC<E>, Blake2s>::prove(&parameters.proving_key, circuit, rng)
+            MarlinCore::<<E as PairingEngine>::Fr, MultiPC<E>, Blake2s>::prove(&proving_key.proving_key, circuit, rng)
                 .map_err(|error| SNARKError::Crate("marlin", format!("Failed to generate proof - {:?}", error)))?;
         end_timer!(proving_time);
         Ok(proof)
     }
 
     fn verify(
-        verifying_key: &Self::PreparedVerificationParameters,
+        verifying_key: &Self::PreparedVerifyingKey,
         input: &Self::VerifierInput,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
         let verification_time = start_timer!(|| "{Marlin}::Verifying");
-        let res = MarlinSNARK::<<E as PairingEngine>::Fr, MultiPC<E>, Blake2s>::verify(
+        let res = MarlinCore::<<E as PairingEngine>::Fr, MultiPC<E>, Blake2s>::verify(
             &verifying_key,
             &input.to_field_elements()?,
             &proof,

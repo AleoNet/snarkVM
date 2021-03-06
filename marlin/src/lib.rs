@@ -42,7 +42,10 @@ extern crate alloc;
 #[rustfmt::skip]
 #[cfg(not(feature = "std"))]
 use alloc::{
+    // boxed::Box,
     collections::BTreeMap,
+    // fmt::Debug,
+    // fmt::Formatter,
     marker::PhantomData,
     string::{String, ToString},
     vec::Vec,
@@ -51,7 +54,10 @@ use alloc::{
 #[rustfmt::skip]
 #[cfg(feature = "std")]
 use std::{
+    // boxed::Box,
     collections::BTreeMap,
+    // fmt::Debug,
+    // fmt::Formatter,
     marker::PhantomData,
     string::{String, ToString},
     vec::Vec,

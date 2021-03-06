@@ -28,13 +28,13 @@ use digest::Digest;
 use rand_core::RngCore;
 
 /// The Marlin proof system.
-pub struct MarlinSNARK<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest>(
+pub struct MarlinCore<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest>(
     #[doc(hidden)] PhantomData<F>,
     #[doc(hidden)] PhantomData<PC>,
     #[doc(hidden)] PhantomData<D>,
 );
 
-impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D> {
+impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinCore<F, PC, D> {
     /// The personalization string for this protocol.
     /// Used to personalize the Fiat-Shamir RNG.
     pub const PROTOCOL_NAME: &'static [u8] = b"MARLIN-2019";

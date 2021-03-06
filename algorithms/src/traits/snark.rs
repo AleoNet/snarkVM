@@ -21,31 +21,27 @@ use rand::Rng;
 use std::fmt::Debug;
 
 pub trait SNARK {
-    type AssignedCircuit;
+    type AllocatedCircuit;
     type Circuit;
     type Proof: Clone + Debug + ToBytes + FromBytes;
-    type PreparedVerificationParameters: Clone + From<Self::VerificationParameters> + From<Self::ProvingParameters>;
-    type ProvingParameters: Clone + ToBytes + FromBytes;
-    type VerificationParameters: Clone
-        + ToBytes
-        + FromBytes
-        + From<Self::PreparedVerificationParameters>
-        + From<Self::ProvingParameters>;
+    type PreparedVerifyingKey: Clone + From<Self::VerifyingKey> + From<Self::ProvingKey>;
+    type ProvingKey: Clone + ToBytes + FromBytes;
+    type VerifyingKey: Clone + ToBytes + FromBytes + From<Self::PreparedVerifyingKey> + From<Self::ProvingKey>;
     type VerifierInput: ?Sized;
 
     fn setup<R: Rng>(
         circuit: &Self::Circuit,
         rng: &mut R,
-    ) -> Result<(Self::ProvingParameters, Self::PreparedVerificationParameters), SNARKError>;
+    ) -> Result<(Self::ProvingKey, Self::PreparedVerifyingKey), SNARKError>;
 
     fn prove<R: Rng>(
-        parameter: &Self::ProvingParameters,
-        input_and_witness: &Self::AssignedCircuit,
+        proving_key: &Self::ProvingKey,
+        input_and_witness: &Self::AllocatedCircuit,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError>;
 
     fn verify(
-        verifier_key: &Self::PreparedVerificationParameters,
+        verifying_key: &Self::PreparedVerifyingKey,
         input: &Self::VerifierInput,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError>;

@@ -121,7 +121,7 @@ mod tests {
         let rng = &mut XorShiftRng::seed_from_u64(1234567);
 
         // run the trusted setup
-        let universal_srs = snarkvm_marlin::marlin::MarlinSNARK::<
+        let universal_srs = snarkvm_marlin::marlin::MarlinCore::<
             <Bls12_377 as PairingEngine>::Fr,
             MultiPC<Bls12_377>,
             Blake2s,

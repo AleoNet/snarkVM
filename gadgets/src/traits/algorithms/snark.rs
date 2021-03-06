@@ -24,9 +24,7 @@ use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 pub trait SNARKVerifierGadget<N: SNARK, F: Field> {
-    type VerificationKeyGadget: AllocGadget<N::VerificationParameters, F>
-        + AllocBytesGadget<Vec<u8>, F>
-        + ToBytesGadget<F>;
+    type VerificationKeyGadget: AllocGadget<N::VerifyingKey, F> + AllocBytesGadget<Vec<u8>, F> + ToBytesGadget<F>;
     type ProofGadget: AllocGadget<N::Proof, F> + AllocBytesGadget<Vec<u8>, F>;
 
     fn check_verify<'a, CS: ConstraintSystem<F>, I: Iterator<Item = &'a T>, T: 'a + ToBitsBEGadget<F> + ?Sized>(

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{r1cs_to_sap::R1CStoSAP, Parameters, VerifyingKey};
+use super::{r1cs_to_sap::R1CStoSAP, ProvingKey, VerifyingKey};
 use crate::{fft::EvaluationDomain, msm::FixedBaseMSM};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
@@ -35,7 +35,7 @@ use rayon::prelude::*;
 
 /// Generates a random common reference string for
 /// a circuit.
-pub fn generate_random_parameters<E, C, R>(circuit: &C, rng: &mut R) -> Result<Parameters<E>, SynthesisError>
+pub fn generate_random_parameters<E, C, R>(circuit: &C, rng: &mut R) -> Result<ProvingKey<E>, SynthesisError>
 where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
@@ -167,7 +167,7 @@ pub fn generate_parameters<E, C, R>(
     g: E::G1Projective,
     h: E::G2Projective,
     rng: &mut R,
-) -> Result<Parameters<E>, SynthesisError>
+) -> Result<ProvingKey<E>, SynthesisError>
 where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
@@ -328,7 +328,7 @@ where
     E::G1Projective::batch_normalization(g_gamma2_z_t.as_mut_slice());
     end_timer!(batch_normalization_time);
 
-    Ok(Parameters {
+    Ok(ProvingKey {
         vk,
         a_query: a_query.into_iter().map(Into::into).collect(),
         b_query: b_query.into_iter().map(Into::into).collect(),

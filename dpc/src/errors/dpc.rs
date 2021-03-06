@@ -57,10 +57,10 @@ pub enum DPCError {
     Message(String),
 
     #[error("missing inner snark proving parameters")]
-    MissingInnerSnarkProvingParameters,
+    MissingInnerSnarkProvingKey,
 
     #[error("missing outer snark proving parameters")]
-    MissingOuterSnarkProvingParameters,
+    MissingOuterSnarkProvingKey,
 
     #[error("{}", _0)]
     ParameterError(ParameterError),

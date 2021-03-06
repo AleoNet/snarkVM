@@ -44,7 +44,7 @@ pub struct OuterCircuit<C: BaseDPCComponents> {
     network_id: u8,
 
     // Inner snark verifier private inputs
-    inner_snark_vk: <C::InnerSNARK as SNARK>::VerificationParameters,
+    inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
     inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
 
     old_private_program_inputs: Vec<PrivateProgramInput>,
@@ -61,7 +61,7 @@ impl<C: BaseDPCComponents> OuterCircuit<C> {
     pub fn blank(
         system_parameters: SystemParameters<C>,
         ledger_parameters: C::MerkleParameters,
-        inner_snark_vk: <C::InnerSNARK as SNARK>::VerificationParameters,
+        inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
         program_snark_vk_and_proof: PrivateProgramInput,
     ) -> Self {
@@ -122,7 +122,7 @@ impl<C: BaseDPCComponents> OuterCircuit<C> {
         network_id: u8,
 
         // Inner SNARK private inputs
-        inner_snark_vk: <C::InnerSNARK as SNARK>::VerificationParameters,
+        inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
 
         // Private program input = Verification key and input

@@ -74,7 +74,7 @@ pub fn execute_outer_proof_gadget<C: BaseDPCComponents, CS: ConstraintSystem<C::
     network_id: u8,
 
     // Inner snark verifier private inputs (verification key and proof)
-    inner_snark_vk: &<C::InnerSNARK as SNARK>::VerificationParameters,
+    inner_snark_vk: &<C::InnerSNARK as SNARK>::VerifyingKey,
     inner_snark_proof: &<C::InnerSNARK as SNARK>::Proof,
 
     // Old record death program verification keys and proofs

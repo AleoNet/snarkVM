@@ -399,7 +399,7 @@ fn test_execute_base_dpc_constraints() {
     )
     .unwrap();
 
-    let inner_snark_vk: <<Components as BaseDPCComponents>::InnerSNARK as SNARK>::VerificationParameters =
+    let inner_snark_vk: <<Components as BaseDPCComponents>::InnerSNARK as SNARK>::VerifyingKey =
         inner_snark_parameters.1.clone().into();
 
     let inner_snark_id = InnerSNARKVerificationKeyCRH::hash(

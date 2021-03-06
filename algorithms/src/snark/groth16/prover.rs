@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, Proof};
+use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Proof, ProvingKey};
 use crate::{cfg_into_iter, msm::VariableBaseMSM};
 use snarkvm_curves::traits::{AffineCurve, Group, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, PrimeField, Zero};
@@ -112,7 +112,7 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
 
 pub fn create_random_proof<E, C, R>(
     circuit: &C,
-    params: &Parameters<E>,
+    params: &ProvingKey<E>,
     rng: &mut R,
 ) -> Result<Proof<E>, SynthesisError>
 where
@@ -126,7 +126,7 @@ where
     create_proof::<E, C>(circuit, params, r, s)
 }
 
-pub fn create_proof_no_zk<E, C>(circuit: &C, params: &Parameters<E>) -> Result<Proof<E>, SynthesisError>
+pub fn create_proof_no_zk<E, C>(circuit: &C, params: &ProvingKey<E>) -> Result<Proof<E>, SynthesisError>
 where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
@@ -134,7 +134,7 @@ where
     create_proof::<E, C>(circuit, params, E::Fr::zero(), E::Fr::zero())
 }
 
-pub fn create_proof<E, C>(circuit: &C, params: &Parameters<E>, r: E::Fr, s: E::Fr) -> Result<Proof<E>, SynthesisError>
+pub fn create_proof<E, C>(circuit: &C, params: &ProvingKey<E>, r: E::Fr, s: E::Fr) -> Result<Proof<E>, SynthesisError>
 where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,

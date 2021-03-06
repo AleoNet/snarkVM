@@ -58,7 +58,7 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
 
 mod marlin {
     use super::*;
-    use crate::marlin::MarlinSNARK;
+    use crate::marlin::MarlinCore;
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
     use snarkvm_polycommit::{marlin_pc::MarlinKZG10, sonic_pc::SonicKZG10};
     use snarkvm_utilities::rand::{test_rng, UniformRand};
@@ -67,10 +67,10 @@ mod marlin {
     use core::ops::MulAssign;
 
     type MultiPC = MarlinKZG10<Bls12_377>;
-    type MarlinInst = MarlinSNARK<Fr, MultiPC, Blake2s>;
+    type MarlinInst = MarlinCore<Fr, MultiPC, Blake2s>;
 
     type MultiPCSonic = SonicKZG10<Bls12_377>;
-    type MarlinSonicInst = MarlinSNARK<Fr, MultiPCSonic, Blake2s>;
+    type MarlinSonicInst = MarlinCore<Fr, MultiPCSonic, Blake2s>;
 
     macro_rules! impl_marlin_test {
         ($test_struct: ident, $marlin_inst: tt) => {

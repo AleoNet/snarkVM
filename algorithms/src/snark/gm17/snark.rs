@@ -19,9 +19,9 @@ use super::{
     generate_random_parameters,
     prepare_verifying_key,
     verify_proof,
-    Parameters,
     PreparedVerifyingKey,
     Proof,
+    ProvingKey,
     VerifyingKey,
 };
 use crate::{errors::SNARKError, traits::SNARK};
@@ -42,18 +42,18 @@ pub struct GM17<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, V: ToConstrai
 }
 
 impl<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, V: ToConstraintField<E::Fr> + ?Sized> SNARK for GM17<E, C, V> {
-    type AssignedCircuit = C;
+    type AllocatedCircuit = C;
     type Circuit = C;
-    type PreparedVerificationParameters = PreparedVerifyingKey<E>;
+    type PreparedVerifyingKey = PreparedVerifyingKey<E>;
     type Proof = Proof<E>;
-    type ProvingParameters = Parameters<E>;
-    type VerificationParameters = VerifyingKey<E>;
+    type ProvingKey = ProvingKey<E>;
     type VerifierInput = V;
+    type VerifyingKey = VerifyingKey<E>;
 
     fn setup<R: Rng>(
         circuit: &Self::Circuit,
         rng: &mut R,
-    ) -> Result<(Self::ProvingParameters, Self::PreparedVerificationParameters), SNARKError> {
+    ) -> Result<(Self::ProvingKey, Self::PreparedVerifyingKey), SNARKError> {
         let setup_time = start_timer!(|| "{Groth-Maller 2017}::Setup");
         let pp = generate_random_parameters::<E, Self::Circuit, R>(circuit, rng)?;
         let vk = prepare_verifying_key(pp.vk.clone());
@@ -62,18 +62,18 @@ impl<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, V: ToConstraintField<E::
     }
 
     fn prove<R: Rng>(
-        pp: &Self::ProvingParameters,
-        input_and_witness: &Self::AssignedCircuit,
+        proving_key: &Self::ProvingKey,
+        input_and_witness: &Self::AllocatedCircuit,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         let proof_time = start_timer!(|| "{Groth-Maller 2017}::Prove");
-        let result = create_random_proof::<E, _, _>(input_and_witness, pp, rng)?;
+        let result = create_random_proof::<E, _, _>(input_and_witness, proving_key, rng)?;
         end_timer!(proof_time);
         Ok(result)
     }
 
     fn verify(
-        vk: &Self::PreparedVerificationParameters,
+        verifying_key: &Self::PreparedVerifyingKey,
         input: &Self::VerifierInput,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
@@ -82,7 +82,7 @@ impl<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, V: ToConstraintField<E::
         let input = input.to_field_elements()?;
         end_timer!(conversion_time);
         let verification = start_timer!(|| format!("Verify proof w/ input len: {}", input.len()));
-        let result = verify_proof(&vk, proof, &input)?;
+        let result = verify_proof(&verifying_key, proof, &input)?;
         end_timer!(verification);
         end_timer!(verify_time);
         Ok(result)
