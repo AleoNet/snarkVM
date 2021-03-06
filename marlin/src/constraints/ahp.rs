@@ -22,10 +22,7 @@ use crate::{
         polynomial::AlgebraForAHP,
     },
     fiat_shamir::{constraints::FiatShamirRngVar, FiatShamirRng},
-    PhantomData,
-    String,
-    ToString,
-    Vec,
+    PhantomData, String, ToString, Vec,
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
@@ -43,16 +40,10 @@ use snarkvm_gadgets::{
 use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
 use snarkvm_polycommit::{
     constraints::{
-        EvaluationsVar,
-        LabeledPointVar,
-        LinearCombinationCoeffVar,
-        LinearCombinationVar,
-        PCCheckVar,
-        PrepareGadget,
+        EvaluationsVar, LabeledPointVar, LinearCombinationCoeffVar, LinearCombinationVar, PCCheckVar, PrepareGadget,
         QuerySetVar,
     },
-    LCTerm,
-    PolynomialCommitment,
+    LCTerm, PolynomialCommitment,
 };
 use snarkvm_r1cs::ConstraintSystem;
 
@@ -115,11 +106,11 @@ pub struct AHPForR1CS<
 }
 
 impl<
-    TargetField: PrimeField,
-    BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField>,
-    PCG: PCCheckVar<TargetField, PC, BaseField>,
-> AHPForR1CS<TargetField, BaseField, PC, PCG>
+        TargetField: PrimeField,
+        BaseField: PrimeField,
+        PC: PolynomialCommitment<TargetField>,
+        PCG: PCCheckVar<TargetField, PC, BaseField>,
+    > AHPForR1CS<TargetField, BaseField, PC, PCG>
 where
     PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
     PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
@@ -672,64 +663,90 @@ where
 
         let mut query_set_gadget = QuerySetVar::<TargetField, BaseField> { 0: HashSet::new() };
 
-        query_set_gadget.0.insert(("g_1".to_string(), LabeledPointVar {
-            name: "beta".to_string(),
-            value: beta.clone(),
-        }));
-        query_set_gadget.0.insert(("z_b".to_string(), LabeledPointVar {
-            name: "beta".to_string(),
-            value: beta.clone(),
-        }));
-        query_set_gadget.0.insert(("t".to_string(), LabeledPointVar {
-            name: "beta".to_string(),
-            value: beta.clone(),
-        }));
-        query_set_gadget
-            .0
-            .insert(("outer_sumcheck".to_string(), LabeledPointVar {
+        query_set_gadget.0.insert((
+            "g_1".to_string(),
+            LabeledPointVar {
                 name: "beta".to_string(),
                 value: beta.clone(),
-            }));
-        query_set_gadget.0.insert(("g_2".to_string(), LabeledPointVar {
-            name: "gamma".to_string(),
-            value: gamma.clone(),
-        }));
-        query_set_gadget.0.insert(("a_denom".to_string(), LabeledPointVar {
-            name: "gamma".to_string(),
-            value: gamma.clone(),
-        }));
-        query_set_gadget.0.insert(("b_denom".to_string(), LabeledPointVar {
-            name: "gamma".to_string(),
-            value: gamma.clone(),
-        }));
-        query_set_gadget.0.insert(("c_denom".to_string(), LabeledPointVar {
-            name: "gamma".to_string(),
-            value: gamma.clone(),
-        }));
-        query_set_gadget
-            .0
-            .insert(("inner_sumcheck".to_string(), LabeledPointVar {
+            },
+        ));
+        query_set_gadget.0.insert((
+            "z_b".to_string(),
+            LabeledPointVar {
+                name: "beta".to_string(),
+                value: beta.clone(),
+            },
+        ));
+        query_set_gadget.0.insert((
+            "t".to_string(),
+            LabeledPointVar {
+                name: "beta".to_string(),
+                value: beta.clone(),
+            },
+        ));
+        query_set_gadget.0.insert((
+            "outer_sumcheck".to_string(),
+            LabeledPointVar {
+                name: "beta".to_string(),
+                value: beta.clone(),
+            },
+        ));
+        query_set_gadget.0.insert((
+            "g_2".to_string(),
+            LabeledPointVar {
                 name: "gamma".to_string(),
                 value: gamma.clone(),
-            }));
-        query_set_gadget
-            .0
-            .insert(("vanishing_poly_h_alpha".to_string(), LabeledPointVar {
+            },
+        ));
+        query_set_gadget.0.insert((
+            "a_denom".to_string(),
+            LabeledPointVar {
+                name: "gamma".to_string(),
+                value: gamma.clone(),
+            },
+        ));
+        query_set_gadget.0.insert((
+            "b_denom".to_string(),
+            LabeledPointVar {
+                name: "gamma".to_string(),
+                value: gamma.clone(),
+            },
+        ));
+        query_set_gadget.0.insert((
+            "c_denom".to_string(),
+            LabeledPointVar {
+                name: "gamma".to_string(),
+                value: gamma.clone(),
+            },
+        ));
+        query_set_gadget.0.insert((
+            "inner_sumcheck".to_string(),
+            LabeledPointVar {
+                name: "gamma".to_string(),
+                value: gamma.clone(),
+            },
+        ));
+        query_set_gadget.0.insert((
+            "vanishing_poly_h_alpha".to_string(),
+            LabeledPointVar {
                 name: "alpha".to_string(),
                 value: alpha.clone(),
-            }));
-        query_set_gadget
-            .0
-            .insert(("vanishing_poly_h_beta".to_string(), LabeledPointVar {
+            },
+        ));
+        query_set_gadget.0.insert((
+            "vanishing_poly_h_beta".to_string(),
+            LabeledPointVar {
                 name: "beta".to_string(),
                 value: beta.clone(),
-            }));
-        query_set_gadget
-            .0
-            .insert(("vanishing_poly_k_gamma".to_string(), LabeledPointVar {
+            },
+        ));
+        query_set_gadget.0.insert((
+            "vanishing_poly_k_gamma".to_string(),
+            LabeledPointVar {
                 name: "gamma".to_string(),
                 value: gamma.clone(),
-            }));
+            },
+        ));
 
         let mut evaluations_gadget = EvaluationsVar::<TargetField, BaseField> { 0: HashMap::new() };
 
@@ -850,8 +867,8 @@ where
 
         // 4 comms for beta from the round 1
         const PROOF_1_LABELS: [&str; 4] = ["w", "z_a", "z_b", "mask_poly"];
-        for (comm, label) in proof.commitments[0].iter().zip(PROOF_1_LABELS.iter()) {
-            let prepared_comm = PCG::PreparedCommitmentVar::prepare(comm)?;
+        for (i, (comm, label)) in proof.commitments[0].iter().zip(PROOF_1_LABELS.iter()).enumerate() {
+            let prepared_comm = PCG::PreparedCommitmentVar::prepare(cs.ns(|| format!("prepare_1_{}", i)), comm)?;
             comms.push(PCG::create_prepared_labeled_commitment(
                 label.to_string(),
                 prepared_comm,
@@ -867,12 +884,13 @@ where
         // 3 comms for beta from the round 2
         const PROOF_2_LABELS: [&str; 3] = ["t", "g_1", "h_1"];
         let proof_2_bounds = [None, Some(h_minus_2), None];
-        for ((comm, label), bound) in proof.commitments[1]
+        for (i, ((comm, label), bound)) in proof.commitments[1]
             .iter()
             .zip(PROOF_2_LABELS.iter())
             .zip(proof_2_bounds.iter())
+            .enumerate()
         {
-            let prepared_comm = PCG::PreparedCommitmentVar::prepare(comm)?;
+            let prepared_comm = PCG::PreparedCommitmentVar::prepare(cs.ns(|| format!("prepare_2_{}", i)), comm)?;
             comms.push(PCG::create_prepared_labeled_commitment(
                 label.to_string(),
                 prepared_comm,
@@ -887,12 +905,13 @@ where
         // 2 comms for gamma from the round 3
         const PROOF_3_LABELS: [&str; 2] = ["g_2", "h_2"];
         let proof_3_bounds = [Some(k_minus_2), None];
-        for ((comm, label), bound) in proof.commitments[2]
+        for (i, ((comm, label), bound)) in proof.commitments[2]
             .iter()
             .zip(PROOF_3_LABELS.iter())
             .zip(proof_3_bounds.into_iter())
+            .enumerate()
         {
-            let prepared_comm = PCG::PreparedCommitmentVar::prepare(comm)?;
+            let prepared_comm = PCG::PreparedCommitmentVar::prepare(cs.ns(|| format!("prepare_3_{}", i)), comm)?;
             comms.push(PCG::create_prepared_labeled_commitment(
                 label.to_string(),
                 prepared_comm,
