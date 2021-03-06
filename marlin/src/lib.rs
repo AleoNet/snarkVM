@@ -43,6 +43,7 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::{
     collections::BTreeMap,
+    marker::PhantomData,
     string::{String, ToString},
     vec::Vec,
 };
@@ -51,6 +52,7 @@ use alloc::{
 #[cfg(feature = "std")]
 use std::{
     collections::BTreeMap,
+    marker::PhantomData,
     string::{String, ToString},
     vec::Vec,
 };
@@ -75,6 +77,9 @@ pub use parameters::*;
 /// Implements the snarkVM-compatible Marlin SNARK interface.
 pub mod snark;
 pub use snark::*;
+
+/// Implements the Marlin verification gadget.
+pub mod constraints;
 
 /// Implements a Fiat-Shamir based Rng that allows one to incrementally update
 /// the seed based on new messages in the proof transcript.
