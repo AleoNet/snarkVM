@@ -61,7 +61,7 @@ impl<F: PrimeField, M: MaskedMerkleParameters, HG: MaskedCRHGadget<M::H, F>, CP:
         if mask.len() != CP::MASK_LENGTH {
             return Err(SynthesisError::Unsatisfiable);
         }
-        let mask_bytes = UInt8::alloc_input_vec(cs.ns(|| "mask"), &mask)?;
+        let mask_bytes = UInt8::alloc_input_vec_le(cs.ns(|| "mask"), &mask)?;
 
         let crh_parameters =
             <HG as CRHGadget<M::H, F>>::ParametersGadget::alloc(&mut cs.ns(|| "new_parameters"), || {

@@ -25,12 +25,17 @@ use snarkvm_gadgets::{
         eq::{ConditionalEqGadget, EqGadget},
         select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
         uint::UInt8,
-        ToBitsGadget,
+        ToBitsBEGadget,
+        ToBitsLEGadget,
         ToBytesGadget,
     },
 };
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
-use snarkvm_utilities::{bititerator::BitIteratorLE, bytes::ToBytes, to_bytes};
+use snarkvm_utilities::{
+    bititerator::{BitIteratorBE, BitIteratorLE},
+    bytes::ToBytes,
+    to_bytes,
+};
 
 use snarkvm_gadgets::utilities::eq::NEqGadget;
 use std::{
@@ -347,23 +352,44 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ConditionalEqGadget<BaseFie
     }
 }
 
-impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsGadget<BaseField>
+impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsBEGadget<BaseField>
     for NonNativeFieldVar<TargetField, BaseField>
 {
-    fn to_bits<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+    fn to_bits_be<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         match self {
-            Self::Constant(_) => self.to_bits_strict(cs.ns(|| "to_bits_strict")),
-            Self::Var(v) => v.to_bits(cs.ns(|| "to_bits")),
+            Self::Constant(_) => self.to_bits_be_strict(cs.ns(|| "to_bits_strict")),
+            Self::Var(v) => v.to_bits_be(cs.ns(|| "to_bits")),
         }
     }
 
-    fn to_bits_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+    fn to_bits_be_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        match self {
+            Self::Constant(c) => Ok(BitIteratorBE::new(&c.into_repr())
+                .take((TargetField::Parameters::MODULUS_BITS) as usize)
+                .map(Boolean::constant)
+                .collect::<Vec<_>>()),
+            Self::Var(v) => v.to_bits_be_strict(cs.ns(|| "to_bits_strict")),
+        }
+    }
+}
+
+impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsLEGadget<BaseField>
+    for NonNativeFieldVar<TargetField, BaseField>
+{
+    fn to_bits_le<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        match self {
+            Self::Constant(_) => self.to_bits_le_strict(cs.ns(|| "to_bits_strict")),
+            Self::Var(v) => v.to_bits_le(cs.ns(|| "to_bits")),
+        }
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         match self {
             Self::Constant(c) => Ok(BitIteratorLE::new(&c.into_repr())
                 .take((TargetField::Parameters::MODULUS_BITS) as usize)
                 .map(Boolean::constant)
                 .collect::<Vec<_>>()),
-            Self::Var(v) => v.to_bits_strict(cs.ns(|| "to_bits_strict")),
+            Self::Var(v) => v.to_bits_le_strict(cs.ns(|| "to_bits_strict")),
         }
     }
 }

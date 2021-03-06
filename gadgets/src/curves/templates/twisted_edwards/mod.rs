@@ -23,7 +23,7 @@ use crate::traits::{
         eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         select::CondSelectGadget,
         uint::UInt8,
-        ToBitsGadget,
+        ToBitsBEGadget,
         ToBytesGadget,
     },
 };
@@ -944,7 +944,7 @@ mod projective_impl {
             Ok(())
         }
 
-        fn precomputed_base_3_bit_signed_digit_scalar_mul<'a, CS, I, J, K, B>(
+        fn precomputed_base_3_bit_signed_digit_scalar_mul_be<'a, CS, I, J, K, B>(
             mut cs: CS,
             bases: &[B],
             scalars: K,
@@ -988,7 +988,7 @@ mod projective_impl {
 
                     let bits = bits
                         .borrow()
-                        .to_bits(&mut cs.ns(|| format!("Convert Scalar {}, {} to bits", segment_i, i)))?;
+                        .to_bits_be(&mut cs.ns(|| format!("Convert Scalar {}, {} to bits", segment_i, i)))?;
                     if bits.len() != CHUNK_SIZE {
                         return Err(SynthesisError::Unsatisfiable);
                     }
@@ -1296,17 +1296,17 @@ impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> NEqGadget
     }
 }
 
-impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> ToBitsGadget<F> for AffineGadget<P, F, FG> {
-    fn to_bits<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let mut x_bits = self.x.to_bits(cs.ns(|| "X Coordinate To Bits"))?;
-        let y_bits = self.y.to_bits(cs.ns(|| "Y Coordinate To Bits"))?;
+impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> ToBitsBEGadget<F> for AffineGadget<P, F, FG> {
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut x_bits = self.x.to_bits_be(cs.ns(|| "X Coordinate To Bits"))?;
+        let y_bits = self.y.to_bits_be(cs.ns(|| "Y Coordinate To Bits"))?;
         x_bits.extend_from_slice(&y_bits);
         Ok(x_bits)
     }
 
-    fn to_bits_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let mut x_bits = self.x.to_bits_strict(cs.ns(|| "X Coordinate To Bits"))?;
-        let y_bits = self.y.to_bits_strict(cs.ns(|| "Y Coordinate To Bits"))?;
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut x_bits = self.x.to_bits_be_strict(cs.ns(|| "X Coordinate To Bits"))?;
+        let y_bits = self.y.to_bits_be_strict(cs.ns(|| "Y Coordinate To Bits"))?;
         x_bits.extend_from_slice(&y_bits);
 
         Ok(x_bits)

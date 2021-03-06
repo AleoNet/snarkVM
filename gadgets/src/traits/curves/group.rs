@@ -19,7 +19,7 @@ use crate::utilities::{
     boolean::Boolean,
     eq::{EqGadget, NEqGadget},
     select::CondSelectGadget,
-    ToBitsGadget,
+    ToBitsBEGadget,
     ToBytesGadget,
 };
 use snarkvm_curves::{
@@ -37,7 +37,7 @@ pub trait GroupGadget<G: Group, F: Field>:
     + ToBytesGadget<F>
     + NEqGadget<F>
     + EqGadget<F>
-    + ToBitsGadget<F>
+    + ToBitsBEGadget<F>
     + CondSelectGadget<F>
     + AllocGadget<G, F>
     + Clone
@@ -155,7 +155,7 @@ pub trait GroupGadget<G: Group, F: Field>:
         Err(SynthesisError::AssignmentMissing)
     }
 
-    fn precomputed_base_3_bit_signed_digit_scalar_mul<CS, I, J, K, B>(
+    fn precomputed_base_3_bit_signed_digit_scalar_mul_be<CS, I, J, K, B>(
         _: CS,
         _: &[B],
         _: K,
@@ -170,35 +170,38 @@ pub trait GroupGadget<G: Group, F: Field>:
         Err(SynthesisError::AssignmentMissing)
     }
 
-    fn precomputed_base_multiscalar_mul<'a, CS, T, I, B>(
+    /// Computes `Σⱼ(scalarⱼ * baseⱼ)` for all j,
+    /// where `scalarⱼ` is a `Boolean` *big-endian*
+    /// representation of the j-th scalar.
+    fn precomputed_base_multiscalar_mul_be<'a, CS, T, I, B>(
         mut cs: CS,
         bases: &[B],
         scalars: I,
     ) -> Result<Self, SynthesisError>
     where
         CS: ConstraintSystem<F>,
-        T: 'a + ToBitsGadget<F> + ?Sized,
+        T: 'a + ToBitsBEGadget<F> + ?Sized,
         I: Iterator<Item = &'a T>,
         B: Borrow<[G]>,
     {
         let mut result = Self::zero(&mut cs.ns(|| "Declare Result"))?;
-        // Compute ∏(h_i^{m_i}) for all i.
+        // Compute Σᵢ(bitᵢ * baseᵢ) for all i.
         for (i, (bits, base_powers)) in scalars.zip_eq(bases).enumerate() {
             let base_powers = base_powers.borrow();
-            let bits = bits.to_bits(&mut cs.ns(|| format!("Convert Scalar {} to bits", i)))?;
+            let bits = bits.to_bits_be(&mut cs.ns(|| format!("Convert Scalar {} to bits", i)))?;
             result.precomputed_base_scalar_mul(cs.ns(|| format!("Chunk {}", i)), bits.iter().zip_eq(base_powers))?;
         }
         Ok(result)
     }
 
-    fn precomputed_base_symmetric_multiscalar_mul<'a, CS, T, I, B>(
+    fn precomputed_base_symmetric_multiscalar_mul_be<'a, CS, T, I, B>(
         mut cs: CS,
         bases: &[B],
         scalars: I,
     ) -> Result<Self, SynthesisError>
     where
         CS: ConstraintSystem<F>,
-        T: 'a + ToBitsGadget<F> + ?Sized,
+        T: 'a + ToBitsBEGadget<F> + ?Sized,
         I: Iterator<Item = &'a T>,
         B: Borrow<[G]>,
     {
@@ -206,7 +209,7 @@ pub trait GroupGadget<G: Group, F: Field>:
         // Compute ∏(h_i^{1  - 2*m_i}) for all i.
         for (i, (bits, base_powers)) in scalars.zip_eq(bases).enumerate() {
             let base_powers = base_powers.borrow();
-            let bits = bits.to_bits(&mut cs.ns(|| format!("Convert Scalar {} to bits", i)))?;
+            let bits = bits.to_bits_be(&mut cs.ns(|| format!("Convert Scalar {} to bits", i)))?;
 
             result.precomputed_base_symmetric_scalar_mul(
                 cs.ns(|| format!("Chunk {}", i)),
@@ -220,7 +223,7 @@ pub trait GroupGadget<G: Group, F: Field>:
     /// 1[p_i = 0] + g_i^{-1} h_i * 1[p_i = 1])^{m_i \xor p_i}) for all i, m_i
     /// being the scalars, p_i being the masks, h_i being the symmetric Pedersen bases and g_i the
     /// Pedersen bases.
-    fn precomputed_base_multiscalar_mul_masked<'a, CS, T, I, B>(
+    fn precomputed_base_multiscalar_mul_masked_be<'a, CS, T, I, B>(
         mut cs: CS,
         bases: &[B],
         scalars: I,
@@ -229,7 +232,7 @@ pub trait GroupGadget<G: Group, F: Field>:
     ) -> Result<Self, SynthesisError>
     where
         CS: ConstraintSystem<F>,
-        T: 'a + ToBitsGadget<F> + ?Sized,
+        T: 'a + ToBitsBEGadget<F> + ?Sized,
         I: Iterator<Item = &'a T>,
         B: Borrow<[G]>,
     {
@@ -239,8 +242,8 @@ pub trait GroupGadget<G: Group, F: Field>:
         {
             let base_powers = base_powers.borrow();
             let mask_powers = mask_powers.borrow();
-            let scalar_bits = scalar.to_bits(&mut cs.ns(|| format!("Convert scalar {} to bits", i)))?;
-            let mask_bits = mask.to_bits(&mut cs.ns(|| format!("Convert mask {} to bits", i)))?;
+            let scalar_bits = scalar.to_bits_be(&mut cs.ns(|| format!("Convert scalar {} to bits", i)))?;
+            let mask_bits = mask.to_bits_be(&mut cs.ns(|| format!("Convert mask {} to bits", i)))?;
 
             let scalar_bits_with_base_powers = scalar_bits.into_iter().zip_eq(base_powers);
             let mask_bits_with_mask_powers = mask_bits.into_iter().zip_eq(mask_powers);
