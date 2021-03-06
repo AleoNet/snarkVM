@@ -32,4 +32,4 @@ pub mod polynomial;
 /// Implementation of the Marlin verification gadget.
 pub mod verifier;
 
-// pub mod verifier_test;
+pub mod verifier_test;

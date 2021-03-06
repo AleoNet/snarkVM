@@ -1,32 +1,48 @@
+use crate::constraints::data_structures::CircuitVerifyingKeyVar;
+
 #[cfg(test)]
 mod tests {
-    use crate::ahp::prover::ProverMsg;
-    use crate::{
-        constraints::{
-            data_structures::{IndexVerifierKeyVar, ProofVar, ProverMsgVar},
-            verifier::Marlin,
-        },
-        fiat_shamir::{
-            constraints::FiatShamirAlgebraicSpongeRngVar, poseidon::constraints::PoseidonSpongeVar,
-            poseidon::PoseidonSponge, FiatShamirAlgebraicSpongeRng,
-        },
-        Marlin as MarlinNative, MarlinRecursiveConfig, Proof,
+    // use crate::ahp::prover::ProverMsg;
+    // use crate::{
+    //     constraints::{
+    //         data_structures::{CircuitVerifyingKeyVar, ProofVar, ProverMsgVar},
+    //         verifier::Marlin,
+    //     },
+    //     fiat_shamir::{
+    //         constraints::FiatShamirAlgebraicSpongeRngVar, poseidon::constraints::PoseidonSpongeVar,
+    //         poseidon::PoseidonSponge, FiatShamirAlgebraicSpongeRng,
+    //     },
+    //     Marlin as MarlinNative, MarlinRecursiveConfig, Proof,
+    // };
+    // use ark_ec::{CurveCycle, PairingEngine, PairingFriendlyCycle};
+    // use ark_ff::{Field, UniformRand};
+    // use ark_mnt4_298::{constraints::PairingVar as MNT4PairingVar, Fq, Fr, MNT4_298};
+    // use ark_mnt6_298::MNT6_298;
+    // use ark_nonnative_field::NonNativeFieldVar;
+    // use ark_poly::univariate::DensePolynomial;
+    // use ark_poly_commit::marlin_pc::{
+    //     BatchLCProofVar, CommitmentVar, MarlinKZG10, MarlinKZG10Gadget,
+    // };
+    // use ark_r1cs_std::{alloc::AllocVar, bits::boolean::Boolean, eq::EqGadget};
+    // use ark_relations::r1cs::OptimizationGoal;
+    // use ark_relations::{
+    //     lc, ns,
+    //     r1cs::{ConstraintSynthesizer, ConstraintSystem, ConstraintSystemRef, SynthesisError},
+    // };
+
+    use crate::constraints::data_structures::CircuitVerifyingKeyVar;
+    use crate::constraints::{data_structures::ProofVar, verifier::MarlinVerificationGadget};
+    use crate::fiat_shamir::{
+        constraints::FiatShamirAlgebraicSpongeRngVar, poseidon::constraints::PoseidonSpongeVar,
+        poseidon::PoseidonSponge, FiatShamirAlgebraicSpongeRng,
     };
-    use ark_ec::{CurveCycle, PairingEngine, PairingFriendlyCycle};
-    use ark_ff::{Field, UniformRand};
-    use ark_mnt4_298::{constraints::PairingVar as MNT4PairingVar, Fq, Fr, MNT4_298};
-    use ark_mnt6_298::MNT6_298;
-    use ark_nonnative_field::NonNativeFieldVar;
-    use ark_poly::univariate::DensePolynomial;
-    use ark_poly_commit::marlin_pc::{
-        BatchLCProofVar, CommitmentVar, MarlinKZG10, MarlinKZG10Gadget,
-    };
-    use ark_r1cs_std::{alloc::AllocVar, bits::boolean::Boolean, eq::EqGadget};
-    use ark_relations::r1cs::OptimizationGoal;
-    use ark_relations::{
-        lc, ns,
-        r1cs::{ConstraintSynthesizer, ConstraintSystem, ConstraintSystemRef, SynthesisError},
-    };
+    use crate::marlin::Proof;
+    use snarkvm_curves::traits::PairingEngine;
+    use snarkvm_fields::Field;
+    use snarkvm_nonnative::NonNativeFieldVar;
+    use snarkvm_polycommit::marlin_pc::MarlinKZG10;
+    use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError};
+
     use core::ops::MulAssign;
     use hashbrown::HashMap;
 
@@ -42,7 +58,7 @@ mod tests {
     }
 
     type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
-    type MultiPC = MarlinKZG10<MNT4_298, DensePolynomial<Fr>>;
+    type MultiPC = MarlinKZG10<MNT4_298>;
     type MarlinNativeInst = MarlinNative<Fr, Fq, MultiPC, FS, MarlinRecursiveConfig>;
 
     type MultiPCVar = MarlinKZG10Gadget<MNT298Cycle, DensePolynomial<Fr>, MNT4PairingVar>;
@@ -56,10 +72,7 @@ mod tests {
     }
 
     impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<ConstraintF> {
-        fn generate_constraints(
-            self,
-            cs: ConstraintSystemRef<ConstraintF>,
-        ) -> Result<(), SynthesisError> {
+        fn generate_constraints(self, cs: ConstraintSystemRef<ConstraintF>) -> Result<(), SynthesisError> {
             let a = cs.new_witness_variable(|| self.a.ok_or(SynthesisError::AssignmentMissing))?;
             let b = cs.new_witness_variable(|| self.b.ok_or(SynthesisError::AssignmentMissing))?;
             let c = cs.new_input_variable(|| {
@@ -71,8 +84,7 @@ mod tests {
             })?;
 
             for _ in 0..(self.num_variables - 3) {
-                let _ =
-                    cs.new_witness_variable(|| self.a.ok_or(SynthesisError::AssignmentMissing))?;
+                let _ = cs.new_witness_variable(|| self.a.ok_or(SynthesisError::AssignmentMissing))?;
             }
 
             for _ in 0..self.num_constraints {
@@ -118,11 +130,11 @@ mod tests {
 
         let cs_sys = ConstraintSystem::<Fq>::new();
         let cs = ConstraintSystemRef::new(cs_sys);
-        cs.set_optimization_goal(OptimizationGoal::Weight);
+        // cs.set_optimization_goal(OptimizationGoal::Weight);
 
         // BEGIN: ivk to ivk_gadget
-        let ivk_gadget: IndexVerifierKeyVar<Fr, Fq, MultiPC, MultiPCVar> =
-            IndexVerifierKeyVar::new_witness(ns!(cs, "alloc#index vk"), || Ok(index_vk)).unwrap();
+        let ivk_gadget: CircuitVerifyingKeyVar<Fr, Fq, MultiPC, MultiPCVar> =
+            CircuitVerifyingKeyVar::alloc(ns!(cs, "alloc#index vk"), || Ok(index_vk)).unwrap();
         // END: ivk to ivk_gadget
 
         // BEGIN: public input to public_input_gadget
@@ -130,10 +142,7 @@ mod tests {
 
         let public_input_gadget: Vec<NonNativeFieldVar<Fr, Fq>> = public_input
             .iter()
-            .map(|x| {
-                NonNativeFieldVar::new_input(ns!(cs.clone(), "alloc#public input"), || Ok(x))
-                    .unwrap()
-            })
+            .map(|x| NonNativeFieldVar::new_input(ns!(cs.clone(), "alloc#public input"), || Ok(x)).unwrap())
             .collect();
         // END: public input to public_input_gadget
 
@@ -150,20 +159,14 @@ mod tests {
             .iter()
             .map(|lst| {
                 lst.iter()
-                    .map(|comm| {
-                        CommitmentVar::new_witness(ns!(cs.clone(), "alloc#commitment"), || Ok(comm))
-                            .unwrap()
-                    })
+                    .map(|comm| CommitmentVar::new_witness(ns!(cs.clone(), "alloc#commitment"), || Ok(comm)).unwrap())
                     .collect()
             })
             .collect();
 
         let evaluation_gadgets_vec: Vec<NonNativeFieldVar<Fr, Fq>> = evaluations
             .iter()
-            .map(|eval| {
-                NonNativeFieldVar::new_witness(ns!(cs.clone(), "alloc#evaluation"), || Ok(eval))
-                    .unwrap()
-            })
+            .map(|eval| NonNativeFieldVar::new_witness(ns!(cs.clone(), "alloc#evaluation"), || Ok(eval)).unwrap())
             .collect();
 
         let prover_message_gadgets: Vec<ProverMsgVar<Fr, Fq>> = prover_messages
@@ -174,10 +177,7 @@ mod tests {
                     ProverMsg::FieldElements(v) => v
                         .iter()
                         .map(|elem| {
-                            NonNativeFieldVar::new_witness(ns!(cs, "alloc#prover message"), || {
-                                Ok(elem)
-                            })
-                            .unwrap()
+                            NonNativeFieldVar::new_witness(ns!(cs, "alloc#prover message"), || Ok(elem)).unwrap()
                         })
                         .collect(),
                 };
@@ -186,12 +186,11 @@ mod tests {
             })
             .collect();
 
-        let pc_batch_proof =
-            BatchLCProofVar::<MNT298Cycle, DensePolynomial<Fr>, MNT4PairingVar>::new_witness(
-                ns!(cs, "alloc#proof"),
-                || Ok(pc_proof),
-            )
-            .unwrap();
+        let pc_batch_proof = BatchLCProofVar::<MNT298Cycle, DensePolynomial<Fr>, MNT4PairingVar>::new_witness(
+            ns!(cs, "alloc#proof"),
+            || Ok(pc_proof),
+        )
+        .unwrap();
 
         let mut evaluation_gadgets = HashMap::<String, NonNativeFieldVar<Fr, Fq>>::new();
 
@@ -213,7 +212,6 @@ mod tests {
         }
 
         let proof_gadget: ProofVar<Fr, Fq, MultiPC, MultiPCVar> = ProofVar {
-            cs: cs.clone(),
             commitments: commitment_gadgets,
             evaluations: evaluation_gadgets,
             prover_messages: prover_message_gadgets,
@@ -221,7 +219,7 @@ mod tests {
         };
         // END: proof to proof_gadget
 
-        Marlin::<Fr, Fq, MultiPC, MultiPCVar>::verify::<
+        MarlinVerificationGadget::<Fr, Fq, MultiPC, MultiPCVar>::verify::<
             FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>,
             FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>,
         >(&ivk_gadget, &public_input_gadget, &proof_gadget)
@@ -229,10 +227,7 @@ mod tests {
         .enforce_equal(&Boolean::Constant(true))
         .unwrap();
 
-        println!(
-            "after Marlin, num_of_constraints = {}",
-            cs.num_constraints()
-        );
+        println!("after Marlin, num_of_constraints = {}", cs.num_constraints());
 
         assert!(
             cs.is_satisfied().unwrap(),

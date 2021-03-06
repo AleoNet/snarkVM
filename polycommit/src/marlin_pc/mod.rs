@@ -14,35 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod constraints;
+pub use constraints::*;
+
+mod data_structures;
+pub use data_structures::*;
+
 use crate::{
-    kzg10,
-    BTreeMap,
-    BTreeSet,
-    BatchLCProof,
-    Error,
-    Evaluations,
-    LabeledCommitment,
-    LabeledPolynomial,
-    LinearCombination,
-    PCCommitterKey,
-    PCRandomness,
-    PCUniversalParams,
-    Polynomial,
-    PolynomialCommitment,
-    QuerySet,
-    String,
-    ToOwned,
-    ToString,
-    Vec,
+    kzg10, BTreeMap, BTreeSet, BatchLCProof, Error, Evaluations, LabeledCommitment, LabeledPolynomial,
+    LinearCombination, PCCommitterKey, PCRandomness, PCUniversalParams, Polynomial, PolynomialCommitment, QuerySet,
+    String, ToOwned, ToString, Vec,
 };
 use snarkvm_curves::traits::{AffineCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 
 use core::{convert::TryInto, marker::PhantomData};
 use rand_core::RngCore;
-
-mod data_structures;
-pub use data_structures::*;
 
 /// Polynomial commitment based on [[KZG10]][kzg], with degree enforcement, batching,
 /// and (optional) hiding property taken from [[CHMMVW20, “Marlin”]][marlin].
