@@ -622,6 +622,18 @@ impl<F: PrimeField> AllocGadget<F, F> for AllocatedFp<F> {
 
 // FpGadget Impl
 
+impl<F: PrimeField> FpGadget<F> {
+    /// Constructs `Self` from a `Boolean`: if `other` is false, this outputs
+    /// `zero`, else it outputs `one`.
+    pub fn from_boolean<CS: ConstraintSystem<F>>(cs: CS, other: Boolean) -> Result<Self, SynthesisError> {
+        if let Boolean::Constant(b) = other {
+            Ok(Self::Constant(F::from(b as u128)))
+        } else {
+            Ok(Self::Variable(AllocatedFp::from_boolean(cs, other)?))
+        }
+    }
+}
+
 impl<F: PrimeField> FieldGadget<F, F> for FpGadget<F> {
     type Variable = ConstraintVariable<F>;
 
@@ -972,6 +984,10 @@ impl<F: PrimeField> ToBytesGadget<F> for FpGadget<F> {
 }
 
 impl<F: PrimeField> CondSelectGadget<F> for FpGadget<F> {
+    /// Conditionally selects one of `first` and `second` based on the value of
+    /// `self`:
+    ///
+    /// If `cond` is `true`, this outputs `first`; else, it outputs `second`.
     #[inline]
     fn conditionally_select<CS: ConstraintSystem<F>>(
         mut cs: CS,

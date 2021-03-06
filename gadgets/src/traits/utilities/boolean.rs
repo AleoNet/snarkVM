@@ -621,6 +621,94 @@ impl Boolean {
 
         Ok(())
     }
+
+    pub fn kary_nand<F: Field, CS: ConstraintSystem<F>>(mut cs: CS, bits: &[Self]) -> Result<Self, SynthesisError> {
+        Ok(Self::kary_and(cs.ns(|| "kary_and"), bits)?.not())
+    }
+
+    fn enforce_kary_nand<F: Field, CS: ConstraintSystem<F>>(mut cs: CS, bits: &[Self]) -> Result<(), SynthesisError> {
+        use Boolean::*;
+        let r = Self::kary_nand(cs.ns(|| "kary_and"), bits)?;
+        match r {
+            Constant(true) => Ok(()),
+            Constant(false) => Err(SynthesisError::AssignmentMissing),
+            Is(_) | Not(_) => {
+                cs.enforce(
+                    || "enforce_constraint",
+                    |lc| lc,
+                    |lc| lc + CS::one(),
+                    |lc| lc + CS::one(),
+                );
+
+                Ok(())
+            }
+        }
+    }
+
+    pub fn enforce_smaller_or_equal_than_le<'a, F: Field, CS: ConstraintSystem<F>>(
+        mut cs: CS,
+        bits: &[Self],
+        element: impl AsRef<[u64]>,
+    ) -> Result<Vec<Self>, SynthesisError> {
+        let b: &[u64] = element.as_ref();
+
+        let mut bits_iter = bits.iter().rev(); // Iterate in big-endian
+
+        // Runs of ones in r
+        let mut last_run = Boolean::constant(true);
+        let mut current_run = vec![];
+
+        let mut element_num_bits = 0;
+        for _ in BitIteratorBE::new_without_leading_zeros(b) {
+            element_num_bits += 1;
+        }
+
+        if bits.len() > element_num_bits {
+            let mut or_result = Boolean::constant(false);
+            for (i, should_be_zero) in bits[element_num_bits..].iter().enumerate() {
+                or_result = Boolean::or(
+                    cs.ns(|| format!("or_result OR should_be_zero_{}", i)),
+                    &or_result,
+                    &should_be_zero,
+                )?;
+                let _ = bits_iter.next().unwrap();
+            }
+            or_result.enforce_equal(cs.ns(|| "enforce_equal"), &Boolean::constant(false))?;
+        }
+
+        for (i, (b, a)) in BitIteratorBE::new_without_leading_zeros(b)
+            .zip(bits_iter.by_ref())
+            .enumerate()
+        {
+            if b {
+                // This is part of a run of ones.
+                current_run.push(a.clone());
+            } else {
+                if !current_run.is_empty() {
+                    // This is the start of a run of zeros, but we need
+                    // to k-ary AND against `last_run` first.
+
+                    current_run.push(last_run.clone());
+                    last_run = Self::kary_and(cs.ns(|| format!("kary_and_{}", i)), &current_run)?;
+                    current_run.truncate(0);
+                }
+
+                // If `last_run` is true, `a` must be false, or it would
+                // not be in the field.
+                //
+                // If `last_run` is false, `a` can be true or false.
+                //
+                // Ergo, at least one of `last_run` and `a` must be false.
+                Self::enforce_kary_nand(cs.ns(|| format!("enforce_kary_and_{}", i)), &[
+                    last_run.clone(),
+                    a.clone(),
+                ])?;
+            }
+        }
+        assert!(bits_iter.next().is_none());
+
+        Ok(current_run)
+    }
 }
 
 impl PartialEq for Boolean {
