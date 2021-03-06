@@ -93,7 +93,7 @@ impl<F: Field, G: Group, GG: GroupGadget<G, F>, S: PedersenSize> CRHGadget<Peder
         // Pad the input if it is not the correct length.
         let input_in_bits = pad_input_and_bitify::<S>(input);
 
-        Ok(GG::precomputed_base_multiscalar_mul_be(
+        Ok(GG::multi_scalar_multiplication(
             cs,
             &parameters.parameters.bases,
             input_in_bits.chunks(S::WINDOW_SIZE),
@@ -138,7 +138,7 @@ impl<F: PrimeField, G: Group, GG: GroupGadget<G, F>, S: PedersenSize> MaskedCRHG
 
         // H_2(p) = sum of h_i^{1-2*p_i} for all i.
         let mask_input_in_bits = pad_input_and_bitify::<S>(mask.clone());
-        let mask_symmetric_hash = GG::precomputed_base_symmetric_multiscalar_mul_be(
+        let mask_symmetric_hash = GG::symmetric_multi_scalar_multiplication(
             cs.ns(|| "evaluate mask with mask bases"),
             &mask_parameters.parameters.bases,
             mask_input_in_bits.chunks(S::WINDOW_SIZE),
@@ -149,7 +149,7 @@ impl<F: PrimeField, G: Group, GG: GroupGadget<G, F>, S: PedersenSize> MaskedCRHG
         let input_in_bits = pad_input_and_bitify::<S>(input);
         let mask_in_bits = pad_input_and_bitify::<S>(mask);
 
-        let masked_output = GG::precomputed_base_multiscalar_mul_masked_be(
+        let masked_output = GG::masked_multi_scalar_multiplication(
             cs.ns(|| "multiscalar multiplication"),
             &parameters.parameters.bases,
             input_in_bits.chunks(S::WINDOW_SIZE),
