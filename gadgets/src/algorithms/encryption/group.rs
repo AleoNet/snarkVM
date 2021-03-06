@@ -503,7 +503,7 @@ impl<
     ) -> Result<Self::PublicKeyGadget, SynthesisError> {
         let private_key_bits = private_key.0.iter().flat_map(|b| b.to_bits_le()).collect::<Vec<_>>();
         let mut public_key = GG::zero(&mut cs.ns(|| "zero"))?;
-        public_key.precomputed_base_scalar_mul(
+        public_key.scalar_multiplication(
             cs.ns(|| "check_public_key_gadget"),
             private_key_bits.iter().zip_eq(&parameters.parameters.generator_powers),
         )?;
@@ -528,7 +528,7 @@ impl<
         let randomness_bits: Vec<_> = randomness.0.iter().flat_map(|byte| byte.to_bits_le()).collect();
 
         let mut c_0 = zero.clone();
-        c_0.precomputed_base_scalar_mul(
+        c_0.scalar_multiplication(
             cs.ns(|| "c_0"),
             randomness_bits.iter().zip_eq(&parameters.parameters.generator_powers),
         )?;

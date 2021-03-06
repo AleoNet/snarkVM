@@ -828,7 +828,7 @@ mod projective_impl {
             Ok(Self::new(self.x.negate(cs.ns(|| "negate x"))?, self.y.clone()))
         }
 
-        fn precomputed_base_scalar_mul<'a, CS, I, B>(
+        fn scalar_multiplication<'a, CS, I, B>(
             &mut self,
             mut cs: CS,
             scalar_bits_with_base_powers: I,
@@ -861,7 +861,7 @@ mod projective_impl {
             Ok(())
         }
 
-        fn precomputed_base_symmetric_scalar_mul<'a, CS, I, B>(
+        fn symmetric_scalar_multiplication<'a, CS, I, B>(
             &mut self,
             mut cs: CS,
             scalar_bits_with_base_powers: I,
@@ -910,7 +910,7 @@ mod projective_impl {
             Ok(())
         }
 
-        fn precomputed_base_scalar_mul_masked<'a, CS, I, B>(
+        fn masked_scalar_multiplication<'a, CS, I, B>(
             &mut self,
             mut cs: CS,
             scalar_bits_with_base_powers: I,
@@ -944,7 +944,7 @@ mod projective_impl {
             Ok(())
         }
 
-        fn precomputed_base_3_bit_signed_digit_scalar_mul_be<'a, CS, I, J, K, B>(
+        fn three_bit_signed_digit_scalar_multiplication<'a, CS, I, J, K, B>(
             mut cs: CS,
             bases: &[B],
             scalars: K,

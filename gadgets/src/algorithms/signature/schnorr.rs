@@ -164,7 +164,7 @@ impl<G: Group + CanonicalSerialize + CanonicalDeserialize, GG: GroupGadget<G, F>
     ) -> Result<Self::PublicKeyGadget, SynthesisError> {
         let randomness = randomness.iter().flat_map(|b| b.to_bits_le()).collect::<Vec<_>>();
         let mut rand_pk = public_key.public_key.clone();
-        rand_pk.precomputed_base_scalar_mul(
+        rand_pk.scalar_multiplication(
             cs.ns(|| "check_randomization_gadget"),
             randomness.iter().zip_eq(&parameters.parameters.generator_powers),
         )?;
