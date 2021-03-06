@@ -97,8 +97,6 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
         limb: &FpGadget<BaseField>,
         num_bits: usize,
     ) -> Result<Vec<Boolean>, SynthesisError> {
-        // let cs = limb.cs();
-
         let num_bits = min(BaseField::size_in_bits() - 1, num_bits);
         let mut bits_considered = Vec::with_capacity(num_bits);
         let limb_value = limb.get_value().unwrap_or_default();
@@ -122,7 +120,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
             _ => {
                 let mut bits = vec![];
                 for (i, b) in bits_considered.iter().enumerate() {
-                    bits.push(Boolean::alloc_input(cs.ns(|| format!("bit_{}", i)), || Ok(b))?);
+                    bits.push(Boolean::alloc(cs.ns(|| format!("bit_{}", i)), || Ok(b))?);
                 }
 
                 let mut bit_sum = FpGadget::zero(cs.ns(|| "zero"))?;
@@ -161,14 +159,14 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
         cs: &mut CS,
         elem: &mut AllocatedNonNativeFieldVar<TargetField, BaseField>,
     ) -> Result<(), SynthesisError> {
-        let params = get_params(
+        let field_parameters = get_params(
             TargetField::size_in_bits(),
             BaseField::size_in_bits(),
             elem.get_optimization_type(),
         );
         let surfeit = overhead!(elem.num_of_additions_over_normal_form + &BaseField::one()) + 1;
 
-        if BaseField::size_in_bits() > 2 * params.bits_per_limb + surfeit + 1 {
+        if BaseField::size_in_bits() > 2 * field_parameters.bits_per_limb + surfeit + 1 {
             Ok(())
         } else {
             Self::reduce(cs, elem)
@@ -183,23 +181,30 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
     ) -> Result<(), SynthesisError> {
         assert_eq!(elem.get_optimization_type(), elem_other.get_optimization_type());
 
-        let params = get_params(
+        let field_parameters = get_params(
             TargetField::size_in_bits(),
             BaseField::size_in_bits(),
             elem.get_optimization_type(),
         );
 
-        if 2 * params.bits_per_limb + log_2(params.num_limbs) as usize > BaseField::size_in_bits() - 1 {
+        if 2 * field_parameters.bits_per_limb + log_2(field_parameters.num_limbs) as usize
+            > BaseField::size_in_bits() - 1
+        {
             panic!("The current limb parameters do not support multiplication.");
         }
 
         loop {
             let prod_of_num_of_additions = (elem.num_of_additions_over_normal_form + &BaseField::one())
                 * &(elem_other.num_of_additions_over_normal_form + &BaseField::one());
-            let overhead_limb = overhead!(prod_of_num_of_additions.mul(
-                &BaseField::from_repr(<BaseField as PrimeField>::BigInteger::from((params.num_limbs) as u64)).unwrap()
-            ));
-            let bits_per_mulresult_limb = 2 * (params.bits_per_limb + 1) + overhead_limb;
+            let overhead_limb = overhead!(
+                prod_of_num_of_additions.mul(
+                    &BaseField::from_repr(<BaseField as PrimeField>::BigInteger::from(
+                        (field_parameters.num_limbs) as u64
+                    ))
+                    .unwrap()
+                )
+            );
+            let bits_per_mulresult_limb = 2 * (field_parameters.bits_per_limb + 1) + overhead_limb;
 
             if bits_per_mulresult_limb < BaseField::size_in_bits() {
                 break;
@@ -304,8 +309,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
 
             carry_value = BaseField::from_repr(carry_repr).unwrap();
 
-            let carry =
-                FpGadget::<BaseField>::alloc_input(cs.ns(|| format!("alloc_input_{}", group_id)), || Ok(carry_value))?;
+            let carry = FpGadget::<BaseField>::alloc(cs.ns(|| format!("alloc_{}", group_id)), || Ok(carry_value))?;
 
             accumulated_extra += limbs_to_bigint(bits_per_limb, &[pad_limb]);
 

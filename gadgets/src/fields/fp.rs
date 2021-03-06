@@ -984,6 +984,10 @@ impl<F: PrimeField> ToBytesGadget<F> for FpGadget<F> {
 }
 
 impl<F: PrimeField> CondSelectGadget<F> for FpGadget<F> {
+    /// Conditionally selects one of `first` and `second` based on the value of
+    /// `self`:
+    ///
+    /// If `cond` is `true`, this outputs `first`; else, it outputs `second`.
     #[inline]
     fn conditionally_select<CS: ConstraintSystem<F>>(
         mut cs: CS,

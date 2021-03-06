@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_gadgets::{traits::fields::FieldGadget, utilities::alloc::AllocGadget};
-use snarkvm_nonnative::NonNativeFieldVar;
-use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
+// use snarkvm_gadgets::{traits::fields::FieldGadget, utilities::alloc::AllocGadget};
+// use snarkvm_nonnative::NonNativeFieldVar;
+// use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
 // TODO (raychu86): Add to_contraint_field impls.
 

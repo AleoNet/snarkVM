@@ -70,22 +70,21 @@ impl<TargetField: PrimeField, BaseField: PrimeField> NonNativeFieldVar<TargetFie
         }
     }
 
-    /// Constructs `Self` from a `Boolean`: if `other` is false, this outputs
-    /// `zero`, else it outputs `one`.
-    pub fn from_boolean<CS: ConstraintSystem<BaseField>>(cs: CS, other: Boolean) -> Result<Self, SynthesisError> {
-        if let Boolean::Constant(b) = other {
+    /// Constructs `Self` from a `Boolean`: if `boolean` is `true`, this outputs
+    /// `one`, else it outputs `zero`.
+    pub fn from_boolean<CS: ConstraintSystem<BaseField>>(cs: CS, boolean: Boolean) -> Result<Self, SynthesisError> {
+        if let Boolean::Constant(b) = boolean {
             Ok(Self::Constant(<TargetField as From<u128>>::from(b as u128)))
         } else {
             // `other` is a variable
             let one = Self::Constant(TargetField::one());
             let zero = Self::Constant(TargetField::zero());
-            Self::conditionally_select(cs, &other, &one, &zero)
+            Self::conditionally_select(cs, &boolean, &one, &zero)
         }
     }
 
-    #[allow(dead_code)]
     /// Determine if two `NonNativeFieldVar` instances are equal.
-    fn is_eq<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
+    pub fn is_eq<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
         let mut constant = true;
 
         if let Self::Constant(_) = self {
@@ -99,8 +98,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> NonNativeFieldVar<TargetFie
         if constant {
             Ok(Boolean::Constant(self.value()? == other.value()?))
         } else {
-            let should_enforce_equal =
-                Boolean::alloc_input(cs.ns(|| "alloc_input"), || Ok(self.value()? == other.value()?))?;
+            let should_enforce_equal = Boolean::alloc(cs.ns(|| "alloc"), || Ok(self.value()? == other.value()?))?;
 
             self.conditional_enforce_equal(cs.ns(|| "conditional_enforce_equal"), other, &should_enforce_equal)?;
             self.conditional_enforce_not_equal(
