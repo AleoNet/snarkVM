@@ -16,7 +16,7 @@
 
 use crate::{
     fields::FpGadget,
-    traits::utilities::{alloc::AllocGadget, boolean::Boolean, uint::UInt8, ToBitsGadget, ToBytesGadget},
+    traits::utilities::{alloc::AllocGadget, boolean::Boolean, uint::UInt8, ToBitsBEGadget, ToBytesGadget},
 };
 use snarkvm_curves::traits::{ModelParameters, MontgomeryModelParameters};
 use snarkvm_fields::PrimeField;
@@ -66,13 +66,13 @@ impl<P: MontgomeryModelParameters, F: PrimeField> AllocGadget<<P as ModelParamet
     }
 }
 
-impl<P: MontgomeryModelParameters, F: PrimeField> ToBitsGadget<F> for Elligator2FieldGadget<P, F> {
-    fn to_bits<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        Ok(self.0.to_bits(cs)?)
+impl<P: MontgomeryModelParameters, F: PrimeField> ToBitsBEGadget<F> for Elligator2FieldGadget<P, F> {
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        Ok(self.0.to_bits_be(cs)?)
     }
 
-    fn to_bits_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        Ok(self.0.to_bits_strict(cs)?)
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        Ok(self.0.to_bits_be_strict(cs)?)
     }
 }
 

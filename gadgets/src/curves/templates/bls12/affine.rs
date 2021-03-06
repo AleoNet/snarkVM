@@ -23,7 +23,7 @@ use crate::traits::{
         eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         select::CondSelectGadget,
         uint::UInt8,
-        ToBitsGadget,
+        ToBitsBEGadget,
         ToBytesGadget,
     },
 };
@@ -557,23 +557,23 @@ impl<P: SWModelParameters, F: PrimeField, FG: FieldGadget<P::BaseField, F>> Allo
     }
 }
 
-impl<P, F, FG> ToBitsGadget<F> for AffineGadget<P, F, FG>
+impl<P, F, FG> ToBitsBEGadget<F> for AffineGadget<P, F, FG>
 where
     P: SWModelParameters,
     F: Field,
     FG: FieldGadget<P::BaseField, F>,
 {
-    fn to_bits<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let mut x_bits = self.x.to_bits(&mut cs.ns(|| "X Coordinate To Bits"))?;
-        let y_bits = self.y.to_bits(&mut cs.ns(|| "Y Coordinate To Bits"))?;
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut x_bits = self.x.to_bits_be(&mut cs.ns(|| "X Coordinate To Bits"))?;
+        let y_bits = self.y.to_bits_be(&mut cs.ns(|| "Y Coordinate To Bits"))?;
         x_bits.extend_from_slice(&y_bits);
         x_bits.push(self.infinity);
         Ok(x_bits)
     }
 
-    fn to_bits_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let mut x_bits = self.x.to_bits_strict(&mut cs.ns(|| "X Coordinate To Bits"))?;
-        let y_bits = self.y.to_bits_strict(&mut cs.ns(|| "Y Coordinate To Bits"))?;
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut x_bits = self.x.to_bits_be_strict(&mut cs.ns(|| "X Coordinate To Bits"))?;
+        let y_bits = self.y.to_bits_be_strict(&mut cs.ns(|| "Y Coordinate To Bits"))?;
         x_bits.extend_from_slice(&y_bits);
         x_bits.push(self.infinity);
 

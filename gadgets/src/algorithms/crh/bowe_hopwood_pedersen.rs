@@ -82,7 +82,7 @@ impl<F: Field, G: Group, GG: GroupGadget<G, F>, S: PedersenSize> CRHGadget<BoweH
             .map(|x| x.chunks(BOWE_HOPWOOD_CHUNK_SIZE));
 
         let result =
-            GG::precomputed_base_3_bit_signed_digit_scalar_mul(cs, &parameters.parameters.bases, input_in_bits)?;
+            GG::precomputed_base_3_bit_signed_digit_scalar_mul_be(cs, &parameters.parameters.bases, input_in_bits)?;
 
         Ok(result)
     }

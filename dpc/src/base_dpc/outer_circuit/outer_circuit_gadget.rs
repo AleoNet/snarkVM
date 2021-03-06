@@ -41,14 +41,14 @@ fn field_element_to_bytes<C: BaseDPCComponents, CS: ConstraintSystem<C::OuterFie
     name: &str,
 ) -> Result<Vec<Vec<UInt8>>, SynthesisError> {
     if field_elements.len() <= 1 {
-        Ok(vec![UInt8::alloc_input_vec(
+        Ok(vec![UInt8::alloc_input_vec_le(
             cs.ns(|| format!("Allocate {}", name)),
             &to_bytes![field_elements].map_err(|_| SynthesisError::AssignmentMissing)?,
         )?])
     } else {
         let mut fe_bytes = Vec::with_capacity(field_elements.len());
         for (index, field_element) in field_elements.iter().enumerate() {
-            fe_bytes.push(UInt8::alloc_input_vec(
+            fe_bytes.push(UInt8::alloc_input_vec_le(
                 cs.ns(|| format!("Allocate {} - index {} ", name, index)),
                 &to_bytes![field_element].map_err(|_| SynthesisError::AssignmentMissing)?,
             )?);

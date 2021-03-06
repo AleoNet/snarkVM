@@ -22,7 +22,8 @@ use crate::{
         eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
         uint::UInt8,
-        ToBitsGadget,
+        ToBitsBEGadget,
+        ToBitsLEGadget,
         ToBytesGadget,
     },
 };
@@ -661,21 +662,41 @@ where
     }
 }
 
-impl<P, F: PrimeField> ToBitsGadget<F> for Fp12Gadget<P, F>
+impl<P, F: PrimeField> ToBitsBEGadget<F> for Fp12Gadget<P, F>
 where
     P: Fp12Parameters,
     <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = F>,
 {
-    fn to_bits<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let mut c0 = self.c0.to_bits(&mut cs)?;
-        let mut c1 = self.c1.to_bits(cs)?;
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut c0 = self.c0.to_bits_be(&mut cs)?;
+        let mut c1 = self.c1.to_bits_be(cs)?;
         c0.append(&mut c1);
         Ok(c0)
     }
 
-    fn to_bits_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let mut c0 = self.c0.to_bits_strict(&mut cs)?;
-        let mut c1 = self.c1.to_bits_strict(cs)?;
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut c0 = self.c0.to_bits_be_strict(&mut cs)?;
+        let mut c1 = self.c1.to_bits_be_strict(cs)?;
+        c0.append(&mut c1);
+        Ok(c0)
+    }
+}
+
+impl<P, F: PrimeField> ToBitsLEGadget<F> for Fp12Gadget<P, F>
+where
+    P: Fp12Parameters,
+    <P::Fp6Params as Fp6Parameters>::Fp2Params: Fp2Parameters<Fp = F>,
+{
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut c0 = self.c0.to_bits_le(&mut cs)?;
+        let mut c1 = self.c1.to_bits_le(cs)?;
+        c0.append(&mut c1);
+        Ok(c0)
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut c0 = self.c0.to_bits_le_strict(&mut cs)?;
+        let mut c1 = self.c1.to_bits_le_strict(cs)?;
         c0.append(&mut c1);
         Ok(c0)
     }

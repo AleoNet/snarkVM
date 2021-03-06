@@ -40,13 +40,13 @@ use snarkvm_gadgets::{
             alloc::AllocGadget,
             arithmetic::{add::Add, sub::Sub},
             boolean::Boolean,
-            eq::{ConditionalEqGadget, EqGadget},
+            eq::{ConditionalEqGadget, EqGadget, NEqGadget},
             int::{Int, Int64},
             uint::UInt8,
-            ToBitsGadget,
             ToBytesGadget,
         },
     },
+    utilities::ToBitsLEGadget,
 };
 use snarkvm_objects::AleoAmount;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -56,7 +56,6 @@ use snarkvm_utilities::{
     to_bytes,
 };
 
-use snarkvm_gadgets::traits::utilities::eq::NEqGadget;
 use std::ops::Mul;
 
 #[allow(clippy::too_many_arguments)]
@@ -829,7 +828,7 @@ where
             // Convert serial number nonce, commitment_randomness, birth program id, death program id, payload, and value into bits
 
             let serial_number_nonce_bits = serial_number_nonce_bytes
-                .to_bits(&mut encryption_cs.ns(|| "Convert serial_number_nonce_bytes to bits"))?;
+                .to_bits_le(&mut encryption_cs.ns(|| "Convert serial_number_nonce_bytes to bits"))?;
 
             let commitment_randomness_bytes =
                 UInt8::alloc_vec(encryption_cs.ns(|| "Allocate commitment randomness bytes"), &to_bytes![
@@ -837,13 +836,13 @@ where
                 ]?)?;
 
             let commitment_randomness_bits = commitment_randomness_bytes
-                .to_bits(&mut encryption_cs.ns(|| "Convert commitment_randomness_bytes to bits"))?;
-            let full_birth_program_id_bits =
-                given_birth_program_id.to_bits(&mut encryption_cs.ns(|| "Convert given_birth_program_id to bits"))?;
-            let full_death_program_id_bits =
-                given_death_program_id.to_bits(&mut encryption_cs.ns(|| "Convert given_death_program_id to bits"))?;
-            let value_bits = given_value.to_bits(&mut encryption_cs.ns(|| "Convert given_value to bits"))?;
-            let payload_bits = given_payload.to_bits(&mut encryption_cs.ns(|| "Convert given_payload to bits"))?;
+                .to_bits_le(&mut encryption_cs.ns(|| "Convert commitment_randomness_bytes to bits"))?;
+            let full_birth_program_id_bits = given_birth_program_id
+                .to_bits_le(&mut encryption_cs.ns(|| "Convert given_birth_program_id to bits"))?;
+            let full_death_program_id_bits = given_death_program_id
+                .to_bits_le(&mut encryption_cs.ns(|| "Convert given_death_program_id to bits"))?;
+            let value_bits = given_value.to_bits_le(&mut encryption_cs.ns(|| "Convert given_value to bits"))?;
+            let payload_bits = given_payload.to_bits_le(&mut encryption_cs.ns(|| "Convert given_payload to bits"))?;
             let mut fq_high_bits = Vec::with_capacity(fq_high_selectors.len() - 1);
 
             for (i, fq_high_bit) in fq_high_selectors[0..(fq_high_selectors.len() - 1)].iter().enumerate() {
@@ -978,27 +977,27 @@ where
             let given_serial_number_nonce_bytes = &record_field_elements_gadgets[0]
                 .to_bytes(&mut encryption_cs.ns(|| "given_serial_number_nonce_bytes"))?;
             let given_serial_number_nonce_bits = given_serial_number_nonce_bytes
-                .to_bits(&mut encryption_cs.ns(|| "Convert given_serial_number_nonce_bytes to bits"))?;
+                .to_bits_le(&mut encryption_cs.ns(|| "Convert given_serial_number_nonce_bytes to bits"))?;
 
             let given_commitment_randomness_bytes = &record_field_elements_gadgets[1]
                 .to_bytes(&mut encryption_cs.ns(|| "given_commitment_randomness_bytes"))?;
             let given_commitment_randomness_bits = given_commitment_randomness_bytes
-                .to_bits(&mut encryption_cs.ns(|| "Convert given_commitment_randomness_bytes to bits"))?;
+                .to_bits_le(&mut encryption_cs.ns(|| "Convert given_commitment_randomness_bytes to bits"))?;
 
             let given_birth_program_id_bytes =
                 &record_field_elements_gadgets[2].to_bytes(&mut encryption_cs.ns(|| "given_birth_program_id_bytes"))?;
             let given_birth_program_id_bits = given_birth_program_id_bytes
-                .to_bits(&mut encryption_cs.ns(|| "Convert given_birth_program_id_bytes to bits"))?;
+                .to_bits_le(&mut encryption_cs.ns(|| "Convert given_birth_program_id_bytes to bits"))?;
 
             let given_death_program_id_bytes =
                 &record_field_elements_gadgets[3].to_bytes(&mut encryption_cs.ns(|| "given_death_program_id_bytes"))?;
             let given_death_program_id_bits = given_death_program_id_bytes
-                .to_bits(&mut encryption_cs.ns(|| "Convert given_death_program_id_bytes to bits"))?;
+                .to_bits_le(&mut encryption_cs.ns(|| "Convert given_death_program_id_bytes to bits"))?;
 
             let given_program_id_remainder_bytes = &record_field_elements_gadgets[4]
                 .to_bytes(&mut encryption_cs.ns(|| "given_program_id_remainder_bytes"))?;
             let given_program_id_remainder_bits = given_program_id_remainder_bytes
-                .to_bits(&mut encryption_cs.ns(|| "Convert given_program_id_remainder_bytes to bits"))?;
+                .to_bits_le(&mut encryption_cs.ns(|| "Convert given_program_id_remainder_bytes to bits"))?;
 
             // *******************************************************************
             // Equate the gadget packed and provided bits
@@ -1036,7 +1035,7 @@ where
                 let given_element_bytes =
                     field_element.to_bytes(&mut encryption_cs.ns(|| format!("given_payload_bytes - {}", i)))?;
                 let given_element_bits = given_element_bytes
-                    .to_bits(&mut encryption_cs.ns(|| format!("Convert given_payload_bytes - {} to bits", i)))?;
+                    .to_bits_le(&mut encryption_cs.ns(|| format!("Convert given_payload_bytes - {} to bits", i)))?;
 
                 payload_element.enforce_equal(
                     &mut encryption_cs.ns(|| format!("Check that computed and declared payload_bits match {}", i)),
@@ -1265,8 +1264,8 @@ where
     {
         let mut cs = cs.ns(|| "Check that local data root is valid.");
 
-        let memo = UInt8::alloc_input_vec(cs.ns(|| "Allocate memorandum"), memo)?;
-        let network_id = UInt8::alloc_input_vec(cs.ns(|| "Allocate network id"), &[network_id])?;
+        let memo = UInt8::alloc_input_vec_le(cs.ns(|| "Allocate memorandum"), memo)?;
+        let network_id = UInt8::alloc_input_vec_le(cs.ns(|| "Allocate network id"), &[network_id])?;
 
         let mut old_record_commitment_bytes = vec![];
         let mut input_bytes = vec![];

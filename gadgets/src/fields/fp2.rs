@@ -23,7 +23,8 @@ use crate::{
         eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
         uint::unsigned_integer::UInt8,
-        ToBitsGadget,
+        ToBitsBEGadget,
+        ToBitsLEGadget,
         ToBytesGadget,
     },
 };
@@ -459,17 +460,33 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> NEqGadget<F> for Fp2Gadget<P, F> {
     }
 }
 
-impl<P: Fp2Parameters<Fp = F>, F: PrimeField> ToBitsGadget<F> for Fp2Gadget<P, F> {
-    fn to_bits<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let mut c0 = self.c0.to_bits(&mut cs)?;
-        let mut c1 = self.c1.to_bits(cs)?;
+impl<P: Fp2Parameters<Fp = F>, F: PrimeField> ToBitsBEGadget<F> for Fp2Gadget<P, F> {
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut c0 = self.c0.to_bits_be(&mut cs)?;
+        let mut c1 = self.c1.to_bits_be(cs)?;
         c0.append(&mut c1);
         Ok(c0)
     }
 
-    fn to_bits_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let mut c0 = self.c0.to_bits_strict(&mut cs)?;
-        let mut c1 = self.c1.to_bits_strict(cs)?;
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut c0 = self.c0.to_bits_be_strict(&mut cs)?;
+        let mut c1 = self.c1.to_bits_be_strict(cs)?;
+        c0.append(&mut c1);
+        Ok(c0)
+    }
+}
+
+impl<P: Fp2Parameters<Fp = F>, F: PrimeField> ToBitsLEGadget<F> for Fp2Gadget<P, F> {
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut c0 = self.c0.to_bits_le(&mut cs)?;
+        let mut c1 = self.c1.to_bits_le(cs)?;
+        c0.append(&mut c1);
+        Ok(c0)
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut c0 = self.c0.to_bits_le_strict(&mut cs)?;
+        let mut c1 = self.c1.to_bits_le_strict(cs)?;
         c0.append(&mut c1);
         Ok(c0)
     }

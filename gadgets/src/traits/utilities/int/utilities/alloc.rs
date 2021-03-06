@@ -21,7 +21,7 @@ use crate::{
         boolean::{AllocatedBit, Boolean},
         eq::EqGadget,
         int::*,
-        ToBitsGadget,
+        ToBitsBEGadget,
     },
 };
 use snarkvm_fields::{traits::to_field_vec::ToConstraintField, Field, FpParameters, PrimeField};
@@ -105,7 +105,7 @@ macro_rules! alloc_input_fe {
                 let mut allocated_bits = Vec::new();
                 for (i, field_element) in field_elements.into_iter().enumerate() {
                     let fe = FpGadget::alloc_input(&mut cs.ns(|| format!("Field element {}", i)), || Ok(field_element))?;
-                    let mut fe_bits = fe.to_bits(cs.ns(|| format!("Convert fe to bits {}", i)))?;
+                    let mut fe_bits = fe.to_bits_be(cs.ns(|| format!("Convert fe to bits {}", i)))?;
                     // FpGadget::to_bits outputs a big-endian binary representation of
                     // fe_gadget's value, so we have to reverse it to get the little-endian
                     // form.

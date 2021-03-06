@@ -1835,6 +1835,7 @@ dependencies = [
 name = "snarkvm-marlin"
 version = "0.2.0"
 dependencies = [
+ "anyhow",
  "blake2",
  "criterion",
  "derivative",

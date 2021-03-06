@@ -22,7 +22,7 @@ use crate::traits::{
         alloc::{AllocBytesGadget, AllocGadget},
         eq::EqGadget,
         uint::UInt8,
-        ToBitsGadget,
+        ToBitsBEGadget,
         ToBytesGadget,
     },
 };
@@ -109,7 +109,7 @@ impl<
     type ProofGadget = GM17ProofGadget<Pairing, F, P>;
     type VerificationKeyGadget = GM17VerifyingKeyGadget<Pairing, F, P>;
 
-    fn check_verify<'a, CS: ConstraintSystem<F>, I: Iterator<Item = &'a T>, T: 'a + ToBitsGadget<F> + ?Sized>(
+    fn check_verify<'a, CS: ConstraintSystem<F>, I: Iterator<Item = &'a T>, T: 'a + ToBitsBEGadget<F> + ?Sized>(
         mut cs: CS,
         vk: &Self::VerificationKeyGadget,
         mut public_inputs: I,
@@ -124,7 +124,7 @@ impl<
             let mut g_psi = pvk.query[0].clone();
             let mut input_len = 1;
             for (i, (input, b)) in public_inputs.by_ref().zip(pvk.query.iter().skip(1)).enumerate() {
-                let input_bits = input.to_bits(cs.ns(|| format!("Input {}", i)))?;
+                let input_bits = input.to_bits_be(cs.ns(|| format!("Input {}", i)))?;
                 g_psi = b.mul_bits(cs.ns(|| format!("Mul {}", i)), &g_psi, input_bits.into_iter())?;
                 input_len += 1;
             }

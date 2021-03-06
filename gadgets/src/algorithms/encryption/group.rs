@@ -171,7 +171,7 @@ impl<G: Group, F: PrimeField> AllocGadget<Vec<G::ScalarField>, F> for GroupEncry
 
         let mut blinding_exponents = Vec::with_capacity(values.len());
         for (i, value) in values.into_iter().enumerate() {
-            let alloc = UInt8::alloc_input_vec(cs.ns(|| format!("Blinding Exponent Iteration {}", i)), &to_bytes![
+            let alloc = UInt8::alloc_input_vec_le(cs.ns(|| format!("Blinding Exponent Iteration {}", i)), &to_bytes![
                 value.borrow()
             ]?)?;
             blinding_exponents.push(alloc);

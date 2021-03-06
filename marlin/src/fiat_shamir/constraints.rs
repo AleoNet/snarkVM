@@ -27,7 +27,7 @@ use snarkvm_gadgets::{
         alloc::AllocGadget,
         boolean::Boolean,
         uint::{UInt, UInt8},
-        ToBitsGadget,
+        ToBitsBEGadget,
     },
 };
 use snarkvm_nonnative::{
@@ -257,7 +257,7 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
         let mut dest_bits = Vec::<Boolean>::new();
 
         for (i, elem) in src_elements.iter().enumerate() {
-            let elem_bits = elem.to_bits(cs.ns(|| format!("elem_to_bits_{}", i)))?;
+            let elem_bits = elem.to_bits_be(cs.ns(|| format!("elem_to_bits_{}", i)))?;
             dest_bits.extend_from_slice(&elem_bits[1..]); // discard the highest bit
         }
 

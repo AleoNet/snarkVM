@@ -19,7 +19,8 @@ use crate::utilities::{
     boolean::Boolean,
     eq::{ConditionalEqGadget, EqGadget, NEqGadget},
     select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
-    ToBitsGadget,
+    ToBitsBEGadget,
+    ToBitsLEGadget,
     ToBytesGadget,
 };
 use snarkvm_fields::Field;
@@ -34,7 +35,8 @@ pub trait FieldGadget<NativeF: Field, F: Field>:
     + EqGadget<F>
     + NEqGadget<F>
     + ConditionalEqGadget<F>
-    + ToBitsGadget<F>
+    + ToBitsBEGadget<F>
+    + ToBitsLEGadget<F>
     + AllocGadget<NativeF, F>
     + ToBytesGadget<F>
     + CondSelectGadget<F>

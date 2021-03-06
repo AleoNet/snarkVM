@@ -30,44 +30,82 @@ pub mod int;
 pub mod select;
 pub mod uint;
 
-pub trait ToBitsGadget<F: Field> {
-    fn to_bits<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError>;
+pub trait ToBitsBEGadget<F: Field> {
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError>;
 
     /// Additionally checks if the produced list of booleans is 'valid'.
-    fn to_bits_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError>;
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError>;
 }
 
-impl<F: Field> ToBitsGadget<F> for Boolean {
-    fn to_bits<CS: ConstraintSystem<F>>(&self, _: CS) -> Result<Vec<Boolean>, SynthesisError> {
+impl<F: Field> ToBitsBEGadget<F> for Boolean {
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, _: CS) -> Result<Vec<Boolean>, SynthesisError> {
         Ok(vec![*self])
     }
 
-    fn to_bits_strict<CS: ConstraintSystem<F>>(&self, _: CS) -> Result<Vec<Boolean>, SynthesisError> {
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, _: CS) -> Result<Vec<Boolean>, SynthesisError> {
         Ok(vec![*self])
     }
 }
 
-impl<F: Field> ToBitsGadget<F> for [Boolean] {
-    fn to_bits<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+impl<F: Field> ToBitsBEGadget<F> for [Boolean] {
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         Ok(self.to_vec())
     }
 
-    fn to_bits_strict<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         Ok(self.to_vec())
     }
 }
-impl<F: Field> ToBitsGadget<F> for Vec<Boolean> {
-    fn to_bits<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+
+impl<F: Field> ToBitsBEGadget<F> for Vec<Boolean> {
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         Ok(self.clone())
     }
 
-    fn to_bits_strict<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         Ok(self.clone())
     }
 }
 
-impl<F: Field> ToBitsGadget<F> for [UInt8] {
-    fn to_bits<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+pub trait ToBitsLEGadget<F: Field> {
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError>;
+
+    /// Additionally checks if the produced list of booleans is 'valid'.
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError>;
+}
+
+impl<F: Field> ToBitsLEGadget<F> for Boolean {
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, _: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        Ok(vec![*self])
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, _: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        Ok(vec![*self])
+    }
+}
+
+impl<F: Field> ToBitsLEGadget<F> for [Boolean] {
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        Ok(self.to_vec())
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        Ok(self.to_vec())
+    }
+}
+
+impl<F: Field> ToBitsLEGadget<F> for Vec<Boolean> {
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        Ok(self.clone())
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        Ok(self.clone())
+    }
+}
+
+impl<F: Field> ToBitsLEGadget<F> for [UInt8] {
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         let mut result = Vec::with_capacity(&self.len() * 8);
         for byte in self {
             result.extend_from_slice(&byte.to_bits_le());
@@ -75,8 +113,8 @@ impl<F: Field> ToBitsGadget<F> for [UInt8] {
         Ok(result)
     }
 
-    fn to_bits_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        self.to_bits(cs)
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.to_bits_le(cs)
     }
 }
 
