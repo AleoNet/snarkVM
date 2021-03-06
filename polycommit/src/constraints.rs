@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BatchLCProof, LCTerm, LabeledCommitment, LinearCombination, PolynomialCommitment};
+use crate::{BatchLCProof, LCTerm, LabeledCommitment, LinearCombination, PolynomialCommitment, String, Vec};
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     fields::FpGadget,
@@ -23,8 +23,8 @@ use snarkvm_gadgets::{
 use snarkvm_nonnative::NonNativeFieldVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
+use core::borrow::Borrow;
 use hashbrown::{HashMap, HashSet};
-use std::borrow::Borrow;
 
 /// Define the minimal interface of prepared allocated structures.
 pub trait PrepareGadget<Unprepared, ConstraintF: PrimeField>: Sized {
