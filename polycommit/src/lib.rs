@@ -53,7 +53,7 @@ extern crate alloc;
 use alloc::{
     borrow::{Cow, ToOwned},
     collections::{BTreeMap, BTreeSet},
-    marker::PhantomData,
+    // marker::PhantomData,
     string::{String, ToString},
     sync::Arc,
     vec::Vec,
@@ -64,7 +64,7 @@ use alloc::{
 use std::{
     borrow::{Cow, ToOwned},
     collections::{BTreeMap, BTreeSet},
-    marker::PhantomData,
+    // marker::PhantomData,
     string::{String, ToString},
     sync::Arc,
     vec::Vec,

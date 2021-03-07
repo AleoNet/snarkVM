@@ -26,9 +26,7 @@ use snarkvm_utilities::{
 
 use derivative::Derivative;
 use std::io::{
-    Read,
-    Write,
-    {self},
+    Read, Write, {self},
 };
 
 /// A zkSNARK proof.
@@ -88,14 +86,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> Proof<F, PC> {
 
         let num_evaluations = self.evaluations.len();
         let evaluation_size_in_bytes = num_evaluations * size_of_fe_in_bytes;
-        let num_prover_messages: usize = self
-            .prover_messages
-            .iter()
-            .map(|v| match v {
-                ProverMessage::EmptyMessage => 0,
-                ProverMessage::FieldElements(v) => v.len(),
-            })
-            .sum();
+        let num_prover_messages: usize = self.prover_messages.iter().map(|v| v.field_elements.len()).sum();
         let prover_message_size_in_bytes = num_prover_messages * size_of_fe_in_bytes;
         let argument_size = size_bytes_comms_with_degree_bounds
             + size_bytes_comms_without_degree_bounds

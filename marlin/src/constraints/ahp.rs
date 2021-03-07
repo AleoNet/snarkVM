@@ -908,7 +908,7 @@ where
         for (i, ((comm, label), bound)) in proof.commitments[2]
             .iter()
             .zip(PROOF_3_LABELS.iter())
-            .zip(proof_3_bounds.into_iter())
+            .zip(proof_3_bounds.iter())
             .enumerate()
         {
             let prepared_comm = PCG::PreparedCommitmentVar::prepare(cs.ns(|| format!("prepare_3_{}", i)), comm)?;

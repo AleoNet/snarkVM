@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    ahp::prover::ProverMessage,
     constraints::verifier::MarlinVerificationGadget as MarlinVerifierVar,
     fiat_shamir::{constraints::FiatShamirRngVar, FiatShamirRng},
     marlin::{CircuitVerifyingKey, PreparedCircuitVerifyingKey, Proof},
@@ -690,20 +689,15 @@ where
             .iter()
             .enumerate()
             .map(|(i, msg)| {
-                let field_elements: Vec<NonNativeFieldVar<TargetField, BaseField>> = match msg {
-                    ProverMessage::EmptyMessage => Vec::new(),
-                    ProverMessage::FieldElements(f) => f
-                        .iter()
-                        .enumerate()
-                        .map(|(j, elem)| {
-                            NonNativeFieldVar::alloc_constant(
-                                cs.ns(|| format!("alloc_constant_prover_message_{}_{}", i, j)),
-                                || Ok(elem),
-                            )
+                let field_elements: Vec<NonNativeFieldVar<TargetField, BaseField>> = msg
+                    .field_elements
+                    .iter()
+                    .enumerate()
+                    .map(|(j, elem)| {
+                        NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_constant_message_{}_{}", i, j)), || Ok(elem))
                             .unwrap()
-                        })
-                        .collect(),
-                };
+                    })
+                    .collect();
 
                 ProverMessageVar { field_elements }
             })
@@ -777,18 +771,15 @@ where
             .iter()
             .enumerate()
             .map(|(i, msg)| {
-                let field_elements: Vec<NonNativeFieldVar<TargetField, BaseField>> = match msg {
-                    ProverMessage::EmptyMessage => Vec::new(),
-                    ProverMessage::FieldElements(f) => f
-                        .iter()
-                        .enumerate()
-                        .map(|(j, elem)| {
-                            NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_prover_message_{}_{}", i, j)), || Ok(elem))
-                                .unwrap()
-                        })
-                        .collect(),
-                };
-
+                let field_elements: Vec<NonNativeFieldVar<TargetField, BaseField>> = msg
+                    .field_elements
+                    .iter()
+                    .enumerate()
+                    .map(|(j, elem)| {
+                        NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_prover_message_{}_{}", i, j)), || Ok(elem))
+                            .unwrap()
+                    })
+                    .collect();
                 ProverMessageVar { field_elements }
             })
             .collect();
@@ -862,20 +853,17 @@ where
             .iter()
             .enumerate()
             .map(|(i, msg)| {
-                let field_elements: Vec<NonNativeFieldVar<TargetField, BaseField>> = match msg {
-                    ProverMessage::EmptyMessage => Vec::new(),
-                    ProverMessage::FieldElements(f) => f
-                        .iter()
-                        .enumerate()
-                        .map(|(j, elem)| {
-                            NonNativeFieldVar::alloc_input(
-                                cs.ns(|| format!("alloc_input_prover_message_{}_{}", i, j)),
-                                || Ok(elem),
-                            )
-                            .unwrap()
+                let field_elements: Vec<NonNativeFieldVar<TargetField, BaseField>> = msg
+                    .field_elements
+                    .iter()
+                    .enumerate()
+                    .map(|(j, elem)| {
+                        NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_input_prover_message_{}_{}", i, j)), || {
+                            Ok(elem)
                         })
-                        .collect(),
-                };
+                        .unwrap()
+                    })
+                    .collect();
 
                 ProverMessageVar { field_elements }
             })

@@ -19,18 +19,13 @@ use crate::{
         indexer::{Circuit, CircuitInfo, Matrix},
         prover::ProverConstraintSystem,
         verifier::{VerifierFirstMessage, VerifierSecondMessage},
-        AHPError,
-        AHPForR1CS,
-        UnnormalizedBivariateLagrangePoly,
+        AHPError, AHPForR1CS, UnnormalizedBivariateLagrangePoly,
     },
     prover::{state::ProverState, ProverMessage},
-    ToString,
-    Vec,
+    ToString, Vec,
 };
 use snarkvm_algorithms::{
-    cfg_into_iter,
-    cfg_iter,
-    cfg_iter_mut,
+    cfg_into_iter, cfg_iter, cfg_iter_mut,
     fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain},
 };
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
@@ -253,7 +248,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         mask_poly[0] -= &scaled_sigma_1;
         end_timer!(mask_poly_time);
 
-        let msg = ProverMessage::EmptyMessage;
+        let msg = ProverMessage::default();
 
         assert!(w_poly.degree() < domain_h.size() - domain_x.size() + zk_bound);
         assert!(z_a_poly.degree() < domain_h.size() + zk_bound);
@@ -417,7 +412,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let g_1 = Polynomial::from_coefficients_slice(&x_g_1.coeffs[1..]);
         end_timer!(sumcheck_time);
 
-        let msg = ProverMessage::EmptyMessage;
+        let msg = ProverMessage::default();
 
         assert!(g_1.degree() <= domain_h.size() - 2);
         assert!(h_1.degree() <= 2 * domain_h.size() + 2 * zk_bound - 2);
@@ -563,7 +558,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
             .0;
         end_timer!(h_2_poly_time);
 
-        let msg = ProverMessage::EmptyMessage;
+        let msg = ProverMessage::default();
 
         assert!(g_2.degree() <= domain_k.size() - 2);
         let oracles = ProverThirdOracles {
