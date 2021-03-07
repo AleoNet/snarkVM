@@ -1836,7 +1836,6 @@ name = "snarkvm-marlin"
 version = "0.2.0"
 dependencies = [
  "blake2",
- "cfg-if 1.0.0",
  "criterion",
  "derivative",
  "digest",
