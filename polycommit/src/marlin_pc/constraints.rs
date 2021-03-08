@@ -1,28 +1,45 @@
 use crate::{
     constraints::{
-        EvaluationsVar, LabeledPointVar, LinearCombinationCoeffVar, LinearCombinationVar, PCCheckRandomDataVar,
-        PCCheckVar, PrepareGadget, QuerySetVar,
+        EvaluationsVar,
+        LabeledPointVar,
+        LinearCombinationCoeffVar,
+        LinearCombinationVar,
+        PCCheckRandomDataVar,
+        PCCheckVar,
+        PrepareGadget,
+        QuerySetVar,
     },
     data_structures::LabeledCommitment,
     kzg10::{Proof, VerifierKey as KZG10VerifierKey},
     marlin_pc::{
         data_structures::{Commitment, VerifierKey},
-        MarlinKZG10, PreparedCommitment, PreparedVerifierKey,
+        MarlinKZG10,
+        PreparedCommitment,
+        PreparedVerifierKey,
     },
-    BTreeMap, BTreeSet, BatchLCProof, PhantomData, String, ToString, Vec,
+    BTreeMap,
+    BTreeSet,
+    BatchLCProof,
+    String,
+    ToString,
+    Vec,
 };
 use snarkvm_curves::traits::PairingEngine;
-use snarkvm_fields::{Field, PrimeField, ToConstraintField};
-use snarkvm_gadgets::traits::curves::PairingGadget;
-use snarkvm_gadgets::utilities::alloc::AllocGadget;
-use snarkvm_gadgets::utilities::uint::UInt8;
-use snarkvm_gadgets::{fields::FpGadget, traits::utilities::boolean::Boolean};
-use snarkvm_gadgets::{traits::fields::ToConstraintFieldGadget, traits::utilities::ToBytesGadget};
+use snarkvm_fields::{Field, One, PrimeField, ToConstraintField, Zero};
+use snarkvm_gadgets::{
+    fields::FpGadget,
+    traits::{
+        curves::{GroupGadget, PairingGadget},
+        fields::{FieldGadget, ToConstraintFieldGadget},
+        utilities::{boolean::Boolean, eq::EqGadget, ToBytesGadget},
+    },
+    utilities::{alloc::AllocGadget, select::CondSelectGadget, uint::UInt8},
+};
 use snarkvm_nonnative::{NonNativeFieldMulResultVar, NonNativeFieldVar};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-use core::borrow::Borrow;
-use core::ops::MulAssign;
+use core::{borrow::Borrow, ops::MulAssign};
+use std::marker::PhantomData;
 
 /// Var for the verification key of the Marlin-KZG10 polynomial commitment scheme.
 #[allow(clippy::type_complexity)]
@@ -81,21 +98,24 @@ where
 
             let mut pir_vector_gadgets = Vec::new();
             for bit in pir_vector.iter() {
-                pir_vector_gadgets.push(Boolean::new_witness(ark_relations::ns!(cs, "alloc_pir"), || Ok(bit)).unwrap());
+                pir_vector_gadgets.push(Boolean::new_witness(cs.ns(|| "alloc_pir"), || Ok(bit)).unwrap());
             }
 
             // Sum of the PIR values are equal to one
-            let mut sum = FpGadget::<<BaseCurve as PairingEngine>::Fr>::zero();
-            let one = FpGadget::<<BaseCurve as PairingEngine>::Fr>::one();
-            for pir_gadget in pir_vector_gadgets.iter() {
-                sum += &FpGadget::<<BaseCurve as PairingEngine>::Fr>::from(pir_gadget.clone());
+            let mut sum = FpGadget::<<BaseCurve as PairingEngine>::Fr>::zero(cs.ns(|| "zero")).unwrap();
+            let one = FpGadget::<<BaseCurve as PairingEngine>::Fr>::one(cs.ns(|| "one")).unwrap();
+            for (i, pir_gadget) in pir_vector_gadgets.iter().enumerate() {
+                sum += &FpGadget::<<BaseCurve as PairingEngine>::Fr>::from_boolean(
+                    cs.ns(|| format!("from_boolean_{}", i)),
+                    pir_gadget.clone(),
+                );
             }
             sum.enforce_equal(&one).unwrap();
 
             // PIR the value
-            let mut found_bound = FpGadget::<<BaseCurve as PairingEngine>::Fr>::zero();
+            let mut found_bound = FpGadget::<<BaseCurve as PairingEngine>::Fr>::zero().unwrap();
 
-            let mut found_shift_power = PG::G1Gadget::zero();
+            let mut found_shift_power = PG::G1Gadget::zero().unwrap();
 
             for (pir_gadget, (_, degree, shift_power)) in
                 pir_vector_gadgets.iter().zip(degree_bounds_and_shift_powers.iter())
@@ -171,12 +191,12 @@ where
                     (
                         *s,
                         FpGadget::<<BaseCurve as PairingEngine>::Fr>::new_variable(
-                            ark_relations::ns!(cs, "degree bound"),
+                            cs.ns(|| "degree bound"),
                             || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*s as u128)),
                             mode,
                         )
                         .unwrap(),
-                        PG::G1Gadget::new_variable(ark_relations::ns!(cs, "pow"), || Ok(*g), mode).unwrap(),
+                        PG::G1Gadget::new_variable(cs.ns(|| format!("pow_{}", s)), || Ok(*g), mode).unwrap(),
                     )
                 })
                 .collect()
@@ -184,9 +204,9 @@ where
 
         let KZG10VerifierKey { g, h, beta_h, .. } = vk;
 
-        let g = PG::G1Gadget::new_variable(ark_relations::ns!(cs, "g"), || Ok(g), mode)?;
-        let h = PG::G2Gadget::new_variable(ark_relations::ns!(cs, "h"), || Ok(h), mode)?;
-        let beta_h = PG::G2Gadget::new_variable(ark_relations::ns!(cs, "beta_h"), || Ok(beta_h), mode)?;
+        let g = PG::G1Gadget::new_variable(cs.ns(|| "g"), || Ok(g), mode)?;
+        let h = PG::G2Gadget::new_variable(cs.ns(|| "h"), || Ok(h), mode)?;
+        let beta_h = PG::G2Gadget::new_variable(cs.ns(|| "beta_h"), || Ok(beta_h), mode)?;
 
         Ok(Self {
             g,
@@ -443,22 +463,18 @@ where
         let obj = t.borrow();
 
         let mut prepared_g = Vec::<PG::G1Gadget>::new();
-        for g in obj.prepared_vk.prepared_g.iter() {
+        for (i, g) in obj.prepared_vk.prepared_g.iter().enumerate() {
             prepared_g.push(<PG::G1Gadget as AllocGadget<
                 <TargetCurve as PairingEngine>::G1Affine,
                 <BaseCurve as PairingEngine>::Fr,
             >>::new_variable(
-                ark_relations::ns!(cs, "g"), || Ok(*g), mode
+                cs.ns(|| format!("g_{}", i)), || Ok(*g), mode
             )?);
         }
 
-        let prepared_h =
-            PG::G2PreparedGadget::new_variable(ark_relations::ns!(cs, "h"), || Ok(&obj.prepared_vk.prepared_h), mode)?;
-        let prepared_beta_h = PG::G2PreparedGadget::new_variable(
-            ark_relations::ns!(cs, "beta_h"),
-            || Ok(&obj.prepared_vk.prepared_beta_h),
-            mode,
-        )?;
+        let prepared_h = PG::G2PreparedGadget::new_variable(cs.ns(|| "h"), || Ok(&obj.prepared_vk.prepared_h), mode)?;
+        let prepared_beta_h =
+            PG::G2PreparedGadget::new_variable(cs.ns(|| "beta_h"), || Ok(&obj.prepared_vk.prepared_beta_h), mode)?;
 
         let prepared_degree_bounds_and_shift_powers = if obj.prepared_degree_bounds_and_shift_powers.is_some() {
             let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G1Gadget>)>::new();
@@ -719,12 +735,12 @@ where
 
         let mut prepared_comm = Vec::<PG::G1Gadget>::new();
 
-        for comm_elem in obj.prepared_comm.0.iter() {
+        for (i, comm_elem) in obj.prepared_comm.0.iter().enumerate() {
             prepared_comm.push(<PG::G1Gadget as AllocGadget<
                 <TargetCurve as PairingEngine>::G1Projective,
                 <BaseCurve as PairingEngine>::Fr,
             >>::new_variable(
-                ark_relations::ns!(cs, "comm_elem"),
+                cs.ns(|| format!("comm_elem_{}", i)),
                 || {
                     Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
                         <TargetCurve as PairingEngine>::G1Affine,
@@ -739,7 +755,7 @@ where
                 <TargetCurve as PairingEngine>::G1Projective,
                 <BaseCurve as PairingEngine>::Fr,
             >>::new_variable(
-                ark_relations::ns!(cs, "shifted_comm"),
+                cs.ns(|| "shifted_comm"),
                 || {
                     Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
                         <TargetCurve as PairingEngine>::G1Affine,
@@ -822,12 +838,11 @@ where
             let commitment = labeled_commitment.commitment();
             let degree_bound = labeled_commitment.degree_bound();
 
-            let commitment =
-                CommitmentVar::new_variable(ark_relations::ns!(cs, "commitment"), || Ok(commitment), mode)?;
+            let commitment = CommitmentVar::new_variable(cs.ns(|| "commitment"), || Ok(commitment), mode)?;
 
             let degree_bound = if let Some(degree_bound) = degree_bound {
                 FpGadget::<<BaseCurve as PairingEngine>::Fr>::new_variable(
-                    ark_relations::ns!(cs, "degree_bound"),
+                    cs.ns(|| "degree_bound"),
                     || {
                         Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(
                             degree_bound as u128,
@@ -968,7 +983,7 @@ where
     {
         value_gen().and_then(|proof| {
             let Proof { w, random_v } = *proof.borrow();
-            let w = PG::G1Gadget::new_variable(ark_relations::ns!(cs, "w"), || Ok(w), mode)?;
+            let w = PG::G1Gadget::new_variable(cs.ns(|| "w"), || Ok(w), mode)?;
 
             let random_v = match random_v {
                 None => None,
@@ -1404,14 +1419,14 @@ where
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
-    type VerifierKeyVar = VerifierKeyVar<TargetCurve, BaseCurve, PG>;
-    type PreparedVerifierKeyVar = PreparedVerifierKeyVar<TargetCurve, BaseCurve, PG>;
-    type CommitmentVar = CommitmentVar<TargetCurve, BaseCurve, PG>;
-    type PreparedCommitmentVar = PreparedCommitmentVar<TargetCurve, BaseCurve, PG>;
-    type LabeledCommitmentVar = LabeledCommitmentVar<TargetCurve, BaseCurve, PG>;
-    type PreparedLabeledCommitmentVar = PreparedLabeledCommitmentVar<TargetCurve, BaseCurve, PG>;
-    type ProofVar = ProofVar<TargetCurve, BaseCurve, PG>;
     type BatchLCProofVar = BatchLCProofVar<TargetCurve, BaseCurve, PG>;
+    type CommitmentVar = CommitmentVar<TargetCurve, BaseCurve, PG>;
+    type LabeledCommitmentVar = LabeledCommitmentVar<TargetCurve, BaseCurve, PG>;
+    type PreparedCommitmentVar = PreparedCommitmentVar<TargetCurve, BaseCurve, PG>;
+    type PreparedLabeledCommitmentVar = PreparedLabeledCommitmentVar<TargetCurve, BaseCurve, PG>;
+    type PreparedVerifierKeyVar = PreparedVerifierKeyVar<TargetCurve, BaseCurve, PG>;
+    type ProofVar = ProofVar<TargetCurve, BaseCurve, PG>;
+    type VerifierKeyVar = VerifierKeyVar<TargetCurve, BaseCurve, PG>;
 
     #[allow(clippy::type_complexity)]
     fn batch_check_evaluations<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
