@@ -327,13 +327,13 @@ where
 {
     fn to_bytes<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
         &self,
-        cs: CS,
+        mut cs: CS,
     ) -> Result<Vec<UInt8>, SynthesisError> {
         let mut bytes = Vec::new();
 
-        bytes.extend_from_slice(&self.g.to_bytes()?);
-        bytes.extend_from_slice(&self.h.to_bytes()?);
-        bytes.extend_from_slice(&self.beta_h.to_bytes()?);
+        bytes.extend_from_slice(&self.g.to_bytes(cs.ns(|| "g_to_bytes"))?);
+        bytes.extend_from_slice(&self.h.to_bytes(cs.ns(|| "h_to_bytes"))?);
+        bytes.extend_from_slice(&self.beta_h.to_bytes(cs.ns(|| "beta_h_to_bytes"))?);
 
         if self.degree_bounds_and_shift_powers.is_some() {
             let degree_bounds_and_shift_powers = self.degree_bounds_and_shift_powers.as_ref().unwrap();
@@ -344,6 +344,10 @@ where
         }
 
         Ok(bytes)
+    }
+
+    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes(cs)
     }
 }
 
