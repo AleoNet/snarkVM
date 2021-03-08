@@ -31,7 +31,7 @@ use snarkvm_gadgets::{
     traits::{
         curves::{GroupGadget, PairingGadget},
         fields::{FieldGadget, ToConstraintFieldGadget},
-        utilities::{boolean::Boolean, eq::EqGadget, ToBytesGadget},
+        utilities::{boolean::Boolean, eq::EqGadget, ToBitsLEGadget, ToBytesGadget},
     },
     utilities::{alloc::AllocGadget, select::CondSelectGadget, uint::UInt8},
 };
@@ -169,15 +169,15 @@ where
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
-    fn new_variable<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>, T>(
-        mut cs: CS,
-        val: impl FnOnce() -> Result<T, SynthesisError>,
-        mode: AllocationMode,
-    ) -> Result<Self, SynthesisError>
-    where
+    fn alloc_constant<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<VerifierKey<TargetCurve>>,
-    {
-        let vk_orig = val()?.borrow().clone();
+        CS: ConstraintSystem<F>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        let vk_orig = value_gen()?.borrow().clone();
 
         let VerifierKey {
             vk,
@@ -187,16 +187,17 @@ where
 
         let degree_bounds_and_shift_powers = degree_bounds_and_shift_powers.map(|vec| {
             vec.iter()
-                .map(|(s, g)| {
+                .enumerate()
+                .map(|(i, (s, g))| {
                     (
                         *s,
-                        FpGadget::<<BaseCurve as PairingEngine>::Fr>::new_variable(
-                            cs.ns(|| "degree bound"),
+                        FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc_constant(
+                            cs.ns(|| format!("degree bound_{}", i)),
                             || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*s as u128)),
                             mode,
                         )
                         .unwrap(),
-                        PG::G1Gadget::new_variable(cs.ns(|| format!("pow_{}", s)), || Ok(*g), mode).unwrap(),
+                        PG::G1Gadget::alloc_constant(cs.ns(|| format!("pow_{}", i)), || Ok(*g)).unwrap(),
                     )
                 })
                 .collect()
@@ -204,9 +205,105 @@ where
 
         let KZG10VerifierKey { g, h, beta_h, .. } = vk;
 
-        let g = PG::G1Gadget::new_variable(cs.ns(|| "g"), || Ok(g), mode)?;
-        let h = PG::G2Gadget::new_variable(cs.ns(|| "h"), || Ok(h), mode)?;
-        let beta_h = PG::G2Gadget::new_variable(cs.ns(|| "beta_h"), || Ok(beta_h), mode)?;
+        let g = PG::G1Gadget::alloc_constant(cs.ns(|| "g"), || Ok(g))?;
+        let h = PG::G2Gadget::alloc_constant(cs.ns(|| "h"), || Ok(h))?;
+        let beta_h = PG::G2Gadget::alloc_constant(cs.ns(|| "beta_h"), || Ok(beta_h))?;
+
+        Ok(Self {
+            g,
+            h,
+            beta_h,
+            degree_bounds_and_shift_powers,
+        })
+    }
+
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<VerifierKey<TargetCurve>>,
+        CS: ConstraintSystem<F>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        let vk_orig = value_gen()?.borrow().clone();
+
+        let VerifierKey {
+            vk,
+            degree_bounds_and_shift_powers,
+            ..
+        } = vk_orig;
+
+        let degree_bounds_and_shift_powers = degree_bounds_and_shift_powers.map(|vec| {
+            vec.iter()
+                .enumerate()
+                .map(|(i, (s, g))| {
+                    (
+                        *s,
+                        FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc(
+                            cs.ns(|| format!("degree bound_{}", i)),
+                            || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*s as u128)),
+                            mode,
+                        )
+                        .unwrap(),
+                        PG::G1Gadget::alloc(cs.ns(|| format!("pow_{}", i)), || Ok(*g)).unwrap(),
+                    )
+                })
+                .collect()
+        });
+
+        let KZG10VerifierKey { g, h, beta_h, .. } = vk;
+
+        let g = PG::G1Gadget::alloc(cs.ns(|| "g"), || Ok(g))?;
+        let h = PG::G2Gadget::alloc(cs.ns(|| "h"), || Ok(h))?;
+        let beta_h = PG::G2Gadget::alloc(cs.ns(|| "beta_h"), || Ok(beta_h))?;
+
+        Ok(Self {
+            g,
+            h,
+            beta_h,
+            degree_bounds_and_shift_powers,
+        })
+    }
+
+    fn alloc_input<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<VerifierKey<TargetCurve>>,
+        CS: ConstraintSystem<F>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        let vk_orig = value_gen()?.borrow().clone();
+
+        let VerifierKey {
+            vk,
+            degree_bounds_and_shift_powers,
+            ..
+        } = vk_orig;
+
+        let degree_bounds_and_shift_powers = degree_bounds_and_shift_powers.map(|vec| {
+            vec.iter()
+                .enumerate()
+                .map(|(i, (s, g))| {
+                    (
+                        *s,
+                        FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc_input(
+                            cs.ns(|| format!("degree bound_{}", i)),
+                            || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*s as u128)),
+                            mode,
+                        )
+                        .unwrap(),
+                        PG::G1Gadget::alloc_input(cs.ns(|| format!("pow_{}", i)), || Ok(*g)).unwrap(),
+                    )
+                })
+                .collect()
+        });
+
+        let KZG10VerifierKey { g, h, beta_h, .. } = vk;
+
+        let g = PG::G1Gadget::alloc_input(cs.ns(|| "g"), || Ok(g))?;
+        let h = PG::G2Gadget::alloc_input(cs.ns(|| "h"), || Ok(h))?;
+        let beta_h = PG::G2Gadget::alloc_input(cs.ns(|| "beta_h"), || Ok(beta_h))?;
 
         Ok(Self {
             g,
@@ -1131,7 +1228,7 @@ where
 {
     #[allow(clippy::type_complexity, clippy::too_many_arguments)]
     fn prepared_batch_check_evaluations<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
-        cs: CS,
+        mut cs: CS,
         prepared_verification_key: &<Self as PCCheckVar<
             <TargetCurve as PairingEngine>::Fr,
             MarlinKZG10<TargetCurve>,
