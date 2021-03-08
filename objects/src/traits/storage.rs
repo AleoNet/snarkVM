@@ -22,7 +22,7 @@ pub trait Storage
 where
     Self: Sized,
 {
-    /// Returns a `bool` indicating whether the storage is in-memory only
+    /// Returns a `bool` indicating whether the storage is in-memory only.
     fn in_memory(&self) -> bool;
 
     /// Opens the storage object, optionally using the given paths; it gets created if it doesn't exist.
