@@ -172,7 +172,7 @@ where
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<VerifierKey<TargetCurve>>,
-        CS: ConstraintSystem<F>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
     >(
         mut cs: CS,
         value_gen: Fn,
@@ -220,7 +220,7 @@ where
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<VerifierKey<TargetCurve>>,
-        CS: ConstraintSystem<F>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
     >(
         mut cs: CS,
         value_gen: Fn,
@@ -268,7 +268,7 @@ where
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<VerifierKey<TargetCurve>>,
-        CS: ConstraintSystem<F>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
     >(
         mut cs: CS,
         value_gen: Fn,
@@ -483,18 +483,21 @@ where
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
-    fn prepare(unprepared: &VerifierKeyVar<TargetCurve, BaseCurve, PG>) -> Result<Self, SynthesisError> {
+    fn prepare<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
+        mut cs: CS,
+        unprepared: &VerifierKeyVar<TargetCurve, BaseCurve, PG>,
+    ) -> Result<Self, SynthesisError> {
         let supported_bits = <<TargetCurve as PairingEngine>::Fr as PrimeField>::size_in_bits();
         let mut prepared_g = Vec::<PG::G1Gadget>::new();
 
         let mut g: PG::G1Gadget = unprepared.g.clone();
-        for _ in 0..supported_bits {
+        for i in 0..supported_bits {
             prepared_g.push(g.clone());
-            g.double_in_place()?;
+            g.double_in_place(cs.ns(|| format!("double_in_place_{}", i)))?;
         }
 
-        let prepared_h = PG::prepare_g2(&unprepared.h)?;
-        let prepared_beta_h = PG::prepare_g2(&unprepared.beta_h)?;
+        let prepared_h = PG::prepare_g2(cs.ns(|| "prepared_h"), &unprepared.h)?;
+        let prepared_beta_h = PG::prepare_g2(cs.ns(|| "prepared_beta_h"), &unprepared.beta_h)?;
 
         let prepared_degree_bounds_and_shift_powers = if unprepared.degree_bounds_and_shift_powers.is_some() {
             let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G1Gadget>)>::new();
