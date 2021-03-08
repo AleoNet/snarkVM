@@ -1839,6 +1839,7 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-dpc",
+ "snarkvm-parameters",
  "snarkvm-utilities",
  "thiserror",
 ]
