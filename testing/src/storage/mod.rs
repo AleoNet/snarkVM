@@ -42,7 +42,7 @@ pub fn initialize_test_blockchain<T: Transaction, P: LoadableMerkleParameters>(
 
     Ledger::<T, P>::destroy_storage(path.clone()).unwrap();
 
-    Ledger::<T, P>::new(&path, parameters, genesis_block).unwrap()
+    Ledger::<T, P>::new(Some(&path), parameters, genesis_block).unwrap()
 }
 
 // Open a test blockchain from stored genesis attributes
