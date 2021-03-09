@@ -607,7 +607,7 @@ where
                         <BaseCurve as PairingEngine>::Fr,
                     >>::alloc_constant(
                         cs.ns(|| format!("alloc_constant_gadget_{}_{}", i, j)),
-                        || Ok(shift_power_elem),
+                        || Ok(shift_power_elem.into()),
                     )?);
                 }
 
@@ -2182,11 +2182,16 @@ where
 
                     let shift_power_times_value = shift_power.scalar_mul_le(value_bits.iter())?;
                     let mut adjusted_comm = shifted_comm;
-                    adjusted_comm -= shift_power_times_value;
+                    adjusted_comm = adjusted_comm.sub(
+                        &mut cs.ns(|| format!("adjusted_comm_minus_shift_power_times_value_{}", i)),
+                        &shift_power_times_value,
+                    )?;
 
                     let adjusted_comm_times_challenge = adjusted_comm.scalar_mul_le(challenge_shifted_bits.iter())?;
-
-                    combined_comm += adjusted_comm_times_challenge;
+                    combined_comm = combined_comm.add(
+                        &mut cs.ns(|| format!("combined_comm_plus_adjusted_comm_times_challenge_{}", i)),
+                        &adjusted_comm_times_challenge,
+                    )?;
                 }
             }
 
