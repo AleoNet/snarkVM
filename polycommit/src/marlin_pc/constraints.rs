@@ -25,7 +25,7 @@ use crate::{
     Vec,
 };
 use snarkvm_curves::traits::PairingEngine;
-use snarkvm_fields::{Field, One, PrimeField, ToConstraintField, Zero};
+use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     fields::FpGadget,
     traits::{
@@ -1657,7 +1657,8 @@ where
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
-    _cycle_engine: PhantomData<CycleE>,
+    _target_curve: PhantomData<TargetCurve>,
+    _base_curve: PhantomData<BaseCurve>,
     _pairing_gadget: PhantomData<PG>,
 }
 
@@ -1673,7 +1674,8 @@ where
 {
     fn clone(&self) -> Self {
         Self {
-            _cycle_engine: PhantomData,
+            _target_curve: PhantomData,
+            _base_curve: PhantomData,
             _pairing_gadget: PhantomData,
         }
     }
