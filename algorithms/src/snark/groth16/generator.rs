@@ -58,14 +58,15 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
     type Root = Self;
 
     #[inline]
-    fn alloc<F, A, AR>(&mut self, _: A, _: F) -> Result<Variable, SynthesisError>
+    fn alloc<F, A, AR>(&mut self, _: A, f: F) -> Result<Variable, SynthesisError>
     where
         F: FnOnce() -> Result<E::Fr, SynthesisError>,
         A: FnOnce() -> AR,
         AR: AsRef<str>,
     {
-        // There is no assignment, so we don't invoke the
-        // function for obtaining one.
+        // There is no assignment, but the function still needs to be called so that
+        // the associated values are allocated
+        f()?;
 
         let index = self.num_private_variables;
         self.num_private_variables += 1;
@@ -74,14 +75,15 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
     }
 
     #[inline]
-    fn alloc_input<F, A, AR>(&mut self, _: A, _: F) -> Result<Variable, SynthesisError>
+    fn alloc_input<F, A, AR>(&mut self, _: A, f: F) -> Result<Variable, SynthesisError>
     where
         F: FnOnce() -> Result<E::Fr, SynthesisError>,
         A: FnOnce() -> AR,
         AR: AsRef<str>,
     {
-        // There is no assignment, so we don't invoke the
-        // function for obtaining one.
+        // There is no assignment, but the function still needs to be called so that
+        // the associated values are allocated
+        f()?;
 
         let index = self.num_public_variables;
         self.num_public_variables += 1;

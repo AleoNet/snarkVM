@@ -489,7 +489,7 @@ mod test {
         }
         let params = {
             let c = Bench::<Fr> {
-                inputs: vec![None; num_inputs],
+                inputs: vec![Some(rng.gen()); num_inputs],
                 num_constraints,
             };
 
@@ -560,7 +560,7 @@ mod test {
         }
         let params = {
             let c = Bench::<Fr> {
-                inputs: vec![None; num_inputs],
+                inputs: vec![Some(rng.gen()); num_inputs],
                 num_constraints,
             };
 
