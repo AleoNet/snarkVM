@@ -194,7 +194,6 @@ where
                         FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc_constant(
                             cs.ns(|| format!("degree bound_{}", i)),
                             || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*s as u128)),
-                            mode,
                         )
                         .unwrap(),
                         PG::G1Gadget::alloc_constant(cs.ns(|| format!("pow_{}", i)), || Ok(*g)).unwrap(),
@@ -242,7 +241,6 @@ where
                         FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc(
                             cs.ns(|| format!("degree bound_{}", i)),
                             || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*s as u128)),
-                            mode,
                         )
                         .unwrap(),
                         PG::G1Gadget::alloc(cs.ns(|| format!("pow_{}", i)), || Ok(*g)).unwrap(),
@@ -290,7 +288,6 @@ where
                         FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc_input(
                             cs.ns(|| format!("degree bound_{}", i)),
                             || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*s as u128)),
-                            mode,
                         )
                         .unwrap(),
                         PG::G1Gadget::alloc_input(cs.ns(|| format!("pow_{}", i)), || Ok(*g)).unwrap(),
@@ -346,7 +343,10 @@ where
         Ok(bytes)
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+    fn to_bytes_strict<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
+        &self,
+        cs: CS,
+    ) -> Result<Vec<UInt8>, SynthesisError> {
         self.to_bytes(cs)
     }
 }
@@ -795,25 +795,84 @@ where
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
-    fn new_variable<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>, T>(
-        mut cs: CS,
-        value_gen: impl FnOnce() -> Result<T, SynthesisError>,
-        mode: AllocationMode,
-    ) -> Result<Self, SynthesisError>
-    where
+    fn alloc_constant<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<Commitment<TargetCurve>>,
-    {
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
         value_gen().and_then(|commitment| {
-            let ns = cs.into();
-            let cs = ns.cs();
-
             let commitment = *commitment.borrow();
             let comm = commitment.comm;
-            let comm_gadget = PG::G1Gadget::new_variable(cs.clone(), || Ok(comm.0), mode)?;
+            let comm_gadget = PG::G1Gadget::alloc_constant(cs.ns(|| "alloc_constant_commitment"), || Ok(comm.0))?;
 
             let shifted_comm = commitment.shifted_comm;
             let shifted_comm_gadget = if let Some(shifted_comm) = shifted_comm {
-                Some(PG::G1Gadget::new_variable(cs, || Ok(shifted_comm.0), mode)?)
+                Some(PG::G1Gadget::alloc_constant(
+                    cs.ns(|| "alloc_constant_shifted_commitment"),
+                    || Ok(shifted_comm.0),
+                )?)
+            } else {
+                None
+            };
+
+            Ok(Self {
+                comm: comm_gadget,
+                shifted_comm: shifted_comm_gadget,
+            })
+        })
+    }
+
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Commitment<TargetCurve>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        value_gen().and_then(|commitment| {
+            let commitment = *commitment.borrow();
+            let comm = commitment.comm;
+            let comm_gadget = PG::G1Gadget::alloc(cs.ns(|| "alloc_commitment"), || Ok(comm.0))?;
+
+            let shifted_comm = commitment.shifted_comm;
+            let shifted_comm_gadget = if let Some(shifted_comm) = shifted_comm {
+                Some(PG::G1Gadget::alloc(cs.ns(|| "alloc_shifted_commitment"), || {
+                    Ok(shifted_comm.0)
+                })?)
+            } else {
+                None
+            };
+
+            Ok(Self {
+                comm: comm_gadget,
+                shifted_comm: shifted_comm_gadget,
+            })
+        })
+    }
+
+    fn alloc_input<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Commitment<TargetCurve>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        value_gen().and_then(|commitment| {
+            let commitment = *commitment.borrow();
+            let comm = commitment.comm;
+            let comm_gadget = PG::G1Gadget::alloc_input(cs.ns(|| "alloc_input_commitment"), || Ok(comm.0))?;
+
+            let shifted_comm = commitment.shifted_comm;
+            let shifted_comm_gadget = if let Some(shifted_comm) = shifted_comm {
+                Some(PG::G1Gadget::alloc_input(
+                    cs.ns(|| "alloc_input_shifted_commitment"),
+                    || Ok(shifted_comm.0),
+                )?)
             } else {
                 None
             };
@@ -964,16 +1023,15 @@ where
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
-    fn new_variable<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>, T>(
-        mut cs: CS,
-        f: impl FnOnce() -> Result<T, SynthesisError>,
-        mode: AllocationMode,
-    ) -> Result<Self, SynthesisError>
-    where
+    fn alloc_constant<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<PreparedCommitment<TargetCurve>>,
-    {
-        let t = f()?;
-        let obj = t.borrow();
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        let obj = value_gen()?.borrow();
 
         let mut prepared_comm = Vec::<PG::G1Gadget>::new();
 
@@ -981,14 +1039,13 @@ where
             prepared_comm.push(<PG::G1Gadget as AllocGadget<
                 <TargetCurve as PairingEngine>::G1Projective,
                 <BaseCurve as PairingEngine>::Fr,
-            >>::new_variable(
+            >>::alloc_constant(
                 cs.ns(|| format!("comm_elem_{}", i)),
                 || {
                     Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
                         <TargetCurve as PairingEngine>::G1Affine,
                     >>::from(*comm_elem))
                 },
-                mode,
             )?);
         }
 
@@ -996,15 +1053,98 @@ where
             Some(<PG::G1Gadget as AllocGadget<
                 <TargetCurve as PairingEngine>::G1Projective,
                 <BaseCurve as PairingEngine>::Fr,
-            >>::new_variable(
-                cs.ns(|| "shifted_comm"),
+            >>::alloc_constant(cs.ns(|| "shifted_comm"), || {
+                Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
+                    <TargetCurve as PairingEngine>::G1Affine,
+                >>::from(obj.shifted_comm.unwrap().0))
+            })?)
+        } else {
+            None
+        };
+
+        Ok(Self {
+            prepared_comm,
+            shifted_comm,
+        })
+    }
+
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PreparedCommitment<TargetCurve>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        let obj = value_gen()?.borrow();
+
+        let mut prepared_comm = Vec::<PG::G1Gadget>::new();
+
+        for (i, comm_elem) in obj.prepared_comm.0.iter().enumerate() {
+            prepared_comm.push(<PG::G1Gadget as AllocGadget<
+                <TargetCurve as PairingEngine>::G1Projective,
+                <BaseCurve as PairingEngine>::Fr,
+            >>::alloc(cs.ns(|| format!("comm_elem_{}", i)), || {
+                Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
+                    <TargetCurve as PairingEngine>::G1Affine,
+                >>::from(*comm_elem))
+            })?);
+        }
+
+        let shifted_comm = if obj.shifted_comm.is_some() {
+            Some(<PG::G1Gadget as AllocGadget<
+                <TargetCurve as PairingEngine>::G1Projective,
+                <BaseCurve as PairingEngine>::Fr,
+            >>::alloc(cs.ns(|| "shifted_comm"), || {
+                Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
+                    <TargetCurve as PairingEngine>::G1Affine,
+                >>::from(obj.shifted_comm.unwrap().0))
+            })?)
+        } else {
+            None
+        };
+
+        Ok(Self {
+            prepared_comm,
+            shifted_comm,
+        })
+    }
+
+    fn alloc_input<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PreparedCommitment<TargetCurve>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        let obj = value_gen()?.borrow();
+
+        let mut prepared_comm = Vec::<PG::G1Gadget>::new();
+
+        for (i, comm_elem) in obj.prepared_comm.0.iter().enumerate() {
+            prepared_comm.push(<PG::G1Gadget as AllocGadget<
+                <TargetCurve as PairingEngine>::G1Projective,
+                <BaseCurve as PairingEngine>::Fr,
+            >>::alloc_input(
+                cs.ns(|| format!("comm_elem_{}", i)),
                 || {
                     Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
                         <TargetCurve as PairingEngine>::G1Affine,
-                    >>::from(obj.shifted_comm.unwrap().0))
+                    >>::from(*comm_elem))
                 },
-                mode,
-            )?)
+            )?);
+        }
+
+        let shifted_comm = if obj.shifted_comm.is_some() {
+            Some(<PG::G1Gadget as AllocGadget<
+                <TargetCurve as PairingEngine>::G1Projective,
+                <BaseCurve as PairingEngine>::Fr,
+            >>::alloc_input(cs.ns(|| "shifted_comm"), || {
+                Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
+                    <TargetCurve as PairingEngine>::G1Affine,
+                >>::from(obj.shifted_comm.unwrap().0))
+            })?)
         } else {
             None
         };
@@ -1066,32 +1206,98 @@ where
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
-    fn new_variable<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>, T>(
-        mut cs: CS,
-        value_gen: impl FnOnce() -> Result<T, SynthesisError>,
-        mode: AllocationMode,
-    ) -> Result<Self, SynthesisError>
-    where
+    fn alloc_constant<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<LabeledCommitment<Commitment<TargetCurve>>>,
-    {
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
         value_gen().and_then(|labeled_commitment| {
             let labeled_commitment = labeled_commitment.borrow().clone();
             let label = labeled_commitment.label().to_string();
             let commitment = labeled_commitment.commitment();
             let degree_bound = labeled_commitment.degree_bound();
 
-            let commitment = CommitmentVar::new_variable(cs.ns(|| "commitment"), || Ok(commitment), mode)?;
+            let commitment = CommitmentVar::alloc_constant(cs.ns(|| "commitment"), || Ok(commitment))?;
 
             let degree_bound = if let Some(degree_bound) = degree_bound {
-                FpGadget::<<BaseCurve as PairingEngine>::Fr>::new_variable(
-                    cs.ns(|| "degree_bound"),
-                    || {
-                        Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(
-                            degree_bound as u128,
-                        ))
-                    },
-                    mode,
-                )
+                FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc_constant(cs.ns(|| "degree_bound"), || {
+                    Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(
+                        degree_bound as u128,
+                    ))
+                })
+                .ok()
+            } else {
+                None
+            };
+
+            Ok(Self {
+                label,
+                commitment,
+                degree_bound,
+            })
+        })
+    }
+
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<LabeledCommitment<Commitment<TargetCurve>>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        value_gen().and_then(|labeled_commitment| {
+            let labeled_commitment = labeled_commitment.borrow().clone();
+            let label = labeled_commitment.label().to_string();
+            let commitment = labeled_commitment.commitment();
+            let degree_bound = labeled_commitment.degree_bound();
+
+            let commitment = CommitmentVar::alloc(cs.ns(|| "commitment"), || Ok(commitment))?;
+
+            let degree_bound = if let Some(degree_bound) = degree_bound {
+                FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc(cs.ns(|| "degree_bound"), || {
+                    Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(
+                        degree_bound as u128,
+                    ))
+                })
+                .ok()
+            } else {
+                None
+            };
+
+            Ok(Self {
+                label,
+                commitment,
+                degree_bound,
+            })
+        })
+    }
+
+    fn alloc_input<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<LabeledCommitment<Commitment<TargetCurve>>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        value_gen().and_then(|labeled_commitment| {
+            let labeled_commitment = labeled_commitment.borrow().clone();
+            let label = labeled_commitment.label().to_string();
+            let commitment = labeled_commitment.commitment();
+            let degree_bound = labeled_commitment.degree_bound();
+
+            let commitment = CommitmentVar::alloc_input(cs.ns(|| "commitment"), || Ok(commitment))?;
+
+            let degree_bound = if let Some(degree_bound) = degree_bound {
+                FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc_input(cs.ns(|| "degree_bound"), || {
+                    Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(
+                        degree_bound as u128,
+                    ))
+                })
                 .ok()
             } else {
                 None
@@ -1215,23 +1421,71 @@ where
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
-    fn new_variable<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>, T>(
-        mut cs: CS,
-        value_gen: impl FnOnce() -> Result<T, SynthesisError>,
-        mode: AllocationMode,
-    ) -> Result<Self, SynthesisError>
-    where
+    fn alloc_constant<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<Proof<TargetCurve>>,
-    {
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
         value_gen().and_then(|proof| {
             let Proof { w, random_v } = *proof.borrow();
-            let w = PG::G1Gadget::new_variable(cs.ns(|| "w"), || Ok(w), mode)?;
+            let w = PG::G1Gadget::alloc_constant(cs.ns(|| "alloc_constant_w"), || Ok(w))?;
 
             let random_v = match random_v {
                 None => None,
-                Some(random_v_inner) => Some(NonNativeFieldVar::new_variable(cs.ns(|| "random_v"), || {
+                Some(random_v_inner) => Some(NonNativeFieldVar::alloc_constant(
+                    cs.ns(|| "alloc_constant_random_v"),
+                    || Ok(random_v_inner),
+                )?),
+            };
+
+            Ok(Self { w, random_v })
+        })
+    }
+
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Proof<TargetCurve>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        value_gen().and_then(|proof| {
+            let Proof { w, random_v } = *proof.borrow();
+            let w = PG::G1Gadget::alloc(cs.ns(|| "alloc_w"), || Ok(w))?;
+
+            let random_v = match random_v {
+                None => None,
+                Some(random_v_inner) => Some(NonNativeFieldVar::alloc(cs.ns(|| "alloc_random_v"), || {
                     Ok(random_v_inner)
                 })?),
+            };
+
+            Ok(Self { w, random_v })
+        })
+    }
+
+    fn alloc_input<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Proof<TargetCurve>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        value_gen().and_then(|proof| {
+            let Proof { w, random_v } = *proof.borrow();
+            let w = PG::G1Gadget::alloc_input(cs.ns(|| "alloc_input_w"), || Ok(w))?;
+
+            let random_v = match random_v {
+                None => None,
+                Some(random_v_inner) => Some(NonNativeFieldVar::alloc_input(
+                    cs.ns(|| "alloc_input_random_v"),
+                    || Ok(random_v_inner),
+                )?),
             };
 
             Ok(Self { w, random_v })
@@ -1277,7 +1531,7 @@ where
 
 impl<TargetCurve, BaseCurve, PG>
     AllocGadget<
-        BatchLCProof<<TargetCurve as PairingEngine>::Fr, P, MarlinKZG10<TargetCurve>>,
+        BatchLCProof<<TargetCurve as PairingEngine>::Fr, MarlinKZG10<TargetCurve>>,
         <BaseCurve as PairingEngine>::Fr,
     > for BatchLCProofVar<TargetCurve, BaseCurve, PG>
 where
@@ -1289,41 +1543,105 @@ where
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
-    fn new_variable<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>, T>(
+    fn alloc_constant<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<BatchLCProof<<TargetCurve as PairingEngine>::Fr, MarlinKZG10<TargetCurve>>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
         mut cs: CS,
-        value_gen: impl FnOnce() -> Result<T, SynthesisError>,
-        mode: AllocationMode,
-    ) -> Result<Self, SynthesisError>
-    where
-        T: Borrow<BatchLCProof<<TargetCurve as PairingEngine>::Fr, P, MarlinKZG10<TargetCurve>>>,
-    {
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
         value_gen().map(|proof| {
-            let BatchLCProof { proof, evals } = proof.borrow().clone();
+            let BatchLCProof { proof, evaluations } = proof.borrow().clone();
 
             let proofs: Vec<Proof<_>> = proof.to_vec();
             let proofs: Vec<ProofVar<TargetCurve, BaseCurve, PG>> = proofs
                 .iter()
-                .map(|p| ProofVar::new_variable(cs.ns(|| "proof"), || Ok(p), mode).unwrap())
+                .map(|p| ProofVar::alloc_constant(cs.ns(|| "proof"), || Ok(p)).unwrap())
                 .collect();
 
             #[allow(clippy::type_complexity)]
             let evals: Option<
                 Vec<NonNativeFieldVar<<TargetCurve as PairingEngine>::Fr, <BaseCurve as PairingEngine>::Fr>>,
-            > = match evals {
+            > = match evaluations {
                 None => None,
                 Some(evals_inner) => Some(
                     evals_inner
                         .iter()
-                        .map(|e| NonNativeFieldVar::new_variable(cs.ns(|| "evaluation"), || Ok(e), mode).unwrap())
+                        .map(|e| NonNativeFieldVar::alloc_constant(cs.ns(|| "evaluation"), || Ok(e)).unwrap())
                         .collect(),
                 ),
             };
 
-            Self {
-                proofs,
-                evals,
-                polynomial: PhantomData,
-            }
+            Self { proofs, evals }
+        })
+    }
+
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<BatchLCProof<<TargetCurve as PairingEngine>::Fr, MarlinKZG10<TargetCurve>>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        value_gen().map(|proof| {
+            let BatchLCProof { proof, evaluations } = proof.borrow().clone();
+
+            let proofs: Vec<Proof<_>> = proof.to_vec();
+            let proofs: Vec<ProofVar<TargetCurve, BaseCurve, PG>> = proofs
+                .iter()
+                .map(|p| ProofVar::alloc(cs.ns(|| "proof"), || Ok(p)).unwrap())
+                .collect();
+
+            #[allow(clippy::type_complexity)]
+            let evals: Option<
+                Vec<NonNativeFieldVar<<TargetCurve as PairingEngine>::Fr, <BaseCurve as PairingEngine>::Fr>>,
+            > = match evaluations {
+                None => None,
+                Some(evals_inner) => Some(
+                    evals_inner
+                        .iter()
+                        .map(|e| NonNativeFieldVar::alloc(cs.ns(|| "evaluation"), || Ok(e)).unwrap())
+                        .collect(),
+                ),
+            };
+
+            Self { proofs, evals }
+        })
+    }
+
+    fn alloc_input<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<BatchLCProof<<TargetCurve as PairingEngine>::Fr, MarlinKZG10<TargetCurve>>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        value_gen().map(|proof| {
+            let BatchLCProof { proof, evaluations } = proof.borrow().clone();
+
+            let proofs: Vec<Proof<_>> = proof.to_vec();
+            let proofs: Vec<ProofVar<TargetCurve, BaseCurve, PG>> = proofs
+                .iter()
+                .map(|p| ProofVar::alloc_input(cs.ns(|| "proof"), || Ok(p)).unwrap())
+                .collect();
+
+            #[allow(clippy::type_complexity)]
+            let evals: Option<
+                Vec<NonNativeFieldVar<<TargetCurve as PairingEngine>::Fr, <BaseCurve as PairingEngine>::Fr>>,
+            > = match evaluations {
+                None => None,
+                Some(evals_inner) => Some(
+                    evals_inner
+                        .iter()
+                        .map(|e| NonNativeFieldVar::alloc_input(cs.ns(|| "evaluation"), || Ok(e)).unwrap())
+                        .collect(),
+                ),
+            };
+
+            Self { proofs, evals }
         })
     }
 }
