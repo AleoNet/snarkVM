@@ -105,12 +105,15 @@ where
             let mut sum = FpGadget::<<BaseCurve as PairingEngine>::Fr>::zero(cs.ns(|| "zero")).unwrap();
             let one = FpGadget::<<BaseCurve as PairingEngine>::Fr>::one(cs.ns(|| "one")).unwrap();
             for (i, pir_gadget) in pir_vector_gadgets.iter().enumerate() {
-                sum += &FpGadget::<<BaseCurve as PairingEngine>::Fr>::from_boolean(
+                let temp = FpGadget::<<BaseCurve as PairingEngine>::Fr>::from_boolean(
                     cs.ns(|| format!("from_boolean_{}", i)),
                     pir_gadget.clone(),
-                );
+                )
+                .unwrap();
+
+                sum = sum.add(cs.ns(|| format!("sum_add_pir{}", i)), &temp).unwrap();
             }
-            sum.enforce_equal(&one).unwrap();
+            sum.enforce_equal(cs.ns(|| "sum_enforce_equal"), &one).unwrap();
 
             // PIR the value
             let mut found_bound =
@@ -942,10 +945,10 @@ where
         let zero_shifted_comm = PG::G1Gadget::zero(cs.ns(|| "zero"))?;
 
         let mut bytes = Vec::new();
-        bytes.extend_from_slice(&self.comm.to_bytes()?);
+        bytes.extend_from_slice(&self.comm.to_bytes(cs.ns(|| "comm_to_bytes"))?);
 
         let shifted_comm = self.shifted_comm.clone().unwrap_or(zero_shifted_comm);
-        bytes.extend_from_slice(&shifted_comm.to_bytes()?);
+        bytes.extend_from_slice(&shifted_comm.to_bytes(cs.ns(|| "shifted_comm_to_bytes"))?);
         Ok(bytes)
     }
 
@@ -1004,16 +1007,16 @@ where
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
     fn prepare<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
-        cs: CS,
+        mut cs: CS,
         unprepared: &CommitmentVar<TargetCurve, BaseCurve, PG>,
     ) -> Result<Self, SynthesisError> {
         let mut prepared_comm = Vec::<PG::G1Gadget>::new();
         let supported_bits = <<TargetCurve as PairingEngine>::Fr as PrimeField>::size_in_bits();
 
         let mut cur: PG::G1Gadget = unprepared.comm.clone();
-        for _ in 0..supported_bits {
+        for i in 0..supported_bits {
             prepared_comm.push(cur.clone());
-            cur.double_in_place()?;
+            cur.double_in_place(cs.ns(|| format!("cur_double_in_place_{}", i)))?;
         }
 
         Ok(Self {
@@ -1814,7 +1817,10 @@ where
                         {
                             for (bit, base_power) in challenge_bits.iter().zip(comm.prepared_comm.iter()) {
                                 let mut new_encoded = base_power.clone();
-                                new_encoded += comm_times_challenge.clone();
+                                new_encoded = new_encoded.add(
+                                    cs.ns(|| format!("new_encoded_plus_comm_times_challenge_{}_{}_{}", i, j, k)),
+                                    &comm_times_challenge,
+                                )?;
                                 comm_times_challenge = PG::G1Gadget::conditionally_select(
                                     cs.ns(|| format!("comm_times_challenge_cond_select_{}_{}_{}", i, j, k)),
                                     bit,
@@ -1825,10 +1831,14 @@ where
                         }
 
                         if negate.eq(&true) {
-                            comm_times_challenge = comm_times_challenge.negate()?;
+                            comm_times_challenge = comm_times_challenge
+                                .negate(cs.ns(|| format!("negate_comm_times_challenge_{}_{}_{}", i, j, k)))?;
                         }
 
-                        combined_comm += comm_times_challenge.clone();
+                        combined_comm = combined_comm.add(
+                            cs.ns(|| format!("combined_comm_plus_comm_times_challenge_{}_{}_{}", i, j, k)),
+                            &comm_times_challenge,
+                        )?;
 
                         // If the degree bound is specified, we include the adjusted degree-shifted commitment
                         // (that is, c_i' - v_i beta^{D - d_i} G), where d_i is the specific degree bound and
@@ -1858,7 +1868,13 @@ where
                             {
                                 for (l, (bit, base_power)) in value_bits.iter().zip(&shift_power).enumerate() {
                                     let mut new_encoded = base_power.clone();
-                                    new_encoded += shift_power_times_value.clone();
+                                    new_encoded = new_encoded.add(
+                                        cs.ns(|| {
+                                            format!("new_encoded_add_shift_power_times_value_{}_{}_{}_{}", i, j, k, l)
+                                        }),
+                                        &shift_power_times_value,
+                                    )?;
+
                                     shift_power_times_value = PG::G1Gadget::conditionally_select(
                                         cs.ns(|| format!("shift_power_times_value_cond_select{}_{}_{}_{}", i, j, k, l)),
                                         bit,
@@ -1868,10 +1884,17 @@ where
                                 }
                             }
                             let mut adjusted_comm = shifted_comm;
-                            adjusted_comm -= shift_power_times_value;
+                            adjusted_comm = adjusted_comm.sub(
+                                cs.ns(|| format!("adjusted_comm_minus_shift_power_times_value_{}_{}_{}", i, j, k)),
+                                &shift_power_times_value,
+                            )?;
+
                             let adjusted_comm_times_challenge =
                                 adjusted_comm.scalar_mul_le(challenge_shifted_bits.iter())?;
-                            combined_comm += adjusted_comm_times_challenge;
+                            combined_comm = combined_comm.add(
+                                cs.ns(|| format!("combined_comm_add_adjusted_comm_times_challenge_{}_{}_{}", i, j, k)),
+                                &adjusted_comm_times_challenge,
+                            )?;
                         }
                     } else {
                         assert!(degree_bound.is_none());
@@ -1879,13 +1902,22 @@ where
                         let mut comm_times_challenge = PG::G1Gadget::zero(cs.ns(|| format!("zero_{}_{}_{}", i, j, k)))?;
                         let coeff = coeff.clone().unwrap();
 
-                        let challenge_times_coeff = &challenge * &coeff;
-                        let challenge_times_coeff_bits = challenge_times_coeff.to_bits_le()?;
+                        let challenge_times_coeff = challenge.mul(
+                            &mut cs.ns(|| format!("challenge_times_coeff_{}_{}_{}", i, j, k)),
+                            &coeff,
+                        )?;
+
+                        let challenge_times_coeff_bits = challenge_times_coeff
+                            .to_bits_le(cs.ns(|| format!("challenge_times_coeff_to_bits_le_{}_{}_{}", i, j, k)))?;
 
                         {
                             for (bit, base_power) in challenge_times_coeff_bits.iter().zip(&comm.prepared_comm) {
                                 let mut new_encoded = comm_times_challenge.clone();
-                                new_encoded += base_power.clone();
+                                new_encoded = new_encoded.add(
+                                    cs.ns(|| format!("new_encoded_add_base_power_{}_{}_{}", i, j, k)),
+                                    &base_power,
+                                )?;
+
                                 comm_times_challenge = PG::G1Gadget::conditionally_select(
                                     cs.ns(|| format!("comm_times_challenge_cond_select_{}_{}_{}", i, j, k)),
                                     bit,
@@ -1896,19 +1928,27 @@ where
                         }
 
                         if negate.eq(&true) {
-                            comm_times_challenge = comm_times_challenge.negate()?;
+                            comm_times_challenge = comm_times_challenge
+                                .negate(cs.ns(|| format!("comm_times_challenge_negate_{}_{}_{}", i, j, k)))?;
                         }
 
-                        combined_comm += comm_times_challenge;
+                        combined_comm = combined_comm.add(
+                            &mut cs.ns(|| format!("combined_comm_add_comm_times_challenge_{}_{}_{}", i, j, k)),
+                            &comm_times_challenge,
+                        )?;
                     }
                 }
                 // Similarly, we add up the evaluations, multiplied with random challenges.
-                let value_times_challenge_unreduced = value.mul_without_reduce(&challenge)?;
+                let value_times_challenge_unreduced =
+                    value.mul_without_reduce(cs.ns(|| format!("value_mul_without_reduce_{}_{}", i, j)), &challenge)?;
 
-                combined_eval += &value_times_challenge_unreduced;
+                combined_eval = combined_eval.add(
+                    &mut cs.ns(|| format!("combined_eval_add_value_times_challenge_unreduced_{}_{}", i, j)),
+                    &value_times_challenge_unreduced,
+                )?;
             }
 
-            let combined_eval_reduced = combined_eval.reduce(cs.ns(|| "combined_eval_reduced"))?;
+            let combined_eval_reduced = combined_eval.reduce(&mut cs.ns(|| format!("combined_eval_reduced_{}", i)))?;
 
             combined_queries.push(point.clone());
             combined_comms.push(combined_comm);
@@ -1929,7 +1969,7 @@ where
             let mut g_multiplier_reduced = NonNativeFieldVar::<
                 <TargetCurve as PairingEngine>::Fr,
                 <BaseCurve as PairingEngine>::Fr,
-            >::zero(cs.ns(|| "zero_g_multiplier"));
+            >::zero(cs.ns(|| "zero_g_multiplier"))?;
             for (i, (((c, z), v), proof)) in combined_comms
                 .iter()
                 .zip(combined_queries)
@@ -1942,7 +1982,8 @@ where
                 let w_times_z = proof.w.scalar_mul_le(z_bits.iter())?;
 
                 let mut c_plus_w_times_z = c.clone();
-                c_plus_w_times_z += w_times_z;
+                c_plus_w_times_z =
+                    c_plus_w_times_z.add(cs.ns(|| format!("c_plus_w_times_z_plus_w_times_z_{}", i)), w_times_z)?;
 
                 if i != 0 {
                     let randomizer = batching_rands.remove(0);
@@ -1951,16 +1992,29 @@ where
                     let randomizer_times_v =
                         randomizer.mul_without_reduce(cs.ns(|| format!("mul_without_reduce_{}", i)), &v)?;
 
-                    g_multiplier += &randomizer_times_v;
+                    g_multiplier = g_multiplier.add(
+                        &mut cs.ns(|| format!("g_multiplier_plus_randomizer_times_v_{}", i)),
+                        &randomizer_times_v,
+                    )?;
 
                     let c_times_randomizer = c_plus_w_times_z.scalar_mul_le(randomizer_bits.iter())?;
                     let w_times_randomizer = proof.w.scalar_mul_le(randomizer_bits.iter())?;
-                    total_c += c_times_randomizer;
-                    total_w += w_times_randomizer;
+                    total_c = total_c.add(
+                        &mut cs.ns(|| format!("total_c_plus_c_times_randomizer_{}", i)),
+                        &c_times_randomizer,
+                    )?;
+                    total_w = total_w.add(
+                        &mut cs.ns(|| format!("total_w_plus_w_times_randomizer_{}", i)),
+                        &w_times_randomizer,
+                    )?;
                 } else {
-                    g_multiplier_reduced += v;
-                    total_c += c_plus_w_times_z;
-                    total_w += proof.w.clone();
+                    g_multiplier_reduced =
+                        g_multiplier_reduced.add(&mut cs.ns(|| format!("g_multiplier_reduced_plus_v_{}", i)), &v)?;
+                    total_c = total_c.add(
+                        &mut cs.ns(|| format!("total_c_plus_c_plus_w_times_z_{}", i)),
+                        &c_plus_w_times_z,
+                    )?;
+                    total_w = total_w.add(&mut cs.ns(|| format!("total_w_plus_proof_w{}", i)), &proof.w)?;
                 }
             }
 
@@ -1970,7 +2024,7 @@ where
                     g_multiplier.reduce(&mut cs.ns(|| "g_multiplier_reduce"))? + &g_multiplier_reduced;
                 let g_multiplier_bits = g_multiplier_reduced.to_bits_le()?;
 
-                let mut g_times_mul = PG::G1Gadget::zero(cs.ns(|| "g_times_mul_zero"));
+                let mut g_times_mul = PG::G1Gadget::zero(cs.ns(|| "g_times_mul_zero"))?;
                 {
                     for (i, (bit, base_power)) in g_multiplier_bits
                         .iter()
@@ -1987,7 +2041,8 @@ where
                         )?;
                     }
                 }
-                total_c -= g_times_mul;
+
+                total_c = total_c.sub(&mut cs.ns(|| "total_c_minus_g_times_mul"), &g_times_mul)?;
                 total_w = total_w.negate(cs.ns(|| "total_w_negate"))?;
 
                 let prepared_total_w = PG::prepare_g1(cs.ns(|| "prepared_total_w"), total_w)?;
@@ -2160,7 +2215,10 @@ where
 
                 let w_times_z = proof.w.scalar_mul_le(z_bits.iter())?;
                 let mut c_plus_w_times_z = c.clone();
-                c_plus_w_times_z += w_times_z;
+                c_plus_w_times_z = c_plus_w_times_z.add(
+                    &mut cs.ns(|| format!("c_plus_w_times_z_plus_c_plus_w_times_z_{}", i)),
+                    &w_times_z,
+                )?;
 
                 let randomizer = batching_rands.remove(0);
                 let randomizer_bits = batching_rands_bits.remove(0);
@@ -2169,12 +2227,21 @@ where
                 let randomizer_times_v =
                     randomizer.mul_without_reduce(cs.ns(|| format!("randomizer_times_v_{}", i)), &v_reduced)?;
 
-                g_multiplier += randomizer_times_v;
+                g_multiplier = g_multiplier.add(
+                    &mut cs.ns(|| format!("g_multiplier_plus_randomizer_times_v_{}", i)),
+                    &randomizer_times_v,
+                )?;
 
                 let c_times_randomizer = c_plus_w_times_z.scalar_mul_le(randomizer_bits.iter())?;
                 let w_times_randomizer = proof.w.scalar_mul_le(randomizer_bits.iter())?;
-                total_c += c_times_randomizer;
-                total_w += w_times_randomizer;
+                total_c = total_c.add(
+                    &mut cs.ns(|| format!("total_c_plus_c_times_randomizer_{}", i)),
+                    &c_times_randomizer,
+                )?;
+                total_w = total_w.add(
+                    &mut cs.ns(|| format!("total_w_plus_w_times_randomizer_{}", i)),
+                    &w_times_randomizer,
+                )?;
             }
 
             // Prepare each input to the pairing.
@@ -2183,7 +2250,7 @@ where
                 let g_multiplier_bits = g_multiplier_reduced.to_bits_le(cs.ns(|| "g_multiplier_reduced_to_bits_le"))?;
 
                 let g_times_mul = verification_key.g.scalar_mul_le(g_multiplier_bits.iter())?;
-                total_c -= g_times_mul;
+                total_c = total_c.sub(&mut cs.ns(|| "total_c_minus_g_times_mul"), &g_times_mul)?;
                 total_w = total_w.negate(cs.ns(|| "total_w_negate"))?;
 
                 let prepared_total_w = PG::prepare_g1(cs.ns(|| "prepared_total_w"), total_w)?;
@@ -2244,14 +2311,17 @@ where
                         if label.name == lc_label {
                             match coeff.clone() {
                                 LinearCombinationCoeffVar::One => {
-                                    **eval = (**eval).clone()
-                                        - &NonNativeFieldVar::one(cs.ns(|| format!("coeff_one_{}_{}", i, j)))
+                                    let one = NonNativeFieldVar::one(cs.ns(|| format!("coeff_one_{}_{}", i, j)))?;
+                                    **eval = (**eval).sub(cs.ns(|| format!("eval_minus_one_{}_{}", i, j)), &one)?;
                                 }
                                 LinearCombinationCoeffVar::MinusOne => {
-                                    **eval = (**eval).clone()
-                                        + &NonNativeFieldVar::one(cs.ns(|| format!("coeff_one_{}_{}", i, j)))
+                                    let one = NonNativeFieldVar::one(cs.ns(|| format!("coeff_one_{}_{}", i, j)))?;
+                                    **eval = (**eval).add(cs.ns(|| format!("eval_add_one_{}_{}", i, j)), &one)?;
                                 }
-                                LinearCombinationCoeffVar::Var(variable) => **eval = (**eval).clone() - &variable,
+                                LinearCombinationCoeffVar::Var(variable) => {
+                                    **eval =
+                                        (**eval).add(cs.ns(|| format!("eval_minus_variable_{}_{}", i, j)), &variable)?
+                                }
                             };
                         }
                     }
@@ -2271,10 +2341,11 @@ where
                         LinearCombinationCoeffVar::One => {
                             Some(NonNativeFieldVar::one(cs.ns(|| format!("coeff_zero_{}_{}", i, j)))?)
                         }
-                        LinearCombinationCoeffVar::MinusOne => Some(
-                            NonNativeFieldVar::zero(cs.ns(|| format!("coeff_zero_{}_{}", i, j)))?
-                                - NonNativeFieldVar::one(cs.ns(|| format!("coeff_one_{}_{}", i, j)))?,
-                        ),
+                        LinearCombinationCoeffVar::MinusOne => {
+                            let zero = NonNativeFieldVar::zero(cs.ns(|| format!("coeff_zero_{}_{}", i, j)))?;
+                            let one = NonNativeFieldVar::one(cs.ns(|| format!("coeff_one_{}_{}", i, j)))?;
+                            Some(zero.sub(cs.ns(|| format!("zero_minus_one_{}_{}", i, j)), &one)?)
+                        }
                         LinearCombinationCoeffVar::Var(variable) => Some(variable.clone()),
                     };
 
