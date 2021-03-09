@@ -50,7 +50,7 @@ version = "1.0.38"
 version = "2"
 
 [dependencies.self_update]
-version = "0.25"
+version = "0.26"
 
 [dependencies.structopt]
 version = "0.3"
