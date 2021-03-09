@@ -555,49 +555,180 @@ where
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
-    fn new_variable<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>, T>(
-        mut cs: CS,
-        f: impl FnOnce() -> Result<T, SynthesisError>,
-        mode: AllocationMode,
-    ) -> Result<Self, SynthesisError>
-    where
+    fn alloc_constant<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<PreparedVerifierKey<TargetCurve>>,
-    {
-        let t = f()?;
-        let obj = t.borrow();
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        let obj = value_gen()?.borrow();
 
         let mut prepared_g = Vec::<PG::G1Gadget>::new();
         for (i, g) in obj.prepared_vk.prepared_g.iter().enumerate() {
             prepared_g.push(<PG::G1Gadget as AllocGadget<
                 <TargetCurve as PairingEngine>::G1Affine,
                 <BaseCurve as PairingEngine>::Fr,
-            >>::new_variable(
-                cs.ns(|| format!("g_{}", i)), || Ok(*g), mode
-            )?);
+            >>::alloc_constant(cs.ns(|| format!("g_{}", i)), || Ok(*g))?);
         }
 
-        let prepared_h = PG::G2PreparedGadget::new_variable(cs.ns(|| "h"), || Ok(&obj.prepared_vk.prepared_h), mode)?;
-        let prepared_beta_h =
-            PG::G2PreparedGadget::new_variable(cs.ns(|| "beta_h"), || Ok(&obj.prepared_vk.prepared_beta_h), mode)?;
+        let prepared_h = PG::G2PreparedGadget::alloc(cs.ns(|| "h"), || Ok(&obj.prepared_vk.prepared_h))?;
+        let prepared_beta_h = PG::G2PreparedGadget::alloc(cs.ns(|| "beta_h"), || Ok(&obj.prepared_vk.prepared_beta_h))?;
 
         let prepared_degree_bounds_and_shift_powers = if obj.prepared_degree_bounds_and_shift_powers.is_some() {
             let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G1Gadget>)>::new();
 
-            for (d, shift_power_elems) in obj.prepared_degree_bounds_and_shift_powers.as_ref().unwrap().iter() {
+            for (i, (d, shift_power_elems)) in obj
+                .prepared_degree_bounds_and_shift_powers
+                .as_ref()
+                .unwrap()
+                .iter()
+                .enumerate()
+            {
                 let mut gadgets = Vec::<PG::G1Gadget>::new();
-                for shift_power_elem in shift_power_elems.iter() {
+                for (j, shift_power_elem) in shift_power_elems.iter().enumerate() {
                     gadgets.push(<PG::G1Gadget as AllocGadget<
                         <TargetCurve as PairingEngine>::G1Affine,
                         <BaseCurve as PairingEngine>::Fr,
-                    >>::new_variable(
-                        cs.clone(), || Ok(shift_power_elem), mode
+                    >>::alloc_constant(
+                        cs.ns(|| format!("alloc_constant_gadget_{}_{}", i, j)),
+                        || Ok(shift_power_elem),
                     )?);
                 }
 
-                let d_gadget = FpGadget::<<BaseCurve as PairingEngine>::Fr>::new_variable(
-                    cs.clone(),
+                let d_gadget = FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc(
+                    cs.ns(|| format!("alloc_constant_d_{}", i)),
                     || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*d as u128)),
-                    mode,
+                )?;
+
+                res.push((*d, d_gadget, gadgets));
+            }
+            Some(res)
+        } else {
+            None
+        };
+
+        Ok(Self {
+            prepared_g,
+            prepared_h,
+            prepared_beta_h,
+            prepared_degree_bounds_and_shift_powers,
+            constant_allocation: true,
+            origin_vk: None,
+        })
+    }
+
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PreparedVerifierKey<TargetCurve>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        let obj = value_gen()?.borrow();
+
+        let mut prepared_g = Vec::<PG::G1Gadget>::new();
+        for (i, g) in obj.prepared_vk.prepared_g.iter().enumerate() {
+            prepared_g.push(<PG::G1Gadget as AllocGadget<
+                <TargetCurve as PairingEngine>::G1Affine,
+                <BaseCurve as PairingEngine>::Fr,
+            >>::alloc(cs.ns(|| format!("g_{}", i)), || Ok(*g))?);
+        }
+
+        let prepared_h = PG::G2PreparedGadget::alloc(cs.ns(|| "h"), || Ok(&obj.prepared_vk.prepared_h))?;
+        let prepared_beta_h = PG::G2PreparedGadget::alloc(cs.ns(|| "beta_h"), || Ok(&obj.prepared_vk.prepared_beta_h))?;
+
+        let prepared_degree_bounds_and_shift_powers = if obj.prepared_degree_bounds_and_shift_powers.is_some() {
+            let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G1Gadget>)>::new();
+
+            for (i, (d, shift_power_elems)) in obj
+                .prepared_degree_bounds_and_shift_powers
+                .as_ref()
+                .unwrap()
+                .iter()
+                .enumerate()
+            {
+                let mut gadgets = Vec::<PG::G1Gadget>::new();
+                for (j, shift_power_elem) in shift_power_elems.iter().enumerate() {
+                    gadgets.push(<PG::G1Gadget as AllocGadget<
+                        <TargetCurve as PairingEngine>::G1Affine,
+                        <BaseCurve as PairingEngine>::Fr,
+                    >>::alloc(
+                        cs.ns(|| format!("alloc_gadget_{}_{}", i, j)),
+                        || Ok(shift_power_elem),
+                    )?);
+                }
+
+                let d_gadget =
+                    FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc(cs.ns(|| format!("alloc_d_{}", i)), || {
+                        Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*d as u128))
+                    })?;
+
+                res.push((*d, d_gadget, gadgets));
+            }
+            Some(res)
+        } else {
+            None
+        };
+
+        Ok(Self {
+            prepared_g,
+            prepared_h,
+            prepared_beta_h,
+            prepared_degree_bounds_and_shift_powers,
+            constant_allocation: true,
+            origin_vk: None,
+        })
+    }
+
+    fn alloc_input<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PreparedVerifierKey<TargetCurve>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        let obj = value_gen()?.borrow();
+
+        let mut prepared_g = Vec::<PG::G1Gadget>::new();
+        for (i, g) in obj.prepared_vk.prepared_g.iter().enumerate() {
+            prepared_g.push(<PG::G1Gadget as AllocGadget<
+                <TargetCurve as PairingEngine>::G1Affine,
+                <BaseCurve as PairingEngine>::Fr,
+            >>::alloc_input(cs.ns(|| format!("g_{}", i)), || Ok(*g))?);
+        }
+
+        let prepared_h = PG::G2PreparedGadget::alloc_input(cs.ns(|| "h"), || Ok(&obj.prepared_vk.prepared_h))?;
+        let prepared_beta_h =
+            PG::G2PreparedGadget::alloc_input(cs.ns(|| "beta_h"), || Ok(&obj.prepared_vk.prepared_beta_h))?;
+
+        let prepared_degree_bounds_and_shift_powers = if obj.prepared_degree_bounds_and_shift_powers.is_some() {
+            let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G1Gadget>)>::new();
+
+            for (i, (d, shift_power_elems)) in obj
+                .prepared_degree_bounds_and_shift_powers
+                .as_ref()
+                .unwrap()
+                .iter()
+                .enumerate()
+            {
+                let mut gadgets = Vec::<PG::G1Gadget>::new();
+                for (j, shift_power_elem) in shift_power_elems.iter().enumerate() {
+                    gadgets.push(<PG::G1Gadget as AllocGadget<
+                        <TargetCurve as PairingEngine>::G1Affine,
+                        <BaseCurve as PairingEngine>::Fr,
+                    >>::alloc_input(
+                        cs.ns(|| format!("alloc_input_gadget_{}_{}", i, j)),
+                        || Ok(shift_power_elem),
+                    )?);
+                }
+
+                let d_gadget = FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc_input(
+                    cs.ns(|| format!("alloc_input_d_{}", i)),
+                    || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*d as u128)),
                 )?;
 
                 res.push((*d, d_gadget, gadgets));
@@ -738,7 +869,7 @@ where
         &self,
         mut cs: CS,
     ) -> Result<Vec<UInt8>, SynthesisError> {
-        let zero_shifted_comm = PG::G1Gadget::zero();
+        let zero_shifted_comm = PG::G1Gadget::zero(cs.ns(|| "zero"));
 
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&self.comm.to_bytes()?);
@@ -746,6 +877,13 @@ where
         let shifted_comm = self.shifted_comm.clone().unwrap_or(zero_shifted_comm);
         bytes.extend_from_slice(&shifted_comm.to_bytes()?);
         Ok(bytes)
+    }
+
+    fn to_bytes_strict<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
+        &self,
+        cs: CS,
+    ) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes(cs)
     }
 }
 
