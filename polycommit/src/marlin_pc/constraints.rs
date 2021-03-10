@@ -394,7 +394,7 @@ where
         if self.degree_bounds_and_shift_powers.as_ref().is_some() {
             let list = self.degree_bounds_and_shift_powers.as_ref().unwrap();
             for (_, d_gadget, shift_power) in list.iter() {
-                let mut d_elems = vec![*d_gadget];
+                let mut d_elems = vec![d_gadget.clone()];
                 let mut shift_power_elems = shift_power.to_constraint_field()?;
 
                 res.append(&mut d_elems);
@@ -466,7 +466,11 @@ where
                 None
             }
         } else {
-            let shift_power = self.origin_vk.as_ref().unwrap().get_shift_power(cs, bound);
+            let shift_power = self
+                .origin_vk
+                .as_ref()
+                .unwrap()
+                .get_shift_power(cs.ns(|| "get_shift_power"), bound);
 
             if let Some(shift_power) = shift_power {
                 let mut prepared_shift_gadgets = Vec::<PG::G1Gadget>::new();
@@ -580,7 +584,7 @@ where
         mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let obj = value_gen()?.borrow();
+        let obj = value_gen()?.borrow().clone();
 
         let mut prepared_g = Vec::<PG::G1Gadget>::new();
         for (i, g) in obj.prepared_vk.prepared_g.iter().enumerate() {
@@ -647,7 +651,7 @@ where
         mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let obj = value_gen()?.borrow();
+        let obj = value_gen()?.borrow().clone();
 
         let mut prepared_g = Vec::<PG::G1Gadget>::new();
         for (i, g) in obj.prepared_vk.prepared_g.iter().enumerate() {
@@ -713,7 +717,7 @@ where
         mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let obj = value_gen()?.borrow();
+        let obj = value_gen()?.borrow().clone();
 
         let mut prepared_g = Vec::<PG::G1Gadget>::new();
         for (i, g) in obj.prepared_vk.prepared_g.iter().enumerate() {
@@ -1057,7 +1061,7 @@ where
         mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let obj = value_gen()?.borrow();
+        let obj = value_gen()?.borrow().clone();
 
         let mut prepared_comm = Vec::<PG::G1Gadget>::new();
 
@@ -1102,7 +1106,7 @@ where
         mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let obj = value_gen()?.borrow();
+        let obj = value_gen()?.borrow().clone();
 
         let mut prepared_comm = Vec::<PG::G1Gadget>::new();
 
@@ -1144,7 +1148,7 @@ where
         mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let obj = value_gen()?.borrow();
+        let obj = value_gen()?.borrow().clone();
 
         let mut prepared_comm = Vec::<PG::G1Gadget>::new();
 
@@ -2021,7 +2025,7 @@ where
                     let c_times_randomizer = c_plus_w_times_z.mul_bits(
                         cs.ns(|| format!("c_plus_w_times_z_mul_bits{}", i)),
                         &zero,
-                        randomizer_bits.into_iter(),
+                        randomizer_bits.clone().into_iter(),
                     )?;
                     let w_times_randomizer = proof.w.mul_bits(
                         cs.ns(|| format!("proof_w_mul_bits{}", i)),
@@ -2050,10 +2054,8 @@ where
 
             // Prepare each input to the pairing.
             let (prepared_total_w, prepared_beta_h, prepared_total_c, prepared_h) = {
-                let g_multiplier_reduced = g_multiplier_reduced.add(
-                    &mut cs.ns(|| "g_multiplier_reduce"),
-                    &g_multiplier.reduce(&mut cs.ns(|| "g_multiplier_reduce_sum"))?,
-                )?;
+                let reduced = g_multiplier.reduce(&mut cs.ns(|| "g_multiplier_reduce_sum"))?;
+                let g_multiplier_reduced = g_multiplier_reduced.add(&mut cs.ns(|| "g_multiplier_reduce"), &reduced)?;
                 let g_multiplier_bits = g_multiplier_reduced.to_bits_le(&mut cs.ns(|| "g_multiplier_to_bits_le"))?;
 
                 let mut g_times_mul = PG::G1Gadget::zero(cs.ns(|| "g_times_mul_zero"))?;
@@ -2299,7 +2301,7 @@ where
                 let c_times_randomizer = c_plus_w_times_z.mul_bits(
                     cs.ns(|| format!("c_plus_w_times_z_mul_bits_{}", i)),
                     &zero,
-                    randomizer_bits.into_iter(),
+                    randomizer_bits.clone().into_iter(),
                 )?;
                 let w_times_randomizer = proof.w.mul_bits(
                     cs.ns(|| format!("w_times_randomizer_mul_bits_{}", i)),
