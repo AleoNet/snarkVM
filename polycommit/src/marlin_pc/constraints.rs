@@ -588,7 +588,7 @@ where
                 <TargetCurve as PairingEngine>::G1Projective,
                 <BaseCurve as PairingEngine>::Fr,
             >>::alloc_constant(cs.ns(|| format!("g_{}", i)), || {
-                Ok(g.into())
+                Ok(g.into_projective())
             })?);
         }
 
@@ -654,7 +654,9 @@ where
             prepared_g.push(<PG::G1Gadget as AllocGadget<
                 <TargetCurve as PairingEngine>::G1Projective,
                 <BaseCurve as PairingEngine>::Fr,
-            >>::alloc(cs.ns(|| format!("g_{}", i)), || Ok(g.into()))?);
+            >>::alloc(cs.ns(|| format!("g_{}", i)), || {
+                Ok(g.into_projective())
+            })?);
         }
 
         let prepared_h = PG::G2PreparedGadget::alloc(cs.ns(|| "h"), || Ok(&obj.prepared_vk.prepared_h))?;
@@ -677,7 +679,7 @@ where
                         <BaseCurve as PairingEngine>::Fr,
                     >>::alloc(
                         cs.ns(|| format!("alloc_gadget_{}_{}", i, j)),
-                        || Ok(shift_power_elem.into()),
+                        || Ok(shift_power_elem.into_projective()),
                     )?);
                 }
 
@@ -719,7 +721,7 @@ where
                 <TargetCurve as PairingEngine>::G1Projective,
                 <BaseCurve as PairingEngine>::Fr,
             >>::alloc_input(cs.ns(|| format!("g_{}", i)), || {
-                Ok(g.into())
+                Ok(g.into_projective())
             })?);
         }
 
@@ -744,7 +746,7 @@ where
                         <BaseCurve as PairingEngine>::Fr,
                     >>::alloc_input(
                         cs.ns(|| format!("alloc_input_gadget_{}_{}", i, j)),
-                        || Ok(shift_power_elem.into()),
+                        || Ok(shift_power_elem.into_projective()),
                     )?);
                 }
 
@@ -859,7 +861,7 @@ where
         value_gen().and_then(|commitment| {
             let commitment = *commitment.borrow();
             let comm = commitment.comm;
-            let comm_gadget = PG::G1Gadget::alloc(cs.ns(|| "alloc_commitment"), || Ok(comm.0))?;
+            let comm_gadget = PG::G1Gadget::alloc(cs.ns(|| "alloc_commitment"), || Ok(comm.0.into_projective()))?;
 
             let shifted_comm = commitment.shifted_comm;
             let shifted_comm_gadget = if let Some(shifted_comm) = shifted_comm {
