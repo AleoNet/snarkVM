@@ -57,6 +57,20 @@ pub trait EqGadget<F: Field>: Eq
 where
     Self: ConditionalEqGadget<F>,
 {
+    /// Output a `Boolean` value representing whether `self.value() ==
+    /// other.value()`.
+    fn is_eq<CS: ConstraintSystem<F>>(&self, _cs: CS, _other: &Self) -> Result<Boolean, SynthesisError> {
+        unimplemented!()
+    }
+
+    /// Output a `Boolean` value representing whether `self.value() !=
+    /// other.value()`.
+    ///
+    /// By default, this is defined as `self.is_eq(other)?.not()`.
+    fn is_neq<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
+        Ok(self.is_eq(cs, other)?.not())
+    }
+
     fn enforce_equal<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<(), SynthesisError> {
         self.conditional_enforce_equal(cs, other, &Boolean::constant(true))
     }

@@ -298,7 +298,82 @@ impl<F: PrimeField> PartialEq for AllocatedFp<F> {
 
 impl<F: PrimeField> Eq for AllocatedFp<F> {}
 
-impl<F: PrimeField> EqGadget<F> for AllocatedFp<F> {}
+impl<F: PrimeField> EqGadget<F> for AllocatedFp<F> {
+    fn is_eq<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
+        Ok(self.is_neq(cs, other)?.not())
+    }
+
+    fn is_neq<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
+        let is_not_equal = Boolean::alloc(cs.ns(|| "is_not_equal"), || Ok(self.value.get()? != other.value.get()?))?;
+
+        let temp = if is_not_equal.get_value().get()? {
+            (self.value.get()? - &other.value.get()?).inverse().get()
+        } else {
+            Ok(F::one())
+        };
+
+        let multiplier = Self::alloc(cs.ns(|| "alloc_multiplier"), || temp)?;
+
+        // Completeness:
+        // Case 1: self != other:
+        // ----------------------
+        //   constraint 1:
+        //   (self - other) * multiplier = is_not_equal
+        //   => (non_zero) * multiplier = 1 (satisfied, because multiplier = 1/(self -
+        // other)
+        //
+        //   constraint 2:
+        //   (self - other) * not(is_not_equal) = 0
+        //   => (non_zero) * not(1) = 0
+        //   => (non_zero) * 0 = 0
+        //
+        // Case 2: self == other:
+        // ----------------------
+        //   constraint 1:
+        //   (self - other) * multiplier = is_not_equal
+        //   => 0 * multiplier = 0 (satisfied, because multiplier = 1
+        //
+        //   constraint 2:
+        //   (self - other) * not(is_not_equal) = 0
+        //   => 0 * not(0) = 0
+        //   => 0 * 1 = 0
+        //
+        // --------------------------------------------------------------------
+        //
+        // Soundness:
+        // Case 1: self != other, but is_not_equal = 0.
+        // --------------------------------------------
+        //   constraint 1:
+        //   (self - other) * multiplier = is_not_equal
+        //   => non_zero * multiplier = 0 (only satisfiable if multiplier == 0)
+        //
+        //   constraint 2:
+        //   (self - other) * not(is_not_equal) = 0
+        //   => (non_zero) * 1 = 0 (impossible)
+        //
+        // Case 2: self == other, but is_not_equal = 1.
+        // --------------------------------------------
+        //   constraint 1:
+        //   (self - other) * multiplier = is_not_equal
+        //   0 * multiplier = 1 (unsatisfiable)
+
+        cs.enforce(
+            || "(self - other) * multiplier = is_not_equal",
+            |lc| &self.variable - &other.variable + lc,
+            |lc| multiplier.variable + lc,
+            |_| is_not_equal.lc(CS::one(), F::one()),
+        );
+
+        cs.enforce(
+            || "(self - other) * not(is_not_equal) = 0",
+            |lc| &self.variable - &other.variable + lc,
+            |_| is_not_equal.not().lc(CS::one(), F::one()),
+            |lc| lc,
+        );
+
+        Ok(is_not_equal)
+    }
+}
 
 impl<F: PrimeField> ConditionalEqGadget<F> for AllocatedFp<F> {
     #[inline]
@@ -958,7 +1033,18 @@ impl<F: PrimeField> PartialEq for FpGadget<F> {
 
 impl<F: PrimeField> Eq for FpGadget<F> {}
 
-impl<F: PrimeField> EqGadget<F> for FpGadget<F> {}
+impl<F: PrimeField> EqGadget<F> for FpGadget<F> {
+    fn is_eq<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
+        match (self, other) {
+            (Self::Constant(c1), Self::Constant(c2)) => Ok(Boolean::Constant(c1 == c2)),
+            (Self::Constant(c), Self::Variable(v)) | (Self::Variable(v), Self::Constant(c)) => {
+                let c = AllocatedFp::alloc_constant(cs.ns(|| "alloc_c"), || Ok(c))?;
+                c.is_eq(cs, v)
+            }
+            (Self::Variable(v1), Self::Variable(v2)) => v1.is_eq(cs, v2),
+        }
+    }
+}
 
 impl<F: PrimeField> ConditionalEqGadget<F> for FpGadget<F> {
     #[inline]
