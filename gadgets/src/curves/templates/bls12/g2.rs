@@ -20,15 +20,15 @@ use crate::{
     traits::{
         curves::GroupGadget,
         fields::FieldGadget,
-        utilities::{eq::NEqGadget, uint::UInt8, ToBytesGadget},
+        utilities::{alloc::AllocGadget, eq::NEqGadget, uint::UInt8, ToBytesGadget},
     },
 };
-use snarkvm_curves::templates::bls12::{Bls12Parameters, TwistType};
-use snarkvm_fields::{Field, One};
+use snarkvm_curves::templates::bls12::{Bls12Parameters, G2Prepared, TwistType};
+use snarkvm_fields::{batch_inversion, Field, One};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
-use std::fmt::Debug;
+use std::{borrow::Borrow, fmt::Debug};
 
 pub type G2Gadget<P> = AffineGadget<<P as Bls12Parameters>::G2Parameters, <P as Bls12Parameters>::Fp, Fp2G<P>>;
 
@@ -134,5 +134,115 @@ impl<P: Bls12Parameters> G2PreparedGadget<P> {
             TwistType::M => Ok((g, f)),
             TwistType::D => Ok((f, g)),
         }
+    }
+}
+
+impl<P: Bls12Parameters> AllocGadget<G2Prepared<P>, <P as Bls12Parameters>::Fp> for G2PreparedGadget<P> {
+    fn alloc_constant<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<G2Prepared<P>>,
+        CS: ConstraintSystem<<P as Bls12Parameters>::Fp>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        let g2_prep = value_gen().map(|b| {
+            let projective_coeffs = &b.borrow().ell_coeffs;
+            let mut z_s = projective_coeffs.iter().map(|(_, _, z)| *z).collect::<Vec<_>>();
+            batch_inversion(&mut z_s);
+            projective_coeffs
+                .iter()
+                .zip(z_s)
+                .map(|((x, y, _), z_inv)| (*x * &z_inv, *y * &z_inv))
+                .collect::<Vec<_>>()
+        })?;
+
+        let mut l = Vec::new();
+        let mut r = Vec::new();
+
+        for (i, (l_elem, _)) in g2_prep.iter().enumerate() {
+            let elem = Fp2G::<P>::alloc_constant(cs.ns(|| format!("l_{}", i)), || Ok(l_elem))?;
+            l.push(elem);
+        }
+
+        for (i, (_, r_elem)) in g2_prep.iter().enumerate() {
+            let elem = Fp2G::<P>::alloc_constant(cs.ns(|| format!("r_{}", i)), || Ok(r_elem))?;
+            r.push(elem);
+        }
+
+        let ell_coeffs = l.into_iter().zip(r).collect();
+        Ok(Self { ell_coeffs })
+    }
+
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<G2Prepared<P>>,
+        CS: ConstraintSystem<<P as Bls12Parameters>::Fp>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        let g2_prep = value_gen().map(|b| {
+            let projective_coeffs = &b.borrow().ell_coeffs;
+            let mut z_s = projective_coeffs.iter().map(|(_, _, z)| *z).collect::<Vec<_>>();
+            batch_inversion(&mut z_s);
+            projective_coeffs
+                .iter()
+                .zip(z_s)
+                .map(|((x, y, _), z_inv)| (*x * &z_inv, *y * &z_inv))
+                .collect::<Vec<_>>()
+        })?;
+
+        let mut l = Vec::new();
+        let mut r = Vec::new();
+
+        for (i, (l_elem, _)) in g2_prep.iter().enumerate() {
+            let elem = Fp2G::<P>::alloc(cs.ns(|| format!("l_{}", i)), || Ok(l_elem))?;
+            l.push(elem);
+        }
+
+        for (i, (_, r_elem)) in g2_prep.iter().enumerate() {
+            let elem = Fp2G::<P>::alloc(cs.ns(|| format!("r_{}", i)), || Ok(r_elem))?;
+            r.push(elem);
+        }
+
+        let ell_coeffs = l.into_iter().zip(r).collect();
+        Ok(Self { ell_coeffs })
+    }
+
+    fn alloc_input<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<G2Prepared<P>>,
+        CS: ConstraintSystem<<P as Bls12Parameters>::Fp>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        let g2_prep = value_gen().map(|b| {
+            let projective_coeffs = &b.borrow().ell_coeffs;
+            let mut z_s = projective_coeffs.iter().map(|(_, _, z)| *z).collect::<Vec<_>>();
+            batch_inversion(&mut z_s);
+            projective_coeffs
+                .iter()
+                .zip(z_s)
+                .map(|((x, y, _), z_inv)| (*x * &z_inv, *y * &z_inv))
+                .collect::<Vec<_>>()
+        })?;
+
+        let mut l = Vec::new();
+        let mut r = Vec::new();
+
+        for (i, (l_elem, _)) in g2_prep.iter().enumerate() {
+            let elem = Fp2G::<P>::alloc_input(cs.ns(|| format!("l_{}", i)), || Ok(l_elem))?;
+            l.push(elem);
+        }
+
+        for (i, (_, r_elem)) in g2_prep.iter().enumerate() {
+            let elem = Fp2G::<P>::alloc_input(cs.ns(|| format!("r_{}", i)), || Ok(r_elem))?;
+            r.push(elem);
+        }
+
+        let ell_coeffs = l.into_iter().zip(r).collect();
+        Ok(Self { ell_coeffs })
     }
 }
