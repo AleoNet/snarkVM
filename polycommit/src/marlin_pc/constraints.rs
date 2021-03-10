@@ -2098,7 +2098,7 @@ where
             println!("after PC batch check: constraints: {}", cs.num_constraints());
 
             let rhs = &PG::GTGadget::one(cs.ns(|| "rhs"))?;
-            lhs.is_eq(&rhs)
+            lhs.is_eq(cs.ns(|| "lhs_is_eq_rhs"), &rhs)
         }
     }
 }
@@ -2346,7 +2346,7 @@ where
 
             let rhs = &PG::GTGadget::one(cs.ns(|| "rhs"))?;
 
-            lhs.is_eq(rhs)
+            lhs.is_eq(cs.ns(|| "lhs_is_eq_rhs"), &rhs)
         }
     }
 
