@@ -1776,6 +1776,8 @@ where
 
         println!("before PC combining commitments: constraints: {}", cs.num_constraints());
 
+        let zero = PG::G1Gadget::zero(cs.ns(|| format!("g1_zero")))?;
+
         // Accumulate commitments and evaluations for each query.
         let mut combined_queries = Vec::new();
         let mut combined_comms = Vec::new();
@@ -1901,8 +1903,12 @@ where
                                 &shift_power_times_value,
                             )?;
 
-                            let adjusted_comm_times_challenge =
-                                adjusted_comm.scalar_mul_le(challenge_shifted_bits.iter())?;
+                            let adjusted_comm_times_challenge = adjusted_comm.mul_bits(
+                                cs.ns(|| format!("combined_comm_add_adjusted_comm_times_challenge_{}_{}_{}", i, j, k)),
+                                &zero,
+                                challenge_shifted_bits.into_iter(),
+                            )?;
+
                             combined_comm = combined_comm.add(
                                 cs.ns(|| format!("combined_comm_add_adjusted_comm_times_challenge_{}_{}_{}", i, j, k)),
                                 &adjusted_comm_times_challenge,
@@ -1991,11 +1997,14 @@ where
             {
                 let z_bits = z.to_bits_le(cs.ns(|| format!("z_bits_to_le_{}", i)))?;
 
-                let w_times_z = proof.w.scalar_mul_le(z_bits.iter())?;
+                let w_times_z =
+                    proof
+                        .w
+                        .mul_bits(cs.ns(|| format!("w_times_z_mul_bits_{}", i)), &zero, z_bits.into_iter())?;
 
                 let mut c_plus_w_times_z = c.clone();
                 c_plus_w_times_z =
-                    c_plus_w_times_z.add(cs.ns(|| format!("c_plus_w_times_z_plus_w_times_z_{}", i)), w_times_z)?;
+                    c_plus_w_times_z.add(cs.ns(|| format!("c_plus_w_times_z_plus_w_times_z_{}", i)), &w_times_z)?;
 
                 if i != 0 {
                     let randomizer = batching_rands.remove(0);
@@ -2009,8 +2018,17 @@ where
                         &randomizer_times_v,
                     )?;
 
-                    let c_times_randomizer = c_plus_w_times_z.scalar_mul_le(randomizer_bits.iter())?;
-                    let w_times_randomizer = proof.w.scalar_mul_le(randomizer_bits.iter())?;
+                    let c_times_randomizer = c_plus_w_times_z.mul_bits(
+                        cs.ns(|| format!("c_plus_w_times_z_mul_bits{}", i)),
+                        &zero,
+                        randomizer_bits.into_iter(),
+                    )?;
+                    let w_times_randomizer = proof.w.mul_bits(
+                        cs.ns(|| format!("proof_w_mul_bits{}", i)),
+                        &zero,
+                        randomizer_bits.into_iter(),
+                    )?;
+
                     total_c = total_c.add(
                         &mut cs.ns(|| format!("total_c_plus_c_times_randomizer_{}", i)),
                         &c_times_randomizer,
@@ -2158,6 +2176,8 @@ where
                 <BaseCurve as PairingEngine>::Fr,
             >::zero();
 
+            let zero = PG::G1Gadget::zero(cs.ns(|| format!("g1_zero")))?;
+
             let mut opening_challenges_counter = 0;
 
             for (i, (labeled_commitment, value)) in
@@ -2175,7 +2195,11 @@ where
                 let CommitmentVar { shifted_comm, .. } = commitment;
 
                 // To combine the commitments, we multiply each by one of the random challenges, and sum.
-                let temp = commitment.comm.scalar_mul_le(challenge_bits.iter())?;
+                let temp = commitment.comm.mul_bits(
+                    cs.ns(|| format!("comm_mul_bits_{}", i)),
+                    &zero,
+                    challenge_bits.into_iter(),
+                )?;
                 combined_comm =
                     combined_comm.add(cs.ns(|| format!("combined_comm_plus_scalar_product_{}", i)), &temp)?;
 
@@ -2202,14 +2226,22 @@ where
                         .get_shift_power(cs.ns(|| format!("get_shift_key_{}", i)), &degree_bound)
                         .unwrap();
 
-                    let shift_power_times_value = shift_power.scalar_mul_le(value_bits.iter())?;
+                    let shift_power_times_value = shift_power.mul_bits(
+                        cs.ns(|| format!("shift_power_mul_bits_{}", i)),
+                        &zero,
+                        value_bits.into_iter(),
+                    )?;
                     let mut adjusted_comm = shifted_comm;
                     adjusted_comm = adjusted_comm.sub(
                         &mut cs.ns(|| format!("adjusted_comm_minus_shift_power_times_value_{}", i)),
                         &shift_power_times_value,
                     )?;
 
-                    let adjusted_comm_times_challenge = adjusted_comm.scalar_mul_le(challenge_shifted_bits.iter())?;
+                    let adjusted_comm_times_challenge = adjusted_comm.mul_bits(
+                        cs.ns(|| format!("adjusted_comm_mul_bits_{}", i)),
+                        &zero,
+                        challenge_shifted_bits.into_iter(),
+                    )?;
                     combined_comm = combined_comm.add(
                         &mut cs.ns(|| format!("combined_comm_plus_adjusted_comm_times_challenge_{}", i)),
                         &adjusted_comm_times_challenge,
@@ -2227,6 +2259,8 @@ where
             let mut total_c = PG::G1Gadget::zero(cs.ns(|| "zero_c"))?;
             let mut total_w = PG::G1Gadget::zero(cs.ns(|| "zero_w"))?;
 
+            let zero = PG::G1Gadget::zero(cs.ns(|| format!("batch_check_g1_zero")))?;
+
             let mut g_multiplier = NonNativeFieldMulResultVar::<
                 <TargetCurve as PairingEngine>::Fr,
                 <BaseCurve as PairingEngine>::Fr,
@@ -2240,7 +2274,10 @@ where
             {
                 let z_bits = z.to_bits_le(cs.ns(|| format!("z_to_bits_le_{}", i)))?;
 
-                let w_times_z = proof.w.scalar_mul_le(z_bits.iter())?;
+                let w_times_z =
+                    proof
+                        .w
+                        .mul_bits(cs.ns(|| format!("proof_w_mul_bits_{}", i)), &zero, z_bits.into_iter())?;
                 let mut c_plus_w_times_z = c.clone();
                 c_plus_w_times_z = c_plus_w_times_z.add(
                     &mut cs.ns(|| format!("c_plus_w_times_z_plus_c_plus_w_times_z_{}", i)),
@@ -2259,8 +2296,16 @@ where
                     &randomizer_times_v,
                 )?;
 
-                let c_times_randomizer = c_plus_w_times_z.scalar_mul_le(randomizer_bits.iter())?;
-                let w_times_randomizer = proof.w.scalar_mul_le(randomizer_bits.iter())?;
+                let c_times_randomizer = c_plus_w_times_z.mul_bits(
+                    cs.ns(|| format!("c_plus_w_times_z_mul_bits_{}", i)),
+                    &zero,
+                    randomizer_bits.into_iter(),
+                )?;
+                let w_times_randomizer = proof.w.mul_bits(
+                    cs.ns(|| format!("w_times_randomizer_mul_bits_{}", i)),
+                    &zero,
+                    randomizer_bits.into_iter(),
+                )?;
                 total_c = total_c.add(
                     &mut cs.ns(|| format!("total_c_plus_c_times_randomizer_{}", i)),
                     &c_times_randomizer,
@@ -2276,7 +2321,11 @@ where
                 let g_multiplier_reduced = g_multiplier.reduce(&mut cs.ns(|| "g_multiplier_reduced"))?;
                 let g_multiplier_bits = g_multiplier_reduced.to_bits_le(cs.ns(|| "g_multiplier_reduced_to_bits_le"))?;
 
-                let g_times_mul = verification_key.g.scalar_mul_le(g_multiplier_bits.iter())?;
+                let g_times_mul = verification_key.g.mul_bits(
+                    cs.ns(|| "g_times_mul_mul_bits"),
+                    &zero,
+                    g_multiplier_bits.into_iter(),
+                )?;
                 total_c = total_c.sub(&mut cs.ns(|| "total_c_minus_g_times_mul"), &g_times_mul)?;
                 total_w = total_w.negate(cs.ns(|| "total_w_negate"))?;
 
