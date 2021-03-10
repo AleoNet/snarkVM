@@ -39,6 +39,7 @@ use snarkvm_nonnative::{NonNativeFieldMulResultVar, NonNativeFieldVar};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use core::{borrow::Borrow, convert::TryInto, ops::MulAssign};
+use snarkvm_curves::AffineCurve;
 use std::marker::PhantomData;
 
 /// Var for the verification key of the Marlin-KZG10 polynomial commitment scheme.
@@ -210,7 +211,8 @@ where
                             || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*s as u128)),
                         )
                         .unwrap(),
-                        PG::G1Gadget::alloc_constant(cs.ns(|| format!("pow_{}", i)), || Ok(*g)).unwrap(),
+                        PG::G1Gadget::alloc_constant(cs.ns(|| format!("pow_{}", i)), || Ok(g.into_projective()))
+                            .unwrap(),
                     )
                 })
                 .collect()
@@ -218,9 +220,9 @@ where
 
         let KZG10VerifierKey { g, h, beta_h, .. } = vk;
 
-        let g = PG::G1Gadget::alloc_constant(cs.ns(|| "g"), || Ok(g))?;
-        let h = PG::G2Gadget::alloc_constant(cs.ns(|| "h"), || Ok(h))?;
-        let beta_h = PG::G2Gadget::alloc_constant(cs.ns(|| "beta_h"), || Ok(beta_h))?;
+        let g = PG::G1Gadget::alloc_constant(cs.ns(|| "g"), || Ok(g.into_projective()))?;
+        let h = PG::G2Gadget::alloc_constant(cs.ns(|| "h"), || Ok(h.into_projective()))?;
+        let beta_h = PG::G2Gadget::alloc_constant(cs.ns(|| "beta_h"), || Ok(beta_h.into_projective()))?;
 
         Ok(Self {
             g,
@@ -257,7 +259,7 @@ where
                             || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*s as u128)),
                         )
                         .unwrap(),
-                        PG::G1Gadget::alloc(cs.ns(|| format!("pow_{}", i)), || Ok(*g)).unwrap(),
+                        PG::G1Gadget::alloc(cs.ns(|| format!("pow_{}", i)), || Ok(g.into_projective())).unwrap(),
                     )
                 })
                 .collect()
@@ -265,9 +267,9 @@ where
 
         let KZG10VerifierKey { g, h, beta_h, .. } = vk;
 
-        let g = PG::G1Gadget::alloc(cs.ns(|| "g"), || Ok(g))?;
-        let h = PG::G2Gadget::alloc(cs.ns(|| "h"), || Ok(h))?;
-        let beta_h = PG::G2Gadget::alloc(cs.ns(|| "beta_h"), || Ok(beta_h))?;
+        let g = PG::G1Gadget::alloc(cs.ns(|| "g"), || Ok(g.into_projective()))?;
+        let h = PG::G2Gadget::alloc(cs.ns(|| "h"), || Ok(h.into_projective()))?;
+        let beta_h = PG::G2Gadget::alloc(cs.ns(|| "beta_h"), || Ok(beta_h.into_projective()))?;
 
         Ok(Self {
             g,
@@ -304,7 +306,7 @@ where
                             || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*s as u128)),
                         )
                         .unwrap(),
-                        PG::G1Gadget::alloc_input(cs.ns(|| format!("pow_{}", i)), || Ok(*g)).unwrap(),
+                        PG::G1Gadget::alloc_input(cs.ns(|| format!("pow_{}", i)), || Ok(g.into_projective())).unwrap(),
                     )
                 })
                 .collect()
@@ -312,9 +314,9 @@ where
 
         let KZG10VerifierKey { g, h, beta_h, .. } = vk;
 
-        let g = PG::G1Gadget::alloc_input(cs.ns(|| "g"), || Ok(g))?;
-        let h = PG::G2Gadget::alloc_input(cs.ns(|| "h"), || Ok(h))?;
-        let beta_h = PG::G2Gadget::alloc_input(cs.ns(|| "beta_h"), || Ok(beta_h))?;
+        let g = PG::G1Gadget::alloc_input(cs.ns(|| "g"), || Ok(g.into_projective()))?;
+        let h = PG::G2Gadget::alloc_input(cs.ns(|| "h"), || Ok(h.into_projective()))?;
+        let beta_h = PG::G2Gadget::alloc_input(cs.ns(|| "beta_h"), || Ok(beta_h.into_projective()))?;
 
         Ok(Self {
             g,
@@ -392,7 +394,7 @@ where
         if self.degree_bounds_and_shift_powers.as_ref().is_some() {
             let list = self.degree_bounds_and_shift_powers.as_ref().unwrap();
             for (_, d_gadget, shift_power) in list.iter() {
-                let mut d_elems = d_gadget.to_constraint_field()?;
+                let mut d_elems = vec![*d_gadget];
                 let mut shift_power_elems = shift_power.to_constraint_field()?;
 
                 res.append(&mut d_elems);
@@ -472,9 +474,10 @@ where
                 let supported_bits = <TargetCurve as PairingEngine>::Fr::size_in_bits();
 
                 let mut cur: PG::G1Gadget = shift_power;
-                for _ in 0..supported_bits {
+                for i in 0..supported_bits {
                     prepared_shift_gadgets.push(cur.clone());
-                    cur.double_in_place().unwrap();
+                    cur.double_in_place(cs.ns(|| format!("cur_double_in_place_{}", i)))
+                        .unwrap();
                 }
 
                 Some(prepared_shift_gadgets)
@@ -582,13 +585,16 @@ where
         let mut prepared_g = Vec::<PG::G1Gadget>::new();
         for (i, g) in obj.prepared_vk.prepared_g.iter().enumerate() {
             prepared_g.push(<PG::G1Gadget as AllocGadget<
-                <TargetCurve as PairingEngine>::G1Affine,
+                <TargetCurve as PairingEngine>::G1Projective,
                 <BaseCurve as PairingEngine>::Fr,
-            >>::alloc_constant(cs.ns(|| format!("g_{}", i)), || Ok(*g))?);
+            >>::alloc_constant(cs.ns(|| format!("g_{}", i)), || {
+                Ok(g.into())
+            })?);
         }
 
-        let prepared_h = PG::G2PreparedGadget::alloc(cs.ns(|| "h"), || Ok(&obj.prepared_vk.prepared_h))?;
-        let prepared_beta_h = PG::G2PreparedGadget::alloc(cs.ns(|| "beta_h"), || Ok(&obj.prepared_vk.prepared_beta_h))?;
+        let prepared_h = PG::G2PreparedGadget::alloc(cs.ns(|| "prepared_h"), || Ok(&obj.prepared_vk.prepared_h))?;
+        let prepared_beta_h =
+            PG::G2PreparedGadget::alloc(cs.ns(|| "prepared_beta_h"), || Ok(&obj.prepared_vk.prepared_beta_h))?;
 
         let prepared_degree_bounds_and_shift_powers = if obj.prepared_degree_bounds_and_shift_powers.is_some() {
             let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G1Gadget>)>::new();
@@ -603,11 +609,11 @@ where
                 let mut gadgets = Vec::<PG::G1Gadget>::new();
                 for (j, shift_power_elem) in shift_power_elems.iter().enumerate() {
                     gadgets.push(<PG::G1Gadget as AllocGadget<
-                        <TargetCurve as PairingEngine>::G1Affine,
+                        <TargetCurve as PairingEngine>::G1Projective,
                         <BaseCurve as PairingEngine>::Fr,
                     >>::alloc_constant(
                         cs.ns(|| format!("alloc_constant_gadget_{}_{}", i, j)),
-                        || Ok(shift_power_elem.into()),
+                        || Ok(shift_power_elem.into_projective()),
                     )?);
                 }
 
@@ -646,9 +652,9 @@ where
         let mut prepared_g = Vec::<PG::G1Gadget>::new();
         for (i, g) in obj.prepared_vk.prepared_g.iter().enumerate() {
             prepared_g.push(<PG::G1Gadget as AllocGadget<
-                <TargetCurve as PairingEngine>::G1Affine,
+                <TargetCurve as PairingEngine>::G1Projective,
                 <BaseCurve as PairingEngine>::Fr,
-            >>::alloc(cs.ns(|| format!("g_{}", i)), || Ok(*g))?);
+            >>::alloc(cs.ns(|| format!("g_{}", i)), || Ok(g.into()))?);
         }
 
         let prepared_h = PG::G2PreparedGadget::alloc(cs.ns(|| "h"), || Ok(&obj.prepared_vk.prepared_h))?;
@@ -667,11 +673,11 @@ where
                 let mut gadgets = Vec::<PG::G1Gadget>::new();
                 for (j, shift_power_elem) in shift_power_elems.iter().enumerate() {
                     gadgets.push(<PG::G1Gadget as AllocGadget<
-                        <TargetCurve as PairingEngine>::G1Affine,
+                        <TargetCurve as PairingEngine>::G1Projective,
                         <BaseCurve as PairingEngine>::Fr,
                     >>::alloc(
                         cs.ns(|| format!("alloc_gadget_{}_{}", i, j)),
-                        || Ok(shift_power_elem),
+                        || Ok(shift_power_elem.into()),
                     )?);
                 }
 
@@ -710,9 +716,11 @@ where
         let mut prepared_g = Vec::<PG::G1Gadget>::new();
         for (i, g) in obj.prepared_vk.prepared_g.iter().enumerate() {
             prepared_g.push(<PG::G1Gadget as AllocGadget<
-                <TargetCurve as PairingEngine>::G1Affine,
+                <TargetCurve as PairingEngine>::G1Projective,
                 <BaseCurve as PairingEngine>::Fr,
-            >>::alloc_input(cs.ns(|| format!("g_{}", i)), || Ok(*g))?);
+            >>::alloc_input(cs.ns(|| format!("g_{}", i)), || {
+                Ok(g.into())
+            })?);
         }
 
         let prepared_h = PG::G2PreparedGadget::alloc_input(cs.ns(|| "h"), || Ok(&obj.prepared_vk.prepared_h))?;
@@ -732,11 +740,11 @@ where
                 let mut gadgets = Vec::<PG::G1Gadget>::new();
                 for (j, shift_power_elem) in shift_power_elems.iter().enumerate() {
                     gadgets.push(<PG::G1Gadget as AllocGadget<
-                        <TargetCurve as PairingEngine>::G1Affine,
+                        <TargetCurve as PairingEngine>::G1Projective,
                         <BaseCurve as PairingEngine>::Fr,
                     >>::alloc_input(
                         cs.ns(|| format!("alloc_input_gadget_{}_{}", i, j)),
-                        || Ok(shift_power_elem),
+                        || Ok(shift_power_elem.into()),
                     )?);
                 }
 
@@ -820,13 +828,14 @@ where
         value_gen().and_then(|commitment| {
             let commitment = *commitment.borrow();
             let comm = commitment.comm;
-            let comm_gadget = PG::G1Gadget::alloc_constant(cs.ns(|| "alloc_constant_commitment"), || Ok(comm.0))?;
+            let comm_gadget =
+                PG::G1Gadget::alloc_constant(cs.ns(|| "alloc_constant_commitment"), || Ok(comm.0.into_projective()))?;
 
             let shifted_comm = commitment.shifted_comm;
             let shifted_comm_gadget = if let Some(shifted_comm) = shifted_comm {
                 Some(PG::G1Gadget::alloc_constant(
                     cs.ns(|| "alloc_constant_shifted_commitment"),
-                    || Ok(shifted_comm.0),
+                    || Ok(shifted_comm.0.into_projective()),
                 )?)
             } else {
                 None
@@ -855,7 +864,7 @@ where
             let shifted_comm = commitment.shifted_comm;
             let shifted_comm_gadget = if let Some(shifted_comm) = shifted_comm {
                 Some(PG::G1Gadget::alloc(cs.ns(|| "alloc_shifted_commitment"), || {
-                    Ok(shifted_comm.0)
+                    Ok(shifted_comm.0.into_projective())
                 })?)
             } else {
                 None
@@ -879,13 +888,14 @@ where
         value_gen().and_then(|commitment| {
             let commitment = *commitment.borrow();
             let comm = commitment.comm;
-            let comm_gadget = PG::G1Gadget::alloc_input(cs.ns(|| "alloc_input_commitment"), || Ok(comm.0))?;
+            let comm_gadget =
+                PG::G1Gadget::alloc_input(cs.ns(|| "alloc_input_commitment"), || Ok(comm.0.into_projective()))?;
 
             let shifted_comm = commitment.shifted_comm;
             let shifted_comm_gadget = if let Some(shifted_comm) = shifted_comm {
                 Some(PG::G1Gadget::alloc_input(
                     cs.ns(|| "alloc_input_shifted_commitment"),
-                    || Ok(shifted_comm.0),
+                    || Ok(shifted_comm.0.into_projective()),
                 )?)
             } else {
                 None
@@ -1445,7 +1455,7 @@ where
     ) -> Result<Self, SynthesisError> {
         value_gen().and_then(|proof| {
             let Proof { w, random_v } = *proof.borrow();
-            let w = PG::G1Gadget::alloc_constant(cs.ns(|| "alloc_constant_w"), || Ok(w))?;
+            let w = PG::G1Gadget::alloc_constant(cs.ns(|| "alloc_constant_w"), || Ok(w.into_projective()))?;
 
             let random_v = match random_v {
                 None => None,
@@ -1469,7 +1479,7 @@ where
     ) -> Result<Self, SynthesisError> {
         value_gen().and_then(|proof| {
             let Proof { w, random_v } = *proof.borrow();
-            let w = PG::G1Gadget::alloc(cs.ns(|| "alloc_w"), || Ok(w))?;
+            let w = PG::G1Gadget::alloc(cs.ns(|| "alloc_w"), || Ok(w.into_projective()))?;
 
             let random_v = match random_v {
                 None => None,
@@ -1492,7 +1502,7 @@ where
     ) -> Result<Self, SynthesisError> {
         value_gen().and_then(|proof| {
             let Proof { w, random_v } = *proof.borrow();
-            let w = PG::G1Gadget::alloc_input(cs.ns(|| "alloc_input_w"), || Ok(w))?;
+            let w = PG::G1Gadget::alloc_input(cs.ns(|| "alloc_input_w"), || Ok(w.into_projective()))?;
 
             let random_v = match random_v {
                 None => None,
@@ -2020,9 +2030,11 @@ where
 
             // Prepare each input to the pairing.
             let (prepared_total_w, prepared_beta_h, prepared_total_c, prepared_h) = {
-                let g_multiplier_reduced =
-                    g_multiplier.reduce(&mut cs.ns(|| "g_multiplier_reduce"))? + &g_multiplier_reduced;
-                let g_multiplier_bits = g_multiplier_reduced.to_bits_le()?;
+                let g_multiplier_reduced = g_multiplier_reduced.add(
+                    &mut cs.ns(|| "g_multiplier_reduce"),
+                    &g_multiplier.reduce(&mut cs.ns(|| "g_multiplier_reduce_sum"))?,
+                )?;
+                let g_multiplier_bits = g_multiplier_reduced.to_bits_le(&mut cs.ns(|| "g_multiplier_to_bits_le"))?;
 
                 let mut g_times_mul = PG::G1Gadget::zero(cs.ns(|| "g_times_mul_zero"))?;
                 {
@@ -2032,7 +2044,9 @@ where
                         .enumerate()
                     {
                         let mut new_encoded = g_times_mul.clone();
-                        new_encoded += base_power.clone();
+                        new_encoded =
+                            new_encoded.add(cs.ns(|| format!("new_encoded_plus_base_power_{}", i)), base_power)?;
+
                         g_times_mul = PG::G1Gadget::conditionally_select(
                             cs.ns(|| format!("g_times_mul_cond_select_{}", i)),
                             bit,
@@ -2061,7 +2075,7 @@ where
 
             println!("after PC batch check: constraints: {}", cs.num_constraints());
 
-            let rhs = &PG::GTVar::one();
+            let rhs = &PG::GTGadget::one(cs.ns(|| "rhs"))?;
             lhs.is_eq(&rhs)
         }
     }
@@ -2159,12 +2173,18 @@ where
                 let CommitmentVar { shifted_comm, .. } = commitment;
 
                 // To combine the commitments, we multiply each by one of the random challenges, and sum.
-                combined_comm += commitment.comm.scalar_mul_le(challenge_bits.iter())?;
+                let temp = commitment.comm.scalar_mul_le(challenge_bits.iter())?;
+                combined_comm =
+                    combined_comm.add(cs.ns(|| format!("combined_comm_plus_scalar_product_{}", i)), &temp)?;
 
                 // Similarly, we add up the evaluations, multiplied with random challenges.
                 let value_times_challenge_unreduced =
                     value.mul_without_reduce(cs.ns(|| format!("value_mul_without_reduce_{}", i)), &challenge)?;
-                combined_eval += &value_times_challenge_unreduced;
+
+                combined_eval = combined_eval.add(
+                    &mut cs.ns(|| format!("combined_eval_add_value_times_challenge_unreduced_{}", i)),
+                    &value_times_challenge_unreduced,
+                )?;
 
                 // If the degree bound is specified, we include the adjusted degree-shifted commitment
                 // (that is, c_i' - v_i beta^{D - d_i} G), where d_i is the specific degree bound and
