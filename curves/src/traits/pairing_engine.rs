@@ -424,3 +424,31 @@ pub trait MontgomeryModelParameters: ModelParameters {
 
     type TEModelParameters: TEModelParameters<BaseField = Self::BaseField>;
 }
+
+pub trait CurveCycle
+// where
+//     <Self::E1 as AffineCurve>::Projective: MulAssign<<Self::E2 as AffineCurve>::BaseField>,
+//     <Self::E2 as AffineCurve>::Projective: MulAssign<<Self::E1 as AffineCurve>::BaseField>,
+{
+    type E1: AffineCurve<
+        BaseField = <Self::E2 as AffineCurve>::ScalarField,
+        ScalarField = <Self::E2 as AffineCurve>::BaseField,
+    >;
+    type E2: AffineCurve;
+}
+
+pub trait PairingFriendlyCycle: CurveCycle {
+    type Engine1: PairingEngine<
+        G1Affine = Self::E1,
+        G1Projective = <Self::E1 as AffineCurve>::Projective,
+        Fq = <Self::E1 as AffineCurve>::BaseField,
+        Fr = <Self::E1 as AffineCurve>::ScalarField,
+    >;
+
+    type Engine2: PairingEngine<
+        G1Affine = Self::E2,
+        G1Projective = <Self::E2 as AffineCurve>::Projective,
+        Fq = <Self::E2 as AffineCurve>::BaseField,
+        Fr = <Self::E2 as AffineCurve>::ScalarField,
+    >;
+}
