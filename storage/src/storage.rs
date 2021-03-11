@@ -14,13 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{error::StorageError, DatabaseTransaction, Op};
+use crate::{DatabaseTransaction, Op};
+use snarkvm_objects::errors::StorageError;
 
 use rocksdb::{ColumnFamily, ColumnFamilyDescriptor, DBIterator, IteratorMode, Options, WriteBatch, DB};
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+
+fn convert_err(err: rocksdb::Error) -> StorageError {
+    StorageError::Crate("rocksdb", err.to_string())
+}
 
 /// A low-level struct for storing state used by the system.
 #[derive(Clone)]
@@ -52,7 +57,7 @@ impl Storage {
         storage_opts.create_missing_column_families(true);
         storage_opts.create_if_missing(true);
 
-        let storage = Arc::new(DB::open_cf_descriptors(&storage_opts, path, cfs)?);
+        let storage = Arc::new(DB::open_cf_descriptors(&storage_opts, path, cfs).map_err(convert_err)?);
 
         Ok(Self { db: storage, cf_names })
     }
@@ -75,14 +80,12 @@ impl Storage {
         let mut storage_opts = Options::default();
         storage_opts.increase_parallelism(2);
 
-        let storage = Arc::new(DB::open_cf_as_secondary(
-            &storage_opts,
-            primary_path,
-            secondary_path,
-            cf_names.clone(),
-        )?);
+        let storage = Arc::new(
+            DB::open_cf_as_secondary(&storage_opts, primary_path, secondary_path, cf_names.clone())
+                .map_err(convert_err)?,
+        );
 
-        storage.try_catch_up_with_primary()?;
+        storage.try_catch_up_with_primary().map_err(convert_err)?;
 
         Ok(Self { db: storage, cf_names })
     }
@@ -98,7 +101,7 @@ impl Storage {
     /// Returns the value from a given key and col.
     /// If the given key does not exist, returns [StorageError](snarkvm_errors::storage::StorageError).
     pub(crate) fn get(&self, col: u32, key: &[u8]) -> Result<Option<Vec<u8>>, StorageError> {
-        Ok(self.db.get_cf(self.get_cf_ref(col), key)?)
+        Ok(self.db.get_cf(self.get_cf_ref(col), key).map_err(convert_err)?)
     }
 
     /// Returns the iterator from a given col.
@@ -125,7 +128,7 @@ impl Storage {
             };
         }
 
-        self.db.write(batch)?;
+        self.db.write(batch).map_err(convert_err)?;
 
         Ok(())
     }
@@ -153,6 +156,6 @@ impl Storage {
         storage_opts.create_missing_column_families(true);
         storage_opts.create_if_missing(true);
 
-        Ok(DB::destroy(&storage_opts, path)?)
+        Ok(DB::destroy(&storage_opts, path).map_err(convert_err)?)
     }
 }

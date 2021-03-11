@@ -20,5 +20,8 @@ pub use block::*;
 pub mod ledger;
 pub use ledger::*;
 
+pub mod storage;
+pub use storage::*;
+
 pub mod transaction;
 pub use transaction::*;

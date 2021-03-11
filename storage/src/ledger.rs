@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{error::StorageError, *};
+use crate::*;
 use snarkvm_algorithms::{merkle_tree::MerkleTree, traits::LoadableMerkleParameters};
 use snarkvm_objects::{
+    errors::StorageError,
     traits::{LedgerScheme, Transaction},
     Block,
 };
@@ -148,7 +149,7 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
 
                 let genesis_block: Block<T> = FromBytes::read(GenesisBlock::load_bytes().as_slice())?;
 
-                let ledger_storage = Self::new(&path.as_ref().to_path_buf(), ledger_parameters, genesis_block)
+                let ledger_storage = Self::new(Some(&path.as_ref()), ledger_parameters, genesis_block)
                     .expect("Ledger could not be instantiated");
 
                 // If there did not exist a primary ledger at the path,
