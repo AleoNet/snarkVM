@@ -26,7 +26,9 @@ use snarkvm_utilities::{
 
 use derivative::Derivative;
 use std::io::{
-    Read, Write, {self},
+    Read,
+    Write,
+    {self},
 };
 
 /// A zkSNARK proof.

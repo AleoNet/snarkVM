@@ -22,7 +22,10 @@ use crate::{
         polynomial::AlgebraForAHP,
     },
     fiat_shamir::{constraints::FiatShamirRngVar, FiatShamirRng},
-    PhantomData, String, ToString, Vec,
+    PhantomData,
+    String,
+    ToString,
+    Vec,
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
@@ -40,10 +43,16 @@ use snarkvm_gadgets::{
 use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
 use snarkvm_polycommit::{
     constraints::{
-        EvaluationsVar, LabeledPointVar, LinearCombinationCoeffVar, LinearCombinationVar, PCCheckVar, PrepareGadget,
+        EvaluationsVar,
+        LabeledPointVar,
+        LinearCombinationCoeffVar,
+        LinearCombinationVar,
+        PCCheckVar,
+        PrepareGadget,
         QuerySetVar,
     },
-    LCTerm, PolynomialCommitment,
+    LCTerm,
+    PolynomialCommitment,
 };
 use snarkvm_r1cs::ConstraintSystem;
 
@@ -106,11 +115,11 @@ pub struct AHPForR1CS<
 }
 
 impl<
-        TargetField: PrimeField,
-        BaseField: PrimeField,
-        PC: PolynomialCommitment<TargetField>,
-        PCG: PCCheckVar<TargetField, PC, BaseField>,
-    > AHPForR1CS<TargetField, BaseField, PC, PCG>
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+> AHPForR1CS<TargetField, BaseField, PC, PCG>
 where
     PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
     PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
@@ -663,90 +672,64 @@ where
 
         let mut query_set_gadget = QuerySetVar::<TargetField, BaseField> { 0: HashSet::new() };
 
-        query_set_gadget.0.insert((
-            "g_1".to_string(),
-            LabeledPointVar {
+        query_set_gadget.0.insert(("g_1".to_string(), LabeledPointVar {
+            name: "beta".to_string(),
+            value: beta.clone(),
+        }));
+        query_set_gadget.0.insert(("z_b".to_string(), LabeledPointVar {
+            name: "beta".to_string(),
+            value: beta.clone(),
+        }));
+        query_set_gadget.0.insert(("t".to_string(), LabeledPointVar {
+            name: "beta".to_string(),
+            value: beta.clone(),
+        }));
+        query_set_gadget
+            .0
+            .insert(("outer_sumcheck".to_string(), LabeledPointVar {
                 name: "beta".to_string(),
                 value: beta.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "z_b".to_string(),
-            LabeledPointVar {
-                name: "beta".to_string(),
-                value: beta.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "t".to_string(),
-            LabeledPointVar {
-                name: "beta".to_string(),
-                value: beta.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "outer_sumcheck".to_string(),
-            LabeledPointVar {
-                name: "beta".to_string(),
-                value: beta.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "g_2".to_string(),
-            LabeledPointVar {
+            }));
+        query_set_gadget.0.insert(("g_2".to_string(), LabeledPointVar {
+            name: "gamma".to_string(),
+            value: gamma.clone(),
+        }));
+        query_set_gadget.0.insert(("a_denom".to_string(), LabeledPointVar {
+            name: "gamma".to_string(),
+            value: gamma.clone(),
+        }));
+        query_set_gadget.0.insert(("b_denom".to_string(), LabeledPointVar {
+            name: "gamma".to_string(),
+            value: gamma.clone(),
+        }));
+        query_set_gadget.0.insert(("c_denom".to_string(), LabeledPointVar {
+            name: "gamma".to_string(),
+            value: gamma.clone(),
+        }));
+        query_set_gadget
+            .0
+            .insert(("inner_sumcheck".to_string(), LabeledPointVar {
                 name: "gamma".to_string(),
                 value: gamma.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "a_denom".to_string(),
-            LabeledPointVar {
-                name: "gamma".to_string(),
-                value: gamma.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "b_denom".to_string(),
-            LabeledPointVar {
-                name: "gamma".to_string(),
-                value: gamma.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "c_denom".to_string(),
-            LabeledPointVar {
-                name: "gamma".to_string(),
-                value: gamma.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "inner_sumcheck".to_string(),
-            LabeledPointVar {
-                name: "gamma".to_string(),
-                value: gamma.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "vanishing_poly_h_alpha".to_string(),
-            LabeledPointVar {
+            }));
+        query_set_gadget
+            .0
+            .insert(("vanishing_poly_h_alpha".to_string(), LabeledPointVar {
                 name: "alpha".to_string(),
                 value: alpha.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "vanishing_poly_h_beta".to_string(),
-            LabeledPointVar {
+            }));
+        query_set_gadget
+            .0
+            .insert(("vanishing_poly_h_beta".to_string(), LabeledPointVar {
                 name: "beta".to_string(),
                 value: beta.clone(),
-            },
-        ));
-        query_set_gadget.0.insert((
-            "vanishing_poly_k_gamma".to_string(),
-            LabeledPointVar {
+            }));
+        query_set_gadget
+            .0
+            .insert(("vanishing_poly_k_gamma".to_string(), LabeledPointVar {
                 name: "gamma".to_string(),
                 value: gamma.clone(),
-            },
-        ));
+            }));
 
         let mut evaluations_gadget = EvaluationsVar::<TargetField, BaseField> { 0: HashMap::new() };
 

@@ -19,13 +19,18 @@ use crate::{
         indexer::{Circuit, CircuitInfo, Matrix},
         prover::ProverConstraintSystem,
         verifier::{VerifierFirstMessage, VerifierSecondMessage},
-        AHPError, AHPForR1CS, UnnormalizedBivariateLagrangePoly,
+        AHPError,
+        AHPForR1CS,
+        UnnormalizedBivariateLagrangePoly,
     },
     prover::{state::ProverState, ProverMessage},
-    ToString, Vec,
+    ToString,
+    Vec,
 };
 use snarkvm_algorithms::{
-    cfg_into_iter, cfg_iter, cfg_iter_mut,
+    cfg_into_iter,
+    cfg_iter,
+    cfg_iter_mut,
     fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain},
 };
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
