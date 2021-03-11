@@ -306,13 +306,16 @@ impl<F: PrimeField> EqGadget<F> for AllocatedFp<F> {
     fn is_neq<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
         let is_not_equal = Boolean::alloc(cs.ns(|| "is_not_equal"), || Ok(self.value.get()? != other.value.get()?))?;
 
-        let temp = if is_not_equal.get_value().get()? {
-            (self.value.get()? - &other.value.get()?).inverse().get()
-        } else {
-            Ok(F::one())
-        };
-
-        let multiplier = Self::alloc(cs.ns(|| "alloc_multiplier"), || temp)?;
+        let multiplier = cs.alloc(
+            || "alloc_multiplier",
+            || {
+                if is_not_equal.get_value().get()? {
+                    (self.value.get()? - &other.value.get()?).inverse().get()
+                } else {
+                    Ok(F::one())
+                }
+            },
+        )?;
 
         // Completeness:
         // Case 1: self != other:
@@ -360,7 +363,7 @@ impl<F: PrimeField> EqGadget<F> for AllocatedFp<F> {
         cs.enforce(
             || "(self - other) * multiplier = is_not_equal",
             |lc| &self.variable - &other.variable + lc,
-            |lc| multiplier.variable + lc,
+            |lc| lc + multiplier,
             |_| is_not_equal.lc(CS::one(), F::one()),
         );
 
