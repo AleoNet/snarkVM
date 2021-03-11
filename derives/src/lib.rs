@@ -278,7 +278,7 @@ pub fn test_with_metrics(_: proc_macro::TokenStream, item: proc_macro::TokenStre
                 })
                 .into()
             }
-            let name = crate_name("snarkos-metrics").unwrap_or("crate".to_string());
+            let name = crate_name("snarkos-metrics").unwrap_or_else(|_| "crate".to_string());
             let crate_name = Ident::new(&name, Span::call_site());
             generate_test_function(function, crate_name)
         }

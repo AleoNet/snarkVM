@@ -32,6 +32,7 @@ where
     fn get(&self, col: u32, key: &[u8]) -> Result<Option<Vec<u8>>, StorageError>;
 
     /// Returns all the keys and values belonging to the given column.
+    #[allow(clippy::type_complexity)]
     fn get_col(&self, col: u32) -> Result<Vec<(Box<[u8]>, Box<[u8]>)>, StorageError>;
 
     /// Returns all the keys belonging to the given column.

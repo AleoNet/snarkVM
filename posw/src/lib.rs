@@ -95,6 +95,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_posw_gm17() {
         let rng = &mut XorShiftRng::seed_from_u64(1234567);
 

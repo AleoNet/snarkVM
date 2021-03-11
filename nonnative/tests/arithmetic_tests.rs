@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::{bls12_377::Bls12_377, bw6_761::BW6_761, traits::PairingEngine};
+use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     traits::fields::FieldGadget,
@@ -41,7 +41,7 @@ fn allocation_test<TargetField: PrimeField, BaseField: PrimeField, CS: Constrain
     rng: &mut R,
 ) {
     let a_native = TargetField::rand(rng);
-    let a = NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "alloc_a"), || Ok(a_native.clone())).unwrap();
+    let a = NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "alloc_a"), || Ok(a_native)).unwrap();
 
     let a_actual = a.value().unwrap();
     let a_expected = a_native;
@@ -209,10 +209,10 @@ fn distribution_law_test<
     let b_native = TargetField::rand(rng);
     let c_native = TargetField::rand(rng);
 
-    let a_plus_b_native = a_native.clone() + &b_native;
-    let a_times_c_native = a_native.clone() * &c_native;
-    let b_times_c_native = b_native.clone() * &c_native;
-    let a_plus_b_times_c_native = a_plus_b_native.clone() * &c_native;
+    let a_plus_b_native = a_native + &b_native;
+    let a_times_c_native = a_native * &c_native;
+    let b_times_c_native = b_native * &c_native;
+    let a_plus_b_times_c_native = a_plus_b_native * &c_native;
     let a_times_c_plus_b_times_c_native = a_times_c_native + &b_times_c_native;
 
     assert!(
