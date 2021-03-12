@@ -1,3 +1,19 @@
+// Copyright (C) 2019-2021 Aleo Systems Inc.
+// This file is part of the snarkVM library.
+
+// The snarkVM library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// The snarkVM library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+
 use crate::utilities::{Boolean, ToBitsLEGadget};
 
 use snarkvm_fields::{FpParameters, PrimeField};
@@ -10,13 +26,13 @@ use std::{borrow::Borrow, marker::PhantomData};
 /// Conversion of field elements by converting them to boolean sequences
 /// Used by Groth16 and Gm17
 #[derive(Clone)]
-pub struct BooleanInputVar<F: PrimeField, CF: PrimeField> {
+pub struct BooleanInputGadget<F: PrimeField, CF: PrimeField> {
     val: Vec<Vec<Boolean>>,
     _snark_field: PhantomData<F>,
     _constraint_field: PhantomData<CF>,
 }
 
-impl<F: PrimeField, CF: PrimeField> BooleanInputVar<F, CF> {
+impl<F: PrimeField, CF: PrimeField> BooleanInputGadget<F, CF> {
     pub fn new(val: Vec<Vec<Boolean>>) -> Self {
         Self {
             val,
@@ -26,7 +42,7 @@ impl<F: PrimeField, CF: PrimeField> BooleanInputVar<F, CF> {
     }
 }
 
-impl<F: PrimeField, CF: PrimeField> IntoIterator for BooleanInputVar<F, CF> {
+impl<F: PrimeField, CF: PrimeField> IntoIterator for BooleanInputGadget<F, CF> {
     type IntoIter = std::vec::IntoIter<Vec<Boolean>>;
     type Item = Vec<Boolean>;
 
@@ -35,7 +51,7 @@ impl<F: PrimeField, CF: PrimeField> IntoIterator for BooleanInputVar<F, CF> {
     }
 }
 
-impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputVar<F, CF> {
+impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadget<F, CF> {
     fn alloc_constant<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Vec<F>>, CS: ConstraintSystem<CF>>(
         mut cs: CS,
         value_gen: Fn,
