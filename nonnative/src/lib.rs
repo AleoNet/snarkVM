@@ -112,6 +112,9 @@ pub use allocated_nonnative_field_var::*;
 mod allocated_nonnative_field_mul_result_var;
 pub use allocated_nonnative_field_mul_result_var::*;
 
+mod nonnative_field_input_var;
+pub use nonnative_field_input_var::*;
+
 mod nonnative_field_var;
 pub use nonnative_field_var::*;
 
