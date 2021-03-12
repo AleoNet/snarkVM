@@ -38,6 +38,10 @@ use std::{borrow::Borrow, cmp::Ordering};
 uint_impl_common!(UInt128, u128, 128);
 
 impl UInt for UInt128 {
+    type IntegerType = u128;
+
+    const SIZE: usize = 128;
+
     /// Returns the inverse UInt128
     fn negate(&self) -> Self {
         Self {
@@ -418,119 +422,6 @@ impl UInt for UInt128 {
             .collect::<Vec<Self>>();
 
         Self::addmany(&mut cs.ns(|| "partial_products"), &partial_products)
-    }
-
-    /// Perform long division of two `UInt128` objects.
-    /// Reference: https://en.wikipedia.org/wiki/Division_algorithm
-    fn div<F: PrimeField, CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, SynthesisError> {
-        // pseudocode:
-        //
-        // if D = 0 then error(DivisionByZeroException) end
-        // Q := 0                  -- Initialize quotient and remainder to zero
-        // R := 0
-        // for i := n − 1 .. 0 do  -- Where n is number of bits in N
-        //   R := R << 1           -- Left-shift R by 1 bit
-        //   R(0) := N(i)          -- Set the least-significant bit of R equal to bit i of the numerator
-        //   if R ≥ D then
-        //     R := R − D
-        //     Q(i) := 1
-        //   end
-        // end
-
-        if other.eq(&Self::constant(0u128)) {
-            return Err(SynthesisError::DivisionByZero);
-        }
-
-        let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
-
-        let allocated_true = Boolean::from(AllocatedBit::alloc(&mut cs.ns(|| "true"), || Ok(true)).unwrap());
-        let true_bit = Boolean::conditionally_select(
-            &mut cs.ns(|| "constant_or_allocated_true"),
-            &is_constant,
-            &Boolean::constant(true),
-            &allocated_true,
-        )?;
-
-        let allocated_one = Self::alloc(&mut cs.ns(|| "one"), || Ok(1u128))?;
-        let one = Self::conditionally_select(
-            &mut cs.ns(|| "constant_or_allocated_1u128"),
-            &is_constant,
-            &Self::constant(1u128),
-            &allocated_one,
-        )?;
-
-        let allocated_zero = Self::alloc(&mut cs.ns(|| "zero"), || Ok(0u128))?;
-        let zero = Self::conditionally_select(
-            &mut cs.ns(|| "constant_or_allocated_0u128"),
-            &is_constant,
-            &Self::constant(0u128),
-            &allocated_zero,
-        )?;
-
-        let self_is_zero = Boolean::Constant(self.eq(&Self::constant(0u128)));
-        let mut quotient = zero.clone();
-        let mut remainder = zero;
-
-        for (i, bit) in self.bits.iter().rev().enumerate() {
-            // Left shift remainder by 1
-            remainder = Self::addmany(&mut cs.ns(|| format!("shift_left_{}", i)), &[
-                remainder.clone(),
-                remainder.clone(),
-            ])?;
-
-            // Set the least-significant bit of remainder to bit i of the numerator
-            let bit_is_true = Boolean::constant(bit.eq(&Boolean::constant(true)));
-            let new_remainder = Self::addmany(&mut cs.ns(|| format!("set_remainder_bit_{}", i)), &[
-                remainder.clone(),
-                one.clone(),
-            ])?;
-
-            remainder = Self::conditionally_select(
-                &mut cs.ns(|| format!("increment_or_remainder_{}", i)),
-                &bit_is_true,
-                &new_remainder,
-                &remainder,
-            )?;
-
-            // Greater than or equal to:
-            //   R >= D
-            //   (R == D) || (R > D)
-            //   (R == D) || ((R !=D) && ((R - D) != 0))
-            //
-            //  (R > D)                     checks subtraction overflow before evaluation
-            //  (R != D) && ((R - D) != 0)  instead evaluate subtraction and check for overflow after
-
-            let no_remainder = Boolean::constant(remainder.eq(&other));
-            let subtraction = remainder.sub_unsafe(&mut cs.ns(|| format!("subtract_divisor_{}", i)), &other)?;
-            let sub_is_zero = Boolean::constant(subtraction.eq(&Self::constant(0)));
-            let cond1 = Boolean::and(
-                &mut cs.ns(|| format!("cond_1_{}", i)),
-                &no_remainder.not(),
-                &sub_is_zero.not(),
-            )?;
-            let cond2 = Boolean::or(&mut cs.ns(|| format!("cond_2_{}", i)), &no_remainder, &cond1)?;
-
-            remainder = Self::conditionally_select(
-                &mut cs.ns(|| format!("subtract_or_same_{}", i)),
-                &cond2,
-                &subtraction,
-                &remainder,
-            )?;
-
-            let index = 127 - i as usize;
-            let bit_value = 1u128 << (index as u128);
-            let mut new_quotient = quotient.clone();
-            new_quotient.bits[index] = true_bit;
-            new_quotient.value = Some(new_quotient.value.unwrap() + bit_value);
-
-            quotient = Self::conditionally_select(
-                &mut cs.ns(|| format!("set_bit_or_same_{}", i)),
-                &cond2,
-                &new_quotient,
-                &quotient,
-            )?;
-        }
-        Self::conditionally_select(&mut cs.ns(|| "self_or_quotient"), &self_is_zero, self, &quotient)
     }
 
     /// Bitwise multiplication of two `UInt128` objects.

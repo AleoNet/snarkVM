@@ -39,6 +39,9 @@ uint_impl!(UInt32, u32, 32);
 uint_impl!(UInt64, u64, 64);
 
 pub trait UInt: Debug + Clone + PartialOrd + Eq + PartialEq {
+    type IntegerType;
+    const SIZE: usize;
+
     /// Returns the inverse `UInt`
     fn negate(&self) -> Self;
 
@@ -83,10 +86,6 @@ pub trait UInt: Debug + Clone + PartialOrd + Eq + PartialEq {
     /// Perform Bitwise multiplication of two `UInt` objects.
     /// Reference: https://en.wikipedia.org/wiki/Binary_multiplier
     fn mul<F: PrimeField, CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, SynthesisError>;
-
-    /// Perform long division of two `UInt` objects.
-    /// Reference: https://en.wikipedia.org/wiki/Division_algorithm
-    fn div<F: PrimeField, CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, SynthesisError>;
 
     /// Bitwise exponentiation of two `UInt64` objects.
     /// Reference: /snarkVM/models/src/curves/field.rs

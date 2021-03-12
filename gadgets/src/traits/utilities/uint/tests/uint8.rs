@@ -16,6 +16,7 @@
 
 use crate::utilities::{
     alloc::AllocGadget,
+    arithmetic::*,
     boolean::Boolean,
     uint::{UInt, UInt8},
 };

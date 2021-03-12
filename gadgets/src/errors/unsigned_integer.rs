@@ -14,17 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#[macro_use]
-mod macros;
+use snarkvm_r1cs::errors::SynthesisError;
 
-pub mod arithmetic;
-pub use arithmetic::*;
+#[derive(Debug, Error)]
+pub enum UnsignedIntegerError {
+    #[error("Integer overflow")]
+    Overflow,
 
-pub mod unsigned_integer;
-pub use unsigned_integer::*;
+    #[error("Division by zero")]
+    DivisionByZero,
 
-pub mod uint128;
-pub use uint128::*;
-
-#[cfg(test)]
-mod tests;
+    #[error("{}", _0)]
+    SynthesisError(#[from] SynthesisError),
+}
