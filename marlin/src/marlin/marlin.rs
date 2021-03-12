@@ -27,6 +27,24 @@ use core::marker::PhantomData;
 use digest::Digest;
 use rand_core::RngCore;
 
+pub trait MarlinConfig: Clone {
+    const FOR_RECURSION: bool;
+}
+
+#[derive(Clone)]
+pub struct MarlinDefaultConfig;
+
+impl MarlinConfig for MarlinDefaultConfig {
+    const FOR_RECURSION: bool = false;
+}
+
+#[derive(Clone)]
+pub struct MarlinRecursiveConfig;
+
+impl MarlinConfig for MarlinRecursiveConfig {
+    const FOR_RECURSION: bool = true;
+}
+
 /// The Marlin proof system.
 pub struct MarlinCore<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest>(
     #[doc(hidden)] PhantomData<F>,
