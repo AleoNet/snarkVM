@@ -360,66 +360,74 @@ fn test_int64_div() {
     }
 }
 
-#[ignore]
 #[test]
 fn test_int64_pow_constants() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    let mut cs = TestConstraintSystem::<Fr>::new();
+    for _ in 0..5 {
+        let mut cs = TestConstraintSystem::<Fr>::new();
 
-    let a: i64 = rng.gen_range(-16..16);
-    let b: i64 = rng.gen_range(-12..12);
+        let a: i64 = rng.gen_range(-3037000499..3037000499);
+        let b: i64 = rng.gen_range(-3..3);
 
-    let expected = a.checked_pow(b as u32).unwrap();
+        let expected = match a.checked_pow(b as u32) {
+            Some(valid) => valid,
+            None => continue,
+        };
 
-    let a_bit = Int64::constant(a);
-    let b_bit = Int64::constant(b);
+        let a_bit = Int64::constant(a);
+        let b_bit = Int64::constant(b);
 
-    let r = a_bit.pow(cs.ns(|| "exponentiation"), &b_bit).unwrap();
+        let r = a_bit.pow(cs.ns(|| "exponentiation"), &b_bit).unwrap();
 
-    assert!(r.value == Some(expected));
+        assert!(r.value == Some(expected));
 
-    check_all_constant_bits(expected, r);
+        check_all_constant_bits(expected, r);
+    }
 }
 
-#[ignore]
 #[test]
 fn test_int64_pow() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    let mut cs = TestConstraintSystem::<Fr>::new();
+    for _ in 0..5 {
+        let mut cs = TestConstraintSystem::<Fr>::new();
 
-    let a: i64 = rng.gen_range(-16..16);
-    let b: i64 = rng.gen_range(-12..12);
+        let a: i64 = rng.gen_range(-3037000499..3037000499);
+        let b: i64 = rng.gen_range(-3..3);
 
-    let expected = a.checked_pow(b as u32).unwrap();
+        let expected = match a.checked_pow(b as u32) {
+            Some(valid) => valid,
+            None => continue,
+        };
 
-    let a_bit = Int64::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-    let b_bit = Int64::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap();
+        let a_bit = Int64::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
+        let b_bit = Int64::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap();
 
-    let r = a_bit.pow(cs.ns(|| "exponentiation"), &b_bit).unwrap();
+        let r = a_bit.pow(cs.ns(|| "exponentiation"), &b_bit).unwrap();
 
-    assert!(cs.is_satisfied());
+        assert!(cs.is_satisfied());
 
-    assert!(r.value == Some(expected));
+        assert!(r.value == Some(expected));
 
-    check_all_allocated_bits(expected, r);
+        check_all_allocated_bits(expected, r);
 
-    // Flip a bit_gadget and see if the exponentiation constraint still works
-    if cs
-        .get("exponentiation/multiply_by_self_0/result bit_gadget 0/boolean")
-        .is_zero()
-    {
-        cs.set(
-            "exponentiation/multiply_by_self_0/result bit_gadget 0/boolean",
-            Fr::one(),
-        );
-    } else {
-        cs.set(
-            "exponentiation/multiply_by_self_0/result bit_gadget 0/boolean",
-            Fr::zero(),
-        );
+        // Flip a bit_gadget and see if the exponentiation constraint still works
+        if cs
+            .get("exponentiation/multiply_by_self_0/result bit_gadget 0/boolean")
+            .is_zero()
+        {
+            cs.set(
+                "exponentiation/multiply_by_self_0/result bit_gadget 0/boolean",
+                Fr::one(),
+            );
+        } else {
+            cs.set(
+                "exponentiation/multiply_by_self_0/result bit_gadget 0/boolean",
+                Fr::zero(),
+            );
+        }
+
+        assert!(!cs.is_satisfied());
     }
-
-    assert!(!cs.is_satisfied());
 }

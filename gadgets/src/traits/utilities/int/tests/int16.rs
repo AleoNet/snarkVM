@@ -360,7 +360,7 @@ fn test_int16_pow_constants() {
     for _ in 0..10 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: i16 = rng.gen_range(-16..16);
+        let a: i16 = rng.gen_range(-180..180);
         let b: i16 = rng.gen_range(-4..4);
 
         let expected = match a.checked_pow(b as u32) {
