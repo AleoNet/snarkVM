@@ -18,12 +18,14 @@ use crate::{
     uint_impl_common,
     utilities::{
         alloc::AllocGadget,
+        arithmetic::Pow,
         boolean::{AllocatedBit, Boolean},
         eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
         select::CondSelectGadget,
         uint::unsigned_integer::{UInt, UInt8},
         ToBytesGadget,
     },
+    UnsignedIntegerError,
 };
 use snarkvm_fields::{Field, FpParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearCombination};
@@ -423,14 +425,14 @@ impl UInt for UInt128 {
 
         Self::addmany(&mut cs.ns(|| "partial_products"), &partial_products)
     }
+}
+
+impl<F: PrimeField> Pow<F> for UInt128 {
+    type ErrorType = UnsignedIntegerError;
 
     /// Bitwise multiplication of two `UInt128` objects.
     /// Reference: /snarkVM/models/src/curves/field.rs
-    fn pow<F: Field + PrimeField, CS: ConstraintSystem<F>>(
-        &self,
-        mut cs: CS,
-        other: &Self,
-    ) -> Result<Self, SynthesisError> {
+    fn pow<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, Self::ErrorType> {
         // let mut res = Self::one();
         //
         // let mut found_one = false;

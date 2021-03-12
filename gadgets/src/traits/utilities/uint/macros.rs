@@ -652,53 +652,6 @@ macro_rules! uint_impl {
 
                 Self::addmany(&mut cs.ns(|| format!("partial_products")), &partial_products)
             }
-
-            fn pow<F: Field + PrimeField, CS: ConstraintSystem<F>>(
-                &self,
-                mut cs: CS,
-                other: &Self,
-            ) -> Result<Self, SynthesisError> {
-                // let mut res = Self::one();
-                //
-                // for i in BitIteratorBE::new(exp) {
-                //     res.square_in_place();
-                //
-                //     if i {
-                //         res *= self;
-                //     }
-                // }
-                // res
-
-                let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
-                let constant_result = Self::constant(1 as $_type);
-                let allocated_result = Self::alloc(
-                    &mut cs.ns(|| format!("allocated_1u{}", $size)),
-                    || Ok(1 as $_type),
-                )?;
-                let mut result = Self::conditionally_select(
-                    &mut cs.ns(|| "constant_or_allocated"),
-                    &is_constant,
-                    &constant_result,
-                    &allocated_result,
-                )?;
-
-                for (i, bit) in other.bits.iter().rev().enumerate() {
-                    result = result.mul(cs.ns(|| format!("square_{}", i)), &result).unwrap();
-
-                    let mul_by_self = result
-                        .mul(cs.ns(|| format!("multiply_by_self_{}", i)), &self)
-                        .unwrap();
-
-                    result = Self::conditionally_select(
-                        &mut cs.ns(|| format!("mul_by_self_or_result_{}", i)),
-                        &bit,
-                        &mul_by_self,
-                        &result,
-                    )?;
-                }
-
-                Ok(result)
-            }
         }
     };
 }

@@ -86,11 +86,6 @@ pub trait UInt: Debug + Clone + PartialOrd + Eq + PartialEq {
     /// Perform Bitwise multiplication of two `UInt` objects.
     /// Reference: https://en.wikipedia.org/wiki/Binary_multiplier
     fn mul<F: PrimeField, CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, SynthesisError>;
-
-    /// Bitwise exponentiation of two `UInt64` objects.
-    /// Reference: /snarkVM/models/src/curves/field.rs
-    fn pow<F: Field + PrimeField, CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self)
-    -> Result<Self, SynthesisError>;
 }
 
 // These methods are used throughout snarkvm-gadgets exclusively by UInt8
