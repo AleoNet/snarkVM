@@ -36,6 +36,7 @@ use snarkvm_utilities::test_rng;
 use rand::{Rng, RngCore};
 
 use crate::marlin::MarlinError;
+use snarkvm_gadgets::traits::algorithms::SNARKGadget;
 use std::{
     cmp::min,
     fmt::{Debug, Formatter},
@@ -123,7 +124,7 @@ where
     // }
 
     fn process_vk(
-        vk: &Self::VerifyingKey,
+        vk: &CircuitVerifyingKey<TargetField, PC>,
     ) -> Result<PreparedCircuitVerifyingKey<TargetField, PC>, Box<MarlinConstraintsError>> {
         Ok(PreparedCircuitVerifyingKey::prepare(vk))
     }
@@ -162,7 +163,7 @@ where
     fn setup<R: RngCore>(
         (circuit, srs): &Self::Circuit,
         rng: &mut R, // The Marlin circuit setup is deterministic.
-    ) -> Result<(Self::ProvingKey, Self::PreparedVerifyingKey), Self::Error> {
+    ) -> Result<(Self::ProvingKey, Self::PreparedVerifyingKey), SNARKError> {
         // let setup_time = start_timer!(|| "{Marlin}::Setup");
         // let parameters = Parameters::<E>::new(circuit, srs)?;
         // end_timer!(setup_time);
@@ -232,7 +233,7 @@ where
     C: ConstraintSynthesizer<TargetField>,
 {
     type InputVar = NonNativeFieldInputVar<TargetField, BaseField>;
-    type ProcessedVerifyingKeyVar = PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, FS, FSG>;
+    type PreparedVerifyingKeyVar = PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, FS, FSG>;
     type ProofVar = ProofVar<TargetField, BaseField, PC, PCG>;
     type VerifierSize = usize;
     type VerifyingKeyVar = CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>;
@@ -243,25 +244,35 @@ where
         circuit_vk.circuit_info.num_instance_variables
     }
 
-    fn verify_with_processed_vk(
-        circuit_pvk: &Self::ProcessedVerifyingKeyVar,
+    fn verify_with_processed_vk<CS: ConstraintSystem<BaseField>>(
+        mut cs: CS,
+        circuit_pvk: &Self::PreparedVerifyingKeyVar,
         x: &Self::InputVar,
         proof: &Self::ProofVar,
     ) -> Result<Boolean, SynthesisError> {
         Ok(
-            MarlinVerificationGadget::<TargetField, BaseField, PC, PCG>::prepared_verify(&circuit_pvk, &x.val, proof)
-                .unwrap(),
+            MarlinVerificationGadget::<TargetField, BaseField, PC, PCG>::prepared_verify(
+                cs.ns(|| "prepared_verify"),
+                &circuit_pvk,
+                &x.val,
+                proof,
+            )
+            .unwrap(),
         )
     }
 
-    fn verify(
+    fn verify<CS: ConstraintSystem<BaseField>>(
+        mut cs: CS,
         circuit_vk: &Self::VerifyingKeyVar,
         x: &Self::InputVar,
         proof: &Self::ProofVar,
     ) -> Result<Boolean, SynthesisError> {
         Ok(
             MarlinVerificationGadget::<TargetField, BaseField, PC, PCG>::verify::<_, FS, FSG>(
-                circuit_vk, &x.val, proof,
+                cs.ns(|| "verify"),
+                circuit_vk,
+                &x.val,
+                proof,
             )
             .unwrap(),
         )
