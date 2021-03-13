@@ -24,6 +24,7 @@ use snarkvm_utilities::{
     serialize::*,
 };
 
+use crate::marlin::CircuitProvingKey;
 use derivative::Derivative;
 use std::io::{
     Read,
@@ -60,5 +61,11 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> CircuitVerifyingKey<F, PC> {
     /// Iterate over the commitments to indexed polynomials in `self`.
     pub fn iter(&self) -> impl Iterator<Item = &PC::Commitment> {
         self.circuit_commitments.iter()
+    }
+}
+
+impl<F: PrimeField, PC: PolynomialCommitment<F>> From<CircuitProvingKey<F, PC>> for CircuitVerifyingKey<F, PC> {
+    fn from(other: CircuitProvingKey<F, PC>) -> Self {
+        other.circuit_verifying_key
     }
 }

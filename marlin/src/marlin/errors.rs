@@ -16,6 +16,8 @@
 
 use snarkvm_algorithms::SNARKError;
 
+use std::fmt::Debug;
+
 /// A `enum` specifying the possible failure modes of `Marlin`.
 #[derive(Debug)]
 pub enum MarlinError<E> {
@@ -49,8 +51,8 @@ impl<E> MarlinError<E> {
     }
 }
 
-impl<E> From<MarlinError<E>> for SNARKError {
+impl<E: Debug> From<MarlinError<E>> for SNARKError {
     fn from(error: MarlinError<E>) -> Self {
-        SNARKError::Crate("marlin", error.to_string())
+        SNARKError::Crate("marlin", format!("{:?}", error))
     }
 }

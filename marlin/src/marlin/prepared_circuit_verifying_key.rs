@@ -15,8 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::marlin::CircuitVerifyingKey;
+
+use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
-use snarkvm_polycommit::PolynomialCommitment;
+use snarkvm_polycommit::{PCPreparedCommitment, PCPreparedVerifierKey, PolynomialCommitment};
+use snarkvm_r1cs::SynthesisError;
 
 /// Verification key, prepared (preprocessed) for use in pairings.
 pub struct PreparedCircuitVerifyingKey<F: PrimeField, PC: PolynomialCommitment<F>> {
@@ -42,6 +45,39 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> Clone for PreparedCircuitVerify
             prepared_index_comms: self.prepared_index_comms.clone(),
             prepared_verifier_key: self.prepared_verifier_key.clone(),
             orig_vk: self.orig_vk.clone(),
+        }
+    }
+}
+
+impl<F, PC> PreparedCircuitVerifyingKey<F, PC>
+where
+    F: PrimeField,
+    PC: PolynomialCommitment<F>,
+{
+    pub fn prepare(vk: &CircuitVerifyingKey<F, PC>) -> Self {
+        let mut prepared_index_comms = Vec::<PC::PreparedCommitment>::new();
+        for (_, comm) in vk.circuit_commitments.iter().enumerate() {
+            prepared_index_comms.push(PC::PreparedCommitment::prepare(comm));
+        }
+
+        let prepared_verifier_key = PC::PreparedVerifierKey::prepare(&vk.verifier_key);
+
+        let domain_h = EvaluationDomain::<F>::new(vk.circuit_info.num_constraints)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
+            .unwrap();
+        let domain_k = EvaluationDomain::<F>::new(vk.circuit_info.num_non_zero)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
+            .unwrap();
+
+        let domain_h_size = domain_h.size();
+        let domain_k_size = domain_k.size();
+
+        Self {
+            domain_h_size: domain_h_size as u64,
+            domain_k_size: domain_k_size as u64,
+            prepared_index_comms,
+            prepared_verifier_key,
+            orig_vk: vk.clone(),
         }
     }
 }

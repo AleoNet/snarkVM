@@ -17,10 +17,10 @@
 use crate::{ahp::indexer::*, marlin::CircuitVerifyingKey, Vec};
 use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::PolynomialCommitment;
-use snarkvm_utilities::{errors::SerializationError, serialize::*};
+use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 use derivative::Derivative;
-use std::io::{Read, Write};
+use std::io::{Read, Result as IoResult, Write};
 
 /// Proving key for a specific circuit (i.e., R1CS matrices).
 #[derive(Derivative)]
@@ -35,4 +35,17 @@ pub struct CircuitProvingKey<F: PrimeField, PC: PolynomialCommitment<F>> {
     pub circuit: Circuit<F>,
     /// The committer key for this index, trimmed from the universal SRS.
     pub committer_key: PC::CommitterKey,
+}
+
+impl<F: PrimeField, PC: PolynomialCommitment<F>> ToBytes for CircuitProvingKey<F, PC> {
+    fn write<W: Write>(&self, mut _writer: W) -> IoResult<()> {
+        unimplemented!()
+    }
+}
+
+impl<F: PrimeField, PC: PolynomialCommitment<F>> FromBytes for CircuitProvingKey<F, PC> {
+    #[inline]
+    fn read<R: Read>(mut _reader: R) -> IoResult<Self> {
+        unimplemented!()
+    }
 }
