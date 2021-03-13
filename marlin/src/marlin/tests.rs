@@ -100,10 +100,10 @@ mod marlin {
                         let proof = $marlin_inst::prove(&index_pk, &circ, rng).unwrap();
                         println!("Called prover");
 
-                        assert!($marlin_inst::verify(&index_vk, &[c], &proof, rng).unwrap());
+                        assert!($marlin_inst::verify(&index_vk, &[c], &proof).unwrap());
                         println!("Called verifier");
                         println!("\nShould not verify (i.e. verifier messages should print below):");
-                        assert!(!$marlin_inst::verify(&index_vk, &[a], &proof, rng).unwrap());
+                        assert!(!$marlin_inst::verify(&index_vk, &[a], &proof).unwrap());
                     }
                 }
             }

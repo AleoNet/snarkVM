@@ -23,14 +23,18 @@ use snarkvm_polycommit::{Evaluations, LabeledCommitment, PCUniversalParams, Poly
 use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{bytes::ToBytes, rand::UniformRand, to_bytes};
 
+use crate::marlin::PreparedCircuitVerifyingKey;
 use core::marker::PhantomData;
 use digest::Digest;
 use rand_core::RngCore;
 
+/// Marlin configuration.
 pub trait MarlinConfig: Clone {
+    /// For recursion flag.
     const FOR_RECURSION: bool;
 }
 
+/// Default Marlin configuration.
 #[derive(Clone)]
 pub struct MarlinDefaultConfig;
 
@@ -38,6 +42,7 @@ impl MarlinConfig for MarlinDefaultConfig {
     const FOR_RECURSION: bool = false;
 }
 
+/// Recursive Marlin configuration.
 #[derive(Clone)]
 pub struct MarlinRecursiveConfig;
 
@@ -294,11 +299,10 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinCore<F, PC, D>
 
     /// Verify that a proof for the constrain system defined by `C` asserts that
     /// all constraints are satisfied.
-    pub fn verify<R: RngCore>(
+    pub fn verify(
         circuit_verifying_key: &CircuitVerifyingKey<F, PC>,
         public_input: &[F],
         proof: &Proof<F, PC>,
-        rng: &mut R,
     ) -> Result<bool, MarlinError<PC::Error>> {
         let verifier_time = start_timer!(|| "Marlin::Verify");
 
@@ -377,7 +381,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinCore<F, PC, D>
             &evaluations,
             &proof.pc_proof,
             opening_challenge,
-            rng,
+            &mut fs_rng,
         )
         .map_err(MarlinError::from_pc_err)?;
 
@@ -389,5 +393,15 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinCore<F, PC, D>
             evaluations_are_correct
         ));
         Ok(evaluations_are_correct)
+    }
+
+    /// Verify that a proof for the constrain system defined by `C` asserts that
+    /// all constraints are satisfied with a prepared circuit verifying key.
+    pub fn prepared_verify(
+        prepared_vk: &PreparedCircuitVerifyingKey<F, PC>,
+        public_input: &[F],
+        proof: &Proof<F, PC>,
+    ) -> Result<bool, MarlinError<PC::Error>> {
+        Self::verify(&prepared_vk.orig_vk, public_input, proof)
     }
 }

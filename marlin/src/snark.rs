@@ -112,7 +112,6 @@ where
             &verifying_key,
             &input.to_field_elements()?,
             &proof,
-            &mut rand_core::OsRng,
         )
         .map_err(|_| SNARKError::Crate("marlin", "Could not verify proof".to_owned()))?;
         end_timer!(verification_time);

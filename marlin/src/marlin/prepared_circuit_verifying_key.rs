@@ -54,6 +54,7 @@ where
     F: PrimeField,
     PC: PolynomialCommitment<F>,
 {
+    /// Prepare the circuit verifying key.
     pub fn prepare(vk: &CircuitVerifyingKey<F, PC>) -> Self {
         let mut prepared_index_comms = Vec::<PC::PreparedCommitment>::new();
         for (_, comm) in vk.circuit_commitments.iter().enumerate() {
