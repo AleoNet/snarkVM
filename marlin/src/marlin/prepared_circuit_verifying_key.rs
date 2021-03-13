@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::marlin::CircuitVerifyingKey;
+use crate::marlin::{CircuitProvingKey, CircuitVerifyingKey};
 
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
@@ -79,5 +79,19 @@ where
             prepared_verifier_key,
             orig_vk: vk.clone(),
         }
+    }
+}
+
+impl<F: PrimeField, PC: PolynomialCommitment<F>> From<CircuitVerifyingKey<F, PC>>
+    for PreparedCircuitVerifyingKey<F, PC>
+{
+    fn from(other: CircuitVerifyingKey<F, PC>) -> Self {
+        Self::prepare(&other)
+    }
+}
+
+impl<F: PrimeField, PC: PolynomialCommitment<F>> From<CircuitProvingKey<F, PC>> for PreparedCircuitVerifyingKey<F, PC> {
+    fn from(other: CircuitProvingKey<F, PC>) -> Self {
+        Self::prepare(&other.circuit_verifying_key)
     }
 }
