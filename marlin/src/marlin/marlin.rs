@@ -50,6 +50,7 @@ impl MarlinConfig for MarlinRecursiveConfig {
     const FOR_RECURSION: bool = true;
 }
 
+// TODO (raychu86): Remove the digest bound.
 /// The Marlin proof system.
 pub struct MarlinCore<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest>(
     #[doc(hidden)] PhantomData<F>,
@@ -80,6 +81,17 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinCore<F, PC, D>
         let srs = PC::setup(max_degree, rng).map_err(MarlinError::from_pc_err);
         end_timer!(setup_time);
         srs
+    }
+
+    /// Generate the index-specific (i.e., circuit-specific) prover and verifier
+    /// keys. This is a trusted setup.
+    #[allow(clippy::type_complexity)]
+    pub fn circuit_specific_setup<C: ConstraintSynthesizer<F>, R: RngCore>(
+        c: &C,
+        rng: &mut R,
+    ) -> Result<(CircuitProvingKey<F, PC>, CircuitVerifyingKey<F, PC>), MarlinError<PC::Error>> {
+        // TODO (raychu86): Implement this.
+        unimplemented!()
     }
 
     /// Generates the circuit proving and verifying keys.
