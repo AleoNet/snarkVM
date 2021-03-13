@@ -1,27 +1,46 @@
+// Copyright (C) 2019-2021 Aleo Systems Inc.
+// This file is part of the snarkVM library.
+
+// The snarkVM library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// The snarkVM library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+
 use crate::{
     constraints::{
         data_structures::{CircuitVerifyingKeyVar, PreparedCircuitVerifyingKeyVar, ProofVar, UniversalSRS},
-        verifier::Marlin as MarlinVerifierGadget,
+        verifier::MarlinVerificationGadget,
     },
     fiat_shamir::{constraints::FiatShamirRngVar, FiatShamirRng},
-    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinCore, PreparedCircuitVerifyingKey, Proof},
-    Box, Debug, Formatter, MarlinConfig, PhantomData, String, ToString, UniversalSRS, Vec,
+    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinConfig, MarlinCore, PreparedCircuitVerifyingKey, Proof},
 };
-use snarkvm_algorithms::SNARK;
-use snarkvm_curves::traits::pairing_engine::PairingEngine;
+use snarkvm_algorithms::{SNARKError, SNARK};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::traits::{
     fields::{FieldGadget, ToConstraintFieldGadget},
     utilities::boolean::Boolean,
 };
+use snarkvm_nonnative::NonNativeFieldInputVar;
 use snarkvm_polycommit::{constraints::PCCheckVar, LinearCombination, PolynomialCommitment};
-use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, Variable};
 use snarkvm_utilities::test_rng;
 
-use rand::{CryptoRng, Rng, RngCore};
+use rand::{Rng, RngCore};
 
-// use ark_relations::lc;
-// use ark_std::cmp::min;
+use crate::marlin::MarlinError;
+use std::{
+    cmp::min,
+    fmt::{Debug, Formatter},
+    marker::PhantomData,
+};
 
 #[derive(Clone, PartialEq, PartialOrd)]
 pub struct MarlinBound {
@@ -116,12 +135,12 @@ where
     ) -> Result<bool, Box<MarlinConstraintsError>> {
         match MarlinCore::<TargetField, BaseField, PC, FS, MC>::prepared_verify(pvk, x, proof) {
             Ok(res) => Ok(res),
-            Err(e) => Err(Box::new(MarlinError::from(e))),
+            Err(e) => Err(Box::new(MarlinError::from(e).into())),
         }
     }
 }
 
-impl<TargetField, BaseField, PC, FS, MC, C> SNARK<TargetField> for MarlinSNARK<TargetField, BaseField, PC, FS, MC, C>
+impl<TargetField, BaseField, PC, FS, MC, C> SNARK for MarlinSNARK<TargetField, BaseField, PC, FS, MC, C>
 where
     TargetField: PrimeField,
     BaseField: PrimeField,
@@ -137,14 +156,12 @@ where
     type PreparedVerifyingKey = CircuitVerifyingKey<TargetField, PC>;
     type Proof = Proof<TargetField, PC>;
     type ProvingKey = CircuitProvingKey<TargetField, PC>;
+    type VerifierInput = &'static [TargetField];
     type VerifyingKey = CircuitVerifyingKey<TargetField, PC>;
-    type VerifierInput = &[TargetField];
-
-    type Error = Box<MarlinError>;
 
     fn setup<R: RngCore>(
         (circuit, srs): &Self::Circuit,
-        _rng: &mut R, // The Marlin circuit setup is deterministic.
+        rng: &mut R, // The Marlin circuit setup is deterministic.
     ) -> Result<(Self::ProvingKey, Self::PreparedVerifyingKey), Self::Error> {
         // let setup_time = start_timer!(|| "{Marlin}::Setup");
         // let parameters = Parameters::<E>::new(circuit, srs)?;
@@ -159,10 +176,10 @@ where
         parameters: &Self::ProvingKey,
         circuit: &Self::AllocatedCircuit,
         rng: &mut R,
-    ) -> Result<Self::Proof, Self::Error> {
+    ) -> Result<Self::Proof, SNARKError> {
         match MarlinCore::<TargetField, BaseField, PC, FS, MC>::prove(&parameters, circuit, rng) {
             Ok(res) => Ok(res),
-            Err(e) => Err(Box::new(MarlinError::from(e))),
+            Err(e) => Err(SNARKError::from(e)),
         }
     }
 
@@ -170,10 +187,10 @@ where
         verifying_key: &Self::PreparedVerifyingKey,
         input: &Self::VerifierInput,
         proof: &Self::Proof,
-    ) -> Result<bool, Self::Error> {
+    ) -> Result<bool, SNARKError> {
         match MarlinCore::<TargetField, BaseField, PC, FS, MC>::verify(verifying_key, input, proof) {
             Ok(res) => Ok(res),
-            Err(e) => Err(Box::new(MarlinError::from(e))),
+            Err(e) => Err(SNARKError::from(e)),
         }
     }
 }
@@ -197,8 +214,8 @@ where
     fsg_phantom: PhantomData<FSG>,
 }
 
-impl<TargetField, BaseField, PC, FS, MC, PCG, FSG>
-    SNARKGadget<TargetField, BaseField, MarlinSNARK<TargetField, BaseField, PC, FS, MC>>
+impl<TargetField, BaseField, PC, FS, MC, PCG, FSG, C>
+    SNARKGadget<TargetField, BaseField, MarlinSNARK<TargetField, BaseField, PC, FS, MC, C>>
     for MarlinSNARKGadget<TargetField, BaseField, PC, FS, MC, PCG, FSG>
 where
     TargetField: PrimeField,
@@ -212,6 +229,7 @@ where
     PC::Commitment: ToConstraintField<BaseField>,
     PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
     PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
+    C: ConstraintSynthesizer<TargetField>,
 {
     type InputVar = NonNativeFieldInputVar<TargetField, BaseField>;
     type ProcessedVerifyingKeyVar = PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, FS, FSG>;
@@ -220,7 +238,7 @@ where
     type VerifyingKeyVar = CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>;
 
     fn verifier_size(
-        circuit_vk: &<MarlinSNARK<TargetField, BaseField, PC, FS, MC> as SNARK<TargetField>>::VerifyingKey,
+        circuit_vk: &<MarlinSNARK<TargetField, BaseField, PC, FS, MC, C> as SNARK>::VerifyingKey,
     ) -> Self::VerifierSize {
         circuit_vk.circuit_info.num_instance_variables
     }
@@ -231,7 +249,7 @@ where
         proof: &Self::ProofVar,
     ) -> Result<Boolean, SynthesisError> {
         Ok(
-            MarlinVerifierGadget::<TargetField, BaseField, PC, PCG>::prepared_verify(&circuit_pvk, &x.val, proof)
+            MarlinVerificationGadget::<TargetField, BaseField, PC, PCG>::prepared_verify(&circuit_pvk, &x.val, proof)
                 .unwrap(),
         )
     }
@@ -242,8 +260,10 @@ where
         proof: &Self::ProofVar,
     ) -> Result<Boolean, SynthesisError> {
         Ok(
-            MarlinVerifierGadget::<TargetField, BaseField, PC, PCG>::verify::<FS, FSG>(circuit_vk, &x.val, proof)
-                .unwrap(),
+            MarlinVerificationGadget::<TargetField, BaseField, PC, PCG>::verify::<_, FS, FSG>(
+                circuit_vk, &x.val, proof,
+            )
+            .unwrap(),
         )
     }
 }
@@ -279,7 +299,7 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for MarlinBoundCircuit<F> {
         let mut rng = test_rng();
 
         let mut non_zero_remaining = (max_degree + 5) / 3;
-        for _ in 0..num_constraints {
+        for i in 0..num_constraints {
             if non_zero_remaining > 0 {
                 let num_for_this_constraint = min(non_zero_remaining, num_variables - 1);
 
@@ -293,11 +313,11 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for MarlinBoundCircuit<F> {
                     lc_c += (F::rand(&mut rng), *var);
                 }
 
-                cs.enforce_constraint(lc_a, lc_b, lc_c)?;
+                cs.enforce(|| format!("enforce_constraint_{}", i), |_| lc_a, |_| lc_b, |_| lc_c);
 
                 non_zero_remaining -= num_for_this_constraint;
             } else {
-                cs.enforce_constraint(lc!(), lc!(), lc!())?;
+                cs.enforce(|| format!("enforce_constraint_{}", i), |lc| lc, |lc| lc, |lc| lc);
             }
         }
 
@@ -327,11 +347,11 @@ pub struct MarlinConstraintsError {
     pub error_msg: String,
 }
 
-impl<E> From<crate::Error<E>> for MarlinConstraintsError
+impl<E> From<MarlinError<E>> for MarlinConstraintsError
 where
-    E: ark_std::error::Error,
+    E: std::error::Error,
 {
-    fn from(e: crate::marlin::MarlinError<E>) -> Self {
+    fn from(e: MarlinError<E>) -> Self {
         match e {
             crate::marlin::MarlinError::<E>::IndexTooLarge(u, v) => Self {
                 error_msg: format!("index of {} is too large, maximum degree of {}", v, u),

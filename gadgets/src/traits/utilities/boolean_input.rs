@@ -27,7 +27,7 @@ use std::{borrow::Borrow, marker::PhantomData};
 /// Used by Groth16 and Gm17
 #[derive(Clone)]
 pub struct BooleanInputGadget<F: PrimeField, CF: PrimeField> {
-    val: Vec<Vec<Boolean>>,
+    pub val: Vec<Vec<Boolean>>,
     _snark_field: PhantomData<F>,
     _constraint_field: PhantomData<CF>,
 }
