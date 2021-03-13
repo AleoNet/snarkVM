@@ -27,9 +27,11 @@ pub mod lagrange_interpolation;
 /// Helper functions to compute vanishing polynomial equations.
 pub mod polynomial;
 
-// pub mod snark;
+/// Marlin SNARK construction.
+pub mod snark;
 
 /// Implementation of the Marlin verification gadget.
 pub mod verifier;
 
+// /// Marlin verification gadget tests.
 // pub mod verifier_test;

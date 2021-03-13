@@ -20,31 +20,36 @@ use crate::{
         verifier::MarlinVerificationGadget,
     },
     fiat_shamir::{constraints::FiatShamirRngVar, FiatShamirRng},
-    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinConfig, MarlinCore, PreparedCircuitVerifyingKey, Proof},
+    marlin::{
+        CircuitProvingKey,
+        CircuitVerifyingKey,
+        MarlinConfig,
+        MarlinCore,
+        MarlinError,
+        PreparedCircuitVerifyingKey,
+        Proof,
+    },
 };
 use snarkvm_algorithms::{SNARKError, SNARK};
 use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_gadgets::traits::{
-    fields::{FieldGadget, ToConstraintFieldGadget},
-    utilities::boolean::Boolean,
-};
+use snarkvm_gadgets::traits::{algorithms::SNARKGadget, fields::ToConstraintFieldGadget, utilities::boolean::Boolean};
 use snarkvm_nonnative::NonNativeFieldInputVar;
-use snarkvm_polycommit::{constraints::PCCheckVar, LinearCombination, PolynomialCommitment};
-use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, Variable};
+use snarkvm_polycommit::{constraints::PCCheckVar, PolynomialCommitment};
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable};
 use snarkvm_utilities::test_rng;
 
+use blake2::Blake2s;
 use rand::{Rng, RngCore};
-
-use crate::marlin::MarlinError;
-use snarkvm_gadgets::traits::algorithms::SNARKGadget;
 use std::{
     cmp::min,
     fmt::{Debug, Formatter},
     marker::PhantomData,
 };
 
+/// Marlin bound.
 #[derive(Clone, PartialEq, PartialOrd)]
 pub struct MarlinBound {
+    /// Maximum degree for universal setup.
     pub max_degree: usize,
 }
 
@@ -60,13 +65,14 @@ impl Debug for MarlinBound {
     }
 }
 
+/// The Marlin proof system.
 pub struct MarlinSNARK<
     F: PrimeField,
     FSF: PrimeField,
     PC: PolynomialCommitment<F>,
     FS: FiatShamirRng<F, FSF>,
     MC: MarlinConfig,
-    C: ConstraintSynthesizer<FSF>,
+    C: ConstraintSynthesizer<F>,
 > {
     f_phantom: PhantomData<F>,
     fsf_phantom: PhantomData<FSF>,
@@ -95,7 +101,7 @@ where
     //
     //     match MarlinCore::<TargetField, BaseField, PC, FS, MC>::universal_setup(1, 1, (max_degree + 5) / 3, rng) {
     //         Ok(res) => Ok((bound.clone(), res)),
-    //         Err(e) => Err(Box::new(MarlinError::from(e))),
+    //         Err(e) => Err(Box::new(MarlinConstraintsError::from(e))),
     //     }
     // }
     //
@@ -134,7 +140,7 @@ where
         x: &[TargetField],
         proof: &Proof<TargetField, PC>,
     ) -> Result<bool, Box<MarlinConstraintsError>> {
-        match MarlinCore::<TargetField, BaseField, PC, FS, MC>::prepared_verify(pvk, x, proof) {
+        match MarlinCore::<TargetField, PC, Blake2s>::prepared_verify(pvk, x, proof) {
             Ok(res) => Ok(res),
             Err(e) => Err(Box::new(MarlinError::from(e).into())),
         }
@@ -154,7 +160,7 @@ where
 {
     type AllocatedCircuit = C;
     type Circuit = (C, UniversalSRS<TargetField, PC>);
-    type PreparedVerifyingKey = CircuitVerifyingKey<TargetField, PC>;
+    type PreparedVerifyingKey = PreparedCircuitVerifyingKey<TargetField, PC>;
     type Proof = Proof<TargetField, PC>;
     type ProvingKey = CircuitProvingKey<TargetField, PC>;
     type VerifierInput = &'static [TargetField];
@@ -170,7 +176,11 @@ where
         //
         // let verifying_key = parameters.verifying_key.clone();
         // Ok((parameters, verifying_key))
-        Ok(MarlinCore::<TargetField, BaseField, PC, FS, MC>::circuit_specific_setup(circuit, rng).unwrap())
+
+        let (circuit_proving_key, circuit_verifier_key) =
+            MarlinCore::<TargetField, PC, Blake2s>::circuit_specific_setup(circuit, rng).unwrap();
+
+        Ok((circuit_proving_key, circuit_verifier_key.into()))
     }
 
     fn prove<R: Rng>(
@@ -178,7 +188,7 @@ where
         circuit: &Self::AllocatedCircuit,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
-        match MarlinCore::<TargetField, BaseField, PC, FS, MC>::prove(&parameters, circuit, rng) {
+        match MarlinCore::<TargetField, PC, Blake2s>::prove(&parameters, circuit, rng) {
             Ok(res) => Ok(res),
             Err(e) => Err(SNARKError::from(e)),
         }
@@ -189,13 +199,14 @@ where
         input: &Self::VerifierInput,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
-        match MarlinCore::<TargetField, BaseField, PC, FS, MC>::verify(verifying_key, input, proof) {
+        match MarlinCore::<TargetField, PC, Blake2s>::prepared_verify(verifying_key, input, proof) {
             Ok(res) => Ok(res),
             Err(e) => Err(SNARKError::from(e)),
         }
     }
 }
 
+/// The Marlin proof system gadget.
 pub struct MarlinSNARKGadget<F, FSF, PC, FS, MC, PCG, FSG>
 where
     F: PrimeField,
@@ -241,7 +252,7 @@ where
     fn verifier_size(
         circuit_vk: &<MarlinSNARK<TargetField, BaseField, PC, FS, MC, C> as SNARK>::VerifyingKey,
     ) -> Self::VerifierSize {
-        circuit_vk.circuit_info.num_instance_variables
+        circuit_vk.circuit_info.num_variables
     }
 
     fn verify_with_processed_vk<CS: ConstraintSystem<BaseField>>(
@@ -279,31 +290,33 @@ where
     }
 }
 
+/// Circuit representing the `MarlinBound`
 #[derive(Clone)]
 pub struct MarlinBoundCircuit<F: PrimeField> {
+    /// The Marlin bound.
     pub bound: MarlinBound,
-    pub fsf_phantom: PhantomData<F>,
+    _fsf_phantom: PhantomData<F>,
 }
 
 impl<F: PrimeField> From<MarlinBound> for MarlinBoundCircuit<F> {
     fn from(bound: MarlinBound) -> Self {
         Self {
             bound,
-            fsf_phantom: PhantomData,
+            _fsf_phantom: PhantomData,
         }
     }
 }
 
 impl<F: PrimeField> ConstraintSynthesizer<F> for MarlinBoundCircuit<F> {
-    fn generate_constraints<CS: ConstraintSystem<F>>(self, cs: &mut CS) -> Result<(), SynthesisError> {
+    fn generate_constraints<CS: ConstraintSystem<F>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
         let MarlinBound { max_degree } = self.bound;
 
         let num_variables = max_degree / 3;
         let num_constraints = max_degree / 3;
 
         let mut vars: Vec<Variable> = vec![];
-        for _ in 0..num_variables - 1 {
-            let var_i = cs.new_witness_variable(|| Ok(F::zero()))?;
+        for i in 0..num_variables - 1 {
+            let var_i = cs.alloc(|| format!("var_i_{}", i), || Ok(F::zero()))?;
             vars.push(var_i);
         }
 
@@ -354,7 +367,9 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for MarlinBoundCircuit<F> {
 //     type BoundCircuit = MarlinBoundCircuit<F>;
 // }
 
+/// Error handling for Marlin constraints.
 pub struct MarlinConstraintsError {
+    /// Error message.
     pub error_msg: String,
 }
 
