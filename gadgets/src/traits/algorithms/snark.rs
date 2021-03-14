@@ -16,7 +16,7 @@
 
 use crate::utilities::{
     alloc::{AllocBytesGadget, AllocGadget},
-    ToBitsGadget,
+    ToBitsBEGadget,
     ToBytesGadget,
 };
 use snarkvm_algorithms::traits::SNARK;
@@ -29,7 +29,7 @@ pub trait SNARKVerifierGadget<N: SNARK, F: Field> {
         + ToBytesGadget<F>;
     type ProofGadget: AllocGadget<N::Proof, F> + AllocBytesGadget<Vec<u8>, F>;
 
-    fn check_verify<'a, CS: ConstraintSystem<F>, I: Iterator<Item = &'a T>, T: 'a + ToBitsGadget<F> + ?Sized>(
+    fn check_verify<'a, CS: ConstraintSystem<F>, I: Iterator<Item = &'a T>, T: 'a + ToBitsBEGadget<F> + ?Sized>(
         cs: CS,
         verification_key: &Self::VerificationKeyGadget,
         input: I,

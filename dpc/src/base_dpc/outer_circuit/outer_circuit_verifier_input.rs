@@ -26,7 +26,7 @@ use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 #[derivative(Clone(bound = "C: BaseDPCComponents"))]
 pub struct OuterCircuitVerifierInput<C: BaseDPCComponents> {
     pub inner_snark_verifier_input: InnerCircuitVerifierInput<C>,
-    pub inner_snark_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output,
+    pub inner_circuit_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output,
 }
 
 impl<C: BaseDPCComponents> ToConstraintField<C::OuterField> for OuterCircuitVerifierInput<C>
@@ -102,7 +102,7 @@ where
         }
 
         v.extend_from_slice(&self.inner_snark_verifier_input.program_commitment.to_field_elements()?);
-        v.extend_from_slice(&self.inner_snark_id.to_field_elements()?);
+        v.extend_from_slice(&self.inner_circuit_id.to_field_elements()?);
         Ok(v)
     }
 }

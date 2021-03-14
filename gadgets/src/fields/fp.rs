@@ -15,14 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    traits::fields::FieldGadget,
+    traits::{fields::FieldGadget, utilities::ToBitsLEGadget},
     utilities::{
         alloc::AllocGadget,
         boolean::{AllocatedBit, Boolean},
         eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
         uint::unsigned_integer::{UInt, UInt8},
-        ToBitsGadget,
+        ToBitsBEGadget,
         ToBytesGadget,
     },
 };
@@ -37,8 +37,11 @@ use snarkvm_r1cs::{
     },
     LinearCombination,
 };
-
-use snarkvm_utilities::{bititerator::BitIteratorBE, bytes::ToBytes, to_bytes};
+use snarkvm_utilities::{
+    bititerator::{BitIteratorBE, BitIteratorLE},
+    bytes::ToBytes,
+    to_bytes,
+};
 
 use std::borrow::Borrow;
 
@@ -335,10 +338,10 @@ impl<F: PrimeField> NEqGadget<F> for AllocatedFp<F> {
     }
 }
 
-impl<F: PrimeField> ToBitsGadget<F> for AllocatedFp<F> {
+impl<F: PrimeField> ToBitsBEGadget<F> for AllocatedFp<F> {
     /// Outputs the binary representation of the value in `self` in *big-endian*
     /// form.
-    fn to_bits<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         let num_bits = F::Parameters::MODULUS_BITS;
         let bit_values = match self.value {
             Some(value) => {
@@ -383,10 +386,67 @@ impl<F: PrimeField> ToBitsGadget<F> for AllocatedFp<F> {
         Ok(bits.into_iter().map(Boolean::from).collect())
     }
 
-    fn to_bits_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        let bits = self.to_bits(&mut cs)?;
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let bits = self.to_bits_be(&mut cs)?;
         Boolean::enforce_in_field::<_, _, F>(&mut cs, &bits)?;
+        Ok(bits)
+    }
+}
 
+impl<F: PrimeField> ToBitsLEGadget<F> for AllocatedFp<F> {
+    /// Outputs the binary representation of the value in `self` in *little-endian*
+    /// form.
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let num_bits = F::Parameters::MODULUS_BITS;
+        let mut bit_values = match self.value {
+            Some(value) => {
+                let mut field_char = BitIteratorBE::new(F::characteristic());
+                let mut tmp = Vec::with_capacity(num_bits as usize);
+                let mut found_one = false;
+                for b in BitIteratorBE::new(value.into_repr()) {
+                    // Skip leading bits
+                    found_one |= field_char.next().unwrap();
+                    if !found_one {
+                        continue;
+                    }
+
+                    tmp.push(Some(b));
+                }
+
+                assert_eq!(tmp.len(), num_bits as usize);
+
+                tmp
+            }
+            None => vec![None; num_bits as usize],
+        };
+
+        // Convert to little-endian
+        bit_values.reverse();
+
+        let mut bits = Vec::with_capacity(bit_values.len());
+        for (i, b) in bit_values.into_iter().enumerate() {
+            bits.push(AllocatedBit::alloc(cs.ns(|| format!("bit {}", i)), || b.get())?);
+        }
+
+        let mut lc = LinearCombination::zero();
+        let mut coeff = F::one();
+
+        for bit in bits.iter().rev() {
+            lc += (coeff, bit.get_variable());
+
+            coeff.double_in_place();
+        }
+
+        lc = &self.variable - lc;
+
+        cs.enforce(|| "unpacking_constraint", |lc| lc, |lc| lc, |_| lc);
+
+        Ok(bits.into_iter().map(Boolean::from).collect())
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let bits = self.to_bits_le(&mut cs)?;
+        Boolean::enforce_in_field::<_, _, F>(&mut cs, &bits)?;
         Ok(bits)
     }
 }
@@ -945,24 +1005,44 @@ impl<F: PrimeField> NEqGadget<F> for FpGadget<F> {
     }
 }
 
-impl<F: PrimeField> ToBitsGadget<F> for FpGadget<F> {
+impl<F: PrimeField> ToBitsBEGadget<F> for FpGadget<F> {
     /// Outputs the binary representation of the value in `self` in *big-endian*
     /// form.
-    fn to_bits<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+    fn to_bits_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         match self {
-            Self::Constant(_) => self.to_bits_strict(cs),
-            Self::Variable(v) => v.to_bits(cs),
+            Self::Constant(_) => self.to_bits_be_strict(cs),
+            Self::Variable(v) => v.to_bits_be(cs),
         }
     }
 
-    fn to_bits_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        use snarkvm_utilities::bititerator::BitIteratorLE;
+    fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        match self {
+            Self::Constant(c) => Ok(BitIteratorBE::new(&c.into_repr())
+                .take((F::Parameters::MODULUS_BITS) as usize)
+                .map(Boolean::constant)
+                .collect::<Vec<_>>()),
+            Self::Variable(v) => v.to_bits_be_strict(cs),
+        }
+    }
+}
+
+impl<F: PrimeField> ToBitsLEGadget<F> for FpGadget<F> {
+    /// Outputs the binary representation of the value in `self` in *little-endian*
+    /// form.
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        match self {
+            Self::Constant(_) => self.to_bits_le_strict(cs),
+            Self::Variable(v) => v.to_bits_le(cs),
+        }
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         match self {
             Self::Constant(c) => Ok(BitIteratorLE::new(&c.into_repr())
                 .take((F::Parameters::MODULUS_BITS) as usize)
                 .map(Boolean::constant)
                 .collect::<Vec<_>>()),
-            Self::Variable(v) => v.to_bits_strict(cs),
+            Self::Variable(v) => v.to_bits_le_strict(cs),
         }
     }
 }

@@ -78,7 +78,7 @@ fn execute_noop_gadget<C: BaseDPCComponents, CS: ConstraintSystem<C::InnerField>
     local_data_root: &<C::LocalDataCRH as CRH>::Output,
     position: u8,
 ) -> Result<(), SynthesisError> {
-    let _position = UInt8::alloc_input_vec(cs.ns(|| "Alloc position"), &[position])?;
+    let _position = UInt8::alloc_input_vec_le(cs.ns(|| "Alloc position"), &[position])?;
 
     let _local_data_commitment_parameters_gadget =
         <C::LocalDataCommitmentGadget as CommitmentGadget<_, _>>::ParametersGadget::alloc_input(

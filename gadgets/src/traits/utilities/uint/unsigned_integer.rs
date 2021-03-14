@@ -21,7 +21,7 @@ use crate::{
         boolean::{AllocatedBit, Boolean},
         eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
         select::CondSelectGadget,
-        ToBitsGadget,
+        ToBitsBEGadget,
         ToBytesGadget,
     },
 };
@@ -120,7 +120,7 @@ impl UInt8 {
     /// `F` elements, (thus reducing the number of input allocations),
     /// and then converts this list of `F` gadgets back into
     /// bytes.
-    pub fn alloc_input_vec<F, CS>(mut cs: CS, values: &[u8]) -> Result<Vec<Self>, SynthesisError>
+    pub fn alloc_input_vec_le<F, CS>(mut cs: CS, values: &[u8]) -> Result<Vec<Self>, SynthesisError>
     where
         F: PrimeField,
         CS: ConstraintSystem<F>,
@@ -132,7 +132,7 @@ impl UInt8 {
         let mut allocated_bits = Vec::new();
         for (i, field_element) in field_elements.into_iter().enumerate() {
             let fe = FpGadget::alloc_input(&mut cs.ns(|| format!("Field element {}", i)), || Ok(field_element))?;
-            let mut fe_bits = fe.to_bits(cs.ns(|| format!("Convert fe to bits {}", i)))?;
+            let mut fe_bits = fe.to_bits_be(cs.ns(|| format!("Convert fe to bits {}", i)))?;
             // FpGadget::to_bits outputs a big-endian binary representation of
             // fe_gadget's value, so we have to reverse it to get the little-endian
             // form.

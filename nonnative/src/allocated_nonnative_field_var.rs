@@ -31,7 +31,8 @@ use snarkvm_gadgets::{
             eq::EqGadget,
             select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
             uint::{UInt, UInt8},
-            ToBitsGadget,
+            ToBitsBEGadget,
+            ToBitsLEGadget,
             ToBytesGadget,
         },
     },
@@ -520,7 +521,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         })?;
 
         let surfeit = overhead!(delta.num_of_additions_over_normal_form + &BaseField::one()) + 1;
-        Reducer::<TargetField, BaseField>::limb_to_bits(&mut cs.ns(|| "limb_to_bits"), &k_gadget, surfeit)?;
+        Reducer::<TargetField, BaseField>::limb_to_bits_be(&mut cs.ns(|| "limb_to_bits"), &k_gadget, surfeit)?;
 
         // Step 4: Compute k * p
         let mut kp_gadget_limbs = Vec::new();
@@ -571,10 +572,10 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
     }
 }
 
-impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsGadget<BaseField>
+impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsBEGadget<BaseField>
     for AllocatedNonNativeFieldVar<TargetField, BaseField>
 {
-    fn to_bits<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+    fn to_bits_be<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         let field_parameters = get_params(
             TargetField::size_in_bits(),
             BaseField::size_in_bits(),
@@ -589,7 +590,50 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsGadget<BaseField>
         // Therefore, we convert it to bits and enforce that it is in the field
         let mut bits = Vec::<Boolean>::new();
         for (i, limb) in self_normal.limbs.iter().enumerate() {
-            bits.extend_from_slice(&Reducer::<TargetField, BaseField>::limb_to_bits(
+            bits.extend_from_slice(&Reducer::<TargetField, BaseField>::limb_to_bits_be(
+                &mut cs.ns(|| format!("limb_to_bits_{}", i)),
+                &limb,
+                field_parameters.bits_per_limb,
+            )?);
+        }
+
+        let mut b = TargetField::characteristic().to_vec();
+        assert_eq!(b[0] % 2, 1);
+        b[0] -= 1; // This works, because the LSB is one, so there's no borrows.
+        let run = Boolean::enforce_smaller_or_equal_than_be(cs.ns(|| "enforce_smaller_or_equal_than_be"), &bits, b)?;
+
+        // We should always end in a "run" of zeros, because
+        // the characteristic is an odd prime. So, this should
+        // be empty.
+        assert!(run.is_empty());
+
+        Ok(bits)
+    }
+
+    fn to_bits_be_strict<CS: ConstraintSystem<BaseField>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.to_bits_be(cs)
+    }
+}
+
+impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsLEGadget<BaseField>
+    for AllocatedNonNativeFieldVar<TargetField, BaseField>
+{
+    fn to_bits_le<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let field_parameters = get_params(
+            TargetField::size_in_bits(),
+            BaseField::size_in_bits(),
+            self.get_optimization_type(),
+        );
+
+        // Reduce to the normal form
+        // Though, a malicious prover can make it slightly larger than p
+        let mut self_normal = self.clone();
+        Reducer::<TargetField, BaseField>::pre_eq_reduce(&mut cs.ns(|| "pre_eq_reduce"), &mut self_normal)?;
+
+        // Therefore, we convert it to bits and enforce that it is in the field
+        let mut bits = Vec::<Boolean>::new();
+        for (i, limb) in self_normal.limbs.iter().enumerate() {
+            bits.extend_from_slice(&Reducer::<TargetField, BaseField>::limb_to_bits_be(
                 &mut cs.ns(|| format!("limb_to_bits_{}", i)),
                 &limb,
                 field_parameters.bits_per_limb,
@@ -610,8 +654,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsGadget<BaseField>
         Ok(bits)
     }
 
-    fn to_bits_strict<CS: ConstraintSystem<BaseField>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        self.to_bits(cs)
+    fn to_bits_le_strict<CS: ConstraintSystem<BaseField>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.to_bits_le(cs)
     }
 }
 
@@ -619,7 +663,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBytesGadget<BaseField>
     for AllocatedNonNativeFieldVar<TargetField, BaseField>
 {
     fn to_bytes<CS: ConstraintSystem<BaseField>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        let bits = self.to_bits(cs)?;
+        let bits = self.to_bits_le(cs)?;
 
         let mut bytes = Vec::<UInt8>::new();
         bits.chunks(8).for_each(|bits_per_byte| {
@@ -903,14 +947,14 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, Ba
         // Only run for `inputs`
 
         for (i, limb) in limbs.iter().rev().take(params.num_limbs - 1).enumerate() {
-            Reducer::<TargetField, BaseField>::limb_to_bits(
+            Reducer::<TargetField, BaseField>::limb_to_bits_be(
                 &mut cs.ns(|| format!("limb_to_bits_{}", i)),
                 limb,
                 params.bits_per_limb,
             )?;
         }
 
-        Reducer::<TargetField, BaseField>::limb_to_bits(
+        Reducer::<TargetField, BaseField>::limb_to_bits_be(
             &mut cs,
             &limbs[0],
             TargetField::size_in_bits() - (params.num_limbs - 1) * params.bits_per_limb,

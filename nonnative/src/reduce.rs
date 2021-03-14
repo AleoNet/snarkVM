@@ -92,7 +92,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
     /// convert limbs to bits (take at most `BaseField::size_in_bits() - 1` bits)
     /// This implementation would be more efficient than the original `to_bits`
     /// or `to_non_unique_bits` since we enforce that some bits are always zero.
-    pub fn limb_to_bits<CS: ConstraintSystem<BaseField>>(
+    pub fn limb_to_bits_be<CS: ConstraintSystem<BaseField>>(
         cs: &mut CS,
         limb: &FpGadget<BaseField>,
         num_bits: usize,
@@ -352,7 +352,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
                     &FpGadget::<BaseField>::Constant(bigint_to_basefield(&accumulated_extra)),
                 )?;
             } else {
-                Reducer::<TargetField, BaseField>::limb_to_bits(
+                Reducer::<TargetField, BaseField>::limb_to_bits_be(
                     &mut cs.ns(|| format!("limb_to_bits_{}", group_id)),
                     &carry,
                     surfeit + bits_per_limb,

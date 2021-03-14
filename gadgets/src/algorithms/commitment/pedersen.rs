@@ -105,7 +105,7 @@ impl<G: Group, F: PrimeField> AllocGadget<G::ScalarField, F> for PedersenRandomn
     ) -> Result<Self, SynthesisError> {
         let randomness = to_bytes![value_gen()?.borrow()].unwrap();
         Ok(PedersenRandomnessGadget(
-            UInt8::alloc_input_vec(cs, &randomness)?,
+            UInt8::alloc_input_vec_le(cs, &randomness)?,
             PhantomData,
         ))
     }
@@ -146,12 +146,11 @@ impl<F: PrimeField, G: Group, GG: GroupGadget<G, F>, S: PedersenSize> Commitment
         // Allocate new variable for commitment output.
         let input_in_bits: Vec<_> = padded_input.iter().flat_map(|byte| byte.to_bits_le()).collect();
         let input_in_bits = input_in_bits.chunks(S::WINDOW_SIZE);
-        let mut result =
-            GG::precomputed_base_multiscalar_mul(cs.ns(|| "msm"), &parameters.parameters.bases, input_in_bits)?;
+        let mut result = GG::multi_scalar_multiplication(cs.ns(|| "msm"), &parameters.parameters.bases, input_in_bits)?;
 
         // Compute h^r
         let rand_bits = randomness.0.iter().flat_map(|byte| byte.to_bits_le());
-        result.precomputed_base_scalar_mul(
+        result.scalar_multiplication(
             cs.ns(|| "randomizer"),
             rand_bits.zip(&parameters.parameters.random_base),
         )?;

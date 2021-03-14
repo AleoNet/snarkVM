@@ -650,9 +650,20 @@ impl Boolean {
         bits: &[Self],
         element: impl AsRef<[u64]>,
     ) -> Result<Vec<Self>, SynthesisError> {
+        let mut bits_be = bits.to_vec();
+        bits_be.reverse(); // Convert to big-endian format.
+
+        Self::enforce_smaller_or_equal_than_be(cs, &bits_be, element)
+    }
+
+    pub fn enforce_smaller_or_equal_than_be<'a, F: Field, CS: ConstraintSystem<F>>(
+        mut cs: CS,
+        bits: &[Self],
+        element: impl AsRef<[u64]>,
+    ) -> Result<Vec<Self>, SynthesisError> {
         let b: &[u64] = element.as_ref();
 
-        let mut bits_iter = bits.iter().rev(); // Iterate in big-endian
+        let mut bits_iter = bits.iter(); // Iterate in big-endian
 
         // Runs of ones in r
         let mut last_run = Boolean::constant(true);

@@ -21,7 +21,7 @@ use crate::traits::{
         alloc::{AllocBytesGadget, AllocGadget},
         eq::EqGadget,
         uint::UInt8,
-        ToBitsGadget,
+        ToBitsBEGadget,
         ToBytesGadget,
     },
 };
@@ -131,7 +131,7 @@ where
     where
         CS: ConstraintSystem<ConstraintF>,
         I: Iterator<Item = &'a T>,
-        T: 'a + ToBitsGadget<ConstraintF> + ?Sized,
+        T: 'a + ToBitsBEGadget<ConstraintF> + ?Sized,
     {
         let pvk = vk.prepare(&mut cs.ns(|| "Prepare vk"))?;
 
@@ -149,7 +149,7 @@ where
             let mut g_ic = gamma_abc_g1_iter.next().cloned().unwrap();
             let mut input_len = 1;
             for (i, (input, b)) in public_inputs.by_ref().zip(gamma_abc_g1_iter).enumerate() {
-                let input_bits = input.to_bits(cs.ns(|| format!("Input {}", i)))?;
+                let input_bits = input.to_bits_be(cs.ns(|| format!("Input {}", i)))?;
                 g_ic = b.mul_bits(cs.ns(|| format!("Mul {}", i)), &g_ic, input_bits.into_iter())?;
                 input_len += 1;
             }

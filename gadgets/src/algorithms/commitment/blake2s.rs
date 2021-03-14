@@ -100,7 +100,7 @@ impl<F: PrimeField> AllocGadget<[u8; 32], F> for Blake2sRandomnessGadget {
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Blake2sRandomnessGadget(<UInt8>::alloc_input_vec(
+        Ok(Blake2sRandomnessGadget(<UInt8>::alloc_input_vec_le(
             cs,
             &match value_gen() {
                 Ok(val) => *(val.borrow()),

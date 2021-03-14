@@ -53,7 +53,7 @@ Define group variables <img src="https://render.githubusercontent.com/render/mat
 
 This requires <img src="https://render.githubusercontent.com/render/math?math=k"> Edwards multiplications (6 constraints each), a 2-bit lookup for each of the <img src="https://render.githubusercontent.com/render/math?math=g_i"> (2 constraints each) and <img src="https://render.githubusercontent.com/render/math?math=k"> booleanity checks.
 
-This is evaluated by ``precomputed_base_scalar_mul_masked`` in ``PedersenCRHGadget``.
+This is evaluated by ``masked_scalar_multiplication`` in ``PedersenCRHGadget``.
 
 ### Pedersen Hash Gadget
 
