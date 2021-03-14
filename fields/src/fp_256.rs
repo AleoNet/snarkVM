@@ -23,7 +23,7 @@ use snarkvm_utilities::{
 
 use std::{
     cmp::{Ord, Ordering, PartialOrd},
-    fmt::{Display, Formatter, Result as FmtResult},
+    fmt::{Debug, Display, Formatter, Result as FmtResult},
     io::{Read, Result as IoResult, Write},
     marker::PhantomData,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
@@ -38,7 +38,6 @@ pub trait Fp256Parameters: FpParameters<BigInteger = BigInteger> {}
     Hash(bound = ""),
     Clone(bound = ""),
     Copy(bound = ""),
-    Debug(bound = ""),
     PartialEq(bound = ""),
     Eq(bound = "")
 )]
@@ -456,10 +455,17 @@ impl<P: Fp256Parameters> FromStr for Fp256<P> {
     }
 }
 
-impl<P: Fp256Parameters> Display for Fp256<P> {
+impl<P: Fp256Parameters> Debug for Fp256<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(f, "Fp256({})", self.into_repr())
+    }
+}
+
+impl<P: Fp256Parameters> Display for Fp256<P> {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(f, "{}", self.into_repr())
     }
 }
 
