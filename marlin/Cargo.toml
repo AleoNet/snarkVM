@@ -74,6 +74,7 @@ default-features = false
 
 [dependencies.rand_core]
 version = "0.6"
+features = ["getrandom"]
 
 [dependencies.rayon]
 version = "1"
