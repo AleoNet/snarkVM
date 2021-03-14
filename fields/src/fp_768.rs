@@ -23,7 +23,7 @@ use snarkvm_utilities::{
 
 use std::{
     cmp::{Ord, Ordering, PartialOrd},
-    fmt::{Display, Formatter, Result as FmtResult},
+    fmt::{Debug, Display, Formatter, Result as FmtResult},
     io::{Read, Result as IoResult, Write},
     marker::PhantomData,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
@@ -38,7 +38,6 @@ pub trait Fp768Parameters: FpParameters<BigInteger = BigInteger> {}
     Hash(bound = "P: Fp768Parameters"),
     Clone(bound = "P: Fp768Parameters"),
     Copy(bound = "P: Fp768Parameters"),
-    Debug(bound = "P: Fp768Parameters"),
     PartialEq(bound = "P: Fp768Parameters"),
     Eq(bound = "P: Fp768Parameters")
 )]
@@ -851,10 +850,17 @@ impl<P: Fp768Parameters> FromStr for Fp768<P> {
     }
 }
 
-impl<P: Fp768Parameters> Display for Fp768<P> {
+impl<P: Fp768Parameters> Debug for Fp768<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(f, "Fp768({})", self.into_repr())
+    }
+}
+
+impl<P: Fp768Parameters> Display for Fp768<P> {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(f, "{}", self.into_repr())
     }
 }
 

@@ -23,7 +23,7 @@ use snarkvm_utilities::{
 
 use std::{
     cmp::{Ord, Ordering, PartialOrd},
-    fmt::{Display, Formatter, Result as FmtResult},
+    fmt::{Debug, Display, Formatter, Result as FmtResult},
     io::{Read, Result as IoResult, Write},
     marker::PhantomData,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
@@ -38,7 +38,6 @@ pub trait Fp384Parameters: FpParameters<BigInteger = BigInteger> {}
     Hash(bound = "P: Fp384Parameters"),
     Clone(bound = "P: Fp384Parameters"),
     Copy(bound = "P: Fp384Parameters"),
-    Debug(bound = "P: Fp384Parameters"),
     PartialEq(bound = "P: Fp384Parameters"),
     Eq(bound = "P: Fp384Parameters")
 )]
@@ -516,10 +515,17 @@ impl<P: Fp384Parameters> FromStr for Fp384<P> {
     }
 }
 
-impl<P: Fp384Parameters> Display for Fp384<P> {
+impl<P: Fp384Parameters> Debug for Fp384<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(f, "Fp384({})", self.into_repr())
+    }
+}
+
+impl<P: Fp384Parameters> Display for Fp384<P> {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(f, "{}", self.into_repr())
     }
 }
 
