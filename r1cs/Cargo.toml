@@ -30,7 +30,7 @@ default-features = false
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.2.1"
-default-features = false
+#default-features = false
 
 [dependencies.cfg-if]
 version = "1.0.0"
