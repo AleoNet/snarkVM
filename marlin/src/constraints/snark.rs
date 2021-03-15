@@ -39,7 +39,7 @@ use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, LinearCombination, S
 use snarkvm_utilities::test_rng;
 
 use blake2::Blake2s;
-use rand::{Rng, RngCore};
+use rand::{CryptoRng, Rng, RngCore};
 use std::{
     cmp::min,
     fmt::{Debug, Formatter},
@@ -93,41 +93,38 @@ where
     PC::Commitment: ToConstraintField<BaseField>,
     C: ConstraintSynthesizer<TargetField>,
 {
-    // fn universal_setup<R: Rng>(
-    //     bound: &MarlinBound,
-    //     rng: &mut R,
-    // ) -> Result<(MarlinBound, UniversalSRS<TargetField, PC>), Box<MarlinConstraintsError>> {
-    //     let MarlinBound { max_degree } = bound;
-    //
-    //     match MarlinCore::<TargetField, BaseField, PC, FS, MC>::universal_setup(1, 1, (max_degree + 5) / 3, rng) {
-    //         Ok(res) => Ok((bound.clone(), res)),
-    //         Err(e) => Err(Box::new(MarlinConstraintsError::from(e))),
-    //     }
-    // }
-    //
-    // #[allow(clippy::type_complexity)]
-    // fn index<C: ConstraintSynthesizer<TargetField>, R: RngCore>(
-    //     crs: &(MarlinBound, UniversalSRS<TargetField, PC>),
-    //     circuit: C,
-    //     _rng: &mut R,
-    // ) -> Result<(Self::ProvingKey, Self::VerifyingKey), Box<MarlinConstraintsError>> {
-    //     let index_res = MarlinCore::<TargetField, BaseField, PC, FS, MC>::index(&crs.1, circuit);
-    //     match index_res {
-    //         Ok(res) => Ok(res),
-    //         Err(err) => match err {
-    //             IndexTooLarge(v) => Err(UniversalSetupIndexError::NeedLargerBound(MarlinBound { max_degree: v })),
-    //             _ => Err(UniversalSetupIndexError::Other(Box::new(MarlinError::from(err)))),
-    //         },
-    //     }
-    // }
-    //
-    // fn circuit_specific_setup<C: ConstraintSynthesizer<TargetField>, R: RngCore + CryptoRng>(
-    //     circuit: C,
-    //     rng: &mut R,
-    // ) -> Result<(CircuitProvingKey<TargetField, PC>, CircuitVerifyingKey<TargetField, PC>), Box<MarlinConstraintsError>>
-    // {
-    //     Ok(MarlinCore::<TargetField, BaseField, PC, FS, MC>::circuit_specific_setup(circuit, rng).unwrap())
-    // }
+    fn universal_setup<R: Rng>(
+        bound: &MarlinBound,
+        rng: &mut R,
+    ) -> Result<(MarlinBound, UniversalSRS<TargetField, PC>), Box<MarlinConstraintsError>> {
+        let MarlinBound { max_degree } = bound;
+
+        match MarlinCore::<TargetField, PC, MC, Blake2s>::universal_setup(1, 1, (max_degree + 5) / 3, rng) {
+            Ok(res) => Ok((bound.clone(), res)),
+            Err(e) => Err(Box::new(MarlinConstraintsError::from(e))),
+        }
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn index<R: RngCore>(
+        crs: &(MarlinBound, UniversalSRS<TargetField, PC>),
+        circuit: C,
+        _rng: &mut R,
+    ) -> Result<(<Self as SNARK>::ProvingKey, <Self as SNARK>::VerifyingKey), Box<MarlinConstraintsError>> {
+        let index_res = MarlinCore::<TargetField, PC, MC, Blake2s>::circuit_setup(&crs.1, &circuit);
+        match index_res {
+            Ok(res) => Ok(res),
+            Err(e) => Err(Box::new(MarlinError::from(e).into())),
+        }
+    }
+
+    fn circuit_specific_setup<R: RngCore + CryptoRng>(
+        circuit: C,
+        rng: &mut R,
+    ) -> Result<(CircuitProvingKey<TargetField, PC>, CircuitVerifyingKey<TargetField, PC>), Box<MarlinConstraintsError>>
+    {
+        Ok(MarlinCore::<TargetField, PC, MC, Blake2s>::circuit_specific_setup(&circuit, rng).unwrap())
+    }
 
     fn process_vk(
         vk: &CircuitVerifyingKey<TargetField, PC>,
