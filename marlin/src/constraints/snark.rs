@@ -93,7 +93,8 @@ where
     PC::Commitment: ToConstraintField<BaseField>,
     C: ConstraintSynthesizer<TargetField>,
 {
-    fn universal_setup<R: Rng>(
+    /// Generates the universal proving and verifying keys for the argument system.
+    pub fn universal_setup<R: Rng>(
         bound: &MarlinBound,
         rng: &mut R,
     ) -> Result<(MarlinBound, UniversalSRS<TargetField, PC>), Box<MarlinConstraintsError>> {
@@ -105,8 +106,10 @@ where
         }
     }
 
+    /// Generates the circuit proving and verifying keys.
+    /// This is a deterministic algorithm that anyone can rerun.
     #[allow(clippy::type_complexity)]
-    fn index<R: RngCore>(
+    pub fn index<R: RngCore>(
         crs: &(MarlinBound, UniversalSRS<TargetField, PC>),
         circuit: C,
         _rng: &mut R,
@@ -118,7 +121,9 @@ where
         }
     }
 
-    fn circuit_specific_setup<R: RngCore + CryptoRng>(
+    /// Generate the index-specific (i.e., circuit-specific) prover and verifier
+    /// keys. This is a trusted setup.
+    pub fn circuit_specific_setup<R: RngCore + CryptoRng>(
         circuit: C,
         rng: &mut R,
     ) -> Result<(CircuitProvingKey<TargetField, PC>, CircuitVerifyingKey<TargetField, PC>), Box<MarlinConstraintsError>>
@@ -126,13 +131,15 @@ where
         Ok(MarlinCore::<TargetField, PC, MC, Blake2s>::circuit_specific_setup(&circuit, rng).unwrap())
     }
 
-    fn process_vk(
+    /// Prepare the verifying key.
+    pub fn process_vk(
         vk: &CircuitVerifyingKey<TargetField, PC>,
     ) -> Result<PreparedCircuitVerifyingKey<TargetField, PC>, Box<MarlinConstraintsError>> {
         Ok(PreparedCircuitVerifyingKey::prepare(vk))
     }
 
-    fn verify_with_processed_vk(
+    /// Verify the proof with the prepared verifying key.
+    pub fn verify_with_processed_vk(
         pvk: &PreparedCircuitVerifyingKey<TargetField, PC>,
         x: &[TargetField],
         proof: &Proof<TargetField, PC>,

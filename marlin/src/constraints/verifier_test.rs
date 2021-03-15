@@ -1,5 +1,3 @@
-use crate::constraints::data_structures::CircuitVerifyingKeyVar;
-
 #[cfg(test)]
 mod tests {
     // use crate::ahp::prover::ProverMsg;
@@ -30,38 +28,64 @@ mod tests {
     //     r1cs::{ConstraintSynthesizer, ConstraintSystem, ConstraintSystemRef, SynthesisError},
     // };
 
-    use crate::constraints::data_structures::CircuitVerifyingKeyVar;
-    use crate::constraints::{data_structures::ProofVar, verifier::MarlinVerificationGadget};
-    use crate::fiat_shamir::{
-        constraints::FiatShamirAlgebraicSpongeRngVar, poseidon::constraints::PoseidonSpongeVar,
-        poseidon::PoseidonSponge, FiatShamirAlgebraicSpongeRng,
+    #[allow(unused_imports)]
+    use crate::{
+        ahp::prover::ProverMessage,
+        constraints::{
+            data_structures::{CircuitVerifyingKeyVar, ProofVar, ProverMessageVar},
+            snark::{MarlinBound, MarlinSNARK},
+            verifier::MarlinVerificationGadget,
+        },
+        fiat_shamir::{
+            constraints::FiatShamirAlgebraicSpongeRngVar,
+            poseidon::{constraints::PoseidonSpongeVar, PoseidonSponge},
+            FiatShamirAlgebraicSpongeRng,
+        },
+        marlin::{MarlinCore, MarlinRecursiveConfig, Proof},
     };
-    use crate::marlin::Proof;
-    use snarkvm_curves::traits::PairingEngine;
+
+    use snarkvm_algorithms::{fft::DensePolynomial, traits::SNARK};
+    use snarkvm_curves::{
+        bls12_377::{Bls12_377, Fq, Fr},
+        traits::{CurveCycle, PairingEngine, PairingFriendlyCycle},
+    };
     use snarkvm_fields::Field;
+    use snarkvm_gadgets::{
+        curves::bls12_377::PairingGadget as Bls12PairingGadget,
+        traits::curves::PairingGadget,
+        utilities::{alloc::AllocGadget, eq::EqGadget},
+    };
     use snarkvm_nonnative::NonNativeFieldVar;
-    use snarkvm_polycommit::marlin_pc::MarlinKZG10;
-    use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError};
+    use snarkvm_polycommit::marlin_pc::{BatchLCProofVar, CommitmentVar, MarlinKZG10, MarlinKZG10Gadget};
+    use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, TestConstraintSystem};
+    use snarkvm_utilities::UniformRand;
 
     use core::ops::MulAssign;
     use hashbrown::HashMap;
+    use rand::SeedableRng;
+    use rand_xorshift::XorShiftRng;
+    use snarkvm_gadgets::utilities::boolean::Boolean;
 
     #[derive(Copy, Clone, Debug)]
-    struct MNT298Cycle;
-    impl CurveCycle for MNT298Cycle {
-        type E1 = <MNT6_298 as PairingEngine>::G1Affine;
-        type E2 = <MNT4_298 as PairingEngine>::G1Affine;
+    struct Bls12Cycle;
+    impl CurveCycle for Bls12Cycle {
+        // TODO (raychu86) What should go here?
+        type E1 = <Bls12_377 as PairingEngine>::G1Affine;
+        type E2 = <Bls12_377 as PairingEngine>::G2Affine;
     }
-    impl PairingFriendlyCycle for MNT298Cycle {
-        type Engine1 = MNT6_298;
-        type Engine2 = MNT4_298;
+    impl PairingFriendlyCycle for Bls12Cycle {
+        type Engine1 = Bls12_377;
+        // TODO (raychu86) What should go here?
+        type Engine2 = Bls12_377;
     }
 
     type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
-    type MultiPC = MarlinKZG10<MNT4_298>;
-    type MarlinNativeInst = MarlinNative<Fr, Fq, MultiPC, FS, MarlinRecursiveConfig>;
+    type MultiPC = MarlinKZG10<Bls12_377>;
 
-    type MultiPCVar = MarlinKZG10Gadget<MNT298Cycle, DensePolynomial<Fr>, MNT4PairingVar>;
+    type MarlinNativeInst = MarlinSNARK<Fr, Fq, MultiPC, FS, MarlinRecursiveConfig, Circuit<Fr>>;
+    // type MarlinNativeInst = MarlinCore<Fr, MultiPC, FS, MarlinRecursiveConfig>;
+
+    type MultiPCVar = MarlinKZG10Gadget<Bls12_377, Bls12_377, Bls12PairingGadget>;
 
     #[derive(Copy, Clone)]
     struct Circuit<F: Field> {
@@ -72,23 +96,34 @@ mod tests {
     }
 
     impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<ConstraintF> {
-        fn generate_constraints(self, cs: ConstraintSystemRef<ConstraintF>) -> Result<(), SynthesisError> {
-            let a = cs.new_witness_variable(|| self.a.ok_or(SynthesisError::AssignmentMissing))?;
-            let b = cs.new_witness_variable(|| self.b.ok_or(SynthesisError::AssignmentMissing))?;
-            let c = cs.new_input_variable(|| {
-                let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
-                let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
+        fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(self, mut cs: CS) -> Result<(), SynthesisError> {
+            let a = cs.alloc(|| "alloc_a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
+            let b = cs.alloc(|| "alloc_b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
+            let c = cs.alloc_input(
+                || "alloc_input_c",
+                || {
+                    let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
+                    let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
 
-                a.mul_assign(&b);
-                Ok(a)
-            })?;
+                    a.mul_assign(&b);
+                    Ok(a)
+                },
+            )?;
 
-            for _ in 0..(self.num_variables - 3) {
-                let _ = cs.new_witness_variable(|| self.a.ok_or(SynthesisError::AssignmentMissing))?;
+            for i in 0..(self.num_variables - 3) {
+                let _ = cs.alloc(
+                    || format!("alloc_a_{}", i),
+                    || self.a.ok_or(SynthesisError::AssignmentMissing),
+                )?;
             }
 
-            for _ in 0..self.num_constraints {
-                cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
+            for i in 0..self.num_constraints {
+                cs.enforce(
+                    || format!("enforce_constraint_{}", i),
+                    |lc| lc + a,
+                    |lc| lc + b,
+                    |lc| lc + c,
+                );
             }
             Ok(())
         }
@@ -96,7 +131,7 @@ mod tests {
 
     #[test]
     fn verifier_test() {
-        let rng = &mut ark_std::test_rng();
+        let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
 
         let universal_srs = MarlinNativeInst::universal_setup(10000, 25, 10000, rng).unwrap();
 
@@ -105,20 +140,20 @@ mod tests {
 
         let a = Fr::rand(rng);
         let b = Fr::rand(rng);
-        let mut c = a;
+        let mut c = a.clone();
         c.mul_assign(&b);
 
         let circ = Circuit {
-            a: Some(a),
+            a: Some(a.clone()),
             b: Some(b),
             num_constraints,
             num_variables,
         };
 
-        let (index_pk, index_vk) = MarlinNativeInst::index(&universal_srs, circ).unwrap();
+        let (index_pk, index_vk) = MarlinNativeInst::index(&universal_srs, circ.clone(), rng).unwrap();
         println!("Called index");
 
-        let proof = MarlinNativeInst::prove(&index_pk, circ, rng).unwrap();
+        let proof = MarlinNativeInst::prove(&index_pk, &circ, rng).unwrap();
         println!("Called prover");
 
         assert!(MarlinNativeInst::verify(&index_vk, &[c], &proof).unwrap());
@@ -128,13 +163,13 @@ mod tests {
 
         // Native works; now convert to the constraint world!
 
-        let cs_sys = ConstraintSystem::<Fq>::new();
-        let cs = ConstraintSystemRef::new(cs_sys);
+        let mut cs = TestConstraintSystem::<Fq>::new();
+
         // cs.set_optimization_goal(OptimizationGoal::Weight);
 
         // BEGIN: ivk to ivk_gadget
         let ivk_gadget: CircuitVerifyingKeyVar<Fr, Fq, MultiPC, MultiPCVar> =
-            CircuitVerifyingKeyVar::alloc(ns!(cs, "alloc#index vk"), || Ok(index_vk)).unwrap();
+            CircuitVerifyingKeyVar::alloc(cs.ns(|| "alloc#index vk"), || Ok(index_vk)).unwrap();
         // END: ivk to ivk_gadget
 
         // BEGIN: public input to public_input_gadget
@@ -142,7 +177,10 @@ mod tests {
 
         let public_input_gadget: Vec<NonNativeFieldVar<Fr, Fq>> = public_input
             .iter()
-            .map(|x| NonNativeFieldVar::new_input(ns!(cs.clone(), "alloc#public input"), || Ok(x)).unwrap())
+            .enumerate()
+            .map(|(i, x)| {
+                NonNativeFieldVar::alloc_input(cs.ns(|| format!("alloc#public input {}", i)), || Ok(x)).unwrap()
+            })
             .collect();
         // END: public input to public_input_gadget
 
@@ -155,42 +193,52 @@ mod tests {
             ..
         } = proof;
 
-        let commitment_gadgets: Vec<Vec<CommitmentVar<MNT298Cycle, MNT4PairingVar>>> = commitments
+        let commitment_gadgets: Vec<Vec<CommitmentVar<Bls12_377, Bls12_377, Bls12PairingGadget>>> = commitments
             .iter()
-            .map(|lst| {
+            .enumerate()
+            .map(|(i, lst)| {
                 lst.iter()
-                    .map(|comm| CommitmentVar::new_witness(ns!(cs.clone(), "alloc#commitment"), || Ok(comm)).unwrap())
+                    .enumerate()
+                    .map(|(j, comm)| {
+                        CommitmentVar::alloc(cs.ns(|| format!("alloc#commitment_{}_{}", i, j)), || Ok(comm)).unwrap()
+                    })
                     .collect()
             })
             .collect();
 
         let evaluation_gadgets_vec: Vec<NonNativeFieldVar<Fr, Fq>> = evaluations
             .iter()
-            .map(|eval| NonNativeFieldVar::new_witness(ns!(cs.clone(), "alloc#evaluation"), || Ok(eval)).unwrap())
+            .enumerate()
+            .map(|(i, eval)| {
+                NonNativeFieldVar::alloc(cs.ns(|| format!("alloc#evaluation_{}", i)), || Ok(eval)).unwrap()
+            })
             .collect();
 
-        let prover_message_gadgets: Vec<ProverMsgVar<Fr, Fq>> = prover_messages
+        let prover_message_gadgets: Vec<ProverMessageVar<Fr, Fq>> = prover_messages
             .iter()
-            .map(|msg| {
-                let field_elements: Vec<NonNativeFieldVar<Fr, Fq>> = match msg.clone() {
-                    ProverMsg::EmptyMessage => Vec::new(),
-                    ProverMsg::FieldElements(v) => v
+            .enumerate()
+            .map(|(i, msg)| {
+                let field_elements: Vec<NonNativeFieldVar<Fr, Fq>> = match msg.field_elements.is_empty() {
+                    true => Vec::new(),
+                    false => msg
+                        .field_elements
                         .iter()
                         .map(|elem| {
-                            NonNativeFieldVar::new_witness(ns!(cs, "alloc#prover message"), || Ok(elem)).unwrap()
+                            NonNativeFieldVar::alloc(cs.ns(|| format!("alloc#prover message_{}", i)), || Ok(elem))
+                                .unwrap()
                         })
                         .collect(),
                 };
 
-                ProverMsgVar { field_elements }
+                ProverMessageVar { field_elements }
             })
             .collect();
 
-        let pc_batch_proof = BatchLCProofVar::<MNT298Cycle, DensePolynomial<Fr>, MNT4PairingVar>::new_witness(
-            ns!(cs, "alloc#proof"),
-            || Ok(pc_proof),
-        )
-        .unwrap();
+        let pc_batch_proof =
+            BatchLCProofVar::<Bls12_377, Bls12_377, Bls12PairingGadget>::alloc(cs.ns(|| "alloc#proof"), || {
+                Ok(pc_proof)
+            })
+            .unwrap();
 
         let mut evaluation_gadgets = HashMap::<String, NonNativeFieldVar<Fr, Fq>>::new();
 
@@ -220,9 +268,15 @@ mod tests {
         // END: proof to proof_gadget
 
         MarlinVerificationGadget::<Fr, Fq, MultiPC, MultiPCVar>::verify::<
+            _,
             FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>,
             FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>,
-        >(&ivk_gadget, &public_input_gadget, &proof_gadget)
+        >(
+            cs.ns(|| "marlin_verification"),
+            &ivk_gadget,
+            &public_input_gadget,
+            &proof_gadget,
+        )
         .unwrap()
         .enforce_equal(&Boolean::Constant(true))
         .unwrap();
@@ -230,9 +284,9 @@ mod tests {
         println!("after Marlin, num_of_constraints = {}", cs.num_constraints());
 
         assert!(
-            cs.is_satisfied().unwrap(),
+            cs.is_satisfied(),
             "Constraints not satisfied: {}",
-            cs.which_is_unsatisfied().unwrap().unwrap_or_default()
+            cs.which_is_unsatisfied().unwrap()
         );
     }
 }

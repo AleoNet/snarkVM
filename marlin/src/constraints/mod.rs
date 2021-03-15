@@ -33,5 +33,5 @@ pub mod snark;
 /// Implementation of the Marlin verification gadget.
 pub mod verifier;
 
-// /// Marlin verification gadget tests.
-// pub mod verifier_test;
+/// Marlin verification gadget tests.
+pub mod verifier_test;
