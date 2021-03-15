@@ -71,9 +71,6 @@ pub trait UInt: Debug + Clone + PartialOrd + Eq + PartialEq {
     /// Rotate self bits by size
     fn rotr(&self, by: usize) -> Self;
 
-    /// XOR this `UInt` with another `UInt`
-    fn xor<F: Field, CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, SynthesisError>;
-
     /// Perform modular addition of several `UInt` objects.
     fn addmany<F: PrimeField, CS: ConstraintSystem<F>>(cs: CS, operands: &[Self]) -> Result<Self, SynthesisError>;
 

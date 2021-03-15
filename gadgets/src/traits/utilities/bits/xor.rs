@@ -14,18 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#[macro_use]
-pub mod adder;
-pub use self::adder::*;
+use snarkvm_fields::Field;
+use snarkvm_r1cs::ConstraintSystem;
 
-pub mod comparator;
-pub use self::comparator::*;
+use crate::utilities::SynthesisError;
 
-pub mod rca;
-pub use self::rca::*;
-
-pub mod sign_extend;
-pub use self::sign_extend::*;
-
-pub mod xor;
-pub use self::xor::*;
+/// Performs a bitwise XOR operation between `self` and `other` in the constraint system.
+pub trait Xor<F: Field, Rhs = Self>
+where
+    Self: std::marker::Sized,
+{
+    fn xor<CS: ConstraintSystem<F>>(&self, cs: CS, rhs: &Self) -> Result<Self, SynthesisError>;
+}

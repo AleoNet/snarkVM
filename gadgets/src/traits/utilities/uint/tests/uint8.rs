@@ -17,6 +17,7 @@
 use crate::utilities::{
     alloc::AllocGadget,
     arithmetic::*,
+    bits::Xor,
     boolean::Boolean,
     uint::{Sub, UInt, UInt8},
 };

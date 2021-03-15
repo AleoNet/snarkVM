@@ -20,6 +20,9 @@ mod macros;
 pub mod arithmetic;
 pub use arithmetic::*;
 
+pub mod bits;
+pub use bits::*;
+
 pub mod relational;
 pub use relational::*;
 

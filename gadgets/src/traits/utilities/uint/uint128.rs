@@ -142,28 +142,6 @@ impl UInt for UInt128 {
         }
     }
 
-    /// XOR this `UInt128` with another `UInt128`
-    fn xor<F: Field, CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, SynthesisError> {
-        let new_value = match (self.value, other.value) {
-            (Some(a), Some(b)) => Some(a ^ b),
-            _ => None,
-        };
-
-        let bits = self
-            .bits
-            .iter()
-            .zip(other.bits.iter())
-            .enumerate()
-            .map(|(i, (a, b))| Boolean::xor(cs.ns(|| format!("xor of bit_gadget {}", i)), a, b))
-            .collect::<Result<_, _>>()?;
-
-        Ok(Self {
-            bits,
-            negated: false,
-            value: new_value,
-        })
-    }
-
     /// Perform modular addition of several `UInt128` objects.
     fn addmany<F: PrimeField, CS: ConstraintSystem<F>>(mut cs: CS, operands: &[Self]) -> Result<Self, SynthesisError> {
         // Make some arbitrary bounds for ourselves to avoid overflows
