@@ -19,3 +19,6 @@ pub use self::div::*;
 
 pub mod pow;
 pub use self::pow::*;
+
+pub mod sub;
+pub use self::sub::*;

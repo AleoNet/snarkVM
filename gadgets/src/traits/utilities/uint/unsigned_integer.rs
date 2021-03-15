@@ -77,12 +77,6 @@ pub trait UInt: Debug + Clone + PartialOrd + Eq + PartialEq {
     /// Perform modular addition of several `UInt` objects.
     fn addmany<F: PrimeField, CS: ConstraintSystem<F>>(cs: CS, operands: &[Self]) -> Result<Self, SynthesisError>;
 
-    /// Perform modular subtraction of two `UInt` objects.
-    fn sub<F: PrimeField, CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, SynthesisError>;
-
-    /// Perform unsafe subtraction of two `UInt` objects which returns 0 if overflowed
-    fn sub_unsafe<F: PrimeField, CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, SynthesisError>;
-
     /// Perform Bitwise multiplication of two `UInt` objects.
     /// Reference: https://en.wikipedia.org/wiki/Binary_multiplier
     fn mul<F: PrimeField, CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, SynthesisError>;
