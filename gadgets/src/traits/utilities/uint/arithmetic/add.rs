@@ -14,14 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod add;
-pub use self::add::*;
+use crate::utilities::{arithmetic::Add, uint::*};
+use snarkvm_fields::{Field, PrimeField};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
-pub mod div;
-pub use self::div::*;
+// Implement unsigned integers
+macro_rules! add_uint_impl {
+    ($($gadget: ident),*) => ($(
+        impl<F: Field + PrimeField> Add<F> for $gadget {
+            type ErrorType = SynthesisError;
 
-pub mod pow;
-pub use self::pow::*;
+            fn add<CS: ConstraintSystem<F>>(
+                &self,
+                cs: CS,
+                other: &Self
+            ) -> Result<Self, Self::ErrorType> {
+                <$gadget as UInt>::addmany(cs, &[self.clone(), other.clone()])
+            }
+        }
+    )*)
+}
 
-pub mod sub;
-pub use self::sub::*;
+add_uint_impl!(UInt8, UInt16, UInt32, UInt64, UInt128);
