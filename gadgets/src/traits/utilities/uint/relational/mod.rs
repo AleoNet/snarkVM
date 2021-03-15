@@ -15,19 +15,5 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #[macro_use]
-mod macros;
-
-pub mod arithmetic;
-pub use arithmetic::*;
-
-pub mod relational;
-pub use relational::*;
-
-pub mod unsigned_integer;
-pub use unsigned_integer::*;
-
-pub mod uint128;
-pub use uint128::*;
-
-#[cfg(test)]
-mod tests;
+pub mod eq;
+pub use self::eq::*;

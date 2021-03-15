@@ -20,7 +20,7 @@ use crate::{
         alloc::AllocGadget,
         arithmetic::Pow,
         boolean::{AllocatedBit, Boolean},
-        eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
+        eq::{ConditionalEqGadget, EqGadget},
         select::CondSelectGadget,
         uint::unsigned_integer::{UInt, UInt8},
         ToBytesGadget,

@@ -19,7 +19,7 @@ use crate::{
     utilities::{
         alloc::AllocGadget,
         boolean::{AllocatedBit, Boolean},
-        eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
+        eq::{ConditionalEqGadget, EqGadget},
         select::CondSelectGadget,
         ToBitsBEGadget,
         ToBytesGadget,

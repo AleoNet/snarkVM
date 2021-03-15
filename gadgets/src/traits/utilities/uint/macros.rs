@@ -159,16 +159,8 @@ macro_rules! cond_select_int_impl {
     };
 }
 
-macro_rules! uint_impl_eq_ord {
+macro_rules! uint_impl_cmp {
     ($name: ident, $_type: ty, $size: expr) => {
-        impl PartialEq for $name {
-            fn eq(&self, other: &Self) -> bool {
-                self.value.is_some() && self.value == other.value
-            }
-        }
-
-        impl Eq for $name {}
-
         impl PartialOrd for $name {
             fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
                 Option::from(self.value.cmp(&other.value))
@@ -179,30 +171,6 @@ macro_rules! uint_impl_eq_ord {
 
 macro_rules! uint_impl_eq_gadget {
     ($name: ident, $_type: ty, $size: expr) => {
-        impl<F: PrimeField> EvaluateEqGadget<F> for $name {
-            fn evaluate_equal<CS: ConstraintSystem<F>>(
-                &self,
-                mut cs: CS,
-                other: &Self,
-            ) -> Result<Boolean, SynthesisError> {
-                let mut result = Boolean::constant(true);
-                for (i, (a, b)) in self.bits.iter().zip(&other.bits).enumerate() {
-                    let equal = a.evaluate_equal(
-                        &mut cs.ns(|| format!("{} evaluate equality for {}-th bit", $size, i)),
-                        b,
-                    )?;
-
-                    result = Boolean::and(
-                        &mut cs.ns(|| format!("{} and result for {}-th bit", $size, i)),
-                        &equal,
-                        &result,
-                    )?;
-                }
-
-                Ok(result)
-            }
-        }
-
         impl<F: Field> EqGadget<F> for $name {}
 
         impl<F: Field> ConditionalEqGadget<F> for $name {
@@ -269,7 +237,7 @@ macro_rules! uint_impl_common {
         alloc_int_impl!($name, $_type, $size);
         cond_select_int_impl!($name, $_type, $size);
         to_bytes_int_impl!($name, $_type, $size);
-        uint_impl_eq_ord!($name, $_type, $size);
+        uint_impl_cmp!($name, $_type, $size);
         uint_impl_eq_gadget!($name, $_type, $size);
     };
 }
