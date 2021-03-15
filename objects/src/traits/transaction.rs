@@ -40,7 +40,7 @@ pub trait Transaction: Clone + Eq + FromBytes + ToBytes {
     fn ledger_digest(&self) -> &Self::Digest;
 
     /// Returns the inner snark id.
-    fn inner_snark_id(&self) -> &Self::InnerSNARKID;
+    fn inner_circuit_id(&self) -> &Self::InnerSNARKID;
 
     /// Returns the old serial numbers.
     fn old_serial_numbers(&self) -> &[Self::SerialNumber];

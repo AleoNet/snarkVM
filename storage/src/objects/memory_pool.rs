@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{error::StorageError, DatabaseTransaction, Ledger, Op, COL_META, KEY_MEMORY_POOL};
+use crate::{DatabaseTransaction, Ledger, Op, COL_META, KEY_MEMORY_POOL};
 use snarkvm_algorithms::traits::LoadableMerkleParameters;
-use snarkvm_objects::traits::Transaction;
+use snarkvm_objects::{errors::StorageError, traits::Transaction};
 
 impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
     /// Get the stored memory pool transactions.

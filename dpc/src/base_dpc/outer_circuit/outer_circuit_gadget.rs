@@ -88,7 +88,7 @@ pub fn execute_outer_proof_gadget<C: BaseDPCComponents, CS: ConstraintSystem<C::
     program_randomness: &<C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
     local_data_root: &<C::LocalDataCRH as CRH>::Output,
 
-    inner_snark_id: &<C::InnerSNARKVerificationKeyCRH as CRH>::Output,
+    inner_circuit_id: &<C::InnerSNARKVerificationKeyCRH as CRH>::Output,
 ) -> Result<(), SynthesisError>
 where
     <C::AccountCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
@@ -486,21 +486,21 @@ where
 
     let inner_snark_vk_bytes = inner_snark_vk.to_bytes(&mut cs.ns(|| "Convert inner snark vk to bytes"))?;
 
-    let given_inner_snark_id =
+    let given_inner_circuit_id =
         <C::InnerSNARKVerificationKeyCRHGadget as CRHGadget<_, C::OuterField>>::OutputGadget::alloc_input(
             &mut cs.ns(|| "Inner snark id"),
-            || Ok(inner_snark_id),
+            || Ok(inner_circuit_id),
         )?;
 
-    let candidate_inner_snark_id = C::InnerSNARKVerificationKeyCRHGadget::check_evaluation_gadget(
+    let candidate_inner_circuit_id = C::InnerSNARKVerificationKeyCRHGadget::check_evaluation_gadget(
         &mut cs.ns(|| "Compute inner snark vk hash"),
         &inner_snark_vk_crh_parameters,
         inner_snark_vk_bytes,
     )?;
 
-    candidate_inner_snark_id.enforce_equal(
+    candidate_inner_circuit_id.enforce_equal(
         &mut cs.ns(|| "Check that declared and computed inner snark ids are equal"),
-        &given_inner_snark_id,
+        &given_inner_circuit_id,
     )?;
 
     Ok(())

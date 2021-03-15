@@ -80,7 +80,7 @@ pub struct DPCTransaction<C: BaseDPCComponents> {
     pub memorandum: [u8; 32],
 
     /// The ID of the inner SNARK being used
-    pub inner_snark_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output,
+    pub inner_circuit_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output,
 }
 
 impl<C: BaseDPCComponents> DPCTransaction<C> {
@@ -90,7 +90,7 @@ impl<C: BaseDPCComponents> DPCTransaction<C> {
         new_commitments: Vec<<Self as Transaction>::Commitment>,
         memorandum: <Self as Transaction>::Memorandum,
         ledger_digest: MerkleTreeDigest<C::MerkleParameters>,
-        inner_snark_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output,
+        inner_circuit_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output,
         transaction_proof: <C::OuterSNARK as SNARK>::Proof,
         program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
         local_data_root: <C::LocalDataCRH as CRH>::Output,
@@ -104,7 +104,7 @@ impl<C: BaseDPCComponents> DPCTransaction<C> {
             new_commitments,
             memorandum,
             ledger_digest,
-            inner_snark_id,
+            inner_circuit_id,
             transaction_proof,
             program_commitment,
             local_data_root,
@@ -157,8 +157,8 @@ impl<C: BaseDPCComponents> Transaction for DPCTransaction<C> {
         &self.ledger_digest
     }
 
-    fn inner_snark_id(&self) -> &Self::InnerSNARKID {
-        &self.inner_snark_id
+    fn inner_circuit_id(&self) -> &Self::InnerSNARKID {
+        &self.inner_circuit_id
     }
 
     fn old_serial_numbers(&self) -> &[Self::SerialNumber] {
@@ -209,7 +209,7 @@ impl<C: BaseDPCComponents> ToBytes for DPCTransaction<C> {
         self.memorandum.write(&mut writer)?;
 
         self.ledger_digest.write(&mut writer)?;
-        self.inner_snark_id.write(&mut writer)?;
+        self.inner_circuit_id.write(&mut writer)?;
         self.transaction_proof.write(&mut writer)?;
         self.program_commitment.write(&mut writer)?;
         self.local_data_root.write(&mut writer)?;
@@ -253,7 +253,7 @@ impl<C: BaseDPCComponents> FromBytes for DPCTransaction<C> {
         let memorandum: [u8; 32] = FromBytes::read(&mut reader)?;
 
         let ledger_digest: MerkleTreeDigest<C::MerkleParameters> = FromBytes::read(&mut reader)?;
-        let inner_snark_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output = FromBytes::read(&mut reader)?;
+        let inner_circuit_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output = FromBytes::read(&mut reader)?;
         let transaction_proof: <C::OuterSNARK as SNARK>::Proof = FromBytes::read(&mut reader)?;
         let program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output =
             FromBytes::read(&mut reader)?;
@@ -289,7 +289,7 @@ impl<C: BaseDPCComponents> FromBytes for DPCTransaction<C> {
             value_balance,
             signatures,
             encrypted_records,
-            inner_snark_id,
+            inner_circuit_id,
             transaction_proof,
             memorandum,
         })
@@ -301,10 +301,10 @@ impl<C: BaseDPCComponents> fmt::Debug for DPCTransaction<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "DPCTransaction {{ network_id: {:?}, digest: {:?}, inner_snark_id: {:?}, old_serial_numbers: {:?}, new_commitments: {:?}, program_commitment: {:?}, local_data_root: {:?}, value_balance: {:?}, signatures: {:?}, transaction_proof: {:?}, memorandum: {:?} }}",
+            "DPCTransaction {{ network_id: {:?}, digest: {:?}, inner_circuit_id: {:?}, old_serial_numbers: {:?}, new_commitments: {:?}, program_commitment: {:?}, local_data_root: {:?}, value_balance: {:?}, signatures: {:?}, transaction_proof: {:?}, memorandum: {:?} }}",
             self.network,
             self.ledger_digest,
-            self.inner_snark_id,
+            self.inner_circuit_id,
             self.old_serial_numbers,
             self.new_commitments,
             self.program_commitment,

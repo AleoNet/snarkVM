@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-derives"
-version = "0.2.0"
+version = "0.2.1"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Canonical serialization for a decentralized virtual machine"
 homepage = "https://aleo.org"

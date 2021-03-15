@@ -645,8 +645,8 @@ impl Boolean {
         }
     }
 
-    pub fn enforce_smaller_or_equal_than_le<'a, F: Field, CS: ConstraintSystem<F>>(
-        cs: CS,
+    pub fn enforce_smaller_or_equal_than_le<F: Field, CS: ConstraintSystem<F>>(
+        mut cs: CS,
         bits: &[Self],
         element: impl AsRef<[u64]>,
     ) -> Result<Vec<Self>, SynthesisError> {
@@ -693,13 +693,13 @@ impl Boolean {
         {
             if b {
                 // This is part of a run of ones.
-                current_run.push(a.clone());
+                current_run.push(*a);
             } else {
                 if !current_run.is_empty() {
                     // This is the start of a run of zeros, but we need
                     // to k-ary AND against `last_run` first.
 
-                    current_run.push(last_run.clone());
+                    current_run.push(last_run);
                     last_run = Self::kary_and(cs.ns(|| format!("kary_and_{}", i)), &current_run)?;
                     current_run.truncate(0);
                 }
@@ -710,10 +710,7 @@ impl Boolean {
                 // If `last_run` is false, `a` can be true or false.
                 //
                 // Ergo, at least one of `last_run` and `a` must be false.
-                Self::enforce_kary_nand(cs.ns(|| format!("enforce_kary_and_{}", i)), &[
-                    last_run.clone(),
-                    a.clone(),
-                ])?;
+                Self::enforce_kary_nand(cs.ns(|| format!("enforce_kary_and_{}", i)), &[last_run, *a])?;
             }
         }
         assert!(bits_iter.next().is_none());

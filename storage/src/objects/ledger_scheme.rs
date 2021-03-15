@@ -27,7 +27,7 @@ use snarkvm_utilities::{
 };
 
 use parking_lot::RwLock;
-use std::{fs, marker::PhantomData, path::PathBuf, sync::Arc};
+use std::{fs, marker::PhantomData, path::Path, sync::Arc};
 
 impl<T: Transaction, P: LoadableMerkleParameters> LedgerScheme for Ledger<T, P> {
     type Block = Block<Self::Transaction>;
@@ -39,7 +39,13 @@ impl<T: Transaction, P: LoadableMerkleParameters> LedgerScheme for Ledger<T, P> 
     type Transaction = T;
 
     /// Instantiates a new ledger with a genesis block.
-    fn new(path: &PathBuf, parameters: Self::MerkleParameters, genesis_block: Self::Block) -> anyhow::Result<Self> {
+    fn new(
+        path: Option<&Path>,
+        parameters: Self::MerkleParameters,
+        genesis_block: Self::Block,
+    ) -> anyhow::Result<Self> {
+        let path = path.unwrap(); // temporarily always present
+
         fs::create_dir_all(&path).map_err(|err| LedgerError::Message(err.to_string()))?;
         let storage = match Storage::open_cf(path, NUM_COLS) {
             Ok(storage) => storage,

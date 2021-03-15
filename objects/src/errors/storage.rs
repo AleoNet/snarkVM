@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::errors::{BlockError, TransactionError};
 use snarkvm_algorithms::errors::MerkleError;
-use snarkvm_objects::errors::{BlockError, TransactionError};
 use snarkvm_parameters::errors::ParameterError;
 
 use std::fmt::Debug;
@@ -133,19 +133,7 @@ pub enum StorageError {
 
 impl From<bincode::Error> for StorageError {
     fn from(error: bincode::Error) -> Self {
-        StorageError::Crate("bincode", format!("{:?}", error))
-    }
-}
-
-impl From<hex::FromHexError> for StorageError {
-    fn from(error: hex::FromHexError) -> Self {
-        StorageError::Crate("hex", format!("{:?}", error))
-    }
-}
-
-impl From<rocksdb::Error> for StorageError {
-    fn from(error: rocksdb::Error) -> Self {
-        StorageError::Crate("rocksdb", format!("{:?}", error))
+        StorageError::Crate("bincode", error.to_string())
     }
 }
 

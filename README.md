@@ -1,5 +1,5 @@
 <p align="center">
-    <img alt="snarkVM" width="1412" src="./.resources/banner.png">
+    <img alt="snarkVM" width="1412" src="https://cdn.aleo.org/snarkvm/banner.png">
 </p>
 
 <p align="center">

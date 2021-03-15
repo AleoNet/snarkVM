@@ -1030,7 +1030,7 @@ where
         let inner_snark_vk: <Components::InnerSNARK as SNARK>::VerifyingKey =
             parameters.inner_snark_parameters.1.clone().into();
 
-        let inner_snark_id = <Components::InnerSNARKVerificationKeyCRH as CRH>::hash(
+        let inner_circuit_id = <Components::InnerSNARKVerificationKeyCRH as CRH>::hash(
             &parameters.system_parameters.inner_snark_verification_key_crh,
             &to_bytes![inner_snark_vk]?,
         )?;
@@ -1053,7 +1053,7 @@ where
                 program_commitment.clone(),
                 program_randomness,
                 local_data_root.clone(),
-                inner_snark_id.clone(),
+                inner_circuit_id.clone(),
             );
 
             let outer_snark_parameters = match &parameters.outer_snark_parameters.0 {
@@ -1069,7 +1069,7 @@ where
             new_commitments,
             memorandum,
             ledger_digest,
-            inner_snark_id,
+            inner_circuit_id,
             transaction_proof,
             program_commitment,
             local_data_root,
@@ -1185,14 +1185,14 @@ where
         let inner_snark_vk: <<Components as BaseDPCComponents>::InnerSNARK as SNARK>::VerifyingKey =
             parameters.inner_snark_parameters.1.clone().into();
 
-        let inner_snark_id = Components::InnerSNARKVerificationKeyCRH::hash(
+        let inner_circuit_id = Components::InnerSNARKVerificationKeyCRH::hash(
             &parameters.system_parameters.inner_snark_verification_key_crh,
             &to_bytes![inner_snark_vk]?,
         )?;
 
         let outer_snark_input = OuterCircuitVerifierInput {
             inner_snark_verifier_input: inner_snark_input,
-            inner_snark_id,
+            inner_circuit_id,
         };
 
         if !Components::OuterSNARK::verify(

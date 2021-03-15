@@ -54,7 +54,7 @@ pub struct OuterCircuit<C: BaseDPCComponents> {
     program_randomness: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
     local_data_root: <C::LocalDataCRH as CRH>::Output,
 
-    inner_snark_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output,
+    inner_circuit_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output,
 }
 
 impl<C: BaseDPCComponents> OuterCircuit<C> {
@@ -84,7 +84,7 @@ impl<C: BaseDPCComponents> OuterCircuit<C> {
         let program_randomness = <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness::default();
         let local_data_root = <C::LocalDataCRH as CRH>::Output::default();
 
-        let inner_snark_id = <C::InnerSNARKVerificationKeyCRH as CRH>::Output::default();
+        let inner_circuit_id = <C::InnerSNARKVerificationKeyCRH as CRH>::Output::default();
 
         Self {
             system_parameters,
@@ -103,7 +103,7 @@ impl<C: BaseDPCComponents> OuterCircuit<C> {
             program_commitment,
             program_randomness,
             local_data_root,
-            inner_snark_id,
+            inner_circuit_id,
         }
     }
 
@@ -138,7 +138,7 @@ impl<C: BaseDPCComponents> OuterCircuit<C> {
         local_data_root: <C::LocalDataCRH as CRH>::Output,
 
         // Inner SNARK ID
-        inner_snark_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output,
+        inner_circuit_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output,
     ) -> Self {
         let num_input_records = C::NUM_INPUT_RECORDS;
         let num_output_records = C::NUM_OUTPUT_RECORDS;
@@ -165,7 +165,7 @@ impl<C: BaseDPCComponents> OuterCircuit<C> {
             program_commitment,
             program_randomness,
             local_data_root,
-            inner_snark_id,
+            inner_circuit_id,
         }
     }
 }
@@ -216,7 +216,7 @@ where
             &self.program_commitment,
             &self.program_randomness,
             &self.local_data_root,
-            &self.inner_snark_id,
+            &self.inner_circuit_id,
         )?;
         Ok(())
     }

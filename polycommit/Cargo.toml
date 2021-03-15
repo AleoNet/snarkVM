@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-polycommit"
-version = "0.2.0"
+version = "0.2.1"
 authors = [
   "Alessandro Chiesa <alexch@berkeley.edu>",
   "Mary Maller <mary.maller.15@ucl.ac.uk>",
@@ -33,15 +33,15 @@ edition = "2018"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.2.0"
+version = "0.2.1"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.2.0"
+version = "0.2.1"
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.2.0"
+version = "0.2.1"
 
 # TODO (howardwu): Remove this, move constraints in this crate to snarkvm-gadgets.
 [dependencies.snarkvm-gadgets]
@@ -55,7 +55,7 @@ version = "0.2.0"
 
 [dependencies.snarkvm-profiler]
 path = "../profiler"
-version = "0.2.0"
+version = "0.2.1"
 
 # TODO (howardwu): Remove this, move constraints in this crate to snarkvm-gadgets.
 [dependencies.snarkvm-r1cs]
@@ -64,7 +64,7 @@ version = "0.2.0"
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.2.0"
+version = "0.2.1"
 
 [dependencies.derivative]
 version = "2"

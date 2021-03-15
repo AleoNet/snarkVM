@@ -23,7 +23,7 @@ use snarkvm_utilities::{
 
 use std::{
     cmp::{Ord, Ordering, PartialOrd},
-    fmt::{Display, Formatter, Result as FmtResult},
+    fmt::{Debug, Display, Formatter, Result as FmtResult},
     io::{Read, Result as IoResult, Write},
     marker::PhantomData,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
@@ -38,7 +38,6 @@ pub trait Fp320Parameters: FpParameters<BigInteger = BigInteger> {}
     Hash(bound = "P: Fp320Parameters"),
     Clone(bound = "P: Fp320Parameters"),
     Copy(bound = "P: Fp320Parameters"),
-    Debug(bound = "P: Fp320Parameters"),
     PartialEq(bound = "P: Fp320Parameters"),
     Eq(bound = "P: Fp320Parameters")
 )]
@@ -489,10 +488,17 @@ impl<P: Fp320Parameters> FromStr for Fp320<P> {
     }
 }
 
-impl<P: Fp320Parameters> Display for Fp320<P> {
+impl<P: Fp320Parameters> Debug for Fp320<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(f, "Fp320({})", self.into_repr())
+    }
+}
+
+impl<P: Fp320Parameters> Display for Fp320<P> {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(f, "{}", self.into_repr())
     }
 }
 

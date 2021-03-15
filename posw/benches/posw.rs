@@ -25,6 +25,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 
+#[allow(deprecated)]
 fn gm17_posw(c: &mut Criterion) {
     let mut group = c.benchmark_group("Proof of Succinct Work: GM17");
     group.sample_size(10);

@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm"
-version = "0.2.0"
+version = "0.2.1"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -50,7 +50,7 @@ version = "1.0.38"
 version = "2"
 
 [dependencies.self_update]
-version = "0.25"
+version = "0.26"
 
 [dependencies.structopt]
 version = "0.3"
