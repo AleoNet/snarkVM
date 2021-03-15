@@ -159,16 +159,6 @@ macro_rules! cond_select_int_impl {
     };
 }
 
-macro_rules! uint_impl_cmp {
-    ($name: ident, $_type: ty, $size: expr) => {
-        impl PartialOrd for $name {
-            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-                Option::from(self.value.cmp(&other.value))
-            }
-        }
-    };
-}
-
 macro_rules! uint_impl_eq_gadget {
     ($name: ident, $_type: ty, $size: expr) => {
         impl<F: Field> EqGadget<F> for $name {}
@@ -237,7 +227,6 @@ macro_rules! uint_impl_common {
         alloc_int_impl!($name, $_type, $size);
         cond_select_int_impl!($name, $_type, $size);
         to_bytes_int_impl!($name, $_type, $size);
-        uint_impl_cmp!($name, $_type, $size);
         uint_impl_eq_gadget!($name, $_type, $size);
     };
 }
