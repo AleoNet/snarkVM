@@ -52,13 +52,14 @@ impl MarlinConfig for MarlinRecursiveConfig {
 
 // TODO (raychu86): Remove the digest bound.
 /// The Marlin proof system.
-pub struct MarlinCore<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest>(
+pub struct MarlinCore<F: PrimeField, PC: PolynomialCommitment<F>, MC: MarlinConfig, D: Digest>(
     #[doc(hidden)] PhantomData<F>,
     #[doc(hidden)] PhantomData<PC>,
+    #[doc(hidden)] PhantomData<MC>,
     #[doc(hidden)] PhantomData<D>,
 );
 
-impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinCore<F, PC, D> {
+impl<F: PrimeField, PC: PolynomialCommitment<F>, MC: MarlinConfig, D: Digest> MarlinCore<F, PC, MC, D> {
     /// The personalization string for this protocol.
     /// Used to personalize the Fiat-Shamir RNG.
     pub const PROTOCOL_NAME: &'static [u8] = b"MARLIN-2019";

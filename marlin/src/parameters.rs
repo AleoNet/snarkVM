@@ -30,6 +30,7 @@ use snarkvm_utilities::{
 
 pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PCCommitment};
 
+use crate::marlin::MarlinDefaultConfig;
 use blake2::Blake2s;
 use derivative::Derivative;
 use rayon::prelude::*;
@@ -57,8 +58,9 @@ pub struct Parameters<E: PairingEngine> {
 impl<E: PairingEngine> Parameters<E> {
     /// Creates an instance of `Parameters` from a given universal SRS.
     pub fn new<C: ConstraintSynthesizer<E::Fr>>(circuit: &C, universal_srs: &SRS<E>) -> Result<Self, SNARKError> {
-        let (proving_key, verifying_key) = MarlinCore::<_, _, Blake2s>::circuit_setup(universal_srs, circuit)
-            .map_err(|error| SNARKError::Crate("marlin", format!("could not index - {:?}", error)))?;
+        let (proving_key, verifying_key) =
+            MarlinCore::<_, _, MarlinDefaultConfig, Blake2s>::circuit_setup(universal_srs, circuit)
+                .map_err(|error| SNARKError::Crate("marlin", format!("could not index - {:?}", error)))?;
         Ok(Self {
             proving_key,
             verifying_key,

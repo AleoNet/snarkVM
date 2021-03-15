@@ -140,7 +140,7 @@ where
         x: &[TargetField],
         proof: &Proof<TargetField, PC>,
     ) -> Result<bool, Box<MarlinConstraintsError>> {
-        match MarlinCore::<TargetField, PC, Blake2s>::prepared_verify(pvk, x, proof) {
+        match MarlinCore::<TargetField, PC, MC, Blake2s>::prepared_verify(pvk, x, proof) {
             Ok(res) => Ok(res),
             Err(e) => Err(Box::new(MarlinError::from(e).into())),
         }
@@ -178,7 +178,7 @@ where
         // Ok((parameters, verifying_key))
 
         let (circuit_proving_key, circuit_verifier_key) =
-            MarlinCore::<TargetField, PC, Blake2s>::circuit_specific_setup(circuit, rng).unwrap();
+            MarlinCore::<TargetField, PC, MC, Blake2s>::circuit_specific_setup(circuit, rng).unwrap();
 
         Ok((circuit_proving_key, circuit_verifier_key.into()))
     }
@@ -188,7 +188,7 @@ where
         circuit: &Self::AllocatedCircuit,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
-        match MarlinCore::<TargetField, PC, Blake2s>::prove(&parameters, circuit, rng) {
+        match MarlinCore::<TargetField, PC, MC, Blake2s>::prove(&parameters, circuit, rng) {
             Ok(res) => Ok(res),
             Err(e) => Err(SNARKError::from(e)),
         }
@@ -199,7 +199,7 @@ where
         input: &Self::VerifierInput,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
-        match MarlinCore::<TargetField, PC, Blake2s>::prepared_verify(verifying_key, input, proof) {
+        match MarlinCore::<TargetField, PC, MC, Blake2s>::prepared_verify(verifying_key, input, proof) {
             Ok(res) => Ok(res),
             Err(e) => Err(SNARKError::from(e)),
         }

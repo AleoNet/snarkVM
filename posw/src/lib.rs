@@ -79,6 +79,7 @@ mod tests {
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
     use snarkvm_algorithms::traits::SNARK;
+    use snarkvm_marlin::marlin::MarlinDefaultConfig;
     use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
     use snarkvm_utilities::bytes::FromBytes;
 
@@ -125,6 +126,7 @@ mod tests {
         let universal_srs = snarkvm_marlin::marlin::MarlinCore::<
             <Bls12_377 as PairingEngine>::Fr,
             MultiPC<Bls12_377>,
+            MarlinDefaultConfig,
             Blake2s,
         >::universal_setup(10000, 10000, 100000, rng)
         .unwrap();
