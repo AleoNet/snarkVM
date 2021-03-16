@@ -36,8 +36,6 @@ use snarkvm_utilities::{
     bytes::ToBytes,
 };
 
-use std::borrow::Borrow;
-
 uint_impl_common!(UInt128, u128, 128);
 
 impl UInt for UInt128 {

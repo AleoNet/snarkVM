@@ -31,7 +31,6 @@ use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearC
 
 use snarkvm_utilities::bytes::ToBytes;
 
-use core::borrow::Borrow;
 use std::fmt::Debug;
 
 uint_impl!(UInt8, u8, 8);

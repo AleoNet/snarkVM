@@ -14,56 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-macro_rules! alloc_int_fn_impl {
-    ($name: ident, $_type: ty, $size: expr, $fn_name: ident) => {
-        fn $fn_name<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<$_type>, CS: ConstraintSystem<F>>(
-            mut cs: CS,
-            value_gen: Fn,
-        ) -> Result<Self, SynthesisError> {
-            let value = value_gen().map(|val| *val.borrow());
-            let values = match value {
-                Ok(mut val) => {
-                    let mut v = Vec::with_capacity($size);
-                    for _ in 0..$size {
-                        v.push(Some(val & 1 == 1));
-                        val >>= 1;
-                    }
-
-                    v
-                }
-                _ => vec![None; $size],
-            };
-
-            let bits = values
-                .into_iter()
-                .enumerate()
-                .map(|(i, v)| {
-                    Ok(Boolean::from(AllocatedBit::$fn_name(
-                        &mut cs.ns(|| format!("allocated bit_gadget {}", i)),
-                        || v.ok_or(SynthesisError::AssignmentMissing),
-                    )?))
-                })
-                .collect::<Result<Vec<_>, SynthesisError>>()?;
-
-            Ok(Self {
-                bits,
-                negated: false,
-                value: value.ok(),
-            })
-        }
-    };
-}
-
-macro_rules! alloc_int_impl {
-    ($name: ident, $_type: ty, $size: expr) => {
-        impl<F: Field> AllocGadget<$_type, F> for $name {
-            alloc_int_fn_impl!($name, $_type, $size, alloc);
-
-            alloc_int_fn_impl!($name, $_type, $size, alloc_input);
-        }
-    };
-}
-
 macro_rules! to_bytes_int_impl {
     ($name: ident, $_type: ty, $size: expr) => {
         impl<F: Field> ToBytesGadget<F> for $name {
@@ -306,7 +256,6 @@ macro_rules! uint_impl_common {
             }
         }
 
-        alloc_int_impl!($name, $_type, $size);
         cond_select_int_impl!($name, $_type, $size);
         to_bytes_int_impl!($name, $_type, $size);
         uint_impl_eq_gadget!($name, $_type, $size);
