@@ -113,36 +113,6 @@ macro_rules! cond_select_int_impl {
     };
 }
 
-macro_rules! uint_impl_eq_gadget {
-    ($name: ident, $_type: ty, $size: expr) => {
-        impl<F: Field> EqGadget<F> for $name {}
-
-        impl<F: Field> ConditionalEqGadget<F> for $name {
-            fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
-                &self,
-                mut cs: CS,
-                other: &Self,
-                condition: &Boolean,
-            ) -> Result<(), SynthesisError> {
-                for (i, (a, b)) in self.bits.iter().zip(&other.bits).enumerate() {
-                    a.conditional_enforce_equal(
-                        &mut cs.ns(|| format!("{} equality check for {}-th bit", $size, i)),
-                        b,
-                        condition,
-                    )?;
-                }
-                Ok(())
-            }
-
-            fn cost() -> usize {
-                const MULTIPLIER: usize = if $size == 128 { 128 } else { 8 };
-
-                MULTIPLIER * <Boolean as ConditionalEqGadget<F>>::cost()
-            }
-        }
-    };
-}
-
 #[macro_export]
 macro_rules! uint_impl_common {
     ($name: ident, $_type: ty, $size: expr) => {
@@ -258,7 +228,6 @@ macro_rules! uint_impl_common {
 
         cond_select_int_impl!($name, $_type, $size);
         to_bytes_int_impl!($name, $_type, $size);
-        uint_impl_eq_gadget!($name, $_type, $size);
     };
 }
 
