@@ -16,7 +16,14 @@
 
 use crate::errors::UnsignedIntegerError;
 
-use crate::utilities::{alloc::AllocGadget, arithmetic::Pow, boolean::Boolean, select::CondSelectGadget, uint::*};
+use crate::utilities::{
+    alloc::AllocGadget,
+    arithmetic::Pow,
+    boolean::Boolean,
+    integral::Integral,
+    select::CondSelectGadget,
+    uint::*,
+};
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSystem;
 
@@ -44,10 +51,10 @@ macro_rules! pow_int_impl {
                 // res
 
                 let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
-                let constant_result = Self::constant(1 as <$gadget as UInt>::IntegerType);
+                let constant_result = Self::constant(1 as <$gadget as Integral>::IntegerType);
                 let allocated_result = Self::alloc(
-                    &mut cs.ns(|| format!("allocated_1u{}", <$gadget as UInt>::SIZE)),
-                    || Ok(1 as <$gadget as UInt>::IntegerType),
+                    &mut cs.ns(|| format!("allocated_1u{}", <$gadget as Integral>::SIZE)),
+                    || Ok(1 as <$gadget as Integral>::IntegerType),
                 )?;
                 let mut result = Self::conditionally_select(
                     &mut cs.ns(|| "constant_or_allocated"),

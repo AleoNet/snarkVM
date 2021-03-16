@@ -17,8 +17,9 @@
 use crate::utilities::{
     alloc::AllocGadget,
     eq::{ConditionalEqGadget, EqGadget},
+    integral::Integral,
     select::CondSelectGadget,
-    uint::{UInt, UInt8},
+    uint::UInt8,
     ToBytesGadget,
 };
 use snarkvm_algorithms::traits::CRH;

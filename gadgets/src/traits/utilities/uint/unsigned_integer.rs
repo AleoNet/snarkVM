@@ -20,6 +20,7 @@ use crate::{
         alloc::AllocGadget,
         boolean::{AllocatedBit, Boolean},
         eq::{ConditionalEqGadget, EqGadget},
+        integral::Integral,
         select::CondSelectGadget,
         ToBitsBEGadget,
         ToBytesGadget,
@@ -38,35 +39,9 @@ uint_impl!(UInt16, u16, 16);
 uint_impl!(UInt32, u32, 32);
 uint_impl!(UInt64, u64, 64);
 
-pub trait UInt: Debug + Clone + PartialOrd + Eq + PartialEq {
-    type IntegerType;
-    const SIZE: usize;
-
+pub trait UInt: Integral {
     /// Returns the inverse `UInt`
     fn negate(&self) -> Self;
-
-    /// Returns true if all bits in this `UInt` are constant
-    fn is_constant(&self) -> bool;
-
-    /// Returns true if both `UInt` objects have constant bits
-    fn result_is_constant(first: &Self, second: &Self) -> bool {
-        // If any bits of first are allocated bits, return false
-        if !first.is_constant() {
-            return false;
-        }
-
-        // If any bits of second are allocated bits, return false
-        second.is_constant()
-    }
-
-    /// Turns this `UInt` into its little-endian byte order representation.
-    /// LSB-first means that we can easily get the corresponding field element
-    /// via double and add.
-    fn to_bits_le(&self) -> Vec<Boolean>;
-
-    /// Converts a little-endian byte order representation of bits into a
-    /// `UInt`.
-    fn from_bits_le(bits: &[Boolean]) -> Self;
 
     /// Rotate self bits by size
     fn rotr(&self, by: usize) -> Self;

@@ -20,6 +20,7 @@ use crate::utilities::{
     alloc::AllocGadget,
     arithmetic::Div,
     boolean::{AllocatedBit, Boolean},
+    integral::Integral,
     select::CondSelectGadget,
     uint::*,
     SynthesisError,
@@ -53,7 +54,7 @@ macro_rules! div_int_impl {
                 //   end
                 // end
 
-                if other.eq(&Self::constant(0 as <$gadget as UInt>::IntegerType)) {
+                if other.eq(&Self::constant(0 as <$gadget as Integral>::IntegerType)) {
                     return Err(SynthesisError::DivisionByZero.into());
                 }
 
@@ -67,23 +68,23 @@ macro_rules! div_int_impl {
                     &allocated_true,
                 )?;
 
-                let allocated_one = Self::alloc(&mut cs.ns(|| "one"), || Ok(1 as <$gadget as UInt>::IntegerType))?;
+                let allocated_one = Self::alloc(&mut cs.ns(|| "one"), || Ok(1 as <$gadget as Integral>::IntegerType))?;
                 let one = Self::conditionally_select(
                     &mut cs.ns(|| "constant_or_allocated_1"),
                     &is_constant,
-                    &Self::constant(1 as <$gadget as UInt>::IntegerType),
+                    &Self::constant(1 as <$gadget as Integral>::IntegerType),
                     &allocated_one,
                 )?;
 
-                let allocated_zero = Self::alloc(&mut cs.ns(|| "zero"), || Ok(0 as <$gadget as UInt>::IntegerType))?;
+                let allocated_zero = Self::alloc(&mut cs.ns(|| "zero"), || Ok(0 as <$gadget as Integral>::IntegerType))?;
                 let zero = Self::conditionally_select(
                     &mut cs.ns(|| "constant_or_allocated_0"),
                     &is_constant,
-                    &Self::constant(0 as <$gadget as UInt>::IntegerType),
+                    &Self::constant(0 as <$gadget as Integral>::IntegerType),
                     &allocated_zero,
                 )?;
 
-                let self_is_zero = Boolean::Constant(self.eq(&Self::constant(0 as <$gadget as UInt>::IntegerType)));
+                let self_is_zero = Boolean::Constant(self.eq(&Self::constant(0 as <$gadget as Integral>::IntegerType)));
                 let mut quotient = zero.clone();
                 let mut remainder = zero.clone();
 
@@ -118,7 +119,7 @@ macro_rules! div_int_impl {
 
                     let no_remainder = Boolean::constant(remainder.eq(&other));
                     let subtraction = remainder.sub_unsafe(&mut cs.ns(|| format!("subtract_divisor_{}", i)), &other)?;
-                    let sub_is_zero = Boolean::constant(subtraction.eq(&Self::constant(0 as <$gadget as UInt>::IntegerType)));
+                    let sub_is_zero = Boolean::constant(subtraction.eq(&Self::constant(0 as <$gadget as Integral>::IntegerType)));
                     let cond1 = Boolean::and(
                         &mut cs.ns(|| format!("cond_1_{}", i)),
                         &no_remainder.not(),
@@ -133,8 +134,8 @@ macro_rules! div_int_impl {
                         &remainder,
                     )?;
 
-                    let index = <$gadget as UInt>::SIZE - 1 - i as usize;
-                    let bit_value = (1 as <$gadget as UInt>::IntegerType) << (index as <$gadget as UInt>::IntegerType);
+                    let index = <$gadget as Integral>::SIZE - 1 - i as usize;
+                    let bit_value = (1 as <$gadget as Integral>::IntegerType) << (index as <$gadget as Integral>::IntegerType);
                     let mut new_quotient = quotient.clone();
                     new_quotient.bits[index] = true_bit;
                     new_quotient.value = Some(new_quotient.value.unwrap() + bit_value);

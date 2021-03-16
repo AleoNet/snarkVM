@@ -18,6 +18,7 @@ use crate::utilities::{
     boolean::Boolean,
     eq::{ConditionalEqGadget, EqGadget},
     int::*,
+    integral::Integral,
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -36,7 +37,7 @@ macro_rules! cond_eq_int_impl {
             ) -> Result<(), SynthesisError> {
                 for (i, (a, b)) in self.bits.iter().zip(&other.bits).enumerate() {
                     a.conditional_enforce_equal(
-                        &mut cs.ns(|| format!("{} equality check for the {}-th bit", <$gadget as Int>::SIZE, i)),
+                        &mut cs.ns(|| format!("{} equality check for the {}-th bit", <$gadget as Integral>::SIZE, i)),
                         b,
                         condition,
                     )?;
@@ -46,7 +47,7 @@ macro_rules! cond_eq_int_impl {
             }
 
             fn cost() -> usize {
-                <$gadget as Int>::SIZE * <Boolean as ConditionalEqGadget<F>>::cost()
+                <$gadget as Integral>::SIZE * <Boolean as ConditionalEqGadget<F>>::cost()
             }
         }
     )*)

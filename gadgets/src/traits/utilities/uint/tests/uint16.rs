@@ -19,6 +19,7 @@ use crate::utilities::{
     arithmetic::*,
     bits::Xor,
     boolean::Boolean,
+    integral::Integral,
     uint::{Sub, UInt, UInt16},
 };
 use snarkvm_fields::{One, Zero};

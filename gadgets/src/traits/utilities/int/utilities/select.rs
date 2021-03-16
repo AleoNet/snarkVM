@@ -14,7 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{alloc::AllocGadget, boolean::Boolean, eq::EqGadget, int::*, select::CondSelectGadget};
+use crate::utilities::{
+    alloc::AllocGadget,
+    boolean::Boolean,
+    eq::EqGadget,
+    int::*,
+    integral::Integral,
+    select::CondSelectGadget,
+};
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 
@@ -46,7 +53,7 @@ macro_rules! select_int_impl {
 
                     for (i, ((bit1, bit2), actual)) in first.bits.iter().zip(second.bits.iter()).zip(result.bits.iter()).enumerate() {
                         let expected = Boolean::conditionally_select(
-                            &mut cs.ns(|| format!("{}_cond_select_{}", <$gadget as Int>::SIZE, i)),
+                            &mut cs.ns(|| format!("{}_cond_select_{}", <$gadget as Integral>::SIZE, i)),
                             cond,
                             bit1,
                             bit2,

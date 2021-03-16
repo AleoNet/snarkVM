@@ -21,6 +21,7 @@ use crate::{
         arithmetic::Pow,
         boolean::{AllocatedBit, Boolean},
         eq::{ConditionalEqGadget, EqGadget},
+        integral::Integral,
         select::CondSelectGadget,
         uint::unsigned_integer::{UInt, UInt8},
         ToBytesGadget,
@@ -40,86 +41,12 @@ use std::borrow::Borrow;
 uint_impl_common!(UInt128, u128, 128);
 
 impl UInt for UInt128 {
-    type IntegerType = u128;
-
-    const SIZE: usize = 128;
-
     /// Returns the inverse UInt128
     fn negate(&self) -> Self {
         Self {
             bits: self.bits.clone(),
             negated: true,
             value: self.value,
-        }
-    }
-
-    /// Returns true if all bits in this UInt128 are constant
-    fn is_constant(&self) -> bool {
-        let mut constant = true;
-
-        // If any bits of self are allocated bits, return false
-        for bit in &self.bits {
-            match *bit {
-                Boolean::Is(ref _bit) => constant = false,
-                Boolean::Not(ref _bit) => constant = false,
-                Boolean::Constant(_bit) => {}
-            }
-        }
-
-        constant
-    }
-
-    /// Turns this `UInt128` into its little-endian byte order representation.
-    fn to_bits_le(&self) -> Vec<Boolean> {
-        self.bits.clone()
-    }
-
-    /// Converts a little-endian byte order representation of bits into a
-    /// `UInt128`.
-    fn from_bits_le(bits: &[Boolean]) -> Self {
-        assert_eq!(bits.len(), 128);
-
-        let bits = bits.to_vec();
-
-        let mut value = Some(0u128);
-        for b in bits.iter().rev() {
-            if let Some(v) = value.as_mut() {
-                *v <<= 1;
-            }
-
-            match *b {
-                Boolean::Constant(b) => {
-                    if b {
-                        if let Some(v) = value.as_mut() {
-                            *v |= 1;
-                        }
-                    }
-                }
-                Boolean::Is(ref b) => match b.get_value() {
-                    Some(true) => {
-                        if let Some(v) = value.as_mut() {
-                            *v |= 1;
-                        }
-                    }
-                    Some(false) => {}
-                    None => value = None,
-                },
-                Boolean::Not(ref b) => match b.get_value() {
-                    Some(false) => {
-                        if let Some(v) = value.as_mut() {
-                            *v |= 1;
-                        }
-                    }
-                    Some(true) => {}
-                    None => value = None,
-                },
-            }
-        }
-
-        Self {
-            value,
-            negated: false,
-            bits,
         }
     }
 

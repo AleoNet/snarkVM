@@ -17,11 +17,7 @@
 use crate::traits::{
     algorithms::{CRHGadget, MaskedCRHGadget},
     curves::{CompressedGroupGadget, GroupGadget},
-    utilities::{
-        alloc::AllocGadget,
-        boolean::Boolean,
-        uint::unsigned_integer::{UInt, UInt8},
-    },
+    utilities::{alloc::AllocGadget, boolean::Boolean, integral::Integral, uint::unsigned_integer::UInt8},
 };
 use snarkvm_algorithms::crh::{PedersenCRH, PedersenCRHParameters, PedersenCompressedCRH, PedersenSize};
 use snarkvm_curves::traits::{Group, ProjectiveCurve};

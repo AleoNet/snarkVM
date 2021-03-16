@@ -69,6 +69,8 @@ macro_rules! to_bytes_int_impl {
         impl<F: Field> ToBytesGadget<F> for $name {
             #[inline]
             fn to_bytes<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+                use crate::utilities::integral::Integral;
+
                 const BYTES_SIZE: usize = if $size == 128 { 16 } else { 8 };
 
                 let value_chunks = match self.value.map(|val| {
@@ -109,6 +111,8 @@ macro_rules! cond_select_int_impl {
                 first: &Self,
                 second: &Self,
             ) -> Result<Self, SynthesisError> {
+                use crate::utilities::integral::Integral;
+
                 if let Boolean::Constant(cond) = *cond {
                     if cond {
                         Ok(first.clone())
@@ -199,8 +203,12 @@ macro_rules! uint_impl_common {
             pub value: Option<$_type>,
         }
 
-        impl $name {
-            pub fn constant(value: $_type) -> Self {
+        impl crate::utilities::integral::Integral for $name {
+            type IntegerType = $_type;
+
+            const SIZE: usize = $size;
+
+            fn constant(value: $_type) -> Self {
                 let mut bits = Vec::with_capacity($size);
 
                 let mut tmp = value;
@@ -222,30 +230,13 @@ macro_rules! uint_impl_common {
                     value: Some(value),
                 }
             }
-        }
 
-        alloc_int_impl!($name, $_type, $size);
-        cond_select_int_impl!($name, $_type, $size);
-        to_bytes_int_impl!($name, $_type, $size);
-        uint_impl_eq_gadget!($name, $_type, $size);
-    };
-}
+            fn one() -> Self {
+                Self::constant(1 as $_type)
+            }
 
-macro_rules! uint_impl {
-    ($name: ident, $_type: ty, $size: expr) => {
-        uint_impl_common!($name, $_type, $size);
-
-        impl UInt for $name {
-            type IntegerType = $_type;
-
-            const SIZE: usize = $size;
-
-            fn negate(&self) -> Self {
-                Self {
-                    bits: self.bits.clone(),
-                    negated: true,
-                    value: self.value,
-                }
+            fn zero() -> Self {
+                Self::constant(0 as $_type)
             }
 
             fn is_constant(&self) -> bool {
@@ -303,6 +294,27 @@ macro_rules! uint_impl {
                     value,
                     negated: false,
                     bits,
+                }
+            }
+        }
+
+        alloc_int_impl!($name, $_type, $size);
+        cond_select_int_impl!($name, $_type, $size);
+        to_bytes_int_impl!($name, $_type, $size);
+        uint_impl_eq_gadget!($name, $_type, $size);
+    };
+}
+
+macro_rules! uint_impl {
+    ($name: ident, $_type: ty, $size: expr) => {
+        uint_impl_common!($name, $_type, $size);
+
+        impl UInt for $name {
+            fn negate(&self) -> Self {
+                Self {
+                    bits: self.bits.clone(),
+                    negated: true,
+                    value: self.value,
                 }
             }
 

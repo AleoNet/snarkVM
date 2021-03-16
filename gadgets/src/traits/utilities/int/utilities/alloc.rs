@@ -21,6 +21,7 @@ use crate::{
         boolean::{AllocatedBit, Boolean},
         eq::EqGadget,
         int::*,
+        integral::Integral,
         ToBitsBEGadget,
     },
 };
@@ -33,7 +34,7 @@ macro_rules! alloc_int_fn_impl {
     ($gadget: ident, $fn_name: ident) => {
         fn $fn_name<
             Fn: FnOnce() -> Result<T, SynthesisError>,
-            T: Borrow<<$gadget as Int>::IntegerType>,
+            T: Borrow<<$gadget as Integral>::IntegerType>,
             CS: ConstraintSystem<F>,
         >(
             mut cs: CS,
@@ -42,16 +43,16 @@ macro_rules! alloc_int_fn_impl {
             let value = value_gen().map(|val| *val.borrow());
             let values = match value {
                 Ok(mut val) => {
-                    let mut v = Vec::with_capacity(<$gadget as Int>::SIZE);
+                    let mut v = Vec::with_capacity(<$gadget as Integral>::SIZE);
 
-                    for _ in 0..<$gadget as Int>::SIZE {
+                    for _ in 0..<$gadget as Integral>::SIZE {
                         v.push(Some(val & 1 == 1));
                         val >>= 1;
                     }
 
                     v
                 }
-                _ => vec![None; <$gadget as Int>::SIZE],
+                _ => vec![None; <$gadget as Integral>::SIZE],
             };
 
             let bits = values
@@ -75,7 +76,7 @@ macro_rules! alloc_int_fn_impl {
 
 macro_rules! alloc_int_impl {
     ($($gadget: ident)*) => ($(
-        impl<F: Field> AllocGadget<<$gadget as Int>::IntegerType, F> for $gadget {
+        impl<F: Field> AllocGadget<<$gadget as Integral>::IntegerType, F> for $gadget {
             alloc_int_fn_impl!($gadget, alloc);
             alloc_int_fn_impl!($gadget, alloc_input);
         }
@@ -93,7 +94,7 @@ macro_rules! alloc_input_fe {
             /// the little-endian byte representation of the unsigned integer to
             /// `F` elements, (thus reducing the number of input allocations),
             /// and then converts this list of `F` gadgets into the unsigned integer gadget
-            pub fn alloc_input_fe<F, CS>(mut cs: CS, value: <$gadget as Int>::IntegerType) -> Result<Self, SynthesisError>
+            pub fn alloc_input_fe<F, CS>(mut cs: CS, value: <$gadget as Integral>::IntegerType) -> Result<Self, SynthesisError>
             where
                 F: PrimeField,
                 CS: ConstraintSystem<F>,
@@ -120,11 +121,11 @@ macro_rules! alloc_input_fe {
                 }
 
                 // Assert that the extra bits are false
-                for (i, bit) in allocated_bits.iter().skip(<$gadget as Int>::SIZE).enumerate() {
-                    bit.enforce_equal(&mut cs.ns(|| format!("bit {} is false", i + <$gadget as Int>::SIZE)), &Boolean::constant(false))?;
+                for (i, bit) in allocated_bits.iter().skip(<$gadget as Integral>::SIZE).enumerate() {
+                    bit.enforce_equal(&mut cs.ns(|| format!("bit {} is false", i + <$gadget as Integral>::SIZE)), &Boolean::constant(false))?;
                 }
 
-                let bits = allocated_bits[0..<$gadget as Int>::SIZE].to_vec();
+                let bits = allocated_bits[0..<$gadget as Integral>::SIZE].to_vec();
 
                 Ok(Self {
                     bits,

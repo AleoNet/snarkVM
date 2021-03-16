@@ -17,10 +17,7 @@
 use crate::traits::{
     algorithms::CommitmentGadget,
     curves::{CompressedGroupGadget, GroupGadget},
-    utilities::{
-        alloc::AllocGadget,
-        uint::unsigned_integer::{UInt, UInt8},
-    },
+    utilities::{alloc::AllocGadget, integral::Integral, uint::unsigned_integer::UInt8},
 };
 use snarkvm_algorithms::{
     commitment::{PedersenCommitment, PedersenCommitmentParameters, PedersenCompressedCommitment},

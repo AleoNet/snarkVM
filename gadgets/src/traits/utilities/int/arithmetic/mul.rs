@@ -22,6 +22,7 @@ use crate::utilities::{
     bits::{RippleCarryAdder, SignExtend},
     boolean::{AllocatedBit, Boolean},
     int::*,
+    integral::Integral,
     select::CondSelectGadget,
 };
 use snarkvm_fields::{FpParameters, PrimeField};
@@ -61,7 +62,7 @@ macro_rules! mul_int_impl {
                 )?;
 
                 // Sign extend to double precision
-                let size = <$gadget as Int>::SIZE * 2;
+                let size = <$gadget as Integral>::SIZE * 2;
 
                 let a = Boolean::sign_extend(&self.bits, size);
                 let b = Boolean::sign_extend(&other.bits, size);
@@ -102,7 +103,7 @@ macro_rules! mul_int_impl {
                 drop(a_shifted);
 
                 // Compute the maximum value of the sum
-                let max_bits = <$gadget as Int>::SIZE;
+                let max_bits = <$gadget as Integral>::SIZE;
 
                 // Truncate the bits to the size of the integer
                 bits.truncate(max_bits);
@@ -163,7 +164,7 @@ macro_rules! mul_int_impl {
                 }
 
                 // The value of the actual result is modulo 2 ^ $size
-                let modular_value = result_value.map(|v| v as <$gadget as Int>::IntegerType);
+                let modular_value = result_value.map(|v| v as <$gadget as Integral>::IntegerType);
 
                 if all_constants && modular_value.is_some() {
                     // We can just return a constant, rather than
@@ -179,7 +180,7 @@ macro_rules! mul_int_impl {
                 let mut coeff = F::one();
                 for i in 0..max_bits {
                     // get bit value
-                    let mask = 1 << i as <$gadget as Int>::IntegerType;
+                    let mask = 1 << i as <$gadget as Integral>::IntegerType;
 
                     // Allocate the bit_gadget
                     let b = AllocatedBit::alloc(cs.ns(|| format!("result bit_gadget {}", i)), || {
@@ -199,7 +200,7 @@ macro_rules! mul_int_impl {
                 cs.enforce(|| "modular multiplication", |lc| lc, |lc| lc, |_| lc);
 
                 // Discard carry bits we don't care about
-                result_bits.truncate(<$gadget as Int>::SIZE);
+                result_bits.truncate(<$gadget as Integral>::SIZE);
 
                 Ok(Self {
                     bits: result_bits,
