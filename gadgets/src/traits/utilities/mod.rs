@@ -25,6 +25,7 @@ pub mod boolean;
 pub mod eq;
 pub mod int;
 pub mod integral;
+pub mod relational;
 pub mod select;
 pub mod uint;
 

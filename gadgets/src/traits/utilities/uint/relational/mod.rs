@@ -16,7 +16,3 @@
 
 pub mod cmp;
 pub use self::cmp::*;
-
-#[macro_use]
-pub mod eq;
-pub use self::eq::*;

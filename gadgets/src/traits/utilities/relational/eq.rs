@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{boolean::Boolean, eq::EvaluateEqGadget, int::*, integral::Integral};
+use crate::utilities::{boolean::Boolean, eq::EvaluateEqGadget, int::*, integral::Integral, uint::*};
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
@@ -54,4 +54,4 @@ macro_rules! eq_gadget_impl {
     )*)
 }
 
-eq_gadget_impl!(Int8 Int16 Int32 Int64 Int128);
+eq_gadget_impl!(Int8 Int16 Int32 Int64 Int128 UInt8 UInt16 UInt32 UInt64 UInt128);
