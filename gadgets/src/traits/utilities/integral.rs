@@ -29,6 +29,8 @@ pub trait Integral: Debug + Clone {
 
     fn zero() -> Self;
 
+    fn new(bits: Vec<Boolean>, value: Option<Self::IntegerType>) -> Self;
+
     /// Returns true if all bits in this `Int` are constant
     fn is_constant(&self) -> bool;
 

@@ -239,6 +239,14 @@ macro_rules! uint_impl_common {
                 Self::constant(0 as $_type)
             }
 
+            fn new(bits: Vec<Boolean>, value: Option<Self::IntegerType>) -> Self {
+                Self {
+                    bits,
+                    value,
+                    negated: false,
+                }
+            }
+
             fn is_constant(&self) -> bool {
                 let mut constant = true;
 

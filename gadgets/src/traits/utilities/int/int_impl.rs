@@ -62,6 +62,10 @@ macro_rules! int_impl {
                 Self::constant(0 as $type_)
             }
 
+            fn new(bits: Vec<Boolean>, value: Option<Self::IntegerType>) -> Self {
+                Self { bits, value }
+            }
+
             fn is_constant(&self) -> bool {
                 // If any bits of self are allocated bits, return false
                 self.bits.iter().all(|bit| matches!(bit, Boolean::Constant(_)))
