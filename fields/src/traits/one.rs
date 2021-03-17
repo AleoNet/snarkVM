@@ -14,20 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod field;
-pub use field::*;
-
-mod fp_parameters;
-pub use fp_parameters::*;
-
-mod one;
-pub use one::*;
-
-mod primefield;
-pub use primefield::*;
-
-mod to_constraint_field;
-pub use to_constraint_field::*;
-
-mod zero;
-pub use zero::*;
+pub trait One: Sized {
+    fn one() -> Self;
+    fn is_one(&self) -> bool;
+}
