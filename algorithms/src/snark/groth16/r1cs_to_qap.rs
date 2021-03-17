@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{generator::KeypairAssembly, prover::ProvingAssignment, Vec};
+use super::{generator::KeypairAssembly, prover::ProvingAssignment, InternedField, Vec};
 use crate::{cfg_iter, cfg_iter_mut, fft::EvaluationDomain};
 use snarkvm_curves::traits::PairingEngine;
 use snarkvm_fields::Zero;
@@ -24,20 +24,25 @@ use snarkvm_r1cs::{
     Index,
 };
 
+use indexmap::IndexSet;
+
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 fn evaluate_constraint<E: PairingEngine>(
-    terms: &[(E::Fr, Index)],
-    public_variables: &[E::Fr],
-    private_variables: &[E::Fr],
+    terms: &[(InternedField, Index)],
+    interned_fields: &IndexSet<E::Fr>,
+    public_variables: &[InternedField],
+    private_variables: &[InternedField],
 ) -> E::Fr {
     let mut acc = E::Fr::zero();
-    for &(coeff, index) in terms {
-        let val = match index {
+    for &(interned_coeff, index) in terms {
+        let interned_val = match index {
             Index::Public(i) => public_variables[i],
             Index::Private(i) => private_variables[i],
         };
+        let coeff = interned_fields.get_index(interned_coeff).unwrap();
+        let val = *interned_fields.get_index(interned_val).unwrap();
         acc += &(val * &coeff);
     }
     acc
@@ -57,6 +62,7 @@ impl R1CStoQAP {
             num_public_variables,
             num_private_variables,
             constraints,
+            interned_fields,
         } = assembly;
         let num_constraints = constraints.len();
 
@@ -82,28 +88,31 @@ impl R1CStoQAP {
         }
 
         for (cstr, x) in constraints.iter().zip(u.iter()) {
-            for &(ref coeff, index) in cstr.at.iter() {
+            for &(interned_coeff, index) in cstr.at.iter() {
                 let index = match index {
                     Index::Public(i) => i,
                     Index::Private(i) => num_public_variables + i,
                 };
 
+                let coeff = interned_fields.get_index(interned_coeff).unwrap();
                 a[index] += &(*x * coeff);
             }
-            for &(ref coeff, index) in cstr.bt.iter() {
+            for &(interned_coeff, index) in cstr.bt.iter() {
                 let index = match index {
                     Index::Public(i) => i,
                     Index::Private(i) => num_public_variables + i,
                 };
 
+                let coeff = interned_fields.get_index(interned_coeff).unwrap();
                 b[index] += &(*x * coeff);
             }
-            for &(ref coeff, index) in cstr.ct.iter() {
+            for &(interned_coeff, index) in cstr.ct.iter() {
                 let index = match index {
                     Index::Public(i) => i,
                     Index::Private(i) => num_public_variables + i,
                 };
 
+                let coeff = interned_fields.get_index(interned_coeff).unwrap();
                 c[index] += &(*x * coeff);
             }
         }
@@ -128,11 +137,28 @@ impl R1CStoQAP {
             .zip(cfg_iter_mut!(b[..num_constraints]))
             .zip(cfg_iter!(&prover.constraints))
             .for_each(|((a, b), cstr)| {
-                *a = evaluate_constraint::<E>(&cstr.at, &prover.public_variables, &prover.private_variables);
-                *b = evaluate_constraint::<E>(&cstr.bt, &prover.public_variables, &prover.private_variables);
+                *a = evaluate_constraint::<E>(
+                    &cstr.at,
+                    &prover.interned_fields,
+                    &prover.public_variables,
+                    &prover.private_variables,
+                );
+                *b = evaluate_constraint::<E>(
+                    &cstr.bt,
+                    &prover.interned_fields,
+                    &prover.public_variables,
+                    &prover.private_variables,
+                );
             });
 
-        a[num_constraints..][..num_inputs].clone_from_slice(&prover.public_variables);
+        a[num_constraints..][..num_inputs].clone_from_slice(
+            prover
+                .public_variables
+                .iter()
+                .map(|v| *prover.interned_fields.get_index(*v).unwrap())
+                .collect::<Vec<_>>()
+                .as_slice(),
+        );
 
         domain.ifft_in_place(&mut a);
         domain.ifft_in_place(&mut b);
@@ -149,7 +175,12 @@ impl R1CStoQAP {
         cfg_iter_mut!(c[..num_constraints])
             .zip(cfg_iter!(&prover.constraints))
             .for_each(|(c, cstr)| {
-                *c = evaluate_constraint::<E>(&cstr.ct, &prover.public_variables, &prover.private_variables);
+                *c = evaluate_constraint::<E>(
+                    &cstr.ct,
+                    &prover.interned_fields,
+                    &prover.public_variables,
+                    &prover.private_variables,
+                );
             });
 
         domain.ifft_in_place(&mut c);

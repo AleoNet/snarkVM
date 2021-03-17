@@ -22,6 +22,7 @@ use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
 use snarkvm_utilities::{rand::UniformRand, serialize::*};
 
+use indexmap::IndexSet;
 use rand::Rng;
 
 #[cfg(feature = "parallel")]
@@ -48,7 +49,8 @@ where
 pub struct KeypairAssembly<E: PairingEngine> {
     pub num_public_variables: usize,
     pub num_private_variables: usize,
-    pub constraints: Vec<ConstraintSet<E>>,
+    pub constraints: Vec<ConstraintSet>,
+    pub interned_fields: IndexSet<E::Fr>,
 }
 
 impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
@@ -97,9 +99,21 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
     {
         let mut constraint_set = ConstraintSet::default();
 
-        push_constraints(a(LinearCombination::zero()), &mut constraint_set.at);
-        push_constraints(b(LinearCombination::zero()), &mut constraint_set.bt);
-        push_constraints(c(LinearCombination::zero()), &mut constraint_set.ct);
+        push_constraints(
+            a(LinearCombination::zero()),
+            &mut constraint_set.at,
+            &mut self.interned_fields,
+        );
+        push_constraints(
+            b(LinearCombination::zero()),
+            &mut constraint_set.bt,
+            &mut self.interned_fields,
+        );
+        push_constraints(
+            c(LinearCombination::zero()),
+            &mut constraint_set.ct,
+            &mut self.interned_fields,
+        );
 
         self.constraints.push(constraint_set);
     }
@@ -152,6 +166,7 @@ where
         num_public_variables: 0,
         num_private_variables: 0,
         constraints: Default::default(),
+        interned_fields: Default::default(),
     };
 
     // Allocate the "one" input variable
