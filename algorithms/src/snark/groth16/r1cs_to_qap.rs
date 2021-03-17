@@ -50,10 +50,17 @@ impl R1CStoQAP {
     #[allow(clippy::many_single_char_names)]
     #[allow(clippy::type_complexity)]
     pub(crate) fn instance_map_with_evaluation<E: PairingEngine>(
-        assembly: &KeypairAssembly<E>,
+        assembly: KeypairAssembly<E>,
         t: &E::Fr,
     ) -> SynthesisResult<(Vec<E::Fr>, Vec<E::Fr>, Vec<E::Fr>, E::Fr, usize, usize)> {
-        let domain_size = assembly.num_constraints() + (assembly.num_public_variables - 1) + 1;
+        let KeypairAssembly {
+            num_public_variables,
+            num_private_variables,
+            constraints,
+        } = assembly;
+        let num_constraints = constraints.len();
+
+        let domain_size = num_constraints + (num_public_variables - 1) + 1;
         let domain = EvaluationDomain::<E::Fr>::new(domain_size).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let domain_size = domain.size();
 
@@ -64,21 +71,21 @@ impl R1CStoQAP {
         let u = domain.evaluate_all_lagrange_coefficients(*t);
         end_timer!(coefficients_time);
 
-        let qap_num_variables = (assembly.num_public_variables - 1) + assembly.num_private_variables;
+        let qap_num_variables = (num_public_variables - 1) + num_private_variables;
 
         let mut a = vec![E::Fr::zero(); qap_num_variables + 1];
         let mut b = vec![E::Fr::zero(); qap_num_variables + 1];
         let mut c = vec![E::Fr::zero(); qap_num_variables + 1];
 
-        for i in 0..assembly.num_public_variables {
-            a[i] = u[assembly.num_constraints() + i];
+        for i in 0..num_public_variables {
+            a[i] = u[num_constraints + i];
         }
 
-        for (cstr, x) in assembly.constraints.iter().zip(u.iter()) {
+        for (cstr, x) in constraints.iter().zip(u.iter()) {
             for &(ref coeff, index) in cstr.at.iter() {
                 let index = match index {
                     Index::Public(i) => i,
-                    Index::Private(i) => assembly.num_public_variables + i,
+                    Index::Private(i) => num_public_variables + i,
                 };
 
                 a[index] += &(*x * coeff);
@@ -86,7 +93,7 @@ impl R1CStoQAP {
             for &(ref coeff, index) in cstr.bt.iter() {
                 let index = match index {
                     Index::Public(i) => i,
-                    Index::Private(i) => assembly.num_public_variables + i,
+                    Index::Private(i) => num_public_variables + i,
                 };
 
                 b[index] += &(*x * coeff);
@@ -94,7 +101,7 @@ impl R1CStoQAP {
             for &(ref coeff, index) in cstr.ct.iter() {
                 let index = match index {
                     Index::Public(i) => i,
-                    Index::Private(i) => assembly.num_public_variables + i,
+                    Index::Private(i) => num_public_variables + i,
                 };
 
                 c[index] += &(*x * coeff);

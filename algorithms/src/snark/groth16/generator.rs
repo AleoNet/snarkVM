@@ -162,10 +162,12 @@ where
     circuit.generate_constraints(&mut assembly)?;
     end_timer!(synthesis_time);
 
+    let num_public_variables = assembly.num_public_variables;
+
     ///////////////////////////////////////////////////////////////////////////
     let domain_time = start_timer!(|| "Constructing evaluation domain");
 
-    let domain_size = assembly.num_constraints() + (assembly.num_public_variables - 1) + 1;
+    let domain_size = assembly.num_constraints() + (num_public_variables - 1) + 1;
     let domain = EvaluationDomain::<E::Fr>::new(domain_size).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
     let t = domain.sample_element_outside_domain(rng);
 
@@ -173,7 +175,7 @@ where
     ///////////////////////////////////////////////////////////////////////////
 
     let reduction_time = start_timer!(|| "R1CS to QAP Instance Map with Evaluation");
-    let (a, b, c, zt, qap_num_variables, m_raw) = R1CStoQAP::instance_map_with_evaluation::<E>(&assembly, &t)?;
+    let (a, b, c, zt, qap_num_variables, m_raw) = R1CStoQAP::instance_map_with_evaluation::<E>(assembly, &t)?;
     end_timer!(reduction_time);
 
     // Compute query densities
@@ -190,9 +192,9 @@ where
     let gamma_inverse = gamma.inverse().ok_or(SynthesisError::UnexpectedIdentity)?;
     let delta_inverse = delta.inverse().ok_or(SynthesisError::UnexpectedIdentity)?;
 
-    let gamma_abc = cfg_iter!(a[0..assembly.num_public_variables])
-        .zip(&b[0..assembly.num_public_variables])
-        .zip(&c[0..assembly.num_public_variables])
+    let gamma_abc = cfg_iter!(a[0..num_public_variables])
+        .zip(&b[0..num_public_variables])
+        .zip(&c[0..num_public_variables])
         .map(|((a, b), c)| (beta * a + &(alpha * b) + c) * &gamma_inverse)
         .collect::<Vec<_>>();
 
@@ -257,7 +259,7 @@ where
     // Compute the L-query
     let l_time = start_timer!(|| "Calculate L");
     let l_query = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, g1_window, &g1_table, &l);
-    let mut l_query = l_query[assembly.num_public_variables..].to_vec();
+    let mut l_query = l_query[num_public_variables..].to_vec();
     end_timer!(l_time);
 
     end_timer!(proving_key_time);
