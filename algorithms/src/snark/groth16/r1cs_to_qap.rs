@@ -27,12 +27,16 @@ use snarkvm_r1cs::{
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-fn evaluate_constraint<E: PairingEngine>(terms: &[(E::Fr, Index)], assignment: &[E::Fr], num_input: usize) -> E::Fr {
+fn evaluate_constraint<E: PairingEngine>(
+    terms: &[(E::Fr, Index)],
+    public_variables: &[E::Fr],
+    private_variables: &[E::Fr],
+) -> E::Fr {
     let mut acc = E::Fr::zero();
     for &(coeff, index) in terms {
         let val = match index {
-            Index::Public(i) => assignment[i],
-            Index::Private(i) => assignment[num_input + i],
+            Index::Public(i) => public_variables[i],
+            Index::Private(i) => private_variables[i],
         };
         acc += &(val * &coeff);
     }
@@ -106,8 +110,6 @@ impl R1CStoQAP {
         let num_inputs = prover.public_variables.len();
         let num_constraints = prover.num_constraints();
 
-        let full_input_assignment = [&prover.public_variables[..], &prover.private_variables[..]].concat();
-
         let domain = EvaluationDomain::<E::Fr>::new(num_constraints + num_inputs)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let domain_size = domain.size();
@@ -119,11 +121,11 @@ impl R1CStoQAP {
             .zip(cfg_iter_mut!(b[..num_constraints]))
             .zip(cfg_iter!(&prover.constraints))
             .for_each(|((a, b), cstr)| {
-                *a = evaluate_constraint::<E>(&cstr.at, &full_input_assignment, num_inputs);
-                *b = evaluate_constraint::<E>(&cstr.bt, &full_input_assignment, num_inputs);
+                *a = evaluate_constraint::<E>(&cstr.at, &prover.public_variables, &prover.private_variables);
+                *b = evaluate_constraint::<E>(&cstr.bt, &prover.public_variables, &prover.private_variables);
             });
 
-        a[num_constraints..(num_inputs + num_constraints)].clone_from_slice(&full_input_assignment[..num_inputs]);
+        a[num_constraints..][..num_inputs].clone_from_slice(&prover.public_variables);
 
         domain.ifft_in_place(&mut a);
         domain.ifft_in_place(&mut b);
@@ -140,7 +142,7 @@ impl R1CStoQAP {
         cfg_iter_mut!(c[..num_constraints])
             .zip(cfg_iter!(&prover.constraints))
             .for_each(|(c, cstr)| {
-                *c = evaluate_constraint::<E>(&cstr.ct, &full_input_assignment, num_inputs);
+                *c = evaluate_constraint::<E>(&cstr.ct, &prover.public_variables, &prover.private_variables);
             });
 
         domain.ifft_in_place(&mut c);
