@@ -24,7 +24,7 @@ use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
 };
-use snarkvm_fields::traits::to_field_vec::ToConstraintField;
+use snarkvm_fields::ToConstraintField;
 use snarkvm_objects::AleoAmount;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 

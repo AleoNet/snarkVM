@@ -19,7 +19,7 @@ use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
 };
-use snarkvm_fields::traits::to_field_vec::ToConstraintField;
+use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::traits::{
     algorithms::{CRHGadget, CommitmentGadget, SNARKVerifierGadget},
     utilities::{

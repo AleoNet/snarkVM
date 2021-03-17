@@ -19,7 +19,7 @@ use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH},
 };
-use snarkvm_fields::{errors::ConstraintFieldError, traits::to_field_vec::ToConstraintField};
+use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
 #[derive(Derivative)]

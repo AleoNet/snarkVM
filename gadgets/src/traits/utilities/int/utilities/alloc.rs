@@ -24,7 +24,7 @@ use crate::{
         ToBitsBEGadget,
     },
 };
-use snarkvm_fields::{traits::to_field_vec::ToConstraintField, Field, FpParameters, PrimeField};
+use snarkvm_fields::{Field, FpParameters, PrimeField, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use core::borrow::Borrow;

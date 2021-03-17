@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::errors::ConstraintFieldError;
-use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_fields::ConstraintFieldError;
+use snarkvm_r1cs::SynthesisError;
 
 #[derive(Debug, Error)]
 pub enum SNARKError {

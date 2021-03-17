@@ -21,7 +21,7 @@ use crate::{
     },
     traits::{ProjectiveCurve, SWModelParameters, TEModelParameters},
 };
-use snarkvm_fields::{errors::ConstraintFieldError, Field, ToConstraintField};
+use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 
 impl<M: TEModelParameters, F: Field> ToConstraintField<F> for TEAffine<M>
 where

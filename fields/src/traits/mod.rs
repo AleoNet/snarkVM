@@ -14,5 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod to_field_vec;
-pub use to_field_vec::*;
+mod field;
+pub use field::*;
+
+mod fp_parameters;
+pub use fp_parameters::*;
+
+mod primefield;
+pub use primefield::*;
+
+mod to_constraint_field;
+pub use to_constraint_field::*;

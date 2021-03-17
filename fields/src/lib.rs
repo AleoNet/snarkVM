@@ -14,6 +14,54 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#[macro_use]
+extern crate derivative;
+
+#[macro_use]
+extern crate thiserror;
+
+#[macro_use]
+mod macros;
+
+mod errors;
+pub use errors::*;
+
+mod fp_256;
+pub use fp_256::*;
+
+mod fp_320;
+pub use fp_320::*;
+
+mod fp_384;
+pub use fp_384::*;
+
+mod fp_768;
+pub use fp_768::*;
+
+mod fp_832;
+pub use fp_832::*;
+
+mod fp2;
+pub use fp2::*;
+
+mod fp3;
+pub use fp3::*;
+
+pub mod fp6_2over3;
+
+pub mod fp6_3over2;
+
+mod fp12_2over3over2;
+pub use fp12_2over3over2::*;
+
+pub mod tests_field;
+
+mod to_field_vec;
+pub use to_field_vec::*;
+
+mod traits;
+pub use traits::*;
+
 use snarkvm_utilities::{
     biginteger::*,
     bytes::{FromBytes, ToBytes},
@@ -25,67 +73,7 @@ use snarkvm_utilities::{
         ConstantSerializedSize,
     },
 };
-
 use std::fmt::Debug;
-
-#[macro_use]
-extern crate derivative;
-
-#[macro_use]
-extern crate thiserror;
-
-#[macro_use]
-mod macros;
-
-pub mod errors;
-pub use errors::*;
-
-pub mod field;
-pub use field::*;
-
-pub mod fp_256;
-pub use fp_256::*;
-
-pub mod fp_320;
-pub use fp_320::*;
-
-pub mod fp_384;
-pub use fp_384::*;
-
-pub mod fp_768;
-pub use fp_768::*;
-
-pub mod fp_832;
-pub use fp_832::*;
-
-pub mod fp2;
-pub use fp2::*;
-
-pub mod fp3;
-pub use fp3::*;
-
-pub mod fp6_2over3;
-pub use fp6_2over3::*;
-
-pub mod fp6_3over2;
-pub use fp6_3over2::*;
-
-pub mod fp12_2over3over2;
-pub use fp12_2over3over2::*;
-
-pub mod fp_parameters;
-pub use fp_parameters::*;
-
-pub mod primefield;
-pub use primefield::*;
-
-pub mod tests_field;
-
-pub mod to_field_vec;
-pub use to_field_vec::*;
-
-pub mod traits;
-pub use traits::*;
 
 #[macro_export]
 macro_rules! field {

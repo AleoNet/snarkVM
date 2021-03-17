@@ -14,11 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::bw6_761::Fq;
+use serde::{Deserialize, Serialize};
+
 use snarkvm_fields::{field, Fp3, Fp3Parameters};
 use snarkvm_utilities::biginteger::BigInteger768 as BigInteger;
 
-use serde::{Deserialize, Serialize};
+use crate::bw6_761::Fq;
 
 pub type Fq3 = Fp3<Fq3Parameters>;
 
