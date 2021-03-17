@@ -48,7 +48,7 @@ mod tests {
     use snarkvm_algorithms::{fft::DensePolynomial, traits::SNARK};
     use snarkvm_curves::{
         bls12_377::{Bls12_377, Fq, Fr},
-        traits::{CurveCycle, PairingEngine, PairingFriendlyCycle},
+        traits::PairingEngine,
     };
     use snarkvm_fields::Field;
     use snarkvm_gadgets::{
@@ -87,7 +87,7 @@ mod tests {
     type MarlinNativeInst = MarlinSNARK<Fr, Fq, MultiPC, FS, MarlinRecursiveConfig, Circuit<Fr>>;
     type MarlinNativeInstCore = MarlinCore<Fr, MultiPC, MarlinRecursiveConfig, Blake2s>;
 
-    type MultiPCVar = MarlinKZG10Gadget<Bls12_377, Bls12_377, Bls12PairingGadget>;
+    type MultiPCVar = MarlinKZG10Gadget<Bls12_377, BW6_761, Bls12PairingGadget>;
 
     #[derive(Copy, Clone)]
     struct Circuit<F: Field> {
@@ -97,8 +97,8 @@ mod tests {
         num_variables: usize,
     }
 
-    impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<ConstraintF> {
-        fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
+    impl<F: Field> ConstraintSynthesizer<F> for Circuit<F> {
+        fn generate_constraints<CS: ConstraintSystem<F>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
             let a = cs.alloc(|| "alloc_a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
             let b = cs.alloc(|| "alloc_b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
             let c = cs.alloc_input(
@@ -171,8 +171,8 @@ mod tests {
         // cs.set_optimization_goal(OptimizationGoal::Weight);
 
         // BEGIN: ivk to ivk_gadget
-        // let ivk_gadget: CircuitVerifyingKeyVar<Fr, Fq, MultiPC, MultiPCVar> =
-        //     CircuitVerifyingKeyVar::alloc(cs.ns(|| "alloc#index vk"), || Ok(index_vk)).unwrap();
+        let ivk_gadget: CircuitVerifyingKeyVar<Fr, Fq, MultiPC, MultiPCVar> =
+            CircuitVerifyingKeyVar::alloc(cs.ns(|| "alloc#index vk"), || Ok(index_vk)).unwrap();
         // END: ivk to ivk_gadget
 
         // BEGIN: public input to public_input_gadget
@@ -196,18 +196,18 @@ mod tests {
             ..
         } = proof;
 
-        // let commitment_gadgets: Vec<Vec<CommitmentVar<Bls12_377, Bls12_377, Bls12PairingGadget>>> = commitments
-        //     .iter()
-        //     .enumerate()
-        //     .map(|(i, lst)| {
-        //         lst.iter()
-        //             .enumerate()
-        //             .map(|(j, comm)| {
-        //                 CommitmentVar::alloc(cs.ns(|| format!("alloc#commitment_{}_{}", i, j)), || Ok(comm)).unwrap()
-        //             })
-        //             .collect()
-        //     })
-        //     .collect();
+        let commitment_gadgets: Vec<Vec<CommitmentVar<Bls12_377, BW6_761, Bls12PairingGadget>>> = commitments
+            .iter()
+            .enumerate()
+            .map(|(i, lst)| {
+                lst.iter()
+                    .enumerate()
+                    .map(|(j, comm)| {
+                        CommitmentVar::alloc(cs.ns(|| format!("alloc#commitment_{}_{}", i, j)), || Ok(comm)).unwrap()
+                    })
+                    .collect()
+            })
+            .collect();
 
         let evaluation_gadgets_vec: Vec<NonNativeFieldVar<Fr, Fq>> = evaluations
             .iter()
@@ -237,11 +237,9 @@ mod tests {
             })
             .collect();
 
-        // let pc_batch_proof =
-        //     BatchLCProofVar::<Bls12_377, Bls12_377, Bls12PairingGadget>::alloc(cs.ns(|| "alloc#proof"), || {
-        //         Ok(pc_proof)
-        //     })
-        //     .unwrap();
+        let pc_batch_proof =
+            BatchLCProofVar::<Bls12_377, BW6_761, Bls12PairingGadget>::alloc(cs.ns(|| "alloc#proof"), || Ok(pc_proof))
+                .unwrap();
 
         let mut evaluation_gadgets = HashMap::<String, NonNativeFieldVar<Fr, Fq>>::new();
 
@@ -262,12 +260,12 @@ mod tests {
             evaluation_gadgets.insert(s.to_string(), (*eval).clone());
         }
 
-        // let proof_gadget: ProofVar<Fr, Fq, MultiPC, MultiPCVar> = ProofVar {
-        //     commitments: commitment_gadgets,
-        //     evaluations: evaluation_gadgets,
-        //     prover_messages: prover_message_gadgets,
-        //     pc_batch_proof,
-        // };
+        let proof_gadget: ProofVar<Fr, Fq, MultiPC, MultiPCVar> = ProofVar {
+            commitments: commitment_gadgets,
+            evaluations: evaluation_gadgets,
+            prover_messages: prover_message_gadgets,
+            pc_batch_proof,
+        };
         // END: proof to proof_gadget
 
         // MarlinVerificationGadget::<Fr, Fq, MultiPC, MultiPCVar>::verify::<
