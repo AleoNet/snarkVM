@@ -168,6 +168,8 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, MC: MarlinConfig, D: Digest> Ma
     ) -> Result<(CircuitProvingKey<F, PC>, CircuitVerifyingKey<F, PC>), MarlinError<PC::Error>> {
         let index_time = start_timer!(|| "Marlin::CircuitSetup");
 
+        let for_recursion = MC::FOR_RECURSION;
+
         // TODO: Add check that c is in the correct mode.
         let index = AHPForR1CS::index(circuit)?;
         if universal_srs.max_degree() < index.max_degree() {
@@ -188,9 +190,33 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, MC: MarlinConfig, D: Digest> Ma
         )
         .map_err(MarlinError::from_pc_err)?;
 
+        let mut vanishing_polys = vec![];
+        if for_recursion {
+            let domain_h = EvaluationDomain::new(index.index_info.num_constraints)
+                .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+            let domain_k =
+                EvaluationDomain::new(index.index_info.num_non_zero).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+
+            vanishing_polys = vec![
+                LabeledPolynomial::new(
+                    "vanishing_poly_h".to_string(),
+                    domain_h.vanishing_polynomial().into(),
+                    None,
+                    None,
+                ),
+                LabeledPolynomial::new(
+                    "vanishing_poly_k".to_string(),
+                    domain_k.vanishing_polynomial().into(),
+                    None,
+                    None,
+                ),
+            ];
+        }
+
         let commit_time = start_timer!(|| "Commit to index polynomials");
         let (circuit_commitments, circuit_commitment_randomness): (_, _) =
-            PC::commit(&committer_key, index.iter(), None).map_err(MarlinError::from_pc_err)?;
+            PC::commit(&committer_key, index.iter().chain(vanishing_polys.iter()), None)
+                .map_err(MarlinError::from_pc_err)?;
         end_timer!(commit_time);
 
         let circuit_commitments = circuit_commitments
@@ -237,6 +263,8 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, MC: MarlinConfig, D: Digest> Ma
 
         // --------------------------------------------------------------------
         // First round
+
+        // TODO (raychu86): Add `hiding` flag and `for_recursion` logic.
 
         let (prover_first_message, prover_first_oracles, prover_state) =
             AHPForR1CS::prover_first_round(prover_init_state, zk_rng)?;
