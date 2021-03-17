@@ -54,7 +54,7 @@ use snarkvm_gadgets::{
 use snarkvm_nonnative::{NonNativeFieldMulResultVar, NonNativeFieldVar};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-use core::{borrow::Borrow, convert::TryInto, ops::MulAssign};
+use core::{borrow::Borrow, convert::TryInto};
 use snarkvm_curves::AffineCurve;
 use std::marker::PhantomData;
 
@@ -65,8 +65,6 @@ pub struct VerifierKeyVar<
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
 > where
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -85,8 +83,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -174,8 +170,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -195,8 +189,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -349,8 +341,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -389,8 +379,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     PG::G1Gadget: ToConstraintFieldGadget<<BaseCurve as PairingEngine>::Fr>,
     PG::G2Gadget: ToConstraintFieldGadget<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
@@ -429,8 +417,6 @@ pub struct PreparedVerifierKeyVar<
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
 > where
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -454,8 +440,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -515,8 +499,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -564,8 +546,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -587,8 +567,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -799,8 +777,6 @@ pub struct CommitmentVar<
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
 > where
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -814,8 +790,6 @@ where
     BaseCurve: PairingEngine,
 
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -834,8 +808,6 @@ where
     BaseCurve: PairingEngine,
 
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -937,8 +909,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     PG::G1Gadget: ToConstraintFieldGadget<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
@@ -965,8 +935,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -999,8 +967,6 @@ pub struct PreparedCommitmentVar<
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
 > where
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -1013,8 +979,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -1033,8 +997,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -1064,8 +1026,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -1208,8 +1168,6 @@ pub struct LabeledCommitmentVar<
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
 > where
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -1226,8 +1184,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -1247,8 +1203,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -1364,8 +1318,6 @@ pub struct PreparedLabeledCommitmentVar<
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
 > where
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -1382,8 +1334,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -1403,8 +1353,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -1427,8 +1375,6 @@ pub struct ProofVar<
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
 > where
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -1443,8 +1389,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -1462,8 +1406,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -1546,8 +1488,6 @@ pub struct BatchLCProofVar<
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
 > where
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -1562,8 +1502,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -1584,8 +1522,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -1698,8 +1634,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -1713,8 +1647,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -1732,8 +1664,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
@@ -2126,8 +2056,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
-    <TargetCurve as PairingEngine>::G2Projective: MulAssign<<BaseCurve as PairingEngine>::Fq>,
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
