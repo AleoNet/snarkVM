@@ -16,7 +16,7 @@
 
 use crate::{overhead, params::get_params, AllocatedNonNativeFieldVar};
 
-use snarkvm_fields::{FpParameters, PrimeField};
+use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_gadgets::{
     fields::FpGadget,
     traits::{
@@ -102,7 +102,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
         let limb_value = limb.get_value().unwrap_or_default();
 
         for b in BitIteratorBE::new(limb_value.into_repr()).skip(
-            <<BaseField as PrimeField>::Parameters as FpParameters>::REPR_SHAVE_BITS as usize
+            <<BaseField as PrimeField>::Parameters as FieldParameters>::REPR_SHAVE_BITS as usize
                 + (BaseField::size_in_bits() - num_bits),
         ) {
             bits_considered.push(b);

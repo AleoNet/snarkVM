@@ -17,7 +17,7 @@
 use snarkvm_utilities::biginteger::*;
 
 /// A trait that defines parameters for a prime field.
-pub trait FpParameters: 'static + Send + Sync + Sized {
+pub trait FieldParameters: 'static + Send + Sync + Sized {
     type BigInteger: BigInteger;
 
     /// The modulus of the field.

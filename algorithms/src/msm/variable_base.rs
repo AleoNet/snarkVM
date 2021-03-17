@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_curves::traits::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::{FpParameters, One, PrimeField, Zero};
+use snarkvm_fields::{FieldParameters, One, PrimeField, Zero};
 use snarkvm_utilities::biginteger::BigInteger;
 
 #[cfg(feature = "parallel")]

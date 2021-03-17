@@ -17,8 +17,8 @@
 mod field;
 pub use field::*;
 
-mod fp_parameters;
-pub use fp_parameters::*;
+mod field_parameters;
+pub use field_parameters::*;
 
 mod one;
 pub use one::*;
