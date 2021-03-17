@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, VerifyingKey};
+use super::{push_constraints, r1cs_to_qap::R1CStoQAP, ConstraintSet, Parameters, VerifyingKey};
 use crate::{cfg_into_iter, cfg_iter, fft::EvaluationDomain, msm::FixedBaseMSM};
 use snarkvm_curves::traits::{Group, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
-use snarkvm_utilities::{errors::SerializationError, rand::UniformRand, serialize::*};
+use snarkvm_utilities::{rand::UniformRand, serialize::*};
 
 use rand::Rng;
 
@@ -45,13 +45,10 @@ where
 
 /// This is our assembly structure that we'll use to synthesize the
 /// circuit into a QAP.
-#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct KeypairAssembly<E: PairingEngine> {
     pub num_public_variables: usize,
     pub num_private_variables: usize,
-    pub at: Vec<Vec<(E::Fr, Index)>>,
-    pub bt: Vec<Vec<(E::Fr, Index)>>,
-    pub ct: Vec<Vec<(E::Fr, Index)>>,
+    pub constraints: Vec<ConstraintSet<E>>,
 }
 
 impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
@@ -98,9 +95,13 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         LB: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
         LC: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
     {
-        push_constraints(a(LinearCombination::zero()), &mut self.at);
-        push_constraints(b(LinearCombination::zero()), &mut self.bt);
-        push_constraints(c(LinearCombination::zero()), &mut self.ct);
+        let mut constraint_set = ConstraintSet::default();
+
+        push_constraints(a(LinearCombination::zero()), &mut constraint_set.at);
+        push_constraints(b(LinearCombination::zero()), &mut constraint_set.bt);
+        push_constraints(c(LinearCombination::zero()), &mut constraint_set.ct);
+
+        self.constraints.push(constraint_set);
     }
 
     fn push_namespace<NR, N>(&mut self, _: N)
@@ -120,7 +121,7 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
     }
 
     fn num_constraints(&self) -> usize {
-        self.at.len()
+        self.constraints.len()
     }
 
     fn num_public_variables(&self) -> usize {
@@ -150,9 +151,7 @@ where
     let mut assembly = KeypairAssembly {
         num_public_variables: 0,
         num_private_variables: 0,
-        at: vec![],
-        bt: vec![],
-        ct: vec![],
+        constraints: Default::default(),
     };
 
     // Allocate the "one" input variable

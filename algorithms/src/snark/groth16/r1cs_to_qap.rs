@@ -70,8 +70,8 @@ impl R1CStoQAP {
             a[i] = u[assembly.num_constraints() + i];
         }
 
-        for (i, x) in u.iter().enumerate().take(assembly.num_constraints()) {
-            for &(ref coeff, index) in assembly.at[i].iter() {
+        for (cstr, x) in assembly.constraints.iter().zip(u.iter()) {
+            for &(ref coeff, index) in cstr.at.iter() {
                 let index = match index {
                     Index::Public(i) => i,
                     Index::Private(i) => assembly.num_public_variables + i,
@@ -79,21 +79,21 @@ impl R1CStoQAP {
 
                 a[index] += &(*x * coeff);
             }
-            for &(ref coeff, index) in assembly.bt[i].iter() {
+            for &(ref coeff, index) in cstr.bt.iter() {
                 let index = match index {
                     Index::Public(i) => i,
                     Index::Private(i) => assembly.num_public_variables + i,
                 };
 
-                b[index] += &(u[i] * coeff);
+                b[index] += &(*x * coeff);
             }
-            for &(ref coeff, index) in assembly.ct[i].iter() {
+            for &(ref coeff, index) in cstr.ct.iter() {
                 let index = match index {
                     Index::Public(i) => i,
                     Index::Private(i) => assembly.num_public_variables + i,
                 };
 
-                c[index] += &(u[i] * coeff);
+                c[index] += &(*x * coeff);
             }
         }
 
@@ -117,11 +117,10 @@ impl R1CStoQAP {
 
         cfg_iter_mut!(a[..num_constraints])
             .zip(cfg_iter_mut!(b[..num_constraints]))
-            .zip(cfg_iter!(&prover.at))
-            .zip(cfg_iter!(&prover.bt))
-            .for_each(|(((a, b), at_i), bt_i)| {
-                *a = evaluate_constraint::<E>(&at_i, &full_input_assignment, num_inputs);
-                *b = evaluate_constraint::<E>(&bt_i, &full_input_assignment, num_inputs);
+            .zip(cfg_iter!(&prover.constraints))
+            .for_each(|((a, b), cstr)| {
+                *a = evaluate_constraint::<E>(&cstr.at, &full_input_assignment, num_inputs);
+                *b = evaluate_constraint::<E>(&cstr.bt, &full_input_assignment, num_inputs);
             });
 
         a[num_constraints..(num_inputs + num_constraints)].clone_from_slice(&full_input_assignment[..num_inputs]);
@@ -137,10 +136,11 @@ impl R1CStoQAP {
         drop(b);
 
         let mut c = vec![zero; domain_size];
-        cfg_iter_mut!(c[..prover.num_constraints()])
-            .enumerate()
-            .for_each(|(i, c)| {
-                *c = evaluate_constraint::<E>(&prover.ct[i], &full_input_assignment, num_inputs);
+
+        cfg_iter_mut!(c[..num_constraints])
+            .zip(cfg_iter!(&prover.constraints))
+            .for_each(|(c, cstr)| {
+                *c = evaluate_constraint::<E>(&cstr.ct, &full_input_assignment, num_inputs);
             });
 
         domain.ifft_in_place(&mut c);

@@ -424,15 +424,30 @@ impl<E: PairingEngine> From<VerifyingKey<E>> for PreparedVerifyingKey<E> {
     }
 }
 
-fn push_constraints<F: Field>(l: LinearCombination<F>, constraints: &mut Vec<Vec<(F, Index)>>) {
+pub struct ConstraintSet<E: PairingEngine> {
+    pub at: Vec<(E::Fr, Index)>,
+    pub bt: Vec<(E::Fr, Index)>,
+    pub ct: Vec<(E::Fr, Index)>,
+}
+
+impl<E: PairingEngine> Default for ConstraintSet<E> {
+    fn default() -> Self {
+        ConstraintSet {
+            at: Default::default(),
+            bt: Default::default(),
+            ct: Default::default(),
+        }
+    }
+}
+
+fn push_constraints<F: Field>(l: LinearCombination<F>, constraint: &mut Vec<(F, Index)>) {
     let vars_and_coeffs = l.as_ref();
-    let mut vec = Vec::with_capacity(vars_and_coeffs.len());
+    constraint.reserve(vars_and_coeffs.len());
 
     for (var, coeff) in vars_and_coeffs {
         match var.get_unchecked() {
-            Index::Public(i) => vec.push((*coeff, Index::Public(i))),
-            Index::Private(i) => vec.push((*coeff, Index::Private(i))),
+            Index::Public(i) => constraint.push((*coeff, Index::Public(i))),
+            Index::Private(i) => constraint.push((*coeff, Index::Private(i))),
         }
     }
-    constraints.push(vec);
 }
