@@ -14,9 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ahp::indexer::*, Vec};
+use crate::{
+    ahp::indexer::*,
+    fiat_shamir::FiatShamirRng,
+    marlin::{CircuitProvingKey, PreparedCircuitVerifyingKey},
+    Vec,
+};
+
 use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::PolynomialCommitment;
+use snarkvm_r1cs::ToConstraintField;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     error,
@@ -24,7 +31,6 @@ use snarkvm_utilities::{
     serialize::*,
 };
 
-use crate::marlin::{CircuitProvingKey, PreparedCircuitVerifyingKey};
 use derivative::Derivative;
 use std::io::{
     Read,
@@ -76,4 +82,17 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> From<PreparedCircuitVerifyingKe
     fn from(other: PreparedCircuitVerifyingKey<F, PC>) -> Self {
         other.orig_vk
     }
+}
+
+fn compute_vk_hash<F, FSF, PC, FS>(vk: &CircuitVerifyingKey<F, PC>) -> Vec<FSF>
+where
+    F: PrimeField,
+    FSF: PrimeField,
+    PC: PolynomialCommitment<F>,
+    FS: FiatShamirRng<F, FSF>,
+    PC::Commitment: ToConstraintField<FSF>,
+{
+    let mut vk_hash_rng = FS::new();
+    vk_hash_rng.absorb_native_field_elements(&vk.circuit_commitments);
+    vk_hash_rng.squeeze_native_field_elements(1)
 }

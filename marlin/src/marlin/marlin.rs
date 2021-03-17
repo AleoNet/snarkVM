@@ -252,6 +252,8 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, MC: MarlinConfig, D: Digest> Ma
 
         let prover_init_state = AHPForR1CS::prover_init(&circuit_proving_key.circuit, circuit)?;
         let public_input = prover_init_state.public_input();
+
+        // TODO (raychu86): Update the Rng to FS::new();
         let mut fs_rng = FiatShamirRng::<D>::from_seed(
             &to_bytes![
                 &Self::PROTOCOL_NAME,
@@ -261,10 +263,10 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, MC: MarlinConfig, D: Digest> Ma
             .unwrap(),
         );
 
+        // TODO (raychu86): Add `hiding` flag and `for_recursion` logic.
+
         // --------------------------------------------------------------------
         // First round
-
-        // TODO (raychu86): Add `hiding` flag and `for_recursion` logic.
 
         let (prover_first_message, prover_first_oracles, prover_state) =
             AHPForR1CS::prover_first_round(prover_init_state, zk_rng)?;
