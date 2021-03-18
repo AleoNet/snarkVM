@@ -207,7 +207,7 @@ macro_rules! mul_int_impl {
                 })
             }
 
-            fn wrapping_mul<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, Self::ErrorType> {
+            fn mul_unsafe<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, Self::ErrorType> {
                 // the pseudocode is the same as with Mul::mul, just without the early return on overflow
 
                 // Conditionally select constant result

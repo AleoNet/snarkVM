@@ -60,7 +60,7 @@ macro_rules! pow_int_impl {
                     result = result.mul(cs.ns(|| format!("square_{}", i)), &result)?;
 
                     let mul_by_self = result
-                        .wrapping_mul(cs.ns(|| format!("multiply_by_self_{}", i)), &self);
+                        .mul_unsafe(cs.ns(|| format!("multiply_by_self_{}", i)), &self);
 
                     result = Self::conditionally_select(
                         &mut cs.ns(|| format!("mul_by_self_or_result_{}", i)),
