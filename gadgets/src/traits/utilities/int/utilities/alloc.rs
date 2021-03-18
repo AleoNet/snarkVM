@@ -18,7 +18,7 @@ use crate::{
     fields::FpGadget,
     utilities::{alloc::AllocGadget, boolean::Boolean, eq::EqGadget, int::*, integral::Integral, ToBitsBEGadget},
 };
-use snarkvm_fields::{traits::to_field_vec::ToConstraintField, FpParameters, PrimeField};
+use snarkvm_fields::{ToConstraintField, FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 /// Alloc the unsigned integer through field elements rather purely bits

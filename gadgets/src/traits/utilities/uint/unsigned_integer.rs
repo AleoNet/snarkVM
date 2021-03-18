@@ -14,6 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use core::borrow::Borrow;
+use std::{cmp::Ordering, fmt::Debug};
+
+use snarkvm_fields::{Field, FieldParameters, PrimeField, ToConstraintField};
+use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearCombination};
+use snarkvm_utilities::bytes::ToBytes;
+
 use crate::{
     fields::FpGadget,
     utilities::{
@@ -28,7 +35,6 @@ use crate::{
 };
 use snarkvm_fields::{fp_parameters::FpParameters, traits::to_field_vec::ToConstraintField, Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearCombination};
-
 use snarkvm_utilities::bytes::ToBytes;
 
 use std::fmt::Debug;

@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_fields::{field, Field, FieldParameters, One};
+use snarkvm_utilities::{biginteger::BigInteger832, bititerator::BitIteratorBE};
+
 use crate::{
     sw6::{
         fq::{Fq, FqParameters},
@@ -25,8 +28,6 @@ use crate::{
     },
     traits::{PairingCurve, PairingEngine, SWModelParameters},
 };
-use snarkvm_fields::{field, Field, FpParameters, One};
-use snarkvm_utilities::{biginteger::BigInteger832, bititerator::BitIteratorBE};
 
 pub type GT = Fq6;
 

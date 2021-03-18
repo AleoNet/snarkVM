@@ -124,7 +124,7 @@ mod test {
         bls12_377::{Bls12_377, Fr},
         edwards_bls12::{EdwardsProjective as Edwards, Fq},
     };
-    use snarkvm_fields::traits::to_field_vec::ToConstraintField;
+    use snarkvm_fields::ToConstraintField;
     use snarkvm_gadgets::{algorithms::crh::PedersenCompressedCRHGadget, curves::edwards_bls12::EdwardsBlsGadget};
     use snarkvm_utilities::bytes::ToBytes;
 

@@ -27,7 +27,7 @@ use crate::traits::{
 };
 use snarkvm_algorithms::snark::groth16::{Groth16, Proof, VerifyingKey};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
-use snarkvm_fields::{traits::to_field_vec::ToConstraintField, Field};
+use snarkvm_fields::{Field, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_utilities::bytes::FromBytes;
 

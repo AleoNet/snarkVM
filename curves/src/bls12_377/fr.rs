@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::{Fp256, Fp256Parameters, FpParameters};
+use snarkvm_fields::{FieldParameters, Fp256, Fp256Parameters};
 use snarkvm_utilities::biginteger::BigInteger256 as BigInteger;
 
 pub type Fr = Fp256<FrParameters>;
@@ -23,7 +23,7 @@ pub struct FrParameters;
 
 impl Fp256Parameters for FrParameters {}
 
-impl FpParameters for FrParameters {
+impl FieldParameters for FrParameters {
     type BigInteger = BigInteger;
 
     const CAPACITY: u32 = Self::MODULUS_BITS - 1;

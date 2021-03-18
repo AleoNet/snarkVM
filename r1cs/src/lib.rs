@@ -44,7 +44,7 @@ pub use test_constraint_system::TestConstraintSystem;
 mod test_fr;
 pub use test_fr::*;
 
-pub use snarkvm_fields::traits::ToConstraintField;
+pub use snarkvm_fields::ToConstraintField;
 
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
 

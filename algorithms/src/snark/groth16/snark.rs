@@ -26,7 +26,7 @@ use super::{
 };
 use crate::{errors::SNARKError, traits::SNARK};
 use snarkvm_curves::traits::PairingEngine;
-use snarkvm_fields::traits::ToConstraintField;
+use snarkvm_fields::ToConstraintField;
 use snarkvm_r1cs::ConstraintSynthesizer;
 
 use rand::Rng;
