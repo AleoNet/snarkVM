@@ -84,7 +84,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> From<PreparedCircuitVerifyingKe
     }
 }
 
-fn compute_vk_hash<F, FSF, PC, FS>(vk: &CircuitVerifyingKey<F, PC>) -> Vec<FSF>
+pub fn compute_vk_hash<F, FSF, PC, FS>(vk: &CircuitVerifyingKey<F, PC>) -> Vec<FSF>
 where
     F: PrimeField,
     FSF: PrimeField,
