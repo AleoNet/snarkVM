@@ -14,24 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{
-    curves::{CompressedGroupGadget, GroupGadget},
-    fields::FieldGadget,
-    utilities::{
-        alloc::AllocGadget,
-        boolean::Boolean,
-        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-        select::CondSelectGadget,
-        uint::UInt8,
-        ToBitsBEGadget,
-        ToBytesGadget,
+use crate::{
+    fields::FpGadget,
+    traits::{
+        curves::{CompressedGroupGadget, GroupGadget},
+        fields::{FieldGadget, ToConstraintFieldGadget},
+        utilities::{
+            alloc::AllocGadget,
+            boolean::Boolean,
+            eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+            select::CondSelectGadget,
+            uint::UInt8,
+            ToBitsBEGadget,
+            ToBytesGadget,
+        },
     },
 };
 use snarkvm_curves::{
     templates::twisted_edwards_extended::GroupAffine as TEAffine,
     traits::{MontgomeryModelParameters, TEModelParameters},
 };
-use snarkvm_fields::Field;
+use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem, Namespace};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
@@ -239,6 +242,22 @@ impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> PartialEq
 }
 
 impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> Eq for AffineGadget<P, F, FG> {}
+
+impl<P, F, FG> ToConstraintFieldGadget<F> for AffineGadget<P, F, FG>
+where
+    P: TEModelParameters,
+    F: PrimeField,
+    FG: FieldGadget<P::BaseField, F> + ToConstraintFieldGadget<F>,
+{
+    fn to_constraint_field(&self) -> Result<Vec<FpGadget<F>>, SynthesisError> {
+        let mut res = Vec::<FpGadget<F>>::new();
+
+        res.extend_from_slice(&self.x.to_constraint_field()?);
+        res.extend_from_slice(&self.y.to_constraint_field()?);
+
+        Ok(res)
+    }
+}
 
 mod affine_impl {
     use super::*;
