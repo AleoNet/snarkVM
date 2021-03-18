@@ -14,5 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod cmp;
-pub use self::cmp::*;
+use snarkvm_fields::Field;
+use snarkvm_r1cs::ConstraintSystem;
+
+use crate::utilities::SynthesisError;
+
+/// Performs a bitwise XOR operation between `self` and `other` in the constraint system.
+pub trait Xor<F: Field, Rhs = Self>
+where
+    Self: std::marker::Sized,
+{
+    fn xor<CS: ConstraintSystem<F>>(&self, cs: CS, rhs: &Self) -> Result<Self, SynthesisError>;
+}

@@ -18,12 +18,15 @@ use crate::{
     uint_impl_common,
     utilities::{
         alloc::AllocGadget,
+        arithmetic::Pow,
         boolean::{AllocatedBit, Boolean},
-        eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
+        eq::{ConditionalEqGadget, EqGadget},
+        integer::Integer,
         select::CondSelectGadget,
         uint::unsigned_integer::{UInt, UInt8},
         ToBytesGadget,
     },
+    UnsignedIntegerError,
 };
 use snarkvm_fields::{Field, FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearCombination};
@@ -32,8 +35,6 @@ use snarkvm_utilities::{
     biginteger::{BigInteger, BigInteger256},
     bytes::ToBytes,
 };
-
-use std::{borrow::Borrow, cmp::Ordering};
 
 uint_impl_common!(UInt128, u128, 128);
 
@@ -44,76 +45,6 @@ impl UInt for UInt128 {
             bits: self.bits.clone(),
             negated: true,
             value: self.value,
-        }
-    }
-
-    /// Returns true if all bits in this UInt128 are constant
-    fn is_constant(&self) -> bool {
-        let mut constant = true;
-
-        // If any bits of self are allocated bits, return false
-        for bit in &self.bits {
-            match *bit {
-                Boolean::Is(ref _bit) => constant = false,
-                Boolean::Not(ref _bit) => constant = false,
-                Boolean::Constant(_bit) => {}
-            }
-        }
-
-        constant
-    }
-
-    /// Turns this `UInt128` into its little-endian byte order representation.
-    fn to_bits_le(&self) -> Vec<Boolean> {
-        self.bits.clone()
-    }
-
-    /// Converts a little-endian byte order representation of bits into a
-    /// `UInt128`.
-    fn from_bits_le(bits: &[Boolean]) -> Self {
-        assert_eq!(bits.len(), 128);
-
-        let bits = bits.to_vec();
-
-        let mut value = Some(0u128);
-        for b in bits.iter().rev() {
-            if let Some(v) = value.as_mut() {
-                *v <<= 1;
-            }
-
-            match *b {
-                Boolean::Constant(b) => {
-                    if b {
-                        if let Some(v) = value.as_mut() {
-                            *v |= 1;
-                        }
-                    }
-                }
-                Boolean::Is(ref b) => match b.get_value() {
-                    Some(true) => {
-                        if let Some(v) = value.as_mut() {
-                            *v |= 1;
-                        }
-                    }
-                    Some(false) => {}
-                    None => value = None,
-                },
-                Boolean::Not(ref b) => match b.get_value() {
-                    Some(false) => {
-                        if let Some(v) = value.as_mut() {
-                            *v |= 1;
-                        }
-                    }
-                    Some(true) => {}
-                    None => value = None,
-                },
-            }
-        }
-
-        Self {
-            value,
-            negated: false,
-            bits,
         }
     }
 
@@ -134,28 +65,6 @@ impl UInt for UInt128 {
             negated: false,
             value: self.value.map(|v| v.rotate_right(by as u32) as u128),
         }
-    }
-
-    /// XOR this `UInt128` with another `UInt128`
-    fn xor<F: Field, CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, SynthesisError> {
-        let new_value = match (self.value, other.value) {
-            (Some(a), Some(b)) => Some(a ^ b),
-            _ => None,
-        };
-
-        let bits = self
-            .bits
-            .iter()
-            .zip(other.bits.iter())
-            .enumerate()
-            .map(|(i, (a, b))| Boolean::xor(cs.ns(|| format!("xor of bit_gadget {}", i)), a, b))
-            .collect::<Result<_, _>>()?;
-
-        Ok(Self {
-            bits,
-            negated: false,
-            value: new_value,
-        })
     }
 
     /// Perform modular addition of several `UInt128` objects.
@@ -293,81 +202,6 @@ impl UInt for UInt128 {
         })
     }
 
-    /// Perform modular subtraction of two `UInt128` objects.
-    fn sub<F: PrimeField, CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, SynthesisError> {
-        // pseudocode:
-        //
-        // a - b
-        // a + (-b)
-
-        Self::addmany(&mut cs.ns(|| "add_not"), &[self.clone(), other.negate()])
-    }
-
-    /// Perform unsafe subtraction of two `UInt128` objects which returns 0 if overflowed
-    fn sub_unsafe<F: PrimeField, CS: ConstraintSystem<F>>(
-        &self,
-        mut cs: CS,
-        other: &Self,
-    ) -> Result<Self, SynthesisError> {
-        match (self.value, other.value) {
-            (Some(val1), Some(val2)) => {
-                // Check for overflow
-                if val1 < val2 {
-                    // Instead of erroring, return 0
-
-                    if Self::result_is_constant(&self, &other) {
-                        // Return constant 0u128
-                        Ok(Self::constant(0u128))
-                    } else {
-                        // Return allocated 0u128
-                        let result_value = Some(0u128);
-                        let modular_value = result_value.map(|v| v as u128);
-
-                        // Storage area for the resulting bits
-                        let mut result_bits = Vec::with_capacity(128);
-
-                        // This is a linear combination that we will enforce to be "zero"
-                        let mut lc = LinearCombination::zero();
-
-                        // Allocate each bit_gadget of the result
-                        let mut coeff = F::one();
-                        for i in 0..128 {
-                            // Allocate the bit_gadget
-                            let b = AllocatedBit::alloc(cs.ns(|| format!("result bit_gadget {}", i)), || {
-                                result_value.map(|v| (v >> i) & 1 == 1).get()
-                            })?;
-
-                            // Subtract this bit_gadget from the linear combination to ensure the sums
-                            // balance out
-                            lc = lc - (coeff, b.get_variable());
-
-                            result_bits.push(b.into());
-
-                            coeff.double_in_place();
-                        }
-
-                        // Enforce that the linear combination equals zero
-                        cs.enforce(|| "unsafe subtraction", |lc| lc, |lc| lc, |_| lc);
-
-                        Ok(Self {
-                            bits: result_bits,
-                            negated: false,
-                            value: modular_value,
-                        })
-                    }
-                } else {
-                    // Perform subtraction
-                    self.sub(&mut cs.ns(|| ""), &other)
-                }
-            }
-            (_, _) => {
-                // If either of our operands have unknown value, we won't
-                // know the value of the result
-                Err(SynthesisError::AssignmentMissing)
-            }
-        }
-    }
-
     /// Bitwise multiplication of two `UInt128` objects.
     /// Reference: https://en.wikipedia.org/wiki/Binary_multiplier
     fn mul<F: PrimeField, CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, SynthesisError> {
@@ -419,127 +253,14 @@ impl UInt for UInt128 {
 
         Self::addmany(&mut cs.ns(|| "partial_products"), &partial_products)
     }
+}
 
-    /// Perform long division of two `UInt128` objects.
-    /// Reference: https://en.wikipedia.org/wiki/Division_algorithm
-    fn div<F: PrimeField, CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, SynthesisError> {
-        // pseudocode:
-        //
-        // if D = 0 then error(DivisionByZeroException) end
-        // Q := 0                  -- Initialize quotient and remainder to zero
-        // R := 0
-        // for i := n − 1 .. 0 do  -- Where n is number of bits in N
-        //   R := R << 1           -- Left-shift R by 1 bit
-        //   R(0) := N(i)          -- Set the least-significant bit of R equal to bit i of the numerator
-        //   if R ≥ D then
-        //     R := R − D
-        //     Q(i) := 1
-        //   end
-        // end
-
-        if other.eq(&Self::constant(0u128)) {
-            return Err(SynthesisError::DivisionByZero);
-        }
-
-        let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
-
-        let allocated_true = Boolean::from(AllocatedBit::alloc(&mut cs.ns(|| "true"), || Ok(true)).unwrap());
-        let true_bit = Boolean::conditionally_select(
-            &mut cs.ns(|| "constant_or_allocated_true"),
-            &is_constant,
-            &Boolean::constant(true),
-            &allocated_true,
-        )?;
-
-        let allocated_one = Self::alloc(&mut cs.ns(|| "one"), || Ok(1u128))?;
-        let one = Self::conditionally_select(
-            &mut cs.ns(|| "constant_or_allocated_1u128"),
-            &is_constant,
-            &Self::constant(1u128),
-            &allocated_one,
-        )?;
-
-        let allocated_zero = Self::alloc(&mut cs.ns(|| "zero"), || Ok(0u128))?;
-        let zero = Self::conditionally_select(
-            &mut cs.ns(|| "constant_or_allocated_0u128"),
-            &is_constant,
-            &Self::constant(0u128),
-            &allocated_zero,
-        )?;
-
-        let self_is_zero = Boolean::Constant(self.eq(&Self::constant(0u128)));
-        let mut quotient = zero.clone();
-        let mut remainder = zero;
-
-        for (i, bit) in self.bits.iter().rev().enumerate() {
-            // Left shift remainder by 1
-            remainder = Self::addmany(&mut cs.ns(|| format!("shift_left_{}", i)), &[
-                remainder.clone(),
-                remainder.clone(),
-            ])?;
-
-            // Set the least-significant bit of remainder to bit i of the numerator
-            let bit_is_true = Boolean::constant(bit.eq(&Boolean::constant(true)));
-            let new_remainder = Self::addmany(&mut cs.ns(|| format!("set_remainder_bit_{}", i)), &[
-                remainder.clone(),
-                one.clone(),
-            ])?;
-
-            remainder = Self::conditionally_select(
-                &mut cs.ns(|| format!("increment_or_remainder_{}", i)),
-                &bit_is_true,
-                &new_remainder,
-                &remainder,
-            )?;
-
-            // Greater than or equal to:
-            //   R >= D
-            //   (R == D) || (R > D)
-            //   (R == D) || ((R !=D) && ((R - D) != 0))
-            //
-            //  (R > D)                     checks subtraction overflow before evaluation
-            //  (R != D) && ((R - D) != 0)  instead evaluate subtraction and check for overflow after
-
-            let no_remainder = Boolean::constant(remainder.eq(&other));
-            let subtraction = remainder.sub_unsafe(&mut cs.ns(|| format!("subtract_divisor_{}", i)), &other)?;
-            let sub_is_zero = Boolean::constant(subtraction.eq(&Self::constant(0)));
-            let cond1 = Boolean::and(
-                &mut cs.ns(|| format!("cond_1_{}", i)),
-                &no_remainder.not(),
-                &sub_is_zero.not(),
-            )?;
-            let cond2 = Boolean::or(&mut cs.ns(|| format!("cond_2_{}", i)), &no_remainder, &cond1)?;
-
-            remainder = Self::conditionally_select(
-                &mut cs.ns(|| format!("subtract_or_same_{}", i)),
-                &cond2,
-                &subtraction,
-                &remainder,
-            )?;
-
-            let index = 127 - i as usize;
-            let bit_value = 1u128 << (index as u128);
-            let mut new_quotient = quotient.clone();
-            new_quotient.bits[index] = true_bit;
-            new_quotient.value = Some(new_quotient.value.unwrap() + bit_value);
-
-            quotient = Self::conditionally_select(
-                &mut cs.ns(|| format!("set_bit_or_same_{}", i)),
-                &cond2,
-                &new_quotient,
-                &quotient,
-            )?;
-        }
-        Self::conditionally_select(&mut cs.ns(|| "self_or_quotient"), &self_is_zero, self, &quotient)
-    }
+impl<F: PrimeField> Pow<F> for UInt128 {
+    type ErrorType = UnsignedIntegerError;
 
     /// Bitwise multiplication of two `UInt128` objects.
     /// Reference: /snarkVM/models/src/curves/field.rs
-    fn pow<F: Field + PrimeField, CS: ConstraintSystem<F>>(
-        &self,
-        mut cs: CS,
-        other: &Self,
-    ) -> Result<Self, SynthesisError> {
+    fn pow<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, Self::ErrorType> {
         // let mut res = Self::one();
         //
         // let mut found_one = false;

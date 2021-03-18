@@ -14,5 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod cmp;
-pub use self::cmp::*;
+use snarkvm_r1cs::errors::SynthesisError;
+
+#[derive(Debug, Error)]
+pub enum UnsignedIntegerError {
+    #[error("Integer overflow")]
+    Overflow,
+
+    #[error("Division by zero")]
+    DivisionByZero,
+
+    #[error("{}", _0)]
+    SynthesisError(#[from] SynthesisError),
+}

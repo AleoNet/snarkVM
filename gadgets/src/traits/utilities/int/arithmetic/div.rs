@@ -23,6 +23,7 @@ use crate::utilities::{
     boolean::{AllocatedBit, Boolean},
     eq::EvaluateEqGadget,
     int::*,
+    integer::Integer,
     select::CondSelectGadget,
 };
 use snarkvm_fields::PrimeField;
@@ -61,7 +62,7 @@ macro_rules! div_int_impl {
                 // else
                 //    !Q                      -- negative result
 
-                if other.eq(&Self::constant(0 as <$gadget as Int>::IntegerType)) {
+                if other.eq(&Self::constant(0 as <$gadget as Integer>::IntegerType)) {
                     return Err(SignedIntegerError::DivisionByZero);
                 }
 
@@ -75,29 +76,29 @@ macro_rules! div_int_impl {
                     &allocated_true,
                 )?;
 
-                let allocated_one = Self::alloc(&mut cs.ns(|| "one"), || Ok(1 as <$gadget as Int>::IntegerType))?;
+                let allocated_one = Self::alloc(&mut cs.ns(|| "one"), || Ok(1 as <$gadget as Integer>::IntegerType))?;
                 let one = Self::conditionally_select(
                     &mut cs.ns(|| "constant_or_allocated_1"),
                     &is_constant,
-                    &Self::constant(1 as <$gadget as Int>::IntegerType),
+                    &Self::constant(1 as <$gadget as Integer>::IntegerType),
                     &allocated_one,
                 )?;
 
-                let allocated_zero = Self::alloc(&mut cs.ns(|| "zero"), || Ok(0 as <$gadget as Int>::IntegerType))?;
+                let allocated_zero = Self::alloc(&mut cs.ns(|| "zero"), || Ok(0 as <$gadget as Integer>::IntegerType))?;
                 let zero = Self::conditionally_select(
                     &mut cs.ns(|| "constant_or_allocated_0"),
                     &is_constant,
-                    &Self::constant(0 as <$gadget as Int>::IntegerType),
+                    &Self::constant(0 as <$gadget as Integer>::IntegerType),
                     &allocated_zero,
                 )?;
 
                 // if the numerator is 0, return 0
-                let self_is_zero = Boolean::Constant(self.eq(&Self::constant(0 as <$gadget as Int>::IntegerType)));
+                let self_is_zero = Boolean::Constant(self.eq(&Self::constant(0 as <$gadget as Integer>::IntegerType)));
 
                 // if other is the minimum number, the result will be zero or one
                 // -128 / -128 = 1
                 // x / -128 = 0 fractional result rounds to 0
-                let min = Self::constant(<$gadget as Int>::IntegerType::MIN);
+                let min = Self::constant(<$gadget as Integer>::IntegerType::MIN);
                 let other_is_min = other.evaluate_equal(
                     &mut cs.ns(|| "other_min_check"),
                     &min
@@ -155,8 +156,8 @@ macro_rules! div_int_impl {
                 let mut q = zero.clone();
                 let mut r = zero;
 
-                let mut index = <$gadget as Int>::SIZE - 1 as usize;
-                let mut bit_value = (1 as <$gadget as Int>::IntegerType) << ((index - 1) as <$gadget as Int>::IntegerType);
+                let mut index = <$gadget as Integer>::SIZE - 1 as usize;
+                let mut bit_value = (1 as <$gadget as Integer>::IntegerType) << ((index - 1) as <$gadget as Integer>::IntegerType);
 
                 for (i, bit) in a.bits.iter().rev().enumerate().skip(1) {
 

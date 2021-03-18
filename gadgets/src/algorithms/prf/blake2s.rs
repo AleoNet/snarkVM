@@ -18,8 +18,10 @@ use crate::traits::{
     algorithms::PRFGadget,
     utilities::{
         alloc::AllocGadget,
+        bits::Xor,
         boolean::Boolean,
         eq::{ConditionalEqGadget, EqGadget},
+        integer::Integer,
         select::CondSelectGadget,
         uint::unsigned_integer::{UInt, UInt32, UInt8},
         ToBytesGadget,

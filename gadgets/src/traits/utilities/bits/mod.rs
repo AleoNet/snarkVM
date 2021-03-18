@@ -26,3 +26,6 @@ pub use self::rca::*;
 
 pub mod sign_extend;
 pub use self::sign_extend::*;
+
+pub mod xor;
+pub use self::xor::*;

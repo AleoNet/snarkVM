@@ -17,6 +17,15 @@
 #[macro_use]
 mod macros;
 
+pub mod arithmetic;
+pub use arithmetic::*;
+
+pub mod bits;
+pub use bits::*;
+
+pub mod relational;
+pub use relational::*;
+
 pub mod unsigned_integer;
 pub use unsigned_integer::*;
 

@@ -14,9 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::uint::{UInt, UInt128, UInt16, UInt32, UInt64, UInt8};
-use snarkvm_fields::{Field, PrimeField};
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+use snarkvm_fields::Field;
+use snarkvm_r1cs::ConstraintSystem;
 
 /// Returns addition of `self` + `other` in the constraint system.
 pub trait Add<F: Field, Rhs = Self>
@@ -27,22 +26,3 @@ where
 
     fn add<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, Self::ErrorType>;
 }
-
-// Implement unsigned integers
-macro_rules! add_uint_impl {
-    ($($gadget: ident),*) => ($(
-        impl<F: Field + PrimeField> Add<F> for $gadget {
-            type ErrorType = SynthesisError;
-
-            fn add<CS: ConstraintSystem<F>>(
-                &self,
-                cs: CS,
-                other: &Self
-            ) -> Result<Self, Self::ErrorType> {
-                <$gadget as UInt>::addmany(cs, &[self.clone(), other.clone()])
-            }
-        }
-    )*)
-}
-
-add_uint_impl!(UInt8, UInt16, UInt32, UInt64, UInt128);

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{boolean::Boolean, eq::EvaluateEqGadget, int::*};
+use crate::utilities::{boolean::Boolean, eq::EvaluateEqGadget, int::*, integer::Integer, uint::*};
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
@@ -29,12 +29,12 @@ macro_rules! eq_gadget_impl {
                 let mut result = Boolean::constant(true);
                 for (i, (a, b)) in self.bits.iter().zip(&other.bits).enumerate() {
                     let equal = a.evaluate_equal(
-                        &mut cs.ns(|| format!("{} evaluate equality for {}-th bit", <$gadget as Int>::SIZE, i)),
+                        &mut cs.ns(|| format!("{} evaluate equality for {}-th bit", <$gadget as Integer>::SIZE, i)),
                         b,
                     )?;
 
                     result = Boolean::and(
-                        &mut cs.ns(|| format!("{} and result for {}-th bit", <$gadget as Int>::SIZE, i)),
+                        &mut cs.ns(|| format!("{} and result for {}-th bit", <$gadget as Integer>::SIZE, i)),
                         &equal,
                         &result,
                     )?;
@@ -54,4 +54,4 @@ macro_rules! eq_gadget_impl {
     )*)
 }
 
-eq_gadget_impl!(Int8 Int16 Int32 Int64 Int128);
+eq_gadget_impl!(Int8 Int16 Int32 Int64 Int128 UInt8 UInt16 UInt32 UInt64 UInt128);

@@ -16,8 +16,11 @@
 
 use crate::utilities::{
     alloc::AllocGadget,
+    arithmetic::*,
+    bits::Xor,
     boolean::Boolean,
-    uint::{UInt, UInt16},
+    integer::Integer,
+    uint::{Sub, UInt, UInt16},
 };
 use snarkvm_fields::{One, Zero};
 use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};

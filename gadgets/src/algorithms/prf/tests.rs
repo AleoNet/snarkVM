@@ -22,7 +22,8 @@ use crate::{
             alloc::AllocGadget,
             boolean::{AllocatedBit, Boolean},
             eq::EqGadget,
-            uint::unsigned_integer::{UInt, UInt8},
+            integer::Integer,
+            uint::unsigned_integer::UInt8,
         },
     },
 };

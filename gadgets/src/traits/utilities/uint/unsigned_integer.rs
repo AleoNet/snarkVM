@@ -14,84 +14,42 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use core::borrow::Borrow;
-use std::{cmp::Ordering, fmt::Debug};
-
-use snarkvm_fields::{Field, FieldParameters, PrimeField, ToConstraintField};
-use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearCombination};
-use snarkvm_utilities::bytes::ToBytes;
-
 use crate::{
     fields::FpGadget,
     utilities::{
         alloc::AllocGadget,
         boolean::{AllocatedBit, Boolean},
-        eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
+        eq::{ConditionalEqGadget, EqGadget},
+        integer::Integer,
         select::CondSelectGadget,
         ToBitsBEGadget,
         ToBytesGadget,
     },
 };
+use snarkvm_fields::{Field, FieldParameters, PrimeField, ToConstraintField};
+use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearCombination};
+use snarkvm_utilities::bytes::ToBytes;
+
+use std::fmt::Debug;
 
 uint_impl!(UInt8, u8, 8);
 uint_impl!(UInt16, u16, 16);
 uint_impl!(UInt32, u32, 32);
 uint_impl!(UInt64, u64, 64);
 
-pub trait UInt: Debug + Clone + PartialOrd + Eq + PartialEq {
+pub trait UInt: Integer {
     /// Returns the inverse `UInt`
     fn negate(&self) -> Self;
-
-    /// Returns true if all bits in this `UInt` are constant
-    fn is_constant(&self) -> bool;
-
-    /// Returns true if both `UInt` objects have constant bits
-    fn result_is_constant(first: &Self, second: &Self) -> bool {
-        // If any bits of first are allocated bits, return false
-        if !first.is_constant() {
-            return false;
-        }
-
-        // If any bits of second are allocated bits, return false
-        second.is_constant()
-    }
-
-    /// Turns this `UInt` into its little-endian byte order representation.
-    /// LSB-first means that we can easily get the corresponding field element
-    /// via double and add.
-    fn to_bits_le(&self) -> Vec<Boolean>;
-
-    /// Converts a little-endian byte order representation of bits into a
-    /// `UInt`.
-    fn from_bits_le(bits: &[Boolean]) -> Self;
 
     /// Rotate self bits by size
     fn rotr(&self, by: usize) -> Self;
 
-    /// XOR this `UInt` with another `UInt`
-    fn xor<F: Field, CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, SynthesisError>;
-
     /// Perform modular addition of several `UInt` objects.
     fn addmany<F: PrimeField, CS: ConstraintSystem<F>>(cs: CS, operands: &[Self]) -> Result<Self, SynthesisError>;
-
-    /// Perform modular subtraction of two `UInt` objects.
-    fn sub<F: PrimeField, CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, SynthesisError>;
-
-    /// Perform unsafe subtraction of two `UInt` objects which returns 0 if overflowed
-    fn sub_unsafe<F: PrimeField, CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, SynthesisError>;
 
     /// Perform Bitwise multiplication of two `UInt` objects.
     /// Reference: https://en.wikipedia.org/wiki/Binary_multiplier
     fn mul<F: PrimeField, CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, SynthesisError>;
-
-    /// Perform long division of two `UInt` objects.
-    /// Reference: https://en.wikipedia.org/wiki/Division_algorithm
-    fn div<F: PrimeField, CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, SynthesisError>;
-
-    /// Bitwise exponentiation of two `UInt64` objects.
-    /// Reference: /snarkVM/models/src/curves/field.rs
-    fn pow<F: Field + PrimeField, CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self)
-    -> Result<Self, SynthesisError>;
 }
 
 // These methods are used throughout snarkvm-gadgets exclusively by UInt8

@@ -14,30 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::boolean::Boolean;
+use crate::utilities::{boolean::Boolean, integer::Integer};
 
 use std::fmt::Debug;
-
-pub trait Int: Debug + Clone {
-    type IntegerType;
-    const SIZE: usize;
-
-    fn one() -> Self;
-
-    fn zero() -> Self;
-
-    /// Returns true if all bits in this `Int` are constant
-    fn is_constant(&self) -> bool;
-
-    /// Returns true if both `Int` objects have constant bits
-    fn result_is_constant(first: &Self, second: &Self) -> bool {
-        first.is_constant() && second.is_constant()
-    }
-
-    fn to_bits_le(&self) -> Vec<Boolean>;
-
-    fn from_bits_le(bits: &[Boolean]) -> Self;
-}
 
 /// Implements the base struct for a signed integer gadget
 macro_rules! int_impl {
@@ -48,8 +27,12 @@ macro_rules! int_impl {
             pub value: Option<$type_>,
         }
 
-        impl $name {
-            pub fn constant(value: $type_) -> Self {
+        impl Integer for $name {
+            type IntegerType = $type_;
+
+            const SIZE: usize = $size;
+
+            fn constant(value: $type_) -> Self {
                 let mut bits = Vec::with_capacity($size);
 
                 for i in 0..$size {
@@ -70,12 +53,6 @@ macro_rules! int_impl {
                     value: Some(value),
                 }
             }
-        }
-
-        impl Int for $name {
-            type IntegerType = $type_;
-
-            const SIZE: usize = $size;
 
             fn one() -> Self {
                 Self::constant(1 as $type_)
@@ -83,6 +60,10 @@ macro_rules! int_impl {
 
             fn zero() -> Self {
                 Self::constant(0 as $type_)
+            }
+
+            fn new(bits: Vec<Boolean>, value: Option<Self::IntegerType>) -> Self {
+                Self { bits, value }
             }
 
             fn is_constant(&self) -> bool {

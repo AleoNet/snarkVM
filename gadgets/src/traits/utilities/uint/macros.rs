@@ -14,61 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-macro_rules! alloc_int_fn_impl {
-    ($name: ident, $_type: ty, $size: expr, $fn_name: ident) => {
-        fn $fn_name<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<$_type>, CS: ConstraintSystem<F>>(
-            mut cs: CS,
-            value_gen: Fn,
-        ) -> Result<Self, SynthesisError> {
-            let value = value_gen().map(|val| *val.borrow());
-            let values = match value {
-                Ok(mut val) => {
-                    let mut v = Vec::with_capacity($size);
-                    for _ in 0..$size {
-                        v.push(Some(val & 1 == 1));
-                        val >>= 1;
-                    }
-
-                    v
-                }
-                _ => vec![None; $size],
-            };
-
-            let bits = values
-                .into_iter()
-                .enumerate()
-                .map(|(i, v)| {
-                    Ok(Boolean::from(AllocatedBit::$fn_name(
-                        &mut cs.ns(|| format!("allocated bit_gadget {}", i)),
-                        || v.ok_or(SynthesisError::AssignmentMissing),
-                    )?))
-                })
-                .collect::<Result<Vec<_>, SynthesisError>>()?;
-
-            Ok(Self {
-                bits,
-                negated: false,
-                value: value.ok(),
-            })
-        }
-    };
-}
-
-macro_rules! alloc_int_impl {
-    ($name: ident, $_type: ty, $size: expr) => {
-        impl<F: Field> AllocGadget<$_type, F> for $name {
-            alloc_int_fn_impl!($name, $_type, $size, alloc);
-
-            alloc_int_fn_impl!($name, $_type, $size, alloc_input);
-        }
-    };
-}
-
 macro_rules! to_bytes_int_impl {
     ($name: ident, $_type: ty, $size: expr) => {
         impl<F: Field> ToBytesGadget<F> for $name {
             #[inline]
             fn to_bytes<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+                use crate::utilities::integer::Integer;
+
                 const BYTES_SIZE: usize = if $size == 128 { 16 } else { 8 };
 
                 let value_chunks = match self.value.map(|val| {
@@ -109,6 +61,8 @@ macro_rules! cond_select_int_impl {
                 first: &Self,
                 second: &Self,
             ) -> Result<Self, SynthesisError> {
+                use crate::utilities::integer::Integer;
+
                 if let Boolean::Constant(cond) = *cond {
                     if cond {
                         Ok(first.clone())
@@ -159,78 +113,6 @@ macro_rules! cond_select_int_impl {
     };
 }
 
-macro_rules! uint_impl_eq_ord {
-    ($name: ident, $_type: ty, $size: expr) => {
-        impl PartialEq for $name {
-            fn eq(&self, other: &Self) -> bool {
-                self.value.is_some() && self.value == other.value
-            }
-        }
-
-        impl Eq for $name {}
-
-        impl PartialOrd for $name {
-            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-                Option::from(self.value.cmp(&other.value))
-            }
-        }
-    };
-}
-
-macro_rules! uint_impl_eq_gadget {
-    ($name: ident, $_type: ty, $size: expr) => {
-        impl<F: PrimeField> EvaluateEqGadget<F> for $name {
-            fn evaluate_equal<CS: ConstraintSystem<F>>(
-                &self,
-                mut cs: CS,
-                other: &Self,
-            ) -> Result<Boolean, SynthesisError> {
-                let mut result = Boolean::constant(true);
-                for (i, (a, b)) in self.bits.iter().zip(&other.bits).enumerate() {
-                    let equal = a.evaluate_equal(
-                        &mut cs.ns(|| format!("{} evaluate equality for {}-th bit", $size, i)),
-                        b,
-                    )?;
-
-                    result = Boolean::and(
-                        &mut cs.ns(|| format!("{} and result for {}-th bit", $size, i)),
-                        &equal,
-                        &result,
-                    )?;
-                }
-
-                Ok(result)
-            }
-        }
-
-        impl<F: Field> EqGadget<F> for $name {}
-
-        impl<F: Field> ConditionalEqGadget<F> for $name {
-            fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
-                &self,
-                mut cs: CS,
-                other: &Self,
-                condition: &Boolean,
-            ) -> Result<(), SynthesisError> {
-                for (i, (a, b)) in self.bits.iter().zip(&other.bits).enumerate() {
-                    a.conditional_enforce_equal(
-                        &mut cs.ns(|| format!("{} equality check for {}-th bit", $size, i)),
-                        b,
-                        condition,
-                    )?;
-                }
-                Ok(())
-            }
-
-            fn cost() -> usize {
-                const MULTIPLIER: usize = if $size == 128 { 128 } else { 8 };
-
-                MULTIPLIER * <Boolean as ConditionalEqGadget<F>>::cost()
-            }
-        }
-    };
-}
-
 #[macro_export]
 macro_rules! uint_impl_common {
     ($name: ident, $_type: ty, $size: expr) => {
@@ -241,8 +123,12 @@ macro_rules! uint_impl_common {
             pub value: Option<$_type>,
         }
 
-        impl $name {
-            pub fn constant(value: $_type) -> Self {
+        impl crate::utilities::integer::Integer for $name {
+            type IntegerType = $_type;
+
+            const SIZE: usize = $size;
+
+            fn constant(value: $_type) -> Self {
                 let mut bits = Vec::with_capacity($size);
 
                 let mut tmp = value;
@@ -264,26 +150,20 @@ macro_rules! uint_impl_common {
                     value: Some(value),
                 }
             }
-        }
 
-        alloc_int_impl!($name, $_type, $size);
-        cond_select_int_impl!($name, $_type, $size);
-        to_bytes_int_impl!($name, $_type, $size);
-        uint_impl_eq_ord!($name, $_type, $size);
-        uint_impl_eq_gadget!($name, $_type, $size);
-    };
-}
+            fn one() -> Self {
+                Self::constant(1 as $_type)
+            }
 
-macro_rules! uint_impl {
-    ($name: ident, $_type: ty, $size: expr) => {
-        uint_impl_common!($name, $_type, $size);
+            fn zero() -> Self {
+                Self::constant(0 as $_type)
+            }
 
-        impl UInt for $name {
-            fn negate(&self) -> Self {
+            fn new(bits: Vec<Boolean>, value: Option<Self::IntegerType>) -> Self {
                 Self {
-                    bits: self.bits.clone(),
-                    negated: true,
-                    value: self.value,
+                    bits,
+                    value,
+                    negated: false,
                 }
             }
 
@@ -344,6 +224,25 @@ macro_rules! uint_impl {
                     bits,
                 }
             }
+        }
+
+        cond_select_int_impl!($name, $_type, $size);
+        to_bytes_int_impl!($name, $_type, $size);
+    };
+}
+
+macro_rules! uint_impl {
+    ($name: ident, $_type: ty, $size: expr) => {
+        uint_impl_common!($name, $_type, $size);
+
+        impl UInt for $name {
+            fn negate(&self) -> Self {
+                Self {
+                    bits: self.bits.clone(),
+                    negated: true,
+                    value: self.value,
+                }
+            }
 
             fn rotr(&self, by: usize) -> Self {
                 let by = by % $size;
@@ -362,27 +261,6 @@ macro_rules! uint_impl {
                     negated: false,
                     value: self.value.map(|v| v.rotate_right(by as u32) as $_type),
                 }
-            }
-
-            fn xor<F: Field, CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, SynthesisError> {
-                let new_value = match (self.value, other.value) {
-                    (Some(a), Some(b)) => Some(a ^ b),
-                    _ => None,
-                };
-
-                let bits = self
-                    .bits
-                    .iter()
-                    .zip(other.bits.iter())
-                    .enumerate()
-                    .map(|(i, (a, b))| Boolean::xor(cs.ns(|| format!("xor of bit_gadget {}", i)), a, b))
-                    .collect::<Result<_, _>>()?;
-
-                Ok(Self {
-                    bits,
-                    negated: false,
-                    value: new_value,
-                })
             }
 
             fn addmany<F: PrimeField, CS: ConstraintSystem<F>>(
@@ -514,84 +392,6 @@ macro_rules! uint_impl {
                 })
             }
 
-            fn sub<F: PrimeField, CS: ConstraintSystem<F>>(
-                &self,
-                mut cs: CS,
-                other: &Self,
-            ) -> Result<Self, SynthesisError> {
-                // pseudocode:
-                //
-                // a - b
-                // a + (-b)
-
-                Self::addmany(&mut cs.ns(|| "add_not"), &[self.clone(), other.negate()])
-            }
-
-            /// Used for division. Evaluates a - b, and when a - b < 0, returns 0.
-            fn sub_unsafe<F: PrimeField, CS: ConstraintSystem<F>>(
-                &self,
-                mut cs: CS,
-                other: &Self,
-            ) -> Result<Self, SynthesisError> {
-                match (self.value, other.value) {
-                    (Some(val1), Some(val2)) => {
-                        // Check for overflow
-                        if val1 < val2 {
-                            // Instead of erroring, return 0
-
-                            if Self::result_is_constant(&self, &other) {
-                                // Return constant 0
-                                Ok(Self::constant(0 as $_type))
-                            } else {
-                                // Return allocated 0
-                                let result_value = Some(0u128);
-                                let modular_value = result_value.map(|v| v as $_type);
-
-                                // Storage area for the resulting bits
-                                let mut result_bits = Vec::with_capacity($size);
-
-                                // This is a linear combination that we will enforce to be "zero"
-                                let mut lc = LinearCombination::zero();
-
-                                // Allocate each bit_gadget of the result
-                                let mut coeff = F::one();
-                                for i in 0..$size {
-                                    // Allocate the bit_gadget
-                                    let b = AllocatedBit::alloc(cs.ns(|| format!("result bit_gadget {}", i)), || {
-                                        result_value.map(|v| (v >> i) & 1 == 1).get()
-                                    })?;
-
-                                    // Subtract this bit_gadget from the linear combination to ensure the sums
-                                    // balance out
-                                    lc = lc - (coeff, b.get_variable());
-
-                                    result_bits.push(b.into());
-
-                                    coeff.double_in_place();
-                                }
-
-                                // Enforce that the linear combination equals zero
-                                cs.enforce(|| "unsafe subtraction", |lc| lc, |lc| lc, |_| lc);
-
-                                Ok(Self {
-                                    bits: result_bits,
-                                    negated: false,
-                                    value: modular_value,
-                                })
-                            }
-                        } else {
-                            // Perform subtraction
-                            self.sub(&mut cs.ns(|| ""), &other)
-                        }
-                    }
-                    (_, _) => {
-                        // If either of our operands have unknown value, we won't
-                        // know the value of the result
-                        return Err(SynthesisError::AssignmentMissing);
-                    }
-                }
-            }
-
             fn mul<F: PrimeField, CS: ConstraintSystem<F>>(
                 &self,
                 mut cs: CS,
@@ -647,168 +447,6 @@ macro_rules! uint_impl {
                     .collect::<Vec<Self>>();
 
                 Self::addmany(&mut cs.ns(|| format!("partial_products")), &partial_products)
-            }
-
-            fn div<F: PrimeField, CS: ConstraintSystem<F>>(
-                &self,
-                mut cs: CS,
-                other: &Self,
-            ) -> Result<Self, SynthesisError> {
-                // pseudocode:
-                //
-                // if D = 0 then error(DivisionByZeroException) end
-                // Q := 0                  -- Initialize quotient and remainder to zero
-                // R := 0
-                // for i := n − 1 .. 0 do  -- Where n is number of bits in N
-                //   R := R << 1           -- Left-shift R by 1 bit
-                //   R(0) := N(i)          -- Set the least-significant bit of R equal to bit i of the numerator
-                //   if R ≥ D then
-                //     R := R − D
-                //     Q(i) := 1
-                //   end
-                // end
-
-                if other.eq(&Self::constant(0 as $_type)) {
-                    return Err(SynthesisError::DivisionByZero);
-                }
-
-                let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
-
-                let allocated_true = Boolean::from(AllocatedBit::alloc(&mut cs.ns(|| "true"), || Ok(true)).unwrap());
-                let true_bit = Boolean::conditionally_select(
-                    &mut cs.ns(|| "constant_or_allocated_true"),
-                    &is_constant,
-                    &Boolean::constant(true),
-                    &allocated_true,
-                )?;
-
-                let allocated_one = Self::alloc(&mut cs.ns(|| "one"), || Ok(1 as $_type))?;
-                let one = Self::conditionally_select(
-                    &mut cs.ns(|| format!("constant_or_allocated_1u{}", $size)),
-                    &is_constant,
-                    &Self::constant(1 as $_type),
-                    &allocated_one,
-                )?;
-
-                let allocated_zero = Self::alloc(&mut cs.ns(|| "zero"), || Ok(0 as $_type))?;
-                let zero = Self::conditionally_select(
-                    &mut cs.ns(|| format!("constant_or_allocated_0u{}", $size)),
-                    &is_constant,
-                    &Self::constant(0 as $_type),
-                    &allocated_zero,
-                )?;
-
-                let self_is_zero = Boolean::Constant(self.eq(&Self::constant(0 as $_type)));
-                let mut quotient = zero.clone();
-                let mut remainder = zero.clone();
-
-                for (i, bit) in self.bits.iter().rev().enumerate() {
-                    // Left shift remainder by 1
-                    remainder = Self::addmany(&mut cs.ns(|| format!("shift_left_{}", i)), &[
-                        remainder.clone(),
-                        remainder.clone(),
-                    ])?;
-
-                    // Set the least-significant bit of remainder to bit i of the numerator
-                    let bit_is_true = Boolean::constant(bit.eq(&Boolean::constant(true)));
-                    let new_remainder = Self::addmany(&mut cs.ns(|| format!("set_remainder_bit_{}", i)), &[
-                        remainder.clone(),
-                        one.clone(),
-                    ])?;
-
-                    remainder = Self::conditionally_select(
-                        &mut cs.ns(|| format!("increment_or_remainder_{}", i)),
-                        &bit_is_true,
-                        &new_remainder,
-                        &remainder,
-                    )?;
-
-                    // Greater than or equal to:
-                    //   R >= D
-                    //   (R == D) || (R > D)
-                    //   (R == D) || ((R !=D) && ((R - D) != 0))
-                    //
-                    //  (R > D)                     checks subtraction overflow before evaluation
-                    //  (R != D) && ((R - D) != 0)  instead evaluate subtraction and check for overflow after
-
-                    let no_remainder = Boolean::constant(remainder.eq(&other));
-                    let subtraction = remainder.sub_unsafe(&mut cs.ns(|| format!("subtract_divisor_{}", i)), &other)?;
-                    let sub_is_zero = Boolean::constant(subtraction.eq(&Self::constant(0 as $_type)));
-                    let cond1 = Boolean::and(
-                        &mut cs.ns(|| format!("cond_1_{}", i)),
-                        &no_remainder.not(),
-                        &sub_is_zero.not(),
-                    )?;
-                    let cond2 = Boolean::or(&mut cs.ns(|| format!("cond_2_{}", i)), &no_remainder, &cond1)?;
-
-                    remainder = Self::conditionally_select(
-                        &mut cs.ns(|| format!("subtract_or_same_{}", i)),
-                        &cond2,
-                        &subtraction,
-                        &remainder,
-                    )?;
-
-                    let index = $size - 1 - i as usize;
-                    let bit_value = (1 as $_type) << (index as $_type);
-                    let mut new_quotient = quotient.clone();
-                    new_quotient.bits[index] = true_bit;
-                    new_quotient.value = Some(new_quotient.value.unwrap() + bit_value);
-
-                    quotient = Self::conditionally_select(
-                        &mut cs.ns(|| format!("set_bit_or_same_{}", i)),
-                        &cond2,
-                        &new_quotient,
-                        &quotient,
-                    )?;
-                }
-                Self::conditionally_select(&mut cs.ns(|| "self_or_quotient"), &self_is_zero, self, &quotient)
-            }
-
-            fn pow<F: Field + PrimeField, CS: ConstraintSystem<F>>(
-                &self,
-                mut cs: CS,
-                other: &Self,
-            ) -> Result<Self, SynthesisError> {
-                // let mut res = Self::one();
-                //
-                // for i in BitIteratorBE::new(exp) {
-                //     res.square_in_place();
-                //
-                //     if i {
-                //         res *= self;
-                //     }
-                // }
-                // res
-
-                let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
-                let constant_result = Self::constant(1 as $_type);
-                let allocated_result = Self::alloc(
-                    &mut cs.ns(|| format!("allocated_1u{}", $size)),
-                    || Ok(1 as $_type),
-                )?;
-                let mut result = Self::conditionally_select(
-                    &mut cs.ns(|| "constant_or_allocated"),
-                    &is_constant,
-                    &constant_result,
-                    &allocated_result,
-                )?;
-
-                for (i, bit) in other.bits.iter().rev().enumerate() {
-                    result = result.mul(cs.ns(|| format!("square_{}", i)), &result).unwrap();
-
-                    let mul_by_self = result
-                        .mul(cs.ns(|| format!("multiply_by_self_{}", i)), &self)
-                        .unwrap();
-
-                    result = Self::conditionally_select(
-                        &mut cs.ns(|| format!("mul_by_self_or_result_{}", i)),
-                        &bit,
-                        &mul_by_self,
-                        &result,
-                    )?;
-                }
-
-                Ok(result)
             }
         }
     };

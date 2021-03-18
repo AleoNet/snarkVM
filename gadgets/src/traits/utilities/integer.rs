@@ -14,5 +14,33 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod cmp;
-pub use self::cmp::*;
+use crate::utilities::boolean::Boolean;
+
+use std::fmt::Debug;
+
+/// The interface for a singed or unsigned integer gadget.
+pub trait Integer: Debug + Clone {
+    type IntegerType;
+
+    const SIZE: usize;
+
+    fn constant(value: Self::IntegerType) -> Self;
+
+    fn one() -> Self;
+
+    fn zero() -> Self;
+
+    fn new(bits: Vec<Boolean>, value: Option<Self::IntegerType>) -> Self;
+
+    /// Returns true if all bits in this `Int` are constant
+    fn is_constant(&self) -> bool;
+
+    /// Returns true if both `Int` objects have constant bits
+    fn result_is_constant(first: &Self, second: &Self) -> bool {
+        first.is_constant() && second.is_constant()
+    }
+
+    fn to_bits_le(&self) -> Vec<Boolean>;
+
+    fn from_bits_le(bits: &[Boolean]) -> Self;
+}
