@@ -23,9 +23,9 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use snarkvm_fields::{
-    fp3::Fp3Parameters,
     fp6_2over3::{Fp6, Fp6Parameters},
     Field,
+    Fp3Parameters,
     One,
     PrimeField,
     SquareRootField,

@@ -14,32 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::ConstraintFieldError;
-use snarkvm_r1cs::SynthesisError;
+use std::fmt::Debug;
 
-#[derive(Debug, Error)]
-pub enum SNARKError {
-    #[error("{}", _0)]
-    ConstraintFieldError(ConstraintFieldError),
-
-    #[error("{}: {}", _0, _1)]
-    Crate(&'static str, String),
-
-    #[error("{}", _0)]
-    Message(String),
-
-    #[error("{}", _0)]
-    SynthesisError(SynthesisError),
+#[derive(Debug, PartialEq)]
+pub enum LegendreSymbol {
+    Zero = 0,
+    QuadraticResidue = 1,
+    QuadraticNonResidue = -1,
 }
 
-impl From<ConstraintFieldError> for SNARKError {
-    fn from(error: ConstraintFieldError) -> Self {
-        SNARKError::ConstraintFieldError(error)
+impl LegendreSymbol {
+    pub fn is_zero(&self) -> bool {
+        *self == LegendreSymbol::Zero
     }
-}
 
-impl From<SynthesisError> for SNARKError {
-    fn from(error: SynthesisError) -> Self {
-        SNARKError::SynthesisError(error)
+    pub fn is_qnr(&self) -> bool {
+        *self == LegendreSymbol::QuadraticNonResidue
+    }
+
+    pub fn is_qr(&self) -> bool {
+        *self == LegendreSymbol::QuadraticResidue
     }
 }

@@ -27,7 +27,7 @@
 //! by performing an O(n log n) FFT over such a domain.
 
 use crate::fft::{multicore::Worker, SparsePolynomial};
-use snarkvm_fields::{batch_inversion, FpParameters, PrimeField};
+use snarkvm_fields::{batch_inversion, FieldParameters, PrimeField};
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use rand::Rng;

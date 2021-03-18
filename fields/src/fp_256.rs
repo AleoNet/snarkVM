@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::FieldError, Field, FpParameters, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
+use crate::{Field, FieldError, FieldParameters, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
     biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger256 as BigInteger},
     bytes::{FromBytes, ToBytes},
@@ -30,7 +30,7 @@ use std::{
     str::FromStr,
 };
 
-pub trait Fp256Parameters: FpParameters<BigInteger = BigInteger> {}
+pub trait Fp256Parameters: FieldParameters<BigInteger = BigInteger> {}
 
 #[derive(Derivative)]
 #[derivative(

@@ -16,7 +16,7 @@
 
 use crate::{AllocatedNonNativeFieldVar, NonNativeFieldMulResultVar};
 
-use snarkvm_fields::{FpParameters, PrimeField};
+use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_gadgets::{
     traits::fields::FieldGadget,
     utilities::{

@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_fields::{FieldParameters, PrimeField};
+use snarkvm_r1cs::{Assignment, ConstraintSystem, LinearCombination};
+
 use crate::{
     errors::SignedIntegerError,
     utilities::{
@@ -24,8 +27,6 @@ use crate::{
         int::*,
     },
 };
-use snarkvm_fields::{fp_parameters::FpParameters, PrimeField};
-use snarkvm_r1cs::{Assignment, ConstraintSystem, LinearCombination};
 
 macro_rules! add_int_impl {
     ($($gadget: ident)*) => ($(

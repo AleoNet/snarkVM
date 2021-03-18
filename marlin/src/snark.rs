@@ -21,7 +21,7 @@ use crate::{
 };
 use snarkvm_algorithms::{errors::SNARKError, traits::SNARK};
 use snarkvm_curves::traits::PairingEngine;
-use snarkvm_fields::traits::to_field_vec::ToConstraintField;
+use snarkvm_fields::ToConstraintField;
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_r1cs::ConstraintSynthesizer;
 
