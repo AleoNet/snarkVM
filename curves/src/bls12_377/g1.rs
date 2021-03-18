@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_fields::{field, Zero};
+use snarkvm_utilities::biginteger::{BigInteger256, BigInteger384};
+
 use crate::{
     bls12_377::{Fq, Fr},
     traits::{ModelParameters, SWModelParameters},
 };
-use snarkvm_fields::{field, Zero};
-use snarkvm_utilities::biginteger::{BigInteger256, BigInteger384};
 
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct Bls12_377G1Parameters;

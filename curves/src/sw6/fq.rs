@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::{Fp832, Fp832Parameters, FpParameters};
+use snarkvm_fields::{FieldParameters, Fp832, Fp832Parameters};
 use snarkvm_utilities::biginteger::BigInteger832 as BigInteger;
 
 pub type Fq = Fp832<FqParameters>;
@@ -23,7 +23,7 @@ pub struct FqParameters;
 
 impl Fp832Parameters for FqParameters {}
 
-impl FpParameters for FqParameters {
+impl FieldParameters for FqParameters {
     type BigInteger = BigInteger;
 
     const CAPACITY: u32 = Self::MODULUS_BITS - 1;

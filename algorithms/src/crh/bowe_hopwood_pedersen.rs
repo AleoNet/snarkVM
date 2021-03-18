@@ -22,7 +22,7 @@ use crate::{
     traits::CRH,
 };
 use snarkvm_curves::Group;
-use snarkvm_fields::{errors::ConstraintFieldError, traits::to_field_vec::ToConstraintField, Field, PrimeField};
+use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::{biginteger::biginteger::BigInteger, bytes_to_bits};
 
 use rand::Rng;

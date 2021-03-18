@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_curves::traits::Group;
-use snarkvm_fields::{errors::ConstraintFieldError, traits::ToConstraintField, Field};
+use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
 use digest::Digest;

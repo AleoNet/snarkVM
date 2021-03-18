@@ -16,7 +16,7 @@
 
 use crate::traits::crh::CRHParameters;
 use snarkvm_curves::Group;
-use snarkvm_fields::{errors::ConstraintFieldError, traits::to_field_vec::ToConstraintField, Field};
+use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
 use rand::Rng;

@@ -16,7 +16,7 @@
 
 use crate::{errors::SignatureError, signature::SchnorrParameters, traits::SignatureScheme};
 use snarkvm_curves::traits::Group;
-use snarkvm_fields::{traits::ToConstraintField, ConstraintFieldError, Field, One, PrimeField, Zero};
+use snarkvm_fields::{ConstraintFieldError, Field, One, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
     bytes::{bytes_to_bits, FromBytes, ToBytes},
     errors::SerializationError,

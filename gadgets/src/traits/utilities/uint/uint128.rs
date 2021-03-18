@@ -25,7 +25,7 @@ use crate::{
         ToBytesGadget,
     },
 };
-use snarkvm_fields::{Field, FpParameters, PrimeField};
+use snarkvm_fields::{Field, FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearCombination};
 
 use snarkvm_utilities::{

@@ -29,7 +29,7 @@ use snarkvm_curves::{
     edwards_bls12::{EdwardsProjective, Fq},
     traits::PairingEngine,
 };
-use snarkvm_fields::{traits::to_field_vec::ToConstraintField, PrimeField};
+use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     algorithms::crh::PedersenCompressedCRHGadget,
     curves::edwards_bls12::EdwardsBlsGadget,

@@ -19,7 +19,7 @@ use snarkvm_curves::{
     traits::{Group, MontgomeryModelParameters, TEModelParameters},
     ProjectiveCurve,
 };
-use snarkvm_fields::{FpParameters, PrimeField};
+use snarkvm_fields::{FieldParameters, PrimeField};
 
 pub trait RecordSerializerScheme {
     /// The group is composed of base field elements in `Self::InnerField`.

@@ -22,7 +22,7 @@ use crate::{
     traits::{CRHParameters, CRH},
 };
 use snarkvm_curves::{AffineCurve, Group, ProjectiveCurve};
-use snarkvm_fields::{errors::ConstraintFieldError, traits::to_field_vec::ToConstraintField, Field};
+use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 
 use rand::Rng;
 

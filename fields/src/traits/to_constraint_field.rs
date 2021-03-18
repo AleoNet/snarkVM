@@ -14,32 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::ConstraintFieldError;
-use snarkvm_r1cs::SynthesisError;
+use crate::{ConstraintFieldError, Field};
 
-#[derive(Debug, Error)]
-pub enum SNARKError {
-    #[error("{}", _0)]
-    ConstraintFieldError(ConstraintFieldError),
-
-    #[error("{}: {}", _0, _1)]
-    Crate(&'static str, String),
-
-    #[error("{}", _0)]
-    Message(String),
-
-    #[error("{}", _0)]
-    SynthesisError(SynthesisError),
-}
-
-impl From<ConstraintFieldError> for SNARKError {
-    fn from(error: ConstraintFieldError) -> Self {
-        SNARKError::ConstraintFieldError(error)
-    }
-}
-
-impl From<SynthesisError> for SNARKError {
-    fn from(error: SynthesisError) -> Self {
-        SNARKError::SynthesisError(error)
-    }
+/// Types that can be converted to a vector of `F` elements. Useful for specifying
+/// how public inputs to a constraint system should be represented inside
+/// that constraint system.
+pub trait ToConstraintField<F: Field> {
+    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError>;
 }
