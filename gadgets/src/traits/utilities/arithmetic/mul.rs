@@ -26,5 +26,6 @@ where
 
     fn mul<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, Self::ErrorType>;
 
-    fn wrapping_mul<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, Self::ErrorType>;
+    /// Overflowing mul gadget. Used to calculate exponents in pow gadget.
+    fn mul_unsafe<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, Self::ErrorType>;
 }
