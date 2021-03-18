@@ -16,7 +16,7 @@
 
 use crate::{
     fields::FpGadget,
-    utilities::{alloc::AllocGadget, boolean::Boolean, eq::EqGadget, int::*, integral::Integral, ToBitsBEGadget},
+    utilities::{alloc::AllocGadget, boolean::Boolean, eq::EqGadget, int::*, integer::Integer, ToBitsBEGadget},
 };
 use snarkvm_fields::{ToConstraintField, FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -30,7 +30,7 @@ macro_rules! alloc_input_fe {
             /// the little-endian byte representation of the unsigned integer to
             /// `F` elements, (thus reducing the number of input allocations),
             /// and then converts this list of `F` gadgets into the unsigned integer gadget
-            pub fn alloc_input_fe<F, CS>(mut cs: CS, value: <$gadget as Integral>::IntegerType) -> Result<Self, SynthesisError>
+            pub fn alloc_input_fe<F, CS>(mut cs: CS, value: <$gadget as Integer>::IntegerType) -> Result<Self, SynthesisError>
             where
                 F: PrimeField,
                 CS: ConstraintSystem<F>,
@@ -57,11 +57,11 @@ macro_rules! alloc_input_fe {
                 }
 
                 // Assert that the extra bits are false
-                for (i, bit) in allocated_bits.iter().skip(<$gadget as Integral>::SIZE).enumerate() {
-                    bit.enforce_equal(&mut cs.ns(|| format!("bit {} is false", i + <$gadget as Integral>::SIZE)), &Boolean::constant(false))?;
+                for (i, bit) in allocated_bits.iter().skip(<$gadget as Integer>::SIZE).enumerate() {
+                    bit.enforce_equal(&mut cs.ns(|| format!("bit {} is false", i + <$gadget as Integer>::SIZE)), &Boolean::constant(false))?;
                 }
 
-                let bits = allocated_bits[0..<$gadget as Integral>::SIZE].to_vec();
+                let bits = allocated_bits[0..<$gadget as Integer>::SIZE].to_vec();
 
                 Ok(Self {
                     bits,

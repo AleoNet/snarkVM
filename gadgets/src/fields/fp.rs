@@ -20,7 +20,7 @@ use crate::{
         alloc::AllocGadget,
         boolean::{AllocatedBit, Boolean},
         eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-        integral::Integral,
+        integer::Integer,
         select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
         uint::unsigned_integer::UInt8,
         ToBitsBEGadget,

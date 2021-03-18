@@ -18,7 +18,8 @@ use crate::utilities::boolean::Boolean;
 
 use std::fmt::Debug;
 
-pub trait Integral: Debug + Clone {
+/// The interface for a singed or unsigned integer gadget.
+pub trait Integer: Debug + Clone {
     type IntegerType;
 
     const SIZE: usize;

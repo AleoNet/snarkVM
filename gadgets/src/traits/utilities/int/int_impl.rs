@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{boolean::Boolean, integral::Integral};
+use crate::utilities::{boolean::Boolean, integer::Integer};
 
 use std::fmt::Debug;
 
@@ -27,7 +27,7 @@ macro_rules! int_impl {
             pub value: Option<$type_>,
         }
 
-        impl Integral for $name {
+        impl Integer for $name {
             type IntegerType = $type_;
 
             const SIZE: usize = $size;

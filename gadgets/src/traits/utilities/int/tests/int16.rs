@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{alloc::AllocGadget, arithmetic::*, boolean::Boolean, int::*, integral::Integral};
+use crate::utilities::{alloc::AllocGadget, arithmetic::*, boolean::Boolean, int::*, integer::Integer};
 use snarkvm_fields::{One, Zero};
 use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
 

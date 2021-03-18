@@ -20,7 +20,7 @@ use crate::utilities::{
     alloc::AllocGadget,
     arithmetic::Pow,
     boolean::Boolean,
-    integral::Integral,
+    integer::Integer,
     select::CondSelectGadget,
     uint::*,
 };
@@ -51,10 +51,10 @@ macro_rules! pow_int_impl {
                 // res
 
                 let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
-                let constant_result = Self::constant(1 as <$gadget as Integral>::IntegerType);
+                let constant_result = Self::constant(1 as <$gadget as Integer>::IntegerType);
                 let allocated_result = Self::alloc(
-                    &mut cs.ns(|| format!("allocated_1u{}", <$gadget as Integral>::SIZE)),
-                    || Ok(1 as <$gadget as Integral>::IntegerType),
+                    &mut cs.ns(|| format!("allocated_1u{}", <$gadget as Integer>::SIZE)),
+                    || Ok(1 as <$gadget as Integer>::IntegerType),
                 )?;
                 let mut result = Self::conditionally_select(
                     &mut cs.ns(|| "constant_or_allocated"),

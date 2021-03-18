@@ -18,7 +18,7 @@ use crate::{
     algorithms::prf::{blake2s_gadget, Blake2sOutputGadget},
     traits::{
         algorithms::CommitmentGadget,
-        utilities::{alloc::AllocGadget, integral::Integral, uint::unsigned_integer::UInt8, ToBytesGadget},
+        utilities::{alloc::AllocGadget, integer::Integer, uint::unsigned_integer::UInt8, ToBytesGadget},
     },
 };
 use snarkvm_algorithms::commitment::Blake2sCommitment;

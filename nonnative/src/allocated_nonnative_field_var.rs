@@ -29,7 +29,7 @@ use snarkvm_gadgets::{
             alloc::AllocGadget,
             boolean::Boolean,
             eq::EqGadget,
-            integral::Integral,
+            integer::Integer,
             select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
             uint::UInt8,
             ToBitsBEGadget,

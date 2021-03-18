@@ -16,7 +16,7 @@
 
 use crate::{
     errors::UnsignedIntegerError,
-    utilities::{alloc::AllocGadget, boolean::AllocatedBit, integral::Integral, uint::*, Field, SynthesisError},
+    utilities::{alloc::AllocGadget, boolean::AllocatedBit, integer::Integer, uint::*, Field, SynthesisError},
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{Assignment, ConstraintSystem, LinearCombination};
@@ -65,21 +65,21 @@ macro_rules! sub_int_impl {
 
                             if Self::result_is_constant(&self, &other) {
                                 // Return constant 0
-                                Ok(Self::constant(0 as <$gadget as Integral>::IntegerType))
+                                Ok(Self::constant(0 as <$gadget as Integer>::IntegerType))
                             } else {
                                 // Return allocated 0
                                 let result_value = Some(0u128);
-                                let modular_value = result_value.map(|v| v as <$gadget as Integral>::IntegerType);
+                                let modular_value = result_value.map(|v| v as <$gadget as Integer>::IntegerType);
 
                                 // Storage area for the resulting bits
-                                let mut result_bits = Vec::with_capacity(<$gadget as Integral>::SIZE);
+                                let mut result_bits = Vec::with_capacity(<$gadget as Integer>::SIZE);
 
                                 // This is a linear combination that we will enforce to be "zero"
                                 let mut lc = LinearCombination::zero();
 
                                 // Allocate each bit_gadget of the result
                                 let mut coeff = F::one();
-                                for i in 0..<$gadget as Integral>::SIZE {
+                                for i in 0..<$gadget as Integer>::SIZE {
                                     // Allocate the bit_gadget
                                     let b = AllocatedBit::alloc(cs.ns(|| format!("result bit_gadget {}", i)), || {
                                         result_value.map(|v| (v >> i) & 1 == 1).get()

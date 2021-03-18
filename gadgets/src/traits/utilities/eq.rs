@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{boolean::Boolean, int::*, integral::Integral, select::CondSelectGadget, uint::*};
+use crate::utilities::{boolean::Boolean, int::*, integer::Integer, select::CondSelectGadget, uint::*};
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
@@ -153,7 +153,7 @@ macro_rules! cond_eq_int_impl {
             ) -> Result<(), SynthesisError> {
                 for (i, (a, b)) in self.bits.iter().zip(&other.bits).enumerate() {
                     a.conditional_enforce_equal(
-                        &mut cs.ns(|| format!("{} equality check for the {}-th bit", <$gadget as Integral>::SIZE, i)),
+                        &mut cs.ns(|| format!("{} equality check for the {}-th bit", <$gadget as Integer>::SIZE, i)),
                         b,
                         condition,
                     )?;
@@ -163,7 +163,7 @@ macro_rules! cond_eq_int_impl {
             }
 
             fn cost() -> usize {
-                <$gadget as Integral>::SIZE * <Boolean as ConditionalEqGadget<F>>::cost()
+                <$gadget as Integer>::SIZE * <Boolean as ConditionalEqGadget<F>>::cost()
             }
         }
     )*)

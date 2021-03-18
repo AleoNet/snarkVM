@@ -17,7 +17,7 @@
 use crate::utilities::{
     boolean::{AllocatedBit, Boolean},
     int::*,
-    integral::Integral,
+    integer::Integer,
     uint::*,
 };
 use snarkvm_fields::Field;
@@ -148,7 +148,7 @@ macro_rules! alloc_gadget_fn_impl {
     ($gadget: ident, $fn_name: ident) => {
         fn $fn_name<
             Fn: FnOnce() -> Result<T, SynthesisError>,
-            T: Borrow<<$gadget as Integral>::IntegerType>,
+            T: Borrow<<$gadget as Integer>::IntegerType>,
             CS: ConstraintSystem<F>,
         >(
             mut cs: CS,
@@ -157,16 +157,16 @@ macro_rules! alloc_gadget_fn_impl {
             let value = value_gen().map(|val| *val.borrow());
             let values = match value {
                 Ok(mut val) => {
-                    let mut v = Vec::with_capacity(<$gadget as Integral>::SIZE);
+                    let mut v = Vec::with_capacity(<$gadget as Integer>::SIZE);
 
-                    for _ in 0..<$gadget as Integral>::SIZE {
+                    for _ in 0..<$gadget as Integer>::SIZE {
                         v.push(Some(val & 1 == 1));
                         val >>= 1;
                     }
 
                     v
                 }
-                _ => vec![None; <$gadget as Integral>::SIZE],
+                _ => vec![None; <$gadget as Integer>::SIZE],
             };
 
             let bits = values
@@ -187,7 +187,7 @@ macro_rules! alloc_gadget_fn_impl {
 
 macro_rules! alloc_gadget_int_impl {
     ($($gadget: ident)*) => ($(
-        impl<F: Field> AllocGadget<<$gadget as Integral>::IntegerType, F> for $gadget {
+        impl<F: Field> AllocGadget<<$gadget as Integer>::IntegerType, F> for $gadget {
             alloc_gadget_fn_impl!($gadget, alloc);
 
             alloc_gadget_fn_impl!($gadget, alloc_input);

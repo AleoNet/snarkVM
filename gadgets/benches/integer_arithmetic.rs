@@ -17,7 +17,7 @@
 use snarkvm_gadgets::traits::utilities::{
     alloc::AllocGadget,
     arithmetic::*,
-    integral::Integral,
+    integer::Integer,
     uint::{Sub, UInt, UInt128, UInt16, UInt32, UInt64, UInt8},
 };
 use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};

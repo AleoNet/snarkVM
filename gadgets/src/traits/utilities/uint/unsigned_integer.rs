@@ -27,7 +27,7 @@ use crate::{
         alloc::AllocGadget,
         boolean::{AllocatedBit, Boolean},
         eq::{ConditionalEqGadget, EqGadget},
-        integral::Integral,
+        integer::Integer,
         select::CondSelectGadget,
         ToBitsBEGadget,
         ToBytesGadget,
@@ -44,7 +44,7 @@ uint_impl!(UInt16, u16, 16);
 uint_impl!(UInt32, u32, 32);
 uint_impl!(UInt64, u64, 64);
 
-pub trait UInt: Integral {
+pub trait UInt: Integer {
     /// Returns the inverse `UInt`
     fn negate(&self) -> Self;
 

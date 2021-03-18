@@ -42,7 +42,7 @@ use snarkvm_gadgets::{
             boolean::Boolean,
             eq::{ConditionalEqGadget, EqGadget, NEqGadget},
             int::Int64,
-            integral::Integral,
+            integer::Integer,
             uint::UInt8,
             ToBytesGadget,
         },

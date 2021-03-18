@@ -19,7 +19,7 @@ macro_rules! to_bytes_int_impl {
         impl<F: Field> ToBytesGadget<F> for $name {
             #[inline]
             fn to_bytes<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-                use crate::utilities::integral::Integral;
+                use crate::utilities::integer::Integer;
 
                 const BYTES_SIZE: usize = if $size == 128 { 16 } else { 8 };
 
@@ -61,7 +61,7 @@ macro_rules! cond_select_int_impl {
                 first: &Self,
                 second: &Self,
             ) -> Result<Self, SynthesisError> {
-                use crate::utilities::integral::Integral;
+                use crate::utilities::integer::Integer;
 
                 if let Boolean::Constant(cond) = *cond {
                     if cond {
@@ -123,7 +123,7 @@ macro_rules! uint_impl_common {
             pub value: Option<$_type>,
         }
 
-        impl crate::utilities::integral::Integral for $name {
+        impl crate::utilities::integer::Integer for $name {
             type IntegerType = $_type;
 
             const SIZE: usize = $size;

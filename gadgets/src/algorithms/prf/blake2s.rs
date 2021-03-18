@@ -21,7 +21,7 @@ use crate::traits::{
         bits::Xor,
         boolean::Boolean,
         eq::{ConditionalEqGadget, EqGadget},
-        integral::Integral,
+        integer::Integer,
         select::CondSelectGadget,
         uint::unsigned_integer::{UInt, UInt32, UInt8},
         ToBytesGadget,

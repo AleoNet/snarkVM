@@ -21,7 +21,7 @@ use crate::utilities::{
     arithmetic::{Mul, Pow},
     boolean::Boolean,
     int::*,
-    integral::Integral,
+    integer::Integer,
     select::CondSelectGadget,
 };
 use snarkvm_fields::PrimeField;
@@ -48,8 +48,8 @@ macro_rules! pow_int_impl {
                 // res
 
                 let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
-                let one_const = Self::constant(1 as <$gadget as Integral>::IntegerType);
-                let one_alloc = Self::alloc(&mut cs.ns(|| "allocated_1"), || Ok(1 as <$gadget as Integral>::IntegerType))?;
+                let one_const = Self::constant(1 as <$gadget as Integer>::IntegerType);
+                let one_alloc = Self::alloc(&mut cs.ns(|| "allocated_1"), || Ok(1 as <$gadget as Integer>::IntegerType))?;
                 let mut result = Self::conditionally_select(
                     &mut cs.ns(|| "constant_or_allocated"),
                     &is_constant,

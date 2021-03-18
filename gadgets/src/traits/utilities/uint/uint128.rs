@@ -21,7 +21,7 @@ use crate::{
         arithmetic::Pow,
         boolean::{AllocatedBit, Boolean},
         eq::{ConditionalEqGadget, EqGadget},
-        integral::Integral,
+        integer::Integer,
         select::CondSelectGadget,
         uint::unsigned_integer::{UInt, UInt8},
         ToBytesGadget,

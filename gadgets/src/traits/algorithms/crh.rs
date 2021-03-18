@@ -17,7 +17,7 @@
 use crate::utilities::{
     alloc::AllocGadget,
     eq::{ConditionalEqGadget, EqGadget},
-    integral::Integral,
+    integer::Integer,
     select::CondSelectGadget,
     uint::UInt8,
     ToBytesGadget,
