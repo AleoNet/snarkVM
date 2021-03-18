@@ -16,7 +16,7 @@
 
 use crate::utilities::{Boolean, ToBitsLEGadget};
 
-use snarkvm_fields::{FpParameters, PrimeField};
+use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use snarkvm_utilities::BigInteger;
 
@@ -136,8 +136,8 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
         //  if CF has the same number of bits as F, but is larger,
         //  then it is okay to put the entire field element in.
         let capacity = if CF::size_in_bits() == F::size_in_bits() {
-            let fq = <<CF as PrimeField>::Parameters as FpParameters>::MODULUS;
-            let fr = <<F as PrimeField>::Parameters as FpParameters>::MODULUS;
+            let fq = <<CF as PrimeField>::Parameters as FieldParameters>::MODULUS;
+            let fr = <<F as PrimeField>::Parameters as FieldParameters>::MODULUS;
 
             let fq_u64: &[u64] = fq.as_ref();
             let fr_u64: &[u64] = fr.as_ref();
