@@ -1,33 +1,5 @@
 #[cfg(test)]
 mod tests {
-    // use crate::ahp::prover::ProverMsg;
-    // use crate::{
-    //     constraints::{
-    //         data_structures::{CircuitVerifyingKeyVar, ProofVar, ProverMsgVar},
-    //         verifier::Marlin,
-    //     },
-    //     fiat_shamir::{
-    //         constraints::FiatShamirAlgebraicSpongeRngVar, poseidon::constraints::PoseidonSpongeVar,
-    //         poseidon::PoseidonSponge, FiatShamirAlgebraicSpongeRng,
-    //     },
-    //     Marlin as MarlinNative, MarlinRecursiveConfig, Proof,
-    // };
-    // use ark_ec::{CurveCycle, PairingEngine, PairingFriendlyCycle};
-    // use ark_ff::{Field, UniformRand};
-    // use ark_mnt4_298::{constraints::PairingVar as MNT4PairingVar, Fq, Fr, MNT4_298};
-    // use ark_mnt6_298::MNT6_298;
-    // use ark_nonnative_field::NonNativeFieldVar;
-    // use ark_poly::univariate::DensePolynomial;
-    // use ark_poly_commit::marlin_pc::{
-    //     BatchLCProofVar, CommitmentVar, MarlinKZG10, MarlinKZG10Gadget,
-    // };
-    // use ark_r1cs_std::{alloc::AllocVar, bits::boolean::Boolean, eq::EqGadget};
-    // use ark_relations::r1cs::OptimizationGoal;
-    // use ark_relations::{
-    //     lc, ns,
-    //     r1cs::{ConstraintSynthesizer, ConstraintSystem, ConstraintSystemRef, SynthesisError},
-    // };
-
     #![allow(unused_imports)]
 
     use crate::{
@@ -48,13 +20,14 @@ mod tests {
     use snarkvm_algorithms::{fft::DensePolynomial, traits::SNARK};
     use snarkvm_curves::{
         bls12_377::{Bls12_377, Fq, Fr},
+        bw6_761::BW6_761,
         traits::PairingEngine,
     };
     use snarkvm_fields::Field;
     use snarkvm_gadgets::{
         curves::bls12_377::PairingGadget as Bls12PairingGadget,
         traits::curves::PairingGadget,
-        utilities::{alloc::AllocGadget, eq::EqGadget},
+        utilities::{alloc::AllocGadget, boolean::Boolean, eq::EqGadget},
     };
     use snarkvm_nonnative::NonNativeFieldVar;
     use snarkvm_polycommit::marlin_pc::{BatchLCProofVar, CommitmentVar, MarlinKZG10, MarlinKZG10Gadget};
@@ -65,21 +38,6 @@ mod tests {
     use core::ops::MulAssign;
     use hashbrown::HashMap;
     use rand::SeedableRng;
-    use snarkvm_curves::bw6_761::BW6_761;
-    use snarkvm_gadgets::utilities::boolean::Boolean;
-
-    // #[derive(Copy, Clone, Debug)]
-    // struct Bls12Cycle;
-    // impl CurveCycle for Bls12Cycle {
-    //     // TODO (raychu86) What should go here?
-    //     type E1 = <Bls12_377 as PairingEngine>::G1Affine;
-    //     type E2 = <Bls12_377 as PairingEngine>::G2Affine;
-    // }
-    // impl PairingFriendlyCycle for Bls12Cycle {
-    //     type Engine1 = Bls12_377;
-    //     // TODO (raychu86) What should go here?
-    //     type Engine2 = Bls12_377;
-    // }
 
     type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
     type MultiPC = MarlinKZG10<Bls12_377>;
@@ -268,26 +226,26 @@ mod tests {
         };
         // END: proof to proof_gadget
 
-        // MarlinVerificationGadget::<Fr, Fq, MultiPC, MultiPCVar>::verify::<
-        //     _,
-        //     FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>,
-        //     FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>,
-        // >(
-        //     cs.ns(|| "marlin_verification"),
-        //     &ivk_gadget,
-        //     &public_input_gadget,
-        //     &proof_gadget,
-        // )
-        // .unwrap()
-        // .enforce_equal(&Boolean::Constant(true))
-        // .unwrap();
-        //
-        // println!("after Marlin, num_of_constraints = {}", cs.num_constraints());
-        //
-        // assert!(
-        //     cs.is_satisfied(),
-        //     "Constraints not satisfied: {}",
-        //     cs.which_is_unsatisfied().unwrap()
-        // );
+        MarlinVerificationGadget::<Fr, Fq, MultiPC, MultiPCVar>::verify::<
+            _,
+            FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>,
+            FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>,
+        >(
+            cs.ns(|| "marlin_verification"),
+            &ivk_gadget,
+            &public_input_gadget,
+            &proof_gadget,
+        )
+        .unwrap()
+        .enforce_equal(cs.ns(|| "enforce_equal"), &Boolean::Constant(true))
+        .unwrap();
+
+        println!("after Marlin, num_of_constraints = {}", cs.num_constraints());
+
+        assert!(
+            cs.is_satisfied(),
+            "Constraints not satisfied: {}",
+            cs.which_is_unsatisfied().unwrap()
+        );
     }
 }
