@@ -351,10 +351,10 @@ fn test_int8_div() {
 fn test_int8_pow_constants() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    for _ in 0..100 {
+    for _ in 0..10 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: i8 = rng.gen_range(-4..4);
+        let a: i8 = rng.gen_range(-12..12);
         let b: i8 = rng.gen_range(-4..4);
 
         let expected = match a.checked_pow(b as u32) {
@@ -380,7 +380,7 @@ fn test_int8_pow() {
     for _ in 0..10 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: i8 = rng.gen_range(-4..4);
+        let a: i8 = rng.gen_range(-12..12);
         let b: i8 = rng.gen_range(-4..4);
 
         let expected = match a.checked_pow(b as u32) {

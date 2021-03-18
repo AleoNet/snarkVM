@@ -353,16 +353,15 @@ fn test_int32_div() {
     }
 }
 
-#[ignore]
 #[test]
 fn test_int32_pow_constants() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    for _ in 0..3 {
+    for _ in 0..10 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: i32 = rng.gen_range(-16..16);
-        let b: i32 = rng.gen_range(-8..8);
+        let a: i32 = rng.gen_range(-46340..46340);
+        let b: i32 = rng.gen_range(-4..4);
 
         let expected = match a.checked_pow(b as u32) {
             Some(valid) => valid,
@@ -380,16 +379,15 @@ fn test_int32_pow_constants() {
     }
 }
 
-#[ignore]
 #[test]
 fn test_int32_pow() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    for _ in 0..3 {
+    for _ in 0..10 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: i32 = rng.gen_range(-16..16);
-        let b: i32 = rng.gen_range(-8..8);
+        let a: i32 = rng.gen_range(-46340..46340);
+        let b: i32 = rng.gen_range(-4..4);
 
         let expected = match a.checked_pow(b as u32) {
             Some(valid) => valid,
