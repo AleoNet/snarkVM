@@ -16,7 +16,7 @@
 
 use crate::{
     fields::FpGadget,
-    traits::fields::FieldGadget,
+    traits::fields::{FieldGadget, ToConstraintFieldGadget},
     utilities::{
         alloc::AllocGadget,
         boolean::Boolean,
@@ -621,5 +621,16 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> AllocGadget<Fp2<P>, F> for Fp2Gadg
         let c0 = FpGadget::alloc_input(&mut cs.ns(|| "c0"), || c0)?;
         let c1 = FpGadget::alloc_input(&mut cs.ns(|| "c1"), || c1)?;
         Ok(Self::new(c0, c1))
+    }
+}
+
+impl<P: Fp2Parameters<Fp = F>, F: PrimeField> ToConstraintFieldGadget<F> for Fp2Gadget<P, F> {
+    fn to_constraint_field(&self) -> Result<Vec<FpGadget<F>>, SynthesisError> {
+        let mut res = Vec::new();
+
+        res.extend_from_slice(&self.c0.to_constraint_field()?);
+        res.extend_from_slice(&self.c1.to_constraint_field()?);
+
+        Ok(res)
     }
 }
