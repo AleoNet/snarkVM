@@ -38,6 +38,7 @@ use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
+use crate::{fields::FpGadget, traits::fields::ToConstraintFieldGadget};
 use std::{borrow::Borrow, marker::PhantomData, ops::Neg};
 
 #[derive(Derivative)]
@@ -604,5 +605,28 @@ where
         x_bytes.extend_from_slice(&inf_bytes);
 
         Ok(x_bytes)
+    }
+}
+
+impl<P, F, FG> ToConstraintFieldGadget<F> for AffineGadget<P, F, FG>
+where
+    P: SWModelParameters,
+    F: PrimeField,
+    FG: FieldGadget<P::BaseField, F> + ToConstraintFieldGadget<F>,
+{
+    fn to_constraint_field(&self) -> Result<Vec<FpGadget<F>>, SynthesisError> {
+        let mut res = Vec::<FpGadget<F>>::new();
+
+        res.extend_from_slice(&self.x.to_constraint_field()?);
+        res.extend_from_slice(&self.y.to_constraint_field()?);
+
+        // TODO (raychu86): Update the boolean conversion into the constraint field. Currently,
+        // there is no constraint system object passed into this trait function.
+
+        // res.extend_from_slice(&self.infinity.to_constraint_field()?);
+
+        // Ok(res)
+
+        unimplemented!()
     }
 }
