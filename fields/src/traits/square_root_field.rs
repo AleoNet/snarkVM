@@ -14,23 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod field;
-pub use field::*;
+use crate::{Field, LegendreSymbol};
 
-mod field_parameters;
-pub use field_parameters::*;
+/// The interface for a field that supports an efficient square-root operation.
+pub trait SquareRootField: Field {
+    /// Returns the Legendre symbol.
+    fn legendre(&self) -> LegendreSymbol;
 
-mod one;
-pub use one::*;
+    /// Returns the square root of self, if it exists.
+    #[must_use]
+    fn sqrt(&self) -> Option<Self>;
 
-mod prime_field;
-pub use prime_field::*;
-
-mod square_root_field;
-pub use square_root_field::*;
-
-mod to_constraint_field;
-pub use to_constraint_field::*;
-
-mod zero;
-pub use zero::*;
+    /// Sets `self` to be the square root of `self`, if it exists.
+    fn sqrt_in_place(&mut self) -> Option<&mut Self>;
+}

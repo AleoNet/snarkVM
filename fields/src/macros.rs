@@ -14,6 +14,31 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#[macro_export]
+macro_rules! field {
+    ($name:ident, $c0:expr) => {
+        $name {
+            0: $c0,
+            1: std::marker::PhantomData,
+        }
+    };
+    ($name:ident, $c0:expr, $c1:expr $(,)?) => {
+        $name {
+            c0: $c0,
+            c1: $c1,
+            _parameters: std::marker::PhantomData,
+        }
+    };
+    ($name:ident, $c0:expr, $c1:expr, $c2:expr $(,)?) => {
+        $name {
+            c0: $c0,
+            c1: $c1,
+            c2: $c2,
+            _parameters: std::marker::PhantomData,
+        }
+    };
+}
+
 macro_rules! impl_field_into_bigint {
     ($field: ident, $bigint: ident, $params: ident) => {
         impl<P: $params> Into<$bigint> for $field<P> {

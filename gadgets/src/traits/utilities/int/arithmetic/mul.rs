@@ -24,7 +24,7 @@ use crate::utilities::{
     int::*,
     select::CondSelectGadget,
 };
-use snarkvm_fields::{FpParameters, PrimeField};
+use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{Assignment, ConstraintSystem, LinearCombination};
 
 use std::iter;

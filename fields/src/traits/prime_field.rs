@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Field, FpParameters};
+use crate::{Field, FieldParameters};
 use snarkvm_utilities::biginteger::BigInteger;
 
 use std::str::FromStr;
@@ -22,7 +22,7 @@ use std::str::FromStr;
 /// The interface for a prime field.
 #[allow(clippy::wrong_self_convention)]
 pub trait PrimeField: Field + FromStr {
-    type Parameters: FpParameters<BigInteger = Self::BigInteger>;
+    type Parameters: FieldParameters<BigInteger = Self::BigInteger>;
     type BigInteger: BigInteger;
 
     /// Returns a prime field element from its underlying representation.

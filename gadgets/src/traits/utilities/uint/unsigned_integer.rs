@@ -17,7 +17,7 @@
 use core::borrow::Borrow;
 use std::{cmp::Ordering, fmt::Debug};
 
-use snarkvm_fields::{Field, FpParameters, PrimeField, ToConstraintField};
+use snarkvm_fields::{Field, FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearCombination};
 use snarkvm_utilities::bytes::ToBytes;
 

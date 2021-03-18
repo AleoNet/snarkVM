@@ -20,7 +20,7 @@ use crate::{
     reduce::{bigint_to_basefield, limbs_to_bigint, Reducer},
 };
 
-use snarkvm_fields::{FpParameters, PrimeField};
+use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_gadgets::{
     fields::FpGadget,
     traits::{
