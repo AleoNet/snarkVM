@@ -22,6 +22,8 @@ use digest::Digest;
 use rand_chacha::ChaChaRng;
 use rand_core::{Error, RngCore, SeedableRng};
 
+/// Implements a Fiat-Shamir based Rng that allows one to incrementally update
+/// the seed based on new messages in the proof transcript.
 /// Use a ChaCha stream cipher to generate the actual pseudorandom bits.
 /// Use a digest function to do absorbing.
 pub struct FiatShamirChaChaRng<TargetField: PrimeField, BaseField: PrimeField, D: Digest> {

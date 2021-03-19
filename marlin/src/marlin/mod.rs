@@ -42,11 +42,6 @@ pub use marlin::*;
 mod proof;
 pub use proof::*;
 
-/// Implements a Fiat-Shamir based Rng that allows one to incrementally update
-/// the seed based on new messages in the proof transcript.
-// mod rng;
-// pub use rng::*;
-
 /// The Marlin universal SRS.
 mod universal_srs;
 pub use universal_srs::*;
