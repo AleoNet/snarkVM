@@ -822,6 +822,7 @@ mod tests {
                     .enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element)
                     .unwrap();
 
+                // Check that the bits are equivalent.
                 let allocated_bits = alloc_element
                     .to_bits_le(cs.ns(|| format!("to_bits_le_{}_{}", i, j)))
                     .unwrap();
@@ -963,6 +964,7 @@ mod tests {
                     .enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element)
                     .unwrap();
 
+                // Check that the bits are equivalent.
                 let allocated_bits = alloc_element
                     .to_bits_le(cs.ns(|| format!("to_bits_le_{}_{}", i, j)))
                     .unwrap();
