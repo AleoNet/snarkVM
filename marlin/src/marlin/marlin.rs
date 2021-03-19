@@ -234,7 +234,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
 
         // Compute the AHP verifier's query set.
         let (query_set, verifier_state) = AHPForR1CS::verifier_query_set(verifier_state, &mut fs_rng);
-        let lc_s = AHPForR1CS::construct_linear_combinations(&public_input, &polynomials, &verifier_state)?;
+        let lc_s = AHPForR1CS::construct_linear_combinations(&public_input, &polynomials, &verifier_state, false)?;
 
         let eval_time = start_timer!(|| "Evaluating linear combinations over query set");
         let mut evaluations = Vec::new();
@@ -349,7 +349,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
             }
         }
 
-        let lc_s = AHPForR1CS::construct_linear_combinations(&public_input, &evaluations, &verifier_state)?;
+        let lc_s = AHPForR1CS::construct_linear_combinations(&public_input, &evaluations, &verifier_state, false)?;
 
         let evaluations_are_correct = PC::check_combinations(
             &circuit_verifying_key.verifier_key,
