@@ -14,7 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{marlin::MarlinSNARK, ProvingKey, VerifyingKey, SRS};
+use crate::{
+    marlin::{FiatShamirChaChaRng, MarlinSNARK},
+    ProvingKey,
+    VerifyingKey,
+    SRS,
+};
 use snarkvm_algorithms::errors::SNARKError;
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
 use snarkvm_r1cs::ConstraintSynthesizer;
@@ -57,8 +62,13 @@ pub struct Parameters<E: PairingEngine> {
 impl<E: PairingEngine> Parameters<E> {
     /// Creates an instance of `Parameters` from a given universal SRS.
     pub fn new<C: ConstraintSynthesizer<E::Fr>>(circuit: &C, universal_srs: &SRS<E>) -> Result<Self, SNARKError> {
-        let (proving_key, verifying_key) = MarlinSNARK::<_, _, Blake2s>::circuit_setup(universal_srs, circuit)
-            .map_err(|error| SNARKError::Crate("marlin", format!("could not index - {:?}", error)))?;
+        let (proving_key, verifying_key) = MarlinSNARK::<
+            <E as PairingEngine>::Fr,
+            <E as PairingEngine>::Fr,
+            MultiPC<E>,
+            FiatShamirChaChaRng<<E as PairingEngine>::Fr, <E as PairingEngine>::Fr, Blake2s>,
+        >::circuit_setup(universal_srs, circuit)
+        .map_err(|error| SNARKError::Crate("marlin", format!("could not index - {:?}", error)))?;
         Ok(Self {
             proving_key,
             verifying_key,

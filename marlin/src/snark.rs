@@ -27,6 +27,7 @@ use snarkvm_r1cs::ConstraintSynthesizer;
 
 pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PolynomialCommitment};
 
+use crate::marlin::FiatShamirChaChaRng;
 use blake2::Blake2s;
 use core::marker::PhantomData;
 use rand_core::RngCore;
@@ -96,9 +97,13 @@ where
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         let proving_time = start_timer!(|| "{Marlin}::Proving");
-        let proof =
-            MarlinSNARK::<<E as PairingEngine>::Fr, MultiPC<E>, Blake2s>::prove(&parameters.proving_key, circuit, rng)
-                .map_err(|error| SNARKError::Crate("marlin", format!("Failed to generate proof - {:?}", error)))?;
+        let proof = MarlinSNARK::<
+            <E as PairingEngine>::Fr,
+            <E as PairingEngine>::Fr,
+            MultiPC<E>,
+            FiatShamirChaChaRng<<E as PairingEngine>::Fr, <E as PairingEngine>::Fr, Blake2s>,
+        >::prove(&parameters.proving_key, circuit, rng)
+        .map_err(|error| SNARKError::Crate("marlin", format!("Failed to generate proof - {:?}", error)))?;
         end_timer!(proving_time);
         Ok(proof)
     }
@@ -109,12 +114,12 @@ where
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
         let verification_time = start_timer!(|| "{Marlin}::Verifying");
-        let res = MarlinSNARK::<<E as PairingEngine>::Fr, MultiPC<E>, Blake2s>::verify(
-            &verifying_key,
-            &input.to_field_elements()?,
-            &proof,
-            &mut rand_core::OsRng,
-        )
+        let res = MarlinSNARK::<
+            <E as PairingEngine>::Fr,
+            <E as PairingEngine>::Fr,
+            MultiPC<E>,
+            FiatShamirChaChaRng<<E as PairingEngine>::Fr, <E as PairingEngine>::Fr, Blake2s>,
+        >::verify(&verifying_key, &input.to_field_elements()?, &proof)
         .map_err(|_| SNARKError::Crate("marlin", "Could not verify proof".to_owned()))?;
         end_timer!(verification_time);
 

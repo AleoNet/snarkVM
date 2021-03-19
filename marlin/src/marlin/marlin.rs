@@ -16,25 +16,38 @@
 
 use crate::{
     ahp::{AHPError, AHPForR1CS, EvaluationsProvider},
-    marlin::{CircuitProvingKey, CircuitVerifyingKey, FiatShamirRng, MarlinError, Proof, UniversalSRS},
+    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinError, Proof, UniversalSRS},
+    traits::FiatShamirRng,
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::{Evaluations, LabeledCommitment, PCUniversalParams, PolynomialCommitment};
 use snarkvm_r1cs::ConstraintSynthesizer;
-use snarkvm_utilities::{bytes::ToBytes, rand::UniformRand, to_bytes};
+use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
 use core::marker::PhantomData;
-use digest::Digest;
 use rand_core::RngCore;
+use snarkvm_algorithms::fft::EvaluationDomain;
 
 /// The Marlin proof system.
-pub struct MarlinSNARK<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest>(
-    #[doc(hidden)] PhantomData<F>,
+pub struct MarlinSNARK<
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    FS: FiatShamirRng<TargetField, BaseField>,
+>(
+    #[doc(hidden)] PhantomData<TargetField>,
+    #[doc(hidden)] PhantomData<BaseField>,
     #[doc(hidden)] PhantomData<PC>,
-    #[doc(hidden)] PhantomData<D>,
+    #[doc(hidden)] PhantomData<FS>,
 );
 
-impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D> {
+impl<
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    FS: FiatShamirRng<TargetField, BaseField>,
+> MarlinSNARK<TargetField, BaseField, PC, FS>
+{
     /// The personalization string for this protocol.
     /// Used to personalize the Fiat-Shamir RNG.
     pub const PROTOCOL_NAME: &'static [u8] = b"MARLIN-2019";
@@ -45,8 +58,8 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         num_variables: usize,
         num_non_zero: usize,
         rng: &mut R,
-    ) -> Result<UniversalSRS<F, PC>, MarlinError<PC::Error>> {
-        let max_degree = AHPForR1CS::<F>::max_degree(num_constraints, num_variables, num_non_zero)?;
+    ) -> Result<UniversalSRS<TargetField, PC>, MarlinError<PC::Error>> {
+        let max_degree = AHPForR1CS::<TargetField>::max_degree(num_constraints, num_variables, num_non_zero)?;
         let setup_time = start_timer!(|| {
             format!(
                 "Marlin::UniversalSetup with max_degree {}, computed for a maximum of {} constraints, {} vars, {} non_zero",
@@ -62,10 +75,11 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
     /// Generates the circuit proving and verifying keys.
     /// This is a deterministic algorithm that anyone can rerun.
     #[allow(clippy::type_complexity)]
-    pub fn circuit_setup<C: ConstraintSynthesizer<F>>(
-        universal_srs: &UniversalSRS<F, PC>,
+    pub fn circuit_setup<C: ConstraintSynthesizer<TargetField>>(
+        universal_srs: &UniversalSRS<TargetField, PC>,
         circuit: &C,
-    ) -> Result<(CircuitProvingKey<F, PC>, CircuitVerifyingKey<F, PC>), MarlinError<PC::Error>> {
+    ) -> Result<(CircuitProvingKey<TargetField, PC>, CircuitVerifyingKey<TargetField, PC>), MarlinError<PC::Error>>
+    {
         let index_time = start_timer!(|| "Marlin::CircuitSetup");
 
         // TODO: Add check that c is in the correct mode.
@@ -78,6 +92,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         }
 
         let coefficient_support = AHPForR1CS::get_degree_bounds(&index.index_info);
+
         // Marlin only needs degree 2 random polynomials
         let supported_hiding_bound = 1;
         let (committer_key, verifier_key) = PC::trim(
@@ -116,17 +131,20 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
     }
 
     /// Create a zkSNARK asserting that the constraint system is satisfied.
-    pub fn prove<C: ConstraintSynthesizer<F>, R: RngCore>(
-        circuit_proving_key: &CircuitProvingKey<F, PC>,
+    pub fn prove<C: ConstraintSynthesizer<TargetField>, R: RngCore>(
+        circuit_proving_key: &CircuitProvingKey<TargetField, PC>,
         circuit: &C,
         zk_rng: &mut R,
-    ) -> Result<Proof<F, PC>, MarlinError<PC::Error>> {
+    ) -> Result<Proof<TargetField, PC>, MarlinError<PC::Error>> {
         let prover_time = start_timer!(|| "Marlin::Prover");
         // TODO: Add check that c is in the correct mode.
 
         let prover_init_state = AHPForR1CS::prover_init(&circuit_proving_key.circuit, circuit)?;
         let public_input = prover_init_state.public_input();
-        let mut fs_rng = FiatShamirRng::<D>::from_seed(
+
+        let mut fs_rng = FS::new();
+
+        fs_rng.absorb_bytes(
             &to_bytes![
                 &Self::PROTOCOL_NAME,
                 &circuit_proving_key.circuit_verifying_key,
@@ -150,7 +168,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         .map_err(MarlinError::from_pc_err)?;
         end_timer!(first_round_comm_time);
 
-        fs_rng.absorb(&to_bytes![first_commitments, prover_first_message].unwrap());
+        fs_rng.absorb_bytes(&to_bytes![first_commitments, prover_first_message].unwrap());
 
         let (verifier_first_message, verifier_state) =
             AHPForR1CS::verifier_first_round(circuit_proving_key.circuit_verifying_key.circuit_info, &mut fs_rng)?;
@@ -171,7 +189,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         .map_err(MarlinError::from_pc_err)?;
         end_timer!(second_round_comm_time);
 
-        fs_rng.absorb(&to_bytes![second_commitments, prover_second_message].unwrap());
+        fs_rng.absorb_bytes(&to_bytes![second_commitments, prover_second_message].unwrap());
 
         let (verifier_second_msg, verifier_state) = AHPForR1CS::verifier_second_round(verifier_state, &mut fs_rng);
         // --------------------------------------------------------------------
@@ -190,7 +208,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         .map_err(MarlinError::from_pc_err)?;
         end_timer!(third_round_comm_time);
 
-        fs_rng.absorb(&to_bytes![third_commitments, prover_third_message].unwrap());
+        fs_rng.absorb_bytes(&to_bytes![third_commitments, prover_third_message].unwrap());
 
         let verifier_state = AHPForR1CS::verifier_third_round(verifier_state, &mut fs_rng);
         // --------------------------------------------------------------------
@@ -211,11 +229,12 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
             second_commitments.iter().map(|p| p.commitment()).cloned().collect(),
             third_commitments.iter().map(|p| p.commitment()).cloned().collect(),
         ];
+
         let labeled_commitments: Vec<_> = circuit_proving_key
             .circuit_verifying_key
             .iter()
             .cloned()
-            .zip(&AHPForR1CS::<F>::INDEXER_POLYNOMIALS)
+            .zip(&AHPForR1CS::<TargetField>::INDEXER_POLYNOMIALS)
             .map(|(c, l)| LabeledCommitment::new(l.to_string(), c, None))
             .chain(first_commitments.into_iter())
             .chain(second_commitments.into_iter())
@@ -237,21 +256,25 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         let lc_s = AHPForR1CS::construct_linear_combinations(&public_input, &polynomials, &verifier_state, false)?;
 
         let eval_time = start_timer!(|| "Evaluating linear combinations over query set");
-        let mut evaluations = Vec::new();
+        let mut evaluations_unsorted = Vec::new();
         for (label, point) in &query_set {
             let lc = lc_s
                 .iter()
                 .find(|lc| &lc.label == label)
                 .ok_or_else(|| AHPError::MissingEval(label.to_string()))?;
             let evaluation = polynomials.get_lc_eval(&lc, *point)?;
-            if !AHPForR1CS::<F>::LC_WITH_ZERO_EVAL.contains(&lc.label.as_ref()) {
-                evaluations.push(evaluation);
+            if !AHPForR1CS::<TargetField>::LC_WITH_ZERO_EVAL.contains(&lc.label.as_ref()) {
+                evaluations_unsorted.push((label.to_string(), evaluation));
             }
         }
+
+        evaluations_unsorted.sort_by(|a, b| a.0.cmp(&b.0));
+        let evaluations = evaluations_unsorted.iter().map(|x| x.1).collect::<Vec<TargetField>>();
         end_timer!(eval_time);
 
-        fs_rng.absorb(&evaluations);
-        let opening_challenge: F = u128::rand(&mut fs_rng).into();
+        fs_rng.absorb_bytes(&to_bytes![&evaluations].unwrap());
+
+        let opening_challenge: TargetField = fs_rng.squeeze_128_bits_nonnative_field_elements(1)[0];
 
         let pc_proof = PC::open_combinations(
             &circuit_proving_key.committer_key,
@@ -276,23 +299,33 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
 
     /// Verify that a proof for the constrain system defined by `C` asserts that
     /// all constraints are satisfied.
-    pub fn verify<R: RngCore>(
-        circuit_verifying_key: &CircuitVerifyingKey<F, PC>,
-        public_input: &[F],
-        proof: &Proof<F, PC>,
-        rng: &mut R,
+    pub fn verify(
+        circuit_verifying_key: &CircuitVerifyingKey<TargetField, PC>,
+        public_input: &[TargetField],
+        proof: &Proof<TargetField, PC>,
     ) -> Result<bool, MarlinError<PC::Error>> {
         let verifier_time = start_timer!(|| "Marlin::Verify");
 
-        let mut fs_rng = FiatShamirRng::<D>::from_seed(
-            &to_bytes![&Self::PROTOCOL_NAME, &circuit_verifying_key, &public_input].unwrap(),
-        );
+        let public_input = {
+            let domain_x = EvaluationDomain::<TargetField>::new(public_input.len() + 1).unwrap();
+
+            let mut unpadded_input = public_input.to_vec();
+            unpadded_input.resize(
+                core::cmp::max(public_input.len(), domain_x.size() - 1),
+                TargetField::zero(),
+            );
+
+            unpadded_input
+        };
+
+        let mut fs_rng = FS::new();
+        fs_rng.absorb_bytes(&to_bytes![&Self::PROTOCOL_NAME, &circuit_verifying_key, &public_input].unwrap());
 
         // --------------------------------------------------------------------
         // First round
 
         let first_commitments = &proof.commitments[0];
-        fs_rng.absorb(&to_bytes![first_commitments, proof.prover_messages[0]].unwrap());
+        fs_rng.absorb_bytes(&to_bytes![first_commitments, proof.prover_messages[0]].unwrap());
 
         let (_, verifier_state) = AHPForR1CS::verifier_first_round(circuit_verifying_key.circuit_info, &mut fs_rng)?;
         // --------------------------------------------------------------------
@@ -300,7 +333,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         // --------------------------------------------------------------------
         // Second round
         let second_commitments = &proof.commitments[1];
-        fs_rng.absorb(&to_bytes![second_commitments, proof.prover_messages[1]].unwrap());
+        fs_rng.absorb_bytes(&to_bytes![second_commitments, proof.prover_messages[1]].unwrap());
 
         let (_, verifier_state) = AHPForR1CS::verifier_second_round(verifier_state, &mut fs_rng);
         // --------------------------------------------------------------------
@@ -308,7 +341,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         // --------------------------------------------------------------------
         // Third round
         let third_commitments = &proof.commitments[2];
-        fs_rng.absorb(&to_bytes![third_commitments, proof.prover_messages[2]].unwrap());
+        fs_rng.absorb_bytes(&to_bytes![third_commitments, proof.prover_messages[2]].unwrap());
 
         let verifier_state = AHPForR1CS::verifier_third_round(verifier_state, &mut fs_rng);
         // --------------------------------------------------------------------
@@ -330,26 +363,33 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
             .chain(second_commitments)
             .chain(third_commitments)
             .cloned()
-            .zip(AHPForR1CS::<F>::polynomial_labels())
+            .zip(AHPForR1CS::<TargetField>::polynomial_labels())
             .zip(degree_bounds)
             .map(|((c, l), d)| LabeledCommitment::new(l, c, d));
 
         let (query_set, verifier_state) = AHPForR1CS::verifier_query_set(verifier_state, &mut fs_rng, false);
 
-        fs_rng.absorb(&proof.evaluations);
-        let opening_challenge: F = u128::rand(&mut fs_rng).into();
+        fs_rng.absorb_bytes(&to_bytes![&proof.evaluations].unwrap());
 
         let mut evaluations = Evaluations::new();
-        let mut proof_evaluations = proof.evaluations.iter();
+
+        let mut evaluation_labels = Vec::<(String, TargetField)>::new();
+
         for q in query_set.iter().cloned() {
-            if AHPForR1CS::<F>::LC_WITH_ZERO_EVAL.contains(&q.0.as_ref()) {
-                evaluations.insert(q, F::zero());
+            if AHPForR1CS::<TargetField>::LC_WITH_ZERO_EVAL.contains(&q.0.as_ref()) {
+                evaluations.insert(q, TargetField::zero());
             } else {
-                evaluations.insert(q, *proof_evaluations.next().unwrap());
+                evaluation_labels.push(q);
             }
+        }
+        evaluation_labels.sort_by(|a, b| a.0.cmp(&b.0));
+        for (q, eval) in evaluation_labels.into_iter().zip(&proof.evaluations) {
+            evaluations.insert(q, *eval);
         }
 
         let lc_s = AHPForR1CS::construct_linear_combinations(&public_input, &evaluations, &verifier_state, false)?;
+
+        let opening_challenge: TargetField = fs_rng.squeeze_128_bits_nonnative_field_elements(1)[0];
 
         let evaluations_are_correct = PC::check_combinations(
             &circuit_verifying_key.verifier_key,
@@ -359,7 +399,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
             &evaluations,
             &proof.pc_proof,
             opening_challenge,
-            rng,
+            &mut fs_rng,
         )
         .map_err(MarlinError::from_pc_err)?;
 
@@ -372,4 +412,12 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         ));
         Ok(evaluations_are_correct)
     }
+
+    // pub fn prepared_verify(
+    //     prepared_vk: &PreparedCircuitVerifyingKey<F, PC>,
+    //     public_input: &[BaseField],
+    //     proof: &Proof<BaseField, PC>,
+    // ) -> Result<bool, MarlinError<PC::Error>> {
+    //     Self::verify(&prepared_vk.orig_vk, public_input, proof)
+    // }
 }
