@@ -14,26 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ahp::{
-    indexer::CircuitInfo,
-    verifier::{VerifierFirstMessage, VerifierSecondMessage, VerifierState},
-    AHPError,
-    AHPForR1CS,
+use crate::{
+    ahp::{
+        indexer::CircuitInfo,
+        verifier::{VerifierFirstMessage, VerifierSecondMessage, VerifierState},
+        AHPError,
+        AHPForR1CS,
+    },
+    traits::FiatShamirRng,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
+use snarkvm_nonnative::params::OptimizationType;
 use snarkvm_r1cs::errors::SynthesisError;
 
 use snarkvm_polycommit::QuerySet;
 
 use rand_core::RngCore;
 
-impl<F: PrimeField> AHPForR1CS<F> {
+impl<TargetField: PrimeField> AHPForR1CS<TargetField> {
     /// Output the first message and next round state.
-    pub fn verifier_first_round<R: RngCore>(
-        index_info: CircuitInfo<F>,
+    pub fn verifier_first_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
+        index_info: CircuitInfo<TargetField>,
         fs_rng: &mut R,
-    ) -> Result<(VerifierFirstMessage<F>, VerifierState<F>), AHPError> {
+    ) -> Result<(VerifierFirstMessage<TargetField>, VerifierState<TargetField>), AHPError> {
         // Check that the R1CS is a square matrix.
         if index_info.num_constraints != index_info.num_variables {
             return Err(AHPError::NonSquareMatrix);
@@ -45,10 +49,12 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let domain_k =
             EvaluationDomain::new(index_info.num_non_zero).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let alpha = domain_h.sample_element_outside_domain(fs_rng);
-        let eta_a = F::rand(fs_rng);
-        let eta_b = F::rand(fs_rng);
-        let eta_c = F::rand(fs_rng);
+        let elems = fs_rng.squeeze_nonnative_field_elements(4, OptimizationType::Weight);
+        let alpha = elems[0];
+        let eta_a = elems[1];
+        let eta_b = elems[2];
+        let eta_c = elems[3];
+        assert!(!domain_h.evaluate_vanishing_polynomial(alpha).is_zero());
 
         let message = VerifierFirstMessage {
             alpha,
@@ -69,11 +75,14 @@ impl<F: PrimeField> AHPForR1CS<F> {
     }
 
     /// Output the second message and next round state.
-    pub fn verifier_second_round<R: RngCore>(
-        mut state: VerifierState<F>,
+    pub fn verifier_second_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
+        mut state: VerifierState<TargetField>,
         fs_rng: &mut R,
-    ) -> (VerifierSecondMessage<F>, VerifierState<F>) {
-        let beta = state.domain_h.sample_element_outside_domain(fs_rng);
+    ) -> (VerifierSecondMessage<TargetField>, VerifierState<TargetField>) {
+        let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight);
+        let beta = elems[0];
+        assert!(!state.domain_h.evaluate_vanishing_polynomial(beta).is_zero());
+
         let msg = VerifierSecondMessage { beta };
         state.second_round_message = Some(msg);
 
@@ -81,17 +90,23 @@ impl<F: PrimeField> AHPForR1CS<F> {
     }
 
     /// Output the third message and next round state.
-    pub fn verifier_third_round<R: RngCore>(mut state: VerifierState<F>, fs_rng: &mut R) -> VerifierState<F> {
-        state.gamma = Some(F::rand(fs_rng));
+    pub fn verifier_third_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
+        mut state: VerifierState<TargetField>,
+        fs_rng: &mut R,
+    ) -> VerifierState<TargetField> {
+        let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight);
+        let gamma = elems[0];
+
+        state.gamma = Some(gamma);
         state
     }
 
     /// Output the query state and next round state.
     pub fn verifier_query_set<'a, 'b, R: RngCore>(
-        state: VerifierState<F>,
+        state: VerifierState<TargetField>,
         _: &'a mut R,
         with_vanishing: bool,
-    ) -> (QuerySet<'b, F>, VerifierState<F>) {
+    ) -> (QuerySet<'b, TargetField>, VerifierState<TargetField>) {
         let alpha = state.first_round_message.unwrap().alpha;
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
