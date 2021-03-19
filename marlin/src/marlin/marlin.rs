@@ -139,7 +139,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         // First round
 
         let (prover_first_message, prover_first_oracles, prover_state) =
-            AHPForR1CS::prover_first_round(prover_init_state, zk_rng)?;
+            AHPForR1CS::prover_first_round(prover_init_state, zk_rng, true)?;
 
         let first_round_comm_time = start_timer!(|| "Committing to first round polys");
         let (first_commitments, first_commitment_randomnesses) = PC::commit(
@@ -160,7 +160,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>, D: Digest> MarlinSNARK<F, PC, D
         // Second round
 
         let (prover_second_message, prover_second_oracles, prover_state) =
-            AHPForR1CS::prover_second_round(&verifier_first_message, prover_state, zk_rng);
+            AHPForR1CS::prover_second_round(&verifier_first_message, prover_state, zk_rng, true);
 
         let second_round_comm_time = start_timer!(|| "Committing to second round polys");
         let (second_commitments, second_commitment_randomnesses) = PC::commit(

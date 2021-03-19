@@ -242,10 +242,10 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
 
     let m_name = matrix_name.to_string();
     MatrixArithmetization {
-        row: LabeledPolynomial::new_owned(m_name.clone() + "_row", row, None, None),
-        col: LabeledPolynomial::new_owned(m_name.clone() + "_col", col, None, None),
-        val: LabeledPolynomial::new_owned(m_name.clone() + "_val", val, None, None),
-        row_col: LabeledPolynomial::new_owned(m_name + "_row_col", row_col, None, None),
+        row: LabeledPolynomial::new(m_name.clone() + "_row", row, None, None),
+        col: LabeledPolynomial::new(m_name.clone() + "_col", col, None, None),
+        val: LabeledPolynomial::new(m_name.clone() + "_val", val, None, None),
+        row_col: LabeledPolynomial::new(m_name + "_row_col", row_col, None, None),
         evals_on_K,
         evals_on_B,
         row_col_evals_on_B,

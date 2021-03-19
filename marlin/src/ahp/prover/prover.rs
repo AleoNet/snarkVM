@@ -195,6 +195,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
     pub fn prover_first_round<'a, R: RngCore>(
         mut state: ProverState<'a, F>,
         rng: &mut R,
+        hiding: bool,
     ) -> Result<(ProverMessage<F>, ProverFirstOracles<F>, ProverState<'a, F>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
         let domain_h = state.domain_h;
@@ -260,10 +261,20 @@ impl<F: PrimeField> AHPForR1CS<F> {
         assert!(z_b_poly.degree() < domain_h.size() + zk_bound);
         assert!(mask_poly.degree() <= 3 * domain_h.size() + 2 * zk_bound - 3);
 
-        let w = LabeledPolynomial::new_owned("w".to_string(), w_poly, None, Some(1));
-        let z_a = LabeledPolynomial::new_owned("z_a".to_string(), z_a_poly, None, Some(1));
-        let z_b = LabeledPolynomial::new_owned("z_b".to_string(), z_b_poly, None, Some(1));
-        let mask_poly = LabeledPolynomial::new_owned("mask_poly".to_string(), mask_poly, None, None);
+        let (w, z_a, z_b) = if hiding {
+            (
+                LabeledPolynomial::new("w".to_string(), w_poly, None, Some(1)),
+                LabeledPolynomial::new("z_a".to_string(), z_a_poly, None, Some(1)),
+                LabeledPolynomial::new("z_b".to_string(), z_b_poly, None, Some(1)),
+            )
+        } else {
+            (
+                LabeledPolynomial::new("w".to_string(), w_poly, None, None),
+                LabeledPolynomial::new("z_a".to_string(), z_a_poly, None, None),
+                LabeledPolynomial::new("z_b".to_string(), z_b_poly, None, None),
+            )
+        };
+        let mask_poly = LabeledPolynomial::new("mask_poly".to_string(), mask_poly, None, None);
 
         let oracles = ProverFirstOracles {
             w: w.clone(),
@@ -314,6 +325,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         verifier_message: &VerifierFirstMessage<F>,
         mut state: ProverState<'a, F>,
         _r: &mut R,
+        hiding: bool,
     ) -> (ProverMessage<F>, ProverSecondOracles<F>, ProverState<'a, F>) {
         let round_time = start_timer!(|| "AHP::Prover::SecondRound");
 
@@ -417,17 +429,23 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let g_1 = Polynomial::from_coefficients_slice(&x_g_1.coeffs[1..]);
         end_timer!(sumcheck_time);
 
-        let msg = ProverMessage {
-            field_elements: Vec::new(),
-        };
+        let msg = ProverMessage::default();
 
         assert!(g_1.degree() <= domain_h.size() - 2);
         assert!(h_1.degree() <= 2 * domain_h.size() + 2 * zk_bound - 2);
 
-        let oracles = ProverSecondOracles {
-            t: LabeledPolynomial::new_owned("t".into(), t_poly, None, None),
-            g_1: LabeledPolynomial::new_owned("g_1".into(), g_1, Some(domain_h.size() - 2), Some(1)),
-            h_1: LabeledPolynomial::new_owned("h_1".into(), h_1, None, None),
+        let oracles = if hiding {
+            ProverSecondOracles {
+                t: LabeledPolynomial::new("t".into(), t_poly, None, None),
+                g_1: LabeledPolynomial::new("g_1".into(), g_1, Some(domain_h.size() - 2), Some(1)),
+                h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None),
+            }
+        } else {
+            ProverSecondOracles {
+                t: LabeledPolynomial::new("t".into(), t_poly, None, None),
+                g_1: LabeledPolynomial::new("g_1".into(), g_1, Some(domain_h.size() - 2), None),
+                h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None),
+            }
         };
 
         state.w_poly = None;
@@ -568,9 +586,10 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let msg = ProverMessage::default();
 
         assert!(g_2.degree() <= domain_k.size() - 2);
+
         let oracles = ProverThirdOracles {
-            g_2: LabeledPolynomial::new_owned("g_2".to_string(), g_2, Some(domain_k.size() - 2), None),
-            h_2: LabeledPolynomial::new_owned("h_2".to_string(), h_2, None, None),
+            g_2: LabeledPolynomial::new("g_2".to_string(), g_2, Some(domain_k.size() - 2), None),
+            h_2: LabeledPolynomial::new("h_2".to_string(), h_2, None, None),
         };
         end_timer!(round_time);
 

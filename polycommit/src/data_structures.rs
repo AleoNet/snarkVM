@@ -114,22 +114,6 @@ impl<F: Field> core::ops::Deref for LabeledPolynomial<F> {
 
 impl<F: Field> LabeledPolynomial<F> {
     /// Construct a new labeled polynomial by consuming `polynomial`.
-    pub fn new_owned(
-        label: PolynomialLabel,
-        polynomial: Polynomial<F>,
-        degree_bound: Option<usize>,
-        hiding_bound: Option<usize>,
-    ) -> Self {
-        Self {
-            label,
-            polynomial: Arc::new(polynomial),
-            degree_bound,
-
-            hiding_bound,
-        }
-    }
-
-    /// Construct a new labeled polynomial.
     pub fn new(
         label: PolynomialLabel,
         polynomial: Polynomial<F>,

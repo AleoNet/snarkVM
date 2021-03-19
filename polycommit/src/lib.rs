@@ -541,12 +541,7 @@ pub mod tests {
                 let hiding_bound = Some(1);
                 degree_bounds.push(degree_bound);
 
-                polynomials.push(LabeledPolynomial::new_owned(
-                    label,
-                    poly,
-                    Some(degree_bound),
-                    hiding_bound,
-                ))
+                polynomials.push(LabeledPolynomial::new(label, poly, Some(degree_bound), hiding_bound))
             }
 
             println!("supported degree: {:?}", supported_degree);
@@ -642,7 +637,7 @@ pub mod tests {
                 };
                 println!("Hiding bound: {:?}", hiding_bound);
 
-                polynomials.push(LabeledPolynomial::new_owned(label, poly, degree_bound, hiding_bound))
+                polynomials.push(LabeledPolynomial::new(label, poly, degree_bound, hiding_bound))
             }
             let supported_hiding_bound = polynomials
                 .iter()
@@ -762,7 +757,7 @@ pub mod tests {
                 };
                 println!("Hiding bound: {:?}", hiding_bound);
 
-                polynomials.push(LabeledPolynomial::new_owned(label, poly, degree_bound, hiding_bound))
+                polynomials.push(LabeledPolynomial::new(label, poly, degree_bound, hiding_bound))
             }
             let supported_hiding_bound = polynomials
                 .iter()
