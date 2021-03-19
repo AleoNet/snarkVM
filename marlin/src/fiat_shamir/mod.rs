@@ -26,6 +26,10 @@ pub use fiat_shamir_chacha::*;
 pub mod fiat_shamir_constraints;
 pub use fiat_shamir_constraints::*;
 
+/// The Poseidon sponge.
+mod poseidon;
+pub use poseidon::*;
+
 /// Traits for the Fiat-Shamir RNG.
 pub mod traits;
 pub use traits::*;
