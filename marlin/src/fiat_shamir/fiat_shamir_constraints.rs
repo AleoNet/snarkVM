@@ -432,37 +432,200 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
     }
 }
 
-// mod tests {
-//     use super::*;
-//
-//     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-//     use snarkvm_polycommit::{marlin_pc::MarlinKZG10, sonic_pc::SonicKZG10};
-//     use snarkvm_utilities::rand::{test_rng, UniformRand};
-//
-//     use blake2::Blake2s;
-//     use core::ops::MulAssign;
-//
-//     #[test]
-//     fn test_compress_gadgets() {}
-//
-//     #[test]
-//     fn test_get_gadgets_from_sponge() {}
-//
-//     #[test]
-//     fn test_get_booleans_from_sponge() {}
-//
-//     #[test]
-//     fn test_squeeze_native_field_elements() {}
-//
-//     #[test]
-//     fn test_squeeze_field_elements() {}
-//
-//     #[test]
-//     fn test_squeeze_field_elements_and_bits() {}
-//
-//     #[test]
-//     fn test_squeeze_128_bits_field_elements() {}
-//
-//     #[test]
-//     fn test_squeeze_128_bits_field_elements_and_bits() {}
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fiat_shamir::{
+        poseidon::{constraints::PoseidonSpongeVar, PoseidonSponge},
+        traits::FiatShamirRng,
+    };
+
+    use snarkvm_curves::bls12_377::Fr;
+    use snarkvm_fields::One;
+    use snarkvm_gadgets::utilities::eq::EqGadget;
+    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_utilities::rand::UniformRand;
+
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaChaRng;
+
+    type PS = PoseidonSponge<Fr>;
+    type PSGadget = PoseidonSpongeVar<Fr>;
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fr, PS>;
+    type FSGadget = FiatShamirAlgebraicSpongeRngVar<Fr, Fr, PS, PSGadget>;
+
+    const MAX_ELEMENTS: usize = 500;
+    const MAX_ELEMENT_SIZE: usize = 100;
+    const ITERATIONS: usize = 100;
+
+    #[test]
+    fn test_fiat_shamir_algebraic_sponge_rng_constant() {
+        let mut rng = ChaChaRng::seed_from_u64(123456789u64);
+
+        for i in 0..ITERATIONS {
+            let mut cs = TestConstraintSystem::<Fr>::new();
+
+            // Generate random elements to absorb.
+            let num_bytes: usize = rng.gen_range(0..MAX_ELEMENT_SIZE);
+            let element: Vec<u8> = (0..num_bytes).map(|_| u8::rand(&mut rng)).collect();
+
+            // Create a new FS rng.
+            let mut fs_rng = FS::new();
+            fs_rng.absorb_bytes(&element);
+
+            // Allocate a new fs_rng gadget from the existing `fs_rng`.
+            let mut fs_rng_gadget = FSGadget::constant(cs.ns(|| format!("fs_rng_gadget_constant_{}", i)), &fs_rng);
+
+            // Get bits from the `fs_rng` and `fs_rng_gadget`.
+            let num_bits = num_bytes * 8;
+            let bits = FS::get_bits_from_sponge(&mut fs_rng.s, num_bits);
+            let bit_gadgets = FSGadget::get_booleans_from_sponge(
+                cs.ns(|| format!("get_booleans_from_sponge_{}", i)),
+                &mut fs_rng_gadget.s,
+                num_bits,
+            )
+            .unwrap();
+
+            // Check that the bit results are equivalent.
+            for (j, (bit_gadget, bit)) in bit_gadgets.iter().zip(bits).enumerate() {
+                // Allocate a boolean from the native bit.
+                let alloc_boolean = Boolean::alloc(cs.ns(|| format!("alloc_boolean_{}_{}", i, j)), || Ok(bit)).unwrap();
+
+                // Check that the boolean gadgets are equivalent.
+                bit_gadget
+                    .enforce_equal(cs.ns(|| format!("enforce_equal_bit_{}_{}", i, j)), &alloc_boolean)
+                    .unwrap();
+            }
+        }
+    }
+
+    #[test]
+    fn test_compress_gadgets_weight_optimized() {
+        let mut rng = ChaChaRng::seed_from_u64(123456789u64);
+
+        for i in 0..ITERATIONS {
+            let mut cs = TestConstraintSystem::<Fr>::new();
+
+            // Generate random elements.
+            let num_elements: usize = rng.gen_range(0..MAX_ELEMENT_SIZE);
+            let elements: Vec<_> = (0..num_elements).map(|_| Fr::rand(&mut rng)).collect();
+
+            // Construct elements limb representations
+            let mut element_limbs = Vec::<(Fr, Fr)>::new();
+            let mut element_limb_gadgets = Vec::<(FpGadget<Fr>, Fr)>::new();
+
+            for (j, elem) in elements.iter().enumerate() {
+                let limbs =
+                    AllocatedNonNativeFieldVar::<Fr, Fr>::get_limbs_representations(elem, OptimizationType::Weight)
+                        .unwrap();
+                for (k, limb) in limbs.iter().enumerate() {
+                    let allocated_limb =
+                        FpGadget::alloc(cs.ns(|| format!("alloc_limb_{}_{}_{}", i, j, k)), || Ok(limb)).unwrap();
+
+                    element_limbs.push((*limb, Fr::one()));
+                    element_limb_gadgets.push((allocated_limb, Fr::one()));
+                    // Specifically set to one, since most gadgets in the constraint world would not have zero noise (due to the relatively weak normal form testing in `alloc`)
+                }
+            }
+
+            // Compress the elements.
+            let compressed_elements = FS::compress_elements(&element_limbs, OptimizationType::Weight);
+            let compressed_element_gadgets = FSGadget::compress_gadgets(
+                cs.ns(|| "compress_elements"),
+                &element_limb_gadgets,
+                OptimizationType::Weight,
+            )
+            .unwrap();
+
+            // Check that the compressed results are equivalent.
+            for (j, (gadget, element)) in compressed_element_gadgets.iter().zip(compressed_elements).enumerate() {
+                // Allocate the field gadget from the base element.
+                let alloc_element =
+                    FpGadget::alloc(cs.ns(|| format!("alloc_field_{}_{}", i, j)), || Ok(element)).unwrap();
+
+                // Check that the elements are equivalent.
+                gadget
+                    .enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element)
+                    .unwrap();
+            }
+        }
+    }
+
+    #[test]
+    fn test_compress_gadgets_constraint_optimized() {
+        let mut rng = ChaChaRng::seed_from_u64(123456789u64);
+
+        for i in 0..ITERATIONS {
+            let mut cs = TestConstraintSystem::<Fr>::new();
+
+            // Generate random elements.
+            let num_elements: usize = rng.gen_range(0..MAX_ELEMENT_SIZE);
+            let elements: Vec<_> = (0..num_elements).map(|_| Fr::rand(&mut rng)).collect();
+
+            // Construct elements limb representations
+            let mut element_limbs = Vec::<(Fr, Fr)>::new();
+            let mut element_limb_gadgets = Vec::<(FpGadget<Fr>, Fr)>::new();
+
+            for (j, elem) in elements.iter().enumerate() {
+                let limbs = AllocatedNonNativeFieldVar::<Fr, Fr>::get_limbs_representations(
+                    elem,
+                    OptimizationType::Constraints,
+                )
+                .unwrap();
+                for (k, limb) in limbs.iter().enumerate() {
+                    let allocated_limb =
+                        FpGadget::alloc(cs.ns(|| format!("alloc_limb_{}_{}_{}", i, j, k)), || Ok(limb)).unwrap();
+
+                    element_limbs.push((*limb, Fr::one()));
+                    element_limb_gadgets.push((allocated_limb, Fr::one()));
+                    // Specifically set to one, since most gadgets in the constraint world would not have zero noise (due to the relatively weak normal form testing in `alloc`)
+                }
+            }
+
+            // Compress the elements.
+            let compressed_elements = FS::compress_elements(&element_limbs, OptimizationType::Constraints);
+            let compressed_element_gadgets = FSGadget::compress_gadgets(
+                cs.ns(|| "compress_elements"),
+                &element_limb_gadgets,
+                OptimizationType::Constraints,
+            )
+            .unwrap();
+
+            // Check that the compressed results are equivalent.
+            for (j, (gadget, element)) in compressed_element_gadgets.iter().zip(compressed_elements).enumerate() {
+                // Allocate the field gadget from the base element.
+                let alloc_element =
+                    FpGadget::alloc(cs.ns(|| format!("alloc_field_{}_{}", i, j)), || Ok(element)).unwrap();
+
+                // Check that the elements are equivalent.
+                gadget
+                    .enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element)
+                    .unwrap();
+            }
+        }
+    }
+
+    #[test]
+    fn test_push_gadgets_to_sponge() {}
+
+    #[test]
+    fn test_get_gadgets_from_sponge() {}
+
+    #[test]
+    fn test_get_booleans_from_sponge() {}
+
+    #[test]
+    fn test_squeeze_native_field_elements() {}
+
+    #[test]
+    fn test_squeeze_field_elements() {}
+
+    #[test]
+    fn test_squeeze_field_elements_and_bits() {}
+
+    #[test]
+    fn test_squeeze_128_bits_field_elements() {}
+
+    #[test]
+    fn test_squeeze_128_bits_field_elements_and_bits() {}
+}
