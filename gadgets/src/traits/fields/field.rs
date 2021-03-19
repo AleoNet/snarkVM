@@ -25,6 +25,7 @@ use crate::utilities::{
 };
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+use snarkvm_utilities::BitIteratorBE;
 
 use std::fmt::Debug;
 
@@ -178,6 +179,23 @@ pub trait FieldGadget<NativeF: Field, F: Field>:
             res = res.square(cs.ns(|| format!("Double {}", i)))?;
             let tmp = res.mul(cs.ns(|| format!("Add {}-th base power", i)), self)?;
             res = Self::conditionally_select(cs.ns(|| format!("Conditional Select {}", i)), bit, &tmp, &res)?;
+        }
+        Ok(res)
+    }
+
+    /// Computes `self^S`, where S is interpreted as an little-endian
+    /// u64-decomposition of an integer.
+    fn pow_by_constant<CS: ConstraintSystem<F>, S: AsRef<[u64]>>(
+        &self,
+        mut cs: CS,
+        exp: S,
+    ) -> Result<Self, SynthesisError> {
+        let mut res = Self::one(cs.ns(|| "one"))?;
+        for (index, i) in BitIteratorBE::new_without_leading_zeros(exp).enumerate() {
+            res.square_in_place(cs.ns(|| format!("square_in_place_{}", index)))?;
+            if i {
+                res.mul_in_place(cs.ns(|| format!("mul_in_place_{}", index)), self)?;
+            }
         }
         Ok(res)
     }
