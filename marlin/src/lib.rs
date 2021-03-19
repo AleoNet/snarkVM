@@ -78,6 +78,6 @@ pub use parameters::*;
 pub mod snark;
 pub use snark::*;
 
-/// Traits for the Marlin SNARK.
-pub mod traits;
-pub use traits::*;
+/// RNGs for the Marlin SNARK.
+pub mod rng;
+pub use rng::*;

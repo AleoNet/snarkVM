@@ -14,29 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-/// The Marlin circuit proving key.
-mod circuit_proving_key;
-pub use circuit_proving_key::*;
+/// Fiat-Shamir algebraic sponge RNG.
+mod fiat_shamir_algebraic_sponge;
+pub use fiat_shamir_algebraic_sponge::*;
 
-/// The Marlin circuit verifying key.
-mod circuit_verifying_key;
-pub use circuit_verifying_key::*;
+/// Fiat-Shamir ChaCha RNG.
+mod fiat_shamir_chacha;
+pub use fiat_shamir_chacha::*;
 
-/// Errors.
-mod errors;
-pub use errors::*;
-
-/// A generic implementation of the Marlin proof system..
-mod marlin;
-pub use marlin::*;
-
-/// The Marlin zkSNARK proof.
-mod proof;
-pub use proof::*;
-
-#[cfg(test)]
-mod tests;
-
-/// The Marlin universal SRS.
-mod universal_srs;
-pub use universal_srs::*;
+/// Traits for the Fiat-Shamir RNG.
+pub mod traits;
+pub use traits::*;

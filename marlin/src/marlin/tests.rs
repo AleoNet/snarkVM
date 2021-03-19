@@ -58,7 +58,7 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
 
 mod marlin {
     use super::*;
-    use crate::marlin::{FiatShamirChaChaRng, MarlinSNARK};
+    use crate::{marlin::MarlinSNARK, rng::FiatShamirChaChaRng};
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
     use snarkvm_polycommit::{marlin_pc::MarlinKZG10, sonic_pc::SonicKZG10};
     use snarkvm_utilities::rand::{test_rng, UniformRand};

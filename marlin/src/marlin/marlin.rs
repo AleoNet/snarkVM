@@ -17,7 +17,7 @@
 use crate::{
     ahp::{AHPError, AHPForR1CS, EvaluationsProvider},
     marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinError, Proof, UniversalSRS},
-    traits::FiatShamirRng,
+    rng::traits::FiatShamirRng,
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::{Evaluations, LabeledCommitment, PCUniversalParams, PolynomialCommitment};

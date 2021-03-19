@@ -17,6 +17,7 @@
 //! The Marlin zkSNARK implementation
 use crate::{
     marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinSNARK, Proof, UniversalSRS},
+    rng::FiatShamirChaChaRng,
     Parameters,
 };
 use snarkvm_algorithms::{errors::SNARKError, traits::SNARK};
@@ -27,7 +28,6 @@ use snarkvm_r1cs::ConstraintSynthesizer;
 
 pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PolynomialCommitment};
 
-use crate::marlin::FiatShamirChaChaRng;
 use blake2::Blake2s;
 use core::marker::PhantomData;
 use rand_core::RngCore;
