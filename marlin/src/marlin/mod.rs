@@ -26,6 +26,14 @@ pub use circuit_verifying_key::*;
 mod errors;
 pub use errors::*;
 
+/// Fiat-Shamir algebraic sponge RNG.
+mod fiat_shamir_algebraic_sponge;
+pub use fiat_shamir_algebraic_sponge::*;
+
+/// Fiat-Shamir ChaCha RNG.
+mod fiat_shamir_chacha;
+pub use fiat_shamir_chacha::*;
+
 /// A generic implementation of the Marlin proof system..
 mod marlin;
 pub use marlin::*;

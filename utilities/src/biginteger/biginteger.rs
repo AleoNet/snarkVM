@@ -35,6 +35,7 @@ bigint_impl!(BigInteger384, 6);
 bigint_impl!(BigInteger768, 12);
 bigint_impl!(BigInteger832, 13);
 
+/// TODO (howardwu): Update to use ToBitsLE and ToBitsBE.
 /// This defines a `BigInteger`, a smart wrapper around a
 /// sequence of `u64` limbs, least-significant digit first.
 pub trait BigInteger:

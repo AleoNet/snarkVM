@@ -64,7 +64,7 @@ pub mod params;
 #[doc(hidden)]
 pub mod reduce;
 
-/// A macro for computing ceil(log2(x)) for a field element x
+/// A macro for computing ceil(log2(x))+1 for a field element x
 #[doc(hidden)]
 #[macro_export]
 macro_rules! overhead {
