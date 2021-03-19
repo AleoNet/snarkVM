@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    rng::{AlgebraicSponge, FiatShamirRng},
+    fiat_shamir::{AlgebraicSponge, FiatShamirRng},
     PhantomData,
 };
 use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};

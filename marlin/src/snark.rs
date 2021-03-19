@@ -16,8 +16,8 @@
 
 //! The Marlin zkSNARK implementation
 use crate::{
+    fiat_shamir::FiatShamirChaChaRng,
     marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinSNARK, Proof, UniversalSRS},
-    rng::FiatShamirChaChaRng,
     Parameters,
 };
 use snarkvm_algorithms::{errors::SNARKError, traits::SNARK};

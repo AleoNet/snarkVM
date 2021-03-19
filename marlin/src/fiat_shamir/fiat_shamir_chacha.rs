@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{rng::FiatShamirRng, PhantomData};
+use crate::{fiat_shamir::FiatShamirRng, PhantomData};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_nonnative::params::OptimizationType;
 

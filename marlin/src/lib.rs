@@ -79,5 +79,5 @@ pub mod snark;
 pub use snark::*;
 
 /// RNGs for the Marlin SNARK.
-pub mod rng;
-pub use rng::*;
+pub mod fiat_shamir;
+pub use fiat_shamir::*;

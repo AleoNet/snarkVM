@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{marlin::MarlinSNARK, rng::FiatShamirChaChaRng, ProvingKey, VerifyingKey, SRS};
+use crate::{fiat_shamir::FiatShamirChaChaRng, marlin::MarlinSNARK, ProvingKey, VerifyingKey, SRS};
 use snarkvm_algorithms::errors::SNARKError;
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
 use snarkvm_r1cs::ConstraintSynthesizer;
