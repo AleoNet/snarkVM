@@ -299,3 +299,110 @@ impl<F: PrimeField> AlgebraicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpongeV
         Ok(squeezed_elems)
     }
 }
+
+mod tests {
+    use super::*;
+    use crate::fiat_shamir::traits::AlgebraicSponge;
+
+    use rand::Rng;
+    use snarkvm_curves::bls12_377::Fr;
+    use snarkvm_gadgets::utilities::eq::EqGadget;
+    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_utilities::rand::UniformRand;
+
+    type Sponge = PoseidonSponge<Fr>;
+    type SpongeVar = PoseidonSpongeVar<Fr>;
+
+    const MAX_ELEMENTS: usize = 100;
+    const ITERATIONS: usize = 100;
+
+    #[test]
+    fn test_poseidon_sponge_constant() {
+        let mut rng = rand_chacha::ChaChaRng::seed_from_u64(123456789u64);
+        let mut cs = TestConstraintSystem::<Fr>::new();
+
+        for i in 0..ITERATIONS {
+            // Create a new algebraic sponge.
+            let mut sponge = Sponge::new();
+
+            // Generate random elements to absorb.
+            let num_elements: usize = rng.gen_range(0..MAX_ELEMENTS);
+            let elements: Vec<_> = (0..num_elements).map(|_| Fr::rand(&mut rng)).collect();
+
+            // Absorb the random elements.
+            sponge.absorb(&elements);
+
+            // Alloc the sponge gadget from a given sponge.
+            let mut sponge_gadget = SpongeVar::constant(cs.ns(|| format!("poseidon_sponge_constant_{}", i)), &sponge);
+
+            // Squeeze the elements from the sponge and sponge gadget.
+            let sponge_squeeze = sponge.squeeze(num_elements);
+            let sponge_gadget_squeeze = sponge_gadget
+                .squeeze(cs.ns(|| format!("squeeze_{}", i)), num_elements)
+                .unwrap();
+
+            // Check that the squeeze results are equivalent.
+            for (j, (gadget, element)) in sponge_gadget_squeeze.iter().zip(sponge_squeeze).enumerate() {
+                // Allocate the field gadget from the base element.
+                let alloc_element =
+                    FpGadget::alloc(cs.ns(|| format!("alloc_field_{}_{}", i, j)), || Ok(element)).unwrap();
+
+                // Check that the elements are equivalent.
+                gadget
+                    .enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element)
+                    .unwrap();
+            }
+        }
+    }
+
+    #[test]
+    fn test_poseidon_sponge_squeeze() {
+        let mut rng = rand_chacha::ChaChaRng::seed_from_u64(123456789u64);
+        let mut cs = TestConstraintSystem::<Fr>::new();
+
+        for i in 0..ITERATIONS {
+            // Create a new algebraic sponge.
+            let mut sponge = Sponge::new();
+
+            // Alloc the sponge gadget from a given sponge.
+            let mut sponge_gadget = SpongeVar::new(cs.ns(|| format!("new_poseidon_sponge_{}", i)));
+
+            // Generate random elements to absorb.
+            let num_elements: usize = rng.gen_range(0..MAX_ELEMENTS);
+            let elements: Vec<_> = (0..num_elements).map(|_| Fr::rand(&mut rng)).collect();
+
+            let mut element_gadgets = vec![];
+            for (j, element) in elements.iter().enumerate() {
+                // Allocate the field gadget from the base element.
+                let alloc_element =
+                    FpGadget::alloc(cs.ns(|| format!("native_alloc_field_{}_{}", i, j)), || Ok(element)).unwrap();
+
+                element_gadgets.push(alloc_element);
+            }
+
+            // Absorb the random elements.
+            sponge.absorb(&elements);
+            sponge_gadget
+                .absorb(cs.ns(|| format!("absorb_{}", i)), &element_gadgets)
+                .unwrap();
+
+            // Squeeze the elements from the sponge and sponge gadget.
+            let sponge_squeeze = sponge.squeeze(num_elements);
+            let sponge_gadget_squeeze = sponge_gadget
+                .squeeze(cs.ns(|| format!("squeeze_{}", i)), num_elements)
+                .unwrap();
+
+            // Check that the squeeze results are equivalent.
+            for (j, (gadget, element)) in sponge_gadget_squeeze.iter().zip(sponge_squeeze).enumerate() {
+                // Allocate the field gadget from the base element.
+                let alloc_element =
+                    FpGadget::alloc(cs.ns(|| format!("squeeze_alloc_field_{}_{}", i, j)), || Ok(element)).unwrap();
+
+                // Check that the elements are equivalent.
+                gadget
+                    .enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element)
+                    .unwrap();
+            }
+        }
+    }
+}
