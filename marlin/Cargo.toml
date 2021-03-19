@@ -41,6 +41,10 @@ version = "0.2.1"
 path = "../fields"
 version = "0.2.1"
 
+[dependencies.snarkvm-nonnative]
+path = "../nonnative"
+version = "0.2.1"
+
 [dependencies.snarkvm-polycommit]
 path = "../polycommit"
 version = "0.2.1"

@@ -75,3 +75,7 @@ pub use parameters::*;
 /// Implements the snarkVM-compatible Marlin SNARK interface.
 pub mod snark;
 pub use snark::*;
+
+/// Traits for the Marlin SNARK.
+pub mod traits;
+pub use traits::*;

@@ -1837,6 +1837,7 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",
+ "snarkvm-nonnative",
  "snarkvm-polycommit",
  "snarkvm-profiler",
  "snarkvm-r1cs",
