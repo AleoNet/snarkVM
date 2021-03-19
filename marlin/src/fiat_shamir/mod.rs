@@ -22,6 +22,10 @@ pub use fiat_shamir_algebraic_sponge::*;
 mod fiat_shamir_chacha;
 pub use fiat_shamir_chacha::*;
 
+/// The constraints for Fiat-Shamir RNG.
+pub mod fiat_shamir_constraints;
+pub use fiat_shamir_constraints::*;
+
 /// Traits for the Fiat-Shamir RNG.
 pub mod traits;
 pub use traits::*;
