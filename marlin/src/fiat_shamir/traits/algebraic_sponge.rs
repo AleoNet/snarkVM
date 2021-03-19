@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_fields::PrimeField;
+use snarkvm_gadgets::fields::FpGadget;
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 /// Trait for an algebraic sponge.
 pub trait AlgebraicSponge<CF: PrimeField>: Clone {
@@ -24,4 +26,19 @@ pub trait AlgebraicSponge<CF: PrimeField>: Clone {
     fn absorb(&mut self, elems: &[CF]);
     /// Takes out field elements.
     fn squeeze(&mut self, num: usize) -> Vec<CF>;
+}
+
+/// Trait for an algebraic sponge such as Poseidon.
+pub trait AlgebraicSpongeVar<CF: PrimeField, PS: AlgebraicSponge<CF>>: Clone {
+    /// Create the new sponge.
+    fn new<CS: ConstraintSystem<CF>>(cs: CS) -> Self;
+
+    /// Instantiate from a plaintext sponge.
+    fn constant<CS: ConstraintSystem<CF>>(cs: CS, ps: &PS) -> Self;
+
+    /// Take in field elements.
+    fn absorb<CS: ConstraintSystem<CF>>(&mut self, cs: CS, elems: &[FpGadget<CF>]) -> Result<(), SynthesisError>;
+
+    /// Output field elements.
+    fn squeeze<CS: ConstraintSystem<CF>>(&mut self, cs: CS, num: usize) -> Result<Vec<FpGadget<CF>>, SynthesisError>;
 }
