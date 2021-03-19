@@ -250,9 +250,6 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
 
                     #[allow(clippy::needless_range_loop)]
                     for k in 0..params.num_limbs {
-                        // TODO (raychu86): Confirm linear combination is correct:
-                        // lc[k] = &lc[k] + bit.lc() * lookup_table[j][k];
-
                         lc[k] = &lc[k] + bit.lc(CS::one(), CF::one()) * lookup_table[j][k];
                     }
                 }
@@ -262,8 +259,6 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
                     let gadget =
                         AllocatedFp::alloc_input(cs.ns(|| format!("alloc_input_{}_{}", i, k)), || Ok(val[k])).unwrap();
 
-                    // TODO (raychu86): Confirm linear combination subtraction is equivalent:
-                    // lc[k] = lc[k] - (CF::one(), &gadget.variable);
                     match &gadget.variable {
                         ConstraintVariable::Var(var) => {
                             lc[k] = lc[k].clone() - (CF::one(), *var);
@@ -273,8 +268,6 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
                         }
                     }
 
-                    // TODO (raychu86): Confirm CS enforcement is equivalent:
-                    // cs.enforce_constraint(lc!(), lc!(), lc[k].clone()).unwrap();
                     cs.enforce(
                         || format!("enforce_constraint_{}_{}", i, k),
                         |lc| lc,
@@ -360,16 +353,11 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
                 if bit.get_value().unwrap_or_default() {
                     elem += adjustment_factor;
                 }
-                // TODO (raychu86): Confirm linear combination is correct:
-                // lc = &lc + bit.lc() * *adjustment_factor;
-
                 lc = &lc + bit.lc(CS::one(), CF::one()) * *adjustment_factor;
             }
 
             let gadget = AllocatedFp::alloc_input(cs.ns(|| format!("alloc_input_{}", i)), || Ok(elem))?;
 
-            // TODO (raychu86): Confirm linear combination subtraction is equivalent:
-            // lc = lc.clone() - (CF::one(), gadget.variable);
             match &gadget.variable {
                 ConstraintVariable::Var(var) => {
                     lc = lc.clone() - (CF::one(), *var);
@@ -381,8 +369,6 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
 
             gadgets.push(FpGadget::from(gadget));
 
-            // TODO (raychu86): Confirm CS enforcement is equivalent:
-            // ccs.enforce_constraint(lc!(), lc!(), lc)?;
             cs.enforce(|| format!("enforce_constraint_{}", i), |lc| lc, |lc| lc, |_| lc);
         }
 
@@ -442,7 +428,7 @@ mod tests {
 
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_fields::One;
-    use snarkvm_gadgets::utilities::eq::EqGadget;
+    use snarkvm_gadgets::utilities::{eq::EqGadget, ToBitsLEGadget};
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::UniformRand;
 
@@ -456,7 +442,7 @@ mod tests {
 
     const MAX_ELEMENTS: usize = 50;
     const MAX_ELEMENT_SIZE: usize = 100;
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: usize = 50;
 
     // TODO (raychu86): Make a macro to test different optimization types.
 
@@ -775,7 +761,79 @@ mod tests {
     }
 
     #[test]
-    fn test_squeeze_field_elements_and_bits() {}
+    fn test_squeeze_field_elements_and_bits() {
+        let mut rng = ChaChaRng::seed_from_u64(123456789u64);
+
+        for i in 0..ITERATIONS {
+            let mut cs = TestConstraintSystem::<Fr>::new();
+
+            // Create a new FS rng.
+            let mut fs_rng = FS::new();
+
+            // Allocate a new fs_rng gadget.
+            let mut fs_rng_gadget = FSGadget::new(cs.ns(|| format!("fs_rng_gadget_new{}", i)));
+
+            // Generate random elements.
+            let num_elements: usize = rng.gen_range(0..MAX_ELEMENTS);
+            let elements: Vec<_> = (0..num_elements).map(|_| Fr::rand(&mut rng)).collect();
+
+            let mut element_gadgets = vec![];
+            for (j, element) in elements.iter().enumerate() {
+                // Allocate the nonnative field gadget from the base element.
+                let alloc_element =
+                    NonNativeFieldVar::alloc(cs.ns(|| format!("nonnative_alloc_field_{}_{}", i, j)), || Ok(element))
+                        .unwrap();
+
+                element_gadgets.push(alloc_element);
+            }
+
+            // Push elements to the sponge
+            fs_rng.absorb_nonnative_field_elements(&elements, OptimizationType::Constraints);
+            fs_rng_gadget
+                .absorb_nonnative_field_elements(
+                    cs.ns(|| format!("push_gadgets_to_sponge{}", i)),
+                    &element_gadgets,
+                    OptimizationType::Constraints,
+                )
+                .unwrap();
+
+            // Get the elements from the `fs_rng` and `fs_rng_gadget`.
+            let squeeze_result = fs_rng.squeeze_nonnative_field_elements(num_elements, OptimizationType::Constraints);
+            let (gadget_squeeze_result, gadget_squeeze_bits) = fs_rng_gadget
+                .squeeze_field_elements_and_bits(cs.ns(|| format!("squeeze_field_elements_{}", i)), num_elements)
+                .unwrap();
+
+            // Check that the squeeze results are equivalent.
+            for (j, ((gadget, bits), element)) in gadget_squeeze_result
+                .iter()
+                .zip(gadget_squeeze_bits)
+                .zip(squeeze_result)
+                .enumerate()
+            {
+                // Allocate the nonnative field gadget from the base element.
+                let alloc_element =
+                    NonNativeFieldVar::alloc(cs.ns(|| format!("nonnative_alloc_field_result{}_{}", i, j)), || {
+                        Ok(element)
+                    })
+                    .unwrap();
+
+                // Check that the elements are equivalent.
+                gadget
+                    .enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element)
+                    .unwrap();
+
+                let allocated_bits = alloc_element
+                    .to_bits_le(cs.ns(|| format!("to_bits_le_{}_{}", i, j)))
+                    .unwrap();
+
+                for (k, (allocated_bit, bit)) in allocated_bits.iter().zip(bits).enumerate() {
+                    allocated_bit
+                        .enforce_equal(cs.ns(|| format!("enforce_equal_bit_{}_{}_{}", i, j, k)), &bit)
+                        .unwrap();
+                }
+            }
+        }
+    }
 
     #[test]
     fn test_squeeze_128_bits_field_elements() {
@@ -817,7 +875,10 @@ mod tests {
             // Get the elements from the `fs_rng` and `fs_rng_gadget`.
             let squeeze_result = fs_rng.squeeze_128_bits_nonnative_field_elements(num_elements);
             let gadget_squeeze_result = fs_rng_gadget
-                .squeeze_128_bits_field_elements(cs.ns(|| format!("squeeze_field_elements_{}", i)), num_elements)
+                .squeeze_128_bits_field_elements(
+                    cs.ns(|| format!("squeeze_128_bit_field_elements_{}", i)),
+                    num_elements,
+                )
                 .unwrap();
 
             // Check that the squeeze results are equivalent.
@@ -838,5 +899,80 @@ mod tests {
     }
 
     #[test]
-    fn test_squeeze_128_bits_field_elements_and_bits() {}
+    fn test_squeeze_128_bits_field_elements_and_bits() {
+        let mut rng = ChaChaRng::seed_from_u64(123456789u64);
+
+        for i in 0..ITERATIONS {
+            let mut cs = TestConstraintSystem::<Fr>::new();
+
+            // Create a new FS rng.
+            let mut fs_rng = FS::new();
+
+            // Allocate a new fs_rng gadget.
+            let mut fs_rng_gadget = FSGadget::new(cs.ns(|| format!("fs_rng_gadget_new{}", i)));
+
+            // Generate random elements.
+            let num_elements: usize = rng.gen_range(0..MAX_ELEMENTS);
+            let elements: Vec<_> = (0..num_elements).map(|_| Fr::rand(&mut rng)).collect();
+
+            let mut element_gadgets = vec![];
+            for (j, element) in elements.iter().enumerate() {
+                // Allocate the nonnative field gadget from the base element.
+                let alloc_element =
+                    NonNativeFieldVar::alloc(cs.ns(|| format!("nonnative_alloc_field_{}_{}", i, j)), || Ok(element))
+                        .unwrap();
+
+                element_gadgets.push(alloc_element);
+            }
+
+            // Push elements to the sponge
+            fs_rng.absorb_nonnative_field_elements(&elements, OptimizationType::Constraints);
+            fs_rng_gadget
+                .absorb_nonnative_field_elements(
+                    cs.ns(|| format!("push_gadgets_to_sponge{}", i)),
+                    &element_gadgets,
+                    OptimizationType::Constraints,
+                )
+                .unwrap();
+
+            // Get the elements from the `fs_rng` and `fs_rng_gadget`.
+            let squeeze_result = fs_rng.squeeze_128_bits_nonnative_field_elements(num_elements);
+            let (gadget_squeeze_result, gadget_squeeze_bits) = fs_rng_gadget
+                .squeeze_128_bits_field_elements_and_bits(
+                    cs.ns(|| format!("squeeze_128_bit_field_elements_{}", i)),
+                    num_elements,
+                )
+                .unwrap();
+
+            // Check that the squeeze results are equivalent.
+            for (j, ((gadget, bits), element)) in gadget_squeeze_result
+                .iter()
+                .zip(gadget_squeeze_bits)
+                .zip(squeeze_result)
+                .enumerate()
+            {
+                // Allocate the nonnative field gadget from the base element.
+                let alloc_element =
+                    NonNativeFieldVar::alloc(cs.ns(|| format!("nonnative_alloc_field_result{}_{}", i, j)), || {
+                        Ok(element)
+                    })
+                    .unwrap();
+
+                // Check that the elements are equivalent.
+                gadget
+                    .enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element)
+                    .unwrap();
+
+                let allocated_bits = alloc_element
+                    .to_bits_le(cs.ns(|| format!("to_bits_le_{}_{}", i, j)))
+                    .unwrap();
+
+                for (k, (allocated_bit, bit)) in allocated_bits.iter().zip(bits).enumerate() {
+                    allocated_bit
+                        .enforce_equal(cs.ns(|| format!("enforce_equal_bit_{}_{}_{}", i, j, k)), &bit)
+                        .unwrap();
+                }
+            }
+        }
+    }
 }
