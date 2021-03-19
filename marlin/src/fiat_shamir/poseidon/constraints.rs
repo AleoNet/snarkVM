@@ -300,15 +300,18 @@ impl<F: PrimeField> AlgebraicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpongeV
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::fiat_shamir::traits::AlgebraicSponge;
 
-    use rand::Rng;
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_gadgets::utilities::eq::EqGadget;
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::UniformRand;
+
+    use rand::Rng;
+    use rand_chacha::ChaChaRng;
 
     type Sponge = PoseidonSponge<Fr>;
     type SpongeVar = PoseidonSpongeVar<Fr>;
@@ -318,10 +321,11 @@ mod tests {
 
     #[test]
     fn test_poseidon_sponge_constant() {
-        let mut rng = rand_chacha::ChaChaRng::seed_from_u64(123456789u64);
-        let mut cs = TestConstraintSystem::<Fr>::new();
+        let mut rng = ChaChaRng::seed_from_u64(123456789u64);
 
         for i in 0..ITERATIONS {
+            let mut cs = TestConstraintSystem::<Fr>::new();
+
             // Create a new algebraic sponge.
             let mut sponge = Sponge::new();
 
@@ -357,10 +361,11 @@ mod tests {
 
     #[test]
     fn test_poseidon_sponge_squeeze() {
-        let mut rng = rand_chacha::ChaChaRng::seed_from_u64(123456789u64);
-        let mut cs = TestConstraintSystem::<Fr>::new();
+        let mut rng = ChaChaRng::seed_from_u64(123456789u64);
 
         for i in 0..ITERATIONS {
+            let mut cs = TestConstraintSystem::<Fr>::new();
+
             // Create a new algebraic sponge.
             let mut sponge = Sponge::new();
 
