@@ -16,6 +16,7 @@
 
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
+use snarkvm_marlin::{marlin::MarlinDefaultMode, FiatShamirChaChaRng};
 use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
 use snarkvm_posw::{txids_to_roots, Marlin, PoswGM17, PoswMarlin, GM17};
 use snarkvm_utilities::bytes::FromBytes;
@@ -65,8 +66,10 @@ fn marlin_posw(c: &mut Criterion) {
 
     let universal_srs = snarkvm_marlin::marlin::MarlinSNARK::<
         <Bls12_377 as PairingEngine>::Fr,
+        <Bls12_377 as PairingEngine>::Fr,
         MultiPC<Bls12_377>,
-        Blake2s,
+        FiatShamirChaChaRng<<Bls12_377 as PairingEngine>::Fr, <Bls12_377 as PairingEngine>::Fr, Blake2s>,
+        MarlinDefaultMode,
     >::universal_setup(10000, 10000, 100000, rng)
     .unwrap();
 
