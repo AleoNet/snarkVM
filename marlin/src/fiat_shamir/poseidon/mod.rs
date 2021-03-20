@@ -25,7 +25,7 @@ use crate::fiat_shamir::AlgebraicSponge;
 
 use snarkvm_fields::PrimeField;
 
-use rand::SeedableRng;
+use rand_core::SeedableRng;
 
 /// constraints for Poseidon
 pub mod constraints;

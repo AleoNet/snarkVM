@@ -30,7 +30,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{fields::FpGadget, traits::fields::FieldGadget, utilities::alloc::AllocGadget};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-use rand::SeedableRng;
+use rand_core::SeedableRng;
 
 #[derive(Clone)]
 /// the gadget for Poseidon sponge

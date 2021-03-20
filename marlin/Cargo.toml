@@ -76,10 +76,6 @@ features = [ "use_core" ]
 [dependencies.digest]
 version = "0.9"
 
-[dependencies.rand]
-version = "0.8"
-default-features = false
-
 [dependencies.rand_chacha]
 version = "0.3"
 default-features = false
@@ -94,6 +90,10 @@ optional = true
 
 [dev-dependencies.criterion]
 version = "0.3.4"
+
+[dev-dependencies.rand]
+version = "0.8"
+default-features = false
 
 [features]
 default = [ "std", "parallel" ]

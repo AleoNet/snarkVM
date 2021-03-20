@@ -432,8 +432,9 @@ mod tests {
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::UniformRand;
 
-    use rand::{Rng, SeedableRng};
+    use rand::Rng;
     use rand_chacha::ChaChaRng;
+    use rand_core::SeedableRng;
 
     type PS = PoseidonSponge<Fr>;
     type PSGadget = PoseidonSpongeVar<Fr>;
