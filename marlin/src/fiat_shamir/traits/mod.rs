@@ -17,5 +17,11 @@
 mod algebraic_sponge;
 pub use algebraic_sponge::*;
 
+mod algebraic_sponge_gadget;
+pub use algebraic_sponge_gadget::*;
+
 mod fiat_shamir;
 pub use fiat_shamir::*;
+
+mod fiat_shamir_gadget;
+pub use fiat_shamir_gadget::*;
