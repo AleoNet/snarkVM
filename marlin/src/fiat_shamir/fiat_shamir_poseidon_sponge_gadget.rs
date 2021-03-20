@@ -14,18 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-/*
- * credit:
- *      This implementation of Poseidon is entirely from Fractal's implementation
- *      ([COS20]: https://eprint.iacr.org/2019/1076)
- *      with small syntax changes.
- */
+//
+// Acknowledgements
+//
+// This implementation of Poseidon is entirely from Fractal's implementation
+// ([COS20]: https://eprint.iacr.org/2019/1076) with small syntax changes.
+//
 
 use crate::fiat_shamir::{
-    poseidon::{PoseidonSponge, PoseidonSpongeState},
+    fiat_shamir_poseidon_sponge::{PoseidonSponge, PoseidonSpongeState},
     traits::AlgebraicSpongeVar,
 };
-
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{fields::FpGadget, traits::fields::FieldGadget, utilities::alloc::AllocGadget};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
@@ -36,23 +35,23 @@ use rand_core::SeedableRng;
 /// the gadget for Poseidon sponge
 pub struct PoseidonSpongeVar<F: PrimeField> {
     /// number of rounds in a full-round operation
-    pub full_rounds: u32,
+    pub(super) full_rounds: u32,
     /// number of rounds in a partial-round operation
-    pub partial_rounds: u32,
+    pub(super) partial_rounds: u32,
     /// Exponent used in S-boxes
-    pub alpha: u64,
+    pub(super) alpha: u64,
     /// Additive Round keys. These are added before each MDS matrix application to make it an affine shift.
     /// They are indexed by ark[round_num][state_element_index]
-    pub ark: Vec<Vec<F>>,
+    pub(super) ark: Vec<Vec<F>>,
     /// Maximally Distance Separating Matrix.
-    pub mds: Vec<Vec<F>>,
+    pub(super) mds: Vec<Vec<F>>,
 
     /// the sponge's state
-    pub state: Vec<FpGadget<F>>,
+    pub(super) state: Vec<FpGadget<F>>,
     /// the rate
-    pub rate: usize,
+    pub(super) rate: usize,
     /// the capacity
-    pub capacity: usize,
+    pub(super) capacity: usize,
     /// the mode
     mode: PoseidonSpongeState,
 }

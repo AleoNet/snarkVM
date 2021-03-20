@@ -19,7 +19,6 @@ use crate::fiat_shamir::{
     AlgebraicSponge,
     FiatShamirAlgebraicSpongeRng,
 };
-
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     fields::{AllocatedFp, FpGadget},
@@ -62,7 +61,7 @@ impl<
 > FiatShamirAlgebraicSpongeRngVar<TargetField, BaseField, PS, S>
 {
     /// Compress every two elements if possible. Provides a vector of (limb, num_of_additions),
-    /// both of which are CF.
+    /// both of which are BaseField.
     pub fn compress_gadgets<CS: ConstraintSystem<BaseField>>(
         mut cs: CS,
         src_limbs: &[(FpGadget<BaseField>, BaseField)],
@@ -451,7 +450,8 @@ impl<
 mod tests {
     use super::*;
     use crate::fiat_shamir::{
-        poseidon::{constraints::PoseidonSpongeVar, PoseidonSponge},
+        fiat_shamir_poseidon_sponge::PoseidonSponge,
+        fiat_shamir_poseidon_sponge_gadget::PoseidonSpongeVar,
         traits::FiatShamirRng,
     };
 

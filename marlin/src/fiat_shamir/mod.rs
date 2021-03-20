@@ -22,13 +22,17 @@ pub use fiat_shamir_algebraic_sponge::*;
 mod fiat_shamir_chacha;
 pub use fiat_shamir_chacha::*;
 
-/// The constraints for Fiat-Shamir RNG.
-pub mod fiat_shamir_constraints;
-pub use fiat_shamir_constraints::*;
+/// Constraints for the Fiat-Shamir RNG.
+mod fiat_shamir_algebraic_sponge_gadget;
+pub use fiat_shamir_algebraic_sponge_gadget::*;
 
 /// The Poseidon sponge.
-mod poseidon;
-pub use poseidon::*;
+mod fiat_shamir_poseidon_sponge;
+pub use fiat_shamir_poseidon_sponge::*;
+
+/// The constraints for the Poseidon sponge.
+mod fiat_shamir_poseidon_sponge_gadget;
+pub use fiat_shamir_poseidon_sponge_gadget::*;
 
 /// Traits for the Fiat-Shamir RNG.
 pub mod traits;
