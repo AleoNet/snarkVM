@@ -19,26 +19,34 @@ use snarkvm_gadgets::fields::FpGadget;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 /// Trait for an algebraic sponge.
-pub trait AlgebraicSponge<CF: PrimeField>: Clone {
+pub trait AlgebraicSponge<BaseField: PrimeField>: Clone {
     /// Initializes an algebraic sponge.
     fn new() -> Self;
     /// Takes in field elements.
-    fn absorb(&mut self, elems: &[CF]);
+    fn absorb(&mut self, elems: &[BaseField]);
     /// Takes out field elements.
-    fn squeeze(&mut self, num: usize) -> Vec<CF>;
+    fn squeeze(&mut self, num: usize) -> Vec<BaseField>;
 }
 
 /// Trait for an algebraic sponge such as Poseidon.
-pub trait AlgebraicSpongeVar<CF: PrimeField, PS: AlgebraicSponge<CF>>: Clone {
+pub trait AlgebraicSpongeVar<BaseField: PrimeField, PS: AlgebraicSponge<BaseField>>: Clone {
     /// Create the new sponge.
-    fn new<CS: ConstraintSystem<CF>>(cs: CS) -> Self;
+    fn new<CS: ConstraintSystem<BaseField>>(cs: CS) -> Self;
 
     /// Instantiate from a plaintext sponge.
-    fn constant<CS: ConstraintSystem<CF>>(cs: CS, ps: &PS) -> Self;
+    fn constant<CS: ConstraintSystem<BaseField>>(cs: CS, ps: &PS) -> Self;
 
     /// Take in field elements.
-    fn absorb<CS: ConstraintSystem<CF>>(&mut self, cs: CS, elems: &[FpGadget<CF>]) -> Result<(), SynthesisError>;
+    fn absorb<CS: ConstraintSystem<BaseField>>(
+        &mut self,
+        cs: CS,
+        elems: &[FpGadget<BaseField>],
+    ) -> Result<(), SynthesisError>;
 
     /// Output field elements.
-    fn squeeze<CS: ConstraintSystem<CF>>(&mut self, cs: CS, num: usize) -> Result<Vec<FpGadget<CF>>, SynthesisError>;
+    fn squeeze<CS: ConstraintSystem<BaseField>>(
+        &mut self,
+        cs: CS,
+        num: usize,
+    ) -> Result<Vec<FpGadget<BaseField>>, SynthesisError>;
 }

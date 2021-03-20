@@ -45,66 +45,68 @@ pub trait FiatShamirRng<TargetField: PrimeField, BaseField: PrimeField>: RngCore
 }
 
 /// Vars for a RNG for use in a Fiat-Shamir transform.
-pub trait FiatShamirRngVar<F: PrimeField, CF: PrimeField, PFS: FiatShamirRng<F, CF>>: Clone {
+pub trait FiatShamirRngVar<TargetField: PrimeField, BaseField: PrimeField, PFS: FiatShamirRng<TargetField, BaseField>>:
+    Clone
+{
     /// Create a new RNG.
-    fn new<CS: ConstraintSystem<CF>>(cs: CS) -> Self;
+    fn new<CS: ConstraintSystem<BaseField>>(cs: CS) -> Self;
 
     /// Instantiate from a plaintext fs_rng.
-    fn constant<CS: ConstraintSystem<CF>>(cs: CS, pfs: &PFS) -> Self;
+    fn constant<CS: ConstraintSystem<BaseField>>(cs: CS, pfs: &PFS) -> Self;
 
     /// Take in field elements.
-    fn absorb_nonnative_field_elements<CS: ConstraintSystem<CF>>(
+    fn absorb_nonnative_field_elements<CS: ConstraintSystem<BaseField>>(
         &mut self,
         cs: CS,
-        elems: &[NonNativeFieldVar<F, CF>],
+        elems: &[NonNativeFieldVar<TargetField, BaseField>],
         ty: OptimizationType,
     ) -> Result<(), SynthesisError>;
 
     /// Take in field elements.
-    fn absorb_native_field_elements<CS: ConstraintSystem<CF>>(
+    fn absorb_native_field_elements<CS: ConstraintSystem<BaseField>>(
         &mut self,
         cs: CS,
-        elems: &[FpGadget<CF>],
+        elems: &[FpGadget<BaseField>],
     ) -> Result<(), SynthesisError>;
 
     /// Take in bytes.
-    fn absorb_bytes<CS: ConstraintSystem<CF>>(&mut self, cs: CS, elems: &[UInt8]) -> Result<(), SynthesisError>;
+    fn absorb_bytes<CS: ConstraintSystem<BaseField>>(&mut self, cs: CS, elems: &[UInt8]) -> Result<(), SynthesisError>;
 
     /// Output field elements.
-    fn squeeze_native_field_elements<CS: ConstraintSystem<CF>>(
+    fn squeeze_native_field_elements<CS: ConstraintSystem<BaseField>>(
         &mut self,
         cs: CS,
         num: usize,
-    ) -> Result<Vec<FpGadget<CF>>, SynthesisError>;
+    ) -> Result<Vec<FpGadget<BaseField>>, SynthesisError>;
 
     /// Output field elements.
-    fn squeeze_field_elements<CS: ConstraintSystem<CF>>(
+    fn squeeze_field_elements<CS: ConstraintSystem<BaseField>>(
         &mut self,
         cs: CS,
         num: usize,
-    ) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError>;
+    ) -> Result<Vec<NonNativeFieldVar<TargetField, BaseField>>, SynthesisError>;
 
     /// Output field elements and the corresponding bits (this can reduce repeated computation).
     #[allow(clippy::type_complexity)]
-    fn squeeze_field_elements_and_bits<CS: ConstraintSystem<CF>>(
+    fn squeeze_field_elements_and_bits<CS: ConstraintSystem<BaseField>>(
         &mut self,
         cs: CS,
         num: usize,
-    ) -> Result<(Vec<NonNativeFieldVar<F, CF>>, Vec<Vec<Boolean>>), SynthesisError>;
+    ) -> Result<(Vec<NonNativeFieldVar<TargetField, BaseField>>, Vec<Vec<Boolean>>), SynthesisError>;
 
     /// Output field elements with only 128 bits.
-    fn squeeze_128_bits_field_elements<CS: ConstraintSystem<CF>>(
+    fn squeeze_128_bits_field_elements<CS: ConstraintSystem<BaseField>>(
         &mut self,
         cs: CS,
         num: usize,
-    ) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError>;
+    ) -> Result<Vec<NonNativeFieldVar<TargetField, BaseField>>, SynthesisError>;
 
     /// Output field elements with only 128 bits, and the corresponding bits (this can reduce
     /// repeated computation).
     #[allow(clippy::type_complexity)]
-    fn squeeze_128_bits_field_elements_and_bits<CS: ConstraintSystem<CF>>(
+    fn squeeze_128_bits_field_elements_and_bits<CS: ConstraintSystem<BaseField>>(
         &mut self,
         cs: CS,
         num: usize,
-    ) -> Result<(Vec<NonNativeFieldVar<F, CF>>, Vec<Vec<Boolean>>), SynthesisError>;
+    ) -> Result<(Vec<NonNativeFieldVar<TargetField, BaseField>>, Vec<Vec<Boolean>>), SynthesisError>;
 }
