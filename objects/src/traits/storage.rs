@@ -22,8 +22,8 @@ pub trait Storage
 where
     Self: Sized,
 {
-    /// Returns a `bool` indicating whether the storage is in-memory only.
-    fn in_memory(&self) -> bool;
+    /// A `bool` indicating whether the storage is in-memory only.
+    const IN_MEMORY: bool;
 
     /// Opens the storage object, optionally using the given paths; it gets created if it doesn't exist.
     fn open(path: Option<&Path>, secondary_path: Option<&Path>) -> Result<Self, StorageError>;
@@ -49,9 +49,6 @@ where
 
     // Attempts to catch up the read-only secondary instance with the primary one.
     fn try_catch_up_with_primary(&self) -> Result<(), StorageError>;
-
-    /// Used to remove any persistent objects associated with the storage.
-    fn destroy(&self) -> Result<(), StorageError>;
 }
 
 /// Database operation.
