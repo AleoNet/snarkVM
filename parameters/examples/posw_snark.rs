@@ -17,6 +17,7 @@
 use snarkvm_algorithms::crh::sha256;
 use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_dpc::errors::DPCError;
+use snarkvm_marlin::{marlin::MarlinDefaultMode, FiatShamirChaChaRng};
 use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
 use snarkvm_posw::PoswMarlin;
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
@@ -34,8 +35,10 @@ pub fn setup() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), DPCError> {
 
     let srs = snarkvm_marlin::marlin::MarlinSNARK::<
         <Bls12_377 as PairingEngine>::Fr,
+        <Bls12_377 as PairingEngine>::Fr,
         MultiPC<Bls12_377>,
-        Blake2s,
+        FiatShamirChaChaRng<<Bls12_377 as PairingEngine>::Fr, <Bls12_377 as PairingEngine>::Fr, Blake2s>,
+        MarlinDefaultMode,
     >::universal_setup(10000, 10000, 100000, rng)
     .unwrap();
 
