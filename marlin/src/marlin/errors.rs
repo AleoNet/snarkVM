@@ -21,6 +21,8 @@ pub enum MarlinError<E> {
     IndexTooLarge(usize, usize),
     /// There was an error in the underlying holographic IOP.
     AHPError(crate::ahp::AHPError),
+    /// There was a synthesis error.
+    R1CSError(snarkvm_r1cs::SynthesisError),
     /// There was an error in the underlying polynomial commitment.
     PolynomialCommitmentError(E),
 }
@@ -28,6 +30,12 @@ pub enum MarlinError<E> {
 impl<E> From<crate::ahp::AHPError> for MarlinError<E> {
     fn from(err: crate::ahp::AHPError) -> Self {
         MarlinError::AHPError(err)
+    }
+}
+
+impl<E> From<snarkvm_r1cs::SynthesisError> for MarlinError<E> {
+    fn from(err: snarkvm_r1cs::SynthesisError) -> Self {
+        MarlinError::R1CSError(err)
     }
 }
 

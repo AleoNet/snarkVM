@@ -17,11 +17,11 @@
 use crate::{
     ahp::{AHPError, AHPForR1CS, EvaluationsProvider},
     fiat_shamir::traits::FiatShamirRng,
-    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinError, Proof, UniversalSRS},
+    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinError, MarlinMode, Proof, UniversalSRS},
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_polycommit::{Evaluations, LabeledCommitment, PCUniversalParams, PolynomialCommitment};
-use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_polycommit::{Evaluations, LabeledCommitment, LabeledPolynomial, PCUniversalParams, PolynomialCommitment};
+use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError};
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
 use core::marker::PhantomData;
@@ -34,11 +34,13 @@ pub struct MarlinSNARK<
     BaseField: PrimeField,
     PC: PolynomialCommitment<TargetField>,
     FS: FiatShamirRng<TargetField, BaseField>,
+    MM: MarlinMode,
 >(
     #[doc(hidden)] PhantomData<TargetField>,
     #[doc(hidden)] PhantomData<BaseField>,
     #[doc(hidden)] PhantomData<PC>,
     #[doc(hidden)] PhantomData<FS>,
+    #[doc(hidden)] PhantomData<MM>,
 );
 
 impl<
@@ -46,7 +48,8 @@ impl<
     BaseField: PrimeField,
     PC: PolynomialCommitment<TargetField>,
     FS: FiatShamirRng<TargetField, BaseField>,
-> MarlinSNARK<TargetField, BaseField, PC, FS>
+    MM: MarlinMode,
+> MarlinSNARK<TargetField, BaseField, PC, FS, MM>
 {
     /// The personalization string for this protocol.
     /// Used to personalize the Fiat-Shamir RNG.
@@ -82,6 +85,8 @@ impl<
     {
         let index_time = start_timer!(|| "Marlin::CircuitSetup");
 
+        let is_recursion = MM::RECURSION;
+
         // TODO: Add check that c is in the correct mode.
         let index = AHPForR1CS::index(circuit)?;
         if universal_srs.max_degree() < index.max_degree() {
@@ -103,9 +108,33 @@ impl<
         )
         .map_err(MarlinError::from_pc_err)?;
 
+        let mut vanishing_polynomials = vec![];
+        if is_recursion {
+            let domain_h = EvaluationDomain::new(index.index_info.num_constraints)
+                .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+            let domain_k =
+                EvaluationDomain::new(index.index_info.num_non_zero).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+
+            vanishing_polynomials = vec![
+                LabeledPolynomial::new(
+                    "vanishing_poly_h".to_string(),
+                    domain_h.vanishing_polynomial().into(),
+                    None,
+                    None,
+                ),
+                LabeledPolynomial::new(
+                    "vanishing_poly_k".to_string(),
+                    domain_k.vanishing_polynomial().into(),
+                    None,
+                    None,
+                ),
+            ];
+        }
+
         let commit_time = start_timer!(|| "Commit to index polynomials");
         let (circuit_commitments, circuit_commitment_randomness): (_, _) =
-            PC::commit(&committer_key, index.iter(), None).map_err(MarlinError::from_pc_err)?;
+            PC::commit(&committer_key, index.iter().chain(vanishing_polynomials.iter()), None)
+                .map_err(MarlinError::from_pc_err)?;
         end_timer!(commit_time);
 
         let circuit_commitments = circuit_commitments
