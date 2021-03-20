@@ -39,42 +39,48 @@ use std::marker::PhantomData;
 /// Building the Fiat-Shamir sponge's gadget from any algebraic sponge's gadget.
 #[derive(Clone)]
 pub struct FiatShamirAlgebraicSpongeRngVar<
-    F: PrimeField,
-    CF: PrimeField,
-    PS: AlgebraicSponge<CF>,
-    S: AlgebraicSpongeVar<CF, PS>,
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PS: AlgebraicSponge<BaseField>,
+    S: AlgebraicSpongeVar<BaseField, PS>,
 > {
     /// Algebraic sponge gadget.
     pub s: S,
     #[doc(hidden)]
-    f_phantom: PhantomData<F>,
-    cf_phantom: PhantomData<CF>,
-    ps_phantom: PhantomData<PS>,
+    _target_field: PhantomData<TargetField>,
+    #[doc(hidden)]
+    _base_field: PhantomData<BaseField>,
+    #[doc(hidden)]
+    _sponge: PhantomData<PS>,
 }
 
-impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeVar<CF, PS>>
-    FiatShamirAlgebraicSpongeRngVar<F, CF, PS, S>
+impl<
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PS: AlgebraicSponge<BaseField>,
+    S: AlgebraicSpongeVar<BaseField, PS>,
+> FiatShamirAlgebraicSpongeRngVar<TargetField, BaseField, PS, S>
 {
     /// Compress every two elements if possible. Provides a vector of (limb, num_of_additions),
     /// both of which are CF.
-    pub fn compress_gadgets<CS: ConstraintSystem<CF>>(
+    pub fn compress_gadgets<CS: ConstraintSystem<BaseField>>(
         mut cs: CS,
-        src_limbs: &[(FpGadget<CF>, CF)],
+        src_limbs: &[(FpGadget<BaseField>, BaseField)],
         ty: OptimizationType,
-    ) -> Result<Vec<FpGadget<CF>>, SynthesisError> {
-        let capacity = CF::size_in_bits() - 1;
-        let mut dest_limbs = Vec::<FpGadget<CF>>::new();
+    ) -> Result<Vec<FpGadget<BaseField>>, SynthesisError> {
+        let capacity = BaseField::size_in_bits() - 1;
+        let mut dest_limbs = Vec::<FpGadget<BaseField>>::new();
 
         if src_limbs.is_empty() {
             return Ok(vec![]);
         }
 
-        let params = get_params(F::size_in_bits(), CF::size_in_bits(), ty);
+        let params = get_params(TargetField::size_in_bits(), BaseField::size_in_bits(), ty);
 
         let adjustment_factor_lookup_table = {
-            let mut table = Vec::<CF>::new();
+            let mut table = Vec::<BaseField>::new();
 
-            let mut cur = CF::one();
+            let mut cur = BaseField::one();
             for _ in 1..=capacity {
                 table.push(cur);
                 cur.double_in_place();
@@ -89,9 +95,9 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
             let first = &src_limbs[i];
             let second = if i + 1 < src_len { Some(&src_limbs[i + 1]) } else { None };
 
-            let first_max_bits_per_limb = params.bits_per_limb + overhead!(first.1 + &CF::one());
+            let first_max_bits_per_limb = params.bits_per_limb + overhead!(first.1 + &BaseField::one());
             let second_max_bits_per_limb = if second.is_some() {
-                params.bits_per_limb + overhead!(second.unwrap().1 + &CF::one())
+                params.bits_per_limb + overhead!(second.unwrap().1 + &BaseField::one())
             } else {
                 0
             };
@@ -118,38 +124,40 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
     }
 
     /// Push gadgets to sponge.
-    pub fn push_gadgets_to_sponge<CS: ConstraintSystem<CF>>(
+    pub fn push_gadgets_to_sponge<CS: ConstraintSystem<BaseField>>(
         mut cs: CS,
         sponge: &mut S,
-        src: &[NonNativeFieldVar<F, CF>],
+        src: &[NonNativeFieldVar<TargetField, BaseField>],
         ty: OptimizationType,
     ) -> Result<(), SynthesisError> {
-        let mut src_limbs: Vec<(FpGadget<CF>, CF)> = Vec::new();
+        let mut src_limbs: Vec<(FpGadget<BaseField>, BaseField)> = Vec::new();
 
         for (i, elem) in src.iter().enumerate() {
             match elem {
                 NonNativeFieldVar::Constant(c) => {
-                    let v = AllocatedNonNativeFieldVar::<F, CF>::alloc_constant(
+                    let v = AllocatedNonNativeFieldVar::<TargetField, BaseField>::alloc_constant(
                         cs.ns(|| format!("alloc_constant_{}", i)),
                         || Ok(c),
                     )?;
 
                     for limb in v.limbs.iter() {
-                        let num_of_additions_over_normal_form = if v.num_of_additions_over_normal_form == CF::zero() {
-                            CF::one()
-                        } else {
-                            v.num_of_additions_over_normal_form
-                        };
+                        let num_of_additions_over_normal_form =
+                            if v.num_of_additions_over_normal_form == BaseField::zero() {
+                                BaseField::one()
+                            } else {
+                                v.num_of_additions_over_normal_form
+                            };
                         src_limbs.push((limb.clone(), num_of_additions_over_normal_form));
                     }
                 }
                 NonNativeFieldVar::Var(v) => {
                     for limb in v.limbs.iter() {
-                        let num_of_additions_over_normal_form = if v.num_of_additions_over_normal_form == CF::zero() {
-                            CF::one()
-                        } else {
-                            v.num_of_additions_over_normal_form
-                        };
+                        let num_of_additions_over_normal_form =
+                            if v.num_of_additions_over_normal_form == BaseField::zero() {
+                                BaseField::one()
+                            } else {
+                                v.num_of_additions_over_normal_form
+                            };
                         src_limbs.push((limb.clone(), num_of_additions_over_normal_form));
                     }
                 }
@@ -163,12 +171,12 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
 
     /// Obtain random bits from hashchain gadget. (Not guaranteed to be uniformly distributed,
     /// should only be used in certain situations.)
-    pub fn get_booleans_from_sponge<CS: ConstraintSystem<CF>>(
+    pub fn get_booleans_from_sponge<CS: ConstraintSystem<BaseField>>(
         mut cs: CS,
         sponge: &mut S,
         num_bits: usize,
     ) -> Result<Vec<Boolean>, SynthesisError> {
-        let bits_per_element = CF::size_in_bits() - 1;
+        let bits_per_element = BaseField::size_in_bits() - 1;
         let num_elements = (num_bits + bits_per_element - 1) / bits_per_element;
 
         let src_elements = sponge.squeeze(cs.ns(|| "squeeze"), num_elements)?;
@@ -184,12 +192,12 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
 
     /// Obtain random elements from hashchain gadget. (Not guaranteed to be uniformly distributed,
     /// should only be used in certain situations.)
-    pub fn get_gadgets_from_sponge<CS: ConstraintSystem<CF>>(
+    pub fn get_gadgets_from_sponge<CS: ConstraintSystem<BaseField>>(
         cs: CS,
         sponge: &mut S,
         num_elements: usize,
         outputs_short_elements: bool,
-    ) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError> {
+    ) -> Result<Vec<NonNativeFieldVar<TargetField, BaseField>>, SynthesisError> {
         let (dest_gadgets, _) =
             Self::get_gadgets_and_bits_from_sponge(cs, sponge, num_elements, outputs_short_elements)?;
 
@@ -199,20 +207,24 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
     /// Obtain random elements, and the corresponding bits, from hashchain gadget. (Not guaranteed
     /// to be uniformly distributed, should only be used in certain situations.)
     #[allow(clippy::type_complexity)]
-    pub fn get_gadgets_and_bits_from_sponge<CS: ConstraintSystem<CF>>(
+    pub fn get_gadgets_and_bits_from_sponge<CS: ConstraintSystem<BaseField>>(
         mut cs: CS,
         sponge: &mut S,
         num_elements: usize,
         outputs_short_elements: bool,
-    ) -> Result<(Vec<NonNativeFieldVar<F, CF>>, Vec<Vec<Boolean>>), SynthesisError> {
+    ) -> Result<(Vec<NonNativeFieldVar<TargetField, BaseField>>, Vec<Vec<Boolean>>), SynthesisError> {
         let optimization_type = OptimizationType::Constraints;
 
-        let params = get_params(F::size_in_bits(), CF::size_in_bits(), optimization_type);
+        let params = get_params(
+            TargetField::size_in_bits(),
+            BaseField::size_in_bits(),
+            optimization_type,
+        );
 
         let num_bits_per_nonnative = if outputs_short_elements {
             128
         } else {
-            F::size_in_bits() - 1 // also omit the highest bit
+            TargetField::size_in_bits() - 1 // also omit the highest bit
         };
         let bits = Self::get_booleans_from_sponge(
             cs.ns(|| "get_booleans_from_sponge"),
@@ -220,21 +232,24 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
             num_bits_per_nonnative * num_elements,
         )?;
 
-        let mut lookup_table = Vec::<Vec<CF>>::new();
-        let mut cur = F::one();
+        let mut lookup_table = Vec::<Vec<BaseField>>::new();
+        let mut cur = TargetField::one();
         for _ in 0..num_bits_per_nonnative {
-            let repr = AllocatedNonNativeFieldVar::<F, CF>::get_limbs_representations(&cur, optimization_type)?;
+            let repr = AllocatedNonNativeFieldVar::<TargetField, BaseField>::get_limbs_representations(
+                &cur,
+                optimization_type,
+            )?;
             lookup_table.push(repr);
             cur.double_in_place();
         }
 
-        let mut dest_gadgets = Vec::<NonNativeFieldVar<F, CF>>::new();
+        let mut dest_gadgets = Vec::<NonNativeFieldVar<TargetField, BaseField>>::new();
         let mut dest_bits = Vec::<Vec<Boolean>>::new();
         bits.chunks_exact(num_bits_per_nonnative)
             .enumerate()
             .for_each(|(i, per_nonnative_bits)| {
-                let mut val = vec![CF::zero(); params.num_limbs];
-                let mut lc = vec![LinearCombination::<CF>::zero(); params.num_limbs];
+                let mut val = vec![BaseField::zero(); params.num_limbs];
+                let mut lc = vec![LinearCombination::<BaseField>::zero(); params.num_limbs];
 
                 let mut per_nonnative_bits_le = per_nonnative_bits.to_vec();
                 per_nonnative_bits_le.reverse();
@@ -250,7 +265,7 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
 
                     #[allow(clippy::needless_range_loop)]
                     for k in 0..params.num_limbs {
-                        lc[k] = &lc[k] + bit.lc(CS::one(), CF::one()) * lookup_table[j][k];
+                        lc[k] = &lc[k] + bit.lc(CS::one(), BaseField::one()) * lookup_table[j][k];
                     }
                 }
 
@@ -261,10 +276,10 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
 
                     match &gadget.variable {
                         ConstraintVariable::Var(var) => {
-                            lc[k] = lc[k].clone() - (CF::one(), *var);
+                            lc[k] = lc[k].clone() - (BaseField::one(), *var);
                         }
                         ConstraintVariable::LC(linear_combination) => {
-                            lc[k] = &lc[k] - (CF::one(), linear_combination);
+                            lc[k] = &lc[k] - (BaseField::one(), linear_combination);
                         }
                     }
 
@@ -275,62 +290,76 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
                         |_| lc[k].clone(),
                     );
 
-                    limbs.push(FpGadget::<CF>::from(gadget));
+                    limbs.push(FpGadget::<BaseField>::from(gadget));
                 }
 
-                dest_gadgets.push(NonNativeFieldVar::<F, CF>::Var(AllocatedNonNativeFieldVar::<F, CF> {
-                    limbs,
-                    num_of_additions_over_normal_form: CF::zero(),
-                    is_in_the_normal_form: true,
-                    target_phantom: Default::default(),
-                }));
+                dest_gadgets.push(NonNativeFieldVar::<TargetField, BaseField>::Var(
+                    AllocatedNonNativeFieldVar::<TargetField, BaseField> {
+                        limbs,
+                        num_of_additions_over_normal_form: BaseField::zero(),
+                        is_in_the_normal_form: true,
+                        target_phantom: Default::default(),
+                    },
+                ));
             });
 
         Ok((dest_gadgets, dest_bits))
     }
 }
 
-impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeVar<CF, PS>>
-    FiatShamirRngVar<F, CF, FiatShamirAlgebraicSpongeRng<F, CF, PS>> for FiatShamirAlgebraicSpongeRngVar<F, CF, PS, S>
+impl<
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PS: AlgebraicSponge<BaseField>,
+    S: AlgebraicSpongeVar<BaseField, PS>,
+> FiatShamirRngVar<TargetField, BaseField, FiatShamirAlgebraicSpongeRng<TargetField, BaseField, PS>>
+    for FiatShamirAlgebraicSpongeRngVar<TargetField, BaseField, PS, S>
 {
-    fn new<CS: ConstraintSystem<CF>>(cs: CS) -> Self {
+    fn new<CS: ConstraintSystem<BaseField>>(cs: CS) -> Self {
         Self {
             s: S::new(cs),
-            f_phantom: PhantomData,
-            cf_phantom: PhantomData,
-            ps_phantom: PhantomData,
+            _target_field: PhantomData,
+            _base_field: PhantomData,
+            _sponge: PhantomData,
         }
     }
 
-    fn constant<CS: ConstraintSystem<CF>>(cs: CS, pfs: &FiatShamirAlgebraicSpongeRng<F, CF, PS>) -> Self {
+    fn constant<CS: ConstraintSystem<BaseField>>(
+        cs: CS,
+        pfs: &FiatShamirAlgebraicSpongeRng<TargetField, BaseField, PS>,
+    ) -> Self {
         Self {
             s: S::constant(cs, &pfs.s.clone()),
-            f_phantom: PhantomData,
-            cf_phantom: PhantomData,
-            ps_phantom: PhantomData,
+            _target_field: PhantomData,
+            _base_field: PhantomData,
+            _sponge: PhantomData,
         }
     }
 
-    fn absorb_nonnative_field_elements<CS: ConstraintSystem<CF>>(
+    fn absorb_nonnative_field_elements<CS: ConstraintSystem<BaseField>>(
         &mut self,
         cs: CS,
-        elems: &[NonNativeFieldVar<F, CF>],
+        elems: &[NonNativeFieldVar<TargetField, BaseField>],
         ty: OptimizationType,
     ) -> Result<(), SynthesisError> {
         Self::push_gadgets_to_sponge(cs, &mut self.s, &elems.to_vec(), ty)
     }
 
-    fn absorb_native_field_elements<CS: ConstraintSystem<CF>>(
+    fn absorb_native_field_elements<CS: ConstraintSystem<BaseField>>(
         &mut self,
         cs: CS,
-        elems: &[FpGadget<CF>],
+        elems: &[FpGadget<BaseField>],
     ) -> Result<(), SynthesisError> {
         self.s.absorb(cs, elems)?;
         Ok(())
     }
 
-    fn absorb_bytes<CS: ConstraintSystem<CF>>(&mut self, mut cs: CS, elems: &[UInt8]) -> Result<(), SynthesisError> {
-        let capacity = CF::size_in_bits() - 1;
+    fn absorb_bytes<CS: ConstraintSystem<BaseField>>(
+        &mut self,
+        mut cs: CS,
+        elems: &[UInt8],
+    ) -> Result<(), SynthesisError> {
+        let capacity = BaseField::size_in_bits() - 1;
         let mut bits = Vec::<Boolean>::new();
         for elem in elems.iter() {
             let mut bits_le = elem.to_bits_le(); // UInt8's to_bits is le, which is an exception in Zexe.
@@ -338,32 +367,32 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
             bits.extend_from_slice(&bits_le);
         }
 
-        let mut adjustment_factors = Vec::<CF>::new();
-        let mut cur = CF::one();
+        let mut adjustment_factors = Vec::<BaseField>::new();
+        let mut cur = BaseField::one();
         for _ in 0..capacity {
             adjustment_factors.push(cur);
             cur.double_in_place();
         }
 
-        let mut gadgets = Vec::<FpGadget<CF>>::new();
+        let mut gadgets = Vec::<FpGadget<BaseField>>::new();
         for (i, elem_bits) in bits.chunks(capacity).enumerate() {
-            let mut elem = CF::zero();
+            let mut elem = BaseField::zero();
             let mut lc = LinearCombination::zero();
             for (bit, adjustment_factor) in elem_bits.iter().rev().zip(adjustment_factors.iter()) {
                 if bit.get_value().unwrap_or_default() {
                     elem += adjustment_factor;
                 }
-                lc = &lc + bit.lc(CS::one(), CF::one()) * *adjustment_factor;
+                lc = &lc + bit.lc(CS::one(), BaseField::one()) * *adjustment_factor;
             }
 
             let gadget = AllocatedFp::alloc_input(cs.ns(|| format!("alloc_input_{}", i)), || Ok(elem))?;
 
             match &gadget.variable {
                 ConstraintVariable::Var(var) => {
-                    lc = lc.clone() - (CF::one(), *var);
+                    lc = lc.clone() - (BaseField::one(), *var);
                 }
                 ConstraintVariable::LC(linear_combination) => {
-                    lc = &lc - (CF::one(), linear_combination);
+                    lc = &lc - (BaseField::one(), linear_combination);
                 }
             }
 
@@ -375,45 +404,45 @@ impl<F: PrimeField, CF: PrimeField, PS: AlgebraicSponge<CF>, S: AlgebraicSpongeV
         self.s.absorb(cs.ns(|| "absorb"), &gadgets)
     }
 
-    fn squeeze_native_field_elements<CS: ConstraintSystem<CF>>(
+    fn squeeze_native_field_elements<CS: ConstraintSystem<BaseField>>(
         &mut self,
         cs: CS,
         num: usize,
-    ) -> Result<Vec<FpGadget<CF>>, SynthesisError> {
+    ) -> Result<Vec<FpGadget<BaseField>>, SynthesisError> {
         self.s.squeeze(cs, num)
     }
 
-    fn squeeze_field_elements<CS: ConstraintSystem<CF>>(
+    fn squeeze_field_elements<CS: ConstraintSystem<BaseField>>(
         &mut self,
         cs: CS,
         num: usize,
-    ) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError> {
+    ) -> Result<Vec<NonNativeFieldVar<TargetField, BaseField>>, SynthesisError> {
         Self::get_gadgets_from_sponge(cs, &mut self.s, num, false)
     }
 
     #[allow(clippy::type_complexity)]
-    fn squeeze_field_elements_and_bits<CS: ConstraintSystem<CF>>(
+    fn squeeze_field_elements_and_bits<CS: ConstraintSystem<BaseField>>(
         &mut self,
         cs: CS,
         num: usize,
-    ) -> Result<(Vec<NonNativeFieldVar<F, CF>>, Vec<Vec<Boolean>>), SynthesisError> {
+    ) -> Result<(Vec<NonNativeFieldVar<TargetField, BaseField>>, Vec<Vec<Boolean>>), SynthesisError> {
         Self::get_gadgets_and_bits_from_sponge(cs, &mut self.s, num, false)
     }
 
-    fn squeeze_128_bits_field_elements<CS: ConstraintSystem<CF>>(
+    fn squeeze_128_bits_field_elements<CS: ConstraintSystem<BaseField>>(
         &mut self,
         cs: CS,
         num: usize,
-    ) -> Result<Vec<NonNativeFieldVar<F, CF>>, SynthesisError> {
+    ) -> Result<Vec<NonNativeFieldVar<TargetField, BaseField>>, SynthesisError> {
         Self::get_gadgets_from_sponge(cs, &mut self.s, num, true)
     }
 
     #[allow(clippy::type_complexity)]
-    fn squeeze_128_bits_field_elements_and_bits<CS: ConstraintSystem<CF>>(
+    fn squeeze_128_bits_field_elements_and_bits<CS: ConstraintSystem<BaseField>>(
         &mut self,
         cs: CS,
         num: usize,
-    ) -> Result<(Vec<NonNativeFieldVar<F, CF>>, Vec<Vec<Boolean>>), SynthesisError> {
+    ) -> Result<(Vec<NonNativeFieldVar<TargetField, BaseField>>, Vec<Vec<Boolean>>), SynthesisError> {
         Self::get_gadgets_and_bits_from_sponge(cs, &mut self.s, num, true)
     }
 }
