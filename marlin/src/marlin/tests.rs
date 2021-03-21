@@ -60,7 +60,7 @@ mod marlin {
     use super::*;
     use crate::{
         fiat_shamir::FiatShamirChaChaRng,
-        marlin::{MarlinDefaultMode, MarlinSNARK},
+        marlin::{MarlinSNARK, MarlinTestnet1Mode},
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
     use snarkvm_polycommit::{marlin_pc::MarlinKZG10, sonic_pc::SonicKZG10};
@@ -70,10 +70,10 @@ mod marlin {
     use core::ops::MulAssign;
 
     type MultiPC = MarlinKZG10<Bls12_377>;
-    type MarlinInst = MarlinSNARK<Fr, Fr, MultiPC, FiatShamirChaChaRng<Fr, Fr, Blake2s>, MarlinDefaultMode>;
+    type MarlinInst = MarlinSNARK<Fr, Fr, MultiPC, FiatShamirChaChaRng<Fr, Fr, Blake2s>, MarlinTestnet1Mode>;
 
     type MultiPCSonic = SonicKZG10<Bls12_377>;
-    type MarlinSonicInst = MarlinSNARK<Fr, Fr, MultiPCSonic, FiatShamirChaChaRng<Fr, Fr, Blake2s>, MarlinDefaultMode>;
+    type MarlinSonicInst = MarlinSNARK<Fr, Fr, MultiPCSonic, FiatShamirChaChaRng<Fr, Fr, Blake2s>, MarlinTestnet1Mode>;
 
     macro_rules! impl_marlin_test {
         ($test_struct: ident, $marlin_inst: tt) => {

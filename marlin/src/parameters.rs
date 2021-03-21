@@ -16,7 +16,7 @@
 
 use crate::{
     fiat_shamir::FiatShamirChaChaRng,
-    marlin::{MarlinDefaultMode, MarlinSNARK},
+    marlin::{MarlinSNARK, MarlinTestnet1Mode},
     ProvingKey,
     VerifyingKey,
     SRS,
@@ -67,7 +67,7 @@ impl<E: PairingEngine> Parameters<E> {
             <E as PairingEngine>::Fr,
             MultiPC<E>,
             FiatShamirChaChaRng<<E as PairingEngine>::Fr, <E as PairingEngine>::Fr, Blake2s>,
-            MarlinDefaultMode,
+            MarlinTestnet1Mode,
         >::circuit_setup(universal_srs, circuit)
         .map_err(|error| SNARKError::Crate("marlin", format!("could not index - {:?}", error)))?;
         Ok(Self {

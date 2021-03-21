@@ -709,7 +709,7 @@ mod tests {
                 .unwrap();
 
             // Get the elements from the `fs_rng` and `fs_rng_gadget`.
-            let squeeze_result = fs_rng.squeeze_native_field_elements(num_elements);
+            let squeeze_result = fs_rng.squeeze_native_field_elements(num_elements).unwrap();
             let gadget_squeeze_result = fs_rng_gadget
                 .squeeze_native_field_elements(cs.ns(|| format!("squeeze_field_elements_{}", i)), num_elements)
                 .unwrap();
@@ -768,7 +768,9 @@ mod tests {
                 .unwrap();
 
             // Get the elements from the `fs_rng` and `fs_rng_gadget`.
-            let squeeze_result = fs_rng.squeeze_nonnative_field_elements(num_elements, OptimizationType::Constraints);
+            let squeeze_result = fs_rng
+                .squeeze_nonnative_field_elements(num_elements, OptimizationType::Constraints)
+                .unwrap();
             let gadget_squeeze_result = fs_rng_gadget
                 .squeeze_field_elements(cs.ns(|| format!("squeeze_field_elements_{}", i)), num_elements)
                 .unwrap();
@@ -828,7 +830,9 @@ mod tests {
                 .unwrap();
 
             // Get the elements from the `fs_rng` and `fs_rng_gadget`.
-            let squeeze_result = fs_rng.squeeze_nonnative_field_elements(num_elements, OptimizationType::Constraints);
+            let squeeze_result = fs_rng
+                .squeeze_nonnative_field_elements(num_elements, OptimizationType::Constraints)
+                .unwrap();
             let (gadget_squeeze_result, gadget_squeeze_bits) = fs_rng_gadget
                 .squeeze_field_elements_and_bits(cs.ns(|| format!("squeeze_field_elements_{}", i)), num_elements)
                 .unwrap();
@@ -904,7 +908,7 @@ mod tests {
                 .unwrap();
 
             // Get the elements from the `fs_rng` and `fs_rng_gadget`.
-            let squeeze_result = fs_rng.squeeze_128_bits_nonnative_field_elements(num_elements);
+            let squeeze_result = fs_rng.squeeze_128_bits_nonnative_field_elements(num_elements).unwrap();
             let gadget_squeeze_result = fs_rng_gadget
                 .squeeze_128_bits_field_elements(
                     cs.ns(|| format!("squeeze_128_bit_field_elements_{}", i)),
@@ -967,7 +971,7 @@ mod tests {
                 .unwrap();
 
             // Get the elements from the `fs_rng` and `fs_rng_gadget`.
-            let squeeze_result = fs_rng.squeeze_128_bits_nonnative_field_elements(num_elements);
+            let squeeze_result = fs_rng.squeeze_128_bits_nonnative_field_elements(num_elements).unwrap();
             let (gadget_squeeze_result, gadget_squeeze_bits) = fs_rng_gadget
                 .squeeze_128_bits_field_elements_and_bits(
                     cs.ns(|| format!("squeeze_128_bit_field_elements_{}", i)),

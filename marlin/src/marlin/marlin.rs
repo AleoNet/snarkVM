@@ -98,7 +98,7 @@ impl<
 
         let coefficient_support = AHPForR1CS::get_degree_bounds(&index.index_info);
 
-        // Marlin only needs degree 2 random polynomials
+        // Marlin only needs degree 2 random polynomials.
         let supported_hiding_bound = 1;
         let (committer_key, verifier_key) = PC::trim(
             &universal_srs,
@@ -220,7 +220,7 @@ impl<
 
         fs_rng.absorb_bytes(&to_bytes![second_commitments, prover_second_message].unwrap());
 
-        let (verifier_second_msg, verifier_state) = AHPForR1CS::verifier_second_round(verifier_state, &mut fs_rng);
+        let (verifier_second_msg, verifier_state) = AHPForR1CS::verifier_second_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
@@ -239,7 +239,7 @@ impl<
 
         fs_rng.absorb_bytes(&to_bytes![third_commitments, prover_third_message].unwrap());
 
-        let verifier_state = AHPForR1CS::verifier_third_round(verifier_state, &mut fs_rng);
+        let verifier_state = AHPForR1CS::verifier_third_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
         // Gather prover polynomials in one vector.
@@ -303,7 +303,7 @@ impl<
 
         fs_rng.absorb_bytes(&to_bytes![&evaluations].unwrap());
 
-        let opening_challenge: TargetField = fs_rng.squeeze_128_bits_nonnative_field_elements(1)[0];
+        let opening_challenge: TargetField = fs_rng.squeeze_128_bits_nonnative_field_elements(1)?[0];
 
         let pc_proof = PC::open_combinations(
             &circuit_proving_key.committer_key,
@@ -326,7 +326,7 @@ impl<
         Ok(proof)
     }
 
-    /// Verify that a proof for the constrain system defined by `C` asserts that
+    /// Verify that a proof for the constraint system defined by `C` asserts that
     /// all constraints are satisfied.
     pub fn verify(
         circuit_verifying_key: &CircuitVerifyingKey<TargetField, PC>,
@@ -364,7 +364,7 @@ impl<
         let second_commitments = &proof.commitments[1];
         fs_rng.absorb_bytes(&to_bytes![second_commitments, proof.prover_messages[1]].unwrap());
 
-        let (_, verifier_state) = AHPForR1CS::verifier_second_round(verifier_state, &mut fs_rng);
+        let (_, verifier_state) = AHPForR1CS::verifier_second_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
@@ -372,7 +372,7 @@ impl<
         let third_commitments = &proof.commitments[2];
         fs_rng.absorb_bytes(&to_bytes![third_commitments, proof.prover_messages[2]].unwrap());
 
-        let verifier_state = AHPForR1CS::verifier_third_round(verifier_state, &mut fs_rng);
+        let verifier_state = AHPForR1CS::verifier_third_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
         // Collect degree bounds for commitments. Indexed polynomials have *no*
@@ -418,7 +418,7 @@ impl<
 
         let lc_s = AHPForR1CS::construct_linear_combinations(&public_input, &evaluations, &verifier_state, false)?;
 
-        let opening_challenge: TargetField = fs_rng.squeeze_128_bits_nonnative_field_elements(1)[0];
+        let opening_challenge: TargetField = fs_rng.squeeze_128_bits_nonnative_field_elements(1)?[0];
 
         let evaluations_are_correct = PC::check_combinations(
             &circuit_verifying_key.verifier_key,

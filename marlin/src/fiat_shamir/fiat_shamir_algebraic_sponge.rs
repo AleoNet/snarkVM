@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    fiat_shamir::{AlgebraicSponge, FiatShamirRng},
+    fiat_shamir::{AlgebraicSponge, FiatShamirError, FiatShamirRng},
     PhantomData,
 };
 use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
@@ -31,7 +31,7 @@ use rand_core::{Error, RngCore};
 /// An RNG from any algebraic sponge
 pub struct FiatShamirAlgebraicSpongeRng<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseField>> {
     /// The algebraic sponge.
-    pub s: S,
+    pub(super) s: S,
     #[doc(hidden)]
     _target_field: PhantomData<TargetField>,
     #[doc(hidden)]
@@ -84,16 +84,20 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseFiel
         self.s.absorb(&elements);
     }
 
-    fn squeeze_nonnative_field_elements(&mut self, num: usize, _: OptimizationType) -> Vec<TargetField> {
-        Self::get_elements_from_sponge(&mut self.s, num, false)
+    fn squeeze_nonnative_field_elements(
+        &mut self,
+        num: usize,
+        _: OptimizationType,
+    ) -> Result<Vec<TargetField>, FiatShamirError> {
+        Ok(Self::get_elements_from_sponge(&mut self.s, num, false))
     }
 
-    fn squeeze_native_field_elements(&mut self, num: usize) -> Vec<BaseField> {
-        self.s.squeeze(num)
+    fn squeeze_native_field_elements(&mut self, num: usize) -> Result<Vec<BaseField>, FiatShamirError> {
+        Ok(self.s.squeeze(num))
     }
 
-    fn squeeze_128_bits_nonnative_field_elements(&mut self, num: usize) -> Vec<TargetField> {
-        Self::get_elements_from_sponge(&mut self.s, num, true)
+    fn squeeze_128_bits_nonnative_field_elements(&mut self, num: usize) -> Result<Vec<TargetField>, FiatShamirError> {
+        Ok(Self::get_elements_from_sponge(&mut self.s, num, true))
     }
 }
 

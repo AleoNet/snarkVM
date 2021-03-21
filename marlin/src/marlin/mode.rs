@@ -20,11 +20,12 @@ pub trait MarlinMode: Clone {
     const RECURSION: bool;
 }
 
-/// The Marlin default mode does not assume recursive proofs of any depth.
+/// TODO (howardwu): Combine all of the testnet configurations into an environment struct higher up.
+/// The Marlin testnet1 mode does not assume recursive proofs of any depth.
 #[derive(Clone)]
-pub struct MarlinDefaultMode;
+pub struct MarlinTestnet1Mode;
 
-impl MarlinMode for MarlinDefaultMode {
+impl MarlinMode for MarlinTestnet1Mode {
     const RECURSION: bool = false;
 }
 

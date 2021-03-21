@@ -25,7 +25,7 @@ use snarkvm_curves::{
 use snarkvm_fields::Field;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_marlin::{marlin::MarlinDefaultMode, snark::MarlinSystem, FiatShamirChaChaRng};
+use snarkvm_marlin::{marlin::MarlinTestnet1Mode, snark::MarlinSystem, FiatShamirChaChaRng};
 use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem};
 
@@ -97,7 +97,7 @@ fn snark_setup(c: &mut Criterion) {
                 <Bls12_377 as PairingEngine>::Fr,
                 MultiPC<Bls12_377>,
                 FiatShamirChaChaRng<<Bls12_377 as PairingEngine>::Fr, <Bls12_377 as PairingEngine>::Fr, Blake2s>,
-                MarlinDefaultMode,
+                MarlinTestnet1Mode,
             >::universal_setup(1000, 1000, 1000, rng)
             .unwrap();
 
@@ -125,7 +125,7 @@ fn snark_prove(c: &mut Criterion) {
         <Bls12_377 as PairingEngine>::Fr,
         MultiPC<Bls12_377>,
         FiatShamirChaChaRng<<Bls12_377 as PairingEngine>::Fr, <Bls12_377 as PairingEngine>::Fr, Blake2s>,
-        MarlinDefaultMode,
+        MarlinTestnet1Mode,
     >::universal_setup(1000, 1000, 1000, rng)
     .unwrap();
 
