@@ -595,7 +595,7 @@ where
             PC::check_combinations(
                 &circuit_verifying_key.verifier_key,
                 &lc_s,
-                commitments,
+                &commitments,
                 &query_set,
                 &evaluations,
                 &proof.pc_proof,

@@ -394,7 +394,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     /// committed in `labeled_commitments`.
     fn batch_check<'a, R: RngCore>(
         vk: &Self::VerifierKey,
-        commitments: impl Iterator<Item = LabeledCommitment<Self::Commitment>>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
         query_set: &QuerySet<F>,
         evaluations: &Evaluations<F>,
         proof: &Self::BatchProof,
@@ -404,7 +404,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     where
         Self::Commitment: 'a,
     {
-        let commitments: BTreeMap<_, _> = commitments.map(|c| (c.label().to_owned(), c)).collect();
+        let commitments: BTreeMap<_, _> = commitments.into_iter().map(|c| (c.label(), c)).collect();
         let mut query_to_labels_map = BTreeMap::new();
         for (label, point) in query_set.iter() {
             let labels = query_to_labels_map.entry(point).or_insert_with(BTreeSet::new);
@@ -519,7 +519,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     fn check_combinations<'a, R: RngCore>(
         vk: &Self::VerifierKey,
         linear_combinations: impl IntoIterator<Item = &'a LinearCombination<F>>,
-        commitments: impl Iterator<Item = LabeledCommitment<Self::Commitment>>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
         eqn_query_set: &QuerySet<F>,
         eqn_evaluations: &Evaluations<F>,
         proof: &BatchLCProof<F, Self>,

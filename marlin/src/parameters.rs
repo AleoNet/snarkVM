@@ -14,13 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    fiat_shamir::FiatShamirChaChaRng,
-    marlin::{MarlinSNARK, MarlinTestnet1Mode},
-    ProvingKey,
-    VerifyingKey,
-    SRS,
-};
+use crate::{MarlinTestnet1, ProvingKey, VerifyingKey, SRS};
 use snarkvm_algorithms::errors::SNARKError;
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
 pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PCCommitment};
@@ -35,7 +29,6 @@ use snarkvm_utilities::{
     SNARK_PARAMS_AFFINE_COUNT,
 };
 
-use blake2::Blake2s;
 use derivative::Derivative;
 use rayon::prelude::*;
 use std::{
@@ -62,14 +55,8 @@ pub struct Parameters<E: PairingEngine> {
 impl<E: PairingEngine> Parameters<E> {
     /// Creates an instance of `Parameters` from a given universal SRS.
     pub fn new<C: ConstraintSynthesizer<E::Fr>>(circuit: &C, universal_srs: &SRS<E>) -> Result<Self, SNARKError> {
-        let (proving_key, verifying_key) = MarlinSNARK::<
-            <E as PairingEngine>::Fr,
-            <E as PairingEngine>::Fr,
-            MultiPC<E>,
-            FiatShamirChaChaRng<<E as PairingEngine>::Fr, <E as PairingEngine>::Fr, Blake2s>,
-            MarlinTestnet1Mode,
-        >::circuit_setup(universal_srs, circuit)
-        .map_err(|error| SNARKError::Crate("marlin", format!("could not index - {:?}", error)))?;
+        let (proving_key, verifying_key) = MarlinTestnet1::<E>::circuit_setup(universal_srs, circuit)
+            .map_err(|error| SNARKError::Crate("marlin", format!("could not index - {:?}", error)))?;
         Ok(Self {
             proving_key,
             verifying_key,

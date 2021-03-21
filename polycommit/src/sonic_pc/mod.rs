@@ -518,7 +518,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
 
     fn batch_check<'a, R: RngCore>(
         vk: &Self::VerifierKey,
-        commitments: impl Iterator<Item = LabeledCommitment<Self::Commitment>>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
         query_set: &QuerySet<E::Fr>,
         values: &Evaluations<E::Fr>,
         proof: &Self::BatchProof,
@@ -673,7 +673,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
     fn check_combinations<'a, R: RngCore>(
         vk: &Self::VerifierKey,
         lc_s: impl IntoIterator<Item = &'a LinearCombination<E::Fr>>,
-        commitments: impl Iterator<Item = LabeledCommitment<Self::Commitment>>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
         query_set: &QuerySet<E::Fr>,
         evaluations: &Evaluations<E::Fr>,
         proof: &BatchLCProof<E::Fr, Self>,
@@ -730,14 +730,15 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
             .into_iter()
             .map(kzg10::Commitment);
 
-        let lc_commitments = lc_info
+        let lc_commitments: Vec<_> = lc_info
             .into_iter()
             .zip(comms)
-            .map(|((label, d), c)| LabeledCommitment::new(label, c, d));
+            .map(|((label, d), c)| LabeledCommitment::new(label, c, d))
+            .collect();
 
         Self::batch_check(
             vk,
-            lc_commitments,
+            &lc_commitments,
             &query_set,
             &evaluations,
             proof,

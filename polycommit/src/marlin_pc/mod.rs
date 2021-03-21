@@ -44,23 +44,6 @@ use rand_core::RngCore;
 mod data_structures;
 pub use data_structures::*;
 
-/// Polynomial commitment based on [[KZG10]][kzg], with degree enforcement, batching,
-/// and (optional) hiding property taken from [[CHMMVW20, “Marlin”]][marlin].
-///
-/// Degree bound enforcement requires that (at least one of) the points at
-/// which a committed polynomial is evaluated are from a distribution that is
-/// random conditioned on the polynomial. This is because degree bound
-/// enforcement relies on checking a polynomial identity at this point.
-/// More formally, the points must be sampled from an admissible query sampler,
-/// as detailed in [[CHMMVW20]][marlin].
-///
-/// [kzg]: http://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf
-/// [marlin]: https://eprint.iacr.org/2019/104
-#[derive(Clone, Debug)]
-pub struct MarlinKZG10<E: PairingEngine> {
-    _engine: PhantomData<E>,
-}
-
 pub(crate) fn shift_polynomial<E: PairingEngine>(
     ck: &CommitterKey<E>,
     p: &Polynomial<E::Fr>,
@@ -79,6 +62,23 @@ pub(crate) fn shift_polynomial<E: PairingEngine>(
         shifted_polynomial_coeffs.extend_from_slice(&p.coeffs);
         Polynomial::from_coefficients_vec(shifted_polynomial_coeffs)
     }
+}
+
+/// Polynomial commitment based on [[KZG10]][kzg], with degree enforcement, batching,
+/// and (optional) hiding property taken from [[CHMMVW20, “Marlin”]][marlin].
+///
+/// Degree bound enforcement requires that (at least one of) the points at
+/// which a committed polynomial is evaluated are from a distribution that is
+/// random conditioned on the polynomial. This is because degree bound
+/// enforcement relies on checking a polynomial identity at this point.
+/// More formally, the points must be sampled from an admissible query sampler,
+/// as detailed in [[CHMMVW20]][marlin].
+///
+/// [kzg]: http://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf
+/// [marlin]: https://eprint.iacr.org/2019/104
+#[derive(Clone, Debug)]
+pub struct MarlinKZG10<E: PairingEngine> {
+    _engine: PhantomData<E>,
 }
 
 impl<E: PairingEngine> MarlinKZG10<E> {
@@ -570,7 +570,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
 
     fn batch_check<'a, R: RngCore>(
         vk: &Self::VerifierKey,
-        commitments: impl Iterator<Item = LabeledCommitment<Self::Commitment>>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
         query_set: &QuerySet<E::Fr>,
         values: &Evaluations<E::Fr>,
         proof: &Self::BatchProof,
@@ -607,7 +607,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
                     label: label.to_string(),
                 })?;
 
-                comms_to_combine.push(commitment);
+                comms_to_combine.push(*commitment);
                 values_to_combine.push(*v_i);
             }
             let (c, v) =
@@ -726,7 +726,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
     fn check_combinations<'a, R: RngCore>(
         vk: &Self::VerifierKey,
         lc_s: impl IntoIterator<Item = &'a LinearCombination<E::Fr>>,
-        commitments: impl Iterator<Item = LabeledCommitment<Self::Commitment>>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
         query_set: &QuerySet<E::Fr>,
         evaluations: &Evaluations<E::Fr>,
         proof: &BatchLCProof<E::Fr, Self>,
@@ -784,15 +784,16 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
         end_timer!(lc_processing_time);
         let combined_comms_norm_time = start_timer!(|| "Normalizing commitments");
         let comms = Self::normalize_commitments(lc_commitments);
-        let lc_commitments = lc_info
+        let lc_commitments: Vec<_> = lc_info
             .into_iter()
             .zip(comms)
-            .map(|((label, d), c)| LabeledCommitment::new(label, c, d));
+            .map(|((label, d), c)| LabeledCommitment::new(label, c, d))
+            .collect();
         end_timer!(combined_comms_norm_time);
 
         Self::batch_check(
             vk,
-            lc_commitments,
+            &lc_commitments,
             &query_set,
             &evaluations,
             proof,
