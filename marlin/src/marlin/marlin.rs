@@ -17,11 +17,11 @@
 use crate::{
     ahp::{AHPError, AHPForR1CS, EvaluationsProvider},
     fiat_shamir::traits::FiatShamirRng,
-    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinError, Proof, UniversalSRS},
+    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinError, MarlinMode, Proof, UniversalSRS},
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_polycommit::{Evaluations, LabeledCommitment, PCUniversalParams, PolynomialCommitment};
-use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_polycommit::{Evaluations, LabeledCommitment, LabeledPolynomial, PCUniversalParams, PolynomialCommitment};
+use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError};
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
 use core::marker::PhantomData;
@@ -34,11 +34,13 @@ pub struct MarlinSNARK<
     BaseField: PrimeField,
     PC: PolynomialCommitment<TargetField>,
     FS: FiatShamirRng<TargetField, BaseField>,
+    MM: MarlinMode,
 >(
     #[doc(hidden)] PhantomData<TargetField>,
     #[doc(hidden)] PhantomData<BaseField>,
     #[doc(hidden)] PhantomData<PC>,
     #[doc(hidden)] PhantomData<FS>,
+    #[doc(hidden)] PhantomData<MM>,
 );
 
 impl<
@@ -46,7 +48,8 @@ impl<
     BaseField: PrimeField,
     PC: PolynomialCommitment<TargetField>,
     FS: FiatShamirRng<TargetField, BaseField>,
-> MarlinSNARK<TargetField, BaseField, PC, FS>
+    MM: MarlinMode,
+> MarlinSNARK<TargetField, BaseField, PC, FS, MM>
 {
     /// The personalization string for this protocol.
     /// Used to personalize the Fiat-Shamir RNG.
@@ -82,6 +85,8 @@ impl<
     {
         let index_time = start_timer!(|| "Marlin::CircuitSetup");
 
+        let is_recursion = MM::RECURSION;
+
         // TODO: Add check that c is in the correct mode.
         let index = AHPForR1CS::index(circuit)?;
         if universal_srs.max_degree() < index.max_degree() {
@@ -93,7 +98,7 @@ impl<
 
         let coefficient_support = AHPForR1CS::get_degree_bounds(&index.index_info);
 
-        // Marlin only needs degree 2 random polynomials
+        // Marlin only needs degree 2 random polynomials.
         let supported_hiding_bound = 1;
         let (committer_key, verifier_key) = PC::trim(
             &universal_srs,
@@ -103,9 +108,33 @@ impl<
         )
         .map_err(MarlinError::from_pc_err)?;
 
+        let mut vanishing_polynomials = vec![];
+        if is_recursion {
+            let domain_h = EvaluationDomain::new(index.index_info.num_constraints)
+                .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+            let domain_k =
+                EvaluationDomain::new(index.index_info.num_non_zero).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+
+            vanishing_polynomials = vec![
+                LabeledPolynomial::new(
+                    "vanishing_poly_h".to_string(),
+                    domain_h.vanishing_polynomial().into(),
+                    None,
+                    None,
+                ),
+                LabeledPolynomial::new(
+                    "vanishing_poly_k".to_string(),
+                    domain_k.vanishing_polynomial().into(),
+                    None,
+                    None,
+                ),
+            ];
+        }
+
         let commit_time = start_timer!(|| "Commit to index polynomials");
         let (circuit_commitments, circuit_commitment_randomness): (_, _) =
-            PC::commit(&committer_key, index.iter(), None).map_err(MarlinError::from_pc_err)?;
+            PC::commit(&committer_key, index.iter().chain(vanishing_polynomials.iter()), None)
+                .map_err(MarlinError::from_pc_err)?;
         end_timer!(commit_time);
 
         let circuit_commitments = circuit_commitments
@@ -191,7 +220,7 @@ impl<
 
         fs_rng.absorb_bytes(&to_bytes![second_commitments, prover_second_message].unwrap());
 
-        let (verifier_second_msg, verifier_state) = AHPForR1CS::verifier_second_round(verifier_state, &mut fs_rng);
+        let (verifier_second_msg, verifier_state) = AHPForR1CS::verifier_second_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
@@ -210,7 +239,7 @@ impl<
 
         fs_rng.absorb_bytes(&to_bytes![third_commitments, prover_third_message].unwrap());
 
-        let verifier_state = AHPForR1CS::verifier_third_round(verifier_state, &mut fs_rng);
+        let verifier_state = AHPForR1CS::verifier_third_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
         // Gather prover polynomials in one vector.
@@ -274,7 +303,7 @@ impl<
 
         fs_rng.absorb_bytes(&to_bytes![&evaluations].unwrap());
 
-        let opening_challenge: TargetField = fs_rng.squeeze_128_bits_nonnative_field_elements(1)[0];
+        let opening_challenge: TargetField = fs_rng.squeeze_128_bits_nonnative_field_elements(1)?[0];
 
         let pc_proof = PC::open_combinations(
             &circuit_proving_key.committer_key,
@@ -297,7 +326,7 @@ impl<
         Ok(proof)
     }
 
-    /// Verify that a proof for the constrain system defined by `C` asserts that
+    /// Verify that a proof for the constraint system defined by `C` asserts that
     /// all constraints are satisfied.
     pub fn verify(
         circuit_verifying_key: &CircuitVerifyingKey<TargetField, PC>,
@@ -335,7 +364,7 @@ impl<
         let second_commitments = &proof.commitments[1];
         fs_rng.absorb_bytes(&to_bytes![second_commitments, proof.prover_messages[1]].unwrap());
 
-        let (_, verifier_state) = AHPForR1CS::verifier_second_round(verifier_state, &mut fs_rng);
+        let (_, verifier_state) = AHPForR1CS::verifier_second_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
@@ -343,7 +372,7 @@ impl<
         let third_commitments = &proof.commitments[2];
         fs_rng.absorb_bytes(&to_bytes![third_commitments, proof.prover_messages[2]].unwrap());
 
-        let verifier_state = AHPForR1CS::verifier_third_round(verifier_state, &mut fs_rng);
+        let verifier_state = AHPForR1CS::verifier_third_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
         // Collect degree bounds for commitments. Indexed polynomials have *no*
@@ -389,7 +418,7 @@ impl<
 
         let lc_s = AHPForR1CS::construct_linear_combinations(&public_input, &evaluations, &verifier_state, false)?;
 
-        let opening_challenge: TargetField = fs_rng.squeeze_128_bits_nonnative_field_elements(1)[0];
+        let opening_challenge: TargetField = fs_rng.squeeze_128_bits_nonnative_field_elements(1)?[0];
 
         let evaluations_are_correct = PC::check_combinations(
             &circuit_verifying_key.verifier_key,

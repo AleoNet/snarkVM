@@ -26,9 +26,13 @@ pub use circuit_verifying_key::*;
 mod errors;
 pub use errors::*;
 
-/// A generic implementation of the Marlin proof system..
+/// A generic implementation of the Marlin proof system.
 mod marlin;
 pub use marlin::*;
+
+/// Specifies the Marlin mode.
+mod mode;
+pub use mode::*;
 
 /// The Marlin zkSNARK proof.
 mod proof;

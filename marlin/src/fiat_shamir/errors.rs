@@ -14,14 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod algebraic_sponge;
-pub use algebraic_sponge::*;
+/// A `enum` specifying the possible failure modes of `FiatShamir`.
+#[derive(Debug)]
+pub enum FiatShamirError {
+    /// There was a synthesis error.
+    R1CSError(snarkvm_r1cs::SynthesisError),
+    /// The RNG has not been initialized.
+    UninitializedRNG,
+}
 
-mod algebraic_sponge_gadget;
-pub use algebraic_sponge_gadget::*;
-
-mod fiat_shamir;
-pub use fiat_shamir::*;
-
-mod fiat_shamir_gadget;
-pub use fiat_shamir_gadget::*;
+impl From<snarkvm_r1cs::SynthesisError> for FiatShamirError {
+    fn from(err: snarkvm_r1cs::SynthesisError) -> Self {
+        FiatShamirError::R1CSError(err)
+    }
+}

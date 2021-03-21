@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::fiat_shamir::FiatShamirError;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_nonnative::params::OptimizationType;
 
@@ -25,16 +26,20 @@ pub trait FiatShamirRng<TargetField: PrimeField, BaseField: PrimeField>: RngCore
     fn new() -> Self;
 
     /// Takes in field elements.
-    fn absorb_nonnative_field_elements(&mut self, elems: &[TargetField], ty: OptimizationType);
+    fn absorb_nonnative_field_elements(&mut self, elements: &[TargetField], ty: OptimizationType);
     /// Takes in field elements.
-    fn absorb_native_field_elements<T: ToConstraintField<BaseField>>(&mut self, elems: &[T]);
+    fn absorb_native_field_elements<T: ToConstraintField<BaseField>>(&mut self, elements: &[T]);
     /// Takes in bytes.
-    fn absorb_bytes(&mut self, elems: &[u8]);
+    fn absorb_bytes(&mut self, elements: &[u8]);
 
     /// Takes out field elements.
-    fn squeeze_nonnative_field_elements(&mut self, num: usize, ty: OptimizationType) -> Vec<TargetField>;
+    fn squeeze_nonnative_field_elements(
+        &mut self,
+        num: usize,
+        ty: OptimizationType,
+    ) -> Result<Vec<TargetField>, FiatShamirError>;
     /// Takes in field elements.
-    fn squeeze_native_field_elements(&mut self, num: usize) -> Vec<BaseField>;
+    fn squeeze_native_field_elements(&mut self, num: usize) -> Result<Vec<BaseField>, FiatShamirError>;
     /// Takes out field elements of 128 bits.
-    fn squeeze_128_bits_nonnative_field_elements(&mut self, num: usize) -> Vec<TargetField>;
+    fn squeeze_128_bits_nonnative_field_elements(&mut self, num: usize) -> Result<Vec<TargetField>, FiatShamirError>;
 }

@@ -14,14 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod algebraic_sponge;
-pub use algebraic_sponge::*;
+/// A trait to specify the Marlin mode.
+pub trait MarlinMode: Clone {
+    /// Specifies whether this is for a recursive proof of at least depth-1.
+    const RECURSION: bool;
+}
 
-mod algebraic_sponge_gadget;
-pub use algebraic_sponge_gadget::*;
+/// TODO (howardwu): Combine all of the testnet configurations into an environment struct higher up.
+/// The Marlin testnet1 mode does not assume recursive proofs of any depth.
+#[derive(Clone)]
+pub struct MarlinTestnet1Mode;
 
-mod fiat_shamir;
-pub use fiat_shamir::*;
+impl MarlinMode for MarlinTestnet1Mode {
+    const RECURSION: bool = false;
+}
 
-mod fiat_shamir_gadget;
-pub use fiat_shamir_gadget::*;
+/// The Marlin default mode assumes a recursive proof of at least depth-1.
+#[derive(Clone)]
+pub struct MarlinRecursiveMode;
+
+impl MarlinMode for MarlinRecursiveMode {
+    const RECURSION: bool = true;
+}

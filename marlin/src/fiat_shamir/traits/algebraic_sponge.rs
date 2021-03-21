@@ -17,11 +17,11 @@
 use snarkvm_fields::PrimeField;
 
 /// Trait for an algebraic sponge.
-pub trait AlgebraicSponge<CF: PrimeField>: Clone {
+pub trait AlgebraicSponge<BaseField: PrimeField>: Clone {
     /// Initializes an algebraic sponge.
     fn new() -> Self;
     /// Takes in field elements.
-    fn absorb(&mut self, elems: &[CF]);
+    fn absorb(&mut self, elems: &[BaseField]);
     /// Takes out field elements.
-    fn squeeze(&mut self, num: usize) -> Vec<CF>;
+    fn squeeze(&mut self, num: usize) -> Vec<BaseField>;
 }

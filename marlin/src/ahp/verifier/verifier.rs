@@ -49,7 +49,7 @@ impl<TargetField: PrimeField> AHPForR1CS<TargetField> {
         let domain_k =
             EvaluationDomain::new(index_info.num_non_zero).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let elems = fs_rng.squeeze_nonnative_field_elements(4, OptimizationType::Weight);
+        let elems = fs_rng.squeeze_nonnative_field_elements(4, OptimizationType::Weight)?;
         let alpha = elems[0];
         let eta_a = elems[1];
         let eta_b = elems[2];
@@ -78,27 +78,27 @@ impl<TargetField: PrimeField> AHPForR1CS<TargetField> {
     pub fn verifier_second_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
         mut state: VerifierState<TargetField>,
         fs_rng: &mut R,
-    ) -> (VerifierSecondMessage<TargetField>, VerifierState<TargetField>) {
-        let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight);
+    ) -> Result<(VerifierSecondMessage<TargetField>, VerifierState<TargetField>), AHPError> {
+        let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight)?;
         let beta = elems[0];
         assert!(!state.domain_h.evaluate_vanishing_polynomial(beta).is_zero());
 
-        let msg = VerifierSecondMessage { beta };
-        state.second_round_message = Some(msg);
+        let message = VerifierSecondMessage { beta };
+        state.second_round_message = Some(message);
 
-        (msg, state)
+        Ok((message, state))
     }
 
     /// Output the third message and next round state.
     pub fn verifier_third_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
         mut state: VerifierState<TargetField>,
         fs_rng: &mut R,
-    ) -> VerifierState<TargetField> {
-        let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight);
+    ) -> Result<VerifierState<TargetField>, AHPError> {
+        let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight)?;
         let gamma = elems[0];
 
         state.gamma = Some(gamma);
-        state
+        Ok(state)
     }
 
     /// Output the query state and next round state.

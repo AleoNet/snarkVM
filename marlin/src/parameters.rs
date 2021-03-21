@@ -14,9 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{fiat_shamir::FiatShamirChaChaRng, marlin::MarlinSNARK, ProvingKey, VerifyingKey, SRS};
+use crate::{
+    fiat_shamir::FiatShamirChaChaRng,
+    marlin::{MarlinSNARK, MarlinTestnet1Mode},
+    ProvingKey,
+    VerifyingKey,
+    SRS,
+};
 use snarkvm_algorithms::errors::SNARKError;
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
+pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PCCommitment};
 use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
@@ -27,8 +34,6 @@ use snarkvm_utilities::{
     PROCESSING_SNARK_PARAMS,
     SNARK_PARAMS_AFFINE_COUNT,
 };
-
-pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PCCommitment};
 
 use blake2::Blake2s;
 use derivative::Derivative;
@@ -62,6 +67,7 @@ impl<E: PairingEngine> Parameters<E> {
             <E as PairingEngine>::Fr,
             MultiPC<E>,
             FiatShamirChaChaRng<<E as PairingEngine>::Fr, <E as PairingEngine>::Fr, Blake2s>,
+            MarlinTestnet1Mode,
         >::circuit_setup(universal_srs, circuit)
         .map_err(|error| SNARKError::Crate("marlin", format!("could not index - {:?}", error)))?;
         Ok(Self {

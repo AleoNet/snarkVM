@@ -17,7 +17,7 @@
 //! The Marlin zkSNARK implementation
 use crate::{
     fiat_shamir::FiatShamirChaChaRng,
-    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinSNARK, Proof, UniversalSRS},
+    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinSNARK, MarlinTestnet1Mode, Proof, UniversalSRS},
     Parameters,
 };
 use snarkvm_algorithms::{errors::SNARKError, traits::SNARK};
@@ -102,6 +102,7 @@ where
             <E as PairingEngine>::Fr,
             MultiPC<E>,
             FiatShamirChaChaRng<<E as PairingEngine>::Fr, <E as PairingEngine>::Fr, Blake2s>,
+            MarlinTestnet1Mode,
         >::prove(&parameters.proving_key, circuit, rng)
         .map_err(|error| SNARKError::Crate("marlin", format!("Failed to generate proof - {:?}", error)))?;
         end_timer!(proving_time);
@@ -119,6 +120,7 @@ where
             <E as PairingEngine>::Fr,
             MultiPC<E>,
             FiatShamirChaChaRng<<E as PairingEngine>::Fr, <E as PairingEngine>::Fr, Blake2s>,
+            MarlinTestnet1Mode,
         >::verify(&verifying_key, &input.to_field_elements()?, &proof)
         .map_err(|_| SNARKError::Crate("marlin", "Could not verify proof".to_owned()))?;
         end_timer!(verification_time);
