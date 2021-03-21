@@ -117,6 +117,64 @@ impl<E: PairingEngine> SonicKZG10<E> {
         end_timer!(acc_time);
     }
 
+    fn accumulate_elems_individual_opening_challenges<'a>(
+        combined_comms: &mut BTreeMap<Option<usize>, E::G1Projective>,
+        combined_witness: &mut E::G1Projective,
+        combined_adjusted_witness: &mut E::G1Projective,
+        vk: &VerifierKey<E>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
+        point: E::Fr,
+        values: impl IntoIterator<Item = E::Fr>,
+        proof: &kzg10::Proof<E>,
+        opening_challenges: &dyn Fn(u64) -> E::Fr,
+        randomizer: Option<E::Fr>,
+    ) {
+        let acc_time = start_timer!(|| "Accumulating elements");
+
+        let mut opening_challenge_counter = 0;
+        let mut curr_challenge = opening_challenges(opening_challenge_counter);
+        opening_challenge_counter += 1;
+
+        // Keeps track of running combination of values
+        let mut combined_values = E::Fr::zero();
+
+        // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
+        for (labeled_comm, value) in commitments.into_iter().zip(values) {
+            combined_values += &(value * &curr_challenge);
+
+            let comm = labeled_comm.commitment();
+            let degree_bound = labeled_comm.degree_bound();
+
+            // Applying opening challenge and randomness (used in batch_checking)
+            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge);
+
+            if let Some(randomizer) = randomizer {
+                comm_with_challenge = comm_with_challenge.mul(&randomizer);
+            }
+
+            // Accumulate values in the BTreeMap
+            *combined_comms.entry(degree_bound).or_insert(E::G1Projective::zero()) += &comm_with_challenge;
+            curr_challenge = opening_challenges(opening_challenge_counter);
+            opening_challenge_counter += 1;
+        }
+
+        // Push expected results into list of elems. Power will be the negative of the expected power
+        let mut witness: E::G1Projective = proof.w.into_projective();
+        let mut adjusted_witness = vk.g.mul(combined_values) - &proof.w.mul(point);
+        if let Some(random_v) = proof.random_v {
+            adjusted_witness += &vk.gamma_g.mul(random_v);
+        }
+
+        if let Some(randomizer) = randomizer {
+            witness = proof.w.mul(randomizer);
+            adjusted_witness = adjusted_witness.mul(&randomizer);
+        }
+
+        *combined_witness += &witness;
+        *combined_adjusted_witness += &adjusted_witness;
+        end_timer!(acc_time);
+    }
+
     #[allow(clippy::type_complexity)]
     fn check_elems(
         combined_comms: BTreeMap<Option<usize>, E::G1Projective>,
@@ -373,6 +431,51 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
 
         let proof_time = start_timer!(|| "Creating proof for polynomials");
         let proof = kzg10::KZG10::open(&ck.powers(), &combined_polynomial, point, &combined_rand)?;
+        end_timer!(proof_time);
+
+        Ok(proof)
+    }
+
+    fn open_individual_opening_challenges<'a>(
+        ck: &Self::CommitterKey,
+        labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
+        _commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
+        point: &'a E::Fr,
+        opening_challenges: &dyn Fn(u64) -> E::Fr,
+        rands: impl IntoIterator<Item = &'a Self::Randomness>,
+        _rng: Option<&mut dyn RngCore>,
+    ) -> Result<Self::Proof, Self::Error>
+    where
+        Self::Randomness: 'a,
+        Self::Commitment: 'a,
+    {
+        let mut combined_polynomial = Polynomial::zero();
+        let mut combined_rand = kzg10::Randomness::empty();
+
+        let mut opening_challenge_counter = 0;
+
+        let mut curr_challenge = opening_challenges(opening_challenge_counter);
+        opening_challenge_counter += 1;
+
+        for (polynomial, rand) in labeled_polynomials.into_iter().zip(rands) {
+            let enforced_degree_bounds: Option<&[usize]> =
+                ck.enforced_degree_bounds.as_ref().map(|bounds| bounds.as_slice());
+
+            kzg10::KZG10::<E>::check_degrees_and_bounds(
+                ck.supported_degree(),
+                ck.max_degree,
+                enforced_degree_bounds,
+                &polynomial,
+            )?;
+
+            combined_polynomial += (curr_challenge, polynomial.polynomial());
+            combined_rand += (curr_challenge, rand);
+            curr_challenge = opening_challenges(opening_challenge_counter);
+            opening_challenge_counter += 1;
+        }
+
+        let proof_time = start_timer!(|| "Creating proof for polynomials");
+        let proof = kzg10::KZG10::open(&ck.powers(), &combined_polynomial, *point, &combined_rand)?;
         end_timer!(proof_time);
 
         Ok(proof)
@@ -641,6 +744,41 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
             opening_challenge,
             rng,
         )
+    }
+
+    fn check_individual_opening_challenges<'a>(
+        vk: &Self::VerifierKey,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
+        point: &'a E::Fr,
+        values: impl IntoIterator<Item = E::Fr>,
+        proof: &Self::Proof,
+        opening_challenges: &dyn Fn(u64) -> E::Fr,
+        _rng: Option<&mut dyn RngCore>,
+    ) -> Result<bool, Self::Error>
+    where
+        Self::Commitment: 'a,
+    {
+        let check_time = start_timer!(|| "Checking evaluations");
+        let mut combined_comms: BTreeMap<Option<usize>, E::G1Projective> = BTreeMap::new();
+        let mut combined_witness: E::G1Projective = E::G1Projective::zero();
+        let mut combined_adjusted_witness: E::G1Projective = E::G1Projective::zero();
+
+        Self::accumulate_elems_individual_opening_challenges(
+            &mut combined_comms,
+            &mut combined_witness,
+            &mut combined_adjusted_witness,
+            vk,
+            commitments,
+            *point,
+            values,
+            proof,
+            opening_challenges,
+            None,
+        );
+
+        let res = Self::check_elems(combined_comms, combined_witness, combined_adjusted_witness, vk);
+        end_timer!(check_time);
+        res
     }
 }
 

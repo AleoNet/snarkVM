@@ -14,8 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ahp::indexer::*, Vec};
-use snarkvm_fields::PrimeField;
+use crate::{
+    ahp::indexer::*,
+    fiat_shamir::{FiatShamirError, FiatShamirRng},
+    marlin::CircuitProvingKey,
+    Vec,
+};
+use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_polycommit::PolynomialCommitment;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
@@ -61,4 +66,26 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> CircuitVerifyingKey<F, PC> {
     pub fn iter(&self) -> impl Iterator<Item = &PC::Commitment> {
         self.circuit_commitments.iter()
     }
+}
+
+impl<F: PrimeField, PC: PolynomialCommitment<F>> From<CircuitProvingKey<F, PC>> for CircuitVerifyingKey<F, PC> {
+    fn from(other: CircuitProvingKey<F, PC>) -> Self {
+        other.circuit_verifying_key
+    }
+}
+
+/// Compute the hash of the circuit verifying key.
+pub(crate) fn compute_vk_hash<TargetField, BaseField, PC, FS>(
+    vk: &CircuitVerifyingKey<TargetField, PC>,
+) -> Result<Vec<BaseField>, FiatShamirError>
+where
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    FS: FiatShamirRng<TargetField, BaseField>,
+    PC::Commitment: ToConstraintField<BaseField>,
+{
+    let mut vk_hash_rng = FS::new();
+    vk_hash_rng.absorb_native_field_elements(&vk.circuit_commitments);
+    vk_hash_rng.squeeze_native_field_elements(1)
 }

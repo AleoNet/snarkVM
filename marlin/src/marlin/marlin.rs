@@ -17,10 +17,10 @@
 use crate::{
     ahp::{AHPError, AHPForR1CS, EvaluationsProvider},
     fiat_shamir::traits::FiatShamirRng,
-    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinError, MarlinMode, Proof, UniversalSRS},
+    marlin::{compute_vk_hash, CircuitProvingKey, CircuitVerifyingKey, MarlinError, MarlinMode, Proof, UniversalSRS},
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_nonnative::params::OptimizationType;
 use snarkvm_polycommit::{Evaluations, LabeledCommitment, LabeledPolynomial, PCUniversalParams, PolynomialCommitment};
 use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError};
@@ -51,6 +51,9 @@ impl<
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
 > MarlinSNARK<TargetField, BaseField, PC, FS, MM>
+where
+    PC::VerifierKey: ToConstraintField<BaseField>,
+    PC::Commitment: ToConstraintField<BaseField>,
 {
     /// The personalization string for this protocol.
     /// Used to personalize the Fiat-Shamir RNG.
@@ -180,9 +183,9 @@ impl<
 
         if is_recursion {
             fs_rng.absorb_bytes(&to_bytes![&Self::PROTOCOL_NAME].unwrap());
-            fs_rng.absorb_native_field_elements(&compute_vk_hash::<F, FSF, PC, FS>(
+            fs_rng.absorb_native_field_elements(&compute_vk_hash::<TargetField, BaseField, PC, FS>(
                 &circuit_proving_key.circuit_verifying_key,
-            ));
+            )?);
             fs_rng.absorb_nonnative_field_elements(&public_input, OptimizationType::Weight);
         } else {
             fs_rng.absorb_bytes(
@@ -319,9 +322,11 @@ impl<
         ];
 
         let indexer_polynomials = if is_recursion {
-            AHPForR1CS::<F>::INDEXER_POLYNOMIALS_WITH_VANISHING.clone().to_vec()
+            AHPForR1CS::<TargetField>::INDEXER_POLYNOMIALS_WITH_VANISHING
+                .clone()
+                .to_vec()
         } else {
-            AHPForR1CS::<F>::INDEXER_POLYNOMIALS.clone().to_vec()
+            AHPForR1CS::<TargetField>::INDEXER_POLYNOMIALS.clone().to_vec()
         };
 
         let labeled_commitments: Vec<_> = circuit_proving_key
@@ -373,7 +378,7 @@ impl<
             fs_rng.absorb_bytes(&to_bytes![&evaluations].unwrap());
         }
 
-        let pc_proof = if for_recursion {
+        let pc_proof = if is_recursion {
             let num_open_challenges: usize = 7;
 
             let mut opening_challenges = Vec::new();
@@ -391,7 +396,7 @@ impl<
                 &commitment_randomnesses,
                 Some(zk_rng),
             )
-            .map_err(Error::from_pc_err)?
+            .map_err(MarlinError::from_pc_err)?
         } else {
             let opening_challenge: TargetField = fs_rng.squeeze_128_bits_nonnative_field_elements(1)?[0];
 
@@ -446,7 +451,7 @@ impl<
             fs_rng.absorb_bytes(&to_bytes![&Self::PROTOCOL_NAME].unwrap());
             fs_rng.absorb_native_field_elements(&compute_vk_hash::<TargetField, BaseField, PC, FS>(
                 circuit_verifying_key,
-            ));
+            )?);
             fs_rng.absorb_nonnative_field_elements(&public_input, OptimizationType::Weight);
         } else {
             fs_rng.absorb_bytes(&to_bytes![&Self::PROTOCOL_NAME, &circuit_verifying_key, &public_input].unwrap());
@@ -527,7 +532,7 @@ impl<
         };
 
         // Gather commitments in one vector.
-        let commitments = circuit_verifying_key
+        let commitments: Vec<_> = circuit_verifying_key
             .iter()
             .chain(first_commitments)
             .chain(second_commitments)
@@ -535,7 +540,8 @@ impl<
             .cloned()
             .zip(polynomial_labels)
             .zip(degree_bounds)
-            .map(|((c, l), d)| LabeledCommitment::new(l, c, d));
+            .map(|((c, l), d)| LabeledCommitment::new(l, c, d))
+            .collect();
 
         let (query_set, verifier_state) = AHPForR1CS::verifier_query_set(verifier_state, &mut fs_rng, is_recursion);
 
@@ -582,7 +588,7 @@ impl<
                 &opening_challenges_f,
                 &mut fs_rng,
             )
-            .map_err(Error::from_pc_err)?
+            .map_err(MarlinError::from_pc_err)?
         } else {
             let opening_challenge: TargetField = fs_rng.squeeze_128_bits_nonnative_field_elements(1)?[0];
 
