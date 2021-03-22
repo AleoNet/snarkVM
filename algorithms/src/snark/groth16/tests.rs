@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use rand::Rng;
 use snarkvm_fields::{Field, Zero};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
@@ -60,14 +59,8 @@ mod bls12_377 {
     fn prove_and_verify() {
         let rng = &mut test_rng();
 
-        let parameters = generate_random_parameters::<Bls12_377, _, _>(
-            &MySillyCircuit {
-                a: Some(rng.gen()),
-                b: Some(rng.gen()),
-            },
-            rng,
-        )
-        .unwrap();
+        let parameters =
+            generate_random_parameters::<Bls12_377, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
 
         for _ in 0..100 {
             let a = Fr::rand(rng);
@@ -95,14 +88,8 @@ mod bw6_761 {
     fn prove_and_verify() {
         let rng = &mut test_rng();
 
-        let parameters = generate_random_parameters::<BW6_761, _, _>(
-            &MySillyCircuit {
-                a: Some(rng.gen()),
-                b: Some(rng.gen()),
-            },
-            rng,
-        )
-        .unwrap();
+        let parameters =
+            generate_random_parameters::<BW6_761, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
 
         let a = Fr::rand(rng);
         let b = Fr::rand(rng);
@@ -130,14 +117,8 @@ mod serialization {
     fn test_compressed_proof_serialization() {
         let rng = &mut test_rng();
 
-        let parameters = generate_random_parameters::<Bls12_377, _, _>(
-            &MySillyCircuit {
-                a: Some(rng.gen()),
-                b: Some(rng.gen()),
-            },
-            rng,
-        )
-        .unwrap();
+        let parameters =
+            generate_random_parameters::<Bls12_377, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
 
         let a = Fr::rand(rng);
         let b = Fr::rand(rng);
@@ -160,14 +141,8 @@ mod serialization {
     fn test_uncompressed_proof_serialization() {
         let rng = &mut test_rng();
 
-        let parameters = generate_random_parameters::<Bls12_377, _, _>(
-            &MySillyCircuit {
-                a: Some(rng.gen()),
-                b: Some(rng.gen()),
-            },
-            rng,
-        )
-        .unwrap();
+        let parameters =
+            generate_random_parameters::<Bls12_377, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
 
         let a = Fr::rand(rng);
         let b = Fr::rand(rng);

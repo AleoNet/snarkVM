@@ -65,8 +65,12 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         AR: AsRef<str>,
     {
         // There is no assignment, but the function still needs to be called so that
-        // the associated values are allocated
-        f()?;
+        // the associated values are allocated; exclude in tests, where the parameters
+        // can be empty
+        #[cfg(not(debug_assertions))]
+        {
+            f()?;
+        }
 
         let index = self.num_private_variables;
         self.num_private_variables += 1;
@@ -82,8 +86,12 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         AR: AsRef<str>,
     {
         // There is no assignment, but the function still needs to be called so that
-        // the associated values are allocated
-        f()?;
+        // the associated values are allocated; exclude in tests, where the parameters
+        // can be empty
+        #[cfg(not(debug_assertions))]
+        {
+            f()?;
+        }
 
         let index = self.num_public_variables;
         self.num_public_variables += 1;

@@ -172,8 +172,8 @@ fn test_mimc_groth_16() {
     // Create parameters for our circuit
     let params = {
         let c = MiMCDemo::<Fr> {
-            xl: Some(rng.gen()),
-            xr: Some(rng.gen()),
+            xl: None,
+            xr: None,
             constants: &constants,
         };
 
