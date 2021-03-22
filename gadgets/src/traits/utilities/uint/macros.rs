@@ -224,6 +224,14 @@ macro_rules! uint_impl_common {
                     bits,
                 }
             }
+
+            fn get_value(&self) -> Option<String> {
+                self.value.map(|num| num.to_string())
+            }
+
+            fn get_bits(&self) -> Vec<Boolean> {
+                self.bits.clone()
+            }
         }
 
         cond_select_int_impl!($name, $_type, $size);
