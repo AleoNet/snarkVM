@@ -26,8 +26,6 @@ use snarkvm_fields::{
     PrimeField,
 };
 
-use rand;
-
 #[test]
 fn test_sw6_fr() {
     let a: Fr = rand::random();
