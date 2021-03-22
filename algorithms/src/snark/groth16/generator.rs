@@ -58,7 +58,7 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
     type Root = Self;
 
     #[inline]
-    fn alloc<F, A, AR>(&mut self, _: A, f: F) -> Result<Variable, SynthesisError>
+    fn alloc<F, A, AR>(&mut self, _: A, _f: F) -> Result<Variable, SynthesisError>
     where
         F: FnOnce() -> Result<E::Fr, SynthesisError>,
         A: FnOnce() -> AR,
@@ -69,7 +69,7 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         // can be empty
         #[cfg(not(debug_assertions))]
         {
-            f()?;
+            _f()?;
         }
 
         let index = self.num_private_variables;
@@ -79,7 +79,7 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
     }
 
     #[inline]
-    fn alloc_input<F, A, AR>(&mut self, _: A, f: F) -> Result<Variable, SynthesisError>
+    fn alloc_input<F, A, AR>(&mut self, _: A, _f: F) -> Result<Variable, SynthesisError>
     where
         F: FnOnce() -> Result<E::Fr, SynthesisError>,
         A: FnOnce() -> AR,
@@ -90,7 +90,7 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         // can be empty
         #[cfg(not(debug_assertions))]
         {
-            f()?;
+            _f()?;
         }
 
         let index = self.num_public_variables;
