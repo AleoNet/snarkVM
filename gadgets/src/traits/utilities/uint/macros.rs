@@ -404,7 +404,7 @@ macro_rules! uint_impl {
                 &self,
                 mut cs: CS,
                 other: &Self,
-            ) -> Result<Self, SynthesisError> {
+            ) -> Result<Self, UnsignedIntegerError> {
                 // pseudocode:
                 //
                 // res = 0;
@@ -455,6 +455,7 @@ macro_rules! uint_impl {
                     .collect::<Vec<Self>>();
 
                 Self::addmany(&mut cs.ns(|| format!("partial_products")), &partial_products)
+                    .map_err(UnsignedIntegerError::SynthesisError)
             }
         }
     };
