@@ -16,6 +16,7 @@
 
 use crate::utilities::{
     alloc::AllocGadget,
+    bits::Xor,
     eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
     select::CondSelectGadget,
     uint::UInt8,
@@ -438,26 +439,6 @@ impl Boolean {
         }
     }
 
-    /// Perform XOR over two boolean operands.
-    pub fn xor<'a, F, CS>(cs: CS, a: &'a Self, b: &'a Self) -> Result<Self, SynthesisError>
-    where
-        F: Field,
-        CS: ConstraintSystem<F>,
-    {
-        match (a, b) {
-            (&Boolean::Constant(false), x) | (x, &Boolean::Constant(false)) => Ok(*x),
-            (&Boolean::Constant(true), x) | (x, &Boolean::Constant(true)) => Ok(x.not()),
-            // a XOR (NOT b) = NOT(a XOR b)
-            (is @ &Boolean::Is(_), not @ &Boolean::Not(_)) | (not @ &Boolean::Not(_), is @ &Boolean::Is(_)) => {
-                Ok(Boolean::xor(cs, is, &not.not())?.not())
-            }
-            // a XOR b = (NOT a) XOR (NOT b)
-            (&Boolean::Is(ref a), &Boolean::Is(ref b)) | (&Boolean::Not(ref a), &Boolean::Not(ref b)) => {
-                Ok(Boolean::Is(AllocatedBit::xor(cs, a, b)?))
-            }
-        }
-    }
-
     /// Perform OR over two boolean operands.
     pub fn or<'a, F, CS>(cs: CS, a: &'a Self, b: &'a Self) -> Result<Self, SynthesisError>
     where
@@ -719,6 +700,23 @@ impl Boolean {
     }
 }
 
+impl<F: Field> Xor<F> for Boolean {
+    fn xor<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, SynthesisError> {
+        match (*self, *other) {
+            (Boolean::Constant(false), x) | (x, Boolean::Constant(false)) => Ok(x),
+            (Boolean::Constant(true), x) | (x, Boolean::Constant(true)) => Ok(x.not()),
+            // a XOR (NOT b) = NOT(a XOR b)
+            (is @ Boolean::Is(_), not @ Boolean::Not(_)) | (not @ Boolean::Not(_), is @ Boolean::Is(_)) => {
+                Ok(is.xor(cs, &not.not())?.not())
+            }
+            // a XOR b = (NOT a) XOR (NOT b)
+            (Boolean::Is(ref a), Boolean::Is(ref b)) | (Boolean::Not(ref a), Boolean::Not(ref b)) => {
+                Ok(Boolean::Is(AllocatedBit::xor(cs, a, b)?))
+            }
+        }
+    }
+}
+
 impl PartialEq for Boolean {
     fn eq(&self, other: &Self) -> bool {
         use self::Boolean::*;
@@ -744,7 +742,7 @@ impl From<AllocatedBit> for Boolean {
 /// a == b = !(a XOR b)
 impl<F: PrimeField> EvaluateEqGadget<F> for Boolean {
     fn evaluate_equal<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
-        let xor = Boolean::xor(cs, self, other)?;
+        let xor = self.xor(cs, other)?;
         Ok(xor.not())
     }
 }
@@ -1176,7 +1174,7 @@ mod test {
                     b = dyn_construct(&mut cs, second_operand, "b");
                 }
 
-                let c = Boolean::xor(&mut cs, &a, &b).unwrap();
+                let c = a.xor(&mut cs, &b).unwrap();
 
                 assert!(cs.is_satisfied());
 
