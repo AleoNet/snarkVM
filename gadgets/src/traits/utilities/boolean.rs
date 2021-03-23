@@ -53,58 +53,6 @@ impl AllocatedBit {
         self.variable
     }
 
-    /// Performs an XOR operation over the two operands, returning
-    /// an `AllocatedBit`.
-    pub fn xor<F, CS>(mut cs: CS, a: &Self, b: &Self) -> Result<Self, SynthesisError>
-    where
-        F: Field,
-        CS: ConstraintSystem<F>,
-    {
-        let mut result_value = None;
-
-        let result_var = cs.alloc(
-            || "xor result",
-            || {
-                if a.value.get()? ^ b.value.get()? {
-                    result_value = Some(true);
-
-                    Ok(F::one())
-                } else {
-                    result_value = Some(false);
-
-                    Ok(F::zero())
-                }
-            },
-        )?;
-
-        // Constrain (a + a) * (b) = (a + b - c)
-        // Given that a and b are boolean constrained, if they
-        // are equal, the only solution for c is 0, and if they
-        // are different, the only solution for c is 1.
-        //
-        // ¬(a ∧ b) ∧ ¬(¬a ∧ ¬b) = c
-        // (1 - (a * b)) * (1 - ((1 - a) * (1 - b))) = c
-        // (1 - ab) * (1 - (1 - a - b + ab)) = c
-        // (1 - ab) * (a + b - ab) = c
-        // a + b - ab - (a^2)b - (b^2)a + (a^2)(b^2) = c
-        // a + b - ab - ab - ab + ab = c
-        // a + b - 2ab = c
-        // -2a * b = c - a - b
-        // 2a * b = a + b - c
-        // (a + a) * b = a + b - c
-        cs.enforce(
-            || "xor constraint",
-            |lc| lc + a.variable + a.variable,
-            |lc| lc + b.variable,
-            |lc| lc + a.variable + b.variable - result_var,
-        );
-
-        Ok(AllocatedBit {
-            variable: result_var,
-            value: result_value,
-        })
-    }
-
     /// Performs an AND operation over the two operands, returning
     /// an `AllocatedBit`.
     pub fn and<F, CS>(mut cs: CS, a: &Self, b: &Self) -> Result<Self, SynthesisError>
@@ -249,6 +197,55 @@ impl AllocatedBit {
             |lc| lc + CS::one() - a.variable,
             |lc| lc + CS::one() - b.variable,
             |lc| lc + result_var,
+        );
+
+        Ok(AllocatedBit {
+            variable: result_var,
+            value: result_value,
+        })
+    }
+}
+
+impl<F: Field> Xor<F> for AllocatedBit {
+    fn xor<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, SynthesisError> {
+        let (a, b) = (self, other);
+        let mut result_value = None;
+
+        let result_var = cs.alloc(
+            || "xor result",
+            || {
+                if a.value.get()? ^ b.value.get()? {
+                    result_value = Some(true);
+
+                    Ok(F::one())
+                } else {
+                    result_value = Some(false);
+
+                    Ok(F::zero())
+                }
+            },
+        )?;
+
+        // Constrain (a + a) * (b) = (a + b - c)
+        // Given that a and b are boolean constrained, if they
+        // are equal, the only solution for c is 0, and if they
+        // are different, the only solution for c is 1.
+        //
+        // ¬(a ∧ b) ∧ ¬(¬a ∧ ¬b) = c
+        // (1 - (a * b)) * (1 - ((1 - a) * (1 - b))) = c
+        // (1 - ab) * (1 - (1 - a - b + ab)) = c
+        // (1 - ab) * (a + b - ab) = c
+        // a + b - ab - (a^2)b - (b^2)a + (a^2)(b^2) = c
+        // a + b - ab - ab - ab + ab = c
+        // a + b - 2ab = c
+        // -2a * b = c - a - b
+        // 2a * b = a + b - c
+        // (a + a) * b = a + b - c
+        cs.enforce(
+            || "xor constraint",
+            |lc| lc + a.variable + a.variable,
+            |lc| lc + b.variable,
+            |lc| lc + a.variable + b.variable - result_var,
         );
 
         Ok(AllocatedBit {
@@ -711,7 +708,7 @@ impl<F: Field> Xor<F> for Boolean {
             }
             // a XOR b = (NOT a) XOR (NOT b)
             (Boolean::Is(ref a), Boolean::Is(ref b)) | (Boolean::Not(ref a), Boolean::Not(ref b)) => {
-                Ok(Boolean::Is(AllocatedBit::xor(cs, a, b)?))
+                Ok(Boolean::Is(a.xor(cs, b)?))
             }
         }
     }
@@ -914,7 +911,7 @@ mod test {
                 let mut cs = TestConstraintSystem::<Fr>::new();
                 let a = AllocatedBit::alloc(cs.ns(|| "a"), || Ok(*a_val)).unwrap();
                 let b = AllocatedBit::alloc(cs.ns(|| "b"), || Ok(*b_val)).unwrap();
-                let c = AllocatedBit::xor(&mut cs, &a, &b).unwrap();
+                let c = a.xor(&mut cs, &b).unwrap();
                 assert_eq!(c.value.unwrap(), *a_val ^ *b_val);
 
                 assert!(cs.is_satisfied());
