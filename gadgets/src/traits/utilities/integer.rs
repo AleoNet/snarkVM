@@ -45,6 +45,4 @@ pub trait Integer: Debug + Clone {
     fn from_bits_le(bits: &[Boolean]) -> Self;
 
     fn get_value(&self) -> Option<String>;
-
-    fn get_bits(&self) -> Vec<Boolean>;
 }
