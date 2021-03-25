@@ -39,33 +39,7 @@ use snarkvm_utilities::{
 uint_impl_common!(UInt128, u128, 128);
 
 impl UInt for UInt128 {
-    /// Returns the inverse UInt128
-    fn negate(&self) -> Self {
-        Self {
-            bits: self.bits.clone(),
-            negated: true,
-            value: self.value,
-        }
-    }
-
-    fn rotr(&self, by: usize) -> Self {
-        let by = by % 128;
-
-        let new_bits = self
-            .bits
-            .iter()
-            .skip(by)
-            .chain(self.bits.iter())
-            .take(128)
-            .cloned()
-            .collect();
-
-        Self {
-            bits: new_bits,
-            negated: false,
-            value: self.value.map(|v| v.rotate_right(by as u32) as u128),
-        }
-    }
+    uint_trait_common!(self);
 
     /// Perform modular addition of several `UInt128` objects.
     fn addmany<F: PrimeField, CS: ConstraintSystem<F>>(mut cs: CS, operands: &[Self]) -> Result<Self, SynthesisError> {

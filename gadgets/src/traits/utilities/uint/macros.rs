@@ -113,6 +113,37 @@ macro_rules! cond_select_int_impl {
     };
 }
 
+macro_rules! uint_trait_common {
+    ($self: ident) => {
+        fn negate(&$self) -> Self {
+            Self {
+                bits: $self.bits.clone(),
+                negated: true,
+                value: $self.value,
+            }
+        }
+
+        fn rotr(&$self, by: usize) -> Self {
+            let by = by % <Self as Integer>::SIZE;
+
+            let bits = $self
+                .bits
+                .iter()
+                .skip(by)
+                .chain($self.bits.iter())
+                .take(<Self as Integer>::SIZE)
+                .cloned()
+                .collect();
+
+            Self {
+                bits,
+                negated: false,
+                value: $self.value.map(|v| v.rotate_right(by as u32) as <Self as Integer>::IntegerType),
+            }
+        }
+    }
+}
+
 #[macro_export]
 macro_rules! uint_impl_common {
     ($name: ident, $_type: ty, $size: expr) => {
@@ -240,32 +271,7 @@ macro_rules! uint_impl {
         uint_impl_common!($name, $_type, $size);
 
         impl UInt for $name {
-            fn negate(&self) -> Self {
-                Self {
-                    bits: self.bits.clone(),
-                    negated: true,
-                    value: self.value,
-                }
-            }
-
-            fn rotr(&self, by: usize) -> Self {
-                let by = by % $size;
-
-                let new_bits = self
-                    .bits
-                    .iter()
-                    .skip(by)
-                    .chain(self.bits.iter())
-                    .take($size)
-                    .cloned()
-                    .collect();
-
-                Self {
-                    bits: new_bits,
-                    negated: false,
-                    value: self.value.map(|v| v.rotate_right(by as u32) as $_type),
-                }
-            }
+            uint_trait_common!(self);
 
             fn addmany<F: PrimeField, CS: ConstraintSystem<F>>(
                 mut cs: CS,
