@@ -123,14 +123,7 @@ mod tests {
         let rng = &mut XorShiftRng::seed_from_u64(1234567);
 
         // run the trusted setup
-        let universal_srs = snarkvm_marlin::marlin::MarlinSNARK::<
-            <Bls12_377 as PairingEngine>::Fr,
-            <Bls12_377 as PairingEngine>::Fr,
-            MultiPC<Bls12_377>,
-            FiatShamirChaChaRng<<Bls12_377 as PairingEngine>::Fr, <Bls12_377 as PairingEngine>::Fr, Blake2s>,
-            MarlinTestnet1Mode,
-        >::universal_setup(10000, 10000, 100000, rng)
-        .unwrap();
+        let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(10000, 10000, 100000, rng).unwrap();
 
         // run the deterministic setup
         let posw = PoswMarlin::index(universal_srs).unwrap();
