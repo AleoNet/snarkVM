@@ -67,8 +67,8 @@ where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
     V: ToConstraintField<E::Fr>,
-    // <MultiPC<E> as PolynomialCommitment<E::Fr>>::Commitment: ToConstraintField<E::Fr>,
-    // <MultiPC<E> as PolynomialCommitment<E::Fr>>::VerifierKey: ToConstraintField<E::Fr>,
+    <MultiPC<E> as PolynomialCommitment<E::Fr>>::Commitment: ToConstraintField<E::Fr>,
+    <MultiPC<E> as PolynomialCommitment<E::Fr>>::VerifierKey: ToConstraintField<E::Fr>,
 {
     _engine: PhantomData<E>,
     _circuit: PhantomData<C>,
@@ -80,8 +80,8 @@ where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
     V: ToConstraintField<E::Fr>,
-    // <MultiPC<E> as PolynomialCommitment<E::Fr>>::Commitment: ToConstraintField<E::Fr>,
-    // <MultiPC<E> as PolynomialCommitment<E::Fr>>::VerifierKey: ToConstraintField<E::Fr>,
+    <MultiPC<E> as PolynomialCommitment<E::Fr>>::Commitment: ToConstraintField<E::Fr>,
+    <MultiPC<E> as PolynomialCommitment<E::Fr>>::VerifierKey: ToConstraintField<E::Fr>,
 {
     type AssignedCircuit = C;
     type Circuit = (C, SRS<E>);
