@@ -862,9 +862,9 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, Ba
         let elem_representations = Self::get_limbs_representations(&elem, optimization_type)?;
         let mut limbs = Vec::new();
 
-        for limb in elem_representations.iter() {
+        for (i, limb) in elem_representations.iter().enumerate() {
             limbs.push(FpGadget::<BaseField>::alloc_constant(
-                cs.ns(|| "alloc_constant"),
+                cs.ns(|| format!("alloc_constant_limb_{}", i)),
                 || Ok(limb),
             )?);
         }
