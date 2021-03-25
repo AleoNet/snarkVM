@@ -68,20 +68,20 @@ impl<P: MontgomeryModelParameters, F: PrimeField> AllocGadget<<P as ModelParamet
 
 impl<P: MontgomeryModelParameters, F: PrimeField> ToBitsBEGadget<F> for Elligator2FieldGadget<P, F> {
     fn to_bits_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        Ok(self.0.to_bits_be(cs)?)
+        self.0.to_bits_be(cs)
     }
 
     fn to_bits_be_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
-        Ok(self.0.to_bits_be_strict(cs)?)
+        self.0.to_bits_be_strict(cs)
     }
 }
 
 impl<P: MontgomeryModelParameters, F: PrimeField> ToBytesGadget<F> for Elligator2FieldGadget<P, F> {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        Ok(self.0.to_bytes(cs)?)
+        self.0.to_bytes(cs)
     }
 
     fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        Ok(self.0.to_bytes_strict(cs)?)
+        self.0.to_bytes_strict(cs)
     }
 }

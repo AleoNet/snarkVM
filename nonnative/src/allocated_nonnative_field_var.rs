@@ -232,7 +232,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
             .muln((surfeit + (TargetField::size_in_bits() - params.bits_per_limb * (params.num_limbs - 1))) as u32);
         let pad_top_limb = BaseField::from_repr(pad_top_limb_repr).unwrap();
 
-        let mut pad_limbs = Vec::new();
+        let mut pad_limbs = Vec::with_capacity(self.limbs.len());
         pad_limbs.push(pad_top_limb);
         for _ in 0..self.limbs.len() - 1 {
             pad_limbs.push(pad_non_top_limb);
