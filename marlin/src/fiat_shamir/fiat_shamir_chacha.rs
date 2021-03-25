@@ -176,3 +176,47 @@ impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest> FiatShamirRng<Ta
         Ok(res)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use snarkvm_curves::bls12_377::{Fq, Fr};
+    use snarkvm_utilities::rand::UniformRand;
+
+    use blake2::Blake2s;
+    use rand_chacha::ChaChaRng;
+
+    const NUM_ABSORBED_RAND_FIELD_ELEMS: usize = 10;
+    const NUM_ABSORBED_RAND_BYTE_ELEMS: usize = 10;
+    const SIZE_ABSORBED_BYTE_ELEM: usize = 64;
+
+    const NUM_SQUEEZED_FIELD_ELEMS: usize = 10;
+    const NUM_SQUEEZED_SHORT_FIELD_ELEMS: usize = 10;
+
+    #[test]
+    fn test_chacharng() {
+        let mut rng = ChaChaRng::seed_from_u64(123456789u64);
+
+        let mut absorbed_rand_field_elems = Vec::new();
+        for _ in 0..NUM_ABSORBED_RAND_FIELD_ELEMS {
+            absorbed_rand_field_elems.push(Fr::rand(&mut rng));
+        }
+
+        let mut absorbed_rand_byte_elems = Vec::<Vec<u8>>::new();
+        for _ in 0..NUM_ABSORBED_RAND_BYTE_ELEMS {
+            absorbed_rand_byte_elems.push((0..SIZE_ABSORBED_BYTE_ELEM).map(|_| u8::rand(&mut rng)).collect());
+        }
+
+        let mut fs_rng = FiatShamirChaChaRng::<Fr, Fq, Blake2s>::new();
+        fs_rng.absorb_nonnative_field_elements(&absorbed_rand_field_elems, OptimizationType::Weight);
+        for absorbed_rand_byte_elem in absorbed_rand_byte_elems {
+            fs_rng.absorb_bytes(&absorbed_rand_byte_elem);
+        }
+
+        let _squeezed_fields_elems =
+            fs_rng.squeeze_nonnative_field_elements(NUM_SQUEEZED_FIELD_ELEMS, OptimizationType::Weight);
+        let _squeezed_short_fields_elems =
+            fs_rng.squeeze_128_bits_nonnative_field_elements(NUM_SQUEEZED_SHORT_FIELD_ELEMS);
+    }
+}
