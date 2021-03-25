@@ -18,7 +18,7 @@ use crate::{
     uint_impl_common,
     utilities::{
         alloc::AllocGadget,
-        arithmetic::Pow,
+        arithmetic::{Mul, Pow},
         boolean::{AllocatedBit, Boolean},
         eq::{ConditionalEqGadget, EqGadget},
         integer::Integer,
@@ -174,63 +174,6 @@ impl UInt for UInt128 {
             negated: false,
             value: modular_value,
         })
-    }
-
-    /// Bitwise multiplication of two `UInt128` objects.
-    /// Reference: https://en.wikipedia.org/wiki/Binary_multiplier
-    fn mul<F: PrimeField, CS: ConstraintSystem<F>>(
-        &self,
-        mut cs: CS,
-        other: &Self,
-    ) -> Result<Self, UnsignedIntegerError> {
-        // pseudocode:
-        //
-        // res = 0;
-        // shifted_self = self;
-        // for bit in other.bits {
-        //   if bit {
-        //     res += shifted_self;
-        //   }
-        //   shifted_self = shifted_self << 1;
-        // }
-        // return res
-
-        let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
-        let constant_result = Self::constant(0u128);
-        let allocated_result = Self::alloc(&mut cs.ns(|| "allocated_0u128"), || Ok(0u128))?;
-        let zero_result = Self::conditionally_select(
-            &mut cs.ns(|| "constant_or_allocated"),
-            &is_constant,
-            &constant_result,
-            &allocated_result,
-        )?;
-
-        let mut left_shift = self.clone();
-
-        let partial_products = other
-            .bits
-            .iter()
-            .enumerate()
-            .map(|(i, bit)| {
-                let current_left_shift = left_shift.clone();
-                left_shift = Self::addmany(&mut cs.ns(|| format!("shift_left_{}", i)), &[
-                    left_shift.clone(),
-                    left_shift.clone(),
-                ])
-                .unwrap();
-
-                Self::conditionally_select(
-                    &mut cs.ns(|| format!("calculate_product_{}", i)),
-                    &bit,
-                    &current_left_shift,
-                    &zero_result,
-                )
-                .unwrap()
-            })
-            .collect::<Vec<Self>>();
-
-        Self::addmany(&mut cs.ns(|| "partial_products"), &partial_products)
-            .map_err(UnsignedIntegerError::SynthesisError)
     }
 }
 
