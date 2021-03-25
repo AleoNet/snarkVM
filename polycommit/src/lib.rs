@@ -834,15 +834,7 @@ pub mod tests {
                 &rands,
                 Some(rng),
             )?;
-            let result = PC::batch_check(
-                &vk,
-                comms.into_iter(),
-                &query_set,
-                &values,
-                &proof,
-                opening_challenge,
-                rng,
-            )?;
+            let result = PC::batch_check(&vk, &comms, &query_set, &values, &proof, opening_challenge, rng)?;
             assert!(result, "proof was incorrect, Query set: {:#?}", query_set);
         }
         Ok(())
@@ -940,15 +932,7 @@ pub mod tests {
                 &rands,
                 Some(rng),
             )?;
-            let result = PC::batch_check(
-                &vk,
-                comms.into_iter(),
-                &query_set,
-                &values,
-                &proof,
-                opening_challenge,
-                rng,
-            )?;
+            let result = PC::batch_check(&vk, &comms, &query_set, &values, &proof, opening_challenge, rng)?;
             if !result {
                 println!(
                     "Failed with {} polynomials, num_points_in_query_set: {:?}",
@@ -1098,7 +1082,7 @@ pub mod tests {
             let result = PC::check_combinations(
                 &vk,
                 &linear_combinations,
-                comms.into_iter(),
+                &comms,
                 &query_set,
                 &values,
                 &proof,

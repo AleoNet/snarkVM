@@ -54,9 +54,9 @@ impl<E: PairingEngine> From<Parameters<E>> for VerifyingKey<E> {
 /// The Marlin proof system for testnet1.
 pub type MarlinTestnet1<E: PairingEngine> = MarlinSNARK<
     <E as PairingEngine>::Fr,
-    <E as PairingEngine>::Fr,
+    <E as PairingEngine>::Fq,
     MultiPC<E>,
-    FiatShamirChaChaRng<<E as PairingEngine>::Fr, <E as PairingEngine>::Fr, Blake2s>,
+    FiatShamirChaChaRng<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, Blake2s>,
     MarlinTestnet1Mode,
 >;
 
@@ -67,8 +67,8 @@ where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
     V: ToConstraintField<E::Fr>,
-    <MultiPC<E> as PolynomialCommitment<E::Fr>>::Commitment: ToConstraintField<E::Fr>,
-    <MultiPC<E> as PolynomialCommitment<E::Fr>>::VerifierKey: ToConstraintField<E::Fr>,
+    <MultiPC<E> as PolynomialCommitment<E::Fr>>::Commitment: ToConstraintField<E::Fq>,
+    <MultiPC<E> as PolynomialCommitment<E::Fr>>::VerifierKey: ToConstraintField<E::Fq>,
 {
     _engine: PhantomData<E>,
     _circuit: PhantomData<C>,
@@ -80,8 +80,8 @@ where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
     V: ToConstraintField<E::Fr>,
-    <MultiPC<E> as PolynomialCommitment<E::Fr>>::Commitment: ToConstraintField<E::Fr>,
-    <MultiPC<E> as PolynomialCommitment<E::Fr>>::VerifierKey: ToConstraintField<E::Fr>,
+    <MultiPC<E> as PolynomialCommitment<E::Fr>>::Commitment: ToConstraintField<E::Fq>,
+    <MultiPC<E> as PolynomialCommitment<E::Fr>>::VerifierKey: ToConstraintField<E::Fq>,
 {
     type AssignedCircuit = C;
     type Circuit = (C, SRS<E>);
