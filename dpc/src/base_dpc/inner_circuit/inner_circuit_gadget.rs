@@ -510,12 +510,12 @@ where
                     let given_account_view_key = AccountEncryptionGadget::PrivateKeyGadget::alloc(
                         &mut account_cs.ns(|| "Allocate account view key"),
                         || {
-                            Ok(account_private_key
+                            account_private_key
                                 .to_decryption_key(
                                     &system_parameters.account_signature,
                                     &system_parameters.account_commitment,
                                 )
-                                .map_err(|_| SynthesisError::AssignmentMissing)?)
+                                .map_err(|_| SynthesisError::AssignmentMissing)
                         },
                     )?;
 

@@ -324,15 +324,16 @@ pub fn blake2s_gadget<F: PrimeField, CS: ConstraintSystem<F>>(
 ) -> Result<Vec<UInt32>, SynthesisError> {
     assert!(input.len() % 8 == 0);
 
-    let mut h = Vec::with_capacity(8);
-    h.push(UInt32::constant(0x6A09E667 ^ 0x01010000 ^ 32));
-    h.push(UInt32::constant(0xBB67AE85));
-    h.push(UInt32::constant(0x3C6EF372));
-    h.push(UInt32::constant(0xA54FF53A));
-    h.push(UInt32::constant(0x510E527F));
-    h.push(UInt32::constant(0x9B05688C));
-    h.push(UInt32::constant(0x1F83D9AB));
-    h.push(UInt32::constant(0x5BE0CD19));
+    let mut h = vec![
+        UInt32::constant(0x6A09E667 ^ 0x01010000 ^ 32),
+        UInt32::constant(0xBB67AE85),
+        UInt32::constant(0x3C6EF372),
+        UInt32::constant(0xA54FF53A),
+        UInt32::constant(0x510E527F),
+        UInt32::constant(0x9B05688C),
+        UInt32::constant(0x1F83D9AB),
+        UInt32::constant(0x5BE0CD19),
+    ];
 
     let mut blocks: Vec<Vec<UInt32>> = Vec::with_capacity(input.len() / 512);
 

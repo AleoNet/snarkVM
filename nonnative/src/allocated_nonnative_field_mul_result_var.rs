@@ -197,8 +197,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
             target_phantom: PhantomData,
         };
 
-        let r_gadget =
-            AllocatedNonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "r"), || Ok(self.value()?))?;
+        let r_gadget = AllocatedNonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "r"), || self.value())?;
 
         let params = get_params(
             TargetField::size_in_bits(),

@@ -89,11 +89,7 @@ impl<F: Field, G: Group, GG: GroupGadget<G, F>, S: PedersenSize> CRHGadget<Peder
         // Pad the input if it is not the correct length.
         let input_in_bits = pad_input_and_bitify::<S>(input);
 
-        Ok(GG::multi_scalar_multiplication(
-            cs,
-            &parameters.parameters.bases,
-            input_in_bits.chunks(S::WINDOW_SIZE),
-        )?)
+        GG::multi_scalar_multiplication(cs, &parameters.parameters.bases, input_in_bits.chunks(S::WINDOW_SIZE))
     }
 }
 
