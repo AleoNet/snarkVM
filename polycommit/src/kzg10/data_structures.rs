@@ -113,6 +113,39 @@ where
     }
 }
 
+/// `PreparedVerifierKey` is the fully prepared version for checking evaluation proofs for a given commitment.
+/// We omit gamma here for simplicity.
+#[derive(Derivative)]
+#[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""))]
+pub struct PreparedVerifierKey<E: PairingEngine> {
+    /// The generator of G1, prepared for power series.
+    pub prepared_g: Vec<E::G1Affine>,
+    /// The generator of G2, prepared for use in pairings.
+    pub prepared_h: <E::G2Affine as PairingCurve>::Prepared,
+    /// \beta times the above generator of G2, prepared for use in pairings.
+    pub prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared,
+}
+
+impl<E: PairingEngine> PreparedVerifierKey<E> {
+    /// prepare `PreparedVerifierKey` from `VerifierKey`
+    pub fn prepare(vk: &VerifierKey<E>) -> Self {
+        let supported_bits = E::Fr::size_in_bits();
+
+        let mut prepared_g = Vec::<E::G1Affine>::new();
+        let mut g = E::G1Projective::from(vk.g.clone());
+        for _ in 0..supported_bits {
+            prepared_g.push(g.clone().into());
+            g.double_in_place();
+        }
+
+        Self {
+            prepared_g,
+            prepared_h: vk.prepared_h.clone(),
+            prepared_beta_h: vk.prepared_beta_h.clone(),
+        }
+    }
+}
+
 /// `Commitment` commits to a polynomial. It is output by `KZG10::commit`.
 #[derive(Derivative)]
 #[derivative(
