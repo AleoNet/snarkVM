@@ -16,6 +16,7 @@
 
 use crate::{impl_bytes, kzg10, BTreeMap, PCCommitterKey, PCVerifierKey, Vec};
 use snarkvm_curves::traits::{PairingCurve, PairingEngine};
+use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     error,
@@ -161,6 +162,30 @@ impl<E: PairingEngine> PCVerifierKey for VerifierKey<E> {
 
     fn supported_degree(&self) -> usize {
         self.supported_degree
+    }
+}
+
+impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E>
+where
+    E::G1Affine: ToConstraintField<E::Fq>,
+    E::G2Affine: ToConstraintField<E::Fq>,
+{
+    fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
+        let mut res = Vec::new();
+        res.extend_from_slice(&self.g.to_field_elements()?);
+        res.extend_from_slice(&self.gamma_g.to_field_elements()?);
+        res.extend_from_slice(&self.h.to_field_elements()?);
+        res.extend_from_slice(&self.beta_h.to_field_elements()?);
+
+        if let Some(degree_bounds_and_prepared_neg_powers_of_h) = &self.degree_bounds_and_prepared_neg_powers_of_h {
+            for (d, _prepared_neg_powers_of_h) in degree_bounds_and_prepared_neg_powers_of_h.iter() {
+                let d_elem: E::Fq = (*d as u64).into();
+
+                res.push(d_elem);
+            }
+        }
+
+        Ok(res)
     }
 }
 

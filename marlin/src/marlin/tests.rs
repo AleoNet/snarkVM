@@ -63,8 +63,7 @@ mod marlin {
         marlin::{MarlinSNARK, MarlinTestnet1Mode},
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-    use snarkvm_polycommit::marlin_pc::MarlinKZG10;
-    // use snarkvm_polycommit::{marlin_pc::MarlinKZG10, sonic_pc::SonicKZG10};
+    use snarkvm_polycommit::{marlin_pc::MarlinKZG10, sonic_pc::SonicKZG10};
     use snarkvm_utilities::rand::{test_rng, UniformRand};
 
     use blake2::Blake2s;
@@ -73,8 +72,8 @@ mod marlin {
     type MultiPC = MarlinKZG10<Bls12_377>;
     type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FiatShamirChaChaRng<Fr, Fq, Blake2s>, MarlinTestnet1Mode>;
 
-    // type MultiPCSonic = SonicKZG10<Bls12_377>;
-    // type MarlinSonicInst = MarlinSNARK<Fr, Fq, MultiPCSonic, FiatShamirChaChaRng<Fr, Fq, Blake2s>, MarlinTestnet1Mode>;
+    type MultiPCSonic = SonicKZG10<Bls12_377>;
+    type MarlinSonicInst = MarlinSNARK<Fr, Fq, MultiPCSonic, FiatShamirChaChaRng<Fr, Fq, Blake2s>, MarlinTestnet1Mode>;
 
     macro_rules! impl_marlin_test {
         ($test_struct: ident, $marlin_inst: tt) => {
@@ -115,7 +114,7 @@ mod marlin {
     }
 
     impl_marlin_test!(MarlinPCTest, MarlinInst);
-    // impl_marlin_test!(SonicPCTest, MarlinSonicInst);
+    impl_marlin_test!(SonicPCTest, MarlinSonicInst);
 
     #[test]
     fn prove_and_verify_with_tall_matrix_big() {
@@ -123,7 +122,7 @@ mod marlin {
         let num_variables = 25;
 
         MarlinPCTest::test_circuit(num_constraints, num_variables);
-        // SonicPCTest::test_circuit(num_constraints, num_variables);
+        SonicPCTest::test_circuit(num_constraints, num_variables);
     }
 
     #[test]
@@ -132,7 +131,7 @@ mod marlin {
         let num_variables = 25;
 
         MarlinPCTest::test_circuit(num_constraints, num_variables);
-        // SonicPCTest::test_circuit(num_constraints, num_variables);
+        SonicPCTest::test_circuit(num_constraints, num_variables);
     }
 
     #[test]
@@ -141,7 +140,7 @@ mod marlin {
         let num_variables = 100;
 
         MarlinPCTest::test_circuit(num_constraints, num_variables);
-        // SonicPCTest::test_circuit(num_constraints, num_variables);
+        SonicPCTest::test_circuit(num_constraints, num_variables);
     }
 
     #[test]
@@ -150,7 +149,7 @@ mod marlin {
         let num_variables = 26;
 
         MarlinPCTest::test_circuit(num_constraints, num_variables);
-        // SonicPCTest::test_circuit(num_constraints, num_variables);
+        SonicPCTest::test_circuit(num_constraints, num_variables);
     }
 
     #[test]
@@ -159,6 +158,6 @@ mod marlin {
         let num_variables = 25;
 
         MarlinPCTest::test_circuit(num_constraints, num_variables);
-        // SonicPCTest::test_circuit(num_constraints, num_variables);
+        SonicPCTest::test_circuit(num_constraints, num_variables);
     }
 }
