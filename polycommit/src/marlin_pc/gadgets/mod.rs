@@ -28,6 +28,6 @@
 //
 // mod prepared_verifier_key;
 // pub use prepared_verifier_key::*;
-//
-// mod verifier_key;
-// pub use verifier_key::*;
+
+/// Verifier gadget.
+pub mod verifier_key;
