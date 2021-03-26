@@ -152,8 +152,8 @@ impl<C: BaseDPCComponents, P: MontgomeryModelParameters + TEModelParameters, G: 
 
         // Process birth_program_id and death_program_id. (Assumption 2 and 3 applies)
 
-        let birth_program_id_biginteger = Self::OuterField::read(&birth_program_id[..])?.into_repr();
-        let death_program_id_biginteger = Self::OuterField::read(&death_program_id[..])?.into_repr();
+        let birth_program_id_biginteger = Self::OuterField::read(birth_program_id)?.into_repr();
+        let death_program_id_biginteger = Self::OuterField::read(death_program_id)?.into_repr();
 
         let mut birth_program_id_bits = Vec::with_capacity(Self::INNER_FIELD_BITSIZE);
         let mut death_program_id_bits = Vec::with_capacity(Self::INNER_FIELD_BITSIZE);
