@@ -306,12 +306,18 @@ where
         // Gather prover polynomials in one vector.
         let polynomials: Vec<_> = circuit_proving_key
             .circuit
-            .iter()
-            .chain(vanishing_polys.iter())
-            .chain(prover_first_oracles.iter())
-            .chain(prover_second_oracles.iter())
-            .chain(prover_third_oracles.iter())
+            .iter() // 12 items
+            .chain(vanishing_polys.iter()) // 0 or 2 items
+            .chain(prover_first_oracles.iter()) // 4 items
+            .chain(prover_second_oracles.iter())// 3 items
+            .chain(prover_third_oracles.iter())// 2 items
             .collect();
+
+        // Sanity check, whose length should be updated if the underlying structs are updated.
+        match is_recursion {
+            true => assert_eq!(23, polynomials.len()),
+            false => assert_eq!(21, polynomials.len()),
+        };
 
         // Gather commitments in one vector.
         #[rustfmt::skip]
@@ -419,6 +425,7 @@ where
         let proof = Proof::new(commitments, evaluations, prover_messages, pc_proof);
         proof.print_size_info();
         end_timer!(prover_time);
+
         Ok(proof)
     }
 
