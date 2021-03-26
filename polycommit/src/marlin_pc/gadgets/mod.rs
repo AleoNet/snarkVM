@@ -25,9 +25,10 @@
 //
 // mod prepared_labeled_commitment;
 // pub use prepared_labeled_commitment::*;
-//
-// mod prepared_verifier_key;
-// pub use prepared_verifier_key::*;
 
-/// Verifier gadget.
-pub mod verifier_key;
+/// Prepared verifier key gadget for the Marlin-KZG10 polynomial commitment scheme.
+pub mod prepared_verifier_key;
+
+/// Verifier key gadge for the Marlin-KZG10 polynomial commitment scheme.
+mod verifier_key;
+pub(crate) use verifier_key::*;
