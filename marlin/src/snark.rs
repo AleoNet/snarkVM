@@ -52,7 +52,7 @@ impl<E: PairingEngine> From<Parameters<E>> for VerifyingKey<E> {
 }
 
 /// The Marlin proof system for testnet1.
-pub type MarlinTestnet1<E: PairingEngine> = MarlinSNARK<
+pub type MarlinTestnet1<E> = MarlinSNARK<
     <E as PairingEngine>::Fr,
     <E as PairingEngine>::Fq,
     MultiPC<E>,

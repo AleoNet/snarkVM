@@ -79,11 +79,7 @@ mod tests {
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
     use snarkvm_algorithms::traits::SNARK;
-    use snarkvm_marlin::{marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
-    use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
     use snarkvm_utilities::bytes::FromBytes;
-
-    use blake2::Blake2s;
 
     #[test]
     fn test_load_verify_only() {

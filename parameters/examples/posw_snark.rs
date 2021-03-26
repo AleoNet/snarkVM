@@ -15,14 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::crh::sha256;
-use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_dpc::errors::DPCError;
-use snarkvm_marlin::{marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
-use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
 use snarkvm_posw::PoswMarlin;
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
-use blake2::Blake2s;
 use rand::thread_rng;
 use std::path::PathBuf;
 
