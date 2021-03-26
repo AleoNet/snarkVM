@@ -474,7 +474,127 @@ mod tests {
     const MAX_ELEMENT_SIZE: usize = 100;
     const ITERATIONS: usize = 50;
 
+    const NUM_ABSORBED_RAND_FIELD_ELEMS: usize = 10;
+    const NUM_ABSORBED_RAND_BYTE_ELEMS: usize = 10;
+    const SIZE_ABSORBED_BYTE_ELEM: usize = 64;
+
+    const NUM_SQUEEZED_FIELD_ELEMS: usize = 10;
+    const NUM_SQUEEZED_SHORT_FIELD_ELEMS: usize = 10;
+
     // TODO (raychu86): Make a macro to test different optimization types.
+
+    #[test]
+    fn test_poseidon() {
+        let rng = &mut ChaChaRng::seed_from_u64(123456789u64);
+
+        let mut absorbed_rand_field_elems = Vec::new();
+        for _ in 0..NUM_ABSORBED_RAND_FIELD_ELEMS {
+            absorbed_rand_field_elems.push(Fr::rand(rng));
+        }
+
+        let mut absorbed_rand_byte_elems = Vec::<Vec<u8>>::new();
+        for _ in 0..NUM_ABSORBED_RAND_BYTE_ELEMS {
+            absorbed_rand_byte_elems.push((0..SIZE_ABSORBED_BYTE_ELEM).map(|_| u8::rand(rng)).collect());
+        }
+
+        // fs_rng in the plaintext world
+        let mut fs_rng = FS::new();
+
+        fs_rng.absorb_nonnative_field_elements(&absorbed_rand_field_elems, OptimizationType::Constraints);
+
+        for absorbed_rand_byte_elem in &absorbed_rand_byte_elems {
+            fs_rng.absorb_bytes(absorbed_rand_byte_elem);
+        }
+
+        let squeezed_fields_elems = fs_rng
+            .squeeze_nonnative_field_elements(NUM_SQUEEZED_FIELD_ELEMS, OptimizationType::Constraints)
+            .unwrap();
+        let squeezed_short_fields_elems = fs_rng
+            .squeeze_128_bits_nonnative_field_elements(NUM_SQUEEZED_SHORT_FIELD_ELEMS)
+            .unwrap();
+
+        // fs_rng in the constraint world
+        let mut cs = TestConstraintSystem::<Fr>::new();
+        let mut fs_rng_gadget = FSGadget::new(cs.ns(|| "new"));
+
+        let mut absorbed_rand_field_elems_gadgets = Vec::new();
+        for (i, absorbed_rand_field_elem) in absorbed_rand_field_elems.iter().enumerate() {
+            absorbed_rand_field_elems_gadgets.push(
+                NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_constant_nonnative_field_var_{}", i)), || {
+                    Ok(absorbed_rand_field_elem)
+                })
+                .unwrap(),
+            );
+        }
+        fs_rng_gadget
+            .absorb_nonnative_field_elements(
+                cs.ns(|| "absorb_nonnative_fe"),
+                &absorbed_rand_field_elems_gadgets,
+                OptimizationType::Constraints,
+            )
+            .unwrap();
+
+        let mut absorbed_rand_byte_elems_gadgets = Vec::<Vec<UInt8>>::new();
+        for absorbed_rand_byte_elem in absorbed_rand_byte_elems.iter() {
+            let mut byte_gadget = Vec::<UInt8>::new();
+            for byte in absorbed_rand_byte_elem.iter() {
+                byte_gadget.push(UInt8::constant(*byte));
+            }
+            absorbed_rand_byte_elems_gadgets.push(byte_gadget);
+        }
+        for (i, absorbed_rand_byte_elems_gadget) in absorbed_rand_byte_elems_gadgets.iter().enumerate() {
+            fs_rng_gadget
+                .absorb_bytes(cs.ns(|| format!("absorb_bytes_{}", i)), absorbed_rand_byte_elems_gadget)
+                .unwrap();
+        }
+
+        let squeezed_fields_elems_gadgets = fs_rng_gadget
+            .squeeze_field_elements(cs.ns(|| "squeeze_fe"), NUM_SQUEEZED_FIELD_ELEMS)
+            .unwrap();
+
+        let squeezed_short_fields_elems_gadgets = fs_rng_gadget
+            .squeeze_128_bits_field_elements(cs.ns(|| "squeeze_128_bits_fe"), NUM_SQUEEZED_SHORT_FIELD_ELEMS)
+            .unwrap();
+
+        // compare elems
+        for (i, (left, right)) in squeezed_fields_elems
+            .iter()
+            .zip(squeezed_fields_elems_gadgets.iter())
+            .enumerate()
+        {
+            assert_eq!(
+                left.into_repr(),
+                right.value().unwrap().into_repr(),
+                "{}: left = {:?}, right = {:?}",
+                i,
+                left.into_repr(),
+                right.value().unwrap().into_repr()
+            );
+        }
+
+        // compare short elems
+        for (i, (left, right)) in squeezed_short_fields_elems
+            .iter()
+            .zip(squeezed_short_fields_elems_gadgets.iter())
+            .enumerate()
+        {
+            assert!(
+                left.into_repr().eq(&right.value().unwrap().into_repr()),
+                "{}: left = {:?}, right = {:?}",
+                i,
+                left.into_repr(),
+                right.value().unwrap().into_repr()
+            );
+        }
+
+        if !cs.is_satisfied() {
+            println!("\n=========================================================");
+            println!("\nUnsatisfied constraints:");
+            println!("\n{:?}", cs.which_is_unsatisfied().unwrap());
+            println!("\n=========================================================");
+        }
+        assert!(cs.is_satisfied());
+    }
 
     #[test]
     fn test_fiat_shamir_algebraic_sponge_rng_constant() {
