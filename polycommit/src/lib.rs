@@ -41,7 +41,7 @@ use snarkvm_utilities::{
     serialize::*,
 };
 
-use core::fmt::Debug;
+use core::{fmt::Debug, iter::FromIterator};
 use rand_core::RngCore;
 
 #[cfg(not(feature = "std"))]
@@ -53,7 +53,6 @@ extern crate alloc;
 use alloc::{
     borrow::{Cow, ToOwned},
     collections::{BTreeMap, BTreeSet},
-    iter::FromIterator,
     string::{String, ToString},
     sync::Arc,
     vec::Vec,
@@ -64,7 +63,6 @@ use alloc::{
 use std::{
     borrow::{Cow, ToOwned},
     collections::{BTreeMap, BTreeSet},
-    iter::FromIterator,
     string::{String, ToString},
     sync::Arc,
     vec::Vec,
