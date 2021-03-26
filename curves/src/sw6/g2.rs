@@ -32,7 +32,7 @@ impl PairingCurve for G2Affine {
     type Prepared = Self;
 
     fn prepare(&self) -> Self::Prepared {
-        self.clone()
+        *self
     }
 
     fn pairing_with(&self, other: &Self::PairWith) -> Self::PairingResult {

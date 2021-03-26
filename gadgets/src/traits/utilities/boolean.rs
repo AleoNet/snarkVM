@@ -646,7 +646,7 @@ impl Boolean {
     }
 
     pub fn enforce_smaller_or_equal_than_le<F: Field, CS: ConstraintSystem<F>>(
-        mut cs: CS,
+        cs: CS,
         bits: &[Self],
         element: impl AsRef<[u64]>,
     ) -> Result<Vec<Self>, SynthesisError> {

@@ -70,6 +70,7 @@ impl SW6 {
         SW6::final_exponentiation(&SW6::ate_miller_loop(p, q))
     }
 
+    #[allow(clippy::many_single_char_names)]
     fn ate_miller_loop(p: &G1Affine, q: &G2Affine) -> Fq6 {
         let px = p.x;
         let py = p.y;
@@ -133,7 +134,7 @@ impl SW6 {
 
                 rx = gamma.square() - &old_rx - &qx;
                 ry = gamma * &(old_rx - &rx) - &old_ry;
-                f = f * &ell_rq_at_p;
+                f *= &ell_rq_at_p;
             }
         }
         f
@@ -150,19 +151,19 @@ impl SW6 {
         // (q^3-1)*(q+1)
 
         // elt_q3 = elt^(q^3)
-        let mut elt_q3 = elt.clone();
+        let mut elt_q3 = *elt;
         elt_q3.frobenius_map(3);
         // elt_q3_over_elt = elt^(q^3-1)
-        let elt_q3_over_elt = elt_q3 * &elt_inv;
+        let elt_q3_over_elt = elt_q3 * elt_inv;
         // alpha = elt^((q^3-1) * q)
-        let mut alpha = elt_q3_over_elt.clone();
+        let mut alpha = elt_q3_over_elt;
         alpha.frobenius_map(1);
         // beta = elt^((q^3-1)*(q+1)
         alpha * &elt_q3_over_elt
     }
 
     fn final_exponentiation_last(elt: &Fq6, elt_inv: &Fq6) -> Fq6 {
-        let mut elt_q = elt.clone();
+        let mut elt_q = *elt;
         elt_q.frobenius_map(1);
 
         let w1_part = elt_q.cyclotomic_exp(&FINAL_EXPONENT_LAST_CHUNK_W1);
