@@ -179,10 +179,6 @@ mod marlin {
 
 mod marlin_recursion {
     use super::*;
-    // use crate::{
-    //     fiat_shamir::FiatShamirChaChaRng,
-    //     marlin::{MarlinRecursiveMode, MarlinSNARK},
-    // };
     use crate::{
         fiat_shamir::{FiatShamirAlgebraicSpongeRng, PoseidonSponge},
         marlin::{MarlinRecursiveMode, MarlinSNARK},
@@ -194,14 +190,8 @@ mod marlin_recursion {
     use core::ops::MulAssign;
 
     type MultiPC = MarlinKZG10<Bls12_377>;
-    type MarlinInst = MarlinSNARK<
-        Fr,
-        Fq,
-        MultiPC,
-        // FiatShamirChaChaRng<Fr, Fq, blake2::Blake2s>,
-        FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>,
-        MarlinRecursiveMode,
-    >;
+    type MarlinInst =
+        MarlinSNARK<Fr, Fq, MultiPC, FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>, MarlinRecursiveMode>;
 
     fn test_circuit(num_constraints: usize, num_variables: usize) {
         let rng = &mut test_rng();
