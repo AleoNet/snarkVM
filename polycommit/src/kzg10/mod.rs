@@ -585,14 +585,7 @@ mod tests {
                 points.push(point);
                 proofs.push(proof);
             }
-            assert!(KZG10::<E>::batch_check(
-                &vk,
-                comms.into_iter(),
-                &points,
-                &values,
-                &proofs,
-                rng
-            )?);
+            assert!(KZG10::<E>::batch_check(&vk, &comms, &points, &values, &proofs, rng)?);
         }
         Ok(())
     }

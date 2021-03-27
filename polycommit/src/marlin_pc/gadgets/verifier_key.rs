@@ -16,7 +16,6 @@
 
 use crate::{kzg10::VerifierKey as KZG10VerifierKey, marlin_pc::data_structures::VerifierKey};
 use snarkvm_curves::{AffineCurve, PairingEngine};
-use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     fields::FpGadget,
     traits::{
@@ -37,10 +36,7 @@ pub struct VerifierKeyVar<
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-> where
-    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-{
+> {
     /// Generator of G1.
     pub g: PG::G1Gadget,
     /// Generator of G2.
@@ -56,8 +52,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
     /// Find the appropriate shift for the degree bound.
     pub fn get_shift_power<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
@@ -143,8 +137,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
     fn clone(&self) -> Self {
         Self {
@@ -162,8 +154,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
@@ -314,8 +304,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
     fn to_bytes<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
         &self,
@@ -354,8 +342,6 @@ where
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
     PG::G1Gadget: ToConstraintFieldGadget<<BaseCurve as PairingEngine>::Fr>,
     PG::G2Gadget: ToConstraintFieldGadget<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
     fn to_constraint_field(&self) -> Result<Vec<FpGadget<<BaseCurve as PairingEngine>::Fr>>, SynthesisError> {
         let mut res = Vec::new();
@@ -380,5 +366,88 @@ where
         }
 
         Ok(res)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::{marlin_pc::MarlinKZG10, PolynomialCommitment};
+
+    use snarkvm_curves::{
+        bls12_377::{Bls12_377, Fq},
+        bw6_761::BW6_761,
+        ProjectiveCurve,
+    };
+    use snarkvm_gadgets::curves::bls12_377::PairingGadget as Bls12_377PairingGadget;
+    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_utilities::rand::test_rng;
+
+    type PC = MarlinKZG10<Bls12_377>;
+    type PG = Bls12_377PairingGadget;
+
+    const MAX_DEGREE: usize = 383;
+    const SUPPORTED_DEGREE: usize = 300;
+    const SUPPORTED_HIDING_BOUND: usize = 1;
+
+    #[test]
+    fn test_alloc() {
+        let rng = &mut test_rng();
+
+        let cs = &mut TestConstraintSystem::<Fq>::new();
+
+        // Construct the universal params.
+        let pp = PC::setup(MAX_DEGREE, rng).unwrap();
+
+        // Construct the verifying key.
+        let (_committer_key, vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, None).unwrap();
+
+        // Allocate the vk gadget.
+        let vk_gadget = VerifierKeyVar::<_, BW6_761, PG>::alloc(cs.ns(|| "alloc_vk"), || Ok(vk.clone())).unwrap();
+
+        // Naive value comparison
+        assert_eq!(vk.vk.g, vk_gadget.g.get_value().unwrap().into_affine());
+        assert_eq!(vk.vk.h, vk_gadget.h.get_value().unwrap().into_affine());
+        assert_eq!(vk.vk.beta_h, vk_gadget.beta_h.get_value().unwrap().into_affine());
+        assert_eq!(vk.vk.beta_h, vk_gadget.beta_h.get_value().unwrap().into_affine());
+
+        assert_eq!(
+            vk.degree_bounds_and_shift_powers.is_some(),
+            vk_gadget.degree_bounds_and_shift_powers.is_some()
+        );
+
+        if let (Some(native), Some(gadget)) = (
+            vk.degree_bounds_and_shift_powers,
+            vk_gadget.degree_bounds_and_shift_powers,
+        ) {
+            for ((native_degree_bounds, native_shift_power), (degree_bounds, fp_gadget, shift_power)) in
+                native.iter().zip(gadget)
+            {
+                assert_eq!(native_degree_bounds, &degree_bounds);
+                assert_eq!(native_shift_power, &shift_power.get_value().unwrap().into_affine());
+            }
+        }
+
+        // TODO (raychu86): Construct the gadget comparison checks.
+        // 1. Alloc the elements from the native vk directly
+        // 2. Call `enforce_equal` on the allocatd gadgets and the subgadgets of `vk_gadget`
+
+        // let g_gadget = <PG as PairingGadget<_, _>>::G1Gadget::alloc(|| "alloc_native_g", || Ok(vk.vk.g)).unwrap();
+    }
+
+    #[test]
+    fn test_get_shift_power() {
+        unimplemented!()
+    }
+
+    #[test]
+    fn test_to_bytes() {
+        unimplemented!()
+    }
+
+    #[test]
+    fn test_to_constraint_field() {
+        unimplemented!()
     }
 }
