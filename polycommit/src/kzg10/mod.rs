@@ -450,7 +450,6 @@ fn convert_to_bigints<F: PrimeField>(p: &[F]) -> Vec<F::BigInteger> {
 mod tests {
     #![allow(non_camel_case_types)]
     use crate::{kzg10::*, *};
-
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
     use snarkvm_utilities::rand::test_rng;
 
@@ -585,14 +584,7 @@ mod tests {
                 points.push(point);
                 proofs.push(proof);
             }
-            assert!(KZG10::<E>::batch_check(
-                &vk,
-                comms.into_iter(),
-                &points,
-                &values,
-                &proofs,
-                rng
-            )?);
+            assert!(KZG10::<E>::batch_check(&vk, &comms, &points, &values, &proofs, rng)?);
         }
         Ok(())
     }
