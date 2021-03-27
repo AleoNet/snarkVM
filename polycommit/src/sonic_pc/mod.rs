@@ -63,161 +63,6 @@ pub struct SonicKZG10<E: PairingEngine> {
     _engine: PhantomData<E>,
 }
 
-impl<E: PairingEngine> SonicKZG10<E> {
-    #[allow(clippy::too_many_arguments)]
-    fn accumulate_elems<'a>(
-        combined_comms: &mut BTreeMap<Option<usize>, E::G1Projective>,
-        combined_witness: &mut E::G1Projective,
-        combined_adjusted_witness: &mut E::G1Projective,
-        vk: &VerifierKey<E>,
-        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
-        point: E::Fr,
-        values: impl IntoIterator<Item = E::Fr>,
-        proof: &kzg10::Proof<E>,
-        opening_challenge: E::Fr,
-        randomizer: Option<E::Fr>,
-    ) {
-        let acc_time = start_timer!(|| "Accumulating elements");
-        let mut curr_challenge = opening_challenge;
-
-        // Keeps track of running combination of values
-        let mut combined_values = E::Fr::zero();
-
-        // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
-        for (labeled_comm, value) in commitments.into_iter().zip(values) {
-            combined_values += &(value * &curr_challenge);
-
-            let comm = labeled_comm.commitment();
-            let degree_bound = labeled_comm.degree_bound();
-
-            // Applying opening challenge and randomness (used in batch_checking)
-            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge);
-
-            if let Some(randomizer) = randomizer {
-                comm_with_challenge = comm_with_challenge.mul(&randomizer);
-            }
-
-            // Accumulate values in the BTreeMap
-            *combined_comms.entry(degree_bound).or_insert_with(E::G1Projective::zero) += &comm_with_challenge;
-            curr_challenge *= &opening_challenge;
-        }
-
-        // Push expected results into list of elems. Power will be the negative of the expected power
-        let mut witness: E::G1Projective = proof.w.into_projective();
-        let mut adjusted_witness = vk.g.mul(combined_values) - &proof.w.mul(point);
-        if let Some(random_v) = proof.random_v {
-            adjusted_witness += &vk.gamma_g.mul(random_v);
-        }
-
-        if let Some(randomizer) = randomizer {
-            witness = witness.mul(&randomizer);
-            adjusted_witness = adjusted_witness.mul(&randomizer);
-        }
-
-        *combined_witness += &witness;
-        *combined_adjusted_witness += &adjusted_witness;
-        end_timer!(acc_time);
-    }
-
-    fn accumulate_elems_individual_opening_challenges<'a>(
-        combined_comms: &mut BTreeMap<Option<usize>, E::G1Projective>,
-        combined_witness: &mut E::G1Projective,
-        combined_adjusted_witness: &mut E::G1Projective,
-        vk: &VerifierKey<E>,
-        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
-        point: E::Fr,
-        values: impl IntoIterator<Item = E::Fr>,
-        proof: &kzg10::Proof<E>,
-        opening_challenges: &dyn Fn(u64) -> E::Fr,
-        randomizer: Option<E::Fr>,
-    ) {
-        let acc_time = start_timer!(|| "Accumulating elements");
-
-        let mut opening_challenge_counter = 0;
-        let mut curr_challenge = opening_challenges(opening_challenge_counter);
-        opening_challenge_counter += 1;
-
-        // Keeps track of running combination of values
-        let mut combined_values = E::Fr::zero();
-
-        // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
-        for (labeled_comm, value) in commitments.into_iter().zip(values) {
-            combined_values += &(value * &curr_challenge);
-
-            let comm = labeled_comm.commitment();
-            let degree_bound = labeled_comm.degree_bound();
-
-            // Applying opening challenge and randomness (used in batch_checking)
-            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge);
-
-            if let Some(randomizer) = randomizer {
-                comm_with_challenge = comm_with_challenge.mul(&randomizer);
-            }
-
-            // Accumulate values in the BTreeMap
-            *combined_comms.entry(degree_bound).or_insert(E::G1Projective::zero()) += &comm_with_challenge;
-            curr_challenge = opening_challenges(opening_challenge_counter);
-            opening_challenge_counter += 1;
-        }
-
-        // Push expected results into list of elems. Power will be the negative of the expected power
-        let mut witness: E::G1Projective = proof.w.into_projective();
-        let mut adjusted_witness = vk.g.mul(combined_values) - &proof.w.mul(point);
-        if let Some(random_v) = proof.random_v {
-            adjusted_witness += &vk.gamma_g.mul(random_v);
-        }
-
-        if let Some(randomizer) = randomizer {
-            witness = proof.w.mul(randomizer);
-            adjusted_witness = adjusted_witness.mul(&randomizer);
-        }
-
-        *combined_witness += &witness;
-        *combined_adjusted_witness += &adjusted_witness;
-        end_timer!(acc_time);
-    }
-
-    #[allow(clippy::type_complexity)]
-    fn check_elems(
-        combined_comms: BTreeMap<Option<usize>, E::G1Projective>,
-        combined_witness: E::G1Projective,
-        combined_adjusted_witness: E::G1Projective,
-        vk: &VerifierKey<E>,
-    ) -> Result<bool, Error> {
-        let check_time = start_timer!(|| "Checking elems");
-        let mut g1_projective_elems = Vec::with_capacity(combined_comms.len() + 2);
-        let mut g2_prepared_elems = Vec::with_capacity(combined_comms.len() + 2);
-
-        for (degree_bound, comm) in combined_comms.into_iter() {
-            let shift_power = if let Some(degree_bound) = degree_bound {
-                vk.get_shift_power(degree_bound)
-                    .ok_or(Error::UnsupportedDegreeBound(degree_bound))?
-            } else {
-                vk.prepared_h.clone()
-            };
-
-            g1_projective_elems.push(comm);
-            g2_prepared_elems.push(shift_power);
-        }
-
-        g1_projective_elems.push(-combined_adjusted_witness);
-        g2_prepared_elems.push(vk.prepared_h.clone());
-
-        g1_projective_elems.push(-combined_witness);
-        g2_prepared_elems.push(vk.prepared_beta_h.clone());
-
-        let g1_prepared_elems_iter = E::G1Projective::batch_normalization_into_affine(g1_projective_elems)
-            .into_iter()
-            .map(|a| a.prepare())
-            .collect::<Vec<_>>();
-
-        let g1_g2_prepared = g1_prepared_elems_iter.iter().zip(g2_prepared_elems.iter());
-        let is_one: bool = E::product_of_pairings(g1_g2_prepared).is_one();
-        end_timer!(check_time);
-        Ok(is_one)
-    }
-}
-
 impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
     type BatchProof = Vec<Self::Proof>;
     type Commitment = Commitment<E>;
@@ -1023,6 +868,161 @@ impl<E: PairingEngine> SonicKZG10<E> {
             end_timer!(proof_time);
         }
         Ok(result)
+    }
+}
+
+impl<E: PairingEngine> SonicKZG10<E> {
+    #[allow(clippy::too_many_arguments)]
+    fn accumulate_elems<'a>(
+        combined_comms: &mut BTreeMap<Option<usize>, E::G1Projective>,
+        combined_witness: &mut E::G1Projective,
+        combined_adjusted_witness: &mut E::G1Projective,
+        vk: &VerifierKey<E>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
+        point: E::Fr,
+        values: impl IntoIterator<Item = E::Fr>,
+        proof: &kzg10::Proof<E>,
+        opening_challenge: E::Fr,
+        randomizer: Option<E::Fr>,
+    ) {
+        let acc_time = start_timer!(|| "Accumulating elements");
+        let mut curr_challenge = opening_challenge;
+
+        // Keeps track of running combination of values
+        let mut combined_values = E::Fr::zero();
+
+        // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
+        for (labeled_comm, value) in commitments.into_iter().zip(values) {
+            combined_values += &(value * &curr_challenge);
+
+            let comm = labeled_comm.commitment();
+            let degree_bound = labeled_comm.degree_bound();
+
+            // Applying opening challenge and randomness (used in batch_checking)
+            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge);
+
+            if let Some(randomizer) = randomizer {
+                comm_with_challenge = comm_with_challenge.mul(&randomizer);
+            }
+
+            // Accumulate values in the BTreeMap
+            *combined_comms.entry(degree_bound).or_insert_with(E::G1Projective::zero) += &comm_with_challenge;
+            curr_challenge *= &opening_challenge;
+        }
+
+        // Push expected results into list of elems. Power will be the negative of the expected power
+        let mut witness: E::G1Projective = proof.w.into_projective();
+        let mut adjusted_witness = vk.g.mul(combined_values) - &proof.w.mul(point);
+        if let Some(random_v) = proof.random_v {
+            adjusted_witness += &vk.gamma_g.mul(random_v);
+        }
+
+        if let Some(randomizer) = randomizer {
+            witness = witness.mul(&randomizer);
+            adjusted_witness = adjusted_witness.mul(&randomizer);
+        }
+
+        *combined_witness += &witness;
+        *combined_adjusted_witness += &adjusted_witness;
+        end_timer!(acc_time);
+    }
+
+    fn accumulate_elems_individual_opening_challenges<'a>(
+        combined_comms: &mut BTreeMap<Option<usize>, E::G1Projective>,
+        combined_witness: &mut E::G1Projective,
+        combined_adjusted_witness: &mut E::G1Projective,
+        vk: &VerifierKey<E>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
+        point: E::Fr,
+        values: impl IntoIterator<Item = E::Fr>,
+        proof: &kzg10::Proof<E>,
+        opening_challenges: &dyn Fn(u64) -> E::Fr,
+        randomizer: Option<E::Fr>,
+    ) {
+        let acc_time = start_timer!(|| "Accumulating elements");
+
+        let mut opening_challenge_counter = 0;
+        let mut curr_challenge = opening_challenges(opening_challenge_counter);
+        opening_challenge_counter += 1;
+
+        // Keeps track of running combination of values
+        let mut combined_values = E::Fr::zero();
+
+        // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
+        for (labeled_comm, value) in commitments.into_iter().zip(values) {
+            combined_values += &(value * &curr_challenge);
+
+            let comm = labeled_comm.commitment();
+            let degree_bound = labeled_comm.degree_bound();
+
+            // Applying opening challenge and randomness (used in batch_checking)
+            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge);
+
+            if let Some(randomizer) = randomizer {
+                comm_with_challenge = comm_with_challenge.mul(&randomizer);
+            }
+
+            // Accumulate values in the BTreeMap
+            *combined_comms.entry(degree_bound).or_insert(E::G1Projective::zero()) += &comm_with_challenge;
+            curr_challenge = opening_challenges(opening_challenge_counter);
+            opening_challenge_counter += 1;
+        }
+
+        // Push expected results into list of elems. Power will be the negative of the expected power
+        let mut witness: E::G1Projective = proof.w.into_projective();
+        let mut adjusted_witness = vk.g.mul(combined_values) - &proof.w.mul(point);
+        if let Some(random_v) = proof.random_v {
+            adjusted_witness += &vk.gamma_g.mul(random_v);
+        }
+
+        if let Some(randomizer) = randomizer {
+            witness = proof.w.mul(randomizer);
+            adjusted_witness = adjusted_witness.mul(&randomizer);
+        }
+
+        *combined_witness += &witness;
+        *combined_adjusted_witness += &adjusted_witness;
+        end_timer!(acc_time);
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn check_elems(
+        combined_comms: BTreeMap<Option<usize>, E::G1Projective>,
+        combined_witness: E::G1Projective,
+        combined_adjusted_witness: E::G1Projective,
+        vk: &VerifierKey<E>,
+    ) -> Result<bool, Error> {
+        let check_time = start_timer!(|| "Checking elems");
+        let mut g1_projective_elems = Vec::with_capacity(combined_comms.len() + 2);
+        let mut g2_prepared_elems = Vec::with_capacity(combined_comms.len() + 2);
+
+        for (degree_bound, comm) in combined_comms.into_iter() {
+            let shift_power = if let Some(degree_bound) = degree_bound {
+                vk.get_shift_power(degree_bound)
+                    .ok_or(Error::UnsupportedDegreeBound(degree_bound))?
+            } else {
+                vk.prepared_h.clone()
+            };
+
+            g1_projective_elems.push(comm);
+            g2_prepared_elems.push(shift_power);
+        }
+
+        g1_projective_elems.push(-combined_adjusted_witness);
+        g2_prepared_elems.push(vk.prepared_h.clone());
+
+        g1_projective_elems.push(-combined_witness);
+        g2_prepared_elems.push(vk.prepared_beta_h.clone());
+
+        let g1_prepared_elems_iter = E::G1Projective::batch_normalization_into_affine(g1_projective_elems)
+            .into_iter()
+            .map(|a| a.prepare())
+            .collect::<Vec<_>>();
+
+        let g1_g2_prepared = g1_prepared_elems_iter.iter().zip(g2_prepared_elems.iter());
+        let is_one: bool = E::product_of_pairings(g1_g2_prepared).is_one();
+        end_timer!(check_time);
+        Ok(is_one)
     }
 }
 

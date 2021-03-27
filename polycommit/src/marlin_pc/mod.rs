@@ -81,201 +81,6 @@ pub struct MarlinKZG10<E: PairingEngine> {
     _engine: PhantomData<E>,
 }
 
-impl<E: PairingEngine> MarlinKZG10<E> {
-    /// MSM for `commitments` and `coeffs`
-    fn combine_commitments<'a>(
-        coeffs_and_comms: impl IntoIterator<Item = (E::Fr, &'a Commitment<E>)>,
-    ) -> (E::G1Projective, Option<E::G1Projective>) {
-        let mut combined_comm = E::G1Projective::zero();
-        let mut combined_shifted_comm = None;
-        for (coeff, comm) in coeffs_and_comms {
-            if coeff.is_one() {
-                combined_comm.add_assign_mixed(&comm.comm.0);
-            } else {
-                combined_comm += &comm.comm.0.mul(coeff);
-            }
-
-            if let Some(shifted_comm) = &comm.shifted_comm {
-                let cur = shifted_comm.0.mul(coeff.into_repr());
-                combined_shifted_comm = Some(combined_shifted_comm.map_or(cur, |c| c + &cur));
-            }
-        }
-        (combined_comm, combined_shifted_comm)
-    }
-
-    fn normalize_commitments(
-        commitments: Vec<(E::G1Projective, Option<E::G1Projective>)>,
-    ) -> impl Iterator<Item = Commitment<E>> {
-        let mut comms = Vec::with_capacity(commitments.len());
-        let mut s_comms = Vec::with_capacity(commitments.len());
-        let mut s_flags = Vec::with_capacity(commitments.len());
-        for (comm, s_comm) in commitments {
-            comms.push(comm);
-            if let Some(c) = s_comm {
-                s_comms.push(c);
-                s_flags.push(true);
-            } else {
-                s_comms.push(E::G1Projective::zero());
-                s_flags.push(false);
-            }
-        }
-        let comms = E::G1Projective::batch_normalization_into_affine(comms);
-        let s_comms = E::G1Projective::batch_normalization_into_affine(s_comms);
-        comms.into_iter().zip(s_comms).zip(s_flags).map(|((c, s_c), flag)| {
-            let shifted_comm = if flag { Some(kzg10::Commitment(s_c)) } else { None };
-            Commitment {
-                comm: kzg10::Commitment(c),
-                shifted_comm,
-            }
-        })
-    }
-
-    /// Combine and normalize a set of commitments
-    fn combine_and_normalize<'a>(
-        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
-        query_set: &QuerySet<E::Fr>,
-        evaluations: &Evaluations<E::Fr>,
-        opening_challenges: &dyn Fn(u64) -> E::Fr,
-        vk: &VerifierKey<E>,
-    ) -> Result<(Vec<kzg10::Commitment<E>>, Vec<E::Fr>, Vec<E::Fr>), Error>
-    where
-        Commitment<E>: 'a,
-    {
-        let commitments: BTreeMap<_, _> = commitments.into_iter().map(|c| (c.label(), c)).collect();
-        let mut query_to_labels_map = BTreeMap::new();
-
-        for (label, point) in query_set.iter() {
-            let labels = query_to_labels_map.entry(point).or_insert_with(BTreeSet::new);
-            labels.insert(label);
-        }
-
-        let mut combined_comms = Vec::new();
-        let mut combined_queries = Vec::new();
-        let mut combined_evals = Vec::new();
-        for (point, labels) in query_to_labels_map.into_iter() {
-            let lc_time = start_timer!(|| format!("Randomly combining {} commitments", labels.len()));
-            let mut comms_to_combine: Vec<&'_ LabeledCommitment<_>> = Vec::new();
-            let mut values_to_combine = Vec::new();
-            for label in labels.into_iter() {
-                let commitment = commitments.get(label).ok_or(Error::MissingPolynomial {
-                    label: label.to_string(),
-                })?;
-                let degree_bound = commitment.degree_bound();
-                assert_eq!(degree_bound.is_some(), commitment.commitment().shifted_comm.is_some());
-
-                let v_i = evaluations
-                    .get(&(label.clone(), point.clone()))
-                    .ok_or(Error::MissingEvaluation {
-                        label: label.to_string(),
-                    })?;
-
-                comms_to_combine.push(commitment);
-                values_to_combine.push(*v_i);
-            }
-
-            let (c, v) = Self::accumulate_commitments_and_values_individual_opening_challenges(
-                vk,
-                comms_to_combine,
-                values_to_combine,
-                opening_challenges,
-            )?;
-            end_timer!(lc_time);
-
-            combined_comms.push(c);
-            combined_queries.push(point.clone());
-            combined_evals.push(v);
-        }
-        let norm_time = start_timer!(|| "Normalizing combined commitments");
-        E::G1Projective::batch_normalization(&mut combined_comms);
-        let combined_comms = combined_comms
-            .into_iter()
-            .map(|c| kzg10::Commitment(c.into()))
-            .collect::<Vec<_>>();
-        end_timer!(norm_time);
-        Ok((combined_comms, combined_queries, combined_evals))
-    }
-
-    /// Accumulate `commitments` and `values` according to `opening_challenge`.
-    fn accumulate_commitments_and_values<'a>(
-        vk: &VerifierKey<E>,
-        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
-        values: impl IntoIterator<Item = E::Fr>,
-        opening_challenge: E::Fr,
-    ) -> Result<(E::G1Projective, E::Fr), Error> {
-        let acc_time = start_timer!(|| "Accumulating commitments and values");
-        let mut combined_comm = E::G1Projective::zero();
-        let mut combined_value = E::Fr::zero();
-        let mut challenge_i = E::Fr::one();
-        for (labeled_commitment, value) in commitments.into_iter().zip(values) {
-            let degree_bound = labeled_commitment.degree_bound();
-            let commitment = labeled_commitment.commitment();
-            assert_eq!(degree_bound.is_some(), commitment.shifted_comm.is_some());
-
-            combined_comm += &commitment.comm.0.mul(challenge_i);
-            combined_value += &(value * &challenge_i);
-
-            if let Some(degree_bound) = degree_bound {
-                let challenge_i_1 = challenge_i * &opening_challenge;
-                let shifted_comm = commitment.shifted_comm.as_ref().unwrap().0.into_projective();
-
-                let shift_power = vk
-                    .get_shift_power(degree_bound)
-                    .ok_or(Error::UnsupportedDegreeBound(degree_bound))?;
-                let mut adjusted_comm = shifted_comm - &shift_power.mul(value);
-                adjusted_comm.mul_assign(challenge_i_1.into_repr());
-                combined_comm += &adjusted_comm;
-            }
-            challenge_i *= &opening_challenge.square();
-        }
-
-        end_timer!(acc_time);
-        Ok((combined_comm, combined_value))
-    }
-
-    /// Accumulate `commitments` and `values` according to `opening_challenge`.
-    fn accumulate_commitments_and_values_individual_opening_challenges<'a>(
-        vk: &VerifierKey<E>,
-        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
-        values: impl IntoIterator<Item = E::Fr>,
-        opening_challenges: &dyn Fn(u64) -> E::Fr,
-    ) -> Result<(E::G1Projective, E::Fr), Error> {
-        let acc_time = start_timer!(|| "Accumulating commitments and values");
-        let mut combined_comm = E::G1Projective::zero();
-        let mut combined_value = E::Fr::zero();
-        let mut opening_challenge_counter = 0;
-        for (labeled_commitment, value) in commitments.into_iter().zip(values) {
-            let degree_bound = labeled_commitment.degree_bound();
-            let commitment = labeled_commitment.commitment();
-            assert_eq!(degree_bound.is_some(), commitment.shifted_comm.is_some());
-
-            let challenge_i = opening_challenges(opening_challenge_counter);
-            opening_challenge_counter += 1;
-
-            combined_comm += &commitment.comm.0.mul(challenge_i);
-            combined_value += &(value * &challenge_i);
-
-            if let Some(degree_bound) = degree_bound {
-                let challenge_i_1 = opening_challenges(opening_challenge_counter);
-                opening_challenge_counter += 1;
-
-                let shifted_comm = commitment.shifted_comm.as_ref().unwrap().0.into_projective();
-
-                let shift_power = vk
-                    .get_shift_power(degree_bound)
-                    .ok_or(Error::UnsupportedDegreeBound(degree_bound))?;
-
-                let mut adjusted_comm = shifted_comm - &shift_power.mul(value);
-
-                adjusted_comm.mul_assign(challenge_i_1.into_repr());
-                combined_comm += &adjusted_comm;
-            }
-        }
-
-        end_timer!(acc_time);
-        Ok((combined_comm, combined_value))
-    }
-}
-
 impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
     type BatchProof = Vec<Self::Proof>;
     type Commitment = Commitment<E>;
@@ -1158,6 +963,201 @@ impl<E: PairingEngine> MarlinKZG10<E> {
             kzg10::KZG10::batch_check(&vk.vk, &combined_comms, &combined_queries, &combined_evals, &proof, rng)?;
         end_timer!(proof_time);
         Ok(result)
+    }
+}
+
+impl<E: PairingEngine> MarlinKZG10<E> {
+    /// MSM for `commitments` and `coeffs`
+    fn combine_commitments<'a>(
+        coeffs_and_comms: impl IntoIterator<Item = (E::Fr, &'a Commitment<E>)>,
+    ) -> (E::G1Projective, Option<E::G1Projective>) {
+        let mut combined_comm = E::G1Projective::zero();
+        let mut combined_shifted_comm = None;
+        for (coeff, comm) in coeffs_and_comms {
+            if coeff.is_one() {
+                combined_comm.add_assign_mixed(&comm.comm.0);
+            } else {
+                combined_comm += &comm.comm.0.mul(coeff);
+            }
+
+            if let Some(shifted_comm) = &comm.shifted_comm {
+                let cur = shifted_comm.0.mul(coeff.into_repr());
+                combined_shifted_comm = Some(combined_shifted_comm.map_or(cur, |c| c + &cur));
+            }
+        }
+        (combined_comm, combined_shifted_comm)
+    }
+
+    fn normalize_commitments(
+        commitments: Vec<(E::G1Projective, Option<E::G1Projective>)>,
+    ) -> impl Iterator<Item = Commitment<E>> {
+        let mut comms = Vec::with_capacity(commitments.len());
+        let mut s_comms = Vec::with_capacity(commitments.len());
+        let mut s_flags = Vec::with_capacity(commitments.len());
+        for (comm, s_comm) in commitments {
+            comms.push(comm);
+            if let Some(c) = s_comm {
+                s_comms.push(c);
+                s_flags.push(true);
+            } else {
+                s_comms.push(E::G1Projective::zero());
+                s_flags.push(false);
+            }
+        }
+        let comms = E::G1Projective::batch_normalization_into_affine(comms);
+        let s_comms = E::G1Projective::batch_normalization_into_affine(s_comms);
+        comms.into_iter().zip(s_comms).zip(s_flags).map(|((c, s_c), flag)| {
+            let shifted_comm = if flag { Some(kzg10::Commitment(s_c)) } else { None };
+            Commitment {
+                comm: kzg10::Commitment(c),
+                shifted_comm,
+            }
+        })
+    }
+
+    /// Combine and normalize a set of commitments
+    fn combine_and_normalize<'a>(
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
+        query_set: &QuerySet<E::Fr>,
+        evaluations: &Evaluations<E::Fr>,
+        opening_challenges: &dyn Fn(u64) -> E::Fr,
+        vk: &VerifierKey<E>,
+    ) -> Result<(Vec<kzg10::Commitment<E>>, Vec<E::Fr>, Vec<E::Fr>), Error>
+    where
+        Commitment<E>: 'a,
+    {
+        let commitments: BTreeMap<_, _> = commitments.into_iter().map(|c| (c.label(), c)).collect();
+        let mut query_to_labels_map = BTreeMap::new();
+
+        for (label, point) in query_set.iter() {
+            let labels = query_to_labels_map.entry(point).or_insert_with(BTreeSet::new);
+            labels.insert(label);
+        }
+
+        let mut combined_comms = Vec::new();
+        let mut combined_queries = Vec::new();
+        let mut combined_evals = Vec::new();
+        for (point, labels) in query_to_labels_map.into_iter() {
+            let lc_time = start_timer!(|| format!("Randomly combining {} commitments", labels.len()));
+            let mut comms_to_combine: Vec<&'_ LabeledCommitment<_>> = Vec::new();
+            let mut values_to_combine = Vec::new();
+            for label in labels.into_iter() {
+                let commitment = commitments.get(label).ok_or(Error::MissingPolynomial {
+                    label: label.to_string(),
+                })?;
+                let degree_bound = commitment.degree_bound();
+                assert_eq!(degree_bound.is_some(), commitment.commitment().shifted_comm.is_some());
+
+                let v_i = evaluations
+                    .get(&(label.clone(), point.clone()))
+                    .ok_or(Error::MissingEvaluation {
+                        label: label.to_string(),
+                    })?;
+
+                comms_to_combine.push(commitment);
+                values_to_combine.push(*v_i);
+            }
+
+            let (c, v) = Self::accumulate_commitments_and_values_individual_opening_challenges(
+                vk,
+                comms_to_combine,
+                values_to_combine,
+                opening_challenges,
+            )?;
+            end_timer!(lc_time);
+
+            combined_comms.push(c);
+            combined_queries.push(point.clone());
+            combined_evals.push(v);
+        }
+        let norm_time = start_timer!(|| "Normalizing combined commitments");
+        E::G1Projective::batch_normalization(&mut combined_comms);
+        let combined_comms = combined_comms
+            .into_iter()
+            .map(|c| kzg10::Commitment(c.into()))
+            .collect::<Vec<_>>();
+        end_timer!(norm_time);
+        Ok((combined_comms, combined_queries, combined_evals))
+    }
+
+    /// Accumulate `commitments` and `values` according to `opening_challenge`.
+    fn accumulate_commitments_and_values<'a>(
+        vk: &VerifierKey<E>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
+        values: impl IntoIterator<Item = E::Fr>,
+        opening_challenge: E::Fr,
+    ) -> Result<(E::G1Projective, E::Fr), Error> {
+        let acc_time = start_timer!(|| "Accumulating commitments and values");
+        let mut combined_comm = E::G1Projective::zero();
+        let mut combined_value = E::Fr::zero();
+        let mut challenge_i = E::Fr::one();
+        for (labeled_commitment, value) in commitments.into_iter().zip(values) {
+            let degree_bound = labeled_commitment.degree_bound();
+            let commitment = labeled_commitment.commitment();
+            assert_eq!(degree_bound.is_some(), commitment.shifted_comm.is_some());
+
+            combined_comm += &commitment.comm.0.mul(challenge_i);
+            combined_value += &(value * &challenge_i);
+
+            if let Some(degree_bound) = degree_bound {
+                let challenge_i_1 = challenge_i * &opening_challenge;
+                let shifted_comm = commitment.shifted_comm.as_ref().unwrap().0.into_projective();
+
+                let shift_power = vk
+                    .get_shift_power(degree_bound)
+                    .ok_or(Error::UnsupportedDegreeBound(degree_bound))?;
+                let mut adjusted_comm = shifted_comm - &shift_power.mul(value);
+                adjusted_comm.mul_assign(challenge_i_1.into_repr());
+                combined_comm += &adjusted_comm;
+            }
+            challenge_i *= &opening_challenge.square();
+        }
+
+        end_timer!(acc_time);
+        Ok((combined_comm, combined_value))
+    }
+
+    /// Accumulate `commitments` and `values` according to `opening_challenge`.
+    fn accumulate_commitments_and_values_individual_opening_challenges<'a>(
+        vk: &VerifierKey<E>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
+        values: impl IntoIterator<Item = E::Fr>,
+        opening_challenges: &dyn Fn(u64) -> E::Fr,
+    ) -> Result<(E::G1Projective, E::Fr), Error> {
+        let acc_time = start_timer!(|| "Accumulating commitments and values");
+        let mut combined_comm = E::G1Projective::zero();
+        let mut combined_value = E::Fr::zero();
+        let mut opening_challenge_counter = 0;
+        for (labeled_commitment, value) in commitments.into_iter().zip(values) {
+            let degree_bound = labeled_commitment.degree_bound();
+            let commitment = labeled_commitment.commitment();
+            assert_eq!(degree_bound.is_some(), commitment.shifted_comm.is_some());
+
+            let challenge_i = opening_challenges(opening_challenge_counter);
+            opening_challenge_counter += 1;
+
+            combined_comm += &commitment.comm.0.mul(challenge_i);
+            combined_value += &(value * &challenge_i);
+
+            if let Some(degree_bound) = degree_bound {
+                let challenge_i_1 = opening_challenges(opening_challenge_counter);
+                opening_challenge_counter += 1;
+
+                let shifted_comm = commitment.shifted_comm.as_ref().unwrap().0.into_projective();
+
+                let shift_power = vk
+                    .get_shift_power(degree_bound)
+                    .ok_or(Error::UnsupportedDegreeBound(degree_bound))?;
+
+                let mut adjusted_comm = shifted_comm - &shift_power.mul(value);
+
+                adjusted_comm.mul_assign(challenge_i_1.into_repr());
+                combined_comm += &adjusted_comm;
+            }
+        }
+
+        end_timer!(acc_time);
+        Ok((combined_comm, combined_value))
     }
 }
 
