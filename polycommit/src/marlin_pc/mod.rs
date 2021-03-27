@@ -596,7 +596,6 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
         query_set: &QuerySet<E::Fr>,
         opening_challenges: &dyn Fn(u64) -> E::Fr,
         rands: impl IntoIterator<Item = &'a Self::Randomness>,
-        rng: Option<&mut dyn RngCore>,
     ) -> Result<BatchLCProof<E::Fr, Self>, Self::Error>
     where
         Self::Randomness: 'a,
@@ -663,7 +662,6 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
             &query_set,
             opening_challenges,
             lc_randomness.iter(),
-            rng,
         )?;
 
         Ok(BatchLCProof {
@@ -852,13 +850,11 @@ impl<E: PairingEngine> MarlinKZG10<E> {
         query_set: &QuerySet<E::Fr>,
         opening_challenges: &dyn Fn(u64) -> E::Fr,
         rands: impl IntoIterator<Item = &'a <Self as PolynomialCommitment<E::Fr>>::Randomness>,
-        rng: Option<&mut dyn RngCore>,
     ) -> Result<<Self as PolynomialCommitment<E::Fr>>::BatchProof, <Self as PolynomialCommitment<E::Fr>>::Error>
     where
         <Self as PolynomialCommitment<E::Fr>>::Randomness: 'a,
         <Self as PolynomialCommitment<E::Fr>>::Commitment: 'a,
     {
-        let rng = &mut crate::optional_rng::OptionalRng(rng);
         let poly_rand_comm: BTreeMap<_, _> = labeled_polynomials
             .into_iter()
             .zip(rands)
@@ -924,7 +920,6 @@ impl<E: PairingEngine> MarlinKZG10<E> {
         values: impl IntoIterator<Item = E::Fr>,
         proof: &<Self as PolynomialCommitment<E::Fr>>::Proof,
         opening_challenges: &dyn Fn(u64) -> E::Fr,
-        _rng: Option<&mut dyn RngCore>,
     ) -> Result<bool, <Self as PolynomialCommitment<E::Fr>>::Error>
     where
         <Self as PolynomialCommitment<E::Fr>>::Commitment: 'a,

@@ -473,7 +473,6 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
         query_set: &QuerySet<F>,
         opening_challenges: &dyn Fn(u64) -> F,
         rands: impl IntoIterator<Item = &'a Self::Randomness>,
-        rng: Option<&mut dyn RngCore>,
     ) -> Result<BatchLCProof<F, Self>, Self::Error>
     where
         Self::Randomness: 'a,

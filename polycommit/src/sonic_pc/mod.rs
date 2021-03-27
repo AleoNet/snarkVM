@@ -560,7 +560,6 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
         query_set: &QuerySet<E::Fr>,
         opening_challenges: &dyn Fn(u64) -> E::Fr,
         rands: impl IntoIterator<Item = &'a Self::Randomness>,
-        rng: Option<&mut dyn RngCore>,
     ) -> Result<BatchLCProof<E::Fr, Self>, Self::Error>
     where
         Self::Randomness: 'a,
@@ -577,7 +576,6 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
             &poly_query_set,
             opening_challenges,
             rands,
-            rng,
         )?;
         Ok(BatchLCProof {
             proof,
@@ -594,7 +592,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
         eqn_evaluations: &Evaluations<E::Fr>,
         proof: &BatchLCProof<E::Fr, Self>,
         opening_challenges: &dyn Fn(u64) -> E::Fr,
-        rng: &mut R,
+        _rng: &mut R,
     ) -> Result<bool, Self::Error>
     where
         Self::Commitment: 'a,
@@ -645,7 +643,6 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
             &poly_evals,
             proof,
             opening_challenges,
-            rng,
         )?;
         if !pc_result {
             eprintln!("Evaluation proofs failed to verify");
@@ -710,13 +707,11 @@ impl<E: PairingEngine> SonicKZG10<E> {
         query_set: &QuerySet<E::Fr>,
         opening_challenges: &dyn Fn(u64) -> E::Fr,
         rands: impl IntoIterator<Item = &'a <Self as PolynomialCommitment<E::Fr>>::Randomness>,
-        rng: Option<&mut dyn RngCore>,
     ) -> Result<<Self as PolynomialCommitment<E::Fr>>::BatchProof, <Self as PolynomialCommitment<E::Fr>>::Error>
     where
         <Self as PolynomialCommitment<E::Fr>>::Randomness: 'a,
         <Self as PolynomialCommitment<E::Fr>>::Commitment: 'a,
     {
-        let rng = &mut crate::optional_rng::OptionalRng(rng);
         let poly_rand_comm: BTreeMap<_, _> = labeled_polynomials
             .into_iter()
             .zip(rands)
@@ -782,7 +777,6 @@ impl<E: PairingEngine> SonicKZG10<E> {
         values: impl IntoIterator<Item = E::Fr>,
         proof: &<Self as PolynomialCommitment<E::Fr>>::Proof,
         opening_challenges: &dyn Fn(u64) -> E::Fr,
-        _rng: Option<&mut dyn RngCore>,
     ) -> Result<bool, <Self as PolynomialCommitment<E::Fr>>::Error>
     where
         <Self as PolynomialCommitment<E::Fr>>::Commitment: 'a,
@@ -811,14 +805,13 @@ impl<E: PairingEngine> SonicKZG10<E> {
     }
 
     /// batch_check but with individual challenges
-    fn batch_check_individual_opening_challenges<'a, R: RngCore>(
+    fn batch_check_individual_opening_challenges<'a>(
         vk: &<Self as PolynomialCommitment<E::Fr>>::VerifierKey,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<<Self as PolynomialCommitment<E::Fr>>::Commitment>>,
         query_set: &QuerySet<E::Fr>,
         evaluations: &Evaluations<E::Fr>,
         proof: &<Self as PolynomialCommitment<E::Fr>>::BatchProof,
         opening_challenges: &dyn Fn(u64) -> E::Fr,
-        rng: &mut R,
     ) -> Result<bool, <Self as PolynomialCommitment<E::Fr>>::Error>
     where
         <Self as PolynomialCommitment<E::Fr>>::Commitment: 'a,
@@ -856,15 +849,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
             }
 
             let proof_time = start_timer!(|| "Checking per-query proof");
-            result &= Self::check_individual_opening_challenges(
-                vk,
-                comms,
-                &point,
-                values,
-                &proof,
-                opening_challenges,
-                Some(rng),
-            )?;
+            result &= Self::check_individual_opening_challenges(vk, comms, &point, values, &proof, opening_challenges)?;
             end_timer!(proof_time);
         }
         Ok(result)

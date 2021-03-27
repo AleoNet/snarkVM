@@ -400,7 +400,6 @@ where
                 &query_set,
                 &opening_challenges_f,
                 &commitment_randomnesses,
-                Some(zk_rng),
             )
             .map_err(MarlinError::from_pc_err)?
         } else {
