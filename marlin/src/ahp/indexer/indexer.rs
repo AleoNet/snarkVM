@@ -54,11 +54,18 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let num_non_zero = ics.num_non_zero();
         let num_variables = num_padded_public_variables + num_private_variables;
 
+        if cfg!(debug_assertions) {
+            println!("Number of padded public variables: {}", num_padded_public_variables);
+            println!("Number of private variables: {}", num_private_variables);
+            println!("Number of num_constraints: {}", num_constraints);
+            println!("Number of num_non_zero: {}", num_non_zero);
+        }
+
         if num_constraints != num_variables {
-            eprintln!("number of padded public variables: {}", num_padded_public_variables);
-            eprintln!("number of private variables: {}", num_private_variables);
-            eprintln!("number of num_constraints: {}", num_constraints);
-            eprintln!("number of num_non_zero: {}", num_non_zero);
+            eprintln!("Number of padded public variables: {}", num_padded_public_variables);
+            eprintln!("Number of private variables: {}", num_private_variables);
+            eprintln!("Number of num_constraints: {}", num_constraints);
+            eprintln!("Number of num_non_zero: {}", num_non_zero);
             return Err(AHPError::NonSquareMatrix);
         }
 
@@ -76,9 +83,9 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let domain_h = EvaluationDomain::new(num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let domain_k = EvaluationDomain::new(num_non_zero).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let x_domain =
-            EvaluationDomain::<F>::new(num_padded_public_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+            EvaluationDomain::new(num_padded_public_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let b_domain =
-            EvaluationDomain::<F>::new(3 * domain_k.size() - 3).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+            EvaluationDomain::new(3 * domain_k.size() - 3).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let a_arithmetization_time = start_timer!(|| "Arithmetizing A");
         let a_star_arith = arithmetize_matrix("a", &mut a, domain_k, domain_h, x_domain, b_domain);
