@@ -281,7 +281,7 @@ impl<E: PairingEngine> KZG10<E> {
     }
 
     /// Verifies that `value` is the evaluation at `point` of the polynomial
-    /// committed inside `comm`.
+    /// committed inside `commitment`.
     pub fn check(
         vk: &VerifierKey<E>,
         commitment: &Commitment<E>,
