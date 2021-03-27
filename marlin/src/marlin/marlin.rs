@@ -425,6 +425,14 @@ where
         proof.print_size_info();
         end_timer!(prover_time);
 
+        println!("Number of proof commitments: {}", proof.commitments.len());
+        println!("Number of proof evaluations: {}", proof.evaluations.len());
+        println!("Number of proof messages: {}", proof.prover_messages.len());
+        println!(
+            "Number of proof batch evaluations: {}",
+            proof.clone().pc_proof.proof.into().len()
+        );
+
         Ok(proof)
     }
 
@@ -440,6 +448,11 @@ where
         let public_input = {
             let domain_x = EvaluationDomain::<TargetField>::new(public_input.len() + 1).unwrap();
 
+            if cfg!(debug_assertions) {
+                println!("Number of given public inputs: {}", public_input.len());
+                println!("Size of evaluation domain x: {}", domain_x.size());
+            }
+
             let mut unpadded_input = public_input.to_vec();
             unpadded_input.resize(
                 core::cmp::max(public_input.len(), domain_x.size() - 1),
@@ -448,6 +461,10 @@ where
 
             unpadded_input
         };
+
+        if cfg!(debug_assertions) {
+            println!("Number of padded public variables: {}", public_input.len());
+        }
 
         let is_recursion = MM::RECURSION;
 

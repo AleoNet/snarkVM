@@ -41,6 +41,17 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
                 Ok(a)
             },
         )?;
+        let d = cs.alloc_input(
+            || "d",
+            || {
+                let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
+                let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
+
+                a.mul_assign(&b);
+                a.mul_assign(&b);
+                Ok(a)
+            },
+        )?;
 
         for i in 0..(self.num_variables - 3) {
             let _ = cs.alloc(
@@ -49,9 +60,11 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
             )?;
         }
 
-        for i in 0..self.num_constraints {
+        for i in 0..(self.num_constraints - 1) {
             cs.enforce(|| format!("constraint {}", i), |lc| lc + a, |lc| lc + b, |lc| lc + c);
         }
+        cs.enforce(|| format!("constraint_final"), |lc| lc + c, |lc| lc + b, |lc| lc + d);
+
         Ok(())
     }
 }
@@ -89,6 +102,8 @@ mod marlin {
                         let b = Fr::rand(rng);
                         let mut c = a;
                         c.mul_assign(&b);
+                        let mut d = c;
+                        d.mul_assign(&b);
 
                         let circ = Circuit {
                             a: Some(a),
@@ -103,10 +118,10 @@ mod marlin {
                         let proof = $marlin_inst::prove(&index_pk, &circ, rng).unwrap();
                         println!("Called prover");
 
-                        assert!($marlin_inst::verify(&index_vk, &[c], &proof).unwrap());
+                        assert!($marlin_inst::verify(&index_vk, &[c, d], &proof).unwrap());
                         println!("Called verifier");
                         println!("\nShould not verify (i.e. verifier messages should print below):");
-                        assert!(!$marlin_inst::verify(&index_vk, &[a], &proof).unwrap());
+                        assert!(!$marlin_inst::verify(&index_vk, &[a, a], &proof).unwrap());
                     }
                 }
             }
@@ -164,6 +179,10 @@ mod marlin {
 
 mod marlin_recursion {
     use super::*;
+    // use crate::{
+    //     fiat_shamir::FiatShamirChaChaRng,
+    //     marlin::{MarlinRecursiveMode, MarlinSNARK},
+    // };
     use crate::{
         fiat_shamir::{FiatShamirAlgebraicSpongeRng, PoseidonSponge},
         marlin::{MarlinRecursiveMode, MarlinSNARK},
@@ -172,7 +191,6 @@ mod marlin_recursion {
     use snarkvm_polycommit::marlin_pc::MarlinKZG10;
     use snarkvm_utilities::rand::{test_rng, UniformRand};
 
-    // use core::{marker::PhantomData, ops::MulAssign};
     use core::ops::MulAssign;
 
     type MultiPC = MarlinKZG10<Bls12_377>;
@@ -198,17 +216,17 @@ mod marlin_recursion {
             let mut d = c;
             d.mul_assign(&b);
 
-            let circ = Circuit {
+            let circuit = Circuit {
                 a: Some(a),
                 b: Some(b),
                 num_constraints,
                 num_variables,
             };
 
-            let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circ).unwrap();
+            let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
             println!("Called circuit setup");
 
-            let proof = MarlinInst::prove(&index_pk, &circ, rng).unwrap();
+            let proof = MarlinInst::prove(&index_pk, &circuit, rng).unwrap();
             println!("Called prover");
 
             assert!(MarlinInst::verify(&index_vk, &[c, d], &proof).unwrap());
