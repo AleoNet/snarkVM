@@ -180,7 +180,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     /// Specializes the public parameters for polynomials up to the given `supported_degree`
     /// and for enforcing degree bounds in the range `1..=supported_degree`.
     fn trim(
-        pp: &Self::UniversalParams,
+        parameters: &Self::UniversalParams,
         supported_degree: usize,
         supported_hiding_bound: usize,
         enforced_degree_bounds: Option<&[usize]>,

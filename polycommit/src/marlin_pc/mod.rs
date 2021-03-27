@@ -97,13 +97,15 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
         kzg10::KZG10::setup(max_degree, false, rng).map_err(Into::into)
     }
 
+    /// Specializes the public parameters for polynomials up to the given `supported_degree`
+    /// and for enforcing degree bounds in the range `1..=supported_degree`.
     fn trim(
-        pp: &Self::UniversalParams,
+        parameters: &Self::UniversalParams,
         supported_degree: usize,
         supported_hiding_bound: usize,
         enforced_degree_bounds: Option<&[usize]>,
     ) -> Result<(Self::CommitterKey, Self::VerifierKey), Self::Error> {
-        let max_degree = pp.max_degree();
+        let max_degree = parameters.max_degree();
         if supported_degree > max_degree {
             return Err(Error::TrimmingDegreeTooLarge);
         }
@@ -111,22 +113,21 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
         // Construct the KZG10 committer key for committing to unshifted polynomials.
         let ck_time =
             start_timer!(|| format!("Constructing `powers` of size {} for unshifted polys", supported_degree));
-        let powers = pp.powers_of_g[..=supported_degree].to_vec();
-        // We want to support making up to `supported_hiding_bound` queries to committed
-        // polynomials.
+        let powers = parameters.powers_of_g[..=supported_degree].to_vec();
+        // We want to support making up to `supported_hiding_bound` queries to committed polynomials.
         let powers_of_gamma_g = (0..=supported_hiding_bound + 1)
-            .map(|i| pp.powers_of_gamma_g[&i])
+            .map(|i| parameters.powers_of_gamma_g[&i])
             .collect::<Vec<_>>();
         end_timer!(ck_time);
 
         // Construct the core KZG10 verifier key.
         let vk = kzg10::VerifierKey {
-            g: pp.powers_of_g[0],
-            gamma_g: pp.powers_of_gamma_g[&0],
-            h: pp.h,
-            beta_h: pp.beta_h,
-            prepared_h: pp.prepared_h.clone(),
-            prepared_beta_h: pp.prepared_beta_h.clone(),
+            g: parameters.powers_of_g[0],
+            gamma_g: parameters.powers_of_gamma_g[&0],
+            h: parameters.h,
+            beta_h: parameters.beta_h,
+            prepared_h: parameters.prepared_h.clone(),
+            prepared_beta_h: parameters.prepared_beta_h.clone(),
         };
 
         let enforced_degree_bounds = enforced_degree_bounds.map(|v| {
@@ -153,12 +154,12 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
                         max_degree - lowest_shifted_power + 1
                     ));
 
-                    let shifted_powers = pp.powers_of_g[lowest_shifted_power..].to_vec();
+                    let shifted_powers = parameters.powers_of_g[lowest_shifted_power..].to_vec();
                     end_timer!(shifted_ck_time);
 
                     let degree_bounds_and_shift_powers = enforced_degree_bounds
                         .iter()
-                        .map(|d| (*d, pp.powers_of_g[max_degree - d]))
+                        .map(|d| (*d, parameters.powers_of_g[max_degree - d]))
                         .collect();
                     (Some(shifted_powers), Some(degree_bounds_and_shift_powers))
                 }
