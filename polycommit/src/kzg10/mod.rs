@@ -44,9 +44,7 @@ pub use data_structures::*;
 ///
 /// [kzg10]: http://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf
 #[derive(Clone, Debug)]
-pub struct KZG10<E: PairingEngine> {
-    _engine: PhantomData<E>,
-}
+pub struct KZG10<E: PairingEngine>(PhantomData<E>);
 
 impl<E: PairingEngine> KZG10<E> {
     /// Constructs public parameters when given as input the maximum degree `degree`
@@ -158,7 +156,7 @@ impl<E: PairingEngine> KZG10<E> {
         hiding_bound: Option<usize>,
         rng: Option<&mut dyn RngCore>,
     ) -> Result<(Commitment<E>, Randomness<E>), Error> {
-        Self::check_degree_is_within_bounds(polynomial.degree(), powers.size())?;
+        Self::check_degree_is_too_large(polynomial.degree(), powers.size())?;
 
         let commit_time = start_timer!(|| format!(
             "Committing to polynomial of degree {} with hiding_bound: {:?}",
@@ -202,14 +200,14 @@ impl<E: PairingEngine> KZG10<E> {
     /// p(z) is the remainder term. We can therefore omit p(z) when computing the quotient.
     #[allow(clippy::type_complexity)]
     pub fn compute_witness_polynomial(
-        p: &Polynomial<E::Fr>,
+        polynomial: &Polynomial<E::Fr>,
         point: E::Fr,
         randomness: &Randomness<E>,
     ) -> Result<(Polynomial<E::Fr>, Option<Polynomial<E::Fr>>), Error> {
         let divisor = Polynomial::from_coefficients_vec(vec![-point, E::Fr::one()]);
 
         let witness_time = start_timer!(|| "Computing witness polynomial");
-        let witness_polynomial = p / &divisor;
+        let witness_polynomial = polynomial / &divisor;
         end_timer!(witness_time);
 
         let random_witness_polynomial = if randomness.is_hiding() {
@@ -264,15 +262,15 @@ impl<E: PairingEngine> KZG10<E> {
     /// On input a polynomial `p` and a point `point`, outputs a proof for the same.
     pub(crate) fn open(
         powers: &Powers<E>,
-        p: &Polynomial<E::Fr>,
+        polynomial: &Polynomial<E::Fr>,
         point: E::Fr,
         rand: &Randomness<E>,
     ) -> Result<Proof<E>, Error> {
-        Self::check_degree_is_within_bounds(p.degree(), powers.size())?;
-        let open_time = start_timer!(|| format!("Opening polynomial of degree {}", p.degree()));
+        Self::check_degree_is_too_large(polynomial.degree(), powers.size())?;
+        let open_time = start_timer!(|| format!("Opening polynomial of degree {}", polynomial.degree()));
 
         let witness_time = start_timer!(|| "Computing witness polynomials");
-        let (witness_poly, hiding_witness_poly) = Self::compute_witness_polynomial(p, point, rand)?;
+        let (witness_poly, hiding_witness_poly) = Self::compute_witness_polynomial(polynomial, point, rand)?;
         end_timer!(witness_time);
 
         let proof =
@@ -283,16 +281,16 @@ impl<E: PairingEngine> KZG10<E> {
     }
 
     /// Verifies that `value` is the evaluation at `point` of the polynomial
-    /// committed inside `comm`.
+    /// committed inside `commitment`.
     pub fn check(
         vk: &VerifierKey<E>,
-        comm: &Commitment<E>,
+        commitment: &Commitment<E>,
         point: E::Fr,
         value: E::Fr,
         proof: &Proof<E>,
     ) -> Result<bool, Error> {
         let check_time = start_timer!(|| "Checking evaluation");
-        let mut inner = comm.0.into_projective() - &vk.g.into_projective().mul(&value);
+        let mut inner = commitment.0.into_projective() - &vk.g.into_projective().mul(&value);
         if let Some(random_v) = proof.random_v {
             inner -= &vk.gamma_g.mul(random_v);
         }
@@ -367,16 +365,8 @@ impl<E: PairingEngine> KZG10<E> {
         Ok(result)
     }
 
-    // Functions for checking errors
-    pub(crate) fn check_degree_is_within_bounds(num_coefficients: usize, num_powers: usize) -> Result<(), Error> {
-        if num_coefficients < 1 {
-            Err(Error::DegreeIsZero)
-        } else {
-            Self::check_degree_is_too_large(num_coefficients, num_powers)
-        }
-    }
-
-    pub(crate) fn check_degree_is_too_large(num_coefficients: usize, num_powers: usize) -> Result<(), Error> {
+    pub(crate) fn check_degree_is_too_large(degree: usize, num_powers: usize) -> Result<(), Error> {
+        let num_coefficients = degree + 1;
         if num_coefficients > num_powers {
             Err(Error::TooManyCoefficients {
                 num_coefficients,
@@ -392,8 +382,7 @@ impl<E: PairingEngine> KZG10<E> {
             Err(Error::HidingBoundIsZero)
         } else if hiding_poly_degree >= num_powers {
             // The above check uses `>=` because committing to a hiding poly with
-            // degree `hiding_poly_degree` requires `hiding_poly_degree + 1`
-            // powers.
+            // degree `hiding_poly_degree` requires `hiding_poly_degree + 1` powers.
             Err(Error::HidingBoundToolarge {
                 hiding_poly_degree,
                 num_powers,
@@ -403,11 +392,11 @@ impl<E: PairingEngine> KZG10<E> {
         }
     }
 
-    pub(crate) fn check_degrees_and_bounds(
+    pub(crate) fn check_degrees_and_bounds<'a>(
         supported_degree: usize,
         max_degree: usize,
         enforced_degree_bounds: Option<&[usize]>,
-        p: &LabeledPolynomial<E::Fr>,
+        p: &'a LabeledPolynomial<E::Fr>,
     ) -> Result<(), Error> {
         if let Some(bound) = p.degree_bound() {
             let enforced_degree_bounds = enforced_degree_bounds.ok_or(Error::UnsupportedDegreeBound(bound))?;
@@ -415,12 +404,12 @@ impl<E: PairingEngine> KZG10<E> {
             if enforced_degree_bounds.binary_search(&bound).is_err() {
                 Err(Error::UnsupportedDegreeBound(bound))
             } else if bound < p.degree() || bound > max_degree {
-                Err(Error::IncorrectDegreeBound {
+                return Err(Error::IncorrectDegreeBound {
                     poly_degree: p.degree(),
                     degree_bound: p.degree_bound().unwrap(),
                     supported_degree,
                     label: p.label().to_string(),
-                })
+                });
             } else {
                 Ok(())
             }
@@ -450,7 +439,6 @@ fn convert_to_bigints<F: PrimeField>(p: &[F]) -> Vec<F::BigInteger> {
 mod tests {
     #![allow(non_camel_case_types)]
     use crate::{kzg10::*, *};
-
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
     use snarkvm_utilities::rand::test_rng;
 
@@ -567,10 +555,12 @@ mod tests {
             }
             let pp = KZG10::<E>::setup(degree, false, rng)?;
             let (ck, vk) = KZG10::trim(&pp, degree);
+
             let mut comms = Vec::new();
             let mut values = Vec::new();
             let mut points = Vec::new();
             let mut proofs = Vec::new();
+
             for _ in 0..10 {
                 let p = Polynomial::rand(degree, rng);
                 let hiding_bound = Some(1);
@@ -599,8 +589,22 @@ mod tests {
     fn linear_polynomial_test() {
         linear_polynomial_test_template::<Bls12_377>().expect("test failed for bls12-377");
     }
+
     #[test]
     fn batch_check_test() {
         batch_check_test_template::<Bls12_377>().expect("test failed for bls12-377");
+    }
+
+    #[test]
+    fn test_degree_is_too_large() {
+        let rng = &mut test_rng();
+
+        let max_degree = 123;
+        let pp = KZG_Bls12_377::setup(max_degree, false, rng).unwrap();
+        let (powers, _) = KZG_Bls12_377::trim(&pp, max_degree);
+
+        let p = Polynomial::<Fr>::rand(max_degree + 1, rng);
+        assert!(p.degree() > max_degree);
+        assert!(KZG_Bls12_377::check_degree_is_too_large(p.degree(), powers.size()).is_err());
     }
 }
