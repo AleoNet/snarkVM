@@ -17,6 +17,7 @@
 use crate::{
     marlin_pc::{gadgets::VerifierKeyVar, PreparedVerifierKey},
     PrepareGadget,
+    Vec,
 };
 use snarkvm_curves::{AffineCurve, PairingEngine};
 use snarkvm_fields::{PrimeField, ToConstraintField};

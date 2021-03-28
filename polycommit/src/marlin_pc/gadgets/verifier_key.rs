@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{kzg10::VerifierKey as KZG10VerifierKey, marlin_pc::data_structures::VerifierKey};
+use crate::{kzg10::VerifierKey as KZG10VerifierKey, marlin_pc::data_structures::VerifierKey, Vec};
 use snarkvm_curves::{AffineCurve, PairingEngine};
 use snarkvm_gadgets::{
     fields::FpGadget,
