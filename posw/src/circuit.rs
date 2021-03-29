@@ -182,7 +182,7 @@ mod test {
         h.update(root_bytes.as_ref());
         let mask = h.finalize().to_vec();
 
-        let snark_leaves = tree.hashed_leaves().into_iter().map(Some).collect();
+        let snark_leaves = tree.hashed_leaves().to_vec().into_iter().map(Some).collect();
         let proof = create_random_proof(
             &POSWCircuit::<_, EdwardsMaskedMerkleParameters, HashGadget, TestPOSWCircuitParameters> {
                 leaves: snark_leaves,

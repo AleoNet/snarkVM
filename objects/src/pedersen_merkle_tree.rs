@@ -84,7 +84,7 @@ pub fn pedersen_merkle_root_hash(hashes: &[[u8; 32]]) -> Fr {
 /// base layer hashes leaved
 pub fn pedersen_merkle_root_hash_with_leaves(hashes: &[[u8; 32]]) -> (Fr, Vec<Fr>) {
     let tree = EdwardsMaskedMerkleTree::new(PARAMS.clone(), hashes.iter()).expect("could not create merkle tree");
-    (tree.root(), tree.hashed_leaves())
+    (tree.root(), tree.hashed_leaves().to_vec())
 }
 
 impl From<Fr> for PedersenMerkleRootHash {
