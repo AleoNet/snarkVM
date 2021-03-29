@@ -43,7 +43,7 @@ pub struct MerkleTree<P: MerkleParameters> {
 impl<P: MerkleParameters> MerkleTree<P> {
     pub const DEPTH: u8 = P::DEPTH as u8;
 
-    pub fn new<L: ToBytes>(parameters: P, leaves: &[L]) -> Result<Self, MerkleError> {
+    pub fn new<L: ToBytes, I: ExactSizeIterator<Item = L>>(parameters: P, leaves: I) -> Result<Self, MerkleError> {
         let new_time = start_timer!(|| "MerkleTree::new");
 
         let last_level_size = leaves.len().next_power_of_two();
@@ -70,8 +70,8 @@ impl<P: MerkleParameters> MerkleTree<P> {
         let hash_input_size_in_bytes = (P::H::INPUT_SIZE_BITS / 8) * 2;
         let last_level_index = level_indices.pop().unwrap_or(0);
         let mut buffer = vec![0u8; hash_input_size_in_bytes];
-        for (i, leaf) in leaves.iter().enumerate() {
-            tree[last_level_index + i] = parameters.hash_leaf(leaf, &mut buffer)?;
+        for (i, leaf) in leaves.enumerate() {
+            tree[last_level_index + i] = parameters.hash_leaf(&leaf, &mut buffer)?;
         }
 
         // Compute the hash values for every node in the tree.

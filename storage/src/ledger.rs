@@ -132,9 +132,9 @@ impl<T: Transaction, P: LoadableMerkleParameters> Ledger<T, P> {
                 }
 
                 cm_and_indices.sort_by(|&(_, i), &(_, j)| i.cmp(&j));
-                let commitments = cm_and_indices.into_iter().map(|(cm, _)| cm).collect::<Vec<_>>();
+                let commitments = cm_and_indices.into_iter().map(|(cm, _)| cm);
 
-                let merkle_tree = MerkleTree::new(ledger_parameters.clone(), &commitments)?;
+                let merkle_tree = MerkleTree::new(ledger_parameters.clone(), commitments)?;
 
                 Ok(Self {
                     latest_block_height: RwLock::new(bytes_to_u32(val)),
