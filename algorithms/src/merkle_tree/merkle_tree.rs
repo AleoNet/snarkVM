@@ -241,3 +241,18 @@ fn parent(index: usize) -> Option<usize> {
 fn convert_index_to_last_level(index: usize, tree_depth: usize) -> usize {
     index + (1 << tree_depth) - 1
 }
+
+pub struct Ancestors(usize);
+
+impl Iterator for Ancestors {
+    type Item = usize;
+
+    fn next(&mut self) -> Option<usize> {
+        if let Some(parent) = parent(self.0) {
+            self.0 = parent;
+            Some(parent)
+        } else {
+            None
+        }
+    }
+}
