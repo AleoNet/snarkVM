@@ -29,6 +29,10 @@ use snarkvm_fields::{batch_inversion, Field, One};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
+use crate::utilities::{
+    boolean::Boolean,
+    eq::{ConditionalEqGadget, EqGadget},
+};
 use std::{borrow::Borrow, fmt::Debug};
 
 pub type G2Gadget<P> = AffineGadget<<P as Bls12Parameters>::G2Parameters, <P as Bls12Parameters>::Fp, Fp2G<P>>;
@@ -38,7 +42,9 @@ type LCoeff<P> = (Fp2G<P>, Fp2G<P>);
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "Fp2Gadget<P::Fp2Params, P::Fp>: Clone"),
-    Debug(bound = "Fp2Gadget<P::Fp2Params, P::Fp>: Debug")
+    Debug(bound = "Fp2Gadget<P::Fp2Params, P::Fp>: Debug"),
+    PartialEq(bound = "Fp2Gadget<P::Fp2Params, P::Fp>: Debug"),
+    Eq(bound = "Fp2Gadget<P::Fp2Params, P::Fp>: Debug")
 )]
 pub struct G2PreparedGadget<P: Bls12Parameters> {
     pub ell_coeffs: Vec<LCoeff<P>>,
@@ -245,5 +251,35 @@ impl<P: Bls12Parameters> AllocGadget<G2Prepared<P>, <P as Bls12Parameters>::Fp> 
 
         let ell_coeffs = l.into_iter().zip(r).collect();
         Ok(Self { ell_coeffs })
+    }
+}
+
+impl<P: Bls12Parameters> EqGadget<<P as Bls12Parameters>::Fp> for G2PreparedGadget<P> {}
+
+impl<P: Bls12Parameters> ConditionalEqGadget<<P as Bls12Parameters>::Fp> for G2PreparedGadget<P> {
+    fn conditional_enforce_equal<CS: ConstraintSystem<P::Fp>>(
+        &self,
+        mut cs: CS,
+        other: &Self,
+        condition: &Boolean,
+    ) -> Result<(), SynthesisError> {
+        for (i, (l_coeff, other_l_coeff)) in self.ell_coeffs.iter().zip(&other.ell_coeffs).enumerate() {
+            l_coeff.0.conditional_enforce_equal(
+                cs.ns(|| format!("enforce_equal_l_coeff_0_{}", i)),
+                &other_l_coeff.0,
+                condition,
+            )?;
+            l_coeff.1.conditional_enforce_equal(
+                cs.ns(|| format!("enforce_equal_l_coeff_1_{}", i)),
+                &other_l_coeff.1,
+                condition,
+            )?;
+        }
+
+        Ok(())
+    }
+
+    fn cost() -> usize {
+        unimplemented!()
     }
 }
