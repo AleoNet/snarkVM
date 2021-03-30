@@ -392,3 +392,240 @@ where
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{marlin_pc::MarlinKZG10, PCPreparedVerifierKey, PolynomialCommitment};
+
+    use snarkvm_curves::{
+        bls12_377::{Bls12_377, Fq},
+        bw6_761::BW6_761,
+        ProjectiveCurve,
+    };
+    use snarkvm_gadgets::{
+        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
+        traits::utilities::eq::EqGadget,
+    };
+    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_utilities::rand::test_rng;
+
+    type PC = MarlinKZG10<Bls12_377>;
+    type PG = Bls12_377PairingGadget;
+    type BASE_CURVE = BW6_761;
+
+    const MAX_DEGREE: usize = 383;
+    const SUPPORTED_DEGREE: usize = 300;
+    const SUPPORTED_HIDING_BOUND: usize = 1;
+
+    #[test]
+    fn test_alloc() {
+        let rng = &mut test_rng();
+
+        let cs = &mut TestConstraintSystem::<Fq>::new();
+
+        // Construct the universal params.
+        let pp = PC::setup(MAX_DEGREE, rng).unwrap();
+
+        // Construct the verifying key.
+        let (_committer_key, vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, None).unwrap();
+
+        let prepared_vk = PreparedVerifierKey::prepare(&vk);
+
+        // Allocate the prepared vk gadget.
+        let prepared_vk_gadget =
+            PreparedVerifierKeyVar::<_, BASE_CURVE, PG>::alloc(cs.ns(|| "alloc_prepared_vk"), || {
+                Ok(prepared_vk.clone())
+            })
+            .unwrap();
+
+        // Gadget enforcement checks.
+        let prepared_h_gadget =
+            <PG as PairingGadget<_, _>>::G2PreparedGadget::alloc(cs.ns(|| "alloc_prepared_native_h"), || {
+                Ok(&prepared_vk.prepared_vk.prepared_h)
+            })
+            .unwrap();
+        let prepared_beta_h_gadget =
+            <PG as PairingGadget<_, _>>::G2PreparedGadget::alloc(cs.ns(|| "alloc_native_prepared_beta_h"), || {
+                Ok(&prepared_vk.prepared_vk.prepared_beta_h)
+            })
+            .unwrap();
+
+        for (i, (g_element, g_gadget_element)) in prepared_vk
+            .prepared_vk
+            .prepared_g
+            .iter()
+            .zip(prepared_vk_gadget.prepared_g)
+            .enumerate()
+        {
+            let prepared_g_gadget = <PG as PairingGadget<_, _>>::G1Gadget::alloc(
+                cs.ns(|| format!("alloc_native_prepared_g_{}", i)),
+                || Ok(g_element.into_projective()),
+            )
+            .unwrap();
+
+            prepared_g_gadget
+                .enforce_equal(cs.ns(|| format!("enforce_equals_prepared_g_{}", i)), &g_gadget_element)
+                .unwrap();
+        }
+
+        prepared_h_gadget
+            .enforce_equal(cs.ns(|| "enforce_equals_prepared_h"), &prepared_vk_gadget.prepared_h)
+            .unwrap();
+        prepared_beta_h_gadget
+            .enforce_equal(
+                cs.ns(|| "enforce_equals_prepared_beta_h"),
+                &prepared_vk_gadget.prepared_beta_h,
+            )
+            .unwrap();
+
+        // Native check that degree bounds are equivalent.
+
+        assert_eq!(
+            prepared_vk.prepared_degree_bounds_and_shift_powers.is_some(),
+            prepared_vk_gadget.prepared_degree_bounds_and_shift_powers.is_some()
+        );
+
+        if let (Some(native), Some(gadget)) = (
+            &prepared_vk.prepared_degree_bounds_and_shift_powers,
+            &prepared_vk_gadget.prepared_degree_bounds_and_shift_powers,
+        ) {
+            // Check each degree bound and shift power.
+            for (i, ((native_degree_bounds, native_shift_powers), (degree_bounds, _fp_gadget, shift_powers))) in
+                native.iter().zip(gadget).enumerate()
+            {
+                assert_eq!(native_degree_bounds, degree_bounds);
+
+                for (j, (native_shift_power, shift_power)) in native_shift_powers.iter().zip(shift_powers).enumerate() {
+                    assert_eq!(native_shift_power, &shift_power.get_value().unwrap().into_affine());
+
+                    let shift_power_gadget = <PG as PairingGadget<_, _>>::G1Gadget::alloc(
+                        cs.ns(|| format!("alloc_native_shift_power_{}_{}", i, j)),
+                        || Ok(native_shift_power.into_projective()),
+                    )
+                    .unwrap();
+
+                    shift_power_gadget
+                        .enforce_equal(
+                            cs.ns(|| format!("enforce_equals_shift_power_{}_{}", i, j)),
+                            &shift_power,
+                        )
+                        .unwrap();
+                }
+            }
+        }
+
+        assert!(cs.is_satisfied());
+    }
+
+    #[test]
+    fn test_prepare() {
+        let rng = &mut test_rng();
+
+        let cs = &mut TestConstraintSystem::<Fq>::new();
+
+        // Construct the universal params.
+        let pp = PC::setup(MAX_DEGREE, rng).unwrap();
+
+        // Construct the verifying key.
+        let (_committer_key, vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, None).unwrap();
+
+        // Allocate the vk gadget.
+        let vk_gadget = VerifierKeyVar::<_, BASE_CURVE, PG>::alloc(cs.ns(|| "alloc_vk"), || Ok(vk.clone())).unwrap();
+
+        // Allocate the prepared vk gadget.
+        let prepared_vk = PreparedVerifierKey::prepare(&vk);
+        let expected_prepared_vk_gadget =
+            PreparedVerifierKeyVar::<_, BASE_CURVE, PG>::alloc(cs.ns(|| "alloc_prepared_vk"), || {
+                Ok(prepared_vk.clone())
+            })
+            .unwrap();
+
+        let prepared_vk_gadget = PreparedVerifierKeyVar::prepare(cs.ns(|| "prepare"), &vk_gadget).unwrap();
+
+        // Enforce that the elements are equivalent.
+
+        for (i, (expected_g_element, g_element_gadget)) in expected_prepared_vk_gadget
+            .prepared_g
+            .iter()
+            .zip(prepared_vk_gadget.prepared_g)
+            .enumerate()
+        {
+            g_element_gadget
+                .enforce_equal(
+                    cs.ns(|| format!("enforce_equals_prepared_g_{}", i)),
+                    &expected_g_element,
+                )
+                .unwrap();
+        }
+
+        // TODO (raychu86): Debug prepared_h and prepared_beta_h equality.
+
+        // prepared_vk_gadget
+        //     .prepared_h
+        //     .enforce_equal(
+        //         cs.ns(|| "enforce_equals_prepared_h"),
+        //         &expected_prepared_vk_gadget.prepared_h,
+        //     )
+        //     .unwrap();
+
+        // prepared_vk_gadget
+        //     .prepared_beta_h
+        //     .enforce_equal(
+        //         cs.ns(|| "enforce_equals_prepared_beta_h"),
+        //         &expected_prepared_vk_gadget.prepared_beta_h,
+        //     )
+        //     .unwrap();
+
+        // Native check that degree bounds are equivalent.
+
+        assert_eq!(
+            prepared_vk.prepared_degree_bounds_and_shift_powers.is_some(),
+            prepared_vk_gadget.prepared_degree_bounds_and_shift_powers.is_some()
+        );
+
+        if let (Some(expected), Some(gadget)) = (
+            &expected_prepared_vk_gadget.prepared_degree_bounds_and_shift_powers,
+            &prepared_vk_gadget.prepared_degree_bounds_and_shift_powers,
+        ) {
+            // Check each degree bound and shift power.
+            for (
+                i,
+                (
+                    (expected_degree_bounds, expected_fp_gadget, expected_shift_powers),
+                    (degree_bounds, fp_gadget, shift_powers),
+                ),
+            ) in expected.iter().zip(gadget).enumerate()
+            {
+                assert_eq!(expected_degree_bounds, degree_bounds);
+
+                fp_gadget
+                    .enforce_equal(cs.ns(|| format!("enforce_equals_fp_gadget_{}", i)), &expected_fp_gadget)
+                    .unwrap();
+
+                for (j, (expected_shift_power, shift_power)) in
+                    expected_shift_powers.iter().zip(shift_powers).enumerate()
+                {
+                    assert_eq!(
+                        expected_shift_power.get_value().unwrap().into_affine(),
+                        shift_power.get_value().unwrap().into_affine()
+                    );
+
+                    shift_power
+                        .enforce_equal(
+                            cs.ns(|| format!("enforce_equals_shift_power_{}_{}", i, j)),
+                            &expected_shift_power,
+                        )
+                        .unwrap();
+                }
+            }
+        }
+
+        assert!(cs.is_satisfied());
+    }
+
+    #[test]
+    fn test_to_constraint_field() {
+        unimplemented!()
+    }
+}
