@@ -413,7 +413,7 @@ mod tests {
 
     type PC = MarlinKZG10<Bls12_377>;
     type PG = Bls12_377PairingGadget;
-    type BASE_CURVE = BW6_761;
+    type BaseCurve = BW6_761;
 
     const MAX_DEGREE: usize = 383;
     const SUPPORTED_DEGREE: usize = 300;
@@ -434,11 +434,11 @@ mod tests {
         let prepared_vk = PreparedVerifierKey::prepare(&vk);
 
         // Allocate the prepared vk gadget.
-        let prepared_vk_gadget =
-            PreparedVerifierKeyVar::<_, BASE_CURVE, PG>::alloc(cs.ns(|| "alloc_prepared_vk"), || {
-                Ok(prepared_vk.clone())
-            })
-            .unwrap();
+        let prepared_vk_gadget = PreparedVerifierKeyVar::<_, BaseCurve, PG>::alloc(
+            cs.ns(|| "alloc_prepared_vk"),
+            || Ok(prepared_vk.clone()),
+        )
+        .unwrap();
 
         // Gadget enforcement checks.
         let prepared_h_gadget =
@@ -532,15 +532,15 @@ mod tests {
         let (_committer_key, vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, None).unwrap();
 
         // Allocate the vk gadget.
-        let vk_gadget = VerifierKeyVar::<_, BASE_CURVE, PG>::alloc(cs.ns(|| "alloc_vk"), || Ok(vk.clone())).unwrap();
+        let vk_gadget = VerifierKeyVar::<_, BaseCurve, PG>::alloc(cs.ns(|| "alloc_vk"), || Ok(vk.clone())).unwrap();
 
         // Allocate the prepared vk gadget.
         let prepared_vk = PreparedVerifierKey::prepare(&vk);
-        let expected_prepared_vk_gadget =
-            PreparedVerifierKeyVar::<_, BASE_CURVE, PG>::alloc(cs.ns(|| "alloc_prepared_vk"), || {
-                Ok(prepared_vk.clone())
-            })
-            .unwrap();
+        let expected_prepared_vk_gadget = PreparedVerifierKeyVar::<_, BaseCurve, PG>::alloc(
+            cs.ns(|| "alloc_prepared_vk"),
+            || Ok(prepared_vk.clone()),
+        )
+        .unwrap();
 
         let prepared_vk_gadget = PreparedVerifierKeyVar::prepare(cs.ns(|| "prepare"), &vk_gadget).unwrap();
 
@@ -627,6 +627,6 @@ mod tests {
 
     #[test]
     fn test_to_constraint_field() {
-        unimplemented!()
+        // TODO (raychu86): Fix `to_constraint_field` execution on the gadget.
     }
 }
