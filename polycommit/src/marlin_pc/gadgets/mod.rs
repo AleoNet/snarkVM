@@ -19,10 +19,10 @@ pub mod commitment;
 
 // mod labeled_commitment;
 // pub use labeled_commitment::*;
-//
-// mod prepared_commitment;
-// pub use prepared_commitment::*;
-//
+
+/// Prepared gadget for an optionally hiding Marlin-KZG10 commitment.
+pub mod prepared_commitment;
+
 // mod prepared_labeled_commitment;
 // pub use prepared_labeled_commitment::*;
 
