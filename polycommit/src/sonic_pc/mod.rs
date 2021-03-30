@@ -15,12 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    evaluate_query_set,
     kzg10,
+    lc_query_set_to_poly_query_set,
     BTreeMap,
     BTreeSet,
     BatchLCProof,
     Error,
     Evaluations,
+    LCTerm,
     LabeledCommitment,
     LabeledPolynomial,
     LinearCombination,
@@ -35,12 +38,11 @@ use crate::{
     ToString,
     Vec,
 };
-
 use snarkvm_curves::traits::{AffineCurve, Group, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
-use core::{convert::TryInto, marker::PhantomData};
+use core::{convert::TryInto, iter::FromIterator, marker::PhantomData};
 use rand_core::RngCore;
 
 mod data_structures;
@@ -59,161 +61,6 @@ pub use data_structures::*;
 #[derive(Clone, Debug)]
 pub struct SonicKZG10<E: PairingEngine> {
     _engine: PhantomData<E>,
-}
-
-impl<E: PairingEngine> SonicKZG10<E> {
-    #[allow(clippy::too_many_arguments)]
-    fn accumulate_elems<'a>(
-        combined_comms: &mut BTreeMap<Option<usize>, E::G1Projective>,
-        combined_witness: &mut E::G1Projective,
-        combined_adjusted_witness: &mut E::G1Projective,
-        vk: &VerifierKey<E>,
-        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
-        point: E::Fr,
-        values: impl IntoIterator<Item = E::Fr>,
-        proof: &kzg10::Proof<E>,
-        opening_challenge: E::Fr,
-        randomizer: Option<E::Fr>,
-    ) {
-        let acc_time = start_timer!(|| "Accumulating elements");
-        let mut curr_challenge = opening_challenge;
-
-        // Keeps track of running combination of values
-        let mut combined_values = E::Fr::zero();
-
-        // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
-        for (labeled_comm, value) in commitments.into_iter().zip(values) {
-            combined_values += &(value * &curr_challenge);
-
-            let comm = labeled_comm.commitment();
-            let degree_bound = labeled_comm.degree_bound();
-
-            // Applying opening challenge and randomness (used in batch_checking)
-            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge);
-
-            if let Some(randomizer) = randomizer {
-                comm_with_challenge = comm_with_challenge.mul(&randomizer);
-            }
-
-            // Accumulate values in the BTreeMap
-            *combined_comms.entry(degree_bound).or_insert_with(E::G1Projective::zero) += &comm_with_challenge;
-            curr_challenge *= &opening_challenge;
-        }
-
-        // Push expected results into list of elems. Power will be the negative of the expected power
-        let mut witness: E::G1Projective = proof.w.into_projective();
-        let mut adjusted_witness = vk.g.mul(combined_values) - &proof.w.mul(point);
-        if let Some(random_v) = proof.random_v {
-            adjusted_witness += &vk.gamma_g.mul(random_v);
-        }
-
-        if let Some(randomizer) = randomizer {
-            witness = witness.mul(&randomizer);
-            adjusted_witness = adjusted_witness.mul(&randomizer);
-        }
-
-        *combined_witness += &witness;
-        *combined_adjusted_witness += &adjusted_witness;
-        end_timer!(acc_time);
-    }
-
-    fn accumulate_elems_individual_opening_challenges<'a>(
-        combined_comms: &mut BTreeMap<Option<usize>, E::G1Projective>,
-        combined_witness: &mut E::G1Projective,
-        combined_adjusted_witness: &mut E::G1Projective,
-        vk: &VerifierKey<E>,
-        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
-        point: E::Fr,
-        values: impl IntoIterator<Item = E::Fr>,
-        proof: &kzg10::Proof<E>,
-        opening_challenges: &dyn Fn(u64) -> E::Fr,
-        randomizer: Option<E::Fr>,
-    ) {
-        let acc_time = start_timer!(|| "Accumulating elements");
-
-        let mut opening_challenge_counter = 0;
-        let mut curr_challenge = opening_challenges(opening_challenge_counter);
-        opening_challenge_counter += 1;
-
-        // Keeps track of running combination of values
-        let mut combined_values = E::Fr::zero();
-
-        // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
-        for (labeled_comm, value) in commitments.into_iter().zip(values) {
-            combined_values += &(value * &curr_challenge);
-
-            let comm = labeled_comm.commitment();
-            let degree_bound = labeled_comm.degree_bound();
-
-            // Applying opening challenge and randomness (used in batch_checking)
-            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge);
-
-            if let Some(randomizer) = randomizer {
-                comm_with_challenge = comm_with_challenge.mul(&randomizer);
-            }
-
-            // Accumulate values in the BTreeMap
-            *combined_comms.entry(degree_bound).or_insert(E::G1Projective::zero()) += &comm_with_challenge;
-            curr_challenge = opening_challenges(opening_challenge_counter);
-            opening_challenge_counter += 1;
-        }
-
-        // Push expected results into list of elems. Power will be the negative of the expected power
-        let mut witness: E::G1Projective = proof.w.into_projective();
-        let mut adjusted_witness = vk.g.mul(combined_values) - &proof.w.mul(point);
-        if let Some(random_v) = proof.random_v {
-            adjusted_witness += &vk.gamma_g.mul(random_v);
-        }
-
-        if let Some(randomizer) = randomizer {
-            witness = proof.w.mul(randomizer);
-            adjusted_witness = adjusted_witness.mul(&randomizer);
-        }
-
-        *combined_witness += &witness;
-        *combined_adjusted_witness += &adjusted_witness;
-        end_timer!(acc_time);
-    }
-
-    #[allow(clippy::type_complexity)]
-    fn check_elems(
-        combined_comms: BTreeMap<Option<usize>, E::G1Projective>,
-        combined_witness: E::G1Projective,
-        combined_adjusted_witness: E::G1Projective,
-        vk: &VerifierKey<E>,
-    ) -> Result<bool, Error> {
-        let check_time = start_timer!(|| "Checking elems");
-        let mut g1_projective_elems = Vec::with_capacity(combined_comms.len() + 2);
-        let mut g2_prepared_elems = Vec::with_capacity(combined_comms.len() + 2);
-
-        for (degree_bound, comm) in combined_comms.into_iter() {
-            let shift_power = if let Some(degree_bound) = degree_bound {
-                vk.get_shift_power(degree_bound)
-                    .ok_or(Error::UnsupportedDegreeBound(degree_bound))?
-            } else {
-                vk.prepared_h.clone()
-            };
-
-            g1_projective_elems.push(comm);
-            g2_prepared_elems.push(shift_power);
-        }
-
-        g1_projective_elems.push(-combined_adjusted_witness);
-        g2_prepared_elems.push(vk.prepared_h.clone());
-
-        g1_projective_elems.push(-combined_witness);
-        g2_prepared_elems.push(vk.prepared_beta_h.clone());
-
-        let g1_prepared_elems_iter = E::G1Projective::batch_normalization_into_affine(g1_projective_elems)
-            .into_iter()
-            .map(|a| a.prepare())
-            .collect::<Vec<_>>();
-
-        let g1_g2_prepared = g1_prepared_elems_iter.iter().zip(g2_prepared_elems.iter());
-        let is_one: bool = E::product_of_pairings(g1_g2_prepared).is_one();
-        end_timer!(check_time);
-        Ok(is_one)
-    }
 }
 
 impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
@@ -431,51 +278,6 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
 
         let proof_time = start_timer!(|| "Creating proof for polynomials");
         let proof = kzg10::KZG10::open(&ck.powers(), &combined_polynomial, point, &combined_rand)?;
-        end_timer!(proof_time);
-
-        Ok(proof)
-    }
-
-    fn open_individual_opening_challenges<'a>(
-        ck: &Self::CommitterKey,
-        labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
-        _commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
-        point: &'a E::Fr,
-        opening_challenges: &dyn Fn(u64) -> E::Fr,
-        rands: impl IntoIterator<Item = &'a Self::Randomness>,
-        _rng: Option<&mut dyn RngCore>,
-    ) -> Result<Self::Proof, Self::Error>
-    where
-        Self::Randomness: 'a,
-        Self::Commitment: 'a,
-    {
-        let mut combined_polynomial = Polynomial::zero();
-        let mut combined_rand = kzg10::Randomness::empty();
-
-        let mut opening_challenge_counter = 0;
-
-        let mut curr_challenge = opening_challenges(opening_challenge_counter);
-        opening_challenge_counter += 1;
-
-        for (polynomial, rand) in labeled_polynomials.into_iter().zip(rands) {
-            let enforced_degree_bounds: Option<&[usize]> =
-                ck.enforced_degree_bounds.as_ref().map(|bounds| bounds.as_slice());
-
-            kzg10::KZG10::<E>::check_degrees_and_bounds(
-                ck.supported_degree(),
-                ck.max_degree,
-                enforced_degree_bounds,
-                &polynomial,
-            )?;
-
-            combined_polynomial += (curr_challenge, polynomial.polynomial());
-            combined_rand += (curr_challenge, rand);
-            curr_challenge = opening_challenges(opening_challenge_counter);
-            opening_challenge_counter += 1;
-        }
-
-        let proof_time = start_timer!(|| "Creating proof for polynomials");
-        let proof = kzg10::KZG10::open(&ck.powers(), &combined_polynomial, *point, &combined_rand)?;
         end_timer!(proof_time);
 
         Ok(proof)
@@ -747,17 +549,237 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
         )
     }
 
-    fn check_individual_opening_challenges<'a>(
-        vk: &Self::VerifierKey,
+    /// On input a list of polynomials, linear combinations of those polynomials,
+    /// and a query set, `open_combination` outputs a proof of evaluation of
+    /// the combinations at the points in the query set.
+    fn open_combinations_individual_opening_challenges<'a>(
+        ck: &Self::CommitterKey,
+        linear_combinations: impl IntoIterator<Item = &'a LinearCombination<E::Fr>>,
+        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
-        point: &'a E::Fr,
-        values: impl IntoIterator<Item = E::Fr>,
-        proof: &Self::Proof,
+        query_set: &QuerySet<E::Fr>,
         opening_challenges: &dyn Fn(u64) -> E::Fr,
-        _rng: Option<&mut dyn RngCore>,
+        rands: impl IntoIterator<Item = &'a Self::Randomness>,
+    ) -> Result<BatchLCProof<E::Fr, Self>, Self::Error>
+    where
+        Self::Randomness: 'a,
+        Self::Commitment: 'a,
+    {
+        let linear_combinations: Vec<_> = linear_combinations.into_iter().collect();
+        let polynomials: Vec<_> = polynomials.into_iter().collect();
+        let poly_query_set = lc_query_set_to_poly_query_set(linear_combinations.iter().copied(), query_set);
+        let poly_evals = evaluate_query_set(polynomials.iter().copied(), &poly_query_set);
+        let proof = Self::batch_open_individual_opening_challenges(
+            ck,
+            polynomials,
+            commitments,
+            &poly_query_set,
+            opening_challenges,
+            rands,
+        )?;
+        Ok(BatchLCProof {
+            proof,
+            evaluations: Some(poly_evals.values().copied().collect()),
+        })
+    }
+
+    /// Check combinations with individual challenges.
+    fn check_combinations_individual_opening_challenges<'a, R: RngCore>(
+        vk: &Self::VerifierKey,
+        linear_combinations: impl IntoIterator<Item = &'a LinearCombination<E::Fr>>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
+        eqn_query_set: &QuerySet<E::Fr>,
+        eqn_evaluations: &Evaluations<E::Fr>,
+        proof: &BatchLCProof<E::Fr, Self>,
+        opening_challenges: &dyn Fn(u64) -> E::Fr,
+        _rng: &mut R,
     ) -> Result<bool, Self::Error>
     where
         Self::Commitment: 'a,
+    {
+        let BatchLCProof { proof, evaluations } = proof;
+
+        let lc_s = BTreeMap::from_iter(linear_combinations.into_iter().map(|lc| (lc.label(), lc)));
+
+        let poly_query_set = lc_query_set_to_poly_query_set(lc_s.values().copied(), eqn_query_set);
+        let poly_evals: Evaluations<_> = poly_query_set
+            .iter()
+            .cloned()
+            .zip(evaluations.clone().unwrap())
+            .collect();
+
+        for &(ref lc_label, ref point) in eqn_query_set {
+            if let Some(lc) = lc_s.get(lc_label) {
+                let claimed_rhs =
+                    *eqn_evaluations
+                        .get(&(lc_label.clone(), point.clone()))
+                        .ok_or(Error::MissingEvaluation {
+                            label: lc_label.to_string(),
+                        })?;
+
+                let mut actual_rhs = E::Fr::zero();
+
+                for (coeff, label) in lc.iter() {
+                    let eval = match label {
+                        LCTerm::One => E::Fr::one(),
+                        LCTerm::PolyLabel(l) => *poly_evals
+                            .get(&(l.clone().into(), point.clone()))
+                            .ok_or(Error::MissingEvaluation { label: l.clone() })?,
+                    };
+
+                    actual_rhs += &(*coeff * &eval);
+                }
+                if claimed_rhs != actual_rhs {
+                    eprintln!("Claimed evaluation of {} is incorrect", lc.label());
+                    return Ok(false);
+                }
+            }
+        }
+
+        let pc_result = Self::batch_check_individual_opening_challenges(
+            vk,
+            commitments,
+            &poly_query_set,
+            &poly_evals,
+            proof,
+            opening_challenges,
+        )?;
+        if !pc_result {
+            eprintln!("Evaluation proofs failed to verify");
+            return Ok(false);
+        }
+
+        Ok(true)
+    }
+}
+
+impl<E: PairingEngine> SonicKZG10<E> {
+    fn open_individual_opening_challenges<'a>(
+        ck: &<Self as PolynomialCommitment<E::Fr>>::CommitterKey,
+        labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
+        _commitments: impl IntoIterator<Item = &'a LabeledCommitment<<Self as PolynomialCommitment<E::Fr>>::Commitment>>,
+        point: &'a E::Fr,
+        opening_challenges: &dyn Fn(u64) -> E::Fr,
+        rands: impl IntoIterator<Item = &'a <Self as PolynomialCommitment<E::Fr>>::Randomness>,
+    ) -> Result<<Self as PolynomialCommitment<E::Fr>>::Proof, <Self as PolynomialCommitment<E::Fr>>::Error>
+    where
+        <Self as PolynomialCommitment<E::Fr>>::Randomness: 'a,
+        <Self as PolynomialCommitment<E::Fr>>::Commitment: 'a,
+    {
+        let mut combined_polynomial = Polynomial::zero();
+        let mut combined_rand = kzg10::Randomness::empty();
+
+        let mut opening_challenge_counter = 0;
+
+        let mut curr_challenge = opening_challenges(opening_challenge_counter);
+        opening_challenge_counter += 1;
+
+        for (polynomial, rand) in labeled_polynomials.into_iter().zip(rands) {
+            let enforced_degree_bounds: Option<&[usize]> =
+                ck.enforced_degree_bounds.as_ref().map(|bounds| bounds.as_slice());
+
+            kzg10::KZG10::<E>::check_degrees_and_bounds(
+                ck.supported_degree(),
+                ck.max_degree,
+                enforced_degree_bounds,
+                &polynomial,
+            )?;
+
+            combined_polynomial += (curr_challenge, polynomial.polynomial());
+            combined_rand += (curr_challenge, rand);
+            curr_challenge = opening_challenges(opening_challenge_counter);
+            opening_challenge_counter += 1;
+        }
+
+        let proof_time = start_timer!(|| "Creating proof for polynomials");
+        let proof = kzg10::KZG10::open(&ck.powers(), &combined_polynomial, *point, &combined_rand)?;
+        end_timer!(proof_time);
+
+        Ok(proof)
+    }
+
+    /// On input a list of labeled polynomials and a query set, `open` outputs a proof of evaluation
+    /// of the polynomials at the points in the query set.
+    fn batch_open_individual_opening_challenges<'a>(
+        ck: &<Self as PolynomialCommitment<E::Fr>>::CommitterKey,
+        labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<<Self as PolynomialCommitment<E::Fr>>::Commitment>>,
+        query_set: &QuerySet<E::Fr>,
+        opening_challenges: &dyn Fn(u64) -> E::Fr,
+        rands: impl IntoIterator<Item = &'a <Self as PolynomialCommitment<E::Fr>>::Randomness>,
+    ) -> Result<<Self as PolynomialCommitment<E::Fr>>::BatchProof, <Self as PolynomialCommitment<E::Fr>>::Error>
+    where
+        <Self as PolynomialCommitment<E::Fr>>::Randomness: 'a,
+        <Self as PolynomialCommitment<E::Fr>>::Commitment: 'a,
+    {
+        let poly_rand_comm: BTreeMap<_, _> = labeled_polynomials
+            .into_iter()
+            .zip(rands)
+            .zip(commitments.into_iter())
+            .map(|((poly, r), comm)| (poly.label(), (poly, r, comm)))
+            .collect();
+
+        let open_time = start_timer!(|| format!(
+            "Opening {} polynomials at query set of size {}",
+            poly_rand_comm.len(),
+            query_set.len(),
+        ));
+
+        let mut query_to_labels_map = BTreeMap::new();
+
+        for (label, point) in query_set.iter() {
+            let labels = query_to_labels_map.entry(point).or_insert_with(BTreeSet::new);
+            labels.insert(label);
+        }
+
+        let mut proofs = Vec::new();
+        for (query, labels) in query_to_labels_map.into_iter() {
+            let mut query_polys: Vec<&'a LabeledPolynomial<_>> = Vec::new();
+            let mut query_rands: Vec<&'a <Self as PolynomialCommitment<E::Fr>>::Randomness> = Vec::new();
+            let mut query_comms: Vec<&'a LabeledCommitment<<Self as PolynomialCommitment<E::Fr>>::Commitment>> =
+                Vec::new();
+
+            for label in labels {
+                let (polynomial, rand, comm) = poly_rand_comm.get(label).ok_or(Error::MissingPolynomial {
+                    label: label.to_string(),
+                })?;
+
+                query_polys.push(polynomial);
+                query_rands.push(rand);
+                query_comms.push(comm);
+            }
+
+            let proof_time = start_timer!(|| "Creating proof");
+            let proof = Self::open_individual_opening_challenges(
+                ck,
+                query_polys,
+                query_comms,
+                &query,
+                opening_challenges,
+                query_rands,
+            )?;
+
+            end_timer!(proof_time);
+
+            proofs.push(proof);
+        }
+        end_timer!(open_time);
+
+        Ok(proofs.into())
+    }
+
+    /// Verifies that `value` is the evaluation at `x` of the polynomial
+    /// committed inside `comm`.
+    fn check_individual_opening_challenges<'a>(
+        vk: &<Self as PolynomialCommitment<E::Fr>>::VerifierKey,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<<Self as PolynomialCommitment<E::Fr>>::Commitment>>,
+        point: &'a E::Fr,
+        values: impl IntoIterator<Item = E::Fr>,
+        proof: &<Self as PolynomialCommitment<E::Fr>>::Proof,
+        opening_challenges: &dyn Fn(u64) -> E::Fr,
+    ) -> Result<bool, <Self as PolynomialCommitment<E::Fr>>::Error>
+    where
+        <Self as PolynomialCommitment<E::Fr>>::Commitment: 'a,
     {
         let check_time = start_timer!(|| "Checking evaluations");
         let mut combined_comms: BTreeMap<Option<usize>, E::G1Projective> = BTreeMap::new();
@@ -780,6 +802,212 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
         let res = Self::check_elems(combined_comms, combined_witness, combined_adjusted_witness, vk);
         end_timer!(check_time);
         res
+    }
+
+    /// batch_check but with individual challenges
+    fn batch_check_individual_opening_challenges<'a>(
+        vk: &<Self as PolynomialCommitment<E::Fr>>::VerifierKey,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<<Self as PolynomialCommitment<E::Fr>>::Commitment>>,
+        query_set: &QuerySet<E::Fr>,
+        evaluations: &Evaluations<E::Fr>,
+        proof: &<Self as PolynomialCommitment<E::Fr>>::BatchProof,
+        opening_challenges: &dyn Fn(u64) -> E::Fr,
+    ) -> Result<bool, <Self as PolynomialCommitment<E::Fr>>::Error>
+    where
+        <Self as PolynomialCommitment<E::Fr>>::Commitment: 'a,
+    {
+        let commitments: BTreeMap<_, _> = commitments.into_iter().map(|c| (c.label(), c)).collect();
+
+        let mut query_to_labels_map = BTreeMap::new();
+        for (label, point) in query_set.iter() {
+            let labels = query_to_labels_map.entry(point).or_insert_with(BTreeSet::new);
+            labels.insert(label);
+        }
+
+        // Implicit assumption: proofs are order in same manner as queries in
+        // `query_to_labels_map`.
+        let proofs: Vec<_> = proof.clone().into();
+        assert_eq!(proofs.len(), query_to_labels_map.len());
+
+        let mut result = true;
+        for ((point, labels), proof) in query_to_labels_map.into_iter().zip(proofs) {
+            let mut comms: Vec<&'_ LabeledCommitment<_>> = Vec::new();
+            let mut values = Vec::new();
+            for label in labels {
+                let commitment = commitments.get(label).ok_or(Error::MissingPolynomial {
+                    label: label.to_string(),
+                })?;
+
+                let v_i = evaluations
+                    .get(&(label.clone(), point.clone()))
+                    .ok_or(Error::MissingEvaluation {
+                        label: label.to_string(),
+                    })?;
+
+                comms.push(commitment);
+                values.push(*v_i);
+            }
+
+            let proof_time = start_timer!(|| "Checking per-query proof");
+            result &= Self::check_individual_opening_challenges(vk, comms, &point, values, &proof, opening_challenges)?;
+            end_timer!(proof_time);
+        }
+        Ok(result)
+    }
+}
+
+impl<E: PairingEngine> SonicKZG10<E> {
+    #[allow(clippy::too_many_arguments)]
+    fn accumulate_elems<'a>(
+        combined_comms: &mut BTreeMap<Option<usize>, E::G1Projective>,
+        combined_witness: &mut E::G1Projective,
+        combined_adjusted_witness: &mut E::G1Projective,
+        vk: &VerifierKey<E>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
+        point: E::Fr,
+        values: impl IntoIterator<Item = E::Fr>,
+        proof: &kzg10::Proof<E>,
+        opening_challenge: E::Fr,
+        randomizer: Option<E::Fr>,
+    ) {
+        let acc_time = start_timer!(|| "Accumulating elements");
+        let mut curr_challenge = opening_challenge;
+
+        // Keeps track of running combination of values
+        let mut combined_values = E::Fr::zero();
+
+        // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
+        for (labeled_comm, value) in commitments.into_iter().zip(values) {
+            combined_values += &(value * &curr_challenge);
+
+            let comm = labeled_comm.commitment();
+            let degree_bound = labeled_comm.degree_bound();
+
+            // Applying opening challenge and randomness (used in batch_checking)
+            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge);
+
+            if let Some(randomizer) = randomizer {
+                comm_with_challenge = comm_with_challenge.mul(&randomizer);
+            }
+
+            // Accumulate values in the BTreeMap
+            *combined_comms.entry(degree_bound).or_insert_with(E::G1Projective::zero) += &comm_with_challenge;
+            curr_challenge *= &opening_challenge;
+        }
+
+        // Push expected results into list of elems. Power will be the negative of the expected power
+        let mut witness: E::G1Projective = proof.w.into_projective();
+        let mut adjusted_witness = vk.g.mul(combined_values) - &proof.w.mul(point);
+        if let Some(random_v) = proof.random_v {
+            adjusted_witness += &vk.gamma_g.mul(random_v);
+        }
+
+        if let Some(randomizer) = randomizer {
+            witness = witness.mul(&randomizer);
+            adjusted_witness = adjusted_witness.mul(&randomizer);
+        }
+
+        *combined_witness += &witness;
+        *combined_adjusted_witness += &adjusted_witness;
+        end_timer!(acc_time);
+    }
+
+    fn accumulate_elems_individual_opening_challenges<'a>(
+        combined_comms: &mut BTreeMap<Option<usize>, E::G1Projective>,
+        combined_witness: &mut E::G1Projective,
+        combined_adjusted_witness: &mut E::G1Projective,
+        vk: &VerifierKey<E>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
+        point: E::Fr,
+        values: impl IntoIterator<Item = E::Fr>,
+        proof: &kzg10::Proof<E>,
+        opening_challenges: &dyn Fn(u64) -> E::Fr,
+        randomizer: Option<E::Fr>,
+    ) {
+        let acc_time = start_timer!(|| "Accumulating elements");
+
+        let mut opening_challenge_counter = 0;
+        let mut curr_challenge = opening_challenges(opening_challenge_counter);
+        opening_challenge_counter += 1;
+
+        // Keeps track of running combination of values
+        let mut combined_values = E::Fr::zero();
+
+        // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
+        for (labeled_comm, value) in commitments.into_iter().zip(values) {
+            combined_values += &(value * &curr_challenge);
+
+            let comm = labeled_comm.commitment();
+            let degree_bound = labeled_comm.degree_bound();
+
+            // Applying opening challenge and randomness (used in batch_checking)
+            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge);
+
+            if let Some(randomizer) = randomizer {
+                comm_with_challenge = comm_with_challenge.mul(&randomizer);
+            }
+
+            // Accumulate values in the BTreeMap
+            *combined_comms.entry(degree_bound).or_insert(E::G1Projective::zero()) += &comm_with_challenge;
+            curr_challenge = opening_challenges(opening_challenge_counter);
+            opening_challenge_counter += 1;
+        }
+
+        // Push expected results into list of elems. Power will be the negative of the expected power
+        let mut witness: E::G1Projective = proof.w.into_projective();
+        let mut adjusted_witness = vk.g.mul(combined_values) - &proof.w.mul(point);
+        if let Some(random_v) = proof.random_v {
+            adjusted_witness += &vk.gamma_g.mul(random_v);
+        }
+
+        if let Some(randomizer) = randomizer {
+            witness = proof.w.mul(randomizer);
+            adjusted_witness = adjusted_witness.mul(&randomizer);
+        }
+
+        *combined_witness += &witness;
+        *combined_adjusted_witness += &adjusted_witness;
+        end_timer!(acc_time);
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn check_elems(
+        combined_comms: BTreeMap<Option<usize>, E::G1Projective>,
+        combined_witness: E::G1Projective,
+        combined_adjusted_witness: E::G1Projective,
+        vk: &VerifierKey<E>,
+    ) -> Result<bool, Error> {
+        let check_time = start_timer!(|| "Checking elems");
+        let mut g1_projective_elems = Vec::with_capacity(combined_comms.len() + 2);
+        let mut g2_prepared_elems = Vec::with_capacity(combined_comms.len() + 2);
+
+        for (degree_bound, comm) in combined_comms.into_iter() {
+            let shift_power = if let Some(degree_bound) = degree_bound {
+                vk.get_shift_power(degree_bound)
+                    .ok_or(Error::UnsupportedDegreeBound(degree_bound))?
+            } else {
+                vk.prepared_h.clone()
+            };
+
+            g1_projective_elems.push(comm);
+            g2_prepared_elems.push(shift_power);
+        }
+
+        g1_projective_elems.push(-combined_adjusted_witness);
+        g2_prepared_elems.push(vk.prepared_h.clone());
+
+        g1_projective_elems.push(-combined_witness);
+        g2_prepared_elems.push(vk.prepared_beta_h.clone());
+
+        let g1_prepared_elems_iter = E::G1Projective::batch_normalization_into_affine(g1_projective_elems)
+            .into_iter()
+            .map(|a| a.prepare())
+            .collect::<Vec<_>>();
+
+        let g1_g2_prepared = g1_prepared_elems_iter.iter().zip(g2_prepared_elems.iter());
+        let is_one: bool = E::product_of_pairings(g1_g2_prepared).is_one();
+        end_timer!(check_time);
+        Ok(is_one)
     }
 }
 
