@@ -18,11 +18,17 @@ use crate::marlin_pc::Commitment;
 
 use snarkvm_curves::{traits::AffineCurve, PairingEngine};
 use snarkvm_fields::ToConstraintField;
-use snarkvm_gadgets::{traits::curves::PairingGadget, utilities::alloc::AllocGadget};
+use snarkvm_gadgets::{
+    fields::FpGadget,
+    traits::{
+        curves::{GroupGadget, PairingGadget},
+        fields::ToConstraintFieldGadget,
+    },
+    utilities::{alloc::AllocGadget, uint::UInt8, ToBytesGadget},
+};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use core::borrow::Borrow;
-use snarkvm_gadgets::{fields::FpGadget, traits::fields::ToConstraintFieldGadget};
 
 /// Var for an optionally hiding Marlin-KZG10 commitment.
 pub struct CommitmentVar<
@@ -177,5 +183,36 @@ where
         }
 
         Ok(res)
+    }
+}
+
+impl<TargetCurve, BaseCurve, PG> ToBytesGadget<<BaseCurve as PairingEngine>::Fr>
+    for CommitmentVar<TargetCurve, BaseCurve, PG>
+where
+    TargetCurve: PairingEngine,
+    BaseCurve: PairingEngine,
+    PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
+    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
+    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
+{
+    fn to_bytes<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
+        &self,
+        mut cs: CS,
+    ) -> Result<Vec<UInt8>, SynthesisError> {
+        let zero_shifted_comm = PG::G1Gadget::zero(cs.ns(|| "zero"))?;
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&self.comm.to_bytes(cs.ns(|| "comm_to_bytes"))?);
+
+        let shifted_comm = self.shifted_comm.clone().unwrap_or(zero_shifted_comm);
+        bytes.extend_from_slice(&shifted_comm.to_bytes(cs.ns(|| "shifted_comm_to_bytes"))?);
+        Ok(bytes)
+    }
+
+    fn to_bytes_strict<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
+        &self,
+        cs: CS,
+    ) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes(cs)
     }
 }
