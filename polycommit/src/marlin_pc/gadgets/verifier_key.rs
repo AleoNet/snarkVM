@@ -380,9 +380,12 @@ mod tests {
         bw6_761::BW6_761,
         ProjectiveCurve,
     };
+    use snarkvm_fields::PrimeField;
     use snarkvm_gadgets::curves::bls12_377::PairingGadget as Bls12_377PairingGadget;
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::test_rng;
+
+    use rand::Rng;
 
     type PC = MarlinKZG10<Bls12_377>;
     type PG = Bls12_377PairingGadget;
@@ -406,11 +409,34 @@ mod tests {
         // Allocate the vk gadget.
         let vk_gadget = VerifierKeyVar::<_, BW6_761, PG>::alloc(cs.ns(|| "alloc_vk"), || Ok(vk.clone())).unwrap();
 
-        // Naive value comparison
+        // Naive value comparison.
         assert_eq!(vk.vk.g, vk_gadget.g.get_value().unwrap().into_affine());
         assert_eq!(vk.vk.h, vk_gadget.h.get_value().unwrap().into_affine());
         assert_eq!(vk.vk.beta_h, vk_gadget.beta_h.get_value().unwrap().into_affine());
-        assert_eq!(vk.vk.beta_h, vk_gadget.beta_h.get_value().unwrap().into_affine());
+
+        // Gadget enforcement checks.
+        let g_gadget =
+            <PG as PairingGadget<_, _>>::G1Gadget::alloc(cs.ns(|| "alloc_native_g"), || Ok(vk.vk.g.into_projective()))
+                .unwrap();
+        let h_gadget =
+            <PG as PairingGadget<_, _>>::G2Gadget::alloc(cs.ns(|| "alloc_native_h"), || Ok(vk.vk.h.into_projective()))
+                .unwrap();
+        let beta_h_gadget = <PG as PairingGadget<_, _>>::G2Gadget::alloc(cs.ns(|| "alloc_native_beta_h"), || {
+            Ok(vk.vk.beta_h.into_projective())
+        })
+        .unwrap();
+
+        g_gadget
+            .enforce_equal(cs.ns(|| "enforce_equals_g"), &vk_gadget.g)
+            .unwrap();
+        h_gadget
+            .enforce_equal(cs.ns(|| "enforce_equals_h"), &vk_gadget.h)
+            .unwrap();
+        beta_h_gadget
+            .enforce_equal(cs.ns(|| "enforce_equals_beta_h"), &vk_gadget.beta_h)
+            .unwrap();
+
+        // Native check that degree bounds are equivalent.
 
         assert_eq!(
             vk.degree_bounds_and_shift_powers.is_some(),
@@ -418,27 +444,72 @@ mod tests {
         );
 
         if let (Some(native), Some(gadget)) = (
-            vk.degree_bounds_and_shift_powers,
-            vk_gadget.degree_bounds_and_shift_powers,
+            &vk.degree_bounds_and_shift_powers,
+            &vk_gadget.degree_bounds_and_shift_powers,
         ) {
-            for ((native_degree_bounds, native_shift_power), (degree_bounds, fp_gadget, shift_power)) in
-                native.iter().zip(gadget)
+            // Check each degree bound and shift power.
+            for (i, ((native_degree_bounds, native_shift_power), (degree_bounds, _fp_gadget, shift_power))) in
+                native.iter().zip(gadget).enumerate()
             {
-                assert_eq!(native_degree_bounds, &degree_bounds);
+                assert_eq!(native_degree_bounds, degree_bounds);
                 assert_eq!(native_shift_power, &shift_power.get_value().unwrap().into_affine());
+
+                let shift_power_gadget = <PG as PairingGadget<_, _>>::G1Gadget::alloc(
+                    cs.ns(|| format!("alloc_native_shift_power_{}", i)),
+                    || Ok(native_shift_power.into_projective()),
+                )
+                .unwrap();
+
+                shift_power_gadget
+                    .enforce_equal(cs.ns(|| format!("enforce_equals_shift_power_{}", i)), &shift_power)
+                    .unwrap();
             }
         }
 
-        // TODO (raychu86): Construct the gadget comparison checks.
-        // 1. Alloc the elements from the native vk directly
-        // 2. Call `enforce_equal` on the allocatd gadgets and the subgadgets of `vk_gadget`
-
-        // let g_gadget = <PG as PairingGadget<_, _>>::G1Gadget::alloc(|| "alloc_native_g", || Ok(vk.vk.g)).unwrap();
+        assert!(cs.is_satisfied());
     }
 
     #[test]
     fn test_get_shift_power() {
-        unimplemented!()
+        let rng = &mut test_rng();
+
+        let cs = &mut TestConstraintSystem::<Fq>::new();
+
+        // Construct the universal params.
+        let pp = PC::setup(MAX_DEGREE, rng).unwrap();
+
+        // Establish the bound
+        let bound = rng.gen_range(1..=SUPPORTED_DEGREE);
+
+        let bound_field = <BW6_761 as PairingEngine>::Fr::from_repr(
+            <<BW6_761 as PairingEngine>::Fr as PrimeField>::BigInteger::from(bound as u64),
+        )
+        .unwrap();
+        let bound_gadget = FpGadget::alloc(cs.ns(|| "alloc_bound"), || Ok(bound_field)).unwrap();
+
+        // Construct the verifying key.
+        let (_committer_key, vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, Some(&vec![bound])).unwrap();
+
+        // Allocate the vk gadget.
+        let vk_gadget = VerifierKeyVar::<_, BW6_761, PG>::alloc(cs.ns(|| "alloc_vk"), || Ok(vk.clone())).unwrap();
+
+        // Fetch the shift power
+        let shift_power = vk.get_shift_power(bound).unwrap();
+        let expected_shift_power =
+            <PG as PairingGadget<_, _>>::G1Gadget::alloc(cs.ns(|| "alloc_native_shift_power"), || {
+                Ok(shift_power.into_projective())
+            })
+            .unwrap();
+
+        let shift_power_gadget = vk_gadget
+            .get_shift_power(cs.ns(|| "get_shift_power"), &bound_gadget)
+            .unwrap();
+
+        shift_power_gadget
+            .enforce_equal(cs.ns(|| "enforce_equals_shift_power"), &expected_shift_power)
+            .unwrap();
+
+        assert!(cs.is_satisfied());
     }
 
     #[test]
