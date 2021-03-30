@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// mod commitment;
-// pub use commitment::*;
-//
+/// Gadget for an optionally hiding Marlin-KZG10 commitment.
+pub mod commitment;
+
 // mod labeled_commitment;
 // pub use labeled_commitment::*;
 //
