@@ -198,6 +198,38 @@ where
     }
 }
 
+/// `PreparedCommitment` commits to a polynomial and prepares for mul_bits.
+#[derive(Derivative)]
+#[derivative(
+    Default(bound = ""),
+    Hash(bound = ""),
+    Clone(bound = ""),
+    Debug(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+pub struct PreparedCommitment<E: PairingEngine>(
+    /// The commitment is a group element.
+    pub Vec<E::G1Affine>,
+);
+
+impl<E: PairingEngine> PreparedCommitment<E> {
+    /// prepare `PreparedCommitment` from `Commitment`
+    pub fn prepare(comm: &Commitment<E>) -> Self {
+        let mut prepared_comm = Vec::<E::G1Affine>::new();
+        let mut cur = E::G1Projective::from(comm.0.clone());
+
+        let supported_bits = E::Fr::size_in_bits();
+
+        for _ in 0..supported_bits {
+            prepared_comm.push(cur.clone().into());
+            cur.double_in_place();
+        }
+
+        Self { 0: prepared_comm }
+    }
+}
+
 /// `Randomness` hides the polynomial inside a commitment. It is output by `KZG10::commit`.
 #[derive(Derivative)]
 #[derivative(
