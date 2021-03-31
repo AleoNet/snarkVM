@@ -29,8 +29,8 @@ pub struct MerkleTree<P: MerkleParameters> {
     /// The internal hashes, from root to hashed leaves, of the full Merkle tree.
     tree: Vec<MerkleTreeDigest<P>>,
 
-    /// The hash of each non-empty leaf in the Merkle tree.
-    hashed_leaves: Vec<MerkleTreeDigest<P>>, // TODO(ljedrz): this can be procured without allocations
+    /// The index from which hashes of each non-empty leaf in the Merkle tree can be obtained.
+    hashed_leaves_index: usize,
 
     /// For each level after a full tree has been built from the leaves,
     /// keeps both the roots the siblings that are used to get to the desired depth.
@@ -108,11 +108,10 @@ impl<P: MerkleParameters> MerkleTree<P> {
 
         end_timer!(new_time);
 
-        let hashed_leaves = tree[last_level_index..].to_vec();
         Ok(MerkleTree {
             tree,
             padding_tree,
-            hashed_leaves,
+            hashed_leaves_index: last_level_index,
             parameters,
             root: Some(root_hash),
         })
@@ -154,7 +153,7 @@ impl<P: MerkleParameters> MerkleTree<P> {
         let mut buffer = vec![0u8; hash_input_size_in_bytes];
 
         // The beginning of the tree can be reconstructed from pre-existing hashed leaves.
-        tree[last_level_index..][..old_leaves.len()].clone_from_slice(&self.hashed_leaves[..old_leaves.len()]);
+        tree[last_level_index..][..old_leaves.len()].clone_from_slice(&self.hashed_leaves()[..old_leaves.len()]);
 
         // The new leaves require hashing.
         for (i, leaf) in new_leaves.enumerate() {
@@ -210,12 +209,10 @@ impl<P: MerkleParameters> MerkleTree<P> {
 
         end_timer!(new_time);
 
-        let hashed_leaves = tree[last_level_index..].to_vec();
-
         // update the values at the very end so the original tree is not altered in case of failure
         self.root = Some(root_hash);
         self.tree = tree;
-        self.hashed_leaves = hashed_leaves;
+        self.hashed_leaves_index = last_level_index;
         self.padding_tree = padding_tree;
 
         Ok(())
@@ -233,7 +230,7 @@ impl<P: MerkleParameters> MerkleTree<P> {
 
     #[inline]
     pub fn hashed_leaves(&self) -> &[<P::H as CRH>::Output] {
-        &self.hashed_leaves
+        &self.tree[self.hashed_leaves_index..]
     }
 
     pub fn generate_proof<L: ToBytes>(&self, index: usize, leaf: &L) -> Result<MerklePath<P>, MerkleError> {
