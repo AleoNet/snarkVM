@@ -16,6 +16,7 @@
 
 /// Gadget for an optionally hiding Marlin-KZG10 commitment.
 pub mod commitment;
+pub(crate) use commitment::*;
 
 // mod labeled_commitment;
 // pub use labeled_commitment::*;

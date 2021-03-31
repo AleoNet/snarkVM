@@ -14,9 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::{
+    marlin_pc::{CommitmentVar, PreparedCommitment},
+    PrepareGadget,
+};
+
 use snarkvm_curves::PairingEngine;
-use snarkvm_fields::ToConstraintField;
-use snarkvm_gadgets::traits::curves::PairingGadget;
+use snarkvm_fields::{PrimeField, ToConstraintField};
+use snarkvm_gadgets::{
+    traits::curves::{GroupGadget, PairingGadget},
+    utilities::alloc::AllocGadget,
+};
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+
+use core::borrow::Borrow;
 
 /// Prepared gadget for an optionally hiding Marlin-KZG10 commitment.
 /// shifted_comm is not prepared, due to the specific use case.
@@ -45,5 +56,177 @@ where
             prepared_comm: self.prepared_comm.clone(),
             shifted_comm: self.shifted_comm.clone(),
         }
+    }
+}
+
+impl<TargetCurve, BaseCurve, PG>
+    PrepareGadget<CommitmentVar<TargetCurve, BaseCurve, PG>, <BaseCurve as PairingEngine>::Fr>
+    for PreparedCommitmentVar<TargetCurve, BaseCurve, PG>
+where
+    TargetCurve: PairingEngine,
+    BaseCurve: PairingEngine,
+    PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
+    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
+    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
+{
+    fn prepare<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
+        mut cs: CS,
+        unprepared: &CommitmentVar<TargetCurve, BaseCurve, PG>,
+    ) -> Result<Self, SynthesisError> {
+        let mut prepared_comm = Vec::<PG::G1Gadget>::new();
+        let supported_bits = <<TargetCurve as PairingEngine>::Fr as PrimeField>::size_in_bits();
+
+        let mut cur: PG::G1Gadget = unprepared.comm.clone();
+        for i in 0..supported_bits {
+            prepared_comm.push(cur.clone());
+            cur.double_in_place(cs.ns(|| format!("cur_double_in_place_{}", i)))?;
+        }
+
+        Ok(Self {
+            prepared_comm,
+            shifted_comm: unprepared.shifted_comm.clone(),
+        })
+    }
+}
+
+impl<TargetCurve, BaseCurve, PG> AllocGadget<PreparedCommitment<TargetCurve>, <BaseCurve as PairingEngine>::Fr>
+    for PreparedCommitmentVar<TargetCurve, BaseCurve, PG>
+where
+    TargetCurve: PairingEngine,
+    BaseCurve: PairingEngine,
+    PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
+    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
+    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
+{
+    fn alloc_constant<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PreparedCommitment<TargetCurve>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        let obj = value_gen()?.borrow().clone();
+
+        let mut prepared_comm = Vec::<PG::G1Gadget>::new();
+
+        for (i, comm_elem) in obj.prepared_comm.0.iter().enumerate() {
+            prepared_comm.push(<PG::G1Gadget as AllocGadget<
+                <TargetCurve as PairingEngine>::G1Projective,
+                <BaseCurve as PairingEngine>::Fr,
+            >>::alloc_constant(
+                cs.ns(|| format!("comm_elem_{}", i)),
+                || {
+                    Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
+                        <TargetCurve as PairingEngine>::G1Affine,
+                    >>::from(*comm_elem))
+                },
+            )?);
+        }
+
+        let shifted_comm = if obj.shifted_comm.is_some() {
+            Some(<PG::G1Gadget as AllocGadget<
+                <TargetCurve as PairingEngine>::G1Projective,
+                <BaseCurve as PairingEngine>::Fr,
+            >>::alloc_constant(cs.ns(|| "shifted_comm"), || {
+                Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
+                    <TargetCurve as PairingEngine>::G1Affine,
+                >>::from(obj.shifted_comm.unwrap().0))
+            })?)
+        } else {
+            None
+        };
+
+        Ok(Self {
+            prepared_comm,
+            shifted_comm,
+        })
+    }
+
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PreparedCommitment<TargetCurve>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        let obj = value_gen()?.borrow().clone();
+
+        let mut prepared_comm = Vec::<PG::G1Gadget>::new();
+
+        for (i, comm_elem) in obj.prepared_comm.0.iter().enumerate() {
+            prepared_comm.push(<PG::G1Gadget as AllocGadget<
+                <TargetCurve as PairingEngine>::G1Projective,
+                <BaseCurve as PairingEngine>::Fr,
+            >>::alloc(cs.ns(|| format!("comm_elem_{}", i)), || {
+                Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
+                    <TargetCurve as PairingEngine>::G1Affine,
+                >>::from(*comm_elem))
+            })?);
+        }
+
+        let shifted_comm = if obj.shifted_comm.is_some() {
+            Some(<PG::G1Gadget as AllocGadget<
+                <TargetCurve as PairingEngine>::G1Projective,
+                <BaseCurve as PairingEngine>::Fr,
+            >>::alloc(cs.ns(|| "shifted_comm"), || {
+                Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
+                    <TargetCurve as PairingEngine>::G1Affine,
+                >>::from(obj.shifted_comm.unwrap().0))
+            })?)
+        } else {
+            None
+        };
+
+        Ok(Self {
+            prepared_comm,
+            shifted_comm,
+        })
+    }
+
+    fn alloc_input<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PreparedCommitment<TargetCurve>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        mut cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        let obj = value_gen()?.borrow().clone();
+
+        let mut prepared_comm = Vec::<PG::G1Gadget>::new();
+
+        for (i, comm_elem) in obj.prepared_comm.0.iter().enumerate() {
+            prepared_comm.push(<PG::G1Gadget as AllocGadget<
+                <TargetCurve as PairingEngine>::G1Projective,
+                <BaseCurve as PairingEngine>::Fr,
+            >>::alloc_input(
+                cs.ns(|| format!("comm_elem_{}", i)),
+                || {
+                    Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
+                        <TargetCurve as PairingEngine>::G1Affine,
+                    >>::from(*comm_elem))
+                },
+            )?);
+        }
+
+        let shifted_comm = if obj.shifted_comm.is_some() {
+            Some(<PG::G1Gadget as AllocGadget<
+                <TargetCurve as PairingEngine>::G1Projective,
+                <BaseCurve as PairingEngine>::Fr,
+            >>::alloc_input(cs.ns(|| "shifted_comm"), || {
+                Ok(<<TargetCurve as PairingEngine>::G1Projective as From<
+                    <TargetCurve as PairingEngine>::G1Affine,
+                >>::from(obj.shifted_comm.unwrap().0))
+            })?)
+        } else {
+            None
+        };
+
+        Ok(Self {
+            prepared_comm,
+            shifted_comm,
+        })
     }
 }
