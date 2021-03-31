@@ -192,8 +192,17 @@ impl<P: MerkleParameters> MerkleTree<P> {
         // Finished computing actual tree.
         // Now, we compute the dummy nodes until we hit our DEPTH goal.
         let mut current_depth = tree_depth;
-        let mut padding_tree = Vec::with_capacity((Self::DEPTH as usize).saturating_sub(current_depth + 1));
         let mut current_hash = tree[0].clone();
+
+        // The whole padding tree can be reused if the current hash matches the previous one.
+        let mut new_padding_tree = if current_hash == self.tree[0] {
+            None
+        } else {
+            Some(Vec::with_capacity(
+                (Self::DEPTH as usize).saturating_sub(current_depth + 1),
+            ))
+        };
+
         while current_depth < Self::DEPTH as usize {
             current_hash = self
                 .parameters
@@ -201,7 +210,9 @@ impl<P: MerkleParameters> MerkleTree<P> {
 
             // do not pad at the top-level of the tree
             if current_depth < Self::DEPTH as usize - 1 {
-                padding_tree.push((current_hash.clone(), empty_hash.clone()));
+                if let Some(ref mut padding_tree) = new_padding_tree {
+                    padding_tree.push((current_hash.clone(), empty_hash.clone()));
+                }
             }
             current_depth += 1;
         }
@@ -213,7 +224,9 @@ impl<P: MerkleParameters> MerkleTree<P> {
         self.root = Some(root_hash);
         self.tree = tree;
         self.hashed_leaves_index = last_level_index;
-        self.padding_tree = padding_tree;
+        if let Some(padding_tree) = new_padding_tree {
+            self.padding_tree = padding_tree;
+        }
 
         Ok(())
     }
