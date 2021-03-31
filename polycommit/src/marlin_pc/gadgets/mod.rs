@@ -18,7 +18,8 @@
 pub mod commitment;
 pub(crate) use commitment::*;
 
-// mod labeled_commitment;
+/// Gadget for a Marlin-KZG10 commitment, with a string label and degree bound.
+pub mod labeled_commitment;
 // pub use labeled_commitment::*;
 
 /// Prepared gadget for an optionally hiding Marlin-KZG10 commitment.
