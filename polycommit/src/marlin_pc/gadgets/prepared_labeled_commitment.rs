@@ -16,7 +16,6 @@
 
 use crate::{
     marlin_pc::{LabeledCommitmentVar, PreparedCommitmentVar},
-    LabeledCommitment,
     PrepareGadget,
 };
 
