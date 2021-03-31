@@ -195,27 +195,29 @@ impl<P: MerkleParameters> MerkleTree<P> {
         let mut current_hash = tree[0].clone();
 
         // The whole padding tree can be reused if the current hash matches the previous one.
-        let mut new_padding_tree = if current_hash == self.tree[0] {
+        let new_padding_tree = if current_hash == self.tree[0] {
+            current_hash =
+                self.parameters
+                    .hash_inner_node(&self.padding_tree.last().unwrap().0, &empty_hash, &mut buffer)?;
+
             None
         } else {
-            Some(Vec::with_capacity(
-                (Self::DEPTH as usize).saturating_sub(current_depth + 1),
-            ))
-        };
+            let mut padding_tree = Vec::with_capacity((Self::DEPTH as usize).saturating_sub(current_depth + 1));
 
-        while current_depth < Self::DEPTH as usize {
-            current_hash = self
-                .parameters
-                .hash_inner_node(&current_hash, &empty_hash, &mut buffer)?;
+            while current_depth < Self::DEPTH as usize {
+                current_hash = self
+                    .parameters
+                    .hash_inner_node(&current_hash, &empty_hash, &mut buffer)?;
 
-            // do not pad at the top-level of the tree
-            if current_depth < Self::DEPTH as usize - 1 {
-                if let Some(ref mut padding_tree) = new_padding_tree {
+                // do not pad at the top-level of the tree
+                if current_depth < Self::DEPTH as usize - 1 {
                     padding_tree.push((current_hash.clone(), empty_hash.clone()));
                 }
+                current_depth += 1;
             }
-            current_depth += 1;
-        }
+
+            Some(padding_tree)
+        };
         let root_hash = current_hash;
 
         end_timer!(new_time);
