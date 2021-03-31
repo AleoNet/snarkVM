@@ -20,13 +20,14 @@ pub(crate) use commitment::*;
 
 /// Gadget for a Marlin-KZG10 commitment, with a string label and degree bound.
 pub mod labeled_commitment;
-// pub use labeled_commitment::*;
+pub(crate) use labeled_commitment::*;
 
 /// Prepared gadget for an optionally hiding Marlin-KZG10 commitment.
 pub mod prepared_commitment;
+pub(crate) use prepared_commitment::*;
 
-// mod prepared_labeled_commitment;
-// pub use prepared_labeled_commitment::*;
+/// Prepared gadget for a Marlin-KZG10 commitment, with a string label and degree bound.
+pub mod prepared_labeled_commitment;
 
 /// Prepared verifier key gadget for the Marlin-KZG10 polynomial commitment scheme.
 pub mod prepared_verifier_key;
