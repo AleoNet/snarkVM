@@ -964,7 +964,7 @@ mod tests {
             // TODO (raychu86): Construct the `PCCheckRandomDataVar` randomness for the batch check.
             // Allocate the randomness.
 
-            let rand_data = PCCheckRandomDataVar::<F, CF> {
+            let rand_data = PCCheckRandomDataVar::<_, _> {
                 opening_challenges,
                 opening_challenges_bits,
                 batching_rands,
