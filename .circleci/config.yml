@@ -78,7 +78,7 @@ jobs:
 
   rust-nightly:
     docker:
-      - image: howardwu/snarkos-ci:2021-01-31
+      - image: howardwu/snarkos-ci:2021-03-25
     resource_class: 2xlarge
     steps:
       - checkout
