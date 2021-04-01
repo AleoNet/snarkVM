@@ -952,7 +952,7 @@ mod tests {
 
             let mut proof_gadgets = Vec::new();
 
-            for (j, proof) in batch_proof.unwrap().iter().enumerate() {
+            for (j, proof) in batch_proof.clone().unwrap().iter().enumerate() {
                 let proof_gadget = <PCGadget as PCCheckVar<_, _, _>>::ProofVar::alloc(
                     cs.ns(|| format!("proof_var_{}_{}", i, j)),
                     || Ok(proof),
@@ -964,6 +964,13 @@ mod tests {
             // TODO (raychu86): Construct the `PCCheckRandomDataVar` randomness for the batch check.
             // Allocate the randomness.
 
+            let rand_data = PCCheckRandomDataVar::<F, CF> {
+                opening_challenges,
+                opening_challenges_bits,
+                batching_rands,
+                batching_rands_bits,
+            };
+
             let result = MarlinKZG10Gadget::batch_check_evaluations(
                 cs.ns(|| format!("batch_check_evaluations_{}", i)),
                 &verification_key_gadget,
@@ -971,7 +978,7 @@ mod tests {
                 &query_set_gadget,
                 &evaluations_gadget,
                 &proof_gadgets,
-                randomness_gadget,
+                &rand_data,
             )
             .unwrap();
 
