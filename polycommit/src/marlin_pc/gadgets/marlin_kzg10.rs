@@ -870,60 +870,46 @@ mod tests {
         use crate::tests::*;
         let test_components = single_poly_test::<_, PC_Bls12_377>().expect("test failed for bls12-377");
 
-        let TestComponents {
-            verification_keys,
-            commitments,
-            query_sets,
-            evaluations,
-            batch_lc_proofs,
-            batch_proofs,
-            opening_challenges,
-            randomness,
-        } = test_components;
+        for (i, test_component) in test_components.iter().enumerate() {
+            let TestComponents {
+                verification_key,
+                commitments,
+                query_set,
+                evaluations,
+                batch_lc_proof,
+                batch_proof,
+                opening_challenge,
+                randomness,
+            } = test_component;
 
-        assert!(batch_proofs.is_some());
-        assert!(batch_lc_proofs.is_none());
+            assert!(batch_proof.is_some());
+            assert!(batch_lc_proof.is_none());
 
-        let cs = &mut TestConstraintSystem::<Fq>::new();
+            let cs = &mut TestConstraintSystem::<Fq>::new();
 
-        // Allocate the verification keys
+            // Allocate the verification key
 
-        let mut verification_key_gadgets = Vec::new();
-
-        for (i, vk) in verification_keys.iter().enumerate() {
-            let vk_gadget = <PCGadget as PCCheckVar<_, _, _>>::VerifierKeyVar::alloc(
+            let verification_key_gadget = <PCGadget as PCCheckVar<_, _, _>>::VerifierKeyVar::alloc(
                 cs.ns(|| format!("alloc_vk_gadget_{}", i)),
-                || Ok(vk.clone()),
+                || Ok(verification_key.clone()),
             )
             .unwrap();
 
-            verification_key_gadgets.push(vk_gadget);
-        }
+            // Allocate the commitments
 
-        // Allocate the commitments
+            let mut commitment_gadgets = Vec::new();
 
-        let mut commitment_gadgets = Vec::new();
-
-        for (i, commitments_i) in commitments.iter().enumerate() {
-            let mut commitments_i_gadgets = Vec::new();
-            for (j, commitment) in commitments_i.iter().enumerate() {
+            for (j, commitment) in commitments.iter().enumerate() {
                 let commitment_gadget = <PCGadget as PCCheckVar<_, _, _>>::LabeledCommitmentVar::alloc(
                     cs.ns(|| format!("alloc_commitment_gadget_{}_{}", i, j)),
                     || Ok(commitment.clone()),
                 )
                 .unwrap();
 
-                commitments_i_gadgets.push(commitment_gadget);
+                commitment_gadgets.push(commitment_gadget);
             }
+            // Allocate the query sets
 
-            commitment_gadgets.push(commitments_i_gadgets);
-        }
-
-        // Allocate the query sets
-
-        let mut query_set_gadgets = Vec::new();
-
-        for (i, query_set) in query_sets.iter().enumerate() {
             let mut query_set_gadget = QuerySetVar::<_, _> { 0: HashSet::new() };
 
             for (j, query) in query_set.iter().enumerate() {
@@ -938,14 +924,8 @@ mod tests {
                 query_set_gadget.0.insert((query.0.clone(), labeled_point_var));
             }
 
-            query_set_gadgets.push(query_set_gadget);
-        }
+            // Allocate the evaluations.
 
-        // Allocate the evaluations.
-
-        let mut evaluations_gadgets = Vec::new();
-
-        for (i, evaluations) in evaluations.iter().enumerate() {
             let mut evaluations_gadget = EvaluationsVar::<_, _> { 0: HashMap::new() };
 
             for (j, evaluation) in evaluations.iter().enumerate() {
@@ -968,43 +948,42 @@ mod tests {
                 evaluations_gadget.0.insert(labeled_point_var, nonnative_point);
             }
 
-            evaluations_gadgets.push(evaluations_gadget);
-        }
+            // Allocate the proofs.
 
-        // Allocate the proofs.
+            let mut proof_gadgets = Vec::new();
 
-        let mut proof_gadgets = Vec::new();
-
-        for (i, proofs_i) in batch_proofs.unwrap().iter().enumerate() {
-            let mut proof_gadgets_i = Vec::new();
-            for (j, proof) in proofs_i.iter().enumerate() {
+            for (j, proof) in batch_proof.unwrap().iter().enumerate() {
                 let proof_gadget = <PCGadget as PCCheckVar<_, _, _>>::ProofVar::alloc(
                     cs.ns(|| format!("proof_var_{}_{}", i, j)),
                     || Ok(proof),
                 )
                 .unwrap();
-                proof_gadgets_i.push(proof_gadget);
+                proof_gadgets.push(proof_gadget);
             }
 
-            proof_gadgets.push(proof_gadgets_i);
+            // TODO (raychu86): Construct the `PCCheckRandomDataVar` randomness for the batch check.
+            // Allocate the randomness.
+
+            let result = MarlinKZG10Gadget::batch_check_evaluations(
+                cs.ns(|| format!("batch_check_evaluations_{}", i)),
+                &verification_key_gadget,
+                &commitment_gadgets,
+                &query_set_gadget,
+                &evaluations_gadget,
+                &proof_gadgets,
+                randomness_gadget,
+            )
+            .unwrap();
+
+            result
+                .enforce_equal(
+                    cs.ns(|| format!("enforce_equal_evaluation_{}", i)),
+                    &Boolean::Constant(true),
+                )
+                .unwrap();
+
+            assert!(cs.is_satisfied());
         }
-
-        // TODO (raychu86): Construct the randomness for the batch check.
-        // Allocate the randomness.
-
-        // let result = MarlinKZG10Gadget::batch_check_evaluations(
-        //     cs.ns(|| "batch_check_evaluations"),
-        //     &verification_key_gadgets,
-        //     &commitment_gadgets,
-        //     &query_set_gadgets,
-        //     &evaluations_gadgets,
-        //     &proof_gadgets,
-        //     randomness_gadgets;
-        // )
-        // .unwrap();
-
-        assert!(cs.is_satisfied());
-
         Ok(())
     }
 
