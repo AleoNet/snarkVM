@@ -30,128 +30,90 @@ pub trait FromBytes: Sized {
     fn read<R: Read>(reader: R) -> IoResult<Self>;
 }
 
-macro_rules! array_bytes {
-    ($N:expr) => {
-        impl ToBytes for [u8; $N] {
-            #[inline]
-            fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-                writer.write_all(self)
-            }
-        }
-
-        impl FromBytes for [u8; $N] {
-            #[inline]
-            fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-                let mut arr = [0u8; $N];
-                reader.read_exact(&mut arr)?;
-                Ok(arr)
-            }
-        }
-
-        impl ToBytes for [u16; $N] {
-            #[inline]
-            fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-                for num in self {
-                    writer.write_all(&num.to_le_bytes())?;
-                }
-                Ok(())
-            }
-        }
-
-        impl FromBytes for [u16; $N] {
-            #[inline]
-            fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-                let mut res = [0u16; $N];
-                for num in res.iter_mut() {
-                    let mut bytes = [0u8; 2];
-                    reader.read_exact(&mut bytes)?;
-                    *num = u16::from_le_bytes(bytes);
-                }
-                Ok(res)
-            }
-        }
-
-        impl ToBytes for [u32; $N] {
-            #[inline]
-            fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-                for num in self {
-                    writer.write_all(&num.to_le_bytes())?;
-                }
-                Ok(())
-            }
-        }
-
-        impl FromBytes for [u32; $N] {
-            #[inline]
-            fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-                let mut res = [0u32; $N];
-                for num in res.iter_mut() {
-                    let mut bytes = [0u8; 4];
-                    reader.read_exact(&mut bytes)?;
-                    *num = u32::from_le_bytes(bytes);
-                }
-                Ok(res)
-            }
-        }
-
-        impl ToBytes for [u64; $N] {
-            #[inline]
-            fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-                for num in self {
-                    writer.write_all(&num.to_le_bytes())?;
-                }
-                Ok(())
-            }
-        }
-
-        impl FromBytes for [u64; $N] {
-            #[inline]
-            fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-                let mut res = [0u64; $N];
-                for num in res.iter_mut() {
-                    let mut bytes = [0u8; 8];
-                    reader.read_exact(&mut bytes)?;
-                    *num = u64::from_le_bytes(bytes);
-                }
-                Ok(res)
-            }
-        }
-    };
+impl<const N: usize> ToBytes for [u8; N] {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        writer.write_all(self)
+    }
 }
 
-array_bytes!(0);
-array_bytes!(1);
-array_bytes!(2);
-array_bytes!(3);
-array_bytes!(4);
-array_bytes!(5);
-array_bytes!(6);
-array_bytes!(7);
-array_bytes!(8);
-array_bytes!(9);
-array_bytes!(10);
-array_bytes!(11);
-array_bytes!(12);
-array_bytes!(13);
-array_bytes!(14);
-array_bytes!(15);
-array_bytes!(16);
-array_bytes!(17);
-array_bytes!(18);
-array_bytes!(19);
-array_bytes!(20);
-array_bytes!(21);
-array_bytes!(22);
-array_bytes!(23);
-array_bytes!(24);
-array_bytes!(25);
-array_bytes!(26);
-array_bytes!(27);
-array_bytes!(28);
-array_bytes!(29);
-array_bytes!(30);
-array_bytes!(31);
-array_bytes!(32);
+impl<const N: usize> FromBytes for [u8; N] {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let mut arr = [0u8; N];
+        reader.read_exact(&mut arr)?;
+        Ok(arr)
+    }
+}
+
+impl<const N: usize> ToBytes for [u16; N] {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        for num in self {
+            writer.write_all(&num.to_le_bytes())?;
+        }
+        Ok(())
+    }
+}
+
+impl<const N: usize> FromBytes for [u16; N] {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let mut res = [0u16; N];
+        for num in res.iter_mut() {
+            let mut bytes = [0u8; 2];
+            reader.read_exact(&mut bytes)?;
+            *num = u16::from_le_bytes(bytes);
+        }
+        Ok(res)
+    }
+}
+
+impl<const N: usize> ToBytes for [u32; N] {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        for num in self {
+            writer.write_all(&num.to_le_bytes())?;
+        }
+        Ok(())
+    }
+}
+
+impl<const N: usize> FromBytes for [u32; N] {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let mut res = [0u32; N];
+        for num in res.iter_mut() {
+            let mut bytes = [0u8; 4];
+            reader.read_exact(&mut bytes)?;
+            *num = u32::from_le_bytes(bytes);
+        }
+        Ok(res)
+    }
+}
+
+impl<const N: usize> ToBytes for [u64; N] {
+    #[inline]
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        for num in self {
+            writer.write_all(&num.to_le_bytes())?;
+        }
+        Ok(())
+    }
+}
+
+impl<const N: usize> FromBytes for [u64; N] {
+    #[inline]
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let mut res = [0u64; N];
+        for num in res.iter_mut() {
+            let mut bytes = [0u8; 8];
+            reader.read_exact(&mut bytes)?;
+            *num = u64::from_le_bytes(bytes);
+        }
+        Ok(res)
+    }
+}
 
 /// Takes as input a sequence of structs, and converts them to a series of
 /// bytes. All traits that implement `Bytes` can be automatically converted to

@@ -27,7 +27,7 @@ fn generate_merkle_tree<P: LoadableMerkleParameters, L: ToBytes + Clone + Eq>(
     leaves: &[L],
     parameters: &P,
 ) -> MerkleTree<P> {
-    let tree = MerkleTree::<P>::new(parameters.clone(), leaves).unwrap();
+    let tree = MerkleTree::<P>::new(parameters.clone(), leaves.iter()).unwrap();
     for (i, leaf) in leaves.iter().enumerate() {
         let proof = tree.generate_proof(i, &leaf).unwrap();
         assert_eq!(P::DEPTH, proof.path.len());
@@ -38,7 +38,7 @@ fn generate_merkle_tree<P: LoadableMerkleParameters, L: ToBytes + Clone + Eq>(
 
 /// Generates a valid Merkle tree and verifies the Merkle path witness for each leaf does not verify to an invalid root hash.
 fn bad_merkle_tree_verify<P: LoadableMerkleParameters, L: ToBytes + Clone + Eq>(leaves: &[L], parameters: &P) {
-    let tree = MerkleTree::<P>::new(parameters.clone(), leaves).unwrap();
+    let tree = MerkleTree::<P>::new(parameters.clone(), leaves.iter()).unwrap();
     for (i, leaf) in leaves.iter().enumerate() {
         let proof = tree.generate_proof(i, &leaf).unwrap();
         assert!(proof.verify(&<P::H as CRH>::Output::default(), &leaf).unwrap());

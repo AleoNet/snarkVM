@@ -204,7 +204,11 @@ impl UInt for UInt128 {
 
     /// Bitwise multiplication of two `UInt128` objects.
     /// Reference: https://en.wikipedia.org/wiki/Binary_multiplier
-    fn mul<F: PrimeField, CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, SynthesisError> {
+    fn mul<F: PrimeField, CS: ConstraintSystem<F>>(
+        &self,
+        mut cs: CS,
+        other: &Self,
+    ) -> Result<Self, UnsignedIntegerError> {
         // pseudocode:
         //
         // res = 0;
@@ -252,6 +256,7 @@ impl UInt for UInt128 {
             .collect::<Vec<Self>>();
 
         Self::addmany(&mut cs.ns(|| "partial_products"), &partial_products)
+            .map_err(UnsignedIntegerError::SynthesisError)
     }
 }
 

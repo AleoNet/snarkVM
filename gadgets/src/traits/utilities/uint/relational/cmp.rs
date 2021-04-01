@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::utilities::{
-    bits::{ComparatorGadget, EvaluateLtGadget},
+    bits::{ComparatorGadget, EvaluateLtGadget, Xor},
     boolean::Boolean,
     select::CondSelectGadget,
     uint::{UInt128, UInt16, UInt32, UInt64, UInt8},
@@ -46,7 +46,7 @@ macro_rules! uint_cmp_impl {
                     let less = Boolean::and(cs.ns(|| format!("not a and b [{}]", i)), &a.not(), b)?;
 
                     // a == b = !(a ^ b)
-                    let not_equal = Boolean::xor(cs.ns(|| format!("a XOR b [{}]", i)), a, b)?;
+                    let not_equal = a.xor(cs.ns(|| format!("a XOR b [{}]", i)), b)?;
                     let equal = not_equal.not();
 
                     // evaluate a <= b
