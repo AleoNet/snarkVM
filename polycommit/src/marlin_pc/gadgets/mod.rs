@@ -18,6 +18,9 @@
 pub mod commitment;
 pub(crate) use commitment::*;
 
+/// Gadget for Marlin-KZG10 polynomial commitment scheme.
+pub mod marlin_kzg10;
+
 /// Gadgets for Marlin-KZG10 proofs.
 pub mod proof;
 
