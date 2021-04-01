@@ -72,7 +72,7 @@ jobs:
           name: Generate coverage report
           command: >
             docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin
-            cargo tarpaulin -v --ciserver circle-ci --out Xml
+            cargo tarpaulin -v --workspace --manifest-path ./Cargo.toml --ciserver circle-ci --out Xml
       - run:
           name: Upload report to Codecov
           command: bash <(curl -s https://codecov.io/bash)
