@@ -61,20 +61,34 @@ jobs:
           cache_key: snarkvm-stable-cache
 
   codecov:
-    machine:
-      image: ubuntu-1604:202004-01
-      docker_layer_caching: true
-    resource_class: 2xlarge
+    machine: true
     steps:
-      - attach_workspace:
-          at: /home/circleci/project/
+      - checkout
       - run:
-          name: Run kcov
+          name: Pull tarpaulin Docker image
+          command: docker pull xd009642/tarpaulin:latest
+      - run:
+          name: Generate coverage report
           command: >
-            cd ~/project/project/ &&
-            docker run --security-opt seccomp=unconfined -v ~/project/project/:/home/circleci/project/
-            howardwu/snarkos-codecov:2021-03-25 bash /home/circleci/project/.resources/kcov.sh
-      - run: cd ./project/ && bash <(curl -s https://codecov.io/bash)
+            docker run --security-opt seccomp=unconfined -v $PWD:/volume xd009642/tarpaulin
+            cargo tarpaulin --manifest-path nimbus/Cargo.toml -v --ciserver circle-ci --out Xml
+      - run:
+          name: Upload report to Codecov
+          command: bash <(curl -s https://codecov.io/bash)
+#    machine:
+#      image: ubuntu-1604:202004-01
+#      docker_layer_caching: true
+#    resource_class: 2xlarge
+#    steps:
+#      - attach_workspace:
+#          at: /home/circleci/project/
+#      - run:
+#          name: Run kcov
+#          command: >
+#            cd ~/project/project/ &&
+#            docker run --security-opt seccomp=unconfined -v ~/project/project/:/home/circleci/project/
+#            howardwu/snarkos-codecov:2021-03-25 bash /home/circleci/project/.resources/kcov.sh
+#      - run: cd ./project/ && bash <(curl -s https://codecov.io/bash)
 
   rust-nightly:
     docker:
@@ -97,6 +111,6 @@ workflows:
     jobs:
       - rust-stable
       - rust-nightly
-      - codecov:
-          requires:
-            - rust-stable
+      - codecov
+#          requires:
+#            - rust-stable
