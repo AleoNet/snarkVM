@@ -14,22 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{arithmetic::Add, uint::*};
+use crate::{
+    utilities::{arithmetic::Add, uint::*},
+    UnsignedIntegerError,
+};
 use snarkvm_fields::{Field, PrimeField};
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+use snarkvm_r1cs::ConstraintSystem;
 
 // Implement unsigned integers
 macro_rules! add_uint_impl {
     ($($gadget: ident),*) => ($(
         impl<F: Field + PrimeField> Add<F> for $gadget {
-            type ErrorType = SynthesisError;
+            type ErrorType = UnsignedIntegerError;
 
             fn add<CS: ConstraintSystem<F>>(
                 &self,
                 cs: CS,
                 other: &Self
             ) -> Result<Self, Self::ErrorType> {
-                <$gadget as UInt>::addmany(cs, &[self.clone(), other.clone()])
+                <$gadget as UInt>::addmany(cs, &[self.clone(), other.clone()]).map_err(Self::ErrorType::SynthesisError)
             }
         }
     )*)

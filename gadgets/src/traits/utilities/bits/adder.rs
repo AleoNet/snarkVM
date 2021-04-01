@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::boolean::Boolean;
+use crate::utilities::{bits::Xor, boolean::Boolean};
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
@@ -42,8 +42,8 @@ impl<'a, F: Field> FullAdder<'a, F> for Boolean {
         b: &'a Self,
         carry: &'a Self,
     ) -> Result<(Self, Self), SynthesisError> {
-        let a_x_b = Boolean::xor(cs.ns(|| "a XOR b"), a, b)?;
-        let sum = Boolean::xor(cs.ns(|| "adder sum"), &a_x_b, carry)?;
+        let a_x_b = a.xor(cs.ns(|| "a XOR b"), b)?;
+        let sum = a_x_b.xor(cs.ns(|| "adder sum"), carry)?;
 
         let c1 = Boolean::and(cs.ns(|| "a AND b"), a, b)?;
         let c2 = Boolean::and(cs.ns(|| "carry AND (a XOR b)"), carry, &a_x_b)?;

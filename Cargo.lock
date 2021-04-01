@@ -22,9 +22,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.39"
+version = "1.0.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81cddc5f91628367664cc7c69714ff08deee8a3efc54623011c772544d7b2767"
+checksum = "28b2cd92db5cbd74e8e5028f7e27dd7aa3090e89e4f2a197cc7c8dfb69c7063b"
 
 [[package]]
 name = "atty"
@@ -851,9 +851,9 @@ dependencies = [
 
 [[package]]
 name = "js-sys"
-version = "0.3.49"
+version = "0.3.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc15e39392125075f60c95ba416f5381ff6c3a948ff02ab12464715adf56c821"
+checksum = "2d99f9e3e84b8f67f846ef5b4cbbc3b1c29f6c759fcbce6f01aa0e73d932a24c"
 dependencies = [
  "wasm-bindgen",
 ]
@@ -1704,7 +1704,7 @@ checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
 
 [[package]]
 name = "snarkvm"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "anyhow",
  "colored",
@@ -1716,7 +1716,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-algorithms"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "blake2",
  "criterion",
@@ -1740,7 +1740,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-curves"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "criterion",
  "derivative",
@@ -1755,7 +1755,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-derives"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "proc-macro-crate",
  "proc-macro-error",
@@ -1766,7 +1766,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-dpc"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "anyhow",
  "base58",
@@ -1792,7 +1792,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-fields"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "bincode",
  "derivative",
@@ -1805,7 +1805,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-gadgets"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "blake2",
  "criterion",
@@ -1824,7 +1824,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-marlin"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "blake2",
  "criterion",
@@ -1847,7 +1847,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-nonnative"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "num-bigint",
  "num-integer",
@@ -1865,7 +1865,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-objects"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1885,7 +1885,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-parameters"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "blake2",
  "curl",
@@ -1903,7 +1903,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-polycommit"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "blake2",
  "derivative",
@@ -1920,7 +1920,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-posw"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "blake2",
  "criterion",
@@ -1944,14 +1944,14 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-profiler"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "colored",
 ]
 
 [[package]]
 name = "snarkvm-r1cs"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "cfg-if 1.0.0",
  "fxhash",
@@ -1964,7 +1964,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-storage"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1985,7 +1985,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-testing"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "once_cell",
  "rand",
@@ -2001,7 +2001,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-utilities"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "bincode",
  "rand",
@@ -2012,7 +2012,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-wasm"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "derivative",
  "rand",
@@ -2078,9 +2078,9 @@ checksum = "1e81da0851ada1f3e9d4312c704aa4f8806f0f9d69faaf8df2f3464b4a9437c2"
 
 [[package]]
 name = "syn"
-version = "1.0.64"
+version = "1.0.67"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fd9d1e9976102a03c542daa2eff1b43f9d72306342f3f8b3ed5fb8908195d6f"
+checksum = "6498a9efc342871f91cc2d0d694c674368b4ceb40f62b65a7a08c3792935e702"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2380,9 +2380,9 @@ checksum = "fd6fbd9a79829dd1ad0cc20627bf1ed606756a7f77edff7b66b7064f9cb327c6"
 
 [[package]]
 name = "wasm-bindgen"
-version = "0.2.72"
+version = "0.2.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fe8f61dba8e5d645a4d8132dc7a0a66861ed5e1045d2c0ed940fab33bac0fbe"
+checksum = "83240549659d187488f91f33c0f8547cbfef0b2088bc470c116d1d260ef623d9"
 dependencies = [
  "cfg-if 1.0.0",
  "serde",
@@ -2392,9 +2392,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-backend"
-version = "0.2.72"
+version = "0.2.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "046ceba58ff062da072c7cb4ba5b22a37f00a302483f7e2a6cdc18fedbdc1fd3"
+checksum = "ae70622411ca953215ca6d06d3ebeb1e915f0f6613e3b495122878d7ebec7dae"
 dependencies = [
  "bumpalo",
  "lazy_static",
@@ -2407,9 +2407,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-futures"
-version = "0.4.22"
+version = "0.4.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73157efb9af26fb564bb59a009afd1c7c334a44db171d280690d0c3faaec3468"
+checksum = "81b8b767af23de6ac18bf2168b690bed2902743ddf0fb39252e36f9e2bfc63ea"
 dependencies = [
  "cfg-if 1.0.0",
  "js-sys",
@@ -2419,9 +2419,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro"
-version = "0.2.72"
+version = "0.2.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ef9aa01d36cda046f797c57959ff5f3c615c9cc63997a8d545831ec7976819b"
+checksum = "3e734d91443f177bfdb41969de821e15c516931c3c3db3d318fa1b68975d0f6f"
 dependencies = [
  "quote",
  "wasm-bindgen-macro-support",
@@ -2429,9 +2429,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro-support"
-version = "0.2.72"
+version = "0.2.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96eb45c1b2ee33545a813a92dbb53856418bf7eb54ab34f7f7ff1448a5b3735d"
+checksum = "d53739ff08c8a68b0fdbcd54c372b8ab800b1449ab3c9d706503bc7dd1621b2c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2442,15 +2442,15 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-shared"
-version = "0.2.72"
+version = "0.2.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7148f4696fb4960a346eaa60bbfb42a1ac4ebba21f750f75fc1375b098d5ffa"
+checksum = "d9a543ae66aa233d14bb765ed9af4a33e81b8b58d1584cf1b47ff8cd0b9e4489"
 
 [[package]]
 name = "wasm-bindgen-test"
-version = "0.3.22"
+version = "0.3.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f002ea97b5abdb19aafd48cbb5a0a7f6931cf36ea05a0a46ccc95d9f4c2cf43"
+checksum = "e972e914de63aa53bd84865e54f5c761bd274d48e5be3a6329a662c0386aa67a"
 dependencies = [
  "console_error_panic_hook",
  "js-sys",
@@ -2462,9 +2462,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-test-macro"
-version = "0.3.22"
+version = "0.3.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10a6c0bd3933daf64c78fc25a7452530f79fa7e21f77fa03d608d1e988a66735"
+checksum = "ea6153a8f9bf24588e9f25c87223414fff124049f68d3a442a0f0eab4768a8b6"
 dependencies = [
  "proc-macro2",
  "quote",

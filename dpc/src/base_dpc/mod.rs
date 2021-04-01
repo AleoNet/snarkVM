@@ -141,33 +141,33 @@ pub struct DPC<Components: BaseDPCComponents> {
 )]
 pub struct TransactionKernel<Components: BaseDPCComponents> {
     #[derivative(PartialEq = "ignore", Debug = "ignore")]
-    system_parameters: SystemParameters<Components>,
+    pub system_parameters: SystemParameters<Components>,
 
     // Old record stuff
-    old_account_private_keys: Vec<AccountPrivateKey<Components>>,
-    old_records: Vec<DPCRecord<Components>>,
-    old_serial_numbers: Vec<<Components::AccountSignature as SignatureScheme>::PublicKey>,
-    old_randomizers: Vec<Vec<u8>>,
+    pub old_account_private_keys: Vec<AccountPrivateKey<Components>>,
+    pub old_records: Vec<DPCRecord<Components>>,
+    pub old_serial_numbers: Vec<<Components::AccountSignature as SignatureScheme>::PublicKey>,
+    pub old_randomizers: Vec<Vec<u8>>,
 
     // New record stuff
-    new_records: Vec<DPCRecord<Components>>,
-    new_sn_nonce_randomness: Vec<[u8; 32]>,
-    new_commitments: Vec<<Components::RecordCommitment as CommitmentScheme>::Output>,
+    pub new_records: Vec<DPCRecord<Components>>,
+    pub new_sn_nonce_randomness: Vec<[u8; 32]>,
+    pub new_commitments: Vec<<Components::RecordCommitment as CommitmentScheme>::Output>,
 
-    new_records_encryption_randomness: Vec<<Components::AccountEncryption as EncryptionScheme>::Randomness>,
-    new_encrypted_records: Vec<EncryptedRecord<Components>>,
-    new_encrypted_record_hashes: Vec<<Components::EncryptedRecordCRH as CRH>::Output>,
+    pub new_records_encryption_randomness: Vec<<Components::AccountEncryption as EncryptionScheme>::Randomness>,
+    pub new_encrypted_records: Vec<EncryptedRecord<Components>>,
+    pub new_encrypted_record_hashes: Vec<<Components::EncryptedRecordCRH as CRH>::Output>,
 
     // Program and local data root and randomness
-    program_commitment: <Components::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
-    program_randomness: <Components::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
+    pub program_commitment: <Components::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
+    pub program_randomness: <Components::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
 
-    local_data_merkle_tree: CommitmentMerkleTree<Components::LocalDataCommitment, Components::LocalDataCRH>,
-    local_data_commitment_randomizers: Vec<<Components::LocalDataCommitment as CommitmentScheme>::Randomness>,
+    pub local_data_merkle_tree: CommitmentMerkleTree<Components::LocalDataCommitment, Components::LocalDataCRH>,
+    pub local_data_commitment_randomizers: Vec<<Components::LocalDataCommitment as CommitmentScheme>::Randomness>,
 
-    value_balance: AleoAmount,
-    memorandum: <DPCTransaction<Components> as Transaction>::Memorandum,
-    network_id: u8,
+    pub value_balance: AleoAmount,
+    pub memorandum: <DPCTransaction<Components> as Transaction>::Memorandum,
+    pub network_id: u8,
 }
 
 impl<Components: BaseDPCComponents> TransactionKernel<Components> {
