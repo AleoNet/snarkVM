@@ -14,8 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{impl_bytes, kzg10, BTreeMap, PCCommitterKey, PCVerifierKey, Vec};
-use snarkvm_curves::traits::{PairingCurve, PairingEngine};
+use crate::{
+    impl_bytes,
+    kzg10,
+    BTreeMap,
+    PCCommitterKey,
+    PCPreparedCommitment,
+    PCPreparedVerifierKey,
+    PCVerifierKey,
+    Vec,
+};
+use snarkvm_curves::traits::{PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
@@ -32,6 +41,23 @@ pub type Randomness<E> = kzg10::Randomness<E>;
 
 /// `Commitment` is the commitment for the KZG10 scheme.
 pub type Commitment<E> = kzg10::Commitment<E>;
+
+/// `PreparedCommitment` is the prepared commitment for the KZG10 scheme.
+pub type PreparedCommitment<E> = kzg10::PreparedCommitment<E>;
+
+impl<E: PairingEngine> PCPreparedCommitment<Commitment<E>> for PreparedCommitment<E> {
+    /// prepare `PreparedCommitment` from `Commitment`
+    fn prepare(comm: &Commitment<E>) -> Self {
+        let mut prepared_comm = Vec::<E::G1Affine>::new();
+        let mut cur = E::G1Projective::from(comm.0.clone());
+        for _ in 0..128 {
+            prepared_comm.push(cur.clone().into());
+            cur.double_in_place();
+        }
+
+        Self { 0: prepared_comm }
+    }
+}
 
 /// `ComitterKey` is used to commit to, and create evaluation proofs for, a given
 /// polynomial.
@@ -186,6 +212,16 @@ where
         }
 
         Ok(res)
+    }
+}
+
+/// Nothing to do to prepare this verifier key (for now).
+pub type PreparedVerifierKey<E> = VerifierKey<E>;
+
+impl<E: PairingEngine> PCPreparedVerifierKey<VerifierKey<E>> for PreparedVerifierKey<E> {
+    /// prepare `PreparedVerifierKey` from `VerifierKey`
+    fn prepare(vk: &VerifierKey<E>) -> Self {
+        vk.clone()
     }
 }
 
