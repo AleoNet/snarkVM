@@ -135,3 +135,85 @@ where
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{marlin_pc::MarlinKZG10, LabeledPolynomial, PolynomialCommitment};
+
+    use snarkvm_algorithms::fft::DensePolynomial;
+    use snarkvm_curves::{
+        bls12_377::{Bls12_377, Fq, Fr},
+        bw6_761::BW6_761,
+        AffineCurve,
+    };
+    use snarkvm_gadgets::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, utilities::eq::EqGadget};
+    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_utilities::rand::{test_rng, UniformRand};
+
+    type PC = MarlinKZG10<Bls12_377>;
+    type PG = Bls12_377PairingGadget;
+    type BaseCurve = BW6_761;
+
+    const MAX_DEGREE: usize = 383;
+    const SUPPORTED_DEGREE: usize = 300;
+    const SUPPORTED_HIDING_BOUND: usize = 1;
+
+    #[test]
+    fn test_alloc() {
+        let rng = &mut test_rng();
+
+        let cs = &mut TestConstraintSystem::<Fq>::new();
+
+        // Construct the universal params.
+        let pp = PC::setup(MAX_DEGREE, rng).unwrap();
+
+        // Construct the verifying key.
+        let (committer_key, _vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, None).unwrap();
+
+        // Construct a polynomial.
+        let random_polynomial = DensePolynomial::<Fr>::rand(SUPPORTED_DEGREE - 1, rng);
+        let labeled_polynomial = LabeledPolynomial::new("test_polynomial".to_string(), random_polynomial, None, None);
+
+        let labeled_polynomials = vec![&labeled_polynomial];
+
+        // Construct commitments.
+        let (commitments, randomness) = PC::commit(&committer_key, labeled_polynomials.clone(), Some(rng)).unwrap();
+
+        let point = Fr::rand(rng);
+        let challenge = Fr::rand(rng);
+
+        let proof = PC::open(
+            &committer_key,
+            labeled_polynomials,
+            &commitments,
+            point,
+            challenge,
+            &randomness,
+            Some(rng),
+        )
+        .unwrap();
+
+        let proof_gadget = ProofVar::<_, BaseCurve, PG>::alloc(cs.ns(|| "alloc_proof"), || Ok(proof)).unwrap();
+
+        let expected_w_gadget =
+            <PG as PairingGadget<_, _>>::G1Gadget::alloc(cs.ns(|| "proof_w"), || Ok(proof.w.into_projective()))
+                .unwrap();
+
+        expected_w_gadget
+            .enforce_equal(cs.ns(|| "enforce_equals_w"), &proof_gadget.w)
+            .unwrap();
+
+        assert_eq!(proof.random_v.is_some(), proof_gadget.random_v.is_some());
+
+        if let (Some(random_v), Some(random_v_gadget)) = (proof.random_v, proof_gadget.random_v) {
+            let expected_random_v = NonNativeFieldVar::alloc(cs.ns(|| "expected_random_v"), || Ok(random_v)).unwrap();
+
+            expected_random_v
+                .enforce_equal(cs.ns(|| "enforce_equal_random_v"), &random_v_gadget)
+                .unwrap();
+        }
+
+        assert!(cs.is_satisfied());
+    }
+}
