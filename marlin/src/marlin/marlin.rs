@@ -306,12 +306,18 @@ where
         // Gather prover polynomials in one vector.
         let polynomials: Vec<_> = circuit_proving_key
             .circuit
-            .iter()
-            .chain(vanishing_polys.iter())
-            .chain(prover_first_oracles.iter())
-            .chain(prover_second_oracles.iter())
-            .chain(prover_third_oracles.iter())
+            .iter() // 12 items
+            .chain(vanishing_polys.iter()) // 0 or 2 items
+            .chain(prover_first_oracles.iter()) // 4 items
+            .chain(prover_second_oracles.iter())// 3 items
+            .chain(prover_third_oracles.iter())// 2 items
             .collect();
+
+        // Sanity check, whose length should be updated if the underlying structs are updated.
+        match is_recursion {
+            true => assert_eq!(23, polynomials.len()),
+            false => assert_eq!(21, polynomials.len()),
+        };
 
         // Gather commitments in one vector.
         #[rustfmt::skip]
@@ -394,7 +400,6 @@ where
                 &query_set,
                 &opening_challenges_f,
                 &commitment_randomnesses,
-                Some(zk_rng),
             )
             .map_err(MarlinError::from_pc_err)?
         } else {
@@ -419,6 +424,15 @@ where
         let proof = Proof::new(commitments, evaluations, prover_messages, pc_proof);
         proof.print_size_info();
         end_timer!(prover_time);
+
+        println!("Number of proof commitments: {}", proof.commitments.len());
+        println!("Number of proof evaluations: {}", proof.evaluations.len());
+        println!("Number of proof messages: {}", proof.prover_messages.len());
+        println!(
+            "Number of proof batch evaluations: {}",
+            proof.clone().pc_proof.proof.into().len()
+        );
+
         Ok(proof)
     }
 
@@ -434,6 +448,11 @@ where
         let public_input = {
             let domain_x = EvaluationDomain::<TargetField>::new(public_input.len() + 1).unwrap();
 
+            if cfg!(debug_assertions) {
+                println!("Number of given public inputs: {}", public_input.len());
+                println!("Size of evaluation domain x: {}", domain_x.size());
+            }
+
             let mut unpadded_input = public_input.to_vec();
             unpadded_input.resize(
                 core::cmp::max(public_input.len(), domain_x.size() - 1),
@@ -442,6 +461,10 @@ where
 
             unpadded_input
         };
+
+        if cfg!(debug_assertions) {
+            println!("Number of padded public variables: {}", public_input.len());
+        }
 
         let is_recursion = MM::RECURSION;
 

@@ -41,6 +41,17 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
                 Ok(a)
             },
         )?;
+        let d = cs.alloc_input(
+            || "d",
+            || {
+                let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
+                let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
+
+                a.mul_assign(&b);
+                a.mul_assign(&b);
+                Ok(a)
+            },
+        )?;
 
         for i in 0..(self.num_variables - 3) {
             let _ = cs.alloc(
@@ -49,9 +60,11 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
             )?;
         }
 
-        for i in 0..self.num_constraints {
+        for i in 0..(self.num_constraints - 1) {
             cs.enforce(|| format!("constraint {}", i), |lc| lc + a, |lc| lc + b, |lc| lc + c);
         }
+        cs.enforce(|| format!("constraint_final"), |lc| lc + c, |lc| lc + b, |lc| lc + d);
+
         Ok(())
     }
 }
@@ -89,6 +102,8 @@ mod marlin {
                         let b = Fr::rand(rng);
                         let mut c = a;
                         c.mul_assign(&b);
+                        let mut d = c;
+                        d.mul_assign(&b);
 
                         let circ = Circuit {
                             a: Some(a),
@@ -98,15 +113,15 @@ mod marlin {
                         };
 
                         let (index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
-                        println!("Called index");
+                        println!("Called circuit setup");
 
                         let proof = $marlin_inst::prove(&index_pk, &circ, rng).unwrap();
                         println!("Called prover");
 
-                        assert!($marlin_inst::verify(&index_vk, &[c], &proof).unwrap());
+                        assert!($marlin_inst::verify(&index_vk, &[c, d], &proof).unwrap());
                         println!("Called verifier");
                         println!("\nShould not verify (i.e. verifier messages should print below):");
-                        assert!(!$marlin_inst::verify(&index_vk, &[a], &proof).unwrap());
+                        assert!(!$marlin_inst::verify(&index_vk, &[a, a], &proof).unwrap());
                     }
                 }
             }
@@ -160,4 +175,120 @@ mod marlin {
         MarlinPCTest::test_circuit(num_constraints, num_variables);
         SonicPCTest::test_circuit(num_constraints, num_variables);
     }
+}
+
+mod marlin_recursion {
+    use super::*;
+    use crate::{
+        fiat_shamir::{FiatShamirAlgebraicSpongeRng, PoseidonSponge},
+        marlin::{MarlinRecursiveMode, MarlinSNARK},
+    };
+    use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
+    use snarkvm_polycommit::marlin_pc::MarlinKZG10;
+    use snarkvm_utilities::rand::{test_rng, UniformRand};
+
+    use core::ops::MulAssign;
+
+    type MultiPC = MarlinKZG10<Bls12_377>;
+    type MarlinInst =
+        MarlinSNARK<Fr, Fq, MultiPC, FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>, MarlinRecursiveMode>;
+
+    fn test_circuit(num_constraints: usize, num_variables: usize) {
+        let rng = &mut test_rng();
+
+        let universal_srs = MarlinInst::universal_setup(100, 25, 100, rng).unwrap();
+
+        for _ in 0..100 {
+            let a = Fr::rand(rng);
+            let b = Fr::rand(rng);
+            let mut c = a;
+            c.mul_assign(&b);
+            let mut d = c;
+            d.mul_assign(&b);
+
+            let circuit = Circuit {
+                a: Some(a),
+                b: Some(b),
+                num_constraints,
+                num_variables,
+            };
+
+            let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
+            println!("Called circuit setup");
+
+            let proof = MarlinInst::prove(&index_pk, &circuit, rng).unwrap();
+            println!("Called prover");
+
+            assert!(MarlinInst::verify(&index_vk, &[c, d], &proof).unwrap());
+            println!("Called verifier");
+            println!("\nShould not verify (i.e. verifier messages should print below):");
+            assert!(!MarlinInst::verify(&index_vk, &[a, a], &proof).unwrap());
+        }
+    }
+
+    #[test]
+    fn prove_and_verify_with_tall_matrix_big() {
+        let num_constraints = 100;
+        let num_variables = 25;
+
+        test_circuit(num_constraints, num_variables);
+    }
+
+    #[test]
+    fn prove_and_verify_with_tall_matrix_small() {
+        let num_constraints = 26;
+        let num_variables = 25;
+
+        test_circuit(num_constraints, num_variables);
+    }
+
+    #[test]
+    fn prove_and_verify_with_squat_matrix_big() {
+        let num_constraints = 25;
+        let num_variables = 100;
+
+        test_circuit(num_constraints, num_variables);
+    }
+
+    #[test]
+    fn prove_and_verify_with_squat_matrix_small() {
+        let num_constraints = 25;
+        let num_variables = 26;
+
+        test_circuit(num_constraints, num_variables);
+    }
+
+    #[test]
+    fn prove_and_verify_with_square_matrix() {
+        let num_constraints = 25;
+        let num_variables = 25;
+
+        test_circuit(num_constraints, num_variables);
+    }
+
+    // #[test]
+    // /// Test on a constraint system that will trigger outlining.
+    // fn prove_and_test_outlining() {
+    //     let rng = &mut test_rng();
+    //
+    //     let universal_srs = MarlinInst::universal_setup(150, 150, 150, rng).unwrap();
+    //
+    //     let circ = OutlineTestCircuit {
+    //         field_phantom: PhantomData,
+    //     };
+    //
+    //     let (index_pk, index_vk) = MarlinInst::index(&universal_srs, circ.clone()).unwrap();
+    //     println!("Called index");
+    //
+    //     let proof = MarlinInst::prove(&index_pk, circ, rng).unwrap();
+    //     println!("Called prover");
+    //
+    //     let mut inputs = Vec::new();
+    //     for i in 0u128..5u128 {
+    //         inputs.push(Fr::from(i));
+    //     }
+    //
+    //     assert!(MarlinInst::verify(&index_vk, &inputs, &proof).unwrap());
+    //     println!("Called verifier");
+    // }
 }
