@@ -17,7 +17,7 @@
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSystem;
 
-use crate::utilities::{bits::Xor, uint::*, Boolean, SynthesisError};
+use crate::utilities::{bits::Xor, uint::*, SynthesisError};
 
 macro_rules! uint_xor_impl {
     ($($gadget: ident),*) => ($(
@@ -33,7 +33,7 @@ macro_rules! uint_xor_impl {
                     .iter()
                     .zip(other.bits.iter())
                     .enumerate()
-                    .map(|(i, (a, b))| Boolean::xor(cs.ns(|| format!("xor of bit_gadget {}", i)), a, b))
+                    .map(|(i, (a, b))| a.xor(cs.ns(|| format!("xor of bit_gadget {}", i)), b))
                     .collect::<Result<_, _>>()?;
 
                 Ok(Self {

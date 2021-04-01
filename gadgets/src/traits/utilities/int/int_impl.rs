@@ -112,6 +112,10 @@ macro_rules! int_impl {
                     bits,
                 }
             }
+
+            fn get_value(&self) -> Option<String> {
+                self.value.map(|num| num.to_string())
+            }
         }
     };
 }
