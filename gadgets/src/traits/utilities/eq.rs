@@ -57,6 +57,12 @@ pub trait EqGadget<F: Field>: Eq
 where
     Self: ConditionalEqGadget<F>,
 {
+    /// Output a `Boolean` value representing whether `self.value() ==
+    /// other.value()`.
+    fn is_eq<CS: ConstraintSystem<F>>(&self, _cs: CS, _other: &Self) -> Result<Boolean, SynthesisError> {
+        unimplemented!()
+    }
+
     fn enforce_equal<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<(), SynthesisError> {
         self.conditional_enforce_equal(cs, other, &Boolean::constant(true))
     }
