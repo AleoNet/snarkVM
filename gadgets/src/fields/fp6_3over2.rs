@@ -681,6 +681,14 @@ where
     P: Fp6Parameters,
     P::Fp2Params: Fp2Parameters<Fp = F>,
 {
+    fn is_eq<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
+        let b0 = self.c0.is_eq(cs.ns(|| "c0_is_eq"), &other.c0)?;
+        let b1 = self.c1.is_eq(cs.ns(|| "c1_is_eq"), &other.c1)?;
+        let b2 = self.c2.is_eq(cs.ns(|| "c2_is_eq"), &other.c2)?;
+        let b0_and_b1 = Boolean::and(cs.ns(|| "b0_and_b1"), &b0, &b1)?;
+
+        Boolean::and(cs.ns(|| "b0_and_b1_and_b2"), &b0_and_b1, &b2)
+    }
 }
 
 impl<P, F: PrimeField> ConditionalEqGadget<F> for Fp6Gadget<P, F>
