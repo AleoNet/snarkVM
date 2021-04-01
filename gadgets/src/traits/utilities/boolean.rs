@@ -16,6 +16,7 @@
 
 use crate::utilities::{
     alloc::AllocGadget,
+    bits::Xor,
     eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
     select::CondSelectGadget,
     uint::UInt8,
@@ -50,58 +51,6 @@ impl AllocatedBit {
 
     pub fn get_variable(&self) -> Variable {
         self.variable
-    }
-
-    /// Performs an XOR operation over the two operands, returning
-    /// an `AllocatedBit`.
-    pub fn xor<F, CS>(mut cs: CS, a: &Self, b: &Self) -> Result<Self, SynthesisError>
-    where
-        F: Field,
-        CS: ConstraintSystem<F>,
-    {
-        let mut result_value = None;
-
-        let result_var = cs.alloc(
-            || "xor result",
-            || {
-                if a.value.get()? ^ b.value.get()? {
-                    result_value = Some(true);
-
-                    Ok(F::one())
-                } else {
-                    result_value = Some(false);
-
-                    Ok(F::zero())
-                }
-            },
-        )?;
-
-        // Constrain (a + a) * (b) = (a + b - c)
-        // Given that a and b are boolean constrained, if they
-        // are equal, the only solution for c is 0, and if they
-        // are different, the only solution for c is 1.
-        //
-        // ¬(a ∧ b) ∧ ¬(¬a ∧ ¬b) = c
-        // (1 - (a * b)) * (1 - ((1 - a) * (1 - b))) = c
-        // (1 - ab) * (1 - (1 - a - b + ab)) = c
-        // (1 - ab) * (a + b - ab) = c
-        // a + b - ab - (a^2)b - (b^2)a + (a^2)(b^2) = c
-        // a + b - ab - ab - ab + ab = c
-        // a + b - 2ab = c
-        // -2a * b = c - a - b
-        // 2a * b = a + b - c
-        // (a + a) * b = a + b - c
-        cs.enforce(
-            || "xor constraint",
-            |lc| lc + a.variable + a.variable,
-            |lc| lc + b.variable,
-            |lc| lc + a.variable + b.variable - result_var,
-        );
-
-        Ok(AllocatedBit {
-            variable: result_var,
-            value: result_value,
-        })
     }
 
     /// Performs an AND operation over the two operands, returning
@@ -248,6 +197,55 @@ impl AllocatedBit {
             |lc| lc + CS::one() - a.variable,
             |lc| lc + CS::one() - b.variable,
             |lc| lc + result_var,
+        );
+
+        Ok(AllocatedBit {
+            variable: result_var,
+            value: result_value,
+        })
+    }
+}
+
+impl<F: Field> Xor<F> for AllocatedBit {
+    fn xor<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Self, SynthesisError> {
+        let (a, b) = (self, other);
+        let mut result_value = None;
+
+        let result_var = cs.alloc(
+            || "xor result",
+            || {
+                if a.value.get()? ^ b.value.get()? {
+                    result_value = Some(true);
+
+                    Ok(F::one())
+                } else {
+                    result_value = Some(false);
+
+                    Ok(F::zero())
+                }
+            },
+        )?;
+
+        // Constrain (a + a) * (b) = (a + b - c)
+        // Given that a and b are boolean constrained, if they
+        // are equal, the only solution for c is 0, and if they
+        // are different, the only solution for c is 1.
+        //
+        // ¬(a ∧ b) ∧ ¬(¬a ∧ ¬b) = c
+        // (1 - (a * b)) * (1 - ((1 - a) * (1 - b))) = c
+        // (1 - ab) * (1 - (1 - a - b + ab)) = c
+        // (1 - ab) * (a + b - ab) = c
+        // a + b - ab - (a^2)b - (b^2)a + (a^2)(b^2) = c
+        // a + b - ab - ab - ab + ab = c
+        // a + b - 2ab = c
+        // -2a * b = c - a - b
+        // 2a * b = a + b - c
+        // (a + a) * b = a + b - c
+        cs.enforce(
+            || "xor constraint",
+            |lc| lc + a.variable + a.variable,
+            |lc| lc + b.variable,
+            |lc| lc + a.variable + b.variable - result_var,
         );
 
         Ok(AllocatedBit {
@@ -435,26 +433,6 @@ impl Boolean {
             Boolean::Constant(c) => Boolean::Constant(!c),
             Boolean::Is(ref v) => Boolean::Not(*v),
             Boolean::Not(ref v) => Boolean::Is(*v),
-        }
-    }
-
-    /// Perform XOR over two boolean operands.
-    pub fn xor<'a, F, CS>(cs: CS, a: &'a Self, b: &'a Self) -> Result<Self, SynthesisError>
-    where
-        F: Field,
-        CS: ConstraintSystem<F>,
-    {
-        match (a, b) {
-            (&Boolean::Constant(false), x) | (x, &Boolean::Constant(false)) => Ok(*x),
-            (&Boolean::Constant(true), x) | (x, &Boolean::Constant(true)) => Ok(x.not()),
-            // a XOR (NOT b) = NOT(a XOR b)
-            (is @ &Boolean::Is(_), not @ &Boolean::Not(_)) | (not @ &Boolean::Not(_), is @ &Boolean::Is(_)) => {
-                Ok(Boolean::xor(cs, is, &not.not())?.not())
-            }
-            // a XOR b = (NOT a) XOR (NOT b)
-            (&Boolean::Is(ref a), &Boolean::Is(ref b)) | (&Boolean::Not(ref a), &Boolean::Not(ref b)) => {
-                Ok(Boolean::Is(AllocatedBit::xor(cs, a, b)?))
-            }
         }
     }
 
@@ -719,6 +697,23 @@ impl Boolean {
     }
 }
 
+impl<F: Field> Xor<F> for Boolean {
+    fn xor<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, SynthesisError> {
+        match (*self, *other) {
+            (Boolean::Constant(false), x) | (x, Boolean::Constant(false)) => Ok(x),
+            (Boolean::Constant(true), x) | (x, Boolean::Constant(true)) => Ok(x.not()),
+            // a XOR (NOT b) = NOT(a XOR b)
+            (is @ Boolean::Is(_), not @ Boolean::Not(_)) | (not @ Boolean::Not(_), is @ Boolean::Is(_)) => {
+                Ok(is.xor(cs, &not.not())?.not())
+            }
+            // a XOR b = (NOT a) XOR (NOT b)
+            (Boolean::Is(ref a), Boolean::Is(ref b)) | (Boolean::Not(ref a), Boolean::Not(ref b)) => {
+                Ok(Boolean::Is(a.xor(cs, b)?))
+            }
+        }
+    }
+}
+
 impl PartialEq for Boolean {
     fn eq(&self, other: &Self) -> bool {
         use self::Boolean::*;
@@ -744,7 +739,7 @@ impl From<AllocatedBit> for Boolean {
 /// a == b = !(a XOR b)
 impl<F: PrimeField> EvaluateEqGadget<F> for Boolean {
     fn evaluate_equal<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
-        let xor = Boolean::xor(cs, self, other)?;
+        let xor = self.xor(cs, other)?;
         Ok(xor.not())
     }
 }
@@ -916,7 +911,7 @@ mod test {
                 let mut cs = TestConstraintSystem::<Fr>::new();
                 let a = AllocatedBit::alloc(cs.ns(|| "a"), || Ok(*a_val)).unwrap();
                 let b = AllocatedBit::alloc(cs.ns(|| "b"), || Ok(*b_val)).unwrap();
-                let c = AllocatedBit::xor(&mut cs, &a, &b).unwrap();
+                let c = a.xor(&mut cs, &b).unwrap();
                 assert_eq!(c.value.unwrap(), *a_val ^ *b_val);
 
                 assert!(cs.is_satisfied());
@@ -1176,7 +1171,7 @@ mod test {
                     b = dyn_construct(&mut cs, second_operand, "b");
                 }
 
-                let c = Boolean::xor(&mut cs, &a, &b).unwrap();
+                let c = a.xor(&mut cs, &b).unwrap();
 
                 assert!(cs.is_satisfied());
 

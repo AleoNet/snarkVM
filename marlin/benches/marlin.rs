@@ -18,18 +18,13 @@
 extern crate criterion;
 
 use snarkvm_algorithms::traits::SNARK;
-use snarkvm_curves::{
-    bls12_377::{Bls12_377, Fr},
-    traits::PairingEngine,
-};
+use snarkvm_curves::bls12_377::{Bls12_377, Fr};
 use snarkvm_fields::Field;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_marlin::{marlin::MarlinTestnet1Mode, snark::MarlinSystem, FiatShamirChaChaRng};
-use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
+use snarkvm_marlin::snark::MarlinSystem;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem};
 
-use blake2::Blake2s;
 use criterion::Criterion;
 use rand::{
     thread_rng,
@@ -92,14 +87,7 @@ fn snark_setup(c: &mut Criterion) {
 
     c.bench_function("snark_setup", move |b| {
         b.iter(|| {
-            let universal_srs = snarkvm_marlin::marlin::MarlinSNARK::<
-                <Bls12_377 as PairingEngine>::Fr,
-                <Bls12_377 as PairingEngine>::Fr,
-                MultiPC<Bls12_377>,
-                FiatShamirChaChaRng<<Bls12_377 as PairingEngine>::Fr, <Bls12_377 as PairingEngine>::Fr, Blake2s>,
-                MarlinTestnet1Mode,
-            >::universal_setup(1000, 1000, 1000, rng)
-            .unwrap();
+            let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(1000, 1000, 1000, rng).unwrap();
 
             let circuit = Benchmark::<Fr> {
                 inputs: vec![None; num_inputs],
@@ -120,14 +108,7 @@ fn snark_prove(c: &mut Criterion) {
         inputs.push(Some(rng.gen()));
     }
 
-    let universal_srs = snarkvm_marlin::marlin::MarlinSNARK::<
-        <Bls12_377 as PairingEngine>::Fr,
-        <Bls12_377 as PairingEngine>::Fr,
-        MultiPC<Bls12_377>,
-        FiatShamirChaChaRng<<Bls12_377 as PairingEngine>::Fr, <Bls12_377 as PairingEngine>::Fr, Blake2s>,
-        MarlinTestnet1Mode,
-    >::universal_setup(1000, 1000, 1000, rng)
-    .unwrap();
+    let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(1000, 1000, 1000, rng).unwrap();
 
     let circuit = Benchmark::<Fr> {
         inputs: vec![None; num_inputs],
