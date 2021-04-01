@@ -844,3 +844,172 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(non_camel_case_types)]
+
+    use super::*;
+    use snarkvm_curves::{
+        bls12_377::{Bls12_377, Fq},
+        bw6_761::BW6_761,
+    };
+    use snarkvm_gadgets::{
+        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
+        traits::utilities::alloc::AllocGadget,
+    };
+    use snarkvm_r1cs::TestConstraintSystem;
+    use std::collections::{HashMap, HashSet};
+
+    type BaseCurve = BW6_761;
+    type PC<E> = MarlinKZG10<E>;
+    type PC_Bls12_377 = PC<Bls12_377>;
+    type PCGadget = MarlinKZG10Gadget<Bls12_377, BaseCurve, Bls12_377PairingGadget>;
+
+    fn single_poly_test_template() -> Result<(), SynthesisError> {
+        use crate::tests::*;
+        let test_components = single_poly_test::<_, PC_Bls12_377>().expect("test failed for bls12-377");
+
+        let TestComponents {
+            verification_keys,
+            commitments,
+            query_sets,
+            evaluations,
+            batch_lc_proofs,
+            batch_proofs,
+            opening_challenges,
+            randomness,
+        } = test_components;
+
+        assert!(batch_proofs.is_some());
+        assert!(batch_lc_proofs.is_none());
+
+        let cs = &mut TestConstraintSystem::<Fq>::new();
+
+        // Allocate the verification keys
+
+        let mut verification_key_gadgets = Vec::new();
+
+        for (i, vk) in verification_keys.iter().enumerate() {
+            let vk_gadget = <PCGadget as PCCheckVar<_, _, _>>::VerifierKeyVar::alloc(
+                cs.ns(|| format!("alloc_vk_gadget_{}", i)),
+                || Ok(vk.clone()),
+            )
+            .unwrap();
+
+            verification_key_gadgets.push(vk_gadget);
+        }
+
+        // Allocate the commitments
+
+        let mut commitment_gadgets = Vec::new();
+
+        for (i, commitments_i) in commitments.iter().enumerate() {
+            let mut commitments_i_gadgets = Vec::new();
+            for (j, commitment) in commitments_i.iter().enumerate() {
+                let commitment_gadget = <PCGadget as PCCheckVar<_, _, _>>::LabeledCommitmentVar::alloc(
+                    cs.ns(|| format!("alloc_commitment_gadget_{}_{}", i, j)),
+                    || Ok(commitment.clone()),
+                )
+                .unwrap();
+
+                commitments_i_gadgets.push(commitment_gadget);
+            }
+
+            commitment_gadgets.push(commitments_i_gadgets);
+        }
+
+        // Allocate the query sets
+
+        let mut query_set_gadgets = Vec::new();
+
+        for (i, query_set) in query_sets.iter().enumerate() {
+            let mut query_set_gadget = QuerySetVar::<_, _> { 0: HashSet::new() };
+
+            for (j, query) in query_set.iter().enumerate() {
+                let value =
+                    NonNativeFieldVar::alloc(cs.ns(|| format!("query_{}_{}", i, j)), || Ok(query.1.clone())).unwrap();
+
+                let labeled_point_var = LabeledPointVar {
+                    name: query.0.clone(),
+                    value,
+                };
+
+                query_set_gadget.0.insert((query.0.clone(), labeled_point_var));
+            }
+
+            query_set_gadgets.push(query_set_gadget);
+        }
+
+        // Allocate the evaluations.
+
+        let mut evaluations_gadgets = Vec::new();
+
+        for (i, evaluations) in evaluations.iter().enumerate() {
+            let mut evaluations_gadget = EvaluationsVar::<_, _> { 0: HashMap::new() };
+
+            for (j, evaluation) in evaluations.iter().enumerate() {
+                let value = NonNativeFieldVar::alloc(cs.ns(|| format!("evaluation_labeled_point_{}_{}", i, j)), || {
+                    Ok(evaluation.0.1.clone())
+                })
+                .unwrap();
+
+                let labeled_point_var = LabeledPointVar {
+                    name: evaluation.0.0.clone(),
+                    value,
+                };
+
+                let nonnative_point =
+                    NonNativeFieldVar::alloc(cs.ns(|| format!("evaluation_point_{}_{}", i, j)), || {
+                        Ok(evaluation.1.clone())
+                    })
+                    .unwrap();
+
+                evaluations_gadget.0.insert(labeled_point_var, nonnative_point);
+            }
+
+            evaluations_gadgets.push(evaluations_gadget);
+        }
+
+        // Allocate the proofs.
+
+        let mut proof_gadgets = Vec::new();
+
+        for (i, proofs_i) in batch_proofs.unwrap().iter().enumerate() {
+            let mut proof_gadgets_i = Vec::new();
+            for (j, proof) in proofs_i.iter().enumerate() {
+                let proof_gadget = <PCGadget as PCCheckVar<_, _, _>>::ProofVar::alloc(
+                    cs.ns(|| format!("proof_var_{}_{}", i, j)),
+                    || Ok(proof),
+                )
+                .unwrap();
+                proof_gadgets_i.push(proof_gadget);
+            }
+
+            proof_gadgets.push(proof_gadgets_i);
+        }
+
+        // TODO (raychu86): Construct the randomness for the batch check.
+        // Allocate the randomness.
+
+        // let result = MarlinKZG10Gadget::batch_check_evaluations(
+        //     cs.ns(|| "batch_check_evaluations"),
+        //     &verification_key_gadgets,
+        //     &commitment_gadgets,
+        //     &query_set_gadgets,
+        //     &evaluations_gadgets,
+        //     &proof_gadgets,
+        //     randomness_gadgets;
+        // )
+        // .unwrap();
+
+        assert!(cs.is_satisfied());
+
+        Ok(())
+    }
+
+    #[test]
+    fn single_poly_test_gadget() {
+        single_poly_test_template().expect("test failed for bls12-377");
+    }
+}

@@ -553,6 +553,17 @@ pub mod tests {
         num_equations: Option<usize>,
     }
 
+    pub struct TestComponents<F: Field, PC: PolynomialCommitment<F>> {
+        pub verification_keys: Vec<PC::VerifierKey>,
+        pub commitments: Vec<Vec<LabeledCommitment<PC::Commitment>>>,
+        pub query_sets: Vec<QuerySet<'static, F>>,
+        pub evaluations: Vec<Evaluations<'static, F>>,
+        pub batch_lc_proofs: Option<Vec<BatchLCProof<F, PC>>>,
+        pub batch_proofs: Option<Vec<PC::BatchProof>>,
+        pub opening_challenges: Vec<F>,
+        pub randomness: Vec<Vec<PC::Randomness>>,
+    }
+
     pub fn bad_degree_bound_test<F, PC>() -> Result<(), PC::Error>
     where
         F: Field,
@@ -614,7 +625,7 @@ pub mod tests {
         Ok(())
     }
 
-    fn test_template<F, PC>(info: TestInfo) -> Result<(), PC::Error>
+    fn test_template<F, PC>(info: TestInfo) -> Result<TestComponents<F, PC>, PC::Error>
     where
         F: Field,
         PC: PolynomialCommitment<F>,
@@ -628,6 +639,14 @@ pub mod tests {
             max_num_queries,
             ..
         } = info;
+
+        let mut verification_keys = Vec::new();
+        let mut commitments = Vec::new();
+        let mut query_sets = Vec::new();
+        let mut evaluations = Vec::new();
+        let mut batch_proofs = Vec::new();
+        let mut opening_challenges = Vec::new();
+        let mut randomness = Vec::new();
 
         let rng = &mut test_rng();
         let max_degree = max_degree.unwrap_or_else(|| rand::distributions::Uniform::from(2..=64).sample(rng));
@@ -718,11 +737,28 @@ pub mod tests {
                 }
             }
             assert!(result, "proof was incorrect, Query set: {:#?}", query_set);
+
+            verification_keys.push(vk);
+            commitments.push(comms);
+            query_sets.push(query_set);
+            evaluations.push(values);
+            batch_proofs.push(proof);
+            opening_challenges.push(opening_challenge);
+            randomness.push(rands);
         }
-        Ok(())
+        Ok(TestComponents {
+            verification_keys,
+            commitments,
+            query_sets,
+            evaluations,
+            batch_lc_proofs: None,
+            batch_proofs: Some(batch_proofs),
+            opening_challenges,
+            randomness,
+        })
     }
 
-    fn equation_test_template<F, PC>(info: TestInfo) -> Result<(), PC::Error>
+    fn equation_test_template<F, PC>(info: TestInfo) -> Result<TestComponents<F, PC>, PC::Error>
     where
         F: Field,
         PC: PolynomialCommitment<F>,
@@ -736,6 +772,14 @@ pub mod tests {
             max_num_queries,
             num_equations,
         } = info;
+
+        let mut verification_keys = Vec::new();
+        let mut commitments = Vec::new();
+        let mut query_sets = Vec::new();
+        let mut evaluations = Vec::new();
+        let mut batch_lc_proofs = Vec::new();
+        let mut opening_challenges = Vec::new();
+        let mut randomness = Vec::new();
 
         let rng = &mut test_rng();
         let max_degree = max_degree.unwrap_or_else(|| rand::distributions::Uniform::from(2..=64).sample(rng));
@@ -874,11 +918,27 @@ pub mod tests {
                 }
             }
             assert!(result, "proof was incorrect, equations: {:#?}", linear_combinations);
+            verification_keys.push(vk);
+            commitments.push(comms);
+            query_sets.push(query_set);
+            evaluations.push(values);
+            batch_lc_proofs.push(proof);
+            opening_challenges.push(opening_challenge);
+            randomness.push(rands);
         }
-        Ok(())
+        Ok(TestComponents {
+            verification_keys,
+            commitments,
+            query_sets,
+            evaluations,
+            batch_lc_proofs: Some(batch_lc_proofs),
+            batch_proofs: None,
+            opening_challenges,
+            randomness,
+        })
     }
 
-    pub fn single_poly_test<F, PC>() -> Result<(), PC::Error>
+    pub fn single_poly_test<F, PC>() -> Result<TestComponents<F, PC>, PC::Error>
     where
         F: Field,
         PC: PolynomialCommitment<F>,
@@ -895,7 +955,7 @@ pub mod tests {
         test_template::<F, PC>(info)
     }
 
-    pub fn linear_poly_degree_bound_test<F, PC>() -> Result<(), PC::Error>
+    pub fn linear_poly_degree_bound_test<F, PC>() -> Result<TestComponents<F, PC>, PC::Error>
     where
         F: Field,
         PC: PolynomialCommitment<F>,
@@ -912,7 +972,7 @@ pub mod tests {
         test_template::<F, PC>(info)
     }
 
-    pub fn single_poly_degree_bound_test<F, PC>() -> Result<(), PC::Error>
+    pub fn single_poly_degree_bound_test<F, PC>() -> Result<TestComponents<F, PC>, PC::Error>
     where
         F: Field,
         PC: PolynomialCommitment<F>,
@@ -929,7 +989,7 @@ pub mod tests {
         test_template::<F, PC>(info)
     }
 
-    pub fn quadratic_poly_degree_bound_multiple_queries_test<F, PC>() -> Result<(), PC::Error>
+    pub fn quadratic_poly_degree_bound_multiple_queries_test<F, PC>() -> Result<TestComponents<F, PC>, PC::Error>
     where
         F: Field,
         PC: PolynomialCommitment<F>,
@@ -946,7 +1006,7 @@ pub mod tests {
         test_template::<F, PC>(info)
     }
 
-    pub fn single_poly_degree_bound_multiple_queries_test<F, PC>() -> Result<(), PC::Error>
+    pub fn single_poly_degree_bound_multiple_queries_test<F, PC>() -> Result<TestComponents<F, PC>, PC::Error>
     where
         F: Field,
         PC: PolynomialCommitment<F>,
@@ -963,7 +1023,7 @@ pub mod tests {
         test_template::<F, PC>(info)
     }
 
-    pub fn two_polys_degree_bound_single_query_test<F, PC>() -> Result<(), PC::Error>
+    pub fn two_polys_degree_bound_single_query_test<F, PC>() -> Result<TestComponents<F, PC>, PC::Error>
     where
         F: Field,
         PC: PolynomialCommitment<F>,
@@ -980,7 +1040,7 @@ pub mod tests {
         test_template::<F, PC>(info)
     }
 
-    pub fn full_end_to_end_test<F, PC>() -> Result<(), PC::Error>
+    pub fn full_end_to_end_test<F, PC>() -> Result<TestComponents<F, PC>, PC::Error>
     where
         F: Field,
         PC: PolynomialCommitment<F>,
@@ -997,7 +1057,7 @@ pub mod tests {
         test_template::<F, PC>(info)
     }
 
-    pub fn full_end_to_end_equation_test<F, PC>() -> Result<(), PC::Error>
+    pub fn full_end_to_end_equation_test<F, PC>() -> Result<TestComponents<F, PC>, PC::Error>
     where
         F: Field,
         PC: PolynomialCommitment<F>,
@@ -1014,7 +1074,7 @@ pub mod tests {
         equation_test_template::<F, PC>(info)
     }
 
-    pub fn single_equation_test<F, PC>() -> Result<(), PC::Error>
+    pub fn single_equation_test<F, PC>() -> Result<TestComponents<F, PC>, PC::Error>
     where
         F: Field,
         PC: PolynomialCommitment<F>,
@@ -1031,7 +1091,7 @@ pub mod tests {
         equation_test_template::<F, PC>(info)
     }
 
-    pub fn two_equation_test<F, PC>() -> Result<(), PC::Error>
+    pub fn two_equation_test<F, PC>() -> Result<TestComponents<F, PC>, PC::Error>
     where
         F: Field,
         PC: PolynomialCommitment<F>,
@@ -1048,7 +1108,7 @@ pub mod tests {
         equation_test_template::<F, PC>(info)
     }
 
-    pub fn two_equation_degree_bound_test<F, PC>() -> Result<(), PC::Error>
+    pub fn two_equation_degree_bound_test<F, PC>() -> Result<TestComponents<F, PC>, PC::Error>
     where
         F: Field,
         PC: PolynomialCommitment<F>,
