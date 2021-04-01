@@ -43,6 +43,7 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::{
     collections::BTreeMap,
+    marker::PhantomData,
     string::{String, ToString},
     vec::Vec,
 };
@@ -51,6 +52,7 @@ use alloc::{
 #[cfg(feature = "std")]
 use std::{
     collections::BTreeMap,
+    marker::PhantomData,
     string::{String, ToString},
     vec::Vec,
 };
@@ -75,3 +77,7 @@ pub use parameters::*;
 /// Implements the snarkVM-compatible Marlin SNARK interface.
 pub mod snark;
 pub use snark::*;
+
+/// RNGs for the Marlin SNARK.
+pub mod fiat_shamir;
+pub use fiat_shamir::*;

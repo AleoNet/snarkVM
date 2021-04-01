@@ -15,12 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::traits::SNARK;
-use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
-use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
+use snarkvm_curves::bls12_377::Bls12_377;
 use snarkvm_posw::{txids_to_roots, Marlin, PoswGM17, PoswMarlin, GM17};
 use snarkvm_utilities::bytes::FromBytes;
 
-use blake2::Blake2s;
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
@@ -63,12 +61,7 @@ fn marlin_posw(c: &mut Criterion) {
     group.sample_size(10);
     let rng = &mut XorShiftRng::seed_from_u64(1234567);
 
-    let universal_srs = snarkvm_marlin::marlin::MarlinSNARK::<
-        <Bls12_377 as PairingEngine>::Fr,
-        MultiPC<Bls12_377>,
-        Blake2s,
-    >::universal_setup(10000, 10000, 100000, rng)
-    .unwrap();
+    let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(10000, 10000, 100000, rng).unwrap();
 
     let posw = PoswMarlin::index(universal_srs).unwrap();
 

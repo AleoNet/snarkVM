@@ -100,5 +100,9 @@ default-features = false
 version = "1.0"
 
 [features]
-print-trace = [ "snarkvm-profiler/print-trace" ]
+default = ["snarkvm-parameters/remote"]
+
+# Internal
+
+print-trace = ["snarkvm-profiler/print-trace"]
 test-helpers = [ ]

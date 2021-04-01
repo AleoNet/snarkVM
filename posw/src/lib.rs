@@ -79,10 +79,7 @@ mod tests {
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
     use snarkvm_algorithms::traits::SNARK;
-    use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
     use snarkvm_utilities::bytes::FromBytes;
-
-    use blake2::Blake2s;
 
     #[test]
     fn test_load_verify_only() {
@@ -122,12 +119,7 @@ mod tests {
         let rng = &mut XorShiftRng::seed_from_u64(1234567);
 
         // run the trusted setup
-        let universal_srs = snarkvm_marlin::marlin::MarlinSNARK::<
-            <Bls12_377 as PairingEngine>::Fr,
-            MultiPC<Bls12_377>,
-            Blake2s,
-        >::universal_setup(10000, 10000, 100000, rng)
-        .unwrap();
+        let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(10000, 10000, 100000, rng).unwrap();
 
         // run the deterministic setup
         let posw = PoswMarlin::index(universal_srs).unwrap();

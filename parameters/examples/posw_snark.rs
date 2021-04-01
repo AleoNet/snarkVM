@@ -15,13 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::crh::sha256;
-use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_dpc::errors::DPCError;
-use snarkvm_polycommit::marlin_pc::MarlinKZG10 as MultiPC;
 use snarkvm_posw::PoswMarlin;
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
-use blake2::Blake2s;
 use rand::thread_rng;
 use std::path::PathBuf;
 
@@ -32,12 +29,7 @@ use utils::store;
 pub fn setup() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
-    let srs = snarkvm_marlin::marlin::MarlinSNARK::<
-        <Bls12_377 as PairingEngine>::Fr,
-        MultiPC<Bls12_377>,
-        Blake2s,
-    >::universal_setup(10000, 10000, 100000, rng)
-    .unwrap();
+    let srs = snarkvm_marlin::MarlinTestnet1::universal_setup(10000, 10000, 100000, rng).unwrap();
 
     let srs_bytes = to_bytes![srs]?;
     let posw_snark = PoswMarlin::index(srs).expect("could not setup params");

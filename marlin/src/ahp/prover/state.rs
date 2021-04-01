@@ -24,34 +24,34 @@ use snarkvm_polycommit::LabeledPolynomial;
 
 /// State for the AHP prover.
 pub struct ProverState<'a, F: PrimeField> {
-    pub(crate) padded_public_variables: Vec<F>,
-    pub(crate) private_variables: Vec<F>,
+    pub(super) padded_public_variables: Vec<F>,
+    pub(super) private_variables: Vec<F>,
     /// Az
-    pub(crate) z_a: Option<Vec<F>>,
+    pub(super) z_a: Option<Vec<F>>,
     /// Bz
-    pub(crate) z_b: Option<Vec<F>>,
+    pub(super) z_b: Option<Vec<F>>,
     /// query bound b
-    pub(crate) zk_bound: usize,
+    pub(super) zk_bound: usize,
 
-    pub(crate) w_poly: Option<LabeledPolynomial<F>>,
-    pub(crate) mz_polys: Option<(LabeledPolynomial<F>, LabeledPolynomial<F>)>,
+    pub(super) w_poly: Option<LabeledPolynomial<F>>,
+    pub(super) mz_polys: Option<(LabeledPolynomial<F>, LabeledPolynomial<F>)>,
 
-    pub(crate) index: &'a Circuit<F>,
+    pub(super) index: &'a Circuit<F>,
 
     /// the random values sent by the verifier in the first round
-    pub(crate) verifier_first_message: Option<VerifierFirstMessage<F>>,
+    pub(super) verifier_first_message: Option<VerifierFirstMessage<F>>,
 
     /// the blinding polynomial for the first round
-    pub(crate) mask_poly: Option<LabeledPolynomial<F>>,
+    pub(super) mask_poly: Option<LabeledPolynomial<F>>,
 
     /// domain X, sized for the public input
-    pub(crate) domain_x: EvaluationDomain<F>,
+    pub(super) domain_x: EvaluationDomain<F>,
 
     /// domain H, sized for constraints
-    pub(crate) domain_h: EvaluationDomain<F>,
+    pub(super) domain_h: EvaluationDomain<F>,
 
     /// domain K, sized for matrix nonzero elements
-    pub(crate) domain_k: EvaluationDomain<F>,
+    pub(super) domain_k: EvaluationDomain<F>,
 }
 
 impl<'a, F: PrimeField> ProverState<'a, F> {

@@ -14,33 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-/// The Marlin circuit proving key.
-mod circuit_proving_key;
-pub use circuit_proving_key::*;
-
-/// The Marlin circuit verifying key.
-mod circuit_verifying_key;
-pub use circuit_verifying_key::*;
-
 /// Errors.
 mod errors;
 pub use errors::*;
 
-/// A generic implementation of the Marlin proof system.
-mod marlin;
-pub use marlin::*;
+/// Fiat-Shamir algebraic sponge RNG.
+mod fiat_shamir_algebraic_sponge;
+pub use fiat_shamir_algebraic_sponge::*;
 
-/// Specifies the Marlin mode.
-mod mode;
-pub use mode::*;
+/// Fiat-Shamir ChaCha RNG.
+mod fiat_shamir_chacha;
+pub use fiat_shamir_chacha::*;
 
-/// The Marlin zkSNARK proof.
-mod proof;
-pub use proof::*;
+/// Constraints for the Fiat-Shamir RNG.
+mod fiat_shamir_algebraic_sponge_gadget;
+pub use fiat_shamir_algebraic_sponge_gadget::*;
 
-#[cfg(test)]
-mod tests;
+/// The Poseidon sponge.
+mod fiat_shamir_poseidon_sponge;
+pub use fiat_shamir_poseidon_sponge::*;
 
-/// The Marlin universal SRS.
-mod universal_srs;
-pub use universal_srs::*;
+/// The constraints for the Poseidon sponge.
+mod fiat_shamir_poseidon_sponge_gadget;
+pub use fiat_shamir_poseidon_sponge_gadget::*;
+
+/// Traits for the Fiat-Shamir RNG.
+pub mod traits;
+pub use traits::*;

@@ -180,7 +180,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     /// Specializes the public parameters for polynomials up to the given `supported_degree`
     /// and for enforcing degree bounds in the range `1..=supported_degree`.
     fn trim(
-        pp: &Self::UniversalParams,
+        parameters: &Self::UniversalParams,
         supported_degree: usize,
         supported_hiding_bound: usize,
         enforced_degree_bounds: Option<&[usize]>,
@@ -307,7 +307,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     /// committed in `labeled_commitments`.
     fn batch_check<'a, R: RngCore>(
         vk: &Self::VerifierKey,
-        commitments: impl Iterator<Item = LabeledCommitment<Self::Commitment>>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
         query_set: &QuerySet<F>,
         evaluations: &Evaluations<F>,
         proof: &Self::BatchProof,
@@ -317,7 +317,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     where
         Self::Commitment: 'a,
     {
-        let commitments: BTreeMap<_, _> = commitments.map(|c| (c.label().to_owned(), c)).collect();
+        let commitments: BTreeMap<_, _> = commitments.into_iter().map(|c| (c.label(), c)).collect();
         let mut query_to_labels_map = BTreeMap::new();
         for (label, point) in query_set.iter() {
             let labels = query_to_labels_map.entry(point).or_insert_with(BTreeSet::new);
@@ -398,7 +398,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     fn check_combinations<'a, R: RngCore>(
         vk: &Self::VerifierKey,
         linear_combinations: impl IntoIterator<Item = &'a LinearCombination<F>>,
-        commitments: impl Iterator<Item = LabeledCommitment<Self::Commitment>>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
         eqn_query_set: &QuerySet<F>,
         eqn_evaluations: &Evaluations<F>,
         proof: &BatchLCProof<F, Self>,
@@ -461,6 +461,36 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
 
         Ok(true)
     }
+
+    /// On input a list of polynomials, linear combinations of those polynomials,
+    /// and a query set, `open_combination` outputs a proof of evaluation of
+    /// the combinations at the points in the query set.
+    fn open_combinations_individual_opening_challenges<'a>(
+        ck: &Self::CommitterKey,
+        linear_combinations: impl IntoIterator<Item = &'a LinearCombination<F>>,
+        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
+        query_set: &QuerySet<F>,
+        opening_challenges: &dyn Fn(u64) -> F,
+        rands: impl IntoIterator<Item = &'a Self::Randomness>,
+    ) -> Result<BatchLCProof<F, Self>, Self::Error>
+    where
+        Self::Randomness: 'a,
+        Self::Commitment: 'a;
+
+    /// Check combinations with individual challenges.
+    fn check_combinations_individual_opening_challenges<'a, R: RngCore>(
+        vk: &Self::VerifierKey,
+        linear_combinations: impl IntoIterator<Item = &'a LinearCombination<F>>,
+        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
+        eqn_query_set: &QuerySet<F>,
+        eqn_evaluations: &Evaluations<F>,
+        proof: &BatchLCProof<F, Self>,
+        opening_challenges: &dyn Fn(u64) -> F,
+        rng: &mut R,
+    ) -> Result<bool, Self::Error>
+    where
+        Self::Commitment: 'a;
 }
 
 /// Evaluate the given polynomials at `query_set`.
@@ -541,12 +571,7 @@ pub mod tests {
                 let hiding_bound = Some(1);
                 degree_bounds.push(degree_bound);
 
-                polynomials.push(LabeledPolynomial::new_owned(
-                    label,
-                    poly,
-                    Some(degree_bound),
-                    hiding_bound,
-                ))
+                polynomials.push(LabeledPolynomial::new(label, poly, Some(degree_bound), hiding_bound))
             }
 
             println!("supported degree: {:?}", supported_degree);
@@ -575,15 +600,7 @@ pub mod tests {
                 &rands,
                 Some(rng),
             )?;
-            let result = PC::batch_check(
-                &vk,
-                comms.into_iter(),
-                &query_set,
-                &values,
-                &proof,
-                opening_challenge,
-                rng,
-            )?;
+            let result = PC::batch_check(&vk, &comms, &query_set, &values, &proof, opening_challenge, rng)?;
             assert!(result, "proof was incorrect, Query set: {:#?}", query_set);
         }
         Ok(())
@@ -642,7 +659,7 @@ pub mod tests {
                 };
                 println!("Hiding bound: {:?}", hiding_bound);
 
-                polynomials.push(LabeledPolynomial::new_owned(label, poly, degree_bound, hiding_bound))
+                polynomials.push(LabeledPolynomial::new(label, poly, degree_bound, hiding_bound))
             }
             let supported_hiding_bound = polynomials
                 .iter()
@@ -681,15 +698,7 @@ pub mod tests {
                 &rands,
                 Some(rng),
             )?;
-            let result = PC::batch_check(
-                &vk,
-                comms.into_iter(),
-                &query_set,
-                &values,
-                &proof,
-                opening_challenge,
-                rng,
-            )?;
+            let result = PC::batch_check(&vk, &comms, &query_set, &values, &proof, opening_challenge, rng)?;
             if !result {
                 println!(
                     "Failed with {} polynomials, num_points_in_query_set: {:?}",
@@ -762,7 +771,7 @@ pub mod tests {
                 };
                 println!("Hiding bound: {:?}", hiding_bound);
 
-                polynomials.push(LabeledPolynomial::new_owned(label, poly, degree_bound, hiding_bound))
+                polynomials.push(LabeledPolynomial::new(label, poly, degree_bound, hiding_bound))
             }
             let supported_hiding_bound = polynomials
                 .iter()
@@ -839,7 +848,7 @@ pub mod tests {
             let result = PC::check_combinations(
                 &vk,
                 &linear_combinations,
-                comms.into_iter(),
+                &comms,
                 &query_set,
                 &values,
                 &proof,

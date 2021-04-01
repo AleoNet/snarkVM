@@ -14,33 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-/// The Marlin circuit proving key.
-mod circuit_proving_key;
-pub use circuit_proving_key::*;
+/// A trait to specify the Marlin mode.
+pub trait MarlinMode: Clone {
+    /// Specifies whether this is for a recursive proof of at least depth-1.
+    const RECURSION: bool;
+}
 
-/// The Marlin circuit verifying key.
-mod circuit_verifying_key;
-pub use circuit_verifying_key::*;
+/// TODO (howardwu): Combine all of the testnet configurations into an environment struct higher up.
+/// The Marlin testnet1 mode does not assume recursive proofs of any depth.
+#[derive(Clone)]
+pub struct MarlinTestnet1Mode;
 
-/// Errors.
-mod errors;
-pub use errors::*;
+impl MarlinMode for MarlinTestnet1Mode {
+    const RECURSION: bool = false;
+}
 
-/// A generic implementation of the Marlin proof system.
-mod marlin;
-pub use marlin::*;
+/// The Marlin default mode assumes a recursive proof of at least depth-1.
+#[derive(Clone)]
+pub struct MarlinRecursiveMode;
 
-/// Specifies the Marlin mode.
-mod mode;
-pub use mode::*;
-
-/// The Marlin zkSNARK proof.
-mod proof;
-pub use proof::*;
-
-#[cfg(test)]
-mod tests;
-
-/// The Marlin universal SRS.
-mod universal_srs;
-pub use universal_srs::*;
+impl MarlinMode for MarlinRecursiveMode {
+    const RECURSION: bool = true;
+}

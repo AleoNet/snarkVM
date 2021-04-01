@@ -41,6 +41,14 @@ version = "0.2.2"
 path = "../fields"
 version = "0.2.2"
 
+[dependencies.snarkvm-gadgets]
+path = "../gadgets"
+version = "0.2.1"
+
+[dependencies.snarkvm-nonnative]
+path = "../nonnative"
+version = "0.2.1"
+
 [dependencies.snarkvm-polycommit]
 path = "../polycommit"
 version = "0.2.2"
@@ -80,12 +88,12 @@ features = [ "getrandom" ]
 version = "1"
 optional = true
 
+[dev-dependencies.criterion]
+version = "0.3.4"
+
 [dev-dependencies.rand]
 version = "0.8"
 default-features = false
-
-[dev-dependencies.criterion]
-version = "0.3.4"
 
 [features]
 default = [ "std", "parallel" ]

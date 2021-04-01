@@ -17,7 +17,7 @@
 use crate::{impl_bytes, BTreeMap, *};
 use core::ops::{Add, AddAssign};
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
-use snarkvm_fields::{PrimeField, Zero};
+use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
     bytes::ToBytes,
     error,
@@ -96,6 +96,23 @@ pub struct VerifierKey<E: PairingEngine> {
 }
 impl_bytes!(VerifierKey);
 
+impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E>
+where
+    E::G1Affine: ToConstraintField<E::Fq>,
+    E::G2Affine: ToConstraintField<E::Fq>,
+{
+    fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
+        let mut res = Vec::new();
+
+        res.extend_from_slice(&self.g.to_field_elements().unwrap());
+        res.extend_from_slice(&self.gamma_g.to_field_elements().unwrap());
+        res.extend_from_slice(&self.h.to_field_elements().unwrap());
+        res.extend_from_slice(&self.beta_h.to_field_elements().unwrap());
+
+        Ok(res)
+    }
+}
+
 /// `Commitment` commits to a polynomial. It is output by `KZG10::commit`.
 #[derive(Derivative)]
 #[derivative(
@@ -136,6 +153,15 @@ impl<'a, E: PairingEngine> AddAssign<(E::Fr, &'a Commitment<E>)> for Commitment<
         let mut other = other.0.mul(f.into_repr());
         other.add_assign_mixed(&self.0);
         self.0 = other.into();
+    }
+}
+
+impl<E: PairingEngine> ToConstraintField<E::Fq> for Commitment<E>
+where
+    E::G1Affine: ToConstraintField<E::Fq>,
+{
+    fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
+        self.0.to_field_elements()
     }
 }
 

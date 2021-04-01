@@ -16,7 +16,8 @@
 
 //! The Marlin zkSNARK implementation
 use crate::{
-    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinSNARK, Proof, UniversalSRS},
+    fiat_shamir::FiatShamirChaChaRng,
+    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinSNARK, MarlinTestnet1Mode, Proof, UniversalSRS},
     Parameters,
 };
 use snarkvm_algorithms::{errors::SNARKError, traits::SNARK};
@@ -50,6 +51,15 @@ impl<E: PairingEngine> From<Parameters<E>> for VerifyingKey<E> {
     }
 }
 
+/// The Marlin proof system for testnet1.
+pub type MarlinTestnet1<E> = MarlinSNARK<
+    <E as PairingEngine>::Fr,
+    <E as PairingEngine>::Fq,
+    MultiPC<E>,
+    FiatShamirChaChaRng<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, Blake2s>,
+    MarlinTestnet1Mode,
+>;
+
 /// A Marlin instance using the KZG10 polynomial commitment and Blake2s
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MarlinSystem<E, C, V>
@@ -57,6 +67,8 @@ where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
     V: ToConstraintField<E::Fr>,
+    <MultiPC<E> as PolynomialCommitment<E::Fr>>::Commitment: ToConstraintField<E::Fq>,
+    <MultiPC<E> as PolynomialCommitment<E::Fr>>::VerifierKey: ToConstraintField<E::Fq>,
 {
     _engine: PhantomData<E>,
     _circuit: PhantomData<C>,
@@ -68,6 +80,8 @@ where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
     V: ToConstraintField<E::Fr>,
+    <MultiPC<E> as PolynomialCommitment<E::Fr>>::Commitment: ToConstraintField<E::Fq>,
+    <MultiPC<E> as PolynomialCommitment<E::Fr>>::VerifierKey: ToConstraintField<E::Fq>,
 {
     type AssignedCircuit = C;
     type Circuit = (C, SRS<E>);
@@ -96,9 +110,8 @@ where
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         let proving_time = start_timer!(|| "{Marlin}::Proving");
-        let proof =
-            MarlinSNARK::<<E as PairingEngine>::Fr, MultiPC<E>, Blake2s>::prove(&parameters.proving_key, circuit, rng)
-                .map_err(|error| SNARKError::Crate("marlin", format!("Failed to generate proof - {:?}", error)))?;
+        let proof = MarlinTestnet1::<E>::prove(&parameters.proving_key, circuit, rng)
+            .map_err(|error| SNARKError::Crate("marlin", format!("Failed to generate proof - {:?}", error)))?;
         end_timer!(proving_time);
         Ok(proof)
     }
@@ -109,13 +122,8 @@ where
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
         let verification_time = start_timer!(|| "{Marlin}::Verifying");
-        let res = MarlinSNARK::<<E as PairingEngine>::Fr, MultiPC<E>, Blake2s>::verify(
-            &verifying_key,
-            &input.to_field_elements()?,
-            &proof,
-            &mut rand_core::OsRng,
-        )
-        .map_err(|_| SNARKError::Crate("marlin", "Could not verify proof".to_owned()))?;
+        let res = MarlinTestnet1::<E>::verify(&verifying_key, &input.to_field_elements()?, &proof)
+            .map_err(|_| SNARKError::Crate("marlin", "Could not verify proof".to_owned()))?;
         end_timer!(verification_time);
 
         Ok(res)

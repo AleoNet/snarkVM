@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{marlin::MarlinSNARK, ProvingKey, VerifyingKey, SRS};
+use crate::{MarlinTestnet1, PolynomialCommitment, ProvingKey, VerifyingKey, SRS};
 use snarkvm_algorithms::errors::SNARKError;
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
-use snarkvm_r1cs::ConstraintSynthesizer;
+pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PCCommitment};
+use snarkvm_r1cs::{ConstraintSynthesizer, ToConstraintField};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     error,
@@ -28,9 +29,6 @@ use snarkvm_utilities::{
     SNARK_PARAMS_AFFINE_COUNT,
 };
 
-pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PCCommitment};
-
-use blake2::Blake2s;
 use derivative::Derivative;
 use rayon::prelude::*;
 use std::{
@@ -54,10 +52,14 @@ pub struct Parameters<E: PairingEngine> {
     pub verifying_key: VerifyingKey<E>,
 }
 
-impl<E: PairingEngine> Parameters<E> {
+impl<E: PairingEngine> Parameters<E>
+where
+    <MultiPC<E> as PolynomialCommitment<E::Fr>>::Commitment: ToConstraintField<E::Fq>,
+    <MultiPC<E> as PolynomialCommitment<E::Fr>>::VerifierKey: ToConstraintField<E::Fq>,
+{
     /// Creates an instance of `Parameters` from a given universal SRS.
     pub fn new<C: ConstraintSynthesizer<E::Fr>>(circuit: &C, universal_srs: &SRS<E>) -> Result<Self, SNARKError> {
-        let (proving_key, verifying_key) = MarlinSNARK::<_, _, Blake2s>::circuit_setup(universal_srs, circuit)
+        let (proving_key, verifying_key) = MarlinTestnet1::<E>::circuit_setup(universal_srs, circuit)
             .map_err(|error| SNARKError::Crate("marlin", format!("could not index - {:?}", error)))?;
         Ok(Self {
             proving_key,

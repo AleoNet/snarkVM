@@ -14,26 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ahp::{
-    indexer::CircuitInfo,
-    verifier::{VerifierFirstMessage, VerifierSecondMessage, VerifierState},
-    AHPError,
-    AHPForR1CS,
+use crate::{
+    ahp::{
+        indexer::CircuitInfo,
+        verifier::{VerifierFirstMessage, VerifierSecondMessage, VerifierState},
+        AHPError,
+        AHPForR1CS,
+    },
+    traits::FiatShamirRng,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
+use snarkvm_nonnative::params::OptimizationType;
 use snarkvm_r1cs::errors::SynthesisError;
 
 use snarkvm_polycommit::QuerySet;
 
 use rand_core::RngCore;
 
-impl<F: PrimeField> AHPForR1CS<F> {
+impl<TargetField: PrimeField> AHPForR1CS<TargetField> {
     /// Output the first message and next round state.
-    pub fn verifier_first_round<R: RngCore>(
-        index_info: CircuitInfo<F>,
-        rng: &mut R,
-    ) -> Result<(VerifierFirstMessage<F>, VerifierState<F>), AHPError> {
+    pub fn verifier_first_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
+        index_info: CircuitInfo<TargetField>,
+        fs_rng: &mut R,
+    ) -> Result<(VerifierFirstMessage<TargetField>, VerifierState<TargetField>), AHPError> {
         // Check that the R1CS is a square matrix.
         if index_info.num_constraints != index_info.num_variables {
             return Err(AHPError::NonSquareMatrix);
@@ -45,10 +49,12 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let domain_k =
             EvaluationDomain::new(index_info.num_non_zero).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let alpha = domain_h.sample_element_outside_domain(rng);
-        let eta_a = F::rand(rng);
-        let eta_b = F::rand(rng);
-        let eta_c = F::rand(rng);
+        let elems = fs_rng.squeeze_nonnative_field_elements(4, OptimizationType::Weight)?;
+        let alpha = elems[0];
+        let eta_a = elems[1];
+        let eta_b = elems[2];
+        let eta_c = elems[3];
+        assert!(!domain_h.evaluate_vanishing_polynomial(alpha).is_zero());
 
         let message = VerifierFirstMessage {
             alpha,
@@ -69,30 +75,40 @@ impl<F: PrimeField> AHPForR1CS<F> {
     }
 
     /// Output the second message and next round state.
-    pub fn verifier_second_round<R: RngCore>(
-        mut state: VerifierState<F>,
-        rng: &mut R,
-    ) -> (VerifierSecondMessage<F>, VerifierState<F>) {
-        let beta = state.domain_h.sample_element_outside_domain(rng);
-        let msg = VerifierSecondMessage { beta };
-        state.second_round_message = Some(msg);
+    pub fn verifier_second_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
+        mut state: VerifierState<TargetField>,
+        fs_rng: &mut R,
+    ) -> Result<(VerifierSecondMessage<TargetField>, VerifierState<TargetField>), AHPError> {
+        let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight)?;
+        let beta = elems[0];
+        assert!(!state.domain_h.evaluate_vanishing_polynomial(beta).is_zero());
 
-        (msg, state)
+        let message = VerifierSecondMessage { beta };
+        state.second_round_message = Some(message);
+
+        Ok((message, state))
     }
 
     /// Output the third message and next round state.
-    pub fn verifier_third_round<R: RngCore>(mut state: VerifierState<F>, rng: &mut R) -> VerifierState<F> {
-        state.gamma = Some(F::rand(rng));
-        state
+    pub fn verifier_third_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
+        mut state: VerifierState<TargetField>,
+        fs_rng: &mut R,
+    ) -> Result<VerifierState<TargetField>, AHPError> {
+        let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight)?;
+        let gamma = elems[0];
+
+        state.gamma = Some(gamma);
+        Ok(state)
     }
 
     /// Output the query state and next round state.
     pub fn verifier_query_set<'a, 'b, R: RngCore>(
-        state: VerifierState<F>,
+        state: VerifierState<TargetField>,
         _: &'a mut R,
-    ) -> (QuerySet<'b, F>, VerifierState<F>) {
+        with_vanishing: bool,
+    ) -> (QuerySet<'b, TargetField>, VerifierState<TargetField>) {
+        let alpha = state.first_round_message.unwrap().alpha;
         let beta = state.second_round_message.unwrap().beta;
-
         let gamma = state.gamma.unwrap();
 
         let mut query_set = QuerySet::new();
@@ -101,16 +117,23 @@ impl<F: PrimeField> AHPForR1CS<F> {
         //   s(beta) + r(alpha, beta) * (sum_M eta_M z_M(beta)) - t(beta) * z(beta)
         // = h_1(beta) * v_H(beta) + beta * g_1(beta)
         //
+        // Note that z is the interpolation of x || w, so it equals x + v_X * w
+        // We also use an optimization: instead of explicitly calculating z_c, we
+        // use the "virtual oracle" z_b * z_c
+        //
         // LinearCombination::new(
         //      outer_sumcheck
         //      vec![
-        //          (F::one(), "mask_poly"),
-        //          (r_alpha_beta * (eta_a + eta_c * z_b_at_beta), z_a),
-        //          (-t_at_beta * v_X_at_beta, w),
-        //          (-v_H_at_beta, h_1),
-        //          (-beta * g_1_at_beta, LCTerm::One)
-        //          (r_alpha_beta * eta_b * z_a_at_beta, LCTerm::One),
-        //          (-t_at_beta * x_poly_at_beta, LCTerm::One),
+        //          (F::one(), "mask_poly".into()),
+        //
+        //          (r_alpha_at_beta * (eta_a + eta_c * z_b_at_beta), "z_a".into()),
+        //          (r_alpha_at_beta * eta_b * z_b_at_beta, LCTerm::One),
+        //
+        //          (-t_at_beta * v_X_at_beta, "w".into()),
+        //          (-t_at_beta * x_at_beta, LCTerm::One),
+        //
+        //          (-v_H_at_beta, "h_1".into()),
+        //          (-beta * g_1_at_beta, LCTerm::One),
         //      ],
         //  )
         //  LinearCombination::new("z_b", vec![(F::one(), z_b)])
@@ -122,8 +145,15 @@ impl<F: PrimeField> AHPForR1CS<F> {
         query_set.insert(("outer_sumcheck".into(), beta));
 
         // For the second linear combination
-        // v_K_at_beta_3 * h_3 - a + v_3 * (beta_3 * 1/beta_3^(D - d_3) * g'_3 + sigma_3/k_size) = 0;
+        // Inner sumcheck test:
+        //   h_2(gamma) * v_K(gamma)
+        // = a(gamma) - b(gamma) * (gamma g_2(gamma) + t(beta) / |K|)
         //
+        // where
+        //   a(X) := sum_M (eta_M v_H(beta) v_H(alpha) val_M(X) prod_N (beta - row_N(X)) (alpha - col_N(X)))
+        //   b(X) := prod_M (beta - row_M(X)) (alpha - col_M(X))
+        //
+        // We define "n_denom" := prod_N (beta - row_N(X)) (alpha - col_N(X)))
         //
         // LinearCombination::new("g_2", vec![(F::one(), g_2)]);
         //
@@ -131,24 +161,24 @@ impl<F: PrimeField> AHPForR1CS<F> {
         //     "a_denom".into(),
         //     vec![
         //         (alpha * beta, LCTerm::One),
-        //         (alpha, "a_row"),
-        //         (beta, "a_col"),
+        //         (-alpha, "a_row"),
+        //         (-beta, "a_col"),
         //         (F::one(), "a_row_col"),
         // ]);
         // LinearCombination::new(
-        //     "b-denom".into(),
+        //     "b_denom".into(),
         //     vec![
         //         (alpha * beta, LCTerm::One),
-        //         (alpha, "b_row"),
-        //         (beta, "b_col"),
+        //         (-alpha, "b_row"),
+        //         (-beta, "b_col"),
         //         (F::one(), "b_row_col"),
         // ]);
         // LinearCombination::new(
         //     "c_denom".into(),
         //     vec![
         //         (alpha * beta, LCTerm::one()),
-        //         (alpha, "c_row"),
-        //         (beta, "c_col"),
+        //         (-alpha, "c_row"),
+        //         (-beta, "c_col"),
         //         (F::one(), "c_row_col"),
         // ]);
         //
@@ -177,6 +207,12 @@ impl<F: PrimeField> AHPForR1CS<F> {
         query_set.insert(("b_denom".into(), gamma));
         query_set.insert(("c_denom".into(), gamma));
         query_set.insert(("inner_sumcheck".into(), gamma));
+
+        if with_vanishing {
+            query_set.insert(("vanishing_poly_h_alpha".into(), alpha));
+            query_set.insert(("vanishing_poly_h_beta".into(), beta));
+            query_set.insert(("vanishing_poly_k_gamma".into(), gamma));
+        }
 
         (query_set, state)
     }

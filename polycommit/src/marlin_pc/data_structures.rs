@@ -16,6 +16,7 @@
 
 use crate::{impl_bytes, PCCommitment, PCCommitterKey, PCRandomness, PCVerifierKey, Vec};
 use snarkvm_curves::traits::PairingEngine;
+use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     error,
@@ -134,6 +135,28 @@ impl<E: PairingEngine> PCVerifierKey for VerifierKey<E> {
     }
 }
 
+impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E>
+where
+    E::G1Affine: ToConstraintField<E::Fq>,
+    E::G2Affine: ToConstraintField<E::Fq>,
+{
+    fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
+        let mut res = Vec::new();
+        res.extend_from_slice(&self.vk.to_field_elements()?);
+
+        if let Some(degree_bounds_and_shift_powers) = &self.degree_bounds_and_shift_powers {
+            for (d, shift_power) in degree_bounds_and_shift_powers.iter() {
+                let d_elem: E::Fq = (*d as u64).into();
+
+                res.push(d_elem);
+                res.extend_from_slice(&shift_power.to_field_elements()?);
+            }
+        }
+
+        Ok(res)
+    }
+}
+
 /// Commitment to a polynomial that optionally enforces a degree bound.
 #[derive(Derivative)]
 #[derivative(
@@ -172,6 +195,22 @@ impl<E: PairingEngine> PCCommitment for Commitment<E> {
             } else {
                 true
             }
+    }
+}
+
+impl<E: PairingEngine> ToConstraintField<E::Fq> for Commitment<E>
+where
+    E::G1Affine: ToConstraintField<E::Fq>,
+{
+    fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
+        let mut res = Vec::new();
+        res.extend_from_slice(&self.comm.to_field_elements()?);
+
+        if let Some(shifted_comm) = &self.shifted_comm {
+            res.extend_from_slice(&shifted_comm.to_field_elements()?);
+        }
+
+        Ok(res)
     }
 }
 

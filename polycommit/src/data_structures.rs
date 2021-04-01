@@ -16,7 +16,7 @@
 
 use crate::{Arc, String, Vec};
 pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
-use snarkvm_fields::Field;
+use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     error as error_fn,
@@ -114,22 +114,6 @@ impl<F: Field> core::ops::Deref for LabeledPolynomial<F> {
 
 impl<F: Field> LabeledPolynomial<F> {
     /// Construct a new labeled polynomial by consuming `polynomial`.
-    pub fn new_owned(
-        label: PolynomialLabel,
-        polynomial: Polynomial<F>,
-        degree_bound: Option<usize>,
-        hiding_bound: Option<usize>,
-    ) -> Self {
-        Self {
-            label,
-            polynomial: Arc::new(polynomial),
-            degree_bound,
-
-            hiding_bound,
-        }
-    }
-
-    /// Construct a new labeled polynomial.
     pub fn new(
         label: PolynomialLabel,
         polynomial: Polynomial<F>,
@@ -181,6 +165,12 @@ pub struct LabeledCommitment<C: PCCommitment> {
     label: PolynomialLabel,
     commitment: C,
     degree_bound: Option<usize>,
+}
+
+impl<F: Field, C: PCCommitment + ToConstraintField<F>> ToConstraintField<F> for LabeledCommitment<C> {
+    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
+        self.commitment.to_field_elements()
+    }
 }
 
 // NOTE: Serializing the LabeledCommitments struct is done by serializing

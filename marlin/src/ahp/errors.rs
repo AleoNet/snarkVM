@@ -17,16 +17,24 @@
 /// Describes the failure modes of the AHP scheme.
 #[derive(Debug)]
 pub enum AHPError {
-    /// During verification, a required evaluation is missing
-    MissingEval(String),
-    /// The number of public inputs is incorrect.
-    InvalidPublicInputLength,
-    /// The instance generated during proving does not match that in the index.
-    InstanceDoesNotMatchIndex,
-    /// Currently we only support square constraint matrices.
-    NonSquareMatrix,
     /// An error occurred during constraint generation.
     ConstraintSystemError(snarkvm_r1cs::errors::SynthesisError),
+    /// An error occurred during Fiat-Shamir.
+    FiatShamirError(crate::fiat_shamir::FiatShamirError),
+    /// The instance generated during proving does not match that in the index.
+    InstanceDoesNotMatchIndex,
+    /// The number of public inputs is incorrect.
+    InvalidPublicInputLength,
+    /// During verification, a required evaluation is missing
+    MissingEval(String),
+    /// Currently we only support square constraint matrices.
+    NonSquareMatrix,
+}
+
+impl From<crate::fiat_shamir::FiatShamirError> for AHPError {
+    fn from(other: crate::fiat_shamir::FiatShamirError) -> Self {
+        AHPError::FiatShamirError(other)
+    }
 }
 
 impl From<snarkvm_r1cs::errors::SynthesisError> for AHPError {
