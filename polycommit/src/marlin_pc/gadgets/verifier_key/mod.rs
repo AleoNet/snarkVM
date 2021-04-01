@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-/// Gadget for a `BatchLCProof`.
-pub mod batch_lc_proof;
+/// Prepared verifier key gadget for the Marlin-KZG10 polynomial commitment scheme.
+pub mod prepared_verifier_key;
 
-/// Gadget for a Marlin-KZG10 proof.
-pub mod proof;
-pub use proof::*;
+/// Verifier key gadget for the Marlin-KZG10 polynomial commitment scheme.
+pub mod verifier_key;
+pub(crate) use verifier_key::*;

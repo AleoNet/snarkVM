@@ -18,12 +18,8 @@
 pub mod commitment;
 pub(crate) use commitment::*;
 
-/// Prepared verifier key gadget for the Marlin-KZG10 polynomial commitment scheme.
-pub mod prepared_verifier_key;
-
 /// Gadgets for Marlin-KZG10 proofs.
 pub mod proof;
 
-/// Verifier key gadge for the Marlin-KZG10 polynomial commitment scheme.
-mod verifier_key;
-pub(crate) use verifier_key::*;
+/// Verifier key gadgets for the Marlin-KZG10 polynomial commitment scheme.
+pub mod verifier_key;
