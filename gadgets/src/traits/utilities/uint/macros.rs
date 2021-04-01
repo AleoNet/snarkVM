@@ -224,6 +224,10 @@ macro_rules! uint_impl_common {
                     bits,
                 }
             }
+
+            fn get_value(&self) -> Option<String> {
+                self.value.map(|num| num.to_string())
+            }
         }
 
         cond_select_int_impl!($name, $_type, $size);
@@ -396,7 +400,7 @@ macro_rules! uint_impl {
                 &self,
                 mut cs: CS,
                 other: &Self,
-            ) -> Result<Self, SynthesisError> {
+            ) -> Result<Self, UnsignedIntegerError> {
                 // pseudocode:
                 //
                 // res = 0;
@@ -447,6 +451,7 @@ macro_rules! uint_impl {
                     .collect::<Vec<Self>>();
 
                 Self::addmany(&mut cs.ns(|| format!("partial_products")), &partial_products)
+                    .map_err(UnsignedIntegerError::SynthesisError)
             }
         }
     };
