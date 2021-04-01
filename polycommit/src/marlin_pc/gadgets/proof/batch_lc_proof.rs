@@ -222,7 +222,6 @@ mod tests {
         let (commitments, randomness) = PC::commit(&committer_key, labeled_polynomials.clone(), Some(rng)).unwrap();
 
         // Set up linear combination values.
-
         let random_point = Fr::rand(rng);
         let mut lc_s = Vec::new();
         let mut query_set = QuerySet::new();
@@ -282,7 +281,6 @@ mod tests {
         }
 
         // Check that the evaluations in the batch proof are equivalent.
-
         assert_eq!(
             batch_lc_proof.evaluations.is_some(),
             batch_lc_proof_gadget.evals.is_some()
