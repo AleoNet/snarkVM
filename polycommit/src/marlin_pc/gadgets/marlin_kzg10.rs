@@ -40,7 +40,7 @@ use snarkvm_gadgets::{
         curves::{GroupGadget, PairingGadget},
         fields::FieldGadget,
     },
-    utilities::{boolean::Boolean, select::CondSelectGadget, ToBitsLEGadget},
+    utilities::{boolean::Boolean, eq::EqGadget, select::CondSelectGadget, ToBitsLEGadget},
 };
 use snarkvm_nonnative::{NonNativeFieldMulResultVar, NonNativeFieldVar};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
