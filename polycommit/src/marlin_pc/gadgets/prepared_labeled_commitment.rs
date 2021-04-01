@@ -78,3 +78,120 @@ where
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::{
+        marlin_pc::{MarlinKZG10, PreparedCommitment},
+        LabeledPolynomial,
+        PCPreparedCommitment,
+        PolynomialCommitment,
+    };
+
+    use snarkvm_algorithms::fft::DensePolynomial;
+    use snarkvm_curves::{
+        bls12_377::{Bls12_377, Fq, Fr},
+        bw6_761::BW6_761,
+        AffineCurve,
+    };
+    use snarkvm_gadgets::{
+        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
+        utilities::{alloc::AllocGadget, eq::EqGadget},
+    };
+    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_utilities::rand::test_rng;
+
+    type PC = MarlinKZG10<Bls12_377>;
+    type PG = Bls12_377PairingGadget;
+    type BaseCurve = BW6_761;
+
+    const MAX_DEGREE: usize = 383;
+    const SUPPORTED_DEGREE: usize = 300;
+    const SUPPORTED_HIDING_BOUND: usize = 1;
+
+    #[test]
+    fn test_prepare() {
+        let rng = &mut test_rng();
+
+        let cs = &mut TestConstraintSystem::<Fq>::new();
+
+        // Construct the universal params.
+        let pp = PC::setup(MAX_DEGREE, rng).unwrap();
+
+        // Construct the verifying key.
+        let (committer_key, _vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, None).unwrap();
+
+        // Construct a polynomial.
+        let random_polynomial = DensePolynomial::<Fr>::rand(SUPPORTED_DEGREE - 1, rng);
+        let labeled_polynomial = LabeledPolynomial::new("test_polynomial".to_string(), random_polynomial, None, None);
+
+        // Construct commitments.
+        let (commitments, _randomness) = PC::commit(&committer_key, vec![&labeled_polynomial], Some(rng)).unwrap();
+
+        for (i, commitment) in commitments.iter().enumerate() {
+            let prepared_commitment = PreparedCommitment::prepare(&commitment.commitment());
+            let commitment_gadget =
+                LabeledCommitmentVar::<_, BaseCurve, PG>::alloc(cs.ns(|| format!("commitment_{}", i)), || {
+                    Ok(commitment)
+                })
+                .unwrap();
+
+            let prepared_commitment_gadget = PreparedLabeledCommitmentVar::prepare(
+                cs.ns(|| format!("prepare_commitment_{}", i)),
+                &commitment_gadget,
+            )
+            .unwrap();
+
+            for (j, (comm_element, comm_element_gadget)) in prepared_commitment
+                .prepared_comm
+                .0
+                .iter()
+                .zip(prepared_commitment_gadget.prepared_commitment.prepared_comm)
+                .enumerate()
+            {
+                // Check commitment.
+                let expected_commitment_gadget = <PG as PairingGadget<_, _>>::G1Gadget::alloc(
+                    cs.ns(|| format!("prepared_commitment_{}_{}", i, j)),
+                    || Ok(comm_element.into_projective()),
+                )
+                .unwrap();
+
+                comm_element_gadget
+                    .enforce_equal(
+                        cs.ns(|| format!("commitment_conditional_enforce_equal_{}_{}", i, j)),
+                        &expected_commitment_gadget,
+                    )
+                    .unwrap();
+            }
+
+            // Check shifted commitment.
+
+            assert_eq!(
+                prepared_commitment.shifted_comm.is_some(),
+                prepared_commitment_gadget.prepared_commitment.shifted_comm.is_some()
+            );
+
+            if let (Some(shifted_comm), Some(shifted_comm_gadget)) = (
+                &prepared_commitment.shifted_comm,
+                prepared_commitment_gadget.prepared_commitment.shifted_comm,
+            ) {
+                let expected_shifted_commitment_gadget = <PG as PairingGadget<_, _>>::G1Gadget::alloc(
+                    cs.ns(|| format!("shifted_commitment_gadget_{}", i)),
+                    || Ok(shifted_comm.0.into_projective()),
+                )
+                .unwrap();
+
+                shifted_comm_gadget
+                    .enforce_equal(
+                        cs.ns(|| format!("shifted_commitment_conditional_enforce_equal_{}", i)),
+                        &expected_shifted_commitment_gadget,
+                    )
+                    .unwrap();
+            }
+
+            assert!(cs.is_satisfied());
+        }
+    }
+}

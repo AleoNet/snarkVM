@@ -39,8 +39,10 @@ pub struct PreparedCommitmentVar<
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
-    prepared_comm: Vec<PG::G1Gadget>,
-    shifted_comm: Option<PG::G1Gadget>,
+    /// Prepared commitment.
+    pub(crate) prepared_comm: Vec<PG::G1Gadget>,
+    /// Shifted commitment.
+    pub(crate) shifted_comm: Option<PG::G1Gadget>,
 }
 
 impl<TargetCurve, BaseCurve, PG> Clone for PreparedCommitmentVar<TargetCurve, BaseCurve, PG>
