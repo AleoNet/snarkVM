@@ -33,11 +33,10 @@ members = [
   "posw",
   "profiler",
   "r1cs",
-  "storage",
-  "testing",
   "utilities",
   "wasm"
 ]
+exclude = [ "snarkos-integration" ]
 
 [[bin]]
 name = "snarkvm"
