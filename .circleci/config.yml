@@ -62,6 +62,7 @@ jobs:
 
   codecov:
     machine: true
+    resource_class: 2xlarge
     steps:
       - checkout
       - run:
