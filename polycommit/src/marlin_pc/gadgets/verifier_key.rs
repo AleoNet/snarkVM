@@ -396,6 +396,8 @@ mod tests {
     const SUPPORTED_DEGREE: usize = 300;
     const SUPPORTED_HIDING_BOUND: usize = 1;
 
+    // TODO (raychu86): Implement `test_to_bytes` and `test_to_constraint_field`.
+
     #[test]
     fn test_alloc() {
         let rng = &mut test_rng();
@@ -514,43 +516,43 @@ mod tests {
         assert!(cs.is_satisfied());
     }
 
-    #[test]
-    fn test_to_bytes() {
-        let rng = &mut test_rng();
+    // #[test]
+    // fn test_to_bytes() {
+    //     let rng = &mut test_rng();
+    //
+    //     let cs = &mut TestConstraintSystem::<Fq>::new();
+    //
+    //     // Construct the universal params.
+    //     let pp = PC::setup(MAX_DEGREE, rng).unwrap();
+    //
+    //     // Construct the verifying key.
+    //     let (_committer_key, vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, None).unwrap();
+    //
+    //     // Allocate the vk gadget.
+    //     let vk_gadget = VerifierKeyVar::<_, BaseCurve, PG>::alloc(cs.ns(|| "alloc_vk"), || Ok(vk.clone())).unwrap();
+    //     let _vk_gadget_bytes = vk_gadget.to_bytes(cs.ns(|| "to_bytes")).unwrap();
+    //
+    //     // TODO (raychu86): Compare with native impl. The native impl serializes the prepared elements as well which the gadgets do not include.
+    // }
 
-        let cs = &mut TestConstraintSystem::<Fq>::new();
+    // #[test]
+    // fn test_to_constraint_field() {
+    // let rng = &mut test_rng();
+    //
+    // let cs = &mut TestConstraintSystem::<Fq>::new();
+    //
+    // // Construct the universal params.
+    // let pp = PC::setup(MAX_DEGREE, rng).unwrap();
+    //
+    // // Construct the verifying key.
+    // let (_committer_key, vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, None).unwrap();
+    //
+    // // Allocate the vk gadget.
+    // let vk_gadget = VerifierKeyVar::<_, BaseCurve, PG>::alloc(cs.ns(|| "alloc_vk"), || Ok(vk.clone())).unwrap();
+    //
+    // let vk_field_elements = vk.to_field_elements().unwrap();
+    // let vk_field_gadgets = vk_gadget.to_constraint_field().unwrap();
 
-        // Construct the universal params.
-        let pp = PC::setup(MAX_DEGREE, rng).unwrap();
-
-        // Construct the verifying key.
-        let (_committer_key, vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, None).unwrap();
-
-        // Allocate the vk gadget.
-        let vk_gadget = VerifierKeyVar::<_, BaseCurve, PG>::alloc(cs.ns(|| "alloc_vk"), || Ok(vk.clone())).unwrap();
-        let _vk_gadget_bytes = vk_gadget.to_bytes(cs.ns(|| "to_bytes")).unwrap();
-
-        // TODO (raychu86): Compare with native impl. The native impl serializes the prepared elements as well which the gadgets do not include.
-    }
-
-    #[test]
-    fn test_to_constraint_field() {
-        // let rng = &mut test_rng();
-        //
-        // let cs = &mut TestConstraintSystem::<Fq>::new();
-        //
-        // // Construct the universal params.
-        // let pp = PC::setup(MAX_DEGREE, rng).unwrap();
-        //
-        // // Construct the verifying key.
-        // let (_committer_key, vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, None).unwrap();
-        //
-        // // Allocate the vk gadget.
-        // let vk_gadget = VerifierKeyVar::<_, BaseCurve, PG>::alloc(cs.ns(|| "alloc_vk"), || Ok(vk.clone())).unwrap();
-        //
-        // let vk_field_elements = vk.to_field_elements().unwrap();
-        // let vk_field_gadgets = vk_gadget.to_constraint_field().unwrap();
-
-        // TODO (raychu86): Fix `to_constraint_field` execution on the gadget.
-    }
+    // TODO (raychu86): Fix `to_constraint_field` execution on the gadget.
+    // }
 }
