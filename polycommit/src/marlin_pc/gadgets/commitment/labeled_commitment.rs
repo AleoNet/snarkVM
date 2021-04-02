@@ -17,8 +17,9 @@
 use crate::{
     marlin_pc::{Commitment, CommitmentVar},
     LabeledCommitment,
+    String,
+    ToString,
 };
-
 use snarkvm_curves::PairingEngine;
 use snarkvm_gadgets::{fields::FpGadget, traits::curves::PairingGadget, utilities::alloc::AllocGadget};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
