@@ -18,7 +18,6 @@ use crate::{
     marlin_pc::{LabeledCommitmentVar, PreparedCommitmentVar},
     PrepareGadget,
     String,
-    ToString,
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_gadgets::{fields::FpGadget, traits::curves::PairingGadget};
@@ -89,6 +88,7 @@ mod tests {
         LabeledPolynomial,
         PCPreparedCommitment,
         PolynomialCommitment,
+        ToString,
     };
 
     use snarkvm_algorithms::fft::DensePolynomial;
