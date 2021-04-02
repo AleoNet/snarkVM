@@ -14,5 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+/// Implementations of native and constraint Lagrange interpolation.
+pub mod lagrange_interpolation;
+
 /// Methods to compute vanishing polynomial equations.
 pub mod polynomial;
