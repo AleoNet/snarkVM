@@ -70,6 +70,9 @@ pub use ahp::*;
 /// Implements the base Marlin zkSNARK proof system.
 pub mod marlin;
 
+/// Gadgets for the Marlin SNARK proof system.
+pub mod gadgets;
+
 /// The Marlin public parameters for a given circuit.
 pub mod parameters;
 pub use parameters::*;
