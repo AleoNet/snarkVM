@@ -134,6 +134,6 @@ workflows:
     jobs:
       - rust-stable
       - rust-nightly
-      - codecov
+      - codecov:
           requires:
             - rust-stable
