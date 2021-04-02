@@ -419,6 +419,8 @@ mod tests {
     const SUPPORTED_DEGREE: usize = 300;
     const SUPPORTED_HIDING_BOUND: usize = 1;
 
+    // TODO (raychu86): Implement `test_to_constraint_field`.
+
     #[test]
     fn test_alloc() {
         let rng = &mut test_rng();
@@ -625,8 +627,8 @@ mod tests {
         assert!(cs.is_satisfied());
     }
 
-    #[test]
-    fn test_to_constraint_field() {
-        // TODO (raychu86): Fix `to_constraint_field` execution on the gadget.
-    }
+    // #[test]
+    // fn test_to_constraint_field() {
+    //     // TODO (raychu86): Fix `to_constraint_field` execution on the gadget.
+    // }
 }
