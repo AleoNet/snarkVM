@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::gadgets::polynomial::AlgebraForAHP;
+use crate::constraints::polynomial::AlgebraForAHP;
 
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
 use snarkvm_gadgets::{
