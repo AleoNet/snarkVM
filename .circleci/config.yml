@@ -135,5 +135,5 @@ workflows:
       - rust-stable
       - rust-nightly
       - codecov
-#          requires:
-#            - rust-stable
+          requires:
+            - rust-stable
