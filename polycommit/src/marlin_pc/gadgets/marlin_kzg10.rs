@@ -518,7 +518,7 @@ where
         let mut combined_queries = Vec::new();
         let mut combined_comms = Vec::new();
         let mut combined_evals = Vec::new();
-        for (_, (point, labels)) in query_to_labels_map.into_iter() {
+        for (i, (_, (point, labels))) in query_to_labels_map.into_iter().enumerate() {
             let mut comms_to_combine: Vec<Self::LabeledCommitmentVar> = Vec::new();
             let mut values_to_combine = Vec::new();
             for label in labels.into_iter() {
@@ -539,17 +539,17 @@ where
             }
 
             // Accumulate the commitments and evaluations corresponding to `query`.
-            let mut combined_comm = PG::G1Gadget::zero(cs.ns(|| "comm_zero"))?;
+            let mut combined_comm = PG::G1Gadget::zero(cs.ns(|| format!("comm_zero_{}", i)))?;
             let mut combined_eval = NonNativeFieldMulResultVar::<
                 <TargetCurve as PairingEngine>::Fr,
                 <BaseCurve as PairingEngine>::Fr,
             >::zero();
 
-            let zero = PG::G1Gadget::zero(cs.ns(|| format!("g1_zero")))?;
+            let zero = PG::G1Gadget::zero(cs.ns(|| format!("g1_zero_{}", i)))?;
 
             let mut opening_challenges_counter = 0;
 
-            for (i, (labeled_commitment, value)) in
+            for (j, (labeled_commitment, value)) in
                 comms_to_combine.into_iter().zip(values_to_combine.iter()).enumerate()
             {
                 let challenge = rand_data.opening_challenges[opening_challenges_counter].clone();
@@ -565,19 +565,21 @@ where
 
                 // To combine the commitments, we multiply each by one of the random challenges, and sum.
                 let temp = commitment.comm.mul_bits(
-                    cs.ns(|| format!("comm_mul_bits_{}", i)),
+                    cs.ns(|| format!("comm_mul_bits_{}_{}", i, j)),
                     &zero,
                     challenge_bits.into_iter(),
                 )?;
-                combined_comm =
-                    combined_comm.add(cs.ns(|| format!("combined_comm_plus_scalar_product_{}", i)), &temp)?;
+                combined_comm = combined_comm.add(
+                    cs.ns(|| format!("combined_comm_plus_scalar_product_{}_{}", i, j)),
+                    &temp,
+                )?;
 
                 // Similarly, we add up the evaluations, multiplied with random challenges.
                 let value_times_challenge_unreduced =
-                    value.mul_without_reduce(cs.ns(|| format!("value_mul_without_reduce_{}", i)), &challenge)?;
+                    value.mul_without_reduce(cs.ns(|| format!("value_mul_without_reduce_{}_{}", i, j)), &challenge)?;
 
                 combined_eval = combined_eval.add(
-                    &mut cs.ns(|| format!("combined_eval_add_value_times_challenge_unreduced_{}", i)),
+                    &mut cs.ns(|| format!("combined_eval_add_value_times_challenge_unreduced_{}_{}", i, j)),
                     &value_times_challenge_unreduced,
                 )?;
 
@@ -590,29 +592,29 @@ where
 
                     let shifted_comm = shifted_comm.as_ref().unwrap().clone();
 
-                    let value_bits = value.to_bits_le(cs.ns(|| format!("value_to_bits_le_{}", i)))?;
+                    let value_bits = value.to_bits_le(cs.ns(|| format!("value_to_bits_le_{}_{}", i, j)))?;
                     let shift_power = verification_key
-                        .get_shift_power(cs.ns(|| format!("get_shift_key_{}", i)), &degree_bound)
+                        .get_shift_power(cs.ns(|| format!("get_shift_key_{}_{}", i, j)), &degree_bound)
                         .unwrap();
 
                     let shift_power_times_value = shift_power.mul_bits(
-                        cs.ns(|| format!("shift_power_mul_bits_{}", i)),
+                        cs.ns(|| format!("shift_power_mul_bits_{}_{}", i, j)),
                         &zero,
                         value_bits.into_iter(),
                     )?;
                     let mut adjusted_comm = shifted_comm;
                     adjusted_comm = adjusted_comm.sub(
-                        &mut cs.ns(|| format!("adjusted_comm_minus_shift_power_times_value_{}", i)),
+                        &mut cs.ns(|| format!("adjusted_comm_minus_shift_power_times_value_{}_{}", i, j)),
                         &shift_power_times_value,
                     )?;
 
                     let adjusted_comm_times_challenge = adjusted_comm.mul_bits(
-                        cs.ns(|| format!("adjusted_comm_mul_bits_{}", i)),
+                        cs.ns(|| format!("adjusted_comm_mul_bits_{}_{}", i, j)),
                         &zero,
                         challenge_shifted_bits.into_iter(),
                     )?;
                     combined_comm = combined_comm.add(
-                        &mut cs.ns(|| format!("combined_comm_plus_adjusted_comm_times_challenge_{}", i)),
+                        &mut cs.ns(|| format!("combined_comm_plus_adjusted_comm_times_challenge_{}_{}", i, j)),
                         &adjusted_comm_times_challenge,
                     )?;
                 }
