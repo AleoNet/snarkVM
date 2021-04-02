@@ -1015,6 +1015,10 @@ mod tests {
                 )
                 .unwrap();
 
+            if !cs.is_satisfied() {
+                println!("Unsatisfied constraint: {}", cs.which_is_unsatisfied().unwrap());
+            }
+
             assert!(cs.is_satisfied());
         }
         Ok(())

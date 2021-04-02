@@ -95,3 +95,4 @@ default-features = false
 [features]
 default = [ "std" ]
 std = [ ]
+print-trace = [ "snarkvm-profiler/print-trace" ]
