@@ -13,6 +13,7 @@
 * [1. Overview](#1-overview)
 * [2. Build Guide](#2-build-guide)
 * [3. Usage Guide](#3-usage-guide)
+* [4. License](#4-license)
 
 ## 1. Overview
 
@@ -84,7 +85,6 @@ snarkvm
 
 ## 3. Usage Guide
 
-## Diffs to Resolve
+## 4. License
 
-- Remove `snarkvm-storage` by reintroducing a virtualized/in-memory ledger
-- Unify `snarkvm-parameters` with `snarkos-parameters` - examples and scripts
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE.md)
