@@ -82,6 +82,12 @@ optional = true
 version = "0.9"
 default-features = false
 
+[dev-dependencies.snarkvm-marlin]
+path = "../marlin"
+
+[dev-dependencies.snarkvm-nonnative]
+path = "../nonnative"
+
 [dev-dependencies.rand]
 version = "0.8"
 default-features = false

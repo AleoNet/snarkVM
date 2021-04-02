@@ -27,8 +27,10 @@ pub trait FiatShamirRng<TargetField: PrimeField, BaseField: PrimeField>: RngCore
 
     /// Takes in field elements.
     fn absorb_nonnative_field_elements(&mut self, elements: &[TargetField], ty: OptimizationType);
+
     /// Takes in field elements.
     fn absorb_native_field_elements<T: ToConstraintField<BaseField>>(&mut self, elements: &[T]);
+
     /// Takes in bytes.
     fn absorb_bytes(&mut self, elements: &[u8]);
 
@@ -38,8 +40,10 @@ pub trait FiatShamirRng<TargetField: PrimeField, BaseField: PrimeField>: RngCore
         num: usize,
         ty: OptimizationType,
     ) -> Result<Vec<TargetField>, FiatShamirError>;
+
     /// Takes in field elements.
     fn squeeze_native_field_elements(&mut self, num: usize) -> Result<Vec<BaseField>, FiatShamirError>;
+
     /// Takes out field elements of 128 bits.
     fn squeeze_128_bits_nonnative_field_elements(&mut self, num: usize) -> Result<Vec<TargetField>, FiatShamirError>;
 }

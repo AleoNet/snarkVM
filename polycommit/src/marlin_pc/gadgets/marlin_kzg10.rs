@@ -851,13 +851,15 @@ mod tests {
 
     use super::*;
     use snarkvm_curves::{
-        bls12_377::{Bls12_377, Fq},
+        bls12_377::{Bls12_377, Fq, Fr},
         bw6_761::BW6_761,
     };
     use snarkvm_gadgets::{
         curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
         traits::utilities::alloc::AllocGadget,
     };
+    use snarkvm_marlin::{FiatShamirAlgebraicSpongeRngVar, FiatShamirRngVar, PoseidonSponge, PoseidonSpongeVar};
+    use snarkvm_nonnative::params::OptimizationType;
     use snarkvm_r1cs::TestConstraintSystem;
     use std::collections::{HashMap, HashSet};
 
@@ -926,6 +928,7 @@ mod tests {
 
             // Allocate the evaluations.
 
+            let mut evaluations_vec: Vec<NonNativeFieldVar<_, _>> = Vec::new();
             let mut evaluations_gadget = EvaluationsVar::<_, _> { 0: HashMap::new() };
 
             for (j, evaluation) in evaluations.iter().enumerate() {
@@ -933,6 +936,7 @@ mod tests {
                     Ok(evaluation.0.1.clone())
                 })
                 .unwrap();
+                evaluations_vec.push(value.clone());
 
                 let labeled_point_var = LabeledPointVar {
                     name: evaluation.0.0.clone(),
@@ -961,10 +965,30 @@ mod tests {
                 proof_gadgets.push(proof_gadget);
             }
 
-            // TODO (raychu86): Construct the `PCCheckRandomDataVar` randomness for the batch check.
             // Allocate the randomness.
 
-            let rand_data = PCCheckRandomDataVar::<_, _> {
+            let mut fs_rng_gadget =
+                FiatShamirAlgebraicSpongeRngVar::<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>::new(
+                    cs.ns(|| "new"),
+                );
+            fs_rng_gadget.absorb_nonnative_field_elements(
+                cs.ns(|| "absorb"),
+                &evaluations_vec,
+                OptimizationType::Weight,
+            )?;
+
+            // For commitments; and combined commitments (degree bounds); and combined commitments again.
+            let num_opening_challenges = 7;
+
+            // Combined commitments.
+            let num_batching_rands = 2;
+
+            let (opening_challenges, opening_challenges_bits) = fs_rng_gadget
+                .squeeze_128_bits_field_elements_and_bits(cs.ns(|| "squeeze opening"), num_opening_challenges)?;
+            let (batching_rands, batching_rands_bits) = fs_rng_gadget
+                .squeeze_128_bits_field_elements_and_bits(cs.ns(|| "squeeze batching"), num_batching_rands)?;
+
+            let rand_data = PCCheckRandomDataVar {
                 opening_challenges,
                 opening_challenges_bits,
                 batching_rands,

@@ -1915,6 +1915,7 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-gadgets",
+ "snarkvm-marlin",
  "snarkvm-nonnative",
  "snarkvm-profiler",
  "snarkvm-r1cs",

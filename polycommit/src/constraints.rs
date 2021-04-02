@@ -136,8 +136,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<LinearCombinati
     }
 }
 
-#[derive(Clone, Debug)]
 /// A collection of random data used in the polynomial commitment checking.
+#[derive(Clone, Debug)]
 pub struct PCCheckRandomDataVar<TargetField: PrimeField, BaseField: PrimeField> {
     /// Opening challenges.
     /// The prover and the verifier MUST use the same opening challenges.
