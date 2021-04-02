@@ -83,6 +83,13 @@ pub trait PCCommitment: CanonicalDeserialize + CanonicalSerialize + Clone + Debu
     fn is_in_correct_subgroup_assuming_on_curve(&self) -> bool;
 }
 
+/// Defines the minimal interface of prepared commitments for any polynomial
+/// commitment scheme.
+pub trait PCPreparedCommitment<Unprepared: PCCommitment>: Clone {
+    /// Prepare
+    fn prepare(commitment: &Unprepared) -> Self;
+}
+
 /// Defines the minimal interface of commitment randomness for any polynomial
 /// commitment scheme.
 pub trait PCRandomness: CanonicalSerialize + CanonicalDeserialize + Clone {

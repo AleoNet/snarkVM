@@ -14,7 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{impl_bytes, PCCommitment, PCCommitterKey, PCPreparedVerifierKey, PCRandomness, PCVerifierKey, Vec};
+use crate::{
+    impl_bytes,
+    PCCommitment,
+    PCCommitterKey,
+    PCPreparedCommitment,
+    PCPreparedVerifierKey,
+    PCRandomness,
+    PCVerifierKey,
+    Vec,
+};
 use snarkvm_curves::{traits::PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField};
 use snarkvm_utilities::{
@@ -268,6 +277,34 @@ where
         }
 
         Ok(res)
+    }
+}
+
+/// Prepared commitment to a polynomial that optionally enforces a degree bound.
+#[derive(Derivative)]
+#[derivative(
+    Hash(bound = ""),
+    Clone(bound = ""),
+    Debug(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+pub struct PreparedCommitment<E: PairingEngine> {
+    pub(crate) prepared_comm: kzg10::PreparedCommitment<E>,
+    pub(crate) shifted_comm: Option<kzg10::Commitment<E>>,
+}
+
+impl<E: PairingEngine> PCPreparedCommitment<Commitment<E>> for PreparedCommitment<E> {
+    /// Prepare commitment to a polynomial that optionally enforces a degree bound.
+    fn prepare(commitment: &Commitment<E>) -> Self {
+        let prepared_commitment = kzg10::PreparedCommitment::<E>::prepare(&commitment.comm);
+
+        let shifted_commitment = commitment.shifted_comm.clone();
+
+        Self {
+            prepared_comm: prepared_commitment,
+            shifted_comm: shifted_commitment,
+        }
     }
 }
 
