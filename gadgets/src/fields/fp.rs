@@ -343,14 +343,14 @@ impl<F: PrimeField> AllocatedFp<F> {
 
         let one = CS::one();
         cs.enforce(
-            || "and constraint",
+            || "case_1",
             |lc| &self.variable - &other.variable + lc,
             |lc| lc + multiplier,
             |_lc| is_not_equal.lc(one, F::one()),
         );
 
         cs.enforce(
-            || "and constraint",
+            || "case_2",
             |lc| &self.variable - &other.variable + lc,
             |_lc| is_not_equal.not().lc(one, F::one()),
             |lc| lc,
