@@ -20,5 +20,13 @@ pub mod lagrange_interpolation;
 /// Methods to compute vanishing polynomial equations.
 pub mod polynomial;
 
-/// Verifier Keys for the Marlin proof system.
+/// The Marlin proof gadget.
+pub mod proof;
+
+/// Verifier keys for the Marlin proof system.
 pub mod verifier_key;
+
+use crate::PolynomialCommitment;
+
+/// Syntactic sugar for the universal SRS in this context.
+pub type UniversalSRS<F, PC> = <PC as PolynomialCommitment<F>>::UniversalParams;
