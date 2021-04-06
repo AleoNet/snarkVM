@@ -20,11 +20,11 @@ use snarkvm_r1cs::errors::SynthesisError;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem};
 
 #[derive(Copy, Clone)]
-struct Circuit<F: Field> {
-    a: Option<F>,
-    b: Option<F>,
-    num_constraints: usize,
-    num_variables: usize,
+pub struct Circuit<F: Field> {
+    pub a: Option<F>,
+    pub b: Option<F>,
+    pub num_constraints: usize,
+    pub num_variables: usize,
 }
 
 impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<ConstraintF> {

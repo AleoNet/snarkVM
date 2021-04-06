@@ -39,7 +39,7 @@ mod proof;
 pub use proof::*;
 
 #[cfg(test)]
-mod tests;
+pub mod tests;
 
 /// The Marlin universal SRS.
 mod universal_srs;
