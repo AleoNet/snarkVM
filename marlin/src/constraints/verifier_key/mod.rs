@@ -16,3 +16,8 @@
 
 /// Circuit verifier key gadget.
 pub mod circuit_verifier_key;
+pub use circuit_verifier_key::*;
+
+/// Prepared circuit verifier key gadget.
+pub mod prepared_circuit_verifier_key;
+pub use prepared_circuit_verifier_key::*;

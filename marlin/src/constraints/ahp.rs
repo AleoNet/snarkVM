@@ -19,7 +19,7 @@ use crate::{
         lagrange_interpolation::LagrangeInterpolationVar,
         polynomial::AlgebraForAHP,
         proof::ProofVar,
-        verifier_key::prepared_circuit_verifier_key::PreparedCircuitVerifyingKeyVar,
+        verifier_key::PreparedCircuitVerifyingKeyVar,
     },
     AHPError,
     FiatShamirRng,
