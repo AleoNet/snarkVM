@@ -16,6 +16,7 @@
 
 use crate::{kzg10::VerifierKey as KZG10VerifierKey, marlin_pc::data_structures::VerifierKey, Vec};
 use snarkvm_curves::{AffineCurve, PairingEngine};
+use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     fields::FpGadget,
     traits::{
@@ -28,7 +29,6 @@ use snarkvm_gadgets::{
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use core::borrow::Borrow;
-use snarkvm_fields::PrimeField;
 
 /// Var for the verification key of the Marlin-KZG10 polynomial commitment scheme.
 #[allow(clippy::type_complexity)]
@@ -343,13 +343,20 @@ where
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
     PG::G1Gadget: ToConstraintFieldGadget<<BaseCurve as PairingEngine>::Fr>,
     PG::G2Gadget: ToConstraintFieldGadget<<BaseCurve as PairingEngine>::Fr>,
+    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
+    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
-    fn to_constraint_field(&self) -> Result<Vec<FpGadget<<BaseCurve as PairingEngine>::Fr>>, SynthesisError> {
+    fn to_constraint_field<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
+        &self,
+        mut cs: CS,
+    ) -> Result<Vec<FpGadget<<BaseCurve as PairingEngine>::Fr>>, SynthesisError> {
         let mut res = Vec::new();
 
-        let mut g_gadget = self.g.to_constraint_field()?;
-        let mut h_gadget = self.h.to_constraint_field()?;
-        let mut beta_h_gadget = self.beta_h.to_constraint_field()?;
+        let mut g_gadget = self.g.to_constraint_field(cs.ns(|| "g_to_constraint_field"))?;
+        let mut h_gadget = self.h.to_constraint_field(cs.ns(|| "h_to_constraint_field"))?;
+        let mut beta_h_gadget = self
+            .beta_h
+            .to_constraint_field(cs.ns(|| "beta_h_to_constraint_field"))?;
 
         res.append(&mut g_gadget);
         res.append(&mut h_gadget);
@@ -357,9 +364,10 @@ where
 
         if self.degree_bounds_and_shift_powers.as_ref().is_some() {
             let list = self.degree_bounds_and_shift_powers.as_ref().unwrap();
-            for (_, d_gadget, shift_power) in list.iter() {
+            for (i, (_, d_gadget, shift_power)) in list.iter().enumerate() {
                 let mut d_elems = vec![d_gadget.clone()];
-                let mut shift_power_elems = shift_power.to_constraint_field()?;
+                let mut shift_power_elems =
+                    shift_power.to_constraint_field(cs.ns(|| format!("shifted_power_to_constraint_field_{}", i)))?;
 
                 res.append(&mut d_elems);
                 res.append(&mut shift_power_elems);

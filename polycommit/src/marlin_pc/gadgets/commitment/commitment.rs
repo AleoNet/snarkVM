@@ -172,15 +172,22 @@ where
     <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
     <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
-    fn to_constraint_field(&self) -> Result<Vec<FpGadget<<BaseCurve as PairingEngine>::Fr>>, SynthesisError> {
+    fn to_constraint_field<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
+        &self,
+        mut cs: CS,
+    ) -> Result<Vec<FpGadget<<BaseCurve as PairingEngine>::Fr>>, SynthesisError> {
         let mut res = Vec::new();
 
-        let mut comm_gadget = self.comm.to_constraint_field()?;
+        let mut comm_gadget = self.comm.to_constraint_field(cs.ns(|| "comm_to_constraint_field"))?;
 
         res.append(&mut comm_gadget);
 
         if self.shifted_comm.as_ref().is_some() {
-            let mut shifted_comm_gadget = self.shifted_comm.as_ref().unwrap().to_constraint_field()?;
+            let mut shifted_comm_gadget = self
+                .shifted_comm
+                .as_ref()
+                .unwrap()
+                .to_constraint_field(cs.ns(|| "shifted_comm_to_constraint_field"))?;
             res.append(&mut shifted_comm_gadget);
         }
 
