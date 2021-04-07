@@ -31,9 +31,9 @@ use snarkvm_r1cs::{
     LinearCombination,
     Variable,
 };
-
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
+use crate::{fields::FpGadget, traits::fields::ToConstraintFieldGadget};
 use std::borrow::Borrow;
 
 /// Represents a variable in the constraint system which is guaranteed
@@ -862,6 +862,13 @@ impl<F: PrimeField> CondSelectGadget<F> for Boolean {
 
     fn cost() -> usize {
         1
+    }
+}
+
+impl<F: PrimeField> ToConstraintFieldGadget<F> for Boolean {
+    fn to_constraint_field<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<FpGadget<F>>, SynthesisError> {
+        let var = FpGadget::from_boolean(cs.ns(|| "fp_from_boolean"), self.clone())?;
+        Ok(vec![var])
     }
 }
 
