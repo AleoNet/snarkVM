@@ -26,6 +26,9 @@ pub mod polynomial;
 /// The Marlin proof gadget.
 pub mod proof;
 
+/// Implementation of the Marlin verification gadget.
+pub mod verifier;
+
 /// Verifier keys for the Marlin proof system.
 pub mod verifier_key;
 
