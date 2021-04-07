@@ -110,10 +110,10 @@ where
             let mut vk_hash_rng = PR::new();
 
             let mut vk_elems = Vec::<BaseField>::new();
-            vk.index_comms.iter().for_each(|index_comm| {
+            vk.index_comms.iter().enumerate().for_each(|(i, index_comm)| {
                 vk_elems.append(
                     &mut index_comm
-                        .to_constraint_field()
+                        .to_constraint_field(cs.ns(|| format!("index_comm_to_constraint_field_{}", i)))
                         .unwrap()
                         .iter()
                         .map(|elem| elem.get_value().unwrap_or_default())
@@ -379,7 +379,10 @@ mod test {
         bls12_377::{Bls12_377, Fq, Fr},
         bw6_761::BW6_761,
     };
-    use snarkvm_gadgets::curves::bls12_377::PairingGadget as Bls12_377PairingGadget;
+    use snarkvm_gadgets::{
+        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
+        traits::utilities::eq::EqGadget,
+    };
     use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::{test_rng, UniformRand};
@@ -426,13 +429,47 @@ mod test {
         let prepared_circuit_vk = PreparedCircuitVerifyingKey::prepare(&circuit_vk);
 
         // Allocate the circuit vk gadget.
-        // let prepared_circuit_vk_gadget = PreparedCircuitVerifyingKeyVar::<_, _, _, MultiPCVar, FS, FSG>::alloc(
-        //     cs.ns(|| "alloc_prepared_vk"),
-        //     || Ok(prepared_circuit_vk.clone()),
-        // )
-        // .unwrap();
+        let prepared_circuit_vk_gadget = PreparedCircuitVerifyingKeyVar::<_, _, _, MultiPCVar, FS, FSG>::alloc(
+            cs.ns(|| "alloc_prepared_vk"),
+            || Ok(prepared_circuit_vk.clone()),
+        )
+        .unwrap();
 
         // Enforce that the native vk and vk gadget elements are equivalent.
+
+        assert_eq!(
+            prepared_circuit_vk.domain_h_size,
+            prepared_circuit_vk_gadget.domain_h_size
+        );
+        assert_eq!(
+            prepared_circuit_vk.domain_k_size,
+            prepared_circuit_vk_gadget.domain_k_size
+        );
+
+        for (i, (prepared_commitment, prepared_commitment_gadget)) in prepared_circuit_vk
+            .prepared_index_comms
+            .iter()
+            .zip(prepared_circuit_vk_gadget.prepared_index_comms)
+            .enumerate()
+        {
+            let expected_prepared_commitment_gadget =
+                <MultiPCVar as PCCheckVar<_, _, _>>::PreparedCommitmentVar::alloc(
+                    cs.ns(|| format!("alloc_prepared_commitment_{}", i)),
+                    || Ok(prepared_commitment),
+                )
+                .unwrap();
+
+            for (j, (expected_comm, comm)) in expected_prepared_commitment_gadget
+                .prepared_comm
+                .iter()
+                .zip(prepared_commitment_gadget.prepared_comm)
+                .enumerate()
+            {
+                expected_comm
+                    .enforce_equal(cs.ns(|| format!("enforce_equal_comm_{}_{}", i, j)), &comm)
+                    .unwrap();
+            }
+        }
 
         assert!(cs.is_satisfied());
     }
@@ -478,6 +515,40 @@ mod test {
                 .unwrap();
 
         // Enforce that the native vk and vk gadget elements are equivalent.
+
+        assert_eq!(
+            prepared_circuit_vk.domain_h_size,
+            prepared_circuit_vk_gadget.domain_h_size
+        );
+        assert_eq!(
+            prepared_circuit_vk.domain_k_size,
+            prepared_circuit_vk_gadget.domain_k_size
+        );
+
+        for (i, (prepared_commitment, prepared_commitment_gadget)) in prepared_circuit_vk
+            .prepared_index_comms
+            .iter()
+            .zip(prepared_circuit_vk_gadget.prepared_index_comms)
+            .enumerate()
+        {
+            let expected_prepared_commitment_gadget =
+                <MultiPCVar as PCCheckVar<_, _, _>>::PreparedCommitmentVar::alloc(
+                    cs.ns(|| format!("alloc_prepared_commitment_{}", i)),
+                    || Ok(prepared_commitment),
+                )
+                .unwrap();
+
+            for (j, (expected_comm, comm)) in expected_prepared_commitment_gadget
+                .prepared_comm
+                .iter()
+                .zip(prepared_commitment_gadget.prepared_comm)
+                .enumerate()
+            {
+                expected_comm
+                    .enforce_equal(cs.ns(|| format!("enforce_equal_comm_{}_{}", i, j)), &comm)
+                    .unwrap();
+            }
+        }
 
         assert!(cs.is_satisfied());
     }
