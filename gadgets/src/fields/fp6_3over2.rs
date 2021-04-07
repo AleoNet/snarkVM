@@ -15,7 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    traits::fields::FieldGadget,
+    fields::FpGadget,
+    traits::fields::{FieldGadget, ToConstraintFieldGadget},
     utilities::{
         alloc::AllocGadget,
         boolean::Boolean,
@@ -950,5 +951,21 @@ where
         let c1 = Fp2Gadget::<P, F>::alloc_input(&mut cs.ns(|| "c1"), || c1)?;
         let c2 = Fp2Gadget::<P, F>::alloc_input(&mut cs.ns(|| "c2"), || c2)?;
         Ok(Self::new(c0, c1, c2))
+    }
+}
+
+impl<P, F: PrimeField> ToConstraintFieldGadget<F> for Fp6Gadget<P, F>
+where
+    P: Fp6Parameters,
+    P::Fp2Params: Fp2Parameters<Fp = F>,
+{
+    fn to_constraint_field<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<FpGadget<F>>, SynthesisError> {
+        let mut res = Vec::new();
+
+        res.extend_from_slice(&self.c0.to_constraint_field(cs.ns(|| "fp6_c0_to_constraint_field"))?);
+        res.extend_from_slice(&self.c1.to_constraint_field(cs.ns(|| "fp6_c1_to_constraint_field"))?);
+        res.extend_from_slice(&self.c2.to_constraint_field(cs.ns(|| "fp6_c2_to_constraint_field"))?);
+
+        Ok(res)
     }
 }

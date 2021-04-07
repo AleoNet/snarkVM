@@ -44,6 +44,7 @@ use snarkvm_utilities::{
     to_bytes,
 };
 
+use crate::traits::fields::ToConstraintFieldGadget;
 use std::borrow::Borrow;
 
 /// Represents a variable in the constraint system whose
@@ -764,6 +765,12 @@ impl<F: PrimeField> AllocGadget<F, F> for AllocatedFp<F> {
     }
 }
 
+impl<F: PrimeField> ToConstraintFieldGadget<F> for AllocatedFp<F> {
+    fn to_constraint_field<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<FpGadget<F>>, SynthesisError> {
+        Ok(vec![self.clone().into()])
+    }
+}
+
 // FpGadget Impl
 
 impl<F: PrimeField> FpGadget<F> {
@@ -1329,5 +1336,11 @@ impl<F: PrimeField> AllocGadget<F, F> for FpGadget<F> {
         T: Borrow<F>,
     {
         AllocatedFp::alloc_input(cs, value_gen).map(Self::Variable)
+    }
+}
+
+impl<F: PrimeField> ToConstraintFieldGadget<F> for FpGadget<F> {
+    fn to_constraint_field<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<FpGadget<F>>, SynthesisError> {
+        Ok(vec![self.clone()])
     }
 }
