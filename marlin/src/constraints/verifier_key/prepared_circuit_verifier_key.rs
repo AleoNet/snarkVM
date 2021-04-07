@@ -363,3 +363,122 @@ where
         })
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use crate::{
+        marlin::{tests::Circuit, MarlinSNARK, MarlinTestnet1Mode},
+        FiatShamirAlgebraicSpongeRng,
+        FiatShamirAlgebraicSpongeRngVar,
+        PoseidonSponge,
+        PoseidonSpongeVar,
+    };
+    use snarkvm_curves::{
+        bls12_377::{Bls12_377, Fq, Fr},
+        bw6_761::BW6_761,
+    };
+    use snarkvm_gadgets::curves::bls12_377::PairingGadget as Bls12_377PairingGadget;
+    use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
+    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_utilities::rand::{test_rng, UniformRand};
+
+    use core::ops::MulAssign;
+
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
+    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
+
+    type MultiPC = MarlinKZG10<Bls12_377>;
+    type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FS, MarlinTestnet1Mode>;
+
+    type MultiPCVar = MarlinKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
+
+    #[test]
+    fn test_alloc() {
+        let rng = &mut test_rng();
+
+        let cs = &mut TestConstraintSystem::<Fq>::new();
+
+        let num_constraints = 25;
+        let num_variables = 25;
+
+        // Construct the circuit verifier key.
+
+        let universal_srs = MarlinInst::universal_setup(100, 25, 100, rng).unwrap();
+
+        let a = Fr::rand(rng);
+        let b = Fr::rand(rng);
+        let mut c = a;
+        c.mul_assign(&b);
+        let mut d = c;
+        d.mul_assign(&b);
+
+        let circ = Circuit {
+            a: Some(a),
+            b: Some(b),
+            num_constraints,
+            num_variables,
+        };
+
+        let (_circuit_pk, circuit_vk) = MarlinInst::circuit_setup(&universal_srs, &circ).unwrap();
+
+        let prepared_circuit_vk = PreparedCircuitVerifyingKey::prepare(&circuit_vk);
+
+        // Allocate the circuit vk gadget.
+        // let prepared_circuit_vk_gadget = PreparedCircuitVerifyingKeyVar::<_, _, _, MultiPCVar, FS, FSG>::alloc(
+        //     cs.ns(|| "alloc_prepared_vk"),
+        //     || Ok(prepared_circuit_vk.clone()),
+        // )
+        // .unwrap();
+
+        // Enforce that the native vk and vk gadget elements are equivalent.
+
+        assert!(cs.is_satisfied());
+    }
+
+    #[test]
+    fn test_prepare() {
+        let rng = &mut test_rng();
+
+        let cs = &mut TestConstraintSystem::<Fq>::new();
+
+        let num_constraints = 25;
+        let num_variables = 25;
+
+        // Construct the circuit verifier key.
+
+        let universal_srs = MarlinInst::universal_setup(100, 25, 100, rng).unwrap();
+
+        let a = Fr::rand(rng);
+        let b = Fr::rand(rng);
+        let mut c = a;
+        c.mul_assign(&b);
+        let mut d = c;
+        d.mul_assign(&b);
+
+        let circ = Circuit {
+            a: Some(a),
+            b: Some(b),
+            num_constraints,
+            num_variables,
+        };
+
+        let (_circuit_pk, circuit_vk) = MarlinInst::circuit_setup(&universal_srs, &circ).unwrap();
+
+        let prepared_circuit_vk = PreparedCircuitVerifyingKey::prepare(&circuit_vk);
+
+        // Allocate the circuit vk gadget.
+        let circuit_vk_gadget =
+            CircuitVerifyingKeyVar::<_, _, _, MultiPCVar>::alloc(cs.ns(|| "alloc_vk"), || Ok(circuit_vk.clone()))
+                .unwrap();
+
+        let prepared_circuit_vk_gadget =
+            PreparedCircuitVerifyingKeyVar::<_, _, _, _, FS, FSG>::prepare(cs.ns(|| "prepare"), &circuit_vk_gadget)
+                .unwrap();
+
+        // Enforce that the native vk and vk gadget elements are equivalent.
+
+        assert!(cs.is_satisfied());
+    }
+}
