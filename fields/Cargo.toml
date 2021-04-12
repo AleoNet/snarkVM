@@ -23,7 +23,7 @@ version = "0.2.2"
 default-features = false
 
 [dependencies.bincode]
-version = "1.3.2"
+version = "1.3.3"
 
 [dependencies.derivative]
 version = "2"
