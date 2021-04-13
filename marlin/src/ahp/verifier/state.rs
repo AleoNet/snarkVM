@@ -19,6 +19,7 @@ use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
 
 /// State of the AHP verifier.
+#[derive(Debug)]
 pub struct VerifierState<F: PrimeField> {
     pub(crate) domain_h: EvaluationDomain<F>,
     pub(crate) domain_k: EvaluationDomain<F>,

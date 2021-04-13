@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 /// First message of the verifier.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct VerifierFirstMessage<F> {
     /// Query for the random polynomial.
     pub alpha: F,
