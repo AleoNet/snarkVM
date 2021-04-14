@@ -79,6 +79,81 @@ where
         srs
     }
 
+    /// Generate the index-specific (i.e., circuit-specific) prover and verifier
+    /// keys. This is a trusted setup.
+    #[allow(clippy::type_complexity)]
+    pub fn circuit_specific_setup<C: ConstraintSynthesizer<TargetField>, R: RngCore>(
+        c: &C,
+        rng: &mut R,
+    ) -> Result<(CircuitProvingKey<TargetField, PC>, CircuitVerifyingKey<TargetField, PC>), MarlinError<PC::Error>>
+    {
+        let index_time = start_timer!(|| "Marlin::CircuitSpecificSetup");
+
+        let for_recursion = MM::RECURSION;
+
+        // TODO: Add check that c is in the correct mode.
+        let circuit = AHPForR1CS::index(c)?;
+        let srs = PC::setup(circuit.max_degree(), rng).map_err(MarlinError::from_pc_err)?;
+
+        let coeff_support = AHPForR1CS::get_degree_bounds(&circuit.index_info);
+
+        // Marlin only needs degree 2 random polynomials
+        let supported_hiding_bound = 1;
+        let (committer_key, verifier_key) =
+            PC::trim(&srs, circuit.max_degree(), supported_hiding_bound, Some(&coeff_support))
+                .map_err(MarlinError::from_pc_err)?;
+
+        let mut vanishing_polys = vec![];
+        if for_recursion {
+            let domain_h = EvaluationDomain::new(circuit.index_info.num_constraints)
+                .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+            let domain_k = EvaluationDomain::new(circuit.index_info.num_non_zero)
+                .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+
+            vanishing_polys = vec![
+                LabeledPolynomial::new(
+                    "vanishing_poly_h".to_string(),
+                    domain_h.vanishing_polynomial().into(),
+                    None,
+                    None,
+                ),
+                LabeledPolynomial::new(
+                    "vanishing_poly_k".to_string(),
+                    domain_k.vanishing_polynomial().into(),
+                    None,
+                    None,
+                ),
+            ];
+        }
+
+        let commit_time = start_timer!(|| "Commit to index polynomials");
+        let (circuit_commitments, circuit_commitment_randomness): (_, _) =
+            PC::commit(&committer_key, circuit.iter().chain(vanishing_polys.iter()), None)
+                .map_err(MarlinError::from_pc_err)?;
+        end_timer!(commit_time);
+
+        let circuit_commitments = circuit_commitments
+            .into_iter()
+            .map(|c| c.commitment().clone())
+            .collect();
+        let index_vk = CircuitVerifyingKey {
+            circuit_info: circuit.index_info,
+            circuit_commitments,
+            verifier_key,
+        };
+
+        let index_pk = CircuitProvingKey {
+            circuit,
+            circuit_commitment_randomness,
+            circuit_verifying_key: index_vk.clone(),
+            committer_key,
+        };
+
+        end_timer!(index_time);
+
+        Ok((index_pk, index_vk))
+    }
+
     /// Generates the circuit proving and verifying keys.
     /// This is a deterministic algorithm that anyone can rerun.
     #[allow(clippy::type_complexity)]
