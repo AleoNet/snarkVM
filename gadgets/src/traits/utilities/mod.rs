@@ -22,6 +22,7 @@ pub mod alloc;
 pub mod arithmetic;
 pub mod bits;
 pub mod boolean;
+pub mod boolean_input;
 pub mod eq;
 pub mod int;
 pub mod integer;
