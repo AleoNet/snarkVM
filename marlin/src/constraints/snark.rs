@@ -15,7 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    constraints::{error::MarlinConstraintsError, UniversalSRS},
+    constraints::{
+        error::MarlinConstraintsError,
+        proof::ProofVar,
+        verifier::MarlinVerificationGadget,
+        verifier_key::{CircuitVerifyingKeyVar, PreparedCircuitVerifyingKeyVar},
+        UniversalSRS,
+    },
     fiat_shamir::FiatShamirRng,
     marlin::{
         CircuitProvingKey,
@@ -26,14 +32,20 @@ use crate::{
         PreparedCircuitVerifyingKey,
         Proof,
     },
+    FiatShamirRngVar,
 };
 
+use snarkvm_algorithms::{SNARKError, SNARK};
 use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_polycommit::PolynomialCommitment;
-use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_gadgets::{
+    traits::{algorithms::SNARKGadget, fields::ToConstraintFieldGadget},
+    utilities::boolean::Boolean,
+};
+use snarkvm_nonnative::NonNativeFieldInputVar;
+use snarkvm_polycommit::{PCCheckVar, PolynomialCommitment};
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
 use rand::{CryptoRng, Rng, RngCore};
-use snarkvm_algorithms::{SNARKError, SNARK};
 use std::{
     fmt::{Debug, Formatter},
     marker::PhantomData,
@@ -199,5 +211,89 @@ where
             Ok(res) => Ok(res),
             Err(e) => Err(SNARKError::from(e)),
         }
+    }
+}
+
+/// The Marlin proof system gadget.
+pub struct MarlinSNARKGadget<F, FSF, PC, FS, MM, PCG, FSG>
+where
+    F: PrimeField,
+    FSF: PrimeField,
+    PC: PolynomialCommitment<F>,
+    FS: FiatShamirRng<F, FSF>,
+    MM: MarlinMode,
+    PCG: PCCheckVar<F, PC, FSF>,
+    FSG: FiatShamirRngVar<F, FSF, FS>,
+{
+    f_phantom: PhantomData<F>,
+    fsf_phantom: PhantomData<FSF>,
+    pc_phantom: PhantomData<PC>,
+    fs_phantom: PhantomData<FS>,
+    mm_phantom: PhantomData<MM>,
+    pcg_phantom: PhantomData<PCG>,
+    fsg_phantom: PhantomData<FSG>,
+}
+
+impl<TargetField, BaseField, PC, FS, MM, PCG, FSG, C>
+    SNARKGadget<TargetField, BaseField, MarlinSNARK<TargetField, BaseField, PC, FS, MM, C>>
+    for MarlinSNARKGadget<TargetField, BaseField, PC, FS, MM, PCG, FSG>
+where
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    FS: FiatShamirRng<TargetField, BaseField>,
+    MM: MarlinMode,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+    FSG: FiatShamirRngVar<TargetField, BaseField, FS>,
+    PC::VerifierKey: ToConstraintField<BaseField>,
+    PC::Commitment: ToConstraintField<BaseField>,
+    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
+    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
+    C: ConstraintSynthesizer<TargetField>,
+{
+    type InputVar = NonNativeFieldInputVar<TargetField, BaseField>;
+    type PreparedVerifyingKeyVar = PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, FS, FSG>;
+    type ProofVar = ProofVar<TargetField, BaseField, PC, PCG>;
+    type VerifierSize = usize;
+    type VerifyingKeyVar = CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>;
+
+    fn verifier_size(
+        circuit_vk: &<MarlinSNARK<TargetField, BaseField, PC, FS, MM, C> as SNARK>::VerificationParameters,
+    ) -> Self::VerifierSize {
+        circuit_vk.circuit_info.num_variables
+    }
+
+    fn verify_with_processed_vk<CS: ConstraintSystem<BaseField>>(
+        mut cs: CS,
+        circuit_pvk: &Self::PreparedVerifyingKeyVar,
+        x: &Self::InputVar,
+        proof: &Self::ProofVar,
+    ) -> Result<Boolean, SynthesisError> {
+        Ok(
+            MarlinVerificationGadget::<TargetField, BaseField, PC, PCG>::prepared_verify(
+                cs.ns(|| "prepared_verify"),
+                &circuit_pvk,
+                &x.val,
+                proof,
+            )
+            .unwrap(),
+        )
+    }
+
+    fn verify<CS: ConstraintSystem<BaseField>>(
+        mut cs: CS,
+        circuit_vk: &Self::VerifyingKeyVar,
+        x: &Self::InputVar,
+        proof: &Self::ProofVar,
+    ) -> Result<Boolean, SynthesisError> {
+        Ok(
+            MarlinVerificationGadget::<TargetField, BaseField, PC, PCG>::verify::<_, FS, FSG>(
+                cs.ns(|| "verify"),
+                circuit_vk,
+                &x.val,
+                proof,
+            )
+            .unwrap(),
+        )
     }
 }
