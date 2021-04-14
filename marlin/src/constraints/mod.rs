@@ -20,11 +20,17 @@ pub mod ahp;
 /// Implementations of native and constraint Lagrange interpolation.
 pub mod lagrange_interpolation;
 
+/// Marlin constraint errors.
+pub mod error;
+
 /// Methods to compute vanishing polynomial equations.
 pub mod polynomial;
 
 /// The Marlin proof gadget.
 pub mod proof;
+
+/// Marlin SNARK construction.
+pub mod snark;
 
 /// Implementation of the Marlin verification gadget.
 pub mod verifier;

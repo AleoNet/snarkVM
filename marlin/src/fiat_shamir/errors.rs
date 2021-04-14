@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::fmt;
+
 /// A `enum` specifying the possible failure modes of `FiatShamir`.
 #[derive(Debug)]
 pub enum FiatShamirError {
@@ -26,5 +28,18 @@ pub enum FiatShamirError {
 impl From<snarkvm_r1cs::SynthesisError> for FiatShamirError {
     fn from(err: snarkvm_r1cs::SynthesisError) -> Self {
         FiatShamirError::R1CSError(err)
+    }
+}
+
+impl fmt::Display for FiatShamirError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        match self {
+            FiatShamirError::R1CSError(error) => {
+                write!(f, "{:?}", error.to_string())
+            }
+            FiatShamirError::UninitializedRNG => {
+                write!(f, "{:?}", "uninitialized rng")
+            }
+        }
     }
 }
