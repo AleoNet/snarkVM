@@ -154,11 +154,18 @@ where
                 );
             });
             fs_rng.absorb_native_field_elements(cs.ns(|| "absorb_native_field_elements"), &elems)?;
-            fs_rng.absorb_nonnative_field_elements(
-                cs.ns(|| "absorb_nonnative_field_elements"),
-                &message,
-                OptimizationType::Weight,
-            )?;
+
+            println!("GADGET CHECK 1: {:?}", message.len());
+
+            if !message.is_empty() {
+                println!("GADGET CHECK 2: {:?}", message.len());
+
+                fs_rng.absorb_nonnative_field_elements(
+                    cs.ns(|| "absorb_nonnative_field_elements"),
+                    &message,
+                    OptimizationType::Weight,
+                )?;
+            }
         }
 
         // obtain four elements from the sponge
@@ -1047,6 +1054,10 @@ mod test {
         // Construct a proof.
         let proof = MarlinInst::prove(&circuit_pk, &circ, rng).unwrap();
 
+        let vf = MarlinInst::verify(&circuit_vk, &public_input, &proof).unwrap();
+
+        println!("VERIFICATION IS: {}", vf);
+
         // Attempt verification.
 
         let public_input = {
@@ -1066,14 +1077,7 @@ mod test {
             fs_rng.absorb_native_field_elements(&compute_vk_hash::<Fr, Fq, MultiPC, FS>(&circuit_vk).unwrap());
             fs_rng.absorb_nonnative_field_elements(&public_input, OptimizationType::Weight);
         } else {
-            fs_rng.absorb_bytes(
-                &to_bytes![
-                    &MarlinInst::PROTOCOL_NAME,
-                    &circuit_pk.circuit_verifying_key,
-                    &public_input
-                ]
-                .unwrap(),
-            );
+            fs_rng.absorb_bytes(&to_bytes![&MarlinInst::PROTOCOL_NAME, &circuit_vk, &public_input].unwrap());
         }
 
         // Start first round.
@@ -1117,6 +1121,8 @@ mod test {
         // Execute the verifier first round.
         let (first_round_message, first_round_state) =
             AHPForR1CSNative::verifier_first_round(circuit_pk.circuit.index_info.clone(), fs_rng).unwrap();
+
+        println!("\n verifier state 1: {:?}\n ", first_round_state);
 
         // Execute the verifier first round gadget.
         let (first_round_message_gadget, first_round_state_gadget) =
