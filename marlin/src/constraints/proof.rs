@@ -212,11 +212,13 @@ where
 
         let commitment_gadgets: Vec<Vec<PCG::CommitmentVar>> = commitments
             .iter()
-            .map(|lst| {
+            .enumerate()
+            .map(|(i, lst)| {
                 lst.iter()
                     .enumerate()
-                    .map(|(i, comm)| {
-                        PCG::CommitmentVar::alloc(cs.ns(|| format!("alloc_commitment_{}", i)), || Ok(comm)).unwrap()
+                    .map(|(j, comm)| {
+                        PCG::CommitmentVar::alloc(cs.ns(|| format!("alloc_commitment_{}_{}", i, j)), || Ok(comm))
+                            .unwrap()
                     })
                     .collect()
             })
