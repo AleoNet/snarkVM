@@ -26,6 +26,7 @@ use snarkvm_polycommit::{Evaluations, LabeledCommitment, LabeledPolynomial, PCUn
 use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError};
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
+use crate::marlin::PreparedCircuitVerifyingKey;
 use core::marker::PhantomData;
 use rand_core::RngCore;
 
@@ -713,11 +714,13 @@ where
         Ok(evaluations_are_correct)
     }
 
-    // pub fn prepared_verify(
-    //     prepared_vk: &PreparedCircuitVerifyingKey<F, PC>,
-    //     public_input: &[BaseField],
-    //     proof: &Proof<BaseField, PC>,
-    // ) -> Result<bool, MarlinError<PC::Error>> {
-    //     Self::verify(&prepared_vk.orig_vk, public_input, proof)
-    // }
+    /// Verify that a proof for the constraint system defined by `C` asserts that
+    /// all constraints are satisfied using the prepared verifying key.
+    pub fn prepared_verify(
+        prepared_vk: &PreparedCircuitVerifyingKey<TargetField, PC>,
+        public_input: &[TargetField],
+        proof: &Proof<TargetField, PC>,
+    ) -> Result<bool, MarlinError<PC::Error>> {
+        Self::verify(&prepared_vk.orig_vk, public_input, proof)
+    }
 }
