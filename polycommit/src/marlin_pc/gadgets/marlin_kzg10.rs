@@ -181,7 +181,7 @@ where
             }
 
             // Accumulate the commitments and evaluations corresponding to `query`.
-            let mut combined_comm = PG::G1Gadget::zero(cs.ns(|| "comm_zero"))?;
+            let mut combined_comm = PG::G1Gadget::zero(cs.ns(|| format!("comm_zero_{}", i)))?;
             let mut combined_eval = NonNativeFieldMulResultVar::<
                 <TargetCurve as PairingEngine>::Fr,
                 <BaseCurve as PairingEngine>::Fr,
@@ -302,15 +302,17 @@ where
                             .to_bits_le(cs.ns(|| format!("challenge_times_coeff_to_bits_le_{}_{}_{}", i, j, k)))?;
 
                         {
-                            for (bit, base_power) in challenge_times_coeff_bits.iter().zip(&comm.prepared_comm) {
+                            for (l, (bit, base_power)) in
+                                challenge_times_coeff_bits.iter().zip(&comm.prepared_comm).enumerate()
+                            {
                                 let mut new_encoded = comm_times_challenge.clone();
                                 new_encoded = new_encoded.add(
-                                    cs.ns(|| format!("new_encoded_add_base_power_{}_{}_{}", i, j, k)),
+                                    cs.ns(|| format!("new_encoded_add_base_power_{}_{}_{}_{}", i, j, k, l)),
                                     &base_power,
                                 )?;
 
                                 comm_times_challenge = PG::G1Gadget::conditionally_select(
-                                    cs.ns(|| format!("comm_times_challenge_cond_select_{}_{}_{}", i, j, k)),
+                                    cs.ns(|| format!("comm_times_challenge_cond_select_{}_{}_{}_{}", i, j, k, l)),
                                     bit,
                                     &new_encoded,
                                     &comm_times_challenge,
