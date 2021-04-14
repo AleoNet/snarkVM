@@ -17,7 +17,7 @@
 use crate::{
     ahp::indexer::*,
     fiat_shamir::{FiatShamirError, FiatShamirRng},
-    marlin::CircuitProvingKey,
+    marlin::{CircuitProvingKey, PreparedCircuitVerifyingKey},
     Vec,
 };
 use snarkvm_fields::{PrimeField, ToConstraintField};
@@ -71,6 +71,14 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> CircuitVerifyingKey<F, PC> {
 impl<F: PrimeField, PC: PolynomialCommitment<F>> From<CircuitProvingKey<F, PC>> for CircuitVerifyingKey<F, PC> {
     fn from(other: CircuitProvingKey<F, PC>) -> Self {
         other.circuit_verifying_key
+    }
+}
+
+impl<F: PrimeField, PC: PolynomialCommitment<F>> From<PreparedCircuitVerifyingKey<F, PC>>
+    for CircuitVerifyingKey<F, PC>
+{
+    fn from(other: PreparedCircuitVerifyingKey<F, PC>) -> Self {
+        other.orig_vk
     }
 }
 
