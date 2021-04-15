@@ -608,14 +608,14 @@ impl Boolean {
 
     fn enforce_kary_nand<F: Field, CS: ConstraintSystem<F>>(mut cs: CS, bits: &[Self]) -> Result<(), SynthesisError> {
         use Boolean::*;
-        let r = Self::kary_nand(cs.ns(|| "kary_and"), bits)?;
+        let r = Self::kary_nand(cs.ns(|| "kary_nand"), bits)?;
         match r {
             Constant(true) => Ok(()),
             Constant(false) => Err(SynthesisError::AssignmentMissing),
             Is(_) | Not(_) => {
                 cs.enforce(
                     || "enforce_constraint",
-                    |lc| lc,
+                    |_| r.lc(CS::one(), F::one()),
                     |lc| lc + CS::one(),
                     |lc| lc + CS::one(),
                 );
