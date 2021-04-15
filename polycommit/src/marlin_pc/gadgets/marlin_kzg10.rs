@@ -202,14 +202,16 @@ where
                         // To combine the commitments, we multiply each by one of the random challenges, and sum.
                         let mut comm_times_challenge = PG::G1Gadget::zero(cs.ns(|| format!("zero_{}_{}_{}", i, j, k)))?;
                         {
-                            for (bit, base_power) in challenge_bits.iter().zip(comm.prepared_comm.iter()) {
+                            for (l, (bit, base_power)) in
+                                challenge_bits.iter().zip(comm.prepared_comm.iter()).enumerate()
+                            {
                                 let mut new_encoded = base_power.clone();
                                 new_encoded = new_encoded.add(
-                                    cs.ns(|| format!("new_encoded_plus_comm_times_challenge_{}_{}_{}", i, j, k)),
+                                    cs.ns(|| format!("new_encoded_plus_comm_times_challenge_{}_{}_{}_{}", i, j, k, l)),
                                     &comm_times_challenge,
                                 )?;
                                 comm_times_challenge = PG::G1Gadget::conditionally_select(
-                                    cs.ns(|| format!("comm_times_challenge_cond_select_{}_{}_{}", i, j, k)),
+                                    cs.ns(|| format!("comm_times_challenge_cond_select_{}_{}_{}_{}", i, j, k, l)),
                                     bit,
                                     &new_encoded,
                                     &comm_times_challenge,
@@ -277,7 +279,7 @@ where
                             )?;
 
                             let adjusted_comm_times_challenge = adjusted_comm.mul_bits(
-                                cs.ns(|| format!("combined_comm_add_adjusted_comm_times_challenge_{}_{}_{}", i, j, k)),
+                                cs.ns(|| format!("adjusted_comm_times_challenge_{}_{}_{}", i, j, k)),
                                 &zero,
                                 challenge_shifted_bits.into_iter(),
                             )?;
@@ -769,7 +771,7 @@ where
                                 }
                                 LinearCombinationCoeffVar::Var(variable) => {
                                     **eval =
-                                        (**eval).add(cs.ns(|| format!("eval_minus_variable_{}_{}", i, j)), &variable)?
+                                        (**eval).sub(cs.ns(|| format!("eval_minus_variable_{}_{}", i, j)), &variable)?
                                 }
                             };
                         }
@@ -787,14 +789,8 @@ where
                     }
 
                     let coeff = match coeff {
-                        LinearCombinationCoeffVar::One => {
-                            Some(NonNativeFieldVar::one(cs.ns(|| format!("coeff_zero_{}_{}", i, j)))?)
-                        }
-                        LinearCombinationCoeffVar::MinusOne => {
-                            let zero = NonNativeFieldVar::zero(cs.ns(|| format!("coeff_zero_{}_{}", i, j)))?;
-                            let one = NonNativeFieldVar::one(cs.ns(|| format!("coeff_one_{}_{}", i, j)))?;
-                            Some(zero.sub(cs.ns(|| format!("zero_minus_one_{}_{}", i, j)), &one)?)
-                        }
+                        LinearCombinationCoeffVar::One => None,
+                        LinearCombinationCoeffVar::MinusOne => None,
                         LinearCombinationCoeffVar::Var(variable) => Some(variable.clone()),
                     };
 
