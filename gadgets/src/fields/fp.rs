@@ -15,7 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    traits::{fields::FieldGadget, utilities::ToBitsLEGadget},
+    traits::{
+        fields::{FieldGadget, ToConstraintFieldGadget},
+        utilities::ToBitsLEGadget,
+    },
     utilities::{
         alloc::AllocGadget,
         boolean::{AllocatedBit, Boolean},
@@ -44,7 +47,7 @@ use snarkvm_utilities::{
     to_bytes,
 };
 
-use crate::traits::fields::ToConstraintFieldGadget;
+use core::ops::Neg;
 use std::borrow::Borrow;
 
 /// Represents a variable in the constraint system whose
@@ -485,22 +488,14 @@ impl<F: PrimeField> ToBitsLEGadget<F> for AllocatedFp<F> {
         let num_bits = F::Parameters::MODULUS_BITS;
         let mut bit_values = match self.value {
             Some(value) => {
-                let mut field_char = BitIteratorBE::new(F::characteristic());
-                let mut tmp = Vec::with_capacity(num_bits as usize);
-                let mut found_one = false;
-                for b in BitIteratorBE::new(value.into_repr()) {
-                    // Skip leading bits
-                    found_one |= field_char.next().unwrap();
-                    if !found_one {
-                        continue;
-                    }
-
-                    tmp.push(Some(b));
-                }
-
-                assert_eq!(tmp.len(), num_bits as usize);
-
-                tmp
+                let field_char = BitIteratorBE::new(F::characteristic());
+                let bits: Vec<_> = BitIteratorBE::new(value.into_repr())
+                    .zip(field_char)
+                    .skip_while(|(_, c)| !*c)
+                    .map(|(b, _)| Some(b))
+                    .collect();
+                assert_eq!(bits.len(), num_bits as usize);
+                bits
             }
             None => vec![None; num_bits as usize],
         };
@@ -508,21 +503,22 @@ impl<F: PrimeField> ToBitsLEGadget<F> for AllocatedFp<F> {
         // Convert to little-endian
         bit_values.reverse();
 
-        let mut bits = Vec::with_capacity(bit_values.len());
-        for (i, b) in bit_values.into_iter().enumerate() {
-            bits.push(AllocatedBit::alloc(cs.ns(|| format!("bit {}", i)), || b.get())?);
-        }
+        let bits: Vec<_> = bit_values
+            .into_iter()
+            .enumerate()
+            .map(|(i, b)| Boolean::alloc(cs.ns(|| format!("bit {}", i)), || b.get()))
+            .collect::<Result<_, _>>()?;
 
         let mut lc = LinearCombination::zero();
         let mut coeff = F::one();
 
-        for bit in bits.iter().rev() {
-            lc += (coeff, bit.get_variable());
+        for bit in bits.iter() {
+            lc = &lc + bit.lc(CS::one(), F::one()) * coeff;
 
             coeff.double_in_place();
         }
 
-        lc = &self.variable - lc;
+        lc = &self.variable.clone().neg() + lc;
 
         cs.enforce(|| "unpacking_constraint", |lc| lc, |lc| lc, |_| lc);
 
@@ -531,7 +527,8 @@ impl<F: PrimeField> ToBitsLEGadget<F> for AllocatedFp<F> {
 
     fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         let bits = self.to_bits_le(&mut cs)?;
-        Boolean::enforce_in_field::<_, _, F>(&mut cs, &bits)?;
+
+        Boolean::enforce_in_field_le::<F, _>(&mut cs, &bits)?;
         Ok(bits)
     }
 }
