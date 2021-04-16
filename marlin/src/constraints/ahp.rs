@@ -1054,7 +1054,7 @@ mod test {
     }
 
     #[test]
-    fn test_verifier_first_message() {
+    fn test_verifier_first_round() {
         let cs = &mut TestConstraintSystem::<Fq>::new();
 
         let num_variables = 25;
@@ -1186,7 +1186,7 @@ mod test {
     }
 
     #[test]
-    fn test_verifier_second_message() {
+    fn test_verifier_second_round() {
         let cs = &mut TestConstraintSystem::<Fq>::new();
 
         let num_variables = 25;
@@ -1343,6 +1343,226 @@ mod test {
         assert_eq!(
             second_round_state.gamma.is_none(),
             second_round_state_gadget.gamma.is_none()
+        );
+
+        if !cs.is_satisfied() {
+            println!("which is unsatisfied: {:?}", cs.which_is_unsatisfied().unwrap());
+        }
+
+        assert!(cs.is_satisfied());
+    }
+
+    #[test]
+    fn test_verifier_third_round() {
+        let cs = &mut TestConstraintSystem::<Fq>::new();
+
+        let num_variables = 25;
+        let num_constraints = 25;
+
+        let (circuit_pk, circuit_vk, proof, public_input) =
+            construct_circuit_parameters(num_variables, num_constraints);
+
+        let prepared_circuit_vk = PreparedCircuitVerifyingKey::prepare(&circuit_vk);
+
+        // Attempt verification.
+
+        let public_input = {
+            let domain_x = EvaluationDomain::<Fr>::new(public_input.len() + 1).unwrap();
+
+            let mut unpadded_input = public_input.to_vec();
+            unpadded_input.resize(core::cmp::max(public_input.len(), domain_x.size() - 1), Fr::zero());
+
+            unpadded_input
+        };
+
+        let is_recursion = MarlinRecursiveMode::RECURSION;
+        let fs_rng = &mut FS::new();
+
+        if is_recursion {
+            fs_rng.absorb_bytes(&to_bytes![&MarlinInst::PROTOCOL_NAME].unwrap());
+            fs_rng.absorb_native_field_elements(&compute_vk_hash::<Fr, Fq, MultiPC, FS>(&circuit_vk).unwrap());
+            fs_rng.absorb_nonnative_field_elements(&public_input, OptimizationType::Weight);
+        } else {
+            fs_rng.absorb_bytes(&to_bytes![&MarlinInst::PROTOCOL_NAME, &circuit_vk, &public_input].unwrap());
+        }
+
+        // Start first round.
+
+        let first_commitments = &proof.commitments[0];
+
+        // Construct the gadget components
+        let fs_rng_gadget = &mut FSG::constant(cs.ns(|| "alloc_rng"), &fs_rng);
+
+        let mut comm_gadgets = Vec::new();
+        let mut message_gadgets = Vec::new();
+
+        for (i, comm) in first_commitments.iter().enumerate() {
+            let commitment_gagdet = CommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
+                cs.ns(|| format!("alloc_comm_{}", i)),
+                || Ok(comm.clone()),
+            )
+            .unwrap();
+            comm_gadgets.push(commitment_gagdet);
+        }
+
+        for (i, msg) in proof.prover_messages[0].field_elements.iter().enumerate() {
+            let msg_gadget = NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_msg_{}", i)), || Ok(msg)).unwrap();
+            message_gadgets.push(msg_gadget);
+        }
+
+        // Insert randomness.
+        if is_recursion {
+            fs_rng.absorb_native_field_elements(&first_commitments);
+            if !proof.prover_messages[0].field_elements.is_empty() {
+                fs_rng.absorb_nonnative_field_elements(
+                    &proof.prover_messages[0].field_elements,
+                    OptimizationType::Weight,
+                );
+            };
+        } else {
+            fs_rng.absorb_bytes(&to_bytes![first_commitments, proof.prover_messages[0]].unwrap());
+        }
+        // Execute the verifier first round.
+        let (_first_round_message, first_round_state) =
+            AHPForR1CSNative::verifier_first_round(circuit_pk.circuit.index_info.clone(), fs_rng).unwrap();
+
+        // Execute the verifier first round gadget.
+        let (_first_round_message_gadget, first_round_state_gadget) =
+            AHPForR1CS::<_, _, _, MultiPCVar>::verifier_first_round(
+                cs.ns(|| "verifier_first_round"),
+                prepared_circuit_vk.domain_h_size,
+                prepared_circuit_vk.domain_k_size,
+                fs_rng_gadget,
+                &comm_gadgets,
+                &message_gadgets,
+            )
+            .unwrap();
+
+        // Start the second round.
+
+        let second_commitments = &proof.commitments[1];
+
+        // Construct the gadget components for the second round
+
+        let mut second_round_comm_gadgets = Vec::new();
+        let mut second_round_message_gadgets = Vec::new();
+
+        for (i, comm) in second_commitments.iter().enumerate() {
+            let commitment_gagdet = CommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
+                cs.ns(|| format!("alloc_second_round_comm_{}", i)),
+                || Ok(comm.clone()),
+            )
+            .unwrap();
+            second_round_comm_gadgets.push(commitment_gagdet);
+        }
+
+        for (i, msg) in proof.prover_messages[1].field_elements.iter().enumerate() {
+            let msg_gadget =
+                NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_second_round_msg_{}", i)), || Ok(msg)).unwrap();
+            second_round_message_gadgets.push(msg_gadget);
+        }
+
+        if is_recursion {
+            fs_rng.absorb_native_field_elements(&second_commitments);
+            if !proof.prover_messages[1].field_elements.is_empty() {
+                fs_rng.absorb_nonnative_field_elements(
+                    &proof.prover_messages[1].field_elements,
+                    OptimizationType::Weight,
+                );
+            };
+        } else {
+            fs_rng.absorb_bytes(&to_bytes![second_commitments, proof.prover_messages[1]].unwrap());
+        }
+
+        // Execute the verifier second round.
+        let (_second_round_message, second_round_state) =
+            AHPForR1CSNative::verifier_second_round(first_round_state, fs_rng).unwrap();
+
+        // Execute the verifier second round gadget.
+        let (_second_round_message_gadget, second_round_state_gadget) =
+            AHPForR1CS::<_, _, _, MultiPCVar>::verifier_second_round(
+                cs.ns(|| "verifier_second_round"),
+                first_round_state_gadget,
+                fs_rng_gadget,
+                &second_round_comm_gadgets,
+                &second_round_message_gadgets,
+            )
+            .unwrap();
+
+        // Start third round.
+
+        let third_commitments = &proof.commitments[2];
+
+        // Construct the gadget components for the third round
+
+        let mut third_round_comm_gadgets = Vec::new();
+        let mut third_round_message_gadgets = Vec::new();
+
+        for (i, comm) in third_commitments.iter().enumerate() {
+            let commitment_gagdet = CommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
+                cs.ns(|| format!("alloc_third_round_comm_{}", i)),
+                || Ok(comm.clone()),
+            )
+            .unwrap();
+            third_round_comm_gadgets.push(commitment_gagdet);
+        }
+
+        for (i, msg) in proof.prover_messages[2].field_elements.iter().enumerate() {
+            let msg_gadget =
+                NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_third_round_msg_{}", i)), || Ok(msg)).unwrap();
+            third_round_message_gadgets.push(msg_gadget);
+        }
+
+        if is_recursion {
+            fs_rng.absorb_native_field_elements(&third_commitments);
+            if !proof.prover_messages[2].field_elements.is_empty() {
+                fs_rng.absorb_nonnative_field_elements(
+                    &proof.prover_messages[2].field_elements,
+                    OptimizationType::Weight,
+                );
+            };
+        } else {
+            fs_rng.absorb_bytes(&to_bytes![third_commitments, proof.prover_messages[2]].unwrap());
+        }
+
+        // Execute the verifier third round.
+        let third_round_state = AHPForR1CSNative::verifier_third_round(second_round_state, fs_rng).unwrap();
+
+        // Execute the verifier third round gadget.
+        let third_round_state_gadget = AHPForR1CS::<_, _, _, MultiPCVar>::verifier_third_round(
+            cs.ns(|| "verifier_third_round"),
+            second_round_state_gadget,
+            fs_rng_gadget,
+            &third_round_comm_gadgets,
+            &third_round_message_gadgets,
+        )
+        .unwrap();
+
+        // Enforce that the native and gadget verifier third round message is equivalent.
+
+        let expected_gamma =
+            NonNativeFieldVar::alloc(cs.ns(|| "gamma"), || Ok(third_round_state.gamma.unwrap())).unwrap();
+
+        expected_gamma
+            .enforce_equal(
+                cs.ns(|| "enforce_equal_gamma"),
+                &third_round_state_gadget.gamma.clone().unwrap(),
+            )
+            .unwrap();
+
+        // Enforce that the native and gadget verifier first round state is equivalent.
+
+        assert_eq!(
+            third_round_state.first_round_message.is_some(),
+            third_round_state_gadget.first_round_msg.is_some()
+        );
+        assert_eq!(
+            third_round_state.second_round_message.is_some(),
+            third_round_state_gadget.second_round_msg.is_some()
+        );
+        assert_eq!(
+            third_round_state.gamma.is_some(),
+            third_round_state_gadget.gamma.is_some()
         );
 
         if !cs.is_satisfied() {
