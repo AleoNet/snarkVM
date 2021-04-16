@@ -674,7 +674,6 @@ impl Boolean {
                     &should_be_zero,
                 )?;
                 let _ = bits_iter.next().unwrap();
-                println!("bit: {}, boolean: {:?}", i, should_be_zero.get_value());
             }
             or_result.enforce_equal(cs.ns(|| "enforce_equal"), &Boolean::constant(false))?;
         }
