@@ -69,7 +69,7 @@ version = "1.0.40"
 version = "0.1"
 
 [dependencies.bech32]
-version = "0.6"
+version = "0.8"
 
 [dependencies.blake2]
 version = "0.9"
