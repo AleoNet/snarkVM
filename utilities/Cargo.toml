@@ -23,7 +23,7 @@ version = "0.2.2"
 optional = true
 
 [dependencies.bincode]
-version = "1.3.2"
+version = "1.3.3"
 
 [dependencies.rand]
 version = "0.8"
