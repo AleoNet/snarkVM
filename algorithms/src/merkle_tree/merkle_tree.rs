@@ -118,10 +118,10 @@ impl<P: MerkleParameters> MerkleTree<P> {
     }
 
     pub fn rebuild<L: ToBytes, I: ExactSizeIterator<Item = L>, J: ExactSizeIterator<Item = L>>(
-        &mut self,
+        &self,
         old_leaves: I,
         new_leaves: J,
-    ) -> Result<(), MerkleError> {
+    ) -> Result<Self, MerkleError> {
         let new_time = start_timer!(|| "MerkleTree::rebuild");
 
         let last_level_size = (old_leaves.len() + new_leaves.len()).next_power_of_two();
@@ -223,14 +223,17 @@ impl<P: MerkleParameters> MerkleTree<P> {
         end_timer!(new_time);
 
         // update the values at the very end so the original tree is not altered in case of failure
-        self.root = Some(root_hash);
-        self.tree = tree;
-        self.hashed_leaves_index = last_level_index;
-        if let Some(padding_tree) = new_padding_tree {
-            self.padding_tree = padding_tree;
-        }
-
-        Ok(())
+        Ok(MerkleTree {
+            root: Some(root_hash),
+            tree,
+            hashed_leaves_index: last_level_index,
+            padding_tree: if let Some(padding_tree) = new_padding_tree {
+                padding_tree
+            } else {
+                self.padding_tree.clone()
+            },
+            parameters: self.parameters.clone(),
+        })
     }
 
     #[inline]
