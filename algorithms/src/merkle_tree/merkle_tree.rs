@@ -20,6 +20,7 @@ use crate::{
     traits::{MerkleParameters, CRH},
 };
 use snarkvm_utilities::ToBytes;
+use std::sync::Arc;
 
 #[derive(Default)]
 pub struct MerkleTree<P: MerkleParameters> {
@@ -37,13 +38,13 @@ pub struct MerkleTree<P: MerkleParameters> {
     padding_tree: Vec<(MerkleTreeDigest<P>, MerkleTreeDigest<P>)>,
 
     /// The Merkle tree parameters (e.g. the hash function).
-    parameters: P,
+    parameters: Arc<P>,
 }
 
 impl<P: MerkleParameters> MerkleTree<P> {
     pub const DEPTH: u8 = P::DEPTH as u8;
 
-    pub fn new<L: ToBytes, I: ExactSizeIterator<Item = L>>(parameters: P, leaves: I) -> Result<Self, MerkleError> {
+    pub fn new<L: ToBytes, I: ExactSizeIterator<Item = L>>(parameters: Arc<P>, leaves: I) -> Result<Self, MerkleError> {
         let new_time = start_timer!(|| "MerkleTree::new");
 
         let last_level_size = leaves.len().next_power_of_two();

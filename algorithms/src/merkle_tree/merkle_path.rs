@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::Arc;
+
 use crate::{
     errors::MerkleError,
     traits::{MerkleParameters, CRH},
@@ -26,7 +28,7 @@ pub type MerkleTreeDigest<P> = <<P as MerkleParameters>::H as CRH>::Output;
 /// Our path `is_left_child()` if the boolean in `path` is true.
 #[derive(Clone, Debug)]
 pub struct MerklePath<P: MerkleParameters> {
-    pub parameters: P,
+    pub parameters: Arc<P>,
     pub path: Vec<(MerkleTreeDigest<P>, MerkleTreeDigest<P>)>,
 }
 
@@ -77,7 +79,7 @@ impl<P: MerkleParameters> Default for MerklePath<P> {
             path.push((MerkleTreeDigest::<P>::default(), MerkleTreeDigest::<P>::default()));
         }
         Self {
-            parameters: P::default(),
+            parameters: Arc::new(P::default()),
             path,
         }
     }

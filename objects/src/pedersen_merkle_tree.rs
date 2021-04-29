@@ -20,10 +20,13 @@ use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::fmt::{
-    Display,
-    Formatter,
-    {self},
+use std::{
+    fmt::{
+        Display,
+        Formatter,
+        {self},
+    },
+    sync::Arc,
 };
 
 // Do not leak the type
@@ -50,7 +53,8 @@ define_masked_merkle_tree_parameters!(MaskedMerkleTreeParameters, MerkleTreeCRH,
 pub type EdwardsMaskedMerkleTree = MerkleTree<MaskedMerkleTreeParameters>;
 
 /// Lazily evaluated parameters for the Masked Merkle tree
-pub static PARAMS: Lazy<MaskedMerkleTreeParameters> = Lazy::new(|| MaskedMerkleTreeParameters::setup(&mut prng()));
+pub static PARAMS: Lazy<Arc<MaskedMerkleTreeParameters>> =
+    Lazy::new(|| Arc::new(MaskedMerkleTreeParameters::setup(&mut prng())));
 
 /// A Pedersen Merkle Root Hash
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

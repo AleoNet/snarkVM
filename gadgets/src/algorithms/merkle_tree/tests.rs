@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::Arc;
+
 use crate::{
     algorithms::{
         crh::{BoweHopwoodPedersenCompressedCRHGadget, PedersenCRHGadget, PedersenCompressedCRHGadget},
@@ -60,7 +62,7 @@ fn generate_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, 
     use_bad_root: bool,
 ) {
     let parameters = P::default();
-    let tree = MerkleTree::<P>::new(parameters.clone(), leaves.iter()).unwrap();
+    let tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), leaves.iter()).unwrap();
     let root = tree.root();
     let mut satisfied = true;
     for (i, leaf) in leaves.iter().enumerate() {
@@ -129,7 +131,7 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
     use_bad_root: bool,
 ) {
     let parameters = P::default();
-    let tree = MerkleTree::<P>::new(parameters.clone(), leaves.iter()).unwrap();
+    let tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), leaves.iter()).unwrap();
     let root = tree.root();
 
     let mut cs = TestConstraintSystem::<F>::new();
