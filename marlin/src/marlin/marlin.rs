@@ -723,4 +723,224 @@ where
     ) -> Result<bool, MarlinError<PC::Error>> {
         Self::verify(&prepared_vk.orig_vk, public_input, proof)
     }
+
+    /// Verify that a proof for the constraint system defined by `C` asserts that
+    /// all constraints are satisfied using the prepared verifying key.
+    pub fn partial_verify<'a>(
+        prepared_vk: &PreparedCircuitVerifyingKey<TargetField, PC>,
+        public_input: &[TargetField],
+        proof: &Proof<TargetField, PC>,
+    ) -> Result<
+        (
+            Vec<snarkvm_polycommit::LinearCombination<TargetField>>,
+            Vec<TargetField>,
+            Vec<LabeledCommitment<PC::Commitment>>,
+            snarkvm_polycommit::QuerySet<'a, TargetField>,
+            Evaluations<'a, TargetField>,
+            FS,
+        ),
+        MarlinError<PC::Error>,
+    > {
+        let verifier_time = start_timer!(|| "Marlin::Verify");
+
+        let circuit_verifying_key = &prepared_vk.orig_vk;
+
+        let public_input = {
+            let domain_x = EvaluationDomain::<TargetField>::new(public_input.len() + 1).unwrap();
+
+            if cfg!(debug_assertions) {
+                println!("Number of given public inputs: {}", public_input.len());
+                println!("Size of evaluation domain x: {}", domain_x.size());
+            }
+
+            let mut unpadded_input = public_input.to_vec();
+            unpadded_input.resize(
+                core::cmp::max(public_input.len(), domain_x.size() - 1),
+                TargetField::zero(),
+            );
+
+            unpadded_input
+        };
+
+        if cfg!(debug_assertions) {
+            println!("Number of padded public variables: {}", public_input.len());
+        }
+
+        let is_recursion = MM::RECURSION;
+
+        let mut fs_rng = FS::new();
+
+        if is_recursion {
+            fs_rng.absorb_bytes(&to_bytes![&Self::PROTOCOL_NAME].unwrap());
+            fs_rng.absorb_native_field_elements(&compute_vk_hash::<TargetField, BaseField, PC, FS>(
+                circuit_verifying_key,
+            )?);
+            fs_rng.absorb_nonnative_field_elements(&public_input, OptimizationType::Weight);
+        } else {
+            fs_rng.absorb_bytes(&to_bytes![&Self::PROTOCOL_NAME, &circuit_verifying_key, &public_input].unwrap());
+        }
+
+        // --------------------------------------------------------------------
+        // First round
+
+        let first_commitments = &proof.commitments[0];
+
+        if is_recursion {
+            fs_rng.absorb_native_field_elements(&first_commitments);
+            if !proof.prover_messages[0].field_elements.is_empty() {
+                fs_rng.absorb_nonnative_field_elements(
+                    &proof.prover_messages[0].field_elements,
+                    OptimizationType::Weight,
+                );
+            };
+        } else {
+            fs_rng.absorb_bytes(&to_bytes![first_commitments, proof.prover_messages[0]].unwrap());
+        }
+
+        let (_, verifier_state) = AHPForR1CS::verifier_first_round(circuit_verifying_key.circuit_info, &mut fs_rng)?;
+
+        // --------------------------------------------------------------------
+
+        // --------------------------------------------------------------------
+        // Second round
+        let second_commitments = &proof.commitments[1];
+
+        if is_recursion {
+            fs_rng.absorb_native_field_elements(&second_commitments);
+            if !proof.prover_messages[1].field_elements.is_empty() {
+                fs_rng.absorb_nonnative_field_elements(
+                    &proof.prover_messages[1].field_elements,
+                    OptimizationType::Weight,
+                );
+            };
+        } else {
+            fs_rng.absorb_bytes(&to_bytes![second_commitments, proof.prover_messages[1]].unwrap());
+        }
+
+        let (_, verifier_state) = AHPForR1CS::verifier_second_round(verifier_state, &mut fs_rng)?;
+
+        // --------------------------------------------------------------------
+
+        // --------------------------------------------------------------------
+        // Third round
+        let third_commitments = &proof.commitments[2];
+
+        if is_recursion {
+            fs_rng.absorb_native_field_elements(&third_commitments);
+            if !proof.prover_messages[2].field_elements.is_empty() {
+                fs_rng.absorb_nonnative_field_elements(
+                    &proof.prover_messages[2].field_elements,
+                    OptimizationType::Weight,
+                );
+            };
+        } else {
+            fs_rng.absorb_bytes(&to_bytes![third_commitments, proof.prover_messages[2]].unwrap());
+        }
+
+        let verifier_state = AHPForR1CS::verifier_third_round(verifier_state, &mut fs_rng)?;
+
+        // --------------------------------------------------------------------
+
+        // Collect degree bounds for commitments. Indexed polynomials have *no*
+        // degree bounds because we know the committed index polynomial has the
+        // correct degree.
+        let index_info = circuit_verifying_key.circuit_info;
+        let degree_bounds = vec![None; circuit_verifying_key.circuit_commitments.len()]
+            .into_iter()
+            .chain(AHPForR1CS::prover_first_round_degree_bounds(&index_info))
+            .chain(AHPForR1CS::prover_second_round_degree_bounds(&index_info))
+            .chain(AHPForR1CS::prover_third_round_degree_bounds(&index_info));
+
+        let polynomial_labels: Vec<String> = if is_recursion {
+            AHPForR1CS::<TargetField>::polynomial_labels_with_vanishing().collect()
+        } else {
+            AHPForR1CS::<TargetField>::polynomial_labels().collect()
+        };
+
+        // Gather commitments in one vector.
+        let commitments: Vec<_> = circuit_verifying_key
+            .iter()
+            .chain(first_commitments)
+            .chain(second_commitments)
+            .chain(third_commitments)
+            .cloned()
+            .zip(polynomial_labels)
+            .zip(degree_bounds)
+            .map(|((c, l), d)| LabeledCommitment::new(l, c, d))
+            .collect();
+
+        let (query_set, verifier_state) = AHPForR1CS::verifier_query_set(verifier_state, &mut fs_rng, is_recursion);
+
+        if is_recursion {
+            fs_rng.absorb_nonnative_field_elements(&proof.evaluations, OptimizationType::Weight);
+        } else {
+            fs_rng.absorb_bytes(&to_bytes![&proof.evaluations].unwrap());
+        }
+
+        let mut evaluations = Evaluations::new();
+
+        let mut evaluation_labels = Vec::<(String, TargetField)>::new();
+
+        for q in query_set.iter().cloned() {
+            if AHPForR1CS::<TargetField>::LC_WITH_ZERO_EVAL.contains(&q.0.as_ref()) {
+                evaluations.insert(q, TargetField::zero());
+            } else {
+                evaluation_labels.push(q);
+            }
+        }
+        evaluation_labels.sort_by(|a, b| a.0.cmp(&b.0));
+        for (q, eval) in evaluation_labels.into_iter().zip(&proof.evaluations) {
+            evaluations.insert(q, *eval);
+        }
+
+        let lc_s =
+            AHPForR1CS::construct_linear_combinations(&public_input, &evaluations, &verifier_state, is_recursion)?;
+
+        let num_open_challenges: usize = 7;
+
+        let mut opening_challenges = Vec::new();
+        opening_challenges.append(&mut fs_rng.squeeze_128_bits_nonnative_field_elements(num_open_challenges)?);
+
+        // println!("\n native: opening challenges: {:?} \n", opening_challenges);
+        // println!("\n native: query_set: {:?}\n", query_set);
+        // println!("\n native: commitments: {:?}\n", commitments);
+
+        let opening_challenges_f = |i| opening_challenges[i as usize];
+
+        let cloned_rng = fs_rng;
+
+        let mut fs_rng_new = FS::new();
+
+        let evaluations_are_correct = PC::check_combinations_individual_opening_challenges(
+            &circuit_verifying_key.verifier_key,
+            &lc_s,        // Checked
+            &commitments, // Checked
+            &query_set,   // Checked
+            &evaluations, // Checked
+            &proof.pc_proof,
+            &opening_challenges_f, // Checked
+            &mut fs_rng_new,
+        )
+        .map_err(MarlinError::from_pc_err)?;
+
+        if !evaluations_are_correct {
+            eprintln!("PC::Check failed");
+        }
+        end_timer!(verifier_time, || format!(
+            " PC::Check for AHP Verifier linear equations: {}",
+            evaluations_are_correct
+        ));
+
+        println!("native evaluations_are_correct: {:?}", evaluations_are_correct);
+        // Ok(evaluations_are_correct)
+
+        Ok((
+            lc_s,
+            opening_challenges,
+            commitments,
+            query_set,
+            evaluations,
+            cloned_rng,
+        ))
+    }
 }

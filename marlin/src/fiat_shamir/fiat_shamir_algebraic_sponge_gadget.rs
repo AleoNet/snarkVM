@@ -213,7 +213,7 @@ impl<
         outputs_short_elements: bool,
     ) -> Result<(Vec<NonNativeFieldVar<TargetField, BaseField>>, Vec<Vec<Boolean>>), SynthesisError> {
         // TODO (raychu86): Assign optimization type properly.
-        let optimization_type = OptimizationType::Constraints;
+        let optimization_type = OptimizationType::Weight;
 
         let params = get_params(
             TargetField::size_in_bits(),
