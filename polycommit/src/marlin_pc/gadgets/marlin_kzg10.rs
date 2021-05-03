@@ -140,9 +140,15 @@ where
 
         let mut query_to_labels_map = BTreeMap::new();
 
-        for (label, point) in query_set.0.iter() {
+        // Sort the query set to match the native impl.
+        let mut sorted_query_set_gadgets: Vec<_> = query_set.0.iter().collect();
+        sorted_query_set_gadgets.sort_by(|a, b| a.0.cmp(&b.0));
+
+        for (label, point) in sorted_query_set_gadgets.iter() {
+            // (raychu86): Changed entry `point.name` to `point.value` to preserve the same ordering,
+            // as the native implementation
             let labels = query_to_labels_map
-                .entry(point.name.clone())
+                .entry(point.value.value()?)
                 .or_insert((point.value.clone(), BTreeSet::new()));
             labels.1.insert(label);
         }
@@ -511,9 +517,15 @@ where
         let commitments: BTreeMap<_, _> = commitments.iter().map(|c| (c.label.clone(), c)).collect();
         let mut query_to_labels_map = BTreeMap::new();
 
-        for (label, point) in query_set.0.iter() {
+        // Sort the query set to match the native impl.
+        let mut sorted_query_set_gadgets: Vec<_> = query_set.0.iter().collect();
+        sorted_query_set_gadgets.sort_by(|a, b| a.0.cmp(&b.0));
+
+        for (label, point) in sorted_query_set_gadgets.iter() {
+            // (raychu86): Changed entry `point.name` to `point.value` to preserve the same ordering,
+            // as the native implementation
             let labels = query_to_labels_map
-                .entry(point.name.clone())
+                .entry(point.value.value()?)
                 .or_insert((point.value.clone(), BTreeSet::new()));
             labels.1.insert(label);
         }
@@ -844,186 +856,3 @@ where
         }
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     #![allow(non_camel_case_types)]
-//
-//     use super::*;
-//     use snarkvm_curves::{
-//         bls12_377::{Bls12_377, Fq, Fr},
-//         bw6_761::BW6_761,
-//     };
-//     use snarkvm_gadgets::{
-//         curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
-//         traits::utilities::alloc::AllocGadget,
-//     };
-//     use snarkvm_marlin::{FiatShamirAlgebraicSpongeRngVar, FiatShamirRngVar, PoseidonSponge, PoseidonSpongeVar};
-//     use snarkvm_nonnative::params::OptimizationType;
-//     use snarkvm_r1cs::TestConstraintSystem;
-//     use std::collections::{HashMap, HashSet};
-//
-//     type BaseCurve = BW6_761;
-//     type PC<E> = MarlinKZG10<E>;
-//     type PC_Bls12_377 = PC<Bls12_377>;
-//     type PCGadget = MarlinKZG10Gadget<Bls12_377, BaseCurve, Bls12_377PairingGadget>;
-//
-//     fn single_poly_test_template() -> Result<(), SynthesisError> {
-//         use crate::tests::*;
-//         let test_components = single_poly_test::<_, PC_Bls12_377>().expect("test failed for bls12-377");
-//
-//         for (i, test_component) in test_components.iter().enumerate() {
-//             let TestComponents {
-//                 verification_key,
-//                 commitments,
-//                 query_set,
-//                 evaluations,
-//                 batch_lc_proof,
-//                 batch_proof,
-//                 opening_challenge,
-//                 randomness,
-//             } = test_component;
-//
-//             assert!(batch_proof.is_some());
-//             assert!(batch_lc_proof.is_none());
-//
-//             let cs = &mut TestConstraintSystem::<Fq>::new();
-//
-//             // Allocate the verification key
-//
-//             let verification_key_gadget = <PCGadget as PCCheckVar<_, _, _>>::VerifierKeyVar::alloc(
-//                 cs.ns(|| format!("alloc_vk_gadget_{}", i)),
-//                 || Ok(verification_key.clone()),
-//             )
-//             .unwrap();
-//
-//             // Allocate the commitments
-//
-//             let mut commitment_gadgets = Vec::new();
-//
-//             for (j, commitment) in commitments.iter().enumerate() {
-//                 let commitment_gadget = <PCGadget as PCCheckVar<_, _, _>>::LabeledCommitmentVar::alloc(
-//                     cs.ns(|| format!("alloc_commitment_gadget_{}_{}", i, j)),
-//                     || Ok(commitment.clone()),
-//                 )
-//                 .unwrap();
-//
-//                 commitment_gadgets.push(commitment_gadget);
-//             }
-//             // Allocate the query sets
-//
-//             let mut query_set_gadget = QuerySetVar::<_, _> { 0: HashSet::new() };
-//
-//             for (j, query) in query_set.iter().enumerate() {
-//                 let value =
-//                     NonNativeFieldVar::alloc(cs.ns(|| format!("query_{}_{}", i, j)), || Ok(query.1.clone())).unwrap();
-//
-//                 let labeled_point_var = LabeledPointVar {
-//                     name: query.0.clone(),
-//                     value,
-//                 };
-//
-//                 query_set_gadget.0.insert((query.0.clone(), labeled_point_var));
-//             }
-//
-//             // Allocate the evaluations.
-//
-//             let mut evaluations_vec: Vec<NonNativeFieldVar<_, _>> = Vec::new();
-//             let mut evaluations_gadget = EvaluationsVar::<_, _> { 0: HashMap::new() };
-//
-//             for (j, evaluation) in evaluations.iter().enumerate() {
-//                 let value = NonNativeFieldVar::alloc(cs.ns(|| format!("evaluation_labeled_point_{}_{}", i, j)), || {
-//                     Ok(evaluation.0.1.clone())
-//                 })
-//                 .unwrap();
-//                 evaluations_vec.push(value.clone());
-//
-//                 let labeled_point_var = LabeledPointVar {
-//                     name: evaluation.0.0.clone(),
-//                     value,
-//                 };
-//
-//                 let nonnative_point =
-//                     NonNativeFieldVar::alloc(cs.ns(|| format!("evaluation_point_{}_{}", i, j)), || {
-//                         Ok(evaluation.1.clone())
-//                     })
-//                     .unwrap();
-//
-//                 evaluations_gadget.0.insert(labeled_point_var, nonnative_point);
-//             }
-//
-//             // Allocate the proofs.
-//
-//             let mut proof_gadgets = Vec::new();
-//
-//             for (j, proof) in batch_proof.clone().unwrap().iter().enumerate() {
-//                 let proof_gadget = <PCGadget as PCCheckVar<_, _, _>>::ProofVar::alloc(
-//                     cs.ns(|| format!("proof_var_{}_{}", i, j)),
-//                     || Ok(proof),
-//                 )
-//                 .unwrap();
-//                 proof_gadgets.push(proof_gadget);
-//             }
-//
-//             // Allocate the randomness.
-//
-//             let mut fs_rng_gadget =
-//                 FiatShamirAlgebraicSpongeRngVar::<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>::new(
-//                     cs.ns(|| "new"),
-//                 );
-//             fs_rng_gadget.absorb_nonnative_field_elements(
-//                 cs.ns(|| "absorb"),
-//                 &evaluations_vec,
-//                 OptimizationType::Weight,
-//             )?;
-//
-//             // For commitments; and combined commitments (degree bounds); and combined commitments again.
-//             let num_opening_challenges = 7;
-//
-//             // Combined commitments.
-//             let num_batching_rands = 2;
-//
-//             let (opening_challenges, opening_challenges_bits) = fs_rng_gadget
-//                 .squeeze_128_bits_field_elements_and_bits(cs.ns(|| "squeeze opening"), num_opening_challenges)?;
-//             let (batching_rands, batching_rands_bits) = fs_rng_gadget
-//                 .squeeze_128_bits_field_elements_and_bits(cs.ns(|| "squeeze batching"), num_batching_rands)?;
-//
-//             let rand_data = PCCheckRandomDataVar {
-//                 opening_challenges,
-//                 opening_challenges_bits,
-//                 batching_rands,
-//                 batching_rands_bits,
-//             };
-//
-//             let result = MarlinKZG10Gadget::batch_check_evaluations(
-//                 cs.ns(|| format!("batch_check_evaluations_{}", i)),
-//                 &verification_key_gadget,
-//                 &commitment_gadgets,
-//                 &query_set_gadget,
-//                 &evaluations_gadget,
-//                 &proof_gadgets,
-//                 &rand_data,
-//             )
-//             .unwrap();
-//
-//             result
-//                 .enforce_equal(
-//                     cs.ns(|| format!("enforce_equal_evaluation_{}", i)),
-//                     &Boolean::Constant(true),
-//                 )
-//                 .unwrap();
-//
-//             if !cs.is_satisfied() {
-//                 println!("Unsatisfied constraint: {}", cs.which_is_unsatisfied().unwrap());
-//             }
-//
-//             assert!(cs.is_satisfied());
-//         }
-//         Ok(())
-//     }
-//
-//     #[test]
-//     fn single_poly_test_gadget() {
-//         single_poly_test_template().expect("test failed for bls12-377");
-//     }
-// }

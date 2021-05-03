@@ -121,16 +121,12 @@ where
                 );
             });
             vk_hash_rng.absorb_native_field_elements(&vk_elems);
-            FpGadget::<BaseField>::alloc(cs.ns(|| "alloc_vk_hash"), || {
-                Ok(vk_hash_rng.squeeze_native_field_elements(1).unwrap()[0]) // TODO (raychu86): Handle this unwrap.
-            })?
+            vk_hash_rng.squeeze_native_field_elements(1).unwrap()
         };
 
-        let fs_rng = {
-            let mut fs_rng = R::constant(cs.ns(|| "fs_rng_raw"), &fs_rng_raw);
-            fs_rng.absorb_native_field_elements(cs.ns(|| "absorb"), &[index_vk_hash])?;
-            fs_rng
-        };
+        fs_rng_raw.absorb_native_field_elements(&index_vk_hash);
+
+        let fs_rng = R::constant(cs.ns(|| "fs_rng_raw"), &fs_rng_raw);
 
         let mut prepared_index_comms = Vec::<PCG::PreparedCommitmentVar>::new();
         for (i, comm) in vk.index_comms.iter().enumerate() {

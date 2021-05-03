@@ -119,7 +119,7 @@ where
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         // TODO (raychu86): Select the optimization type properly.
-        let optimization_type = OptimizationType::Constraints;
+        let optimization_type = OptimizationType::Weight;
 
         let params = get_params(F::size_in_bits(), CF::size_in_bits(), optimization_type);
 

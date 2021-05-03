@@ -117,7 +117,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         //     OptimizationGoal::Weight => OptimizationType::Weight,
         // };
 
-        let optimization_type = OptimizationType::Constraints;
+        let optimization_type = OptimizationType::Weight;
 
         let limbs_value = Self::get_limbs_representations(&value, optimization_type)?;
 
@@ -569,7 +569,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         //     OptimizationGoal::Weight => OptimizationType::Weight,
         // }
 
-        OptimizationType::Constraints
+        OptimizationType::Weight
     }
 }
 
@@ -735,7 +735,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> TwoBitLookupGadget<BaseFiel
         debug_assert!(bits.len() == 2);
         debug_assert!(constants.len() == 4);
 
-        let optimization_type = OptimizationType::Constraints;
+        let optimization_type = OptimizationType::Weight;
 
         let field_parameters = get_params(
             TargetField::size_in_bits(),
@@ -794,7 +794,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ThreeBitCondNegLookupGadget
         debug_assert!(bits.len() == 3);
         debug_assert!(constants.len() == 4);
 
-        let optimization_type = OptimizationType::Constraints;
+        let optimization_type = OptimizationType::Weight;
 
         let field_parameters = get_params(
             TargetField::size_in_bits(),
@@ -850,7 +850,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, Ba
         FN: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<TargetField>,
     {
-        let optimization_type = OptimizationType::Constraints;
+        let optimization_type = OptimizationType::Weight;
 
         let zero = TargetField::zero();
 
@@ -885,7 +885,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, Ba
         FN: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<TargetField>,
     {
-        let optimization_type = OptimizationType::Constraints;
+        let optimization_type = OptimizationType::Weight;
 
         let zero = TargetField::zero();
 
@@ -919,7 +919,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<TargetField, Ba
         FN: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<TargetField>,
     {
-        let optimization_type = OptimizationType::Constraints;
+        let optimization_type = OptimizationType::Weight;
 
         let params = get_params(
             TargetField::size_in_bits(),

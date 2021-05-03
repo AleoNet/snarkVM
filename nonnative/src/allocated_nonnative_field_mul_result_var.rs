@@ -303,6 +303,6 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
         //     OptimizationGoal::Weight => OptimizationType::Weight,
         // }
 
-        OptimizationType::Constraints
+        OptimizationType::Weight
     }
 }

@@ -433,23 +433,6 @@ mod test {
     type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Circuit<Fr>>;
     type TestSNARKGadget = MarlinSNARKGadget<Fr, Fq, PC, FS, MarlinRecursiveMode, PCGadget, FSG>;
 
-    //
-    //
-    // type TestSNARK = MarlinSNARK<MNT4Fr, MNT4Fq, MarlinKZG10<MNT4_298, DensePolynomial<MNT4Fr>>, FS4, TestMarlinConfig>;
-    // type FS4 = FiatShamirAlgebraicSpongeRng<MNT4Fr, MNT4Fq, PoseidonSponge<MNT4Fq>>;
-    // type PCGadget4 = MarlinKZG10Gadget<Mnt64298cycle, DensePolynomial<MNT4Fr>, MNT4PairingVar>;
-    // type FSG4 = FiatShamirAlgebraicSpongeRngVar<MNT4Fr, MNT4Fq, PoseidonSponge<MNT4Fq>, PoseidonSpongeVar<MNT4Fq>>;
-    // type TestSNARKGadget = MarlinSNARKGadget<
-    //     MNT4Fr,
-    //     MNT4Fq,
-    //     MarlinKZG10<MNT4_298, DensePolynomial<MNT4Fr>>,
-    //     FS4,
-    //     TestMarlinConfig,
-    //     PCGadget4,
-    //     FSG4,
-    // >;
-    //
-    //
     #[test]
     fn marlin_snark_test() {
         let mut rng = test_rng();
@@ -484,18 +467,11 @@ mod test {
         // Initialize constraint system.
         let mut cs = TestConstraintSystem::<Fq>::new();
 
-        let input_gadget = <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::InputVar::alloc(
+        let input_gadget = <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::InputVar::alloc_input(
             cs.ns(|| "alloc_input_gadget"),
             || Ok(vec![c]),
         )
         .unwrap();
-
-        // TODO (raychu86): Should be allocated as input.
-        // let input_gadget = <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::InputVar::alloc_input(
-        //     cs.ns(|| "alloc_input_gadget"),
-        //     || Ok(vec![c]),
-        // )
-        //     .unwrap();
 
         let proof_gadget =
             <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::ProofVar::alloc(cs.ns(|| "alloc_proof"), || Ok(proof))
@@ -513,8 +489,6 @@ mod test {
             cs.which_is_unsatisfied().unwrap()
         );
 
-        println!("START VERIFICATION");
-
         let verification_result = <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::verify(
             cs.ns(|| "marlin_verify"),
             &vk_gadget,
@@ -522,8 +496,6 @@ mod test {
             &proof_gadget,
         )
         .unwrap();
-
-        println!("END VERIFICATION");
 
         assert!(
             cs.is_satisfied(),

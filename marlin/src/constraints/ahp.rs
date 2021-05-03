@@ -956,7 +956,11 @@ mod test {
         traits::utilities::eq::EqGadget,
     };
     use snarkvm_polycommit::marlin_pc::{
-        commitment::commitment::CommitmentVar,
+        commitment::{
+            commitment::CommitmentVar,
+            labeled_commitment::LabeledCommitmentVar,
+            prepared_commitment::PreparedCommitmentVar,
+        },
         marlin_kzg10::MarlinKZG10Gadget,
         MarlinKZG10,
     };
@@ -965,7 +969,7 @@ mod test {
 
     use crate::marlin::{CircuitProvingKey, CircuitVerifyingKey, Proof};
     use core::ops::MulAssign;
-    use snarkvm_polycommit::Evaluations;
+    use snarkvm_polycommit::{Evaluations, LabeledCommitment};
 
     type MultiPC = MarlinKZG10<Bls12_377>;
     type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FS, MarlinRecursiveMode>;
@@ -1817,13 +1821,14 @@ mod test {
         )
         .unwrap();
 
-        let proof_gadget = ProofVar::<_, _, _, MultiPCVar>::alloc(cs.ns(|| "proof_gadget"), || Ok(proof)).unwrap();
+        let proof_gadget =
+            ProofVar::<_, _, _, MultiPCVar>::alloc(cs.ns(|| "proof_gadget"), || Ok(proof.clone())).unwrap();
 
         let lc_gadgets = AHPForR1CS::<_, _, _, MultiPCVar>::verifier_decision(
             cs.ns(|| "verifier_decision"),
             &formatted_public_input,
             &proof_gadget.evaluations,
-            third_round_state_gadget,
+            third_round_state_gadget.clone(),
             &prepared_vk_gadget.domain_k_size_gadget,
         )
         .unwrap();
@@ -1845,7 +1850,6 @@ mod test {
                     (LinearCombinationCoeffVar::MinusOne, LinearCombinationCoeffVar::MinusOne) => {}
                     (LinearCombinationCoeffVar::One, LinearCombinationCoeffVar::One) => {}
                     (LinearCombinationCoeffVar::Var(expected_coeff), LinearCombinationCoeffVar::Var(coeff)) => {
-                        println!("var {} {}", i, j);
                         expected_coeff
                             .enforce_equal(cs.ns(|| format!("enforce_eq_coeff_{}_{}", i, j)), &coeff)
                             .unwrap();
@@ -1865,6 +1869,396 @@ mod test {
                     }
                 }
             }
+        }
+
+        if !cs.is_satisfied() {
+            println!("which is unsatisfied: {:?}", cs.which_is_unsatisfied().unwrap());
+        }
+
+        assert!(cs.is_satisfied());
+    }
+
+    #[test]
+    fn test_verifier_comm_query_eval_set() {
+        let cs = &mut TestConstraintSystem::<Fq>::new();
+
+        let num_variables = 25;
+        let num_constraints = 25;
+
+        let (circuit_pk, circuit_vk, proof, public_input) =
+            construct_circuit_parameters(num_variables, num_constraints);
+
+        let prepared_circuit_vk = PreparedCircuitVerifyingKey::prepare(&circuit_vk);
+
+        // Attempt verification.
+
+        let public_input = {
+            let domain_x = EvaluationDomain::<Fr>::new(public_input.len() + 1).unwrap();
+
+            let mut unpadded_input = public_input.to_vec();
+            unpadded_input.resize(core::cmp::max(public_input.len(), domain_x.size() - 1), Fr::zero());
+
+            unpadded_input
+        };
+
+        let is_recursion = MarlinRecursiveMode::RECURSION;
+        let fs_rng = &mut FS::new();
+
+        if is_recursion {
+            fs_rng.absorb_bytes(&to_bytes![&MarlinInst::PROTOCOL_NAME].unwrap());
+            fs_rng.absorb_native_field_elements(&compute_vk_hash::<Fr, Fq, MultiPC, FS>(&circuit_vk).unwrap());
+            fs_rng.absorb_nonnative_field_elements(&public_input, OptimizationType::Weight);
+        } else {
+            fs_rng.absorb_bytes(&to_bytes![&MarlinInst::PROTOCOL_NAME, &circuit_vk, &public_input].unwrap());
+        }
+
+        // Start first round.
+
+        let first_commitments = &proof.commitments[0];
+
+        // Construct the gadget components
+        let fs_rng_gadget = &mut FSG::constant(cs.ns(|| "alloc_rng"), &fs_rng);
+
+        let mut comm_gadgets = Vec::new();
+        let mut message_gadgets = Vec::new();
+
+        for (i, comm) in first_commitments.iter().enumerate() {
+            let commitment_gagdet = CommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
+                cs.ns(|| format!("alloc_comm_{}", i)),
+                || Ok(comm.clone()),
+            )
+            .unwrap();
+            comm_gadgets.push(commitment_gagdet);
+        }
+
+        for (i, msg) in proof.prover_messages[0].field_elements.iter().enumerate() {
+            let msg_gadget = NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_msg_{}", i)), || Ok(msg)).unwrap();
+            message_gadgets.push(msg_gadget);
+        }
+
+        // Insert randomness.
+        if is_recursion {
+            fs_rng.absorb_native_field_elements(&first_commitments);
+            if !proof.prover_messages[0].field_elements.is_empty() {
+                fs_rng.absorb_nonnative_field_elements(
+                    &proof.prover_messages[0].field_elements,
+                    OptimizationType::Weight,
+                );
+            };
+        } else {
+            fs_rng.absorb_bytes(&to_bytes![first_commitments, proof.prover_messages[0]].unwrap());
+        }
+        // Execute the verifier first round.
+        let (_first_round_message, first_round_state) =
+            AHPForR1CSNative::verifier_first_round(circuit_pk.circuit.index_info.clone(), fs_rng).unwrap();
+
+        // Execute the verifier first round gadget.
+        let (_first_round_message_gadget, first_round_state_gadget) =
+            AHPForR1CS::<_, _, _, MultiPCVar>::verifier_first_round(
+                cs.ns(|| "verifier_first_round"),
+                prepared_circuit_vk.domain_h_size,
+                prepared_circuit_vk.domain_k_size,
+                fs_rng_gadget,
+                &comm_gadgets,
+                &message_gadgets,
+            )
+            .unwrap();
+
+        // Start the second round.
+
+        let second_commitments = &proof.commitments[1];
+
+        // Construct the gadget components for the second round
+
+        let mut second_round_comm_gadgets = Vec::new();
+        let mut second_round_message_gadgets = Vec::new();
+
+        for (i, comm) in second_commitments.iter().enumerate() {
+            let commitment_gagdet = CommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
+                cs.ns(|| format!("alloc_second_round_comm_{}", i)),
+                || Ok(comm.clone()),
+            )
+            .unwrap();
+            second_round_comm_gadgets.push(commitment_gagdet);
+        }
+
+        for (i, msg) in proof.prover_messages[1].field_elements.iter().enumerate() {
+            let msg_gadget =
+                NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_second_round_msg_{}", i)), || Ok(msg)).unwrap();
+            second_round_message_gadgets.push(msg_gadget);
+        }
+
+        if is_recursion {
+            fs_rng.absorb_native_field_elements(&second_commitments);
+            if !proof.prover_messages[1].field_elements.is_empty() {
+                fs_rng.absorb_nonnative_field_elements(
+                    &proof.prover_messages[1].field_elements,
+                    OptimizationType::Weight,
+                );
+            };
+        } else {
+            fs_rng.absorb_bytes(&to_bytes![second_commitments, proof.prover_messages[1]].unwrap());
+        }
+
+        // Execute the verifier second round.
+        let (_second_round_message, second_round_state) =
+            AHPForR1CSNative::verifier_second_round(first_round_state, fs_rng).unwrap();
+
+        // Execute the verifier second round gadget.
+        let (_second_round_message_gadget, second_round_state_gadget) =
+            AHPForR1CS::<_, _, _, MultiPCVar>::verifier_second_round(
+                cs.ns(|| "verifier_second_round"),
+                first_round_state_gadget,
+                fs_rng_gadget,
+                &second_round_comm_gadgets,
+                &second_round_message_gadgets,
+            )
+            .unwrap();
+
+        // Start third round.
+
+        let third_commitments = &proof.commitments[2];
+
+        // Construct the gadget components for the third round
+
+        let mut third_round_comm_gadgets = Vec::new();
+        let mut third_round_message_gadgets = Vec::new();
+
+        for (i, comm) in third_commitments.iter().enumerate() {
+            let commitment_gagdet = CommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
+                cs.ns(|| format!("alloc_third_round_comm_{}", i)),
+                || Ok(comm.clone()),
+            )
+            .unwrap();
+            third_round_comm_gadgets.push(commitment_gagdet);
+        }
+
+        for (i, msg) in proof.prover_messages[2].field_elements.iter().enumerate() {
+            let msg_gadget =
+                NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_third_round_msg_{}", i)), || Ok(msg)).unwrap();
+            third_round_message_gadgets.push(msg_gadget);
+        }
+
+        if is_recursion {
+            fs_rng.absorb_native_field_elements(&third_commitments);
+            if !proof.prover_messages[2].field_elements.is_empty() {
+                fs_rng.absorb_nonnative_field_elements(
+                    &proof.prover_messages[2].field_elements,
+                    OptimizationType::Weight,
+                );
+            };
+        } else {
+            fs_rng.absorb_bytes(&to_bytes![third_commitments, proof.prover_messages[2]].unwrap());
+        }
+
+        // Execute the verifier third round.
+        let third_round_state = AHPForR1CSNative::verifier_third_round(second_round_state, fs_rng).unwrap();
+
+        // Execute the verifier third round gadget.
+        let third_round_state_gadget = AHPForR1CS::<_, _, _, MultiPCVar>::verifier_third_round(
+            cs.ns(|| "verifier_third_round"),
+            second_round_state_gadget,
+            fs_rng_gadget,
+            &third_round_comm_gadgets,
+            &third_round_message_gadgets,
+        )
+        .unwrap();
+
+        // --------- Native verifier lc
+
+        // Collect degree bounds for commitments. Indexed polynomials have *no*
+        // degree bounds because we know the committed index polynomial has the
+        // correct degree.
+        let (query_set, verifier_state) = AHPForR1CSNative::verifier_query_set(third_round_state, fs_rng, is_recursion);
+
+        if is_recursion {
+            fs_rng.absorb_nonnative_field_elements(&proof.evaluations, OptimizationType::Weight);
+        } else {
+            fs_rng.absorb_bytes(&to_bytes![&proof.evaluations].unwrap());
+        }
+
+        let mut evaluations = Evaluations::new();
+
+        let mut evaluation_labels = Vec::<(String, Fr)>::new();
+
+        for q in query_set.iter().cloned() {
+            if AHPForR1CSNative::<Fr>::LC_WITH_ZERO_EVAL.contains(&q.0.as_ref()) {
+                evaluations.insert(q, Fr::zero());
+            } else {
+                evaluation_labels.push(q);
+            }
+        }
+        evaluation_labels.sort_by(|a, b| a.0.cmp(&b.0));
+        for (q, eval) in evaluation_labels.into_iter().zip(&proof.evaluations) {
+            evaluations.insert(q, *eval);
+        }
+
+        let prepared_vk_gadget = PreparedCircuitVerifyingKeyVar::<_, _, _, MultiPCVar, FS, FSG>::alloc(
+            cs.ns(|| "alloc_prepared_vk"),
+            || Ok(prepared_circuit_vk),
+        )
+        .unwrap();
+
+        let proof_gadget =
+            ProofVar::<_, _, _, MultiPCVar>::alloc(cs.ns(|| "proof_gadget"), || Ok(proof.clone())).unwrap();
+
+        // Test verifier_comm_query_eval_set.
+
+        // Construct native commitments
+
+        // Collect degree bounds for commitments. Indexed polynomials have *no*
+        // degree bounds because we know the committed index polynomial has the
+        // correct degree.
+        let index_info = circuit_vk.circuit_info;
+        let degree_bounds = vec![None; circuit_vk.circuit_commitments.len()]
+            .into_iter()
+            .chain(AHPForR1CSNative::prover_first_round_degree_bounds(&index_info))
+            .chain(AHPForR1CSNative::prover_second_round_degree_bounds(&index_info))
+            .chain(AHPForR1CSNative::prover_third_round_degree_bounds(&index_info));
+
+        let polynomial_labels: Vec<String> = if is_recursion {
+            AHPForR1CSNative::<Fr>::polynomial_labels_with_vanishing().collect()
+        } else {
+            AHPForR1CSNative::<Fr>::polynomial_labels().collect()
+        };
+
+        // Gather commitments in one vector.
+        let commitments: Vec<_> = circuit_vk
+            .iter()
+            .chain(first_commitments)
+            .chain(second_commitments)
+            .chain(third_commitments)
+            .cloned()
+            .zip(polynomial_labels)
+            .zip(degree_bounds)
+            .map(|((c, l), d)| LabeledCommitment::new(l, c, d))
+            .collect();
+
+        let (num_opening_challenges, num_batching_rands, comm_gadgets, query_set_gadgets, evaluation_gadgets) =
+            AHPForR1CS::<_, _, _, MultiPCVar>::verifier_comm_query_eval_set(
+                cs.ns(|| "verifier_comm_query_eval_set"),
+                &prepared_vk_gadget,
+                &proof_gadget,
+                &third_round_state_gadget,
+            )
+            .unwrap();
+
+        assert_eq!(num_opening_challenges, 7);
+        assert_eq!(num_batching_rands, 2);
+
+        let (query_set_native, _verifier_state_native) =
+            AHPForR1CSNative::<Fr>::verifier_query_set(verifier_state, fs_rng, true);
+
+        // Check that the query sets are equivalent
+
+        let mut sorted_query_set_gadgets: Vec<_> = query_set_gadgets.0.iter().collect();
+        sorted_query_set_gadgets.sort_by(|a, b| a.0.cmp(&b.0));
+
+        for (i, (query_native, query_gadget)) in query_set_native.iter().zip(sorted_query_set_gadgets).enumerate() {
+            assert_eq!(query_native.0, query_gadget.0);
+
+            let expected_query =
+                NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_query{}", i)), || Ok(query_native.1)).unwrap();
+
+            expected_query
+                .enforce_equal(cs.ns(|| format!("enforce_eq_query_{}", i)), &query_gadget.1.value)
+                .unwrap();
+        }
+
+        // Check that the commitments are equivalent
+
+        // let mut sorted_query_set_gadgets: Vec<_> = query_set_gadgets.0.iter().collect();
+        // sorted_query_set_gadgets.sort_by(|a, b| a.0.cmp(&b.0));
+
+        for (i, (commitment_native, commitment_gadget)) in commitments.iter().zip(comm_gadgets).enumerate() {
+            // Check the label
+
+            assert_eq!(commitment_native.label(), &commitment_gadget.label);
+
+            // Check the commitment values
+            let expected_commitment = LabeledCommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
+                cs.ns(|| format!("alloc_commitment_{}", i)),
+                || Ok(commitment_native),
+            )
+            .unwrap();
+
+            let expected_prepared_commitment = PreparedCommitmentVar::prepare(
+                cs.ns(|| format!("prepare_comm_{}", i)),
+                &expected_commitment.commitment,
+            )
+            .unwrap();
+
+            expected_prepared_commitment
+                .prepared_comm
+                .enforce_equal(
+                    cs.ns(|| format!("enforce_eq_commitment_comm{}", i)),
+                    &commitment_gadget.prepared_commitment.prepared_comm,
+                )
+                .unwrap();
+
+            assert_eq!(
+                expected_prepared_commitment.shifted_comm.is_some(),
+                commitment_gadget.prepared_commitment.shifted_comm.is_some()
+            );
+
+            if let (Some(expected_shifted_comm), Some(shifted_comm)) = (
+                expected_prepared_commitment.shifted_comm,
+                commitment_gadget.prepared_commitment.shifted_comm,
+            ) {
+                expected_shifted_comm
+                    .enforce_equal(
+                        cs.ns(|| format!("enforce_eq_commitment_shifted_comm{}", i)),
+                        &shifted_comm,
+                    )
+                    .unwrap();
+            }
+
+            // Check degree bound.
+
+            assert_eq!(
+                expected_commitment.degree_bound.is_some(),
+                commitment_gadget.degree_bound.is_some()
+            );
+
+            if let (Some(expected_degree_bound), Some(degree_bound_gadget)) =
+                (expected_commitment.degree_bound, commitment_gadget.degree_bound)
+            {
+                expected_degree_bound
+                    .enforce_equal(
+                        cs.ns(|| format!("degree_bound_enforce_equal_{}", i)),
+                        &degree_bound_gadget,
+                    )
+                    .unwrap();
+            }
+        }
+
+        // Check that the evaluations are equivalent
+
+        let mut sorted_evaluation_gadgets: Vec<_> = evaluation_gadgets.0.iter().collect();
+        sorted_evaluation_gadgets.sort_by(|a, b| a.0.name.cmp(&b.0.name));
+
+        for (i, (evaluation_native, evaluation_gadget)) in evaluations.iter().zip(sorted_evaluation_gadgets).enumerate()
+        {
+            assert_eq!(evaluation_native.0.0, evaluation_gadget.0.name);
+
+            let expected_eval_key =
+                NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_eval_key_{}", i)), || Ok(evaluation_native.0.1))
+                    .unwrap();
+
+            let expected_eval_value =
+                NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_eval_value_{}", i)), || Ok(evaluation_native.1))
+                    .unwrap();
+
+            expected_eval_key
+                .enforce_equal(
+                    cs.ns(|| format!("enforce_eq_eval_key_{}", i)),
+                    &evaluation_gadget.0.value,
+                )
+                .unwrap();
+
+            expected_eval_value
+                .enforce_equal(cs.ns(|| format!("enforce_eq_eval_value_{}", i)), &evaluation_gadget.1)
+                .unwrap();
         }
 
         if !cs.is_satisfied() {
