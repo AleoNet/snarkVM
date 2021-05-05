@@ -30,13 +30,14 @@ use snarkvm_algorithms::{
 };
 use snarkvm_objects::AleoAmount;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
+use std::sync::Arc;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: BaseDPCComponents"))]
 pub struct InnerCircuit<C: BaseDPCComponents> {
     // Parameters
     system_parameters: SystemParameters<C>,
-    ledger_parameters: C::MerkleParameters,
+    ledger_parameters: Arc<C::MerkleParameters>,
 
     ledger_digest: MerkleTreeDigest<C::MerkleParameters>,
 
@@ -71,7 +72,7 @@ pub struct InnerCircuit<C: BaseDPCComponents> {
 }
 
 impl<C: BaseDPCComponents> InnerCircuit<C> {
-    pub fn blank(system_parameters: &SystemParameters<C>, ledger_parameters: &C::MerkleParameters) -> Self {
+    pub fn blank(system_parameters: &SystemParameters<C>, ledger_parameters: &Arc<C::MerkleParameters>) -> Self {
         let num_input_records = C::NUM_INPUT_RECORDS;
         let num_output_records = C::NUM_OUTPUT_RECORDS;
         let digest = MerkleTreeDigest::<C::MerkleParameters>::default();
@@ -147,7 +148,7 @@ impl<C: BaseDPCComponents> InnerCircuit<C> {
     pub fn new(
         // Parameters
         system_parameters: SystemParameters<C>,
-        ledger_parameters: C::MerkleParameters,
+        ledger_parameters: Arc<C::MerkleParameters>,
 
         // Digest
         ledger_digest: MerkleTreeDigest<C::MerkleParameters>,

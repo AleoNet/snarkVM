@@ -54,6 +54,7 @@ use rand::Rng;
 use std::{
     io::{Read, Result as IoResult, Write},
     marker::PhantomData,
+    sync::Arc,
 };
 
 pub mod inner_circuit;
@@ -581,7 +582,7 @@ where
     type TransactionKernel = TransactionKernel<Components>;
 
     fn setup<R: Rng>(
-        ledger_parameters: &Components::MerkleParameters,
+        ledger_parameters: &Arc<Components::MerkleParameters>,
         rng: &mut R,
     ) -> anyhow::Result<Self::NetworkParameters> {
         let setup_time = start_timer!(|| "BaseDPC::setup");

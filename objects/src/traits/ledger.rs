@@ -16,7 +16,7 @@
 
 use crate::traits::{BlockScheme, Transaction};
 
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
 #[allow(clippy::len_without_is_empty)]
 pub trait LedgerScheme: Sized {
@@ -29,14 +29,17 @@ pub trait LedgerScheme: Sized {
     type Transaction: Transaction;
 
     /// Instantiates a new ledger with a genesis block.
-    fn new(path: Option<&Path>, parameters: Self::MerkleParameters, genesis_block: Self::Block)
-    -> anyhow::Result<Self>;
+    fn new(
+        path: Option<&Path>,
+        parameters: Arc<Self::MerkleParameters>,
+        genesis_block: Self::Block,
+    ) -> anyhow::Result<Self>;
 
     /// Returns the number of blocks including the genesis block
     fn len(&self) -> usize;
 
     /// Return the parameters used to construct the ledger Merkle tree.
-    fn parameters(&self) -> &Self::MerkleParameters;
+    fn parameters(&self) -> &Arc<Self::MerkleParameters>;
 
     /// Return a digest of the latest ledger Merkle tree.
     fn digest(&self) -> Option<Self::MerkleTreeDigest>;
@@ -60,7 +63,7 @@ pub trait LedgerScheme: Sized {
     /// Returns true if the given Merkle path is a valid witness for
     /// the given ledger digest and commitment.
     fn verify_cm(
-        parameters: &Self::MerkleParameters,
+        parameters: &Arc<Self::MerkleParameters>,
         digest: &Self::MerkleTreeDigest,
         cm: &Self::Commitment,
         witness: &Self::MerklePath,

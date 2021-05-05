@@ -27,6 +27,7 @@ use snarkvm_algorithms::{
 use snarkvm_fields::ToConstraintField;
 use snarkvm_objects::AleoAmount;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
+use std::sync::Arc;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: BaseDPCComponents"))]
@@ -34,7 +35,7 @@ pub struct OuterCircuit<C: BaseDPCComponents> {
     system_parameters: SystemParameters<C>,
 
     // Inner snark verifier public inputs
-    ledger_parameters: C::MerkleParameters,
+    ledger_parameters: Arc<C::MerkleParameters>,
     ledger_digest: MerkleTreeDigest<C::MerkleParameters>,
     old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
     new_commitments: Vec<<C::RecordCommitment as CommitmentScheme>::Output>,
@@ -60,7 +61,7 @@ pub struct OuterCircuit<C: BaseDPCComponents> {
 impl<C: BaseDPCComponents> OuterCircuit<C> {
     pub fn blank(
         system_parameters: SystemParameters<C>,
-        ledger_parameters: C::MerkleParameters,
+        ledger_parameters: Arc<C::MerkleParameters>,
         inner_snark_vk: <C::InnerSNARK as SNARK>::VerificationParameters,
         inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
         program_snark_vk_and_proof: PrivateProgramInput,
@@ -112,7 +113,7 @@ impl<C: BaseDPCComponents> OuterCircuit<C> {
         system_parameters: SystemParameters<C>,
 
         // Inner SNARK public inputs
-        ledger_parameters: C::MerkleParameters,
+        ledger_parameters: Arc<C::MerkleParameters>,
         ledger_digest: MerkleTreeDigest<C::MerkleParameters>,
         old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
         new_commitments: Vec<<C::RecordCommitment as CommitmentScheme>::Output>,
