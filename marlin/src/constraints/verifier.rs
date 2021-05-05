@@ -201,3 +201,200 @@ where
         )
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use crate::{
+        constraints::{proof::ProverMessageVar, snark::test::Circuit},
+        fiat_shamir::{
+            FiatShamirAlgebraicSpongeRng,
+            FiatShamirAlgebraicSpongeRngVar,
+            PoseidonSponge,
+            PoseidonSpongeVar,
+        },
+        marlin::{MarlinRecursiveMode, MarlinSNARK as MarlinCore, Proof},
+    };
+
+    use snarkvm_curves::{
+        bls12_377::{Bls12_377, Fq, Fr},
+        bw6_761::BW6_761,
+    };
+    use snarkvm_gadgets::{
+        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
+        utilities::{alloc::AllocGadget, eq::EqGadget},
+    };
+    use snarkvm_polycommit::marlin_pc::{
+        commitment::commitment::CommitmentVar,
+        marlin_kzg10::MarlinKZG10Gadget,
+        proof::batch_lc_proof::BatchLCProofVar,
+        MarlinKZG10,
+    };
+    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_utilities::{test_rng, UniformRand};
+
+    use core::ops::MulAssign;
+    use std::collections::HashMap;
+
+    type PC = MarlinKZG10<Bls12_377>;
+    type PCGadget = MarlinKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
+
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
+    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
+
+    type MarlinInst = MarlinCore<Fr, Fq, PC, FS, MarlinRecursiveMode>;
+
+    #[test]
+    fn verifier_test() {
+        let rng = &mut test_rng();
+
+        let universal_srs = MarlinInst::universal_setup(10000, 25, 10000, rng).unwrap();
+
+        let num_constraints = 10000;
+        let num_variables = 25;
+
+        let a = Fr::rand(rng);
+        let b = Fr::rand(rng);
+        let mut c = a;
+        c.mul_assign(&b);
+
+        let circ = Circuit {
+            a: Some(a),
+            b: Some(b),
+            num_constraints,
+            num_variables,
+        };
+
+        let (circuit_pk, circuit_vk) = MarlinInst::circuit_setup(&universal_srs, &circ).unwrap();
+        println!("Called index");
+
+        let proof = MarlinInst::prove(&circuit_pk, &circ, rng).unwrap();
+        println!("Called prover");
+
+        assert!(MarlinInst::verify(&circuit_vk, &[c], &proof).unwrap());
+        println!("Called verifier");
+        println!("\nShould not verify (i.e. verifier messages should print below):");
+        assert!(!MarlinInst::verify(&circuit_vk, &[a], &proof).unwrap());
+
+        // Native works; now convert to the constraint world!
+
+        let mut cs = TestConstraintSystem::<Fq>::new();
+
+        // BEGIN: ivk to ivk_gadget
+        let ivk_gadget: CircuitVerifyingKeyVar<Fr, Fq, PC, PCGadget> =
+            CircuitVerifyingKeyVar::alloc(cs.ns(|| "alloc_circuit_vk"), || Ok(circuit_vk)).unwrap();
+        // END: ivk to ivk_gadget
+
+        // BEGIN: public input to public_input_gadget
+        let public_input: Vec<Fr> = vec![c];
+
+        let public_input_gadget: Vec<NonNativeFieldVar<Fr, Fq>> = public_input
+            .iter()
+            .enumerate()
+            .map(|(i, x)| NonNativeFieldVar::alloc_input(cs.ns(|| format!("alloc_input_{}", i)), || Ok(x)).unwrap())
+            .collect();
+        // END: public input to public_input_gadget
+
+        // BEGIN: proof to proof_gadget
+        let Proof {
+            commitments,
+            evaluations,
+            prover_messages,
+            pc_proof,
+            ..
+        } = proof;
+
+        let commitment_gadgets: Vec<Vec<CommitmentVar<Bls12_377, BW6_761, Bls12_377PairingGadget>>> = commitments
+            .iter()
+            .enumerate()
+            .map(|(i, lst)| {
+                lst.iter()
+                    .enumerate()
+                    .map(|(j, comm)| {
+                        CommitmentVar::alloc(cs.ns(|| format!("alloc_commitment_{}_{}", i, j)), || Ok(comm)).unwrap()
+                    })
+                    .collect()
+            })
+            .collect();
+
+        let evaluation_gadgets_vec: Vec<NonNativeFieldVar<Fr, Fq>> = evaluations
+            .iter()
+            .enumerate()
+            .map(|(i, eval)| {
+                NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_evaluation_{}", i)), || Ok(eval)).unwrap()
+            })
+            .collect();
+
+        let prover_message_gadgets: Vec<ProverMessageVar<Fr, Fq>> = prover_messages
+            .iter()
+            .enumerate()
+            .map(|(i, msg)| {
+                let field_elements: Vec<NonNativeFieldVar<Fr, Fq>> = match msg.field_elements.is_empty() {
+                    true => Vec::new(),
+                    false => msg
+                        .field_elements
+                        .iter()
+                        .map(|elem| {
+                            NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_prover message_{}", i)), || Ok(elem))
+                                .unwrap()
+                        })
+                        .collect(),
+                };
+
+                ProverMessageVar { field_elements }
+            })
+            .collect();
+
+        let pc_batch_proof =
+            BatchLCProofVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(cs.ns(|| "alloc#proof"), || {
+                Ok(pc_proof)
+            })
+            .unwrap();
+
+        let mut evaluation_gadgets = HashMap::<String, NonNativeFieldVar<Fr, Fq>>::new();
+
+        const ALL_POLYNOMIALS: [&str; 10] = [
+            "a_denom",
+            "b_denom",
+            "c_denom",
+            "g_1",
+            "g_2",
+            "t",
+            "vanishing_poly_h_alpha",
+            "vanishing_poly_h_beta",
+            "vanishing_poly_k_gamma",
+            "z_b",
+        ];
+
+        for (s, eval) in ALL_POLYNOMIALS.iter().zip(evaluation_gadgets_vec.iter()) {
+            evaluation_gadgets.insert(s.to_string(), (*eval).clone());
+        }
+
+        let proof_gadget: ProofVar<Fr, Fq, PC, PCGadget> = ProofVar {
+            commitments: commitment_gadgets,
+            evaluations: evaluation_gadgets,
+            prover_messages: prover_message_gadgets,
+            pc_batch_proof,
+        };
+        // END: proof to proof_gadget
+
+        MarlinVerificationGadget::<Fr, Fq, PC, PCGadget>::verify::<_, FS, FSG>(
+            cs.ns(|| "marlin_verification"),
+            &ivk_gadget,
+            &public_input_gadget,
+            &proof_gadget,
+        )
+        .unwrap()
+        .enforce_equal(cs.ns(|| "enforce_equal"), &Boolean::Constant(true))
+        .unwrap();
+
+        println!("after Marlin, num_of_constraints = {}", cs.num_constraints());
+
+        assert!(
+            cs.is_satisfied(),
+            "Constraints not satisfied: {}",
+            cs.which_is_unsatisfied().unwrap()
+        );
+    }
+}

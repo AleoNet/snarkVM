@@ -358,7 +358,7 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for MarlinBoundCircuit<F> {
 }
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use super::*;
 
     use crate::{
@@ -387,11 +387,11 @@ mod test {
     use core::ops::MulAssign;
 
     #[derive(Copy, Clone)]
-    struct Circuit<F: Field> {
-        a: Option<F>,
-        b: Option<F>,
-        num_constraints: usize,
-        num_variables: usize,
+    pub struct Circuit<F: Field> {
+        pub a: Option<F>,
+        pub b: Option<F>,
+        pub num_constraints: usize,
+        pub num_variables: usize,
     }
 
     impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<ConstraintF> {
