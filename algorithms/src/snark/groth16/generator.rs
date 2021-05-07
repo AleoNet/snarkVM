@@ -28,7 +28,7 @@ use snarkvm_r1cs::{
     SynthesisError,
     Variable,
 };
-use snarkvm_utilities::{errors::SerializationError, rand::UniformRand, serialize::*};
+use snarkvm_utilities::rand::UniformRand;
 
 use rand::Rng;
 
@@ -53,7 +53,7 @@ where
 
 /// This is our assembly structure that we'll use to synthesize the
 /// circuit into a QAP.
-#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug)]
 pub struct KeypairAssembly<E: PairingEngine> {
     pub num_public_variables: usize,
     pub num_private_variables: usize,
