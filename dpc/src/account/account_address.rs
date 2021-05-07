@@ -18,7 +18,7 @@ use crate::{account_format, traits::DPCComponents, AccountError, AccountPrivateK
 use snarkvm_algorithms::traits::EncryptionScheme;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use bech32::{Bech32, FromBase32, ToBase32};
+use bech32::{self, FromBase32, ToBase32};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
@@ -100,12 +100,12 @@ impl<C: DPCComponents> FromStr for AccountAddress<C> {
             return Err(AccountError::InvalidPrefix(prefix.to_string()));
         };
 
-        let bech32 = Bech32::from_str(&address)?;
-        if bech32.data().is_empty() {
+        let (_hrp, data, _variant) = bech32::decode(&address)?;
+        if data.is_empty() {
             return Err(AccountError::InvalidByteLength(0));
         }
 
-        let buffer = Vec::from_base32(&bech32.data())?;
+        let buffer = Vec::from_base32(&data)?;
         Ok(Self::read(&buffer[..])?)
     }
 }
@@ -120,7 +120,7 @@ impl<C: DPCComponents> fmt::Display for AccountAddress<C> {
 
         let prefix = account_format::ADDRESS_PREFIX.to_string();
 
-        let result = Bech32::new(prefix, address.to_base32());
+        let result = bech32::encode(&prefix, address.to_base32(), bech32::Variant::Bech32);
         result.unwrap().fmt(f)
     }
 }
