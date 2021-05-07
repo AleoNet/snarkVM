@@ -39,6 +39,12 @@ pub enum OptimizationGoal {
     Weight,
 }
 
+impl Default for OptimizationGoal {
+    fn default() -> Self {
+        Self::Constraints
+    }
+}
+
 /// Represents a constraint system which can have new variables
 /// allocated and constrains between them formed.
 pub trait ConstraintSystem<F: Field>: Sized {

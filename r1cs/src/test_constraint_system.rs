@@ -142,6 +142,7 @@ impl<F: Field> Default for TestConstraintSystem<F> {
             constraints,
             public_variables: inputs,
             private_variables: Default::default(),
+            optimization_goal: OptimizationGoal::Constraints,
         }
     }
 }
