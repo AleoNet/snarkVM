@@ -18,6 +18,7 @@ use crate::traits::{AccountScheme, Record};
 use snarkvm_objects::traits::{LedgerScheme, Transaction};
 
 use rand::Rng;
+use std::sync::Arc;
 
 pub trait DPCScheme<L: LedgerScheme> {
     type Account: AccountScheme;
@@ -31,7 +32,10 @@ pub trait DPCScheme<L: LedgerScheme> {
     type TransactionKernel;
 
     /// Returns public parameters for the DPC.
-    fn setup<R: Rng>(ledger_parameters: &L::MerkleParameters, rng: &mut R) -> anyhow::Result<Self::NetworkParameters>;
+    fn setup<R: Rng>(
+        ledger_parameters: &Arc<L::MerkleParameters>,
+        rng: &mut R,
+    ) -> anyhow::Result<Self::NetworkParameters>;
 
     /// Returns an account, given the system parameters, metadata, and an RNG.
     fn create_account<R: Rng>(parameters: &Self::SystemParameters, rng: &mut R) -> anyhow::Result<Self::Account>;

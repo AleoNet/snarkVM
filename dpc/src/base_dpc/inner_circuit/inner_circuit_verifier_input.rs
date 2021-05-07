@@ -21,6 +21,7 @@ use snarkvm_algorithms::{
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_objects::AleoAmount;
+use std::sync::Arc;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: BaseDPCComponents"))]
@@ -29,7 +30,7 @@ pub struct InnerCircuitVerifierInput<C: BaseDPCComponents> {
     pub system_parameters: SystemParameters<C>,
 
     // Ledger parameters and digest
-    pub ledger_parameters: C::MerkleParameters,
+    pub ledger_parameters: Arc<C::MerkleParameters>,
     pub ledger_digest: MerkleTreeDigest<C::MerkleParameters>,
 
     // Input record serial numbers

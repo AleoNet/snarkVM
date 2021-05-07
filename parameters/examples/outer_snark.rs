@@ -41,7 +41,7 @@ use snarkvm_utilities::{
 };
 
 use rand::thread_rng;
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 mod utils;
 use utils::store;
@@ -52,7 +52,7 @@ pub fn setup<C: BaseDPCComponents>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
 
     let merkle_tree_hash_parameters: <C::MerkleParameters as MerkleParameters>::H =
         From::from(FromBytes::read(&LedgerMerkleTreeParameters::load_bytes()?[..])?);
-    let ledger_merkle_tree_parameters = From::from(merkle_tree_hash_parameters);
+    let ledger_merkle_tree_parameters = Arc::new(From::from(merkle_tree_hash_parameters));
 
     let inner_snark_pk: <C::InnerSNARK as SNARK>::ProvingParameters =
         <C::InnerSNARK as SNARK>::ProvingParameters::read(InnerSNARKPKParameters::load_bytes()?.as_slice())?;

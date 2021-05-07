@@ -28,7 +28,7 @@ use snarkvm_gadgets::traits::{
 };
 use snarkvm_r1cs::{Assignment, ConstraintSynthesizer, ConstraintSystem};
 
-use std::marker::PhantomData;
+use std::{marker::PhantomData, sync::Arc};
 
 /// Enforces sizes of the mask and leaves.
 pub trait POSWCircuitParameters {
@@ -43,7 +43,7 @@ pub struct POSWCircuit<
     CP: POSWCircuitParameters,
 > {
     pub leaves: Vec<Option<<M::H as CRH>::Output>>,
-    pub merkle_parameters: M,
+    pub merkle_parameters: Arc<M>,
     pub mask: Option<Vec<u8>>,
     pub root: Option<<M::H as CRH>::Output>,
 
@@ -130,7 +130,7 @@ mod test {
 
     use blake2::{digest::Digest, Blake2s};
     use rand::thread_rng;
-    use std::marker::PhantomData;
+    use std::{marker::PhantomData, sync::Arc};
 
     // We'll use 32 byte masks in this test
     struct TestPOSWCircuitParameters;
@@ -159,7 +159,7 @@ mod test {
         let params = generate_random_parameters::<Bls12_377, _, _>(
             &POSWCircuit::<_, EdwardsMaskedMerkleParameters, HashGadget, TestPOSWCircuitParameters> {
                 leaves: vec![None; 7],
-                merkle_parameters: parameters.clone(),
+                merkle_parameters: Arc::new(parameters.clone()),
                 mask: None,
                 root: None,
                 field_type: PhantomData,
@@ -172,7 +172,7 @@ mod test {
 
         let nonce = [1; 32];
         let leaves = vec![vec![3u8; 32]; 7];
-        let tree = EdwardsMaskedMerkleTree::new(parameters.clone(), leaves.iter()).unwrap();
+        let tree = EdwardsMaskedMerkleTree::new(Arc::new(parameters.clone()), leaves.iter()).unwrap();
         let root = tree.root();
         let mut root_bytes = [0; 32];
         root.write(&mut root_bytes[..]).unwrap();
@@ -186,7 +186,7 @@ mod test {
         let proof = create_random_proof(
             &POSWCircuit::<_, EdwardsMaskedMerkleParameters, HashGadget, TestPOSWCircuitParameters> {
                 leaves: snark_leaves,
-                merkle_parameters: parameters,
+                merkle_parameters: Arc::new(parameters),
                 mask: Some(mask.clone()),
                 root: Some(root),
                 field_type: PhantomData,
