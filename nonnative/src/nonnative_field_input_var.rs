@@ -165,10 +165,8 @@ where
                 let mut cur = CF::one();
 
                 for (k, bit) in bits_slice.iter().rev().enumerate() {
-                    let mut temp = FpGadget::<CF>::from_boolean(
-                        cs.ns(|| format!("from_boolean_{}_{}_{}", i, j, k)),
-                        (*bit).clone(),
-                    )?;
+                    let mut temp =
+                        FpGadget::<CF>::from_boolean(cs.ns(|| format!("from_boolean_{}_{}_{}", i, j, k)), *bit)?;
                     temp = temp.mul_by_constant(cs.ns(|| format!("mul_by_constant_{}_{}_{}", i, j, k)), &cur)?;
 
                     bit_sum = bit_sum.add(cs.ns(|| format!("bit_sum_add_{}_{}_{}", i, j, k)), &temp)?;
