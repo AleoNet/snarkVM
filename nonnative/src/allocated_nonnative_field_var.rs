@@ -38,7 +38,7 @@ use snarkvm_gadgets::{
         },
     },
 };
-use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
+use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, OptimizationGoal};
 use snarkvm_utilities::BigInteger;
 
 use std::{
@@ -111,13 +111,11 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
 
     /// Obtain the nonnative field element of a constant value
     pub fn constant<CS: ConstraintSystem<BaseField>>(cs: &mut CS, value: TargetField) -> Result<Self, SynthesisError> {
-        // let optimization_type = match cs.optimization_goal() {
-        //     OptimizationGoal::None => OptimizationType::Constraints,
-        //     OptimizationGoal::Constraints => OptimizationType::Constraints,
-        //     OptimizationGoal::Weight => OptimizationType::Weight,
-        // };
-
-        let optimization_type = OptimizationType::Weight;
+        let optimization_type = match cs.optimization_goal() {
+            OptimizationGoal::None => OptimizationType::Constraints,
+            OptimizationGoal::Constraints => OptimizationType::Constraints,
+            OptimizationGoal::Weight => OptimizationType::Weight,
+        };
 
         let limbs_value = Self::get_limbs_representations(&value, optimization_type)?;
 

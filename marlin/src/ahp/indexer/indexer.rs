@@ -24,7 +24,7 @@ use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem};
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, OptimizationGoal};
 
 use core::marker::PhantomData;
 
@@ -35,6 +35,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
         let constraint_time = start_timer!(|| "Generating constraints");
         let mut ics = IndexerConstraintSystem::new();
+        ics.set_optimization_goal(OptimizationGoal::Weight);
         c.generate_constraints(&mut ics)?;
         end_timer!(constraint_time);
 

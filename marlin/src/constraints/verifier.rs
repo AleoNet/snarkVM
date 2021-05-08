@@ -231,7 +231,7 @@ mod test {
         proof::batch_lc_proof::BatchLCProofVar,
         MarlinKZG10,
     };
-    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_r1cs::{OptimizationGoal, TestConstraintSystem};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     use core::ops::MulAssign;
@@ -280,6 +280,7 @@ mod test {
         // Native works; now convert to the constraint world!
 
         let mut cs = TestConstraintSystem::<Fq>::new();
+        cs.set_optimization_goal(OptimizationGoal::Weight);
 
         // BEGIN: ivk to ivk_gadget
         let ivk_gadget: CircuitVerifyingKeyVar<Fr, Fq, PC, PCGadget> =

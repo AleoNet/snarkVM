@@ -381,7 +381,7 @@ pub mod test {
         utilities::{alloc::AllocGadget, eq::EqGadget},
     };
     use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
-    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_r1cs::{OptimizationGoal, TestConstraintSystem};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     use core::ops::MulAssign;
@@ -469,6 +469,7 @@ pub mod test {
 
             // Initialize constraint system.
             let mut cs = TestConstraintSystem::<Fq>::new();
+            cs.set_optimization_goal(OptimizationGoal::Weight);
 
             let input_gadget = <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::InputVar::alloc_input(
                 cs.ns(|| "alloc_input_gadget"),

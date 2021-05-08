@@ -964,7 +964,7 @@ mod test {
         marlin_kzg10::MarlinKZG10Gadget,
         MarlinKZG10,
     };
-    use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError, TestConstraintSystem};
+    use snarkvm_r1cs::{ConstraintSynthesizer, OptimizationGoal, SynthesisError, TestConstraintSystem};
     use snarkvm_utilities::{test_rng, to_bytes, ToBytes, UniformRand};
 
     use crate::marlin::{CircuitProvingKey, CircuitVerifyingKey, Proof};
@@ -1061,6 +1061,7 @@ mod test {
     #[test]
     fn test_verifier_first_round() {
         let cs = &mut TestConstraintSystem::<Fq>::new();
+        cs.set_optimization_goal(OptimizationGoal::Weight);
 
         let num_variables = 25;
         let num_constraints = 25;
@@ -1193,6 +1194,7 @@ mod test {
     #[test]
     fn test_verifier_second_round() {
         let cs = &mut TestConstraintSystem::<Fq>::new();
+        cs.set_optimization_goal(OptimizationGoal::Weight);
 
         let num_variables = 25;
         let num_constraints = 25;
@@ -1360,6 +1362,7 @@ mod test {
     #[test]
     fn test_verifier_third_round() {
         let cs = &mut TestConstraintSystem::<Fq>::new();
+        cs.set_optimization_goal(OptimizationGoal::Weight);
 
         let num_variables = 25;
         let num_constraints = 25;
@@ -1580,6 +1583,7 @@ mod test {
     #[test]
     fn test_verifier_decision() {
         let cs = &mut TestConstraintSystem::<Fq>::new();
+        cs.set_optimization_goal(OptimizationGoal::Weight);
 
         let num_variables = 25;
         let num_constraints = 25;
@@ -1881,6 +1885,7 @@ mod test {
     #[test]
     fn test_verifier_comm_query_eval_set() {
         let cs = &mut TestConstraintSystem::<Fq>::new();
+        cs.set_optimization_goal(OptimizationGoal::Weight);
 
         let num_variables = 25;
         let num_constraints = 25;

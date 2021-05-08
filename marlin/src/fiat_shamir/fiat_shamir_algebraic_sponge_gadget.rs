@@ -31,7 +31,7 @@ use snarkvm_nonnative::{
     AllocatedNonNativeFieldVar,
     NonNativeFieldVar,
 };
-use snarkvm_r1cs::{ConstraintSystem, ConstraintVariable, LinearCombination, SynthesisError};
+use snarkvm_r1cs::{ConstraintSystem, ConstraintVariable, LinearCombination, OptimizationGoal, SynthesisError};
 
 use std::marker::PhantomData;
 
@@ -212,8 +212,11 @@ impl<
         num_elements: usize,
         outputs_short_elements: bool,
     ) -> Result<(Vec<NonNativeFieldVar<TargetField, BaseField>>, Vec<Vec<Boolean>>), SynthesisError> {
-        // TODO (raychu86): Assign optimization type properly.
-        let optimization_type = OptimizationType::Weight;
+        let optimization_type = match cs.optimization_goal() {
+            OptimizationGoal::None => OptimizationType::Constraints,
+            OptimizationGoal::Constraints => OptimizationType::Constraints,
+            OptimizationGoal::Weight => OptimizationType::Weight,
+        };
 
         let params = get_params(
             TargetField::size_in_bits(),
@@ -482,8 +485,6 @@ mod tests {
     const NUM_SQUEEZED_FIELD_ELEMS: usize = 10;
     const NUM_SQUEEZED_SHORT_FIELD_ELEMS: usize = 10;
 
-    // TODO (raychu86): Make a macro to test different optimization types.
-
     #[test]
     fn test_poseidon() {
         let rng = &mut ChaChaRng::seed_from_u64(123456789u64);
@@ -516,6 +517,7 @@ mod tests {
 
         // fs_rng in the constraint world
         let mut cs = TestConstraintSystem::<Fr>::new();
+        cs.set_optimization_goal(OptimizationGoal::Weight);
         let mut fs_rng_gadget = FSGadget::new(cs.ns(|| "new"));
 
         let mut absorbed_rand_field_elems_gadgets = Vec::new();

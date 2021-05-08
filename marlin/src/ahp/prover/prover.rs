@@ -37,7 +37,7 @@ use snarkvm_fields::{batch_inversion, Field, PrimeField};
 use snarkvm_r1cs::errors::SynthesisError;
 
 use snarkvm_polycommit::{LabeledPolynomial, Polynomial};
-use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, OptimizationGoal};
 
 use rand_core::RngCore;
 
@@ -105,6 +105,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
         let constraint_time = start_timer!(|| "Generating constraints and witnesses");
         let mut pcs = ProverConstraintSystem::new();
+        pcs.set_optimization_goal(OptimizationGoal::Weight);
         circuit.generate_constraints(&mut pcs)?;
         end_timer!(constraint_time);
 
