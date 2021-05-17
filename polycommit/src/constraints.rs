@@ -25,7 +25,7 @@ use snarkvm_nonnative::NonNativeFieldVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use core::borrow::Borrow;
-use std::collections::{HashMap, HashSet};
+use hashbrown::{HashMap, HashSet};
 
 /// Define the minimal interface of prepared allocated structures.
 pub trait PrepareGadget<Unprepared, F: PrimeField>: Sized {
