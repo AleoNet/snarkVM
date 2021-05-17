@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    marlin_pc::{gadgets::VerifierKeyVar, PreparedVerifierKey},
+    marlin_pc::{gadgets::verifier_key::VerifierKeyVar, PreparedVerifierKey},
     PrepareGadget,
     Vec,
 };

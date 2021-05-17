@@ -70,6 +70,9 @@ features = [ "use_core" ]
 [dependencies.digest]
 version = "0.9"
 
+[dependencies.hashbrown]
+version = "0.11.2"
+
 [dependencies.rand_core]
 version = "0.6"
 default-features = false
@@ -82,6 +85,12 @@ optional = true
 version = "0.9"
 default-features = false
 
+[dev-dependencies.snarkvm-marlin]
+path = "../marlin"
+
+[dev-dependencies.snarkvm-nonnative]
+path = "../nonnative"
+
 [dev-dependencies.rand]
 version = "0.8"
 default-features = false
@@ -89,3 +98,4 @@ default-features = false
 [features]
 default = [ "std" ]
 std = [ ]
+print-trace = [ "snarkvm-profiler/print-trace" ]

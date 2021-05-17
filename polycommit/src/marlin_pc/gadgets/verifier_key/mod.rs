@@ -14,15 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-/// Gadgets for Marlin-KZG10 commitments.
-pub mod commitment;
-pub(crate) use commitment::*;
+/// Prepared verifier key gadget for the Marlin-KZG10 polynomial commitment scheme.
+pub mod prepared_verifier_key;
 
-/// Gadget for Marlin-KZG10 polynomial commitment scheme.
-pub mod marlin_kzg10;
-
-/// Gadgets for Marlin-KZG10 proofs.
-pub mod proof;
-
-/// Verifier key gadgets for the Marlin-KZG10 polynomial commitment scheme.
+/// Verifier key gadget for the Marlin-KZG10 polynomial commitment scheme.
 pub mod verifier_key;
+pub(crate) use verifier_key::*;

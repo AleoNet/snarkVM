@@ -289,7 +289,7 @@ pub struct LinearCombination<F> {
     /// The label.
     pub label: String,
     /// The linear combination of `(coeff, poly_label)` pairs.
-    terms: Vec<(F, LCTerm)>,
+    pub terms: Vec<(F, LCTerm)>,
 }
 
 impl<F: Field> LinearCombination<F> {

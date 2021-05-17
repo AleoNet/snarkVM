@@ -482,14 +482,16 @@ impl Boolean {
         CS: ConstraintSystem<F>,
     {
         assert!(!bits.is_empty());
-        let mut bits = bits.iter();
-
-        let mut cur: Self = *bits.next().unwrap();
-        for (i, next) in bits.enumerate() {
-            cur = Boolean::and(cs.ns(|| format!("AND {}", i)), &cur, next)?;
+        let mut cur: Option<Self> = None;
+        for (i, next) in bits.iter().enumerate() {
+            cur = if let Some(b) = cur {
+                Some(Boolean::and(cs.ns(|| format!("AND {}", i)), &b, next)?)
+            } else {
+                Some(next.clone())
+            };
         }
 
-        Ok(cur)
+        Ok(cur.expect("should not be 0"))
     }
 
     /// Asserts that at least one operand is false.
