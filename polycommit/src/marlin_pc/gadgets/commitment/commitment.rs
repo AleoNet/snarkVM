@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::marlin_pc::Commitment;
-
+use crate::{marlin_pc::Commitment, Vec};
 use snarkvm_curves::{traits::AffineCurve, PairingEngine};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{

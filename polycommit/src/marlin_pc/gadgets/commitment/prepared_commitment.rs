@@ -17,8 +17,8 @@
 use crate::{
     marlin_pc::{CommitmentVar, PreparedCommitment},
     PrepareGadget,
+    Vec,
 };
-
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{

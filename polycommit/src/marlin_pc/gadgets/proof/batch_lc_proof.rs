@@ -18,6 +18,7 @@ use crate::{
     kzg10::Proof,
     marlin_pc::{proof::ProofVar, MarlinKZG10},
     BatchLCProof,
+    Vec,
 };
 
 use snarkvm_curves::PairingEngine;
