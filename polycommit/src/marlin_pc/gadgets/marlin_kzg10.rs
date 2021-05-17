@@ -24,6 +24,8 @@ use crate::{
         MarlinKZG10,
         PreparedCommitmentVar,
     },
+    BTreeMap,
+    BTreeSet,
     EvaluationsVar,
     LabeledPointVar,
     LinearCombinationCoeffVar,
@@ -31,6 +33,8 @@ use crate::{
     PCCheckRandomDataVar,
     PCCheckVar,
     QuerySetVar,
+    String,
+    Vec,
 };
 
 use snarkvm_curves::PairingEngine;
@@ -45,11 +49,7 @@ use snarkvm_gadgets::{
 use snarkvm_nonnative::{NonNativeFieldMulResultVar, NonNativeFieldVar};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
 
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    convert::TryInto,
-    marker::PhantomData,
-};
+use core::{convert::TryInto, marker::PhantomData};
 
 /// Gadget for the Marlin-KZG10 polynomial commitment verifier.
 pub struct MarlinKZG10Gadget<TargetCurve, BaseCurve, PG>
