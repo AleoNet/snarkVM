@@ -52,10 +52,8 @@ use snarkvm_polycommit::{
 };
 use snarkvm_r1cs::ConstraintSystem;
 
-use std::{
-    collections::{HashMap, HashSet},
-    marker::PhantomData,
-};
+use core::marker::PhantomData;
+use hashbrown::{HashMap, HashSet};
 
 /// The Marlin verifier round state gadget used to output the state of each round.
 #[derive(Clone)]

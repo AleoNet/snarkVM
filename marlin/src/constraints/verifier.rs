@@ -35,7 +35,7 @@ use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
 use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
 use snarkvm_r1cs::ConstraintSystem;
 
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 /// The Marlin verification gadget.
 pub struct MarlinVerificationGadget<
@@ -235,7 +235,7 @@ mod test {
     use snarkvm_utilities::{test_rng, UniformRand};
 
     use core::ops::MulAssign;
-    use std::collections::HashMap;
+    use hashbrown::HashMap;
 
     type PC = MarlinKZG10<Bls12_377>;
     type PCGadget = MarlinKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;

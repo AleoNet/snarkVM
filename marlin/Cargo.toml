@@ -76,6 +76,9 @@ features = [ "use_core" ]
 [dependencies.digest]
 version = "0.9"
 
+[dependencies.hashbrown]
+version = "0.11.2"
+
 [dependencies.rand]
 version = "0.8"
 default-features = false

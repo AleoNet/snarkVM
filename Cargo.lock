@@ -1649,6 +1649,7 @@ dependencies = [
  "criterion",
  "derivative",
  "digest",
+ "hashbrown 0.11.2",
  "rand",
  "rand_chacha",
  "rand_core",

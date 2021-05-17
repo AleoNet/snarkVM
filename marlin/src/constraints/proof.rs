@@ -23,7 +23,7 @@ use snarkvm_polycommit::PCCheckVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use core::borrow::Borrow;
-use std::collections::HashMap;
+use hashbrown::HashMap;
 
 /// The prover message gadget
 #[repr(transparent)]
