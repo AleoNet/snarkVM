@@ -139,7 +139,7 @@ where
         > = lc_info.iter().map(|c| (c.0.clone(), c.clone())).collect();
 
         let mut query_to_labels_map: BTreeMap<
-            String,
+            <TargetCurve as PairingEngine>::Fr,
             (
                 NonNativeFieldVar<<TargetCurve as PairingEngine>::Fr, <BaseCurve as PairingEngine>::Fr>,
                 BTreeSet<&String>,
@@ -522,7 +522,7 @@ where
 
         let commitments: BTreeMap<_, _> = commitments.iter().map(|c| (c.label.clone(), c)).collect();
         let mut query_to_labels_map: BTreeMap<
-            String,
+            <TargetCurve as PairingEngine>::Fr,
             (
                 NonNativeFieldVar<<TargetCurve as PairingEngine>::Fr, <BaseCurve as PairingEngine>::Fr>,
                 BTreeSet<&String>,
