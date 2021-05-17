@@ -16,9 +16,9 @@
 
 use crate::{
     traits::{curves::GroupGadget, fields::FieldGadget},
-    utilities::ToBytesGadget,
+    utilities::{alloc::AllocGadget, ToBytesGadget},
 };
-use snarkvm_curves::traits::PairingEngine;
+use snarkvm_curves::{traits::PairingEngine, PairingCurve};
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
@@ -28,7 +28,10 @@ pub trait PairingGadget<Pairing: PairingEngine, F: Field> {
     type G1Gadget: GroupGadget<Pairing::G1Projective, F>;
     type G2Gadget: GroupGadget<Pairing::G2Projective, F>;
     type G1PreparedGadget: ToBytesGadget<F> + Clone + Debug;
-    type G2PreparedGadget: ToBytesGadget<F> + Clone + Debug;
+    type G2PreparedGadget: ToBytesGadget<F>
+        + AllocGadget<<Pairing::G2Affine as PairingCurve>::Prepared, F>
+        + Clone
+        + Debug;
     type GTGadget: FieldGadget<Pairing::Fqk, F> + Clone;
 
     fn miller_loop<CS: ConstraintSystem<F>>(

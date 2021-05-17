@@ -14,8 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod field;
-pub use field::*;
+/// Gadget for an optionally hiding Marlin-KZG10 commitment.
+pub mod commitment;
+pub(crate) use commitment::*;
 
-pub mod to_constraint_field;
-pub use to_constraint_field::*;
+/// Gadget for a Marlin-KZG10 commitment, with a string label and degree bound.
+pub mod labeled_commitment;
+pub(crate) use labeled_commitment::*;
+
+/// Prepared gadget for an optionally hiding Marlin-KZG10 commitment.
+pub mod prepared_commitment;
+pub(crate) use prepared_commitment::*;
+
+/// Prepared gadget for a Marlin-KZG10 commitment, with a string label and degree bound.
+pub mod prepared_labeled_commitment;

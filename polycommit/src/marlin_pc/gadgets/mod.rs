@@ -14,8 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod field;
-pub use field::*;
+/// Gadgets for Marlin-KZG10 commitments.
+pub mod commitment;
+pub(crate) use commitment::*;
 
-pub mod to_constraint_field;
-pub use to_constraint_field::*;
+/// Prepared verifier key gadget for the Marlin-KZG10 polynomial commitment scheme.
+pub mod prepared_verifier_key;
+
+/// Verifier key gadge for the Marlin-KZG10 polynomial commitment scheme.
+mod verifier_key;
+pub(crate) use verifier_key::*;

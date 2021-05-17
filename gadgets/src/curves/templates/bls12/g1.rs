@@ -21,6 +21,10 @@ use crate::{
         curves::GroupGadget,
         utilities::{uint::UInt8, ToBytesGadget},
     },
+    utilities::{
+        boolean::Boolean,
+        eq::{ConditionalEqGadget, EqGadget},
+    },
 };
 use snarkvm_curves::{
     templates::bls12::{Bls12Parameters, G1Prepared},
@@ -37,7 +41,12 @@ pub type G1Gadget<P> = AffineGadget<
 >;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "G1Gadget<P>: Clone"), Debug(bound = "G1Gadget<P>: Debug"))]
+#[derivative(
+    Clone(bound = "G1Gadget<P>: Clone"),
+    Debug(bound = "G1Gadget<P>: Debug"),
+    PartialEq(bound = "G1Gadget<P>: Debug"),
+    Eq(bound = "G1Gadget<P>: Debug")
+)]
 pub struct G1PreparedGadget<P: Bls12Parameters>(pub G1Gadget<P>);
 
 impl<P: Bls12Parameters> G1PreparedGadget<P> {
@@ -58,5 +67,22 @@ impl<P: Bls12Parameters> ToBytesGadget<P::Fp> for G1PreparedGadget<P> {
 
     fn to_bytes_strict<CS: ConstraintSystem<P::Fp>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.to_bytes(cs)
+    }
+}
+
+impl<P: Bls12Parameters> EqGadget<<P as Bls12Parameters>::Fp> for G1PreparedGadget<P> {}
+
+impl<P: Bls12Parameters> ConditionalEqGadget<<P as Bls12Parameters>::Fp> for G1PreparedGadget<P> {
+    fn conditional_enforce_equal<CS: ConstraintSystem<P::Fp>>(
+        &self,
+        cs: CS,
+        other: &Self,
+        condition: &Boolean,
+    ) -> Result<(), SynthesisError> {
+        self.0.conditional_enforce_equal(cs, &other.0, condition)
+    }
+
+    fn cost() -> usize {
+        2 * <FpGadget<<P as Bls12Parameters>::Fp> as ConditionalEqGadget<<P as Bls12Parameters>::Fp>>::cost()
     }
 }

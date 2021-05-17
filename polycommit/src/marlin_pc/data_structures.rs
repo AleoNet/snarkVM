@@ -14,9 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{impl_bytes, PCCommitment, PCCommitterKey, PCRandomness, PCVerifierKey, Vec};
-use snarkvm_curves::traits::PairingEngine;
-use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
+use crate::{
+    impl_bytes,
+    PCCommitment,
+    PCCommitterKey,
+    PCPreparedCommitment,
+    PCPreparedVerifierKey,
+    PCRandomness,
+    PCVerifierKey,
+    Vec,
+};
+use snarkvm_curves::{traits::PairingEngine, ProjectiveCurve};
+use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     error,
@@ -157,6 +166,63 @@ where
     }
 }
 
+/// `PreparedVerifierKey` is used to check evaluation proofs for a given commitment.
+#[derive(Derivative)]
+#[derivative(Clone(bound = ""), Debug(bound = ""))]
+pub struct PreparedVerifierKey<E: PairingEngine> {
+    /// The verification key for the underlying KZG10 scheme.
+    pub prepared_vk: kzg10::PreparedVerifierKey<E>,
+    /// Information required to enforce degree bounds. Each pair
+    /// is of the form `(degree_bound, shifting_advice)`.
+    /// This is `None` if `self` does not support enforcing any degree bounds.
+    pub prepared_degree_bounds_and_shift_powers: Option<Vec<(usize, Vec<E::G1Affine>)>>,
+    /// The maximum degree supported by the `UniversalParams` `self` was derived
+    /// from.
+    pub max_degree: usize,
+    /// The maximum degree supported by the trimmed parameters that `self` is
+    /// a part of.
+    pub supported_degree: usize,
+}
+
+impl<E: PairingEngine> PCPreparedVerifierKey<VerifierKey<E>> for PreparedVerifierKey<E> {
+    /// prepare `PreparedVerifierKey` from `VerifierKey`
+    fn prepare(vk: &VerifierKey<E>) -> Self {
+        let prepared_vk = kzg10::PreparedVerifierKey::<E>::prepare(&vk.vk);
+
+        let supported_bits = E::Fr::size_in_bits();
+
+        let prepared_degree_bounds_and_shift_powers: Option<Vec<(usize, Vec<E::G1Affine>)>> =
+            if vk.degree_bounds_and_shift_powers.is_some() {
+                let mut res = Vec::<(usize, Vec<E::G1Affine>)>::new();
+
+                let degree_bounds_and_shift_powers = vk.degree_bounds_and_shift_powers.as_ref().unwrap();
+
+                for (d, shift_power) in degree_bounds_and_shift_powers {
+                    let mut prepared_shift_power = Vec::<E::G1Affine>::new();
+
+                    let mut cur = E::G1Projective::from(shift_power.clone());
+                    for _ in 0..supported_bits {
+                        prepared_shift_power.push(cur.clone().into());
+                        cur.double_in_place();
+                    }
+
+                    res.push((d.clone(), prepared_shift_power));
+                }
+
+                Some(res)
+            } else {
+                None
+            };
+
+        Self {
+            prepared_vk,
+            prepared_degree_bounds_and_shift_powers,
+            max_degree: vk.max_degree,
+            supported_degree: vk.supported_degree,
+        }
+    }
+}
+
 /// Commitment to a polynomial that optionally enforces a degree bound.
 #[derive(Derivative)]
 #[derivative(
@@ -211,6 +277,34 @@ where
         }
 
         Ok(res)
+    }
+}
+
+/// Prepared commitment to a polynomial that optionally enforces a degree bound.
+#[derive(Derivative)]
+#[derivative(
+    Hash(bound = ""),
+    Clone(bound = ""),
+    Debug(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+pub struct PreparedCommitment<E: PairingEngine> {
+    pub(crate) prepared_comm: kzg10::PreparedCommitment<E>,
+    pub(crate) shifted_comm: Option<kzg10::Commitment<E>>,
+}
+
+impl<E: PairingEngine> PCPreparedCommitment<Commitment<E>> for PreparedCommitment<E> {
+    /// Prepare commitment to a polynomial that optionally enforces a degree bound.
+    fn prepare(commitment: &Commitment<E>) -> Self {
+        let prepared_commitment = kzg10::PreparedCommitment::<E>::prepare(&commitment.comm);
+
+        let shifted_commitment = commitment.shifted_comm.clone();
+
+        Self {
+            prepared_comm: prepared_commitment,
+            shifted_comm: shifted_commitment,
+        }
     }
 }
 

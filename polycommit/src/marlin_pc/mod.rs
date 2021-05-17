@@ -44,6 +44,9 @@ use rand_core::RngCore;
 mod data_structures;
 pub use data_structures::*;
 
+mod gadgets;
+pub use gadgets::*;
+
 pub(crate) fn shift_polynomial<E: PairingEngine>(
     ck: &CommitterKey<E>,
     p: &Polynomial<E::Fr>,

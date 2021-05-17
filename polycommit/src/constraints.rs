@@ -14,8 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod field;
-pub use field::*;
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-pub mod to_constraint_field;
-pub use to_constraint_field::*;
+/// Define the minimal interface of prepared allocated structures.
+pub trait PrepareGadget<Unprepared, F: PrimeField>: Sized {
+    /// Prepare from an unprepared element.
+    fn prepare<CS: ConstraintSystem<F>>(cs: CS, unprepared: &Unprepared) -> Result<Self, SynthesisError>;
+}
