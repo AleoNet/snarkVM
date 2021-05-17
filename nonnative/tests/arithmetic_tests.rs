@@ -26,15 +26,9 @@ use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use rand::{RngCore, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
-#[cfg(not(ci))]
-const NUM_REPETITIONS: usize = 100;
-#[cfg(ci)]
-const NUM_REPETITIONS: usize = 1;
+const NUM_REPETITIONS: usize = 20;
 
-#[cfg(not(ci))]
-const TEST_COUNT: usize = 100;
-#[cfg(ci)]
-const TEST_COUNT: usize = 1;
+const TEST_COUNT: usize = 20;
 
 fn allocation_test<TargetField: PrimeField, BaseField: PrimeField, CS: ConstraintSystem<BaseField>, R: RngCore>(
     mut cs: CS,

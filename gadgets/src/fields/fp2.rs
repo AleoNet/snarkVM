@@ -31,6 +31,7 @@ use crate::{
 use snarkvm_fields::{Field, Fp2, Fp2Parameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, ConstraintVariable};
 
+use crate::traits::fields::ToConstraintFieldGadget;
 use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Derivative)]
@@ -627,5 +628,16 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> AllocGadget<Fp2<P>, F> for Fp2Gadg
         let c0 = FpGadget::alloc_input(&mut cs.ns(|| "c0"), || c0)?;
         let c1 = FpGadget::alloc_input(&mut cs.ns(|| "c1"), || c1)?;
         Ok(Self::new(c0, c1))
+    }
+}
+
+impl<P: Fp2Parameters<Fp = F>, F: PrimeField> ToConstraintFieldGadget<F> for Fp2Gadget<P, F> {
+    fn to_constraint_field<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<FpGadget<F>>, SynthesisError> {
+        let mut res = Vec::new();
+
+        res.extend_from_slice(&self.c0.to_constraint_field(cs.ns(|| "fp2_c0_to_constraint_field"))?);
+        res.extend_from_slice(&self.c1.to_constraint_field(cs.ns(|| "fp2_c1_to_constraint_field"))?);
+
+        Ok(res)
     }
 }

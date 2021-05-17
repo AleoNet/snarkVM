@@ -20,6 +20,8 @@ use snarkvm_nonnative::params::OptimizationType;
 
 use rand_core::RngCore;
 
+// TODO (raychu86): Remove unnecessary Result types
+
 /// Trait for a Fiat-Shamir RNG.
 pub trait FiatShamirRng<TargetField: PrimeField, BaseField: PrimeField>: RngCore {
     /// Initializes an RNG.

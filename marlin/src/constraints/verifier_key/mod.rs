@@ -14,18 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ahp::verifier::{VerifierFirstMessage, VerifierSecondMessage};
-use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_fields::PrimeField;
+/// Circuit verifier key gadget.
+pub mod circuit_verifier_key;
+pub use circuit_verifier_key::*;
 
-/// State of the AHP verifier.
-#[derive(Debug)]
-pub struct VerifierState<F: PrimeField> {
-    pub(crate) domain_h: EvaluationDomain<F>,
-    pub(crate) domain_k: EvaluationDomain<F>,
-
-    pub(crate) first_round_message: Option<VerifierFirstMessage<F>>,
-    pub(crate) second_round_message: Option<VerifierSecondMessage<F>>,
-
-    pub(crate) gamma: Option<F>,
-}
+/// Prepared circuit verifier key gadget.
+pub mod prepared_circuit_verifier_key;
+pub use prepared_circuit_verifier_key::*;

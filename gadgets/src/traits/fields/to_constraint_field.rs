@@ -17,11 +17,11 @@
 use crate::fields::FpGadget;
 
 use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::SynthesisError;
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 /// Specifies how to convert a variable of type `Self` to variables of
 /// type `FpGadget<F>`
 pub trait ToConstraintFieldGadget<F: PrimeField> {
     /// Converts `self` to `FpGadget<F>` variables.
-    fn to_constraint_field(&self) -> Result<Vec<FpGadget<F>>, SynthesisError>;
+    fn to_constraint_field<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<FpGadget<F>>, SynthesisError>;
 }

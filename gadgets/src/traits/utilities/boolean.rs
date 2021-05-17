@@ -31,9 +31,9 @@ use snarkvm_r1cs::{
     LinearCombination,
     Variable,
 };
-
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
+use crate::{fields::FpGadget, traits::fields::ToConstraintFieldGadget};
 use std::borrow::Borrow;
 
 /// Represents a variable in the constraint system which is guaranteed
@@ -602,20 +602,42 @@ impl Boolean {
         Ok(())
     }
 
+    /// Enforces that `bits`, when interpreted as a integer, is less than
+    /// `F::characteristic()`, That is, interpret bits as a little-endian
+    /// integer, and enforce that this integer is "in the field Z_p", where
+    /// `p = F::characteristic()` .
+    pub fn enforce_in_field_le<F: Field, CS: ConstraintSystem<F>>(
+        mut cs: CS,
+        bits: &[Self],
+    ) -> Result<(), SynthesisError> {
+        // `bits` < F::characteristic() <==> `bits` <= F::characteristic() -1
+        let mut b = F::characteristic().to_vec();
+        assert_eq!(b[0] % 2, 1);
+        b[0] -= 1; // This works, because the LSB is one, so there's no borrows.
+        let run = Self::enforce_smaller_or_equal_than_le(cs.ns(|| "enforce_smaller_or_equal_than_le"), bits, b)?;
+
+        // We should always end in a "run" of zeros, because
+        // the characteristic is an odd prime. So, this should
+        // be empty.
+        assert!(run.is_empty());
+
+        Ok(())
+    }
+
     pub fn kary_nand<F: Field, CS: ConstraintSystem<F>>(mut cs: CS, bits: &[Self]) -> Result<Self, SynthesisError> {
         Ok(Self::kary_and(cs.ns(|| "kary_and"), bits)?.not())
     }
 
     fn enforce_kary_nand<F: Field, CS: ConstraintSystem<F>>(mut cs: CS, bits: &[Self]) -> Result<(), SynthesisError> {
         use Boolean::*;
-        let r = Self::kary_nand(cs.ns(|| "kary_and"), bits)?;
+        let r = Self::kary_nand(cs.ns(|| "kary_nand"), bits)?;
         match r {
             Constant(true) => Ok(()),
             Constant(false) => Err(SynthesisError::AssignmentMissing),
             Is(_) | Not(_) => {
                 cs.enforce(
-                    || "enforce_constraint",
-                    |lc| lc,
+                    || "enforce_kary_nand_enforce_constraint",
+                    |_| r.lc(CS::one(), F::one()),
                     |lc| lc + CS::one(),
                     |lc| lc + CS::one(),
                 );
@@ -626,14 +648,65 @@ impl Boolean {
     }
 
     pub fn enforce_smaller_or_equal_than_le<F: Field, CS: ConstraintSystem<F>>(
-        cs: CS,
+        mut cs: CS,
         bits: &[Self],
         element: impl AsRef<[u64]>,
     ) -> Result<Vec<Self>, SynthesisError> {
-        let mut bits_be = bits.to_vec();
-        bits_be.reverse(); // Convert to big-endian format.
+        let b: &[u64] = element.as_ref();
 
-        Self::enforce_smaller_or_equal_than_be(cs, &bits_be, element)
+        let mut bits_iter = bits.iter().rev(); // Iterate in big-endian
+
+        // Runs of ones in r
+        let mut last_run = Boolean::constant(true);
+        let mut current_run = vec![];
+
+        let mut element_num_bits = 0;
+        for _ in BitIteratorBE::new_without_leading_zeros(b) {
+            element_num_bits += 1;
+        }
+
+        if bits.len() > element_num_bits {
+            let mut or_result = Boolean::constant(false);
+            for (i, should_be_zero) in bits[element_num_bits..].iter().enumerate() {
+                or_result = Boolean::or(
+                    cs.ns(|| format!("or_result OR should_be_zero_{}", i)),
+                    &or_result,
+                    &should_be_zero,
+                )?;
+                let _ = bits_iter.next().unwrap();
+            }
+            or_result.enforce_equal(cs.ns(|| "enforce_equal"), &Boolean::constant(false))?;
+        }
+
+        for (i, (b, a)) in BitIteratorBE::new_without_leading_zeros(b)
+            .zip(bits_iter.by_ref())
+            .enumerate()
+        {
+            if b {
+                // This is part of a run of ones.
+                current_run.push(*a);
+            } else {
+                if !current_run.is_empty() {
+                    // This is the start of a run of zeros, but we need
+                    // to k-ary AND against `last_run` first.
+
+                    current_run.push(last_run);
+                    last_run = Self::kary_and(cs.ns(|| format!("kary_and_{}", i)), &current_run)?;
+                    current_run.truncate(0);
+                }
+
+                // If `last_run` is true, `a` must be false, or it would
+                // not be in the field.
+                //
+                // If `last_run` is false, `a` can be true or false.
+                //
+                // Ergo, at least one of `last_run` and `a` must be false.
+                Self::enforce_kary_nand(cs.ns(|| format!("enforce_kary_nand_{}", i)), &[last_run, *a])?;
+            }
+        }
+        assert!(bits_iter.next().is_none());
+
+        Ok(current_run)
     }
 
     pub fn enforce_smaller_or_equal_than_be<F: Field, CS: ConstraintSystem<F>>(
@@ -690,7 +763,7 @@ impl Boolean {
                 // If `last_run` is false, `a` can be true or false.
                 //
                 // Ergo, at least one of `last_run` and `a` must be false.
-                Self::enforce_kary_nand(cs.ns(|| format!("enforce_kary_and_{}", i)), &[last_run, *a])?;
+                Self::enforce_kary_nand(cs.ns(|| format!("enforce_kary_nand_{}", i)), &[last_run, *a])?;
             }
         }
         assert!(bits_iter.next().is_none());
@@ -862,6 +935,13 @@ impl<F: PrimeField> CondSelectGadget<F> for Boolean {
 
     fn cost() -> usize {
         1
+    }
+}
+
+impl<F: PrimeField> ToConstraintFieldGadget<F> for Boolean {
+    fn to_constraint_field<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<FpGadget<F>>, SynthesisError> {
+        let var = FpGadget::from_boolean(cs.ns(|| "fp_from_boolean"), self.clone())?;
+        Ok(vec![var])
     }
 }
 

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 /// Second verifier message.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct VerifierSecondMessage<F> {
     /// Query for the second round of polynomials.
     pub beta: F,

@@ -212,7 +212,8 @@ impl<
         num_elements: usize,
         outputs_short_elements: bool,
     ) -> Result<(Vec<NonNativeFieldVar<TargetField, BaseField>>, Vec<Vec<Boolean>>), SynthesisError> {
-        let optimization_type = OptimizationType::Constraints;
+        // TODO (raychu86): Assign optimization type properly.
+        let optimization_type = OptimizationType::Weight;
 
         let params = get_params(
             TargetField::size_in_bits(),
@@ -500,14 +501,14 @@ mod tests {
         // fs_rng in the plaintext world
         let mut fs_rng = FS::new();
 
-        fs_rng.absorb_nonnative_field_elements(&absorbed_rand_field_elems, OptimizationType::Constraints);
+        fs_rng.absorb_nonnative_field_elements(&absorbed_rand_field_elems, OptimizationType::Weight);
 
         for absorbed_rand_byte_elem in &absorbed_rand_byte_elems {
             fs_rng.absorb_bytes(absorbed_rand_byte_elem);
         }
 
         let squeezed_fields_elems = fs_rng
-            .squeeze_nonnative_field_elements(NUM_SQUEEZED_FIELD_ELEMS, OptimizationType::Constraints)
+            .squeeze_nonnative_field_elements(NUM_SQUEEZED_FIELD_ELEMS, OptimizationType::Weight)
             .unwrap();
         let squeezed_short_fields_elems = fs_rng
             .squeeze_128_bits_nonnative_field_elements(NUM_SQUEEZED_SHORT_FIELD_ELEMS)
@@ -530,7 +531,7 @@ mod tests {
             .absorb_nonnative_field_elements(
                 cs.ns(|| "absorb_nonnative_fe"),
                 &absorbed_rand_field_elems_gadgets,
-                OptimizationType::Constraints,
+                OptimizationType::Weight,
             )
             .unwrap();
 

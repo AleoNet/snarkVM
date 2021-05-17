@@ -86,7 +86,8 @@ where
             let proofs: Vec<Proof<_>> = proof.to_vec();
             let proofs: Vec<ProofVar<TargetCurve, BaseCurve, PG>> = proofs
                 .iter()
-                .map(|p| ProofVar::alloc_constant(cs.ns(|| "proof"), || Ok(p)).unwrap())
+                .enumerate()
+                .map(|(i, p)| ProofVar::alloc_constant(cs.ns(|| format!("proof_{}", i)), || Ok(p)).unwrap())
                 .collect();
 
             #[allow(clippy::type_complexity)]
@@ -97,7 +98,10 @@ where
                 Some(evals_inner) => Some(
                     evals_inner
                         .iter()
-                        .map(|e| NonNativeFieldVar::alloc_constant(cs.ns(|| "evaluation"), || Ok(e)).unwrap())
+                        .enumerate()
+                        .map(|(i, e)| {
+                            NonNativeFieldVar::alloc_constant(cs.ns(|| format!("evaluation_{}", i)), || Ok(e)).unwrap()
+                        })
                         .collect(),
                 ),
             };
@@ -120,7 +124,8 @@ where
             let proofs: Vec<Proof<_>> = proof.to_vec();
             let proofs: Vec<ProofVar<TargetCurve, BaseCurve, PG>> = proofs
                 .iter()
-                .map(|p| ProofVar::alloc(cs.ns(|| "proof"), || Ok(p)).unwrap())
+                .enumerate()
+                .map(|(i, p)| ProofVar::alloc(cs.ns(|| format!("proof_{}", i)), || Ok(p)).unwrap())
                 .collect();
 
             #[allow(clippy::type_complexity)]
@@ -131,7 +136,10 @@ where
                 Some(evals_inner) => Some(
                     evals_inner
                         .iter()
-                        .map(|e| NonNativeFieldVar::alloc(cs.ns(|| "evaluation"), || Ok(e)).unwrap())
+                        .enumerate()
+                        .map(|(i, e)| {
+                            NonNativeFieldVar::alloc(cs.ns(|| format!("evaluation_{}", i)), || Ok(e)).unwrap()
+                        })
                         .collect(),
                 ),
             };
@@ -154,7 +162,8 @@ where
             let proofs: Vec<Proof<_>> = proof.to_vec();
             let proofs: Vec<ProofVar<TargetCurve, BaseCurve, PG>> = proofs
                 .iter()
-                .map(|p| ProofVar::alloc_input(cs.ns(|| "proof"), || Ok(p)).unwrap())
+                .enumerate()
+                .map(|(i, p)| ProofVar::alloc_input(cs.ns(|| format!("proof_{}", i)), || Ok(p)).unwrap())
                 .collect();
 
             #[allow(clippy::type_complexity)]
@@ -165,7 +174,10 @@ where
                 Some(evals_inner) => Some(
                     evals_inner
                         .iter()
-                        .map(|e| NonNativeFieldVar::alloc_input(cs.ns(|| "evaluation"), || Ok(e)).unwrap())
+                        .enumerate()
+                        .map(|(i, e)| {
+                            NonNativeFieldVar::alloc_input(cs.ns(|| format!("evaluation_{}", i)), || Ok(e)).unwrap()
+                        })
                         .collect(),
                 ),
             };

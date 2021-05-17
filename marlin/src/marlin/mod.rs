@@ -34,12 +34,16 @@ pub use marlin::*;
 mod mode;
 pub use mode::*;
 
+/// The Marlin prepared circuit verifying key.
+mod prepared_circuit_verifying_key;
+pub use prepared_circuit_verifying_key::*;
+
 /// The Marlin zkSNARK proof.
 mod proof;
 pub use proof::*;
 
 #[cfg(test)]
-mod tests;
+pub mod tests;
 
 /// The Marlin universal SRS.
 mod universal_srs;

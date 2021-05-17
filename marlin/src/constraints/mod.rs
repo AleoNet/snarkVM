@@ -14,18 +14,31 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ahp::verifier::{VerifierFirstMessage, VerifierSecondMessage};
-use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_fields::PrimeField;
+/// Implementation of an AHP gadget.
+pub mod ahp;
 
-/// State of the AHP verifier.
-#[derive(Debug)]
-pub struct VerifierState<F: PrimeField> {
-    pub(crate) domain_h: EvaluationDomain<F>,
-    pub(crate) domain_k: EvaluationDomain<F>,
+/// Implementations of native and constraint Lagrange interpolation.
+pub mod lagrange_interpolation;
 
-    pub(crate) first_round_message: Option<VerifierFirstMessage<F>>,
-    pub(crate) second_round_message: Option<VerifierSecondMessage<F>>,
+/// Marlin constraint errors.
+pub mod error;
 
-    pub(crate) gamma: Option<F>,
-}
+/// Methods to compute vanishing polynomial equations.
+pub mod polynomial;
+
+/// The Marlin proof gadget.
+pub mod proof;
+
+/// Marlin SNARK construction.
+pub mod snark;
+
+/// Implementation of the Marlin verification gadget.
+pub mod verifier;
+
+/// Verifier keys for the Marlin proof system.
+pub mod verifier_key;
+
+use crate::PolynomialCommitment;
+
+/// Syntactic sugar for the universal SRS in this context.
+pub type UniversalSRS<F, PC> = <PC as PolynomialCommitment<F>>::UniversalParams;

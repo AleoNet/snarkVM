@@ -34,7 +34,7 @@ pub trait PrepareGadget<Unprepared, F: PrimeField>: Sized {
 }
 
 /// A coefficient of `LinearCombination`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum LinearCombinationCoeffVar<TargetField: PrimeField, BaseField: PrimeField> {
     /// Coefficient 1.
     One,

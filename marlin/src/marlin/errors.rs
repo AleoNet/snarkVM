@@ -14,6 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_algorithms::SNARKError;
+
+use std::fmt::Debug;
+
 /// A `enum` specifying the possible failure modes of `Marlin`.
 #[derive(Debug)]
 pub enum MarlinError<E> {
@@ -52,5 +56,11 @@ impl<E> MarlinError<E> {
     /// to a `Error`.
     pub fn from_pc_err(err: E) -> Self {
         MarlinError::PolynomialCommitmentError(err)
+    }
+}
+
+impl<E: Debug> From<MarlinError<E>> for SNARKError {
+    fn from(error: MarlinError<E>) -> Self {
+        SNARKError::Crate("marlin", format!("{:?}", error))
     }
 }
