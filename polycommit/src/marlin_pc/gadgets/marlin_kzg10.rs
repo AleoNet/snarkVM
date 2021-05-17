@@ -138,7 +138,13 @@ where
             ),
         > = lc_info.iter().map(|c| (c.0.clone(), c.clone())).collect();
 
-        let mut query_to_labels_map = BTreeMap::new();
+        let mut query_to_labels_map: BTreeMap<
+            String,
+            (
+                NonNativeFieldVar<<TargetCurve as PairingEngine>::Fr, <BaseCurve as PairingEngine>::Fr>,
+                BTreeSet<&String>,
+            ),
+        > = BTreeMap::new();
 
         for (label, point) in query_set.0.iter() {
             let labels = query_to_labels_map
@@ -147,7 +153,7 @@ where
             labels.1.insert(label);
         }
 
-        println!("before PC combining commitments: constraints: {}", cs.num_constraints());
+        eprintln!("before PC combining commitments: constraints: {}", cs.num_constraints());
 
         let zero = PG::G1Gadget::zero(cs.ns(|| format!("g1_zero")))?;
 
@@ -346,7 +352,7 @@ where
             combined_evals.push(combined_eval_reduced);
         }
 
-        println!("before PC batch check: constraints: {}", cs.num_constraints());
+        eprintln!("before PC batch check: constraints: {}", cs.num_constraints());
 
         // Perform the batch check.
         {
@@ -464,7 +470,7 @@ where
                 &[prepared_beta_h, prepared_h],
             )?;
 
-            println!("after PC batch check: constraints: {}", cs.num_constraints());
+            eprintln!("after PC batch check: constraints: {}", cs.num_constraints());
 
             let rhs = &PG::GTGadget::one(cs.ns(|| "rhs"))?;
             lhs.is_eq(cs.ns(|| "lhs_is_eq_rhs"), &rhs)
@@ -505,7 +511,13 @@ where
         let mut batching_rands_bits = rand_data.batching_rands_bits.to_vec();
 
         let commitments: BTreeMap<_, _> = commitments.iter().map(|c| (c.label.clone(), c)).collect();
-        let mut query_to_labels_map = BTreeMap::new();
+        let mut query_to_labels_map: BTreeMap<
+            String,
+            (
+                NonNativeFieldVar<<TargetCurve as PairingEngine>::Fr, <BaseCurve as PairingEngine>::Fr>,
+                BTreeSet<&String>,
+            ),
+        > = BTreeMap::new();
 
         for (label, point) in query_set.0.iter() {
             let labels = query_to_labels_map
