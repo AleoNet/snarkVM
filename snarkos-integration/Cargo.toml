@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-snarkos-integration"
-version = "0.2.2"
+version = "0.3.1"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A test suite for functionalities requiring snarkOS integration"
 homepage = "https://aleo.org"
@@ -18,43 +18,43 @@ license = "GPL-3.0"
 edition = "2018"
 
 [dependencies.snarkvm-algorithms]
-version = "0.2.2"
+version = "0.3.1"
 default-features = false
 
 [dependencies.snarkvm-curves]
-version = "0.2.2"
+version = "0.3.1"
 default-features = false
 
 [dependencies.snarkvm-dpc]
-version = "0.2.2"
+version = "0.3.1"
 default-features = false
 
 [dependencies.snarkvm-fields]
-version = "0.2.2"
+version = "0.3.1"
 default-features = false
 
 [dependencies.snarkvm-gadgets]
-version = "0.2.2"
+version = "0.3.1"
 default-features = false
 
 [dependencies.snarkvm-objects]
-version = "0.2.2"
+version = "0.3.1"
 default-features = false
 
 [dependencies.snarkvm-parameters]
-version = "0.2.2"
+version = "0.3.1"
 default-features = false
 
 [dependencies.snarkvm-profiler]
-version = "0.2.2"
+version = "0.3.1"
 default-features = false
 
 [dependencies.snarkvm-r1cs]
-version = "0.2.2"
+version = "0.3.1"
 default-features = false
 
 [dependencies.snarkvm-utilities]
-version = "0.2.2"
+version = "0.3.1"
 default-features = false
 
 [dependencies.anyhow]
