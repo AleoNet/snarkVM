@@ -501,14 +501,6 @@ where
         proof.print_size_info();
         end_timer!(prover_time);
 
-        println!("Number of proof commitments: {}", proof.commitments.len());
-        println!("Number of proof evaluations: {}", proof.evaluations.len());
-        println!("Number of proof messages: {}", proof.prover_messages.len());
-        println!(
-            "Number of proof batch evaluations: {}",
-            proof.clone().pc_proof.proof.into().len()
-        );
-
         Ok(proof)
     }
 
