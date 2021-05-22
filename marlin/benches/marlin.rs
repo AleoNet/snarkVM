@@ -23,10 +23,14 @@ use snarkvm_curves::{
     bw6_761::BW6_761,
 };
 use snarkvm_fields::Field;
-use snarkvm_gadgets::curves::bls12_377::PairingGadget as Bls12_377PairingGadget;
+use snarkvm_gadgets::{
+    curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
+    traits::algorithms::SNARKGadget,
+    utilities::{alloc::AllocGadget, boolean::Boolean, eq::EqGadget},
+};
 use snarkvm_marlin::{
-    constraints::snark::MarlinSNARKGadget,
-    marlin::{MarlinRecursiveMode, MarlinSNARK},
+    constraints::snark::{MarlinSNARK, MarlinSNARKGadget},
+    marlin::{MarlinRecursiveMode, MarlinSNARK as MarlinCore},
     snark::MarlinSystem,
     FiatShamirAlgebraicSpongeRng,
     FiatShamirAlgebraicSpongeRngVar,
@@ -34,12 +38,21 @@ use snarkvm_marlin::{
     PoseidonSpongeVar,
 };
 use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
+use snarkvm_utilities::UniformRand;
 
 use criterion::Criterion;
-use rand::{self, thread_rng, Rng};
+use rand::{self, thread_rng};
+use std::ops::MulAssign;
+
+// TODO (raychu86): Unify the Marlin instances. Currently too convoluted.
+
+// Standard Marlin instances
 
 type Marlin = MarlinSystem<Bls12_377, Benchmark<Fr>, Vec<Fr>>;
+type MarlinInst = MarlinCore<Fr, Fq, PC, FS, MarlinRecursiveMode>;
+
+// Used for Marlin Verification Gadget
 
 type PC = MarlinKZG10<Bls12_377>;
 type PCGadget = MarlinKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
@@ -47,48 +60,43 @@ type PCGadget = MarlinKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
 type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
 
-type MarlinCore = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode>;
-
+type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Benchmark<Fr>>;
 type TestSNARKGadget = MarlinSNARKGadget<Fr, Fq, PC, FS, MarlinRecursiveMode, PCGadget, FSG>;
 
-struct Benchmark<F: Field> {
-    inputs: Vec<Option<F>>,
-    num_constraints: usize,
+#[derive(Copy, Clone)]
+pub struct Benchmark<F: Field> {
+    pub a: Option<F>,
+    pub b: Option<F>,
+    pub num_constraints: usize,
+    pub num_variables: usize,
 }
 
-impl<F: Field> ConstraintSynthesizer<F> for Benchmark<F> {
-    fn generate_constraints<CS: ConstraintSystem<F>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
-        assert!(self.inputs.len() >= 2);
-        assert!(self.num_constraints >= self.inputs.len());
+impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Benchmark<ConstraintF> {
+    fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
+        let a = cs.alloc(|| "a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
+        let b = cs.alloc(|| "b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
+        let c = cs.alloc_input(
+            || "c",
+            || {
+                let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
+                let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
 
-        let mut variables: Vec<_> = Vec::with_capacity(self.inputs.len());
-        for (i, input) in self.inputs.iter().cloned().enumerate() {
-            let input_var = cs.alloc_input(
-                || format!("input_{}", i),
-                || input.ok_or(SynthesisError::AssignmentMissing),
+                a.mul_assign(&b);
+                Ok(a)
+            },
+        )?;
+
+        for i in 0..(self.num_variables - 3) {
+            let _ = cs.alloc(
+                || format!("var {}", i),
+                || self.a.ok_or(SynthesisError::AssignmentMissing),
             )?;
-            variables.push((input, input_var));
         }
 
-        for i in 0..self.num_constraints {
-            let new_entry = {
-                let (input_1_val, input_1_var) = variables[i];
-                let (input_2_val, input_2_var) = variables[i + 1];
-                let result_val = input_1_val.and_then(|input_1| input_2_val.map(|input_2| input_1 * &input_2));
-                let result_var = cs.alloc(
-                    || format!("result_{}", i),
-                    || result_val.ok_or(SynthesisError::AssignmentMissing),
-                )?;
-                cs.enforce(
-                    || format!("enforce_constraint_{}", i),
-                    |lc| lc + input_1_var,
-                    |lc| lc + input_2_var,
-                    |lc| lc + result_var,
-                );
-                (result_val, result_var)
-            };
-            variables.push(new_entry);
+        for i in 0..(self.num_constraints - 1) {
+            cs.enforce(|| format!("constraint {}", i), |lc| lc + a, |lc| lc + b, |lc| lc + c);
         }
+
         Ok(())
     }
 }
@@ -98,27 +106,28 @@ fn snark_universal_setup(c: &mut Criterion) {
 
     c.bench_function("snark_universal_setup", move |b| {
         b.iter(|| {
-            MarlinCore::universal_setup(1000000, 1000000, 1000000, rng).unwrap();
+            MarlinInst::universal_setup(1000000, 1000000, 1000000, rng).unwrap();
         })
     });
 }
 
 fn snark_circuit_setup(c: &mut Criterion) {
-    let num_inputs = 2;
-    let num_constraints = 10000;
+    let num_constraints = 100;
+    let num_variables = 100;
     let rng = &mut thread_rng();
-    let mut inputs: Vec<Option<Fr>> = Vec::with_capacity(num_inputs);
-    for _ in 0..num_inputs {
-        inputs.push(Some(rng.gen()));
-    }
 
-    let universal_srs = MarlinCore::universal_setup(100000, 100000, 100000, rng).unwrap();
+    let x = Fr::rand(rng);
+    let y = Fr::rand(rng);
+
+    let universal_srs = MarlinInst::universal_setup(100000, 100000, 100000, rng).unwrap();
 
     c.bench_function("snark_circuit_setup", move |b| {
         b.iter(|| {
             let circuit = Benchmark::<Fr> {
-                inputs: vec![None; num_inputs],
+                a: Some(x),
+                b: Some(y),
                 num_constraints,
+                num_variables,
             };
 
             Marlin::setup(&(circuit, universal_srs.clone()), rng).unwrap()
@@ -127,19 +136,20 @@ fn snark_circuit_setup(c: &mut Criterion) {
 }
 
 fn snark_prove(c: &mut Criterion) {
-    let num_inputs = 2;
-    let num_constraints = 1000;
+    let num_constraints = 100;
+    let num_variables = 100;
     let rng = &mut thread_rng();
-    let mut inputs: Vec<Option<Fr>> = Vec::with_capacity(num_inputs);
-    for _ in 0..num_inputs {
-        inputs.push(Some(rng.gen()));
-    }
 
-    let universal_srs = MarlinCore::universal_setup(1000, 1000, 1000, rng).unwrap();
+    let x = Fr::rand(rng);
+    let y = Fr::rand(rng);
+
+    let universal_srs = MarlinInst::universal_setup(1000, 1000, 1000, rng).unwrap();
 
     let circuit = Benchmark::<Fr> {
-        inputs: vec![None; num_inputs],
+        a: Some(x),
+        b: Some(y),
         num_constraints,
+        num_variables,
     };
 
     let params = Marlin::setup(&(circuit, universal_srs), rng).unwrap();
@@ -149,8 +159,10 @@ fn snark_prove(c: &mut Criterion) {
             Marlin::prove(
                 &params.0,
                 &Benchmark {
-                    inputs: inputs.clone(),
+                    a: Some(x),
+                    b: Some(y),
                     num_constraints,
+                    num_variables,
                 },
                 rng,
             )
@@ -160,77 +172,118 @@ fn snark_prove(c: &mut Criterion) {
 }
 
 fn snark_verify(c: &mut Criterion) {
-    let num_inputs = 2;
     let num_constraints = 1000;
+    let num_variables = 25;
     let rng = &mut thread_rng();
-    let mut inputs: Vec<Option<Fr>> = Vec::with_capacity(num_inputs);
-    for _ in 0..num_inputs {
-        inputs.push(Some(rng.gen()));
-    }
 
-    let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(1000, 1000, 1000, rng).unwrap();
+    let x = Fr::rand(rng);
+    let y = Fr::rand(rng);
+    let mut z = x;
+    z.mul_assign(&y);
+
+    let universal_srs = MarlinInst::universal_setup(1000000, 100000, 1000000, rng).unwrap();
 
     let circuit = Benchmark::<Fr> {
-        inputs: vec![None; num_inputs],
+        a: Some(x),
+        b: Some(y),
         num_constraints,
+        num_variables,
     };
 
-    let params = Marlin::setup(&(circuit, universal_srs), rng).unwrap();
+    let params = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
 
-    let proof = Marlin::prove(
+    let proof = MarlinInst::prove(
         &params.0,
         &Benchmark {
-            inputs: inputs.clone(),
+            a: Some(x),
+            b: Some(y),
             num_constraints,
+            num_variables,
         },
         rng,
     )
     .unwrap();
 
-    let public_inputs: Vec<_> = inputs.iter().map(|x| x.unwrap()).collect();
-
-    c.bench_function("snark_prove", move |b| {
+    c.bench_function("snark_verify", move |b| {
         b.iter(|| {
-            let verification = Marlin::verify(&params.1, &public_inputs, &proof).unwrap();
+            let verification = Marlin::verify(&params.1, &vec![z], &proof).unwrap();
             assert_eq!(verification, true);
         })
     });
 }
 
 fn snark_verify_gadget(c: &mut Criterion) {
-    let num_inputs = 2;
-    let num_constraints = 1000;
+    let num_constraints = 2000;
+    let num_variables = 25;
     let rng = &mut thread_rng();
-    let mut inputs: Vec<Option<Fr>> = Vec::with_capacity(num_inputs);
-    for _ in 0..num_inputs {
-        inputs.push(Some(rng.gen()));
-    }
 
-    let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(1000, 1000, 1000, rng).unwrap();
+    let x = Fr::rand(rng);
+    let y = Fr::rand(rng);
+    let mut z = x;
+    z.mul_assign(&y);
+
+    let universal_srs = MarlinInst::universal_setup(1000000, 100000, 1000000, rng).unwrap();
 
     let circuit = Benchmark::<Fr> {
-        inputs: vec![None; num_inputs],
+        a: Some(x),
+        b: Some(y),
         num_constraints,
+        num_variables,
     };
 
-    let params = Marlin::setup(&(circuit, universal_srs), rng).unwrap();
+    let params = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
 
-    let proof = Marlin::prove(
+    let proof = MarlinInst::prove(
         &params.0,
         &Benchmark {
-            inputs: inputs.clone(),
+            a: Some(x),
+            b: Some(y),
             num_constraints,
+            num_variables,
         },
         rng,
     )
     .unwrap();
 
-    let public_inputs: Vec<_> = inputs.iter().map(|x| x.unwrap()).collect();
+    let mut cs = TestConstraintSystem::<Fq>::new();
 
-    c.bench_function("snark_prove", move |b| {
+    let input_gadget = <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::InputVar::alloc_input(
+        cs.ns(|| "alloc_input_gadget"),
+        || Ok(vec![z]),
+    )
+    .unwrap();
+
+    let proof_gadget =
+        <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::ProofVar::alloc(cs.ns(|| "alloc_proof"), || Ok(proof))
+            .unwrap();
+
+    let vk_gadget =
+        <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::VerifyingKeyVar::alloc(cs.ns(|| "alloc_vk"), || {
+            Ok(params.1.clone())
+        })
+        .unwrap();
+
+    c.bench_function("snark_verify_gadget", move |b| {
         b.iter(|| {
-            let verification = Marlin::verify(&params.1, &public_inputs, &proof).unwrap();
-            assert_eq!(verification, true);
+            println!("cs: {}", cs.num_constraints());
+
+            let verification_result = <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::verify(
+                cs.ns(|| "marlin_verify"),
+                &vk_gadget,
+                &input_gadget,
+                &proof_gadget,
+            )
+            .unwrap();
+
+            verification_result
+                .enforce_equal(cs.ns(|| "enforce_equal_verification"), &Boolean::Constant(true))
+                .unwrap();
+
+            assert!(
+                cs.is_satisfied(),
+                "Constraints not satisfied: {}",
+                cs.which_is_unsatisfied().unwrap()
+            );
         })
     });
 }
@@ -238,7 +291,7 @@ fn snark_verify_gadget(c: &mut Criterion) {
 criterion_group! {
     name = marlin_snark;
     config = Criterion::default().sample_size(10);
-    targets = snark_universal_setup, snark_circuit_setup, snark_prove, snark_verify
+    targets = snark_universal_setup, snark_circuit_setup, snark_prove, snark_verify, snark_verify_gadget
 }
 
 criterion_main!(marlin_snark);
