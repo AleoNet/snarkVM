@@ -58,7 +58,10 @@ use snarkvm_utilities::{
 use itertools::Itertools;
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 type L = Ledger<Tx, CommitmentMerkleParameters, MemDb>;
 
@@ -367,7 +370,7 @@ fn test_execute_base_dpc_constraints() {
 
     // Generate parameters for the ledger, commitment schemes, CRH, and the
     // "always-accept" program.
-    let ledger_parameters = CommitmentMerkleParameters::setup(&mut rng);
+    let ledger_parameters = Arc::new(CommitmentMerkleParameters::setup(&mut rng));
     let system_parameters = InstantiatedDPC::generate_system_parameters(&mut rng).unwrap();
 
     let (noop_program_snark_pp, noop_program_id) = generate_test_noop_program_parameters(&system_parameters, &mut rng);
