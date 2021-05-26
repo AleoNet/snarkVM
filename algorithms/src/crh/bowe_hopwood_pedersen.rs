@@ -16,25 +16,23 @@
 
 pub use crate::crh::pedersen_parameters::PedersenSize;
 
+use super::bowe_hopwood_pedersen_parameters::*;
 use crate::{
     crh::{PedersenCRH, PedersenCRHParameters},
     errors::CRHError,
     traits::CRH,
 };
+use bitvec::{order::Lsb0, view::BitView};
 use snarkvm_curves::Group;
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
-use snarkvm_utilities::{biginteger::biginteger::BigInteger, bytes_to_bits};
+use snarkvm_utilities::biginteger::biginteger::BigInteger;
 
 use rand::Rng;
-
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
-
-pub const BOWE_HOPWOOD_CHUNK_SIZE: usize = 3;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BoweHopwoodPedersenCRH<G: Group, S: PedersenSize> {
     pub parameters: PedersenCRHParameters<G, S>,
+    pub bowe_hopwood_parameters: BoweHopwoodPedersenCRHParameters<G>,
 }
 
 impl<G: Group, S: PedersenSize> BoweHopwoodPedersenCRH<G, S> {
@@ -93,7 +91,13 @@ impl<G: Group, S: PedersenSize> CRH for BoweHopwoodPedersenCRH<G, S> {
         end_timer!(time);
 
         let parameters = Self::Parameters::from(bases);
-        Self { parameters }
+
+        let bowe_hopwood_parameters = BoweHopwoodPedersenCRHParameters::setup(&parameters);
+
+        Self {
+            parameters,
+            bowe_hopwood_parameters,
+        }
     }
 
     fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
@@ -106,30 +110,21 @@ impl<G: Group, S: PedersenSize> CRH for BoweHopwoodPedersenCRH<G, S> {
                 S::NUM_WINDOWS,
             ));
         }
+        // we cant use these in array sizes since they are from a trait (and cant be refered to at const time)
+        assert!(S::WINDOW_SIZE <= 256);
+        assert!(S::NUM_WINDOWS <= 256);
 
-        // Pad the input if it is not the current length.
-        let mut input_bytes = input;
-        let mut padded_input_bytes = vec![];
-        if (input.len() * 8) < S::WINDOW_SIZE * S::NUM_WINDOWS {
-            padded_input_bytes.extend_from_slice(input_bytes);
-            padded_input_bytes.resize((S::WINDOW_SIZE * S::NUM_WINDOWS) / 8, 0u8);
-            input_bytes = padded_input_bytes.as_slice();
+        // overzealous but stack allocation
+        let mut buffer = [0u8; 256 * 256 / 8 + BOWE_HOPWOOD_CHUNK_SIZE + 1];
+        buffer[..input.len()].copy_from_slice(input);
+        let buf_slice = (&buffer[..]).view_bits::<Lsb0>();
+
+        let mut bit_len = S::WINDOW_SIZE * S::NUM_WINDOWS;
+        if bit_len % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
+            bit_len += BOWE_HOPWOOD_CHUNK_SIZE - (bit_len % BOWE_HOPWOOD_CHUNK_SIZE);
         }
 
-        let mut padded_input = Vec::with_capacity(input_bytes.len());
-        let input = bytes_to_bits(input_bytes);
-        let input_len = input_bytes.len() * 8;
-        // Pad the input if it is not the current length.
-        padded_input.extend(input);
-        if input_len % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
-            let current_length = input_len;
-            padded_input.resize(
-                current_length + BOWE_HOPWOOD_CHUNK_SIZE - current_length % BOWE_HOPWOOD_CHUNK_SIZE,
-                false,
-            );
-        }
-
-        assert_eq!(padded_input.len() % BOWE_HOPWOOD_CHUNK_SIZE, 0);
+        assert_eq!(bit_len % BOWE_HOPWOOD_CHUNK_SIZE, 0);
 
         assert_eq!(
             self.parameters.bases.len(),
@@ -149,30 +144,20 @@ impl<G: Group, S: PedersenSize> CRH for BoweHopwoodPedersenCRH<G, S> {
         // (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}
         // for all i. Described in section 5.4.1.7 in the Zcash protocol
         // specification.
-        let mapping = cfg_chunks!(padded_input, S::WINDOW_SIZE * BOWE_HOPWOOD_CHUNK_SIZE)
-            .zip(&self.parameters.bases)
+        let result = buf_slice[..bit_len]
+            .chunks(S::WINDOW_SIZE * BOWE_HOPWOOD_CHUNK_SIZE)
+            .zip(&self.bowe_hopwood_parameters.base_lookup)
             .map(|(segment_bits, segment_generators)| {
-                cfg_reduce!(
-                    cfg_chunks!(segment_bits, BOWE_HOPWOOD_CHUNK_SIZE)
-                        .zip(segment_generators)
-                        .map(|(chunk_bits, generator)| {
-                            let mut encoded = *generator;
-                            if chunk_bits[0] {
-                                encoded += generator;
-                            }
-                            if chunk_bits[1] {
-                                encoded += &generator.double();
-                            }
-                            if chunk_bits[2] {
-                                encoded = encoded.neg();
-                            }
-                            encoded
-                        }),
-                    G::zero,
-                    |a, b| a + &b
-                )
-            });
-        let result = cfg_reduce!(mapping, G::zero, |a, b| a + &b);
+                segment_bits
+                    .chunks(BOWE_HOPWOOD_CHUNK_SIZE)
+                    .zip(segment_generators)
+                    .map(|(chunk_bits, generator)| {
+                        &generator
+                            [(chunk_bits[0] as usize) | (chunk_bits[1] as usize) << 1 | (chunk_bits[2] as usize) << 2]
+                    })
+                    .fold(G::zero(), |a, b| a + &b)
+            })
+            .fold(G::zero(), |a, b| a + &b);
 
         end_timer!(eval_time);
 
@@ -186,7 +171,10 @@ impl<G: Group, S: PedersenSize> CRH for BoweHopwoodPedersenCRH<G, S> {
 
 impl<G: Group, S: PedersenSize> From<PedersenCRHParameters<G, S>> for BoweHopwoodPedersenCRH<G, S> {
     fn from(parameters: PedersenCRHParameters<G, S>) -> Self {
-        Self { parameters }
+        Self {
+            bowe_hopwood_parameters: BoweHopwoodPedersenCRHParameters::setup(&parameters),
+            parameters,
+        }
     }
 }
 
@@ -194,5 +182,33 @@ impl<F: Field, G: Group + ToConstraintField<F>, S: PedersenSize> ToConstraintFie
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         self.parameters.to_field_elements()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::SeedableRng;
+    use snarkvm_curves::edwards_bls12::EdwardsProjective;
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+    pub struct CRHSize;
+
+    impl PedersenSize for CRHSize {
+        const NUM_WINDOWS: usize = 8;
+        const WINDOW_SIZE: usize = 32;
+    }
+
+    #[test]
+    fn test_bowe_pedersen() {
+        let mut rng = rand_xorshift::XorShiftRng::seed_from_u64(23453245);
+        let parameters = <BoweHopwoodPedersenCRH<EdwardsProjective, CRHSize> as CRH>::setup(&mut rng);
+        let input = vec![127u8; 32];
+
+        let output = <BoweHopwoodPedersenCRH<EdwardsProjective, CRHSize> as CRH>::hash(&parameters, &input).unwrap();
+        assert_eq!(
+            &*output.to_string(),
+            "GroupAffine(x=232405123812771034726439972860096518067116445442313271493943612938654881935, y=752634260468672343124870935373206613671657768711738358314821821547485346646)"
+        );
     }
 }

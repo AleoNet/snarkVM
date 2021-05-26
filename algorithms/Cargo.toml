@@ -28,6 +28,11 @@ path = "benches/crh/pedersen.rs"
 harness = false
 
 [[bench]]
+name = "crh-bowe-pedersen"
+path = "benches/crh/bowe_pedersen.rs"
+harness = false
+
+[[bench]]
 name = "fft"
 path = "benches/fft/fft.rs"
 harness = false
@@ -91,7 +96,6 @@ version = "0.10.0"
 
 [dependencies.rand]
 version = "0.8"
-default-features = false
 
 [dependencies.rand_chacha]
 version = "0.3"
@@ -109,6 +113,9 @@ version = "1.6"
 
 [dependencies.thiserror]
 version = "1.0"
+
+[dependencies.bitvec]
+version = "0.22"
 
 [dev-dependencies.criterion]
 version = "0.3.4"

@@ -18,7 +18,7 @@
 extern crate criterion;
 
 use snarkvm_algorithms::{
-    crh::pedersen::{PedersenCRH, PedersenSize},
+    crh::{pedersen::PedersenSize, BoweHopwoodPedersenCRH},
     traits::CRH,
 };
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
@@ -37,34 +37,34 @@ impl PedersenSize for CRHSize {
     const WINDOW_SIZE: usize = 32;
 }
 
-fn pedersen_crh_setup(c: &mut Criterion) {
+fn bowe_pedersen_crh_setup(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
-    c.bench_function("Pedersen Commitment Setup", move |b| {
-        b.iter(|| <PedersenCRH<EdwardsProjective, CRHSize> as CRH>::setup(rng))
+    c.bench_function("Bowe Pedersen Commitment Setup", move |b| {
+        b.iter(|| <BoweHopwoodPedersenCRH<EdwardsProjective, CRHSize> as CRH>::setup(rng))
     });
 }
 
-fn pedersen_crh_hash(c: &mut Criterion) {
+fn bowe_pedersen_crh_hash(c: &mut Criterion) {
     let rng = &mut thread_rng();
-    let parameters = <PedersenCRH<EdwardsProjective, CRHSize> as CRH>::setup(rng);
+    let parameters = <BoweHopwoodPedersenCRH<EdwardsProjective, CRHSize> as CRH>::setup(rng);
     let input = vec![127u8; 32];
 
-    c.bench_function("Pedersen Commitment Evaluation", move |b| {
-        b.iter(|| <PedersenCRH<EdwardsProjective, CRHSize> as CRH>::hash(&parameters, &input).unwrap())
+    c.bench_function("Bowe Pedersen Commitment Evaluation", move |b| {
+        b.iter(|| <BoweHopwoodPedersenCRH<EdwardsProjective, CRHSize> as CRH>::hash(&parameters, &input).unwrap())
     });
 }
 
 criterion_group! {
-    name = crh_setup;
+    name = bowe_crh_setup;
     config = Criterion::default().sample_size(50);
-    targets = pedersen_crh_setup
+    targets = bowe_pedersen_crh_setup
 }
 
 criterion_group! {
-    name = crh_hash;
+    name = bowe_crh_hash;
     config = Criterion::default().sample_size(50);
-    targets = pedersen_crh_hash
+    targets = bowe_pedersen_crh_hash
 }
 
-criterion_main!(crh_setup, crh_hash);
+criterion_main!(bowe_crh_setup, bowe_crh_hash);
