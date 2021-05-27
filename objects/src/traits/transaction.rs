@@ -20,7 +20,7 @@ use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 use std::hash::Hash;
 
 pub trait Transaction: Clone + Eq + FromBytes + ToBytes {
-    type Commitment: Clone + Eq + Hash + FromBytes + ToBytes;
+    type Commitment: Clone + Eq + Hash + FromBytes + ToBytes + Sync + Send;
     type Digest: Clone + Eq + Hash + FromBytes + ToBytes;
     type InnerSNARKID: Clone + Eq + FromBytes + ToBytes;
     type LocalDataRoot: Clone + Eq + Hash + FromBytes + ToBytes;

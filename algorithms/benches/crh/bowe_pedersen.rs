@@ -63,7 +63,7 @@ criterion_group! {
 
 criterion_group! {
     name = bowe_crh_hash;
-    config = Criterion::default().sample_size(50);
+    config = Criterion::default().sample_size(5000);
     targets = bowe_pedersen_crh_hash
 }
 
