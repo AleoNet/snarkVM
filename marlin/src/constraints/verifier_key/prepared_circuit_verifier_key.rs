@@ -34,6 +34,7 @@ use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
 use core::borrow::Borrow;
+use snarkvm_gadgets::utilities::{uint::UInt8, ToBytesGadget};
 use std::marker::PhantomData;
 
 /// The prepared circuit verifying key gadget
@@ -358,6 +359,41 @@ where
             fs_rng,
             pr: PhantomData,
         })
+    }
+}
+
+impl<TargetField, BaseField, PC, PCG, PR, R> ToBytesGadget<BaseField>
+    for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
+where
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+    PR: FiatShamirRng<TargetField, BaseField>,
+    R: FiatShamirRngVar<TargetField, BaseField, PR>,
+    PC::VerifierKey: ToConstraintField<BaseField>,
+    PC::Commitment: ToConstraintField<BaseField>,
+    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
+    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
+{
+    fn to_bytes<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut res = Vec::<UInt8>::new();
+
+        let unprepared_vk: PCG::VerifierKeyVar = self.prepared_verifier_key.into();
+
+        res.append(&mut unprepared_vk.to_bytes(cs.ns(|| "to_bytes"))?);
+
+        Ok(res)
+    }
+
+    fn to_bytes_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut res = Vec::<UInt8>::new();
+
+        let unprepared_vk: PCG::VerifierKeyVar = self.prepared_verifier_key.into();
+
+        res.append(&mut unprepared_vk.to_bytes_strict(cs.ns(|| "to_bytes_strict"))?);
+
+        Ok(res)
     }
 }
 
