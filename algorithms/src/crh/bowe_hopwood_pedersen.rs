@@ -135,7 +135,12 @@ impl<G: Group, S: PedersenSize> CRH for BoweHopwoodPedersenCRH<G, S> {
             S::NUM_WINDOWS,
             BOWE_HOPWOOD_CHUNK_SIZE,
         );
+        assert_eq!(self.parameters.len(), S::NUM_WINDOWS);
         for bases in self.parameters.bases.iter() {
+            assert_eq!(bases.len(), S::WINDOW_SIZE);
+        }
+        assert_eq!(self.bowe_hopwood_parameters.base_lookup.len(), S::NUM_WINDOWS);
+        for bases in self.bowe_hopwood_parameters.base_lookup.iter() {
             assert_eq!(bases.len(), S::WINDOW_SIZE);
         }
         assert_eq!(BOWE_HOPWOOD_CHUNK_SIZE, 3);
