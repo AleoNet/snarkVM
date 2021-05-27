@@ -112,10 +112,10 @@ impl<G: Group, S: PedersenSize> CRH for BoweHopwoodPedersenCRH<G, S> {
         }
         // we cant use these in array sizes since they are from a trait (and cant be refered to at const time)
         assert!(S::WINDOW_SIZE <= 256);
-        assert!(S::NUM_WINDOWS <= 256);
+        assert!(S::NUM_WINDOWS <= 296);
 
         // overzealous but stack allocation
-        let mut buffer = [0u8; 256 * 256 / 8 + BOWE_HOPWOOD_CHUNK_SIZE + 1];
+        let mut buffer = [0u8; 296 * 256 / 8 + BOWE_HOPWOOD_CHUNK_SIZE + 1];
         buffer[..input.len()].copy_from_slice(input);
         let buf_slice = (&buffer[..]).view_bits::<Lsb0>();
 
