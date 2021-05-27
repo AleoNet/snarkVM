@@ -21,19 +21,27 @@ use crate::{
         verifier_key::{CircuitVerifyingKeyVar, PreparedCircuitVerifyingKeyVar},
     },
     marlin::MarlinError,
+    FiatShamirAlgebraicSpongeRng,
+    FiatShamirAlgebraicSpongeRngVar,
     FiatShamirRng,
     FiatShamirRngVar,
     PolynomialCommitment,
+    PoseidonSponge,
+    PoseidonSpongeVar,
 };
 
+use crate::{constraints::snark::MarlinSNARK, marlin::MarlinMode};
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
-    traits::fields::{FieldGadget, ToConstraintFieldGadget},
-    utilities::boolean::Boolean,
+    traits::{
+        algorithms::SNARKVerifierGadget,
+        fields::{FieldGadget, ToConstraintFieldGadget},
+    },
+    utilities::{boolean::Boolean, ToBitsBEGadget},
 };
 use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
 use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
-use snarkvm_r1cs::ConstraintSystem;
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, ToConstraintField};
 
 use core::marker::PhantomData;
 
@@ -49,6 +57,58 @@ pub struct MarlinVerificationGadget<
     PhantomData<PC>,
     PhantomData<PCG>,
 );
+
+// TODO (raychu86): Implement SNARKVerifierGadget for MarlinVerificationGadget
+
+/// Fiat Shamir Algebraic Sponge RNG type
+pub type FSA<InnerField, OuterField> = FiatShamirAlgebraicSpongeRng<InnerField, OuterField, PoseidonSponge<OuterField>>;
+
+/// Fiat Shamir Algebraic Sponge RNG Gadget type
+pub type FSG<InnerField, OuterField> =
+    FiatShamirAlgebraicSpongeRngVar<InnerField, OuterField, PoseidonSponge<OuterField>, PoseidonSpongeVar<OuterField>>;
+
+impl<TargetField, BaseField, PC, PCG, FS, MM, C>
+    SNARKVerifierGadget<MarlinSNARK<TargetField, BaseField, PC, FS, MM, C>, BaseField>
+    for MarlinVerificationGadget<TargetField, BaseField, PC, PCG>
+where
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PC::VerifierKey: ToConstraintField<BaseField>,
+    PC::Commitment: ToConstraintField<BaseField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
+    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
+    FS: FiatShamirRng<TargetField, BaseField>,
+    MM: MarlinMode,
+    C: ConstraintSynthesizer<TargetField>,
+{
+    type ProofGadget = ProofVar<TargetField, BaseField, PC, PCG>;
+    type VerificationKeyGadget = PreparedCircuitVerifyingKeyVar<
+        TargetField,
+        BaseField,
+        PC,
+        PCG,
+        FSA<TargetField, BaseField>,
+        FSG<TargetField, BaseField>,
+    >;
+
+    fn check_verify<
+        'a,
+        CS: ConstraintSystem<BaseField>,
+        I: Iterator<Item = &'a T>,
+        T: 'a + ToBitsBEGadget<BaseField> + ?Sized,
+    >(
+        cs: CS,
+        verification_key: &Self::VerificationKeyGadget,
+        input: I,
+        proof: &Self::ProofGadget,
+    ) -> Result<(), SynthesisError> {
+        // let result = Self::prepared_verify()
+
+        Ok(())
+    }
+}
 
 impl<TargetField, BaseField, PC, PCG> MarlinVerificationGadget<TargetField, BaseField, PC, PCG>
 where
@@ -396,5 +456,9 @@ mod test {
             "Constraints not satisfied: {}",
             cs.which_is_unsatisfied().unwrap()
         );
+
+        println!("cs: size {}", cs.num_constraints());
+        println!("cs: size {}", cs.num_private_variables());
+        println!("cs: size {}", cs.num_public_variables());
     }
 }

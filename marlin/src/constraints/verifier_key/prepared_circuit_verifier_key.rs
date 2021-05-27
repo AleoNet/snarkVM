@@ -377,7 +377,7 @@ where
     PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
 {
     #[inline]
-    fn alloc_constant<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    fn alloc_constant<FN, T, CS: ConstraintSystem<BaseField>>(cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<CircuitVerifyingKey<TargetField, PC>>,
@@ -390,7 +390,8 @@ where
     }
 
     #[inline]
-    fn alloc<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    #[inline]
+    fn alloc<FN, T, CS: ConstraintSystem<BaseField>>(cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<CircuitVerifyingKey<TargetField, PC>>,
@@ -403,7 +404,7 @@ where
     }
 
     #[inline]
-    fn alloc_input<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    fn alloc_input<FN, T, CS: ConstraintSystem<BaseField>>(cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<CircuitVerifyingKey<TargetField, PC>>,
@@ -433,7 +434,7 @@ where
     fn to_bytes<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut res = Vec::<UInt8>::new();
 
-        let unprepared_vk: PCG::VerifierKeyVar = self.prepared_verifier_key.into();
+        let unprepared_vk: PCG::VerifierKeyVar = self.prepared_verifier_key.clone().into();
 
         res.append(&mut unprepared_vk.to_bytes(cs.ns(|| "to_bytes"))?);
 
@@ -443,7 +444,7 @@ where
     fn to_bytes_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut res = Vec::<UInt8>::new();
 
-        let unprepared_vk: PCG::VerifierKeyVar = self.prepared_verifier_key.into();
+        let unprepared_vk: PCG::VerifierKeyVar = self.prepared_verifier_key.clone().into();
 
         res.append(&mut unprepared_vk.to_bytes_strict(cs.ns(|| "to_bytes_strict"))?);
 
