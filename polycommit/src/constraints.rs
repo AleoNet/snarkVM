@@ -159,7 +159,8 @@ pub trait PCCheckVar<PCF: PrimeField, PC: PolynomialCommitment<PCF>, ConstraintF
     /// An allocated version of `PC::PreparedVerifierKey`.
     type PreparedVerifierKeyVar: AllocGadget<PC::PreparedVerifierKey, ConstraintF>
         + Clone
-        + PrepareGadget<Self::VerifierKeyVar, ConstraintF>;
+        + PrepareGadget<Self::VerifierKeyVar, ConstraintF>
+        + Into<Self::VerifierKeyVar>;
     /// An allocated version of `PC::Commitment`.
     type CommitmentVar: AllocGadget<PC::Commitment, ConstraintF> + Clone + ToBytesGadget<ConstraintF>;
     /// An allocated version of `PC::PreparedCommitment`.
