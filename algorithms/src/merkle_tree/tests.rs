@@ -173,7 +173,7 @@ mod pedersen_crh_on_affine {
     #[derive(Clone, Debug, PartialEq, Eq)]
     pub struct Size;
     impl PedersenSize for Size {
-        const NUM_WINDOWS: usize = 512;
+        const NUM_WINDOWS: usize = 256;
         const WINDOW_SIZE: usize = 4;
     }
 
@@ -216,7 +216,7 @@ mod pedersen_crh_on_projective {
     #[derive(Clone, Debug, PartialEq, Eq)]
     pub struct Size;
     impl PedersenSize for Size {
-        const NUM_WINDOWS: usize = 512;
+        const NUM_WINDOWS: usize = 256;
         const WINDOW_SIZE: usize = 4;
     }
 
@@ -263,7 +263,7 @@ mod pedersen_compressed_crh_on_projective {
     #[derive(Clone, Debug, PartialEq, Eq)]
     pub struct Size;
     impl PedersenSize for Size {
-        const NUM_WINDOWS: usize = 512;
+        const NUM_WINDOWS: usize = 256;
         const WINDOW_SIZE: usize = 4;
     }
 
