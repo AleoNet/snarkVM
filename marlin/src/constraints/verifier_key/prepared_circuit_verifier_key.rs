@@ -362,6 +362,60 @@ where
     }
 }
 
+impl<TargetField, BaseField, PC, PCG, PR, R> AllocGadget<CircuitVerifyingKey<TargetField, PC>, BaseField>
+    for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
+where
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+    PR: FiatShamirRng<TargetField, BaseField>,
+    R: FiatShamirRngVar<TargetField, BaseField, PR>,
+    PC::VerifierKey: ToConstraintField<BaseField>,
+    PC::Commitment: ToConstraintField<BaseField>,
+    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
+    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
+{
+    #[inline]
+    fn alloc_constant<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<CircuitVerifyingKey<TargetField, PC>>,
+    {
+        let tmp = value_gen()?;
+        let vk = tmp.borrow();
+        let prepared_vk = PreparedCircuitVerifyingKey::prepare(&vk);
+
+        Self::alloc_constant(cs, || Ok(prepared_vk))
+    }
+
+    #[inline]
+    fn alloc<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<CircuitVerifyingKey<TargetField, PC>>,
+    {
+        let tmp = value_gen()?;
+        let vk = tmp.borrow();
+        let prepared_vk = PreparedCircuitVerifyingKey::prepare(&vk);
+
+        Self::alloc(cs, || Ok(prepared_vk))
+    }
+
+    #[inline]
+    fn alloc_input<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<CircuitVerifyingKey<TargetField, PC>>,
+    {
+        let tmp = value_gen()?;
+        let vk = tmp.borrow();
+        let prepared_vk = PreparedCircuitVerifyingKey::prepare(&vk);
+
+        Self::alloc_input(cs, || Ok(prepared_vk))
+    }
+}
+
 impl<TargetField, BaseField, PC, PCG, PR, R> ToBytesGadget<BaseField>
     for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
