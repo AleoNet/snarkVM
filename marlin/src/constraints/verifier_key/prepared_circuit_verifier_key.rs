@@ -22,15 +22,16 @@ use crate::{
     PolynomialCommitment,
 };
 
+use crate::marlin::CircuitVerifyingKey;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     fields::FpGadget,
     traits::fields::{FieldGadget, ToConstraintFieldGadget},
-    utilities::alloc::AllocGadget,
+    utilities::alloc::{AllocBytesGadget, AllocGadget},
 };
 use snarkvm_polycommit::{PCCheckVar, PrepareGadget};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
-use snarkvm_utilities::{to_bytes, ToBytes};
+use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
 use core::borrow::Borrow;
 use std::marker::PhantomData;
@@ -356,6 +357,52 @@ where
             prepared_verifier_key,
             fs_rng,
             pr: PhantomData,
+        })
+    }
+}
+
+impl<TargetField, BaseField, PC, PCG, PR, R> AllocBytesGadget<Vec<u8>, BaseField>
+    for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
+where
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+    PR: FiatShamirRng<TargetField, BaseField>,
+    R: FiatShamirRngVar<TargetField, BaseField, PR>,
+    PC::VerifierKey: ToConstraintField<BaseField>,
+    PC::Commitment: ToConstraintField<BaseField>,
+    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
+    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
+{
+    #[inline]
+    fn alloc_bytes<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Vec<u8>>,
+    {
+        value_gen().and_then(|vk_bytes| {
+            let circuit_vk: CircuitVerifyingKey<TargetField, PC> = FromBytes::read(&vk_bytes.borrow()[..])?;
+            let prepared_circuit_vk = PreparedCircuitVerifyingKey::prepare(&circuit_vk);
+
+            Self::alloc(cs.ns(|| "alloc_bytes"), || Ok(prepared_circuit_vk))
+        })
+    }
+
+    #[inline]
+    fn alloc_input_bytes<FN, T, CS: ConstraintSystem<BaseField>>(
+        mut cs: CS,
+        value_gen: FN,
+    ) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Vec<u8>>,
+    {
+        value_gen().and_then(|vk_bytes| {
+            let circuit_vk: CircuitVerifyingKey<TargetField, PC> = FromBytes::read(&vk_bytes.borrow()[..])?;
+            let prepared_circuit_vk = PreparedCircuitVerifyingKey::prepare(&circuit_vk);
+
+            Self::alloc_input(cs.ns(|| "alloc_input_bytes"), || Ok(prepared_circuit_vk))
         })
     }
 }
