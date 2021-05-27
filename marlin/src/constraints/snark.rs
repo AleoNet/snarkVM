@@ -519,4 +519,91 @@ pub mod test {
             );
         }
     }
+
+    #[test]
+    fn marlin_verifier_num_constraints_test() {
+        let mut rng = test_rng();
+
+        // Construct the circuit.
+
+        let a = Fr::rand(&mut rng);
+        let b = Fr::rand(&mut rng);
+        let mut c = a;
+        c.mul_assign(&b);
+
+        let circ = Circuit {
+            a: Some(a),
+            b: Some(b),
+            num_constraints: rng.gen_range(1000..100000),
+            num_variables: rng.gen_range(100..1000),
+        };
+
+        // Generate the circuit parameters.
+
+        let (pk, vk) = TestSNARK::circuit_specific_setup(circ, &mut rng).unwrap();
+
+        // Test native proof and verification.
+
+        let proof = TestSNARK::prove(&pk, &circ, &mut rng).unwrap();
+
+        assert!(
+            TestSNARK::verify(&vk.clone().into(), &[c], &proof).unwrap(),
+            "The native verification check fails."
+        );
+
+        // Initialize constraint system.
+        let mut cs = TestConstraintSystem::<Fq>::new();
+
+        let input_gadget = <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::InputVar::alloc_input(
+            cs.ns(|| "alloc_input_gadget"),
+            || Ok(vec![c]),
+        )
+        .unwrap();
+
+        let input_gadget_constraints = cs.num_constraints();
+
+        let proof_gadget =
+            <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::ProofVar::alloc(cs.ns(|| "alloc_proof"), || Ok(proof))
+                .unwrap();
+
+        let proof_gadget_constraints = cs.num_constraints() - input_gadget_constraints;
+
+        let vk_gadget =
+            <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::VerifyingKeyVar::alloc(cs.ns(|| "alloc_vk"), || {
+                Ok(vk.clone())
+            })
+            .unwrap();
+
+        let vk_gadget_constraints = cs.num_constraints() - input_gadget_constraints;
+
+        let verification_result = <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::verify(
+            cs.ns(|| "marlin_verify"),
+            &vk_gadget,
+            &input_gadget,
+            &proof_gadget,
+        )
+        .unwrap();
+
+        let verifier_gadget_constraints = cs.num_constraints() - proof_gadget_constraints;
+
+        verification_result
+            .enforce_equal(cs.ns(|| "enforce_equal_verification"), &Boolean::Constant(true))
+            .unwrap();
+
+        assert!(
+            cs.is_satisfied(),
+            "Constraints not satisfied: {}",
+            cs.which_is_unsatisfied().unwrap()
+        );
+
+        const INPUT_GADGET_CONSTRAINTS: usize = 383;
+        const PROOF_GADGET_CONSTRAINTS: usize = 56;
+        const VK_GADGET_CONSTRAINTS: usize = 136;
+        const VERIFIER_GADGET_CONSTRAINTS: usize = 152885;
+
+        assert_eq!(input_gadget_constraints, INPUT_GADGET_CONSTRAINTS);
+        assert_eq!(proof_gadget_constraints, PROOF_GADGET_CONSTRAINTS);
+        assert_eq!(vk_gadget_constraints, VK_GADGET_CONSTRAINTS);
+        assert_eq!(verifier_gadget_constraints, VERIFIER_GADGET_CONSTRAINTS);
+    }
 }

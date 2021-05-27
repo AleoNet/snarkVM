@@ -389,8 +389,6 @@ mod test {
         .enforce_equal(cs.ns(|| "enforce_equal"), &Boolean::Constant(true))
         .unwrap();
 
-        println!("after Marlin, num_of_constraints = {}", cs.num_constraints());
-
         assert!(
             cs.is_satisfied(),
             "Constraints not satisfied: {}",
