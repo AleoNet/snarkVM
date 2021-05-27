@@ -22,11 +22,11 @@ use crate::{
     errors::CRHError,
     traits::CRH,
 };
-use bitvec::{order::Lsb0, view::BitView};
 use snarkvm_curves::Group;
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::biginteger::biginteger::BigInteger;
 
+use bitvec::{order::Lsb0, view::BitView};
 use rand::Rng;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
