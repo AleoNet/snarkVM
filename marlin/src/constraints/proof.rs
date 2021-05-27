@@ -17,15 +17,17 @@
 use crate::{marlin::Proof, PolynomialCommitment};
 
 use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_gadgets::{traits::fields::ToConstraintFieldGadget, utilities::alloc::AllocGadget};
+use snarkvm_gadgets::{
+    traits::fields::ToConstraintFieldGadget,
+    utilities::alloc::{AllocBytesGadget, AllocGadget},
+};
 use snarkvm_nonnative::NonNativeFieldVar;
 use snarkvm_polycommit::PCCheckVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+use snarkvm_utilities::FromBytes;
 
 use core::borrow::Borrow;
 use hashbrown::HashMap;
-use snarkvm_gadgets::utilities::alloc::AllocBytesGadget;
-use snarkvm_utilities::FromBytes;
 
 /// The prover message gadget
 #[repr(transparent)]
