@@ -29,6 +29,10 @@ use snarkvm_utilities::biginteger::biginteger::BigInteger;
 use bitvec::{order::Lsb0, view::BitView};
 use rand::Rng;
 
+// we cant use these in array sizes since they are from a trait (and cant be refered to at const time)
+const MAX_WINDOW_SIZE: usize = 256;
+const MAX_NUM_WINDOWS: usize = 296;
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BoweHopwoodPedersenCRH<G: Group, S: PedersenSize> {
     pub parameters: PedersenCRHParameters<G, S>,
@@ -110,12 +114,11 @@ impl<G: Group, S: PedersenSize> CRH for BoweHopwoodPedersenCRH<G, S> {
                 S::NUM_WINDOWS,
             ));
         }
-        // we cant use these in array sizes since they are from a trait (and cant be refered to at const time)
-        assert!(S::WINDOW_SIZE <= 256);
-        assert!(S::NUM_WINDOWS <= 296);
+        assert!(S::WINDOW_SIZE <= MAX_WINDOW_SIZE);
+        assert!(S::NUM_WINDOWS <= MAX_NUM_WINDOWS);
 
         // overzealous but stack allocation
-        let mut buffer = [0u8; 296 * 256 / 8 + BOWE_HOPWOOD_CHUNK_SIZE + 1];
+        let mut buffer = [0u8; MAX_WINDOW_SIZE * MAX_NUM_WINDOWS / 8 + BOWE_HOPWOOD_CHUNK_SIZE + 1];
         buffer[..input.len()].copy_from_slice(input);
         let buf_slice = (&buffer[..]).view_bits::<Lsb0>();
 
