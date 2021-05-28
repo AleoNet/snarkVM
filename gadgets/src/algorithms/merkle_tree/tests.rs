@@ -131,7 +131,7 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
     use_bad_root: bool,
 ) {
     let parameters = P::default();
-    let tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), leaves.iter()).unwrap();
+    let tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), &leaves[..]).unwrap();
     let root = tree.root();
 
     let mut cs = TestConstraintSystem::<F>::new();
