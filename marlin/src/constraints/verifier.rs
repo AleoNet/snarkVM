@@ -37,7 +37,7 @@ use snarkvm_gadgets::{
         algorithms::SNARKVerifierGadget,
         fields::{FieldGadget, ToConstraintFieldGadget},
     },
-    utilities::{boolean::Boolean, ToBitsBEGadget},
+    utilities::{boolean::Boolean, eq::EqGadget},
 };
 use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
 use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
@@ -83,6 +83,7 @@ where
     MM: MarlinMode,
     C: ConstraintSynthesizer<TargetField>,
 {
+    type Input = NonNativeFieldVar<TargetField, BaseField>;
     type ProofGadget = ProofVar<TargetField, BaseField, PC, PCG>;
     type VerificationKeyGadget = PreparedCircuitVerifyingKeyVar<
         TargetField,
@@ -93,18 +94,16 @@ where
         FSG<TargetField, BaseField>,
     >;
 
-    fn check_verify<
-        'a,
-        CS: ConstraintSystem<BaseField>,
-        I: Iterator<Item = &'a T>,
-        T: 'a + ToBitsBEGadget<BaseField> + ?Sized,
-    >(
-        cs: CS,
+    fn check_verify<CS: ConstraintSystem<BaseField>, I: Iterator<Item = Self::Input>>(
+        mut cs: CS,
         verification_key: &Self::VerificationKeyGadget,
         input: I,
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError> {
-        // let result = Self::prepared_verify()
+        let inputs: Vec<_> = input.collect();
+        let result = Self::prepared_verify(cs.ns(|| "prepared_verify"), verification_key, &inputs, proof).unwrap();
+
+        result.enforce_equal(cs.ns(|| "enforce_verification_correctness"), &Boolean::Constant(true))?;
 
         Ok(())
     }
