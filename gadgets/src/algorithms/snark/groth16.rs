@@ -14,16 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{
-    algorithms::snark::SNARKVerifierGadget,
-    curves::{GroupGadget, PairingGadget},
-    utilities::{
-        alloc::{AllocBytesGadget, AllocGadget},
-        eq::EqGadget,
-        uint::UInt8,
-        ToBitsBEGadget,
-        ToBytesGadget,
+use crate::{
+    traits::{
+        algorithms::snark::SNARKVerifierGadget,
+        curves::{GroupGadget, PairingGadget},
+        utilities::{
+            alloc::{AllocBytesGadget, AllocGadget},
+            eq::EqGadget,
+            uint::UInt8,
+            ToBitsBEGadget,
+            ToBytesGadget,
+        },
     },
+    utilities::boolean::Boolean,
 };
 use snarkvm_algorithms::snark::groth16::{Groth16, Proof, VerifyingKey};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
@@ -119,20 +122,16 @@ where
     V: ToConstraintField<PairingE::Fr>,
     P: PairingGadget<PairingE, ConstraintF>,
 {
+    type Input = Vec<Boolean>;
     type ProofGadget = ProofGadget<PairingE, ConstraintF, P>;
     type VerificationKeyGadget = VerifyingKeyGadget<PairingE, ConstraintF, P>;
 
-    fn check_verify<'a, CS, I, T>(
+    fn check_verify<CS: ConstraintSystem<ConstraintF>, I: Iterator<Item = Self::Input>>(
         mut cs: CS,
         vk: &Self::VerificationKeyGadget,
         mut public_inputs: I,
         proof: &Self::ProofGadget,
-    ) -> Result<(), SynthesisError>
-    where
-        CS: ConstraintSystem<ConstraintF>,
-        I: Iterator<Item = &'a T>,
-        T: 'a + ToBitsBEGadget<ConstraintF> + ?Sized,
-    {
+    ) -> Result<(), SynthesisError> {
         let pvk = vk.prepare(&mut cs.ns(|| "Prepare vk"))?;
 
         let PreparedVerifyingKeyGadget {
@@ -533,7 +532,7 @@ mod test {
             <TestVerifierGadget as SNARKVerifierGadget<TestProofSystem, Fq>>::check_verify(
                 cs.ns(|| "Verify"),
                 &vk_gadget,
-                input_gadgets.iter(),
+                input_gadgets.iter().cloned(),
                 &proof_gadget,
             )
             .unwrap();
@@ -607,7 +606,7 @@ mod test {
             <TestVerifierGadget as SNARKVerifierGadget<TestProofSystem, Fq>>::check_verify(
                 cs.ns(|| "Verify"),
                 &vk_gadget,
-                input_gadgets.iter(),
+                input_gadgets.iter().cloned(),
                 &proof_gadget,
             )
             .unwrap();

@@ -31,8 +31,9 @@ pub trait SNARKVerifierGadget<N: SNARK, F: Field> {
         + AllocBytesGadget<Vec<u8>, F>
         + ToBytesGadget<F>;
     type ProofGadget: AllocGadget<N::Proof, F> + AllocBytesGadget<Vec<u8>, F>;
+    type Input: ToBitsBEGadget<F> + Clone + ?Sized;
 
-    fn check_verify<'a, CS: ConstraintSystem<F>, I: Iterator<Item = &'a T>, T: 'a + ToBitsBEGadget<F> + ?Sized>(
+    fn check_verify<'a, CS: ConstraintSystem<F>, I: Iterator<Item = Self::Input>>(
         cs: CS,
         verification_key: &Self::VerificationKeyGadget,
         input: I,
