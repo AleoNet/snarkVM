@@ -28,13 +28,6 @@ pub trait LedgerScheme: Sized {
     type SerialNumber;
     type Transaction: Transaction;
 
-    /// Instantiates a new ledger with a genesis block.
-    fn new(
-        path: Option<&Path>,
-        parameters: Arc<Self::MerkleParameters>,
-        genesis_block: Self::Block,
-    ) -> anyhow::Result<Self>;
-
     /// Returns the number of blocks including the genesis block
     fn len(&self) -> usize;
 
