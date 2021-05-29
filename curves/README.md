@@ -6,7 +6,7 @@
 # snarkvm-curves
 
 [![Crates.io](https://img.shields.io/crates/v/snarkvm-curves.svg?color=neon)](https://crates.io/crates/snarkvm-curves)
-[![Authors](https://img.shields.io/badge/authors-Aleo-orange.svg)](../AUTHORS)
+[![Authors](https://img.shields.io/badge/authors-Aleo-orange.svg)](https://aleo.org)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE.md)
 
 ## Overview
