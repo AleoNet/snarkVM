@@ -81,13 +81,13 @@ impl<C: BaseDPCComponents, P: MontgomeryModelParameters + TEModelParameters, G: 
 
     /// Records are serialized in a specialized format to be space-saving.
     ///
-    /// Serialized element 1 - [ Serial number nonce ]
-    /// Serialized element 2 - [ Commitment randomness ]
-    /// Serialized element 3 - [ Birth program id (part 1) ]
-    /// Serialized element 4 - [ Death program id (part 1) ]
-    /// Serialized element 5 - [ Birth program id (part 2) || Death program id (part 2) ]
-    /// Serialized element 6 - [ Payload (part 1) || 1 ]
-    /// Serialized element 7 - [ 1 || Sign high bits (7 bits) || Value || Payload (part 2) ]
+    /// Encoded element 1 - [ Serial number nonce ]
+    /// Encoded element 2 - [ Commitment randomness ]
+    /// Encoded element 3 - [ Birth program id (part 1) ]
+    /// Encoded element 4 - [ Death program id (part 1) ]
+    /// Encoded element 5 - [ Birth program id (part 2) || Death program id (part 2) ]
+    /// Encoded element 6 - [ Payload (part 1) || 1 ]
+    /// Encoded element 7 - [ 1 || Sign high bits (7 bits) || Value || Payload (part 2) ]
     ///
     fn encode(record: &Self::Record) -> Result<(Vec<Self::Group>, bool), DPCError> {
         // Assumption 1 - The scalar field bit size must be strictly less than the base field bit size
@@ -270,7 +270,7 @@ impl<C: BaseDPCComponents, P: MontgomeryModelParameters + TEModelParameters, G: 
         Ok((encoded_elements, final_sign_high))
     }
 
-    /// Deserialize and return the record components
+    /// Decode and return the record components
     fn decode(encoded_record: Vec<Self::Group>, final_sign_high: bool) -> Result<Self::DecodedRecord, DPCError> {
         let remainder_size = Self::OUTER_FIELD_BITSIZE - Self::DATA_ELEMENT_BITSIZE;
 
