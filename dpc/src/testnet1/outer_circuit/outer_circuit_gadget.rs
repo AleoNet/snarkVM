@@ -322,7 +322,7 @@ where
     C::InnerSNARKGadget::check_verify(
         &mut cs.ns(|| "Check that proof is satisfied"),
         &inner_snark_vk,
-        inner_snark_input_bits.iter().filter(|inp| !inp.is_empty()),
+        inner_snark_input_bits.iter().filter(|inp| !inp.is_empty()).cloned(),
         &inner_snark_proof,
     )?;
 
@@ -392,7 +392,7 @@ where
         C::ProgramSNARKGadget::check_verify(
             &mut cs.ns(|| "Check that proof is satisfied"),
             &death_program_vk,
-            ([position].iter()).chain(program_input_bits.iter()),
+            ([position].iter()).chain(program_input_bits.iter()).cloned(),
             &death_program_proof,
         )?;
     }
@@ -433,7 +433,7 @@ where
         C::ProgramSNARKGadget::check_verify(
             &mut cs.ns(|| "Check that proof is satisfied"),
             &birth_program_vk,
-            ([position].iter()).chain(program_input_bits.iter()),
+            ([position].iter()).chain(program_input_bits.iter()).cloned(),
             &birth_program_proof,
         )?;
     }

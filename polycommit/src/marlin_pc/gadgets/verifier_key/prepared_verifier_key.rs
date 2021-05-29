@@ -184,6 +184,26 @@ where
     }
 }
 
+impl<TargetCurve, BaseCurve, PG> Into<VerifierKeyVar<TargetCurve, BaseCurve, PG>>
+    for PreparedVerifierKeyVar<TargetCurve, BaseCurve, PG>
+where
+    TargetCurve: PairingEngine,
+    BaseCurve: PairingEngine,
+    PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
+    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
+    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
+{
+    fn into(self) -> VerifierKeyVar<TargetCurve, BaseCurve, PG> {
+        match self.origin_vk {
+            Some(vk) => vk.clone(),
+            None => {
+                eprintln!("Missing original vk");
+                panic!()
+            }
+        }
+    }
+}
+
 impl<TargetCurve, BaseCurve, PG> AllocGadget<PreparedVerifierKey<TargetCurve>, <BaseCurve as PairingEngine>::Fr>
     for PreparedVerifierKeyVar<TargetCurve, BaseCurve, PG>
 where

@@ -35,7 +35,10 @@ use snarkvm_algorithms::{
     },
 };
 use snarkvm_curves::traits::{Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
-use snarkvm_gadgets::traits::algorithms::{CRHGadget, SNARKVerifierGadget};
+use snarkvm_gadgets::{
+    traits::algorithms::{CRHGadget, SNARKVerifierGadget},
+    utilities::boolean::Boolean,
+};
 use snarkvm_objects::{
     traits::{LedgerScheme, TransactionScheme},
     AleoAmount,
@@ -99,7 +102,7 @@ pub trait BaseDPCComponents: DPCComponents {
     >;
 
     /// SNARK Verifier gadget for the inner snark
-    type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK, Self::OuterField>;
+    type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK, Self::OuterField, Input = Vec<Boolean>>;
 
     /// SNARK for proof-verification checks
     type OuterSNARK: SNARK<
@@ -117,7 +120,7 @@ pub trait BaseDPCComponents: DPCComponents {
     >;
 
     /// SNARK Verifier gadget for the "dummy program" that does nothing with its input.
-    type ProgramSNARKGadget: SNARKVerifierGadget<Self::NoopProgramSNARK, Self::OuterField>;
+    type ProgramSNARKGadget: SNARKVerifierGadget<Self::NoopProgramSNARK, Self::OuterField, Input = Vec<Boolean>>;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
