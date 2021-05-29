@@ -105,12 +105,12 @@ where
     }
 
     fn prove<R: RngCore>(
-        parameters: &Self::ProvingKey,
-        circuit: &Self::AllocatedCircuit,
+        proving_key: &Self::ProvingKey,
+        input_and_witness: &Self::AllocatedCircuit,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         let proving_time = start_timer!(|| "{Marlin}::Proving");
-        let proof = MarlinTestnet1::<E>::prove(&parameters.proving_key, circuit, rng)
+        let proof = MarlinTestnet1::<E>::prove(&proving_key.proving_key, input_and_witness, rng)
             .map_err(|error| SNARKError::Crate("marlin", format!("Failed to generate proof - {:?}", error)))?;
         end_timer!(proving_time);
         Ok(proof)
