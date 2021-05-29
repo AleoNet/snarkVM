@@ -454,8 +454,8 @@ mod test {
             cs.which_is_unsatisfied().unwrap()
         );
 
-        println!("cs: size {}", cs.num_constraints());
-        println!("cs: size {}", cs.num_private_variables());
-        println!("cs: size {}", cs.num_public_variables());
+        println!("cs - number of constraints: {}", cs.num_constraints());
+        println!("cs - number of private variables: {}", cs.num_private_variables());
+        println!("cs - number of public variables: {}", cs.num_public_variables());
     }
 }

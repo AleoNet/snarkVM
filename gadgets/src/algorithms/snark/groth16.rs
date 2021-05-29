@@ -684,7 +684,7 @@ mod test {
             <TestVerifierGadget as SNARKVerifierGadget<TestProofSystem, Fq>>::check_verify(
                 cs.ns(|| "Verify"),
                 &vk_gadget,
-                input_gadgets.iter(),
+                input_gadgets.iter().cloned(),
                 &proof_gadget,
             )
             .unwrap();
