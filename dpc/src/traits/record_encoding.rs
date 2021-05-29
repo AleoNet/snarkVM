@@ -21,7 +21,7 @@ use snarkvm_curves::{
 };
 use snarkvm_fields::{FieldParameters, PrimeField};
 
-pub trait RecordSerializerScheme {
+pub trait RecordEncodingScheme {
     /// The group is composed of base field elements in `Self::InnerField`.
     type Group: Group + ProjectiveCurve;
     /// The inner field is equivalent to the base field in `Self::Group`.
@@ -30,7 +30,7 @@ pub trait RecordSerializerScheme {
     type OuterField: PrimeField;
     type Parameters: MontgomeryModelParameters + TEModelParameters;
     type Record: RecordScheme;
-    type DeserializedRecord;
+    type DecodedRecord;
 
     /// This is the bitsize of the scalar field modulus in `Self::Group`.
     const SCALAR_FIELD_BITSIZE: usize =
@@ -47,10 +47,7 @@ pub trait RecordSerializerScheme {
     /// Represents a standard unit for packing the payload into data elements for storage.
     const PAYLOAD_ELEMENT_BITSIZE: usize = Self::DATA_ELEMENT_BITSIZE - 1;
 
-    fn serialize(record: &Self::Record) -> Result<(Vec<Self::Group>, bool), DPCError>;
+    fn encode(record: &Self::Record) -> Result<(Vec<Self::Group>, bool), DPCError>;
 
-    fn deserialize(
-        serialized_record: Vec<Self::Group>,
-        final_fq_high_bit: bool,
-    ) -> Result<Self::DeserializedRecord, DPCError>;
+    fn decode(encoded_record: Vec<Self::Group>, final_fq_high_bit: bool) -> Result<Self::DecodedRecord, DPCError>;
 }

@@ -19,11 +19,11 @@ use crate::{
     errors::DPCError,
     testnet1::{
         parameters::SystemParameters,
-        record::{encrypted_record::*, record_serializer::*, Record},
+        record::{encrypted_record::*, record_encoding::*, Record},
         record_payload::RecordPayload,
         BaseDPCComponents,
     },
-    traits::{DPCComponents, RecordScheme, RecordSerializerScheme},
+    traits::{DPCComponents, RecordEncodingScheme, RecordScheme},
 };
 use snarkvm_algorithms::{
     encoding::Elligator2,
@@ -103,7 +103,7 @@ impl<C: BaseDPCComponents> RecordEncryption<C> {
     > {
         // Serialize the record into group elements and fq_high bits
         let (serialized_record, final_fq_high_selector) =
-            RecordSerializer::<C, C::EncryptionModelParameters, C::EncryptionGroup>::serialize(record)?;
+            RecordEncoding::<C, C::EncryptionModelParameters, C::EncryptionGroup>::encode(record)?;
 
         let mut record_plaintexts = Vec::with_capacity(serialized_record.len());
         for element in serialized_record.iter() {
@@ -155,13 +155,13 @@ impl<C: BaseDPCComponents> RecordEncryption<C> {
         }
 
         // Deserialize the plaintext record into record components
-        let record_components = RecordSerializer::<
+        let record_components = RecordEncoding::<
             C,
             <C as BaseDPCComponents>::EncryptionModelParameters,
             <C as BaseDPCComponents>::EncryptionGroup,
-        >::deserialize(plaintext, encrypted_record.final_fq_high_selector)?;
+        >::decode(plaintext, encrypted_record.final_fq_high_selector)?;
 
-        let DeserializedRecord {
+        let DecodedRecord {
             serial_number_nonce,
             commitment_randomness,
             birth_program_id,
@@ -267,7 +267,7 @@ impl<C: BaseDPCComponents> RecordEncryption<C> {
     ) -> Result<RecordEncryptionGadgetComponents<C>, DPCError> {
         // Serialize the record into group elements and fq_high bits
         let (serialized_record, final_fq_high_selector) =
-            RecordSerializer::<C, C::EncryptionModelParameters, C::EncryptionGroup>::serialize(&record)?;
+            RecordEncoding::<C, C::EncryptionModelParameters, C::EncryptionGroup>::encode(&record)?;
 
         // Extract the fq_bits from the serialized record
         let fq_high_selectors = {
