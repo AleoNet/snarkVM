@@ -41,7 +41,7 @@ use snarkvm_dpc::{
 use snarkvm_objects::{
     dpc::DPCTransactions,
     merkle_root,
-    traits::{LedgerScheme, Transaction},
+    traits::Transaction,
     Block,
     BlockHeader,
     BlockHeaderHash,

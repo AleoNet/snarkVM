@@ -36,11 +36,7 @@ use snarkvm_algorithms::{
 };
 use snarkvm_curves::traits::{Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
 use snarkvm_gadgets::traits::algorithms::{CRHGadget, SNARKVerifierGadget};
-use snarkvm_objects::{
-    traits::{LedgerScheme, Transaction},
-    AleoAmount,
-    Network,
-};
+use snarkvm_objects::{traits::Transaction, AleoAmount, Network};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     has_duplicates,
@@ -560,17 +556,7 @@ impl<Components: BaseDPCComponents> DPC<Components> {
     }
 }
 
-impl<Components: BaseDPCComponents, L: LedgerScheme> DPCScheme<L> for DPC<Components>
-where
-    L: LedgerScheme<
-        Commitment = <Components::RecordCommitment as CommitmentScheme>::Output,
-        MerkleParameters = Components::MerkleParameters,
-        MerklePath = MerklePath<Components::MerkleParameters>,
-        MerkleTreeDigest = MerkleTreeDigest<Components::MerkleParameters>,
-        SerialNumber = <Components::AccountSignature as SignatureScheme>::PublicKey,
-        Transaction = DPCTransaction<Components>,
-    >,
-{
+impl<Components: BaseDPCComponents> DPCScheme<Components::MerkleParameters> for DPC<Components> {
     type Account = Account<Components>;
     type LocalData = LocalData<Components>;
     type NetworkParameters = PublicParameters<Components>;
@@ -861,10 +847,12 @@ where
 
     fn execute_online<R: Rng>(
         parameters: &Self::NetworkParameters,
+        ledger_parameters: &Arc<Components::MerkleParameters>,
         transaction_kernel: Self::TransactionKernel,
+        ledger_digest: MerkleTreeDigest<Components::MerkleParameters>,
+        old_witnesses: Vec<MerklePath<Components::MerkleParameters>>,
         old_death_program_proofs: Vec<Self::PrivateProgramInput>,
         new_birth_program_proofs: Vec<Self::PrivateProgramInput>,
-        ledger: &L,
         rng: &mut R,
     ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)> {
         assert_eq!(Components::NUM_INPUT_RECORDS, old_death_program_proofs.len());
@@ -904,20 +892,20 @@ where
 
         // Construct the ledger witnesses
 
-        let ledger_digest = ledger.digest().expect("could not get digest");
+        // let ledger_digest = ledger.digest().expect("could not get digest");
 
         // Generate the ledger membership witnesses
-        let mut old_witnesses = Vec::with_capacity(Components::NUM_INPUT_RECORDS);
+        // let mut old_witnesses = Vec::with_capacity(Components::NUM_INPUT_RECORDS);
 
-        // Compute the ledger membership witness and serial number from the old records.
-        for record in old_records.iter() {
-            if record.is_dummy() {
-                old_witnesses.push(MerklePath::default());
-            } else {
-                let witness = ledger.prove_cm(&record.commitment())?;
-                old_witnesses.push(witness);
-            }
-        }
+        // // Compute the ledger membership witness and serial number from the old records.
+        // for record in old_records.iter() {
+        //     if record.is_dummy() {
+        //         old_witnesses.push(MerklePath::default());
+        //     } else {
+        //         let witness = ledger.prove_cm(&record.commitment())?;
+        //         old_witnesses.push(witness);
+        //     }
+        // }
 
         // Generate Schnorr signature on transaction data
         // TODO (raychu86) Remove ledger_digest from signature and move the schnorr signing into `execute_offline`
@@ -976,7 +964,7 @@ where
         let inner_proof = {
             let circuit = InnerCircuit::new(
                 parameters.system_parameters.clone(),
-                ledger.parameters().clone(),
+                ledger_parameters.clone(),
                 ledger_digest.clone(),
                 old_records,
                 old_witnesses,
@@ -1009,7 +997,7 @@ where
         {
             let input = InnerCircuitVerifierInput {
                 system_parameters: parameters.system_parameters.clone(),
-                ledger_parameters: ledger.parameters().clone(),
+                ledger_parameters: ledger_parameters.clone(),
                 ledger_digest: ledger_digest.clone(),
                 old_serial_numbers: old_serial_numbers.clone(),
                 new_commitments: new_commitments.clone(),
@@ -1037,7 +1025,7 @@ where
         let transaction_proof = {
             let circuit = OuterCircuit::new(
                 parameters.system_parameters.clone(),
-                ledger.parameters().clone(),
+                ledger_parameters.clone(),
                 ledger_digest.clone(),
                 old_serial_numbers.clone(),
                 new_commitments.clone(),
@@ -1085,8 +1073,8 @@ where
 
     fn verify(
         parameters: &Self::NetworkParameters,
+        ledger_parameters: &Arc<Components::MerkleParameters>,
         transaction: &Self::Transaction,
-        ledger: &L,
     ) -> anyhow::Result<bool> {
         let verify_time = start_timer!(|| "BaseDPC::verify");
 
@@ -1104,33 +1092,33 @@ where
 
         let ledger_time = start_timer!(|| "Ledger checks");
 
-        // Returns false if the transaction memo previously existed in the ledger.
-        if ledger.contains_memo(transaction.memorandum()) {
-            eprintln!("Ledger already contains this transaction memo.");
-            return Ok(false);
-        }
+        // // Returns false if the transaction memo previously existed in the ledger.
+        // if ledger.contains_memo(transaction.memorandum()) {
+        //     eprintln!("Ledger already contains this transaction memo.");
+        //     return Ok(false);
+        // }
 
-        // Returns false if any transaction serial number previously existed in the ledger.
-        for sn in transaction.old_serial_numbers() {
-            if ledger.contains_sn(sn) {
-                eprintln!("Ledger already contains this transaction serial number.");
-                return Ok(false);
-            }
-        }
+        // // Returns false if any transaction serial number previously existed in the ledger.
+        // for sn in transaction.old_serial_numbers() {
+        //     if ledger.contains_sn(sn) {
+        //         eprintln!("Ledger already contains this transaction serial number.");
+        //         return Ok(false);
+        //     }
+        // }
 
-        // Returns false if any transaction commitment previously existed in the ledger.
-        for cm in transaction.new_commitments() {
-            if ledger.contains_cm(cm) {
-                eprintln!("Ledger already contains this transaction commitment.");
-                return Ok(false);
-            }
-        }
+        // // Returns false if any transaction commitment previously existed in the ledger.
+        // for cm in transaction.new_commitments() {
+        //     if ledger.contains_cm(cm) {
+        //         eprintln!("Ledger already contains this transaction commitment.");
+        //         return Ok(false);
+        //     }
+        // }
 
-        // Returns false if the ledger digest in the transaction is invalid.
-        if !ledger.validate_digest(&transaction.ledger_digest) {
-            eprintln!("Ledger digest is invalid.");
-            return Ok(false);
-        }
+        // // Returns false if the ledger digest in the transaction is invalid.
+        // if !ledger.validate_digest(&transaction.ledger_digest) {
+        //     eprintln!("Ledger digest is invalid.");
+        //     return Ok(false);
+        // }
 
         end_timer!(ledger_time);
 
@@ -1169,7 +1157,7 @@ where
 
         let inner_snark_input = InnerCircuitVerifierInput {
             system_parameters: parameters.system_parameters.clone(),
-            ledger_parameters: ledger.parameters().clone(),
+            ledger_parameters: ledger_parameters.clone(),
             ledger_digest: transaction.ledger_digest().clone(),
             old_serial_numbers: transaction.old_serial_numbers().to_vec(),
             new_commitments: transaction.new_commitments().to_vec(),
@@ -1204,21 +1192,6 @@ where
         }
 
         end_timer!(verify_time);
-
-        Ok(true)
-    }
-
-    /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions(
-        parameters: &Self::NetworkParameters,
-        transactions: &[Self::Transaction],
-        ledger: &L,
-    ) -> anyhow::Result<bool> {
-        for transaction in transactions {
-            if !Self::verify(parameters, transaction, ledger)? {
-                return Ok(false);
-            }
-        }
 
         Ok(true)
     }

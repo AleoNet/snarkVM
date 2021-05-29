@@ -15,12 +15,16 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::traits::{AccountScheme, Record};
-use snarkvm_objects::traits::{LedgerScheme, Transaction};
+use snarkvm_algorithms::{
+    merkle_tree::{MerklePath, MerkleTreeDigest},
+    MerkleParameters,
+};
+use snarkvm_objects::traits::Transaction;
 
 use rand::Rng;
 use std::sync::Arc;
 
-pub trait DPCScheme<L: LedgerScheme> {
+pub trait DPCScheme<P: MerkleParameters> {
     type Account: AccountScheme;
     type LocalData;
     type NetworkParameters;
@@ -32,10 +36,7 @@ pub trait DPCScheme<L: LedgerScheme> {
     type TransactionKernel;
 
     /// Returns public parameters for the DPC.
-    fn setup<R: Rng>(
-        ledger_parameters: &Arc<L::MerkleParameters>,
-        rng: &mut R,
-    ) -> anyhow::Result<Self::NetworkParameters>;
+    fn setup<R: Rng>(ledger_parameters: &Arc<P>, rng: &mut R) -> anyhow::Result<Self::NetworkParameters>;
 
     /// Returns an account, given the system parameters, metadata, and an RNG.
     fn create_account<R: Rng>(parameters: &Self::SystemParameters, rng: &mut R) -> anyhow::Result<Self::Account>;
@@ -61,24 +62,19 @@ pub trait DPCScheme<L: LedgerScheme> {
     /// consumption of old records.
     fn execute_online<R: Rng>(
         parameters: &Self::NetworkParameters,
+        ledger_parameters: &Arc<P>,
         transaction_kernel: Self::TransactionKernel,
+        ledger_digest: MerkleTreeDigest<P>,
+        old_witnesses: Vec<MerklePath<P>>,
         old_death_program_proofs: Vec<Self::PrivateProgramInput>,
         new_birth_program_proofs: Vec<Self::PrivateProgramInput>,
-        ledger: &L,
         rng: &mut R,
     ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)>;
 
     /// Returns true iff the transaction is valid according to the ledger.
     fn verify(
         parameters: &Self::NetworkParameters,
+        ledger_parameters: &Arc<P>,
         transaction: &Self::Transaction,
-        ledger: &L,
-    ) -> anyhow::Result<bool>;
-
-    /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions(
-        parameters: &Self::NetworkParameters,
-        block: &[Self::Transaction],
-        ledger: &L,
     ) -> anyhow::Result<bool>;
 }
