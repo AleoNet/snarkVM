@@ -77,18 +77,3 @@ pub use traits::*;
 
 #[cfg(test)]
 mod tests;
-
-use snarkvm_r1cs::errors::SynthesisError;
-
-pub trait Assignment<T> {
-    fn get(&self) -> Result<&T, SynthesisError>;
-}
-
-impl<T> Assignment<T> for Option<T> {
-    fn get(&self) -> Result<&T, SynthesisError> {
-        match *self {
-            Some(ref v) => Ok(v),
-            None => Err(SynthesisError::AssignmentMissing),
-        }
-    }
-}
