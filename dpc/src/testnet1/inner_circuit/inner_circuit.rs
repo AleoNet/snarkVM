@@ -16,7 +16,7 @@
 
 use crate::{
     account::AccountPrivateKey,
-    base_dpc::{
+    testnet1::{
         inner_circuit_gadget::execute_inner_proof_gadget,
         parameters::SystemParameters,
         record::DPCRecord,

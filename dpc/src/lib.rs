@@ -66,8 +66,8 @@ extern crate thiserror;
 pub mod account;
 pub use account::*;
 
-pub mod base_dpc;
-pub use base_dpc::*;
+pub mod testnet1;
+pub use testnet1::*;
 
 pub mod errors;
 pub use errors::*;

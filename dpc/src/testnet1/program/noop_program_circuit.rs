@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    base_dpc::{parameters::SystemParameters, BaseDPCComponents},
+    testnet1::{parameters::SystemParameters, BaseDPCComponents},
     Assignment,
 };
 use snarkvm_algorithms::traits::{CommitmentScheme, CRH};

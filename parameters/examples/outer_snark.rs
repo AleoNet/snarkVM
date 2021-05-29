@@ -19,7 +19,8 @@ use snarkvm_algorithms::{
     traits::{MerkleParameters, SNARK},
 };
 use snarkvm_dpc::{
-    base_dpc::{
+    errors::DPCError,
+    testnet1::{
         inner_circuit::InnerCircuit,
         instantiated::Components,
         outer_circuit::OuterCircuit,
@@ -27,7 +28,6 @@ use snarkvm_dpc::{
         program::{NoopCircuit, PrivateProgramInput},
         BaseDPCComponents,
     },
-    errors::DPCError,
 };
 use snarkvm_parameters::{
     traits::Parameter,

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::base_dpc::BaseDPCComponents;
+use crate::testnet1::BaseDPCComponents;
 use snarkvm_algorithms::traits::{EncryptionScheme, SNARK};
 use snarkvm_parameters::{traits::Parameter, *};
 use snarkvm_utilities::bytes::FromBytes;

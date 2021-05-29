@@ -16,8 +16,8 @@
 
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_dpc::{
-    base_dpc::{instantiated::Components, parameters::SystemParameters, BaseDPCComponents, DPC},
     errors::DPCError,
+    testnet1::{instantiated::Components, parameters::SystemParameters, BaseDPCComponents, DPC},
 };
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 

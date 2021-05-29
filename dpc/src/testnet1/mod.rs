@@ -16,8 +16,8 @@
 
 use crate::{
     account::{Account, AccountAddress, AccountPrivateKey},
-    base_dpc::record_payload::RecordPayload,
     errors::DPCError,
+    testnet1::record_payload::RecordPayload,
     traits::{AccountScheme, DPCComponents, DPCScheme, Record},
 };
 use snarkvm_algorithms::{

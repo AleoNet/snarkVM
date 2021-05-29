@@ -16,7 +16,7 @@
 
 use crate::{
     account::AccountPrivateKey,
-    base_dpc::{
+    testnet1::{
         parameters::SystemParameters,
         record::DPCRecord,
         record_encryption::RecordEncryptionGadgetComponents,

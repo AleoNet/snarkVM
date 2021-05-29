@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    base_dpc::{record::DPCRecord, record_payload::RecordPayload, BaseDPCComponents},
     errors::DPCError,
+    testnet1::{record::DPCRecord, record_payload::RecordPayload, BaseDPCComponents},
     traits::{DPCComponents, Record, RecordSerializerScheme},
 };
 use snarkvm_algorithms::{
