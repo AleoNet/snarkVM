@@ -172,7 +172,7 @@ mod test {
 
         let nonce = [1; 32];
         let leaves = vec![vec![3u8; 32]; 7];
-        let tree = EdwardsMaskedMerkleTree::new(Arc::new(parameters.clone()), leaves.iter()).unwrap();
+        let tree = EdwardsMaskedMerkleTree::new(Arc::new(parameters.clone()), &leaves[..]).unwrap();
         let root = tree.root();
         let mut root_bytes = [0; 32];
         root.write(&mut root_bytes[..]).unwrap();
