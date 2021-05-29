@@ -39,7 +39,7 @@ use std::{
     Eq(bound = "C: BaseDPCComponents")
 )]
 // TODO (howardwu): Remove the public visibility here
-pub struct DPCTransaction<C: BaseDPCComponents> {
+pub struct Transaction<C: BaseDPCComponents> {
     /// The network this transaction is included in
     pub network: Network,
 
@@ -83,7 +83,7 @@ pub struct DPCTransaction<C: BaseDPCComponents> {
     pub inner_circuit_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output,
 }
 
-impl<C: BaseDPCComponents> DPCTransaction<C> {
+impl<C: BaseDPCComponents> Transaction<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         old_serial_numbers: Vec<<Self as TransactionScheme>::SerialNumber>,
@@ -116,7 +116,7 @@ impl<C: BaseDPCComponents> DPCTransaction<C> {
     }
 }
 
-impl<C: BaseDPCComponents> TransactionScheme for DPCTransaction<C> {
+impl<C: BaseDPCComponents> TransactionScheme for Transaction<C> {
     type Commitment = <C::RecordCommitment as CommitmentScheme>::Output;
     type Digest = MerkleTreeDigest<C::MerkleParameters>;
     type EncryptedRecord = EncryptedRecord<C>;
@@ -195,7 +195,7 @@ impl<C: BaseDPCComponents> TransactionScheme for DPCTransaction<C> {
     }
 }
 
-impl<C: BaseDPCComponents> ToBytes for DPCTransaction<C> {
+impl<C: BaseDPCComponents> ToBytes for Transaction<C> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         for old_serial_number in &self.old_serial_numbers {
@@ -229,7 +229,7 @@ impl<C: BaseDPCComponents> ToBytes for DPCTransaction<C> {
     }
 }
 
-impl<C: BaseDPCComponents> FromBytes for DPCTransaction<C> {
+impl<C: BaseDPCComponents> FromBytes for Transaction<C> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the old serial numbers
@@ -297,7 +297,7 @@ impl<C: BaseDPCComponents> FromBytes for DPCTransaction<C> {
 }
 
 // TODO add debug support for record ciphertexts
-impl<C: BaseDPCComponents> fmt::Debug for DPCTransaction<C> {
+impl<C: BaseDPCComponents> fmt::Debug for Transaction<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

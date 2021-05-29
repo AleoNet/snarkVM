@@ -21,10 +21,8 @@ use crate::{
         outer_circuit::OuterCircuit,
         outer_circuit_verifier_input::OuterCircuitVerifierInput,
         program::{NoopCircuit, ProgramLocalData},
-        transaction::DPCTransaction,
-        BaseDPCComponents,
-        LocalData as DPCLocalData,
-        DPC,
+        transaction::Transaction,
+        BaseDPCComponents, LocalData as DPCLocalData, DPC,
     },
     traits::DPCComponents,
 };
@@ -204,7 +202,7 @@ pub type OuterSNARK = Groth16<OuterPairing, OuterCircuit<Components>, OuterCircu
 pub type NoopProgramSNARK<C> = GM17<InnerPairing, NoopCircuit<C>, ProgramLocalData<C>>;
 pub type PRF = Blake2s;
 
-pub type Tx = DPCTransaction<Components>;
+pub type Tx = Transaction<Components>;
 
 pub type InstantiatedDPC = DPC<Components>;
 pub type LocalData = DPCLocalData<Components>;

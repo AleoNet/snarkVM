@@ -24,13 +24,7 @@ use snarkvm_algorithms::{
     commitment_tree::CommitmentMerkleTree,
     merkle_tree::{MerklePath, MerkleTreeDigest},
     traits::{
-        CommitmentScheme,
-        EncryptionScheme,
-        LoadableMerkleParameters,
-        MerkleParameters,
-        SignatureScheme,
-        CRH,
-        PRF,
+        CommitmentScheme, EncryptionScheme, LoadableMerkleParameters, MerkleParameters, SignatureScheme, CRH, PRF,
         SNARK,
     },
 };
@@ -38,8 +32,7 @@ use snarkvm_curves::traits::{Group, MontgomeryModelParameters, ProjectiveCurve, 
 use snarkvm_gadgets::traits::algorithms::{CRHGadget, SNARKVerifierGadget};
 use snarkvm_objects::{
     traits::{LedgerScheme, TransactionScheme},
-    AleoAmount,
-    Network,
+    AleoAmount, Network,
 };
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
@@ -164,7 +157,7 @@ pub struct TransactionKernel<Components: BaseDPCComponents> {
     pub local_data_commitment_randomizers: Vec<<Components::LocalDataCommitment as CommitmentScheme>::Randomness>,
 
     pub value_balance: AleoAmount,
-    pub memorandum: <DPCTransaction<Components> as TransactionScheme>::Memorandum,
+    pub memorandum: <Transaction<Components> as TransactionScheme>::Memorandum,
     pub network_id: u8,
 }
 
@@ -364,7 +357,7 @@ impl<Components: BaseDPCComponents> FromBytes for TransactionKernel<Components> 
         }
 
         let value_balance: AleoAmount = FromBytes::read(&mut reader)?;
-        let memorandum: <DPCTransaction<Components> as TransactionScheme>::Memorandum = FromBytes::read(&mut reader)?;
+        let memorandum: <Transaction<Components> as TransactionScheme>::Memorandum = FromBytes::read(&mut reader)?;
         let network_id: u8 = FromBytes::read(&mut reader)?;
 
         Ok(Self {
@@ -409,7 +402,7 @@ pub struct LocalData<Components: BaseDPCComponents> {
     pub local_data_merkle_tree: CommitmentMerkleTree<Components::LocalDataCommitment, Components::LocalDataCRH>,
     pub local_data_commitment_randomizers: Vec<<Components::LocalDataCommitment as CommitmentScheme>::Randomness>,
 
-    pub memorandum: <DPCTransaction<Components> as TransactionScheme>::Memorandum,
+    pub memorandum: <Transaction<Components> as TransactionScheme>::Memorandum,
     pub network_id: u8,
 }
 
@@ -568,7 +561,7 @@ where
         MerklePath = MerklePath<Components::MerkleParameters>,
         MerkleTreeDigest = MerkleTreeDigest<Components::MerkleParameters>,
         SerialNumber = <Components::AccountSignature as SignatureScheme>::PublicKey,
-        Transaction = DPCTransaction<Components>,
+        Transaction = Transaction<Components>,
     >,
 {
     type Account = Account<Components>;
@@ -578,7 +571,7 @@ where
     type PrivateProgramInput = PrivateProgramInput;
     type Record = Record<Components>;
     type SystemParameters = SystemParameters<Components>;
-    type Transaction = DPCTransaction<Components>;
+    type Transaction = Transaction<Components>;
     type TransactionKernel = TransactionKernel<Components>;
 
     fn setup<R: Rng>(
