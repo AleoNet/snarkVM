@@ -22,7 +22,9 @@ use crate::{
         outer_circuit_verifier_input::OuterCircuitVerifierInput,
         program::{NoopCircuit, ProgramLocalData},
         transaction::Transaction,
-        BaseDPCComponents, LocalData as DPCLocalData, DPC,
+        BaseDPCComponents,
+        LocalData as DPCLocalData,
+        DPC,
     },
     traits::DPCComponents,
 };

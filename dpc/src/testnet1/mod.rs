@@ -24,7 +24,13 @@ use snarkvm_algorithms::{
     commitment_tree::CommitmentMerkleTree,
     merkle_tree::{MerklePath, MerkleTreeDigest},
     traits::{
-        CommitmentScheme, EncryptionScheme, LoadableMerkleParameters, MerkleParameters, SignatureScheme, CRH, PRF,
+        CommitmentScheme,
+        EncryptionScheme,
+        LoadableMerkleParameters,
+        MerkleParameters,
+        SignatureScheme,
+        CRH,
+        PRF,
         SNARK,
     },
 };
@@ -32,7 +38,8 @@ use snarkvm_curves::traits::{Group, MontgomeryModelParameters, ProjectiveCurve, 
 use snarkvm_gadgets::traits::algorithms::{CRHGadget, SNARKVerifierGadget};
 use snarkvm_objects::{
     traits::{LedgerScheme, TransactionScheme},
-    AleoAmount, Network,
+    AleoAmount,
+    Network,
 };
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
