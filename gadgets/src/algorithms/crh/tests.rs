@@ -22,9 +22,10 @@ use crate::{
         PedersenCompressedCRHGadget,
     },
     curves::edwards_bls12::EdwardsBlsGadget,
+    integers::uint::UInt8,
     traits::{
         algorithms::{CRHGadget, MaskedCRHGadget},
-        utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8},
+        utilities::{alloc::AllocGadget, eq::EqGadget},
     },
 };
 use snarkvm_algorithms::{

@@ -22,8 +22,9 @@ use crate::{
     traits::{
         curves::PairingGadget,
         fields::FieldGadget,
-        utilities::{alloc::AllocGadget, boolean::Boolean, eq::EqGadget},
+        utilities::{alloc::AllocGadget, eq::EqGadget},
     },
+    utilities::boolean::Boolean,
 };
 use snarkvm_curves::{
     bls12_377::{Bls12_377, Fq, Fr, G1Projective, G2Projective},

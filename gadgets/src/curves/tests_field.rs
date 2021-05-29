@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{
-    fields::FieldGadget,
-    utilities::{alloc::AllocGadget, boolean::Boolean},
+use crate::{
+    traits::{fields::FieldGadget, utilities::alloc::AllocGadget},
+    utilities::boolean::Boolean,
 };
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};

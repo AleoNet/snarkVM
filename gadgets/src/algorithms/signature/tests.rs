@@ -17,9 +17,10 @@
 use crate::{
     algorithms::signature::{SchnorrParametersGadget, SchnorrPublicKeyGadget, SchnorrPublicKeyRandomizationGadget},
     curves::edwards_bls12::EdwardsBlsGadget,
+    integers::uint::UInt8,
     traits::{
         algorithms::SignaturePublicKeyRandomizationGadget,
-        utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8},
+        utilities::{alloc::AllocGadget, eq::EqGadget},
     },
 };
 use snarkvm_algorithms::{signature::SchnorrSignature, traits::SignatureScheme};

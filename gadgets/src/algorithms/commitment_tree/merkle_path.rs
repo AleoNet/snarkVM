@@ -14,12 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{
-    algorithms::{CRHGadget, CommitmentGadget},
+use crate::{
+    traits::{
+        algorithms::{CRHGadget, CommitmentGadget},
+        utilities::{
+            alloc::AllocGadget,
+            eq::{ConditionalEqGadget, ConditionalOrEqualsGadget},
+        },
+    },
     utilities::{
-        alloc::AllocGadget,
         boolean::{AllocatedBit, Boolean},
-        eq::{ConditionalEqGadget, ConditionalOrEqualsGadget},
         ToBytesGadget,
     },
 };

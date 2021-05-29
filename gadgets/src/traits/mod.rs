@@ -20,4 +20,6 @@ pub mod curves;
 
 pub mod fields;
 
+pub mod integers;
+
 pub mod utilities;

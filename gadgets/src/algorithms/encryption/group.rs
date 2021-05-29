@@ -14,17 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{
-    algorithms::EncryptionGadget,
-    curves::{CompressedGroupGadget, GroupGadget},
-    utilities::{
-        alloc::AllocGadget,
-        boolean::Boolean,
-        eq::{ConditionalEqGadget, EqGadget},
-        integer::Integer,
-        uint::UInt8,
-        ToBytesGadget,
+use crate::{
+    integers::uint::UInt8,
+    traits::{
+        algorithms::EncryptionGadget,
+        curves::{CompressedGroupGadget, GroupGadget},
+        integers::integer::Integer,
+        utilities::{
+            alloc::AllocGadget,
+            eq::{ConditionalEqGadget, EqGadget},
+        },
     },
+    utilities::{boolean::Boolean, ToBytesGadget},
 };
 use snarkvm_algorithms::encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey};
 use snarkvm_curves::traits::{Group, ProjectiveCurve};

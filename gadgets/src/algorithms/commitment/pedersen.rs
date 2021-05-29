@@ -14,10 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{
-    algorithms::CommitmentGadget,
-    curves::{CompressedGroupGadget, GroupGadget},
-    utilities::{alloc::AllocGadget, integer::Integer, uint::unsigned_integer::UInt8},
+use crate::{
+    integers::uint::UInt8,
+    traits::{
+        algorithms::CommitmentGadget,
+        curves::{CompressedGroupGadget, GroupGadget},
+        integers::Integer,
+        utilities::alloc::AllocGadget,
+    },
 };
 use snarkvm_algorithms::{
     commitment::{PedersenCommitment, PedersenCommitmentParameters, PedersenCompressedCommitment},

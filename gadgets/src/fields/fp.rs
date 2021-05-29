@@ -15,18 +15,20 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    integers::uint::UInt8,
     traits::{
         fields::{FieldGadget, ToConstraintFieldGadget},
-        utilities::ToBitsLEGadget,
+        integers::Integer,
+        utilities::{
+            alloc::AllocGadget,
+            eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+            select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
+        },
     },
     utilities::{
-        alloc::AllocGadget,
         boolean::{AllocatedBit, Boolean},
-        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-        integer::Integer,
-        select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
-        uint::unsigned_integer::UInt8,
         ToBitsBEGadget,
+        ToBitsLEGadget,
         ToBytesGadget,
     },
 };

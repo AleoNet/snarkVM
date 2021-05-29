@@ -17,11 +17,8 @@
 use super::*;
 use crate::{
     curves::edwards_bls12::EdwardsBlsGadget,
-    traits::{
-        algorithms::CommitmentGadget,
-        fields::FieldGadget,
-        utilities::{alloc::AllocGadget, uint::UInt8},
-    },
+    integers::uint::UInt8,
+    traits::{algorithms::CommitmentGadget, fields::FieldGadget, utilities::alloc::AllocGadget},
 };
 use snarkvm_algorithms::{
     commitment::{Blake2sCommitment, PedersenCommitment},

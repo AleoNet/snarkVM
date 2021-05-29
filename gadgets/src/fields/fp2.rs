@@ -16,17 +16,16 @@
 
 use crate::{
     fields::FpGadget,
-    traits::fields::FieldGadget,
-    utilities::{
-        alloc::AllocGadget,
-        boolean::Boolean,
-        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-        select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
-        uint::unsigned_integer::UInt8,
-        ToBitsBEGadget,
-        ToBitsLEGadget,
-        ToBytesGadget,
+    integers::uint::UInt8,
+    traits::{
+        fields::FieldGadget,
+        utilities::{
+            alloc::AllocGadget,
+            eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+            select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
+        },
     },
+    utilities::{boolean::Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
 };
 use snarkvm_fields::{Field, Fp2, Fp2Parameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, ConstraintVariable};

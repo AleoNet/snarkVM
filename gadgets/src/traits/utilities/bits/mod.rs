@@ -16,16 +16,16 @@
 
 #[macro_use]
 pub mod adder;
-pub use self::adder::*;
+pub use adder::*;
 
 pub mod comparator;
-pub use self::comparator::*;
+pub use comparator::*;
 
 pub mod rca;
-pub use self::rca::*;
+pub use rca::*;
 
 pub mod sign_extend;
-pub use self::sign_extend::*;
+pub use sign_extend::*;
 
 pub mod xor;
-pub use self::xor::*;
+pub use xor::*;

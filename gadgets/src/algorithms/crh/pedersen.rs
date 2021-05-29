@@ -14,10 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{
-    algorithms::{CRHGadget, MaskedCRHGadget},
-    curves::{CompressedGroupGadget, GroupGadget},
-    utilities::{alloc::AllocGadget, boolean::Boolean, integer::Integer, uint::unsigned_integer::UInt8},
+use crate::{
+    integers::uint::UInt8,
+    traits::{
+        algorithms::{CRHGadget, MaskedCRHGadget},
+        curves::{CompressedGroupGadget, GroupGadget},
+        integers::Integer,
+        utilities::alloc::AllocGadget,
+    },
+    utilities::boolean::Boolean,
 };
 use snarkvm_algorithms::crh::{PedersenCRH, PedersenCRHParameters, PedersenCompressedCRH, PedersenSize};
 use snarkvm_curves::traits::{Group, ProjectiveCurve};

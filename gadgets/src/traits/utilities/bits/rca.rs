@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{bits::FullAdder, boolean::Boolean, int::*};
-use snarkvm_fields::{Field, PrimeField};
+use crate::{traits::utilities::bits::FullAdder, utilities::boolean::Boolean};
+use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 /// Returns the bitwise sum of a n-bit number with carry bit
@@ -44,15 +44,3 @@ impl<F: Field> RippleCarryAdder<F> for Vec<Boolean> {
         Ok(result)
     }
 }
-
-macro_rules! rpc_impl {
-    ($($gadget: ident)*) => ($(
-        impl<F: Field + PrimeField> RippleCarryAdder<F> for $gadget {
-            fn add_bits<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Vec<Boolean>, SynthesisError> {
-                self.bits.add_bits(cs, &other.bits)
-            }
-        }
-    )*)
-}
-
-rpc_impl!(Int8 Int16 Int32 Int64 Int128);

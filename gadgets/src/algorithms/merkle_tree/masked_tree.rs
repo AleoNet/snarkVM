@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{
-    algorithms::MaskedCRHGadget,
-    utilities::{uint::unsigned_integer::UInt8, ToBytesGadget},
-};
+use crate::{integers::uint::UInt8, traits::algorithms::MaskedCRHGadget, utilities::ToBytesGadget};
 use snarkvm_algorithms::traits::CRH;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};

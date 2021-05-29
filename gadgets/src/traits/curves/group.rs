@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{
-    alloc::AllocGadget,
-    boolean::Boolean,
-    eq::{EqGadget, NEqGadget},
-    select::CondSelectGadget,
-    ToBitsBEGadget,
-    ToBytesGadget,
+use crate::{
+    traits::utilities::{
+        alloc::AllocGadget,
+        eq::{EqGadget, NEqGadget},
+        select::CondSelectGadget,
+    },
+    utilities::{boolean::Boolean, ToBitsBEGadget, ToBytesGadget},
 };
 use snarkvm_curves::{
     traits::{AffineCurve, Group},

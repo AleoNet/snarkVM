@@ -24,7 +24,8 @@ use snarkvm_r1cs::errors::SynthesisError;
 
 use snarkvm_gadgets::traits::{
     algorithms::{CRHGadget, MaskedCRHGadget},
-    utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8},
+    integers::uint::UInt8,
+    utilities::{alloc::AllocGadget, eq::EqGadget},
 };
 use snarkvm_r1cs::{Assignment, ConstraintSynthesizer, ConstraintSystem};
 

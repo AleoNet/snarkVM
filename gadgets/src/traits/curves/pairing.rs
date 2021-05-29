@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    traits::{curves::GroupGadget, fields::FieldGadget},
-    utilities::{alloc::AllocGadget, ToBytesGadget},
+    traits::{curves::GroupGadget, fields::FieldGadget, utilities::alloc::AllocGadget},
+    utilities::ToBytesGadget,
 };
 use snarkvm_curves::{traits::PairingEngine, PairingCurve};
 use snarkvm_fields::Field;

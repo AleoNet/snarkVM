@@ -15,9 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_fields::Field;
-use snarkvm_r1cs::ConstraintSystem;
-
-use crate::utilities::SynthesisError;
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 /// Performs a bitwise XOR operation between `self` and `other` in the constraint system.
 pub trait Xor<F: Field, Rhs = Self>

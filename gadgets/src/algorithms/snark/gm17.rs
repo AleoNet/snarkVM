@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    integers::uint::UInt8,
     traits::{
         algorithms::SNARKVerifierGadget,
         curves::{GroupGadget, PairingGadget},
@@ -22,12 +23,9 @@ use crate::{
         utilities::{
             alloc::{AllocBytesGadget, AllocGadget},
             eq::EqGadget,
-            uint::UInt8,
-            ToBitsBEGadget,
-            ToBytesGadget,
         },
     },
-    utilities::boolean::Boolean,
+    utilities::{boolean::Boolean, ToBitsBEGadget, ToBytesGadget},
 };
 use snarkvm_algorithms::snark::gm17::{Proof, VerifyingKey, GM17};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};

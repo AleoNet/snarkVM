@@ -18,12 +18,9 @@ use crate::{
     curves::tests_group::group_test,
     traits::{
         curves::GroupGadget,
-        utilities::{
-            alloc::AllocGadget,
-            boolean::{AllocatedBit, Boolean},
-            select::CondSelectGadget,
-        },
+        utilities::{alloc::AllocGadget, select::CondSelectGadget},
     },
+    utilities::boolean::{AllocatedBit, Boolean},
 };
 use snarkvm_curves::{
     templates::twisted_edwards_extended::GroupAffine as TEAffine,

@@ -15,18 +15,16 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    integers::uint::UInt8,
     traits::{
         algorithms::snark::SNARKVerifierGadget,
         curves::{GroupGadget, PairingGadget},
         utilities::{
             alloc::{AllocBytesGadget, AllocGadget},
             eq::EqGadget,
-            uint::UInt8,
-            ToBitsBEGadget,
-            ToBytesGadget,
         },
     },
-    utilities::boolean::Boolean,
+    utilities::{boolean::Boolean, ToBitsBEGadget, ToBytesGadget},
 };
 use snarkvm_algorithms::snark::groth16::{Groth16, Proof, VerifyingKey};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
@@ -420,15 +418,17 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, traits::utilities::boolean::Boolean};
+    use rand::Rng;
+
     use snarkvm_algorithms::snark::groth16::*;
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_fields::PrimeField;
     use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
     use snarkvm_utilities::{test_rng, to_bytes, BitIteratorBE, ToBytes};
 
-    use rand::Rng;
+    use crate::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, utilities::boolean::Boolean};
+
+    use super::*;
 
     type TestProofSystem = Groth16<Bls12_377, Bench<Fr>, Fr>;
     type TestVerifierGadget = Groth16VerifierGadget<Bls12_377, Fq, Bls12_377PairingGadget>;

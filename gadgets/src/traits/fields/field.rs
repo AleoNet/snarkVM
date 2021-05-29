@@ -14,14 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{
-    alloc::AllocGadget,
-    boolean::Boolean,
-    eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-    select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
-    ToBitsBEGadget,
-    ToBitsLEGadget,
-    ToBytesGadget,
+use crate::{
+    traits::utilities::{
+        alloc::AllocGadget,
+        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+        select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
+    },
+    utilities::{boolean::Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
 };
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};

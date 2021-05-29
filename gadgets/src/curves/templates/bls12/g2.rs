@@ -17,22 +17,22 @@
 use crate::{
     curves::templates::bls12::AffineGadget,
     fields::Fp2Gadget,
+    integers::uint::UInt8,
     traits::{
         curves::GroupGadget,
         fields::FieldGadget,
-        utilities::{eq::NEqGadget, uint::UInt8, ToBytesGadget},
+        utilities::{
+            alloc::AllocGadget,
+            eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+        },
     },
-    utilities::alloc::AllocGadget,
+    utilities::{boolean::Boolean, ToBytesGadget},
 };
 use snarkvm_curves::templates::bls12::{Bls12Parameters, G2Prepared, TwistType};
 use snarkvm_fields::{batch_inversion, Field, One};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
-use crate::utilities::{
-    boolean::Boolean,
-    eq::{ConditionalEqGadget, EqGadget},
-};
 use std::{borrow::Borrow, fmt::Debug};
 
 pub type G2Gadget<P> = AffineGadget<<P as Bls12Parameters>::G2Parameters, <P as Bls12Parameters>::Fp, Fp2G<P>>;

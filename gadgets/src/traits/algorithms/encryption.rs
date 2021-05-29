@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{alloc::AllocGadget, eq::EqGadget, ToBytesGadget};
+use crate::{
+    traits::utilities::{alloc::AllocGadget, eq::EqGadget},
+    utilities::ToBytesGadget,
+};
 use snarkvm_algorithms::traits::EncryptionScheme;
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};

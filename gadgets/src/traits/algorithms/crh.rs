@@ -14,13 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{
-    alloc::AllocGadget,
-    eq::{ConditionalEqGadget, EqGadget},
-    integer::Integer,
-    select::CondSelectGadget,
-    uint::UInt8,
-    ToBytesGadget,
+use crate::{
+    integers::uint::UInt8,
+    traits::{
+        integers::Integer,
+        utilities::{
+            alloc::AllocGadget,
+            eq::{ConditionalEqGadget, EqGadget},
+            select::CondSelectGadget,
+        },
+    },
+    utilities::ToBytesGadget,
 };
 use snarkvm_algorithms::traits::CRH;
 use snarkvm_fields::{Field, PrimeField};

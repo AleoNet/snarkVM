@@ -16,11 +16,13 @@
 
 use crate::{
     algorithms::crh::pedersen::PedersenCRHParametersGadget,
+    integers::uint::UInt8,
     traits::{
         algorithms::CRHGadget,
         curves::{CompressedGroupGadget, GroupGadget},
-        utilities::{boolean::Boolean, integer::Integer, uint::unsigned_integer::UInt8},
+        integers::integer::Integer,
     },
+    utilities::boolean::Boolean,
 };
 use snarkvm_algorithms::crh::{
     BoweHopwoodPedersenCRH,

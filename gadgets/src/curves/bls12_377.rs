@@ -38,17 +38,12 @@ pub type PairingGadget = Bls12PairingGadget<Bls12_377Parameters>;
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::traits::{
-        curves::GroupGadget,
-        fields::FieldGadget,
-        utilities::{
-            alloc::AllocGadget,
-            boolean::{AllocatedBit, Boolean},
-            eq::EqGadget,
-            select::CondSelectGadget,
-        },
+    use rand::{
+        SeedableRng,
+        {self},
     };
+    use rand_xorshift::XorShiftRng;
+
     use snarkvm_curves::{
         bls12_377::{Fq, Fr, G1Projective as G1, G2Projective as G2},
         traits::{AffineCurve, ProjectiveCurve},
@@ -57,11 +52,16 @@ mod test {
     use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
     use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
 
-    use rand::{
-        SeedableRng,
-        {self},
+    use crate::{
+        traits::{
+            curves::GroupGadget,
+            fields::FieldGadget,
+            utilities::{alloc::AllocGadget, eq::EqGadget, select::CondSelectGadget},
+        },
+        utilities::boolean::{AllocatedBit, Boolean},
     };
-    use rand_xorshift::XorShiftRng;
+
+    use super::*;
 
     #[test]
     fn bls12_g1_constraint_costs() {

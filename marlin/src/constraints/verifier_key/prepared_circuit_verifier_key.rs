@@ -34,7 +34,7 @@ use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
 use core::borrow::Borrow;
-use snarkvm_gadgets::utilities::{uint::UInt8, ToBytesGadget};
+use snarkvm_gadgets::{integers::uint::UInt8, utilities::ToBytesGadget};
 use std::marker::PhantomData;
 
 /// The prepared circuit verifying key gadget

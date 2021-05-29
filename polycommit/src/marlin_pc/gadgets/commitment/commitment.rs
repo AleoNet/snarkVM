@@ -19,11 +19,12 @@ use snarkvm_curves::{traits::AffineCurve, PairingEngine};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     fields::FpGadget,
+    integers::uint::UInt8,
     traits::{
         curves::{GroupGadget, PairingGadget},
         fields::ToConstraintFieldGadget,
     },
-    utilities::{alloc::AllocGadget, uint::UInt8, ToBytesGadget},
+    utilities::{alloc::AllocGadget, ToBytesGadget},
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 

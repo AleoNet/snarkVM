@@ -20,7 +20,8 @@ use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     fields::FpGadget,
-    utilities::{alloc::AllocGadget, uint::UInt8, ToBytesGadget},
+    integers::uint::UInt8,
+    utilities::{alloc::AllocGadget, ToBytesGadget},
 };
 use snarkvm_polycommit::PCCheckVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};

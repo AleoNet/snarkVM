@@ -17,14 +17,12 @@
 use crate::{
     curves::templates::bls12::AffineGadget,
     fields::FpGadget,
+    integers::uint::UInt8,
     traits::{
         curves::GroupGadget,
-        utilities::{uint::UInt8, ToBytesGadget},
+        utilities::eq::{ConditionalEqGadget, EqGadget},
     },
-    utilities::{
-        boolean::Boolean,
-        eq::{ConditionalEqGadget, EqGadget},
-    },
+    utilities::{boolean::Boolean, ToBytesGadget},
 };
 use snarkvm_curves::{
     templates::bls12::{Bls12Parameters, G1Prepared},

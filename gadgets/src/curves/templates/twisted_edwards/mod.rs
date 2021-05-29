@@ -14,18 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{
-    curves::{CompressedGroupGadget, GroupGadget},
-    fields::FieldGadget,
-    utilities::{
-        alloc::AllocGadget,
-        boolean::Boolean,
-        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-        select::CondSelectGadget,
-        uint::UInt8,
-        ToBitsBEGadget,
-        ToBytesGadget,
+use crate::{
+    integers::uint::UInt8,
+    traits::{
+        curves::{CompressedGroupGadget, GroupGadget},
+        fields::FieldGadget,
+        utilities::{
+            alloc::AllocGadget,
+            eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+            select::CondSelectGadget,
+        },
     },
+    utilities::{boolean::Boolean, ToBitsBEGadget, ToBytesGadget},
 };
 use snarkvm_curves::{
     templates::twisted_edwards_extended::GroupAffine as TEAffine,
@@ -54,11 +54,13 @@ pub struct MontgomeryAffineGadget<P: TEModelParameters, F: Field, FG: FieldGadge
 }
 
 mod montgomery_affine_impl {
-    use super::*;
+    use std::ops::{AddAssign, MulAssign, SubAssign};
+
     use snarkvm_curves::templates::twisted_edwards_extended::GroupAffine;
     use snarkvm_fields::{Field, One, Zero};
     use snarkvm_r1cs::Assignment;
-    use std::ops::{AddAssign, MulAssign, SubAssign};
+
+    use super::*;
 
     impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> MontgomeryAffineGadget<P, F, FG> {
         pub fn new(x: FG, y: FG) -> Self {
@@ -241,12 +243,13 @@ impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> PartialEq
 impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> Eq for AffineGadget<P, F, FG> {}
 
 mod affine_impl {
-    use super::*;
+    use std::ops::Neg;
+
     use snarkvm_curves::traits::AffineCurve;
     use snarkvm_fields::{Field, One, PrimeField};
     use snarkvm_r1cs::Assignment;
 
-    use std::ops::Neg;
+    use super::*;
 
     impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> GroupGadget<TEAffine<P>, F>
         for AffineGadget<P, F, FG>
@@ -604,14 +607,16 @@ mod affine_impl {
 }
 
 mod projective_impl {
-    use super::*;
+    use std::ops::Neg;
+
     use snarkvm_curves::{
         templates::twisted_edwards_extended::GroupProjective as TEProjective,
         traits::{AffineCurve, ProjectiveCurve},
     };
     use snarkvm_fields::{Field, One, PrimeField, Zero};
     use snarkvm_r1cs::Assignment;
-    use std::ops::Neg;
+
+    use super::*;
 
     /// Based on 2 input bits, output on a group element from a 4 element table.
     /// 00 => table[0]

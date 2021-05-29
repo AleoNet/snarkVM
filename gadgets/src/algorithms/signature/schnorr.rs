@@ -14,17 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{
-    algorithms::SignaturePublicKeyRandomizationGadget,
-    curves::GroupGadget,
-    utilities::{
-        alloc::AllocGadget,
-        boolean::Boolean,
-        eq::{ConditionalEqGadget, EqGadget},
-        integer::Integer,
-        uint::unsigned_integer::UInt8,
-        ToBytesGadget,
+use crate::{
+    integers::uint::UInt8,
+    traits::{
+        algorithms::SignaturePublicKeyRandomizationGadget,
+        curves::GroupGadget,
+        integers::Integer,
+        utilities::{
+            alloc::AllocGadget,
+            eq::{ConditionalEqGadget, EqGadget},
+        },
     },
+    utilities::{boolean::Boolean, ToBytesGadget},
 };
 use snarkvm_algorithms::signature::{SchnorrParameters, SchnorrPublicKey, SchnorrSignature};
 use snarkvm_curves::traits::Group;

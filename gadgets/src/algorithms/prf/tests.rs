@@ -14,27 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    algorithms::prf::*,
-    traits::{
-        algorithms::PRFGadget,
-        utilities::{
-            alloc::AllocGadget,
-            boolean::{AllocatedBit, Boolean},
-            eq::EqGadget,
-            integer::Integer,
-            uint::unsigned_integer::UInt8,
-        },
-    },
-};
-use snarkvm_algorithms::{prf::blake2s::Blake2s as B2SPRF, traits::PRF};
-use snarkvm_curves::bls12_377::Fr;
-use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-
 use blake2::VarBlake2s;
 use digest::{Update, VariableOutput};
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
+
+use snarkvm_algorithms::{prf::blake2s::Blake2s as B2SPRF, traits::PRF};
+use snarkvm_curves::bls12_377::Fr;
+use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
+
+use crate::{
+    algorithms::prf::*,
+    integers::uint::UInt8,
+    traits::{
+        algorithms::PRFGadget,
+        integers::integer::Integer,
+        utilities::{alloc::AllocGadget, eq::EqGadget},
+    },
+    utilities::boolean::{AllocatedBit, Boolean},
+};
 
 #[test]
 fn test_blake2s_constraints() {
