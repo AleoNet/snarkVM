@@ -67,7 +67,6 @@ pub mod account;
 pub use account::*;
 
 pub mod testnet1;
-pub use testnet1::*;
 
 pub mod errors;
 pub use errors::*;
