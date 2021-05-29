@@ -39,7 +39,7 @@ use std::{
     PartialEq(bound = "C: BaseDPCComponents"),
     Eq(bound = "C: BaseDPCComponents")
 )]
-pub struct DPCRecord<C: BaseDPCComponents> {
+pub struct Record<C: BaseDPCComponents> {
     pub(crate) owner: AccountAddress<C>,
     pub(crate) is_dummy: bool,
     // TODO (raychu86) use AleoAmount which will guard the value range
@@ -63,7 +63,7 @@ fn default_program_id<C: CRH>() -> Vec<u8> {
     to_bytes![C::Output::default()].unwrap()
 }
 
-impl<C: BaseDPCComponents> RecordScheme for DPCRecord<C> {
+impl<C: BaseDPCComponents> RecordScheme for Record<C> {
     type Commitment = <C::RecordCommitment as CommitmentScheme>::Output;
     type CommitmentRandomness = <C::RecordCommitment as CommitmentScheme>::Randomness;
     type Owner = AccountAddress<C>;
@@ -109,7 +109,7 @@ impl<C: BaseDPCComponents> RecordScheme for DPCRecord<C> {
     }
 }
 
-impl<C: BaseDPCComponents> ToBytes for DPCRecord<C> {
+impl<C: BaseDPCComponents> ToBytes for Record<C> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.owner.write(&mut writer)?;
@@ -130,7 +130,7 @@ impl<C: BaseDPCComponents> ToBytes for DPCRecord<C> {
     }
 }
 
-impl<C: BaseDPCComponents> FromBytes for DPCRecord<C> {
+impl<C: BaseDPCComponents> FromBytes for Record<C> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let owner: AccountAddress<C> = FromBytes::read(&mut reader)?;

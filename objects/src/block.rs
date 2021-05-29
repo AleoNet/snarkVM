@@ -16,7 +16,7 @@
 
 use crate::{
     dpc::DPCTransactions,
-    traits::{BlockScheme, Transaction},
+    traits::{BlockScheme, TransactionScheme},
     BlockError,
     BlockHeader,
 };
@@ -29,7 +29,7 @@ use snarkvm_utilities::{
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Block<T: Transaction> {
+pub struct Block<T: TransactionScheme> {
     /// First `HEADER_SIZE` bytes of the block as defined by the encoding used by
     /// "block" messages.
     pub header: BlockHeader,
@@ -37,7 +37,7 @@ pub struct Block<T: Transaction> {
     pub transactions: DPCTransactions<T>,
 }
 
-impl<T: Transaction> BlockScheme for Block<T> {
+impl<T: TransactionScheme> BlockScheme for Block<T> {
     type BlockHeader = BlockHeader;
     type Transaction = T;
 
@@ -52,7 +52,7 @@ impl<T: Transaction> BlockScheme for Block<T> {
     }
 }
 
-impl<T: Transaction> ToBytes for Block<T> {
+impl<T: TransactionScheme> ToBytes for Block<T> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.header.write(&mut writer)?;
@@ -60,7 +60,7 @@ impl<T: Transaction> ToBytes for Block<T> {
     }
 }
 
-impl<T: Transaction> FromBytes for Block<T> {
+impl<T: TransactionScheme> FromBytes for Block<T> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let header: BlockHeader = FromBytes::read(&mut reader)?;
@@ -70,7 +70,7 @@ impl<T: Transaction> FromBytes for Block<T> {
     }
 }
 
-impl<T: Transaction> Block<T> {
+impl<T: TransactionScheme> Block<T> {
     pub fn serialize(&self) -> Result<Vec<u8>, BlockError> {
         let mut serialization = vec![];
         serialization.extend(&self.header.serialize().to_vec());

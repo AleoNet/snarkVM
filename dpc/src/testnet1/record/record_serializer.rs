@@ -16,7 +16,7 @@
 
 use crate::{
     errors::DPCError,
-    testnet1::{record::DPCRecord, record_payload::RecordPayload, BaseDPCComponents},
+    testnet1::{record::Record, record_payload::RecordPayload, BaseDPCComponents},
     traits::{DPCComponents, RecordScheme, RecordSerializerScheme},
 };
 use snarkvm_algorithms::{
@@ -77,7 +77,7 @@ impl<C: BaseDPCComponents, P: MontgomeryModelParameters + TEModelParameters, G: 
     type InnerField = <C as DPCComponents>::InnerField;
     type OuterField = <C as DPCComponents>::OuterField;
     type Parameters = P;
-    type Record = DPCRecord<C>;
+    type Record = Record<C>;
 
     /// Records are serialized in a specialized format to be space-saving.
     ///

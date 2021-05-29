@@ -19,7 +19,7 @@ use crate::{
     errors::DPCError,
     testnet1::{
         parameters::SystemParameters,
-        record::{encrypted_record::*, record_serializer::*, DPCRecord},
+        record::{encrypted_record::*, record_serializer::*, Record},
         record_payload::RecordPayload,
         BaseDPCComponents,
     },
@@ -92,7 +92,7 @@ impl<C: BaseDPCComponents> RecordEncryption<C> {
     /// 2. Encrypted record
     pub fn encrypt_record<R: Rng>(
         system_parameters: &SystemParameters<C>,
-        record: &DPCRecord<C>,
+        record: &Record<C>,
         rng: &mut R,
     ) -> Result<
         (
@@ -139,7 +139,7 @@ impl<C: BaseDPCComponents> RecordEncryption<C> {
         system_parameters: &SystemParameters<C>,
         account_view_key: &AccountViewKey<C>,
         encrypted_record: &EncryptedRecord<C>,
-    ) -> Result<DPCRecord<C>, DPCError> {
+    ) -> Result<Record<C>, DPCError> {
         // Decrypt the encrypted record
         let plaintext_elements = C::AccountEncryption::decrypt(
             &system_parameters.account_encryption,
@@ -202,7 +202,7 @@ impl<C: BaseDPCComponents> RecordEncryption<C> {
             &commitment_randomness,
         )?;
 
-        Ok(DPCRecord {
+        Ok(Record {
             owner,
             is_dummy,
             value,
@@ -262,7 +262,7 @@ impl<C: BaseDPCComponents> RecordEncryption<C> {
     /// 5. Record ciphertext blinding exponents used to encrypt the record
     pub fn prepare_encryption_gadget_components(
         system_parameters: &SystemParameters<C>,
-        record: &DPCRecord<C>,
+        record: &Record<C>,
         encryption_randomness: &<<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Randomness,
     ) -> Result<RecordEncryptionGadgetComponents<C>, DPCError> {
         // Serialize the record into group elements and fq_high bits

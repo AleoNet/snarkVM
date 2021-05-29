@@ -19,7 +19,7 @@ use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, SignatureScheme, CRH, SNARK},
 };
-use snarkvm_objects::{errors::TransactionError, traits::Transaction, AleoAmount, Network};
+use snarkvm_objects::{errors::TransactionError, traits::TransactionScheme, AleoAmount, Network};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     serialize::{CanonicalDeserialize, CanonicalSerialize},
@@ -86,9 +86,9 @@ pub struct DPCTransaction<C: BaseDPCComponents> {
 impl<C: BaseDPCComponents> DPCTransaction<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        old_serial_numbers: Vec<<Self as Transaction>::SerialNumber>,
-        new_commitments: Vec<<Self as Transaction>::Commitment>,
-        memorandum: <Self as Transaction>::Memorandum,
+        old_serial_numbers: Vec<<Self as TransactionScheme>::SerialNumber>,
+        new_commitments: Vec<<Self as TransactionScheme>::Commitment>,
+        memorandum: <Self as TransactionScheme>::Memorandum,
         ledger_digest: MerkleTreeDigest<C::MerkleParameters>,
         inner_circuit_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output,
         transaction_proof: <C::OuterSNARK as SNARK>::Proof,
@@ -116,7 +116,7 @@ impl<C: BaseDPCComponents> DPCTransaction<C> {
     }
 }
 
-impl<C: BaseDPCComponents> Transaction for DPCTransaction<C> {
+impl<C: BaseDPCComponents> TransactionScheme for DPCTransaction<C> {
     type Commitment = <C::RecordCommitment as CommitmentScheme>::Output;
     type Digest = MerkleTreeDigest<C::MerkleParameters>;
     type EncryptedRecord = EncryptedRecord<C>;

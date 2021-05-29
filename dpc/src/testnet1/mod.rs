@@ -37,7 +37,7 @@ use snarkvm_algorithms::{
 use snarkvm_curves::traits::{Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
 use snarkvm_gadgets::traits::algorithms::{CRHGadget, SNARKVerifierGadget};
 use snarkvm_objects::{
-    traits::{LedgerScheme, Transaction},
+    traits::{LedgerScheme, TransactionScheme},
     AleoAmount,
     Network,
 };
@@ -143,12 +143,12 @@ pub struct TransactionKernel<Components: BaseDPCComponents> {
 
     // Old record stuff
     pub old_account_private_keys: Vec<AccountPrivateKey<Components>>,
-    pub old_records: Vec<DPCRecord<Components>>,
+    pub old_records: Vec<Record<Components>>,
     pub old_serial_numbers: Vec<<Components::AccountSignature as SignatureScheme>::PublicKey>,
     pub old_randomizers: Vec<Vec<u8>>,
 
     // New record stuff
-    pub new_records: Vec<DPCRecord<Components>>,
+    pub new_records: Vec<Record<Components>>,
     pub new_sn_nonce_randomness: Vec<[u8; 32]>,
     pub new_commitments: Vec<<Components::RecordCommitment as CommitmentScheme>::Output>,
 
@@ -164,7 +164,7 @@ pub struct TransactionKernel<Components: BaseDPCComponents> {
     pub local_data_commitment_randomizers: Vec<<Components::LocalDataCommitment as CommitmentScheme>::Randomness>,
 
     pub value_balance: AleoAmount,
-    pub memorandum: <DPCTransaction<Components> as Transaction>::Memorandum,
+    pub memorandum: <DPCTransaction<Components> as TransactionScheme>::Memorandum,
     pub network_id: u8,
 }
 
@@ -279,7 +279,7 @@ impl<Components: BaseDPCComponents> FromBytes for TransactionKernel<Components> 
 
         let mut old_records = vec![];
         for _ in 0..Components::NUM_INPUT_RECORDS {
-            let old_record: DPCRecord<Components> = FromBytes::read(&mut reader)?;
+            let old_record: Record<Components> = FromBytes::read(&mut reader)?;
             old_records.push(old_record);
         }
 
@@ -306,7 +306,7 @@ impl<Components: BaseDPCComponents> FromBytes for TransactionKernel<Components> 
 
         let mut new_records = vec![];
         for _ in 0..Components::NUM_OUTPUT_RECORDS {
-            let new_record: DPCRecord<Components> = FromBytes::read(&mut reader)?;
+            let new_record: Record<Components> = FromBytes::read(&mut reader)?;
             new_records.push(new_record);
         }
 
@@ -364,7 +364,7 @@ impl<Components: BaseDPCComponents> FromBytes for TransactionKernel<Components> 
         }
 
         let value_balance: AleoAmount = FromBytes::read(&mut reader)?;
-        let memorandum: <DPCTransaction<Components> as Transaction>::Memorandum = FromBytes::read(&mut reader)?;
+        let memorandum: <DPCTransaction<Components> as TransactionScheme>::Memorandum = FromBytes::read(&mut reader)?;
         let network_id: u8 = FromBytes::read(&mut reader)?;
 
         Ok(Self {
@@ -399,17 +399,17 @@ pub struct LocalData<Components: BaseDPCComponents> {
     pub system_parameters: SystemParameters<Components>,
 
     // Old records and serial numbers
-    pub old_records: Vec<DPCRecord<Components>>,
+    pub old_records: Vec<Record<Components>>,
     pub old_serial_numbers: Vec<<Components::AccountSignature as SignatureScheme>::PublicKey>,
 
     // New records
-    pub new_records: Vec<DPCRecord<Components>>,
+    pub new_records: Vec<Record<Components>>,
 
     // Commitment to the above information.
     pub local_data_merkle_tree: CommitmentMerkleTree<Components::LocalDataCommitment, Components::LocalDataCRH>,
     pub local_data_commitment_randomizers: Vec<<Components::LocalDataCommitment as CommitmentScheme>::Randomness>,
 
-    pub memorandum: <DPCTransaction<Components> as Transaction>::Memorandum,
+    pub memorandum: <DPCTransaction<Components> as TransactionScheme>::Memorandum,
     pub network_id: u8,
 }
 
@@ -490,7 +490,7 @@ impl<Components: BaseDPCComponents> DPC<Components> {
 
     pub fn generate_sn(
         system_parameters: &SystemParameters<Components>,
-        record: &DPCRecord<Components>,
+        record: &Record<Components>,
         account_private_key: &AccountPrivateKey<Components>,
     ) -> Result<(<Components::AccountSignature as SignatureScheme>::PublicKey, Vec<u8>), DPCError> {
         let sn_time = start_timer!(|| "Generate serial number");
@@ -521,7 +521,7 @@ impl<Components: BaseDPCComponents> DPC<Components> {
         birth_program_id: Vec<u8>,
         death_program_id: Vec<u8>,
         rng: &mut R,
-    ) -> Result<DPCRecord<Components>, DPCError> {
+    ) -> Result<Record<Components>, DPCError> {
         let record_time = start_timer!(|| "Generate record");
         // Sample new commitment randomness.
         let commitment_randomness = <Components::RecordCommitment as CommitmentScheme>::Randomness::rand(rng);
@@ -543,7 +543,7 @@ impl<Components: BaseDPCComponents> DPC<Components> {
             &commitment_randomness,
         )?;
 
-        let record = DPCRecord {
+        let record = Record {
             owner,
             is_dummy,
             value,
@@ -576,7 +576,7 @@ where
     type NetworkParameters = PublicParameters<Components>;
     type Payload = <Self::Record as RecordScheme>::Payload;
     type PrivateProgramInput = PrivateProgramInput;
-    type Record = DPCRecord<Components>;
+    type Record = Record<Components>;
     type SystemParameters = SystemParameters<Components>;
     type Transaction = DPCTransaction<Components>;
     type TransactionKernel = TransactionKernel<Components>;
@@ -659,7 +659,7 @@ where
         new_payloads: Vec<Self::Payload>,
         new_birth_program_ids: Vec<Vec<u8>>,
         new_death_program_ids: Vec<Vec<u8>>,
-        memorandum: <Self::Transaction as Transaction>::Memorandum,
+        memorandum: <Self::Transaction as TransactionScheme>::Memorandum,
         network_id: u8,
         rng: &mut R,
     ) -> anyhow::Result<Self::TransactionKernel> {

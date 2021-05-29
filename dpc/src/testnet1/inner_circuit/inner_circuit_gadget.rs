@@ -18,7 +18,7 @@ use crate::{
     account::AccountPrivateKey,
     testnet1::{
         parameters::SystemParameters,
-        record::DPCRecord,
+        record::Record,
         record_encryption::RecordEncryptionGadgetComponents,
         BaseDPCComponents,
     },
@@ -70,13 +70,13 @@ pub fn execute_inner_proof_gadget<C: BaseDPCComponents, CS: ConstraintSystem<C::
     ledger_digest: &MerkleTreeDigest<C::MerkleParameters>,
 
     // Old record stuff
-    old_records: &[DPCRecord<C>],
+    old_records: &[Record<C>],
     old_witnesses: &[MerklePath<C::MerkleParameters>],
     old_account_private_keys: &[AccountPrivateKey<C>],
     old_serial_numbers: &[<C::AccountSignature as SignatureScheme>::PublicKey],
 
     // New record stuff
-    new_records: &[DPCRecord<C>],
+    new_records: &[Record<C>],
     new_sn_nonce_randomness: &[[u8; 32]],
     new_commitments: &[<C::RecordCommitment as CommitmentScheme>::Output],
 
@@ -177,13 +177,13 @@ fn base_dpc_execute_gadget_helper<
     ledger_digest: &MerkleTreeDigest<C::MerkleParameters>,
 
     //
-    old_records: &[DPCRecord<C>],
+    old_records: &[Record<C>],
     old_witnesses: &[MerklePath<C::MerkleParameters>],
     old_account_private_keys: &[AccountPrivateKey<C>],
     old_serial_numbers: &[AccountSignature::PublicKey],
 
     //
-    new_records: &[DPCRecord<C>],
+    new_records: &[Record<C>],
     new_sn_nonce_randomness: &[[u8; 32]],
     new_commitments: &[RecordCommitment::Output],
 

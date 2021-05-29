@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{traits::Transaction, TransactionError};
+use crate::{traits::TransactionScheme, TransactionError};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     has_duplicates,
@@ -28,9 +28,9 @@ use std::{
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct DPCTransactions<T: Transaction>(pub Vec<T>);
+pub struct DPCTransactions<T: TransactionScheme>(pub Vec<T>);
 
-impl<T: Transaction> DPCTransactions<T> {
+impl<T: TransactionScheme> DPCTransactions<T> {
     /// Initializes an empty list of transactions.
     pub fn new() -> Self {
         Self(vec![])
@@ -116,7 +116,7 @@ impl<T: Transaction> DPCTransactions<T> {
     }
 }
 
-impl<T: Transaction> ToBytes for DPCTransactions<T> {
+impl<T: TransactionScheme> ToBytes for DPCTransactions<T> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         variable_length_integer(self.0.len() as u64).write(&mut writer)?;
@@ -129,7 +129,7 @@ impl<T: Transaction> ToBytes for DPCTransactions<T> {
     }
 }
 
-impl<T: Transaction> FromBytes for DPCTransactions<T> {
+impl<T: TransactionScheme> FromBytes for DPCTransactions<T> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let num_transactions = read_variable_length_integer(&mut reader)?;
@@ -143,13 +143,13 @@ impl<T: Transaction> FromBytes for DPCTransactions<T> {
     }
 }
 
-impl<T: Transaction> Default for DPCTransactions<T> {
+impl<T: TransactionScheme> Default for DPCTransactions<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: Transaction> Deref for DPCTransactions<T> {
+impl<T: TransactionScheme> Deref for DPCTransactions<T> {
     type Target = Vec<T>;
 
     fn deref(&self) -> &Self::Target {
@@ -157,7 +157,7 @@ impl<T: Transaction> Deref for DPCTransactions<T> {
     }
 }
 
-impl<T: Transaction> DerefMut for DPCTransactions<T> {
+impl<T: TransactionScheme> DerefMut for DPCTransactions<T> {
     fn deref_mut(&mut self) -> &mut Vec<T> {
         &mut self.0
     }
