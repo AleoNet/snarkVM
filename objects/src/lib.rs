@@ -29,9 +29,6 @@ pub use block_header::*;
 pub mod block_header_hash;
 pub use block_header_hash::*;
 
-pub mod dpc;
-pub use dpc::*;
-
 pub mod errors;
 pub use errors::*;
 
@@ -52,3 +49,6 @@ pub use posw::ProofOfSuccinctWork;
 
 pub mod traits;
 pub use traits::*;
+
+pub mod transactions;
+pub use transactions::*;

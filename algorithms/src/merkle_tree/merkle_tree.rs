@@ -41,10 +41,30 @@ pub struct MerkleTree<P: MerkleParameters> {
     parameters: Arc<P>,
 }
 
-impl<P: MerkleParameters> MerkleTree<P> {
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
+
+impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
     pub const DEPTH: u8 = P::DEPTH as u8;
 
-    pub fn new<L: ToBytes, I: ExactSizeIterator<Item = L>>(parameters: Arc<P>, leaves: I) -> Result<Self, MerkleError> {
+    fn hash_row<L: ToBytes + Send + Sync>(
+        parameters: &P,
+        leaves: &[L],
+    ) -> Result<Vec<Vec<<<P as MerkleParameters>::H as CRH>::Output>>, MerkleError> {
+        let hash_input_size_in_bytes = (P::H::INPUT_SIZE_BITS / 8) * 2;
+        cfg_chunks!(leaves, 500) // arbitrary, experimentally derived
+            .map(|chunk| -> Result<Vec<_>, MerkleError> {
+                let mut buffer = vec![0u8; hash_input_size_in_bytes];
+                let mut out = Vec::with_capacity(chunk.len());
+                for leaf in chunk.into_iter() {
+                    out.push(parameters.hash_leaf(&leaf, &mut buffer)?);
+                }
+                Ok(out)
+            })
+            .collect::<Result<Vec<_>, MerkleError>>()
+    }
+
+    pub fn new<L: ToBytes + Send + Sync>(parameters: Arc<P>, leaves: &[L]) -> Result<Self, MerkleError> {
         let new_time = start_timer!(|| "MerkleTree::new");
 
         let last_level_size = leaves.len().next_power_of_two();
@@ -70,9 +90,14 @@ impl<P: MerkleParameters> MerkleTree<P> {
         // Compute and store the hash values for each leaf.
         let hash_input_size_in_bytes = (P::H::INPUT_SIZE_BITS / 8) * 2;
         let last_level_index = level_indices.pop().unwrap_or(0);
-        let mut buffer = vec![0u8; hash_input_size_in_bytes];
-        for (i, leaf) in leaves.enumerate() {
-            tree[last_level_index + i] = parameters.hash_leaf(&leaf, &mut buffer)?;
+
+        let subsections = Self::hash_row(&*parameters, leaves)?;
+
+        let mut subsection_index = 0;
+        for subsection in subsections.into_iter() {
+            tree[last_level_index + subsection_index..last_level_index + subsection_index + subsection.len()]
+                .copy_from_slice(&subsection[..]);
+            subsection_index += subsection.len();
         }
 
         // Compute the hash values for every node in the tree.
@@ -81,13 +106,19 @@ impl<P: MerkleParameters> MerkleTree<P> {
         level_indices.reverse();
         for &start_index in &level_indices {
             // Iterate over the current level.
-            for current_index in start_index..upper_bound {
-                let left_index = left_child(current_index);
-                let right_index = right_child(current_index);
+            let hashings = (start_index..upper_bound)
+                .map(|i| (&tree[left_child(i)], &tree[right_child(i)]))
+                .collect::<Vec<_>>();
 
-                // Compute Hash(left || right).
-                tree[current_index] = parameters.hash_inner_node(&tree[left_index], &tree[right_index], &mut buffer)?;
+            let hashes = Self::hash_row(&*parameters, &hashings[..])?;
+
+            let mut subsection_index = 0;
+            for subsection in hashes.into_iter() {
+                tree[start_index + subsection_index..start_index + subsection_index + subsection.len()]
+                    .copy_from_slice(&subsection[..]);
+                subsection_index += subsection.len();
             }
+
             upper_bound = start_index;
         }
 
@@ -118,10 +149,10 @@ impl<P: MerkleParameters> MerkleTree<P> {
         })
     }
 
-    pub fn rebuild<L: ToBytes, I: ExactSizeIterator<Item = L>, J: ExactSizeIterator<Item = L>>(
+    pub fn rebuild<L: ToBytes + Send + Sync, I: ExactSizeIterator<Item = L>>(
         &self,
         old_leaves: I,
-        new_leaves: J,
+        new_leaves: &[L],
     ) -> Result<Self, MerkleError> {
         let new_time = start_timer!(|| "MerkleTree::rebuild");
 
@@ -151,14 +182,16 @@ impl<P: MerkleParameters> MerkleTree<P> {
         // Compute and store the hash values for each leaf.
         let hash_input_size_in_bytes = (P::H::INPUT_SIZE_BITS / 8) * 2;
         let last_level_index = level_indices.pop().unwrap_or(0);
-        let mut buffer = vec![0u8; hash_input_size_in_bytes];
 
         // The beginning of the tree can be reconstructed from pre-existing hashed leaves.
         tree[last_level_index..][..old_leaves.len()].clone_from_slice(&self.hashed_leaves()[..old_leaves.len()]);
 
         // The new leaves require hashing.
-        for (i, leaf) in new_leaves.enumerate() {
-            tree[last_level_index + old_leaves.len() + i] = self.parameters.hash_leaf(&leaf, &mut buffer)?;
+        let subsections = Self::hash_row(&*self.parameters, new_leaves)?;
+
+        for (i, subsection) in subsections.into_iter().enumerate() {
+            tree[last_level_index + old_leaves.len() + i..last_level_index + old_leaves.len() + i + subsection.len()]
+                .copy_from_slice(&subsection[..]);
         }
 
         // Compute the hash values for every node in the tree.

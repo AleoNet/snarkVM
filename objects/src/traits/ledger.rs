@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{BlockScheme, Transaction};
+use crate::traits::{BlockScheme, TransactionScheme};
 
 use std::{path::Path, sync::Arc};
 
@@ -26,7 +26,7 @@ pub trait LedgerScheme: Sized {
     type MerklePath;
     type MerkleTreeDigest;
     type SerialNumber;
-    type Transaction: Transaction;
+    type Transaction: TransactionScheme;
 
     /// Instantiates a new ledger with a genesis block.
     fn new(
@@ -54,7 +54,7 @@ pub trait LedgerScheme: Sized {
     fn contains_sn(&self, sn: &Self::SerialNumber) -> bool;
 
     /// Returns true if the given memorandum exists in the ledger.
-    fn contains_memo(&self, memo: &<Self::Transaction as Transaction>::Memorandum) -> bool;
+    fn contains_memo(&self, memo: &<Self::Transaction as TransactionScheme>::Memorandum) -> bool;
 
     /// Returns the Merkle path to the latest ledger digest
     /// for a given commitment, if it exists in the ledger.

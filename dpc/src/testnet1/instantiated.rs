@@ -15,13 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    base_dpc::{
+    testnet1::{
         inner_circuit::InnerCircuit,
         inner_circuit_verifier_input::InnerCircuitVerifierInput,
         outer_circuit::OuterCircuit,
         outer_circuit_verifier_input::OuterCircuitVerifierInput,
         program::{NoopCircuit, ProgramLocalData},
-        transaction::DPCTransaction,
+        transaction::Transaction,
         BaseDPCComponents,
         LocalData as DPCLocalData,
         DPC,
@@ -204,7 +204,7 @@ pub type OuterSNARK = Groth16<OuterPairing, OuterCircuit<Components>, OuterCircu
 pub type NoopProgramSNARK<C> = GM17<InnerPairing, NoopCircuit<C>, ProgramLocalData<C>>;
 pub type PRF = Blake2s;
 
-pub type Tx = DPCTransaction<Components>;
+pub type Tx = Transaction<Components>;
 
 pub type InstantiatedDPC = DPC<Components>;
 pub type LocalData = DPCLocalData<Components>;

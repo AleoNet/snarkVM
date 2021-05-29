@@ -14,16 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    base_dpc::{parameters::SystemParameters, BaseDPCComponents},
-    Assignment,
-};
+use crate::testnet1::{parameters::SystemParameters, BaseDPCComponents};
 use snarkvm_algorithms::traits::{CommitmentScheme, CRH};
 use snarkvm_gadgets::traits::{
     algorithms::{CRHGadget, CommitmentGadget},
     utilities::{alloc::AllocGadget, uint::UInt8},
 };
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
+use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSynthesizer, ConstraintSystem};
 
 /// Always-accept program
 pub struct NoopCircuit<C: BaseDPCComponents> {
@@ -65,8 +62,8 @@ impl<C: BaseDPCComponents> ConstraintSynthesizer<C::InnerField> for NoopCircuit<
     fn generate_constraints<CS: ConstraintSystem<C::InnerField>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
         execute_noop_gadget(
             cs,
-            self.system_parameters.get()?,
-            self.local_data_root.get()?,
+            self.system_parameters.get_ref()?,
+            self.local_data_root.get_ref()?,
             self.position,
         )
     }

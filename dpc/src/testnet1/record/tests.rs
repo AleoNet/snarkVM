@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{record_encryption::*, record_serializer::*};
+use super::{record_encoding::*, record_encryption::*};
 use crate::{
     account::{Account, AccountViewKey},
-    base_dpc::{instantiated::*, record_payload::RecordPayload, DPC},
-    traits::{AccountScheme, RecordSerializerScheme},
+    testnet1::{instantiated::*, record_payload::RecordPayload, DPC},
+    traits::{AccountScheme, RecordEncodingScheme},
 };
 use snarkvm_algorithms::traits::CRH;
 use snarkvm_curves::edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls};
@@ -76,8 +76,8 @@ fn test_record_serialization() {
             .unwrap();
 
             let (serialized_record, final_fq_high_bit) =
-                RecordSerializer::<_, EdwardsParameters, EdwardsBls>::serialize(&given_record).unwrap();
-            let record_components = RecordSerializer::<Components, EdwardsParameters, EdwardsBls>::deserialize(
+                RecordEncoding::<_, EdwardsParameters, EdwardsBls>::encode(&given_record).unwrap();
+            let record_components = RecordEncoding::<Components, EdwardsParameters, EdwardsBls>::decode(
                 serialized_record,
                 final_fq_high_bit,
             )

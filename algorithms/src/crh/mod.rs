@@ -20,6 +20,9 @@ pub use bowe_hopwood_pedersen::*;
 pub mod bowe_hopwood_pedersen_compressed;
 pub use bowe_hopwood_pedersen_compressed::*;
 
+pub mod bowe_hopwood_pedersen_parameters;
+pub use bowe_hopwood_pedersen_parameters::*;
+
 pub mod pedersen;
 pub use pedersen::*;
 

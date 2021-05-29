@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-gadgets"
-version = "0.3.1"
+version = "0.3.2"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Gadgets for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -24,27 +24,27 @@ harness = false
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.3.1"
+version = "0.3.2"
 default-features = false
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.3.1"
+version = "0.3.2"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.3.1"
+version = "0.3.2"
 default-features = false
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
-version = "0.3.1"
+version = "0.3.2"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.3.1"
+version = "0.3.2"
 default-features = false
 
 [dependencies.derivative]

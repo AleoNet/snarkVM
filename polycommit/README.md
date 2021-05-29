@@ -1,7 +1,7 @@
 # snarkvm-polycommit
 
 [![Crates.io](https://img.shields.io/crates/v/snarkvm-polycommit.svg?color=neon)](https://crates.io/crates/snarkvm-polycommit)
-[![Authors](https://img.shields.io/badge/authors-Aleo-orange.svg)](../AUTHORS)
+[![Authors](https://img.shields.io/badge/authors-Aleo-orange.svg)](https://aleo.org)
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE.md)
 
 `snarkvm-polycommit` is a Rust library that implements (univariate) *polynomial commitment schemes*. This library was initially developed as part of the [Marlin paper][marlin].

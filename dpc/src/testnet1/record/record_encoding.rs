@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    base_dpc::{record::DPCRecord, record_payload::RecordPayload, BaseDPCComponents},
     errors::DPCError,
-    traits::{DPCComponents, Record, RecordSerializerScheme},
+    testnet1::{record::Record, record_payload::RecordPayload, BaseDPCComponents},
+    traits::{DPCComponents, RecordEncodingScheme, RecordScheme},
 };
 use snarkvm_algorithms::{
     encoding::Elligator2,
@@ -54,42 +54,42 @@ pub fn decode_from_group<P: MontgomeryModelParameters + TEModelParameters, G: Gr
     Ok(to_bytes![output]?)
 }
 
-pub struct DeserializedRecord<C: BaseDPCComponents> {
-    pub serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
-    pub commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
+pub struct DecodedRecord<C: BaseDPCComponents> {
+    pub value: u64,
+    pub payload: RecordPayload,
     pub birth_program_id: Vec<u8>,
     pub death_program_id: Vec<u8>,
-    pub payload: RecordPayload,
-    pub value: u64,
+    pub serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
+    pub commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
 }
 
-pub struct RecordSerializer<
+pub struct RecordEncoding<
     C: BaseDPCComponents,
     P: MontgomeryModelParameters + TEModelParameters,
     G: Group + ProjectiveCurve,
 >(PhantomData<C>, PhantomData<P>, PhantomData<G>);
 
 impl<C: BaseDPCComponents, P: MontgomeryModelParameters + TEModelParameters, G: Group + ProjectiveCurve>
-    RecordSerializerScheme for RecordSerializer<C, P, G>
+    RecordEncodingScheme for RecordEncoding<C, P, G>
 {
-    type DeserializedRecord = DeserializedRecord<C>;
+    type DecodedRecord = DecodedRecord<C>;
     type Group = G;
     type InnerField = <C as DPCComponents>::InnerField;
     type OuterField = <C as DPCComponents>::OuterField;
     type Parameters = P;
-    type Record = DPCRecord<C>;
+    type Record = Record<C>;
 
     /// Records are serialized in a specialized format to be space-saving.
     ///
-    /// Serialized element 1 - [ Serial number nonce ]
-    /// Serialized element 2 - [ Commitment randomness ]
-    /// Serialized element 3 - [ Birth program id (part 1) ]
-    /// Serialized element 4 - [ Death program id (part 1) ]
-    /// Serialized element 5 - [ Birth program id (part 2) || Death program id (part 2) ]
-    /// Serialized element 6 - [ Payload (part 1) || 1 ]
-    /// Serialized element 7 - [ 1 || Sign high bits (7 bits) || Value || Payload (part 2) ]
+    /// Encoded element 1 - [ Serial number nonce ]
+    /// Encoded element 2 - [ Commitment randomness ]
+    /// Encoded element 3 - [ Birth program id (part 1) ]
+    /// Encoded element 4 - [ Death program id (part 1) ]
+    /// Encoded element 5 - [ Birth program id (part 2) || Death program id (part 2) ]
+    /// Encoded element 6 - [ Payload (part 1) || 1 ]
+    /// Encoded element 7 - [ 1 || Sign high bits (7 bits) || Value || Payload (part 2) ]
     ///
-    fn serialize(record: &Self::Record) -> Result<(Vec<Self::Group>, bool), DPCError> {
+    fn encode(record: &Self::Record) -> Result<(Vec<Self::Group>, bool), DPCError> {
         // Assumption 1 - The scalar field bit size must be strictly less than the base field bit size
         // for the logic below to work correctly.
         assert!(Self::SCALAR_FIELD_BITSIZE < Self::INNER_FIELD_BITSIZE);
@@ -260,40 +260,37 @@ impl<C: BaseDPCComponents, P: MontgomeryModelParameters + TEModelParameters, G: 
             5 + num_payload_elements + (value_does_not_fit as usize) + 1
         );
 
-        // Compute the output group elements.
+        // Compute the encoded group elements.
 
-        let mut output = Vec::with_capacity(data_elements.len());
+        let mut encoded_elements = Vec::with_capacity(data_elements.len());
         for element in data_elements.iter() {
-            output.push(element.into_projective());
+            encoded_elements.push(element.into_projective());
         }
 
-        Ok((output, final_sign_high))
+        Ok((encoded_elements, final_sign_high))
     }
 
-    /// Deserialize and return the record components
-    fn deserialize(
-        serialized_record: Vec<Self::Group>,
-        final_sign_high: bool,
-    ) -> Result<Self::DeserializedRecord, DPCError> {
+    /// Decode and return the record components
+    fn decode(encoded_record: Vec<Self::Group>, final_sign_high: bool) -> Result<Self::DecodedRecord, DPCError> {
         let remainder_size = Self::OUTER_FIELD_BITSIZE - Self::DATA_ELEMENT_BITSIZE;
 
         // Extract the fq_bits
-        let final_element = &serialized_record[serialized_record.len() - 1];
+        let final_element = &encoded_record[encoded_record.len() - 1];
         let final_element_bytes =
             decode_from_group::<Self::Parameters, Self::Group>(final_element.into_affine(), final_sign_high)?;
         let final_element_bits = bytes_to_bits(&final_element_bytes).collect::<Vec<_>>();
 
-        let fq_high_bits = &final_element_bits[1..serialized_record.len()];
+        let fq_high_bits = &final_element_bits[1..encoded_record.len()];
 
         // Deserialize serial number nonce
 
-        let (serial_number_nonce, _) = &(serialized_record[0], fq_high_bits[0]);
+        let (serial_number_nonce, _) = &(encoded_record[0], fq_high_bits[0]);
         let serial_number_nonce_bytes = to_bytes![serial_number_nonce.into_affine().to_x_coordinate()]?;
         let serial_number_nonce = <C::SerialNumberNonceCRH as CRH>::Output::read(&serial_number_nonce_bytes[..])?;
 
         // Deserialize commitment randomness
 
-        let (commitment_randomness, commitment_randomness_fq_high) = &(serialized_record[1], fq_high_bits[1]);
+        let (commitment_randomness, commitment_randomness_fq_high) = &(encoded_record[1], fq_high_bits[1]);
         let commitment_randomness_bytes = decode_from_group::<Self::Parameters, Self::Group>(
             commitment_randomness.into_affine(),
             *commitment_randomness_fq_high,
@@ -307,19 +304,19 @@ impl<C: BaseDPCComponents, P: MontgomeryModelParameters + TEModelParameters, G: 
 
         // Deserialize birth and death programs
 
-        let (birth_program_id, birth_program_id_sign_high) = &(serialized_record[2], fq_high_bits[2]);
+        let (birth_program_id, birth_program_id_sign_high) = &(encoded_record[2], fq_high_bits[2]);
         let birth_program_id_bytes = decode_from_group::<Self::Parameters, Self::Group>(
             birth_program_id.into_affine(),
             *birth_program_id_sign_high,
         )?;
 
-        let (death_program_id, death_program_id_sign_high) = &(serialized_record[3], fq_high_bits[3]);
+        let (death_program_id, death_program_id_sign_high) = &(encoded_record[3], fq_high_bits[3]);
         let death_program_id_bytes = decode_from_group::<Self::Parameters, Self::Group>(
             death_program_id.into_affine(),
             *death_program_id_sign_high,
         )?;
 
-        let (program_id_remainder, program_id_sign_high) = &(serialized_record[4], fq_high_bits[4]);
+        let (program_id_remainder, program_id_sign_high) = &(encoded_record[4], fq_high_bits[4]);
         let program_id_remainder_bytes = decode_from_group::<Self::Parameters, Self::Group>(
             program_id_remainder.into_affine(),
             *program_id_sign_high,
@@ -341,15 +338,15 @@ impl<C: BaseDPCComponents, P: MontgomeryModelParameters + TEModelParameters, G: 
 
         // Deserialize the value
 
-        let value_start = serialized_record.len();
-        let value_end = value_start + (std::mem::size_of_val(&<Self::Record as Record>::Value::default()) * 8);
-        let value: <Self::Record as Record>::Value =
+        let value_start = encoded_record.len();
+        let value_end = value_start + (std::mem::size_of_val(&<Self::Record as RecordScheme>::Value::default()) * 8);
+        let value: <Self::Record as RecordScheme>::Value =
             FromBytes::read(&bits_to_bytes(&final_element_bits[value_start..value_end])[..])?;
 
         // Deserialize payload
 
         let mut payload_bits = vec![];
-        for (element, fq_high) in serialized_record[5..serialized_record.len() - 1]
+        for (element, fq_high) in encoded_record[5..encoded_record.len() - 1]
             .iter()
             .zip_eq(&fq_high_bits[5..])
         {
@@ -360,13 +357,13 @@ impl<C: BaseDPCComponents, P: MontgomeryModelParameters + TEModelParameters, G: 
 
         let payload = RecordPayload::read(&bits_to_bytes(&payload_bits)[..])?;
 
-        Ok(DeserializedRecord {
-            serial_number_nonce,
-            commitment_randomness,
+        Ok(DecodedRecord {
+            value,
+            payload,
             birth_program_id,
             death_program_id,
-            payload,
-            value,
+            serial_number_nonce,
+            commitment_randomness,
         })
     }
 }

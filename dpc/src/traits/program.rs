@@ -18,18 +18,18 @@ use crate::errors::DPCError;
 
 use rand::Rng;
 
-pub trait Program: Clone {
+pub trait ProgramScheme: Clone {
     type LocalData;
-    type PublicInput;
     type PrivateWitness;
-    type ProvingParameters;
-    type VerificationParameters;
+    type ProvingKey;
+    type PublicInput;
+    type VerifyingKey;
 
     /// Executes and returns the program proof
     fn execute<R: Rng>(
         &self,
-        proving_key: &Self::ProvingParameters,
-        verification_key: &Self::VerificationParameters,
+        proving_key: &Self::ProvingKey,
+        verifying_key: &Self::VerifyingKey,
         local_data: &Self::LocalData,
         position: u8,
         rng: &mut R,

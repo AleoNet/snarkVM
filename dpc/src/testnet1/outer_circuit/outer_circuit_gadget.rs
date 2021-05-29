@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::base_dpc::{parameters::SystemParameters, program::PrivateProgramInput, BaseDPCComponents};
+use crate::testnet1::{parameters::SystemParameters, program::PrivateProgramInput, BaseDPCComponents};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
@@ -75,7 +75,7 @@ pub fn execute_outer_proof_gadget<C: BaseDPCComponents, CS: ConstraintSystem<C::
     network_id: u8,
 
     // Inner snark verifier private inputs (verification key and proof)
-    inner_snark_vk: &<C::InnerSNARK as SNARK>::VerificationParameters,
+    inner_snark_vk: &<C::InnerSNARK as SNARK>::VerifyingKey,
     inner_snark_proof: &<C::InnerSNARK as SNARK>::Proof,
 
     // Old record death program verification keys and proofs

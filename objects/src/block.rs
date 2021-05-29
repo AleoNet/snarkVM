@@ -15,10 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    dpc::DPCTransactions,
-    traits::{BlockScheme, Transaction},
+    traits::{BlockScheme, TransactionScheme},
     BlockError,
     BlockHeader,
+    Transactions,
 };
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
@@ -29,15 +29,14 @@ use snarkvm_utilities::{
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Block<T: Transaction> {
-    /// First `HEADER_SIZE` bytes of the block as defined by the encoding used by
-    /// "block" messages.
+pub struct Block<T: TransactionScheme> {
+    /// First `HEADER_SIZE` bytes of the block as defined by the encoding used by "block" messages.
     pub header: BlockHeader,
     /// The block transactions.
-    pub transactions: DPCTransactions<T>,
+    pub transactions: Transactions<T>,
 }
 
-impl<T: Transaction> BlockScheme for Block<T> {
+impl<T: TransactionScheme> BlockScheme for Block<T> {
     type BlockHeader = BlockHeader;
     type Transaction = T;
 
@@ -52,7 +51,7 @@ impl<T: Transaction> BlockScheme for Block<T> {
     }
 }
 
-impl<T: Transaction> ToBytes for Block<T> {
+impl<T: TransactionScheme> ToBytes for Block<T> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.header.write(&mut writer)?;
@@ -60,17 +59,17 @@ impl<T: Transaction> ToBytes for Block<T> {
     }
 }
 
-impl<T: Transaction> FromBytes for Block<T> {
+impl<T: TransactionScheme> FromBytes for Block<T> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let header: BlockHeader = FromBytes::read(&mut reader)?;
-        let transactions: DPCTransactions<T> = FromBytes::read(&mut reader)?;
+        let transactions: Transactions<T> = FromBytes::read(&mut reader)?;
 
         Ok(Self { header, transactions })
     }
 }
 
-impl<T: Transaction> Block<T> {
+impl<T: TransactionScheme> Block<T> {
     pub fn serialize(&self) -> Result<Vec<u8>, BlockError> {
         let mut serialization = vec![];
         serialization.extend(&self.header.serialize().to_vec());
@@ -91,7 +90,7 @@ impl<T: Transaction> Block<T> {
         header_array.copy_from_slice(&header_bytes[0..HEADER_SIZE]);
         let header = BlockHeader::deserialize(&header_array);
 
-        let transactions: DPCTransactions<T> = FromBytes::read(transactions_bytes)?;
+        let transactions: Transactions<T> = FromBytes::read(transactions_bytes)?;
 
         Ok(Block { header, transactions })
     }

@@ -19,13 +19,13 @@ use snarkvm_algorithms::{
     traits::{MerkleParameters, SNARK},
 };
 use snarkvm_dpc::{
-    base_dpc::{
+    errors::DPCError,
+    testnet1::{
         inner_circuit::InnerCircuit,
         instantiated::Components,
         parameters::SystemParameters,
         BaseDPCComponents,
     },
-    errors::DPCError,
 };
 use snarkvm_parameters::{traits::Parameter, LedgerMerkleTreeParameters};
 use snarkvm_utilities::{
@@ -53,7 +53,7 @@ pub fn setup<C: BaseDPCComponents>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
         rng,
     )?;
     let inner_snark_pk = to_bytes![inner_snark_parameters.0]?;
-    let inner_snark_vk: <C::InnerSNARK as SNARK>::VerificationParameters = inner_snark_parameters.1.into();
+    let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = inner_snark_parameters.1.into();
     let inner_snark_vk = to_bytes![inner_snark_vk]?;
 
     println!("inner_snark_pk.params\n\tsize - {}", inner_snark_pk.len());

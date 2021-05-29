@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::{errors::MerkleError, traits::MerkleParameters};
-use snarkvm_dpc::base_dpc::{instantiated::Components, BaseDPCComponents};
+use snarkvm_dpc::testnet1::{instantiated::Components, BaseDPCComponents};
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
 use rand::thread_rng;

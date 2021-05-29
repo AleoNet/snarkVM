@@ -82,14 +82,14 @@ version = "0.10.0"
 version = "0.8"
 
 [dependencies.snarkos-storage]
-git = "https://github.com/ljedrz/snarkOS"
-rev = "2eca11a85989bab2f5ea00854f7efdfab7859d95"
+git = "https://github.com/AleoHQ/snarkOS"
+rev = "e72d3d9d03d1a053ae148608e3f5b3ae857a4edf" # version 1.3.6 of the package
 default-features = false
 features = ["mem_storage"]
 
 [dependencies.snarkos-testing]
-git = "https://github.com/ljedrz/snarkOS"
-rev = "2eca11a85989bab2f5ea00854f7efdfab7859d95"
+git = "https://github.com/AleoHQ/snarkOS"
+rev = "e72d3d9d03d1a053ae148608e3f5b3ae857a4edf" # version 1.3.6 of the package
 default-features = false
 
 [dependencies.thiserror]

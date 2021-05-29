@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::DPCError, traits::Record};
+use crate::{errors::DPCError, traits::RecordScheme};
 use snarkvm_curves::{
     traits::{Group, MontgomeryModelParameters, TEModelParameters},
     ProjectiveCurve,
 };
 use snarkvm_fields::{FieldParameters, PrimeField};
 
-pub trait RecordSerializerScheme {
+pub trait RecordEncodingScheme {
     /// The group is composed of base field elements in `Self::InnerField`.
     type Group: Group + ProjectiveCurve;
     /// The inner field is equivalent to the base field in `Self::Group`.
@@ -29,8 +29,8 @@ pub trait RecordSerializerScheme {
     /// The outer field is unrelated to `Self::Group` and `Self::InnerField`.
     type OuterField: PrimeField;
     type Parameters: MontgomeryModelParameters + TEModelParameters;
-    type Record: Record;
-    type DeserializedRecord;
+    type Record: RecordScheme;
+    type DecodedRecord;
 
     /// This is the bitsize of the scalar field modulus in `Self::Group`.
     const SCALAR_FIELD_BITSIZE: usize =
@@ -47,10 +47,7 @@ pub trait RecordSerializerScheme {
     /// Represents a standard unit for packing the payload into data elements for storage.
     const PAYLOAD_ELEMENT_BITSIZE: usize = Self::DATA_ELEMENT_BITSIZE - 1;
 
-    fn serialize(record: &Self::Record) -> Result<(Vec<Self::Group>, bool), DPCError>;
+    fn encode(record: &Self::Record) -> Result<(Vec<Self::Group>, bool), DPCError>;
 
-    fn deserialize(
-        serialized_record: Vec<Self::Group>,
-        final_fq_high_bit: bool,
-    ) -> Result<Self::DeserializedRecord, DPCError>;
+    fn decode(encoded_record: Vec<Self::Group>, final_fq_high_bit: bool) -> Result<Self::DecodedRecord, DPCError>;
 }

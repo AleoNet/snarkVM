@@ -91,7 +91,11 @@ impl<F: Field> LinearCombination<F> {
                     found_index += 1;
                 }
             }
-            Err(found_index)
+            if self.0.get(found_index).map(|x| &x.0 == search_var).unwrap_or_default() {
+                Ok(found_index)
+            } else {
+                Err(found_index)
+            }
         } else {
             self.0.binary_search_by_key(search_var, |&(cur_var, _)| cur_var)
         }
@@ -477,5 +481,22 @@ impl<'a, F: Field> Sub<(F, LinearCombination<F>)> for LinearCombination<F> {
 
     fn sub(self, (coeff, other): (F, LinearCombination<F>)) -> LinearCombination<F> {
         self + (-coeff, other)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Index;
+
+    use super::*;
+    use snarkvm_curves::bls12_377::Fr;
+
+    #[test]
+    fn linear_combination_append() {
+        let mut combo = LinearCombination::<Fr>::zero();
+        for i in 0..100u64 {
+            combo += (i.into(), Variable::new_unchecked(Index::Public(0)));
+        }
+        assert_eq!(combo.0.len(), 1);
     }
 }

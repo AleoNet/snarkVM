@@ -27,9 +27,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use core::fmt::Debug;
 
 pub trait SNARKVerifierGadget<N: SNARK, F: Field> {
-    type VerificationKeyGadget: AllocGadget<N::VerificationParameters, F>
-        + AllocBytesGadget<Vec<u8>, F>
-        + ToBytesGadget<F>;
+    type VerificationKeyGadget: AllocGadget<N::VerifyingKey, F> + AllocBytesGadget<Vec<u8>, F> + ToBytesGadget<F>;
     type ProofGadget: AllocGadget<N::Proof, F> + AllocBytesGadget<Vec<u8>, F>;
     type Input: ToBitsBEGadget<F> + Clone + ?Sized;
 
@@ -45,8 +43,8 @@ pub trait SNARKVerifierGadget<N: SNARK, F: Field> {
 
 /// This implements constraints for SNARK verifiers.
 pub trait SNARKGadget<F: PrimeField, CF: PrimeField, S: SNARK> {
-    type PreparedVerifyingKeyVar: AllocGadget<S::PreparedVerificationParameters, CF> + Clone;
-    type VerifyingKeyVar: AllocGadget<S::VerificationParameters, CF> + ToBytesGadget<CF> + Clone;
+    type PreparedVerifyingKeyVar: AllocGadget<S::PreparedVerifyingKey, CF> + Clone;
+    type VerifyingKeyVar: AllocGadget<S::VerifyingKey, CF> + ToBytesGadget<CF> + Clone;
     type InputVar: AllocGadget<Vec<F>, CF> + Clone; // + FromFieldElementsGadget<F, CF>
     type ProofVar: AllocGadget<S::Proof, CF> + Clone;
 
@@ -61,7 +59,7 @@ pub trait SNARKGadget<F: PrimeField, CF: PrimeField, S: SNARK> {
 
     /// Returns information about the R1CS constraints required to check proofs relative
     /// to the verification key `circuit_vk`.
-    fn verifier_size(circuit_vk: &S::VerificationParameters) -> Self::VerifierSize;
+    fn verifier_size(circuit_vk: &S::VerifyingKey) -> Self::VerifierSize;
 
     fn verify_with_processed_vk<CS: ConstraintSystem<CF>>(
         cs: CS,

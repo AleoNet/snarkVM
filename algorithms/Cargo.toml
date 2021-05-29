@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-algorithms"
-version = "0.3.1"
+version = "0.3.2"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Algorithms for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -25,6 +25,11 @@ harness = false
 [[bench]]
 name = "crh-pedersen"
 path = "benches/crh/pedersen.rs"
+harness = false
+
+[[bench]]
+name = "crh-bowe-pedersen"
+path = "benches/crh/bowe_pedersen.rs"
 harness = false
 
 [[bench]]
@@ -53,27 +58,27 @@ path = "examples/snark/gm17.rs"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.3.1"
+version = "0.3.2"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.3.1"
+version = "0.3.2"
 default-features = false
 
 [dependencies.snarkvm-profiler]
 path = "../profiler"
-version = "0.3.1"
+version = "0.3.2"
 default-features = false
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
-version = "0.3.1"
+version = "0.3.2"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.3.1"
+version = "0.3.2"
 default-features = false
 
 [dependencies.blake2]
@@ -91,7 +96,6 @@ version = "0.10.0"
 
 [dependencies.rand]
 version = "0.8"
-default-features = false
 
 [dependencies.rand_chacha]
 version = "0.3"
@@ -109,6 +113,9 @@ version = "1.6"
 
 [dependencies.thiserror]
 version = "1.0"
+
+[dependencies.bitvec]
+version = "0.22"
 
 [dev-dependencies.criterion]
 version = "0.3.4"

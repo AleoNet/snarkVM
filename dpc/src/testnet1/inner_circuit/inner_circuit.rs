@@ -16,10 +16,10 @@
 
 use crate::{
     account::AccountPrivateKey,
-    base_dpc::{
+    testnet1::{
         inner_circuit_gadget::execute_inner_proof_gadget,
         parameters::SystemParameters,
-        record::DPCRecord,
+        record::Record,
         record_encryption::RecordEncryptionGadgetComponents,
         BaseDPCComponents,
     },
@@ -42,13 +42,13 @@ pub struct InnerCircuit<C: BaseDPCComponents> {
     ledger_digest: MerkleTreeDigest<C::MerkleParameters>,
 
     // Inputs for old records.
-    old_records: Vec<DPCRecord<C>>,
+    old_records: Vec<Record<C>>,
     old_witnesses: Vec<MerklePath<C::MerkleParameters>>,
     old_account_private_keys: Vec<AccountPrivateKey<C>>,
     old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
 
     // Inputs for new records.
-    new_records: Vec<DPCRecord<C>>,
+    new_records: Vec<Record<C>>,
     new_serial_number_nonce_randomness: Vec<[u8; 32]>,
     new_commitments: Vec<<C::RecordCommitment as CommitmentScheme>::Output>,
 
@@ -79,13 +79,13 @@ impl<C: BaseDPCComponents> InnerCircuit<C> {
 
         let old_serial_numbers =
             vec![<C::AccountSignature as SignatureScheme>::PublicKey::default(); num_input_records];
-        let old_records = vec![DPCRecord::default(); num_input_records];
+        let old_records = vec![Record::default(); num_input_records];
         let old_witnesses = vec![MerklePath::default(); num_input_records];
         let old_account_private_keys = vec![AccountPrivateKey::default(); num_input_records];
 
         let new_commitments = vec![<C::RecordCommitment as CommitmentScheme>::Output::default(); num_output_records];
         let new_serial_number_nonce_randomness = vec![[0u8; 32]; num_output_records];
-        let new_records = vec![DPCRecord::default(); num_output_records];
+        let new_records = vec![Record::default(); num_output_records];
 
         let new_records_encryption_randomness =
             vec![<C::AccountEncryption as EncryptionScheme>::Randomness::default(); num_output_records];
@@ -154,13 +154,13 @@ impl<C: BaseDPCComponents> InnerCircuit<C> {
         ledger_digest: MerkleTreeDigest<C::MerkleParameters>,
 
         // Old records
-        old_records: Vec<DPCRecord<C>>,
+        old_records: Vec<Record<C>>,
         old_witnesses: Vec<MerklePath<C::MerkleParameters>>,
         old_account_private_keys: Vec<AccountPrivateKey<C>>,
         old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
 
         // New records
-        new_records: Vec<DPCRecord<C>>,
+        new_records: Vec<Record<C>>,
         new_serial_number_nonce_randomness: Vec<[u8; 32]>,
         new_commitments: Vec<<C::RecordCommitment as CommitmentScheme>::Output>,
 

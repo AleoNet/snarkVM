@@ -193,8 +193,8 @@ impl<E: PairingEngine> FromBytes for VerifyingKey<E> {
     }
 }
 
-impl<E: PairingEngine> From<Parameters<E>> for VerifyingKey<E> {
-    fn from(other: Parameters<E>) -> Self {
+impl<E: PairingEngine> From<ProvingKey<E>> for VerifyingKey<E> {
+    fn from(other: ProvingKey<E>) -> Self {
         other.vk
     }
 }
@@ -258,7 +258,7 @@ impl<E: PairingEngine> VerifyingKey<E> {
 
 /// Full public (prover and verifier) parameters for the Groth16 zkSNARK.
 #[derive(Clone, Debug, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct Parameters<E: PairingEngine> {
+pub struct ProvingKey<E: PairingEngine> {
     pub vk: VerifyingKey<E>,
     pub beta_g1: E::G1Affine,
     pub delta_g1: E::G1Affine,
@@ -269,20 +269,20 @@ pub struct Parameters<E: PairingEngine> {
     pub l_query: Vec<E::G1Affine>,
 }
 
-impl<E: PairingEngine> ToBytes for Parameters<E> {
+impl<E: PairingEngine> ToBytes for ProvingKey<E> {
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.write(&mut writer)
     }
 }
 
-impl<E: PairingEngine> FromBytes for Parameters<E> {
+impl<E: PairingEngine> FromBytes for ProvingKey<E> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         Self::read(&mut reader, false)
     }
 }
 
-impl<E: PairingEngine> Parameters<E> {
+impl<E: PairingEngine> ProvingKey<E> {
     /// Serialize the parameters to bytes.
     pub fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.vk.write(&mut writer)?;
@@ -412,8 +412,8 @@ impl<E: PairingEngine> PreparedVerifyingKey<E> {
     }
 }
 
-impl<E: PairingEngine> From<Parameters<E>> for PreparedVerifyingKey<E> {
-    fn from(other: Parameters<E>) -> Self {
+impl<E: PairingEngine> From<ProvingKey<E>> for PreparedVerifyingKey<E> {
+    fn from(other: ProvingKey<E>) -> Self {
         prepare_verifying_key(other.vk)
     }
 }

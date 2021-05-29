@@ -16,8 +16,8 @@
 
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_dpc::{
-    base_dpc::{instantiated::Components, parameters::SystemParameters, BaseDPCComponents, DPC},
     errors::DPCError,
+    testnet1::{instantiated::Components, parameters::SystemParameters, BaseDPCComponents, DPC},
 };
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
@@ -33,7 +33,7 @@ pub fn setup<C: BaseDPCComponents>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
 
     let noop_program_snark_parameters = DPC::<C>::generate_noop_program_snark_parameters(&system_parameters, rng)?;
     let noop_program_snark_pk = to_bytes![noop_program_snark_parameters.proving_key]?;
-    let noop_program_snark_vk: <C::NoopProgramSNARK as SNARK>::VerificationParameters =
+    let noop_program_snark_vk: <C::NoopProgramSNARK as SNARK>::VerifyingKey =
         noop_program_snark_parameters.verification_key;
     let noop_program_snark_vk = to_bytes![noop_program_snark_vk]?;
 

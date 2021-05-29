@@ -621,4 +621,100 @@ mod test {
             assert!(cs.is_satisfied());
         }
     }
+
+    #[test]
+    fn groth16_verifier_num_constraints_test() {
+        let num_inputs = 100;
+        let num_constraints = num_inputs;
+        let rng = &mut test_rng();
+        let mut inputs: Vec<Option<Fr>> = Vec::with_capacity(num_inputs);
+        for _ in 0..num_inputs {
+            inputs.push(Some(rng.gen()));
+        }
+        let params = {
+            let c = Bench::<Fr> {
+                inputs: vec![None; num_inputs],
+                num_constraints,
+            };
+
+            generate_random_parameters(&c, rng).unwrap()
+        };
+
+        {
+            let proof = {
+                // Create an instance of our circuit (with the
+                // witness)
+                let c = Bench {
+                    inputs: inputs.clone(),
+                    num_constraints,
+                };
+                // Create a groth16 proof with our parameters.
+                create_random_proof(&c, &params, rng).unwrap()
+            };
+
+            // assert!(!verify_proof(&pvk, &proof, &[a]).unwrap());
+            let mut cs = TestConstraintSystem::<Fq>::new();
+
+            let inputs = inputs.into_iter().map(|input| input.unwrap());
+            let mut input_gadgets = Vec::new();
+
+            {
+                let mut cs = cs.ns(|| "Allocate Input");
+                for (i, input) in inputs.enumerate() {
+                    let mut input_bits = BitIteratorBE::new(input.into_repr()).collect::<Vec<_>>();
+                    // Input must be in little-endian, but BitIterator outputs in big-endian.
+                    input_bits.reverse();
+
+                    let input_bits =
+                        Vec::<Boolean>::alloc_input(cs.ns(|| format!("Input {}", i)), || Ok(input_bits)).unwrap();
+                    input_gadgets.push(input_bits);
+                }
+            }
+
+            let input_gadget_constraints = cs.num_constraints();
+
+            let vk_gadget = TestVkGadget::alloc_input(cs.ns(|| "Vk"), || Ok(&params.vk)).unwrap();
+
+            let vk_gadget_constraints = cs.num_constraints() - input_gadget_constraints;
+
+            let proof_gadget = TestProofGadget::alloc(cs.ns(|| "Proof"), || Ok(proof.clone())).unwrap();
+
+            let proof_gadget_constraints = cs.num_constraints() - vk_gadget_constraints;
+
+            <TestVerifierGadget as SNARKVerifierGadget<TestProofSystem, Fq>>::check_verify(
+                cs.ns(|| "Verify"),
+                &vk_gadget,
+                input_gadgets.iter(),
+                &proof_gadget,
+            )
+            .unwrap();
+
+            let verifier_gadget_constraints = cs.num_constraints() - proof_gadget_constraints;
+
+            if !cs.is_satisfied() {
+                println!("=========================================================");
+                println!("Unsatisfied constraints:");
+                println!("{:?}", cs.which_is_unsatisfied().unwrap());
+                println!("=========================================================");
+            }
+
+            // cs.print_named_objects();
+            assert!(cs.is_satisfied());
+
+            println!("input_gadget_constraints : {:?}", input_gadget_constraints);
+            println!("vk_gadget_constraints : {:?}", vk_gadget_constraints);
+            println!("proof_gadget_constraints : {:?}", proof_gadget_constraints);
+            println!("verifier_gadget_constraints : {:?}", verifier_gadget_constraints);
+
+            const INPUT_GADGET_CONSTRAINTS: usize = 25600;
+            const VK_GADGET_CONSTRAINTS: usize = 105;
+            const PROOF_GADGET_CONSTRAINTS: usize = 30199;
+            const VERIFIER_GADGET_CONSTRAINTS: usize = 316635;
+
+            assert_eq!(input_gadget_constraints, INPUT_GADGET_CONSTRAINTS);
+            assert_eq!(vk_gadget_constraints, VK_GADGET_CONSTRAINTS);
+            assert_eq!(proof_gadget_constraints, PROOF_GADGET_CONSTRAINTS);
+            assert_eq!(verifier_gadget_constraints, VERIFIER_GADGET_CONSTRAINTS);
+        }
+    }
 }

@@ -17,7 +17,7 @@
 pub use crate::crh::pedersen_parameters::PedersenSize;
 
 use crate::{
-    crh::{BoweHopwoodPedersenCRH, PedersenCRH, PedersenCRHParameters},
+    crh::{BoweHopwoodPedersenCRH, BoweHopwoodPedersenCRHParameters, PedersenCRH, PedersenCRHParameters},
     errors::CRHError,
     traits::CRH,
 };
@@ -29,6 +29,7 @@ use rand::Rng;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BoweHopwoodPedersenCompressedCRH<G: Group + ProjectiveCurve, S: PedersenSize> {
     pub parameters: PedersenCRHParameters<G, S>,
+    pub bowe_hopwood_parameters: BoweHopwoodPedersenCRHParameters<G>,
 }
 
 impl<G: Group + ProjectiveCurve, S: PedersenSize> CRH for BoweHopwoodPedersenCompressedCRH<G, S> {
@@ -38,14 +39,21 @@ impl<G: Group + ProjectiveCurve, S: PedersenSize> CRH for BoweHopwoodPedersenCom
     const INPUT_SIZE_BITS: usize = PedersenCRH::<G, S>::INPUT_SIZE_BITS;
 
     fn setup<R: Rng>(rng: &mut R) -> Self {
-        let parameters = BoweHopwoodPedersenCRH::<G, S>::setup(rng).parameters;
+        let BoweHopwoodPedersenCRH {
+            parameters,
+            bowe_hopwood_parameters,
+        } = BoweHopwoodPedersenCRH::<G, S>::setup(rng);
 
-        Self { parameters }
+        Self {
+            parameters,
+            bowe_hopwood_parameters,
+        }
     }
 
     fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
         let crh = BoweHopwoodPedersenCRH::<G, S> {
             parameters: self.parameters.clone(),
+            bowe_hopwood_parameters: self.bowe_hopwood_parameters.clone(),
         };
 
         let output = crh.hash(input)?;
@@ -63,7 +71,10 @@ impl<G: Group + ProjectiveCurve, S: PedersenSize> From<PedersenCRHParameters<G, 
     for BoweHopwoodPedersenCompressedCRH<G, S>
 {
     fn from(parameters: PedersenCRHParameters<G, S>) -> Self {
-        Self { parameters }
+        Self {
+            bowe_hopwood_parameters: BoweHopwoodPedersenCRHParameters::setup(&parameters),
+            parameters,
+        }
     }
 }
 
