@@ -890,23 +890,6 @@ impl<Components: BaseDPCComponents> DPCScheme<Components::MerkleParameters> for 
         let old_death_program_attributes = old_death_program_proofs;
         let new_birth_program_attributes = new_birth_program_proofs;
 
-        // Construct the ledger witnesses
-
-        // let ledger_digest = ledger.digest().expect("could not get digest");
-
-        // Generate the ledger membership witnesses
-        // let mut old_witnesses = Vec::with_capacity(Components::NUM_INPUT_RECORDS);
-
-        // // Compute the ledger membership witness and serial number from the old records.
-        // for record in old_records.iter() {
-        //     if record.is_dummy() {
-        //         old_witnesses.push(MerklePath::default());
-        //     } else {
-        //         let witness = ledger.prove_cm(&record.commitment())?;
-        //         old_witnesses.push(witness);
-        //     }
-        // }
-
         // Generate Schnorr signature on transaction data
         // TODO (raychu86) Remove ledger_digest from signature and move the schnorr signing into `execute_offline`
         let signature_time = start_timer!(|| "Sign and randomize transaction contents");
@@ -1091,34 +1074,6 @@ impl<Components: BaseDPCComponents> DPCScheme<Components::MerkleParameters> for 
         }
 
         let ledger_time = start_timer!(|| "Ledger checks");
-
-        // // Returns false if the transaction memo previously existed in the ledger.
-        // if ledger.contains_memo(transaction.memorandum()) {
-        //     eprintln!("Ledger already contains this transaction memo.");
-        //     return Ok(false);
-        // }
-
-        // // Returns false if any transaction serial number previously existed in the ledger.
-        // for sn in transaction.old_serial_numbers() {
-        //     if ledger.contains_sn(sn) {
-        //         eprintln!("Ledger already contains this transaction serial number.");
-        //         return Ok(false);
-        //     }
-        // }
-
-        // // Returns false if any transaction commitment previously existed in the ledger.
-        // for cm in transaction.new_commitments() {
-        //     if ledger.contains_cm(cm) {
-        //         eprintln!("Ledger already contains this transaction commitment.");
-        //         return Ok(false);
-        //     }
-        // }
-
-        // // Returns false if the ledger digest in the transaction is invalid.
-        // if !ledger.validate_digest(&transaction.ledger_digest) {
-        //     eprintln!("Ledger digest is invalid.");
-        //     return Ok(false);
-        // }
 
         end_timer!(ledger_time);
 
