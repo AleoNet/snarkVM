@@ -51,18 +51,18 @@ impl<C: BaseDPCComponents, S: SNARK> NoopProgram<C, S> {
 
 impl<C: BaseDPCComponents, S: SNARK> ProgramScheme for NoopProgram<C, S>
 where
-    S: SNARK<AssignedCircuit = NoopCircuit<C>, VerifierInput = ProgramLocalData<C>>,
+    S: SNARK<AllocatedCircuit = NoopCircuit<C>, VerifierInput = ProgramLocalData<C>>,
 {
     type LocalData = LocalData<C>;
     type PrivateWitness = PrivateProgramInput;
-    type ProvingParameters = S::ProvingParameters;
+    type ProvingKey = S::ProvingKey;
     type PublicInput = ();
-    type VerificationParameters = S::VerificationParameters;
+    type VerifyingKey = S::VerifyingKey;
 
     fn execute<R: Rng>(
         &self,
-        proving_key: &Self::ProvingParameters,
-        verification_key: &Self::VerificationParameters,
+        proving_key: &Self::ProvingKey,
+        verifying_key: &Self::VerifyingKey,
         local_data: &Self::LocalData,
         position: u8,
         rng: &mut R,
@@ -89,7 +89,7 @@ where
         let proof = S::prove(proving_key, &circuit, rng)?;
 
         {
-            let program_snark_pvk: <S as SNARK>::PreparedVerificationParameters = verification_key.clone().into();
+            let program_snark_pvk: <S as SNARK>::PreparedVerifyingKey = verifying_key.clone().into();
 
             let program_pub_input: ProgramLocalData<C> = ProgramLocalData {
                 local_data_commitment_parameters: local_data
@@ -104,7 +104,7 @@ where
         }
 
         Ok(Self::PrivateWitness {
-            verification_key: to_bytes![verification_key]?,
+            verification_key: to_bytes![verifying_key]?,
             proof: to_bytes![proof]?,
         })
     }

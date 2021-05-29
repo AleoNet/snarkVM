@@ -78,10 +78,10 @@ where
 {
     /// The proving key. If not provided, the PoSW runner will work in verify-only
     /// mode and the `mine` function will panic.
-    pub pk: Option<S::ProvingParameters>,
+    pub pk: Option<S::ProvingKey>,
 
     /// The (prepared) verifying key.
-    pub vk: S::PreparedVerificationParameters,
+    pub vk: S::PreparedVerifyingKey,
 
     _circuit: PhantomData<POSWCircuit<F, M, HG, CP>>,
 }
@@ -94,7 +94,7 @@ where
     /// Loads the PoSW runner from the locally stored parameters.
     pub fn verify_only() -> Result<Self, PoswError> {
         let params = PoswSNARKVKParameters::load_bytes()?;
-        let vk = S::VerificationParameters::read(&params[..])?;
+        let vk = S::VerifyingKey::read(&params[..])?;
 
         Ok(Self {
             pk: None,
@@ -105,8 +105,8 @@ where
 
     /// Loads the PoSW runner from the locally stored parameters.
     pub fn load() -> Result<Self, PoswError> {
-        let vk = S::VerificationParameters::read(&PoswSNARKVKParameters::load_bytes()?[..])?;
-        let pk = S::ProvingParameters::read(&PoswSNARKPKParameters::load_bytes()?[..])?;
+        let vk = S::VerifyingKey::read(&PoswSNARKVKParameters::load_bytes()?[..])?;
+        let pk = S::ProvingKey::read(&PoswSNARKPKParameters::load_bytes()?[..])?;
 
         Ok(Self {
             pk: Some(pk),
@@ -145,7 +145,7 @@ where
 
 impl<S, CP> Posw<S, F, M, HG, CP>
 where
-    S: SNARK<VerifierInput = Vec<F>, AssignedCircuit = POSWCircuit<F, M, HG, CP>>,
+    S: SNARK<VerifierInput = Vec<F>, AllocatedCircuit = POSWCircuit<F, M, HG, CP>>,
     CP: POSWCircuitParameters,
 {
     /// Performs a trusted setup for the PoSW circuit and returns an instance of the runner
@@ -241,7 +241,7 @@ where
     /// Runs the internal SNARK `prove` function on the POSW circuit and returns
     /// the proof serialized as bytes
     fn prove<R: Rng>(
-        pk: &S::ProvingParameters,
+        pk: &S::ProvingKey,
         nonce: u32,
         subroots: &[[u8; 32]],
         rng: &mut R,

@@ -118,13 +118,7 @@ where
         crs: &(MarlinBound, UniversalSRS<TargetField, PC>),
         circuit: C,
         _rng: &mut R,
-    ) -> Result<
-        (
-            <Self as SNARK>::ProvingParameters,
-            <Self as SNARK>::VerificationParameters,
-        ),
-        Box<MarlinConstraintsError>,
-    > {
+    ) -> Result<(<Self as SNARK>::ProvingKey, <Self as SNARK>::VerifyingKey), Box<MarlinConstraintsError>> {
         let index_res = MarlinCore::<TargetField, BaseField, PC, FS, MM>::circuit_setup(&crs.1, &circuit);
         match index_res {
             Ok(res) => Ok(res),
@@ -173,18 +167,18 @@ where
     PC::Commitment: ToConstraintField<BaseField>,
     C: ConstraintSynthesizer<TargetField>,
 {
-    type AssignedCircuit = C;
+    type AllocatedCircuit = C;
     type Circuit = (C, UniversalSRS<TargetField, PC>);
-    type PreparedVerificationParameters = PreparedCircuitVerifyingKey<TargetField, PC>;
+    type PreparedVerifyingKey = PreparedCircuitVerifyingKey<TargetField, PC>;
     type Proof = Proof<TargetField, PC>;
-    type ProvingParameters = CircuitProvingKey<TargetField, PC>;
-    type VerificationParameters = CircuitVerifyingKey<TargetField, PC>;
+    type ProvingKey = CircuitProvingKey<TargetField, PC>;
     type VerifierInput = [TargetField];
+    type VerifyingKey = CircuitVerifyingKey<TargetField, PC>;
 
     fn setup<R: RngCore>(
         (circuit, _srs): &Self::Circuit,
         rng: &mut R, // The Marlin circuit setup is deterministic.
-    ) -> Result<(Self::ProvingParameters, Self::PreparedVerificationParameters), SNARKError> {
+    ) -> Result<(Self::ProvingKey, Self::PreparedVerifyingKey), SNARKError> {
         let (circuit_proving_key, circuit_verifier_key) =
             MarlinCore::<TargetField, BaseField, PC, FS, MM>::circuit_specific_setup(circuit, rng).unwrap();
 
@@ -192,8 +186,8 @@ where
     }
 
     fn prove<R: Rng>(
-        parameters: &Self::ProvingParameters,
-        circuit: &Self::AssignedCircuit,
+        parameters: &Self::ProvingKey,
+        circuit: &Self::AllocatedCircuit,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         match MarlinCore::<TargetField, BaseField, PC, FS, MM>::prove(&parameters, circuit, rng) {
@@ -203,7 +197,7 @@ where
     }
 
     fn verify(
-        verifying_key: &Self::PreparedVerificationParameters,
+        verifying_key: &Self::PreparedVerifyingKey,
         input: &Self::VerifierInput,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
@@ -258,7 +252,7 @@ where
     type VerifyingKeyVar = CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>;
 
     fn verifier_size(
-        circuit_vk: &<MarlinSNARK<TargetField, BaseField, PC, FS, MM, C> as SNARK>::VerificationParameters,
+        circuit_vk: &<MarlinSNARK<TargetField, BaseField, PC, FS, MM, C> as SNARK>::VerifyingKey,
     ) -> Self::VerifierSize {
         circuit_vk.circuit_info.num_variables
     }

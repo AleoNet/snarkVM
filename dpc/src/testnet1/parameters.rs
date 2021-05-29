@@ -85,18 +85,17 @@ impl<C: BaseDPCComponents> SystemParameters<C> {
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: BaseDPCComponents"))]
 pub struct NoopProgramSNARKParameters<C: BaseDPCComponents> {
-    pub proving_key: <C::NoopProgramSNARK as SNARK>::ProvingParameters,
-    pub verification_key: <C::NoopProgramSNARK as SNARK>::VerificationParameters,
+    pub proving_key: <C::NoopProgramSNARK as SNARK>::ProvingKey,
+    pub verification_key: <C::NoopProgramSNARK as SNARK>::VerifyingKey,
 }
 
 impl<C: BaseDPCComponents> NoopProgramSNARKParameters<C> {
     // TODO (howardwu): Why are we not preparing the VK here?
     pub fn load() -> IoResult<Self> {
-        let proving_key: <C::NoopProgramSNARK as SNARK>::ProvingParameters =
+        let proving_key: <C::NoopProgramSNARK as SNARK>::ProvingKey =
             FromBytes::read(NoopProgramSNARKPKParameters::load_bytes()?.as_slice())?;
-        let verification_key = <C::NoopProgramSNARK as SNARK>::VerificationParameters::read(
-            NoopProgramSNARKVKParameters::load_bytes()?.as_slice(),
-        )?;
+        let verification_key =
+            <C::NoopProgramSNARK as SNARK>::VerifyingKey::read(NoopProgramSNARKVKParameters::load_bytes()?.as_slice())?;
 
         Ok(Self {
             proving_key,
@@ -111,12 +110,12 @@ pub struct PublicParameters<C: BaseDPCComponents> {
     pub system_parameters: SystemParameters<C>,
     pub noop_program_snark_parameters: NoopProgramSNARKParameters<C>,
     pub inner_snark_parameters: (
-        Option<<C::InnerSNARK as SNARK>::ProvingParameters>,
-        <C::InnerSNARK as SNARK>::PreparedVerificationParameters,
+        Option<<C::InnerSNARK as SNARK>::ProvingKey>,
+        <C::InnerSNARK as SNARK>::PreparedVerifyingKey,
     ),
     pub outer_snark_parameters: (
-        Option<<C::OuterSNARK as SNARK>::ProvingParameters>,
-        <C::OuterSNARK as SNARK>::PreparedVerificationParameters,
+        Option<<C::OuterSNARK as SNARK>::ProvingKey>,
+        <C::OuterSNARK as SNARK>::PreparedVerifyingKey,
     ),
 }
 
@@ -136,8 +135,8 @@ impl<C: BaseDPCComponents> PublicParameters<C> {
     pub fn inner_snark_parameters(
         &self,
     ) -> &(
-        Option<<C::InnerSNARK as SNARK>::ProvingParameters>,
-        <C::InnerSNARK as SNARK>::PreparedVerificationParameters,
+        Option<<C::InnerSNARK as SNARK>::ProvingKey>,
+        <C::InnerSNARK as SNARK>::PreparedVerifyingKey,
     ) {
         &self.inner_snark_parameters
     }
@@ -153,8 +152,8 @@ impl<C: BaseDPCComponents> PublicParameters<C> {
     pub fn outer_snark_parameters(
         &self,
     ) -> &(
-        Option<<C::OuterSNARK as SNARK>::ProvingParameters>,
-        <C::OuterSNARK as SNARK>::PreparedVerificationParameters,
+        Option<<C::OuterSNARK as SNARK>::ProvingKey>,
+        <C::OuterSNARK as SNARK>::PreparedVerifyingKey,
     ) {
         &self.outer_snark_parameters
     }
@@ -190,15 +189,13 @@ impl<C: BaseDPCComponents> PublicParameters<C> {
         let inner_snark_parameters = {
             let inner_snark_pk = match verify_only {
                 true => None,
-                false => Some(<C::InnerSNARK as SNARK>::ProvingParameters::read(
+                false => Some(<C::InnerSNARK as SNARK>::ProvingKey::read(
                     InnerSNARKPKParameters::load_bytes()?.as_slice(),
                 )?),
             };
 
-            let inner_snark_vk: <C::InnerSNARK as SNARK>::VerificationParameters =
-                <C::InnerSNARK as SNARK>::VerificationParameters::read(
-                    InnerSNARKVKParameters::load_bytes()?.as_slice(),
-                )?;
+            let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey =
+                <C::InnerSNARK as SNARK>::VerifyingKey::read(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
 
             (inner_snark_pk, inner_snark_vk.into())
         };
@@ -206,15 +203,13 @@ impl<C: BaseDPCComponents> PublicParameters<C> {
         let outer_snark_parameters = {
             let outer_snark_pk = match verify_only {
                 true => None,
-                false => Some(<C::OuterSNARK as SNARK>::ProvingParameters::read(
+                false => Some(<C::OuterSNARK as SNARK>::ProvingKey::read(
                     OuterSNARKPKParameters::load_bytes()?.as_slice(),
                 )?),
             };
 
-            let outer_snark_vk: <C::OuterSNARK as SNARK>::VerificationParameters =
-                <C::OuterSNARK as SNARK>::VerificationParameters::read(
-                    OuterSNARKVKParameters::load_bytes()?.as_slice(),
-                )?;
+            let outer_snark_vk: <C::OuterSNARK as SNARK>::VerifyingKey =
+                <C::OuterSNARK as SNARK>::VerifyingKey::read(OuterSNARKVKParameters::load_bytes()?.as_slice())?;
 
             (outer_snark_pk, outer_snark_vk.into())
         };
@@ -233,19 +228,15 @@ impl<C: BaseDPCComponents> PublicParameters<C> {
 
         let inner_snark_parameters = {
             let inner_snark_pk = None;
-            let inner_snark_vk: <C::InnerSNARK as SNARK>::VerificationParameters =
-                <C::InnerSNARK as SNARK>::VerificationParameters::read(
-                    InnerSNARKVKParameters::load_bytes()?.as_slice(),
-                )?;
+            let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey =
+                <C::InnerSNARK as SNARK>::VerifyingKey::read(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
             (inner_snark_pk, inner_snark_vk.into())
         };
 
         let outer_snark_parameters = {
             let outer_snark_pk = None;
-            let outer_snark_vk: <C::OuterSNARK as SNARK>::VerificationParameters =
-                <C::OuterSNARK as SNARK>::VerificationParameters::read(
-                    OuterSNARKVKParameters::load_bytes()?.as_slice(),
-                )?;
+            let outer_snark_vk: <C::OuterSNARK as SNARK>::VerifyingKey =
+                <C::OuterSNARK as SNARK>::VerifyingKey::read(OuterSNARKVKParameters::load_bytes()?.as_slice())?;
             (outer_snark_pk, outer_snark_vk.into())
         };
 

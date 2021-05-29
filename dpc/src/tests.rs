@@ -24,7 +24,7 @@ use snarkvm_utilities::{to_bytes, ToBytes};
 fn testnet1_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
     let parameters = PublicParameters::<Components>::load(false)?;
 
-    let inner_snark_vk: <<Components as BaseDPCComponents>::InnerSNARK as SNARK>::VerificationParameters =
+    let inner_snark_vk: <<Components as BaseDPCComponents>::InnerSNARK as SNARK>::VerifyingKey =
         parameters.inner_snark_parameters.1.clone().into();
 
     let inner_circuit_id = <<Components as DPCComponents>::InnerSNARKVerificationKeyCRH as CRH>::hash(

@@ -83,19 +83,19 @@ where
     <MultiPC<E> as PolynomialCommitment<E::Fr>>::Commitment: ToConstraintField<E::Fq>,
     <MultiPC<E> as PolynomialCommitment<E::Fr>>::VerifierKey: ToConstraintField<E::Fq>,
 {
-    type AssignedCircuit = C;
+    type AllocatedCircuit = C;
     type Circuit = (C, SRS<E>);
     // Abuse the Circuit type to pass the SRS as well.
-    type PreparedVerificationParameters = VerifyingKey<E>;
+    type PreparedVerifyingKey = VerifyingKey<E>;
     type Proof = Proof<<E as PairingEngine>::Fr, MultiPC<E>>;
-    type ProvingParameters = Parameters<E>;
-    type VerificationParameters = VerifyingKey<E>;
+    type ProvingKey = Parameters<E>;
     type VerifierInput = V;
+    type VerifyingKey = VerifyingKey<E>;
 
     fn setup<R: RngCore>(
         (circuit, srs): &Self::Circuit,
         _rng: &mut R, // The Marlin circuit setup is deterministic.
-    ) -> Result<(Self::ProvingParameters, Self::PreparedVerificationParameters), SNARKError> {
+    ) -> Result<(Self::ProvingKey, Self::PreparedVerifyingKey), SNARKError> {
         let setup_time = start_timer!(|| "{Marlin}::Setup");
         let parameters = Parameters::<E>::new(circuit, srs)?;
         end_timer!(setup_time);
@@ -105,8 +105,8 @@ where
     }
 
     fn prove<R: RngCore>(
-        parameters: &Self::ProvingParameters,
-        circuit: &Self::AssignedCircuit,
+        parameters: &Self::ProvingKey,
+        circuit: &Self::AllocatedCircuit,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         let proving_time = start_timer!(|| "{Marlin}::Proving");
@@ -117,7 +117,7 @@ where
     }
 
     fn verify(
-        verifying_key: &Self::PreparedVerificationParameters,
+        verifying_key: &Self::PreparedVerifyingKey,
         input: &Self::VerifierInput,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {

@@ -94,7 +94,7 @@ pub trait BaseDPCComponents: DPCComponents {
     /// SNARK for non-proof-verification checks
     type InnerSNARK: SNARK<
         Circuit = InnerCircuit<Self>,
-        AssignedCircuit = InnerCircuit<Self>,
+        AllocatedCircuit = InnerCircuit<Self>,
         VerifierInput = InnerCircuitVerifierInput<Self>,
     >;
 
@@ -104,7 +104,7 @@ pub trait BaseDPCComponents: DPCComponents {
     /// SNARK for proof-verification checks
     type OuterSNARK: SNARK<
         Circuit = OuterCircuit<Self>,
-        AssignedCircuit = OuterCircuit<Self>,
+        AllocatedCircuit = OuterCircuit<Self>,
         VerifierInput = OuterCircuitVerifierInput<Self>,
     >;
 
@@ -112,7 +112,7 @@ pub trait BaseDPCComponents: DPCComponents {
     /// SNARK for the Noop "always-accept" that does nothing with its input.
     type NoopProgramSNARK: SNARK<
         Circuit = NoopCircuit<Self>,
-        AssignedCircuit = NoopCircuit<Self>,
+        AllocatedCircuit = NoopCircuit<Self>,
         VerifierInput = ProgramLocalData<Self>,
     >;
 
@@ -608,8 +608,7 @@ where
         end_timer!(snark_setup_time);
 
         let snark_setup_time = start_timer!(|| "Execute outer SNARK setup");
-        let inner_snark_vk: <Components::InnerSNARK as SNARK>::VerificationParameters =
-            inner_snark_parameters.1.clone().into();
+        let inner_snark_vk: <Components::InnerSNARK as SNARK>::VerifyingKey = inner_snark_parameters.1.clone().into();
         let inner_snark_proof = Components::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, rng)?;
 
         let outer_snark_parameters = Components::OuterSNARK::setup(
@@ -1026,7 +1025,7 @@ where
             assert!(Components::InnerSNARK::verify(verification_key, &input, &inner_proof)?);
         }
 
-        let inner_snark_vk: <Components::InnerSNARK as SNARK>::VerificationParameters =
+        let inner_snark_vk: <Components::InnerSNARK as SNARK>::VerifyingKey =
             parameters.inner_snark_parameters.1.clone().into();
 
         let inner_circuit_id = <Components::InnerSNARKVerificationKeyCRH as CRH>::hash(
@@ -1181,7 +1180,7 @@ where
             network_id: transaction.network_id(),
         };
 
-        let inner_snark_vk: <<Components as BaseDPCComponents>::InnerSNARK as SNARK>::VerificationParameters =
+        let inner_snark_vk: <<Components as BaseDPCComponents>::InnerSNARK as SNARK>::VerifyingKey =
             parameters.inner_snark_parameters.1.clone().into();
 
         let inner_circuit_id = Components::InnerSNARKVerificationKeyCRH::hash(

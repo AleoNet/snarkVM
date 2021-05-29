@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, VerifyingKey};
+use super::{push_constraints, r1cs_to_qap::R1CStoQAP, ProvingKey, VerifyingKey};
 use crate::{cfg_into_iter, cfg_iter, fft::EvaluationDomain, msm::FixedBaseMSM};
 use snarkvm_curves::traits::{Group, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
@@ -27,9 +27,8 @@ use rand::Rng;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-/// Generates a random common reference string for
-/// a circuit.
-pub fn generate_random_parameters<E, C, R>(circuit: &C, rng: &mut R) -> Result<Parameters<E>, SynthesisError>
+/// Generates a random common reference string for a circuit.
+pub fn generate_random_parameters<E, C, R>(circuit: &C, rng: &mut R) -> Result<ProvingKey<E>, SynthesisError>
 where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
@@ -141,7 +140,7 @@ pub fn generate_parameters<E, C, R>(
     gamma: E::Fr,
     delta: E::Fr,
     rng: &mut R,
-) -> Result<Parameters<E>, SynthesisError>
+) -> Result<ProvingKey<E>, SynthesisError>
 where
     E: PairingEngine,
     C: ConstraintSynthesizer<E::Fr>,
@@ -288,7 +287,7 @@ where
     E::G1Projective::batch_normalization(l_query.as_mut_slice());
     end_timer!(batch_normalization_time);
 
-    Ok(Parameters {
+    Ok(ProvingKey {
         vk,
         beta_g1: beta_g1.into_affine(),
         delta_g1: delta_g1.into_affine(),
