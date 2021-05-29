@@ -17,7 +17,7 @@
 use crate::{
     account::AccountAddress,
     testnet1::{record_payload::RecordPayload, BaseDPCComponents},
-    traits::Record,
+    traits::RecordScheme,
 };
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH};
 use snarkvm_utilities::{
@@ -63,7 +63,7 @@ fn default_program_id<C: CRH>() -> Vec<u8> {
     to_bytes![C::Output::default()].unwrap()
 }
 
-impl<C: BaseDPCComponents> Record for DPCRecord<C> {
+impl<C: BaseDPCComponents> RecordScheme for DPCRecord<C> {
     type Commitment = <C::RecordCommitment as CommitmentScheme>::Output;
     type CommitmentRandomness = <C::RecordCommitment as CommitmentScheme>::Randomness;
     type Owner = AccountAddress<C>;

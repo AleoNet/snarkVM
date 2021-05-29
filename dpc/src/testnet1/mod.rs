@@ -18,7 +18,7 @@ use crate::{
     account::{Account, AccountAddress, AccountPrivateKey},
     errors::DPCError,
     testnet1::record_payload::RecordPayload,
-    traits::{AccountScheme, DPCComponents, DPCScheme, Record},
+    traits::{AccountScheme, DPCComponents, DPCScheme, RecordScheme},
 };
 use snarkvm_algorithms::{
     commitment_tree::CommitmentMerkleTree,
@@ -574,7 +574,7 @@ where
     type Account = Account<Components>;
     type LocalData = LocalData<Components>;
     type NetworkParameters = PublicParameters<Components>;
-    type Payload = <Self::Record as Record>::Payload;
+    type Payload = <Self::Record as RecordScheme>::Payload;
     type PrivateProgramInput = PrivateProgramInput;
     type Record = DPCRecord<Components>;
     type SystemParameters = SystemParameters<Components>;

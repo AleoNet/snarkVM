@@ -22,7 +22,7 @@ use crate::{
         record_encryption::RecordEncryptionGadgetComponents,
         BaseDPCComponents,
     },
-    traits::Record,
+    traits::RecordScheme,
 };
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},

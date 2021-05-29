@@ -23,7 +23,7 @@ use crate::{
         record_payload::RecordPayload,
         BaseDPCComponents,
     },
-    traits::{DPCComponents, Record, RecordSerializerScheme},
+    traits::{DPCComponents, RecordScheme, RecordSerializerScheme},
 };
 use snarkvm_algorithms::{
     encoding::Elligator2,

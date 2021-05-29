@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::DPCError, traits::Record};
+use crate::{errors::DPCError, traits::RecordScheme};
 use snarkvm_curves::{
     traits::{Group, MontgomeryModelParameters, TEModelParameters},
     ProjectiveCurve,
@@ -29,7 +29,7 @@ pub trait RecordSerializerScheme {
     /// The outer field is unrelated to `Self::Group` and `Self::InnerField`.
     type OuterField: PrimeField;
     type Parameters: MontgomeryModelParameters + TEModelParameters;
-    type Record: Record;
+    type Record: RecordScheme;
     type DeserializedRecord;
 
     /// This is the bitsize of the scalar field modulus in `Self::Group`.

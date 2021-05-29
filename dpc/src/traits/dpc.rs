@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{AccountScheme, Record};
+use crate::traits::{AccountScheme, RecordScheme};
 use snarkvm_objects::traits::{LedgerScheme, Transaction};
 
 use rand::Rng;
@@ -26,9 +26,9 @@ pub trait DPCScheme<L: LedgerScheme> {
     type NetworkParameters;
     type Payload;
     type PrivateProgramInput;
-    type Record: Record<Owner = <Self::Account as AccountScheme>::AccountAddress>;
+    type Record: RecordScheme<Owner = <Self::Account as AccountScheme>::AccountAddress>;
     type SystemParameters;
-    type Transaction: Transaction<SerialNumber = <Self::Record as Record>::SerialNumber>;
+    type Transaction: Transaction<SerialNumber = <Self::Record as RecordScheme>::SerialNumber>;
     type TransactionKernel;
 
     /// Returns public parameters for the DPC.

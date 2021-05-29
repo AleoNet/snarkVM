@@ -17,7 +17,7 @@
 use crate::{
     errors::DPCError,
     testnet1::{record::DPCRecord, record_payload::RecordPayload, BaseDPCComponents},
-    traits::{DPCComponents, Record, RecordSerializerScheme},
+    traits::{DPCComponents, RecordScheme, RecordSerializerScheme},
 };
 use snarkvm_algorithms::{
     encoding::Elligator2,
@@ -342,8 +342,8 @@ impl<C: BaseDPCComponents, P: MontgomeryModelParameters + TEModelParameters, G: 
         // Deserialize the value
 
         let value_start = serialized_record.len();
-        let value_end = value_start + (std::mem::size_of_val(&<Self::Record as Record>::Value::default()) * 8);
-        let value: <Self::Record as Record>::Value =
+        let value_end = value_start + (std::mem::size_of_val(&<Self::Record as RecordScheme>::Value::default()) * 8);
+        let value: <Self::Record as RecordScheme>::Value =
             FromBytes::read(&bits_to_bytes(&final_element_bits[value_start..value_end])[..])?;
 
         // Deserialize payload

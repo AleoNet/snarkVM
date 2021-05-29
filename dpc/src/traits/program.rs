@@ -18,7 +18,7 @@ use crate::errors::DPCError;
 
 use rand::Rng;
 
-pub trait Program: Clone {
+pub trait ProgramScheme: Clone {
     type LocalData;
     type PublicInput;
     type PrivateWitness;

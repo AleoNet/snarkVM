@@ -18,7 +18,7 @@ use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
 use std::hash::Hash;
 
-pub trait Record: Default + FromBytes + ToBytes {
+pub trait RecordScheme: Default + FromBytes + ToBytes {
     type Owner;
     type Commitment: FromBytes + ToBytes;
     type CommitmentRandomness;

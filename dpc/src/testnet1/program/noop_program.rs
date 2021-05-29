@@ -17,7 +17,7 @@
 use crate::{
     errors::DPCError,
     testnet1::{BaseDPCComponents, LocalData, NoopCircuit, PrivateProgramInput, ProgramLocalData},
-    traits::{Program, Record},
+    traits::{ProgramScheme, RecordScheme},
 };
 use snarkvm_algorithms::traits::{CommitmentScheme, SNARK};
 use snarkvm_utilities::{to_bytes, ToBytes};
@@ -49,7 +49,7 @@ impl<C: BaseDPCComponents, S: SNARK> NoopProgram<C, S> {
     }
 }
 
-impl<C: BaseDPCComponents, S: SNARK> Program for NoopProgram<C, S>
+impl<C: BaseDPCComponents, S: SNARK> ProgramScheme for NoopProgram<C, S>
 where
     S: SNARK<AssignedCircuit = NoopCircuit<C>, VerifierInput = ProgramLocalData<C>>,
 {
