@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    base_dpc::{BaseDPCComponents, LocalData, NoopCircuit, PrivateProgramInput, ProgramLocalData},
     errors::DPCError,
+    testnet1::{BaseDPCComponents, LocalData, NoopCircuit, PrivateProgramInput, ProgramLocalData},
     traits::{Program, Record},
 };
 use snarkvm_algorithms::traits::{CommitmentScheme, SNARK};

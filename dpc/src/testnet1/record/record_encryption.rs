@@ -16,13 +16,13 @@
 
 use crate::{
     account::{AccountAddress, AccountViewKey},
-    base_dpc::{
+    errors::DPCError,
+    testnet1::{
         parameters::SystemParameters,
         record::{encrypted_record::*, record_serializer::*, DPCRecord},
         record_payload::RecordPayload,
         BaseDPCComponents,
     },
-    errors::DPCError,
     traits::{DPCComponents, Record, RecordSerializerScheme},
 };
 use snarkvm_algorithms::{

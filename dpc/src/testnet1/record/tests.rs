@@ -17,7 +17,7 @@
 use super::{record_encryption::*, record_serializer::*};
 use crate::{
     account::{Account, AccountViewKey},
-    base_dpc::{instantiated::*, record_payload::RecordPayload, DPC},
+    testnet1::{instantiated::*, record_payload::RecordPayload, DPC},
     traits::{AccountScheme, RecordSerializerScheme},
 };
 use snarkvm_algorithms::traits::CRH;

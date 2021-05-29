@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    base_dpc::{instantiated::Components, parameters::PublicParameters, BaseDPCComponents},
+    testnet1::{instantiated::Components, parameters::PublicParameters, BaseDPCComponents},
     traits::DPCComponents,
 };
 use snarkvm_algorithms::traits::{CRH, SNARK};

@@ -16,7 +16,7 @@
 
 use crate::{
     account::AccountAddress,
-    base_dpc::{record_payload::RecordPayload, BaseDPCComponents},
+    testnet1::{record_payload::RecordPayload, BaseDPCComponents},
     traits::Record,
 };
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH};
