@@ -19,8 +19,8 @@ use crate::{
     errors::DPCError,
     testnet1::{
         parameters::SystemParameters,
+        payload::Payload,
         record::{encrypted_record::*, record_encoding::*, Record},
-        record_payload::RecordPayload,
         BaseDPCComponents,
     },
     traits::{DPCComponents, RecordEncodingScheme, RecordScheme},
@@ -180,7 +180,7 @@ impl<C: BaseDPCComponents> RecordEncryption<C> {
         let dummy_program = birth_program_id.clone();
 
         let is_dummy = (value == 0)
-            && (payload == RecordPayload::default())
+            && (payload == Payload::default())
             && (death_program_id == dummy_program)
             && (birth_program_id == dummy_program);
 

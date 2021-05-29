@@ -16,7 +16,7 @@
 
 use crate::{
     errors::DPCError,
-    testnet1::{record::Record, record_payload::RecordPayload, BaseDPCComponents},
+    testnet1::{payload::Payload, record::Record, BaseDPCComponents},
     traits::{DPCComponents, RecordEncodingScheme, RecordScheme},
 };
 use snarkvm_algorithms::{
@@ -56,7 +56,7 @@ pub fn decode_from_group<P: MontgomeryModelParameters + TEModelParameters, G: Gr
 
 pub struct DecodedRecord<C: BaseDPCComponents> {
     pub value: u64,
-    pub payload: RecordPayload,
+    pub payload: Payload,
     pub birth_program_id: Vec<u8>,
     pub death_program_id: Vec<u8>,
     pub serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
@@ -355,7 +355,7 @@ impl<C: BaseDPCComponents, P: MontgomeryModelParameters + TEModelParameters, G: 
         }
         payload_bits.extend_from_slice(&final_element_bits[value_end..]);
 
-        let payload = RecordPayload::read(&bits_to_bytes(&payload_bits)[..])?;
+        let payload = Payload::read(&bits_to_bytes(&payload_bits)[..])?;
 
         Ok(DecodedRecord {
             value,

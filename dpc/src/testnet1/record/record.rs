@@ -16,7 +16,7 @@
 
 use crate::{
     account::AccountAddress,
-    testnet1::{record_payload::RecordPayload, BaseDPCComponents},
+    testnet1::{payload::Payload, BaseDPCComponents},
     traits::RecordScheme,
 };
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH};
@@ -44,7 +44,7 @@ pub struct Record<C: BaseDPCComponents> {
     pub(crate) is_dummy: bool,
     // TODO (raychu86) use AleoAmount which will guard the value range
     pub(crate) value: u64,
-    pub(crate) payload: RecordPayload,
+    pub(crate) payload: Payload,
 
     #[derivative(Default(value = "default_program_id::<C::ProgramVerificationKeyCRH>()"))]
     pub(crate) birth_program_id: Vec<u8>,
@@ -67,7 +67,7 @@ impl<C: BaseDPCComponents> RecordScheme for Record<C> {
     type Commitment = <C::RecordCommitment as CommitmentScheme>::Output;
     type CommitmentRandomness = <C::RecordCommitment as CommitmentScheme>::Randomness;
     type Owner = AccountAddress<C>;
-    type Payload = RecordPayload;
+    type Payload = Payload;
     type SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey;
     type SerialNumberNonce = <C::SerialNumberNonceCRH as CRH>::Output;
     type Value = u64;
@@ -136,7 +136,7 @@ impl<C: BaseDPCComponents> FromBytes for Record<C> {
         let owner: AccountAddress<C> = FromBytes::read(&mut reader)?;
         let is_dummy: bool = FromBytes::read(&mut reader)?;
         let value: u64 = FromBytes::read(&mut reader)?;
-        let payload: RecordPayload = FromBytes::read(&mut reader)?;
+        let payload: Payload = FromBytes::read(&mut reader)?;
 
         let birth_program_id_size: usize = read_variable_length_integer(&mut reader)?;
 

@@ -17,7 +17,7 @@
 use crate::{
     account::{Account, AccountAddress, AccountPrivateKey},
     errors::DPCError,
-    testnet1::record_payload::RecordPayload,
+    testnet1::payload::Payload,
     traits::{AccountScheme, DPCComponents, DPCScheme, RecordScheme},
 };
 use snarkvm_algorithms::{
@@ -520,7 +520,7 @@ impl<Components: BaseDPCComponents> DPC<Components> {
         owner: AccountAddress<Components>,
         is_dummy: bool,
         value: u64,
-        payload: RecordPayload,
+        payload: Payload,
         birth_program_id: Vec<u8>,
         death_program_id: Vec<u8>,
         rng: &mut R,

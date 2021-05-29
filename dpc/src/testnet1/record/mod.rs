@@ -26,7 +26,7 @@ pub use record_encoding::*;
 pub mod record_encryption;
 pub use record_encryption::*;
 
-pub mod record_payload;
+pub mod payload;
 
 #[cfg(test)]
 mod tests;

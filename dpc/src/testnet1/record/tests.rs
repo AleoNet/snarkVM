@@ -17,7 +17,7 @@
 use super::{record_encoding::*, record_encryption::*};
 use crate::{
     account::{Account, AccountViewKey},
-    testnet1::{instantiated::*, record_payload::RecordPayload, DPC},
+    testnet1::{instantiated::*, payload::Payload, DPC},
     traits::{AccountScheme, RecordEncodingScheme},
 };
 use snarkvm_algorithms::traits::CRH;
@@ -68,7 +68,7 @@ fn test_record_serialization() {
                 dummy_account.address,
                 false,
                 value,
-                RecordPayload::from_bytes(&payload),
+                Payload::from_bytes(&payload),
                 program_snark_vk_bytes.clone(),
                 program_snark_vk_bytes.clone(),
                 &mut rng,
@@ -135,7 +135,7 @@ fn test_record_encryption() {
                 dummy_account.address,
                 false,
                 value,
-                RecordPayload::from_bytes(&payload),
+                Payload::from_bytes(&payload),
                 program_snark_vk_bytes.clone(),
                 program_snark_vk_bytes.clone(),
                 &mut rng,
