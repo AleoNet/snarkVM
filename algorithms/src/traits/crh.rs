@@ -28,7 +28,7 @@ pub trait CRHParameters: Clone + Debug + ToBytes + FromBytes + Eq {
 }
 
 pub trait CRH: Clone + From<<Self as CRH>::Parameters> {
-    type Output: Clone + Debug + Display + ToBytes + FromBytes + Eq + Hash + Default;
+    type Output: Clone + Debug + Display + ToBytes + FromBytes + Eq + Hash + Default + Send + Sync + Copy;
     type Parameters: CRHParameters;
 
     const INPUT_SIZE_BITS: usize;

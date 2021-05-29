@@ -115,6 +115,14 @@ impl<const N: usize> FromBytes for [u64; N] {
     }
 }
 
+impl<L: ToBytes, R: ToBytes> ToBytes for (L, R) {
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.0.write(&mut writer)?;
+        self.1.write(&mut writer)?;
+        Ok(())
+    }
+}
+
 /// Takes as input a sequence of structs, and converts them to a series of
 /// bytes. All traits that implement `Bytes` can be automatically converted to
 /// bytes in this manner.

@@ -20,7 +20,7 @@ use snarkvm_utilities::bytes::ToBytes;
 use rand::Rng;
 use std::io::Cursor;
 
-pub trait MerkleParameters: Clone + Default {
+pub trait MerkleParameters: Send + Sync + Clone + Default {
     type H: CRH;
 
     const DEPTH: usize;
