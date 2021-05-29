@@ -52,7 +52,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         leaves: &[L],
     ) -> Result<Vec<Vec<<<P as MerkleParameters>::H as CRH>::Output>>, MerkleError> {
         let hash_input_size_in_bytes = (P::H::INPUT_SIZE_BITS / 8) * 2;
-        cfg_chunks!(leaves, 500)
+        cfg_chunks!(leaves, 500) // arbitrary, experimentally derived
             .map(|chunk| -> Result<Vec<_>, MerkleError> {
                 let mut buffer = vec![0u8; hash_input_size_in_bytes];
                 let mut out = Vec::with_capacity(chunk.len());
