@@ -62,7 +62,7 @@ fn generate_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, 
     use_bad_root: bool,
 ) {
     let parameters = P::default();
-    let tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), leaves.iter()).unwrap();
+    let tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), &leaves[..]).unwrap();
     let root = tree.root();
     let mut satisfied = true;
     for (i, leaf) in leaves.iter().enumerate() {
