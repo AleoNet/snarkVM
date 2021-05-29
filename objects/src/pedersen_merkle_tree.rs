@@ -80,14 +80,14 @@ pub fn pedersen_merkle_root(hashes: &[[u8; 32]]) -> PedersenMerkleRootHash {
 
 /// Calculates the root of the Merkle tree using a Pedersen Hash instantiated with a PRNG
 pub fn pedersen_merkle_root_hash(hashes: &[[u8; 32]]) -> Fr {
-    let tree = EdwardsMaskedMerkleTree::new(PARAMS.clone(), hashes.iter()).expect("could not create merkle tree");
+    let tree = EdwardsMaskedMerkleTree::new(PARAMS.clone(), hashes).expect("could not create merkle tree");
     tree.root()
 }
 
 /// Calculates the root of the Merkle tree using a Pedersen Hash instantiated with a PRNG and the
 /// base layer hashes leaved
 pub fn pedersen_merkle_root_hash_with_leaves(hashes: &[[u8; 32]]) -> (Fr, Vec<Fr>) {
-    let tree = EdwardsMaskedMerkleTree::new(PARAMS.clone(), hashes.iter()).expect("could not create merkle tree");
+    let tree = EdwardsMaskedMerkleTree::new(PARAMS.clone(), hashes).expect("could not create merkle tree");
     (tree.root(), tree.hashed_leaves().to_vec())
 }
 
