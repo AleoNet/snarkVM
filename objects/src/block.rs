@@ -15,10 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    dpc::DPCTransactions,
     traits::{BlockScheme, TransactionScheme},
     BlockError,
     BlockHeader,
+    Transactions,
 };
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
@@ -30,11 +30,10 @@ use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Block<T: TransactionScheme> {
-    /// First `HEADER_SIZE` bytes of the block as defined by the encoding used by
-    /// "block" messages.
+    /// First `HEADER_SIZE` bytes of the block as defined by the encoding used by "block" messages.
     pub header: BlockHeader,
     /// The block transactions.
-    pub transactions: DPCTransactions<T>,
+    pub transactions: Transactions<T>,
 }
 
 impl<T: TransactionScheme> BlockScheme for Block<T> {
@@ -64,7 +63,7 @@ impl<T: TransactionScheme> FromBytes for Block<T> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let header: BlockHeader = FromBytes::read(&mut reader)?;
-        let transactions: DPCTransactions<T> = FromBytes::read(&mut reader)?;
+        let transactions: Transactions<T> = FromBytes::read(&mut reader)?;
 
         Ok(Self { header, transactions })
     }
@@ -91,7 +90,7 @@ impl<T: TransactionScheme> Block<T> {
         header_array.copy_from_slice(&header_bytes[0..HEADER_SIZE]);
         let header = BlockHeader::deserialize(&header_array);
 
-        let transactions: DPCTransactions<T> = FromBytes::read(transactions_bytes)?;
+        let transactions: Transactions<T> = FromBytes::read(transactions_bytes)?;
 
         Ok(Block { header, transactions })
     }
