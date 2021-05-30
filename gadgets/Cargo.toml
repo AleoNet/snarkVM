@@ -100,5 +100,9 @@ default = [
   "snarkvm-utilities/default"
 ]
 
-full = ["nonnative"]
+full = ["algorithms", "curves", "fields", "integers", "nonnative"]
+algorithms = []
+curves = []
+fields = []
+integers = []
 nonnative = ["num-bigint", "num-integer", "num-traits"]

@@ -46,18 +46,22 @@ extern crate derivative;
 #[macro_use]
 extern crate thiserror;
 
+#[cfg(feature = "algorithms")]
 pub mod algorithms;
 
 pub mod bits;
 pub use bits::*;
 
+#[cfg(feature = "curves")]
 pub mod curves;
 
 pub mod errors;
 pub use errors::*;
 
+#[cfg(feature = "fields")]
 pub mod fields;
 
+#[cfg(feature = "integers")]
 pub mod integers;
 
 #[cfg(feature = "nonnative")]
