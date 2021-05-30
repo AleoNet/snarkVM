@@ -14,19 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{
-    curves::GroupGadget,
-    fields::{FieldGadget, ToConstraintFieldGadget},
-    utilities::{
-        alloc::AllocGadget,
-        boolean::Boolean,
-        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-        select::CondSelectGadget,
-        uint::UInt8,
-        ToBitsBEGadget,
-        ToBytesGadget,
-    },
-};
+use std::{borrow::Borrow, marker::PhantomData, ops::Neg};
+
 use snarkvm_curves::{
     templates::short_weierstrass::short_weierstrass_jacobian::{
         GroupAffine as SWAffine,
@@ -38,8 +27,18 @@ use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
-use crate::fields::FpGadget;
-use std::{borrow::Borrow, marker::PhantomData, ops::Neg};
+use crate::{
+    bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
+    fields::FpGadget,
+    integers::uint::UInt8,
+    traits::{
+        alloc::AllocGadget,
+        curves::GroupGadget,
+        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+        fields::{FieldGadget, ToConstraintFieldGadget},
+        select::CondSelectGadget,
+    },
+};
 
 #[derive(Derivative)]
 #[derivative(Debug, Clone)]

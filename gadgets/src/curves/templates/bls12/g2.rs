@@ -14,26 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    curves::templates::bls12::AffineGadget,
-    fields::Fp2Gadget,
-    traits::{
-        curves::GroupGadget,
-        fields::FieldGadget,
-        utilities::{eq::NEqGadget, uint::UInt8, ToBytesGadget},
-    },
-    utilities::alloc::AllocGadget,
-};
+use std::{borrow::Borrow, fmt::Debug};
+
 use snarkvm_curves::templates::bls12::{Bls12Parameters, G2Prepared, TwistType};
 use snarkvm_fields::{batch_inversion, Field, One};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
-use crate::utilities::{
-    boolean::Boolean,
-    eq::{ConditionalEqGadget, EqGadget},
+use crate::{
+    bits::{Boolean, ToBytesGadget},
+    curves::templates::bls12::AffineGadget,
+    fields::Fp2Gadget,
+    integers::uint::UInt8,
+    traits::{
+        alloc::AllocGadget,
+        curves::GroupGadget,
+        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+        fields::FieldGadget,
+    },
 };
-use std::{borrow::Borrow, fmt::Debug};
 
 pub type G2Gadget<P> = AffineGadget<<P as Bls12Parameters>::G2Parameters, <P as Bls12Parameters>::Fp, Fp2G<P>>;
 

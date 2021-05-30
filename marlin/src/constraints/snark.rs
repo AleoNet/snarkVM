@@ -14,6 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::{
+    fmt::{Debug, Formatter},
+    marker::PhantomData,
+};
+
+use rand::{CryptoRng, Rng, RngCore};
+
+use snarkvm_algorithms::{SNARKError, SNARK};
+use snarkvm_fields::{PrimeField, ToConstraintField};
+use snarkvm_gadgets::{
+    bits::Boolean,
+    traits::{algorithms::SNARKGadget, fields::ToConstraintFieldGadget},
+};
+use snarkvm_nonnative::NonNativeFieldInputVar;
+use snarkvm_polycommit::{PCCheckVar, PolynomialCommitment};
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable};
+
 use crate::{
     constraints::{
         error::MarlinConstraintsError,
@@ -33,22 +50,6 @@ use crate::{
         Proof,
     },
     FiatShamirRngVar,
-};
-
-use snarkvm_algorithms::{SNARKError, SNARK};
-use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_gadgets::{
-    traits::{algorithms::SNARKGadget, fields::ToConstraintFieldGadget},
-    utilities::boolean::Boolean,
-};
-use snarkvm_nonnative::NonNativeFieldInputVar;
-use snarkvm_polycommit::{PCCheckVar, PolynomialCommitment};
-use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable};
-
-use rand::{CryptoRng, Rng, RngCore};
-use std::{
-    fmt::{Debug, Formatter},
-    marker::PhantomData,
 };
 
 /// Marlin bound.
@@ -353,7 +354,20 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for MarlinBoundCircuit<F> {
 
 #[cfg(test)]
 pub mod test {
-    use super::*;
+    use core::ops::MulAssign;
+
+    use snarkvm_curves::{
+        bls12_377::{Bls12_377, Fq, Fr},
+        bw6_761::BW6_761,
+    };
+    use snarkvm_fields::Field;
+    use snarkvm_gadgets::{
+        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
+        traits::{alloc::AllocGadget, eq::EqGadget},
+    };
+    use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
+    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_utilities::{test_rng, UniformRand};
 
     use crate::{
         constraints::snark::{MarlinSNARK, MarlinSNARKGadget},
@@ -365,20 +379,8 @@ pub mod test {
         },
         marlin::MarlinRecursiveMode,
     };
-    use snarkvm_curves::{
-        bls12_377::{Bls12_377, Fq, Fr},
-        bw6_761::BW6_761,
-    };
-    use snarkvm_fields::Field;
-    use snarkvm_gadgets::{
-        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
-        utilities::{alloc::AllocGadget, eq::EqGadget},
-    };
-    use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
-    use snarkvm_r1cs::TestConstraintSystem;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
-    use core::ops::MulAssign;
+    use super::*;
 
     const ITERATIONS: usize = 10;
 

@@ -14,17 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
-use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{
-    traits::fields::FieldGadget,
-    utilities::{alloc::AllocGadget, eq::EqGadget},
-};
-use snarkvm_nonnative::NonNativeFieldVar;
-use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-
 use rand::{RngCore, SeedableRng};
 use rand_xorshift::XorShiftRng;
+
+use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
+use snarkvm_fields::PrimeField;
+use snarkvm_gadgets::traits::{alloc::AllocGadget, eq::EqGadget, fields::FieldGadget};
+use snarkvm_nonnative::NonNativeFieldVar;
+use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
 const NUM_REPETITIONS: usize = 20;
 

@@ -17,18 +17,20 @@
 //! Implements a Proof of Succinct work circuit. The inputs are opaque leaves,
 //! which are then used to build a tree instantiated with a masked Pedersen hash. The prover
 //! inputs a mask computed as Blake2s(nonce || root), which the verifier also checks.
+use std::{marker::PhantomData, sync::Arc};
+
 use snarkvm_algorithms::traits::{MaskedMerkleParameters, CRH};
 use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::algorithms::merkle_tree::compute_root;
-use snarkvm_r1cs::errors::SynthesisError;
-
-use snarkvm_gadgets::traits::{
-    algorithms::{CRHGadget, MaskedCRHGadget},
-    utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8},
+use snarkvm_gadgets::{
+    algorithms::merkle_tree::compute_root,
+    integers::uint::UInt8,
+    traits::{
+        algorithms::{CRHGadget, MaskedCRHGadget},
+        alloc::AllocGadget,
+        eq::EqGadget,
+    },
 };
-use snarkvm_r1cs::{Assignment, ConstraintSynthesizer, ConstraintSystem};
-
-use std::{marker::PhantomData, sync::Arc};
+use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSynthesizer, ConstraintSystem};
 
 /// Enforces sizes of the mask and leaves.
 pub trait POSWCircuitParameters {
@@ -114,7 +116,11 @@ impl<F: PrimeField, M: MaskedMerkleParameters, HG: MaskedCRHGadget<M::H, F>, CP:
 
 #[cfg(test)]
 mod test {
-    use super::{POSWCircuit, POSWCircuitParameters};
+    use std::{marker::PhantomData, sync::Arc};
+
+    use blake2::{digest::Digest, Blake2s};
+    use rand::thread_rng;
+
     use snarkvm_algorithms::{
         crh::{PedersenCompressedCRH, PedersenSize},
         define_masked_merkle_tree_parameters,
@@ -128,9 +134,7 @@ mod test {
     use snarkvm_gadgets::{algorithms::crh::PedersenCompressedCRHGadget, curves::edwards_bls12::EdwardsBlsGadget};
     use snarkvm_utilities::bytes::ToBytes;
 
-    use blake2::{digest::Digest, Blake2s};
-    use rand::thread_rng;
-    use std::{marker::PhantomData, sync::Arc};
+    use super::{POSWCircuit, POSWCircuitParameters};
 
     // We'll use 32 byte masks in this test
     struct TestPOSWCircuitParameters;

@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_curves::bls12_377::{Bls12_377Parameters, Fq, Fq12Parameters, Fq2Parameters, Fq6Parameters};
+
 use crate::{
     curves::templates::bls12::{
         Bls12PairingGadget,
@@ -24,7 +26,6 @@ use crate::{
     },
     fields::{Fp12Gadget, Fp2Gadget, Fp6Gadget, FpGadget},
 };
-use snarkvm_curves::bls12_377::{Bls12_377Parameters, Fq, Fq12Parameters, Fq2Parameters, Fq6Parameters};
 
 pub type FqGadget = FpGadget<Fq>;
 pub type Fq2Gadget = Fp2Gadget<Fq2Parameters, Fq>;
@@ -38,17 +39,12 @@ pub type PairingGadget = Bls12PairingGadget<Bls12_377Parameters>;
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::traits::{
-        curves::GroupGadget,
-        fields::FieldGadget,
-        utilities::{
-            alloc::AllocGadget,
-            boolean::{AllocatedBit, Boolean},
-            eq::EqGadget,
-            select::CondSelectGadget,
-        },
+    use rand::{
+        SeedableRng,
+        {self},
     };
+    use rand_xorshift::XorShiftRng;
+
     use snarkvm_curves::{
         bls12_377::{Fq, Fr, G1Projective as G1, G2Projective as G2},
         traits::{AffineCurve, ProjectiveCurve},
@@ -57,11 +53,18 @@ mod test {
     use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
     use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
 
-    use rand::{
-        SeedableRng,
-        {self},
+    use crate::{
+        bits::boolean::{AllocatedBit, Boolean},
+        traits::{
+            alloc::AllocGadget,
+            curves::GroupGadget,
+            eq::EqGadget,
+            fields::FieldGadget,
+            select::CondSelectGadget,
+        },
     };
-    use rand_xorshift::XorShiftRng;
+
+    use super::*;
 
     #[test]
     fn bls12_g1_constraint_costs() {

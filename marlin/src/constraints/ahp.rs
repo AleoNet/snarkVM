@@ -14,29 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    constraints::{
-        lagrange_interpolation::LagrangeInterpolationVar,
-        polynomial::AlgebraForAHP,
-        proof::ProofVar,
-        verifier_key::PreparedCircuitVerifyingKeyVar,
-    },
-    AHPError,
-    FiatShamirRng,
-    FiatShamirRngVar,
-    PolynomialCommitment,
-};
+use core::marker::PhantomData;
+
+use hashbrown::{HashMap, HashSet};
 
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
+    bits::{Boolean, ToBitsLEGadget},
     fields::FpGadget,
-    traits::fields::{FieldGadget, ToConstraintFieldGadget},
-    utilities::{
+    traits::{
         alloc::AllocGadget,
-        boolean::Boolean,
         eq::{EqGadget, NEqGadget},
-        ToBitsLEGadget,
+        fields::{FieldGadget, ToConstraintFieldGadget},
     },
 };
 use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
@@ -52,8 +42,18 @@ use snarkvm_polycommit::{
 };
 use snarkvm_r1cs::ConstraintSystem;
 
-use core::marker::PhantomData;
-use hashbrown::{HashMap, HashSet};
+use crate::{
+    constraints::{
+        lagrange_interpolation::LagrangeInterpolationVar,
+        polynomial::AlgebraForAHP,
+        proof::ProofVar,
+        verifier_key::PreparedCircuitVerifyingKeyVar,
+    },
+    AHPError,
+    FiatShamirRng,
+    FiatShamirRngVar,
+    PolynomialCommitment,
+};
 
 /// The Marlin verifier round state gadget used to output the state of each round.
 #[derive(Clone)]
@@ -933,41 +933,49 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::*;
-
-    use crate::{
-        ahp::AHPForR1CS as AHPForR1CSNative,
-        marlin::{compute_vk_hash, MarlinMode, MarlinRecursiveMode, MarlinSNARK, PreparedCircuitVerifyingKey},
-        FiatShamirAlgebraicSpongeRng,
-        FiatShamirAlgebraicSpongeRngVar,
-        PoseidonSponge,
-        PoseidonSpongeVar,
-    };
+    use core::ops::MulAssign;
 
     use snarkvm_curves::{
         bls12_377::{Bls12_377, Fq, Fr},
         bw6_761::BW6_761,
     };
     use snarkvm_fields::{Field, Zero};
-    use snarkvm_gadgets::{
-        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
-        traits::utilities::eq::EqGadget,
-    };
-    use snarkvm_polycommit::marlin_pc::{
-        commitment::{
-            commitment::CommitmentVar,
-            labeled_commitment::LabeledCommitmentVar,
-            prepared_commitment::PreparedCommitmentVar,
+    use snarkvm_gadgets::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, traits::eq::EqGadget};
+    use snarkvm_polycommit::{
+        marlin_pc::{
+            commitment::{
+                commitment::CommitmentVar,
+                labeled_commitment::LabeledCommitmentVar,
+                prepared_commitment::PreparedCommitmentVar,
+            },
+            marlin_kzg10::MarlinKZG10Gadget,
+            MarlinKZG10,
         },
-        marlin_kzg10::MarlinKZG10Gadget,
-        MarlinKZG10,
+        Evaluations,
+        LabeledCommitment,
     };
     use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError, TestConstraintSystem};
     use snarkvm_utilities::{test_rng, to_bytes, ToBytes, UniformRand};
 
-    use crate::marlin::{CircuitProvingKey, CircuitVerifyingKey, Proof};
-    use core::ops::MulAssign;
-    use snarkvm_polycommit::{Evaluations, LabeledCommitment};
+    use crate::{
+        ahp::AHPForR1CS as AHPForR1CSNative,
+        marlin::{
+            compute_vk_hash,
+            CircuitProvingKey,
+            CircuitVerifyingKey,
+            MarlinMode,
+            MarlinRecursiveMode,
+            MarlinSNARK,
+            PreparedCircuitVerifyingKey,
+            Proof,
+        },
+        FiatShamirAlgebraicSpongeRng,
+        FiatShamirAlgebraicSpongeRngVar,
+        PoseidonSponge,
+        PoseidonSpongeVar,
+    };
+
+    use super::*;
 
     type MultiPC = MarlinKZG10<Bls12_377>;
     type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FS, MarlinRecursiveMode>;

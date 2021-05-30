@@ -14,22 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    traits::{
-        fields::{FieldGadget, ToConstraintFieldGadget},
-        utilities::ToBitsLEGadget,
-    },
-    utilities::{
-        alloc::AllocGadget,
-        boolean::{AllocatedBit, Boolean},
-        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-        integer::Integer,
-        select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
-        uint::unsigned_integer::UInt8,
-        ToBitsBEGadget,
-        ToBytesGadget,
-    },
-};
+use core::ops::Neg;
+use std::borrow::Borrow;
+
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{
     errors::SynthesisError,
@@ -47,8 +34,22 @@ use snarkvm_utilities::{
     to_bytes,
 };
 
-use core::ops::Neg;
-use std::borrow::Borrow;
+use crate::{
+    bits::{
+        boolean::{AllocatedBit, Boolean},
+        ToBitsBEGadget,
+        ToBitsLEGadget,
+        ToBytesGadget,
+    },
+    integers::uint::UInt8,
+    traits::{
+        alloc::AllocGadget,
+        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+        fields::{FieldGadget, ToConstraintFieldGadget},
+        integers::Integer,
+        select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
+    },
+};
 
 /// Represents a variable in the constraint system whose
 /// value can be an arbitrary field element.

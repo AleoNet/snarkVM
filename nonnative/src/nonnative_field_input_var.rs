@@ -14,21 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::borrow::Borrow;
+
+use snarkvm_fields::PrimeField;
+use snarkvm_gadgets::{
+    bits::boolean_input::BooleanInputGadget,
+    fields::FpGadget,
+    traits::{alloc::AllocGadget, eq::EqGadget, fields::FieldGadget},
+};
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+
 use crate::{
     params::{get_params, OptimizationType},
     AllocatedNonNativeFieldVar,
     NonNativeFieldVar,
 };
-
-use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{
-    fields::FpGadget,
-    traits::fields::FieldGadget,
-    utilities::{alloc::AllocGadget, boolean_input::BooleanInputGadget, eq::EqGadget},
-};
-use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
-
-use std::borrow::Borrow;
 
 /// Conversion of field elements by allocating them as nonnative field elements
 /// Used by Marlin

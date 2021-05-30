@@ -14,13 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use core::marker::PhantomData;
+
+use snarkvm_fields::PrimeField;
+use snarkvm_gadgets::{
+    bits::Boolean,
+    traits::{
+        algorithms::SNARKVerifierGadget,
+        eq::EqGadget,
+        fields::{FieldGadget, ToConstraintFieldGadget},
+    },
+};
+use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
+use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, ToConstraintField};
+
 use crate::{
     constraints::{
         ahp::AHPForR1CS,
         proof::ProofVar,
+        snark::MarlinSNARK,
         verifier_key::{CircuitVerifyingKeyVar, PreparedCircuitVerifyingKeyVar},
     },
-    marlin::MarlinError,
+    marlin::{MarlinError, MarlinMode},
     FiatShamirAlgebraicSpongeRng,
     FiatShamirAlgebraicSpongeRngVar,
     FiatShamirRng,
@@ -29,21 +45,6 @@ use crate::{
     PoseidonSponge,
     PoseidonSpongeVar,
 };
-
-use crate::{constraints::snark::MarlinSNARK, marlin::MarlinMode};
-use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{
-    traits::{
-        algorithms::SNARKVerifierGadget,
-        fields::{FieldGadget, ToConstraintFieldGadget},
-    },
-    utilities::{boolean::Boolean, eq::EqGadget},
-};
-use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
-use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
-use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, ToConstraintField};
-
-use core::marker::PhantomData;
 
 /// The Marlin verification gadget.
 pub struct MarlinVerificationGadget<
@@ -263,7 +264,26 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use core::ops::MulAssign;
+
+    use hashbrown::HashMap;
+
+    use snarkvm_curves::{
+        bls12_377::{Bls12_377, Fq, Fr},
+        bw6_761::BW6_761,
+    };
+    use snarkvm_gadgets::{
+        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
+        traits::{alloc::AllocGadget, eq::EqGadget},
+    };
+    use snarkvm_polycommit::marlin_pc::{
+        commitment::commitment::CommitmentVar,
+        marlin_kzg10::MarlinKZG10Gadget,
+        proof::batch_lc_proof::BatchLCProofVar,
+        MarlinKZG10,
+    };
+    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_utilities::{test_rng, UniformRand};
 
     use crate::{
         constraints::{proof::ProverMessageVar, snark::test::Circuit},
@@ -276,25 +296,7 @@ mod test {
         marlin::{MarlinRecursiveMode, MarlinSNARK as MarlinCore, Proof},
     };
 
-    use snarkvm_curves::{
-        bls12_377::{Bls12_377, Fq, Fr},
-        bw6_761::BW6_761,
-    };
-    use snarkvm_gadgets::{
-        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
-        utilities::{alloc::AllocGadget, eq::EqGadget},
-    };
-    use snarkvm_polycommit::marlin_pc::{
-        commitment::commitment::CommitmentVar,
-        marlin_kzg10::MarlinKZG10Gadget,
-        proof::batch_lc_proof::BatchLCProofVar,
-        MarlinKZG10,
-    };
-    use snarkvm_r1cs::TestConstraintSystem;
-    use snarkvm_utilities::{test_rng, UniformRand};
-
-    use core::ops::MulAssign;
-    use hashbrown::HashMap;
+    use super::*;
 
     type PC = MarlinKZG10<Bls12_377>;
     type PCGadget = MarlinKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;

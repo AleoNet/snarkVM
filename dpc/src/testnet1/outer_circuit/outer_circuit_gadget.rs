@@ -14,27 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet1::{parameters::SystemParameters, program::PrivateProgramInput, BaseDPCComponents};
+use itertools::Itertools;
+
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
 };
 use snarkvm_fields::ToConstraintField;
-use snarkvm_gadgets::traits::{
-    algorithms::{CRHGadget, CommitmentGadget, SNARKVerifierGadget},
-    utilities::{
+use snarkvm_gadgets::{
+    bits::ToBytesGadget,
+    integers::uint::UInt8,
+    traits::{
+        algorithms::{CRHGadget, CommitmentGadget, SNARKVerifierGadget},
         alloc::{AllocBytesGadget, AllocGadget},
         eq::EqGadget,
-        integer::Integer,
-        uint::unsigned_integer::UInt8,
-        ToBytesGadget,
+        integers::integer::Integer,
     },
 };
 use snarkvm_objects::AleoAmount;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
-use itertools::Itertools;
+use crate::testnet1::{parameters::SystemParameters, program::PrivateProgramInput, BaseDPCComponents};
 
 fn field_element_to_bytes<C: BaseDPCComponents, CS: ConstraintSystem<C::OuterField>>(
     cs: &mut CS,

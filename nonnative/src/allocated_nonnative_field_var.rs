@@ -14,37 +14,32 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    allocated_nonnative_field_mul_result_var::AllocatedNonNativeFieldMulResultVar,
-    params::{get_params, OptimizationType},
-    reduce::{bigint_to_basefield, limbs_to_bigint, Reducer},
+use std::{
+    borrow::Borrow,
+    cmp::{max, min},
+    marker::PhantomData,
 };
 
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_gadgets::{
+    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
     fields::FpGadget,
+    integers::uint::UInt8,
     traits::{
+        alloc::AllocGadget,
+        eq::EqGadget,
         fields::FieldGadget,
-        utilities::{
-            alloc::AllocGadget,
-            boolean::Boolean,
-            eq::EqGadget,
-            integer::Integer,
-            select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
-            uint::UInt8,
-            ToBitsBEGadget,
-            ToBitsLEGadget,
-            ToBytesGadget,
-        },
+        integers::integer::Integer,
+        select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
     },
 };
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 use snarkvm_utilities::BigInteger;
 
-use std::{
-    borrow::Borrow,
-    cmp::{max, min},
-    marker::PhantomData,
+use crate::{
+    allocated_nonnative_field_mul_result_var::AllocatedNonNativeFieldMulResultVar,
+    params::{get_params, OptimizationType},
+    reduce::{bigint_to_basefield, limbs_to_bigint, Reducer},
 };
 
 /// The allocated version of `NonNativeFieldVar` (introduced below)

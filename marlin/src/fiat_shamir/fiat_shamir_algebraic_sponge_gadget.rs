@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::fiat_shamir::{
-    traits::{AlgebraicSpongeVar, FiatShamirRngVar},
-    AlgebraicSponge,
-    FiatShamirAlgebraicSpongeRng,
-};
+use std::marker::PhantomData;
+
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
+    bits::{Boolean, ToBitsBEGadget},
     fields::{AllocatedFp, FpGadget},
-    traits::fields::FieldGadget,
-    utilities::{alloc::AllocGadget, boolean::Boolean, integer::Integer, uint::UInt8, ToBitsBEGadget},
+    integers::uint::UInt8,
+    traits::{alloc::AllocGadget, fields::FieldGadget, integers::Integer},
 };
 use snarkvm_nonnative::{
     overhead,
@@ -33,7 +31,11 @@ use snarkvm_nonnative::{
 };
 use snarkvm_r1cs::{ConstraintSystem, ConstraintVariable, LinearCombination, SynthesisError};
 
-use std::marker::PhantomData;
+use crate::fiat_shamir::{
+    traits::{AlgebraicSpongeVar, FiatShamirRngVar},
+    AlgebraicSponge,
+    FiatShamirAlgebraicSpongeRng,
+};
 
 /// Building the Fiat-Shamir sponge's gadget from any algebraic sponge's gadget.
 #[derive(Clone)]
@@ -449,22 +451,23 @@ impl<
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use rand::Rng;
+    use rand_chacha::ChaChaRng;
+    use rand_core::SeedableRng;
+
+    use snarkvm_curves::bls12_377::Fr;
+    use snarkvm_fields::One;
+    use snarkvm_gadgets::{bits::ToBitsLEGadget, traits::eq::EqGadget};
+    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_utilities::rand::UniformRand;
+
     use crate::fiat_shamir::{
         fiat_shamir_poseidon_sponge::PoseidonSponge,
         fiat_shamir_poseidon_sponge_gadget::PoseidonSpongeVar,
         traits::FiatShamirRng,
     };
 
-    use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_fields::One;
-    use snarkvm_gadgets::utilities::{eq::EqGadget, ToBitsLEGadget};
-    use snarkvm_r1cs::TestConstraintSystem;
-    use snarkvm_utilities::rand::UniformRand;
-
-    use rand::Rng;
-    use rand_chacha::ChaChaRng;
-    use rand_core::SeedableRng;
+    use super::*;
 
     type PS = PoseidonSponge<Fr>;
     type PSGadget = PoseidonSpongeVar<Fr>;

@@ -16,17 +16,8 @@
 
 use std::sync::Arc;
 
-use crate::{
-    algorithms::{
-        crh::{BoweHopwoodPedersenCompressedCRHGadget, PedersenCRHGadget, PedersenCompressedCRHGadget},
-        merkle_tree::*,
-    },
-    curves::edwards_bls12::EdwardsBlsGadget,
-    traits::{
-        algorithms::{CRHGadget, MaskedCRHGadget},
-        utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8},
-    },
-};
+use blake2::{digest::Digest, Blake2s};
+
 use snarkvm_algorithms::{
     crh::{BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH, PedersenSize},
     define_masked_merkle_tree_parameters,
@@ -41,7 +32,19 @@ use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::ToBytes;
 
-use blake2::{digest::Digest, Blake2s};
+use crate::{
+    algorithms::{
+        crh::{BoweHopwoodPedersenCompressedCRHGadget, PedersenCRHGadget, PedersenCompressedCRHGadget},
+        merkle_tree::*,
+    },
+    curves::edwards_bls12::EdwardsBlsGadget,
+    integers::uint::UInt8,
+    traits::{
+        algorithms::{CRHGadget, MaskedCRHGadget},
+        alloc::AllocGadget,
+        eq::EqGadget,
+    },
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Size;

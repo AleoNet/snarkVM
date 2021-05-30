@@ -15,9 +15,25 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod algorithms;
+pub use algorithms::*;
+
+pub mod alloc;
+pub use alloc::*;
+
+pub mod bits;
+pub use bits::*;
 
 pub mod curves;
+pub use curves::*;
+
+pub mod eq;
+pub use eq::*;
 
 pub mod fields;
+pub use fields::*;
 
-pub mod utilities;
+pub mod integers;
+pub use integers::*;
+
+pub mod select;
+pub use select::*;

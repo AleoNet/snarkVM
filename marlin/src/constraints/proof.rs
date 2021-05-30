@@ -14,20 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{marlin::Proof, PolynomialCommitment};
+use core::borrow::Borrow;
+
+use hashbrown::HashMap;
 
 use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_gadgets::{
-    traits::fields::ToConstraintFieldGadget,
-    utilities::alloc::{AllocBytesGadget, AllocGadget},
+use snarkvm_gadgets::traits::{
+    alloc::{AllocBytesGadget, AllocGadget},
+    fields::ToConstraintFieldGadget,
 };
 use snarkvm_nonnative::NonNativeFieldVar;
 use snarkvm_polycommit::PCCheckVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use snarkvm_utilities::FromBytes;
 
-use core::borrow::Borrow;
-use hashbrown::HashMap;
+use crate::{marlin::Proof, PolynomialCommitment};
 
 /// The prover message gadget
 #[repr(transparent)]

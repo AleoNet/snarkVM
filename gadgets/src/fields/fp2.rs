@@ -14,25 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    fields::FpGadget,
-    traits::fields::FieldGadget,
-    utilities::{
-        alloc::AllocGadget,
-        boolean::Boolean,
-        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-        select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
-        uint::unsigned_integer::UInt8,
-        ToBitsBEGadget,
-        ToBitsLEGadget,
-        ToBytesGadget,
-    },
-};
+use std::{borrow::Borrow, marker::PhantomData};
+
 use snarkvm_fields::{Field, Fp2, Fp2Parameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, ConstraintVariable};
 
-use crate::traits::fields::ToConstraintFieldGadget;
-use std::{borrow::Borrow, marker::PhantomData};
+use crate::{
+    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
+    fields::FpGadget,
+    integers::uint::UInt8,
+    traits::{
+        alloc::AllocGadget,
+        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+        fields::{FieldGadget, ToConstraintFieldGadget},
+        select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
+    },
+};
 
 #[derive(Derivative)]
 #[derivative(Debug(bound = "P: Fp2Parameters, F: PrimeField"))]

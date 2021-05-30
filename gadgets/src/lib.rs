@@ -41,12 +41,21 @@ extern crate thiserror;
 
 pub mod algorithms;
 
-pub mod curves;
+pub mod bits;
+pub use bits::*;
 
-pub mod fields;
+pub mod curves;
 
 pub mod errors;
 pub use errors::*;
 
+pub mod fields;
+
+pub mod integers;
+
 pub mod traits;
 pub use traits::*;
+
+pub mod prelude {
+    pub use crate::{bits::*, errors::*, traits::*};
+}

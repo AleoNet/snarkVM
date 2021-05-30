@@ -14,28 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{overhead, params::get_params, AllocatedNonNativeFieldVar};
-
-use snarkvm_fields::{FieldParameters, PrimeField};
-use snarkvm_gadgets::{
-    fields::FpGadget,
-    traits::{
-        fields::FieldGadget,
-        utilities::{
-            alloc::AllocGadget,
-            boolean::Boolean,
-            eq::{ConditionalEqGadget, EqGadget},
-        },
-    },
-};
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::{biginteger::BigInteger, bititerator::BitIteratorBE};
+use std::{cmp::min, marker::PhantomData, vec, vec::Vec};
 
 use num_bigint::BigUint;
 use num_integer::Integer;
 use num_traits::identities::{One, Zero};
 
-use std::{cmp::min, marker::PhantomData, vec, vec::Vec};
+use snarkvm_fields::{FieldParameters, PrimeField};
+use snarkvm_gadgets::{
+    bits::Boolean,
+    fields::FpGadget,
+    traits::{
+        alloc::AllocGadget,
+        eq::{ConditionalEqGadget, EqGadget},
+        fields::FieldGadget,
+    },
+};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+use snarkvm_utilities::{biginteger::BigInteger, bititerator::BitIteratorBE};
+
+use crate::{overhead, params::get_params, AllocatedNonNativeFieldVar};
 
 const fn num_bits<T>() -> usize {
     std::mem::size_of::<T>() * 8
