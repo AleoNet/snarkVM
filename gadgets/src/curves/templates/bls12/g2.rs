@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::{Boolean, ToBytesGadget},
     curves::templates::bls12::AffineGadget,
     fields::Fp2Gadget,
     integers::uint::UInt8,
@@ -26,7 +27,6 @@ use crate::{
             eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         },
     },
-    utilities::{Boolean, ToBytesGadget},
 };
 use snarkvm_curves::templates::bls12::{Bls12Parameters, G2Prepared, TwistType};
 use snarkvm_fields::{batch_inversion, Field, One};

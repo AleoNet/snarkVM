@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::{Boolean, ToBitsLEGadget},
     fields::FpGadget,
     traits::utilities::alloc::AllocGadget,
-    utilities::{Boolean, ToBitsLEGadget},
 };
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};

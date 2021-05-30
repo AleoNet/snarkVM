@@ -15,6 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::{
+        boolean::{AllocatedBit, Boolean},
+        ToBitsBEGadget,
+        ToBytesGadget,
+    },
     fields::FpGadget,
     traits::{
         integers::Integer,
@@ -23,11 +28,6 @@ use crate::{
             eq::{ConditionalEqGadget, EqGadget},
             select::CondSelectGadget,
         },
-    },
-    utilities::{
-        boolean::{AllocatedBit, Boolean},
-        ToBitsBEGadget,
-        ToBytesGadget,
     },
     UnsignedIntegerError,
 };

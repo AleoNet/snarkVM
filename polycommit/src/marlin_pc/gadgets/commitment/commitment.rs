@@ -18,6 +18,7 @@ use crate::{marlin_pc::Commitment, Vec};
 use snarkvm_curves::{traits::AffineCurve, PairingEngine};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
+    bits::ToBytesGadget,
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{
@@ -25,7 +26,6 @@ use snarkvm_gadgets::{
         fields::ToConstraintFieldGadget,
         utilities::alloc::AllocGadget,
     },
-    utilities::ToBytesGadget,
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 

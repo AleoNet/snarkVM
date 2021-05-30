@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::Boolean,
     curves::{
         bls12_377::{G1Gadget, G1PreparedGadget, G2Gadget, G2PreparedGadget},
         templates::bls12::Bls12PairingGadget,
@@ -24,7 +25,6 @@ use crate::{
         fields::FieldGadget,
         utilities::{alloc::AllocGadget, eq::EqGadget},
     },
-    utilities::Boolean,
 };
 use snarkvm_curves::{
     bls12_377::{Bls12_377, Fq, Fr, G1Projective, G2Projective},

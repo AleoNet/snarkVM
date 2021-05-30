@@ -15,12 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::Boolean,
     integers::int::*,
     traits::{
         integers::*,
         utilities::{alloc::AllocGadget, eq::EqGadget},
     },
-    utilities::Boolean,
 };
 use snarkvm_fields::{One, Zero};
 use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};

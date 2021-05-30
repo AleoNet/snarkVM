@@ -21,10 +21,10 @@ use crate::fiat_shamir::{
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
+    bits::{Boolean, ToBitsBEGadget},
     fields::{AllocatedFp, FpGadget},
     integers::uint::UInt8,
     traits::{fields::FieldGadget, integers::Integer, utilities::alloc::AllocGadget},
-    utilities::{Boolean, ToBitsBEGadget},
 };
 use snarkvm_nonnative::{
     overhead,
@@ -458,7 +458,7 @@ mod tests {
     };
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_fields::One;
-    use snarkvm_gadgets::{traits::utilities::eq::EqGadget, utilities::ToBitsLEGadget};
+    use snarkvm_gadgets::{bits::ToBitsLEGadget, traits::utilities::eq::EqGadget};
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::UniformRand;
 

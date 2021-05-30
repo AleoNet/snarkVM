@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
     integers::uint::UInt8,
     traits::{
         algorithms::snark::SNARKVerifierGadget,
@@ -24,7 +25,6 @@ use crate::{
             eq::EqGadget,
         },
     },
-    utilities::{Boolean, ToBitsBEGadget, ToBytesGadget},
 };
 use snarkvm_algorithms::snark::groth16::{Groth16, Proof, VerifyingKey};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
@@ -426,7 +426,7 @@ mod test {
     use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
     use snarkvm_utilities::{test_rng, to_bytes, BitIteratorBE, ToBytes};
 
-    use crate::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, utilities::Boolean};
+    use crate::{bits::Boolean, curves::bls12_377::PairingGadget as Bls12_377PairingGadget};
 
     use super::*;
 

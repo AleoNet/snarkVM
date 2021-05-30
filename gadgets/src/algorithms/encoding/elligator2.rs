@@ -15,10 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
     fields::FpGadget,
     integers::uint::UInt8,
     traits::utilities::alloc::AllocGadget,
-    utilities::{Boolean, ToBitsBEGadget, ToBytesGadget},
 };
 use snarkvm_curves::traits::{ModelParameters, MontgomeryModelParameters};
 use snarkvm_fields::PrimeField;

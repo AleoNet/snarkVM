@@ -16,12 +16,12 @@
 
 use crate::{
     algorithms::snark::*,
+    bits::Boolean,
     curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
     traits::{
         algorithms::snark::SNARKVerifierGadget,
         utilities::alloc::{AllocBytesGadget, AllocGadget},
     },
-    utilities::Boolean,
 };
 use snarkvm_algorithms::snark::gm17::{create_random_proof, generate_random_parameters, GM17};
 use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};

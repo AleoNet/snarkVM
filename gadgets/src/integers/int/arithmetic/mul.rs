@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::boolean::{AllocatedBit, Boolean},
     errors::SignedIntegerError,
     integers::int::*,
     traits::{
@@ -25,7 +26,6 @@ use crate::{
             select::CondSelectGadget,
         },
     },
-    utilities::boolean::{AllocatedBit, Boolean},
 };
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{Assignment, ConstraintSystem, LinearCombination};

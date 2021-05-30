@@ -16,9 +16,9 @@
 
 use crate::{
     algorithms::prf::{blake2s_gadget, Blake2sOutputGadget},
+    bits::ToBytesGadget,
     integers::uint::UInt8,
     traits::{algorithms::CommitmentGadget, integers::integer::Integer, utilities::alloc::AllocGadget},
-    utilities::ToBytesGadget,
 };
 use snarkvm_algorithms::commitment::Blake2sCommitment;
 use snarkvm_fields::{Field, PrimeField};

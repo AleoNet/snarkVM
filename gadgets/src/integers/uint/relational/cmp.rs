@@ -15,12 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::Boolean,
     integers::uint::{UInt128, UInt16, UInt32, UInt64, UInt8},
     traits::utilities::{
         bits::{ComparatorGadget, EvaluateLtGadget, Xor},
         select::CondSelectGadget,
     },
-    utilities::Boolean,
 };
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};

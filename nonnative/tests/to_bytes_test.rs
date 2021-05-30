@@ -17,8 +17,8 @@
 use snarkvm_curves::{bls12_377::Bls12_377, bw6_761::BW6_761, pairing_engine::PairingEngine};
 use snarkvm_fields::Zero;
 use snarkvm_gadgets::{
+    bits::{ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
     traits::utilities::alloc::AllocGadget,
-    utilities::{ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
 };
 use snarkvm_nonnative::NonNativeFieldVar;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};

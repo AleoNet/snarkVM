@@ -25,13 +25,13 @@ use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
 use crate::{
     algorithms::prf::*,
+    bits::boolean::{AllocatedBit, Boolean},
     integers::uint::UInt8,
     traits::{
         algorithms::PRFGadget,
         integers::integer::Integer,
         utilities::{alloc::AllocGadget, eq::EqGadget},
     },
-    utilities::boolean::{AllocatedBit, Boolean},
 };
 
 #[test]

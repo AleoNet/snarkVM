@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::boolean::{AllocatedBit, Boolean},
     integers::{int::*, uint::*},
     traits::{integers::Integer, utilities::alloc::AllocGadget},
-    utilities::boolean::{AllocatedBit, Boolean},
 };
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};

@@ -21,12 +21,12 @@ use crate::{
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
+    bits::boolean_input::BooleanInputGadget,
     fields::FpGadget,
     traits::{
         fields::FieldGadget,
         utilities::{alloc::AllocGadget, eq::EqGadget},
     },
-    utilities::boolean_input::BooleanInputGadget,
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 

@@ -29,6 +29,7 @@ use crate::{
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
+    bits::{Boolean, ToBitsLEGadget},
     fields::FpGadget,
     traits::{
         fields::{FieldGadget, ToConstraintFieldGadget},
@@ -37,7 +38,6 @@ use snarkvm_gadgets::{
             eq::{EqGadget, NEqGadget},
         },
     },
-    utilities::{Boolean, ToBitsLEGadget},
 };
 use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
 use snarkvm_polycommit::{

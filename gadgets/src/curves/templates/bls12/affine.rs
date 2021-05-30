@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{
@@ -26,7 +27,6 @@ use crate::{
             select::CondSelectGadget,
         },
     },
-    utilities::{Boolean, ToBitsBEGadget, ToBytesGadget},
 };
 use snarkvm_curves::{
     templates::short_weierstrass::short_weierstrass_jacobian::{

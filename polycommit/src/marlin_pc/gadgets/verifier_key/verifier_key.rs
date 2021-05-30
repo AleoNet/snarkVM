@@ -19,6 +19,7 @@ use core::borrow::Borrow;
 use snarkvm_curves::{AffineCurve, PairingEngine};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
+    bits::{Boolean, ToBytesGadget},
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{
@@ -26,7 +27,6 @@ use snarkvm_gadgets::{
         fields::{FieldGadget, ToConstraintFieldGadget},
         utilities::{alloc::AllocGadget, eq::EqGadget, select::CondSelectGadget},
     },
-    utilities::{Boolean, ToBytesGadget},
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 

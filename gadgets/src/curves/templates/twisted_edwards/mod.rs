@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
     integers::uint::UInt8,
     traits::{
         curves::{CompressedGroupGadget, GroupGadget},
@@ -25,7 +26,6 @@ use crate::{
             select::CondSelectGadget,
         },
     },
-    utilities::{Boolean, ToBitsBEGadget, ToBytesGadget},
 };
 use snarkvm_curves::{
     templates::twisted_edwards_extended::GroupAffine as TEAffine,

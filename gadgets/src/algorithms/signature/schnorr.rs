@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::{Boolean, ToBytesGadget},
     integers::uint::UInt8,
     traits::{
         algorithms::SignaturePublicKeyRandomizationGadget,
@@ -25,7 +26,6 @@ use crate::{
             eq::{ConditionalEqGadget, EqGadget},
         },
     },
-    utilities::{Boolean, ToBytesGadget},
 };
 use snarkvm_algorithms::signature::{SchnorrParameters, SchnorrPublicKey, SchnorrSignature};
 use snarkvm_curves::traits::Group;

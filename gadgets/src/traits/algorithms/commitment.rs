@@ -15,13 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::ToBytesGadget,
     integers::uint::UInt8,
     traits::utilities::{
         alloc::AllocGadget,
         eq::{ConditionalEqGadget, EqGadget},
         select::CondSelectGadget,
     },
-    utilities::ToBytesGadget,
 };
 use snarkvm_algorithms::traits::CommitmentScheme;
 use snarkvm_fields::Field;

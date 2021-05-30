@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{integers::uint::UInt8, traits::integers::Integer, utilities::Boolean};
+use crate::{bits::Boolean, integers::uint::UInt8, traits::integers::Integer};
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 

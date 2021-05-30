@@ -32,12 +32,12 @@ use crate::{
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
+    bits::Boolean,
     traits::{
         algorithms::SNARKVerifierGadget,
         fields::{FieldGadget, ToConstraintFieldGadget},
         utilities::eq::EqGadget,
     },
-    utilities::Boolean,
 };
 use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
 use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};

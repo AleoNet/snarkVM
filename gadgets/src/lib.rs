@@ -41,6 +41,9 @@ extern crate thiserror;
 
 pub mod algorithms;
 
+pub mod bits;
+pub use bits::*;
+
 pub mod curves;
 
 pub mod fields;
@@ -52,6 +55,3 @@ pub mod integers;
 
 pub mod traits;
 pub use traits::*;
-
-pub mod utilities;
-pub use utilities::*;

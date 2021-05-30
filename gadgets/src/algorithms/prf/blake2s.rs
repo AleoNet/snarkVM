@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::{Boolean, ToBytesGadget},
     integers::uint::{UInt, UInt32, UInt8},
     traits::{
         algorithms::PRFGadget,
@@ -26,7 +27,6 @@ use crate::{
             select::CondSelectGadget,
         },
     },
-    utilities::{Boolean, ToBytesGadget},
 };
 use snarkvm_algorithms::prf::Blake2s;
 use snarkvm_fields::PrimeField;

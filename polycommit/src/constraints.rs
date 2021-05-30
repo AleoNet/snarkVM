@@ -17,9 +17,9 @@
 use crate::{BatchLCProof, LCTerm, LabeledCommitment, LinearCombination, PolynomialCommitment, String, Vec};
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
+    bits::{Boolean, ToBytesGadget},
     fields::FpGadget,
     traits::utilities::alloc::AllocGadget,
-    utilities::{Boolean, ToBytesGadget},
 };
 use snarkvm_nonnative::NonNativeFieldVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};

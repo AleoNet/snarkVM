@@ -15,6 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::{
+        boolean::{AllocatedBit, Boolean},
+        ToBytesGadget,
+    },
     integers::uint::{UInt, UInt8},
     traits::{
         integers::{Integer, Pow},
@@ -25,10 +29,6 @@ use crate::{
         },
     },
     uint_impl_common,
-    utilities::{
-        boolean::{AllocatedBit, Boolean},
-        ToBytesGadget,
-    },
     UnsignedIntegerError,
 };
 use snarkvm_fields::{Field, FieldParameters, PrimeField};

@@ -32,6 +32,7 @@ use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryModelParameters, Proj
 use snarkvm_fields::{Field, One, PrimeField};
 use snarkvm_gadgets::{
     algorithms::{encoding::Elligator2FieldGadget, merkle_tree::merkle_path::MerklePathGadget},
+    bits::{Boolean, ToBitsLEGadget, ToBytesGadget},
     fields::FpGadget,
     integers::{int::Int64, uint::UInt8},
     traits::{
@@ -43,7 +44,6 @@ use snarkvm_gadgets::{
             eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         },
     },
-    utilities::{Boolean, ToBitsLEGadget, ToBytesGadget},
 };
 use snarkvm_objects::AleoAmount;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};

@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::Boolean,
     integers::uint::UInt8,
     traits::{
         algorithms::{CRHGadget, MaskedCRHGadget},
@@ -22,7 +23,6 @@ use crate::{
         integers::Integer,
         utilities::alloc::AllocGadget,
     },
-    utilities::Boolean,
 };
 use snarkvm_algorithms::crh::{PedersenCRH, PedersenCRHParameters, PedersenCompressedCRH, PedersenSize};
 use snarkvm_curves::traits::{Group, ProjectiveCurve};

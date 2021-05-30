@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
     traits::utilities::alloc::{AllocBytesGadget, AllocGadget},
-    utilities::{Boolean, ToBitsBEGadget, ToBytesGadget},
 };
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_fields::{Field, PrimeField};

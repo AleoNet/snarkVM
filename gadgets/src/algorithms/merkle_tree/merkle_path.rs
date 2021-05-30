@@ -15,16 +15,16 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::{
+        boolean::{AllocatedBit, Boolean},
+        ToBytesGadget,
+    },
     traits::{
         algorithms::CRHGadget,
         utilities::{
             alloc::AllocGadget,
             eq::{ConditionalEqGadget, ConditionalOrEqualsGadget},
         },
-    },
-    utilities::{
-        boolean::{AllocatedBit, Boolean},
-        ToBytesGadget,
     },
 };
 use snarkvm_algorithms::{

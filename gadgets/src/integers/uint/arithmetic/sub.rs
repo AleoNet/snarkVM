@@ -15,10 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::boolean::AllocatedBit,
     errors::UnsignedIntegerError,
     integers::uint::*,
     traits::{integers::Integer, utilities::alloc::AllocGadget},
-    utilities::boolean::AllocatedBit,
 };
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{Assignment, ConstraintSystem, LinearCombination, SynthesisError};

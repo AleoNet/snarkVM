@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::ToBytesGadget,
     integers::uint::UInt8,
     traits::utilities::{alloc::AllocGadget, eq::EqGadget},
-    utilities::ToBytesGadget,
 };
 use snarkvm_algorithms::traits::PRF;
 use snarkvm_fields::Field;

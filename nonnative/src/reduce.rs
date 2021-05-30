@@ -22,6 +22,7 @@ use num_traits::identities::{One, Zero};
 
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_gadgets::{
+    bits::Boolean,
     fields::FpGadget,
     traits::{
         fields::FieldGadget,
@@ -30,7 +31,6 @@ use snarkvm_gadgets::{
             eq::{ConditionalEqGadget, EqGadget},
         },
     },
-    utilities::Boolean,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{biginteger::BigInteger, bititerator::BitIteratorBE};

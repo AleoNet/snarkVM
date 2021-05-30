@@ -15,13 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::boolean::{AllocatedBit, Boolean},
     errors::SignedIntegerError,
     integers::int::*,
     traits::{
         integers::{Add, Div, Integer, Neg, Sub},
         utilities::{alloc::AllocGadget, bits::ComparatorGadget, eq::EvaluateEqGadget, select::CondSelectGadget},
     },
-    utilities::boolean::{AllocatedBit, Boolean},
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSystem;

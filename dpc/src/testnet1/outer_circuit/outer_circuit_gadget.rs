@@ -21,6 +21,7 @@ use snarkvm_algorithms::{
 };
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
+    bits::ToBytesGadget,
     integers::uint::UInt8,
     traits::{
         algorithms::{CRHGadget, CommitmentGadget, SNARKVerifierGadget},
@@ -30,7 +31,6 @@ use snarkvm_gadgets::{
             eq::EqGadget,
         },
     },
-    utilities::ToBytesGadget,
 };
 use snarkvm_objects::AleoAmount;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};

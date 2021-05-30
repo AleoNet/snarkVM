@@ -19,10 +19,10 @@ use crate::{marlin::CircuitVerifyingKey, PolynomialCommitment};
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
+    bits::ToBytesGadget,
     fields::FpGadget,
     integers::uint::UInt8,
     traits::utilities::alloc::AllocGadget,
-    utilities::ToBytesGadget,
 };
 use snarkvm_polycommit::PCCheckVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};

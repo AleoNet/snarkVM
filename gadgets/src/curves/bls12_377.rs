@@ -53,12 +53,12 @@ mod test {
     use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
 
     use crate::{
+        bits::boolean::{AllocatedBit, Boolean},
         traits::{
             curves::GroupGadget,
             fields::FieldGadget,
             utilities::{alloc::AllocGadget, eq::EqGadget, select::CondSelectGadget},
         },
-        utilities::boolean::{AllocatedBit, Boolean},
     };
 
     use super::*;

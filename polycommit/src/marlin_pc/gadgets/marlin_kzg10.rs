@@ -38,13 +38,13 @@ use crate::{
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_gadgets::{
+    bits::{Boolean, ToBitsLEGadget},
     fields::FpGadget,
     traits::{
         curves::{GroupGadget, PairingGadget},
         fields::FieldGadget,
         utilities::{eq::EqGadget, select::CondSelectGadget},
     },
-    utilities::{Boolean, ToBitsLEGadget},
 };
 use snarkvm_nonnative::{NonNativeFieldMulResultVar, NonNativeFieldVar};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};

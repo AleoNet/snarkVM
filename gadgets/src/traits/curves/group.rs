@@ -15,12 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
     traits::utilities::{
         alloc::AllocGadget,
         eq::{EqGadget, NEqGadget},
         select::CondSelectGadget,
     },
-    utilities::{Boolean, ToBitsBEGadget, ToBytesGadget},
 };
 use snarkvm_curves::{
     traits::{AffineCurve, Group},

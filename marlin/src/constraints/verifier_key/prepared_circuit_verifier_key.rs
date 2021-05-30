@@ -23,13 +23,13 @@ use crate::{
 };
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
+    bits::ToBytesGadget,
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{
         fields::{FieldGadget, ToConstraintFieldGadget},
         utilities::alloc::{AllocBytesGadget, AllocGadget},
     },
-    utilities::ToBytesGadget,
 };
 use snarkvm_polycommit::{PCCheckVar, PrepareGadget};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};

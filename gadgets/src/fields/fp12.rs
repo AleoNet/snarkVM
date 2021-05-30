@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{
@@ -25,7 +26,6 @@ use crate::{
             select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
         },
     },
-    utilities::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
 };
 use snarkvm_fields::{
     fp6_3over2::{Fp6, Fp6Parameters},

@@ -190,9 +190,9 @@ mod tests {
         AffineCurve,
     };
     use snarkvm_gadgets::{
+        bits::ToBytesGadget,
         curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
         traits::utilities::eq::EqGadget,
-        utilities::ToBytesGadget,
     };
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::test_rng;

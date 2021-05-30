@@ -21,6 +21,7 @@ use crate::{
 };
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_gadgets::{
+    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{
@@ -32,7 +33,6 @@ use snarkvm_gadgets::{
             select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
         },
     },
-    utilities::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
 };
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 use snarkvm_utilities::BigInteger;

@@ -37,8 +37,8 @@ use crate::{
 use snarkvm_algorithms::{SNARKError, SNARK};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
+    bits::Boolean,
     traits::{algorithms::SNARKGadget, fields::ToConstraintFieldGadget},
-    utilities::Boolean,
 };
 use snarkvm_nonnative::NonNativeFieldInputVar;
 use snarkvm_polycommit::{PCCheckVar, PolynomialCommitment};
