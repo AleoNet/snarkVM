@@ -16,10 +16,12 @@
 
 use crate::testnet1::{parameters::SystemParameters, BaseDPCComponents};
 use snarkvm_algorithms::traits::{CommitmentScheme, CRH};
-use snarkvm_gadgets::traits::{
-    algorithms::{CRHGadget, CommitmentGadget},
+use snarkvm_gadgets::{
     integers::uint::UInt8,
-    utilities::alloc::AllocGadget,
+    traits::{
+        algorithms::{CRHGadget, CommitmentGadget},
+        utilities::alloc::AllocGadget,
+    },
 };
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSynthesizer, ConstraintSystem};
 

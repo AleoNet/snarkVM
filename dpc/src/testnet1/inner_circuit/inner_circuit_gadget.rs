@@ -14,39 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::ops::Mul;
-
-use snarkvm_algorithms::{
-    merkle_tree::{MerklePath, MerkleTreeDigest},
-    traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, PRF},
-};
-use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
-use snarkvm_fields::{Field, One, PrimeField};
-use snarkvm_gadgets::{
-    algorithms::{encoding::Elligator2FieldGadget, merkle_tree::merkle_path::MerklePathGadget},
-    fields::FpGadget,
-    traits::{
-        algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignaturePublicKeyRandomizationGadget},
-        fields::FieldGadget,
-        integers::{add::Add, integer::Integer, sub::Sub},
-        utilities::{
-            alloc::AllocGadget,
-            eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-            int::Int64,
-            uint::UInt8,
-            ToBytesGadget,
-        },
-    },
-    utilities::{boolean::Boolean, ToBitsLEGadget},
-};
-use snarkvm_objects::AleoAmount;
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::{
-    bits_to_bytes,
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-};
-
 use crate::{
     account::AccountPrivateKey,
     testnet1::{
@@ -57,6 +24,36 @@ use crate::{
     },
     traits::RecordScheme,
 };
+use snarkvm_algorithms::{
+    merkle_tree::{MerklePath, MerkleTreeDigest},
+    traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, PRF},
+};
+use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
+use snarkvm_fields::{Field, One, PrimeField};
+use snarkvm_gadgets::{
+    algorithms::{encoding::Elligator2FieldGadget, merkle_tree::merkle_path::MerklePathGadget},
+    fields::FpGadget,
+    integers::{int::Int64, uint::UInt8},
+    traits::{
+        algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignaturePublicKeyRandomizationGadget},
+        fields::FieldGadget,
+        integers::{add::Add, integer::Integer, sub::Sub},
+        utilities::{
+            alloc::AllocGadget,
+            eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+        },
+    },
+    utilities::{boolean::Boolean, ToBitsLEGadget, ToBytesGadget},
+};
+use snarkvm_objects::AleoAmount;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+use snarkvm_utilities::{
+    bits_to_bytes,
+    bytes::{FromBytes, ToBytes},
+    to_bytes,
+};
+
+use std::ops::Mul;
 
 #[allow(clippy::too_many_arguments)]
 pub fn execute_inner_proof_gadget<C: BaseDPCComponents, CS: ConstraintSystem<C::InnerField>>(
