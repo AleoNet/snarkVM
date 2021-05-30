@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
+
 use crate::{
     bits::Boolean,
     integers::int::*,
-    traits::{
-        integers::Integer,
-        utilities::{alloc::AllocGadget, eq::EqGadget, select::CondSelectGadget},
-    },
+    traits::{alloc::AllocGadget, eq::EqGadget, integers::Integer, select::CondSelectGadget},
 };
-use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 
 macro_rules! select_int_impl {
     ($($gadget: ident)*) => ($(

@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{bits::Boolean, traits::utilities::select::CondSelectGadget};
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+
+use crate::{bits::Boolean, traits::select::CondSelectGadget};
 
 pub trait EvaluateEqGadget<F: Field> {
     fn evaluate_equal<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Boolean, SynthesisError>;

@@ -14,17 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::ConstraintSystem;
+
 use crate::{
     bits::Boolean,
     errors::SignedIntegerError,
     integers::int::*,
     traits::{
+        alloc::AllocGadget,
         integers::{Integer, Mul, Pow},
-        utilities::{alloc::AllocGadget, select::CondSelectGadget},
+        select::CondSelectGadget,
     },
 };
-use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::ConstraintSystem;
 
 macro_rules! pow_int_impl {
     ($($gadget:ty)*) => ($(

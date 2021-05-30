@@ -14,18 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AllocatedNonNativeFieldVar, NonNativeFieldMulResultVar};
+use std::{
+    borrow::Borrow,
+    hash::{Hash, Hasher},
+};
+
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_gadgets::{
     bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
     integers::uint::UInt8,
     traits::{
+        alloc::AllocGadget,
+        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         fields::FieldGadget,
-        utilities::{
-            alloc::AllocGadget,
-            eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-            select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
-        },
+        select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
     },
 };
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
@@ -35,10 +37,7 @@ use snarkvm_utilities::{
     to_bytes,
 };
 
-use std::{
-    borrow::Borrow,
-    hash::{Hash, Hasher},
-};
+use crate::{AllocatedNonNativeFieldVar, NonNativeFieldMulResultVar};
 
 /// A gadget for representing non-native (`TargetField`) field elements over the constraint field (`BaseField`).
 #[derive(Clone, Debug)]

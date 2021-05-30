@@ -14,20 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    bits::Boolean,
-    integers::uint::{Sub, UInt, UInt128},
-    traits::{
-        integers::*,
-        utilities::{alloc::AllocGadget, bits::Xor},
-    },
-};
-use snarkvm_fields::{One, Zero};
-use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
+use std::convert::TryInto;
 
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
-use std::convert::TryInto;
+
+use snarkvm_fields::{One, Zero};
+use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
+
+use crate::{
+    bits::Boolean,
+    integers::uint::{Sub, UInt, UInt128},
+    traits::{alloc::AllocGadget, bits::Xor, integers::*},
+};
 
 fn check_all_constant_bits(mut expected: u128, actual: UInt128) {
     for b in actual.bits.iter() {

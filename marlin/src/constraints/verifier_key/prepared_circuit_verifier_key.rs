@@ -14,6 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use core::borrow::Borrow;
+use std::marker::PhantomData;
+
+use snarkvm_fields::{PrimeField, ToConstraintField};
+use snarkvm_gadgets::{
+    bits::ToBytesGadget,
+    fields::FpGadget,
+    integers::uint::UInt8,
+    traits::{
+        alloc::{AllocBytesGadget, AllocGadget},
+        fields::{FieldGadget, ToConstraintFieldGadget},
+    },
+};
+use snarkvm_polycommit::{PCCheckVar, PrepareGadget};
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
+
 use crate::{
     constraints::{verifier::MarlinVerificationGadget, verifier_key::CircuitVerifyingKeyVar},
     marlin::{CircuitVerifyingKey, PreparedCircuitVerifyingKey},
@@ -21,22 +38,6 @@ use crate::{
     FiatShamirRngVar,
     PolynomialCommitment,
 };
-use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_gadgets::{
-    bits::ToBytesGadget,
-    fields::FpGadget,
-    integers::uint::UInt8,
-    traits::{
-        fields::{FieldGadget, ToConstraintFieldGadget},
-        utilities::alloc::{AllocBytesGadget, AllocGadget},
-    },
-};
-use snarkvm_polycommit::{PCCheckVar, PrepareGadget};
-use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
-use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
-
-use core::borrow::Borrow;
-use std::marker::PhantomData;
 
 /// The prepared circuit verifying key gadget
 pub struct PreparedCircuitVerifyingKeyVar<
@@ -501,7 +502,16 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use core::ops::MulAssign;
+
+    use snarkvm_curves::{
+        bls12_377::{Bls12_377, Fq, Fr},
+        bw6_761::BW6_761,
+    };
+    use snarkvm_gadgets::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, traits::eq::EqGadget};
+    use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
+    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_utilities::rand::{test_rng, UniformRand};
 
     use crate::{
         marlin::{tests::Circuit, MarlinSNARK, MarlinTestnet1Mode},
@@ -510,19 +520,8 @@ mod test {
         PoseidonSponge,
         PoseidonSpongeVar,
     };
-    use snarkvm_curves::{
-        bls12_377::{Bls12_377, Fq, Fr},
-        bw6_761::BW6_761,
-    };
-    use snarkvm_gadgets::{
-        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
-        traits::utilities::eq::EqGadget,
-    };
-    use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
-    use snarkvm_r1cs::TestConstraintSystem;
-    use snarkvm_utilities::rand::{test_rng, UniformRand};
 
-    use core::ops::MulAssign;
+    use super::*;
 
     type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
     type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;

@@ -14,18 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
-    fields::FpGadget,
-    integers::uint::UInt8,
-    traits::utilities::alloc::AllocGadget,
-};
+use std::{borrow::Borrow, marker::PhantomData};
+
 use snarkvm_curves::traits::{ModelParameters, MontgomeryModelParameters};
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{to_bytes, ToBytes};
 
-use std::{borrow::Borrow, marker::PhantomData};
+use crate::{
+    bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
+    fields::FpGadget,
+    integers::uint::UInt8,
+    traits::alloc::AllocGadget,
+};
 
 #[derive(Clone, Debug)]
 pub struct Elligator2FieldGadget<P: MontgomeryModelParameters, F: PrimeField>(pub FpGadget<F>, PhantomData<P>);

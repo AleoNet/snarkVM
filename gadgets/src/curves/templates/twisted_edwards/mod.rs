@@ -14,19 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
-    integers::uint::UInt8,
-    traits::{
-        curves::{CompressedGroupGadget, GroupGadget},
-        fields::FieldGadget,
-        utilities::{
-            alloc::AllocGadget,
-            eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-            select::CondSelectGadget,
-        },
-    },
-};
+use std::{borrow::Borrow, marker::PhantomData};
+
 use snarkvm_curves::{
     templates::twisted_edwards_extended::GroupAffine as TEAffine,
     traits::{MontgomeryModelParameters, TEModelParameters},
@@ -35,7 +24,17 @@ use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem, Namespace};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
-use std::{borrow::Borrow, marker::PhantomData};
+use crate::{
+    bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
+    integers::uint::UInt8,
+    traits::{
+        alloc::AllocGadget,
+        curves::{CompressedGroupGadget, GroupGadget},
+        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+        fields::FieldGadget,
+        select::CondSelectGadget,
+    },
+};
 
 #[cfg(test)]
 pub mod test;

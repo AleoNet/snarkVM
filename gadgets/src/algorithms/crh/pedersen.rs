@@ -14,22 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    bits::Boolean,
-    integers::uint::UInt8,
-    traits::{
-        algorithms::{CRHGadget, MaskedCRHGadget},
-        curves::{CompressedGroupGadget, GroupGadget},
-        integers::Integer,
-        utilities::alloc::AllocGadget,
-    },
-};
+use std::{borrow::Borrow, marker::PhantomData};
+
 use snarkvm_algorithms::crh::{PedersenCRH, PedersenCRHParameters, PedersenCompressedCRH, PedersenSize};
 use snarkvm_curves::traits::{Group, ProjectiveCurve};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
-use std::{borrow::Borrow, marker::PhantomData};
+use crate::{
+    bits::Boolean,
+    integers::uint::UInt8,
+    traits::{
+        algorithms::{CRHGadget, MaskedCRHGadget},
+        alloc::AllocGadget,
+        curves::{CompressedGroupGadget, GroupGadget},
+        integers::Integer,
+    },
+};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct PedersenCRHParametersGadget<G: Group, S: PedersenSize, F: Field, GG: GroupGadget<G, F>> {

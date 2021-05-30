@@ -14,23 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    bits::ToBytesGadget,
-    integers::uint::UInt8,
-    traits::{
-        integers::Integer,
-        utilities::{
-            alloc::AllocGadget,
-            eq::{ConditionalEqGadget, EqGadget},
-            select::CondSelectGadget,
-        },
-    },
-};
+use std::fmt::Debug;
+
 use snarkvm_algorithms::traits::CRH;
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
-use std::fmt::Debug;
+use crate::{
+    bits::ToBytesGadget,
+    integers::uint::UInt8,
+    traits::{
+        alloc::AllocGadget,
+        eq::{ConditionalEqGadget, EqGadget},
+        integers::Integer,
+        select::CondSelectGadget,
+    },
+};
 
 pub trait CRHGadget<H: CRH, F: Field>: Sized + Clone {
     type ParametersGadget: AllocGadget<H::Parameters, F> + Clone;

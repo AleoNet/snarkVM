@@ -14,14 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_fields::{Field, PrimeField};
+use snarkvm_r1cs::{Assignment, ConstraintSystem, LinearCombination, SynthesisError};
+
 use crate::{
     bits::boolean::AllocatedBit,
     errors::UnsignedIntegerError,
     integers::uint::*,
-    traits::{integers::Integer, utilities::alloc::AllocGadget},
+    traits::{alloc::AllocGadget, integers::Integer},
 };
-use snarkvm_fields::{Field, PrimeField};
-use snarkvm_r1cs::{Assignment, ConstraintSystem, LinearCombination, SynthesisError};
 
 /// Returns subtraction of `self` - `other` in the constraint system.
 pub trait Sub<F: Field, Rhs = Self>

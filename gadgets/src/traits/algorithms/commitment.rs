@@ -14,20 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::fmt::Debug;
+
+use snarkvm_algorithms::traits::CommitmentScheme;
+use snarkvm_fields::Field;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+
 use crate::{
     bits::ToBytesGadget,
     integers::uint::UInt8,
-    traits::utilities::{
+    traits::{
         alloc::AllocGadget,
         eq::{ConditionalEqGadget, EqGadget},
         select::CondSelectGadget,
     },
 };
-use snarkvm_algorithms::traits::CommitmentScheme;
-use snarkvm_fields::Field;
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-
-use std::fmt::Debug;
 
 pub trait CommitmentGadget<C: CommitmentScheme, F: Field> {
     type OutputGadget: ConditionalEqGadget<F>

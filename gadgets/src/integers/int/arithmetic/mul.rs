@@ -14,23 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::iter;
+
+use snarkvm_fields::{FieldParameters, PrimeField};
+use snarkvm_r1cs::{Assignment, ConstraintSystem, LinearCombination};
+
 use crate::{
     bits::boolean::{AllocatedBit, Boolean},
     errors::SignedIntegerError,
     integers::int::*,
     traits::{
+        alloc::AllocGadget,
+        bits::{RippleCarryAdder, SignExtend},
         integers::{Integer, Mul},
-        utilities::{
-            alloc::AllocGadget,
-            bits::{RippleCarryAdder, SignExtend},
-            select::CondSelectGadget,
-        },
+        select::CondSelectGadget,
     },
 };
-use snarkvm_fields::{FieldParameters, PrimeField};
-use snarkvm_r1cs::{Assignment, ConstraintSystem, LinearCombination};
-
-use std::iter;
 
 macro_rules! mul_int_impl {
     ($($gadget: ident)*) => ($(

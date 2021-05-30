@@ -16,11 +16,13 @@
 
 use crate::{
     bits::ToBytesGadget,
+    fields::FpGadget,
     integers::uint::UInt8,
-    traits::utilities::{
+    traits::{
         alloc::AllocGadget,
         bits::Xor,
         eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
+        fields::ToConstraintFieldGadget,
         select::CondSelectGadget,
     },
 };
@@ -35,7 +37,6 @@ use snarkvm_r1cs::{
 };
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
-use crate::{fields::FpGadget, traits::fields::ToConstraintFieldGadget};
 use std::borrow::Borrow;
 
 /// Represents a variable in the constraint system which is guaranteed
@@ -949,14 +950,16 @@ impl<F: PrimeField> ToConstraintFieldGadget<F> for Boolean {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use std::str::FromStr;
+
+    use rand::SeedableRng;
+    use rand_xorshift::XorShiftRng;
+
     use snarkvm_fields::{Field, One, PrimeField, Zero};
     use snarkvm_r1cs::{Fr, TestConstraintSystem};
     use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
 
-    use rand::SeedableRng;
-    use rand_xorshift::XorShiftRng;
-    use std::str::FromStr;
+    use super::*;
 
     #[test]
     fn test_boolean_to_byte() {

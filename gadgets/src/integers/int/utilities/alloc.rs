@@ -14,17 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+
 use crate::{
     bits::{Boolean, ToBitsBEGadget},
     fields::FpGadget,
     integers::int::*,
-    traits::{
-        integers::Integer,
-        utilities::{alloc::AllocGadget, eq::EqGadget},
-    },
+    traits::{alloc::AllocGadget, eq::EqGadget, integers::Integer},
 };
-use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 /// Alloc the unsigned integer through field elements rather purely bits
 /// to reduce the number of input allocations.

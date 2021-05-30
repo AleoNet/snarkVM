@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_curves::bls12_377::{Bls12_377Parameters, Fq, Fq12Parameters, Fq2Parameters, Fq6Parameters};
+
 use crate::{
     curves::templates::bls12::{
         Bls12PairingGadget,
@@ -24,7 +26,6 @@ use crate::{
     },
     fields::{Fp12Gadget, Fp2Gadget, Fp6Gadget, FpGadget},
 };
-use snarkvm_curves::bls12_377::{Bls12_377Parameters, Fq, Fq12Parameters, Fq2Parameters, Fq6Parameters};
 
 pub type FqGadget = FpGadget<Fq>;
 pub type Fq2Gadget = Fp2Gadget<Fq2Parameters, Fq>;
@@ -55,9 +56,11 @@ mod test {
     use crate::{
         bits::boolean::{AllocatedBit, Boolean},
         traits::{
+            alloc::AllocGadget,
             curves::GroupGadget,
+            eq::EqGadget,
             fields::FieldGadget,
-            utilities::{alloc::AllocGadget, eq::EqGadget, select::CondSelectGadget},
+            select::CondSelectGadget,
         },
     };
 

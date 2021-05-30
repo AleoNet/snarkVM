@@ -14,14 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_curves::PairingEngine;
+use snarkvm_gadgets::{fields::FpGadget, traits::curves::PairingGadget};
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
+
 use crate::{
     marlin_pc::{LabeledCommitmentVar, PreparedCommitmentVar},
     PrepareGadget,
     String,
 };
-use snarkvm_curves::PairingEngine;
-use snarkvm_gadgets::{fields::FpGadget, traits::curves::PairingGadget};
-use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
 
 /// Prepared gadget for a Marlin-KZG10 commitment, with a string label and degree bound.
 pub struct PreparedLabeledCommitmentVar<
@@ -81,14 +82,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{
-        marlin_pc::{MarlinKZG10, PreparedCommitment},
-        LabeledPolynomial,
-        PCPreparedCommitment,
-        PolynomialCommitment,
-        ToString,
-    };
     use snarkvm_algorithms::fft::DensePolynomial;
     use snarkvm_curves::{
         bls12_377::{Bls12_377, Fq, Fr},
@@ -97,10 +90,20 @@ mod tests {
     };
     use snarkvm_gadgets::{
         curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
-        traits::utilities::{alloc::AllocGadget, eq::EqGadget},
+        traits::{alloc::AllocGadget, eq::EqGadget},
     };
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::test_rng;
+
+    use crate::{
+        marlin_pc::{MarlinKZG10, PreparedCommitment},
+        LabeledPolynomial,
+        PCPreparedCommitment,
+        PolynomialCommitment,
+        ToString,
+    };
+
+    use super::*;
 
     type PC = MarlinKZG10<Bls12_377>;
     type PG = Bls12_377PairingGadget;

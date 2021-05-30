@@ -21,18 +21,19 @@
 // ([COS20]: https://eprint.iacr.org/2019/1076) with small syntax changes.
 //
 
+use rand_core::SeedableRng;
+
+use snarkvm_fields::PrimeField;
+use snarkvm_gadgets::{
+    fields::FpGadget,
+    traits::{alloc::AllocGadget, fields::FieldGadget},
+};
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+
 use crate::fiat_shamir::{
     fiat_shamir_poseidon_sponge::{PoseidonSponge, PoseidonSpongeState},
     traits::AlgebraicSpongeVar,
 };
-use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{
-    fields::FpGadget,
-    traits::{fields::FieldGadget, utilities::alloc::AllocGadget},
-};
-use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
-
-use rand_core::SeedableRng;
 
 #[derive(Clone)]
 /// the gadget for Poseidon sponge
@@ -304,15 +305,17 @@ impl<F: PrimeField> AlgebraicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpongeV
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::fiat_shamir::traits::AlgebraicSponge;
+    use rand::Rng;
+    use rand_chacha::ChaChaRng;
+
     use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_gadgets::traits::utilities::eq::EqGadget;
+    use snarkvm_gadgets::traits::eq::EqGadget;
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::UniformRand;
 
-    use rand::Rng;
-    use rand_chacha::ChaChaRng;
+    use crate::fiat_shamir::traits::AlgebraicSponge;
+
+    use super::*;
 
     type Sponge = PoseidonSponge<Fr>;
     type SpongeVar = PoseidonSpongeVar<Fr>;

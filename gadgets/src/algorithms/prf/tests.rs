@@ -27,11 +27,7 @@ use crate::{
     algorithms::prf::*,
     bits::boolean::{AllocatedBit, Boolean},
     integers::uint::UInt8,
-    traits::{
-        algorithms::PRFGadget,
-        integers::integer::Integer,
-        utilities::{alloc::AllocGadget, eq::EqGadget},
-    },
+    traits::{algorithms::PRFGadget, alloc::AllocGadget, eq::EqGadget, integers::integer::Integer},
 };
 
 #[test]

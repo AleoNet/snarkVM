@@ -14,28 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    bits::{Boolean, ToBytesGadget},
-    integers::uint::UInt8,
-    traits::{
-        algorithms::SignaturePublicKeyRandomizationGadget,
-        curves::GroupGadget,
-        integers::Integer,
-        utilities::{
-            alloc::AllocGadget,
-            eq::{ConditionalEqGadget, EqGadget},
-        },
-    },
-};
+use std::{borrow::Borrow, marker::PhantomData};
+
+use digest::Digest;
+use itertools::Itertools;
+
 use snarkvm_algorithms::signature::{SchnorrParameters, SchnorrPublicKey, SchnorrSignature};
 use snarkvm_curves::traits::Group;
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::serialize::{CanonicalDeserialize, CanonicalSerialize};
 
-use digest::Digest;
-use itertools::Itertools;
-use std::{borrow::Borrow, marker::PhantomData};
+use crate::{
+    bits::{Boolean, ToBytesGadget},
+    integers::uint::UInt8,
+    traits::{
+        algorithms::SignaturePublicKeyRandomizationGadget,
+        alloc::AllocGadget,
+        curves::GroupGadget,
+        eq::{ConditionalEqGadget, EqGadget},
+        integers::Integer,
+    },
+};
 
 #[derive(Clone)]
 pub struct SchnorrParametersGadget<G: Group, F: Field, D: Digest> {

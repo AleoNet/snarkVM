@@ -14,6 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::fmt::Debug;
+
+use snarkvm_fields::{Field, FieldParameters, PrimeField, ToConstraintField};
+use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearCombination};
+use snarkvm_utilities::bytes::ToBytes;
+
 use crate::{
     bits::{
         boolean::{AllocatedBit, Boolean},
@@ -22,20 +28,13 @@ use crate::{
     },
     fields::FpGadget,
     traits::{
+        alloc::AllocGadget,
+        eq::{ConditionalEqGadget, EqGadget},
         integers::Integer,
-        utilities::{
-            alloc::AllocGadget,
-            eq::{ConditionalEqGadget, EqGadget},
-            select::CondSelectGadget,
-        },
+        select::CondSelectGadget,
     },
     UnsignedIntegerError,
 };
-use snarkvm_fields::{Field, FieldParameters, PrimeField, ToConstraintField};
-use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearCombination};
-use snarkvm_utilities::bytes::ToBytes;
-
-use std::fmt::Debug;
 
 uint_impl!(UInt8, u8, 8);
 uint_impl!(UInt16, u16, 16);

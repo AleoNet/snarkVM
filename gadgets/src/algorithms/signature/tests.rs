@@ -14,22 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    algorithms::signature::{SchnorrParametersGadget, SchnorrPublicKeyGadget, SchnorrPublicKeyRandomizationGadget},
-    curves::edwards_bls12::EdwardsBlsGadget,
-    integers::uint::UInt8,
-    traits::{
-        algorithms::SignaturePublicKeyRandomizationGadget,
-        utilities::{alloc::AllocGadget, eq::EqGadget},
-    },
-};
+use blake2::Blake2s;
+use rand::{thread_rng, Rng};
+
 use snarkvm_algorithms::{signature::SchnorrSignature, traits::SignatureScheme};
 use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsAffine, traits::Group};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{bytes::ToBytes, rand::UniformRand, to_bytes};
 
-use blake2::Blake2s;
-use rand::{thread_rng, Rng};
+use crate::{
+    algorithms::signature::{SchnorrParametersGadget, SchnorrPublicKeyGadget, SchnorrPublicKeyRandomizationGadget},
+    curves::edwards_bls12::EdwardsBlsGadget,
+    integers::uint::UInt8,
+    traits::{algorithms::SignaturePublicKeyRandomizationGadget, alloc::AllocGadget, eq::EqGadget},
+};
 
 #[test]
 fn test_schnorr_signature_randomize_public_key_gadget() {

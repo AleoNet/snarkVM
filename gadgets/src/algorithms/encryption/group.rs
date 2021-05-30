@@ -14,28 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    bits::{Boolean, ToBytesGadget},
-    integers::uint::UInt8,
-    traits::{
-        algorithms::EncryptionGadget,
-        curves::{CompressedGroupGadget, GroupGadget},
-        integers::integer::Integer,
-        utilities::{
-            alloc::AllocGadget,
-            eq::{ConditionalEqGadget, EqGadget},
-        },
-    },
-};
+use std::{borrow::Borrow, marker::PhantomData};
+
+use digest::Digest;
+use itertools::Itertools;
+
 use snarkvm_algorithms::encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey};
 use snarkvm_curves::traits::{Group, ProjectiveCurve};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{to_bytes, CanonicalDeserialize, CanonicalSerialize, ToBytes};
 
-use digest::Digest;
-use itertools::Itertools;
-use std::{borrow::Borrow, marker::PhantomData};
+use crate::{
+    bits::{Boolean, ToBytesGadget},
+    integers::uint::UInt8,
+    traits::{
+        algorithms::EncryptionGadget,
+        alloc::AllocGadget,
+        curves::{CompressedGroupGadget, GroupGadget},
+        eq::{ConditionalEqGadget, EqGadget},
+        integers::integer::Integer,
+    },
+};
 
 /// Group encryption parameters gadget
 #[derive(Clone, Debug, PartialEq, Eq)]

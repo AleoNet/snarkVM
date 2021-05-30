@@ -14,19 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
-    fields::FpGadget,
-    integers::uint::UInt8,
-    traits::{
-        fields::{FieldGadget, ToConstraintFieldGadget},
-        utilities::{
-            alloc::AllocGadget,
-            eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-            select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
-        },
-    },
-};
+use std::{borrow::Borrow, marker::PhantomData};
+
 use snarkvm_fields::{
     batch_inversion,
     fp6_3over2::{Fp6, Fp6Parameters},
@@ -36,7 +25,17 @@ use snarkvm_fields::{
 };
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, ConstraintVariable};
 
-use std::{borrow::Borrow, marker::PhantomData};
+use crate::{
+    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
+    fields::FpGadget,
+    integers::uint::UInt8,
+    traits::{
+        alloc::AllocGadget,
+        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+        fields::{FieldGadget, ToConstraintFieldGadget},
+        select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
+    },
+};
 
 type Fp2Gadget<P, F> = super::fp2::Fp2Gadget<<P as Fp6Parameters>::Fp2Params, F>;
 

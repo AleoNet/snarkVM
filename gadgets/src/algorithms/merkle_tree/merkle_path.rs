@@ -14,19 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    bits::{
-        boolean::{AllocatedBit, Boolean},
-        ToBytesGadget,
-    },
-    traits::{
-        algorithms::CRHGadget,
-        utilities::{
-            alloc::AllocGadget,
-            eq::{ConditionalEqGadget, ConditionalOrEqualsGadget},
-        },
-    },
-};
+use std::borrow::Borrow;
+
 use snarkvm_algorithms::{
     merkle_tree::MerklePath,
     traits::{MerkleParameters, CRH},
@@ -34,7 +23,17 @@ use snarkvm_algorithms::{
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
-use std::borrow::Borrow;
+use crate::{
+    bits::{
+        boolean::{AllocatedBit, Boolean},
+        ToBytesGadget,
+    },
+    traits::{
+        algorithms::CRHGadget,
+        alloc::AllocGadget,
+        eq::{ConditionalEqGadget, ConditionalOrEqualsGadget},
+    },
+};
 
 pub struct MerklePathGadget<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> {
     path: Vec<(HG::OutputGadget, HG::OutputGadget)>,

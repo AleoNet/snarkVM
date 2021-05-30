@@ -14,17 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+
 use crate::{
     bits::boolean::{AllocatedBit, Boolean},
     errors::UnsignedIntegerError,
     integers::uint::*,
     traits::{
+        alloc::AllocGadget,
         integers::{Div, Integer},
-        utilities::{alloc::AllocGadget, select::CondSelectGadget},
+        select::CondSelectGadget,
     },
 };
-use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 /// Perform long division of two `UInt` objects.
 /// Reference: https://en.wikipedia.org/wiki/Division_algorithm

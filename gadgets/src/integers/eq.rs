@@ -14,16 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_fields::{Field, PrimeField};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+
 use crate::{
     bits::Boolean,
     integers::{int::*, uint::*},
     traits::{
+        eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
         integers::Integer,
-        utilities::eq::{ConditionalEqGadget, EqGadget, EvaluateEqGadget},
     },
 };
-use snarkvm_fields::{Field, PrimeField};
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 macro_rules! eq_gadget_impl {
     ($($gadget: ident)*) => ($(

@@ -25,11 +25,9 @@ use snarkvm_gadgets::{
     bits::Boolean,
     fields::FpGadget,
     traits::{
+        alloc::AllocGadget,
+        eq::{ConditionalEqGadget, EqGadget},
         fields::FieldGadget,
-        utilities::{
-            alloc::AllocGadget,
-            eq::{ConditionalEqGadget, EqGadget},
-        },
     },
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};

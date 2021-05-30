@@ -23,9 +23,11 @@ use snarkvm_gadgets::{
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{
+        alloc::AllocGadget,
         curves::{GroupGadget, PairingGadget},
+        eq::EqGadget,
         fields::{FieldGadget, ToConstraintFieldGadget},
-        utilities::{alloc::AllocGadget, eq::EqGadget, select::CondSelectGadget},
+        select::CondSelectGadget,
     },
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};

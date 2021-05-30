@@ -14,16 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    account::AccountPrivateKey,
-    testnet1::{
-        parameters::SystemParameters,
-        record::Record,
-        record_encryption::RecordEncryptionGadgetComponents,
-        BaseDPCComponents,
-    },
-    traits::RecordScheme,
-};
+use std::ops::Mul;
+
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, PRF},
@@ -37,12 +29,10 @@ use snarkvm_gadgets::{
     integers::{int::Int64, uint::UInt8},
     traits::{
         algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignaturePublicKeyRandomizationGadget},
+        alloc::AllocGadget,
+        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         fields::FieldGadget,
         integers::{add::Add, integer::Integer, sub::Sub},
-        utilities::{
-            alloc::AllocGadget,
-            eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-        },
     },
 };
 use snarkvm_objects::AleoAmount;
@@ -53,7 +43,16 @@ use snarkvm_utilities::{
     to_bytes,
 };
 
-use std::ops::Mul;
+use crate::{
+    account::AccountPrivateKey,
+    testnet1::{
+        parameters::SystemParameters,
+        record::Record,
+        record_encryption::RecordEncryptionGadgetComponents,
+        BaseDPCComponents,
+    },
+    traits::RecordScheme,
+};
 
 #[allow(clippy::too_many_arguments)]
 pub fn execute_inner_proof_gadget<C: BaseDPCComponents, CS: ConstraintSystem<C::InnerField>>(

@@ -14,15 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    bits::ToBytesGadget,
-    traits::utilities::{alloc::AllocGadget, eq::EqGadget},
-};
+use std::fmt::Debug;
+
 use snarkvm_algorithms::traits::EncryptionScheme;
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
-use std::fmt::Debug;
+use crate::{
+    bits::ToBytesGadget,
+    traits::{alloc::AllocGadget, eq::EqGadget},
+};
 
 pub trait EncryptionGadget<E: EncryptionScheme, F: Field> {
     type ParametersGadget: AllocGadget<<E as EncryptionScheme>::Parameters, F> + Clone;

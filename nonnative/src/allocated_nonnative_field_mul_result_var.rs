@@ -22,7 +22,7 @@ use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_gadgets::{
     bits::Boolean,
     fields::FpGadget,
-    traits::{fields::FieldGadget, utilities::alloc::AllocGadget},
+    traits::{alloc::AllocGadget, fields::FieldGadget},
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 

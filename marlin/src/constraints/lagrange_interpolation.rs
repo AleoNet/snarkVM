@@ -14,14 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::constraints::polynomial::AlgebraForAHP;
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
-use snarkvm_gadgets::traits::{
-    fields::FieldGadget,
-    utilities::{alloc::AllocGadget, eq::EqGadget},
-};
+use snarkvm_gadgets::traits::{alloc::AllocGadget, eq::EqGadget, fields::FieldGadget};
 use snarkvm_nonnative::NonNativeFieldVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+
+use crate::constraints::polynomial::AlgebraForAHP;
 
 /// A helper struct for evaluating the vanishing polynomial.
 pub struct VanishingPolynomial<F: Field> {

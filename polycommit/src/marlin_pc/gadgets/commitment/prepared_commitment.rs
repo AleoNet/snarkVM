@@ -14,20 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use core::borrow::Borrow;
+
+use snarkvm_curves::PairingEngine;
+use snarkvm_fields::{PrimeField, ToConstraintField};
+use snarkvm_gadgets::traits::{
+    alloc::AllocGadget,
+    curves::{GroupGadget, PairingGadget},
+};
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+
 use crate::{
     marlin_pc::{CommitmentVar, PreparedCommitment},
     PrepareGadget,
     Vec,
 };
-use snarkvm_curves::PairingEngine;
-use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_gadgets::traits::{
-    curves::{GroupGadget, PairingGadget},
-    utilities::alloc::AllocGadget,
-};
-use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
-
-use core::borrow::Borrow;
 
 /// Prepared gadget for an optionally hiding Marlin-KZG10 commitment.
 /// shifted_comm is not prepared, due to the specific use case.

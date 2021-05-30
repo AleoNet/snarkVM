@@ -14,18 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::cmp::Ordering;
+
+use snarkvm_fields::{Field, PrimeField};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+
 use crate::{
     bits::Boolean,
     integers::uint::{UInt128, UInt16, UInt32, UInt64, UInt8},
-    traits::utilities::{
+    traits::{
         bits::{ComparatorGadget, EvaluateLtGadget, Xor},
         select::CondSelectGadget,
     },
 };
-use snarkvm_fields::{Field, PrimeField};
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-
-use std::cmp::Ordering;
 
 macro_rules! uint_cmp_impl {
     ($($gadget: ident),*) => ($(

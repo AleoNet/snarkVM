@@ -14,6 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_fields::{Field, FieldParameters, PrimeField};
+use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearCombination};
+use snarkvm_utilities::{
+    biginteger::{BigInteger, BigInteger256},
+    bytes::ToBytes,
+};
+
 use crate::{
     bits::{
         boolean::{AllocatedBit, Boolean},
@@ -21,22 +28,13 @@ use crate::{
     },
     integers::uint::{UInt, UInt8},
     traits::{
+        alloc::AllocGadget,
+        eq::{ConditionalEqGadget, EqGadget},
         integers::{Integer, Pow},
-        utilities::{
-            alloc::AllocGadget,
-            eq::{ConditionalEqGadget, EqGadget},
-            select::CondSelectGadget,
-        },
+        select::CondSelectGadget,
     },
     uint_impl_common,
     UnsignedIntegerError,
-};
-use snarkvm_fields::{Field, FieldParameters, PrimeField};
-use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearCombination};
-
-use snarkvm_utilities::{
-    biginteger::{BigInteger, BigInteger256},
-    bytes::ToBytes,
 };
 
 uint_impl_common!(UInt128, u128, 128);

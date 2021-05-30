@@ -19,9 +19,9 @@ use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
 use snarkvm_gadgets::traits::{
+    alloc::AllocGadget,
     integers::integer::Integer,
     utilities::{
-        alloc::AllocGadget,
         arithmetic::*,
         uint::{Sub, UInt, UInt128, UInt16, UInt32, UInt64, UInt8},
     },

@@ -14,6 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use core::{convert::TryInto, marker::PhantomData};
+
+use snarkvm_curves::PairingEngine;
+use snarkvm_gadgets::{
+    bits::{Boolean, ToBitsLEGadget},
+    fields::FpGadget,
+    traits::{
+        curves::{GroupGadget, PairingGadget},
+        eq::EqGadget,
+        fields::FieldGadget,
+        select::CondSelectGadget,
+    },
+};
+use snarkvm_nonnative::{NonNativeFieldMulResultVar, NonNativeFieldVar};
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
+
 use crate::{
     marlin_pc::{
         prepared_labeled_commitment::PreparedLabeledCommitmentVar,
@@ -36,20 +52,6 @@ use crate::{
     String,
     Vec,
 };
-use snarkvm_curves::PairingEngine;
-use snarkvm_gadgets::{
-    bits::{Boolean, ToBitsLEGadget},
-    fields::FpGadget,
-    traits::{
-        curves::{GroupGadget, PairingGadget},
-        fields::FieldGadget,
-        utilities::{eq::EqGadget, select::CondSelectGadget},
-    },
-};
-use snarkvm_nonnative::{NonNativeFieldMulResultVar, NonNativeFieldVar};
-use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
-
-use core::{convert::TryInto, marker::PhantomData};
 
 /// Gadget for the Marlin-KZG10 polynomial commitment verifier.
 pub struct MarlinKZG10Gadget<TargetCurve, BaseCurve, PG>

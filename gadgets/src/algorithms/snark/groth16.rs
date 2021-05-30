@@ -14,25 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
-    integers::uint::UInt8,
-    traits::{
-        algorithms::snark::SNARKVerifierGadget,
-        curves::{GroupGadget, PairingGadget},
-        utilities::{
-            alloc::{AllocBytesGadget, AllocGadget},
-            eq::EqGadget,
-        },
-    },
-};
+use std::{borrow::Borrow, marker::PhantomData};
+
 use snarkvm_algorithms::snark::groth16::{Groth16, Proof, VerifyingKey};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
 use snarkvm_fields::{Field, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_utilities::bytes::FromBytes;
 
-use std::{borrow::Borrow, marker::PhantomData};
+use crate::{
+    bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
+    integers::uint::UInt8,
+    traits::{
+        algorithms::snark::SNARKVerifierGadget,
+        alloc::{AllocBytesGadget, AllocGadget},
+        curves::{GroupGadget, PairingGadget},
+        eq::EqGadget,
+    },
+};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "P::G1Gadget: Clone, P::G2Gadget: Clone"))]

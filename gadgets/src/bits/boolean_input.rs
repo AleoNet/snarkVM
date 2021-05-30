@@ -14,16 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    bits::{Boolean, ToBitsLEGadget},
-    fields::FpGadget,
-    traits::utilities::alloc::AllocGadget,
-};
+use std::{borrow::Borrow, marker::PhantomData};
+
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use snarkvm_utilities::BigInteger;
 
-use std::{borrow::Borrow, marker::PhantomData};
+use crate::{
+    bits::{Boolean, ToBitsLEGadget},
+    fields::FpGadget,
+    traits::alloc::AllocGadget,
+};
 
 /// Conversion of field elements by converting them to boolean sequences
 /// Used by Groth16 and Gm17

@@ -14,20 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    bits::Boolean,
-    integers::int::*,
-    traits::{
-        integers::*,
-        utilities::{alloc::AllocGadget, eq::EqGadget},
-    },
-};
-use snarkvm_fields::{One, Zero};
-use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
+use std::i64;
 
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
-use std::i64;
+
+use snarkvm_fields::{One, Zero};
+use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
+
+use crate::{
+    bits::Boolean,
+    integers::int::*,
+    traits::{alloc::AllocGadget, eq::EqGadget, integers::*},
+};
 
 fn check_all_constant_bits(expected: i64, actual: Int64) {
     for (i, b) in actual.bits.iter().enumerate() {

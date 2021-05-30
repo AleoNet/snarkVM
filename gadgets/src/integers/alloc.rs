@@ -14,15 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    bits::boolean::{AllocatedBit, Boolean},
-    integers::{int::*, uint::*},
-    traits::{integers::Integer, utilities::alloc::AllocGadget},
-};
+use std::borrow::Borrow;
+
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
-use std::borrow::Borrow;
+use crate::{
+    bits::boolean::{AllocatedBit, Boolean},
+    integers::{int::*, uint::*},
+    traits::{alloc::AllocGadget, integers::Integer},
+};
 
 macro_rules! alloc_gadget_fn_impl {
     ($gadget: ident, $fn_name: ident) => {
