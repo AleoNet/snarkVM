@@ -46,10 +46,10 @@ pub use bits::*;
 
 pub mod curves;
 
-pub mod fields;
-
 pub mod errors;
 pub use errors::*;
+
+pub mod fields;
 
 pub mod integers;
 
@@ -57,7 +57,5 @@ pub mod traits;
 pub use traits::*;
 
 pub mod prelude {
-    pub use bits::*;
-    pub use errors::*;
-    pub use traits::*;
+    pub use crate::{bits::*, errors::*, traits::*};
 }

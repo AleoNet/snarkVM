@@ -20,7 +20,7 @@ use rand_xorshift::XorShiftRng;
 
 use snarkvm_gadgets::{
     integers::uint::{Sub, UInt, UInt128, UInt16, UInt32, UInt64, UInt8},
-    traits::{alloc::AllocGadget, integers::*},
+    prelude::*,
 };
 use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
 
