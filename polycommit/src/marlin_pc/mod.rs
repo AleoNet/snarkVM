@@ -919,6 +919,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
 
     /// Verifies that `value` is the evaluation at `x` of the polynomial
     /// committed inside `comm`.
+    #[allow(dead_code)]
     fn check_individual_opening_challenges<'a>(
         vk: &<Self as PolynomialCommitment<E::Fr>>::VerifierKey,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<<Self as PolynomialCommitment<E::Fr>>::Commitment>>,
