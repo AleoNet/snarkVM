@@ -16,8 +16,8 @@
 
 use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{
-    traits::fields::FieldGadget,
+use snarkvm_gadgets::traits::{
+    fields::FieldGadget,
     utilities::{alloc::AllocGadget, eq::EqGadget},
 };
 use snarkvm_nonnative::NonNativeFieldVar;
