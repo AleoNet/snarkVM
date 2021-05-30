@@ -18,13 +18,9 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
-use snarkvm_gadgets::traits::{
-    alloc::AllocGadget,
-    integers::integer::Integer,
-    utilities::{
-        arithmetic::*,
-        uint::{Sub, UInt, UInt128, UInt16, UInt32, UInt64, UInt8},
-    },
+use snarkvm_gadgets::{
+    integers::uint::{Sub, UInt, UInt128, UInt16, UInt32, UInt64, UInt8},
+    traits::{alloc::AllocGadget, integers::*},
 };
 use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
 

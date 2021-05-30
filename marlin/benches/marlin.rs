@@ -24,8 +24,10 @@ use snarkvm_curves::{
 };
 use snarkvm_fields::Field;
 use snarkvm_gadgets::{
-    bits::{alloc::AllocGadget, eq::EqGadget, Boolean},
+    alloc::AllocGadget,
+    bits::Boolean,
     curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
+    eq::EqGadget,
     traits::algorithms::SNARKGadget,
 };
 use snarkvm_marlin::{
