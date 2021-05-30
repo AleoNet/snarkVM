@@ -55,3 +55,9 @@ pub mod integers;
 
 pub mod traits;
 pub use traits::*;
+
+pub mod prelude {
+    pub use bits::*;
+    pub use errors::*;
+    pub use traits::*;
+}
