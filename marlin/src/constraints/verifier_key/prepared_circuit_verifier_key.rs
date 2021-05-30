@@ -16,25 +16,26 @@
 
 use crate::{
     constraints::{verifier::MarlinVerificationGadget, verifier_key::CircuitVerifyingKeyVar},
-    marlin::PreparedCircuitVerifyingKey,
+    marlin::{CircuitVerifyingKey, PreparedCircuitVerifyingKey},
     FiatShamirRng,
     FiatShamirRngVar,
     PolynomialCommitment,
 };
-
-use crate::marlin::CircuitVerifyingKey;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     fields::FpGadget,
-    traits::fields::{FieldGadget, ToConstraintFieldGadget},
-    utilities::alloc::{AllocBytesGadget, AllocGadget},
+    integers::uint::UInt8,
+    traits::{
+        fields::{FieldGadget, ToConstraintFieldGadget},
+        utilities::alloc::{AllocBytesGadget, AllocGadget},
+    },
+    utilities::ToBytesGadget,
 };
 use snarkvm_polycommit::{PCCheckVar, PrepareGadget};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
 use core::borrow::Borrow;
-use snarkvm_gadgets::{integers::uint::UInt8, utilities::ToBytesGadget};
 use std::marker::PhantomData;
 
 /// The prepared circuit verifying key gadget

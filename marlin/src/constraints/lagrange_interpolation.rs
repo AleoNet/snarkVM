@@ -15,10 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::constraints::polynomial::AlgebraForAHP;
-
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
-use snarkvm_gadgets::{
-    traits::fields::FieldGadget,
+use snarkvm_gadgets::traits::{
+    fields::FieldGadget,
     utilities::{alloc::AllocGadget, eq::EqGadget},
 };
 use snarkvm_nonnative::NonNativeFieldVar;

@@ -26,18 +26,18 @@ use crate::{
     FiatShamirRngVar,
     PolynomialCommitment,
 };
-
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     fields::FpGadget,
-    traits::fields::{FieldGadget, ToConstraintFieldGadget},
-    utilities::{
-        alloc::AllocGadget,
-        boolean::Boolean,
-        eq::{EqGadget, NEqGadget},
-        ToBitsLEGadget,
+    traits::{
+        fields::{FieldGadget, ToConstraintFieldGadget},
+        utilities::{
+            alloc::AllocGadget,
+            eq::{EqGadget, NEqGadget},
+        },
     },
+    utilities::{boolean::Boolean, ToBitsLEGadget},
 };
 use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
 use snarkvm_polycommit::{

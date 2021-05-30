@@ -183,7 +183,6 @@ where
 mod tests {
     use super::*;
     use crate::{marlin_pc::MarlinKZG10, LabeledPolynomial, PolynomialCommitment};
-
     use snarkvm_algorithms::fft::DensePolynomial;
     use snarkvm_curves::{
         bls12_377::{Bls12_377, Fq, Fr},
@@ -192,7 +191,8 @@ mod tests {
     };
     use snarkvm_gadgets::{
         curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
-        utilities::{eq::EqGadget, ToBytesGadget},
+        traits::utilities::eq::EqGadget,
+        utilities::ToBytesGadget,
     };
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::test_rng;

@@ -26,7 +26,10 @@ use crate::fiat_shamir::{
     traits::AlgebraicSpongeVar,
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{fields::FpGadget, traits::fields::FieldGadget, utilities::alloc::AllocGadget};
+use snarkvm_gadgets::{
+    fields::FpGadget,
+    traits::{fields::FieldGadget, utilities::alloc::AllocGadget},
+};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use rand_core::SeedableRng;
@@ -303,9 +306,8 @@ impl<F: PrimeField> AlgebraicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpongeV
 mod tests {
     use super::*;
     use crate::fiat_shamir::traits::AlgebraicSponge;
-
     use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_gadgets::utilities::eq::EqGadget;
+    use snarkvm_gadgets::traits::utilities::eq::EqGadget;
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::UniformRand;
 

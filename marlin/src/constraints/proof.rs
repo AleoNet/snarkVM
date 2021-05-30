@@ -15,10 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{marlin::Proof, PolynomialCommitment};
-
 use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_gadgets::{
-    traits::fields::ToConstraintFieldGadget,
+use snarkvm_gadgets::traits::{
+    fields::ToConstraintFieldGadget,
     utilities::alloc::{AllocBytesGadget, AllocGadget},
 };
 use snarkvm_nonnative::NonNativeFieldVar;

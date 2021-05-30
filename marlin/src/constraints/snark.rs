@@ -34,7 +34,6 @@ use crate::{
     },
     FiatShamirRngVar,
 };
-
 use snarkvm_algorithms::{SNARKError, SNARK};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
@@ -354,7 +353,6 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for MarlinBoundCircuit<F> {
 #[cfg(test)]
 pub mod test {
     use super::*;
-
     use crate::{
         constraints::snark::{MarlinSNARK, MarlinSNARKGadget},
         fiat_shamir::{
@@ -372,7 +370,7 @@ pub mod test {
     use snarkvm_fields::Field;
     use snarkvm_gadgets::{
         curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
-        utilities::{alloc::AllocGadget, eq::EqGadget},
+        traits::utilities::{alloc::AllocGadget, eq::EqGadget},
     };
     use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
     use snarkvm_r1cs::TestConstraintSystem;

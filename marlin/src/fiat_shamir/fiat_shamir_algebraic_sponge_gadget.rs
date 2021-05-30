@@ -22,8 +22,9 @@ use crate::fiat_shamir::{
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     fields::{AllocatedFp, FpGadget},
-    traits::fields::FieldGadget,
-    utilities::{alloc::AllocGadget, boolean::Boolean, integer::Integer, uint::UInt8, ToBitsBEGadget},
+    integers::uint::UInt8,
+    traits::{fields::FieldGadget, integers::Integer, utilities::alloc::AllocGadget},
+    utilities::{boolean::Boolean, ToBitsBEGadget},
 };
 use snarkvm_nonnative::{
     overhead,
@@ -455,10 +456,9 @@ mod tests {
         fiat_shamir_poseidon_sponge_gadget::PoseidonSpongeVar,
         traits::FiatShamirRng,
     };
-
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_fields::One;
-    use snarkvm_gadgets::utilities::{eq::EqGadget, ToBitsLEGadget};
+    use snarkvm_gadgets::{traits::utilities::eq::EqGadget, utilities::ToBitsLEGadget};
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::UniformRand;
 

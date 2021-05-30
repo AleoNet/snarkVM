@@ -16,10 +16,7 @@
 
 use crate::traits::FiatShamirRng;
 use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{
-    fields::FpGadget,
-    utilities::{boolean::Boolean, uint::UInt8},
-};
+use snarkvm_gadgets::{fields::FpGadget, integers::uint::UInt8, utilities::boolean::Boolean};
 use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 

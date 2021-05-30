@@ -18,9 +18,10 @@ use crate::{
     constraints::{
         ahp::AHPForR1CS,
         proof::ProofVar,
+        snark::MarlinSNARK,
         verifier_key::{CircuitVerifyingKeyVar, PreparedCircuitVerifyingKeyVar},
     },
-    marlin::MarlinError,
+    marlin::{MarlinError, MarlinMode},
     FiatShamirAlgebraicSpongeRng,
     FiatShamirAlgebraicSpongeRngVar,
     FiatShamirRng,
@@ -29,15 +30,14 @@ use crate::{
     PoseidonSponge,
     PoseidonSpongeVar,
 };
-
-use crate::{constraints::snark::MarlinSNARK, marlin::MarlinMode};
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     traits::{
         algorithms::SNARKVerifierGadget,
         fields::{FieldGadget, ToConstraintFieldGadget},
+        utilities::eq::EqGadget,
     },
-    utilities::{boolean::Boolean, eq::EqGadget},
+    utilities::boolean::Boolean,
 };
 use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
 use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
@@ -264,7 +264,6 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-
     use crate::{
         constraints::{proof::ProverMessageVar, snark::test::Circuit},
         fiat_shamir::{
@@ -275,14 +274,13 @@ mod test {
         },
         marlin::{MarlinRecursiveMode, MarlinSNARK as MarlinCore, Proof},
     };
-
     use snarkvm_curves::{
         bls12_377::{Bls12_377, Fq, Fr},
         bw6_761::BW6_761,
     };
     use snarkvm_gadgets::{
         curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
-        utilities::{alloc::AllocGadget, eq::EqGadget},
+        traits::utilities::{alloc::AllocGadget, eq::EqGadget},
     };
     use snarkvm_polycommit::marlin_pc::{
         commitment::commitment::CommitmentVar,
