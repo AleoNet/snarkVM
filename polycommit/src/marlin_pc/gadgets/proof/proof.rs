@@ -17,8 +17,10 @@
 use core::borrow::Borrow;
 
 use snarkvm_curves::{AffineCurve, PairingEngine};
-use snarkvm_gadgets::traits::{alloc::AllocGadget, curves::PairingGadget};
-use snarkvm_nonnative::NonNativeFieldVar;
+use snarkvm_gadgets::{
+    nonnative::NonNativeFieldVar,
+    traits::{alloc::AllocGadget, curves::PairingGadget},
+};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
 
 use crate::kzg10::Proof;

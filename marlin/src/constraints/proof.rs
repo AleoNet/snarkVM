@@ -19,11 +19,13 @@ use core::borrow::Borrow;
 use hashbrown::HashMap;
 
 use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_gadgets::traits::{
-    alloc::{AllocBytesGadget, AllocGadget},
-    fields::ToConstraintFieldGadget,
+use snarkvm_gadgets::{
+    nonnative::NonNativeFieldVar,
+    traits::{
+        alloc::{AllocBytesGadget, AllocGadget},
+        fields::ToConstraintFieldGadget,
+    },
 };
-use snarkvm_nonnative::NonNativeFieldVar;
 use snarkvm_polycommit::PCCheckVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use snarkvm_utilities::FromBytes;

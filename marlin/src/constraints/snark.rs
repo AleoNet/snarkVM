@@ -25,9 +25,9 @@ use snarkvm_algorithms::{SNARKError, SNARK};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     bits::Boolean,
+    nonnative::NonNativeFieldInputVar,
     traits::{algorithms::SNARKGadget, fields::ToConstraintFieldGadget},
 };
-use snarkvm_nonnative::NonNativeFieldInputVar;
 use snarkvm_polycommit::{PCCheckVar, PolynomialCommitment};
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable};
 

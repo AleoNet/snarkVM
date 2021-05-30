@@ -16,15 +16,15 @@
 
 use std::borrow::Borrow;
 
-use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{
+use crate::{
     bits::boolean_input::BooleanInputGadget,
     fields::FpGadget,
     traits::{alloc::AllocGadget, eq::EqGadget, fields::FieldGadget},
 };
+use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-use crate::{
+use crate::nonnative::{
     params::{get_params, OptimizationType},
     AllocatedNonNativeFieldVar,
     NonNativeFieldVar,

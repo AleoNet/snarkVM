@@ -19,8 +19,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use snarkvm_fields::{FieldParameters, PrimeField};
-use snarkvm_gadgets::{
+use crate::{
     bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
     integers::uint::UInt8,
     traits::{
@@ -30,6 +29,7 @@ use snarkvm_gadgets::{
         select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
     },
 };
+use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 use snarkvm_utilities::{
     bititerator::{BitIteratorBE, BitIteratorLE},
@@ -37,7 +37,7 @@ use snarkvm_utilities::{
     to_bytes,
 };
 
-use crate::{AllocatedNonNativeFieldVar, NonNativeFieldMulResultVar};
+use crate::nonnative::{AllocatedNonNativeFieldVar, NonNativeFieldMulResultVar};
 
 /// A gadget for representing non-native (`TargetField`) field elements over the constraint field (`BaseField`).
 #[derive(Clone, Debug)]

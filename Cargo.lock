@@ -1637,6 +1637,10 @@ dependencies = [
  "derivative",
  "digest",
  "itertools 0.10.0",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+ "paste",
  "rand",
  "rand_xorshift",
  "snarkvm-algorithms",
@@ -1664,27 +1668,8 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-gadgets",
- "snarkvm-nonnative",
  "snarkvm-polycommit",
  "snarkvm-profiler",
- "snarkvm-r1cs",
- "snarkvm-utilities",
-]
-
-[[package]]
-name = "snarkvm-nonnative"
-version = "0.3.2"
-dependencies = [
- "num-bigint",
- "num-integer",
- "num-traits",
- "paste",
- "rand",
- "rand_xorshift",
- "snarkvm-algorithms",
- "snarkvm-curves",
- "snarkvm-fields",
- "snarkvm-gadgets",
  "snarkvm-r1cs",
  "snarkvm-utilities",
 ]
@@ -1743,7 +1728,6 @@ dependencies = [
  "snarkvm-fields",
  "snarkvm-gadgets",
  "snarkvm-marlin",
- "snarkvm-nonnative",
  "snarkvm-profiler",
  "snarkvm-r1cs",
  "snarkvm-utilities",

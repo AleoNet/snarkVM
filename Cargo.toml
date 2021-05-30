@@ -26,7 +26,6 @@ members = [
   "fields",
   "gadgets",
   "marlin",
-  "nonnative",
   "objects",
   "parameters",
   "polycommit",

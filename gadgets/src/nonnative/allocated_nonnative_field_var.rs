@@ -20,11 +20,11 @@ use std::{
     marker::PhantomData,
 };
 
-use snarkvm_fields::{FieldParameters, PrimeField};
-use snarkvm_gadgets::{
+use crate::{
     bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
     fields::FpGadget,
     integers::uint::UInt8,
+    overhead,
     traits::{
         alloc::AllocGadget,
         eq::EqGadget,
@@ -33,10 +33,11 @@ use snarkvm_gadgets::{
         select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
     },
 };
+use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 use snarkvm_utilities::BigInteger;
 
-use crate::{
+use crate::nonnative::{
     allocated_nonnative_field_mul_result_var::AllocatedNonNativeFieldMulResultVar,
     params::{get_params, OptimizationType},
     reduce::{bigint_to_basefield, limbs_to_bigint, Reducer},

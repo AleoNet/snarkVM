@@ -15,8 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::traits::fields::FieldGadget;
-use snarkvm_nonnative::NonNativeFieldVar;
+use snarkvm_gadgets::{nonnative::NonNativeFieldVar, traits::fields::FieldGadget};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use std::marker::PhantomData;

@@ -19,13 +19,13 @@ use core::marker::PhantomData;
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     bits::Boolean,
+    nonnative::{params::OptimizationType, NonNativeFieldVar},
     traits::{
         algorithms::SNARKVerifierGadget,
         eq::EqGadget,
         fields::{FieldGadget, ToConstraintFieldGadget},
     },
 };
-use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
 use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, ToConstraintField};
 

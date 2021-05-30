@@ -20,8 +20,7 @@ use num_bigint::BigUint;
 use num_integer::Integer;
 use num_traits::identities::{One, Zero};
 
-use snarkvm_fields::{FieldParameters, PrimeField};
-use snarkvm_gadgets::{
+use crate::{
     bits::Boolean,
     fields::FpGadget,
     traits::{
@@ -30,10 +29,14 @@ use snarkvm_gadgets::{
         fields::FieldGadget,
     },
 };
+use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{biginteger::BigInteger, bititerator::BitIteratorBE};
 
-use crate::{overhead, params::get_params, AllocatedNonNativeFieldVar};
+use crate::{
+    nonnative::{params::get_params, AllocatedNonNativeFieldVar},
+    overhead,
+};
 
 const fn num_bits<T>() -> usize {
     std::mem::size_of::<T>() * 8
