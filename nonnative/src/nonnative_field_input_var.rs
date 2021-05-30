@@ -19,12 +19,14 @@ use crate::{
     AllocatedNonNativeFieldVar,
     NonNativeFieldVar,
 };
-
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     fields::FpGadget,
-    traits::fields::FieldGadget,
-    utilities::{alloc::AllocGadget, boolean_input::BooleanInputGadget, eq::EqGadget},
+    traits::{
+        fields::FieldGadget,
+        utilities::{alloc::AllocGadget, eq::EqGadget},
+    },
+    utilities::boolean_input::BooleanInputGadget,
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 

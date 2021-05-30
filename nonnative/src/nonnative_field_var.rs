@@ -15,20 +15,18 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{AllocatedNonNativeFieldVar, NonNativeFieldMulResultVar};
-
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_gadgets::{
-    traits::fields::FieldGadget,
-    utilities::{
-        alloc::AllocGadget,
-        boolean::Boolean,
-        eq::{ConditionalEqGadget, EqGadget},
-        select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
-        uint::UInt8,
-        ToBitsBEGadget,
-        ToBitsLEGadget,
-        ToBytesGadget,
+    integers::uint::UInt8,
+    traits::{
+        fields::FieldGadget,
+        utilities::{
+            alloc::AllocGadget,
+            eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+            select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
+        },
     },
+    utilities::{boolean::Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
 };
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 use snarkvm_utilities::{
@@ -37,7 +35,6 @@ use snarkvm_utilities::{
     to_bytes,
 };
 
-use snarkvm_gadgets::utilities::eq::NEqGadget;
 use std::{
     borrow::Borrow,
     hash::{Hash, Hasher},
