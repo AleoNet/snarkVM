@@ -17,7 +17,7 @@
 use crate::kzg10::Proof;
 
 use snarkvm_curves::{AffineCurve, PairingEngine};
-use snarkvm_gadgets::{traits::curves::PairingGadget, utilities::alloc::AllocGadget};
+use snarkvm_gadgets::traits::{curves::PairingGadget, utilities::alloc::AllocGadget};
 use snarkvm_nonnative::NonNativeFieldVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
 

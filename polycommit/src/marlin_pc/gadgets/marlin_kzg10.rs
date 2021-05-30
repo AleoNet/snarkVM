@@ -36,15 +36,15 @@ use crate::{
     String,
     Vec,
 };
-
 use snarkvm_curves::PairingEngine;
 use snarkvm_gadgets::{
     fields::FpGadget,
     traits::{
         curves::{GroupGadget, PairingGadget},
         fields::FieldGadget,
+        utilities::{eq::EqGadget, select::CondSelectGadget},
     },
-    utilities::{boolean::Boolean, eq::EqGadget, select::CondSelectGadget, ToBitsLEGadget},
+    utilities::{boolean::Boolean, ToBitsLEGadget},
 };
 use snarkvm_nonnative::{NonNativeFieldMulResultVar, NonNativeFieldVar};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};

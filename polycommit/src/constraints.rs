@@ -15,11 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{BatchLCProof, LCTerm, LabeledCommitment, LinearCombination, PolynomialCommitment, String, Vec};
-
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     fields::FpGadget,
-    utilities::{alloc::AllocGadget, boolean::Boolean, ToBytesGadget},
+    traits::utilities::alloc::AllocGadget,
+    utilities::{boolean::Boolean, ToBytesGadget},
 };
 use snarkvm_nonnative::NonNativeFieldVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};

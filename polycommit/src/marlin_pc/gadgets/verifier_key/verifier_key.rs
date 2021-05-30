@@ -20,12 +20,13 @@ use snarkvm_curves::{AffineCurve, PairingEngine};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     fields::FpGadget,
+    integers::uint::UInt8,
     traits::{
         curves::{GroupGadget, PairingGadget},
         fields::{FieldGadget, ToConstraintFieldGadget},
-        utilities::eq::EqGadget,
+        utilities::{alloc::AllocGadget, eq::EqGadget, select::CondSelectGadget},
     },
-    utilities::{alloc::AllocGadget, boolean::Boolean, select::CondSelectGadget, uint::UInt8, ToBytesGadget},
+    utilities::{boolean::Boolean, ToBytesGadget},
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 

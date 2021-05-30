@@ -21,8 +21,8 @@ use crate::{
 };
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_gadgets::{
-    traits::curves::{GroupGadget, PairingGadget},
+use snarkvm_gadgets::traits::{
+    curves::{GroupGadget, PairingGadget},
     utilities::alloc::AllocGadget,
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};

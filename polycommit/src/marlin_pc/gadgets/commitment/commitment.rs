@@ -23,8 +23,9 @@ use snarkvm_gadgets::{
     traits::{
         curves::{GroupGadget, PairingGadget},
         fields::ToConstraintFieldGadget,
+        utilities::alloc::AllocGadget,
     },
-    utilities::{alloc::AllocGadget, ToBytesGadget},
+    utilities::ToBytesGadget,
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
