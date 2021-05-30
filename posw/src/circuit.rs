@@ -19,15 +19,15 @@
 //! inputs a mask computed as Blake2s(nonce || root), which the verifier also checks.
 use snarkvm_algorithms::traits::{MaskedMerkleParameters, CRH};
 use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::algorithms::merkle_tree::compute_root;
-use snarkvm_r1cs::errors::SynthesisError;
-
-use snarkvm_gadgets::traits::{
-    algorithms::{CRHGadget, MaskedCRHGadget},
+use snarkvm_gadgets::{
+    algorithms::merkle_tree::compute_root,
     integers::uint::UInt8,
-    utilities::{alloc::AllocGadget, eq::EqGadget},
+    traits::{
+        algorithms::{CRHGadget, MaskedCRHGadget},
+        utilities::{alloc::AllocGadget, eq::EqGadget},
+    },
 };
-use snarkvm_r1cs::{Assignment, ConstraintSynthesizer, ConstraintSystem};
+use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSynthesizer, ConstraintSystem};
 
 use std::{marker::PhantomData, sync::Arc};
 
