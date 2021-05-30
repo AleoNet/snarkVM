@@ -20,7 +20,7 @@ use crate::{
         bits::{ComparatorGadget, EvaluateLtGadget, Xor},
         select::CondSelectGadget,
     },
-    utilities::boolean::Boolean,
+    utilities::Boolean,
 };
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};

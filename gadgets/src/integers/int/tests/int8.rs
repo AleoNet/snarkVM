@@ -17,7 +17,7 @@
 use crate::{
     integers::int::*,
     traits::{integers::*, utilities::alloc::AllocGadget},
-    utilities::boolean::Boolean,
+    utilities::Boolean,
 };
 use snarkvm_fields::{One, Zero};
 use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};

@@ -24,7 +24,7 @@ use crate::{
             eq::EqGadget,
         },
     },
-    utilities::{boolean::Boolean, ToBitsBEGadget, ToBytesGadget},
+    utilities::{Boolean, ToBitsBEGadget, ToBytesGadget},
 };
 use snarkvm_algorithms::snark::groth16::{Groth16, Proof, VerifyingKey};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
@@ -426,7 +426,7 @@ mod test {
     use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
     use snarkvm_utilities::{test_rng, to_bytes, BitIteratorBE, ToBytes};
 
-    use crate::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, utilities::boolean::Boolean};
+    use crate::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, utilities::Boolean};
 
     use super::*;
 

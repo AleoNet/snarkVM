@@ -18,7 +18,7 @@ use crate::{
     fields::FpGadget,
     integers::uint::UInt8,
     traits::utilities::alloc::AllocGadget,
-    utilities::{boolean::Boolean, ToBitsBEGadget, ToBytesGadget},
+    utilities::{Boolean, ToBitsBEGadget, ToBytesGadget},
 };
 use snarkvm_curves::traits::{ModelParameters, MontgomeryModelParameters};
 use snarkvm_fields::PrimeField;

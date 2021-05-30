@@ -25,7 +25,7 @@ use crate::{
             eq::{ConditionalEqGadget, EqGadget},
         },
     },
-    utilities::{boolean::Boolean, ToBytesGadget},
+    utilities::{Boolean, ToBytesGadget},
 };
 use snarkvm_algorithms::encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey};
 use snarkvm_curves::traits::{Group, ProjectiveCurve};

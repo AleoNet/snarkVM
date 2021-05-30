@@ -16,7 +16,7 @@
 
 use crate::{
     traits::utilities::alloc::{AllocBytesGadget, AllocGadget},
-    utilities::{boolean::Boolean, ToBitsBEGadget, ToBytesGadget},
+    utilities::{Boolean, ToBitsBEGadget, ToBytesGadget},
 };
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_fields::{Field, PrimeField};

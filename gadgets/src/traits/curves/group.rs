@@ -20,7 +20,7 @@ use crate::{
         eq::{EqGadget, NEqGadget},
         select::CondSelectGadget,
     },
-    utilities::{boolean::Boolean, ToBitsBEGadget, ToBytesGadget},
+    utilities::{Boolean, ToBitsBEGadget, ToBytesGadget},
 };
 use snarkvm_curves::{
     traits::{AffineCurve, Group},

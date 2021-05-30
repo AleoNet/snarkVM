@@ -43,7 +43,7 @@ use snarkvm_gadgets::{
             eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         },
     },
-    utilities::{boolean::Boolean, ToBitsLEGadget, ToBytesGadget},
+    utilities::{Boolean, ToBitsLEGadget, ToBytesGadget},
 };
 use snarkvm_objects::AleoAmount;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};

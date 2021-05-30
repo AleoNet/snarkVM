@@ -44,7 +44,7 @@ use snarkvm_gadgets::{
         fields::FieldGadget,
         utilities::{eq::EqGadget, select::CondSelectGadget},
     },
-    utilities::{boolean::Boolean, ToBitsLEGadget},
+    utilities::{Boolean, ToBitsLEGadget},
 };
 use snarkvm_nonnative::{NonNativeFieldMulResultVar, NonNativeFieldVar};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};

@@ -25,7 +25,7 @@ use crate::{
             eq::EqGadget,
         },
     },
-    utilities::{boolean::Boolean, ToBitsBEGadget, ToBytesGadget},
+    utilities::{Boolean, ToBitsBEGadget, ToBytesGadget},
 };
 use snarkvm_algorithms::snark::gm17::{Proof, VerifyingKey, GM17};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};

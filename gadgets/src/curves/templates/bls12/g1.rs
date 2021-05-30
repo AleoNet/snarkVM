@@ -22,7 +22,7 @@ use crate::{
         curves::GroupGadget,
         utilities::eq::{ConditionalEqGadget, EqGadget},
     },
-    utilities::{boolean::Boolean, ToBytesGadget},
+    utilities::{Boolean, ToBytesGadget},
 };
 use snarkvm_curves::{
     templates::bls12::{Bls12Parameters, G1Prepared},

@@ -20,7 +20,7 @@ use crate::{
         integers::Integer,
         utilities::{alloc::AllocGadget, eq::EqGadget, select::CondSelectGadget},
     },
-    utilities::boolean::Boolean,
+    utilities::Boolean,
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};

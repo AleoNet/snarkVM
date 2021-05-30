@@ -26,7 +26,7 @@ use crate::{
             eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         },
     },
-    utilities::{boolean::Boolean, ToBytesGadget},
+    utilities::{Boolean, ToBytesGadget},
 };
 use snarkvm_curves::templates::bls12::{Bls12Parameters, G2Prepared, TwistType};
 use snarkvm_fields::{batch_inversion, Field, One};

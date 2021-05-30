@@ -30,7 +30,7 @@ use snarkvm_gadgets::{
             eq::{ConditionalEqGadget, EqGadget},
         },
     },
-    utilities::boolean::Boolean,
+    utilities::Boolean,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{biginteger::BigInteger, bititerator::BitIteratorBE};

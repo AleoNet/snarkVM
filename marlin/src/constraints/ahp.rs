@@ -37,7 +37,7 @@ use snarkvm_gadgets::{
             eq::{EqGadget, NEqGadget},
         },
     },
-    utilities::{boolean::Boolean, ToBitsLEGadget},
+    utilities::{Boolean, ToBitsLEGadget},
 };
 use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
 use snarkvm_polycommit::{

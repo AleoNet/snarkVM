@@ -26,7 +26,7 @@ use crate::{
             select::CondSelectGadget,
         },
     },
-    utilities::{boolean::Boolean, ToBytesGadget},
+    utilities::{Boolean, ToBytesGadget},
 };
 use snarkvm_algorithms::prf::Blake2s;
 use snarkvm_fields::PrimeField;

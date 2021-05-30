@@ -25,7 +25,7 @@ use crate::{
             select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
         },
     },
-    utilities::{boolean::Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
+    utilities::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
 };
 use snarkvm_fields::{
     fp6_3over2::{Fp6, Fp6Parameters},

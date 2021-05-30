@@ -22,7 +22,7 @@ use crate::{
         curves::{CompressedGroupGadget, GroupGadget},
         integers::integer::Integer,
     },
-    utilities::boolean::Boolean,
+    utilities::Boolean,
 };
 use snarkvm_algorithms::crh::{
     BoweHopwoodPedersenCRH,

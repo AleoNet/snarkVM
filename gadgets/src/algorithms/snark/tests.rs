@@ -21,7 +21,7 @@ use crate::{
         algorithms::snark::SNARKVerifierGadget,
         utilities::alloc::{AllocBytesGadget, AllocGadget},
     },
-    utilities::boolean::Boolean,
+    utilities::Boolean,
 };
 use snarkvm_algorithms::snark::gm17::{create_random_proof, generate_random_parameters, GM17};
 use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};

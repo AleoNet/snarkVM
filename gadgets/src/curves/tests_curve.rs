@@ -24,7 +24,7 @@ use crate::{
         fields::FieldGadget,
         utilities::{alloc::AllocGadget, eq::EqGadget},
     },
-    utilities::boolean::Boolean,
+    utilities::Boolean,
 };
 use snarkvm_curves::{
     bls12_377::{Bls12_377, Fq, Fr, G1Projective, G2Projective},

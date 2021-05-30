@@ -19,7 +19,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     fields::FpGadget,
     traits::utilities::alloc::AllocGadget,
-    utilities::{boolean::Boolean, ToBytesGadget},
+    utilities::{Boolean, ToBytesGadget},
 };
 use snarkvm_nonnative::NonNativeFieldVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};

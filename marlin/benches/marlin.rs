@@ -26,7 +26,7 @@ use snarkvm_fields::Field;
 use snarkvm_gadgets::{
     curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
     traits::algorithms::SNARKGadget,
-    utilities::{alloc::AllocGadget, boolean::Boolean, eq::EqGadget},
+    utilities::{alloc::AllocGadget, eq::EqGadget, Boolean},
 };
 use snarkvm_marlin::{
     constraints::snark::{MarlinSNARK, MarlinSNARKGadget},

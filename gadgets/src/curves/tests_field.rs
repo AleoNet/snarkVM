@@ -16,7 +16,7 @@
 
 use crate::{
     traits::{fields::FieldGadget, utilities::alloc::AllocGadget},
-    utilities::boolean::Boolean,
+    utilities::Boolean,
 };
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};

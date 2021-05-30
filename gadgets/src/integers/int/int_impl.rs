@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{traits::integers::Integer, utilities::boolean::Boolean};
+use crate::{traits::integers::Integer, utilities::Boolean};
 
 use std::fmt::Debug;
 

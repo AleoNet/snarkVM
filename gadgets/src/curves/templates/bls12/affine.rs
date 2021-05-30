@@ -26,7 +26,7 @@ use crate::{
             select::CondSelectGadget,
         },
     },
-    utilities::{boolean::Boolean, ToBitsBEGadget, ToBytesGadget},
+    utilities::{Boolean, ToBitsBEGadget, ToBytesGadget},
 };
 use snarkvm_curves::{
     templates::short_weierstrass::short_weierstrass_jacobian::{

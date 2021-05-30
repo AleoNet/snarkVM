@@ -21,7 +21,7 @@ use crate::{
         integers::{Integer, Mul, Pow},
         utilities::{alloc::AllocGadget, select::CondSelectGadget},
     },
-    utilities::boolean::Boolean,
+    utilities::Boolean,
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSystem;

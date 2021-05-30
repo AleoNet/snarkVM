@@ -26,7 +26,7 @@ use snarkvm_gadgets::{
         fields::{FieldGadget, ToConstraintFieldGadget},
         utilities::{alloc::AllocGadget, eq::EqGadget, select::CondSelectGadget},
     },
-    utilities::{boolean::Boolean, ToBytesGadget},
+    utilities::{Boolean, ToBytesGadget},
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 

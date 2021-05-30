@@ -25,7 +25,7 @@ use crate::{
             eq::{ConditionalEqGadget, EqGadget},
         },
     },
-    utilities::{boolean::Boolean, ToBytesGadget},
+    utilities::{Boolean, ToBytesGadget},
 };
 use snarkvm_algorithms::signature::{SchnorrParameters, SchnorrPublicKey, SchnorrSignature};
 use snarkvm_curves::traits::Group;

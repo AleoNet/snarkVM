@@ -24,7 +24,7 @@ use snarkvm_gadgets::{
     fields::{AllocatedFp, FpGadget},
     integers::uint::UInt8,
     traits::{fields::FieldGadget, integers::Integer, utilities::alloc::AllocGadget},
-    utilities::{boolean::Boolean, ToBitsBEGadget},
+    utilities::{Boolean, ToBitsBEGadget},
 };
 use snarkvm_nonnative::{
     overhead,

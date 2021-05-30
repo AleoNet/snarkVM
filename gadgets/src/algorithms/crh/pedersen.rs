@@ -22,7 +22,7 @@ use crate::{
         integers::Integer,
         utilities::alloc::AllocGadget,
     },
-    utilities::boolean::Boolean,
+    utilities::Boolean,
 };
 use snarkvm_algorithms::crh::{PedersenCRH, PedersenCRHParameters, PedersenCompressedCRH, PedersenSize};
 use snarkvm_curves::traits::{Group, ProjectiveCurve};

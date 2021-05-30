@@ -25,7 +25,7 @@ use crate::{
             select::CondSelectGadget,
         },
     },
-    utilities::{boolean::Boolean, ToBitsBEGadget, ToBytesGadget},
+    utilities::{Boolean, ToBitsBEGadget, ToBytesGadget},
 };
 use snarkvm_curves::{
     templates::twisted_edwards_extended::GroupAffine as TEAffine,

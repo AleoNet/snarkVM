@@ -21,7 +21,7 @@ use crate::{
         integers::Integer,
         utilities::{alloc::AllocGadget, eq::EqGadget},
     },
-    utilities::{boolean::Boolean, ToBitsBEGadget},
+    utilities::{Boolean, ToBitsBEGadget},
 };
 use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};

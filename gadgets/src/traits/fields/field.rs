@@ -20,7 +20,7 @@ use crate::{
         eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
     },
-    utilities::{boolean::Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
+    utilities::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
 };
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};

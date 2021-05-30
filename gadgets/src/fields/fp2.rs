@@ -25,7 +25,7 @@ use crate::{
             select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
         },
     },
-    utilities::{boolean::Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
+    utilities::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
 };
 use snarkvm_fields::{Field, Fp2, Fp2Parameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, ConstraintVariable};

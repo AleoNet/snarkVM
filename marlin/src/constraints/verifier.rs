@@ -37,7 +37,7 @@ use snarkvm_gadgets::{
         fields::{FieldGadget, ToConstraintFieldGadget},
         utilities::eq::EqGadget,
     },
-    utilities::boolean::Boolean,
+    utilities::Boolean,
 };
 use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
 use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};

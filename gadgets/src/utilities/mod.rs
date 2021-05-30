@@ -14,11 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub use to_bits::*;
-pub use to_bytes::*;
+pub mod boolean;
+pub use boolean::*;
+
+pub mod boolean_input;
+pub use boolean_input::*;
 
 pub mod to_bits;
-pub mod to_bytes;
+pub use to_bits::*;
 
-pub mod boolean;
-pub mod boolean_input;
+pub mod to_bytes;
+pub use to_bytes::*;

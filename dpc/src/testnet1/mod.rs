@@ -37,7 +37,7 @@ use snarkvm_algorithms::{
 use snarkvm_curves::traits::{Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
 use snarkvm_gadgets::{
     traits::algorithms::{CRHGadget, SNARKVerifierGadget},
-    utilities::boolean::Boolean,
+    utilities::Boolean,
 };
 use snarkvm_objects::{
     traits::{LedgerScheme, TransactionScheme},
