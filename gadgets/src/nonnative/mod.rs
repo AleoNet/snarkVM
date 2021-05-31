@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-//! This library provides the non-native field gadget for the `snarkVM` constraint-writing platform.
+//! This module provides the non-native field gadget for the `snarkVM` constraint-writing platform.
 //! The non-native field gadget can be used as a standard `FieldVar`, given
 //! reasonable non-native gadget parameters.
 //!
@@ -29,27 +29,20 @@
 //!     result of multiplication, which is hidden from the `FieldVar` interface
 //!     and is left for advanced users who want better performance.
 //!
-//! The Python script mentioned above can be found in the subdirectory `scripts`.
+mod allocated_nonnative_field_var;
+pub use allocated_nonnative_field_var::*;
 
-#![cfg_attr(not(feature = "std"), no_std)]
-#![deny(
-    warnings,
-    unused,
-    future_incompatible,
-    nonstandard_style,
-    rust_2018_idioms,
-    missing_docs
-)]
-#![allow(
-    clippy::redundant_closure_call,
-    clippy::enum_glob_use,
-    clippy::missing_errors_doc,
-    clippy::cast_possible_truncation,
-    clippy::unseparated_literal_suffix
-)]
-#![forbid(unsafe_code)]
+mod allocated_nonnative_field_mul_result_var;
+pub use allocated_nonnative_field_mul_result_var::*;
 
-use std::fmt::Debug;
+mod nonnative_field_var;
+pub use nonnative_field_var::*;
+
+mod nonnative_field_input_var;
+pub use nonnative_field_input_var::*;
+
+mod nonnative_field_mul_result_var;
+pub use nonnative_field_mul_result_var::*;
 
 /// example parameters of non-native field gadget
 ///
@@ -63,6 +56,8 @@ pub mod params;
 /// a submodule for reducing the representations
 #[doc(hidden)]
 pub mod reduce;
+
+use std::fmt::Debug;
 
 /// A macro for computing ceil(log2(x))+1 for a field element x
 #[doc(hidden)]
@@ -105,18 +100,3 @@ pub struct NonNativeFieldParams {
     /// The number of bits of the limb
     pub bits_per_limb: usize,
 }
-
-mod allocated_nonnative_field_var;
-pub use allocated_nonnative_field_var::*;
-
-mod allocated_nonnative_field_mul_result_var;
-pub use allocated_nonnative_field_mul_result_var::*;
-
-mod nonnative_field_var;
-pub use nonnative_field_var::*;
-
-mod nonnative_field_input_var;
-pub use nonnative_field_input_var::*;
-
-mod nonnative_field_mul_result_var;
-pub use nonnative_field_mul_result_var::*;

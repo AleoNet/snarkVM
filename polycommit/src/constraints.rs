@@ -22,9 +22,9 @@ use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     bits::{Boolean, ToBytesGadget},
     fields::FpGadget,
+    nonnative::NonNativeFieldVar,
     traits::alloc::AllocGadget,
 };
-use snarkvm_nonnative::NonNativeFieldVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use crate::{BatchLCProof, LCTerm, LabeledCommitment, LinearCombination, PolynomialCommitment, String, Vec};

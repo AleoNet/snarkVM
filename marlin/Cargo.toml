@@ -45,10 +45,6 @@ version = "0.3.2"
 path = "../gadgets"
 version = "0.3.2"
 
-[dependencies.snarkvm-nonnative]
-path = "../nonnative"
-version = "0.3.2"
-
 [dependencies.snarkvm-polycommit]
 path = "../polycommit"
 version = "0.3.2"

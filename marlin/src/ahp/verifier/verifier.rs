@@ -25,7 +25,7 @@ use crate::{
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
-use snarkvm_nonnative::params::OptimizationType;
+use snarkvm_gadgets::nonnative::params::OptimizationType;
 use snarkvm_r1cs::errors::SynthesisError;
 
 use snarkvm_polycommit::QuerySet;

@@ -21,13 +21,13 @@ use snarkvm_gadgets::{
     bits::{Boolean, ToBitsBEGadget},
     fields::{AllocatedFp, FpGadget},
     integers::uint::UInt8,
-    traits::{alloc::AllocGadget, fields::FieldGadget, integers::Integer},
-};
-use snarkvm_nonnative::{
+    nonnative::{
+        params::{get_params, OptimizationType},
+        AllocatedNonNativeFieldVar,
+        NonNativeFieldVar,
+    },
     overhead,
-    params::{get_params, OptimizationType},
-    AllocatedNonNativeFieldVar,
-    NonNativeFieldVar,
+    traits::{alloc::AllocGadget, fields::FieldGadget, integers::Integer},
 };
 use snarkvm_r1cs::{ConstraintSystem, ConstraintVariable, LinearCombination, SynthesisError};
 

@@ -19,10 +19,12 @@ use crate::{
     PhantomData,
 };
 use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
-use snarkvm_nonnative::{
+use snarkvm_gadgets::{
+    nonnative::{
+        params::{get_params, OptimizationType},
+        AllocatedNonNativeFieldVar,
+    },
     overhead,
-    params::{get_params, OptimizationType},
-    AllocatedNonNativeFieldVar,
 };
 use snarkvm_utilities::BigInteger;
 

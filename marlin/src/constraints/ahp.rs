@@ -23,13 +23,13 @@ use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     bits::{Boolean, ToBitsLEGadget},
     fields::FpGadget,
+    nonnative::{params::OptimizationType, NonNativeFieldVar},
     traits::{
         alloc::AllocGadget,
         eq::{EqGadget, NEqGadget},
         fields::{FieldGadget, ToConstraintFieldGadget},
     },
 };
-use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
 use snarkvm_polycommit::{
     EvaluationsVar,
     LCTerm,

@@ -19,8 +19,10 @@ use rand_xorshift::XorShiftRng;
 
 use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::traits::{alloc::AllocGadget, eq::EqGadget, fields::FieldGadget};
-use snarkvm_nonnative::NonNativeFieldVar;
+use snarkvm_gadgets::{
+    nonnative::NonNativeFieldVar,
+    traits::{alloc::AllocGadget, eq::EqGadget, fields::FieldGadget},
+};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
 const NUM_REPETITIONS: usize = 20;

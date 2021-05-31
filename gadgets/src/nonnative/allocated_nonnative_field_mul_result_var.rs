@@ -18,18 +18,21 @@ use std::marker::PhantomData;
 
 use num_bigint::BigUint;
 
-use snarkvm_fields::{FieldParameters, PrimeField};
-use snarkvm_gadgets::{
+use crate::{
     bits::Boolean,
     fields::FpGadget,
     traits::{alloc::AllocGadget, fields::FieldGadget},
 };
+use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
-    params::{get_params, OptimizationType},
-    reduce::{bigint_to_basefield, limbs_to_bigint, Reducer},
-    AllocatedNonNativeFieldVar,
+    nonnative::{
+        params::{get_params, OptimizationType},
+        reduce::{bigint_to_basefield, limbs_to_bigint, Reducer},
+        AllocatedNonNativeFieldVar,
+    },
+    overhead,
 };
 
 /// The allocated form of `NonNativeFieldMulResultVar` (introduced below)

@@ -20,6 +20,7 @@ use snarkvm_curves::PairingEngine;
 use snarkvm_gadgets::{
     bits::{Boolean, ToBitsLEGadget},
     fields::FpGadget,
+    nonnative::{NonNativeFieldMulResultVar, NonNativeFieldVar},
     traits::{
         curves::{GroupGadget, PairingGadget},
         eq::EqGadget,
@@ -27,7 +28,6 @@ use snarkvm_gadgets::{
         select::CondSelectGadget,
     },
 };
-use snarkvm_nonnative::{NonNativeFieldMulResultVar, NonNativeFieldVar};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
 
 use crate::{
