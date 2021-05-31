@@ -52,12 +52,8 @@ jobs:
           cache_key: snarkvm-stable-cache
       - run:
           name: Build and run tests
-          no_output_timeout: 30m
+          no_output_timeout: 60m
           command: RUST_MIN_STACK=8388608 cargo test --all
-      - run:
-          name: Build and run snarkOS integration tests
-          no_output_timeout: 30m
-          command: cd snarkos-integration && RUST_MIN_STACK=8388608 cargo test
       - persist_to_workspace:
           root: ~/
           paths: project/
@@ -90,12 +86,8 @@ jobs:
           cache_key: snarkvm-nightly-cache
       - run:
           name: Build and test
-          no_output_timeout: 30m
+          no_output_timeout: 60m
           command: RUST_MIN_STACK=8388608 cargo test --all
-      - run:
-          name: Build and run snarkOS integration tests
-          no_output_timeout: 30m
-          command: cd snarkos-integration && RUST_MIN_STACK=8388608 cargo test
       - clear_environment:
           cache_key: snarkvm-nightly-cache
 
