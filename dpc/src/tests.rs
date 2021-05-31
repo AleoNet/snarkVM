@@ -27,8 +27,8 @@ fn testnet1_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
     let inner_snark_vk: <<Components as BaseDPCComponents>::InnerSNARK as SNARK>::VerifyingKey =
         parameters.inner_snark_parameters.1.clone().into();
 
-    let inner_circuit_id = <<Components as DPCComponents>::InnerSNARKVerificationKeyCRH as CRH>::hash(
-        &parameters.system_parameters.inner_snark_verification_key_crh,
+    let inner_circuit_id = <<Components as DPCComponents>::InnerCircuitIDCRH as CRH>::hash(
+        &parameters.system_parameters.inner_circuit_id_crh,
         &to_bytes![inner_snark_vk]?,
     )?;
 

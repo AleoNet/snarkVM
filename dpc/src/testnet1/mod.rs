@@ -432,8 +432,8 @@ impl<Components: BaseDPCComponents> DPC<Components> {
         let encrypted_record_crh = Components::EncryptedRecordCRH::setup(rng);
         end_timer!(time);
 
-        let time = start_timer!(|| "Inner SNARK verification key CRH setup");
-        let inner_snark_verification_key_crh = Components::InnerSNARKVerificationKeyCRH::setup(rng);
+        let time = start_timer!(|| "Inner circuit ID CRH setup");
+        let inner_circuit_id_crh = Components::InnerCircuitIDCRH::setup(rng);
         end_timer!(time);
 
         let time = start_timer!(|| "Local data commitment setup");
@@ -465,7 +465,7 @@ impl<Components: BaseDPCComponents> DPC<Components> {
             account_encryption,
             account_signature,
             encrypted_record_crh,
-            inner_snark_verification_key_crh,
+            inner_circuit_id_crh,
             local_data_crh,
             local_data_commitment,
             program_verification_key_commitment,
@@ -1027,8 +1027,8 @@ where
         let inner_snark_vk: <Components::InnerSNARK as SNARK>::VerifyingKey =
             parameters.inner_snark_parameters.1.clone().into();
 
-        let inner_circuit_id = <Components::InnerSNARKVerificationKeyCRH as CRH>::hash(
-            &parameters.system_parameters.inner_snark_verification_key_crh,
+        let inner_circuit_id = <Components::InnerCircuitIDCRH as CRH>::hash(
+            &parameters.system_parameters.inner_circuit_id_crh,
             &to_bytes![inner_snark_vk]?,
         )?;
 
@@ -1182,10 +1182,10 @@ where
         let inner_snark_vk: <<Components as BaseDPCComponents>::InnerSNARK as SNARK>::VerifyingKey =
             parameters.inner_snark_parameters.1.clone().into();
 
-        let inner_circuit_id = Components::InnerSNARKVerificationKeyCRH::hash(
-            &parameters.system_parameters.inner_snark_verification_key_crh,
-            &to_bytes![inner_snark_vk]?,
-        )?;
+        let inner_circuit_id =
+            Components::InnerCircuitIDCRH::hash(&parameters.system_parameters.inner_circuit_id_crh, &to_bytes![
+                inner_snark_vk
+            ]?)?;
 
         let outer_snark_input = OuterCircuitVerifierInput {
             inner_snark_verifier_input: inner_snark_input,

@@ -22,7 +22,7 @@ use std::hash::Hash;
 pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes {
     type Commitment: Clone + Eq + Hash + FromBytes + ToBytes + Sync + Send;
     type Digest: Clone + Eq + Hash + FromBytes + ToBytes;
-    type InnerSNARKID: Clone + Eq + FromBytes + ToBytes;
+    type InnerCircuitID: Clone + Eq + FromBytes + ToBytes;
     type LocalDataRoot: Clone + Eq + Hash + FromBytes + ToBytes;
     type Memorandum: Clone + Eq + Hash + FromBytes + ToBytes;
     type ProgramCommitment: Clone + Eq + Hash + FromBytes + ToBytes;
@@ -39,8 +39,8 @@ pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes {
     /// Returns the ledger digest.
     fn ledger_digest(&self) -> &Self::Digest;
 
-    /// Returns the inner snark id.
-    fn inner_circuit_id(&self) -> &Self::InnerSNARKID;
+    /// Returns the inner circuit id.
+    fn inner_circuit_id(&self) -> &Self::InnerCircuitID;
 
     /// Returns the old serial numbers.
     fn old_serial_numbers(&self) -> &[Self::SerialNumber];

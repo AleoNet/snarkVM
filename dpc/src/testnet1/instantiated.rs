@@ -142,9 +142,9 @@ impl DPCComponents for Components {
     type AccountSignatureGadget = AccountSignatureGadget;
     type EncryptedRecordCRH = EncryptedRecordCRH;
     type EncryptedRecordCRHGadget = EncryptedRecordCRHGadget;
+    type InnerCircuitIDCRH = InnerCircuitIDCRH;
+    type InnerCircuitIDCRHGadget = InnerCircuitIDCRHGadget;
     type InnerField = InnerField;
-    type InnerSNARKVerificationKeyCRH = InnerSNARKVerificationKeyCRH;
-    type InnerSNARKVerificationKeyCRHGadget = InnerSNARKVerificationKeyCRHGadget;
     type LocalDataCRH = LocalDataCRH;
     type LocalDataCRHGadget = LocalDataCRHGadget;
     type LocalDataCommitment = LocalDataCommitment;
@@ -195,7 +195,7 @@ pub type AccountSignature = SchnorrSignature<EdwardsAffine, Blake2sHash>;
 
 pub type MerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, TwoToOneWindow>;
 pub type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, EncryptedRecordWindow>;
-pub type InnerSNARKVerificationKeyCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, InnerSNARKVkHashWindow>;
+pub type InnerCircuitIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, InnerSNARKVkHashWindow>;
 pub type SerialNumberNonce = BoweHopwoodPedersenCompressedCRH<EdwardsBls, SnNonceWindow>;
 pub type ProgramVerificationKeyCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, ProgramVkHashWindow>;
 
@@ -222,8 +222,7 @@ pub type AccountSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAff
 
 pub type MerkleTreeCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
 pub type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-pub type InnerSNARKVerificationKeyCRHGadget =
-    BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, OuterField, EdwardsSWGadget>;
+pub type InnerCircuitIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, OuterField, EdwardsSWGadget>;
 pub type SerialNumberNonceGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
 pub type ProgramVerificationKeyCRHGadget =
     BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, OuterField, EdwardsSWGadget>;

@@ -26,18 +26,18 @@ use utils::store;
 
 pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, CRHError> {
     let rng = &mut thread_rng();
-    let inner_snark_vk_crh = <C::InnerSNARKVerificationKeyCRH as CRH>::setup(rng);
-    let inner_snark_vk_crh_parameters = inner_snark_vk_crh.parameters();
-    let inner_snark_vk_crh_parameters_bytes = to_bytes![inner_snark_vk_crh_parameters]?;
+    let inner_circuit_id_crh = <C::InnerCircuitIDCRH as CRH>::setup(rng);
+    let inner_circuit_id_crh_parameters = inner_circuit_id_crh.parameters();
+    let inner_circuit_id_crh_parameters_bytes = to_bytes![inner_circuit_id_crh_parameters]?;
 
-    let size = inner_snark_vk_crh_parameters_bytes.len();
-    println!("inner_snark_vk_crh.params\n\tsize - {}", size);
-    Ok(inner_snark_vk_crh_parameters_bytes)
+    let size = inner_circuit_id_crh_parameters_bytes.len();
+    println!("inner_circuit_id_crh.params\n\tsize - {}", size);
+    Ok(inner_circuit_id_crh_parameters_bytes)
 }
 
 pub fn main() {
     let bytes = setup::<Components>().unwrap();
-    let filename = PathBuf::from("inner_snark_vk_crh.params");
-    let sumname = PathBuf::from("inner_snark_vk_crh.checksum");
+    let filename = PathBuf::from("inner_circuit_id_crh.params");
+    let sumname = PathBuf::from("inner_circuit_id_crh.checksum");
     store(&filename, &sumname, &bytes).unwrap();
 }

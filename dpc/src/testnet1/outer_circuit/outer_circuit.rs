@@ -56,7 +56,7 @@ pub struct OuterCircuit<C: BaseDPCComponents> {
     program_randomness: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
     local_data_root: <C::LocalDataCRH as CRH>::Output,
 
-    inner_circuit_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output,
+    inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
 }
 
 impl<C: BaseDPCComponents> OuterCircuit<C> {
@@ -86,7 +86,7 @@ impl<C: BaseDPCComponents> OuterCircuit<C> {
         let program_randomness = <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness::default();
         let local_data_root = <C::LocalDataCRH as CRH>::Output::default();
 
-        let inner_circuit_id = <C::InnerSNARKVerificationKeyCRH as CRH>::Output::default();
+        let inner_circuit_id = <C::InnerCircuitIDCRH as CRH>::Output::default();
 
         Self {
             system_parameters,
@@ -139,8 +139,8 @@ impl<C: BaseDPCComponents> OuterCircuit<C> {
         program_randomness: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
         local_data_root: <C::LocalDataCRH as CRH>::Output,
 
-        // Inner SNARK ID
-        inner_circuit_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output,
+        // Inner circuit ID
+        inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
     ) -> Self {
         let num_input_records = C::NUM_INPUT_RECORDS;
         let num_output_records = C::NUM_OUTPUT_RECORDS;

@@ -26,6 +26,10 @@ THe Pedersen commitment parameters used to construct record commitments.
 
 The Bowe-Hopwood Pedersen CRH parameters used to establish the encrypted record hashes used to verify the validity of the encrypted records.
 
+### Inner Circuit ID CRH
+
+The Bowe-Hopwood Pedersen CRH parameters used to compute the inner circuit ID.
+
 ### Ledger Merkle Tree
 
 The Bowe-Hopwood Pedersen CRH parameters used to construct the record commitment Merkle tree. 

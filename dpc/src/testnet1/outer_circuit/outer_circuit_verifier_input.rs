@@ -26,7 +26,7 @@ use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 #[derivative(Clone(bound = "C: BaseDPCComponents"))]
 pub struct OuterCircuitVerifierInput<C: BaseDPCComponents> {
     pub inner_snark_verifier_input: InnerCircuitVerifierInput<C>,
-    pub inner_circuit_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output,
+    pub inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
 }
 
 impl<C: BaseDPCComponents> ToConstraintField<C::OuterField> for OuterCircuitVerifierInput<C>
@@ -35,8 +35,8 @@ where
     <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::OuterField>,
     <C::ProgramVerificationKeyCRH as CRH>::Parameters: ToConstraintField<C::OuterField>,
 
-    <C::InnerSNARKVerificationKeyCRH as CRH>::Parameters: ToConstraintField<C::OuterField>,
-    <C::InnerSNARKVerificationKeyCRH as CRH>::Output: ToConstraintField<C::OuterField>,
+    <C::InnerCircuitIDCRH as CRH>::Parameters: ToConstraintField<C::OuterField>,
+    <C::InnerCircuitIDCRH as CRH>::Output: ToConstraintField<C::OuterField>,
 
     <C::AccountCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
     <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerField>,
@@ -86,7 +86,7 @@ where
             &self
                 .inner_snark_verifier_input
                 .system_parameters
-                .inner_snark_verification_key_crh
+                .inner_circuit_id_crh
                 .parameters()
                 .to_field_elements()?,
         );

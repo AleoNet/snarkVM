@@ -84,7 +84,7 @@ pub struct Transaction<C: BaseDPCComponents> {
     pub memorandum: [u8; 32],
 
     /// The ID of the inner SNARK being used
-    pub inner_circuit_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output,
+    pub inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
 }
 
 impl<C: BaseDPCComponents> Transaction<C> {
@@ -94,7 +94,7 @@ impl<C: BaseDPCComponents> Transaction<C> {
         new_commitments: Vec<<Self as TransactionScheme>::Commitment>,
         memorandum: <Self as TransactionScheme>::Memorandum,
         ledger_digest: MerkleTreeDigest<C::MerkleParameters>,
-        inner_circuit_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output,
+        inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
         transaction_proof: <C::OuterSNARK as SNARK>::Proof,
         program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
         local_data_root: <C::LocalDataCRH as CRH>::Output,
@@ -124,7 +124,7 @@ impl<C: BaseDPCComponents> TransactionScheme for Transaction<C> {
     type Commitment = <C::RecordCommitment as CommitmentScheme>::Output;
     type Digest = MerkleTreeDigest<C::MerkleParameters>;
     type EncryptedRecord = EncryptedRecord<C>;
-    type InnerSNARKID = <C::InnerSNARKVerificationKeyCRH as CRH>::Output;
+    type InnerCircuitID = <C::InnerCircuitIDCRH as CRH>::Output;
     type LocalDataRoot = <C::LocalDataCRH as CRH>::Output;
     type Memorandum = [u8; 32];
     type ProgramCommitment = <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output;
@@ -161,7 +161,7 @@ impl<C: BaseDPCComponents> TransactionScheme for Transaction<C> {
         &self.ledger_digest
     }
 
-    fn inner_circuit_id(&self) -> &Self::InnerSNARKID {
+    fn inner_circuit_id(&self) -> &Self::InnerCircuitID {
         &self.inner_circuit_id
     }
 
@@ -257,7 +257,7 @@ impl<C: BaseDPCComponents> FromBytes for Transaction<C> {
         let memorandum: [u8; 32] = FromBytes::read(&mut reader)?;
 
         let ledger_digest: MerkleTreeDigest<C::MerkleParameters> = FromBytes::read(&mut reader)?;
-        let inner_circuit_id: <C::InnerSNARKVerificationKeyCRH as CRH>::Output = FromBytes::read(&mut reader)?;
+        let inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output = FromBytes::read(&mut reader)?;
         let transaction_proof: <C::OuterSNARK as SNARK>::Proof = FromBytes::read(&mut reader)?;
         let program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output =
             FromBytes::read(&mut reader)?;

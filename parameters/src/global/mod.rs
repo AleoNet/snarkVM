@@ -60,10 +60,10 @@ impl_params_local!(
     270532
 );
 impl_params_local!(
-    InnerSNARKVKCRHParameters,
-    inner_snark_vk_crh_test,
+    InnerCircuitIDCRH,
+    inner_circuit_id_crh_test,
     "./",
-    "inner_snark_vk_crh",
+    "inner_circuit_id_crh",
     3581604
 );
 impl_params_local!(

@@ -6,7 +6,7 @@ cargo run --release --example account_commitment
 cargo run --release --example account_encryption
 cargo run --release --example account_signature
 cargo run --release --example encrypted_record_crh
-cargo run --release --example inner_snark_vk_crh
+cargo run --release --example inner_circuit_id_crh
 cargo run --release --example ledger_merkle_tree
 cargo run --release --example local_data_crh
 cargo run --release --example local_data_commitment
@@ -26,8 +26,8 @@ mv account_signature.checksum ../src/params
 mv encrypted_record_crh.params ../src/params
 mv encrypted_record_crh.checksum ../src/params
 
-mv inner_snark_vk_crh.params ../src/params
-mv inner_snark_vk_crh.checksum ../src/params
+mv inner_circuit_id_crh.params ../src/params
+mv inner_circuit_id_crh.checksum ../src/params
 
 mv ledger_merkle_tree.params ../src/params
 mv ledger_merkle_tree.checksum ../src/params

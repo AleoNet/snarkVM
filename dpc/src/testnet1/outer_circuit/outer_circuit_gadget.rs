@@ -88,7 +88,7 @@ pub fn execute_outer_proof_gadget<C: BaseDPCComponents, CS: ConstraintSystem<C::
     program_randomness: &<C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
     local_data_root: &<C::LocalDataCRH as CRH>::Output,
 
-    inner_circuit_id: &<C::InnerSNARKVerificationKeyCRH as CRH>::Output,
+    inner_circuit_id: &<C::InnerCircuitIDCRH as CRH>::Output,
 ) -> Result<(), SynthesisError>
 where
     <C::AccountCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
@@ -117,7 +117,7 @@ where
     MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerField>,
 {
     // Declare public parameters.
-    let (program_vk_commitment_parameters, program_vk_crh_parameters, inner_snark_vk_crh_parameters) = {
+    let (program_vk_commitment_parameters, program_vk_crh_parameters, inner_circuit_id_crh_parameters) = {
         let cs = &mut cs.ns(|| "Declare Comm and CRH parameters");
 
         let program_vk_commitment_parameters = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<
@@ -134,16 +134,16 @@ where
                 || Ok(system_parameters.program_verification_key_crh.parameters()),
             )?;
 
-        let inner_snark_vk_crh_parameters =
-            <C::InnerSNARKVerificationKeyCRHGadget as CRHGadget<_, C::OuterField>>::ParametersGadget::alloc_input(
-                &mut cs.ns(|| "Declare inner_snark_vk_crh_parameters"),
-                || Ok(system_parameters.inner_snark_verification_key_crh.parameters()),
+        let inner_circuit_id_crh_parameters =
+            <C::InnerCircuitIDCRHGadget as CRHGadget<_, C::OuterField>>::ParametersGadget::alloc_input(
+                &mut cs.ns(|| "Declare inner_circuit_id_crh_parameters"),
+                || Ok(system_parameters.inner_circuit_id_crh.parameters()),
             )?;
 
         (
             program_vk_commitment_parameters,
             program_vk_crh_parameters,
-            inner_snark_vk_crh_parameters,
+            inner_circuit_id_crh_parameters,
         )
     };
 
@@ -481,25 +481,25 @@ where
     // ********************************************************************
 
     // ********************************************************************
-    // Check that the inner snark id is derived correctly.
+    // Check that the inner circuit ID is derived correctly.
     // ********************************************************************
 
     let inner_snark_vk_bytes = inner_snark_vk.to_bytes(&mut cs.ns(|| "Convert inner snark vk to bytes"))?;
 
     let given_inner_circuit_id =
-        <C::InnerSNARKVerificationKeyCRHGadget as CRHGadget<_, C::OuterField>>::OutputGadget::alloc_input(
-            &mut cs.ns(|| "Inner snark id"),
+        <C::InnerCircuitIDCRHGadget as CRHGadget<_, C::OuterField>>::OutputGadget::alloc_input(
+            &mut cs.ns(|| "Inner circuit ID"),
             || Ok(inner_circuit_id),
         )?;
 
-    let candidate_inner_circuit_id = C::InnerSNARKVerificationKeyCRHGadget::check_evaluation_gadget(
-        &mut cs.ns(|| "Compute inner snark vk hash"),
-        &inner_snark_vk_crh_parameters,
+    let candidate_inner_circuit_id = C::InnerCircuitIDCRHGadget::check_evaluation_gadget(
+        &mut cs.ns(|| "Compute inner circuit ID"),
+        &inner_circuit_id_crh_parameters,
         inner_snark_vk_bytes,
     )?;
 
     candidate_inner_circuit_id.enforce_equal(
-        &mut cs.ns(|| "Check that declared and computed inner snark ids are equal"),
+        &mut cs.ns(|| "Check that declared and computed inner circuit IDs are equal"),
         &given_inner_circuit_id,
     )?;
 

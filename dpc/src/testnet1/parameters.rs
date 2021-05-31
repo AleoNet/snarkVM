@@ -29,7 +29,7 @@ pub struct SystemParameters<C: BaseDPCComponents> {
     pub account_signature: C::AccountSignature,
     pub record_commitment: C::RecordCommitment,
     pub encrypted_record_crh: C::EncryptedRecordCRH,
-    pub inner_snark_verification_key_crh: C::InnerSNARKVerificationKeyCRH,
+    pub inner_circuit_id_crh: C::InnerCircuitIDCRH,
     pub program_verification_key_commitment: C::ProgramVerificationKeyCommitment,
     pub program_verification_key_crh: C::ProgramVerificationKeyCRH,
     pub local_data_crh: C::LocalDataCRH,
@@ -49,8 +49,8 @@ impl<C: BaseDPCComponents> SystemParameters<C> {
             From::from(FromBytes::read(AccountSignatureParameters::load_bytes()?.as_slice())?);
         let encrypted_record_crh: C::EncryptedRecordCRH =
             From::from(FromBytes::read(EncryptedRecordCRHParameters::load_bytes()?.as_slice())?);
-        let inner_snark_verification_key_crh: C::InnerSNARKVerificationKeyCRH =
-            From::from(FromBytes::read(InnerSNARKVKCRHParameters::load_bytes()?.as_slice())?);
+        let inner_circuit_id_crh: C::InnerCircuitIDCRH =
+            From::from(FromBytes::read(InnerCircuitIDCRH::load_bytes()?.as_slice())?);
         let local_data_crh: C::LocalDataCRH =
             From::from(FromBytes::read(LocalDataCRHParameters::load_bytes()?.as_slice())?);
         let local_data_commitment: C::LocalDataCommitment = From::from(FromBytes::read(
@@ -71,7 +71,7 @@ impl<C: BaseDPCComponents> SystemParameters<C> {
             account_encryption,
             account_signature,
             encrypted_record_crh,
-            inner_snark_verification_key_crh,
+            inner_circuit_id_crh,
             local_data_crh,
             local_data_commitment,
             program_verification_key_commitment,
