@@ -4,8 +4,8 @@
 
 cargo run --release --example inner_snark
 
-mv inner_snark_pk*.params ../src/params
-mv inner_snark_pk.checksum ../src/params
+mv inner_snark_pk*.params ../src/testnet1
+mv inner_snark_pk.checksum ../src/testnet1
 
-mv inner_snark_vk.params ../src/params
-mv inner_snark_vk.checksum ../src/params
+mv inner_snark_vk.params ../src/testnet1
+mv inner_snark_vk.checksum ../src/testnet1
