@@ -16,6 +16,7 @@
 
 use itertools::Itertools;
 
+use crate::testnet1::{parameters::SystemParameters, program::PrivateProgramInput, AleoAmount, BaseDPCComponents};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
@@ -31,11 +32,8 @@ use snarkvm_gadgets::{
         integers::integer::Integer,
     },
 };
-use snarkvm_objects::AleoAmount;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
-
-use crate::testnet1::{parameters::SystemParameters, program::PrivateProgramInput, BaseDPCComponents};
 
 fn field_element_to_bytes<C: BaseDPCComponents, CS: ConstraintSystem<C::OuterField>>(
     cs: &mut CS,

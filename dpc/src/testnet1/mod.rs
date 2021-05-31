@@ -17,7 +17,7 @@
 use crate::{
     account::{Account, AccountAddress, AccountPrivateKey},
     errors::DPCError,
-    testnet1::payload::Payload,
+    testnet1::{payload::Payload, AleoAmount},
     traits::{AccountScheme, DPCComponents, DPCScheme, RecordScheme},
 };
 use snarkvm_algorithms::{
@@ -41,7 +41,6 @@ use snarkvm_gadgets::{
 };
 use snarkvm_objects::{
     traits::{LedgerScheme, TransactionScheme},
-    AleoAmount,
     Network,
 };
 use snarkvm_utilities::{

@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet1::{record::encrypted_record::*, BaseDPCComponents};
+use crate::testnet1::{record::encrypted_record::*, AleoAmount, BaseDPCComponents};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, SignatureScheme, CRH, SNARK},
 };
-use snarkvm_objects::{errors::TransactionError, traits::TransactionScheme, AleoAmount, Network};
+use snarkvm_objects::{errors::TransactionError, traits::TransactionScheme, Network};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     serialize::{CanonicalDeserialize, CanonicalSerialize},

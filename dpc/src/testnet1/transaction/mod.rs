@@ -14,16 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt::Debug;
+pub mod amount;
+pub use amount::*;
 
-#[derive(Debug, Error)]
-pub enum AmountError {
-    #[error("the amount: {} exceeds the supply bounds of {}", _0, _1)]
-    AmountOutOfBounds(String, String),
-
-    #[error("{}: {}", _0, _1)]
-    Crate(&'static str, String),
-
-    #[error("invalid amount: {}", _0)]
-    InvalidAmount(String),
-}
+pub mod transaction;
+pub use transaction::*;

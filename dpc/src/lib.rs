@@ -78,5 +78,5 @@ pub use traits::*;
 mod tests;
 
 pub mod prelude {
-    pub use crate::{accounts::*, errors::*, traits::*};
+    pub use crate::{account::*, errors::*, traits::*};
 }

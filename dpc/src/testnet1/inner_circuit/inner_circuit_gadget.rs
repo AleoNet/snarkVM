@@ -35,7 +35,6 @@ use snarkvm_gadgets::{
         integers::{add::Add, integer::Integer, sub::Sub},
     },
 };
-use snarkvm_objects::AleoAmount;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{
     bits_to_bytes,
@@ -49,6 +48,7 @@ use crate::{
         parameters::SystemParameters,
         record::Record,
         record_encryption::RecordEncryptionGadgetComponents,
+        AleoAmount,
         BaseDPCComponents,
     },
     traits::RecordScheme,

@@ -21,6 +21,7 @@ use crate::{
         parameters::SystemParameters,
         record::Record,
         record_encryption::RecordEncryptionGadgetComponents,
+        AleoAmount,
         BaseDPCComponents,
     },
 };
@@ -28,7 +29,6 @@ use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
     traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, CRH},
 };
-use snarkvm_objects::AleoAmount;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 use std::sync::Arc;
 

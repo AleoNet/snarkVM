@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet1::{parameters::SystemParameters, BaseDPCComponents};
+use crate::testnet1::{parameters::SystemParameters, AleoAmount, BaseDPCComponents};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH},
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
-use snarkvm_objects::AleoAmount;
 use std::sync::Arc;
 
 #[derive(Derivative)]

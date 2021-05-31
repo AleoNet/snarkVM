@@ -18,6 +18,7 @@ use crate::testnet1::{
     outer_circuit_gadget::execute_outer_proof_gadget,
     parameters::SystemParameters,
     program::PrivateProgramInput,
+    AleoAmount,
     BaseDPCComponents,
 };
 use snarkvm_algorithms::{
@@ -25,7 +26,6 @@ use snarkvm_algorithms::{
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
 };
 use snarkvm_fields::ToConstraintField;
-use snarkvm_objects::AleoAmount;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 use std::sync::Arc;
 

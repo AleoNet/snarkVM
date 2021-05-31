@@ -16,14 +16,13 @@
 
 use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
-use serde::Serialize;
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
 };
 
 /// Represents the amount of ALEOs in UNITS
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AleoAmount(pub i64);
 
 pub enum Denomination {
@@ -166,7 +165,7 @@ mod tests {
         assert_eq!(result, a.sub(b));
     }
 
-    pub struct AmountDenominationTestCase {
+    pub(crate) struct AmountDenominationTestCase {
         byte: i64,
         gate: i64,
         aleo: i64,
