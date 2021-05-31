@@ -33,7 +33,7 @@ members = [
   "r1cs",
   "utilities",
   "wasm",
-  ".snarkos-integration"
+  ".integration"
 ]
 
 [[bin]]
