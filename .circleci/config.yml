@@ -91,6 +91,201 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-nightly-cache
 
+  snarkvm-algorithms:
+    docker:
+      - image: cimg/rust:1.51.0
+    resource_class: xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-algorithms-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 35m
+          command: cd algorithms && RUST_MIN_STACK=8388608 cargo test
+      - clear_environment:
+          cache_key: snarkvm-algorithms-cache
+
+  snarkvm-curves:
+    docker:
+      - image: cimg/rust:1.51.0
+    resource_class: xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-curves-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 35m
+          command: cd curves && RUST_MIN_STACK=8388608 cargo test
+      - clear_environment:
+          cache_key: snarkvm-curves-cache
+
+  snarkvm-derives:
+    docker:
+      - image: cimg/rust:1.51.0
+    resource_class: xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-derives-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 35m
+          command: cd derives && RUST_MIN_STACK=8388608 cargo test
+      - clear_environment:
+          cache_key: snarkvm-derives-cache
+
+  snarkvm-dpc:
+    docker:
+      - image: cimg/rust:1.51.0
+    resource_class: xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-dpc-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 35m
+          command: cd dpc && RUST_MIN_STACK=8388608 cargo test
+      - clear_environment:
+          cache_key: snarkvm-dpc-cache
+
+  snarkvm-fields:
+    docker:
+      - image: cimg/rust:1.51.0
+    resource_class: xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-fields-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 35m
+          command: cd fields && RUST_MIN_STACK=8388608 cargo test
+      - clear_environment:
+          cache_key: snarkvm-fields-cache
+
+  snarkvm-gadgets:
+    docker:
+      - image: cimg/rust:1.51.0
+    resource_class: xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-gadgets-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 35m
+          command: cd gadgets && RUST_MIN_STACK=8388608 cargo test
+      - clear_environment:
+          cache_key: snarkvm-gadgets-cache
+
+  snarkvm-marlin:
+    docker:
+      - image: cimg/rust:1.51.0
+    resource_class: xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-marlin-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 35m
+          command: cd marlin && RUST_MIN_STACK=8388608 cargo test
+      - clear_environment:
+          cache_key: snarkvm-marlin-cache
+
+  snarkvm-parameters:
+    docker:
+      - image: cimg/rust:1.51.0
+    resource_class: xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-parameters-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 35m
+          command: cd parameters && RUST_MIN_STACK=8388608 cargo test
+      - clear_environment:
+          cache_key: snarkvm-parameters-cache
+
+  snarkvm-polycommit:
+    docker:
+      - image: cimg/rust:1.51.0
+    resource_class: xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-polycommit-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 35m
+          command: cd polycommit && RUST_MIN_STACK=8388608 cargo test
+      - clear_environment:
+          cache_key: snarkvm-polycommit-cache
+
+  snarkvm-posw:
+    docker:
+      - image: cimg/rust:1.51.0
+    resource_class: xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-posw-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 35m
+          command: cd posw && RUST_MIN_STACK=8388608 cargo test
+      - clear_environment:
+          cache_key: snarkvm-posw-cache
+
+  snarkvm-profiler:
+    docker:
+      - image: cimg/rust:1.51.0
+    resource_class: xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-profiler-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 35m
+          command: cd profiler && RUST_MIN_STACK=8388608 cargo test
+      - clear_environment:
+          cache_key: snarkvm-profiler-cache
+
+  snarkvm-r1cs:
+    docker:
+      - image: cimg/rust:1.51.0
+    resource_class: xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-r1cs-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 35m
+          command: cd r1cs && RUST_MIN_STACK=8388608 cargo test
+      - clear_environment:
+          cache_key: snarkvm-r1cs-cache
+
+  snarkvm-utilities:
+    docker:
+      - image: cimg/rust:1.51.0
+    resource_class: xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-utilities-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 35m
+          command: cd utilities && RUST_MIN_STACK=8388608 cargo test
+      - clear_environment:
+          cache_key: snarkvm-utilities-cache
+
 workflows:
   version: 2
   main-workflow:
@@ -100,3 +295,16 @@ workflows:
       - codecov:
           requires:
             - rust-stable
+      - snarkvm-algorithms
+      - snarkvm-curves
+      - snarkvm-derives
+      - snarkvm-dpc
+      - snarkvm-fields
+      - snarkvm-gadgets
+      - snarkvm-marlin
+      - snarkvm-parameters
+      - snarkvm-polycommit
+      - snarkvm-posw
+      - snarkvm-profiler
+      - snarkvm-r1cs
+      - snarkvm-utilities
