@@ -14,10 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{block_header::GenesisBlockHeader, traits::Genesis};
+use crate::traits::Genesis;
 
-#[test]
-fn test_genesis_block_header() {
-    let header = GenesisBlockHeader::load_bytes();
-    assert_eq!(GenesisBlockHeader::SIZE, header.len() as u64);
+pub struct GenesisBlockHeader;
+
+impl Genesis for GenesisBlockHeader {
+    const CHECKSUM: &'static str = "";
+    const SIZE: u64 = 1088;
+
+    fn load_bytes() -> Vec<u8> {
+        let buffer = include_bytes!("block_header.genesis");
+        buffer.to_vec()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_genesis_block_header() {
+        let header = GenesisBlockHeader::load_bytes();
+        assert_eq!(GenesisBlockHeader::SIZE, header.len() as u64);
+    }
 }

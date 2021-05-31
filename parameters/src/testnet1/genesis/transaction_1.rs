@@ -14,8 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod transaction_1;
-pub use transaction_1::*;
+use crate::traits::Genesis;
+
+pub struct Transaction1;
+
+impl Genesis for Transaction1 {
+    const CHECKSUM: &'static str = "";
+    const SIZE: u64 = 1538;
+
+    fn load_bytes() -> Vec<u8> {
+        let buffer = include_bytes!("transaction_1.genesis");
+        buffer.to_vec()
+    }
+}
 
 #[cfg(test)]
-pub mod tests;
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_transaction_1() {
+        let parameters = Transaction1::load_bytes();
+        assert_eq!(Transaction1::SIZE, parameters.len() as u64);
+    }
+}

@@ -28,11 +28,8 @@ pub use errors::*;
 pub mod global;
 pub use global::*;
 
-pub mod genesis;
-pub use genesis::*;
-
-pub mod params;
-pub use params::*;
+pub mod testnet1;
+pub use testnet1::*;
 
 pub mod traits;
 pub use traits::*;

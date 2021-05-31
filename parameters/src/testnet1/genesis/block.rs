@@ -24,17 +24,24 @@ impl Genesis for GenesisBlock {
     const SIZE: u64 = 2627;
 
     fn load_bytes() -> Vec<u8> {
-        let mut buffer = vec![];
-
         let block_header_bytes = GenesisBlockHeader::load_bytes();
+        let transactions = [Transaction1::load_bytes()];
 
-        let num_transactions: u64 = 1;
-        let transaction_1_bytes = Transaction1::load_bytes();
-
-        buffer.extend(block_header_bytes);
-        buffer.extend(variable_length_integer(num_transactions));
-        buffer.extend(transaction_1_bytes);
-
+        let mut buffer = vec![];
+        buffer.extend(block_header_bytes); // Genesis block header bytes
+        buffer.extend(variable_length_integer(transactions.len() as u64)); // Number of transactions
+        buffer.extend(transactions.concat()); // Ordered buffer of all transaction bytes
         buffer
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_genesis_block() {
+        let block = GenesisBlock::load_bytes();
+        assert_eq!(GenesisBlock::SIZE, block.len() as u64);
     }
 }

@@ -62,12 +62,12 @@ macro_rules! impl_params_local {
 
 #[macro_export]
 macro_rules! impl_params_remote {
-    ($name: ident, $remote_url: tt, $fname: tt, $size: tt) => {
+    ($name: ident, $remote_url: tt, $local_dir: expr, $fname: tt, $size: tt) => {
 
         pub struct $name;
 
         impl crate::traits::Parameter for $name {
-            const CHECKSUM: &'static str = include_str!(concat!("params/", $fname, ".checksum"));
+            const CHECKSUM: &'static str = include_str!(concat!($local_dir, $fname, ".checksum"));
             const SIZE: u64 = $size;
 
             fn load_bytes() -> Result<Vec<u8>, crate::errors::ParameterError> {
@@ -75,7 +75,7 @@ macro_rules! impl_params_remote {
                 let filename = Self::versioned_filename();
                 let mut file_path = std::path::PathBuf::from(file!());
                 file_path.pop();
-                file_path.push("params/");
+                file_path.push($local_dir);
                 file_path.push(&filename);
 
                 // Compute the relative path.

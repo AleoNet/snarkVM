@@ -14,33 +14,31 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod genesis;
+pub use genesis::*;
+
 // POSW SNARK
 impl_params_remote!(
     PoswSNARKPKParameters,
     "https://snarkos-testnet.s3-us-west-2.amazonaws.com",
+    "./",
     "posw_snark_pk",
     171163800
 );
-impl_params_local!(
-    PoswSNARKVKParameters,
-    posw_snark_vk_test,
-    "params/",
-    "posw_snark_vk",
-    40807
-);
+impl_params_local!(PoswSNARKVKParameters, posw_snark_vk_test, "./", "posw_snark_vk", 40807);
 
 // Program SNARK
 impl_params_local!(
     NoopProgramSNARKPKParameters,
     noop_program_snark_pk_test,
-    "params/",
+    "./",
     "noop_program_snark_pk",
     348514
 );
 impl_params_local!(
     NoopProgramSNARKVKParameters,
     noop_program_snark_vk_test,
-    "params/",
+    "./",
     "noop_program_snark_vk",
     1068
 );
@@ -49,13 +47,14 @@ impl_params_local!(
 impl_params_remote!(
     InnerSNARKPKParameters,
     "https://snarkos-testnet.s3-us-west-2.amazonaws.com",
+    "./",
     "inner_snark_pk",
     250108401
 );
 impl_params_local!(
     InnerSNARKVKParameters,
     inner_snark_vk_test,
-    "params/",
+    "./",
     "inner_snark_vk",
     2329
 );
@@ -64,13 +63,14 @@ impl_params_local!(
 impl_params_remote!(
     OuterSNARKPKParameters,
     "https://snarkos-testnet.s3-us-west-2.amazonaws.com",
+    "./",
     "outer_snark_pk",
     502942005
 );
 impl_params_local!(
     OuterSNARKVKParameters,
     outer_snark_vk_test,
-    "params/",
+    "./",
     "outer_snark_vk",
     4443
 );
