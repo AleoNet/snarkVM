@@ -30,9 +30,8 @@ use snarkvm_dpc::{
     },
 };
 use snarkvm_parameters::{
+    testnet1::{InnerSNARKPKParameters, InnerSNARKVKParameters},
     traits::Parameter,
-    InnerSNARKPKParameters,
-    InnerSNARKVKParameters,
     LedgerMerkleTreeParameters,
 };
 use snarkvm_utilities::{

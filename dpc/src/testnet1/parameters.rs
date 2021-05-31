@@ -16,7 +16,7 @@
 
 use crate::testnet1::BaseDPCComponents;
 use snarkvm_algorithms::traits::{EncryptionScheme, SNARK};
-use snarkvm_parameters::{traits::Parameter, *};
+use snarkvm_parameters::{prelude::*, testnet1::*};
 use snarkvm_utilities::bytes::FromBytes;
 
 use std::io::Result as IoResult;

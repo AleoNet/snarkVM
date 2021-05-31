@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{block_header::GenesisBlockHeader, traits::Genesis, transaction_1::Transaction1};
+use crate::{
+    testnet1::{block_header::GenesisBlockHeader, transaction_1::Transaction1},
+    traits::Genesis,
+};
 use snarkvm_utilities::variable_length_integer::variable_length_integer;
 
 pub struct GenesisBlock;

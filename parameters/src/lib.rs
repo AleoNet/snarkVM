@@ -29,7 +29,6 @@ pub mod global;
 pub use global::*;
 
 pub mod testnet1;
-pub use testnet1::*;
 
 pub mod traits;
 pub use traits::*;

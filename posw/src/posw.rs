@@ -40,7 +40,10 @@ use snarkvm_gadgets::{
     traits::algorithms::MaskedCRHGadget,
 };
 use snarkvm_marlin::snark::SRS;
-use snarkvm_parameters::{traits::Parameter, PoswSNARKPKParameters, PoswSNARKVKParameters};
+use snarkvm_parameters::{
+    testnet1::{PoswSNARKPKParameters, PoswSNARKVKParameters},
+    traits::Parameter,
+};
 use snarkvm_polycommit::optional_rng::OptionalRng;
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_utilities::{
