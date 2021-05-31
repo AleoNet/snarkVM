@@ -14,41 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkos_storage::mem::MemDb;
-use snarkos_testing::{dpc::*, storage::*};
 use snarkvm_algorithms::{
     merkle_tree::MerklePath,
     traits::{MerkleParameters, CRH, SNARK},
 };
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{
-    account::{Account, AccountViewKey},
-    base_dpc::{
+    prelude::*,
+    testnet1::{
         execute_inner_proof_gadget,
         execute_outer_proof_gadget,
         inner_circuit::InnerCircuit,
         instantiated::*,
         parameters::{NoopProgramSNARKParameters, SystemParameters},
         program::NoopProgram,
-        record::record_encryption::RecordEncryption,
-        record_payload::RecordPayload,
+        record::{payload::Payload, record_encryption::RecordEncryption},
         BaseDPCComponents,
         TransactionKernel,
         DPC,
     },
-    traits::{AccountScheme, DPCScheme, Program, Record},
 };
-use snarkvm_objects::{
-    dpc::DPCTransactions,
-    merkle_root,
-    traits::{LedgerScheme, Transaction},
-    Block,
-    BlockHeader,
-    BlockHeaderHash,
-    MerkleRootHash,
-    PedersenMerkleRootHash,
-    ProofOfSuccinctWork,
-};
+use snarkvm_integration::{dpc::*, ledger::*, memdb::MemDb, storage::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
@@ -66,7 +52,7 @@ use std::{
 type L = Ledger<Tx, CommitmentMerkleParameters, MemDb>;
 
 #[test]
-fn base_dpc_integration_test() {
+fn dpc_testnet1_integration_test() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
     // Generate or load parameters for the ledger, commitment schemes, and CRH
@@ -88,9 +74,9 @@ fn base_dpc_integration_test() {
             time: 0,
             difficulty_target: 0x07FF_FFFF_FFFF_FFFF_u64,
             nonce: 0,
-            proof: ProofOfSuccinctWork::default(),
+            proof: ProofOfSuccinctWork([0u8; 972]),
         },
-        transactions: DPCTransactions::new(),
+        transactions: Transactions::new(),
     };
 
     let ledger = initialize_test_blockchain::<Tx, CommitmentMerkleParameters, MemDb>(ledger_parameters, genesis_block);
@@ -119,7 +105,7 @@ fn base_dpc_integration_test() {
             genesis_account.address.clone(),
             true, // The input record is dummy
             0,
-            RecordPayload::default(),
+            Payload::default(),
             noop_program_id.clone(),
             noop_program_id.clone(),
             &mut rng,
@@ -134,7 +120,7 @@ fn base_dpc_integration_test() {
     let new_record_owners = vec![recipient.address.clone(); NUM_OUTPUT_RECORDS];
     let new_is_dummy_flags = vec![false; NUM_OUTPUT_RECORDS];
     let new_values = vec![10; NUM_OUTPUT_RECORDS];
-    let new_payloads = vec![RecordPayload::default(); NUM_OUTPUT_RECORDS];
+    let new_payloads = vec![Payload::default(); NUM_OUTPUT_RECORDS];
     let new_birth_program_ids = vec![noop_program_id.clone(); NUM_OUTPUT_RECORDS];
     let new_death_program_ids = vec![noop_program_id.clone(); NUM_OUTPUT_RECORDS];
 
@@ -237,7 +223,7 @@ fn base_dpc_integration_test() {
 
     let previous_block = ledger.get_latest_block().unwrap();
 
-    let mut transactions = DPCTransactions::new();
+    let mut transactions = Transactions::new();
     transactions.push(transaction);
 
     let transaction_ids = transactions.to_transaction_ids().unwrap();
@@ -257,7 +243,7 @@ fn base_dpc_integration_test() {
         difficulty_target: previous_block.header.difficulty_target,
         nonce: 0,
         pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
-        proof: ProofOfSuccinctWork::default(),
+        proof: ProofOfSuccinctWork([0u8; 972]),
     };
 
     assert!(InstantiatedDPC::verify_transactions(&parameters, &transactions.0, &ledger).unwrap());
@@ -314,7 +300,7 @@ fn test_transaction_kernel_serialization() {
         test_account.address.clone(),
         true,
         0,
-        RecordPayload::default(),
+        Payload::default(),
         noop_program_id.clone(),
         noop_program_id.clone(),
         &mut rng,
@@ -330,7 +316,7 @@ fn test_transaction_kernel_serialization() {
     let new_record_owners = vec![test_account.address; NUM_OUTPUT_RECORDS];
     let new_is_dummy_flags = vec![false; NUM_OUTPUT_RECORDS];
     let new_values = vec![10; NUM_OUTPUT_RECORDS];
-    let new_payloads = vec![RecordPayload::default(); NUM_OUTPUT_RECORDS];
+    let new_payloads = vec![Payload::default(); NUM_OUTPUT_RECORDS];
     let new_birth_program_ids = vec![noop_program_id.clone(); NUM_OUTPUT_RECORDS];
     let new_death_program_ids = vec![noop_program_id; NUM_OUTPUT_RECORDS];
     let memo = [0u8; 32];
@@ -398,9 +384,9 @@ fn test_execute_base_dpc_constraints() {
             difficulty_target: 0x07FF_FFFF_FFFF_FFFF_u64,
             nonce: 0,
             pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
-            proof: ProofOfSuccinctWork::default(),
+            proof: ProofOfSuccinctWork([0u8; 972]),
         },
-        transactions: DPCTransactions::new(),
+        transactions: Transactions::new(),
     };
 
     // Use genesis record, serial number, and memo to initialize the ledger.
@@ -413,7 +399,7 @@ fn test_execute_base_dpc_constraints() {
         dummy_account.address,
         true,
         0,
-        RecordPayload::default(),
+        Payload::default(),
         alternate_noop_program_id.clone(),
         alternate_noop_program_id.clone(),
         &mut rng,
@@ -441,7 +427,7 @@ fn test_execute_base_dpc_constraints() {
     let new_record_owners = vec![new_account.address; NUM_OUTPUT_RECORDS];
     let new_is_dummy_flags = vec![false; NUM_OUTPUT_RECORDS];
     let new_values = vec![10; NUM_OUTPUT_RECORDS];
-    let new_payloads = vec![RecordPayload::default(); NUM_OUTPUT_RECORDS];
+    let new_payloads = vec![Payload::default(); NUM_OUTPUT_RECORDS];
     let new_birth_program_ids = vec![noop_program_id.clone(); NUM_OUTPUT_RECORDS];
     let new_death_program_ids = vec![noop_program_id.clone(); NUM_OUTPUT_RECORDS];
     let memo = [0u8; 32];
@@ -608,11 +594,11 @@ fn test_execute_base_dpc_constraints() {
     )
     .unwrap();
 
-    let inner_snark_vk: <<Components as BaseDPCComponents>::InnerSNARK as SNARK>::VerificationParameters =
+    let inner_snark_vk: <<Components as BaseDPCComponents>::InnerSNARK as SNARK>::VerifyingKey =
         inner_snark_parameters.1.clone().into();
 
-    let inner_snark_id = InnerSNARKVerificationKeyCRH::hash(
-        &system_parameters.inner_snark_verification_key_crh,
+    let inner_snark_id = InnerCircuitIDCRH::hash(
+        &system_parameters.inner_circuit_id_crh,
         &to_bytes![inner_snark_vk].unwrap(),
     )
     .unwrap();

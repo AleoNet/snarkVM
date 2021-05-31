@@ -1,8 +1,8 @@
 [package]
-name = "snarkvm-snarkos-integration"
-version = "0.3.1"
+name = "snarkvm-integration"
+version = "0.4.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
-description = "A test suite for functionalities requiring snarkOS integration"
+description = "Integration testing for DPC"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkVM"
 keywords = [
@@ -18,43 +18,32 @@ license = "GPL-3.0"
 edition = "2018"
 
 [dependencies.snarkvm-algorithms]
-version = "0.3.1"
-default-features = false
+path = "../algorithms"
 
 [dependencies.snarkvm-curves]
-version = "0.3.1"
-default-features = false
+path = "../curves"
 
 [dependencies.snarkvm-dpc]
-version = "0.3.1"
-default-features = false
+path = "../dpc"
 
 [dependencies.snarkvm-fields]
-version = "0.3.1"
-default-features = false
+path = "../fields"
 
 [dependencies.snarkvm-gadgets]
-version = "0.3.1"
-default-features = false
-
-[dependencies.snarkvm-objects]
-version = "0.3.1"
-default-features = false
+path = "../gadgets"
 
 [dependencies.snarkvm-parameters]
-version = "0.3.1"
-default-features = false
+path = "../parameters"
 
 [dependencies.snarkvm-profiler]
-version = "0.3.1"
+path = "../profiler"
 default-features = false
 
 [dependencies.snarkvm-r1cs]
-version = "0.3.1"
-default-features = false
+path = "../r1cs"
 
 [dependencies.snarkvm-utilities]
-version = "0.3.1"
+path = "../utilities"
 default-features = false
 
 [dependencies.anyhow]
@@ -65,6 +54,9 @@ version = "0.1"
 
 [dependencies.bech32]
 version = "0.8"
+
+[dependencies.bincode]
+version = "1.3.1"
 
 [dependencies.blake2]
 version = "0.9"
@@ -78,19 +70,11 @@ version = "0.4.3"
 [dependencies.itertools]
 version = "0.10.0"
 
+[dependencies.parking_lot]
+version = "0.11.1"
+
 [dependencies.rand]
 version = "0.8"
-
-[dependencies.snarkos-storage]
-git = "https://github.com/AleoHQ/snarkOS"
-rev = "e72d3d9d03d1a053ae148608e3f5b3ae857a4edf" # version 1.3.6 of the package
-default-features = false
-features = ["mem_storage"]
-
-[dependencies.snarkos-testing]
-git = "https://github.com/AleoHQ/snarkOS"
-rev = "e72d3d9d03d1a053ae148608e3f5b3ae857a4edf" # version 1.3.6 of the package
-default-features = false
 
 [dependencies.thiserror]
 version = "1.0"
