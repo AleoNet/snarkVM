@@ -14,18 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BatchLCProof, LCTerm, LabeledCommitment, LinearCombination, PolynomialCommitment, String, Vec};
+use core::borrow::Borrow;
+
+use hashbrown::{HashMap, HashSet};
 
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
+    bits::{Boolean, ToBytesGadget},
     fields::FpGadget,
-    utilities::{alloc::AllocGadget, boolean::Boolean, ToBytesGadget},
+    nonnative::NonNativeFieldVar,
+    traits::alloc::AllocGadget,
 };
-use snarkvm_nonnative::NonNativeFieldVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-use core::borrow::Borrow;
-use hashbrown::{HashMap, HashSet};
+use crate::{BatchLCProof, LCTerm, LabeledCommitment, LinearCombination, PolynomialCommitment, String, Vec};
 
 /// Define the minimal interface of prepared allocated structures.
 pub trait PrepareGadget<Unprepared, F: PrimeField>: Sized {
@@ -159,7 +161,8 @@ pub trait PCCheckVar<PCF: PrimeField, PC: PolynomialCommitment<PCF>, ConstraintF
     /// An allocated version of `PC::PreparedVerifierKey`.
     type PreparedVerifierKeyVar: AllocGadget<PC::PreparedVerifierKey, ConstraintF>
         + Clone
-        + PrepareGadget<Self::VerifierKeyVar, ConstraintF>;
+        + PrepareGadget<Self::VerifierKeyVar, ConstraintF>
+        + Into<Self::VerifierKeyVar>;
     /// An allocated version of `PC::Commitment`.
     type CommitmentVar: AllocGadget<PC::Commitment, ConstraintF> + Clone + ToBytesGadget<ConstraintF>;
     /// An allocated version of `PC::PreparedCommitment`.

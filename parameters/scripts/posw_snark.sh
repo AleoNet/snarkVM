@@ -4,8 +4,8 @@
 
 cargo run --release --example posw_snark
 
-mv posw_snark_pk*.params ../src/params
-mv posw_snark_pk.checksum ../src/params
+mv posw_snark_pk*.params ../src/testnet1
+mv posw_snark_pk.checksum ../src/testnet1
 
-mv posw_snark_vk.params ../src/params
-mv posw_snark_vk.checksum ../src/params
+mv posw_snark_vk.params ../src/testnet1
+mv posw_snark_vk.checksum ../src/testnet1

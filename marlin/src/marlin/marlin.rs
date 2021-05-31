@@ -21,7 +21,7 @@ use crate::{
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_nonnative::params::OptimizationType;
+use snarkvm_gadgets::nonnative::params::OptimizationType;
 use snarkvm_polycommit::{Evaluations, LabeledCommitment, LabeledPolynomial, PCUniversalParams, PolynomialCommitment};
 use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError};
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};

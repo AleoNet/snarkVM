@@ -14,18 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{marlin::CircuitVerifyingKey, PolynomialCommitment};
+use core::borrow::Borrow;
 
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{
-    fields::FpGadget,
-    utilities::{alloc::AllocGadget, uint::UInt8, ToBytesGadget},
-};
+use snarkvm_gadgets::{bits::ToBytesGadget, fields::FpGadget, integers::uint::UInt8, traits::alloc::AllocGadget};
 use snarkvm_polycommit::PCCheckVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-use core::borrow::Borrow;
+use crate::{marlin::CircuitVerifyingKey, PolynomialCommitment};
 
 /// The circuit verifying key gadget
 pub struct CircuitVerifyingKeyVar<
@@ -250,23 +247,25 @@ impl<
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use core::ops::MulAssign;
+
+    use blake2::Blake2s;
+
+    use snarkvm_curves::{
+        bls12_377::{Bls12_377, Fq, Fr},
+        bw6_761::BW6_761,
+    };
+    use snarkvm_gadgets::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, traits::eq::EqGadget};
+    use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
+    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_utilities::rand::{test_rng, UniformRand};
 
     use crate::{
         fiat_shamir::FiatShamirChaChaRng,
         marlin::{tests::Circuit, MarlinSNARK, MarlinTestnet1Mode},
     };
-    use snarkvm_curves::{
-        bls12_377::{Bls12_377, Fq, Fr},
-        bw6_761::BW6_761,
-    };
-    use snarkvm_gadgets::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, utilities::eq::EqGadget};
-    use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
-    use snarkvm_r1cs::TestConstraintSystem;
-    use snarkvm_utilities::rand::{test_rng, UniformRand};
 
-    use blake2::Blake2s;
-    use core::ops::MulAssign;
+    use super::*;
 
     type MultiPC = MarlinKZG10<Bls12_377>;
     type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FiatShamirChaChaRng<Fr, Fq, Blake2s>, MarlinTestnet1Mode>;

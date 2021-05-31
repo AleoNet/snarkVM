@@ -16,7 +16,7 @@
 
 use crate::{fiat_shamir::FiatShamirRng, FiatShamirError, PhantomData};
 use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_nonnative::params::OptimizationType;
+use snarkvm_gadgets::nonnative::params::OptimizationType;
 
 use core::num::NonZeroU32;
 use digest::Digest;

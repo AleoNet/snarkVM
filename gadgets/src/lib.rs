@@ -31,6 +31,13 @@
     bare_trait_objects
 )]
 #![deny(const_err, unused_must_use, unused_unsafe, private_in_public, unsafe_code)]
+#![allow(
+    clippy::redundant_closure_call,
+    clippy::enum_glob_use,
+    clippy::missing_errors_doc,
+    clippy::cast_possible_truncation,
+    clippy::unseparated_literal_suffix
+)]
 #![forbid(unsafe_code)]
 
 #[macro_use]
@@ -39,14 +46,30 @@ extern crate derivative;
 #[macro_use]
 extern crate thiserror;
 
+#[cfg(feature = "algorithms")]
 pub mod algorithms;
 
-pub mod curves;
+pub mod bits;
+pub use bits::*;
 
-pub mod fields;
+#[cfg(feature = "curves")]
+pub mod curves;
 
 pub mod errors;
 pub use errors::*;
 
+#[cfg(feature = "fields")]
+pub mod fields;
+
+#[cfg(feature = "integers")]
+pub mod integers;
+
+#[cfg(feature = "nonnative")]
+pub mod nonnative;
+
 pub mod traits;
 pub use traits::*;
+
+pub mod prelude {
+    pub use crate::{bits::*, errors::*, traits::*};
+}

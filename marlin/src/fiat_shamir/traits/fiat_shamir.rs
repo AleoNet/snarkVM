@@ -16,7 +16,7 @@
 
 use crate::fiat_shamir::FiatShamirError;
 use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_nonnative::params::OptimizationType;
+use snarkvm_gadgets::nonnative::params::OptimizationType;
 
 use rand_core::RngCore;
 

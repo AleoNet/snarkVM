@@ -17,5 +17,5 @@
 pub mod genesis;
 pub use genesis::*;
 
-pub mod parameters;
-pub use parameters::*;
+pub mod parameter;
+pub use parameter::*;

@@ -14,15 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
-use crate::{
-    curves::edwards_bls12::EdwardsBlsGadget,
-    traits::{
-        algorithms::CommitmentGadget,
-        fields::FieldGadget,
-        utilities::{alloc::AllocGadget, uint::UInt8},
-    },
-};
+use rand::{thread_rng, Rng};
+
 use snarkvm_algorithms::{
     commitment::{Blake2sCommitment, PedersenCommitment},
     crh::PedersenSize,
@@ -35,7 +28,13 @@ use snarkvm_curves::{
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::rand::UniformRand;
 
-use rand::{thread_rng, Rng};
+use crate::{
+    curves::edwards_bls12::EdwardsBlsGadget,
+    integers::uint::UInt8,
+    traits::{algorithms::CommitmentGadget, alloc::AllocGadget, fields::FieldGadget},
+};
+
+use super::*;
 
 #[test]
 fn blake2s_commitment_gadget_test() {

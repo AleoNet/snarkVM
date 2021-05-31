@@ -14,28 +14,37 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use core::marker::PhantomData;
+
+use snarkvm_fields::PrimeField;
+use snarkvm_gadgets::{
+    bits::Boolean,
+    nonnative::{params::OptimizationType, NonNativeFieldVar},
+    traits::{
+        algorithms::SNARKVerifierGadget,
+        eq::EqGadget,
+        fields::{FieldGadget, ToConstraintFieldGadget},
+    },
+};
+use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, ToConstraintField};
+
 use crate::{
     constraints::{
         ahp::AHPForR1CS,
         proof::ProofVar,
+        snark::MarlinSNARK,
         verifier_key::{CircuitVerifyingKeyVar, PreparedCircuitVerifyingKeyVar},
     },
-    marlin::MarlinError,
+    marlin::{MarlinError, MarlinMode},
+    FiatShamirAlgebraicSpongeRng,
+    FiatShamirAlgebraicSpongeRngVar,
     FiatShamirRng,
     FiatShamirRngVar,
     PolynomialCommitment,
+    PoseidonSponge,
+    PoseidonSpongeVar,
 };
-
-use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{
-    traits::fields::{FieldGadget, ToConstraintFieldGadget},
-    utilities::boolean::Boolean,
-};
-use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
-use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
-use snarkvm_r1cs::ConstraintSystem;
-
-use core::marker::PhantomData;
 
 /// The Marlin verification gadget.
 pub struct MarlinVerificationGadget<
@@ -49,6 +58,57 @@ pub struct MarlinVerificationGadget<
     PhantomData<PC>,
     PhantomData<PCG>,
 );
+
+// TODO (raychu86): Implement SNARKVerifierGadget for MarlinVerificationGadget
+
+/// Fiat Shamir Algebraic Sponge RNG type
+pub type FSA<InnerField, OuterField> = FiatShamirAlgebraicSpongeRng<InnerField, OuterField, PoseidonSponge<OuterField>>;
+
+/// Fiat Shamir Algebraic Sponge RNG Gadget type
+pub type FSG<InnerField, OuterField> =
+    FiatShamirAlgebraicSpongeRngVar<InnerField, OuterField, PoseidonSponge<OuterField>, PoseidonSpongeVar<OuterField>>;
+
+impl<TargetField, BaseField, PC, PCG, FS, MM, C>
+    SNARKVerifierGadget<MarlinSNARK<TargetField, BaseField, PC, FS, MM, C>, BaseField>
+    for MarlinVerificationGadget<TargetField, BaseField, PC, PCG>
+where
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PC::VerifierKey: ToConstraintField<BaseField>,
+    PC::Commitment: ToConstraintField<BaseField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
+    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
+    FS: FiatShamirRng<TargetField, BaseField>,
+    MM: MarlinMode,
+    C: ConstraintSynthesizer<TargetField>,
+{
+    type Input = NonNativeFieldVar<TargetField, BaseField>;
+    type ProofGadget = ProofVar<TargetField, BaseField, PC, PCG>;
+    type VerificationKeyGadget = PreparedCircuitVerifyingKeyVar<
+        TargetField,
+        BaseField,
+        PC,
+        PCG,
+        FSA<TargetField, BaseField>,
+        FSG<TargetField, BaseField>,
+    >;
+
+    fn check_verify<CS: ConstraintSystem<BaseField>, I: Iterator<Item = Self::Input>>(
+        mut cs: CS,
+        verification_key: &Self::VerificationKeyGadget,
+        input: I,
+        proof: &Self::ProofGadget,
+    ) -> Result<(), SynthesisError> {
+        let inputs: Vec<_> = input.collect();
+        let result = Self::prepared_verify(cs.ns(|| "prepared_verify"), verification_key, &inputs, proof).unwrap();
+
+        result.enforce_equal(cs.ns(|| "enforce_verification_correctness"), &Boolean::Constant(true))?;
+
+        Ok(())
+    }
+}
 
 impl<TargetField, BaseField, PC, PCG> MarlinVerificationGadget<TargetField, BaseField, PC, PCG>
 where
@@ -204,7 +264,26 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use core::ops::MulAssign;
+
+    use hashbrown::HashMap;
+
+    use snarkvm_curves::{
+        bls12_377::{Bls12_377, Fq, Fr},
+        bw6_761::BW6_761,
+    };
+    use snarkvm_gadgets::{
+        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
+        traits::{alloc::AllocGadget, eq::EqGadget},
+    };
+    use snarkvm_polycommit::marlin_pc::{
+        commitment::commitment::CommitmentVar,
+        marlin_kzg10::MarlinKZG10Gadget,
+        proof::batch_lc_proof::BatchLCProofVar,
+        MarlinKZG10,
+    };
+    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_utilities::{test_rng, UniformRand};
 
     use crate::{
         constraints::{proof::ProverMessageVar, snark::test::Circuit},
@@ -217,25 +296,7 @@ mod test {
         marlin::{MarlinRecursiveMode, MarlinSNARK as MarlinCore, Proof},
     };
 
-    use snarkvm_curves::{
-        bls12_377::{Bls12_377, Fq, Fr},
-        bw6_761::BW6_761,
-    };
-    use snarkvm_gadgets::{
-        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
-        utilities::{alloc::AllocGadget, eq::EqGadget},
-    };
-    use snarkvm_polycommit::marlin_pc::{
-        commitment::commitment::CommitmentVar,
-        marlin_kzg10::MarlinKZG10Gadget,
-        proof::batch_lc_proof::BatchLCProofVar,
-        MarlinKZG10,
-    };
-    use snarkvm_r1cs::TestConstraintSystem;
-    use snarkvm_utilities::{test_rng, UniformRand};
-
-    use core::ops::MulAssign;
-    use hashbrown::HashMap;
+    use super::*;
 
     type PC = MarlinKZG10<Bls12_377>;
     type PCGadget = MarlinKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
@@ -394,5 +455,9 @@ mod test {
             "Constraints not satisfied: {}",
             cs.which_is_unsatisfied().unwrap()
         );
+
+        println!("cs - number of constraints: {}", cs.num_constraints());
+        println!("cs - number of private variables: {}", cs.num_private_variables());
+        println!("cs - number of public variables: {}", cs.num_public_variables());
     }
 }

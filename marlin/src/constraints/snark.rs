@@ -14,6 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::{
+    fmt::{Debug, Formatter},
+    marker::PhantomData,
+};
+
+use rand::{CryptoRng, Rng, RngCore};
+
+use snarkvm_algorithms::{SNARKError, SNARK};
+use snarkvm_fields::{PrimeField, ToConstraintField};
+use snarkvm_gadgets::{
+    bits::Boolean,
+    nonnative::NonNativeFieldInputVar,
+    traits::{algorithms::SNARKGadget, fields::ToConstraintFieldGadget},
+};
+use snarkvm_polycommit::{PCCheckVar, PolynomialCommitment};
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable};
+
 use crate::{
     constraints::{
         error::MarlinConstraintsError,
@@ -33,22 +50,6 @@ use crate::{
         Proof,
     },
     FiatShamirRngVar,
-};
-
-use snarkvm_algorithms::{SNARKError, SNARK};
-use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_gadgets::{
-    traits::{algorithms::SNARKGadget, fields::ToConstraintFieldGadget},
-    utilities::boolean::Boolean,
-};
-use snarkvm_nonnative::NonNativeFieldInputVar;
-use snarkvm_polycommit::{PCCheckVar, PolynomialCommitment};
-use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable};
-
-use rand::{CryptoRng, Rng, RngCore};
-use std::{
-    fmt::{Debug, Formatter},
-    marker::PhantomData,
 };
 
 /// Marlin bound.
@@ -118,13 +119,7 @@ where
         crs: &(MarlinBound, UniversalSRS<TargetField, PC>),
         circuit: C,
         _rng: &mut R,
-    ) -> Result<
-        (
-            <Self as SNARK>::ProvingParameters,
-            <Self as SNARK>::VerificationParameters,
-        ),
-        Box<MarlinConstraintsError>,
-    > {
+    ) -> Result<(<Self as SNARK>::ProvingKey, <Self as SNARK>::VerifyingKey), Box<MarlinConstraintsError>> {
         let index_res = MarlinCore::<TargetField, BaseField, PC, FS, MM>::circuit_setup(&crs.1, &circuit);
         match index_res {
             Ok(res) => Ok(res),
@@ -173,18 +168,18 @@ where
     PC::Commitment: ToConstraintField<BaseField>,
     C: ConstraintSynthesizer<TargetField>,
 {
-    type AssignedCircuit = C;
+    type AllocatedCircuit = C;
     type Circuit = (C, UniversalSRS<TargetField, PC>);
-    type PreparedVerificationParameters = PreparedCircuitVerifyingKey<TargetField, PC>;
+    type PreparedVerifyingKey = PreparedCircuitVerifyingKey<TargetField, PC>;
     type Proof = Proof<TargetField, PC>;
-    type ProvingParameters = CircuitProvingKey<TargetField, PC>;
-    type VerificationParameters = CircuitVerifyingKey<TargetField, PC>;
+    type ProvingKey = CircuitProvingKey<TargetField, PC>;
     type VerifierInput = [TargetField];
+    type VerifyingKey = CircuitVerifyingKey<TargetField, PC>;
 
     fn setup<R: RngCore>(
         (circuit, _srs): &Self::Circuit,
         rng: &mut R, // The Marlin circuit setup is deterministic.
-    ) -> Result<(Self::ProvingParameters, Self::PreparedVerificationParameters), SNARKError> {
+    ) -> Result<(Self::ProvingKey, Self::PreparedVerifyingKey), SNARKError> {
         let (circuit_proving_key, circuit_verifier_key) =
             MarlinCore::<TargetField, BaseField, PC, FS, MM>::circuit_specific_setup(circuit, rng).unwrap();
 
@@ -192,8 +187,8 @@ where
     }
 
     fn prove<R: Rng>(
-        parameters: &Self::ProvingParameters,
-        circuit: &Self::AssignedCircuit,
+        parameters: &Self::ProvingKey,
+        circuit: &Self::AllocatedCircuit,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         match MarlinCore::<TargetField, BaseField, PC, FS, MM>::prove(&parameters, circuit, rng) {
@@ -203,7 +198,7 @@ where
     }
 
     fn verify(
-        verifying_key: &Self::PreparedVerificationParameters,
+        verifying_key: &Self::PreparedVerifyingKey,
         input: &Self::VerifierInput,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
@@ -258,7 +253,7 @@ where
     type VerifyingKeyVar = CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>;
 
     fn verifier_size(
-        circuit_vk: &<MarlinSNARK<TargetField, BaseField, PC, FS, MM, C> as SNARK>::VerificationParameters,
+        circuit_vk: &<MarlinSNARK<TargetField, BaseField, PC, FS, MM, C> as SNARK>::VerifyingKey,
     ) -> Self::VerifierSize {
         circuit_vk.circuit_info.num_variables
     }
@@ -359,7 +354,20 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for MarlinBoundCircuit<F> {
 
 #[cfg(test)]
 pub mod test {
-    use super::*;
+    use core::ops::MulAssign;
+
+    use snarkvm_curves::{
+        bls12_377::{Bls12_377, Fq, Fr},
+        bw6_761::BW6_761,
+    };
+    use snarkvm_fields::Field;
+    use snarkvm_gadgets::{
+        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
+        traits::{alloc::AllocGadget, eq::EqGadget},
+    };
+    use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
+    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_utilities::{test_rng, UniformRand};
 
     use crate::{
         constraints::snark::{MarlinSNARK, MarlinSNARKGadget},
@@ -371,20 +379,8 @@ pub mod test {
         },
         marlin::MarlinRecursiveMode,
     };
-    use snarkvm_curves::{
-        bls12_377::{Bls12_377, Fq, Fr},
-        bw6_761::BW6_761,
-    };
-    use snarkvm_fields::Field;
-    use snarkvm_gadgets::{
-        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
-        utilities::{alloc::AllocGadget, eq::EqGadget},
-    };
-    use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
-    use snarkvm_r1cs::TestConstraintSystem;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
-    use core::ops::MulAssign;
+    use super::*;
 
     const ITERATIONS: usize = 10;
 

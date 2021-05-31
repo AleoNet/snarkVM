@@ -1,7 +1,7 @@
 # snarkvm-parameters
 
 [![Crates.io](https://img.shields.io/crates/v/snarkvm-parameters.svg?color=neon)](https://crates.io/crates/snarkvm-parameters)
-[![Authors](https://img.shields.io/badge/authors-Aleo-orange.svg)](../AUTHORS)
+[![Authors](https://img.shields.io/badge/authors-Aleo-orange.svg)](https://aleo.org)
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE.md)
 
 The Aleo parameters.
@@ -25,6 +25,10 @@ THe Pedersen commitment parameters used to construct record commitments.
 ### Encrypted Record CRH
 
 The Bowe-Hopwood Pedersen CRH parameters used to establish the encrypted record hashes used to verify the validity of the encrypted records.
+
+### Inner Circuit ID CRH
+
+The Bowe-Hopwood Pedersen CRH parameters used to compute the inner circuit ID.
 
 ### Ledger Merkle Tree
 

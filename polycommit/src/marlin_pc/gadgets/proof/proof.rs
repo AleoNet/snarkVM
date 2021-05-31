@@ -14,14 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::kzg10::Proof;
+use core::borrow::Borrow;
 
 use snarkvm_curves::{AffineCurve, PairingEngine};
-use snarkvm_gadgets::{traits::curves::PairingGadget, utilities::alloc::AllocGadget};
-use snarkvm_nonnative::NonNativeFieldVar;
+use snarkvm_gadgets::{
+    nonnative::NonNativeFieldVar,
+    traits::{alloc::AllocGadget, curves::PairingGadget},
+};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
 
-use core::borrow::Borrow;
+use crate::kzg10::Proof;
 
 /// Gadget for a Marlin-KZG10 proof.
 #[allow(clippy::type_complexity)]
@@ -138,18 +140,19 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{marlin_pc::MarlinKZG10, LabeledPolynomial, PolynomialCommitment};
-
     use snarkvm_algorithms::fft::DensePolynomial;
     use snarkvm_curves::{
         bls12_377::{Bls12_377, Fq, Fr},
         bw6_761::BW6_761,
         AffineCurve,
     };
-    use snarkvm_gadgets::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, utilities::eq::EqGadget};
+    use snarkvm_gadgets::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, traits::eq::EqGadget};
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::{test_rng, UniformRand};
+
+    use crate::{marlin_pc::MarlinKZG10, LabeledPolynomial, PolynomialCommitment};
+
+    use super::*;
 
     type PC = MarlinKZG10<Bls12_377>;
     type PG = Bls12_377PairingGadget;

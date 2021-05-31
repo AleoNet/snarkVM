@@ -23,11 +23,7 @@ use snarkvm_curves::{
     bw6_761::BW6_761,
 };
 use snarkvm_fields::Field;
-use snarkvm_gadgets::{
-    curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
-    traits::algorithms::SNARKGadget,
-    utilities::{alloc::AllocGadget, boolean::Boolean, eq::EqGadget},
-};
+use snarkvm_gadgets::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, prelude::*};
 use snarkvm_marlin::{
     constraints::snark::{MarlinSNARK, MarlinSNARKGadget},
     marlin::{MarlinRecursiveMode, MarlinSNARK as MarlinCore},

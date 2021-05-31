@@ -14,26 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use core::borrow::Borrow;
+use std::marker::PhantomData;
+
+use snarkvm_fields::{PrimeField, ToConstraintField};
+use snarkvm_gadgets::{
+    bits::ToBytesGadget,
+    fields::FpGadget,
+    integers::uint::UInt8,
+    traits::{
+        alloc::{AllocBytesGadget, AllocGadget},
+        fields::{FieldGadget, ToConstraintFieldGadget},
+    },
+};
+use snarkvm_polycommit::{PCCheckVar, PrepareGadget};
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
+
 use crate::{
     constraints::{verifier::MarlinVerificationGadget, verifier_key::CircuitVerifyingKeyVar},
-    marlin::PreparedCircuitVerifyingKey,
+    marlin::{CircuitVerifyingKey, PreparedCircuitVerifyingKey},
     FiatShamirRng,
     FiatShamirRngVar,
     PolynomialCommitment,
 };
-
-use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_gadgets::{
-    fields::FpGadget,
-    traits::fields::{FieldGadget, ToConstraintFieldGadget},
-    utilities::alloc::AllocGadget,
-};
-use snarkvm_polycommit::{PCCheckVar, PrepareGadget};
-use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
-use snarkvm_utilities::{to_bytes, ToBytes};
-
-use core::borrow::Borrow;
-use std::marker::PhantomData;
 
 /// The prepared circuit verifying key gadget
 pub struct PreparedCircuitVerifyingKeyVar<
@@ -360,9 +364,154 @@ where
     }
 }
 
+impl<TargetField, BaseField, PC, PCG, PR, R> AllocGadget<CircuitVerifyingKey<TargetField, PC>, BaseField>
+    for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
+where
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+    PR: FiatShamirRng<TargetField, BaseField>,
+    R: FiatShamirRngVar<TargetField, BaseField, PR>,
+    PC::VerifierKey: ToConstraintField<BaseField>,
+    PC::Commitment: ToConstraintField<BaseField>,
+    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
+    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
+{
+    #[inline]
+    fn alloc_constant<FN, T, CS: ConstraintSystem<BaseField>>(cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<CircuitVerifyingKey<TargetField, PC>>,
+    {
+        let tmp = value_gen()?;
+        let vk = tmp.borrow();
+        let prepared_vk = PreparedCircuitVerifyingKey::prepare(&vk);
+
+        Self::alloc_constant(cs, || Ok(prepared_vk))
+    }
+
+    #[inline]
+    #[inline]
+    fn alloc<FN, T, CS: ConstraintSystem<BaseField>>(cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<CircuitVerifyingKey<TargetField, PC>>,
+    {
+        let tmp = value_gen()?;
+        let vk = tmp.borrow();
+        let prepared_vk = PreparedCircuitVerifyingKey::prepare(&vk);
+
+        Self::alloc(cs, || Ok(prepared_vk))
+    }
+
+    #[inline]
+    fn alloc_input<FN, T, CS: ConstraintSystem<BaseField>>(cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<CircuitVerifyingKey<TargetField, PC>>,
+    {
+        let tmp = value_gen()?;
+        let vk = tmp.borrow();
+        let prepared_vk = PreparedCircuitVerifyingKey::prepare(&vk);
+
+        Self::alloc_input(cs, || Ok(prepared_vk))
+    }
+}
+
+impl<TargetField, BaseField, PC, PCG, PR, R> ToBytesGadget<BaseField>
+    for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
+where
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+    PR: FiatShamirRng<TargetField, BaseField>,
+    R: FiatShamirRngVar<TargetField, BaseField, PR>,
+    PC::VerifierKey: ToConstraintField<BaseField>,
+    PC::Commitment: ToConstraintField<BaseField>,
+    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
+    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
+{
+    fn to_bytes<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut res = Vec::<UInt8>::new();
+
+        let unprepared_vk: PCG::VerifierKeyVar = self.prepared_verifier_key.clone().into();
+
+        res.append(&mut unprepared_vk.to_bytes(cs.ns(|| "to_bytes"))?);
+
+        Ok(res)
+    }
+
+    fn to_bytes_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut res = Vec::<UInt8>::new();
+
+        let unprepared_vk: PCG::VerifierKeyVar = self.prepared_verifier_key.clone().into();
+
+        res.append(&mut unprepared_vk.to_bytes_strict(cs.ns(|| "to_bytes_strict"))?);
+
+        Ok(res)
+    }
+}
+
+impl<TargetField, BaseField, PC, PCG, PR, R> AllocBytesGadget<Vec<u8>, BaseField>
+    for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
+where
+    TargetField: PrimeField,
+    BaseField: PrimeField,
+    PC: PolynomialCommitment<TargetField>,
+    PCG: PCCheckVar<TargetField, PC, BaseField>,
+    PR: FiatShamirRng<TargetField, BaseField>,
+    R: FiatShamirRngVar<TargetField, BaseField, PR>,
+    PC::VerifierKey: ToConstraintField<BaseField>,
+    PC::Commitment: ToConstraintField<BaseField>,
+    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
+    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
+{
+    #[inline]
+    fn alloc_bytes<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Vec<u8>>,
+    {
+        value_gen().and_then(|vk_bytes| {
+            let circuit_vk: CircuitVerifyingKey<TargetField, PC> = FromBytes::read(&vk_bytes.borrow()[..])?;
+            let prepared_circuit_vk = PreparedCircuitVerifyingKey::prepare(&circuit_vk);
+
+            Self::alloc(cs.ns(|| "alloc_bytes"), || Ok(prepared_circuit_vk))
+        })
+    }
+
+    #[inline]
+    fn alloc_input_bytes<FN, T, CS: ConstraintSystem<BaseField>>(
+        mut cs: CS,
+        value_gen: FN,
+    ) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Vec<u8>>,
+    {
+        value_gen().and_then(|vk_bytes| {
+            let circuit_vk: CircuitVerifyingKey<TargetField, PC> = FromBytes::read(&vk_bytes.borrow()[..])?;
+            let prepared_circuit_vk = PreparedCircuitVerifyingKey::prepare(&circuit_vk);
+
+            Self::alloc_input(cs.ns(|| "alloc_input_bytes"), || Ok(prepared_circuit_vk))
+        })
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use super::*;
+    use core::ops::MulAssign;
+
+    use snarkvm_curves::{
+        bls12_377::{Bls12_377, Fq, Fr},
+        bw6_761::BW6_761,
+    };
+    use snarkvm_gadgets::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, traits::eq::EqGadget};
+    use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
+    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_utilities::rand::{test_rng, UniformRand};
 
     use crate::{
         marlin::{tests::Circuit, MarlinSNARK, MarlinTestnet1Mode},
@@ -371,19 +520,8 @@ mod test {
         PoseidonSponge,
         PoseidonSpongeVar,
     };
-    use snarkvm_curves::{
-        bls12_377::{Bls12_377, Fq, Fr},
-        bw6_761::BW6_761,
-    };
-    use snarkvm_gadgets::{
-        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
-        traits::utilities::eq::EqGadget,
-    };
-    use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
-    use snarkvm_r1cs::TestConstraintSystem;
-    use snarkvm_utilities::rand::{test_rng, UniformRand};
 
-    use core::ops::MulAssign;
+    use super::*;
 
     type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
     type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;

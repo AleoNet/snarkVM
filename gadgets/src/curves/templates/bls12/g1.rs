@@ -14,25 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    curves::templates::bls12::AffineGadget,
-    fields::FpGadget,
-    traits::{
-        curves::GroupGadget,
-        utilities::{uint::UInt8, ToBytesGadget},
-    },
-    utilities::{
-        boolean::Boolean,
-        eq::{ConditionalEqGadget, EqGadget},
-    },
-};
+use std::fmt::Debug;
+
 use snarkvm_curves::{
     templates::bls12::{Bls12Parameters, G1Prepared},
     traits::ProjectiveCurve,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
-use std::fmt::Debug;
+use crate::{
+    bits::{Boolean, ToBytesGadget},
+    curves::templates::bls12::AffineGadget,
+    fields::FpGadget,
+    integers::uint::UInt8,
+    traits::{
+        curves::GroupGadget,
+        eq::{ConditionalEqGadget, EqGadget},
+    },
+};
 
 pub type G1Gadget<P> = AffineGadget<
     <P as Bls12Parameters>::G1Parameters,

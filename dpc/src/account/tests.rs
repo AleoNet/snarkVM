@@ -16,7 +16,7 @@
 
 use crate::{
     account::{Account, AccountAddress, AccountPrivateKey, AccountViewKey},
-    base_dpc::{instantiated::Components, parameters::SystemParameters},
+    testnet1::{instantiated::Components, parameters::SystemParameters},
     traits::account::AccountScheme,
 };
 

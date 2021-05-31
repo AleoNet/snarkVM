@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{
-    algorithms::CommitmentGadget,
-    curves::{CompressedGroupGadget, GroupGadget},
-    utilities::{alloc::AllocGadget, integer::Integer, uint::unsigned_integer::UInt8},
+use std::{
+    borrow::{Borrow, Cow},
+    marker::PhantomData,
 };
+
 use snarkvm_algorithms::{
     commitment::{PedersenCommitment, PedersenCommitmentParameters, PedersenCompressedCommitment},
     crh::PedersenSize,
@@ -28,9 +28,14 @@ use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
-use std::{
-    borrow::{Borrow, Cow},
-    marker::PhantomData,
+use crate::{
+    integers::uint::UInt8,
+    traits::{
+        algorithms::CommitmentGadget,
+        alloc::AllocGadget,
+        curves::{CompressedGroupGadget, GroupGadget},
+        integers::Integer,
+    },
 };
 
 #[derive(Clone)]

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{r1cs_to_sap::R1CStoSAP, Parameters, Proof};
+use super::{r1cs_to_sap::R1CStoSAP, Proof, ProvingKey};
 use crate::msm::VariableBaseMSM;
 use snarkvm_curves::traits::{AffineCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, PrimeField, Zero};
@@ -203,7 +203,7 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
 
 pub fn create_random_proof<E, C, R>(
     circuit: &C,
-    params: &Parameters<E>,
+    params: &ProvingKey<E>,
     rng: &mut R,
 ) -> Result<Proof<E>, SynthesisError>
 where
@@ -220,7 +220,7 @@ where
 
 pub fn create_proof<E, C>(
     circuit: &C,
-    params: &Parameters<E>,
+    params: &ProvingKey<E>,
     d1: E::Fr,
     d2: E::Fr,
     r: E::Fr,

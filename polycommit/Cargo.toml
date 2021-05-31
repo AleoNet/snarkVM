@@ -47,10 +47,6 @@ version = "0.4.0"
 path = "../gadgets"
 version = "0.4.0"
 
-[dependencies.snarkvm-nonnative]
-path = "../nonnative"
-version = "0.4.0"
-
 [dependencies.snarkvm-profiler]
 path = "../profiler"
 version = "0.4.0"
@@ -87,9 +83,6 @@ default-features = false
 
 [dev-dependencies.snarkvm-marlin]
 path = "../marlin"
-
-[dev-dependencies.snarkvm-nonnative]
-path = "../nonnative"
 
 [dev-dependencies.rand]
 version = "0.8"

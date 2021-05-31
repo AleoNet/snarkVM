@@ -14,17 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    curves::{
-        bls12_377::{G1Gadget, G1PreparedGadget, G2Gadget, G2PreparedGadget},
-        templates::bls12::Bls12PairingGadget,
-    },
-    traits::{
-        curves::PairingGadget,
-        fields::FieldGadget,
-        utilities::{alloc::AllocGadget, boolean::Boolean, eq::EqGadget},
-    },
-};
+use std::ops::Mul;
+
 use snarkvm_curves::{
     bls12_377::{Bls12_377, Fq, Fr, G1Projective, G2Projective},
     traits::{PairingEngine, ProjectiveCurve},
@@ -33,7 +24,14 @@ use snarkvm_fields::{Field, One, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
-use std::ops::Mul;
+use crate::{
+    bits::Boolean,
+    curves::{
+        bls12_377::{G1Gadget, G1PreparedGadget, G2Gadget, G2PreparedGadget},
+        templates::bls12::Bls12PairingGadget,
+    },
+    traits::{alloc::AllocGadget, curves::PairingGadget, eq::EqGadget, fields::FieldGadget},
+};
 
 #[test]
 fn bls12_377_gadget_bilinearity_test() {

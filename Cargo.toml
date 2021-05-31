@@ -26,17 +26,15 @@ members = [
   "fields",
   "gadgets",
   "marlin",
-  "nonnative",
-  "objects",
   "parameters",
   "polycommit",
   "posw",
   "profiler",
   "r1cs",
   "utilities",
-  "wasm"
+  "wasm",
+  ".integration"
 ]
-exclude = [ "snarkos-integration" ]
 
 [[bin]]
 name = "snarkvm"

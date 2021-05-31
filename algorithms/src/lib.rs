@@ -72,3 +72,7 @@ pub mod snark;
 
 pub mod traits;
 pub use traits::*;
+
+pub mod prelude {
+    pub use crate::{errors::*, traits::*};
+}

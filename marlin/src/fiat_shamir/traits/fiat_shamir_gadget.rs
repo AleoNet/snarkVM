@@ -17,10 +17,11 @@
 use crate::traits::FiatShamirRng;
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
+    bits::Boolean,
     fields::FpGadget,
-    utilities::{boolean::Boolean, uint::UInt8},
+    integers::uint::UInt8,
+    nonnative::{params::OptimizationType, NonNativeFieldVar},
 };
-use snarkvm_nonnative::{params::OptimizationType, NonNativeFieldVar};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 /// Constraints for a RNG for use in a Fiat-Shamir transform.

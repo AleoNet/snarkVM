@@ -43,7 +43,6 @@ default-features = false
 
 [dev-dependencies.snarkvm-dpc]
 path = "../dpc"
-default-features = false
 
 [dev-dependencies.snarkvm-marlin]
 path = "../marlin"

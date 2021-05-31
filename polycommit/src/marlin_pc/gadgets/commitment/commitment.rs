@@ -14,20 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{marlin_pc::Commitment, Vec};
+use core::borrow::Borrow;
+
 use snarkvm_curves::{traits::AffineCurve, PairingEngine};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
+    bits::ToBytesGadget,
     fields::FpGadget,
+    integers::uint::UInt8,
     traits::{
+        alloc::AllocGadget,
         curves::{GroupGadget, PairingGadget},
         fields::ToConstraintFieldGadget,
     },
-    utilities::{alloc::AllocGadget, uint::UInt8, ToBytesGadget},
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-use core::borrow::Borrow;
+use crate::{marlin_pc::Commitment, Vec};
 
 /// Var for an optionally hiding Marlin-KZG10 commitment.
 pub struct CommitmentVar<

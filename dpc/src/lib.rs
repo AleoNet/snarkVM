@@ -54,6 +54,7 @@
 #![cfg_attr(feature = "clippy", allow(many_single_char_names))]
 #![cfg_attr(feature = "clippy", allow(new_without_default_derive))]
 
+#[cfg(feature = "testnet1")]
 #[macro_use]
 extern crate snarkvm_profiler;
 
@@ -66,8 +67,11 @@ extern crate thiserror;
 pub mod account;
 pub use account::*;
 
-pub mod base_dpc;
-pub use base_dpc::*;
+pub mod block;
+pub use block::*;
+
+#[cfg(feature = "testnet1")]
+pub mod testnet1;
 
 pub mod errors;
 pub use errors::*;
@@ -78,17 +82,6 @@ pub use traits::*;
 #[cfg(test)]
 mod tests;
 
-use snarkvm_r1cs::errors::SynthesisError;
-
-pub trait Assignment<T> {
-    fn get(&self) -> Result<&T, SynthesisError>;
-}
-
-impl<T> Assignment<T> for Option<T> {
-    fn get(&self) -> Result<&T, SynthesisError> {
-        match *self {
-            Some(ref v) => Ok(v),
-            None => Err(SynthesisError::AssignmentMissing),
-        }
-    }
+pub mod prelude {
+    pub use crate::{account::*, block::*, errors::*, traits::*};
 }

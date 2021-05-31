@@ -14,25 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{
-    algorithms::SNARKVerifierGadget,
-    curves::{GroupGadget, PairingGadget},
-    fields::FieldGadget,
-    utilities::{
-        alloc::{AllocBytesGadget, AllocGadget},
-        eq::EqGadget,
-        uint::UInt8,
-        ToBitsBEGadget,
-        ToBytesGadget,
-    },
-};
+use std::{borrow::Borrow, marker::PhantomData};
+
 use snarkvm_algorithms::snark::gm17::{Proof, VerifyingKey, GM17};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
 use snarkvm_fields::{Field, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_utilities::bytes::FromBytes;
 
-use std::{borrow::Borrow, marker::PhantomData};
+use crate::{
+    bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
+    integers::uint::UInt8,
+    traits::{
+        algorithms::SNARKVerifierGadget,
+        alloc::{AllocBytesGadget, AllocGadget},
+        curves::{GroupGadget, PairingGadget},
+        eq::EqGadget,
+        fields::FieldGadget,
+    },
+};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "P::G1Gadget: Clone, P::G2Gadget: Clone"))]
@@ -106,10 +106,11 @@ impl<
     V: ToConstraintField<Pairing::Fr>,
 > SNARKVerifierGadget<GM17<Pairing, C, V>, F> for GM17VerifierGadget<Pairing, F, P>
 {
+    type Input = Vec<Boolean>;
     type ProofGadget = GM17ProofGadget<Pairing, F, P>;
     type VerificationKeyGadget = GM17VerifyingKeyGadget<Pairing, F, P>;
 
-    fn check_verify<'a, CS: ConstraintSystem<F>, I: Iterator<Item = &'a T>, T: 'a + ToBitsBEGadget<F> + ?Sized>(
+    fn check_verify<CS: ConstraintSystem<F>, I: Iterator<Item = Self::Input>>(
         mut cs: CS,
         vk: &Self::VerificationKeyGadget,
         mut public_inputs: I,

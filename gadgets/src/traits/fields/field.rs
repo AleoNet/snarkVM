@@ -14,20 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{
-    alloc::AllocGadget,
-    boolean::Boolean,
-    eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-    select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
-    ToBitsBEGadget,
-    ToBitsLEGadget,
-    ToBytesGadget,
-};
+use std::fmt::Debug;
+
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::BitIteratorBE;
 
-use std::fmt::Debug;
+use crate::{
+    bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
+    traits::{
+        alloc::AllocGadget,
+        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
+        select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
+    },
+};
 
 pub trait FieldGadget<NativeF: Field, F: Field>:
     Sized

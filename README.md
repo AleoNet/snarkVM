@@ -19,6 +19,7 @@
 
 |       Package      |                                    Crate.io                                   |        `std`       |       `wasm`       |    `no_std`    |
 |:------------------:|-------------------------------------------------------------------------------|:------------------:|:------------------:|:--------------:|
+| snarkvm            |![crates.io](https://img.shields.io/crates/v/snarkvm.svg?color=neon)           | :white_check_mark: | :white_check_mark: | :construction: |
 | snarkvm-algorithms |![crates.io](https://img.shields.io/crates/v/snarkvm-algorithms.svg?color=neon)| :white_check_mark: | :white_check_mark: | :construction: |
 | snarkvm-curves     | ![crates.io](https://img.shields.io/crates/v/snarkvm-curves.svg?color=neon)   | :white_check_mark: | :white_check_mark: | :construction: |
 | snarkvm-derives    | ![crates.io](https://img.shields.io/crates/v/snarkvm-derives.svg?color=neon)  | :white_check_mark: | :white_check_mark: | :construction: |
@@ -26,7 +27,6 @@
 | snarkvm-fields     | ![crates.io](https://img.shields.io/crates/v/snarkvm-fields.svg?color=neon)   | :white_check_mark: | :white_check_mark: | :construction: |
 | snarkvm-gadgets    | ![crates.io](https://img.shields.io/crates/v/snarkvm-gadgets.svg?color=neon)  | :white_check_mark: | :white_check_mark: | :construction: |
 | snarkvm-marlin     | ![crates.io](https://img.shields.io/crates/v/snarkvm-marlin.svg?color=neon)   | :white_check_mark: |   :construction:   | :construction: |
-| snarkvm-objects    | ![crates.io](https://img.shields.io/crates/v/snarkvm-objects.svg?color=neon)  | :white_check_mark: | :white_check_mark: | :construction: |
 | snarkvm-parameters |![crates.io](https://img.shields.io/crates/v/snarkvm-parameters.svg?color=neon)| :white_check_mark: | :white_check_mark: | :construction: |
 | snarkvm-polycommit |![crates.io](https://img.shields.io/crates/v/snarkvm-polycommit.svg?color=neon)| :white_check_mark: |   :construction:   | :construction: |
 | snarkvm-posw       | ![crates.io](https://img.shields.io/crates/v/snarkvm-posw.svg?color=neon)     | :white_check_mark: |   :construction:   | :construction: |

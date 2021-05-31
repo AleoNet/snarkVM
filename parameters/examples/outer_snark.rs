@@ -19,7 +19,8 @@ use snarkvm_algorithms::{
     traits::{MerkleParameters, SNARK},
 };
 use snarkvm_dpc::{
-    base_dpc::{
+    errors::DPCError,
+    testnet1::{
         inner_circuit::InnerCircuit,
         instantiated::Components,
         outer_circuit::OuterCircuit,
@@ -27,12 +28,10 @@ use snarkvm_dpc::{
         program::{NoopCircuit, PrivateProgramInput},
         BaseDPCComponents,
     },
-    errors::DPCError,
 };
 use snarkvm_parameters::{
+    testnet1::{InnerSNARKPKParameters, InnerSNARKVKParameters},
     traits::Parameter,
-    InnerSNARKPKParameters,
-    InnerSNARKVKParameters,
     LedgerMerkleTreeParameters,
 };
 use snarkvm_utilities::{
@@ -54,11 +53,11 @@ pub fn setup<C: BaseDPCComponents>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
         From::from(FromBytes::read(&LedgerMerkleTreeParameters::load_bytes()?[..])?);
     let ledger_merkle_tree_parameters = Arc::new(From::from(merkle_tree_hash_parameters));
 
-    let inner_snark_pk: <C::InnerSNARK as SNARK>::ProvingParameters =
-        <C::InnerSNARK as SNARK>::ProvingParameters::read(InnerSNARKPKParameters::load_bytes()?.as_slice())?;
+    let inner_snark_pk: <C::InnerSNARK as SNARK>::ProvingKey =
+        <C::InnerSNARK as SNARK>::ProvingKey::read(InnerSNARKPKParameters::load_bytes()?.as_slice())?;
 
-    let inner_snark_vk: <C::InnerSNARK as SNARK>::VerificationParameters =
-        <C::InnerSNARK as SNARK>::VerificationParameters::read(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
+    let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey =
+        <C::InnerSNARK as SNARK>::VerifyingKey::read(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
 
     let inner_snark_proof = C::InnerSNARK::prove(
         &inner_snark_pk,
@@ -91,7 +90,7 @@ pub fn setup<C: BaseDPCComponents>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     )?;
 
     let outer_snark_pk = to_bytes![outer_snark_parameters.0]?;
-    let outer_snark_vk: <C::OuterSNARK as SNARK>::VerificationParameters = outer_snark_parameters.1.into();
+    let outer_snark_vk: <C::OuterSNARK as SNARK>::VerifyingKey = outer_snark_parameters.1.into();
     let outer_snark_vk = to_bytes![outer_snark_vk]?;
 
     println!("outer_snark_pk.params\n\tsize - {}", outer_snark_pk.len());

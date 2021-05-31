@@ -14,24 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{
-    algorithms::snark::SNARKVerifierGadget,
-    curves::{GroupGadget, PairingGadget},
-    utilities::{
-        alloc::{AllocBytesGadget, AllocGadget},
-        eq::EqGadget,
-        uint::UInt8,
-        ToBitsBEGadget,
-        ToBytesGadget,
-    },
-};
+use std::{borrow::Borrow, marker::PhantomData};
+
 use snarkvm_algorithms::snark::groth16::{Groth16, Proof, VerifyingKey};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
 use snarkvm_fields::{Field, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_utilities::bytes::FromBytes;
 
-use std::{borrow::Borrow, marker::PhantomData};
+use crate::{
+    bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
+    integers::uint::UInt8,
+    traits::{
+        algorithms::snark::SNARKVerifierGadget,
+        alloc::{AllocBytesGadget, AllocGadget},
+        curves::{GroupGadget, PairingGadget},
+        eq::EqGadget,
+    },
+};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "P::G1Gadget: Clone, P::G2Gadget: Clone"))]
@@ -119,20 +119,16 @@ where
     V: ToConstraintField<PairingE::Fr>,
     P: PairingGadget<PairingE, ConstraintF>,
 {
+    type Input = Vec<Boolean>;
     type ProofGadget = ProofGadget<PairingE, ConstraintF, P>;
     type VerificationKeyGadget = VerifyingKeyGadget<PairingE, ConstraintF, P>;
 
-    fn check_verify<'a, CS, I, T>(
+    fn check_verify<CS: ConstraintSystem<ConstraintF>, I: Iterator<Item = Self::Input>>(
         mut cs: CS,
         vk: &Self::VerificationKeyGadget,
         mut public_inputs: I,
         proof: &Self::ProofGadget,
-    ) -> Result<(), SynthesisError>
-    where
-        CS: ConstraintSystem<ConstraintF>,
-        I: Iterator<Item = &'a T>,
-        T: 'a + ToBitsBEGadget<ConstraintF> + ?Sized,
-    {
+    ) -> Result<(), SynthesisError> {
         let pvk = vk.prepare(&mut cs.ns(|| "Prepare vk"))?;
 
         let PreparedVerifyingKeyGadget {
@@ -421,15 +417,17 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, traits::utilities::boolean::Boolean};
+    use rand::Rng;
+
     use snarkvm_algorithms::snark::groth16::*;
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_fields::PrimeField;
     use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
     use snarkvm_utilities::{test_rng, to_bytes, BitIteratorBE, ToBytes};
 
-    use rand::Rng;
+    use crate::{bits::Boolean, curves::bls12_377::PairingGadget as Bls12_377PairingGadget};
+
+    use super::*;
 
     type TestProofSystem = Groth16<Bls12_377, Bench<Fr>, Fr>;
     type TestVerifierGadget = Groth16VerifierGadget<Bls12_377, Fq, Bls12_377PairingGadget>;
@@ -533,7 +531,7 @@ mod test {
             <TestVerifierGadget as SNARKVerifierGadget<TestProofSystem, Fq>>::check_verify(
                 cs.ns(|| "Verify"),
                 &vk_gadget,
-                input_gadgets.iter(),
+                input_gadgets.iter().cloned(),
                 &proof_gadget,
             )
             .unwrap();
@@ -607,7 +605,7 @@ mod test {
             <TestVerifierGadget as SNARKVerifierGadget<TestProofSystem, Fq>>::check_verify(
                 cs.ns(|| "Verify"),
                 &vk_gadget,
-                input_gadgets.iter(),
+                input_gadgets.iter().cloned(),
                 &proof_gadget,
             )
             .unwrap();
@@ -685,7 +683,7 @@ mod test {
             <TestVerifierGadget as SNARKVerifierGadget<TestProofSystem, Fq>>::check_verify(
                 cs.ns(|| "Verify"),
                 &vk_gadget,
-                input_gadgets.iter(),
+                input_gadgets.iter().cloned(),
                 &proof_gadget,
             )
             .unwrap();

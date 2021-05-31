@@ -14,12 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8, ToBytesGadget};
+use std::fmt::Debug;
+
 use snarkvm_algorithms::traits::PRF;
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
-use std::fmt::Debug;
+use crate::{
+    bits::ToBytesGadget,
+    integers::uint::UInt8,
+    traits::{alloc::AllocGadget, eq::EqGadget},
+};
 
 pub trait PRFGadget<P: PRF, F: Field> {
     type OutputGadget: EqGadget<F> + ToBytesGadget<F> + AllocGadget<P::Output, F> + Clone + Debug;

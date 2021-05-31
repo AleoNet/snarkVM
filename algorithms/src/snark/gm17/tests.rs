@@ -159,7 +159,7 @@ mod gm17 {
 
 mod serialization {
     use super::*;
-    use crate::snark::gm17::{create_random_proof, generate_random_parameters, Parameters, Proof, VerifyingKey};
+    use crate::snark::gm17::{create_random_proof, generate_random_parameters, Proof, ProvingKey, VerifyingKey};
 
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
     use snarkvm_utilities::{
@@ -231,7 +231,7 @@ mod serialization {
         let parameter_bytes = to_bytes![&parameters].unwrap();
         let vk_bytes = to_bytes![&vk].unwrap();
 
-        let recovered_parameters: Parameters<Bls12_377> = FromBytes::read(&parameter_bytes[..]).unwrap();
+        let recovered_parameters: ProvingKey<Bls12_377> = FromBytes::read(&parameter_bytes[..]).unwrap();
         let recovered_vk: VerifyingKey<Bls12_377> = FromBytes::read(&vk_bytes[..]).unwrap();
 
         assert_eq!(parameters, recovered_parameters);

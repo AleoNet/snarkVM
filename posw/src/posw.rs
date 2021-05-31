@@ -29,6 +29,10 @@ use snarkvm_curves::{
     edwards_bls12::{EdwardsProjective, Fq},
     traits::PairingEngine,
 };
+use snarkvm_dpc::block::{
+    pedersen_merkle_tree::{pedersen_merkle_root_hash_with_leaves, PedersenMerkleRootHash, PARAMS},
+    MaskedMerkleTreeParameters,
+};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     algorithms::crh::PedersenCompressedCRHGadget,
@@ -36,11 +40,10 @@ use snarkvm_gadgets::{
     traits::algorithms::MaskedCRHGadget,
 };
 use snarkvm_marlin::snark::SRS;
-use snarkvm_objects::{
-    pedersen_merkle_tree::{pedersen_merkle_root_hash_with_leaves, PedersenMerkleRootHash, PARAMS},
-    MaskedMerkleTreeParameters,
+use snarkvm_parameters::{
+    testnet1::{PoswSNARKPKParameters, PoswSNARKVKParameters},
+    traits::Parameter,
 };
-use snarkvm_parameters::{traits::Parameter, PoswSNARKPKParameters, PoswSNARKVKParameters};
 use snarkvm_polycommit::optional_rng::OptionalRng;
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_utilities::{
@@ -78,10 +81,10 @@ where
 {
     /// The proving key. If not provided, the PoSW runner will work in verify-only
     /// mode and the `mine` function will panic.
-    pub pk: Option<S::ProvingParameters>,
+    pub pk: Option<S::ProvingKey>,
 
     /// The (prepared) verifying key.
-    pub vk: S::PreparedVerificationParameters,
+    pub vk: S::PreparedVerifyingKey,
 
     _circuit: PhantomData<POSWCircuit<F, M, HG, CP>>,
 }
@@ -94,7 +97,7 @@ where
     /// Loads the PoSW runner from the locally stored parameters.
     pub fn verify_only() -> Result<Self, PoswError> {
         let params = PoswSNARKVKParameters::load_bytes()?;
-        let vk = S::VerificationParameters::read(&params[..])?;
+        let vk = S::VerifyingKey::read(&params[..])?;
 
         Ok(Self {
             pk: None,
@@ -105,8 +108,8 @@ where
 
     /// Loads the PoSW runner from the locally stored parameters.
     pub fn load() -> Result<Self, PoswError> {
-        let vk = S::VerificationParameters::read(&PoswSNARKVKParameters::load_bytes()?[..])?;
-        let pk = S::ProvingParameters::read(&PoswSNARKPKParameters::load_bytes()?[..])?;
+        let vk = S::VerifyingKey::read(&PoswSNARKVKParameters::load_bytes()?[..])?;
+        let pk = S::ProvingKey::read(&PoswSNARKPKParameters::load_bytes()?[..])?;
 
         Ok(Self {
             pk: Some(pk),
@@ -145,7 +148,7 @@ where
 
 impl<S, CP> Posw<S, F, M, HG, CP>
 where
-    S: SNARK<VerifierInput = Vec<F>, AssignedCircuit = POSWCircuit<F, M, HG, CP>>,
+    S: SNARK<VerifierInput = Vec<F>, AllocatedCircuit = POSWCircuit<F, M, HG, CP>>,
     CP: POSWCircuitParameters,
 {
     /// Performs a trusted setup for the PoSW circuit and returns an instance of the runner
@@ -241,7 +244,7 @@ where
     /// Runs the internal SNARK `prove` function on the POSW circuit and returns
     /// the proof serialized as bytes
     fn prove<R: Rng>(
-        pk: &S::ProvingParameters,
+        pk: &S::ProvingKey,
         nonce: u32,
         subroots: &[[u8; 32]],
         rng: &mut R,

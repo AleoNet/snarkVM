@@ -14,18 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    algorithms::{
-        commitment::PedersenCompressedCommitmentGadget,
-        commitment_tree::*,
-        crh::BoweHopwoodPedersenCompressedCRHGadget,
-    },
-    curves::edwards_bls12::EdwardsBlsGadget,
-    traits::{
-        algorithms::{CRHGadget, CommitmentGadget},
-        utilities::alloc::AllocGadget,
-    },
-};
+use rand::{Rng, SeedableRng};
+use rand_xorshift::XorShiftRng;
+
 use snarkvm_algorithms::{
     commitment::PedersenCompressedCommitment,
     commitment_tree::*,
@@ -37,8 +28,18 @@ use snarkvm_fields::Field;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::rand::UniformRand;
 
-use rand::{Rng, SeedableRng};
-use rand_xorshift::XorShiftRng;
+use crate::{
+    algorithms::{
+        commitment::PedersenCompressedCommitmentGadget,
+        commitment_tree::*,
+        crh::BoweHopwoodPedersenCompressedCRHGadget,
+    },
+    curves::edwards_bls12::EdwardsBlsGadget,
+    traits::{
+        algorithms::{CRHGadget, CommitmentGadget},
+        alloc::AllocGadget,
+    },
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct CRHWindow;

@@ -14,21 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{kzg10::VerifierKey as KZG10VerifierKey, marlin_pc::data_structures::VerifierKey, Vec};
+use core::borrow::Borrow;
+
 use snarkvm_curves::{AffineCurve, PairingEngine};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
+    bits::{Boolean, ToBytesGadget},
     fields::FpGadget,
+    integers::uint::UInt8,
     traits::{
+        alloc::AllocGadget,
         curves::{GroupGadget, PairingGadget},
+        eq::EqGadget,
         fields::{FieldGadget, ToConstraintFieldGadget},
-        utilities::{boolean::Boolean, eq::EqGadget},
+        select::CondSelectGadget,
     },
-    utilities::{alloc::AllocGadget, select::CondSelectGadget, uint::UInt8, ToBytesGadget},
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-use core::borrow::Borrow;
+use crate::{kzg10::VerifierKey as KZG10VerifierKey, marlin_pc::data_structures::VerifierKey, Vec};
 
 /// Var for the verification key of the Marlin-KZG10 polynomial commitment scheme.
 #[allow(clippy::type_complexity)]
@@ -380,9 +384,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    use crate::{marlin_pc::MarlinKZG10, PolynomialCommitment};
+    use rand::Rng;
 
     use snarkvm_curves::{
         bls12_377::{Bls12_377, Fq},
@@ -394,7 +396,9 @@ mod tests {
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::test_rng;
 
-    use rand::Rng;
+    use crate::{marlin_pc::MarlinKZG10, PolynomialCommitment};
+
+    use super::*;
 
     type PC = MarlinKZG10<Bls12_377>;
     type PG = Bls12_377PairingGadget;

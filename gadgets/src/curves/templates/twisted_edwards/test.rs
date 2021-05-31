@@ -14,17 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    curves::tests_group::group_test,
-    traits::{
-        curves::GroupGadget,
-        utilities::{
-            alloc::AllocGadget,
-            boolean::{AllocatedBit, Boolean},
-            select::CondSelectGadget,
-        },
-    },
-};
+use rand::thread_rng;
+
 use snarkvm_curves::{
     templates::twisted_edwards_extended::GroupAffine as TEAffine,
     traits::{Group, TEModelParameters},
@@ -33,7 +24,11 @@ use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::ConstraintSystem;
 use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
 
-use rand::thread_rng;
+use crate::{
+    bits::boolean::{AllocatedBit, Boolean},
+    curves::tests_group::group_test,
+    traits::{alloc::AllocGadget, curves::GroupGadget, select::CondSelectGadget},
+};
 
 pub(crate) fn edwards_test<F, P, GG, CS>(cs: &mut CS)
 where

@@ -14,19 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    algorithms::crh::{
-        BoweHopwoodPedersenCRHGadget,
-        BoweHopwoodPedersenCompressedCRHGadget,
-        PedersenCRHGadget,
-        PedersenCompressedCRHGadget,
-    },
-    curves::edwards_bls12::EdwardsBlsGadget,
-    traits::{
-        algorithms::{CRHGadget, MaskedCRHGadget},
-        utilities::{alloc::AllocGadget, eq::EqGadget, uint::UInt8},
-    },
-};
+use rand::{thread_rng, Rng};
+
 use snarkvm_algorithms::{
     crh::{BoweHopwoodPedersenCRH, BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH, PedersenSize},
     traits::{CRHParameters, CRH},
@@ -38,7 +27,21 @@ use snarkvm_curves::{
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
-use rand::{thread_rng, Rng};
+use crate::{
+    algorithms::crh::{
+        BoweHopwoodPedersenCRHGadget,
+        BoweHopwoodPedersenCompressedCRHGadget,
+        PedersenCRHGadget,
+        PedersenCompressedCRHGadget,
+    },
+    curves::edwards_bls12::EdwardsBlsGadget,
+    integers::uint::UInt8,
+    traits::{
+        algorithms::{CRHGadget, MaskedCRHGadget},
+        alloc::AllocGadget,
+        eq::EqGadget,
+    },
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(super) struct Size;

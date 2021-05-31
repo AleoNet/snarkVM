@@ -14,15 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{
-    algorithms::{CRHGadget, CommitmentGadget},
-    utilities::{
-        alloc::AllocGadget,
-        boolean::{AllocatedBit, Boolean},
-        eq::{ConditionalEqGadget, ConditionalOrEqualsGadget},
-        ToBytesGadget,
-    },
-};
+use std::borrow::Borrow;
+
 use snarkvm_algorithms::{
     commitment_tree::CommitmentMerklePath,
     traits::{CommitmentScheme, CRH},
@@ -30,7 +23,17 @@ use snarkvm_algorithms::{
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
-use std::borrow::Borrow;
+use crate::{
+    bits::{
+        boolean::{AllocatedBit, Boolean},
+        ToBytesGadget,
+    },
+    traits::{
+        algorithms::{CRHGadget, CommitmentGadget},
+        alloc::AllocGadget,
+        eq::{ConditionalEqGadget, ConditionalOrEqualsGadget},
+    },
+};
 
 pub struct CommitmentMerklePathGadget<
     C: CommitmentScheme,
