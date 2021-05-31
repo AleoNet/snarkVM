@@ -19,8 +19,14 @@
 #[macro_use]
 extern crate thiserror;
 
+#[macro_use]
+pub mod macros;
+
 pub mod errors;
 pub use errors::*;
+
+pub mod global;
+pub use global::*;
 
 pub mod genesis;
 pub use genesis::*;
@@ -30,3 +36,7 @@ pub use params::*;
 
 pub mod traits;
 pub use traits::*;
+
+pub mod prelude {
+    pub use crate::{errors::*, global::*, traits::*};
+}

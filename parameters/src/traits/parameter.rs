@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::ParameterError;
-
 pub trait Parameter {
     const CHECKSUM: &'static str;
     const SIZE: u64;
 
-    fn load_bytes() -> Result<Vec<u8>, ParameterError>;
+    fn load_bytes() -> Result<Vec<u8>, crate::errors::ParameterError>;
 }
