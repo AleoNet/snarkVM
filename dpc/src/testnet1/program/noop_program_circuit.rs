@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::testnet1::{parameters::SystemParameters, BaseDPCComponents};
 use snarkvm_algorithms::traits::{CommitmentScheme, CRH};
 use snarkvm_gadgets::{
     integers::uint::UInt8,
@@ -23,8 +24,6 @@ use snarkvm_gadgets::{
     },
 };
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSynthesizer, ConstraintSystem};
-
-use crate::testnet1::{parameters::SystemParameters, BaseDPCComponents};
 
 /// Always-accept program
 pub struct NoopCircuit<C: BaseDPCComponents> {

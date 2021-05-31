@@ -20,6 +20,7 @@ use snarkvm_algorithms::{
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH},
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
+
 use std::sync::Arc;
 
 #[derive(Derivative)]

@@ -41,18 +41,7 @@ const PROOF_SIZE: usize = 972;
 /// A Proof of Succinct Work is a SNARK proof which
 pub struct ProofOfSuccinctWork(pub [u8; PROOF_SIZE]);
 
-impl std::default::Default for ProofOfSuccinctWork {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl ProofOfSuccinctWork {
-    /// Initializes an empty proof array
-    fn new() -> Self {
-        Self([0; PROOF_SIZE])
-    }
-
     /// Returns the proof's size
     pub const fn size() -> usize {
         PROOF_SIZE
@@ -89,7 +78,7 @@ impl<'de> Deserialize<'de> for ProofOfSuccinctWork {
         impl<'de> Visitor<'de> for ArrayVisitor {
             type Value = ProofOfSuccinctWork;
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
                 formatter.write_str("a valid proof")
             }
 

@@ -16,9 +16,10 @@
 
 use crate::{
     account::{Account, AccountAddress, AccountPrivateKey},
+    block::Network,
     errors::DPCError,
     testnet1::{payload::Payload, AleoAmount},
-    traits::{AccountScheme, DPCComponents, DPCScheme, RecordScheme},
+    traits::{AccountScheme, DPCComponents, DPCScheme, LedgerScheme, RecordScheme, TransactionScheme},
 };
 use snarkvm_algorithms::{
     commitment_tree::CommitmentMerkleTree,
@@ -38,10 +39,6 @@ use snarkvm_curves::traits::{Group, MontgomeryModelParameters, ProjectiveCurve, 
 use snarkvm_gadgets::{
     bits::Boolean,
     traits::algorithms::{CRHGadget, SNARKVerifierGadget},
-};
-use snarkvm_objects::{
-    traits::{LedgerScheme, TransactionScheme},
-    Network,
 };
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},

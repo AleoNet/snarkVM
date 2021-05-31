@@ -27,6 +27,7 @@ use snarkvm_algorithms::{
 };
 use snarkvm_fields::ToConstraintField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
+
 use std::sync::Arc;
 
 #[derive(Derivative)]

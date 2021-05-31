@@ -30,6 +30,7 @@ use snarkvm_algorithms::{
     traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, CRH},
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
+
 use std::sync::Arc;
 
 #[derive(Derivative)]
