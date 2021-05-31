@@ -54,6 +54,7 @@
 #![cfg_attr(feature = "clippy", allow(many_single_char_names))]
 #![cfg_attr(feature = "clippy", allow(new_without_default_derive))]
 
+#[cfg(feature = "testnet1")]
 #[macro_use]
 extern crate snarkvm_profiler;
 

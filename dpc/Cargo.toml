@@ -36,7 +36,6 @@ default-features = false
 path = "../gadgets"
 version = "0.4.0"
 default-features = false
-optional = true
 
 [dependencies.snarkvm-parameters]
 path = "../parameters"
@@ -119,4 +118,4 @@ default = [
 print-trace = [ "snarkvm-profiler/print-trace" ]
 
 full = ["testnet1"]
-testnet1 = ["snarkvm-gadgets", "snarkvm-r1cs"]
+testnet1 = ["snarkvm-r1cs"]
