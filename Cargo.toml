@@ -32,9 +32,9 @@ members = [
   "profiler",
   "r1cs",
   "utilities",
-  "wasm"
+  "wasm",
+  ".snarkos-integration"
 ]
-exclude = [ "snarkos-integration" ]
 
 [[bin]]
 name = "snarkvm"
