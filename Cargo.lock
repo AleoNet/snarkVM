@@ -1596,17 +1596,21 @@ dependencies = [
  "anyhow",
  "base58",
  "bech32",
+ "bincode",
  "blake2",
+ "chrono",
  "derivative",
  "hex",
  "itertools 0.10.0",
+ "once_cell",
  "rand",
  "rand_xorshift",
+ "serde",
+ "sha2",
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-gadgets",
- "snarkvm-objects",
  "snarkvm-parameters",
  "snarkvm-profiler",
  "snarkvm-r1cs",
@@ -1674,26 +1678,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "snarkvm-objects"
-version = "0.4.0"
-dependencies = [
- "anyhow",
- "bincode",
- "chrono",
- "hex",
- "once_cell",
- "rand",
- "serde",
- "sha2",
- "snarkvm-algorithms",
- "snarkvm-curves",
- "snarkvm-dpc",
- "snarkvm-parameters",
- "snarkvm-utilities",
- "thiserror",
-]
-
-[[package]]
 name = "snarkvm-parameters"
 version = "0.4.0"
 dependencies = [
@@ -1744,10 +1728,10 @@ dependencies = [
  "serde",
  "snarkvm-algorithms",
  "snarkvm-curves",
+ "snarkvm-dpc",
  "snarkvm-fields",
  "snarkvm-gadgets",
  "snarkvm-marlin",
- "snarkvm-objects",
  "snarkvm-parameters",
  "snarkvm-polycommit",
  "snarkvm-profiler",

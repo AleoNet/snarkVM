@@ -66,6 +66,10 @@ extern crate thiserror;
 pub mod account;
 pub use account::*;
 
+pub mod block;
+pub use block::*;
+
+#[cfg(feature = "testnet1")]
 pub mod testnet1;
 
 pub mod errors;
@@ -78,5 +82,5 @@ pub use traits::*;
 mod tests;
 
 pub mod prelude {
-    pub use crate::{account::*, errors::*, traits::*};
+    pub use crate::{account::*, block::*, errors::*, traits::*};
 }

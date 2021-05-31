@@ -17,11 +17,17 @@
 pub mod account;
 pub use account::*;
 
+pub mod block;
+pub use block::*;
+
 pub mod dpc;
 pub use dpc::*;
 
 pub mod dpc_components;
 pub use dpc_components::*;
+
+pub mod ledger;
+pub use ledger::*;
 
 pub mod program;
 pub use program::*;
@@ -31,3 +37,9 @@ pub use record::*;
 
 pub mod record_encoding;
 pub use record_encoding::*;
+
+pub mod storage;
+pub use storage::*;
+
+pub mod transaction;
+pub use transaction::*;

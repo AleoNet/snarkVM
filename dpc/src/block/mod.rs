@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#[macro_use]
-extern crate thiserror;
-
 pub mod block;
 pub use block::*;
 
@@ -25,9 +22,6 @@ pub use block_header::*;
 
 pub mod block_header_hash;
 pub use block_header_hash::*;
-
-pub mod errors;
-pub use errors::*;
 
 pub mod merkle_root_hash;
 pub use merkle_root_hash::*;
@@ -43,9 +37,6 @@ pub use pedersen_merkle_tree::*;
 
 pub mod posw;
 pub use posw::ProofOfSuccinctWork;
-
-pub mod traits;
-pub use traits::*;
 
 pub mod transactions;
 pub use transactions::*;

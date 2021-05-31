@@ -29,6 +29,10 @@ use snarkvm_curves::{
     edwards_bls12::{EdwardsProjective, Fq},
     traits::PairingEngine,
 };
+use snarkvm_dpc::block::{
+    pedersen_merkle_tree::{pedersen_merkle_root_hash_with_leaves, PedersenMerkleRootHash, PARAMS},
+    MaskedMerkleTreeParameters,
+};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     algorithms::crh::PedersenCompressedCRHGadget,
@@ -36,10 +40,6 @@ use snarkvm_gadgets::{
     traits::algorithms::MaskedCRHGadget,
 };
 use snarkvm_marlin::snark::SRS;
-use snarkvm_objects::{
-    pedersen_merkle_tree::{pedersen_merkle_root_hash_with_leaves, PedersenMerkleRootHash, PARAMS},
-    MaskedMerkleTreeParameters,
-};
 use snarkvm_parameters::{traits::Parameter, PoswSNARKPKParameters, PoswSNARKVKParameters};
 use snarkvm_polycommit::optional_rng::OptionalRng;
 use snarkvm_profiler::{end_timer, start_timer};
