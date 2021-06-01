@@ -33,7 +33,7 @@ use crate::{
         select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
     },
 };
-use snarkvm_fields::{FieldParameters, PrimeField};
+use snarkvm_fields::{Field, FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 use snarkvm_utilities::BigInteger;
 
@@ -65,7 +65,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
             optimization_type,
         );
 
-        let mut base_repr: <TargetField as PrimeField>::BigInteger = TargetField::one().into_repr();
+        let mut base_repr: <TargetField as Field>::BigInteger = TargetField::one().into_repr();
 
         // Convert 2^{(params.bits_per_limb - 1)} into the TargetField and then double the base
         // This is because 2^{(params.bits_per_limb)} might indeed be larger than the target field's prime.
@@ -218,8 +218,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         }
 
         // Step 2: Construct the padding
-        let mut pad_non_top_limb_repr: <BaseField as PrimeField>::BigInteger = BaseField::one().into_repr();
-        let mut pad_top_limb_repr: <BaseField as PrimeField>::BigInteger = pad_non_top_limb_repr;
+        let mut pad_non_top_limb_repr: <BaseField as Field>::BigInteger = BaseField::one().into_repr();
+        let mut pad_top_limb_repr: <BaseField as Field>::BigInteger = pad_non_top_limb_repr;
 
         pad_non_top_limb_repr.muln((surfeit + params.bits_per_limb) as u32);
         let pad_non_top_limb = BaseField::from_repr(pad_non_top_limb_repr).unwrap();
@@ -348,7 +348,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
 
     /// Obtain the limbs directly from a big int
     pub fn get_limbs_representations_from_big_integer(
-        elem: &<TargetField as PrimeField>::BigInteger,
+        elem: &<TargetField as Field>::BigInteger,
         optimization_type: OptimizationType,
     ) -> Result<Vec<BaseField>, SynthesisError> {
         let params = get_params(
@@ -362,7 +362,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         let mut cur = *elem;
         for _ in 0..params.num_limbs {
             let cur_bits = cur.to_bits_be(); // `to_bits` is big endian
-            let cur_mod_r = <BaseField as PrimeField>::BigInteger::from_bits_be(
+            let cur_mod_r = <BaseField as Field>::BigInteger::from_bits_be(
                 cur_bits[cur_bits.len() - params.bits_per_limb..].to_vec(),
             ); // therefore, the lowest `bits_per_non_top_limb` bits is what we want.
             limbs.push(BaseField::from_repr(cur_mod_r).unwrap());

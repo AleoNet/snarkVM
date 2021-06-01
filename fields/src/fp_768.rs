@@ -326,6 +326,8 @@ impl<P: Fp768Parameters> One for Fp768<P> {
 }
 
 impl<P: Fp768Parameters> Field for Fp768<P> {
+    type BigInteger = BigInteger;
+
     // 768/64 = 12 limbs.
     impl_field_from_random_bytes_with_flags!(12);
 
@@ -635,10 +637,17 @@ impl<P: Fp768Parameters> Field for Fp768<P> {
     fn frobenius_map(&mut self, _: usize) {
         // No-op: No effect in a prime field.
     }
+
+    fn as_repr_singlet(&self) -> Option<&Self::BigInteger> {
+        Some(&self.0)
+    }
+
+    fn from_repr_singlet(repr: Self::BigInteger) -> Option<Self> {
+        Some(Self(repr, PhantomData))
+    }
 }
 
 impl<P: Fp768Parameters> PrimeField for Fp768<P> {
-    type BigInteger = BigInteger;
     type Parameters = P;
 
     #[inline]
@@ -815,7 +824,7 @@ impl<P: Fp768Parameters> FromStr for Fp768<P> {
 
         let mut res = Self::zero();
 
-        let ten = Self::from_repr(<Self as PrimeField>::BigInteger::from(10)).ok_or(FieldError::InvalidFieldElement)?;
+        let ten = Self::from_repr(<Self as Field>::BigInteger::from(10)).ok_or(FieldError::InvalidFieldElement)?;
 
         let mut first_digit = true;
 
@@ -832,7 +841,7 @@ impl<P: Fp768Parameters> FromStr for Fp768<P> {
 
                     res.mul_assign(&ten);
                     res.add_assign(
-                        &Self::from_repr(<Self as PrimeField>::BigInteger::from(u64::from(c)))
+                        &Self::from_repr(<Self as Field>::BigInteger::from(u64::from(c)))
                             .ok_or(FieldError::InvalidFieldElement)?,
                     );
                 }

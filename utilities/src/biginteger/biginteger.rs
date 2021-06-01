@@ -122,9 +122,43 @@ pub trait BigInteger:
         *self = Self::read(reader)?;
         Ok(())
     }
+
+    /// swaps endian of internal storage
+    fn swap_endian(mut self) -> Self {
+        let inner = self.as_mut();
+        for x in inner {
+            *x = x.swap_bytes();
+        }
+        self
+    }
 }
 
 pub mod arithmetic {
+    // #[cfg(all(target_arch = "x86_64", target_feature = "adx"))]
+    // #[inline(always)]
+    // pub fn adc_u8(a: u64, b: u64, carry: &mut u8) -> u64 {
+    //     let mut out = 0u64;
+    //     *carry = unsafe { core::arch::x86_64::_addcarryx_u64(*carry, a, b, &mut out) };
+    //     out
+    // }
+
+    // #[cfg(all(target_arch = "x86_64", not(target_feature = "adx")))]
+    // #[inline(always)]
+    // pub fn adc_u8(a: u64, b: u64, carry: &mut u8) -> u64 {
+    //     let mut out = 0u64;
+    //     *carry = unsafe { core::arch::x86_64::_addcarry_u64(*carry, a, b, &mut out) };
+    //     out
+    // }
+
+    // #[cfg(not(target_arch = "x86_64"))]
+    pub fn adc_u8(a: u64, b: u64, carry: &mut u8) -> u64 {
+        let tmp = u128::from(a) + u128::from(b) + u128::from(*carry);
+
+        *carry = (tmp >> 64) as u8;
+
+        tmp as u64
+    }
+
     /// Calculate a + b + carry, returning the sum and modifying the
     /// carry value.
     #[inline(always)]
@@ -136,10 +170,16 @@ pub mod arithmetic {
         tmp as u64
     }
 
-    /// Calculate a - b - borrow, returning the result and modifying
-    /// the borrow value.
-    #[inline(always)]
-    pub fn sbb(a: u64, b: u64, borrow: &mut u64) -> u64 {
+    // #[cfg(target_arch = "x86_64")]
+    // #[inline(always)]
+    // pub fn sbb(a: u64, b: u64, borrow: &mut u8) -> u64 {
+    //     let mut out = 0u64;
+    //     *borrow = unsafe { core::arch::x86_64::_subborrow_u64(*borrow, a, b, &mut out) };
+    //     out
+    // }
+
+    // #[cfg(not(target_arch = "x86_64"))]
+    pub fn sbb(a: u64, b: u64, borrow: &mut u8) -> u64 {
         let tmp = (1u128 << 64) + u128::from(a) - u128::from(b) - u128::from(*borrow);
 
         *borrow = if tmp >> 64 == 0 { 1 } else { 0 };
@@ -151,6 +191,16 @@ pub mod arithmetic {
     /// and setting carry to the most significant digit.
     #[inline(always)]
     pub fn mac_with_carry(a: u64, b: u64, c: u64, carry: &mut u64) -> u64 {
+        // let mut a_and_carry = 0u64;
+        // let a_carry = unsafe { core::arch::x86_64::_addcarryx_u64(0, a, *carry, &mut a_and_carry) };
+
+        // let mut hi = 0u64;
+        // let mut lo = unsafe { core::arch::x86_64::_mulx_u64(b, c, &mut hi) };
+        // let a_low_carry = unsafe { core::arch::x86_64::_addcarryx_u64(0, a_and_carry, lo, &mut lo) };
+
+        // *carry = hi + a_low_carry as u64 + a_carry as u64;
+
+        // lo
         let tmp = (u128::from(a)) + u128::from(b) * u128::from(c) + u128::from(*carry);
 
         *carry = (tmp >> 64) as u64;

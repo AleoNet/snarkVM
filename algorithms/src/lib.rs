@@ -20,7 +20,7 @@
 #![deny(renamed_and_removed_lints, unused_allocation, unused_comparisons)]
 #![deny(const_err, unused_must_use, unused_mut, private_in_public)]
 #![deny(unused_extern_crates, trivial_numeric_casts)]
-#![forbid(unsafe_code)]
+// #![forbid(unsafe_code)]
 
 #[macro_use]
 extern crate derivative;

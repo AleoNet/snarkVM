@@ -17,7 +17,7 @@
 use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Proof, ProvingKey};
 use crate::{cfg_into_iter, msm::VariableBaseMSM};
 use snarkvm_curves::traits::{AffineCurve, Group, PairingEngine, ProjectiveCurve};
-use snarkvm_fields::{One, PrimeField, Zero};
+use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_r1cs::errors::SynthesisError;
 
 use snarkvm_profiler::{end_timer, start_timer};
@@ -241,7 +241,7 @@ fn calculate_coeff<G: AffineCurve>(
     initial: G::Projective,
     query: &[G],
     vk_param: G,
-    assignment: &[<G::ScalarField as PrimeField>::BigInteger],
+    assignment: &[<G::ScalarField as Field>::BigInteger],
 ) -> G::Projective {
     let el = query[0];
     let acc = VariableBaseMSM::multi_scalar_mul(&query[1..], assignment);

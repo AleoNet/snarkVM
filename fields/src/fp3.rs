@@ -142,6 +142,8 @@ impl<P: Fp3Parameters> One for Fp3<P> {
 }
 
 impl<P: Fp3Parameters> Field for Fp3<P> {
+    type BigInteger = <P::Fp as Field>::BigInteger;
+
     #[inline]
     fn characteristic<'a>() -> &'a [u64] {
         P::Fp::characteristic()
@@ -269,6 +271,14 @@ impl<P: Fp3Parameters> Field for Fp3<P> {
     fn frobenius_map(&mut self, power: usize) {
         self.c1.mul_assign(&P::FROBENIUS_COEFF_FP3_C1[power % 3]);
         self.c2.mul_assign(&P::FROBENIUS_COEFF_FP3_C2[power % 3]);
+    }
+
+    fn as_repr_singlet(&self) -> Option<&Self::BigInteger> {
+        None
+    }
+
+    fn from_repr_singlet(_repr: Self::BigInteger) -> Option<Self> {
+        None
     }
 }
 

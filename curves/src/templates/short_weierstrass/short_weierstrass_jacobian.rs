@@ -19,7 +19,7 @@ use crate::{
     impl_sw_from_random_bytes,
     traits::{AffineCurve, ProjectiveCurve, SWModelParameters as Parameters},
 };
-use snarkvm_fields::{Field, One, PrimeField, SquareRootField, Zero};
+use snarkvm_fields::{Field, One, SquareRootField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
     bytes::{FromBytes, ToBytes},
@@ -158,7 +158,7 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
     }
 
     #[inline]
-    fn mul<S: Into<<Self::ScalarField as PrimeField>::BigInteger>>(&self, by: S) -> GroupProjective<P> {
+    fn mul<S: Into<<Self::ScalarField as Field>::BigInteger>>(&self, by: S) -> GroupProjective<P> {
         let bits = BitIteratorBE::new(by.into());
         self.mul_bits(bits)
     }
@@ -404,7 +404,7 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
             g.z = tmp * &s;
             tmp = newtmp;
         }
-        #[cfg(not(feature = "parallel"))]
+        // #[cfg(not(feature = "parallel"))]
         {
             // Perform affine transformations
             for g in v.iter_mut().filter(|g| !g.is_normalized()) {
@@ -415,17 +415,17 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
             }
         }
 
-        #[cfg(feature = "parallel")]
-        {
-            use rayon::prelude::*;
-            // Perform affine transformations
-            v.par_iter_mut().filter(|g| !g.is_normalized()).for_each(|g| {
-                let z2 = g.z.square(); // 1/z
-                g.x *= &z2; // x/z^2
-                g.y *= &(z2 * &g.z); // y/z^3
-                g.z = P::BaseField::one(); // z = 1
-            });
-        }
+        // #[cfg(feature = "parallel")]
+        // {
+        //     use rayon::prelude::*;
+        //     // Perform affine transformations
+        //     v.par_iter_mut().filter(|g| !g.is_normalized()).for_each(|g| {
+        //         let z2 = g.z.square(); // 1/z
+        //         g.x *= &z2; // x/z^2
+        //         g.y *= &(z2 * &g.z); // y/z^3
+        //         g.z = P::BaseField::one(); // z = 1
+        //     });
+        // }
     }
 
     #[allow(clippy::many_single_char_names)]
@@ -513,14 +513,25 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
         // http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-madd-2007-bl
         // Works for all curves.
 
+        // printf("c-t%llu:add:0 %llu,%llu,%llu -> %llu,%llu\n", threadIdx.x, p1->X[0], p1->Y[0], p1->Z[0], p2->X[0], p2->Y[0]);
+        // println!("r-tX:add:0 {},{},{} -> {},{}", self.x.as_repr_singlet().unwrap().clone().as_ref()[0], self.y.as_repr_singlet().unwrap().clone().as_ref()[0], self.z.as_repr_singlet().unwrap().clone().as_ref()[0], other.x.as_repr_singlet().unwrap().clone().as_ref()[0], other.y.as_repr_singlet().unwrap().clone().as_ref()[0]);
+
         // Z1Z1 = Z1^2
         let z1z1 = self.z.square();
+
+        //    printf("c-t%llu:add:1 %llu\n", threadIdx.x, z1z1[0]);
+        // println!("r-tX:add:1 {}", z1z1.as_repr_singlet().unwrap().clone().as_ref()[0]);
 
         // U2 = X2*Z1Z1
         let u2 = other.x * &z1z1;
 
+        // printf("c-t%llu:add:2 %llu\n", threadIdx.x, u2[0]);
+        // println!("r-tX:add:2 {}", u2.as_repr_singlet().unwrap().clone().as_ref()[0]);
+
         // S2 = Y2*Z1*Z1Z1
         let s2 = (other.y * &self.z) * &z1z1;
+
+        // println!("r-tX:add:3 {}", s2.as_repr_singlet().unwrap().clone().as_ref()[0]);
 
         if self.x == u2 && self.y == s2 {
             // The two points are equal, so we double.
@@ -531,27 +542,40 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
             // H = U2-X1
             let h = u2 - &self.x;
 
+            // println!("r-tX:add:4 {}", h.as_repr_singlet().unwrap().clone().as_ref()[0]);
+
             // HH = H^2
             let hh = h.square();
+
+            // println!("r-tX:add:5 {}", hh.as_repr_singlet().unwrap().clone().as_ref()[0]);
 
             // I = 4*HH
             let mut i = hh;
             i.double_in_place().double_in_place();
 
+            // println!("r-tX:add:6 {}", i.as_repr_singlet().unwrap().clone().as_ref()[0]);
+
             // J = H*I
             let mut j = h * &i;
+            // println!("r-tX:add:7 {}", j.as_repr_singlet().unwrap().clone().as_ref()[0]);
 
             // r = 2*(S2-Y1)
             let r = (s2 - &self.y).double();
+            // println!("r-tX:add:8 {}", r.as_repr_singlet().unwrap().clone().as_ref()[0]);
 
             // V = X1*I
             let v = self.x * &i;
+            // println!("r-tX:add:9 {}", v.as_repr_singlet().unwrap().clone().as_ref()[0]);
 
             // X3 = r^2 - J - 2*V
             self.x = r.square();
+            // println!("r-tX:add:1X {}", self.x.as_repr_singlet().unwrap().clone().as_ref()[0]);
             self.x -= &j;
+            // println!("r-tX:add:2X {:?} -- {:?}", self.x.as_repr_singlet().unwrap().clone().as_ref(), j.as_repr_singlet().unwrap().clone().as_ref());
             self.x -= &v;
+            // println!("r-tX:add:3X {}", self.x.as_repr_singlet().unwrap().clone().as_ref()[0]);
             self.x -= &v;
+            // println!("r-tX:add:4X {}", self.x.as_repr_singlet().unwrap().clone().as_ref()[0]);
 
             // Y3 = r*(V-X3)-2*Y1*J
             j *= &self.y; // J = 2*Y1*J
@@ -559,16 +583,18 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
             self.y = v - &self.x;
             self.y *= &r;
             self.y -= &j;
+            // println!("r-tX:add:Y {}", self.y.as_repr_singlet().unwrap().clone().as_ref()[0]);
 
             // Z3 = (Z1+H)^2-Z1Z1-HH
             self.z += &h;
             self.z.square_in_place();
             self.z -= &z1z1;
             self.z -= &hh;
+            // println!("r-tX:add:Z {}", self.z.as_repr_singlet().unwrap().clone().as_ref()[0]);
         }
     }
 
-    fn mul_assign<S: Into<<Self::ScalarField as PrimeField>::BigInteger>>(&mut self, other: S) {
+    fn mul_assign<S: Into<<Self::ScalarField as Field>::BigInteger>>(&mut self, other: S) {
         let mut res = Self::zero();
 
         let mut found_one = false;
@@ -594,13 +620,34 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
     }
 
     #[inline]
-    fn recommended_wnaf_for_scalar(scalar: <Self::ScalarField as PrimeField>::BigInteger) -> usize {
+    fn recommended_wnaf_for_scalar(scalar: <Self::ScalarField as Field>::BigInteger) -> usize {
         P::empirical_recommended_wnaf_for_scalar(scalar)
     }
 
     #[inline]
     fn recommended_wnaf_for_num_scalars(num_scalars: usize) -> usize {
         P::empirical_recommended_wnaf_for_num_scalars(num_scalars)
+    }
+
+    fn from_repr(repr: &[Self::BaseField]) -> Self {
+        Self {
+            x: repr[0],
+            y: repr[1],
+            z: repr[2],
+            _params: PhantomData,
+        }
+    }
+
+    fn to_x_coordinate(&self) -> Self::BaseField {
+        self.x
+    }
+
+    fn to_y_coordinate(&self) -> Self::BaseField {
+        self.y
+    }
+
+    fn to_z_coordinate(&self) -> Self::BaseField {
+        self.z
     }
 }
 
@@ -673,6 +720,7 @@ impl<'a, P: Parameters> AddAssign<&'a Self> for GroupProjective<P> {
 
             // I = (2*H)^2
             let i = (h.double()).square();
+            // println!("r-tX:add:6 {}", i.as_repr_singlet().unwrap().clone().as_ref()[0]);
 
             // J = H*I
             let j = h * &i;
@@ -682,6 +730,7 @@ impl<'a, P: Parameters> AddAssign<&'a Self> for GroupProjective<P> {
 
             // V = U1*I
             let v = u1 * &i;
+            // println!("r-tX:add:9 {}", v.as_repr_singlet().unwrap().clone().as_ref()[0]);
 
             // X3 = r^2 - J - 2*V
             self.x = r.square() - &j - &(v.double());

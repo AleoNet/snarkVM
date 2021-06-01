@@ -29,7 +29,7 @@ use crate::{
         fields::FieldGadget,
     },
 };
-use snarkvm_fields::{FieldParameters, PrimeField};
+use snarkvm_fields::{Field, FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{biginteger::BigInteger, bititerator::BitIteratorBE};
 
@@ -71,7 +71,7 @@ pub fn bigint_to_basefield<BaseField: PrimeField>(bigint: &BigUint) -> BaseField
     let mut cur = BaseField::one();
     let bytes = bigint.to_bytes_be();
 
-    let basefield_256 = BaseField::from_repr(<BaseField as PrimeField>::BigInteger::from(256)).unwrap();
+    let basefield_256 = BaseField::from_repr(<BaseField as Field>::BigInteger::from(256)).unwrap();
 
     for byte in bytes.iter().rev() {
         let bytes_basefield = BaseField::from(*byte as u128);
@@ -199,7 +199,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
                 * &(elem_other.num_of_additions_over_normal_form + &BaseField::one());
             let overhead_limb = overhead!(
                 prod_of_num_of_additions.mul(
-                    &BaseField::from_repr(<BaseField as PrimeField>::BigInteger::from(
+                    &BaseField::from_repr(<BaseField as Field>::BigInteger::from(
                         (field_parameters.num_limbs) as u64
                     ))
                     .unwrap()
@@ -293,7 +293,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
         for (group_id, (left_total_limb, right_total_limb, num_limb_in_this_group)) in
             groupped_limb_pairs.iter().enumerate()
         {
-            let mut pad_limb_repr: <BaseField as PrimeField>::BigInteger = BaseField::one().into_repr();
+            let mut pad_limb_repr: <BaseField as Field>::BigInteger = BaseField::one().into_repr();
 
             pad_limb_repr.muln(
                 (surfeit + (bits_per_limb - shift_per_limb) + shift_per_limb * num_limb_in_this_group + 1 + 1) as u32,

@@ -18,6 +18,11 @@ license = "GPL-3.0"
 edition = "2018"
 
 [[bench]]
+name = "msm-variable-base"
+path = "benches/msm/variable_base.rs"
+harness = false
+
+[[bench]]
 name = "commitment-pedersen"
 path = "benches/commitment/pedersen.rs"
 harness = false
@@ -104,12 +109,21 @@ default-features = false
 [dependencies.rayon]
 version = "1"
 
+[target.'cfg(target_arch = "x86_64")'.build-dependencies]
+cc = "1.0.50"
+
 [dependencies.sha2]
 version = "0.9"
 default-features = false
 
 [dependencies.smallvec]
 version = "1.6"
+
+[dependencies.lazy_static]
+version = "1.4"
+
+[dependencies.crossbeam-channel]
+version = "0.5"
 
 [dependencies.thiserror]
 version = "1.0"
@@ -133,7 +147,8 @@ default = [
   "snarkvm-curves/default",
   "snarkvm-fields/default",
   "snarkvm-r1cs/default",
-  "snarkvm-utilities/default"
+  "snarkvm-utilities/default",
+  "blstasm"
 ]
 full = [
   "commitment",
@@ -174,3 +189,4 @@ signature = [ "encryption" ]
 snark = [ "fft", "msm" ]
 parallel = [ ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
+blstasm = [ ]

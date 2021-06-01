@@ -391,7 +391,7 @@ mod tests {
         bw6_761::BW6_761,
         ProjectiveCurve,
     };
-    use snarkvm_fields::PrimeField;
+    use snarkvm_fields::{Field, PrimeField};
     use snarkvm_gadgets::curves::bls12_377::PairingGadget as Bls12_377PairingGadget;
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::rand::test_rng;
@@ -498,7 +498,7 @@ mod tests {
         let bound = rng.gen_range(1..=SUPPORTED_DEGREE);
 
         let bound_field = <BaseCurve as PairingEngine>::Fr::from_repr(
-            <<BaseCurve as PairingEngine>::Fr as PrimeField>::BigInteger::from(bound as u64),
+            <<BaseCurve as PairingEngine>::Fr as Field>::BigInteger::from(bound as u64),
         )
         .unwrap();
         let bound_gadget = FpGadget::alloc(cs.ns(|| "alloc_bound"), || Ok(bound_field)).unwrap();

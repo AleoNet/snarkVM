@@ -19,7 +19,7 @@ use snarkvm_curves::{
     bls12_377::{Fr, G1Projective},
     traits::{AffineCurve, ProjectiveCurve},
 };
-use snarkvm_fields::{PrimeField, Zero};
+use snarkvm_fields::{Field, PrimeField, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
 use rand::SeedableRng;
@@ -27,7 +27,7 @@ use rand_xorshift::XorShiftRng;
 
 fn naive_variable_base_msm<G: AffineCurve>(
     bases: &[G],
-    scalars: &[<G::ScalarField as PrimeField>::BigInteger],
+    scalars: &[<G::ScalarField as Field>::BigInteger],
 ) -> G::Projective {
     let mut acc = G::Projective::zero();
 

@@ -26,6 +26,7 @@ use snarkvm_utilities::{
         CanonicalSerializeWithFlags,
         ConstantSerializedSize,
     },
+    BigInteger,
 };
 
 use std::{
@@ -77,6 +78,8 @@ pub trait Field:
     + for<'a> Deserialize<'a>
     + Zero
 {
+    type BigInteger: BigInteger;
+
     /// Returns the characteristic of the field.
     fn characteristic<'a>() -> &'a [u64];
 
@@ -142,4 +145,8 @@ pub trait Field:
     /// None. This function is primarily intended for sampling
     /// random field elements from a hash-function or RNG output.
     fn from_random_bytes_with_flags(bytes: &[u8]) -> Option<(Self, u8)>;
+
+    fn as_repr_singlet(&self) -> Option<&Self::BigInteger>;
+
+    fn from_repr_singlet(repr: Self::BigInteger) -> Option<Self>;
 }
