@@ -47,6 +47,11 @@ path = "../parameters"
 version = "0.5.0"
 default-features = false
 
+[dependencies.snarkvm-polycommit]
+path = "../polycommit"
+version = "0.5.0"
+default-features = false
+
 [dependencies.snarkvm-profiler]
 path = "../profiler"
 version = "0.5.0"
