@@ -16,14 +16,12 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 //! A crate for polynomial commitment schemes.
-#![deny(unused_import_braces, unused_qualifications, trivial_casts)]
-#![deny(trivial_numeric_casts, private_in_public, variant_size_differences)]
-#![deny(stable_features, unreachable_pub, non_shorthand_field_patterns)]
-#![deny(unused_attributes, unused_mut)]
-#![deny(missing_docs)]
-#![deny(unused_imports)]
-#![deny(renamed_and_removed_lints, stable_features, unused_allocation)]
-#![deny(unused_comparisons, bare_trait_objects, unused_must_use, const_err)]
+#![deny(unused_import_braces, trivial_casts, bare_trait_objects)]
+#![deny(unused_qualifications, variant_size_differences, stable_features)]
+#![deny(non_shorthand_field_patterns, unused_attributes)]
+#![deny(renamed_and_removed_lints, unused_allocation, unused_comparisons)]
+#![deny(const_err, unused_must_use, unused_mut, private_in_public)]
+#![deny(unused_extern_crates, trivial_numeric_casts)]
 #![forbid(unsafe_code)]
 
 #[macro_use]

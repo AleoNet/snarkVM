@@ -96,6 +96,14 @@ version = "0.8"
 default-features = false
 
 [features]
-default = [ "std" ]
+default = [
+  "std",
+  "snarkvm-algorithms/default",
+  "snarkvm-curves/default",
+  "snarkvm-fields/default",
+  "snarkvm-gadgets/default",
+  "snarkvm-r1cs/default",
+  "snarkvm-utilities/default"
+]
 std = [ ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
