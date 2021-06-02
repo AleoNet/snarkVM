@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "random": "cpp",
+        "*.s": "c",
+        "functional": "c"
+    }
+}

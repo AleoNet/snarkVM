@@ -14,17 +14,73 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::traits::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::{FieldParameters, One, PrimeField, Zero};
+use snarkvm_curves::traits::AffineCurve;
+use snarkvm_fields::{FieldParameters, PrimeField, Zero};
+#[cfg(not(feature = "blstasm"))]
 use snarkvm_utilities::biginteger::BigInteger;
 
-#[cfg(feature = "parallel")]
+#[cfg(all(feature = "parallel", not(feature = "blstasm")))]
 use rayon::prelude::*;
+
+#[cfg(feature = "blstasm")]
+#[link(name = "blst377", kind = "static")]
+extern "C" {
+    pub fn msm_pippenger_6(
+        result: *mut u64,
+        bases_in: *const u8,
+        scalars_in: *const u8,
+        num_pairs: usize,
+        scalar_bits: usize,
+        c: usize,
+    );
+}
 
 pub struct VariableBaseMSM;
 
 impl VariableBaseMSM {
+    #[cfg(feature = "blstasm")]
     fn msm_inner<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
+        //println!("MSM_size,{}", scalars.len());
+        if scalars.len() < 4 {
+            let mut acc = G::Projective::zero();
+
+            for (base, scalar) in bases.iter().zip(scalars.iter()) {
+                acc += &base.mul(*scalar);
+            }
+            return acc;
+        }
+
+        let c = if scalars.len() < 32 {
+            3
+        } else {
+            (2.0 / 3.0 * (f64::from(scalars.len() as u32)).log2() + 2.0).ceil() as usize
+        };
+        let num_bits = <G::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize;
+
+        let mut sn_result = G::Projective::zero();
+
+        unsafe {
+            let bases_raw = &*(bases.as_ptr() as *const u8);
+            let scalars_raw = &*(scalars.as_ptr() as *const u8);
+            #[allow(trivial_casts)]
+            let sn_result_raw = std::slice::from_raw_parts_mut(&mut sn_result as *mut _ as *mut u64, 18);
+            msm_pippenger_6(
+                sn_result_raw.as_mut_ptr(),
+                bases_raw,
+                scalars_raw,
+                scalars.len(),
+                num_bits,
+                c,
+            );
+        }
+        sn_result
+    }
+
+    #[cfg(not(feature = "blstasm"))]
+    fn msm_inner<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
+        use snarkvm_fields::One;
+        use snarkvm_curves::traits::ProjectiveCurve;
+
         let c = if scalars.len() < 32 {
             3
         } else {
@@ -40,7 +96,7 @@ impl VariableBaseMSM {
         // Each window is of size `c`.
         // We divide up the bits 0..num_bits into windows of size `c`, and
         // in parallel process each such window.
-        let window_sums: Vec<_> = cfg_into_iter!(window_starts)
+        let window_sums: Vec<_> = window_starts.into_iter() // cfg_into_iter!(window_starts)
             .map(|w_start| {
                 let mut res = zero;
                 // We don't need the "zero" bucket, so we only have 2^c - 1 buckets

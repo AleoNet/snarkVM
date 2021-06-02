@@ -31,7 +31,7 @@ macro_rules! bigint_impl {
                 let mut carry = 0;
 
                 for (a, b) in self.0.iter_mut().zip(other.0.iter()) {
-                    *a = arithmetic::adc(*a, *b, &mut carry);
+                    *a = arithmetic::adc_u8(*a, *b, &mut carry);
                 }
 
                 carry != 0

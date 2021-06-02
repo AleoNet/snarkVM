@@ -404,7 +404,7 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
             g.z = tmp * &s;
             tmp = newtmp;
         }
-        #[cfg(not(feature = "parallel"))]
+        // #[cfg(not(feature = "parallel"))]
         {
             // Perform affine transformations
             for g in v.iter_mut().filter(|g| !g.is_normalized()) {
@@ -415,17 +415,17 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
             }
         }
 
-        #[cfg(feature = "parallel")]
-        {
-            use rayon::prelude::*;
-            // Perform affine transformations
-            v.par_iter_mut().filter(|g| !g.is_normalized()).for_each(|g| {
-                let z2 = g.z.square(); // 1/z
-                g.x *= &z2; // x/z^2
-                g.y *= &(z2 * &g.z); // y/z^3
-                g.z = P::BaseField::one(); // z = 1
-            });
-        }
+        // #[cfg(feature = "parallel")]
+        // {
+        //     use rayon::prelude::*;
+        //     // Perform affine transformations
+        //     v.par_iter_mut().filter(|g| !g.is_normalized()).for_each(|g| {
+        //         let z2 = g.z.square(); // 1/z
+        //         g.x *= &z2; // x/z^2
+        //         g.y *= &(z2 * &g.z); // y/z^3
+        //         g.z = P::BaseField::one(); // z = 1
+        //     });
+        // }
     }
 
     #[allow(clippy::many_single_char_names)]
