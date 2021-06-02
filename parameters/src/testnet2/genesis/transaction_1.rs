@@ -14,27 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![allow(clippy::module_inception)]
+use crate::traits::Genesis;
 
-#[macro_use]
-extern crate thiserror;
+pub struct Transaction1;
 
-#[macro_use]
-pub mod macros;
+impl Genesis for Transaction1 {
+    const CHECKSUM: &'static str = "";
+    const SIZE: u64 = 1538;
 
-pub mod errors;
-pub use errors::*;
+    fn load_bytes() -> Vec<u8> {
+        let buffer = include_bytes!("transaction_1.genesis");
+        buffer.to_vec()
+    }
+}
 
-pub mod global;
-pub use global::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-pub mod testnet1;
-
-pub mod testnet2;
-
-pub mod traits;
-pub use traits::*;
-
-pub mod prelude {
-    pub use crate::{errors::*, global::*, traits::*};
+    #[test]
+    fn test_transaction_1() {
+        let parameters = Transaction1::load_bytes();
+        assert_eq!(Transaction1::SIZE, parameters.len() as u64);
+    }
 }
