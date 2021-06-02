@@ -32,34 +32,42 @@ harness = false
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
 version = "0.5.0"
+default-features = false
 
 [dependencies.snarkvm-curves]
 path = "../curves"
 version = "0.5.0"
+default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
 version = "0.5.0"
+default-features = false
 
 [dependencies.snarkvm-gadgets]
 path = "../gadgets"
 version = "0.5.0"
+default-features = false
 
 [dependencies.snarkvm-polycommit]
 path = "../polycommit"
 version = "0.5.0"
+default-features = false
 
 [dependencies.snarkvm-profiler]
 path = "../profiler"
 version = "0.5.0"
+default-features = false
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
 version = "0.5.0"
+default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.5.0"
+default-features = false
 
 [dependencies.blake2]
 version = "0.9"
@@ -94,7 +102,17 @@ optional = true
 version = "0.3.4"
 
 [features]
-default = [ "std", "parallel" ]
-std = [ "snarkvm-polycommit/std" ]
+default = [
+  "std",
+  "parallel",
+  "snarkvm-algorithms/default",
+  "snarkvm-curves/default",
+  "snarkvm-fields/default",
+  "snarkvm-gadgets/default",
+  "snarkvm-polycommit/default",
+  "snarkvm-r1cs/default",
+  "snarkvm-utilities/default"
+]
+std = [ ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
 parallel = [ "std", "rayon" ]
