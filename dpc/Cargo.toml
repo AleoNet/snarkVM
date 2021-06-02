@@ -37,6 +37,11 @@ path = "../gadgets"
 version = "0.5.0"
 default-features = false
 
+[dependencies.snarkvm-marlin]
+path = "../marlin"
+version = "0.5.0"
+default-features = false
+
 [dependencies.snarkvm-parameters]
 path = "../parameters"
 version = "0.5.0"
@@ -112,6 +117,7 @@ default = [
   "snarkvm-curves/default",
   "snarkvm-fields/default",
   "snarkvm-gadgets/default",
+  "snarkvm-marlin/default",
   "snarkvm-parameters/default",
   "snarkvm-utilities/default"
 ]
