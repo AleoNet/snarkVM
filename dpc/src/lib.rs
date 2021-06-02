@@ -73,6 +73,9 @@ pub use block::*;
 #[cfg(feature = "testnet1")]
 pub mod testnet1;
 
+// #[cfg(feature = "testnet2")]
+pub mod testnet2;
+
 pub mod errors;
 pub use errors::*;
 
