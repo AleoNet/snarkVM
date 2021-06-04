@@ -40,6 +40,8 @@ use snarkvm_gadgets::{
     bits::Boolean,
     traits::algorithms::{CRHGadget, SNARKVerifierGadget},
 };
+use snarkvm_marlin::marlin::UniversalSRS;
+use snarkvm_polycommit::PolynomialCommitment;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     has_duplicates,
@@ -107,16 +109,27 @@ pub trait BaseDPCComponents: DPCComponents {
         VerifierInput = OuterCircuitVerifierInput<Self>,
     >;
 
-    // TODO (raychu86) remove these from BaseDPCComponents
+    // TODO (raychu86) Declare a proper marlin circuit w/ a UniversalSRS tuple.
     /// SNARK for the Noop "always-accept" that does nothing with its input.
     type NoopProgramSNARK: SNARK<
-        Circuit = NoopCircuit<Self>,
+        Circuit = (
+            NoopCircuit<Self>,
+            UniversalSRS<Self::InnerField, Self::PolynomialCommitment>,
+        ),
         AllocatedCircuit = NoopCircuit<Self>,
         VerifierInput = ProgramLocalData<Self>,
     >;
 
+    // TODO (raychu86): Look into properly declaring a proper input. i.e. Self::MarlinInputGadget.
     /// SNARK Verifier gadget for the "dummy program" that does nothing with its input.
-    type ProgramSNARKGadget: SNARKVerifierGadget<Self::NoopProgramSNARK, Self::OuterField, Input = Vec<Boolean>>;
+    type ProgramSNARKGadget: SNARKVerifierGadget<
+        Self::NoopProgramSNARK,
+        Self::OuterField,
+        // Input = NonNativeFieldVar,
+    >;
+
+    /// Polynomial commitment scheme for Program SNARKS using Marlin.
+    type PolynomialCommitment: PolynomialCommitment<Self::InnerField>;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -475,11 +488,20 @@ impl<Components: BaseDPCComponents> DPC<Components> {
         })
     }
 
+    // TODO (raychu86): Implement generation of universal srs.
+    pub fn generate_program_snark_universal_srs<R: Rng>(
+        rng: &mut R,
+    ) -> Result<ProgramSNARKUniversalSRS<Components>, DPCError> {
+        unimplemented!()
+    }
+
     pub fn generate_noop_program_snark_parameters<R: Rng>(
         system_parameters: &SystemParameters<Components>,
+        universal_srs: ProgramSNARKUniversalSRS<Components>,
         rng: &mut R,
     ) -> Result<NoopProgramSNARKParameters<Components>, DPCError> {
-        let (pk, pvk) = Components::NoopProgramSNARK::setup(&NoopCircuit::blank(system_parameters), rng)?;
+        let (pk, pvk) =
+            Components::NoopProgramSNARK::setup(&(NoopCircuit::blank(system_parameters), universal_srs.0), rng)?;
 
         Ok(NoopProgramSNARKParameters {
             proving_key: pk,
@@ -587,8 +609,11 @@ where
         let setup_time = start_timer!(|| "BaseDPC::setup");
         let system_parameters = Self::generate_system_parameters(rng)?;
 
+        let program_snark_universal_srs = Self::generate_program_snark_universal_srs(rng)?;
+
         let program_snark_setup_time = start_timer!(|| "Dummy program SNARK setup");
-        let noop_program_snark_parameters = Self::generate_noop_program_snark_parameters(&system_parameters, rng)?;
+        let noop_program_snark_parameters =
+            Self::generate_noop_program_snark_parameters(&system_parameters, program_snark_universal_srs, rng)?;
         let program_snark_proof = Components::NoopProgramSNARK::prove(
             &noop_program_snark_parameters.proving_key,
             &NoopCircuit::blank(&system_parameters),

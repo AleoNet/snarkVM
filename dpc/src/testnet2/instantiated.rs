@@ -183,6 +183,7 @@ impl BaseDPCComponents for Components {
     type MerkleParameters = CommitmentMerkleParameters;
     type NoopProgramSNARK = NoopProgramSNARK<Self>;
     type OuterSNARK = OuterSNARK;
+    type PolynomialCommitment = PC;
     type ProgramSNARKGadget = ProgramSNARKGadget;
 }
 
