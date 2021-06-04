@@ -36,11 +36,15 @@ use snarkvm_algorithms::{
     },
 };
 use snarkvm_curves::traits::{Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
+use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     bits::Boolean,
     traits::algorithms::{CRHGadget, SNARKVerifierGadget},
 };
-use snarkvm_marlin::marlin::UniversalSRS;
+use snarkvm_marlin::{
+    marlin::{MarlinMode, MarlinSNARK, UniversalSRS},
+    FiatShamirRng,
+};
 use snarkvm_polycommit::PolynomialCommitment;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
@@ -130,6 +134,12 @@ pub trait BaseDPCComponents: DPCComponents {
 
     /// Polynomial commitment scheme for Program SNARKS using Marlin.
     type PolynomialCommitment: PolynomialCommitment<Self::InnerField>;
+
+    /// Fiat Shamir RNG scheme used for Marlin SNARKS.
+    type FiatShamirRng: FiatShamirRng<Self::InnerField, Self::OuterField>;
+
+    /// Specify the Marlin mode (recursive or non-recursive) for program SNARKS.
+    type MarlinMode: MarlinMode;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -427,7 +437,13 @@ pub struct LocalData<Components: BaseDPCComponents> {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-impl<Components: BaseDPCComponents> DPC<Components> {
+impl<Components: BaseDPCComponents> DPC<Components>
+where
+    <Components::PolynomialCommitment as PolynomialCommitment<Components::InnerField>>::VerifierKey:
+        ToConstraintField<Components::OuterField>,
+    <Components::PolynomialCommitment as PolynomialCommitment<Components::InnerField>>::Commitment:
+        ToConstraintField<Components::OuterField>,
+{
     pub fn generate_system_parameters<R: Rng>(rng: &mut R) -> Result<SystemParameters<Components>, DPCError> {
         let time = start_timer!(|| "Account commitment scheme setup");
         let account_commitment = Components::AccountCommitment::setup(rng);
@@ -488,11 +504,26 @@ impl<Components: BaseDPCComponents> DPC<Components> {
         })
     }
 
-    // TODO (raychu86): Implement generation of universal srs.
     pub fn generate_program_snark_universal_srs<R: Rng>(
         rng: &mut R,
     ) -> Result<ProgramSNARKUniversalSRS<Components>, DPCError> {
-        unimplemented!()
+        // TODO (raychu86): Specify the `num_constraints`, `num_variables`, and `num_non_zero` variables.
+
+        let num_constraints = 100000;
+        let num_variables = 100000;
+        let num_non_zero = 100000;
+
+        // TODO (raychu86): Handle this unwrap.
+        let universalSRS = MarlinSNARK::<
+            Components::InnerField,
+            Components::OuterField,
+            Components::PolynomialCommitment,
+            Components::FiatShamirRng,
+            Components::MarlinMode,
+        >::universal_setup(num_constraints, num_variables, num_non_zero, rng)
+        .unwrap();
+
+        Ok(ProgramSNARKUniversalSRS(universalSRS))
     }
 
     pub fn generate_noop_program_snark_parameters<R: Rng>(
@@ -591,6 +622,10 @@ where
         SerialNumber = <Components::AccountSignature as SignatureScheme>::PublicKey,
         Transaction = Transaction<Components>,
     >,
+    <Components::PolynomialCommitment as PolynomialCommitment<Components::InnerField>>::VerifierKey:
+        ToConstraintField<Components::OuterField>,
+    <Components::PolynomialCommitment as PolynomialCommitment<Components::InnerField>>::Commitment:
+        ToConstraintField<Components::OuterField>,
 {
     type Account = Account<Components>;
     type LocalData = LocalData<Components>;

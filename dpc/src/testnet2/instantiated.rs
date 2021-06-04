@@ -177,8 +177,10 @@ impl DPCComponents for Components {
 impl BaseDPCComponents for Components {
     type EncryptionGroup = EdwardsBls;
     type EncryptionModelParameters = EdwardsParameters;
+    type FiatShamirRng = FS;
     type InnerSNARK = InnerSNARK;
     type InnerSNARKGadget = InnerSNARKGadget;
+    type MarlinMode = MM;
     type MerkleHashGadget = MerkleTreeCRHGadget;
     type MerkleParameters = CommitmentMerkleParameters;
     type NoopProgramSNARK = NoopProgramSNARK<Self>;
@@ -201,6 +203,8 @@ pub type FS = FiatShamirAlgebraicSpongeRng<InnerField, OuterField, PoseidonSpong
 pub type FSG =
     FiatShamirAlgebraicSpongeRngVar<InnerField, OuterField, PoseidonSponge<OuterField>, PoseidonSpongeVar<OuterField>>;
 
+pub type MM = MarlinTestnet2Mode;
+
 pub type AccountCommitment = PedersenCompressedCommitment<EdwardsBls, AccountWindow>;
 pub type AccountEncryption = GroupEncryption<EdwardsBls, EdwardsAffine, Blake2sHash>;
 pub type RecordCommitment = PedersenCompressedCommitment<EdwardsBls, RecordWindow>;
@@ -218,8 +222,7 @@ pub type ProgramVerificationKeyCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW,
 
 pub type InnerSNARK = Groth16<InnerPairing, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
 pub type OuterSNARK = Groth16<OuterPairing, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
-pub type NoopProgramSNARK<C> =
-    MarlinSNARK<InnerField, OuterField, PC, FS, MarlinTestnet2Mode, NoopCircuit<C>, ProgramLocalData<C>>;
+pub type NoopProgramSNARK<C> = MarlinSNARK<InnerField, OuterField, PC, FS, MM, NoopCircuit<C>, ProgramLocalData<C>>;
 
 pub type PRF = Blake2s;
 
