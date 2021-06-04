@@ -55,12 +55,14 @@ use snarkvm_gadgets::{
     curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBlsGadget, edwards_sw6::EdwardsSWGadget},
 };
 use snarkvm_marlin::{
-    constraints::snark::MarlinSNARK,
+    constraints::{snark::MarlinSNARK, verifier::MarlinVerificationGadget},
+    marlin::MarlinTestnet2Mode,
     FiatShamirAlgebraicSpongeRng,
     FiatShamirAlgebraicSpongeRngVar,
     PoseidonSponge,
     PoseidonSpongeVar,
 };
+use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
 
 use blake2::Blake2s as Blake2sHash;
 
@@ -191,6 +193,13 @@ pub type OuterPairing = BW6_761;
 pub type InnerField = Bls12_377Fr;
 pub type OuterField = Bls12_377Fq;
 
+pub type PC = MarlinKZG10<Bls12_377>;
+pub type PCGadget = MarlinKZG10Gadget<Bls12_377, BW6_761, PairingGadget>;
+
+pub type FS = FiatShamirAlgebraicSpongeRng<InnerField, OuterField, PoseidonSponge<OuterField>>;
+pub type FSG =
+    FiatShamirAlgebraicSpongeRngVar<InnerField, OuterField, PoseidonSponge<OuterField>, PoseidonSpongeVar<OuterField>>;
+
 pub type AccountCommitment = PedersenCompressedCommitment<EdwardsBls, AccountWindow>;
 pub type AccountEncryption = GroupEncryption<EdwardsBls, EdwardsAffine, Blake2sHash>;
 pub type RecordCommitment = PedersenCompressedCommitment<EdwardsBls, RecordWindow>;
@@ -208,8 +217,8 @@ pub type ProgramVerificationKeyCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW,
 
 pub type InnerSNARK = Groth16<InnerPairing, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
 pub type OuterSNARK = Groth16<OuterPairing, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
-// pub type NoopProgramSNARK<C> = MarlinSystem<InnerPairing, NoopCircuit<C>, ProgramLocalData<C>>;
-pub type NoopProgramSNARK<C> = MarlinSNARK<InnerField, OuterField, PC, FS, MarlinTestnet2Mode, NoopCircuit<C>>;
+pub type NoopProgramSNARK<C> =
+    MarlinSNARK<InnerField, OuterField, PC, FS, MarlinTestnet2Mode, NoopCircuit<C>, ProgramLocalData<C>>;
 
 pub type PRF = Blake2s;
 
@@ -239,14 +248,3 @@ pub type ProgramVerificationKeyCRHGadget =
 pub type PRFGadget = Blake2sGadget;
 pub type ProgramSNARKGadget = MarlinVerificationGadget<InnerField, OuterField, PC, PCGadget>;
 pub type InnerSNARKGadget = Groth16VerifierGadget<InnerPairing, OuterField, PairingGadget>;
-
-use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
-
-type PC = MarlinKZG10<Bls12_377>;
-type PCGadget = MarlinKZG10Gadget<Bls12_377, BW6_761, PairingGadget>;
-
-type FS = FiatShamirAlgebraicSpongeRng<InnerField, OuterField, PoseidonSponge<OuterField>>;
-type FSG =
-    FiatShamirAlgebraicSpongeRngVar<InnerField, OuterField, PoseidonSponge<OuterField>, PoseidonSpongeVar<OuterField>>;
-
-use snarkvm_marlin::{constraints::verifier::MarlinVerificationGadget, marlin::MarlinTestnet2Mode};
