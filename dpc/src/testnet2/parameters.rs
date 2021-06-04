@@ -16,6 +16,7 @@
 
 use crate::testnet2::BaseDPCComponents;
 use snarkvm_algorithms::traits::{EncryptionScheme, SNARK};
+use snarkvm_marlin::marlin::UniversalSRS;
 use snarkvm_parameters::{prelude::*, testnet2::*};
 use snarkvm_utilities::bytes::FromBytes;
 
@@ -79,6 +80,17 @@ impl<C: BaseDPCComponents> SystemParameters<C> {
             record_commitment,
             serial_number_nonce,
         })
+    }
+}
+
+#[derive(Derivative)]
+#[derivative(Clone(bound = "C: BaseDPCComponents"))]
+pub struct ProgramSNARKUniversalSRS<C: BaseDPCComponents>(pub UniversalSRS<C::InnerField, C::PolynomialCommitment>);
+
+// TODO (raychu86): Implement loading of the Program SNARK Universal SRS.
+impl<C: BaseDPCComponents> ProgramSNARKUniversalSRS<C> {
+    pub fn load() -> IoResult<Self> {
+        unimplemented!()
     }
 }
 
