@@ -1,31 +1,5 @@
 #include "blst_377_ops.h"
 
-/* BLS12-377 P - Modulus */
-const blst_fp BLS12_377_P = {
-  TO_LIMB_T(0x8508c00000000001), TO_LIMB_T(0x170b5d4430000000),
-  TO_LIMB_T(0x1ef3622fba094800), TO_LIMB_T(0x1a22d9f300f5138f),
-  TO_LIMB_T(0xc63b05c06ca1493b), TO_LIMB_T(0x1ae3a4617c510ea)
-};
-
-/* R = (1 << 384) % P */
-#define ONE_MONT_P TO_LIMB_T(0x02cdffffffffff68), \
-                 TO_LIMB_T(0x51409f837fffffb1), \
-                 TO_LIMB_T(0x9f7db3a98a7d3ff2), \
-                 TO_LIMB_T(0x7b4e97b76e7c6305), \
-                 TO_LIMB_T(0x4cf495bf803c84e8), \
-                 TO_LIMB_T(0x008d6661e2fdf49a)
-
-const blst_fp BLS12_377_ONE = { /* (1<<384)%P, "radix", one-in-Montgomery */
-  ONE_MONT_P
-  //TO_LIMB_T(0x02cdffffffffff68), TO_LIMB_T(0x51409f837fffffb1),
-  //TO_LIMB_T(0x9f7db3a98a7d3ff2), TO_LIMB_T(0x7b4e97b76e7c6305),
-  //TO_LIMB_T(0x4cf495bf803c84e8), TO_LIMB_T(0x008d6661e2fdf49a)
-};
-
-/* MU = -1 / P  (INV) (p0) */
-/* (-modinv(P, 2^64)) % 2^64 */
-const limb_t BLS12_377_p0 = (limb_t)0x8508bfffffffffff;  /* -1/P */
-
 /* G1 Generator in Montgomery form */
 const blst_p1 BLS12_377_G1_MONT = {
   { TO_LIMB_T(0x260f33b9772451f4), TO_LIMB_T(0xc54dd773169d5658),
@@ -56,7 +30,7 @@ const blst_scalar BLS12_377_rRR = {
   TO_LIMB_T(0xa7cc008fe5dc8593), TO_LIMB_T(0x11fdae7eff1c939)
 };
 
-static inline void vec_select(void *ret, const void *a, const void *b,
+__device__ static inline void vec_select(void *ret, const void *a, const void *b,
                             size_t num, bool sel_a)
 {
   limb_t bi, *rp = (limb_t *)ret;
@@ -73,10 +47,10 @@ static inline void vec_select(void *ret, const void *a, const void *b,
   }
 }
 
-static inline bool is_zero(limb_t l)
+__device__ static inline bool is_zero(limb_t l)
 {   return (~l & (l - 1)) >> (LIMB_T_BITS - 1);   }
 
-static inline bool vec_is_zero(const void *a, size_t num)
+__device__ static inline bool vec_is_zero(const void *a, size_t num)
 {
   const limb_t *ap = (const limb_t *)a;
   limb_t acc;
@@ -90,7 +64,7 @@ static inline bool vec_is_zero(const void *a, size_t num)
   return is_zero(acc);
 }
 
-static inline void vec_copy(void *restrict ret, const void *a, size_t num)
+__device__ static inline void vec_copy(void *restrict ret, const void *a, size_t num)
 {
   limb_t *rp = (limb_t *)ret;
   const limb_t *ap = (const limb_t *)a;
@@ -102,7 +76,7 @@ static inline void vec_copy(void *restrict ret, const void *a, size_t num)
     rp[i] = ap[i];
 }
 
-static inline void vec_zero(void *ret, size_t num)
+__device__ static inline void vec_zero(void *ret, size_t num)
 {
     volatile limb_t *rp = (volatile limb_t *)ret;
     size_t i;
@@ -117,7 +91,7 @@ static inline void vec_zero(void *ret, size_t num)
 #endif
 }
 
-static inline bool vec_is_equal(const void *a, const void *b, size_t num)
+__device__ static inline bool vec_is_equal(const void *a, const void *b, size_t num)
 {
   const limb_t *ap = (const limb_t *)a;
   const limb_t *bp = (const limb_t *)b;
@@ -132,7 +106,7 @@ static inline bool vec_is_equal(const void *a, const void *b, size_t num)
   return is_zero(acc);
 }
 
-static inline bool is_bit_set(const uint8_t *v, size_t i)
+__device__ static inline bool is_bit_set(const uint8_t *v, size_t i)
 {   return (v[i/8] >> (i%8)) & 1;   }
 
 /*
@@ -162,7 +136,7 @@ static inline bool is_bit_set(const uint8_t *v, size_t i)
  * As for R!=0 condition in context of H==0, a.k.a. P-P. The result is
  * infinity by virtue of Z3 = (U2-U1)*zz = H*zz = 0*zz == 0.
  */
-void blst_p1_add_or_double_affine(blst_p1 *out, const blst_p1 *p1,
+__device__ void blst_p1_add_or_double_affine(blst_p1 *out, const blst_p1 *p1,
                                                 const blst_p1_affine *p2) {
   blst_p1 p3; /* starts as (,, H*Z1) from addition side */
   struct { blst_fp H, R, sx; } add, dbl; 
@@ -254,7 +228,7 @@ void blst_p1_add_or_double_affine(blst_p1 *out, const blst_p1 *p1,
  * As for R!=0 condition in context of H==0, a.k.a. P-P. The result is
  * infinity by virtue of Z3 = (U2-U1)*zz = H*zz = 0*zz == 0.
  */
-void blst_p1_add_or_double(blst_p1 *out, const blst_p1 *p1,
+__device__ void blst_p1_add_or_double(blst_p1 *out, const blst_p1 *p1,
                                          const blst_p1 *p2) {
   blst_p1 p3; /* starts as (U1, S1, zz) from addition side */
   struct { blst_fp H, R, sx; } add, dbl; 
@@ -321,7 +295,7 @@ void blst_p1_add_or_double(blst_p1 *out, const blst_p1 *p1,
 /*
  * https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-2009-l
  */
-void blst_p1_double(blst_p1 *out, const blst_p1 *p1) { 
+__device__ void blst_p1_double(blst_p1 *out, const blst_p1 *p1) { 
   blst_fp A, B, C;
 
   blst_fp_sqr(A, p1->X);              /* A = X1^2 */
@@ -349,14 +323,14 @@ void blst_p1_double(blst_p1 *out, const blst_p1 *p1) {
   blst_fp_sub(out->Y, out->Y, C);     /* Y3 = E*(D-X3)-8*C */
 }
 
-bool blst_p1_is_inf(const blst_p1 *p)
+__device__ bool blst_p1_is_inf(const blst_p1 *p)
 {   return vec_is_zero(p->Z, sizeof(p->Z));   }
 
 
 /*
  * http://www.hyperelliptic.org/EFD/g1p/auto-shortw-xyzz.html#doubling-mdbl-2008-s-1
  */
-void blst_p1_ext_double_affine(blst_p1_ext *out, const blst_p1_affine *p1) {
+__device__ void blst_p1_ext_double_affine(blst_p1_ext *out, const blst_p1_affine *p1) {
   blst_fp U, S, M;
   
   blst_fp_add(U, p1->Y, p1->Y);        /* U = 2 * Y1 */
@@ -377,7 +351,7 @@ void blst_p1_ext_double_affine(blst_p1_ext *out, const blst_p1_affine *p1) {
 /*
  * http://www.hyperelliptic.org/EFD/g1p/auto-shortw-xyzz.html#addition-madd-2008-s
  */
-void blst_p1_ext_add_or_double_affine(blst_p1_ext *out, const blst_p1_ext *p1,
+__device__ void blst_p1_ext_add_or_double_affine(blst_p1_ext *out, const blst_p1_ext *p1,
                                       const blst_p1_affine *p2)
 {
 
@@ -429,7 +403,7 @@ void blst_p1_ext_add_or_double_affine(blst_p1_ext *out, const blst_p1_ext *p1,
  *  Extended Jacobian (X, Y, ZZ, ZZZ) : x = X / ZZ, y = Y / ZZZ, ZZ^3 = ZZZ^2 
  *  Do not check for infinity (used in cases where check is already done)
  */
-void blst_p1_from_extended_no_check(blst_p1 *out, const blst_p1_ext *in)
+__device__ void blst_p1_from_extended_no_check(blst_p1 *out, const blst_p1_ext *in)
 {
   blst_fp_mul(out->X, in->X, in->ZZ);     /* X * ZZ */
   blst_fp_mul(out->X, out->X, in->ZZ);    /* X * ZZ * ZZ */
@@ -438,5 +412,5 @@ void blst_p1_from_extended_no_check(blst_p1 *out, const blst_p1_ext *in)
   vec_copy(out->Z, in->ZZZ, sizeof(out->Z));
 }
 
-bool blst_p1_ext_is_inf(const blst_p1_ext *p)
+__device__ bool blst_p1_ext_is_inf(const blst_p1_ext *p)
 {   return vec_is_zero(p->ZZ, sizeof(p->ZZ));   }

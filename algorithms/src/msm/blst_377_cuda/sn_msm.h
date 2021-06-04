@@ -5,7 +5,6 @@
 #ifndef __SUPRANATIONAL_MSM_H__
 #define __SUPRANATIONAL_MSM_H__
 
-#include <vector>
 #include "blst_377_ops.h"
 
 // Pippenger bucketing

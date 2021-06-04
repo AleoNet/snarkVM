@@ -19,12 +19,6 @@ typedef _Bool bool; /* it's assumed that cgo calls modern enough compiler */
 # define bool int
 #endif
 
-#ifdef __UINTPTR_TYPE__
-typedef __UINTPTR_TYPE__ uptr_t;
-#else
-typedef const void *uptr_t;
-#endif
-
 #if defined(__x86_64__) || defined(__aarch64__)
 /* These are available even in ILP32 flavours, but even then they are
  * capable of performing 64-bit operations as efficiently as in *P64. */
@@ -75,13 +69,6 @@ typedef unsigned long limb_t;
 #  endif
 # endif
 #endif
-
-
-typedef unsigned char byte;
-#define TO_BYTES(limb64)    (byte)limb64,(byte)(limb64>>8),\
-                            (byte)(limb64>>16),(byte)(limb64>>24),\
-                            (byte)(limb64>>32),(byte)(limb64>>40),\
-                            (byte)(limb64>>48),(byte)(limb64>>56)
 
 typedef limb_t blst_scalar[NLIMBS(256)];
 typedef limb_t blst_fr[NLIMBS(256)];
