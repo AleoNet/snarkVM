@@ -79,6 +79,7 @@ pub struct MarlinSNARK<
     FS: FiatShamirRng<F, FSF>,
     MC: MarlinMode,
     C: ConstraintSynthesizer<F>,
+    V: ToConstraintField<F>,
 > {
     f_phantom: PhantomData<F>,
     fsf_phantom: PhantomData<FSF>,
@@ -86,9 +87,10 @@ pub struct MarlinSNARK<
     fs_phantom: PhantomData<FS>,
     mc_phantom: PhantomData<MC>,
     c_phantom: PhantomData<C>,
+    v_phantom: PhantomData<V>,
 }
 
-impl<TargetField, BaseField, PC, FS, MM, C> MarlinSNARK<TargetField, BaseField, PC, FS, MM, C>
+impl<TargetField, BaseField, PC, FS, MM, C, V> MarlinSNARK<TargetField, BaseField, PC, FS, MM, C, V>
 where
     TargetField: PrimeField,
     BaseField: PrimeField,
@@ -98,6 +100,7 @@ where
     PC::VerifierKey: ToConstraintField<BaseField>,
     PC::Commitment: ToConstraintField<BaseField>,
     C: ConstraintSynthesizer<TargetField>,
+    V: ToConstraintField<TargetField>,
 {
     /// Generates the universal proving and verifying keys for the argument system.
     pub fn universal_setup<R: Rng>(
@@ -157,7 +160,7 @@ where
     }
 }
 
-impl<TargetField, BaseField, PC, FS, MM, C> SNARK for MarlinSNARK<TargetField, BaseField, PC, FS, MM, C>
+impl<TargetField, BaseField, PC, FS, MM, C, V> SNARK for MarlinSNARK<TargetField, BaseField, PC, FS, MM, C, V>
 where
     TargetField: PrimeField,
     BaseField: PrimeField,
@@ -167,13 +170,14 @@ where
     PC::VerifierKey: ToConstraintField<BaseField>,
     PC::Commitment: ToConstraintField<BaseField>,
     C: ConstraintSynthesizer<TargetField>,
+    V: ToConstraintField<TargetField>,
 {
     type AllocatedCircuit = C;
     type Circuit = (C, UniversalSRS<TargetField, PC>);
     type PreparedVerifyingKey = PreparedCircuitVerifyingKey<TargetField, PC>;
     type Proof = Proof<TargetField, PC>;
     type ProvingKey = CircuitProvingKey<TargetField, PC>;
-    type VerifierInput = [TargetField];
+    type VerifierInput = V;
     type VerifyingKey = CircuitVerifyingKey<TargetField, PC>;
 
     fn setup<R: RngCore>(
@@ -202,7 +206,11 @@ where
         input: &Self::VerifierInput,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
-        match MarlinCore::<TargetField, BaseField, PC, FS, MM>::prepared_verify(verifying_key, input, proof) {
+        match MarlinCore::<TargetField, BaseField, PC, FS, MM>::prepared_verify(
+            verifying_key,
+            &input.to_field_elements()?,
+            proof,
+        ) {
             Ok(res) => Ok(res),
             Err(e) => Err(SNARKError::from(e)),
         }
@@ -229,8 +237,8 @@ where
     fsg_phantom: PhantomData<FSG>,
 }
 
-impl<TargetField, BaseField, PC, FS, MM, PCG, FSG, C>
-    SNARKGadget<TargetField, BaseField, MarlinSNARK<TargetField, BaseField, PC, FS, MM, C>>
+impl<TargetField, BaseField, PC, FS, MM, PCG, FSG, C, V>
+    SNARKGadget<TargetField, BaseField, MarlinSNARK<TargetField, BaseField, PC, FS, MM, C, V>>
     for MarlinSNARKGadget<TargetField, BaseField, PC, FS, MM, PCG, FSG>
 where
     TargetField: PrimeField,
@@ -245,6 +253,7 @@ where
     PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
     PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
     C: ConstraintSynthesizer<TargetField>,
+    V: ToConstraintField<TargetField>,
 {
     type InputVar = NonNativeFieldInputVar<TargetField, BaseField>;
     type PreparedVerifyingKeyVar = PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, FS, FSG>;
@@ -253,7 +262,7 @@ where
     type VerifyingKeyVar = CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>;
 
     fn verifier_size(
-        circuit_vk: &<MarlinSNARK<TargetField, BaseField, PC, FS, MM, C> as SNARK>::VerifyingKey,
+        circuit_vk: &<MarlinSNARK<TargetField, BaseField, PC, FS, MM, C, V> as SNARK>::VerifyingKey,
     ) -> Self::VerifierSize {
         circuit_vk.circuit_info.num_variables
     }
@@ -428,7 +437,7 @@ pub mod test {
     type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
     type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
 
-    type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Circuit<Fr>>;
+    type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Circuit<Fr>, Vec<Fr>>;
     type TestSNARKGadget = MarlinSNARKGadget<Fr, Fq, PC, FS, MarlinRecursiveMode, PCGadget, FSG>;
 
     #[test]
@@ -459,7 +468,7 @@ pub mod test {
             let proof = TestSNARK::prove(&pk, &circ, &mut rng).unwrap();
 
             assert!(
-                TestSNARK::verify(&vk.clone().into(), &[c], &proof).unwrap(),
+                TestSNARK::verify(&vk.clone().into(), &[c].to_vec(), &proof).unwrap(),
                 "The native verification check fails."
             );
 
@@ -543,7 +552,7 @@ pub mod test {
         let proof = TestSNARK::prove(&pk, &circ, &mut rng).unwrap();
 
         assert!(
-            TestSNARK::verify(&vk.clone().into(), &[c], &proof).unwrap(),
+            TestSNARK::verify(&vk.clone().into(), &[c].to_vec(), &proof).unwrap(),
             "The native verification check fails."
         );
 

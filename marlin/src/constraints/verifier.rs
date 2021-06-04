@@ -68,8 +68,8 @@ pub type FSA<InnerField, OuterField> = FiatShamirAlgebraicSpongeRng<InnerField, 
 pub type FSG<InnerField, OuterField> =
     FiatShamirAlgebraicSpongeRngVar<InnerField, OuterField, PoseidonSponge<OuterField>, PoseidonSpongeVar<OuterField>>;
 
-impl<TargetField, BaseField, PC, PCG, FS, MM, C>
-    SNARKVerifierGadget<MarlinSNARK<TargetField, BaseField, PC, FS, MM, C>, BaseField>
+impl<TargetField, BaseField, PC, PCG, FS, MM, C, V>
+    SNARKVerifierGadget<MarlinSNARK<TargetField, BaseField, PC, FS, MM, C, V>, BaseField>
     for MarlinVerificationGadget<TargetField, BaseField, PC, PCG>
 where
     TargetField: PrimeField,
@@ -83,6 +83,7 @@ where
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
     C: ConstraintSynthesizer<TargetField>,
+    V: ToConstraintField<TargetField>,
 {
     type Input = NonNativeFieldVar<TargetField, BaseField>;
     type ProofGadget = ProofVar<TargetField, BaseField, PC, PCG>;
