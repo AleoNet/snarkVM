@@ -119,7 +119,6 @@ wasm = [
   "full",
   "snarkvm-algorithms/wasm",
   "snarkvm-gadgets/full",
-  "snarkvm-parameters/remote"
 ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
 full = [ "testnet1" ]
