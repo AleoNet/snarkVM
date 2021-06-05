@@ -59,8 +59,6 @@ pub struct MarlinVerificationGadget<
     PhantomData<PCG>,
 );
 
-// TODO (raychu86): Implement SNARKVerifierGadget for MarlinVerificationGadget
-
 /// Fiat Shamir Algebraic Sponge RNG type
 pub type FSA<InnerField, OuterField> = FiatShamirAlgebraicSpongeRng<InnerField, OuterField, PoseidonSponge<OuterField>>;
 

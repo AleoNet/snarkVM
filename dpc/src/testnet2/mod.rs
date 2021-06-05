@@ -39,6 +39,7 @@ use snarkvm_curves::traits::{Group, MontgomeryModelParameters, ProjectiveCurve, 
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     bits::Boolean,
+    nonnative::NonNativeFieldVar,
     traits::algorithms::{CRHGadget, SNARKVerifierGadget},
 };
 use snarkvm_marlin::{
@@ -129,7 +130,7 @@ pub trait BaseDPCComponents: DPCComponents {
     type ProgramSNARKGadget: SNARKVerifierGadget<
         Self::NoopProgramSNARK,
         Self::OuterField,
-        // Input = NonNativeFieldVar,
+        Input = NonNativeFieldVar<Self::InnerField, Self::OuterField>,
     >;
 
     /// Polynomial commitment scheme for Program SNARKS using Marlin.
