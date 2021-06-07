@@ -143,7 +143,7 @@ macro_rules! impl_params_remote {
 
             #[cfg(not(any(test, feature = "remote")))]
             pub fn load_remote() -> Result<Vec<u8>, crate::errors::ParameterError> {
-                Err(ParameterError::RemoteFetchDisabled)
+                Err(crate::errors::ParameterError::RemoteFetchDisabled)
             }
 
             fn versioned_filename() -> String {
