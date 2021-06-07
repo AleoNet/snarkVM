@@ -1192,11 +1192,15 @@ impl<F: PrimeField> CondSelectGadget<F> for FpGadget<F> {
                     }
                     (..) => {
                         let first = match first {
-                            Self::Constant(f) => AllocatedFp::alloc(cs.ns(|| "alloc_constant_first"), || Ok(f))?,
+                            Self::Constant(f) => {
+                                AllocatedFp::alloc_constant(cs.ns(|| "alloc_constant_first"), || Ok(f))?
+                            }
                             Self::Variable(v) => v.clone(),
                         };
                         let second = match second {
-                            Self::Constant(f) => AllocatedFp::alloc(cs.ns(|| "alloc_constant_second"), || Ok(f))?,
+                            Self::Constant(f) => {
+                                AllocatedFp::alloc_constant(cs.ns(|| "alloc_constant_second"), || Ok(f))?
+                            }
                             Self::Variable(v) => v.clone(),
                         };
                         AllocatedFp::conditionally_select(cs.ns(|| "conditionally_select"), &cond, &first, &second)
