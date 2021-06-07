@@ -24,6 +24,7 @@ use crate::{
     bits::{Boolean, ToBitsLEGadget},
     fields::FpGadget,
     traits::alloc::AllocGadget,
+    FromFieldElementsGadget,
 };
 
 /// Conversion of field elements by converting them to boolean sequences
@@ -186,6 +187,66 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
             })
             .collect::<Vec<Vec<Boolean>>>();
 
+        Ok(Self {
+            val: res,
+            _snark_field: PhantomData,
+            _constraint_field: PhantomData,
+        })
+    }
+}
+
+impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanInputGadget<F, CF> {
+    fn from_field_elements<CS: ConstraintSystem<CF>>(
+        mut cs: CS,
+        field_elements: &Vec<FpGadget<CF>>,
+    ) -> Result<Self, SynthesisError> {
+        // Step 1: obtain the booleans of the CF field variables
+        let mut src_booleans = Vec::<Boolean>::new();
+        for (i, elem) in field_elements.iter().enumerate() {
+            let mut bits = elem.to_bits_le(cs.ns(|| format!("to_bits_le_{}", i)))?;
+            bits.reverse();
+            src_booleans.extend_from_slice(&bits);
+        }
+
+        // Step 2: repack the bits as F field elements
+        // Deciding how many bits can be embedded.
+        let capacity = if CF::size_in_bits() == F::size_in_bits() {
+            let fq = <<CF as PrimeField>::Parameters as FieldParameters>::MODULUS;
+            let fr = <<F as PrimeField>::Parameters as FieldParameters>::MODULUS;
+
+            let fq_u64: &[u64] = fq.as_ref();
+            let fr_u64: &[u64] = fr.as_ref();
+
+            let mut fr_not_smaller_than_fq = true;
+            for (left, right) in fr_u64.iter().zip(fq_u64.iter()).rev() {
+                if left < right {
+                    fr_not_smaller_than_fq = false;
+                    break;
+                }
+
+                if left > right {
+                    break;
+                }
+            }
+
+            if fr_not_smaller_than_fq {
+                F::size_in_bits()
+            } else {
+                F::size_in_bits() - 1
+            }
+        } else {
+            F::size_in_bits() - 1
+        };
+
+        // Step 3: group them based on the used capacity of F
+        let res = src_booleans
+            .chunks(capacity)
+            .map(|x| {
+                let mut res = x.to_vec();
+                res.reverse();
+                res
+            })
+            .collect::<Vec<Vec<Boolean>>>();
         Ok(Self {
             val: res,
             _snark_field: PhantomData,
