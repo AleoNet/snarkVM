@@ -14,20 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::borrow::Borrow;
+use std::{borrow::Borrow, marker::PhantomData, ops::Neg};
 
 use crate::{
     bits::boolean_input::BooleanInputGadget,
     fields::FpGadget,
     traits::{alloc::AllocGadget, eq::EqGadget, fields::FieldGadget},
+    Boolean,
+    FromFieldElementsGadget,
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+use snarkvm_r1cs::{ConstraintSystem, LinearCombination, SynthesisError};
 
-use crate::nonnative::{
-    params::{get_params, OptimizationType},
-    AllocatedNonNativeFieldVar,
-    NonNativeFieldVar,
+use crate::{
+    fields::AllocatedFp,
+    nonnative::{
+        params::{get_params, OptimizationType},
+        AllocatedNonNativeFieldVar,
+        NonNativeFieldVar,
+    },
 };
 
 /// Conversion of field elements by allocating them as nonnative field elements
@@ -184,5 +189,82 @@ where
         Ok(Self {
             val: wrapped_field_allocation,
         })
+    }
+}
+
+impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for NonNativeFieldInputVar<F, CF> {
+    fn from_field_elements<CS: ConstraintSystem<CF>>(
+        mut cs: CS,
+        field_elements: &Vec<FpGadget<CF>>,
+    ) -> Result<Self, SynthesisError> {
+        // TODO (raychu86): Use constraint system specified optimization goal.
+
+        // let optimization_type = match cs.optimization_goal() {
+        //     OptimizationGoal::None => OptimizationType::Constraints,
+        //     OptimizationGoal::Constraints => OptimizationType::Constraints,
+        //     OptimizationGoal::Weight => OptimizationType::Weight,
+        // };
+
+        let optimization_type = OptimizationType::Weight;
+
+        let params = get_params(F::size_in_bits(), CF::size_in_bits(), optimization_type);
+
+        // Step 1: use BooleanInputVar to convert them into booleans
+        let boolean_allocation =
+            BooleanInputGadget::<F, CF>::from_field_elements(cs.ns(|| "from_field_elements"), field_elements)?;
+
+        // Step 2: construct the nonnative field gadgets from bits
+        let mut field_allocation = Vec::<NonNativeFieldVar<F, CF>>::new();
+
+        // reconstruct the field elements and check consistency
+        for field_bits in boolean_allocation.val.iter() {
+            let mut field_bits = field_bits.clone();
+            field_bits.resize(F::size_in_bits(), Boolean::Constant(false));
+            field_bits.reverse();
+
+            let mut limbs = Vec::<FpGadget<CF>>::new();
+
+            let bit_per_top_limb = F::size_in_bits() - (params.num_limbs - 1) * params.bits_per_limb;
+            let bit_per_non_top_limb = params.bits_per_limb;
+
+            // must use lc to save computation
+            for j in 0..params.num_limbs {
+                let bits_slice = if j == 0 {
+                    field_bits[0..bit_per_top_limb].to_vec()
+                } else {
+                    field_bits
+                        [bit_per_top_limb + (j - 1) * bit_per_non_top_limb..bit_per_top_limb + j * bit_per_non_top_limb]
+                        .to_vec()
+                };
+
+                let mut lc = LinearCombination::<CF>::zero();
+                let mut cur = CF::one();
+
+                let mut limb_value = CF::zero();
+                for bit in bits_slice.iter().rev() {
+                    lc = &lc + bit.lc(CS::one(), CF::one()) * cur;
+                    if bit.get_value().unwrap_or_default() {
+                        limb_value += &cur;
+                    }
+                    cur.double_in_place();
+                }
+
+                let limb = AllocatedFp::<CF>::alloc(cs.ns(|| format!("limb_{}", j)), || Ok(limb_value))?;
+                lc = &limb.variable.clone().neg() + lc;
+
+                cs.enforce(|| format!("enforce_constraint_{}", j), |lc| lc, |lc| lc, |_| lc);
+
+                limbs.push(FpGadget::from(limb));
+            }
+
+            field_allocation.push(NonNativeFieldVar::<F, CF>::Var(AllocatedNonNativeFieldVar::<F, CF> {
+                limbs,
+                num_of_additions_over_normal_form: CF::zero(),
+                is_in_the_normal_form: true,
+                target_phantom: PhantomData,
+            }))
+        }
+
+        Ok(Self { val: field_allocation })
     }
 }
