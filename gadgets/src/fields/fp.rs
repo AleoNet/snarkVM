@@ -83,12 +83,12 @@ impl<F: PrimeField> From<AllocatedFp<F>> for FpGadget<F> {
 }
 
 impl<F: PrimeField> AllocatedFp<F> {
-    /// Constructs `Self` from a `Boolean`: if `other` is false, this outputs
+    /// Constructs `Self` from a `Boolean`: if `cond` is false, this outputs
     /// `zero`, else it outputs `one`.
-    pub fn from_boolean<CS: ConstraintSystem<F>>(cs: CS, other: Boolean) -> Result<Self, SynthesisError> {
-        let value = F::from(other.get_value().get()? as u128);
-
-        Self::alloc(cs, || Ok(value))
+    pub fn from_boolean<CS: ConstraintSystem<F>>(mut cs: CS, cond: Boolean) -> Result<Self, SynthesisError> {
+        Ok(Self::alloc(cs.ns(|| ""), || {
+            cond.get_value().and_then(|value| Some(F::from(value as u128))).get()
+        })?)
     }
 
     #[inline]
