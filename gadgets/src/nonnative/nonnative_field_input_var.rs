@@ -130,7 +130,7 @@ where
 
         let obj = value_gen()?;
 
-        // Step 1: use BooleanInputVar to allocate the values as bits
+        // Step 1: use BooleanInputGadget to allocate the values as bits
         // This is to make sure that we are using as few elements as possible
         let boolean_allocation = BooleanInputGadget::alloc_input(cs.ns(|| "boolean"), || Ok(obj.borrow()))?;
 
@@ -209,7 +209,7 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for NonNative
 
         let params = get_params(F::size_in_bits(), CF::size_in_bits(), optimization_type);
 
-        // Step 1: use BooleanInputVar to convert them into booleans
+        // Step 1: use BooleanInputGadget to convert them into booleans
         let boolean_allocation =
             BooleanInputGadget::<F, CF>::from_field_elements(cs.ns(|| "from_field_elements"), field_elements)?;
 
@@ -266,5 +266,61 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for NonNative
         }
 
         Ok(Self { val: field_allocation })
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use snarkvm_r1cs::{Fr, TestConstraintSystem};
+    use snarkvm_utilities::rand::{test_rng, UniformRand};
+
+    use super::*;
+    use crate::traits::eq::EqGadget;
+
+    #[test]
+    fn test_nonnative_field_inputs_from_field_elements() {
+        let rng = &mut test_rng();
+
+        let mut cs = TestConstraintSystem::<Fr>::new();
+
+        let mut field_elements = vec![];
+        let mut field_element_gadgets = vec![];
+
+        // Construct the field elements and field element gadgets
+        for i in 0..1 {
+            let field_element = Fr::rand(rng);
+            let field_element_gadget =
+                FpGadget::alloc(cs.ns(|| format!("field element_{}", i)), || Ok(field_element.clone())).unwrap();
+
+            field_elements.push(field_element);
+            field_element_gadgets.push(field_element_gadget);
+        }
+
+        // Construct expected field element bits
+
+        let expected_nonnative_field_element_gadgets =
+            NonNativeFieldInputVar::<Fr, Fr>::alloc(cs.ns(|| "alloc_nonnative_field_elements"), || Ok(field_elements))
+                .unwrap();
+
+        // Construct gadget nonnative field elements
+        let nonnative_field_element_gadgets = NonNativeFieldInputVar::<Fr, Fr>::from_field_elements(
+            cs.ns(|| "from_field_elements"),
+            &field_element_gadgets,
+        )
+        .unwrap();
+
+        for (i, (expected_nonnative_fe, nonnative_fe)) in expected_nonnative_field_element_gadgets
+            .val
+            .iter()
+            .zip(nonnative_field_element_gadgets.val.iter())
+            .enumerate()
+        {
+            expected_nonnative_fe
+                .enforce_equal(cs.ns(|| format!("enforce_equal_nonnative_fe_{}", i)), nonnative_fe)
+                .unwrap();
+        }
+
+        assert!(cs.is_satisfied());
     }
 }
