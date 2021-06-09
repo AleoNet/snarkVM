@@ -83,12 +83,12 @@ impl<F: PrimeField> From<AllocatedFp<F>> for FpGadget<F> {
 }
 
 impl<F: PrimeField> AllocatedFp<F> {
-    /// Constructs `Self` from a `Boolean`: if `other` is false, this outputs
+    /// Constructs `Self` from a `Boolean`: if `cond` is false, this outputs
     /// `zero`, else it outputs `one`.
-    pub fn from_boolean<CS: ConstraintSystem<F>>(cs: CS, other: Boolean) -> Result<Self, SynthesisError> {
-        let value = F::from(other.get_value().get()? as u128);
-
-        Self::alloc(cs, || Ok(value))
+    pub fn from_boolean<CS: ConstraintSystem<F>>(mut cs: CS, cond: Boolean) -> Result<Self, SynthesisError> {
+        Ok(Self::alloc(cs.ns(|| ""), || {
+            cond.get_value().and_then(|value| Some(F::from(value as u128))).get()
+        })?)
     }
 
     #[inline]
@@ -1192,11 +1192,15 @@ impl<F: PrimeField> CondSelectGadget<F> for FpGadget<F> {
                     }
                     (..) => {
                         let first = match first {
-                            Self::Constant(f) => AllocatedFp::alloc(cs.ns(|| "alloc_constant_first"), || Ok(f))?,
+                            Self::Constant(f) => {
+                                AllocatedFp::alloc_constant(cs.ns(|| "alloc_constant_first"), || Ok(f))?
+                            }
                             Self::Variable(v) => v.clone(),
                         };
                         let second = match second {
-                            Self::Constant(f) => AllocatedFp::alloc(cs.ns(|| "alloc_constant_second"), || Ok(f))?,
+                            Self::Constant(f) => {
+                                AllocatedFp::alloc_constant(cs.ns(|| "alloc_constant_second"), || Ok(f))?
+                            }
                             Self::Variable(v) => v.clone(),
                         };
                         AllocatedFp::conditionally_select(cs.ns(|| "conditionally_select"), &cond, &first, &second)

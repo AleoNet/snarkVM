@@ -21,14 +21,11 @@ use crate::{
     errors::CRHError,
     traits::{CRHParameters, CRH},
 };
+use bitvec::{order::Lsb0, view::BitView};
 use snarkvm_curves::Group;
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
-use snarkvm_utilities::bytes_to_bits;
 
 use rand::Rng;
-
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PedersenCRH<G: Group, S: PedersenSize> {
@@ -75,8 +72,9 @@ impl<G: Group, S: PedersenSize> CRH for PedersenCRH<G, S> {
         }
 
         // Compute sum of h_i^{m_i} for all i.
-        let bits = bytes_to_bits(input).collect::<Vec<_>>();
-        let mapping = cfg_chunks!(bits, S::WINDOW_SIZE)
+        let bits = input.view_bits::<Lsb0>();
+        let result = bits
+            .chunks(S::WINDOW_SIZE)
             .zip(&self.parameters.bases)
             .map(|(bits, powers)| {
                 let mut encoded = G::zero();
@@ -86,8 +84,8 @@ impl<G: Group, S: PedersenSize> CRH for PedersenCRH<G, S> {
                     }
                 }
                 encoded
-            });
-        let result = cfg_reduce!(mapping, G::zero, |a, b| a + &b);
+            })
+            .fold(G::zero(), |a, b| a + &b);
 
         Ok(result)
     }

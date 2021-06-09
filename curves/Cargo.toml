@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-curves"
-version = "0.5.0"
+version = "0.5.4"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Curves for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -24,12 +24,12 @@ harness = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.5.0"
+version = "0.5.4"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.5.0"
+version = "0.5.4"
 default-features = false
 
 [dependencies.derivative]
