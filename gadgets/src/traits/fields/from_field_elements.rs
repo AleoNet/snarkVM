@@ -14,11 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod field;
-pub use field::*;
+use crate::fields::FpGadget;
 
-pub mod from_field_elements;
-pub use from_field_elements::*;
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-pub mod to_constraint_field;
-pub use to_constraint_field::*;
+/// Specifies how to convert variables of type `FpGadget<F>` to a variable of type `Self`
+pub trait FromFieldElementsGadget<F: PrimeField, CF: PrimeField>: Sized {
+    /// Converts `FpGadget<F>` variables to `self`.
+    fn from_field_elements<CS: ConstraintSystem<CF>>(
+        cs: CS,
+        field_elements: &Vec<FpGadget<CF>>,
+    ) -> Result<Self, SynthesisError>;
+}
