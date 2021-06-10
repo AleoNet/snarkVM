@@ -119,6 +119,16 @@ default-features = false
 [dependencies.smallvec]
 version = "1.6"
 
+[dependencies.cuda-oxide]
+version = "0.1"
+optional = true
+
+[dependencies.lazy_static]
+version = "1.4"
+
+[dependencies.crossbeam-channel]
+version = "0.5"
+
 [dependencies.thiserror]
 version = "1.0"
 
@@ -142,6 +152,7 @@ default = [
   "snarkvm-fields/default",
   "snarkvm-r1cs/default",
   "snarkvm-utilities/default",
+  "cuda",
   "blstasm"
 ]
 full = [
@@ -184,3 +195,4 @@ snark = [ "fft", "msm" ]
 parallel = [ ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
 blstasm = [ ]
+cuda = [ "cuda-oxide" ]

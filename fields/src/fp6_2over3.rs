@@ -211,6 +211,8 @@ impl<P: Fp6Parameters> One for Fp6<P> {
 }
 
 impl<P: Fp6Parameters> Field for Fp6<P> {
+    type BigInteger = <<P::Fp3Params as Fp3Parameters>::Fp as Field>::BigInteger;
+
     #[inline]
     fn characteristic<'a>() -> &'a [u64] {
         Fp3::<P::Fp3Params>::characteristic()
@@ -304,6 +306,14 @@ impl<P: Fp6Parameters> Field for Fp6<P> {
         self.c0.frobenius_map(power);
         self.c1.frobenius_map(power);
         self.c1.mul_assign_by_fp(&P::FROBENIUS_COEFF_FP6_C1[power % 6]);
+    }
+
+    fn as_repr_singlet(&self) -> Option<&Self::BigInteger> {
+        None
+    }
+
+    fn from_repr_singlet(_repr: Self::BigInteger) -> Option<Self> {
+        None
     }
 }
 

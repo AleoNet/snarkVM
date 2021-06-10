@@ -247,6 +247,8 @@ impl<P: Fp12Parameters> One for Fp12<P> {
 }
 
 impl<P: Fp12Parameters> Field for Fp12<P> {
+    type BigInteger = <<<P::Fp6Params as Fp6Parameters>::Fp2Params as Fp2Parameters>::Fp as Field>::BigInteger;
+
     #[inline]
     fn characteristic<'a>() -> &'a [u64] {
         Fp6::<P::Fp6Params>::characteristic()
@@ -352,6 +354,14 @@ impl<P: Fp12Parameters> Field for Fp12<P> {
             }
             None => None,
         }
+    }
+
+    fn as_repr_singlet(&self) -> Option<&Self::BigInteger> {
+        None
+    }
+
+    fn from_repr_singlet(_repr: Self::BigInteger) -> Option<Self> {
+        None
     }
 }
 

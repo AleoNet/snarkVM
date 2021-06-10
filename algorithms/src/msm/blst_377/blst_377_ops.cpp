@@ -117,24 +117,6 @@ static inline void vec_zero(void *ret, size_t num)
 #endif
 }
 
-static inline bool vec_is_equal(const void *a, const void *b, size_t num)
-{
-  const limb_t *ap = (const limb_t *)a;
-  const limb_t *bp = (const limb_t *)b;
-  limb_t acc;
-  size_t i;
-
-  num /= sizeof(limb_t);
-
-  for (acc = 0, i = 0; i < num; i++)
-    acc |= ap[i] ^ bp[i];
-
-  return is_zero(acc);
-}
-
-static inline bool is_bit_set(const uint8_t *v, size_t i)
-{   return (v[i/8] >> (i%8)) & 1;   }
-
 /*
  * Addition with affine point that can handle doubling [as well as
  * points at infinity, with |p1| being encoded as Z==0 and |p2| as

@@ -498,7 +498,7 @@ mod tests {
         let bound = rng.gen_range(1..=SUPPORTED_DEGREE);
 
         let bound_field = <BaseCurve as PairingEngine>::Fr::from_repr(
-            <<BaseCurve as PairingEngine>::Fr as PrimeField>::BigInteger::from(bound as u64),
+            <<BaseCurve as PairingEngine>::Fr as Field>::BigInteger::from(bound as u64),
         )
         .unwrap();
         let bound_gadget = FpGadget::alloc(cs.ns(|| "alloc_bound"), || Ok(bound_field)).unwrap();

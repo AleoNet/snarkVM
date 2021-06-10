@@ -15,18 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{One, Zero};
-use snarkvm_utilities::{
-    bititerator::BitIteratorBE,
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    serialize::{
+use snarkvm_utilities::{BigInteger, bititerator::BitIteratorBE, bytes::{FromBytes, ToBytes}, rand::UniformRand, serialize::{
         CanonicalDeserialize,
         CanonicalDeserializeWithFlags,
         CanonicalSerialize,
         CanonicalSerializeWithFlags,
         ConstantSerializedSize,
-    },
-};
+    }};
 
 use std::{
     fmt::{Debug, Display},
@@ -77,6 +72,8 @@ pub trait Field:
     + for<'a> Deserialize<'a>
     + Zero
 {
+    type BigInteger: BigInteger;
+
     /// Returns the characteristic of the field.
     fn characteristic<'a>() -> &'a [u64];
 
@@ -142,4 +139,8 @@ pub trait Field:
     /// None. This function is primarily intended for sampling
     /// random field elements from a hash-function or RNG output.
     fn from_random_bytes_with_flags(bytes: &[u8]) -> Option<(Self, u8)>;
+
+    fn as_repr_singlet(&self) -> Option<&Self::BigInteger>;
+
+    fn from_repr_singlet(repr: Self::BigInteger) -> Option<Self>;
 }

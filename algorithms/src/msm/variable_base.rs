@@ -15,11 +15,17 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_curves::traits::AffineCurve;
-use snarkvm_fields::{FieldParameters, PrimeField, Zero};
-#[cfg(not(feature = "blstasm"))]
+use snarkvm_fields::{Field, PrimeField, FieldParameters, Zero};
 use snarkvm_utilities::biginteger::BigInteger;
 
-#[cfg(all(feature = "parallel", not(feature = "blstasm")))]
+pub enum MsmMode {
+    Rust,
+    RustBasic,
+    Assembly,
+    Cuda,
+}
+
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 #[cfg(feature = "blstasm")]
@@ -38,9 +44,22 @@ extern "C" {
 pub struct VariableBaseMSM;
 
 impl VariableBaseMSM {
+    #[cfg(feature = "cuda")]
+    fn msm_inner_cuda<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as Field>::BigInteger]) -> Result<G::Projective, cuda_oxide::ErrorCode> {
+        super::cuda::msm_cuda(bases, scalars)
+    }
+
+    fn msm_inner_basic<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as Field>::BigInteger]) -> G::Projective {
+        let mut acc = G::Projective::zero();
+
+        for (base, scalar) in bases.iter().zip(scalars.iter()) {
+            acc += &base.mul(*scalar);
+        }
+        acc
+    }
+
     #[cfg(feature = "blstasm")]
-    fn msm_inner<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
-        //println!("MSM_size,{}", scalars.len());
+    fn msm_inner_asm<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as Field>::BigInteger]) -> G::Projective {
         if scalars.len() < 4 {
             let mut acc = G::Projective::zero();
 
@@ -76,16 +95,15 @@ impl VariableBaseMSM {
         sn_result
     }
 
-    #[cfg(not(feature = "blstasm"))]
-    fn msm_inner<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
+    fn msm_inner_rust<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as Field>::BigInteger]) -> G::Projective {
         use snarkvm_fields::One;
         use snarkvm_curves::traits::ProjectiveCurve;
 
-        let c = if scalars.len() < 32 {
+        let c = 1;/*if scalars.len() < 32 {
             3
         } else {
             (2.0 / 3.0 * (f64::from(scalars.len() as u32)).log2() + 2.0).ceil() as usize
-        };
+        };*/
 
         let num_bits = <G::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize;
         let fr_one = G::ScalarField::one().into_repr();
@@ -132,10 +150,19 @@ impl VariableBaseMSM {
                 G::Projective::batch_normalization(&mut buckets);
 
                 let mut running_sum = G::Projective::zero();
-                for b in buckets.into_iter().map(|g| g.into_affine()).rev() {
-                    running_sum.add_assign_mixed(&b);
+                for (i, proj) in buckets.into_iter().enumerate().rev() {
+                    // println!("r-t{}:pre: bucket {}: bx={} by={} bz={}", w, i, proj.to_x_coordinate().as_repr_singlet().unwrap().clone().as_ref()[0], proj.to_y_coordinate().as_repr_singlet().unwrap().clone().as_ref()[0], proj.to_z_coordinate().as_repr_singlet().unwrap().clone().as_ref()[0]);
+                    let affine = proj.into_affine();
+                    // println!("r-t{}:affine: bucket {}: ax={} ay={}", w, i, affine.to_x_coordinate().as_repr_singlet().unwrap().clone().as_ref()[0], affine.to_y_coordinate().as_repr_singlet().unwrap().clone().as_ref()[0]);
+                    running_sum.add_assign_mixed(&affine);
+                    // println!("r-t{}:added: bucket {}: sx={} sy={} sz={}", w, i, running_sum.to_x_coordinate().as_repr_singlet().unwrap().clone().as_ref()[0], running_sum.to_y_coordinate().as_repr_singlet().unwrap().clone().as_ref()[0], running_sum.to_z_coordinate().as_repr_singlet().unwrap().clone().as_ref()[0]);
                     res += &running_sum;
+                    // println!("r-t{}:committed: bucket {}: ox={} oy={} oz={}", w_start, i, res.to_x_coordinate().as_repr_singlet().unwrap().clone().as_ref()[0], res.to_y_coordinate().as_repr_singlet().unwrap().clone().as_ref()[0], res.to_z_coordinate().as_repr_singlet().unwrap().clone().as_ref()[0]);
                 }
+                // for b in buckets.into_iter().map(|g| g.into_affine()).rev() {
+                //     running_sum.add_assign_mixed(&b);
+                //     res += &running_sum;
+                // }
 
                 res
             })
@@ -156,8 +183,55 @@ impl VariableBaseMSM {
 
     pub fn multi_scalar_mul<G: AffineCurve>(
         bases: &[G],
-        scalars: &[<G::ScalarField as PrimeField>::BigInteger],
+        scalars: &[<G::ScalarField as Field>::BigInteger],
     ) -> G::Projective {
-        Self::msm_inner(bases, scalars)
+        Self::msm_inner_cuda(bases, scalars).unwrap()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::SeedableRng;
+    use rand_xorshift::XorShiftRng;
+    use snarkvm_curves::{bls12_377::{Fr, G1Affine, G1Projective}, traits::ProjectiveCurve};
+    use snarkvm_fields::PrimeField;
+    use snarkvm_utilities::{BigInteger256, rand::UniformRand};
+
+
+    fn test_data(samples: usize) -> (Vec<G1Affine>, Vec<BigInteger256>) {
+        let mut rng = XorShiftRng::seed_from_u64(234872846u64);
+
+        let v = (0..samples).map(|_| Fr::rand(&mut rng).into_repr()).collect::<Vec<_>>();
+        let g = (0..samples)
+            .map(|_| G1Projective::rand(&mut rng).into_affine())
+            .collect::<Vec<_>>();
+    
+        (g, v)
+    }
+
+    #[test]
+    fn test_msm_basic() {
+        let (bases, scalars) = test_data(3);
+        let rust = VariableBaseMSM::msm_inner_rust(bases.as_slice(), scalars.as_slice());
+        let basic = VariableBaseMSM::msm_inner_basic(bases.as_slice(), scalars.as_slice());
+        assert_eq!(rust, basic);
+    }
+
+    #[test]
+    fn test_msm_asm() {
+        let (bases, scalars) = test_data(1 << 10);
+        let rust = VariableBaseMSM::msm_inner_rust(bases.as_slice(), scalars.as_slice());
+        let asm = VariableBaseMSM::msm_inner_asm(bases.as_slice(), scalars.as_slice());
+        assert_eq!(rust, asm);
+    }
+
+    #[test]
+    fn test_msm_cuda() {
+        let (bases, scalars) = test_data(1 << 10);
+        let rust = VariableBaseMSM::msm_inner_rust(bases.as_slice(), scalars.as_slice());
+
+        let cuda = VariableBaseMSM::msm_inner_cuda(bases.as_slice(), scalars.as_slice()).unwrap();
+        assert_eq!(rust, cuda);
     }
 }

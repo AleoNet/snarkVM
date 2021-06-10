@@ -17,7 +17,7 @@
 extern crate cc;
 
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 fn main() {
     /*
@@ -43,8 +43,8 @@ fn main() {
     file_vec.push(blst_base_dir.join("blst_377_ops.cpp"));
     file_vec.push(blst_base_dir.join("sn_msm.cpp"));
     //
-    // file_vec.push(blst_base_dir.join("build/assembly.S"));
-    file_vec.push(blst_base_dir.join("asm.cpp"));
+    file_vec.push(blst_base_dir.join("build/assembly.S"));
+    // file_vec.push(blst_base_dir.join("asm.cpp"));
 
     // Set CC environment variable to choose alternative C compiler.
     // Optimization level depends on whether or not --release is passed

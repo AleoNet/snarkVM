@@ -86,6 +86,7 @@ impl<P: Fp384Parameters> Fp384<P> {
         // The Montgomery reduction here is based on Algorithm 14.32 in
         // Handbook of Applied Cryptography
         // <http://cacr.uwaterloo.ca/hac/about/chap14.pdf>.
+        // println!("rust pre-reduce:0: {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}", r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11);
 
         let k = r0.wrapping_mul(P::INV);
         let mut carry = 0;
@@ -97,6 +98,7 @@ impl<P: Fp384Parameters> Fp384<P> {
         r5 = fa::mac_with_carry(r5, k, P::MODULUS.0[5], &mut carry);
         r6 = fa::adc(r6, 0, &mut carry);
         let carry2 = carry;
+        // println!("rust pre-reduce:1: {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}", r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11);
         let k = r1.wrapping_mul(P::INV);
         let mut carry = 0;
         fa::mac_with_carry(r1, k, P::MODULUS.0[0], &mut carry);
@@ -107,6 +109,7 @@ impl<P: Fp384Parameters> Fp384<P> {
         r6 = fa::mac_with_carry(r6, k, P::MODULUS.0[5], &mut carry);
         r7 = fa::adc(r7, carry2, &mut carry);
         let carry2 = carry;
+        // println!("rust pre-reduce:2: {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}", r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11);
         let k = r2.wrapping_mul(P::INV);
         let mut carry = 0;
         fa::mac_with_carry(r2, k, P::MODULUS.0[0], &mut carry);
@@ -117,6 +120,7 @@ impl<P: Fp384Parameters> Fp384<P> {
         r7 = fa::mac_with_carry(r7, k, P::MODULUS.0[5], &mut carry);
         r8 = fa::adc(r8, carry2, &mut carry);
         let carry2 = carry;
+        // println!("rust pre-reduce:3: {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}", r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11);
         let k = r3.wrapping_mul(P::INV);
         let mut carry = 0;
         fa::mac_with_carry(r3, k, P::MODULUS.0[0], &mut carry);
@@ -127,6 +131,7 @@ impl<P: Fp384Parameters> Fp384<P> {
         r8 = fa::mac_with_carry(r8, k, P::MODULUS.0[5], &mut carry);
         r9 = fa::adc(r9, carry2, &mut carry);
         let carry2 = carry;
+        // println!("rust pre-reduce:4: {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}", r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11);
         let k = r4.wrapping_mul(P::INV);
         let mut carry = 0;
         fa::mac_with_carry(r4, k, P::MODULUS.0[0], &mut carry);
@@ -137,6 +142,7 @@ impl<P: Fp384Parameters> Fp384<P> {
         r9 = fa::mac_with_carry(r9, k, P::MODULUS.0[5], &mut carry);
         r10 = fa::adc(r10, carry2, &mut carry);
         let carry2 = carry;
+        // println!("rust pre-reduce:5: {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}", r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11);
         let k = r5.wrapping_mul(P::INV);
         let mut carry = 0;
         fa::mac_with_carry(r5, k, P::MODULUS.0[0], &mut carry);
@@ -152,6 +158,7 @@ impl<P: Fp384Parameters> Fp384<P> {
         (self.0).0[3] = r9;
         (self.0).0[4] = r10;
         (self.0).0[5] = r11;
+        // println!("rust pre-reduce:6: {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}", r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11);
         self.reduce();
     }
 }
@@ -181,6 +188,8 @@ impl<P: Fp384Parameters> One for Fp384<P> {
 }
 
 impl<P: Fp384Parameters> Field for Fp384<P> {
+    type BigInteger = BigInteger;
+
     // 384/64 = 6 limbs.
     impl_field_from_random_bytes_with_flags!(6);
 
@@ -287,7 +296,9 @@ impl<P: Fp384Parameters> Field for Fp384<P> {
             let mut c = Self::zero();
 
             while u != one && v != one {
+                // println!("r-inverse_round: u={} v={} b={} c={}", u.0[0], v.0[0], b.0.0[0], c.0.0[0]);
                 while u.is_even() {
+                    // println!("r-inverse_round_u_start: u={} b={}", u.0[0], b.0.0[0]);
                     u.div2();
 
                     if b.0.is_even() {
@@ -296,9 +307,11 @@ impl<P: Fp384Parameters> Field for Fp384<P> {
                         b.0.add_nocarry(&P::MODULUS);
                         b.0.div2();
                     }
+                    // println!("r-inverse_round_u_stop: u={} b={}", u.0[0], b.0.0[0]);
                 }
 
                 while v.is_even() {
+                    // println!("r-inverse_round_v_start: u={} b={}", v.0[0], c.0.0[0]);
                     v.div2();
 
                     if c.0.is_even() {
@@ -307,6 +320,7 @@ impl<P: Fp384Parameters> Field for Fp384<P> {
                         c.0.add_nocarry(&P::MODULUS);
                         c.0.div2();
                     }
+                    // println!("r-inverse_round_v_stop: u={} b={}", v.0[0], c.0.0[0]);
                 }
 
                 if v < u {
@@ -335,10 +349,17 @@ impl<P: Fp384Parameters> Field for Fp384<P> {
     fn frobenius_map(&mut self, _: usize) {
         // No-op: No effect in a prime field.
     }
+
+    fn as_repr_singlet(&self) -> Option<&Self::BigInteger> {
+        Some(&self.0)
+    }
+
+    fn from_repr_singlet(repr: Self::BigInteger) -> Option<Self> {
+        Some(Self(repr, PhantomData))
+    }
 }
 
 impl<P: Fp384Parameters> PrimeField for Fp384<P> {
-    type BigInteger = BigInteger;
     type Parameters = P;
 
     #[inline]
@@ -480,7 +501,7 @@ impl<P: Fp384Parameters> FromStr for Fp384<P> {
 
         let mut res = Self::zero();
 
-        let ten = Self::from_repr(<Self as PrimeField>::BigInteger::from(10)).ok_or(FieldError::InvalidFieldElement)?;
+        let ten = Self::from_repr(<Self as Field>::BigInteger::from(10)).ok_or(FieldError::InvalidFieldElement)?;
 
         let mut first_digit = true;
 
@@ -497,7 +518,7 @@ impl<P: Fp384Parameters> FromStr for Fp384<P> {
 
                     res.mul_assign(&ten);
                     res.add_assign(
-                        &Self::from_repr(<Self as PrimeField>::BigInteger::from(u64::from(c)))
+                        &Self::from_repr(<Self as Field>::BigInteger::from(u64::from(c)))
                             .ok_or(FieldError::InvalidFieldElement)?,
                     );
                 }

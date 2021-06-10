@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
     bytes::{FromBytes, ToBytes},
@@ -50,7 +50,7 @@ pub trait Group:
     + for<'a> AddAssign<&'a Self>
     + for<'a> SubAssign<&'a Self>
 {
-    type ScalarField: PrimeField + Into<<Self::ScalarField as PrimeField>::BigInteger>;
+    type ScalarField: PrimeField + Into<<Self::ScalarField as Field>::BigInteger>;
 
     /// Returns `self + self`.
     #[must_use]

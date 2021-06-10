@@ -20,12 +20,7 @@ use crate::{
     traits::{AffineCurve, ProjectiveCurve, SWModelParameters as Parameters},
 };
 use snarkvm_fields::{Field, One, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{
-    bititerator::BitIteratorBE,
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    serialize::*,
-};
+use snarkvm_utilities::{BigInteger, bititerator::BitIteratorBE, bytes::{FromBytes, ToBytes}, rand::UniformRand, serialize::*};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -155,7 +150,7 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
         unimplemented!()
     }
 
-    fn mul<S: Into<<Self::ScalarField as PrimeField>::BigInteger>>(&self, by: S) -> GroupProjective<P> {
+    fn mul<S: Into<<Self::ScalarField as Field>::BigInteger>>(&self, by: S) -> GroupProjective<P> {
         let bits = BitIteratorBE::new(by.into());
         self.mul_bits(bits)
     }
@@ -480,7 +475,7 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
         }
     }
 
-    fn mul_assign<S: Into<<Self::ScalarField as PrimeField>::BigInteger>>(&mut self, other: S) {
+    fn mul_assign<S: Into<<Self::ScalarField as Field>::BigInteger>>(&mut self, other: S) {
         let mut res = Self::zero();
 
         let mut found_one = false;
@@ -504,12 +499,34 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
         (*self).into()
     }
 
-    fn recommended_wnaf_for_scalar(scalar: <Self::ScalarField as PrimeField>::BigInteger) -> usize {
+    fn recommended_wnaf_for_scalar(scalar: <Self::ScalarField as Field>::BigInteger) -> usize {
         P::empirical_recommended_wnaf_for_scalar(scalar)
     }
 
     fn recommended_wnaf_for_num_scalars(num_scalars: usize) -> usize {
         P::empirical_recommended_wnaf_for_num_scalars(num_scalars)
+    }
+
+    fn from_repr(repr: &[Self::BaseField]) -> Self {
+        Self {
+            x: repr[0],
+            y: repr[1],
+            z: repr[2],
+            _params: PhantomData
+        }
+    }
+
+
+    fn to_x_coordinate(&self) -> Self::BaseField {
+        self.x
+    }
+
+    fn to_y_coordinate(&self) -> Self::BaseField {
+        self.y
+    }
+
+    fn to_z_coordinate(&self) -> Self::BaseField {
+        self.z
     }
 }
 
