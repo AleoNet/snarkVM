@@ -92,7 +92,7 @@ version = "2"
 version = "0.9"
 
 [dependencies.itertools]
-version = "0.10.0"
+version = "0.10.1"
 
 [dependencies.rand]
 version = "0.8"
