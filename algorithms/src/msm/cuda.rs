@@ -262,21 +262,23 @@ mod tests {
         }
     }
     
-    // #[test]
-    // fn test_cuda_square() {
-    //     let mut rng = XorShiftRng::seed_from_u64(234872847u64);
+    #[test]
+    fn test_cuda_square() {
+        let inputs = make_tests(1000, 1);
 
-    //     let input = G1Projective::rand(&mut rng);
-
-    //     let output = run_roundtrip("sqr_mont_384_test", &[input.x]);
-        
-    //     let rust_out = input.x.square();
-
-    //     let output = output.into_repr_raw();
-    //     let rust_out = rust_out.into_repr_raw();
-
-    //     assert_eq!(rust_out.as_ref(), output.as_ref());
-    // }
+        let output = run_roundtrip("sqr_test", &inputs[..]);
+        for (input, output) in inputs.iter().zip(output.iter()) {
+            let rust_out = input[0].square();
+            let output = output.into_repr_raw();
+            let rust_out = rust_out.into_repr_raw();
+    
+            if rust_out != output {
+                eprintln!("test failed: {:?} != {:?}", rust_out.as_ref(), output.as_ref());
+                eprintln!("inputs {:?}", input[0].into_repr_raw().as_ref());
+                assert_eq!(rust_out.as_ref(), output.as_ref());
+            }
+        }
+    }
 
     #[test]
     fn test_cuda_add() {

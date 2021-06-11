@@ -626,80 +626,171 @@ __device__ void mul_mont_384(blst_fp ret, const blst_fp a, const blst_fp b, cons
 }
 
 __device__ void sqr_mont_384(blst_fp ret, const blst_fp a, const blst_fp p, limb_t p_inv) {
-    mul_mont_384(ret, a, a, p, p_inv);
-    // limb_t r[12];
-    // r[1] = __mad_lo_cc(a[0], a[1], 0); // todo mul_low
-    // limb_t carry = __madc_hi_cc(a[0], a[1], 0);
-    // r[2] = __madc_lo_cc(a[0], a[2], carry);
-    // carry = __madc_hi_cc(a[0], a[2], 0);
-    // r[3] = __madc_lo_cc(a[0], a[3], carry);
-    // carry = __madc_hi_cc(a[0], a[3], 0);
-    // r[4] = __madc_lo_cc(a[0], a[4], carry);
-    // carry = __madc_hi_cc(a[0], a[4], 0);
-    // r[5] = __madc_lo_cc(a[0], a[5], carry);
-    // r[6] = __madc_hi(a[0], a[5], 0);
+    limb_t r[12];
 
-    // r[3] = __mad_lo_cc(a[1], a[2], r[3]);
-    // carry = __madc_hi_cc(a[1], a[2], 0);
-    // r[4] = __addc_cc(__madc_lo_cc(a[1], a[3], r[4]), carry);
-    // carry = __madc_hi_cc(a[1], a[3], 0);
-    // r[5] = __addc_cc(__madc_lo_cc(a[1], a[4], r[5]), carry);
-    // carry = __madc_hi_cc(a[1], a[4], 0);
-    // r[6] = __addc_cc(__madc_lo_cc(a[1], a[5], r[6]), carry);
-    // r[7] = __madc_hi(a[1], a[5], 0);
+    asm(
+      "{\n\t"
+      ".reg .u64 c;\n\t"
+      ".reg .u64 nc;\n\t"
+      ".reg .u64 t;\n\t"
 
-    // r[5] = __mad_lo_cc(a[2], a[3], r[4]);
-    // carry = __madc_hi_cc(a[2], a[3], 0);
-    // r[6] = __addc_cc(__madc_lo_cc(a[2], a[4], r[6]), carry);
-    // carry = __madc_hi_cc(a[2], a[4], 0);
-    // r[7] = __addc_cc(__madc_lo_cc(a[2], a[4], r[7]), carry);
-    // r[8] = __madc_hi(a[2], a[5], 0);
+      "mad.lo.cc.u64 %1, %12, %13, 0;\n\t"
+      "madc.hi.cc.u64 c, %12, %13, 0;\n\t"
 
-    // r[7] = __mad_lo_cc(a[3], a[4], r[7]);
-    // carry = __madc_hi_cc(a[3], a[4], 0);
-    // r[8] = __addc_cc(__madc_lo_cc(a[3], a[5], r[8]), carry);
-    // r[9] = __madc_hi(a[3], a[5], 0);
+      "madc.lo.cc.u64 %2, %12, %14, c;\n\t"
+      "madc.hi.cc.u64 c, %12, %14, 0;\n\t"
 
-    // r[9] = __mad_lo_cc(a[4], a[5], r[9]);
-    // r[10] = __madc_hi(a[3], a[5], 0);
+      "madc.lo.cc.u64 %3, %12, %15, c;\n\t"
+      "madc.hi.cc.u64 c, %12, %15, 0;\n\t"
 
-    // r[11] = r[10] >> 63;
-    // r[10] = (r[10] << 1) | (r[9] >> 63);
-    // r[9] = (r[9] << 1) | (r[8] >> 63);
-    // r[8] = (r[8] << 1) | (r[7] >> 63);
-    // r[7] = (r[7] << 1) | (r[6] >> 63);
-    // r[6] = (r[6] << 1) | (r[5] >> 63);
-    // r[5] = (r[5] << 1) | (r[4] >> 63);
-    // r[4] = (r[4] << 1) | (r[3] >> 63);
-    // r[3] = (r[3] << 1) | (r[2] >> 63);
-    // r[2] = (r[2] << 1) | (r[1] >> 63);
-    // r[1] = r[1] << 1;
+      "madc.lo.cc.u64 %4, %12, %16, c;\n\t"
+      "madc.hi.cc.u64 c, %12, %16, 0;\n\t"
 
-    // r[0] = __mad_lo_cc(a[0], a[0], 0);
-    // carry = __madc_hi_cc(a[0], a[0], 0);
-    // r[1] = __addc_cc(r[1], carry);
+      "madc.lo.cc.u64 %5, %12, %17, c;\n\t"
+      "madc.hi.u64 %6, %12, %17, 0;\n\t"
 
-    // r[2] = __madc_lo_cc(a[1], a[1], r[2]);
-    // carry = __madc_hi_cc(a[1], a[1], 0);
-    // r[3] = __addc_cc(r[3], carry);
+      "mad.lo.cc.u64 %3, %13, %14, %3;\n\t"
+      "madc.hi.cc.u64 c, %13, %14, 0;\n\t"
+      
+      "addc.cc.u64 t, %4, c;\n\t"
+      "addc.u64 nc, 0, 0;\n\t"
+      "mad.lo.cc.u64 %4, %13, %15, t;\n\t"
+      "madc.hi.cc.u64 c, %13, %15, nc;\n\t"
 
-    // r[4] = __madc_lo_cc(a[2], a[2], r[4]);
-    // carry = __madc_hi_cc(a[2], a[2], 0);
-    // r[5] = __addc_cc(r[5], carry);
+      "addc.cc.u64 t, %5, c;\n\t"
+      "addc.u64 nc, 0, 0;\n\t"
+      "mad.lo.cc.u64 %5, %13, %16, t;\n\t"
+      "madc.hi.cc.u64 c, %13, %16, nc;\n\t"
 
-    // r[6] = __madc_lo_cc(a[3], a[3], r[6]);
-    // carry = __madc_hi_cc(a[3], a[3], 0);
-    // r[7] = __addc_cc(r[7], carry);
+      "addc.cc.u64 t, %6, c;\n\t"
+      "addc.u64 nc, 0, 0;\n\t"
+      "mad.lo.cc.u64 %6, %13, %17, t;\n\t"
+      "madc.hi.u64 %7, %13, %17, nc;\n\t"
 
-    // r[8] = __madc_lo_cc(a[4], a[4], r[8]);
-    // carry = __madc_hi_cc(a[4], a[4], 0);
-    // r[9] = __addc_cc(r[9], carry);
 
-    // r[10] = __madc_lo_cc(a[5], a[5], r[10]);
-    // carry = __madc_hi_cc(a[5], a[5], 0);
-    // r[11] = __addc_cc(r[11], carry);
 
-    // mont_384(ret, r, p, p_inv);
+      "mad.lo.cc.u64 %5, %14, %15, %5;\n\t"
+      "madc.hi.cc.u64 c, %14, %15, 0;\n\t"
+      
+      "addc.cc.u64 t, %6, c;\n\t"
+      "addc.u64 nc, 0, 0;\n\t"
+      "mad.lo.cc.u64 %6, %14, %16, t;\n\t"
+      "madc.hi.cc.u64 c, %14, %16, nc;\n\t"
+      
+      "addc.cc.u64 t, %7, c;\n\t"
+      "addc.u64 nc, 0, 0;\n\t"
+      "mad.lo.cc.u64 %7, %14, %17, t;\n\t"
+      "madc.hi.u64 %8, %14, %17, nc;\n\t"
+
+
+
+
+      "mad.lo.cc.u64 %7, %15, %16, %7;\n\t"
+      "madc.hi.cc.u64 c, %15, %16, 0;\n\t"
+      
+      "addc.cc.u64 t, %8, c;\n\t"
+      "addc.u64 nc, 0, 0;\n\t"
+      "mad.lo.cc.u64 %8, %15, %17, t;\n\t"
+      "madc.hi.u64 %9, %15, %17, nc;\n\t"
+      
+
+
+      "mad.lo.cc.u64 %9, %16, %17, %9;\n\t"
+      "madc.hi.u64 %10, %16, %17, 0;\n\t"
+
+      "}"
+      : "+l"(r[0]),
+      "+l"(r[1]),
+      "+l"(r[2]),
+      "+l"(r[3]),
+      "+l"(r[4]),
+      "+l"(r[5]),
+      "+l"(r[6]),
+      "+l"(r[7]),
+      "+l"(r[8]),
+      "+l"(r[9]),
+      "+l"(r[10]),
+      "+l"(r[11])
+      : "l"(a[0]),
+      "l"(a[1]),
+      "l"(a[2]),
+      "l"(a[3]),
+      "l"(a[4]),
+      "l"(a[5])
+    );
+
+    // printf("c-t%i:0: X, %llu, %llu, %llu, %llu, %llu, %llu, %llu, %llu, %llu, %llu, X\n", threadIdx.x, r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10]);
+
+    r[11] = r[10] >> 63;
+    r[10] = (r[10] << 1) | (r[9] >> 63);
+    r[9] = (r[9] << 1) | (r[8] >> 63);
+    r[8] = (r[8] << 1) | (r[7] >> 63);
+    r[7] = (r[7] << 1) | (r[6] >> 63);
+    r[6] = (r[6] << 1) | (r[5] >> 63);
+    r[5] = (r[5] << 1) | (r[4] >> 63);
+    r[4] = (r[4] << 1) | (r[3] >> 63);
+    r[3] = (r[3] << 1) | (r[2] >> 63);
+    r[2] = (r[2] << 1) | (r[1] >> 63);
+    r[1] = r[1] << 1;
+
+    // printf("c-t%i:1: X, %llu, %llu, %llu, %llu, %llu, %llu, %llu, %llu, %llu, %llu, %llu\n", threadIdx.x, r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11]);
+
+    asm(
+      "{\n\t"
+      // let r0 = fa::mac_with_carry(0, (self.0).0[0], (self.0).0[0], &mut carry);
+      // let r1 = fa::adc(r1, 0, &mut carry);
+      // let r2 = fa::mac_with_carry(r2, (self.0).0[1], (self.0).0[1], &mut carry);
+      // let r3 = fa::adc(r3, 0, &mut carry);
+      // let r4 = fa::mac_with_carry(r4, (self.0).0[2], (self.0).0[2], &mut carry);
+      // let r5 = fa::adc(r5, 0, &mut carry);
+      // let r6 = fa::mac_with_carry(r6, (self.0).0[3], (self.0).0[3], &mut carry);
+      // let r7 = fa::adc(r7, 0, &mut carry);
+      // let r8 = fa::mac_with_carry(r8, (self.0).0[4], (self.0).0[4], &mut carry);
+      // let r9 = fa::adc(r9, 0, &mut carry);
+      // let r10 = fa::mac_with_carry(r10, (self.0).0[5], (self.0).0[5], &mut carry);
+      // let r11 = fa::adc(r11, 0, &mut carry);
+
+      "mad.lo.cc.u64 %0, %12, %12, 0;\n\t"
+      "madc.hi.cc.u64 %1, %12, %12, %1;\n\t"
+
+      "madc.lo.cc.u64 %2, %13, %13, %2;\n\t"
+      "madc.hi.cc.u64 %3, %13, %13, %3;\n\t"
+  
+      "madc.lo.cc.u64 %4, %14, %14, %4;\n\t"
+      "madc.hi.cc.u64 %5, %14, %14, %5;\n\t"
+  
+      "madc.lo.cc.u64 %6, %15, %15, %6;\n\t"
+      "madc.hi.cc.u64 %7, %15, %15, %7;\n\t"
+  
+      "madc.lo.cc.u64 %8, %16, %16, %8;\n\t"
+      "madc.hi.cc.u64 %9, %16, %16, %9;\n\t"
+  
+      "madc.lo.cc.u64 %10, %17, %17, %10;\n\t"
+      "madc.hi.u64 %11, %17, %17, %11;\n\t"
+
+      "}"
+      : "+l"(r[0]),
+      "+l"(r[1]),
+      "+l"(r[2]),
+      "+l"(r[3]),
+      "+l"(r[4]),
+      "+l"(r[5]),
+      "+l"(r[6]),
+      "+l"(r[7]),
+      "+l"(r[8]),
+      "+l"(r[9]),
+      "+l"(r[10]),
+      "+l"(r[11])
+      : "l"(a[0]),
+      "l"(a[1]),
+      "l"(a[2]),
+      "l"(a[3]),
+      "l"(a[4]),
+      "l"(a[5])
+    );
+    // printf("c-t%i:2: %llu, %llu, %llu, %llu, %llu, %llu, %llu, %llu, %llu, %llu, %llu, %llu\n", threadIdx.x, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11]);
+
+    mont_384(ret, r, p, p_inv);
 }
 
 

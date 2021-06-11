@@ -2,7 +2,7 @@
 #include "asm_cuda.h"
 #include "blst_377_ops.h"
 
-extern "C" __global__ void sqr_mont_384_test(blst_fp ret, const blst_fp a) {
+extern "C" __global__ void sqr_test(blst_fp ret, const blst_fp a) {
     blst_fp_sqr(ret, a);
 }
 

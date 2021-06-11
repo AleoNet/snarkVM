@@ -248,6 +248,7 @@ impl<P: Fp384Parameters> Field for Fp384<P> {
         let mut carry = 0;
         let r9 = fa::mac_with_carry(r9, (self.0).0[4], (self.0).0[5], &mut carry);
         let r10 = carry;
+        // println!("rust pre-reduce:0: X, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, X", r1, r2, r3, r4, r5, r6, r7, r8, r9, r10);
 
         let r11 = r10 >> 63;
         let r10 = (r10 << 1) | (r9 >> 63);
@@ -260,6 +261,7 @@ impl<P: Fp384Parameters> Field for Fp384<P> {
         let r3 = (r3 << 1) | (r2 >> 63);
         let r2 = (r2 << 1) | (r1 >> 63);
         let r1 = r1 << 1;
+        // println!("rust pre-reduce:1: X, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}", r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11);
 
         let mut carry = 0;
         let r0 = fa::mac_with_carry(0, (self.0).0[0], (self.0).0[0], &mut carry);
@@ -274,6 +276,7 @@ impl<P: Fp384Parameters> Field for Fp384<P> {
         let r9 = fa::adc(r9, 0, &mut carry);
         let r10 = fa::mac_with_carry(r10, (self.0).0[5], (self.0).0[5], &mut carry);
         let r11 = fa::adc(r11, 0, &mut carry);
+        // println!("rust pre-reduce:2: {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}", r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11);
         self.mont_reduce(r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11);
         self
     }
