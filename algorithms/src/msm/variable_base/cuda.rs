@@ -29,10 +29,6 @@ pub struct CudaRequest {
     response: crossbeam_channel::Sender<Result<G1Projective, ErrorCode>>,
 }
 
-unsafe fn into_raw_slice<T: Sized>(input: &[T]) -> &[u8] {
-    std::slice::from_raw_parts(input.as_ptr() as *const u8, input.len() * std::mem::size_of::<T>())
-}
-
 struct CudaContext<'a, 'b, 'c> {
     handle: &'b Rc<Handle<'a>>,
     stream: &'b mut Stream<'a>,
@@ -63,12 +59,6 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
             y: affine.y,
         })
         .collect();
-    let raw_bases = unsafe { into_raw_slice(&mapped_bases[..]) };
-    let raw_scalars = unsafe { into_raw_slice(&request.scalars[..]) };
-    assert_eq!(std::mem::size_of::<CudaAffine>(), 8 * LIMB_COUNT * 2);
-    assert_eq!(raw_bases.len(), 8 * LIMB_COUNT * 2 * mapped_bases.len());
-    assert_eq!(std::mem::size_of::<Fr>(), 8 * 4);
-    assert_eq!(raw_scalars.len(), 8 * 4 * request.scalars.len());
 
     let mut window_lengths = (0..(request.scalars.len() as u32 / WINDOW_SIZE))
         .into_iter()
@@ -78,23 +68,18 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
     if overflow_size > 0 {
         window_lengths.push(overflow_size);
     }
-    let raw_window_lengths = unsafe { into_raw_slice(&window_lengths[..]) };
 
-    let window_lengths_buf = DeviceBox::new(&context.handle, raw_window_lengths)?;
-    let bases_in_buf = DeviceBox::new(&context.handle, raw_bases)?;
-    let scalars_in_buf = DeviceBox::new(&context.handle, raw_scalars)?;
-    unsafe { context.output_buf.memset_d32_stream(0, context.stream) }?;
+    let window_lengths_buf = DeviceBox::new_ffi(&context.handle, &window_lengths[..])?;
+    let bases_in_buf = DeviceBox::new_ffi(&context.handle, &mapped_bases[..])?;
+    let scalars_in_buf = DeviceBox::new_ffi(&context.handle, &request.scalars[..])?;
+    context.output_buf.memset_d32_stream(0, context.stream)?;
 
-    let buckets = unsafe {
-        DeviceBox::alloc(
-            &context.handle,
-            context.num_groups as u64 * window_lengths.len() as u64 * 8 * LIMB_COUNT as u64 * 3,
-        )
-    }?;
+    let buckets = DeviceBox::alloc(
+        &context.handle,
+        context.num_groups as u64 * window_lengths.len() as u64 * 8 * LIMB_COUNT as u64 * 3,
+    )?;
 
     let start = Instant::now();
-
-    // println!("kernel1 start {}:{}", context.num_groups, window_lengths.len());
 
     context.stream.launch(
         &context.pixel_func,
@@ -109,15 +94,11 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
             window_lengths.len() as u32,
         ),
     )?;
-    // println!("kernel1 started");
 
     context.stream.sync()?;
 
     let time = (start.elapsed().as_micros() as f64) / 1000.0;
     println!("msm-pixel took {} ms", time);
-
-    // println!("kernel1 done, kernel 2 starting");
-    //extern "C" __global__ void msm6_collapse_rows(blst_p1* target, const blst_p1** bucket_lists, const uint32_t bucket_count) {
 
     context.stream.launch(
         &context.row_func,
@@ -126,12 +107,9 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
         0,
         (&context.output_buf, &buckets, window_lengths.len() as u32),
     )?;
-    // println!("kernel2 started");
-
-    //        &context.output_buf,
 
     context.stream.sync()?;
-    // println!("kernel2 done");
+
     let time = (start.elapsed().as_micros() as f64) / 1000.0;
     println!("msm-row took {} ms", time);
 
@@ -179,7 +157,7 @@ fn cuda_thread(input: crossbeam_channel::Receiver<CudaRequest>) {
     let row_func = module.get_function("msm6_collapse_rows").unwrap();
     let mut stream = Stream::new(&handle).unwrap();
 
-    let output_buf = unsafe { DeviceBox::alloc(&handle, LIMB_COUNT as u64 * 8 * num_groups as u64 * 3) }.unwrap();
+    let output_buf = DeviceBox::alloc(&handle, LIMB_COUNT as u64 * 8 * num_groups as u64 * 3).unwrap();
 
     let mut context = CudaContext {
         handle: &handle,
@@ -269,14 +247,10 @@ mod tests {
         assert!(inputs.iter().all(|x| x.len() == first_len));
 
         for input in inputs {
-            let mut output_buf = unsafe { DeviceBox::alloc(&handle, size as u64) }.unwrap();
+            let output_buf = DeviceBox::alloc(&handle, size as u64).unwrap();
             output_buf.memset_d32(0).unwrap();
 
-            #[allow(trivial_casts)]
-            let input_buf = DeviceBox::new(&handle, unsafe {
-                std::slice::from_raw_parts(input.as_ptr() as *const u8, size * input.len())
-            })
-            .unwrap();
+            let input_buf = DeviceBox::new_ffi(&handle, &input[..]).unwrap();
 
             stream.launch(&func, 1, 1, 0, (&output_buf, &input_buf)).unwrap();
 

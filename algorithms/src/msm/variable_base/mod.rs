@@ -34,13 +34,6 @@ compile_error!("`blstasm` feature is only supported on x86_64");
 #[cfg(all(feature = "cuda", not(target_arch = "x86_64")))]
 compile_error!("`cuda` feature is only supported on x86_64");
 
-pub enum MsmMode {
-    Rust,
-    RustBasic,
-    Assembly,
-    Cuda,
-}
-
 #[cfg(feature = "cuda")]
 static HAS_CUDA_FAILED: AtomicBool = AtomicBool::new(false);
 
@@ -75,7 +68,7 @@ impl VariableBaseMSM {
                         Ok(x) => return x,
                         Err(e) => {
                             HAS_CUDA_FAILED.store(true, Ordering::SeqCst);
-                            eprintln!("cuda failed, moving to next msm method: {:?}", e);
+                            eprintln!("CUDA failed, moving to next msm method: {:?}", e);
                         }
                     }
                 }

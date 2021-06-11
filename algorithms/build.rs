@@ -44,18 +44,15 @@ fn compile_blst_asm() {
         panic!("invalid arch for asm, expected x86_64");
     }
 
-    let mut cc_compat = cc.clone();
-
+    //todo: cpuid
     cc.define("__ADX__", None);
 
     // cc.flag_if_supported("-mno-avx"); // avoid costly transitions
     cc.flag_if_supported("-march=native");
     if !cfg!(debug_assertions) {
         cc.opt_level(2);
-        cc_compat.opt_level(2);
     }
     cc.files(&file_vec).cpp(true).compile("libblst377.a");
-    cc_compat.files(&file_vec).cpp(true).compile("libblst377_compat.a");
 }
 
 #[cfg(not(feature = "blstasm"))]

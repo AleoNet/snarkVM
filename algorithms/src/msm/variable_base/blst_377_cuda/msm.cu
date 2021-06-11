@@ -19,10 +19,8 @@ extern "C" __global__ void msm6_pixel(blst_p1* bucket_lists, const blst_p1_affin
     uint32_t activated_bases[WINDOW_SIZE];
     uint32_t activated_base_index = 0;
 
-    // printf("c-%i:%i: windows %u -> %u\n", threadIdx.x, blockIdx.x, window_start, window_start + window_lengths[blockIdx.x]);
     // we delay the actual additions to a second loop because it reduces warp divergence (20% practical gain)
     for (uint32_t i = window_start; i < window_end; ++i) {
-        // printf("c-%i:%i: doing %lu\n", threadIdx.x, blockIdx.x, i);
         // limb_t bitw = (scalars[i][index] >> shift) & 1;
         limb_t bit = (scalars[i][index] & mask);
         if (bit == 0) {
