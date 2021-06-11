@@ -515,7 +515,7 @@ where
         let num_non_zero = 100000;
 
         // TODO (raychu86): Handle this unwrap.
-        let universalSRS = MarlinSNARK::<
+        let universal_srs = MarlinSNARK::<
             Components::InnerField,
             Components::OuterField,
             Components::PolynomialCommitment,
@@ -524,7 +524,7 @@ where
         >::universal_setup(num_constraints, num_variables, num_non_zero, rng)
         .unwrap();
 
-        Ok(ProgramSNARKUniversalSRS(universalSRS))
+        Ok(ProgramSNARKUniversalSRS(universal_srs))
     }
 
     pub fn generate_noop_program_snark_parameters<R: Rng>(
