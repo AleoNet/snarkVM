@@ -21,7 +21,7 @@ use snarkvm_curves::{
     bls12_377::{Fr, G1Affine, G1Projective},
     traits::{AffineCurve, ProjectiveCurve},
 };
-use snarkvm_fields::{Field, Zero};
+use snarkvm_fields::{PrimeField, Zero};
 
 pub struct CudaRequest {
     bases: Vec<G1Affine>,
@@ -115,7 +115,7 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
 
     let mut out = context.output_buf.load()?;
 
-    let base_size = std::mem::size_of::<<<G1Affine as AffineCurve>::BaseField as Field>::BigInteger>();
+    let base_size = std::mem::size_of::<<<G1Affine as AffineCurve>::BaseField as PrimeField>::BigInteger>();
 
     let windows = unsafe {
         Vec::from_raw_parts(
@@ -185,7 +185,7 @@ lazy_static::lazy_static! {
 
 pub(super) fn msm_cuda<G: AffineCurve>(
     mut bases: &[G],
-    mut scalars: &[<G::ScalarField as Field>::BigInteger],
+    mut scalars: &[<G::ScalarField as PrimeField>::BigInteger],
 ) -> Result<G::Projective, ErrorCode> {
     if TypeId::of::<G>() != TypeId::of::<G1Affine>() {
         unimplemented!("trying to use cuda for unsupported curve");
@@ -225,7 +225,7 @@ mod tests {
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
     use snarkvm_curves::bls12_377::Fq;
-    use snarkvm_fields::PrimeField;
+    use snarkvm_fields::{Field, PrimeField};
     use snarkvm_utilities::UniformRand;
 
     use super::*;
