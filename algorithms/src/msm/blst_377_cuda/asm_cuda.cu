@@ -46,9 +46,9 @@ __device__ static inline void sub_mod_384_unchecked(blst_fp ret, const blst_fp a
 }
 
 __device__ static inline void reduce(blst_fp x, const blst_fp p) {
-    blst_fp x_sub;
-    sub_mod_384_unchecked(x_sub, x, p);
     if (is_ge_384(x, p)) {
+        blst_fp x_sub;
+        sub_mod_384_unchecked(x_sub, x, p);
         memcpy(x, x_sub, sizeof(blst_fp));
     }
 }
@@ -849,29 +849,6 @@ __device__ void sub_mod_384_unsafe(blst_fp ret, const blst_fp a, const blst_fp b
 __device__ void add_mod_384_unsafe(blst_fp ret, const blst_fp a, const blst_fp b) {
     add_mod_384_unchecked(ret, a, b);
     // return cf != 0?
-}
-
-__device__ static inline void _lshift_384(blst_fp ret, const blst_fp a) {
-    asm(
-      "add.cc.u64 %0, %6, %6;\n\t"
-      "addc.cc.u64 %1, %7, %7;\n\t"
-      "addc.cc.u64 %2, %8, %8;\n\t"
-      "addc.cc.u64 %3, %9, %9;\n\t"
-      "addc.cc.u64 %4, %10, %10;\n\t"
-      "addc.u64 %5, %11, %11;"
-      : "=l"(ret[0]),
-      "=l"(ret[1]),
-      "=l"(ret[2]),
-      "=l"(ret[3]),
-      "=l"(ret[4]),
-      "=l"(ret[5])
-      : "l"(a[0]),
-      "l"(a[1]),
-      "l"(a[2]),
-      "l"(a[3]),
-      "l"(a[4]),
-      "l"(a[5])
-    );
 }
 
 __device__ static inline void _rshift_384(blst_fp ret, const blst_fp value) {

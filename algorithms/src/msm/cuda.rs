@@ -26,7 +26,7 @@ struct CudaContext<'a, 'b, 'c> {
 const SCALAR_BITS: usize = 253;
 const BIT_WIDTH: usize = 1;
 const LIMB_COUNT: usize = 6;
-const WINDOW_SIZE: u32 = 32; // must match in cuda source
+const WINDOW_SIZE: u32 = 128; // must match in cuda source
 
 #[allow(dead_code)]
 #[repr(C)]
@@ -158,10 +158,17 @@ lazy_static::lazy_static! {
     };
 }
 
-pub(super) fn msm_cuda<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as Field>::BigInteger]) -> Result<G::Projective, ErrorCode> {
+pub(super) fn msm_cuda<G: AffineCurve>(mut bases: &[G], scalars: &[<G::ScalarField as Field>::BigInteger]) -> Result<G::Projective, ErrorCode> {
     if TypeId::of::<G>() != TypeId::of::<G1Affine>() {
         unimplemented!("trying to use cuda for unsupported curve");
     }
+
+    if bases.len() < scalars.len() {
+        panic!("malformed input to msm, not enough bases for scalars");
+    } else if bases.len() > scalars.len() {
+        bases = &bases[..scalars.len()];
+    }
+    
     if scalars.len() < 4 {
         let mut acc = G::Projective::zero();
 

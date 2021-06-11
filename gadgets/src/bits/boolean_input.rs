@@ -16,7 +16,7 @@
 
 use std::{borrow::Borrow, marker::PhantomData};
 
-use snarkvm_fields::{FieldParameters, PrimeField};
+use snarkvm_fields::{Field, FieldParameters, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use snarkvm_utilities::BigInteger;
 

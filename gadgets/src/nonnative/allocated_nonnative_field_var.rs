@@ -33,7 +33,7 @@ use crate::{
         select::{CondSelectGadget, ThreeBitCondNegLookupGadget, TwoBitLookupGadget},
     },
 };
-use snarkvm_fields::{FieldParameters, PrimeField};
+use snarkvm_fields::{Field, FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 use snarkvm_utilities::BigInteger;
 
@@ -660,7 +660,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBytesGadget<BaseField>
     for AllocatedNonNativeFieldVar<TargetField, BaseField>
 {
     fn to_bytes<CS: ConstraintSystem<BaseField>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        let bits = self.to_bits_le()?;
+        let bits = self.to_bits_le(cs)?;
 
         let mut bytes = Vec::<UInt8>::new();
         bits.chunks(8).for_each(|bits_per_byte| {

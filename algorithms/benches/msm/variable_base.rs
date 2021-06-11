@@ -30,7 +30,7 @@ use snarkvm_utilities::rand::UniformRand;
 extern crate criterion;
 
 fn variable_base(c: &mut Criterion) {
-    const SAMPLES: usize = 1 << 10;
+    const SAMPLES: usize = 200000;
 
     let mut rng = XorShiftRng::seed_from_u64(234872845u64);
 
@@ -48,7 +48,7 @@ fn variable_base(c: &mut Criterion) {
 
 criterion_group! {
     name = variable_base_group;
-    config = Criterion::default().sample_size(100);
+    config = Criterion::default().sample_size(10);
     targets = variable_base 
 }
 

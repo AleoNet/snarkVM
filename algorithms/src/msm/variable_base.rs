@@ -185,6 +185,8 @@ impl VariableBaseMSM {
         bases: &[G],
         scalars: &[<G::ScalarField as Field>::BigInteger],
     ) -> G::Projective {
+        // Self::msm_inner_rust(bases, scalars)
+        // Self::msm_inner_asm(bases, scalars)
         Self::msm_inner_cuda(bases, scalars).unwrap()
     }
 }

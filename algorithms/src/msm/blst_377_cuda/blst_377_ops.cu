@@ -83,7 +83,6 @@ __device__ void blst_inverse(blst_fp out, const blst_fp in) {
             div_by_2_mod_384(u, u);
 
             if ((b[0] & 1) != 0) {
-                // printf("c-tINVERSE ADDING b\n");
                 blst_fp_add_unsafe(b, b, BLS12_377_P);
             }
             div_by_2_mod_384(b, b);
@@ -95,7 +94,6 @@ __device__ void blst_inverse(blst_fp out, const blst_fp in) {
             div_by_2_mod_384(v, v);
 
             if ((c[0] & 1) != 0) {
-                    // printf("c-tINVERSE ADDING c\n");
                 blst_fp_add_unsafe(c, c, BLS12_377_P);
             }
             div_by_2_mod_384(c, c);
@@ -140,7 +138,7 @@ __device__ void blst_p1_projective_into_affine(blst_p1_affine* out, const blst_p
     }
 }
 
-__device__ void blstv2_add_affine_to_projective(blst_p1 *out, const blst_p1 *p1, const blst_p1_affine *p2) {
+__device__ void blst_add_affine_to_projective(blst_p1 *out, const blst_p1 *p1, const blst_p1_affine *p2) {
     if (is_blst_p1_affine_zero(p2)) {
         memcpy(out, p1, sizeof(blst_p1));
         return;
@@ -238,7 +236,7 @@ __device__ void blstv2_add_affine_to_projective(blst_p1 *out, const blst_p1 *p1,
 }
 
 
-__device__ void blstv2_add_projective_to_projective(blst_p1 *out, const blst_p1 *p1, const blst_p1 *p2) {
+__device__ void blst_add_projective_to_projective(blst_p1 *out, const blst_p1 *p1, const blst_p1 *p2) {
     if (is_blst_p1_zero(p2)) {
         memcpy(out, p1, sizeof(blst_p1));
         return;

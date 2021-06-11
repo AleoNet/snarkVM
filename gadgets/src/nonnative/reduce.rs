@@ -29,7 +29,7 @@ use crate::{
         fields::FieldGadget,
     },
 };
-use snarkvm_fields::{FieldParameters, PrimeField};
+use snarkvm_fields::{Field, FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{biginteger::BigInteger, bititerator::BitIteratorBE};
 
