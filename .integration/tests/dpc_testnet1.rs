@@ -34,7 +34,7 @@ use snarkvm_dpc::{
         DPC,
     },
 };
-use snarkvm_integration::{dpc::*, ledger::*, memdb::MemDb, storage::*};
+use snarkvm_integration::{ledger::*, memdb::MemDb, storage::*, testnet1::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
