@@ -224,7 +224,7 @@ where
     let program_vk_commitment_parameters_fe_bytes =
         field_element_to_bytes::<C, _>(cs, program_vk_commitment_parameters_fe, "program vk commitment pp")?;
     let local_data_commitment_parameters_fe_bytes =
-        field_element_to_bytes::<C, _>(cs, local_data_crh_parameters_fe, "local data commitment pp")?;
+        field_element_to_bytes::<C, _>(cs, local_data_crh_parameters_fe.clone(), "local data commitment pp")?;
     let serial_number_nonce_crh_parameters_fe_bytes =
         field_element_to_bytes::<C, _>(cs, serial_number_nonce_crh_parameters_fe, "serial number nonce crh pp")?;
     let ledger_parameters_fe_bytes = field_element_to_bytes::<C, _>(cs, ledger_parameters_fe, "ledger pp")?;
@@ -269,7 +269,7 @@ where
     let program_commitment_fe_bytes = field_element_to_bytes::<C, _>(cs, program_commitment_fe, "program commitment")?;
     let memo_fe_bytes = field_element_to_bytes::<C, _>(cs, memo_fe, "memo")?;
     let network_id_fe_bytes = field_element_to_bytes::<C, _>(cs, network_id_fe, "network id")?;
-    let local_data_root_fe_bytes = field_element_to_bytes::<C, _>(cs, local_data_root_fe, "local data root")?;
+    let local_data_root_fe_bytes = field_element_to_bytes::<C, _>(cs, local_data_root_fe.clone(), "local data root")?;
     let value_balance_fe_bytes = field_element_to_bytes::<C, _>(cs, value_balance_fe, "value balance")?;
 
     // Construct inner snark input as bytes
@@ -386,12 +386,30 @@ where
 
         old_death_program_ids.push(claimed_death_program_id_bytes);
 
-        let position = UInt8::constant(i as u8).to_bits_le();
+        // let position = UInt8::constant(i as u8).to_bits_le();
+
+        let position_fe = vec![C::InnerField::from(i as u128)];
+        let mut program_input_field_elements = vec![];
+
+        program_input_field_elements.extend(position_fe);
+        program_input_field_elements.extend(local_data_crh_parameters_fe.clone());
+        program_input_field_elements.extend(local_data_root_fe.clone());
+
+        let mut program_snark_input = vec![];
+
+        for (j, input) in program_input_field_elements.iter().enumerate() {
+            let input_element = <C::ProgramSNARKGadget as SNARKVerifierGadget<_, _>>::Input::alloc(
+                cs.ns(|| format!("alloc_death_program_input_{}_{}", i, j)),
+                || Ok(input),
+            )?;
+
+            program_snark_input.push(input_element);
+        }
 
         C::ProgramSNARKGadget::check_verify(
             &mut cs.ns(|| "Check that proof is satisfied"),
             &death_program_vk,
-            ([position].iter()).chain(program_input_bits.iter()).cloned(),
+            program_snark_input.iter().cloned(),
             &death_program_proof,
         )?;
     }
@@ -427,12 +445,28 @@ where
 
         new_birth_program_ids.push(claimed_birth_program_id_bytes);
 
-        let position = UInt8::constant((C::NUM_INPUT_RECORDS + j) as u8).to_bits_le();
+        let position_fe = vec![C::InnerField::from((C::NUM_INPUT_RECORDS + j) as u128)];
+        let mut program_input_field_elements = vec![];
+
+        program_input_field_elements.extend(position_fe);
+        program_input_field_elements.extend(local_data_crh_parameters_fe.clone());
+        program_input_field_elements.extend(local_data_root_fe.clone());
+
+        let mut program_snark_input = vec![];
+
+        for (k, input) in program_input_field_elements.iter().enumerate() {
+            let input_element = <C::ProgramSNARKGadget as SNARKVerifierGadget<_, _>>::Input::alloc(
+                cs.ns(|| format!("alloc_birth_program_input_{}_{}", j, k)),
+                || Ok(input),
+            )?;
+
+            program_snark_input.push(input_element);
+        }
 
         C::ProgramSNARKGadget::check_verify(
             &mut cs.ns(|| "Check that proof is satisfied"),
             &birth_program_vk,
-            ([position].iter()).chain(program_input_bits.iter()).cloned(),
+            program_snark_input.iter().cloned(),
             &birth_program_proof,
         )?;
     }
