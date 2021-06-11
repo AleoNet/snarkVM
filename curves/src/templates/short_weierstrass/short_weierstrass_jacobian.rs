@@ -720,6 +720,7 @@ impl<'a, P: Parameters> AddAssign<&'a Self> for GroupProjective<P> {
 
             // I = (2*H)^2
             let i = (h.double()).square();
+            // println!("r-tX:add:6 {}", i.as_repr_singlet().unwrap().clone().as_ref()[0]);
 
             // J = H*I
             let j = h * &i;
@@ -729,6 +730,7 @@ impl<'a, P: Parameters> AddAssign<&'a Self> for GroupProjective<P> {
 
             // V = U1*I
             let v = u1 * &i;
+            // println!("r-tX:add:9 {}", v.as_repr_singlet().unwrap().clone().as_ref()[0]);
 
             // X3 = r^2 - J - 2*V
             self.x = r.square() - &j - &(v.double());

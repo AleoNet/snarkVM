@@ -42,7 +42,7 @@ extern "C" __global__ void msm6_collapse_rows(blst_p1* target, const blst_p1* bu
     memcpy(&temp_target, &bucket_lists[base], sizeof(blst_p1));
 
     for (uint32_t i = base + 1; i < term; ++i) {
-        blst_p1_add_or_double(&temp_target, &temp_target, &bucket_lists[i]);
+        blstv2_add_projective_to_projective(&temp_target, &temp_target, &bucket_lists[i]);
     }
     
     memcpy(&target[threadIdx.x], &temp_target, sizeof(blst_p1));

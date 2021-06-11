@@ -60,5 +60,5 @@ __device__ static const blst_fp BLS12_377_R2 {
 __device__ static const limb_t BLS12_377_p0 = (limb_t)0x8508bfffffffffff;
 __device__ extern const blst_p1 BLS12_377_ZERO_PROJECTIVE;
 __device__ extern const blst_p1_affine BLS12_377_ZERO_AFFINE;
-extern const blst_scalar BLS12_377_r;
+__device__ extern const blst_scalar BLS12_377_R;
 

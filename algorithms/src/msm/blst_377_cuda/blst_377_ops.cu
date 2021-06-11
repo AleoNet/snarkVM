@@ -1,4 +1,7 @@
 #include "blst_377_ops.h"
+#include "types.h"
+#include "asm_cuda.h"
+#include <stdio.h>
 
 __device__ const blst_p1 BLS12_377_ZERO_PROJECTIVE = {
   {0},
@@ -11,148 +14,330 @@ __device__ const blst_p1_affine BLS12_377_ZERO_AFFINE = {
   {ONE_MONT_P}
 };
 
-const blst_scalar BLS12_377_r = {
+__device__ const blst_scalar BLS12_377_R = {
   TO_LIMB_T(0x0a11800000000001), TO_LIMB_T(0x59aa76fed0000001),
   TO_LIMB_T(0x60b44d1e5c37b001), TO_LIMB_T(0x12ab655e9a2ca556)
 };
 
-__device__ static inline void vec_select(void *ret, const void *a, const void *b,
-                            size_t num, bool sel_a)
-{
-  limb_t bi, *rp = (limb_t *)ret;
-  const limb_t *ap = (const limb_t *)a;
-  const limb_t *bp = (const limb_t *)b;
-  limb_t xorm, mask = (limb_t)0 - sel_a;
-  size_t i;
-
-  num /= sizeof(limb_t);
-
-  for (i = 0; i < num; i++) {
-    xorm = (ap[i] ^ (bi = bp[i])) & mask;
-    rp[i] = bi ^ xorm;
-  }
+__device__ static inline int is_blst_p1_zero(const blst_p1 *p) {
+    return p->Z[0] == 0 &&
+        p->Z[1] == 0 &&
+        p->Z[2] == 0 &&
+        p->Z[3] == 0 &&
+        p->Z[4] == 0 &&
+        p->Z[5] == 0;
 }
 
-__device__ static inline bool is_zero(limb_t l)
-{   return (~l & (l - 1)) >> (LIMB_T_BITS - 1);   }
-
-__device__ static inline bool vec_is_zero(const void *a, size_t num)
-{
-  const limb_t *ap = (const limb_t *)a;
-  limb_t acc;
-  size_t i;
-
-  num /= sizeof(limb_t);
-
-  for (acc = 0, i = 0; i < num; i++)
-    acc |= ap[i];
-
-  return is_zero(acc);
+__device__ static inline int is_blst_fp_zero(const blst_fp p) {
+    return p[0] == 0 &&
+        p[1] == 0 &&
+        p[2] == 0 &&
+        p[3] == 0 &&
+        p[4] == 0 &&
+        p[5] == 0;
 }
 
-__device__ static inline void vec_copy(void *restrict ret, const void *a, size_t num)
-{
-  limb_t *rp = (limb_t *)ret;
-  const limb_t *ap = (const limb_t *)a;
-  size_t i;
-
-  num /= sizeof(limb_t);
-
-  for (i = 0; i < num; i++)
-    rp[i] = ap[i];
+__device__ static inline int is_blst_fp_eq(const blst_fp p1, const blst_fp p2) {
+    return p1[0] == p2[0] &&
+        p1[1] == p2[1] &&
+        p1[2] == p2[2] &&
+        p1[3] == p2[3] &&
+        p1[4] == p2[4] &&
+        p1[5] == p2[5];
 }
 
-/*
- * Addition that can handle doubling [as well as points at infinity,
- * which are encoded as Z==0] in constant time. It naturally comes at
- * cost, but this subroutine should be called only when independent
- * points are processed, which is considered reasonable compromise.
- * For example, ptype##s_mult_w5 calls it, but since *major* gain is
- * result of pure doublings being effectively divided by amount of
- * points, slightly slower addition can be tolerated. But what is the
- * additional cost more specifically? Best addition result is 11M+5S,
- * while this routine takes 13M+5S (+1M+1S if a4!=0), as per
- *
- * -------------+-------------
- * addition     | doubling
- * -------------+-------------
- * U1 = X1*Z2^2 | U1 = X1
- * U2 = X2*Z1^2 |
- * S1 = Y1*Z2^3 | S1 = Y1
- * S2 = Y2*Z1^3 |
- * zz = Z1*Z2   | zz = Z1
- * H = U2-U1    | H' = 2*Y1
- * R = S2-S1    | R' = 3*X1^2[+a*Z1^4]
- * sx = U1+U2   | sx = X1+X1
- * -------------+-------------
- * H!=0 || R!=0 | H==0 && R==0
- *
- *      X3 = R^2-H^2*sx
- *      Y3 = R*(H^2*U1-X3)-H^3*S1
- *      Z3 = H*zz
- *
- * As for R!=0 condition in context of H==0, a.k.a. P-P. The result is
- * infinity by virtue of Z3 = (U2-U1)*zz = H*zz = 0*zz == 0.
- */
-__device__ void blst_p1_add_or_double(blst_p1 *out, const blst_p1 *p1,
-                                         const blst_p1 *p2) {
-  blst_p1 p3; /* starts as (U1, S1, zz) from addition side */
-  struct { blst_fp H, R, sx; } add, dbl; 
-  bool p1inf, p2inf, is_dbl; 
+__device__ static inline int is_blst_p1_affine_zero(const blst_p1_affine *p) {
+    return p->X[0] == 0 &&
+        p->X[1] == 0 &&
+        p->X[2] == 0 &&
+        p->X[3] == 0 &&
+        p->X[4] == 0 &&
+        p->X[5] == 0;
+}
 
-  p2inf = vec_is_zero(p2->Z, sizeof(p2->Z)); 
-  if (p2inf) {
-    vec_copy(out, p1, sizeof(blst_p1));
-    return;
-  }
-  p1inf = vec_is_zero(p1->Z, sizeof(p1->Z)); 
-  if (p1inf) {
-    vec_copy(out, p2, sizeof(blst_p1));
-    return;
-  }
+__device__ static const blst_fp BIGINT_ONE = { 1, 0, 0, 0, 0, 0 };
 
-  blst_fp_add(dbl.sx, p1->X, p1->X);  /* sx = X1+X1 */
-  blst_fp_sqr(dbl.R, p1->X);          /* X1^2 */
-  blst_fp_mul_by_3(dbl.R, dbl.R);     /* R = 3*X1^2 */
-  blst_fp_add(dbl.H, p1->Y, p1->Y);   /* H = 2*Y1 */
+__device__ void blst_inverse(blst_fp out, const blst_fp in) {
+    if (is_blst_fp_zero(in)) {
+        // this is really bad?
+        *((int*)NULL);
+    }
+    // Guajardo Kumar Paar Pelzl
+    // Efficient Software-Implementation of Finite Fields with Applications to
+    // Cryptography
+    // Algorithm 16 (BEA for Inversion in Fp)
 
-  blst_fp_sqr(p3.X, p2->Z);           /* Z2^2 */
-  blst_fp_mul(p3.Z, p1->Z, p2->Z);    /* Z1*Z2 */
-  blst_fp_sqr(add.H, p1->Z);          /* Z1^2 */
+    blst_fp u;
+    memcpy(u, in, sizeof(blst_fp));
+    blst_fp v;
+    memcpy(v, BLS12_377_P, sizeof(blst_fp));
+    blst_fp b;
+    memcpy(b, BLS12_377_R2, sizeof(blst_fp));
+    blst_fp c;
+    memset(c, 0, sizeof(blst_fp));
 
-  blst_fp_mul(p3.Y, p1->Y, p2->Z);    
-  blst_fp_mul(p3.Y, p3.Y, p3.X);      /* S1 = Y1*Z2^3 */
-  blst_fp_mul(add.R, p2->Y, p1->Z);   
-  blst_fp_mul(add.R, add.R, add.H);   /* S2 = Y2*Z1^3 */
-  blst_fp_sub(add.R, add.R, p3.Y);    /* R = S2-S1 */
+    while (!is_blst_fp_eq(u, BIGINT_ONE) && !is_blst_fp_eq(v, BIGINT_ONE)) {
+        // printf("c-t%i-inverse_round: u=%llu v=%llu b=%llu c=%llu\n", threadIdx.x, u[0], v[0], b[0], c[0]);
+        while ((u[0] & 1) == 0) {
+            // printf("c-t%i-inverse_round_u_start: u=%llu b=%llu\n", threadIdx.x, u[0], b[0]);
+            div_by_2_mod_384(u, u);
 
-  blst_fp_mul(p3.X, p3.X, p1->X);     /* U1 = X1*Z2^2 */
-  blst_fp_mul(add.H, add.H, p2->X);   /* U2 = X2*Z1^2 */
+            if ((b[0] & 1) != 0) {
+                // printf("c-tINVERSE ADDING b\n");
+                blst_fp_add_unsafe(b, b, BLS12_377_P);
+            }
+            div_by_2_mod_384(b, b);
+            // printf("c-t%i-inverse_round_u_stop: u=%llu b=%llu\n", threadIdx.x, u[0], b[0]);
+        }
 
-  blst_fp_add(add.sx, add.H, p3.X);   /* sx = U1+U2 */
-  blst_fp_sub(add.H, add.H, p3.X);    /* H = U2-U1 */
+        while ((v[0] & 1) == 0) {
+            // printf("c-t%i-inverse_round_v_start: u=%llu b=%llu\n", threadIdx.x, v[0], c[0]);
+            div_by_2_mod_384(v, v);
 
-  /* make the choice between addition and doubling */
-  is_dbl = vec_is_zero(add.H, 2*sizeof(add.H));      
-  vec_select(&p3, p1, &p3, sizeof(p3), is_dbl);      
-  vec_select(&add, &dbl, &add, sizeof(add), is_dbl); 
-  /* |p3| and |add| hold all inputs now, |p3| will hold output */
+            if ((c[0] & 1) != 0) {
+                    // printf("c-tINVERSE ADDING c\n");
+                blst_fp_add_unsafe(c, c, BLS12_377_P);
+            }
+            div_by_2_mod_384(c, c);
+            // printf("c-t%i-inverse_round_v_stop: u=%llu b=%llu\n", threadIdx.x, v[0], c[0]);
+        }
 
-  blst_fp_mul(p3.Z, p3.Z, add.H);     /* Z3 = H*Z1*Z2 */
+        if (is_gt_384(u, v)) {
+            blst_fp_sub_unsafe(u, u, v);
+            
+            blst_fp_sub(b, b, c);
+        } else {
+            blst_fp_sub_unsafe(v, v, u);
 
-  blst_fp_sqr(dbl.H, add.H);          /* H^2 */
-  blst_fp_mul(dbl.R, dbl.H, add.H);   /* H^3 */
-  blst_fp_mul(dbl.R, dbl.R, p3.Y);    /* H^3*S1 */
-  blst_fp_mul(p3.Y, dbl.H, p3.X);     /* H^2*U1 */
+            blst_fp_sub(c, c, b);
+        }
+    }
+    if (is_blst_fp_eq(u, BIGINT_ONE)) {
+        memcpy(out, b, sizeof(blst_fp));
+    } else {
+        memcpy(out, c, sizeof(blst_fp));
+    }
+}
 
-  blst_fp_mul(dbl.H, dbl.H, add.sx);  /* H^2*sx */
-  blst_fp_sqr(p3.X, add.R);           /* R^2 */
-  blst_fp_sub(p3.X, p3.X, dbl.H);     /* X3 = R^2-H^2*sx */
+__device__ void blst_p1_projective_into_affine(blst_p1_affine* out, const blst_p1* in) {
+    if (is_blst_p1_zero(in)) {
+        memset(out->X, 0, sizeof(blst_fp));
+        memcpy(out->Y, BLS12_377_ONE, sizeof(blst_fp));
+        //todo: set inf
+    } else if (is_blst_fp_eq(in->Z, BLS12_377_ONE)) {
+        memcpy(out->X, in->X, sizeof(blst_fp));
+        memcpy(out->Y, in->Y, sizeof(blst_fp));
+    } else {
+        blst_fp z_inv;
+        // printf("c-t%i:cinverse-in: %llu\n", threadIdx.x, in->Z[0]);
+        blst_inverse(z_inv, in->Z);
+        // printf("c-t%i:cinverse-out: %llu\n", threadIdx.x, z_inv[0]);
+        blst_fp z_inv_squared;
+        blst_fp_sqr(z_inv_squared, z_inv);
+        blst_fp_mul(out->X, in->X, z_inv_squared);
+        blst_fp_mul(z_inv_squared, z_inv_squared, z_inv);
+        blst_fp_mul(out->Y, in->Y, z_inv_squared);
+    }
+}
 
-  blst_fp_sub(p3.Y, p3.Y, p3.X);      /* H^2*U1-X3 */
-  blst_fp_mul(p3.Y, p3.Y, add.R);     /* R*(H^2*U1-X3) */
-  blst_fp_sub(p3.Y, p3.Y, dbl.R);     /* Y3 = R*(H^2*U1-X3)-H^3*S1 */
+__device__ void blstv2_add_affine_to_projective(blst_p1 *out, const blst_p1 *p1, const blst_p1_affine *p2) {
+    if (is_blst_p1_affine_zero(p2)) {
+        memcpy(out, p1, sizeof(blst_p1));
+        return;
+    }
 
-  vec_select(&p3, p1, &p3, sizeof(blst_p1), p2inf); 
-  vec_select(out, p2, &p3, sizeof(blst_p1), p1inf); 
+    if (is_blst_p1_zero(p1)) {
+        memcpy(out->X, p2->X, sizeof(blst_fp));
+        memcpy(out->Y, p2->Y, sizeof(blst_fp));
+        memcpy(out->Z, BLS12_377_ONE, sizeof(blst_fp));
+        return;
+    }
+  
+    // http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-madd-2007-bl
+    // Works for all curves.
+
+    // printf("c-t%llu:add:0 %llu,%llu,%llu -> %llu,%llu\n", threadIdx.x, p1->X[0], p1->Y[0], p1->Z[0], p2->X[0], p2->Y[0]);
+
+    // Z1Z1 = Z1^2
+    blst_fp z1z1;
+    blst_fp_sqr(z1z1, p1->Z);
+
+    // printf("c-t%llu:add:1 %llu\n", threadIdx.x, z1z1[0]);
+
+    // U2 = X2*Z1Z1
+    blst_fp u2;
+    blst_fp_mul(u2, p2->X, z1z1);
+
+    // printf("c-t%llu:add:2 %llu\n", threadIdx.x, u2[0]);
+
+    // S2 = Y2*Z1*Z1Z1
+    blst_fp s2;
+    blst_fp_mul(s2, p2->Y, p1->Z);
+    blst_fp_mul(s2, s2, z1z1);
+
+    // printf("c-t%llu:add:3 %llu\n", threadIdx.x, s2[0]);
+
+    // H = U2-X1
+    blst_fp h;
+    blst_fp_sub(h, u2, p1->X);
+
+    // printf("c-t%llu:add:4 %llu\n", threadIdx.x, h[0]);
+
+    // HH = H^2
+    blst_fp hh;
+    blst_fp_sqr(hh, h);
+    // printf("c-t%llu:add:5 %llu\n", threadIdx.x, hh[0]);
+
+    // I = 4*HH
+    blst_fp i;
+    memcpy(i, hh, sizeof(blst_fp));
+    blst_fp_add(i, i, i);
+    blst_fp_add(i, i, i);
+    // printf("c-t%llu:add:6 %llu\n", threadIdx.x, i[0]);
+
+    // J = H*I
+    blst_fp j;
+    blst_fp_mul(j, h, i);
+    // printf("c-t%llu:add:7 %llu\n", threadIdx.x, j[0]);
+
+    // r = 2*(S2-Y1)
+    blst_fp r;
+    blst_fp_sub(r, s2, p1->Y);
+    blst_fp_add(r, r, r);
+    // printf("c-t%llu:add:8 %llu\n", threadIdx.x, r[0]);
+
+    // V = X1*I
+    blst_fp v;
+    blst_fp_mul(v, p1->X, i);
+    // printf("c-t%llu:add:9 %llu\n", threadIdx.x, v[0]);
+
+    // X3 = r^2 - J - 2*V
+    blst_fp_sqr(out->X, r);
+    // printf("c-t%llu:add:1X %llu, %llu, %llu, %llu, %llu, %llu\n", threadIdx.x, out->X[0], out->X[1], out->X[2], out->X[3], out->X[4], out->X[5]);
+    blst_fp_sub(out->X, out->X, j);
+    // printf("c-t%llu:add:2X %llu, %llu, %llu, %llu, %llu, %llu -- %llu, %llu, %llu, %llu, %llu, %llu\n", threadIdx.x, out->X[0], out->X[1], out->X[2], out->X[3], out->X[4], out->X[5], j[0], j[1], j[2], j[3], j[4], j[5]);
+    blst_fp_sub(out->X, out->X, v);
+    // printf("c-t%llu:add:3X %llu\n", threadIdx.x, out->X[0]);
+    blst_fp_sub(out->X, out->X, v);
+    // printf("c-t%llu:add:4X %llu\n", threadIdx.x, out->X[0]);
+
+    // Y3 = r*(V-X3)-2*Y1*J
+    blst_fp_mul(j, p1->Y, j);
+    blst_fp_add(j, j, j);
+    blst_fp_sub(out->Y, v, out->X);
+    blst_fp_mul(out->Y, out->Y, r);
+    blst_fp_sub(out->Y, out->Y, j);
+    // printf("c-t%llu:add:Y %llu\n", threadIdx.x, out->Y[0]);
+
+    // Z3 = (Z1+H)^2-Z1Z1-HH
+    blst_fp_add(out->Z, p1->Z, h);
+    blst_fp_sqr(out->Z, out->Z);
+    blst_fp_sub(out->Z, out->Z, z1z1);
+    blst_fp_sub(out->Z, out->Z, hh);
+    // printf("c-t%llu:add:Z %llu\n", threadIdx.x, out->Z[0]);
+}
+
+
+__device__ void blstv2_add_projective_to_projective(blst_p1 *out, const blst_p1 *p1, const blst_p1 *p2) {
+    if (is_blst_p1_zero(p2)) {
+        memcpy(out, p1, sizeof(blst_p1));
+        return;
+    }
+
+    if (is_blst_p1_zero(p1)) {
+        memcpy(out->X, p2->X, sizeof(blst_fp));
+        memcpy(out->Y, p2->Y, sizeof(blst_fp));
+        return;
+    }
+  
+    // http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-madd-2007-bl
+    // Works for all curves.
+
+    // printf("c-t%llu:add:0 %llu,%llu,%llu -> %llu,%llu\n", threadIdx.x, p1->X[0], p1->Y[0], p1->Z[0], p2->X[0], p2->Y[0]);
+
+    // Z1Z1 = Z1^2
+    blst_fp z1z1;
+    blst_fp_sqr(z1z1, p1->Z);
+
+    // Z2Z2 = Z2^2
+    blst_fp z2z2;
+    blst_fp_sqr(z2z2, p2->Z);
+
+    // U1 = X1*Z2Z2
+    blst_fp u1;
+    blst_fp_mul(u1, p1->X, z2z2);
+
+    // U2 = X2*Z1Z1
+    blst_fp u2;
+    blst_fp_mul(u2, p2->X, z1z1);
+
+    // S1 = Y1*Z2*Z2Z2
+    blst_fp s1;
+    blst_fp_mul(s1, p1->Y, p2->Z);
+    blst_fp_mul(s1, s1, z2z2);
+
+    // S2 = Y2*Z1*Z1Z1
+    blst_fp s2;
+    blst_fp_mul(s2, p2->Y, p1->Z);
+    blst_fp_mul(s2, s2, z1z1);
+
+    // H = U2-U1
+    blst_fp h;
+    blst_fp_sub(h, u2, u1);
+
+    // printf("c-t%llu:add:4 %llu\n", threadIdx.x, h[0]);
+
+    // HH = H^2
+    blst_fp hh;
+    blst_fp_sqr(hh, h);
+    // printf("c-t%llu:add:5 %llu\n", threadIdx.x, hh[0]);
+
+    // I = 4*HH
+    blst_fp i;
+    memcpy(i, hh, sizeof(blst_fp));
+    blst_fp_add(i, i, i);
+    blst_fp_add(i, i, i);
+    // printf("c-t%llu:add:6 %llu\n", threadIdx.x, i[0]);
+
+    // J = H*I
+    blst_fp j;
+    blst_fp_mul(j, h, i);
+    // printf("c-t%llu:add:7 %llu\n", threadIdx.x, j[0]);
+
+    // r = 2*(S2-S1)
+    blst_fp r;
+    blst_fp_sub(r, s2, s1);
+    blst_fp_add(r, r, r);
+    // printf("c-t%llu:add:8 %llu\n", threadIdx.x, r[0]);
+
+    // V = U1*I
+    blst_fp v;
+    blst_fp_mul(v, u1, i);
+    // printf("c-t%llu:add:9 %llu\n", threadIdx.x, v[0]);
+
+    // X3 = r^2 - J - 2*V
+    blst_fp_sqr(out->X, r);
+    // printf("c-t%llu:add:1X %llu, %llu, %llu, %llu, %llu, %llu\n", threadIdx.x, out->X[0], out->X[1], out->X[2], out->X[3], out->X[4], out->X[5]);
+    blst_fp_sub(out->X, out->X, j);
+    // printf("c-t%llu:add:2X %llu, %llu, %llu, %llu, %llu, %llu -- %llu, %llu, %llu, %llu, %llu, %llu\n", threadIdx.x, out->X[0], out->X[1], out->X[2], out->X[3], out->X[4], out->X[5], j[0], j[1], j[2], j[3], j[4], j[5]);
+    blst_fp_sub(out->X, out->X, v);
+    // printf("c-t%llu:add:3X %llu\n", threadIdx.x, out->X[0]);
+    blst_fp_sub(out->X, out->X, v);
+    // printf("c-t%llu:add:4X %llu\n", threadIdx.x, out->X[0]);
+
+    // Y3 = r*(V-X3)-2*S1*J
+    blst_fp_mul(j, s1, j);
+    blst_fp_add(j, j, j);
+    blst_fp_sub(out->Y, v, out->X);
+    blst_fp_mul(out->Y, out->Y, r);
+    blst_fp_sub(out->Y, out->Y, j);
+    // printf("c-t%llu:add:Y %llu\n", threadIdx.x, out->Y[0]);
+
+    // Z3 = ((Z1+Z2)^2-Z1Z1-Z2Z2)*H
+    blst_fp_add(out->Z, p1->Z, p2->Z);
+    blst_fp_sqr(out->Z, out->Z);
+    blst_fp_sub(out->Z, out->Z, z1z1);
+    blst_fp_sub(out->Z, out->Z, z2z2);
+    blst_fp_mul(out->Z, out->Z, h);
+    // printf("c-t%llu:add:Z %llu\n", threadIdx.x, out->Z[0]);
 }

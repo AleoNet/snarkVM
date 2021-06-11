@@ -16,10 +16,6 @@ __device__ void add_mod_384_unsafe(blst_fp ret, const blst_fp a, const blst_fp b
 
 __device__ void div_by_2_mod_384(blst_fp ret, const blst_fp a);
 
-__device__ void mul_by_3_mod_384(blst_fp ret, const blst_fp a, const blst_fp p);
-
-__device__ void mul_by_8_mod_384(blst_fp ret, const blst_fp a, const blst_fp p);
-
 __device__ void cneg_mod_384(blst_fp ret, const blst_fp a, bool flag, const blst_fp p);
 
 __device__ static inline int is_gt_384(const blst_fp left, const blst_fp right) {

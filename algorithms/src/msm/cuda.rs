@@ -61,7 +61,7 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
 
     let buckets = unsafe { DeviceBox::alloc(&context.handle, context.num_groups as u64 * window_lengths.len() as u64 * 8 * LIMB_COUNT as u64 * 3) }?;
 
-    // let start = Instant::now();
+    let start = Instant::now();
 
     // println!("kernel1 start {}:{}", context.num_groups, window_lengths.len());
 
@@ -89,8 +89,8 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
 
     context.stream.sync()?;
     // println!("kernel2 done");
-    // let time = (start.elapsed().as_micros() as f64) / 1000.0;
-    // println!("msm-core took {} ms", time);
+    let time = (start.elapsed().as_micros() as f64) / 1000.0;
+    println!("msm-core took {} ms", time);
 
     let mut out = context.output_buf.load()?;
 
@@ -244,6 +244,19 @@ mod tests {
         inputs
     }
 
+    fn make_projective_tests(count: usize, cardinality: usize) -> Vec<Vec<G1Projective>> {
+        let mut rng = XorShiftRng::seed_from_u64(234832847u64);
+        let mut inputs = vec![];
+        for _ in 0..count {
+            let mut out = vec![];
+            for _ in 0..cardinality {
+                out.push(G1Projective::rand(&mut rng));
+            }
+            inputs.push(out);
+        }
+        inputs
+    }
+
     #[test]
     fn test_cuda_mul() {
         let inputs = make_tests(1000, 2);
@@ -296,6 +309,19 @@ mod tests {
                 eprintln!("inputs {:?}, {:?}", input[0].into_repr_raw().as_ref(), input[1].into_repr_raw().as_ref());
                 assert_eq!(rust_out.as_ref(), output.as_ref());
             }
+        }
+    }
+
+    #[test]
+    fn test_cuda_projective_add() {
+        let inputs = make_projective_tests(1000, 2);
+
+        let output = run_roundtrip("add_projective_test", &inputs[..]);
+        
+        for (input, output) in inputs.iter().zip(output.iter()) {
+            let rust_out = input[0] + &input[1];
+    
+            assert_eq!(&rust_out, output);
         }
     }
 

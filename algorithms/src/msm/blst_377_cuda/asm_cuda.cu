@@ -887,18 +887,6 @@ __device__ void div_by_2_mod_384(blst_fp ret, const blst_fp a) {
     _rshift_384(ret, a);
 }
 
-__device__ void mul_by_3_mod_384(blst_fp ret, const blst_fp a, const blst_fp p) {
-    _lshift_384(ret, a);
-    add_mod_384(ret, ret, a, p);
-}
-
-__device__ void mul_by_8_mod_384(blst_fp ret, const blst_fp a, const blst_fp p) {
-    _lshift_384(ret, a);
-    _lshift_384(ret, a);
-    _lshift_384(ret, a);
-    reduce(ret, p);
-}
-
 __device__ void cneg_mod_384(blst_fp ret, const blst_fp a, bool flag, const blst_fp p) {
     // just let the compiler cmov
     if (flag) {
