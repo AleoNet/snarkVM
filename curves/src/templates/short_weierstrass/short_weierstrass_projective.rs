@@ -20,7 +20,12 @@ use crate::{
     traits::{AffineCurve, ProjectiveCurve, SWModelParameters as Parameters},
 };
 use snarkvm_fields::{Field, One, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{BigInteger, bititerator::BitIteratorBE, bytes::{FromBytes, ToBytes}, rand::UniformRand, serialize::*};
+use snarkvm_utilities::{
+    bititerator::BitIteratorBE,
+    bytes::{FromBytes, ToBytes},
+    rand::UniformRand,
+    serialize::*,
+};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -512,10 +517,9 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
             x: repr[0],
             y: repr[1],
             z: repr[2],
-            _params: PhantomData
+            _params: PhantomData,
         }
     }
-
 
     fn to_x_coordinate(&self) -> Self::BaseField {
         self.x

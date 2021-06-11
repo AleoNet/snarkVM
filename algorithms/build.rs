@@ -16,33 +16,20 @@
 
 extern crate cc;
 
-use std::env;
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
-fn main() {
-    /*
-     * Use pre-built libblst.a if there is one. This is primarily
-     * for trouble-shooting purposes. Idea is that libblst.a can be
-     * compiled with flags independent from cargo defaults, e.g.
-     * '../../build.sh -O1 ...'.
-     */
-    // if Path::new("libblst377.a").exists() {
-    //     println!("cargo:rustc-link-search=.");
-    //     println!("cargo:rustc-link-lib=blst");
-    //     return;
-    // }
-
+#[cfg(feature = "blstasm")]
+fn compile_blst_asm() {
     let mut file_vec = Vec::new();
 
     let blst_base_dir = match env::var("BLST_SRC_DIR") {
         Ok(val) => PathBuf::from(val),
-        Err(_) => PathBuf::from("src/msm/blst_377"),
+        Err(_) => PathBuf::from("src/msm/variable_base/blst_377_asm"),
     };
     println!("Using blst source directory {}", blst_base_dir.display());
 
     file_vec.push(blst_base_dir.join("blst_377_ops.cpp"));
     file_vec.push(blst_base_dir.join("sn_msm.cpp"));
-    //
     file_vec.push(blst_base_dir.join("build/assembly.S"));
     // file_vec.push(blst_base_dir.join("asm.cpp"));
 
@@ -53,35 +40,27 @@ fn main() {
 
     // account for cross-compilation
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
-    match (cfg!(feature = "portable"), cfg!(feature = "force-adx")) {
-        (true, false) => {
-            println!("Compiling in portable mode without ISA extensions");
-            cc.define("__BLST_PORTABLE__", None);
-        }
-        (false, true) => {
-            if target_arch.eq("x86_64") {
-                println!("Enabling ADX support via `force-adx` feature");
-                cc.define("__ADX__", None);
-            } else {
-                println!("`force-adx` is ignored for non-x86_64 targets");
-            }
-        }
-        (false, false) => {
-            #[cfg(target_arch = "x86_64")]
-            if target_arch.eq("x86_64") && cfg!(target_feature = "adx")
-            {
-                println!("Enabling ADX because it was detected on the host");
-                cc.define("__ADX__", None);
-            }
-        }
-        (true, true) => panic!(
-            "Cannot compile with both `portable` and `force-adx` features"
-        ),
+    if target_arch != "x86_64" {
+        panic!("invalid arch for asm, expected x86_64");
     }
+
+    let mut cc_compat = cc.clone();
+
+    cc.define("__ADX__", None);
+
     // cc.flag_if_supported("-mno-avx"); // avoid costly transitions
     cc.flag_if_supported("-march=native");
     if !cfg!(debug_assertions) {
         cc.opt_level(2);
+        cc_compat.opt_level(2);
     }
     cc.files(&file_vec).cpp(true).compile("libblst377.a");
+    cc_compat.files(&file_vec).cpp(true).compile("libblst377_compat.a");
+}
+
+#[cfg(not(feature = "blstasm"))]
+fn compile_blst_asm() {}
+
+fn main() {
+    compile_blst_asm();
 }

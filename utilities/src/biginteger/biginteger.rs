@@ -123,7 +123,6 @@ pub trait BigInteger:
         Ok(())
     }
 
-
     /// swaps endian of internal storage
     fn swap_endian(mut self) -> Self {
         let inner = self.as_mut();

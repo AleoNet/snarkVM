@@ -1,8 +1,27 @@
+// Copyright (C) 2019-2021 Aleo Systems Inc.
+// This file is part of the snarkVM library.
+
+// The snarkVM library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// The snarkVM library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+
 use std::{any::TypeId, rc::Rc, time::Instant};
 
-use snarkvm_curves::{bls12_377::{Fr, G1Affine, G1Projective}, traits::{ AffineCurve, ProjectiveCurve }};
-use snarkvm_fields::{Field, Zero};
 use cuda_oxide::*;
+use snarkvm_curves::{
+    bls12_377::{Fr, G1Affine, G1Projective},
+    traits::{AffineCurve, ProjectiveCurve},
+};
+use snarkvm_fields::{Field, Zero};
 
 pub struct CudaRequest {
     bases: Vec<G1Affine>,
@@ -36,10 +55,14 @@ struct CudaAffine {
 }
 
 fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Result<G1Projective, ErrorCode> {
-    let mapped_bases: Vec<_> = request.bases.iter().map(|affine| CudaAffine {
-        x: affine.x,
-        y: affine.y,
-    }).collect();
+    let mapped_bases: Vec<_> = request
+        .bases
+        .iter()
+        .map(|affine| CudaAffine {
+            x: affine.x,
+            y: affine.y,
+        })
+        .collect();
     let raw_bases = unsafe { into_raw_slice(&mapped_bases[..]) };
     let raw_scalars = unsafe { into_raw_slice(&request.scalars[..]) };
     assert_eq!(std::mem::size_of::<CudaAffine>(), 8 * LIMB_COUNT * 2);
@@ -47,7 +70,10 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
     assert_eq!(std::mem::size_of::<Fr>(), 8 * 4);
     assert_eq!(raw_scalars.len(), 8 * 4 * request.scalars.len());
 
-    let mut window_lengths = (0..(request.scalars.len() as u32 / WINDOW_SIZE)).into_iter().map(|_| WINDOW_SIZE).collect::<Vec<u32>>();
+    let mut window_lengths = (0..(request.scalars.len() as u32 / WINDOW_SIZE))
+        .into_iter()
+        .map(|_| WINDOW_SIZE)
+        .collect::<Vec<u32>>();
     let overflow_size = request.scalars.len() as u32 - window_lengths.len() as u32 * WINDOW_SIZE;
     if overflow_size > 0 {
         window_lengths.push(overflow_size);
@@ -59,19 +85,30 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
     let scalars_in_buf = DeviceBox::new(&context.handle, raw_scalars)?;
     unsafe { context.output_buf.memset_d32_stream(0, context.stream) }?;
 
-    let buckets = unsafe { DeviceBox::alloc(&context.handle, context.num_groups as u64 * window_lengths.len() as u64 * 8 * LIMB_COUNT as u64 * 3) }?;
+    let buckets = unsafe {
+        DeviceBox::alloc(
+            &context.handle,
+            context.num_groups as u64 * window_lengths.len() as u64 * 8 * LIMB_COUNT as u64 * 3,
+        )
+    }?;
 
     let start = Instant::now();
 
     // println!("kernel1 start {}:{}", context.num_groups, window_lengths.len());
 
-    context.stream.launch(&context.pixel_func, window_lengths.len() as u32, context.num_groups, 0, (
-        &buckets,
-        &bases_in_buf,
-        &scalars_in_buf,
-        &window_lengths_buf,
+    context.stream.launch(
+        &context.pixel_func,
         window_lengths.len() as u32,
-    ))?;
+        context.num_groups,
+        0,
+        (
+            &buckets,
+            &bases_in_buf,
+            &scalars_in_buf,
+            &window_lengths_buf,
+            window_lengths.len() as u32,
+        ),
+    )?;
     // println!("kernel1 started");
 
     context.stream.sync()?;
@@ -80,16 +117,18 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
     println!("msm-pixel took {} ms", time);
 
     // println!("kernel1 done, kernel 2 starting");
-//extern "C" __global__ void msm6_collapse_rows(blst_p1* target, const blst_p1** bucket_lists, const uint32_t bucket_count) {
+    //extern "C" __global__ void msm6_collapse_rows(blst_p1* target, const blst_p1** bucket_lists, const uint32_t bucket_count) {
 
-    context.stream.launch(&context.row_func, 1, context.num_groups, 0, (
-        &context.output_buf,
-        &buckets,
-        window_lengths.len() as u32,
-    ))?;
+    context.stream.launch(
+        &context.row_func,
+        1,
+        context.num_groups,
+        0,
+        (&context.output_buf, &buckets, window_lengths.len() as u32),
+    )?;
     // println!("kernel2 started");
 
-//        &context.output_buf,
+    //        &context.output_buf,
 
     context.stream.sync()?;
     // println!("kernel2 done");
@@ -112,13 +151,17 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
     let lowest = windows.first().unwrap();
 
     // We're traversing windows from high to low.
-    let out = windows[1..].iter().rev().fold(G1Projective::zero(), |mut total, sum_i| {
-        total += sum_i;
-        for _ in 0..BIT_WIDTH {
-            total.double_in_place();
-        }
-        total
-    }) + lowest;
+    let out = windows[1..]
+        .iter()
+        .rev()
+        .fold(G1Projective::zero(), |mut total, sum_i| {
+            total += sum_i;
+            for _ in 0..BIT_WIDTH {
+                total.double_in_place();
+            }
+            total
+        })
+        + lowest;
     Ok(out)
 }
 
@@ -162,7 +205,10 @@ lazy_static::lazy_static! {
     };
 }
 
-pub(super) fn msm_cuda<G: AffineCurve>(mut bases: &[G], scalars: &[<G::ScalarField as Field>::BigInteger]) -> Result<G::Projective, ErrorCode> {
+pub(super) fn msm_cuda<G: AffineCurve>(
+    mut bases: &[G],
+    scalars: &[<G::ScalarField as Field>::BigInteger],
+) -> Result<G::Projective, ErrorCode> {
     if TypeId::of::<G>() != TypeId::of::<G1Affine>() {
         unimplemented!("trying to use cuda for unsupported curve");
     }
@@ -172,7 +218,7 @@ pub(super) fn msm_cuda<G: AffineCurve>(mut bases: &[G], scalars: &[<G::ScalarFie
     } else if bases.len() > scalars.len() {
         bases = &bases[..scalars.len()];
     }
-    
+
     if scalars.len() < 4 {
         let mut acc = G::Projective::zero();
 
@@ -183,11 +229,13 @@ pub(super) fn msm_cuda<G: AffineCurve>(mut bases: &[G], scalars: &[<G::ScalarFie
     }
 
     let (sender, receiver) = crossbeam_channel::bounded(1);
-    CUDA_DISPATCH.send(CudaRequest {
-        bases: unsafe { std::mem::transmute(bases.to_vec()) },
-        scalars: unsafe { std::mem::transmute(scalars.to_vec()) },
-        response: sender,
-    }).unwrap(); // todo handle this error (cuda gone)
+    CUDA_DISPATCH
+        .send(CudaRequest {
+            bases: unsafe { std::mem::transmute(bases.to_vec()) },
+            scalars: unsafe { std::mem::transmute(scalars.to_vec()) },
+            response: sender,
+        })
+        .unwrap(); // todo handle this error (cuda gone)
     match receiver.recv() {
         Ok(x) => unsafe { std::mem::transmute_copy(&x) },
         Err(_) => todo!("cuda crash handler"), // todo
@@ -223,22 +271,22 @@ mod tests {
         for input in inputs {
             let mut output_buf = unsafe { DeviceBox::alloc(&handle, size as u64) }.unwrap();
             output_buf.memset_d32(0).unwrap();
-    
+
             #[allow(trivial_casts)]
-            let input_buf = DeviceBox::new(&handle, unsafe { std::slice::from_raw_parts(input.as_ptr() as *const u8, size * input.len()) }).unwrap();
-            
-            stream.launch(&func, 1, 1, 0, (
-                &output_buf,
-                &input_buf,
-            )).unwrap();
-    
+            let input_buf = DeviceBox::new(&handle, unsafe {
+                std::slice::from_raw_parts(input.as_ptr() as *const u8, size * input.len())
+            })
+            .unwrap();
+
+            stream.launch(&func, 1, 1, 0, (&output_buf, &input_buf)).unwrap();
+
             stream.sync().unwrap();
-    
+
             let output = output_buf.load().unwrap();
             let output = unsafe { (output.as_ptr() as *const T).as_ref() }.unwrap();
             out.push(output.clone());
         }
-        
+
         out
     }
 
@@ -277,15 +325,19 @@ mod tests {
             let rust_out = input[0] * &input[1];
             let output = output.into_repr_raw();
             let rust_out = rust_out.into_repr_raw();
-    
+
             if rust_out != output {
                 eprintln!("test failed: {:?} != {:?}", rust_out.as_ref(), output.as_ref());
-                eprintln!("inputs {:?}, {:?}", input[0].into_repr_raw().as_ref(), input[1].into_repr_raw().as_ref());
+                eprintln!(
+                    "inputs {:?}, {:?}",
+                    input[0].into_repr_raw().as_ref(),
+                    input[1].into_repr_raw().as_ref()
+                );
                 assert_eq!(rust_out.as_ref(), output.as_ref());
             }
         }
     }
-    
+
     #[test]
     fn test_cuda_square() {
         let inputs = make_tests(1000, 1);
@@ -295,7 +347,7 @@ mod tests {
             let rust_out = input[0].square();
             let output = output.into_repr_raw();
             let rust_out = rust_out.into_repr_raw();
-    
+
             if rust_out != output {
                 eprintln!("test failed: {:?} != {:?}", rust_out.as_ref(), output.as_ref());
                 eprintln!("inputs {:?}", input[0].into_repr_raw().as_ref());
@@ -309,15 +361,19 @@ mod tests {
         let inputs = make_tests(1000, 2);
 
         let output = run_roundtrip("add_test", &inputs[..]);
-        
+
         for (input, output) in inputs.iter().zip(output.iter()) {
             let rust_out = input[0] + &input[1];
             let output = output.into_repr_raw();
             let rust_out = rust_out.into_repr_raw();
-    
+
             if rust_out != output {
                 eprintln!("test failed: {:?} != {:?}", rust_out.as_ref(), output.as_ref());
-                eprintln!("inputs {:?}, {:?}", input[0].into_repr_raw().as_ref(), input[1].into_repr_raw().as_ref());
+                eprintln!(
+                    "inputs {:?}, {:?}",
+                    input[0].into_repr_raw().as_ref(),
+                    input[1].into_repr_raw().as_ref()
+                );
                 assert_eq!(rust_out.as_ref(), output.as_ref());
             }
         }
@@ -328,10 +384,10 @@ mod tests {
         let inputs = make_projective_tests(1000, 2);
 
         let output = run_roundtrip("add_projective_test", &inputs[..]);
-        
+
         for (input, output) in inputs.iter().zip(output.iter()) {
             let rust_out = input[0] + &input[1];
-    
+
             assert_eq!(&rust_out, output);
         }
     }
@@ -344,7 +400,7 @@ mod tests {
     //     let two = Fq::from_repr_raw(BigInteger384::new([0xffffffffffff0000, 0, 0, 0, 0, 0]));
 
     //     let output = run_roundtrip("sub_test", &[input.x, two]);
-        
+
     //     let rust_out = input.x - &two;
 
     //     let output = output.into_repr_raw();
@@ -360,7 +416,7 @@ mod tests {
     //     let two = Fq::from_repr_raw(BigInteger384::new([2969935861058708186, 3214136913282752413, 16546303229048786771, 5876847618051361000, 10837191459028516831, 92459721659549085]));
 
     //     let output = run_roundtrip("sub_test", &[input, two]);
-        
+
     //     let rust_out = input - &two;
 
     //     let output = output.into_repr_raw();
@@ -375,7 +431,7 @@ mod tests {
     //     let input = Fq::from_repr_raw(BigInteger384::new([8153812714561349231, 8257634240502272872, 3309964121663164928, 14127110235610584458, 15209779385852976188, 40768380988256860]));
 
     //     let output = run_roundtrip("div2_test", &[input]);
-        
+
     //     let mut rust_out = input;
     //     rust_out.0.div2();
 
@@ -391,7 +447,7 @@ mod tests {
     //     let input = Fq::from_repr_raw(BigInteger384::new([8153812714561349231, 8257634240502272872, 3309964121663164928, 14127110235610584458, 15209779385852976188, 40768380988256860]));
 
     //     let output = run_roundtrip("inverse_test", &[input]);
-        
+
     //     let mut rust_out = input;
     //     rust_out.inverse_in_place();
 

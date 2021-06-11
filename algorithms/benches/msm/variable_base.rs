@@ -1,4 +1,3 @@
-
 // Copyright (C) 2019-2021 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
@@ -49,7 +48,7 @@ fn variable_base(c: &mut Criterion) {
 criterion_group! {
     name = variable_base_group;
     config = Criterion::default().sample_size(10);
-    targets = variable_base 
+    targets = variable_base
 }
 
 criterion_main!(variable_base_group);

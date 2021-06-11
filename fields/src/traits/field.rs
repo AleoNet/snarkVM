@@ -15,13 +15,19 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{One, Zero};
-use snarkvm_utilities::{BigInteger, bititerator::BitIteratorBE, bytes::{FromBytes, ToBytes}, rand::UniformRand, serialize::{
+use snarkvm_utilities::{
+    bititerator::BitIteratorBE,
+    bytes::{FromBytes, ToBytes},
+    rand::UniformRand,
+    serialize::{
         CanonicalDeserialize,
         CanonicalDeserializeWithFlags,
         CanonicalSerialize,
         CanonicalSerializeWithFlags,
         ConstantSerializedSize,
-    }};
+    },
+    BigInteger,
+};
 
 use std::{
     fmt::{Debug, Display},

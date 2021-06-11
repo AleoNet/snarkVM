@@ -22,5 +22,3 @@ pub mod tests;
 
 pub mod variable_base;
 pub use variable_base::*;
-
-mod cuda;

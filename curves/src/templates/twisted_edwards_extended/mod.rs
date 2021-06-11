@@ -599,10 +599,9 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
             y: repr[1],
             z: repr[2],
             t: repr[3],
-            _params: PhantomData
+            _params: PhantomData,
         }
     }
-
 
     fn to_x_coordinate(&self) -> Self::BaseField {
         self.x

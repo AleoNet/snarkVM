@@ -90,7 +90,7 @@ fn marlin_posw(c: &mut Criterion) {
 criterion_group! {
     name = posw;
     config = Criterion::default().sample_size(10);
-    targets = gm17_posw, marlin_posw
+    targets = marlin_posw
 }
 
 criterion_main!(posw);

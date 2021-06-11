@@ -634,7 +634,7 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
             x: repr[0],
             y: repr[1],
             z: repr[2],
-            _params: PhantomData
+            _params: PhantomData,
         }
     }
 

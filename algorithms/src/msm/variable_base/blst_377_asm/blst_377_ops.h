@@ -96,7 +96,7 @@ void mul_by_3_mod_384(blst_fp ret, const blst_fp a, const blst_fp p);
 void mul_by_8_mod_384(blst_fp ret, const blst_fp a, const blst_fp p);
 void cneg_mod_384(blst_fp ret, const blst_fp a, bool flag, const blst_fp p);
 
-#if defined(__ADX__) /* e.g. -march=broadwell */ && !defined(__BLST_PORTABLE__)
+#if defined(__ADX__)
 # define mul_mont_384 mulx_mont_384
 # define sqr_mont_384 sqrx_mont_384
 #endif
