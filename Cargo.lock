@@ -389,9 +389,9 @@ dependencies = [
 
 [[package]]
 name = "cuda-oxide"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71939bba44108568dab069c4aaa533fc824eec5f5aa7b10ea721ef0b62b6a8e2"
+checksum = "d37ccfe3f8770d24c57df90a6665da922865cb54f67cbcb2d19570cbcb0afc32"
 dependencies = [
  "num_enum",
 ]

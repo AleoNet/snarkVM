@@ -147,7 +147,13 @@ fn cuda_thread(input: crossbeam_channel::Receiver<CudaRequest>) {
     let num_groups = (SCALAR_BITS + BIT_WIDTH - 1) / BIT_WIDTH;
     Cuda::init().unwrap();
 
-    let device = Cuda::list_devices().unwrap().remove(0);
+    let mut devices = Cuda::list_devices().unwrap();
+    if devices.is_empty() {
+        eprintln!("CUDA enabled but no CUDA devices were found");
+        return;
+    }
+    let device = devices.remove(0);
+    eprintln!("Using '{}' as CUDA device", device.name().unwrap());
     let mut ctx = Context::new(&device).unwrap();
     #[cfg(debug_assertions)]
     ctx.set_limit(LimitType::PrintfFifoSize, 1024 * 1024 * 16).unwrap();
@@ -213,10 +219,10 @@ pub(super) fn msm_cuda<G: AffineCurve>(
             scalars: unsafe { std::mem::transmute(scalars.to_vec()) },
             response: sender,
         })
-        .unwrap(); // todo handle this error (cuda gone)
+        .map_err(|_| ErrorCode::NoDevice)?;
     match receiver.recv() {
         Ok(x) => unsafe { std::mem::transmute_copy(&x) },
-        Err(_) => todo!("cuda crash handler"), // todo
+        Err(_) => Err(ErrorCode::NoDevice)
     }
 }
 
