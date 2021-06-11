@@ -116,6 +116,16 @@ default-features = false
 [dependencies.smallvec]
 version = "1.6"
 
+[dependencies.cuda-oxide]
+version = "0.2"
+optional = true
+
+[dependencies.lazy_static]
+version = "1.4"
+
+[dependencies.crossbeam-channel]
+version = "0.5"
+
 [dependencies.thiserror]
 version = "1.0"
 
@@ -138,7 +148,8 @@ default = [
   "snarkvm-curves/default",
   "snarkvm-fields/default",
   "snarkvm-r1cs/default",
-  "snarkvm-utilities/default"
+  "snarkvm-utilities/default",
+  "cuda"
 ]
 full = [
   "commitment",
@@ -179,3 +190,4 @@ signature = [ "encryption" ]
 snark = [ "fft", "msm" ]
 parallel = [ ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
+cuda = [ "cuda-oxide" ]

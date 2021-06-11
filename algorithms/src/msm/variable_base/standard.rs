@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::traits::AffineCurve;
-use snarkvm_fields::{FieldParameters, PrimeField, Zero};
+use snarkvm_curves::traits::{AffineCurve, ProjectiveCurve};
+use snarkvm_fields::{FieldParameters, One, PrimeField, Zero};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -25,9 +25,6 @@ pub fn msm_standard<G: AffineCurve>(
     bases: &[G],
     scalars: &[<G::ScalarField as PrimeField>::BigInteger],
 ) -> G::Projective {
-    use snarkvm_curves::traits::ProjectiveCurve;
-    use snarkvm_fields::One;
-
     let c = if scalars.len() < 32 {
         3
     } else {

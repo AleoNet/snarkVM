@@ -388,6 +388,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cuda-oxide"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71939bba44108568dab069c4aaa533fc824eec5f5aa7b10ea721ef0b62b6a8e2"
+dependencies = [
+ "num_enum",
+]
+
+[[package]]
 name = "curl"
 version = "0.4.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -979,6 +988,28 @@ checksum = "05499f3756671c15885fee9034446956fff3f243d6077b91e5767df161f766b3"
 dependencies = [
  "hermit-abi",
  "libc",
+]
+
+[[package]]
+name = "num_enum"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "226b45a5c2ac4dd696ed30fa6b94b057ad909c7b7fc2e0d0808192bced894066"
+dependencies = [
+ "derivative",
+ "num_enum_derive",
+]
+
+[[package]]
+name = "num_enum_derive"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c0fd9eba1d5db0994a239e09c1be402d35622277e35468ba891aa5e3188ce7e"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1603,10 +1634,13 @@ dependencies = [
  "bitvec",
  "blake2",
  "criterion",
+ "crossbeam-channel",
  "csv",
+ "cuda-oxide",
  "derivative",
  "digest",
  "itertools 0.10.1",
+ "lazy_static",
  "rand",
  "rand_chacha",
  "rand_xorshift",
