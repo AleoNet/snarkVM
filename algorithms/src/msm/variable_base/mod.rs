@@ -19,12 +19,9 @@ use std::any::TypeId;
 use snarkvm_curves::{bls12_377::G1Affine, traits::AffineCurve};
 use snarkvm_fields::{Field, Zero};
 
-#[cfg(feature = "blstasm")]
+#[cfg(all(feature = "blstasm", target_arch = "x86_64"))]
 mod asm;
 mod standard;
-
-#[cfg(all(feature = "blstasm", not(target_arch = "x86_64")))]
-compile_error!("`blstasm` feature is only supported on x86_64");
 
 pub struct VariableBaseMSM;
 
@@ -51,7 +48,7 @@ impl VariableBaseMSM {
         scalars: &[<G::ScalarField as Field>::BigInteger],
     ) -> G::Projective {
         if TypeId::of::<G>() == TypeId::of::<G1Affine>() {
-            #[cfg(feature = "blstasm")]
+            #[cfg(all(feature = "blstasm", target_arch = "x86_64"))]
             {
                 return asm::msm_asm(bases, scalars);
             }

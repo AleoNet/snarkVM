@@ -18,7 +18,7 @@ extern crate cc;
 
 use std::{env, path::PathBuf};
 
-#[cfg(feature = "blstasm")]
+#[cfg(all(feature = "blstasm", target_arch = "x86_64"))]
 fn compile_blst_asm() {
     let mut file_vec = Vec::new();
 
@@ -57,7 +57,7 @@ fn compile_blst_asm() {
     cc.files(&file_vec).cpp(true).compile("libblst377.a");
 }
 
-#[cfg(not(feature = "blstasm"))]
+#[cfg(not(all(feature = "blstasm", target_arch = "x86_64")))]
 fn compile_blst_asm() {}
 
 fn main() {
