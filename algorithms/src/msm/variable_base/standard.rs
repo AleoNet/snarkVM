@@ -26,9 +26,9 @@ pub fn msm_standard<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as F
     use snarkvm_fields::One;
 
     let c = if scalars.len() < 32 {
-    3
+        3
     } else {
-    (2.0 / 3.0 * (f64::from(scalars.len() as u32)).log2() + 2.0).ceil() as usize
+        (2.0 / 3.0 * (f64::from(scalars.len() as u32)).log2() + 2.0).ceil() as usize
     };
 
     let num_bits = <G::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize;

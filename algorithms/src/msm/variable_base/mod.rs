@@ -98,5 +98,4 @@ mod tests {
         let asm = asm::msm_asm(bases.as_slice(), scalars.as_slice());
         assert_eq!(rust, asm);
     }
-
 }
