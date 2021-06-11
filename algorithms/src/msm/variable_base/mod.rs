@@ -89,6 +89,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(all(feature = "blstasm", target_arch = "x86_64"))]
     fn test_msm_asm() {
         let (bases, scalars) = test_data(1 << 10);
         let rust = standard::msm_standard(bases.as_slice(), scalars.as_slice());
