@@ -75,6 +75,10 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
     // println!("kernel1 started");
 
     context.stream.sync()?;
+
+    let time = (start.elapsed().as_micros() as f64) / 1000.0;
+    println!("msm-pixel took {} ms", time);
+
     // println!("kernel1 done, kernel 2 starting");
 //extern "C" __global__ void msm6_collapse_rows(blst_p1* target, const blst_p1** bucket_lists, const uint32_t bucket_count) {
 
@@ -90,7 +94,7 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
     context.stream.sync()?;
     // println!("kernel2 done");
     let time = (start.elapsed().as_micros() as f64) / 1000.0;
-    println!("msm-core took {} ms", time);
+    println!("msm-row took {} ms", time);
 
     let mut out = context.output_buf.load()?;
 

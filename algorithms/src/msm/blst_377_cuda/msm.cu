@@ -8,7 +8,7 @@ static const uint32_t BLST_WIDTH = 253;
 extern "C" __global__ void msm6_pixel(blst_p1* bucket_lists, const blst_p1_affine* bases_in, const blst_scalar* scalars, const uint32_t* window_lengths, const uint32_t window_count) {
     limb_t index = threadIdx.x / 64;
     size_t shift = threadIdx.x - (index * 64);
-    // printf("c-%i:%i: running\n", threadIdx.x, blockIdx.x);
+    limb_t mask = (limb_t) 1 << (limb_t) shift;
 
     blst_p1 bucket;
     memcpy(&bucket, &BLS12_377_ZERO_PROJECTIVE, sizeof(blst_p1));
@@ -23,7 +23,8 @@ extern "C" __global__ void msm6_pixel(blst_p1* bucket_lists, const blst_p1_affin
     // we delay the actual additions to a second loop because it reduces warp divergence (20% practical gain)
     for (uint32_t i = window_start; i < window_end; ++i) {
         // printf("c-%i:%i: doing %lu\n", threadIdx.x, blockIdx.x, i);
-        limb_t bit = (scalars[i][index] >> shift) & 1;
+        // limb_t bitw = (scalars[i][index] >> shift) & 1;
+        limb_t bit = (scalars[i][index] & mask);
         if (bit == 0) {
             continue;
         }
