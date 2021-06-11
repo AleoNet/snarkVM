@@ -21,7 +21,10 @@ use snarkvm_fields::{FieldParameters, PrimeField, Zero};
 use rayon::prelude::*;
 use snarkvm_utilities::BigInteger;
 
-pub fn msm_standard<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
+pub fn msm_standard<G: AffineCurve>(
+    bases: &[G],
+    scalars: &[<G::ScalarField as PrimeField>::BigInteger],
+) -> G::Projective {
     use snarkvm_curves::traits::ProjectiveCurve;
     use snarkvm_fields::One;
 
