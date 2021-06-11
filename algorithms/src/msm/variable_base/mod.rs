@@ -14,9 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::traits::AffineCurve;
+use std::any::TypeId;
+
+use snarkvm_curves::{bls12_377::G1Affine, traits::AffineCurve};
 use snarkvm_fields::{PrimeField, Zero};
 
+#[cfg(all(feature = "blstasm", target_arch = "x86_64"))]
+mod asm;
 mod standard;
 
 pub struct VariableBaseMSM;
@@ -36,6 +40,12 @@ impl VariableBaseMSM {
         bases: &[G],
         scalars: &[<G::ScalarField as PrimeField>::BigInteger],
     ) -> G::Projective {
+        if TypeId::of::<G>() == TypeId::of::<G1Affine>() {
+            #[cfg(all(feature = "blstasm", target_arch = "x86_64"))]
+            {
+                return asm::msm_asm(bases, scalars);
+            }
+        }
         standard::msm_standard(bases, scalars)
     }
 }
@@ -69,5 +79,14 @@ mod tests {
         let rust = standard::msm_standard(bases.as_slice(), scalars.as_slice());
         let basic = VariableBaseMSM::msm_basic(bases.as_slice(), scalars.as_slice());
         assert_eq!(rust, basic);
+    }
+
+    #[cfg(all(feature = "blstasm", target_arch = "x86_64"))]
+    #[test]
+    fn test_msm_asm() {
+        let (bases, scalars) = test_data(1 << 10);
+        let rust = standard::msm_standard(bases.as_slice(), scalars.as_slice());
+        let asm = asm::msm_asm(bases.as_slice(), scalars.as_slice());
+        assert_eq!(rust, asm);
     }
 }

@@ -1587,6 +1587,7 @@ version = "0.5.0"
 dependencies = [
  "bitvec",
  "blake2",
+ "cc",
  "criterion",
  "csv",
  "derivative",

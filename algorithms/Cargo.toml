@@ -109,6 +109,9 @@ default-features = false
 [dependencies.rayon]
 version = "1"
 
+[target.'cfg(target_arch = "x86_64")'.build-dependencies]
+cc = "1.0.50"
+
 [dependencies.sha2]
 version = "0.9"
 default-features = false
@@ -138,7 +141,8 @@ default = [
   "snarkvm-curves/default",
   "snarkvm-fields/default",
   "snarkvm-r1cs/default",
-  "snarkvm-utilities/default"
+  "snarkvm-utilities/default",
+  "blstasm"
 ]
 full = [
   "commitment",
@@ -179,3 +183,4 @@ signature = [ "encryption" ]
 snark = [ "fft", "msm" ]
 parallel = [ ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
+blstasm = [ ]
