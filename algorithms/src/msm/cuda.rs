@@ -19,12 +19,14 @@ struct CudaContext<'a, 'b, 'c> {
     stream: &'b mut Stream<'a>,
     num_groups: u32,
     output_buf: DeviceBox<'a>,
-    msm_func: Function<'a, 'c>,
+    pixel_func: Function<'a, 'c>,
+    row_func: Function<'a, 'c>,
 }
 
 const SCALAR_BITS: usize = 253;
 const BIT_WIDTH: usize = 1;
 const LIMB_COUNT: usize = 6;
+const WINDOW_SIZE: u32 = 32; // must match in cuda source
 
 #[allow(dead_code)]
 #[repr(C)]
@@ -45,22 +47,51 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
     assert_eq!(std::mem::size_of::<Fr>(), 8 * 4);
     assert_eq!(raw_scalars.len(), 8 * 4 * request.scalars.len());
 
+    let mut window_lengths = (0..(request.scalars.len() as u32 / WINDOW_SIZE)).into_iter().map(|_| WINDOW_SIZE).collect::<Vec<u32>>();
+    let overflow_size = request.scalars.len() as u32 - window_lengths.len() as u32 * WINDOW_SIZE;
+    if overflow_size > 0 {
+        window_lengths.push(overflow_size);
+    }
+    let raw_window_lengths = unsafe { into_raw_slice(&window_lengths[..]) };
+
+    let window_lengths_buf = DeviceBox::new(&context.handle, raw_window_lengths)?;
     let bases_in_buf = DeviceBox::new(&context.handle, raw_bases)?;
     let scalars_in_buf = DeviceBox::new(&context.handle, raw_scalars)?;
     unsafe { context.output_buf.memset_d32_stream(0, context.stream) }?;
 
-    let start = Instant::now();
-    context.stream.launch(&context.msm_func, 1, context.num_groups, 0, (
-        &context.output_buf,
+    let buckets = unsafe { DeviceBox::alloc(&context.handle, context.num_groups as u64 * window_lengths.len() as u64 * 8 * LIMB_COUNT as u64 * 3) }?;
+
+    // let start = Instant::now();
+
+    // println!("kernel1 start {}:{}", context.num_groups, window_lengths.len());
+
+    context.stream.launch(&context.pixel_func, window_lengths.len() as u32, context.num_groups, 0, (
+        &buckets,
         &bases_in_buf,
         &scalars_in_buf,
-        request.scalars.len(),
+        &window_lengths_buf,
+        window_lengths.len() as u32,
     ))?;
+    // println!("kernel1 started");
 
     context.stream.sync()?;
-    let time = (start.elapsed().as_micros() as f64) / 1000.0;
-    println!("msm-core took {} ms", time);
-    
+    // println!("kernel1 done, kernel 2 starting");
+//extern "C" __global__ void msm6_collapse_rows(blst_p1* target, const blst_p1** bucket_lists, const uint32_t bucket_count) {
+
+    context.stream.launch(&context.row_func, 1, context.num_groups, 0, (
+        &context.output_buf,
+        &buckets,
+        window_lengths.len() as u32,
+    ))?;
+    // println!("kernel2 started");
+
+//        &context.output_buf,
+
+    context.stream.sync()?;
+    // println!("kernel2 done");
+    // let time = (start.elapsed().as_micros() as f64) / 1000.0;
+    // println!("msm-core took {} ms", time);
+
     let mut out = context.output_buf.load()?;
 
     let base_size = std::mem::size_of::<<<G1Affine as AffineCurve>::BaseField as Field>::BigInteger>();
@@ -97,7 +128,8 @@ fn cuda_thread(input: crossbeam_channel::Receiver<CudaRequest>) {
     ctx.set_limit(LimitType::PrintfFifoSize, 1024 * 1024 * 16).unwrap();
     let handle = ctx.enter().unwrap();
     let module = Module::load(&handle, include_bytes!("./blst_377_cuda/kernel")).unwrap();
-    let func = module.get_function("msm6_window_253_1").unwrap();
+    let pixel_func = module.get_function("msm6_pixel").unwrap();
+    let row_func = module.get_function("msm6_collapse_rows").unwrap();
     let mut stream = Stream::new(&handle).unwrap();
 
     let output_buf = unsafe { DeviceBox::alloc(&handle, LIMB_COUNT as u64 * 8 * num_groups as u64 * 3) }.unwrap();
@@ -107,7 +139,8 @@ fn cuda_thread(input: crossbeam_channel::Receiver<CudaRequest>) {
         stream: &mut stream,
         num_groups: num_groups as u32,
         output_buf,
-        msm_func: func,
+        pixel_func,
+        row_func,
     };
 
     while let Ok(request) = input.recv() {
