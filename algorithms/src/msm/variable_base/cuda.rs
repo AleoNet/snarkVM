@@ -222,7 +222,7 @@ pub(super) fn msm_cuda<G: AffineCurve>(
         .map_err(|_| ErrorCode::NoDevice)?;
     match receiver.recv() {
         Ok(x) => unsafe { std::mem::transmute_copy(&x) },
-        Err(_) => Err(ErrorCode::NoDevice)
+        Err(_) => Err(ErrorCode::NoDevice),
     }
 }
 
