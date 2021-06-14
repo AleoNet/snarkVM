@@ -24,6 +24,7 @@ use crate::{
     bits::{Boolean, ToBitsLEGadget},
     fields::FpGadget,
     traits::alloc::AllocGadget,
+    FromFieldElementsGadget,
 };
 
 /// Conversion of field elements by converting them to boolean sequences
@@ -191,5 +192,152 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
             _snark_field: PhantomData,
             _constraint_field: PhantomData,
         })
+    }
+}
+
+impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanInputGadget<F, CF> {
+    fn from_field_elements<CS: ConstraintSystem<CF>>(
+        mut cs: CS,
+        field_elements: &Vec<FpGadget<CF>>,
+    ) -> Result<Self, SynthesisError> {
+        // Step 1: obtain the booleans of the CF field variables
+        let mut src_booleans = Vec::<Boolean>::new();
+        for (i, elem) in field_elements.iter().enumerate() {
+            let mut bits = elem.to_bits_le(cs.ns(|| format!("to_bits_le_{}", i)))?;
+            bits.reverse();
+            src_booleans.extend_from_slice(&bits);
+        }
+
+        // Step 2: repack the bits as F field elements
+        // Deciding how many bits can be embedded.
+        let capacity = if CF::size_in_bits() == F::size_in_bits() {
+            let fq = <<CF as PrimeField>::Parameters as FieldParameters>::MODULUS;
+            let fr = <<F as PrimeField>::Parameters as FieldParameters>::MODULUS;
+
+            let fq_u64: &[u64] = fq.as_ref();
+            let fr_u64: &[u64] = fr.as_ref();
+
+            let mut fr_not_smaller_than_fq = true;
+            for (left, right) in fr_u64.iter().zip(fq_u64.iter()).rev() {
+                if left < right {
+                    fr_not_smaller_than_fq = false;
+                    break;
+                }
+
+                if left > right {
+                    break;
+                }
+            }
+
+            if fr_not_smaller_than_fq {
+                F::size_in_bits()
+            } else {
+                F::size_in_bits() - 1
+            }
+        } else {
+            F::size_in_bits() - 1
+        };
+
+        // Step 3: group them based on the used capacity of F
+        let res = src_booleans
+            .chunks(capacity)
+            .map(|x| {
+                let mut res = x.to_vec();
+                res.reverse();
+                res
+            })
+            .collect::<Vec<Vec<Boolean>>>();
+        Ok(Self {
+            val: res,
+            _snark_field: PhantomData,
+            _constraint_field: PhantomData,
+        })
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use snarkvm_fields::PrimeField;
+    use snarkvm_r1cs::{Fr, TestConstraintSystem};
+    use snarkvm_utilities::{
+        rand::{test_rng, UniformRand},
+        to_bytes,
+        ToBytes,
+    };
+
+    use super::*;
+    use crate::{integers::uint::UInt8, traits::eq::EqGadget};
+
+    fn field_element_to_bytes<F: PrimeField, CS: ConstraintSystem<F>>(
+        mut cs: CS,
+        field_elements: Vec<F>,
+    ) -> Vec<Vec<UInt8>> {
+        if field_elements.len() <= 1 {
+            vec![
+                UInt8::alloc_input_vec_le(
+                    cs.ns(|| format!("Allocate field elements")),
+                    &to_bytes![field_elements].unwrap(),
+                )
+                .unwrap(),
+            ]
+        } else {
+            let mut fe_bytes = Vec::with_capacity(field_elements.len());
+            for (index, field_element) in field_elements.iter().enumerate() {
+                fe_bytes.push(
+                    UInt8::alloc_input_vec_le(
+                        cs.ns(|| format!("Allocate field elements - index {} ", index)),
+                        &to_bytes![field_element].unwrap(),
+                    )
+                    .unwrap(),
+                );
+            }
+            fe_bytes
+        }
+    }
+
+    #[test]
+    fn test_boolean_inputs_from_field_elements() {
+        let rng = &mut test_rng();
+
+        let mut cs = TestConstraintSystem::<Fr>::new();
+
+        let mut field_elements = vec![];
+        let mut field_element_gadgets = vec![];
+
+        // Construct the field elements and field element gadgets
+        for i in 0..1 {
+            let field_element = Fr::rand(rng);
+            let field_element_gadget =
+                FpGadget::alloc(cs.ns(|| format!("field element_{}", i)), || Ok(field_element.clone())).unwrap();
+
+            field_elements.push(field_element);
+            field_element_gadgets.push(field_element_gadget);
+        }
+
+        // Construct expected field element bits
+
+        let field_element_bytes = field_element_to_bytes(cs.ns(|| "field_element_to_bytes"), field_elements);
+
+        let expected_fe_bits = field_element_bytes
+            .iter()
+            .enumerate()
+            .flat_map(|(i, byte)| byte.to_bits_le(cs.ns(|| format!("to_bits_le_{}", i))))
+            .collect::<Vec<_>>();
+
+        // Construct gadget field element bits
+        let fe_bits =
+            BooleanInputGadget::<Fr, Fr>::from_field_elements(cs.ns(|| "from_field_elements"), &field_element_gadgets)
+                .unwrap();
+
+        for (i, (expected_bits, bits)) in expected_fe_bits.iter().zip(fe_bits.val.iter()).enumerate() {
+            for (j, (expected_bit, bit)) in expected_bits.iter().zip(bits.iter()).enumerate() {
+                expected_bit
+                    .enforce_equal(cs.ns(|| format!("enforce_equal_bit_{}_{}", i, j)), bit)
+                    .unwrap();
+            }
+        }
+
+        assert!(cs.is_satisfied());
     }
 }
