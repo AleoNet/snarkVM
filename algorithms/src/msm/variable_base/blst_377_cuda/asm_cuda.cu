@@ -737,18 +737,6 @@ __device__ void sqr_mont_384(blst_fp ret, const blst_fp a, const blst_fp p, limb
 
     asm(
       "{\n\t"
-      // let r0 = fa::mac_with_carry(0, (self.0).0[0], (self.0).0[0], &mut carry);
-      // let r1 = fa::adc(r1, 0, &mut carry);
-      // let r2 = fa::mac_with_carry(r2, (self.0).0[1], (self.0).0[1], &mut carry);
-      // let r3 = fa::adc(r3, 0, &mut carry);
-      // let r4 = fa::mac_with_carry(r4, (self.0).0[2], (self.0).0[2], &mut carry);
-      // let r5 = fa::adc(r5, 0, &mut carry);
-      // let r6 = fa::mac_with_carry(r6, (self.0).0[3], (self.0).0[3], &mut carry);
-      // let r7 = fa::adc(r7, 0, &mut carry);
-      // let r8 = fa::mac_with_carry(r8, (self.0).0[4], (self.0).0[4], &mut carry);
-      // let r9 = fa::adc(r9, 0, &mut carry);
-      // let r10 = fa::mac_with_carry(r10, (self.0).0[5], (self.0).0[5], &mut carry);
-      // let r11 = fa::adc(r11, 0, &mut carry);
 
       "mad.lo.cc.u64 %0, %12, %12, 0;\n\t"
       "madc.hi.cc.u64 %1, %12, %12, %1;\n\t"
@@ -834,10 +822,16 @@ __device__ void add_mod_384(blst_fp ret, const blst_fp a, const blst_fp b, const
 __device__ void sub_mod_384(blst_fp ret, const blst_fp a, const blst_fp b, const blst_fp p) {
     blst_fp added;
     memcpy(added, a, sizeof(blst_fp));
+    // printf("pre-sub [%llu, %llu, %llu, %llu, %llu, %llu]\n", added[0], added[1], added[2], added[3], added[4], added[5]);
     if (is_gt_384(b, a)) {
+      // printf("sub-preduce [%llu, %llu, %llu, %llu, %llu, %llu] > [%llu, %llu, %llu, %llu, %llu, %llu]\n", b[0], b[1], b[2], b[3], b[4], b[5], added[0], added[1], added[2], added[3], added[4], added[5]);
       add_mod_384_unchecked(added, added, p);
+      // printf("sub-postduce [%llu, %llu, %llu, %llu, %llu, %llu]\n", added[0], added[1], added[2], added[3], added[4], added[5]);
+    } else {
+      // printf("sub-nonduce [%llu, %llu, %llu, %llu, %llu, %llu] <= [%llu, %llu, %llu, %llu, %llu, %llu]\n", b[0], b[1], b[2], b[3], b[4], b[5], added[0], added[1], added[2], added[3], added[4], added[5]);
     }
     sub_mod_384_unchecked(ret, added, b);
+    // printf("post-sub [%llu, %llu, %llu, %llu, %llu, %llu]\n", ret[0], ret[1], ret[2], ret[3], ret[4], ret[5]);
     // return cf != 0?
 }
 

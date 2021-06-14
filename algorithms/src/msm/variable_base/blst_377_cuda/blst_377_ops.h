@@ -25,9 +25,12 @@ __device__ static inline void blst_fp_mul(blst_fp ret, const blst_fp a, const bl
 __device__ static inline void blst_fp_sqr(blst_fp ret, const blst_fp a)
 {   sqr_mont_384(ret, a, BLS12_377_P, BLS12_377_p0);   }
 
-__device__ void blst_inverse(blst_fp out, const blst_fp in);
-__device__ void blst_add_affine_to_projective(blst_p1 *out, const blst_p1 *p1, const blst_p1_affine *p2);
-__device__ void blst_add_projective_to_projective(blst_p1 *out, const blst_p1 *p1, const blst_p1 *p2);
-__device__ void blst_p1_projective_into_affine(blst_p1_affine* out, const blst_p1* in);
+__device__ void blst_fp_inverse(blst_fp out, const blst_fp in);
 
+__device__ void blst_p1_add_affine_to_projective(blst_p1 *out, const blst_p1 *p1, const blst_p1_affine *p2);
+__device__ void blst_p1_add_projective_to_projective(blst_p1 *out, const blst_p1 *p1, const blst_p1 *p2);
+__device__ void blst_p1_projective_into_affine(blst_p1_affine* out, const blst_p1* in);
+__device__ void blst_p1_add_affines_into_projective(blst_p1* out, const blst_p1_affine* p1, const blst_p1_affine* p2);
+__device__ void blst_p1_add_affine_to_affine(blst_p1_affine* out, const blst_p1_affine* p1, const blst_p1_affine* p2);
+__device__ void blst_p1_double(blst_p1* out, const blst_p1* in);
 #endif /* __BLS12_377_OPS_H__ */

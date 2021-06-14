@@ -78,8 +78,8 @@ mod tests {
     use snarkvm_fields::PrimeField;
     use snarkvm_utilities::{rand::UniformRand, BigInteger256};
 
-    fn test_data(samples: usize) -> (Vec<G1Affine>, Vec<BigInteger256>) {
-        let mut rng = XorShiftRng::seed_from_u64(234872846u64);
+    fn test_data(seed: u64, samples: usize) -> (Vec<G1Affine>, Vec<BigInteger256>) {
+        let mut rng = XorShiftRng::seed_from_u64(seed);
 
         let v = (0..samples).map(|_| Fr::rand(&mut rng).into_repr()).collect::<Vec<_>>();
         let g = (0..samples)
@@ -91,7 +91,7 @@ mod tests {
 
     #[test]
     fn test_naive() {
-        let (bases, scalars) = test_data(100);
+        let (bases, scalars) = test_data(334563456, 100);
         let rust = standard::msm_standard(bases.as_slice(), scalars.as_slice());
         let naive = VariableBaseMSM::msm_naive(bases.as_slice(), scalars.as_slice());
         assert_eq!(rust, naive);
@@ -100,10 +100,12 @@ mod tests {
     #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
     #[test]
     fn test_msm_cuda() {
-        let (bases, scalars) = test_data(1 << 10);
-        let rust = standard::msm_standard(bases.as_slice(), scalars.as_slice());
+        for i in 0..100 {
+            let (bases, scalars) = test_data(334563456 + i as u64, 1 << 10);
+            let rust = standard::msm_standard(bases.as_slice(), scalars.as_slice());
 
-        let cuda = cuda::msm_cuda(bases.as_slice(), scalars.as_slice()).unwrap();
-        assert_eq!(rust, cuda);
+            let cuda = cuda::msm_cuda(bases.as_slice(), scalars.as_slice()).unwrap();
+            assert_eq!(rust, cuda);
+        }
     }
 }

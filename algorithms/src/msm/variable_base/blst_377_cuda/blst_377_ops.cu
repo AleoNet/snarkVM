@@ -57,9 +57,9 @@ __device__ static inline int is_blst_p1_affine_zero(const blst_p1_affine *p) {
 
 __device__ static const blst_fp BIGINT_ONE = { 1, 0, 0, 0, 0, 0 };
 
-__device__ void blst_inverse(blst_fp out, const blst_fp in) {
+__device__ void blst_fp_inverse(blst_fp out, const blst_fp in) {
     if (is_blst_fp_zero(in)) {
-        // this is really bad?
+        // this is really bad
         *((int*)NULL);
     }
     // Guajardo Kumar Paar Pelzl
@@ -128,7 +128,7 @@ __device__ void blst_p1_projective_into_affine(blst_p1_affine* out, const blst_p
     } else {
         blst_fp z_inv;
         // printf("c-t%i:cinverse-in: %llu\n", threadIdx.x, in->Z[0]);
-        blst_inverse(z_inv, in->Z);
+        blst_fp_inverse(z_inv, in->Z);
         // printf("c-t%i:cinverse-out: %llu\n", threadIdx.x, z_inv[0]);
         blst_fp z_inv_squared;
         blst_fp_sqr(z_inv_squared, z_inv);
@@ -138,7 +138,60 @@ __device__ void blst_p1_projective_into_affine(blst_p1_affine* out, const blst_p
     }
 }
 
-__device__ void blst_add_affine_to_projective(blst_p1 *out, const blst_p1 *p1, const blst_p1_affine *p2) {
+__device__ void blst_p1_double(blst_p1* out, const blst_p1* in) {
+    if (is_blst_p1_zero(in)) {
+        memcpy(out, in, sizeof(blst_p1));
+    }
+
+    // Z3 = 2*Y1*Z1
+    blst_fp_mul(out->Z, in->Y, in->Z);
+    blst_fp_add(out->Z, out->Z, out->Z);
+
+    // A = X1^2
+    blst_fp a;
+    blst_fp_sqr(a, in->X);
+    
+    // B = Y1^2
+    blst_fp b;
+    blst_fp_sqr(b, in->Y);
+
+    // C = B^2
+    blst_fp c;
+    blst_fp_sqr(c, b);
+
+    // D = 2*((X1+B)^2-A-C)
+    blst_fp d;
+    blst_fp_add(d, in->X, b);
+    blst_fp_sqr(d, d);
+    blst_fp_sub(d, d, a);
+    blst_fp_sub(d, d, c);
+    blst_fp_add(d, d, d);
+
+    // E = 3*A
+    blst_fp e;
+    blst_fp_add(e, a, a);
+    blst_fp_add(e, e, a);
+
+    // F = E^2
+    blst_fp f;
+    blst_fp_sqr(f, e);
+
+    // X3 = F-2*D
+    blst_fp_add(out->X, d, d);
+    blst_fp_sub(out->X, f, out->X);
+
+    // Y3 = E*(D-X3)-8*C
+    blst_fp_sub(out->Y, d, out->X);
+    blst_fp_mul(out->Y, out->Y, e);
+
+    blst_fp c3;
+    blst_fp_add(c3, c, c); // 2c
+    blst_fp_add(c3, c3, c3); // 4c
+    blst_fp_add(c3, c3, c3); // 8c
+    blst_fp_sub(out->Y, out->Y, c3);
+}
+
+__device__ void blst_p1_add_affine_to_projective(blst_p1 *out, const blst_p1 *p1, const blst_p1_affine *p2) {
     if (is_blst_p1_affine_zero(p2)) {
         memcpy(out, p1, sizeof(blst_p1));
         return;
@@ -173,8 +226,14 @@ __device__ void blst_add_affine_to_projective(blst_p1 *out, const blst_p1 *p1, c
     blst_fp_mul(s2, p2->Y, p1->Z);
     blst_fp_mul(s2, s2, z1z1);
 
+    if (is_blst_fp_eq(p1->X, u2) && is_blst_fp_eq(p1->Y, s2)) {
+        blst_p1_double(out, p1);
+        return;
+    }
+
     // printf("c-t%llu:add:3 %llu\n", threadIdx.x, s2[0]);
 
+    // printf("c-t%llu:add:pre-4 %llu - %llu\n", threadIdx.x, u2[0], p1->X[0]);
     // H = U2-X1
     blst_fp h;
     blst_fp_sub(h, u2, p1->X);
@@ -236,15 +295,40 @@ __device__ void blst_add_affine_to_projective(blst_p1 *out, const blst_p1 *p1, c
 }
 
 
-__device__ void blst_add_projective_to_projective(blst_p1 *out, const blst_p1 *p1, const blst_p1 *p2) {
+__device__ void blst_p1_add_projective_to_projective(blst_p1 *out, const blst_p1 *p1, const blst_p1 *p2) {
     if (is_blst_p1_zero(p2)) {
         memcpy(out, p1, sizeof(blst_p1));
         return;
     }
 
     if (is_blst_p1_zero(p1)) {
-        memcpy(out->X, p2->X, sizeof(blst_fp));
-        memcpy(out->Y, p2->Y, sizeof(blst_fp));
+        memcpy(out, p2, sizeof(blst_p1));
+        return;
+    }
+
+    int p1_is_affine = is_blst_fp_eq(p1->Z, BLS12_377_ONE);
+    int p2_is_affine = is_blst_fp_eq(p2->Z, BLS12_377_ONE);
+    //todo: confirm generated ptx here is *okay* for warp divergence
+    if (p1_is_affine && p2_is_affine) {
+        blst_p1_affine p1_affine;
+        memcpy(&p1_affine.X, &p1->X, sizeof(blst_fp));
+        memcpy(&p1_affine.Y, &p1->Y, sizeof(blst_fp));
+        blst_p1_affine p2_affine;
+        memcpy(&p2_affine.X, &p2->X, sizeof(blst_fp));
+        memcpy(&p2_affine.Y, &p2->Y, sizeof(blst_fp));
+        blst_p1_add_affines_into_projective(out, &p1_affine, &p2_affine);
+        return;
+    } if (p1_is_affine) {
+        blst_p1_affine p1_affine;
+        memcpy(&p1_affine.X, &p1->X, sizeof(blst_fp));
+        memcpy(&p1_affine.Y, &p1->Y, sizeof(blst_fp));
+        blst_p1_add_affine_to_projective(out, p2, &p1_affine);
+        return;
+    } else if (p2_is_affine) {
+        blst_p1_affine p2_affine;
+        memcpy(&p2_affine.X, &p2->X, sizeof(blst_fp));
+        memcpy(&p2_affine.Y, &p2->Y, sizeof(blst_fp));
+        blst_p1_add_affine_to_projective(out, p1, &p2_affine);
         return;
     }
   
@@ -338,4 +422,95 @@ __device__ void blst_add_projective_to_projective(blst_p1 *out, const blst_p1 *p
     blst_fp_sub(out->Z, out->Z, z2z2);
     blst_fp_mul(out->Z, out->Z, h);
     // printf("c-t%llu:add:Z %llu\n", threadIdx.x, out->Z[0]);
+}
+
+__device__ void blst_p1_add_affines_into_projective(blst_p1* out, const blst_p1_affine* p1, const blst_p1_affine* p2) {
+    /*
+        mmadd-2007-bl from
+        http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-mmadd-2007-bl
+    */
+
+    // H = X2-X1
+    blst_fp h;
+    blst_fp_sub(h, p2->X, p1->X);
+
+    // HH = H^2
+    // I = 4*HH
+    blst_fp i;
+    memcpy(i, h, sizeof(blst_fp));
+    blst_fp_add(i, i, i);
+    blst_fp_sqr(i, i);
+
+    // J = H*I
+    blst_fp j;
+    blst_fp_mul(j, h, i);
+
+    // r = 2*(Y2-Y1)
+    blst_fp r;
+    blst_fp_sub(r, p2->Y, p1->Y);
+    blst_fp_add(r, r, r);
+
+    // V = X1*I
+    blst_fp v;
+    blst_fp_mul(v, p1->X, i);
+
+    // X3 = r^2-J-2*V
+    blst_fp_sqr(out->X, r);
+    blst_fp_sub(out->X, out->X, j);
+    blst_fp_sub(out->X, out->X, v);
+    blst_fp_sub(out->X, out->X, v);
+
+    // Y3 = r*(V-X3)-2*Y1*J
+    blst_fp_sub(out->Y, v, out->X);
+    blst_fp_mul(out->Y, out->Y, r);
+
+    blst_fp y1j;
+    blst_fp_mul(y1j, p1->Y, j);
+    blst_fp_sub(out->Y, out->Y, y1j);
+    blst_fp_sub(out->Y, out->Y, y1j);
+
+    // Z3 = 2*H
+    blst_fp_add(out->Z, h, h);
+}
+
+__device__ void blst_p1_add_affine_to_affine(blst_p1_affine* out, const blst_p1_affine* p1, const blst_p1_affine* p2) {
+    /*
+        http://www.hyperelliptic.org/EFD/g1p/auto-shortw.html
+        x3 = (y2-y1)2/(x2-x1)2-x1-x2
+        y3 = (2*x1+x2)*(y2-y1)/(x2-x1)-(y2-y1)3/(x2-x1)3-y1
+    */
+    blst_fp y_diff;
+    blst_fp_sub(y_diff, p2->Y, p1->Y);
+
+    blst_fp y_diff2;
+    blst_fp_sqr(y_diff2, y_diff);
+
+    blst_fp x_diff_inv;
+    blst_fp_sub(x_diff_inv, p2->X, p1->X);
+    blst_fp_inverse(x_diff_inv, x_diff_inv);
+    
+    blst_fp x_diff_inv2;
+    blst_fp_sqr(x_diff_inv2, x_diff_inv);
+
+    blst_fp sum_x;
+    blst_fp_add(sum_x, p1->X, p2->X);
+
+    blst_fp_mul(out->X, y_diff2, x_diff_inv2);
+    blst_fp_sub(out->X, out->X, sum_x);
+
+    blst_fp_mul(out->Y, y_diff, x_diff_inv);
+    blst_fp_mul(out->Y, out->Y, sum_x);
+    blst_fp_add(out->Y, out->Y, out->Y);
+
+    blst_fp y_diff3;
+    blst_fp_mul(y_diff3, y_diff2, y_diff);
+
+    blst_fp x_diff_inv3;
+    blst_fp_mul(x_diff_inv3, x_diff_inv2, x_diff_inv);
+
+    blst_fp j;
+    blst_fp_mul(j, y_diff3, x_diff_inv3);
+    blst_fp_sub(out->Y, out->Y, j);
+
+    blst_fp_sub(out->Y, out->Y, p1->Y);
 }

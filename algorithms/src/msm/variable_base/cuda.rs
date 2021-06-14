@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::{any::TypeId, rc::Rc, time::Instant};
+use std::{any::TypeId, rc::Rc};
 
 use cuda_oxide::*;
 use snarkvm_curves::{
-    bls12_377::{Fr, G1Affine, G1Projective},
+    bls12_377::{Fq, Fr, G1Affine, G1Projective},
     traits::{AffineCurve, ProjectiveCurve},
 };
 use snarkvm_fields::{PrimeField, Zero};
@@ -43,11 +43,12 @@ const BIT_WIDTH: usize = 1;
 const LIMB_COUNT: usize = 6;
 const WINDOW_SIZE: u32 = 128; // must match in cuda source
 
+#[derive(Clone, Debug)]
 #[allow(dead_code)]
 #[repr(C)]
 struct CudaAffine {
-    x: <G1Affine as AffineCurve>::BaseField,
-    y: <G1Affine as AffineCurve>::BaseField,
+    x: Fq,
+    y: Fq,
 }
 
 fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Result<G1Projective, ErrorCode> {
@@ -79,7 +80,7 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
         context.num_groups as u64 * window_lengths.len() as u64 * 8 * LIMB_COUNT as u64 * 3,
     )?;
 
-    let start = Instant::now();
+    // let start = Instant::now();
 
     context.stream.launch(
         &context.pixel_func,
@@ -97,8 +98,8 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
 
     context.stream.sync()?;
 
-    let time = (start.elapsed().as_micros() as f64) / 1000.0;
-    println!("msm-pixel took {} ms", time);
+    // let time = (start.elapsed().as_micros() as f64) / 1000.0;
+    // println!("msm-pixel took {} ms", time);
 
     context.stream.launch(
         &context.row_func,
@@ -110,8 +111,8 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
 
     context.stream.sync()?;
 
-    let time = (start.elapsed().as_micros() as f64) / 1000.0;
-    println!("msm-row took {} ms", time);
+    // let time = (start.elapsed().as_micros() as f64) / 1000.0;
+    // println!("msm-row took {} ms", time);
 
     let mut out = context.output_buf.load()?;
 
@@ -236,7 +237,13 @@ mod tests {
 
     use super::*;
 
-    fn run_roundtrip<T: Clone>(name: &str, inputs: &[Vec<T>]) -> Vec<T> {
+    #[repr(C)]
+    struct ProjectiveAffine {
+        projective: G1Projective,
+        affine: CudaAffine,
+    }
+
+    fn run_roundtrip<T, Y: Clone>(name: &str, inputs: &[Vec<T>]) -> Vec<Y> {
         Cuda::init().unwrap();
         let device = Cuda::list_devices().unwrap().remove(0);
         let mut ctx = Context::new(&device).unwrap();
@@ -246,14 +253,14 @@ mod tests {
         let func = module.get_function(name).unwrap();
         let mut stream = Stream::new(&handle).unwrap();
 
-        let size = std::mem::size_of::<T>();
+        let out_size = std::mem::size_of::<Y>();
         let mut out = vec![];
 
         let first_len = inputs.first().unwrap().len();
         assert!(inputs.iter().all(|x| x.len() == first_len));
 
         for input in inputs {
-            let output_buf = DeviceBox::alloc(&handle, size as u64).unwrap();
+            let output_buf = DeviceBox::alloc(&handle, out_size as u64).unwrap();
             output_buf.memset_d32(0).unwrap();
 
             let input_buf = DeviceBox::new_ffi(&handle, &input[..]).unwrap();
@@ -263,7 +270,7 @@ mod tests {
             stream.sync().unwrap();
 
             let output = output_buf.load().unwrap();
-            let output = unsafe { (output.as_ptr() as *const T).as_ref() }.unwrap();
+            let output = unsafe { (output.as_ptr() as *const Y).as_ref() }.unwrap();
             out.push(output.clone());
         }
 
@@ -296,11 +303,25 @@ mod tests {
         inputs
     }
 
+    fn make_affine_tests(count: usize, cardinality: usize) -> Vec<Vec<CudaAffine>> {
+        let mut rng = XorShiftRng::seed_from_u64(23483281023u64);
+        let mut inputs = vec![];
+        for _ in 0..count {
+            let mut out = vec![];
+            for _ in 0..cardinality {
+                let point = G1Projective::rand(&mut rng).into_affine();
+                out.push(CudaAffine { x: point.x, y: point.y });
+            }
+            inputs.push(out);
+        }
+        inputs
+    }
+
     #[test]
     fn test_cuda_mul() {
         let inputs = make_tests(1000, 2);
 
-        let output = run_roundtrip("mul_test", &inputs[..]);
+        let output: Vec<Fq> = run_roundtrip("mul_test", &inputs[..]);
         for (input, output) in inputs.iter().zip(output.iter()) {
             let rust_out = input[0] * &input[1];
             let output = output.into_repr_raw();
@@ -322,7 +343,7 @@ mod tests {
     fn test_cuda_square() {
         let inputs = make_tests(1000, 1);
 
-        let output = run_roundtrip("sqr_test", &inputs[..]);
+        let output: Vec<Fq> = run_roundtrip("sqr_test", &inputs[..]);
         for (input, output) in inputs.iter().zip(output.iter()) {
             let rust_out = input[0].square();
             let output = output.into_repr_raw();
@@ -340,7 +361,7 @@ mod tests {
     fn test_cuda_add() {
         let inputs = make_tests(1000, 2);
 
-        let output = run_roundtrip("add_test", &inputs[..]);
+        let output: Vec<Fq> = run_roundtrip("add_test", &inputs[..]);
 
         for (input, output) in inputs.iter().zip(output.iter()) {
             let rust_out = input[0] + &input[1];
@@ -372,22 +393,93 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_cuda_sub() {
-    //     let mut rng = XorShiftRng::seed_from_u64(234872847u64);
+    #[test]
+    fn test_cuda_projective_double() {
+        let inputs = make_projective_tests(1000, 1);
 
-    //     let input = G1Projective::rand(&mut rng);
-    //     let two = Fq::from_repr_raw(BigInteger384::new([0xffffffffffff0000, 0, 0, 0, 0, 0]));
+        let output = run_roundtrip("double_projective_test", &inputs[..]);
 
-    //     let output = run_roundtrip("sub_test", &[input.x, two]);
+        for (input, output) in inputs.iter().zip(output.iter()) {
+            let rust_out = input[0].double();
 
-    //     let rust_out = input.x - &two;
+            assert_eq!(&rust_out, output);
+        }
+    }
 
-    //     let output = output.into_repr_raw();
-    //     let rust_out = rust_out.into_repr_raw();
+    #[test]
+    fn test_cuda_affine_round_trip() {
+        let inputs = make_affine_tests(1000, 1);
 
-    //     assert_eq!(rust_out.as_ref(), output.as_ref());
-    // }
+        let output: Vec<CudaAffine> = run_roundtrip("affine_round_trip_test", &inputs[..]);
+
+        for (input, output) in inputs.iter().zip(output.iter()) {
+            let a = G1Affine::new(input[0].x, input[0].y, false);
+            let out = G1Affine::new(output.x, output.y, false);
+            assert_eq!(a, out);
+        }
+    }
+
+    #[test]
+    fn test_cuda_affine_add() {
+        let inputs = make_affine_tests(1000, 2);
+
+        let output: Vec<G1Projective> = run_roundtrip("add_affine_test", &inputs[..]);
+
+        for (input, output) in inputs.iter().zip(output.iter()) {
+            let a = G1Affine::new(input[0].x, input[0].y, false);
+            let b = G1Affine::new(input[1].x, input[1].y, false);
+            let rust_out: G1Projective = a.into_projective() + &b.into_projective();
+            assert_eq!(&rust_out, output);
+        }
+    }
+
+    #[test]
+    fn test_cuda_projective_affine_add() {
+        let affine_inputs = make_affine_tests(1000, 1);
+        let projective_inputs = make_projective_tests(1000, 1);
+
+        let inputs = projective_inputs
+            .into_iter()
+            .zip(affine_inputs.into_iter())
+            .map(|(mut projective, mut affine)| {
+                vec![ProjectiveAffine {
+                    projective: projective.remove(0),
+                    affine: affine.remove(0),
+                }]
+            })
+            .collect::<Vec<_>>();
+
+        let output: Vec<G1Projective> = run_roundtrip("add_projective_affine_test", &inputs[..]);
+
+        for (input, output) in inputs.iter().zip(output.iter()) {
+            let b = G1Affine::new(input[0].affine.x, input[0].affine.y, false);
+            let mut rust_out = input[0].projective;
+            rust_out.add_assign_mixed(&b);
+            assert_eq!(&rust_out, output);
+        }
+    }
+
+    #[test]
+    fn test_cuda_sub() {
+        let inputs = make_tests(1000, 2);
+
+        let output: Vec<Fq> = run_roundtrip("sub_test", &inputs[..]);
+
+        for (input, output) in inputs.iter().zip(output.iter()) {
+            let rust_out = input[0] - &input[1];
+            let output = output.into_repr_raw();
+            let rust_out = rust_out.into_repr_raw();
+            if rust_out != output {
+                eprintln!("test failed: {:?} != {:?}", rust_out.as_ref(), output.as_ref());
+                eprintln!(
+                    "inputs {:?}, {:?}",
+                    input[0].into_repr_raw().as_ref(),
+                    input[1].into_repr_raw().as_ref()
+                );
+                assert_eq!(rust_out.as_ref(), output.as_ref());
+            }
+        }
+    }
 
     // #[test]
     // fn test_cuda_sub_wrap() {
