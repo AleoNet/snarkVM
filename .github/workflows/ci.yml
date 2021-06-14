@@ -71,11 +71,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Install Rust (nightly)
+      - name: Install Rust (stable)
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: stable
           target: wasm32-unknown-unknown
           override: true
 

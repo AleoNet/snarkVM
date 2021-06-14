@@ -77,11 +77,12 @@ pub fn msm_standard<G: AffineCurve>(
                         }
                     }
                 });
-            G::Projective::batch_normalization(&mut buckets);
+            // G::Projective::batch_normalization(&mut buckets);
 
             let mut running_sum = G::Projective::zero();
-            for b in buckets.into_iter().map(|g| g.into_affine()).rev() {
-                running_sum.add_assign_mixed(&b);
+            for b in buckets.into_iter().rev() {
+                running_sum += &b;
+                // running_sum.add_assign_mixed(&b);
                 res += &running_sum;
             }
 
