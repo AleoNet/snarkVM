@@ -23,7 +23,7 @@ pub struct VariableBaseMSM;
 
 impl VariableBaseMSM {
     #[allow(unused)]
-    fn msm_basic<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
+    fn msm_naive<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
         let mut acc = G::Projective::zero();
 
         for (base, scalar) in bases.iter().zip(scalars.iter()) {
@@ -64,10 +64,10 @@ mod tests {
     }
 
     #[test]
-    fn test_basic() {
+    fn test_naive() {
         let (bases, scalars) = test_data(100);
         let rust = standard::msm_standard(bases.as_slice(), scalars.as_slice());
-        let basic = VariableBaseMSM::msm_basic(bases.as_slice(), scalars.as_slice());
-        assert_eq!(rust, basic);
+        let naive = VariableBaseMSM::msm_naive(bases.as_slice(), scalars.as_slice());
+        assert_eq!(rust, naive);
     }
 }
