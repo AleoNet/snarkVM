@@ -532,8 +532,10 @@ where
         universal_srs: &ProgramSNARKUniversalSRS<Components>,
         rng: &mut R,
     ) -> Result<NoopProgramSNARKParameters<Components>, DPCError> {
-        let (pk, pvk) =
-            Components::NoopProgramSNARK::setup(&(NoopCircuit::blank(system_parameters), universal_srs.0), rng)?;
+        let (pk, pvk) = Components::NoopProgramSNARK::setup(
+            &(NoopCircuit::blank(system_parameters), universal_srs.0.clone()),
+            rng,
+        )?;
 
         Ok(NoopProgramSNARKParameters {
             proving_key: pk,
