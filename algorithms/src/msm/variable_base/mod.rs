@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::{
-    any::TypeId,
-    sync::atomic::{AtomicBool, Ordering},
-};
+use std::any::TypeId;
+
+#[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use snarkvm_curves::{bls12_377::G1Affine, traits::AffineCurve};
 use snarkvm_fields::{PrimeField, Zero};
