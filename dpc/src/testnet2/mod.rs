@@ -529,7 +529,7 @@ where
 
     pub fn generate_noop_program_snark_parameters<R: Rng>(
         system_parameters: &SystemParameters<Components>,
-        universal_srs: ProgramSNARKUniversalSRS<Components>,
+        universal_srs: &ProgramSNARKUniversalSRS<Components>,
         rng: &mut R,
     ) -> Result<NoopProgramSNARKParameters<Components>, DPCError> {
         let (pk, pvk) =
@@ -649,7 +649,7 @@ where
 
         let program_snark_setup_time = start_timer!(|| "Dummy program SNARK setup");
         let noop_program_snark_parameters =
-            Self::generate_noop_program_snark_parameters(&system_parameters, program_snark_universal_srs, rng)?;
+            Self::generate_noop_program_snark_parameters(&system_parameters, &program_snark_universal_srs, rng)?;
         let program_snark_proof = Components::NoopProgramSNARK::prove(
             &noop_program_snark_parameters.proving_key,
             &NoopCircuit::blank(&system_parameters),
