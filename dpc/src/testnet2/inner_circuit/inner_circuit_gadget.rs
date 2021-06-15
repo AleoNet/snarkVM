@@ -1390,7 +1390,7 @@ where
         // Enforce that given_value_balance is equivalent to candidate_value_balance
         given_value_balance.enforce_equal(
             cs.ns(|| "given_value_balance == candidate_value_balance"),
-            &given_value_balance,
+            &candidate_value_balance,
         )?;
     }
 

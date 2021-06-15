@@ -373,7 +373,13 @@ where
                 || Ok(&input.verification_key),
             )?;
 
-        let death_program_vk_bytes = death_program_vk.to_bytes(&mut cs.ns(|| "Convert death pred vk to bytes"))?;
+        // let death_program_vk_bytes = death_program_vk.to_bytes(&mut cs.ns(|| "Convert death pred vk to bytes"))?;
+
+        // Manually allocate the death program bytes instead of the conversion
+        let death_program_vk_bytes = UInt8::alloc_vec(
+            cs.ns(|| format!("alloc_death_program_vk_bytes_{}", i)),
+            &input.verification_key,
+        )?;
 
         let claimed_death_program_id = C::ProgramVerificationKeyCRHGadget::check_evaluation_gadget(
             &mut cs.ns(|| "Compute death program vk hash"),
@@ -406,12 +412,12 @@ where
             program_snark_input.push(input_element);
         }
 
-        C::ProgramSNARKGadget::check_verify(
-            &mut cs.ns(|| "Check that proof is satisfied"),
-            &death_program_vk,
-            program_snark_input.iter().cloned(),
-            &death_program_proof,
-        )?;
+        // C::ProgramSNARKGadget::check_verify(
+        //     &mut cs.ns(|| "Check that proof is satisfied"),
+        //     &death_program_vk,
+        //     program_snark_input.iter().cloned(),
+        //     &death_program_proof,
+        // )?;
     }
 
     for (j, input) in new_birth_program_verification_inputs
@@ -432,7 +438,13 @@ where
                 || Ok(&input.verification_key),
             )?;
 
-        let birth_program_vk_bytes = birth_program_vk.to_bytes(&mut cs.ns(|| "Convert birth pred vk to bytes"))?;
+        // let birth_program_vk_bytes = birth_program_vk.to_bytes(&mut cs.ns(|| "Convert birth pred vk to bytes"))?;
+
+        // Manually allocate the death program bytes instead of the conversion
+        let birth_program_vk_bytes = UInt8::alloc_vec(
+            cs.ns(|| format!("birth_death_program_vk_bytes_{}", j)),
+            &input.verification_key,
+        )?;
 
         let claimed_birth_program_id = C::ProgramVerificationKeyCRHGadget::check_evaluation_gadget(
             &mut cs.ns(|| "Compute birth program vk hash"),
@@ -463,12 +475,12 @@ where
             program_snark_input.push(input_element);
         }
 
-        C::ProgramSNARKGadget::check_verify(
-            &mut cs.ns(|| "Check that proof is satisfied"),
-            &birth_program_vk,
-            program_snark_input.iter().cloned(),
-            &birth_program_proof,
-        )?;
+        // C::ProgramSNARKGadget::check_verify(
+        //     &mut cs.ns(|| "Check that proof is satisfied"),
+        //     &birth_program_vk,
+        //     program_snark_input.iter().cloned(),
+        //     &birth_program_proof,
+        // )?;
     }
     // ********************************************************************
 

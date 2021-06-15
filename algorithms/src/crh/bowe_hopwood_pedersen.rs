@@ -31,7 +31,7 @@ use rand::Rng;
 
 // we cant use these in array sizes since they are from a trait (and cant be refered to at const time)
 const MAX_WINDOW_SIZE: usize = 256;
-const MAX_NUM_WINDOWS: usize = 296;
+const MAX_NUM_WINDOWS: usize = 4096;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BoweHopwoodPedersenCRH<G: Group, S: PedersenSize> {

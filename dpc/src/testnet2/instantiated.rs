@@ -69,6 +69,8 @@ use blake2::Blake2s as Blake2sHash;
 pub const NUM_INPUT_RECORDS: usize = 2;
 pub const NUM_OUTPUT_RECORDS: usize = 2;
 
+// TODO (raychu86): Optimize windows.
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct AccountWindow;
 impl PedersenSize for AccountWindow {
@@ -112,8 +114,8 @@ impl PedersenSize for LocalDataCRHWindow {
 pub struct ProgramVkHashWindow;
 
 impl PedersenSize for ProgramVkHashWindow {
-    const NUM_WINDOWS: usize = 144;
-    const WINDOW_SIZE: usize = 63;
+    const NUM_WINDOWS: usize = 4096;
+    const WINDOW_SIZE: usize = 80;
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
