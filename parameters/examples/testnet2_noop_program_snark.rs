@@ -17,8 +17,16 @@
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_dpc::{
     errors::DPCError,
-    testnet2::{instantiated::Components, parameters::SystemParameters, BaseDPCComponents, DPC},
+    testnet2::{
+        instantiated::Components,
+        parameters::SystemParameters,
+        BaseDPCComponents,
+        ProgramSNARKUniversalSRS,
+        DPC,
+    },
 };
+use snarkvm_fields::ToConstraintField;
+use snarkvm_marlin::PolynomialCommitment;
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
 use rand::thread_rng;
@@ -27,11 +35,18 @@ use std::path::PathBuf;
 mod utils;
 use utils::store;
 
-pub fn setup<C: BaseDPCComponents>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
+pub fn setup<C: BaseDPCComponents>() -> Result<(Vec<u8>, Vec<u8>), DPCError>
+where
+    <C::PolynomialCommitment as PolynomialCommitment<C::InnerField>>::VerifierKey: ToConstraintField<C::OuterField>,
+    <C::PolynomialCommitment as PolynomialCommitment<C::InnerField>>::Commitment: ToConstraintField<C::OuterField>,
+{
     let rng = &mut thread_rng();
     let system_parameters = SystemParameters::<C>::load()?;
 
-    let noop_program_snark_parameters = DPC::<C>::generate_noop_program_snark_parameters(&system_parameters, rng)?;
+    let universal_srs = ProgramSNARKUniversalSRS::<C>::load()?;
+
+    let noop_program_snark_parameters =
+        DPC::<C>::generate_noop_program_snark_parameters(&system_parameters, &universal_srs, rng)?;
     let noop_program_snark_pk = to_bytes![noop_program_snark_parameters.proving_key]?;
     let noop_program_snark_vk: <C::NoopProgramSNARK as SNARK>::VerifyingKey =
         noop_program_snark_parameters.verification_key;

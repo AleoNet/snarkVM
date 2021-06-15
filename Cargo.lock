@@ -1760,6 +1760,7 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-dpc",
+ "snarkvm-fields",
  "snarkvm-marlin",
  "snarkvm-polycommit",
  "snarkvm-posw",
