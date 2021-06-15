@@ -33,6 +33,7 @@ members = [
   "r1cs",
   "utilities",
   "wasm",
+  "ir",
   ".integration"
 ]
 
