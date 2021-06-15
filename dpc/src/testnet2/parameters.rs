@@ -87,10 +87,12 @@ impl<C: BaseDPCComponents> SystemParameters<C> {
 #[derivative(Clone(bound = "C: BaseDPCComponents"))]
 pub struct ProgramSNARKUniversalSRS<C: BaseDPCComponents>(pub UniversalSRS<C::InnerField, C::PolynomialCommitment>);
 
-// TODO (raychu86): Implement loading of the Program SNARK Universal SRS.
 impl<C: BaseDPCComponents> ProgramSNARKUniversalSRS<C> {
     pub fn load() -> IoResult<Self> {
-        unimplemented!()
+        let srs: UniversalSRS<C::InnerField, C::PolynomialCommitment> =
+            From::from(FromBytes::read(UniversalSRSParameters::load_bytes()?.as_slice())?);
+
+        Ok(Self(srs))
     }
 }
 

@@ -510,9 +510,9 @@ where
     ) -> Result<ProgramSNARKUniversalSRS<Components>, DPCError> {
         // TODO (raychu86): Specify the `num_constraints`, `num_variables`, and `num_non_zero` variables.
 
-        let num_constraints = 100000;
-        let num_variables = 100000;
-        let num_non_zero = 100000;
+        let num_constraints = 10000;
+        let num_variables = 10000;
+        let num_non_zero = 10000;
 
         // TODO (raychu86): Handle this unwrap.
         let universal_srs = MarlinSNARK::<
