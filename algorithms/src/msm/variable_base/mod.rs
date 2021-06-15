@@ -33,7 +33,6 @@ static HAS_CUDA_FAILED: AtomicBool = AtomicBool::new(false);
 pub struct VariableBaseMSM;
 
 impl VariableBaseMSM {
-
     #[allow(unused)]
     fn msm_naive<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
         let mut acc = G::Projective::zero();

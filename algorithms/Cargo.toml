@@ -117,7 +117,7 @@ default-features = false
 version = "1.6"
 
 [dependencies.cuda-oxide]
-version = "0.2"
+version = "0.3"
 optional = true
 
 [dependencies.lazy_static]
@@ -148,7 +148,8 @@ default = [
   "snarkvm-curves/default",
   "snarkvm-fields/default",
   "snarkvm-r1cs/default",
-  "snarkvm-utilities/default"
+  "snarkvm-utilities/default",
+  "cuda"
 ]
 full = [
   "commitment",
