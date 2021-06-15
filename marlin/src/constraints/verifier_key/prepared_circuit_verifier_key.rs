@@ -476,9 +476,14 @@ where
     {
         value_gen().and_then(|vk_bytes| {
             let circuit_vk: CircuitVerifyingKey<TargetField, PC> = FromBytes::read(&vk_bytes.borrow()[..])?;
-            let prepared_circuit_vk = PreparedCircuitVerifyingKey::prepare(&circuit_vk);
+            // TODO (raychu86): Preparing the verifying key natively is more efficient, however it is currently broken.
 
-            Self::alloc(cs.ns(|| "alloc_bytes"), || Ok(prepared_circuit_vk))
+            let unprepared_vk_gadget =
+                CircuitVerifyingKeyVar::<TargetField, BaseField, PC, PCG>::alloc(cs.ns(|| "unprepared_vk"), || {
+                    Ok(circuit_vk)
+                })?;
+
+            Self::prepare(cs.ns(|| "prepare"), &unprepared_vk_gadget)
         })
     }
 
@@ -493,9 +498,14 @@ where
     {
         value_gen().and_then(|vk_bytes| {
             let circuit_vk: CircuitVerifyingKey<TargetField, PC> = FromBytes::read(&vk_bytes.borrow()[..])?;
-            let prepared_circuit_vk = PreparedCircuitVerifyingKey::prepare(&circuit_vk);
+            // TODO (raychu86): Preparing the verifying key natively is more efficient, however it is currently broken.
 
-            Self::alloc_input(cs.ns(|| "alloc_input_bytes"), || Ok(prepared_circuit_vk))
+            let unprepared_vk_gadget = CircuitVerifyingKeyVar::<TargetField, BaseField, PC, PCG>::alloc_input(
+                cs.ns(|| "unprepared_vk"),
+                || Ok(circuit_vk),
+            )?;
+
+            Self::prepare(cs.ns(|| "prepare"), &unprepared_vk_gadget)
         })
     }
 }

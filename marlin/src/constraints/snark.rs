@@ -372,11 +372,11 @@ pub mod test {
     use snarkvm_fields::Field;
     use snarkvm_gadgets::{
         curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
-        traits::{alloc::AllocGadget, eq::EqGadget},
+        traits::{alloc::AllocGadget, eq::EqGadget, AllocBytesGadget},
     };
     use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
     use snarkvm_r1cs::TestConstraintSystem;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_utilities::{test_rng, to_bytes, ToBytes, UniformRand};
 
     use crate::{
         constraints::snark::{MarlinSNARK, MarlinSNARKGadget},
@@ -387,6 +387,7 @@ pub mod test {
             PoseidonSpongeVar,
         },
         marlin::MarlinRecursiveMode,
+        VerifyingKey,
     };
 
     use super::*;
@@ -426,6 +427,76 @@ pub mod test {
             for i in 0..(self.num_constraints - 1) {
                 cs.enforce(|| format!("constraint {}", i), |lc| lc + a, |lc| lc + b, |lc| lc + c);
             }
+
+            Ok(())
+        }
+    }
+
+    pub struct VerifierCircuit<
+        F: PrimeField,
+        ConstraintF: PrimeField,
+        PC: PolynomialCommitment<F>,
+        FS: FiatShamirRng<F, ConstraintF>,
+        MM: MarlinMode,
+        PCG: PCCheckVar<F, PC, ConstraintF>,
+        FSG: FiatShamirRngVar<F, ConstraintF, FS>,
+    >
+    where
+        PC::VerifierKey: ToConstraintField<ConstraintF>,
+        PC::Commitment: ToConstraintField<ConstraintF>,
+        PCG::VerifierKeyVar: ToConstraintFieldGadget<ConstraintF>,
+        PCG::CommitmentVar: ToConstraintFieldGadget<ConstraintF>,
+    {
+        pub c: F,
+        pub verifying_key: CircuitVerifyingKey<F, PC>,
+        pub proof: Proof<F, PC>,
+        _f: PhantomData<ConstraintF>,
+        _fs: PhantomData<FS>,
+        _marlin_mode: PhantomData<MM>,
+        _pcg: PhantomData<PCG>,
+        _fsg: PhantomData<FSG>,
+    }
+
+    impl<
+        F: PrimeField,
+        ConstraintF: PrimeField,
+        PC: PolynomialCommitment<F>,
+        FS: FiatShamirRng<F, ConstraintF>,
+        MM: MarlinMode,
+        PCG: PCCheckVar<F, PC, ConstraintF>,
+        FSG: FiatShamirRngVar<F, ConstraintF, FS>,
+    > ConstraintSynthesizer<ConstraintF> for VerifierCircuit<F, ConstraintF, PC, FS, MM, PCG, FSG>
+    where
+        PC::VerifierKey: ToConstraintField<ConstraintF>,
+        PC::Commitment: ToConstraintField<ConstraintF>,
+        PCG::VerifierKeyVar: ToConstraintFieldGadget<ConstraintF>,
+        PCG::CommitmentVar: ToConstraintFieldGadget<ConstraintF>,
+    {
+        fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
+            let vk_bytes = to_bytes![self.verifying_key]?;
+            let prepared_vk = PreparedCircuitVerifyingKeyVar::<F, ConstraintF, PC, PCG, FS, FSG>::alloc_bytes(
+                cs.ns(|| "prepared_vk"),
+                || Ok(vk_bytes),
+            )
+            .unwrap();
+
+            let proof_bytes = to_bytes![self.proof]?;
+            let proof = ProofVar::<F, ConstraintF, PC, PCG>::alloc_bytes(cs.ns(|| "proof"), || Ok(proof_bytes))?;
+
+            let input = NonNativeFieldInputVar::<F, ConstraintF>::alloc(cs.ns(|| "input"), || Ok(vec![self.c.clone()]))
+                .unwrap();
+
+            let x = MarlinVerificationGadget::<F, ConstraintF, PC, PCG>::prepared_verify::<_, FS, FSG>(
+                cs.ns(|| "verify"),
+                &prepared_vk,
+                &input.val,
+                &proof,
+            )
+            .unwrap();
+
+            let expected = Boolean::Constant(true);
+
+            x.enforce_equal(cs.ns(|| "valid_verification"), &expected)?;
 
             Ok(())
         }
@@ -515,6 +586,64 @@ pub mod test {
 
             verification_result
                 .enforce_equal(cs.ns(|| "enforce_equal_verification"), &Boolean::Constant(true))
+                .unwrap();
+
+            assert!(
+                cs.is_satisfied(),
+                "Constraints not satisfied: {}",
+                cs.which_is_unsatisfied().unwrap()
+            );
+        }
+    }
+
+    #[test]
+    fn marlin_nested_verification_gadget_test() {
+        let mut rng = test_rng();
+
+        for _ in 0..ITERATIONS {
+            // Construct the circuit.
+
+            let a = Fr::rand(&mut rng);
+            let b = Fr::rand(&mut rng);
+            let mut c = a;
+            c.mul_assign(&b);
+
+            let circ = Circuit {
+                a: Some(a),
+                b: Some(b),
+                num_constraints: 100,
+                num_variables: 25,
+            };
+
+            // Generate the circuit parameters.
+
+            let (pk, vk) = TestSNARK::circuit_specific_setup(circ, &mut rng).unwrap();
+
+            // Test native proof and verification.
+
+            let proof = TestSNARK::prove(&pk, &circ, &mut rng).unwrap();
+
+            assert!(
+                TestSNARK::verify(&vk.clone().into(), &[c].to_vec(), &proof).unwrap(),
+                "The native verification check fails."
+            );
+
+            // Initialize constraint system.
+            let mut cs = TestConstraintSystem::<Fq>::new();
+
+            let circuit = VerifierCircuit::<Fr, Fq, PC, FS, MarlinRecursiveMode, PCGadget, FSG> {
+                c: c.clone(),
+                verifying_key: vk,
+                proof,
+                _f: PhantomData,
+                _fs: PhantomData,
+                _marlin_mode: PhantomData,
+                _pcg: PhantomData,
+                _fsg: PhantomData,
+            };
+
+            circuit
+                .generate_constraints(&mut cs.ns(|| "verify_within_gadget"))
                 .unwrap();
 
             assert!(
