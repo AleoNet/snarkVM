@@ -14,15 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::fmt;
+
 use crate::ir;
 
 use anyhow::*;
 
+#[derive(Clone, Debug, PartialEq)]
 pub enum GroupCoordinate {
     Field(Vec<u64>),
     SignHigh,
     SignLow,
     Inferred,
+}
+
+impl fmt::Display for GroupCoordinate {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            GroupCoordinate::Field(field) => write!(f, "{:?}", field),
+            GroupCoordinate::SignHigh => write!(f, "+"),
+            GroupCoordinate::SignLow => write!(f, "-"),
+            GroupCoordinate::Inferred => write!(f, "_"),
+        }
+    }
 }
 
 impl GroupCoordinate {
@@ -52,6 +66,7 @@ impl GroupCoordinate {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Integer {
     U8(u8),
     U16(u16),
@@ -66,7 +81,25 @@ pub enum Integer {
     I128(i128),
 }
 
+impl fmt::Display for Integer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Integer::U8(x) => write!(f, "{}", x),
+            Integer::U16(x) => write!(f, "{}", x),
+            Integer::U32(x) => write!(f, "{}", x),
+            Integer::U64(x) => write!(f, "{}", x),
+            Integer::U128(x) => write!(f, "{}", x),
+            Integer::I8(x) => write!(f, "{}", x),
+            Integer::I16(x) => write!(f, "{}", x),
+            Integer::I32(x) => write!(f, "{}", x),
+            Integer::I64(x) => write!(f, "{}", x),
+            Integer::I128(x) => write!(f, "{}", x),
+        }
+    }
+}
+
 /// A constant value in IR representation or variable reference
+#[derive(Clone, Debug, PartialEq)]
 pub enum Value {
     Address(Vec<u8>),
     Boolean(bool),
@@ -77,6 +110,43 @@ pub enum Value {
     Array(Vec<Value>),
     Tuple(Vec<Value>),
     Ref(u32), // reference to a variable
+}
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Value::Address(_) => todo!(),
+            Value::Boolean(x) => write!(f, "{}", x),
+            Value::Char(c) => write!(f, "{}", std::char::from_u32(*c).unwrap_or(std::char::REPLACEMENT_CHARACTER)),
+            Value::Field(field) => write!(f, "{:?}", field),
+            Value::Group(left, None) => write!(f, "{}group", left),
+            Value::Group(left, Some(right)) => write!(f, "({}, {})group", left, right),
+            Value::Integer(x) => write!(f, "{}", x),
+            Value::Array(items) => {
+                write!(f, "[")?;
+                for (i, item) in items.iter().enumerate() {
+                    write!(f, "{}{}", item, if i == items.len() - 1 {
+                        ""
+                    } else {
+                        ", "
+                    })?;
+                }
+                write!(f, "]")
+            },
+            Value::Tuple(items) => {
+                write!(f, "(")?;
+                for (i, item) in items.iter().enumerate() {
+                    write!(f, "{}{}", item, if i == items.len() - 1 {
+                        ""
+                    } else {
+                        ", "
+                    })?;
+                }
+                write!(f, ")")
+            },
+            Value::Ref(x) => write!(f, "{}var", x),
+        }
+    }
 }
 
 impl Value {
