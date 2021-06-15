@@ -22,6 +22,13 @@ mod standard;
 pub struct VariableBaseMSM;
 
 impl VariableBaseMSM {
+    pub fn multi_scalar_mul<G: AffineCurve>(
+        bases: &[G],
+        scalars: &[<G::ScalarField as PrimeField>::BigInteger],
+    ) -> G::Projective {
+        standard::msm_standard(bases, scalars)
+    }
+
     #[allow(unused)]
     fn msm_naive<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
         let mut acc = G::Projective::zero();
@@ -30,13 +37,6 @@ impl VariableBaseMSM {
             acc += &base.mul(*scalar);
         }
         acc
-    }
-
-    pub fn multi_scalar_mul<G: AffineCurve>(
-        bases: &[G],
-        scalars: &[<G::ScalarField as PrimeField>::BigInteger],
-    ) -> G::Projective {
-        standard::msm_standard(bases, scalars)
     }
 }
 
