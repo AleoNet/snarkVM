@@ -75,6 +75,8 @@ where
     <C::LocalDataCRH as CRH>::Parameters: ToConstraintField<C::InnerField>,
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerField>,
 
+    <C::LocalDataCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
+
     <<C::MerkleParameters as MerkleParameters>::H as CRH>::Parameters: ToConstraintField<C::InnerField>,
     MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerField>,
 {
@@ -121,6 +123,13 @@ where
                 .to_field_elements()?,
         );
         v.extend_from_slice(&self.system_parameters.local_data_crh.parameters().to_field_elements()?);
+        v.extend_from_slice(
+            &self
+                .system_parameters
+                .local_data_commitment
+                .parameters()
+                .to_field_elements()?,
+        );
         v.extend_from_slice(
             &self
                 .system_parameters

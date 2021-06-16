@@ -113,6 +113,8 @@ where
     <C::LocalDataCRH as CRH>::Parameters: ToConstraintField<C::InnerField>,
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerField>,
 
+    <C::LocalDataCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
+
     <<C::MerkleParameters as MerkleParameters>::H as CRH>::Parameters: ToConstraintField<C::InnerField>,
     MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerField>,
 {
@@ -183,6 +185,10 @@ where
         ToConstraintField::<C::InnerField>::to_field_elements(system_parameters.local_data_crh.parameters())
             .map_err(|_| SynthesisError::AssignmentMissing)?;
 
+    let local_data_commitment_parameters_fe =
+        ToConstraintField::<C::InnerField>::to_field_elements(system_parameters.local_data_commitment.parameters())
+            .map_err(|_| SynthesisError::AssignmentMissing)?;
+
     let serial_number_nonce_crh_parameters_fe =
         ToConstraintField::<C::InnerField>::to_field_elements(system_parameters.serial_number_nonce.parameters())
             .map_err(|_| SynthesisError::AssignmentMissing)?;
@@ -223,8 +229,13 @@ where
         field_element_to_bytes::<C, _>(cs, encrypted_record_crh_parameters_fe, "encrypted record crh pp")?;
     let program_vk_commitment_parameters_fe_bytes =
         field_element_to_bytes::<C, _>(cs, program_vk_commitment_parameters_fe, "program vk commitment pp")?;
-    let local_data_commitment_parameters_fe_bytes =
-        field_element_to_bytes::<C, _>(cs, local_data_crh_parameters_fe.clone(), "local data commitment pp")?;
+    let local_data_crh_parameters_fe_bytes =
+        field_element_to_bytes::<C, _>(cs, local_data_crh_parameters_fe.clone(), "local data crh pp")?;
+    let local_data_commitment_parameters_fe_bytes = field_element_to_bytes::<C, _>(
+        cs,
+        local_data_commitment_parameters_fe.clone(),
+        "local data commitment pp",
+    )?;
     let serial_number_nonce_crh_parameters_fe_bytes =
         field_element_to_bytes::<C, _>(cs, serial_number_nonce_crh_parameters_fe, "serial number nonce crh pp")?;
     let ledger_parameters_fe_bytes = field_element_to_bytes::<C, _>(cs, ledger_parameters_fe, "ledger pp")?;
@@ -281,6 +292,7 @@ where
     inner_snark_input_bytes.extend(record_commitment_parameters_fe_bytes);
     inner_snark_input_bytes.extend(encrypted_record_crh_parameters_fe_bytes);
     inner_snark_input_bytes.extend(program_vk_commitment_parameters_fe_bytes);
+    inner_snark_input_bytes.extend(local_data_crh_parameters_fe_bytes);
     inner_snark_input_bytes.extend(local_data_commitment_parameters_fe_bytes.clone());
     inner_snark_input_bytes.extend(serial_number_nonce_crh_parameters_fe_bytes);
     inner_snark_input_bytes.extend(ledger_parameters_fe_bytes);
@@ -373,8 +385,6 @@ where
                 || Ok(&input.verification_key),
             )?;
 
-        // let death_program_vk_bytes = death_program_vk.to_bytes(&mut cs.ns(|| "Convert death pred vk to bytes"))?;
-
         // Manually allocate the death program bytes instead of the conversion
         let death_program_vk_bytes = UInt8::alloc_vec(
             cs.ns(|| format!("alloc_death_program_vk_bytes_{}", i)),
@@ -392,14 +402,12 @@ where
 
         old_death_program_ids.push(claimed_death_program_id_bytes);
 
-        // let position = UInt8::constant(i as u8).to_bits_le();
-
         let position_fe = vec![C::InnerField::from(i as u128)];
         let mut program_input_field_elements = vec![];
 
         program_input_field_elements.extend(position_fe);
-        program_input_field_elements.extend(local_data_crh_parameters_fe.clone());
-        program_input_field_elements.extend(local_data_root_fe.clone());
+        // program_input_field_elements.extend(local_data_commitment_parameters_fe.clone());
+        // program_input_field_elements.extend(local_data_root_fe.clone());
 
         let mut program_snark_input = vec![];
 
@@ -412,12 +420,12 @@ where
             program_snark_input.push(input_element);
         }
 
-        // C::ProgramSNARKGadget::check_verify(
-        //     &mut cs.ns(|| "Check that proof is satisfied"),
-        //     &death_program_vk,
-        //     program_snark_input.iter().cloned(),
-        //     &death_program_proof,
-        // )?;
+        C::ProgramSNARKGadget::check_verify(
+            &mut cs.ns(|| "Check that proof is satisfied"),
+            &death_program_vk,
+            program_snark_input.iter().cloned(),
+            &death_program_proof,
+        )?;
     }
 
     for (j, input) in new_birth_program_verification_inputs
@@ -437,8 +445,6 @@ where
                 &mut cs.ns(|| "Allocate verification key"),
                 || Ok(&input.verification_key),
             )?;
-
-        // let birth_program_vk_bytes = birth_program_vk.to_bytes(&mut cs.ns(|| "Convert birth pred vk to bytes"))?;
 
         // Manually allocate the death program bytes instead of the conversion
         let birth_program_vk_bytes = UInt8::alloc_vec(
@@ -461,8 +467,8 @@ where
         let mut program_input_field_elements = vec![];
 
         program_input_field_elements.extend(position_fe);
-        program_input_field_elements.extend(local_data_crh_parameters_fe.clone());
-        program_input_field_elements.extend(local_data_root_fe.clone());
+        // program_input_field_elements.extend(local_data_crh_parameters_fe.clone());
+        // program_input_field_elements.extend(local_data_root_fe.clone());
 
         let mut program_snark_input = vec![];
 
@@ -475,12 +481,12 @@ where
             program_snark_input.push(input_element);
         }
 
-        // C::ProgramSNARKGadget::check_verify(
-        //     &mut cs.ns(|| "Check that proof is satisfied"),
-        //     &birth_program_vk,
-        //     program_snark_input.iter().cloned(),
-        //     &birth_program_proof,
-        // )?;
+        C::ProgramSNARKGadget::check_verify(
+            &mut cs.ns(|| "Check that proof is satisfied"),
+            &birth_program_vk,
+            program_snark_input.iter().cloned(),
+            &birth_program_proof,
+        )?;
     }
     // ********************************************************************
 
