@@ -18,6 +18,11 @@ license = "GPL-3.0"
 edition = "2018"
 
 [[bench]]
+name = "msm-variable-base"
+path = "benches/msm/variable_base.rs"
+harness = false
+
+[[bench]]
 name = "commitment-pedersen"
 path = "benches/commitment/pedersen.rs"
 harness = false
