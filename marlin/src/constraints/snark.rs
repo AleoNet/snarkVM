@@ -603,3 +603,311 @@ pub mod test {
         assert_eq!(verifier_gadget_constraints, VERIFIER_GADGET_CONSTRAINTS);
     }
 }
+
+#[cfg(test)]
+pub mod multiple_input_tests {
+    use core::ops::MulAssign;
+
+    use snarkvm_curves::{
+        bls12_377::{Bls12_377, Fq, Fr},
+        bw6_761::BW6_761,
+    };
+    use snarkvm_fields::Field;
+    use snarkvm_gadgets::{
+        curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
+        traits::{alloc::AllocGadget, eq::EqGadget},
+    };
+    use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
+    use snarkvm_r1cs::TestConstraintSystem;
+    use snarkvm_utilities::{test_rng, UniformRand};
+
+    use crate::{
+        constraints::snark::{MarlinSNARK, MarlinSNARKGadget},
+        fiat_shamir::{
+            FiatShamirAlgebraicSpongeRng,
+            FiatShamirAlgebraicSpongeRngVar,
+            PoseidonSponge,
+            PoseidonSpongeVar,
+        },
+        marlin::MarlinRecursiveMode,
+    };
+
+    use super::*;
+
+    const ITERATIONS: usize = 10;
+
+    #[derive(Copy, Clone)]
+    pub struct Circuit<F: Field> {
+        pub a: Option<F>,
+        pub b: Option<F>,
+        pub num_constraints: usize,
+        pub num_variables: usize,
+    }
+
+    impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<ConstraintF> {
+        fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
+            let a = cs.alloc(|| "a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
+            let b = cs.alloc(|| "b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
+            let c = cs.alloc_input(
+                || "c",
+                || {
+                    let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
+                    let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
+
+                    a.mul_assign(&b);
+                    Ok(a)
+                },
+            )?;
+
+            let d = cs.alloc_input(
+                || "d",
+                || {
+                    let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
+                    let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
+
+                    a.mul_assign(&b);
+                    Ok(a)
+                },
+            )?;
+
+            for i in 0..(self.num_variables - 3) {
+                let _ = cs.alloc(
+                    || format!("var {}", i),
+                    || self.a.ok_or(SynthesisError::AssignmentMissing),
+                )?;
+            }
+
+            for i in 0..(self.num_constraints - 1) {
+                cs.enforce(|| format!("constraint {}", i), |lc| lc + a, |lc| lc + b, |lc| lc + c);
+            }
+
+            for i in 0..(self.num_constraints - 1) {
+                cs.enforce(|| format!("constraint 2 {}", i), |lc| lc + a, |lc| lc + b, |lc| lc + d);
+            }
+
+            Ok(())
+        }
+    }
+
+    pub struct VerifierCircuit<
+        F: PrimeField,
+        ConstraintF: PrimeField,
+        PC: PolynomialCommitment<F>,
+        FS: FiatShamirRng<F, ConstraintF>,
+        MM: MarlinMode,
+        PCG: PCCheckVar<F, PC, ConstraintF>,
+        FSG: FiatShamirRngVar<F, ConstraintF, FS>,
+    >
+    where
+        PC::VerifierKey: ToConstraintField<ConstraintF>,
+        PC::Commitment: ToConstraintField<ConstraintF>,
+        PCG::VerifierKeyVar: ToConstraintFieldGadget<ConstraintF>,
+        PCG::CommitmentVar: ToConstraintFieldGadget<ConstraintF>,
+    {
+        pub c: F,
+        pub verifying_key: CircuitVerifyingKey<F, PC>,
+        pub proof: Proof<F, PC>,
+        _f: PhantomData<ConstraintF>,
+        _fs: PhantomData<FS>,
+        _marlin_mode: PhantomData<MM>,
+        _pcg: PhantomData<PCG>,
+        _fsg: PhantomData<FSG>,
+    }
+
+    impl<
+        F: PrimeField,
+        ConstraintF: PrimeField,
+        PC: PolynomialCommitment<F>,
+        FS: FiatShamirRng<F, ConstraintF>,
+        MM: MarlinMode,
+        PCG: PCCheckVar<F, PC, ConstraintF>,
+        FSG: FiatShamirRngVar<F, ConstraintF, FS>,
+    > ConstraintSynthesizer<ConstraintF> for VerifierCircuit<F, ConstraintF, PC, FS, MM, PCG, FSG>
+    where
+        PC::VerifierKey: ToConstraintField<ConstraintF>,
+        PC::Commitment: ToConstraintField<ConstraintF>,
+        PCG::VerifierKeyVar: ToConstraintFieldGadget<ConstraintF>,
+        PCG::CommitmentVar: ToConstraintFieldGadget<ConstraintF>,
+    {
+        fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
+            let vk_gadget = CircuitVerifyingKeyVar::<F, ConstraintF, PC, PCG>::alloc(cs.ns(|| "vk"), || {
+                Ok(self.verifying_key.clone())
+            })
+            .unwrap();
+
+            let proof_gadget =
+                ProofVar::<F, ConstraintF, PC, PCG>::alloc(cs.ns(|| "proof"), || Ok(self.proof.clone()))?;
+
+            let input_gadget = NonNativeFieldInputVar::<F, ConstraintF>::alloc(cs.ns(|| "input 2"), || {
+                Ok(vec![self.c.clone(), self.c.clone()])
+            })
+            .unwrap();
+
+            let output = MarlinVerificationGadget::<F, ConstraintF, PC, PCG>::verify::<_, FS, FSG>(
+                cs.ns(|| "verify"),
+                &vk_gadget,
+                &input_gadget.val,
+                &proof_gadget,
+            )
+            .unwrap();
+
+            let expected = Boolean::Constant(true);
+
+            output.enforce_equal(cs.ns(|| "valid_verification"), &expected)?;
+
+            Ok(())
+        }
+    }
+
+    type PC = MarlinKZG10<Bls12_377>;
+    type PCGadget = MarlinKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
+
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
+    type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
+
+    type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Circuit<Fr>>;
+    type TestSNARKGadget = MarlinSNARKGadget<Fr, Fq, PC, FS, MarlinRecursiveMode, PCGadget, FSG>;
+
+    #[test]
+    fn failing_2_input_marlin_snark_test() {
+        let mut rng = test_rng();
+
+        for _ in 0..ITERATIONS {
+            // Construct the circuit.
+
+            let a = Fr::rand(&mut rng);
+            let b = Fr::rand(&mut rng);
+            let mut c = a;
+            c.mul_assign(&b);
+
+            let circ = Circuit {
+                a: Some(a),
+                b: Some(b),
+                num_constraints: 100,
+                num_variables: 25,
+            };
+
+            // Generate the circuit parameters.
+
+            let (pk, vk) = TestSNARK::circuit_specific_setup(circ, &mut rng).unwrap();
+
+            // Test native proof and verification.
+
+            let proof = TestSNARK::prove(&pk, &circ, &mut rng).unwrap();
+
+            assert!(
+                TestSNARK::verify(&vk.clone().into(), &[c.clone(), c].to_vec(), &proof).unwrap(),
+                "The native verification check fails."
+            );
+
+            // Initialize constraint system.
+            let mut cs = TestConstraintSystem::<Fq>::new();
+
+            let input_gadget = <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::InputVar::alloc_input(
+                cs.ns(|| "alloc_input_gadget"),
+                || Ok(vec![c.clone(), c]),
+            )
+            .unwrap();
+
+            let proof_gadget =
+                <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::ProofVar::alloc(cs.ns(|| "alloc_proof"), || {
+                    Ok(proof)
+                })
+                .unwrap();
+
+            let vk_gadget = <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::VerifyingKeyVar::alloc(
+                cs.ns(|| "alloc_vk"),
+                || Ok(vk.clone()),
+            )
+            .unwrap();
+
+            assert!(
+                cs.is_satisfied(),
+                "Constraints not satisfied: {}",
+                cs.which_is_unsatisfied().unwrap()
+            );
+
+            let verification_result = <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::verify(
+                cs.ns(|| "marlin_verify"),
+                &vk_gadget,
+                &input_gadget,
+                &proof_gadget,
+            )
+            .unwrap();
+
+            assert!(
+                cs.is_satisfied(),
+                "Constraints not satisfied: {}",
+                cs.which_is_unsatisfied().unwrap()
+            );
+
+            verification_result
+                .enforce_equal(cs.ns(|| "enforce_equal_verification"), &Boolean::Constant(true))
+                .unwrap();
+
+            assert!(
+                cs.is_satisfied(),
+                "Constraints not satisfied: {}",
+                cs.which_is_unsatisfied().unwrap()
+            );
+        }
+    }
+
+    #[test]
+    fn failing_marlin_nested_verification_gadget_test() {
+        let mut rng = test_rng();
+
+        for _ in 0..ITERATIONS {
+            // Construct the circuit.
+
+            let a = Fr::rand(&mut rng);
+            let b = Fr::rand(&mut rng);
+            let mut c = a;
+            c.mul_assign(&b);
+
+            let circ = Circuit {
+                a: Some(a),
+                b: Some(b),
+                num_constraints: 100,
+                num_variables: 25,
+            };
+
+            // Generate the circuit parameters.
+
+            let (pk, vk) = TestSNARK::circuit_specific_setup(circ, &mut rng).unwrap();
+
+            // Test native proof and verification.
+
+            let proof = TestSNARK::prove(&pk, &circ, &mut rng).unwrap();
+
+            assert!(
+                TestSNARK::verify(&vk.clone().into(), &[c.clone(), c].to_vec(), &proof).unwrap(),
+                "The native verification check fails."
+            );
+
+            // Initialize constraint system.
+            let mut cs = TestConstraintSystem::<Fq>::new();
+
+            let circuit = VerifierCircuit::<Fr, Fq, PC, FS, MarlinRecursiveMode, PCGadget, FSG> {
+                c: c.clone(),
+                verifying_key: vk,
+                proof,
+                _f: PhantomData,
+                _fs: PhantomData,
+                _marlin_mode: PhantomData,
+                _pcg: PhantomData,
+                _fsg: PhantomData,
+            };
+
+            circuit
+                .generate_constraints(&mut cs.ns(|| "verify_within_gadget"))
+                .unwrap();
+
+            assert!(
+                cs.is_satisfied(),
+                "Constraints not satisfied: {}",
+                cs.which_is_unsatisfied().unwrap()
+            );
+        }
+    }
+}
