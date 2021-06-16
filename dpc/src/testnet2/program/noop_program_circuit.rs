@@ -81,15 +81,15 @@ fn execute_noop_gadget<C: BaseDPCComponents, CS: ConstraintSystem<C::InnerField>
     let _position = UInt8::alloc_input_vec_le(cs.ns(|| "Alloc position"), &[position])?;
 
     let _local_data_commitment_parameters_gadget =
-        <C::LocalDataCommitmentGadget as CommitmentGadget<_, _>>::ParametersGadget::alloc_input(
+        <C::LocalDataCommitmentGadget as CommitmentGadget<_, _>>::ParametersGadget::alloc(
             &mut cs.ns(|| "Declare local data commitment parameters"),
             || Ok(system_parameters.local_data_commitment.parameters().clone()),
         )?;
 
-    let _local_data_root_gadget = <C::LocalDataCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
-        cs.ns(|| "Allocate local data root"),
-        || Ok(local_data_root),
-    )?;
+    let _local_data_root_gadget =
+        <C::LocalDataCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc(cs.ns(|| "Allocate local data root"), || {
+            Ok(local_data_root)
+        })?;
 
     Ok(())
 }

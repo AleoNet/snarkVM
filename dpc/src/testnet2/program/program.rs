@@ -48,10 +48,10 @@ where
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerField>,
 {
     fn to_field_elements(&self) -> Result<Vec<C::InnerField>, ConstraintFieldError> {
-        let mut v = ToConstraintField::<C::InnerField>::to_field_elements(&[self.position][..])?;
+        let v = ToConstraintField::<C::InnerField>::to_field_elements(&[self.position][..])?;
 
-        v.extend_from_slice(&self.local_data_commitment_parameters.to_field_elements()?);
-        v.extend_from_slice(&self.local_data_root.to_field_elements()?);
+        // v.extend_from_slice(&self.local_data_commitment_parameters.to_field_elements()?);
+        // v.extend_from_slice(&self.local_data_root.to_field_elements()?);
         Ok(v)
     }
 }
