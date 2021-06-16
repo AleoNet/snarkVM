@@ -80,6 +80,13 @@ impl_params_local!(
     "program_vk_crh",
     1742404
 );
+impl_params_local!(
+    Testnet2ProgramVKCRHParameters,
+    testnet2_program_vk_crh_test,
+    "./",
+    "testnet2_program_vk_crh",
+    62930948
+);
 
 impl_params_local!(
     SerialNumberNonceCRHParameters,

@@ -59,8 +59,9 @@ impl<C: BaseDPCComponents> SystemParameters<C> {
         )?);
         let program_verification_key_commitment: C::ProgramVerificationKeyCommitment =
             From::from(FromBytes::read(&[][..])?);
-        let program_verification_key_crh: C::ProgramVerificationKeyCRH =
-            From::from(FromBytes::read(ProgramVKCRHParameters::load_bytes()?.as_slice())?);
+        let program_verification_key_crh: C::ProgramVerificationKeyCRH = From::from(FromBytes::read(
+            Testnet2ProgramVKCRHParameters::load_bytes()?.as_slice(),
+        )?);
         let record_commitment: C::RecordCommitment =
             From::from(FromBytes::read(RecordCommitmentParameters::load_bytes()?.as_slice())?);
         let serial_number_nonce: C::SerialNumberNonceCRH = From::from(FromBytes::read(
