@@ -78,8 +78,6 @@ pub fn setup<C: BaseDPCComponents>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
         proof: to_bytes![program_snark_proof]?,
     };
 
-    println!("123123");
-
     let outer_snark_parameters = C::OuterSNARK::setup(
         &OuterCircuit::blank(
             system_parameters,
@@ -90,8 +88,6 @@ pub fn setup<C: BaseDPCComponents>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
         ),
         rng,
     )?;
-
-    println!("11111");
 
     let outer_snark_pk = to_bytes![outer_snark_parameters.0]?;
     let outer_snark_vk: <C::OuterSNARK as SNARK>::VerifyingKey = outer_snark_parameters.1.into();
