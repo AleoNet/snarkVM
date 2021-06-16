@@ -406,8 +406,8 @@ where
         let mut program_input_field_elements = vec![];
 
         program_input_field_elements.extend(position_fe);
-        // program_input_field_elements.extend(local_data_commitment_parameters_fe.clone());
-        // program_input_field_elements.extend(local_data_root_fe.clone());
+        program_input_field_elements.extend(local_data_commitment_parameters_fe.clone());
+        program_input_field_elements.extend(local_data_root_fe.clone());
 
         let mut program_snark_input = vec![];
 
@@ -467,8 +467,8 @@ where
         let mut program_input_field_elements = vec![];
 
         program_input_field_elements.extend(position_fe);
-        // program_input_field_elements.extend(local_data_crh_parameters_fe.clone());
-        // program_input_field_elements.extend(local_data_root_fe.clone());
+        program_input_field_elements.extend(local_data_crh_parameters_fe.clone());
+        program_input_field_elements.extend(local_data_root_fe.clone());
 
         let mut program_snark_input = vec![];
 
