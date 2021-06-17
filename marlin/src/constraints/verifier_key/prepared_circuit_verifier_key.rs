@@ -24,11 +24,11 @@ use snarkvm_gadgets::{
     integers::uint::UInt8,
     traits::{
         alloc::{AllocBytesGadget, AllocGadget},
-        fields::{FieldGadget, ToConstraintFieldGadget},
+        fields::ToConstraintFieldGadget,
     },
 };
 use snarkvm_polycommit::{PCCheckVar, PrepareGadget};
-use snarkvm_r1cs::{ConstraintSystem, SynthesisError, TestConstraintSystem};
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
 use crate::{
@@ -118,8 +118,7 @@ where
             vk.origin_verifier_key
                 .circuit_commitments
                 .iter()
-                .enumerate()
-                .for_each(|(i, index_comm)| {
+                .for_each(|index_comm| {
                     vk_elems.append(&mut index_comm.to_field_elements().unwrap());
                 });
             vk_hash_rng.absorb_native_field_elements(&vk_elems);

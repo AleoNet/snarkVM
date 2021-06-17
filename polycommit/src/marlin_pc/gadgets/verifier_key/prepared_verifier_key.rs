@@ -259,7 +259,7 @@ where
                     )?);
                 }
 
-                let d_gadget = FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc(
+                let d_gadget = FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc_constant(
                     cs.ns(|| format!("alloc_constant_d_{}", i)),
                     || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*d as u128)),
                 )?;
