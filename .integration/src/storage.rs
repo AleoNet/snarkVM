@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{memdb::MemDb, Ledger};
+use crate::Ledger;
 use snarkvm_algorithms::traits::merkle_tree::LoadableMerkleParameters;
 use snarkvm_dpc::{
     block::Block,
-    testnet1::instantiated::CommitmentMerkleParameters,
-    traits::{BlockScheme, LedgerScheme, Storage, TransactionScheme},
+    traits::{LedgerScheme, Storage, TransactionScheme},
     TransactionError,
 };
 use snarkvm_utilities::{FromBytes, ToBytes};
