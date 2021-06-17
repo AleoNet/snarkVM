@@ -31,6 +31,8 @@ pub struct CircuitVerifyingKeyVar<
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > {
+    /// The original key
+    pub origin_verifier_key: CircuitVerifyingKey<TargetField, PC>,
     /// The size of domain h
     pub domain_h_size: u64,
     /// The size of domain k
@@ -54,6 +56,7 @@ impl<
 {
     fn clone(&self) -> Self {
         Self {
+            origin_verifier_key: self.origin_verifier_key.clone(),
             domain_h_size: self.domain_h_size,
             domain_k_size: self.domain_k_size,
             domain_h_size_gadget: self.domain_h_size_gadget.clone(),
@@ -117,6 +120,7 @@ impl<
         })?;
 
         Ok(CircuitVerifyingKeyVar {
+            origin_verifier_key: (*ivk).clone(),
             domain_h_size: domain_h.size() as u64,
             domain_k_size: domain_k.size() as u64,
             domain_h_size_gadget,
@@ -158,6 +162,7 @@ impl<
         })?;
 
         Ok(CircuitVerifyingKeyVar {
+            origin_verifier_key: (*ivk).clone(),
             domain_h_size: domain_h.size() as u64,
             domain_k_size: domain_k.size() as u64,
             domain_h_size_gadget,
@@ -199,6 +204,7 @@ impl<
         })?;
 
         Ok(CircuitVerifyingKeyVar {
+            origin_verifier_key: (*ivk).clone(),
             domain_h_size: domain_h.size() as u64,
             domain_k_size: domain_k.size() as u64,
             domain_h_size_gadget,

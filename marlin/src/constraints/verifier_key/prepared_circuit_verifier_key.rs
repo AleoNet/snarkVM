@@ -28,7 +28,7 @@ use snarkvm_gadgets::{
     },
 };
 use snarkvm_polycommit::{PCCheckVar, PrepareGadget};
-use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError, TestConstraintSystem};
 use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
 use crate::{
@@ -97,6 +97,7 @@ where
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
     R: FiatShamirRngVar<TargetField, BaseField, PR>,
+    PC::Commitment: ToConstraintField<BaseField>,
     PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
     PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
 {
@@ -114,16 +115,13 @@ where
             let mut vk_hash_rng = PR::new();
 
             let mut vk_elems = Vec::<BaseField>::new();
-            vk.index_comms.iter().enumerate().for_each(|(i, index_comm)| {
-                vk_elems.append(
-                    &mut index_comm
-                        .to_constraint_field(cs.ns(|| format!("index_comm_to_constraint_field_{}", i)))
-                        .unwrap()
-                        .iter()
-                        .map(|elem| elem.get_value().unwrap_or_default())
-                        .collect(),
-                );
-            });
+            vk.origin_verifier_key
+                .circuit_commitments
+                .iter()
+                .enumerate()
+                .for_each(|(i, index_comm)| {
+                    vk_elems.append(&mut index_comm.to_field_elements().unwrap());
+                });
             vk_hash_rng.absorb_native_field_elements(&vk_elems);
             vk_hash_rng.squeeze_native_field_elements(1).unwrap()
         };
