@@ -59,7 +59,7 @@ version = "0.5.4"
 default-features = false
 
 [dependencies.anyhow]
-version = "1.0.40"
+version = "1.0.41"
 
 [dependencies.base58]
 version = "0.1"
