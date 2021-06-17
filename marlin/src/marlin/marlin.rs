@@ -521,13 +521,12 @@ where
                 println!("Size of evaluation domain x: {}", domain_x.size());
             }
 
-            let mut unpadded_input = public_input.to_vec();
-            unpadded_input.resize(
+            let mut new_input = public_input.to_vec();
+            new_input.resize(
                 core::cmp::max(public_input.len(), domain_x.size() - 1),
                 TargetField::zero(),
             );
-
-            unpadded_input
+            new_input
         };
 
         if cfg!(debug_assertions) {
