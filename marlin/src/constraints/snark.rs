@@ -776,7 +776,7 @@ pub mod multiple_input_tests {
     type TestSNARKGadget = MarlinSNARKGadget<Fr, Fq, PC, FS, MarlinRecursiveMode, PCGadget, FSG>;
 
     #[test]
-    fn failing_2_input_marlin_snark_test() {
+    fn two_input_marlin_snark_test() {
         let mut rng = test_rng();
 
         for _ in 0..ITERATIONS {
