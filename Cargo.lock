@@ -286,7 +286,7 @@ dependencies = [
  "clap",
  "criterion-plot",
  "csv",
- "itertools 0.10.0",
+ "itertools 0.10.1",
  "lazy_static",
  "num-traits",
  "oorandom",
@@ -795,9 +795,9 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37d572918e350e82412fe766d24b15e6682fb2ed2bbe018280caa810397cb319"
+checksum = "69ddb889f9d0d08a67338271fa9b62996bc788c7796a5c18cf057420aaed5eaf"
 dependencies = [
  "either",
 ]
@@ -1606,7 +1606,7 @@ dependencies = [
  "csv",
  "derivative",
  "digest",
- "itertools 0.10.0",
+ "itertools 0.10.1",
  "rand",
  "rand_chacha",
  "rand_xorshift",
@@ -1659,7 +1659,7 @@ dependencies = [
  "chrono",
  "derivative",
  "hex",
- "itertools 0.10.0",
+ "itertools 0.10.1",
  "once_cell",
  "rand",
  "rand_xorshift",
@@ -1697,7 +1697,7 @@ dependencies = [
  "criterion",
  "derivative",
  "digest",
- "itertools 0.10.0",
+ "itertools 0.10.1",
  "num-bigint",
  "num-integer",
  "num-traits",
@@ -1723,7 +1723,7 @@ dependencies = [
  "blake2",
  "derivative",
  "hex",
- "itertools 0.10.0",
+ "itertools 0.10.1",
  "parking_lot",
  "rand",
  "rand_xorshift",
@@ -1839,7 +1839,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "fxhash",
  "indexmap",
- "itertools 0.10.0",
+ "itertools 0.10.1",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-utilities",
