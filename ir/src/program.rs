@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::fmt;
+
 use prost::Message;
 
-use crate::{ir, Header, Instruction};
+use crate::{ir, Header, Instruction, MaskData, RepeatData};
 
 use anyhow::*;
 
@@ -52,5 +54,53 @@ impl Program {
 
     pub fn deserialize(input: &[u8]) -> Result<Self> {
         Self::decode(ir::Program::decode(input)?)
+    }
+
+    pub fn iter_functions<'a>(&self) -> impl Iterator<Item = &[Instruction]> {
+        let mut iter: Vec<_> = self
+            .header
+            .function_offsets
+            .windows(2)
+            .map(|offsets| {
+                assert_eq!(offsets.len(), 2);
+                &self.instructions[offsets[0] as usize..offsets[1] as usize]
+            })
+            .collect();
+        if !self.header.function_offsets.is_empty() {
+            iter.push(&self.instructions[self.header.function_offsets.last().copied().unwrap() as usize..])
+        }
+        iter.into_iter()
+    }
+}
+
+impl fmt::Display for Program {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (i, instructions) in self.iter_functions().enumerate() {
+            write!(f, "decl f{}:\n", i)?;
+            let mut indent = 1usize;
+            // indentation scheme assumes a well formed program (no inner masks/repeats are longer than parent mask/repeat/function body)
+            let mut indent_stops = vec![];
+            for (i, instruction) in instructions.iter().enumerate() {
+                for _ in 0..indent {
+                    write!(f, "  ")?;
+                }
+                instruction.fmt(f)?;
+                if let Some(indent_stop) = indent_stops.last().copied() {
+                    if indent_stop == i {
+                        indent -= 1;
+                    }
+                    indent_stops.pop();
+                }
+                match instruction {
+                    Instruction::Mask(MaskData { instruction_count, .. })
+                    | Instruction::Repeat(RepeatData { instruction_count, .. }) => {
+                        indent += 1;
+                        indent_stops.push(i + *instruction_count as usize);
+                    }
+                    _ => (),
+                }
+            }
+        }
+        Ok(())
     }
 }

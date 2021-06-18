@@ -16,85 +16,42 @@
 
 use std::fmt;
 
-use anyhow::*;
-
 use crate::{ir, Value};
 
-use super::decode_control_u32;
+use anyhow::*;
+
+use super::{decode_control_string, decode_control_u32};
 
 #[derive(Clone, Debug)]
-pub struct ArrayInitRepeatData {
+pub struct CallData {
     pub destination: u32,
-    pub length: u32,
-    pub value: Value,
+    pub index: u32, // index of function (of all defined functions, not instruction index)
+    pub arguments: Vec<Value>,
 }
 
-impl fmt::Display for ArrayInitRepeatData {
+impl fmt::Display for CallData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "&v{}, {}, {}", self.destination, self.length, self.value)
-    }
-}
-
-impl ArrayInitRepeatData {
-    pub(crate) fn decode(operands: Vec<ir::Operand>) -> Result<Self> {
-        if operands.len() != 3 {
-            return Err(anyhow!(
-                "illegal operand count for ArrayInitRepeatData: {}",
-                operands.len()
-            ));
-        }
-        let mut operands = operands.into_iter();
-        let destination = decode_control_u32(operands.next().unwrap())?;
-        let length = decode_control_u32(operands.next().unwrap())?;
-        let value = Value::decode(operands.next().unwrap())?;
-        Ok(Self {
-            destination,
-            length,
-            value,
-        })
-    }
-
-    pub(crate) fn encode(&self) -> Vec<ir::Operand> {
-        let mut operands = vec![];
-        operands.push(ir::Operand {
-            u32: Some(ir::U32 { u32: self.destination }),
-            ..Default::default()
-        });
-        operands.push(ir::Operand {
-            u32: Some(ir::U32 { u32: self.length }),
-            ..Default::default()
-        });
-        operands.push(self.value.encode());
-        operands
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct VarData {
-    pub destination: u32,
-    pub values: Vec<Value>,
-}
-
-impl fmt::Display for VarData {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "&v{}", self.destination)?;
-        for value in &self.values {
+        write!(f, "&v{}, f{}", self.destination, self.index)?;
+        for value in &self.arguments {
             write!(f, ", {}", value)?;
         }
         Ok(())
     }
 }
 
-impl VarData {
+impl CallData {
     pub(crate) fn decode(operands: Vec<ir::Operand>) -> Result<Self> {
-        if operands.is_empty() {
-            return Err(anyhow!("illegal operand count for VarData: {}", operands.len()));
+        if operands.len() < 2 {
+            return Err(anyhow!("illegal operand count for RepeatData: {}", operands.len()));
         }
         let mut operands = operands.into_iter();
         let destination = decode_control_u32(operands.next().unwrap())?;
+        let index = decode_control_u32(operands.next().unwrap())?;
+        let arguments = operands.map(Value::decode).collect::<Result<Vec<Value>>>()?;
         Ok(Self {
             destination,
-            values: operands.map(Value::decode).collect::<Result<Vec<Value>>>()?,
+            index,
+            arguments,
         })
     }
 
@@ -104,7 +61,63 @@ impl VarData {
             u32: Some(ir::U32 { u32: self.destination }),
             ..Default::default()
         });
-        for value in self.values.iter() {
+        operands.push(ir::Operand {
+            u32: Some(ir::U32 { u32: self.index }),
+            ..Default::default()
+        });
+        for value in self.arguments.iter() {
+            operands.push(value.encode());
+        }
+        operands
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct CallCoreData {
+    pub destination: u32,
+    pub identifier: String, // name of core function
+    pub arguments: Vec<Value>,
+}
+
+impl fmt::Display for CallCoreData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "&v{}, '{}'", self.destination, self.identifier)?;
+        for value in &self.arguments {
+            write!(f, ", {}", value)?;
+        }
+        Ok(())
+    }
+}
+
+impl CallCoreData {
+    pub(crate) fn decode(operands: Vec<ir::Operand>) -> Result<Self> {
+        if operands.len() < 2 {
+            return Err(anyhow!("illegal operand count for RepeatData: {}", operands.len()));
+        }
+        let mut operands = operands.into_iter();
+        let destination = decode_control_u32(operands.next().unwrap())?;
+        let identifier = decode_control_string(operands.next().unwrap())?;
+        let arguments = operands.map(Value::decode).collect::<Result<Vec<Value>>>()?;
+        Ok(Self {
+            destination,
+            identifier,
+            arguments,
+        })
+    }
+
+    pub(crate) fn encode(&self) -> Vec<ir::Operand> {
+        let mut operands = vec![];
+        operands.push(ir::Operand {
+            u32: Some(ir::U32 { u32: self.destination }),
+            ..Default::default()
+        });
+        operands.push(ir::Operand {
+            string: Some(ir::String {
+                string: self.identifier.clone(),
+            }),
+            ..Default::default()
+        });
+        for value in self.arguments.iter() {
             operands.push(value.encode());
         }
         operands

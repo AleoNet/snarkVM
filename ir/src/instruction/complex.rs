@@ -14,17 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::fmt;
+
 use crate::{ir, Value};
 
 use anyhow::*;
 use num_enum::TryFromPrimitive;
 
-use super::{decode_control_string, decode_control_u32};
+use super::decode_control_u32;
 
 #[derive(Clone, Debug)]
 pub struct MaskData {
     pub instruction_count: u32,
     pub condition: Value,
+}
+
+impl fmt::Display for MaskData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}, {}", self.instruction_count, self.condition)
+    }
 }
 
 impl MaskData {
@@ -60,6 +68,16 @@ pub struct RepeatData {
     pub iter_variable: u32,
     pub from: Value,
     pub to: Value,
+}
+
+impl fmt::Display for RepeatData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}, &v{}, {}, {}",
+            self.instruction_count, self.iter_variable, self.from, self.to
+        )
+    }
 }
 
 impl RepeatData {
@@ -100,88 +118,6 @@ impl RepeatData {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct CallData {
-    pub destination: u32,
-    pub index: u32, // index of function (of all defined functions, not instruction index)
-    pub arguments: Vec<Value>,
-}
-
-impl CallData {
-    pub(crate) fn decode(operands: Vec<ir::Operand>) -> Result<Self> {
-        if operands.len() < 2 {
-            return Err(anyhow!("illegal operand count for RepeatData: {}", operands.len()));
-        }
-        let mut operands = operands.into_iter();
-        let destination = decode_control_u32(operands.next().unwrap())?;
-        let index = decode_control_u32(operands.next().unwrap())?;
-        let arguments = operands.map(Value::decode).collect::<Result<Vec<Value>>>()?;
-        Ok(Self {
-            destination,
-            index,
-            arguments,
-        })
-    }
-
-    pub(crate) fn encode(&self) -> Vec<ir::Operand> {
-        let mut operands = vec![];
-        operands.push(ir::Operand {
-            u32: Some(ir::U32 { u32: self.destination }),
-            ..Default::default()
-        });
-        operands.push(ir::Operand {
-            u32: Some(ir::U32 { u32: self.index }),
-            ..Default::default()
-        });
-        for value in self.arguments.iter() {
-            operands.push(value.encode());
-        }
-        operands
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct CallCoreData {
-    pub destination: u32,
-    pub identifier: String, // name of core function
-    pub arguments: Vec<Value>,
-}
-
-impl CallCoreData {
-    pub(crate) fn decode(operands: Vec<ir::Operand>) -> Result<Self> {
-        if operands.len() < 2 {
-            return Err(anyhow!("illegal operand count for RepeatData: {}", operands.len()));
-        }
-        let mut operands = operands.into_iter();
-        let destination = decode_control_u32(operands.next().unwrap())?;
-        let identifier = decode_control_string(operands.next().unwrap())?;
-        let arguments = operands.map(Value::decode).collect::<Result<Vec<Value>>>()?;
-        Ok(Self {
-            destination,
-            identifier,
-            arguments,
-        })
-    }
-
-    pub(crate) fn encode(&self) -> Vec<ir::Operand> {
-        let mut operands = vec![];
-        operands.push(ir::Operand {
-            u32: Some(ir::U32 { u32: self.destination }),
-            ..Default::default()
-        });
-        operands.push(ir::Operand {
-            string: Some(ir::String {
-                string: self.identifier.clone(),
-            }),
-            ..Default::default()
-        });
-        for value in self.arguments.iter() {
-            operands.push(value.encode());
-        }
-        operands
-    }
-}
-
 #[repr(u32)]
 #[derive(Clone, Copy, Debug, TryFromPrimitive)]
 pub enum LogLevel {
@@ -190,10 +126,30 @@ pub enum LogLevel {
     Debug,
 }
 
+impl fmt::Display for LogLevel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LogLevel::Error => write!(f, "ERROR"),
+            LogLevel::Info => write!(f, "INFO"),
+            LogLevel::Debug => write!(f, "DEBUG"),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct LogData {
     pub log_level: LogLevel,
     pub parts: Vec<Value>,
+}
+
+impl fmt::Display for LogData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.log_level)?;
+        for value in &self.parts {
+            write!(f, ", {}", value)?;
+        }
+        Ok(())
+    }
 }
 
 impl LogData {
@@ -219,28 +175,5 @@ impl LogData {
             operands.push(value.encode());
         }
         operands
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct PredicateData<const N: usize> {
-    pub values: Vec<Value>,
-}
-
-impl<const N: usize> PredicateData<N> {
-    pub(crate) fn decode(operands: Vec<ir::Operand>) -> Result<Self> {
-        if operands.len() != N {
-            return Err(anyhow!("illegal operand count for PredicateData: {}", operands.len()));
-        }
-        Ok(Self {
-            values: operands
-                .into_iter()
-                .map(Value::decode)
-                .collect::<Result<Vec<Value>>>()?,
-        })
-    }
-
-    pub(crate) fn encode(&self) -> Vec<ir::Operand> {
-        self.values.iter().map(|x| x.encode()).collect()
     }
 }

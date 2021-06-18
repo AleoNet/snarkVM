@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::fmt;
+
 use crate::{ir, Value};
 
 use anyhow::*;
@@ -24,6 +26,16 @@ use super::decode_control_u32;
 pub struct QueryData<const N: usize> {
     pub destination: u32,
     pub values: Vec<Value>,
+}
+
+impl<const N: usize> fmt::Display for QueryData<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "&v{}", self.destination)?;
+        for value in &self.values {
+            write!(f, ", {}", value)?;
+        }
+        Ok(())
+    }
 }
 
 pub type UnaryData = QueryData<1>;

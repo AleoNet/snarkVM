@@ -136,7 +136,7 @@ impl fmt::Display for Value {
                 write!(f, ")")
             }
             Value::Str(s) => write!(f, "\"{}\"", s),
-            Value::Ref(x) => write!(f, "{}var", x),
+            Value::Ref(x) => write!(f, "v{}", x),
         }
     }
 }
