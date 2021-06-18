@@ -14,75 +14,98 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ir, Type};
+use crate::{ir, Input};
 
 use anyhow::*;
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SnarkVMVersion {
+    major: u32,
+    minor: u32,
+    patch: u32,
+}
+
+impl Default for SnarkVMVersion {
+    fn default() -> Self {
+        Self {
+            major: env!("CARGO_PKG_VERSION_MAJOR").parse().expect("invalid major version"),
+            minor: env!("CARGO_PKG_VERSION_MINOR").parse().expect("invalid minor version"),
+            patch: env!("CARGO_PKG_VERSION_PATCH").parse().expect("invalid patch version"),
+        }
+    }
+}
+
+impl SnarkVMVersion {
+    pub fn check_compatible(&self) -> bool {
+        self == &Self::default()
+    }
+}
+
 pub struct Header {
     pub function_offsets: Vec<u32>, // 0 is always main/entrypoint
-    pub snarkvm_major: u32,
-    pub snarkvm_minor: u32,
-    pub snarkvm_patch: u32,
-    pub main_input_types: Vec<Type>,
-    pub constant_input_types: Vec<Type>,
-    pub register_input_types: Vec<Type>,
-    pub public_state_types: Vec<Type>,
-    pub private_record_state_types: Vec<Type>,
-    pub private_leaf_state_types: Vec<Type>,
+    pub version: SnarkVMVersion,
+    pub main_inputs: Vec<Input>,
+    pub constant_inputs: Vec<Input>,
+    pub register_inputs: Vec<Input>,
+    pub public_states: Vec<Input>,
+    pub private_record_states: Vec<Input>,
+    pub private_leaf_states: Vec<Input>,
 }
 
 impl Header {
     pub(crate) fn decode(header: ir::Header) -> Result<Self> {
         Ok(Self {
             function_offsets: header.function_offsets,
-            snarkvm_major: header.snarkvm_major,
-            snarkvm_minor: header.snarkvm_minor,
-            snarkvm_patch: header.snarkvm_patch,
-            main_input_types: header
-                .main_input_types
+            version: SnarkVMVersion {
+                major: header.snarkvm_major,
+                minor: header.snarkvm_minor,
+                patch: header.snarkvm_patch,
+            },
+            main_inputs: header
+                .main_inputs
                 .into_iter()
-                .map(Type::decode)
-                .collect::<Result<Vec<Type>>>()?,
-            constant_input_types: header
-                .constant_input_types
+                .map(Input::decode)
+                .collect::<Result<Vec<Input>>>()?,
+            constant_inputs: header
+                .constant_inputs
                 .into_iter()
-                .map(Type::decode)
-                .collect::<Result<Vec<Type>>>()?,
-            register_input_types: header
-                .register_input_types
+                .map(Input::decode)
+                .collect::<Result<Vec<Input>>>()?,
+            register_inputs: header
+                .register_inputs
                 .into_iter()
-                .map(Type::decode)
-                .collect::<Result<Vec<Type>>>()?,
-            public_state_types: header
-                .public_state_types
+                .map(Input::decode)
+                .collect::<Result<Vec<Input>>>()?,
+            public_states: header
+                .public_states
                 .into_iter()
-                .map(Type::decode)
-                .collect::<Result<Vec<Type>>>()?,
-            private_record_state_types: header
-                .private_record_state_types
+                .map(Input::decode)
+                .collect::<Result<Vec<Input>>>()?,
+            private_record_states: header
+                .private_record_states
                 .into_iter()
-                .map(Type::decode)
-                .collect::<Result<Vec<Type>>>()?,
-            private_leaf_state_types: header
-                .private_leaf_state_types
+                .map(Input::decode)
+                .collect::<Result<Vec<Input>>>()?,
+            private_leaf_states: header
+                .private_leaf_states
                 .into_iter()
-                .map(Type::decode)
-                .collect::<Result<Vec<Type>>>()?,
+                .map(Input::decode)
+                .collect::<Result<Vec<Input>>>()?,
         })
     }
 
     pub(crate) fn encode(&self) -> ir::Header {
         ir::Header {
             function_offsets: self.function_offsets.clone(),
-            snarkvm_major: self.snarkvm_major,
-            snarkvm_minor: self.snarkvm_minor,
-            snarkvm_patch: self.snarkvm_patch,
-            main_input_types: self.main_input_types.iter().map(|x| x.encode()).collect(),
-            constant_input_types: self.constant_input_types.iter().map(|x| x.encode()).collect(),
-            register_input_types: self.register_input_types.iter().map(|x| x.encode()).collect(),
-            public_state_types: self.public_state_types.iter().map(|x| x.encode()).collect(),
-            private_record_state_types: self.private_record_state_types.iter().map(|x| x.encode()).collect(),
-            private_leaf_state_types: self.private_leaf_state_types.iter().map(|x| x.encode()).collect(),
+            snarkvm_major: self.version.major,
+            snarkvm_minor: self.version.minor,
+            snarkvm_patch: self.version.patch,
+            main_inputs: self.main_inputs.iter().map(|x| x.encode()).collect(),
+            constant_inputs: self.constant_inputs.iter().map(|x| x.encode()).collect(),
+            register_inputs: self.register_inputs.iter().map(|x| x.encode()).collect(),
+            public_states: self.public_states.iter().map(|x| x.encode()).collect(),
+            private_record_states: self.private_record_states.iter().map(|x| x.encode()).collect(),
+            private_leaf_states: self.private_leaf_states.iter().map(|x| x.encode()).collect(),
         }
     }
 }

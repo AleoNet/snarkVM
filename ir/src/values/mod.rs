@@ -103,13 +103,13 @@ impl fmt::Display for Integer {
 pub enum Value {
     Address(Vec<u8>),
     Boolean(bool),
-    Char(u32),
     Field(Vec<u64>),
     Group(GroupCoordinate, Option<GroupCoordinate>),
     Integer(Integer),
     Array(Vec<Value>),
     Tuple(Vec<Value>),
-    Ref(u32), // reference to a variable
+    Str(String), // not a language level string -- used for logs & core call ids
+    Ref(u32),    // reference to a variable
 }
 
 impl fmt::Display for Value {
@@ -117,7 +117,6 @@ impl fmt::Display for Value {
         match self {
             Value::Address(_) => todo!(),
             Value::Boolean(x) => write!(f, "{}", x),
-            Value::Char(c) => write!(f, "{}", std::char::from_u32(*c).unwrap_or(std::char::REPLACEMENT_CHARACTER)),
             Value::Field(field) => write!(f, "{:?}", field),
             Value::Group(left, None) => write!(f, "{}group", left),
             Value::Group(left, Some(right)) => write!(f, "({}, {})group", left, right),
@@ -125,25 +124,18 @@ impl fmt::Display for Value {
             Value::Array(items) => {
                 write!(f, "[")?;
                 for (i, item) in items.iter().enumerate() {
-                    write!(f, "{}{}", item, if i == items.len() - 1 {
-                        ""
-                    } else {
-                        ", "
-                    })?;
+                    write!(f, "{}{}", item, if i == items.len() - 1 { "" } else { ", " })?;
                 }
                 write!(f, "]")
-            },
+            }
             Value::Tuple(items) => {
                 write!(f, "(")?;
                 for (i, item) in items.iter().enumerate() {
-                    write!(f, "{}{}", item, if i == items.len() - 1 {
-                        ""
-                    } else {
-                        ", "
-                    })?;
+                    write!(f, "{}{}", item, if i == items.len() - 1 { "" } else { ", " })?;
                 }
                 write!(f, ")")
-            },
+            }
+            Value::Str(s) => write!(f, "\"{}\"", s),
             Value::Ref(x) => write!(f, "{}var", x),
         }
     }
@@ -158,7 +150,6 @@ impl Value {
             ir::Operand {
                 boolean: Some(boolean), ..
             } => Value::Boolean(boolean.boolean),
-            ir::Operand { char: Some(char), .. } => Value::Char(char.char),
             ir::Operand { field, .. } if !field.is_empty() => Value::Field(field),
             ir::Operand { group_single, .. } if !group_single.is_empty() => {
                 Value::Group(GroupCoordinate::Field(group_single), None)
@@ -223,10 +214,6 @@ impl Value {
             },
             Value::Boolean(value) => ir::Operand {
                 boolean: Some(ir::Bool { boolean: *value }),
-                ..Default::default()
-            },
-            Value::Char(c) => ir::Operand {
-                char: Some(ir::Char { char: *c }),
                 ..Default::default()
             },
             Value::Field(field) => ir::Operand {
@@ -307,6 +294,10 @@ impl Value {
                 variable_ref: Some(ir::VariableRef {
                     variable_ref: *variable_ref,
                 }),
+                ..Default::default()
+            },
+            Value::Str(str) => ir::Operand {
+                string: Some(ir::String { string: str.clone() }),
                 ..Default::default()
             },
         }

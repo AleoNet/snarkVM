@@ -73,4 +73,11 @@ pub enum InstructionOp {
     // Function Call
     Call,
     Return,
+
+    // Debugging
+    Assert,
+    Log,
+
+    // FFI/Core
+    CallCore,
 }

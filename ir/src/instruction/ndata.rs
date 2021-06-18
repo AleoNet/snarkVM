@@ -20,15 +20,16 @@ use anyhow::*;
 
 use super::decode_control_u32;
 
-pub struct NData<const N: usize> {
+#[derive(Clone, Debug)]
+pub struct QueryData<const N: usize> {
     pub destination: u32,
     pub values: Vec<Value>,
 }
 
-pub type UnaryData = NData<1>;
-pub type BinaryData = NData<2>;
+pub type UnaryData = QueryData<1>;
+pub type BinaryData = QueryData<2>;
 
-impl<const N: usize> NData<N> {
+impl<const N: usize> QueryData<N> {
     pub(crate) fn decode(operands: Vec<ir::Operand>) -> Result<Self> {
         if operands.len() != N + 1 {
             return Err(anyhow!("illegal operand count for VarData: {}", operands.len()));

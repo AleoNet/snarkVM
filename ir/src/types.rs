@@ -18,6 +18,7 @@ use crate::ir;
 
 use anyhow::*;
 
+#[derive(Clone, Debug, PartialEq)]
 pub enum Type {
     Address,
     Boolean,

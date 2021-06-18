@@ -29,6 +29,7 @@ use anyhow::*;
 
 use crate::ir;
 
+#[derive(Clone, Debug)]
 pub enum Instruction {
     // Binary
     Add(BinaryData),
@@ -64,34 +65,33 @@ pub enum Instruction {
     ArrayInitRepeat(ArrayInitRepeatData),
     ArrayInit(VarData),
     ArrayIndexGet(BinaryData),
-    ArraySliceGet(NData<3>),
-    ArrayIndexStore(NData<3>),
-    ArraySliceStore(NData<4>),
+    ArraySliceGet(QueryData<3>),
+    ArrayIndexStore(QueryData<2>),
+    ArraySliceStore(QueryData<3>),
 
     // Tuples
     TupleInit(VarData),
     TupleIndexGet(BinaryData),
-    TupleIndexStore(NData<3>),
-
-    // Circuits are represented as tuples
-    // CircuitInit,
-    // CircuitMemberGet,
-    // CircuitMemberSet,
-    // CircuitMemberCall,
-    // CircuitMemberCallMut,
-    // CircuitStaticMemberGet,
+    TupleIndexStore(QueryData<2>),
 
     // Complex Expressions
-    Pick(NData<3>),     // ternary / conditional move
+    Pick(QueryData<3>), // ternary / conditional move
     Mask(MaskData),     // mask side effects of following N instructions if condition is set
     Repeat(RepeatData), // const-count iteration of N following instructions with counter register at base
 
     // Variables
-    Store(UnaryData),
+    Store(QueryData<1>),
 
     // Function Call
-    Call(CallData),     // call a function
-    Return(ReturnData), // return from a function
+    Call(CallData),           // call a function
+    Return(PredicateData<1>), // return from a function
+
+    // Debugging
+    Assert(PredicateData<1>),
+    Log(LogData),
+
+    // FFI/Core
+    CallCore(CallCoreData),
 }
 
 impl Instruction {
@@ -135,6 +135,9 @@ impl Instruction {
             Instruction::Store(_) => InstructionOp::Store,
             Instruction::Call(_) => InstructionOp::Call,
             Instruction::Return(_) => InstructionOp::Return,
+            Instruction::Assert(_) => InstructionOp::Assert,
+            Instruction::Log(_) => InstructionOp::Log,
+            Instruction::CallCore(_) => InstructionOp::CallCore,
         }
     }
 
@@ -178,6 +181,9 @@ impl Instruction {
             Instruction::Store(x) => x.encode(),
             Instruction::Call(x) => x.encode(),
             Instruction::Return(x) => x.encode(),
+            Instruction::Assert(x) => x.encode(),
+            Instruction::Log(x) => x.encode(),
+            Instruction::CallCore(x) => x.encode(),
         }
     }
 
@@ -193,46 +199,55 @@ impl Instruction {
             match InstructionOp::try_from_primitive(instruction.opcode)
                 .map_err(|_| anyhow!("unknown instruction opcode: {}", instruction.opcode))?
             {
-                InstructionOp::Add => Instruction::Add(NData::decode(instruction.operands)?),
-                InstructionOp::Sub => Instruction::Sub(NData::decode(instruction.operands)?),
-                InstructionOp::Mul => Instruction::Mul(NData::decode(instruction.operands)?),
-                InstructionOp::Div => Instruction::Div(NData::decode(instruction.operands)?),
-                InstructionOp::Pow => Instruction::Pow(NData::decode(instruction.operands)?),
-                InstructionOp::Or => Instruction::Or(NData::decode(instruction.operands)?),
-                InstructionOp::And => Instruction::And(NData::decode(instruction.operands)?),
-                InstructionOp::Eq => Instruction::Eq(NData::decode(instruction.operands)?),
-                InstructionOp::Ne => Instruction::Ne(NData::decode(instruction.operands)?),
-                InstructionOp::Ge => Instruction::Ge(NData::decode(instruction.operands)?),
-                InstructionOp::Gt => Instruction::Gt(NData::decode(instruction.operands)?),
-                InstructionOp::Le => Instruction::Le(NData::decode(instruction.operands)?),
-                InstructionOp::Lt => Instruction::Lt(NData::decode(instruction.operands)?),
-                InstructionOp::BitOr => Instruction::BitOr(NData::decode(instruction.operands)?),
-                InstructionOp::BitAnd => Instruction::BitAnd(NData::decode(instruction.operands)?),
-                InstructionOp::BitXor => Instruction::BitXor(NData::decode(instruction.operands)?),
-                InstructionOp::Shr => Instruction::Shr(NData::decode(instruction.operands)?),
-                InstructionOp::ShrSigned => Instruction::ShrSigned(NData::decode(instruction.operands)?),
-                InstructionOp::Shl => Instruction::Shl(NData::decode(instruction.operands)?),
-                InstructionOp::Mod => Instruction::Mod(NData::decode(instruction.operands)?),
-                InstructionOp::Not => Instruction::Not(NData::decode(instruction.operands)?),
-                InstructionOp::Negate => Instruction::Negate(NData::decode(instruction.operands)?),
-                InstructionOp::BitNot => Instruction::BitNot(NData::decode(instruction.operands)?),
+                InstructionOp::Add => Instruction::Add(QueryData::decode(instruction.operands)?),
+                InstructionOp::Sub => Instruction::Sub(QueryData::decode(instruction.operands)?),
+                InstructionOp::Mul => Instruction::Mul(QueryData::decode(instruction.operands)?),
+                InstructionOp::Div => Instruction::Div(QueryData::decode(instruction.operands)?),
+                InstructionOp::Pow => Instruction::Pow(QueryData::decode(instruction.operands)?),
+                InstructionOp::Or => Instruction::Or(QueryData::decode(instruction.operands)?),
+                InstructionOp::And => Instruction::And(QueryData::decode(instruction.operands)?),
+                InstructionOp::Eq => Instruction::Eq(QueryData::decode(instruction.operands)?),
+                InstructionOp::Ne => Instruction::Ne(QueryData::decode(instruction.operands)?),
+                InstructionOp::Ge => Instruction::Ge(QueryData::decode(instruction.operands)?),
+                InstructionOp::Gt => Instruction::Gt(QueryData::decode(instruction.operands)?),
+                InstructionOp::Le => Instruction::Le(QueryData::decode(instruction.operands)?),
+                InstructionOp::Lt => Instruction::Lt(QueryData::decode(instruction.operands)?),
+                InstructionOp::BitOr => Instruction::BitOr(QueryData::decode(instruction.operands)?),
+                InstructionOp::BitAnd => Instruction::BitAnd(QueryData::decode(instruction.operands)?),
+                InstructionOp::BitXor => Instruction::BitXor(QueryData::decode(instruction.operands)?),
+                InstructionOp::Shr => Instruction::Shr(QueryData::decode(instruction.operands)?),
+                InstructionOp::ShrSigned => Instruction::ShrSigned(QueryData::decode(instruction.operands)?),
+                InstructionOp::Shl => Instruction::Shl(QueryData::decode(instruction.operands)?),
+                InstructionOp::Mod => Instruction::Mod(QueryData::decode(instruction.operands)?),
+                InstructionOp::Not => Instruction::Not(QueryData::decode(instruction.operands)?),
+                InstructionOp::Negate => Instruction::Negate(QueryData::decode(instruction.operands)?),
+                InstructionOp::BitNot => Instruction::BitNot(QueryData::decode(instruction.operands)?),
                 InstructionOp::ArrayInitRepeat => {
                     Instruction::ArrayInitRepeat(ArrayInitRepeatData::decode(instruction.operands)?)
                 }
                 InstructionOp::ArrayInit => Instruction::ArrayInit(VarData::decode(instruction.operands)?),
-                InstructionOp::ArrayIndexGet => Instruction::ArrayIndexGet(NData::decode(instruction.operands)?),
-                InstructionOp::ArraySliceGet => Instruction::ArraySliceGet(NData::decode(instruction.operands)?),
-                InstructionOp::ArrayIndexStore => Instruction::ArrayIndexStore(NData::decode(instruction.operands)?),
-                InstructionOp::ArraySliceStore => Instruction::ArraySliceStore(NData::decode(instruction.operands)?),
+                InstructionOp::ArrayIndexGet => Instruction::ArrayIndexGet(QueryData::decode(instruction.operands)?),
+                InstructionOp::ArraySliceGet => Instruction::ArraySliceGet(QueryData::decode(instruction.operands)?),
+                InstructionOp::ArrayIndexStore => {
+                    Instruction::ArrayIndexStore(QueryData::decode(instruction.operands)?)
+                }
+                InstructionOp::ArraySliceStore => {
+                    Instruction::ArraySliceStore(QueryData::decode(instruction.operands)?)
+                }
                 InstructionOp::TupleInit => Instruction::TupleInit(VarData::decode(instruction.operands)?),
-                InstructionOp::TupleIndexGet => Instruction::TupleIndexGet(NData::decode(instruction.operands)?),
-                InstructionOp::TupleIndexStore => Instruction::TupleIndexStore(NData::decode(instruction.operands)?),
-                InstructionOp::Pick => Instruction::Pick(NData::decode(instruction.operands)?),
+                InstructionOp::TupleIndexGet => Instruction::TupleIndexGet(QueryData::decode(instruction.operands)?),
+                InstructionOp::TupleIndexStore => {
+                    Instruction::TupleIndexStore(QueryData::decode(instruction.operands)?)
+                }
+                InstructionOp::Pick => Instruction::Pick(QueryData::decode(instruction.operands)?),
                 InstructionOp::Mask => Instruction::Mask(MaskData::decode(instruction.operands)?),
                 InstructionOp::Repeat => Instruction::Repeat(RepeatData::decode(instruction.operands)?),
-                InstructionOp::Store => Instruction::Store(NData::decode(instruction.operands)?),
+                InstructionOp::Store => Instruction::Store(QueryData::decode(instruction.operands)?),
                 InstructionOp::Call => Instruction::Call(CallData::decode(instruction.operands)?),
-                InstructionOp::Return => Instruction::Return(ReturnData::decode(instruction.operands)?),
+                InstructionOp::Return => Instruction::Return(PredicateData::decode(instruction.operands)?),
+                InstructionOp::Assert => Instruction::Assert(PredicateData::decode(instruction.operands)?),
+                InstructionOp::Log => Instruction::Log(LogData::decode(instruction.operands)?),
+                InstructionOp::CallCore => Instruction::CallCore(CallCoreData::decode(instruction.operands)?),
             },
         )
     }
@@ -241,6 +256,15 @@ impl Instruction {
 fn decode_control_u32(operand: ir::Operand) -> Result<u32> {
     match operand {
         ir::Operand { u32: Some(u32), .. } => Ok(u32.u32),
+        _ => Err(anyhow!("illegal value for control operand: {:?}", operand)),
+    }
+}
+
+fn decode_control_string(operand: ir::Operand) -> Result<String> {
+    match operand {
+        ir::Operand {
+            string: Some(string), ..
+        } => Ok(string.string),
         _ => Err(anyhow!("illegal value for control operand: {:?}", operand)),
     }
 }

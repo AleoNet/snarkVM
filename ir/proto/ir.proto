@@ -32,10 +32,6 @@ message Bool {
     bool boolean = 1;
 }
 
-message Char {
-    uint32 char = 1;
-}
-
 message U8 {
     uint32 u8 = 1;
 }
@@ -88,32 +84,41 @@ message Tuple {
     repeated Operand tuple = 1;
 }
 
+message String {
+    string string = 1;
+}
+
 message Operand {
     Address address = 1;
     Bool boolean = 2;
-    Char char = 3;
-    repeated fixed64 field = 4;
-    repeated fixed64 group_single = 5;
-    Group group_tuple = 6;
-    U8 u8 = 7;
-    U16 u16 = 8;
-    U32 u32 = 9;
-    U64 u64 = 10;
-    U128 u128 = 11;
-    I8 i8 = 12;
-    I16 i16 = 13;
-    I32 i32 = 14;
-    I64 i64 = 15;
-    I128 i128 = 16;
-    Array array = 17;
-    Tuple tuple = 18;
-    VariableRef variable_ref = 19;
+    repeated fixed64 field = 3;
+    repeated fixed64 group_single = 4;
+    Group group_tuple = 5;
+    U8 u8 = 6;
+    U16 u16 = 7;
+    U32 u32 = 8;
+    U64 u64 = 9;
+    U128 u128 = 10;
+    I8 i8 = 11;
+    I16 i16 = 12;
+    I32 i32 = 13;
+    I64 i64 = 14;
+    I128 i128 = 15;
+    Array array = 16;
+    Tuple tuple = 17;
+    VariableRef variable_ref = 18;
+    String string = 19;
 }
 
 message Type {
     TypeClass class = 1;
     uint32 array_length = 2;
     repeated Type subtypes = 3;
+}
+
+message Input {
+    uint32 variable = 1;
+    Type type = 2;
 }
 
 enum TypeClass {
@@ -142,12 +147,12 @@ message Header {
     uint32 snarkvm_major = 2;
     uint32 snarkvm_minor = 3;
     uint32 snarkvm_patch = 4;
-    repeated Type main_input_types = 5;
-    repeated Type constant_input_types = 6;
-    repeated Type register_input_types = 7;
-    repeated Type public_state_types = 8;
-    repeated Type private_record_state_types = 9;
-    repeated Type private_leaf_state_types = 10;
+    repeated Input main_inputs = 5;
+    repeated Input constant_inputs = 6;
+    repeated Input register_inputs = 7;
+    repeated Input public_states = 8;
+    repeated Input private_record_states = 9;
+    repeated Input private_leaf_states = 10;
 }
 
 message Program {
