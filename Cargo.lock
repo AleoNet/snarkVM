@@ -1757,6 +1757,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "snarkvm-eval"
+version = "0.5.4"
+dependencies = [
+ "anyhow",
+ "indexmap",
+ "snarkvm-curves",
+ "snarkvm-dpc",
+ "snarkvm-fields",
+ "snarkvm-gadgets",
+ "snarkvm-ir",
+ "snarkvm-r1cs",
+ "snarkvm-utilities",
+ "thiserror",
+]
+
+[[package]]
 name = "snarkvm-fields"
 version = "0.5.4"
 dependencies = [
@@ -1824,6 +1840,7 @@ name = "snarkvm-ir"
 version = "0.5.4"
 dependencies = [
  "anyhow",
+ "bech32",
  "num_enum",
  "prost",
  "prost-build",

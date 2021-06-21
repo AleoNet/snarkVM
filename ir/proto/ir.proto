@@ -88,6 +88,10 @@ message String {
     string string = 1;
 }
 
+message Char {
+    uint32 char = 1;
+}
+
 message Operand {
     Address address = 1;
     Bool boolean = 2;
@@ -108,17 +112,20 @@ message Operand {
     Tuple tuple = 17;
     VariableRef variable_ref = 18;
     String string = 19;
+    Char char = 20;
 }
 
 message Type {
     TypeClass class = 1;
     uint32 array_length = 2;
     repeated Type subtypes = 3;
+    repeated string subtype_names = 4;
 }
 
 message Input {
     uint32 variable = 1;
-    Type type = 2;
+    string name = 2;
+    Type type = 3;
 }
 
 enum TypeClass {
@@ -140,10 +147,11 @@ enum TypeClass {
 
     TypeArray = 14;
     TypeTuple = 15;
+    TypeCircuit = 16;
+    TypeChar = 17;
 }
 
 message Header {
-    repeated uint32 function_offsets = 1;
     uint32 snarkvm_major = 2;
     uint32 snarkvm_minor = 3;
     uint32 snarkvm_patch = 4;
@@ -155,7 +163,12 @@ message Header {
     repeated Input private_leaf_states = 10;
 }
 
+message Function {
+    uint32 argument_start_variable = 1;
+    repeated Instruction instructions = 2;
+}
+
 message Program {
     Header header = 1;
-    repeated Instruction instructions = 2;
+    repeated Function functions = 2;
 }

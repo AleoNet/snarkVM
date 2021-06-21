@@ -14,25 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod instruction;
-pub use instruction::*;
-
-mod values;
-pub use values::*;
-
-mod header;
-pub use header::*;
-
+pub mod errors;
+mod evaluator;
 mod input;
+mod operations;
+mod setup;
+mod value;
+
+pub use evaluator::*;
 pub use input::*;
-
-mod types;
-pub use types::*;
-
-mod program;
-pub use program::*;
-
-mod function;
-pub use function::*;
-
-mod ir;
+pub use setup::*;
+pub use value::*;

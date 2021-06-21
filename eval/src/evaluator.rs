@@ -14,25 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod instruction;
-pub use instruction::*;
+use snarkvm_fields::PrimeField;
+use snarkvm_ir::Program;
 
-mod values;
-pub use values::*;
+use crate::{GroupType, Input};
 
-mod header;
-pub use header::*;
+pub trait Evaluator<F: PrimeField, G: GroupType<F>> {
+    type Output;
+    type Error;
 
-mod input;
-pub use input::*;
-
-mod types;
-pub use types::*;
-
-mod program;
-pub use program::*;
-
-mod function;
-pub use function::*;
-
-mod ir;
+    fn evaluate(&mut self, program: &Program, input: &Input) -> Result<Self::Output, Self::Error>;
+}

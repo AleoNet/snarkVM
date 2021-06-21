@@ -213,6 +213,12 @@ macro_rules! bigint_impl {
 
                 res
             }
+
+            fn from_slice(input: &[u64]) -> Self {
+                let mut out = [0u64; $num_limbs];
+                out.copy_from_slice(&input[..input.len().min($num_limbs)]);
+                Self(out)
+            }
         }
 
         impl ToBytes for $name {

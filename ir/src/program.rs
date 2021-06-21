@@ -18,31 +18,31 @@ use std::fmt;
 
 use prost::Message;
 
-use crate::{ir, Header, Instruction, MaskData, RepeatData};
+use crate::{ir, Function, Header, Instruction, MaskData, RepeatData};
 
 use anyhow::*;
 
 pub struct Program {
     pub header: Header,
-    pub instructions: Vec<Instruction>,
+    pub functions: Vec<Function>,
 }
 
 impl Program {
     pub(crate) fn encode(&self) -> ir::Program {
         ir::Program {
             header: Some(self.header.encode()),
-            instructions: self.instructions.iter().map(|x| x.encode()).collect(),
+            functions: self.functions.iter().map(|x| x.encode()).collect(),
         }
     }
 
     pub(crate) fn decode(program: ir::Program) -> Result<Self> {
         Ok(Self {
             header: Header::decode(program.header.ok_or_else(|| anyhow!("missing header for program"))?)?,
-            instructions: program
-                .instructions
+            functions: program
+                .functions
                 .into_iter()
-                .map(Instruction::decode)
-                .collect::<Result<Vec<Instruction>>>()?,
+                .map(Function::decode)
+                .collect::<Result<Vec<Function>>>()?,
         })
     }
 
@@ -55,36 +55,21 @@ impl Program {
     pub fn deserialize(input: &[u8]) -> Result<Self> {
         Self::decode(ir::Program::decode(input)?)
     }
-
-    pub fn iter_functions<'a>(&self) -> impl Iterator<Item = &[Instruction]> {
-        let mut iter: Vec<_> = self
-            .header
-            .function_offsets
-            .windows(2)
-            .map(|offsets| {
-                assert_eq!(offsets.len(), 2);
-                &self.instructions[offsets[0] as usize..offsets[1] as usize]
-            })
-            .collect();
-        if !self.header.function_offsets.is_empty() {
-            iter.push(&self.instructions[self.header.function_offsets.last().copied().unwrap() as usize..])
-        }
-        iter.into_iter()
-    }
 }
 
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (i, instructions) in self.iter_functions().enumerate() {
+        for (i, function) in self.functions.iter().enumerate() {
             write!(f, "decl f{}:\n", i)?;
             let mut indent = 1usize;
             // indentation scheme assumes a well formed program (no inner masks/repeats are longer than parent mask/repeat/function body)
             let mut indent_stops = vec![];
-            for (i, instruction) in instructions.iter().enumerate() {
+            for (i, instruction) in function.instructions.iter().enumerate() {
                 for _ in 0..indent {
                     write!(f, "  ")?;
                 }
                 instruction.fmt(f)?;
+                writeln!(f, "")?;
                 if let Some(indent_stop) = indent_stops.last().copied() {
                     if indent_stop == i {
                         indent -= 1;

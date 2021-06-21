@@ -34,6 +34,7 @@ members = [
   "utilities",
   "wasm",
   "ir",
+  "eval",
   ".integration"
 ]
 

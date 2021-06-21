@@ -42,7 +42,6 @@ impl SnarkVMVersion {
 }
 
 pub struct Header {
-    pub function_offsets: Vec<u32>, // 0 is always main/entrypoint
     pub version: SnarkVMVersion,
     pub main_inputs: Vec<Input>,
     pub constant_inputs: Vec<Input>,
@@ -55,7 +54,6 @@ pub struct Header {
 impl Header {
     pub(crate) fn decode(header: ir::Header) -> Result<Self> {
         Ok(Self {
-            function_offsets: header.function_offsets,
             version: SnarkVMVersion {
                 major: header.snarkvm_major,
                 minor: header.snarkvm_minor,
@@ -96,7 +94,6 @@ impl Header {
 
     pub(crate) fn encode(&self) -> ir::Header {
         ir::Header {
-            function_offsets: self.function_offsets.clone(),
             snarkvm_major: self.version.major,
             snarkvm_minor: self.version.minor,
             snarkvm_patch: self.version.patch,

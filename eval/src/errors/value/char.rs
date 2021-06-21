@@ -14,25 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod instruction;
-pub use instruction::*;
+use thiserror::Error;
 
-mod values;
-pub use values::*;
+use crate::errors::FieldError;
 
-mod header;
-pub use header::*;
+#[derive(Debug, Error)]
+pub enum CharError {
+    #[error("{}", _0)]
+    Error(String),
 
-mod input;
-pub use input::*;
+    #[error("{}", _0)]
+    FieldError(#[from] FieldError),
+}
 
-mod types;
-pub use types::*;
+impl CharError {
+    fn new(message: String) -> Self {
+        CharError::Error(message)
+    }
 
-mod program;
-pub use program::*;
+    pub fn invalid_char(actual: String) -> Self {
+        let message = format!("expected char element input type, found `{}`", actual);
 
-mod function;
-pub use function::*;
-
-mod ir;
+        Self::new(message)
+    }
+}

@@ -14,25 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod instruction;
-pub use instruction::*;
+use indexmap::IndexMap;
+use snarkvm_ir::{Header, Value};
 
-mod values;
-pub use values::*;
+use anyhow::*;
 
-mod header;
-pub use header::*;
+pub struct Input {
+    pub main: IndexMap<String, Value>,
+    pub constants: IndexMap<String, Value>,
+    pub registers: IndexMap<String, Value>,
+    pub public_states: IndexMap<String, Value>,
+    pub private_record_states: IndexMap<String, Value>,
+    pub private_leaf_states: IndexMap<String, Value>,
+}
 
-mod input;
-pub use input::*;
-
-mod types;
-pub use types::*;
-
-mod program;
-pub use program::*;
-
-mod function;
-pub use function::*;
-
-mod ir;
+impl Input {
+    pub fn validate(header: &Header) -> Result<()> {
+        todo!();
+        Ok(())
+    }
+}

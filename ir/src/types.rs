@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::fmt;
+
 use crate::ir;
 
 use anyhow::*;
@@ -23,6 +25,7 @@ pub enum Type {
     Address,
     Boolean,
     Field,
+    Char,
     Group,
 
     U8,
@@ -38,7 +41,7 @@ pub enum Type {
 
     Array(Box<Type>, u32),
     Tuple(Vec<Type>),
-    // Circuit(Vec<Type>), represented as a Tuple
+    Circuit(Vec<(String, Type)>), // represented as a Tuple internally, used for input type description
 }
 
 impl Type {
@@ -47,6 +50,7 @@ impl Type {
             x if x == ir::TypeClass::TypeAddress as i32 => Type::Address,
             x if x == ir::TypeClass::TypeBoolean as i32 => Type::Boolean,
             x if x == ir::TypeClass::TypeField as i32 => Type::Field,
+            x if x == ir::TypeClass::TypeChar as i32 => Type::Char,
             x if x == ir::TypeClass::TypeGroup as i32 => Type::Group,
             x if x == ir::TypeClass::TypeU8 as i32 => Type::U8,
             x if x == ir::TypeClass::TypeU16 as i32 => Type::U16,
@@ -81,6 +85,7 @@ impl Type {
                 Type::Address => ir::TypeClass::TypeAddress as i32,
                 Type::Boolean => ir::TypeClass::TypeBoolean as i32,
                 Type::Field => ir::TypeClass::TypeField as i32,
+                Type::Char => ir::TypeClass::TypeChar as i32,
                 Type::Group => ir::TypeClass::TypeGroup as i32,
                 Type::U8 => ir::TypeClass::TypeU8 as i32,
                 Type::U16 => ir::TypeClass::TypeU16 as i32,
@@ -94,6 +99,7 @@ impl Type {
                 Type::I128 => ir::TypeClass::TypeI128 as i32,
                 Type::Array(_, _) => ir::TypeClass::TypeArray as i32,
                 Type::Tuple(_) => ir::TypeClass::TypeTuple as i32,
+                Type::Circuit(_) => ir::TypeClass::TypeCircuit as i32,
             },
             array_length: match self {
                 Type::Array(_, length) => *length,
@@ -102,8 +108,50 @@ impl Type {
             subtypes: match self {
                 Type::Array(item, _) => vec![item.encode()],
                 Type::Tuple(items) => items.iter().map(|x| x.encode()).collect(),
+                Type::Circuit(items) => items.iter().map(|(_, x)| x.encode()).collect(),
                 _ => vec![],
             },
+            subtype_names: match self {
+                Type::Circuit(items) => items.iter().map(|(x, _)| x.clone()).collect(),
+                _ => vec![],
+            },
+        }
+    }
+}
+
+impl fmt::Display for Type {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Type::Address => write!(f, "address"),
+            Type::Boolean => write!(f, "bool"),
+            Type::Field => write!(f, "field"),
+            Type::Char => write!(f, "char"),
+            Type::Group => write!(f, "group"),
+            Type::U8 => write!(f, "u8"),
+            Type::U16 => write!(f, "u16"),
+            Type::U32 => write!(f, "u32"),
+            Type::U64 => write!(f, "u64"),
+            Type::U128 => write!(f, "u128"),
+            Type::I8 => write!(f, "i8"),
+            Type::I16 => write!(f, "i16"),
+            Type::I32 => write!(f, "i32"),
+            Type::I64 => write!(f, "i64"),
+            Type::I128 => write!(f, "i128"),
+            Type::Array(inner, len) => write!(f, "[{}; {}]", inner, len),
+            Type::Tuple(inner) => {
+                write!(f, "(")?;
+                for (i, type_) in inner.iter().enumerate() {
+                    write!(f, "{}{}", if i != 0 { ", " } else { "" }, type_)?;
+                }
+                write!(f, ")")
+            }
+            Type::Circuit(inner) => {
+                write!(f, "{{")?;
+                for (i, (name, type_)) in inner.iter().enumerate() {
+                    write!(f, "{}{}: {}", if i != 0 { ", " } else { "" }, name, type_)?;
+                }
+                write!(f, "}}")
+            }
         }
     }
 }

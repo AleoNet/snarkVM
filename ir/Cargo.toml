@@ -28,5 +28,8 @@ version = "1.0"
 [dependencies.num_enum]
 version = "0.5"
 
+[dependencies.bech32]
+version = "0.8"
+
 [build-dependencies.prost-build]
 version = "0.7"

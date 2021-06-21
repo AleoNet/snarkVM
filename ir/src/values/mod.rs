@@ -16,13 +16,16 @@
 
 use std::fmt;
 
-use crate::ir;
+use crate::{ir, Type};
 
 use anyhow::*;
+use bech32::ToBase32;
+
+pub type Field = Vec<u64>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum GroupCoordinate {
-    Field(Vec<u64>),
+    Field(Field),
     SignHigh,
     SignLow,
     Inferred,
@@ -66,6 +69,21 @@ impl GroupCoordinate {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum Group {
+    Single(Field),
+    Tuple(GroupCoordinate, GroupCoordinate),
+}
+
+impl fmt::Display for Group {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Group::Single(field) => write!(f, "{:?}group", field),
+            Group::Tuple(left, right) => write!(f, "({}, {})group", left, right),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Integer {
     U8(u8),
@@ -104,7 +122,8 @@ pub enum Value {
     Address(Vec<u8>),
     Boolean(bool),
     Field(Vec<u64>),
-    Group(GroupCoordinate, Option<GroupCoordinate>),
+    Char(u32),
+    Group(Group),
     Integer(Integer),
     Array(Vec<Value>),
     Tuple(Vec<Value>),
@@ -115,11 +134,19 @@ pub enum Value {
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::Address(_) => todo!(),
+            Value::Address(bytes) => write!(
+                f,
+                "aleo1{}",
+                bech32::encode("aleo", bytes.to_vec().to_base32(), bech32::Variant::Bech32).unwrap_or_default()
+            ),
             Value::Boolean(x) => write!(f, "{}", x),
             Value::Field(field) => write!(f, "{:?}", field),
-            Value::Group(left, None) => write!(f, "{}group", left),
-            Value::Group(left, Some(right)) => write!(f, "({}, {})group", left, right),
+            Value::Char(c) => write!(
+                f,
+                "{}",
+                std::char::from_u32(*c).unwrap_or(std::char::REPLACEMENT_CHARACTER)
+            ),
+            Value::Group(group) => group.fmt(f),
             Value::Integer(x) => write!(f, "{}", x),
             Value::Array(items) => {
                 write!(f, "[")?;
@@ -142,6 +169,40 @@ impl fmt::Display for Value {
 }
 
 impl Value {
+    pub fn matches_input_type(&self, type_: &Type) -> bool {
+        match (self, type_) {
+            (Value::Address(_), Type::Address)
+            | (Value::Boolean(_), Type::Boolean)
+            | (Value::Field(_), Type::Field)
+            | (Value::Char(_), Type::Char)
+            | (Value::Group(_), Type::Group)
+            | (Value::Integer(Integer::I8(_)), Type::I8)
+            | (Value::Integer(Integer::I16(_)), Type::I16)
+            | (Value::Integer(Integer::I32(_)), Type::I32)
+            | (Value::Integer(Integer::I64(_)), Type::I64)
+            | (Value::Integer(Integer::I128(_)), Type::I128)
+            | (Value::Integer(Integer::U8(_)), Type::U8)
+            | (Value::Integer(Integer::U16(_)), Type::U16)
+            | (Value::Integer(Integer::U32(_)), Type::U32)
+            | (Value::Integer(Integer::U64(_)), Type::U64)
+            | (Value::Integer(Integer::U128(_)), Type::U128) => true,
+            (Value::Array(inner), Type::Array(inner_type, len)) => {
+                inner.len() == *len as usize && inner.iter().all(|inner| inner.matches_input_type(&**inner_type))
+            }
+            (Value::Tuple(values), Type::Tuple(types)) => values
+                .iter()
+                .zip(types.iter())
+                .all(|(value, type_)| value.matches_input_type(type_)),
+            (Value::Tuple(values), Type::Circuit(members)) => values
+                .iter()
+                .zip(members.iter())
+                .all(|(value, (_, type_))| value.matches_input_type(type_)),
+            (Value::Str(_), _) => panic!("illegal str type in input type"),
+            (Value::Ref(_), _) => panic!("illegal ref in input type"),
+            (_, _) => false,
+        }
+    }
+
     pub(crate) fn decode(from: ir::Operand) -> Result<Value> {
         Ok(match from {
             ir::Operand {
@@ -151,9 +212,8 @@ impl Value {
                 boolean: Some(boolean), ..
             } => Value::Boolean(boolean.boolean),
             ir::Operand { field, .. } if !field.is_empty() => Value::Field(field),
-            ir::Operand { group_single, .. } if !group_single.is_empty() => {
-                Value::Group(GroupCoordinate::Field(group_single), None)
-            }
+            ir::Operand { char: Some(char), .. } => Value::Char(char.char),
+            ir::Operand { group_single, .. } if !group_single.is_empty() => Value::Group(Group::Single(group_single)),
             ir::Operand {
                 group_tuple:
                     Some(ir::Group {
@@ -161,7 +221,10 @@ impl Value {
                         right: Some(right),
                     }),
                 ..
-            } => Value::Group(GroupCoordinate::decode(left)?, Some(GroupCoordinate::decode(right)?)),
+            } => Value::Group(Group::Tuple(
+                GroupCoordinate::decode(left)?,
+                GroupCoordinate::decode(right)?,
+            )),
             ir::Operand { u8: Some(u8), .. } => Value::Integer(Integer::U8(u8.u8 as u8)),
             ir::Operand { u16: Some(u16), .. } => Value::Integer(Integer::U16(u16.u16 as u16)),
             ir::Operand { u32: Some(u32), .. } => Value::Integer(Integer::U32(u32.u32)),
@@ -220,12 +283,15 @@ impl Value {
                 field: field.clone(),
                 ..Default::default()
             },
-            Value::Group(GroupCoordinate::Field(inner), None) => ir::Operand {
+            Value::Char(char) => ir::Operand {
+                char: Some(ir::Char { char: *char }),
+                ..Default::default()
+            },
+            Value::Group(Group::Single(inner)) => ir::Operand {
                 group_single: inner.clone(),
                 ..Default::default()
             },
-            Value::Group(_, None) => unimplemented!("cannot have unit group with inference"),
-            Value::Group(left, Some(right)) => ir::Operand {
+            Value::Group(Group::Tuple(left, right)) => ir::Operand {
                 group_tuple: Some(ir::Group {
                     left: Some(left.encode()),
                     right: Some(right.encode()),
