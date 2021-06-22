@@ -17,22 +17,30 @@
 use crate::fft::domain::*;
 use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_utilities::rand::UniformRand;
+use snarkvm_fields::PrimeField;
+use snarkvm_curves::bls12_377::{G1Projective, Fr};
 
 /// Test multiplying various (low degree) polynomials together and
 /// comparing with naive evaluations.
 #[test]
 fn fft_composition() {
-    fn test_fft_composition<E: PairingEngine, R: rand::Rng>(rng: &mut R) {
+    fn test_fft_composition<
+        F: PrimeField,
+        T: DomainCoeff<F> + UniformRand + core::fmt::Debug + Eq,
+        R: rand::Rng,
+        D: EvaluationDomain<F>,
+    >(rng: &mut R) {
         for coeffs in 0..10 {
             let coeffs = 1 << coeffs;
 
             let mut v = vec![];
             for _ in 0..coeffs {
-                v.push(E::Fr::rand(rng));
+                v.push(T::rand(rng));
             }
             let mut v2 = v.clone();
 
-            let domain = EvaluationDomain::<E::Fr>::new(coeffs).unwrap();
+            let domain = D::new(coeffs).unwrap();
+
             domain.ifft_in_place(&mut v2);
             domain.fft_in_place(&mut v2);
             assert_eq!(v, v2, "ifft(fft(.)) != iden");
@@ -53,7 +61,8 @@ fn fft_composition() {
 
     let rng = &mut rand::thread_rng();
 
-    test_fft_composition::<Bls12_377, _>(rng);
+    test_fft_composition::<Fr, Fr, _, FftEvaluationDomain<Fr>>(rng);
+    test_fft_composition::<Fr, G1Projective, _, FftEvaluationDomain<Fr>>(rng);
 }
 
 #[cfg(feature = "parallel")]
@@ -66,7 +75,7 @@ fn parallel_fft_consistency() {
     use std::cmp::min;
 
     fn serial_radix2_ifft<E: PairingEngine>(a: &mut [E::Fr], omega: E::Fr, log_n: u32) {
-        serial_radix2_fft(a, omega.inverse().unwrap(), log_n);
+        serial_radix2_fft(a, &omega.inverse().unwrap(), log_n);
         let domain_size_inv = E::Fr::from(a.len() as u64).inverse().unwrap();
         for coeff in a.iter_mut() {
             *coeff *= &domain_size_inv;
@@ -80,7 +89,7 @@ fn parallel_fft_consistency() {
             *coeff *= &cur_pow;
             cur_pow *= &coset_shift;
         }
-        serial_radix2_fft(a, omega, log_n);
+        serial_radix2_fft(a, &omega, log_n);
     }
 
     fn serial_radix2_coset_ifft<E: PairingEngine>(a: &mut [E::Fr], omega: E::Fr, log_n: u32) {

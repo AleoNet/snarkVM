@@ -142,7 +142,7 @@ impl<F: Field> DensePolynomial<F> {
 impl<F: PrimeField> DensePolynomial<F> {
     /// Multiply `self` by the vanishing polynomial for the domain `domain`.
     /// Returns the quotient and remainder of the division.
-    pub fn mul_by_vanishing_poly(&self, domain: EvaluationDomain<F>) -> DensePolynomial<F> {
+    pub fn mul_by_vanishing_poly<D: EvaluationDomain<F>>(&self, domain: D) -> DensePolynomial<F> {
         let mut shifted = vec![F::zero(); domain.size()];
         shifted.extend_from_slice(&self.coeffs);
         cfg_iter_mut!(shifted).zip(&self.coeffs).for_each(|(s, c)| *s -= c);
@@ -151,9 +151,9 @@ impl<F: PrimeField> DensePolynomial<F> {
 
     /// Divide `self` by the vanishing polynomial for the domain `domain`.
     /// Returns the quotient and remainder of the division.
-    pub fn divide_by_vanishing_poly(
+    pub fn divide_by_vanishing_poly<D: EvaluationDomain<F>>(
         &self,
-        domain: EvaluationDomain<F>,
+        domain: D,
     ) -> Option<(DensePolynomial<F>, DensePolynomial<F>)> {
         let self_poly = DenseOrSparsePolynomial::from(self);
         let vanishing_poly = DenseOrSparsePolynomial::from(domain.vanishing_polynomial());
@@ -243,13 +243,13 @@ impl<'a, 'b, F: Field> AddAssign<(F, &'a DensePolynomial<F>)> for DensePolynomia
 
 impl<F: PrimeField> DensePolynomial<F> {
     /// Evaluate `self` over `domain`.
-    pub fn evaluate_over_domain_by_ref(&self, domain: EvaluationDomain<F>) -> Evaluations<F> {
+    pub fn evaluate_over_domain_by_ref<D: EvaluationDomain<F>>(&self, domain: D) -> Evaluations<F, D> {
         let poly: DenseOrSparsePolynomial<'_, F> = self.into();
         DenseOrSparsePolynomial::<F>::evaluate_over_domain(poly, domain)
     }
 
     /// Evaluate `self` over `domain`.
-    pub fn evaluate_over_domain(self, domain: EvaluationDomain<F>) -> Evaluations<F> {
+    pub fn evaluate_over_domain<D: EvaluationDomain<F>>(self, domain: D) -> Evaluations<F, D> {
         let poly: DenseOrSparsePolynomial<'_, F> = self.into();
         DenseOrSparsePolynomial::<F>::evaluate_over_domain(poly, domain)
     }
