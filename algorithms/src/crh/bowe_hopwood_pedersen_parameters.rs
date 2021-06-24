@@ -21,6 +21,9 @@ use super::{PedersenCRHParameters, PedersenSize};
 pub const BOWE_HOPWOOD_CHUNK_SIZE: usize = 3;
 pub const BOWE_HOPWOOD_LOOKUP_SIZE: usize = 2usize.pow(BOWE_HOPWOOD_CHUNK_SIZE as u32);
 
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BoweHopwoodPedersenCRHParameters<G: Group> {
     pub base_lookup: Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>>,
@@ -29,9 +32,7 @@ pub struct BoweHopwoodPedersenCRHParameters<G: Group> {
 impl<G: Group> BoweHopwoodPedersenCRHParameters<G> {
     pub fn setup<S: PedersenSize>(input: &PedersenCRHParameters<G, S>) -> Self {
         Self {
-            base_lookup: input
-                .bases
-                .iter()
+            base_lookup: cfg_iter!(input.bases)
                 .map(|x| {
                     x.iter()
                         .map(|g| {
