@@ -1607,6 +1607,7 @@ dependencies = [
  "derivative",
  "digest",
  "itertools 0.10.1",
+ "once_cell",
  "rand",
  "rand_chacha",
  "rand_xorshift",

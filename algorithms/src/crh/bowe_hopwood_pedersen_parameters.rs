@@ -24,37 +24,50 @@ pub const BOWE_HOPWOOD_LOOKUP_SIZE: usize = 2usize.pow(BOWE_HOPWOOD_CHUNK_SIZE a
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+use once_cell::sync::OnceCell;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoweHopwoodPedersenCRHParameters<G: Group> {
-    pub base_lookup: Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>>,
+    base_lookup: OnceCell<Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>>>,
 }
 
 impl<G: Group> BoweHopwoodPedersenCRHParameters<G> {
-    pub fn setup<S: PedersenSize>(input: &PedersenCRHParameters<G, S>) -> Self {
+    pub fn new() -> Self {
         Self {
-            base_lookup: cfg_iter!(input.bases)
-                .map(|x| {
-                    x.iter()
-                        .map(|g| {
-                            let mut out = [G::zero(); BOWE_HOPWOOD_LOOKUP_SIZE];
-                            for i in 0..BOWE_HOPWOOD_LOOKUP_SIZE {
-                                let mut encoded = *g;
-                                if (i & 0x01) != 0 {
-                                    encoded += g;
-                                }
-                                if (i & 0x02) != 0 {
-                                    encoded += &g.double();
-                                }
-                                if (i & 0x04) != 0 {
-                                    encoded = encoded.neg();
-                                }
-                                out[i] = encoded;
-                            }
-                            out
-                        })
-                        .collect()
-                })
-                .collect(),
+            base_lookup: OnceCell::new(),
         }
+    }
+
+    pub fn base_lookup<S: PedersenSize>(
+        &self,
+        input: &PedersenCRHParameters<G, S>,
+    ) -> &Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>> {
+        self.base_lookup
+            .get_or_try_init::<_, ()>(|| {
+                Ok(cfg_iter!(input.bases)
+                    .map(|x| {
+                        x.iter()
+                            .map(|g| {
+                                let mut out = [G::zero(); BOWE_HOPWOOD_LOOKUP_SIZE];
+                                for i in 0..BOWE_HOPWOOD_LOOKUP_SIZE {
+                                    let mut encoded = *g;
+                                    if (i & 0x01) != 0 {
+                                        encoded += g;
+                                    }
+                                    if (i & 0x02) != 0 {
+                                        encoded += &g.double();
+                                    }
+                                    if (i & 0x04) != 0 {
+                                        encoded = encoded.neg();
+                                    }
+                                    out[i] = encoded;
+                                }
+                                out
+                            })
+                            .collect()
+                    })
+                    .collect())
+            })
+            .expect("failed to init BoweHopwoodPedersenCRHParameters")
     }
 }
