@@ -33,7 +33,7 @@ use rand::Rng;
 const MAX_WINDOW_SIZE: usize = 256;
 const MAX_NUM_WINDOWS: usize = 296;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoweHopwoodPedersenCRH<G: Group, S: PedersenSize> {
     pub parameters: PedersenCRHParameters<G, S>,
     pub bowe_hopwood_parameters: BoweHopwoodPedersenCRHParameters<G>,
@@ -96,7 +96,7 @@ impl<G: Group, S: PedersenSize> CRH for BoweHopwoodPedersenCRH<G, S> {
 
         let parameters = Self::Parameters::from(bases);
 
-        let bowe_hopwood_parameters = BoweHopwoodPedersenCRHParameters::setup(&parameters);
+        let bowe_hopwood_parameters = BoweHopwoodPedersenCRHParameters::new();
 
         Self {
             parameters,
@@ -142,8 +142,9 @@ impl<G: Group, S: PedersenSize> CRH for BoweHopwoodPedersenCRH<G, S> {
         for bases in self.parameters.bases.iter() {
             assert_eq!(bases.len(), S::WINDOW_SIZE);
         }
-        assert_eq!(self.bowe_hopwood_parameters.base_lookup.len(), S::NUM_WINDOWS);
-        for bases in self.bowe_hopwood_parameters.base_lookup.iter() {
+        let base_lookup = self.bowe_hopwood_parameters.base_lookup(&self.parameters);
+        assert_eq!(base_lookup.len(), S::NUM_WINDOWS);
+        for bases in base_lookup.iter() {
             assert_eq!(bases.len(), S::WINDOW_SIZE);
         }
         assert_eq!(BOWE_HOPWOOD_CHUNK_SIZE, 3);
@@ -154,7 +155,7 @@ impl<G: Group, S: PedersenSize> CRH for BoweHopwoodPedersenCRH<G, S> {
         // specification.
         let result = buf_slice[..bit_len]
             .chunks(S::WINDOW_SIZE * BOWE_HOPWOOD_CHUNK_SIZE)
-            .zip(&self.bowe_hopwood_parameters.base_lookup)
+            .zip(base_lookup)
             .map(|(segment_bits, segment_generators)| {
                 segment_bits
                     .chunks(BOWE_HOPWOOD_CHUNK_SIZE)
@@ -180,7 +181,7 @@ impl<G: Group, S: PedersenSize> CRH for BoweHopwoodPedersenCRH<G, S> {
 impl<G: Group, S: PedersenSize> From<PedersenCRHParameters<G, S>> for BoweHopwoodPedersenCRH<G, S> {
     fn from(parameters: PedersenCRHParameters<G, S>) -> Self {
         Self {
-            bowe_hopwood_parameters: BoweHopwoodPedersenCRHParameters::setup(&parameters),
+            bowe_hopwood_parameters: BoweHopwoodPedersenCRHParameters::new(),
             parameters,
         }
     }

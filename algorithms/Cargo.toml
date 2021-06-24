@@ -122,6 +122,9 @@ version = "1.0"
 [dependencies.bitvec]
 version = "0.22"
 
+[dependencies.once_cell]
+version = "1.8"
+
 [dev-dependencies.criterion]
 version = "0.3.4"
 
