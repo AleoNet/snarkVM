@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod address;
+mod boolean;
 mod char;
 mod field;
 mod group;
@@ -23,6 +24,7 @@ mod value;
 
 pub use self::char::*;
 pub use address::*;
+pub(crate) use boolean::*;
 pub use field::*;
 pub use group::*;
 pub use integer::*;

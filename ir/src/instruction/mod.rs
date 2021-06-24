@@ -73,7 +73,9 @@ pub enum Instruction {
     ArrayInitRepeat(ArrayInitRepeatData),
     ArrayInit(VarData),
     ArrayIndexGet(BinaryData),
-    ArraySliceGet(QueryData<3>),
+    // array, from, to, length (constant)
+    ArraySliceGet(QueryData<4>),
+    // destination + source, index, item
     ArrayIndexStore(QueryData<2>),
     ArraySliceStore(QueryData<3>),
 
@@ -120,7 +122,7 @@ fn decode_control_string(operand: ir::Operand) -> Result<String> {
 
 impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.opcode().mnemonic())?;
+        write!(f, "{} ", self.opcode().mnemonic())?;
         match self {
             Instruction::Add(x) => x.fmt(f)?,
             Instruction::Sub(x) => x.fmt(f)?,

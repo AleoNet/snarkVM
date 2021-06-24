@@ -70,6 +70,12 @@ impl ValueError {
         Self::new(message)
     }
 
+    pub fn bad_value_for_type(type_: &str, value: &str) -> Self {
+        let message = format!("expected '{}' but got value '{}'", type_, value);
+
+        Self::new(message)
+    }
+
     pub fn cannot_enforce(operation: &str, error: SynthesisError) -> Self {
         let message = format!(
             "the gadget operation `{}` failed due to synthesis error `{:?}`",

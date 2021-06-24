@@ -31,6 +31,8 @@ use std::fmt::{Debug, Display};
 
 pub mod edwards_bls12;
 
+pub use snarkvm_fields::PrimeField;
+
 pub trait GroupType<F: Field>:
     Sized
     + Clone

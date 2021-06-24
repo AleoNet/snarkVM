@@ -15,10 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use indexmap::IndexMap;
-use snarkvm_ir::{Header, Value};
+use snarkvm_ir::Value;
 
-use anyhow::*;
-
+#[derive(Clone, Debug, Default)]
 pub struct Input {
     pub main: IndexMap<String, Value>,
     pub constants: IndexMap<String, Value>,
@@ -26,11 +25,4 @@ pub struct Input {
     pub public_states: IndexMap<String, Value>,
     pub private_record_states: IndexMap<String, Value>,
     pub private_leaf_states: IndexMap<String, Value>,
-}
-
-impl Input {
-    pub fn validate(header: &Header) -> Result<()> {
-        todo!();
-        Ok(())
-    }
 }

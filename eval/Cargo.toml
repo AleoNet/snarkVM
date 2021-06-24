@@ -19,6 +19,9 @@ edition = "2018"
 
 [features]
 
+[dependencies.tracing]
+version = "0.1"
+
 [dependencies.anyhow]
 version = "1.0"
 
@@ -55,3 +58,6 @@ version = "1.0"
 
 [dependencies.indexmap]
 version = "1.6.2"
+
+[dependencies.im]
+version = "15.0"

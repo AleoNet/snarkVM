@@ -1,3 +1,19 @@
+// Copyright (C) 2019-2021 Aleo Systems Inc.
+// This file is part of the snarkVM library.
+
+// The snarkVM library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// The snarkVM library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+
 use crate::{Address, Char, FieldType, GroupType, Integer};
 
 use snarkvm_fields::PrimeField;
@@ -5,10 +21,11 @@ use snarkvm_gadgets::{
     bits::Boolean,
     traits::{eq::ConditionalEqGadget, select::CondSelectGadget},
 };
+use snarkvm_ir::Type;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use std::fmt;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ConstrainedValue<F: PrimeField, G: GroupType<F>> {
     // Data types
     Address(Address),
@@ -51,6 +68,38 @@ impl<F: PrimeField, G: GroupType<F>> ConstrainedValue<F, G> {
         match self {
             ConstrainedValue::Tuple(x) => Ok(x),
             value => Err(value),
+        }
+    }
+
+    pub fn matches_input_type(&self, type_: &Type) -> bool {
+        match (self, type_) {
+            (ConstrainedValue::Address(_), Type::Address)
+            | (ConstrainedValue::Boolean(_), Type::Boolean)
+            | (ConstrainedValue::Field(_), Type::Field)
+            | (ConstrainedValue::Char(_), Type::Char)
+            | (ConstrainedValue::Group(_), Type::Group)
+            | (ConstrainedValue::Integer(Integer::I8(_)), Type::I8)
+            | (ConstrainedValue::Integer(Integer::I16(_)), Type::I16)
+            | (ConstrainedValue::Integer(Integer::I32(_)), Type::I32)
+            | (ConstrainedValue::Integer(Integer::I64(_)), Type::I64)
+            | (ConstrainedValue::Integer(Integer::I128(_)), Type::I128)
+            | (ConstrainedValue::Integer(Integer::U8(_)), Type::U8)
+            | (ConstrainedValue::Integer(Integer::U16(_)), Type::U16)
+            | (ConstrainedValue::Integer(Integer::U32(_)), Type::U32)
+            | (ConstrainedValue::Integer(Integer::U64(_)), Type::U64)
+            | (ConstrainedValue::Integer(Integer::U128(_)), Type::U128) => true,
+            (ConstrainedValue::Array(inner), Type::Array(inner_type, len)) => {
+                inner.len() == *len as usize && inner.iter().all(|inner| inner.matches_input_type(&**inner_type))
+            }
+            (ConstrainedValue::Tuple(values), Type::Tuple(types)) => values
+                .iter()
+                .zip(types.iter())
+                .all(|(value, type_)| value.matches_input_type(type_)),
+            (ConstrainedValue::Tuple(values), Type::Circuit(members)) => values
+                .iter()
+                .zip(members.iter())
+                .all(|(value, (_, type_))| value.matches_input_type(type_)),
+            (_, _) => false,
         }
     }
 }
@@ -98,12 +147,6 @@ impl<F: PrimeField, G: GroupType<F>> fmt::Display for ConstrainedValue<F, G> {
                 write!(f, "({})", values)
             }
         }
-    }
-}
-
-impl<F: PrimeField, G: GroupType<F>> fmt::Debug for ConstrainedValue<F, G> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
     }
 }
 
