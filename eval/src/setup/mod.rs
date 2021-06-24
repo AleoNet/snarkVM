@@ -67,7 +67,7 @@ impl<F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> Evaluator<F, G> fo
         let mut state = EvaluatorState::new(program, &mut self.cs);
 
         state.handle_input_block(&program.header.main_inputs, &input.main)?;
-        state.handle_input_block(&program.header.constant_inputs, &input.constants)?; //todo: should these not allocate?
+        state.handle_const_input_block(&program.header.constant_inputs, &input.constants)?;
         state.handle_input_block(&program.header.register_inputs, &input.registers)?;
         state.handle_input_block(&program.header.public_states, &input.public_states)?;
         state.handle_input_block(&program.header.private_record_states, &input.private_record_states)?;
