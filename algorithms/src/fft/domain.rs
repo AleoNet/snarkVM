@@ -27,7 +27,7 @@
 //! by performing an O(n log n) FFT over such a domain.
 
 use crate::fft::{multicore::Worker, SparsePolynomial};
-use snarkvm_fields::{batch_inversion, FftParameters, PrimeField};
+use snarkvm_fields::{batch_inversion, FftField, FftParameters};
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use rand::Rng;
@@ -51,7 +51,7 @@ fn log2(number: usize) -> usize {
 /// only for fields that have a large multiplicative subgroup of size that is
 /// a power-of-2.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct EvaluationDomain<F: PrimeField> {
+pub struct EvaluationDomain<F: FftField> {
     /// The size of the domain.
     pub size: u64,
     /// `log_2(self.size)`.
@@ -68,13 +68,13 @@ pub struct EvaluationDomain<F: PrimeField> {
     pub generator_inv: F,
 }
 
-impl<F: PrimeField> fmt::Debug for EvaluationDomain<F> {
+impl<F: FftField> fmt::Debug for EvaluationDomain<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Multiplicative subgroup of size {}", self.size)
     }
 }
 
-impl<F: PrimeField> EvaluationDomain<F> {
+impl<F: FftField> EvaluationDomain<F> {
     fn calculate_chunk_size(size: usize) -> usize {
         match size / rayon::current_num_threads() {
             0 => 1,
@@ -98,19 +98,19 @@ impl<F: PrimeField> EvaluationDomain<F> {
         let size = num_coeffs.next_power_of_two() as u64;
         let log_size_of_group = size.trailing_zeros();
 
-        if log_size_of_group >= F::Parameters::TWO_ADICITY {
+        // libfqfft uses > https://github.com/scipr-lab/libfqfft/blob/e0183b2cef7d4c5deb21a6eaf3fe3b586d738fe0/libfqfft/evaluation_domain/domains/basic_radix2_domain.tcc#L33
+        if log_size_of_group > F::FftParameters::TWO_ADICITY {
             return None;
         }
 
         // Compute the generator for the multiplicative subgroup.
-        // It should be 2^(log_size_of_group) root of unity.
-        let mut group_gen = F::root_of_unity();
-        for _ in log_size_of_group..F::Parameters::TWO_ADICITY {
-            group_gen.square_in_place();
-        }
+        // It should be the 2^(log_size_of_group) root of unity.
+        let group_gen = F::get_root_of_unity(size as usize)?;
 
-        let size_as_bigint = F::BigInteger::from(size);
-        let size_as_field_element = F::from_repr(size_as_bigint)?;
+        // Check that it is indeed the 2^(log_size_of_group) root of unity.
+        debug_assert_eq!(group_gen.pow([size]), F::one());
+
+        let size_as_field_element = F::from(size);
         let size_inv = size_as_field_element.inverse()?;
 
         Some(EvaluationDomain {
@@ -128,7 +128,7 @@ impl<F: PrimeField> EvaluationDomain<F> {
     /// having `num_coeffs` coefficients.
     pub fn compute_size_of_domain(num_coeffs: usize) -> Option<usize> {
         let size = num_coeffs.next_power_of_two();
-        if size.trailing_zeros() < F::Parameters::TWO_ADICITY {
+        if size.trailing_zeros() <= F::FftParameters::TWO_ADICITY {
             Some(size)
         } else {
             None
@@ -140,27 +140,27 @@ impl<F: PrimeField> EvaluationDomain<F> {
         self.size as usize
     }
 
-    /// Compute a FFT.
+    /// Compute an FFT.
     pub fn fft(&self, coeffs: &[F]) -> Vec<F> {
         let mut coeffs = coeffs.to_vec();
         self.fft_in_place(&mut coeffs);
         coeffs
     }
 
-    /// Compute a FFT, modifying the vector in place.
+    /// Compute an FFT, modifying the vector in place.
     pub fn fft_in_place(&self, coeffs: &mut Vec<F>) {
         coeffs.resize(self.size(), F::zero());
         best_fft(coeffs, &Worker::new(), self.group_gen, self.log_size_of_group)
     }
 
-    /// Compute a IFFT.
+    /// Compute an IFFT.
     pub fn ifft(&self, evals: &[F]) -> Vec<F> {
         let mut evals = evals.to_vec();
         self.ifft_in_place(&mut evals);
         evals
     }
 
-    /// Compute a IFFT, modifying the vector in place.
+    /// Compute an IFFT, modifying the vector in place.
     #[inline]
     pub fn ifft_in_place(&self, evals: &mut Vec<F>) {
         evals.resize(self.size(), F::zero());
@@ -168,28 +168,28 @@ impl<F: PrimeField> EvaluationDomain<F> {
         cfg_iter_mut!(evals).for_each(|val| *val *= &self.size_inv);
     }
 
-    /// Compute a FFT over a coset of the domain.
+    /// Compute an FFT over a coset of the domain.
     pub fn coset_fft(&self, coeffs: &[F]) -> Vec<F> {
         let mut coeffs = coeffs.to_vec();
         self.coset_fft_in_place(&mut coeffs);
         coeffs
     }
 
-    /// Compute a FFT over a coset of the domain, modifying the input vector
+    /// Compute an FFT over a coset of the domain, modifying the input vector
     /// in place.
     pub fn coset_fft_in_place(&self, coeffs: &mut Vec<F>) {
         Self::distribute_powers(coeffs, F::multiplicative_generator());
         self.fft_in_place(coeffs);
     }
 
-    /// Compute a IFFT over a coset of the domain.
+    /// Compute an IFFT over a coset of the domain.
     pub fn coset_ifft(&self, evals: &[F]) -> Vec<F> {
         let mut evals = evals.to_vec();
         self.coset_ifft_in_place(&mut evals);
         evals
     }
 
-    /// Compute a IFFT over a coset of the domain, modifying the input vector in place.
+    /// Compute an IFFT over a coset of the domain, modifying the input vector in place.
     pub fn coset_ifft_in_place(&self, evals: &mut Vec<F>) {
         self.ifft_in_place(evals);
         Self::distribute_powers(evals, self.generator_inv);
@@ -415,12 +415,12 @@ impl<F: PrimeField> EvaluationDomain<F> {
 
 #[allow(unused_variables)]
 #[cfg(not(feature = "parallel"))]
-fn best_fft<F: PrimeField>(a: &mut [F], worker: &Worker, omega: F, log_n: u32) {
+fn best_fft<F: FftField>(a: &mut [F], worker: &Worker, omega: F, log_n: u32) {
     serial_radix2_fft(a, omega, log_n);
 }
 
 #[cfg(feature = "parallel")]
-fn best_fft<F: PrimeField>(a: &mut [F], worker: &Worker, omega: F, log_n: u32) {
+fn best_fft<F: FftField>(a: &mut [F], worker: &Worker, omega: F, log_n: u32) {
     let log_cpus = worker.log_num_cpus();
 
     if log_n <= log_cpus {
@@ -431,7 +431,7 @@ fn best_fft<F: PrimeField>(a: &mut [F], worker: &Worker, omega: F, log_n: u32) {
 }
 
 #[allow(clippy::many_single_char_names)]
-pub(crate) fn serial_radix2_fft<F: PrimeField>(a: &mut [F], omega: F, log_n: u32) {
+pub(crate) fn serial_radix2_fft<F: FftField>(a: &mut [F], omega: F, log_n: u32) {
     #[inline]
     fn bitreverse(mut n: u32, l: u32) -> u32 {
         let mut r = 0;
@@ -477,7 +477,7 @@ pub(crate) fn serial_radix2_fft<F: PrimeField>(a: &mut [F], omega: F, log_n: u32
 }
 
 #[cfg(feature = "parallel")]
-pub(crate) fn parallel_radix2_fft<F: PrimeField>(a: &mut [F], worker: &Worker, omega: F, log_n: u32, log_cpus: u32) {
+pub(crate) fn parallel_radix2_fft<F: FftField>(a: &mut [F], worker: &Worker, omega: F, log_n: u32, log_cpus: u32) {
     assert!(log_n >= log_cpus);
 
     let num_cpus = 1 << log_cpus;
@@ -530,13 +530,13 @@ pub(crate) fn parallel_radix2_fft<F: PrimeField>(a: &mut [F], worker: &Worker, o
 }
 
 /// An iterator over the elements of the domain.
-pub struct Elements<F: PrimeField> {
+pub struct Elements<F: FftField> {
     cur_elem: F,
     cur_pow: u64,
     domain: EvaluationDomain<F>,
 }
 
-impl<F: PrimeField> Iterator for Elements<F> {
+impl<F: FftField> Iterator for Elements<F> {
     type Item = F;
 
     fn next(&mut self) -> Option<F> {
