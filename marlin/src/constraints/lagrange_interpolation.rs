@@ -116,7 +116,7 @@ impl<BaseField: PrimeField> LagrangeInterpolator<BaseField> {
             .zip(self.poly_evaluations.iter())
             .take(poly_evaluations_size)
         {
-            interpolation += &(*lagrange_coeff * &poly_evaluation);
+            interpolation += &(*lagrange_coeff * poly_evaluation);
         }
         interpolation
     }

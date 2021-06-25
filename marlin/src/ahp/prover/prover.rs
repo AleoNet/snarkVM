@@ -427,7 +427,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
             .zip(&z_poly_evals.evaluations)
             .zip(&t_poly_m_evals.evaluations)
             .for_each(|(((a, b), &c), d)| {
-                *a *= &b;
+                *a *= b;
                 *a -= &(c * d);
             });
         let rhs = r_alpha_evals.interpolate();

@@ -98,7 +98,7 @@ pub fn batch_inversion<F: Field>(v: &mut [F]) {
     let mut prod = Vec::with_capacity(v.len());
     let mut tmp = F::one();
     for f in v.iter().filter(|f| !f.is_zero()) {
-        tmp.mul_assign(&f);
+        tmp.mul_assign(f);
         prod.push(tmp);
     }
 
@@ -115,9 +115,9 @@ pub fn batch_inversion<F: Field>(v: &mut [F]) {
         // Backwards, skip last element, fill in one for last term.
         .zip(prod.into_iter().rev().skip(1).chain(Some(F::one())))
     {
-        // tmp := tmp * g.z; g.z := tmp * s = 1/z
-        let newtmp = tmp * &f;
+        // tmp := tmp * f; f := tmp * s = 1/f
+        let new_tmp = tmp * *f;
         *f = tmp * &s;
-        tmp = newtmp;
+        tmp = new_tmp;
     }
 }

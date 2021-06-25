@@ -448,20 +448,20 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
             let d = ((self.x + &b).square() - &a - &c).double();
 
             // E = 3*A
-            let e = a + a.double_in_place();
+            let e = a + &*a.double_in_place();
 
             // F = E^2
             let f = e.square();
 
             // Z3 = 2*Y1*Z1
-            self.z.mul_assign(&self.y);
+            self.z *= &self.y;
             self.z.double_in_place();
 
             // X3 = F-2*D
             self.x = f - &d - &d;
 
             // Y3 = E*(D-X3)-8*C
-            self.y = (d - &self.x) * &e - c.double_in_place().double_in_place().double_in_place();
+            self.y = (d - &self.x) * &e - &*c.double_in_place().double_in_place().double_in_place();
             self
         } else {
             // http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-2009-l
@@ -490,7 +490,7 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
             self.x = t;
             // Y3 = M*(S-T)-8*YYYY
             let old_y = self.y;
-            self.y = m * &(s - &t) - yyyy.double_in_place().double_in_place().double_in_place();
+            self.y = m * &(s - &t) - &*yyyy.double_in_place().double_in_place().double_in_place();
             // Z3 = (Y1+Z1)^2-YY-ZZ
             self.z = (old_y + &self.z).square() - &yy - &zz;
             self
@@ -687,7 +687,7 @@ impl<'a, P: Parameters> AddAssign<&'a Self> for GroupProjective<P> {
             self.x = r.square() - &j - &(v.double());
 
             // Y3 = r*(V - X3) - 2*S1*J
-            self.y = r * &(v - &self.x) - (s1 * &j).double_in_place();
+            self.y = r * &(v - &self.x) - &*(s1 * &j).double_in_place();
 
             // Z3 = ((Z1+Z2)^2 - Z1Z1 - Z2Z2)*H
             self.z = ((self.z + &other.z).square() - &z1z1 - &z2z2) * &h;

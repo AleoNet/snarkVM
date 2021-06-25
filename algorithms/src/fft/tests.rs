@@ -60,7 +60,6 @@ fn fft_composition() {
 #[cfg(feature = "parallel")]
 #[test]
 fn parallel_fft_consistency() {
-    use crate::fft::multicore::*;
     use snarkvm_fields::{Field, One};
 
     use rand::Rng;
@@ -95,8 +94,6 @@ fn parallel_fft_consistency() {
     }
 
     fn test_basic_consistency<E: PairingEngine, R: Rng>(rng: &mut R, max_coeffs: u32) {
-        let worker = Worker::new();
-
         for _ in 0..5 {
             for log_d in 0..max_coeffs {
                 let d = 1 << log_d;
@@ -104,10 +101,10 @@ fn parallel_fft_consistency() {
                 let mut v1 = (0..d).map(|_| E::Fr::rand(rng)).collect::<Vec<_>>();
                 let mut v2 = v1.clone();
 
-                let domain = EvaluationDomain::new(v1.len()).unwrap();
+                let domain = EvaluationDomain::<E::Fr>::new(v1.len()).unwrap();
 
                 for log_cpus in log_d..min(log_d + 1, 3) {
-                    parallel_radix2_fft(&mut v1, &worker, domain.group_gen, log_d, log_cpus);
+                    parallel_radix2_fft(&mut v1, domain.group_gen, log_d, log_cpus);
                     serial_radix2_fft(&mut v2, domain.group_gen, log_d);
 
                     assert_eq!(v1, v2);

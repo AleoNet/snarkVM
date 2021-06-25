@@ -58,7 +58,7 @@ fn mimc<F: Field>(mut xl: F, mut xr: F, constants: &[F]) -> F {
 
     for c in constants.iter().take(MIMC_ROUNDS) {
         let mut tmp1 = xl;
-        tmp1.add_assign(&c);
+        tmp1.add_assign(c);
         let mut tmp2 = tmp1;
         tmp2.square_in_place();
         tmp2.mul_assign(&tmp1);

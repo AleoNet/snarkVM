@@ -14,7 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{FftField, Field, FieldError, FieldParameters, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
+use crate::{
+    impl_additive_ops_from_ref,
+    impl_multiplicative_ops_from_ref,
+    FftField,
+    Field,
+    FieldError,
+    FieldParameters,
+    LegendreSymbol,
+    One,
+    PrimeField,
+    SquareRootField,
+    Zero,
+};
 use snarkvm_utilities::{
     biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger384 as BigInteger},
     bytes::{FromBytes, ToBytes},
@@ -460,6 +472,9 @@ impl_prime_field_from_int!(Fp384, u16, Fp384Parameters);
 impl_prime_field_from_int!(Fp384, u8, Fp384Parameters);
 
 impl_prime_field_standard_sample!(Fp384, Fp384Parameters);
+
+impl_additive_ops_from_ref!(Fp384, Fp384Parameters);
+impl_multiplicative_ops_from_ref!(Fp384, Fp384Parameters);
 
 impl<P: Fp384Parameters> ToBytes for Fp384<P> {
     #[inline]

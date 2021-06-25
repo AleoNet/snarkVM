@@ -88,8 +88,8 @@ impl<P: Fp2Parameters> Fp2<P> {
     }
 
     pub fn mul_by_fp(&mut self, element: &P::Fp) {
-        self.c0.mul_assign(&element);
-        self.c1.mul_assign(&element);
+        self.c0.mul_assign(element);
+        self.c1.mul_assign(element);
     }
 }
 
@@ -337,6 +337,9 @@ impl<P: Fp2Parameters> Distribution<Fp2<P>> for Standard {
         Fp2::new(UniformRand::rand(rng), UniformRand::rand(rng))
     }
 }
+
+impl_additive_ops_from_ref!(Fp2, Fp2Parameters);
+impl_multiplicative_ops_from_ref!(Fp2, Fp2Parameters);
 
 impl<'a, P: Fp2Parameters> Add<&'a Fp2<P>> for Fp2<P> {
     type Output = Self;

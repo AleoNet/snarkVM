@@ -210,7 +210,7 @@ impl R1CStoSAP {
         let d1_double = d1.double();
         let mut h: Vec<E::Fr> = vec![d1_double; domain_size];
         cfg_iter_mut!(h).zip(&a).for_each(|(h_i, a_i)| *h_i *= a_i);
-        h[0].sub_assign(&d2);
+        h[0].sub_assign(d2);
         let d1d1 = d1.square();
         h[0].sub_assign(&d1d1);
         h.push(d1d1);

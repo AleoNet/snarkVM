@@ -61,6 +61,14 @@ pub trait Field:
     + From<u32>
     + From<u16>
     + From<u8>
+    + Add<Self, Output = Self>
+    + Sub<Self, Output = Self>
+    + Mul<Self, Output = Self>
+    + Div<Self, Output = Self>
+    + AddAssign<Self>
+    + SubAssign<Self>
+    + MulAssign<Self>
+    + DivAssign<Self>
     + for<'a> Add<&'a Self, Output = Self>
     + for<'a> Sub<&'a Self, Output = Self>
     + for<'a> Mul<&'a Self, Output = Self>
@@ -69,6 +77,10 @@ pub trait Field:
     + for<'a> SubAssign<&'a Self>
     + for<'a> MulAssign<&'a Self>
     + for<'a> DivAssign<&'a Self>
+    + core::iter::Sum<Self>
+    + for<'a> core::iter::Sum<&'a Self>
+    + core::iter::Product<Self>
+    + for<'a> core::iter::Product<&'a Self>
     + CanonicalSerialize
     + ConstantSerializedSize
     + CanonicalSerializeWithFlags
@@ -98,7 +110,7 @@ pub trait Field:
     #[must_use]
     fn inverse(&self) -> Option<Self>;
 
-    // Sets `self` to `self`'s inverse if it exists. Otherwise it is a no-op.
+    /// Sets `self` to `self`'s inverse if it exists. Otherwise it is a no-op.
     fn inverse_in_place(&mut self) -> Option<&mut Self>;
 
     /// Exponentiates this element by a power of the base prime modulus via
