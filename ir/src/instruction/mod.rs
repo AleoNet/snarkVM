@@ -71,6 +71,7 @@ pub enum Instruction {
 
     // Arrays
     ArrayInitRepeat(ArrayInitRepeatData),
+    // flatten a single dimension of each argument and concatentes into an array
     ArrayInit(VarData),
     ArrayIndexGet(BinaryData),
     // array, from, to, length (constant)

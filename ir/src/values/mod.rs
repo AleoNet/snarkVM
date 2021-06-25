@@ -21,68 +21,10 @@ use crate::{ir, Type};
 use anyhow::*;
 use bech32::ToBase32;
 
-pub type Field = Vec<u64>;
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum GroupCoordinate {
-    Field(Field),
-    SignHigh,
-    SignLow,
-    Inferred,
-}
-
-impl fmt::Display for GroupCoordinate {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            GroupCoordinate::Field(field) => write!(f, "{:?}", field),
-            GroupCoordinate::SignHigh => write!(f, "+"),
-            GroupCoordinate::SignLow => write!(f, "-"),
-            GroupCoordinate::Inferred => write!(f, "_"),
-        }
-    }
-}
-
-impl GroupCoordinate {
-    pub(crate) fn decode(from: ir::GroupCoordinate) -> Result<GroupCoordinate> {
-        match from.coordinate_type {
-            x if x == ir::GroupCoordinateType::Field as i32 => Ok(GroupCoordinate::Field(from.value)),
-            x if x == ir::GroupCoordinateType::SignHigh as i32 => Ok(GroupCoordinate::SignHigh),
-            x if x == ir::GroupCoordinateType::SignLow as i32 => Ok(GroupCoordinate::SignLow),
-            x if x == ir::GroupCoordinateType::Inferred as i32 => Ok(GroupCoordinate::Inferred),
-            x => Err(anyhow!("unknown group coordinate type: {}", x)),
-        }
-    }
-
-    pub(crate) fn encode(&self) -> ir::GroupCoordinate {
-        ir::GroupCoordinate {
-            coordinate_type: match self {
-                GroupCoordinate::Field(_) => ir::GroupCoordinateType::Field as i32,
-                GroupCoordinate::SignHigh => ir::GroupCoordinateType::SignHigh as i32,
-                GroupCoordinate::SignLow => ir::GroupCoordinateType::SignLow as i32,
-                GroupCoordinate::Inferred => ir::GroupCoordinateType::Inferred as i32,
-            },
-            value: match self {
-                GroupCoordinate::Field(f) => f.clone(),
-                _ => vec![],
-            },
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Group {
-    Single(Field),
-    Tuple(GroupCoordinate, GroupCoordinate),
-}
-
-impl fmt::Display for Group {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Group::Single(field) => write!(f, "{:?}group", field),
-            Group::Tuple(left, right) => write!(f, "({}, {})group", left, right),
-        }
-    }
-}
+mod field;
+pub use field::*;
+mod group;
+pub use group::*;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Integer {
@@ -121,7 +63,7 @@ impl fmt::Display for Integer {
 pub enum Value {
     Address(Vec<u8>),
     Boolean(bool),
-    Field(Vec<u64>),
+    Field(Field),
     Char(u32),
     Group(Group),
     Integer(Integer),
@@ -136,7 +78,7 @@ impl fmt::Display for Value {
         match self {
             Value::Address(bytes) => write!(
                 f,
-                "aleo1{}",
+                "{}",
                 bech32::encode("aleo", bytes.to_vec().to_base32(), bech32::Variant::Bech32).unwrap_or_default()
             ),
             Value::Boolean(x) => write!(f, "{}", x),
@@ -211,9 +153,12 @@ impl Value {
             ir::Operand {
                 boolean: Some(boolean), ..
             } => Value::Boolean(boolean.boolean),
-            ir::Operand { field, .. } if !field.is_empty() => Value::Field(field),
+            ir::Operand { field: Some(field), .. } => Value::Field(Field::decode(field)),
             ir::Operand { char: Some(char), .. } => Value::Char(char.char),
-            ir::Operand { group_single, .. } if !group_single.is_empty() => Value::Group(Group::Single(group_single)),
+            ir::Operand {
+                group_single: Some(group_single),
+                ..
+            } => Value::Group(Group::Single(Field::decode(group_single))),
             ir::Operand {
                 group_tuple:
                     Some(ir::Group {
@@ -280,7 +225,7 @@ impl Value {
                 ..Default::default()
             },
             Value::Field(field) => ir::Operand {
-                field: field.clone(),
+                field: Some(field.encode()),
                 ..Default::default()
             },
             Value::Char(char) => ir::Operand {
@@ -288,7 +233,7 @@ impl Value {
                 ..Default::default()
             },
             Value::Group(Group::Single(inner)) => ir::Operand {
-                group_single: inner.clone(),
+                group_single: Some(inner.encode()),
                 ..Default::default()
             },
             Value::Group(Group::Tuple(left, right)) => ir::Operand {

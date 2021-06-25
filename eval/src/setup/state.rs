@@ -123,8 +123,8 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         Ok(Cow::Owned(match value {
             Value::Address(bytes) => ConstrainedValue::Address(Address::constant(&bytes[..])?),
             Value::Boolean(value) => ConstrainedValue::Boolean(Boolean::Constant(*value)),
-            Value::Field(limbs) => ConstrainedValue::Field(FieldType::constant(&mut self.cs, &limbs[..])?),
-            Value::Char(c) => ConstrainedValue::Char(Char::constant(&mut self.cs, *c, &[*c as u64])?),
+            Value::Field(limbs) => ConstrainedValue::Field(FieldType::constant(&mut self.cs, &limbs)?),
+            Value::Char(c) => ConstrainedValue::Char(Char::constant(&mut self.cs, *c)?),
             Value::Group(g) => ConstrainedValue::Group(G::constant(g)?),
             Value::Integer(i) => ConstrainedValue::Integer(Integer::constant(i)?),
             Value::Array(items) => {
@@ -216,16 +216,23 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             self.variables.insert(arg_register, argument.clone());
             arg_register += 1;
         }
-        let mut result = ConstrainedValue::<F, G>::Tuple(vec![]);
+        let mut result = None;
         let out = self.evaluate_block(0, &function.instructions[..], &mut result);
         self.call_depth -= 1;
         if let Err(e) = out {
             return Err(anyhow!("f#{}: {:?}", index, e));
         }
-        Ok(result)
+        Ok(result.unwrap_or_else(|| ConstrainedValue::Tuple(vec![])))
     }
 
-    fn evaluate_control_instruction(&mut self, base_instruction_index: usize, instruction_index: &mut usize, block: &[Instruction], instruction: &Instruction, mut result: &mut ConstrainedValue<F, G>) -> Result<bool> {
+    fn evaluate_control_instruction(
+        &mut self,
+        base_instruction_index: usize,
+        instruction_index: &mut usize,
+        block: &[Instruction],
+        instruction: &Instruction,
+        mut result: &mut Option<ConstrainedValue<F, G>>,
+    ) -> Result<bool> {
         match instruction {
             Instruction::Mask(MaskData {
                 instruction_count,
@@ -244,7 +251,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
 
                 let mut interior = result.clone();
                 let mut assignments = HashMap::new();
-                self.child(
+                let child_result = self.child(
                     &*format!("{}: conditional block", *instruction_index),
                     |state| {
                         state.evaluate_block(
@@ -254,10 +261,13 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                         )
                     },
                     &mut assignments,
-                )?;
+                );
+                if child_result.is_err() && condition.get_value().unwrap_or(true) {
+                    return Err(child_result.unwrap_err());
+                }
 
                 for (variable, value) in assignments {
-                    if let Some(prior) = self.variables.get(&variable) {
+                    if let Some(prior) = self.variables.get(&variable).or(self.parent_variables.get(&variable)) {
                         let value = ConstrainedValue::conditionally_select(&mut self.cs, condition, &value, prior)?;
                         self.store(variable, value);
                     } else {
@@ -267,9 +277,21 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                 }
 
                 *instruction_index += instruction_count;
-                let prior_result = result.clone();
-                *result =
-                    ConstrainedValue::conditionally_select(&mut self.cs, condition, &interior, &prior_result)?;
+                match (result.clone(), interior) {
+                    (Some(prior), Some(interior)) => {
+                        *result = Some(ConstrainedValue::conditionally_select(
+                            &mut self.cs,
+                            condition,
+                            &interior,
+                            &prior,
+                        )?);
+                    }
+                    (None, Some(interior)) => {
+                        // will produce garbage if invalid IR (incomplete return path)
+                        *result = Some(interior);
+                    }
+                    (_, None) => (),
+                }
             }
             Instruction::Repeat(RepeatData {
                 instruction_count,
@@ -342,9 +364,9 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             instruction => {
                 match self.evaluate_instruction(instruction) {
                     Ok(Some(returned)) => {
-                        *result = returned;
-                        return Ok(true);    
-                    },
+                        *result = Some(returned);
+                        return Ok(true);
+                    }
                     Ok(None) => (),
                     Err(e) => return Err(anyhow!("i#{}: {:?}", *instruction_index + base_instruction_index, e)),
                 }
@@ -355,13 +377,24 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         Ok(false)
     }
 
-    pub fn evaluate_block(&mut self, base_instruction_index: usize, block: &[Instruction], result: &mut ConstrainedValue<F, G>) -> Result<()> {
+    pub fn evaluate_block(
+        &mut self,
+        base_instruction_index: usize,
+        block: &[Instruction],
+        result: &mut Option<ConstrainedValue<F, G>>,
+    ) -> Result<()> {
         let mut instruction_index = 0usize;
         while instruction_index < block.len() {
             let instruction = &block[instruction_index];
-            
-            if self.evaluate_control_instruction(base_instruction_index, &mut instruction_index, block, instruction, result)? {
-                return Ok(())
+
+            if self.evaluate_control_instruction(
+                base_instruction_index,
+                &mut instruction_index,
+                block,
+                instruction,
+                result,
+            )? {
+                return Ok(());
             }
         }
         Ok(())

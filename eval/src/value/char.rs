@@ -21,7 +21,7 @@ use snarkvm_gadgets::{
     select::CondSelectGadget,
     traits::bits::comparator::{ComparatorGadget, EvaluateLtGadget},
 };
-use snarkvm_ir::Value;
+use snarkvm_ir::{Field, Value};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use crate::{errors::CharError, ConstrainedValue, FieldType, GroupType};
@@ -34,10 +34,13 @@ pub struct Char<F: PrimeField> {
 }
 
 impl<F: PrimeField> Char<F> {
-    pub fn constant<CS: ConstraintSystem<F>>(cs: CS, character: u32, field: &[u64]) -> Result<Self, CharError> {
+    pub fn constant<CS: ConstraintSystem<F>>(cs: CS, character: u32) -> Result<Self, CharError> {
         Ok(Self {
             character,
-            field: FieldType::constant(cs, field)?,
+            field: FieldType::constant(cs, &Field {
+                values: vec![character as u64],
+                negate: false,
+            })?,
         })
     }
 
@@ -53,7 +56,7 @@ impl<F: PrimeField> Char<F> {
             return Err(CharError::invalid_char(value.to_string()));
         };
 
-        let field = super::field::allocate_field(cs, name, Some(&[value as u64]))?;
+        let field = super::field::allocate_field(cs, name, &[value as u64])?;
 
         Ok(ConstrainedValue::Char(Char {
             character: value,
@@ -148,7 +151,7 @@ impl<F: PrimeField + std::fmt::Display> std::fmt::Display for Char<F> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if let Some(c) = std::char::from_u32(self.character) {
             if c.is_ascii() {
-                return write!(f, "{}", c);
+                return write!(f, "{}", char::escape_default(c));
             }
         }
         write!(f, "\\u{{{:X}}}", self.character)

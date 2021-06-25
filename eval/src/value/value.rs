@@ -177,12 +177,20 @@ impl<F: PrimeField, G: GroupType<F>> ConditionalEqGadget<F> for ConstrainedValue
                 num_1.conditional_enforce_equal(cs, num_2, condition)
             }
             (ConstrainedValue::Array(arr_1), ConstrainedValue::Array(arr_2)) => {
+                if arr_1.len() != arr_2.len() {
+                    return Err(SynthesisError::Unsatisfiable);
+                }
+
                 for (i, (left, right)) in arr_1.iter().zip(arr_2.iter()).enumerate() {
                     left.conditional_enforce_equal(cs.ns(|| format!("array[{}]", i)), right, condition)?;
                 }
                 Ok(())
             }
             (ConstrainedValue::Tuple(tuple_1), ConstrainedValue::Tuple(tuple_2)) => {
+                if tuple_1.len() != tuple_2.len() {
+                    return Err(SynthesisError::Unsatisfiable);
+                }
+
                 for (i, (left, right)) in tuple_1.iter().zip(tuple_2.iter()).enumerate() {
                     left.conditional_enforce_equal(cs.ns(|| format!("tuple index {}", i)), right, condition)?;
                 }
@@ -224,6 +232,10 @@ impl<F: PrimeField, G: GroupType<F>> CondSelectGadget<F> for ConstrainedValue<F,
                 ConstrainedValue::Integer(Integer::conditionally_select(cs, cond, num_1, num_2)?)
             }
             (ConstrainedValue::Array(arr_1), ConstrainedValue::Array(arr_2)) => {
+                if arr_1.len() != arr_2.len() {
+                    return Err(SynthesisError::Unsatisfiable);
+                }
+
                 let mut array = Vec::with_capacity(arr_1.len());
 
                 for (i, (first, second)) in arr_1.iter().zip(arr_2.iter()).enumerate() {
@@ -238,6 +250,10 @@ impl<F: PrimeField, G: GroupType<F>> CondSelectGadget<F> for ConstrainedValue<F,
                 ConstrainedValue::Array(array)
             }
             (ConstrainedValue::Tuple(tuple_1), ConstrainedValue::Tuple(tuple_2)) => {
+                if tuple_1.len() != tuple_2.len() {
+                    return Err(SynthesisError::Unsatisfiable);
+                }
+
                 let mut array = Vec::with_capacity(tuple_1.len());
 
                 for (i, (first, second)) in tuple_1.iter().zip(tuple_2.iter()).enumerate() {

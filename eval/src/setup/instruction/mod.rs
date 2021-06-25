@@ -162,9 +162,19 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             Instruction::ArrayInit(VarData { destination, values }) => {
                 let mut inner = Vec::with_capacity(values.len());
                 for value in values {
-                    inner.push(self.resolve(value)?.into_owned());
+                    let value = self.resolve(value)?.into_owned();
+                    match value {
+                        ConstrainedValue::Array(values) => {
+                            for value in values {
+                                inner.push(value);
+                            }
+                        }
+                        value => {
+                            inner.push(value);
+                        }
+                    }
                 }
-                //todo: assert same type and flatten array if needed
+                //todo: optionally assert same type
                 let array = ConstrainedValue::Array(inner);
                 self.store(*destination, array);
             }
@@ -288,16 +298,17 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                 let value = values.get(0).unwrap();
                 let value = self.resolve(value)?.into_owned();
                 match value {
-                    ConstrainedValue::Boolean(b) => match b {
-                        Boolean::Is(_) | Boolean::Not(_) => {
-                            return Err(anyhow!("cannot have input-based assertion"));
+                    ConstrainedValue::Boolean(b) => {
+                        if b.is_allocated() {
+                            tracing::warn!("input based assertion");
                         }
-                        Boolean::Constant(value) => {
-                            if !value {
-                                return Err(anyhow!("assertion failed"));
-                            }
+                        if !b
+                            .get_value()
+                            .ok_or_else(|| anyhow!("cannot have input-based assertion with no known value"))?
+                        {
+                            return Err(anyhow!("assertion failed"));
                         }
-                    },
+                    }
                     _ => return Err(anyhow!("invalid type for assertion, expected boolean")),
                 }
             }

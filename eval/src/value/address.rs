@@ -41,9 +41,10 @@ pub struct Address {
 }
 
 impl Address {
-    pub(crate) fn constant(mut address_bytes: &[u8]) -> Result<Self, AddressError> {
-        let address =
-            AccountAddress::read(&mut address_bytes).map_err(|error| AddressError::account_error(error.into()))?;
+    pub(crate) fn constant(address_bytes: &[u8]) -> Result<Self, AddressError> {
+        let mut address_bytes_reader = address_bytes;
+        let address = AccountAddress::read(&mut address_bytes_reader)
+            .map_err(|error| AddressError::account_error(error.into()))?;
 
         let bytes = UInt8::constant_vec(address_bytes);
 
@@ -71,7 +72,7 @@ impl Address {
 
         let account =
             AccountAddress::read(&mut &value[..]).map_err(|error| AddressError::account_error(error.into()))?;
-        let bytes = UInt8::alloc_input_vec_le(cs, &value[..])?;
+        let bytes = UInt8::alloc_vec(cs, &value[..])?;
 
         let address = Address {
             address: Some(account),
@@ -80,34 +81,6 @@ impl Address {
 
         Ok(ConstrainedValue::Address(address))
     }
-
-    // pub(crate) fn from_bytes<F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>>(
-    //     cs: &mut CS,
-    //     name: &str,
-    //     bytes: &[u8],
-    // ) -> Result<ConstrainedValue<F, G>, AddressError> {
-    //     // Check that the input value is the correct type
-    //     let address_value = match input_value {
-    //         Some(input) => {
-    //             if let Value::Address(string) = input {
-    //                 string
-    //             } else {
-    //                 return Err(AddressError::invalid_address(name));
-    //             }
-    //         }
-    //         None => return Err(AddressError::missing_address(name)),
-    //     };
-
-    //     let account = AccountAddress::read(&mut &bytes[..]).map_err(|error| AddressError::account_error(error.into()))?;
-    //     let bytes = UInt8::constant_vec(&address_value[..])?;
-
-    //     let address = Address {
-    //         address: Some(account),
-    //         bytes,
-    //     };
-
-    //     Ok(ConstrainedValue::Address(address))
-    // }
 
     pub(crate) fn alloc_helper<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<String>>(
         value_gen: Fn,
@@ -164,6 +137,10 @@ impl<F: PrimeField> AllocGadget<String, F> for Address {
 
 impl<F: PrimeField> EvaluateEqGadget<F> for Address {
     fn evaluate_equal<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
+        if self.bytes.len() != other.bytes.len() {
+            return Err(SynthesisError::Unsatisfiable);
+        }
+
         if self.is_constant() && other.is_constant() {
             Ok(Boolean::Constant(self.eq(other)))
         } else {
@@ -207,6 +184,10 @@ impl<F: PrimeField> ConditionalEqGadget<F> for Address {
         if let Boolean::Constant(cond) = *condition {
             cond_equal_helper(self, other, cond)
         } else {
+            if self.bytes.len() != other.bytes.len() {
+                return Err(SynthesisError::Unsatisfiable);
+            }
+
             for (i, (a, b)) in self.bytes.iter().zip(&other.bytes).enumerate() {
                 a.conditional_enforce_equal(
                     &mut cs.ns(|| format!("address equality check for {}-th byte", i)),
@@ -248,6 +229,10 @@ impl<F: PrimeField> CondSelectGadget<F> for Address {
             let result = Self::alloc(cs.ns(|| "cond_select_result"), || {
                 result_val.get().map(|v| v.to_string())
             })?;
+
+            if first.bytes.len() != second.bytes.len() {
+                return Err(SynthesisError::Unsatisfiable);
+            }
 
             let expected_bytes = first
                 .bytes

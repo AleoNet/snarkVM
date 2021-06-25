@@ -60,7 +60,7 @@ impl Program {
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (i, function) in self.functions.iter().enumerate() {
-            write!(f, "decl f{}:\n", i)?;
+            write!(f, "decl f{}: <{}>\n", i, function.argument_start_variable)?;
             let mut indent = 1usize;
             // indentation scheme assumes a well formed program (no inner masks/repeats are longer than parent mask/repeat/function body)
             let mut indent_stops = vec![];
@@ -70,11 +70,15 @@ impl fmt::Display for Program {
                 }
                 instruction.fmt(f)?;
                 writeln!(f, "")?;
-                if let Some(indent_stop) = indent_stops.last().copied() {
-                    if indent_stop == i {
-                        indent -= 1;
+                loop {
+                    if let Some(indent_stop) = indent_stops.last().copied() {
+                        if indent_stop == i {
+                            indent -= 1;
+                            indent_stops.pop();
+                            continue;
+                        }
                     }
-                    indent_stops.pop();
+                    break;
                 }
                 match instruction {
                     Instruction::Mask(MaskData { instruction_count, .. })

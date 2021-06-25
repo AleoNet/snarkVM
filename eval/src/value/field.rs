@@ -28,7 +28,7 @@ use snarkvm_gadgets::{
         select::CondSelectGadget,
     },
 };
-use snarkvm_ir::Value;
+use snarkvm_ir::{Field, Value};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use snarkvm_utilities::BigInteger;
 use std::{borrow::Borrow, cmp::Ordering};
@@ -45,13 +45,18 @@ impl<F: PrimeField> FieldType<F> {
     }
 
     /// Returns a new `FieldType` from the given `String` or returns a `FieldError`.
-    pub fn constant<CS: ConstraintSystem<F>>(cs: CS, number: &[u64]) -> Result<Self, FieldError> {
-        let value = F::from_repr(<F as PrimeField>::BigInteger::from_slice(number))
-            .ok_or_else(|| FieldError::invalid_field(format!("{:?}", number)))?;
+    pub fn constant<CS: ConstraintSystem<F>>(mut cs: CS, number: &Field) -> Result<Self, FieldError> {
+        let value = F::from_repr(<F as PrimeField>::BigInteger::from_slice(&number.values[..]))
+            .ok_or_else(|| FieldError::invalid_field(format!("{}", number)))?;
 
-        let value = FpGadget::alloc_constant(cs, || Ok(value))
-            .map_err(|_| FieldError::invalid_field(format!("{:?}", number)))?;
+        let mut value = FpGadget::alloc_constant(&mut cs, || Ok(value))
+            .map_err(|_| FieldError::invalid_field(format!("{}", number)))?;
 
+        if number.negate {
+            value = value
+                .negate(cs)
+                .map_err(|_| FieldError::invalid_field(format!("{}", number)))?;
+        }
         Ok(FieldType(value))
     }
 
@@ -130,13 +135,15 @@ impl<F: PrimeField> FieldType<F> {
     ) -> Result<ConstrainedValue<F, G>, FieldError> {
         // Check that the parameter value is the correct type
         let value = if let Value::Field(value) = value {
-            Some(value)
+            value
         } else {
             return Err(FieldError::invalid_field(value.to_string()));
         };
 
-        let field = allocate_field(cs, name, value.as_ref().map(|x| &x[..]))?;
-
+        let mut field = allocate_field(cs, name, &value.values[..])?;
+        if value.negate {
+            field = field.negate(cs)?;
+        }
         Ok(ConstrainedValue::Field(field))
     }
 }
@@ -265,17 +272,12 @@ impl<F: PrimeField> std::fmt::Display for FieldType<F> {
 pub(crate) fn allocate_field<F: PrimeField, CS: ConstraintSystem<F>>(
     cs: &mut CS,
     name: &str,
-    option: Option<&[u64]>,
+    raw_value: &[u64],
 ) -> Result<FieldType<F>, FieldError> {
-    match option {
-        Some(value) => {
-            let value = F::from_repr(<F as PrimeField>::BigInteger::from_slice(value))
-                .ok_or_else(|| FieldError::invalid_field(format!("{:?}", value)))?;
+    let value = F::from_repr(<F as PrimeField>::BigInteger::from_slice(raw_value))
+        .ok_or_else(|| FieldError::invalid_field(format!("{:?}", raw_value)))?;
 
-            FpGadget::alloc(cs, || Ok(value))
-                .map(FieldType)
-                .map_err(|_| FieldError::missing_field(format!("{}: field", name)))
-        }
-        None => Err(FieldError::missing_field(format!("{}: field", name))),
-    }
+    FpGadget::alloc(cs, || Ok(value))
+        .map(FieldType)
+        .map_err(|_| FieldError::missing_field(format!("{}: field", name)))
 }

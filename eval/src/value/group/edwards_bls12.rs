@@ -37,7 +37,7 @@ use snarkvm_gadgets::{
     },
     CondSelectGadget,
 };
-use snarkvm_ir::{Group, GroupCoordinate};
+use snarkvm_ir::{Field, Group, GroupCoordinate};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use snarkvm_utilities::{BigInteger, BigInteger256};
 use std::{
@@ -141,13 +141,16 @@ impl EdwardsGroupType {
         }
     }
 
-    pub fn edwards_affine_from_single(number: &[u64]) -> Result<EdwardsAffine, GroupError> {
-        if number.iter().all(|x| *x == 0) {
+    pub fn edwards_affine_from_single(number: &Field) -> Result<EdwardsAffine, GroupError> {
+        if number.values.iter().all(|x| *x == 0) {
             Ok(EdwardsAffine::zero())
         } else {
             let one = edwards_affine_one();
-            let number_value = Fp256::from_repr(BigInteger256::from_slice(number))
+            let mut number_value = Fp256::from_repr(BigInteger256::from_slice(&number.values[..]))
                 .ok_or_else(|| GroupError::n_group(format!("{:?}", number)))?;
+            if number.negate {
+                number_value = number_value.neg();
+            }
 
             let result: EdwardsAffine = one.mul(&number_value);
 
@@ -156,40 +159,32 @@ impl EdwardsGroupType {
     }
 
     pub fn edwards_affine_from_tuple(x: &GroupCoordinate, y: &GroupCoordinate) -> Result<EdwardsAffine, GroupError> {
-        let x = x.clone();
-        let y = y.clone();
-
         match (x, y) {
             // (x, y)
-            (GroupCoordinate::Field(x), GroupCoordinate::Field(y)) => Self::edwards_affine_from_pair(&x[..], &y[..]),
+            (GroupCoordinate::Field(x), GroupCoordinate::Field(y)) => Self::edwards_affine_from_pair(x, y),
             // (x, +)
-            (GroupCoordinate::Field(x), GroupCoordinate::SignHigh) => {
-                Self::edwards_affine_from_x_str(&x[..], Some(true))
-            }
+            (GroupCoordinate::Field(x), GroupCoordinate::SignHigh) => Self::edwards_affine_from_x(x, Some(true)),
             // (x, -)
-            (GroupCoordinate::Field(x), GroupCoordinate::SignLow) => {
-                Self::edwards_affine_from_x_str(&x[..], Some(false))
-            }
+            (GroupCoordinate::Field(x), GroupCoordinate::SignLow) => Self::edwards_affine_from_x(x, Some(false)),
             // (x, _)
-            (GroupCoordinate::Field(x), GroupCoordinate::Inferred) => Self::edwards_affine_from_x_str(&x[..], None),
+            (GroupCoordinate::Field(x), GroupCoordinate::Inferred) => Self::edwards_affine_from_x(x, None),
             // (+, y)
-            (GroupCoordinate::SignHigh, GroupCoordinate::Field(y)) => {
-                Self::edwards_affine_from_y_str(&y[..], Some(true))
-            }
+            (GroupCoordinate::SignHigh, GroupCoordinate::Field(y)) => Self::edwards_affine_from_y(y, Some(true)),
             // (-, y)
-            (GroupCoordinate::SignLow, GroupCoordinate::Field(y)) => {
-                Self::edwards_affine_from_y_str(&y[..], Some(false))
-            }
+            (GroupCoordinate::SignLow, GroupCoordinate::Field(y)) => Self::edwards_affine_from_y(y, Some(false)),
             // (_, y)
-            (GroupCoordinate::Inferred, GroupCoordinate::Field(y)) => Self::edwards_affine_from_y_str(&y[..], None),
+            (GroupCoordinate::Inferred, GroupCoordinate::Field(y)) => Self::edwards_affine_from_y(y, None),
             // Invalid
             (x, y) => Err(GroupError::invalid_group(format!("({}, {})", x, y))),
         }
     }
 
-    pub fn edwards_affine_from_x_str(x_info: &[u64], greatest: Option<bool>) -> Result<EdwardsAffine, GroupError> {
-        let x = Fp256::from_repr(BigInteger256::from_slice(x_info))
-            .ok_or_else(|| GroupError::x_invalid(format!("{:?}", x_info)))?;
+    pub fn edwards_affine_from_x(x_info: &Field, greatest: Option<bool>) -> Result<EdwardsAffine, GroupError> {
+        let mut x = Fp256::from_repr(BigInteger256::from_slice(&x_info.values[..]))
+            .ok_or_else(|| GroupError::x_invalid(format!("{}", x_info)))?;
+        if x_info.negate {
+            x = x.neg();
+        }
 
         match greatest {
             // Sign provided
@@ -212,9 +207,12 @@ impl EdwardsGroupType {
         }
     }
 
-    pub fn edwards_affine_from_y_str(y_info: &[u64], greatest: Option<bool>) -> Result<EdwardsAffine, GroupError> {
-        let y = Fp256::from_repr(BigInteger256::from_slice(y_info))
-            .ok_or_else(|| GroupError::y_invalid(format!("{:?}", y_info)))?;
+    pub fn edwards_affine_from_y(y_info: &Field, greatest: Option<bool>) -> Result<EdwardsAffine, GroupError> {
+        let mut y = Fp256::from_repr(BigInteger256::from_slice(&y_info.values[..]))
+            .ok_or_else(|| GroupError::y_invalid(format!("{}", y_info)))?;
+        if y_info.negate {
+            y = y.neg();
+        }
 
         match greatest {
             // Sign provided
@@ -237,11 +235,17 @@ impl EdwardsGroupType {
         }
     }
 
-    pub fn edwards_affine_from_pair(x_info: &[u64], y_info: &[u64]) -> Result<EdwardsAffine, GroupError> {
-        let x = Fp256::from_repr(BigInteger256::from_slice(x_info))
-            .ok_or_else(|| GroupError::x_invalid(format!("{:?}", x_info)))?;
-        let y = Fp256::from_repr(BigInteger256::from_slice(y_info))
-            .ok_or_else(|| GroupError::y_invalid(format!("{:?}", y_info)))?;
+    pub fn edwards_affine_from_pair(x_info: &Field, y_info: &Field) -> Result<EdwardsAffine, GroupError> {
+        let mut x = Fp256::from_repr(BigInteger256::from_slice(&x_info.values[..]))
+            .ok_or_else(|| GroupError::x_invalid(format!("{}", x_info)))?;
+        let mut y = Fp256::from_repr(BigInteger256::from_slice(&y_info.values[..]))
+            .ok_or_else(|| GroupError::y_invalid(format!("{}", y_info)))?;
+        if x_info.negate {
+            x = x.neg();
+        }
+        if y_info.negate {
+            y = y.neg();
+        }
 
         let element = EdwardsAffine::new(x, y);
 

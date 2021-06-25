@@ -8,7 +8,7 @@ message Instruction {
 }
 
 enum GroupCoordinateType {
-    Field = 0;
+    GroupField = 0;
     SignHigh = 1;
     SignLow = 2;
     Inferred = 3;
@@ -16,7 +16,7 @@ enum GroupCoordinateType {
 
 message GroupCoordinate {
     GroupCoordinateType coordinate_type = 1;
-    repeated fixed64 value = 2;
+    Field field = 2;
 }
 
 message Group {
@@ -92,11 +92,16 @@ message Char {
     uint32 char = 1;
 }
 
+message Field {
+    bool negate = 1;
+    repeated fixed64 values = 2;
+}
+
 message Operand {
     Address address = 1;
     Bool boolean = 2;
-    repeated fixed64 field = 3;
-    repeated fixed64 group_single = 4;
+    Field field = 3;
+    Field group_single = 4;
     Group group_tuple = 5;
     U8 u8 = 6;
     U16 u16 = 7;
