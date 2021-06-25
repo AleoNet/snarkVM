@@ -357,7 +357,7 @@ impl<P: Fp320Parameters> PrimeField for Fp320<P> {
 
     #[inline]
     fn root_of_unity() -> Self {
-        Fp320::<P>(P::ROOT_OF_UNITY, PhantomData)
+        Fp320::<P>(P::TWO_ADIC_ROOT_OF_UNITY, PhantomData)
     }
 }
 
@@ -366,7 +366,7 @@ impl<P: Fp320Parameters> FftField for Fp320<P> {
 
     #[inline]
     fn two_adic_root_of_unity() -> Self {
-        Self(P::ROOT_OF_UNITY, PhantomData)
+        Self(P::TWO_ADIC_ROOT_OF_UNITY, PhantomData)
     }
 
     #[inline]

@@ -387,7 +387,7 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
 
     #[inline]
     fn root_of_unity() -> Self {
-        Fp384::<P>(P::ROOT_OF_UNITY, PhantomData)
+        Fp384::<P>(P::TWO_ADIC_ROOT_OF_UNITY, PhantomData)
     }
 }
 
@@ -396,7 +396,7 @@ impl<P: Fp384Parameters> FftField for Fp384<P> {
 
     #[inline]
     fn two_adic_root_of_unity() -> Self {
-        Self(P::ROOT_OF_UNITY, PhantomData)
+        Self(P::TWO_ADIC_ROOT_OF_UNITY, PhantomData)
     }
 
     #[inline]

@@ -700,7 +700,7 @@ impl<P: Fp768Parameters> PrimeField for Fp768<P> {
 
     #[inline]
     fn root_of_unity() -> Self {
-        Fp768::<P>(P::ROOT_OF_UNITY, PhantomData)
+        Fp768::<P>(P::TWO_ADIC_ROOT_OF_UNITY, PhantomData)
     }
 
     #[inline]
@@ -729,7 +729,7 @@ impl<P: Fp768Parameters> FftField for Fp768<P> {
 
     #[inline]
     fn two_adic_root_of_unity() -> Self {
-        Self(P::ROOT_OF_UNITY, PhantomData)
+        Self(P::TWO_ADIC_ROOT_OF_UNITY, PhantomData)
     }
 
     #[inline]

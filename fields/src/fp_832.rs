@@ -669,7 +669,7 @@ impl<P: Fp832Parameters> PrimeField for Fp832<P> {
 
     #[inline]
     fn root_of_unity() -> Self {
-        Fp832::<P>(P::ROOT_OF_UNITY, PhantomData)
+        Fp832::<P>(P::TWO_ADIC_ROOT_OF_UNITY, PhantomData)
     }
 
     #[inline]
@@ -698,7 +698,7 @@ impl<P: Fp832Parameters> FftField for Fp832<P> {
 
     #[inline]
     fn two_adic_root_of_unity() -> Self {
-        Self(P::ROOT_OF_UNITY, PhantomData)
+        Self(P::TWO_ADIC_ROOT_OF_UNITY, PhantomData)
     }
 
     #[inline]

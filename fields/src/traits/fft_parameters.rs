@@ -27,7 +27,7 @@ pub trait FftParameters: 'static + Send + Sync + Sized {
     const TWO_ADICITY: u32;
 
     /// 2^s root of unity computed by GENERATOR^t
-    const ROOT_OF_UNITY: Self::BigInteger;
+    const TWO_ADIC_ROOT_OF_UNITY: Self::BigInteger;
 
     /// An integer `b` such that there exists a multiplicative subgroup
     /// of size `b^k` for some integer `k`.

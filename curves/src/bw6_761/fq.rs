@@ -26,9 +26,16 @@ impl Fp768Parameters for FqParameters {}
 impl FftParameters for FqParameters {
     type BigInteger = BigInteger;
 
+    // The internal representation of this type is six 64-bit unsigned
+    // integers in little-endian order. Values are always in
+    // Montgomery form; i.e., Scalar(a) = aR mod p, with R=2^768.
+
+    /// (MODULUS - 1) % 2^TWO_ADICITY == 0
+    #[rustfmt::skip]
+    const TWO_ADICITY: u32 = 1;
     /// least_quadratic_nonresidue(MODULUS) in Sage.
     #[rustfmt::skip]
-    const ROOT_OF_UNITY: BigInteger = BigInteger([
+    const TWO_ADIC_ROOT_OF_UNITY: BigInteger = BigInteger([
         17481284903592032950u64,
         10104133845767975835u64,
         8607375506753517913u64,
@@ -42,13 +49,6 @@ impl FftParameters for FqParameters {
         18005297320867222879u64,
         58811391084848524u64,
     ]);
-    // The internal representation of this type is six 64-bit unsigned
-    // integers in little-endian order. Values are always in
-    // Montgomery form; i.e., Scalar(a) = aR mod p, with R=2^768.
-
-    /// (MODULUS - 1) % 2^TWO_ADICITY == 0
-    #[rustfmt::skip]
-    const TWO_ADICITY: u32 = 1;
 }
 
 impl FieldParameters for FqParameters {

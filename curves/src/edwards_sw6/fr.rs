@@ -26,8 +26,9 @@ impl Fp384Parameters for FrParameters {}
 impl FftParameters for FrParameters {
     type BigInteger = BigInteger;
 
+    const TWO_ADICITY: u32 = 2u32;
     #[rustfmt::skip]
-    const ROOT_OF_UNITY: BigInteger = BigInteger([
+    const TWO_ADIC_ROOT_OF_UNITY: BigInteger = BigInteger([
         12119792640622387781u64,
         8318439284650634613u64,
         6931324077796168275u64,
@@ -35,7 +36,6 @@ impl FftParameters for FrParameters {
         6881015057611215092u64,
         1893962574900431u64,
     ]);
-    const TWO_ADICITY: u32 = 2u32;
 }
 
 impl FieldParameters for FrParameters {
