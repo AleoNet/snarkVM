@@ -133,13 +133,13 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                 let out = operations::evaluate_lt(&mut self.cs, left, right)?;
                 self.store(data.destination, out);
             }
-            Instruction::BitOr(_) => todo!(),
-            Instruction::BitAnd(_) => todo!(),
-            Instruction::BitXor(_) => todo!(),
-            Instruction::Shr(_) => todo!(),
-            Instruction::ShrSigned(_) => todo!(),
-            Instruction::Shl(_) => todo!(),
-            Instruction::Mod(_) => todo!(),
+            Instruction::BitOr(_) => return Err(anyhow!("BitOr unimplemented")),
+            Instruction::BitAnd(_) => return Err(anyhow!("BitAnd unimplemented")),
+            Instruction::BitXor(_) => return Err(anyhow!("BitXor unimplemented")),
+            Instruction::Shr(_) => return Err(anyhow!("Shr unimplemented")),
+            Instruction::ShrSigned(_) => return Err(anyhow!("ShrSigned unimplemented")),
+            Instruction::Shl(_) => return Err(anyhow!("Shl unimplemented")),
+            Instruction::Mod(_) => return Err(anyhow!("Mod unimplemented")),
             Instruction::Not(QueryData { destination, values }) => {
                 let inner = self.resolve(values.get(0).unwrap())?.into_owned();
                 let out = operations::evaluate_not(inner)?;
@@ -150,7 +150,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                 let out = operations::enforce_negate(&mut self.cs, inner)?;
                 self.store(*destination, out);
             }
-            Instruction::BitNot(_) => todo!(),
+            Instruction::BitNot(_) => return Err(anyhow!("BitNot unimplemented")),
             Instruction::ArrayInitRepeat(ArrayInitRepeatData {
                 destination,
                 length,

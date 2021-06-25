@@ -319,9 +319,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                     .map_err(|value| anyhow!("illegal type for loop terminator: {}", value))?
                     .to_usize()
                     .ok_or_else(|| anyhow!("illegal input-derived loop terminator"))?;
-                if from < to {
-                    // todo: should this be an error
-                }
+
                 *instruction_index += 1;
                 //todo: max loop count (DOS vector)
                 for i in from..to {
