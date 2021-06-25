@@ -37,7 +37,7 @@ use num_enum::TryFromPrimitive;
 
 use crate::ir;
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Instruction {
     // Binary
     Add(BinaryData),

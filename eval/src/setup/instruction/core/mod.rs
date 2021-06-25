@@ -14,31 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ir, Type};
+use super::*;
 
-use anyhow::*;
+mod blake2s;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Input {
-    pub variable: u32,
-    pub name: String,
-    pub type_: Type,
-}
-
-impl Input {
-    pub(crate) fn decode(input: ir::Input) -> Result<Self> {
-        Ok(Self {
-            variable: input.variable,
-            name: input.name,
-            type_: Type::decode(input.r#type.ok_or_else(|| anyhow!("missing type for input"))?)?,
-        })
-    }
-
-    pub(crate) fn encode(&self) -> ir::Input {
-        ir::Input {
-            variable: self.variable,
-            name: self.name.clone(),
-            r#type: Some(self.type_.encode()),
+impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
+    pub fn call_core(&mut self, name: &str, arguments: &[ConstrainedValue<F, G>]) -> Result<ConstrainedValue<F, G>> {
+        match name {
+            blake2s::BLAKE2S_CORE => self.call_core_blake2s(arguments),
+            _ => Err(anyhow!("unknown core call: {}", name)),
         }
     }
 }

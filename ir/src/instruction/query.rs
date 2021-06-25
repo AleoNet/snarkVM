@@ -22,7 +22,7 @@ use anyhow::*;
 
 use super::decode_control_u32;
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct QueryData<const N: usize> {
     pub destination: u32,
     pub values: Vec<Value>,

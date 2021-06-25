@@ -20,7 +20,7 @@ use crate::{ir, Value};
 
 use anyhow::*;
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PredicateData<const N: usize> {
     pub values: Vec<Value>,
 }

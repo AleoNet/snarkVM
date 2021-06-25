@@ -22,7 +22,7 @@ use anyhow::*;
 
 use super::{decode_control_string, decode_control_u32};
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct CallData {
     pub destination: u32,
     pub index: u32, // index of function (of all defined functions, not instruction index)
@@ -72,7 +72,7 @@ impl CallData {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct CallCoreData {
     pub destination: u32,
     pub identifier: String, // name of core function

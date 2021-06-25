@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::convert::TryInto;
+use std::{borrow::Cow, convert::TryInto};
 
 use im::HashMap;
 use snarkvm_fields::PrimeField;
@@ -28,6 +28,7 @@ use snarkvm_gadgets::{
 };
 use snarkvm_ir::{
     ArrayInitRepeatData,
+    CallCoreData,
     CallData,
     Instruction,
     Integer as IrInteger,
@@ -56,6 +57,7 @@ mod array_index_get;
 mod array_index_store;
 mod array_slice_get;
 mod array_slice_store;
+mod core;
 
 impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
     fn resolve_binary(&mut self, data: &QueryData<2>) -> Result<(ConstrainedValue<F, G>, ConstrainedValue<F, G>)> {
@@ -326,7 +328,19 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                     LogLevel::Debug => tracing::debug!("{}", out),
                 }
             }
-            Instruction::CallCore(_) => todo!(),
+            Instruction::CallCore(CallCoreData {
+                destination,
+                identifier,
+                arguments,
+            }) => {
+                let arguments = arguments
+                    .iter()
+                    .map(|x| self.resolve(x).map(Cow::into_owned))
+                    .collect::<Result<Vec<_>>>()?;
+
+                let out = self.call_core(&**identifier, &arguments[..])?;
+                self.store(*destination, out);
+            }
         }
         Ok(None)
     }

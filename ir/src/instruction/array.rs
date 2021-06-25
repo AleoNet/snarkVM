@@ -22,7 +22,7 @@ use crate::{ir, Value};
 
 use super::decode_control_u32;
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ArrayInitRepeatData {
     pub destination: u32,
     pub length: u32,
@@ -69,7 +69,7 @@ impl ArrayInitRepeatData {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct VarData {
     pub destination: u32,
     pub values: Vec<Value>,

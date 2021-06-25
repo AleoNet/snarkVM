@@ -22,6 +22,7 @@ use crate::{ir, Function, Header, Instruction, MaskData, RepeatData};
 
 use anyhow::*;
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Program {
     pub header: Header,
     pub functions: Vec<Function>,

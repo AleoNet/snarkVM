@@ -41,7 +41,7 @@ impl SnarkVMVersion {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Header {
     pub version: SnarkVMVersion,
     pub main_inputs: Vec<Input>,

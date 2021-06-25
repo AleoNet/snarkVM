@@ -23,7 +23,7 @@ use num_enum::TryFromPrimitive;
 
 use super::decode_control_u32;
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MaskData {
     pub instruction_count: u32,
     pub condition: Value,
@@ -62,7 +62,7 @@ impl MaskData {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RepeatData {
     pub instruction_count: u32,
     pub iter_variable: u32,
@@ -119,7 +119,7 @@ impl RepeatData {
 }
 
 #[repr(u32)]
-#[derive(Clone, Copy, Debug, TryFromPrimitive)]
+#[derive(Clone, Copy, Debug, TryFromPrimitive, PartialEq)]
 pub enum LogLevel {
     Error = 0,
     Info,
@@ -136,7 +136,7 @@ impl fmt::Display for LogLevel {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LogData {
     pub log_level: LogLevel,
     pub parts: Vec<Value>,

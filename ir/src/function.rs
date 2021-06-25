@@ -18,7 +18,7 @@ use crate::{ir, Instruction};
 
 use anyhow::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Function {
     pub argument_start_variable: u32,
     pub instructions: Vec<Instruction>,
