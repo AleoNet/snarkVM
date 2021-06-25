@@ -16,6 +16,7 @@
 
 use snarkvm_curves::traits::AffineCurve;
 use snarkvm_fields::{PrimeField, Zero};
+use snarkvm_utilities::BitIteratorBE;
 
 mod standard;
 
@@ -34,7 +35,7 @@ impl VariableBaseMSM {
         let mut acc = G::Projective::zero();
 
         for (base, scalar) in bases.iter().zip(scalars.iter()) {
-            acc += &base.mul(*scalar);
+            acc += base.mul_bits(BitIteratorBE::new(*scalar));
         }
         acc
     }

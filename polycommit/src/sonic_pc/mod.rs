@@ -38,11 +38,11 @@ use crate::{
     ToString,
     Vec,
 };
-use snarkvm_curves::traits::{AffineCurve, Group, PairingCurve, PairingEngine, ProjectiveCurve};
+use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
-use core::{convert::TryInto, iter::FromIterator, marker::PhantomData};
+use core::{convert::TryInto, iter::FromIterator, marker::PhantomData, ops::Mul};
 use rand_core::RngCore;
 
 mod data_structures;
@@ -436,7 +436,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
                 hiding_bound = core::cmp::max(hiding_bound, cur_poly.hiding_bound());
                 poly += (*coeff, cur_poly.polynomial());
                 randomness += (*coeff, cur_rand);
-                comm += &curr_comm.commitment().0.into_projective().mul(coeff);
+                comm += &curr_comm.commitment().0.into_projective().mul(*coeff);
             }
 
             let lc_poly = LabeledPolynomial::new(lc_label.clone(), poly, degree_bound, hiding_bound);
@@ -522,7 +522,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
                     } else if cur_comm.degree_bound().is_some() {
                         return Err(Self::Error::EquationHasDegreeBounds(lc_label));
                     }
-                    combined_comm += &cur_comm.commitment().0.mul(*coeff);
+                    combined_comm += &cur_comm.commitment().0.mul(*coeff).into();
                 }
             }
 
@@ -886,10 +886,10 @@ impl<E: PairingEngine> SonicKZG10<E> {
             let degree_bound = labeled_comm.degree_bound();
 
             // Applying opening challenge and randomness (used in batch_checking)
-            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge);
+            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge).into();
 
             if let Some(randomizer) = randomizer {
-                comm_with_challenge = comm_with_challenge.mul(&randomizer);
+                comm_with_challenge = comm_with_challenge.mul(randomizer);
             }
 
             // Accumulate values in the BTreeMap
@@ -905,12 +905,12 @@ impl<E: PairingEngine> SonicKZG10<E> {
         }
 
         if let Some(randomizer) = randomizer {
-            witness = witness.mul(&randomizer);
-            adjusted_witness = adjusted_witness.mul(&randomizer);
+            witness = witness.mul(randomizer);
+            adjusted_witness = adjusted_witness.mul(randomizer);
         }
 
         *combined_witness += &witness;
-        *combined_adjusted_witness += &adjusted_witness;
+        *combined_adjusted_witness += &adjusted_witness.into();
         end_timer!(acc_time);
     }
 
@@ -943,10 +943,10 @@ impl<E: PairingEngine> SonicKZG10<E> {
             let degree_bound = labeled_comm.degree_bound();
 
             // Applying opening challenge and randomness (used in batch_checking)
-            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge);
+            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge).into();
 
             if let Some(randomizer) = randomizer {
-                comm_with_challenge = comm_with_challenge.mul(&randomizer);
+                comm_with_challenge = comm_with_challenge.mul(randomizer);
             }
 
             // Accumulate values in the BTreeMap
@@ -963,12 +963,12 @@ impl<E: PairingEngine> SonicKZG10<E> {
         }
 
         if let Some(randomizer) = randomizer {
-            witness = proof.w.mul(randomizer);
-            adjusted_witness = adjusted_witness.mul(&randomizer);
+            witness = proof.w.into_projective().mul(randomizer);
+            adjusted_witness = adjusted_witness.mul(randomizer);
         }
 
         *combined_witness += &witness;
-        *combined_adjusted_witness += &adjusted_witness;
+        *combined_adjusted_witness += &adjusted_witness.into();
         end_timer!(acc_time);
     }
 

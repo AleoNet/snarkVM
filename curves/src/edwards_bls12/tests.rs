@@ -21,6 +21,7 @@ use crate::{
         tests_curve::curve_tests,
         tests_group::group_test,
         AffineCurve,
+        Group,
         MontgomeryModelParameters,
         ProjectiveCurve,
         TEModelParameters,

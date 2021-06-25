@@ -222,10 +222,9 @@ impl<P: Fp6Parameters> Field for Fp6<P> {
         result
     }
 
-    fn double_in_place(&mut self) -> &mut Self {
+    fn double_in_place(&mut self) {
         self.c0.double_in_place();
         self.c1.double_in_place();
-        self
     }
 
     fn square(&self) -> Self {
@@ -401,7 +400,7 @@ impl<'a, P: Fp6Parameters> Add<&'a Fp6<P>> for Fp6<P> {
     #[inline]
     fn add(self, other: &Self) -> Self {
         let mut result = self;
-        result.add_assign(&other);
+        result.add_assign(other);
         result
     }
 }
@@ -442,8 +441,8 @@ impl<'a, P: Fp6Parameters> Div<&'a Fp6<P>> for Fp6<P> {
 impl<'a, P: Fp6Parameters> AddAssign<&'a Self> for Fp6<P> {
     #[inline]
     fn add_assign(&mut self, other: &Self) {
-        self.c0.add_assign(&other.c0);
-        self.c1.add_assign(&other.c1);
+        self.c0.add_assign(other.c0);
+        self.c1.add_assign(other.c1);
     }
 }
 

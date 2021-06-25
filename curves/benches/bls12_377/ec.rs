@@ -59,7 +59,7 @@ pub(crate) mod g1 {
         c.bench_function("bls12_377: g1_add_assign", |c| {
             c.iter(|| {
                 let mut tmp = v[count].0;
-                tmp.add_assign(&v[count].1);
+                tmp.add_assign(v[count].1);
                 count = (count + 1) % SAMPLES;
                 tmp
             })
@@ -151,7 +151,7 @@ pub(crate) mod g2 {
         c.bench_function("bls12_377: g2_add_assign", |c| {
             c.iter(|| {
                 let mut tmp = v[count].0;
-                tmp.add_assign(&v[count].1);
+                tmp.add_assign(v[count].1);
                 count = (count + 1) % SAMPLES;
                 tmp
             })

@@ -17,7 +17,7 @@
 use crate::{
     edwards_sw6::*,
     templates::twisted_edwards_extended::tests::{edwards_test, montgomery_conversion_test},
-    traits::{tests_curve::curve_tests, tests_group::group_test, AffineCurve, ProjectiveCurve},
+    traits::{tests_curve::curve_tests, tests_group::group_test, AffineCurve, Group, ProjectiveCurve},
 };
 use snarkvm_fields::tests_field::{field_serialization_test, field_test, primefield_test};
 

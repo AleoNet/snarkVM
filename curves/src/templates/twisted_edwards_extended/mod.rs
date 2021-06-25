@@ -18,12 +18,13 @@ use crate::{
     impl_edwards_curve_serializer,
     traits::{
         AffineCurve,
+        Group,
         MontgomeryModelParameters as MontgomeryParameters,
         ProjectiveCurve,
         TEModelParameters as Parameters,
     },
 };
-use snarkvm_fields::{Field, One, PrimeField, SquareRootField, Zero};
+use snarkvm_fields::{impl_additive_ops_from_ref, Field, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
     bytes::{FromBytes, ToBytes},
@@ -81,18 +82,6 @@ impl<P: Parameters> GroupAffine<P> {
         self.mul_bits(BitIteratorBE::new(P::COFACTOR))
     }
 
-    #[must_use]
-    pub(crate) fn mul_bits<S: AsRef<[u64]>>(&self, bits: BitIteratorBE<S>) -> <Self as AffineCurve>::Projective {
-        let mut res = GroupProjective::zero();
-        for i in bits {
-            res.double_in_place();
-            if i {
-                res.add_assign_mixed(self)
-            }
-        }
-        res
-    }
-
     /// Checks that the current point is on the elliptic curve.
     pub fn is_on_curve(&self) -> bool {
         let x2 = self.x.square();
@@ -118,7 +107,6 @@ impl<P: Parameters> Zero for GroupAffine<P> {
 impl<P: Parameters> AffineCurve for GroupAffine<P> {
     type BaseField = P::BaseField;
     type Projective = GroupProjective<P>;
-    type ScalarField = P::ScalarField;
 
     fn prime_subgroup_generator() -> Self {
         Self::new(P::AFFINE_GENERATOR_COEFFS.0, P::AFFINE_GENERATOR_COEFFS.1)
@@ -177,14 +165,15 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
         }
     }
 
-    fn add(self, other: &Self) -> Self {
-        let mut copy = self;
-        copy += other;
-        copy
-    }
-
-    fn mul<S: Into<<Self::ScalarField as PrimeField>::BigInteger>>(&self, by: S) -> GroupProjective<P> {
-        self.mul_bits(BitIteratorBE::new(by.into()))
+    fn mul_bits<S: AsRef<[u64]>>(&self, bits: BitIteratorBE<S>) -> <Self as AffineCurve>::Projective {
+        let mut res = GroupProjective::zero();
+        for i in bits {
+            res.double_in_place();
+            if i {
+                res.add_assign_mixed(self)
+            }
+        }
+        res
     }
 
     fn mul_by_cofactor_to_projective(&self) -> Self::Projective {
@@ -224,6 +213,24 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
     }
 }
 
+impl<P: Parameters> Group for GroupAffine<P> {
+    type ScalarField = P::ScalarField;
+
+    #[inline]
+    #[must_use]
+    fn double(&self) -> Self {
+        let mut tmp = *self;
+        tmp += self;
+        tmp
+    }
+
+    #[inline]
+    fn double_in_place(&mut self) {
+        let tmp = *self;
+        *self = tmp.double();
+    }
+}
+
 impl<P: Parameters> Neg for GroupAffine<P> {
     type Output = Self;
 
@@ -231,6 +238,8 @@ impl<P: Parameters> Neg for GroupAffine<P> {
         Self::new(-self.x, self.y)
     }
 }
+
+impl_additive_ops_from_ref!(GroupAffine, Parameters);
 
 impl<'a, P: Parameters> Add<&'a Self> for GroupAffine<P> {
     type Output = Self;
@@ -276,19 +285,17 @@ impl<'a, P: Parameters> SubAssign<&'a Self> for GroupAffine<P> {
     }
 }
 
-impl<'a, P: Parameters> Mul<&'a P::ScalarField> for GroupAffine<P> {
+impl<P: Parameters> Mul<P::ScalarField> for GroupAffine<P> {
     type Output = Self;
 
-    fn mul(self, other: &'a P::ScalarField) -> Self {
-        let mut copy = self;
-        copy *= other;
-        copy
+    fn mul(self, other: P::ScalarField) -> Self {
+        self.mul_bits(BitIteratorBE::new(other.into_repr())).into()
     }
 }
 
-impl<'a, P: Parameters> MulAssign<&'a P::ScalarField> for GroupAffine<P> {
-    fn mul_assign(&mut self, other: &'a P::ScalarField) {
-        *self = <Self as AffineCurve>::mul(self, other.into_repr()).into_affine();
+impl<P: Parameters> MulAssign<P::ScalarField> for GroupAffine<P> {
+    fn mul_assign(&mut self, other: P::ScalarField) {
+        *self = self.mul(other).into()
     }
 }
 
@@ -326,31 +333,6 @@ impl<P: Parameters> Distribution<GroupAffine<P>> for Standard {
             if let Some(p) = GroupAffine::from_x_coordinate(x, greatest) {
                 return p.scale_by_cofactor().into();
             }
-        }
-    }
-}
-
-mod group_impl {
-    use super::*;
-    use crate::traits::Group;
-
-    impl<P: Parameters> Group for GroupAffine<P> {
-        type ScalarField = P::ScalarField;
-
-        #[inline]
-        #[must_use]
-        fn double(&self) -> Self {
-            let mut tmp = *self;
-            tmp += self;
-            tmp
-        }
-
-        #[inline]
-        fn double_in_place(&mut self) -> &mut Self {
-            let mut tmp = *self;
-            tmp += self;
-            *self = tmp;
-            self
         }
     }
 }
@@ -467,7 +449,6 @@ impl<P: Parameters> Zero for GroupProjective<P> {
 impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
     type Affine = GroupAffine<P>;
     type BaseField = P::BaseField;
-    type ScalarField = P::ScalarField;
 
     fn prime_subgroup_generator() -> Self {
         GroupAffine::prime_subgroup_generator().into()
@@ -527,12 +508,6 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
         }
     }
 
-    fn double_in_place(&mut self) -> &mut Self {
-        let tmp = *self;
-        *self += &tmp;
-        self
-    }
-
     #[allow(clippy::many_single_char_names)]
     fn add_assign_mixed(&mut self, other: &Self::Affine) {
         // A = X1*X2
@@ -561,26 +536,6 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
         self.z = f * &g;
     }
 
-    fn mul_assign<S: Into<<Self::ScalarField as PrimeField>::BigInteger>>(&mut self, other: S) {
-        let mut res = Self::zero();
-
-        let mut found_one = false;
-
-        for i in BitIteratorBE::new(other.into()) {
-            if found_one {
-                res.double_in_place();
-            } else {
-                found_one = i;
-            }
-
-            if i {
-                res.add_assign(self);
-            }
-        }
-
-        *self = res;
-    }
-
     fn into_affine(&self) -> GroupAffine<P> {
         (*self).into()
     }
@@ -594,6 +549,24 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
     }
 }
 
+impl<P: Parameters> Group for GroupProjective<P> {
+    type ScalarField = P::ScalarField;
+
+    #[inline]
+    #[must_use]
+    fn double(&self) -> Self {
+        let mut tmp = *self;
+        tmp += self;
+        tmp
+    }
+
+    #[inline]
+    fn double_in_place(&mut self) {
+        let tmp = *self;
+        *self = tmp.double();
+    }
+}
+
 impl<P: Parameters> Neg for GroupProjective<P> {
     type Output = Self;
 
@@ -603,6 +576,8 @@ impl<P: Parameters> Neg for GroupProjective<P> {
         self
     }
 }
+
+impl_additive_ops_from_ref!(GroupProjective, Parameters);
 
 impl<'a, P: Parameters> Add<&'a Self> for GroupProjective<P> {
     type Output = Self;
@@ -676,19 +651,36 @@ impl<'a, P: Parameters> SubAssign<&'a Self> for GroupProjective<P> {
     }
 }
 
-impl<'a, P: Parameters> Mul<&'a P::ScalarField> for GroupProjective<P> {
+impl<P: Parameters> Mul<P::ScalarField> for GroupProjective<P> {
     type Output = Self;
 
-    fn mul(self, other: &'a P::ScalarField) -> Self {
-        let mut copy = self;
-        copy *= other;
-        copy
+    /// Performs scalar multiplication of this element.
+    #[inline]
+    fn mul(self, other: P::ScalarField) -> Self {
+        let mut res = Self::zero();
+
+        let mut found_one = false;
+
+        for i in BitIteratorBE::new(other.into_repr()) {
+            if found_one {
+                res.double_in_place();
+            } else {
+                found_one = i;
+            }
+
+            if i {
+                res += self;
+            }
+        }
+
+        res
     }
 }
 
-impl<'a, P: Parameters> MulAssign<&'a P::ScalarField> for GroupProjective<P> {
-    fn mul_assign(&mut self, other: &'a P::ScalarField) {
-        <Self as ProjectiveCurve>::mul_assign(self, other.into_repr());
+impl<P: Parameters> MulAssign<P::ScalarField> for GroupProjective<P> {
+    /// Performs scalar multiplication of this element.
+    fn mul_assign(&mut self, other: P::ScalarField) {
+        *self = *self * other
     }
 }
 

@@ -120,7 +120,7 @@ mod montgomery_affine_impl {
                 let mut t0 = self.x.get_value().get()?;
                 let mut t1 = t0;
                 t0.sub_assign(&P::BaseField::one());
-                t1.add_assign(&P::BaseField::one());
+                t1.add_assign(P::BaseField::one());
 
                 match t1.inverse() {
                     Some(t1) => {

@@ -85,7 +85,7 @@ impl<G: Group, S: PedersenSize> CRH for PedersenCRH<G, S> {
                 }
                 encoded
             })
-            .fold(G::zero(), |a, b| a + &b);
+            .fold(G::zero(), |a, b| a + b);
 
         Ok(result)
     }

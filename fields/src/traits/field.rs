@@ -97,7 +97,7 @@ pub trait Field:
     fn double(&self) -> Self;
 
     /// Doubles `self` in place.
-    fn double_in_place(&mut self) -> &mut Self;
+    fn double_in_place(&mut self);
 
     /// Returns `self * self`.
     #[must_use]

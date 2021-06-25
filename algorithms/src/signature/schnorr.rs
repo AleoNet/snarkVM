@@ -142,7 +142,7 @@ where
         let mut public_key = G::zero();
         for (bit, base_power) in bytes_to_bits(&to_bytes![private_key]?).zip_eq(&self.parameters.generator_powers) {
             if bit {
-                public_key += &base_power;
+                public_key += base_power;
             }
         }
         end_timer!(keygen_time);
@@ -167,7 +167,7 @@ where
             for (bit, base_power) in bytes_to_bits(&to_bytes![random_scalar]?).zip_eq(&self.parameters.generator_powers)
             {
                 if bit {
-                    prover_commitment += &base_power;
+                    prover_commitment += base_power;
                 }
             }
 
@@ -210,12 +210,12 @@ where
         let mut claimed_prover_commitment = G::zero();
         for (bit, base_power) in bytes_to_bits(&to_bytes![prover_response]?).zip_eq(&self.parameters.generator_powers) {
             if bit {
-                claimed_prover_commitment += &base_power;
+                claimed_prover_commitment += base_power;
             }
         }
 
-        let public_key_times_verifier_challenge = public_key.0.mul(verifier_challenge);
-        claimed_prover_commitment += &public_key_times_verifier_challenge;
+        let public_key_times_verifier_challenge = public_key.0.mul(*verifier_challenge);
+        claimed_prover_commitment += public_key_times_verifier_challenge;
 
         let mut hash_input = Vec::new();
         hash_input.extend_from_slice(&self.parameters.salt);
@@ -245,10 +245,10 @@ where
         let mut encoded = G::zero();
         for (bit, base_power) in bytes_to_bits(&to_bytes![randomness]?).zip_eq(&self.parameters.generator_powers) {
             if bit {
-                encoded += &base_power;
+                encoded += base_power;
             }
         }
-        randomized_pk += &encoded;
+        randomized_pk += encoded;
 
         end_timer!(rand_pk_time);
 
@@ -265,7 +265,7 @@ where
         let mut multiplier = <G as Group>::ScalarField::zero();
         for bit in bytes_to_bits(randomness) {
             if bit {
-                multiplier += &base;
+                multiplier += base;
             }
             base.double_in_place();
         }

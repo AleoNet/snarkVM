@@ -143,7 +143,7 @@ mod gm17 {
         }
 
         let mut sum = Fr::one();
-        sum.add_assign(&Fr::one());
+        sum.add_assign(Fr::one());
         let circuit = R1CSCircuit::new(Fr::one(), sum, Fr::one());
 
         let rng = &mut thread_rng();

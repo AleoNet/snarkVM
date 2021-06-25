@@ -152,7 +152,10 @@ impl<F: PrimeField> AllocatedFp<F> {
     }
 
     fn double_in_place<CS: ConstraintSystem<F>>(&mut self, _cs: CS) -> &mut Self {
-        self.value.as_mut().map(|val| val.double_in_place());
+        self.value.as_mut().map(|val| {
+            val.double_in_place();
+            val
+        });
         self.variable.double_in_place();
         self
     }

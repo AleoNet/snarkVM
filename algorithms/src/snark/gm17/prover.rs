@@ -28,9 +28,9 @@ use snarkvm_r1cs::{
 };
 use snarkvm_utilities::rand::UniformRand;
 
+use core::ops::{AddAssign, Mul, MulAssign};
 use rand::Rng;
 use smallvec::SmallVec;
-use std::ops::{AddAssign, MulAssign};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -62,10 +62,10 @@ fn evaluate<E: PairingEngine>(
         }
 
         if coeff.is_one() {
-            acc.add_assign(&tmp);
+            acc.add_assign(tmp);
         } else {
             tmp.mul_assign(&coeff);
-            acc.add_assign(&tmp);
+            acc.add_assign(tmp);
         }
     }
 
@@ -284,11 +284,11 @@ where
     let r_g = params.get_g_gamma_z()?.mul(r);
     let d1_g = params.get_g_gamma_z()?.mul(d1);
 
-    let mut g_a = r_g;
-    g_a.add_assign(&params.get_a_query_full()?[0].into_projective());
-    g_a.add_assign(&d1_g);
-    g_a.add_assign(&a_inputs_acc);
-    g_a.add_assign(&a_aux_acc);
+    let mut g_a = r_g.into_projective();
+    g_a.add_assign(params.get_a_query_full()?[0].into_projective());
+    g_a.add_assign(d1_g.into_projective());
+    g_a.add_assign(a_inputs_acc);
+    g_a.add_assign(a_aux_acc);
     end_timer!(a_acc_time);
 
     // Compute B
@@ -301,16 +301,16 @@ where
     let r_h = params.get_h_gamma_z()?.mul(r);
     let d1_h = params.get_h_gamma_z()?.mul(d1);
 
-    let mut g_b = r_h;
-    g_b.add_assign(&params.get_b_query_full()?[0].into_projective());
-    g_b.add_assign(&d1_h);
-    g_b.add_assign(&b_inputs_acc);
-    g_b.add_assign(&b_aux_acc);
+    let mut g_b = r_h.into_projective();
+    g_b.add_assign(params.get_b_query_full()?[0].into_projective());
+    g_b.add_assign(d1_h.into_projective());
+    g_b.add_assign(b_inputs_acc);
+    g_b.add_assign(b_aux_acc);
     end_timer!(b_acc_time);
 
     // Compute C
     let c_acc_time = start_timer!(|| "Compute C");
-    let r_2 = r + &r;
+    let r_2 = r + r;
     let r2 = r * &r;
     let d1_r_2 = d1 * &r_2;
 
@@ -325,7 +325,7 @@ where
     let c2_inputs_acc = VariableBaseMSM::multi_scalar_mul(c2_inputs_source, &input_assignment);
     let c2_aux_acc = VariableBaseMSM::multi_scalar_mul(c2_aux_source, &aux_assignment);
 
-    let c2_acc = c2_inputs_acc + &c2_aux_acc;
+    let c2_acc = c2_inputs_acc + c2_aux_acc;
     end_timer!(c2_acc_time);
 
     // Compute G
@@ -335,7 +335,7 @@ where
     let g_inputs_acc = VariableBaseMSM::multi_scalar_mul(g_inputs_source, &h_input);
     let g_aux_acc = VariableBaseMSM::multi_scalar_mul(g_aux_source, &h_aux);
 
-    let g_acc = g_inputs_acc + &g_aux_acc;
+    let g_acc = g_inputs_acc + g_aux_acc;
     end_timer!(g_acc_time);
 
     let r2_g_gamma2_z2 = params.get_g_gamma2_z2()?.mul(r2);
@@ -348,14 +348,14 @@ where
     r_c2_exp.mul_assign(r);
 
     let mut g_c = c1_acc;
-    g_c.add_assign(&r2_g_gamma2_z2);
-    g_c.add_assign(&r_g_ab_gamma_z);
-    g_c.add_assign(&d1_g_ab_gamma_z);
-    g_c.add_assign(&r_c0);
-    g_c.add_assign(&r2_d1_g_gamma2_z2);
-    g_c.add_assign(&r_c2_exp);
-    g_c.add_assign(&d2_g_gamma2_z_t0);
-    g_c.add_assign(&g_acc);
+    g_c.add_assign(r2_g_gamma2_z2.into_projective());
+    g_c.add_assign(r_g_ab_gamma_z.into_projective());
+    g_c.add_assign(d1_g_ab_gamma_z.into_projective());
+    g_c.add_assign(r_c0.into_projective());
+    g_c.add_assign(r2_d1_g_gamma2_z2.into_projective());
+    g_c.add_assign(r_c2_exp);
+    g_c.add_assign(d2_g_gamma2_z_t0.into_projective());
+    g_c.add_assign(g_acc);
     end_timer!(c_acc_time);
 
     end_timer!(prover_time);

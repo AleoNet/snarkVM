@@ -153,11 +153,10 @@ impl<P: Fp3Parameters> Field for Fp3<P> {
         result
     }
 
-    fn double_in_place(&mut self) -> &mut Self {
+    fn double_in_place(&mut self) {
         self.c0.double_in_place();
         self.c1.double_in_place();
         self.c2.double_in_place();
-        self
     }
 
     #[inline]
@@ -239,11 +238,11 @@ impl<P: Fp3Parameters> Field for Fp3<P> {
             let mut a2 = self.c1;
             a2.mul_assign(&s2);
             let mut a3 = a1;
-            a3.add_assign(&a2);
+            a3.add_assign(a2);
             a3 = P::mul_fp_by_nonresidue(&a3);
             let mut t6 = self.c0;
             t6.mul_assign(&s0);
-            t6.add_assign(&a3);
+            t6.add_assign(a3);
             t6.inverse_in_place();
 
             let mut c0 = t6;
@@ -397,7 +396,7 @@ impl<'a, P: Fp3Parameters> Add<&'a Fp3<P>> for Fp3<P> {
     #[inline]
     fn add(self, other: &Self) -> Self {
         let mut result = self;
-        result.add_assign(&other);
+        result.add_assign(other);
         result
     }
 }
@@ -438,9 +437,9 @@ impl<'a, P: Fp3Parameters> Div<&'a Fp3<P>> for Fp3<P> {
 impl<'a, P: Fp3Parameters> AddAssign<&'a Self> for Fp3<P> {
     #[inline]
     fn add_assign(&mut self, other: &Self) {
-        self.c0.add_assign(&other.c0);
-        self.c1.add_assign(&other.c1);
-        self.c2.add_assign(&other.c2);
+        self.c0.add_assign(other.c0);
+        self.c1.add_assign(other.c1);
+        self.c2.add_assign(other.c2);
     }
 }
 

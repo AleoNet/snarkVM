@@ -186,12 +186,11 @@ impl<P: Fp320Parameters> Field for Fp320<P> {
     }
 
     #[inline]
-    fn double_in_place(&mut self) -> &mut Self {
+    fn double_in_place(&mut self) {
         // This cannot exceed the backing capacity.
         self.0.mul2();
         // However, it may need to be reduced.
         self.reduce();
-        self
     }
 
     #[inline]

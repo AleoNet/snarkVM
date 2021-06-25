@@ -609,7 +609,7 @@ mod tests {
             // Do lagrange interpolation, and compare against the actual evaluation
             let mut interpolated_evaluation = Fr::zero();
             for i in 0..domain_size {
-                interpolated_evaluation += &(lagrange_coefficients[i] * &polynomial_evaluations[i]);
+                interpolated_evaluation += lagrange_coefficients[i] * &polynomial_evaluations[i];
             }
             assert_eq!(actual_evaluations, interpolated_evaluation);
         }

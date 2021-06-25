@@ -23,7 +23,7 @@ use snarkvm_r1cs::{
     Index,
 };
 
-use std::ops::{AddAssign, SubAssign};
+use core::ops::{AddAssign, SubAssign};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -62,7 +62,7 @@ impl R1CStoSAP {
         for i in 0..assembly.num_constraints {
             let u_2i = u[2 * i];
             let u_2i_plus_1 = u[2 * i + 1];
-            let u_add = u_2i + &u_2i_plus_1;
+            let u_add = u_2i + u_2i_plus_1;
             let u_sub = u_2i - &u_2i_plus_1;
 
             for &(ref coeff, index) in assembly.at[i].iter() {
@@ -71,7 +71,7 @@ impl R1CStoSAP {
                     Index::Private(i) => assembly.num_public_variables + i,
                 };
 
-                a[index] += &(u_add * coeff);
+                a[index] += u_add * coeff;
             }
 
             for &(ref coeff, index) in assembly.bt[i].iter() {
@@ -80,7 +80,7 @@ impl R1CStoSAP {
                     Index::Private(i) => assembly.num_public_variables + i,
                 };
 
-                a[index] += &(u_sub * coeff);
+                a[index] += u_sub * coeff;
             }
 
             for &(ref coeff, index) in assembly.ct[i].iter() {
@@ -89,30 +89,30 @@ impl R1CStoSAP {
                     Index::Private(i) => assembly.num_public_variables + i,
                 };
 
-                c[index] += &((u_2i * coeff).double().double());
+                c[index] += (u_2i * coeff).double().double();
             }
-            c[extra_var_offset + i].add_assign(&u_add);
+            c[extra_var_offset + i].add_assign(u_add);
         }
 
-        a[0].add_assign(&u[extra_constr_offset]);
-        c[0].add_assign(&u[extra_constr_offset]);
+        a[0].add_assign(u[extra_constr_offset]);
+        c[0].add_assign(u[extra_constr_offset]);
 
         for i in 1..assembly.num_public_variables {
             // First extra constraint
 
-            a[i].add_assign(&u[extra_constr_offset + 2 * i - 1]);
-            a[0].add_assign(&u[extra_constr_offset + 2 * i - 1]);
+            a[i].add_assign(u[extra_constr_offset + 2 * i - 1]);
+            a[0].add_assign(u[extra_constr_offset + 2 * i - 1]);
 
             let t_four = u[extra_constr_offset + 2 * i - 1].double().double();
 
-            c[i].add_assign(&t_four);
-            c[extra_var_offset2 + i].add_assign(&u[extra_constr_offset + 2 * i - 1]);
+            c[i].add_assign(t_four);
+            c[extra_var_offset2 + i].add_assign(u[extra_constr_offset + 2 * i - 1]);
 
             // Second extra constraint
 
-            a[i].add_assign(&u[extra_constr_offset + 2 * i]);
+            a[i].add_assign(u[extra_constr_offset + 2 * i]);
             a[0].sub_assign(&u[extra_constr_offset + 2 * i]);
-            c[extra_var_offset2 + i].add_assign(&u[extra_constr_offset + 2 * i]);
+            c[extra_var_offset2 + i].add_assign(u[extra_constr_offset + 2 * i]);
         }
 
         Ok((a, c, zt, sap_num_variables, domain_size))
@@ -137,7 +137,7 @@ impl R1CStoSAP {
                     Index::Public(i) => assignment[i],
                     Index::Private(i) => assignment[num_input + i],
                 };
-                acc += &(val * &coeff);
+                acc += val * &coeff;
             }
             acc
         }
@@ -186,7 +186,7 @@ impl R1CStoSAP {
             .zip(&prover.bt)
             .for_each(|((chunk, at_i), bt_i)| {
                 chunk[0] = evaluate_constraint::<E>(&at_i, &full_input_assignment, prover.num_public_variables);
-                chunk[0].add_assign(&evaluate_constraint::<E>(
+                chunk[0].add_assign(evaluate_constraint::<E>(
                     &bt_i,
                     &full_input_assignment,
                     prover.num_public_variables,
@@ -201,7 +201,7 @@ impl R1CStoSAP {
             });
         a[extra_constr_offset] = one;
         for i in 1..prover.num_public_variables {
-            a[extra_constr_offset + 2 * i - 1] = full_input_assignment[i] + &one;
+            a[extra_constr_offset + 2 * i - 1] = full_input_assignment[i] + one;
             a[extra_constr_offset + 2 * i] = full_input_assignment[i] - &one;
         }
 
@@ -230,7 +230,7 @@ impl R1CStoSAP {
                 tmp.double_in_place();
 
                 let assignment = full_input_assignment[extra_var_offset + i];
-                chunk[0] = tmp + &assignment;
+                chunk[0] = tmp + assignment;
                 chunk[1] = assignment;
             });
         c[extra_constr_offset] = one;
@@ -240,7 +240,7 @@ impl R1CStoSAP {
             tmp.double_in_place();
 
             let assignment = full_input_assignment[extra_var_offset2 + i];
-            c[extra_constr_offset + 2 * i - 1] = tmp + &assignment;
+            c[extra_constr_offset + 2 * i - 1] = tmp + assignment;
             c[extra_constr_offset + 2 * i] = assignment;
         }
 
@@ -254,7 +254,7 @@ impl R1CStoSAP {
 
         cfg_iter_mut!(h[..domain_size - 1])
             .enumerate()
-            .for_each(|(i, e)| e.add_assign(&aa[i]));
+            .for_each(|(i, e)| e.add_assign(aa[i]));
 
         Ok((full_input_assignment, h, domain_size))
     }

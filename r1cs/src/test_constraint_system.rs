@@ -202,7 +202,7 @@ impl<F: Field> TestConstraintSystem<F> {
             let coeff = self.interned_fields.get_index(interned_coeff).unwrap();
 
             tmp.mul_assign(coeff);
-            acc.add_assign(&tmp);
+            acc.add_assign(tmp);
         }
 
         acc

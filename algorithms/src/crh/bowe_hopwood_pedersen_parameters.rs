@@ -55,7 +55,7 @@ impl<G: Group> BoweHopwoodPedersenCRHParameters<G> {
                                         encoded += g;
                                     }
                                     if (i & 0x02) != 0 {
-                                        encoded += &g.double();
+                                        encoded += g.double();
                                     }
                                     if (i & 0x04) != 0 {
                                         encoded = encoded.neg();

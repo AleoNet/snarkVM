@@ -83,7 +83,7 @@ impl<P: Fp2Parameters> Fp2<P> {
         let t0 = self.c0.square();
         let mut t1 = self.c1.square();
         t1 = -P::mul_fp_by_nonresidue(&t1);
-        t1.add_assign(&t0);
+        t1.add_assign(t0);
         t1
     }
 
@@ -124,10 +124,9 @@ impl<P: Fp2Parameters> Field for Fp2<P> {
         result
     }
 
-    fn double_in_place(&mut self) -> &mut Self {
+    fn double_in_place(&mut self) {
         self.c0.double_in_place();
         self.c1.double_in_place();
-        self
     }
 
     fn square(&self) -> Self {
@@ -347,7 +346,7 @@ impl<'a, P: Fp2Parameters> Add<&'a Fp2<P>> for Fp2<P> {
     #[inline]
     fn add(self, other: &Self) -> Self {
         let mut result = self;
-        result.add_assign(&other);
+        result.add_assign(other);
         result
     }
 }
@@ -388,8 +387,8 @@ impl<'a, P: Fp2Parameters> Div<&'a Fp2<P>> for Fp2<P> {
 impl<'a, P: Fp2Parameters> AddAssign<&'a Self> for Fp2<P> {
     #[inline]
     fn add_assign(&mut self, other: &Self) {
-        self.c0.add_assign(&other.c0);
-        self.c1.add_assign(&other.c1);
+        self.c0.add_assign(other.c0);
+        self.c1.add_assign(other.c1);
     }
 }
 

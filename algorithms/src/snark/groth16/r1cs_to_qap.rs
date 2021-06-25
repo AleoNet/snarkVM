@@ -34,7 +34,7 @@ fn evaluate_constraint<E: PairingEngine>(terms: &[(E::Fr, Index)], assignment: &
             Index::Public(i) => assignment[i],
             Index::Private(i) => assignment[num_input + i],
         };
-        acc += &(val * &coeff);
+        acc += val * &coeff;
     }
     acc
 }
@@ -77,7 +77,7 @@ impl R1CStoQAP {
                     Index::Private(i) => assembly.num_public_variables + i,
                 };
 
-                a[index] += &(*x * coeff);
+                a[index] += *x * coeff;
             }
             for &(ref coeff, index) in assembly.bt[i].iter() {
                 let index = match index {
@@ -85,7 +85,7 @@ impl R1CStoQAP {
                     Index::Private(i) => assembly.num_public_variables + i,
                 };
 
-                b[index] += &(u[i] * coeff);
+                b[index] += u[i] * coeff;
             }
             for &(ref coeff, index) in assembly.ct[i].iter() {
                 let index = match index {
@@ -93,7 +93,7 @@ impl R1CStoQAP {
                     Index::Private(i) => assembly.num_public_variables + i,
                 };
 
-                c[index] += &(u[i] * coeff);
+                c[index] += u[i] * coeff;
             }
         }
 

@@ -114,13 +114,13 @@ impl<P: Fp12Parameters> Fp12<P> {
         bb.mul_by_1(c4);
         let mut o = *c1;
         o.add_assign(c4);
-        self.c1.add_assign(&self.c0);
+        self.c1.add_assign(self.c0);
         self.c1.mul_by_01(c0, &o);
         self.c1.sub_assign(&aa);
         self.c1.sub_assign(&bb);
         self.c0 = bb;
         self.c0 = Self::mul_fp6_by_nonresidue(&self.c0);
-        self.c0.add_assign(&aa);
+        self.c0.add_assign(aa);
     }
 
     pub fn cyclotomic_square(&self) -> Self {
@@ -283,10 +283,9 @@ impl<P: Fp12Parameters> Field for Fp12<P> {
         Self::from_random_bytes_with_flags(bytes).map(|f| f.0)
     }
 
-    fn double_in_place(&mut self) -> &mut Self {
+    fn double_in_place(&mut self) {
         self.c0.double_in_place();
         self.c1.double_in_place();
-        self
     }
 
     fn frobenius_map(&mut self, power: usize) {
@@ -308,14 +307,14 @@ impl<P: Fp12Parameters> Field for Fp12<P> {
         let mut ab = self.c0;
         ab.mul_assign(&self.c1);
         let mut c0c1 = self.c0;
-        c0c1.add_assign(&self.c1);
+        c0c1.add_assign(self.c1);
         let mut c0 = self.c1;
         c0 = Self::mul_fp6_by_nonresidue(&c0);
-        c0.add_assign(&self.c0);
+        c0.add_assign(self.c0);
         c0.mul_assign(&c0c1);
         c0.sub_assign(&ab);
         self.c1 = ab;
-        self.c1.add_assign(&ab);
+        self.c1.add_assign(ab);
         ab = Self::mul_fp6_by_nonresidue(&ab);
         c0.sub_assign(&ab);
         self.c0 = c0;
@@ -377,7 +376,7 @@ impl<'a, P: Fp12Parameters> Add<&'a Self> for Fp12<P> {
     #[inline]
     fn add(self, other: &Self) -> Self {
         let mut result = self;
-        result.add_assign(&other);
+        result.add_assign(other);
         result
     }
 }
@@ -418,8 +417,8 @@ impl<'a, P: Fp12Parameters> Div<&'a Self> for Fp12<P> {
 impl<'a, P: Fp12Parameters> AddAssign<&'a Self> for Fp12<P> {
     #[inline]
     fn add_assign(&mut self, other: &Self) {
-        self.c0.add_assign(&other.c0);
-        self.c1.add_assign(&other.c1);
+        self.c0.add_assign(other.c0);
+        self.c1.add_assign(other.c1);
     }
 }
 
