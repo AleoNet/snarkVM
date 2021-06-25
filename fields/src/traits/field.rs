@@ -38,7 +38,8 @@ use serde::{Deserialize, Serialize};
 
 /// The interface for a generic field.
 pub trait Field:
-    ToBytes
+    'static
+    + ToBytes
     + FromBytes
     + Copy
     + Clone
@@ -47,12 +48,12 @@ pub trait Field:
     + Default
     + Send
     + Sync
-    + 'static
     + Eq
     + One
     + Ord
     + Neg<Output = Self>
     + UniformRand
+    + Zero
     + Sized
     + Hash
     + From<u128>
@@ -75,7 +76,6 @@ pub trait Field:
     + CanonicalDeserializeWithFlags
     + Serialize
     + for<'a> Deserialize<'a>
-    + Zero
 {
     /// Returns the characteristic of the field.
     fn characteristic<'a>() -> &'a [u64];

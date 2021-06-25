@@ -27,7 +27,7 @@
 //! by performing an O(n log n) FFT over such a domain.
 
 use crate::fft::{multicore::Worker, SparsePolynomial};
-use snarkvm_fields::{batch_inversion, FieldParameters, PrimeField};
+use snarkvm_fields::{batch_inversion, FftParameters, PrimeField};
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use rand::Rng;
@@ -555,7 +555,7 @@ impl<F: PrimeField> Iterator for Elements<F> {
 mod tests {
     use crate::fft::{DensePolynomial, EvaluationDomain};
     use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_fields::{Field, One, PrimeField, Zero};
+    use snarkvm_fields::{FftField, Field, One, Zero};
     use snarkvm_utilities::UniformRand;
 
     use rand::{thread_rng, Rng};

@@ -16,6 +16,7 @@
 
 use crate::fft::domain::*;
 use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
+use snarkvm_fields::FftField;
 use snarkvm_utilities::rand::UniformRand;
 
 /// Test multiplying various (low degree) polynomials together and
@@ -60,7 +61,7 @@ fn fft_composition() {
 #[test]
 fn parallel_fft_consistency() {
     use crate::fft::multicore::*;
-    use snarkvm_fields::{Field, One, PrimeField};
+    use snarkvm_fields::{Field, One};
 
     use rand::Rng;
     use std::cmp::min;

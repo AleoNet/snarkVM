@@ -46,6 +46,8 @@ use crate::{
 use snarkvm_fields::{
     fp6_3over2::Fp6Parameters,
     tests_field::{field_serialization_test, field_test, frobenius_test, primefield_test, sqrt_field_test},
+    FftField,
+    FftParameters,
     Field,
     FieldParameters,
     Fp2Parameters,

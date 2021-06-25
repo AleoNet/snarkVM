@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Field, FieldError, FieldParameters, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
+use crate::{FftField, Field, FieldError, FieldParameters, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
     biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger320 as BigInteger},
     bytes::{FromBytes, ToBytes},
@@ -356,13 +356,27 @@ impl<P: Fp320Parameters> PrimeField for Fp320<P> {
     }
 
     #[inline]
-    fn multiplicative_generator() -> Self {
-        Fp320::<P>(P::GENERATOR, PhantomData)
+    fn root_of_unity() -> Self {
+        Fp320::<P>(P::ROOT_OF_UNITY, PhantomData)
+    }
+}
+
+impl<P: Fp320Parameters> FftField for Fp320<P> {
+    type FftParameters = P;
+
+    #[inline]
+    fn two_adic_root_of_unity() -> Self {
+        Self(P::ROOT_OF_UNITY, PhantomData)
     }
 
     #[inline]
-    fn root_of_unity() -> Self {
-        Fp320::<P>(P::ROOT_OF_UNITY, PhantomData)
+    fn large_subgroup_root_of_unity() -> Option<Self> {
+        Some(Self(P::LARGE_SUBGROUP_ROOT_OF_UNITY?, PhantomData))
+    }
+
+    #[inline]
+    fn multiplicative_generator() -> Self {
+        Self(P::GENERATOR, PhantomData)
     }
 }
 

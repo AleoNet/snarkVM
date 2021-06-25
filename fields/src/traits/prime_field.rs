@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Field, FieldParameters};
+use crate::{FftField, Field, FieldParameters};
 use snarkvm_utilities::biginteger::BigInteger;
 
 use std::str::FromStr;
 
 /// The interface for a prime field.
 #[allow(clippy::wrong_self_convention)]
-pub trait PrimeField: Field + FromStr {
+pub trait PrimeField: FftField<FftParameters = <Self as PrimeField>::Parameters> + Field + FromStr {
     type Parameters: FieldParameters<BigInteger = Self::BigInteger>;
     type BigInteger: BigInteger;
 
@@ -36,9 +36,6 @@ pub trait PrimeField: Field + FromStr {
 
     /// Returns the underlying raw representation of the prime field element.
     fn into_repr_raw(&self) -> Self::BigInteger;
-
-    /// Returns the multiplicative generator of `char()` - 1 order.
-    fn multiplicative_generator() -> Self;
 
     /// Returns the 2^s root of unity.
     fn root_of_unity() -> Self;
@@ -55,12 +52,20 @@ pub trait PrimeField: Field + FromStr {
 
     /// Returns the trace.
     fn trace() -> Self::BigInteger {
-        Self::Parameters::T
+        // TODO (howardwu): This function has been disabled as
+        //  `snarkvm_curves::edwards_bls12::Fr` and `snarkvm_curves::edwards_sw6::Fr`
+        //  do NOT implement `FieldParameters::T` or `FieldParameters::T_MINUS_ONE_DIV_TWO`.
+        unimplemented!()
+        // Self::Parameters::T
     }
 
     /// Returns the trace minus one divided by two.
     fn trace_minus_one_div_two() -> Self::BigInteger {
-        Self::Parameters::T_MINUS_ONE_DIV_TWO
+        // TODO (howardwu): This function has been disabled as
+        //  `snarkvm_curves::edwards_bls12::Fr` and `snarkvm_curves::edwards_sw6::Fr`
+        //  do NOT implement `FieldParameters::T` or `FieldParameters::T_MINUS_ONE_DIV_TWO`.
+        unimplemented!()
+        // Self::Parameters::T_MINUS_ONE_DIV_TWO
     }
 
     /// Returns the modulus minus one divided by two.
