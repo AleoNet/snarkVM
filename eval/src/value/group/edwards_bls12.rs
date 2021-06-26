@@ -16,8 +16,9 @@
 
 use crate::{errors::GroupError, GroupType};
 
+pub use snarkvm_curves::edwards_bls12::Fq;
 use snarkvm_curves::{
-    edwards_bls12::{EdwardsAffine, EdwardsParameters, Fq},
+    edwards_bls12::{EdwardsAffine, EdwardsParameters},
     templates::twisted_edwards_extended::GroupAffine,
     AffineCurve,
     TEModelParameters,
