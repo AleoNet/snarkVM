@@ -16,7 +16,7 @@
 
 use crate::traits::Group;
 use snarkvm_fields::{Field, PrimeField, SquareRootField};
-use snarkvm_utilities::{biginteger::BigInteger, bytes::ToBytes, rand::UniformRand, serialize::*, BitIteratorBE};
+use snarkvm_utilities::{biginteger::BigInteger, bytes::ToBytes, serialize::*, BitIteratorBE};
 
 use std::{fmt::Debug, iter};
 

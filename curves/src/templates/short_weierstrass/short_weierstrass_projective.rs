@@ -549,7 +549,7 @@ impl<P: Parameters> Group for GroupProjective<P> {
             // ZZ = Z1^2
             let zz = self.z.square();
             // w = a*ZZ + 3*XX
-            let w = P::mul_by_a(&zz) + &(xx + &xx.double());
+            let w = P::mul_by_a(&zz) + (xx + &xx.double());
             // s = 2*Y1*Z1
             let mut s = self.y * &(self.z);
             s.double_in_place();
@@ -678,7 +678,7 @@ impl<P: Parameters> Mul<P::ScalarField> for GroupProjective<P> {
             }
 
             if i {
-                res += self;
+                res += &self;
             }
         }
 

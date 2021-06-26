@@ -801,7 +801,7 @@ impl<P: Parameters> Mul<P::ScalarField> for GroupProjective<P> {
             }
 
             if i {
-                res += self;
+                res += &self;
             }
         }
 

@@ -165,7 +165,7 @@ fn random_expansion_tests<F: Field, R: Rng>(rng: &mut R) {
         let c = F::rand(rng);
 
         let t0 = (a + &b) * &c;
-        let t2 = a * &c + &(b * &c);
+        let t2 = a * &c + (b * &c);
 
         assert_eq!(t0, t2);
     }
@@ -306,9 +306,9 @@ pub fn field_test<F: Field>(a: F, b: F) {
     // a - b = -(b - a)
     assert_eq!(a - &b, -(b - &a));
     // (a + b) + a = a + (b + a)
-    assert_eq!((a + &b) + &a, a + &(b + &a));
+    assert_eq!((a + &b) + &a, a + (b + &a));
     // (a + b).double() = (a + b) + (b + a)
-    assert_eq!((a + &b).double(), (a + &b) + &(b + &a));
+    assert_eq!((a + &b).double(), (a + &b) + (b + &a));
 
     // a * 0 = 0
     assert_eq!(a * &zero, zero);
@@ -327,7 +327,7 @@ pub fn field_test<F: Field>(a: F, b: F) {
     // (a * b) * a = a * (b * a)
     assert_eq!((a * &b) * &a, a * &(b * &a));
     // (a + b)^2 = a^2 + 2ab + b^2
-    assert_eq!((a + &b).square(), a.square() + &((a * &b) + &(a * &b)) + &b.square());
+    assert_eq!((a + &b).square(), a.square() + ((a * &b) + (a * &b)) + &b.square());
     // (a - b)^2 = (-(b - a))^2
     assert_eq!((a - &b).square(), (-(b - &a)).square());
 

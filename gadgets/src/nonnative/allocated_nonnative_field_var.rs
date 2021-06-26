@@ -267,8 +267,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         let result = AllocatedNonNativeFieldVar::<TargetField, BaseField> {
             limbs,
             num_of_additions_over_normal_form: self.num_of_additions_over_normal_form
-                + &(other.num_of_additions_over_normal_form + &BaseField::one())
-                + &(other.num_of_additions_over_normal_form + &BaseField::one()),
+                + (other.num_of_additions_over_normal_form + &BaseField::one())
+                + (other.num_of_additions_over_normal_form + &BaseField::one()),
             is_in_the_normal_form: false,
             target_phantom: PhantomData,
         };

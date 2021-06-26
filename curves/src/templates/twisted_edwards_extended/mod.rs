@@ -88,7 +88,7 @@ impl<P: Parameters> GroupAffine<P> {
         let y2 = self.y.square();
 
         let lhs = y2 + &P::mul_by_a(&x2);
-        let rhs = P::BaseField::one() + &(P::COEFF_D * &(x2 * &y2));
+        let rhs = P::BaseField::one() + (P::COEFF_D * &(x2 * &y2));
 
         lhs == rhs
     }
@@ -207,7 +207,7 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
         let y2 = self.y.square();
 
         let lhs = y2 + &P::mul_by_a(&x2);
-        let rhs = P::BaseField::one() + &(P::COEFF_D * &(x2 * &y2));
+        let rhs = P::BaseField::one() + (P::COEFF_D * &(x2 * &y2));
 
         lhs == rhs
     }
@@ -669,7 +669,7 @@ impl<P: Parameters> Mul<P::ScalarField> for GroupProjective<P> {
             }
 
             if i {
-                res += self;
+                res += &self;
             }
         }
 

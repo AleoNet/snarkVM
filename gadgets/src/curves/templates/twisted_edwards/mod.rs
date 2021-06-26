@@ -180,7 +180,7 @@ mod montgomery_affine_impl {
 
             let yprime = FG::alloc(cs.ns(|| "yprime"), || {
                 Ok(-(self.y.get_value().get()?
-                    + &(lambda.get_value().get()? * &(xprime.get_value().get()? - &self.x.get_value().get()?))))
+                    + (lambda.get_value().get()? * &(xprime.get_value().get()? - &self.x.get_value().get()?))))
             })?;
 
             let xres = self.x.sub(cs.ns(|| "xres"), &xprime)?;
@@ -315,7 +315,7 @@ mod affine_impl {
 
             // Compute y3 = (U + a * v0 - v1) / (1 - v2)
             let y3 = FG::alloc(&mut cs.ns(|| "y3"), || {
-                let t0 = u.get_value().get()? + &(a * &v0.get_value().get()?) - &v1.get_value().get()?;
+                let t0 = u.get_value().get()? + (a * &v0.get_value().get()?) - &v1.get_value().get()?;
                 let t1 = P::BaseField::one() - &v2.get_value().get()?;
                 Ok(t0 * &t1.inverse().get()?)
             })?;
@@ -377,7 +377,7 @@ mod affine_impl {
 
             // Compute y3 = (U + a * v0 - v1) / (1 - v2)
             let y3 = FG::alloc(&mut cs.ns(|| "y3"), || {
-                let t0 = u.get_value().get()? + &(a * &v0.get_value().get()?) - &v1.get_value().get()?;
+                let t0 = u.get_value().get()? + (a * &v0.get_value().get()?) - &v1.get_value().get()?;
                 let t1 = P::BaseField::one() - &v2.get_value().get()?;
                 Ok(t0 * &t1.inverse().get()?)
             })?;
@@ -705,7 +705,7 @@ mod projective_impl {
 
             // Compute y3 = (U + a * v0 - v1) / (1 - v2)
             let y3 = FG::alloc(&mut cs.ns(|| "y3"), || {
-                let t0 = u.get_value().get()? + &(a * &v0.get_value().get()?) - &v1.get_value().get()?;
+                let t0 = u.get_value().get()? + (a * &v0.get_value().get()?) - &v1.get_value().get()?;
                 let t1 = P::BaseField::one() - &v2.get_value().get()?;
                 Ok(t0 * &t1.inverse().get()?)
             })?;
@@ -768,7 +768,7 @@ mod projective_impl {
 
             // Compute y3 = (U + a * v0 - v1) / (1 - v2)
             let y3 = FG::alloc(&mut cs.ns(|| "y3"), || {
-                let t0 = u.get_value().get()? + &(a * &v0.get_value().get()?) - &v1.get_value().get()?;
+                let t0 = u.get_value().get()? + (a * &v0.get_value().get()?) - &v1.get_value().get()?;
                 let t1 = P::BaseField::one() - &v2.get_value().get()?;
                 Ok(t0 * &t1.inverse().get()?)
             })?;

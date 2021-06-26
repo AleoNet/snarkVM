@@ -200,7 +200,7 @@ impl<TargetField: PrimeField> AHPForR1CS<TargetField> {
         // let h_lc = LinearCombination::new("b_poly", vec![(v_K_at_gamma, "h_2")]);
         //
         // // This LC is the only one that is evaluated:
-        // let inner_sumcheck = a_poly_lc - (b_lc * (gamma * &g_2_at_gamma + &(t_at_beta / &k_size))) - h_lc
+        // let inner_sumcheck = a_poly_lc - (b_lc * (gamma * &g_2_at_gamma + (t_at_beta / &k_size))) - h_lc
         // main_lc.set_label("inner_sumcheck");
         query_set.insert(("g_2".into(), gamma));
         query_set.insert(("a_denom".into(), gamma));

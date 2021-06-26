@@ -131,7 +131,7 @@ fn test_edwards_to_montgomery_point() {
         let v2 = v.square();
         let u2 = u.square();
         let u3 = u2 * &u;
-        assert_eq!(B * &v2, u3 + &(A * &u2) + &u);
+        assert_eq!(B * &v2, u3 + (A * &u2) + &u);
     }
 
     // Edwards element (x, y)
@@ -157,8 +157,8 @@ fn print_montgomery_to_weierstrass_parameters() {
 
     let two = Fq::one() + &Fq::one();
     let three = Fq::one() + &two;
-    let nine = three + &(three + &three);
-    let twenty_seven = nine + &(nine + &nine);
+    let nine = three + (three + &three);
+    let twenty_seven = nine + (nine + &nine);
 
     let a2 = A.square();
     let a3 = A * &a2;
@@ -243,7 +243,7 @@ fn test_isomorphism() {
         let v3 = v2 * &v;
         let av2 = a * &v2;
         let bv = b * &v;
-        let e = (v3 + &(av2 + &bv)).legendre();
+        let e = (v3 + (av2 + &bv)).legendre();
 
         // Let x = ev - ((1 - e) * A/2).
         let two = Fq::one().double();
@@ -258,7 +258,7 @@ fn test_isomorphism() {
         let x3 = x2 * &x;
         let ax2 = a * &x2;
         let bx = b * &x;
-        let value = (x3 + &(ax2 + &bx)).sqrt().unwrap();
+        let value = (x3 + (ax2 + &bx)).sqrt().unwrap();
         let y = match e {
             LegendreSymbol::Zero => Fq::zero(),
             LegendreSymbol::QuadraticResidue => -value,
@@ -274,7 +274,7 @@ fn test_isomorphism() {
         let v2 = v.square();
         let u2 = u.square();
         let u3 = u2 * &u;
-        assert_eq!(v2, u3 + &(a * &u2) + &(b * &u));
+        assert_eq!(v2, u3 + (a * &u2) + (b * &u));
     }
 
     // Convert the alternate Montgomery element (u, v) to Montgomery element (s, t).
@@ -288,7 +288,7 @@ fn test_isomorphism() {
             let t2 = t.square();
             let s2 = s.square();
             let s3 = s2 * &s;
-            assert_eq!(B * &t2, s3 + &(A * &s2) + &s);
+            assert_eq!(B * &t2, s3 + (A * &s2) + &s);
         }
 
         (s, t)
@@ -323,7 +323,7 @@ fn test_isomorphism() {
             let v2 = v.square();
             let u2 = u.square();
             let u3 = u2 * &u;
-            assert_eq!(B * &v2, u3 + &(A * &u2) + &u);
+            assert_eq!(B * &v2, u3 + (A * &u2) + &u);
         }
 
         let u = u * &B.inverse().unwrap();
@@ -335,7 +335,7 @@ fn test_isomorphism() {
             let v2 = v.square();
             let u2 = u.square();
             let u3 = u2 * &u;
-            assert_eq!(v2, u3 + &(a * &u2) + &(b * &u));
+            assert_eq!(v2, u3 + (a * &u2) + (b * &u));
         }
 
         (u, v)

@@ -366,7 +366,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         cfg_iter_mut!(summed_z_m_coeffs)
             .zip(&z_a_poly.polynomial().coeffs)
             .zip(&z_b_poly.polynomial().coeffs)
-            .for_each(|((c, a), b)| *c += &(eta_a * a + &(eta_b * b)));
+            .for_each(|((c, a), b)| *c += &(eta_a * a + (eta_b * b)));
 
         let summed_z_m = Polynomial::from_coefficients_vec(summed_z_m_coeffs);
         end_timer!(summed_z_m_poly_time);
@@ -525,8 +525,8 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
         for i in 0..domain_k.size() {
             let t = eta_a * &a_star.evals_on_K.val[i] * &inverses_a[i]
-                + &(eta_b * &b_star.evals_on_K.val[i] * &inverses_b[i])
-                + &(eta_c * &c_star.evals_on_K.val[i] * &inverses_c[i]);
+                + (eta_b * &b_star.evals_on_K.val[i] * &inverses_b[i])
+                + (eta_c * &c_star.evals_on_K.val[i] * &inverses_c[i]);
             let f_at_kappa = v_H_at_beta * &v_H_at_alpha * &t;
             f_vals_on_K.push(f_at_kappa);
         }
@@ -565,8 +565,8 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let a_poly_on_B = cfg_into_iter!(0..domain_b.size())
             .map(|i| {
                 let t = eta_a * &a_star.evals_on_B.val.evaluations[i] * &b_denom[i] * &c_denom[i]
-                    + &(eta_b * &b_star.evals_on_B.val.evaluations[i] * &a_denom[i] * &c_denom[i])
-                    + &(eta_c * &c_star.evals_on_B.val.evaluations[i] * &a_denom[i] * &b_denom[i]);
+                    + (eta_b * &b_star.evals_on_B.val.evaluations[i] * &a_denom[i] * &c_denom[i])
+                    + (eta_c * &c_star.evals_on_B.val.evaluations[i] * &a_denom[i] * &b_denom[i]);
                 v_H_at_beta * &v_H_at_alpha * &t
             })
             .collect();

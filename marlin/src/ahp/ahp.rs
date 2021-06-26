@@ -189,7 +189,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
             vec![
                 (F::one(), "mask_poly".into()),
 
-                (r_alpha_at_beta * &(eta_a + &(eta_c * &z_b_at_beta)), "z_a".into()),
+                (r_alpha_at_beta * &(eta_a + (eta_c * &z_b_at_beta)), "z_a".into()),
                 (r_alpha_at_beta * &eta_b * &z_b_at_beta, LCTerm::One),
 
                 (-t_at_beta * &v_X_at_beta, "w".into()),
@@ -246,7 +246,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
         a *= v_H_at_alpha * &v_H_at_beta;
         let b_at_gamma = a_denom_at_gamma * &b_denom_at_gamma * &c_denom_at_gamma;
-        let b_expr_at_gamma = b_at_gamma * &(gamma * &g_2_at_gamma + &(t_at_beta / &k_size));
+        let b_expr_at_gamma = b_at_gamma * &(gamma * &g_2_at_gamma + (t_at_beta / &k_size));
 
         a -= &LinearCombination::new("b_expr", vec![(b_expr_at_gamma, LCTerm::One)]);
         a -= &LinearCombination::new("h_2", vec![(v_K_at_gamma, "h_2")]);

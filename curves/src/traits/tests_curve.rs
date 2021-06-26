@@ -56,7 +56,7 @@ fn random_addition_test<G: ProjectiveCurve>() {
         tmp[0] = (a + &b) + &c;
 
         // a + (b + c)
-        tmp[1] = a + &(b + &c);
+        tmp[1] = a + (b + &c);
 
         // (a + c) + b
         tmp[2] = (a + &c) + &b;

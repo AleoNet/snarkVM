@@ -56,9 +56,9 @@ pub fn group_test<G: Group>(a: G, mut b: G) {
     // a - b = -(b - a)
     assert_eq!(a - &b, -(b - &a));
     // (a + b) + a = a + (b + a)
-    assert_eq!((a + &b) + &a, a + &(b + &a));
+    assert_eq!((a + &b) + &a, a + (b + &a));
     // (a + b).double() = (a + b) + (b + a)
-    assert_eq!((a + &b).double(), (a + &b) + &(b + &a));
+    assert_eq!((a + &b).double(), (a + &b) + (b + &a));
 
     // Check that double_in_place and double give the same result
     let original_b = b;
