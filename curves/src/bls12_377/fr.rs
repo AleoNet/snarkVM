@@ -28,7 +28,6 @@ use snarkvm_utilities::biginteger::BigInteger256 as BigInteger;
 /// o = q - 1
 /// F = GF(q)
 /// g = F.multiplicative_generator()
-/// g = F.multiplicative_generator()
 /// assert g.multiplicative_order() == o
 /// g2 = g ** (o/2**s)
 /// assert g2.multiplicative_order() == 2**s
@@ -49,12 +48,21 @@ impl FftParameters for FrParameters {
 
     #[rustfmt::skip]
     const TWO_ADICITY: u32 = 47;
+    /// TODO (howardwu): CRITICAL - Fix this after a migration plan has been determined.
+    ///  - 0x3c3d3ca739381fb2,
+    ///  - 0x9a14cda3ec99772b,
+    ///  - 0xd7aacc7c59724826,
+    ///  - 0xd1ba211c5cc349c,
+    ///  + 12646347781564978760u64,
+    ///  + 6783048705277173164u64,
+    ///  + 268534165941069093u64,
+    ///  + 1121515446318641358u64,
     #[rustfmt::skip]
     const TWO_ADIC_ROOT_OF_UNITY: BigInteger = BigInteger([
-        12646347781564978760u64,
-        6783048705277173164u64,
-        268534165941069093u64,
-        1121515446318641358u64,
+        0x3c3d3ca739381fb2,
+        0x9a14cda3ec99772b,
+        0xd7aacc7c59724826,
+        0xd1ba211c5cc349c,
     ]);
 }
 
@@ -64,7 +72,6 @@ impl FieldParameters for FrParameters {
     /// GENERATOR = 22
     /// Encoded in Montgomery form, so the value is
     /// (22 * R) % q = 5642976643016801619665363617888466827793962762719196659561577942948671127251
-    #[rustfmt::skip]
     #[rustfmt::skip]
     const GENERATOR: BigInteger = BigInteger([
         2984901390528151251u64,

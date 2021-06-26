@@ -710,11 +710,6 @@ impl<P: Fp768Parameters> PrimeField for Fp768<P> {
     }
 
     #[inline]
-    fn root_of_unity() -> Self {
-        Fp768::<P>(P::TWO_ADIC_ROOT_OF_UNITY, PhantomData)
-    }
-
-    #[inline]
     fn size_in_bits() -> usize {
         P::MODULUS_BITS as usize
     }

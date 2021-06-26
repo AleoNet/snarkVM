@@ -37,14 +37,6 @@ pub trait PrimeField: FftField<FftParameters = <Self as PrimeField>::Parameters>
     /// Returns the underlying raw representation of the prime field element.
     fn into_repr_raw(&self) -> Self::BigInteger;
 
-    /// Returns the 2^s root of unity.
-    fn root_of_unity() -> Self;
-
-    /// Return the a QNR^T
-    fn qnr_to_t() -> Self {
-        Self::root_of_unity()
-    }
-
     /// Returns the field size in bits.
     fn size_in_bits() -> usize {
         Self::Parameters::MODULUS_BITS as usize
@@ -52,20 +44,12 @@ pub trait PrimeField: FftField<FftParameters = <Self as PrimeField>::Parameters>
 
     /// Returns the trace.
     fn trace() -> Self::BigInteger {
-        // TODO (howardwu): This function has been disabled as
-        //  `snarkvm_curves::edwards_bls12::Fr` and `snarkvm_curves::edwards_sw6::Fr`
-        //  do NOT implement `FieldParameters::T` or `FieldParameters::T_MINUS_ONE_DIV_TWO`.
-        unimplemented!()
-        // Self::Parameters::T
+        Self::Parameters::T
     }
 
     /// Returns the trace minus one divided by two.
     fn trace_minus_one_div_two() -> Self::BigInteger {
-        // TODO (howardwu): This function has been disabled as
-        //  `snarkvm_curves::edwards_bls12::Fr` and `snarkvm_curves::edwards_sw6::Fr`
-        //  do NOT implement `FieldParameters::T` or `FieldParameters::T_MINUS_ONE_DIV_TWO`.
-        unimplemented!()
-        // Self::Parameters::T_MINUS_ONE_DIV_TWO
+        Self::Parameters::T_MINUS_ONE_DIV_TWO
     }
 
     /// Returns the modulus minus one divided by two.

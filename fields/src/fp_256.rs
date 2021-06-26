@@ -329,11 +329,6 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
         let r = *self;
         r.0
     }
-
-    #[inline]
-    fn root_of_unity() -> Self {
-        Fp256::<P>(P::TWO_ADIC_ROOT_OF_UNITY, PhantomData)
-    }
 }
 
 impl<P: Fp256Parameters> FftField for Fp256<P> {

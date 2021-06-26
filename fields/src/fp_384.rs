@@ -395,11 +395,6 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
     fn into_repr_raw(&self) -> BigInteger {
         self.0
     }
-
-    #[inline]
-    fn root_of_unity() -> Self {
-        Fp384::<P>(P::TWO_ADIC_ROOT_OF_UNITY, PhantomData)
-    }
 }
 
 impl<P: Fp384Parameters> FftField for Fp384<P> {

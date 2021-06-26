@@ -102,7 +102,7 @@ impl<P: Fp3Parameters> Fp3<P> {
 
     // Returns the value of QNR^T.
     #[inline]
-    pub fn qnr_to_t() -> Self {
+    pub fn two_adic_root_of_unity() -> Self {
         Self::new(
             P::QUADRATIC_NONRESIDUE_TO_T.0,
             P::QUADRATIC_NONRESIDUE_TO_T.1,

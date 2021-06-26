@@ -108,7 +108,7 @@ macro_rules! sqrt_impl {
             Zero => Some(*$self),
             QuadraticNonResidue => None,
             QuadraticResidue => {
-                let mut z = $Self::qnr_to_t();
+                let mut z = $Self::two_adic_root_of_unity();
                 let mut w = $self.pow($P::T_MINUS_ONE_DIV_TWO);
                 let mut x = w * $self;
                 let mut b = x * w;

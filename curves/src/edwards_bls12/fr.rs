@@ -83,7 +83,17 @@ impl FieldParameters for FrParameters {
     #[rustfmt::skip]
     const REPR_SHAVE_BITS: u32 = 5;
     #[rustfmt::skip]
-    const T: BigInteger = BigInteger([0x0, 0x0, 0x0, 0x0]);
+    const T: BigInteger = BigInteger([
+        6678124996694371583,
+        2975139753996731775,
+        14706092969812227584,
+        168160046336021674
+    ]);
     #[rustfmt::skip]
-    const T_MINUS_ONE_DIV_TWO: BigInteger = BigInteger([0x0, 0x0, 0x0, 0x0]);
+    const T_MINUS_ONE_DIV_TWO: BigInteger = BigInteger([
+        12562434535201961599,
+        1487569876998365887,
+        7353046484906113792,
+        84080023168010837
+    ]);
 }
