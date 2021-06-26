@@ -664,6 +664,7 @@ impl<P: Parameters> Mul<P::ScalarField> for GroupProjective<P> {
     type Output = Self;
 
     /// Performs scalar multiplication of this element.
+    #[allow(clippy::suspicious_arithmetic_impl)]
     #[inline]
     fn mul(self, other: P::ScalarField) -> Self {
         let mut res = Self::zero();
@@ -678,7 +679,7 @@ impl<P: Parameters> Mul<P::ScalarField> for GroupProjective<P> {
             }
 
             if i {
-                res += &self;
+                res += self;
             }
         }
 
