@@ -53,13 +53,13 @@ fn random_addition_test<G: ProjectiveCurve>() {
         let mut tmp = vec![G::zero(); 6];
 
         // (a + b) + c
-        tmp[0] = (a + &b) + &c;
+        tmp[0] = (a + b) + c;
 
         // a + (b + c)
-        tmp[1] = a + (b + &c);
+        tmp[1] = a + (b + c);
 
         // (a + c) + b
-        tmp[2] = (a + &c) + &b;
+        tmp[2] = (a + c) + b;
 
         // Mixed addition
 
@@ -166,7 +166,7 @@ fn random_negation_test<G: ProjectiveCurve>() {
 
         let s = G::ScalarField::rand(&mut rng);
         let sneg = -s;
-        assert!((s + &sneg).is_zero());
+        assert!((s + sneg).is_zero());
 
         let mut t1 = r;
         t1.mul_assign(s);

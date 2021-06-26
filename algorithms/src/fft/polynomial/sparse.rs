@@ -90,7 +90,7 @@ impl<F: Field> SparsePolynomial<F> {
         }
         let mut total = F::zero();
         for (i, c) in &self.coeffs {
-            total += *c * &point.pow(&[*i as u64]);
+            total += *c * point.pow(&[*i as u64]);
         }
         total
     }

@@ -316,7 +316,7 @@ where
 
         let (two_inverse, six_inverse) = {
             let two = <P::Fp2Params as Fp2Parameters>::Fp::one().double();
-            let six = two.double() + &two;
+            let six = two.double() + two;
             let mut two_and_six = [two, six];
             batch_inversion(&mut two_and_six);
 
@@ -420,7 +420,7 @@ where
 
         let (two_inverse, six_inverse) = {
             let two = <P::Fp2Params as Fp2Parameters>::Fp::one().double();
-            let six = two.double() + &two;
+            let six = two.double() + two;
             let mut two_and_six = [two, six];
             batch_inversion(&mut two_and_six);
 
@@ -525,7 +525,7 @@ where
                 .c0
                 .add(v1_cs.ns(|| "a0 + a1"), &self.c1)?
                 .add(v1_cs.ns(|| "a0 + a1 + a2"), &self.c2)?;
-            let b0_plus_b1_plus_b2 = other.c0 + &other.c1 + &other.c2;
+            let b0_plus_b1_plus_b2 = other.c0 + other.c1 + other.c2;
 
             a0_plus_a1_plus_a2
                 .mul_by_constant_in_place(v1_cs.ns(|| "(a0 + a1 + a2)*(b0 + b1 + b2)"), &b0_plus_b1_plus_b2)?;
@@ -539,7 +539,7 @@ where
                 .c0
                 .sub(v2_cs.ns(|| "sub1"), &self.c1)?
                 .add(v2_cs.ns(|| "add2"), &self.c2)?;
-            let b0_minus_b1_plus_b2 = other.c0 - &other.c1 + &other.c2;
+            let b0_minus_b1_plus_b2 = other.c0 - other.c1 + other.c2;
             a0_minus_a1_plus_a2
                 .mul_by_constant_in_place(v2_cs.ns(|| "(a0 - a1 + a2)*(b0 - b1 + b2)"), &b0_minus_b1_plus_b2)?;
             a0_minus_a1_plus_a2
@@ -557,7 +557,7 @@ where
 
             let b1_double = other.c1.double();
             let b2_quad = other.c2.double().double();
-            let b0_plus_2_b1_plus_4_b2 = other.c0 + &b1_double + &b2_quad;
+            let b0_plus_2_b1_plus_4_b2 = other.c0 + b1_double + b2_quad;
 
             a0_plus_2_a1_plus_4_a2.mul_by_constant_in_place(
                 v3_cs.ns(|| "(a0 + 2a1 + 4a2)*(b0 + 2b1 + 4b2)"),
@@ -571,7 +571,7 @@ where
 
         let (two_inverse, six_inverse) = {
             let two = <P::Fp2Params as Fp2Parameters>::Fp::one().double();
-            let six = two.double() + &two;
+            let six = two.double() + two;
             let mut two_and_six = [two, six];
             batch_inversion(&mut two_and_six);
 

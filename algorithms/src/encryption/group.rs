@@ -256,7 +256,7 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
             };
 
             // m_i <- c_i - h_i
-            let m_i = *c_i - &h_i;
+            let m_i = *c_i - h_i;
 
             plaintext.push(m_i);
             i += one;

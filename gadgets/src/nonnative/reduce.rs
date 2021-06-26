@@ -75,7 +75,7 @@ pub fn bigint_to_basefield<BaseField: PrimeField>(bigint: &BigUint) -> BaseField
 
     for byte in bytes.iter().rev() {
         let bytes_basefield = BaseField::from(*byte as u128);
-        val += &(cur * &bytes_basefield);
+        val += &(cur * bytes_basefield);
 
         cur *= &basefield_256;
     }
@@ -165,7 +165,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
             BaseField::size_in_bits(),
             elem.get_optimization_type(),
         );
-        let surfeit = overhead!(elem.num_of_additions_over_normal_form + &BaseField::one()) + 1;
+        let surfeit = overhead!(elem.num_of_additions_over_normal_form + BaseField::one()) + 1;
 
         if BaseField::size_in_bits() > 2 * field_parameters.bits_per_limb + surfeit + 1 {
             Ok(())
@@ -195,8 +195,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
         }
 
         loop {
-            let prod_of_num_of_additions = (elem.num_of_additions_over_normal_form + &BaseField::one())
-                * &(elem_other.num_of_additions_over_normal_form + &BaseField::one());
+            let prod_of_num_of_additions = (elem.num_of_additions_over_normal_form + BaseField::one())
+                * (elem_other.num_of_additions_over_normal_form + BaseField::one());
             let overhead_limb = overhead!(
                 prod_of_num_of_additions.mul(
                     &BaseField::from_repr(<BaseField as PrimeField>::BigInteger::from(
@@ -303,7 +303,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
             let left_total_limb_value = left_total_limb.get_value().unwrap_or_default();
             let right_total_limb_value = right_total_limb.get_value().unwrap_or_default();
 
-            let mut carry_value = left_total_limb_value + &carry_in_value + &pad_limb - &right_total_limb_value;
+            let mut carry_value = left_total_limb_value + carry_in_value + pad_limb - right_total_limb_value;
 
             let mut carry_repr = carry_value.into_repr();
             carry_repr.divn((shift_per_limb * num_limb_in_this_group) as u32);

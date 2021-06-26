@@ -63,7 +63,7 @@ impl R1CStoSAP {
             let u_2i = u[2 * i];
             let u_2i_plus_1 = u[2 * i + 1];
             let u_add = u_2i + u_2i_plus_1;
-            let u_sub = u_2i - &u_2i_plus_1;
+            let u_sub = u_2i - u_2i_plus_1;
 
             for &(ref coeff, index) in assembly.at[i].iter() {
                 let index = match index {
@@ -137,7 +137,7 @@ impl R1CStoSAP {
                     Index::Public(i) => assignment[i],
                     Index::Private(i) => assignment[num_input + i],
                 };
-                acc += val * &coeff;
+                acc += val * coeff;
             }
             acc
         }
@@ -202,7 +202,7 @@ impl R1CStoSAP {
         a[extra_constr_offset] = one;
         for i in 1..prover.num_public_variables {
             a[extra_constr_offset + 2 * i - 1] = full_input_assignment[i] + one;
-            a[extra_constr_offset + 2 * i] = full_input_assignment[i] - &one;
+            a[extra_constr_offset + 2 * i] = full_input_assignment[i] - one;
         }
 
         domain.ifft_in_place(&mut a);

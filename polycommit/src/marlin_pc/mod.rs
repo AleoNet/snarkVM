@@ -295,7 +295,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
                 let shifted_rand = rand.shifted_rand.as_ref().unwrap();
                 let (witness, shifted_rand_witness) =
                     kzg10::KZG10::compute_witness_polynomial(polynomial.polynomial(), point, &shifted_rand)?;
-                let challenge_j_1 = challenge_j * &opening_challenge;
+                let challenge_j_1 = challenge_j * opening_challenge;
 
                 let shifted_witness = shift_polynomial(ck, &witness, degree_bound);
 
@@ -325,7 +325,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
 
             w += &shifted_proof.w.into_projective();
             if let Some(shifted_random_v) = shifted_proof.random_v {
-                random_v = random_v.map(|v| v + &shifted_random_v);
+                random_v = random_v.map(|v| v + shifted_random_v);
             }
         }
 
@@ -841,7 +841,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
 
             w += &shifted_proof.w.into_projective();
             if let Some(shifted_random_v) = shifted_proof.random_v {
-                random_v = random_v.map(|v| v + &shifted_random_v);
+                random_v = random_v.map(|v| v + shifted_random_v);
             }
         }
 
@@ -988,7 +988,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
 
             if let Some(shifted_comm) = &comm.shifted_comm {
                 let cur = shifted_comm.0.mul(coeff).into_projective();
-                combined_shifted_comm = Some(combined_shifted_comm.map_or(cur, |c| c + &cur));
+                combined_shifted_comm = Some(combined_shifted_comm.map_or(cur, |c| c + cur));
             }
         }
         (combined_comm, combined_shifted_comm)
@@ -1103,10 +1103,10 @@ impl<E: PairingEngine> MarlinKZG10<E> {
             assert_eq!(degree_bound.is_some(), commitment.shifted_comm.is_some());
 
             combined_comm += &commitment.comm.0.mul(challenge_i).into();
-            combined_value += &(value * &challenge_i);
+            combined_value += &(value * challenge_i);
 
             if let Some(degree_bound) = degree_bound {
-                let challenge_i_1 = challenge_i * &opening_challenge;
+                let challenge_i_1 = challenge_i * opening_challenge;
                 let shifted_comm = commitment.shifted_comm.as_ref().unwrap().0.into_projective();
 
                 let shift_power = vk
@@ -1143,7 +1143,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
             opening_challenge_counter += 1;
 
             combined_comm += &commitment.comm.0.mul(challenge_i).into();
-            combined_value += &(value * &challenge_i);
+            combined_value += &(value * challenge_i);
 
             if let Some(degree_bound) = degree_bound {
                 let challenge_i_1 = opening_challenges(opening_challenge_counter);

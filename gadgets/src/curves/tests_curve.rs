@@ -43,7 +43,7 @@ fn bls12_377_gadget_bilinearity_test() {
 
     let a: G1Projective = G1Projective::prime_subgroup_generator();
     let b: G2Projective = G2Projective::prime_subgroup_generator();
-    let s: Fr = Fr::one() + &Fr::one();
+    let s: Fr = Fr::one() + Fr::one();
 
     let sa = a.mul(s);
     let sb = b.mul(s);

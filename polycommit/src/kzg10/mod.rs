@@ -290,7 +290,7 @@ impl<E: PairingEngine> KZG10<E> {
         proof: &Proof<E>,
     ) -> Result<bool, Error> {
         let check_time = start_timer!(|| "Checking evaluation");
-        let mut inner = commitment.0.into_projective() - &vk.g.into_projective().mul(value);
+        let mut inner = commitment.0.into_projective() - vk.g.into_projective().mul(value);
         if let Some(random_v) = proof.random_v {
             inner -= &vk.gamma_g.mul(random_v).into();
         }
@@ -333,7 +333,7 @@ impl<E: PairingEngine> KZG10<E> {
             let c = temp;
             g_multiplier += &(randomizer * v);
             if let Some(random_v) = proof.random_v {
-                gamma_g_multiplier += &(randomizer * &random_v);
+                gamma_g_multiplier += &(randomizer * random_v);
             }
             total_c += &c.mul(randomizer).into();
             total_w += &w.mul(randomizer).into();

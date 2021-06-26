@@ -478,7 +478,7 @@ fn test_fq2_mul_nonresidue() {
     for _ in 0..1000 {
         let mut a = Fq2::rand(&mut rng);
         let mut b = a;
-        a = quadratic_non_residue * &a;
+        a = quadratic_non_residue * a;
         b.mul_assign(&nqr);
 
         assert_eq!(a, b);

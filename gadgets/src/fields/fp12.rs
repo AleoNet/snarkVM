@@ -157,7 +157,7 @@ where
         // t0 + t1*y = (z0 + z1*y)^2 = a^2
         let tmp = z0.mul(cs.ns(|| "first mul"), &z1)?;
         let t0 = {
-            // (z0 + &z1) * &(z0 + (fp2_nr * &z1)) - &tmp - &(tmp * &fp2_nr);
+            // (z0 + z1) * (z0 + (fp2_nr * z1)) - tmp - (tmp * fp2_nr);
             let mut cs = cs.ns(|| "t0");
             let tmp1 = z0.add(cs.ns(|| "tmp1"), &z1)?;
             let tmp2 = z1
@@ -173,7 +173,7 @@ where
         // t2 + t3*y = (z2 + z3*y)^2 = b^2
         let tmp = z2.mul(cs.ns(|| "second mul"), &z3)?;
         let t2 = {
-            // (z2 + &z3) * &(z2 + (fp2_nr * &z3)) - &tmp - &(tmp * &fp2_nr);
+            // (z2 + z3) * (z2 + (fp2_nr * z3)) - tmp - (tmp * fp2_nr);
             let mut cs = cs.ns(|| "t2");
             let tmp1 = z2.add(cs.ns(|| "tmp1"), &z3)?;
             let tmp2 = z3
@@ -189,7 +189,7 @@ where
         // t4 + t5*y = (z4 + z5*y)^2 = c^2
         let tmp = z4.mul(cs.ns(|| "third mul"), &z5)?;
         let t4 = {
-            // (z4 + &z5) * &(z4 + (fp2_nr * &z5)) - &tmp - &(tmp * &fp2_nr);
+            // (z4 + z5) * (z4 + (fp2_nr * z5)) - tmp - (tmp * fp2_nr);
             let mut cs = cs.ns(|| "t4");
             let tmp1 = z4.add(cs.ns(|| "tmp1"), &z5)?;
             let tmp2 = z5

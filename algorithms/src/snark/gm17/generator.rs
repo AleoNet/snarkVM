@@ -236,15 +236,15 @@ where
         scalar_bits,
         g_window,
         &g_table,
-        &cfg_iter!(a).map(|a| *a * &gamma).collect::<Vec<_>>(),
+        &cfg_iter!(a).map(|a| *a * gamma).collect::<Vec<_>>(),
     );
     end_timer!(a_time);
 
     // Compute the G_gamma-query
     let g_gamma_time = start_timer!(|| "Calculate G gamma");
-    let gamma_z = zt * &gamma;
+    let gamma_z = zt * gamma;
     let alpha_beta = alpha + beta;
-    let ab_gamma_z = alpha_beta * &gamma * &zt;
+    let ab_gamma_z = alpha_beta * gamma * zt;
     let g_gamma = g.into_affine().mul(gamma);
     let g_gamma_z = g.into_affine().mul(gamma_z);
     let h_gamma = h.into_affine().mul(gamma);
@@ -253,13 +253,13 @@ where
     let g_gamma2_z2 = g.into_affine().mul(gamma_z.square());
 
     // Compute the vector G_gamma2_z_t := Z(t) * t^i * gamma^2 * G
-    let gamma2_z_t = gamma_z * &gamma;
+    let gamma2_z_t = gamma_z * gamma;
     let mut g_gamma2_z_t = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
         scalar_bits,
         g_window,
         &g_table,
         &cfg_into_iter!(0..m_raw + 1)
-            .map(|i| gamma2_z_t * &(t.pow([i as u64])))
+            .map(|i| gamma2_z_t * (t.pow([i as u64])))
             .collect::<Vec<_>>(),
     );
     end_timer!(g_gamma_time);
@@ -271,7 +271,7 @@ where
         g_window,
         &g_table,
         &cfg_into_iter!(0..sap_num_variables + 1)
-            .map(|i| c[i] * &gamma + (a[i] * &alpha_beta))
+            .map(|i| c[i] * gamma + (a[i] * alpha_beta))
             .collect::<Vec<_>>(),
     );
     let (verifier_query, c_query_1) = result.split_at_mut(assembly.num_public_variables);
@@ -279,13 +279,13 @@ where
 
     // Compute the C_2-query
     let c2_time = start_timer!(|| "Calculate C2");
-    let double_gamma2_z = (zt * &gamma.square()).double();
+    let double_gamma2_z = (zt * gamma.square()).double();
     let mut c_query_2 = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
         scalar_bits,
         g_window,
         &g_table,
         &cfg_into_iter!(0..sap_num_variables + 1)
-            .map(|i| a[i] * &double_gamma2_z)
+            .map(|i| a[i] * double_gamma2_z)
             .collect::<Vec<_>>(),
     );
     drop(g_table);

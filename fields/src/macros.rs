@@ -111,7 +111,7 @@ macro_rules! sqrt_impl {
                 let mut z = $Self::qnr_to_t();
                 let mut w = $self.pow($P::T_MINUS_ONE_DIV_TWO);
                 let mut x = w * $self;
-                let mut b = x * &w;
+                let mut b = x * w;
 
                 let mut v = $P::TWO_ADICITY as usize;
                 // t = self^t

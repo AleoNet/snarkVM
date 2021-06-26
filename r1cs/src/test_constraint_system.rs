@@ -176,12 +176,8 @@ impl<F: Field> TestConstraintSystem<F> {
             parent_ns = interned_parent_ns.parent_namespace;
         }
 
-        reversed_uninterned_segments
-            .into_iter()
-            .map(|s| s.as_str())
-            .rev()
-            .intersperse("/")
-            .collect()
+        let segments = reversed_uninterned_segments.into_iter().map(|s| s.as_str()).rev();
+        Itertools::intersperse(segments, "/").collect()
     }
 
     pub fn print_named_objects(&self) {

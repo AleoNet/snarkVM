@@ -629,7 +629,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
                             .ok_or(Error::MissingEvaluation { label: l.clone() })?,
                     };
 
-                    actual_rhs += &(*coeff * &eval);
+                    actual_rhs += &(*coeff * eval);
                 }
                 if claimed_rhs != actual_rhs {
                     eprintln!("Claimed evaluation of {} is incorrect", lc.label());
@@ -880,7 +880,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
 
         // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
         for (labeled_comm, value) in commitments.into_iter().zip(values) {
-            combined_values += &(value * &curr_challenge);
+            combined_values += &(value * curr_challenge);
 
             let comm = labeled_comm.commitment();
             let degree_bound = labeled_comm.degree_bound();
@@ -899,7 +899,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
 
         // Push expected results into list of elems. Power will be the negative of the expected power
         let mut witness: E::G1Projective = proof.w.into_projective();
-        let mut adjusted_witness = vk.g.mul(combined_values) - &proof.w.mul(point);
+        let mut adjusted_witness = vk.g.mul(combined_values) - proof.w.mul(point);
         if let Some(random_v) = proof.random_v {
             adjusted_witness += &vk.gamma_g.mul(random_v);
         }
@@ -937,7 +937,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
 
         // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
         for (labeled_comm, value) in commitments.into_iter().zip(values) {
-            combined_values += &(value * &curr_challenge);
+            combined_values += &(value * curr_challenge);
 
             let comm = labeled_comm.commitment();
             let degree_bound = labeled_comm.degree_bound();
@@ -957,7 +957,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
 
         // Push expected results into list of elems. Power will be the negative of the expected power
         let mut witness: E::G1Projective = proof.w.into_projective();
-        let mut adjusted_witness = vk.g.mul(combined_values) - &proof.w.mul(point);
+        let mut adjusted_witness = vk.g.mul(combined_values) - proof.w.mul(point);
         if let Some(random_v) = proof.random_v {
             adjusted_witness += &vk.gamma_g.mul(random_v);
         }

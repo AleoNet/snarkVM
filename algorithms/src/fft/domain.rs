@@ -215,12 +215,12 @@ impl<F: FftField> EvaluationDomain<F> {
             }
             u
         } else {
-            let mut l = (t_size - &one) * &self.size_inv;
+            let mut l = (t_size - one) * self.size_inv;
             let mut r = one;
             let mut u = vec![F::zero(); size];
             let mut ls = vec![F::zero(); size];
             for i in 0..size {
-                u[i] = tau - &r;
+                u[i] = tau - r;
                 ls[i] = l;
                 l *= &self.group_gen;
                 r *= &self.group_gen;
@@ -228,7 +228,7 @@ impl<F: FftField> EvaluationDomain<F> {
 
             batch_inversion(u.as_mut_slice());
             cfg_iter_mut!(u).zip(ls).for_each(|(tau_minus_r, l)| {
-                *tau_minus_r = l * &*tau_minus_r;
+                *tau_minus_r = l * *tau_minus_r;
             });
             u
         }
@@ -243,7 +243,7 @@ impl<F: FftField> EvaluationDomain<F> {
     /// This evaluates the vanishing polynomial for this domain at tau.
     /// For multiplicative subgroups, this polynomial is `z(X) = X^self.size - 1`.
     pub fn evaluate_vanishing_polynomial(&self, tau: F) -> F {
-        tau.pow(&[self.size]) - &F::one()
+        tau.pow(&[self.size]) - F::one()
     }
 
     /// Return an iterator over the elements of the domain.
@@ -350,7 +350,7 @@ impl<F: FftField> EvaluationDomain<F> {
         if log_powers.len() <= LOG_ROOTS_OF_UNITY_PARALLEL_SIZE {
             powers[0] = F::one();
             for i in 1..powers.len() {
-                powers[i] = powers[i - 1] * &log_powers[0];
+                powers[i] = powers[i - 1] * log_powers[0];
             }
             return;
         }
@@ -609,7 +609,7 @@ mod tests {
             // Do lagrange interpolation, and compare against the actual evaluation
             let mut interpolated_evaluation = Fr::zero();
             for i in 0..domain_size {
-                interpolated_evaluation += lagrange_coefficients[i] * &polynomial_evaluations[i];
+                interpolated_evaluation += lagrange_coefficients[i] * polynomial_evaluations[i];
             }
             assert_eq!(actual_evaluations, interpolated_evaluation);
         }
@@ -675,7 +675,7 @@ mod tests {
             let polynomial_evaluations = domain.fft(&random_polynomial.coeffs);
             let polynomial_coset_evaluations = domain.coset_fft(&random_polynomial.coeffs);
             for (i, x) in domain.elements().enumerate() {
-                let coset_x = Fr::multiplicative_generator() * &x;
+                let coset_x = Fr::multiplicative_generator() * x;
 
                 assert_eq!(polynomial_evaluations[i], random_polynomial.evaluate(x));
                 assert_eq!(polynomial_coset_evaluations[i], random_polynomial.evaluate(coset_x));

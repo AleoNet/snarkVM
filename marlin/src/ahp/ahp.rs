@@ -180,8 +180,8 @@ impl<F: PrimeField> AHPForR1CS<F> {
             .evaluate_all_lagrange_coefficients(beta)
             .into_iter()
             .zip(public_input)
-            .map(|(l, x)| l * &x)
-            .fold(F::zero(), |x, y| x + &y);
+            .map(|(l, x)| l * x)
+            .fold(F::zero(), |x, y| x + y);
 
         #[rustfmt::skip]
         let outer_sumcheck = LinearCombination::new(
@@ -189,14 +189,14 @@ impl<F: PrimeField> AHPForR1CS<F> {
             vec![
                 (F::one(), "mask_poly".into()),
 
-                (r_alpha_at_beta * &(eta_a + (eta_c * &z_b_at_beta)), "z_a".into()),
-                (r_alpha_at_beta * &eta_b * &z_b_at_beta, LCTerm::One),
+                (r_alpha_at_beta * (eta_a + (eta_c * z_b_at_beta)), "z_a".into()),
+                (r_alpha_at_beta * eta_b * z_b_at_beta, LCTerm::One),
 
-                (-t_at_beta * &v_X_at_beta, "w".into()),
-                (-t_at_beta * &x_at_beta, LCTerm::One),
+                (-t_at_beta * v_X_at_beta, "w".into()),
+                (-t_at_beta * x_at_beta, LCTerm::One),
 
                 (-v_H_at_beta, "h_1".into()),
-                (-beta * &g_1_at_beta, LCTerm::One),
+                (-beta * g_1_at_beta, LCTerm::One),
             ],
         );
         debug_assert!(evals.get_lc_eval(&outer_sumcheck, beta)?.is_zero());
@@ -207,7 +207,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
         linear_combinations.push(outer_sumcheck);
 
         //  Inner sumcheck:
-        let beta_alpha = beta * &alpha;
+        let beta_alpha = beta * alpha;
         let g_2 = LinearCombination::new("g_2", vec![(F::one(), "g_2")]);
 
         let a_denom = LinearCombination::new("a_denom", vec![
@@ -239,14 +239,14 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let v_K_at_gamma = domain_k.evaluate_vanishing_polynomial(gamma);
 
         let mut a = LinearCombination::new("a_poly", vec![
-            (eta_a * &b_denom_at_gamma * &c_denom_at_gamma, "a_val"),
-            (eta_b * &a_denom_at_gamma * &c_denom_at_gamma, "b_val"),
-            (eta_c * &b_denom_at_gamma * &a_denom_at_gamma, "c_val"),
+            (eta_a * b_denom_at_gamma * c_denom_at_gamma, "a_val"),
+            (eta_b * a_denom_at_gamma * c_denom_at_gamma, "b_val"),
+            (eta_c * b_denom_at_gamma * a_denom_at_gamma, "c_val"),
         ]);
 
-        a *= v_H_at_alpha * &v_H_at_beta;
-        let b_at_gamma = a_denom_at_gamma * &b_denom_at_gamma * &c_denom_at_gamma;
-        let b_expr_at_gamma = b_at_gamma * &(gamma * &g_2_at_gamma + (t_at_beta / &k_size));
+        a *= v_H_at_alpha * v_H_at_beta;
+        let b_at_gamma = a_denom_at_gamma * b_denom_at_gamma * c_denom_at_gamma;
+        let b_expr_at_gamma = b_at_gamma * (gamma * g_2_at_gamma + (t_at_beta / &k_size));
 
         a -= &LinearCombination::new("b_expr", vec![(b_expr_at_gamma, LCTerm::One)]);
         a -= &LinearCombination::new("h_2", vec![(v_K_at_gamma, "h_2")]);
@@ -314,7 +314,7 @@ impl<F: Field, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F> for Vec<T
                 assert!(term.is_one());
                 F::one()
             };
-            eval += &(*coeff * &value)
+            eval += &(*coeff * value)
         }
         Ok(eval)
     }
@@ -335,15 +335,15 @@ pub trait UnnormalizedBivariateLagrangePoly<F: PrimeField> {
 impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F> {
     fn eval_unnormalized_bivariate_lagrange_poly(&self, x: F, y: F) -> F {
         if x != y {
-            (self.evaluate_vanishing_polynomial(x) - &self.evaluate_vanishing_polynomial(y)) / &(x - &y)
+            (self.evaluate_vanishing_polynomial(x) - self.evaluate_vanishing_polynomial(y)) / &(x - y)
         } else {
-            self.size_as_field_element * &x.pow(&[(self.size() - 1) as u64])
+            self.size_as_field_element * x.pow(&[(self.size() - 1) as u64])
         }
     }
 
     fn batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(&self, x: F) -> Vec<F> {
         let vanish_x = self.evaluate_vanishing_polynomial(x);
-        let mut inverses: Vec<F> = self.elements().map(|y| x - &y).collect();
+        let mut inverses: Vec<F> = self.elements().map(|y| x - y).collect();
         batch_inversion(&mut inverses);
 
         cfg_iter_mut!(inverses).for_each(|denominator| *denominator *= &vanish_x);
@@ -351,7 +351,7 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
     }
 
     fn batch_eval_unnormalized_bivariate_lagrange_poly_with_same_inputs(&self) -> Vec<F> {
-        let mut elems: Vec<F> = self.elements().map(|e| e * &self.size_as_field_element).collect();
+        let mut elems: Vec<F> = self.elements().map(|e| e * self.size_as_field_element).collect();
         elems[1..].reverse();
         elems
     }
@@ -405,13 +405,13 @@ mod tests {
         for eval in domain.elements().map(|e| poly.evaluate(e)) {
             sum += &eval;
         }
-        let first = poly.coeffs[0] * &size_as_fe;
-        let last = *poly.coeffs.last().unwrap() * &size_as_fe;
+        let first = poly.coeffs[0] * size_as_fe;
+        let last = *poly.coeffs.last().unwrap() * size_as_fe;
         println!("sum: {:?}", sum);
         println!("a_0: {:?}", first);
         println!("a_n: {:?}", last);
-        println!("first + last: {:?}\n", first + &last);
-        assert_eq!(sum, first + &last);
+        println!("first + last: {:?}\n", first + last);
+        assert_eq!(sum, first + last);
     }
 
     #[test]

@@ -93,7 +93,7 @@ mod bw6_761 {
 
         let a = Fr::rand(rng);
         let b = Fr::rand(rng);
-        let c = a * &b;
+        let c = a * b;
 
         let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters, rng).unwrap();
         let pvk = prepare_verifying_key::<BW6_761>(parameters.vk);

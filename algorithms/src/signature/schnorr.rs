@@ -184,7 +184,7 @@ where
         };
 
         // k - xe;
-        let prover_response = random_scalar - &(verifier_challenge * private_key);
+        let prover_response = random_scalar - (verifier_challenge * private_key);
         let signature = SchnorrOutput {
             prover_response,
             verifier_challenge,
@@ -271,7 +271,7 @@ where
         }
 
         let new_sig = SchnorrOutput {
-            prover_response: *prover_response - &(*verifier_challenge * &multiplier),
+            prover_response: *prover_response - (*verifier_challenge * multiplier),
             verifier_challenge: *verifier_challenge,
         };
         end_timer!(rand_signature_time);

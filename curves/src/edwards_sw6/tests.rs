@@ -76,9 +76,9 @@ fn test_conversion() {
     let b: EdwardsAffine = rand::random();
     let a_b = {
         use crate::traits::Group;
-        (a + &b).double().double()
+        (a + b).double().double()
     };
-    let a_b2 = (a.into_projective() + &b.into_projective()).double().double();
+    let a_b2 = (a.into_projective() + b.into_projective()).double().double();
     assert_eq!(a_b, a_b2.into_affine());
     assert_eq!(a_b.into_projective(), a_b2);
 }

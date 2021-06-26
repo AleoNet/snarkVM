@@ -94,9 +94,9 @@ impl<BaseField: PrimeField> LagrangeInterpolator<BaseField> {
         let vp_t_inv = self.domain_vp.evaluate(&interpolation_point).inverse().unwrap();
         let mut inverted_lagrange_coeffs: Vec<BaseField> = Vec::with_capacity(self.all_domain_elems.len());
         for i in 0..poly_evaluations_size {
-            let l = vp_t_inv * &self.v_inv_elems[i];
+            let l = vp_t_inv * self.v_inv_elems[i];
             let r = self.all_domain_elems[i];
-            inverted_lagrange_coeffs.push(l * &(interpolation_point - &r));
+            inverted_lagrange_coeffs.push(l * (interpolation_point - r));
         }
         let lagrange_coeffs = inverted_lagrange_coeffs.as_mut_slice();
         batch_inversion::<BaseField>(lagrange_coeffs);

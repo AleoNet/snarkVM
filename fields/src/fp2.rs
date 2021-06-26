@@ -156,18 +156,18 @@ impl<P: Fp2Parameters> Field for Fp2<P> {
 
     fn square_in_place(&mut self) -> &mut Self {
         // v0 = c0 - c1
-        let mut v0 = self.c0 - &self.c1;
+        let mut v0 = self.c0 - self.c1;
         // v3 = c0 - beta * c1
-        let v3 = self.c0 - &P::mul_fp_by_nonresidue(&self.c1);
+        let v3 = self.c0 - P::mul_fp_by_nonresidue(&self.c1);
         // v2 = c0 * c1
-        let v2 = self.c0 * &self.c1;
+        let v2 = self.c0 * self.c1;
 
         // v0 = (v0 * v3) + v2
         v0 *= &v3;
         v0 += &v2;
 
         self.c1 = v2.double();
-        self.c0 = v0 + &P::mul_fp_by_nonresidue(&v2);
+        self.c0 = v0 + P::mul_fp_by_nonresidue(&v2);
 
         self
     }
@@ -184,8 +184,8 @@ impl<P: Fp2Parameters> Field for Fp2<P> {
             // v0 = v0 - beta * v1
             v0 -= &P::mul_fp_by_nonresidue(&v1);
             v0.inverse().map(|v1| {
-                let c0 = self.c0 * &v1;
-                let c1 = -(self.c1 * &v1);
+                let c0 = self.c0 * v1;
+                let c1 = -(self.c1 * v1);
                 Self::new(c0, c1)
             })
         }
@@ -232,13 +232,13 @@ where
                     .norm()
                     .sqrt()
                     .expect("We are in the QR case, the norm should have a square root");
-                let mut delta = (alpha + &self.c0) * &two_inv;
+                let mut delta = (alpha + self.c0) * two_inv;
                 if delta.legendre().is_qnr() {
                     delta -= &alpha;
                 }
                 let c0 = delta.sqrt().expect("Delta must have a square root");
                 let c0_inv = c0.inverse().expect("c0 must have an inverse");
-                Some(Self::new(c0, self.c1 * &two_inv * &c0_inv))
+                Some(Self::new(c0, self.c1 * two_inv * c0_inv))
             }
         }
     }
@@ -406,14 +406,14 @@ impl<'a, P: Fp2Parameters> MulAssign<&'a Self> for Fp2<P> {
     fn mul_assign(&mut self, other: &Self) {
         // Karatsuba multiplication;
         // Guide to Pairing-based cryprography, Algorithm 5.16.
-        let v0 = self.c0 * &other.c0;
-        let v1 = self.c1 * &other.c1;
+        let v0 = self.c0 * other.c0;
+        let v1 = self.c1 * other.c1;
 
         self.c1 += &self.c0;
-        self.c1 *= &(other.c0 + &other.c1);
+        self.c1 *= &(other.c0 + other.c1);
         self.c1 -= &v0;
         self.c1 -= &v1;
-        self.c0 = v0 + &P::mul_fp_by_nonresidue(&v1);
+        self.c0 = v0 + P::mul_fp_by_nonresidue(&v1);
     }
 }
 

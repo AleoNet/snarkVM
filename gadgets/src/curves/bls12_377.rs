@@ -127,7 +127,7 @@ mod test {
         assert_eq!(gadget_b.y.get_value().unwrap(), b_affine.y);
 
         // Check addition
-        let ab = a + &b;
+        let ab = a + b;
         let ab_affine = ab.into_affine();
         let gadget_ab = gadget_a.add(&mut cs.ns(|| "ab"), &gadget_b).unwrap();
         let gadget_ba = gadget_b.add(&mut cs.ns(|| "ba"), &gadget_a).unwrap();
@@ -153,7 +153,7 @@ mod test {
 
         // Check mul_bits
         let scalar = Fr::rand(&mut rng);
-        let native_result = aa.mul(scalar) + &b;
+        let native_result = aa.mul(scalar) + b;
         let native_result = native_result.into_affine();
 
         let mut scalar: Vec<bool> = BitIteratorBE::new(scalar.into_repr()).collect();
@@ -192,7 +192,7 @@ mod test {
         assert_eq!(gadget_b.x.get_value().unwrap(), b_affine.x);
         assert_eq!(gadget_b.y.get_value().unwrap(), b_affine.y);
 
-        let ab = a + &b;
+        let ab = a + b;
         let ab_affine = ab.into_affine();
         let gadget_ab = gadget_a.add(&mut cs.ns(|| "ab"), &gadget_b).unwrap();
         let gadget_ba = gadget_b.add(&mut cs.ns(|| "ba"), &gadget_a).unwrap();

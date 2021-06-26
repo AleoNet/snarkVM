@@ -77,8 +77,8 @@ mod montgomery_affine_impl {
             } else if p.x == P::BaseField::zero() {
                 GroupAffine::new(P::BaseField::zero(), P::BaseField::zero())
             } else {
-                let u = (P::BaseField::one() + &p.y) * &(P::BaseField::one() - &p.y).inverse().unwrap();
-                let v = u * &p.x.inverse().unwrap();
+                let u = (P::BaseField::one() + p.y) * (P::BaseField::one() - p.y).inverse().unwrap();
+                let v = u * p.x.inverse().unwrap();
                 GroupAffine::new(u, v)
             };
 
@@ -162,10 +162,10 @@ mod montgomery_affine_impl {
             // Compute x'' = B*lambda^2 - A - x - x'
             let xprime = FG::alloc(cs.ns(|| "xprime"), || {
                 Ok(
-                    lambda.get_value().get()?.square() * &P::MontgomeryModelParameters::COEFF_B
-                        - &P::MontgomeryModelParameters::COEFF_A
-                        - &self.x.get_value().get()?
-                        - &other.x.get_value().get()?,
+                    lambda.get_value().get()?.square() * P::MontgomeryModelParameters::COEFF_B
+                        - P::MontgomeryModelParameters::COEFF_A
+                        - self.x.get_value().get()?
+                        - other.x.get_value().get()?,
                 )
             })?;
 
@@ -180,7 +180,7 @@ mod montgomery_affine_impl {
 
             let yprime = FG::alloc(cs.ns(|| "yprime"), || {
                 Ok(-(self.y.get_value().get()?
-                    + (lambda.get_value().get()? * &(xprime.get_value().get()? - &self.x.get_value().get()?))))
+                    + (lambda.get_value().get()? * (xprime.get_value().get()? - self.x.get_value().get()?))))
             })?;
 
             let xres = self.x.sub(cs.ns(|| "xres"), &xprime)?;
@@ -303,9 +303,9 @@ mod affine_impl {
 
             // Compute x3 = (v0 + v1) / (1 + v2)
             let x3 = FG::alloc(&mut cs.ns(|| "x3"), || {
-                let t0 = v0.get_value().get()? + &v1.get_value().get()?;
-                let t1 = P::BaseField::one() + &v2.get_value().get()?;
-                Ok(t0 * &t1.inverse().get()?)
+                let t0 = v0.get_value().get()? + v1.get_value().get()?;
+                let t1 = P::BaseField::one() + v2.get_value().get()?;
+                Ok(t0 * t1.inverse().get()?)
             })?;
 
             let one = P::BaseField::one();
@@ -315,9 +315,9 @@ mod affine_impl {
 
             // Compute y3 = (U + a * v0 - v1) / (1 - v2)
             let y3 = FG::alloc(&mut cs.ns(|| "y3"), || {
-                let t0 = u.get_value().get()? + (a * &v0.get_value().get()?) - &v1.get_value().get()?;
-                let t1 = P::BaseField::one() - &v2.get_value().get()?;
-                Ok(t0 * &t1.inverse().get()?)
+                let t0 = u.get_value().get()? + (a * v0.get_value().get()?) - v1.get_value().get()?;
+                let t1 = P::BaseField::one() - v2.get_value().get()?;
+                Ok(t0 * t1.inverse().get()?)
             })?;
 
             let one_minus_v2 = v2
@@ -348,7 +348,7 @@ mod affine_impl {
                 .x
                 .mul_by_constant(cs.ns(|| "-A * x1"), &a.neg())?
                 .add(cs.ns(|| "-A * x1 + y1"), &self.y)?;
-            let u2 = other_x + &other_y;
+            let u2 = other_x + other_y;
 
             let u = u1.mul_by_constant(cs.ns(|| "(-A * x1 + y1) * (x2 + y2)"), &u2)?;
 
@@ -365,9 +365,9 @@ mod affine_impl {
 
             // Compute x3 = (v0 + v1) / (1 + v2)
             let x3 = FG::alloc(&mut cs.ns(|| "x3"), || {
-                let t0 = v0.get_value().get()? + &v1.get_value().get()?;
-                let t1 = P::BaseField::one() + &v2.get_value().get()?;
-                Ok(t0 * &t1.inverse().get()?)
+                let t0 = v0.get_value().get()? + v1.get_value().get()?;
+                let t1 = P::BaseField::one() + v2.get_value().get()?;
+                Ok(t0 * t1.inverse().get()?)
             })?;
 
             let one = P::BaseField::one();
@@ -377,9 +377,9 @@ mod affine_impl {
 
             // Compute y3 = (U + a * v0 - v1) / (1 - v2)
             let y3 = FG::alloc(&mut cs.ns(|| "y3"), || {
-                let t0 = u.get_value().get()? + (a * &v0.get_value().get()?) - &v1.get_value().get()?;
-                let t1 = P::BaseField::one() - &v2.get_value().get()?;
-                Ok(t0 * &t1.inverse().get()?)
+                let t0 = u.get_value().get()? + (a * v0.get_value().get()?) - v1.get_value().get()?;
+                let t1 = P::BaseField::one() - v2.get_value().get()?;
+                Ok(t0 * t1.inverse().get()?)
             })?;
 
             let one_minus_v2 = v2
@@ -408,8 +408,8 @@ mod affine_impl {
             // Compute x3 = (2xy) / (ax^2 + y^2)
             let x3 = FG::alloc(&mut cs.ns(|| "x3"), || {
                 let t0 = xy.get_value().get()?.double();
-                let t1 = a * &x2.get_value().get()? + &y2.get_value().get()?;
-                Ok(t0 * &t1.inverse().get()?)
+                let t1 = a * x2.get_value().get()? + y2.get_value().get()?;
+                Ok(t0 * t1.inverse().get()?)
             })?;
 
             let a_x2_plus_y2 = a_x2.add(cs.ns(|| "v2 + 1"), &y2)?;
@@ -419,10 +419,10 @@ mod affine_impl {
             // Compute y3 = (y^2 - ax^2) / (2 - ax^2 - y^2)
             let two = P::BaseField::one().double();
             let y3 = FG::alloc(&mut cs.ns(|| "y3"), || {
-                let a_x2 = a * &x2.get_value().get()?;
-                let t0 = y2.get_value().get()? - &a_x2;
-                let t1 = two - &a_x2 - &y2.get_value().get()?;
-                Ok(t0 * &t1.inverse().get()?)
+                let a_x2 = a * x2.get_value().get()?;
+                let t0 = y2.get_value().get()? - a_x2;
+                let t1 = two - a_x2 - y2.get_value().get()?;
+                Ok(t0 * t1.inverse().get()?)
             })?;
             let y2_minus_a_x2 = y2.sub(cs.ns(|| "y^2 - ax^2"), &a_x2)?;
             let two_minus_ax2_minus_y2 = a_x2
@@ -693,9 +693,9 @@ mod projective_impl {
 
             // Compute x3 = (v0 + v1) / (1 + v2)
             let x3 = FG::alloc(&mut cs.ns(|| "x3"), || {
-                let t0 = v0.get_value().get()? + &v1.get_value().get()?;
-                let t1 = P::BaseField::one() + &v2.get_value().get()?;
-                Ok(t0 * &t1.inverse().get()?)
+                let t0 = v0.get_value().get()? + v1.get_value().get()?;
+                let t1 = P::BaseField::one() + v2.get_value().get()?;
+                Ok(t0 * t1.inverse().get()?)
             })?;
 
             let one = P::BaseField::one();
@@ -705,9 +705,9 @@ mod projective_impl {
 
             // Compute y3 = (U + a * v0 - v1) / (1 - v2)
             let y3 = FG::alloc(&mut cs.ns(|| "y3"), || {
-                let t0 = u.get_value().get()? + (a * &v0.get_value().get()?) - &v1.get_value().get()?;
-                let t1 = P::BaseField::one() - &v2.get_value().get()?;
-                Ok(t0 * &t1.inverse().get()?)
+                let t0 = u.get_value().get()? + (a * v0.get_value().get()?) - v1.get_value().get()?;
+                let t1 = P::BaseField::one() - v2.get_value().get()?;
+                Ok(t0 * t1.inverse().get()?)
             })?;
 
             let one_minus_v2 = v2
@@ -739,7 +739,7 @@ mod projective_impl {
                 .x
                 .mul_by_constant(cs.ns(|| "-A * x1"), &a.neg())?
                 .add(cs.ns(|| "-A * x1 + y1"), &self.y)?;
-            let u2 = other_x + &other_y;
+            let u2 = other_x + other_y;
 
             let u = u1.mul_by_constant(cs.ns(|| "(-A * x1 + y1) * (x2 + y2)"), &u2)?;
 
@@ -756,9 +756,9 @@ mod projective_impl {
 
             // Compute x3 = (v0 + v1) / (1 + v2)
             let x3 = FG::alloc(&mut cs.ns(|| "x3"), || {
-                let t0 = v0.get_value().get()? + &v1.get_value().get()?;
-                let t1 = P::BaseField::one() + &v2.get_value().get()?;
-                Ok(t0 * &t1.inverse().get()?)
+                let t0 = v0.get_value().get()? + v1.get_value().get()?;
+                let t1 = P::BaseField::one() + v2.get_value().get()?;
+                Ok(t0 * t1.inverse().get()?)
             })?;
 
             let one = P::BaseField::one();
@@ -768,9 +768,9 @@ mod projective_impl {
 
             // Compute y3 = (U + a * v0 - v1) / (1 - v2)
             let y3 = FG::alloc(&mut cs.ns(|| "y3"), || {
-                let t0 = u.get_value().get()? + (a * &v0.get_value().get()?) - &v1.get_value().get()?;
-                let t1 = P::BaseField::one() - &v2.get_value().get()?;
-                Ok(t0 * &t1.inverse().get()?)
+                let t0 = u.get_value().get()? + (a * v0.get_value().get()?) - v1.get_value().get()?;
+                let t1 = P::BaseField::one() - v2.get_value().get()?;
+                Ok(t0 * t1.inverse().get()?)
             })?;
 
             let one_minus_v2 = v2
@@ -799,8 +799,8 @@ mod projective_impl {
             // Compute x3 = (2xy) / (ax^2 + y^2)
             let x3 = FG::alloc(&mut cs.ns(|| "x3"), || {
                 let t0 = xy.get_value().get()?.double();
-                let t1 = a * &x2.get_value().get()? + &y2.get_value().get()?;
-                Ok(t0 * &t1.inverse().get()?)
+                let t1 = a * x2.get_value().get()? + y2.get_value().get()?;
+                Ok(t0 * t1.inverse().get()?)
             })?;
 
             let a_x2_plus_y2 = a_x2.add(cs.ns(|| "v2 + 1"), &y2)?;
@@ -810,10 +810,10 @@ mod projective_impl {
             // Compute y3 = (y^2 - ax^2) / (2 - ax^2 - y^2)
             let two = P::BaseField::one().double();
             let y3 = FG::alloc(&mut cs.ns(|| "y3"), || {
-                let a_x2 = a * &x2.get_value().get()?;
-                let t0 = y2.get_value().get()? - &a_x2;
-                let t1 = two - &a_x2 - &y2.get_value().get()?;
-                Ok(t0 * &t1.inverse().get()?)
+                let a_x2 = a * x2.get_value().get()?;
+                let t0 = y2.get_value().get()? - a_x2;
+                let t1 = two - a_x2 - y2.get_value().get()?;
+                Ok(t0 * t1.inverse().get()?)
             })?;
             let y2_minus_a_x2 = y2.sub(cs.ns(|| "y^2 - ax^2"), &a_x2)?;
             let two_minus_ax2_minus_y2 = a_x2
@@ -851,7 +851,7 @@ mod projective_impl {
                 if bits_base_powers.len() == 2 {
                     let bits = [bits_base_powers[0].0, bits_base_powers[1].0];
                     let base_powers = [bits_base_powers[0].1, bits_base_powers[1].1];
-                    let table = [zero, base_powers[0], base_powers[1], base_powers[0] + &base_powers[1]];
+                    let table = [zero, base_powers[0], base_powers[1], base_powers[0] + base_powers[1]];
                     let adder: Self = two_bit_lookup_helper(cs.ns(|| "two bit lookup"), bits, table)?;
                     *self = <Self as GroupGadget<TEProjective<P>, F>>::add(self, &mut cs.ns(|| "Add"), &adder)?;
                 } else if bits_base_powers.len() == 1 {
@@ -889,10 +889,10 @@ mod projective_impl {
                     let bits = [bits_base_powers[0].0, bits_base_powers[1].0];
                     let base_powers = [bits_base_powers[0].1, bits_base_powers[1].1];
                     let table = [
-                        base_powers[0] + &base_powers[1],
-                        base_powers[0].neg() + &base_powers[1],
-                        base_powers[0] + &base_powers[1].neg(),
-                        base_powers[0].neg() + &base_powers[1].neg(),
+                        base_powers[0] + base_powers[1],
+                        base_powers[0].neg() + base_powers[1],
+                        base_powers[0] + base_powers[1].neg(),
+                        base_powers[0].neg() + base_powers[1].neg(),
                     ];
                     let adder: Self = two_bit_lookup_helper(cs.ns(|| "two bit lookup"), bits, table)?;
                     *self = <Self as GroupGadget<TEProjective<P>, F>>::add(self, &mut cs.ns(|| "Add"), &adder)?;
@@ -1024,17 +1024,17 @@ mod projective_impl {
                         .conditionally_add_constant(
                             cs.ns(|| format!("add bool 01 in window {}, {}", segment_i, i)),
                             &bits[0],
-                            x_coeffs[1] - &x_coeffs[0],
+                            x_coeffs[1] - x_coeffs[0],
                         )?
                         .conditionally_add_constant(
                             cs.ns(|| format!("add bool 10 in window {}, {}", segment_i, i)),
                             &bits[1],
-                            x_coeffs[2] - &x_coeffs[0],
+                            x_coeffs[2] - x_coeffs[0],
                         )?
                         .conditionally_add_constant(
                             cs.ns(|| format!("add bool 11 in window {}, {}", segment_i, i)),
                             &precomp,
-                            x_coeffs[3] - &x_coeffs[2] - &x_coeffs[1] + &x_coeffs[0],
+                            x_coeffs[3] - x_coeffs[2] - x_coeffs[1] + x_coeffs[0],
                         )?;
 
                     let y = FG::three_bit_cond_neg_lookup(

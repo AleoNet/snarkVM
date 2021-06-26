@@ -194,13 +194,13 @@ where
     let gamma_abc = cfg_iter!(a[0..assembly.num_public_variables])
         .zip(&b[0..assembly.num_public_variables])
         .zip(&c[0..assembly.num_public_variables])
-        .map(|((a, b), c)| (beta * a + (alpha * b) + c) * &gamma_inverse)
+        .map(|((a, b), c)| (beta * a + (alpha * b) + c) * gamma_inverse)
         .collect::<Vec<_>>();
 
     let l = cfg_iter!(a)
         .zip(&b)
         .zip(&c)
-        .map(|((a, b), c)| (beta * a + (alpha * b) + c) * &delta_inverse)
+        .map(|((a, b), c)| (beta * a + (alpha * b) + c) * delta_inverse)
         .collect::<Vec<_>>();
 
     let g1_generator = E::G1Projective::rand(rng);
@@ -249,7 +249,7 @@ where
         g1_window,
         &g1_table,
         &cfg_into_iter!(0..m_raw - 1)
-            .map(|i| zt * &delta_inverse * &t.pow([i as u64]))
+            .map(|i| zt * delta_inverse * t.pow([i as u64]))
             .collect::<Vec<_>>(),
     );
 

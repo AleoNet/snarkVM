@@ -311,8 +311,8 @@ where
     // Compute C
     let c_acc_time = start_timer!(|| "Compute C");
     let r_2 = r + r;
-    let r2 = r * &r;
-    let d1_r_2 = d1 * &r_2;
+    let r2 = r * r;
+    let d1_r_2 = d1 * r_2;
 
     let c1_acc_time = start_timer!(|| "Compute C1");
     let (_, c1_aux_source) = params.get_c_query_1(0)?;

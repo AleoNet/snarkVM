@@ -34,7 +34,7 @@ fn evaluate_constraint<E: PairingEngine>(terms: &[(E::Fr, Index)], assignment: &
             Index::Public(i) => assignment[i],
             Index::Private(i) => assignment[num_input + i],
         };
-        acc += val * &coeff;
+        acc += val * coeff;
     }
     acc
 }

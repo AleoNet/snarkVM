@@ -117,7 +117,7 @@ pub fn batch_inversion<F: Field>(v: &mut [F]) {
     {
         // tmp := tmp * f; f := tmp * s = 1/f
         let new_tmp = tmp * *f;
-        *f = tmp * &s;
+        *f = tmp * s;
         tmp = new_tmp;
     }
 }

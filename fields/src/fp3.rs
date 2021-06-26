@@ -195,16 +195,16 @@ impl<P: Fp3Parameters> Field for Fp3<P> {
         let c = self.c2;
 
         let s0 = a.square();
-        let ab = a * &b;
-        let s1 = ab + &ab;
-        let s2 = (a - &b + &c).square();
-        let bc = b * &c;
-        let s3 = bc + &bc;
+        let ab = a * b;
+        let s1 = ab + ab;
+        let s2 = (a - b + c).square();
+        let bc = b * c;
+        let s3 = bc + bc;
         let s4 = c.square();
 
-        self.c0 = s0 + &P::mul_fp_by_nonresidue(&s3);
-        self.c1 = s1 + &P::mul_fp_by_nonresidue(&s4);
-        self.c2 = s1 + &s2 + &s3 - &s0 - &s4;
+        self.c0 = s0 + P::mul_fp_by_nonresidue(&s3);
+        self.c1 = s1 + P::mul_fp_by_nonresidue(&s4);
+        self.c2 = s1 + s2 + s3 - s0 - s4;
         self
     }
 
@@ -469,16 +469,16 @@ impl<'a, P: Fp3Parameters> MulAssign<&'a Self> for Fp3<P> {
         let e = self.c1;
         let f = self.c2;
 
-        let ad = d * &a;
-        let be = e * &b;
-        let cf = f * &c;
+        let ad = d * a;
+        let be = e * b;
+        let cf = f * c;
 
-        let x = (e + &f) * &(b + &c) - &be - &cf;
-        let y = (d + &e) * &(a + &b) - &ad - &be;
-        let z = (d + &f) * &(a + &c) - &ad + &be - &cf;
+        let x = (e + f) * (b + c) - be - cf;
+        let y = (d + e) * (a + b) - ad - be;
+        let z = (d + f) * (a + c) - ad + be - cf;
 
-        self.c0 = ad + &P::mul_fp_by_nonresidue(&x);
-        self.c1 = y + &P::mul_fp_by_nonresidue(&cf);
+        self.c0 = ad + P::mul_fp_by_nonresidue(&x);
+        self.c1 = y + P::mul_fp_by_nonresidue(&cf);
         self.c2 = z;
     }
 }

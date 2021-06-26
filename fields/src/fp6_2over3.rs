@@ -103,12 +103,12 @@ impl<P: Fp6Parameters> Fp6<P> {
         let mut tmp2 = x4;
         tmp2.mul_assign(&<P::Fp3Params as Fp3Parameters>::NONRESIDUE);
 
-        self.c0.c0 = x0 * &z0 + (tmp1 * &z5) + (tmp2 * &z4);
-        self.c0.c1 = x0 * &z1 + (x3 * &z3) + (tmp2 * &z5);
-        self.c0.c2 = x0 * &z2 + (x3 * &z4) + (x4 * &z3);
-        self.c1.c0 = x0 * &z3 + (x3 * &z0) + (tmp2 * &z2);
-        self.c1.c1 = x0 * &z4 + (x3 * &z1) + (x4 * &z0);
-        self.c1.c2 = x0 * &z5 + (x3 * &z2) + (x4 * &z1);
+        self.c0.c0 = x0 * z0 + (tmp1 * z5) + (tmp2 * z4);
+        self.c0.c1 = x0 * z1 + (x3 * z3) + (tmp2 * z5);
+        self.c0.c2 = x0 * z2 + (x3 * z4) + (x4 * z3);
+        self.c1.c0 = x0 * z3 + (x3 * z0) + (tmp2 * z2);
+        self.c1.c1 = x0 * z4 + (x3 * z1) + (x4 * z0);
+        self.c1.c2 = x0 * z5 + (x3 * z2) + (x4 * z1);
     }
 
     pub fn mul_by_014(
@@ -133,12 +133,12 @@ impl<P: Fp6Parameters> Fp6<P> {
         let mut tmp2 = x4;
         tmp2.mul_assign(&<P::Fp3Params as Fp3Parameters>::NONRESIDUE);
 
-        self.c0.c0 = x0 * &z0 + (tmp1 * &z2) + (tmp2 * &z4);
-        self.c0.c1 = x0 * &z1 + (x1 * &z0) + (tmp2 * &z5);
-        self.c0.c2 = x0 * &z2 + (x1 * &z1) + (x4 * &z3);
-        self.c1.c0 = x0 * &z3 + (tmp1 * &z5) + (tmp2 * &z2);
-        self.c1.c1 = x0 * &z4 + (x1 * &z3) + (x4 * &z0);
-        self.c1.c2 = x0 * &z5 + (x1 * &z4) + (x4 * &z1);
+        self.c0.c0 = x0 * z0 + (tmp1 * z2) + (tmp2 * z4);
+        self.c0.c1 = x0 * z1 + (x1 * z0) + (tmp2 * z5);
+        self.c0.c2 = x0 * z2 + (x1 * z1) + (x4 * z3);
+        self.c1.c0 = x0 * z3 + (tmp1 * z5) + (tmp2 * z2);
+        self.c1.c1 = x0 * z4 + (x1 * z3) + (x4 * z0);
+        self.c1.c2 = x0 * z5 + (x1 * z4) + (x4 * z1);
     }
 
     /// Multiply by quadratic nonresidue v.
@@ -258,10 +258,10 @@ impl<P: Fp6Parameters> Field for Fp6<P> {
         // Fields.pdf; Section 3 (Complex)
         let a = self.c0;
         let b = self.c1;
-        let ab_add = a + &b;
-        let ab_mul = a * &b;
+        let ab_add = a + b;
+        let ab_mul = a * b;
 
-        let c0 = ab_add * &(a + &Self::mul_by_nonresidue(&b)) - &ab_mul - &Self::mul_by_nonresidue(&ab_mul);
+        let c0 = ab_add * (a + Self::mul_by_nonresidue(&b)) - ab_mul - Self::mul_by_nonresidue(&ab_mul);
         let c1 = ab_mul.double();
 
         self.c0 = c0;
@@ -280,11 +280,11 @@ impl<P: Fp6Parameters> Field for Fp6<P> {
             let b = self.c1;
 
             let t1 = b.square();
-            let t0 = a.square() - &Self::mul_by_nonresidue(&t1);
+            let t0 = a.square() - Self::mul_by_nonresidue(&t1);
             let t2 = t0.inverse().unwrap();
 
-            let c0 = a * &t2;
-            let c1 = (b * &t2).neg();
+            let c0 = a * t2;
+            let c1 = (b * t2).neg();
 
             Some(Self::new(c0, c1))
         }
@@ -466,12 +466,12 @@ impl<'a, P: Fp6Parameters> MulAssign<&'a Self> for Fp6<P> {
         let a1 = other.c0;
         let b1 = other.c1;
 
-        let a0a1 = a0 * &a1;
-        let b0b1 = b0 * &b1;
+        let a0a1 = a0 * a1;
+        let b0b1 = b0 * b1;
         let beta_b0b1 = Self::mul_by_nonresidue(&b0b1);
 
-        let c0 = a0a1 + &beta_b0b1;
-        let c1 = (a0 + &b0) * &(a1 + &b1) - &a0a1 - &b0b1;
+        let c0 = a0a1 + beta_b0b1;
+        let c1 = (a0 + b0) * (a1 + b1) - a0a1 - b0b1;
 
         self.c0 = c0;
         self.c1 = c1;

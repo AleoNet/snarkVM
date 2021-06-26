@@ -93,31 +93,22 @@ fn field_test<NativeF: Field, F: Field, FG: FieldGadget<NativeF, F>, CS: Constra
     let a_b = a.add(cs.ns(|| "a_plus_b"), &b).unwrap();
     let b_a = b.add(cs.ns(|| "b_plus_a"), &a).unwrap();
     assert_eq!(a_b, b_a);
-    assert_eq!(a_b.get_value().unwrap(), a_native + &b_native);
+    assert_eq!(a_b.get_value().unwrap(), a_native + b_native);
     a_b.enforce_equal(&mut cs.ns(|| "a+b == b+a"), &b_a).unwrap();
 
     // (a + b) + a = a + (b + a)
     let ab_a = a_b.add(cs.ns(|| "a_b_plus_a"), &a).unwrap();
     let a_ba = a.add(cs.ns(|| "a_plus_b_a"), &b_a).unwrap();
     assert_eq!(ab_a, a_ba);
-    assert_eq!(ab_a.get_value().unwrap(), a_native + &b_native + &a_native);
+    assert_eq!(ab_a.get_value().unwrap(), a_native + b_native + a_native);
     ab_a.enforce_equal(&mut cs.ns(|| "a+b + a == a+ b+a"), &a_ba).unwrap();
 
     let b_times_a_plus_b = a_b.mul(cs.ns(|| "b * (a + b)"), &b).unwrap();
     let b_times_b_plus_a = b_a.mul(cs.ns(|| "b * (b + a)"), &b).unwrap();
     assert_eq!(b_times_b_plus_a, b_times_a_plus_b);
-    assert_eq!(
-        b_times_a_plus_b.get_value().unwrap(),
-        b_native * &(b_native + &a_native)
-    );
-    assert_eq!(
-        b_times_a_plus_b.get_value().unwrap(),
-        (b_native + &a_native) * &b_native
-    );
-    assert_eq!(
-        b_times_a_plus_b.get_value().unwrap(),
-        (a_native + &b_native) * &b_native
-    );
+    assert_eq!(b_times_a_plus_b.get_value().unwrap(), b_native * (b_native + a_native));
+    assert_eq!(b_times_a_plus_b.get_value().unwrap(), (b_native + a_native) * b_native);
+    assert_eq!(b_times_a_plus_b.get_value().unwrap(), (a_native + b_native) * b_native);
     b_times_b_plus_a
         .enforce_equal(&mut cs.ns(|| "b*(a+b) == b * (b+a)"), &b_times_a_plus_b)
         .unwrap();
@@ -129,20 +120,20 @@ fn field_test<NativeF: Field, F: Field, FG: FieldGadget<NativeF, F>, CS: Constra
     assert_eq!(a.mul(cs.ns(|| "a_times_one"), &one).unwrap(), a);
     assert_eq!(
         a.mul(cs.ns(|| "a_times_one2"), &one).unwrap().get_value().unwrap(),
-        a_native * &one_native
+        a_native * one_native
     );
 
     // a * b = b * a
     let ab = a.mul(cs.ns(|| "a_times_b"), &b).unwrap();
     let ba = b.mul(cs.ns(|| "b_times_a"), &a).unwrap();
     assert_eq!(ab, ba);
-    assert_eq!(ab.get_value().unwrap(), a_native * &b_native);
+    assert_eq!(ab.get_value().unwrap(), a_native * b_native);
 
     // (a * b) * a = a * (b * a)
     let ab_a = ab.mul(cs.ns(|| "ab_times_a"), &a).unwrap();
     let a_ba = a.mul(cs.ns(|| "a_times_ba"), &ba).unwrap();
     assert_eq!(ab_a, a_ba);
-    assert_eq!(ab_a.get_value().unwrap(), a_native * &b_native * &a_native);
+    assert_eq!(ab_a.get_value().unwrap(), a_native * b_native * a_native);
 
     let aa = a.mul(cs.ns(|| "a * a"), &a).unwrap();
     let a_squared = a.square(cs.ns(|| "a^2")).unwrap();
@@ -173,7 +164,7 @@ fn field_test<NativeF: Field, F: Field, FG: FieldGadget<NativeF, F>, CS: Constra
     // a * a * a = a^3
     let bits = BitIteratorBE::new([0x3]).map(Boolean::constant).collect::<Vec<_>>();
     assert_eq!(
-        a_native * &(a_native * &a_native),
+        a_native * (a_native * a_native),
         a.pow(cs.ns(|| "test_pow"), &bits).unwrap().get_value().unwrap()
     );
 
@@ -204,7 +195,7 @@ fn field_test<NativeF: Field, F: Field, FG: FieldGadget<NativeF, F>, CS: Constra
     let ab_true = a
         .conditionally_add_constant(cs.ns(|| "Add bool with coeff true"), &Boolean::constant(true), b_native)
         .unwrap();
-    assert_eq!(ab_true.get_value().unwrap(), a_native + &b_native);
+    assert_eq!(ab_true.get_value().unwrap(), a_native + b_native);
 }
 
 fn random_frobenius_tests<NativeF: Field, F: Field, FG: FieldGadget<NativeF, F>, CS: ConstraintSystem<F>>(
