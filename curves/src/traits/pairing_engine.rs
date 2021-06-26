@@ -16,22 +16,9 @@
 
 use crate::traits::Group;
 use snarkvm_fields::{Field, PrimeField, SquareRootField};
-use snarkvm_utilities::{
-    biginteger::BigInteger,
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    serialize::*,
-    BitIteratorBE,
-};
+use snarkvm_utilities::{biginteger::BigInteger, bytes::ToBytes, rand::UniformRand, serialize::*, BitIteratorBE};
 
-use std::{
-    fmt::{Debug, Display},
-    hash::Hash,
-    iter,
-    ops::Neg,
-};
-
-use snarkvm_fields::Zero;
+use std::{fmt::Debug, iter};
 
 pub trait PairingEngine: Sized + 'static + Copy + Debug + Sync + Send {
     /// This is the scalar field of the G1/G2 groups.
@@ -112,25 +99,10 @@ pub trait PairingEngine: Sized + 'static + Copy + Debug + Sync + Send {
 /// in the correct prime order subgroup.
 pub trait ProjectiveCurve:
     Group
-    + Eq
     + Sized
-    + ToBytes
-    + FromBytes
     + CanonicalSerialize
     + ConstantSerializedSize
     + CanonicalDeserialize
-    + Copy
-    + Clone
-    + Default
-    + Send
-    + Sync
-    + Hash
-    + Debug
-    + Display
-    + UniformRand
-    + Zero
-    + 'static
-    + Neg<Output = Self>
     + From<<Self as ProjectiveCurve>::Affine>
 {
     type BaseField: Field;
@@ -181,24 +153,10 @@ pub trait ProjectiveCurve:
 #[allow(clippy::wrong_self_convention)]
 pub trait AffineCurve:
     Group
-    + Eq
     + Sized
-    + ToBytes
-    + FromBytes
     + CanonicalSerialize
     + ConstantSerializedSize
     + CanonicalDeserialize
-    + Copy
-    + Clone
-    + Default
-    + Send
-    + Sync
-    + Hash
-    + Debug
-    + Display
-    + Neg<Output = Self>
-    + Zero
-    + 'static
     + From<<Self as AffineCurve>::Projective>
 {
     type BaseField: Field;
