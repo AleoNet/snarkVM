@@ -1807,7 +1807,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-eval"
-version = "0.5.4"
+version = "0.5.5"
 dependencies = [
  "anyhow",
  "im",
@@ -1888,7 +1888,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-ir"
-version = "0.5.4"
+version = "0.5.5"
 dependencies = [
  "anyhow",
  "bech32",

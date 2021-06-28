@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-eval"
-version = "0.5.4"
+version = "0.5.5"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "IR for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -26,31 +26,31 @@ version = "0.1"
 version = "1.0"
 
 [dependencies.snarkvm-ir]
-version = "0.5.4"
+version = "0.5.5"
 path = "../ir"
 
 [dependencies.snarkvm-fields]
-version = "0.5.4"
+version = "0.5.5"
 path = "../fields"
 
 [dependencies.snarkvm-gadgets]
-version = "0.5.4"
+version = "0.5.5"
 path = "../gadgets"
 
 [dependencies.snarkvm-r1cs]
-version = "0.5.4"
+version = "0.5.5"
 path = "../r1cs"
 
 [dependencies.snarkvm-curves]
-version = "0.5.4"
+version = "0.5.5"
 path = "../curves"
 
 [dependencies.snarkvm-utilities]
-version = "0.5.4"
+version = "0.5.5"
 path = "../utilities"
 
 [dependencies.snarkvm-dpc]
-version = "0.5.4"
+version = "0.5.5"
 path = "../dpc"
 
 [dependencies.thiserror]
