@@ -27,6 +27,7 @@ use snarkvm_utilities::serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 use crate::{
     bits::{Boolean, ToBytesGadget},
+    fields::FpGadget,
     integers::uint::UInt8,
     traits::{
         algorithms::SignaturePublicKeyRandomizationGadget,
@@ -146,6 +147,61 @@ impl<G: Group, F: Field, GG: GroupGadget<G, F>> ToBytesGadget<F> for SchnorrPubl
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SchnorrSignatureGadget<G: Group, F: Field, D: Digest> {
+    parameters: FpGadget<F>,
+    _group: PhantomData<*const G>,
+    _engine: PhantomData<*const F>,
+}
+
+impl<G: Group, F: Field, D: Digest> AllocGadget<SchnorrParameters<G, D>, F> for SchnorrSignatureGadget<G, F, D> {
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrParameters<G, D>>, CS: ConstraintSystem<F>>(
+        _cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+
+    fn alloc_input<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<SchnorrParameters<G, D>>,
+        CS: ConstraintSystem<F>,
+    >(
+        _cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+}
+
+impl<G: Group, F: Field, GG: GroupGadget<G, F>> ConditionalEqGadget<F> for SchnorrSignatureGadget<G, F, GG> {
+    #[inline]
+    fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
+        &self,
+        mut cs: CS,
+        other: &Self,
+        condition: &Boolean,
+    ) -> Result<(), SynthesisError> {
+        unimplemented!();
+    }
+
+    fn cost() -> usize {
+        unimplemented!()
+    }
+}
+
+impl<G: Group, F: Field, GG: GroupGadget<G, F>> EqGadget<F> for SchnorrSignatureGadget<G, F, GG> {}
+
+impl<G: Group, F: Field, GG: GroupGadget<G, F>> ToBytesGadget<F> for SchnorrSignatureGadget<G, F, GG> {
+    fn to_bytes<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        unimplemented!()
+    }
+
+    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        unimplemented!()
+    }
+}
+
 pub struct SchnorrPublicKeyRandomizationGadget<G: Group, F: Field, GG: GroupGadget<G, F>> {
     _group: PhantomData<*const G>,
     _group_gadget: PhantomData<*const GG>,
@@ -157,6 +213,7 @@ impl<G: Group + CanonicalSerialize + CanonicalDeserialize, GG: GroupGadget<G, F>
 {
     type ParametersGadget = SchnorrParametersGadget<G, F, D>;
     type PublicKeyGadget = SchnorrPublicKeyGadget<G, F, GG>;
+    type SignatureGadget = SchnorrSignatureGadget<G, F, GG>;
 
     fn check_randomization_gadget<CS: ConstraintSystem<F>>(
         mut cs: CS,
@@ -176,5 +233,15 @@ impl<G: Group + CanonicalSerialize + CanonicalDeserialize, GG: GroupGadget<G, F>
             _group: PhantomData,
             _engine: PhantomData,
         })
+    }
+
+    fn verify<CS: ConstraintSystem<F>>(
+        cs: CS,
+        parameters: &Self::ParametersGadget,
+        public_key: &Self::PublicKeyGadget,
+        message: &[UInt8],
+        signature: &Self::SignatureGadget,
+    ) -> Result<Self::PublicKeyGadget, SynthesisError> {
+        unimplemented!()
     }
 }
