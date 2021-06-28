@@ -14,14 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::{any::TypeId, rc::Rc};
-
-use cuda_oxide::*;
 use snarkvm_curves::{
     bls12_377::{Fq, Fr, G1Affine, G1Projective},
     traits::{AffineCurve, ProjectiveCurve},
 };
 use snarkvm_fields::{PrimeField, Zero};
+use snarkvm_utilities::BitIteratorBE;
+
+use cuda_oxide::*;
+use std::{any::TypeId, rc::Rc};
 
 pub struct CudaRequest {
     bases: Vec<G1Affine>,
@@ -233,7 +234,7 @@ pub(super) fn msm_cuda<G: AffineCurve>(
         let mut acc = G::Projective::zero();
 
         for (base, scalar) in bases.iter().zip(scalars.iter()) {
-            acc += &base.mul(*scalar);
+            acc += &base.mul_bits(BitIteratorBE::new(*scalar))
         }
         return Ok(acc);
     }
