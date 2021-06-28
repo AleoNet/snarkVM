@@ -176,12 +176,8 @@ impl<F: Field> TestConstraintSystem<F> {
             parent_ns = interned_parent_ns.parent_namespace;
         }
 
-        reversed_uninterned_segments
-            .into_iter()
-            .map(|s| s.as_str())
-            .rev()
-            .intersperse("/")
-            .collect()
+        let segments = reversed_uninterned_segments.into_iter().map(|s| s.as_str()).rev();
+        Itertools::intersperse(segments, "/").collect()
     }
 
     pub fn print_named_objects(&self) {
@@ -202,7 +198,7 @@ impl<F: Field> TestConstraintSystem<F> {
             let coeff = self.interned_fields.get_index(interned_coeff).unwrap();
 
             tmp.mul_assign(coeff);
-            acc.add_assign(&tmp);
+            acc.add_assign(tmp);
         }
 
         acc

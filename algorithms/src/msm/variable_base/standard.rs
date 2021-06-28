@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::traits::{AffineCurve, ProjectiveCurve};
+use snarkvm_curves::{traits::AffineCurve, Group, ProjectiveCurve};
 use snarkvm_fields::{FieldParameters, One, PrimeField, Zero};
+use snarkvm_utilities::BigInteger;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
-use snarkvm_utilities::BigInteger;
 
 pub fn msm_standard<G: AffineCurve>(
     bases: &[G],
@@ -78,9 +78,9 @@ pub fn msm_standard<G: AffineCurve>(
 
             let mut running_sum = G::Projective::zero();
             for b in buckets.into_iter().rev() {
-                running_sum += &b;
+                running_sum += b;
                 // running_sum.add_assign_mixed(&b);
-                res += &running_sum;
+                res += running_sum;
             }
 
             res

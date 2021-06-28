@@ -16,7 +16,7 @@
 
 use super::{r1cs_to_sap::R1CStoSAP, ProvingKey, VerifyingKey};
 use crate::{fft::EvaluationDomain, msm::FixedBaseMSM};
-use snarkvm_curves::traits::{AffineCurve, PairingEngine, ProjectiveCurve};
+use snarkvm_curves::traits::{PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_r1cs::{
     errors::SynthesisError,
@@ -28,6 +28,7 @@ use snarkvm_r1cs::{
 };
 use snarkvm_utilities::rand::UniformRand;
 
+use core::ops::Mul;
 use rand::Rng;
 
 #[cfg(feature = "parallel")]
@@ -235,30 +236,30 @@ where
         scalar_bits,
         g_window,
         &g_table,
-        &cfg_iter!(a).map(|a| *a * &gamma).collect::<Vec<_>>(),
+        &cfg_iter!(a).map(|a| *a * gamma).collect::<Vec<_>>(),
     );
     end_timer!(a_time);
 
     // Compute the G_gamma-query
     let g_gamma_time = start_timer!(|| "Calculate G gamma");
-    let gamma_z = zt * &gamma;
-    let alpha_beta = alpha + &beta;
-    let ab_gamma_z = alpha_beta * &gamma * &zt;
-    let g_gamma = g.into_affine().mul(gamma.into_repr());
-    let g_gamma_z = g.into_affine().mul(gamma_z.into_repr());
-    let h_gamma = h.into_affine().mul(gamma.into_repr());
-    let h_gamma_z = h_gamma.into_affine().mul(zt.into_repr());
-    let g_ab_gamma_z = g.into_affine().mul(ab_gamma_z.into_repr());
-    let g_gamma2_z2 = g.into_affine().mul(gamma_z.square().into_repr());
+    let gamma_z = zt * gamma;
+    let alpha_beta = alpha + beta;
+    let ab_gamma_z = alpha_beta * gamma * zt;
+    let g_gamma = g.into_affine().mul(gamma);
+    let g_gamma_z = g.into_affine().mul(gamma_z);
+    let h_gamma = h.into_affine().mul(gamma);
+    let h_gamma_z = h_gamma.mul(zt);
+    let g_ab_gamma_z = g.into_affine().mul(ab_gamma_z);
+    let g_gamma2_z2 = g.into_affine().mul(gamma_z.square());
 
     // Compute the vector G_gamma2_z_t := Z(t) * t^i * gamma^2 * G
-    let gamma2_z_t = gamma_z * &gamma;
+    let gamma2_z_t = gamma_z * gamma;
     let mut g_gamma2_z_t = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
         scalar_bits,
         g_window,
         &g_table,
         &cfg_into_iter!(0..m_raw + 1)
-            .map(|i| gamma2_z_t * &(t.pow([i as u64])))
+            .map(|i| gamma2_z_t * (t.pow([i as u64])))
             .collect::<Vec<_>>(),
     );
     end_timer!(g_gamma_time);
@@ -270,7 +271,7 @@ where
         g_window,
         &g_table,
         &cfg_into_iter!(0..sap_num_variables + 1)
-            .map(|i| c[i] * &gamma + &(a[i] * &alpha_beta))
+            .map(|i| c[i] * gamma + (a[i] * alpha_beta))
             .collect::<Vec<_>>(),
     );
     let (verifier_query, c_query_1) = result.split_at_mut(assembly.num_public_variables);
@@ -278,13 +279,13 @@ where
 
     // Compute the C_2-query
     let c2_time = start_timer!(|| "Calculate C2");
-    let double_gamma2_z = (zt * &gamma.square()).double();
+    let double_gamma2_z = (zt * gamma.square()).double();
     let mut c_query_2 = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
         scalar_bits,
         g_window,
         &g_table,
         &cfg_into_iter!(0..sap_num_variables + 1)
-            .map(|i| a[i] * &double_gamma2_z)
+            .map(|i| a[i] * double_gamma2_z)
             .collect::<Vec<_>>(),
     );
     drop(g_table);
@@ -293,7 +294,7 @@ where
     // Compute H_gamma window table
     let h_gamma_time = start_timer!(|| "Compute H table");
     let h_gamma_window = FixedBaseMSM::get_mul_window_size(non_zero_a);
-    let h_gamma_table = FixedBaseMSM::get_window_table::<E::G2Projective>(scalar_bits, h_gamma_window, h_gamma);
+    let h_gamma_table = FixedBaseMSM::get_window_table::<E::G2Projective>(scalar_bits, h_gamma_window, h_gamma.into());
     end_timer!(h_gamma_time);
 
     // Compute the B-query
@@ -306,16 +307,16 @@ where
 
     // Generate R1CS verification key
     let verifying_key_time = start_timer!(|| "Generate the R1CS verification key");
-    let g_alpha = g.into_affine().mul(alpha.into_repr());
-    let h_beta = h.into_affine().mul(beta.into_repr());
+    let g_alpha = g.into_affine().mul(alpha);
+    let h_beta = h.into_affine().mul(beta);
     end_timer!(verifying_key_time);
 
     let vk = VerifyingKey::<E> {
         h_g2: h.into_affine(),
-        g_alpha_g1: g_alpha.into_affine(),
-        h_beta_g2: h_beta.into_affine(),
-        g_gamma_g1: g_gamma.into_affine(),
-        h_gamma_g2: h_gamma.into_affine(),
+        g_alpha_g1: g_alpha,
+        h_beta_g2: h_beta,
+        g_gamma_g1: g_gamma,
+        h_gamma_g2: h_gamma,
         query: cfg_into_iter!(verifier_query).map(|e| e.into_affine()).collect(),
     };
 
@@ -333,10 +334,10 @@ where
         b_query: b_query.into_iter().map(Into::into).collect(),
         c_query_1: c_query_1.iter().copied().map(Into::into).collect(),
         c_query_2: c_query_2.into_iter().map(Into::into).collect(),
-        g_gamma_z: g_gamma_z.into_affine(),
-        h_gamma_z: h_gamma_z.into_affine(),
-        g_ab_gamma_z: g_ab_gamma_z.into_affine(),
-        g_gamma2_z2: g_gamma2_z2.into_affine(),
+        g_gamma_z,
+        h_gamma_z,
+        g_ab_gamma_z,
+        g_gamma2_z2,
         g_gamma2_z_t: g_gamma2_z_t.into_iter().map(Into::into).collect(),
     })
 }

@@ -73,7 +73,7 @@ impl<F: PrimeField> PoseidonSponge<F> {
 
     fn apply_ark(&self, state: &mut [F], round_number: usize) {
         for (i, state_elem) in state.iter_mut().enumerate() {
-            state_elem.add_assign(&self.ark[round_number][i]);
+            state_elem.add_assign(self.ark[round_number][i]);
         }
     }
 
@@ -83,7 +83,7 @@ impl<F: PrimeField> PoseidonSponge<F> {
             let mut cur = F::zero();
             for (j, state_elem) in state.iter().enumerate() {
                 let term = state_elem.mul(&self.mds[i][j]);
-                cur.add_assign(&term);
+                cur.add_assign(term);
             }
             new_state.push(cur);
         }

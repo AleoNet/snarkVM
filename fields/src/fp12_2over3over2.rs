@@ -101,10 +101,10 @@ impl<P: Fp12Parameters> Fp12<P> {
 
         let c0 = *c0 + c3;
         let c1 = c4;
-        let mut e = self.c0 + &self.c1;
+        let mut e = self.c0 + self.c1;
         e.mul_by_01(&c0, &c1);
-        self.c1 = e - &(a + &b);
-        self.c0 = a + &Self::mul_fp6_by_nonresidue(&b);
+        self.c1 = e - (a + b);
+        self.c0 = a + Self::mul_fp6_by_nonresidue(&b);
     }
 
     pub fn mul_by_014(&mut self, c0: &Fp2<Fp2Params<P>>, c1: &Fp2<Fp2Params<P>>, c4: &Fp2<Fp2Params<P>>) {
@@ -114,13 +114,13 @@ impl<P: Fp12Parameters> Fp12<P> {
         bb.mul_by_1(c4);
         let mut o = *c1;
         o.add_assign(c4);
-        self.c1.add_assign(&self.c0);
+        self.c1.add_assign(self.c0);
         self.c1.mul_by_01(c0, &o);
         self.c1.sub_assign(&aa);
         self.c1.sub_assign(&bb);
         self.c0 = bb;
         self.c0 = Self::mul_fp6_by_nonresidue(&self.c0);
-        self.c0.add_assign(&aa);
+        self.c0.add_assign(aa);
     }
 
     pub fn cyclotomic_square(&self) -> Self {
@@ -135,56 +135,56 @@ impl<P: Fp12Parameters> Fp12<P> {
         let mut z5 = self.c1.c2;
 
         // t0 + t1*y = (z0 + z1*y)^2 = a^2
-        let mut tmp = z0 * &z1;
-        let t0 = (z0 + &z1) * &(z0 + &fp2_nr(&z1)) - &tmp - &fp2_nr(&tmp);
+        let mut tmp = z0 * z1;
+        let t0 = (z0 + z1) * (z0 + fp2_nr(&z1)) - tmp - fp2_nr(&tmp);
         let t1 = tmp.double();
 
         // t2 + t3*y = (z2 + z3*y)^2 = b^2
-        tmp = z2 * &z3;
-        let t2 = (z2 + &z3) * &(z2 + &fp2_nr(&z3)) - &tmp - &fp2_nr(&tmp);
+        tmp = z2 * z3;
+        let t2 = (z2 + z3) * (z2 + fp2_nr(&z3)) - tmp - fp2_nr(&tmp);
         let t3 = tmp.double();
 
         // t4 + t5*y = (z4 + z5*y)^2 = c^2
-        tmp = z4 * &z5;
-        let t4 = (z4 + &z5) * &(z4 + &fp2_nr(&z5)) - &tmp - &fp2_nr(&tmp);
+        tmp = z4 * z5;
+        let t4 = (z4 + z5) * (z4 + fp2_nr(&z5)) - tmp - fp2_nr(&tmp);
         let t5 = tmp.double();
 
         // for A
 
         // z0 = 3 * t0 - 2 * z0
-        z0 = t0 - &z0;
-        z0 = z0 + &z0;
-        result.c0.c0 = z0 + &t0;
+        z0 = t0 - z0;
+        z0 = z0 + z0;
+        result.c0.c0 = z0 + t0;
 
         // z1 = 3 * t1 + 2 * z1
-        z1 = t1 + &z1;
-        z1 = z1 + &z1;
-        result.c1.c1 = z1 + &t1;
+        z1 = t1 + z1;
+        z1 = z1 + z1;
+        result.c1.c1 = z1 + t1;
 
         // for B
 
         // z2 = 3 * (xi * t5) + 2 * z2
         tmp = fp2_nr(&t5);
-        z2 = tmp + &z2;
-        z2 = z2 + &z2;
-        result.c1.c0 = z2 + &tmp;
+        z2 = tmp + z2;
+        z2 = z2 + z2;
+        result.c1.c0 = z2 + tmp;
 
         // z3 = 3 * t4 - 2 * z3
-        z3 = t4 - &z3;
-        z3 = z3 + &z3;
-        result.c0.c2 = z3 + &t4;
+        z3 = t4 - z3;
+        z3 = z3 + z3;
+        result.c0.c2 = z3 + t4;
 
         // for C
 
         // z4 = 3 * t2 - 2 * z4
-        z4 = t2 - &z4;
-        z4 = z4 + &z4;
-        result.c0.c1 = z4 + &t2;
+        z4 = t2 - z4;
+        z4 = z4 + z4;
+        result.c0.c1 = z4 + t2;
 
         // z5 = 3 * t3 + 2 * z5
-        z5 = t3 + &z5;
-        z5 = z5 + &z5;
-        result.c1.c2 = z5 + &t3;
+        z5 = t3 + z5;
+        z5 = z5 + z5;
+        result.c1.c2 = z5 + t3;
 
         result
     }
@@ -283,10 +283,9 @@ impl<P: Fp12Parameters> Field for Fp12<P> {
         Self::from_random_bytes_with_flags(bytes).map(|f| f.0)
     }
 
-    fn double_in_place(&mut self) -> &mut Self {
+    fn double_in_place(&mut self) {
         self.c0.double_in_place();
         self.c1.double_in_place();
-        self
     }
 
     fn frobenius_map(&mut self, power: usize) {
@@ -308,14 +307,14 @@ impl<P: Fp12Parameters> Field for Fp12<P> {
         let mut ab = self.c0;
         ab.mul_assign(&self.c1);
         let mut c0c1 = self.c0;
-        c0c1.add_assign(&self.c1);
+        c0c1.add_assign(self.c1);
         let mut c0 = self.c1;
         c0 = Self::mul_fp6_by_nonresidue(&c0);
-        c0.add_assign(&self.c0);
+        c0.add_assign(self.c0);
         c0.mul_assign(&c0c1);
         c0.sub_assign(&ab);
         self.c1 = ab;
-        self.c1.add_assign(&ab);
+        self.c1.add_assign(ab);
         ab = Self::mul_fp6_by_nonresidue(&ab);
         c0.sub_assign(&ab);
         self.c0 = c0;
@@ -368,13 +367,16 @@ impl<P: Fp12Parameters> Neg for Fp12<P> {
     }
 }
 
+impl_additive_ops_from_ref!(Fp12, Fp12Parameters);
+impl_multiplicative_ops_from_ref!(Fp12, Fp12Parameters);
+
 impl<'a, P: Fp12Parameters> Add<&'a Self> for Fp12<P> {
     type Output = Self;
 
     #[inline]
     fn add(self, other: &Self) -> Self {
         let mut result = self;
-        result.add_assign(&other);
+        result.add_assign(other);
         result
     }
 }
@@ -415,8 +417,8 @@ impl<'a, P: Fp12Parameters> Div<&'a Self> for Fp12<P> {
 impl<'a, P: Fp12Parameters> AddAssign<&'a Self> for Fp12<P> {
     #[inline]
     fn add_assign(&mut self, other: &Self) {
-        self.c0.add_assign(&other.c0);
-        self.c1.add_assign(&other.c1);
+        self.c0.add_assign(other.c0);
+        self.c1.add_assign(other.c1);
     }
 }
 
@@ -432,10 +434,10 @@ impl<'a, P: Fp12Parameters> MulAssign<&'a Self> for Fp12<P> {
     #[inline]
     #[allow(clippy::suspicious_op_assign_impl)]
     fn mul_assign(&mut self, other: &Self) {
-        let v0 = self.c0 * &other.c0;
-        let v1 = self.c1 * &other.c1;
-        self.c1 = (self.c0 + &self.c1) * &(other.c0 + &other.c1) - &v0 - &v1;
-        self.c0 = v0 + &Self::mul_fp6_by_nonresidue(&v1);
+        let v0 = self.c0 * other.c0;
+        let v1 = self.c1 * other.c1;
+        self.c1 = (self.c0 + self.c1) * (other.c0 + other.c1) - v0 - v1;
+        self.c0 = v0 + Self::mul_fp6_by_nonresidue(&v1);
     }
 }
 

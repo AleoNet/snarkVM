@@ -16,12 +16,12 @@
 
 use crate::snark::gm17::{PreparedVerifyingKey, Proof, VerifyingKey};
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
-use snarkvm_fields::{One, PrimeField};
+use snarkvm_fields::One;
 use snarkvm_r1cs::errors::SynthesisError;
 
-use std::{
+use core::{
     iter,
-    ops::{AddAssign, MulAssign, Neg},
+    ops::{AddAssign, Mul, MulAssign, Neg},
 };
 
 pub fn prepare_verifying_key<E: PairingEngine>(vk: VerifyingKey<E>) -> PreparedVerifyingKey<E> {
@@ -55,24 +55,24 @@ pub fn verify_proof<E: PairingEngine>(
     // e(A*G^{alpha}, B*H^{beta}) = e(G^{alpha}, H^{beta}) * e(G^{psi}, H^{gamma}) *
     // e(C, H) where psi = \sum_{i=0}^l input_i pvk.query[i]
 
-    let mut g_psi = pvk.query()[0].into_projective();
+    let mut g_psi = pvk.query()[0];
     for (i, b) in public_inputs.iter().zip(pvk.query().iter().skip(1)) {
-        g_psi.add_assign(&b.mul(i.into_repr()));
+        g_psi.add_assign(b.mul(*i));
     }
 
     let mut test1_a_g_alpha = proof.a.into_projective();
-    test1_a_g_alpha.add_assign(&pvk.g_alpha.into_projective());
+    test1_a_g_alpha.add_assign(pvk.g_alpha.into_projective());
     let test1_a_g_alpha = test1_a_g_alpha.into_affine();
 
     let mut test1_b_h_beta = proof.b.into_projective();
-    test1_b_h_beta.add_assign(&pvk.h_beta.into_projective());
+    test1_b_h_beta.add_assign(pvk.h_beta.into_projective());
     let test1_b_h_beta = test1_b_h_beta.into_affine();
 
     let test1_r1 = pvk.g_alpha_h_beta_ml;
     let test1_r2 = E::miller_loop(
         [
             (&test1_a_g_alpha.neg().prepare(), &test1_b_h_beta.prepare()),
-            (&g_psi.into_affine().prepare(), &pvk.h_gamma_pc),
+            (&g_psi.prepare(), &pvk.h_gamma_pc),
             (&proof.c.prepare(), &pvk.h_pc),
         ]
         .iter()

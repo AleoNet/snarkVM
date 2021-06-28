@@ -21,6 +21,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use snarkvm_curves::{bls12_377::G1Affine, traits::AffineCurve};
 use snarkvm_fields::{PrimeField, Zero};
+use snarkvm_utilities::BitIteratorBE;
 
 mod standard;
 
@@ -38,7 +39,7 @@ impl VariableBaseMSM {
         let mut acc = G::Projective::zero();
 
         for (base, scalar) in bases.iter().zip(scalars.iter()) {
-            acc += &base.mul(*scalar);
+            acc += base.mul_bits(BitIteratorBE::new(*scalar));
         }
         acc
     }

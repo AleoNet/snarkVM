@@ -60,7 +60,7 @@ impl<F: Field> ConstraintSynthesizer<F> for Bench<F> {
             let new_entry = {
                 let (input_1_val, input_1_var) = variables[i];
                 let (input_2_val, input_2_var) = variables[i + 1];
-                let result_val = input_1_val.and_then(|input_1| input_2_val.map(|input_2| input_1 * &input_2));
+                let result_val = input_1_val.and_then(|input_1| input_2_val.map(|input_2| input_1 * input_2));
                 let result_var = cs.alloc(
                     || format!("Result {}", i),
                     || result_val.ok_or(SynthesisError::AssignmentMissing),

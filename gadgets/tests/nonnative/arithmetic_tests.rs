@@ -57,7 +57,7 @@ fn addition_test<TargetField: PrimeField, BaseField: PrimeField, CS: ConstraintS
     let a_plus_b = a.add(cs.ns(|| "a_plus_b"), &b).unwrap();
 
     let a_plus_b_actual = a_plus_b.value().unwrap();
-    let a_plus_b_expected = a_native + &b_native;
+    let a_plus_b_expected = a_native + b_native;
     assert!(a_plus_b_actual.eq(&a_plus_b_expected), "a + b failed");
 }
 
@@ -74,7 +74,7 @@ fn multiplication_test<TargetField: PrimeField, BaseField: PrimeField, CS: Const
     let a_times_b = a.mul(cs.ns(|| "a_times_b"), &b).unwrap();
 
     let a_times_b_actual = a_times_b.value().unwrap();
-    let a_times_b_expected = a_native * &b_native;
+    let a_times_b_expected = a_native * b_native;
 
     assert!(
         a_times_b_actual.eq(&a_times_b_expected),
@@ -97,7 +97,7 @@ fn equality_test<TargetField: PrimeField, BaseField: PrimeField, CS: ConstraintS
 
     let a_times_b = a.mul(cs.ns(|| "a_times_b"), &b).unwrap();
 
-    let a_times_b_expected = a_native * &b_native;
+    let a_times_b_expected = a_native * b_native;
     let a_times_b_expected_gadget =
         NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "alloc a * b"), || Ok(a_times_b_expected)).unwrap();
 
@@ -115,7 +115,7 @@ fn edge_cases_test<TargetField: PrimeField, BaseField: PrimeField, CS: Constrain
     let one = NonNativeFieldVar::<TargetField, BaseField>::one(cs.ns(|| "one")).unwrap();
 
     let a_native = TargetField::rand(rng);
-    let minus_a_native = TargetField::zero() - &a_native;
+    let minus_a_native = TargetField::zero() - a_native;
     let a = NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "alloc_a"), || Ok(a_native)).unwrap();
 
     let a_plus_zero = a.add(cs.ns(|| "a_plus_zero"), &zero).unwrap();
@@ -202,11 +202,11 @@ fn distribution_law_test<
     let b_native = TargetField::rand(rng);
     let c_native = TargetField::rand(rng);
 
-    let a_plus_b_native = a_native + &b_native;
-    let a_times_c_native = a_native * &c_native;
-    let b_times_c_native = b_native * &c_native;
-    let a_plus_b_times_c_native = a_plus_b_native * &c_native;
-    let a_times_c_plus_b_times_c_native = a_times_c_native + &b_times_c_native;
+    let a_plus_b_native = a_native + b_native;
+    let a_times_c_native = a_native * c_native;
+    let b_times_c_native = b_native * c_native;
+    let a_plus_b_times_c_native = a_plus_b_native * c_native;
+    let a_times_c_plus_b_times_c_native = a_times_c_native + b_times_c_native;
 
     assert!(
         a_plus_b_times_c_native.eq(&a_times_c_plus_b_times_c_native),
@@ -363,7 +363,7 @@ fn mul_and_add_stress_test<
         )
         .unwrap();
 
-        num_native = num_native * &next_mul_native + &next_add_native;
+        num_native = num_native * next_mul_native + next_add_native;
 
         num = num.mul(cs.ns(|| format!("num_mul_next_{}", i)), &next_mul).unwrap();
         num = num.add(cs.ns(|| format!("num_add_next_{}", i)), &next_add).unwrap();
@@ -398,7 +398,7 @@ fn square_mul_add_stress_test<
         )
         .unwrap();
 
-        num_native = num_native * &num_native * &next_mul_native + &next_add_native;
+        num_native = num_native * num_native * next_mul_native + next_add_native;
 
         let num_squared = num.mul(cs.ns(|| format!("num_squared_{}", i)), &num).unwrap();
         let num_squared_times_next_mul = num_squared
@@ -422,7 +422,7 @@ fn double_stress_test_1<TargetField: PrimeField, BaseField: PrimeField, CS: Cons
     // Add to at least BaseField::size_in_bits() to ensure that we teat the overflowing
     for i in 0..TEST_COUNT + BaseField::size_in_bits() {
         // double
-        num_native = num_native + &num_native;
+        num_native = num_native + num_native;
         num = num.double(cs.ns(|| format!("num_double_{}", i))).unwrap();
 
         assert!(num.value().unwrap().eq(&num_native), "result incorrect");
@@ -438,13 +438,13 @@ fn double_stress_test_2<TargetField: PrimeField, BaseField: PrimeField, CS: Cons
         NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "initial num"), || Ok(num_native)).unwrap();
     for i in 0..TEST_COUNT {
         // double
-        num_native = num_native + &num_native;
+        num_native = num_native + num_native;
         num = num.double(cs.ns(|| format!("num_double_{}", i))).unwrap();
 
         assert!(num.value().unwrap().eq(&num_native));
 
         // square
-        let num_square_native = num_native * &num_native;
+        let num_square_native = num_native * num_native;
         let num_square = num.mul(cs.ns(|| format!("num_squared_{}", i)), &num).unwrap();
         assert!(num_square.value().unwrap().eq(&num_square_native));
     }
@@ -459,13 +459,13 @@ fn double_stress_test_3<TargetField: PrimeField, BaseField: PrimeField, CS: Cons
         NonNativeFieldVar::<TargetField, BaseField>::alloc(cs.ns(|| "initial num"), || Ok(num_native)).unwrap();
     for i in 0..TEST_COUNT {
         // double
-        num_native = num_native + &num_native;
+        num_native = num_native + num_native;
         num = num.double(cs.ns(|| format!("num_double_{}", i))).unwrap();
 
         assert!(num.value().unwrap().eq(&num_native));
 
         // square
-        let num_square_native = num_native * &num_native;
+        let num_square_native = num_native * num_native;
         let num_square = num.mul(cs.ns(|| format!("num_squared_{}", i)), &num).unwrap();
         let num_square_native_gadget = NonNativeFieldVar::<TargetField, BaseField>::alloc(
             cs.ns(|| format!("repetition_{}: alloc_native num", i)),

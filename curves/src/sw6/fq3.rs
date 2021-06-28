@@ -226,6 +226,6 @@ impl Fp3Parameters for Fq3Parameters {
         let mut four_fe = fe.double();
         four_fe.double_in_place();
         let eight_fe = four_fe.double();
-        eight_fe + &four_fe + &original
+        eight_fe + four_fe + original
     }
 }

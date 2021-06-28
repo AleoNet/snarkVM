@@ -46,6 +46,8 @@ use crate::{
 use snarkvm_fields::{
     fp6_3over2::Fp6Parameters,
     tests_field::{field_serialization_test, field_test, frobenius_test, primefield_test, sqrt_field_test},
+    FftField,
+    FftParameters,
     Field,
     FieldParameters,
     Fp2Parameters,
@@ -176,12 +178,12 @@ fn test_fq_add_assign() {
         let c = Fq::rand(&mut rng);
 
         let mut tmp1 = a;
-        tmp1.add_assign(&b);
-        tmp1.add_assign(&c);
+        tmp1.add_assign(b);
+        tmp1.add_assign(c);
 
         let mut tmp2 = b;
-        tmp2.add_assign(&c);
-        tmp2.add_assign(&a);
+        tmp2.add_assign(c);
+        tmp2.add_assign(a);
 
         assert!(tmp1.is_valid());
         assert!(tmp2.is_valid());
@@ -204,7 +206,7 @@ fn test_fq_sub_assign() {
         let mut tmp2 = b;
         tmp2.sub_assign(&a);
 
-        tmp1.add_assign(&tmp2);
+        tmp1.add_assign(tmp2);
         assert!(tmp1.is_zero());
     }
 }
@@ -239,16 +241,16 @@ fn test_fq_mul_assign() {
         let mut c = Fq::rand(&mut rng);
 
         let mut tmp1 = a;
-        tmp1.add_assign(&b);
-        tmp1.add_assign(&c);
+        tmp1.add_assign(b);
+        tmp1.add_assign(c);
         tmp1.mul_assign(&r);
 
         a.mul_assign(&r);
         b.mul_assign(&r);
         c.mul_assign(&r);
 
-        a.add_assign(&b);
-        a.add_assign(&c);
+        a.add_assign(b);
+        a.add_assign(c);
 
         assert_eq!(tmp1, a);
     }
@@ -297,7 +299,7 @@ fn test_fq_double_in_place() {
         // Ensure doubling a is equivalent to adding a to itself.
         let mut a = Fq::rand(&mut rng);
         let mut b = a;
-        b.add_assign(&a);
+        b.add_assign(a);
         a.double_in_place();
         assert_eq!(a, b);
     }
@@ -317,7 +319,7 @@ fn test_fq_negate() {
         // Ensure (a - (-a)) = 0.
         let mut a = Fq::rand(&mut rng);
         let b = -a;
-        a.add_assign(&b);
+        a.add_assign(b);
 
         assert!(a.is_zero());
     }
@@ -395,9 +397,12 @@ fn test_fq_root_of_unity() {
             0xe9185f1443ab18ec,
             0x6b8
         ]),
-        Fq::root_of_unity()
+        Fq::two_adic_root_of_unity()
     );
-    assert_eq!(Fq::root_of_unity().pow([1 << FqParameters::TWO_ADICITY]), Fq::one());
+    assert_eq!(
+        Fq::two_adic_root_of_unity().pow([1 << FqParameters::TWO_ADICITY]),
+        Fq::one()
+    );
     assert!(Fq::multiplicative_generator().sqrt().is_none());
 }
 
@@ -430,17 +435,17 @@ fn test_fq2_ordering() {
     let mut b = a;
 
     assert!(a.cmp(&b) == Ordering::Equal);
-    b.c0.add_assign(&Fq::one());
+    b.c0.add_assign(Fq::one());
     assert!(a.cmp(&b) == Ordering::Less);
-    a.c0.add_assign(&Fq::one());
+    a.c0.add_assign(Fq::one());
     assert!(a.cmp(&b) == Ordering::Equal);
-    b.c1.add_assign(&Fq::one());
+    b.c1.add_assign(Fq::one());
     assert!(a.cmp(&b) == Ordering::Less);
-    a.c0.add_assign(&Fq::one());
+    a.c0.add_assign(Fq::one());
     assert!(a.cmp(&b) == Ordering::Less);
-    a.c1.add_assign(&Fq::one());
+    a.c1.add_assign(Fq::one());
     assert!(a.cmp(&b) == Ordering::Greater);
-    b.c0.add_assign(&Fq::one());
+    b.c0.add_assign(Fq::one());
     assert!(a.cmp(&b) == Ordering::Equal);
 }
 
@@ -476,7 +481,7 @@ fn test_fq2_mul_nonresidue() {
     for _ in 0..1000 {
         let mut a = Fq2::rand(&mut rng);
         let mut b = a;
-        a = quadratic_non_residue * &a;
+        a = quadratic_non_residue * a;
         b.mul_assign(&nqr);
 
         assert_eq!(a, b);
@@ -604,8 +609,8 @@ fn test_bilinearity() {
     let b: G2Projective = rand::random();
     let s: Fr = rand::random();
 
-    let sa = a * &s;
-    let sb = b * &s;
+    let sa = a * s;
+    let sb = b * s;
 
     let ans1 = Bls12_377::pairing(sa, b);
     let ans2 = Bls12_377::pairing(a, sb);
@@ -632,7 +637,7 @@ fn test_g1_generator_raw() {
         let mut rhs = x;
         rhs.square_in_place();
         rhs.mul_assign(&x);
-        rhs.add_assign(&Bls12_377G1Parameters::COEFF_B);
+        rhs.add_assign(Bls12_377G1Parameters::COEFF_B);
 
         if let Some(y) = rhs.sqrt() {
             let p = G1Affine::new(x, if y < -y { y } else { -y }, false);
@@ -651,6 +656,6 @@ fn test_g1_generator_raw() {
         }
 
         i += 1;
-        x.add_assign(&Fq::one());
+        x.add_assign(Fq::one());
     }
 }

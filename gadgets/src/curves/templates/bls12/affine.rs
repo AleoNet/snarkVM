@@ -164,14 +164,14 @@ where
         let inv = x2_minus_x1.inverse(cs.ns(|| "compute inv"))?;
 
         let lambda = FG::alloc(cs.ns(|| "lambda"), || {
-            Ok(y2_minus_y1.get_value().get()? * &inv.get_value().get()?)
+            Ok(y2_minus_y1.get_value().get()? * inv.get_value().get()?)
         })?;
 
         let x_3 = FG::alloc(&mut cs.ns(|| "x_3"), || {
             let lambda_val = lambda.get_value().get()?;
             let x1 = self.x.get_value().get()?;
             let x2 = other.x.get_value().get()?;
-            Ok((lambda_val.square() - &x1) - &x2)
+            Ok((lambda_val.square() - x1) - x2)
         })?;
 
         let y_3 = FG::alloc(&mut cs.ns(|| "y_3"), || {
@@ -179,7 +179,7 @@ where
             let x_1 = self.x.get_value().get()?;
             let y_1 = self.y.get_value().get()?;
             let x_3 = x_3.get_value().get()?;
-            Ok(lambda_val * &(x_1 - &x_3) - &y_1)
+            Ok(lambda_val * (x_1 - x_3) - y_1)
         })?;
 
         // Check lambda
@@ -241,14 +241,14 @@ where
         let inv = x2_minus_x1.inverse(cs.ns(|| "compute inv"))?;
 
         let lambda = FG::alloc(cs.ns(|| "lambda"), || {
-            Ok(y2_minus_y1.get_value().get()? * &inv.get_value().get()?)
+            Ok(y2_minus_y1.get_value().get()? * inv.get_value().get()?)
         })?;
 
         let x_3 = FG::alloc(&mut cs.ns(|| "x_3"), || {
             let lambda_val = lambda.get_value().get()?;
             let x1 = self.x.get_value().get()?;
             let x2 = other_x;
-            Ok((lambda_val.square() - &x1) - &x2)
+            Ok((lambda_val.square() - x1) - x2)
         })?;
 
         let y_3 = FG::alloc(&mut cs.ns(|| "y_3"), || {
@@ -256,7 +256,7 @@ where
             let x_1 = self.x.get_value().get()?;
             let y_1 = self.y.get_value().get()?;
             let x_3 = x_3.get_value().get()?;
-            Ok(lambda_val * &(x_1 - &x_3) - &y_1)
+            Ok(lambda_val * (x_1 - x_3) - y_1)
         })?;
 
         // Check lambda
@@ -284,7 +284,7 @@ where
 
         let one = P::BaseField::one();
         let two = one.double();
-        let three = two + &one;
+        let three = two + one;
 
         let three_x_squared = x_squared.mul_by_constant(cs.ns(|| "3 * x^2"), &three)?;
         let three_x_squared_plus_a = three_x_squared.add_constant(cs.ns(|| "3 * x^2 + a"), &a)?;
@@ -293,7 +293,7 @@ where
 
         let lambda = FG::alloc(cs.ns(|| "lambda"), || {
             let y_doubled_inv = two_y.get_value().get()?.inverse().get()?;
-            Ok(three_x_squared_plus_a.get_value().get()? * &y_doubled_inv)
+            Ok(three_x_squared_plus_a.get_value().get()? * y_doubled_inv)
         })?;
 
         // Check lambda

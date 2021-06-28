@@ -218,7 +218,7 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FieldGadget<Fp2<P>, F> for Fp2Gadg
         let non_residue_c1 = self.c1.mul_by_constant(cs.ns(|| "non_residue * a1"), &P::NONRESIDUE)?;
         let a0_plus_non_residue_c1 = self.c0.add(cs.ns(|| "a0 + non_residue * a1"), &non_residue_c1)?;
         let one_plus_non_residue_v0 =
-            v0.mul_by_constant(cs.ns(|| "1 + non_residue * v0"), &(P::Fp::one() + &P::NONRESIDUE))?;
+            v0.mul_by_constant(cs.ns(|| "1 + non_residue * v0"), &(P::Fp::one() + P::NONRESIDUE))?;
 
         let c0 = a0_plus_a1
             .mul(cs.ns(|| "(a0 + a1) * (a0 + non_residue * a1)"), &a0_plus_non_residue_c1)?
@@ -252,7 +252,7 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FieldGadget<Fp2<P>, F> for Fp2Gadg
             .mul_by_constant_in_place(cs.ns(|| "non_residue * a1"), &P::NONRESIDUE)?;
         let a0_plus_non_residue_c1 = self.c0.add(cs.ns(|| "a0 + non_residue * a1"), &self.c1)?;
         let one_plus_non_residue_v0 =
-            v0.mul_by_constant(cs.ns(|| "1 + non_residue * v0"), &(P::Fp::one() + &P::NONRESIDUE))?;
+            v0.mul_by_constant(cs.ns(|| "1 + non_residue * v0"), &(P::Fp::one() + P::NONRESIDUE))?;
 
         self.c0 = a0_plus_a1
             .mul(cs.ns(|| "(a0 + a1) * (a0 + non_residue * a1)"), &a0_plus_non_residue_c1)?
@@ -296,7 +296,7 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FieldGadget<Fp2<P>, F> for Fp2Gadg
 
         let one = P::Fp::one();
         let rhs = v1
-            .mul_by_constant_in_place(cs.ns(|| "(1 - nonresidue) * v1"), &(one - &P::NONRESIDUE))?
+            .mul_by_constant_in_place(cs.ns(|| "(1 - nonresidue) * v1"), &(one - P::NONRESIDUE))?
             .add_constant_in_place(cs.ns(|| "add one"), &one)?;
         a0_plus_a1.mul_equals(cs.ns(|| "inv_constraint_2"), &b0_plus_b1, rhs)?;
         Ok(inverse)
@@ -394,7 +394,7 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> FieldGadget<Fp2<P>, F> for Fp2Gadg
         let (a0, a1) = (&self.c0, &self.c1);
         let (b0, b1) = (fe.c0, fe.c1);
         let mut v0 = a0.mul_by_constant(&mut cs.ns(|| "v0"), &b0)?;
-        let beta_v1 = a1.mul_by_constant(&mut cs.ns(|| "v1"), &(b1 * &P::NONRESIDUE))?;
+        let beta_v1 = a1.mul_by_constant(&mut cs.ns(|| "v1"), &(b1 * P::NONRESIDUE))?;
 
         v0.add_in_place(&mut cs.ns(|| "c0"), &beta_v1)?;
         let c0 = v0;
