@@ -99,7 +99,7 @@ impl<P: Fp6Parameters> Fp6<P> {
         let mut t1 = *c1;
         {
             let mut tmp = self.c1;
-            tmp.add_assign(&self.c2);
+            tmp.add_assign(self.c2);
 
             t1.mul_assign(&tmp);
             t1.sub_assign(&b_b);
@@ -109,7 +109,7 @@ impl<P: Fp6Parameters> Fp6<P> {
         let mut t2 = *c1;
         {
             let mut tmp = self.c0;
-            tmp.add_assign(&self.c1);
+            tmp.add_assign(self.c1);
 
             t2.mul_assign(&tmp);
             t2.sub_assign(&b_b);
@@ -129,29 +129,29 @@ impl<P: Fp6Parameters> Fp6<P> {
         let mut t1 = *c1;
         {
             let mut tmp = self.c1;
-            tmp.add_assign(&self.c2);
+            tmp.add_assign(self.c2);
 
             t1.mul_assign(&tmp);
             t1.sub_assign(&b_b);
             t1 = P::mul_fp2_by_nonresidue(&t1);
-            t1.add_assign(&a_a);
+            t1.add_assign(a_a);
         }
 
         let mut t3 = *c0;
         {
             let mut tmp = self.c0;
-            tmp.add_assign(&self.c2);
+            tmp.add_assign(self.c2);
 
             t3.mul_assign(&tmp);
             t3.sub_assign(&a_a);
-            t3.add_assign(&b_b);
+            t3.add_assign(b_b);
         }
 
         let mut t2 = *c0;
         t2.add_assign(c1);
         {
             let mut tmp = self.c0;
-            tmp.add_assign(&self.c1);
+            tmp.add_assign(self.c1);
 
             t2.mul_assign(&tmp);
             t2.sub_assign(&a_a);
@@ -196,11 +196,10 @@ impl<P: Fp6Parameters> Field for Fp6<P> {
         result
     }
 
-    fn double_in_place(&mut self) -> &mut Self {
+    fn double_in_place(&mut self) {
         self.c0.double_in_place();
         self.c1.double_in_place();
         self.c2.double_in_place();
-        self
     }
 
     #[inline]
@@ -232,14 +231,14 @@ impl<P: Fp6Parameters> Field for Fp6<P> {
 
     fn square_in_place(&mut self) -> &mut Self {
         let s0 = self.c0.square();
-        let s1 = (self.c0 * &self.c1).double();
-        let s2 = (self.c0 - &self.c1 + &self.c2).square();
-        let s3 = (self.c1 * &self.c2).double();
+        let s1 = (self.c0 * self.c1).double();
+        let s2 = (self.c0 - self.c1 + self.c2).square();
+        let s3 = (self.c1 * self.c2).double();
         let s4 = self.c2.square();
 
-        self.c0 = s0 + &P::mul_fp2_by_nonresidue(&s3);
-        self.c1 = s1 + &P::mul_fp2_by_nonresidue(&s4);
-        self.c2 = s1 + &s2 + &s3 - &s0 - &s4;
+        self.c0 = s0 + P::mul_fp2_by_nonresidue(&s3);
+        self.c1 = s1 + P::mul_fp2_by_nonresidue(&s4);
+        self.c2 = s1 + s2 + s3 - s0 - s4;
 
         self
     }
@@ -255,7 +254,7 @@ impl<P: Fp6Parameters> Field for Fp6<P> {
             {
                 let mut c0s = self.c0;
                 c0s.square_in_place();
-                c0.add_assign(&c0s);
+                c0.add_assign(c0s);
             }
             let mut c1 = self.c2;
             c1.square_in_place();
@@ -277,14 +276,14 @@ impl<P: Fp6Parameters> Field for Fp6<P> {
             tmp1.mul_assign(&c1);
             let mut tmp2 = self.c1;
             tmp2.mul_assign(&c2);
-            tmp1.add_assign(&tmp2);
+            tmp1.add_assign(tmp2);
             tmp1 = P::mul_fp2_by_nonresidue(&tmp1);
             tmp2 = self.c0;
             tmp2.mul_assign(&c0);
-            tmp1.add_assign(&tmp2);
+            tmp1.add_assign(tmp2);
 
             match tmp1.inverse() {
-                Some(t) => Some(Self::new(t * &c0, t * &c1, t * &c2)),
+                Some(t) => Some(Self::new(t * c0, t * c1, t * c2)),
                 None => None,
             }
         }
@@ -336,13 +335,16 @@ impl<P: Fp6Parameters> Neg for Fp6<P> {
     }
 }
 
+impl_additive_ops_from_ref!(Fp6, Fp6Parameters);
+impl_multiplicative_ops_from_ref!(Fp6, Fp6Parameters);
+
 impl<'a, P: Fp6Parameters> Add<&'a Self> for Fp6<P> {
     type Output = Self;
 
     #[inline]
     fn add(self, other: &Self) -> Self {
         let mut result = self;
-        result.add_assign(&other);
+        result.add_assign(other);
         result
     }
 }
@@ -401,13 +403,13 @@ impl<'a, P: Fp6Parameters> SubAssign<&'a Self> for Fp6<P> {
 impl<'a, P: Fp6Parameters> MulAssign<&'a Self> for Fp6<P> {
     #[inline]
     fn mul_assign(&mut self, other: &Self) {
-        let v0 = self.c0 * &other.c0;
-        let v1 = self.c1 * &other.c1;
-        let v2 = self.c2 * &other.c2;
+        let v0 = self.c0 * other.c0;
+        let v1 = self.c1 * other.c1;
+        let v2 = self.c2 * other.c2;
 
-        let c0 = P::mul_fp2_by_nonresidue(&((self.c1 + &self.c2) * &(other.c1 + &other.c2) - &v1 - &v2)) + &v0;
-        let c1 = (self.c0 + &self.c1) * &(other.c0 + &other.c1) - &v0 - &v1 + &P::mul_fp2_by_nonresidue(&v2);
-        let c2 = (self.c0 + &self.c2) * &(other.c0 + &other.c2) - &v0 - &v2 + &v1;
+        let c0 = P::mul_fp2_by_nonresidue(&((self.c1 + self.c2) * (other.c1 + other.c2) - v1 - v2)) + v0;
+        let c1 = (self.c0 + self.c1) * (other.c0 + other.c1) - v0 - v1 + P::mul_fp2_by_nonresidue(&v2);
+        let c2 = (self.c0 + self.c2) * (other.c0 + other.c2) - v0 - v2 + v1;
 
         self.c0 = c0;
         self.c1 = c1;

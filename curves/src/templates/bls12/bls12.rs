@@ -175,7 +175,7 @@ where
             Some(mut f2) => {
                 // f2 = f^(-1);
                 // r = f^(p^6 - 1)
-                let mut r = f1 * &f2;
+                let mut r = f1 * f2;
 
                 // f2 = f^(p^6 - 1)
                 f2 = r;
@@ -194,7 +194,7 @@ where
                 let mut y5 = Self::exp_by_x(r);
 
                 let mut y1 = y5.cyclotomic_square();
-                let mut y3 = y0 * &y5;
+                let mut y3 = y0 * y5;
                 y0 = Self::exp_by_x(y3);
                 let y2 = Self::exp_by_x(y0);
                 let mut y4 = Self::exp_by_x(y2);

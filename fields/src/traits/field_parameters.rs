@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_utilities::biginteger::*;
+use crate::traits::FftParameters;
 
 /// A trait that defines parameters for a prime field.
-pub trait FieldParameters: 'static + Send + Sync + Sized {
-    type BigInteger: BigInteger;
-
+pub trait FieldParameters: 'static + FftParameters {
     /// The modulus of the field.
     const MODULUS: Self::BigInteger;
 
@@ -49,12 +47,6 @@ pub trait FieldParameters: 'static + Send + Sync + Sized {
     /// The number of bits that can be reliably stored.
     /// (Should equal `SELF::MODULUS_BITS - 1`)
     const CAPACITY: u32;
-
-    /// 2^s * t = MODULUS - 1 with t odd. This is the two-adicity of the prime.
-    const TWO_ADICITY: u32;
-
-    /// 2^s root of unity computed by GENERATOR^t
-    const ROOT_OF_UNITY: Self::BigInteger;
 
     /// t for 2^s * t = MODULUS - 1
     const T: Self::BigInteger;

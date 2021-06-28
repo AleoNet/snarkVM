@@ -20,6 +20,8 @@ use snarkvm_dpc::block::PedersenMerkleRootHash;
 use snarkvm_posw::{txids_to_roots, Marlin, PoswMarlin};
 use snarkvm_utilities::bytes::FromBytes;
 
+use rand::SeedableRng;
+
 #[test]
 fn test_posw_load_and_mine() {
     // Load the PoSW Marlin parameters.
@@ -74,4 +76,229 @@ fn test_posw_verify_testnet1() {
 
     let posw = PoswMarlin::load().unwrap();
     assert!(posw.verify(nonce, &proof, &pedersen_merkle_root).is_ok());
+}
+
+#[test]
+fn test_posw_setup_vs_load_weak_sanity_check() {
+    let generated_posw = {
+        // Load the PoSW Marlin parameters.
+        let rng = &mut rand_xorshift::XorShiftRng::seed_from_u64(1234567);
+        // Run the universal setup.
+        let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(10000, 10000, 100000, rng).unwrap();
+        // Run the circuit setup.
+        PoswMarlin::index(universal_srs).unwrap()
+    };
+    let loaded_posw = PoswMarlin::load().unwrap();
+
+    let generated_proving_key = generated_posw.pk.unwrap().proving_key;
+    let loaded_proving_key = loaded_posw.pk.unwrap().proving_key;
+
+    let a = generated_proving_key.committer_key.max_degree;
+    let b = loaded_proving_key.committer_key.max_degree;
+    assert_eq!(a, b);
+
+    let a = generated_proving_key.circuit_commitment_randomness.len();
+    let b = loaded_proving_key.circuit_commitment_randomness.len();
+    println!("{:?} == {:?}? {}", a, b, a == b);
+    assert_eq!(a, b);
+
+    let a = generated_proving_key.circuit.max_degree();
+    let b = loaded_proving_key.circuit.max_degree();
+    println!("{:?} == {:?}? {}", a, b, a == b);
+    assert_eq!(a, b);
+
+    let a = generated_proving_key.circuit.index_info.num_variables;
+    let b = loaded_proving_key.circuit.index_info.num_variables;
+    println!("{:?} == {:?}? {}", a, b, a == b);
+    assert_eq!(a, b);
+
+    let a = generated_proving_key.circuit.index_info.num_constraints;
+    let b = loaded_proving_key.circuit.index_info.num_constraints;
+    println!("{:?} == {:?}? {}", a, b, a == b);
+    assert_eq!(a, b);
+
+    let a = generated_proving_key.circuit.index_info.num_non_zero;
+    let b = loaded_proving_key.circuit.index_info.num_non_zero;
+    println!("{:?} == {:?}? {}", a, b, a == b);
+    assert_eq!(a, b);
+
+    let a = generated_proving_key.circuit.index_info.max_degree();
+    let b = loaded_proving_key.circuit.index_info.max_degree();
+    println!("{:?} == {:?}? {}", a, b, a == b);
+    assert_eq!(a, b);
+
+    macro_rules! check_term_sizes {
+        ($term: ident) => {
+            let a = generated_proving_key.circuit.$term.len();
+            let b = loaded_proving_key.circuit.$term.len();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            // TODO (howardwu): CRITICAL - Confirm expected circuit behavior and reenable inner checks.
+            // for i in 0..generated_proving_key.circuit.$term.len() {
+            //     let a = generated_proving_key.circuit.$term[i].len();
+            //     let b = loaded_proving_key.circuit.$term[i].len();
+            //     println!("{:?} == {:?}? {}", a, b, a == b);
+            //     assert_eq!(a, b);
+            // }
+        };
+    }
+
+    check_term_sizes!(a);
+    check_term_sizes!(b);
+    check_term_sizes!(c);
+
+    macro_rules! check_arithmetization_sizes {
+        ($term: ident) => {
+            let a = generated_proving_key.circuit.$term.row.degree_bound();
+            let b = loaded_proving_key.circuit.$term.row.degree_bound();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            let a = generated_proving_key.circuit.$term.row.hiding_bound();
+            let b = loaded_proving_key.circuit.$term.row.hiding_bound();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            let a = generated_proving_key.circuit.$term.row.polynomial().degree();
+            let b = loaded_proving_key.circuit.$term.row.polynomial().degree();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            let a = generated_proving_key.circuit.$term.col.degree_bound();
+            let b = loaded_proving_key.circuit.$term.col.degree_bound();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            let a = generated_proving_key.circuit.$term.col.hiding_bound();
+            let b = loaded_proving_key.circuit.$term.col.hiding_bound();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            let a = generated_proving_key.circuit.$term.col.polynomial().degree();
+            let b = loaded_proving_key.circuit.$term.col.polynomial().degree();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            let a = generated_proving_key.circuit.$term.val.degree_bound();
+            let b = loaded_proving_key.circuit.$term.val.degree_bound();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            let a = generated_proving_key.circuit.$term.val.hiding_bound();
+            let b = loaded_proving_key.circuit.$term.val.hiding_bound();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            let a = generated_proving_key.circuit.$term.val.polynomial().degree();
+            let b = loaded_proving_key.circuit.$term.val.polynomial().degree();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            let a = generated_proving_key.circuit.$term.row_col.degree_bound();
+            let b = loaded_proving_key.circuit.$term.row_col.degree_bound();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            let a = generated_proving_key.circuit.$term.row_col.hiding_bound();
+            let b = loaded_proving_key.circuit.$term.row_col.hiding_bound();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            let a = generated_proving_key.circuit.$term.row_col.polynomial().degree();
+            let b = loaded_proving_key.circuit.$term.row_col.polynomial().degree();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            let a = generated_proving_key
+                .circuit
+                .$term
+                .evals_on_K
+                .row
+                .evaluations
+                .len();
+            let b = loaded_proving_key.circuit.$term.evals_on_K.row.evaluations.len();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            let a = generated_proving_key
+                .circuit
+                .$term
+                .evals_on_K
+                .col
+                .evaluations
+                .len();
+            let b = loaded_proving_key.circuit.$term.evals_on_K.col.evaluations.len();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            let a = generated_proving_key
+                .circuit
+                .$term
+                .evals_on_K
+                .val
+                .evaluations
+                .len();
+            let b = loaded_proving_key.circuit.$term.evals_on_K.val.evaluations.len();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            let a = generated_proving_key
+                .circuit
+                .$term
+                .evals_on_B
+                .row
+                .evaluations
+                .len();
+            let b = loaded_proving_key.circuit.$term.evals_on_B.row.evaluations.len();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            let a = generated_proving_key
+                .circuit
+                .$term
+                .evals_on_B
+                .col
+                .evaluations
+                .len();
+            let b = loaded_proving_key.circuit.$term.evals_on_B.col.evaluations.len();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            let a = generated_proving_key
+                .circuit
+                .$term
+                .evals_on_B
+                .val
+                .evaluations
+                .len();
+            let b = loaded_proving_key.circuit.$term.evals_on_B.val.evaluations.len();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+
+            let a = generated_proving_key
+                .circuit
+                .$term
+                .row_col_evals_on_B
+                .evaluations
+                .len();
+            let b = loaded_proving_key
+                .circuit
+                .$term
+                .row_col_evals_on_B
+                .evaluations
+                .len();
+            println!("{:?} == {:?}? {}", a, b, a == b);
+            assert_eq!(a, b);
+        };
+    }
+
+    println!("------ Checking circuit A arithmetization sizes ------");
+    check_arithmetization_sizes!(a_star_arith);
+
+    println!("------ Checking circuit B arithmetization sizes ------");
+    check_arithmetization_sizes!(b_star_arith);
+
+    println!("------ Checking circuit C arithmetization sizes ------");
+    check_arithmetization_sizes!(c_star_arith);
 }

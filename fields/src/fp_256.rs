@@ -14,7 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Field, FieldError, FieldParameters, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
+use crate::{
+    impl_additive_ops_from_ref,
+    impl_multiplicative_ops_from_ref,
+    FftField,
+    Field,
+    FieldError,
+    FieldParameters,
+    LegendreSymbol,
+    One,
+    PrimeField,
+    SquareRootField,
+    Zero,
+};
 use snarkvm_utilities::{
     biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger256 as BigInteger},
     bytes::{FromBytes, ToBytes},
@@ -158,12 +170,11 @@ impl<P: Fp256Parameters> Field for Fp256<P> {
     }
 
     #[inline]
-    fn double_in_place(&mut self) -> &mut Self {
+    fn double_in_place(&mut self) {
         // This cannot exceed the backing capacity.
         self.0.mul2();
         // However, it may need to be reduced.
         self.reduce();
-        self
     }
 
     #[inline]
@@ -318,15 +329,24 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
         let r = *self;
         r.0
     }
+}
+
+impl<P: Fp256Parameters> FftField for Fp256<P> {
+    type FftParameters = P;
 
     #[inline]
-    fn multiplicative_generator() -> Self {
-        Fp256::<P>(P::GENERATOR, PhantomData)
+    fn two_adic_root_of_unity() -> Self {
+        Self(P::TWO_ADIC_ROOT_OF_UNITY, PhantomData)
     }
 
     #[inline]
-    fn root_of_unity() -> Self {
-        Fp256::<P>(P::ROOT_OF_UNITY, PhantomData)
+    fn large_subgroup_root_of_unity() -> Option<Self> {
+        Some(Self(P::LARGE_SUBGROUP_ROOT_OF_UNITY?, PhantomData))
+    }
+
+    #[inline]
+    fn multiplicative_generator() -> Self {
+        Self(P::GENERATOR, PhantomData)
     }
 }
 
@@ -371,6 +391,9 @@ impl_prime_field_from_int!(Fp256, u16, Fp256Parameters);
 impl_prime_field_from_int!(Fp256, u8, Fp256Parameters);
 
 impl_prime_field_standard_sample!(Fp256, Fp256Parameters);
+
+impl_additive_ops_from_ref!(Fp256, Fp256Parameters);
+impl_multiplicative_ops_from_ref!(Fp256, Fp256Parameters);
 
 impl<P: Fp256Parameters> ToBytes for Fp256<P> {
     #[inline]

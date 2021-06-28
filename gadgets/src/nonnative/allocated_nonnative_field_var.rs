@@ -71,7 +71,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         // This is because 2^{(params.bits_per_limb)} might indeed be larger than the target field's prime.
         base_repr.muln((params.bits_per_limb - 1) as u32);
         let mut base: TargetField = TargetField::from_repr(base_repr).unwrap();
-        base = base + &base;
+        base = base + base;
 
         let mut result = TargetField::zero();
         let mut power = TargetField::one();
@@ -88,7 +88,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
                 cur.double_in_place();
             }
 
-            result += &(val * &power);
+            result += &(val * power);
             power *= &base;
         }
 
@@ -207,14 +207,14 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         );
 
         // Step 1: Reduce the `other` if needed
-        let mut surfeit = overhead!(other.num_of_additions_over_normal_form + &BaseField::one()) + 1;
+        let mut surfeit = overhead!(other.num_of_additions_over_normal_form + BaseField::one()) + 1;
         let mut other = other.clone();
         if (surfeit + params.bits_per_limb > BaseField::size_in_bits() - 1)
             || (surfeit + (TargetField::size_in_bits() - params.bits_per_limb * (params.num_limbs - 1))
                 > BaseField::size_in_bits() - 1)
         {
             Reducer::reduce(cs, &mut other)?;
-            surfeit = overhead!(other.num_of_additions_over_normal_form + &BaseField::one()) + 1;
+            surfeit = overhead!(other.num_of_additions_over_normal_form + BaseField::one()) + 1;
         }
 
         // Step 2: Construct the padding
@@ -248,14 +248,14 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
             .enumerate()
         {
             if i != 0 {
-                let temp = pad_non_top_limb + &*pad_to_kp_limb;
+                let temp = pad_non_top_limb + *pad_to_kp_limb;
                 limbs.push(
                     this_limb
                         .add_constant(cs.ns(|| format!("add_constant_{}", i)), &temp)?
                         .sub(cs.ns(|| format!("sub_{}", i)), &other_limb)?,
                 );
             } else {
-                let temp = pad_top_limb + &*pad_to_kp_limb;
+                let temp = pad_top_limb + *pad_to_kp_limb;
                 limbs.push(
                     this_limb
                         .add_constant(cs.ns(|| format!("add_constant_{}", i)), &temp)?
@@ -267,8 +267,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         let result = AllocatedNonNativeFieldVar::<TargetField, BaseField> {
             limbs,
             num_of_additions_over_normal_form: self.num_of_additions_over_normal_form
-                + &(other.num_of_additions_over_normal_form + &BaseField::one())
-                + &(other.num_of_additions_over_normal_form + &BaseField::one()),
+                + (other.num_of_additions_over_normal_form + BaseField::one())
+                + (other.num_of_additions_over_normal_form + BaseField::one()),
             is_in_the_normal_form: false,
             target_phantom: PhantomData,
         };
@@ -457,8 +457,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
 
         Ok(AllocatedNonNativeFieldMulResultVar {
             limbs: prod_limbs,
-            prod_of_num_of_additions: (self_reduced.num_of_additions_over_normal_form + &BaseField::one())
-                * &(other_reduced.num_of_additions_over_normal_form + &BaseField::one()),
+            prod_of_num_of_additions: (self_reduced.num_of_additions_over_normal_form + BaseField::one())
+                * (other_reduced.num_of_additions_over_normal_form + BaseField::one()),
             target_phantom: PhantomData,
         })
     }
@@ -517,7 +517,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
             Ok(bigint_to_basefield::<BaseField>(&(delta_bigint / p_bigint)))
         })?;
 
-        let surfeit = overhead!(delta.num_of_additions_over_normal_form + &BaseField::one()) + 1;
+        let surfeit = overhead!(delta.num_of_additions_over_normal_form + BaseField::one()) + 1;
         Reducer::<TargetField, BaseField>::limb_to_bits_be(&mut cs.ns(|| "limb_to_bits"), &k_gadget, surfeit)?;
 
         // Step 4: Compute k * p

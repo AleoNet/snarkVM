@@ -159,7 +159,7 @@ impl<P: Bls12Parameters> AllocGadget<G2Prepared<P>, <P as Bls12Parameters>::Fp> 
             projective_coeffs
                 .iter()
                 .zip(z_s)
-                .map(|((x, y, _), z_inv)| (*x * &z_inv, *y * &z_inv))
+                .map(|((x, y, _), z_inv)| (*x * z_inv, *y * z_inv))
                 .collect::<Vec<_>>()
         })?;
 
@@ -195,7 +195,7 @@ impl<P: Bls12Parameters> AllocGadget<G2Prepared<P>, <P as Bls12Parameters>::Fp> 
             projective_coeffs
                 .iter()
                 .zip(z_s)
-                .map(|((x, y, _), z_inv)| (*x * &z_inv, *y * &z_inv))
+                .map(|((x, y, _), z_inv)| (*x * z_inv, *y * z_inv))
                 .collect::<Vec<_>>()
         })?;
 
@@ -231,7 +231,7 @@ impl<P: Bls12Parameters> AllocGadget<G2Prepared<P>, <P as Bls12Parameters>::Fp> 
             projective_coeffs
                 .iter()
                 .zip(z_s)
-                .map(|((x, y, _), z_inv)| (*x * &z_inv, *y * &z_inv))
+                .map(|((x, y, _), z_inv)| (*x * z_inv, *y * z_inv))
                 .collect::<Vec<_>>()
         })?;
 

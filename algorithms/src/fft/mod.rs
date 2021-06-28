@@ -26,7 +26,26 @@ pub use evaluations::Evaluations;
 pub mod polynomial;
 pub use polynomial::{DenseOrSparsePolynomial, DensePolynomial, SparsePolynomial};
 
-pub(crate) mod multicore;
-
 #[cfg(test)]
 mod tests;
+
+use snarkvm_fields::FftField;
+
+/// Types that can be FFT-ed must implement this trait.
+pub trait DomainCoeff<F: FftField>:
+    Copy + Send + Sync + snarkvm_fields::Zero + core::ops::AddAssign + core::ops::SubAssign + core::ops::MulAssign<F>
+{
+}
+
+impl<T, F> DomainCoeff<F> for T
+where
+    F: FftField,
+    T: Copy
+        + Send
+        + Sync
+        + snarkvm_fields::Zero
+        + core::ops::AddAssign
+        + core::ops::SubAssign
+        + core::ops::MulAssign<F>,
+{
+}

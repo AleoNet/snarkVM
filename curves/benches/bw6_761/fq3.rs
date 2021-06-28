@@ -36,7 +36,7 @@ pub fn bench_fq3_add_assign(c: &mut Criterion) {
     c.bench_function("bw6_761: fq3_add_assign", |c| {
         c.iter(|| {
             let mut tmp = v[count].0;
-            tmp.add_assign(&v[count].1);
+            tmp.add_assign(v[count].1);
             count = (count + 1) % SAMPLES;
             tmp
         })

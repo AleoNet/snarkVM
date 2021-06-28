@@ -164,9 +164,9 @@ impl<G: Group, S: PedersenSize> CRH for BoweHopwoodPedersenCRH<G, S> {
                         &generator
                             [(chunk_bits[0] as usize) | (chunk_bits[1] as usize) << 1 | (chunk_bits[2] as usize) << 2]
                     })
-                    .fold(G::zero(), |a, b| a + &b)
+                    .fold(G::zero(), |a, b| a + b)
             })
-            .fold(G::zero(), |a, b| a + &b);
+            .fold(G::zero(), |a, b| a + b);
 
         end_timer!(eval_time);
 

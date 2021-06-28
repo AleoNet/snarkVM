@@ -90,7 +90,7 @@ impl<F: Field> SparsePolynomial<F> {
         }
         let mut total = F::zero();
         for (i, c) in &self.coeffs {
-            total += &(*c * &point.pow(&[*i as u64]));
+            total += *c * point.pow(&[*i as u64]);
         }
         total
     }
@@ -104,7 +104,7 @@ impl<F: Field> SparsePolynomial<F> {
             for (i, self_coeff) in self.coeffs.iter() {
                 for (j, other_coeff) in other.coeffs.iter() {
                     let cur_coeff = result.entry(i + j).or_insert_with(F::zero);
-                    *cur_coeff += &(*self_coeff * other_coeff);
+                    *cur_coeff += *self_coeff * other_coeff;
                 }
             }
             let mut result = result.into_iter().collect::<Vec<_>>();
@@ -151,7 +151,7 @@ mod tests {
         for size in 2..10 {
             let domain_size = 1 << size;
             let domain = EvaluationDomain::new(domain_size).unwrap();
-            let two = Fr::one() + &Fr::one();
+            let two = Fr::one() + Fr::one();
             let sparse_poly = SparsePolynomial::from_coefficients_vec(vec![(0, two), (1, two)]);
             let evals1 = sparse_poly.evaluate_over_domain_by_ref(domain);
 

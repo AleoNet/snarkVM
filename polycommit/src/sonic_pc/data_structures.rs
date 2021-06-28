@@ -24,7 +24,10 @@ use crate::{
     PCVerifierKey,
     Vec,
 };
-use snarkvm_curves::traits::{PairingCurve, PairingEngine, ProjectiveCurve};
+use snarkvm_curves::{
+    traits::{PairingCurve, PairingEngine},
+    Group,
+};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},

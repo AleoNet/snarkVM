@@ -229,7 +229,7 @@ impl<F: Field> Add<&LinearCombination<F>> for &LinearCombination<F> {
             self,
             other,
             |coeff| coeff,
-            |cur_coeff, other_coeff| cur_coeff + &other_coeff,
+            |cur_coeff, other_coeff| cur_coeff + other_coeff,
         )
     }
 }
@@ -247,7 +247,7 @@ impl<F: Field> Add<LinearCombination<F>> for &LinearCombination<F> {
             self,
             &other,
             |coeff| coeff,
-            |cur_coeff, other_coeff| cur_coeff + &other_coeff,
+            |cur_coeff, other_coeff| cur_coeff + other_coeff,
         )
     }
 }
@@ -265,7 +265,7 @@ impl<'a, F: Field> Add<&'a LinearCombination<F>> for LinearCombination<F> {
             &self,
             other,
             |coeff| coeff,
-            |cur_coeff, other_coeff| cur_coeff + &other_coeff,
+            |cur_coeff, other_coeff| cur_coeff + other_coeff,
         )
     }
 }
@@ -283,7 +283,7 @@ impl<F: Field> Add<LinearCombination<F>> for LinearCombination<F> {
             &self,
             &other,
             |coeff| coeff,
-            |cur_coeff, other_coeff| cur_coeff + &other_coeff,
+            |cur_coeff, other_coeff| cur_coeff + other_coeff,
         )
     }
 }
@@ -305,7 +305,7 @@ impl<F: Field> Sub<&LinearCombination<F>> for &LinearCombination<F> {
             self,
             other,
             |coeff| -coeff,
-            |cur_coeff, other_coeff| cur_coeff - &other_coeff,
+            |cur_coeff, other_coeff| cur_coeff - other_coeff,
         )
     }
 }
@@ -325,7 +325,7 @@ impl<'a, F: Field> Sub<&'a LinearCombination<F>> for LinearCombination<F> {
             &self,
             other,
             |coeff| -coeff,
-            |cur_coeff, other_coeff| cur_coeff - &other_coeff,
+            |cur_coeff, other_coeff| cur_coeff - other_coeff,
         )
     }
 }
@@ -345,7 +345,7 @@ impl<F: Field> Sub<LinearCombination<F>> for &LinearCombination<F> {
             self,
             &other,
             |coeff| -coeff,
-            |cur_coeff, other_coeff| cur_coeff - &other_coeff,
+            |cur_coeff, other_coeff| cur_coeff - other_coeff,
         )
     }
 }
@@ -364,7 +364,7 @@ impl<F: Field> Sub<LinearCombination<F>> for LinearCombination<F> {
             &self,
             &other,
             |coeff| -coeff,
-            |cur_coeff, other_coeff| cur_coeff - &other_coeff,
+            |cur_coeff, other_coeff| cur_coeff - other_coeff,
         )
     }
 }
@@ -384,8 +384,8 @@ impl<F: Field> Add<(F, &LinearCombination<F>)> for &LinearCombination<F> {
         op_impl(
             self,
             other,
-            |coeff| mul_coeff * &coeff,
-            |cur_coeff, other_coeff| cur_coeff + &(mul_coeff * &other_coeff),
+            |coeff| mul_coeff * coeff,
+            |cur_coeff, other_coeff| cur_coeff + (mul_coeff * other_coeff),
         )
     }
 }
@@ -405,8 +405,8 @@ impl<'a, F: Field> Add<(F, &'a LinearCombination<F>)> for LinearCombination<F> {
         op_impl(
             &self,
             other,
-            |coeff| mul_coeff * &coeff,
-            |cur_coeff, other_coeff| cur_coeff + &(mul_coeff * &other_coeff),
+            |coeff| mul_coeff * coeff,
+            |cur_coeff, other_coeff| cur_coeff + (mul_coeff * other_coeff),
         )
     }
 }
@@ -425,8 +425,8 @@ impl<F: Field> Add<(F, LinearCombination<F>)> for &LinearCombination<F> {
         op_impl(
             self,
             &other,
-            |coeff| mul_coeff * &coeff,
-            |cur_coeff, other_coeff| cur_coeff + &(mul_coeff * &other_coeff),
+            |coeff| mul_coeff * coeff,
+            |cur_coeff, other_coeff| cur_coeff + (mul_coeff * other_coeff),
         )
     }
 }
@@ -446,8 +446,8 @@ impl<F: Field> Add<(F, Self)> for LinearCombination<F> {
         op_impl(
             &self,
             &other,
-            |coeff| mul_coeff * &coeff,
-            |cur_coeff, other_coeff| cur_coeff + &(mul_coeff * &other_coeff),
+            |coeff| mul_coeff * coeff,
+            |cur_coeff, other_coeff| cur_coeff + (mul_coeff * other_coeff),
         )
     }
 }

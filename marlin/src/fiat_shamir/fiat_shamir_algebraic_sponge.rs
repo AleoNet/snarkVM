@@ -200,9 +200,9 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseFiel
             let first = &src_limbs[i];
             let second = if i + 1 < src_len { Some(&src_limbs[i + 1]) } else { None };
 
-            let first_max_bits_per_limb = params.bits_per_limb + overhead!(first.1 + &BaseField::one());
+            let first_max_bits_per_limb = params.bits_per_limb + overhead!(first.1 + BaseField::one());
             let second_max_bits_per_limb = if let Some(second) = second {
-                params.bits_per_limb + overhead!(second.1 + &BaseField::one())
+                params.bits_per_limb + overhead!(second.1 + BaseField::one())
             } else {
                 0
             };
@@ -211,7 +211,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseFiel
                 if first_max_bits_per_limb + second_max_bits_per_limb <= capacity {
                     let adjustment_factor = &adjustment_factor_lookup_table[second_max_bits_per_limb];
 
-                    dest_limbs.push(first.0 * adjustment_factor + &second.0);
+                    dest_limbs.push(first.0 * adjustment_factor + second.0);
                     i += 2;
                 } else {
                     dest_limbs.push(first.0);

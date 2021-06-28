@@ -30,7 +30,7 @@
 //     let a = NonNativeFieldVar::Constant(F::from(12u8));
 //     let b = NonNativeFieldVar::<F, CF>::alloc(cs.ns(|| "alloc"), || Ok(F::from(6u8))).unwrap();
 //
-//     let b2 = &b + &b;
+//     let b2 = &b + b;
 //     let b2 = b.double(cs.ns(|| "b_plus_b")).unwrap();
 //
 //     let a_to_constraint_field = a.to_constraint_field().unwrap();

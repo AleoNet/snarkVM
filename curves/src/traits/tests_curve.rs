@@ -15,11 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::traits::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::{PrimeField, Zero};
+use snarkvm_fields::Zero;
 use snarkvm_utilities::rand::UniformRand;
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
+use std::ops::{AddAssign, Mul};
 
 pub const ITERATIONS: usize = 5;
 
@@ -37,7 +38,7 @@ fn random_addition_test<G: ProjectiveCurve>() {
         // a + a should equal the doubling
         {
             let mut aplusa = a;
-            aplusa.add_assign(&a);
+            aplusa.add_assign(a);
 
             let mut aplusamixed = a;
             aplusamixed.add_assign_mixed(&a.into_affine());
@@ -52,13 +53,13 @@ fn random_addition_test<G: ProjectiveCurve>() {
         let mut tmp = vec![G::zero(); 6];
 
         // (a + b) + c
-        tmp[0] = (a + &b) + &c;
+        tmp[0] = (a + b) + c;
 
         // a + (b + c)
-        tmp[1] = a + &(b + &c);
+        tmp[1] = a + (b + c);
 
         // (a + c) + b
-        tmp[2] = (a + &c) + &b;
+        tmp[2] = (a + c) + b;
 
         // Mixed addition
 
@@ -111,22 +112,22 @@ fn random_multiplication_test<G: ProjectiveCurve>() {
 
         // s ( a + b )
         let mut tmp1 = a;
-        tmp1.add_assign(&b);
-        tmp1.mul_assign(s.into_repr());
+        tmp1.add_assign(b);
+        tmp1.mul_assign(s);
 
         // sa + sb
-        a.mul_assign(s.into_repr());
-        b.mul_assign(s.into_repr());
+        a.mul_assign(s);
+        b.mul_assign(s);
 
         let mut tmp2 = a;
-        tmp2.add_assign(&b);
+        tmp2.add_assign(b);
 
         // Affine multiplication
-        let mut tmp3 = a_affine.mul(s.into_repr());
-        tmp3.add_assign(&b_affine.mul(s.into_repr()));
+        let mut tmp3 = a_affine.mul(s);
+        tmp3.add_assign(b_affine.mul(s));
 
         assert_eq!(tmp1, tmp2);
-        assert_eq!(tmp1, tmp3);
+        assert_eq!(tmp1, tmp3.into());
     }
 }
 
@@ -139,7 +140,7 @@ fn random_doubling_test<G: ProjectiveCurve>() {
 
         // 2(a + b)
         let mut tmp1 = a;
-        tmp1.add_assign(&b);
+        tmp1.add_assign(b);
         tmp1.double_in_place();
 
         // 2a + 2b
@@ -147,7 +148,7 @@ fn random_doubling_test<G: ProjectiveCurve>() {
         b.double_in_place();
 
         let mut tmp2 = a;
-        tmp2.add_assign(&b);
+        tmp2.add_assign(b);
 
         let mut tmp3 = a;
         tmp3.add_assign_mixed(&b.into_affine());
@@ -165,7 +166,7 @@ fn random_negation_test<G: ProjectiveCurve>() {
 
         let s = G::ScalarField::rand(&mut rng);
         let sneg = -s;
-        assert!((s + &sneg).is_zero());
+        assert!((s + sneg).is_zero());
 
         let mut t1 = r;
         t1.mul_assign(s);
@@ -174,7 +175,7 @@ fn random_negation_test<G: ProjectiveCurve>() {
         t2.mul_assign(sneg);
 
         let mut t3 = t1;
-        t3.add_assign(&t2);
+        t3.add_assign(t2);
         println!("t3 = {}", t3);
         assert!(t3.is_zero());
 
@@ -247,19 +248,19 @@ pub fn curve_tests<G: ProjectiveCurve>() {
     {
         let mut r = G::rand(&mut rng);
         let rcopy = r;
-        r.add_assign(&G::zero());
+        r.add_assign(G::zero());
         assert_eq!(r, rcopy);
         r.add_assign_mixed(&G::Affine::zero());
         assert_eq!(r, rcopy);
 
         let mut z = G::zero();
-        z.add_assign(&G::zero());
+        z.add_assign(G::zero());
         assert!(z.is_zero());
         z.add_assign_mixed(&G::Affine::zero());
         assert!(z.is_zero());
 
         let mut z2 = z;
-        z2.add_assign(&r);
+        z2.add_assign(r);
 
         z.add_assign_mixed(&r.into_affine());
 
