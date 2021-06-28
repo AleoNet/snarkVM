@@ -74,3 +74,11 @@ impl_params_local!(
     "outer_snark_vk",
     4443
 );
+
+impl_params_local!(
+    UniversalSRSParameters,
+    universal_srs_parameters_test,
+    "./",
+    "universal_srs",
+    5151842
+);
