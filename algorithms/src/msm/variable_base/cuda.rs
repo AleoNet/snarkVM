@@ -16,7 +16,7 @@
 
 use snarkvm_curves::{
     bls12_377::{Fq, Fr, G1Affine, G1Projective},
-    traits::{AffineCurve, ProjectiveCurve},
+    traits::{AffineCurve, Group, ProjectiveCurve},
 };
 use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::BitIteratorBE;
