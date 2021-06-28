@@ -41,9 +41,10 @@ use snarkvm_gadgets::{
 use snarkvm_ir::{Field, Group, GroupCoordinate};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use snarkvm_utilities::{BigInteger, BigInteger256};
-use std::{
+
+use core::{
     borrow::Borrow,
-    ops::{Mul, Neg, Sub},
+    ops::{Add, Mul, Neg, Sub},
 };
 
 #[derive(Clone, Debug)]
@@ -153,7 +154,7 @@ impl EdwardsGroupType {
                 number_value = number_value.neg();
             }
 
-            let result: EdwardsAffine = one.mul(&number_value);
+            let result: EdwardsAffine = one.mul(number_value);
 
             Ok(result)
         }
