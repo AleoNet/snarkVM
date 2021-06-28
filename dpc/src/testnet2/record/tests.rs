@@ -14,10 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{record_encoding::*, record_encryption::*};
 use crate::{
     account::{Account, AccountViewKey},
-    testnet2::{instantiated::*, payload::Payload, DPC},
+    testnet2::{instantiated::*, payload::Payload, record_encoding::*, record_encryption::*, DPC},
     traits::{AccountScheme, RecordEncodingScheme},
 };
 use snarkvm_algorithms::traits::CRH;

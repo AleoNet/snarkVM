@@ -14,8 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use rand::thread_rng;
-
+use crate::{
+    bits::boolean::{AllocatedBit, Boolean},
+    curves::tests_group::group_test,
+    traits::{alloc::AllocGadget, curves::GroupGadget, select::CondSelectGadget},
+};
 use snarkvm_curves::{
     templates::twisted_edwards_extended::GroupAffine as TEAffine,
     traits::{Group, TEModelParameters},
@@ -24,11 +27,8 @@ use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::ConstraintSystem;
 use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
 
-use crate::{
-    bits::boolean::{AllocatedBit, Boolean},
-    curves::tests_group::group_test,
-    traits::{alloc::AllocGadget, curves::GroupGadget, select::CondSelectGadget},
-};
+use core::ops::Mul;
+use rand::thread_rng;
 
 pub(crate) fn edwards_test<F, P, GG, CS>(cs: &mut CS)
 where
@@ -47,7 +47,7 @@ where
 
     // Check mul_bits
     let scalar: <TEAffine<P> as Group>::ScalarField = UniformRand::rand(&mut thread_rng());
-    let native_result = a.mul(&scalar);
+    let native_result = a.mul(scalar);
 
     let mut scalar: Vec<bool> = BitIteratorBE::new(scalar.into_repr()).collect();
     // Get the scalar bits into little-endian form.

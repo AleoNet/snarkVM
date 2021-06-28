@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-integration"
-version = "0.5.4"
+version = "0.6.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Integration testing for DPC"
 homepage = "https://aleo.org"
@@ -19,44 +19,44 @@ edition = "2018"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.5.4"
+version = "0.6.0"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.5.4"
+version = "0.6.0"
 
 [dependencies.snarkvm-dpc]
 path = "../dpc"
-version = "0.5.4"
+version = "0.6.0"
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.5.4"
+version = "0.6.0"
 
 [dependencies.snarkvm-gadgets]
 path = "../gadgets"
-version = "0.5.4"
+version = "0.6.0"
 
 [dependencies.snarkvm-parameters]
 path = "../parameters"
-version = "0.5.4"
+version = "0.6.0"
 
 [dependencies.snarkvm-profiler]
 path = "../profiler"
-version = "0.5.4"
+version = "0.6.0"
 default-features = false
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
-version = "0.5.4"
+version = "0.6.0"
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.5.4"
+version = "0.6.0"
 default-features = false
 
 [dependencies.anyhow]
-version = "1.0.38"
+version = "1.0.41"
 
 [dependencies.base58]
 version = "0.1"
@@ -77,7 +77,7 @@ version = "2"
 version = "0.4.3"
 
 [dependencies.itertools]
-version = "0.10.0"
+version = "0.10.1"
 
 [dependencies.parking_lot]
 version = "0.11.1"

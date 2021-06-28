@@ -96,9 +96,9 @@ impl<
             let first = &src_limbs[i];
             let second = if i + 1 < src_len { Some(&src_limbs[i + 1]) } else { None };
 
-            let first_max_bits_per_limb = params.bits_per_limb + overhead!(first.1 + &BaseField::one());
+            let first_max_bits_per_limb = params.bits_per_limb + overhead!(first.1 + BaseField::one());
             let second_max_bits_per_limb = if second.is_some() {
-                params.bits_per_limb + overhead!(second.unwrap().1 + &BaseField::one())
+                params.bits_per_limb + overhead!(second.unwrap().1 + BaseField::one())
             } else {
                 0
             };

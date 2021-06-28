@@ -18,13 +18,14 @@ pub(crate) mod g1 {
     use snarkvm_curves::{
         bw6_761::{Fr, G1Affine, G1Projective as G1},
         traits::ProjectiveCurve,
+        Group,
     };
     use snarkvm_utilities::rand::UniformRand;
 
     use criterion::Criterion;
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
-    use std::ops::AddAssign;
+    use std::ops::{AddAssign, MulAssign};
 
     pub fn bench_g1_rand(c: &mut Criterion) {
         let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
@@ -60,7 +61,7 @@ pub(crate) mod g1 {
         c.bench_function("bw6_761: g1_add_assign", |c| {
             c.iter(|| {
                 let mut tmp = v[count].0;
-                tmp.add_assign(&v[count].1);
+                tmp.add_assign(v[count].1);
                 count = (count + 1) % SAMPLES;
                 tmp
             })
@@ -110,13 +111,14 @@ pub(crate) mod g2 {
     use snarkvm_curves::{
         bw6_761::{Fr, G2Affine, G2Projective as G2},
         traits::ProjectiveCurve,
+        Group,
     };
     use snarkvm_utilities::rand::UniformRand;
 
     use criterion::Criterion;
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
-    use std::ops::AddAssign;
+    use std::ops::{AddAssign, MulAssign};
 
     pub fn bench_g2_rand(c: &mut Criterion) {
         let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
@@ -152,7 +154,7 @@ pub(crate) mod g2 {
         c.bench_function("bw6_761: g2_add_assign", |c| {
             c.iter(|| {
                 let mut tmp = v[count].0;
-                tmp.add_assign(&v[count].1);
+                tmp.add_assign(v[count].1);
                 count = (count + 1) % SAMPLES;
                 tmp
             })

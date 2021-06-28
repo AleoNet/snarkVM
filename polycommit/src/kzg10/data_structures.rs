@@ -16,7 +16,10 @@
 
 use crate::{impl_bytes, BTreeMap, *};
 use core::ops::{Add, AddAssign};
-use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
+use snarkvm_curves::{
+    traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve},
+    Group,
+};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
     bytes::ToBytes,
@@ -24,6 +27,8 @@ use snarkvm_utilities::{
     errors::SerializationError,
     serialize::{CanonicalDeserialize, CanonicalSerialize},
 };
+
+use core::ops::Mul;
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 #[derive(Derivative)]
@@ -183,7 +188,7 @@ impl<E: PairingEngine> PCCommitment for Commitment<E> {
 impl<'a, E: PairingEngine> AddAssign<(E::Fr, &'a Commitment<E>)> for Commitment<E> {
     #[inline]
     fn add_assign(&mut self, (f, other): (E::Fr, &'a Commitment<E>)) {
-        let mut other = other.0.mul(f.into_repr());
+        let mut other = other.0.mul(f).into_projective();
         other.add_assign_mixed(&self.0);
         self.0 = other.into();
     }

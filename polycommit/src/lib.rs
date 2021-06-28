@@ -442,7 +442,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
                             .ok_or(Error::MissingEvaluation { label: l.clone() })?,
                     };
 
-                    actual_rhs += &(*coeff * &eval);
+                    actual_rhs += &(*coeff * eval);
                 }
                 if claimed_rhs != actual_rhs {
                     eprintln!("Claimed evaluation of {} is incorrect", lc.label());
@@ -846,7 +846,7 @@ pub mod tests {
                             } else {
                                 assert!(poly.degree_bound().is_none());
                                 let coeff = F::rand(rng);
-                                value += &(coeff * &poly.evaluate(point));
+                                value += &(coeff * poly.evaluate(point));
                                 lc.push((coeff, label.to_string().into()));
                             }
                         }

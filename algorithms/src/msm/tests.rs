@@ -20,7 +20,7 @@ use snarkvm_curves::{
     traits::{AffineCurve, ProjectiveCurve},
 };
 use snarkvm_fields::{PrimeField, Zero};
-use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::{rand::UniformRand, BitIteratorBE};
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
@@ -32,7 +32,7 @@ fn naive_variable_base_msm<G: AffineCurve>(
     let mut acc = G::Projective::zero();
 
     for (base, scalar) in bases.iter().zip(scalars.iter()) {
-        acc += &base.mul(*scalar);
+        acc += base.mul_bits(BitIteratorBE::new(*scalar));
     }
     acc
 }

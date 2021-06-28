@@ -16,20 +16,6 @@
 
 use core::marker::PhantomData;
 
-use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{
-    bits::Boolean,
-    nonnative::{params::OptimizationType, NonNativeFieldVar},
-    traits::{
-        algorithms::SNARKVerifierGadget,
-        eq::EqGadget,
-        fields::{FieldGadget, ToConstraintFieldGadget},
-    },
-};
-use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
-use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, ToConstraintField};
-
 use crate::{
     constraints::{
         ahp::AHPForR1CS,
@@ -46,6 +32,19 @@ use crate::{
     PoseidonSponge,
     PoseidonSpongeVar,
 };
+use snarkvm_algorithms::fft::EvaluationDomain;
+use snarkvm_fields::PrimeField;
+use snarkvm_gadgets::{
+    bits::Boolean,
+    nonnative::{params::OptimizationType, NonNativeFieldVar},
+    traits::{
+        algorithms::SNARKVerifierGadget,
+        eq::EqGadget,
+        fields::{FieldGadget, ToConstraintFieldGadget},
+    },
+};
+use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, ToConstraintField};
 
 /// The Marlin verification gadget.
 pub struct MarlinVerificationGadget<

@@ -122,8 +122,8 @@ fn test_bilinearity() {
     let b: G2Projective = rand::random();
     let s: Fr = rand::random();
 
-    let sa = a * &s;
-    let sb = b * &s;
+    let sa = a * s;
+    let sb = b * s;
 
     let ans1 = BW6_761::pairing(sa, b);
     let ans2 = BW6_761::pairing(a, sb);
