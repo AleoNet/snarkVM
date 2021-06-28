@@ -30,7 +30,7 @@ use rand_xorshift::XorShiftRng;
 pub(crate) const ITERATIONS: usize = 5;
 
 #[test]
-fn test_record_serialization() {
+fn test_record_encoding() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
     for _ in 0..ITERATIONS {

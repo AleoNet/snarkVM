@@ -16,6 +16,7 @@
 
 use crate::{
     account::AccountAddress,
+    errors::RecordError,
     testnet1::{payload::Payload, BaseDPCComponents},
     traits::RecordScheme,
 };
@@ -27,9 +28,14 @@ use snarkvm_utilities::{
 };
 
 use std::{
+    fmt,
     io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
+    str::FromStr,
 };
+
+fn default_program_id<C: CRH>() -> Vec<u8> {
+    to_bytes![C::Output::default()].unwrap()
+}
 
 #[derive(Derivative)]
 #[derivative(
@@ -52,15 +58,8 @@ pub struct Record<C: BaseDPCComponents> {
     pub(crate) death_program_id: Vec<u8>,
 
     pub(crate) serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
-
     pub(crate) commitment: <C::RecordCommitment as CommitmentScheme>::Output,
     pub(crate) commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
-
-    pub(crate) _components: PhantomData<C>,
-}
-
-fn default_program_id<C: CRH>() -> Vec<u8> {
-    to_bytes![C::Output::default()].unwrap()
 }
 
 impl<C: BaseDPCComponents> RecordScheme for Record<C> {
@@ -78,6 +77,10 @@ impl<C: BaseDPCComponents> RecordScheme for Record<C> {
 
     fn is_dummy(&self) -> bool {
         self.is_dummy
+    }
+
+    fn value(&self) -> Self::Value {
+        self.value
     }
 
     fn payload(&self) -> &Self::Payload {
@@ -103,17 +106,12 @@ impl<C: BaseDPCComponents> RecordScheme for Record<C> {
     fn commitment_randomness(&self) -> Self::CommitmentRandomness {
         self.commitment_randomness.clone()
     }
-
-    fn value(&self) -> Self::Value {
-        self.value
-    }
 }
 
 impl<C: BaseDPCComponents> ToBytes for Record<C> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.owner.write(&mut writer)?;
-
         self.is_dummy.write(&mut writer)?;
         self.value.write(&mut writer)?;
         self.payload.write(&mut writer)?;
@@ -170,7 +168,26 @@ impl<C: BaseDPCComponents> FromBytes for Record<C> {
             serial_number_nonce,
             commitment,
             commitment_randomness,
-            _components: PhantomData,
         })
+    }
+}
+
+impl<C: BaseDPCComponents> FromStr for Record<C> {
+    type Err = RecordError;
+
+    fn from_str(record: &str) -> Result<Self, Self::Err> {
+        let record = hex::decode(record)?;
+
+        Ok(Self::read(&record[..])?)
+    }
+}
+
+impl<C: BaseDPCComponents> fmt::Display for Record<C> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            hex::encode(to_bytes![self].expect("serialization to bytes failed"))
+        )
     }
 }

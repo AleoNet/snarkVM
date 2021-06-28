@@ -63,7 +63,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
         limbs.resize(2 * field_parameters.num_limbs - 1, FpGadget::<BaseField>::zero(cs)?);
         limbs.reverse();
 
-        let prod_of_num_of_additions = src.num_of_additions_over_normal_form + &BaseField::one();
+        let prod_of_num_of_additions = src.num_of_additions_over_normal_form + BaseField::one();
 
         Ok(Self {
             limbs,
@@ -131,7 +131,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
         };
 
         // Step 2: Compute surfeit
-        let surfeit = overhead!(self.prod_of_num_of_additions + &BaseField::one()) + 1 + 1;
+        let surfeit = overhead!(self.prod_of_num_of_additions + BaseField::one()) + 1 + 1;
 
         // Step 3: Allocate k
         let k_bits = {
@@ -224,8 +224,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
 
         let mut kp_plus_r_gadget = Self {
             limbs: prod_limbs,
-            prod_of_num_of_additions: (p_gadget.num_of_additions_over_normal_form + &BaseField::one())
-                * &(k_gadget.num_of_additions_over_normal_form + &BaseField::one()),
+            prod_of_num_of_additions: (p_gadget.num_of_additions_over_normal_form + BaseField::one())
+                * (k_gadget.num_of_additions_over_normal_form + BaseField::one()),
             target_phantom: PhantomData,
         };
 
@@ -260,7 +260,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
 
         Ok(Self {
             limbs: new_limbs,
-            prod_of_num_of_additions: self.prod_of_num_of_additions + &other.prod_of_num_of_additions,
+            prod_of_num_of_additions: self.prod_of_num_of_additions + other.prod_of_num_of_additions,
             target_phantom: PhantomData,
         })
     }
@@ -291,7 +291,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldMulR
 
         Ok(Self {
             limbs: new_limbs,
-            prod_of_num_of_additions: self.prod_of_num_of_additions + &BaseField::one(),
+            prod_of_num_of_additions: self.prod_of_num_of_additions + BaseField::one(),
             target_phantom: PhantomData,
         })
     }

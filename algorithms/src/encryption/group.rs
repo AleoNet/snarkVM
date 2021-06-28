@@ -135,7 +135,7 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
         let mut public_key = G::zero();
         for (bit, base_power) in bytes_to_bits(&to_bytes![private_key]?).zip_eq(&self.parameters.generator_powers) {
             if bit {
-                public_key += &base_power;
+                public_key += base_power;
             }
         }
         end_timer!(keygen_time);
@@ -154,7 +154,7 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
         while Self::Randomness::read(&z_bytes[..]).is_err() {
             y = Self::Randomness::rand(rng);
 
-            let affine = public_key.0.mul(&y).into_affine();
+            let affine = public_key.0.mul(y).into_affine();
             debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
             z_bytes = to_bytes![affine.to_x_coordinate()]?;
         }
@@ -168,7 +168,7 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
         randomness: &Self::Randomness,
         message_length: usize,
     ) -> Result<Vec<Self::BlindingExponent>, EncryptionError> {
-        let record_view_key = public_key.0.mul(&randomness);
+        let record_view_key = public_key.0.mul(*randomness);
 
         let affine = record_view_key.into_affine();
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
@@ -182,12 +182,12 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
         let mut blinding_exponents = vec![];
         for _ in 0..message_length {
             // 1 [/] (z [+] i)
-            match (z + &i).inverse() {
+            match (z + i).inverse() {
                 Some(val) => blinding_exponents.push(val),
                 None => return Err(EncryptionError::MissingInverse),
             };
 
-            i += &one;
+            i += one;
         }
 
         Ok(blinding_exponents)
@@ -199,12 +199,12 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
         randomness: &Self::Randomness,
         message: &[Self::Text],
     ) -> Result<Vec<Self::Text>, EncryptionError> {
-        let record_view_key = public_key.0.mul(&randomness);
+        let record_view_key = public_key.0.mul(*randomness);
 
         let mut c_0 = G::zero();
         for (bit, base_power) in bytes_to_bits(&to_bytes![randomness]?).zip_eq(&self.parameters.generator_powers) {
             if bit {
-                c_0 += &base_power;
+                c_0 += base_power;
             }
         }
         let mut ciphertext = vec![c_0];
@@ -216,13 +216,13 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
 
         for (m_i, blinding_exp) in message.iter().zip_eq(blinding_exponents) {
             // h_i <- 1 [/] (z [+] i) * record_view_key
-            let h_i = record_view_key.mul(&blinding_exp);
+            let h_i = record_view_key.mul(blinding_exp);
 
             // c_i <- h_i + m_i
             let c_i = h_i + m_i;
 
             ciphertext.push(c_i);
-            i += &one;
+            i += one;
         }
 
         Ok(ciphertext)
@@ -236,7 +236,7 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
         assert!(!ciphertext.is_empty());
         let c_0 = &ciphertext[0];
 
-        let record_view_key = c_0.mul(&private_key);
+        let record_view_key = c_0.mul(*private_key);
 
         let affine = record_view_key.into_affine();
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
@@ -250,16 +250,16 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
 
         for c_i in ciphertext.iter().skip(1) {
             // h_i <- 1 [/] (z [+] i) * record_view_key
-            let h_i = match &(z + &i).inverse() {
-                Some(val) => record_view_key.mul(val),
+            let h_i = match &(z + i).inverse() {
+                Some(val) => record_view_key.mul(*val),
                 None => return Err(EncryptionError::MissingInverse),
             };
 
             // m_i <- c_i - h_i
-            let m_i = *c_i - &h_i;
+            let m_i = *c_i - h_i;
 
             plaintext.push(m_i);
-            i += &one;
+            i += one;
         }
 
         Ok(plaintext)

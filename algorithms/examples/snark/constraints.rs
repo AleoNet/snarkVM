@@ -47,7 +47,7 @@ impl<F: Field> ConstraintSynthesizer<F> for Benchmark<F> {
 
         for i in 0..self.num_constraints - 1 {
             if i % 2 != 0 {
-                let c_val = a_val * &b_val;
+                let c_val = a_val * b_val;
                 let c_var = cs.alloc(|| format!("{}", i), || Ok(c_val))?;
 
                 cs.enforce(
@@ -63,7 +63,7 @@ impl<F: Field> ConstraintSynthesizer<F> for Benchmark<F> {
                 b_val = c_val;
                 b_var = c_var;
             } else {
-                let c_val = a_val + &b_val;
+                let c_val = a_val + b_val;
                 let c_var = cs.alloc(|| format!("{}", i), || Ok(c_val))?;
 
                 cs.enforce(

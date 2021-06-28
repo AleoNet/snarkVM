@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Field, FieldParameters};
+use crate::{FftField, FieldParameters};
 use snarkvm_utilities::biginteger::BigInteger;
 
 use std::str::FromStr;
 
 /// The interface for a prime field.
 #[allow(clippy::wrong_self_convention)]
-pub trait PrimeField: Field + FromStr {
+pub trait PrimeField: FftField<FftParameters = <Self as PrimeField>::Parameters> + FromStr {
     type Parameters: FieldParameters<BigInteger = Self::BigInteger>;
     type BigInteger: BigInteger;
 
@@ -36,17 +36,6 @@ pub trait PrimeField: Field + FromStr {
 
     /// Returns the underlying raw representation of the prime field element.
     fn into_repr_raw(&self) -> Self::BigInteger;
-
-    /// Returns the multiplicative generator of `char()` - 1 order.
-    fn multiplicative_generator() -> Self;
-
-    /// Returns the 2^s root of unity.
-    fn root_of_unity() -> Self;
-
-    /// Return the a QNR^T
-    fn qnr_to_t() -> Self {
-        Self::root_of_unity()
-    }
 
     /// Returns the field size in bits.
     fn size_in_bits() -> usize {

@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-algorithms"
-version = "0.5.4"
+version = "0.5.5"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Algorithms for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -16,6 +16,11 @@ categories = [ "cryptography::cryptocurrencies", "operating-systems" ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2018"
+
+[[bench]]
+name = "msm-variable-base"
+path = "benches/msm/variable_base.rs"
+harness = false
 
 [[bench]]
 name = "commitment-pedersen"
@@ -58,27 +63,27 @@ path = "examples/snark/gm17.rs"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.5.4"
+version = "0.5.5"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.5.4"
+version = "0.5.5"
 default-features = false
 
 [dependencies.snarkvm-profiler]
 path = "../profiler"
-version = "0.5.4"
+version = "0.5.5"
 default-features = false
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
-version = "0.5.4"
+version = "0.5.5"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.5.4"
+version = "0.5.5"
 default-features = false
 
 [dependencies.blake2]
@@ -92,7 +97,7 @@ version = "2"
 version = "0.9"
 
 [dependencies.itertools]
-version = "0.10.0"
+version = "0.10.1"
 
 [dependencies.rand]
 version = "0.8"
@@ -116,6 +121,9 @@ version = "1.0"
 
 [dependencies.bitvec]
 version = "0.22"
+
+[dependencies.once_cell]
+version = "1.8"
 
 [dev-dependencies.criterion]
 version = "0.3.4"

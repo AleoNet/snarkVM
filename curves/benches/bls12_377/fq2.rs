@@ -36,7 +36,7 @@ pub(crate) fn bench_fq2_add_assign(c: &mut Criterion) {
     c.bench_function("bls12_377: fq2_add_assign", |c| {
         c.iter(|| {
             let mut tmp = v[count].0;
-            tmp.add_assign(&v[count].1);
+            tmp.add_assign(v[count].1);
             count = (count + 1) % SAMPLES;
             tmp
         })

@@ -107,7 +107,7 @@ impl<F: Field> DensePolynomial<F> {
         let mapping = cfg_into_iter!(powers_of_point)
             .zip(&self.coeffs)
             .map(|(power, coeff)| power * coeff);
-        cfg_reduce!(mapping, || zero, |a, b| a + &b)
+        cfg_reduce!(mapping, || zero, |a, b| a + b)
     }
 
     /// Outputs a polynomial of degree `d` where each coefficient is sampled uniformly at random
@@ -131,7 +131,7 @@ impl<F: Field> DensePolynomial<F> {
             let mut result = vec![F::zero(); self.degree() + other.degree() + 1];
             for (i, self_coeff) in self.coeffs.iter().enumerate() {
                 for (j, other_coeff) in other.coeffs.iter().enumerate() {
-                    result[i + j] += &(*self_coeff * other_coeff);
+                    result[i + j] += *self_coeff * other_coeff;
                 }
             }
             DensePolynomial::from_coefficients_vec(result)
@@ -225,13 +225,13 @@ impl<'a, 'b, F: Field> AddAssign<(F, &'a DensePolynomial<F>)> for DensePolynomia
             // return
         } else if self.degree() >= other.degree() {
             for (a, b) in self.coeffs.iter_mut().zip(&other.coeffs) {
-                *a += &(f * b);
+                *a += f * b;
             }
         } else {
             // Add the necessary number of zero coefficients.
             self.coeffs.resize(other.coeffs.len(), F::zero());
             for (a, b) in self.coeffs.iter_mut().zip(&other.coeffs) {
-                *a += &(f * b);
+                *a += f * b;
             }
             // If the leading coefficient ends up being zero, pop it off.
             while self.coeffs.last().unwrap().is_zero() {
@@ -482,7 +482,7 @@ mod tests {
             let point: Fr = Fr::from(10u64);
             let mut total = Fr::zero();
             for (i, coeff) in p.coeffs.iter().enumerate() {
-                total += &(point.pow(&[i as u64]) * coeff);
+                total += point.pow(&[i as u64]) * coeff;
             }
             assert_eq!(p.evaluate(point), total);
         }

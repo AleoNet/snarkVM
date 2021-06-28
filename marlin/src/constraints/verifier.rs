@@ -45,6 +45,7 @@ use crate::{
     PoseidonSponge,
     PoseidonSpongeVar,
 };
+use snarkvm_algorithms::fft::EvaluationDomain;
 
 /// The Marlin verification gadget.
 pub struct MarlinVerificationGadget<
@@ -136,6 +137,17 @@ where
         let mut fs_rng = prepared_verifying_key.fs_rng.clone();
 
         eprintln!("before AHP: constraints: {}", cs.num_constraints());
+
+        let public_input = {
+            let domain_x = EvaluationDomain::<TargetField>::new(public_input.len() + 1).unwrap();
+
+            let mut new_input = public_input.to_vec();
+            new_input.resize(
+                core::cmp::max(public_input.len(), domain_x.size() - 1),
+                NonNativeFieldVar::<TargetField, BaseField>::Constant(TargetField::zero()),
+            );
+            new_input
+        };
 
         fs_rng.absorb_nonnative_field_elements(
             cs.ns(|| "initial_absorb_nonnative_field_elements"),

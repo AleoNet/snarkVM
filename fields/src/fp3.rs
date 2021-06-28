@@ -102,7 +102,7 @@ impl<P: Fp3Parameters> Fp3<P> {
 
     // Returns the value of QNR^T.
     #[inline]
-    pub fn qnr_to_t() -> Self {
+    pub fn two_adic_root_of_unity() -> Self {
         Self::new(
             P::QUADRATIC_NONRESIDUE_TO_T.0,
             P::QUADRATIC_NONRESIDUE_TO_T.1,
@@ -153,11 +153,10 @@ impl<P: Fp3Parameters> Field for Fp3<P> {
         result
     }
 
-    fn double_in_place(&mut self) -> &mut Self {
+    fn double_in_place(&mut self) {
         self.c0.double_in_place();
         self.c1.double_in_place();
         self.c2.double_in_place();
-        self
     }
 
     #[inline]
@@ -196,16 +195,16 @@ impl<P: Fp3Parameters> Field for Fp3<P> {
         let c = self.c2;
 
         let s0 = a.square();
-        let ab = a * &b;
-        let s1 = ab + &ab;
-        let s2 = (a - &b + &c).square();
-        let bc = b * &c;
-        let s3 = bc + &bc;
+        let ab = a * b;
+        let s1 = ab + ab;
+        let s2 = (a - b + c).square();
+        let bc = b * c;
+        let s3 = bc + bc;
         let s4 = c.square();
 
-        self.c0 = s0 + &P::mul_fp_by_nonresidue(&s3);
-        self.c1 = s1 + &P::mul_fp_by_nonresidue(&s4);
-        self.c2 = s1 + &s2 + &s3 - &s0 - &s4;
+        self.c0 = s0 + P::mul_fp_by_nonresidue(&s3);
+        self.c1 = s1 + P::mul_fp_by_nonresidue(&s4);
+        self.c2 = s1 + s2 + s3 - s0 - s4;
         self
     }
 
@@ -239,11 +238,11 @@ impl<P: Fp3Parameters> Field for Fp3<P> {
             let mut a2 = self.c1;
             a2.mul_assign(&s2);
             let mut a3 = a1;
-            a3.add_assign(&a2);
+            a3.add_assign(a2);
             a3 = P::mul_fp_by_nonresidue(&a3);
             let mut t6 = self.c0;
             t6.mul_assign(&s0);
-            t6.add_assign(&a3);
+            t6.add_assign(a3);
             t6.inverse_in_place();
 
             let mut c0 = t6;
@@ -388,13 +387,16 @@ impl<P: Fp3Parameters> Distribution<Fp3<P>> for Standard {
     }
 }
 
+impl_additive_ops_from_ref!(Fp3, Fp3Parameters);
+impl_multiplicative_ops_from_ref!(Fp3, Fp3Parameters);
+
 impl<'a, P: Fp3Parameters> Add<&'a Fp3<P>> for Fp3<P> {
     type Output = Self;
 
     #[inline]
     fn add(self, other: &Self) -> Self {
         let mut result = self;
-        result.add_assign(&other);
+        result.add_assign(other);
         result
     }
 }
@@ -435,9 +437,9 @@ impl<'a, P: Fp3Parameters> Div<&'a Fp3<P>> for Fp3<P> {
 impl<'a, P: Fp3Parameters> AddAssign<&'a Self> for Fp3<P> {
     #[inline]
     fn add_assign(&mut self, other: &Self) {
-        self.c0.add_assign(&other.c0);
-        self.c1.add_assign(&other.c1);
-        self.c2.add_assign(&other.c2);
+        self.c0.add_assign(other.c0);
+        self.c1.add_assign(other.c1);
+        self.c2.add_assign(other.c2);
     }
 }
 
@@ -467,16 +469,16 @@ impl<'a, P: Fp3Parameters> MulAssign<&'a Self> for Fp3<P> {
         let e = self.c1;
         let f = self.c2;
 
-        let ad = d * &a;
-        let be = e * &b;
-        let cf = f * &c;
+        let ad = d * a;
+        let be = e * b;
+        let cf = f * c;
 
-        let x = (e + &f) * &(b + &c) - &be - &cf;
-        let y = (d + &e) * &(a + &b) - &ad - &be;
-        let z = (d + &f) * &(a + &c) - &ad + &be - &cf;
+        let x = (e + f) * (b + c) - be - cf;
+        let y = (d + e) * (a + b) - ad - be;
+        let z = (d + f) * (a + c) - ad + be - cf;
 
-        self.c0 = ad + &P::mul_fp_by_nonresidue(&x);
-        self.c1 = y + &P::mul_fp_by_nonresidue(&cf);
+        self.c0 = ad + P::mul_fp_by_nonresidue(&x);
+        self.c1 = y + P::mul_fp_by_nonresidue(&cf);
         self.c2 = z;
     }
 }

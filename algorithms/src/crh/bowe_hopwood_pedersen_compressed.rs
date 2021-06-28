@@ -26,7 +26,7 @@ use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 
 use rand::Rng;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoweHopwoodPedersenCompressedCRH<G: Group + ProjectiveCurve, S: PedersenSize> {
     pub parameters: PedersenCRHParameters<G, S>,
     pub bowe_hopwood_parameters: BoweHopwoodPedersenCRHParameters<G>,
@@ -72,7 +72,7 @@ impl<G: Group + ProjectiveCurve, S: PedersenSize> From<PedersenCRHParameters<G, 
 {
     fn from(parameters: PedersenCRHParameters<G, S>) -> Self {
         Self {
-            bowe_hopwood_parameters: BoweHopwoodPedersenCRHParameters::setup(&parameters),
+            bowe_hopwood_parameters: BoweHopwoodPedersenCRHParameters::new(),
             parameters,
         }
     }

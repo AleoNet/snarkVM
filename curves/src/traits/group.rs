@@ -14,9 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{PrimeField, SquareRootField};
 use snarkvm_utilities::{
-    bititerator::BitIteratorBE,
     bytes::{FromBytes, ToBytes},
     rand::UniformRand,
 };
@@ -24,7 +23,7 @@ use snarkvm_utilities::{
 use std::{
     fmt::{Debug, Display},
     hash::Hash,
-    ops::{Add, AddAssign, Neg, Sub, SubAssign},
+    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
 use snarkvm_fields::Zero;
@@ -45,35 +44,23 @@ pub trait Group:
     + Neg<Output = Self>
     + UniformRand
     + Zero
+    + Add<Self, Output = Self>
+    + Sub<Self, Output = Self>
+    + Mul<Self::ScalarField, Output = Self>
+    + AddAssign<Self>
+    + SubAssign<Self>
+    + MulAssign<Self::ScalarField>
     + for<'a> Add<&'a Self, Output = Self>
     + for<'a> Sub<&'a Self, Output = Self>
     + for<'a> AddAssign<&'a Self>
     + for<'a> SubAssign<&'a Self>
 {
-    type ScalarField: PrimeField + Into<<Self::ScalarField as PrimeField>::BigInteger>;
+    type ScalarField: PrimeField + SquareRootField + Into<<Self::ScalarField as PrimeField>::BigInteger>;
 
     /// Returns `self + self`.
     #[must_use]
     fn double(&self) -> Self;
 
     /// Sets `self := self + self`.
-    fn double_in_place(&mut self) -> &mut Self;
-
-    #[must_use]
-    fn mul(&self, other: &Self::ScalarField) -> Self {
-        let mut copy = *self;
-        copy.mul_assign(other);
-        copy
-    }
-
-    fn mul_assign(&mut self, other: &Self::ScalarField) {
-        let mut res = Self::zero();
-        for i in BitIteratorBE::new(other.into_repr()) {
-            res.double_in_place();
-            if i {
-                res += self;
-            }
-        }
-        *self = res
-    }
+    fn double_in_place(&mut self);
 }

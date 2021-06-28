@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-marlin"
-version = "0.5.4"
+version = "0.5.5"
 authors = [
   "Alessandro Chiesa <alexch@berkeley.edu>",
   "Mary Maller <mary.maller.15@ucl.ac.uk>",
@@ -31,35 +31,35 @@ harness = false
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.5.4"
+version = "0.5.5"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.5.4"
+version = "0.5.5"
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.5.4"
+version = "0.5.5"
 
 [dependencies.snarkvm-gadgets]
 path = "../gadgets"
-version = "0.5.4"
+version = "0.5.5"
 
 [dependencies.snarkvm-polycommit]
 path = "../polycommit"
-version = "0.5.4"
+version = "0.5.5"
 
 [dependencies.snarkvm-profiler]
 path = "../profiler"
-version = "0.5.4"
+version = "0.5.5"
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
-version = "0.5.4"
+version = "0.5.5"
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.5.4"
+version = "0.5.5"
 
 [dependencies.blake2]
 version = "0.9"

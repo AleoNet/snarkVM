@@ -212,7 +212,6 @@ impl<C: BaseDPCComponents> RecordEncryption<C> {
             serial_number_nonce,
             commitment_randomness,
             commitment,
-            _components: PhantomData,
         })
     }
 

@@ -48,7 +48,7 @@ impl Updater {
             .repo_owner(Self::SNARKVM_REPO_OWNER)
             .repo_name(Self::SNARKVM_REPO_NAME)
             .bin_name(Self::SNARKVM_BIN_NAME)
-            .current_version(&env!("CARGO_PKG_VERSION"))
+            .current_version(env!("CARGO_PKG_VERSION"))
             .show_download_progress(show_output)
             .no_confirm(true)
             .show_output(show_output)
@@ -64,7 +64,7 @@ impl Updater {
             .repo_owner(Self::SNARKVM_REPO_OWNER)
             .repo_name(Self::SNARKVM_REPO_NAME)
             .bin_name(Self::SNARKVM_BIN_NAME)
-            .current_version(&env!("CARGO_PKG_VERSION"))
+            .current_version(env!("CARGO_PKG_VERSION"))
             .build()?;
 
         let current_version = updater.current_version();

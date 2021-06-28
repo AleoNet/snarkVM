@@ -100,40 +100,40 @@ impl SW6 {
             old_ry = ry;
 
             let old_rx_square = old_rx.square();
-            let old_rx_square_3 = old_rx_square.double() + &old_rx_square;
-            let old_rx_square_3_a = old_rx_square_3 + &SW6G2Parameters::COEFF_A;
+            let old_rx_square_3 = old_rx_square.double() + old_rx_square;
+            let old_rx_square_3_a = old_rx_square_3 + SW6G2Parameters::COEFF_A;
             let old_ry_double_inverse = old_ry.double().inverse().unwrap();
 
-            let gamma = old_rx_square_3_a * &old_ry_double_inverse;
-            let gamma_twist = gamma * &TWIST;
-            let gamma_old_rx = gamma * &old_rx;
+            let gamma = old_rx_square_3_a * old_ry_double_inverse;
+            let gamma_twist = gamma * TWIST;
+            let gamma_old_rx = gamma * old_rx;
             let mut gamma_twist_px = gamma_twist;
             gamma_twist_px.mul_assign_by_fp(&px);
 
             let x = py_twist_squared;
-            let y = gamma_old_rx - &old_ry - &gamma_twist_px;
+            let y = gamma_old_rx - old_ry - gamma_twist_px;
             let ell_rr_at_p = Fq6::new(x, y);
 
-            rx = gamma.square() - &old_rx.double();
-            ry = gamma * &(old_rx - &rx) - &old_ry;
-            f = f.square() * &ell_rr_at_p;
+            rx = gamma.square() - old_rx.double();
+            ry = gamma * (old_rx - rx) - old_ry;
+            f = f.square() * ell_rr_at_p;
 
             if bit {
                 old_rx = rx;
                 old_ry = ry;
 
-                let gamma = (old_ry - &qy) * &((old_rx - &qx).inverse().unwrap());
-                let gamma_twist = gamma * &TWIST;
-                let gamma_qx = gamma * &qx;
+                let gamma = (old_ry - qy) * ((old_rx - qx).inverse().unwrap());
+                let gamma_twist = gamma * TWIST;
+                let gamma_qx = gamma * qx;
                 let mut gamma_twist_px = gamma_twist;
                 gamma_twist_px.mul_assign_by_fp(&px);
 
                 let x = py_twist_squared;
-                let y = gamma_qx - &qy - &gamma_twist_px;
+                let y = gamma_qx - qy - gamma_twist_px;
                 let ell_rq_at_p = Fq6::new(x, y);
 
-                rx = gamma.square() - &old_rx - &qx;
-                ry = gamma * &(old_rx - &rx) - &old_ry;
+                rx = gamma.square() - old_rx - qx;
+                ry = gamma * (old_rx - rx) - old_ry;
                 f *= &ell_rq_at_p;
             }
         }
@@ -159,7 +159,7 @@ impl SW6 {
         let mut alpha = elt_q3_over_elt;
         alpha.frobenius_map(1);
         // beta = elt^((q^3-1)*(q+1)
-        alpha * &elt_q3_over_elt
+        alpha * elt_q3_over_elt
     }
 
     fn final_exponentiation_last(elt: &Fq6, elt_inv: &Fq6) -> Fq6 {
@@ -172,7 +172,7 @@ impl SW6 {
             false => elt.cyclotomic_exp(&FINAL_EXPONENT_LAST_CHUNK_ABS_OF_W0),
         };
 
-        w1_part * &w0_part
+        w1_part * w0_part
     }
 }
 

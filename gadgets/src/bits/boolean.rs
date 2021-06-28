@@ -364,7 +364,7 @@ fn cond_select_helper<F: PrimeField, CS: ConstraintSystem<F>>(
     cs.enforce(
         || "conditionally_select",
         |_| cond.lc(one, F::one()),
-        |lc| (&first_var - &second_var) + lc,
+        |lc| (first_var - &second_var) + lc,
         |lc| ConstraintVariable::from(result_var) - &second_var + lc,
     );
 
@@ -884,8 +884,8 @@ impl<F: Field> ConditionalEqGadget<F> for Boolean {
         } else {
             cs.enforce(
                 || "conditional_equals",
-                |lc| difference + &lc,
-                |lc| condition.lc(one, F::one()) + &lc,
+                |lc| difference + lc,
+                |lc| condition.lc(one, F::one()) + lc,
                 |lc| lc,
             );
             Ok(())

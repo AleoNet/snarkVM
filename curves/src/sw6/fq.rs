@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::{FieldParameters, Fp832, Fp832Parameters};
+use snarkvm_fields::{FftParameters, FieldParameters, Fp832, Fp832Parameters};
 use snarkvm_utilities::biginteger::BigInteger832 as BigInteger;
 
 pub type Fq = Fp832<FqParameters>;
@@ -23,9 +23,29 @@ pub struct FqParameters;
 
 impl Fp832Parameters for FqParameters {}
 
-impl FieldParameters for FqParameters {
+impl FftParameters for FqParameters {
     type BigInteger = BigInteger;
 
+    const TWO_ADICITY: u32 = 3;
+    #[rustfmt::skip]
+    const TWO_ADIC_ROOT_OF_UNITY: BigInteger = BigInteger([
+        18044746167194862600u64,
+        63590321303744709u64,
+        5009346151370959890u64,
+        2859114157767503991u64,
+        8301813204852325413u64,
+        5629414263664332594u64,
+        2637340888701394641u64,
+        17433538052687852753u64,
+        2230763098934759248u64,
+        3785382115983092023u64,
+        8895511354022222370u64,
+        15792083141709071785u64,
+        1328u64,
+    ]);
+}
+
+impl FieldParameters for FqParameters {
     const CAPACITY: u32 = Self::MODULUS_BITS - 1;
     /// GENERATOR = 13
     const GENERATOR: BigInteger = BigInteger([
@@ -107,21 +127,6 @@ impl FieldParameters for FqParameters {
         7833u64,
     ]);
     const REPR_SHAVE_BITS: u32 = 50;
-    const ROOT_OF_UNITY: BigInteger = BigInteger([
-        18044746167194862600u64,
-        63590321303744709u64,
-        5009346151370959890u64,
-        2859114157767503991u64,
-        8301813204852325413u64,
-        5629414263664332594u64,
-        2637340888701394641u64,
-        17433538052687852753u64,
-        2230763098934759248u64,
-        3785382115983092023u64,
-        8895511354022222370u64,
-        15792083141709071785u64,
-        1328u64,
-    ]);
     // T =
     // 2796234287359462116293342775812631866846949933162148072772937078455846756557253067529059877268485152522256821925480238069737214402829166671516844553287632810960290821869823500141573291432819154425935511163079134531347828686569665103197
     const T: BigInteger = BigInteger([
@@ -139,7 +144,6 @@ impl FieldParameters for FqParameters {
         0x189a44c7757f1283,
         0x709,
     ]);
-    const TWO_ADICITY: u32 = 3;
     // (T - 1)/2 =
     // 1398117143679731058146671387906315933423474966581074036386468539227923378278626533764529938634242576261128410962740119034868607201414583335758422276643816405480145410934911750070786645716409577212967755581539567265673914343284832551598
     const T_MINUS_ONE_DIV_TWO: BigInteger = BigInteger([

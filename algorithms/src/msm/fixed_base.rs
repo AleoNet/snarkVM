@@ -45,7 +45,7 @@ impl FixedBaseMSM {
             let cur_in_window = if outer == outerc - 1 { last_in_window } else { in_window };
             for x in m.iter_mut().take(cur_in_window) {
                 *x = g_inner;
-                g_inner += &g_outer;
+                g_inner += g_outer;
             }
             for _ in 0..window {
                 g_outer.double_in_place();
@@ -73,7 +73,7 @@ impl FixedBaseMSM {
                     inner |= 1 << i;
                 }
             }
-            res += &multiples_of_g[outer][inner];
+            res += multiples_of_g[outer][inner];
         }
         res
     }
