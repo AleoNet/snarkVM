@@ -50,7 +50,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-type L = Ledger<Tx, CommitmentMerkleParameters, MemDb>;
+type L = Ledger<Testnet2Transaction, CommitmentMerkleParameters, MemDb>;
 
 #[test]
 fn dpc_testnet2_integration_test() {
@@ -80,7 +80,10 @@ fn dpc_testnet2_integration_test() {
         transactions: Transactions::new(),
     };
 
-    let ledger = initialize_test_blockchain::<Tx, CommitmentMerkleParameters, MemDb>(ledger_parameters, genesis_block);
+    let ledger = initialize_test_blockchain::<Testnet2Transaction, CommitmentMerkleParameters, MemDb>(
+        ledger_parameters,
+        genesis_block,
+    );
 
     let noop_program_id = to_bytes![
         <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
@@ -128,7 +131,7 @@ fn dpc_testnet2_integration_test() {
     let memo = [4u8; 32];
 
     // Offline execution to generate a DPC transaction kernel
-    let transaction_kernel = <InstantiatedDPC as DPCScheme<L>>::execute_offline(
+    let transaction_kernel = <Testnet2DPC as DPCScheme<L>>::execute_offline(
         parameters.system_parameters.clone(),
         old_records,
         old_account_private_keys,
@@ -180,7 +183,7 @@ fn dpc_testnet2_integration_test() {
         new_birth_program_proofs.push(private_input);
     }
 
-    let (new_records, transaction) = InstantiatedDPC::execute_online(
+    let (new_records, transaction) = Testnet2DPC::execute_online(
         &parameters,
         transaction_kernel,
         old_death_program_proofs,
@@ -192,7 +195,7 @@ fn dpc_testnet2_integration_test() {
 
     // Check that the transaction is serialized and deserialized correctly
     let transaction_bytes = to_bytes![transaction].unwrap();
-    let recovered_transaction = Tx::read(&transaction_bytes[..]).unwrap();
+    let recovered_transaction = Testnet2Transaction::read(&transaction_bytes[..]).unwrap();
 
     assert_eq!(transaction, recovered_transaction);
 
@@ -247,7 +250,7 @@ fn dpc_testnet2_integration_test() {
         proof: ProofOfSuccinctWork([0u8; 972]),
     };
 
-    assert!(InstantiatedDPC::verify_transactions(&parameters, &transactions.0, &ledger).unwrap());
+    assert!(Testnet2DPC::verify_transactions(&parameters, &transactions.0, &ledger).unwrap());
 
     let block = Block { header, transactions };
 
@@ -262,7 +265,7 @@ fn generate_test_noop_program_parameters<R: Rng>(
     rng: &mut R,
 ) -> (NoopProgramSNARKParameters<Components>, Vec<u8>) {
     let noop_program_snark_pp =
-        InstantiatedDPC::generate_noop_program_snark_parameters(&system_parameters, universal_srs, rng).unwrap();
+        Testnet2DPC::generate_noop_program_snark_parameters(&system_parameters, universal_srs, rng).unwrap();
 
     let noop_program_id = to_bytes![
         <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
@@ -282,9 +285,9 @@ fn test_testnet_2_transaction_kernel_serialization() {
 
     // Generate parameters for the ledger, commitment schemes, CRH, and the
     // "always-accept" program.
-    let system_parameters = InstantiatedDPC::generate_system_parameters(&mut rng).unwrap();
+    let system_parameters = Testnet2DPC::generate_system_parameters(&mut rng).unwrap();
 
-    let universal_srs = InstantiatedDPC::generate_program_snark_universal_srs(&mut rng).unwrap();
+    let universal_srs = Testnet2DPC::generate_program_snark_universal_srs(&mut rng).unwrap();
 
     let (_noop_program_snark_pp, noop_program_id) =
         generate_test_noop_program_parameters(&system_parameters, &universal_srs, &mut rng);
@@ -329,7 +332,7 @@ fn test_testnet_2_transaction_kernel_serialization() {
     let memo = [0u8; 32];
 
     // Generate transaction kernel
-    let transaction_kernel = <InstantiatedDPC as DPCScheme<L>>::execute_offline(
+    let transaction_kernel = <Testnet2DPC as DPCScheme<L>>::execute_offline(
         system_parameters,
         old_records,
         old_account_private_keys,
@@ -348,7 +351,7 @@ fn test_testnet_2_transaction_kernel_serialization() {
     // Serialize the transaction kernel
     let transaction_kernel_bytes = to_bytes![&transaction_kernel].unwrap();
 
-    let recovered_transaction_kernel: <InstantiatedDPC as DPCScheme<L>>::TransactionKernel =
+    let recovered_transaction_kernel: <Testnet2DPC as DPCScheme<L>>::TransactionKernel =
         FromBytes::read(&transaction_kernel_bytes[..]).unwrap();
 
     assert_eq!(transaction_kernel, recovered_transaction_kernel);
@@ -364,9 +367,9 @@ fn test_execute_testnet2_base_dpc_constraints() {
     // Generate parameters for the ledger, commitment schemes, CRH, and the
     // "always-accept" program.
     let ledger_parameters = Arc::new(CommitmentMerkleParameters::setup(&mut rng));
-    let system_parameters = InstantiatedDPC::generate_system_parameters(&mut rng).unwrap();
+    let system_parameters = Testnet2DPC::generate_system_parameters(&mut rng).unwrap();
 
-    let universal_srs = InstantiatedDPC::generate_program_snark_universal_srs(&mut rng).unwrap();
+    let universal_srs = Testnet2DPC::generate_program_snark_universal_srs(&mut rng).unwrap();
 
     let (noop_program_snark_pp, noop_program_id) =
         generate_test_noop_program_parameters(&system_parameters, &universal_srs, &mut rng);
@@ -400,7 +403,10 @@ fn test_execute_testnet2_base_dpc_constraints() {
     };
 
     // Use genesis record, serial number, and memo to initialize the ledger.
-    let ledger = initialize_test_blockchain::<Tx, CommitmentMerkleParameters, MemDb>(ledger_parameters, genesis_block);
+    let ledger = initialize_test_blockchain::<Testnet2Transaction, CommitmentMerkleParameters, MemDb>(
+        ledger_parameters,
+        genesis_block,
+    );
 
     let sn_nonce =
         <Components as DPCComponents>::SerialNumberNonceCRH::hash(&system_parameters.serial_number_nonce, &[0u8; 1])
@@ -444,7 +450,7 @@ fn test_execute_testnet2_base_dpc_constraints() {
     let new_death_program_ids = vec![noop_program_id.clone(); NUM_OUTPUT_RECORDS];
     let memo = [0u8; 32];
 
-    let transaction_kernel = <InstantiatedDPC as DPCScheme<L>>::execute_offline(
+    let transaction_kernel = <Testnet2DPC as DPCScheme<L>>::execute_offline(
         system_parameters.clone(),
         old_records,
         old_account_private_keys,

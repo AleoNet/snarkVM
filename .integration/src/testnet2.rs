@@ -29,14 +29,14 @@ use snarkvm_utilities::bytes::FromBytes;
 use rand::Rng;
 use std::sync::Arc;
 
-pub type MerkleTreeLedger<S> = Ledger<Tx, CommitmentMerkleParameters, S>;
+pub type MerkleTreeLedger<S> = Ledger<Testnet2Transaction, CommitmentMerkleParameters, S>;
 
 pub fn setup_or_load_parameters<R: Rng, S: Storage>(
     verify_only: bool,
     rng: &mut R,
 ) -> (
     Arc<CommitmentMerkleParameters>,
-    <InstantiatedDPC as DPCScheme<MerkleTreeLedger<S>>>::NetworkParameters,
+    <Testnet2DPC as DPCScheme<MerkleTreeLedger<S>>>::NetworkParameters,
 ) {
     // TODO (howardwu): Resolve this inconsistency on import structure with a new model once MerkleParameters are refactored.
     let crh_parameters =
@@ -54,7 +54,7 @@ pub fn setup_or_load_parameters<R: Rng, S: Storage>(
     //     }
     // };
 
-    let parameters = <InstantiatedDPC as DPCScheme<MerkleTreeLedger<S>>>::setup(&ledger_merkle_tree_parameters, rng)
+    let parameters = <Testnet2DPC as DPCScheme<MerkleTreeLedger<S>>>::setup(&ledger_merkle_tree_parameters, rng)
         .expect("DPC setup failed");
 
     (ledger_merkle_tree_parameters, parameters)

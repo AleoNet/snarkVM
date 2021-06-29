@@ -205,14 +205,13 @@ pub type OuterCurve = BW6_761;
 pub type InnerField = Bls12_377Fr;
 pub type OuterField = Bls12_377Fq;
 
+pub type LocalData = DPCLocalData<Components>;
+pub type MerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, TwoToOneWindow>;
+
 pub type PCGadget = MarlinKZG10Gadget<InnerCurve, OuterCurve, PairingGadget>;
 
 pub type FSG =
     FiatShamirAlgebraicSpongeRngVar<InnerField, OuterField, PoseidonSponge<OuterField>, PoseidonSpongeVar<OuterField>>;
 
-pub type MerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, TwoToOneWindow>;
-
-pub type Tx = Transaction<Components>;
-
-pub type InstantiatedDPC = DPC<Components>;
-pub type LocalData = DPCLocalData<Components>;
+pub type Testnet2DPC = DPC<Components>;
+pub type Testnet2Transaction = Transaction<Components>;
