@@ -214,11 +214,21 @@ impl<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> Conditio
         other: &Self,
         condition: &Boolean,
     ) -> Result<(), SynthesisError> {
-        unimplemented!();
+        self.prover_response.conditional_enforce_equal(
+            &mut cs.ns(|| "prover_response_conditional_enforce_equal"),
+            &other.prover_response,
+            condition,
+        )?;
+        self.verifier_challenge.conditional_enforce_equal(
+            &mut cs.ns(|| "verifier_challenge_conditional_enforce_equal"),
+            &other.verifier_challenge,
+            condition,
+        )?;
+        Ok(())
     }
 
     fn cost() -> usize {
-        unimplemented!()
+        <FG as ConditionalEqGadget<F>>::cost() * 2
     }
 }
 
@@ -230,12 +240,34 @@ impl<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> EqGadget
 impl<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> ToBytesGadget<F>
     for SchnorrSignatureGadget<G, F, FG>
 {
-    fn to_bytes<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        unimplemented!()
+    fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut result = Vec::new();
+
+        result.extend(
+            self.prover_response
+                .to_bytes(&mut cs.ns(|| "prover_response_to_bytes"))?,
+        );
+        result.extend(
+            self.verifier_challenge
+                .to_bytes(&mut cs.ns(|| "verifier_challenge_to_bytes"))?,
+        );
+
+        Ok(result)
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        unimplemented!()
+    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut result = Vec::new();
+
+        result.extend(
+            self.prover_response
+                .to_bytes_strict(&mut cs.ns(|| "prover_response_to_bytes_strict"))?,
+        );
+        result.extend(
+            self.verifier_challenge
+                .to_bytes_strict(&mut cs.ns(|| "verifier_challenge_to_bytes_strict"))?,
+        );
+
+        Ok(result)
     }
 }
 
