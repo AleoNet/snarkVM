@@ -139,10 +139,10 @@ impl<TargetField: PrimeField> AHPForR1CS<TargetField> {
         //  LinearCombination::new("z_b", vec![(F::one(), z_b)])
         //  LinearCombination::new("g_1", vec![(F::one(), g_1)], rhs::new(g_1_at_beta))
         //  LinearCombination::new("t", vec![(F::one(), t)])
-        query_set.insert(("g_1".into(), beta));
-        query_set.insert(("z_b".into(), beta));
-        query_set.insert(("t".into(), beta));
-        query_set.insert(("outer_sumcheck".into(), beta));
+        query_set.insert(("g_1".into(), ("beta".into(), beta)));
+        query_set.insert(("z_b".into(), ("beta".into(), beta)));
+        query_set.insert(("t".into(), ("beta".into(), beta)));
+        query_set.insert(("outer_sumcheck".into(), ("beta".into(), beta)));
 
         // For the second linear combination
         // Inner sumcheck test:
@@ -202,16 +202,16 @@ impl<TargetField: PrimeField> AHPForR1CS<TargetField> {
         // // This LC is the only one that is evaluated:
         // let inner_sumcheck = a_poly_lc - (b_lc * (gamma * &g_2_at_gamma + &(t_at_beta / &k_size))) - h_lc
         // main_lc.set_label("inner_sumcheck");
-        query_set.insert(("g_2".into(), gamma));
-        query_set.insert(("a_denom".into(), gamma));
-        query_set.insert(("b_denom".into(), gamma));
-        query_set.insert(("c_denom".into(), gamma));
-        query_set.insert(("inner_sumcheck".into(), gamma));
+        query_set.insert(("g_2".into(), ("gamma".into(), gamma)));
+        query_set.insert(("a_denom".into(), ("gamma".into(), gamma)));
+        query_set.insert(("b_denom".into(), ("gamma".into(), gamma)));
+        query_set.insert(("c_denom".into(), ("gamma".into(), gamma)));
+        query_set.insert(("inner_sumcheck".into(), ("gamma".into(), gamma)));
 
         if with_vanishing {
-            query_set.insert(("vanishing_poly_h_alpha".into(), alpha));
-            query_set.insert(("vanishing_poly_h_beta".into(), beta));
-            query_set.insert(("vanishing_poly_k_gamma".into(), gamma));
+            query_set.insert(("vanishing_poly_h_alpha".into(), ("alpha".into(), alpha)));
+            query_set.insert(("vanishing_poly_h_beta".into(), ("beta".into(), beta)));
+            query_set.insert(("vanishing_poly_k_gamma".into(), ("gamma".into(), gamma)));
         }
 
         (query_set, state)
