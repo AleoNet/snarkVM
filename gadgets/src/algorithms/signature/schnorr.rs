@@ -19,15 +19,14 @@ use std::{borrow::Borrow, marker::PhantomData};
 use digest::Digest;
 use itertools::Itertools;
 
-use snarkvm_algorithms::signature::{SchnorrParameters, SchnorrPublicKey, SchnorrSignature};
+use snarkvm_algorithms::signature::{SchnorrOutput, SchnorrParameters, SchnorrPublicKey, SchnorrSignature};
 use snarkvm_curves::traits::Group;
-use snarkvm_fields::Field;
+use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 use crate::{
     bits::{Boolean, ToBytesGadget},
-    fields::FpGadget,
     integers::uint::UInt8,
     traits::{
         algorithms::SignaturePublicKeyRandomizationGadget,
@@ -36,6 +35,7 @@ use crate::{
         eq::{ConditionalEqGadget, EqGadget},
         integers::Integer,
     },
+    FieldGadget,
 };
 
 #[derive(Clone)]
@@ -148,33 +148,65 @@ impl<G: Group, F: Field, GG: GroupGadget<G, F>> ToBytesGadget<F> for SchnorrPubl
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SchnorrSignatureGadget<G: Group, F: Field, D: Digest> {
-    parameters: FpGadget<F>,
+pub struct SchnorrSignatureGadget<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> {
+    prover_response: FG,
+    verifier_challenge: FG,
+    _field: PhantomData<*const F>,
     _group: PhantomData<*const G>,
-    _engine: PhantomData<*const F>,
 }
 
-impl<G: Group, F: Field, D: Digest> AllocGadget<SchnorrParameters<G, D>, F> for SchnorrSignatureGadget<G, F, D> {
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrParameters<G, D>>, CS: ConstraintSystem<F>>(
-        _cs: CS,
+impl<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> AllocGadget<SchnorrOutput<G>, F>
+    for SchnorrSignatureGadget<G, F, FG>
+{
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrOutput<G>>, CS: ConstraintSystem<F>>(
+        mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        unimplemented!()
+        let value = value_gen()?;
+        let schnorr_output = value.borrow().clone();
+
+        let prover_response = FG::alloc(
+            cs.ns(|| "alloc_prover_response"),
+            || Ok(&schnorr_output.prover_response),
+        )?;
+        let verifier_challenge = FG::alloc(cs.ns(|| "alloc_verifier_challenge"), || {
+            Ok(&schnorr_output.verifier_challenge)
+        })?;
+
+        Ok(Self {
+            prover_response,
+            verifier_challenge,
+            _field: PhantomData,
+            _group: PhantomData,
+        })
     }
 
-    fn alloc_input<
-        Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<SchnorrParameters<G, D>>,
-        CS: ConstraintSystem<F>,
-    >(
-        _cs: CS,
+    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrOutput<G>>, CS: ConstraintSystem<F>>(
+        mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        unimplemented!()
+        let value = value_gen()?;
+        let schnorr_output = value.borrow().clone();
+
+        let prover_response = FG::alloc_input(cs.ns(|| "alloc_input_prover_response"), || {
+            Ok(&schnorr_output.prover_response)
+        })?;
+        let verifier_challenge = FG::alloc_input(cs.ns(|| "alloc_input_verifier_challenge"), || {
+            Ok(&schnorr_output.verifier_challenge)
+        })?;
+
+        Ok(Self {
+            prover_response,
+            verifier_challenge,
+            _field: PhantomData,
+            _group: PhantomData,
+        })
     }
 }
 
-impl<G: Group, F: Field, GG: GroupGadget<G, F>> ConditionalEqGadget<F> for SchnorrSignatureGadget<G, F, GG> {
+impl<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> ConditionalEqGadget<F>
+    for SchnorrSignatureGadget<G, F, FG>
+{
     #[inline]
     fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
         &self,
@@ -190,9 +222,14 @@ impl<G: Group, F: Field, GG: GroupGadget<G, F>> ConditionalEqGadget<F> for Schno
     }
 }
 
-impl<G: Group, F: Field, GG: GroupGadget<G, F>> EqGadget<F> for SchnorrSignatureGadget<G, F, GG> {}
+impl<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> EqGadget<F>
+    for SchnorrSignatureGadget<G, F, FG>
+{
+}
 
-impl<G: Group, F: Field, GG: GroupGadget<G, F>> ToBytesGadget<F> for SchnorrSignatureGadget<G, F, GG> {
+impl<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> ToBytesGadget<F>
+    for SchnorrSignatureGadget<G, F, FG>
+{
     fn to_bytes<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         unimplemented!()
     }
@@ -202,18 +239,30 @@ impl<G: Group, F: Field, GG: GroupGadget<G, F>> ToBytesGadget<F> for SchnorrSign
     }
 }
 
-pub struct SchnorrPublicKeyRandomizationGadget<G: Group, F: Field, GG: GroupGadget<G, F>> {
+pub struct SchnorrPublicKeyRandomizationGadget<
+    G: Group,
+    F: PrimeField,
+    GG: GroupGadget<G, F>,
+    FG: FieldGadget<<G as Group>::ScalarField, F>,
+> {
     _group: PhantomData<*const G>,
     _group_gadget: PhantomData<*const GG>,
+    _field_gadget: PhantomData<*const FG>,
     _engine: PhantomData<*const F>,
 }
 
-impl<G: Group + CanonicalSerialize + CanonicalDeserialize, GG: GroupGadget<G, F>, D: Digest + Send + Sync, F: Field>
-    SignaturePublicKeyRandomizationGadget<SchnorrSignature<G, D>, F> for SchnorrPublicKeyRandomizationGadget<G, F, GG>
+impl<
+    G: Group + CanonicalSerialize + CanonicalDeserialize,
+    GG: GroupGadget<G, F>,
+    FG: FieldGadget<<G as Group>::ScalarField, F>,
+    D: Digest + Send + Sync,
+    F: PrimeField,
+> SignaturePublicKeyRandomizationGadget<SchnorrSignature<G, D>, F>
+    for SchnorrPublicKeyRandomizationGadget<G, F, GG, FG>
 {
     type ParametersGadget = SchnorrParametersGadget<G, F, D>;
     type PublicKeyGadget = SchnorrPublicKeyGadget<G, F, GG>;
-    type SignatureGadget = SchnorrSignatureGadget<G, F, GG>;
+    type SignatureGadget = SchnorrSignatureGadget<G, F, FG>;
 
     fn check_randomization_gadget<CS: ConstraintSystem<F>>(
         mut cs: CS,
