@@ -16,7 +16,7 @@
 
 use snarkvm_curves::Group;
 
-use super::{PedersenCRHParameters, PedersenSize};
+use super::PedersenCRHParameters;
 
 pub const BOWE_HOPWOOD_CHUNK_SIZE: usize = 3;
 pub const BOWE_HOPWOOD_LOOKUP_SIZE: usize = 2usize.pow(BOWE_HOPWOOD_CHUNK_SIZE as u32);
@@ -38,9 +38,9 @@ impl<G: Group> BoweHopwoodPedersenCRHParameters<G> {
         }
     }
 
-    pub fn base_lookup<S: PedersenSize>(
+    pub fn base_lookup<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(
         &self,
-        input: &PedersenCRHParameters<G, S>,
+        input: &PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>,
     ) -> &Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>> {
         self.base_lookup
             .get_or_try_init::<_, ()>(|| {

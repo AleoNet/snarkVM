@@ -30,7 +30,7 @@ use crate::{
 };
 use snarkvm_algorithms::{
     commitment::{Blake2sCommitment, PedersenCompressedCommitment},
-    crh::{BoweHopwoodPedersenCompressedCRH, PedersenSize},
+    crh::BoweHopwoodPedersenCompressedCRH,
     define_merkle_tree_parameters,
     encryption::GroupEncryption,
     prf::Blake2s,
@@ -69,74 +69,32 @@ pub const NUM_OUTPUT_RECORDS: usize = 2;
 
 // TODO (raychu86): Optimize windows.
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct AccountWindow;
-impl PedersenSize for AccountWindow {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 192;
-}
+const ACCOUNT_NUM_WINDOWS: usize = 8;
+const ACCOUNT_WINDOW_SIZE: usize = 192;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct EncryptedRecordWindow;
+const ENCRYPTED_RECORD_NUM_WINDOWS: usize = 48;
+const ENCRYPTED_RECORD_WINDOW_SIZE: usize = 44;
 
-impl PedersenSize for EncryptedRecordWindow {
-    const NUM_WINDOWS: usize = 48;
-    const WINDOW_SIZE: usize = 44;
-}
+const INNER_CIRCUIT_ID_NUM_WINDOWS: usize = 296;
+const INNER_CIRCUIT_ID_WINDOW_SIZE: usize = 63;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct InnerSNARKVkHashWindow;
+const LOCAL_DATA_CRH_NUM_WINDOWS: usize = 16;
+const LOCAL_DATA_CRH_WINDOW_SIZE: usize = 32;
 
-impl PedersenSize for InnerSNARKVkHashWindow {
-    const NUM_WINDOWS: usize = 296;
-    const WINDOW_SIZE: usize = 63;
-}
+const LOCAL_DATA_COMMITMENT_NUM_WINDOWS: usize = 8;
+const LOCAL_DATA_COMMITMENT_WINDOW_SIZE: usize = 129;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct LocalDataCommitmentWindow;
+const PROGRAM_VK_CRH_NUM_WINDOWS: usize = 4096;
+const PROGRAM_VK_CRH_WINDOW_SIZE: usize = 80;
 
-impl PedersenSize for LocalDataCommitmentWindow {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 129;
-}
+const RECORD_NUM_WINDOWS: usize = 8;
+const RECORD_WINDOW_SIZE: usize = 233;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct LocalDataCRHWindow;
+const SN_NONCE_NUM_WINDOWS: usize = 32;
+const SN_NONCE_WINDOW_SIZE: usize = 63;
 
-impl PedersenSize for LocalDataCRHWindow {
-    const NUM_WINDOWS: usize = 16;
-    const WINDOW_SIZE: usize = 32;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ProgramVkHashWindow;
-
-impl PedersenSize for ProgramVkHashWindow {
-    const NUM_WINDOWS: usize = 4096;
-    const WINDOW_SIZE: usize = 80;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct RecordWindow;
-impl PedersenSize for RecordWindow {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 233;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct SnNonceWindow;
-
-impl PedersenSize for SnNonceWindow {
-    const NUM_WINDOWS: usize = 32;
-    const WINDOW_SIZE: usize = 63;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct TwoToOneWindow;
-impl PedersenSize for TwoToOneWindow {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 32;
-}
+const MERKLE_TREE_CRH_NUM_WINDOWS: usize = 8;
+const MERKLE_TREE_CRH_WINDOW_SIZE: usize = 32;
 
 define_merkle_tree_parameters!(CommitmentMerkleParameters, MerkleTreeCRH, 32);
 
@@ -150,7 +108,7 @@ impl DPCComponents for Components {
     type InnerField = Bls12_377Fr;
     type OuterField = Bls12_377Fq;
     
-    type AccountCommitment = PedersenCompressedCommitment<EdwardsBls, AccountWindow>;
+    type AccountCommitment = PedersenCompressedCommitment<EdwardsBls, ACCOUNT_NUM_WINDOWS, ACCOUNT_WINDOW_SIZE>;
     type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
     
     type AccountEncryption = GroupEncryption<EdwardsBls, EdwardsAffine, Blake2sHash>;
@@ -159,31 +117,31 @@ impl DPCComponents for Components {
     type AccountSignature = SchnorrSignature<EdwardsAffine, Blake2sHash>;
     type AccountSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, Self::InnerField, EdwardsBlsGadget>;
     
-    type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, EncryptedRecordWindow>;
+    type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, ENCRYPTED_RECORD_NUM_WINDOWS, ENCRYPTED_RECORD_WINDOW_SIZE>;
     type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
     
-    type InnerCircuitIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, InnerSNARKVkHashWindow>;
+    type InnerCircuitIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, INNER_CIRCUIT_ID_NUM_WINDOWS, INNER_CIRCUIT_ID_WINDOW_SIZE>;
     type InnerCircuitIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, Self::OuterField, EdwardsSWGadget>;
     
-    type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, LocalDataCRHWindow>;
+    type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, LOCAL_DATA_CRH_NUM_WINDOWS, LOCAL_DATA_CRH_WINDOW_SIZE>;
     type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
     
-    type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls, LocalDataCommitmentWindow>;
+    type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls, LOCAL_DATA_COMMITMENT_NUM_WINDOWS, LOCAL_DATA_COMMITMENT_WINDOW_SIZE>;
     type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
     
     type PRF = Blake2s;
     type PRFGadget = Blake2sGadget;
     
-    type ProgramVerificationKeyCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, ProgramVkHashWindow>;
+    type ProgramVerificationKeyCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, PROGRAM_VK_CRH_NUM_WINDOWS, PROGRAM_VK_CRH_WINDOW_SIZE>;
     type ProgramVerificationKeyCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, Self::OuterField, EdwardsSWGadget>;
     
     type ProgramVerificationKeyCommitment = Blake2sCommitment;
     type ProgramVerificationKeyCommitmentGadget = Blake2sCommitmentGadget;
     
-    type RecordCommitment = PedersenCompressedCommitment<EdwardsBls, RecordWindow>;
+    type RecordCommitment = PedersenCompressedCommitment<EdwardsBls, RECORD_NUM_WINDOWS, RECORD_WINDOW_SIZE>;
     type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
     
-    type SerialNumberNonceCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, SnNonceWindow>;
+    type SerialNumberNonceCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, SN_NONCE_NUM_WINDOWS, SN_NONCE_WINDOW_SIZE>;
     type SerialNumberNonceCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
 }
 
@@ -223,7 +181,8 @@ pub type InnerCurve = Bls12_377;
 pub type OuterCurve = BW6_761;
 
 pub type LocalData = DPCLocalData<Components>;
-pub type MerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, TwoToOneWindow>;
+pub type MerkleTreeCRH =
+    BoweHopwoodPedersenCompressedCRH<EdwardsBls, MERKLE_TREE_CRH_NUM_WINDOWS, MERKLE_TREE_CRH_WINDOW_SIZE>;
 
 // This is currently unused.
 //
