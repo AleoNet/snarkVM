@@ -36,7 +36,9 @@ use crate::{
         integers::Integer,
     },
     FieldGadget,
+    PRFGadget,
 };
+use snarkvm_algorithms::prf::Blake2s;
 
 #[derive(Clone)]
 pub struct SchnorrParametersGadget<G: Group, F: Field, D: Digest> {
@@ -316,13 +318,81 @@ impl<
         })
     }
 
-    fn verify<CS: ConstraintSystem<F>>(
-        cs: CS,
+    // TODO (raychu86): Remove the hardcoded blake2s usage.
+    fn verify<CS: ConstraintSystem<F>, PG: PRFGadget<Blake2s, F>>(
+        mut cs: CS,
         parameters: &Self::ParametersGadget,
         public_key: &Self::PublicKeyGadget,
         message: &[UInt8],
         signature: &Self::SignatureGadget,
-    ) -> Result<Self::PublicKeyGadget, SynthesisError> {
-        unimplemented!()
+    ) -> Result<Boolean, SynthesisError> {
+        let zero_group_gadget = GG::zero(cs.ns(|| "zero"))?;
+
+        let prover_response_bits = signature
+            .prover_response
+            .to_bits_le(cs.ns(|| "prover_response_to_bits"))?;
+        let verifier_challenge_bits = signature
+            .verifier_challenge
+            .to_bits_le(cs.ns(|| "verifier_challenge_to_bits"))?;
+
+        let mut claimed_prover_commitment = GG::zero(cs.ns(|| "zero_claimed_prover_commitment"))?;
+        for (i, (bit, base_power)) in prover_response_bits
+            .iter()
+            .zip_eq(&parameters.parameters.generator_powers)
+            .enumerate()
+        {
+            let added =
+                claimed_prover_commitment.add_constant(cs.ns(|| format!("add_base_power_{}", i)), base_power)?;
+
+            claimed_prover_commitment = GG::conditionally_select(
+                cs.ns(|| format!("cond_select_{}", i)),
+                &bit,
+                &added,
+                &claimed_prover_commitment,
+            )?;
+        }
+
+        let public_key_times_verifier_challenge = public_key.public_key.mul_bits(
+            cs.ns(|| "record_view_key"),
+            &zero_group_gadget,
+            verifier_challenge_bits.into_iter(),
+        )?;
+
+        claimed_prover_commitment = claimed_prover_commitment.add(
+            cs.ns(|| "claimed_prover_commitment_plus_public_key_times_verifier_challenge"),
+            &public_key_times_verifier_challenge,
+        )?;
+
+        let salt_bytes = UInt8::alloc_vec(cs.ns(|| "alloc_salt"), &parameters.parameters.salt)?;
+        let claimed_prover_commitment_bytes =
+            claimed_prover_commitment.to_bytes(cs.ns(|| "claimed_prover_commitment_to_bytes"))?;
+
+        // Construct the hash
+
+        let mut hash_input = Vec::new();
+        hash_input.extend_from_slice(&salt_bytes);
+        hash_input.extend_from_slice(&claimed_prover_commitment_bytes);
+        hash_input.extend_from_slice(&message);
+
+        let hash = PG::check_evaluation_gadget(cs.ns(|| "schnorr_hash"), &vec![], &hash_input)?;
+
+        // Check that the hash bytes are equivalent to the Field gadget.
+
+        // TODO (raychu86): Check that this method is the same as checking <G as Group>::ScalarField::from_random_bytes(hash).
+
+        let hash_bytes = hash.to_bytes(cs.ns(|| "hash_to_bytes"))?;
+        let verifier_challenge_bytes = signature
+            .verifier_challenge
+            .to_bytes(cs.ns(|| "verifier_challenge_to_bytes"))?;
+
+        let mut result = Boolean::constant(true);
+
+        for (i, (expected_byte, found_byte)) in verifier_challenge_bytes.iter().zip_eq(hash_bytes).enumerate() {
+            let is_eq = expected_byte.is_eq(cs.ns(|| format!("is_eq_{}", i)), &found_byte)?;
+
+            result = Boolean::and(cs.ns(|| format!("and_{}", i)), &result, &is_eq)?;
+        }
+
+        return Ok(result);
     }
 }
