@@ -82,7 +82,7 @@ impl fmt::Display for RepeatData {
 
 impl RepeatData {
     pub(crate) fn decode(operands: Vec<ir::Operand>) -> Result<Self> {
-        if operands.len() != 3 {
+        if operands.len() != 4 {
             return Err(anyhow!("illegal operand count for RepeatData: {}", operands.len()));
         }
         let mut operands = operands.into_iter();
