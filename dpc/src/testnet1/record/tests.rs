@@ -36,9 +36,9 @@ fn test_record_encoding() {
     for _ in 0..ITERATIONS {
         // Generate parameters for the ledger, commitment schemes, CRH, and the
         // "always-accept" program.
-        let system_parameters = InstantiatedDPC::generate_system_parameters(&mut rng).unwrap();
+        let system_parameters = Testnet1DPC::generate_system_parameters(&mut rng).unwrap();
         let noop_program_snark_pp =
-            InstantiatedDPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
+            Testnet1DPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
 
         let program_snark_vk_bytes = to_bytes![
             <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
@@ -107,9 +107,9 @@ fn test_record_encryption() {
     for _ in 0..ITERATIONS {
         // Generate parameters for the ledger, commitment schemes, CRH, and the
         // "always-accept" program.
-        let system_parameters = InstantiatedDPC::generate_system_parameters(&mut rng).unwrap();
+        let system_parameters = Testnet1DPC::generate_system_parameters(&mut rng).unwrap();
         let program_snark_pp =
-            InstantiatedDPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
+            Testnet1DPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
 
         let program_snark_vk_bytes = to_bytes![
             <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(

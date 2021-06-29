@@ -29,14 +29,14 @@ use snarkvm_utilities::bytes::FromBytes;
 use rand::Rng;
 use std::sync::Arc;
 
-pub type MerkleTreeLedger<S> = Ledger<Tx, CommitmentMerkleParameters, S>;
+pub type MerkleTreeLedger<S> = Ledger<Testnet1Transaction, CommitmentMerkleParameters, S>;
 
 pub fn setup_or_load_parameters<R: Rng, S: Storage>(
     verify_only: bool,
     rng: &mut R,
 ) -> (
     Arc<CommitmentMerkleParameters>,
-    <InstantiatedDPC as DPCScheme<MerkleTreeLedger<S>>>::NetworkParameters,
+    <Testnet1DPC as DPCScheme<MerkleTreeLedger<S>>>::NetworkParameters,
 ) {
     // TODO (howardwu): Resolve this inconsistency on import structure with a new model once MerkleParameters are refactored.
     let crh_parameters =
@@ -45,11 +45,11 @@ pub fn setup_or_load_parameters<R: Rng, S: Storage>(
     let merkle_tree_hash_parameters = <CommitmentMerkleParameters as MerkleParameters>::H::from(crh_parameters);
     let ledger_merkle_tree_parameters = Arc::new(From::from(merkle_tree_hash_parameters));
 
-    let parameters = match <InstantiatedDPC as DPCScheme<MerkleTreeLedger<S>>>::NetworkParameters::load(verify_only) {
+    let parameters = match <Testnet1DPC as DPCScheme<MerkleTreeLedger<S>>>::NetworkParameters::load(verify_only) {
         Ok(parameters) => parameters,
         Err(err) => {
             println!("error - {}, re-running parameter Setup", err);
-            <InstantiatedDPC as DPCScheme<MerkleTreeLedger<S>>>::setup(&ledger_merkle_tree_parameters, rng)
+            <Testnet1DPC as DPCScheme<MerkleTreeLedger<S>>>::setup(&ledger_merkle_tree_parameters, rng)
                 .expect("DPC setup failed")
         }
     };
