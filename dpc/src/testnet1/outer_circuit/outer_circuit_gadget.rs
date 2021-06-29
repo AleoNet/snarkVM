@@ -16,7 +16,10 @@
 
 use itertools::Itertools;
 
-use crate::testnet1::{parameters::SystemParameters, program::PrivateProgramInput, AleoAmount, Testnet1Components};
+use crate::{
+    testnet1::{parameters::SystemParameters, program::PrivateProgramInput, Testnet1Components},
+    AleoAmount,
+};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, SNARK},

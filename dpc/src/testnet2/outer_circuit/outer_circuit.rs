@@ -14,12 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet2::{
-    outer_circuit_gadget::execute_outer_proof_gadget,
-    parameters::SystemParameters,
-    program::PrivateProgramInput,
+use crate::{
+    testnet2::{
+        outer_circuit_gadget::execute_outer_proof_gadget,
+        parameters::SystemParameters,
+        program::PrivateProgramInput,
+        Testnet2Components,
+    },
     AleoAmount,
-    Testnet2Components,
 };
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,

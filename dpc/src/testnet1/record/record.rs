@@ -15,10 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    account::AccountAddress,
-    errors::RecordError,
     testnet1::{payload::Payload, Testnet1Components},
     traits::RecordScheme,
+    AccountAddress,
+    RecordError,
 };
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH};
 use snarkvm_utilities::{

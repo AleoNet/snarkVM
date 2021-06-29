@@ -58,9 +58,7 @@ use snarkvm_marlin::{
     constraints::{snark::MarlinSNARK, verifier::MarlinVerificationGadget},
     marlin::MarlinTestnet2Mode,
     FiatShamirAlgebraicSpongeRng,
-    FiatShamirAlgebraicSpongeRngVar,
     PoseidonSponge,
-    PoseidonSpongeVar,
 };
 use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
 
@@ -144,51 +142,64 @@ define_merkle_tree_parameters!(CommitmentMerkleParameters, MerkleTreeCRH, 32);
 
 pub struct Components;
 
+#[rustfmt::skip]
 impl DPCComponents for Components {
-    type AccountCommitment = PedersenCompressedCommitment<EdwardsBls, AccountWindow>;
-    type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-    type AccountEncryption = GroupEncryption<EdwardsBls, EdwardsAffine, Blake2sHash>;
-    type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-    type AccountSignature = SchnorrSignature<EdwardsAffine, Blake2sHash>;
-    type AccountSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, InnerField, EdwardsBlsGadget>;
-    type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, EncryptedRecordWindow>;
-    type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-    type InnerCircuitIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, InnerSNARKVkHashWindow>;
-    type InnerCircuitIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, OuterField, EdwardsSWGadget>;
-    type InnerField = InnerField;
-    type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, LocalDataCRHWindow>;
-    type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-    type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls, LocalDataCommitmentWindow>;
-    type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-    type OuterField = OuterField;
-    type PRF = Blake2s;
-    type PRFGadget = Blake2sGadget;
-    type ProgramVerificationKeyCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, ProgramVkHashWindow>;
-    type ProgramVerificationKeyCRHGadget =
-        BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, OuterField, EdwardsSWGadget>;
-    type ProgramVerificationKeyCommitment = Blake2sCommitment;
-    type ProgramVerificationKeyCommitmentGadget = Blake2sCommitmentGadget;
-    type RecordCommitment = PedersenCompressedCommitment<EdwardsBls, RecordWindow>;
-    type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-    type SerialNumberNonceCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, SnNonceWindow>;
-    type SerialNumberNonceCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-
     const NUM_INPUT_RECORDS: usize = NUM_INPUT_RECORDS;
     const NUM_OUTPUT_RECORDS: usize = NUM_OUTPUT_RECORDS;
+
+    type InnerField = Bls12_377Fr;
+    type OuterField = Bls12_377Fq;
+    
+    type AccountCommitment = PedersenCompressedCommitment<EdwardsBls, AccountWindow>;
+    type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    
+    type AccountEncryption = GroupEncryption<EdwardsBls, EdwardsAffine, Blake2sHash>;
+    type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    
+    type AccountSignature = SchnorrSignature<EdwardsAffine, Blake2sHash>;
+    type AccountSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, Self::InnerField, EdwardsBlsGadget>;
+    
+    type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, EncryptedRecordWindow>;
+    type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    
+    type InnerCircuitIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, InnerSNARKVkHashWindow>;
+    type InnerCircuitIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, Self::OuterField, EdwardsSWGadget>;
+    
+    type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, LocalDataCRHWindow>;
+    type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    
+    type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls, LocalDataCommitmentWindow>;
+    type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    
+    type PRF = Blake2s;
+    type PRFGadget = Blake2sGadget;
+    
+    type ProgramVerificationKeyCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, ProgramVkHashWindow>;
+    type ProgramVerificationKeyCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, Self::OuterField, EdwardsSWGadget>;
+    
+    type ProgramVerificationKeyCommitment = Blake2sCommitment;
+    type ProgramVerificationKeyCommitmentGadget = Blake2sCommitmentGadget;
+    
+    type RecordCommitment = PedersenCompressedCommitment<EdwardsBls, RecordWindow>;
+    type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    
+    type SerialNumberNonceCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, SnNonceWindow>;
+    type SerialNumberNonceCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
 }
 
 impl Testnet2Components for Components {
     type EncryptionGroup = EdwardsBls;
     type EncryptionModelParameters = EdwardsParameters;
-    type FiatShamirRng = FiatShamirAlgebraicSpongeRng<InnerField, OuterField, PoseidonSponge<OuterField>>;
+    type FiatShamirRng =
+        FiatShamirAlgebraicSpongeRng<Self::InnerField, Self::OuterField, PoseidonSponge<Self::OuterField>>;
     type InnerSNARK = Groth16<InnerCurve, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
-    type InnerSNARKGadget = Groth16VerifierGadget<InnerCurve, OuterField, PairingGadget>;
+    type InnerSNARKGadget = Groth16VerifierGadget<InnerCurve, Self::OuterField, PairingGadget>;
     type MarlinMode = MarlinTestnet2Mode;
-    type MerkleHashGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
+    type MerkleHashGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
     type MerkleParameters = CommitmentMerkleParameters;
     type NoopProgramSNARK = MarlinSNARK<
-        InnerField,
-        OuterField,
+        Self::InnerField,
+        Self::OuterField,
         Self::PolynomialCommitment,
         Self::FiatShamirRng,
         Self::MarlinMode,
@@ -197,21 +208,30 @@ impl Testnet2Components for Components {
     >;
     type OuterSNARK = Groth16<OuterCurve, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
     type PolynomialCommitment = MarlinKZG10<InnerCurve>;
-    type ProgramSNARKGadget = MarlinVerificationGadget<InnerField, OuterField, Self::PolynomialCommitment, PCGadget>;
+    type ProgramSNARKGadget = MarlinVerificationGadget<
+        Self::InnerField,
+        Self::OuterField,
+        Self::PolynomialCommitment,
+        MarlinKZG10Gadget<InnerCurve, OuterCurve, PairingGadget>,
+    >;
 }
+
+pub type Testnet2DPC = DPC<Components>;
+pub type Testnet2Transaction = Transaction<Components>;
 
 pub type InnerCurve = Bls12_377;
 pub type OuterCurve = BW6_761;
-pub type InnerField = Bls12_377Fr;
-pub type OuterField = Bls12_377Fq;
 
 pub type LocalData = DPCLocalData<Components>;
 pub type MerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, TwoToOneWindow>;
 
-pub type PCGadget = MarlinKZG10Gadget<InnerCurve, OuterCurve, PairingGadget>;
-
-pub type FSG =
-    FiatShamirAlgebraicSpongeRngVar<InnerField, OuterField, PoseidonSponge<OuterField>, PoseidonSpongeVar<OuterField>>;
-
-pub type Testnet2DPC = DPC<Components>;
-pub type Testnet2Transaction = Transaction<Components>;
+// This is currently unused.
+//
+// use snarkvm_marlin::{FiatShamirAlgebraicSpongeRngVar, PoseidonSpongeVar};
+//
+// pub type FSG = FiatShamirAlgebraicSpongeRngVar<
+//     Self::InnerField,
+//     Self::OuterField,
+//     PoseidonSponge<Self::OuterField>,
+//     PoseidonSpongeVar<Self::OuterField>,
+// >;

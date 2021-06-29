@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    account::AccountAddress,
     testnet2::{payload::Payload, Testnet2Components},
     traits::RecordScheme,
+    AccountAddress,
 };
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH};
 use snarkvm_utilities::{

@@ -15,9 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    account::{Account, AccountViewKey},
     testnet2::{instantiated::*, payload::Payload, record_encoding::*, record_encryption::*, DPC},
     traits::{AccountScheme, DPCComponents, RecordEncodingScheme},
+    Account,
+    AccountViewKey,
 };
 use snarkvm_algorithms::traits::CRH;
 use snarkvm_curves::edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls};

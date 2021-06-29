@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    errors::DPCError,
     testnet1::{LocalData, NoopCircuit, PrivateProgramInput, ProgramLocalData, Testnet1Components},
     traits::{ProgramScheme, RecordScheme},
+    DPCError,
 };
 use snarkvm_algorithms::traits::{CommitmentScheme, SNARK};
 use snarkvm_utilities::{to_bytes, ToBytes};

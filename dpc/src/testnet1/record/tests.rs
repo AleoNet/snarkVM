@@ -16,9 +16,10 @@
 
 use super::{record_encoding::*, record_encryption::*};
 use crate::{
-    account::{Account, AccountViewKey},
     testnet1::{instantiated::*, payload::Payload, DPC},
     traits::{AccountScheme, DPCComponents, RecordEncodingScheme},
+    Account,
+    AccountViewKey,
 };
 use snarkvm_algorithms::traits::CRH;
 use snarkvm_curves::edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls};

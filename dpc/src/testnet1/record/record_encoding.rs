@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    errors::DPCError,
     testnet1::{payload::Payload, record::Record, Testnet1Components},
     traits::{DPCComponents, RecordEncodingScheme, RecordScheme},
+    DPCError,
 };
 use snarkvm_algorithms::{
     encoding::Elligator2,

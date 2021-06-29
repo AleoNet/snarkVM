@@ -16,6 +16,17 @@
 
 use std::ops::Mul;
 
+use crate::{
+    testnet1::{
+        parameters::SystemParameters,
+        record::Record,
+        record_encryption::RecordEncryptionGadgetComponents,
+        Testnet1Components,
+    },
+    traits::RecordScheme,
+    AccountPrivateKey,
+    AleoAmount,
+};
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, PRF},
@@ -40,18 +51,6 @@ use snarkvm_utilities::{
     bits_to_bytes,
     bytes::{FromBytes, ToBytes},
     to_bytes,
-};
-
-use crate::{
-    testnet1::{
-        parameters::SystemParameters,
-        record::Record,
-        record_encryption::RecordEncryptionGadgetComponents,
-        Testnet1Components,
-    },
-    traits::RecordScheme,
-    AccountPrivateKey,
-    AleoAmount,
 };
 
 #[allow(clippy::too_many_arguments)]

@@ -15,15 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    account::AccountPrivateKey,
     testnet2::{
         inner_circuit_gadget::execute_inner_proof_gadget,
         parameters::SystemParameters,
         record::Record,
         record_encryption::RecordEncryptionGadgetComponents,
-        AleoAmount,
         Testnet2Components,
     },
+    AccountPrivateKey,
+    AleoAmount,
 };
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},

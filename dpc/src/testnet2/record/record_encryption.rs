@@ -15,8 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    account::{AccountAddress, AccountViewKey},
-    errors::DPCError,
     testnet2::{
         parameters::SystemParameters,
         payload::Payload,
@@ -24,6 +22,9 @@ use crate::{
         Testnet2Components,
     },
     traits::{DPCComponents, RecordEncodingScheme, RecordScheme},
+    AccountAddress,
+    AccountViewKey,
+    DPCError,
 };
 use snarkvm_algorithms::{
     encoding::Elligator2,

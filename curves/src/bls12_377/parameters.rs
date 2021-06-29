@@ -57,9 +57,6 @@ impl Bls12Parameters for Bls12_377Parameters {
 
 pub type Bls12_377 = Bls12<Bls12_377Parameters>;
 
-pub type G2Affine = Bls12G2Affine<Bls12_377Parameters>;
-pub type G2Projective = Bls12G2Projective<Bls12_377Parameters>;
-
 pub type G1Affine = Bls12G1Affine<Bls12_377Parameters>;
 pub type G1Projective = Bls12G1Projective<Bls12_377Parameters>;
 
@@ -77,6 +74,9 @@ impl PairingCurve for G1Affine {
         Bls12_377::pairing(*self, *other)
     }
 }
+
+pub type G2Affine = Bls12G2Affine<Bls12_377Parameters>;
+pub type G2Projective = Bls12G2Projective<Bls12_377Parameters>;
 
 impl PairingCurve for G2Affine {
     type Engine = Bls12_377;
