@@ -19,6 +19,7 @@ use snarkvm_ir::Program;
 
 use crate::{GroupType, Input};
 
+/// A trait describing a mechanism for producing output from a given program and input
 pub trait Evaluator<F: PrimeField, G: GroupType<F>> {
     type Output;
     type Error;

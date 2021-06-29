@@ -295,10 +295,22 @@ macro_rules! uint_impl {
                             // Subtract or add operand
                             if op.negated {
                                 // Perform subtraction
-                                result_value.as_mut().map(|v| *v -= u128::from(val));
+                                result_value
+                                    .as_mut()
+                                    .map(|v| {
+                                        v.checked_sub(u128::from(val))
+                                            .ok_or_else(|| SynthesisError::Overflow)
+                                    })
+                                    .transpose()?;
                             } else {
                                 // Perform addition
-                                result_value.as_mut().map(|v| *v += u128::from(val));
+                                result_value
+                                    .as_mut()
+                                    .map(|v| {
+                                        v.checked_add(u128::from(val))
+                                            .ok_or_else(|| SynthesisError::Overflow)
+                                    })
+                                    .transpose()?;
                             }
                         }
                         None => {

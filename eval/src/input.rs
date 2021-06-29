@@ -17,6 +17,7 @@
 use indexmap::IndexMap;
 use snarkvm_ir::Value;
 
+/// Value data for an [`Evaluator`] to consume
 #[derive(Clone, Debug, Default)]
 pub struct Input {
     pub main: IndexMap<String, Value>,

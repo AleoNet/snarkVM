@@ -48,19 +48,20 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         } else if array.is_empty() {
             return Err(ArrayError::array_index_out_of_bounds(0, 0).into());
         } else {
+            let mut cs = self.cs();
             {
                 let array_len: u32 = array
                     .len()
                     .try_into()
                     .map_err(|_| ArrayError::array_length_out_of_bounds())?;
-                self.array_bounds_check(index_resolved, array_len)?;
+                Self::array_bounds_check(&mut cs, index_resolved, array_len)?;
             }
 
             let array = array.clone();
             let mut out = Vec::with_capacity(array.len());
             for (i, item) in array.into_iter().enumerate() {
                 let namespace_string = format!("evaluate dyn array assignment eq {}", i);
-                let eq_namespace = self.cs.ns(|| namespace_string);
+                let eq_namespace = cs.ns(|| namespace_string);
 
                 let i = match &index_resolved {
                     Integer::U8(_) => Integer::U8(UInt8::constant(
@@ -81,7 +82,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                     .evaluate_equal(eq_namespace, &i)
                     .map_err(|e| ValueError::cannot_enforce("==", e))?;
 
-                let unique_namespace = self.cs.ns(|| format!("select array dyn assignment {}", i));
+                let unique_namespace = cs.ns(|| format!("select array dyn assignment {}", i));
                 let value = ConstrainedValue::conditionally_select(unique_namespace, &index_comparison, &target, &item)
                     .map_err(|e| ValueError::cannot_enforce("conditional select", e))?;
                 out.push(value);
