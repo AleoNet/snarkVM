@@ -82,7 +82,7 @@ impl fmt::Display for Value {
                 bech32::encode("aleo", bytes.to_vec().to_base32(), bech32::Variant::Bech32).unwrap_or_default()
             ),
             Value::Boolean(x) => write!(f, "{}", x),
-            Value::Field(field) => write!(f, "{:?}", field),
+            Value::Field(field) => write!(f, "{}", field),
             Value::Char(c) => write!(
                 f,
                 "{}",
