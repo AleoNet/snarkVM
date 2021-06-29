@@ -82,7 +82,7 @@ fn dpc_testnet1_integration_test() {
     let ledger = initialize_test_blockchain::<Tx, CommitmentMerkleParameters, MemDb>(ledger_parameters, genesis_block);
 
     let noop_program_id = to_bytes![
-        ProgramVerificationKeyCRH::hash(
+        <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
             &parameters.system_parameters.program_verification_key_crh,
             &to_bytes![parameters.noop_program_snark_parameters().verification_key].unwrap()
         )
@@ -94,7 +94,7 @@ fn dpc_testnet1_integration_test() {
     let old_account_private_keys = vec![genesis_account.private_key.clone(); NUM_INPUT_RECORDS];
     let mut old_records = vec![];
     for i in 0..NUM_INPUT_RECORDS {
-        let old_sn_nonce = SerialNumberNonce::hash(
+        let old_sn_nonce = <Components as DPCComponents>::SerialNumberNonceCRH::hash(
             &parameters.system_parameters.serial_number_nonce,
             &[64u8 + (i as u8); 1],
         )
@@ -263,7 +263,7 @@ fn generate_test_noop_program_parameters<R: Rng>(
         InstantiatedDPC::generate_noop_program_snark_parameters(&system_parameters, rng).unwrap();
 
     let noop_program_id = to_bytes![
-        ProgramVerificationKeyCRH::hash(
+        <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
             &system_parameters.program_verification_key_crh,
             &to_bytes![noop_program_snark_pp.verification_key].unwrap()
         )
@@ -293,7 +293,9 @@ fn test_transaction_kernel_serialization() {
     )
     .unwrap();
 
-    let sn_nonce = SerialNumberNonce::hash(&system_parameters.serial_number_nonce, &[0u8; 1]).unwrap();
+    let sn_nonce =
+        <Components as DPCComponents>::SerialNumberNonceCRH::hash(&system_parameters.serial_number_nonce, &[0u8; 1])
+            .unwrap();
     let old_record = DPC::generate_record(
         &system_parameters,
         sn_nonce,
@@ -392,7 +394,9 @@ fn test_execute_base_dpc_constraints() {
     // Use genesis record, serial number, and memo to initialize the ledger.
     let ledger = initialize_test_blockchain::<Tx, CommitmentMerkleParameters, MemDb>(ledger_parameters, genesis_block);
 
-    let sn_nonce = SerialNumberNonce::hash(&system_parameters.serial_number_nonce, &[0u8; 1]).unwrap();
+    let sn_nonce =
+        <Components as DPCComponents>::SerialNumberNonceCRH::hash(&system_parameters.serial_number_nonce, &[0u8; 1])
+            .unwrap();
     let old_record = DPC::generate_record(
         &system_parameters,
         sn_nonce,
@@ -597,7 +601,7 @@ fn test_execute_base_dpc_constraints() {
     let inner_snark_vk: <<Components as BaseDPCComponents>::InnerSNARK as SNARK>::VerifyingKey =
         inner_snark_parameters.1.clone().into();
 
-    let inner_snark_id = InnerCircuitIDCRH::hash(
+    let inner_snark_id = <Components as DPCComponents>::InnerCircuitIDCRH::hash(
         &system_parameters.inner_circuit_id_crh,
         &to_bytes![inner_snark_vk].unwrap(),
     )

@@ -17,7 +17,7 @@
 use crate::{
     account::{Account, AccountViewKey},
     testnet2::{instantiated::*, payload::Payload, record_encoding::*, record_encryption::*, DPC},
-    traits::{AccountScheme, RecordEncodingScheme},
+    traits::{AccountScheme, DPCComponents, RecordEncodingScheme},
 };
 use snarkvm_algorithms::traits::CRH;
 use snarkvm_curves::edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls};
@@ -42,7 +42,7 @@ fn test_record_serialization() {
                 .unwrap();
 
         let program_snark_vk_bytes = to_bytes![
-            ProgramVerificationKeyCRH::hash(
+            <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
                 &system_parameters.program_verification_key_crh,
                 &to_bytes![noop_program_snark_pp.verification_key].unwrap()
             )
@@ -65,7 +65,11 @@ fn test_record_serialization() {
 
             let given_record = DPC::generate_record(
                 &system_parameters,
-                SerialNumberNonce::hash(&system_parameters.serial_number_nonce, &sn_nonce_input).unwrap(),
+                <Components as DPCComponents>::SerialNumberNonceCRH::hash(
+                    &system_parameters.serial_number_nonce,
+                    &sn_nonce_input,
+                )
+                .unwrap(),
                 dummy_account.address,
                 false,
                 value,
@@ -111,7 +115,7 @@ fn test_record_encryption() {
                 .unwrap();
 
         let program_snark_vk_bytes = to_bytes![
-            ProgramVerificationKeyCRH::hash(
+            <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
                 &system_parameters.program_verification_key_crh,
                 &to_bytes![program_snark_pp.verification_key].unwrap()
             )
@@ -134,7 +138,11 @@ fn test_record_encryption() {
 
             let given_record = DPC::generate_record(
                 &system_parameters,
-                SerialNumberNonce::hash(&system_parameters.serial_number_nonce, &sn_nonce_input).unwrap(),
+                <Components as DPCComponents>::SerialNumberNonceCRH::hash(
+                    &system_parameters.serial_number_nonce,
+                    &sn_nonce_input,
+                )
+                .unwrap(),
                 dummy_account.address,
                 false,
                 value,
