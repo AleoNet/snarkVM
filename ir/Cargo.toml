@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-ir"
-version = "0.5.5"
+version = "0.6.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "IR for a decentralized virtual machine"
 homepage = "https://aleo.org"
