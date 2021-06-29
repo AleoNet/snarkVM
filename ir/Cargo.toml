@@ -31,5 +31,8 @@ version = "0.5"
 [dependencies.bech32]
 version = "0.8"
 
+[dependencies.indexmap]
+version = "1.6"
+
 [build-dependencies.prost-build]
 version = "0.7"

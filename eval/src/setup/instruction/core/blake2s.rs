@@ -46,13 +46,13 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         }
         let input = unwrap_argument(&arguments[1])?;
         let seed = unwrap_argument(&arguments[0])?;
-
-        let digest = Blake2sGadget::check_evaluation_gadget(self.cs.ns(|| "blake2s hash"), &seed[..], &input[..])
+        let mut cs = self.cs();
+        let digest = Blake2sGadget::check_evaluation_gadget(cs.ns(|| "blake2s hash"), &seed[..], &input[..])
             .map_err(|e| ValueError::cannot_enforce("Blake2s check evaluation gadget", e))?;
 
         Ok(ConstrainedValue::Array(
             digest
-                .to_bytes(&mut self.cs)
+                .to_bytes(&mut cs)
                 .map_err(|e| ValueError::cannot_enforce("Vec<UInt8> ToBytes", e))?
                 .into_iter()
                 .map(Integer::U8)

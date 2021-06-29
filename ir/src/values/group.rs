@@ -77,7 +77,7 @@ pub enum Group {
 impl fmt::Display for Group {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Group::Single(field) => write!(f, "{:?}group", field),
+            Group::Single(field) => write!(f, "{}group", field),
             Group::Tuple(left, right) => write!(f, "({}, {})group", left, right),
         }
     }

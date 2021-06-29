@@ -64,9 +64,10 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             }
             ConstrainedValue::Array(array[left..right].to_owned())
         } else {
+            let mut cs = self.cs();
             {
                 let calc_len = operations::enforce_sub::<F, G, _>(
-                    &mut self.cs,
+                    &mut cs,
                     ConstrainedValue::Integer(to_resolved.clone()),
                     ConstrainedValue::Integer(from_resolved.clone()),
                 )?;
@@ -74,14 +75,15 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                     ConstrainedValue::Integer(i) => i,
                     _ => unimplemented!("illegal non-Integer returned from sub"),
                 };
-                let namespace_string = format!("evaluate array range access length check",);
-                let mut unique_namespace = self.cs.ns(|| namespace_string);
+                let namespace_string = format!("evaluate array range access length check");
+                let mut unique_namespace = cs.ns(|| namespace_string);
                 calc_len
                     .enforce_equal(&mut unique_namespace, &Integer::new(&IrInteger::U32(length as u32)))
                     .map_err(|e| ValueError::cannot_enforce("array length check", e))?;
             }
             {
-                self.array_bounds_check(
+                Self::array_bounds_check(
+                    &mut cs,
                     to_resolved,
                     array
                         .len()
@@ -99,7 +101,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                     break;
                 };
                 let array_value = ConstrainedValue::Array(window.to_vec());
-                let mut unique_namespace = self.cs.ns(|| format!("array index eq-check {}", i));
+                let mut unique_namespace = cs.ns(|| format!("array index eq-check {}", i));
 
                 let equality = operations::evaluate_eq::<F, G, _>(
                     &mut unique_namespace,

@@ -22,8 +22,10 @@ pub(super) struct EvaluatorState<'a, F: PrimeField, G: GroupType<F>, CS: Constra
     pub program: &'a Program,
     variables: HashMap<u32, ConstrainedValue<F, G>>,
     call_depth: usize,
-    pub cs: CS,
+    cs: CS,
     pub parent_variables: HashMap<u32, ConstrainedValue<F, G>>,
+    pub function_index: u32,
+    pub instruction_index: u32,
 }
 
 impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
@@ -34,6 +36,8 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             call_depth: 0,
             cs,
             parent_variables: HashMap::new(),
+            function_index: 0,
+            instruction_index: 0,
         }
     }
 
@@ -43,28 +47,54 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         mut inner: I,
         merge: &mut HashMap<u32, ConstrainedValue<F, G>>,
     ) -> Result<T, E> {
+        let function_index = self.function_index;
+        let instruction_index = self.instruction_index;
+
         let mut state = EvaluatorState {
             program: self.program,
             variables: HashMap::new(),
             call_depth: self.call_depth,
             parent_variables: self.variables.clone().union(self.parent_variables.clone()), // todo: eval perf of im::map here
-            cs: self.cs.ns(|| name),
+            cs: self
+                .cs
+                .ns(|| format!("f#{}i#{} block: {}", function_index, instruction_index, name)),
+            function_index: self.function_index,
+            instruction_index: self.instruction_index,
         };
         let out = inner(&mut state)?;
         *merge = state.variables;
         Ok(out)
     }
 
-    // pub fn merge(&mut self, child: EvaluatorState<'a, F, G, Namespace<'_, F, CS::Root>>)
+    pub fn cs<'b>(&'b mut self) -> impl ConstraintSystem<F> + 'b {
+        let function_index = self.function_index;
+        let instruction_index = self.instruction_index;
+        self.cs
+            .ns(move || format!("f#{}i#{}", function_index, instruction_index))
+    }
 
-    fn allocate_input(&mut self, type_: &Type, name: &str, value: Value) -> Result<ConstrainedValue<F, G>, ValueError> {
+    pub fn cs_meta<'b>(&'b mut self, meta: &str) -> impl ConstraintSystem<F> + 'b {
+        let function_index = self.function_index;
+        let instruction_index = self.instruction_index;
+        self.cs
+            .ns(move || format!("f#{}i#{}: {}", function_index, instruction_index, meta))
+    }
+
+    fn allocate_input<CS2: ConstraintSystem<F>>(
+        cs: &mut CS2,
+        type_: &Type,
+        name: &str,
+        value: Value,
+    ) -> Result<ConstrainedValue<F, G>, ValueError> {
         Ok(match type_ {
-            Type::Address => Address::from_input(&mut self.cs, name, value)?,
-            Type::Boolean => bool_from_input(&mut self.cs, name, value)?,
-            Type::Field => FieldType::from_input(&mut self.cs, name, value)?,
-            Type::Char => Char::from_input(&mut self.cs, name, value)?,
+            Type::Address => Address::from_input(&mut cs.ns(|| name.to_string()), name, value)?,
+            Type::Boolean => bool_from_input(&mut cs.ns(|| name.to_string()), name, value)?,
+            Type::Field => FieldType::from_input(&mut cs.ns(|| name.to_string()), name, value)?,
+            Type::Char => Char::from_input(&mut cs.ns(|| name.to_string()), name, value)?,
             Type::Group => match value {
-                Value::Group(g) => ConstrainedValue::Group(G::constant(&g)?.to_allocated(&mut self.cs)?),
+                Value::Group(g) => {
+                    ConstrainedValue::Group(G::constant(&g)?.to_allocated(&mut cs.ns(|| name.to_string()))?)
+                }
                 _ => {
                     return Err(
                         GroupError::invalid_group("expected group, didn't find group in input".to_string()).into(),
@@ -80,7 +110,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             | Type::I16
             | Type::I32
             | Type::I64
-            | Type::I128 => Integer::from_input(&mut self.cs, name, value)?,
+            | Type::I128 => Integer::from_input(&mut cs.ns(|| name.to_string()), name, value)?,
             Type::Array(inner, len) => {
                 let values = match value {
                     Value::Array(x) => x,
@@ -93,8 +123,13 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                     ));
                 }
                 let mut out = Vec::with_capacity(values.len());
-                for value in values {
-                    out.push(self.allocate_input(&**inner, name, value)?);
+                for (i, value) in values.into_iter().enumerate() {
+                    out.push(Self::allocate_input(
+                        &mut cs.ns(|| format!("{}[{}]", name, i)),
+                        &**inner,
+                        name,
+                        value,
+                    )?);
                 }
                 ConstrainedValue::Array(out)
             }
@@ -110,8 +145,13 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                     ));
                 }
                 let mut out = Vec::with_capacity(values.len());
-                for (value, type_) in values.into_iter().zip(inner.iter()) {
-                    out.push(self.allocate_input(type_, name, value)?);
+                for (i, (value, type_)) in values.into_iter().zip(inner.iter()).enumerate() {
+                    out.push(Self::allocate_input(
+                        &mut cs.ns(|| format!("{}.{}", name, i)),
+                        type_,
+                        name,
+                        value,
+                    )?);
                 }
                 ConstrainedValue::Tuple(out)
             }
@@ -161,9 +201,11 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
 
     pub fn handle_input_block(
         &mut self,
+        name: &str,
         input_header: &[IrInput],
         input_values: &IndexMap<String, Value>,
     ) -> Result<()> {
+        let mut cs = self.cs.ns(|| format!("input {}", name));
         for ir_input in input_header {
             let value = input_values
                 .get(&ir_input.name)
@@ -175,7 +217,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                     ir_input.type_
                 ));
             }
-            let value = self.allocate_input(&ir_input.type_, &*ir_input.name, value.clone())?;
+            let value = Self::allocate_input(&mut cs, &ir_input.type_, &*ir_input.name, value.clone())?;
             self.variables.insert(ir_input.variable, value);
         }
         Ok(())
@@ -208,7 +250,6 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         index: usize,
         arguments: &[ConstrainedValue<F, G>],
     ) -> Result<ConstrainedValue<F, G>> {
-        self.call_depth += 1;
         let function = self.program.functions.get(index).expect("missing function");
 
         let mut arg_register = function.argument_start_variable;
@@ -217,8 +258,19 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             arg_register += 1;
         }
         let mut result = None;
+
+        let prior_function_index = self.function_index;
+        let prior_instruction_index = self.instruction_index;
+        self.function_index = index as u32;
+        self.instruction_index = 0;
+        self.call_depth += 1;
+
         let out = self.evaluate_block(0, &function.instructions[..], &mut result);
+
         self.call_depth -= 1;
+        self.instruction_index = prior_instruction_index;
+        self.function_index = prior_function_index;
+
         if let Err(e) = out {
             return Err(anyhow!("f#{}: {:?}", index, e));
         }
@@ -252,7 +304,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                 let mut interior = result.clone();
                 let mut assignments = HashMap::new();
                 let child_result = self.child(
-                    &*format!("{}: conditional block", *instruction_index),
+                    &*format!("{}: conditional block", self.instruction_index),
                     |state| {
                         state.evaluate_block(
                             base_instruction_index + *instruction_index,
@@ -265,10 +317,15 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                 if child_result.is_err() && condition.get_value().unwrap_or(true) {
                     return Err(child_result.unwrap_err());
                 }
-
                 for (variable, value) in assignments {
                     if let Some(prior) = self.variables.get(&variable).or(self.parent_variables.get(&variable)) {
-                        let value = ConstrainedValue::conditionally_select(&mut self.cs, condition, &value, prior)?;
+                        let prior = prior.clone(); //todo: optimize away clone
+                        let value = ConstrainedValue::conditionally_select(
+                            &mut self.cs_meta(&*format!("selection {}", variable)),
+                            condition,
+                            &value,
+                            &prior,
+                        )?;
                         self.store(variable, value);
                     } else {
                         // if it didnt exist in parent scope before, it cant exist now
@@ -280,7 +337,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                 match (result.clone(), interior) {
                     (Some(prior), Some(interior)) => {
                         *result = Some(ConstrainedValue::conditionally_select(
-                            &mut self.cs,
+                            &mut self.cs_meta(&*format!("selection result")),
                             condition,
                             &interior,
                             &prior,
@@ -342,7 +399,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                     let mut assignments = HashMap::new();
 
                     self.child(
-                        &*format!("{}: iteration #{}", *instruction_index, i),
+                        &*format!("{}: iteration #{}", self.instruction_index, i),
                         |state| {
                             state.evaluate_block(
                                 base_instruction_index + *instruction_index,
@@ -384,7 +441,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         let mut instruction_index = 0usize;
         while instruction_index < block.len() {
             let instruction = &block[instruction_index];
-
+            self.instruction_index = instruction_index as u32 + base_instruction_index as u32;
             if self.evaluate_control_instruction(
                 base_instruction_index,
                 &mut instruction_index,

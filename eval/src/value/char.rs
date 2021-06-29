@@ -150,9 +150,7 @@ impl<F: PrimeField> CondSelectGadget<F> for Char<F> {
 impl<F: PrimeField + std::fmt::Display> std::fmt::Display for Char<F> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if let Some(c) = std::char::from_u32(self.character) {
-            if c.is_ascii() {
-                return write!(f, "{}", char::escape_default(c));
-            }
+            return write!(f, "{}", c.escape_default());
         }
         write!(f, "\\u{{{:X}}}", self.character)
     }

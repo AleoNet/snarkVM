@@ -82,11 +82,13 @@ impl fmt::Display for Value {
                 bech32::encode("aleo", bytes.to_vec().to_base32(), bech32::Variant::Bech32).unwrap_or_default()
             ),
             Value::Boolean(x) => write!(f, "{}", x),
-            Value::Field(field) => write!(f, "{:?}", field),
+            Value::Field(field) => write!(f, "{}", field),
             Value::Char(c) => write!(
                 f,
-                "{}",
-                std::char::from_u32(*c).unwrap_or(std::char::REPLACEMENT_CHARACTER)
+                "'{}'",
+                std::char::from_u32(*c)
+                    .unwrap_or(std::char::REPLACEMENT_CHARACTER)
+                    .escape_default()
             ),
             Value::Group(group) => group.fmt(f),
             Value::Integer(x) => write!(f, "{}", x),
@@ -208,7 +210,10 @@ impl Value {
                 variable_ref: Some(variable_ref),
                 ..
             } => Value::Ref(variable_ref.variable_ref),
-            _ => return Err(anyhow!("illegal operand state")),
+            ir::Operand {
+                string: Some(string), ..
+            } => Value::Str(string.string),
+            x => return Err(anyhow!("illegal value data: {:?}", x)),
         })
     }
 

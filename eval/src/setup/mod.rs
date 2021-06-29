@@ -25,7 +25,7 @@ use snarkvm_gadgets::{
     CondSelectGadget,
     Integer as IntegerTrait,
 };
-use snarkvm_ir::{Input as IrInput, Instruction, MaskData, Program, RepeatData, Type, Value};
+use snarkvm_ir::{Input as IrInput, InputData, Instruction, MaskData, Program, RepeatData, Type, Value};
 use snarkvm_r1cs::ConstraintSystem;
 
 use crate::{
@@ -37,7 +37,6 @@ use crate::{
     Evaluator,
     FieldType,
     GroupType,
-    Input,
     Integer,
     IntegerType,
 };
@@ -48,6 +47,7 @@ mod state;
 
 use state::*;
 
+/// An evaluator for filling out a R1CS while also producing an expected output.
 pub struct SetupEvaluator<F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> {
     cs: CS,
     _p: PhantomData<(F, G)>,
@@ -63,15 +63,23 @@ impl<F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> Evaluator<F, G> fo
     type Error = anyhow::Error;
     type Output = ConstrainedValue<F, G>;
 
-    fn evaluate(&mut self, program: &Program, input: &Input) -> Result<Self::Output, Self::Error> {
+    fn evaluate(&mut self, program: &Program, input: &InputData) -> Result<Self::Output, Self::Error> {
         let mut state = EvaluatorState::new(program, &mut self.cs);
 
-        state.handle_input_block(&program.header.main_inputs, &input.main)?;
+        state.handle_input_block("main", &program.header.main_inputs, &input.main)?;
         state.handle_const_input_block(&program.header.constant_inputs, &input.constants)?;
-        state.handle_input_block(&program.header.register_inputs, &input.registers)?;
-        state.handle_input_block(&program.header.public_states, &input.public_states)?;
-        state.handle_input_block(&program.header.private_record_states, &input.private_record_states)?;
-        state.handle_input_block(&program.header.private_leaf_states, &input.private_leaf_states)?;
+        state.handle_input_block("register", &program.header.register_inputs, &input.registers)?;
+        state.handle_input_block("public_states", &program.header.public_states, &input.public_states)?;
+        state.handle_input_block(
+            "private_record_states",
+            &program.header.private_record_states,
+            &input.private_record_states,
+        )?;
+        state.handle_input_block(
+            "private_leaf_states",
+            &program.header.private_leaf_states,
+            &input.private_leaf_states,
+        )?;
 
         let output = state.evaluate_function(0, &[])?; // arguments assigned via input system for entrypoint
         Ok(output)

@@ -17,7 +17,11 @@
 use super::*;
 
 impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState<'a, F, G, CS> {
-    pub(super) fn array_bounds_check(&mut self, index_resolved: &Integer, array_len: u32) -> Result<()> {
+    pub(super) fn array_bounds_check<CS2: ConstraintSystem<F>>(
+        cs: &mut CS2,
+        index_resolved: &Integer,
+        array_len: u32,
+    ) -> Result<()> {
         // todo: support non-homogenous comparison
         let array_len_value = match index_resolved {
             Integer::U8(_) => IrInteger::U8(
@@ -33,8 +37,8 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             Integer::U32(_) => IrInteger::U32(array_len),
             value => return Err(ArrayError::invalid_index(value.to_string()).into()),
         };
-        let bounds_check = operations::evaluate_lt::<F, G, CS>(
-            &mut self.cs,
+        let bounds_check = operations::evaluate_lt::<F, G, _>(
+            cs,
             ConstrainedValue::Integer(index_resolved.clone()),
             ConstrainedValue::Integer(Integer::new(&array_len_value)),
         )?;
@@ -43,7 +47,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
             _ => unimplemented!("illegal non-Integer returned from lt"),
         };
         let namespace_string = format!("evaluate array access bounds");
-        let mut unique_namespace = self.cs.ns(|| namespace_string);
+        let mut unique_namespace = cs.ns(|| namespace_string);
         bounds_check
             .enforce_equal(&mut unique_namespace, &Boolean::Constant(true))
             .map_err(|e| ValueError::cannot_enforce("array bounds check", e))?;
@@ -73,19 +77,20 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
         } else if array.is_empty() {
             return Err(ArrayError::array_index_out_of_bounds(0, 0).into());
         } else {
+            let mut cs = self.cs();
             {
                 let array_len: u32 = array
                     .len()
                     .try_into()
                     .map_err(|_| ArrayError::array_length_out_of_bounds())?;
-                self.array_bounds_check(index_resolved, array_len)?;
+                Self::array_bounds_check(&mut cs, index_resolved, array_len)?;
             }
 
             let mut array = array.clone();
             let mut current_value = array.pop().unwrap();
             for (i, item) in array.into_iter().enumerate() {
                 let namespace_string = format!("evaluate array access eq {}", i);
-                let eq_namespace = self.cs.ns(|| namespace_string);
+                let eq_namespace = cs.ns(|| namespace_string);
 
                 let i = match &index_resolved {
                     Integer::U8(_) => Integer::U8(UInt8::constant(
@@ -106,7 +111,7 @@ impl<'a, F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> EvaluatorState
                     .evaluate_equal(eq_namespace, &i)
                     .map_err(|e| ValueError::cannot_enforce("==", e))?;
 
-                let unique_namespace = self.cs.ns(|| format!("select array access {}", i));
+                let unique_namespace = cs.ns(|| format!("select array access {}", i));
                 let value =
                     ConstrainedValue::conditionally_select(unique_namespace, &index_comparison, &item, &current_value)
                         .map_err(|e| ValueError::cannot_enforce("conditional select", e))?;

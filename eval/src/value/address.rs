@@ -36,7 +36,7 @@ use std::{borrow::Borrow, str::FromStr};
 /// A public address
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Address {
-    pub address: Option<AccountAddress<Components>>,
+    pub address: AccountAddress<Components>,
     pub bytes: Vec<UInt8>,
 }
 
@@ -48,10 +48,7 @@ impl Address {
 
         let bytes = UInt8::constant_vec(address_bytes);
 
-        Ok(Address {
-            address: Some(address),
-            bytes,
-        })
+        Ok(Address { address, bytes })
     }
 
     pub(crate) fn is_constant(&self) -> bool {
@@ -75,7 +72,7 @@ impl Address {
         let bytes = UInt8::alloc_vec(cs, &value[..])?;
 
         let address = Address {
-            address: Some(account),
+            address: account,
             bytes,
         };
 
@@ -110,10 +107,7 @@ impl<F: PrimeField> AllocGadget<String, F> for Address {
 
         let bytes = UInt8::alloc_vec(cs, &address_bytes[..])?;
 
-        Ok(Address {
-            address: Some(address),
-            bytes,
-        })
+        Ok(Address { address, bytes })
     }
 
     fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<String>, CS: ConstraintSystem<F>>(
@@ -128,10 +122,7 @@ impl<F: PrimeField> AllocGadget<String, F> for Address {
 
         let bytes = UInt8::alloc_input_vec_le(cs, &address_bytes[..])?;
 
-        Ok(Address {
-            address: Some(address),
-            bytes,
-        })
+        Ok(Address { address, bytes })
     }
 }
 
@@ -163,7 +154,7 @@ impl<F: PrimeField> EvaluateEqGadget<F> for Address {
 }
 
 fn cond_equal_helper(first: &Address, second: &Address, cond: bool) -> Result<(), SynthesisError> {
-    if cond && first.address.is_some() && second.address.is_some() {
+    if cond {
         if first.eq(second) {
             Ok(())
         } else {
@@ -220,9 +211,9 @@ impl<F: PrimeField> CondSelectGadget<F> for Address {
         } else {
             let result_val = cond.get_value().and_then(|c| {
                 if c {
-                    first.address.clone()
+                    Some(first.address.clone())
                 } else {
-                    second.address.clone()
+                    Some(second.address.clone())
                 }
             });
 
@@ -260,9 +251,6 @@ impl<F: PrimeField> CondSelectGadget<F> for Address {
 
 impl std::fmt::Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self.address {
-            Some(ref address) => write!(f, "{}", address),
-            None => write!(f, "[input address]"),
-        }
+        write!(f, "{}", self.address)
     }
 }

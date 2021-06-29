@@ -133,6 +133,20 @@ message Input {
     Type type = 3;
 }
 
+message InputDataItem {
+    string name = 1;
+    Operand value = 2;
+}
+
+message InputData {
+    repeated InputDataItem main = 1;
+    repeated InputDataItem constants = 2;
+    repeated InputDataItem registers = 3;
+    repeated InputDataItem public_state = 4;
+    repeated InputDataItem private_leaf_state = 5;
+    repeated InputDataItem private_record_state = 6;
+}
+
 enum TypeClass {
     TypeAddress = 0;
     TypeBoolean = 1;
