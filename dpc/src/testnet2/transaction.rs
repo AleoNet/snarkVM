@@ -15,10 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    errors::TransactionError,
-    testnet1::{record::encrypted_record::*, AleoAmount, Testnet1Components},
+    testnet2::{record::encrypted_record::*, Testnet2Components},
     traits::TransactionScheme,
+    AleoAmount,
     Network,
+    TransactionError,
 };
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
@@ -38,12 +39,12 @@ use std::{
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: Testnet1Components"),
-    PartialEq(bound = "C: Testnet1Components"),
-    Eq(bound = "C: Testnet1Components")
+    Clone(bound = "C: Testnet2Components"),
+    PartialEq(bound = "C: Testnet2Components"),
+    Eq(bound = "C: Testnet2Components")
 )]
 // TODO (howardwu): Remove the public visibility here
-pub struct Transaction<C: Testnet1Components> {
+pub struct Transaction<C: Testnet2Components> {
     /// The network this transaction is included in
     pub network: Network,
 
@@ -87,7 +88,7 @@ pub struct Transaction<C: Testnet1Components> {
     pub inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
 }
 
-impl<C: Testnet1Components> Transaction<C> {
+impl<C: Testnet2Components> Transaction<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         old_serial_numbers: Vec<<Self as TransactionScheme>::SerialNumber>,
@@ -120,7 +121,7 @@ impl<C: Testnet1Components> Transaction<C> {
     }
 }
 
-impl<C: Testnet1Components> TransactionScheme for Transaction<C> {
+impl<C: Testnet2Components> TransactionScheme for Transaction<C> {
     type Commitment = <C::RecordCommitment as CommitmentScheme>::Output;
     type Digest = MerkleTreeDigest<C::MerkleParameters>;
     type EncryptedRecord = EncryptedRecord<C>;
@@ -199,7 +200,7 @@ impl<C: Testnet1Components> TransactionScheme for Transaction<C> {
     }
 }
 
-impl<C: Testnet1Components> ToBytes for Transaction<C> {
+impl<C: Testnet2Components> ToBytes for Transaction<C> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         for old_serial_number in &self.old_serial_numbers {
@@ -233,7 +234,7 @@ impl<C: Testnet1Components> ToBytes for Transaction<C> {
     }
 }
 
-impl<C: Testnet1Components> FromBytes for Transaction<C> {
+impl<C: Testnet2Components> FromBytes for Transaction<C> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the old serial numbers
@@ -301,7 +302,7 @@ impl<C: Testnet1Components> FromBytes for Transaction<C> {
 }
 
 // TODO add debug support for record ciphertexts
-impl<C: Testnet1Components> fmt::Debug for Transaction<C> {
+impl<C: Testnet2Components> fmt::Debug for Transaction<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

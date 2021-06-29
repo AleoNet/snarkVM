@@ -26,11 +26,11 @@ use std::{
 pub struct AleoAmount(pub i64);
 
 pub enum Denomination {
-    // AB
+    /// AB
     BYTE,
-    // AG
+    /// AG
     GATE,
-    // ALEO
+    /// ALEO
     ALEO,
 }
 

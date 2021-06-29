@@ -43,15 +43,15 @@ use snarkvm_utilities::{
 };
 
 use crate::{
-    account::AccountPrivateKey,
     testnet1::{
         parameters::SystemParameters,
         record::Record,
         record_encryption::RecordEncryptionGadgetComponents,
-        AleoAmount,
         Testnet1Components,
     },
     traits::RecordScheme,
+    AccountPrivateKey,
+    AleoAmount,
 };
 
 #[allow(clippy::too_many_arguments)]

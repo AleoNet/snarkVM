@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet1::{parameters::SystemParameters, AleoAmount, Testnet1Components};
+use crate::{
+    testnet1::{parameters::SystemParameters, Testnet1Components},
+    AleoAmount,
+};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH},

@@ -15,11 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    account::{Account, AccountAddress, AccountPrivateKey},
-    block::Network,
-    errors::DPCError,
-    testnet2::{payload::Payload, AleoAmount},
+    testnet2::payload::Payload,
     traits::{AccountScheme, DPCComponents, DPCScheme, LedgerScheme, RecordScheme, TransactionScheme},
+    Account,
+    AccountAddress,
+    AccountPrivateKey,
+    AleoAmount,
+    DPCError,
+    Network,
 };
 use snarkvm_algorithms::{
     commitment_tree::CommitmentMerkleTree,
