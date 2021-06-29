@@ -149,6 +149,7 @@ impl<G: Group, F: Field, GG: GroupGadget<G, F>> ToBytesGadget<F> for SchnorrPubl
     }
 }
 
+// TODO (raychu86): Change Field Gadget constraints for FpGadget support.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SchnorrSignatureGadget<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> {
     prover_response: FG,

@@ -15,7 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use blake2::Blake2s;
-use rand::{thread_rng, Rng};
+use rand::{thread_rng, Rng, SeedableRng};
+use rand_xorshift::XorShiftRng;
 
 use snarkvm_algorithms::{signature::SchnorrSignature, traits::SignatureScheme};
 use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsAffine, traits::Group};
@@ -25,8 +26,10 @@ use snarkvm_utilities::{bytes::ToBytes, rand::UniformRand, to_bytes};
 use crate::{
     algorithms::signature::{SchnorrParametersGadget, SchnorrPublicKeyGadget, SchnorrPublicKeyRandomizationGadget},
     curves::edwards_bls12::EdwardsBlsGadget,
+    fields::FpGadget,
     integers::uint::UInt8,
     traits::{algorithms::SignaturePublicKeyRandomizationGadget, alloc::AllocGadget, eq::EqGadget},
+    Boolean,
 };
 
 #[test]
@@ -86,6 +89,7 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
         EdwardsAffine,
         Fr,
         EdwardsBlsGadget,
+        FpGadget<<EdwardsAffine as Group>::ScalarField>,
     > as SignaturePublicKeyRandomizationGadget<Schnorr, Fr>>::check_randomization_gadget(
         &mut cs.ns(|| "candidate_randomized_public_key"),
         &candidate_parameters_gadget,
@@ -112,3 +116,64 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
     }
     assert!(cs.is_satisfied());
 }
+
+type TestSignature = SchnorrSignature<EdwardsAffine, Blake2s>;
+type TestSignatureGadget = SchnorrPublicKeyRandomizationGadget<
+    EdwardsAffine,
+    Fr,
+    EdwardsBlsGadget,
+    FpGadget<<EdwardsAffine as Group>::ScalarField>,
+>;
+
+#[test]
+fn schnorr_signature_verification_test() {
+    let message = "Hi, I am a Schnorr signature!".as_bytes();
+    let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
+
+    let schnorr_signature = TestSignature::setup::<_>(rng).unwrap();
+    let private_key = schnorr_signature.generate_private_key(rng).unwrap();
+    let public_key = schnorr_signature.generate_public_key(&private_key).unwrap();
+    let signature = schnorr_signature.sign(&private_key, &message, rng).unwrap();
+
+    assert!(schnorr_signature.verify(&public_key, &message, &signature).unwrap());
+
+    let mut cs = TestConstraintSystem::<Fr>::new();
+
+    let parameter_gadget =
+        TestSignatureGadget::ParametersGadget::alloc(cs.ns(|| "alloc_parameters"), || Ok(schnorr_signature.parameters))
+            .unwrap();
+
+    let public_key_gadget =
+        TestSignatureGadget::PublicKeyGadget::alloc(cs.ns(|| "alloc_public_key"), || Ok(public_key)).unwrap();
+
+    let message_gadget = UInt8::alloc_vec(cs.ns(|| "alloc_message"), message).unwrap();
+
+    let signature_gadget =
+        TestSignatureGadget::SignatureGadget::alloc(cs.ns(|| "alloc_signature"), || Ok(signature)).unwrap();
+
+    let verification = TestSignatureGadget::verify(
+        cs.ns(|| "verify"),
+        &parameter_gadget,
+        &public_key_gadget,
+        &message_gadget,
+        &signature_gadget,
+    )
+    .unwrap();
+
+    verification
+        .enforce_equal(cs.ns(|| "check_verification"), &Boolean::constant(true))
+        .unwrap();
+
+    if !cs.is_satisfied() {
+        println!("which is unsatisfied: {:?}", cs.which_is_unsatisfied().unwrap());
+    }
+    assert!(cs.is_satisfied());
+}
+
+//
+// #[test]
+// fn failed_schnorr_signature_verification_test() {
+//     let message = "Hi, I am a Schnorr signature!";
+//     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
+//     sign_and_verify::<TestSignature>(message.as_bytes());
+// }
