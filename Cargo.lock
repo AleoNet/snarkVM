@@ -1879,6 +1879,7 @@ version = "0.6.0"
 dependencies = [
  "anyhow",
  "bech32",
+ "indexmap",
  "num_enum",
  "prost",
  "prost-build",

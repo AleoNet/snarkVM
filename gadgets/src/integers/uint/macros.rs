@@ -295,22 +295,26 @@ macro_rules! uint_impl {
                             // Subtract or add operand
                             if op.negated {
                                 // Perform subtraction
-                                result_value
-                                    .as_mut()
-                                    .map(|v| {
-                                        v.checked_sub(u128::from(val))
-                                            .ok_or_else(|| SynthesisError::Overflow)
-                                    })
-                                    .transpose()?;
+                                result_value.as_mut().into_iter().try_for_each(|v| {
+                                    match v.checked_sub(u128::from(val)) {
+                                        Some(out) => {
+                                            *v = out;
+                                            Ok(())
+                                        }
+                                        None => Err(SynthesisError::Overflow),
+                                    }
+                                })?;
                             } else {
                                 // Perform addition
-                                result_value
-                                    .as_mut()
-                                    .map(|v| {
-                                        v.checked_add(u128::from(val))
-                                            .ok_or_else(|| SynthesisError::Overflow)
-                                    })
-                                    .transpose()?;
+                                result_value.as_mut().into_iter().try_for_each(|v| {
+                                    match v.checked_add(u128::from(val)) {
+                                        Some(out) => {
+                                            *v = out;
+                                            Ok(())
+                                        }
+                                        None => Err(SynthesisError::Overflow),
+                                    }
+                                })?;
                             }
                         }
                         None => {

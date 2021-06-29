@@ -25,7 +25,7 @@ use snarkvm_gadgets::{
     CondSelectGadget,
     Integer as IntegerTrait,
 };
-use snarkvm_ir::{Input as IrInput, Instruction, MaskData, Program, RepeatData, Type, Value};
+use snarkvm_ir::{Input as IrInput, InputData, Instruction, MaskData, Program, RepeatData, Type, Value};
 use snarkvm_r1cs::ConstraintSystem;
 
 use crate::{
@@ -37,7 +37,6 @@ use crate::{
     Evaluator,
     FieldType,
     GroupType,
-    Input,
     Integer,
     IntegerType,
 };
@@ -64,7 +63,7 @@ impl<F: PrimeField, G: GroupType<F>, CS: ConstraintSystem<F>> Evaluator<F, G> fo
     type Error = anyhow::Error;
     type Output = ConstrainedValue<F, G>;
 
-    fn evaluate(&mut self, program: &Program, input: &Input) -> Result<Self::Output, Self::Error> {
+    fn evaluate(&mut self, program: &Program, input: &InputData) -> Result<Self::Output, Self::Error> {
         let mut state = EvaluatorState::new(program, &mut self.cs);
 
         state.handle_input_block("main", &program.header.main_inputs, &input.main)?;

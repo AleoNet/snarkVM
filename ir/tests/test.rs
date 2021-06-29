@@ -21,24 +21,29 @@ use std::{
     str::FromStr,
 };
 
-use snarkvm_ir::Program;
+use snarkvm_ir::{InputData, Program};
 
-fn inner_load_tests<P: AsRef<Path>>(path: P, out: &mut BTreeMap<String, Vec<u8>>) {
+fn inner_load_tests<P: AsRef<Path>>(path: P, out: &mut BTreeMap<String, Vec<u8>>, extension: &str) {
     for item in path.as_ref().read_dir().unwrap() {
         let item = item.unwrap();
         let type_ = item.file_type().unwrap();
         let path = item.path();
-        if type_.is_file() && path.extension().map(|x| x.to_string_lossy() == "ir").unwrap_or(false) {
+        if type_.is_file()
+            && path
+                .extension()
+                .map(|x| x.to_string_lossy() == extension)
+                .unwrap_or(false)
+        {
             out.insert(path.to_string_lossy().into_owned(), fs::read(&path).unwrap());
         } else if type_.is_dir() {
-            inner_load_tests(&path, out);
+            inner_load_tests(&path, out, extension);
         }
     }
 }
 
 pub fn load_tests() -> BTreeMap<String, Vec<u8>> {
     let mut out = BTreeMap::new();
-    inner_load_tests("../tests/ir/", &mut out);
+    inner_load_tests("../tests/ir/", &mut out, "ir");
     out
 }
 
@@ -52,6 +57,21 @@ fn reserialize_test() {
             .expect(&*format!("failed to reserialize {}", name));
         if reserialized != raw {
             panic!("reserialized mismatch for {}", name);
+        }
+    }
+}
+
+#[test]
+fn reserialize_input_test() {
+    let mut tests = BTreeMap::new();
+    inner_load_tests("../tests/ir/", &mut tests, "input");
+    for (name, raw) in tests {
+        let deserialized = InputData::deserialize(&raw[..]).expect(&*format!("failed to deserialize {}", name));
+        let reserialized = deserialized
+            .serialize()
+            .expect(&*format!("failed to reserialize {}", name));
+        if reserialized != raw {
+            panic!("reserialized mismatch for {}\n{:?}\n{:?}", name, raw, reserialized);
         }
     }
 }

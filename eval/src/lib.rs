@@ -16,12 +16,10 @@
 
 pub mod errors;
 mod evaluator;
-mod input;
 mod operations;
 mod setup;
 mod value;
 
 pub use evaluator::*;
-pub use input::*;
 pub use setup::*;
 pub use value::*;
