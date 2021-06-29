@@ -26,7 +26,7 @@ use snarkvm_dpc::{
         outer_circuit::OuterCircuit,
         parameters::{NoopProgramSNARKParameters, SystemParameters},
         program::{NoopCircuit, PrivateProgramInput},
-        BaseDPCComponents,
+        Testnet2Components,
     },
 };
 use snarkvm_parameters::{
@@ -45,7 +45,7 @@ use std::{path::PathBuf, sync::Arc};
 mod utils;
 use utils::store;
 
-pub fn setup<C: BaseDPCComponents>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
+pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
     let system_parameters = SystemParameters::<C>::load()?;
 

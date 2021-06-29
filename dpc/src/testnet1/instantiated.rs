@@ -22,8 +22,8 @@ use crate::{
         outer_circuit_verifier_input::OuterCircuitVerifierInput,
         program::{NoopCircuit, ProgramLocalData},
         transaction::Transaction,
-        BaseDPCComponents,
         LocalData as DPCLocalData,
+        Testnet1Components,
         DPC,
     },
     traits::DPCComponents,
@@ -166,7 +166,7 @@ impl DPCComponents for Components {
     const NUM_OUTPUT_RECORDS: usize = NUM_OUTPUT_RECORDS;
 }
 
-impl BaseDPCComponents for Components {
+impl Testnet1Components for Components {
     type EncryptionGroup = EdwardsBls;
     type EncryptionModelParameters = EdwardsParameters;
     type InnerSNARK = Groth16<InnerCurve, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;

@@ -17,7 +17,7 @@
 use crate::{
     account::AccountAddress,
     errors::RecordError,
-    testnet1::{payload::Payload, BaseDPCComponents},
+    testnet1::{payload::Payload, Testnet1Components},
     traits::RecordScheme,
 };
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH};
@@ -39,13 +39,13 @@ fn default_program_id<C: CRH>() -> Vec<u8> {
 
 #[derive(Derivative)]
 #[derivative(
-    Default(bound = "C: BaseDPCComponents"),
-    Debug(bound = "C: BaseDPCComponents"),
-    Clone(bound = "C: BaseDPCComponents"),
-    PartialEq(bound = "C: BaseDPCComponents"),
-    Eq(bound = "C: BaseDPCComponents")
+    Default(bound = "C: Testnet1Components"),
+    Debug(bound = "C: Testnet1Components"),
+    Clone(bound = "C: Testnet1Components"),
+    PartialEq(bound = "C: Testnet1Components"),
+    Eq(bound = "C: Testnet1Components")
 )]
-pub struct Record<C: BaseDPCComponents> {
+pub struct Record<C: Testnet1Components> {
     pub(crate) owner: AccountAddress<C>,
     pub(crate) is_dummy: bool,
     // TODO (raychu86) use AleoAmount which will guard the value range
@@ -62,7 +62,7 @@ pub struct Record<C: BaseDPCComponents> {
     pub(crate) commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
 }
 
-impl<C: BaseDPCComponents> RecordScheme for Record<C> {
+impl<C: Testnet1Components> RecordScheme for Record<C> {
     type Commitment = <C::RecordCommitment as CommitmentScheme>::Output;
     type CommitmentRandomness = <C::RecordCommitment as CommitmentScheme>::Randomness;
     type Owner = AccountAddress<C>;
@@ -108,7 +108,7 @@ impl<C: BaseDPCComponents> RecordScheme for Record<C> {
     }
 }
 
-impl<C: BaseDPCComponents> ToBytes for Record<C> {
+impl<C: Testnet1Components> ToBytes for Record<C> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.owner.write(&mut writer)?;
@@ -128,7 +128,7 @@ impl<C: BaseDPCComponents> ToBytes for Record<C> {
     }
 }
 
-impl<C: BaseDPCComponents> FromBytes for Record<C> {
+impl<C: Testnet1Components> FromBytes for Record<C> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let owner: AccountAddress<C> = FromBytes::read(&mut reader)?;
@@ -172,7 +172,7 @@ impl<C: BaseDPCComponents> FromBytes for Record<C> {
     }
 }
 
-impl<C: BaseDPCComponents> FromStr for Record<C> {
+impl<C: Testnet1Components> FromStr for Record<C> {
     type Err = RecordError;
 
     fn from_str(record: &str) -> Result<Self, Self::Err> {
@@ -182,7 +182,7 @@ impl<C: BaseDPCComponents> FromStr for Record<C> {
     }
 }
 
-impl<C: BaseDPCComponents> fmt::Display for Record<C> {
+impl<C: Testnet1Components> fmt::Display for Record<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

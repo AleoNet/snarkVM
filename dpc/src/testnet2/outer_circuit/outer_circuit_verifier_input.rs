@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet2::{inner_circuit_verifier_input::InnerCircuitVerifierInput, BaseDPCComponents};
+use crate::testnet2::{inner_circuit_verifier_input::InnerCircuitVerifierInput, Testnet2Components};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH},
@@ -23,13 +23,13 @@ use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: BaseDPCComponents"))]
-pub struct OuterCircuitVerifierInput<C: BaseDPCComponents> {
+#[derivative(Clone(bound = "C: Testnet2Components"))]
+pub struct OuterCircuitVerifierInput<C: Testnet2Components> {
     pub inner_snark_verifier_input: InnerCircuitVerifierInput<C>,
     pub inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
 }
 
-impl<C: BaseDPCComponents> ToConstraintField<C::OuterField> for OuterCircuitVerifierInput<C>
+impl<C: Testnet2Components> ToConstraintField<C::OuterField> for OuterCircuitVerifierInput<C>
 where
     <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::OuterField>,
     <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::OuterField>,

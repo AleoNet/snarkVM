@@ -16,7 +16,7 @@
 
 use crate::{
     errors::TransactionError,
-    testnet2::{record::encrypted_record::*, AleoAmount, BaseDPCComponents},
+    testnet2::{record::encrypted_record::*, AleoAmount, Testnet2Components},
     traits::TransactionScheme,
     Network,
 };
@@ -38,12 +38,12 @@ use std::{
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: BaseDPCComponents"),
-    PartialEq(bound = "C: BaseDPCComponents"),
-    Eq(bound = "C: BaseDPCComponents")
+    Clone(bound = "C: Testnet2Components"),
+    PartialEq(bound = "C: Testnet2Components"),
+    Eq(bound = "C: Testnet2Components")
 )]
 // TODO (howardwu): Remove the public visibility here
-pub struct Transaction<C: BaseDPCComponents> {
+pub struct Transaction<C: Testnet2Components> {
     /// The network this transaction is included in
     pub network: Network,
 
@@ -87,7 +87,7 @@ pub struct Transaction<C: BaseDPCComponents> {
     pub inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
 }
 
-impl<C: BaseDPCComponents> Transaction<C> {
+impl<C: Testnet2Components> Transaction<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         old_serial_numbers: Vec<<Self as TransactionScheme>::SerialNumber>,
@@ -120,7 +120,7 @@ impl<C: BaseDPCComponents> Transaction<C> {
     }
 }
 
-impl<C: BaseDPCComponents> TransactionScheme for Transaction<C> {
+impl<C: Testnet2Components> TransactionScheme for Transaction<C> {
     type Commitment = <C::RecordCommitment as CommitmentScheme>::Output;
     type Digest = MerkleTreeDigest<C::MerkleParameters>;
     type EncryptedRecord = EncryptedRecord<C>;
@@ -199,7 +199,7 @@ impl<C: BaseDPCComponents> TransactionScheme for Transaction<C> {
     }
 }
 
-impl<C: BaseDPCComponents> ToBytes for Transaction<C> {
+impl<C: Testnet2Components> ToBytes for Transaction<C> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         for old_serial_number in &self.old_serial_numbers {
@@ -233,7 +233,7 @@ impl<C: BaseDPCComponents> ToBytes for Transaction<C> {
     }
 }
 
-impl<C: BaseDPCComponents> FromBytes for Transaction<C> {
+impl<C: Testnet2Components> FromBytes for Transaction<C> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the old serial numbers
@@ -301,11 +301,11 @@ impl<C: BaseDPCComponents> FromBytes for Transaction<C> {
 }
 
 // TODO add debug support for record ciphertexts
-impl<C: BaseDPCComponents> fmt::Debug for Transaction<C> {
+impl<C: Testnet2Components> fmt::Debug for Transaction<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "DPCTransaction {{ network_id: {:?}, digest: {:?}, inner_circuit_id: {:?}, old_serial_numbers: {:?}, new_commitments: {:?}, program_commitment: {:?}, local_data_root: {:?}, value_balance: {:?}, signatures: {:?}, transaction_proof: {:?}, memorandum: {:?} }}",
+            "Transaction {{ network_id: {:?}, digest: {:?}, inner_circuit_id: {:?}, old_serial_numbers: {:?}, new_commitments: {:?}, program_commitment: {:?}, local_data_root: {:?}, value_balance: {:?}, signatures: {:?}, transaction_proof: {:?}, memorandum: {:?} }}",
             self.network,
             self.ledger_digest,
             self.inner_circuit_id,

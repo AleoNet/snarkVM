@@ -24,7 +24,7 @@ use snarkvm_dpc::{
         inner_circuit::InnerCircuit,
         instantiated::Components,
         parameters::SystemParameters,
-        BaseDPCComponents,
+        Testnet2Components,
     },
 };
 use snarkvm_parameters::{traits::Parameter, LedgerMerkleTreeParameters};
@@ -39,7 +39,7 @@ use std::{path::PathBuf, sync::Arc};
 mod utils;
 use utils::store;
 
-pub fn setup<C: BaseDPCComponents>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
+pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
     // TODO (howardwu): Resolve this inconsistency on import structure with a new model once MerkleParameters are refactored.

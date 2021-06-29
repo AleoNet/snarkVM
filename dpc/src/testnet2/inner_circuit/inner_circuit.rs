@@ -22,7 +22,7 @@ use crate::{
         record::Record,
         record_encryption::RecordEncryptionGadgetComponents,
         AleoAmount,
-        BaseDPCComponents,
+        Testnet2Components,
     },
 };
 use snarkvm_algorithms::{
@@ -34,8 +34,8 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSyst
 use std::sync::Arc;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: BaseDPCComponents"))]
-pub struct InnerCircuit<C: BaseDPCComponents> {
+#[derivative(Clone(bound = "C: Testnet2Components"))]
+pub struct InnerCircuit<C: Testnet2Components> {
     // Parameters
     system_parameters: SystemParameters<C>,
     ledger_parameters: Arc<C::MerkleParameters>,
@@ -72,7 +72,7 @@ pub struct InnerCircuit<C: BaseDPCComponents> {
     network_id: u8,
 }
 
-impl<C: BaseDPCComponents> InnerCircuit<C> {
+impl<C: Testnet2Components> InnerCircuit<C> {
     pub fn blank(system_parameters: &SystemParameters<C>, ledger_parameters: &Arc<C::MerkleParameters>) -> Self {
         let num_input_records = C::NUM_INPUT_RECORDS;
         let num_output_records = C::NUM_OUTPUT_RECORDS;
@@ -247,7 +247,7 @@ impl<C: BaseDPCComponents> InnerCircuit<C> {
     }
 }
 
-impl<C: BaseDPCComponents> ConstraintSynthesizer<C::InnerField> for InnerCircuit<C> {
+impl<C: Testnet2Components> ConstraintSynthesizer<C::InnerField> for InnerCircuit<C> {
     fn generate_constraints<CS: ConstraintSystem<C::InnerField>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
         execute_inner_proof_gadget::<C, CS>(
             cs,

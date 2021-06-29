@@ -16,7 +16,7 @@
 
 use itertools::Itertools;
 
-use crate::testnet1::{parameters::SystemParameters, program::PrivateProgramInput, AleoAmount, BaseDPCComponents};
+use crate::testnet1::{parameters::SystemParameters, program::PrivateProgramInput, AleoAmount, Testnet1Components};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
@@ -35,7 +35,7 @@ use snarkvm_gadgets::{
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
-fn field_element_to_bytes<C: BaseDPCComponents, CS: ConstraintSystem<C::OuterField>>(
+fn field_element_to_bytes<C: Testnet1Components, CS: ConstraintSystem<C::OuterField>>(
     cs: &mut CS,
     field_elements: Vec<C::InnerField>,
     name: &str,
@@ -58,7 +58,7 @@ fn field_element_to_bytes<C: BaseDPCComponents, CS: ConstraintSystem<C::OuterFie
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn execute_outer_proof_gadget<C: BaseDPCComponents, CS: ConstraintSystem<C::OuterField>>(
+pub fn execute_outer_proof_gadget<C: Testnet1Components, CS: ConstraintSystem<C::OuterField>>(
     cs: &mut CS,
     // Parameters
     system_parameters: &SystemParameters<C>,

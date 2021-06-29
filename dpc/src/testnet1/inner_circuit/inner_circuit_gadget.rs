@@ -49,13 +49,13 @@ use crate::{
         record::Record,
         record_encryption::RecordEncryptionGadgetComponents,
         AleoAmount,
-        BaseDPCComponents,
+        Testnet1Components,
     },
     traits::RecordScheme,
 };
 
 #[allow(clippy::too_many_arguments)]
-pub fn execute_inner_proof_gadget<C: BaseDPCComponents, CS: ConstraintSystem<C::InnerField>>(
+pub fn execute_inner_proof_gadget<C: Testnet1Components, CS: ConstraintSystem<C::InnerField>>(
     cs: &mut CS,
     // Parameters
     system_parameters: &SystemParameters<C>,
@@ -196,7 +196,7 @@ fn base_dpc_execute_gadget_helper<
     network_id: u8,
 ) -> Result<(), SynthesisError>
 where
-    C: BaseDPCComponents<
+    C: Testnet1Components<
         AccountCommitment = AccountCommitment,
         AccountEncryption = AccountEncryption,
         AccountSignature = AccountSignature,

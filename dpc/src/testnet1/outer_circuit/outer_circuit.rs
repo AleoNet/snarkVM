@@ -19,7 +19,7 @@ use crate::testnet1::{
     parameters::SystemParameters,
     program::PrivateProgramInput,
     AleoAmount,
-    BaseDPCComponents,
+    Testnet1Components,
 };
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
@@ -31,8 +31,8 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSyst
 use std::sync::Arc;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: BaseDPCComponents"))]
-pub struct OuterCircuit<C: BaseDPCComponents> {
+#[derivative(Clone(bound = "C: Testnet1Components"))]
+pub struct OuterCircuit<C: Testnet1Components> {
     system_parameters: SystemParameters<C>,
 
     // Inner snark verifier public inputs
@@ -59,7 +59,7 @@ pub struct OuterCircuit<C: BaseDPCComponents> {
     inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
 }
 
-impl<C: BaseDPCComponents> OuterCircuit<C> {
+impl<C: Testnet1Components> OuterCircuit<C> {
     pub fn blank(
         system_parameters: SystemParameters<C>,
         ledger_parameters: Arc<C::MerkleParameters>,
@@ -172,7 +172,7 @@ impl<C: BaseDPCComponents> OuterCircuit<C> {
     }
 }
 
-impl<C: BaseDPCComponents> ConstraintSynthesizer<C::OuterField> for OuterCircuit<C>
+impl<C: Testnet1Components> ConstraintSynthesizer<C::OuterField> for OuterCircuit<C>
 where
     <C::AccountCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
     <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerField>,

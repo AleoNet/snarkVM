@@ -29,7 +29,7 @@ use snarkvm_dpc::{
         parameters::{NoopProgramSNARKParameters, SystemParameters},
         program::NoopProgram,
         record::{payload::Payload, record_encryption::RecordEncryption},
-        BaseDPCComponents,
+        Testnet2Components,
         TransactionKernel,
         DPC,
     },
@@ -148,7 +148,7 @@ fn dpc_testnet2_integration_test() {
 
     // Generate the program proofs
 
-    let noop_program = NoopProgram::<_, <Components as BaseDPCComponents>::NoopProgramSNARK>::new(noop_program_id);
+    let noop_program = NoopProgram::<_, <Components as Testnet2Components>::NoopProgramSNARK>::new(noop_program_id);
 
     let mut old_death_program_proofs = vec![];
     for i in 0..NUM_INPUT_RECORDS {
@@ -464,9 +464,9 @@ fn test_execute_testnet2_base_dpc_constraints() {
 
     // Generate the program proofs
 
-    let noop_program = NoopProgram::<_, <Components as BaseDPCComponents>::NoopProgramSNARK>::new(noop_program_id);
+    let noop_program = NoopProgram::<_, <Components as Testnet2Components>::NoopProgramSNARK>::new(noop_program_id);
     let alternate_noop_program =
-        NoopProgram::<_, <Components as BaseDPCComponents>::NoopProgramSNARK>::new(alternate_noop_program_id);
+        NoopProgram::<_, <Components as Testnet2Components>::NoopProgramSNARK>::new(alternate_noop_program_id);
 
     let mut old_proof_and_vk = vec![];
     for i in 0..NUM_INPUT_RECORDS {
@@ -600,13 +600,13 @@ fn test_execute_testnet2_base_dpc_constraints() {
     assert!(core_cs.is_satisfied());
 
     // Generate inner snark parameters and proof for verification in the outer snark
-    let inner_snark_parameters = <Components as BaseDPCComponents>::InnerSNARK::setup(
+    let inner_snark_parameters = <Components as Testnet2Components>::InnerSNARK::setup(
         &InnerCircuit::blank(&system_parameters, ledger.parameters()),
         &mut rng,
     )
     .unwrap();
 
-    let inner_snark_vk: <<Components as BaseDPCComponents>::InnerSNARK as SNARK>::VerifyingKey =
+    let inner_snark_vk: <<Components as Testnet2Components>::InnerSNARK as SNARK>::VerifyingKey =
         inner_snark_parameters.1.clone().into();
 
     let inner_snark_id = <Components as DPCComponents>::InnerCircuitIDCRH::hash(
@@ -615,7 +615,7 @@ fn test_execute_testnet2_base_dpc_constraints() {
     )
     .unwrap();
 
-    let inner_snark_proof = <Components as BaseDPCComponents>::InnerSNARK::prove(
+    let inner_snark_proof = <Components as Testnet2Components>::InnerSNARK::prove(
         &inner_snark_parameters.0,
         &InnerCircuit::new(
             system_parameters.clone(),

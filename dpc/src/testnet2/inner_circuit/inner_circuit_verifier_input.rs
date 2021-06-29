@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet2::{parameters::SystemParameters, AleoAmount, BaseDPCComponents};
+use crate::testnet2::{parameters::SystemParameters, AleoAmount, Testnet2Components};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH},
@@ -24,8 +24,8 @@ use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use std::sync::Arc;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: BaseDPCComponents"))]
-pub struct InnerCircuitVerifierInput<C: BaseDPCComponents> {
+#[derivative(Clone(bound = "C: Testnet2Components"))]
+pub struct InnerCircuitVerifierInput<C: Testnet2Components> {
     // Commitment, CRH, and signature parameters
     pub system_parameters: SystemParameters<C>,
 
@@ -51,7 +51,7 @@ pub struct InnerCircuitVerifierInput<C: BaseDPCComponents> {
     pub network_id: u8,
 }
 
-impl<C: BaseDPCComponents> ToConstraintField<C::InnerField> for InnerCircuitVerifierInput<C>
+impl<C: Testnet2Components> ToConstraintField<C::InnerField> for InnerCircuitVerifierInput<C>
 where
     <C::AccountCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
     <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerField>,

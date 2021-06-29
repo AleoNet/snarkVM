@@ -16,7 +16,7 @@
 
 use crate::{
     errors::DPCError,
-    testnet2::{payload::Payload, record::Record, BaseDPCComponents},
+    testnet2::{payload::Payload, record::Record, Testnet2Components},
     traits::{DPCComponents, RecordEncodingScheme, RecordScheme},
 };
 use snarkvm_algorithms::{
@@ -54,7 +54,7 @@ pub fn decode_from_group<P: MontgomeryModelParameters + TEModelParameters, G: Gr
     Ok(to_bytes![output]?)
 }
 
-pub struct DecodedRecord<C: BaseDPCComponents> {
+pub struct DecodedRecord<C: Testnet2Components> {
     pub value: u64,
     pub payload: Payload,
     pub birth_program_id: Vec<u8>,
@@ -64,12 +64,12 @@ pub struct DecodedRecord<C: BaseDPCComponents> {
 }
 
 pub struct RecordEncoding<
-    C: BaseDPCComponents,
+    C: Testnet2Components,
     P: MontgomeryModelParameters + TEModelParameters,
     G: Group + ProjectiveCurve,
 >(PhantomData<C>, PhantomData<P>, PhantomData<G>);
 
-impl<C: BaseDPCComponents, P: MontgomeryModelParameters + TEModelParameters, G: Group + ProjectiveCurve>
+impl<C: Testnet2Components, P: MontgomeryModelParameters + TEModelParameters, G: Group + ProjectiveCurve>
     RecordEncodingScheme for RecordEncoding<C, P, G>
 {
     type DecodedRecord = DecodedRecord<C>;

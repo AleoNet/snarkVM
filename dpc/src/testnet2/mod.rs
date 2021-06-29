@@ -88,7 +88,7 @@ pub mod instantiated;
 /// Trait that stores all information about the components of a Plain DPC
 /// scheme. Simplifies the interface of Plain DPC by wrapping all these into
 /// one.
-pub trait BaseDPCComponents: DPCComponents {
+pub trait Testnet2Components: DPCComponents {
     /// Ledger digest type.
     type MerkleParameters: LoadableMerkleParameters;
     type MerkleHashGadget: CRHGadget<<Self::MerkleParameters as MerkleParameters>::H, Self::InnerField>;
@@ -145,7 +145,7 @@ pub trait BaseDPCComponents: DPCComponents {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-pub struct DPC<Components: BaseDPCComponents> {
+pub struct DPC<Components: Testnet2Components> {
     _components: PhantomData<Components>,
 }
 
@@ -155,12 +155,12 @@ pub struct DPC<Components: BaseDPCComponents> {
 /// stores references to existing information like old records and secret keys.
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "Components: BaseDPCComponents"),
-    PartialEq(bound = "Components: BaseDPCComponents"),
-    Eq(bound = "Components: BaseDPCComponents"),
-    Debug(bound = "Components: BaseDPCComponents")
+    Clone(bound = "Components: Testnet2Components"),
+    PartialEq(bound = "Components: Testnet2Components"),
+    Eq(bound = "Components: Testnet2Components"),
+    Debug(bound = "Components: Testnet2Components")
 )]
-pub struct TransactionKernel<Components: BaseDPCComponents> {
+pub struct TransactionKernel<Components: Testnet2Components> {
     #[derivative(PartialEq = "ignore", Debug = "ignore")]
     pub system_parameters: SystemParameters<Components>,
 
@@ -191,7 +191,7 @@ pub struct TransactionKernel<Components: BaseDPCComponents> {
     pub network_id: u8,
 }
 
-impl<Components: BaseDPCComponents> TransactionKernel<Components> {
+impl<Components: Testnet2Components> TransactionKernel<Components> {
     #[allow(clippy::wrong_self_convention)]
     pub fn into_local_data(&self) -> LocalData<Components> {
         LocalData {
@@ -211,7 +211,7 @@ impl<Components: BaseDPCComponents> TransactionKernel<Components> {
     }
 }
 
-impl<Components: BaseDPCComponents> ToBytes for TransactionKernel<Components> {
+impl<Components: Testnet2Components> ToBytes for TransactionKernel<Components> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write old record components
@@ -279,7 +279,7 @@ impl<Components: BaseDPCComponents> ToBytes for TransactionKernel<Components> {
     }
 }
 
-impl<Components: BaseDPCComponents> FromBytes for TransactionKernel<Components> {
+impl<Components: Testnet2Components> FromBytes for TransactionKernel<Components> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let system_parameters = SystemParameters::<Components>::load().expect("Could not load system parameters");
@@ -418,7 +418,7 @@ impl<Components: BaseDPCComponents> FromBytes for TransactionKernel<Components> 
 }
 
 /// Stores local data required to produce program proofs.
-pub struct LocalData<Components: BaseDPCComponents> {
+pub struct LocalData<Components: Testnet2Components> {
     pub system_parameters: SystemParameters<Components>,
 
     // Old records and serial numbers
@@ -438,7 +438,7 @@ pub struct LocalData<Components: BaseDPCComponents> {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-impl<Components: BaseDPCComponents> DPC<Components>
+impl<Components: Testnet2Components> DPC<Components>
 where
     <Components::PolynomialCommitment as PolynomialCommitment<Components::InnerField>>::VerifierKey:
         ToConstraintField<Components::OuterField>,
@@ -615,7 +615,7 @@ where
     }
 }
 
-impl<Components: BaseDPCComponents, L: LedgerScheme> DPCScheme<L> for DPC<Components>
+impl<Components: Testnet2Components, L: LedgerScheme> DPCScheme<L> for DPC<Components>
 where
     L: LedgerScheme<
         Commitment = <Components::RecordCommitment as CommitmentScheme>::Output,
@@ -1242,7 +1242,7 @@ where
             network_id: transaction.network_id(),
         };
 
-        let inner_snark_vk: <<Components as BaseDPCComponents>::InnerSNARK as SNARK>::VerifyingKey =
+        let inner_snark_vk: <<Components as Testnet2Components>::InnerSNARK as SNARK>::VerifyingKey =
             parameters.inner_snark_parameters.1.clone().into();
 
         let inner_circuit_id =

@@ -22,8 +22,8 @@ use crate::{
         outer_circuit_verifier_input::OuterCircuitVerifierInput,
         program::{NoopCircuit, ProgramLocalData},
         transaction::Transaction,
-        BaseDPCComponents,
         LocalData as DPCLocalData,
+        Testnet2Components,
         DPC,
     },
     traits::DPCComponents,
@@ -177,7 +177,7 @@ impl DPCComponents for Components {
     const NUM_OUTPUT_RECORDS: usize = NUM_OUTPUT_RECORDS;
 }
 
-impl BaseDPCComponents for Components {
+impl Testnet2Components for Components {
     type EncryptionGroup = EdwardsBls;
     type EncryptionModelParameters = EdwardsParameters;
     type FiatShamirRng = FiatShamirAlgebraicSpongeRng<InnerField, OuterField, PoseidonSponge<OuterField>>;

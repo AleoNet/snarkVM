@@ -16,7 +16,7 @@
 
 use crate::{
     account::AccountAddress,
-    testnet2::{payload::Payload, BaseDPCComponents},
+    testnet2::{payload::Payload, Testnet2Components},
     traits::RecordScheme,
 };
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH};
@@ -33,13 +33,13 @@ use std::{
 
 #[derive(Derivative)]
 #[derivative(
-    Default(bound = "C: BaseDPCComponents"),
-    Debug(bound = "C: BaseDPCComponents"),
-    Clone(bound = "C: BaseDPCComponents"),
-    PartialEq(bound = "C: BaseDPCComponents"),
-    Eq(bound = "C: BaseDPCComponents")
+    Default(bound = "C: Testnet2Components"),
+    Debug(bound = "C: Testnet2Components"),
+    Clone(bound = "C: Testnet2Components"),
+    PartialEq(bound = "C: Testnet2Components"),
+    Eq(bound = "C: Testnet2Components")
 )]
-pub struct Record<C: BaseDPCComponents> {
+pub struct Record<C: Testnet2Components> {
     pub(crate) owner: AccountAddress<C>,
     pub(crate) is_dummy: bool,
     // TODO (raychu86) use AleoAmount which will guard the value range
@@ -63,7 +63,7 @@ fn default_program_id<C: CRH>() -> Vec<u8> {
     to_bytes![C::Output::default()].unwrap()
 }
 
-impl<C: BaseDPCComponents> RecordScheme for Record<C> {
+impl<C: Testnet2Components> RecordScheme for Record<C> {
     type Commitment = <C::RecordCommitment as CommitmentScheme>::Output;
     type CommitmentRandomness = <C::RecordCommitment as CommitmentScheme>::Randomness;
     type Owner = AccountAddress<C>;
@@ -109,7 +109,7 @@ impl<C: BaseDPCComponents> RecordScheme for Record<C> {
     }
 }
 
-impl<C: BaseDPCComponents> ToBytes for Record<C> {
+impl<C: Testnet2Components> ToBytes for Record<C> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.owner.write(&mut writer)?;
@@ -130,7 +130,7 @@ impl<C: BaseDPCComponents> ToBytes for Record<C> {
     }
 }
 
-impl<C: BaseDPCComponents> FromBytes for Record<C> {
+impl<C: Testnet2Components> FromBytes for Record<C> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let owner: AccountAddress<C> = FromBytes::read(&mut reader)?;

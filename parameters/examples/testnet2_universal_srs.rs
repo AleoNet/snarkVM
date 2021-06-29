@@ -16,7 +16,7 @@
 
 use snarkvm_dpc::{
     errors::DPCError,
-    testnet2::{instantiated::Components, BaseDPCComponents, DPC},
+    testnet2::{instantiated::Components, Testnet2Components, DPC},
 };
 use snarkvm_fields::ToConstraintField;
 use snarkvm_marlin::PolynomialCommitment;
@@ -28,7 +28,7 @@ use std::path::PathBuf;
 mod utils;
 use utils::store;
 
-pub fn setup<C: BaseDPCComponents>() -> Result<Vec<u8>, DPCError>
+pub fn setup<C: Testnet2Components>() -> Result<Vec<u8>, DPCError>
 where
     <C::PolynomialCommitment as PolynomialCommitment<C::InnerField>>::VerifierKey: ToConstraintField<C::OuterField>,
     <C::PolynomialCommitment as PolynomialCommitment<C::InnerField>>::Commitment: ToConstraintField<C::OuterField>,

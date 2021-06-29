@@ -17,7 +17,7 @@
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_dpc::{
     errors::DPCError,
-    testnet1::{instantiated::Components, parameters::SystemParameters, BaseDPCComponents, DPC},
+    testnet1::{instantiated::Components, parameters::SystemParameters, Testnet1Components, DPC},
 };
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
@@ -27,7 +27,7 @@ use std::path::PathBuf;
 mod utils;
 use utils::store;
 
-pub fn setup<C: BaseDPCComponents>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
+pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
     let system_parameters = SystemParameters::<C>::load()?;
 

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet1::{instantiated::Components, parameters::PublicParameters, BaseDPCComponents},
+    testnet1::{instantiated::Components, parameters::PublicParameters, Testnet1Components},
     traits::DPCComponents,
 };
 use snarkvm_algorithms::traits::{CRH, SNARK};
@@ -24,7 +24,7 @@ use snarkvm_utilities::{to_bytes, ToBytes};
 fn testnet1_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
     let parameters = PublicParameters::<Components>::load(false)?;
 
-    let inner_snark_vk: <<Components as BaseDPCComponents>::InnerSNARK as SNARK>::VerifyingKey =
+    let inner_snark_vk: <<Components as Testnet1Components>::InnerSNARK as SNARK>::VerifyingKey =
         parameters.inner_snark_parameters.1.clone().into();
 
     let inner_circuit_id = <<Components as DPCComponents>::InnerCircuitIDCRH as CRH>::hash(

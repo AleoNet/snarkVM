@@ -20,8 +20,8 @@ use snarkvm_dpc::{
     testnet2::{
         instantiated::Components,
         parameters::SystemParameters,
-        BaseDPCComponents,
         ProgramSNARKUniversalSRS,
+        Testnet2Components,
         DPC,
     },
 };
@@ -35,7 +35,7 @@ use std::path::PathBuf;
 mod utils;
 use utils::store;
 
-pub fn setup<C: BaseDPCComponents>() -> Result<(Vec<u8>, Vec<u8>), DPCError>
+pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError>
 where
     <C::PolynomialCommitment as PolynomialCommitment<C::InnerField>>::VerifierKey: ToConstraintField<C::OuterField>,
     <C::PolynomialCommitment as PolynomialCommitment<C::InnerField>>::Commitment: ToConstraintField<C::OuterField>,

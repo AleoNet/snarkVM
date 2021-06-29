@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet2::BaseDPCComponents;
+use crate::testnet2::Testnet2Components;
 use snarkvm_algorithms::traits::{CommitmentScheme, CRH};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
@@ -34,7 +34,7 @@ impl Clone for PrivateProgramInput {
     }
 }
 
-pub struct ProgramLocalData<C: BaseDPCComponents> {
+pub struct ProgramLocalData<C: Testnet2Components> {
     pub local_data_commitment_parameters: <C::LocalDataCommitment as CommitmentScheme>::Parameters,
     // TODO (raychu86) add local_data_crh_parameters
     pub local_data_root: <C::LocalDataCRH as CRH>::Output,
@@ -42,7 +42,7 @@ pub struct ProgramLocalData<C: BaseDPCComponents> {
 }
 
 /// Convert each component to bytes and pack into field elements.
-impl<C: BaseDPCComponents> ToConstraintField<C::InnerField> for ProgramLocalData<C>
+impl<C: Testnet2Components> ToConstraintField<C::InnerField> for ProgramLocalData<C>
 where
     <C::LocalDataCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerField>,

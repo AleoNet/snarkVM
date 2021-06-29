@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet2::BaseDPCComponents;
+use crate::testnet2::Testnet2Components;
 use snarkvm_algorithms::traits::{EncryptionScheme, SNARK};
 use snarkvm_marlin::marlin::UniversalSRS;
 use snarkvm_parameters::{prelude::*, testnet2::*};
@@ -23,8 +23,8 @@ use snarkvm_utilities::bytes::FromBytes;
 use std::io::Result as IoResult;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: BaseDPCComponents"))]
-pub struct SystemParameters<C: BaseDPCComponents> {
+#[derivative(Clone(bound = "C: Testnet2Components"))]
+pub struct SystemParameters<C: Testnet2Components> {
     pub account_commitment: C::AccountCommitment,
     pub account_encryption: C::AccountEncryption,
     pub account_signature: C::AccountSignature,
@@ -38,7 +38,7 @@ pub struct SystemParameters<C: BaseDPCComponents> {
     pub serial_number_nonce: C::SerialNumberNonceCRH,
 }
 
-impl<C: BaseDPCComponents> SystemParameters<C> {
+impl<C: Testnet2Components> SystemParameters<C> {
     // TODO (howardwu): Inspect what is going on with program_verification_key_commitment.
     pub fn load() -> IoResult<Self> {
         let account_commitment: C::AccountCommitment =
@@ -85,10 +85,10 @@ impl<C: BaseDPCComponents> SystemParameters<C> {
 }
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: BaseDPCComponents"))]
-pub struct ProgramSNARKUniversalSRS<C: BaseDPCComponents>(pub UniversalSRS<C::InnerField, C::PolynomialCommitment>);
+#[derivative(Clone(bound = "C: Testnet2Components"))]
+pub struct ProgramSNARKUniversalSRS<C: Testnet2Components>(pub UniversalSRS<C::InnerField, C::PolynomialCommitment>);
 
-impl<C: BaseDPCComponents> ProgramSNARKUniversalSRS<C> {
+impl<C: Testnet2Components> ProgramSNARKUniversalSRS<C> {
     pub fn load() -> IoResult<Self> {
         let srs: UniversalSRS<C::InnerField, C::PolynomialCommitment> =
             From::from(FromBytes::read(UniversalSRSParameters::load_bytes()?.as_slice())?);
@@ -98,13 +98,13 @@ impl<C: BaseDPCComponents> ProgramSNARKUniversalSRS<C> {
 }
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: BaseDPCComponents"))]
-pub struct NoopProgramSNARKParameters<C: BaseDPCComponents> {
+#[derivative(Clone(bound = "C: Testnet2Components"))]
+pub struct NoopProgramSNARKParameters<C: Testnet2Components> {
     pub proving_key: <C::NoopProgramSNARK as SNARK>::ProvingKey,
     pub verification_key: <C::NoopProgramSNARK as SNARK>::VerifyingKey,
 }
 
-impl<C: BaseDPCComponents> NoopProgramSNARKParameters<C> {
+impl<C: Testnet2Components> NoopProgramSNARKParameters<C> {
     // TODO (howardwu): Why are we not preparing the VK here?
     pub fn load() -> IoResult<Self> {
         let proving_key: <C::NoopProgramSNARK as SNARK>::ProvingKey =
@@ -120,8 +120,8 @@ impl<C: BaseDPCComponents> NoopProgramSNARKParameters<C> {
 }
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: BaseDPCComponents"))]
-pub struct PublicParameters<C: BaseDPCComponents> {
+#[derivative(Clone(bound = "C: Testnet2Components"))]
+pub struct PublicParameters<C: Testnet2Components> {
     pub system_parameters: SystemParameters<C>,
     pub noop_program_snark_parameters: NoopProgramSNARKParameters<C>,
     pub inner_snark_parameters: (
@@ -134,7 +134,7 @@ pub struct PublicParameters<C: BaseDPCComponents> {
     ),
 }
 
-impl<C: BaseDPCComponents> PublicParameters<C> {
+impl<C: Testnet2Components> PublicParameters<C> {
     pub fn account_commitment_parameters(&self) -> &C::AccountCommitment {
         &self.system_parameters.account_commitment
     }
