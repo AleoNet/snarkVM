@@ -454,7 +454,7 @@ mod tests {
     use rand_chacha::ChaChaRng;
     use rand_core::SeedableRng;
 
-    use snarkvm_curves::bls12_377::Fr;
+    use snarkvm_curves::bls12_377::Fq;
     use snarkvm_fields::One;
     use snarkvm_gadgets::{bits::ToBitsLEGadget, traits::eq::EqGadget};
     use snarkvm_r1cs::TestConstraintSystem;
@@ -468,10 +468,10 @@ mod tests {
 
     use super::*;
 
-    type PS = PoseidonSponge<Fr>;
-    type PSGadget = PoseidonSpongeVar<Fr>;
-    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fr, PS>;
-    type FSGadget = FiatShamirAlgebraicSpongeRngVar<Fr, Fr, PS, PSGadget>;
+    type PS = PoseidonSponge<Fq>;
+    type PSGadget = PoseidonSpongeVar<Fq>;
+    type FS = FiatShamirAlgebraicSpongeRng<Fq, Fq, PS>;
+    type FSGadget = FiatShamirAlgebraicSpongeRngVar<Fq, Fq, PS, PSGadget>;
 
     const MAX_ELEMENTS: usize = 50;
     const MAX_ELEMENT_SIZE: usize = 100;
@@ -492,7 +492,7 @@ mod tests {
 
         let mut absorbed_rand_field_elems = Vec::new();
         for _ in 0..NUM_ABSORBED_RAND_FIELD_ELEMS {
-            absorbed_rand_field_elems.push(Fr::rand(rng));
+            absorbed_rand_field_elems.push(Fq::rand(rng));
         }
 
         let mut absorbed_rand_byte_elems = Vec::<Vec<u8>>::new();
@@ -517,7 +517,7 @@ mod tests {
             .unwrap();
 
         // fs_rng in the constraint world
-        let mut cs = TestConstraintSystem::<Fr>::new();
+        let mut cs = TestConstraintSystem::<Fq>::new();
         let mut fs_rng_gadget = FSGadget::new(cs.ns(|| "new"));
 
         let mut absorbed_rand_field_elems_gadgets = Vec::new();
@@ -604,7 +604,7 @@ mod tests {
         let mut rng = ChaChaRng::seed_from_u64(123456789u64);
 
         for i in 0..ITERATIONS {
-            let mut cs = TestConstraintSystem::<Fr>::new();
+            let mut cs = TestConstraintSystem::<Fq>::new();
 
             // Generate random element.
             let num_bytes: usize = rng.gen_range(0..MAX_ELEMENT_SIZE);
@@ -645,26 +645,26 @@ mod tests {
         let mut rng = ChaChaRng::seed_from_u64(123456789u64);
 
         for i in 0..ITERATIONS {
-            let mut cs = TestConstraintSystem::<Fr>::new();
+            let mut cs = TestConstraintSystem::<Fq>::new();
 
             // Generate random elements.
             let num_elements: usize = rng.gen_range(0..MAX_ELEMENT_SIZE);
-            let elements: Vec<_> = (0..num_elements).map(|_| Fr::rand(&mut rng)).collect();
+            let elements: Vec<_> = (0..num_elements).map(|_| Fq::rand(&mut rng)).collect();
 
             // Construct elements limb representations
-            let mut element_limbs = Vec::<(Fr, Fr)>::new();
-            let mut element_limb_gadgets = Vec::<(FpGadget<Fr>, Fr)>::new();
+            let mut element_limbs = Vec::<(Fq, Fq)>::new();
+            let mut element_limb_gadgets = Vec::<(FpGadget<Fq>, Fq)>::new();
 
             for (j, elem) in elements.iter().enumerate() {
                 let limbs =
-                    AllocatedNonNativeFieldVar::<Fr, Fr>::get_limbs_representations(elem, OptimizationType::Weight)
+                    AllocatedNonNativeFieldVar::<Fq, Fq>::get_limbs_representations(elem, OptimizationType::Weight)
                         .unwrap();
                 for (k, limb) in limbs.iter().enumerate() {
                     let allocated_limb =
                         FpGadget::alloc(cs.ns(|| format!("alloc_limb_{}_{}_{}", i, j, k)), || Ok(limb)).unwrap();
 
-                    element_limbs.push((*limb, Fr::one()));
-                    element_limb_gadgets.push((allocated_limb, Fr::one()));
+                    element_limbs.push((*limb, Fq::one()));
+                    element_limb_gadgets.push((allocated_limb, Fq::one()));
                     // Specifically set to one, since most gadgets in the constraint world would not have zero noise (due to the relatively weak normal form testing in `alloc`)
                 }
             }
@@ -697,18 +697,18 @@ mod tests {
         let mut rng = ChaChaRng::seed_from_u64(123456789u64);
 
         for i in 0..ITERATIONS {
-            let mut cs = TestConstraintSystem::<Fr>::new();
+            let mut cs = TestConstraintSystem::<Fq>::new();
 
             // Generate random elements.
             let num_elements: usize = rng.gen_range(0..MAX_ELEMENT_SIZE);
-            let elements: Vec<_> = (0..num_elements).map(|_| Fr::rand(&mut rng)).collect();
+            let elements: Vec<_> = (0..num_elements).map(|_| Fq::rand(&mut rng)).collect();
 
             // Construct elements limb representations
-            let mut element_limbs = Vec::<(Fr, Fr)>::new();
-            let mut element_limb_gadgets = Vec::<(FpGadget<Fr>, Fr)>::new();
+            let mut element_limbs = Vec::<(Fq, Fq)>::new();
+            let mut element_limb_gadgets = Vec::<(FpGadget<Fq>, Fq)>::new();
 
             for (j, elem) in elements.iter().enumerate() {
-                let limbs = AllocatedNonNativeFieldVar::<Fr, Fr>::get_limbs_representations(
+                let limbs = AllocatedNonNativeFieldVar::<Fq, Fq>::get_limbs_representations(
                     elem,
                     OptimizationType::Constraints,
                 )
@@ -717,8 +717,8 @@ mod tests {
                     let allocated_limb =
                         FpGadget::alloc(cs.ns(|| format!("alloc_limb_{}_{}_{}", i, j, k)), || Ok(limb)).unwrap();
 
-                    element_limbs.push((*limb, Fr::one()));
-                    element_limb_gadgets.push((allocated_limb, Fr::one()));
+                    element_limbs.push((*limb, Fq::one()));
+                    element_limb_gadgets.push((allocated_limb, Fq::one()));
                     // Specifically set to one, since most gadgets in the constraint world would not have zero noise (due to the relatively weak normal form testing in `alloc`)
                 }
             }
@@ -751,7 +751,7 @@ mod tests {
         let mut rng = ChaChaRng::seed_from_u64(123456789u64);
 
         for i in 0..ITERATIONS {
-            let mut cs = TestConstraintSystem::<Fr>::new();
+            let mut cs = TestConstraintSystem::<Fq>::new();
 
             // Create a new FS rng and FS rng gadget.
             let mut fs_rng = FS::new();
@@ -804,7 +804,7 @@ mod tests {
         let mut rng = ChaChaRng::seed_from_u64(123456789u64);
 
         for i in 0..ITERATIONS {
-            let mut cs = TestConstraintSystem::<Fr>::new();
+            let mut cs = TestConstraintSystem::<Fq>::new();
 
             // Create a new FS rng.
             let mut fs_rng = FS::new();
@@ -814,7 +814,7 @@ mod tests {
 
             // Generate random elements.
             let num_elements: usize = rng.gen_range(0..MAX_ELEMENTS);
-            let elements: Vec<_> = (0..num_elements).map(|_| Fr::rand(&mut rng)).collect();
+            let elements: Vec<_> = (0..num_elements).map(|_| Fq::rand(&mut rng)).collect();
 
             let mut element_gadgets = vec![];
             for (j, element) in elements.iter().enumerate() {
@@ -858,7 +858,7 @@ mod tests {
         let mut rng = ChaChaRng::seed_from_u64(123456789u64);
 
         for i in 0..ITERATIONS {
-            let mut cs = TestConstraintSystem::<Fr>::new();
+            let mut cs = TestConstraintSystem::<Fq>::new();
 
             // Create a new FS rng.
             let mut fs_rng = FS::new();
@@ -868,7 +868,7 @@ mod tests {
 
             // Generate random elements.
             let num_elements: usize = rng.gen_range(0..MAX_ELEMENTS);
-            let elements: Vec<_> = (0..num_elements).map(|_| Fr::rand(&mut rng)).collect();
+            let elements: Vec<_> = (0..num_elements).map(|_| Fq::rand(&mut rng)).collect();
 
             let mut element_gadgets = vec![];
             for (j, element) in elements.iter().enumerate() {
@@ -920,7 +920,7 @@ mod tests {
         let mut rng = ChaChaRng::seed_from_u64(123456789u64);
 
         for i in 0..ITERATIONS {
-            let mut cs = TestConstraintSystem::<Fr>::new();
+            let mut cs = TestConstraintSystem::<Fq>::new();
 
             // Create a new FS rng.
             let mut fs_rng = FS::new();
@@ -930,7 +930,7 @@ mod tests {
 
             // Generate random elements.
             let num_elements: usize = rng.gen_range(0..MAX_ELEMENTS);
-            let elements: Vec<_> = (0..num_elements).map(|_| Fr::rand(&mut rng)).collect();
+            let elements: Vec<_> = (0..num_elements).map(|_| Fq::rand(&mut rng)).collect();
 
             let mut element_gadgets = vec![];
             for (j, element) in elements.iter().enumerate() {
@@ -998,7 +998,7 @@ mod tests {
         let mut rng = ChaChaRng::seed_from_u64(123456789u64);
 
         for i in 0..ITERATIONS {
-            let mut cs = TestConstraintSystem::<Fr>::new();
+            let mut cs = TestConstraintSystem::<Fq>::new();
 
             // Create a new FS rng.
             let mut fs_rng = FS::new();
@@ -1008,7 +1008,7 @@ mod tests {
 
             // Generate random elements.
             let num_elements: usize = rng.gen_range(0..MAX_ELEMENTS);
-            let elements: Vec<_> = (0..num_elements).map(|_| Fr::rand(&mut rng)).collect();
+            let elements: Vec<_> = (0..num_elements).map(|_| Fq::rand(&mut rng)).collect();
 
             let mut element_gadgets = vec![];
             for (j, element) in elements.iter().enumerate() {
@@ -1061,7 +1061,7 @@ mod tests {
         let mut rng = ChaChaRng::seed_from_u64(123456789u64);
 
         for i in 0..ITERATIONS {
-            let mut cs = TestConstraintSystem::<Fr>::new();
+            let mut cs = TestConstraintSystem::<Fq>::new();
 
             // Create a new FS rng.
             let mut fs_rng = FS::new();
@@ -1071,7 +1071,7 @@ mod tests {
 
             // Generate random elements.
             let num_elements: usize = rng.gen_range(0..MAX_ELEMENTS);
-            let elements: Vec<_> = (0..num_elements).map(|_| Fr::rand(&mut rng)).collect();
+            let elements: Vec<_> = (0..num_elements).map(|_| Fq::rand(&mut rng)).collect();
 
             let mut element_gadgets = vec![];
             for (j, element) in elements.iter().enumerate() {
