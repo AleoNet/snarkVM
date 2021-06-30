@@ -19,7 +19,7 @@ use core::marker::PhantomData;
 use hashbrown::{HashMap, HashSet};
 
 use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{PoseidonMDSField, PrimeField};
 use snarkvm_gadgets::{
     bits::{Boolean, ToBitsLEGadget},
     fields::FpGadget,
@@ -97,7 +97,7 @@ pub struct VerifierThirdMsgVar<TargetField: PrimeField, BaseField: PrimeField> {
 /// The AHP gadget.
 pub struct AHPForR1CS<
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > where
@@ -112,7 +112,7 @@ pub struct AHPForR1CS<
 
 impl<
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > AHPForR1CS<TargetField, BaseField, PC, PCG>

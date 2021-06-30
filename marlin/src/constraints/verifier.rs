@@ -16,7 +16,7 @@
 
 use core::marker::PhantomData;
 
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{PoseidonMDSField, PrimeField};
 use snarkvm_gadgets::{
     bits::Boolean,
     nonnative::{params::OptimizationType, NonNativeFieldVar},
@@ -74,7 +74,7 @@ impl<TargetField, BaseField, PC, PCG, FS, MM, C>
     for MarlinVerificationGadget<TargetField, BaseField, PC, PCG>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PC::VerifierKey: ToConstraintField<BaseField>,
     PC::Commitment: ToConstraintField<BaseField>,
@@ -114,7 +114,7 @@ where
 impl<TargetField, BaseField, PC, PCG> MarlinVerificationGadget<TargetField, BaseField, PC, PCG>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
