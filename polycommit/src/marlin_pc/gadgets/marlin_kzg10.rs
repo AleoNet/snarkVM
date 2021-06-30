@@ -141,7 +141,7 @@ where
         > = lc_info.iter().map(|c| (c.0.clone(), c.clone())).collect();
 
         let mut query_to_labels_map: BTreeMap<
-            <TargetCurve as PairingEngine>::Fr,
+            String,
             (
                 NonNativeFieldVar<<TargetCurve as PairingEngine>::Fr, <BaseCurve as PairingEngine>::Fr>,
                 BTreeSet<&String>,
@@ -152,18 +152,9 @@ where
         let mut sorted_query_set_gadgets: Vec<_> = query_set.0.iter().collect();
         sorted_query_set_gadgets.sort_by(|a, b| a.0.cmp(&b.0));
 
-        for (i, (label, point)) in sorted_query_set_gadgets.iter().enumerate() {
-            //TODO (raychu86): Changed entry `point.name` to `point.value` to preserve the same ordering,
-            // as the native implementation
-
-            // TODO (raychu86): Workaround for `AssignmentMissing` error in setup
-            let entry = match point.value.value() {
-                Ok(val) => val,
-                Err(_) => <TargetCurve as PairingEngine>::Fr::from(i as u128),
-            };
-
+        for (label, point) in sorted_query_set_gadgets.iter() {
             let labels = query_to_labels_map
-                .entry(entry)
+                .entry(point.name.clone())
                 .or_insert((point.value.clone(), BTreeSet::new()));
             labels.1.insert(label);
         }
