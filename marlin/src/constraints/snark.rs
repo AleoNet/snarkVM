@@ -917,4 +917,63 @@ pub mod multiple_input_tests {
             );
         }
     }
+
+    #[test]
+    fn marlin_test_nested_snark() {
+        let mut rng = test_rng();
+
+        // Construct the circuit.
+
+        let a = Fr::rand(&mut rng);
+        let b = Fr::rand(&mut rng);
+        let mut c = a;
+        c.mul_assign(&b);
+
+        let circ = Circuit {
+            a: Some(a),
+            b: Some(b),
+            num_constraints: 100,
+            num_variables: 25,
+        };
+
+        // Generate the circuit parameters.
+
+        let (pk, vk) = TestSNARK::circuit_specific_setup(circ, &mut rng).unwrap();
+
+        // Test native proof and verification.
+
+        let proof = TestSNARK::prove(&pk, &circ, &mut rng).unwrap();
+
+        assert!(
+            TestSNARK::verify(&vk.clone().into(), &[c.clone(), c].to_vec(), &proof).unwrap(),
+            "The native verification check fails."
+        );
+
+        // Initialize constraint system.
+        let nested_circuit = VerifierCircuit::<Fr, Fq, PC, FS, MarlinRecursiveMode, PCGadget, FSG> {
+            c: c.clone(),
+            verifying_key: vk,
+            proof,
+            _f: PhantomData,
+            _fs: PhantomData,
+            _marlin_mode: PhantomData,
+            _pcg: PhantomData,
+            _fsg: PhantomData,
+        };
+
+        use snarkvm_algorithms::snark::groth16::Groth16;
+        type NestedSNARK =
+            Groth16<BW6_761, VerifierCircuit<Fr, Fq, PC, FS, MarlinRecursiveMode, PCGadget, FSG>, Vec<Fq>>;
+
+        let (nested_pk, nested_vk) = NestedSNARK::setup(&nested_circuit, &mut rng).unwrap();
+
+        // Test native proof and verification.
+
+        let nested_proof = NestedSNARK::prove(&nested_pk, &nested_circuit, &mut rng).unwrap();
+
+        assert!(
+            NestedSNARK::verify(&nested_vk.clone().into(), &vec![], &nested_proof).unwrap(),
+            "The native verification check fails."
+        );
+    }
 }
