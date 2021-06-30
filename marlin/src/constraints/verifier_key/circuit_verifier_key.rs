@@ -17,7 +17,7 @@
 use core::borrow::Borrow;
 
 use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{PoseidonMDSField, PrimeField};
 use snarkvm_gadgets::{bits::ToBytesGadget, fields::FpGadget, integers::uint::UInt8, traits::alloc::AllocGadget};
 use snarkvm_polycommit::PCCheckVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
@@ -27,7 +27,7 @@ use crate::{marlin::CircuitVerifyingKey, PolynomialCommitment};
 /// The circuit verifying key gadget
 pub struct CircuitVerifyingKeyVar<
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > {
@@ -47,7 +47,7 @@ pub struct CircuitVerifyingKeyVar<
 
 impl<
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > Clone for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
@@ -66,7 +66,7 @@ impl<
 
 impl<
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
@@ -79,7 +79,7 @@ impl<
 
 impl<
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > AllocGadget<CircuitVerifyingKey<TargetField, PC>, BaseField>
@@ -211,7 +211,7 @@ impl<
 
 impl<
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > ToBytesGadget<BaseField> for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
