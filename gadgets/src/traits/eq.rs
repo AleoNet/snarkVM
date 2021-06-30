@@ -73,7 +73,17 @@ where
     }
 }
 
-impl<T: EqGadget<F>, F: Field> EqGadget<F> for [T] {}
+impl<T: EqGadget<F>, F: Field> EqGadget<F> for [T] {
+    fn is_eq<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
+        assert_eq!(self.len(), other.len());
+        assert!(!self.is_empty());
+        let mut results = Vec::with_capacity(self.len());
+        for (i, (a, b)) in self.iter().zip(other).enumerate() {
+            results.push(a.is_eq(cs.ns(|| format!("is_eq_{}", i)), b)?);
+        }
+        Boolean::kary_and(cs.ns(|| "is_eq_kary_and"), &results)
+    }
+}
 
 pub trait NEqGadget<F: Field>: Eq {
     fn enforce_not_equal<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<(), SynthesisError>;
