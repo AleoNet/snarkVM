@@ -21,9 +21,14 @@ use itertools::Itertools;
 
 use snarkvm_algorithms::signature::{SchnorrOutput, SchnorrParameters, SchnorrPublicKey, SchnorrSignature};
 use snarkvm_curves::traits::Group;
-use snarkvm_fields::{Field, PrimeField};
+use snarkvm_fields::{Field, FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::serialize::{CanonicalDeserialize, CanonicalSerialize};
+use snarkvm_utilities::{
+    serialize::{CanonicalDeserialize, CanonicalSerialize},
+    to_bytes,
+    FromBytes,
+    ToBytes,
+};
 
 use crate::{
     bits::{Boolean, ToBytesGadget},
@@ -149,18 +154,15 @@ impl<G: Group, F: Field, GG: GroupGadget<G, F>> ToBytesGadget<F> for SchnorrPubl
     }
 }
 
-// TODO (raychu86): Change Field Gadget constraints for FpGadget support.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SchnorrSignatureGadget<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> {
+pub struct SchnorrSignatureGadget<G: Group, F: Field, FG: FieldGadget<F, F>> {
     prover_response: FG,
     verifier_challenge: FG,
     _field: PhantomData<*const F>,
     _group: PhantomData<*const G>,
 }
 
-impl<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> AllocGadget<SchnorrOutput<G>, F>
-    for SchnorrSignatureGadget<G, F, FG>
-{
+impl<G: Group, F: Field, FG: FieldGadget<F, F>> AllocGadget<SchnorrOutput<G>, F> for SchnorrSignatureGadget<G, F, FG> {
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrOutput<G>>, CS: ConstraintSystem<F>>(
         mut cs: CS,
         value_gen: Fn,
@@ -168,13 +170,12 @@ impl<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> AllocGad
         let value = value_gen()?;
         let schnorr_output = value.borrow().clone();
 
-        let prover_response = FG::alloc(
-            cs.ns(|| "alloc_prover_response"),
-            || Ok(&schnorr_output.prover_response),
-        )?;
-        let verifier_challenge = FG::alloc(cs.ns(|| "alloc_verifier_challenge"), || {
-            Ok(&schnorr_output.verifier_challenge)
-        })?;
+        // Cast <G as Group>::ScalarField as F.
+        let prover_response: F = FromBytes::read(&to_bytes![schnorr_output.prover_response]?[..])?;
+        let verifier_challenge: F = FromBytes::read(&to_bytes![schnorr_output.verifier_challenge]?[..])?;
+
+        let prover_response = FG::alloc(cs.ns(|| "alloc_prover_response"), || Ok(&prover_response))?;
+        let verifier_challenge = FG::alloc(cs.ns(|| "alloc_verifier_challenge"), || Ok(&verifier_challenge))?;
 
         Ok(Self {
             prover_response,
@@ -191,12 +192,13 @@ impl<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> AllocGad
         let value = value_gen()?;
         let schnorr_output = value.borrow().clone();
 
-        let prover_response = FG::alloc_input(cs.ns(|| "alloc_input_prover_response"), || {
-            Ok(&schnorr_output.prover_response)
-        })?;
-        let verifier_challenge = FG::alloc_input(cs.ns(|| "alloc_input_verifier_challenge"), || {
-            Ok(&schnorr_output.verifier_challenge)
-        })?;
+        // Cast <G as Group>::ScalarField as F.
+        let prover_response: F = FromBytes::read(&to_bytes![schnorr_output.prover_response]?[..])?;
+        let verifier_challenge: F = FromBytes::read(&to_bytes![schnorr_output.verifier_challenge]?[..])?;
+
+        let prover_response = FG::alloc_input(cs.ns(|| "alloc_input_prover_response"), || Ok(&prover_response))?;
+        let verifier_challenge =
+            FG::alloc_input(cs.ns(|| "alloc_input_verifier_challenge"), || Ok(&verifier_challenge))?;
 
         Ok(Self {
             prover_response,
@@ -207,9 +209,7 @@ impl<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> AllocGad
     }
 }
 
-impl<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> ConditionalEqGadget<F>
-    for SchnorrSignatureGadget<G, F, FG>
-{
+impl<G: Group, F: Field, FG: FieldGadget<F, F>> ConditionalEqGadget<F> for SchnorrSignatureGadget<G, F, FG> {
     #[inline]
     fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
         &self,
@@ -235,14 +235,9 @@ impl<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> Conditio
     }
 }
 
-impl<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> EqGadget<F>
-    for SchnorrSignatureGadget<G, F, FG>
-{
-}
+impl<G: Group, F: Field, FG: FieldGadget<F, F>> EqGadget<F> for SchnorrSignatureGadget<G, F, FG> {}
 
-impl<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> ToBytesGadget<F>
-    for SchnorrSignatureGadget<G, F, FG>
-{
+impl<G: Group, F: Field, FG: FieldGadget<F, F>> ToBytesGadget<F> for SchnorrSignatureGadget<G, F, FG> {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut result = Vec::new();
 
@@ -274,12 +269,7 @@ impl<G: Group, F: Field, FG: FieldGadget<<G as Group>::ScalarField, F>> ToBytesG
     }
 }
 
-pub struct SchnorrPublicKeyRandomizationGadget<
-    G: Group,
-    F: PrimeField,
-    GG: GroupGadget<G, F>,
-    FG: FieldGadget<<G as Group>::ScalarField, F>,
-> {
+pub struct SchnorrPublicKeyRandomizationGadget<G: Group, F: PrimeField, GG: GroupGadget<G, F>, FG: FieldGadget<F, F>> {
     _group: PhantomData<*const G>,
     _group_gadget: PhantomData<*const GG>,
     _field_gadget: PhantomData<*const FG>,
@@ -289,7 +279,7 @@ pub struct SchnorrPublicKeyRandomizationGadget<
 impl<
     G: Group + CanonicalSerialize + CanonicalDeserialize,
     GG: GroupGadget<G, F>,
-    FG: FieldGadget<<G as Group>::ScalarField, F>,
+    FG: FieldGadget<F, F>,
     D: Digest + Send + Sync,
     F: PrimeField,
 > SignaturePublicKeyRandomizationGadget<SchnorrSignature<G, D>, F>
@@ -319,7 +309,7 @@ impl<
         })
     }
 
-    // TODO (raychu86): Remove the hardcoded blake2s usage.
+    // TODO (raychu86): Make the blake2s usage generic for all PRFs.
     fn verify<CS: ConstraintSystem<F>, PG: PRFGadget<Blake2s, F>>(
         mut cs: CS,
         parameters: &Self::ParametersGadget,
@@ -329,9 +319,14 @@ impl<
     ) -> Result<Boolean, SynthesisError> {
         let zero_group_gadget = GG::zero(cs.ns(|| "zero"))?;
 
-        let prover_response_bits = signature
+        let prover_response_bytes = signature
             .prover_response
-            .to_bits_le(cs.ns(|| "prover_response_to_bits"))?;
+            .to_bytes(cs.ns(|| "prover_response_to_bytes"))?;
+
+        let prover_response_bits = prover_response_bytes
+            .iter()
+            .flat_map(|byte| byte.to_bits_le())
+            .collect::<Vec<_>>();
         let verifier_challenge_bits = signature
             .verifier_challenge
             .to_bits_le(cs.ns(|| "verifier_challenge_to_bits"))?;
@@ -371,28 +366,41 @@ impl<
         // Construct the hash
 
         let mut hash_input = Vec::new();
-        hash_input.extend_from_slice(&salt_bytes);
         hash_input.extend_from_slice(&claimed_prover_commitment_bytes);
         hash_input.extend_from_slice(&message);
 
-        let hash = PG::check_evaluation_gadget(cs.ns(|| "schnorr_hash"), &vec![], &hash_input)?;
+        let hash = PG::check_evaluation_gadget(cs.ns(|| "schnorr_hash"), &salt_bytes, &hash_input)?;
 
         // Check that the hash bytes are equivalent to the Field gadget.
-
-        // TODO (raychu86): Check that this method is the same as checking <G as Group>::ScalarField::from_random_bytes(hash).
 
         let hash_bytes = hash.to_bytes(cs.ns(|| "hash_to_bytes"))?;
         let verifier_challenge_bytes = signature
             .verifier_challenge
             .to_bytes(cs.ns(|| "verifier_challenge_to_bytes"))?;
 
-        let mut result = Boolean::constant(true);
+        let num_bits = F::size_in_bits() - <F::Parameters as FieldParameters>::REPR_SHAVE_BITS as usize;
 
+        let mut expected_bits = Vec::with_capacity(num_bits);
+        let mut found_bits = Vec::with_capacity(num_bits);
+
+        // TODO (raychu86): Confirm that this is equivalent for `<G as Group>::ScalarField::from_random_bytes`
+
+        // Check all the bits up to the bit size of the Field gadget.
         for (i, (expected_byte, found_byte)) in verifier_challenge_bytes.iter().zip_eq(hash_bytes).enumerate() {
-            let is_eq = expected_byte.is_eq(cs.ns(|| format!("is_eq_{}", i)), &found_byte)?;
-
-            result = Boolean::and(cs.ns(|| format!("and_{}", i)), &result, &is_eq)?;
+            for (j, (expected_bit, found_bit)) in expected_byte
+                .to_bits_le()
+                .iter()
+                .zip_eq(found_byte.to_bits_le())
+                .enumerate()
+            {
+                if (i * 8 + j) < num_bits {
+                    expected_bits.push(expected_bit.clone());
+                    found_bits.push(found_bit.clone());
+                }
+            }
         }
+
+        let result = expected_bits.is_eq(cs.ns(|| "is_eq"), &found_bits)?;
 
         return Ok(result);
     }
