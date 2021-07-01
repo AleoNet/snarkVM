@@ -86,6 +86,12 @@ impl ViewKey {
     }
 }
 
+impl fmt::Display for ViewKey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.view_key.to_string())
+    }
+}
+
 #[derive(Derivative)]
 #[derivative(
     Default(bound = "C: DPCComponents"),
