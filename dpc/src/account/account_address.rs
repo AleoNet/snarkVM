@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, traits::DPCComponents, AccountError, AccountPrivateKey, AccountViewKey};
+use crate::{testnet1::instantiated::Components, testnet1::parameters::SystemParameters, account_format, traits::DPCComponents, AccountError, AccountPrivateKey, AccountViewKey};
+use crate::AddressError;
 use snarkvm_algorithms::traits::EncryptionScheme;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -36,7 +37,32 @@ pub struct AccountAddress<C: DPCComponents> {
     pub encryption_key: <C::AccountEncryption as EncryptionScheme>::PublicKey,
 }
 
+#[derive(Debug)]
+pub struct Address<C: DPCComponents> {
+    pub(crate) address: AccountAddress<C>,
+}
+
+impl Address<Components> {
+    pub fn from(private_key: &AccountPrivateKey<Components>) -> Result<Self, AddressError> {
+        let parameters = SystemParameters::<Components>::load()?;
+        let address = AccountAddress::<Components>::from_private_key(
+            &parameters.account_signature,
+            &parameters.account_commitment,
+            &parameters.account_encryption,
+            &private_key,
+        )?;
+        Ok(Self { address })
+    }
+}
+
+impl fmt::Display for Address<Components> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.address.to_string())
+    }
+}
+
 impl<C: DPCComponents> AccountAddress<C> {
+
     /// Derives the account address from an account private key.
     pub fn from_private_key(
         signature_parameters: &C::AccountSignature,

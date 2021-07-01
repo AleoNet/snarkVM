@@ -17,6 +17,72 @@
 use snarkvm_algorithms::errors::{CRHError, CommitmentError, EncryptionError, PRFError, SignatureError};
 
 #[derive(Debug, Error)]
+pub enum ViewKeyError {
+    #[error("{}: {}", _0, _1)]
+    Crate(&'static str, String),
+}
+
+impl From<std::io::Error> for ViewKeyError {
+    fn from(error: std::io::Error) -> Self {
+        ViewKeyError::Crate("std::io", format!("{:?}", error))
+    }
+}
+
+impl From<AccountError> for ViewKeyError {
+    fn from(error: AccountError) -> Self {
+        ViewKeyError::Crate("snarkos_errors::objects::account", format!("{:?}", error))
+    }
+}
+
+impl From<hex::FromHexError> for ViewKeyError {
+    fn from(error: hex::FromHexError) -> Self {
+        ViewKeyError::Crate("hex", format!("{:?}", error))
+    }
+}
+
+impl From<SignatureError> for ViewKeyError {
+    fn from(error: SignatureError) -> Self {
+        ViewKeyError::Crate("snarkos_errors::algorithms::signature", format!("{:?}", error))
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum PrivateKeyError {
+    #[error("{}: {}", _0, _1)]
+    Crate(&'static str, String),
+}
+
+impl From<AccountError> for PrivateKeyError {
+    fn from(error: AccountError) -> Self {
+        PrivateKeyError::Crate("snarkvm::dpc::errors::account", format!("{:?}", error))
+    }
+}
+
+impl From<std::io::Error> for PrivateKeyError {
+    fn from(error: std::io::Error) -> Self {
+        PrivateKeyError::Crate("std::io", format!("{:?}", error))
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum AddressError {
+    #[error("{}: {}", _0, _1)]
+    Crate(&'static str, String),
+}
+
+impl From<AccountError> for AddressError {
+    fn from(error: AccountError) -> Self {
+        AddressError::Crate("snarkvm::dpc::errors::account", format!("{:?}", error))
+    }
+}
+
+impl From<std::io::Error> for AddressError {
+    fn from(error: std::io::Error) -> Self {
+        AddressError::Crate("std::io", format!("{:?}", error))
+    }
+}
+
+#[derive(Debug, Error)]
 pub enum AccountError {
     #[error("{}", _0)]
     CommitmentError(CommitmentError),

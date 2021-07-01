@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, traits::DPCComponents, AccountError, AccountPrivateKey};
+use crate::{account_format, traits::DPCComponents, AccountError, AccountPrivateKey, PrivateKey, ViewKeyError, testnet1::SystemParameters, testnet1::instantiated::Components};
 use snarkvm_algorithms::traits::EncryptionScheme;
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_algorithms::SignatureScheme;
+use snarkvm_utilities::{FromBytes, ToBytes, to_bytes};
 
 use base58::{FromBase58, ToBase58};
 use std::{
@@ -24,6 +25,59 @@ use std::{
     io::{Read, Result as IoResult, Write},
     str::FromStr,
 };
+use rand::{CryptoRng, Rng};
+
+pub struct Signature(pub <<Components as DPCComponents>::AccountEncryption as SignatureScheme>::Output);
+
+impl FromStr for Signature {
+    type Err = ViewKeyError;
+
+    fn from_str(signature: &str) -> Result<Self, Self::Err> {
+        let signature_bytes = hex::decode(signature)?;
+        let signature: <<Components as DPCComponents>::AccountEncryption as SignatureScheme>::Output =
+            FromBytes::read(&signature_bytes[..])?;
+
+        Ok(Self(signature))
+    }
+}
+
+impl fmt::Display for Signature {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            hex::encode(to_bytes![self.0].expect("failed to convert to bytes"))
+        )
+    }
+}
+
+#[derive(Debug)]
+pub struct ViewKey {
+    pub view_key: AccountViewKey<Components>,
+}
+
+impl ViewKey {
+    pub fn from(private_key: &PrivateKey) -> Result<Self, ViewKeyError> {
+        let parameters = SystemParameters::<Components>::load()?;
+        let view_key = AccountViewKey::<Components>::from_private_key(
+            &parameters.account_signature,
+            &parameters.account_commitment,
+            &private_key.private_key,
+        )?;
+        Ok(Self { view_key })
+    }
+
+    /// Sign message with the view key.
+    pub fn sign<R: Rng + CryptoRng>(&self, message: &[u8], rng: &mut R) -> Result<Signature, ViewKeyError> {
+        let parameters = SystemParameters::<Components>::load()?;
+
+        let signature = parameters
+            .account_encryption
+            .sign(&self.view_key.decryption_key, message, rng)?;
+
+        Ok(Signature(signature))
+    }
+}
 
 #[derive(Derivative)]
 #[derivative(

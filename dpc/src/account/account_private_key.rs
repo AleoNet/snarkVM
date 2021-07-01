@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, traits::DPCComponents, AccountError};
+use crate::{account_format, traits::DPCComponents, AccountError, PrivateKeyError};
+use crate::testnet1::{SystemParameters, instantiated::Components};
 use snarkvm_algorithms::{
     prf::Blake2s,
     traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, PRF},
@@ -22,10 +23,25 @@ use snarkvm_algorithms::{
 use snarkvm_utilities::{bytes_to_bits, to_bytes, FromBytes, ToBytes};
 
 use base58::{FromBase58, ToBase58};
-use rand::Rng;
+use rand::{Rng, CryptoRng};
 use std::{fmt, str::FromStr};
 
-#[derive(Derivative)]
+#[derive(Debug)]
+pub struct PrivateKey {
+    pub private_key: AccountPrivateKey<Components>,
+}
+
+impl PrivateKey {
+    /// Returns a new Account Private Key.
+    pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, PrivateKeyError> {
+        let parameters = SystemParameters::<Components>::load()?;
+        let private_key =
+            AccountPrivateKey::<Components>::new(&parameters.account_signature, &parameters.account_commitment, rng)?;
+        Ok(Self { private_key })
+    }
+}
+
+    #[derive(Derivative)]
 #[derivative(
     Clone(bound = "C: DPCComponents"),
     Default(bound = "C: DPCComponents"),
