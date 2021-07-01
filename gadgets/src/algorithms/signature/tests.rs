@@ -145,6 +145,8 @@ fn schnorr_signature_verification_test() {
         )
         .unwrap();
 
+    assert_eq!(cs.num_constraints(), 0);
+
     let public_key_gadget =
         <TestSignatureGadget as SignaturePublicKeyRandomizationGadget<Schnorr, Fr>>::PublicKeyGadget::alloc(
             cs.ns(|| "alloc_public_key"),
@@ -152,7 +154,11 @@ fn schnorr_signature_verification_test() {
         )
         .unwrap();
 
+    assert_eq!(cs.num_constraints(), 13);
+
     let message_gadget = UInt8::alloc_vec(cs.ns(|| "alloc_message"), message).unwrap();
+
+    assert_eq!(cs.num_constraints(), 245);
 
     let signature_gadget =
         <TestSignatureGadget as SignaturePublicKeyRandomizationGadget<Schnorr, Fr>>::SignatureGadget::alloc(
@@ -160,6 +166,8 @@ fn schnorr_signature_verification_test() {
             || Ok(signature),
         )
         .unwrap();
+
+    assert_eq!(cs.num_constraints(), 245);
 
     let verification =
         <TestSignatureGadget as SignaturePublicKeyRandomizationGadget<Schnorr, Fr>>::verify::<_, Blake2sGadget>(
@@ -170,6 +178,8 @@ fn schnorr_signature_verification_test() {
             &signature_gadget,
         )
         .unwrap();
+
+    assert_eq!(cs.num_constraints(), 49926);
 
     verification
         .enforce_equal(cs.ns(|| "check_verification"), &Boolean::constant(true))
