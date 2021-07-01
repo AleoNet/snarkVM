@@ -14,10 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, traits::DPCComponents, AccountError, AccountPrivateKey, PrivateKey, ViewKeyError, testnet1::SystemParameters, testnet1::instantiated::Components};
-use snarkvm_algorithms::traits::EncryptionScheme;
-use snarkvm_algorithms::SignatureScheme;
-use snarkvm_utilities::{FromBytes, ToBytes, to_bytes};
+use crate::{
+    account_format,
+    testnet1::{instantiated::Components, SystemParameters},
+    traits::DPCComponents,
+    AccountError,
+    AccountPrivateKey,
+    PrivateKey,
+    ViewKeyError,
+};
+use snarkvm_algorithms::{traits::EncryptionScheme, SignatureScheme};
+use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
 use base58::{FromBase58, ToBase58};
 use std::{
