@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub use crate::crh::pedersen_parameters::PedersenSize;
-
 use crate::{
     crh::{PedersenCRH, PedersenCRHParameters},
     traits::CRH,
@@ -28,18 +26,20 @@ use rand::Rng;
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PedersenCommitmentParameters<G: Group, S: PedersenSize> {
+pub struct PedersenCommitmentParameters<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub bases: Vec<Vec<G>>,
     pub random_base: Vec<G>,
-    pub crh: PedersenCRH<G, S>,
+    pub crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
-impl<G: Group, S: PedersenSize> PedersenCommitmentParameters<G, S> {
+impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
+{
     pub fn setup<R: Rng>(rng: &mut R) -> Self {
-        let bases = (0..S::NUM_WINDOWS)
-            .map(|_| Self::base(S::WINDOW_SIZE, rng))
+        let bases = (0..NUM_WINDOWS)
+            .map(|_| Self::base(WINDOW_SIZE, rng))
             .collect::<Vec<Vec<G>>>();
-        let random_base = Self::base(S::WINDOW_SIZE, rng);
+        let random_base = Self::base(WINDOW_SIZE, rng);
         let crh_parameters = PedersenCRHParameters::from(bases.clone());
         let crh = PedersenCRH::from(crh_parameters);
         Self {
@@ -60,8 +60,8 @@ impl<G: Group, S: PedersenSize> PedersenCommitmentParameters<G, S> {
     }
 }
 
-impl<F: Field, G: Group + ToConstraintField<F>, S: PedersenSize> ToConstraintField<F>
-    for PedersenCommitmentParameters<G, S>
+impl<F: Field, G: Group + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToConstraintField<F>
+    for PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
@@ -69,7 +69,9 @@ impl<F: Field, G: Group + ToConstraintField<F>, S: PedersenSize> ToConstraintFie
     }
 }
 
-impl<G: Group, S: PedersenSize> ToBytes for PedersenCommitmentParameters<G, S> {
+impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
+    for PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
+{
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (self.bases.len() as u32).write(&mut writer)?;
         for base in &self.bases {
@@ -90,7 +92,9 @@ impl<G: Group, S: PedersenSize> ToBytes for PedersenCommitmentParameters<G, S> {
     }
 }
 
-impl<G: Group, S: PedersenSize> FromBytes for PedersenCommitmentParameters<G, S> {
+impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
+    for PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
+{
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let num_bases: u32 = FromBytes::read(&mut reader)?;
@@ -115,8 +119,9 @@ impl<G: Group, S: PedersenSize> FromBytes for PedersenCommitmentParameters<G, S>
             random_base.push(g);
         }
 
-        let crh_parameters: <PedersenCRH<G, S> as CRH>::Parameters = FromBytes::read(&mut reader)?;
-        let crh = PedersenCRH::<G, S>::from(crh_parameters);
+        let crh_parameters: <PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE> as CRH>::Parameters =
+            FromBytes::read(&mut reader)?;
+        let crh = PedersenCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::from(crh_parameters);
 
         Ok(Self {
             bases,

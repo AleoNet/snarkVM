@@ -15,15 +15,16 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    account::{AccountAddress, AccountViewKey},
-    errors::DPCError,
     testnet1::{
         parameters::SystemParameters,
         payload::Payload,
         record::{encrypted_record::*, record_encoding::*, Record},
-        BaseDPCComponents,
+        Testnet1Components,
     },
     traits::{DPCComponents, RecordEncodingScheme, RecordScheme},
+    AccountAddress,
+    AccountViewKey,
+    DPCError,
 };
 use snarkvm_algorithms::{
     encoding::Elligator2,
@@ -37,15 +38,15 @@ use itertools::Itertools;
 use rand::Rng;
 use std::marker::PhantomData;
 
-type BaseField<T> = <<T as BaseDPCComponents>::EncryptionModelParameters as ModelParameters>::BaseField;
+type BaseField<T> = <<T as Testnet1Components>::EncryptionModelParameters as ModelParameters>::BaseField;
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: BaseDPCComponents"),
-    PartialEq(bound = "C: BaseDPCComponents"),
-    Eq(bound = "C: BaseDPCComponents")
+    Clone(bound = "C: Testnet1Components"),
+    PartialEq(bound = "C: Testnet1Components"),
+    Eq(bound = "C: Testnet1Components")
 )]
-pub struct RecordEncryptionGadgetComponents<C: BaseDPCComponents> {
+pub struct RecordEncryptionGadgetComponents<C: Testnet1Components> {
     /// Record field element representations
     pub record_field_elements: Vec<<C::EncryptionModelParameters as ModelParameters>::BaseField>,
     /// Record group element encodings - Represented in (x,y) affine coordinates
@@ -58,7 +59,7 @@ pub struct RecordEncryptionGadgetComponents<C: BaseDPCComponents> {
     pub encryption_blinding_exponents: Vec<<C::AccountEncryption as EncryptionScheme>::BlindingExponent>,
 }
 
-impl<C: BaseDPCComponents> Default for RecordEncryptionGadgetComponents<C> {
+impl<C: Testnet1Components> Default for RecordEncryptionGadgetComponents<C> {
     fn default() -> Self {
         // TODO (raychu86) Fix the lengths to be generic
         let record_encoding_length = 7;
@@ -84,9 +85,9 @@ impl<C: BaseDPCComponents> Default for RecordEncryptionGadgetComponents<C> {
     }
 }
 
-pub struct RecordEncryption<C: BaseDPCComponents>(PhantomData<C>);
+pub struct RecordEncryption<C: Testnet1Components>(PhantomData<C>);
 
-impl<C: BaseDPCComponents> RecordEncryption<C> {
+impl<C: Testnet1Components> RecordEncryption<C> {
     /// Encrypt the given vector of records and returns
     /// 1. Encryption Randomness
     /// 2. Encrypted record
@@ -149,7 +150,7 @@ impl<C: BaseDPCComponents> RecordEncryption<C> {
 
         let mut plaintext = Vec::with_capacity(plaintext_elements.len());
         for element in plaintext_elements {
-            let plaintext_element = <C as BaseDPCComponents>::EncryptionGroup::read(&to_bytes![element]?[..])?;
+            let plaintext_element = <C as Testnet1Components>::EncryptionGroup::read(&to_bytes![element]?[..])?;
 
             plaintext.push(plaintext_element);
         }
@@ -157,8 +158,8 @@ impl<C: BaseDPCComponents> RecordEncryption<C> {
         // Deserialize the plaintext record into record components
         let record_components = RecordEncoding::<
             C,
-            <C as BaseDPCComponents>::EncryptionModelParameters,
-            <C as BaseDPCComponents>::EncryptionGroup,
+            <C as Testnet1Components>::EncryptionModelParameters,
+            <C as Testnet1Components>::EncryptionGroup,
         >::decode(plaintext, encrypted_record.final_fq_high_selector)?;
 
         let DecodedRecord {
@@ -226,12 +227,12 @@ impl<C: BaseDPCComponents> RecordEncryption<C> {
         for ciphertext_element in &encrypted_record.encrypted_record {
             // Compress the ciphertext element to the affine x coordinate
             let ciphertext_element_affine =
-                <C as BaseDPCComponents>::EncryptionGroup::read(&to_bytes![ciphertext_element]?[..])?.into_affine();
+                <C as Testnet1Components>::EncryptionGroup::read(&to_bytes![ciphertext_element]?[..])?.into_affine();
             let ciphertext_x_coordinate = ciphertext_element_affine.to_x_coordinate();
 
             // Fetch the ciphertext selector bit
             let selector =
-                match <<C as BaseDPCComponents>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
+                match <<C as Testnet1Components>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
                     ciphertext_x_coordinate,
                     true,
                 ) {
@@ -298,15 +299,15 @@ impl<C: BaseDPCComponents> RecordEncryption<C> {
             if i == 0 {
                 // Serial number nonce
                 let record_field_element =
-                    <<C as BaseDPCComponents>::EncryptionModelParameters as ModelParameters>::BaseField::read(
+                    <<C as Testnet1Components>::EncryptionModelParameters as ModelParameters>::BaseField::read(
                         &to_bytes![element]?[..],
                     )?;
                 record_field_elements.push(record_field_element);
             } else {
                 // Decode the encoded groups into their respective field elements
                 let record_field_element = Elligator2::<
-                    <C as BaseDPCComponents>::EncryptionModelParameters,
-                    <C as BaseDPCComponents>::EncryptionGroup,
+                    <C as Testnet1Components>::EncryptionModelParameters,
+                    <C as Testnet1Components>::EncryptionGroup,
                 >::decode(&element_affine, *fq_high)?;
 
                 record_field_elements.push(record_field_element);
@@ -314,10 +315,10 @@ impl<C: BaseDPCComponents> RecordEncryption<C> {
 
             // Fetch the x and y coordinates of the serialized group elements
             // These values will be used in the inner circuit to validate the Elligator2 encoding
-            let x = <<C as BaseDPCComponents>::EncryptionModelParameters as ModelParameters>::BaseField::read(
+            let x = <<C as Testnet1Components>::EncryptionModelParameters as ModelParameters>::BaseField::read(
                 &to_bytes![element_affine.to_x_coordinate()]?[..],
             )?;
-            let y = <<C as BaseDPCComponents>::EncryptionModelParameters as ModelParameters>::BaseField::read(
+            let y = <<C as Testnet1Components>::EncryptionModelParameters as ModelParameters>::BaseField::read(
                 &to_bytes![element_affine.to_y_coordinate()]?[..],
             )?;
             record_group_encoding.push((x, y));
@@ -349,11 +350,11 @@ impl<C: BaseDPCComponents> RecordEncryption<C> {
         for ciphertext_element in encrypted_record.iter() {
             // Compress the ciphertext element to the affine x coordinate
             let ciphertext_element_affine =
-                <C as BaseDPCComponents>::EncryptionGroup::read(&to_bytes![ciphertext_element]?[..])?.into_affine();
+                <C as Testnet1Components>::EncryptionGroup::read(&to_bytes![ciphertext_element]?[..])?.into_affine();
 
             // Fetch the ciphertext selector bit
             let selector =
-                match <<C as BaseDPCComponents>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
+                match <<C as Testnet1Components>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
                     ciphertext_element_affine.to_x_coordinate(),
                     true,
                 ) {

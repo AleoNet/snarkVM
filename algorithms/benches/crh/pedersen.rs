@@ -17,10 +17,7 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_algorithms::{
-    crh::pedersen::{PedersenCRH, PedersenSize},
-    traits::CRH,
-};
+use snarkvm_algorithms::{crh::pedersen::PedersenCRH, traits::CRH};
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
 
 use criterion::Criterion;
@@ -29,29 +26,24 @@ use rand::{
     {self},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CRHSize;
-
-impl PedersenSize for CRHSize {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 32;
-}
+const NUM_WINDOWS: usize = 8;
+const WINDOW_SIZE: usize = 32;
 
 fn pedersen_crh_setup(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
     c.bench_function("Pedersen Commitment Setup", move |b| {
-        b.iter(|| <PedersenCRH<EdwardsProjective, CRHSize> as CRH>::setup(rng))
+        b.iter(|| <PedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup(rng))
     });
 }
 
 fn pedersen_crh_hash(c: &mut Criterion) {
     let rng = &mut thread_rng();
-    let parameters = <PedersenCRH<EdwardsProjective, CRHSize> as CRH>::setup(rng);
+    let parameters = <PedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup(rng);
     let input = vec![127u8; 32];
 
     c.bench_function("Pedersen Commitment Evaluation", move |b| {
-        b.iter(|| <PedersenCRH<EdwardsProjective, CRHSize> as CRH>::hash(&parameters, &input).unwrap())
+        b.iter(|| <PedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::hash(&parameters, &input).unwrap())
     });
 }
 

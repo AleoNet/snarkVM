@@ -29,6 +29,14 @@ impl MarlinMode for MarlinTestnet1Mode {
     const RECURSION: bool = false;
 }
 
+/// The Marlin testnet2 mode does not assume recursive proofs of any depth.
+#[derive(Clone)]
+pub struct MarlinTestnet2Mode;
+
+impl MarlinMode for MarlinTestnet2Mode {
+    const RECURSION: bool = true;
+}
+
 /// The Marlin default mode assumes a recursive proof of at least depth-1.
 #[derive(Clone)]
 pub struct MarlinRecursiveMode;

@@ -37,8 +37,18 @@ path = "../gadgets"
 version = "0.6.0"
 default-features = false
 
+[dependencies.snarkvm-marlin]
+path = "../marlin"
+version = "0.6.0"
+default-features = false
+
 [dependencies.snarkvm-parameters]
 path = "../parameters"
+version = "0.6.0"
+default-features = false
+
+[dependencies.snarkvm-polycommit]
+path = "../polycommit"
 version = "0.6.0"
 default-features = false
 
@@ -112,10 +122,12 @@ default = [
   "snarkvm-curves/default",
   "snarkvm-fields/default",
   "snarkvm-gadgets/default",
+  "snarkvm-marlin/default",
   "snarkvm-parameters/default",
   "snarkvm-utilities/default"
 ]
-wasm = [ "full", "snarkvm-algorithms/wasm", "snarkvm-gadgets/full" ]
-print-trace = [ "snarkvm-profiler/print-trace" ]
-full = [ "testnet1" ]
-testnet1 = [ "snarkvm-r1cs" ]
+wasm = ["full", "snarkvm-algorithms/wasm", "snarkvm-gadgets/full"]
+print-trace = ["snarkvm-profiler/print-trace"]
+full = ["testnet1", "testnet2"]
+testnet1 = ["snarkvm-r1cs"]
+testnet2 = ["snarkvm-r1cs"]
