@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::{FftParameters, FieldParameters, Fp256, Fp256Parameters};
+use snarkvm_fields::{FftParameters, FieldParameters, Fp256, Fp256Parameters, PoseidonMDSParameters};
 use snarkvm_utilities::biginteger::BigInteger256 as BigInteger;
 
 /// BLS12-377 scalar field.
@@ -136,4 +136,72 @@ impl FieldParameters for FrParameters {
         0x655e9a2ca55660b4,
         0x12ab,
     ]);
+}
+
+impl PoseidonMDSParameters for FrParameters {
+    const POSEIDON_ALPHA: u64 = 17;
+    const POSEIDON_FULL_ROUNDS: u32 = 8;
+    const POSEIDON_MDS: [[Self::BigInteger; 3]; 3] = [
+        [
+            BigInteger([
+                8806513028658363326u64,
+                15053186071727540304u64,
+                5696515454272365748u64,
+                970742914458760010u64,
+            ]),
+            BigInteger([
+                2918270005146215558u64,
+                2774925947115011592u64,
+                5884721450907856879u64,
+                950800771623181517u64,
+            ]),
+            BigInteger([
+                2516930343207584478u64,
+                11196757859080427836u64,
+                5031588339554890784u64,
+                175314450148713644u64,
+            ]),
+        ],
+        [
+            BigInteger([
+                13760249783872587504u64,
+                7704044940907060409u64,
+                12350625633276941392u64,
+                503573740682430072u64,
+            ]),
+            BigInteger([
+                9157404549907193636u64,
+                4323711154235637448u64,
+                1124534761540483572u64,
+                372520853795536861u64,
+            ]),
+            BigInteger([
+                6522979333561834021u64,
+                8436467654835417512u64,
+                12901651654483235701u64,
+                506126110716555896u64,
+            ]),
+        ],
+        [
+            BigInteger([
+                15823185592847918141u64,
+                4852181963844857702u64,
+                6821048097516286084u64,
+                364049575130405898u64,
+            ]),
+            BigInteger([
+                4781480296693221917u64,
+                7519174151579037511u64,
+                9739240730242330220u64,
+                13442168907709878u64,
+            ]),
+            BigInteger([
+                423385975790009902u64,
+                8737951638793074235u64,
+                8548350117022136149u64,
+                1319220933125114985u64,
+            ]),
+        ],
+    ];
+    const POSEIDON_PARTIAL_ROUNDS: u32 = 31;
 }
