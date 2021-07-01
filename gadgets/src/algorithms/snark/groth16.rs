@@ -54,7 +54,7 @@ pub struct VerifyingKeyGadget<PairingE: PairingEngine, ConstraintF: Field, P: Pa
 }
 
 impl<PairingE: PairingEngine, ConstraintF: Field, P: PairingGadget<PairingE, ConstraintF>>
-    PrepareToGadget<PreparedVerifyingKeyGadget<Pairing, ConstraintF, P>, ConstraintFF>
+    PrepareToGadget<PreparedVerifyingKeyGadget<PairingE, ConstraintF, P>, ConstraintF>
     for VerifyingKeyGadget<PairingE, ConstraintF, P>
 {
     fn prepare<CS: ConstraintSystem<ConstraintF>>(
