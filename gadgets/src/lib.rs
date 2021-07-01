@@ -58,11 +58,11 @@ pub mod curves;
 pub mod errors;
 pub use errors::*;
 
-#[cfg(feature = "fields")]
 pub mod fields;
+pub use fields::*;
 
-#[cfg(feature = "integers")]
 pub mod integers;
+pub use integers::*;
 
 #[cfg(feature = "nonnative")]
 pub mod nonnative;
@@ -71,5 +71,5 @@ pub mod traits;
 pub use traits::*;
 
 pub mod prelude {
-    pub use crate::{bits::*, errors::*, traits::*};
+    pub use crate::{bits::*, errors::*, fields::*, integers::*, traits::*};
 }
