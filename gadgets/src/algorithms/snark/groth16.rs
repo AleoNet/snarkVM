@@ -31,6 +31,7 @@ use crate::{
         curves::{GroupGadget, PairingGadget},
         eq::EqGadget,
     },
+    PrepareToGadget,
 };
 
 #[derive(Derivative)]
@@ -53,7 +54,8 @@ pub struct VerifyingKeyGadget<PairingE: PairingEngine, ConstraintF: Field, P: Pa
 }
 
 impl<PairingE: PairingEngine, ConstraintF: Field, P: PairingGadget<PairingE, ConstraintF>>
-    VerifyingKeyGadget<PairingE, ConstraintF, P>
+    PrepareToGadget<PreparedVerifyingKeyGadget<Pairing, ConstraintF, P>, ConstraintFF>
+    for VerifyingKeyGadget<PairingE, ConstraintF, P>
 {
     fn prepare<CS: ConstraintSystem<ConstraintF>>(
         &self,
