@@ -25,17 +25,111 @@ use crate::{
     traits::alloc::{AllocBytesGadget, AllocGadget},
 };
 
+pub enum RandProvider<F: Field> {
+    PowerSeries(F)
+}
+
+impl<F: Field> RandProvider<F> {
+    pub fn output_random_elements(&self, num: usize) -> Vec<F> {
+        let mut res = Vec::new();
+
+        match self {
+            RandProvider::PowerSeries(challenge) => {
+                let mut cur = F::one();
+                res.push(cur);
+
+                for _ in 1..num {
+                    cur *= challenge;
+                    res.push(cur)
+                }
+            }
+        }
+
+        res
+    }
+}
+
+pub trait PrepareToGadget<T, F: Field> : Sized {
+    fn prepare<CS: ConstraintSystem<F>>(&self, cs : CS) -> Result<T, SynthesisError>;
+}
+
 pub trait SNARKVerifierGadget<N: SNARK, F: Field> {
-    type VerificationKeyGadget: AllocGadget<N::VerifyingKey, F> + AllocBytesGadget<Vec<u8>, F> + ToBytesGadget<F>;
+    type PreparedVerificationKeyGadget: AllocGadget<N::PreparedVerifyingKey, F>;
+    type VerificationKeyGadget: AllocGadget<N::VerifyingKey, F> + AllocBytesGadget<Vec<u8>, F> + ToBytesGadget<F> + PrepareToGadget<Self::PreparedVerificationKeyGadget, F>;
     type ProofGadget: AllocGadget<N::Proof, F> + AllocBytesGadget<Vec<u8>, F>;
     type Input: ToBitsBEGadget<F> + Clone + ?Sized;
 
-    fn check_verify<'a, CS: ConstraintSystem<F>, I: Iterator<Item = Self::Input>>(
+    fn check_verify_with_processed_vk<CS: ConstraintSystem<F>, I: Iterator<Item = Self::Input>>(
         cs: CS,
-        verification_key: &Self::VerificationKeyGadget,
+        processed_verification_key: &Self::PreparedVerificationKeyGadget,
         input: I,
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError>;
+
+    fn check_verify<'a, CS: ConstraintSystem<F>, I: Iterator<Item = Self::Input>>(
+        mut cs: CS,
+        verification_key: &Self::VerificationKeyGadget,
+        input: I,
+        proof: &Self::ProofGadget,
+    ) -> Result<(), SynthesisError> {
+        let processed_verification_key = verification_key.prepare(&mut cs.ns(||"prepare the verification key"))?;
+        Self::check_verify_with_processed_vk(&mut cs.ns(|| "verify with the processed key"), &processed_verification_key, input, proof)
+    }
+
+    fn batch_check_verify_same_processed_vk<'a, CS: ConstraintSystem<F>>(
+        mut cs: CS,
+        processed_verification_key: &Self::PreparedVerificationKeyGadget,
+        inputs: &[Vec<Self::Input>],
+        proofs: &[Self::ProofGadget],
+        _rand: &RandProvider<F>,
+    ) -> Result<(), SynthesisError> {
+        assert_eq!(inputs.len(), proofs.len());
+        for (i, (input, proof)) in inputs.iter().zip(proofs.iter()).enumerate() {
+            Self::check_verify_with_processed_vk(&mut cs.ns(|| format!("verify proof {}", i)), processed_verification_key, (*input).iter().cloned(), proof)?;
+        }
+        Ok(())
+    }
+
+    fn batch_check_verify_same_vk<'a, CS: ConstraintSystem<F>>(
+        mut cs: CS,
+        verification_key: &Self::VerificationKeyGadget,
+        inputs: &[Vec<Self::Input>],
+        proofs: &[Self::ProofGadget],
+        rand: &RandProvider<F>,
+    ) -> Result<(), SynthesisError> {
+        let processed_verification_key = verification_key.prepare(&mut cs.ns(||"prepare the verification key"))?;
+        Self::batch_check_verify_same_processed_vk(&mut cs.ns(|| "verify with the processed key"), &processed_verification_key, inputs, proofs, rand)
+    }
+
+    fn batch_check_verify_different_processed_vk<'a, CS: ConstraintSystem<F>>(
+        mut cs: CS,
+        processed_verification_keys: &[Self::PreparedVerificationKeyGadget],
+        inputs: &[Vec<Self::Input>],
+        proofs: &[Self::ProofGadget],
+        _rand: &RandProvider<F>,
+    ) -> Result<(), SynthesisError> {
+        assert_eq!(processed_verification_keys.len(), inputs.len());
+        assert_eq!(inputs.len(), proofs.len());
+        for (i, ((processed_verification_key, input), proof)) in processed_verification_keys.iter().zip(inputs.iter()).zip(proofs.iter()).enumerate() {
+            Self::check_verify_with_processed_vk(&mut cs.ns(|| format!("verify proof {}", i)), processed_verification_key, (*input).iter().cloned(), proof)?;
+        }
+        Ok(())
+    }
+
+    fn batch_check_verify_different_vk<'a, CS: ConstraintSystem<F>>(
+        mut cs: CS,
+        verification_keys: &[Self::VerificationKeyGadget],
+        inputs: &[Vec<Self::Input>],
+        proofs: &[Self::ProofGadget],
+        _rand: &RandProvider<F>,
+    ) -> Result<(), SynthesisError> {
+        assert_eq!(verification_keys.len(), inputs.len());
+        assert_eq!(inputs.len(), proofs.len());
+        for (i, ((verification_key, input), proof)) in verification_keys.iter().zip(inputs.iter()).zip(proofs.iter()).enumerate() {
+            Self::check_verify(&mut cs.ns(|| format!("verify proof {}", i)), verification_key, (*input).iter().cloned(), proof)?;
+        }
+        Ok(())
+    }
 }
 
 // TODO (raychu86): Unify with the `SNARK` trait. Currently the `SNARKGadget` is only used for `marlin`.
