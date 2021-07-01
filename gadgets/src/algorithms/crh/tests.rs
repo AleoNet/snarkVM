@@ -43,8 +43,8 @@ use crate::{
     },
 };
 
-const PEDERSEN_NUM_WINDOWS: usize = 32;
-const PEDERSEN_WINDOW_SIZE: usize = 48;
+const PEDERSEN_NUM_WINDOWS: usize = 8;
+const PEDERSEN_WINDOW_SIZE: usize = 128;
 
 const BHP_NUM_WINDOWS: usize = 32;
 const BHP_WINDOW_SIZE: usize = 48;
