@@ -46,6 +46,16 @@ impl PrivateKey {
     }
 }
 
+impl FromStr for PrivateKey {
+    type Err = PrivateKeyError;
+
+    fn from_str(private_key: &str) -> Result<Self, Self::Err> {
+        Ok(Self {
+            private_key: AccountPrivateKey::<Components>::from_str(private_key)?,
+        })
+    }
+}
+
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "C: DPCComponents"),
