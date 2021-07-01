@@ -179,7 +179,7 @@ fn schnorr_signature_verification_test() {
         )
         .unwrap();
 
-    assert_eq!(cs.num_constraints(), 49926);
+    assert_eq!(cs.num_constraints(), 49803);
 
     verification
         .enforce_equal(cs.ns(|| "check_verification"), &Boolean::constant(true))

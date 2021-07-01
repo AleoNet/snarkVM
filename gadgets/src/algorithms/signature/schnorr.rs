@@ -21,7 +21,7 @@ use itertools::Itertools;
 
 use snarkvm_algorithms::signature::{SchnorrOutput, SchnorrParameters, SchnorrPublicKey, SchnorrSignature};
 use snarkvm_curves::traits::Group;
-use snarkvm_fields::{Field, FieldParameters, PrimeField};
+use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{
     serialize::{CanonicalDeserialize, CanonicalSerialize},
@@ -380,61 +380,21 @@ impl<
             .verifier_challenge
             .to_bytes(cs.ns(|| "verifier_challenge_to_bytes"))?;
 
-        // TODO (raychu86): Genericize this. Currently the following is the `from_random_bytes` defined from `impl_field_from_random_bytes_with_flags`.
-
-        let repr_shave_bits =
-            <<<G as Group>::ScalarField as PrimeField>::Parameters as FieldParameters>::REPR_SHAVE_BITS;
-
-        // Construct the fp256 mask.
-        let mask: u64 = 0xffffffffffffffff >> repr_shave_bits;
-        let mask_bytes = UInt8::alloc_vec(&mut cs.ns(|| "Alloc mask"), &to_bytes![mask]?)?;
-
-        let num_bytes: usize = verifier_challenge_bytes.len();
-
         let total_bits = <G as Group>::ScalarField::size_in_bits();
         let mut expected_bits = Vec::with_capacity(total_bits);
         let mut found_bits = Vec::with_capacity(total_bits);
 
         // Check all the bits up to the bit size of the Field gadget.
-
-        // Check the main bytes normally
-        for (_, (expected_byte, found_byte)) in verifier_challenge_bytes[..num_bytes - 8]
-            .iter()
-            .zip_eq(&hash_bytes[..num_bytes - 8])
-            .enumerate()
-        {
-            for (_, (expected_bit, found_bit)) in expected_byte
+        for (i, (expected_byte, found_byte)) in verifier_challenge_bytes.iter().zip_eq(&hash_bytes).enumerate() {
+            for (j, (expected_bit, found_bit)) in expected_byte
                 .to_bits_le()
                 .iter()
                 .zip_eq(found_byte.to_bits_le())
                 .enumerate()
             {
-                if expected_bits.len() < total_bits {
+                if (i * 8 + j) < total_bits {
                     expected_bits.push(expected_bit.clone());
                     found_bits.push(found_bit.clone());
-                }
-            }
-        }
-
-        // Check the final 8 bytes with the mask
-        for (i, ((expected_byte, found_byte), mask_byte)) in verifier_challenge_bytes[(num_bytes - 8 as usize)..]
-            .iter()
-            .zip_eq(&hash_bytes[(num_bytes - 8 as usize)..])
-            .zip_eq(mask_bytes)
-            .enumerate()
-        {
-            for (j, ((expected_bit, found_bit), mask_bit)) in expected_byte
-                .to_bits_le()
-                .iter()
-                .zip_eq(found_byte.to_bits_le())
-                .zip_eq(mask_byte.to_bits_le())
-                .enumerate()
-            {
-                if expected_bits.len() < total_bits {
-                    let new_found_bit = Boolean::and(cs.ns(|| format!("mask_{}_{}", i, j)), &found_bit, &mask_bit)?;
-
-                    expected_bits.push(expected_bit.clone());
-                    found_bits.push(new_found_bit.clone());
                 }
             }
         }
