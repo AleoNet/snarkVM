@@ -18,14 +18,8 @@ use snarkvm_utilities::bytes::{FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct Payload([u8; 32]);
-
-impl Default for Payload {
-    fn default() -> Self {
-        Self([0u8; 32])
-    }
-}
 
 impl Payload {
     pub fn to_bytes(&self) -> &[u8] {
@@ -56,8 +50,6 @@ impl ToBytes for Payload {
 impl FromBytes for Payload {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let payload: [u8; 32] = FromBytes::read(&mut reader)?;
-
-        Ok(Self(payload))
+        Ok(Self(FromBytes::read(&mut reader)?))
     }
 }

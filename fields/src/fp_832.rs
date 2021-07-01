@@ -23,6 +23,8 @@ use crate::{
     FieldParameters,
     LegendreSymbol,
     One,
+    PoseidonMDSField,
+    PoseidonMDSParameters,
     PrimeField,
     SquareRootField,
     Zero,
@@ -1147,5 +1149,32 @@ impl<'a, P: Fp832Parameters> DivAssign<&'a Self> for Fp832<P> {
     #[inline]
     fn div_assign(&mut self, other: &Self) {
         self.mul_assign(&other.inverse().unwrap());
+    }
+}
+
+impl<P: Fp832Parameters + PoseidonMDSParameters> PoseidonMDSField for Fp832<P> {
+    fn poseidon_mds_matrix() -> Vec<Vec<Self>> {
+        let mut mds = Vec::<Vec<Self>>::new();
+        for row in P::POSEIDON_MDS.iter() {
+            mds.push(
+                row.iter()
+                    .map(|b| Self::from_repr_raw(*b))
+                    .collect::<Vec<Self>>()
+                    .to_vec(),
+            );
+        }
+        mds
+    }
+
+    fn poseidon_alpha() -> u64 {
+        P::POSEIDON_ALPHA
+    }
+
+    fn poseidon_number_full_rounds() -> u32 {
+        P::POSEIDON_FULL_ROUNDS
+    }
+
+    fn poseidon_number_partial_rounds() -> u32 {
+        P::POSEIDON_PARTIAL_ROUNDS
     }
 }

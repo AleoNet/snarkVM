@@ -40,9 +40,6 @@ pub const KEY_CURR_SN_INDEX: &str = "CURRENT_SN_INDEX";
 pub const KEY_CURR_MEMO_INDEX: &str = "CURRENT_MEMO_INDEX";
 pub const KEY_CURR_DIGEST: &str = "CURRENT_DIGEST";
 
-pub mod dpc;
-pub use dpc::*;
-
 pub mod ledger;
 pub use ledger::*;
 
@@ -51,6 +48,12 @@ pub use memdb::*;
 
 pub mod storage;
 pub use storage::*;
+
+pub mod testnet1;
+pub use testnet1::*;
+
+pub mod testnet2;
+pub use testnet2::*;
 
 /// Represents address of certain transaction within block
 #[derive(Debug, PartialEq, Clone)]

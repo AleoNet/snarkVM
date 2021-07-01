@@ -19,7 +19,7 @@ use std::sync::Arc;
 use blake2::{digest::Digest, Blake2s};
 
 use snarkvm_algorithms::{
-    crh::{BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH, PedersenSize},
+    crh::{BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH},
     define_masked_merkle_tree_parameters,
     merkle_tree::MerkleTree,
     traits::{MaskedMerkleParameters, MerkleParameters, CRH},
@@ -46,19 +46,11 @@ use crate::{
     },
 };
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Size;
-impl PedersenSize for Size {
-    const NUM_WINDOWS: usize = 256;
-    const WINDOW_SIZE: usize = 4;
-}
+const PEDERSEN_NUM_WINDOWS: usize = 256;
+const PEDERSEN_WINDOW_SIZE: usize = 4;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BoweHopwoodSize;
-impl PedersenSize for BoweHopwoodSize {
-    const NUM_WINDOWS: usize = 32;
-    const WINDOW_SIZE: usize = 60;
-}
+const BHP_NUM_WINDOWS: usize = 32;
+const BHP_WINDOW_SIZE: usize = 60;
 
 fn generate_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, F>>(
     leaves: &[[u8; 30]],
@@ -203,7 +195,7 @@ mod merkle_tree_pedersen_crh_on_affine {
 
     define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
 
-    type H = PedersenCRH<EdwardsAffine, Size>;
+    type H = PedersenCRH<EdwardsAffine, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
     type HG = PedersenCRHGadget<EdwardsAffine, Fr, EdwardsBlsGadget>;
 
     #[test]
@@ -233,7 +225,7 @@ mod merkle_tree_compressed_pedersen_crh_on_projective {
 
     define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
 
-    type H = PedersenCompressedCRH<EdwardsProjective, Size>;
+    type H = PedersenCompressedCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
     type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBlsGadget>;
 
     #[test]
@@ -284,7 +276,7 @@ mod merkle_tree_bowe_hopwood_pedersen_compressed_crh_on_projective {
 
     define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
 
-    type H = BoweHopwoodPedersenCompressedCRH<EdwardsProjective, BoweHopwoodSize>;
+    type H = BoweHopwoodPedersenCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
     type HG = BoweHopwoodPedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBlsGadget>;
 
     #[test]

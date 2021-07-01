@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    errors::DPCError,
-    testnet1::{BaseDPCComponents, LocalData, NoopCircuit, PrivateProgramInput, ProgramLocalData},
+    testnet1::{LocalData, NoopCircuit, PrivateProgramInput, ProgramLocalData, Testnet1Components},
     traits::{ProgramScheme, RecordScheme},
+    DPCError,
 };
 use snarkvm_algorithms::traits::{CommitmentScheme, SNARK};
 use snarkvm_utilities::{to_bytes, ToBytes};
@@ -27,19 +27,19 @@ use std::marker::PhantomData;
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: BaseDPCComponents, S: SNARK"),
-    Debug(bound = "C: BaseDPCComponents, S: SNARK"),
-    PartialEq(bound = "C: BaseDPCComponents, S: SNARK"),
-    Eq(bound = "C: BaseDPCComponents, S: SNARK")
+    Clone(bound = "C: Testnet1Components, S: SNARK"),
+    Debug(bound = "C: Testnet1Components, S: SNARK"),
+    PartialEq(bound = "C: Testnet1Components, S: SNARK"),
+    Eq(bound = "C: Testnet1Components, S: SNARK")
 )]
-pub struct NoopProgram<C: BaseDPCComponents, S: SNARK> {
+pub struct NoopProgram<C: Testnet1Components, S: SNARK> {
     #[derivative(Default(value = "vec![0u8; 48]"))]
     identity: Vec<u8>,
     _components: PhantomData<C>,
     _snark: PhantomData<S>,
 }
 
-impl<C: BaseDPCComponents, S: SNARK> NoopProgram<C, S> {
+impl<C: Testnet1Components, S: SNARK> NoopProgram<C, S> {
     pub fn new(identity: Vec<u8>) -> Self {
         Self {
             identity,
@@ -49,7 +49,7 @@ impl<C: BaseDPCComponents, S: SNARK> NoopProgram<C, S> {
     }
 }
 
-impl<C: BaseDPCComponents, S: SNARK> ProgramScheme for NoopProgram<C, S>
+impl<C: Testnet1Components, S: SNARK> ProgramScheme for NoopProgram<C, S>
 where
     S: SNARK<AllocatedCircuit = NoopCircuit<C>, VerifierInput = ProgramLocalData<C>>,
 {

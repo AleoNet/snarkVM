@@ -19,7 +19,7 @@ use core::marker::PhantomData;
 use hashbrown::{HashMap, HashSet};
 
 use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{PoseidonMDSField, PrimeField};
 use snarkvm_gadgets::{
     bits::{Boolean, ToBitsLEGadget},
     fields::FpGadget,
@@ -97,7 +97,7 @@ pub struct VerifierThirdMsgVar<TargetField: PrimeField, BaseField: PrimeField> {
 /// The AHP gadget.
 pub struct AHPForR1CS<
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > where
@@ -112,7 +112,7 @@ pub struct AHPForR1CS<
 
 impl<
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > AHPForR1CS<TargetField, BaseField, PC, PCG>
@@ -1786,11 +1786,11 @@ mod test {
 
         let mut evaluation_labels = Vec::<(String, Fr)>::new();
 
-        for q in query_set.iter().cloned() {
-            if AHPForR1CSNative::<Fr>::LC_WITH_ZERO_EVAL.contains(&q.0.as_ref()) {
-                evaluations.insert(q, Fr::zero());
+        for (label, (_point_name, q)) in query_set.iter().cloned() {
+            if AHPForR1CSNative::<Fr>::LC_WITH_ZERO_EVAL.contains(&label.as_ref()) {
+                evaluations.insert((label, q), Fr::zero());
             } else {
-                evaluation_labels.push(q);
+                evaluation_labels.push((label, q));
             }
         }
         evaluation_labels.sort_by(|a, b| a.0.cmp(&b.0));
@@ -2087,11 +2087,11 @@ mod test {
 
         let mut evaluation_labels = Vec::<(String, Fr)>::new();
 
-        for q in query_set.iter().cloned() {
-            if AHPForR1CSNative::<Fr>::LC_WITH_ZERO_EVAL.contains(&q.0.as_ref()) {
-                evaluations.insert(q, Fr::zero());
+        for (label, (_point_name, q)) in query_set.iter().cloned() {
+            if AHPForR1CSNative::<Fr>::LC_WITH_ZERO_EVAL.contains(&label.as_ref()) {
+                evaluations.insert((label, q), Fr::zero());
             } else {
-                evaluation_labels.push(q);
+                evaluation_labels.push((label, q));
             }
         }
         evaluation_labels.sort_by(|a, b| a.0.cmp(&b.0));
@@ -2160,11 +2160,13 @@ mod test {
         let mut sorted_query_set_gadgets: Vec<_> = query_set_gadgets.0.iter().collect();
         sorted_query_set_gadgets.sort_by(|a, b| a.0.cmp(&b.0));
 
-        for (i, (query_native, query_gadget)) in query_set_native.iter().zip(sorted_query_set_gadgets).enumerate() {
-            assert_eq!(query_native.0, query_gadget.0);
+        for (i, ((label, (_query_point_name, query_native)), query_gadget)) in
+            query_set_native.iter().zip(sorted_query_set_gadgets).enumerate()
+        {
+            assert_eq!(label.clone(), query_gadget.0);
 
             let expected_query =
-                NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_query{}", i)), || Ok(query_native.1)).unwrap();
+                NonNativeFieldVar::alloc(cs.ns(|| format!("alloc_query{}", i)), || Ok(query_native)).unwrap();
 
             expected_query
                 .enforce_equal(cs.ns(|| format!("enforce_eq_query_{}", i)), &query_gadget.1.value)

@@ -16,7 +16,7 @@
 
 use std::{borrow::Borrow, marker::PhantomData};
 
-use snarkvm_algorithms::crh::{PedersenCRH, PedersenCRHParameters, PedersenCompressedCRH, PedersenSize};
+use snarkvm_algorithms::crh::{PedersenCRH, PedersenCRHParameters, PedersenCompressedCRH};
 use snarkvm_curves::traits::{Group, ProjectiveCurve};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -33,18 +33,25 @@ use crate::{
 };
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct PedersenCRHParametersGadget<G: Group, S: PedersenSize, F: Field, GG: GroupGadget<G, F>> {
-    pub(crate) parameters: PedersenCRHParameters<G, S>,
+pub struct PedersenCRHParametersGadget<
+    G: Group,
+    F: Field,
+    GG: GroupGadget<G, F>,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> {
+    pub(crate) parameters: PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>,
     _group: PhantomData<GG>,
     _engine: PhantomData<F>,
 }
 
-impl<G: Group, S: PedersenSize, F: Field, GG: GroupGadget<G, F>> AllocGadget<PedersenCRHParameters<G, S>, F>
-    for PedersenCRHParametersGadget<G, S, F, GG>
+impl<G: Group, F: Field, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    AllocGadget<PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+    for PedersenCRHParametersGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCRHParameters<G, S>>,
+        T: Borrow<PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -59,7 +66,7 @@ impl<G: Group, S: PedersenSize, F: Field, GG: GroupGadget<G, F>> AllocGadget<Ped
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCRHParameters<G, S>>,
+        T: Borrow<PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -80,34 +87,34 @@ pub struct PedersenCRHGadget<G: Group, F: Field, GG: GroupGadget<G, F>> {
     _engine: PhantomData<F>,
 }
 
-impl<F: Field, G: Group, GG: GroupGadget<G, F>, S: PedersenSize> CRHGadget<PedersenCRH<G, S>, F>
-    for PedersenCRHGadget<G, F, GG>
+impl<F: Field, G: Group, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    CRHGadget<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for PedersenCRHGadget<G, F, GG>
 {
     type OutputGadget = GG;
-    type ParametersGadget = PedersenCRHParametersGadget<G, S, F, GG>;
+    type ParametersGadget = PedersenCRHParametersGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>;
 
     fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
         cs: CS,
         parameters: &Self::ParametersGadget,
         input: Vec<UInt8>,
     ) -> Result<Self::OutputGadget, SynthesisError> {
-        assert_eq!(parameters.parameters.bases.len(), S::NUM_WINDOWS);
+        assert_eq!(parameters.parameters.bases.len(), NUM_WINDOWS);
         // Pad the input if it is not the correct length.
-        let input_in_bits = pad_input_and_bitify::<S>(input);
+        let input_in_bits = pad_input_and_bitify::<NUM_WINDOWS, WINDOW_SIZE>(input);
 
-        GG::multi_scalar_multiplication(cs, &parameters.parameters.bases, input_in_bits.chunks(S::WINDOW_SIZE))
+        GG::multi_scalar_multiplication(cs, &parameters.parameters.bases, input_in_bits.chunks(WINDOW_SIZE))
     }
 }
 
-fn pad_input_and_bitify<S: PedersenSize>(input: Vec<UInt8>) -> Vec<Boolean> {
+fn pad_input_and_bitify<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(input: Vec<UInt8>) -> Vec<Boolean> {
     let mut padded_input = input;
-    padded_input.resize(S::WINDOW_SIZE * S::NUM_WINDOWS / 8, UInt8::constant(0u8));
-    assert_eq!(padded_input.len() * 8, S::WINDOW_SIZE * S::NUM_WINDOWS);
+    padded_input.resize(WINDOW_SIZE * NUM_WINDOWS / 8, UInt8::constant(0u8));
+    assert_eq!(padded_input.len() * 8, WINDOW_SIZE * NUM_WINDOWS);
     padded_input.into_iter().flat_map(|byte| byte.to_bits_le()).collect()
 }
 
-impl<F: PrimeField, G: Group, GG: GroupGadget<G, F>, S: PedersenSize> MaskedCRHGadget<PedersenCRH<G, S>, F>
-    for PedersenCRHGadget<G, F, GG>
+impl<F: PrimeField, G: Group, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    MaskedCRHGadget<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for PedersenCRHGadget<G, F, GG>
 {
     /// Evaluates a masked Pedersen hash on the given `input` using the given `mask`. The algorithm
     /// is based on the description in https://eprint.iacr.org/2020/190.pdf, which relies on the
@@ -130,29 +137,32 @@ impl<F: PrimeField, G: Group, GG: GroupGadget<G, F>, S: PedersenSize> MaskedCRHG
         if input.len() != mask.len() * 2 {
             return Err(SynthesisError::Unsatisfiable);
         }
-        let mask = <Self as MaskedCRHGadget<PedersenCRH<G, S>, F>>::extend_mask(cs.ns(|| "extend mask"), &mask)?;
+        let mask = <Self as MaskedCRHGadget<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>>::extend_mask(
+            cs.ns(|| "extend mask"),
+            &mask,
+        )?;
         // H(p) = sum of g_i^{p_i} for all i.
         let mask_hash = Self::check_evaluation_gadget(cs.ns(|| "evaluate mask"), parameters, mask.clone())?;
 
         // H_2(p) = sum of h_i^{1-2*p_i} for all i.
-        let mask_input_in_bits = pad_input_and_bitify::<S>(mask.clone());
+        let mask_input_in_bits = pad_input_and_bitify::<NUM_WINDOWS, WINDOW_SIZE>(mask.clone());
         let mask_symmetric_hash = GG::symmetric_multi_scalar_multiplication(
             cs.ns(|| "evaluate mask with mask bases"),
             &mask_parameters.parameters.bases,
-            mask_input_in_bits.chunks(S::WINDOW_SIZE),
+            mask_input_in_bits.chunks(WINDOW_SIZE),
         )?;
 
-        assert_eq!(parameters.parameters.bases.len(), S::NUM_WINDOWS);
+        assert_eq!(parameters.parameters.bases.len(), NUM_WINDOWS);
         // Pad the input if it is not the correct length.
-        let input_in_bits = pad_input_and_bitify::<S>(input);
-        let mask_in_bits = pad_input_and_bitify::<S>(mask);
+        let input_in_bits = pad_input_and_bitify::<NUM_WINDOWS, WINDOW_SIZE>(input);
+        let mask_in_bits = pad_input_and_bitify::<NUM_WINDOWS, WINDOW_SIZE>(mask);
 
         let masked_output = GG::masked_multi_scalar_multiplication(
             cs.ns(|| "multiscalar multiplication"),
             &parameters.parameters.bases,
-            input_in_bits.chunks(S::WINDOW_SIZE),
+            input_in_bits.chunks(WINDOW_SIZE),
             &mask_parameters.parameters.bases,
-            mask_in_bits.chunks(S::WINDOW_SIZE),
+            mask_in_bits.chunks(WINDOW_SIZE),
         )?;
         masked_output
             .add(cs.ns(|| "remove mask"), &mask_hash)?
@@ -167,11 +177,16 @@ pub struct PedersenCompressedCRHGadget<G: Group + ProjectiveCurve, F: Field, GG:
     _engine: PhantomData<F>,
 }
 
-impl<F: Field, G: Group + ProjectiveCurve, GG: CompressedGroupGadget<G, F>, S: PedersenSize>
-    CRHGadget<PedersenCompressedCRH<G, S>, F> for PedersenCompressedCRHGadget<G, F, GG>
+impl<
+    F: Field,
+    G: Group + ProjectiveCurve,
+    GG: CompressedGroupGadget<G, F>,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> CRHGadget<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for PedersenCompressedCRHGadget<G, F, GG>
 {
     type OutputGadget = GG::BaseFieldGadget;
-    type ParametersGadget = PedersenCRHParametersGadget<G, S, F, GG>;
+    type ParametersGadget = PedersenCRHParametersGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>;
 
     fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
         cs: CS,
@@ -183,8 +198,13 @@ impl<F: Field, G: Group + ProjectiveCurve, GG: CompressedGroupGadget<G, F>, S: P
     }
 }
 
-impl<F: PrimeField, G: Group + ProjectiveCurve, GG: CompressedGroupGadget<G, F>, S: PedersenSize>
-    MaskedCRHGadget<PedersenCompressedCRH<G, S>, F> for PedersenCompressedCRHGadget<G, F, GG>
+impl<
+    F: PrimeField,
+    G: Group + ProjectiveCurve,
+    GG: CompressedGroupGadget<G, F>,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> MaskedCRHGadget<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for PedersenCompressedCRHGadget<G, F, GG>
 {
     fn check_evaluation_gadget_masked<CS: ConstraintSystem<F>>(
         cs: CS,

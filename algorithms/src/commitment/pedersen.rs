@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub use crate::crh::pedersen_parameters::PedersenSize;
-
 use crate::{
     commitment::PedersenCommitmentParameters,
     errors::CommitmentError,
@@ -28,13 +26,15 @@ use snarkvm_utilities::bititerator::BitIteratorBE;
 use rand::Rng;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PedersenCommitment<G: Group, S: PedersenSize> {
-    pub parameters: PedersenCommitmentParameters<G, S>,
+pub struct PedersenCommitment<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+    pub parameters: PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
-impl<G: Group, S: PedersenSize> CommitmentScheme for PedersenCommitment<G, S> {
+impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
+    for PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
+{
     type Output = G;
-    type Parameters = PedersenCommitmentParameters<G, S>;
+    type Parameters = PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>;
     type Randomness = G::ScalarField;
 
     fn setup<R: Rng>(rng: &mut R) -> Self {
@@ -45,11 +45,11 @@ impl<G: Group, S: PedersenSize> CommitmentScheme for PedersenCommitment<G, S> {
 
     fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
         // If the input is too long, return an error.
-        if input.len() > S::WINDOW_SIZE * S::NUM_WINDOWS {
+        if input.len() > WINDOW_SIZE * NUM_WINDOWS {
             return Err(CommitmentError::IncorrectInputLength(
                 input.len(),
-                S::WINDOW_SIZE,
-                S::NUM_WINDOWS,
+                WINDOW_SIZE,
+                NUM_WINDOWS,
             ));
         }
 
@@ -72,8 +72,11 @@ impl<G: Group, S: PedersenSize> CommitmentScheme for PedersenCommitment<G, S> {
     }
 }
 
-impl<G: Group, S: PedersenSize> From<PedersenCommitmentParameters<G, S>> for PedersenCommitment<G, S> {
-    fn from(parameters: PedersenCommitmentParameters<G, S>) -> Self {
+impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    From<PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>>
+    for PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
+{
+    fn from(parameters: PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>) -> Self {
         Self { parameters }
     }
 }

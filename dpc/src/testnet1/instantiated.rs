@@ -22,15 +22,15 @@ use crate::{
         outer_circuit_verifier_input::OuterCircuitVerifierInput,
         program::{NoopCircuit, ProgramLocalData},
         transaction::Transaction,
-        BaseDPCComponents,
         LocalData as DPCLocalData,
+        Testnet1Components,
         DPC,
     },
     traits::DPCComponents,
 };
 use snarkvm_algorithms::{
     commitment::{Blake2sCommitment, PedersenCompressedCommitment},
-    crh::{BoweHopwoodPedersenCompressedCRH, PedersenSize},
+    crh::BoweHopwoodPedersenCompressedCRH,
     define_merkle_tree_parameters,
     encryption::GroupEncryption,
     prf::Blake2s,
@@ -61,174 +61,100 @@ use snarkvm_gadgets::fields::FpGadget;
 pub const NUM_INPUT_RECORDS: usize = 2;
 pub const NUM_OUTPUT_RECORDS: usize = 2;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct AccountWindow;
-impl PedersenSize for AccountWindow {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 192;
-}
+const ACCOUNT_NUM_WINDOWS: usize = 8;
+const ACCOUNT_WINDOW_SIZE: usize = 192;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct EncryptedRecordWindow;
+const ENCRYPTED_RECORD_NUM_WINDOWS: usize = 48;
+const ENCRYPTED_RECORD_WINDOW_SIZE: usize = 44;
 
-impl PedersenSize for EncryptedRecordWindow {
-    const NUM_WINDOWS: usize = 48;
-    const WINDOW_SIZE: usize = 44;
-}
+const INNER_CIRCUIT_ID_NUM_WINDOWS: usize = 296;
+const INNER_CIRCUIT_ID_WINDOW_SIZE: usize = 63;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct InnerSNARKVkHashWindow;
+const LOCAL_DATA_CRH_NUM_WINDOWS: usize = 16;
+const LOCAL_DATA_CRH_WINDOW_SIZE: usize = 32;
 
-impl PedersenSize for InnerSNARKVkHashWindow {
-    const NUM_WINDOWS: usize = 296;
-    const WINDOW_SIZE: usize = 63;
-}
+const LOCAL_DATA_COMMITMENT_NUM_WINDOWS: usize = 8;
+const LOCAL_DATA_COMMITMENT_WINDOW_SIZE: usize = 129;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct LocalDataCommitmentWindow;
+const PROGRAM_VK_CRH_NUM_WINDOWS: usize = 144;
+const PROGRAM_VK_CRH_WINDOW_SIZE: usize = 63;
 
-impl PedersenSize for LocalDataCommitmentWindow {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 129;
-}
+const RECORD_NUM_WINDOWS: usize = 8;
+const RECORD_WINDOW_SIZE: usize = 233;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct LocalDataCRHWindow;
+const SN_NONCE_NUM_WINDOWS: usize = 32;
+const SN_NONCE_WINDOW_SIZE: usize = 63;
 
-impl PedersenSize for LocalDataCRHWindow {
-    const NUM_WINDOWS: usize = 16;
-    const WINDOW_SIZE: usize = 32;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ProgramVkHashWindow;
-
-impl PedersenSize for ProgramVkHashWindow {
-    const NUM_WINDOWS: usize = 144;
-    const WINDOW_SIZE: usize = 63;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct RecordWindow;
-impl PedersenSize for RecordWindow {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 233;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct SnNonceWindow;
-
-impl PedersenSize for SnNonceWindow {
-    const NUM_WINDOWS: usize = 32;
-    const WINDOW_SIZE: usize = 63;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct TwoToOneWindow;
-impl PedersenSize for TwoToOneWindow {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 32;
-}
+const MERKLE_TREE_CRH_NUM_WINDOWS: usize = 8;
+const MERKLE_TREE_CRH_WINDOW_SIZE: usize = 32;
 
 define_merkle_tree_parameters!(CommitmentMerkleParameters, MerkleTreeCRH, 32);
 
 pub struct Components;
 
+#[rustfmt::skip]
 impl DPCComponents for Components {
-    type AccountCommitment = AccountCommitment;
-    type AccountCommitmentGadget = AccountCommitmentGadget;
-    type AccountEncryption = AccountEncryption;
-    type AccountEncryptionGadget = AccountEncryptionGadget;
-    type AccountSignature = AccountSignature;
-    type AccountSignatureGadget = AccountSignatureGadget;
-    type EncryptedRecordCRH = EncryptedRecordCRH;
-    type EncryptedRecordCRHGadget = EncryptedRecordCRHGadget;
-    type InnerCircuitIDCRH = InnerCircuitIDCRH;
-    type InnerCircuitIDCRHGadget = InnerCircuitIDCRHGadget;
-    type InnerField = InnerField;
-    type LocalDataCRH = LocalDataCRH;
-    type LocalDataCRHGadget = LocalDataCRHGadget;
-    type LocalDataCommitment = LocalDataCommitment;
-    type LocalDataCommitmentGadget = LocalDataCommitmentGadget;
-    type OuterField = OuterField;
-    type PRF = PRF;
-    type PRFGadget = PRFGadget;
-    type ProgramVerificationKeyCRH = ProgramVerificationKeyCRH;
-    type ProgramVerificationKeyCRHGadget = ProgramVerificationKeyCRHGadget;
-    type ProgramVerificationKeyCommitment = ProgramVerificationKeyCommitment;
-    type ProgramVerificationKeyCommitmentGadget = ProgramVerificationKeyCommitmentGadget;
-    type RecordCommitment = RecordCommitment;
-    type RecordCommitmentGadget = RecordCommitmentGadget;
-    type SerialNumberNonceCRH = SerialNumberNonce;
-    type SerialNumberNonceCRHGadget = SerialNumberNonceGadget;
-
     const NUM_INPUT_RECORDS: usize = NUM_INPUT_RECORDS;
     const NUM_OUTPUT_RECORDS: usize = NUM_OUTPUT_RECORDS;
+    
+    type InnerField = Bls12_377Fr;
+    type OuterField = Bls12_377Fq;
+    
+    type AccountCommitment = PedersenCompressedCommitment<EdwardsBls, ACCOUNT_NUM_WINDOWS, ACCOUNT_WINDOW_SIZE>;
+    type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    
+    type AccountEncryption = GroupEncryption<EdwardsBls, EdwardsAffine, Blake2sHash>;
+    type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    
+    type AccountSignature = SchnorrSignature<EdwardsAffine, Blake2sHash>;
+    type AccountSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, Self::InnerField, EdwardsBlsGadget>;
+    
+    type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, ENCRYPTED_RECORD_NUM_WINDOWS, ENCRYPTED_RECORD_WINDOW_SIZE>;
+    type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    
+    type InnerCircuitIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, INNER_CIRCUIT_ID_NUM_WINDOWS, INNER_CIRCUIT_ID_WINDOW_SIZE>;
+    type InnerCircuitIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, Self::OuterField, EdwardsSWGadget>;
+    
+    type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, LOCAL_DATA_CRH_NUM_WINDOWS, LOCAL_DATA_CRH_WINDOW_SIZE>;
+    type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    
+    type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls, LOCAL_DATA_COMMITMENT_NUM_WINDOWS, LOCAL_DATA_COMMITMENT_WINDOW_SIZE>;
+    type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+
+    type PRF = Blake2s;
+    type PRFGadget = Blake2sGadget;
+    
+    type ProgramVerificationKeyCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, PROGRAM_VK_CRH_NUM_WINDOWS, PROGRAM_VK_CRH_WINDOW_SIZE>;
+    type ProgramVerificationKeyCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, Self::OuterField, EdwardsSWGadget>;
+    
+    type ProgramVerificationKeyCommitment = Blake2sCommitment;
+    type ProgramVerificationKeyCommitmentGadget = Blake2sCommitmentGadget;
+    
+    type RecordCommitment = PedersenCompressedCommitment<EdwardsBls, RECORD_NUM_WINDOWS, RECORD_WINDOW_SIZE>;
+    type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    
+    type SerialNumberNonceCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, SN_NONCE_NUM_WINDOWS, SN_NONCE_WINDOW_SIZE>;
+    type SerialNumberNonceCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
 }
 
-impl BaseDPCComponents for Components {
+impl Testnet1Components for Components {
     type EncryptionGroup = EdwardsBls;
     type EncryptionModelParameters = EdwardsParameters;
-    type InnerSNARK = InnerSNARK;
-    type InnerSNARKGadget = InnerSNARKGadget;
-    type MerkleHashGadget = MerkleTreeCRHGadget;
+    type InnerSNARK = Groth16<InnerCurve, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
+    type InnerSNARKGadget = Groth16VerifierGadget<InnerCurve, Self::OuterField, PairingGadget>;
+    type MerkleHashGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
     type MerkleParameters = CommitmentMerkleParameters;
-    type NoopProgramSNARK = NoopProgramSNARK<Self>;
-    type OuterSNARK = OuterSNARK;
-    type ProgramSNARKGadget = ProgramSNARKGadget;
+    type NoopProgramSNARK = GM17<InnerCurve, NoopCircuit<Self>, ProgramLocalData<Self>>;
+    type OuterSNARK = Groth16<OuterCurve, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
+    type ProgramSNARKGadget = GM17VerifierGadget<InnerCurve, Self::OuterField, PairingGadget>;
 }
 
-// Native primitives
+pub type Testnet1DPC = DPC<Components>;
+pub type Testnet1Transaction = Transaction<Components>;
 
-pub type InnerPairing = Bls12_377;
-pub type OuterPairing = BW6_761;
-pub type InnerField = Bls12_377Fr;
-pub type OuterField = Bls12_377Fq;
+pub type InnerCurve = Bls12_377;
+pub type OuterCurve = BW6_761;
 
-pub type AccountCommitment = PedersenCompressedCommitment<EdwardsBls, AccountWindow>;
-pub type AccountEncryption = GroupEncryption<EdwardsBls, EdwardsAffine, Blake2sHash>;
-pub type RecordCommitment = PedersenCompressedCommitment<EdwardsBls, RecordWindow>;
-pub type ProgramVerificationKeyCommitment = Blake2sCommitment;
-pub type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, LocalDataCRHWindow>;
-pub type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls, LocalDataCommitmentWindow>;
-
-pub type AccountSignature = SchnorrSignature<EdwardsAffine, Blake2sHash>;
-
-pub type MerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, TwoToOneWindow>;
-pub type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, EncryptedRecordWindow>;
-pub type InnerCircuitIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, InnerSNARKVkHashWindow>;
-pub type SerialNumberNonce = BoweHopwoodPedersenCompressedCRH<EdwardsBls, SnNonceWindow>;
-pub type ProgramVerificationKeyCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, ProgramVkHashWindow>;
-
-pub type InnerSNARK = Groth16<InnerPairing, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
-pub type OuterSNARK = Groth16<OuterPairing, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
-pub type NoopProgramSNARK<C> = GM17<InnerPairing, NoopCircuit<C>, ProgramLocalData<C>>;
-pub type PRF = Blake2s;
-
-pub type Tx = Transaction<Components>;
-
-pub type InstantiatedDPC = DPC<Components>;
 pub type LocalData = DPCLocalData<Components>;
-
-// Gadgets
-
-pub type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-pub type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-pub type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-pub type ProgramVerificationKeyCommitmentGadget = Blake2sCommitmentGadget;
-pub type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-pub type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-
-pub type AccountSignatureGadget =
-    SchnorrPublicKeyRandomizationGadget<EdwardsAffine, InnerField, EdwardsBlsGadget, FpGadget<InnerField>>;
-
-pub type MerkleTreeCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-pub type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-pub type InnerCircuitIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, OuterField, EdwardsSWGadget>;
-pub type SerialNumberNonceGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-pub type ProgramVerificationKeyCRHGadget =
-    BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, OuterField, EdwardsSWGadget>;
-
-pub type PRFGadget = Blake2sGadget;
-pub type ProgramSNARKGadget = GM17VerifierGadget<InnerPairing, OuterField, PairingGadget>;
-pub type InnerSNARKGadget = Groth16VerifierGadget<InnerPairing, OuterField, PairingGadget>;
+pub type MerkleTreeCRH =
+    BoweHopwoodPedersenCompressedCRH<EdwardsBls, MERKLE_TREE_CRH_NUM_WINDOWS, MERKLE_TREE_CRH_WINDOW_SIZE>;

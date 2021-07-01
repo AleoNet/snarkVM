@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet1::{parameters::SystemParameters, BaseDPCComponents};
+use crate::testnet1::{parameters::SystemParameters, Testnet1Components};
 use snarkvm_algorithms::traits::{CommitmentScheme, CRH};
 use snarkvm_gadgets::{
     integers::uint::UInt8,
@@ -26,7 +26,7 @@ use snarkvm_gadgets::{
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSynthesizer, ConstraintSystem};
 
 /// Always-accept program
-pub struct NoopCircuit<C: BaseDPCComponents> {
+pub struct NoopCircuit<C: Testnet1Components> {
     /// System parameters
     pub system_parameters: Option<SystemParameters<C>>,
 
@@ -37,7 +37,7 @@ pub struct NoopCircuit<C: BaseDPCComponents> {
     pub position: u8,
 }
 
-impl<C: BaseDPCComponents> NoopCircuit<C> {
+impl<C: Testnet1Components> NoopCircuit<C> {
     pub fn blank(system_parameters: &SystemParameters<C>) -> Self {
         let local_data_root = <C::LocalDataCRH as CRH>::Output::default();
 
@@ -61,7 +61,7 @@ impl<C: BaseDPCComponents> NoopCircuit<C> {
     }
 }
 
-impl<C: BaseDPCComponents> ConstraintSynthesizer<C::InnerField> for NoopCircuit<C> {
+impl<C: Testnet1Components> ConstraintSynthesizer<C::InnerField> for NoopCircuit<C> {
     fn generate_constraints<CS: ConstraintSystem<C::InnerField>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
         execute_noop_gadget(
             cs,
@@ -72,7 +72,7 @@ impl<C: BaseDPCComponents> ConstraintSynthesizer<C::InnerField> for NoopCircuit<
     }
 }
 
-fn execute_noop_gadget<C: BaseDPCComponents, CS: ConstraintSystem<C::InnerField>>(
+fn execute_noop_gadget<C: Testnet1Components, CS: ConstraintSystem<C::InnerField>>(
     cs: &mut CS,
     system_parameters: &SystemParameters<C>,
     local_data_root: &<C::LocalDataCRH as CRH>::Output,

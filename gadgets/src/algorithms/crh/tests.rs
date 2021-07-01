@@ -17,7 +17,7 @@
 use rand::{thread_rng, Rng};
 
 use snarkvm_algorithms::{
-    crh::{BoweHopwoodPedersenCRH, BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH, PedersenSize},
+    crh::{BoweHopwoodPedersenCRH, BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH},
     traits::{CRHParameters, CRH},
 };
 use snarkvm_curves::{
@@ -43,21 +43,11 @@ use crate::{
     },
 };
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(super) struct Size;
+const PEDERSEN_NUM_WINDOWS: usize = 8;
+const PEDERSEN_WINDOW_SIZE: usize = 128;
 
-impl PedersenSize for Size {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 128;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(super) struct BoweHopwoodSize;
-
-impl PedersenSize for BoweHopwoodSize {
-    const NUM_WINDOWS: usize = 32;
-    const WINDOW_SIZE: usize = 48;
-}
+const BHP_NUM_WINDOWS: usize = 32;
+const BHP_WINDOW_SIZE: usize = 48;
 
 const PEDERSEN_HASH_CONSTRAINTS: usize = 5632;
 const PEDERSEN_HASH_CONSTRAINTS_ON_AFFINE: usize = 6656;
@@ -172,7 +162,7 @@ fn masked_crh_gadget_test<F: PrimeField, H: CRH, CG: MaskedCRHGadget<H, F>>() {
 mod pedersen_crh_gadget_on_projective {
     use super::*;
 
-    type TestCRH = PedersenCRH<EdwardsProjective, Size>;
+    type TestCRH = PedersenCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
     type TestCRHGadget = PedersenCRHGadget<EdwardsProjective, Fr, EdwardsBlsGadget>;
 
     #[test]
@@ -189,7 +179,7 @@ mod pedersen_crh_gadget_on_projective {
 mod pedersen_crh_gadget_on_affine {
     use super::*;
 
-    type TestCRH = PedersenCRH<EdwardsAffine, Size>;
+    type TestCRH = PedersenCRH<EdwardsAffine, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
     type TestCRHGadget = PedersenCRHGadget<EdwardsAffine, Fr, EdwardsBlsGadget>;
 
     #[test]
@@ -201,7 +191,7 @@ mod pedersen_crh_gadget_on_affine {
 mod pedersen_compressed_crh_gadget_on_projective {
     use super::*;
 
-    type TestCRH = PedersenCompressedCRH<EdwardsProjective, Size>;
+    type TestCRH = PedersenCompressedCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
     type TestCRHGadget = PedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBlsGadget>;
 
     #[test]
@@ -220,7 +210,7 @@ mod pedersen_compressed_crh_gadget_on_projective {
 mod bowe_hopwood_pedersen_crh_gadget_on_projective {
     use super::*;
 
-    type TestCRH = BoweHopwoodPedersenCRH<EdwardsProjective, BoweHopwoodSize>;
+    type TestCRH = BoweHopwoodPedersenCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
     type TestCRHGadget = BoweHopwoodPedersenCRHGadget<EdwardsProjective, Fr, EdwardsBlsGadget>;
 
     #[test]
@@ -232,7 +222,7 @@ mod bowe_hopwood_pedersen_crh_gadget_on_projective {
 mod bowe_hopwood_pedersen_compressed_crh_gadget_on_projective {
     use super::*;
 
-    type TestCRH = BoweHopwoodPedersenCompressedCRH<EdwardsProjective, BoweHopwoodSize>;
+    type TestCRH = BoweHopwoodPedersenCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
     type TestCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBlsGadget>;
 
     #[test]

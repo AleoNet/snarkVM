@@ -15,15 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    account::AccountPrivateKey,
     testnet1::{
         inner_circuit_gadget::execute_inner_proof_gadget,
         parameters::SystemParameters,
         record::Record,
         record_encryption::RecordEncryptionGadgetComponents,
-        AleoAmount,
-        BaseDPCComponents,
+        Testnet1Components,
     },
+    AccountPrivateKey,
+    AleoAmount,
 };
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
@@ -34,8 +34,8 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSyst
 use std::sync::Arc;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: BaseDPCComponents"))]
-pub struct InnerCircuit<C: BaseDPCComponents> {
+#[derivative(Clone(bound = "C: Testnet1Components"))]
+pub struct InnerCircuit<C: Testnet1Components> {
     // Parameters
     system_parameters: SystemParameters<C>,
     ledger_parameters: Arc<C::MerkleParameters>,
@@ -72,7 +72,7 @@ pub struct InnerCircuit<C: BaseDPCComponents> {
     network_id: u8,
 }
 
-impl<C: BaseDPCComponents> InnerCircuit<C> {
+impl<C: Testnet1Components> InnerCircuit<C> {
     pub fn blank(system_parameters: &SystemParameters<C>, ledger_parameters: &Arc<C::MerkleParameters>) -> Self {
         let num_input_records = C::NUM_INPUT_RECORDS;
         let num_output_records = C::NUM_OUTPUT_RECORDS;
@@ -247,7 +247,7 @@ impl<C: BaseDPCComponents> InnerCircuit<C> {
     }
 }
 
-impl<C: BaseDPCComponents> ConstraintSynthesizer<C::InnerField> for InnerCircuit<C> {
+impl<C: Testnet1Components> ConstraintSynthesizer<C::InnerField> for InnerCircuit<C> {
     fn generate_constraints<CS: ConstraintSystem<C::InnerField>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
         execute_inner_proof_gadget::<C, CS>(
             cs,
