@@ -16,10 +16,10 @@
 
 use crate::{
     account_format,
-    testnet1::{SystemParameters, instantiated::Components},
+    testnet1::{instantiated::Components, SystemParameters},
     traits::DPCComponents,
     AccountError,
-    PrivateKeyError
+    PrivateKeyError,
 };
 use snarkvm_algorithms::{
     prf::Blake2s,

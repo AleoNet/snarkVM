@@ -22,8 +22,8 @@ use crate::{
     AccountPrivateKey,
     AccountViewKey,
     AddressError,
-    ViewKey,
     Signature,
+    ViewKey,
 };
 use snarkvm_algorithms::traits::EncryptionScheme;
 use snarkvm_utilities::{FromBytes, ToBytes};
@@ -97,7 +97,6 @@ impl fmt::Display for Address<Components> {
 }
 
 impl<C: DPCComponents> AccountAddress<C> {
-
     /// Derives the account address from an account private key.
     pub fn from_private_key(
         signature_parameters: &C::AccountSignature,

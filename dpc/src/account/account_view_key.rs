@@ -27,12 +27,12 @@ use snarkvm_algorithms::{traits::EncryptionScheme, SignatureScheme};
 use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
 use base58::{FromBase58, ToBase58};
+use rand::{CryptoRng, Rng};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
     str::FromStr,
 };
-use rand::{CryptoRng, Rng};
 
 pub struct Signature(pub <<Components as DPCComponents>::AccountEncryption as SignatureScheme>::Output);
 
