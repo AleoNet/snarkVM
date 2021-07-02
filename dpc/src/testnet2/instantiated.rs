@@ -148,6 +148,7 @@ impl DPCComponents for Components {
 
 impl Testnet2Components for Components {
     type EncryptionGroup = EdwardsBls;
+    type EncryptionGroupGadget = EdwardsBlsGadget;
     type EncryptionModelParameters = EdwardsParameters;
     type FiatShamirRng =
         FiatShamirAlgebraicSpongeRng<Self::InnerField, Self::OuterField, PoseidonSponge<Self::OuterField>>;
