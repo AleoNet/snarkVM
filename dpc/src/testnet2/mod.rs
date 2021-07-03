@@ -44,6 +44,7 @@ use snarkvm_gadgets::{
     bits::Boolean,
     nonnative::NonNativeFieldVar,
     traits::algorithms::{CRHGadget, SNARKVerifierGadget},
+    CompressedGroupGadget,
 };
 use snarkvm_marlin::{
     marlin::{MarlinMode, MarlinSNARK, UniversalSRS},
@@ -101,6 +102,7 @@ pub trait Testnet2Components: DPCComponents {
 
     /// Group and Model Parameters for record encryption
     type EncryptionGroup: Group + ProjectiveCurve;
+    type EncryptionGroupGadget: CompressedGroupGadget<Self::EncryptionGroup, Self::InnerField>;
     type EncryptionModelParameters: MontgomeryModelParameters + TEModelParameters;
 
     /// SNARK for non-proof-verification checks

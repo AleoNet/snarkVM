@@ -65,7 +65,11 @@ macro_rules! eq_gadget_impl {
 macro_rules! cond_eq_int_impl {
     ($($gadget: ident)*) => ($(
 
-        impl<F: Field> EqGadget<F> for $gadget {}
+        impl<F: Field> EqGadget<F> for $gadget {
+            fn is_eq<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
+                self.bits.is_eq(cs.ns(|| "bits_is_eq"), &other.bits)
+            }
+        }
 
         impl<F: Field> ConditionalEqGadget<F> for $gadget {
             fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
