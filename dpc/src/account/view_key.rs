@@ -92,7 +92,7 @@ impl<C: DPCComponents> FromStr for ViewKey<C> {
         let mut reader = &data[7..];
 
         Ok(Self {
-            decryption_key: <C::AccountEncryption as EncryptionScheme>::PrivateKey = FromBytes::read(&mut reader)?,
+            decryption_key: FromBytes::read(&mut reader)?,
         })
     }
 }
