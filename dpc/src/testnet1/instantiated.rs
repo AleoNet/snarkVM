@@ -58,9 +58,6 @@ use snarkvm_gadgets::{
 
 use blake2::Blake2s as Blake2sHash;
 
-pub const NUM_INPUT_RECORDS: usize = 2;
-pub const NUM_OUTPUT_RECORDS: usize = 2;
-
 const ACCOUNT_NUM_WINDOWS: usize = 8;
 const ACCOUNT_WINDOW_SIZE: usize = 192;
 
@@ -94,8 +91,8 @@ pub struct Components;
 
 #[rustfmt::skip]
 impl DPCComponents for Components {
-    const NUM_INPUT_RECORDS: usize = NUM_INPUT_RECORDS;
-    const NUM_OUTPUT_RECORDS: usize = NUM_OUTPUT_RECORDS;
+    const NUM_INPUT_RECORDS: usize = 2;
+    const NUM_OUTPUT_RECORDS: usize = 2;
     
     type InnerField = Bls12_377Fr;
     type OuterField = Bls12_377Fq;
