@@ -52,7 +52,6 @@ pub struct Record<C: Testnet2Components> {
     pub(crate) death_program_id: Vec<u8>,
 
     pub(crate) serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
-
     pub(crate) commitment: <C::RecordCommitment as CommitmentScheme>::Output,
     pub(crate) commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
 

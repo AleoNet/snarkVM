@@ -127,8 +127,8 @@ pub trait Testnet1Components: DPCComponents {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-pub struct DPC<Components: Testnet1Components> {
-    _components: PhantomData<Components>,
+pub struct DPC<C: Testnet1Components> {
+    _components: PhantomData<C>,
 }
 
 /// Returned by `DPC::execute_offline`. Stores data required to produce the
@@ -137,45 +137,45 @@ pub struct DPC<Components: Testnet1Components> {
 /// stores references to existing information like old records and secret keys.
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "Components: Testnet1Components"),
-    PartialEq(bound = "Components: Testnet1Components"),
-    Eq(bound = "Components: Testnet1Components"),
-    Debug(bound = "Components: Testnet1Components")
+    Clone(bound = "C: Testnet1Components"),
+    PartialEq(bound = "C: Testnet1Components"),
+    Eq(bound = "C: Testnet1Components"),
+    Debug(bound = "C: Testnet1Components")
 )]
-pub struct TransactionKernel<Components: Testnet1Components> {
+pub struct TransactionKernel<C: Testnet1Components> {
     #[derivative(PartialEq = "ignore", Debug = "ignore")]
-    pub system_parameters: SystemParameters<Components>,
+    pub system_parameters: SystemParameters<C>,
 
     // Old record stuff
-    pub old_account_private_keys: Vec<PrivateKey<Components>>,
-    pub old_records: Vec<Record<Components>>,
-    pub old_serial_numbers: Vec<<Components::AccountSignature as SignatureScheme>::PublicKey>,
+    pub old_account_private_keys: Vec<PrivateKey<C>>,
+    pub old_records: Vec<Record<C>>,
+    pub old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
     pub old_randomizers: Vec<Vec<u8>>,
 
     // New record stuff
-    pub new_records: Vec<Record<Components>>,
+    pub new_records: Vec<Record<C>>,
     pub new_sn_nonce_randomness: Vec<[u8; 32]>,
-    pub new_commitments: Vec<<Components::RecordCommitment as CommitmentScheme>::Output>,
+    pub new_commitments: Vec<<C::RecordCommitment as CommitmentScheme>::Output>,
 
-    pub new_records_encryption_randomness: Vec<<Components::AccountEncryption as EncryptionScheme>::Randomness>,
-    pub new_encrypted_records: Vec<EncryptedRecord<Components>>,
-    pub new_encrypted_record_hashes: Vec<<Components::EncryptedRecordCRH as CRH>::Output>,
+    pub new_records_encryption_randomness: Vec<<C::AccountEncryption as EncryptionScheme>::Randomness>,
+    pub new_encrypted_records: Vec<EncryptedRecord<C>>,
+    pub new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
 
     // Program and local data root and randomness
-    pub program_commitment: <Components::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
-    pub program_randomness: <Components::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
+    pub program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
+    pub program_randomness: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
 
-    pub local_data_merkle_tree: CommitmentMerkleTree<Components::LocalDataCommitment, Components::LocalDataCRH>,
-    pub local_data_commitment_randomizers: Vec<<Components::LocalDataCommitment as CommitmentScheme>::Randomness>,
+    pub local_data_merkle_tree: CommitmentMerkleTree<C::LocalDataCommitment, C::LocalDataCRH>,
+    pub local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
 
     pub value_balance: AleoAmount,
-    pub memorandum: <Transaction<Components> as TransactionScheme>::Memorandum,
+    pub memorandum: <Transaction<C> as TransactionScheme>::Memorandum,
     pub network_id: u8,
 }
 
-impl<Components: Testnet1Components> TransactionKernel<Components> {
+impl<C: Testnet1Components> TransactionKernel<C> {
     #[allow(clippy::wrong_self_convention)]
-    pub fn into_local_data(&self) -> LocalData<Components> {
+    pub fn into_local_data(&self) -> LocalData<C> {
         LocalData {
             system_parameters: self.system_parameters.clone(),
 
@@ -193,7 +193,7 @@ impl<Components: Testnet1Components> TransactionKernel<Components> {
     }
 }
 
-impl<Components: Testnet1Components> ToBytes for TransactionKernel<Components> {
+impl<C: Testnet1Components> ToBytes for TransactionKernel<C> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write old record components
@@ -261,19 +261,19 @@ impl<Components: Testnet1Components> ToBytes for TransactionKernel<Components> {
     }
 }
 
-impl<Components: Testnet1Components> FromBytes for TransactionKernel<Components> {
+impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let system_parameters = SystemParameters::<Components>::load().expect("Could not load system parameters");
+        let system_parameters = SystemParameters::<C>::load().expect("Could not load system parameters");
 
         // Read old record components
 
         let mut old_account_private_keys = vec![];
-        for _ in 0..Components::NUM_INPUT_RECORDS {
+        for _ in 0..C::NUM_INPUT_RECORDS {
             let r_pk_counter_bytes: [u8; 2] = FromBytes::read(&mut reader)?;
             let private_key_seed: [u8; 32] = FromBytes::read(&mut reader)?;
 
-            let old_account_private_key = PrivateKey::<Components>::from_seed_and_counter_unchecked(
+            let old_account_private_key = PrivateKey::<C>::from_seed_and_counter_unchecked(
                 &private_key_seed,
                 u16::from_le_bytes(r_pk_counter_bytes),
             )
@@ -283,20 +283,19 @@ impl<Components: Testnet1Components> FromBytes for TransactionKernel<Components>
         }
 
         let mut old_records = vec![];
-        for _ in 0..Components::NUM_INPUT_RECORDS {
-            let old_record: Record<Components> = FromBytes::read(&mut reader)?;
+        for _ in 0..C::NUM_INPUT_RECORDS {
+            let old_record: Record<C> = FromBytes::read(&mut reader)?;
             old_records.push(old_record);
         }
 
         let mut old_serial_numbers = vec![];
-        for _ in 0..Components::NUM_INPUT_RECORDS {
-            let old_serial_number: <Components::AccountSignature as SignatureScheme>::PublicKey =
-                FromBytes::read(&mut reader)?;
+        for _ in 0..C::NUM_INPUT_RECORDS {
+            let old_serial_number: <C::AccountSignature as SignatureScheme>::PublicKey = FromBytes::read(&mut reader)?;
             old_serial_numbers.push(old_serial_number);
         }
 
         let mut old_randomizers = vec![];
-        for _ in 0..Components::NUM_INPUT_RECORDS {
+        for _ in 0..C::NUM_INPUT_RECORDS {
             let num_bytes = read_variable_length_integer(&mut reader)?;
             let mut randomizer = vec![];
             for _ in 0..num_bytes {
@@ -310,66 +309,64 @@ impl<Components: Testnet1Components> FromBytes for TransactionKernel<Components>
         // Read new record components
 
         let mut new_records = vec![];
-        for _ in 0..Components::NUM_OUTPUT_RECORDS {
-            let new_record: Record<Components> = FromBytes::read(&mut reader)?;
+        for _ in 0..C::NUM_OUTPUT_RECORDS {
+            let new_record: Record<C> = FromBytes::read(&mut reader)?;
             new_records.push(new_record);
         }
 
         let mut new_sn_nonce_randomness = vec![];
-        for _ in 0..Components::NUM_OUTPUT_RECORDS {
+        for _ in 0..C::NUM_OUTPUT_RECORDS {
             let randomness: [u8; 32] = FromBytes::read(&mut reader)?;
             new_sn_nonce_randomness.push(randomness);
         }
 
         let mut new_commitments = vec![];
-        for _ in 0..Components::NUM_OUTPUT_RECORDS {
-            let new_commitment: <Components::RecordCommitment as CommitmentScheme>::Output =
-                FromBytes::read(&mut reader)?;
+        for _ in 0..C::NUM_OUTPUT_RECORDS {
+            let new_commitment: <C::RecordCommitment as CommitmentScheme>::Output = FromBytes::read(&mut reader)?;
             new_commitments.push(new_commitment);
         }
 
         let mut new_records_encryption_randomness = vec![];
-        for _ in 0..Components::NUM_OUTPUT_RECORDS {
-            let encryption_randomness: <Components::AccountEncryption as EncryptionScheme>::Randomness =
+        for _ in 0..C::NUM_OUTPUT_RECORDS {
+            let encryption_randomness: <C::AccountEncryption as EncryptionScheme>::Randomness =
                 FromBytes::read(&mut reader)?;
             new_records_encryption_randomness.push(encryption_randomness);
         }
 
         let mut new_encrypted_records = vec![];
-        for _ in 0..Components::NUM_OUTPUT_RECORDS {
-            let encrypted_record: EncryptedRecord<Components> = FromBytes::read(&mut reader)?;
+        for _ in 0..C::NUM_OUTPUT_RECORDS {
+            let encrypted_record: EncryptedRecord<C> = FromBytes::read(&mut reader)?;
             new_encrypted_records.push(encrypted_record);
         }
 
         let mut new_encrypted_record_hashes = vec![];
-        for _ in 0..Components::NUM_OUTPUT_RECORDS {
-            let encrypted_record_hash: <Components::EncryptedRecordCRH as CRH>::Output = FromBytes::read(&mut reader)?;
+        for _ in 0..C::NUM_OUTPUT_RECORDS {
+            let encrypted_record_hash: <C::EncryptedRecordCRH as CRH>::Output = FromBytes::read(&mut reader)?;
             new_encrypted_record_hashes.push(encrypted_record_hash);
         }
 
         // Read transaction components
 
-        let program_commitment: <Components::ProgramVerificationKeyCommitment as CommitmentScheme>::Output =
+        let program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output =
             FromBytes::read(&mut reader)?;
-        let program_randomness: <Components::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness =
+        let program_randomness: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness =
             FromBytes::read(&mut reader)?;
 
-        let local_data_merkle_tree =
-            CommitmentMerkleTree::<Components::LocalDataCommitment, Components::LocalDataCRH>::from_bytes(
-                &mut reader,
-                system_parameters.local_data_crh.clone(),
-            )
-            .expect("Could not load local data merkle tree");
+        let local_data_merkle_tree = CommitmentMerkleTree::<C::LocalDataCommitment, C::LocalDataCRH>::from_bytes(
+            &mut reader,
+            system_parameters.local_data_crh.clone(),
+        )
+        .expect("Could not load local data merkle tree");
 
         let mut local_data_commitment_randomizers = vec![];
         for _ in 0..4 {
-            let local_data_commitment_randomizer: <Components::LocalDataCommitment as CommitmentScheme>::Randomness =
+            let local_data_commitment_randomizer: <C::LocalDataCommitment as CommitmentScheme>::Randomness =
                 FromBytes::read(&mut reader)?;
             local_data_commitment_randomizers.push(local_data_commitment_randomizer);
         }
 
         let value_balance: AleoAmount = FromBytes::read(&mut reader)?;
-        let memorandum: <Transaction<Components> as TransactionScheme>::Memorandum = FromBytes::read(&mut reader)?;
+        let memorandum: <Transaction<C> as TransactionScheme>::Memorandum = FromBytes::read(&mut reader)?;
         let network_id: u8 = FromBytes::read(&mut reader)?;
 
         Ok(Self {
@@ -400,72 +397,70 @@ impl<Components: Testnet1Components> FromBytes for TransactionKernel<Components>
 }
 
 /// Stores local data required to produce program proofs.
-pub struct LocalData<Components: Testnet1Components> {
-    pub system_parameters: SystemParameters<Components>,
+pub struct LocalData<C: Testnet1Components> {
+    pub system_parameters: SystemParameters<C>,
 
     // Old records and serial numbers
-    pub old_records: Vec<Record<Components>>,
-    pub old_serial_numbers: Vec<<Components::AccountSignature as SignatureScheme>::PublicKey>,
+    pub old_records: Vec<Record<C>>,
+    pub old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
 
     // New records
-    pub new_records: Vec<Record<Components>>,
+    pub new_records: Vec<Record<C>>,
 
     // Commitment to the above information.
-    pub local_data_merkle_tree: CommitmentMerkleTree<Components::LocalDataCommitment, Components::LocalDataCRH>,
-    pub local_data_commitment_randomizers: Vec<<Components::LocalDataCommitment as CommitmentScheme>::Randomness>,
+    pub local_data_merkle_tree: CommitmentMerkleTree<C::LocalDataCommitment, C::LocalDataCRH>,
+    pub local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
 
-    pub memorandum: <Transaction<Components> as TransactionScheme>::Memorandum,
+    pub memorandum: <Transaction<C> as TransactionScheme>::Memorandum,
     pub network_id: u8,
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-impl<Components: Testnet1Components> DPC<Components> {
-    pub fn generate_system_parameters<R: Rng + CryptoRng>(
-        rng: &mut R,
-    ) -> Result<SystemParameters<Components>, DPCError> {
+impl<C: Testnet1Components> DPC<C> {
+    pub fn generate_system_parameters<R: Rng + CryptoRng>(rng: &mut R) -> Result<SystemParameters<C>, DPCError> {
         let time = start_timer!(|| "Account commitment scheme setup");
-        let account_commitment = Components::AccountCommitment::setup(rng);
+        let account_commitment = C::AccountCommitment::setup(rng);
         end_timer!(time);
 
         let time = start_timer!(|| "Account encryption scheme setup");
-        let account_encryption = <Components::AccountEncryption as EncryptionScheme>::setup(rng);
+        let account_encryption = <C::AccountEncryption as EncryptionScheme>::setup(rng);
         end_timer!(time);
 
         let time = start_timer!(|| "Account signature setup");
-        let account_signature = Components::AccountSignature::setup(rng)?;
+        let account_signature = C::AccountSignature::setup(rng)?;
         end_timer!(time);
 
         let time = start_timer!(|| "Encrypted record CRH setup");
-        let encrypted_record_crh = Components::EncryptedRecordCRH::setup(rng);
+        let encrypted_record_crh = C::EncryptedRecordCRH::setup(rng);
         end_timer!(time);
 
         let time = start_timer!(|| "Inner circuit ID CRH setup");
-        let inner_circuit_id_crh = Components::InnerCircuitIDCRH::setup(rng);
+        let inner_circuit_id_crh = C::InnerCircuitIDCRH::setup(rng);
         end_timer!(time);
 
         let time = start_timer!(|| "Local data commitment setup");
-        let local_data_commitment = Components::LocalDataCommitment::setup(rng);
+        let local_data_commitment = C::LocalDataCommitment::setup(rng);
         end_timer!(time);
 
         let time = start_timer!(|| "Local data CRH setup");
-        let local_data_crh = Components::LocalDataCRH::setup(rng);
+        let local_data_crh = C::LocalDataCRH::setup(rng);
         end_timer!(time);
 
         let time = start_timer!(|| "Program verification key CRH setup");
-        let program_verification_key_crh = Components::ProgramVerificationKeyCRH::setup(rng);
+        let program_verification_key_crh = C::ProgramVerificationKeyCRH::setup(rng);
         end_timer!(time);
 
         let time = start_timer!(|| "Program verification key commitment setup");
-        let program_verification_key_commitment = Components::ProgramVerificationKeyCommitment::setup(rng);
+        let program_verification_key_commitment = C::ProgramVerificationKeyCommitment::setup(rng);
         end_timer!(time);
 
         let time = start_timer!(|| "Record commitment scheme setup");
-        let record_commitment = Components::RecordCommitment::setup(rng);
+        let record_commitment = C::RecordCommitment::setup(rng);
         end_timer!(time);
 
         let time = start_timer!(|| "Serial nonce CRH setup");
-        let serial_number_nonce = Components::SerialNumberNonceCRH::setup(rng);
+        let serial_number_nonce = C::SerialNumberNonceCRH::setup(rng);
         end_timer!(time);
 
         Ok(SystemParameters {
@@ -484,10 +479,10 @@ impl<Components: Testnet1Components> DPC<Components> {
     }
 
     pub fn generate_noop_program_snark_parameters<R: Rng + CryptoRng>(
-        system_parameters: &SystemParameters<Components>,
+        system_parameters: &SystemParameters<C>,
         rng: &mut R,
-    ) -> Result<NoopProgramSNARKParameters<Components>, DPCError> {
-        let (pk, pvk) = Components::NoopProgramSNARK::setup(&NoopCircuit::blank(system_parameters), rng)?;
+    ) -> Result<NoopProgramSNARKParameters<C>, DPCError> {
+        let (pk, pvk) = C::NoopProgramSNARK::setup(&NoopCircuit::blank(system_parameters), rng)?;
 
         Ok(NoopProgramSNARKParameters {
             proving_key: pk,
@@ -496,19 +491,19 @@ impl<Components: Testnet1Components> DPC<Components> {
     }
 
     pub fn generate_sn(
-        system_parameters: &SystemParameters<Components>,
-        record: &Record<Components>,
-        account_private_key: &PrivateKey<Components>,
-    ) -> Result<(<Components::AccountSignature as SignatureScheme>::PublicKey, Vec<u8>), DPCError> {
+        system_parameters: &SystemParameters<C>,
+        record: &Record<C>,
+        account_private_key: &PrivateKey<C>,
+    ) -> Result<(<C::AccountSignature as SignatureScheme>::PublicKey, Vec<u8>), DPCError> {
         let sn_time = start_timer!(|| "Generate serial number");
         let sk_prf = &account_private_key.sk_prf;
         let sn_nonce = to_bytes!(record.serial_number_nonce())?;
         // Compute the serial number.
         let prf_input = FromBytes::read(sn_nonce.as_slice())?;
         let prf_seed = FromBytes::read(to_bytes!(sk_prf)?.as_slice())?;
-        let sig_and_pk_randomizer = to_bytes![Components::PRF::evaluate(&prf_seed, &prf_input)?]?;
+        let sig_and_pk_randomizer = to_bytes![C::PRF::evaluate(&prf_seed, &prf_input)?]?;
 
-        let sn = Components::AccountSignature::randomize_public_key(
+        let sn = C::AccountSignature::randomize_public_key(
             &system_parameters.account_signature,
             &account_private_key.pk_sig(&system_parameters.account_signature)?,
             &sig_and_pk_randomizer,
@@ -519,19 +514,19 @@ impl<Components: Testnet1Components> DPC<Components> {
 
     #[allow(clippy::too_many_arguments)]
     pub fn generate_record<R: Rng + CryptoRng>(
-        system_parameters: &SystemParameters<Components>,
-        sn_nonce: <Components::SerialNumberNonceCRH as CRH>::Output,
-        owner: Address<Components>,
+        system_parameters: &SystemParameters<C>,
+        sn_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
+        owner: Address<C>,
         is_dummy: bool,
         value: u64,
         payload: Payload,
         birth_program_id: Vec<u8>,
         death_program_id: Vec<u8>,
         rng: &mut R,
-    ) -> Result<Record<Components>, DPCError> {
+    ) -> Result<Record<C>, DPCError> {
         let record_time = start_timer!(|| "Generate record");
         // Sample new commitment randomness.
-        let commitment_randomness = <Components::RecordCommitment as CommitmentScheme>::Randomness::rand(rng);
+        let commitment_randomness = <C::RecordCommitment as CommitmentScheme>::Randomness::rand(rng);
 
         // Total = 32 + 1 + 8 + 32 + 48 + 48 + 32 = 201 bytes
         let commitment_input = to_bytes![
@@ -544,7 +539,7 @@ impl<Components: Testnet1Components> DPC<Components> {
             sn_nonce          // 256 bits = 32 bytes
         ]?;
 
-        let commitment = Components::RecordCommitment::commit(
+        let commitment = C::RecordCommitment::commit(
             &system_parameters.record_commitment,
             &commitment_input,
             &commitment_randomness,
@@ -566,29 +561,29 @@ impl<Components: Testnet1Components> DPC<Components> {
     }
 }
 
-impl<Components: Testnet1Components, L: LedgerScheme> DPCScheme<L> for DPC<Components>
+impl<C: Testnet1Components, L: LedgerScheme> DPCScheme<L> for DPC<C>
 where
     L: LedgerScheme<
-        Commitment = <Components::RecordCommitment as CommitmentScheme>::Output,
-        MerkleParameters = Components::MerkleParameters,
-        MerklePath = MerklePath<Components::MerkleParameters>,
-        MerkleTreeDigest = MerkleTreeDigest<Components::MerkleParameters>,
-        SerialNumber = <Components::AccountSignature as SignatureScheme>::PublicKey,
-        Transaction = Transaction<Components>,
+        Commitment = <C::RecordCommitment as CommitmentScheme>::Output,
+        MerkleParameters = C::MerkleParameters,
+        MerklePath = MerklePath<C::MerkleParameters>,
+        MerkleTreeDigest = MerkleTreeDigest<C::MerkleParameters>,
+        SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey,
+        Transaction = Transaction<C>,
     >,
 {
-    type Account = Account<Components>;
-    type LocalData = LocalData<Components>;
-    type NetworkParameters = PublicParameters<Components>;
+    type Account = Account<C>;
+    type LocalData = LocalData<C>;
+    type NetworkParameters = PublicParameters<C>;
     type Payload = <Self::Record as RecordScheme>::Payload;
     type PrivateProgramInput = PrivateProgramInput;
-    type Record = Record<Components>;
-    type SystemParameters = SystemParameters<Components>;
-    type Transaction = Transaction<Components>;
-    type TransactionKernel = TransactionKernel<Components>;
+    type Record = Record<C>;
+    type SystemParameters = SystemParameters<C>;
+    type Transaction = Transaction<C>;
+    type TransactionKernel = TransactionKernel<C>;
 
     fn setup<R: Rng + CryptoRng>(
-        ledger_parameters: &Arc<Components::MerkleParameters>,
+        ledger_parameters: &Arc<C::MerkleParameters>,
         rng: &mut R,
     ) -> anyhow::Result<Self::NetworkParameters> {
         let setup_time = start_timer!(|| "DPC::setup");
@@ -596,7 +591,7 @@ where
 
         let program_snark_setup_time = start_timer!(|| "Dummy program SNARK setup");
         let noop_program_snark_parameters = Self::generate_noop_program_snark_parameters(&system_parameters, rng)?;
-        let program_snark_proof = Components::NoopProgramSNARK::prove(
+        let program_snark_proof = C::NoopProgramSNARK::prove(
             &noop_program_snark_parameters.proving_key,
             &NoopCircuit::blank(&system_parameters),
             rng,
@@ -610,14 +605,14 @@ where
 
         let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");
         let inner_circuit = InnerCircuit::blank(&system_parameters, ledger_parameters);
-        let inner_snark_parameters = Components::InnerSNARK::setup(&inner_circuit, rng)?;
+        let inner_snark_parameters = C::InnerSNARK::setup(&inner_circuit, rng)?;
         end_timer!(snark_setup_time);
 
         let snark_setup_time = start_timer!(|| "Execute outer SNARK setup");
-        let inner_snark_vk: <Components::InnerSNARK as SNARK>::VerifyingKey = inner_snark_parameters.1.clone().into();
-        let inner_snark_proof = Components::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, rng)?;
+        let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = inner_snark_parameters.1.clone().into();
+        let inner_snark_proof = C::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, rng)?;
 
-        let outer_snark_parameters = Components::OuterSNARK::setup(
+        let outer_snark_parameters = C::OuterSNARK::setup(
             &OuterCircuit::blank(
                 system_parameters.clone(),
                 ledger_parameters.clone(),
@@ -671,17 +666,17 @@ where
         network_id: u8,
         rng: &mut R,
     ) -> anyhow::Result<Self::TransactionKernel> {
-        assert_eq!(Components::NUM_INPUT_RECORDS, old_records.len());
-        assert_eq!(Components::NUM_INPUT_RECORDS, old_account_private_keys.len());
+        assert_eq!(C::NUM_INPUT_RECORDS, old_records.len());
+        assert_eq!(C::NUM_INPUT_RECORDS, old_account_private_keys.len());
 
-        assert_eq!(Components::NUM_OUTPUT_RECORDS, new_record_owners.len());
-        assert_eq!(Components::NUM_OUTPUT_RECORDS, new_is_dummy_flags.len());
-        assert_eq!(Components::NUM_OUTPUT_RECORDS, new_payloads.len());
-        assert_eq!(Components::NUM_OUTPUT_RECORDS, new_birth_program_ids.len());
-        assert_eq!(Components::NUM_OUTPUT_RECORDS, new_death_program_ids.len());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, new_record_owners.len());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, new_is_dummy_flags.len());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, new_payloads.len());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, new_birth_program_ids.len());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, new_death_program_ids.len());
 
-        let mut old_serial_numbers = Vec::with_capacity(Components::NUM_INPUT_RECORDS);
-        let mut old_randomizers = Vec::with_capacity(Components::NUM_INPUT_RECORDS);
+        let mut old_serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+        let mut old_randomizers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         let mut joint_serial_numbers = Vec::new();
         let mut old_death_program_ids = Vec::with_capacity(old_records.len());
 
@@ -704,15 +699,15 @@ where
             end_timer!(input_record_time);
         }
 
-        let mut new_records = Vec::with_capacity(Components::NUM_OUTPUT_RECORDS);
-        let mut new_commitments = Vec::with_capacity(Components::NUM_OUTPUT_RECORDS);
-        let mut new_sn_nonce_randomness = Vec::with_capacity(Components::NUM_OUTPUT_RECORDS);
+        let mut new_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+        let mut new_commitments = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+        let mut new_sn_nonce_randomness = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
         // Generate new records and commitments for them.
         for (j, (new_record_owner, new_payload, new_death_program_id)) in
             izip!(new_record_owners, new_payloads, new_death_program_ids).enumerate()
         {
-            if j == Components::NUM_OUTPUT_RECORDS {
+            if j == C::NUM_OUTPUT_RECORDS {
                 break;
             }
 
@@ -723,7 +718,7 @@ where
             let sn_randomness: [u8; 32] = rng.gen();
 
             let crh_input = to_bytes![j as u8, sn_randomness, joint_serial_numbers]?;
-            let sn_nonce = Components::SerialNumberNonceCRH::hash(&parameters.serial_number_nonce, &crh_input)?;
+            let sn_nonce = C::SerialNumberNonceCRH::hash(&parameters.serial_number_nonce, &crh_input)?;
 
             end_timer!(sn_nonce_time);
 
@@ -753,15 +748,15 @@ where
         // TODO (raychu86) Add index and program register inputs + outputs to local data commitment leaves
         let local_data_merkle_tree_timer = start_timer!(|| "Compute local data merkle tree");
 
-        let mut local_data_commitment_randomizers = Vec::with_capacity(Components::NUM_INPUT_RECORDS);
+        let mut local_data_commitment_randomizers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
 
-        let mut old_record_commitments = Vec::with_capacity(Components::NUM_INPUT_RECORDS);
-        for i in 0..Components::NUM_INPUT_RECORDS {
+        let mut old_record_commitments = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+        for i in 0..C::NUM_INPUT_RECORDS {
             let record = &old_records[i];
             let input_bytes = to_bytes![old_serial_numbers[i], record.commitment(), memorandum, network_id]?;
 
-            let commitment_randomness = <Components::LocalDataCommitment as CommitmentScheme>::Randomness::rand(rng);
-            let commitment = Components::LocalDataCommitment::commit(
+            let commitment_randomness = <C::LocalDataCommitment as CommitmentScheme>::Randomness::rand(rng);
+            let commitment = C::LocalDataCommitment::commit(
                 &parameters.local_data_commitment,
                 &input_bytes,
                 &commitment_randomness,
@@ -771,12 +766,12 @@ where
             local_data_commitment_randomizers.push(commitment_randomness);
         }
 
-        let mut new_record_commitments = Vec::with_capacity(Components::NUM_OUTPUT_RECORDS);
-        for record in new_records.iter().take(Components::NUM_OUTPUT_RECORDS) {
+        let mut new_record_commitments = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+        for record in new_records.iter().take(C::NUM_OUTPUT_RECORDS) {
             let input_bytes = to_bytes![record.commitment(), memorandum, network_id]?;
 
-            let commitment_randomness = <Components::LocalDataCommitment as CommitmentScheme>::Randomness::rand(rng);
-            let commitment = Components::LocalDataCommitment::commit(
+            let commitment_randomness = <C::LocalDataCommitment as CommitmentScheme>::Randomness::rand(rng);
+            let commitment = C::LocalDataCommitment::commit(
                 &parameters.local_data_commitment,
                 &input_bytes,
                 &commitment_randomness,
@@ -806,9 +801,8 @@ where
             for id in new_birth_program_ids {
                 input.extend_from_slice(&id);
             }
-            let program_randomness =
-                <Components::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness::rand(rng);
-            let program_commitment = Components::ProgramVerificationKeyCommitment::commit(
+            let program_randomness = <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness::rand(rng);
+            let program_commitment = C::ProgramVerificationKeyCommitment::commit(
                 &parameters.program_verification_key_commitment,
                 &input,
                 &program_randomness,
@@ -819,8 +813,8 @@ where
 
         // Encrypt the new records
 
-        let mut new_records_encryption_randomness = Vec::with_capacity(Components::NUM_OUTPUT_RECORDS);
-        let mut new_encrypted_records = Vec::with_capacity(Components::NUM_OUTPUT_RECORDS);
+        let mut new_records_encryption_randomness = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+        let mut new_encrypted_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
         for record in &new_records {
             let (record_encryption_randomness, encrypted_record) =
@@ -832,7 +826,7 @@ where
 
         // Construct the ciphertext hashes
 
-        let mut new_encrypted_record_hashes = Vec::with_capacity(Components::NUM_OUTPUT_RECORDS);
+        let mut new_encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         for encrypted_record in &new_encrypted_records {
             let encrypted_record_hash = RecordEncryption::encrypted_record_hash(&parameters, &encrypted_record)?;
 
@@ -875,8 +869,8 @@ where
         ledger: &L,
         rng: &mut R,
     ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)> {
-        assert_eq!(Components::NUM_INPUT_RECORDS, old_death_program_proofs.len());
-        assert_eq!(Components::NUM_OUTPUT_RECORDS, new_birth_program_proofs.len());
+        assert_eq!(C::NUM_INPUT_RECORDS, old_death_program_proofs.len());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, new_birth_program_proofs.len());
 
         let exec_time = start_timer!(|| "DPC::execute_online");
 
@@ -915,7 +909,7 @@ where
         let ledger_digest = ledger.digest().expect("could not get digest");
 
         // Generate the ledger membership witnesses
-        let mut old_witnesses = Vec::with_capacity(Components::NUM_INPUT_RECORDS);
+        let mut old_witnesses = Vec::with_capacity(C::NUM_INPUT_RECORDS);
 
         // Compute the ledger membership witness and serial number from the old records.
         for record in old_records.iter() {
@@ -942,21 +936,17 @@ where
             memorandum
         ]?;
 
-        let mut signatures = Vec::with_capacity(Components::NUM_INPUT_RECORDS);
-        for i in 0..Components::NUM_INPUT_RECORDS {
+        let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+        for i in 0..C::NUM_INPUT_RECORDS {
             let sk_sig = &old_account_private_keys[i].sk_sig;
             let randomizer = &old_randomizers[i];
 
             // Sign the transaction data
-            let account_signature = Components::AccountSignature::sign(
-                &system_parameters.account_signature,
-                sk_sig,
-                &signature_message,
-                rng,
-            )?;
+            let account_signature =
+                C::AccountSignature::sign(&system_parameters.account_signature, sk_sig, &signature_message, rng)?;
 
             // Randomize the signature
-            let randomized_signature = Components::AccountSignature::randomize_signature(
+            let randomized_signature = C::AccountSignature::randomize_signature(
                 &system_parameters.account_signature,
                 &account_signature,
                 randomizer,
@@ -969,7 +959,7 @@ where
 
         // Prepare record encryption components used in the inner SNARK
 
-        let mut new_records_encryption_gadget_components = Vec::with_capacity(Components::NUM_OUTPUT_RECORDS);
+        let mut new_records_encryption_gadget_components = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
         for (record, ciphertext_randomness) in new_records.iter().zip_eq(&new_records_encryption_randomness) {
             let record_encryption_gadget_components = RecordEncryption::prepare_encryption_gadget_components(
@@ -1010,7 +1000,7 @@ where
                 None => return Err(DPCError::MissingInnerSnarkProvingParameters.into()),
             };
 
-            Components::InnerSNARK::prove(&inner_snark_parameters, &circuit, rng)?
+            C::InnerSNARK::prove(&inner_snark_parameters, &circuit, rng)?
         };
 
         // Verify that the inner proof passes
@@ -1031,16 +1021,15 @@ where
 
             let verification_key = &parameters.inner_snark_parameters.1;
 
-            assert!(Components::InnerSNARK::verify(verification_key, &input, &inner_proof)?);
+            assert!(C::InnerSNARK::verify(verification_key, &input, &inner_proof)?);
         }
 
-        let inner_snark_vk: <Components::InnerSNARK as SNARK>::VerifyingKey =
-            parameters.inner_snark_parameters.1.clone().into();
+        let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = parameters.inner_snark_parameters.1.clone().into();
 
-        let inner_circuit_id = <Components::InnerCircuitIDCRH as CRH>::hash(
-            &parameters.system_parameters.inner_circuit_id_crh,
-            &to_bytes![inner_snark_vk]?,
-        )?;
+        let inner_circuit_id =
+            <C::InnerCircuitIDCRH as CRH>::hash(&parameters.system_parameters.inner_circuit_id_crh, &to_bytes![
+                inner_snark_vk
+            ]?)?;
 
         let transaction_proof = {
             let circuit = OuterCircuit::new(
@@ -1068,7 +1057,7 @@ where
                 None => return Err(DPCError::MissingOuterSnarkProvingParameters.into()),
             };
 
-            Components::OuterSNARK::prove(&outer_snark_parameters, &circuit, rng)?
+            C::OuterSNARK::prove(&outer_snark_parameters, &circuit, rng)?
         };
 
         let transaction = Self::Transaction::new(
@@ -1157,7 +1146,7 @@ where
 
         let account_signature = &parameters.system_parameters.account_signature;
         for (pk, sig) in transaction.old_serial_numbers().iter().zip(&transaction.signatures) {
-            if !Components::AccountSignature::verify(account_signature, pk, signature_message, sig)? {
+            if !C::AccountSignature::verify(account_signature, pk, signature_message, sig)? {
                 eprintln!("Signature didn't verify.");
                 return Ok(false);
             }
@@ -1167,7 +1156,7 @@ where
 
         // Construct the ciphertext hashes
 
-        let mut new_encrypted_record_hashes = Vec::with_capacity(Components::NUM_OUTPUT_RECORDS);
+        let mut new_encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         for encrypted_record in &transaction.encrypted_records {
             let encrypted_record_hash =
                 RecordEncryption::encrypted_record_hash(&parameters.system_parameters, encrypted_record)?;
@@ -1189,11 +1178,11 @@ where
             network_id: transaction.network_id(),
         };
 
-        let inner_snark_vk: <<Components as Testnet1Components>::InnerSNARK as SNARK>::VerifyingKey =
+        let inner_snark_vk: <<C as Testnet1Components>::InnerSNARK as SNARK>::VerifyingKey =
             parameters.inner_snark_parameters.1.clone().into();
 
         let inner_circuit_id =
-            Components::InnerCircuitIDCRH::hash(&parameters.system_parameters.inner_circuit_id_crh, &to_bytes![
+            C::InnerCircuitIDCRH::hash(&parameters.system_parameters.inner_circuit_id_crh, &to_bytes![
                 inner_snark_vk
             ]?)?;
 
@@ -1202,7 +1191,7 @@ where
             inner_circuit_id,
         };
 
-        if !Components::OuterSNARK::verify(
+        if !C::OuterSNARK::verify(
             &parameters.outer_snark_parameters.1,
             &outer_snark_input,
             &transaction.transaction_proof,
