@@ -15,10 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{account_format, traits::DPCComponents, AccountError, AccountPrivateKey};
-use snarkvm_algorithms::traits::EncryptionScheme;
+use snarkvm_algorithms::{traits::EncryptionScheme, SignatureScheme};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use base58::{FromBase58, ToBase58};
+use rand::{CryptoRng, Rng};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
@@ -46,6 +47,16 @@ impl<C: DPCComponents> AccountViewKey<C> {
         let decryption_key = private_key.to_decryption_key(signature_parameters, commitment_parameters)?;
 
         Ok(Self { decryption_key })
+    }
+
+    /// Signs a message using the account view key.
+    pub fn sign<R: Rng + CryptoRng>(
+        &self,
+        encryption_parameters: &C::AccountEncryption,
+        message: &[u8],
+        rng: &mut R,
+    ) -> Result<<C::AccountEncryption as SignatureScheme>::Signature, AccountError> {
+        Ok(encryption_parameters.sign(&self.decryption_key.clone().into(), message, rng)?)
     }
 }
 

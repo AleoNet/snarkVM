@@ -25,13 +25,13 @@ use snarkvm_curves::edwards_bls12::{EdwardsParameters, EdwardsProjective as Edwa
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
 use rand::{Rng, SeedableRng};
-use rand_xorshift::XorShiftRng;
+use rand_chacha::ChaChaRng;
 
 pub(crate) const ITERATIONS: usize = 5;
 
 #[test]
 fn test_record_serialization() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     for _ in 0..ITERATIONS {
         // Generate parameters for the ledger, commitment schemes, CRH, and the
@@ -103,7 +103,7 @@ fn test_record_serialization() {
 
 #[test]
 fn test_record_encryption() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     for _ in 0..ITERATIONS {
         // Generate parameters for the ledger, commitment schemes, CRH, and the

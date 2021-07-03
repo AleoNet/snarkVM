@@ -16,7 +16,7 @@
 
 use crate::traits::{AccountScheme, LedgerScheme, RecordScheme, TransactionScheme};
 
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 use std::sync::Arc;
 
 pub trait DPCScheme<L: LedgerScheme> {
@@ -31,17 +31,20 @@ pub trait DPCScheme<L: LedgerScheme> {
     type TransactionKernel;
 
     /// Returns public parameters for the DPC.
-    fn setup<R: Rng>(
+    fn setup<R: Rng + CryptoRng>(
         ledger_parameters: &Arc<L::MerkleParameters>,
         rng: &mut R,
     ) -> anyhow::Result<Self::NetworkParameters>;
 
     /// Returns an account, given the system parameters, metadata, and an RNG.
-    fn create_account<R: Rng>(parameters: &Self::SystemParameters, rng: &mut R) -> anyhow::Result<Self::Account>;
+    fn create_account<R: Rng + CryptoRng>(
+        parameters: &Self::SystemParameters,
+        rng: &mut R,
+    ) -> anyhow::Result<Self::Account>;
 
     /// Returns the execution context required for program snark and DPC transaction generation.
     #[allow(clippy::too_many_arguments)]
-    fn execute_offline<R: Rng>(
+    fn execute_offline<R: Rng + CryptoRng>(
         parameters: Self::SystemParameters,
         old_records: Vec<Self::Record>,
         old_account_private_keys: Vec<<Self::Account as AccountScheme>::AccountPrivateKey>,
@@ -58,7 +61,7 @@ pub trait DPCScheme<L: LedgerScheme> {
 
     /// Returns new records and a transaction based on the authorized
     /// consumption of old records.
-    fn execute_online<R: Rng>(
+    fn execute_online<R: Rng + CryptoRng>(
         parameters: &Self::NetworkParameters,
         transaction_kernel: Self::TransactionKernel,
         old_death_program_proofs: Vec<Self::PrivateProgramInput>,

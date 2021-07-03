@@ -52,7 +52,7 @@ use snarkvm_utilities::{
 };
 
 use itertools::{izip, Itertools};
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 use std::{
     io::{Read, Result as IoResult, Write},
     marker::PhantomData,
@@ -421,7 +421,9 @@ pub struct LocalData<Components: Testnet1Components> {
 ///////////////////////////////////////////////////////////////////////////////
 
 impl<Components: Testnet1Components> DPC<Components> {
-    pub fn generate_system_parameters<R: Rng>(rng: &mut R) -> Result<SystemParameters<Components>, DPCError> {
+    pub fn generate_system_parameters<R: Rng + CryptoRng>(
+        rng: &mut R,
+    ) -> Result<SystemParameters<Components>, DPCError> {
         let time = start_timer!(|| "Account commitment scheme setup");
         let account_commitment = Components::AccountCommitment::setup(rng);
         end_timer!(time);
@@ -481,7 +483,7 @@ impl<Components: Testnet1Components> DPC<Components> {
         })
     }
 
-    pub fn generate_noop_program_snark_parameters<R: Rng>(
+    pub fn generate_noop_program_snark_parameters<R: Rng + CryptoRng>(
         system_parameters: &SystemParameters<Components>,
         rng: &mut R,
     ) -> Result<NoopProgramSNARKParameters<Components>, DPCError> {
@@ -516,7 +518,7 @@ impl<Components: Testnet1Components> DPC<Components> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn generate_record<R: Rng>(
+    pub fn generate_record<R: Rng + CryptoRng>(
         system_parameters: &SystemParameters<Components>,
         sn_nonce: <Components::SerialNumberNonceCRH as CRH>::Output,
         owner: AccountAddress<Components>,
@@ -585,7 +587,7 @@ where
     type Transaction = Transaction<Components>;
     type TransactionKernel = TransactionKernel<Components>;
 
-    fn setup<R: Rng>(
+    fn setup<R: Rng + CryptoRng>(
         ledger_parameters: &Arc<Components::MerkleParameters>,
         rng: &mut R,
     ) -> anyhow::Result<Self::NetworkParameters> {
@@ -639,7 +641,10 @@ where
         })
     }
 
-    fn create_account<R: Rng>(parameters: &Self::SystemParameters, rng: &mut R) -> anyhow::Result<Self::Account> {
+    fn create_account<R: Rng + CryptoRng>(
+        parameters: &Self::SystemParameters,
+        rng: &mut R,
+    ) -> anyhow::Result<Self::Account> {
         let time = start_timer!(|| "BaseDPC::create_account");
         let account = Account::new(
             &parameters.account_signature,
@@ -652,7 +657,7 @@ where
         Ok(account)
     }
 
-    fn execute_offline<R: Rng>(
+    fn execute_offline<R: Rng + CryptoRng>(
         parameters: Self::SystemParameters,
         old_records: Vec<Self::Record>,
         old_account_private_keys: Vec<<Self::Account as AccountScheme>::AccountPrivateKey>,
@@ -862,7 +867,7 @@ where
         Ok(transaction_kernel)
     }
 
-    fn execute_online<R: Rng>(
+    fn execute_online<R: Rng + CryptoRng>(
         parameters: &Self::NetworkParameters,
         transaction_kernel: Self::TransactionKernel,
         old_death_program_proofs: Vec<Self::PrivateProgramInput>,

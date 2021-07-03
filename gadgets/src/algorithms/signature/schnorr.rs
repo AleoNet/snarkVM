@@ -14,22 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::{borrow::Borrow, marker::PhantomData};
-
-use digest::Digest;
-use itertools::Itertools;
-
-use snarkvm_algorithms::signature::{SchnorrOutput, SchnorrParameters, SchnorrPublicKey, SchnorrSignature};
-use snarkvm_curves::traits::Group;
-use snarkvm_fields::{Field, PrimeField};
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::{
-    serialize::{CanonicalDeserialize, CanonicalSerialize},
-    to_bytes,
-    FromBytes,
-    ToBytes,
-};
-
 use crate::{
     bits::{Boolean, ToBytesGadget},
     integers::uint::UInt8,
@@ -43,7 +27,23 @@ use crate::{
     FieldGadget,
     PRFGadget,
 };
-use snarkvm_algorithms::prf::Blake2s;
+use snarkvm_algorithms::{
+    prf::Blake2s,
+    signature::{Schnorr, SchnorrParameters, SchnorrPublicKey, SchnorrSignature},
+};
+use snarkvm_curves::traits::Group;
+use snarkvm_fields::{Field, PrimeField};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+use snarkvm_utilities::{
+    serialize::{CanonicalDeserialize, CanonicalSerialize},
+    to_bytes,
+    FromBytes,
+    ToBytes,
+};
+
+use digest::Digest;
+use itertools::Itertools;
+use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone)]
 pub struct SchnorrParametersGadget<G: Group, F: Field, D: Digest> {
@@ -284,8 +284,7 @@ impl<
     FG: FieldGadget<F, F>,
     D: Digest + Send + Sync,
     F: PrimeField,
-> SignaturePublicKeyRandomizationGadget<SchnorrSignature<G, D>, F>
-    for SchnorrPublicKeyRandomizationGadget<G, F, GG, FG>
+> SignaturePublicKeyRandomizationGadget<Schnorr<G, D>, F> for SchnorrPublicKeyRandomizationGadget<G, F, GG, FG>
 {
     type ParametersGadget = SchnorrParametersGadget<G, F, D>;
     type PublicKeyGadget = SchnorrPublicKeyGadget<G, F, GG>;

@@ -21,7 +21,7 @@ use crate::{
     AccountPrivateKey,
 };
 
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 use std::fmt;
 
 #[derive(Derivative)]
@@ -39,7 +39,7 @@ impl<C: DPCComponents> AccountScheme for Account<C> {
     type SignatureScheme = C::AccountSignature;
 
     /// Creates a new account.
-    fn new<R: Rng>(
+    fn new<R: Rng + CryptoRng>(
         signature_parameters: &Self::SignatureScheme,
         commitment_parameters: &Self::CommitmentScheme,
         encryption_parameters: &Self::EncryptionScheme,
