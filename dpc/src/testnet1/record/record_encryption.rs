@@ -22,9 +22,9 @@ use crate::{
         Testnet1Components,
     },
     traits::{DPCComponents, RecordEncodingScheme, RecordScheme},
-    AccountViewKey,
     Address,
     DPCError,
+    ViewKey,
 };
 use snarkvm_algorithms::{
     encoding::Elligator2,
@@ -138,7 +138,7 @@ impl<C: Testnet1Components> RecordEncryption<C> {
     /// Decrypt and reconstruct the encrypted record
     pub fn decrypt_record(
         system_parameters: &SystemParameters<C>,
-        account_view_key: &AccountViewKey<C>,
+        account_view_key: &ViewKey<C>,
         encrypted_record: &EncryptedRecord<C>,
     ) -> Result<Record<C>, DPCError> {
         // Decrypt the encrypted record

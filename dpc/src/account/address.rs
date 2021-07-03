@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, traits::DPCComponents, AccountError, AccountPrivateKey, AccountViewKey};
+use crate::{account_format, traits::DPCComponents, AccountError, AccountPrivateKey, ViewKey};
 use snarkvm_algorithms::{EncryptionScheme, SignatureScheme};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -54,7 +54,7 @@ impl<C: DPCComponents> Address<C> {
     /// Derives the account address from an account view key.
     pub fn from_view_key(
         encryption_parameters: &C::AccountEncryption,
-        view_key: &AccountViewKey<C>,
+        view_key: &ViewKey<C>,
     ) -> Result<Self, AccountError> {
         let encryption_key = <C::AccountEncryption as EncryptionScheme>::generate_public_key(
             encryption_parameters,
@@ -129,10 +129,13 @@ impl<C: DPCComponents> fmt::Display for Address<C> {
             .write(&mut address[0..32])
             .expect("address formatting failed");
 
-        let prefix = account_format::ADDRESS_PREFIX.to_string();
-
-        let result = bech32::encode(&prefix, address.to_base32(), bech32::Variant::Bech32);
-        result.unwrap().fmt(f)
+        bech32::encode(
+            &account_format::ADDRESS_PREFIX.to_string(),
+            address.to_base32(),
+            bech32::Variant::Bech32,
+        )
+        .unwrap()
+        .fmt(f)
     }
 }
 

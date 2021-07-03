@@ -18,7 +18,7 @@ use crate::{
     testnet2::{instantiated::*, payload::Payload, record_encoding::*, record_encryption::*, DPC},
     traits::{AccountScheme, DPCComponents, RecordEncodingScheme},
     Account,
-    AccountViewKey,
+    ViewKey,
 };
 use snarkvm_algorithms::traits::CRH;
 use snarkvm_curves::edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls};
@@ -155,7 +155,7 @@ fn test_record_encryption() {
             // Encrypt the record
             let (_, encryped_record) =
                 RecordEncryption::encrypt_record(&system_parameters, &given_record, &mut rng).unwrap();
-            let account_view_key = AccountViewKey::from_private_key(
+            let account_view_key = ViewKey::from_private_key(
                 &system_parameters.account_signature,
                 &system_parameters.account_commitment,
                 &dummy_account.private_key,

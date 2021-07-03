@@ -33,11 +33,11 @@ use std::{
     PartialEq(bound = "C: DPCComponents"),
     Eq(bound = "C: DPCComponents")
 )]
-pub struct AccountViewKey<C: DPCComponents> {
+pub struct ViewKey<C: DPCComponents> {
     pub decryption_key: <C::AccountEncryption as EncryptionScheme>::PrivateKey,
 }
 
-impl<C: DPCComponents> AccountViewKey<C> {
+impl<C: DPCComponents> ViewKey<C> {
     /// Creates a new account view key from an account private key.
     pub fn from_private_key(
         signature_parameters: &C::AccountSignature,
@@ -60,13 +60,13 @@ impl<C: DPCComponents> AccountViewKey<C> {
     }
 }
 
-impl<C: DPCComponents> ToBytes for AccountViewKey<C> {
+impl<C: DPCComponents> ToBytes for ViewKey<C> {
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.decryption_key.write(&mut writer)
     }
 }
 
-impl<C: DPCComponents> FromBytes for AccountViewKey<C> {
+impl<C: DPCComponents> FromBytes for ViewKey<C> {
     /// Reads in an account view key buffer.
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -76,13 +76,13 @@ impl<C: DPCComponents> FromBytes for AccountViewKey<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Debug for AccountViewKey<C> {
+impl<C: DPCComponents> fmt::Debug for ViewKey<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "AccountViewKey {{ decryption_key: {:?} }}", self.decryption_key)
     }
 }
 
-impl<C: DPCComponents> FromStr for AccountViewKey<C> {
+impl<C: DPCComponents> FromStr for ViewKey<C> {
     type Err = AccountError;
 
     /// Reads in an account view key string.
@@ -103,7 +103,7 @@ impl<C: DPCComponents> FromStr for AccountViewKey<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Display for AccountViewKey<C> {
+impl<C: DPCComponents> fmt::Display for ViewKey<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut view_key = [0u8; 39];
         let prefix = account_format::VIEW_KEY_PREFIX;

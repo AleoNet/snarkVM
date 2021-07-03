@@ -207,7 +207,7 @@ fn dpc_testnet1_integration_test() {
         for ((encrypted_record, private_key), new_record) in
             encrypted_records.iter().zip(new_account_private_keys).zip(new_records)
         {
-            let account_view_key = AccountViewKey::from_private_key(
+            let account_view_key = ViewKey::from_private_key(
                 &parameters.system_parameters.account_signature,
                 &parameters.system_parameters.account_commitment,
                 &private_key,
