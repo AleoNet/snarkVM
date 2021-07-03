@@ -26,12 +26,12 @@ use snarkvm_dpc::{
 use snarkvm_parameters::{LedgerMerkleTreeParameters, Parameter};
 use snarkvm_utilities::bytes::FromBytes;
 
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 use std::sync::Arc;
 
 pub type MerkleTreeLedger<S> = Ledger<Tx, CommitmentMerkleParameters, S>;
 
-pub fn setup_or_load_parameters<R: Rng, S: Storage>(
+pub fn setup_or_load_parameters<R: Rng + CryptoRng, S: Storage>(
     verify_only: bool,
     rng: &mut R,
 ) -> (
@@ -61,7 +61,7 @@ pub fn load_verifying_parameters() -> PublicParameters<Components> {
     PublicParameters::<Components>::load_vk_direct().unwrap()
 }
 
-pub fn generate_test_accounts<R: Rng, S: Storage>(
+pub fn generate_test_accounts<R: Rng + CryptoRng, S: Storage>(
     parameters: &PublicParameters<Components>,
     rng: &mut R,
 ) -> [Account<Components>; 3] {

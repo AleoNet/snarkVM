@@ -49,7 +49,7 @@ use snarkvm_utilities::{
 };
 
 use itertools::{izip, Itertools};
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 use std::{
     io::{Read, Result as IoResult, Write},
     marker::PhantomData,
@@ -579,7 +579,7 @@ where
     type Transaction = Transaction<Components>;
     type TransactionKernel = TransactionKernel<Components>;
 
-    fn setup<R: Rng>(
+    fn setup<R: Rng + CryptoRng>(
         ledger_parameters: &Arc<Components::MerkleParameters>,
         rng: &mut R,
     ) -> anyhow::Result<Self::NetworkParameters> {
@@ -633,7 +633,10 @@ where
         })
     }
 
-    fn create_account<R: Rng>(parameters: &Self::SystemParameters, rng: &mut R) -> anyhow::Result<Self::Account> {
+    fn create_account<R: Rng + CryptoRng>(
+        parameters: &Self::SystemParameters,
+        rng: &mut R,
+    ) -> anyhow::Result<Self::Account> {
         let time = start_timer!(|| "BaseDPC::create_account");
         let account = Account::new(
             &parameters.account_signature,
@@ -646,7 +649,7 @@ where
         Ok(account)
     }
 
-    fn execute_offline<R: Rng>(
+    fn execute_offline<R: Rng + CryptoRng>(
         parameters: Self::SystemParameters,
         old_records: Vec<Self::Record>,
         old_account_private_keys: Vec<<Self::Account as AccountScheme>::AccountPrivateKey>,
@@ -856,7 +859,7 @@ where
         Ok(transaction_kernel)
     }
 
-    fn execute_online<R: Rng>(
+    fn execute_online<R: Rng + CryptoRng>(
         parameters: &Self::NetworkParameters,
         transaction_kernel: Self::TransactionKernel,
         old_death_program_proofs: Vec<Self::PrivateProgramInput>,

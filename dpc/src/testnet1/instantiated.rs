@@ -34,7 +34,7 @@ use snarkvm_algorithms::{
     define_merkle_tree_parameters,
     encryption::GroupEncryption,
     prf::Blake2s,
-    signature::SchnorrSignature,
+    signature::Schnorr,
     snark::{gm17::GM17, groth16::Groth16},
 };
 use snarkvm_curves::{
@@ -191,7 +191,7 @@ pub type ProgramVerificationKeyCommitment = Blake2sCommitment;
 pub type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, LocalDataCRHWindow>;
 pub type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls, LocalDataCommitmentWindow>;
 
-pub type AccountSignature = SchnorrSignature<EdwardsAffine, Blake2sHash>;
+pub type AccountSignature = Schnorr<EdwardsAffine, Blake2sHash>;
 
 pub type MerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, TwoToOneWindow>;
 pub type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, EncryptedRecordWindow>;

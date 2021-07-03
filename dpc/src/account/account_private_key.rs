@@ -14,13 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    account_format,
-    testnet1::{instantiated::Components, SystemParameters},
-    traits::DPCComponents,
-    AccountError,
-    PrivateKeyError,
-};
+use crate::{account_format, traits::DPCComponents, AccountError};
 use snarkvm_algorithms::{
     prf::Blake2s,
     traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, PRF},
@@ -30,31 +24,6 @@ use snarkvm_utilities::{bytes_to_bits, to_bytes, FromBytes, ToBytes};
 use base58::{FromBase58, ToBase58};
 use rand::{CryptoRng, Rng};
 use std::{fmt, str::FromStr};
-
-#[derive(Debug)]
-pub struct PrivateKey {
-    pub private_key: AccountPrivateKey<Components>,
-}
-
-impl PrivateKey {
-    /// Returns a new Account Private Key.
-    pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, PrivateKeyError> {
-        let parameters = SystemParameters::<Components>::load()?;
-        let private_key =
-            AccountPrivateKey::<Components>::new(&parameters.account_signature, &parameters.account_commitment, rng)?;
-        Ok(Self { private_key })
-    }
-}
-
-impl FromStr for PrivateKey {
-    type Err = PrivateKeyError;
-
-    fn from_str(private_key: &str) -> Result<Self, Self::Err> {
-        Ok(Self {
-            private_key: AccountPrivateKey::<Components>::from_str(private_key)?,
-        })
-    }
-}
 
 #[derive(Derivative)]
 #[derivative(
@@ -84,7 +53,7 @@ impl<C: DPCComponents> AccountPrivateKey<C> {
     const INPUT_SK_SIG: [u8; 32] = [0u8; 32];
 
     /// Creates a new account private key.
-    pub fn new<R: Rng>(
+    pub fn new<R: Rng + CryptoRng>(
         signature_parameters: &C::AccountSignature,
         commitment_parameters: &C::AccountCommitment,
         rng: &mut R,

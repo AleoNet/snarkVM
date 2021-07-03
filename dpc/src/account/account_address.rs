@@ -14,18 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    account_format,
-    testnet1::{instantiated::Components, parameters::SystemParameters},
-    traits::DPCComponents,
-    AccountError,
-    AccountPrivateKey,
-    AccountViewKey,
-    AddressError,
-    Signature,
-    ViewKey,
-};
-use snarkvm_algorithms::traits::EncryptionScheme;
+use crate::{account_format, traits::DPCComponents, AccountError, AccountPrivateKey, AccountViewKey};
+use snarkvm_algorithms::{EncryptionScheme, SignatureScheme};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use bech32::{self, FromBase32, ToBase32};
@@ -44,56 +34,6 @@ use std::{
 )]
 pub struct AccountAddress<C: DPCComponents> {
     pub encryption_key: <C::AccountEncryption as EncryptionScheme>::PublicKey,
-}
-
-#[derive(Debug)]
-pub struct Address<C: DPCComponents> {
-    pub(crate) address: AccountAddress<C>,
-}
-
-impl Address<Components> {
-    pub fn from(private_key: &AccountPrivateKey<Components>) -> Result<Self, AddressError> {
-        let parameters = SystemParameters::<Components>::load()?;
-        let address = AccountAddress::<Components>::from_private_key(
-            &parameters.account_signature,
-            &parameters.account_commitment,
-            &parameters.account_encryption,
-            &private_key,
-        )?;
-        Ok(Self { address })
-    }
-
-    pub fn from_view_key(view_key: &ViewKey) -> Result<Self, AddressError> {
-        let parameters = SystemParameters::<Components>::load()?;
-        let address = AccountAddress::<Components>::from_view_key(&parameters.account_encryption, &view_key.view_key)?;
-        Ok(Self { address })
-    }
-
-    /// Verify a signature signed by the view key
-    /// Returns `true` if the signature is verified correctly. Otherwise, returns `false`.
-    pub fn verify(&self, message: &[u8], signature: &Signature) -> Result<bool, AddressError> {
-        let parameters = SystemParameters::<Components>::load()?;
-
-        Ok(parameters
-            .account_encryption
-            .verify(&self.address.encryption_key, message, &signature.0)?)
-    }
-}
-
-impl FromStr for Address<Components> {
-    type Err = AddressError;
-
-    fn from_str(address: &str) -> Result<Self, Self::Err> {
-        Ok(Self {
-            address: AccountAddress::<Components>::from_str(address)?,
-        })
-    }
-}
-
-impl fmt::Display for Address<Components> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.address.to_string())
-    }
 }
 
 impl<C: DPCComponents> AccountAddress<C> {
@@ -127,6 +67,17 @@ impl<C: DPCComponents> AccountAddress<C> {
     #[allow(clippy::wrong_self_convention)]
     pub fn into_repr(&self) -> &<C::AccountEncryption as EncryptionScheme>::PublicKey {
         &self.encryption_key
+    }
+
+    /// Verifies a signature on a message signed by the account view key.
+    /// Returns `true` if the signature is valid. Otherwise, returns `false`.
+    pub fn verify_signature(
+        &self,
+        encryption_parameters: &C::AccountEncryption,
+        message: &[u8],
+        signature: &<C::AccountEncryption as SignatureScheme>::Signature,
+    ) -> Result<bool, AccountError> {
+        Ok(encryption_parameters.verify(&self.encryption_key.clone().into(), message, signature)?)
     }
 }
 

@@ -17,7 +17,7 @@
 use crate::{
     encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey},
     errors::SignatureError,
-    signature::{SchnorrOutput, SchnorrParameters, SchnorrPublicKey, SchnorrSignature},
+    signature::{Schnorr, SchnorrParameters, SchnorrPublicKey, SchnorrSignature},
     traits::{EncryptionScheme, SignatureScheme},
 };
 use snarkvm_curves::traits::{Group, ProjectiveCurve};
@@ -29,7 +29,10 @@ use rand::Rng;
 use std::{hash::Hash, marker::PhantomData};
 
 /// Map the encryption group into the signature group.
-fn into_signature_group<G: Group + ProjectiveCurve + CanonicalSerialize, SG: Group + CanonicalDeserialize>(
+pub(super) fn into_signature_group<
+    G: Group + ProjectiveCurve + CanonicalSerialize,
+    SG: Group + CanonicalDeserialize,
+>(
     projective: G,
 ) -> SG {
     let mut bytes = vec![];
@@ -39,7 +42,7 @@ fn into_signature_group<G: Group + ProjectiveCurve + CanonicalSerialize, SG: Gro
 
 /// Map the GroupEncryption parameters into a Schnorr signature scheme.
 impl<G: Group + ProjectiveCurve + CanonicalSerialize, SG: Group + CanonicalDeserialize, D: Digest>
-    From<GroupEncryptionParameters<G>> for SchnorrSignature<SG, D>
+    From<GroupEncryptionParameters<G>> for Schnorr<SG, D>
 {
     fn from(parameters: GroupEncryptionParameters<G>) -> Self {
         let generator_powers: Vec<SG> = parameters
@@ -72,10 +75,10 @@ impl<G: Group + ProjectiveCurve, SG: Group + Hash + CanonicalSerialize + Canonic
 where
     <G as Group>::ScalarField: PrimeField,
 {
-    type Output = SchnorrOutput<SG>;
     type Parameters = GroupEncryptionParameters<G>;
     type PrivateKey = <G as Group>::ScalarField;
     type PublicKey = GroupEncryptionPublicKey<G>;
+    type Signature = SchnorrSignature<SG>;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self, SignatureError> {
         Ok(<Self as EncryptionScheme>::setup(rng))
@@ -98,8 +101,8 @@ where
         private_key: &Self::PrivateKey,
         message: &[u8],
         rng: &mut R,
-    ) -> Result<Self::Output, SignatureError> {
-        let schnorr_signature: SchnorrSignature<SG, D> = self.parameters.clone().into();
+    ) -> Result<Self::Signature, SignatureError> {
+        let schnorr_signature: Schnorr<SG, D> = self.parameters.clone().into();
         let private_key = <SG as Group>::ScalarField::read(&to_bytes![private_key]?[..])?;
 
         Ok(schnorr_signature.sign(&private_key, message, rng)?)
@@ -109,9 +112,9 @@ where
         &self,
         public_key: &Self::PublicKey,
         message: &[u8],
-        signature: &Self::Output,
+        signature: &Self::Signature,
     ) -> Result<bool, SignatureError> {
-        let schnorr_signature: SchnorrSignature<SG, D> = self.parameters.clone().into();
+        let schnorr_signature: Schnorr<SG, D> = self.parameters.clone().into();
         let schnorr_public_key: SchnorrPublicKey<SG> = (*public_key).into();
 
         Ok(schnorr_signature.verify(&schnorr_public_key, message, signature)?)
@@ -127,9 +130,9 @@ where
 
     fn randomize_signature(
         &self,
-        _signature: &Self::Output,
+        _signature: &Self::Signature,
         _randomness: &[u8],
-    ) -> Result<Self::Output, SignatureError> {
+    ) -> Result<Self::Signature, SignatureError> {
         unimplemented!()
     }
 }

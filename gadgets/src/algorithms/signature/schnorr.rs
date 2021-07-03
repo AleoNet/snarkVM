@@ -19,7 +19,7 @@ use std::{borrow::Borrow, marker::PhantomData};
 use digest::Digest;
 use itertools::Itertools;
 
-use snarkvm_algorithms::signature::{SchnorrParameters, SchnorrPublicKey, SchnorrSignature};
+use snarkvm_algorithms::signature::{Schnorr, SchnorrParameters, SchnorrPublicKey};
 use snarkvm_curves::traits::Group;
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -153,7 +153,7 @@ pub struct SchnorrPublicKeyRandomizationGadget<G: Group, F: Field, GG: GroupGadg
 }
 
 impl<G: Group + CanonicalSerialize + CanonicalDeserialize, GG: GroupGadget<G, F>, D: Digest + Send + Sync, F: Field>
-    SignaturePublicKeyRandomizationGadget<SchnorrSignature<G, D>, F> for SchnorrPublicKeyRandomizationGadget<G, F, GG>
+    SignaturePublicKeyRandomizationGadget<Schnorr<G, D>, F> for SchnorrPublicKeyRandomizationGadget<G, F, GG>
 {
     type ParametersGadget = SchnorrParametersGadget<G, F, D>;
     type PublicKeyGadget = SchnorrPublicKeyGadget<G, F, GG>;

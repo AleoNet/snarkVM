@@ -43,7 +43,7 @@ use snarkvm_utilities::{
 
 use itertools::Itertools;
 use rand::{Rng, SeedableRng};
-use rand_xorshift::XorShiftRng;
+use rand_chacha::ChaChaRng;
 use std::{
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
@@ -53,7 +53,7 @@ type L = Ledger<Tx, CommitmentMerkleParameters, MemDb>;
 
 #[test]
 fn dpc_testnet1_integration_test() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     // Generate or load parameters for the ledger, commitment schemes, and CRH
     let (ledger_parameters, parameters) = setup_or_load_parameters::<_, MemDb>(false, &mut rng);
@@ -276,7 +276,7 @@ fn generate_test_noop_program_parameters<R: Rng>(
 
 #[test]
 fn test_transaction_kernel_serialization() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     // Generate parameters for the ledger, commitment schemes, CRH, and the
     // "always-accept" program.
@@ -349,7 +349,7 @@ fn test_transaction_kernel_serialization() {
 
 #[test]
 fn test_execute_base_dpc_constraints() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     // Specify network_id
     let network_id: u8 = 0;
