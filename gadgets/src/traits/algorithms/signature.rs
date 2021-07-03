@@ -29,7 +29,7 @@ use crate::{
 pub trait SignaturePublicKeyRandomizationGadget<S: SignatureScheme, F: Field> {
     type ParametersGadget: AllocGadget<S::Parameters, F>;
     type PublicKeyGadget: ToBytesGadget<F> + EqGadget<F> + AllocGadget<S::PublicKey, F> + Clone;
-    type SignatureGadget: ToBytesGadget<F> + EqGadget<F> + AllocGadget<S::Output, F> + Clone;
+    type SignatureGadget: ToBytesGadget<F> + EqGadget<F> + AllocGadget<S::Signature, F> + Clone;
 
     fn check_randomization_gadget<CS: ConstraintSystem<F>>(
         cs: CS,

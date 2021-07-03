@@ -90,6 +90,10 @@ version = "0.8"
 version = "0.3"
 default-features = false
 
+[dev-dependencies.rand_chacha]
+version = "0.3"
+default-features = false
+
 [features]
 default = [
   "full",

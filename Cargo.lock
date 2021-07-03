@@ -1696,6 +1696,7 @@ dependencies = [
  "num-traits",
  "paste",
  "rand",
+ "rand_chacha",
  "rand_xorshift",
  "snarkvm-algorithms",
  "snarkvm-curves",

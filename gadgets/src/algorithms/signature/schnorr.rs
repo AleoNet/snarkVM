@@ -162,8 +162,10 @@ pub struct SchnorrSignatureGadget<G: Group, F: Field, FG: FieldGadget<F, F>> {
     _group: PhantomData<*const G>,
 }
 
-impl<G: Group, F: Field, FG: FieldGadget<F, F>> AllocGadget<SchnorrOutput<G>, F> for SchnorrSignatureGadget<G, F, FG> {
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrOutput<G>>, CS: ConstraintSystem<F>>(
+impl<G: Group, F: Field, FG: FieldGadget<F, F>> AllocGadget<SchnorrSignature<G>, F>
+    for SchnorrSignatureGadget<G, F, FG>
+{
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrSignature<G>>, CS: ConstraintSystem<F>>(
         mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
@@ -187,7 +189,11 @@ impl<G: Group, F: Field, FG: FieldGadget<F, F>> AllocGadget<SchnorrOutput<G>, F>
         })
     }
 
-    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrOutput<G>>, CS: ConstraintSystem<F>>(
+    fn alloc_input<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<SchnorrSignature<G>>,
+        CS: ConstraintSystem<F>,
+    >(
         mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
