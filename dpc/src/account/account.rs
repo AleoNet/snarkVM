@@ -17,8 +17,8 @@
 use crate::{
     errors::AccountError,
     traits::{AccountScheme, DPCComponents},
-    AccountAddress,
     AccountPrivateKey,
+    Address,
 };
 
 use rand::{CryptoRng, Rng};
@@ -28,11 +28,11 @@ use std::fmt;
 #[derivative(Clone(bound = "C: DPCComponents"))]
 pub struct Account<C: DPCComponents> {
     pub private_key: AccountPrivateKey<C>,
-    pub address: AccountAddress<C>,
+    pub address: Address<C>,
 }
 
 impl<C: DPCComponents> AccountScheme for Account<C> {
-    type AccountAddress = AccountAddress<C>;
+    type AccountAddress = Address<C>;
     type AccountPrivateKey = AccountPrivateKey<C>;
     type CommitmentScheme = C::AccountCommitment;
     type EncryptionScheme = C::AccountEncryption;
@@ -46,7 +46,7 @@ impl<C: DPCComponents> AccountScheme for Account<C> {
         rng: &mut R,
     ) -> Result<Self, AccountError> {
         let private_key = AccountPrivateKey::new(signature_parameters, commitment_parameters, rng)?;
-        let address = AccountAddress::from_private_key(
+        let address = Address::from_private_key(
             signature_parameters,
             commitment_parameters,
             encryption_parameters,

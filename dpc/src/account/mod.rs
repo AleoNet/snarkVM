@@ -19,8 +19,8 @@
 pub mod account;
 pub use account::*;
 
-pub mod account_address;
-pub use account_address::*;
+pub mod address;
+pub use address::*;
 
 pub mod account_format;
 pub use account_format::*;

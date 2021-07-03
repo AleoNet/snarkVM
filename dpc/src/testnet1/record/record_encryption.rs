@@ -22,8 +22,8 @@ use crate::{
         Testnet1Components,
     },
     traits::{DPCComponents, RecordEncodingScheme, RecordScheme},
-    AccountAddress,
     AccountViewKey,
+    Address,
     DPCError,
 };
 use snarkvm_algorithms::{
@@ -173,7 +173,7 @@ impl<C: Testnet1Components> RecordEncryption<C> {
 
         // Construct the record account address
 
-        let owner = AccountAddress::from_view_key(&system_parameters.account_encryption, &account_view_key)?;
+        let owner = Address::from_view_key(&system_parameters.account_encryption, &account_view_key)?;
 
         // Determine if the record is a dummy
 

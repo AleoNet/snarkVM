@@ -32,11 +32,11 @@ use std::{
     PartialEq(bound = "C: DPCComponents"),
     Eq(bound = "C: DPCComponents")
 )]
-pub struct AccountAddress<C: DPCComponents> {
+pub struct Address<C: DPCComponents> {
     pub encryption_key: <C::AccountEncryption as EncryptionScheme>::PublicKey,
 }
 
-impl<C: DPCComponents> AccountAddress<C> {
+impl<C: DPCComponents> Address<C> {
     /// Derives the account address from an account private key.
     pub fn from_private_key(
         signature_parameters: &C::AccountSignature,
@@ -81,13 +81,13 @@ impl<C: DPCComponents> AccountAddress<C> {
     }
 }
 
-impl<C: DPCComponents> ToBytes for AccountAddress<C> {
+impl<C: DPCComponents> ToBytes for Address<C> {
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.encryption_key.write(&mut writer)
     }
 }
 
-impl<C: DPCComponents> FromBytes for AccountAddress<C> {
+impl<C: DPCComponents> FromBytes for Address<C> {
     /// Reads in an account address buffer.
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -97,7 +97,7 @@ impl<C: DPCComponents> FromBytes for AccountAddress<C> {
     }
 }
 
-impl<C: DPCComponents> FromStr for AccountAddress<C> {
+impl<C: DPCComponents> FromStr for Address<C> {
     type Err = AccountError;
 
     /// Reads in an account address string.
@@ -121,7 +121,7 @@ impl<C: DPCComponents> FromStr for AccountAddress<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Display for AccountAddress<C> {
+impl<C: DPCComponents> fmt::Display for Address<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Write the encryption key to a buffer.
         let mut address = [0u8; 32];
@@ -136,7 +136,7 @@ impl<C: DPCComponents> fmt::Display for AccountAddress<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Debug for AccountAddress<C> {
+impl<C: DPCComponents> fmt::Debug for Address<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "AccountAddress {{ encryption_key: {:?} }}", self.encryption_key)
     }

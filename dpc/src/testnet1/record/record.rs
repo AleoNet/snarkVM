@@ -17,7 +17,7 @@
 use crate::{
     testnet1::{payload::Payload, Testnet1Components},
     traits::RecordScheme,
-    AccountAddress,
+    Address,
     RecordError,
 };
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH};
@@ -46,7 +46,7 @@ fn default_program_id<C: CRH>() -> Vec<u8> {
     Eq(bound = "C: Testnet1Components")
 )]
 pub struct Record<C: Testnet1Components> {
-    pub(crate) owner: AccountAddress<C>,
+    pub(crate) owner: Address<C>,
     pub(crate) is_dummy: bool,
     // TODO (raychu86) use AleoAmount which will guard the value range
     pub(crate) value: u64,
@@ -65,7 +65,7 @@ pub struct Record<C: Testnet1Components> {
 impl<C: Testnet1Components> RecordScheme for Record<C> {
     type Commitment = <C::RecordCommitment as CommitmentScheme>::Output;
     type CommitmentRandomness = <C::RecordCommitment as CommitmentScheme>::Randomness;
-    type Owner = AccountAddress<C>;
+    type Owner = Address<C>;
     type Payload = Payload;
     type SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey;
     type SerialNumberNonce = <C::SerialNumberNonceCRH as CRH>::Output;
@@ -131,7 +131,7 @@ impl<C: Testnet1Components> ToBytes for Record<C> {
 impl<C: Testnet1Components> FromBytes for Record<C> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let owner: AccountAddress<C> = FromBytes::read(&mut reader)?;
+        let owner: Address<C> = FromBytes::read(&mut reader)?;
         let is_dummy: bool = FromBytes::read(&mut reader)?;
         let value: u64 = FromBytes::read(&mut reader)?;
         let payload: Payload = FromBytes::read(&mut reader)?;

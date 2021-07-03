@@ -18,8 +18,8 @@ use crate::{
     testnet1::payload::Payload,
     traits::{AccountScheme, DPCComponents, DPCScheme, LedgerScheme, RecordScheme, TransactionScheme},
     Account,
-    AccountAddress,
     AccountPrivateKey,
+    Address,
     AleoAmount,
     DPCError,
     Network,
@@ -521,7 +521,7 @@ impl<Components: Testnet1Components> DPC<Components> {
     pub fn generate_record<R: Rng + CryptoRng>(
         system_parameters: &SystemParameters<Components>,
         sn_nonce: <Components::SerialNumberNonceCRH as CRH>::Output,
-        owner: AccountAddress<Components>,
+        owner: Address<Components>,
         is_dummy: bool,
         value: u64,
         payload: Payload,
