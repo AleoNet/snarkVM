@@ -247,8 +247,11 @@ impl<C: Testnet1Components> InnerCircuit<C> {
     }
 }
 
-impl<C: Testnet1Components> ConstraintSynthesizer<C::InnerField> for InnerCircuit<C> {
-    fn generate_constraints<CS: ConstraintSystem<C::InnerField>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
+impl<C: Testnet1Components> ConstraintSynthesizer<C::InnerScalarField> for InnerCircuit<C> {
+    fn generate_constraints<CS: ConstraintSystem<C::InnerScalarField>>(
+        &self,
+        cs: &mut CS,
+    ) -> Result<(), SynthesisError> {
         execute_inner_proof_gadget::<C, CS>(
             cs,
             // Parameters

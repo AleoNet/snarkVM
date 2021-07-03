@@ -74,8 +74,8 @@ impl<C: Testnet2Components, P: MontgomeryModelParameters + TEModelParameters, G:
 {
     type DecodedRecord = DecodedRecord<C>;
     type Group = G;
-    type InnerField = <C as DPCComponents>::InnerField;
-    type OuterField = <C as DPCComponents>::OuterField;
+    type InnerField = <C as DPCComponents>::InnerScalarField;
+    type OuterField = <C as DPCComponents>::OuterScalarField;
     type Parameters = P;
     type Record = Record<C>;
 

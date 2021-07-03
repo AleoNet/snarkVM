@@ -37,8 +37,10 @@ use utils::store;
 
 pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError>
 where
-    <C::PolynomialCommitment as PolynomialCommitment<C::InnerField>>::VerifierKey: ToConstraintField<C::OuterField>,
-    <C::PolynomialCommitment as PolynomialCommitment<C::InnerField>>::Commitment: ToConstraintField<C::OuterField>,
+    <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::VerifierKey:
+        ToConstraintField<C::OuterScalarField>,
+    <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::Commitment:
+        ToConstraintField<C::OuterScalarField>,
 {
     let rng = &mut thread_rng();
     let system_parameters = SystemParameters::<C>::load()?;

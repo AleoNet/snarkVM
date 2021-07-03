@@ -86,11 +86,13 @@ impl<C: Testnet2Components> SystemParameters<C> {
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet2Components"))]
-pub struct ProgramSNARKUniversalSRS<C: Testnet2Components>(pub UniversalSRS<C::InnerField, C::PolynomialCommitment>);
+pub struct ProgramSNARKUniversalSRS<C: Testnet2Components>(
+    pub UniversalSRS<C::InnerScalarField, C::PolynomialCommitment>,
+);
 
 impl<C: Testnet2Components> ProgramSNARKUniversalSRS<C> {
     pub fn load() -> IoResult<Self> {
-        let srs: UniversalSRS<C::InnerField, C::PolynomialCommitment> =
+        let srs: UniversalSRS<C::InnerScalarField, C::PolynomialCommitment> =
             From::from(FromBytes::read(UniversalSRSParameters::load_bytes()?.as_slice())?);
 
         Ok(Self(srs))

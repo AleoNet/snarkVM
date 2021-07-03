@@ -42,13 +42,13 @@ pub struct ProgramLocalData<C: Testnet1Components> {
 }
 
 /// Convert each component to bytes and pack into field elements.
-impl<C: Testnet1Components> ToConstraintField<C::InnerField> for ProgramLocalData<C>
+impl<C: Testnet1Components> ToConstraintField<C::InnerScalarField> for ProgramLocalData<C>
 where
-    <C::LocalDataCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
-    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerField>,
+    <C::LocalDataCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
 {
-    fn to_field_elements(&self) -> Result<Vec<C::InnerField>, ConstraintFieldError> {
-        let mut v = ToConstraintField::<C::InnerField>::to_field_elements(&[self.position][..])?;
+    fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
+        let mut v = ToConstraintField::<C::InnerScalarField>::to_field_elements(&[self.position][..])?;
 
         v.extend_from_slice(&self.local_data_commitment_parameters.to_field_elements()?);
         v.extend_from_slice(&self.local_data_root.to_field_elements()?);

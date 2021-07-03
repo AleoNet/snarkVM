@@ -38,9 +38,9 @@ use snarkvm_gadgets::{
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
-fn field_element_to_bytes<C: Testnet1Components, CS: ConstraintSystem<C::OuterField>>(
+fn field_element_to_bytes<C: Testnet1Components, CS: ConstraintSystem<C::OuterScalarField>>(
     cs: &mut CS,
-    field_elements: Vec<C::InnerField>,
+    field_elements: Vec<C::InnerScalarField>,
     name: &str,
 ) -> Result<Vec<Vec<UInt8>>, SynthesisError> {
     if field_elements.len() <= 1 {
@@ -61,7 +61,7 @@ fn field_element_to_bytes<C: Testnet1Components, CS: ConstraintSystem<C::OuterFi
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn execute_outer_proof_gadget<C: Testnet1Components, CS: ConstraintSystem<C::OuterField>>(
+pub fn execute_outer_proof_gadget<C: Testnet1Components, CS: ConstraintSystem<C::OuterScalarField>>(
     cs: &mut CS,
     // Parameters
     system_parameters: &SystemParameters<C>,
@@ -94,30 +94,30 @@ pub fn execute_outer_proof_gadget<C: Testnet1Components, CS: ConstraintSystem<C:
     inner_circuit_id: &<C::InnerCircuitIDCRH as CRH>::Output,
 ) -> Result<(), SynthesisError>
 where
-    <C::AccountCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
-    <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerField>,
+    <C::AccountCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
 
-    <C::AccountEncryption as EncryptionScheme>::Parameters: ToConstraintField<C::InnerField>,
+    <C::AccountEncryption as EncryptionScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
 
-    <C::AccountSignature as SignatureScheme>::Parameters: ToConstraintField<C::InnerField>,
-    <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerField>,
+    <C::AccountSignature as SignatureScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
 
-    <C::RecordCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
-    <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerField>,
+    <C::RecordCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
 
-    <C::EncryptedRecordCRH as CRH>::Parameters: ToConstraintField<C::InnerField>,
-    <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerField>,
+    <C::EncryptedRecordCRH as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
 
-    <C::SerialNumberNonceCRH as CRH>::Parameters: ToConstraintField<C::InnerField>,
+    <C::SerialNumberNonceCRH as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
 
-    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
-    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerField>,
+    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
 
-    <C::LocalDataCRH as CRH>::Parameters: ToConstraintField<C::InnerField>,
-    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerField>,
+    <C::LocalDataCRH as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
 
-    <<C::MerkleParameters as MerkleParameters>::H as CRH>::Parameters: ToConstraintField<C::InnerField>,
-    MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerField>,
+    <<C::MerkleParameters as MerkleParameters>::H as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
+    MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerScalarField>,
 {
     // Declare public parameters.
     let (program_vk_commitment_parameters, program_vk_crh_parameters, inner_circuit_id_crh_parameters) = {
@@ -125,20 +125,20 @@ where
 
         let program_vk_commitment_parameters = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<
             _,
-            C::OuterField,
+            C::OuterScalarField,
         >>::ParametersGadget::alloc_input(
             &mut cs.ns(|| "Declare program_vk_commitment_parameters"),
             || Ok(system_parameters.program_verification_key_commitment.parameters()),
         )?;
 
         let program_vk_crh_parameters =
-            <C::ProgramVerificationKeyCRHGadget as CRHGadget<_, C::OuterField>>::ParametersGadget::alloc_input(
+            <C::ProgramVerificationKeyCRHGadget as CRHGadget<_, C::OuterScalarField>>::ParametersGadget::alloc_input(
                 &mut cs.ns(|| "Declare program_vk_crh_parameters"),
                 || Ok(system_parameters.program_verification_key_crh.parameters()),
             )?;
 
         let inner_circuit_id_crh_parameters =
-            <C::InnerCircuitIDCRHGadget as CRHGadget<_, C::OuterField>>::ParametersGadget::alloc_input(
+            <C::InnerCircuitIDCRHGadget as CRHGadget<_, C::OuterScalarField>>::ParametersGadget::alloc_input(
                 &mut cs.ns(|| "Declare inner_circuit_id_crh_parameters"),
                 || Ok(system_parameters.inner_circuit_id_crh.parameters()),
             )?;
@@ -157,58 +157,61 @@ where
     // Declare inner snark verifier inputs as `CoreCheckF` field elements
 
     let account_commitment_parameters_fe =
-        ToConstraintField::<C::InnerField>::to_field_elements(system_parameters.account_commitment.parameters())
+        ToConstraintField::<C::InnerScalarField>::to_field_elements(system_parameters.account_commitment.parameters())
             .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let account_encryption_parameters_fe = ToConstraintField::<C::InnerField>::to_field_elements(
+    let account_encryption_parameters_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(
         <C::AccountEncryption as EncryptionScheme>::parameters(&system_parameters.account_encryption),
     )
     .map_err(|_| SynthesisError::AssignmentMissing)?;
 
     let account_signature_fe =
-        ToConstraintField::<C::InnerField>::to_field_elements(system_parameters.account_signature.parameters())
+        ToConstraintField::<C::InnerScalarField>::to_field_elements(system_parameters.account_signature.parameters())
             .map_err(|_| SynthesisError::AssignmentMissing)?;
 
     let record_commitment_parameters_fe =
-        ToConstraintField::<C::InnerField>::to_field_elements(system_parameters.record_commitment.parameters())
+        ToConstraintField::<C::InnerScalarField>::to_field_elements(system_parameters.record_commitment.parameters())
             .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let encrypted_record_crh_parameters_fe =
-        ToConstraintField::<C::InnerField>::to_field_elements(system_parameters.encrypted_record_crh.parameters())
-            .map_err(|_| SynthesisError::AssignmentMissing)?;
+    let encrypted_record_crh_parameters_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(
+        system_parameters.encrypted_record_crh.parameters(),
+    )
+    .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let program_vk_commitment_parameters_fe = ToConstraintField::<C::InnerField>::to_field_elements(
+    let program_vk_commitment_parameters_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(
         system_parameters.program_verification_key_commitment.parameters(),
     )
     .map_err(|_| SynthesisError::AssignmentMissing)?;
 
     let local_data_crh_parameters_fe =
-        ToConstraintField::<C::InnerField>::to_field_elements(system_parameters.local_data_crh.parameters())
+        ToConstraintField::<C::InnerScalarField>::to_field_elements(system_parameters.local_data_crh.parameters())
             .map_err(|_| SynthesisError::AssignmentMissing)?;
 
     let serial_number_nonce_crh_parameters_fe =
-        ToConstraintField::<C::InnerField>::to_field_elements(system_parameters.serial_number_nonce.parameters())
+        ToConstraintField::<C::InnerScalarField>::to_field_elements(system_parameters.serial_number_nonce.parameters())
             .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let ledger_parameters_fe = ToConstraintField::<C::InnerField>::to_field_elements(ledger_parameters.parameters())
+    let ledger_parameters_fe =
+        ToConstraintField::<C::InnerScalarField>::to_field_elements(ledger_parameters.parameters())
+            .map_err(|_| SynthesisError::AssignmentMissing)?;
+
+    let ledger_digest_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(ledger_digest)
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let ledger_digest_fe = ToConstraintField::<C::InnerField>::to_field_elements(ledger_digest)
+    let program_commitment_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(program_commitment)
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let program_commitment_fe = ToConstraintField::<C::InnerField>::to_field_elements(program_commitment)
+    let memo_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(memo)
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let memo_fe =
-        ToConstraintField::<C::InnerField>::to_field_elements(memo).map_err(|_| SynthesisError::AssignmentMissing)?;
-
-    let local_data_root_fe = ToConstraintField::<C::InnerField>::to_field_elements(local_data_root)
+    let local_data_root_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(local_data_root)
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let value_balance_fe = ToConstraintField::<C::InnerField>::to_field_elements(&value_balance.0.to_le_bytes()[..])
-        .map_err(|_| SynthesisError::AssignmentMissing)?;
+    let value_balance_fe =
+        ToConstraintField::<C::InnerScalarField>::to_field_elements(&value_balance.0.to_le_bytes()[..])
+            .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let network_id_fe = ToConstraintField::<C::InnerField>::to_field_elements(&[network_id][..])
+    let network_id_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(&[network_id][..])
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
     // Allocate field element bytes
@@ -235,8 +238,8 @@ where
 
     let mut serial_number_fe_bytes = vec![];
     for (index, sn) in old_serial_numbers.iter().enumerate() {
-        let serial_number_fe =
-            ToConstraintField::<C::InnerField>::to_field_elements(sn).map_err(|_| SynthesisError::AssignmentMissing)?;
+        let serial_number_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(sn)
+            .map_err(|_| SynthesisError::AssignmentMissing)?;
 
         serial_number_fe_bytes.extend(field_element_to_bytes::<C, _>(
             cs,
@@ -251,10 +254,11 @@ where
         .zip_eq(new_encrypted_record_hashes.iter())
         .enumerate()
     {
-        let commitment_fe =
-            ToConstraintField::<C::InnerField>::to_field_elements(cm).map_err(|_| SynthesisError::AssignmentMissing)?;
-        let encrypted_record_hash_fe = ToConstraintField::<C::InnerField>::to_field_elements(encrypted_record_hash)
+        let commitment_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(cm)
             .map_err(|_| SynthesisError::AssignmentMissing)?;
+        let encrypted_record_hash_fe =
+            ToConstraintField::<C::InnerScalarField>::to_field_elements(encrypted_record_hash)
+                .map_err(|_| SynthesisError::AssignmentMissing)?;
 
         commitment_and_encrypted_record_hash_fe_bytes.extend(field_element_to_bytes::<C, _>(
             cs,
@@ -456,24 +460,30 @@ where
             input.extend_from_slice(&id);
         }
 
-        let given_commitment_randomness =
-            <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<_, C::OuterField>>::RandomnessGadget::alloc(
-                &mut commitment_cs.ns(|| "Commitment randomness"),
-                || Ok(program_randomness),
-            )?;
-
-        let given_commitment = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<_, C::OuterField>>::OutputGadget::alloc_input(
-            &mut commitment_cs.ns(|| "Commitment output"),
-            || Ok(program_commitment),
+        let given_commitment_randomness = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<
+            _,
+            C::OuterScalarField,
+        >>::RandomnessGadget::alloc(
+            &mut commitment_cs.ns(|| "Commitment randomness"),
+            || Ok(program_randomness),
         )?;
 
-        let candidate_commitment =
-            <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<_, C::OuterField>>::check_commitment_gadget(
-                &mut commitment_cs.ns(|| "Compute commitment"),
-                &program_vk_commitment_parameters,
-                &input,
-                &given_commitment_randomness,
-            )?;
+        let given_commitment = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<
+            _,
+            C::OuterScalarField,
+        >>::OutputGadget::alloc_input(
+            &mut commitment_cs.ns(|| "Commitment output"), || Ok(program_commitment)
+        )?;
+
+        let candidate_commitment = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<
+            _,
+            C::OuterScalarField,
+        >>::check_commitment_gadget(
+            &mut commitment_cs.ns(|| "Compute commitment"),
+            &program_vk_commitment_parameters,
+            &input,
+            &given_commitment_randomness,
+        )?;
 
         candidate_commitment.enforce_equal(
             &mut commitment_cs.ns(|| "Check that declared and computed commitments are equal"),
@@ -490,7 +500,7 @@ where
     let inner_snark_vk_bytes = inner_snark_vk.to_bytes(&mut cs.ns(|| "Convert inner snark vk to bytes"))?;
 
     let given_inner_circuit_id =
-        <C::InnerCircuitIDCRHGadget as CRHGadget<_, C::OuterField>>::OutputGadget::alloc_input(
+        <C::InnerCircuitIDCRHGadget as CRHGadget<_, C::OuterScalarField>>::OutputGadget::alloc_input(
             &mut cs.ns(|| "Inner circuit ID"),
             || Ok(inner_circuit_id),
         )?;

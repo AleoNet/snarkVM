@@ -98,11 +98,11 @@ mod tests;
 pub trait Testnet2Components: DPCComponents {
     /// Ledger digest type.
     type MerkleParameters: LoadableMerkleParameters;
-    type MerkleHashGadget: CRHGadget<<Self::MerkleParameters as MerkleParameters>::H, Self::InnerField>;
+    type MerkleHashGadget: CRHGadget<<Self::MerkleParameters as MerkleParameters>::H, Self::InnerScalarField>;
 
     /// Group and Model Parameters for record encryption
     type EncryptionGroup: Group + ProjectiveCurve;
-    type EncryptionGroupGadget: CompressedGroupGadget<Self::EncryptionGroup, Self::InnerField>;
+    type EncryptionGroupGadget: CompressedGroupGadget<Self::EncryptionGroup, Self::InnerScalarField>;
     type EncryptionModelParameters: MontgomeryModelParameters + TEModelParameters;
 
     /// SNARK for non-proof-verification checks
@@ -113,7 +113,7 @@ pub trait Testnet2Components: DPCComponents {
     >;
 
     /// SNARK Verifier gadget for the inner snark
-    type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK, Self::OuterField, Input = Vec<Boolean>>;
+    type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK, Self::OuterScalarField, Input = Vec<Boolean>>;
 
     /// SNARK for proof-verification checks
     type OuterSNARK: SNARK<
@@ -127,7 +127,7 @@ pub trait Testnet2Components: DPCComponents {
     type NoopProgramSNARK: SNARK<
         Circuit = (
             NoopCircuit<Self>,
-            UniversalSRS<Self::InnerField, Self::PolynomialCommitment>,
+            UniversalSRS<Self::InnerScalarField, Self::PolynomialCommitment>,
         ),
         AllocatedCircuit = NoopCircuit<Self>,
         VerifierInput = ProgramLocalData<Self>,
@@ -137,15 +137,15 @@ pub trait Testnet2Components: DPCComponents {
     /// SNARK Verifier gadget for the "dummy program" that does nothing with its input.
     type ProgramSNARKGadget: SNARKVerifierGadget<
         Self::NoopProgramSNARK,
-        Self::OuterField,
-        Input = NonNativeFieldVar<Self::InnerField, Self::OuterField>,
+        Self::OuterScalarField,
+        Input = NonNativeFieldVar<Self::InnerScalarField, Self::OuterScalarField>,
     >;
 
     /// Polynomial commitment scheme for Program SNARKS using Marlin.
-    type PolynomialCommitment: PolynomialCommitment<Self::InnerField>;
+    type PolynomialCommitment: PolynomialCommitment<Self::InnerScalarField>;
 
     /// Fiat Shamir RNG scheme used for Marlin SNARKS.
-    type FiatShamirRng: FiatShamirRng<Self::InnerField, Self::OuterField>;
+    type FiatShamirRng: FiatShamirRng<Self::InnerScalarField, Self::OuterScalarField>;
 
     /// Specify the Marlin mode (recursive or non-recursive) for program SNARKS.
     type MarlinMode: MarlinMode;
@@ -448,10 +448,10 @@ pub struct LocalData<Components: Testnet2Components> {
 
 impl<Components: Testnet2Components> DPC<Components>
 where
-    <Components::PolynomialCommitment as PolynomialCommitment<Components::InnerField>>::VerifierKey:
-        ToConstraintField<Components::OuterField>,
-    <Components::PolynomialCommitment as PolynomialCommitment<Components::InnerField>>::Commitment:
-        ToConstraintField<Components::OuterField>,
+    <Components::PolynomialCommitment as PolynomialCommitment<Components::InnerScalarField>>::VerifierKey:
+        ToConstraintField<Components::OuterScalarField>,
+    <Components::PolynomialCommitment as PolynomialCommitment<Components::InnerScalarField>>::Commitment:
+        ToConstraintField<Components::OuterScalarField>,
 {
     pub fn generate_system_parameters<R: Rng>(rng: &mut R) -> Result<SystemParameters<Components>, DPCError> {
         let time = start_timer!(|| "Account commitment scheme setup");
@@ -524,8 +524,8 @@ where
 
         // TODO (raychu86): Handle this unwrap.
         let universal_srs = MarlinSNARK::<
-            Components::InnerField,
-            Components::OuterField,
+            Components::InnerScalarField,
+            Components::OuterScalarField,
             Components::PolynomialCommitment,
             Components::FiatShamirRng,
             Components::MarlinMode,
@@ -633,10 +633,10 @@ where
         SerialNumber = <Components::AccountSignature as SignatureScheme>::PublicKey,
         Transaction = Transaction<Components>,
     >,
-    <Components::PolynomialCommitment as PolynomialCommitment<Components::InnerField>>::VerifierKey:
-        ToConstraintField<Components::OuterField>,
-    <Components::PolynomialCommitment as PolynomialCommitment<Components::InnerField>>::Commitment:
-        ToConstraintField<Components::OuterField>,
+    <Components::PolynomialCommitment as PolynomialCommitment<Components::InnerScalarField>>::VerifierKey:
+        ToConstraintField<Components::OuterScalarField>,
+    <Components::PolynomialCommitment as PolynomialCommitment<Components::InnerScalarField>>::Commitment:
+        ToConstraintField<Components::OuterScalarField>,
 {
     type Account = Account<Components>;
     type LocalData = LocalData<Components>;

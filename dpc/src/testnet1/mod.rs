@@ -90,7 +90,7 @@ mod tests;
 pub trait Testnet1Components: DPCComponents {
     /// Ledger digest type.
     type MerkleParameters: LoadableMerkleParameters;
-    type MerkleHashGadget: CRHGadget<<Self::MerkleParameters as MerkleParameters>::H, Self::InnerField>;
+    type MerkleHashGadget: CRHGadget<<Self::MerkleParameters as MerkleParameters>::H, Self::InnerScalarField>;
 
     /// Group and Model Parameters for record encryption
     type EncryptionGroup: Group + ProjectiveCurve;
@@ -104,7 +104,7 @@ pub trait Testnet1Components: DPCComponents {
     >;
 
     /// SNARK Verifier gadget for the inner snark
-    type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK, Self::OuterField, Input = Vec<Boolean>>;
+    type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK, Self::OuterScalarField, Input = Vec<Boolean>>;
 
     /// SNARK for proof-verification checks
     type OuterSNARK: SNARK<
@@ -122,7 +122,7 @@ pub trait Testnet1Components: DPCComponents {
     >;
 
     /// SNARK Verifier gadget for the "dummy program" that does nothing with its input.
-    type ProgramSNARKGadget: SNARKVerifierGadget<Self::NoopProgramSNARK, Self::OuterField, Input = Vec<Boolean>>;
+    type ProgramSNARKGadget: SNARKVerifierGadget<Self::NoopProgramSNARK, Self::OuterScalarField, Input = Vec<Boolean>>;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

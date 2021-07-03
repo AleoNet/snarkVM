@@ -38,10 +38,11 @@ use snarkvm_algorithms::{
     snark::{gm17::GM17, groth16::Groth16},
 };
 use snarkvm_curves::{
-    bls12_377::{fq::Fq as Bls12_377Fq, fr::Fr as Bls12_377Fr, Bls12_377},
+    bls12_377::Bls12_377,
     bw6_761::BW6_761,
     edwards_bls12::{EdwardsAffine, EdwardsParameters, EdwardsProjective as EdwardsBls},
     edwards_sw6::EdwardsProjective as EdwardsSW,
+    PairingEngine,
 };
 use snarkvm_gadgets::{
     algorithms::{
@@ -61,9 +62,6 @@ use blake2::Blake2s as Blake2sHash;
 pub type Testnet1DPC = DPC<Components>;
 pub type Testnet1Transaction = Transaction<Components>;
 
-pub type InnerCurve = Bls12_377;
-pub type OuterCurve = BW6_761;
-
 pub type LocalData = DPCLocalData<Components>;
 pub type MerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, 8, 32>;
 
@@ -75,55 +73,59 @@ pub struct Components;
 impl DPCComponents for Components {
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
-    
-    type InnerField = Bls12_377Fr;
-    type OuterField = Bls12_377Fq;
+
+    type InnerCurve = Bls12_377;
+    type OuterCurve = BW6_761;
+
+    type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
+    type OuterScalarField = <Self::OuterCurve as PairingEngine>::Fr;
     
     type AccountCommitment = PedersenCompressedCommitment<EdwardsBls, 8, 192>;
-    type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, Self::InnerScalarField, EdwardsBlsGadget>;
     
     type AccountEncryption = GroupEncryption<EdwardsBls, EdwardsAffine, Blake2sHash>;
-    type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls, Self::InnerScalarField, EdwardsBlsGadget>;
 
     type AccountSignature = Schnorr<EdwardsAffine, Blake2sHash>;
-    type AccountSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, Self::InnerField, EdwardsBlsGadget, FpGadget<Self::InnerField>>;
+    type AccountSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, Self::InnerScalarField, EdwardsBlsGadget, FpGadget<Self::InnerScalarField>>;
     
     type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, 48, 44>;
-    type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerScalarField, EdwardsBlsGadget>;
     
     type InnerCircuitIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, 296, 63>;
-    type InnerCircuitIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, Self::OuterField, EdwardsSWGadget>;
+    type InnerCircuitIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, Self::OuterScalarField, EdwardsSWGadget>;
     
     type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, 16, 32>;
-    type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerScalarField, EdwardsBlsGadget>;
     
     type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls, 8, 129>;
-    type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, Self::InnerScalarField, EdwardsBlsGadget>;
 
     type PRF = Blake2s;
     type PRFGadget = Blake2sGadget;
     
     type ProgramVerificationKeyCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, 144, 63>;
-    type ProgramVerificationKeyCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, Self::OuterField, EdwardsSWGadget>;
+    type ProgramVerificationKeyCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, Self::OuterScalarField, EdwardsSWGadget>;
     
     type ProgramVerificationKeyCommitment = Blake2sCommitment;
     type ProgramVerificationKeyCommitmentGadget = Blake2sCommitmentGadget;
     
     type RecordCommitment = PedersenCompressedCommitment<EdwardsBls, 8, 233>;
-    type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, Self::InnerScalarField, EdwardsBlsGadget>;
     
     type SerialNumberNonceCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, 32, 63>;
-    type SerialNumberNonceCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    type SerialNumberNonceCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerScalarField, EdwardsBlsGadget>;
 }
 
 impl Testnet1Components for Components {
     type EncryptionGroup = EdwardsBls;
     type EncryptionModelParameters = EdwardsParameters;
-    type InnerSNARK = Groth16<InnerCurve, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
-    type InnerSNARKGadget = Groth16VerifierGadget<InnerCurve, Self::OuterField, PairingGadget>;
-    type MerkleHashGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
+    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
+    type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, Self::OuterScalarField, PairingGadget>;
+    type MerkleHashGadget =
+        BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerScalarField, EdwardsBlsGadget>;
     type MerkleParameters = CommitmentMerkleParameters;
-    type NoopProgramSNARK = GM17<InnerCurve, NoopCircuit<Self>, ProgramLocalData<Self>>;
-    type OuterSNARK = Groth16<OuterCurve, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
-    type ProgramSNARKGadget = GM17VerifierGadget<InnerCurve, Self::OuterField, PairingGadget>;
+    type NoopProgramSNARK = GM17<Self::InnerCurve, NoopCircuit<Self>, ProgramLocalData<Self>>;
+    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
+    type ProgramSNARKGadget = GM17VerifierGadget<Self::InnerCurve, Self::OuterScalarField, PairingGadget>;
 }
