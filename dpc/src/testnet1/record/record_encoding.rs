@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    errors::DPCError,
-    testnet1::{payload::Payload, record::Record, BaseDPCComponents},
+    testnet1::{payload::Payload, record::Record, Testnet1Components},
     traits::{DPCComponents, RecordEncodingScheme, RecordScheme},
+    DPCError,
 };
 use snarkvm_algorithms::{
     encoding::Elligator2,
@@ -54,7 +54,7 @@ pub fn decode_from_group<P: MontgomeryModelParameters + TEModelParameters, G: Gr
     Ok(to_bytes![output]?)
 }
 
-pub struct DecodedRecord<C: BaseDPCComponents> {
+pub struct DecodedRecord<C: Testnet1Components> {
     pub value: u64,
     pub payload: Payload,
     pub birth_program_id: Vec<u8>,
@@ -64,12 +64,12 @@ pub struct DecodedRecord<C: BaseDPCComponents> {
 }
 
 pub struct RecordEncoding<
-    C: BaseDPCComponents,
+    C: Testnet1Components,
     P: MontgomeryModelParameters + TEModelParameters,
     G: Group + ProjectiveCurve,
 >(PhantomData<C>, PhantomData<P>, PhantomData<G>);
 
-impl<C: BaseDPCComponents, P: MontgomeryModelParameters + TEModelParameters, G: Group + ProjectiveCurve>
+impl<C: Testnet1Components, P: MontgomeryModelParameters + TEModelParameters, G: Group + ProjectiveCurve>
     RecordEncodingScheme for RecordEncoding<C, P, G>
 {
     type DecodedRecord = DecodedRecord<C>;

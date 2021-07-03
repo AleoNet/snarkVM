@@ -21,6 +21,7 @@ use crate::{
         tests_curve::curve_tests,
         tests_group::group_test,
         AffineCurve,
+        Group,
         MontgomeryModelParameters,
         ProjectiveCurve,
         TEModelParameters,
@@ -93,9 +94,9 @@ fn test_conversion() {
     let b: EdwardsAffine = rand::random();
     let a_b = {
         use crate::traits::Group;
-        (a + &b).double().double()
+        (a + b).double().double()
     };
-    let a_b2 = (a.into_projective() + &b.into_projective()).double().double();
+    let a_b2 = (a.into_projective() + b.into_projective()).double().double();
     assert_eq!(a_b, a_b2.into_affine());
     assert_eq!(a_b.into_projective(), a_b2);
 }
@@ -113,11 +114,11 @@ fn test_edwards_to_montgomery_point() {
 
     // Montgomery element (u, v)
     let (u, v) = {
-        let numerator = Fq::one() + &y;
-        let denominator = Fq::one() - &y;
+        let numerator = Fq::one() + y;
+        let denominator = Fq::one() - y;
 
-        let u = numerator * &(denominator.inverse().unwrap());
-        let v = numerator * &((denominator * &x).inverse().unwrap());
+        let u = numerator * (denominator.inverse().unwrap());
+        let v = numerator * ((denominator * x).inverse().unwrap());
         (u, v)
     };
 
@@ -129,17 +130,17 @@ fn test_edwards_to_montgomery_point() {
         // Enforce B * v^2 == u^3 + A * u^2 + u
         let v2 = v.square();
         let u2 = u.square();
-        let u3 = u2 * &u;
-        assert_eq!(B * &v2, u3 + &(A * &u2) + &u);
+        let u3 = u2 * u;
+        assert_eq!(B * v2, u3 + (A * u2) + u);
     }
 
     // Edwards element (x, y)
     let (x_reconstructed, y_reconstructed) = {
-        let x = u * &v.inverse().unwrap();
+        let x = u * v.inverse().unwrap();
 
-        let numerator = u - &Fq::one();
-        let denominator = u + &Fq::one();
-        let y = numerator * &denominator.inverse().unwrap();
+        let numerator = u - Fq::one();
+        let denominator = u + Fq::one();
+        let y = numerator * denominator.inverse().unwrap();
 
         (x, y)
     };
@@ -154,25 +155,25 @@ fn print_montgomery_to_weierstrass_parameters() {
     const A: Fq = <EdwardsParameters as MontgomeryModelParameters>::COEFF_A;
     const B: Fq = <EdwardsParameters as MontgomeryModelParameters>::COEFF_B;
 
-    let two = Fq::one() + &Fq::one();
-    let three = Fq::one() + &two;
-    let nine = three + &(three + &three);
-    let twenty_seven = nine + &(nine + &nine);
+    let two = Fq::one() + Fq::one();
+    let three = Fq::one() + two;
+    let nine = three + (three + three);
+    let twenty_seven = nine + (nine + nine);
 
     let a2 = A.square();
-    let a3 = A * &a2;
+    let a3 = A * a2;
     let b2 = B.square();
-    let b3 = B * &b2;
+    let b3 = B * b2;
 
     // Let a = (3 - A^2) / (3 * B^2).
-    let numerator = three - &a2;
-    let denominator = three * &b2;
-    let a = numerator * &denominator.inverse().unwrap();
+    let numerator = three - a2;
+    let denominator = three * b2;
+    let a = numerator * denominator.inverse().unwrap();
 
     // Let b = (2 * A^3 - 9 * A) / (27 * B^3).
-    let numerator = (two * &a3) - &(nine * &A);
-    let denominator = twenty_seven * &b3;
-    let b = numerator * &denominator.inverse().unwrap();
+    let numerator = (two * a3) - (nine * A);
+    let denominator = twenty_seven * b3;
+    let b = numerator * denominator.inverse().unwrap();
 
     println!("A - {}\nB - {}", a, b);
 }
@@ -202,8 +203,8 @@ fn test_isomorphism() {
 
     // Compute the parameters for the alternate Montgomery form: v^2 == u^3 + A * u^2 + B * u.
     let (a, b) = {
-        let a = A * &B.inverse().unwrap();
-        let b = Fq::one() * &B.square().inverse().unwrap();
+        let a = A * B.inverse().unwrap();
+        let b = Fq::one() * B.square().inverse().unwrap();
         (a, b)
     };
 
@@ -217,7 +218,7 @@ fn test_isomorphism() {
         let u = <EdwardsParameters as TEModelParameters>::COEFF_D;
 
         // Let ur2 = u * r^2;
-        let ur2 = r.square() * &u;
+        let ur2 = r.square() * u;
 
         {
             // Verify r is nonzero.
@@ -227,37 +228,37 @@ fn test_isomorphism() {
             assert!(u.legendre().is_qnr());
 
             // Verify 1 + ur^2 != 0.
-            assert_ne!(Fq::one() + &ur2, Fq::zero());
+            assert_ne!(Fq::one() + ur2, Fq::zero());
 
             // Verify A^2 * ur^2 != B(1 + ur^2)^2.
             let a2 = a.square();
-            assert_ne!(a2 * &ur2, (Fq::one() + &ur2).square() * &b);
+            assert_ne!(a2 * ur2, (Fq::one() + ur2).square() * b);
         }
 
         // Let v = -A / (1 + ur^2).
-        let v = (Fq::one() + &ur2).inverse().unwrap() * &(-a);
+        let v = (Fq::one() + ur2).inverse().unwrap() * (-a);
 
         // Let e = legendre(v^3 + Av^2 + Bv).
         let v2 = v.square();
-        let v3 = v2 * &v;
-        let av2 = a * &v2;
-        let bv = b * &v;
-        let e = (v3 + &(av2 + &bv)).legendre();
+        let v3 = v2 * v;
+        let av2 = a * v2;
+        let bv = b * v;
+        let e = (v3 + (av2 + bv)).legendre();
 
         // Let x = ev - ((1 - e) * A/2).
         let two = Fq::one().double();
         let x = match e {
-            LegendreSymbol::Zero => -(a * &two.inverse().unwrap()),
+            LegendreSymbol::Zero => -(a * two.inverse().unwrap()),
             LegendreSymbol::QuadraticResidue => v,
-            LegendreSymbol::QuadraticNonResidue => (-v) - &a,
+            LegendreSymbol::QuadraticNonResidue => (-v) - a,
         };
 
         // Let y = -e * sqrt(x^3 + Ax^2 + Bx).
         let x2 = x.square();
-        let x3 = x2 * &x;
-        let ax2 = a * &x2;
-        let bx = b * &x;
-        let value = (x3 + &(ax2 + &bx)).sqrt().unwrap();
+        let x3 = x2 * x;
+        let ax2 = a * x2;
+        let bx = b * x;
+        let value = (x3 + (ax2 + bx)).sqrt().unwrap();
         let y = match e {
             LegendreSymbol::Zero => Fq::zero(),
             LegendreSymbol::QuadraticResidue => -value,
@@ -272,22 +273,22 @@ fn test_isomorphism() {
         // Enforce v^2 == u^3 + A * u^2 + B * u
         let v2 = v.square();
         let u2 = u.square();
-        let u3 = u2 * &u;
-        assert_eq!(v2, u3 + &(a * &u2) + &(b * &u));
+        let u3 = u2 * u;
+        assert_eq!(v2, u3 + (a * u2) + (b * u));
     }
 
     // Convert the alternate Montgomery element (u, v) to Montgomery element (s, t).
     let (s, t) = {
-        let s = u * &B;
-        let t = v * &B;
+        let s = u * B;
+        let t = v * B;
 
         // Ensure (s, t) is a valid Montgomery element
         {
             // Enforce B * t^2 == s^3 + A * s^2 + s
             let t2 = t.square();
             let s2 = s.square();
-            let s3 = s2 * &s;
-            assert_eq!(B * &t2, s3 + &(A * &s2) + &s);
+            let s3 = s2 * s;
+            assert_eq!(B * t2, s3 + (A * s2) + s);
         }
 
         (s, t)
@@ -295,11 +296,11 @@ fn test_isomorphism() {
 
     // Convert the Montgomery element (s, t) to the twisted Edwards element (x, y).
     let (x, y) = {
-        let x = s * &t.inverse().unwrap();
+        let x = s * t.inverse().unwrap();
 
-        let numerator = s - &Fq::one();
-        let denominator = s + &Fq::one();
-        let y = numerator * &denominator.inverse().unwrap();
+        let numerator = s - Fq::one();
+        let denominator = s + Fq::one();
+        let y = numerator * denominator.inverse().unwrap();
 
         (x, y)
     };
@@ -310,31 +311,31 @@ fn test_isomorphism() {
 
     // Convert the twisted Edwards element (x, y) to the alternate Montgomery element (u, v)
     let (u_reconstructed, v_reconstructed) = {
-        let numerator = Fq::one() + &y;
-        let denominator = Fq::one() - &y;
+        let numerator = Fq::one() + y;
+        let denominator = Fq::one() - y;
 
-        let u = numerator * &(denominator.inverse().unwrap());
-        let v = numerator * &((denominator * &x).inverse().unwrap());
+        let u = numerator * (denominator.inverse().unwrap());
+        let v = numerator * ((denominator * x).inverse().unwrap());
 
         // Ensure (u, v) is a valid Montgomery element
         {
             // Enforce B * v^2 == u^3 + A * u^2 + u
             let v2 = v.square();
             let u2 = u.square();
-            let u3 = u2 * &u;
-            assert_eq!(B * &v2, u3 + &(A * &u2) + &u);
+            let u3 = u2 * u;
+            assert_eq!(B * v2, u3 + (A * u2) + u);
         }
 
-        let u = u * &B.inverse().unwrap();
-        let v = v * &B.inverse().unwrap();
+        let u = u * B.inverse().unwrap();
+        let v = v * B.inverse().unwrap();
 
         // Ensure (u, v) is a valid alternate Montgomery element.
         {
             // Enforce v^2 == u^3 + A * u^2 + B * u
             let v2 = v.square();
             let u2 = u.square();
-            let u3 = u2 * &u;
-            assert_eq!(v2, u3 + &(a * &u2) + &(b * &u));
+            let u3 = u2 * u;
+            assert_eq!(v2, u3 + (a * u2) + (b * u));
         }
 
         (u, v)
@@ -363,20 +364,20 @@ fn test_isomorphism() {
             }
 
             // Verify -ux(x + A) is a residue.
-            assert_eq!((-(u * &x) * &(x + &a)).legendre(), LegendreSymbol::QuadraticResidue);
+            assert_eq!((-(u * x) * (x + a)).legendre(), LegendreSymbol::QuadraticResidue);
         }
 
         println!("\ngroup legendre - {:?}", y.legendre());
 
         // Let value1 = sqrt(-x / ((x + A) * u)).
         let numerator = -x;
-        let denominator = (x + &a) * &u;
-        let value1 = (numerator * &denominator.inverse().unwrap()).sqrt();
+        let denominator = (x + a) * u;
+        let value1 = (numerator * denominator.inverse().unwrap()).sqrt();
 
         // Let value2 = sqrt(-(x + A) / ux)).
-        let numerator = -x - &a;
-        let denominator = x * &u;
-        let value2 = (numerator * &denominator.inverse().unwrap()).sqrt();
+        let numerator = -x - a;
+        let denominator = x * u;
+        let value2 = (numerator * denominator.inverse().unwrap()).sqrt();
 
         let mut recovered_value = None;
 

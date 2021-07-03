@@ -17,7 +17,7 @@
 use core::borrow::Borrow;
 
 use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{PoseidonMDSField, PrimeField};
 use snarkvm_gadgets::{bits::ToBytesGadget, fields::FpGadget, integers::uint::UInt8, traits::alloc::AllocGadget};
 use snarkvm_polycommit::PCCheckVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
@@ -27,10 +27,12 @@ use crate::{marlin::CircuitVerifyingKey, PolynomialCommitment};
 /// The circuit verifying key gadget
 pub struct CircuitVerifyingKeyVar<
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > {
+    /// The original key
+    pub origin_verifier_key: CircuitVerifyingKey<TargetField, PC>,
     /// The size of domain h
     pub domain_h_size: u64,
     /// The size of domain k
@@ -47,13 +49,14 @@ pub struct CircuitVerifyingKeyVar<
 
 impl<
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > Clone for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
 {
     fn clone(&self) -> Self {
         Self {
+            origin_verifier_key: self.origin_verifier_key.clone(),
             domain_h_size: self.domain_h_size,
             domain_k_size: self.domain_k_size,
             domain_h_size_gadget: self.domain_h_size_gadget.clone(),
@@ -66,7 +69,7 @@ impl<
 
 impl<
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
@@ -79,7 +82,7 @@ impl<
 
 impl<
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > AllocGadget<CircuitVerifyingKey<TargetField, PC>, BaseField>
@@ -117,6 +120,7 @@ impl<
         })?;
 
         Ok(CircuitVerifyingKeyVar {
+            origin_verifier_key: (*ivk).clone(),
             domain_h_size: domain_h.size() as u64,
             domain_k_size: domain_k.size() as u64,
             domain_h_size_gadget,
@@ -158,6 +162,7 @@ impl<
         })?;
 
         Ok(CircuitVerifyingKeyVar {
+            origin_verifier_key: (*ivk).clone(),
             domain_h_size: domain_h.size() as u64,
             domain_k_size: domain_k.size() as u64,
             domain_h_size_gadget,
@@ -199,6 +204,7 @@ impl<
         })?;
 
         Ok(CircuitVerifyingKeyVar {
+            origin_verifier_key: (*ivk).clone(),
             domain_h_size: domain_h.size() as u64,
             domain_k_size: domain_k.size() as u64,
             domain_h_size_gadget,
@@ -211,7 +217,7 @@ impl<
 
 impl<
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > ToBytesGadget<BaseField> for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>

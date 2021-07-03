@@ -16,21 +16,9 @@
 
 use crate::traits::Group;
 use snarkvm_fields::{Field, PrimeField, SquareRootField};
-use snarkvm_utilities::{
-    biginteger::BigInteger,
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    serialize::*,
-};
+use snarkvm_utilities::{biginteger::BigInteger, bytes::ToBytes, serialize::*, BitIteratorBE};
 
-use std::{
-    fmt::{Debug, Display},
-    hash::Hash,
-    iter,
-    ops::{Add, AddAssign, Neg, Sub, SubAssign},
-};
-
-use snarkvm_fields::Zero;
+use std::{fmt::Debug, iter};
 
 pub trait PairingEngine: Sized + 'static + Copy + Debug + Sync + Send {
     /// This is the scalar field of the G1/G2 groups.
@@ -110,32 +98,13 @@ pub trait PairingEngine: Sized + 'static + Copy + Debug + Sync + Send {
 /// Projective representation of an elliptic curve point guaranteed to be
 /// in the correct prime order subgroup.
 pub trait ProjectiveCurve:
-    Eq
+    Group
     + Sized
-    + ToBytes
-    + FromBytes
     + CanonicalSerialize
     + ConstantSerializedSize
     + CanonicalDeserialize
-    + Copy
-    + Clone
-    + Default
-    + Send
-    + Sync
-    + Hash
-    + Debug
-    + Display
-    + UniformRand
-    + Zero
-    + 'static
-    + Neg<Output = Self>
-    + for<'a> Add<&'a Self, Output = Self>
-    + for<'a> Sub<&'a Self, Output = Self>
-    + for<'a> AddAssign<&'a Self>
-    + for<'a> SubAssign<&'a Self>
     + From<<Self as ProjectiveCurve>::Affine>
 {
-    type ScalarField: PrimeField + SquareRootField + Into<<Self::ScalarField as PrimeField>::BigInteger>;
     type BaseField: Field;
     type Affine: AffineCurve<Projective = Self, ScalarField = Self::ScalarField> + From<Self> + Into<Self>;
 
@@ -159,21 +128,8 @@ pub trait ProjectiveCurve:
     #[must_use]
     fn is_normalized(&self) -> bool;
 
-    /// Doubles this element.
-    #[must_use]
-    fn double(&self) -> Self {
-        let mut copy = *self;
-        copy.double_in_place();
-        copy
-    }
-
-    fn double_in_place(&mut self) -> &mut Self;
-
     /// Adds an affine element to this element.
     fn add_assign_mixed(&mut self, other: &Self::Affine);
-
-    /// Performs scalar multiplication of this element.
-    fn mul_assign<S: Into<<Self::ScalarField as PrimeField>::BigInteger>>(&mut self, other: S);
 
     /// Converts this element into its affine representation.
     #[must_use]
@@ -196,27 +152,13 @@ pub trait ProjectiveCurve:
 /// in the correct prime order subgroup.
 #[allow(clippy::wrong_self_convention)]
 pub trait AffineCurve:
-    Eq
+    Group
     + Sized
-    + ToBytes
-    + FromBytes
     + CanonicalSerialize
     + ConstantSerializedSize
     + CanonicalDeserialize
-    + Copy
-    + Clone
-    + Default
-    + Send
-    + Sync
-    + Hash
-    + Debug
-    + Display
-    + Neg<Output = Self>
-    + Zero
-    + 'static
     + From<<Self as AffineCurve>::Projective>
 {
-    type ScalarField: PrimeField + SquareRootField + Into<<Self::ScalarField as PrimeField>::BigInteger>;
     type BaseField: Field;
     type Projective: ProjectiveCurve<Affine = Self, ScalarField = Self::ScalarField> + From<Self> + Into<Self>;
 
@@ -238,13 +180,6 @@ pub trait AffineCurve:
     /// largest y-coordinate be selected.
     fn from_y_coordinate(y: Self::BaseField, greatest: bool) -> Option<Self>;
 
-    /// Performs the standard addition operation of this element with a given other element.
-    fn add(self, other: &Self) -> Self;
-
-    /// Performs scalar multiplication of this element with mixed addition.
-    #[must_use]
-    fn mul<S: Into<<Self::ScalarField as PrimeField>::BigInteger>>(&self, other: S) -> Self::Projective;
-
     /// Multiply this element by the cofactor and output the
     /// resulting projective element.
     #[must_use]
@@ -258,6 +193,9 @@ pub trait AffineCurve:
     /// otherwise returns None. This function is primarily intended for sampling
     /// random group elements from a hash-function or RNG output.
     fn from_random_bytes(bytes: &[u8]) -> Option<Self>;
+
+    /// Multiply this element by a scalar field element in BigInteger form.
+    fn mul_bits<S: AsRef<[u64]>>(&self, bits: BitIteratorBE<S>) -> Self::Projective;
 
     /// Multiply this element by the cofactor.
     #[must_use]
@@ -299,23 +237,6 @@ pub trait PairingCurve: AffineCurve {
     /// Perform a pairing
     #[must_use]
     fn pairing_with(&self, other: &Self::PairWith) -> Self::PairingResult;
-}
-
-impl<C: ProjectiveCurve> Group for C {
-    type ScalarField = C::ScalarField;
-
-    #[inline]
-    #[must_use]
-    fn double(&self) -> Self {
-        let mut tmp = *self;
-        tmp += self;
-        tmp
-    }
-
-    #[inline]
-    fn double_in_place(&mut self) -> &mut Self {
-        <C as ProjectiveCurve>::double_in_place(self)
-    }
 }
 
 pub trait ModelParameters: Send + Sync + 'static {

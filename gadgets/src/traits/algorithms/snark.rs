@@ -23,6 +23,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use crate::{
     bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
     traits::alloc::{AllocBytesGadget, AllocGadget},
+    FromFieldElementsGadget,
 };
 
 pub trait SNARKVerifierGadget<N: SNARK, F: Field> {
@@ -44,7 +45,7 @@ pub trait SNARKVerifierGadget<N: SNARK, F: Field> {
 pub trait SNARKGadget<F: PrimeField, CF: PrimeField, S: SNARK> {
     type PreparedVerifyingKeyVar: AllocGadget<S::PreparedVerifyingKey, CF> + Clone;
     type VerifyingKeyVar: AllocGadget<S::VerifyingKey, CF> + ToBytesGadget<CF> + Clone;
-    type InputVar: AllocGadget<Vec<F>, CF> + Clone; // + FromFieldElementsGadget<F, CF>
+    type InputVar: AllocGadget<Vec<F>, CF> + Clone + FromFieldElementsGadget<F, CF>;
     type ProofVar: AllocGadget<S::Proof, CF> + Clone;
 
     /// Information about the R1CS constraints required to check proofs relative

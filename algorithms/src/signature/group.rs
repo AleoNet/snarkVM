@@ -29,10 +29,7 @@ use rand::Rng;
 use std::{hash::Hash, marker::PhantomData};
 
 /// Map the encryption group into the signature group.
-pub(super) fn into_signature_group<
-    G: Group + ProjectiveCurve + CanonicalSerialize,
-    SG: Group + CanonicalDeserialize,
->(
+fn into_signature_group<G: Group + ProjectiveCurve + CanonicalSerialize, SG: Group + CanonicalDeserialize>(
     projective: G,
 ) -> SG {
     let mut bytes = vec![];

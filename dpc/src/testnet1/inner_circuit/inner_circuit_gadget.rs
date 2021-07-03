@@ -16,6 +16,17 @@
 
 use std::ops::Mul;
 
+use crate::{
+    testnet1::{
+        parameters::SystemParameters,
+        record::Record,
+        record_encryption::RecordEncryptionGadgetComponents,
+        Testnet1Components,
+    },
+    traits::RecordScheme,
+    AccountPrivateKey,
+    AleoAmount,
+};
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, PRF},
@@ -42,20 +53,8 @@ use snarkvm_utilities::{
     to_bytes,
 };
 
-use crate::{
-    account::AccountPrivateKey,
-    testnet1::{
-        parameters::SystemParameters,
-        record::Record,
-        record_encryption::RecordEncryptionGadgetComponents,
-        AleoAmount,
-        BaseDPCComponents,
-    },
-    traits::RecordScheme,
-};
-
 #[allow(clippy::too_many_arguments)]
-pub fn execute_inner_proof_gadget<C: BaseDPCComponents, CS: ConstraintSystem<C::InnerField>>(
+pub fn execute_inner_proof_gadget<C: Testnet1Components, CS: ConstraintSystem<C::InnerField>>(
     cs: &mut CS,
     // Parameters
     system_parameters: &SystemParameters<C>,
@@ -196,7 +195,7 @@ fn base_dpc_execute_gadget_helper<
     network_id: u8,
 ) -> Result<(), SynthesisError>
 where
-    C: BaseDPCComponents<
+    C: Testnet1Components<
         AccountCommitment = AccountCommitment,
         AccountEncryption = AccountEncryption,
         AccountSignature = AccountSignature,

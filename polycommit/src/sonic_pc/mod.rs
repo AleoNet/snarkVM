@@ -38,11 +38,11 @@ use crate::{
     ToString,
     Vec,
 };
-use snarkvm_curves::traits::{AffineCurve, Group, PairingCurve, PairingEngine, ProjectiveCurve};
+use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
-use core::{convert::TryInto, iter::FromIterator, marker::PhantomData};
+use core::{convert::TryInto, iter::FromIterator, marker::PhantomData, ops::Mul};
 use rand_core::RngCore;
 
 mod data_structures;
@@ -335,9 +335,11 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
         let commitments: BTreeMap<_, _> = commitments.into_iter().map(|c| (c.label().to_owned(), c)).collect();
         let mut query_to_labels_map = BTreeMap::new();
 
-        for (label, point) in query_set.iter() {
-            let labels = query_to_labels_map.entry(point).or_insert_with(BTreeSet::new);
-            labels.insert(label);
+        for (label, (point_name, point)) in query_set.iter() {
+            let labels = query_to_labels_map
+                .entry(point_name)
+                .or_insert((point, BTreeSet::new()));
+            labels.1.insert(label);
         }
 
         assert_eq!(proof.len(), query_to_labels_map.len());
@@ -348,7 +350,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
         let mut combined_witness: E::G1Projective = E::G1Projective::zero();
         let mut combined_adjusted_witness: E::G1Projective = E::G1Projective::zero();
 
-        for ((query, labels), p) in query_to_labels_map.into_iter().zip(proof) {
+        for ((_query_name, (query, labels)), p) in query_to_labels_map.into_iter().zip(proof) {
             let mut comms_to_combine: Vec<&'_ LabeledCommitment<_>> = Vec::new();
             let mut values_to_combine = Vec::new();
             for label in labels.into_iter() {
@@ -436,7 +438,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
                 hiding_bound = core::cmp::max(hiding_bound, cur_poly.hiding_bound());
                 poly += (*coeff, cur_poly.polynomial());
                 randomness += (*coeff, cur_rand);
-                comm += &curr_comm.commitment().0.into_projective().mul(coeff);
+                comm += &curr_comm.commitment().0.into_projective().mul(*coeff);
             }
 
             let lc_poly = LabeledPolynomial::new(lc_label.clone(), poly, degree_bound, hiding_bound);
@@ -522,7 +524,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
                     } else if cur_comm.degree_bound().is_some() {
                         return Err(Self::Error::EquationHasDegreeBounds(lc_label));
                     }
-                    combined_comm += &cur_comm.commitment().0.mul(*coeff);
+                    combined_comm += &cur_comm.commitment().0.mul(*coeff).into();
                 }
             }
 
@@ -606,11 +608,12 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
         let poly_query_set = lc_query_set_to_poly_query_set(lc_s.values().copied(), eqn_query_set);
         let poly_evals: Evaluations<_> = poly_query_set
             .iter()
+            .map(|(_, point)| point)
             .cloned()
             .zip(evaluations.clone().unwrap())
             .collect();
 
-        for &(ref lc_label, ref point) in eqn_query_set {
+        for &(ref lc_label, (_, ref point)) in eqn_query_set {
             if let Some(lc) = lc_s.get(lc_label) {
                 let claimed_rhs =
                     *eqn_evaluations
@@ -629,7 +632,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for SonicKZG10<E> {
                             .ok_or(Error::MissingEvaluation { label: l.clone() })?,
                     };
 
-                    actual_rhs += &(*coeff * &eval);
+                    actual_rhs += &(*coeff * eval);
                 }
                 if claimed_rhs != actual_rhs {
                     eprintln!("Claimed evaluation of {} is incorrect", lc.label());
@@ -729,13 +732,15 @@ impl<E: PairingEngine> SonicKZG10<E> {
 
         let mut query_to_labels_map = BTreeMap::new();
 
-        for (label, point) in query_set.iter() {
-            let labels = query_to_labels_map.entry(point).or_insert_with(BTreeSet::new);
-            labels.insert(label);
+        for (label, (point_name, point)) in query_set.iter() {
+            let labels = query_to_labels_map
+                .entry(point_name)
+                .or_insert((point, BTreeSet::new()));
+            labels.1.insert(label);
         }
 
         let mut proofs = Vec::new();
-        for (query, labels) in query_to_labels_map.into_iter() {
+        for (_query_name, (query, labels)) in query_to_labels_map.into_iter() {
             let mut query_polys: Vec<&'a LabeledPolynomial<_>> = Vec::new();
             let mut query_rands: Vec<&'a <Self as PolynomialCommitment<E::Fr>>::Randomness> = Vec::new();
             let mut query_comms: Vec<&'a LabeledCommitment<<Self as PolynomialCommitment<E::Fr>>::Commitment>> =
@@ -821,9 +826,11 @@ impl<E: PairingEngine> SonicKZG10<E> {
         let commitments: BTreeMap<_, _> = commitments.into_iter().map(|c| (c.label(), c)).collect();
 
         let mut query_to_labels_map = BTreeMap::new();
-        for (label, point) in query_set.iter() {
-            let labels = query_to_labels_map.entry(point).or_insert_with(BTreeSet::new);
-            labels.insert(label);
+        for (label, (point_name, point)) in query_set.iter() {
+            let labels = query_to_labels_map
+                .entry(point_name)
+                .or_insert((point, BTreeSet::new()));
+            labels.1.insert(label);
         }
 
         // Implicit assumption: proofs are order in same manner as queries in
@@ -832,7 +839,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
         assert_eq!(proofs.len(), query_to_labels_map.len());
 
         let mut result = true;
-        for ((point, labels), proof) in query_to_labels_map.into_iter().zip(proofs) {
+        for ((_point_name, (point, labels)), proof) in query_to_labels_map.into_iter().zip(proofs) {
             let mut comms: Vec<&'_ LabeledCommitment<_>> = Vec::new();
             let mut values = Vec::new();
             for label in labels {
@@ -880,16 +887,16 @@ impl<E: PairingEngine> SonicKZG10<E> {
 
         // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
         for (labeled_comm, value) in commitments.into_iter().zip(values) {
-            combined_values += &(value * &curr_challenge);
+            combined_values += &(value * curr_challenge);
 
             let comm = labeled_comm.commitment();
             let degree_bound = labeled_comm.degree_bound();
 
             // Applying opening challenge and randomness (used in batch_checking)
-            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge);
+            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge).into();
 
             if let Some(randomizer) = randomizer {
-                comm_with_challenge = comm_with_challenge.mul(&randomizer);
+                comm_with_challenge = comm_with_challenge.mul(randomizer);
             }
 
             // Accumulate values in the BTreeMap
@@ -899,18 +906,18 @@ impl<E: PairingEngine> SonicKZG10<E> {
 
         // Push expected results into list of elems. Power will be the negative of the expected power
         let mut witness: E::G1Projective = proof.w.into_projective();
-        let mut adjusted_witness = vk.g.mul(combined_values) - &proof.w.mul(point);
+        let mut adjusted_witness = vk.g.mul(combined_values) - proof.w.mul(point);
         if let Some(random_v) = proof.random_v {
             adjusted_witness += &vk.gamma_g.mul(random_v);
         }
 
         if let Some(randomizer) = randomizer {
-            witness = witness.mul(&randomizer);
-            adjusted_witness = adjusted_witness.mul(&randomizer);
+            witness = witness.mul(randomizer);
+            adjusted_witness = adjusted_witness.mul(randomizer);
         }
 
         *combined_witness += &witness;
-        *combined_adjusted_witness += &adjusted_witness;
+        *combined_adjusted_witness += &adjusted_witness.into();
         end_timer!(acc_time);
     }
 
@@ -937,16 +944,16 @@ impl<E: PairingEngine> SonicKZG10<E> {
 
         // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
         for (labeled_comm, value) in commitments.into_iter().zip(values) {
-            combined_values += &(value * &curr_challenge);
+            combined_values += &(value * curr_challenge);
 
             let comm = labeled_comm.commitment();
             let degree_bound = labeled_comm.degree_bound();
 
             // Applying opening challenge and randomness (used in batch_checking)
-            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge);
+            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge).into();
 
             if let Some(randomizer) = randomizer {
-                comm_with_challenge = comm_with_challenge.mul(&randomizer);
+                comm_with_challenge = comm_with_challenge.mul(randomizer);
             }
 
             // Accumulate values in the BTreeMap
@@ -957,18 +964,18 @@ impl<E: PairingEngine> SonicKZG10<E> {
 
         // Push expected results into list of elems. Power will be the negative of the expected power
         let mut witness: E::G1Projective = proof.w.into_projective();
-        let mut adjusted_witness = vk.g.mul(combined_values) - &proof.w.mul(point);
+        let mut adjusted_witness = vk.g.mul(combined_values) - proof.w.mul(point);
         if let Some(random_v) = proof.random_v {
             adjusted_witness += &vk.gamma_g.mul(random_v);
         }
 
         if let Some(randomizer) = randomizer {
-            witness = proof.w.mul(randomizer);
-            adjusted_witness = adjusted_witness.mul(&randomizer);
+            witness = proof.w.into_projective().mul(randomizer);
+            adjusted_witness = adjusted_witness.mul(randomizer);
         }
 
         *combined_witness += &witness;
-        *combined_adjusted_witness += &adjusted_witness;
+        *combined_adjusted_witness += &adjusted_witness.into();
         end_timer!(acc_time);
     }
 

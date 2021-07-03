@@ -26,11 +26,11 @@ use snarkvm_algorithms::{
     cfg_iter,
     msm::{FixedBaseMSM, VariableBaseMSM},
 };
-use snarkvm_curves::traits::{AffineCurve, Group, PairingCurve, PairingEngine, ProjectiveCurve};
+use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, PrimeField, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
-use core::marker::PhantomData;
+use core::{marker::PhantomData, ops::Mul};
 use rand_core::RngCore;
 
 #[cfg(feature = "parallel")]
@@ -89,7 +89,7 @@ impl<E: PairingEngine> KZG10<E> {
         );
         // Add an additional power of gamma_g, because we want to be able to support
         // up to D queries.
-        powers_of_gamma_g.push(powers_of_gamma_g.last().unwrap().mul(&beta));
+        powers_of_gamma_g.push(powers_of_gamma_g.last().unwrap().mul(beta));
         end_timer!(gamma_g_time);
 
         let powers_of_g = E::G1Projective::batch_normalization_into_affine(powers_of_g);
@@ -131,7 +131,7 @@ impl<E: PairingEngine> KZG10<E> {
 
         end_timer!(prepared_neg_powers_of_h_time);
 
-        let beta_h = h.mul(&beta).into_affine();
+        let beta_h = h.mul(beta).into_affine();
         let h = h.into_affine();
         let prepared_h = h.prepare();
         let prepared_beta_h = beta_h.prepare();
@@ -290,13 +290,13 @@ impl<E: PairingEngine> KZG10<E> {
         proof: &Proof<E>,
     ) -> Result<bool, Error> {
         let check_time = start_timer!(|| "Checking evaluation");
-        let mut inner = commitment.0.into_projective() - &vk.g.into_projective().mul(&value);
+        let mut inner = commitment.0.into_projective() - vk.g.into_projective().mul(value);
         if let Some(random_v) = proof.random_v {
-            inner -= &vk.gamma_g.mul(random_v);
+            inner -= &vk.gamma_g.mul(random_v).into();
         }
         let lhs = E::pairing(inner, vk.h);
 
-        let inner = vk.beta_h.into_projective() - &vk.h.mul(point);
+        let inner = vk.beta_h.into_projective() - &vk.h.mul(point).into();
         let rhs = E::pairing(proof.w, inner);
 
         end_timer!(check_time, || format!("Result: {}", lhs == rhs));
@@ -328,21 +328,21 @@ impl<E: PairingEngine> KZG10<E> {
         let mut gamma_g_multiplier = E::Fr::zero();
         for (((c, z), v), proof) in commitments.iter().zip(points).zip(values).zip(proofs) {
             let w = proof.w;
-            let mut temp = w.mul(*z);
+            let mut temp = w.mul(*z).into_projective();
             temp.add_assign_mixed(&c.0);
             let c = temp;
             g_multiplier += &(randomizer * v);
             if let Some(random_v) = proof.random_v {
-                gamma_g_multiplier += &(randomizer * &random_v);
+                gamma_g_multiplier += &(randomizer * random_v);
             }
-            total_c += &c.mul(&randomizer);
-            total_w += &w.mul(randomizer.into_repr());
+            total_c += &c.mul(randomizer).into();
+            total_w += &w.mul(randomizer).into();
             // We don't need to sample randomizers from the full field,
             // only from 128-bit strings.
             randomizer = u128::rand(rng).into();
         }
-        total_c -= &g.mul(&g_multiplier);
-        total_c -= &gamma_g.mul(&gamma_g_multiplier);
+        total_c -= &g.mul(g_multiplier);
+        total_c -= &gamma_g.mul(gamma_g_multiplier);
         end_timer!(combination_time);
 
         let to_affine_time = start_timer!(|| "Converting results to affine for pairing");

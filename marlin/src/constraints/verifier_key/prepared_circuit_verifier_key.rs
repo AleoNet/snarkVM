@@ -17,14 +17,14 @@
 use core::borrow::Borrow;
 use std::marker::PhantomData;
 
-use snarkvm_fields::{PrimeField, ToConstraintField};
+use snarkvm_fields::{PoseidonMDSField, PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     bits::ToBytesGadget,
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{
         alloc::{AllocBytesGadget, AllocGadget},
-        fields::{FieldGadget, ToConstraintFieldGadget},
+        fields::ToConstraintFieldGadget,
     },
 };
 use snarkvm_polycommit::{PCCheckVar, PrepareGadget};
@@ -42,7 +42,7 @@ use crate::{
 /// The prepared circuit verifying key gadget
 pub struct PreparedCircuitVerifyingKeyVar<
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -68,7 +68,7 @@ pub struct PreparedCircuitVerifyingKeyVar<
 
 impl<
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -92,11 +92,12 @@ impl<
 impl<TargetField, BaseField, PC, PCG, PR, R> PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
     R: FiatShamirRngVar<TargetField, BaseField, PR>,
+    PC::Commitment: ToConstraintField<BaseField>,
     PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
     PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
 {
@@ -114,16 +115,12 @@ where
             let mut vk_hash_rng = PR::new();
 
             let mut vk_elems = Vec::<BaseField>::new();
-            vk.index_comms.iter().enumerate().for_each(|(i, index_comm)| {
-                vk_elems.append(
-                    &mut index_comm
-                        .to_constraint_field(cs.ns(|| format!("index_comm_to_constraint_field_{}", i)))
-                        .unwrap()
-                        .iter()
-                        .map(|elem| elem.get_value().unwrap_or_default())
-                        .collect(),
-                );
-            });
+            vk.origin_verifier_key
+                .circuit_commitments
+                .iter()
+                .for_each(|index_comm| {
+                    vk_elems.append(&mut index_comm.to_field_elements().unwrap());
+                });
             vk_hash_rng.absorb_native_field_elements(&vk_elems);
             vk_hash_rng.squeeze_native_field_elements(1).unwrap()
         };
@@ -159,7 +156,7 @@ impl<TargetField, BaseField, PC, PCG, PR, R> AllocGadget<PreparedCircuitVerifyin
     for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -368,7 +365,7 @@ impl<TargetField, BaseField, PC, PCG, PR, R> AllocGadget<CircuitVerifyingKey<Tar
     for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -423,7 +420,7 @@ impl<TargetField, BaseField, PC, PCG, PR, R> ToBytesGadget<BaseField>
     for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -458,7 +455,7 @@ impl<TargetField, BaseField, PC, PCG, PR, R> AllocBytesGadget<Vec<u8>, BaseField
     for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField,
+    BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -476,9 +473,14 @@ where
     {
         value_gen().and_then(|vk_bytes| {
             let circuit_vk: CircuitVerifyingKey<TargetField, PC> = FromBytes::read(&vk_bytes.borrow()[..])?;
-            let prepared_circuit_vk = PreparedCircuitVerifyingKey::prepare(&circuit_vk);
+            // TODO (raychu86): Preparing the verifying key natively is more efficient, however it is currently broken.
 
-            Self::alloc(cs.ns(|| "alloc_bytes"), || Ok(prepared_circuit_vk))
+            let unprepared_vk_gadget =
+                CircuitVerifyingKeyVar::<TargetField, BaseField, PC, PCG>::alloc(cs.ns(|| "unprepared_vk"), || {
+                    Ok(circuit_vk)
+                })?;
+
+            Self::prepare(cs.ns(|| "prepare"), &unprepared_vk_gadget)
         })
     }
 
@@ -493,9 +495,14 @@ where
     {
         value_gen().and_then(|vk_bytes| {
             let circuit_vk: CircuitVerifyingKey<TargetField, PC> = FromBytes::read(&vk_bytes.borrow()[..])?;
-            let prepared_circuit_vk = PreparedCircuitVerifyingKey::prepare(&circuit_vk);
+            // TODO (raychu86): Preparing the verifying key natively is more efficient, however it is currently broken.
 
-            Self::alloc_input(cs.ns(|| "alloc_input_bytes"), || Ok(prepared_circuit_vk))
+            let unprepared_vk_gadget = CircuitVerifyingKeyVar::<TargetField, BaseField, PC, PCG>::alloc_input(
+                cs.ns(|| "unprepared_vk"),
+                || Ok(circuit_vk),
+            )?;
+
+            Self::prepare(cs.ns(|| "prepare"), &unprepared_vk_gadget)
         })
     }
 }

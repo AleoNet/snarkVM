@@ -19,10 +19,7 @@ use std::{
     marker::PhantomData,
 };
 
-use snarkvm_algorithms::{
-    commitment::{PedersenCommitment, PedersenCommitmentParameters, PedersenCompressedCommitment},
-    crh::PedersenSize,
-};
+use snarkvm_algorithms::commitment::{PedersenCommitment, PedersenCommitmentParameters, PedersenCompressedCommitment};
 use snarkvm_curves::traits::{Group, ProjectiveCurve};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -39,19 +36,19 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub struct PedersenCommitmentParametersGadget<G: Group, S: PedersenSize, F: Field> {
-    parameters: PedersenCommitmentParameters<G, S>,
+pub struct PedersenCommitmentParametersGadget<G: Group, F: Field, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+    parameters: PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>,
     _group: PhantomData<G>,
     _engine: PhantomData<F>,
-    _window: PhantomData<S>,
 }
 
-impl<G: Group, S: PedersenSize, F: PrimeField> AllocGadget<PedersenCommitmentParameters<G, S>, F>
-    for PedersenCommitmentParametersGadget<G, S, F>
+impl<G: Group, F: PrimeField, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    AllocGadget<PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+    for PedersenCommitmentParametersGadget<G, F, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCommitmentParameters<G, S>>,
+        T: Borrow<PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -63,13 +60,12 @@ impl<G: Group, S: PedersenSize, F: PrimeField> AllocGadget<PedersenCommitmentPar
             parameters,
             _group: PhantomData,
             _engine: PhantomData,
-            _window: PhantomData,
         })
     }
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCommitmentParameters<G, S>>,
+        T: Borrow<PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -81,7 +77,6 @@ impl<G: Group, S: PedersenSize, F: PrimeField> AllocGadget<PedersenCommitmentPar
             parameters,
             _group: PhantomData,
             _engine: PhantomData,
-            _window: PhantomData,
         })
     }
 }
@@ -119,11 +114,11 @@ pub struct PedersenCommitmentGadget<G: Group, F: Field, GG: GroupGadget<G, F>>(
     PhantomData<F>,
 );
 
-impl<F: PrimeField, G: Group, GG: GroupGadget<G, F>, S: PedersenSize> CommitmentGadget<PedersenCommitment<G, S>, F>
-    for PedersenCommitmentGadget<G, F, GG>
+impl<F: PrimeField, G: Group, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    CommitmentGadget<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F> for PedersenCommitmentGadget<G, F, GG>
 {
     type OutputGadget = GG;
-    type ParametersGadget = PedersenCommitmentParametersGadget<G, S, F>;
+    type ParametersGadget = PedersenCommitmentParametersGadget<G, F, NUM_WINDOWS, WINDOW_SIZE>;
     type RandomnessGadget = PedersenRandomnessGadget<G>;
 
     fn check_commitment_gadget<CS: ConstraintSystem<F>>(
@@ -132,22 +127,22 @@ impl<F: PrimeField, G: Group, GG: GroupGadget<G, F>, S: PedersenSize> Commitment
         input: &[UInt8],
         randomness: &Self::RandomnessGadget,
     ) -> Result<Self::OutputGadget, SynthesisError> {
-        assert!((input.len() * 8) <= (S::WINDOW_SIZE * S::NUM_WINDOWS));
+        assert!((input.len() * 8) <= (WINDOW_SIZE * NUM_WINDOWS));
 
         let mut padded_input = Cow::Borrowed(input);
-        // Pad if input length is less than `S::WINDOW_SIZE * S::NUM_WINDOWS`.
-        if (input.len() * 8) < S::WINDOW_SIZE * S::NUM_WINDOWS {
+        // Pad if input length is less than `WINDOW_SIZE * NUM_WINDOWS`.
+        if (input.len() * 8) < WINDOW_SIZE * NUM_WINDOWS {
             padded_input
                 .to_mut()
-                .resize((S::WINDOW_SIZE * S::NUM_WINDOWS) / 8, UInt8::constant(0u8))
+                .resize((WINDOW_SIZE * NUM_WINDOWS) / 8, UInt8::constant(0u8))
         }
 
-        assert_eq!(padded_input.len() * 8, S::WINDOW_SIZE * S::NUM_WINDOWS);
-        assert_eq!(parameters.parameters.bases.len(), S::NUM_WINDOWS);
+        assert_eq!(padded_input.len() * 8, WINDOW_SIZE * NUM_WINDOWS);
+        assert_eq!(parameters.parameters.bases.len(), NUM_WINDOWS);
 
         // Allocate new variable for commitment output.
         let input_in_bits: Vec<_> = padded_input.iter().flat_map(|byte| byte.to_bits_le()).collect();
-        let input_in_bits = input_in_bits.chunks(S::WINDOW_SIZE);
+        let input_in_bits = input_in_bits.chunks(WINDOW_SIZE);
         let mut result = GG::multi_scalar_multiplication(cs.ns(|| "msm"), &parameters.parameters.bases, input_in_bits)?;
 
         // Compute h^r
@@ -167,11 +162,17 @@ pub struct PedersenCompressedCommitmentGadget<G: Group + ProjectiveCurve, F: Fie
     PhantomData<F>,
 );
 
-impl<F: PrimeField, G: Group + ProjectiveCurve, GG: CompressedGroupGadget<G, F>, S: PedersenSize>
-    CommitmentGadget<PedersenCompressedCommitment<G, S>, F> for PedersenCompressedCommitmentGadget<G, F, GG>
+impl<
+    F: PrimeField,
+    G: Group + ProjectiveCurve,
+    GG: CompressedGroupGadget<G, F>,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> CommitmentGadget<PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+    for PedersenCompressedCommitmentGadget<G, F, GG>
 {
     type OutputGadget = GG::BaseFieldGadget;
-    type ParametersGadget = PedersenCommitmentParametersGadget<G, S, F>;
+    type ParametersGadget = PedersenCommitmentParametersGadget<G, F, NUM_WINDOWS, WINDOW_SIZE>;
     type RandomnessGadget = PedersenRandomnessGadget<G>;
 
     fn check_commitment_gadget<CS: ConstraintSystem<F>>(

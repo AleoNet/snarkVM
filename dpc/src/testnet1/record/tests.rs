@@ -16,9 +16,10 @@
 
 use super::{record_encoding::*, record_encryption::*};
 use crate::{
-    account::{Account, AccountViewKey},
     testnet1::{instantiated::*, payload::Payload, DPC},
-    traits::{AccountScheme, RecordEncodingScheme},
+    traits::{AccountScheme, DPCComponents, RecordEncodingScheme},
+    Account,
+    AccountViewKey,
 };
 use snarkvm_algorithms::traits::CRH;
 use snarkvm_curves::edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls};
@@ -36,12 +37,12 @@ fn test_record_encoding() {
     for _ in 0..ITERATIONS {
         // Generate parameters for the ledger, commitment schemes, CRH, and the
         // "always-accept" program.
-        let system_parameters = InstantiatedDPC::generate_system_parameters(&mut rng).unwrap();
+        let system_parameters = Testnet1DPC::generate_system_parameters(&mut rng).unwrap();
         let noop_program_snark_pp =
-            InstantiatedDPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
+            Testnet1DPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
 
         let program_snark_vk_bytes = to_bytes![
-            ProgramVerificationKeyCRH::hash(
+            <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
                 &system_parameters.program_verification_key_crh,
                 &to_bytes![noop_program_snark_pp.verification_key].unwrap()
             )
@@ -64,7 +65,11 @@ fn test_record_encoding() {
 
             let given_record = DPC::generate_record(
                 &system_parameters,
-                SerialNumberNonce::hash(&system_parameters.serial_number_nonce, &sn_nonce_input).unwrap(),
+                <Components as DPCComponents>::SerialNumberNonceCRH::hash(
+                    &system_parameters.serial_number_nonce,
+                    &sn_nonce_input,
+                )
+                .unwrap(),
                 dummy_account.address,
                 false,
                 value,
@@ -103,12 +108,12 @@ fn test_record_encryption() {
     for _ in 0..ITERATIONS {
         // Generate parameters for the ledger, commitment schemes, CRH, and the
         // "always-accept" program.
-        let system_parameters = InstantiatedDPC::generate_system_parameters(&mut rng).unwrap();
+        let system_parameters = Testnet1DPC::generate_system_parameters(&mut rng).unwrap();
         let program_snark_pp =
-            InstantiatedDPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
+            Testnet1DPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
 
         let program_snark_vk_bytes = to_bytes![
-            ProgramVerificationKeyCRH::hash(
+            <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
                 &system_parameters.program_verification_key_crh,
                 &to_bytes![program_snark_pp.verification_key].unwrap()
             )
@@ -131,7 +136,11 @@ fn test_record_encryption() {
 
             let given_record = DPC::generate_record(
                 &system_parameters,
-                SerialNumberNonce::hash(&system_parameters.serial_number_nonce, &sn_nonce_input).unwrap(),
+                <Components as DPCComponents>::SerialNumberNonceCRH::hash(
+                    &system_parameters.serial_number_nonce,
+                    &sn_nonce_input,
+                )
+                .unwrap(),
                 dummy_account.address,
                 false,
                 value,

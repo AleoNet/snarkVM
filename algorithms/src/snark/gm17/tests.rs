@@ -87,7 +87,7 @@ mod bw6 {
 
         let a = BW6Fr::rand(rng);
         let b = BW6Fr::rand(rng);
-        let c = a * &b;
+        let c = a * b;
 
         let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &params, rng).unwrap();
         let pvk = prepare_verifying_key::<BW6_761>(params.vk);
@@ -143,7 +143,7 @@ mod gm17 {
         }
 
         let mut sum = Fr::one();
-        sum.add_assign(&Fr::one());
+        sum.add_assign(Fr::one());
         let circuit = R1CSCircuit::new(Fr::one(), sum, Fr::one());
 
         let rng = &mut thread_rng();

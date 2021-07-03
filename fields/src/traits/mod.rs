@@ -14,6 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod fft_field;
+pub use fft_field::*;
+
+mod fft_parameters;
+pub use fft_parameters::*;
+
 mod field;
 pub use field::*;
 
@@ -34,3 +40,6 @@ pub use to_constraint_field::*;
 
 mod zero;
 pub use zero::*;
+
+mod poseidon_mds_field;
+pub use poseidon_mds_field::*;

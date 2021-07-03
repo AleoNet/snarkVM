@@ -14,7 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Field, FieldError, FieldParameters, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
+use crate::{
+    impl_additive_ops_from_ref,
+    impl_multiplicative_ops_from_ref,
+    FftField,
+    Field,
+    FieldError,
+    FieldParameters,
+    LegendreSymbol,
+    One,
+    PoseidonMDSField,
+    PoseidonMDSParameters,
+    PrimeField,
+    SquareRootField,
+    Zero,
+};
 use snarkvm_utilities::{
     biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger384 as BigInteger},
     bytes::{FromBytes, ToBytes},
@@ -192,12 +206,11 @@ impl<P: Fp384Parameters> Field for Fp384<P> {
     }
 
     #[inline]
-    fn double_in_place(&mut self) -> &mut Self {
+    fn double_in_place(&mut self) {
         // This cannot exceed the backing capacity.
         self.0.mul2();
         // However, it may need to be reduced.
         self.reduce();
-        self
     }
 
     #[inline]
@@ -384,15 +397,24 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
     fn into_repr_raw(&self) -> BigInteger {
         self.0
     }
+}
+
+impl<P: Fp384Parameters> FftField for Fp384<P> {
+    type FftParameters = P;
 
     #[inline]
-    fn multiplicative_generator() -> Self {
-        Fp384::<P>(P::GENERATOR, PhantomData)
+    fn two_adic_root_of_unity() -> Self {
+        Self(P::TWO_ADIC_ROOT_OF_UNITY, PhantomData)
     }
 
     #[inline]
-    fn root_of_unity() -> Self {
-        Fp384::<P>(P::ROOT_OF_UNITY, PhantomData)
+    fn large_subgroup_root_of_unity() -> Option<Self> {
+        Some(Self(P::LARGE_SUBGROUP_ROOT_OF_UNITY?, PhantomData))
+    }
+
+    #[inline]
+    fn multiplicative_generator() -> Self {
+        Self(P::GENERATOR, PhantomData)
     }
 }
 
@@ -446,6 +468,9 @@ impl_prime_field_from_int!(Fp384, u16, Fp384Parameters);
 impl_prime_field_from_int!(Fp384, u8, Fp384Parameters);
 
 impl_prime_field_standard_sample!(Fp384, Fp384Parameters);
+
+impl_additive_ops_from_ref!(Fp384, Fp384Parameters);
+impl_multiplicative_ops_from_ref!(Fp384, Fp384Parameters);
 
 impl<P: Fp384Parameters> ToBytes for Fp384<P> {
     #[inline]
@@ -670,5 +695,32 @@ impl<'a, P: Fp384Parameters> DivAssign<&'a Self> for Fp384<P> {
     #[inline]
     fn div_assign(&mut self, other: &Self) {
         self.mul_assign(&other.inverse().unwrap());
+    }
+}
+
+impl<P: Fp384Parameters + PoseidonMDSParameters> PoseidonMDSField for Fp384<P> {
+    fn poseidon_mds_matrix() -> Vec<Vec<Self>> {
+        let mut mds = Vec::<Vec<Self>>::new();
+        for row in P::POSEIDON_MDS.iter() {
+            mds.push(
+                row.iter()
+                    .map(|b| Self::from_repr_raw(*b))
+                    .collect::<Vec<Self>>()
+                    .to_vec(),
+            );
+        }
+        mds
+    }
+
+    fn poseidon_alpha() -> u64 {
+        P::POSEIDON_ALPHA
+    }
+
+    fn poseidon_number_full_rounds() -> u32 {
+        P::POSEIDON_FULL_ROUNDS
+    }
+
+    fn poseidon_number_partial_rounds() -> u32 {
+        P::POSEIDON_PARTIAL_ROUNDS
     }
 }

@@ -16,7 +16,7 @@
 
 use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Proof, ProvingKey};
 use crate::{cfg_into_iter, msm::VariableBaseMSM};
-use snarkvm_curves::traits::{AffineCurve, Group, PairingEngine, ProjectiveCurve};
+use snarkvm_curves::traits::{AffineCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, PrimeField, Zero};
 use snarkvm_r1cs::errors::SynthesisError;
 
@@ -24,6 +24,7 @@ use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable};
 use snarkvm_utilities::rand::UniformRand;
 
+use core::ops::Mul;
 use rand::Rng;
 
 #[cfg(feature = "parallel")]
@@ -180,7 +181,7 @@ where
     let a_query = &params.a_query;
     let r_g1 = params.delta_g1.mul(r);
 
-    let g_a = calculate_coeff(r_g1, a_query, params.vk.alpha_g1, &assignment);
+    let g_a = calculate_coeff(r_g1.into(), a_query, params.vk.alpha_g1, &assignment);
 
     end_timer!(a_acc_time);
 
@@ -190,7 +191,7 @@ where
         let s_g1 = params.delta_g1.mul(s);
         let b_query = &params.b_g1_query;
 
-        let g1_b = calculate_coeff(s_g1, b_query, params.beta_g1, &assignment);
+        let g1_b = calculate_coeff(s_g1.into(), b_query, params.beta_g1, &assignment);
 
         end_timer!(b_g1_acc_time);
 
@@ -203,7 +204,7 @@ where
     let b_g2_acc_time = start_timer!(|| "Compute B in G2");
     let b_query = &params.b_g2_query;
     let s_g2 = params.vk.delta_g2.mul(s);
-    let g2_b = calculate_coeff(s_g2, &b_query, params.vk.beta_g2, &assignment);
+    let g2_b = calculate_coeff(s_g2.into(), &b_query, params.vk.beta_g2, &assignment);
 
     end_timer!(b_g2_acc_time);
 
@@ -216,15 +217,15 @@ where
     let l_aux_source = &params.l_query;
     let l_aux_acc = VariableBaseMSM::multi_scalar_mul(l_aux_source, &aux_assignment);
 
-    let s_g_a = g_a.mul(&s);
-    let r_g1_b = g1_b.mul(&r);
-    let r_s_delta_g1 = params.delta_g1.into_projective().mul(&r).mul(&s);
+    let s_g_a = g_a.mul(s);
+    let r_g1_b = g1_b.mul(r);
+    let r_s_delta_g1 = params.delta_g1.into_projective().mul(r).mul(s);
 
     let mut g_c = s_g_a;
-    g_c += &r_g1_b;
+    g_c += r_g1_b;
     g_c -= &r_s_delta_g1;
-    g_c += &l_aux_acc;
-    g_c += &h_acc;
+    g_c += l_aux_acc;
+    g_c += h_acc;
     end_timer!(c_acc_time);
 
     end_timer!(prover_time);
@@ -248,7 +249,7 @@ fn calculate_coeff<G: AffineCurve>(
 
     let mut res = initial;
     res.add_assign_mixed(&el);
-    res += &acc;
+    res += acc;
     res.add_assign_mixed(&vk_param);
 
     res

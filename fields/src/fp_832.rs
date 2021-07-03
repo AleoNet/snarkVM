@@ -14,7 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Field, FieldError, FieldParameters, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
+use crate::{
+    impl_additive_ops_from_ref,
+    impl_multiplicative_ops_from_ref,
+    FftField,
+    Field,
+    FieldError,
+    FieldParameters,
+    LegendreSymbol,
+    One,
+    PoseidonMDSField,
+    PoseidonMDSParameters,
+    PrimeField,
+    SquareRootField,
+    Zero,
+};
 use snarkvm_utilities::{
     biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger832 as BigInteger},
     bytes::{FromBytes, ToBytes},
@@ -369,12 +383,11 @@ impl<P: Fp832Parameters> Field for Fp832<P> {
     }
 
     #[inline]
-    fn double_in_place(&mut self) -> &mut Self {
+    fn double_in_place(&mut self) {
         // This cannot exceed the backing capacity.
         self.0.mul2();
         // However, it may need to be reduced.
         self.reduce();
-        self
     }
 
     #[inline]
@@ -668,16 +681,6 @@ impl<P: Fp832Parameters> PrimeField for Fp832<P> {
     }
 
     #[inline]
-    fn multiplicative_generator() -> Self {
-        Fp832::<P>(P::GENERATOR, PhantomData)
-    }
-
-    #[inline]
-    fn root_of_unity() -> Self {
-        Fp832::<P>(P::ROOT_OF_UNITY, PhantomData)
-    }
-
-    #[inline]
     fn size_in_bits() -> usize {
         P::MODULUS_BITS as usize
     }
@@ -695,6 +698,25 @@ impl<P: Fp832Parameters> PrimeField for Fp832<P> {
     #[inline]
     fn modulus_minus_one_div_two() -> BigInteger {
         P::MODULUS_MINUS_ONE_DIV_TWO
+    }
+}
+
+impl<P: Fp832Parameters> FftField for Fp832<P> {
+    type FftParameters = P;
+
+    #[inline]
+    fn two_adic_root_of_unity() -> Self {
+        Self(P::TWO_ADIC_ROOT_OF_UNITY, PhantomData)
+    }
+
+    #[inline]
+    fn large_subgroup_root_of_unity() -> Option<Self> {
+        Some(Self(P::LARGE_SUBGROUP_ROOT_OF_UNITY?, PhantomData))
+    }
+
+    #[inline]
+    fn multiplicative_generator() -> Self {
+        Self(P::GENERATOR, PhantomData)
     }
 }
 
@@ -750,6 +772,9 @@ impl_prime_field_from_int!(Fp832, u16, Fp832Parameters);
 impl_prime_field_from_int!(Fp832, u8, Fp832Parameters);
 
 impl_prime_field_standard_sample!(Fp832, Fp832Parameters);
+
+impl_additive_ops_from_ref!(Fp832, Fp832Parameters);
+impl_multiplicative_ops_from_ref!(Fp832, Fp832Parameters);
 
 impl<P: Fp832Parameters> ToBytes for Fp832<P> {
     #[inline]
@@ -1124,5 +1149,32 @@ impl<'a, P: Fp832Parameters> DivAssign<&'a Self> for Fp832<P> {
     #[inline]
     fn div_assign(&mut self, other: &Self) {
         self.mul_assign(&other.inverse().unwrap());
+    }
+}
+
+impl<P: Fp832Parameters + PoseidonMDSParameters> PoseidonMDSField for Fp832<P> {
+    fn poseidon_mds_matrix() -> Vec<Vec<Self>> {
+        let mut mds = Vec::<Vec<Self>>::new();
+        for row in P::POSEIDON_MDS.iter() {
+            mds.push(
+                row.iter()
+                    .map(|b| Self::from_repr_raw(*b))
+                    .collect::<Vec<Self>>()
+                    .to_vec(),
+            );
+        }
+        mds
+    }
+
+    fn poseidon_alpha() -> u64 {
+        P::POSEIDON_ALPHA
+    }
+
+    fn poseidon_number_full_rounds() -> u32 {
+        P::POSEIDON_FULL_ROUNDS
+    }
+
+    fn poseidon_number_partial_rounds() -> u32 {
+        P::POSEIDON_PARTIAL_ROUNDS
     }
 }

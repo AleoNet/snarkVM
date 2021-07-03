@@ -22,7 +22,7 @@
 //
 
 use crate::fiat_shamir::AlgebraicSponge;
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{PoseidonMDSField, PrimeField};
 
 use rand_core::SeedableRng;
 
@@ -34,7 +34,7 @@ pub(super) enum PoseidonSpongeState {
 
 #[derive(Clone)]
 /// The sponge for Poseidon
-pub struct PoseidonSponge<F: PrimeField> {
+pub struct PoseidonSponge<F: PrimeField + PoseidonMDSField> {
     /// Number of rounds in a full-round operation
     pub(super) full_rounds: u32,
     /// number of rounds in a partial-round operation
@@ -57,7 +57,7 @@ pub struct PoseidonSponge<F: PrimeField> {
     pub(super) mode: PoseidonSpongeState,
 }
 
-impl<F: PrimeField> PoseidonSponge<F> {
+impl<F: PrimeField + PoseidonMDSField> PoseidonSponge<F> {
     fn apply_s_box(&self, state: &mut [F], is_full_round: bool) {
         // Full rounds apply the S Box (x^alpha) to every element of state
         if is_full_round {
@@ -73,7 +73,7 @@ impl<F: PrimeField> PoseidonSponge<F> {
 
     fn apply_ark(&self, state: &mut [F], round_number: usize) {
         for (i, state_elem) in state.iter_mut().enumerate() {
-            state_elem.add_assign(&self.ark[round_number][i]);
+            state_elem.add_assign(self.ark[round_number][i]);
         }
     }
 
@@ -83,7 +83,7 @@ impl<F: PrimeField> PoseidonSponge<F> {
             let mut cur = F::zero();
             for (j, state_elem) in state.iter().enumerate() {
                 let term = state_elem.mul(&self.mds[i][j]);
-                cur.add_assign(&term);
+                cur.add_assign(term);
             }
             new_state.push(cur);
         }
@@ -160,18 +160,15 @@ impl<F: PrimeField> PoseidonSponge<F> {
     }
 }
 
-impl<F: PrimeField> AlgebraicSponge<F> for PoseidonSponge<F> {
+impl<F: PrimeField + PoseidonMDSField> AlgebraicSponge<F> for PoseidonSponge<F> {
     fn new() -> Self {
-        // Requires F to be Alt_Bn128Fr
-        let full_rounds = 8;
-        let partial_rounds = 31;
-        let alpha = 17;
+        // The parameters are checked for BLS12-377's Fq field (where the Marlin sponge actually runs over)
+        let full_rounds = F::poseidon_number_full_rounds();
+        let partial_rounds = F::poseidon_number_partial_rounds();
+        let alpha = F::poseidon_alpha();
 
-        let mds = vec![
-            vec![F::one(), F::zero(), F::one()],
-            vec![F::one(), F::one(), F::zero()],
-            vec![F::zero(), F::one(), F::one()],
-        ];
+        // This MDS matrix passes the checks in the reference implementation.
+        let mds = F::poseidon_mds_matrix();
 
         let mut ark = Vec::new();
         let mut ark_rng = rand_chacha::ChaChaRng::seed_from_u64(123456789u64);

@@ -17,10 +17,7 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_algorithms::{
-    crh::{pedersen::PedersenSize, BoweHopwoodPedersenCRH},
-    traits::CRH,
-};
+use snarkvm_algorithms::{crh::BoweHopwoodPedersenCRH, traits::CRH};
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
 
 use criterion::Criterion;
@@ -29,42 +26,67 @@ use rand::{
     {self},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CRHSize;
+const NUM_WINDOWS: usize = 8;
+const WINDOW_SIZE: usize = 32;
 
-impl PedersenSize for CRHSize {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 32;
-}
+const BIG_NUM_WINDOWS: usize = 296;
+const BIG_WINDOW_SIZE: usize = 63;
 
 fn bowe_pedersen_crh_setup(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
     c.bench_function("Bowe Pedersen Commitment Setup", move |b| {
-        b.iter(|| <BoweHopwoodPedersenCRH<EdwardsProjective, CRHSize> as CRH>::setup(rng))
+        b.iter(|| <BoweHopwoodPedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup(rng))
+    });
+}
+
+fn big_bowe_pedersen_crh_setup(c: &mut Criterion) {
+    let rng = &mut thread_rng();
+
+    c.bench_function("Big Bowe Pedersen Commitment Setup", move |b| {
+        b.iter(|| <BoweHopwoodPedersenCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::setup(rng))
     });
 }
 
 fn bowe_pedersen_crh_hash(c: &mut Criterion) {
     let rng = &mut thread_rng();
-    let parameters = <BoweHopwoodPedersenCRH<EdwardsProjective, CRHSize> as CRH>::setup(rng);
+    let parameters = <BoweHopwoodPedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup(rng);
     let input = vec![127u8; 32];
 
     c.bench_function("Bowe Pedersen Commitment Evaluation", move |b| {
-        b.iter(|| <BoweHopwoodPedersenCRH<EdwardsProjective, CRHSize> as CRH>::hash(&parameters, &input).unwrap())
+        b.iter(|| {
+            <BoweHopwoodPedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::hash(&parameters, &input)
+                .unwrap()
+        })
+    });
+}
+
+fn big_bowe_pedersen_crh_hash(c: &mut Criterion) {
+    let rng = &mut thread_rng();
+    let parameters = <BoweHopwoodPedersenCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::setup(rng);
+    let input = vec![127u8; 32];
+
+    c.bench_function("Bowe Pedersen Commitment Evaluation", move |b| {
+        b.iter(|| {
+            <BoweHopwoodPedersenCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::hash(
+                &parameters,
+                &input,
+            )
+            .unwrap()
+        })
     });
 }
 
 criterion_group! {
     name = bowe_crh_setup;
     config = Criterion::default().sample_size(50);
-    targets = bowe_pedersen_crh_setup
+    targets = bowe_pedersen_crh_setup, big_bowe_pedersen_crh_setup
 }
 
 criterion_group! {
     name = bowe_crh_hash;
     config = Criterion::default().sample_size(5000);
-    targets = bowe_pedersen_crh_hash
+    targets = bowe_pedersen_crh_hash, big_bowe_pedersen_crh_hash
 }
 
 criterion_main!(bowe_crh_setup, bowe_crh_hash);

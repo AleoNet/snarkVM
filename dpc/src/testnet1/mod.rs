@@ -15,11 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    account::{Account, AccountAddress, AccountPrivateKey},
-    block::Network,
-    errors::DPCError,
-    testnet1::{payload::Payload, AleoAmount},
+    testnet1::payload::Payload,
     traits::{AccountScheme, DPCComponents, DPCScheme, LedgerScheme, RecordScheme, TransactionScheme},
+    Account,
+    AccountAddress,
+    AccountPrivateKey,
+    AleoAmount,
+    DPCError,
+    Network,
 };
 use snarkvm_algorithms::{
     commitment_tree::CommitmentMerkleTree,
@@ -76,12 +79,15 @@ pub use transaction::*;
 
 pub mod instantiated;
 
+#[cfg(test)]
+mod tests;
+
 ///////////////////////////////////////////////////////////////////////////////
 
 /// Trait that stores all information about the components of a Plain DPC
 /// scheme. Simplifies the interface of Plain DPC by wrapping all these into
 /// one.
-pub trait BaseDPCComponents: DPCComponents {
+pub trait Testnet1Components: DPCComponents {
     /// Ledger digest type.
     type MerkleParameters: LoadableMerkleParameters;
     type MerkleHashGadget: CRHGadget<<Self::MerkleParameters as MerkleParameters>::H, Self::InnerField>;
@@ -121,7 +127,7 @@ pub trait BaseDPCComponents: DPCComponents {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-pub struct DPC<Components: BaseDPCComponents> {
+pub struct DPC<Components: Testnet1Components> {
     _components: PhantomData<Components>,
 }
 
@@ -131,12 +137,12 @@ pub struct DPC<Components: BaseDPCComponents> {
 /// stores references to existing information like old records and secret keys.
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "Components: BaseDPCComponents"),
-    PartialEq(bound = "Components: BaseDPCComponents"),
-    Eq(bound = "Components: BaseDPCComponents"),
-    Debug(bound = "Components: BaseDPCComponents")
+    Clone(bound = "Components: Testnet1Components"),
+    PartialEq(bound = "Components: Testnet1Components"),
+    Eq(bound = "Components: Testnet1Components"),
+    Debug(bound = "Components: Testnet1Components")
 )]
-pub struct TransactionKernel<Components: BaseDPCComponents> {
+pub struct TransactionKernel<Components: Testnet1Components> {
     #[derivative(PartialEq = "ignore", Debug = "ignore")]
     pub system_parameters: SystemParameters<Components>,
 
@@ -167,7 +173,7 @@ pub struct TransactionKernel<Components: BaseDPCComponents> {
     pub network_id: u8,
 }
 
-impl<Components: BaseDPCComponents> TransactionKernel<Components> {
+impl<Components: Testnet1Components> TransactionKernel<Components> {
     #[allow(clippy::wrong_self_convention)]
     pub fn into_local_data(&self) -> LocalData<Components> {
         LocalData {
@@ -187,7 +193,7 @@ impl<Components: BaseDPCComponents> TransactionKernel<Components> {
     }
 }
 
-impl<Components: BaseDPCComponents> ToBytes for TransactionKernel<Components> {
+impl<Components: Testnet1Components> ToBytes for TransactionKernel<Components> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write old record components
@@ -255,7 +261,7 @@ impl<Components: BaseDPCComponents> ToBytes for TransactionKernel<Components> {
     }
 }
 
-impl<Components: BaseDPCComponents> FromBytes for TransactionKernel<Components> {
+impl<Components: Testnet1Components> FromBytes for TransactionKernel<Components> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let system_parameters = SystemParameters::<Components>::load().expect("Could not load system parameters");
@@ -394,7 +400,7 @@ impl<Components: BaseDPCComponents> FromBytes for TransactionKernel<Components> 
 }
 
 /// Stores local data required to produce program proofs.
-pub struct LocalData<Components: BaseDPCComponents> {
+pub struct LocalData<Components: Testnet1Components> {
     pub system_parameters: SystemParameters<Components>,
 
     // Old records and serial numbers
@@ -414,8 +420,10 @@ pub struct LocalData<Components: BaseDPCComponents> {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-impl<Components: BaseDPCComponents> DPC<Components> {
-    pub fn generate_system_parameters<R: Rng>(rng: &mut R) -> Result<SystemParameters<Components>, DPCError> {
+impl<Components: Testnet1Components> DPC<Components> {
+    pub fn generate_system_parameters<R: Rng + CryptoRng>(
+        rng: &mut R,
+    ) -> Result<SystemParameters<Components>, DPCError> {
         let time = start_timer!(|| "Account commitment scheme setup");
         let account_commitment = Components::AccountCommitment::setup(rng);
         end_timer!(time);
@@ -475,7 +483,7 @@ impl<Components: BaseDPCComponents> DPC<Components> {
         })
     }
 
-    pub fn generate_noop_program_snark_parameters<R: Rng>(
+    pub fn generate_noop_program_snark_parameters<R: Rng + CryptoRng>(
         system_parameters: &SystemParameters<Components>,
         rng: &mut R,
     ) -> Result<NoopProgramSNARKParameters<Components>, DPCError> {
@@ -510,7 +518,7 @@ impl<Components: BaseDPCComponents> DPC<Components> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn generate_record<R: Rng>(
+    pub fn generate_record<R: Rng + CryptoRng>(
         system_parameters: &SystemParameters<Components>,
         sn_nonce: <Components::SerialNumberNonceCRH as CRH>::Output,
         owner: AccountAddress<Components>,
@@ -558,7 +566,7 @@ impl<Components: BaseDPCComponents> DPC<Components> {
     }
 }
 
-impl<Components: BaseDPCComponents, L: LedgerScheme> DPCScheme<L> for DPC<Components>
+impl<Components: Testnet1Components, L: LedgerScheme> DPCScheme<L> for DPC<Components>
 where
     L: LedgerScheme<
         Commitment = <Components::RecordCommitment as CommitmentScheme>::Output,
@@ -1181,7 +1189,7 @@ where
             network_id: transaction.network_id(),
         };
 
-        let inner_snark_vk: <<Components as BaseDPCComponents>::InnerSNARK as SNARK>::VerifyingKey =
+        let inner_snark_vk: <<Components as Testnet1Components>::InnerSNARK as SNARK>::VerifyingKey =
             parameters.inner_snark_parameters.1.clone().into();
 
         let inner_circuit_id =

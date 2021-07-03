@@ -14,29 +14,55 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::traits::AffineCurve;
+use std::any::TypeId;
+
+#[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use snarkvm_curves::{bls12_377::G1Affine, traits::AffineCurve};
 use snarkvm_fields::{PrimeField, Zero};
+use snarkvm_utilities::BitIteratorBE;
 
 mod standard;
+
+#[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+mod cuda;
+
+#[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+static HAS_CUDA_FAILED: AtomicBool = AtomicBool::new(false);
 
 pub struct VariableBaseMSM;
 
 impl VariableBaseMSM {
-    pub fn multi_scalar_mul<G: AffineCurve>(
-        bases: &[G],
-        scalars: &[<G::ScalarField as PrimeField>::BigInteger],
-    ) -> G::Projective {
-        standard::msm_standard(bases, scalars)
-    }
-
     #[allow(unused)]
     fn msm_naive<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
         let mut acc = G::Projective::zero();
 
         for (base, scalar) in bases.iter().zip(scalars.iter()) {
-            acc += &base.mul(*scalar);
+            acc += base.mul_bits(BitIteratorBE::new(*scalar));
         }
         acc
+    }
+
+    pub fn multi_scalar_mul<G: AffineCurve>(
+        bases: &[G],
+        scalars: &[<G::ScalarField as PrimeField>::BigInteger],
+    ) -> G::Projective {
+        if TypeId::of::<G>() == TypeId::of::<G1Affine>() {
+            #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+            {
+                if !HAS_CUDA_FAILED.load(Ordering::SeqCst) {
+                    match cuda::msm_cuda(bases, scalars) {
+                        Ok(x) => return x,
+                        Err(e) => {
+                            HAS_CUDA_FAILED.store(true, Ordering::SeqCst);
+                            eprintln!("CUDA failed, moving to next msm method: {:?}", e);
+                        }
+                    }
+                }
+            }
+        }
+        standard::msm_standard(bases, scalars)
     }
 }
 
@@ -52,8 +78,8 @@ mod tests {
     use snarkvm_fields::PrimeField;
     use snarkvm_utilities::{rand::UniformRand, BigInteger256};
 
-    fn test_data(samples: usize) -> (Vec<G1Affine>, Vec<BigInteger256>) {
-        let mut rng = XorShiftRng::seed_from_u64(234872846u64);
+    fn test_data(seed: u64, samples: usize) -> (Vec<G1Affine>, Vec<BigInteger256>) {
+        let mut rng = XorShiftRng::seed_from_u64(seed);
 
         let v = (0..samples).map(|_| Fr::rand(&mut rng).into_repr()).collect::<Vec<_>>();
         let g = (0..samples)
@@ -65,9 +91,21 @@ mod tests {
 
     #[test]
     fn test_naive() {
-        let (bases, scalars) = test_data(100);
+        let (bases, scalars) = test_data(334563456, 100);
         let rust = standard::msm_standard(bases.as_slice(), scalars.as_slice());
         let naive = VariableBaseMSM::msm_naive(bases.as_slice(), scalars.as_slice());
         assert_eq!(rust, naive);
+    }
+
+    #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+    #[test]
+    fn test_msm_cuda() {
+        for i in 0..100 {
+            let (bases, scalars) = test_data(334563456 + i as u64, 1 << 10);
+            let rust = standard::msm_standard(bases.as_slice(), scalars.as_slice());
+
+            let cuda = cuda::msm_cuda(bases.as_slice(), scalars.as_slice()).unwrap();
+            assert_eq!(rust, cuda);
+        }
     }
 }

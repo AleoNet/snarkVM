@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Field, LegendreSymbol, PrimeField, SquareRootField};
+use crate::{traits::FftParameters, FftField, Field, LegendreSymbol, PrimeField, SquareRootField};
 use snarkvm_utilities::{
     io::Cursor,
     serialize::{CanonicalDeserialize, CanonicalSerialize, Flags, SWFlags},
@@ -41,11 +41,11 @@ fn random_addition_tests<F: Field, R: Rng>(rng: &mut R) {
         let b = F::rand(rng);
         let c = F::rand(rng);
 
-        let t0 = (a + &b) + &c; // (a + b) + c
+        let t0 = (a + b) + c; // (a + b) + c
 
-        let t1 = (a + &c) + &b; // (a + c) + b
+        let t1 = (a + c) + b; // (a + c) + b
 
-        let t2 = (b + &c) + &a; // (b + c) + a
+        let t2 = (b + c) + a; // (b + c) + a
 
         assert_eq!(t0, t1);
         assert_eq!(t1, t2);
@@ -57,7 +57,7 @@ fn random_subtraction_tests<F: Field, R: Rng>(rng: &mut R) {
         let a = F::rand(rng);
         let b = F::rand(rng);
 
-        let t0 = a - &b; // (a - b)
+        let t0 = a - b; // (a - b)
 
         let mut t1 = b; // (b - a)
         t1 -= &a;
@@ -164,8 +164,8 @@ fn random_expansion_tests<F: Field, R: Rng>(rng: &mut R) {
         let b = F::rand(rng);
         let c = F::rand(rng);
 
-        let t0 = (a + &b) * &c;
-        let t2 = a * &c + &(b * &c);
+        let t0 = (a + b) * c;
+        let t2 = a * c + (b * c);
 
         assert_eq!(t0, t2);
     }
@@ -193,7 +193,7 @@ fn random_field_tests<F: Field>() {
 
     // Multiplication by zero
     {
-        let a = F::rand(&mut rng) * &F::zero();
+        let a = F::rand(&mut rng) * F::zero();
         assert!(a.is_zero());
     }
 
@@ -280,9 +280,9 @@ pub fn field_test<F: Field>(a: F, b: F) {
     assert!(one == one);
     assert_eq!(one.is_zero(), false);
     assert_eq!(one.is_one(), true);
-    assert_eq!(zero + &one, one);
+    assert_eq!(zero + one, one);
 
-    let two = one + &one;
+    let two = one + one;
     assert!(two == two);
     assert_ne!(zero, two);
     assert_ne!(one, two);
@@ -290,54 +290,90 @@ pub fn field_test<F: Field>(a: F, b: F) {
     // a == a
     assert!(a == a);
     // a + 0 = a
-    assert_eq!(a + &zero, a);
+    assert_eq!(a + zero, a);
     // a - 0 = a
-    assert_eq!(a - &zero, a);
+    assert_eq!(a - zero, a);
     // a - a = 0
-    assert_eq!(a - &a, zero);
+    assert_eq!(a - a, zero);
     // 0 - a = -a
-    assert_eq!(zero - &a, -a);
+    assert_eq!(zero - a, -a);
     // a.double() = a + a
-    assert_eq!(a.double(), a + &a);
+    assert_eq!(a.double(), a + a);
     // b.double() = b + b
-    assert_eq!(b.double(), b + &b);
+    assert_eq!(b.double(), b + b);
     // a + b = b + a
-    assert_eq!(a + &b, b + &a);
+    assert_eq!(a + b, b + a);
     // a - b = -(b - a)
-    assert_eq!(a - &b, -(b - &a));
+    assert_eq!(a - b, -(b - a));
     // (a + b) + a = a + (b + a)
-    assert_eq!((a + &b) + &a, a + &(b + &a));
+    assert_eq!((a + b) + a, a + (b + a));
     // (a + b).double() = (a + b) + (b + a)
-    assert_eq!((a + &b).double(), (a + &b) + &(b + &a));
+    assert_eq!((a + b).double(), (a + b) + (b + a));
 
     // a * 0 = 0
-    assert_eq!(a * &zero, zero);
+    assert_eq!(a * zero, zero);
     // a * 1 = a
-    assert_eq!(a * &one, a);
+    assert_eq!(a * one, a);
     // a * 2 = a.double()
-    assert_eq!(a * &two, a.double());
+    assert_eq!(a * two, a.double());
     // a * a^-1 = 1
-    assert_eq!(a * &a.inverse().unwrap(), one);
+    assert_eq!(a * a.inverse().unwrap(), one);
     // a * a = a^2
-    assert_eq!(a * &a, a.square());
+    assert_eq!(a * a, a.square());
     // a * a * a = a^3
-    assert_eq!(a * &(a * &a), a.pow([0x3, 0x0, 0x0, 0x0]));
+    assert_eq!(a * (a * a), a.pow([0x3, 0x0, 0x0, 0x0]));
     // a * b = b * a
-    assert_eq!(a * &b, b * &a);
+    assert_eq!(a * b, b * a);
     // (a * b) * a = a * (b * a)
-    assert_eq!((a * &b) * &a, a * &(b * &a));
+    assert_eq!((a * b) * a, a * (b * a));
     // (a + b)^2 = a^2 + 2ab + b^2
-    assert_eq!((a + &b).square(), a.square() + &((a * &b) + &(a * &b)) + &b.square());
+    assert_eq!((a + b).square(), a.square() + ((a * b) + (a * b)) + b.square());
     // (a - b)^2 = (-(b - a))^2
-    assert_eq!((a - &b).square(), (-(b - &a)).square());
+    assert_eq!((a - b).square(), (-(b - a)).square());
 
     random_field_tests::<F>();
+}
+
+pub fn fft_field_test<F: PrimeField + FftField>() {
+    let modulus_minus_one_div_two = F::from_repr(F::modulus_minus_one_div_two()).unwrap();
+    assert!(!modulus_minus_one_div_two.is_zero());
+
+    // modulus - 1 == 2^s * t
+    // => t == (modulus - 1) / 2^s
+    // => t == [(modulus - 1) / 2] * [1 / 2^(s-1)]
+    let two_adicity = F::FftParameters::TWO_ADICITY;
+    assert!(two_adicity > 0);
+    let two_s_minus_one = F::from(2_u32).pow(&[(two_adicity - 1) as u64]);
+    let trace = modulus_minus_one_div_two * two_s_minus_one.inverse().unwrap();
+    assert_eq!(trace, F::from_repr(F::trace()).unwrap());
+
+    // (trace - 1) / 2 == trace_minus_one_div_two
+    let trace_minus_one_div_two = F::from_repr(F::trace_minus_one_div_two()).unwrap();
+    assert!(!trace_minus_one_div_two.is_zero());
+    assert_eq!((trace - F::one()) / F::one().double(), trace_minus_one_div_two);
+
+    // multiplicative_generator^trace == root of unity
+    let generator = F::multiplicative_generator();
+    assert!(!generator.is_zero());
+    let two_adic_root_of_unity = F::two_adic_root_of_unity();
+    assert!(!two_adic_root_of_unity.is_zero());
+    assert_eq!(two_adic_root_of_unity.pow([1 << two_adicity]), F::one());
+    // TODO (howardwu): CRITICAL - Reenable this after BLS12-377 Fr root_of_unity has been fixed.
+    // assert_eq!(generator.pow(trace.into_repr().as_ref()), two_adic_root_of_unity);
 }
 
 pub fn primefield_test<F: PrimeField>() {
     let one = F::one();
     assert_eq!(F::from_repr(one.into_repr()).unwrap(), one);
     assert_eq!(F::from_str("1").ok().unwrap(), one);
+    assert_eq!(F::from_str(&one.to_string()).ok().unwrap(), one);
+
+    let two = F::one().double();
+    assert_eq!(F::from_repr(two.into_repr()).unwrap(), two);
+    assert_eq!(F::from_str("2").ok().unwrap(), two);
+    assert_eq!(F::from_str(&two.to_string()).ok().unwrap(), two);
+
+    fft_field_test::<F>();
 }
 
 pub fn sqrt_field_test<F: SquareRootField>(elem: F) {

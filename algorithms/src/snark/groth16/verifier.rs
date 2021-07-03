@@ -15,11 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{PreparedVerifyingKey, Proof, VerifyingKey};
-use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
-use snarkvm_fields::PrimeField;
+use snarkvm_curves::traits::{PairingCurve, PairingEngine};
 use snarkvm_r1cs::errors::SynthesisError;
 
-use core::ops::{AddAssign, Neg};
+use core::ops::{AddAssign, Mul, Neg};
 
 pub fn prepare_verifying_key<E: PairingEngine>(vk: VerifyingKey<E>) -> PreparedVerifyingKey<E> {
     let alpha_g1_beta_g2 = E::pairing(vk.alpha_g1, vk.beta_g2);
@@ -43,15 +42,15 @@ pub fn verify_proof<E: PairingEngine>(
         return Err(SynthesisError::MalformedVerifyingKey);
     }
 
-    let mut g_ic = pvk.gamma_abc_g1()[0].into_projective();
+    let mut g_ic = pvk.gamma_abc_g1()[0];
     for (i, b) in public_inputs.iter().zip(pvk.gamma_abc_g1().iter().skip(1)) {
-        g_ic.add_assign(&b.mul(i.into_repr()));
+        g_ic.add_assign(b.mul(*i));
     }
 
     let qap = E::miller_loop(
         [
             (&proof.a.prepare(), &proof.b.prepare()),
-            (&g_ic.into_affine().prepare(), &pvk.gamma_g2_neg_pc),
+            (&g_ic.prepare(), &pvk.gamma_g2_neg_pc),
             (&proof.c.prepare(), &pvk.delta_g2_neg_pc),
         ]
         .iter()

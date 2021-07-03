@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-algorithms"
-version = "0.5.4"
+version = "0.6.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Algorithms for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -63,27 +63,27 @@ path = "examples/snark/gm17.rs"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.5.4"
+version = "0.6.0"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.5.4"
+version = "0.6.0"
 default-features = false
 
 [dependencies.snarkvm-profiler]
 path = "../profiler"
-version = "0.5.4"
+version = "0.6.0"
 default-features = false
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
-version = "0.5.4"
+version = "0.6.0"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.5.4"
+version = "0.6.0"
 default-features = false
 
 [dependencies.blake2]
@@ -116,11 +116,24 @@ default-features = false
 [dependencies.smallvec]
 version = "1.6"
 
+[dependencies.cuda-oxide]
+version = "0.3"
+optional = true
+
+[dependencies.lazy_static]
+version = "1.4"
+
+[dependencies.crossbeam-channel]
+version = "0.5"
+
 [dependencies.thiserror]
 version = "1.0"
 
 [dependencies.bitvec]
 version = "0.22"
+
+[dependencies.once_cell]
+version = "1.8"
 
 [dev-dependencies.criterion]
 version = "0.3.4"
@@ -179,3 +192,4 @@ signature = [ "encryption" ]
 snark = [ "fft", "msm" ]
 parallel = [ ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
+cuda = [ "cuda-oxide" ]

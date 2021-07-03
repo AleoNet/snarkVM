@@ -16,12 +16,13 @@
 
 use super::{push_constraints, r1cs_to_qap::R1CStoQAP, ProvingKey, VerifyingKey};
 use crate::{cfg_into_iter, cfg_iter, fft::EvaluationDomain, msm::FixedBaseMSM};
-use snarkvm_curves::traits::{Group, PairingEngine, ProjectiveCurve};
+use snarkvm_curves::traits::{PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
 use snarkvm_utilities::{errors::SerializationError, rand::UniformRand, serialize::*};
 
+use core::ops::Mul;
 use rand::Rng;
 
 #[cfg(feature = "parallel")]
@@ -193,13 +194,13 @@ where
     let gamma_abc = cfg_iter!(a[0..assembly.num_public_variables])
         .zip(&b[0..assembly.num_public_variables])
         .zip(&c[0..assembly.num_public_variables])
-        .map(|((a, b), c)| (beta * a + &(alpha * b) + c) * &gamma_inverse)
+        .map(|((a, b), c)| (beta * a + (alpha * b) + c) * gamma_inverse)
         .collect::<Vec<_>>();
 
     let l = cfg_iter!(a)
         .zip(&b)
         .zip(&c)
-        .map(|((a, b), c)| (beta * a + &(alpha * b) + c) * &delta_inverse)
+        .map(|((a, b), c)| (beta * a + (alpha * b) + c) * delta_inverse)
         .collect::<Vec<_>>();
 
     let g1_generator = E::G1Projective::rand(rng);
@@ -214,11 +215,11 @@ where
     // Generate the R1CS proving key
     let proving_key_time = start_timer!(|| "Generate the R1CS proving key");
 
-    let alpha_g1 = g1_generator.mul(&alpha);
-    let beta_g1 = g1_generator.mul(&beta);
-    let beta_g2 = g2_generator.mul(&beta);
-    let delta_g1 = g1_generator.mul(&delta);
-    let delta_g2 = g2_generator.mul(&delta);
+    let alpha_g1 = g1_generator.mul(alpha);
+    let beta_g1 = g1_generator.mul(beta);
+    let beta_g2 = g2_generator.mul(beta);
+    let delta_g1 = g1_generator.mul(delta);
+    let delta_g2 = g2_generator.mul(delta);
 
     // Compute the A-query
     let a_time = start_timer!(|| "Calculate A");
@@ -248,7 +249,7 @@ where
         g1_window,
         &g1_table,
         &cfg_into_iter!(0..m_raw - 1)
-            .map(|i| zt * &delta_inverse * &t.pow([i as u64]))
+            .map(|i| zt * delta_inverse * t.pow([i as u64]))
             .collect::<Vec<_>>(),
     );
 
@@ -264,7 +265,7 @@ where
 
     // Generate R1CS verification key
     let verifying_key_time = start_timer!(|| "Generate the R1CS verification key");
-    let gamma_g2 = g2_generator.mul(&gamma);
+    let gamma_g2 = g2_generator.mul(gamma);
     let gamma_abc_g1 = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, g1_window, &g1_table, &gamma_abc);
 
     drop(g1_table);

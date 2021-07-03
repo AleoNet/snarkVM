@@ -58,11 +58,11 @@ fn mimc<F: Field>(mut xl: F, mut xr: F, constants: &[F]) -> F {
 
     for c in constants.iter().take(MIMC_ROUNDS) {
         let mut tmp1 = xl;
-        tmp1.add_assign(&c);
+        tmp1.add_assign(c);
         let mut tmp2 = tmp1;
         tmp2.square_in_place();
         tmp2.mul_assign(&tmp1);
-        tmp2.add_assign(&xr);
+        tmp2.add_assign(xr);
         xr = xl;
         xl = tmp2;
     }
@@ -99,7 +99,7 @@ impl<'a, F: Field> ConstraintSynthesizer<F> for MiMCDemo<'a, F> {
 
             // tmp = (xL + Ci)^2
             let tmp_value = xl_value.map(|mut e| {
-                e.add_assign(&self.constants[i]);
+                e.add_assign(self.constants[i]);
                 e.square_in_place();
                 e
             });
@@ -116,9 +116,9 @@ impl<'a, F: Field> ConstraintSynthesizer<F> for MiMCDemo<'a, F> {
             // new_xL = xR + tmp * (xL + Ci)
             // new_xL - xR = tmp * (xL + Ci)
             let new_xl_value = xl_value.map(|mut e| {
-                e.add_assign(&self.constants[i]);
+                e.add_assign(self.constants[i]);
                 e.mul_assign(&tmp_value.unwrap());
-                e.add_assign(&xr_value.unwrap());
+                e.add_assign(xr_value.unwrap());
                 e
             });
 

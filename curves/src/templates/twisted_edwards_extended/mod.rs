@@ -18,12 +18,13 @@ use crate::{
     impl_edwards_curve_serializer,
     traits::{
         AffineCurve,
+        Group,
         MontgomeryModelParameters as MontgomeryParameters,
         ProjectiveCurve,
         TEModelParameters as Parameters,
     },
 };
-use snarkvm_fields::{Field, One, PrimeField, SquareRootField, Zero};
+use snarkvm_fields::{impl_additive_ops_from_ref, Field, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
     bytes::{FromBytes, ToBytes},
@@ -81,25 +82,13 @@ impl<P: Parameters> GroupAffine<P> {
         self.mul_bits(BitIteratorBE::new(P::COFACTOR))
     }
 
-    #[must_use]
-    pub(crate) fn mul_bits<S: AsRef<[u64]>>(&self, bits: BitIteratorBE<S>) -> <Self as AffineCurve>::Projective {
-        let mut res = GroupProjective::zero();
-        for i in bits {
-            res.double_in_place();
-            if i {
-                res.add_assign_mixed(self)
-            }
-        }
-        res
-    }
-
     /// Checks that the current point is on the elliptic curve.
     pub fn is_on_curve(&self) -> bool {
         let x2 = self.x.square();
         let y2 = self.y.square();
 
-        let lhs = y2 + &P::mul_by_a(&x2);
-        let rhs = P::BaseField::one() + &(P::COEFF_D * &(x2 * &y2));
+        let lhs = y2 + P::mul_by_a(&x2);
+        let rhs = P::BaseField::one() + (P::COEFF_D * (x2 * y2));
 
         lhs == rhs
     }
@@ -118,7 +107,6 @@ impl<P: Parameters> Zero for GroupAffine<P> {
 impl<P: Parameters> AffineCurve for GroupAffine<P> {
     type BaseField = P::BaseField;
     type Projective = GroupProjective<P>;
-    type ScalarField = P::ScalarField;
 
     fn prime_subgroup_generator() -> Self {
         Self::new(P::AFFINE_GENERATOR_COEFFS.0, P::AFFINE_GENERATOR_COEFFS.1)
@@ -133,9 +121,9 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
         // y = sqrt( (a * x^2 - 1)  / (d * x^2 - 1) )
         let x2 = x.square();
         let one = Self::BaseField::one();
-        let numerator = P::mul_by_a(&x2) - &one;
-        let denominator = P::COEFF_D * &x2 - &one;
-        let y2 = denominator.inverse().map(|denom| denom * &numerator);
+        let numerator = P::mul_by_a(&x2) - one;
+        let denominator = P::COEFF_D * x2 - one;
+        let y2 = denominator.inverse().map(|denom| denom * numerator);
         y2.and_then(|y2| y2.sqrt()).map(|y| {
             let negy = -y;
             let y = if (y < negy) ^ greatest { y } else { negy };
@@ -152,9 +140,9 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
         // x = sqrt( (1 - y^2) / (a - d * y^2) )
         let y2 = y.square();
         let one = Self::BaseField::one();
-        let numerator = one - &y2;
-        let denominator = P::mul_by_a(&one) - &(P::COEFF_D * &y2);
-        let x2 = denominator.inverse().map(|denom| denom * &numerator);
+        let numerator = one - y2;
+        let denominator = P::mul_by_a(&one) - (P::COEFF_D * y2);
+        let x2 = denominator.inverse().map(|denom| denom * numerator);
         x2.and_then(|x2| x2.sqrt()).map(|x| {
             let negx = -x;
             let x = if (x < negx) ^ greatest { x } else { negx };
@@ -177,14 +165,15 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
         }
     }
 
-    fn add(self, other: &Self) -> Self {
-        let mut copy = self;
-        copy += other;
-        copy
-    }
-
-    fn mul<S: Into<<Self::ScalarField as PrimeField>::BigInteger>>(&self, by: S) -> GroupProjective<P> {
-        self.mul_bits(BitIteratorBE::new(by.into()))
+    fn mul_bits<S: AsRef<[u64]>>(&self, bits: BitIteratorBE<S>) -> <Self as AffineCurve>::Projective {
+        let mut res = GroupProjective::zero();
+        for i in bits {
+            res.double_in_place();
+            if i {
+                res.add_assign_mixed(self)
+            }
+        }
+        res
     }
 
     fn mul_by_cofactor_to_projective(&self) -> Self::Projective {
@@ -217,10 +206,28 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
         let x2 = self.x.square();
         let y2 = self.y.square();
 
-        let lhs = y2 + &P::mul_by_a(&x2);
-        let rhs = P::BaseField::one() + &(P::COEFF_D * &(x2 * &y2));
+        let lhs = y2 + P::mul_by_a(&x2);
+        let rhs = P::BaseField::one() + (P::COEFF_D * (x2 * y2));
 
         lhs == rhs
+    }
+}
+
+impl<P: Parameters> Group for GroupAffine<P> {
+    type ScalarField = P::ScalarField;
+
+    #[inline]
+    #[must_use]
+    fn double(&self) -> Self {
+        let mut tmp = *self;
+        tmp += self;
+        tmp
+    }
+
+    #[inline]
+    fn double_in_place(&mut self) {
+        let tmp = *self;
+        *self = tmp.double();
     }
 }
 
@@ -231,6 +238,8 @@ impl<P: Parameters> Neg for GroupAffine<P> {
         Self::new(-self.x, self.y)
     }
 }
+
+impl_additive_ops_from_ref!(GroupAffine, Parameters);
 
 impl<'a, P: Parameters> Add<&'a Self> for GroupAffine<P> {
     type Output = Self;
@@ -245,18 +254,18 @@ impl<'a, P: Parameters> Add<&'a Self> for GroupAffine<P> {
 impl<'a, P: Parameters> AddAssign<&'a Self> for GroupAffine<P> {
     #[allow(clippy::suspicious_op_assign_impl)]
     fn add_assign(&mut self, other: &'a Self) {
-        let y1y2 = self.y * &other.y;
-        let x1x2 = self.x * &other.x;
-        let dx1x2y1y2 = P::COEFF_D * &y1y2 * &x1x2;
+        let y1y2 = self.y * other.y;
+        let x1x2 = self.x * other.x;
+        let dx1x2y1y2 = P::COEFF_D * y1y2 * x1x2;
 
-        let d1 = P::BaseField::one() + &dx1x2y1y2;
-        let d2 = P::BaseField::one() - &dx1x2y1y2;
+        let d1 = P::BaseField::one() + dx1x2y1y2;
+        let d2 = P::BaseField::one() - dx1x2y1y2;
 
-        let x1y2 = self.x * &other.y;
-        let y1x2 = self.y * &other.x;
+        let x1y2 = self.x * other.y;
+        let y1x2 = self.y * other.x;
 
-        self.x = (x1y2 + &y1x2) / &d1;
-        self.y = (y1y2 - &P::mul_by_a(&x1x2)) / &d2;
+        self.x = (x1y2 + y1x2) / &d1;
+        self.y = (y1y2 - P::mul_by_a(&x1x2)) / &d2;
     }
 }
 
@@ -276,19 +285,17 @@ impl<'a, P: Parameters> SubAssign<&'a Self> for GroupAffine<P> {
     }
 }
 
-impl<'a, P: Parameters> Mul<&'a P::ScalarField> for GroupAffine<P> {
+impl<P: Parameters> Mul<P::ScalarField> for GroupAffine<P> {
     type Output = Self;
 
-    fn mul(self, other: &'a P::ScalarField) -> Self {
-        let mut copy = self;
-        copy *= other;
-        copy
+    fn mul(self, other: P::ScalarField) -> Self {
+        self.mul_bits(BitIteratorBE::new(other.into_repr())).into()
     }
 }
 
-impl<'a, P: Parameters> MulAssign<&'a P::ScalarField> for GroupAffine<P> {
-    fn mul_assign(&mut self, other: &'a P::ScalarField) {
-        *self = <Self as AffineCurve>::mul(self, other.into_repr()).into_affine();
+impl<P: Parameters> MulAssign<P::ScalarField> for GroupAffine<P> {
+    fn mul_assign(&mut self, other: P::ScalarField) {
+        *self = self.mul(other).into()
     }
 }
 
@@ -330,31 +337,6 @@ impl<P: Parameters> Distribution<GroupAffine<P>> for Standard {
     }
 }
 
-mod group_impl {
-    use super::*;
-    use crate::traits::Group;
-
-    impl<P: Parameters> Group for GroupAffine<P> {
-        type ScalarField = P::ScalarField;
-
-        #[inline]
-        #[must_use]
-        fn double(&self) -> Self {
-            let mut tmp = *self;
-            tmp += self;
-            tmp
-        }
-
-        #[inline]
-        fn double_in_place(&mut self) -> &mut Self {
-            let mut tmp = *self;
-            tmp += self;
-            *self = tmp;
-            self
-        }
-    }
-}
-
 //////////////////////////////////////////////////////////////////////////////
 
 #[derive(Derivative)]
@@ -391,7 +373,7 @@ impl<P: Parameters> PartialEq for GroupProjective<P> {
         }
 
         // x1/z1 == x2/z2  <==> x1 * z2 == x2 * z1
-        (self.x * &other.z) == (other.x * &self.z) && (self.y * &other.z) == (other.y * &self.z)
+        (self.x * other.z) == (other.x * self.z) && (self.y * other.z) == (other.y * self.z)
     }
 }
 
@@ -467,7 +449,6 @@ impl<P: Parameters> Zero for GroupProjective<P> {
 impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
     type Affine = GroupAffine<P>;
     type BaseField = P::BaseField;
-    type ScalarField = P::ScalarField;
 
     fn prime_subgroup_generator() -> Self {
         GroupAffine::prime_subgroup_generator().into()
@@ -513,8 +494,8 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
             )
         {
             // tmp := tmp * g.z; g.z := tmp * s = 1/z
-            let newtmp = tmp * &g.z;
-            g.z = tmp * &s;
+            let newtmp = tmp * g.z;
+            g.z = tmp * s;
             tmp = newtmp;
         }
 
@@ -527,58 +508,32 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
         }
     }
 
-    fn double_in_place(&mut self) -> &mut Self {
-        let tmp = *self;
-        *self += &tmp;
-        self
-    }
-
     #[allow(clippy::many_single_char_names)]
     fn add_assign_mixed(&mut self, other: &Self::Affine) {
         // A = X1*X2
-        let a = self.x * &other.x;
+        let a = self.x * other.x;
         // B = Y1*Y2
-        let b = self.y * &other.y;
+        let b = self.y * other.y;
         // C = T1*d*T2
-        let c = P::COEFF_D * &self.t * &other.x * &other.y;
+        let c = P::COEFF_D * self.t * other.x * other.y;
         // D = Z1
         let d = self.z;
         // E = (X1+Y1)*(X2+Y2)-A-B
-        let e = (self.x + &self.y) * &(other.x + &other.y) - &a - &b;
+        let e = (self.x + self.y) * (other.x + other.y) - a - b;
         // F = D-C
-        let f = d - &c;
+        let f = d - c;
         // G = D+C
-        let g = d + &c;
+        let g = d + c;
         // H = B-a*A
-        let h = b - &P::mul_by_a(&a);
+        let h = b - P::mul_by_a(&a);
         // X3 = E*F
-        self.x = e * &f;
+        self.x = e * f;
         // Y3 = G*H
-        self.y = g * &h;
+        self.y = g * h;
         // T3 = E*H
-        self.t = e * &h;
+        self.t = e * h;
         // Z3 = F*G
-        self.z = f * &g;
-    }
-
-    fn mul_assign<S: Into<<Self::ScalarField as PrimeField>::BigInteger>>(&mut self, other: S) {
-        let mut res = Self::zero();
-
-        let mut found_one = false;
-
-        for i in BitIteratorBE::new(other.into()) {
-            if found_one {
-                res.double_in_place();
-            } else {
-                found_one = i;
-            }
-
-            if i {
-                res.add_assign(self);
-            }
-        }
-
-        *self = res;
+        self.z = f * g;
     }
 
     fn into_affine(&self) -> GroupAffine<P> {
@@ -594,6 +549,24 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
     }
 }
 
+impl<P: Parameters> Group for GroupProjective<P> {
+    type ScalarField = P::ScalarField;
+
+    #[inline]
+    #[must_use]
+    fn double(&self) -> Self {
+        let mut tmp = *self;
+        tmp += self;
+        tmp
+    }
+
+    #[inline]
+    fn double_in_place(&mut self) {
+        let tmp = *self;
+        *self = tmp.double();
+    }
+}
+
 impl<P: Parameters> Neg for GroupProjective<P> {
     type Output = Self;
 
@@ -603,6 +576,8 @@ impl<P: Parameters> Neg for GroupProjective<P> {
         self
     }
 }
+
+impl_additive_ops_from_ref!(GroupProjective, Parameters);
 
 impl<'a, P: Parameters> Add<&'a Self> for GroupProjective<P> {
     type Output = Self;
@@ -623,40 +598,40 @@ impl<'a, P: Parameters> AddAssign<&'a Self> for GroupProjective<P> {
         // 3.1 Unified Addition in E^e
 
         // A = x1 * x2
-        let a = self.x * &other.x;
+        let a = self.x * other.x;
 
         // B = y1 * y2
-        let b = self.y * &other.y;
+        let b = self.y * other.y;
 
         // C = d * t1 * t2
-        let c = P::COEFF_D * &self.t * &other.t;
+        let c = P::COEFF_D * self.t * other.t;
 
         // D = z1 * z2
-        let d = self.z * &other.z;
+        let d = self.z * other.z;
 
         // H = B - aA
-        let h = b - &P::mul_by_a(&a);
+        let h = b - P::mul_by_a(&a);
 
         // E = (x1 + y1) * (x2 + y2) - A - B
-        let e = (self.x + &self.y) * &(other.x + &other.y) - &a - &b;
+        let e = (self.x + self.y) * (other.x + other.y) - a - b;
 
         // F = D - C
-        let f = d - &c;
+        let f = d - c;
 
         // G = D + C
-        let g = d + &c;
+        let g = d + c;
 
         // x3 = E * F
-        self.x = e * &f;
+        self.x = e * f;
 
         // y3 = G * H
-        self.y = g * &h;
+        self.y = g * h;
 
         // t3 = E * H
-        self.t = e * &h;
+        self.t = e * h;
 
         // z3 = F * G
-        self.z = f * &g;
+        self.z = f * g;
     }
 }
 
@@ -676,19 +651,37 @@ impl<'a, P: Parameters> SubAssign<&'a Self> for GroupProjective<P> {
     }
 }
 
-impl<'a, P: Parameters> Mul<&'a P::ScalarField> for GroupProjective<P> {
+impl<P: Parameters> Mul<P::ScalarField> for GroupProjective<P> {
     type Output = Self;
 
-    fn mul(self, other: &'a P::ScalarField) -> Self {
-        let mut copy = self;
-        copy *= other;
-        copy
+    /// Performs scalar multiplication of this element.
+    #[allow(clippy::suspicious_arithmetic_impl)]
+    #[inline]
+    fn mul(self, other: P::ScalarField) -> Self {
+        let mut res = Self::zero();
+
+        let mut found_one = false;
+
+        for i in BitIteratorBE::new(other.into_repr()) {
+            if found_one {
+                res.double_in_place();
+            } else {
+                found_one = i;
+            }
+
+            if i {
+                res += self;
+            }
+        }
+
+        res
     }
 }
 
-impl<'a, P: Parameters> MulAssign<&'a P::ScalarField> for GroupProjective<P> {
-    fn mul_assign(&mut self, other: &'a P::ScalarField) {
-        <Self as ProjectiveCurve>::mul_assign(self, other.into_repr());
+impl<P: Parameters> MulAssign<P::ScalarField> for GroupProjective<P> {
+    /// Performs scalar multiplication of this element.
+    fn mul_assign(&mut self, other: P::ScalarField) {
+        *self = *self * other
     }
 }
 
@@ -696,7 +689,7 @@ impl<'a, P: Parameters> MulAssign<&'a P::ScalarField> for GroupProjective<P> {
 // with Z = 1.
 impl<P: Parameters> From<GroupAffine<P>> for GroupProjective<P> {
     fn from(p: GroupAffine<P>) -> GroupProjective<P> {
-        Self::new(p.x, p.y, p.x * &p.y, P::BaseField::one())
+        Self::new(p.x, p.y, p.x * p.y, P::BaseField::one())
     }
 }
 
@@ -712,8 +705,8 @@ impl<P: Parameters> From<GroupProjective<P>> for GroupAffine<P> {
         } else {
             // Z is nonzero, so it must have an inverse in a field.
             let z_inv = p.z.inverse().unwrap();
-            let x = p.x * &z_inv;
-            let y = p.y * &z_inv;
+            let x = p.x * z_inv;
+            let y = p.y * z_inv;
             GroupAffine::new(x, y)
         }
     }

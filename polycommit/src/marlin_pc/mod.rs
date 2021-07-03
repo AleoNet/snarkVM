@@ -36,9 +36,13 @@ use crate::{
     Vec,
 };
 use snarkvm_curves::traits::{AffineCurve, PairingEngine, ProjectiveCurve};
-use snarkvm_fields::{Field, One, PrimeField, Zero};
+use snarkvm_fields::{Field, One, Zero};
 
-use core::{convert::TryInto, marker::PhantomData};
+use core::{
+    convert::TryInto,
+    marker::PhantomData,
+    ops::{Mul, MulAssign},
+};
 use rand_core::RngCore;
 
 mod data_structures;
@@ -291,7 +295,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
                 let shifted_rand = rand.shifted_rand.as_ref().unwrap();
                 let (witness, shifted_rand_witness) =
                     kzg10::KZG10::compute_witness_polynomial(polynomial.polynomial(), point, &shifted_rand)?;
-                let challenge_j_1 = challenge_j * &opening_challenge;
+                let challenge_j_1 = challenge_j * opening_challenge;
 
                 let shifted_witness = shift_polynomial(ck, &witness, degree_bound);
 
@@ -321,7 +325,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
 
             w += &shifted_proof.w.into_projective();
             if let Some(shifted_random_v) = shifted_proof.random_v {
-                random_v = random_v.map(|v| v + &shifted_random_v);
+                random_v = random_v.map(|v| v + shifted_random_v);
             }
         }
 
@@ -369,16 +373,18 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
         let commitments: BTreeMap<_, _> = commitments.into_iter().map(|c| (c.label().to_owned(), c)).collect();
         let mut query_to_labels_map = BTreeMap::new();
 
-        for (label, point) in query_set.iter() {
-            let labels = query_to_labels_map.entry(point).or_insert_with(BTreeSet::new);
-            labels.insert(label);
+        for (label, (point_name, point)) in query_set.iter() {
+            let labels = query_to_labels_map
+                .entry(point_name)
+                .or_insert((point, BTreeSet::new()));
+            labels.1.insert(label);
         }
         assert_eq!(proof.len(), query_to_labels_map.len());
 
         let mut combined_comms = Vec::with_capacity(query_to_labels_map.len());
         let mut combined_queries = Vec::with_capacity(query_to_labels_map.len());
         let mut combined_evals = Vec::with_capacity(query_to_labels_map.len());
-        for (query, labels) in query_to_labels_map.into_iter() {
+        for (_point_name, (query, labels)) in query_to_labels_map.into_iter() {
             let lc_time = start_timer!(|| format!("Randomly combining {} commitments", labels.len()));
             let mut comms_to_combine = Vec::with_capacity(labels.len());
             let mut values_to_combine = Vec::with_capacity(labels.len());
@@ -837,7 +843,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
 
             w += &shifted_proof.w.into_projective();
             if let Some(shifted_random_v) = shifted_proof.random_v {
-                random_v = random_v.map(|v| v + &shifted_random_v);
+                random_v = random_v.map(|v| v + shifted_random_v);
             }
         }
 
@@ -876,13 +882,15 @@ impl<E: PairingEngine> MarlinKZG10<E> {
 
         let mut query_to_labels_map = BTreeMap::new();
 
-        for (label, point) in query_set.iter() {
-            let labels = query_to_labels_map.entry(point).or_insert_with(BTreeSet::new);
-            labels.insert(label);
+        for (label, (point_name, point)) in query_set.iter() {
+            let labels = query_to_labels_map
+                .entry(point_name)
+                .or_insert((point, BTreeSet::new()));
+            labels.1.insert(label);
         }
 
         let mut proofs = Vec::new();
-        for (query, labels) in query_to_labels_map.into_iter() {
+        for (_point_name, (query, labels)) in query_to_labels_map.into_iter() {
             let mut query_polys: Vec<&'a LabeledPolynomial<_>> = Vec::new();
             let mut query_rands: Vec<&'a <Self as PolynomialCommitment<E::Fr>>::Randomness> = Vec::new();
             let mut query_comms: Vec<&'a LabeledCommitment<<Self as PolynomialCommitment<E::Fr>>::Commitment>> =
@@ -979,12 +987,12 @@ impl<E: PairingEngine> MarlinKZG10<E> {
             if coeff.is_one() {
                 combined_comm.add_assign_mixed(&comm.comm.0);
             } else {
-                combined_comm += &comm.comm.0.mul(coeff);
+                combined_comm += &comm.comm.0.mul(coeff).into();
             }
 
             if let Some(shifted_comm) = &comm.shifted_comm {
-                let cur = shifted_comm.0.mul(coeff.into_repr());
-                combined_shifted_comm = Some(combined_shifted_comm.map_or(cur, |c| c + &cur));
+                let cur = shifted_comm.0.mul(coeff).into_projective();
+                combined_shifted_comm = Some(combined_shifted_comm.map_or(cur, |c| c + cur));
             }
         }
         (combined_comm, combined_shifted_comm)
@@ -1031,15 +1039,17 @@ impl<E: PairingEngine> MarlinKZG10<E> {
         let commitments: BTreeMap<_, _> = commitments.into_iter().map(|c| (c.label(), c)).collect();
         let mut query_to_labels_map = BTreeMap::new();
 
-        for (label, point) in query_set.iter() {
-            let labels = query_to_labels_map.entry(point).or_insert_with(BTreeSet::new);
-            labels.insert(label);
+        for (label, (point_name, point)) in query_set.iter() {
+            let labels = query_to_labels_map
+                .entry(point_name)
+                .or_insert((point, BTreeSet::new()));
+            labels.1.insert(label);
         }
 
         let mut combined_comms = Vec::new();
         let mut combined_queries = Vec::new();
         let mut combined_evals = Vec::new();
-        for (point, labels) in query_to_labels_map.into_iter() {
+        for (_point_name, (point, labels)) in query_to_labels_map.into_iter() {
             let lc_time = start_timer!(|| format!("Randomly combining {} commitments", labels.len()));
             let mut comms_to_combine: Vec<&'_ LabeledCommitment<_>> = Vec::new();
             let mut values_to_combine = Vec::new();
@@ -1098,18 +1108,18 @@ impl<E: PairingEngine> MarlinKZG10<E> {
             let commitment = labeled_commitment.commitment();
             assert_eq!(degree_bound.is_some(), commitment.shifted_comm.is_some());
 
-            combined_comm += &commitment.comm.0.mul(challenge_i);
-            combined_value += &(value * &challenge_i);
+            combined_comm += &commitment.comm.0.mul(challenge_i).into();
+            combined_value += &(value * challenge_i);
 
             if let Some(degree_bound) = degree_bound {
-                let challenge_i_1 = challenge_i * &opening_challenge;
+                let challenge_i_1 = challenge_i * opening_challenge;
                 let shifted_comm = commitment.shifted_comm.as_ref().unwrap().0.into_projective();
 
                 let shift_power = vk
                     .get_shift_power(degree_bound)
                     .ok_or(Error::UnsupportedDegreeBound(degree_bound))?;
-                let mut adjusted_comm = shifted_comm - &shift_power.mul(value);
-                adjusted_comm.mul_assign(challenge_i_1.into_repr());
+                let mut adjusted_comm = shifted_comm - &shift_power.mul(value).into();
+                adjusted_comm.mul_assign(challenge_i_1);
                 combined_comm += &adjusted_comm;
             }
             challenge_i *= &opening_challenge.square();
@@ -1138,8 +1148,8 @@ impl<E: PairingEngine> MarlinKZG10<E> {
             let challenge_i = opening_challenges(opening_challenge_counter);
             opening_challenge_counter += 1;
 
-            combined_comm += &commitment.comm.0.mul(challenge_i);
-            combined_value += &(value * &challenge_i);
+            combined_comm += &commitment.comm.0.mul(challenge_i).into();
+            combined_value += &(value * challenge_i);
 
             if let Some(degree_bound) = degree_bound {
                 let challenge_i_1 = opening_challenges(opening_challenge_counter);
@@ -1151,9 +1161,9 @@ impl<E: PairingEngine> MarlinKZG10<E> {
                     .get_shift_power(degree_bound)
                     .ok_or(Error::UnsupportedDegreeBound(degree_bound))?;
 
-                let mut adjusted_comm = shifted_comm - &shift_power.mul(value);
+                let mut adjusted_comm = shifted_comm - &shift_power.mul(value).into();
 
-                adjusted_comm.mul_assign(challenge_i_1.into_repr());
+                adjusted_comm.mul_assign(challenge_i_1);
                 combined_comm += &adjusted_comm;
             }
         }

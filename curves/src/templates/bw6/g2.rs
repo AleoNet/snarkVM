@@ -153,24 +153,24 @@ fn doubling_step<B: BW6Parameters>(r: &mut G2HomProjective<B>) -> (B::Fp, B::Fp,
     // Formula for line function when working with
     // homogeneous projective coordinates, as described in https://eprint.iacr.org/2013/722.pdf.
 
-    let a = r.x * &r.y;
+    let a = r.x * r.y;
     let b = r.y.square();
     let b4 = b.double().double();
     let c = r.z.square();
-    let e = B::G2Parameters::COEFF_B * &(c.double() + &c);
-    let f = e.double() + &e;
-    let g = b + &f;
-    let h = (r.y + &r.z).square() - &(b + &c);
-    let i = e - &b;
+    let e = B::G2Parameters::COEFF_B * (c.double() + c);
+    let f = e.double() + e;
+    let g = b + f;
+    let h = (r.y + r.z).square() - (b + c);
+    let i = e - b;
     let j = r.x.square();
     let e2_square = e.double().square();
 
-    r.x = a.double() * &(b - &f);
-    r.y = g.square() - &(e2_square.double() + &e2_square);
-    r.z = b4 * &h;
+    r.x = a.double() * (b - f);
+    r.y = g.square() - (e2_square.double() + e2_square);
+    r.z = b4 * h;
     match B::TWIST_TYPE {
-        TwistType::M => (i, j.double() + &j, -h),
-        TwistType::D => (-h, j.double() + &j, i),
+        TwistType::M => (i, j.double() + j, -h),
+        TwistType::D => (-h, j.double() + j, i),
     }
 }
 
@@ -178,18 +178,18 @@ fn doubling_step<B: BW6Parameters>(r: &mut G2HomProjective<B>) -> (B::Fp, B::Fp,
 fn addition_step<B: BW6Parameters>(r: &mut G2HomProjective<B>, q: &G2Affine<B>) -> (B::Fp, B::Fp, B::Fp) {
     // Formula for line function when working with
     // homogeneous projective coordinates, as described in https://eprint.iacr.org/2013/722.pdf.
-    let theta = r.y - &(q.y * &r.z);
-    let lambda = r.x - &(q.x * &r.z);
+    let theta = r.y - (q.y * r.z);
+    let lambda = r.x - (q.x * r.z);
     let c = theta.square();
     let d = lambda.square();
-    let e = lambda * &d;
-    let f = r.z * &c;
-    let g = r.x * &d;
-    let h = e + &f - &g.double();
-    r.x = lambda * &h;
-    r.y = theta * &(g - &h) - &(e * &r.y);
+    let e = lambda * d;
+    let f = r.z * c;
+    let g = r.x * d;
+    let h = e + f - g.double();
+    r.x = lambda * h;
+    r.y = theta * (g - h) - (e * r.y);
     r.z *= &e;
-    let j = theta * &q.x - &(lambda * &q.y);
+    let j = theta * q.x - (lambda * q.y);
 
     match B::TWIST_TYPE {
         TwistType::M => (j, -theta, lambda),

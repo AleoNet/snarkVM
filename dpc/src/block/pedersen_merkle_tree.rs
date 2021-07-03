@@ -30,19 +30,10 @@ use std::{
 };
 
 // Do not leak the type
-mod window {
-    use snarkvm_algorithms::crh::PedersenSize;
+pub(crate) const NUM_WINDOWS: usize = 4;
+pub(crate) const WINDOW_SIZE: usize = 128;
 
-    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-    pub struct TwoToOneWindow;
-
-    impl PedersenSize for TwoToOneWindow {
-        const NUM_WINDOWS: usize = 4;
-        const WINDOW_SIZE: usize = 128;
-    }
-}
-
-pub type MerkleTreeCRH = PedersenCompressedCRH<EdwardsBls, window::TwoToOneWindow>;
+pub type MerkleTreeCRH = PedersenCompressedCRH<EdwardsBls, NUM_WINDOWS, WINDOW_SIZE>;
 
 // We instantiate the tree here with depth = 2. This may change in the future.
 pub const MASKED_TREE_DEPTH: usize = 2;
