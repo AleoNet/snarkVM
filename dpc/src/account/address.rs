@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, traits::DPCComponents, AccountError, AccountPrivateKey, ViewKey};
+use crate::{account_format, traits::DPCComponents, AccountError, PrivateKey, ViewKey};
 use snarkvm_algorithms::{EncryptionScheme, SignatureScheme};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -42,7 +42,7 @@ impl<C: DPCComponents> Address<C> {
         signature_parameters: &C::AccountSignature,
         commitment_parameters: &C::AccountCommitment,
         encryption_parameters: &C::AccountEncryption,
-        private_key: &AccountPrivateKey<C>,
+        private_key: &PrivateKey<C>,
     ) -> Result<Self, AccountError> {
         let decryption_key = private_key.to_decryption_key(signature_parameters, commitment_parameters)?;
         let encryption_key =
@@ -141,6 +141,6 @@ impl<C: DPCComponents> fmt::Display for Address<C> {
 
 impl<C: DPCComponents> fmt::Debug for Address<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "AccountAddress {{ encryption_key: {:?} }}", self.encryption_key)
+        write!(f, "Address {{ encryption_key: {:?} }}", self.encryption_key)
     }
 }

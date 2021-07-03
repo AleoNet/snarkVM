@@ -32,7 +32,7 @@ use std::{fmt, str::FromStr};
     PartialEq(bound = "C: DPCComponents"),
     Eq(bound = "C: DPCComponents")
 )]
-pub struct AccountPrivateKey<C: DPCComponents> {
+pub struct PrivateKey<C: DPCComponents> {
     pub seed: [u8; 32],
     // Derived private attributes from the seed.
     pub sk_sig: <C::AccountSignature as SignatureScheme>::PrivateKey,
@@ -44,7 +44,7 @@ pub struct AccountPrivateKey<C: DPCComponents> {
     pub is_dummy: bool,
 }
 
-impl<C: DPCComponents> AccountPrivateKey<C> {
+impl<C: DPCComponents> PrivateKey<C> {
     const INITIAL_R_PK_COUNTER: u16 = 2;
     const INPUT_SK_PRF: [u8; 32] = [
         0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -236,7 +236,7 @@ impl<C: DPCComponents> AccountPrivateKey<C> {
     }
 }
 
-impl<C: DPCComponents> FromStr for AccountPrivateKey<C> {
+impl<C: DPCComponents> FromStr for PrivateKey<C> {
     type Err = AccountError;
 
     /// Reads in an account private key string.
@@ -258,7 +258,7 @@ impl<C: DPCComponents> FromStr for AccountPrivateKey<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Display for AccountPrivateKey<C> {
+impl<C: DPCComponents> fmt::Display for PrivateKey<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut private_key = [0u8; 43];
         let prefix = account_format::PRIVATE_KEY_PREFIX;
@@ -274,11 +274,11 @@ impl<C: DPCComponents> fmt::Display for AccountPrivateKey<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Debug for AccountPrivateKey<C> {
+impl<C: DPCComponents> fmt::Debug for PrivateKey<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "AccountPrivateKey {{ seed: {:?}, r_pk_counter: {:?} }}",
+            "PrivateKey {{ seed: {:?}, r_pk_counter: {:?} }}",
             self.seed, self.r_pk_counter
         )
     }

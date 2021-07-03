@@ -18,11 +18,11 @@ use crate::{
     testnet2::payload::Payload,
     traits::{AccountScheme, DPCComponents, DPCScheme, LedgerScheme, RecordScheme, TransactionScheme},
     Account,
-    AccountPrivateKey,
     Address,
     AleoAmount,
     DPCError,
     Network,
+    PrivateKey,
 };
 use snarkvm_algorithms::{
     commitment_tree::CommitmentMerkleTree,
@@ -173,7 +173,7 @@ pub struct TransactionKernel<Components: Testnet2Components> {
     pub system_parameters: SystemParameters<Components>,
 
     // Old record stuff
-    pub old_account_private_keys: Vec<AccountPrivateKey<Components>>,
+    pub old_account_private_keys: Vec<PrivateKey<Components>>,
     pub old_records: Vec<Record<Components>>,
     pub old_serial_numbers: Vec<<Components::AccountSignature as SignatureScheme>::PublicKey>,
     pub old_randomizers: Vec<Vec<u8>>,
@@ -299,7 +299,7 @@ impl<Components: Testnet2Components> FromBytes for TransactionKernel<Components>
             let r_pk_counter_bytes: [u8; 2] = FromBytes::read(&mut reader)?;
             let private_key_seed: [u8; 32] = FromBytes::read(&mut reader)?;
 
-            let old_account_private_key = AccountPrivateKey::<Components>::from_seed_and_counter_unchecked(
+            let old_account_private_key = PrivateKey::<Components>::from_seed_and_counter_unchecked(
                 &private_key_seed,
                 u16::from_le_bytes(r_pk_counter_bytes),
             )
@@ -554,7 +554,7 @@ where
     pub fn generate_sn(
         system_parameters: &SystemParameters<Components>,
         record: &Record<Components>,
-        account_private_key: &AccountPrivateKey<Components>,
+        account_private_key: &PrivateKey<Components>,
     ) -> Result<(<Components::AccountSignature as SignatureScheme>::PublicKey, Vec<u8>), DPCError> {
         let sn_time = start_timer!(|| "Generate serial number");
         let sk_prf = &account_private_key.sk_prf;

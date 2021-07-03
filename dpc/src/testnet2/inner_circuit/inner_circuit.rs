@@ -22,8 +22,8 @@ use crate::{
         record_encryption::RecordEncryptionGadgetComponents,
         Testnet2Components,
     },
-    AccountPrivateKey,
     AleoAmount,
+    PrivateKey,
 };
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
@@ -45,7 +45,7 @@ pub struct InnerCircuit<C: Testnet2Components> {
     // Inputs for old records.
     old_records: Vec<Record<C>>,
     old_witnesses: Vec<MerklePath<C::MerkleParameters>>,
-    old_account_private_keys: Vec<AccountPrivateKey<C>>,
+    old_account_private_keys: Vec<PrivateKey<C>>,
     old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
 
     // Inputs for new records.
@@ -82,7 +82,7 @@ impl<C: Testnet2Components> InnerCircuit<C> {
             vec![<C::AccountSignature as SignatureScheme>::PublicKey::default(); num_input_records];
         let old_records = vec![Record::default(); num_input_records];
         let old_witnesses = vec![MerklePath::default(); num_input_records];
-        let old_account_private_keys = vec![AccountPrivateKey::default(); num_input_records];
+        let old_account_private_keys = vec![PrivateKey::default(); num_input_records];
 
         let new_commitments = vec![<C::RecordCommitment as CommitmentScheme>::Output::default(); num_output_records];
         let new_serial_number_nonce_randomness = vec![[0u8; 32]; num_output_records];
@@ -157,7 +157,7 @@ impl<C: Testnet2Components> InnerCircuit<C> {
         // Old records
         old_records: Vec<Record<C>>,
         old_witnesses: Vec<MerklePath<C::MerkleParameters>>,
-        old_account_private_keys: Vec<AccountPrivateKey<C>>,
+        old_account_private_keys: Vec<PrivateKey<C>>,
         old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
 
         // New records

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    account::{Account, AccountPrivateKey, Address, ViewKey},
+    account::{Account, Address, PrivateKey, ViewKey},
     testnet1::{instantiated::Components, parameters::SystemParameters},
     traits::account::AccountScheme,
 };
@@ -44,7 +44,7 @@ fn test_account_new() {
 #[test]
 pub fn test_private_key_from_str() {
     let private_key_string = "APrivateKey1uaf51GJ6LuMzLi2jy9zJJC3doAtngx52WGFZrcvK6aBsEgo";
-    let private_key = AccountPrivateKey::<Components>::from_str(private_key_string);
+    let private_key = PrivateKey::<Components>::from_str(private_key_string);
     println!("{:?}", private_key);
 
     assert!(private_key.is_ok());

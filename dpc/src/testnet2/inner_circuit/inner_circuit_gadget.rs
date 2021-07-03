@@ -24,8 +24,8 @@ use crate::{
         Testnet2Components,
     },
     traits::RecordScheme,
-    AccountPrivateKey,
     AleoAmount,
+    PrivateKey,
 };
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
@@ -66,7 +66,7 @@ pub fn execute_inner_proof_gadget<C: Testnet2Components, CS: ConstraintSystem<C:
     // Old record stuff
     old_records: &[Record<C>],
     old_witnesses: &[MerklePath<C::MerkleParameters>],
-    old_account_private_keys: &[AccountPrivateKey<C>],
+    old_account_private_keys: &[PrivateKey<C>],
     old_serial_numbers: &[<C::AccountSignature as SignatureScheme>::PublicKey],
 
     // New record stuff
@@ -173,7 +173,7 @@ fn base_dpc_execute_gadget_helper<
     //
     old_records: &[Record<C>],
     old_witnesses: &[MerklePath<C::MerkleParameters>],
-    old_account_private_keys: &[AccountPrivateKey<C>],
+    old_account_private_keys: &[PrivateKey<C>],
     old_serial_numbers: &[AccountSignature::PublicKey],
 
     //
