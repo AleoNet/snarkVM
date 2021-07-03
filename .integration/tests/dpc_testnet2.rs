@@ -95,9 +95,9 @@ fn dpc_testnet2_integration_test() {
     .unwrap();
 
     // Generate dummy input records having as address the genesis address.
-    let old_account_private_keys = vec![genesis_account.private_key.clone(); NUM_INPUT_RECORDS];
+    let old_account_private_keys = vec![genesis_account.private_key.clone(); Components::NUM_INPUT_RECORDS];
     let mut old_records = vec![];
-    for i in 0..NUM_INPUT_RECORDS {
+    for i in 0..Components::NUM_INPUT_RECORDS {
         let old_sn_nonce = <Components as DPCComponents>::SerialNumberNonceCRH::hash(
             &parameters.system_parameters.serial_number_nonce,
             &[64u8 + (i as u8); 1],
@@ -121,12 +121,12 @@ fn dpc_testnet2_integration_test() {
     // Construct new records.
 
     // Set the new records' program to be the "always-accept" program.
-    let new_record_owners = vec![recipient.address.clone(); NUM_OUTPUT_RECORDS];
-    let new_is_dummy_flags = vec![false; NUM_OUTPUT_RECORDS];
-    let new_values = vec![10; NUM_OUTPUT_RECORDS];
-    let new_payloads = vec![Payload::default(); NUM_OUTPUT_RECORDS];
-    let new_birth_program_ids = vec![noop_program_id.clone(); NUM_OUTPUT_RECORDS];
-    let new_death_program_ids = vec![noop_program_id.clone(); NUM_OUTPUT_RECORDS];
+    let new_record_owners = vec![recipient.address.clone(); Components::NUM_OUTPUT_RECORDS];
+    let new_is_dummy_flags = vec![false; Components::NUM_OUTPUT_RECORDS];
+    let new_values = vec![10; Components::NUM_OUTPUT_RECORDS];
+    let new_payloads = vec![Payload::default(); Components::NUM_OUTPUT_RECORDS];
+    let new_birth_program_ids = vec![noop_program_id.clone(); Components::NUM_OUTPUT_RECORDS];
+    let new_death_program_ids = vec![noop_program_id.clone(); Components::NUM_OUTPUT_RECORDS];
 
     let memo = [4u8; 32];
 
@@ -154,7 +154,7 @@ fn dpc_testnet2_integration_test() {
     let noop_program = NoopProgram::<_, <Components as Testnet2Components>::NoopProgramSNARK>::new(noop_program_id);
 
     let mut old_death_program_proofs = vec![];
-    for i in 0..NUM_INPUT_RECORDS {
+    for i in 0..Components::NUM_INPUT_RECORDS {
         let private_input = noop_program
             .execute(
                 &parameters.noop_program_snark_parameters.proving_key,
@@ -169,13 +169,13 @@ fn dpc_testnet2_integration_test() {
     }
 
     let mut new_birth_program_proofs = vec![];
-    for j in 0..NUM_OUTPUT_RECORDS {
+    for j in 0..Components::NUM_OUTPUT_RECORDS {
         let private_input = noop_program
             .execute(
                 &parameters.noop_program_snark_parameters.proving_key,
                 &parameters.noop_program_snark_parameters.verification_key,
                 &local_data,
-                (NUM_INPUT_RECORDS + j) as u8,
+                (Components::NUM_INPUT_RECORDS + j) as u8,
                 &mut rng,
             )
             .unwrap();
@@ -203,7 +203,7 @@ fn dpc_testnet2_integration_test() {
         // Check that new_records can be decrypted from the transaction
 
         let encrypted_records = transaction.encrypted_records();
-        let new_account_private_keys = vec![recipient.private_key; NUM_OUTPUT_RECORDS];
+        let new_account_private_keys = vec![recipient.private_key; Components::NUM_OUTPUT_RECORDS];
 
         for ((encrypted_record, private_key), new_record) in
             encrypted_records.iter().zip(new_account_private_keys).zip(new_records)
@@ -318,17 +318,17 @@ fn test_testnet_2_transaction_kernel_serialization() {
     .unwrap();
 
     // Set the input records for our transaction to be the initial dummy records.
-    let old_records = vec![old_record; NUM_INPUT_RECORDS];
-    let old_account_private_keys = vec![test_account.private_key.clone(); NUM_INPUT_RECORDS];
+    let old_records = vec![old_record; Components::NUM_INPUT_RECORDS];
+    let old_account_private_keys = vec![test_account.private_key.clone(); Components::NUM_INPUT_RECORDS];
 
     // Construct new records.
 
-    let new_record_owners = vec![test_account.address; NUM_OUTPUT_RECORDS];
-    let new_is_dummy_flags = vec![false; NUM_OUTPUT_RECORDS];
-    let new_values = vec![10; NUM_OUTPUT_RECORDS];
-    let new_payloads = vec![Payload::default(); NUM_OUTPUT_RECORDS];
-    let new_birth_program_ids = vec![noop_program_id.clone(); NUM_OUTPUT_RECORDS];
-    let new_death_program_ids = vec![noop_program_id; NUM_OUTPUT_RECORDS];
+    let new_record_owners = vec![test_account.address; Components::NUM_OUTPUT_RECORDS];
+    let new_is_dummy_flags = vec![false; Components::NUM_OUTPUT_RECORDS];
+    let new_values = vec![10; Components::NUM_OUTPUT_RECORDS];
+    let new_payloads = vec![Payload::default(); Components::NUM_OUTPUT_RECORDS];
+    let new_birth_program_ids = vec![noop_program_id.clone(); Components::NUM_OUTPUT_RECORDS];
+    let new_death_program_ids = vec![noop_program_id; Components::NUM_OUTPUT_RECORDS];
     let memo = [0u8; 32];
 
     // Generate transaction kernel
@@ -425,8 +425,8 @@ fn test_execute_testnet2_base_dpc_constraints() {
     .unwrap();
 
     // Set the input records for our transaction to be the initial dummy records.
-    let old_records = vec![old_record; NUM_INPUT_RECORDS];
-    let old_account_private_keys = vec![dummy_account.private_key; NUM_INPUT_RECORDS];
+    let old_records = vec![old_record; Components::NUM_INPUT_RECORDS];
+    let old_account_private_keys = vec![dummy_account.private_key; Components::NUM_INPUT_RECORDS];
 
     // Construct new records.
 
@@ -442,12 +442,12 @@ fn test_execute_testnet2_base_dpc_constraints() {
 
     // Set the new record's program to be the "always-accept" program.
 
-    let new_record_owners = vec![new_account.address; NUM_OUTPUT_RECORDS];
-    let new_is_dummy_flags = vec![false; NUM_OUTPUT_RECORDS];
-    let new_values = vec![10; NUM_OUTPUT_RECORDS];
-    let new_payloads = vec![Payload::default(); NUM_OUTPUT_RECORDS];
-    let new_birth_program_ids = vec![noop_program_id.clone(); NUM_OUTPUT_RECORDS];
-    let new_death_program_ids = vec![noop_program_id.clone(); NUM_OUTPUT_RECORDS];
+    let new_record_owners = vec![new_account.address; Components::NUM_OUTPUT_RECORDS];
+    let new_is_dummy_flags = vec![false; Components::NUM_OUTPUT_RECORDS];
+    let new_values = vec![10; Components::NUM_OUTPUT_RECORDS];
+    let new_payloads = vec![Payload::default(); Components::NUM_OUTPUT_RECORDS];
+    let new_birth_program_ids = vec![noop_program_id.clone(); Components::NUM_OUTPUT_RECORDS];
+    let new_death_program_ids = vec![noop_program_id.clone(); Components::NUM_OUTPUT_RECORDS];
     let memo = [0u8; 32];
 
     let transaction_kernel = <Testnet2DPC as DPCScheme<L>>::execute_offline(
@@ -475,7 +475,7 @@ fn test_execute_testnet2_base_dpc_constraints() {
         NoopProgram::<_, <Components as Testnet2Components>::NoopProgramSNARK>::new(alternate_noop_program_id);
 
     let mut old_proof_and_vk = vec![];
-    for i in 0..NUM_INPUT_RECORDS {
+    for i in 0..Components::NUM_INPUT_RECORDS {
         let private_input = alternate_noop_program
             .execute(
                 &alternate_noop_program_snark_pp.proving_key,
@@ -490,13 +490,13 @@ fn test_execute_testnet2_base_dpc_constraints() {
     }
 
     let mut new_proof_and_vk = vec![];
-    for j in 0..NUM_OUTPUT_RECORDS {
+    for j in 0..Components::NUM_OUTPUT_RECORDS {
         let private_input = noop_program
             .execute(
                 &noop_program_snark_pp.proving_key,
                 &noop_program_snark_pp.verification_key,
                 &local_data,
-                (NUM_INPUT_RECORDS + j) as u8,
+                (Components::NUM_INPUT_RECORDS + j) as u8,
                 &mut rng,
             )
             .unwrap();
@@ -535,7 +535,7 @@ fn test_execute_testnet2_base_dpc_constraints() {
     let ledger_digest = ledger.digest().expect("could not get digest");
 
     // Generate the ledger membership witnesses
-    let mut old_witnesses = Vec::with_capacity(NUM_INPUT_RECORDS);
+    let mut old_witnesses = Vec::with_capacity(Components::NUM_INPUT_RECORDS);
 
     // Compute the ledger membership witness and serial number from the old records.
     for record in old_records.iter() {
@@ -548,7 +548,7 @@ fn test_execute_testnet2_base_dpc_constraints() {
     }
 
     // Prepare record encryption components used in the inner SNARK
-    let mut new_records_encryption_gadget_components = Vec::with_capacity(NUM_OUTPUT_RECORDS);
+    let mut new_records_encryption_gadget_components = Vec::with_capacity(Components::NUM_OUTPUT_RECORDS);
     for (record, ciphertext_randomness) in new_records.iter().zip_eq(&new_records_encryption_randomness) {
         let record_encryption_gadget_components =
             RecordEncryption::prepare_encryption_gadget_components(&system_parameters, &record, ciphertext_randomness)
