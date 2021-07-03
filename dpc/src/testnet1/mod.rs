@@ -131,7 +131,7 @@ pub struct DPC<Components: Testnet1Components> {
     _components: PhantomData<Components>,
 }
 
-/// Returned by `BaseDPC::execute_offline`. Stores data required to produce the
+/// Returned by `DPC::execute_offline`. Stores data required to produce the
 /// final transaction after `execute_offline` has created old serial numbers,
 /// new records and commitments. For convenience, it also
 /// stores references to existing information like old records and secret keys.
@@ -591,7 +591,7 @@ where
         ledger_parameters: &Arc<Components::MerkleParameters>,
         rng: &mut R,
     ) -> anyhow::Result<Self::NetworkParameters> {
-        let setup_time = start_timer!(|| "BaseDPC::setup");
+        let setup_time = start_timer!(|| "DPC::setup");
         let system_parameters = Self::generate_system_parameters(rng)?;
 
         let program_snark_setup_time = start_timer!(|| "Dummy program SNARK setup");
@@ -645,7 +645,7 @@ where
         parameters: &Self::SystemParameters,
         rng: &mut R,
     ) -> anyhow::Result<Self::Account> {
-        let time = start_timer!(|| "BaseDPC::create_account");
+        let time = start_timer!(|| "DPC::create_account");
         let account = Account::new(
             &parameters.account_signature,
             &parameters.account_commitment,
@@ -878,7 +878,7 @@ where
         assert_eq!(Components::NUM_INPUT_RECORDS, old_death_program_proofs.len());
         assert_eq!(Components::NUM_OUTPUT_RECORDS, new_birth_program_proofs.len());
 
-        let exec_time = start_timer!(|| "BaseDPC::execute_online");
+        let exec_time = start_timer!(|| "DPC::execute_online");
 
         let TransactionKernel {
             system_parameters,
@@ -1096,7 +1096,7 @@ where
         transaction: &Self::Transaction,
         ledger: &L,
     ) -> anyhow::Result<bool> {
-        let verify_time = start_timer!(|| "BaseDPC::verify");
+        let verify_time = start_timer!(|| "DPC::verify");
 
         // Returns false if there are duplicate serial numbers in the transaction.
         if has_duplicates(transaction.old_serial_numbers().iter()) {
