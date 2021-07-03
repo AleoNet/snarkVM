@@ -17,7 +17,7 @@
 use crate::errors::AccountError;
 use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, SignatureScheme};
 
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 
 pub trait AccountScheme: Sized {
     type AccountAddress: Default;
@@ -26,7 +26,7 @@ pub trait AccountScheme: Sized {
     type EncryptionScheme: EncryptionScheme;
     type SignatureScheme: SignatureScheme;
 
-    fn new<R: Rng>(
+    fn new<R: Rng + CryptoRng>(
         signature_parameters: &Self::SignatureScheme,
         commitment_parameters: &Self::CommitmentScheme,
         encryption_parameters: &Self::EncryptionScheme,

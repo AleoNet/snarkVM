@@ -34,7 +34,7 @@ use snarkvm_algorithms::{
     define_merkle_tree_parameters,
     encryption::GroupEncryption,
     prf::Blake2s,
-    signature::SchnorrSignature,
+    signature::Schnorr,
     snark::{gm17::GM17, groth16::Groth16},
 };
 use snarkvm_curves::{
@@ -105,7 +105,7 @@ impl DPCComponents for Components {
     type AccountEncryption = GroupEncryption<EdwardsBls, EdwardsAffine, Blake2sHash>;
     type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls, Self::InnerField, EdwardsBlsGadget>;
     
-    type AccountSignature = SchnorrSignature<EdwardsAffine, Blake2sHash>;
+    type AccountSignature = Schnorr<EdwardsAffine, Blake2sHash>;
     type AccountSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, Self::InnerField, EdwardsBlsGadget>;
     
     type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, ENCRYPTED_RECORD_NUM_WINDOWS, ENCRYPTED_RECORD_WINDOW_SIZE>;

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{account_format, traits::DPCComponents, AccountError, AccountPrivateKey, AccountViewKey};
-use snarkvm_algorithms::traits::EncryptionScheme;
+use snarkvm_algorithms::{EncryptionScheme, SignatureScheme};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use bech32::{self, FromBase32, ToBase32};
@@ -67,6 +67,17 @@ impl<C: DPCComponents> AccountAddress<C> {
     #[allow(clippy::wrong_self_convention)]
     pub fn into_repr(&self) -> &<C::AccountEncryption as EncryptionScheme>::PublicKey {
         &self.encryption_key
+    }
+
+    /// Verifies a signature on a message signed by the account view key.
+    /// Returns `true` if the signature is valid. Otherwise, returns `false`.
+    pub fn verify_signature(
+        &self,
+        encryption_parameters: &C::AccountEncryption,
+        message: &[u8],
+        signature: &<C::AccountEncryption as SignatureScheme>::Signature,
+    ) -> Result<bool, AccountError> {
+        Ok(encryption_parameters.verify(&self.encryption_key.clone().into(), message, signature)?)
     }
 }
 

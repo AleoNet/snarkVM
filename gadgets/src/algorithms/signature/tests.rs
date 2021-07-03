@@ -17,7 +17,7 @@
 use blake2::Blake2s;
 use rand::{thread_rng, Rng};
 
-use snarkvm_algorithms::{signature::SchnorrSignature, traits::SignatureScheme};
+use snarkvm_algorithms::{signature::Schnorr, traits::SignatureScheme};
 use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsAffine, traits::Group};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{bytes::ToBytes, rand::UniformRand, to_bytes};
@@ -31,7 +31,7 @@ use crate::{
 
 #[test]
 fn test_schnorr_signature_randomize_public_key_gadget() {
-    type Schnorr = SchnorrSignature<EdwardsAffine, Blake2s>;
+    type SchnorrScheme = Schnorr<EdwardsAffine, Blake2s>;
 
     // Setup environment
 
@@ -45,7 +45,7 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
 
     // Native Schnorr signing
 
-    let schnorr_signature = Schnorr::setup::<_>(rng).unwrap();
+    let schnorr_signature = SchnorrScheme::setup::<_>(rng).unwrap();
     let private_key = schnorr_signature.generate_private_key(rng).unwrap();
     let public_key = schnorr_signature.generate_public_key(&private_key).unwrap();
     let signature = schnorr_signature.sign(&private_key, &message, rng).unwrap();
@@ -86,7 +86,7 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
         EdwardsAffine,
         Fr,
         EdwardsBlsGadget,
-    > as SignaturePublicKeyRandomizationGadget<Schnorr, Fr>>::check_randomization_gadget(
+    > as SignaturePublicKeyRandomizationGadget<SchnorrScheme, Fr>>::check_randomization_gadget(
         &mut cs.ns(|| "candidate_randomized_public_key"),
         &candidate_parameters_gadget,
         &candidate_public_key_gadget,

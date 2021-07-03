@@ -22,7 +22,7 @@ use snarkvm_algorithms::{
 use snarkvm_utilities::{bytes_to_bits, to_bytes, FromBytes, ToBytes};
 
 use base58::{FromBase58, ToBase58};
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 use std::{fmt, str::FromStr};
 
 #[derive(Derivative)]
@@ -53,7 +53,7 @@ impl<C: DPCComponents> AccountPrivateKey<C> {
     const INPUT_SK_SIG: [u8; 32] = [0u8; 32];
 
     /// Creates a new account private key.
-    pub fn new<R: Rng>(
+    pub fn new<R: Rng + CryptoRng>(
         signature_parameters: &C::AccountSignature,
         commitment_parameters: &C::AccountCommitment,
         rng: &mut R,

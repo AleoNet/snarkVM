@@ -25,8 +25,16 @@ use std::{fmt::Debug, hash::Hash};
 
 pub trait EncryptionScheme: Sized + Clone + From<<Self as EncryptionScheme>::Parameters> + SignatureScheme {
     type Parameters: Clone + Debug + Eq + ToBytes + FromBytes;
-    type PrivateKey: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
-    type PublicKey: Clone + Debug + Default + Eq + ToBytes + FromBytes;
+    type PrivateKey: Clone
+        + Debug
+        + Default
+        + Eq
+        + Hash
+        + ToBytes
+        + FromBytes
+        + UniformRand
+        + Into<<Self as SignatureScheme>::PrivateKey>;
+    type PublicKey: Clone + Debug + Default + Eq + ToBytes + FromBytes + Into<<Self as SignatureScheme>::PublicKey>;
     type Text: Clone + Debug + Default + Eq + ToBytes + FromBytes;
     type Randomness: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
     type BlindingExponent: Clone + Debug + Default + Eq + Hash + ToBytes;
