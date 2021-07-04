@@ -26,7 +26,7 @@ use std::io::{Read, Result as IoResult, Write};
 /// Returned by `DPC::execute_offline_phase`. Stores data required to produce the
 /// final transaction after `execute_offline_phase` has created old serial numbers,
 /// new records and commitments. For convenience, it also
-/// stores references to existing information like old records and secret keys.
+/// stores references to existing information such as old records.
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "C: Testnet2Components"),
