@@ -19,11 +19,11 @@
 pub mod account;
 pub use account::*;
 
-pub mod address;
-pub use address::*;
-
 pub mod account_format;
 pub use account_format::*;
+
+pub mod address;
+pub use address::*;
 
 pub mod private_key;
 pub use private_key::*;

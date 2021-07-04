@@ -817,7 +817,7 @@ where
         let mut new_encrypted_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
         for record in &new_records {
-            let (record_encryption_randomness, encrypted_record) = EncryptedRecord::encrypt(&parameters, record, rng)?;
+            let (encrypted_record, record_encryption_randomness) = EncryptedRecord::encrypt(&parameters, record, rng)?;
 
             new_records_encryption_randomness.push(record_encryption_randomness);
             new_encrypted_records.push(encrypted_record);

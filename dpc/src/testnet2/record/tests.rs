@@ -148,7 +148,7 @@ fn test_record_encryption() {
             .unwrap();
 
             // Encrypt the record
-            let (_, encryped_record) = EncryptedRecord::encrypt(&system_parameters, &given_record, &mut rng).unwrap();
+            let (encryped_record, _) = EncryptedRecord::encrypt(&system_parameters, &given_record, &mut rng).unwrap();
             let account_view_key = ViewKey::from_private_key(
                 &system_parameters.account_signature,
                 &system_parameters.account_commitment,

@@ -110,8 +110,8 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
         rng: &mut R,
     ) -> Result<
         (
-            <<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Randomness,
             Self,
+            <<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Randomness,
         ),
         DPCError,
     > {
@@ -145,7 +145,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
             final_fq_high_selector,
         };
 
-        Ok((encryption_randomness, encrypted_record))
+        Ok((encrypted_record, encryption_randomness))
     }
 
     /// Decrypt and reconstruct the encrypted record.

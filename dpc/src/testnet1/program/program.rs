@@ -20,18 +20,10 @@ use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
 /// Program verification key and proof
 /// Represented as bytes to be generic for any Program SNARK
+#[derive(Clone)]
 pub struct PrivateProgramInput {
     pub verification_key: Vec<u8>,
     pub proof: Vec<u8>,
-}
-
-impl Clone for PrivateProgramInput {
-    fn clone(&self) -> Self {
-        Self {
-            verification_key: self.verification_key.clone(),
-            proof: self.proof.clone(),
-        }
-    }
 }
 
 pub struct ProgramLocalData<C: Testnet1Components> {
@@ -49,7 +41,6 @@ where
 {
     fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
         let mut v = ToConstraintField::<C::InnerScalarField>::to_field_elements(&[self.position][..])?;
-
         v.extend_from_slice(&self.local_data_commitment_parameters.to_field_elements()?);
         v.extend_from_slice(&self.local_data_root.to_field_elements()?);
         Ok(v)
