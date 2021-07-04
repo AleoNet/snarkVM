@@ -64,7 +64,9 @@ pub struct Record<C: Testnet1Components> {
     pub(crate) commitment: <C::RecordCommitment as CommitmentScheme>::Output,
     pub(crate) commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
 
+    #[derivative(PartialEq = "ignore")]
     pub(crate) serial_number_nonce_randomness: Option<[u8; 32]>,
+    #[derivative(PartialEq = "ignore")]
     pub(crate) position: Option<u8>,
 }
 

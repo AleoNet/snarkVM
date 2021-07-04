@@ -60,7 +60,9 @@ pub struct Record<C: Testnet2Components> {
     pub(crate) commitment: <C::RecordCommitment as CommitmentScheme>::Output,
     pub(crate) commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
 
+    #[derivative(PartialEq = "ignore")]
     pub(crate) serial_number_nonce_randomness: Option<[u8; 32]>,
+    #[derivative(PartialEq = "ignore")]
     pub(crate) position: Option<u8>,
 }
 
@@ -300,7 +302,6 @@ impl<C: Testnet2Components> FromBytes for Record<C> {
         }
 
         let serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output = FromBytes::read(&mut reader)?;
-
         let commitment: <C::RecordCommitment as CommitmentScheme>::Output = FromBytes::read(&mut reader)?;
         let commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness =
             FromBytes::read(&mut reader)?;
