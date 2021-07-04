@@ -36,10 +36,7 @@ use snarkvm_utilities::{bits_to_bytes, bytes_to_bits, to_bytes, variable_length_
 
 use itertools::Itertools;
 use rand::Rng;
-use std::{
-    io::{Error, ErrorKind, Read, Result as IoResult, Write},
-    marker::PhantomData,
-};
+use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
 
 type BaseField<T> = <<T as Testnet2Components>::EncryptionModelParameters as ModelParameters>::BaseField;
 
@@ -227,7 +224,6 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
             serial_number_nonce,
             commitment_randomness,
             commitment,
-            _components: PhantomData,
         })
     }
 

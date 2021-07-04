@@ -26,10 +26,7 @@ use snarkvm_utilities::{
     variable_length_integer::*,
 };
 
-use std::{
-    io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
-};
+use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Derivative)]
 #[derivative(
@@ -54,8 +51,6 @@ pub struct Record<C: Testnet2Components> {
     pub(crate) serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
     pub(crate) commitment: <C::RecordCommitment as CommitmentScheme>::Output,
     pub(crate) commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
-
-    pub(crate) _components: PhantomData<C>,
 }
 
 fn default_program_id<C: CRH>() -> Vec<u8> {
@@ -169,7 +164,6 @@ impl<C: Testnet2Components> FromBytes for Record<C> {
             serial_number_nonce,
             commitment,
             commitment_randomness,
-            _components: PhantomData,
         })
     }
 }

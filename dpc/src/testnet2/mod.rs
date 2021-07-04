@@ -330,7 +330,6 @@ where
             serial_number_nonce: sn_nonce,
             commitment,
             commitment_randomness,
-            _components: PhantomData,
         };
         end_timer!(record_time);
         Ok(record)
