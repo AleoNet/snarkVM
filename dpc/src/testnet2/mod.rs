@@ -131,27 +131,6 @@ pub trait Testnet2Components: DPCComponents {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-/// Stores local data required to produce program proofs.
-pub struct LocalData<C: Testnet2Components> {
-    pub system_parameters: SystemParameters<C>,
-
-    // Old records and serial numbers
-    pub old_records: Vec<Record<C>>,
-    pub old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
-
-    // New records
-    pub new_records: Vec<Record<C>>,
-
-    // Commitment to the above information.
-    pub local_data_merkle_tree: CommitmentMerkleTree<C::LocalDataCommitment, C::LocalDataCRH>,
-    pub local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
-
-    pub memorandum: <Transaction<C> as TransactionScheme>::Memorandum,
-    pub network_id: u8,
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
 pub struct DPC<C: Testnet2Components> {
     _components: PhantomData<C>,
 }
