@@ -150,7 +150,7 @@ fn dpc_testnet1_integration_test() {
     );
 
     let mut program_proofs = vec![];
-    for i in 0..Components::NUM_RECORDS {
+    for i in 0..Components::NUM_TOTAL_RECORDS {
         program_proofs.push(
             noop_program
                 .execute(&transaction_kernel.into_local_data(), i as u8, &mut rng)

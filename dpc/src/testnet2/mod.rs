@@ -930,7 +930,7 @@ where
         ledger: &L,
         rng: &mut R,
     ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)> {
-        assert_eq!(C::NUM_RECORDS, program_proofs.len());
+        assert_eq!(C::NUM_TOTAL_RECORDS, program_proofs.len());
 
         let exec_time = start_timer!(|| "DPC::execute_online");
 

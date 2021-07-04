@@ -30,7 +30,7 @@ pub trait DPCComponents: 'static + Sized {
 
     const NUM_INPUT_RECORDS: usize;
     const NUM_OUTPUT_RECORDS: usize;
-    const NUM_RECORDS: usize = Self::NUM_INPUT_RECORDS + Self::NUM_OUTPUT_RECORDS;
+    const NUM_TOTAL_RECORDS: usize = Self::NUM_INPUT_RECORDS + Self::NUM_OUTPUT_RECORDS;
 
     type InnerCurve: PairingEngine;
     type OuterCurve: PairingEngine;

@@ -77,7 +77,7 @@ impl<C: Testnet2Components> OuterCircuit<C> {
         let value_balance = AleoAmount::ZERO;
         let network_id = C::NETWORK_ID;
 
-        let program_proofs = vec![program_snark_vk_and_proof.clone(); C::NUM_RECORDS];
+        let program_proofs = vec![program_snark_vk_and_proof.clone(); C::NUM_TOTAL_RECORDS];
         let program_commitment = <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output::default();
         let program_randomness = <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness::default();
         let local_data_root = <C::LocalDataCRH as CRH>::Output::default();
@@ -132,7 +132,7 @@ impl<C: Testnet2Components> OuterCircuit<C> {
         // Inner circuit ID
         inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
     ) -> Self {
-        assert_eq!(C::NUM_RECORDS, program_proofs.len());
+        assert_eq!(C::NUM_TOTAL_RECORDS, program_proofs.len());
         assert_eq!(C::NUM_OUTPUT_RECORDS, new_commitments.len());
         assert_eq!(C::NUM_OUTPUT_RECORDS, new_encrypted_record_hashes.len());
 

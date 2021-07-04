@@ -81,7 +81,7 @@ pub struct Components;
 #[rustfmt::skip]
 impl DPCComponents for Components {
     const NETWORK_ID: u8 = Network::Testnet2.id();
-    
+
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
     
