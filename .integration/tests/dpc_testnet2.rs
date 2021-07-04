@@ -129,7 +129,7 @@ fn dpc_testnet2_integration_test() {
     let transaction_kernel = <Testnet2DPC as DPCScheme<L>>::execute_offline_phase(
         parameters.system_parameters.clone(),
         old_records,
-        old_account_private_keys,
+        &old_account_private_keys,
         new_record_owners,
         &new_is_dummy_flags,
         &new_values,
@@ -158,8 +158,15 @@ fn dpc_testnet2_integration_test() {
         );
     }
 
-    let (new_records, transaction) =
-        Testnet2DPC::execute_online_phase(&parameters, transaction_kernel, program_proofs, &ledger, &mut rng).unwrap();
+    let (new_records, transaction) = Testnet2DPC::execute_online_phase(
+        &parameters,
+        &old_account_private_keys,
+        transaction_kernel,
+        program_proofs,
+        &ledger,
+        &mut rng,
+    )
+    .unwrap();
 
     // Check that the transaction is serialized and deserialized correctly
     let transaction_bytes = to_bytes![transaction].unwrap();
@@ -301,7 +308,7 @@ fn test_testnet_2_transaction_kernel_serialization() {
     let transaction_kernel = <Testnet2DPC as DPCScheme<L>>::execute_offline_phase(
         system_parameters,
         old_records,
-        old_account_private_keys,
+        &old_account_private_keys,
         new_record_owners,
         &new_is_dummy_flags,
         &new_values,
@@ -413,7 +420,7 @@ fn test_testnet2_dpc_execute_constraints() {
     let transaction_kernel = <Testnet2DPC as DPCScheme<L>>::execute_offline_phase(
         system_parameters.clone(),
         old_records,
-        old_account_private_keys,
+        &old_account_private_keys,
         new_record_owners,
         &new_is_dummy_flags,
         &new_values,
@@ -462,7 +469,6 @@ fn test_testnet2_dpc_execute_constraints() {
         system_parameters: _,
 
         old_records,
-        old_account_private_keys,
         old_serial_numbers,
         old_randomizers: _,
 

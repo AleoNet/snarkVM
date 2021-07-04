@@ -25,7 +25,7 @@ pub trait DPCScheme<L: LedgerScheme> {
     type NetworkParameters;
     type Payload;
     type PrivateProgramInput;
-    type Record: RecordScheme<Owner = <Self::Account as AccountScheme>::AccountAddress>;
+    type Record: RecordScheme<Owner = <Self::Account as AccountScheme>::Address>;
     type SystemParameters;
     type Transaction: TransactionScheme<SerialNumber = <Self::Record as RecordScheme>::SerialNumber>;
     type TransactionKernel;
@@ -47,8 +47,8 @@ pub trait DPCScheme<L: LedgerScheme> {
     fn execute_offline_phase<R: Rng + CryptoRng>(
         parameters: Self::SystemParameters,
         old_records: Vec<Self::Record>,
-        old_account_private_keys: Vec<<Self::Account as AccountScheme>::AccountPrivateKey>,
-        new_record_owners: Vec<<Self::Account as AccountScheme>::AccountAddress>,
+        old_account_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
+        new_record_owners: Vec<<Self::Account as AccountScheme>::Address>,
         new_is_dummy_flags: &[bool],
         new_values: &[u64],
         new_payloads: Vec<Self::Payload>,
@@ -62,6 +62,7 @@ pub trait DPCScheme<L: LedgerScheme> {
     /// consumption of old records.
     fn execute_online_phase<R: Rng + CryptoRng>(
         parameters: &Self::NetworkParameters,
+        old_account_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         transaction_kernel: Self::TransactionKernel,
         program_proofs: Vec<Self::PrivateProgramInput>,
         ledger: &L,

@@ -39,7 +39,6 @@ pub struct TransactionKernel<C: Testnet2Components> {
     pub system_parameters: SystemParameters<C>,
 
     // Old record stuff
-    pub old_account_private_keys: Vec<PrivateKey<C>>,
     pub old_records: Vec<Record<C>>,
     pub old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
     pub old_randomizers: Vec<Vec<u8>>,
@@ -89,13 +88,6 @@ impl<C: Testnet2Components> ToBytes for TransactionKernel<C> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write old record components
-
-        for old_account_private_key in &self.old_account_private_keys {
-            let r_pk_counter = old_account_private_key.r_pk_counter;
-            let private_key_seed = old_account_private_key.seed;
-            r_pk_counter.write(&mut writer)?;
-            private_key_seed.write(&mut writer)?;
-        }
 
         for old_record in &self.old_records {
             old_record.write(&mut writer)?;
@@ -159,20 +151,6 @@ impl<C: Testnet2Components> FromBytes for TransactionKernel<C> {
         let system_parameters = SystemParameters::<C>::load().expect("Could not load system parameters");
 
         // Read old record components
-
-        let mut old_account_private_keys = vec![];
-        for _ in 0..C::NUM_INPUT_RECORDS {
-            let r_pk_counter_bytes: [u8; 2] = FromBytes::read(&mut reader)?;
-            let private_key_seed: [u8; 32] = FromBytes::read(&mut reader)?;
-
-            let old_account_private_key = PrivateKey::<C>::from_seed_and_counter_unchecked(
-                &private_key_seed,
-                u16::from_le_bytes(r_pk_counter_bytes),
-            )
-            .expect("could not load private key");
-
-            old_account_private_keys.push(old_account_private_key);
-        }
 
         let mut old_records = vec![];
         for _ in 0..C::NUM_INPUT_RECORDS {
@@ -265,7 +243,6 @@ impl<C: Testnet2Components> FromBytes for TransactionKernel<C> {
             system_parameters,
 
             old_records,
-            old_account_private_keys,
             old_serial_numbers,
             old_randomizers,
 

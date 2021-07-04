@@ -118,44 +118,6 @@ impl<C: DPCComponents> PrivateKey<C> {
         }
     }
 
-    /// Derives the account private key from a given seed and counter without verifying if it is well-formed.
-    pub fn from_seed_and_counter_unchecked(seed: &[u8; 32], r_pk_counter: u16) -> Result<Self, AccountError> {
-        // Generate the SIG key pair.
-        let sk_sig_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_SIG)?;
-        let sk_sig = <C::AccountSignature as SignatureScheme>::PrivateKey::read(&sk_sig_bytes[..])?;
-
-        // Generate the PRF secret key.
-        let sk_prf_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_PRF)?;
-        let sk_prf = <C::PRF as PRF>::Seed::read(&sk_prf_bytes[..])?;
-
-        // Generate the randomness rpk for the commitment scheme.
-        let r_pk = Self::derive_r_pk(seed, r_pk_counter)?;
-
-        Ok(Self {
-            seed: *seed,
-            sk_sig,
-            sk_prf,
-            r_pk,
-            r_pk_counter,
-            is_dummy: false,
-        })
-    }
-
-    /// Generate the randomness rpk for the commitment scheme from a given seed and counter
-    fn derive_r_pk(
-        seed: &[u8; 32],
-        counter: u16,
-    ) -> Result<<C::AccountCommitment as CommitmentScheme>::Randomness, AccountError> {
-        let mut r_pk_input = [0u8; 32];
-        r_pk_input[0..2].copy_from_slice(&counter.to_le_bytes());
-
-        // Generate the randomness rpk for the commitment scheme.
-        let r_pk_bytes = Blake2s::evaluate(seed, &r_pk_input)?;
-        let r_pk = <C::AccountCommitment as CommitmentScheme>::Randomness::read(&r_pk_bytes[..])?;
-
-        Ok(r_pk)
-    }
-
     /// Returns `true` if the private key is well-formed. Otherwise, returns `false`.
     pub fn is_valid(
         &self,
@@ -218,6 +180,44 @@ impl<C: DPCComponents> PrivateKey<C> {
         )?)
     }
 
+    /// Derives the account private key from a given seed and counter without verifying if it is well-formed.
+    fn from_seed_and_counter_unsafe(seed: &[u8; 32], r_pk_counter: u16) -> Result<Self, AccountError> {
+        // Generate the SIG key pair.
+        let sk_sig_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_SIG)?;
+        let sk_sig = <C::AccountSignature as SignatureScheme>::PrivateKey::read(&sk_sig_bytes[..])?;
+
+        // Generate the PRF secret key.
+        let sk_prf_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_PRF)?;
+        let sk_prf = <C::PRF as PRF>::Seed::read(&sk_prf_bytes[..])?;
+
+        // Generate the randomness rpk for the commitment scheme.
+        let r_pk = Self::derive_r_pk(seed, r_pk_counter)?;
+
+        Ok(Self {
+            seed: *seed,
+            sk_sig,
+            sk_prf,
+            r_pk,
+            r_pk_counter,
+            is_dummy: false,
+        })
+    }
+
+    /// Generate the randomness rpk for the commitment scheme from a given seed and counter
+    fn derive_r_pk(
+        seed: &[u8; 32],
+        counter: u16,
+    ) -> Result<<C::AccountCommitment as CommitmentScheme>::Randomness, AccountError> {
+        let mut r_pk_input = [0u8; 32];
+        r_pk_input[0..2].copy_from_slice(&counter.to_le_bytes());
+
+        // Generate the randomness rpk for the commitment scheme.
+        let r_pk_bytes = Blake2s::evaluate(seed, &r_pk_input)?;
+        let r_pk = <C::AccountCommitment as CommitmentScheme>::Randomness::read(&r_pk_bytes[..])?;
+
+        Ok(r_pk)
+    }
+
     /// Returns the commitment output of the private key.
     fn commit(
         &self,
@@ -254,7 +254,7 @@ impl<C: DPCComponents> FromStr for PrivateKey<C> {
         let counter_bytes: [u8; 2] = FromBytes::read(&mut reader)?;
         let seed: [u8; 32] = FromBytes::read(&mut reader)?;
 
-        Self::from_seed_and_counter_unchecked(&seed, u16::from_le_bytes(counter_bytes))
+        Self::from_seed_and_counter_unsafe(&seed, u16::from_le_bytes(counter_bytes))
     }
 }
 

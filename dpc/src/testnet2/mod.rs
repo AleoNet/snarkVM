@@ -338,8 +338,8 @@ where
     fn execute_offline_phase<R: Rng + CryptoRng>(
         parameters: Self::SystemParameters,
         old_records: Vec<Self::Record>,
-        old_account_private_keys: Vec<<Self::Account as AccountScheme>::AccountPrivateKey>,
-        new_record_owners: Vec<<Self::Account as AccountScheme>::AccountAddress>,
+        old_account_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
+        new_record_owners: Vec<<Self::Account as AccountScheme>::Address>,
         new_is_dummy_flags: &[bool],
         new_values: &[u64],
         new_payloads: Vec<Self::Payload>,
@@ -519,7 +519,6 @@ where
             system_parameters: parameters,
 
             old_records,
-            old_account_private_keys,
             old_serial_numbers,
             old_randomizers,
 
@@ -545,11 +544,13 @@ where
 
     fn execute_online_phase<R: Rng + CryptoRng>(
         parameters: &Self::NetworkParameters,
+        old_account_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         transaction_kernel: Self::TransactionKernel,
         program_proofs: Vec<Self::PrivateProgramInput>,
         ledger: &L,
         rng: &mut R,
     ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)> {
+        assert_eq!(C::NUM_INPUT_RECORDS, old_account_private_keys.len());
         assert_eq!(C::NUM_TOTAL_RECORDS, program_proofs.len());
 
         let exec_time = start_timer!(|| "DPC::execute_online_phase");
@@ -558,7 +559,6 @@ where
             system_parameters,
 
             old_records,
-            old_account_private_keys,
             old_serial_numbers,
             old_randomizers,
 
@@ -655,7 +655,7 @@ where
                 ledger_digest.clone(),
                 old_records,
                 old_witnesses,
-                old_account_private_keys,
+                old_account_private_keys.clone(),
                 old_serial_numbers.clone(),
                 new_records.clone(),
                 new_sn_nonce_randomness,

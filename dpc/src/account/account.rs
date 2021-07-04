@@ -32,10 +32,10 @@ pub struct Account<C: DPCComponents> {
 }
 
 impl<C: DPCComponents> AccountScheme for Account<C> {
-    type AccountAddress = Address<C>;
-    type AccountPrivateKey = PrivateKey<C>;
+    type Address = Address<C>;
     type CommitmentScheme = C::AccountCommitment;
     type EncryptionScheme = C::AccountEncryption;
+    type PrivateKey = PrivateKey<C>;
     type SignatureScheme = C::AccountSignature;
 
     /// Creates a new account.

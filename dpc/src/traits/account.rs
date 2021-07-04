@@ -20,8 +20,8 @@ use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, SignatureSc
 use rand::{CryptoRng, Rng};
 
 pub trait AccountScheme: Sized {
-    type AccountAddress: Default;
-    type AccountPrivateKey;
+    type Address: Default;
+    type PrivateKey;
     type CommitmentScheme: CommitmentScheme;
     type EncryptionScheme: EncryptionScheme;
     type SignatureScheme: SignatureScheme;
