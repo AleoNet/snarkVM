@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod encoded;
+pub use encoded::*;
+
 pub mod encrypted_record;
 pub use encrypted_record::*;
 
 pub mod record;
 pub use record::*;
-
-pub mod record_encoding;
-pub use record_encoding::*;
 
 pub mod record_encryption;
 pub use record_encryption::*;

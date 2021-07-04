@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet2::{instantiated::*, payload::Payload, record_encoding::*, record_encryption::*, DPC},
-    traits::{AccountScheme, DPCComponents, RecordEncodingScheme},
+    testnet2::{encoded::*, instantiated::*, payload::Payload, record_encryption::*, DPC},
+    traits::{AccountScheme, DPCComponents, EncodedRecordScheme},
     Account,
     ViewKey,
 };
@@ -80,13 +80,8 @@ fn test_record_serialization() {
             )
             .unwrap();
 
-            let (serialized_record, final_fq_high_bit) =
-                RecordEncoding::<_, EdwardsParameters, EdwardsBls>::encode(&given_record).unwrap();
-            let record_components = RecordEncoding::<Components, EdwardsParameters, EdwardsBls>::decode(
-                serialized_record,
-                final_fq_high_bit,
-            )
-            .unwrap();
+            let encoded_record = EncodedRecord::<_, EdwardsParameters, EdwardsBls>::encode(&given_record).unwrap();
+            let record_components = encoded_record.decode().unwrap();
 
             assert_eq!(given_record.serial_number_nonce, record_components.serial_number_nonce);
             assert_eq!(

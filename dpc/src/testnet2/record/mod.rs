@@ -20,8 +20,8 @@ pub use encrypted_record::*;
 pub mod record;
 pub use record::*;
 
-pub mod record_encoding;
-pub use record_encoding::*;
+pub mod encoded;
+pub use encoded::*;
 
 pub mod record_encryption;
 pub use record_encryption::*;

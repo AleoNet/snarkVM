@@ -21,7 +21,7 @@ use snarkvm_curves::{
 };
 use snarkvm_fields::{FieldParameters, PrimeField};
 
-pub trait RecordEncodingScheme {
+pub trait EncodedRecordScheme: Sized {
     /// The group is composed of base field elements in `Self::InnerField`.
     type Group: Group + ProjectiveCurve;
     /// The inner field is equivalent to the base field in `Self::Group`.
@@ -47,7 +47,7 @@ pub trait RecordEncodingScheme {
     /// Represents a standard unit for packing the payload into data elements for storage.
     const PAYLOAD_ELEMENT_BITSIZE: usize = Self::DATA_ELEMENT_BITSIZE - 1;
 
-    fn encode(record: &Self::Record) -> Result<(Vec<Self::Group>, bool), DPCError>;
+    fn encode(record: &Self::Record) -> Result<Self, DPCError>;
 
-    fn decode(encoded_record: Vec<Self::Group>, final_fq_high_bit: bool) -> Result<Self::DecodedRecord, DPCError>;
+    fn decode(&self) -> Result<Self::DecodedRecord, DPCError>;
 }

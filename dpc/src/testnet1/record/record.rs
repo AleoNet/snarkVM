@@ -153,7 +153,6 @@ impl<C: Testnet1Components> FromBytes for Record<C> {
         }
 
         let serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output = FromBytes::read(&mut reader)?;
-
         let commitment: <C::RecordCommitment as CommitmentScheme>::Output = FromBytes::read(&mut reader)?;
         let commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness =
             FromBytes::read(&mut reader)?;

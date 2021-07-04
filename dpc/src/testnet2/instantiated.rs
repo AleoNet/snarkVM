@@ -164,8 +164,8 @@ impl Testnet2Components for Components {
 // use snarkvm_marlin::{FiatShamirAlgebraicSpongeRngVar, PoseidonSpongeVar};
 //
 // pub type FSG = FiatShamirAlgebraicSpongeRngVar<
-//     Self::InnerField,
-//     Self::OuterField,
-//     PoseidonSponge<Self::OuterField>,
-//     PoseidonSpongeVar<Self::OuterField>,
+//     Self::InnerScalarField,
+//     Self::OuterScalarField,
+//     PoseidonSponge<Self::OuterScalarField>,
+//     PoseidonSpongeVar<Self::OuterScalarField>,
 // >;

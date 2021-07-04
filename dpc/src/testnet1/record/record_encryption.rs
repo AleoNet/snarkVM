@@ -18,10 +18,10 @@ use crate::{
     testnet1::{
         parameters::SystemParameters,
         payload::Payload,
-        record::{encrypted_record::*, record_encoding::*, Record},
+        record::{encoded::*, encrypted_record::*, Record},
         Testnet1Components,
     },
-    traits::{DPCComponents, RecordEncodingScheme, RecordScheme},
+    traits::{DPCComponents, EncodedRecordScheme, RecordScheme},
     Address,
     DPCError,
     ViewKey,
@@ -103,11 +103,11 @@ impl<C: Testnet1Components> RecordEncryption<C> {
         DPCError,
     > {
         // Serialize the record into group elements and fq_high bits
-        let (serialized_record, final_fq_high_selector) =
-            RecordEncoding::<C, C::EncryptionModelParameters, C::EncryptionGroup>::encode(record)?;
+        let encoded_record = EncodedRecord::<C, C::EncryptionModelParameters, C::EncryptionGroup>::encode(record)?;
+        let final_fq_high_selector = encoded_record.final_sign_high;
 
-        let mut record_plaintexts = Vec::with_capacity(serialized_record.len());
-        for element in serialized_record.iter() {
+        let mut record_plaintexts = Vec::with_capacity(encoded_record.encoded_elements.len());
+        for element in encoded_record.encoded_elements.iter() {
             // Construct the plaintext element from the serialized group elements
             // This value will be used in the inner circuit to validate the encryption
             let plaintext_element =
@@ -156,11 +156,12 @@ impl<C: Testnet1Components> RecordEncryption<C> {
         }
 
         // Deserialize the plaintext record into record components
-        let record_components = RecordEncoding::<
+        let encoded_record = EncodedRecord::<
             C,
             <C as Testnet1Components>::EncryptionModelParameters,
             <C as Testnet1Components>::EncryptionGroup,
-        >::decode(plaintext, encrypted_record.final_fq_high_selector)?;
+        >::new(plaintext, encrypted_record.final_fq_high_selector);
+        let record_components = encoded_record.decode()?;
 
         let DecodedRecord {
             serial_number_nonce,
@@ -255,7 +256,7 @@ impl<C: Testnet1Components> RecordEncryption<C> {
 
     /// Returns the intermediate components of the encryption algorithm that the inner SNARK
     /// needs to validate the new record was encrypted correctly
-    /// 1. Record field element reprentations
+    /// 1. Record field element representations
     /// 2. Record group element encodings - Represented in (x,y) affine coordinates
     /// 3. Record ciphertext selectors - Used for ciphertext compression/decompression
     /// 4. Record fq high selectors - Used for plaintext serialization/deserialization
@@ -266,12 +267,13 @@ impl<C: Testnet1Components> RecordEncryption<C> {
         encryption_randomness: &<<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Randomness,
     ) -> Result<RecordEncryptionGadgetComponents<C>, DPCError> {
         // Serialize the record into group elements and fq_high bits
-        let (serialized_record, final_fq_high_selector) =
-            RecordEncoding::<C, C::EncryptionModelParameters, C::EncryptionGroup>::encode(&record)?;
+        let encoded_record = EncodedRecord::<C, C::EncryptionModelParameters, C::EncryptionGroup>::encode(record)?;
+        let num_encoded_elements = encoded_record.encoded_elements.len();
+        let final_fq_high_selector = encoded_record.final_sign_high;
 
         // Extract the fq_bits from the serialized record
         let fq_high_selectors = {
-            let final_element = &serialized_record[serialized_record.len() - 1];
+            let final_element = &encoded_record.encoded_elements[num_encoded_elements - 1];
             let final_element_bytes = decode_from_group::<C::EncryptionModelParameters, C::EncryptionGroup>(
                 final_element.into_affine(),
                 final_fq_high_selector,
@@ -280,18 +282,23 @@ impl<C: Testnet1Components> RecordEncryption<C> {
             [
                 &final_element_bits
                     .skip(1)
-                    .take(serialized_record.len().saturating_sub(1))
+                    .take(num_encoded_elements.saturating_sub(1))
                     .collect::<Vec<_>>(),
                 &[final_fq_high_selector][..],
             ]
             .concat()
         };
 
-        let mut record_field_elements = Vec::with_capacity(serialized_record.len());
-        let mut record_group_encoding = Vec::with_capacity(serialized_record.len());
-        let mut record_plaintexts = Vec::with_capacity(serialized_record.len());
+        let mut record_field_elements = Vec::with_capacity(num_encoded_elements);
+        let mut record_group_encoding = Vec::with_capacity(num_encoded_elements);
+        let mut record_plaintexts = Vec::with_capacity(num_encoded_elements);
 
-        for (i, (element, fq_high)) in serialized_record.iter().zip_eq(&fq_high_selectors).enumerate() {
+        for (i, (element, fq_high)) in encoded_record
+            .encoded_elements
+            .iter()
+            .zip_eq(&fq_high_selectors)
+            .enumerate()
+        {
             let element_affine = element.into_affine();
 
             // Decode the field elements from the serialized group element
