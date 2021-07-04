@@ -46,8 +46,8 @@ pub trait DPCScheme<L: LedgerScheme> {
     #[allow(clippy::too_many_arguments)]
     fn execute_offline_phase<R: Rng + CryptoRng>(
         parameters: Self::SystemParameters,
+        old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         old_records: Vec<Self::Record>,
-        old_account_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         new_records: Vec<Self::Record>,
         memorandum: <Self::Transaction as TransactionScheme>::Memorandum,
         rng: &mut R,
@@ -57,7 +57,7 @@ pub trait DPCScheme<L: LedgerScheme> {
     /// consumption of old records.
     fn execute_online_phase<R: Rng + CryptoRng>(
         parameters: &Self::NetworkParameters,
-        old_account_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
+        old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         transaction_kernel: Self::TransactionKernel,
         program_proofs: Vec<Self::PrivateProgramInput>,
         ledger: &L,

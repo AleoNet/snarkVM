@@ -90,7 +90,7 @@ fn dpc_testnet2_integration_test() {
     .unwrap();
 
     // Generate dummy input records having as address the genesis address.
-    let old_account_private_keys = vec![genesis_account.private_key.clone(); Components::NUM_INPUT_RECORDS];
+    let old_private_keys = vec![genesis_account.private_key.clone(); Components::NUM_INPUT_RECORDS];
 
     let mut joint_serial_numbers = vec![];
     let mut old_records = vec![];
@@ -114,10 +114,7 @@ fn dpc_testnet2_integration_test() {
         .unwrap();
 
         let (sn, _) = old_record
-            .to_serial_number(
-                &parameters.system_parameters.account_signature,
-                &old_account_private_keys[i],
-            )
+            .to_serial_number(&parameters.system_parameters.account_signature, &old_private_keys[i])
             .unwrap();
         joint_serial_numbers.extend_from_slice(&to_bytes![sn].unwrap());
 
@@ -152,8 +149,8 @@ fn dpc_testnet2_integration_test() {
     let memo = [4u8; 32];
     let transaction_kernel = <Testnet2DPC as DPCScheme<L>>::execute_offline_phase(
         parameters.system_parameters.clone(),
+        &old_private_keys,
         old_records,
-        &old_account_private_keys,
         new_records,
         memo,
         &mut rng,
@@ -179,7 +176,7 @@ fn dpc_testnet2_integration_test() {
 
     let (new_records, transaction) = Testnet2DPC::execute_online_phase(
         &parameters,
-        &old_account_private_keys,
+        &old_private_keys,
         transaction_kernel,
         program_proofs,
         &ledger,
@@ -293,7 +290,7 @@ fn test_testnet_2_transaction_kernel_serialization() {
     )
     .unwrap();
 
-    let old_account_private_keys = vec![test_account.private_key.clone(); Components::NUM_INPUT_RECORDS];
+    let old_private_keys = vec![test_account.private_key.clone(); Components::NUM_INPUT_RECORDS];
 
     // Set the input records for our transaction to be the initial dummy records.
     let mut joint_serial_numbers = vec![];
@@ -317,7 +314,7 @@ fn test_testnet_2_transaction_kernel_serialization() {
         .unwrap();
 
         let (sn, _) = old_record
-            .to_serial_number(&system_parameters.account_signature, &old_account_private_keys[i])
+            .to_serial_number(&system_parameters.account_signature, &old_private_keys[i])
             .unwrap();
         joint_serial_numbers.extend_from_slice(&to_bytes![sn].unwrap());
 
@@ -351,8 +348,8 @@ fn test_testnet_2_transaction_kernel_serialization() {
     let memo = [0u8; 32];
     let transaction_kernel = <Testnet2DPC as DPCScheme<L>>::execute_offline_phase(
         system_parameters,
+        &old_private_keys,
         old_records,
-        &old_account_private_keys,
         new_records,
         memo,
         &mut rng,
@@ -414,7 +411,7 @@ fn test_testnet2_dpc_execute_constraints() {
         genesis_block,
     );
 
-    let old_account_private_keys = vec![dummy_account.private_key; Components::NUM_INPUT_RECORDS];
+    let old_private_keys = vec![dummy_account.private_key; Components::NUM_INPUT_RECORDS];
 
     // Set the input records for our transaction to be the initial dummy records.
     let mut joint_serial_numbers = vec![];
@@ -438,7 +435,7 @@ fn test_testnet2_dpc_execute_constraints() {
         .unwrap();
 
         let (sn, _) = old_record
-            .to_serial_number(signature_parameters, &old_account_private_keys[i])
+            .to_serial_number(signature_parameters, &old_private_keys[i])
             .unwrap();
         joint_serial_numbers.extend_from_slice(&to_bytes![sn].unwrap());
 
@@ -480,8 +477,8 @@ fn test_testnet2_dpc_execute_constraints() {
     let memo = [0u8; 32];
     let transaction_kernel = <Testnet2DPC as DPCScheme<L>>::execute_offline_phase(
         system_parameters.clone(),
+        &old_private_keys,
         old_records,
-        &old_account_private_keys,
         new_records,
         memo,
         &mut rng,
@@ -584,7 +581,7 @@ fn test_testnet2_dpc_execute_constraints() {
         &ledger_digest,
         &old_records,
         &old_witnesses,
-        &old_account_private_keys,
+        &old_private_keys,
         &old_serial_numbers,
         &new_records,
         &new_sn_nonce_randomness,
@@ -647,7 +644,7 @@ fn test_testnet2_dpc_execute_constraints() {
             ledger_digest,
             old_records,
             old_witnesses,
-            old_account_private_keys,
+            old_private_keys,
             old_serial_numbers.clone(),
             new_records,
             new_sn_nonce_randomness,

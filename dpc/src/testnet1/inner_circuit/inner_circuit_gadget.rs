@@ -66,7 +66,7 @@ pub fn execute_inner_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Inne
     // Old record stuff
     old_records: &[Record<C>],
     old_witnesses: &[MerklePath<C::MerkleParameters>],
-    old_account_private_keys: &[PrivateKey<C>],
+    old_private_keys: &[PrivateKey<C>],
     old_serial_numbers: &[<C::AccountSignature as SignatureScheme>::PublicKey],
 
     // New record stuff
@@ -118,7 +118,7 @@ pub fn execute_inner_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Inne
         //
         old_records,
         old_witnesses,
-        old_account_private_keys,
+        old_private_keys,
         old_serial_numbers,
         //
         new_records,
@@ -173,7 +173,7 @@ fn inner_circuit_gadget<
     //
     old_records: &[Record<C>],
     old_witnesses: &[MerklePath<C::MerkleParameters>],
-    old_account_private_keys: &[PrivateKey<C>],
+    old_private_keys: &[PrivateKey<C>],
     old_serial_numbers: &[AccountSignature::PublicKey],
 
     //
@@ -351,7 +351,7 @@ where
     for (i, (((record, witness), account_private_key), given_serial_number)) in old_records
         .iter()
         .zip(old_witnesses)
-        .zip(old_account_private_keys)
+        .zip(old_private_keys)
         .zip(old_serial_numbers)
         .enumerate()
     {

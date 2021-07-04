@@ -45,7 +45,7 @@ pub struct InnerCircuit<C: Testnet1Components> {
     // Inputs for old records.
     old_records: Vec<Record<C>>,
     old_witnesses: Vec<MerklePath<C::MerkleParameters>>,
-    old_account_private_keys: Vec<PrivateKey<C>>,
+    old_private_keys: Vec<PrivateKey<C>>,
     old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
 
     // Inputs for new records.
@@ -82,7 +82,7 @@ impl<C: Testnet1Components> InnerCircuit<C> {
             vec![<C::AccountSignature as SignatureScheme>::PublicKey::default(); num_input_records];
         let old_records = vec![Record::default(); num_input_records];
         let old_witnesses = vec![MerklePath::default(); num_input_records];
-        let old_account_private_keys = vec![PrivateKey::default(); num_input_records];
+        let old_private_keys = vec![PrivateKey::default(); num_input_records];
 
         let new_commitments = vec![<C::RecordCommitment as CommitmentScheme>::Output::default(); num_output_records];
         let new_serial_number_nonce_randomness = vec![[0u8; 32]; num_output_records];
@@ -122,7 +122,7 @@ impl<C: Testnet1Components> InnerCircuit<C> {
             // Input records
             old_records,
             old_witnesses,
-            old_account_private_keys,
+            old_private_keys,
             old_serial_numbers,
 
             // Output records
@@ -157,7 +157,7 @@ impl<C: Testnet1Components> InnerCircuit<C> {
         // Old records
         old_records: Vec<Record<C>>,
         old_witnesses: Vec<MerklePath<C::MerkleParameters>>,
-        old_account_private_keys: Vec<PrivateKey<C>>,
+        old_private_keys: Vec<PrivateKey<C>>,
         old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
 
         // New records
@@ -187,7 +187,7 @@ impl<C: Testnet1Components> InnerCircuit<C> {
 
         assert_eq!(num_input_records, old_records.len());
         assert_eq!(num_input_records, old_witnesses.len());
-        assert_eq!(num_input_records, old_account_private_keys.len());
+        assert_eq!(num_input_records, old_private_keys.len());
         assert_eq!(num_input_records, old_serial_numbers.len());
 
         assert_eq!(num_output_records, new_records.len());
@@ -223,7 +223,7 @@ impl<C: Testnet1Components> InnerCircuit<C> {
             // Input records
             old_records,
             old_witnesses,
-            old_account_private_keys,
+            old_private_keys,
             old_serial_numbers,
 
             // Output records
@@ -262,7 +262,7 @@ impl<C: Testnet1Components> ConstraintSynthesizer<C::InnerScalarField> for Inner
             // Old records
             &self.old_records,
             &self.old_witnesses,
-            &self.old_account_private_keys,
+            &self.old_private_keys,
             &self.old_serial_numbers,
             // New records
             &self.new_records,

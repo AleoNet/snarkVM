@@ -276,20 +276,20 @@ where
 
     fn execute_offline_phase<R: Rng + CryptoRng>(
         parameters: Self::SystemParameters,
+        old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         old_records: Vec<Self::Record>,
-        old_account_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         new_records: Vec<Self::Record>,
         memorandum: <Self::Transaction as TransactionScheme>::Memorandum,
         rng: &mut R,
     ) -> anyhow::Result<Self::TransactionKernel> {
-        assert_eq!(C::NUM_INPUT_RECORDS, old_account_private_keys.len());
+        assert_eq!(C::NUM_INPUT_RECORDS, old_private_keys.len());
         assert_eq!(C::NUM_INPUT_RECORDS, old_records.len());
         assert_eq!(C::NUM_OUTPUT_RECORDS, new_records.len());
 
         let mut old_serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         let mut old_randomizers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         let mut joint_serial_numbers = Vec::new();
-        let mut old_death_program_ids = Vec::with_capacity(old_records.len());
+        let mut old_death_program_ids = Vec::with_capacity(C::NUM_INPUT_RECORDS);
 
         let mut value_balance = AleoAmount::ZERO;
 
@@ -301,8 +301,7 @@ where
                 value_balance = value_balance.add(AleoAmount::from_bytes(record.value() as i64));
             }
 
-            let (sn, randomizer) =
-                record.to_serial_number(&parameters.account_signature, &old_account_private_keys[i])?;
+            let (sn, randomizer) = record.to_serial_number(&parameters.account_signature, &old_private_keys[i])?;
             joint_serial_numbers.extend_from_slice(&to_bytes![sn]?);
             old_serial_numbers.push(sn);
             old_randomizers.push(randomizer);
@@ -450,13 +449,13 @@ where
 
     fn execute_online_phase<R: Rng + CryptoRng>(
         parameters: &Self::NetworkParameters,
-        old_account_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
+        old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         transaction_kernel: Self::TransactionKernel,
         program_proofs: Vec<Self::PrivateProgramInput>,
         ledger: &L,
         rng: &mut R,
     ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)> {
-        assert_eq!(C::NUM_INPUT_RECORDS, old_account_private_keys.len());
+        assert_eq!(C::NUM_INPUT_RECORDS, old_private_keys.len());
         assert_eq!(C::NUM_TOTAL_RECORDS, program_proofs.len());
 
         let exec_time = start_timer!(|| "DPC::execute_online_phase");
@@ -521,7 +520,7 @@ where
 
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for i in 0..C::NUM_INPUT_RECORDS {
-            let sk_sig = &old_account_private_keys[i].sk_sig;
+            let sk_sig = &old_private_keys[i].sk_sig;
             let randomizer = &old_randomizers[i];
 
             // Sign the transaction data
@@ -561,7 +560,7 @@ where
                 ledger_digest.clone(),
                 old_records,
                 old_witnesses,
-                old_account_private_keys.clone(),
+                old_private_keys.clone(),
                 old_serial_numbers.clone(),
                 new_records.clone(),
                 new_sn_nonce_randomness,
