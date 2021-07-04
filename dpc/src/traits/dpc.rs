@@ -48,12 +48,7 @@ pub trait DPCScheme<L: LedgerScheme> {
         parameters: Self::SystemParameters,
         old_records: Vec<Self::Record>,
         old_account_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        new_record_owners: Vec<<Self::Account as AccountScheme>::Address>,
-        new_is_dummy_flags: &[bool],
-        new_values: &[u64],
-        new_payloads: Vec<Self::Payload>,
-        new_birth_program_ids: Vec<Vec<u8>>,
-        new_death_program_ids: Vec<Vec<u8>>,
+        new_records: Vec<Self::Record>,
         memorandum: <Self::Transaction as TransactionScheme>::Memorandum,
         rng: &mut R,
     ) -> anyhow::Result<Self::TransactionKernel>;

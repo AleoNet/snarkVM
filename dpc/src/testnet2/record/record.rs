@@ -59,6 +59,9 @@ pub struct Record<C: Testnet2Components> {
     pub(crate) serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
     pub(crate) commitment: <C::RecordCommitment as CommitmentScheme>::Output,
     pub(crate) commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
+
+    pub(crate) serial_number_nonce_randomness: Option<[u8; 32]>,
+    pub(crate) position: Option<u8>,
 }
 
 fn default_program_id<C: CRH>() -> Vec<u8> {
@@ -66,6 +69,46 @@ fn default_program_id<C: CRH>() -> Vec<u8> {
 }
 
 impl<C: Testnet2Components> Record<C> {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_full<R: Rng + CryptoRng>(
+        serial_number_nonce_parameters: &C::SerialNumberNonceCRH,
+        record_commitment_parameters: &C::RecordCommitment,
+        owner: Address<C>,
+        is_dummy: bool,
+        value: u64,
+        payload: Payload,
+        birth_program_id: Vec<u8>,
+        death_program_id: Vec<u8>,
+        position: u8,
+        joint_serial_numbers: Vec<u8>,
+        rng: &mut R,
+    ) -> Result<Self, RecordError> {
+        let record_time = start_timer!(|| "Generate record");
+
+        // Sample randomness sn_randomness for the CRH input.
+        let sn_randomness: [u8; 32] = rng.gen();
+
+        let crh_input = to_bytes![position, sn_randomness, joint_serial_numbers]?;
+        let serial_number_nonce = C::SerialNumberNonceCRH::hash(&serial_number_nonce_parameters, &crh_input)?;
+
+        let mut record = Self::new(
+            record_commitment_parameters,
+            owner,
+            is_dummy,
+            value,
+            payload,
+            birth_program_id,
+            death_program_id,
+            serial_number_nonce,
+            rng,
+        )?;
+        record.serial_number_nonce_randomness = Some(sn_randomness);
+        record.position = Some(position);
+
+        end_timer!(record_time);
+        Ok(record)
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn new<R: Rng + CryptoRng>(
         record_commitment_parameters: &C::RecordCommitment,
@@ -75,7 +118,7 @@ impl<C: Testnet2Components> Record<C> {
         payload: Payload,
         birth_program_id: Vec<u8>,
         death_program_id: Vec<u8>,
-        sn_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
+        serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
         let record_time = start_timer!(|| "Generate record");
@@ -84,31 +127,59 @@ impl<C: Testnet2Components> Record<C> {
 
         // Total = 32 + 1 + 8 + 32 + 48 + 48 + 32 = 201 bytes
         let commitment_input = to_bytes![
-            owner,            // 256 bits = 32 bytes
-            is_dummy,         // 1 bit = 1 byte
-            value,            // 64 bits = 8 bytes
-            payload,          // 256 bits = 32 bytes
-            birth_program_id, // 384 bits = 48 bytes
-            death_program_id, // 384 bits = 48 bytes
-            sn_nonce          // 256 bits = 32 bytes
+            owner,               // 256 bits = 32 bytes
+            is_dummy,            // 1 bit = 1 byte
+            value,               // 64 bits = 8 bytes
+            payload,             // 256 bits = 32 bytes
+            birth_program_id,    // 384 bits = 48 bytes
+            death_program_id,    // 384 bits = 48 bytes
+            serial_number_nonce  // 256 bits = 32 bytes
         ]?;
 
         let commitment =
             C::RecordCommitment::commit(&record_commitment_parameters, &commitment_input, &commitment_randomness)?;
 
-        let record = Record {
+        end_timer!(record_time);
+
+        Ok(Self::from(
             owner,
             is_dummy,
             value,
             payload,
             birth_program_id,
             death_program_id,
-            serial_number_nonce: sn_nonce,
+            serial_number_nonce,
             commitment,
             commitment_randomness,
-        };
-        end_timer!(record_time);
-        Ok(record)
+        ))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn from(
+        owner: Address<C>,
+        is_dummy: bool,
+        value: u64,
+        payload: Payload,
+        birth_program_id: Vec<u8>,
+        death_program_id: Vec<u8>,
+        serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
+        commitment: <C::RecordCommitment as CommitmentScheme>::Output,
+        commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
+    ) -> Self {
+        Self {
+            owner,
+            is_dummy,
+            value,
+            payload,
+            birth_program_id,
+            death_program_id,
+            serial_number_nonce,
+            commitment,
+            commitment_randomness,
+
+            serial_number_nonce_randomness: None,
+            position: None,
+        }
     }
 
     pub fn to_serial_number(
@@ -164,6 +235,10 @@ impl<C: Testnet2Components> RecordScheme for Record<C> {
 
     fn serial_number_nonce(&self) -> &Self::SerialNumberNonce {
         &self.serial_number_nonce
+    }
+
+    fn serial_number_nonce_randomness(&self) -> &Option<[u8; 32]> {
+        &self.serial_number_nonce_randomness
     }
 
     fn commitment(&self) -> Self::Commitment {
@@ -240,6 +315,9 @@ impl<C: Testnet2Components> FromBytes for Record<C> {
             serial_number_nonce,
             commitment,
             commitment_randomness,
+
+            serial_number_nonce_randomness: None,
+            position: None,
         })
     }
 }

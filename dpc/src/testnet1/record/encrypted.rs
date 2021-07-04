@@ -214,7 +214,7 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
             &commitment_randomness,
         )?;
 
-        Ok(Record {
+        Ok(Record::from(
             owner,
             is_dummy,
             value,
@@ -222,9 +222,9 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
             birth_program_id,
             death_program_id,
             serial_number_nonce,
-            commitment_randomness,
             commitment,
-        })
+            commitment_randomness,
+        ))
     }
 
     /// Returns the encrypted record hash.

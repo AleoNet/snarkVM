@@ -41,7 +41,7 @@ use snarkvm_marlin::{
 use snarkvm_polycommit::PolynomialCommitment;
 use snarkvm_utilities::{bytes::ToBytes, has_duplicates, rand::UniformRand, to_bytes};
 
-use itertools::{izip, Itertools};
+use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 use std::{marker::PhantomData, sync::Arc};
 
@@ -331,7 +331,6 @@ where
             rng,
         )?;
         end_timer!(time);
-
         Ok(account)
     }
 
@@ -339,23 +338,13 @@ where
         parameters: Self::SystemParameters,
         old_records: Vec<Self::Record>,
         old_account_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        new_record_owners: Vec<<Self::Account as AccountScheme>::Address>,
-        new_is_dummy_flags: &[bool],
-        new_values: &[u64],
-        new_payloads: Vec<Self::Payload>,
-        new_birth_program_ids: Vec<Vec<u8>>,
-        new_death_program_ids: Vec<Vec<u8>>,
+        new_records: Vec<Self::Record>,
         memorandum: <Self::Transaction as TransactionScheme>::Memorandum,
         rng: &mut R,
     ) -> anyhow::Result<Self::TransactionKernel> {
-        assert_eq!(C::NUM_INPUT_RECORDS, old_records.len());
         assert_eq!(C::NUM_INPUT_RECORDS, old_account_private_keys.len());
-
-        assert_eq!(C::NUM_OUTPUT_RECORDS, new_record_owners.len());
-        assert_eq!(C::NUM_OUTPUT_RECORDS, new_is_dummy_flags.len());
-        assert_eq!(C::NUM_OUTPUT_RECORDS, new_payloads.len());
-        assert_eq!(C::NUM_OUTPUT_RECORDS, new_birth_program_ids.len());
-        assert_eq!(C::NUM_OUTPUT_RECORDS, new_death_program_ids.len());
+        assert_eq!(C::NUM_INPUT_RECORDS, old_records.len());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, new_records.len());
 
         let mut old_serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         let mut old_randomizers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
@@ -365,7 +354,7 @@ where
         let mut value_balance = AleoAmount::ZERO;
 
         // Compute the ledger membership witness and serial number from the old records.
-        for (i, record) in old_records.iter().enumerate() {
+        for (i, record) in old_records.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
             let input_record_time = start_timer!(|| format!("Process input record {}", i));
 
             if !record.is_dummy() {
@@ -382,48 +371,29 @@ where
             end_timer!(input_record_time);
         }
 
-        let mut new_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+        let mut new_birth_program_ids = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         let mut new_commitments = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         let mut new_sn_nonce_randomness = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
-        // Generate new records and commitments for them.
-        for (j, (new_record_owner, new_payload, new_death_program_id)) in
-            izip!(new_record_owners, new_payloads, new_death_program_ids).enumerate()
-        {
-            if j == C::NUM_OUTPUT_RECORDS {
-                break;
-            }
-
+        for (j, record) in new_records.iter().enumerate().take(C::NUM_OUTPUT_RECORDS) {
             let output_record_time = start_timer!(|| format!("Process output record {}", j));
-            let sn_nonce_time = start_timer!(|| "Generate serial number nonce");
 
-            // Sample randomness sn_randomness for the CRH input.
-            let sn_randomness: [u8; 32] = rng.gen();
-
-            let crh_input = to_bytes![j as u8, sn_randomness, joint_serial_numbers]?;
-            let sn_nonce = C::SerialNumberNonceCRH::hash(&parameters.serial_number_nonce, &crh_input)?;
-
-            end_timer!(sn_nonce_time);
-
-            let record = Record::new(
-                &parameters.record_commitment,
-                new_record_owner,
-                new_is_dummy_flags[j],
-                new_values[j],
-                new_payload,
-                new_birth_program_ids[j].clone(),
-                new_death_program_id,
-                sn_nonce,
-                rng,
-            )?;
+            new_birth_program_ids.push(record.birth_program_id());
+            new_commitments.push(record.commitment());
+            new_sn_nonce_randomness.push(match record.serial_number_nonce_randomness() {
+                Some(randomness) => randomness.clone(),
+                None => {
+                    return Err(DPCError::Message(format!(
+                        "New record {} is missing its serial number nonce randomness",
+                        j
+                    ))
+                    .into());
+                }
+            });
 
             if !record.is_dummy() {
                 value_balance = value_balance.sub(AleoAmount::from_bytes(record.value() as i64));
             }
-
-            new_commitments.push(record.commitment().clone());
-            new_sn_nonce_randomness.push(sn_randomness);
-            new_records.push(record);
 
             end_timer!(output_record_time);
         }
@@ -507,15 +477,12 @@ where
         }
 
         // Construct the ciphertext hashes
-
         let mut new_encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         for encrypted_record in &new_encrypted_records {
-            let encrypted_record_hash = encrypted_record.to_hash(&parameters)?;
-
-            new_encrypted_record_hashes.push(encrypted_record_hash);
+            new_encrypted_record_hashes.push(encrypted_record.to_hash(&parameters)?);
         }
 
-        let transaction_kernel = TransactionKernel {
+        Ok(TransactionKernel {
             system_parameters: parameters,
 
             old_records,
@@ -538,8 +505,7 @@ where
             value_balance,
             memorandum,
             network_id: C::NETWORK_ID,
-        };
-        Ok(transaction_kernel)
+        })
     }
 
     fn execute_online_phase<R: Rng + CryptoRng>(

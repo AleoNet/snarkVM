@@ -91,6 +91,8 @@ fn dpc_testnet2_integration_test() {
 
     // Generate dummy input records having as address the genesis address.
     let old_account_private_keys = vec![genesis_account.private_key.clone(); Components::NUM_INPUT_RECORDS];
+
+    let mut joint_serial_numbers = vec![];
     let mut old_records = vec![];
     for i in 0..Components::NUM_INPUT_RECORDS {
         let old_sn_nonce = <Components as DPCComponents>::SerialNumberNonceCRH::hash(
@@ -110,32 +112,49 @@ fn dpc_testnet2_integration_test() {
             &mut rng,
         )
         .unwrap();
+
+        let (sn, _) = old_record
+            .to_serial_number(
+                &parameters.system_parameters.account_signature,
+                &old_account_private_keys[i],
+            )
+            .unwrap();
+        joint_serial_numbers.extend_from_slice(&to_bytes![sn].unwrap());
+
         old_records.push(old_record);
     }
 
     // Construct new records.
 
     // Set the new records' program to be the "always-accept" program.
-    let new_record_owners = vec![recipient.address.clone(); Components::NUM_OUTPUT_RECORDS];
-    let new_is_dummy_flags = vec![false; Components::NUM_OUTPUT_RECORDS];
-    let new_values = vec![10; Components::NUM_OUTPUT_RECORDS];
-    let new_payloads = vec![Payload::default(); Components::NUM_OUTPUT_RECORDS];
-    let new_birth_program_ids = vec![noop_program_id.clone(); Components::NUM_OUTPUT_RECORDS];
-    let new_death_program_ids = vec![noop_program_id.clone(); Components::NUM_OUTPUT_RECORDS];
 
+    let mut new_records = vec![];
+    for j in 0..Components::NUM_OUTPUT_RECORDS {
+        new_records.push(
+            Record::new_full(
+                &parameters.system_parameters.serial_number_nonce,
+                &parameters.system_parameters.record_commitment,
+                recipient.address.clone(),
+                false,
+                10,
+                Payload::default(),
+                noop_program_id.clone(),
+                noop_program_id.clone(),
+                j as u8,
+                joint_serial_numbers.clone(),
+                &mut rng,
+            )
+            .unwrap(),
+        );
+    }
+
+    // Offline execution to generate a DPC transaction kernel.
     let memo = [4u8; 32];
-
-    // Offline execution to generate a DPC transaction kernel
     let transaction_kernel = <Testnet2DPC as DPCScheme<L>>::execute_offline_phase(
         parameters.system_parameters.clone(),
         old_records,
         &old_account_private_keys,
-        new_record_owners,
-        &new_is_dummy_flags,
-        &new_values,
-        new_payloads,
-        new_birth_program_ids,
-        new_death_program_ids,
+        new_records,
         memo,
         &mut rng,
     )
@@ -274,47 +293,67 @@ fn test_testnet_2_transaction_kernel_serialization() {
     )
     .unwrap();
 
-    let sn_nonce =
-        <Components as DPCComponents>::SerialNumberNonceCRH::hash(&system_parameters.serial_number_nonce, &[0u8; 1])
-            .unwrap();
-    let old_record = Record::new(
-        &system_parameters.record_commitment,
-        test_account.address.clone(),
-        true,
-        0,
-        Payload::default(),
-        noop_program_id.clone(),
-        noop_program_id.clone(),
-        sn_nonce,
-        &mut rng,
-    )
-    .unwrap();
+    let old_account_private_keys = vec![test_account.private_key.clone(); Components::NUM_INPUT_RECORDS];
 
     // Set the input records for our transaction to be the initial dummy records.
-    let old_records = vec![old_record; Components::NUM_INPUT_RECORDS];
-    let old_account_private_keys = vec![test_account.private_key.clone(); Components::NUM_INPUT_RECORDS];
+    let mut joint_serial_numbers = vec![];
+    let mut old_records = vec![];
+    for i in 0..Components::NUM_INPUT_RECORDS {
+        let old_record = Record::new(
+            &system_parameters.record_commitment,
+            test_account.address.clone(),
+            true,
+            0,
+            Payload::default(),
+            noop_program_id.clone(),
+            noop_program_id.clone(),
+            <Components as DPCComponents>::SerialNumberNonceCRH::hash(
+                &system_parameters.serial_number_nonce,
+                &[0u8; 1],
+            )
+            .unwrap(),
+            &mut rng,
+        )
+        .unwrap();
+
+        let (sn, _) = old_record
+            .to_serial_number(&system_parameters.account_signature, &old_account_private_keys[i])
+            .unwrap();
+        joint_serial_numbers.extend_from_slice(&to_bytes![sn].unwrap());
+
+        old_records.push(old_record);
+    }
 
     // Construct new records.
 
-    let new_record_owners = vec![test_account.address; Components::NUM_OUTPUT_RECORDS];
-    let new_is_dummy_flags = vec![false; Components::NUM_OUTPUT_RECORDS];
-    let new_values = vec![10; Components::NUM_OUTPUT_RECORDS];
-    let new_payloads = vec![Payload::default(); Components::NUM_OUTPUT_RECORDS];
-    let new_birth_program_ids = vec![noop_program_id.clone(); Components::NUM_OUTPUT_RECORDS];
-    let new_death_program_ids = vec![noop_program_id; Components::NUM_OUTPUT_RECORDS];
-    let memo = [0u8; 32];
+    // Set the new record's program to be the "always-accept" program.
+    let mut new_records = vec![];
+    for j in 0..Components::NUM_OUTPUT_RECORDS {
+        new_records.push(
+            Record::new_full(
+                &system_parameters.serial_number_nonce,
+                &system_parameters.record_commitment,
+                test_account.address.clone(),
+                false,
+                10,
+                Payload::default(),
+                noop_program_id.clone(),
+                noop_program_id.clone(),
+                j as u8,
+                joint_serial_numbers.clone(),
+                &mut rng,
+            )
+            .unwrap(),
+        );
+    }
 
     // Generate transaction kernel
+    let memo = [0u8; 32];
     let transaction_kernel = <Testnet2DPC as DPCScheme<L>>::execute_offline_phase(
         system_parameters,
         old_records,
         &old_account_private_keys,
-        new_record_owners,
-        &new_is_dummy_flags,
-        &new_values,
-        new_payloads,
-        new_birth_program_ids,
-        new_death_program_ids,
+        new_records,
         memo,
         &mut rng,
     )
@@ -375,30 +414,38 @@ fn test_testnet2_dpc_execute_constraints() {
         genesis_block,
     );
 
-    let sn_nonce =
-        <Components as DPCComponents>::SerialNumberNonceCRH::hash(&system_parameters.serial_number_nonce, &[0u8; 1])
-            .unwrap();
-    let old_record = Record::new(
-        &system_parameters.record_commitment,
-        dummy_account.address,
-        true,
-        0,
-        Payload::default(),
-        alternate_noop_program_id.clone(),
-        alternate_noop_program_id.clone(),
-        sn_nonce,
-        &mut rng,
-    )
-    .unwrap();
-
-    // Set the input records for our transaction to be the initial dummy records.
-    let old_records = vec![old_record; Components::NUM_INPUT_RECORDS];
     let old_account_private_keys = vec![dummy_account.private_key; Components::NUM_INPUT_RECORDS];
 
-    // Construct new records.
+    // Set the input records for our transaction to be the initial dummy records.
+    let mut joint_serial_numbers = vec![];
+    let mut old_records = vec![];
+    for i in 0..Components::NUM_INPUT_RECORDS {
+        let old_record = Record::new(
+            &system_parameters.record_commitment,
+            dummy_account.address.clone(),
+            true,
+            0,
+            Payload::default(),
+            alternate_noop_program_id.clone(),
+            alternate_noop_program_id.clone(),
+            <Components as DPCComponents>::SerialNumberNonceCRH::hash(
+                &system_parameters.serial_number_nonce,
+                &[0u8; 1],
+            )
+            .unwrap(),
+            &mut rng,
+        )
+        .unwrap();
+
+        let (sn, _) = old_record
+            .to_serial_number(signature_parameters, &old_account_private_keys[i])
+            .unwrap();
+        joint_serial_numbers.extend_from_slice(&to_bytes![sn].unwrap());
+
+        old_records.push(old_record);
+    }
 
     // Create an account for an actual new record.
-
     let new_account = Account::new(
         signature_parameters,
         commitment_parameters,
@@ -407,26 +454,35 @@ fn test_testnet2_dpc_execute_constraints() {
     )
     .unwrap();
 
+    // Construct new records.
+
     // Set the new record's program to be the "always-accept" program.
+    let mut new_records = vec![];
+    for j in 0..Components::NUM_OUTPUT_RECORDS {
+        new_records.push(
+            Record::new_full(
+                &system_parameters.serial_number_nonce,
+                &system_parameters.record_commitment,
+                new_account.address.clone(),
+                false,
+                10,
+                Payload::default(),
+                noop_program_id.clone(),
+                noop_program_id.clone(),
+                j as u8,
+                joint_serial_numbers.clone(),
+                &mut rng,
+            )
+            .unwrap(),
+        );
+    }
 
-    let new_record_owners = vec![new_account.address; Components::NUM_OUTPUT_RECORDS];
-    let new_is_dummy_flags = vec![false; Components::NUM_OUTPUT_RECORDS];
-    let new_values = vec![10; Components::NUM_OUTPUT_RECORDS];
-    let new_payloads = vec![Payload::default(); Components::NUM_OUTPUT_RECORDS];
-    let new_birth_program_ids = vec![noop_program_id.clone(); Components::NUM_OUTPUT_RECORDS];
-    let new_death_program_ids = vec![noop_program_id.clone(); Components::NUM_OUTPUT_RECORDS];
     let memo = [0u8; 32];
-
     let transaction_kernel = <Testnet2DPC as DPCScheme<L>>::execute_offline_phase(
         system_parameters.clone(),
         old_records,
         &old_account_private_keys,
-        new_record_owners,
-        &new_is_dummy_flags,
-        &new_values,
-        new_payloads,
-        new_birth_program_ids,
-        new_death_program_ids,
+        new_records,
         memo,
         &mut rng,
     )
