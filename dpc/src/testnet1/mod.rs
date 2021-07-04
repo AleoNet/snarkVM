@@ -113,16 +113,19 @@ pub trait Testnet1Components: DPCComponents {
         VerifierInput = OuterCircuitVerifierInput<Self>,
     >;
 
-    // TODO (raychu86) remove these from BaseDPCComponents
-    /// SNARK for the Noop "always-accept" that does nothing with its input.
+    /// SNARK for the no-op "always-accept" that does nothing with its input.
     type NoopProgramSNARK: SNARK<
         Circuit = NoopCircuit<Self>,
         AllocatedCircuit = NoopCircuit<Self>,
         VerifierInput = ProgramLocalData<Self>,
     >;
 
-    /// SNARK Verifier gadget for the "dummy program" that does nothing with its input.
-    type ProgramSNARKGadget: SNARKVerifierGadget<Self::NoopProgramSNARK, Self::OuterScalarField, Input = Vec<Boolean>>;
+    /// SNARK Verifier gadget for the no-op "always-accept" that does nothing with its input.
+    type NoopProgramSNARKGadget: SNARKVerifierGadget<
+        Self::NoopProgramSNARK,
+        Self::OuterScalarField,
+        Input = Vec<Boolean>,
+    >;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

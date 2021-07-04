@@ -362,13 +362,13 @@ where
     for (i, input) in program_proofs.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
         let cs = &mut cs.ns(|| format!("Check death program for input record {}", i));
 
-        let death_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_, _>>::ProofGadget::alloc_bytes(
+        let death_program_proof = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::ProofGadget::alloc_bytes(
             &mut cs.ns(|| "Allocate proof"),
             || Ok(&input.proof),
         )?;
 
         let death_program_vk =
-            <C::ProgramSNARKGadget as SNARKVerifierGadget<_, _>>::VerificationKeyGadget::alloc_bytes(
+            <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::VerificationKeyGadget::alloc_bytes(
                 &mut cs.ns(|| "Allocate verification key"),
                 || Ok(&input.verification_key),
             )?;
@@ -388,7 +388,7 @@ where
 
         let position = UInt8::constant(i as u8).to_bits_le();
 
-        C::ProgramSNARKGadget::check_verify(
+        C::NoopProgramSNARKGadget::check_verify(
             &mut cs.ns(|| "Check that proof is satisfied"),
             &death_program_vk,
             ([position].iter()).chain(program_input_bits.iter()).cloned(),
@@ -404,13 +404,13 @@ where
     {
         let cs = &mut cs.ns(|| format!("Check birth program for output record {}", j));
 
-        let birth_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_, _>>::ProofGadget::alloc_bytes(
+        let birth_program_proof = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::ProofGadget::alloc_bytes(
             &mut cs.ns(|| "Allocate proof"),
             || Ok(&input.proof),
         )?;
 
         let birth_program_vk =
-            <C::ProgramSNARKGadget as SNARKVerifierGadget<_, _>>::VerificationKeyGadget::alloc_bytes(
+            <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::VerificationKeyGadget::alloc_bytes(
                 &mut cs.ns(|| "Allocate verification key"),
                 || Ok(&input.verification_key),
             )?;
@@ -430,7 +430,7 @@ where
 
         let position = UInt8::constant((C::NUM_INPUT_RECORDS + j) as u8).to_bits_le();
 
-        C::ProgramSNARKGadget::check_verify(
+        C::NoopProgramSNARKGadget::check_verify(
             &mut cs.ns(|| "Check that proof is satisfied"),
             &birth_program_vk,
             ([position].iter()).chain(program_input_bits.iter()).cloned(),

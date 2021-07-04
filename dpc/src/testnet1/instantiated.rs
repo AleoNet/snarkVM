@@ -129,6 +129,6 @@ impl Testnet1Components for Components {
         BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
     type MerkleParameters = CommitmentMerkleParameters;
     type NoopProgramSNARK = GM17<Self::InnerCurve, NoopCircuit<Self>, ProgramLocalData<Self>>;
+    type NoopProgramSNARKGadget = GM17VerifierGadget<Self::InnerCurve, Self::OuterScalarField, PairingGadget>;
     type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
-    type ProgramSNARKGadget = GM17VerifierGadget<Self::InnerCurve, Self::OuterScalarField, PairingGadget>;
 }

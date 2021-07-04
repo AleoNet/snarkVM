@@ -152,14 +152,14 @@ impl Testnet2Components for Components {
         NoopCircuit<Self>,
         ProgramLocalData<Self>,
     >;
-    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
-    type PolynomialCommitment = MarlinKZG10<Self::InnerCurve>;
-    type ProgramSNARKGadget = MarlinVerificationGadget<
+    type NoopProgramSNARKGadget = MarlinVerificationGadget<
         Self::InnerScalarField,
         Self::OuterScalarField,
         Self::PolynomialCommitment,
         MarlinKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>,
     >;
+    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
+    type PolynomialCommitment = MarlinKZG10<Self::InnerCurve>;
 }
 
 // This is currently unused.
