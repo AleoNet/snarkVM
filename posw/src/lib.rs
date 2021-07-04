@@ -31,10 +31,6 @@ use snarkvm_dpc::block::{
     MASKED_TREE_DEPTH,
 };
 
-/// PoSW instantiated over BLS12-377 with GM17.
-#[deprecated]
-pub type PoswGM17 = Posw<GM17<Bls12_377>, Bls12_377>;
-
 /// GM17 type alias for the PoSW circuit
 #[deprecated]
 pub type GM17<E> = snark::gm17::GM17<E, PoswCircuit<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
@@ -97,6 +93,9 @@ mod tests {
     #[allow(deprecated)]
     fn test_posw_gm17() {
         let rng = &mut XorShiftRng::seed_from_u64(1234567);
+
+        // PoSW instantiated over BLS12-377 with GM17.
+        pub type PoswGM17 = Posw<GM17<Bls12_377>, Bls12_377>;
 
         // run the trusted setup
         let posw = PoswGM17::setup(rng).unwrap();
