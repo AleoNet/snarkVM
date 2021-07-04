@@ -43,7 +43,6 @@ use std::{
     PartialEq(bound = "C: Testnet2Components"),
     Eq(bound = "C: Testnet2Components")
 )]
-// TODO (howardwu): Remove the public visibility here
 pub struct Transaction<C: Testnet2Components> {
     /// The network this transaction is included in
     pub network: Network,

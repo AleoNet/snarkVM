@@ -22,7 +22,6 @@ use crate::{
         outer_circuit_verifier_input::OuterCircuitVerifierInput,
         program::{NoopCircuit, ProgramLocalData},
         transaction::Transaction,
-        LocalData as DPCLocalData,
         Testnet1Components,
         DPC,
     },
@@ -63,7 +62,6 @@ use blake2::Blake2s as Blake2sHash;
 pub type Testnet1DPC = DPC<Components>;
 pub type Testnet1Transaction = Transaction<Components>;
 
-pub type LocalData = DPCLocalData<Components>;
 pub type MerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 8, 32>;
 
 define_merkle_tree_parameters!(CommitmentMerkleParameters, MerkleTreeCRH, 32);

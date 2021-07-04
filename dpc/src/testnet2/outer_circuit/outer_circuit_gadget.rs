@@ -383,23 +383,23 @@ where
         let death_program_vk =
             <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::VerificationKeyGadget::alloc_bytes(
                 &mut cs.ns(|| "Allocate verification key"),
-                || Ok(&input.verification_key),
+                || Ok(&input.verifying_key),
             )?;
 
         // Manually allocate the death program bytes instead of the conversion
         let death_program_vk_bytes = UInt8::alloc_vec(
             cs.ns(|| format!("alloc_death_program_vk_bytes_{}", i)),
-            &input.verification_key,
+            &input.verifying_key,
         )?;
 
         let claimed_death_program_id = C::ProgramVerificationKeyCRHGadget::check_evaluation_gadget(
-            &mut cs.ns(|| "Compute death program vk hash"),
+            &mut cs.ns(|| "Compute death program ID"),
             &program_vk_crh_parameters,
             death_program_vk_bytes,
         )?;
 
         let claimed_death_program_id_bytes =
-            claimed_death_program_id.to_bytes(&mut cs.ns(|| "Convert death_pred vk hash to bytes"))?;
+            claimed_death_program_id.to_bytes(&mut cs.ns(|| "Convert death program ID to bytes"))?;
 
         old_death_program_ids.push(claimed_death_program_id_bytes);
 
@@ -445,23 +445,23 @@ where
         let birth_program_vk =
             <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::VerificationKeyGadget::alloc_bytes(
                 &mut cs.ns(|| "Allocate verification key"),
-                || Ok(&input.verification_key),
+                || Ok(&input.verifying_key),
             )?;
 
         // Manually allocate the death program bytes instead of the conversion
         let birth_program_vk_bytes = UInt8::alloc_vec(
             cs.ns(|| format!("birth_death_program_vk_bytes_{}", j)),
-            &input.verification_key,
+            &input.verifying_key,
         )?;
 
         let claimed_birth_program_id = C::ProgramVerificationKeyCRHGadget::check_evaluation_gadget(
-            &mut cs.ns(|| "Compute birth program vk hash"),
+            &mut cs.ns(|| "Compute birth program ID"),
             &program_vk_crh_parameters,
             birth_program_vk_bytes,
         )?;
 
         let claimed_birth_program_id_bytes =
-            claimed_birth_program_id.to_bytes(&mut cs.ns(|| "Convert birth_pred vk hash to bytes"))?;
+            claimed_birth_program_id.to_bytes(&mut cs.ns(|| "Convert birth program ID to bytes"))?;
 
         new_birth_program_ids.push(claimed_birth_program_id_bytes);
 

@@ -126,7 +126,7 @@ fn dpc_testnet1_integration_test() {
     let memo = [4u8; 32];
 
     // Offline execution to generate a DPC transaction kernel
-    let transaction_kernel = <Testnet1DPC as DPCScheme<L>>::execute_offline(
+    let transaction_kernel = <Testnet1DPC as DPCScheme<L>>::execute_offline_phase(
         parameters.system_parameters.clone(),
         old_records,
         old_account_private_keys,
@@ -159,7 +159,7 @@ fn dpc_testnet1_integration_test() {
     }
 
     let (new_records, transaction) =
-        Testnet1DPC::execute_online(&parameters, transaction_kernel, program_proofs, &ledger, &mut rng).unwrap();
+        Testnet1DPC::execute_online_phase(&parameters, transaction_kernel, program_proofs, &ledger, &mut rng).unwrap();
 
     // Check that the transaction is serialized and deserialized correctly
     let transaction_bytes = to_bytes![transaction].unwrap();
@@ -293,7 +293,7 @@ fn test_transaction_kernel_serialization() {
     let memo = [0u8; 32];
 
     // Generate transaction kernel
-    let transaction_kernel = <Testnet1DPC as DPCScheme<L>>::execute_offline(
+    let transaction_kernel = <Testnet1DPC as DPCScheme<L>>::execute_offline_phase(
         system_parameters,
         old_records,
         old_account_private_keys,
@@ -404,7 +404,7 @@ fn test_testnet1_dpc_execute_constraints() {
     let new_death_program_ids = vec![noop_program_id.clone(); Components::NUM_OUTPUT_RECORDS];
     let memo = [0u8; 32];
 
-    let transaction_kernel = <Testnet1DPC as DPCScheme<L>>::execute_offline(
+    let transaction_kernel = <Testnet1DPC as DPCScheme<L>>::execute_offline_phase(
         system_parameters.clone(),
         old_records,
         old_account_private_keys,

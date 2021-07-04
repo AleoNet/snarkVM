@@ -44,7 +44,7 @@ pub trait DPCScheme<L: LedgerScheme> {
 
     /// Returns the execution context required for program snark and DPC transaction generation.
     #[allow(clippy::too_many_arguments)]
-    fn execute_offline<R: Rng + CryptoRng>(
+    fn execute_offline_phase<R: Rng + CryptoRng>(
         parameters: Self::SystemParameters,
         old_records: Vec<Self::Record>,
         old_account_private_keys: Vec<<Self::Account as AccountScheme>::AccountPrivateKey>,
@@ -60,7 +60,7 @@ pub trait DPCScheme<L: LedgerScheme> {
 
     /// Returns new records and a transaction based on the authorized
     /// consumption of old records.
-    fn execute_online<R: Rng + CryptoRng>(
+    fn execute_online_phase<R: Rng + CryptoRng>(
         parameters: &Self::NetworkParameters,
         transaction_kernel: Self::TransactionKernel,
         program_proofs: Vec<Self::PrivateProgramInput>,

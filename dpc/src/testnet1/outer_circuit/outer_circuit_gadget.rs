@@ -376,13 +376,13 @@ where
         let death_program_vk_bytes = death_program_vk.to_bytes(&mut cs.ns(|| "Convert death pred vk to bytes"))?;
 
         let claimed_death_program_id = C::ProgramVerificationKeyCRHGadget::check_evaluation_gadget(
-            &mut cs.ns(|| "Compute death program vk hash"),
+            &mut cs.ns(|| "Compute death program ID"),
             &program_vk_crh_parameters,
             death_program_vk_bytes,
         )?;
 
         let claimed_death_program_id_bytes =
-            claimed_death_program_id.to_bytes(&mut cs.ns(|| "Convert death_pred vk hash to bytes"))?;
+            claimed_death_program_id.to_bytes(&mut cs.ns(|| "Convert death program ID to bytes"))?;
 
         old_death_program_ids.push(claimed_death_program_id_bytes);
 
@@ -418,13 +418,13 @@ where
         let birth_program_vk_bytes = birth_program_vk.to_bytes(&mut cs.ns(|| "Convert birth pred vk to bytes"))?;
 
         let claimed_birth_program_id = C::ProgramVerificationKeyCRHGadget::check_evaluation_gadget(
-            &mut cs.ns(|| "Compute birth program vk hash"),
+            &mut cs.ns(|| "Compute birth program ID"),
             &program_vk_crh_parameters,
             birth_program_vk_bytes,
         )?;
 
         let claimed_birth_program_id_bytes =
-            claimed_birth_program_id.to_bytes(&mut cs.ns(|| "Convert birth_pred vk hash to bytes"))?;
+            claimed_birth_program_id.to_bytes(&mut cs.ns(|| "Convert birth program ID to bytes"))?;
 
         new_birth_program_ids.push(claimed_birth_program_id_bytes);
 

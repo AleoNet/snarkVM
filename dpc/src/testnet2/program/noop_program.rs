@@ -104,7 +104,7 @@ where
         }
 
         Ok(Self::PrivateWitness {
-            verification_key: to_bytes![self.verifying_key]?,
+            verifying_key: to_bytes![self.verifying_key]?,
             proof: to_bytes![proof]?,
         })
     }

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet2::payload::Payload,
+    testnet2::Payload,
     traits::{AccountScheme, DPCComponents, DPCScheme, LedgerScheme, RecordScheme, TransactionScheme},
     Account,
     Address,
@@ -27,16 +27,7 @@ use crate::{
 use snarkvm_algorithms::{
     commitment_tree::CommitmentMerkleTree,
     merkle_tree::{MerklePath, MerkleTreeDigest},
-    traits::{
-        CommitmentScheme,
-        EncryptionScheme,
-        LoadableMerkleParameters,
-        MerkleParameters,
-        SignatureScheme,
-        CRH,
-        PRF,
-        SNARK,
-    },
+    prelude::*,
 };
 use snarkvm_curves::traits::{Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
 use snarkvm_fields::ToConstraintField;
@@ -56,16 +47,11 @@ use snarkvm_utilities::{
     has_duplicates,
     rand::UniformRand,
     to_bytes,
-    variable_length_integer::*,
 };
 
 use itertools::{izip, Itertools};
 use rand::{CryptoRng, Rng};
-use std::{
-    io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
-    sync::Arc,
-};
+use std::{marker::PhantomData, sync::Arc};
 
 pub mod inner_circuit;
 pub use inner_circuit::*;
@@ -92,9 +78,7 @@ mod tests;
 
 ///////////////////////////////////////////////////////////////////////////////
 
-/// Trait that stores all information about the components of a Plain DPC
-/// scheme. Simplifies the interface of Plain DPC by wrapping all these into
-/// one.
+/// Trait that stores information about the testnet2 DPC scheme.
 pub trait Testnet2Components: DPCComponents {
     /// Ledger digest type.
     type MerkleParameters: LoadableMerkleParameters;
@@ -153,275 +137,6 @@ pub trait Testnet2Components: DPCComponents {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-pub struct DPC<C: Testnet2Components> {
-    _components: PhantomData<C>,
-}
-
-/// Returned by `DPC::execute_offline`. Stores data required to produce the
-/// final transaction after `execute_offline` has created old serial numbers,
-/// new records and commitments. For convenience, it also
-/// stores references to existing information like old records and secret keys.
-#[derive(Derivative)]
-#[derivative(
-    Clone(bound = "C: Testnet2Components"),
-    PartialEq(bound = "C: Testnet2Components"),
-    Eq(bound = "C: Testnet2Components"),
-    Debug(bound = "C: Testnet2Components")
-)]
-pub struct TransactionKernel<C: Testnet2Components> {
-    #[derivative(PartialEq = "ignore", Debug = "ignore")]
-    pub system_parameters: SystemParameters<C>,
-
-    // Old record stuff
-    pub old_account_private_keys: Vec<PrivateKey<C>>,
-    pub old_records: Vec<Record<C>>,
-    pub old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
-    pub old_randomizers: Vec<Vec<u8>>,
-
-    // New record stuff
-    pub new_records: Vec<Record<C>>,
-    pub new_sn_nonce_randomness: Vec<[u8; 32]>,
-    pub new_commitments: Vec<<C::RecordCommitment as CommitmentScheme>::Output>,
-
-    pub new_records_encryption_randomness: Vec<<C::AccountEncryption as EncryptionScheme>::Randomness>,
-    pub new_encrypted_records: Vec<EncryptedRecord<C>>,
-    pub new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
-
-    // Program and local data root and randomness
-    pub program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
-    pub program_randomness: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
-
-    pub local_data_merkle_tree: CommitmentMerkleTree<C::LocalDataCommitment, C::LocalDataCRH>,
-    pub local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
-
-    pub value_balance: AleoAmount,
-    pub memorandum: <Transaction<C> as TransactionScheme>::Memorandum,
-    pub network_id: u8,
-}
-
-impl<C: Testnet2Components> TransactionKernel<C> {
-    #[allow(clippy::wrong_self_convention)]
-    pub fn into_local_data(&self) -> LocalData<C> {
-        LocalData {
-            system_parameters: self.system_parameters.clone(),
-
-            old_records: self.old_records.to_vec(),
-            old_serial_numbers: self.old_serial_numbers.to_vec(),
-
-            new_records: self.new_records.to_vec(),
-
-            local_data_merkle_tree: self.local_data_merkle_tree.clone(),
-            local_data_commitment_randomizers: self.local_data_commitment_randomizers.clone(),
-
-            memorandum: self.memorandum,
-            network_id: self.network_id,
-        }
-    }
-}
-
-impl<C: Testnet2Components> ToBytes for TransactionKernel<C> {
-    #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Write old record components
-
-        for old_account_private_key in &self.old_account_private_keys {
-            let r_pk_counter = old_account_private_key.r_pk_counter;
-            let private_key_seed = old_account_private_key.seed;
-            r_pk_counter.write(&mut writer)?;
-            private_key_seed.write(&mut writer)?;
-        }
-
-        for old_record in &self.old_records {
-            old_record.write(&mut writer)?;
-        }
-
-        for old_serial_number in &self.old_serial_numbers {
-            old_serial_number.write(&mut writer)?;
-        }
-
-        for old_randomizer in &self.old_randomizers {
-            variable_length_integer(old_randomizer.len() as u64).write(&mut writer)?;
-            old_randomizer.write(&mut writer)?;
-        }
-
-        // Write new record components
-
-        for new_record in &self.new_records {
-            new_record.write(&mut writer)?;
-        }
-
-        for new_sn_nonce_randomness in &self.new_sn_nonce_randomness {
-            new_sn_nonce_randomness.write(&mut writer)?;
-        }
-
-        for new_commitment in &self.new_commitments {
-            new_commitment.write(&mut writer)?;
-        }
-
-        for new_records_encryption_randomness in &self.new_records_encryption_randomness {
-            new_records_encryption_randomness.write(&mut writer)?;
-        }
-
-        for new_encrypted_record in &self.new_encrypted_records {
-            new_encrypted_record.write(&mut writer)?;
-        }
-
-        for new_encrypted_record_hash in &self.new_encrypted_record_hashes {
-            new_encrypted_record_hash.write(&mut writer)?;
-        }
-
-        // Write transaction components
-
-        self.program_commitment.write(&mut writer)?;
-        self.program_randomness.write(&mut writer)?;
-
-        self.local_data_merkle_tree.write(&mut writer)?;
-
-        for local_data_commitment_randomizer in &self.local_data_commitment_randomizers {
-            local_data_commitment_randomizer.write(&mut writer)?;
-        }
-
-        self.value_balance.write(&mut writer)?;
-        self.memorandum.write(&mut writer)?;
-        self.network_id.write(&mut writer)
-    }
-}
-
-impl<C: Testnet2Components> FromBytes for TransactionKernel<C> {
-    #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let system_parameters = SystemParameters::<C>::load().expect("Could not load system parameters");
-
-        // Read old record components
-
-        let mut old_account_private_keys = vec![];
-        for _ in 0..C::NUM_INPUT_RECORDS {
-            let r_pk_counter_bytes: [u8; 2] = FromBytes::read(&mut reader)?;
-            let private_key_seed: [u8; 32] = FromBytes::read(&mut reader)?;
-
-            let old_account_private_key = PrivateKey::<C>::from_seed_and_counter_unchecked(
-                &private_key_seed,
-                u16::from_le_bytes(r_pk_counter_bytes),
-            )
-            .expect("could not load private key");
-
-            old_account_private_keys.push(old_account_private_key);
-        }
-
-        let mut old_records = vec![];
-        for _ in 0..C::NUM_INPUT_RECORDS {
-            let old_record: Record<C> = FromBytes::read(&mut reader)?;
-            old_records.push(old_record);
-        }
-
-        let mut old_serial_numbers = vec![];
-        for _ in 0..C::NUM_INPUT_RECORDS {
-            let old_serial_number: <C::AccountSignature as SignatureScheme>::PublicKey = FromBytes::read(&mut reader)?;
-            old_serial_numbers.push(old_serial_number);
-        }
-
-        let mut old_randomizers = vec![];
-        for _ in 0..C::NUM_INPUT_RECORDS {
-            let num_bytes = read_variable_length_integer(&mut reader)?;
-            let mut randomizer = vec![];
-            for _ in 0..num_bytes {
-                let byte: u8 = FromBytes::read(&mut reader)?;
-                randomizer.push(byte);
-            }
-
-            old_randomizers.push(randomizer);
-        }
-
-        // Read new record components
-
-        let mut new_records = vec![];
-        for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let new_record: Record<C> = FromBytes::read(&mut reader)?;
-            new_records.push(new_record);
-        }
-
-        let mut new_sn_nonce_randomness = vec![];
-        for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let randomness: [u8; 32] = FromBytes::read(&mut reader)?;
-            new_sn_nonce_randomness.push(randomness);
-        }
-
-        let mut new_commitments = vec![];
-        for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let new_commitment: <C::RecordCommitment as CommitmentScheme>::Output = FromBytes::read(&mut reader)?;
-            new_commitments.push(new_commitment);
-        }
-
-        let mut new_records_encryption_randomness = vec![];
-        for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let encryption_randomness: <C::AccountEncryption as EncryptionScheme>::Randomness =
-                FromBytes::read(&mut reader)?;
-            new_records_encryption_randomness.push(encryption_randomness);
-        }
-
-        let mut new_encrypted_records = vec![];
-        for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let encrypted_record: EncryptedRecord<C> = FromBytes::read(&mut reader)?;
-            new_encrypted_records.push(encrypted_record);
-        }
-
-        let mut new_encrypted_record_hashes = vec![];
-        for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let encrypted_record_hash: <C::EncryptedRecordCRH as CRH>::Output = FromBytes::read(&mut reader)?;
-            new_encrypted_record_hashes.push(encrypted_record_hash);
-        }
-
-        // Read transaction components
-
-        let program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output =
-            FromBytes::read(&mut reader)?;
-        let program_randomness: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness =
-            FromBytes::read(&mut reader)?;
-
-        let local_data_merkle_tree = CommitmentMerkleTree::<C::LocalDataCommitment, C::LocalDataCRH>::from_bytes(
-            &mut reader,
-            system_parameters.local_data_crh.clone(),
-        )
-        .expect("Could not load local data merkle tree");
-
-        let mut local_data_commitment_randomizers = vec![];
-        for _ in 0..4 {
-            let local_data_commitment_randomizer: <C::LocalDataCommitment as CommitmentScheme>::Randomness =
-                FromBytes::read(&mut reader)?;
-            local_data_commitment_randomizers.push(local_data_commitment_randomizer);
-        }
-
-        let value_balance: AleoAmount = FromBytes::read(&mut reader)?;
-        let memorandum: <Transaction<C> as TransactionScheme>::Memorandum = FromBytes::read(&mut reader)?;
-        let network_id: u8 = FromBytes::read(&mut reader)?;
-
-        Ok(Self {
-            system_parameters,
-
-            old_records,
-            old_account_private_keys,
-            old_serial_numbers,
-            old_randomizers,
-
-            new_records,
-            new_sn_nonce_randomness,
-            new_commitments,
-
-            new_records_encryption_randomness,
-            new_encrypted_records,
-            new_encrypted_record_hashes,
-
-            program_commitment,
-            program_randomness,
-            local_data_merkle_tree,
-            local_data_commitment_randomizers,
-            value_balance,
-            memorandum,
-            network_id,
-        })
-    }
-}
-
 /// Stores local data required to produce program proofs.
 pub struct LocalData<C: Testnet2Components> {
     pub system_parameters: SystemParameters<C>,
@@ -442,6 +157,10 @@ pub struct LocalData<C: Testnet2Components> {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+
+pub struct DPC<C: Testnet2Components> {
+    _components: PhantomData<C>,
+}
 
 impl<C: Testnet2Components> DPC<C>
 where
@@ -663,7 +382,7 @@ where
         end_timer!(program_snark_setup_time);
 
         let program_snark_vk_and_proof = PrivateProgramInput {
-            verification_key: to_bytes![noop_program_snark_parameters.verifying_key]?,
+            verifying_key: to_bytes![noop_program_snark_parameters.verifying_key]?,
             proof: to_bytes![program_snark_proof]?,
         };
 
@@ -716,7 +435,7 @@ where
         Ok(account)
     }
 
-    fn execute_offline<R: Rng + CryptoRng>(
+    fn execute_offline_phase<R: Rng + CryptoRng>(
         parameters: Self::SystemParameters,
         old_records: Vec<Self::Record>,
         old_account_private_keys: Vec<<Self::Account as AccountScheme>::AccountPrivateKey>,
@@ -923,7 +642,7 @@ where
         Ok(transaction_kernel)
     }
 
-    fn execute_online<R: Rng + CryptoRng>(
+    fn execute_online_phase<R: Rng + CryptoRng>(
         parameters: &Self::NetworkParameters,
         transaction_kernel: Self::TransactionKernel,
         program_proofs: Vec<Self::PrivateProgramInput>,
@@ -932,7 +651,7 @@ where
     ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)> {
         assert_eq!(C::NUM_TOTAL_RECORDS, program_proofs.len());
 
-        let exec_time = start_timer!(|| "DPC::execute_online");
+        let exec_time = start_timer!(|| "DPC::execute_online_phase");
 
         let TransactionKernel {
             system_parameters,
@@ -979,7 +698,7 @@ where
         }
 
         // Generate Schnorr signature on transaction data
-        // TODO (raychu86) Remove ledger_digest from signature and move the schnorr signing into `execute_offline`
+        // TODO (raychu86) Remove ledger_digest from signature and move the schnorr signing into `execute_offline_phase`
         let signature_time = start_timer!(|| "Sign and randomize transaction contents");
 
         let signature_message = to_bytes![
