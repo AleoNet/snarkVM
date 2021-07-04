@@ -69,16 +69,8 @@ pub trait DPCScheme<L: LedgerScheme> {
     ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)>;
 
     /// Returns true iff the transaction is valid according to the ledger.
-    fn verify(
-        parameters: &Self::NetworkParameters,
-        transaction: &Self::Transaction,
-        ledger: &L,
-    ) -> anyhow::Result<bool>;
+    fn verify(parameters: &Self::NetworkParameters, transaction: &Self::Transaction, ledger: &L) -> bool;
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions(
-        parameters: &Self::NetworkParameters,
-        block: &[Self::Transaction],
-        ledger: &L,
-    ) -> anyhow::Result<bool>;
+    fn verify_transactions(parameters: &Self::NetworkParameters, block: &[Self::Transaction], ledger: &L) -> bool;
 }

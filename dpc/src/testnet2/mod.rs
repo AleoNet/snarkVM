@@ -805,35 +805,31 @@ where
         Ok((new_records, transaction))
     }
 
-    fn verify(
-        parameters: &Self::NetworkParameters,
-        transaction: &Self::Transaction,
-        ledger: &L,
-    ) -> anyhow::Result<bool> {
+    fn verify(parameters: &Self::NetworkParameters, transaction: &Self::Transaction, ledger: &L) -> bool {
         let verify_time = start_timer!(|| "DPC::verify");
 
         // Returns false if the number of serial numbers in the transaction is incorrect.
         if transaction.old_serial_numbers().len() != C::NUM_INPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of serial numbers");
-            return Ok(false);
+            return false;
         }
 
         // Returns false if there are duplicate serial numbers in the transaction.
         if has_duplicates(transaction.old_serial_numbers().iter()) {
             eprintln!("Transaction contains duplicate serial numbers");
-            return Ok(false);
+            return false;
         }
 
         // Returns false if the number of commitments in the transaction is incorrect.
         if transaction.new_commitments().len() != C::NUM_OUTPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of commitments");
-            return Ok(false);
+            return false;
         }
 
         // Returns false if there are duplicate commitments numbers in the transaction.
         if has_duplicates(transaction.new_commitments().iter()) {
             eprintln!("Transaction contains duplicate commitments");
-            return Ok(false);
+            return false;
         }
 
         let ledger_time = start_timer!(|| "Ledger checks");
@@ -841,14 +837,14 @@ where
         // Returns false if the transaction memo previously existed in the ledger.
         if ledger.contains_memo(transaction.memorandum()) {
             eprintln!("Ledger already contains this transaction memo.");
-            return Ok(false);
+            return false;
         }
 
         // Returns false if any transaction serial number previously existed in the ledger.
         for sn in transaction.old_serial_numbers() {
             if ledger.contains_sn(sn) {
                 eprintln!("Ledger already contains this transaction serial number.");
-                return Ok(false);
+                return false;
             }
         }
 
@@ -856,14 +852,14 @@ where
         for cm in transaction.new_commitments() {
             if ledger.contains_cm(cm) {
                 eprintln!("Ledger already contains this transaction commitment.");
-                return Ok(false);
+                return false;
             }
         }
 
         // Returns false if the ledger digest in the transaction is invalid.
         if !ledger.validate_digest(&transaction.ledger_digest) {
             eprintln!("Ledger digest is invalid.");
-            return Ok(false);
+            return false;
         }
 
         end_timer!(ledger_time);
@@ -873,10 +869,10 @@ where
         // Returns false if the number of signatures in the transaction is incorrect.
         if transaction.signatures().len() != C::NUM_OUTPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of commitments");
-            return Ok(false);
+            return false;
         }
 
-        let signature_message = &to_bytes![
+        let signature_message = match to_bytes![
             transaction.network_id(),
             transaction.ledger_digest(),
             transaction.old_serial_numbers(),
@@ -885,13 +881,27 @@ where
             transaction.local_data_root(),
             transaction.value_balance(),
             transaction.memorandum()
-        ]?;
+        ] {
+            Ok(message) => message,
+            _ => {
+                eprintln!("Unable to construct signature message.");
+                return false;
+            }
+        };
 
         let account_signature = &parameters.system_parameters.account_signature;
         for (pk, sig) in transaction.old_serial_numbers().iter().zip(transaction.signatures()) {
-            if !C::AccountSignature::verify(account_signature, pk, signature_message, sig)? {
-                eprintln!("Signature didn't verify.");
-                return Ok(false);
+            match C::AccountSignature::verify(account_signature, pk, &signature_message, sig) {
+                Ok(is_valid) => {
+                    if !is_valid {
+                        eprintln!("Signature failed to verify.");
+                        return false;
+                    }
+                }
+                _ => {
+                    eprintln!("Unable to verify signature.");
+                    return false;
+                }
             }
         }
 
@@ -902,12 +912,18 @@ where
         // Returns false if the number of encrypted records in the transaction is incorrect.
         if transaction.encrypted_records().len() != C::NUM_OUTPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of encrypted records");
-            return Ok(false);
+            return false;
         }
 
         let mut new_encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         for encrypted_record in transaction.encrypted_records() {
-            new_encrypted_record_hashes.push(encrypted_record.to_hash(&parameters.system_parameters)?);
+            match encrypted_record.to_hash(&parameters.system_parameters) {
+                Ok(hash) => new_encrypted_record_hashes.push(hash),
+                _ => {
+                    eprintln!("Unable to hash encrypted record.");
+                    return false;
+                }
+            }
         }
 
         let inner_snark_input = InnerCircuitVerifierInput {
@@ -927,28 +943,48 @@ where
         let inner_snark_vk: <<C as Testnet2Components>::InnerSNARK as SNARK>::VerifyingKey =
             parameters.inner_snark_parameters.1.clone().into();
 
-        let inner_circuit_id =
-            C::InnerCircuitIDCRH::hash(&parameters.system_parameters.inner_circuit_id_crh, &to_bytes![
-                inner_snark_vk
-            ]?)?;
+        let inner_snark_vk_bytes = match to_bytes![inner_snark_vk] {
+            Ok(bytes) => bytes,
+            _ => {
+                eprintln!("Unable to convert inner snark vk into bytes.");
+                return false;
+            }
+        };
 
         let outer_snark_input = OuterCircuitVerifierInput {
             inner_snark_verifier_input: inner_snark_input,
-            inner_circuit_id,
+            inner_circuit_id: match C::InnerCircuitIDCRH::hash(
+                &parameters.system_parameters.inner_circuit_id_crh,
+                &inner_snark_vk_bytes,
+            ) {
+                Ok(hash) => hash,
+                _ => {
+                    eprintln!("Unable to hash inner snark vk.");
+                    return false;
+                }
+            },
         };
 
-        if !C::OuterSNARK::verify(
+        match C::OuterSNARK::verify(
             &parameters.outer_snark_parameters.1,
             &outer_snark_input,
             &transaction.transaction_proof,
-        )? {
-            eprintln!("Transaction proof failed to verify.");
-            return Ok(false);
+        ) {
+            Ok(is_valid) => {
+                if !is_valid {
+                    eprintln!("Transaction proof failed to verify.");
+                    return false;
+                }
+            }
+            _ => {
+                eprintln!("Unable to verify transaction proof.");
+                return false;
+            }
         }
 
         end_timer!(verify_time);
 
-        Ok(true)
+        true
     }
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
@@ -956,13 +992,13 @@ where
         parameters: &Self::NetworkParameters,
         transactions: &[Self::Transaction],
         ledger: &L,
-    ) -> anyhow::Result<bool> {
+    ) -> bool {
         for transaction in transactions {
-            if !Self::verify(parameters, transaction, ledger)? {
-                return Ok(false);
+            if !Self::verify(parameters, transaction, ledger) {
+                return false;
             }
         }
 
-        Ok(true)
+        true
     }
 }

@@ -217,7 +217,7 @@ fn dpc_testnet2_integration_test() {
         proof: ProofOfSuccinctWork([0u8; 972]),
     };
 
-    assert!(Testnet2DPC::verify_transactions(&parameters, &transactions.0, &ledger).unwrap());
+    assert!(Testnet2DPC::verify_transactions(&parameters, &transactions.0, &ledger));
 
     let block = Block { header, transactions };
 
