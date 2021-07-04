@@ -17,7 +17,7 @@
 use crate::{
     testnet1::{
         encrypted::RecordEncryptionGadgetComponents,
-        inner_circuit_gadget::execute_inner_proof_gadget,
+        inner_circuit_gadget::execute_inner_circuit,
         parameters::SystemParameters,
         record::Record,
         Testnet1Components,
@@ -252,7 +252,7 @@ impl<C: Testnet1Components> ConstraintSynthesizer<C::InnerScalarField> for Inner
         &self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
-        execute_inner_proof_gadget::<C, CS>(
+        execute_inner_circuit::<C, CS>(
             cs,
             // Parameters
             &self.system_parameters,

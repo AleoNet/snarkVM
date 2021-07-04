@@ -54,7 +54,7 @@ use snarkvm_utilities::{
 };
 
 #[allow(clippy::too_many_arguments)]
-pub fn execute_inner_proof_gadget<C: Testnet1Components, CS: ConstraintSystem<C::InnerScalarField>>(
+pub fn execute_inner_circuit<C: Testnet1Components, CS: ConstraintSystem<C::InnerScalarField>>(
     cs: &mut CS,
     // Parameters
     system_parameters: &SystemParameters<C>,
@@ -87,7 +87,7 @@ pub fn execute_inner_proof_gadget<C: Testnet1Components, CS: ConstraintSystem<C:
     value_balance: AleoAmount,
     network_id: u8,
 ) -> Result<(), SynthesisError> {
-    base_dpc_execute_gadget_helper::<
+    inner_circuit_gadget::<
         C,
         CS,
         C::AccountCommitment,
@@ -139,7 +139,7 @@ pub fn execute_inner_proof_gadget<C: Testnet1Components, CS: ConstraintSystem<C:
 }
 
 #[allow(clippy::too_many_arguments)]
-fn base_dpc_execute_gadget_helper<
+fn inner_circuit_gadget<
     C,
     CS: ConstraintSystem<C::InnerScalarField>,
     AccountCommitment,

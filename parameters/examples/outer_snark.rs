@@ -74,7 +74,7 @@ pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
         rng,
     )?;
     let private_program_input = PrivateProgramInput {
-        verification_key: to_bytes![noop_program_snark_parameters.verification_key]?,
+        verification_key: to_bytes![noop_program_snark_parameters.verifying_key]?,
         proof: to_bytes![program_snark_proof]?,
     };
 

@@ -44,7 +44,7 @@ fn test_record_serialization() {
         let program_snark_vk_bytes = to_bytes![
             <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
                 &system_parameters.program_verification_key_crh,
-                &to_bytes![noop_program_snark_pp.verification_key].unwrap()
+                &to_bytes![noop_program_snark_pp.verifying_key].unwrap()
             )
             .unwrap()
         ]
@@ -111,7 +111,7 @@ fn test_record_encryption() {
         let program_snark_vk_bytes = to_bytes![
             <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
                 &system_parameters.program_verification_key_crh,
-                &to_bytes![program_snark_pp.verification_key].unwrap()
+                &to_bytes![program_snark_pp.verifying_key].unwrap()
             )
             .unwrap()
         ]
@@ -157,8 +157,7 @@ fn test_record_encryption() {
             .unwrap();
 
             // Decrypt the record
-            let decrypted_record =
-                EncryptedRecord::decrypt(&system_parameters, &account_view_key, &encryped_record).unwrap();
+            let decrypted_record = encryped_record.decrypt(&system_parameters, &account_view_key).unwrap();
 
             assert_eq!(given_record, decrypted_record);
         }

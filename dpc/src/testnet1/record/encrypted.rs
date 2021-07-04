@@ -93,7 +93,7 @@ impl<C: Testnet1Components> Default for RecordEncryptionGadgetComponents<C> {
     Debug(bound = "C: Testnet1Components")
 )]
 pub struct EncryptedRecord<C: Testnet1Components> {
-    pub encrypted_record: Vec<<<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Text>,
+    pub encrypted_elements: Vec<<<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Text>,
     pub final_fq_high_selector: bool,
 }
 
@@ -138,7 +138,7 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
         )?;
 
         let encrypted_record = Self {
-            encrypted_record,
+            encrypted_elements: encrypted_record,
             final_fq_high_selector,
         };
 
@@ -147,15 +147,15 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
 
     /// Decrypt and reconstruct the encrypted record.
     pub fn decrypt(
+        &self,
         system_parameters: &SystemParameters<C>,
         account_view_key: &ViewKey<C>,
-        encrypted_record: &EncryptedRecord<C>,
     ) -> Result<Record<C>, DPCError> {
         // Decrypt the encrypted record
         let plaintext_elements = C::AccountEncryption::decrypt(
             &system_parameters.account_encryption,
             &account_view_key.decryption_key,
-            &encrypted_record.encrypted_record,
+            &self.encrypted_elements,
         )?;
 
         let mut plaintext = Vec::with_capacity(plaintext_elements.len());
@@ -170,7 +170,7 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
             C,
             <C as Testnet1Components>::EncryptionModelParameters,
             <C as Testnet1Components>::EncryptionGroup,
-        >::new(plaintext, encrypted_record.final_fq_high_selector);
+        >::new(plaintext, self.final_fq_high_selector);
         let record_components = encoded_record.decode()?;
 
         let DecodedRecord {
@@ -233,9 +233,9 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
         system_parameters: &SystemParameters<C>,
         encrypted_record: &EncryptedRecord<C>,
     ) -> Result<<<C as DPCComponents>::EncryptedRecordCRH as CRH>::Output, DPCError> {
-        let mut ciphertext_affine_x = Vec::with_capacity(encrypted_record.encrypted_record.len());
-        let mut selector_bits = Vec::with_capacity(encrypted_record.encrypted_record.len() + 1);
-        for ciphertext_element in &encrypted_record.encrypted_record {
+        let mut ciphertext_affine_x = Vec::with_capacity(encrypted_record.encrypted_elements.len());
+        let mut selector_bits = Vec::with_capacity(encrypted_record.encrypted_elements.len() + 1);
+        for ciphertext_element in &encrypted_record.encrypted_elements {
             // Compress the ciphertext element to the affine x coordinate
             let ciphertext_element_affine =
                 <C as Testnet1Components>::EncryptionGroup::read(&to_bytes![ciphertext_element]?[..])?.into_affine();
@@ -395,11 +395,11 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
 impl<C: Testnet1Components> ToBytes for EncryptedRecord<C> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        let mut ciphertext_selectors = Vec::with_capacity(self.encrypted_record.len() + 1);
+        let mut ciphertext_selectors = Vec::with_capacity(self.encrypted_elements.len() + 1);
 
         // Write the encrypted record
-        variable_length_integer(self.encrypted_record.len() as u64).write(&mut writer)?;
-        for ciphertext_element in &self.encrypted_record {
+        variable_length_integer(self.encrypted_elements.len() as u64).write(&mut writer)?;
+        for ciphertext_element in &self.encrypted_elements {
             // Compress the ciphertext representation to the affine x-coordinate and the selector bit
             let ciphertext_element_affine =
                 <C as Testnet1Components>::EncryptionGroup::read(&to_bytes![ciphertext_element]?[..])?.into_affine();
@@ -471,7 +471,7 @@ impl<C: Testnet1Components> FromBytes for EncryptedRecord<C> {
         let final_fq_high_selector = selector_bits.next().unwrap();
 
         Ok(Self {
-            encrypted_record: ciphertext,
+            encrypted_elements: ciphertext,
             final_fq_high_selector,
         })
     }

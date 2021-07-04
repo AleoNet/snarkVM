@@ -16,7 +16,7 @@
 
 use crate::{
     testnet1::{
-        outer_circuit_gadget::execute_outer_proof_gadget,
+        outer_circuit_gadget::execute_outer_circuit,
         parameters::SystemParameters,
         program::PrivateProgramInput,
         Testnet1Components,
@@ -205,7 +205,7 @@ where
         &self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
-        execute_outer_proof_gadget::<C, CS>(
+        execute_outer_circuit::<C, CS>(
             cs,
             &self.system_parameters,
             &self.ledger_parameters,

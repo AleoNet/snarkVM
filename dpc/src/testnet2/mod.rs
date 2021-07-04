@@ -542,7 +542,7 @@ where
 
         Ok(NoopProgramSNARKParameters {
             proving_key: pk,
-            verification_key: pvk.into(),
+            verifying_key: pvk.into(),
         })
     }
 
@@ -663,7 +663,7 @@ where
         end_timer!(program_snark_setup_time);
 
         let program_snark_vk_and_proof = PrivateProgramInput {
-            verification_key: to_bytes![noop_program_snark_parameters.verification_key]?,
+            verification_key: to_bytes![noop_program_snark_parameters.verifying_key]?,
             proof: to_bytes![program_snark_proof]?,
         };
 

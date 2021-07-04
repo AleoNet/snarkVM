@@ -61,7 +61,7 @@ fn field_element_to_bytes<C: Testnet1Components, CS: ConstraintSystem<C::OuterSc
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn execute_outer_proof_gadget<C: Testnet1Components, CS: ConstraintSystem<C::OuterScalarField>>(
+pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::OuterScalarField>>(
     cs: &mut CS,
     // Parameters
     system_parameters: &SystemParameters<C>,

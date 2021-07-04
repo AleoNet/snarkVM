@@ -22,8 +22,8 @@ use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{
     prelude::*,
     testnet2::{
-        execute_inner_proof_gadget,
-        execute_outer_proof_gadget,
+        execute_inner_circuit,
+        execute_outer_circuit,
         inner_circuit::InnerCircuit,
         instantiated::*,
         parameters::{NoopProgramSNARKParameters, SystemParameters},
@@ -84,7 +84,7 @@ fn dpc_testnet2_integration_test() {
     let noop_program_id = to_bytes![
         <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
             &parameters.system_parameters.program_verification_key_crh,
-            &to_bytes![parameters.noop_program_snark_parameters().verification_key].unwrap()
+            &to_bytes![parameters.noop_program_snark_parameters().verifying_key].unwrap()
         )
         .unwrap()
     ]
@@ -142,40 +142,34 @@ fn dpc_testnet2_integration_test() {
     )
     .unwrap();
 
-    let local_data = transaction_kernel.into_local_data();
-
     // Generate the program proofs
 
-    let noop_program = NoopProgram::<_, <Components as Testnet2Components>::NoopProgramSNARK>::new(noop_program_id);
+    let noop_program = NoopProgram::<_, <Components as Testnet2Components>::NoopProgramSNARK>::new(
+        noop_program_id,
+        parameters.noop_program_snark_parameters.proving_key.clone(),
+        parameters.noop_program_snark_parameters.verifying_key.clone(),
+    );
 
     let mut old_death_program_proofs = vec![];
     for i in 0..Components::NUM_INPUT_RECORDS {
-        let private_input = noop_program
-            .execute(
-                &parameters.noop_program_snark_parameters.proving_key,
-                &parameters.noop_program_snark_parameters.verification_key,
-                &local_data,
-                i as u8,
-                &mut rng,
-            )
-            .unwrap();
-
-        old_death_program_proofs.push(private_input);
+        old_death_program_proofs.push(
+            noop_program
+                .execute(&transaction_kernel.into_local_data(), i as u8, &mut rng)
+                .unwrap(),
+        );
     }
 
     let mut new_birth_program_proofs = vec![];
     for j in 0..Components::NUM_OUTPUT_RECORDS {
-        let private_input = noop_program
-            .execute(
-                &parameters.noop_program_snark_parameters.proving_key,
-                &parameters.noop_program_snark_parameters.verification_key,
-                &local_data,
-                (Components::NUM_INPUT_RECORDS + j) as u8,
-                &mut rng,
-            )
-            .unwrap();
-
-        new_birth_program_proofs.push(private_input);
+        new_birth_program_proofs.push(
+            noop_program
+                .execute(
+                    &transaction_kernel.into_local_data(),
+                    (Components::NUM_INPUT_RECORDS + j) as u8,
+                    &mut rng,
+                )
+                .unwrap(),
+        );
     }
 
     let (new_records, transaction) = Testnet2DPC::execute_online(
@@ -191,12 +185,10 @@ fn dpc_testnet2_integration_test() {
     // Check that the transaction is serialized and deserialized correctly
     let transaction_bytes = to_bytes![transaction].unwrap();
     let recovered_transaction = Testnet2Transaction::read(&transaction_bytes[..]).unwrap();
-
     assert_eq!(transaction, recovered_transaction);
 
+    // Check that new_records can be decrypted from the transaction
     {
-        // Check that new_records can be decrypted from the transaction
-
         let encrypted_records = transaction.encrypted_records();
         let new_account_private_keys = vec![recipient.private_key; Components::NUM_OUTPUT_RECORDS];
 
@@ -210,8 +202,9 @@ fn dpc_testnet2_integration_test() {
             )
             .unwrap();
 
-            let decrypted_record =
-                EncryptedRecord::decrypt(&parameters.system_parameters, &account_view_key, encrypted_record).unwrap();
+            let decrypted_record = encrypted_record
+                .decrypt(&parameters.system_parameters, &account_view_key)
+                .unwrap();
 
             assert_eq!(decrypted_record, new_record);
         }
@@ -264,7 +257,7 @@ fn generate_test_noop_program_parameters<R: Rng + CryptoRng>(
     let noop_program_id = to_bytes![
         <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
             &system_parameters.program_verification_key_crh,
-            &to_bytes![noop_program_snark_pp.verification_key].unwrap()
+            &to_bytes![noop_program_snark_pp.verifying_key].unwrap()
         )
         .unwrap()
     ]
@@ -455,42 +448,39 @@ fn test_testnet2_dpc_execute_constraints() {
     )
     .unwrap();
 
-    let local_data = transaction_kernel.into_local_data();
-
     // Generate the program proofs
 
-    let noop_program = NoopProgram::<_, <Components as Testnet2Components>::NoopProgramSNARK>::new(noop_program_id);
-    let alternate_noop_program =
-        NoopProgram::<_, <Components as Testnet2Components>::NoopProgramSNARK>::new(alternate_noop_program_id);
+    let noop_program = NoopProgram::<_, <Components as Testnet2Components>::NoopProgramSNARK>::new(
+        noop_program_id,
+        noop_program_snark_pp.proving_key,
+        noop_program_snark_pp.verifying_key,
+    );
+    let alternate_noop_program = NoopProgram::<_, <Components as Testnet2Components>::NoopProgramSNARK>::new(
+        alternate_noop_program_id,
+        alternate_noop_program_snark_pp.proving_key,
+        alternate_noop_program_snark_pp.verifying_key,
+    );
 
     let mut old_proof_and_vk = vec![];
     for i in 0..Components::NUM_INPUT_RECORDS {
-        let private_input = alternate_noop_program
-            .execute(
-                &alternate_noop_program_snark_pp.proving_key,
-                &alternate_noop_program_snark_pp.verification_key,
-                &local_data,
-                i as u8,
-                &mut rng,
-            )
-            .unwrap();
-
-        old_proof_and_vk.push(private_input);
+        old_proof_and_vk.push(
+            alternate_noop_program
+                .execute(&transaction_kernel.into_local_data(), i as u8, &mut rng)
+                .unwrap(),
+        );
     }
 
     let mut new_proof_and_vk = vec![];
     for j in 0..Components::NUM_OUTPUT_RECORDS {
-        let private_input = noop_program
-            .execute(
-                &noop_program_snark_pp.proving_key,
-                &noop_program_snark_pp.verification_key,
-                &local_data,
-                (Components::NUM_INPUT_RECORDS + j) as u8,
-                &mut rng,
-            )
-            .unwrap();
-
-        new_proof_and_vk.push(private_input);
+        new_proof_and_vk.push(
+            noop_program
+                .execute(
+                    &transaction_kernel.into_local_data(),
+                    (Components::NUM_INPUT_RECORDS + j) as u8,
+                    &mut rng,
+                )
+                .unwrap(),
+        );
     }
 
     let TransactionKernel {
@@ -548,10 +538,10 @@ fn test_testnet2_dpc_execute_constraints() {
 
     //////////////////////////////////////////////////////////////////////////
     // Check that the core check constraint system was satisfied.
-    let mut core_cs = TestConstraintSystem::<Fr>::new();
+    let mut inner_circuit_cs = TestConstraintSystem::<Fr>::new();
 
-    execute_inner_proof_gadget::<_, _>(
-        &mut core_cs.ns(|| "Core checks"),
+    execute_inner_circuit::<_, _>(
+        &mut inner_circuit_cs.ns(|| "Inner circuit"),
         &system_parameters,
         ledger.parameters(),
         &ledger_digest,
@@ -575,24 +565,26 @@ fn test_testnet2_dpc_execute_constraints() {
     )
     .unwrap();
 
-    if !core_cs.is_satisfied() {
+    if !inner_circuit_cs.is_satisfied() {
         println!("=========================================================");
-        println!("num constraints: {:?}", core_cs.num_constraints());
+        println!(
+            "Inner circuit num constraints: {:?}",
+            inner_circuit_cs.num_constraints()
+        );
         println!("Unsatisfied constraints:");
-        println!("{}", core_cs.which_is_unsatisfied().unwrap());
+        println!("{}", inner_circuit_cs.which_is_unsatisfied().unwrap());
         println!("=========================================================");
     }
 
-    if core_cs.is_satisfied() {
-        println!("\n\n\n\nAll Core check constraints:");
-        //        core_cs.print_named_objects();
-        println!("num constraints: {:?}", core_cs.num_constraints());
+    {
+        println!("=========================================================");
+        let num_constraints = inner_circuit_cs.num_constraints();
+        println!("Inner circuit num constraints: {:?}", num_constraints);
+        assert_eq!(418189, num_constraints);
+        println!("=========================================================");
     }
-    println!("=========================================================");
-    println!("=========================================================");
-    println!("=========================================================\n\n\n");
 
-    assert!(core_cs.is_satisfied());
+    assert!(inner_circuit_cs.is_satisfied());
 
     // Generate inner snark parameters and proof for verification in the outer snark
     let inner_snark_parameters = <Components as Testnet2Components>::InnerSNARK::setup(
@@ -639,10 +631,10 @@ fn test_testnet2_dpc_execute_constraints() {
     .unwrap();
 
     // Check that the proof check constraint system was satisfied.
-    let mut pf_check_cs = TestConstraintSystem::<Fq>::new();
+    let mut outer_circuit_cs = TestConstraintSystem::<Fq>::new();
 
-    execute_outer_proof_gadget::<_, _>(
-        &mut pf_check_cs.ns(|| "Check program proofs"),
+    execute_outer_circuit::<_, _>(
+        &mut outer_circuit_cs.ns(|| "Outer circuit"),
         &system_parameters,
         ledger.parameters(),
         &ledger_digest,
@@ -663,21 +655,25 @@ fn test_testnet2_dpc_execute_constraints() {
     )
     .unwrap();
 
-    if !pf_check_cs.is_satisfied() {
+    if !outer_circuit_cs.is_satisfied() {
         println!("=========================================================");
-        println!("num constraints: {:?}", pf_check_cs.num_constraints());
+        println!(
+            "Outer circuit num constraints: {:?}",
+            outer_circuit_cs.num_constraints()
+        );
         println!("Unsatisfied constraints:");
-        println!("{}", pf_check_cs.which_is_unsatisfied().unwrap());
+        println!("{}", outer_circuit_cs.which_is_unsatisfied().unwrap());
         println!("=========================================================");
     }
-    if pf_check_cs.is_satisfied() {
-        println!("\n\n\n\nAll Proof check constraints:");
-        // pf_check_cs.print_named_objects();
-        println!("num constraints: {:?}", pf_check_cs.num_constraints());
-    }
-    println!("=========================================================");
-    println!("=========================================================");
-    println!("=========================================================");
 
-    assert!(pf_check_cs.is_satisfied());
+    {
+        println!("=========================================================");
+        let num_constraints = outer_circuit_cs.num_constraints();
+        println!("Outer circuit num constraints: {:?}", num_constraints);
+        // TODO (howardwu): This constraint count is wrong. Update it after the bug source has been found.
+        assert_eq!(4372996, num_constraints);
+        println!("=========================================================");
+    }
+
+    assert!(outer_circuit_cs.is_satisfied());
 }

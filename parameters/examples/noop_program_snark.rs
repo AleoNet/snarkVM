@@ -34,7 +34,7 @@ pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let noop_program_snark_parameters = DPC::<C>::generate_noop_program_snark_parameters(&system_parameters, rng)?;
     let noop_program_snark_pk = to_bytes![noop_program_snark_parameters.proving_key]?;
     let noop_program_snark_vk: <C::NoopProgramSNARK as SNARK>::VerifyingKey =
-        noop_program_snark_parameters.verification_key;
+        noop_program_snark_parameters.verifying_key;
     let noop_program_snark_vk = to_bytes![noop_program_snark_vk]?;
 
     println!("noop_program_snark_pk.params\n\tsize - {}", noop_program_snark_pk.len());

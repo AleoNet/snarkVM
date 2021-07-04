@@ -103,7 +103,7 @@ impl<C: Testnet2Components> ProgramSNARKUniversalSRS<C> {
 #[derivative(Clone(bound = "C: Testnet2Components"))]
 pub struct NoopProgramSNARKParameters<C: Testnet2Components> {
     pub proving_key: <C::NoopProgramSNARK as SNARK>::ProvingKey,
-    pub verification_key: <C::NoopProgramSNARK as SNARK>::VerifyingKey,
+    pub verifying_key: <C::NoopProgramSNARK as SNARK>::VerifyingKey,
 }
 
 impl<C: Testnet2Components> NoopProgramSNARKParameters<C> {
@@ -111,12 +111,12 @@ impl<C: Testnet2Components> NoopProgramSNARKParameters<C> {
     pub fn load() -> IoResult<Self> {
         let proving_key: <C::NoopProgramSNARK as SNARK>::ProvingKey =
             FromBytes::read(NoopProgramSNARKPKParameters::load_bytes()?.as_slice())?;
-        let verification_key =
+        let verifying_key =
             <C::NoopProgramSNARK as SNARK>::VerifyingKey::read(NoopProgramSNARKVKParameters::load_bytes()?.as_slice())?;
 
         Ok(Self {
             proving_key,
-            verification_key,
+            verifying_key,
         })
     }
 }
