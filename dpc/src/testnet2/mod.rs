@@ -1133,7 +1133,7 @@ where
             program_commitment,
             local_data_root,
             value_balance,
-            Network::from_network_id(network_id),
+            Network::from_id(network_id),
             signatures,
             new_encrypted_records,
         );

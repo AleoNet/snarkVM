@@ -62,7 +62,7 @@ fn dpc_testnet1_integration_test() {
     let [genesis_account, recipient, _] = generate_test_accounts::<_, MemDb>(&parameters, &mut rng);
 
     // Specify network_id
-    let network_id: u8 = 0;
+    let network_id: u8 = 1;
 
     // Create a genesis block
 
@@ -351,11 +351,11 @@ fn test_transaction_kernel_serialization() {
 }
 
 #[test]
-fn test_execute_base_dpc_constraints() {
+fn test_testnet1_dpc_execute_constraints() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     // Specify network_id
-    let network_id: u8 = 0;
+    let network_id: u8 = 1;
 
     // Generate parameters for the ledger, commitment schemes, CRH, and the
     // "always-accept" program.
