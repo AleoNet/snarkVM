@@ -16,20 +16,23 @@
 
 use crate::errors::DPCError;
 
+use core::fmt::Debug;
 use rand::Rng;
 
 pub trait ProgramScheme: Clone {
+    type Id: Debug;
     type LocalData;
     type PrivateWitness;
     type ProvingKey;
     type PublicInput;
     type VerifyingKey;
 
-    /// Executes and returns the program proof
+    /// Initializes a new instance of a program.
+    fn new(program_id: Self::Id, proving_key: Self::ProvingKey, verifying_key: Self::VerifyingKey) -> Self;
+
+    /// Executes the program, returning the execution proof.
     fn execute<R: Rng>(
         &self,
-        proving_key: &Self::ProvingKey,
-        verifying_key: &Self::VerifyingKey,
         local_data: &Self::LocalData,
         position: u8,
         rng: &mut R,

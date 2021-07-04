@@ -15,14 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{curves::templates::twisted_edwards::AffineGadget, fields::FpGadget};
-use snarkvm_curves::edwards_bls12::{EdwardsParameters, Fq};
+use snarkvm_curves::edwards_bw6::{EdwardsParameters, Fq};
 
 pub type FqGadget = FpGadget<Fq>;
-pub type EdwardsBls12Gadget = AffineGadget<EdwardsParameters, Fq, FqGadget>;
+
+pub type EdwardsBW6Gadget = AffineGadget<EdwardsParameters, Fq, FqGadget>;
 
 #[cfg(test)]
 mod test {
-    use super::EdwardsBls12Gadget;
+    use super::EdwardsBW6Gadget;
     use crate::{
         curves::{
             templates::twisted_edwards::test::{edwards_constraint_costs, edwards_test},
@@ -30,32 +31,32 @@ mod test {
         },
         traits::alloc::AllocGadget,
     };
-    use snarkvm_curves::edwards_bls12::{EdwardsParameters, EdwardsProjective, Fq};
+    use snarkvm_curves::edwards_bw6::{EdwardsParameters, EdwardsProjective, Fq};
     use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
     #[test]
     fn edwards_constraint_costs_test() {
         let mut cs = TestConstraintSystem::<Fq>::new();
-        edwards_constraint_costs::<_, EdwardsParameters, EdwardsBls12Gadget, _>(&mut cs);
+        edwards_constraint_costs::<_, EdwardsParameters, EdwardsBW6Gadget, _>(&mut cs);
         assert!(cs.is_satisfied());
     }
 
     #[test]
-    fn edwards_bls12_gadget_test() {
+    fn edwards_bw6_gadget_test() {
         let mut cs = TestConstraintSystem::<Fq>::new();
-        edwards_test::<_, EdwardsParameters, EdwardsBls12Gadget, _>(&mut cs);
+        edwards_test::<_, EdwardsParameters, EdwardsBW6Gadget, _>(&mut cs);
         assert!(cs.is_satisfied());
     }
 
     #[test]
-    fn edwards_bls12_group_gadgets_test() {
+    fn edwards_bw6_group_gadgets_test() {
         let mut cs = TestConstraintSystem::<Fq>::new();
 
         let a: EdwardsProjective = rand::random();
         let b: EdwardsProjective = rand::random();
 
-        let a = EdwardsBls12Gadget::alloc(&mut cs.ns(|| "generate_a"), || Ok(a)).unwrap();
-        let b = EdwardsBls12Gadget::alloc(&mut cs.ns(|| "generate_b"), || Ok(b)).unwrap();
+        let a = EdwardsBW6Gadget::alloc(&mut cs.ns(|| "generate_a"), || Ok(a)).unwrap();
+        let b = EdwardsBW6Gadget::alloc(&mut cs.ns(|| "generate_b"), || Ok(b)).unwrap();
         group_test::<_, EdwardsProjective, _, _>(&mut cs.ns(|| "GroupTest(a, b)"), a, b);
     }
 }

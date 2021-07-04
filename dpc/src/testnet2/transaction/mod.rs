@@ -14,32 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod account;
-pub use account::*;
-
-pub mod block;
-pub use block::*;
-
-pub mod dpc;
-pub use dpc::*;
-
-pub mod dpc_components;
-pub use dpc_components::*;
-
-pub mod ledger;
-pub use ledger::*;
-
-pub mod program;
-pub use program::*;
-
-pub mod record;
-pub use record::*;
-
-pub mod encoded;
-pub use encoded::*;
-
-pub mod storage;
-pub use storage::*;
+pub mod kernel;
+pub use kernel::*;
 
 pub mod transaction;
 pub use transaction::*;

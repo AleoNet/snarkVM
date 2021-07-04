@@ -17,7 +17,7 @@
 use crate::{encryption::GroupEncryption, signature::Schnorr, traits::SignatureScheme};
 use snarkvm_curves::{
     edwards_bls12::{EdwardsAffine, EdwardsProjective},
-    edwards_sw6::EdwardsAffine as Edwards,
+    edwards_bw6::EdwardsAffine as Edwards,
     traits::Group,
 };
 use snarkvm_utilities::{

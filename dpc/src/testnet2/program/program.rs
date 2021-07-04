@@ -18,20 +18,11 @@ use crate::testnet2::Testnet2Components;
 use snarkvm_algorithms::traits::{CommitmentScheme, CRH};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
-/// Program verification key and proof
-/// Represented as bytes to be generic for any Program SNARK
+/// Program verifying key and proof, represented as bytes to be generic for any program SNARK.
+#[derive(Clone)]
 pub struct PrivateProgramInput {
-    pub verification_key: Vec<u8>,
+    pub verifying_key: Vec<u8>,
     pub proof: Vec<u8>,
-}
-
-impl Clone for PrivateProgramInput {
-    fn clone(&self) -> Self {
-        Self {
-            verification_key: self.verification_key.clone(),
-            proof: self.proof.clone(),
-        }
-    }
 }
 
 pub struct ProgramLocalData<C: Testnet2Components> {
@@ -42,14 +33,13 @@ pub struct ProgramLocalData<C: Testnet2Components> {
 }
 
 /// Convert each component to bytes and pack into field elements.
-impl<C: Testnet2Components> ToConstraintField<C::InnerField> for ProgramLocalData<C>
+impl<C: Testnet2Components> ToConstraintField<C::InnerScalarField> for ProgramLocalData<C>
 where
-    <C::LocalDataCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
-    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerField>,
+    <C::LocalDataCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
 {
-    fn to_field_elements(&self) -> Result<Vec<C::InnerField>, ConstraintFieldError> {
-        let mut v = ToConstraintField::<C::InnerField>::to_field_elements(&[self.position][..])?;
-
+    fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
+        let mut v = ToConstraintField::<C::InnerScalarField>::to_field_elements(&[self.position][..])?;
         v.extend_from_slice(&self.local_data_commitment_parameters.to_field_elements()?);
         v.extend_from_slice(&self.local_data_root.to_field_elements()?);
         Ok(v)

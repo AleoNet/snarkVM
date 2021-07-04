@@ -34,7 +34,7 @@ use crate::{
         commitment_tree::*,
         crh::BoweHopwoodPedersenCompressedCRHGadget,
     },
-    curves::edwards_bls12::EdwardsBlsGadget,
+    curves::edwards_bls12::EdwardsBls12Gadget,
     traits::{
         algorithms::{CRHGadget, CommitmentGadget},
         alloc::AllocGadget,
@@ -48,10 +48,10 @@ const COMMITMENT_NUM_WINDOWS: usize = 8;
 const COMMITMENT_WINDOW_SIZE: usize = 32;
 
 pub type H = BoweHopwoodPedersenCompressedCRH<EdwardsBls, CRH_NUM_WINDOWS, CRH_WINDOW_SIZE>;
-pub type HG = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Fr, EdwardsBlsGadget>;
+pub type HG = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Fr, EdwardsBls12Gadget>;
 
 pub type C = PedersenCompressedCommitment<EdwardsBls, COMMITMENT_NUM_WINDOWS, COMMITMENT_WINDOW_SIZE>;
-pub type CG = PedersenCompressedCommitmentGadget<EdwardsBls, Fr, EdwardsBlsGadget>;
+pub type CG = PedersenCompressedCommitmentGadget<EdwardsBls, Fr, EdwardsBls12Gadget>;
 
 /// Generates a valid Merkle tree and verifies the Merkle path witness for each leaf.
 fn generate_merkle_tree<C: CommitmentScheme, H: CRH, R: Rng>(

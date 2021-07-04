@@ -15,14 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    edwards_sw6::*,
+    edwards_bw6::*,
     templates::twisted_edwards_extended::tests::{edwards_test, montgomery_conversion_test},
     traits::{tests_curve::curve_tests, tests_group::group_test, AffineCurve, Group, ProjectiveCurve},
 };
 use snarkvm_fields::tests_field::{field_serialization_test, field_test, primefield_test};
 
 #[test]
-fn test_edwards_sw6_fr() {
+fn test_edwards_bw6_fr() {
     let a: Fr = rand::random();
     let b: Fr = rand::random();
     field_test(a, b);
@@ -31,7 +31,7 @@ fn test_edwards_sw6_fr() {
 }
 
 #[test]
-fn test_edwards_sw6_fq() {
+fn test_edwards_bw6_fq() {
     let a: Fq = rand::random();
     let b: Fq = rand::random();
     field_test(a, b);

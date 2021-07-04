@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{record_encoding::*, record_encryption::*};
+use super::{encoded::*, encrypted::*};
 use crate::{
-    testnet1::{instantiated::*, payload::Payload, DPC},
-    traits::{AccountScheme, DPCComponents, RecordEncodingScheme},
+    testnet1::{instantiated::*, Payload, Record},
+    traits::{AccountScheme, DPCComponents, EncodedRecordScheme},
     Account,
-    AccountViewKey,
+    ViewKey,
 };
 use snarkvm_algorithms::traits::CRH;
 use snarkvm_curves::edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls};
@@ -44,14 +44,14 @@ fn test_record_encoding() {
         let program_snark_vk_bytes = to_bytes![
             <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
                 &system_parameters.program_verification_key_crh,
-                &to_bytes![noop_program_snark_pp.verification_key].unwrap()
+                &to_bytes![noop_program_snark_pp.verifying_key].unwrap()
             )
             .unwrap()
         ]
         .unwrap();
 
         for _ in 0..ITERATIONS {
-            let dummy_account = Account::new(
+            let dummy_account = Account::<Components>::new(
                 &system_parameters.account_signature,
                 &system_parameters.account_commitment,
                 &system_parameters.account_encryption,
@@ -63,30 +63,25 @@ fn test_record_encoding() {
             let value = rng.gen();
             let payload: [u8; 32] = rng.gen();
 
-            let given_record = DPC::generate_record(
-                &system_parameters,
-                <Components as DPCComponents>::SerialNumberNonceCRH::hash(
-                    &system_parameters.serial_number_nonce,
-                    &sn_nonce_input,
-                )
-                .unwrap(),
+            let given_record = Record::new(
+                &system_parameters.record_commitment,
                 dummy_account.address,
                 false,
                 value,
                 Payload::from_bytes(&payload),
                 program_snark_vk_bytes.clone(),
                 program_snark_vk_bytes.clone(),
+                <Components as DPCComponents>::SerialNumberNonceCRH::hash(
+                    &system_parameters.serial_number_nonce,
+                    &sn_nonce_input,
+                )
+                .unwrap(),
                 &mut rng,
             )
             .unwrap();
 
-            let (serialized_record, final_fq_high_bit) =
-                RecordEncoding::<_, EdwardsParameters, EdwardsBls>::encode(&given_record).unwrap();
-            let record_components = RecordEncoding::<Components, EdwardsParameters, EdwardsBls>::decode(
-                serialized_record,
-                final_fq_high_bit,
-            )
-            .unwrap();
+            let encoded_record = EncodedRecord::<_, EdwardsParameters, EdwardsBls>::encode(&given_record).unwrap();
+            let record_components = encoded_record.decode().unwrap();
 
             assert_eq!(given_record.serial_number_nonce, record_components.serial_number_nonce);
             assert_eq!(
@@ -115,7 +110,7 @@ fn test_record_encryption() {
         let program_snark_vk_bytes = to_bytes![
             <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
                 &system_parameters.program_verification_key_crh,
-                &to_bytes![program_snark_pp.verification_key].unwrap()
+                &to_bytes![program_snark_pp.verifying_key].unwrap()
             )
             .unwrap()
         ]
@@ -134,27 +129,26 @@ fn test_record_encryption() {
             let value = rng.gen();
             let payload: [u8; 32] = rng.gen();
 
-            let given_record = DPC::generate_record(
-                &system_parameters,
-                <Components as DPCComponents>::SerialNumberNonceCRH::hash(
-                    &system_parameters.serial_number_nonce,
-                    &sn_nonce_input,
-                )
-                .unwrap(),
+            let given_record = Record::new(
+                &system_parameters.record_commitment,
                 dummy_account.address,
                 false,
                 value,
                 Payload::from_bytes(&payload),
                 program_snark_vk_bytes.clone(),
                 program_snark_vk_bytes.clone(),
+                <Components as DPCComponents>::SerialNumberNonceCRH::hash(
+                    &system_parameters.serial_number_nonce,
+                    &sn_nonce_input,
+                )
+                .unwrap(),
                 &mut rng,
             )
             .unwrap();
 
             // Encrypt the record
-            let (_, encryped_record) =
-                RecordEncryption::encrypt_record(&system_parameters, &given_record, &mut rng).unwrap();
-            let account_view_key = AccountViewKey::from_private_key(
+            let (encryped_record, _) = EncryptedRecord::encrypt(&system_parameters, &given_record, &mut rng).unwrap();
+            let account_view_key = ViewKey::from_private_key(
                 &system_parameters.account_signature,
                 &system_parameters.account_commitment,
                 &dummy_account.private_key,
@@ -162,8 +156,7 @@ fn test_record_encryption() {
             .unwrap();
 
             // Decrypt the record
-            let decrypted_record =
-                RecordEncryption::decrypt_record(&system_parameters, &account_view_key, &encryped_record).unwrap();
+            let decrypted_record = encryped_record.decrypt(&system_parameters, &account_view_key).unwrap();
 
             assert_eq!(given_record, decrypted_record);
         }

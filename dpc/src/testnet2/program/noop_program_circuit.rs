@@ -61,8 +61,11 @@ impl<C: Testnet2Components> NoopCircuit<C> {
     }
 }
 
-impl<C: Testnet2Components> ConstraintSynthesizer<C::InnerField> for NoopCircuit<C> {
-    fn generate_constraints<CS: ConstraintSystem<C::InnerField>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
+impl<C: Testnet2Components> ConstraintSynthesizer<C::InnerScalarField> for NoopCircuit<C> {
+    fn generate_constraints<CS: ConstraintSystem<C::InnerScalarField>>(
+        &self,
+        cs: &mut CS,
+    ) -> Result<(), SynthesisError> {
         execute_noop_gadget(
             cs,
             self.system_parameters.get_ref()?,
@@ -72,7 +75,7 @@ impl<C: Testnet2Components> ConstraintSynthesizer<C::InnerField> for NoopCircuit
     }
 }
 
-fn execute_noop_gadget<C: Testnet2Components, CS: ConstraintSystem<C::InnerField>>(
+fn execute_noop_gadget<C: Testnet2Components, CS: ConstraintSystem<C::InnerScalarField>>(
     cs: &mut CS,
     system_parameters: &SystemParameters<C>,
     local_data_root: &<C::LocalDataCRH as CRH>::Output,

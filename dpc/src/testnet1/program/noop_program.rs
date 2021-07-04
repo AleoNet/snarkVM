@@ -28,41 +28,41 @@ use std::marker::PhantomData;
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "C: Testnet1Components, S: SNARK"),
-    Debug(bound = "C: Testnet1Components, S: SNARK"),
-    PartialEq(bound = "C: Testnet1Components, S: SNARK"),
-    Eq(bound = "C: Testnet1Components, S: SNARK")
+    Debug(bound = "C: Testnet1Components, S: SNARK")
 )]
 pub struct NoopProgram<C: Testnet1Components, S: SNARK> {
     #[derivative(Default(value = "vec![0u8; 48]"))]
-    identity: Vec<u8>,
+    id: Vec<u8>,
+    #[derivative(Debug = "ignore")]
+    proving_key: S::ProvingKey,
+    #[derivative(Debug = "ignore")]
+    verifying_key: S::VerifyingKey,
+    #[derivative(Debug = "ignore")]
     _components: PhantomData<C>,
-    _snark: PhantomData<S>,
-}
-
-impl<C: Testnet1Components, S: SNARK> NoopProgram<C, S> {
-    pub fn new(identity: Vec<u8>) -> Self {
-        Self {
-            identity,
-            _components: PhantomData,
-            _snark: PhantomData,
-        }
-    }
 }
 
 impl<C: Testnet1Components, S: SNARK> ProgramScheme for NoopProgram<C, S>
 where
     S: SNARK<AllocatedCircuit = NoopCircuit<C>, VerifierInput = ProgramLocalData<C>>,
 {
+    type Id = Vec<u8>;
     type LocalData = LocalData<C>;
     type PrivateWitness = PrivateProgramInput;
     type ProvingKey = S::ProvingKey;
     type PublicInput = ();
     type VerifyingKey = S::VerifyingKey;
 
+    fn new(program_id: Self::Id, proving_key: Self::ProvingKey, verifying_key: Self::VerifyingKey) -> Self {
+        Self {
+            id: program_id,
+            proving_key,
+            verifying_key,
+            _components: PhantomData,
+        }
+    }
+
     fn execute<R: Rng>(
         &self,
-        proving_key: &Self::ProvingKey,
-        verifying_key: &Self::VerifyingKey,
         local_data: &Self::LocalData,
         position: u8,
         rng: &mut R,
@@ -77,19 +77,19 @@ where
         };
 
         if (position as usize) < C::NUM_INPUT_RECORDS {
-            assert_eq!(self.identity, record.death_program_id());
+            assert_eq!(self.id, record.death_program_id());
         } else {
-            assert_eq!(self.identity, record.birth_program_id());
+            assert_eq!(self.id, record.birth_program_id());
         }
 
         let local_data_root = local_data.local_data_merkle_tree.root();
 
         let circuit = NoopCircuit::<C>::new(&local_data.system_parameters, &local_data_root, position);
 
-        let proof = S::prove(proving_key, &circuit, rng)?;
+        let proof = S::prove(&self.proving_key, &circuit, rng)?;
 
         {
-            let program_snark_pvk: <S as SNARK>::PreparedVerifyingKey = verifying_key.clone().into();
+            let program_snark_pvk: <S as SNARK>::PreparedVerifyingKey = self.verifying_key.clone().into();
 
             let program_pub_input: ProgramLocalData<C> = ProgramLocalData {
                 local_data_commitment_parameters: local_data
@@ -104,7 +104,7 @@ where
         }
 
         Ok(Self::PrivateWitness {
-            verification_key: to_bytes![verifying_key]?,
+            verifying_key: to_bytes![self.verifying_key]?,
             proof: to_bytes![proof]?,
         })
     }
@@ -114,6 +114,6 @@ where
     }
 
     fn into_compact_repr(&self) -> Vec<u8> {
-        self.identity.clone()
+        self.id.clone()
     }
 }

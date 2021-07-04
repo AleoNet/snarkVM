@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet2::{record::encrypted_record::*, Testnet2Components},
+    testnet1::{record::encrypted::*, Testnet1Components},
     traits::TransactionScheme,
     AleoAmount,
     Network,
@@ -39,12 +39,11 @@ use std::{
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: Testnet2Components"),
-    PartialEq(bound = "C: Testnet2Components"),
-    Eq(bound = "C: Testnet2Components")
+    Clone(bound = "C: Testnet1Components"),
+    PartialEq(bound = "C: Testnet1Components"),
+    Eq(bound = "C: Testnet1Components")
 )]
-// TODO (howardwu): Remove the public visibility here
-pub struct Transaction<C: Testnet2Components> {
+pub struct Transaction<C: Testnet1Components> {
     /// The network this transaction is included in
     pub network: Network,
 
@@ -88,7 +87,7 @@ pub struct Transaction<C: Testnet2Components> {
     pub inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
 }
 
-impl<C: Testnet2Components> Transaction<C> {
+impl<C: Testnet1Components> Transaction<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         old_serial_numbers: Vec<<Self as TransactionScheme>::SerialNumber>,
@@ -104,6 +103,11 @@ impl<C: Testnet2Components> Transaction<C> {
         signatures: Vec<<C::AccountSignature as SignatureScheme>::Signature>,
         encrypted_records: Vec<EncryptedRecord<C>>,
     ) -> Self {
+        assert_eq!(C::NUM_INPUT_RECORDS, old_serial_numbers.len());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, new_commitments.len());
+        assert_eq!(C::NUM_INPUT_RECORDS, signatures.len());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, encrypted_records.len());
+
         Self {
             old_serial_numbers,
             new_commitments,
@@ -121,7 +125,7 @@ impl<C: Testnet2Components> Transaction<C> {
     }
 }
 
-impl<C: Testnet2Components> TransactionScheme for Transaction<C> {
+impl<C: Testnet1Components> TransactionScheme for Transaction<C> {
     type Commitment = <C::RecordCommitment as CommitmentScheme>::Output;
     type Digest = MerkleTreeDigest<C::MerkleParameters>;
     type EncryptedRecord = EncryptedRecord<C>;
@@ -130,18 +134,19 @@ impl<C: Testnet2Components> TransactionScheme for Transaction<C> {
     type Memorandum = [u8; 32];
     type ProgramCommitment = <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output;
     type SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey;
+    type Signature = <C::AccountSignature as SignatureScheme>::Signature;
     type ValueBalance = AleoAmount;
 
     /// Transaction id = Hash of (serial numbers || commitments || memo)
     fn transaction_id(&self) -> Result<[u8; 32], TransactionError> {
         let mut pre_image_bytes: Vec<u8> = vec![];
 
-        for sn in self.old_serial_numbers() {
-            pre_image_bytes.extend(&to_bytes![sn]?);
+        for serial_number in self.old_serial_numbers() {
+            pre_image_bytes.extend(&to_bytes![serial_number]?);
         }
 
-        for cm in self.new_commitments() {
-            pre_image_bytes.extend(&to_bytes![cm]?);
+        for commitment in self.new_commitments() {
+            pre_image_bytes.extend(&to_bytes![commitment]?);
         }
 
         pre_image_bytes.extend(self.memorandum());
@@ -174,6 +179,10 @@ impl<C: Testnet2Components> TransactionScheme for Transaction<C> {
         self.new_commitments.as_slice()
     }
 
+    fn memorandum(&self) -> &Self::Memorandum {
+        &self.memorandum
+    }
+
     fn program_commitment(&self) -> &Self::ProgramCommitment {
         &self.program_commitment
     }
@@ -186,12 +195,12 @@ impl<C: Testnet2Components> TransactionScheme for Transaction<C> {
         self.value_balance
     }
 
-    fn encrypted_records(&self) -> &[Self::EncryptedRecord] {
-        &self.encrypted_records
+    fn signatures(&self) -> &[Self::Signature] {
+        &self.signatures
     }
 
-    fn memorandum(&self) -> &Self::Memorandum {
-        &self.memorandum
+    fn encrypted_records(&self) -> &[Self::EncryptedRecord] {
+        &self.encrypted_records
     }
 
     fn size(&self) -> usize {
@@ -200,7 +209,7 @@ impl<C: Testnet2Components> TransactionScheme for Transaction<C> {
     }
 }
 
-impl<C: Testnet2Components> ToBytes for Transaction<C> {
+impl<C: Testnet1Components> ToBytes for Transaction<C> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         for old_serial_number in &self.old_serial_numbers {
@@ -234,7 +243,7 @@ impl<C: Testnet2Components> ToBytes for Transaction<C> {
     }
 }
 
-impl<C: Testnet2Components> FromBytes for Transaction<C> {
+impl<C: Testnet1Components> FromBytes for Transaction<C> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the old serial numbers
@@ -302,7 +311,7 @@ impl<C: Testnet2Components> FromBytes for Transaction<C> {
 }
 
 // TODO add debug support for record ciphertexts
-impl<C: Testnet2Components> fmt::Debug for Transaction<C> {
+impl<C: Testnet1Components> fmt::Debug for Transaction<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

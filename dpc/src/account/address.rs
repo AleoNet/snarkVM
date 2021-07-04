@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, traits::DPCComponents, AccountError, AccountPrivateKey, AccountViewKey};
+use crate::{account_format, traits::DPCComponents, AccountError, PrivateKey, ViewKey};
 use snarkvm_algorithms::{EncryptionScheme, SignatureScheme};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -32,17 +32,17 @@ use std::{
     PartialEq(bound = "C: DPCComponents"),
     Eq(bound = "C: DPCComponents")
 )]
-pub struct AccountAddress<C: DPCComponents> {
+pub struct Address<C: DPCComponents> {
     pub encryption_key: <C::AccountEncryption as EncryptionScheme>::PublicKey,
 }
 
-impl<C: DPCComponents> AccountAddress<C> {
+impl<C: DPCComponents> Address<C> {
     /// Derives the account address from an account private key.
     pub fn from_private_key(
         signature_parameters: &C::AccountSignature,
         commitment_parameters: &C::AccountCommitment,
         encryption_parameters: &C::AccountEncryption,
-        private_key: &AccountPrivateKey<C>,
+        private_key: &PrivateKey<C>,
     ) -> Result<Self, AccountError> {
         let decryption_key = private_key.to_decryption_key(signature_parameters, commitment_parameters)?;
         let encryption_key =
@@ -54,7 +54,7 @@ impl<C: DPCComponents> AccountAddress<C> {
     /// Derives the account address from an account view key.
     pub fn from_view_key(
         encryption_parameters: &C::AccountEncryption,
-        view_key: &AccountViewKey<C>,
+        view_key: &ViewKey<C>,
     ) -> Result<Self, AccountError> {
         let encryption_key = <C::AccountEncryption as EncryptionScheme>::generate_public_key(
             encryption_parameters,
@@ -81,13 +81,13 @@ impl<C: DPCComponents> AccountAddress<C> {
     }
 }
 
-impl<C: DPCComponents> ToBytes for AccountAddress<C> {
+impl<C: DPCComponents> ToBytes for Address<C> {
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.encryption_key.write(&mut writer)
     }
 }
 
-impl<C: DPCComponents> FromBytes for AccountAddress<C> {
+impl<C: DPCComponents> FromBytes for Address<C> {
     /// Reads in an account address buffer.
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -97,7 +97,7 @@ impl<C: DPCComponents> FromBytes for AccountAddress<C> {
     }
 }
 
-impl<C: DPCComponents> FromStr for AccountAddress<C> {
+impl<C: DPCComponents> FromStr for Address<C> {
     type Err = AccountError;
 
     /// Reads in an account address string.
@@ -121,7 +121,7 @@ impl<C: DPCComponents> FromStr for AccountAddress<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Display for AccountAddress<C> {
+impl<C: DPCComponents> fmt::Display for Address<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Write the encryption key to a buffer.
         let mut address = [0u8; 32];
@@ -129,15 +129,18 @@ impl<C: DPCComponents> fmt::Display for AccountAddress<C> {
             .write(&mut address[0..32])
             .expect("address formatting failed");
 
-        let prefix = account_format::ADDRESS_PREFIX.to_string();
-
-        let result = bech32::encode(&prefix, address.to_base32(), bech32::Variant::Bech32);
-        result.unwrap().fmt(f)
+        bech32::encode(
+            &account_format::ADDRESS_PREFIX.to_string(),
+            address.to_base32(),
+            bech32::Variant::Bech32,
+        )
+        .unwrap()
+        .fmt(f)
     }
 }
 
-impl<C: DPCComponents> fmt::Debug for AccountAddress<C> {
+impl<C: DPCComponents> fmt::Debug for Address<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "AccountAddress {{ encryption_key: {:?} }}", self.encryption_key)
+        write!(f, "Address {{ encryption_key: {:?} }}", self.encryption_key)
     }
 }

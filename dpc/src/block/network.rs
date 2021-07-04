@@ -21,30 +21,33 @@ use std::{
     io::{Read, Result as IoResult, Write},
 };
 
-/// Represents the network the node operating on
+/// Represents the network the node operating on.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Network {
     Mainnet,
     Testnet1,
+    Testnet2,
     Custom(u8),
 }
 
 impl Network {
-    /// Returns the id of the network
-    pub fn id(&self) -> u8 {
-        match self {
-            Network::Mainnet => 0,
-            Network::Testnet1 => 1,
-            Network::Custom(id) => *id,
-        }
-    }
-
-    /// Returns the network from a given network id
-    pub fn from_network_id(network_id: u8) -> Self {
+    /// Returns the network from a given network ID.
+    pub const fn from_id(network_id: u8) -> Self {
         match network_id {
             0 => Network::Mainnet,
             1 => Network::Testnet1,
+            2 => Network::Testnet2,
             id => Network::Custom(id),
+        }
+    }
+
+    /// Returns the ID of the network.
+    pub const fn id(&self) -> u8 {
+        match self {
+            Network::Mainnet => 0,
+            Network::Testnet1 => 1,
+            Network::Testnet2 => 2,
+            Network::Custom(id) => *id,
         }
     }
 }
@@ -60,8 +63,7 @@ impl FromBytes for Network {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let network_id: u8 = FromBytes::read(&mut reader)?;
-
-        Ok(Self::from_network_id(network_id))
+        Ok(Self::from_id(network_id))
     }
 }
 

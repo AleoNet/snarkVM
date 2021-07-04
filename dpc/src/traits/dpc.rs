@@ -25,7 +25,7 @@ pub trait DPCScheme<L: LedgerScheme> {
     type NetworkParameters;
     type Payload;
     type PrivateProgramInput;
-    type Record: RecordScheme<Owner = <Self::Account as AccountScheme>::AccountAddress>;
+    type Record: RecordScheme<Owner = <Self::Account as AccountScheme>::Address>;
     type SystemParameters;
     type Transaction: TransactionScheme<SerialNumber = <Self::Record as RecordScheme>::SerialNumber>;
     type TransactionKernel;
@@ -44,43 +44,29 @@ pub trait DPCScheme<L: LedgerScheme> {
 
     /// Returns the execution context required for program snark and DPC transaction generation.
     #[allow(clippy::too_many_arguments)]
-    fn execute_offline<R: Rng + CryptoRng>(
+    fn execute_offline_phase<R: Rng + CryptoRng>(
         parameters: Self::SystemParameters,
+        old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         old_records: Vec<Self::Record>,
-        old_account_private_keys: Vec<<Self::Account as AccountScheme>::AccountPrivateKey>,
-        new_record_owners: Vec<<Self::Account as AccountScheme>::AccountAddress>,
-        new_is_dummy_flags: &[bool],
-        new_values: &[u64],
-        new_payloads: Vec<Self::Payload>,
-        new_birth_program_ids: Vec<Vec<u8>>,
-        new_death_program_ids: Vec<Vec<u8>>,
+        new_records: Vec<Self::Record>,
         memorandum: <Self::Transaction as TransactionScheme>::Memorandum,
-        network_id: u8,
         rng: &mut R,
     ) -> anyhow::Result<Self::TransactionKernel>;
 
     /// Returns new records and a transaction based on the authorized
     /// consumption of old records.
-    fn execute_online<R: Rng + CryptoRng>(
+    fn execute_online_phase<R: Rng + CryptoRng>(
         parameters: &Self::NetworkParameters,
+        old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         transaction_kernel: Self::TransactionKernel,
-        old_death_program_proofs: Vec<Self::PrivateProgramInput>,
-        new_birth_program_proofs: Vec<Self::PrivateProgramInput>,
+        program_proofs: Vec<Self::PrivateProgramInput>,
         ledger: &L,
         rng: &mut R,
     ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)>;
 
     /// Returns true iff the transaction is valid according to the ledger.
-    fn verify(
-        parameters: &Self::NetworkParameters,
-        transaction: &Self::Transaction,
-        ledger: &L,
-    ) -> anyhow::Result<bool>;
+    fn verify(parameters: &Self::NetworkParameters, transaction: &Self::Transaction, ledger: &L) -> bool;
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions(
-        parameters: &Self::NetworkParameters,
-        block: &[Self::Transaction],
-        ledger: &L,
-    ) -> anyhow::Result<bool>;
+    fn verify_transactions(parameters: &Self::NetworkParameters, block: &[Self::Transaction], ledger: &L) -> bool;
 }
