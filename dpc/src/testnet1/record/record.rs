@@ -26,8 +26,10 @@ use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     to_bytes,
     variable_length_integer::*,
+    UniformRand,
 };
 
+use rand::{CryptoRng, Rng};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
@@ -64,6 +66,51 @@ pub struct Record<C: Testnet1Components> {
 }
 
 impl<C: Testnet1Components> Record<C> {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new<R: Rng + CryptoRng>(
+        record_commitment_parameters: &C::RecordCommitment,
+        owner: Address<C>,
+        is_dummy: bool,
+        value: u64,
+        payload: Payload,
+        birth_program_id: Vec<u8>,
+        death_program_id: Vec<u8>,
+        sn_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
+        rng: &mut R,
+    ) -> Result<Self, RecordError> {
+        let record_time = start_timer!(|| "Generate record");
+        // Sample new commitment randomness.
+        let commitment_randomness = <C::RecordCommitment as CommitmentScheme>::Randomness::rand(rng);
+
+        // Total = 32 + 1 + 8 + 32 + 48 + 48 + 32 = 201 bytes
+        let commitment_input = to_bytes![
+            owner,            // 256 bits = 32 bytes
+            is_dummy,         // 1 bit = 1 byte
+            value,            // 64 bits = 8 bytes
+            payload,          // 256 bits = 32 bytes
+            birth_program_id, // 384 bits = 48 bytes
+            death_program_id, // 384 bits = 48 bytes
+            sn_nonce          // 256 bits = 32 bytes
+        ]?;
+
+        let commitment =
+            C::RecordCommitment::commit(&record_commitment_parameters, &commitment_input, &commitment_randomness)?;
+
+        let record = Record {
+            owner,
+            is_dummy,
+            value,
+            payload,
+            birth_program_id,
+            death_program_id,
+            serial_number_nonce: sn_nonce,
+            commitment,
+            commitment_randomness,
+        };
+        end_timer!(record_time);
+        Ok(record)
+    }
+
     pub fn to_serial_number(
         &self,
         signature_parameters: &C::AccountSignature,

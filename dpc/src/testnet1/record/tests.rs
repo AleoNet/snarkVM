@@ -16,7 +16,7 @@
 
 use super::{encoded::*, encrypted::*};
 use crate::{
-    testnet1::{instantiated::*, payload::Payload, DPC},
+    testnet1::{instantiated::*, Payload, Record},
     traits::{AccountScheme, DPCComponents, EncodedRecordScheme},
     Account,
     ViewKey,
@@ -63,19 +63,19 @@ fn test_record_encoding() {
             let value = rng.gen();
             let payload: [u8; 32] = rng.gen();
 
-            let given_record = DPC::generate_record(
+            let given_record = Record::new(
                 &system_parameters.record_commitment,
-                <Components as DPCComponents>::SerialNumberNonceCRH::hash(
-                    &system_parameters.serial_number_nonce,
-                    &sn_nonce_input,
-                )
-                .unwrap(),
                 dummy_account.address,
                 false,
                 value,
                 Payload::from_bytes(&payload),
                 program_snark_vk_bytes.clone(),
                 program_snark_vk_bytes.clone(),
+                <Components as DPCComponents>::SerialNumberNonceCRH::hash(
+                    &system_parameters.serial_number_nonce,
+                    &sn_nonce_input,
+                )
+                .unwrap(),
                 &mut rng,
             )
             .unwrap();
@@ -129,19 +129,19 @@ fn test_record_encryption() {
             let value = rng.gen();
             let payload: [u8; 32] = rng.gen();
 
-            let given_record = DPC::generate_record(
+            let given_record = Record::new(
                 &system_parameters.record_commitment,
-                <Components as DPCComponents>::SerialNumberNonceCRH::hash(
-                    &system_parameters.serial_number_nonce,
-                    &sn_nonce_input,
-                )
-                .unwrap(),
                 dummy_account.address,
                 false,
                 value,
                 Payload::from_bytes(&payload),
                 program_snark_vk_bytes.clone(),
                 program_snark_vk_bytes.clone(),
+                <Components as DPCComponents>::SerialNumberNonceCRH::hash(
+                    &system_parameters.serial_number_nonce,
+                    &sn_nonce_input,
+                )
+                .unwrap(),
                 &mut rng,
             )
             .unwrap();

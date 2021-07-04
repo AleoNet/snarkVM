@@ -28,10 +28,9 @@ use snarkvm_dpc::{
         instantiated::*,
         parameters::{NoopProgramSNARKParameters, SystemParameters},
         program::NoopProgram,
-        record::{EncryptedRecord, Payload},
+        record::{EncryptedRecord, Payload, Record},
         Testnet2Components,
         TransactionKernel,
-        DPC,
     },
 };
 use snarkvm_integration::{ledger::*, memdb::MemDb, storage::*, testnet2::*};
@@ -99,15 +98,15 @@ fn dpc_testnet2_integration_test() {
             &[64u8 + (i as u8); 1],
         )
         .unwrap();
-        let old_record = DPC::generate_record(
+        let old_record = Record::new(
             &parameters.system_parameters.record_commitment,
-            old_sn_nonce,
             genesis_account.address.clone(),
             true, // The input record is dummy
             0,
             Payload::default(),
             noop_program_id.clone(),
             noop_program_id.clone(),
+            old_sn_nonce,
             &mut rng,
         )
         .unwrap();
@@ -271,15 +270,15 @@ fn test_testnet_2_transaction_kernel_serialization() {
     let sn_nonce =
         <Components as DPCComponents>::SerialNumberNonceCRH::hash(&system_parameters.serial_number_nonce, &[0u8; 1])
             .unwrap();
-    let old_record = DPC::generate_record(
+    let old_record = Record::new(
         &system_parameters.record_commitment,
-        sn_nonce,
         test_account.address.clone(),
         true,
         0,
         Payload::default(),
         noop_program_id.clone(),
         noop_program_id.clone(),
+        sn_nonce,
         &mut rng,
     )
     .unwrap();
@@ -372,15 +371,15 @@ fn test_testnet2_dpc_execute_constraints() {
     let sn_nonce =
         <Components as DPCComponents>::SerialNumberNonceCRH::hash(&system_parameters.serial_number_nonce, &[0u8; 1])
             .unwrap();
-    let old_record = DPC::generate_record(
+    let old_record = Record::new(
         &system_parameters.record_commitment,
-        sn_nonce,
         dummy_account.address,
         true,
         0,
         Payload::default(),
         alternate_noop_program_id.clone(),
         alternate_noop_program_id.clone(),
+        sn_nonce,
         &mut rng,
     )
     .unwrap();
