@@ -62,7 +62,7 @@ macro_rules! impl_params_local {
 
 #[macro_export]
 macro_rules! impl_params_remote {
-    ($name: ident, $remote_url: tt, $local_dir: expr, $fname: tt, $size: tt) => {
+    ($name: ident, $test_name: ident, $remote_url: tt, $local_dir: expr, $fname: tt, $size: tt) => {
 
         pub struct $name;
 
@@ -98,7 +98,7 @@ macro_rules! impl_params_remote {
                 } else {
                     // Downloads the missing parameters and stores it in the local directory for use.
                     eprintln!(
-                        "\nWARNING - \"{}\" does not exist. snarkVM will download this file remotely and store it locally. Please ensure \"{}\" is stored in {:?}.\n",
+                        "\nWARNING - \"{}\" does not exist, downloading this file remotely and storing it locally. Please ensure \"{}\" is stored in {:?}.\n",
                         filename, filename, file_path
                     );
                     let output = Self::load_remote()?;
@@ -202,6 +202,15 @@ macro_rules! impl_params_remote {
                 })?;
                 Ok(transfer.perform()?)
             }
+        }
+
+        #[cfg(test)]
+        #[test]
+        fn $test_name() {
+            use crate::traits::Parameter;
+
+            let parameters = $name::load_bytes().expect("failed to load parameters");
+            assert_eq!($name::SIZE, parameters.len() as u64);
         }
     }
 }
