@@ -32,13 +32,15 @@ use snarkvm_dpc::block::{
 };
 
 /// PoSW instantiated over BLS12-377 with GM17.
+#[deprecated]
 pub type PoswGM17 = Posw<GM17<Bls12_377>, Bls12_377>;
+
+/// GM17 type alias for the PoSW circuit
+#[deprecated]
+pub type GM17<E> = snark::gm17::GM17<E, PoswCircuit<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
 
 /// PoSW instantiated over BLS12-377 with Marlin.
 pub type PoswMarlin = Posw<Marlin<Bls12_377>, Bls12_377>;
-
-/// GM17 type alias for the PoSW circuit
-pub type GM17<E> = snark::gm17::GM17<E, PoswCircuit<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
 
 /// Marlin proof system on PoSW
 pub type Marlin<E> =
