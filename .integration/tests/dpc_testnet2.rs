@@ -56,17 +56,13 @@ type L = Ledger<Testnet2Transaction, CommitmentMerkleParameters, MemDb>;
 fn dpc_testnet2_integration_test() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
-    // Generate or load parameters for the ledger, commitment schemes, and CRH
+    // Generate or load parameters for the ledger, commitment schemes, and CRH.
     let (ledger_parameters, parameters) = setup_or_load_parameters::<_, MemDb>(false, &mut rng);
 
-    // Generate accounts
+    // Generate accounts.
     let [genesis_account, recipient, _] = generate_test_accounts::<_, MemDb>(&parameters, &mut rng);
 
-    // Specify network_id
-    let network_id: u8 = 2;
-
-    // Create a genesis block
-
+    // Create a genesis block.
     let genesis_block = Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
@@ -142,7 +138,6 @@ fn dpc_testnet2_integration_test() {
         new_birth_program_ids,
         new_death_program_ids,
         memo,
-        network_id,
         &mut rng,
     )
     .unwrap();
@@ -342,7 +337,6 @@ fn test_testnet_2_transaction_kernel_serialization() {
         new_birth_program_ids,
         new_death_program_ids,
         memo,
-        0,
         &mut rng,
     )
     .unwrap();
@@ -359,9 +353,6 @@ fn test_testnet_2_transaction_kernel_serialization() {
 #[test]
 fn test_testnet2_dpc_execute_constraints() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
-
-    // Specify network_id
-    let network_id: u8 = 2;
 
     // Generate parameters for the ledger, commitment schemes, CRH, and the
     // "always-accept" program.
@@ -460,7 +451,6 @@ fn test_testnet2_dpc_execute_constraints() {
         new_birth_program_ids,
         new_death_program_ids,
         memo,
-        network_id,
         &mut rng,
     )
     .unwrap();

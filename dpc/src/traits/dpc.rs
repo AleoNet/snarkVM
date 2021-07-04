@@ -55,7 +55,6 @@ pub trait DPCScheme<L: LedgerScheme> {
         new_birth_program_ids: Vec<Vec<u8>>,
         new_death_program_ids: Vec<Vec<u8>>,
         memorandum: <Self::Transaction as TransactionScheme>::Memorandum,
-        network_id: u8,
         rng: &mut R,
     ) -> anyhow::Result<Self::TransactionKernel>;
 

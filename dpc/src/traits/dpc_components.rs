@@ -26,6 +26,8 @@ use snarkvm_gadgets::traits::algorithms::{
 };
 
 pub trait DPCComponents: 'static + Sized {
+    const NETWORK_ID: u8;
+
     const NUM_INPUT_RECORDS: usize;
     const NUM_OUTPUT_RECORDS: usize;
 

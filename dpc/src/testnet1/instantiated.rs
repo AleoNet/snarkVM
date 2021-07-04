@@ -26,7 +26,8 @@ use crate::{
         Testnet1Components,
         DPC,
     },
-    traits::DPCComponents,
+    DPCComponents,
+    Network,
 };
 use snarkvm_algorithms::{
     commitment::{Blake2sCommitment, PedersenCompressedCommitment},
@@ -71,6 +72,8 @@ pub struct Components;
 
 #[rustfmt::skip]
 impl DPCComponents for Components {
+    const NETWORK_ID: u8 = Network::Testnet1.id();
+    
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
 

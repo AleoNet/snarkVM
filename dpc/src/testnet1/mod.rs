@@ -663,7 +663,6 @@ where
         new_birth_program_ids: Vec<Vec<u8>>,
         new_death_program_ids: Vec<Vec<u8>>,
         memorandum: <Self::Transaction as TransactionScheme>::Memorandum,
-        network_id: u8,
         rng: &mut R,
     ) -> anyhow::Result<Self::TransactionKernel> {
         assert_eq!(C::NUM_INPUT_RECORDS, old_records.len());
@@ -753,7 +752,7 @@ where
         let mut old_record_commitments = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for i in 0..C::NUM_INPUT_RECORDS {
             let record = &old_records[i];
-            let input_bytes = to_bytes![old_serial_numbers[i], record.commitment(), memorandum, network_id]?;
+            let input_bytes = to_bytes![old_serial_numbers[i], record.commitment(), memorandum, C::NETWORK_ID]?;
 
             let commitment_randomness = <C::LocalDataCommitment as CommitmentScheme>::Randomness::rand(rng);
             let commitment = C::LocalDataCommitment::commit(
@@ -768,7 +767,7 @@ where
 
         let mut new_record_commitments = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         for record in new_records.iter().take(C::NUM_OUTPUT_RECORDS) {
-            let input_bytes = to_bytes![record.commitment(), memorandum, network_id]?;
+            let input_bytes = to_bytes![record.commitment(), memorandum, C::NETWORK_ID]?;
 
             let commitment_randomness = <C::LocalDataCommitment as CommitmentScheme>::Randomness::rand(rng);
             let commitment = C::LocalDataCommitment::commit(
@@ -855,7 +854,7 @@ where
 
             value_balance,
             memorandum,
-            network_id,
+            network_id: C::NETWORK_ID,
         };
         Ok(transaction_kernel)
     }
