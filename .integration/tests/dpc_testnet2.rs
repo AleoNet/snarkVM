@@ -150,37 +150,17 @@ fn dpc_testnet2_integration_test() {
         parameters.noop_program_snark_parameters.verifying_key.clone(),
     );
 
-    let mut old_death_program_proofs = vec![];
-    for i in 0..Components::NUM_INPUT_RECORDS {
-        old_death_program_proofs.push(
+    let mut program_proofs = vec![];
+    for i in 0..Components::NUM_RECORDS {
+        program_proofs.push(
             noop_program
                 .execute(&transaction_kernel.into_local_data(), i as u8, &mut rng)
                 .unwrap(),
         );
     }
 
-    let mut new_birth_program_proofs = vec![];
-    for j in 0..Components::NUM_OUTPUT_RECORDS {
-        new_birth_program_proofs.push(
-            noop_program
-                .execute(
-                    &transaction_kernel.into_local_data(),
-                    (Components::NUM_INPUT_RECORDS + j) as u8,
-                    &mut rng,
-                )
-                .unwrap(),
-        );
-    }
-
-    let (new_records, transaction) = Testnet2DPC::execute_online(
-        &parameters,
-        transaction_kernel,
-        old_death_program_proofs,
-        new_birth_program_proofs,
-        &ledger,
-        &mut rng,
-    )
-    .unwrap();
+    let (new_records, transaction) =
+        Testnet2DPC::execute_online(&parameters, transaction_kernel, program_proofs, &ledger, &mut rng).unwrap();
 
     // Check that the transaction is serialized and deserialized correctly
     let transaction_bytes = to_bytes![transaction].unwrap();
@@ -336,10 +316,8 @@ fn test_testnet_2_transaction_kernel_serialization() {
 
     // Serialize the transaction kernel
     let transaction_kernel_bytes = to_bytes![&transaction_kernel].unwrap();
-
     let recovered_transaction_kernel: <Testnet2DPC as DPCScheme<L>>::TransactionKernel =
         FromBytes::read(&transaction_kernel_bytes[..]).unwrap();
-
     assert_eq!(transaction_kernel, recovered_transaction_kernel);
 }
 
@@ -461,18 +439,16 @@ fn test_testnet2_dpc_execute_constraints() {
         alternate_noop_program_snark_pp.verifying_key,
     );
 
-    let mut old_proof_and_vk = vec![];
+    let mut program_proofs = vec![];
     for i in 0..Components::NUM_INPUT_RECORDS {
-        old_proof_and_vk.push(
+        program_proofs.push(
             alternate_noop_program
                 .execute(&transaction_kernel.into_local_data(), i as u8, &mut rng)
                 .unwrap(),
         );
     }
-
-    let mut new_proof_and_vk = vec![];
     for j in 0..Components::NUM_OUTPUT_RECORDS {
-        new_proof_and_vk.push(
+        program_proofs.push(
             noop_program
                 .execute(
                     &transaction_kernel.into_local_data(),
@@ -646,8 +622,7 @@ fn test_testnet2_dpc_execute_constraints() {
         network_id,
         &inner_snark_vk,
         &inner_snark_proof,
-        &old_proof_and_vk,
-        &new_proof_and_vk,
+        &program_proofs,
         &program_commitment,
         &program_randomness,
         &local_data_root,

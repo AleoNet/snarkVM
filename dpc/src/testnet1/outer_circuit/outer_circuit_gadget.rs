@@ -80,11 +80,8 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     inner_snark_vk: &<C::InnerSNARK as SNARK>::VerifyingKey,
     inner_snark_proof: &<C::InnerSNARK as SNARK>::Proof,
 
-    // Old record death program verification keys and proofs
-    old_death_program_verification_inputs: &[PrivateProgramInput],
-
-    // New record birth program verification keys and proofs
-    new_birth_program_verification_inputs: &[PrivateProgramInput],
+    // Program verification keys and proofs
+    program_proofs: &[PrivateProgramInput],
 
     // Rest
     program_commitment: &<C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
@@ -362,11 +359,7 @@ where
 
     let mut old_death_program_ids = Vec::with_capacity(C::NUM_INPUT_RECORDS);
     let mut new_birth_program_ids = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-    for (i, input) in old_death_program_verification_inputs
-        .iter()
-        .enumerate()
-        .take(C::NUM_INPUT_RECORDS)
-    {
+    for (i, input) in program_proofs.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
         let cs = &mut cs.ns(|| format!("Check death program for input record {}", i));
 
         let death_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_, _>>::ProofGadget::alloc_bytes(
@@ -403,8 +396,9 @@ where
         )?;
     }
 
-    for (j, input) in new_birth_program_verification_inputs
+    for (j, input) in program_proofs
         .iter()
+        .skip(C::NUM_INPUT_RECORDS)
         .enumerate()
         .take(C::NUM_OUTPUT_RECORDS)
     {

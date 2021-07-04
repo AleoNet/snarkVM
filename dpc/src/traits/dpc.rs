@@ -63,8 +63,7 @@ pub trait DPCScheme<L: LedgerScheme> {
     fn execute_online<R: Rng + CryptoRng>(
         parameters: &Self::NetworkParameters,
         transaction_kernel: Self::TransactionKernel,
-        old_death_program_proofs: Vec<Self::PrivateProgramInput>,
-        new_birth_program_proofs: Vec<Self::PrivateProgramInput>,
+        program_proofs: Vec<Self::PrivateProgramInput>,
         ledger: &L,
         rng: &mut R,
     ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)>;

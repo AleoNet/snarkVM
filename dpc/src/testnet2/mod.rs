@@ -926,13 +926,11 @@ where
     fn execute_online<R: Rng + CryptoRng>(
         parameters: &Self::NetworkParameters,
         transaction_kernel: Self::TransactionKernel,
-        old_death_program_proofs: Vec<Self::PrivateProgramInput>,
-        new_birth_program_proofs: Vec<Self::PrivateProgramInput>,
+        program_proofs: Vec<Self::PrivateProgramInput>,
         ledger: &L,
         rng: &mut R,
     ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)> {
-        assert_eq!(C::NUM_INPUT_RECORDS, old_death_program_proofs.len());
-        assert_eq!(C::NUM_OUTPUT_RECORDS, new_birth_program_proofs.len());
+        assert_eq!(C::NUM_RECORDS, program_proofs.len());
 
         let exec_time = start_timer!(|| "DPC::execute_online");
 
@@ -962,9 +960,6 @@ where
         } = transaction_kernel;
 
         let local_data_root = local_data_merkle_tree.root();
-
-        let old_death_program_attributes = old_death_program_proofs;
-        let new_birth_program_attributes = new_birth_program_proofs;
 
         // Construct the ledger witnesses
 
@@ -1106,8 +1101,7 @@ where
                 network_id,
                 inner_snark_vk,
                 inner_proof,
-                old_death_program_attributes,
-                new_birth_program_attributes,
+                program_proofs,
                 program_commitment.clone(),
                 program_randomness,
                 local_data_root.clone(),
