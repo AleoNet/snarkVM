@@ -28,7 +28,7 @@ use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::rand::UniformRand;
 
 use crate::{
-    curves::edwards_bls12::EdwardsBlsGadget,
+    curves::edwards_bls12::EdwardsBls12Gadget,
     integers::uint::UInt8,
     traits::{algorithms::CommitmentGadget, alloc::AllocGadget, fields::FieldGadget},
 };
@@ -84,7 +84,7 @@ fn pedersen_commitment_gadget_test() {
     const WINDOW_SIZE: usize = 4;
 
     type TestCommitment = PedersenCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE>;
-    type TestCommitmentGadget = PedersenCommitmentGadget<EdwardsProjective, Fq, EdwardsBlsGadget>;
+    type TestCommitmentGadget = PedersenCommitmentGadget<EdwardsProjective, Fq, EdwardsBls12Gadget>;
 
     let rng = &mut thread_rng();
 

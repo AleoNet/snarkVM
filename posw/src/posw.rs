@@ -36,7 +36,7 @@ use snarkvm_dpc::block::{
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     algorithms::crh::PedersenCompressedCRHGadget,
-    curves::edwards_bls12::EdwardsBlsGadget,
+    curves::edwards_bls12::EdwardsBls12Gadget,
     traits::algorithms::MaskedCRHGadget,
 };
 use snarkvm_marlin::snark::SRS;
@@ -66,7 +66,7 @@ pub fn commit(nonce: u32, root: &PedersenMerkleRootHash) -> Vec<u8> {
 // We need to instantiate the Merkle tree and the Gadget, but these should not be
 // proving system specific
 pub type M = MaskedMerkleTreeParameters;
-pub type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fq, EdwardsBlsGadget>;
+pub type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fq, EdwardsBls12Gadget>;
 pub type F = Fr;
 
 /// A Proof of Succinct Work miner and verifier

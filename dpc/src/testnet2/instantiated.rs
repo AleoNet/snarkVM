@@ -40,8 +40,8 @@ use snarkvm_algorithms::{
 use snarkvm_curves::{
     bls12_377::Bls12_377,
     bw6_761::BW6_761,
-    edwards_bls12::{EdwardsAffine, EdwardsParameters, EdwardsProjective as EdwardsBls},
-    edwards_sw6::EdwardsProjective as EdwardsSW,
+    edwards_bls12::{EdwardsAffine, EdwardsParameters, EdwardsProjective as EdwardsBls12},
+    edwards_bw6::EdwardsProjective as EdwardsBW6,
     PairingEngine,
 };
 use snarkvm_gadgets::{
@@ -53,7 +53,7 @@ use snarkvm_gadgets::{
         signature::SchnorrPublicKeyRandomizationGadget,
         snark::Groth16VerifierGadget,
     },
-    curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBlsGadget, edwards_sw6::EdwardsSWGadget},
+    curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
     fields::FpGadget,
 };
 use snarkvm_marlin::{
@@ -70,7 +70,7 @@ pub type Testnet2DPC = DPC<Components>;
 pub type Testnet2Transaction = Transaction<Components>;
 
 pub type LocalData = DPCLocalData<Components>;
-pub type MerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, 8, 32>;
+pub type MerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 8, 32>;
 
 define_merkle_tree_parameters!(CommitmentMerkleParameters, MerkleTreeCRH, 32);
 
@@ -88,46 +88,46 @@ impl DPCComponents for Components {
     type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
     type OuterScalarField = <Self::OuterCurve as PairingEngine>::Fr;
     
-    type AccountCommitment = PedersenCompressedCommitment<EdwardsBls, 8, 192>;
-    type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, Self::InnerScalarField, EdwardsBlsGadget>;
+    type AccountCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 192>;
+    type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
     
-    type AccountEncryption = GroupEncryption<EdwardsBls, EdwardsAffine, Blake2sHash>;
-    type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls, Self::InnerScalarField, EdwardsBlsGadget>;
+    type AccountEncryption = GroupEncryption<EdwardsBls12, EdwardsAffine, Blake2sHash>;
+    type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
 
     type AccountSignature = Schnorr<EdwardsAffine, Blake2sHash>;
-    type AccountSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, Self::InnerScalarField, EdwardsBlsGadget, FpGadget<Self::InnerScalarField>>;
+    type AccountSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, Self::InnerScalarField, EdwardsBls12Gadget, FpGadget<Self::InnerScalarField>>;
     
-    type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, 48, 44>;
-    type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerScalarField, EdwardsBlsGadget>;
+    type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 48, 44>;
+    type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
     
-    type InnerCircuitIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, 296, 63>;
-    type InnerCircuitIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, Self::OuterScalarField, EdwardsSWGadget>;
+    type InnerCircuitIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBW6, 296, 63>;
+    type InnerCircuitIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget>;
     
-    type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, 16, 32>;
-    type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerScalarField, EdwardsBlsGadget>;
+    type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 16, 32>;
+    type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
     
-    type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls, 8, 129>;
-    type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, Self::InnerScalarField, EdwardsBlsGadget>;
+    type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 129>;
+    type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
     
     type PRF = Blake2s;
     type PRFGadget = Blake2sGadget;
     
-    type ProgramVerificationKeyCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, 4096, 80>;
-    type ProgramVerificationKeyCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, Self::OuterScalarField, EdwardsSWGadget>;
+    type ProgramVerificationKeyCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBW6, 4096, 80>;
+    type ProgramVerificationKeyCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget>;
     
     type ProgramVerificationKeyCommitment = Blake2sCommitment;
     type ProgramVerificationKeyCommitmentGadget = Blake2sCommitmentGadget;
     
-    type RecordCommitment = PedersenCompressedCommitment<EdwardsBls, 8, 233>;
-    type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, Self::InnerScalarField, EdwardsBlsGadget>;
+    type RecordCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 233>;
+    type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
     
-    type SerialNumberNonceCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, 32, 63>;
-    type SerialNumberNonceCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerScalarField, EdwardsBlsGadget>;
+    type SerialNumberNonceCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 32, 63>;
+    type SerialNumberNonceCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
 }
 
 impl Testnet2Components for Components {
-    type EncryptionGroup = EdwardsBls;
-    type EncryptionGroupGadget = EdwardsBlsGadget;
+    type EncryptionGroup = EdwardsBls12;
+    type EncryptionGroupGadget = EdwardsBls12Gadget;
     type EncryptionModelParameters = EdwardsParameters;
     type FiatShamirRng = FiatShamirAlgebraicSpongeRng<
         Self::InnerScalarField,
@@ -138,7 +138,7 @@ impl Testnet2Components for Components {
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, Self::OuterScalarField, PairingGadget>;
     type MarlinMode = MarlinTestnet2Mode;
     type MerkleHashGadget =
-        BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Self::InnerScalarField, EdwardsBlsGadget>;
+        BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
     type MerkleParameters = CommitmentMerkleParameters;
     type NoopProgramSNARK = MarlinSNARK<
         Self::InnerScalarField,

@@ -37,7 +37,7 @@ use crate::{
         crh::{BoweHopwoodPedersenCompressedCRHGadget, PedersenCRHGadget, PedersenCompressedCRHGadget},
         merkle_tree::*,
     },
-    curves::edwards_bls12::EdwardsBlsGadget,
+    curves::edwards_bls12::EdwardsBls12Gadget,
     integers::uint::UInt8,
     traits::{
         algorithms::{CRHGadget, MaskedCRHGadget},
@@ -196,7 +196,7 @@ mod merkle_tree_pedersen_crh_on_affine {
     define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
 
     type H = PedersenCRH<EdwardsAffine, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-    type HG = PedersenCRHGadget<EdwardsAffine, Fr, EdwardsBlsGadget>;
+    type HG = PedersenCRHGadget<EdwardsAffine, Fr, EdwardsBls12Gadget>;
 
     #[test]
     fn good_root_test() {
@@ -226,7 +226,7 @@ mod merkle_tree_compressed_pedersen_crh_on_projective {
     define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
 
     type H = PedersenCompressedCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-    type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBlsGadget>;
+    type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
 
     #[test]
     fn good_root_test() {
@@ -277,7 +277,7 @@ mod merkle_tree_bowe_hopwood_pedersen_compressed_crh_on_projective {
     define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
 
     type H = BoweHopwoodPedersenCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
-    type HG = BoweHopwoodPedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBlsGadget>;
+    type HG = BoweHopwoodPedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
 
     #[test]
     fn good_root_test() {

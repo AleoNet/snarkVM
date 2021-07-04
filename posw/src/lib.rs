@@ -43,7 +43,7 @@ pub type Marlin<E> =
     snarkvm_marlin::snark::MarlinSystem<E, PoswCircuit<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
 
 /// A generic PoSW.
-type Posw<S, E> = posw::Posw<S, <E as PairingEngine>::Fr, M, HG, params::PoSWParams>;
+pub type Posw<S, E> = posw::Posw<S, <E as PairingEngine>::Fr, M, HG, params::PoSWParams>;
 
 /// Instantiate the circuit with the CRH to Fq.
 type PoswCircuit<F> = circuit::POSWCircuit<F, M, HG, params::PoSWParams>;

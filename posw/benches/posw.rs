@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_curves::bls12_377::Bls12_377;
-use snarkvm_posw::{txids_to_roots, Marlin, PoswMarlin, GM17};
+use snarkvm_posw::{txids_to_roots, Marlin, Posw, PoswMarlin, GM17};
 use snarkvm_utilities::bytes::FromBytes;
 
 use criterion::{criterion_group, criterion_main, Criterion};

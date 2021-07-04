@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    edwards_sw6::{Fq, Fr},
+    edwards_bw6::{Fq, Fr},
     errors::GroupError,
     templates::twisted_edwards_extended::{GroupAffine, GroupProjective},
     traits::{ModelParameters, MontgomeryModelParameters, TEModelParameters},

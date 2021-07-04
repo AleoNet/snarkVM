@@ -19,7 +19,7 @@ use crate::{
         prf::Blake2sGadget,
         signature::{SchnorrParametersGadget, SchnorrPublicKeyGadget, SchnorrPublicKeyRandomizationGadget},
     },
-    curves::edwards_bls12::EdwardsBlsGadget,
+    curves::edwards_bls12::EdwardsBls12Gadget,
     fields::FpGadget,
     integers::uint::UInt8,
     traits::{algorithms::SignaturePublicKeyRandomizationGadget, alloc::AllocGadget, eq::EqGadget},
@@ -36,7 +36,7 @@ use rand_chacha::ChaChaRng;
 
 type SchnorrScheme = Schnorr<EdwardsAffine, Blake2s>;
 type TestSignature = Schnorr<EdwardsAffine, Blake2s>;
-type TestSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, Fr, EdwardsBlsGadget, FpGadget<Fr>>;
+type TestSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, Fr, EdwardsBls12Gadget, FpGadget<Fr>>;
 
 #[test]
 fn test_schnorr_signature_randomize_public_key_gadget() {
@@ -81,7 +81,7 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
     )
     .unwrap();
 
-    let candidate_public_key_gadget = SchnorrPublicKeyGadget::<EdwardsAffine, Fr, EdwardsBlsGadget>::alloc(
+    let candidate_public_key_gadget = SchnorrPublicKeyGadget::<EdwardsAffine, Fr, EdwardsBls12Gadget>::alloc(
         &mut cs.ns(|| "candidate_public_key"),
         || Ok(&public_key),
     )
@@ -92,7 +92,7 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
     let candidate_randomized_public_key_gadget = <SchnorrPublicKeyRandomizationGadget<
         EdwardsAffine,
         Fr,
-        EdwardsBlsGadget,
+        EdwardsBls12Gadget,
         FpGadget<Fr>,
     > as SignaturePublicKeyRandomizationGadget<SchnorrScheme, Fr>>::check_randomization_gadget(
         &mut cs.ns(|| "candidate_randomized_public_key"),
@@ -105,7 +105,7 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
     // Circuit Schnorr randomized public key (given)
 
     let given_randomized_public_key_gadget =
-        SchnorrPublicKeyGadget::<EdwardsAffine, Fr, EdwardsBlsGadget>::alloc_input(
+        SchnorrPublicKeyGadget::<EdwardsAffine, Fr, EdwardsBls12Gadget>::alloc_input(
             &mut cs.ns(|| "given_randomized_public_key"),
             || Ok(randomized_public_key),
         )

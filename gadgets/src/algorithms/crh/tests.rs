@@ -34,7 +34,7 @@ use crate::{
         PedersenCRHGadget,
         PedersenCompressedCRHGadget,
     },
-    curves::edwards_bls12::EdwardsBlsGadget,
+    curves::edwards_bls12::EdwardsBls12Gadget,
     integers::uint::UInt8,
     traits::{
         algorithms::{CRHGadget, MaskedCRHGadget},
@@ -163,7 +163,7 @@ mod pedersen_crh_gadget_on_projective {
     use super::*;
 
     type TestCRH = PedersenCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-    type TestCRHGadget = PedersenCRHGadget<EdwardsProjective, Fr, EdwardsBlsGadget>;
+    type TestCRHGadget = PedersenCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
 
     #[test]
     fn primitive_gadget_test() {
@@ -180,7 +180,7 @@ mod pedersen_crh_gadget_on_affine {
     use super::*;
 
     type TestCRH = PedersenCRH<EdwardsAffine, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-    type TestCRHGadget = PedersenCRHGadget<EdwardsAffine, Fr, EdwardsBlsGadget>;
+    type TestCRHGadget = PedersenCRHGadget<EdwardsAffine, Fr, EdwardsBls12Gadget>;
 
     #[test]
     fn primitive_gadget_test() {
@@ -192,7 +192,7 @@ mod pedersen_compressed_crh_gadget_on_projective {
     use super::*;
 
     type TestCRH = PedersenCompressedCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-    type TestCRHGadget = PedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBlsGadget>;
+    type TestCRHGadget = PedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
 
     #[test]
     fn primitive_gadget_test() {
@@ -211,7 +211,7 @@ mod bowe_hopwood_pedersen_crh_gadget_on_projective {
     use super::*;
 
     type TestCRH = BoweHopwoodPedersenCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
-    type TestCRHGadget = BoweHopwoodPedersenCRHGadget<EdwardsProjective, Fr, EdwardsBlsGadget>;
+    type TestCRHGadget = BoweHopwoodPedersenCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
 
     #[test]
     fn primitive_gadget_test() {
@@ -223,7 +223,7 @@ mod bowe_hopwood_pedersen_compressed_crh_gadget_on_projective {
     use super::*;
 
     type TestCRH = BoweHopwoodPedersenCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
-    type TestCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBlsGadget>;
+    type TestCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
 
     #[test]
     fn primitive_gadget_test() {
