@@ -99,7 +99,7 @@ fn dpc_testnet1_integration_test() {
         )
         .unwrap();
         let old_record = DPC::generate_record(
-            &parameters.system_parameters,
+            &parameters.system_parameters.record_commitment,
             old_sn_nonce,
             genesis_account.address.clone(),
             true, // The input record is dummy
@@ -266,7 +266,7 @@ fn test_transaction_kernel_serialization() {
         <Components as DPCComponents>::SerialNumberNonceCRH::hash(&system_parameters.serial_number_nonce, &[0u8; 1])
             .unwrap();
     let old_record = DPC::generate_record(
-        &system_parameters,
+        &system_parameters.record_commitment,
         sn_nonce,
         test_account.address.clone(),
         true,
@@ -366,7 +366,7 @@ fn test_testnet1_dpc_execute_constraints() {
         <Components as DPCComponents>::SerialNumberNonceCRH::hash(&system_parameters.serial_number_nonce, &[0u8; 1])
             .unwrap();
     let old_record = DPC::generate_record(
-        &system_parameters,
+        &system_parameters.record_commitment,
         sn_nonce,
         dummy_account.address,
         true,

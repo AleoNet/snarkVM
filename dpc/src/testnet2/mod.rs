@@ -240,7 +240,7 @@ where
 
     #[allow(clippy::too_many_arguments)]
     pub fn generate_record<R: Rng + CryptoRng>(
-        system_parameters: &SystemParameters<C>,
+        record_commitment_parameters: &C::RecordCommitment,
         sn_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
         owner: Address<C>,
         is_dummy: bool,
@@ -265,11 +265,8 @@ where
             sn_nonce          // 256 bits = 32 bytes
         ]?;
 
-        let commitment = C::RecordCommitment::commit(
-            &system_parameters.record_commitment,
-            &commitment_input,
-            &commitment_randomness,
-        )?;
+        let commitment =
+            C::RecordCommitment::commit(&record_commitment_parameters, &commitment_input, &commitment_randomness)?;
 
         let record = Record {
             owner,
@@ -456,7 +453,7 @@ where
             end_timer!(sn_nonce_time);
 
             let record = Self::generate_record(
-                &parameters,
+                &parameters.record_commitment,
                 sn_nonce,
                 new_record_owner,
                 new_is_dummy_flags[j],

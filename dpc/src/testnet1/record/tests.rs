@@ -51,7 +51,7 @@ fn test_record_encoding() {
         .unwrap();
 
         for _ in 0..ITERATIONS {
-            let dummy_account = Account::new(
+            let dummy_account = Account::<Components>::new(
                 &system_parameters.account_signature,
                 &system_parameters.account_commitment,
                 &system_parameters.account_encryption,
@@ -64,7 +64,7 @@ fn test_record_encoding() {
             let payload: [u8; 32] = rng.gen();
 
             let given_record = DPC::generate_record(
-                &system_parameters,
+                &system_parameters.record_commitment,
                 <Components as DPCComponents>::SerialNumberNonceCRH::hash(
                     &system_parameters.serial_number_nonce,
                     &sn_nonce_input,
@@ -130,7 +130,7 @@ fn test_record_encryption() {
             let payload: [u8; 32] = rng.gen();
 
             let given_record = DPC::generate_record(
-                &system_parameters,
+                &system_parameters.record_commitment,
                 <Components as DPCComponents>::SerialNumberNonceCRH::hash(
                     &system_parameters.serial_number_nonce,
                     &sn_nonce_input,
