@@ -17,16 +17,14 @@
 pub mod encoded;
 pub use encoded::*;
 
-pub mod encrypted_record;
-pub use encrypted_record::*;
+pub mod encrypted;
+pub use encrypted::*;
+
+pub mod payload;
+pub use payload::*;
 
 pub mod record;
 pub use record::*;
-
-pub mod record_encryption;
-pub use record_encryption::*;
-
-pub mod payload;
 
 #[cfg(test)]
 mod tests;

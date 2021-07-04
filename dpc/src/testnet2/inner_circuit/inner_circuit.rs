@@ -16,10 +16,10 @@
 
 use crate::{
     testnet2::{
+        encrypted::RecordEncryptionGadgetComponents,
         inner_circuit_gadget::execute_inner_proof_gadget,
         parameters::SystemParameters,
         record::Record,
-        record_encryption::RecordEncryptionGadgetComponents,
         Testnet2Components,
     },
     AleoAmount,

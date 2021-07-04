@@ -14,19 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod encrypted_record;
-pub use encrypted_record::*;
-
-pub mod record;
-pub use record::*;
-
 pub mod encoded;
 pub use encoded::*;
 
-pub mod record_encryption;
-pub use record_encryption::*;
+pub mod encrypted;
+pub use encrypted::*;
 
 pub mod payload;
+pub use payload::*;
+
+pub mod record;
+pub use record::*;
 
 #[cfg(test)]
 mod tests;

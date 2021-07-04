@@ -28,7 +28,7 @@ use snarkvm_dpc::{
         instantiated::*,
         parameters::{NoopProgramSNARKParameters, SystemParameters},
         program::NoopProgram,
-        record::{payload::Payload, record_encryption::RecordEncryption},
+        record::{EncryptedRecord, Payload},
         Testnet1Components,
         TransactionKernel,
         DPC,
@@ -215,8 +215,7 @@ fn dpc_testnet1_integration_test() {
             .unwrap();
 
             let decrypted_record =
-                RecordEncryption::decrypt_record(&parameters.system_parameters, &account_view_key, encrypted_record)
-                    .unwrap();
+                EncryptedRecord::decrypt(&parameters.system_parameters, &account_view_key, encrypted_record).unwrap();
 
             assert_eq!(decrypted_record, new_record);
         }
@@ -542,7 +541,7 @@ fn test_execute_base_dpc_constraints() {
     let mut new_records_encryption_gadget_components = Vec::with_capacity(Components::NUM_OUTPUT_RECORDS);
     for (record, ciphertext_randomness) in new_records.iter().zip_eq(&new_records_encryption_randomness) {
         let record_encryption_gadget_components =
-            RecordEncryption::prepare_encryption_gadget_components(&system_parameters, &record, ciphertext_randomness)
+            EncryptedRecord::prepare_encryption_gadget_components(&system_parameters, &record, ciphertext_randomness)
                 .unwrap();
 
         new_records_encryption_gadget_components.push(record_encryption_gadget_components);

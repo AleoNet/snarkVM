@@ -18,9 +18,9 @@ use std::ops::Mul;
 
 use crate::{
     testnet2::{
+        encrypted::RecordEncryptionGadgetComponents,
         parameters::SystemParameters,
         record::Record,
-        record_encryption::RecordEncryptionGadgetComponents,
         Testnet2Components,
     },
     traits::RecordScheme,

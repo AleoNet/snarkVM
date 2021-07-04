@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{encoded::*, record_encryption::*};
+use super::{encoded::*, encrypted::*};
 use crate::{
     testnet1::{instantiated::*, payload::Payload, DPC},
     traits::{AccountScheme, DPCComponents, EncodedRecordScheme},
@@ -147,8 +147,7 @@ fn test_record_encryption() {
             .unwrap();
 
             // Encrypt the record
-            let (_, encryped_record) =
-                RecordEncryption::encrypt_record(&system_parameters, &given_record, &mut rng).unwrap();
+            let (_, encryped_record) = EncryptedRecord::encrypt(&system_parameters, &given_record, &mut rng).unwrap();
             let account_view_key = ViewKey::from_private_key(
                 &system_parameters.account_signature,
                 &system_parameters.account_commitment,
@@ -158,7 +157,7 @@ fn test_record_encryption() {
 
             // Decrypt the record
             let decrypted_record =
-                RecordEncryption::decrypt_record(&system_parameters, &account_view_key, &encryped_record).unwrap();
+                EncryptedRecord::decrypt(&system_parameters, &account_view_key, &encryped_record).unwrap();
 
             assert_eq!(given_record, decrypted_record);
         }

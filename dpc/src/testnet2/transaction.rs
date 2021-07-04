@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet2::{record::encrypted_record::*, Testnet2Components},
+    testnet2::{record::encrypted::*, Testnet2Components},
     traits::TransactionScheme,
     AleoAmount,
     Network,

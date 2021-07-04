@@ -817,8 +817,7 @@ where
         let mut new_encrypted_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
         for record in &new_records {
-            let (record_encryption_randomness, encrypted_record) =
-                RecordEncryption::encrypt_record(&parameters, record, rng)?;
+            let (record_encryption_randomness, encrypted_record) = EncryptedRecord::encrypt(&parameters, record, rng)?;
 
             new_records_encryption_randomness.push(record_encryption_randomness);
             new_encrypted_records.push(encrypted_record);
@@ -828,7 +827,7 @@ where
 
         let mut new_encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         for encrypted_record in &new_encrypted_records {
-            let encrypted_record_hash = RecordEncryption::encrypted_record_hash(&parameters, &encrypted_record)?;
+            let encrypted_record_hash = EncryptedRecord::encrypted_record_hash(&parameters, &encrypted_record)?;
 
             new_encrypted_record_hashes.push(encrypted_record_hash);
         }
@@ -962,7 +961,7 @@ where
         let mut new_records_encryption_gadget_components = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
         for (record, ciphertext_randomness) in new_records.iter().zip_eq(&new_records_encryption_randomness) {
-            let record_encryption_gadget_components = RecordEncryption::prepare_encryption_gadget_components(
+            let record_encryption_gadget_components = EncryptedRecord::prepare_encryption_gadget_components(
                 &system_parameters,
                 &record,
                 ciphertext_randomness,
@@ -1159,7 +1158,7 @@ where
         let mut new_encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         for encrypted_record in &transaction.encrypted_records {
             let encrypted_record_hash =
-                RecordEncryption::encrypted_record_hash(&parameters.system_parameters, encrypted_record)?;
+                EncryptedRecord::encrypted_record_hash(&parameters.system_parameters, encrypted_record)?;
 
             new_encrypted_record_hashes.push(encrypted_record_hash);
         }
