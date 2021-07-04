@@ -34,7 +34,13 @@ use std::{
 };
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "G: Group"), Debug(bound = "G: Group"), Default(bound = "G: Group"))]
+#[derivative(
+    Clone(bound = "G: Group"),
+    Debug(bound = "G: Group"),
+    Default(bound = "G: Group"),
+    PartialEq(bound = "G: Group"),
+    Eq(bound = "G: Group")
+)]
 pub struct SchnorrSignature<G: Group> {
     pub prover_response: <G as Group>::ScalarField,
     pub verifier_challenge: <G as Group>::ScalarField,

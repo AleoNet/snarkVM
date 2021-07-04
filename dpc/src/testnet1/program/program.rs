@@ -18,11 +18,11 @@ use crate::testnet1::Testnet1Components;
 use snarkvm_algorithms::traits::{CommitmentScheme, CRH};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
-/// Program verification key and proof
+/// Program verifying key and proof
 /// Represented as bytes to be generic for any Program SNARK
 #[derive(Clone)]
 pub struct PrivateProgramInput {
-    pub verification_key: Vec<u8>,
+    pub verifying_key: Vec<u8>,
     pub proof: Vec<u8>,
 }
 

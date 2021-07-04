@@ -103,6 +103,11 @@ impl<C: Testnet1Components> Transaction<C> {
         signatures: Vec<<C::AccountSignature as SignatureScheme>::Signature>,
         encrypted_records: Vec<EncryptedRecord<C>>,
     ) -> Self {
+        assert_eq!(C::NUM_INPUT_RECORDS, old_serial_numbers.len());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, new_commitments.len());
+        assert_eq!(C::NUM_INPUT_RECORDS, signatures.len());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, encrypted_records.len());
+
         Self {
             old_serial_numbers,
             new_commitments,
@@ -129,18 +134,19 @@ impl<C: Testnet1Components> TransactionScheme for Transaction<C> {
     type Memorandum = [u8; 32];
     type ProgramCommitment = <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output;
     type SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey;
+    type Signature = <C::AccountSignature as SignatureScheme>::Signature;
     type ValueBalance = AleoAmount;
 
     /// Transaction id = Hash of (serial numbers || commitments || memo)
     fn transaction_id(&self) -> Result<[u8; 32], TransactionError> {
         let mut pre_image_bytes: Vec<u8> = vec![];
 
-        for sn in self.old_serial_numbers() {
-            pre_image_bytes.extend(&to_bytes![sn]?);
+        for serial_number in self.old_serial_numbers() {
+            pre_image_bytes.extend(&to_bytes![serial_number]?);
         }
 
-        for cm in self.new_commitments() {
-            pre_image_bytes.extend(&to_bytes![cm]?);
+        for commitment in self.new_commitments() {
+            pre_image_bytes.extend(&to_bytes![commitment]?);
         }
 
         pre_image_bytes.extend(self.memorandum());
@@ -173,6 +179,10 @@ impl<C: Testnet1Components> TransactionScheme for Transaction<C> {
         self.new_commitments.as_slice()
     }
 
+    fn memorandum(&self) -> &Self::Memorandum {
+        &self.memorandum
+    }
+
     fn program_commitment(&self) -> &Self::ProgramCommitment {
         &self.program_commitment
     }
@@ -185,12 +195,12 @@ impl<C: Testnet1Components> TransactionScheme for Transaction<C> {
         self.value_balance
     }
 
-    fn encrypted_records(&self) -> &[Self::EncryptedRecord] {
-        &self.encrypted_records
+    fn signatures(&self) -> &[Self::Signature] {
+        &self.signatures
     }
 
-    fn memorandum(&self) -> &Self::Memorandum {
-        &self.memorandum
+    fn encrypted_records(&self) -> &[Self::EncryptedRecord] {
+        &self.encrypted_records
     }
 
     fn size(&self) -> usize {

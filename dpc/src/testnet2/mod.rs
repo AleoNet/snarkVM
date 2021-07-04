@@ -22,7 +22,6 @@ use crate::{
     AleoAmount,
     DPCError,
     Network,
-    PrivateKey,
 };
 use snarkvm_algorithms::{
     commitment_tree::CommitmentMerkleTree,
@@ -42,12 +41,7 @@ use snarkvm_marlin::{
     FiatShamirRng,
 };
 use snarkvm_polycommit::PolynomialCommitment;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    has_duplicates,
-    rand::UniformRand,
-    to_bytes,
-};
+use snarkvm_utilities::{bytes::ToBytes, has_duplicates, rand::UniformRand, to_bytes};
 
 use itertools::{izip, Itertools};
 use rand::{CryptoRng, Rng};
@@ -198,11 +192,11 @@ where
         let local_data_crh = C::LocalDataCRH::setup(rng);
         end_timer!(time);
 
-        let time = start_timer!(|| "Program verification key CRH setup");
+        let time = start_timer!(|| "Program verifying key CRH setup");
         let program_verification_key_crh = C::ProgramVerificationKeyCRH::setup(rng);
         end_timer!(time);
 
-        let time = start_timer!(|| "Program verification key commitment setup");
+        let time = start_timer!(|| "Program verifying key commitment setup");
         let program_verification_key_commitment = C::ProgramVerificationKeyCommitment::setup(rng);
         end_timer!(time);
 
@@ -263,28 +257,6 @@ where
             proving_key: pk,
             verifying_key: pvk.into(),
         })
-    }
-
-    pub fn generate_sn(
-        system_parameters: &SystemParameters<C>,
-        record: &Record<C>,
-        account_private_key: &PrivateKey<C>,
-    ) -> Result<(<C::AccountSignature as SignatureScheme>::PublicKey, Vec<u8>), DPCError> {
-        let sn_time = start_timer!(|| "Generate serial number");
-        let sk_prf = &account_private_key.sk_prf;
-        let sn_nonce = to_bytes!(record.serial_number_nonce())?;
-        // Compute the serial number.
-        let prf_input = FromBytes::read(sn_nonce.as_slice())?;
-        let prf_seed = FromBytes::read(to_bytes!(sk_prf)?.as_slice())?;
-        let sig_and_pk_randomizer = to_bytes![C::PRF::evaluate(&prf_seed, &prf_input)?]?;
-
-        let sn = C::AccountSignature::randomize_public_key(
-            &system_parameters.account_signature,
-            &account_private_key.pk_sig(&system_parameters.account_signature)?,
-            &sig_and_pk_randomizer,
-        )?;
-        end_timer!(sn_time);
-        Ok((sn, sig_and_pk_randomizer))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -471,7 +443,8 @@ where
                 value_balance = value_balance.add(AleoAmount::from_bytes(record.value() as i64));
             }
 
-            let (sn, randomizer) = Self::generate_sn(&parameters, record, &old_account_private_keys[i])?;
+            let (sn, randomizer) =
+                record.to_serial_number(&parameters.account_signature, &old_account_private_keys[i])?;
             joint_serial_numbers.extend_from_slice(&to_bytes![sn]?);
             old_serial_numbers.push(sn);
             old_randomizers.push(randomizer);
@@ -608,7 +581,7 @@ where
 
         let mut new_encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         for encrypted_record in &new_encrypted_records {
-            let encrypted_record_hash = EncryptedRecord::encrypted_record_hash(&parameters, &encrypted_record)?;
+            let encrypted_record_hash = encrypted_record.to_hash(&parameters)?;
 
             new_encrypted_record_hashes.push(encrypted_record_hash);
         }
@@ -794,9 +767,11 @@ where
                 network_id,
             };
 
-            let verification_key = &parameters.inner_snark_parameters.1;
-
-            assert!(C::InnerSNARK::verify(verification_key, &input, &inner_proof)?);
+            assert!(C::InnerSNARK::verify(
+                &parameters.inner_snark_parameters.1,
+                &input,
+                &inner_proof
+            )?);
         }
 
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = parameters.inner_snark_parameters.1.clone().into();
@@ -861,9 +836,21 @@ where
     ) -> anyhow::Result<bool> {
         let verify_time = start_timer!(|| "DPC::verify");
 
+        // Returns false if the number of serial numbers in the transaction is incorrect.
+        if transaction.old_serial_numbers().len() != C::NUM_INPUT_RECORDS {
+            eprintln!("Transaction contains incorrect number of serial numbers");
+            return Ok(false);
+        }
+
         // Returns false if there are duplicate serial numbers in the transaction.
         if has_duplicates(transaction.old_serial_numbers().iter()) {
             eprintln!("Transaction contains duplicate serial numbers");
+            return Ok(false);
+        }
+
+        // Returns false if the number of commitments in the transaction is incorrect.
+        if transaction.new_commitments().len() != C::NUM_OUTPUT_RECORDS {
+            eprintln!("Transaction contains incorrect number of commitments");
             return Ok(false);
         }
 
@@ -907,6 +894,12 @@ where
 
         let signature_time = start_timer!(|| "Signature checks");
 
+        // Returns false if the number of signatures in the transaction is incorrect.
+        if transaction.signatures().len() != C::NUM_OUTPUT_RECORDS {
+            eprintln!("Transaction contains incorrect number of commitments");
+            return Ok(false);
+        }
+
         let signature_message = &to_bytes![
             transaction.network_id(),
             transaction.ledger_digest(),
@@ -919,7 +912,7 @@ where
         ]?;
 
         let account_signature = &parameters.system_parameters.account_signature;
-        for (pk, sig) in transaction.old_serial_numbers().iter().zip(&transaction.signatures) {
+        for (pk, sig) in transaction.old_serial_numbers().iter().zip(transaction.signatures()) {
             if !C::AccountSignature::verify(account_signature, pk, signature_message, sig)? {
                 eprintln!("Signature didn't verify.");
                 return Ok(false);
@@ -930,12 +923,15 @@ where
 
         // Construct the ciphertext hashes
 
-        let mut new_encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-        for encrypted_record in &transaction.encrypted_records {
-            let encrypted_record_hash =
-                EncryptedRecord::encrypted_record_hash(&parameters.system_parameters, encrypted_record)?;
+        // Returns false if the number of encrypted records in the transaction is incorrect.
+        if transaction.encrypted_records().len() != C::NUM_OUTPUT_RECORDS {
+            eprintln!("Transaction contains incorrect number of encrypted records");
+            return Ok(false);
+        }
 
-            new_encrypted_record_hashes.push(encrypted_record_hash);
+        let mut new_encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+        for encrypted_record in transaction.encrypted_records() {
+            new_encrypted_record_hashes.push(encrypted_record.to_hash(&parameters.system_parameters)?);
         }
 
         let inner_snark_input = InnerCircuitVerifierInput {

@@ -168,7 +168,7 @@ impl<E: PairingEngine> Proof<E> {
     }
 }
 
-/// A verification key in the GM17 SNARK.
+/// A verifying key in the GM17 SNARK.
 #[derive(Clone, Debug, Eq)]
 pub struct VerifyingKey<E: PairingEngine> {
     pub h_g2: E::G2Affine,
@@ -217,7 +217,7 @@ impl<E: PairingEngine> PartialEq for VerifyingKey<E> {
 }
 
 impl<E: PairingEngine> VerifyingKey<E> {
-    /// Serialize the verification key into bytes, for storage on disk
+    /// Serialize the verifying key into bytes, for storage on disk
     /// or transmission over the network.
     pub fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.h_g2.write(&mut writer)?;
@@ -232,7 +232,7 @@ impl<E: PairingEngine> VerifyingKey<E> {
         Ok(())
     }
 
-    /// Deserialize the verification key from bytes.
+    /// Deserialize the verifying key from bytes.
     pub fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let h_g2: E::G2Affine = FromBytes::read(&mut reader)?;
         let g_alpha_g1: E::G1Affine = FromBytes::read(&mut reader)?;
@@ -434,7 +434,7 @@ impl<E: PairingEngine> ProvingKey<E> {
     }
 }
 
-/// Preprocessed verification key parameters that enable faster verification
+/// Preprocessed verifying key parameters that enable faster verification
 /// at the expense of larger size in memory.
 #[derive(Clone, Debug)]
 pub struct PreparedVerifyingKey<E: PairingEngine> {

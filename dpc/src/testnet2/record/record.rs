@@ -18,15 +18,21 @@ use crate::{
     testnet2::{payload::Payload, Testnet2Components},
     traits::RecordScheme,
     Address,
+    PrivateKey,
+    RecordError,
 };
-use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH};
+use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH, PRF};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     to_bytes,
     variable_length_integer::*,
 };
 
-use std::io::{Read, Result as IoResult, Write};
+use std::{
+    fmt,
+    io::{Read, Result as IoResult, Write},
+    str::FromStr,
+};
 
 #[derive(Derivative)]
 #[derivative(
@@ -55,6 +61,29 @@ pub struct Record<C: Testnet2Components> {
 
 fn default_program_id<C: CRH>() -> Vec<u8> {
     to_bytes![C::Output::default()].unwrap()
+}
+
+impl<C: Testnet2Components> Record<C> {
+    pub fn to_serial_number(
+        &self,
+        signature_parameters: &C::AccountSignature,
+        account_private_key: &PrivateKey<C>,
+    ) -> Result<(<C::AccountSignature as SignatureScheme>::PublicKey, Vec<u8>), RecordError> {
+        let timer = start_timer!(|| "Generate serial number");
+
+        // Compute the serial number.
+        let seed = FromBytes::read(to_bytes!(&account_private_key.sk_prf)?.as_slice())?;
+        let input = FromBytes::read(to_bytes!(self.serial_number_nonce)?.as_slice())?;
+        let randomizer = to_bytes![C::PRF::evaluate(&seed, &input)?]?;
+        let serial_number = C::AccountSignature::randomize_public_key(
+            &signature_parameters,
+            &account_private_key.pk_sig(&signature_parameters)?,
+            &randomizer,
+        )?;
+
+        end_timer!(timer);
+        Ok((serial_number, randomizer))
+    }
 }
 
 impl<C: Testnet2Components> RecordScheme for Record<C> {
@@ -165,5 +194,24 @@ impl<C: Testnet2Components> FromBytes for Record<C> {
             commitment,
             commitment_randomness,
         })
+    }
+}
+
+impl<C: Testnet2Components> FromStr for Record<C> {
+    type Err = RecordError;
+
+    fn from_str(record: &str) -> Result<Self, Self::Err> {
+        let record = hex::decode(record)?;
+        Ok(Self::read(&record[..])?)
+    }
+}
+
+impl<C: Testnet2Components> fmt::Display for Record<C> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            hex::encode(to_bytes![self].expect("serialization to bytes failed"))
+        )
     }
 }

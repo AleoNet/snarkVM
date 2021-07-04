@@ -18,9 +18,10 @@ use crate::{
     testnet1::{payload::Payload, Testnet1Components},
     traits::RecordScheme,
     Address,
+    PrivateKey,
     RecordError,
 };
-use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH};
+use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH, PRF};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     to_bytes,
@@ -60,6 +61,29 @@ pub struct Record<C: Testnet1Components> {
     pub(crate) serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
     pub(crate) commitment: <C::RecordCommitment as CommitmentScheme>::Output,
     pub(crate) commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
+}
+
+impl<C: Testnet1Components> Record<C> {
+    pub fn to_serial_number(
+        &self,
+        signature_parameters: &C::AccountSignature,
+        account_private_key: &PrivateKey<C>,
+    ) -> Result<(<C::AccountSignature as SignatureScheme>::PublicKey, Vec<u8>), RecordError> {
+        let timer = start_timer!(|| "Generate serial number");
+
+        // Compute the serial number.
+        let seed = FromBytes::read(to_bytes!(&account_private_key.sk_prf)?.as_slice())?;
+        let input = FromBytes::read(to_bytes!(self.serial_number_nonce)?.as_slice())?;
+        let randomizer = to_bytes![C::PRF::evaluate(&seed, &input)?]?;
+        let serial_number = C::AccountSignature::randomize_public_key(
+            &signature_parameters,
+            &account_private_key.pk_sig(&signature_parameters)?,
+            &randomizer,
+        )?;
+
+        end_timer!(timer);
+        Ok((serial_number, randomizer))
+    }
 }
 
 impl<C: Testnet1Components> RecordScheme for Record<C> {
@@ -176,7 +200,6 @@ impl<C: Testnet1Components> FromStr for Record<C> {
 
     fn from_str(record: &str) -> Result<Self, Self::Err> {
         let record = hex::decode(record)?;
-
         Ok(Self::read(&record[..])?)
     }
 }

@@ -14,12 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{CRHError, CommitmentError, EncryptionError};
+use crate::AccountError;
+use snarkvm_algorithms::{CRHError, CommitmentError, EncryptionError, PRFError, SignatureError};
 
 use hex::FromHexError;
 
 #[derive(Debug, Error)]
 pub enum RecordError {
+    #[error("{}", _0)]
+    AccountError(AccountError),
+
     #[error("Failed to build Record data type. See console logs for error")]
     BuilderError,
 
@@ -58,6 +62,30 @@ pub enum RecordError {
 
     #[error("Attempted to set `is_dummy: true` on a record with a non-zero value")]
     NonZeroValue,
+
+    #[error("{}", _0)]
+    PRFError(PRFError),
+
+    #[error("{}", _0)]
+    SignatureError(SignatureError),
+}
+
+impl From<AccountError> for RecordError {
+    fn from(error: AccountError) -> Self {
+        RecordError::AccountError(error)
+    }
+}
+
+impl From<PRFError> for RecordError {
+    fn from(error: PRFError) -> Self {
+        RecordError::PRFError(error)
+    }
+}
+
+impl From<SignatureError> for RecordError {
+    fn from(error: SignatureError) -> Self {
+        RecordError::SignatureError(error)
+    }
 }
 
 impl From<std::io::Error> for RecordError {

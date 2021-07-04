@@ -76,11 +76,11 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     value_balance: AleoAmount,
     network_id: u8,
 
-    // Inner snark verifier private inputs (verification key and proof)
+    // Inner snark verifier private inputs (verifying key and proof)
     inner_snark_vk: &<C::InnerSNARK as SNARK>::VerifyingKey,
     inner_snark_proof: &<C::InnerSNARK as SNARK>::Proof,
 
-    // Program verification keys and proofs
+    // Program verifying keys and proofs
     program_proofs: &[PrivateProgramInput],
 
     // Rest
@@ -313,7 +313,7 @@ where
     // ************************************************************************
 
     let inner_snark_vk = <C::InnerSNARKGadget as SNARKVerifierGadget<_, _>>::VerificationKeyGadget::alloc(
-        &mut cs.ns(|| "Allocate inner snark verification key"),
+        &mut cs.ns(|| "Allocate inner snark verifying key"),
         || Ok(inner_snark_vk),
     )?;
 
@@ -369,8 +369,8 @@ where
 
         let death_program_vk =
             <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::VerificationKeyGadget::alloc_bytes(
-                &mut cs.ns(|| "Allocate verification key"),
-                || Ok(&input.verification_key),
+                &mut cs.ns(|| "Allocate verifying key"),
+                || Ok(&input.verifying_key),
             )?;
 
         let death_program_vk_bytes = death_program_vk.to_bytes(&mut cs.ns(|| "Convert death pred vk to bytes"))?;
@@ -411,8 +411,8 @@ where
 
         let birth_program_vk =
             <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::VerificationKeyGadget::alloc_bytes(
-                &mut cs.ns(|| "Allocate verification key"),
-                || Ok(&input.verification_key),
+                &mut cs.ns(|| "Allocate verifying key"),
+                || Ok(&input.verifying_key),
             )?;
 
         let birth_program_vk_bytes = birth_program_vk.to_bytes(&mut cs.ns(|| "Convert birth pred vk to bytes"))?;

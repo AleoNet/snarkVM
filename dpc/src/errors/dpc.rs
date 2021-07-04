@@ -117,6 +117,12 @@ impl From<MerkleError> for DPCError {
     }
 }
 
+impl From<ParameterError> for DPCError {
+    fn from(error: ParameterError) -> Self {
+        DPCError::ParameterError(error)
+    }
+}
+
 impl From<PRFError> for DPCError {
     fn from(error: PRFError) -> Self {
         DPCError::PRFError(error)
@@ -126,12 +132,6 @@ impl From<PRFError> for DPCError {
 impl From<SignatureError> for DPCError {
     fn from(error: SignatureError) -> Self {
         DPCError::SignatureError(error)
-    }
-}
-
-impl From<ParameterError> for DPCError {
-    fn from(error: ParameterError) -> Self {
-        DPCError::ParameterError(error)
     }
 }
 

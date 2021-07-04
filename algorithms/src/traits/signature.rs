@@ -37,7 +37,7 @@ pub trait SignatureScheme: Sized + Clone + From<<Self as SignatureScheme>::Param
         + CanonicalSerialize
         + CanonicalDeserialize;
     type PrivateKey: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
-    type Signature: Clone + Debug + Default + ToBytes + FromBytes + Send + Sync;
+    type Signature: Clone + Debug + Default + ToBytes + FromBytes + Send + Sync + PartialEq + Eq;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self, SignatureError>;
 

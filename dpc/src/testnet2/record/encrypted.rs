@@ -227,15 +227,15 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
         })
     }
 
-    /// Returns the encrypted record hash
-    /// The hash input is the ciphertext x-coordinates appended with the selector bits
-    pub fn encrypted_record_hash(
+    /// Returns the encrypted record hash.
+    /// The hash input is the ciphertext x-coordinates appended with the selector bits.
+    pub fn to_hash(
+        &self,
         system_parameters: &SystemParameters<C>,
-        encrypted_record: &EncryptedRecord<C>,
     ) -> Result<<<C as DPCComponents>::EncryptedRecordCRH as CRH>::Output, DPCError> {
-        let mut ciphertext_affine_x = Vec::with_capacity(encrypted_record.encrypted_elements.len());
-        let mut selector_bits = Vec::with_capacity(encrypted_record.encrypted_elements.len() + 1);
-        for ciphertext_element in &encrypted_record.encrypted_elements {
+        let mut ciphertext_affine_x = Vec::with_capacity(self.encrypted_elements.len());
+        let mut selector_bits = Vec::with_capacity(self.encrypted_elements.len() + 1);
+        for ciphertext_element in &self.encrypted_elements {
             // Compress the ciphertext element to the affine x coordinate
             let ciphertext_element_affine =
                 <C as Testnet2Components>::EncryptionGroup::read(&to_bytes![ciphertext_element]?[..])?.into_affine();
@@ -256,7 +256,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
         }
 
         // Concatenate the ciphertext selector bits and the final fq_high selector bit
-        selector_bits.push(encrypted_record.final_fq_high_selector);
+        selector_bits.push(self.final_fq_high_selector);
         let selector_bytes = bits_to_bytes(&selector_bits);
 
         Ok(system_parameters
