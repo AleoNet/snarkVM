@@ -21,7 +21,7 @@ use crate::{
     ProgramScheme,
     RecordScheme,
 };
-use snarkvm_algorithms::{CommitmentScheme, CRH, SNARK};
+use snarkvm_algorithms::prelude::*;
 use snarkvm_utilities::{to_bytes, ToBytes};
 
 use rand::Rng;
@@ -91,17 +91,13 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
 
         let local_data_root = local_data.local_data_merkle_tree.root();
 
-        let circuit = NoopCircuit::<C>::new(&local_data.system_parameters, &local_data_root, position);
+        let circuit = NoopCircuit::<C>::new(&local_data.local_data_commitment_parameters, &local_data_root, position);
 
         let proof = <Self::ProofSystem as SNARK>::prove(&self.proving_key, &circuit, rng)?;
 
         {
             let program_pub_input: ProgramLocalData<C> = ProgramLocalData {
-                local_data_commitment_parameters: local_data
-                    .system_parameters
-                    .local_data_commitment
-                    .parameters()
-                    .clone(),
+                local_data_commitment_parameters: local_data.local_data_commitment_parameters.clone(),
                 local_data_root,
                 position,
             };

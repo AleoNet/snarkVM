@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::{
     crh::sha256::sha256,
-    traits::{MerkleParameters, SNARK},
+    traits::{CommitmentScheme, MerkleParameters, SNARK},
 };
 use snarkvm_dpc::{
     errors::DPCError,
@@ -70,7 +70,7 @@ pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
 
     let program_snark_proof = C::NoopProgramSNARK::prove(
         &noop_program_snark_parameters.proving_key,
-        &NoopCircuit::blank(&system_parameters),
+        &NoopCircuit::blank(system_parameters.local_data_commitment.parameters()),
         rng,
     )?;
     let private_program_input = PrivateProgramInput {

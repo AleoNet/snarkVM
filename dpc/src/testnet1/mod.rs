@@ -31,11 +31,12 @@ use snarkvm_gadgets::{
     bits::Boolean,
     traits::algorithms::{CRHGadget, SNARKVerifierGadget},
 };
-use snarkvm_utilities::{bytes::ToBytes, has_duplicates, rand::UniformRand, to_bytes};
+use snarkvm_parameters::{prelude::*, testnet1::*};
+use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes, FromBytes, ToBytes};
 
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
-use std::{marker::PhantomData, sync::Arc};
+use std::sync::Arc;
 
 pub mod inner_circuit;
 pub use inner_circuit::*;
@@ -56,9 +57,6 @@ pub mod transaction;
 pub use transaction::*;
 
 pub mod instantiated;
-
-#[cfg(test)]
-mod tests;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -107,7 +105,16 @@ pub trait Testnet1Components: DPCComponents {
 ///////////////////////////////////////////////////////////////////////////////
 
 pub struct DPC<C: Testnet1Components> {
-    _components: PhantomData<C>,
+    pub system_parameters: SystemParameters<C>,
+    pub noop_program_snark_parameters: NoopProgramSNARKParameters<C>,
+    pub inner_snark_parameters: (
+        Option<<C::InnerSNARK as SNARK>::ProvingKey>,
+        <C::InnerSNARK as SNARK>::PreparedVerifyingKey,
+    ),
+    pub outer_snark_parameters: (
+        Option<<C::OuterSNARK as SNARK>::ProvingKey>,
+        <C::OuterSNARK as SNARK>::PreparedVerifyingKey,
+    ),
 }
 
 impl<C: Testnet1Components> DPC<C> {
@@ -115,7 +122,10 @@ impl<C: Testnet1Components> DPC<C> {
         system_parameters: &SystemParameters<C>,
         rng: &mut R,
     ) -> Result<NoopProgramSNARKParameters<C>, DPCError> {
-        let (pk, pvk) = C::NoopProgramSNARK::setup(&NoopCircuit::blank(system_parameters), rng)?;
+        let (pk, pvk) = C::NoopProgramSNARK::setup(
+            &NoopCircuit::blank(system_parameters.local_data_commitment.parameters()),
+            rng,
+        )?;
 
         Ok(NoopProgramSNARKParameters {
             proving_key: pk,
@@ -137,26 +147,21 @@ where
 {
     type Account = Account<C>;
     type LocalData = LocalData<C>;
-    type NetworkParameters = PublicParameters<C>;
-    type Payload = <Self::Record as RecordScheme>::Payload;
     type PrivateProgramInput = PrivateProgramInput;
     type Record = Record<C>;
     type SystemParameters = SystemParameters<C>;
     type Transaction = Transaction<C>;
     type TransactionKernel = TransactionKernel<C>;
 
-    fn setup<R: Rng + CryptoRng>(
-        ledger_parameters: &Arc<C::MerkleParameters>,
-        rng: &mut R,
-    ) -> anyhow::Result<Self::NetworkParameters> {
+    fn setup<R: Rng + CryptoRng>(ledger_parameters: &Arc<C::MerkleParameters>, rng: &mut R) -> anyhow::Result<Self> {
         let setup_time = start_timer!(|| "DPC::setup");
-        let system_parameters = SystemParameters::<C>::setup(rng)?;
+        let system_parameters = Self::SystemParameters::setup(rng)?;
 
         let program_snark_setup_time = start_timer!(|| "Dummy program SNARK setup");
         let noop_program_snark_parameters = Self::generate_noop_program_snark_parameters(&system_parameters, rng)?;
         let program_snark_proof = C::NoopProgramSNARK::prove(
             &noop_program_snark_parameters.proving_key,
-            &NoopCircuit::blank(&system_parameters),
+            &NoopCircuit::blank(system_parameters.local_data_commitment.parameters()),
             rng,
         )?;
         end_timer!(program_snark_setup_time);
@@ -188,7 +193,7 @@ where
         end_timer!(snark_setup_time);
         end_timer!(setup_time);
 
-        Ok(PublicParameters {
+        Ok(Self {
             system_parameters,
             noop_program_snark_parameters,
             inner_snark_parameters: (Some(inner_snark_parameters.0), inner_snark_parameters.1),
@@ -196,15 +201,52 @@ where
         })
     }
 
-    fn create_account<R: Rng + CryptoRng>(
-        parameters: &Self::SystemParameters,
-        rng: &mut R,
-    ) -> anyhow::Result<Self::Account> {
+    fn load(verify_only: bool) -> anyhow::Result<Self> {
+        let timer = start_timer!(|| "DPC::load");
+        let system_parameters = Self::SystemParameters::load()?;
+        let noop_program_snark_parameters = NoopProgramSNARKParameters::<C>::load()?;
+
+        let inner_snark_parameters = {
+            let inner_snark_pk = match verify_only {
+                true => None,
+                false => Some(<C::InnerSNARK as SNARK>::ProvingKey::read(
+                    InnerSNARKPKParameters::load_bytes()?.as_slice(),
+                )?),
+            };
+            let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey =
+                <C::InnerSNARK as SNARK>::VerifyingKey::read(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
+
+            (inner_snark_pk, inner_snark_vk.into())
+        };
+
+        let outer_snark_parameters = {
+            let outer_snark_pk = match verify_only {
+                true => None,
+                false => Some(<C::OuterSNARK as SNARK>::ProvingKey::read(
+                    OuterSNARKPKParameters::load_bytes()?.as_slice(),
+                )?),
+            };
+            let outer_snark_vk: <C::OuterSNARK as SNARK>::VerifyingKey =
+                <C::OuterSNARK as SNARK>::VerifyingKey::read(OuterSNARKVKParameters::load_bytes()?.as_slice())?;
+
+            (outer_snark_pk, outer_snark_vk.into())
+        };
+        end_timer!(timer);
+
+        Ok(Self {
+            system_parameters,
+            noop_program_snark_parameters,
+            inner_snark_parameters,
+            outer_snark_parameters,
+        })
+    }
+
+    fn create_account<R: Rng + CryptoRng>(&self, rng: &mut R) -> anyhow::Result<Self::Account> {
         let time = start_timer!(|| "DPC::create_account");
         let account = Account::new(
-            &parameters.account_signature,
-            &parameters.account_commitment,
-            &parameters.account_encryption,
+            &self.system_parameters.account_signature,
+            &self.system_parameters.account_commitment,
+            &self.system_parameters.account_encryption,
             rng,
         )?;
         end_timer!(time);
@@ -212,7 +254,7 @@ where
     }
 
     fn execute_offline_phase<R: Rng + CryptoRng>(
-        parameters: Self::SystemParameters,
+        &self,
         old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         old_records: Vec<Self::Record>,
         new_records: Vec<Self::Record>,
@@ -238,7 +280,8 @@ where
                 value_balance = value_balance.add(AleoAmount::from_bytes(record.value() as i64));
             }
 
-            let (sn, randomizer) = record.to_serial_number(&parameters.account_signature, &old_private_keys[i])?;
+            let (sn, randomizer) =
+                record.to_serial_number(&self.system_parameters.account_signature, &old_private_keys[i])?;
             joint_serial_numbers.extend_from_slice(&to_bytes![sn]?);
             old_serial_numbers.push(sn);
             old_randomizers.push(randomizer);
@@ -289,7 +332,7 @@ where
 
             let commitment_randomness = <C::LocalDataCommitment as CommitmentScheme>::Randomness::rand(rng);
             let commitment = C::LocalDataCommitment::commit(
-                &parameters.local_data_commitment,
+                &self.system_parameters.local_data_commitment,
                 &input_bytes,
                 &commitment_randomness,
             )?;
@@ -304,7 +347,7 @@ where
 
             let commitment_randomness = <C::LocalDataCommitment as CommitmentScheme>::Randomness::rand(rng);
             let commitment = C::LocalDataCommitment::commit(
-                &parameters.local_data_commitment,
+                &self.system_parameters.local_data_commitment,
                 &input_bytes,
                 &commitment_randomness,
             )?;
@@ -319,7 +362,7 @@ where
             new_record_commitments[0].clone(),
             new_record_commitments[1].clone(),
         ];
-        let local_data_merkle_tree = CommitmentMerkleTree::new(parameters.local_data_crh.clone(), &leaves)?;
+        let local_data_merkle_tree = CommitmentMerkleTree::new(self.system_parameters.local_data_crh.clone(), &leaves)?;
 
         end_timer!(local_data_merkle_tree_timer);
 
@@ -334,7 +377,7 @@ where
             }
             let program_randomness = <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness::rand(rng);
             let program_commitment = C::ProgramVerificationKeyCommitment::commit(
-                &parameters.program_verification_key_commitment,
+                &self.system_parameters.program_verification_key_commitment,
                 &input,
                 &program_randomness,
             )?;
@@ -349,16 +392,15 @@ where
         let mut new_encrypted_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
         for record in &new_records {
-            let (encrypted_record, record_encryption_randomness) = EncryptedRecord::encrypt(&parameters, record, rng)?;
+            let (encrypted_record, record_encryption_randomness) =
+                EncryptedRecord::encrypt(&self.system_parameters, record, rng)?;
 
             new_records_encryption_randomness.push(record_encryption_randomness);
-            new_encrypted_record_hashes.push(encrypted_record.to_hash(&parameters)?);
+            new_encrypted_record_hashes.push(encrypted_record.to_hash(&self.system_parameters)?);
             new_encrypted_records.push(encrypted_record);
         }
 
         Ok(TransactionKernel {
-            system_parameters: parameters,
-
             old_records,
             old_serial_numbers,
             old_randomizers,
@@ -383,7 +425,7 @@ where
     }
 
     fn execute_online_phase<R: Rng + CryptoRng>(
-        parameters: &Self::NetworkParameters,
+        &self,
         old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         transaction_kernel: Self::TransactionKernel,
         program_proofs: Vec<Self::PrivateProgramInput>,
@@ -396,8 +438,6 @@ where
         let exec_time = start_timer!(|| "DPC::execute_online_phase");
 
         let TransactionKernel {
-            system_parameters,
-
             old_records,
             old_serial_numbers,
             old_randomizers,
@@ -457,7 +497,7 @@ where
         for i in 0..C::NUM_INPUT_RECORDS {
             // Sign the transaction data
             let account_signature = C::AccountSignature::sign(
-                &system_parameters.account_signature,
+                &self.system_parameters.account_signature,
                 &old_private_keys[i].sk_sig,
                 &signature_message,
                 rng,
@@ -465,7 +505,7 @@ where
 
             // Randomize the signature
             let randomized_signature = C::AccountSignature::randomize_signature(
-                &system_parameters.account_signature,
+                &self.system_parameters.account_signature,
                 &account_signature,
                 &old_randomizers[i],
             )?;
@@ -481,7 +521,7 @@ where
 
         for (record, ciphertext_randomness) in new_records.iter().zip_eq(&new_records_encryption_randomness) {
             let record_encryption_gadget_components = EncryptedRecord::prepare_encryption_gadget_components(
-                &system_parameters,
+                &self.system_parameters,
                 &record,
                 ciphertext_randomness,
             )?;
@@ -491,7 +531,7 @@ where
 
         let inner_proof = {
             let circuit = InnerCircuit::new(
-                parameters.system_parameters.clone(),
+                self.system_parameters.clone(),
                 ledger.parameters().clone(),
                 ledger_digest.clone(),
                 old_records,
@@ -513,7 +553,7 @@ where
                 network_id,
             );
 
-            let inner_snark_parameters = match &parameters.inner_snark_parameters.0 {
+            let inner_snark_parameters = match &self.inner_snark_parameters.0 {
                 Some(inner_snark_parameters) => inner_snark_parameters,
                 None => return Err(DPCError::MissingInnerSnarkProvingParameters.into()),
             };
@@ -524,7 +564,7 @@ where
         // Verify that the inner proof passes
         {
             let input = InnerCircuitVerifierInput {
-                system_parameters: parameters.system_parameters.clone(),
+                system_parameters: self.system_parameters.clone(),
                 ledger_parameters: ledger.parameters().clone(),
                 ledger_digest: ledger_digest.clone(),
                 old_serial_numbers: old_serial_numbers.clone(),
@@ -538,22 +578,22 @@ where
             };
 
             assert!(C::InnerSNARK::verify(
-                &parameters.inner_snark_parameters.1,
+                &self.inner_snark_parameters.1,
                 &input,
                 &inner_proof
             )?);
         }
 
-        let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = parameters.inner_snark_parameters.1.clone().into();
+        let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = self.inner_snark_parameters.1.clone().into();
 
         let inner_circuit_id =
-            <C::InnerCircuitIDCRH as CRH>::hash(&parameters.system_parameters.inner_circuit_id_crh, &to_bytes![
+            <C::InnerCircuitIDCRH as CRH>::hash(&self.system_parameters.inner_circuit_id_crh, &to_bytes![
                 inner_snark_vk
             ]?)?;
 
         let transaction_proof = {
             let circuit = OuterCircuit::new(
-                parameters.system_parameters.clone(),
+                self.system_parameters.clone(),
                 ledger.parameters().clone(),
                 ledger_digest.clone(),
                 old_serial_numbers.clone(),
@@ -571,7 +611,7 @@ where
                 inner_circuit_id.clone(),
             );
 
-            let outer_snark_parameters = match &parameters.outer_snark_parameters.0 {
+            let outer_snark_parameters = match &self.outer_snark_parameters.0 {
                 Some(outer_snark_parameters) => outer_snark_parameters,
                 None => return Err(DPCError::MissingOuterSnarkProvingParameters.into()),
             };
@@ -599,7 +639,7 @@ where
         Ok((new_records, transaction))
     }
 
-    fn verify(parameters: &Self::NetworkParameters, transaction: &Self::Transaction, ledger: &L) -> bool {
+    fn verify(&self, transaction: &Self::Transaction, ledger: &L) -> bool {
         let verify_time = start_timer!(|| "DPC::verify");
 
         // Returns false if the number of serial numbers in the transaction is incorrect.
@@ -683,7 +723,7 @@ where
             }
         };
 
-        let account_signature = &parameters.system_parameters.account_signature;
+        let account_signature = &self.system_parameters.account_signature;
         for (pk, sig) in transaction.old_serial_numbers().iter().zip(transaction.signatures()) {
             match C::AccountSignature::verify(account_signature, pk, &signature_message, sig) {
                 Ok(is_valid) => {
@@ -711,7 +751,7 @@ where
 
         let mut new_encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         for encrypted_record in transaction.encrypted_records() {
-            match encrypted_record.to_hash(&parameters.system_parameters) {
+            match encrypted_record.to_hash(&self.system_parameters) {
                 Ok(hash) => new_encrypted_record_hashes.push(hash),
                 _ => {
                     eprintln!("Unable to hash encrypted record.");
@@ -721,7 +761,7 @@ where
         }
 
         let inner_snark_input = InnerCircuitVerifierInput {
-            system_parameters: parameters.system_parameters.clone(),
+            system_parameters: self.system_parameters.clone(),
             ledger_parameters: ledger.parameters().clone(),
             ledger_digest: transaction.ledger_digest().clone(),
             old_serial_numbers: transaction.old_serial_numbers().to_vec(),
@@ -735,7 +775,7 @@ where
         };
 
         let inner_snark_vk: <<C as Testnet1Components>::InnerSNARK as SNARK>::VerifyingKey =
-            parameters.inner_snark_parameters.1.clone().into();
+            self.inner_snark_parameters.1.clone().into();
 
         let inner_snark_vk_bytes = match to_bytes![inner_snark_vk] {
             Ok(bytes) => bytes,
@@ -748,7 +788,7 @@ where
         let outer_snark_input = OuterCircuitVerifierInput {
             inner_snark_verifier_input: inner_snark_input,
             inner_circuit_id: match C::InnerCircuitIDCRH::hash(
-                &parameters.system_parameters.inner_circuit_id_crh,
+                &self.system_parameters.inner_circuit_id_crh,
                 &inner_snark_vk_bytes,
             ) {
                 Ok(hash) => hash,
@@ -760,7 +800,7 @@ where
         };
 
         match C::OuterSNARK::verify(
-            &parameters.outer_snark_parameters.1,
+            &self.outer_snark_parameters.1,
             &outer_snark_input,
             &transaction.transaction_proof,
         ) {
@@ -782,13 +822,9 @@ where
     }
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions(
-        parameters: &Self::NetworkParameters,
-        transactions: &[Self::Transaction],
-        ledger: &L,
-    ) -> bool {
+    fn verify_transactions(&self, transactions: &[Self::Transaction], ledger: &L) -> bool {
         for transaction in transactions {
-            if !Self::verify(parameters, transaction, ledger) {
+            if !self.verify(transaction, ledger) {
                 return false;
             }
         }

@@ -19,6 +19,7 @@ use crate::{
     testnet2::{EncryptedRecord, LocalData, Record, SystemParameters, Testnet2Components, Transaction},
 };
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, prelude::*};
+use snarkvm_parameters::{LocalDataCommitmentParameters, Parameter};
 use snarkvm_utilities::{to_bytes, variable_length_integer::*, FromBytes, ToBytes};
 
 use std::{
@@ -39,9 +40,6 @@ use std::{
     Debug(bound = "C: Testnet2Components")
 )]
 pub struct TransactionKernel<C: Testnet2Components> {
-    #[derivative(PartialEq = "ignore", Debug = "ignore")]
-    pub system_parameters: SystemParameters<C>,
-
     // Old record stuff
     pub old_records: Vec<Record<C>>,
     pub old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
@@ -72,13 +70,14 @@ impl<C: Testnet2Components> TransactionKernel<C> {
     #[allow(clippy::wrong_self_convention)]
     pub fn into_local_data(&self) -> LocalData<C> {
         LocalData {
-            system_parameters: self.system_parameters.clone(),
-
             old_records: self.old_records.to_vec(),
             old_serial_numbers: self.old_serial_numbers.to_vec(),
 
             new_records: self.new_records.to_vec(),
 
+            local_data_commitment_parameters: From::from(
+                FromBytes::read(LocalDataCommitmentParameters::load_bytes().unwrap().as_slice()).unwrap(),
+            ),
             local_data_merkle_tree: self.local_data_merkle_tree.clone(),
             local_data_commitment_randomizers: self.local_data_commitment_randomizers.clone(),
 
@@ -244,8 +243,6 @@ impl<C: Testnet2Components> FromBytes for TransactionKernel<C> {
         let network_id: u8 = FromBytes::read(&mut reader)?;
 
         Ok(Self {
-            system_parameters,
-
             old_records,
             old_serial_numbers,
             old_randomizers,
