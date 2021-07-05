@@ -26,7 +26,7 @@ use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
     prelude::*,
 };
-use snarkvm_curves::traits::{Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
+use snarkvm_curves::traits::{Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_gadgets::{
     bits::Boolean,
     traits::algorithms::{CRHGadget, SNARKVerifierGadget},
@@ -70,7 +70,7 @@ pub trait Testnet1Components: DPCComponents {
 
     /// Group and Model Parameters for record encryption
     type EncryptionGroup: Group + ProjectiveCurve;
-    type EncryptionModelParameters: MontgomeryModelParameters + TEModelParameters;
+    type EncryptionModelParameters: MontgomeryParameters + TwistedEdwardsParameters;
 
     /// SNARK for non-proof-verification checks
     type InnerSNARK: SNARK<
@@ -248,14 +248,11 @@ where
         end_timer!(snark_setup_time);
         end_timer!(setup_time);
 
-        let inner_snark_parameters = (Some(inner_snark_parameters.0), inner_snark_parameters.1);
-        let outer_snark_parameters = (Some(outer_snark_parameters.0), outer_snark_parameters.1);
-
         Ok(PublicParameters {
             system_parameters,
             noop_program_snark_parameters,
-            inner_snark_parameters,
-            outer_snark_parameters,
+            inner_snark_parameters: (Some(inner_snark_parameters.0), inner_snark_parameters.1),
+            outer_snark_parameters: (Some(outer_snark_parameters.0), outer_snark_parameters.1),
         })
     }
 
@@ -337,15 +334,18 @@ where
             end_timer!(output_record_time);
         }
 
-        // TODO (raychu86) Add index and program register inputs + outputs to local data commitment leaves
+        // TODO (raychu86): Add index and program register inputs + outputs to local data commitment leaves
         let local_data_merkle_tree_timer = start_timer!(|| "Compute local data merkle tree");
 
         let mut local_data_commitment_randomizers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-
         let mut old_record_commitments = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for i in 0..C::NUM_INPUT_RECORDS {
-            let record = &old_records[i];
-            let input_bytes = to_bytes![old_serial_numbers[i], record.commitment(), memorandum, C::NETWORK_ID]?;
+            let input_bytes = to_bytes![
+                old_serial_numbers[i],
+                &old_records[i].commitment(),
+                memorandum,
+                C::NETWORK_ID
+            ]?;
 
             let commitment_randomness = <C::LocalDataCommitment as CommitmentScheme>::Randomness::rand(rng);
             let commitment = C::LocalDataCommitment::commit(
@@ -389,7 +389,6 @@ where
             for id in old_death_program_ids {
                 input.extend_from_slice(&id);
             }
-
             for id in new_birth_program_ids {
                 input.extend_from_slice(&id);
             }
@@ -403,22 +402,18 @@ where
         };
         end_timer!(program_comm_timer);
 
-        // Encrypt the new records
+        // Encrypt the new records and construct the ciphertext hashes
 
         let mut new_records_encryption_randomness = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+        let mut new_encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         let mut new_encrypted_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
         for record in &new_records {
             let (encrypted_record, record_encryption_randomness) = EncryptedRecord::encrypt(&parameters, record, rng)?;
 
             new_records_encryption_randomness.push(record_encryption_randomness);
-            new_encrypted_records.push(encrypted_record);
-        }
-
-        // Construct the ciphertext hashes
-        let mut new_encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-        for encrypted_record in &new_encrypted_records {
             new_encrypted_record_hashes.push(encrypted_record.to_hash(&parameters)?);
+            new_encrypted_records.push(encrypted_record);
         }
 
         Ok(TransactionKernel {
@@ -504,7 +499,7 @@ where
         }
 
         // Generate Schnorr signature on transaction data
-        // TODO (raychu86) Remove ledger_digest from signature and move the schnorr signing into `execute_offline_phase`
+        // TODO (raychu86): Remove ledger_digest from signature and move the schnorr signing into `execute_offline_phase`
         let signature_time = start_timer!(|| "Sign and randomize transaction contents");
 
         let signature_message = to_bytes![
@@ -520,18 +515,19 @@ where
 
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for i in 0..C::NUM_INPUT_RECORDS {
-            let sk_sig = &old_private_keys[i].sk_sig;
-            let randomizer = &old_randomizers[i];
-
             // Sign the transaction data
-            let account_signature =
-                C::AccountSignature::sign(&system_parameters.account_signature, sk_sig, &signature_message, rng)?;
+            let account_signature = C::AccountSignature::sign(
+                &system_parameters.account_signature,
+                &old_private_keys[i].sk_sig,
+                &signature_message,
+                rng,
+            )?;
 
             // Randomize the signature
             let randomized_signature = C::AccountSignature::randomize_signature(
                 &system_parameters.account_signature,
                 &account_signature,
-                randomizer,
+                &old_randomizers[i],
             )?;
 
             signatures.push(randomized_signature);

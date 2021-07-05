@@ -18,23 +18,23 @@ use crate::errors::EncodingError;
 use snarkvm_curves::traits::{
     pairing_engine::{AffineCurve, ProjectiveCurve},
     Group,
-    MontgomeryModelParameters,
-    TEModelParameters,
+    MontgomeryParameters,
+    TwistedEdwardsParameters,
 };
 use snarkvm_fields::{Field, LegendreSymbol, One, SquareRootField, Zero};
 use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
 use std::{cmp, marker::PhantomData, ops::Neg};
 
-pub struct Elligator2<P: MontgomeryModelParameters + TEModelParameters, G: Group + ProjectiveCurve> {
+pub struct Elligator2<P: MontgomeryParameters + TwistedEdwardsParameters, G: Group + ProjectiveCurve> {
     _parameters: PhantomData<P>,
     _group: PhantomData<G>,
 }
 
-impl<P: MontgomeryModelParameters + TEModelParameters, G: Group + ProjectiveCurve> Elligator2<P, G> {
-    const A: P::BaseField = <P as MontgomeryModelParameters>::COEFF_A;
-    const B: P::BaseField = <P as MontgomeryModelParameters>::COEFF_B;
-    const D: P::BaseField = <P as TEModelParameters>::COEFF_D;
+impl<P: MontgomeryParameters + TwistedEdwardsParameters, G: Group + ProjectiveCurve> Elligator2<P, G> {
+    const A: P::BaseField = <P as MontgomeryParameters>::COEFF_A;
+    const B: P::BaseField = <P as MontgomeryParameters>::COEFF_B;
+    const D: P::BaseField = <P as TwistedEdwardsParameters>::COEFF_D;
 
     /// Returns the encoded group element for a given base field element.
     #[allow(clippy::many_single_char_names)]

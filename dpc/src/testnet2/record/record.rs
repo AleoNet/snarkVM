@@ -187,17 +187,23 @@ impl<C: Testnet2Components> Record<C> {
     pub fn to_serial_number(
         &self,
         signature_parameters: &C::AccountSignature,
-        account_private_key: &PrivateKey<C>,
+        private_key: &PrivateKey<C>,
     ) -> Result<(<C::AccountSignature as SignatureScheme>::PublicKey, Vec<u8>), RecordError> {
         let timer = start_timer!(|| "Generate serial number");
 
+        // TODO (howardwu) - Implement after removing parameters from the inputs.
+        // // Check that the private key corresponds with the owner of the record.
+        // if self.owner != &Address::<C>::from_private_key(private_key)? {
+        //     return Err(RecordError::IncorrectPrivateKey);
+        // }
+
         // Compute the serial number.
-        let seed = FromBytes::read(to_bytes!(&account_private_key.sk_prf)?.as_slice())?;
+        let seed = FromBytes::read(to_bytes!(&private_key.sk_prf)?.as_slice())?;
         let input = FromBytes::read(to_bytes!(self.serial_number_nonce)?.as_slice())?;
         let randomizer = to_bytes![C::PRF::evaluate(&seed, &input)?]?;
         let serial_number = C::AccountSignature::randomize_public_key(
             &signature_parameters,
-            &account_private_key.pk_sig(&signature_parameters)?,
+            &private_key.pk_sig(&signature_parameters)?,
             &randomizer,
         )?;
 
@@ -260,7 +266,6 @@ impl<C: Testnet2Components> ToBytes for Record<C> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.owner.write(&mut writer)?;
-
         self.is_dummy.write(&mut writer)?;
         self.value.write(&mut writer)?;
         self.payload.write(&mut writer)?;
@@ -327,8 +332,7 @@ impl<C: Testnet2Components> FromStr for Record<C> {
     type Err = RecordError;
 
     fn from_str(record: &str) -> Result<Self, Self::Err> {
-        let record = hex::decode(record)?;
-        Ok(Self::read(&record[..])?)
+        Ok(Self::read(&hex::decode(record)?[..])?)
     }
 }
 

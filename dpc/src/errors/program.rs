@@ -14,15 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{CRHError, CommitmentError, EncryptionError, PRFError, SignatureError};
+use snarkvm_algorithms::{CRHError, CommitmentError, EncryptionError, PRFError, SNARKError, SignatureError};
 
 #[derive(Debug, Error)]
-pub enum RecordError {
+pub enum ProgramError {
     #[error("{}", _0)]
     AccountError(#[from] crate::AccountError),
-
-    #[error("Failed to build Record data type. See console logs for error")]
-    BuilderError,
 
     #[error("Cannot verify the provided record commitment")]
     CannotVerifyCommitment,
@@ -39,9 +36,6 @@ pub enum RecordError {
     #[error("{}", _0)]
     DPCError(#[from] crate::DPCError),
 
-    #[error("Attempted to set `value: {}` on a dummy record", _0)]
-    DummyMustBeZero(u64),
-
     #[error("{}", _0)]
     EncryptionError(#[from] EncryptionError),
 
@@ -54,24 +48,18 @@ pub enum RecordError {
     #[error("Attempted to build a record with an invalid commitment. Try `calculate_commitment()`")]
     InvalidCommitment,
 
-    #[error("Missing Record field: {0}")]
-    MissingField(String),
-
-    #[error("Missing commitment randomness")]
-    MissingRandomness,
-
-    #[error("Attempted to set `is_dummy: true` on a record with a non-zero value")]
-    NonZeroValue,
-
     #[error("{}", _0)]
     PRFError(#[from] PRFError),
 
     #[error("{}", _0)]
     SignatureError(#[from] SignatureError),
+
+    #[error("{}", _0)]
+    SNARKError(#[from] SNARKError),
 }
 
-impl From<std::io::Error> for RecordError {
+impl From<std::io::Error> for ProgramError {
     fn from(error: std::io::Error) -> Self {
-        RecordError::Crate("std::io", format!("{:?}", error))
+        ProgramError::Crate("std::io", format!("{:?}", error))
     }
 }

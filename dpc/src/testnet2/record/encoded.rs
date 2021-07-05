@@ -23,7 +23,7 @@ use snarkvm_algorithms::{
     encoding::Elligator2,
     traits::{CommitmentScheme, CRH},
 };
-use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
+use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{bits_to_bytes, bytes_to_bits, to_bytes, BigInteger, FromBytes, ToBytes};
 
@@ -31,7 +31,7 @@ use itertools::Itertools;
 use std::marker::PhantomData;
 
 /// Encode a base field element bytes to a group representation
-pub fn encode_to_group<P: MontgomeryModelParameters + TEModelParameters, G: Group + ProjectiveCurve>(
+pub fn encode_to_group<P: MontgomeryParameters + TwistedEdwardsParameters, G: Group + ProjectiveCurve>(
     x_bytes: &[u8],
 ) -> Result<(<G as ProjectiveCurve>::Affine, bool), DPCError> {
     // TODO (howardwu): Remove this hardcoded value and use BaseField's size in bits to pad length.
@@ -46,7 +46,7 @@ pub fn encode_to_group<P: MontgomeryModelParameters + TEModelParameters, G: Grou
 }
 
 /// Decode a group into the byte representation of a base field element
-pub fn decode_from_group<P: MontgomeryModelParameters + TEModelParameters, G: Group + ProjectiveCurve>(
+pub fn decode_from_group<P: MontgomeryParameters + TwistedEdwardsParameters, G: Group + ProjectiveCurve>(
     affine: <G as ProjectiveCurve>::Affine,
     fq_high: bool,
 ) -> Result<Vec<u8>, DPCError> {
@@ -65,7 +65,7 @@ pub struct DecodedRecord<C: Testnet2Components> {
 
 pub struct EncodedRecord<
     C: Testnet2Components,
-    P: MontgomeryModelParameters + TEModelParameters,
+    P: MontgomeryParameters + TwistedEdwardsParameters,
     G: Group + ProjectiveCurve,
 > {
     pub(super) encoded_elements: Vec<G>,
@@ -74,7 +74,7 @@ pub struct EncodedRecord<
     _parameters: PhantomData<P>,
 }
 
-impl<C: Testnet2Components, P: MontgomeryModelParameters + TEModelParameters, G: Group + ProjectiveCurve>
+impl<C: Testnet2Components, P: MontgomeryParameters + TwistedEdwardsParameters, G: Group + ProjectiveCurve>
     EncodedRecord<C, P, G>
 {
     pub fn new(encoded_elements: Vec<G>, final_sign_high: bool) -> Self {
@@ -87,7 +87,7 @@ impl<C: Testnet2Components, P: MontgomeryModelParameters + TEModelParameters, G:
     }
 }
 
-impl<C: Testnet2Components, P: MontgomeryModelParameters + TEModelParameters, G: Group + ProjectiveCurve>
+impl<C: Testnet2Components, P: MontgomeryParameters + TwistedEdwardsParameters, G: Group + ProjectiveCurve>
     EncodedRecordScheme for EncodedRecord<C, P, G>
 {
     type DecodedRecord = DecodedRecord<C>;

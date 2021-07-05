@@ -26,7 +26,6 @@ use snarkvm_dpc::{
         execute_outer_circuit,
         inner_circuit::InnerCircuit,
         instantiated::*,
-        parameters::{NoopProgramSNARKParameters, SystemParameters},
         program::NoopProgram,
         record::{EncryptedRecord, Payload, Record},
         Testnet2Components,
@@ -41,9 +40,8 @@ use snarkvm_utilities::{
 };
 
 use itertools::Itertools;
-use rand::{CryptoRng, Rng, SeedableRng};
+use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
-use snarkvm_dpc::testnet2::ProgramSNARKUniversalSRS;
 use std::{
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
@@ -80,14 +78,13 @@ fn dpc_testnet2_integration_test() {
         genesis_block,
     );
 
-    let noop_program_id = to_bytes![
-        <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
-            &parameters.system_parameters.program_verification_key_crh,
-            &to_bytes![parameters.noop_program_snark_parameters().verifying_key].unwrap()
-        )
-        .unwrap()
-    ]
+    let noop_program = NoopProgram::<Components>::new(
+        &parameters.system_parameters.program_verification_key_crh,
+        parameters.noop_program_snark_parameters.proving_key.clone(),
+        parameters.noop_program_snark_parameters.verifying_key.clone(),
+    )
     .unwrap();
+    let noop_program_id = noop_program.id();
 
     // Generate dummy input records having as address the genesis address.
     let old_private_keys = vec![genesis_account.private_key.clone(); Components::NUM_INPUT_RECORDS];
@@ -158,12 +155,6 @@ fn dpc_testnet2_integration_test() {
     .unwrap();
 
     // Generate the program proofs
-
-    let noop_program = NoopProgram::<_, <Components as Testnet2Components>::NoopProgramSNARK>::new(
-        noop_program_id,
-        parameters.noop_program_snark_parameters.proving_key.clone(),
-        parameters.noop_program_snark_parameters.verifying_key.clone(),
-    );
 
     let mut program_proofs = vec![];
     for i in 0..Components::NUM_TOTAL_RECORDS {
@@ -247,27 +238,6 @@ fn dpc_testnet2_integration_test() {
     assert_eq!(ledger.len(), 2);
 }
 
-/// Generates and returns noop program parameters and its corresponding program id.
-fn generate_test_noop_program_parameters<R: Rng + CryptoRng>(
-    system_parameters: &SystemParameters<Components>,
-    universal_srs: &ProgramSNARKUniversalSRS<Components>,
-    rng: &mut R,
-) -> (NoopProgramSNARKParameters<Components>, Vec<u8>) {
-    let noop_program_snark_pp =
-        Testnet2DPC::generate_noop_program_snark_parameters(&system_parameters, universal_srs, rng).unwrap();
-
-    let noop_program_id = to_bytes![
-        <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
-            &system_parameters.program_verification_key_crh,
-            &to_bytes![noop_program_snark_pp.verifying_key].unwrap()
-        )
-        .unwrap()
-    ]
-    .unwrap();
-
-    (noop_program_snark_pp, noop_program_id)
-}
-
 #[test]
 fn test_testnet_2_transaction_kernel_serialization() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
@@ -278,8 +248,15 @@ fn test_testnet_2_transaction_kernel_serialization() {
 
     let universal_srs = Testnet2DPC::generate_program_snark_universal_srs(&mut rng).unwrap();
 
-    let (_noop_program_snark_pp, noop_program_id) =
-        generate_test_noop_program_parameters(&system_parameters, &universal_srs, &mut rng);
+    let noop_program_snark_pp =
+        Testnet2DPC::generate_noop_program_snark_parameters(&system_parameters, &universal_srs, &mut rng).unwrap();
+    let noop_program = NoopProgram::<Components>::new(
+        &system_parameters.program_verification_key_crh,
+        noop_program_snark_pp.proving_key,
+        noop_program_snark_pp.verifying_key,
+    )
+    .unwrap();
+    let noop_program_id = noop_program.id();
 
     // Generate metadata and an account for a dummy initial record.
     let test_account = Account::new(
@@ -374,10 +351,25 @@ fn test_testnet2_dpc_execute_constraints() {
 
     let universal_srs = Testnet2DPC::generate_program_snark_universal_srs(&mut rng).unwrap();
 
-    let (noop_program_snark_pp, noop_program_id) =
-        generate_test_noop_program_parameters(&system_parameters, &universal_srs, &mut rng);
-    let (alternate_noop_program_snark_pp, alternate_noop_program_id) =
-        generate_test_noop_program_parameters(&system_parameters, &universal_srs, &mut rng);
+    let noop_program_snark_pp =
+        Testnet2DPC::generate_noop_program_snark_parameters(&system_parameters, &universal_srs, &mut rng).unwrap();
+    let noop_program = NoopProgram::<Components>::new(
+        &system_parameters.program_verification_key_crh,
+        noop_program_snark_pp.proving_key,
+        noop_program_snark_pp.verifying_key,
+    )
+    .unwrap();
+    let noop_program_id = noop_program.id();
+
+    let alternate_noop_program_snark_pp =
+        Testnet2DPC::generate_noop_program_snark_parameters(&system_parameters, &universal_srs, &mut rng).unwrap();
+    let alternate_noop_program = NoopProgram::<Components>::new(
+        &system_parameters.program_verification_key_crh,
+        alternate_noop_program_snark_pp.proving_key,
+        alternate_noop_program_snark_pp.verifying_key,
+    )
+    .unwrap();
+    let alternate_noop_program_id = alternate_noop_program.id();
 
     let signature_parameters = &system_parameters.account_signature;
     let commitment_parameters = &system_parameters.account_commitment;
@@ -486,17 +478,6 @@ fn test_testnet2_dpc_execute_constraints() {
     .unwrap();
 
     // Generate the program proofs
-
-    let noop_program = NoopProgram::<_, <Components as Testnet2Components>::NoopProgramSNARK>::new(
-        noop_program_id,
-        noop_program_snark_pp.proving_key,
-        noop_program_snark_pp.verifying_key,
-    );
-    let alternate_noop_program = NoopProgram::<_, <Components as Testnet2Components>::NoopProgramSNARK>::new(
-        alternate_noop_program_id,
-        alternate_noop_program_snark_pp.proving_key,
-        alternate_noop_program_snark_pp.verifying_key,
-    );
 
     let mut program_proofs = vec![];
     for i in 0..Components::NUM_INPUT_RECORDS {

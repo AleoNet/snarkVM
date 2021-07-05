@@ -17,16 +17,16 @@
 use crate::{
     edwards_bw6::{Fq, Fr},
     errors::GroupError,
-    templates::twisted_edwards_extended::{GroupAffine, GroupProjective},
-    traits::{ModelParameters, MontgomeryModelParameters, TEModelParameters},
+    templates::twisted_edwards_extended::{Affine, Projective},
+    traits::{AffineCurve, ModelParameters, MontgomeryParameters, TwistedEdwardsParameters},
 };
 use snarkvm_fields::field;
 use snarkvm_utilities::biginteger::BigInteger384 as BigInteger;
 
 use std::str::FromStr;
 
-pub type EdwardsAffine = GroupAffine<EdwardsParameters>;
-pub type EdwardsProjective = GroupProjective<EdwardsParameters>;
+pub type EdwardsAffine = Affine<EdwardsParameters>;
+pub type EdwardsProjective = Projective<EdwardsParameters>;
 
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct EdwardsParameters;
@@ -36,8 +36,8 @@ impl ModelParameters for EdwardsParameters {
     type ScalarField = Fr;
 }
 
-impl TEModelParameters for EdwardsParameters {
-    type MontgomeryModelParameters = EdwardsParameters;
+impl TwistedEdwardsParameters for EdwardsParameters {
+    type MontgomeryParameters = EdwardsParameters;
 
     /// AFFINE_GENERATOR_COEFFS = (GENERATOR_X, GENERATOR_Y)
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) = (GENERATOR_X, GENERATOR_Y);
@@ -89,8 +89,8 @@ impl TEModelParameters for EdwardsParameters {
     }
 }
 
-impl MontgomeryModelParameters for EdwardsParameters {
-    type TEModelParameters = EdwardsParameters;
+impl MontgomeryParameters for EdwardsParameters {
+    type TwistedEdwardsParameters = EdwardsParameters;
 
     /// COEFF_A = 0x95D53EB3F6AC3F7A53C26020144439DC6073BCAE513E03FD06B6B3BAA390F25E51534B26719E33F4CD906D4DA9B535
     const COEFF_A: Fq = field!(

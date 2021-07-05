@@ -17,9 +17,9 @@
 use crate::{
     templates::{
         bw6::{BW6Parameters, TwistType},
-        short_weierstrass::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
+        short_weierstrass_jacobian::{Affine, Projective},
     },
-    traits::{AffineCurve, SWModelParameters},
+    traits::{AffineCurve, ShortWeierstrassParameters},
 };
 use snarkvm_fields::{Field, One, Zero};
 use snarkvm_utilities::{bititerator::BitIteratorBE, bytes::ToBytes, errors::SerializationError, serialize::*};
@@ -29,8 +29,8 @@ use std::{
     ops::Neg,
 };
 
-pub type G2Affine<P> = GroupAffine<<P as BW6Parameters>::G2Parameters>;
-pub type G2Projective<P> = GroupProjective<<P as BW6Parameters>::G2Parameters>;
+pub type G2Affine<P> = Affine<<P as BW6Parameters>::G2Parameters>;
+pub type G2Projective<P> = Projective<<P as BW6Parameters>::G2Parameters>;
 
 #[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(
