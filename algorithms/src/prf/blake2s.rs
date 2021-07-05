@@ -28,7 +28,7 @@ impl PRF for Blake2s {
     type Seed = [u8; 32];
 
     fn evaluate(seed: &Self::Seed, input: &Self::Input) -> Result<Self::Output, PRFError> {
-        let eval_time = start_timer!(|| "Blake2s::Eval");
+        let eval_time = start_timer!(|| "Blake2s::evaluate");
         let mut h = blake2s::new();
         h.update(seed.as_ref());
         h.update(input.as_ref());

@@ -16,7 +16,6 @@
 
 use crate::{
     impl_sw_curve_serializer,
-    impl_sw_from_random_bytes,
     traits::{AffineCurve, Group, ProjectiveCurve, SWModelParameters as Parameters},
 };
 use snarkvm_fields::{impl_additive_ops_from_ref, Field, One, PrimeField, SquareRootField, Zero};
@@ -108,11 +107,23 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
     type BaseField = P::BaseField;
     type Projective = GroupProjective<P>;
 
-    impl_sw_from_random_bytes!();
-
     #[inline]
     fn prime_subgroup_generator() -> Self {
         Self::new(P::AFFINE_GENERATOR_COEFFS.0, P::AFFINE_GENERATOR_COEFFS.1, false)
+    }
+
+    #[inline]
+    fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
+        Self::BaseField::from_random_bytes_with_flags(bytes).and_then(|(x, flags)| {
+            // If x is valid and is zero and only the infinity flag is set, then parse this
+            // point as infinity. For all other choices, get the original point.
+            if x.is_zero() && flags == SWFlags::Infinity.u8_bitmask() {
+                Some(Self::zero())
+            } else {
+                let is_positive = flags & SWFlags::PositiveY.u8_bitmask() != 0;
+                Self::from_x_coordinate(x, is_positive)
+            }
+        })
     }
 
     /// Attempts to construct an affine point given an x-coordinate. The

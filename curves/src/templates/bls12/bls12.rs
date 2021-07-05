@@ -161,7 +161,7 @@ where
     }
 
     fn final_exponentiation(f: &Self::Fqk) -> Option<Self::Fqk> {
-        // Computing the final exponentation following
+        // Computing the final exponentiation following
         // https://eprint.iacr.org/2016/130.pdf.
         // We don't use their "faster" formula because it is difficult to make
         // it work for curves with odd `P::X`.
