@@ -16,7 +16,7 @@
 
 use crate::{
     sw6::{Fq, Fq3, Fq6, Fr, G1Affine, FQ_ZERO, SW6},
-    templates::short_weierstrass::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
+    templates::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
     traits::{ModelParameters, PairingCurve, PairingEngine, SWModelParameters},
 };
 use snarkvm_fields::field;

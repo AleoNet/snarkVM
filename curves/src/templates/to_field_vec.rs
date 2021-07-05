@@ -16,7 +16,7 @@
 
 use crate::{
     templates::{
-        short_weierstrass::short_weierstrass_jacobian::{GroupAffine as SWAffine, GroupProjective as SWProjective},
+        short_weierstrass_jacobian::{GroupAffine as SWAffine, GroupProjective as SWProjective},
         twisted_edwards_extended::{GroupAffine as TEAffine, GroupProjective as TEProjective},
     },
     traits::{ProjectiveCurve, SWModelParameters, TEModelParameters},

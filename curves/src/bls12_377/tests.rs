@@ -33,7 +33,7 @@ use crate::{
         G2Affine,
         G2Projective,
     },
-    templates::{short_weierstrass::tests::sw_tests, twisted_edwards_extended::tests::edwards_test},
+    templates::{short_weierstrass_jacobian::tests::sw_tests, twisted_edwards_extended::tests::edwards_test},
     traits::{
         tests_curve::curve_tests,
         tests_group::group_test,

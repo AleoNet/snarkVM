@@ -17,7 +17,7 @@
 use crate::{
     templates::{
         bw6::{BW6Parameters, TwistType},
-        short_weierstrass::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
+        short_weierstrass_jacobian::{GroupAffine, GroupProjective},
     },
     traits::{AffineCurve, SWModelParameters},
 };

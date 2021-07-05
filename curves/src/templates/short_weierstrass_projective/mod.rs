@@ -14,13 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod bls12;
-pub mod bw6;
-pub mod short_weierstrass_jacobian;
-pub mod short_weierstrass_projective;
-pub mod to_field_vec;
-pub mod twisted_edwards_extended;
+pub mod affine;
+pub use affine::*;
 
-/// Macros for implementing serialization and deserialization
-#[macro_use]
-pub mod macros;
+pub mod projective;
+pub use projective::*;

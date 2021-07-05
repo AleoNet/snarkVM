@@ -14,19 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::short_weierstrass_jacobian::{GroupAffine, GroupProjective};
-
-use snarkvm_utilities::{
-    io::Cursor,
-    rand::UniformRand,
-    serialize::{CanonicalDeserialize, CanonicalSerialize},
-};
-
+use super::{GroupAffine, GroupProjective};
 use crate::traits::{
     pairing_engine::{AffineCurve, ProjectiveCurve},
     SWModelParameters,
 };
 use snarkvm_fields::Zero;
+use snarkvm_utilities::{
+    io::Cursor,
+    rand::UniformRand,
+    serialize::{CanonicalDeserialize, CanonicalSerialize},
+};
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
