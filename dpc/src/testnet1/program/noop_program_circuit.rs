@@ -62,33 +62,23 @@ impl<C: Testnet1Components> ConstraintSynthesizer<C::InnerScalarField> for NoopC
         &self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
-        execute_noop_gadget(
-            cs,
-            self.system_parameters.get_ref()?,
-            self.local_data_root.get_ref()?,
-            self.position,
-        )
-    }
-}
+        let system_parameters = self.system_parameters.get_ref()?;
+        let local_data_root = self.local_data_root.get_ref()?;
+        let position = self.position;
 
-fn execute_noop_gadget<C: Testnet1Components, CS: ConstraintSystem<C::InnerScalarField>>(
-    cs: &mut CS,
-    system_parameters: &SystemParameters<C>,
-    local_data_root: &<C::LocalDataCRH as CRH>::Output,
-    position: u8,
-) -> Result<(), SynthesisError> {
-    let _position = UInt8::alloc_input_vec_le(cs.ns(|| "Alloc position"), &[position])?;
+        let _position = UInt8::alloc_input_vec_le(cs.ns(|| "Alloc position"), &[position])?;
 
-    let _local_data_commitment_parameters_gadget =
-        <C::LocalDataCommitmentGadget as CommitmentGadget<_, _>>::ParametersGadget::alloc_input(
-            &mut cs.ns(|| "Declare local data commitment parameters"),
-            || Ok(system_parameters.local_data_commitment.parameters().clone()),
+        let _local_data_commitment_parameters_gadget =
+            <C::LocalDataCommitmentGadget as CommitmentGadget<_, _>>::ParametersGadget::alloc_input(
+                &mut cs.ns(|| "Declare local data commitment parameters"),
+                || Ok(system_parameters.local_data_commitment.parameters().clone()),
+            )?;
+
+        let _local_data_root_gadget = <C::LocalDataCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
+            cs.ns(|| "Allocate local data root"),
+            || Ok(local_data_root),
         )?;
 
-    let _local_data_root_gadget = <C::LocalDataCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
-        cs.ns(|| "Allocate local data root"),
-        || Ok(local_data_root),
-    )?;
-
-    Ok(())
+        Ok(())
+    }
 }
