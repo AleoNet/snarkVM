@@ -17,6 +17,9 @@
 pub mod affine;
 pub use affine::*;
 
+pub mod non_zero_affine;
+pub use non_zero_affine::*;
+
 pub mod g1;
 pub use g1::*;
 

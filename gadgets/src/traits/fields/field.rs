@@ -203,4 +203,10 @@ pub trait FieldGadget<NativeF: Field, F: Field>:
     fn cost_of_mul() -> usize;
 
     fn cost_of_inv() -> usize;
+
+    /// Returns `(self / d)`.
+    fn mul_by_inverse<CS: ConstraintSystem<F>>(&self, mut cs: CS, d: &Self) -> Result<Self, SynthesisError> {
+        let d_inv = d.inverse(cs.ns(|| "d_inv"))?;
+        d_inv.mul(cs.ns(|| "self * d_inv"), &self)
+    }
 }

@@ -28,10 +28,13 @@ use crate::{
     bits::Boolean,
     curves::{
         bls12_377::{G1Gadget, G1PreparedGadget, G2Gadget, G2PreparedGadget},
-        templates::bls12::Bls12PairingGadget,
+        templates::bls12::{AffineGadget, Bls12PairingGadget, NonZeroAffineVar},
     },
     traits::{alloc::AllocGadget, curves::PairingGadget, eq::EqGadget, fields::FieldGadget},
+    FpGadget,
+    GroupGadget,
 };
+use snarkvm_curves::bls12_377::Bls12_377G1Parameters;
 
 #[test]
 fn bls12_377_gadget_bilinearity_test() {
@@ -102,4 +105,125 @@ fn bls12_377_gadget_bilinearity_test() {
     }
 
     assert!(cs.is_satisfied(), "cs is not satisfied");
+}
+
+#[test]
+fn bls12_377_non_zero_affine_gadget_test1() {
+    let mut cs = TestConstraintSystem::<Fq>::new();
+
+    let a = G1Projective::prime_subgroup_generator().into_affine();
+
+    let x = FpGadget::<Fq>::alloc(cs.ns(|| "x"), || Ok(a.x)).unwrap();
+    let y = FpGadget::<Fq>::alloc(cs.ns(|| "y"), || Ok(a.y)).unwrap();
+
+    // The following code uses `double` and `add` (`add_unchecked`) to compute
+    // (1 + 2 + ... + 2^9) G
+    let sum_a = {
+        let a = AffineGadget::<Bls12_377G1Parameters, Fq, FpGadget<Fq>>::new(
+            x.clone(),
+            y.clone(),
+            Boolean::Constant(false),
+        );
+
+        let mut double_sequence = Vec::new();
+        double_sequence.push(a.clone());
+
+        let mut tmp = a.clone();
+        for i in 1..10 {
+            tmp.double_in_place(cs.ns(|| format!("sum_a double {}", i))).unwrap();
+            double_sequence.push(tmp.clone());
+        }
+
+        let mut sum = a.clone();
+        for (i, elem) in double_sequence.iter().skip(1).enumerate() {
+            sum = sum.add(cs.ns(|| format!("sum_a add {}", i)), &elem).unwrap();
+        }
+
+        (sum.x.get_value().unwrap(), sum.y.get_value().unwrap())
+    };
+
+    let sum_b = {
+        let a = NonZeroAffineVar::<Bls12_377G1Parameters, Fq, FpGadget<Fq>>::new(x.clone(), y.clone());
+
+        let mut double_sequence = Vec::new();
+        double_sequence.push(a.clone());
+
+        let mut tmp = a.clone();
+        for i in 1..10 {
+            tmp = tmp.double(cs.ns(|| format!("sum_b double {}", i))).unwrap();
+            double_sequence.push(tmp.clone());
+        }
+
+        let mut sum = a.clone();
+        for (i, elem) in double_sequence.iter().skip(1).enumerate() {
+            sum = sum.add_unchecked(cs.ns(|| format!("sum_b add {}", i)), &elem).unwrap();
+        }
+
+        (sum.x.get_value().unwrap(), sum.y.get_value().unwrap())
+    };
+
+    assert!(cs.is_satisfied());
+    assert_eq!(sum_a.0, sum_b.0);
+    assert_eq!(sum_a.1, sum_b.1);
+}
+
+#[test]
+fn bls12_377_non_zero_affine_gadget_test2() {
+    let mut cs = TestConstraintSystem::<Fq>::new();
+
+    let a = G1Projective::prime_subgroup_generator().into_affine();
+
+    let x = FpGadget::<Fq>::alloc(cs.ns(|| "x"), || Ok(a.x)).unwrap();
+    let y = FpGadget::<Fq>::alloc(cs.ns(|| "y"), || Ok(a.y)).unwrap();
+
+    // The following code tests `double_and_add`.
+    let sum_a = {
+        let a = AffineGadget::<Bls12_377G1Parameters, Fq, FpGadget<Fq>>::new(
+            x.clone(),
+            y.clone(),
+            Boolean::Constant(false),
+        );
+
+        let mut cur = a.clone();
+        cur.double_in_place(cs.ns(|| "sum_a cur initial double")).unwrap();
+        for i in 1..10 {
+            cur.double_in_place(cs.ns(|| format!("sum_a double {}", i))).unwrap();
+            cur = cur.add(cs.ns(|| format!("sum_a add {}", i)), &a).unwrap();
+        }
+
+        (cur.x.get_value().unwrap(), cur.y.get_value().unwrap())
+    };
+
+    let sum_b = {
+        let a = NonZeroAffineVar::<Bls12_377G1Parameters, Fq, FpGadget<Fq>>::new(x.clone(), y.clone());
+
+        let mut cur = a.double(cs.ns(|| "sum_b cur initial double")).unwrap();
+        for i in 1..10 {
+            cur = cur
+                .double_and_add(cs.ns(|| format!("sum_b double and add {}", i)), &a)
+                .unwrap();
+        }
+
+        (cur.x.get_value().unwrap(), cur.y.get_value().unwrap())
+    };
+
+    assert!(cs.is_satisfied());
+    assert_eq!(sum_a.0, sum_b.0);
+    assert_eq!(sum_a.1, sum_b.1);
+}
+
+#[test]
+#[should_panic]
+fn bls12_377_non_zero_affine_gadget_test3() {
+    let mut cs = TestConstraintSystem::<Fq>::new();
+
+    let a = G1Projective::prime_subgroup_generator().into_affine();
+
+    let x = FpGadget::<Fq>::alloc(cs.ns(|| "x"), || Ok(a.x)).unwrap();
+    let y = FpGadget::<Fq>::alloc(cs.ns(|| "y"), || Ok(a.y)).unwrap();
+
+    let a = NonZeroAffineVar::<Bls12_377G1Parameters, Fq, FpGadget<Fq>>::new(x.clone(), y.clone());
+
+    let _ = a.double_and_add(cs.ns(|| "double and add"), &a).unwrap();
+    assert!(!cs.is_satisfied());
 }
