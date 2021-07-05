@@ -38,7 +38,7 @@ use itertools::Itertools;
 use rand::Rng;
 use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
 
-type BaseField<T> = <<T as Testnet1Components>::EncryptionModelParameters as ModelParameters>::BaseField;
+type BaseField<T> = <<T as Testnet1Components>::EncryptionParameters as ModelParameters>::BaseField;
 
 #[derive(Derivative)]
 #[derivative(
@@ -48,7 +48,7 @@ type BaseField<T> = <<T as Testnet1Components>::EncryptionModelParameters as Mod
 )]
 pub struct RecordEncryptionGadgetComponents<C: Testnet1Components> {
     /// Record field element representations
-    pub record_field_elements: Vec<<C::EncryptionModelParameters as ModelParameters>::BaseField>,
+    pub record_field_elements: Vec<<C::EncryptionParameters as ModelParameters>::BaseField>,
     /// Record group element encodings - Represented in (x,y) affine coordinates
     pub record_group_encoding: Vec<(BaseField<C>, BaseField<C>)>,
     /// Record ciphertext selectors - Used for ciphertext compression/decompression
@@ -63,8 +63,8 @@ impl<C: Testnet1Components> Default for RecordEncryptionGadgetComponents<C> {
     fn default() -> Self {
         // TODO (raychu86) Fix the lengths to be generic
         let record_encoding_length = 7;
-        let base_field_one = <C::EncryptionModelParameters as ModelParameters>::BaseField::one();
-        let base_field_default = <C::EncryptionModelParameters as ModelParameters>::BaseField::default();
+        let base_field_one = <C::EncryptionParameters as ModelParameters>::BaseField::one();
+        let base_field_default = <C::EncryptionParameters as ModelParameters>::BaseField::default();
 
         let record_field_elements = vec![base_field_one; record_encoding_length];
         let record_group_encoding = vec![(base_field_default, base_field_default); record_encoding_length];
@@ -113,7 +113,7 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
         DPCError,
     > {
         // Serialize the record into group elements and fq_high bits
-        let encoded_record = EncodedRecord::<C, C::EncryptionModelParameters, C::EncryptionGroup>::encode(record)?;
+        let encoded_record = EncodedRecord::<C, C::EncryptionParameters, C::EncryptionGroup>::encode(record)?;
         let final_fq_high_selector = encoded_record.final_sign_high;
 
         let mut record_plaintexts = Vec::with_capacity(encoded_record.encoded_elements.len());
@@ -168,7 +168,7 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
         // Deserialize the plaintext record into record components
         let encoded_record = EncodedRecord::<
             C,
-            <C as Testnet1Components>::EncryptionModelParameters,
+            <C as Testnet1Components>::EncryptionParameters,
             <C as Testnet1Components>::EncryptionGroup,
         >::new(plaintext, self.final_fq_high_selector);
         let record_components = encoded_record.decode()?;
@@ -277,14 +277,14 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
         encryption_randomness: &<<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Randomness,
     ) -> Result<RecordEncryptionGadgetComponents<C>, DPCError> {
         // Serialize the record into group elements and fq_high bits
-        let encoded_record = EncodedRecord::<C, C::EncryptionModelParameters, C::EncryptionGroup>::encode(record)?;
+        let encoded_record = EncodedRecord::<C, C::EncryptionParameters, C::EncryptionGroup>::encode(record)?;
         let num_encoded_elements = encoded_record.encoded_elements.len();
         let final_fq_high_selector = encoded_record.final_sign_high;
 
         // Extract the fq_bits from the serialized record
         let fq_high_selectors = {
             let final_element = &encoded_record.encoded_elements[num_encoded_elements - 1];
-            let final_element_bytes = decode_from_group::<C::EncryptionModelParameters, C::EncryptionGroup>(
+            let final_element_bytes = decode_from_group::<C::EncryptionParameters, C::EncryptionGroup>(
                 final_element.into_affine(),
                 final_fq_high_selector,
             )?;
@@ -316,14 +316,14 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
             if i == 0 {
                 // Serial number nonce
                 let record_field_element =
-                    <<C as Testnet1Components>::EncryptionModelParameters as ModelParameters>::BaseField::read(
+                    <<C as Testnet1Components>::EncryptionParameters as ModelParameters>::BaseField::read(
                         &to_bytes![element]?[..],
                     )?;
                 record_field_elements.push(record_field_element);
             } else {
                 // Decode the encoded groups into their respective field elements
                 let record_field_element = Elligator2::<
-                    <C as Testnet1Components>::EncryptionModelParameters,
+                    <C as Testnet1Components>::EncryptionParameters,
                     <C as Testnet1Components>::EncryptionGroup,
                 >::decode(&element_affine, *fq_high)?;
 
@@ -332,10 +332,10 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
 
             // Fetch the x and y coordinates of the serialized group elements
             // These values will be used in the inner circuit to validate the Elligator2 encoding
-            let x = <<C as Testnet1Components>::EncryptionModelParameters as ModelParameters>::BaseField::read(
+            let x = <<C as Testnet1Components>::EncryptionParameters as ModelParameters>::BaseField::read(
                 &to_bytes![element_affine.to_x_coordinate()]?[..],
             )?;
-            let y = <<C as Testnet1Components>::EncryptionModelParameters as ModelParameters>::BaseField::read(
+            let y = <<C as Testnet1Components>::EncryptionParameters as ModelParameters>::BaseField::read(
                 &to_bytes![element_affine.to_y_coordinate()]?[..],
             )?;
             record_group_encoding.push((x, y));

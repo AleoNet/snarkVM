@@ -78,7 +78,7 @@ pub trait Testnet2Components: DPCComponents {
     /// Group and Model Parameters for record encryption
     type EncryptionGroup: Group + ProjectiveCurve;
     type EncryptionGroupGadget: CompressedGroupGadget<Self::EncryptionGroup, Self::InnerScalarField>;
-    type EncryptionModelParameters: MontgomeryParameters + TwistedEdwardsParameters;
+    type EncryptionParameters: MontgomeryParameters + TwistedEdwardsParameters;
 
     /// SNARK for non-proof-verification checks
     type InnerSNARK: SNARK<
@@ -187,8 +187,8 @@ where
         ToConstraintField<C::OuterScalarField>,
 {
     type Account = Account<C>;
+    type Execution = Execution;
     type LocalData = LocalData<C>;
-    type PrivateProgramInput = Execution;
     type Record = Record<C>;
     type SystemParameters = SystemParameters<C>;
     type Transaction = Transaction<C>;
@@ -238,6 +238,7 @@ where
     }
 
     fn load(verify_only: bool) -> anyhow::Result<Self> {
+        let timer = start_timer!(|| "DPC::load");
         let system_parameters = Self::SystemParameters::load()?;
         let noop_program = NoopProgram::load(
             &system_parameters.local_data_commitment,
@@ -268,6 +269,7 @@ where
 
             (outer_snark_pk, outer_snark_vk.into())
         };
+        end_timer!(timer);
 
         Ok(Self {
             system_parameters,
@@ -464,7 +466,7 @@ where
         &self,
         old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         transaction_kernel: Self::TransactionKernel,
-        program_proofs: Vec<Self::PrivateProgramInput>,
+        program_proofs: Vec<Self::Execution>,
         ledger: &L,
         rng: &mut R,
     ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)> {

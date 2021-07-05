@@ -69,7 +69,7 @@ pub trait Testnet1Components: DPCComponents {
 
     /// Group and Model Parameters for record encryption
     type EncryptionGroup: Group + ProjectiveCurve;
-    type EncryptionModelParameters: MontgomeryParameters + TwistedEdwardsParameters;
+    type EncryptionParameters: MontgomeryParameters + TwistedEdwardsParameters;
 
     /// SNARK for non-proof-verification checks
     type InnerSNARK: SNARK<
@@ -130,8 +130,8 @@ where
     >,
 {
     type Account = Account<C>;
+    type Execution = Execution;
     type LocalData = LocalData<C>;
-    type PrivateProgramInput = Execution;
     type Record = Record<C>;
     type SystemParameters = SystemParameters<C>;
     type Transaction = Transaction<C>;
@@ -409,7 +409,7 @@ where
         &self,
         old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         transaction_kernel: Self::TransactionKernel,
-        program_proofs: Vec<Self::PrivateProgramInput>,
+        program_proofs: Vec<Self::Execution>,
         ledger: &L,
         rng: &mut R,
     ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)> {

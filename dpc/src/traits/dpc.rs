@@ -22,7 +22,7 @@ use std::sync::Arc;
 pub trait DPCScheme<L: LedgerScheme>: Sized {
     type Account: AccountScheme;
     type LocalData;
-    type PrivateProgramInput;
+    type Execution;
     type Record: RecordScheme<Owner = <Self::Account as AccountScheme>::Address>;
     type SystemParameters;
     type Transaction: TransactionScheme<SerialNumber = <Self::Record as RecordScheme>::SerialNumber>;
@@ -54,7 +54,7 @@ pub trait DPCScheme<L: LedgerScheme>: Sized {
         &self,
         old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         transaction_kernel: Self::TransactionKernel,
-        program_proofs: Vec<Self::PrivateProgramInput>,
+        program_proofs: Vec<Self::Execution>,
         ledger: &L,
         rng: &mut R,
     ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)>;
