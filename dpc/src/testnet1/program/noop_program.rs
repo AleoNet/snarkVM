@@ -16,10 +16,12 @@
 
 use crate::{
     testnet1::{LocalData, NoopCircuit, PrivateProgramInput, ProgramLocalData, Testnet1Components},
-    traits::{ProgramScheme, RecordScheme},
-    DPCError,
+    DPCComponents,
+    ProgramError,
+    ProgramScheme,
+    RecordScheme,
 };
-use snarkvm_algorithms::traits::{CommitmentScheme, SNARK};
+use snarkvm_algorithms::{CommitmentScheme, CRH, SNARK};
 use snarkvm_utilities::{to_bytes, ToBytes};
 
 use rand::Rng;
@@ -45,20 +47,36 @@ impl<C: Testnet1Components, S: SNARK> ProgramScheme for NoopProgram<C, S>
 where
     S: SNARK<AllocatedCircuit = NoopCircuit<C>, VerifierInput = ProgramLocalData<C>>,
 {
-    type Id = Vec<u8>;
+    type ID = Vec<u8>;
     type LocalData = LocalData<C>;
     type PrivateWitness = PrivateProgramInput;
+    type ProgramIDCRH = C::ProgramVerificationKeyCRH;
     type ProvingKey = S::ProvingKey;
     type PublicInput = ();
     type VerifyingKey = S::VerifyingKey;
 
-    fn new(program_id: Self::Id, proving_key: Self::ProvingKey, verifying_key: Self::VerifyingKey) -> Self {
-        Self {
+    /// Initializes a new instance of a program.
+    fn new(
+        program_id_crh_parameters: &Self::ProgramIDCRH,
+        proving_key: Self::ProvingKey,
+        verifying_key: Self::VerifyingKey,
+    ) -> Result<Self, ProgramError> {
+        let program_id = to_bytes![<C as DPCComponents>::ProgramVerificationKeyCRH::hash(
+            program_id_crh_parameters,
+            &to_bytes![verifying_key]?
+        )?]?;
+
+        Ok(Self {
             id: program_id,
             proving_key,
             verifying_key,
             _components: PhantomData,
-        }
+        })
+    }
+
+    /// Returns the program ID.
+    fn id(&self) -> Self::ID {
+        self.id.clone()
     }
 
     fn execute<R: Rng>(
@@ -66,7 +84,7 @@ where
         local_data: &Self::LocalData,
         position: u8,
         rng: &mut R,
-    ) -> Result<Self::PrivateWitness, DPCError> {
+    ) -> Result<Self::PrivateWitness, ProgramError> {
         let num_records = local_data.old_records.len() + local_data.new_records.len();
         assert!((position as usize) < num_records);
 

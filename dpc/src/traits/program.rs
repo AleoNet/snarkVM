@@ -14,21 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::DPCError;
+use crate::errors::ProgramError;
 
 use core::fmt::Debug;
 use rand::Rng;
 
 pub trait ProgramScheme: Clone {
-    type Id: Debug;
+    type ID: Debug;
     type LocalData;
     type PrivateWitness;
     type ProvingKey;
     type PublicInput;
     type VerifyingKey;
+    type ProgramIDCRH;
 
     /// Initializes a new instance of a program.
-    fn new(program_id: Self::Id, proving_key: Self::ProvingKey, verifying_key: Self::VerifyingKey) -> Self;
+    fn new(
+        program_id_crh_parameters: &Self::ProgramIDCRH,
+        proving_key: Self::ProvingKey,
+        verifying_key: Self::VerifyingKey,
+    ) -> Result<Self, ProgramError>;
+
+    /// Returns the program ID.
+    fn id(&self) -> Self::ID;
 
     /// Executes the program, returning the execution proof.
     fn execute<R: Rng>(
@@ -36,7 +44,7 @@ pub trait ProgramScheme: Clone {
         local_data: &Self::LocalData,
         position: u8,
         rng: &mut R,
-    ) -> Result<Self::PrivateWitness, DPCError>;
+    ) -> Result<Self::PrivateWitness, ProgramError>;
 
     /// Returns the evaluation of the program on given input and witness.
     fn evaluate(&self, primary: &Self::PublicInput, witness: &Self::PrivateWitness) -> bool;
