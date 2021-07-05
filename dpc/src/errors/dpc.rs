@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::{AccountError, LedgerError, RecordError, TransactionError};
-use snarkvm_algorithms::errors::{
+use crate::{AccountError, LedgerError, ProgramError, RecordError, TransactionError};
+use snarkvm_algorithms::{
     CRHError,
     CommitmentError,
     EncodingError,
@@ -25,7 +25,7 @@ use snarkvm_algorithms::errors::{
     SNARKError,
     SignatureError,
 };
-use snarkvm_parameters::errors::ParameterError;
+use snarkvm_parameters::ParameterError;
 
 #[derive(Debug, Error)]
 pub enum DPCError {
@@ -73,6 +73,9 @@ pub enum DPCError {
 
     #[error("{}", _0)]
     ParameterError(#[from] ParameterError),
+
+    #[error("{}", _0)]
+    ProgramError(#[from] ProgramError),
 
     #[error("{}", _0)]
     PRFError(#[from] PRFError),

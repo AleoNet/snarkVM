@@ -20,6 +20,7 @@ use crate::{
     AleoAmount,
     DPCError,
     Network,
+    ProgramScheme,
 };
 use snarkvm_algorithms::{
     commitment_tree::CommitmentMerkleTree,
@@ -129,7 +130,7 @@ pub trait Testnet2Components: DPCComponents {
 
 pub struct DPC<C: Testnet2Components> {
     pub system_parameters: SystemParameters<C>,
-    pub noop_program_snark_parameters: NoopProgramSNARKParameters<C>,
+    pub noop_program: NoopProgram<C>,
     pub inner_snark_parameters: (
         Option<<C::InnerSNARK as SNARK>::ProvingKey>,
         <C::InnerSNARK as SNARK>::PreparedVerifyingKey,
@@ -187,7 +188,7 @@ where
 {
     type Account = Account<C>;
     type LocalData = LocalData<C>;
-    type PrivateProgramInput = PrivateProgramInput;
+    type PrivateProgramInput = Execution;
     type Record = Record<C>;
     type SystemParameters = SystemParameters<C>;
     type Transaction = Transaction<C>;
@@ -197,22 +198,14 @@ where
         let setup_time = start_timer!(|| "DPC::setup");
         let system_parameters = Self::SystemParameters::setup(rng)?;
 
-        let program_snark_universal_srs = Self::generate_program_snark_universal_srs(rng)?;
-
-        let program_snark_setup_time = start_timer!(|| "Dummy program SNARK setup");
-        let noop_program_snark_parameters =
-            NoopProgramSNARKParameters::setup(&system_parameters, &program_snark_universal_srs, rng)?;
-        let program_snark_proof = C::NoopProgramSNARK::prove(
-            &noop_program_snark_parameters.proving_key,
-            &NoopCircuit::blank(system_parameters.local_data_commitment.parameters()),
+        let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
+        let noop_program = NoopProgram::setup(
+            &system_parameters.local_data_commitment,
+            &system_parameters.program_verification_key_crh,
             rng,
         )?;
-        end_timer!(program_snark_setup_time);
-
-        let program_snark_vk_and_proof = PrivateProgramInput {
-            verifying_key: to_bytes![noop_program_snark_parameters.verifying_key]?,
-            proof: to_bytes![program_snark_proof]?,
-        };
+        let noop_program_execution = noop_program.execute_blank(rng)?;
+        end_timer!(noop_program_timer);
 
         let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");
         let inner_circuit = InnerCircuit::blank(&system_parameters, ledger_parameters);
@@ -229,7 +222,7 @@ where
                 ledger_parameters.clone(),
                 inner_snark_vk,
                 inner_snark_proof,
-                program_snark_vk_and_proof,
+                noop_program_execution,
             ),
             rng,
         )?;
@@ -238,7 +231,7 @@ where
 
         Ok(Self {
             system_parameters,
-            noop_program_snark_parameters,
+            noop_program,
             inner_snark_parameters: (Some(inner_snark_parameters.0), inner_snark_parameters.1),
             outer_snark_parameters: (Some(outer_snark_parameters.0), outer_snark_parameters.1),
         })
@@ -246,8 +239,10 @@ where
 
     fn load(verify_only: bool) -> anyhow::Result<Self> {
         let system_parameters = Self::SystemParameters::load()?;
-        let noop_program_snark_parameters = NoopProgramSNARKParameters::<C>::load()?;
-
+        let noop_program = NoopProgram::load(
+            &system_parameters.local_data_commitment,
+            &system_parameters.program_verification_key_crh,
+        )?;
         let inner_snark_parameters = {
             let inner_snark_pk = match verify_only {
                 true => None,
@@ -276,7 +271,7 @@ where
 
         Ok(Self {
             system_parameters,
-            noop_program_snark_parameters,
+            noop_program,
             inner_snark_parameters,
             outer_snark_parameters,
         })

@@ -18,40 +18,46 @@ use crate::errors::ProgramError;
 use snarkvm_algorithms::SNARK;
 
 use core::fmt::Debug;
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 
 pub trait ProgramScheme: Clone {
     type ID: Debug;
     type LocalData;
+    type LocalDataCommitment;
     type PublicInput;
-    type PrivateWitness;
+    type Execution;
     type ProgramVerifyingKeyCRH;
     type ProofSystem: SNARK;
     type ProvingKey;
     type VerifyingKey;
 
     /// Initializes a new instance of a program.
-    fn new(
+    fn setup<R: Rng + CryptoRng>(
+        local_data_commitment: &Self::LocalDataCommitment,
         program_verifying_key_crh: &Self::ProgramVerifyingKeyCRH,
-        proving_key: Self::ProvingKey,
-        verifying_key: Self::VerifyingKey,
+        rng: &mut R,
     ) -> Result<Self, ProgramError>;
 
-    /// Returns the program ID.
-    fn id(&self) -> Self::ID;
+    /// Loads an instance of a program.
+    fn load(
+        local_data_commitment: &Self::LocalDataCommitment,
+        program_verifying_key_crh: &Self::ProgramVerifyingKeyCRH,
+    ) -> Result<Self, ProgramError>;
 
-    /// Executes the program, returning the execution proof.
-    fn execute<R: Rng>(
+    /// Returns the execution of the program.
+    fn execute<R: Rng + CryptoRng>(
         &self,
         local_data: &Self::LocalData,
         position: u8,
         rng: &mut R,
-    ) -> Result<Self::PrivateWitness, ProgramError>;
+    ) -> Result<Self::Execution, ProgramError>;
+
+    /// Returns the blank execution of the program, typically used for a SNARK setup.
+    fn execute_blank<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::Execution, ProgramError>;
 
     /// Returns the evaluation of the program on given input and witness.
-    fn evaluate(&self, primary: &Self::PublicInput, witness: &Self::PrivateWitness) -> bool;
+    fn evaluate(&self, primary: &Self::PublicInput, witness: &Self::Execution) -> bool;
 
-    /// Returns the program identity
-    #[allow(clippy::wrong_self_convention)]
-    fn into_compact_repr(&self) -> Vec<u8>;
+    /// Returns the program ID.
+    fn id(&self) -> Self::ID;
 }

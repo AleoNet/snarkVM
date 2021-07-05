@@ -27,7 +27,6 @@ pub struct LocalData<C: Testnet1Components> {
     pub new_records: Vec<Record<C>>,
 
     // Commitment to the above information.
-    pub local_data_commitment_parameters: <C::LocalDataCommitment as CommitmentScheme>::Parameters,
     pub local_data_merkle_tree: CommitmentMerkleTree<C::LocalDataCommitment, C::LocalDataCRH>,
     pub local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
 

@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::{CRHError, CommitmentError, EncryptionError, PRFError, SNARKError, SignatureError};
+use snarkvm_parameters::ParameterError;
 
 #[derive(Debug, Error)]
 pub enum ProgramError {
@@ -34,9 +35,6 @@ pub enum ProgramError {
     CRHError(#[from] CRHError),
 
     #[error("{}", _0)]
-    DPCError(#[from] crate::DPCError),
-
-    #[error("{}", _0)]
     EncryptionError(#[from] EncryptionError),
 
     #[error("{}", _0)]
@@ -47,6 +45,9 @@ pub enum ProgramError {
 
     #[error("Attempted to build a record with an invalid commitment. Try `calculate_commitment()`")]
     InvalidCommitment,
+
+    #[error("{}", _0)]
+    ParameterError(#[from] ParameterError),
 
     #[error("{}", _0)]
     PRFError(#[from] PRFError),

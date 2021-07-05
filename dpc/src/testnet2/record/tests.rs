@@ -15,22 +15,16 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet2::{
-        encoded::*,
-        encrypted::*,
-        instantiated::*,
-        NoopProgramSNARKParameters,
-        Payload,
-        Record,
-        SystemParameters,
-    },
-    traits::{AccountScheme, DPCComponents, EncodedRecordScheme},
+    testnet2::{encoded::*, encrypted::*, instantiated::*, NoopProgram, Payload, Record, SystemParameters},
     Account,
+    AccountScheme,
+    DPCComponents,
+    EncodedRecordScheme,
+    ProgramScheme,
     ViewKey,
 };
 use snarkvm_algorithms::traits::CRH;
 use snarkvm_curves::edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls};
-use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
@@ -45,17 +39,11 @@ fn test_record_serialization() {
         // Generate parameters for the ledger, commitment schemes, CRH, and the
         // "always-accept" program.
         let system_parameters = SystemParameters::<Components>::setup(&mut rng).unwrap();
-        let universal_srs = Testnet2DPC::generate_program_snark_universal_srs(&mut rng).unwrap();
-        let noop_program_snark_pp =
-            NoopProgramSNARKParameters::setup(&system_parameters, &universal_srs, &mut rng).unwrap();
-
-        let program_snark_vk_bytes = to_bytes![
-            <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
-                &system_parameters.program_verification_key_crh,
-                &to_bytes![noop_program_snark_pp.verifying_key].unwrap()
-            )
-            .unwrap()
-        ]
+        let noop_program = NoopProgram::<Components>::setup(
+            &system_parameters.local_data_commitment,
+            &system_parameters.program_verification_key_crh,
+            &mut rng,
+        )
         .unwrap();
 
         for _ in 0..ITERATIONS {
@@ -77,8 +65,8 @@ fn test_record_serialization() {
                 false,
                 value,
                 Payload::from_bytes(&payload),
-                program_snark_vk_bytes.clone(),
-                program_snark_vk_bytes.clone(),
+                noop_program.id(),
+                noop_program.id(),
                 <Components as DPCComponents>::SerialNumberNonceCRH::hash(
                     &system_parameters.serial_number_nonce,
                     &sn_nonce_input,
@@ -112,16 +100,11 @@ fn test_record_encryption() {
         // Generate parameters for the ledger, commitment schemes, CRH, and the
         // "always-accept" program.
         let system_parameters = SystemParameters::<Components>::setup(&mut rng).unwrap();
-        let universal_srs = Testnet2DPC::generate_program_snark_universal_srs(&mut rng).unwrap();
-        let program_snark_pp = NoopProgramSNARKParameters::setup(&system_parameters, &universal_srs, &mut rng).unwrap();
-
-        let program_snark_vk_bytes = to_bytes![
-            <Components as DPCComponents>::ProgramVerificationKeyCRH::hash(
-                &system_parameters.program_verification_key_crh,
-                &to_bytes![program_snark_pp.verifying_key].unwrap()
-            )
-            .unwrap()
-        ]
+        let noop_program = NoopProgram::<Components>::setup(
+            &system_parameters.local_data_commitment,
+            &system_parameters.program_verification_key_crh,
+            &mut rng,
+        )
         .unwrap();
 
         for _ in 0..ITERATIONS {
@@ -143,8 +126,8 @@ fn test_record_encryption() {
                 false,
                 value,
                 Payload::from_bytes(&payload),
-                program_snark_vk_bytes.clone(),
-                program_snark_vk_bytes.clone(),
+                noop_program.id(),
+                noop_program.id(),
                 <Components as DPCComponents>::SerialNumberNonceCRH::hash(
                     &system_parameters.serial_number_nonce,
                     &sn_nonce_input,

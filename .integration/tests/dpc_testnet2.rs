@@ -28,7 +28,6 @@ use snarkvm_dpc::{
         program::NoopProgram,
         EncryptedRecord,
         InnerCircuit,
-        NoopProgramSNARKParameters,
         Payload,
         Record,
         Testnet2Components,
@@ -107,13 +106,11 @@ fn dpc_testnet2_integration_test() {
         genesis_block,
     );
 
-    let noop_program = NoopProgram::<Components>::new(
+    let noop_program = NoopProgram::<Components>::load(
+        &dpc.system_parameters.local_data_commitment,
         &dpc.system_parameters.program_verification_key_crh,
-        dpc.noop_program_snark_parameters.proving_key.clone(),
-        dpc.noop_program_snark_parameters.verifying_key.clone(),
     )
     .unwrap();
-    let noop_program_id = noop_program.id();
 
     // Generate dummy input records having as address the genesis address.
     let old_private_keys = vec![genesis_account.private_key.clone(); Components::NUM_INPUT_RECORDS];
@@ -132,8 +129,8 @@ fn dpc_testnet2_integration_test() {
             true, // The input record is dummy
             0,
             Payload::default(),
-            noop_program_id.clone(),
-            noop_program_id.clone(),
+            noop_program.id(),
+            noop_program.id(),
             old_sn_nonce,
             &mut rng,
         )
@@ -161,8 +158,8 @@ fn dpc_testnet2_integration_test() {
                 false,
                 10,
                 Payload::default(),
-                noop_program_id.clone(),
-                noop_program_id.clone(),
+                noop_program.id(),
+                noop_program.id(),
                 j as u8,
                 joint_serial_numbers.clone(),
                 &mut rng,
@@ -269,18 +266,12 @@ fn test_testnet_2_transaction_kernel_serialization() {
     // "always-accept" program.
     let dpc = <Testnet2DPC as DPCScheme<L>>::load(false).unwrap();
     let system_parameters = &dpc.system_parameters;
-
-    let universal_srs = Testnet2DPC::generate_program_snark_universal_srs(&mut rng).unwrap();
-
-    let noop_program_snark_pp =
-        NoopProgramSNARKParameters::setup(&system_parameters, &universal_srs, &mut rng).unwrap();
-    let noop_program = NoopProgram::<Components>::new(
+    let noop_program = NoopProgram::<Components>::setup(
+        &system_parameters.local_data_commitment,
         &system_parameters.program_verification_key_crh,
-        noop_program_snark_pp.proving_key,
-        noop_program_snark_pp.verifying_key,
+        &mut rng,
     )
     .unwrap();
-    let noop_program_id = noop_program.id();
 
     // Generate metadata and an account for a dummy initial record.
     let test_account = Account::new(
@@ -303,8 +294,8 @@ fn test_testnet_2_transaction_kernel_serialization() {
             true,
             0,
             Payload::default(),
-            noop_program_id.clone(),
-            noop_program_id.clone(),
+            noop_program.id(),
+            noop_program.id(),
             <Components as DPCComponents>::SerialNumberNonceCRH::hash(
                 &system_parameters.serial_number_nonce,
                 &[0u8; 1],
@@ -335,8 +326,8 @@ fn test_testnet_2_transaction_kernel_serialization() {
                 false,
                 10,
                 Payload::default(),
-                noop_program_id.clone(),
-                noop_program_id.clone(),
+                noop_program.id(),
+                noop_program.id(),
                 j as u8,
                 joint_serial_numbers.clone(),
                 &mut rng,
@@ -375,24 +366,18 @@ fn test_testnet2_dpc_execute_constraints() {
     let dpc = <Testnet2DPC as DPCScheme<L>>::load(false).unwrap();
     let system_parameters = &dpc.system_parameters;
 
-    let universal_srs = Testnet2DPC::generate_program_snark_universal_srs(&mut rng).unwrap();
-
-    let noop_program_snark_pp =
-        NoopProgramSNARKParameters::setup(&system_parameters, &universal_srs, &mut rng).unwrap();
-    let noop_program = NoopProgram::<Components>::new(
+    let noop_program = NoopProgram::<Components>::setup(
+        &system_parameters.local_data_commitment,
         &system_parameters.program_verification_key_crh,
-        noop_program_snark_pp.proving_key,
-        noop_program_snark_pp.verifying_key,
+        &mut rng,
     )
     .unwrap();
     let noop_program_id = noop_program.id();
 
-    let alternate_noop_program_snark_pp =
-        NoopProgramSNARKParameters::setup(&system_parameters, &universal_srs, &mut rng).unwrap();
-    let alternate_noop_program = NoopProgram::<Components>::new(
+    let alternate_noop_program = NoopProgram::<Components>::setup(
+        &system_parameters.local_data_commitment,
         &system_parameters.program_verification_key_crh,
-        alternate_noop_program_snark_pp.proving_key,
-        alternate_noop_program_snark_pp.verifying_key,
+        &mut rng,
     )
     .unwrap();
     let alternate_noop_program_id = alternate_noop_program.id();

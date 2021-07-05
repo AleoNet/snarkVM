@@ -18,7 +18,7 @@ use crate::{
     testnet2::{
         outer_circuit_gadget::execute_outer_circuit,
         parameters::SystemParameters,
-        program::PrivateProgramInput,
+        program::Execution,
         Testnet2Components,
     },
     AleoAmount,
@@ -51,7 +51,7 @@ pub struct OuterCircuit<C: Testnet2Components> {
     inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
     inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
 
-    program_proofs: Vec<PrivateProgramInput>,
+    program_proofs: Vec<Execution>,
     program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
     program_randomness: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
     local_data_root: <C::LocalDataCRH as CRH>::Output,
@@ -65,7 +65,7 @@ impl<C: Testnet2Components> OuterCircuit<C> {
         ledger_parameters: Arc<C::MerkleParameters>,
         inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
-        program_snark_vk_and_proof: PrivateProgramInput,
+        program_snark_vk_and_proof: Execution,
     ) -> Self {
         let ledger_digest = MerkleTreeDigest::<C::MerkleParameters>::default();
         let old_serial_numbers =
@@ -124,7 +124,7 @@ impl<C: Testnet2Components> OuterCircuit<C> {
 
         // Private program input = Verification key and input
         // Commitment contains commitment to hash of death program vk.
-        program_proofs: Vec<PrivateProgramInput>,
+        program_proofs: Vec<Execution>,
         program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
         program_randomness: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
         local_data_root: <C::LocalDataCRH as CRH>::Output,

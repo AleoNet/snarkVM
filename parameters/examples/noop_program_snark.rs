@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::traits::SNARK;
 use snarkvm_dpc::{
-    errors::DPCError,
-    testnet1::{instantiated::Components, NoopProgramSNARKParameters, SystemParameters, Testnet1Components},
+    testnet1::{instantiated::Components, NoopProgram, SystemParameters, Testnet1Components},
+    DPCError,
+    ProgramScheme,
 };
 use snarkvm_utilities::{bytes::ToBytes, to_bytes};
 
@@ -27,15 +27,19 @@ use std::path::PathBuf;
 mod utils;
 use utils::store;
 
+#[allow(deprecated)]
 pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
     let system_parameters = SystemParameters::<C>::load()?;
 
-    let noop_program_snark_parameters = NoopProgramSNARKParameters::setup(&system_parameters, rng)?;
-    let noop_program_snark_pk = to_bytes![noop_program_snark_parameters.proving_key]?;
-    let noop_program_snark_vk: <C::NoopProgramSNARK as SNARK>::VerifyingKey =
-        noop_program_snark_parameters.verifying_key;
-    let noop_program_snark_vk = to_bytes![noop_program_snark_vk]?;
+    let noop_program = NoopProgram::<C>::setup(
+        &system_parameters.local_data_commitment,
+        &system_parameters.program_verification_key_crh,
+        rng,
+    )?;
+    let (proving_key, verifying_key) = noop_program.to_snark_parameters();
+    let noop_program_snark_pk = to_bytes![proving_key]?;
+    let noop_program_snark_vk = to_bytes![verifying_key]?;
 
     println!("noop_program_snark_pk.params\n\tsize - {}", noop_program_snark_pk.len());
     println!("noop_program_snark_vk.params\n\tsize - {}", noop_program_snark_vk.len());
