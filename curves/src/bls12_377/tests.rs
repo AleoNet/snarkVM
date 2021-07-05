@@ -40,7 +40,7 @@ use crate::{
         AffineCurve,
         PairingEngine,
         ProjectiveCurve,
-        SWModelParameters,
+        ShortWeierstrassParameters,
     },
 };
 use snarkvm_fields::{

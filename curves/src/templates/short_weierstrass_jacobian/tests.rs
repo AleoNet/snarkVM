@@ -17,7 +17,7 @@
 use super::{Affine, Projective};
 use crate::traits::{
     pairing_engine::{AffineCurve, ProjectiveCurve},
-    SWModelParameters,
+    ShortWeierstrassParameters,
 };
 use snarkvm_fields::Zero;
 use snarkvm_utilities::{
@@ -31,12 +31,12 @@ use rand_xorshift::XorShiftRng;
 
 pub const ITERATIONS: usize = 10;
 
-pub fn sw_tests<P: SWModelParameters>() {
+pub fn sw_tests<P: ShortWeierstrassParameters>() {
     sw_curve_serialization_test::<P>();
     sw_from_random_bytes::<P>();
 }
 
-pub fn sw_curve_serialization_test<P: SWModelParameters>() {
+pub fn sw_curve_serialization_test<P: ShortWeierstrassParameters>() {
     let buf_size = Affine::<P>::zero().serialized_size();
 
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
@@ -119,7 +119,7 @@ pub fn sw_curve_serialization_test<P: SWModelParameters>() {
     }
 }
 
-pub fn sw_from_random_bytes<P: SWModelParameters>() {
+pub fn sw_from_random_bytes<P: ShortWeierstrassParameters>() {
     let buf_size = Affine::<P>::zero().serialized_size();
 
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);

@@ -19,7 +19,7 @@ use snarkvm_utilities::biginteger::{BigInteger256, BigInteger384};
 
 use crate::{
     bls12_377::{Fq, Fr},
-    traits::{ModelParameters, SWModelParameters},
+    traits::{ModelParameters, ShortWeierstrassParameters},
 };
 
 #[derive(Clone, Default, PartialEq, Eq)]
@@ -30,7 +30,7 @@ impl ModelParameters for Bls12_377G1Parameters {
     type ScalarField = Fr;
 }
 
-impl SWModelParameters for Bls12_377G1Parameters {
+impl ShortWeierstrassParameters for Bls12_377G1Parameters {
     /// AFFINE_GENERATOR_COEFFS = (G1_GENERATOR_X, G1_GENERATOR_Y)
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) = (G1_GENERATOR_X, G1_GENERATOR_Y);
     /// COEFF_A = 0

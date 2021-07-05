@@ -16,7 +16,7 @@
 
 use crate::{
     templates::twisted_edwards_extended::Affine,
-    traits::{AffineCurve, Group, ProjectiveCurve, TEModelParameters as Parameters},
+    traits::{AffineCurve, Group, ProjectiveCurve, TwistedEdwardsParameters as Parameters},
 };
 use snarkvm_fields::{impl_additive_ops_from_ref, Field, One, PrimeField, Zero};
 use snarkvm_utilities::{

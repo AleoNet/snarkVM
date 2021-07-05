@@ -16,7 +16,7 @@
 
 use crate::{errors::DPCError, traits::RecordScheme};
 use snarkvm_curves::{
-    traits::{Group, MontgomeryModelParameters, TEModelParameters},
+    traits::{Group, MontgomeryParameters, TwistedEdwardsParameters},
     ProjectiveCurve,
 };
 use snarkvm_fields::{FieldParameters, PrimeField};
@@ -28,7 +28,7 @@ pub trait EncodedRecordScheme: Sized {
     type InnerField: PrimeField;
     /// The outer field is unrelated to `Self::Group` and `Self::InnerField`.
     type OuterField: PrimeField;
-    type Parameters: MontgomeryModelParameters + TEModelParameters;
+    type Parameters: MontgomeryParameters + TwistedEdwardsParameters;
     type Record: RecordScheme;
     type DecodedRecord;
 

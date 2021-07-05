@@ -18,7 +18,7 @@ use crate::{
     edwards_bls12::{Fq, Fr},
     errors::GroupError,
     templates::twisted_edwards_extended::{Affine, Projective},
-    traits::{AffineCurve, ModelParameters, MontgomeryModelParameters, TEModelParameters},
+    traits::{AffineCurve, ModelParameters, MontgomeryParameters, TwistedEdwardsParameters},
 };
 use snarkvm_fields::field;
 use snarkvm_utilities::biginteger::BigInteger256;
@@ -36,8 +36,8 @@ impl ModelParameters for EdwardsParameters {
     type ScalarField = Fr;
 }
 
-impl TEModelParameters for EdwardsParameters {
-    type MontgomeryModelParameters = EdwardsParameters;
+impl TwistedEdwardsParameters for EdwardsParameters {
+    type MontgomeryParameters = EdwardsParameters;
 
     /// Generated randomly
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) = (GENERATOR_X, GENERATOR_Y);
@@ -83,8 +83,8 @@ impl TEModelParameters for EdwardsParameters {
     }
 }
 
-impl MontgomeryModelParameters for EdwardsParameters {
-    type TEModelParameters = EdwardsParameters;
+impl MontgomeryParameters for EdwardsParameters {
+    type TwistedEdwardsParameters = EdwardsParameters;
 
     /// COEFF_A = 0x8D26E3FADA9010A26949031ECE3971B93952AD84D4753DDEDB748DA37E8F552
     const COEFF_A: Fq = field!(

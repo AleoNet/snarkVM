@@ -17,13 +17,7 @@
 use crate::{
     impl_edwards_curve_serializer,
     templates::twisted_edwards_extended::Projective,
-    traits::{
-        AffineCurve,
-        Group,
-        MontgomeryModelParameters as MontgomeryParameters,
-        ProjectiveCurve,
-        TEModelParameters as Parameters,
-    },
+    traits::{AffineCurve, Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters as Parameters},
 };
 use snarkvm_fields::{impl_additive_ops_from_ref, Field, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{

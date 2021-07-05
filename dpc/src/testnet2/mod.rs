@@ -26,7 +26,7 @@ use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
     prelude::*,
 };
-use snarkvm_curves::traits::{Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
+use snarkvm_curves::traits::{Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     bits::Boolean,
@@ -79,7 +79,7 @@ pub trait Testnet2Components: DPCComponents {
     /// Group and Model Parameters for record encryption
     type EncryptionGroup: Group + ProjectiveCurve;
     type EncryptionGroupGadget: CompressedGroupGadget<Self::EncryptionGroup, Self::InnerScalarField>;
-    type EncryptionModelParameters: MontgomeryModelParameters + TEModelParameters;
+    type EncryptionModelParameters: MontgomeryParameters + TwistedEdwardsParameters;
 
     /// SNARK for non-proof-verification checks
     type InnerSNARK: SNARK<

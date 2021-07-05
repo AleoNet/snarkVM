@@ -17,7 +17,7 @@
 use crate::{
     sw6::{Fq, Fq3, Fq6, Fr, G1Affine, FQ_ZERO, SW6},
     templates::short_weierstrass_jacobian::{Affine, Projective},
-    traits::{ModelParameters, PairingCurve, PairingEngine, SWModelParameters},
+    traits::{ModelParameters, PairingCurve, PairingEngine, ShortWeierstrassParameters},
 };
 use snarkvm_fields::field;
 use snarkvm_utilities::biginteger::{BigInteger384, BigInteger832};
@@ -48,7 +48,7 @@ impl ModelParameters for SW6G2Parameters {
     type ScalarField = Fr;
 }
 
-impl SWModelParameters for SW6G2Parameters {
+impl ShortWeierstrassParameters for SW6G2Parameters {
     /// AFFINE_GENERATOR_COEFFS = (G2_GENERATOR_X, G2_GENERATOR_Y)
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) = (G2_GENERATOR_X, G2_GENERATOR_Y);
     /// COEFF_A = (0, 0, COEFF_A * TWIST^2) = (0, 0, 5)

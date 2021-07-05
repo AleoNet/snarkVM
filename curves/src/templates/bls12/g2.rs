@@ -19,7 +19,7 @@ use crate::{
         bls12::{Bls12Parameters, TwistType},
         short_weierstrass_jacobian::{Affine, Projective},
     },
-    traits::{AffineCurve, SWModelParameters},
+    traits::{AffineCurve, ShortWeierstrassParameters},
 };
 use snarkvm_fields::{Field, Fp2, One, Zero};
 use snarkvm_utilities::{bititerator::BitIteratorBE, bytes::ToBytes, errors::SerializationError, serialize::*};

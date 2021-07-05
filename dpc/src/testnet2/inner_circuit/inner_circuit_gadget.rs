@@ -31,7 +31,7 @@ use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, PRF},
 };
-use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
+use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, One, PrimeField};
 use snarkvm_gadgets::{
     algorithms::{encoding::Elligator2FieldGadget, merkle_tree::merkle_path::MerklePathGadget},
@@ -1060,11 +1060,11 @@ where
 
             assert_eq!(record_field_elements_gadgets.len(), record_group_encoding_gadgets.len());
 
-            let coeff_a = <C::EncryptionModelParameters as MontgomeryModelParameters>::COEFF_A;
-            let coeff_b = <C::EncryptionModelParameters as MontgomeryModelParameters>::COEFF_B;
+            let coeff_a = <C::EncryptionModelParameters as MontgomeryParameters>::COEFF_A;
+            let coeff_b = <C::EncryptionModelParameters as MontgomeryParameters>::COEFF_B;
 
             let a = coeff_a.mul(&coeff_b.inverse().unwrap());
-            let u = <C::EncryptionModelParameters as TEModelParameters>::COEFF_D;
+            let u = <C::EncryptionModelParameters as TwistedEdwardsParameters>::COEFF_D;
             let ua = a.mul(&u);
 
             let a = C::InnerScalarField::read(&to_bytes![a]?[..])?;

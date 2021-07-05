@@ -18,7 +18,7 @@ use std::{borrow::Borrow, marker::PhantomData, ops::Neg};
 
 use snarkvm_curves::{
     templates::short_weierstrass_jacobian::{Affine as SWAffine, Projective as SWProjective},
-    traits::{AffineCurve, ProjectiveCurve, SWModelParameters},
+    traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters},
 };
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
@@ -40,7 +40,7 @@ use crate::{
 #[derive(Derivative)]
 #[derivative(Debug, Clone)]
 #[must_use]
-pub struct AffineGadget<P: SWModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> {
+pub struct AffineGadget<P: ShortWeierstrassParameters, F: Field, FG: FieldGadget<P::BaseField, F>> {
     pub x: FG,
     pub y: FG,
     pub infinity: Boolean,
@@ -48,7 +48,7 @@ pub struct AffineGadget<P: SWModelParameters, F: Field, FG: FieldGadget<P::BaseF
     _engine: PhantomData<F>,
 }
 
-impl<P: SWModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> AffineGadget<P, F, FG> {
+impl<P: ShortWeierstrassParameters, F: Field, FG: FieldGadget<P::BaseField, F>> AffineGadget<P, F, FG> {
     pub fn new(x: FG, y: FG, infinity: Boolean) -> Self {
         Self {
             x,
@@ -85,7 +85,7 @@ impl<P: SWModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> AffineGad
 
 impl<P, F, FG> PartialEq for AffineGadget<P, F, FG>
 where
-    P: SWModelParameters,
+    P: ShortWeierstrassParameters,
     F: Field,
     FG: FieldGadget<P::BaseField, F>,
 {
@@ -96,7 +96,7 @@ where
 
 impl<P, F, FG> Eq for AffineGadget<P, F, FG>
 where
-    P: SWModelParameters,
+    P: ShortWeierstrassParameters,
     F: Field,
     FG: FieldGadget<P::BaseField, F>,
 {
@@ -104,7 +104,7 @@ where
 
 impl<P, F, FG> GroupGadget<SWProjective<P>, F> for AffineGadget<P, F, FG>
 where
-    P: SWModelParameters,
+    P: ShortWeierstrassParameters,
     F: PrimeField,
     FG: FieldGadget<P::BaseField, F>,
 {
@@ -330,7 +330,7 @@ where
 
 impl<P, F, FG> CondSelectGadget<F> for AffineGadget<P, F, FG>
 where
-    P: SWModelParameters,
+    P: ShortWeierstrassParameters,
     F: PrimeField,
     FG: FieldGadget<P::BaseField, F>,
 {
@@ -356,7 +356,7 @@ where
 
 impl<P, F, FG> EqGadget<F> for AffineGadget<P, F, FG>
 where
-    P: SWModelParameters,
+    P: ShortWeierstrassParameters,
     F: Field,
     FG: FieldGadget<P::BaseField, F>,
 {
@@ -364,7 +364,7 @@ where
 
 impl<P, F, FG> ConditionalEqGadget<F> for AffineGadget<P, F, FG>
 where
-    P: SWModelParameters,
+    P: ShortWeierstrassParameters,
     F: Field,
     FG: FieldGadget<P::BaseField, F>,
 {
@@ -394,7 +394,7 @@ where
 
 impl<P, F, FG> NEqGadget<F> for AffineGadget<P, F, FG>
 where
-    P: SWModelParameters,
+    P: ShortWeierstrassParameters,
     F: Field,
     FG: FieldGadget<P::BaseField, F>,
 {
@@ -412,7 +412,7 @@ where
     }
 }
 
-impl<P: SWModelParameters, F: PrimeField, FG: FieldGadget<P::BaseField, F>> AllocGadget<SWProjective<P>, F>
+impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField, F>> AllocGadget<SWProjective<P>, F>
     for AffineGadget<P, F, FG>
 {
     #[inline]
@@ -556,7 +556,7 @@ impl<P: SWModelParameters, F: PrimeField, FG: FieldGadget<P::BaseField, F>> Allo
 
 impl<P, F, FG> ToBitsBEGadget<F> for AffineGadget<P, F, FG>
 where
-    P: SWModelParameters,
+    P: ShortWeierstrassParameters,
     F: Field,
     FG: FieldGadget<P::BaseField, F>,
 {
@@ -580,7 +580,7 @@ where
 
 impl<P, F, FG> ToBytesGadget<F> for AffineGadget<P, F, FG>
 where
-    P: SWModelParameters,
+    P: ShortWeierstrassParameters,
     F: Field,
     FG: FieldGadget<P::BaseField, F>,
 {
@@ -606,7 +606,7 @@ where
 
 impl<P, F, FG> ToConstraintFieldGadget<F> for AffineGadget<P, F, FG>
 where
-    P: SWModelParameters,
+    P: ShortWeierstrassParameters,
     F: PrimeField,
     FG: FieldGadget<P::BaseField, F> + ToConstraintFieldGadget<F>,
 {

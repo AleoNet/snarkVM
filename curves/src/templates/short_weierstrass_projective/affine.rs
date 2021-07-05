@@ -17,7 +17,7 @@
 use crate::{
     impl_sw_curve_serializer,
     templates::short_weierstrass_projective::Projective,
-    traits::{AffineCurve, Group, ProjectiveCurve, SWModelParameters as Parameters},
+    traits::{AffineCurve, Group, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
 use snarkvm_fields::{impl_additive_ops_from_ref, Field, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{

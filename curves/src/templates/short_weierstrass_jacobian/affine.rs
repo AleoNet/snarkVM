@@ -17,7 +17,7 @@
 use crate::{
     impl_sw_curve_serializer,
     templates::short_weierstrass_jacobian::Projective,
-    traits::{AffineCurve, Group, ProjectiveCurve, SWModelParameters as Parameters},
+    traits::{AffineCurve, Group, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
 use snarkvm_fields::{impl_additive_ops_from_ref, Field, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
@@ -53,16 +53,6 @@ pub struct Affine<P: Parameters> {
     pub infinity: bool,
 }
 
-impl<P: Parameters> Display for Affine<P> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        if self.infinity {
-            write!(f, "Affine(Infinity)")
-        } else {
-            write!(f, "Affine(x={}, y={})", self.x, self.y)
-        }
-    }
-}
-
 impl<P: Parameters> Affine<P> {
     pub fn new(x: P::BaseField, y: P::BaseField, infinity: bool) -> Self {
         Self { x, y, infinity }
@@ -82,6 +72,16 @@ impl<P: Parameters> Zero for Affine<P> {
     #[inline]
     fn is_zero(&self) -> bool {
         self.infinity
+    }
+}
+
+impl<P: Parameters> Display for Affine<P> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        if self.infinity {
+            write!(f, "Affine(Infinity)")
+        } else {
+            write!(f, "Affine(x={}, y={})", self.x, self.y)
+        }
     }
 }
 
@@ -135,14 +135,14 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     }
 
     fn mul_bits<S: AsRef<[u64]>>(&self, bits: BitIteratorBE<S>) -> Projective<P> {
-        let mut res = Projective::zero();
+        let mut output = Projective::zero();
         for i in bits {
-            res.double_in_place();
+            output.double_in_place();
             if i {
-                res.add_assign_mixed(self)
+                output.add_assign_mixed(self);
             }
         }
-        res
+        output
     }
 
     fn mul_by_cofactor_to_projective(&self) -> Self::Projective {

@@ -26,8 +26,8 @@ use snarkvm_utilities::{
 
 use crate::traits::{
     pairing_engine::{AffineCurve, ProjectiveCurve},
-    MontgomeryModelParameters,
-    TEModelParameters,
+    MontgomeryParameters,
+    TwistedEdwardsParameters,
 };
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 
@@ -38,18 +38,18 @@ pub const ITERATIONS: usize = 10;
 
 pub fn montgomery_conversion_test<P>()
 where
-    P: TEModelParameters,
+    P: TwistedEdwardsParameters,
 {
     // A = 2 * (a + d) / (a - d)
     let a = P::BaseField::one().double() * (P::COEFF_A + P::COEFF_D) * (P::COEFF_A - P::COEFF_D).inverse().unwrap();
     // B = 4 / (a - d)
     let b = P::BaseField::one().double().double() * (P::COEFF_A - P::COEFF_D).inverse().unwrap();
 
-    assert_eq!(a, P::MontgomeryModelParameters::COEFF_A);
-    assert_eq!(b, P::MontgomeryModelParameters::COEFF_B);
+    assert_eq!(a, P::MontgomeryParameters::COEFF_A);
+    assert_eq!(b, P::MontgomeryParameters::COEFF_B);
 }
 
-pub fn edwards_test<P: TEModelParameters>()
+pub fn edwards_test<P: TwistedEdwardsParameters>()
 where
     P::BaseField: PrimeField,
 {
@@ -58,7 +58,7 @@ where
     edwards_from_x_and_y_coordinates::<P>();
 }
 
-pub fn edwards_curve_serialization_test<P: TEModelParameters>() {
+pub fn edwards_curve_serialization_test<P: TwistedEdwardsParameters>() {
     let buf_size = Affine::<P>::zero().serialized_size();
 
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
@@ -121,7 +121,7 @@ pub fn edwards_curve_serialization_test<P: TEModelParameters>() {
     }
 }
 
-pub fn edwards_from_random_bytes<P: TEModelParameters>()
+pub fn edwards_from_random_bytes<P: TwistedEdwardsParameters>()
 where
     P::BaseField: PrimeField,
 {
@@ -156,7 +156,7 @@ where
     }
 }
 
-pub fn edwards_from_x_and_y_coordinates<P: TEModelParameters>()
+pub fn edwards_from_x_and_y_coordinates<P: TwistedEdwardsParameters>()
 where
     P::BaseField: PrimeField,
 {
