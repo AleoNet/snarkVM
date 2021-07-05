@@ -343,12 +343,12 @@ where
         assert_eq!(C::NUM_INPUT_RECORDS, old_records.len());
         assert_eq!(C::NUM_OUTPUT_RECORDS, new_records.len());
 
+        let mut value_balance = AleoAmount::ZERO;
+
         let mut old_serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         let mut old_randomizers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         let mut joint_serial_numbers = Vec::new();
         let mut old_death_program_ids = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-
-        let mut value_balance = AleoAmount::ZERO;
 
         // Compute the ledger membership witness and serial number from the old records.
         for (i, record) in old_records.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
@@ -394,15 +394,18 @@ where
             end_timer!(output_record_time);
         }
 
-        // TODO (raychu86) Add index and program register inputs + outputs to local data commitment leaves
+        // TODO (raychu86): Add index and program register inputs + outputs to local data commitment leaves
         let local_data_merkle_tree_timer = start_timer!(|| "Compute local data merkle tree");
 
         let mut local_data_commitment_randomizers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-
         let mut old_record_commitments = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for i in 0..C::NUM_INPUT_RECORDS {
-            let record = &old_records[i];
-            let input_bytes = to_bytes![old_serial_numbers[i], record.commitment(), memorandum, C::NETWORK_ID]?;
+            let input_bytes = to_bytes![
+                old_serial_numbers[i],
+                &old_records[i].commitment(),
+                memorandum,
+                C::NETWORK_ID
+            ]?;
 
             let commitment_randomness = <C::LocalDataCommitment as CommitmentScheme>::Randomness::rand(rng);
             let commitment = C::LocalDataCommitment::commit(
@@ -556,7 +559,7 @@ where
         }
 
         // Generate Schnorr signature on transaction data
-        // TODO (raychu86) Remove ledger_digest from signature and move the schnorr signing into `execute_offline_phase`
+        // TODO (raychu86): Remove ledger_digest from signature and move the schnorr signing into `execute_offline_phase`
         let signature_time = start_timer!(|| "Sign and randomize transaction contents");
 
         let signature_message = to_bytes![
@@ -572,18 +575,19 @@ where
 
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for i in 0..C::NUM_INPUT_RECORDS {
-            let sk_sig = &old_private_keys[i].sk_sig;
-            let randomizer = &old_randomizers[i];
-
             // Sign the transaction data
-            let account_signature =
-                C::AccountSignature::sign(&system_parameters.account_signature, sk_sig, &signature_message, rng)?;
+            let account_signature = C::AccountSignature::sign(
+                &system_parameters.account_signature,
+                &old_private_keys[i].sk_sig,
+                &signature_message,
+                rng,
+            )?;
 
             // Randomize the signature
             let randomized_signature = C::AccountSignature::randomize_signature(
                 &system_parameters.account_signature,
                 &account_signature,
-                randomizer,
+                &old_randomizers[i],
             )?;
 
             signatures.push(randomized_signature);
