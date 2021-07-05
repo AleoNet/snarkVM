@@ -41,7 +41,7 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
     type ID = Vec<u8>;
     type LocalData = LocalData<C>;
     type PrivateWitness = PrivateProgramInput;
-    type ProgramIDCRH = C::ProgramVerificationKeyCRH;
+    type ProgramVerifyingKeyCRH = C::ProgramVerificationKeyCRH;
     type ProofSystem = <C as Testnet1Components>::NoopProgramSNARK;
     type ProvingKey = <Self::ProofSystem as SNARK>::ProvingKey;
     type PublicInput = ();
@@ -49,13 +49,13 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
 
     /// Initializes a new instance of a program.
     fn new(
-        program_id_crh_parameters: &Self::ProgramIDCRH,
+        program_verifying_key_crh: &Self::ProgramVerifyingKeyCRH,
         proving_key: Self::ProvingKey,
         verifying_key: Self::VerifyingKey,
     ) -> Result<Self, ProgramError> {
         // Compute the program ID.
         let program_id = to_bytes![<C as DPCComponents>::ProgramVerificationKeyCRH::hash(
-            program_id_crh_parameters,
+            program_verifying_key_crh,
             &to_bytes![verifying_key]?
         )?]?;
 

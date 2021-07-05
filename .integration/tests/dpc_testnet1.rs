@@ -28,6 +28,7 @@ use snarkvm_dpc::{
         program::NoopProgram,
         EncryptedRecord,
         InnerCircuit,
+        NoopProgramSNARKParameters,
         Payload,
         Record,
         Testnet1Components,
@@ -268,8 +269,7 @@ fn test_transaction_kernel_serialization() {
     let dpc = <Testnet1DPC as DPCScheme<L>>::load(false).unwrap();
     let system_parameters = &dpc.system_parameters;
 
-    let noop_program_snark_pp =
-        Testnet1DPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
+    let noop_program_snark_pp = NoopProgramSNARKParameters::setup(&system_parameters, &mut rng).unwrap();
     let noop_program = NoopProgram::<Components>::new(
         &system_parameters.program_verification_key_crh,
         noop_program_snark_pp.proving_key,
@@ -373,8 +373,7 @@ fn test_testnet1_dpc_execute_constraints() {
     let dpc = <Testnet1DPC as DPCScheme<L>>::load(false).unwrap();
     let system_parameters = &dpc.system_parameters;
 
-    let noop_program_snark_pp =
-        Testnet1DPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
+    let noop_program_snark_pp = NoopProgramSNARKParameters::setup(&system_parameters, &mut rng).unwrap();
     let noop_program = NoopProgram::<Components>::new(
         &system_parameters.program_verification_key_crh,
         noop_program_snark_pp.proving_key,
@@ -383,8 +382,7 @@ fn test_testnet1_dpc_execute_constraints() {
     .unwrap();
     let noop_program_id = noop_program.id();
 
-    let alternate_noop_program_snark_pp =
-        Testnet1DPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
+    let alternate_noop_program_snark_pp = NoopProgramSNARKParameters::setup(&system_parameters, &mut rng).unwrap();
     let alternate_noop_program = NoopProgram::<Components>::new(
         &system_parameters.program_verification_key_crh,
         alternate_noop_program_snark_pp.proving_key,

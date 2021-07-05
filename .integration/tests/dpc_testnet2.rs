@@ -28,6 +28,7 @@ use snarkvm_dpc::{
         program::NoopProgram,
         EncryptedRecord,
         InnerCircuit,
+        NoopProgramSNARKParameters,
         Payload,
         Record,
         Testnet2Components,
@@ -272,7 +273,7 @@ fn test_testnet_2_transaction_kernel_serialization() {
     let universal_srs = Testnet2DPC::generate_program_snark_universal_srs(&mut rng).unwrap();
 
     let noop_program_snark_pp =
-        Testnet2DPC::generate_noop_program_snark_parameters(&system_parameters, &universal_srs, &mut rng).unwrap();
+        NoopProgramSNARKParameters::setup(&system_parameters, &universal_srs, &mut rng).unwrap();
     let noop_program = NoopProgram::<Components>::new(
         &system_parameters.program_verification_key_crh,
         noop_program_snark_pp.proving_key,
@@ -377,7 +378,7 @@ fn test_testnet2_dpc_execute_constraints() {
     let universal_srs = Testnet2DPC::generate_program_snark_universal_srs(&mut rng).unwrap();
 
     let noop_program_snark_pp =
-        Testnet2DPC::generate_noop_program_snark_parameters(&system_parameters, &universal_srs, &mut rng).unwrap();
+        NoopProgramSNARKParameters::setup(&system_parameters, &universal_srs, &mut rng).unwrap();
     let noop_program = NoopProgram::<Components>::new(
         &system_parameters.program_verification_key_crh,
         noop_program_snark_pp.proving_key,
@@ -387,7 +388,7 @@ fn test_testnet2_dpc_execute_constraints() {
     let noop_program_id = noop_program.id();
 
     let alternate_noop_program_snark_pp =
-        Testnet2DPC::generate_noop_program_snark_parameters(&system_parameters, &universal_srs, &mut rng).unwrap();
+        NoopProgramSNARKParameters::setup(&system_parameters, &universal_srs, &mut rng).unwrap();
     let alternate_noop_program = NoopProgram::<Components>::new(
         &system_parameters.program_verification_key_crh,
         alternate_noop_program_snark_pp.proving_key,

@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{testnet1::Testnet1Components, DPCError};
+use crate::{
+    testnet1::{NoopCircuit, Testnet1Components},
+    DPCError,
+};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_parameters::{prelude::*, testnet1::*};
 use snarkvm_utilities::bytes::FromBytes;
@@ -151,6 +154,21 @@ pub struct NoopProgramSNARKParameters<C: Testnet1Components> {
 }
 
 impl<C: Testnet1Components> NoopProgramSNARKParameters<C> {
+    pub fn setup<R: Rng + CryptoRng>(
+        system_parameters: &SystemParameters<C>,
+        rng: &mut R,
+    ) -> Result<NoopProgramSNARKParameters<C>, DPCError> {
+        let (proving_key, verifying_key) = C::NoopProgramSNARK::setup(
+            &NoopCircuit::blank(system_parameters.local_data_commitment.parameters()),
+            rng,
+        )?;
+
+        Ok(Self {
+            proving_key,
+            verifying_key: verifying_key.into(),
+        })
+    }
+
     // TODO (howardwu): Why are we not preparing the VK here?
     pub fn load() -> IoResult<Self> {
         let proving_key: <C::NoopProgramSNARK as SNARK>::ProvingKey =

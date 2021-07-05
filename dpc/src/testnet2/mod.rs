@@ -168,25 +168,6 @@ where
 
         Ok(ProgramSNARKUniversalSRS(universal_srs))
     }
-
-    pub fn generate_noop_program_snark_parameters<R: Rng + CryptoRng>(
-        system_parameters: &SystemParameters<C>,
-        universal_srs: &ProgramSNARKUniversalSRS<C>,
-        rng: &mut R,
-    ) -> Result<NoopProgramSNARKParameters<C>, DPCError> {
-        let (pk, pvk) = C::NoopProgramSNARK::setup(
-            &(
-                NoopCircuit::blank(system_parameters.local_data_commitment.parameters()),
-                universal_srs.0.clone(),
-            ),
-            rng,
-        )?;
-
-        Ok(NoopProgramSNARKParameters {
-            proving_key: pk,
-            verifying_key: pvk.into(),
-        })
-    }
 }
 
 impl<C: Testnet2Components, L: LedgerScheme> DPCScheme<L> for DPC<C>
@@ -220,7 +201,7 @@ where
 
         let program_snark_setup_time = start_timer!(|| "Dummy program SNARK setup");
         let noop_program_snark_parameters =
-            Self::generate_noop_program_snark_parameters(&system_parameters, &program_snark_universal_srs, rng)?;
+            NoopProgramSNARKParameters::setup(&system_parameters, &program_snark_universal_srs, rng)?;
         let program_snark_proof = C::NoopProgramSNARK::prove(
             &noop_program_snark_parameters.proving_key,
             &NoopCircuit::blank(system_parameters.local_data_commitment.parameters()),

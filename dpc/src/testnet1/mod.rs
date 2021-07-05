@@ -117,23 +117,6 @@ pub struct DPC<C: Testnet1Components> {
     ),
 }
 
-impl<C: Testnet1Components> DPC<C> {
-    pub fn generate_noop_program_snark_parameters<R: Rng + CryptoRng>(
-        system_parameters: &SystemParameters<C>,
-        rng: &mut R,
-    ) -> Result<NoopProgramSNARKParameters<C>, DPCError> {
-        let (pk, pvk) = C::NoopProgramSNARK::setup(
-            &NoopCircuit::blank(system_parameters.local_data_commitment.parameters()),
-            rng,
-        )?;
-
-        Ok(NoopProgramSNARKParameters {
-            proving_key: pk,
-            verifying_key: pvk.into(),
-        })
-    }
-}
-
 impl<C: Testnet1Components, L: LedgerScheme> DPCScheme<L> for DPC<C>
 where
     L: LedgerScheme<
@@ -158,7 +141,7 @@ where
         let system_parameters = Self::SystemParameters::setup(rng)?;
 
         let program_snark_setup_time = start_timer!(|| "Dummy program SNARK setup");
-        let noop_program_snark_parameters = Self::generate_noop_program_snark_parameters(&system_parameters, rng)?;
+        let noop_program_snark_parameters = NoopProgramSNARKParameters::setup(&system_parameters, rng)?;
         let program_snark_proof = C::NoopProgramSNARK::prove(
             &noop_program_snark_parameters.proving_key,
             &NoopCircuit::blank(system_parameters.local_data_commitment.parameters()),

@@ -20,9 +20,9 @@ use snarkvm_dpc::{
     testnet2::{
         instantiated::Components,
         parameters::SystemParameters,
+        NoopProgramSNARKParameters,
         ProgramSNARKUniversalSRS,
         Testnet2Components,
-        DPC,
     },
 };
 use snarkvm_fields::ToConstraintField;
@@ -47,8 +47,7 @@ where
 
     let universal_srs = ProgramSNARKUniversalSRS::<C>::load()?;
 
-    let noop_program_snark_parameters =
-        DPC::<C>::generate_noop_program_snark_parameters(&system_parameters, &universal_srs, rng)?;
+    let noop_program_snark_parameters = NoopProgramSNARKParameters::setup(&system_parameters, &universal_srs, rng)?;
     let noop_program_snark_pk = to_bytes![noop_program_snark_parameters.proving_key]?;
     let noop_program_snark_vk: <C::NoopProgramSNARK as SNARK>::VerifyingKey =
         noop_program_snark_parameters.verifying_key;

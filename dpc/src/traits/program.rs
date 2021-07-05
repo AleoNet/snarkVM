@@ -25,14 +25,14 @@ pub trait ProgramScheme: Clone {
     type LocalData;
     type PublicInput;
     type PrivateWitness;
-    type ProgramIDCRH;
+    type ProgramVerifyingKeyCRH;
     type ProofSystem: SNARK;
     type ProvingKey;
     type VerifyingKey;
 
     /// Initializes a new instance of a program.
     fn new(
-        program_id_crh_parameters: &Self::ProgramIDCRH,
+        program_verifying_key_crh: &Self::ProgramVerifyingKeyCRH,
         proving_key: Self::ProvingKey,
         verifying_key: Self::VerifyingKey,
     ) -> Result<Self, ProgramError>;
