@@ -30,7 +30,7 @@ pub enum BlockError {
     Message(String),
 
     #[error("{}", _0)]
-    TransactionError(TransactionError),
+    TransactionError(#[from] TransactionError),
 
     #[error("block number {} has not been mined yet", _0)]
     InvalidBlockNumber(u32),
@@ -45,11 +45,5 @@ pub enum BlockError {
 impl From<std::io::Error> for BlockError {
     fn from(error: std::io::Error) -> Self {
         BlockError::Crate("std::io", format!("{:?}", error))
-    }
-}
-
-impl From<TransactionError> for BlockError {
-    fn from(error: TransactionError) -> Self {
-        BlockError::TransactionError(error)
     }
 }

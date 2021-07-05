@@ -14,15 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::AccountError;
 use snarkvm_algorithms::{CRHError, CommitmentError, EncryptionError, PRFError, SignatureError};
-
-use hex::FromHexError;
 
 #[derive(Debug, Error)]
 pub enum RecordError {
     #[error("{}", _0)]
-    AccountError(AccountError),
+    AccountError(#[from] crate::AccountError),
 
     #[error("Failed to build Record data type. See console logs for error")]
     BuilderError,
@@ -49,7 +46,10 @@ pub enum RecordError {
     EncryptionError(#[from] EncryptionError),
 
     #[error("{}", _0)]
-    FromHexError(#[from] FromHexError),
+    FromHexError(#[from] hex::FromHexError),
+
+    #[error("Given private key does not correspond to the record owner")]
+    IncorrectPrivateKey,
 
     #[error("Attempted to build a record with an invalid commitment. Try `calculate_commitment()`")]
     InvalidCommitment,
@@ -64,28 +64,10 @@ pub enum RecordError {
     NonZeroValue,
 
     #[error("{}", _0)]
-    PRFError(PRFError),
+    PRFError(#[from] PRFError),
 
     #[error("{}", _0)]
-    SignatureError(SignatureError),
-}
-
-impl From<AccountError> for RecordError {
-    fn from(error: AccountError) -> Self {
-        RecordError::AccountError(error)
-    }
-}
-
-impl From<PRFError> for RecordError {
-    fn from(error: PRFError) -> Self {
-        RecordError::PRFError(error)
-    }
-}
-
-impl From<SignatureError> for RecordError {
-    fn from(error: SignatureError) -> Self {
-        RecordError::SignatureError(error)
-    }
+    SignatureError(#[from] SignatureError),
 }
 
 impl From<std::io::Error> for RecordError {

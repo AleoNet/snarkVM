@@ -19,9 +19,13 @@ use crate::{
     testnet2::{EncryptedRecord, LocalData, Record, SystemParameters, Testnet2Components, Transaction},
 };
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, prelude::*};
-use snarkvm_utilities::{variable_length_integer::*, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes, variable_length_integer::*, FromBytes, ToBytes};
 
-use std::io::{Read, Result as IoResult, Write};
+use std::{
+    fmt,
+    io::{Read, Result as IoResult, Write},
+    str::FromStr,
+};
 
 /// Returned by `DPC::execute_offline_phase`. Stores data required to produce the
 /// final transaction after `execute_offline_phase` has created old serial numbers,
@@ -262,5 +266,23 @@ impl<C: Testnet2Components> FromBytes for TransactionKernel<C> {
             memorandum,
             network_id,
         })
+    }
+}
+
+impl<C: Testnet2Components> FromStr for TransactionKernel<C> {
+    type Err = DPCError;
+
+    fn from_str(kernel: &str) -> Result<Self, Self::Err> {
+        Ok(Self::read(&hex::decode(kernel)?[..])?)
+    }
+}
+
+impl<C: Testnet2Components> fmt::Display for TransactionKernel<C> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            hex::encode(to_bytes![self].expect("couldn't serialize to bytes"))
+        )
     }
 }
