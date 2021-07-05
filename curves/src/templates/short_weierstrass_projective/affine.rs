@@ -35,7 +35,6 @@ use serde::{Deserialize, Serialize};
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
     io::{Error, ErrorKind, Read, Result as IoResult, Write},
-    marker::PhantomData,
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
@@ -52,28 +51,11 @@ pub struct GroupAffine<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
     pub infinity: bool,
-    #[derivative(Debug = "ignore")]
-    _params: PhantomData<P>,
-}
-
-impl<P: Parameters> Display for GroupAffine<P> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        if self.infinity {
-            write!(f, "GroupAffine(Infinity)")
-        } else {
-            write!(f, "GroupAffine(x={}, y={})", self.x, self.y)
-        }
-    }
 }
 
 impl<P: Parameters> GroupAffine<P> {
     pub fn new(x: P::BaseField, y: P::BaseField, infinity: bool) -> Self {
-        Self {
-            x,
-            y,
-            infinity,
-            _params: PhantomData,
-        }
+        Self { x, y, infinity }
     }
 
     pub fn scale_by_cofactor(&self) -> <Self as AffineCurve>::Projective {
@@ -322,6 +304,16 @@ impl<P: Parameters> Distribution<GroupAffine<P>> for Standard {
             if let Some(p) = GroupAffine::from_x_coordinate(x, greatest) {
                 return p.scale_by_cofactor().into();
             }
+        }
+    }
+}
+
+impl<P: Parameters> Display for GroupAffine<P> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        if self.infinity {
+            write!(f, "GroupAffine(Infinity)")
+        } else {
+            write!(f, "GroupAffine(x={}, y={})", self.x, self.y)
         }
     }
 }

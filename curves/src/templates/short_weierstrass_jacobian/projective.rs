@@ -33,7 +33,6 @@ use rand::{
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
     io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
@@ -49,7 +48,12 @@ pub struct GroupProjective<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
     pub z: P::BaseField,
-    _params: PhantomData<P>,
+}
+
+impl<P: Parameters> GroupProjective<P> {
+    pub fn new(x: P::BaseField, y: P::BaseField, z: P::BaseField) -> Self {
+        Self { x, y, z }
+    }
 }
 
 impl<P: Parameters> Display for GroupProjective<P> {
@@ -110,17 +114,6 @@ impl<P: Parameters> Default for GroupProjective<P> {
     #[inline]
     fn default() -> Self {
         Self::zero()
-    }
-}
-
-impl<P: Parameters> GroupProjective<P> {
-    pub fn new(x: P::BaseField, y: P::BaseField, z: P::BaseField) -> Self {
-        Self {
-            x,
-            y,
-            z,
-            _params: PhantomData,
-        }
     }
 }
 
@@ -538,8 +531,7 @@ impl<P: Parameters> MulAssign<P::ScalarField> for GroupProjective<P> {
     }
 }
 
-// The affine point X, Y is represented in the Jacobian
-// coordinates with Z = 1.
+/// The affine point X, Y is represented in the Jacobian coordinates with Z = 1.
 impl<P: Parameters> From<GroupAffine<P>> for GroupProjective<P> {
     #[inline]
     fn from(p: GroupAffine<P>) -> GroupProjective<P> {

@@ -36,15 +36,15 @@ use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
+use serde::{Deserialize, Serialize};
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
     io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
+#[cfg(test)]
 pub mod tests;
-use serde::{Deserialize, Serialize};
 
 #[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
@@ -58,8 +58,6 @@ use serde::{Deserialize, Serialize};
 pub struct GroupAffine<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
-    #[derivative(Debug = "ignore")]
-    _params: PhantomData<P>,
 }
 
 impl<P: Parameters> Display for GroupAffine<P> {
@@ -70,11 +68,7 @@ impl<P: Parameters> Display for GroupAffine<P> {
 
 impl<P: Parameters> GroupAffine<P> {
     pub fn new(x: P::BaseField, y: P::BaseField) -> Self {
-        Self {
-            x,
-            y,
-            _params: PhantomData,
-        }
+        Self { x, y }
     }
 
     #[must_use]
@@ -108,8 +102,22 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
     type BaseField = P::BaseField;
     type Projective = GroupProjective<P>;
 
+    #[inline]
     fn prime_subgroup_generator() -> Self {
         Self::new(P::AFFINE_GENERATOR_COEFFS.0, P::AFFINE_GENERATOR_COEFFS.1)
+    }
+
+    #[inline]
+    fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
+        if let Some((x, flags)) = Self::BaseField::from_random_bytes_with_flags(bytes) {
+            if x.is_zero() {
+                Some(Self::zero())
+            } else {
+                Self::from_x_coordinate(x, EdwardsFlags::from_u8(flags).is_positive())
+            }
+        } else {
+            None
+        }
     }
 
     /// Attempts to construct an affine point given an x-coordinate. The
@@ -117,6 +125,7 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
     ///
     /// If and only if `greatest` is set will the lexicographically
     /// largest y-coordinate be selected.
+    #[inline]
     fn from_x_coordinate(x: Self::BaseField, greatest: bool) -> Option<Self> {
         // y = sqrt( (a * x^2 - 1)  / (d * x^2 - 1) )
         let x2 = x.square();
@@ -136,6 +145,7 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
     ///
     /// If and only if `greatest` is set will the lexicographically
     /// largest y-coordinate be selected.
+    #[inline]
     fn from_y_coordinate(y: Self::BaseField, greatest: bool) -> Option<Self> {
         // x = sqrt( (1 - y^2) / (a - d * y^2) )
         let y2 = y.square();
@@ -148,21 +158,6 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
             let x = if (x < negx) ^ greatest { x } else { negx };
             Self::new(x, y)
         })
-    }
-
-    // Copied from https://github.com/scipr-lab/zexe/blob/4b3f08c6c0a08c5392ed8aa3fd3c32f28da402c4/algebra-core/src/curves/models/twisted_edwards_extended.rs#L144-L156.
-    fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
-        let x = P::BaseField::from_random_bytes_with_flags(bytes);
-        if let Some((x, flags)) = x {
-            let parsed_flags = EdwardsFlags::from_u8(flags);
-            if x.is_zero() {
-                Some(Self::zero())
-            } else {
-                Self::from_x_coordinate(x, parsed_flags.is_positive())
-            }
-        } else {
-            None
-        }
     }
 
     fn mul_bits<S: AsRef<[u64]>>(&self, bits: BitIteratorBE<S>) -> <Self as AffineCurve>::Projective {
@@ -352,8 +347,12 @@ pub struct GroupProjective<P: Parameters> {
     pub y: P::BaseField,
     pub t: P::BaseField,
     pub z: P::BaseField,
-    #[derivative(Debug = "ignore")]
-    _params: PhantomData<P>,
+}
+
+impl<P: Parameters> GroupProjective<P> {
+    pub fn new(x: P::BaseField, y: P::BaseField, t: P::BaseField, z: P::BaseField) -> Self {
+        Self { x, y, t, z }
+    }
 }
 
 impl<P: Parameters> Display for GroupProjective<P> {
@@ -416,18 +415,6 @@ impl<P: Parameters> Default for GroupProjective<P> {
     #[inline]
     fn default() -> Self {
         Self::zero()
-    }
-}
-
-impl<P: Parameters> GroupProjective<P> {
-    pub fn new(x: P::BaseField, y: P::BaseField, t: P::BaseField, z: P::BaseField) -> Self {
-        Self {
-            x,
-            y,
-            t,
-            z,
-            _params: PhantomData,
-        }
     }
 }
 
@@ -724,23 +711,17 @@ impl<P: Parameters> From<GroupProjective<P>> for GroupAffine<P> {
 pub struct MontgomeryGroupAffine<P: MontgomeryParameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
-    #[derivative(Debug = "ignore")]
-    _params: PhantomData<P>,
+}
+
+impl<P: MontgomeryParameters> MontgomeryGroupAffine<P> {
+    pub fn new(x: P::BaseField, y: P::BaseField) -> Self {
+        Self { x, y }
+    }
 }
 
 impl<P: MontgomeryParameters> Display for MontgomeryGroupAffine<P> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(f, "MontgomeryGroupAffine(x={}, y={})", self.x, self.y)
-    }
-}
-
-impl<P: MontgomeryParameters> MontgomeryGroupAffine<P> {
-    pub fn new(x: P::BaseField, y: P::BaseField) -> Self {
-        Self {
-            x,
-            y,
-            _params: PhantomData,
-        }
     }
 }
 
