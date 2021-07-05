@@ -17,7 +17,7 @@
 use std::{borrow::Borrow, marker::PhantomData, ops::Neg};
 
 use snarkvm_curves::{
-    templates::short_weierstrass_jacobian::{GroupAffine as SWAffine, GroupProjective as SWProjective},
+    templates::short_weierstrass_jacobian::{Affine as SWAffine, Projective as SWProjective},
     traits::{AffineCurve, ProjectiveCurve, SWModelParameters},
 };
 use snarkvm_fields::{Field, One, PrimeField, Zero};

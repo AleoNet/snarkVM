@@ -16,14 +16,14 @@
 
 use crate::{
     sw6::{Fq, Fq3, Fq6, Fr, G1Affine, FQ_ZERO, SW6},
-    templates::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
+    templates::short_weierstrass_jacobian::{Affine, Projective},
     traits::{ModelParameters, PairingCurve, PairingEngine, SWModelParameters},
 };
 use snarkvm_fields::field;
 use snarkvm_utilities::biginteger::{BigInteger384, BigInteger832};
 
-pub type G2Affine = GroupAffine<SW6G2Parameters>;
-pub type G2Projective = GroupProjective<SW6G2Parameters>;
+pub type G2Affine = Affine<SW6G2Parameters>;
+pub type G2Projective = Projective<SW6G2Parameters>;
 
 impl PairingCurve for G2Affine {
     type Engine = SW6;

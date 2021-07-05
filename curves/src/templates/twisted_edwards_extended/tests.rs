@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{GroupAffine, GroupProjective};
+use super::{Affine, Projective};
 
 use snarkvm_utilities::{
     bytes::ToBytes,
@@ -59,12 +59,12 @@ where
 }
 
 pub fn edwards_curve_serialization_test<P: TEModelParameters>() {
-    let buf_size = GroupAffine::<P>::zero().serialized_size();
+    let buf_size = Affine::<P>::zero().serialized_size();
 
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
     for _ in 0..10 {
-        let a = GroupProjective::<P>::rand(&mut rng);
+        let a = Projective::<P>::rand(&mut rng);
         let a = a.into_affine();
         {
             let mut serialized = vec![0; buf_size];
@@ -72,22 +72,22 @@ pub fn edwards_curve_serialization_test<P: TEModelParameters>() {
             a.serialize(&mut cursor).unwrap();
 
             let mut cursor = Cursor::new(&serialized[..]);
-            let b = GroupAffine::<P>::deserialize(&mut cursor).unwrap();
+            let b = Affine::<P>::deserialize(&mut cursor).unwrap();
             assert_eq!(a, b);
         }
 
         {
-            let a = GroupAffine::<P>::zero();
+            let a = Affine::<P>::zero();
             let mut serialized = vec![0; buf_size];
             let mut cursor = Cursor::new(&mut serialized[..]);
             a.serialize(&mut cursor).unwrap();
             let mut cursor = Cursor::new(&serialized[..]);
-            let b = GroupAffine::<P>::deserialize(&mut cursor).unwrap();
+            let b = Affine::<P>::deserialize(&mut cursor).unwrap();
             assert_eq!(a, b);
         }
 
         {
-            let a = GroupAffine::<P>::zero();
+            let a = Affine::<P>::zero();
             let mut serialized = vec![0; buf_size - 1];
             let mut cursor = Cursor::new(&mut serialized[..]);
             a.serialize(&mut cursor).unwrap_err();
@@ -96,7 +96,7 @@ pub fn edwards_curve_serialization_test<P: TEModelParameters>() {
         {
             let serialized = vec![0; buf_size - 1];
             let mut cursor = Cursor::new(&serialized[..]);
-            GroupAffine::<P>::deserialize(&mut cursor).unwrap_err();
+            Affine::<P>::deserialize(&mut cursor).unwrap_err();
         }
 
         {
@@ -105,17 +105,17 @@ pub fn edwards_curve_serialization_test<P: TEModelParameters>() {
             a.serialize_uncompressed(&mut cursor).unwrap();
 
             let mut cursor = Cursor::new(&serialized[..]);
-            let b = GroupAffine::<P>::deserialize_uncompressed(&mut cursor).unwrap();
+            let b = Affine::<P>::deserialize_uncompressed(&mut cursor).unwrap();
             assert_eq!(a, b);
         }
 
         {
-            let a = GroupAffine::<P>::zero();
+            let a = Affine::<P>::zero();
             let mut serialized = vec![0; a.uncompressed_size()];
             let mut cursor = Cursor::new(&mut serialized[..]);
             a.serialize_uncompressed(&mut cursor).unwrap();
             let mut cursor = Cursor::new(&serialized[..]);
-            let b = GroupAffine::<P>::deserialize_uncompressed(&mut cursor).unwrap();
+            let b = Affine::<P>::deserialize_uncompressed(&mut cursor).unwrap();
             assert_eq!(a, b);
         }
     }
@@ -125,12 +125,12 @@ pub fn edwards_from_random_bytes<P: TEModelParameters>()
 where
     P::BaseField: PrimeField,
 {
-    let buf_size = GroupAffine::<P>::zero().serialized_size();
+    let buf_size = Affine::<P>::zero().serialized_size();
 
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
     for _ in 0..ITERATIONS {
-        let a = GroupProjective::<P>::rand(&mut rng);
+        let a = Projective::<P>::rand(&mut rng);
         let a = a.into_affine();
         {
             let mut serialized = vec![0; buf_size];
@@ -138,19 +138,19 @@ where
             a.serialize(&mut cursor).unwrap();
 
             let mut cursor = Cursor::new(&serialized[..]);
-            let p1 = GroupAffine::<P>::deserialize(&mut cursor).unwrap();
-            let p2 = GroupAffine::<P>::from_random_bytes(&serialized).unwrap();
+            let p1 = Affine::<P>::deserialize(&mut cursor).unwrap();
+            let p2 = Affine::<P>::from_random_bytes(&serialized).unwrap();
             assert_eq!(p1, p2);
         }
     }
 
     for _ in 0..ITERATIONS {
-        let biginteger = <<GroupAffine<P> as AffineCurve>::BaseField as PrimeField>::BigInteger::rand(&mut rng);
+        let biginteger = <<Affine<P> as AffineCurve>::BaseField as PrimeField>::BigInteger::rand(&mut rng);
         let mut bytes = to_bytes![biginteger].unwrap();
-        let mut g = GroupAffine::<P>::from_random_bytes(&bytes);
+        let mut g = Affine::<P>::from_random_bytes(&bytes);
         while g.is_none() {
             bytes.iter_mut().for_each(|i| *i = i.wrapping_sub(1));
-            g = GroupAffine::<P>::from_random_bytes(&bytes);
+            g = Affine::<P>::from_random_bytes(&bytes);
         }
         let _g = g.unwrap();
     }
@@ -163,21 +163,21 @@ where
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
     for _ in 0..ITERATIONS {
-        let a = GroupProjective::<P>::rand(&mut rng);
+        let a = Projective::<P>::rand(&mut rng);
         let a = a.into_affine();
         {
             let x = a.x;
 
-            let a1 = GroupAffine::<P>::from_x_coordinate(x, true).unwrap();
-            let a2 = GroupAffine::<P>::from_x_coordinate(x, false).unwrap();
+            let a1 = Affine::<P>::from_x_coordinate(x, true).unwrap();
+            let a2 = Affine::<P>::from_x_coordinate(x, false).unwrap();
 
             assert!(a == a1 || a == a2);
         }
         {
             let y = a.y;
 
-            let a1 = GroupAffine::<P>::from_y_coordinate(y, true).unwrap();
-            let a2 = GroupAffine::<P>::from_y_coordinate(y, false).unwrap();
+            let a1 = Affine::<P>::from_y_coordinate(y, true).unwrap();
+            let a2 = Affine::<P>::from_y_coordinate(y, false).unwrap();
 
             assert!(a == a1 || a == a2);
         }

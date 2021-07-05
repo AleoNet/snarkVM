@@ -17,7 +17,7 @@
 use std::{borrow::Borrow, marker::PhantomData};
 
 use snarkvm_curves::{
-    templates::twisted_edwards_extended::GroupAffine as TEAffine,
+    templates::twisted_edwards_extended::Affine as TEAffine,
     traits::{MontgomeryModelParameters, TEModelParameters},
 };
 use snarkvm_fields::Field;
@@ -55,7 +55,7 @@ pub struct MontgomeryAffineGadget<P: TEModelParameters, F: Field, FG: FieldGadge
 mod montgomery_affine_impl {
     use std::ops::{AddAssign, MulAssign, SubAssign};
 
-    use snarkvm_curves::templates::twisted_edwards_extended::GroupAffine;
+    use snarkvm_curves::templates::twisted_edwards_extended::Affine;
     use snarkvm_fields::{Field, One, Zero};
     use snarkvm_r1cs::Assignment;
 
@@ -72,14 +72,14 @@ mod montgomery_affine_impl {
         }
 
         pub fn from_edwards_to_coords(p: &TEAffine<P>) -> Result<(P::BaseField, P::BaseField), SynthesisError> {
-            let montgomery_point: GroupAffine<P> = if p.y == P::BaseField::one() {
-                GroupAffine::zero()
+            let montgomery_point: Affine<P> = if p.y == P::BaseField::one() {
+                Affine::zero()
             } else if p.x == P::BaseField::zero() {
-                GroupAffine::new(P::BaseField::zero(), P::BaseField::zero())
+                Affine::new(P::BaseField::zero(), P::BaseField::zero())
             } else {
                 let u = (P::BaseField::one() + p.y) * (P::BaseField::one() - p.y).inverse().unwrap();
                 let v = u * p.x.inverse().unwrap();
-                GroupAffine::new(u, v)
+                Affine::new(u, v)
             };
 
             Ok((montgomery_point.x, montgomery_point.y))
@@ -609,7 +609,7 @@ mod projective_impl {
     use std::ops::Neg;
 
     use snarkvm_curves::{
-        templates::twisted_edwards_extended::GroupProjective as TEProjective,
+        templates::twisted_edwards_extended::Projective as TEProjective,
         traits::{AffineCurve, ProjectiveCurve},
     };
     use snarkvm_fields::{Field, One, PrimeField, Zero};

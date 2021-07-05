@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    templates::short_weierstrass_projective::GroupAffine,
+    templates::short_weierstrass_projective::Affine,
     traits::{AffineCurve, Group, ProjectiveCurve, SWModelParameters as Parameters},
 };
 use snarkvm_fields::{impl_additive_ops_from_ref, Field, One, PrimeField, Zero};
@@ -44,25 +44,25 @@ use std::{
     Debug(bound = "P: Parameters"),
     Hash(bound = "P: Parameters")
 )]
-pub struct GroupProjective<P: Parameters> {
+pub struct Projective<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
     pub z: P::BaseField,
 }
 
-impl<P: Parameters> GroupProjective<P> {
+impl<P: Parameters> Projective<P> {
     pub fn new(x: P::BaseField, y: P::BaseField, z: P::BaseField) -> Self {
         Self { x, y, z }
     }
 }
 
-impl<P: Parameters> Display for GroupProjective<P> {
+impl<P: Parameters> Display for Projective<P> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(f, "{}", self.into_affine())
     }
 }
 
-impl<P: Parameters> PartialEq for GroupProjective<P> {
+impl<P: Parameters> PartialEq for Projective<P> {
     fn eq(&self, other: &Self) -> bool {
         if self.is_zero() {
             return other.is_zero();
@@ -77,16 +77,16 @@ impl<P: Parameters> PartialEq for GroupProjective<P> {
     }
 }
 
-impl<P: Parameters> Distribution<GroupProjective<P>> for Standard {
+impl<P: Parameters> Distribution<Projective<P>> for Standard {
     #[inline]
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> GroupProjective<P> {
-        let res = GroupProjective::prime_subgroup_generator() * P::ScalarField::rand(rng);
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Projective<P> {
+        let res = Projective::prime_subgroup_generator() * P::ScalarField::rand(rng);
         debug_assert!(res.into_affine().is_in_correct_subgroup_assuming_on_curve());
         res
     }
 }
 
-impl<P: Parameters> ToBytes for GroupProjective<P> {
+impl<P: Parameters> ToBytes for Projective<P> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.x.write(&mut writer)?;
@@ -95,7 +95,7 @@ impl<P: Parameters> ToBytes for GroupProjective<P> {
     }
 }
 
-impl<P: Parameters> FromBytes for GroupProjective<P> {
+impl<P: Parameters> FromBytes for Projective<P> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let x = P::BaseField::read(&mut reader)?;
@@ -105,14 +105,14 @@ impl<P: Parameters> FromBytes for GroupProjective<P> {
     }
 }
 
-impl<P: Parameters> Default for GroupProjective<P> {
+impl<P: Parameters> Default for Projective<P> {
     #[inline]
     fn default() -> Self {
         Self::zero()
     }
 }
 
-impl<P: Parameters> Zero for GroupProjective<P> {
+impl<P: Parameters> Zero for Projective<P> {
     // The point at infinity is always represented by Z = 0.
     #[inline]
     fn zero() -> Self {
@@ -127,13 +127,13 @@ impl<P: Parameters> Zero for GroupProjective<P> {
     }
 }
 
-impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
-    type Affine = GroupAffine<P>;
+impl<P: Parameters> ProjectiveCurve for Projective<P> {
+    type Affine = Affine<P>;
     type BaseField = P::BaseField;
 
     #[inline]
     fn prime_subgroup_generator() -> Self {
-        GroupAffine::prime_subgroup_generator().into()
+        Affine::prime_subgroup_generator().into()
     }
 
     #[inline]
@@ -230,7 +230,7 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
         }
     }
 
-    fn into_affine(&self) -> GroupAffine<P> {
+    fn into_affine(&self) -> Affine<P> {
         (*self).into()
     }
 
@@ -243,7 +243,7 @@ impl<P: Parameters> ProjectiveCurve for GroupProjective<P> {
     }
 }
 
-impl<P: Parameters> Group for GroupProjective<P> {
+impl<P: Parameters> Group for Projective<P> {
     type ScalarField = P::ScalarField;
 
     #[inline]
@@ -291,7 +291,7 @@ impl<P: Parameters> Group for GroupProjective<P> {
     }
 }
 
-impl<P: Parameters> Neg for GroupProjective<P> {
+impl<P: Parameters> Neg for Projective<P> {
     type Output = Self;
 
     fn neg(self) -> Self {
@@ -303,9 +303,9 @@ impl<P: Parameters> Neg for GroupProjective<P> {
     }
 }
 
-impl_additive_ops_from_ref!(GroupProjective, Parameters);
+impl_additive_ops_from_ref!(Projective, Parameters);
 
-impl<'a, P: Parameters> Add<&'a Self> for GroupProjective<P> {
+impl<'a, P: Parameters> Add<&'a Self> for Projective<P> {
     type Output = Self;
 
     fn add(self, other: &'a Self) -> Self {
@@ -315,7 +315,7 @@ impl<'a, P: Parameters> Add<&'a Self> for GroupProjective<P> {
     }
 }
 
-impl<'a, P: Parameters> AddAssign<&'a Self> for GroupProjective<P> {
+impl<'a, P: Parameters> AddAssign<&'a Self> for Projective<P> {
     #[allow(clippy::suspicious_op_assign_impl)]
     fn add_assign(&mut self, other: &'a Self) {
         if self.is_zero() {
@@ -361,7 +361,7 @@ impl<'a, P: Parameters> AddAssign<&'a Self> for GroupProjective<P> {
     }
 }
 
-impl<'a, P: Parameters> Sub<&'a Self> for GroupProjective<P> {
+impl<'a, P: Parameters> Sub<&'a Self> for Projective<P> {
     type Output = Self;
 
     fn sub(self, other: &'a Self) -> Self {
@@ -371,13 +371,13 @@ impl<'a, P: Parameters> Sub<&'a Self> for GroupProjective<P> {
     }
 }
 
-impl<'a, P: Parameters> SubAssign<&'a Self> for GroupProjective<P> {
+impl<'a, P: Parameters> SubAssign<&'a Self> for Projective<P> {
     fn sub_assign(&mut self, other: &'a Self) {
         *self += &(-(*other));
     }
 }
 
-impl<P: Parameters> Mul<P::ScalarField> for GroupProjective<P> {
+impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
     type Output = Self;
 
     /// Performs scalar multiplication of this element.
@@ -404,7 +404,7 @@ impl<P: Parameters> Mul<P::ScalarField> for GroupProjective<P> {
     }
 }
 
-impl<P: Parameters> MulAssign<P::ScalarField> for GroupProjective<P> {
+impl<P: Parameters> MulAssign<P::ScalarField> for Projective<P> {
     /// Performs scalar multiplication of this element.
     fn mul_assign(&mut self, other: P::ScalarField) {
         *self = *self * other
@@ -413,8 +413,8 @@ impl<P: Parameters> MulAssign<P::ScalarField> for GroupProjective<P> {
 
 // The affine point X, Y is represented in the jacobian
 // coordinates with Z = 1.
-impl<P: Parameters> From<GroupAffine<P>> for GroupProjective<P> {
-    fn from(p: GroupAffine<P>) -> GroupProjective<P> {
+impl<P: Parameters> From<Affine<P>> for Projective<P> {
+    fn from(p: Affine<P>) -> Projective<P> {
         if p.is_zero() {
             Self::zero()
         } else {

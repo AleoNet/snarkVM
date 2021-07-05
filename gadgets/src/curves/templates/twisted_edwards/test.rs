@@ -20,7 +20,7 @@ use crate::{
     traits::{alloc::AllocGadget, curves::GroupGadget, select::CondSelectGadget},
 };
 use snarkvm_curves::{
-    templates::twisted_edwards_extended::GroupAffine as TEAffine,
+    templates::twisted_edwards_extended::Affine as TEAffine,
     traits::{Group, TEModelParameters},
 };
 use snarkvm_fields::{Field, PrimeField};

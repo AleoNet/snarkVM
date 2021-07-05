@@ -16,7 +16,7 @@
 
 use crate::{
     impl_edwards_curve_serializer,
-    templates::twisted_edwards_extended::GroupProjective,
+    templates::twisted_edwards_extended::Projective,
     traits::{
         AffineCurve,
         Group,
@@ -53,20 +53,20 @@ use std::{
     Debug(bound = "P: MontgomeryParameters"),
     Hash(bound = "P: MontgomeryParameters")
 )]
-pub struct MontgomeryGroupAffine<P: MontgomeryParameters> {
+pub struct MontgomeryAffine<P: MontgomeryParameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
 }
 
-impl<P: MontgomeryParameters> MontgomeryGroupAffine<P> {
+impl<P: MontgomeryParameters> MontgomeryAffine<P> {
     pub fn new(x: P::BaseField, y: P::BaseField) -> Self {
         Self { x, y }
     }
 }
 
-impl<P: MontgomeryParameters> Display for MontgomeryGroupAffine<P> {
+impl<P: MontgomeryParameters> Display for MontgomeryAffine<P> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "MontgomeryGroupAffine(x={}, y={})", self.x, self.y)
+        write!(f, "MontgomeryAffine(x={}, y={})", self.x, self.y)
     }
 }
 
@@ -79,12 +79,12 @@ impl<P: MontgomeryParameters> Display for MontgomeryGroupAffine<P> {
     Debug(bound = "P: Parameters"),
     Hash(bound = "P: Parameters")
 )]
-pub struct GroupAffine<P: Parameters> {
+pub struct Affine<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
 }
 
-impl<P: Parameters> GroupAffine<P> {
+impl<P: Parameters> Affine<P> {
     pub fn new(x: P::BaseField, y: P::BaseField) -> Self {
         Self { x, y }
     }
@@ -95,7 +95,7 @@ impl<P: Parameters> GroupAffine<P> {
     }
 }
 
-impl<P: Parameters> Zero for GroupAffine<P> {
+impl<P: Parameters> Zero for Affine<P> {
     fn zero() -> Self {
         Self::new(P::BaseField::zero(), P::BaseField::one())
     }
@@ -105,15 +105,15 @@ impl<P: Parameters> Zero for GroupAffine<P> {
     }
 }
 
-impl<P: Parameters> Display for GroupAffine<P> {
+impl<P: Parameters> Display for Affine<P> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "GroupAffine(x={}, y={})", self.x, self.y)
+        write!(f, "Affine(x={}, y={})", self.x, self.y)
     }
 }
 
-impl<P: Parameters> AffineCurve for GroupAffine<P> {
+impl<P: Parameters> AffineCurve for Affine<P> {
     type BaseField = P::BaseField;
-    type Projective = GroupProjective<P>;
+    type Projective = Projective<P>;
 
     #[inline]
     fn prime_subgroup_generator() -> Self {
@@ -174,7 +174,7 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
     }
 
     fn mul_bits<S: AsRef<[u64]>>(&self, bits: BitIteratorBE<S>) -> <Self as AffineCurve>::Projective {
-        let mut res = GroupProjective::zero();
+        let mut res = Projective::zero();
         for i in bits {
             res.double_in_place();
             if i {
@@ -192,7 +192,7 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
         self.mul(P::COFACTOR_INV).into()
     }
 
-    fn into_projective(&self) -> GroupProjective<P> {
+    fn into_projective(&self) -> Projective<P> {
         (*self).into()
     }
 
@@ -221,7 +221,7 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
     }
 }
 
-impl<P: Parameters> Group for GroupAffine<P> {
+impl<P: Parameters> Group for Affine<P> {
     type ScalarField = P::ScalarField;
 
     #[inline]
@@ -239,7 +239,7 @@ impl<P: Parameters> Group for GroupAffine<P> {
     }
 }
 
-impl<P: Parameters> Neg for GroupAffine<P> {
+impl<P: Parameters> Neg for Affine<P> {
     type Output = Self;
 
     fn neg(self) -> Self {
@@ -247,9 +247,9 @@ impl<P: Parameters> Neg for GroupAffine<P> {
     }
 }
 
-impl_additive_ops_from_ref!(GroupAffine, Parameters);
+impl_additive_ops_from_ref!(Affine, Parameters);
 
-impl<'a, P: Parameters> Add<&'a Self> for GroupAffine<P> {
+impl<'a, P: Parameters> Add<&'a Self> for Affine<P> {
     type Output = Self;
 
     fn add(self, other: &'a Self) -> Self {
@@ -259,7 +259,7 @@ impl<'a, P: Parameters> Add<&'a Self> for GroupAffine<P> {
     }
 }
 
-impl<'a, P: Parameters> AddAssign<&'a Self> for GroupAffine<P> {
+impl<'a, P: Parameters> AddAssign<&'a Self> for Affine<P> {
     #[allow(clippy::suspicious_op_assign_impl)]
     fn add_assign(&mut self, other: &'a Self) {
         let y1y2 = self.y * other.y;
@@ -277,7 +277,7 @@ impl<'a, P: Parameters> AddAssign<&'a Self> for GroupAffine<P> {
     }
 }
 
-impl<'a, P: Parameters> Sub<&'a Self> for GroupAffine<P> {
+impl<'a, P: Parameters> Sub<&'a Self> for Affine<P> {
     type Output = Self;
 
     fn sub(self, other: &'a Self) -> Self {
@@ -287,13 +287,13 @@ impl<'a, P: Parameters> Sub<&'a Self> for GroupAffine<P> {
     }
 }
 
-impl<'a, P: Parameters> SubAssign<&'a Self> for GroupAffine<P> {
+impl<'a, P: Parameters> SubAssign<&'a Self> for Affine<P> {
     fn sub_assign(&mut self, other: &'a Self) {
         *self += &(-(*other));
     }
 }
 
-impl<P: Parameters> Mul<P::ScalarField> for GroupAffine<P> {
+impl<P: Parameters> Mul<P::ScalarField> for Affine<P> {
     type Output = Self;
 
     fn mul(self, other: P::ScalarField) -> Self {
@@ -301,13 +301,13 @@ impl<P: Parameters> Mul<P::ScalarField> for GroupAffine<P> {
     }
 }
 
-impl<P: Parameters> MulAssign<P::ScalarField> for GroupAffine<P> {
+impl<P: Parameters> MulAssign<P::ScalarField> for Affine<P> {
     fn mul_assign(&mut self, other: P::ScalarField) {
         *self = self.mul(other).into()
     }
 }
 
-impl<P: Parameters> ToBytes for GroupAffine<P> {
+impl<P: Parameters> ToBytes for Affine<P> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.x.write(&mut writer)?;
@@ -315,7 +315,7 @@ impl<P: Parameters> ToBytes for GroupAffine<P> {
     }
 }
 
-impl<P: Parameters> FromBytes for GroupAffine<P> {
+impl<P: Parameters> FromBytes for Affine<P> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let x = P::BaseField::read(&mut reader)?;
@@ -324,21 +324,21 @@ impl<P: Parameters> FromBytes for GroupAffine<P> {
     }
 }
 
-impl<P: Parameters> Default for GroupAffine<P> {
+impl<P: Parameters> Default for Affine<P> {
     #[inline]
     fn default() -> Self {
         Self::zero()
     }
 }
 
-impl<P: Parameters> Distribution<GroupAffine<P>> for Standard {
+impl<P: Parameters> Distribution<Affine<P>> for Standard {
     #[inline]
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> GroupAffine<P> {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Affine<P> {
         loop {
             let x = P::BaseField::rand(rng);
             let greatest = rng.gen();
 
-            if let Some(p) = GroupAffine::from_x_coordinate(x, greatest) {
+            if let Some(p) = Affine::from_x_coordinate(x, greatest) {
                 return p.scale_by_cofactor().into();
             }
         }
@@ -347,19 +347,19 @@ impl<P: Parameters> Distribution<GroupAffine<P>> for Standard {
 
 // The projective point X, Y, T, Z is represented in the affine
 // coordinates as X/Z, Y/Z.
-impl<P: Parameters> From<GroupProjective<P>> for GroupAffine<P> {
-    fn from(p: GroupProjective<P>) -> GroupAffine<P> {
+impl<P: Parameters> From<Projective<P>> for Affine<P> {
+    fn from(p: Projective<P>) -> Affine<P> {
         if p.is_zero() {
-            GroupAffine::zero()
+            Affine::zero()
         } else if p.z.is_one() {
             // If Z is one, the point is already normalized.
-            GroupAffine::new(p.x, p.y)
+            Affine::new(p.x, p.y)
         } else {
             // Z is nonzero, so it must have an inverse in a field.
             let z_inv = p.z.inverse().unwrap();
             let x = p.x * z_inv;
             let y = p.y * z_inv;
-            GroupAffine::new(x, y)
+            Affine::new(x, y)
         }
     }
 }

@@ -16,7 +16,7 @@
 
 use crate::{
     impl_sw_curve_serializer,
-    templates::short_weierstrass_jacobian::GroupProjective,
+    templates::short_weierstrass_jacobian::Projective,
     traits::{AffineCurve, Group, ProjectiveCurve, SWModelParameters as Parameters},
 };
 use snarkvm_fields::{impl_additive_ops_from_ref, Field, One, PrimeField, SquareRootField, Zero};
@@ -47,33 +47,33 @@ use std::{
     Debug(bound = "P: Parameters"),
     Hash(bound = "P: Parameters")
 )]
-pub struct GroupAffine<P: Parameters> {
+pub struct Affine<P: Parameters> {
     pub x: P::BaseField,
     pub y: P::BaseField,
     pub infinity: bool,
 }
 
-impl<P: Parameters> Display for GroupAffine<P> {
+impl<P: Parameters> Display for Affine<P> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         if self.infinity {
-            write!(f, "GroupAffine(Infinity)")
+            write!(f, "Affine(Infinity)")
         } else {
-            write!(f, "GroupAffine(x={}, y={})", self.x, self.y)
+            write!(f, "Affine(x={}, y={})", self.x, self.y)
         }
     }
 }
 
-impl<P: Parameters> GroupAffine<P> {
+impl<P: Parameters> Affine<P> {
     pub fn new(x: P::BaseField, y: P::BaseField, infinity: bool) -> Self {
         Self { x, y, infinity }
     }
 
-    pub fn scale_by_cofactor(&self) -> GroupProjective<P> {
+    pub fn scale_by_cofactor(&self) -> Projective<P> {
         self.mul_bits(BitIteratorBE::new(P::COFACTOR))
     }
 }
 
-impl<P: Parameters> Zero for GroupAffine<P> {
+impl<P: Parameters> Zero for Affine<P> {
     #[inline]
     fn zero() -> Self {
         Self::new(P::BaseField::zero(), P::BaseField::one(), true)
@@ -85,9 +85,9 @@ impl<P: Parameters> Zero for GroupAffine<P> {
     }
 }
 
-impl<P: Parameters> AffineCurve for GroupAffine<P> {
+impl<P: Parameters> AffineCurve for Affine<P> {
     type BaseField = P::BaseField;
-    type Projective = GroupProjective<P>;
+    type Projective = Projective<P>;
 
     #[inline]
     fn prime_subgroup_generator() -> Self {
@@ -134,8 +134,8 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
         unimplemented!()
     }
 
-    fn mul_bits<S: AsRef<[u64]>>(&self, bits: BitIteratorBE<S>) -> GroupProjective<P> {
-        let mut res = GroupProjective::zero();
+    fn mul_bits<S: AsRef<[u64]>>(&self, bits: BitIteratorBE<S>) -> Projective<P> {
+        let mut res = Projective::zero();
         for i in bits {
             res.double_in_place();
             if i {
@@ -154,7 +154,7 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
     }
 
     #[inline]
-    fn into_projective(&self) -> GroupProjective<P> {
+    fn into_projective(&self) -> Projective<P> {
         (*self).into()
     }
 
@@ -184,7 +184,7 @@ impl<P: Parameters> AffineCurve for GroupAffine<P> {
     }
 }
 
-impl<P: Parameters> Group for GroupAffine<P> {
+impl<P: Parameters> Group for Affine<P> {
     type ScalarField = P::ScalarField;
 
     #[inline]
@@ -202,7 +202,7 @@ impl<P: Parameters> Group for GroupAffine<P> {
     }
 }
 
-impl<P: Parameters> Neg for GroupAffine<P> {
+impl<P: Parameters> Neg for Affine<P> {
     type Output = Self;
 
     #[inline]
@@ -215,9 +215,9 @@ impl<P: Parameters> Neg for GroupAffine<P> {
     }
 }
 
-impl_additive_ops_from_ref!(GroupAffine, Parameters);
+impl_additive_ops_from_ref!(Affine, Parameters);
 
-impl<'a, P: Parameters> Add<&'a Self> for GroupAffine<P> {
+impl<'a, P: Parameters> Add<&'a Self> for Affine<P> {
     type Output = Self;
 
     fn add(self, other: &'a Self) -> Self {
@@ -227,15 +227,15 @@ impl<'a, P: Parameters> Add<&'a Self> for GroupAffine<P> {
     }
 }
 
-impl<'a, P: Parameters> AddAssign<&'a Self> for GroupAffine<P> {
+impl<'a, P: Parameters> AddAssign<&'a Self> for Affine<P> {
     fn add_assign(&mut self, other: &'a Self) {
-        let mut projective = GroupProjective::from(*self);
+        let mut projective = Projective::from(*self);
         projective.add_assign_mixed(other);
         *self = projective.into();
     }
 }
 
-impl<'a, P: Parameters> Sub<&'a Self> for GroupAffine<P> {
+impl<'a, P: Parameters> Sub<&'a Self> for Affine<P> {
     type Output = Self;
 
     fn sub(self, other: &'a Self) -> Self {
@@ -245,13 +245,13 @@ impl<'a, P: Parameters> Sub<&'a Self> for GroupAffine<P> {
     }
 }
 
-impl<'a, P: Parameters> SubAssign<&'a Self> for GroupAffine<P> {
+impl<'a, P: Parameters> SubAssign<&'a Self> for Affine<P> {
     fn sub_assign(&mut self, other: &'a Self) {
         *self += &(-(*other));
     }
 }
 
-impl<P: Parameters> Mul<P::ScalarField> for GroupAffine<P> {
+impl<P: Parameters> Mul<P::ScalarField> for Affine<P> {
     type Output = Self;
 
     fn mul(self, other: P::ScalarField) -> Self {
@@ -259,13 +259,13 @@ impl<P: Parameters> Mul<P::ScalarField> for GroupAffine<P> {
     }
 }
 
-impl<P: Parameters> MulAssign<P::ScalarField> for GroupAffine<P> {
+impl<P: Parameters> MulAssign<P::ScalarField> for Affine<P> {
     fn mul_assign(&mut self, other: P::ScalarField) {
         *self = self.mul(other).into()
     }
 }
 
-impl<P: Parameters> ToBytes for GroupAffine<P> {
+impl<P: Parameters> ToBytes for Affine<P> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.x.write(&mut writer)?;
@@ -274,7 +274,7 @@ impl<P: Parameters> ToBytes for GroupAffine<P> {
     }
 }
 
-impl<P: Parameters> FromBytes for GroupAffine<P> {
+impl<P: Parameters> FromBytes for Affine<P> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let x = P::BaseField::read(&mut reader)?;
@@ -288,21 +288,21 @@ impl<P: Parameters> FromBytes for GroupAffine<P> {
     }
 }
 
-impl<P: Parameters> Default for GroupAffine<P> {
+impl<P: Parameters> Default for Affine<P> {
     #[inline]
     fn default() -> Self {
         Self::zero()
     }
 }
 
-impl<P: Parameters> Distribution<GroupAffine<P>> for Standard {
+impl<P: Parameters> Distribution<Affine<P>> for Standard {
     #[inline]
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> GroupAffine<P> {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Affine<P> {
         loop {
             let x = P::BaseField::rand(rng);
             let greatest = rng.gen();
 
-            if let Some(p) = GroupAffine::from_x_coordinate(x, greatest) {
+            if let Some(p) = Affine::from_x_coordinate(x, greatest) {
                 return p.scale_by_cofactor().into();
             }
         }
@@ -311,14 +311,14 @@ impl<P: Parameters> Distribution<GroupAffine<P>> for Standard {
 
 // The projective point X, Y, Z is represented in the affine
 // coordinates as X/Z^2, Y/Z^3.
-impl<P: Parameters> From<GroupProjective<P>> for GroupAffine<P> {
+impl<P: Parameters> From<Projective<P>> for Affine<P> {
     #[inline]
-    fn from(p: GroupProjective<P>) -> GroupAffine<P> {
+    fn from(p: Projective<P>) -> Affine<P> {
         if p.is_zero() {
-            GroupAffine::zero()
+            Affine::zero()
         } else if p.z.is_one() {
             // If Z is one, the point is already normalized.
-            GroupAffine::new(p.x, p.y, false)
+            Affine::new(p.x, p.y, false)
         } else {
             // Z is nonzero, so it must have an inverse in a field.
             let zinv = p.z.inverse().unwrap();
@@ -330,7 +330,7 @@ impl<P: Parameters> From<GroupProjective<P>> for GroupAffine<P> {
             // Y/Z^3
             let y = p.y * (zinv_squared * zinv);
 
-            GroupAffine::new(x, y, false)
+            Affine::new(x, y, false)
         }
     }
 }

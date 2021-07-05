@@ -17,7 +17,7 @@
 use crate::{
     templates::{
         bls12::{Bls12Parameters, TwistType},
-        short_weierstrass_jacobian::{GroupAffine, GroupProjective},
+        short_weierstrass_jacobian::{Affine, Projective},
     },
     traits::{AffineCurve, SWModelParameters},
 };
@@ -26,8 +26,8 @@ use snarkvm_utilities::{bititerator::BitIteratorBE, bytes::ToBytes, errors::Seri
 
 use std::io::{Result as IoResult, Write};
 
-pub type G2Affine<P> = GroupAffine<<P as Bls12Parameters>::G2Parameters>;
-pub type G2Projective<P> = GroupProjective<<P as Bls12Parameters>::G2Parameters>;
+pub type G2Affine<P> = Affine<<P as Bls12Parameters>::G2Parameters>;
+pub type G2Projective<P> = Projective<<P as Bls12Parameters>::G2Parameters>;
 type CoeffTriplet<T> = (Fp2<T>, Fp2<T>, Fp2<T>);
 
 #[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
