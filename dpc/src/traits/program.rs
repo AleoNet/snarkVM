@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::ProgramError;
+use snarkvm_algorithms::SNARK;
 
 use core::fmt::Debug;
 use rand::Rng;
@@ -22,11 +23,12 @@ use rand::Rng;
 pub trait ProgramScheme: Clone {
     type ID: Debug;
     type LocalData;
-    type PrivateWitness;
-    type ProvingKey;
     type PublicInput;
-    type VerifyingKey;
+    type PrivateWitness;
     type ProgramIDCRH;
+    type ProofSystem: SNARK;
+    type ProvingKey;
+    type VerifyingKey;
 
     /// Initializes a new instance of a program.
     fn new(

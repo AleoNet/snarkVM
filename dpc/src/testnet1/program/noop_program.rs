@@ -25,35 +25,27 @@ use snarkvm_algorithms::{CommitmentScheme, CRH, SNARK};
 use snarkvm_utilities::{to_bytes, ToBytes};
 
 use rand::Rng;
-use std::marker::PhantomData;
 
 #[derive(Derivative)]
-#[derivative(
-    Clone(bound = "C: Testnet1Components, S: SNARK"),
-    Debug(bound = "C: Testnet1Components, S: SNARK")
-)]
-pub struct NoopProgram<C: Testnet1Components, S: SNARK> {
+#[derivative(Clone(bound = "C: Testnet1Components"), Debug(bound = "C: Testnet1Components"))]
+pub struct NoopProgram<C: Testnet1Components> {
     #[derivative(Default(value = "vec![0u8; 48]"))]
     id: Vec<u8>,
     #[derivative(Debug = "ignore")]
-    proving_key: S::ProvingKey,
+    proving_key: <<C as Testnet1Components>::NoopProgramSNARK as SNARK>::ProvingKey,
     #[derivative(Debug = "ignore")]
-    verifying_key: S::VerifyingKey,
-    #[derivative(Debug = "ignore")]
-    _components: PhantomData<C>,
+    verifying_key: <<C as Testnet1Components>::NoopProgramSNARK as SNARK>::VerifyingKey,
 }
 
-impl<C: Testnet1Components, S: SNARK> ProgramScheme for NoopProgram<C, S>
-where
-    S: SNARK<AllocatedCircuit = NoopCircuit<C>, VerifierInput = ProgramLocalData<C>>,
-{
+impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
     type ID = Vec<u8>;
     type LocalData = LocalData<C>;
     type PrivateWitness = PrivateProgramInput;
     type ProgramIDCRH = C::ProgramVerificationKeyCRH;
-    type ProvingKey = S::ProvingKey;
+    type ProofSystem = <C as Testnet1Components>::NoopProgramSNARK;
+    type ProvingKey = <Self::ProofSystem as SNARK>::ProvingKey;
     type PublicInput = ();
-    type VerifyingKey = S::VerifyingKey;
+    type VerifyingKey = <Self::ProofSystem as SNARK>::VerifyingKey;
 
     /// Initializes a new instance of a program.
     fn new(
@@ -61,6 +53,7 @@ where
         proving_key: Self::ProvingKey,
         verifying_key: Self::VerifyingKey,
     ) -> Result<Self, ProgramError> {
+        // Compute the program ID.
         let program_id = to_bytes![<C as DPCComponents>::ProgramVerificationKeyCRH::hash(
             program_id_crh_parameters,
             &to_bytes![verifying_key]?
@@ -70,7 +63,6 @@ where
             id: program_id,
             proving_key,
             verifying_key,
-            _components: PhantomData,
         })
     }
 
@@ -104,10 +96,11 @@ where
 
         let circuit = NoopCircuit::<C>::new(&local_data.system_parameters, &local_data_root, position);
 
-        let proof = S::prove(&self.proving_key, &circuit, rng)?;
+        let proof = <Self::ProofSystem as SNARK>::prove(&self.proving_key, &circuit, rng)?;
 
         {
-            let program_snark_pvk: <S as SNARK>::PreparedVerifyingKey = self.verifying_key.clone().into();
+            let program_snark_pvk: <Self::ProofSystem as SNARK>::PreparedVerifyingKey =
+                self.verifying_key.clone().into();
 
             let program_pub_input: ProgramLocalData<C> = ProgramLocalData {
                 local_data_commitment_parameters: local_data
@@ -118,7 +111,11 @@ where
                 local_data_root,
                 position,
             };
-            assert!(S::verify(&program_snark_pvk, &program_pub_input, &proof)?);
+            assert!(<Self::ProofSystem as SNARK>::verify(
+                &program_snark_pvk,
+                &program_pub_input,
+                &proof
+            )?);
         }
 
         Ok(Self::PrivateWitness {

@@ -78,7 +78,7 @@ fn dpc_testnet1_integration_test() {
         genesis_block,
     );
 
-    let noop_program = NoopProgram::<_, <Components as Testnet1Components>::NoopProgramSNARK>::new(
+    let noop_program = NoopProgram::<Components>::new(
         &parameters.system_parameters.program_verification_key_crh,
         parameters.noop_program_snark_parameters.proving_key.clone(),
         parameters.noop_program_snark_parameters.verifying_key.clone(),
@@ -249,7 +249,7 @@ fn test_transaction_kernel_serialization() {
 
     let noop_program_snark_pp =
         Testnet1DPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
-    let noop_program = NoopProgram::<_, <Components as Testnet1Components>::NoopProgramSNARK>::new(
+    let noop_program = NoopProgram::<Components>::new(
         &system_parameters.program_verification_key_crh,
         noop_program_snark_pp.proving_key,
         noop_program_snark_pp.verifying_key,
@@ -352,7 +352,7 @@ fn test_testnet1_dpc_execute_constraints() {
 
     let noop_program_snark_pp =
         Testnet1DPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
-    let noop_program = NoopProgram::<_, <Components as Testnet1Components>::NoopProgramSNARK>::new(
+    let noop_program = NoopProgram::<Components>::new(
         &system_parameters.program_verification_key_crh,
         noop_program_snark_pp.proving_key,
         noop_program_snark_pp.verifying_key,
@@ -362,7 +362,7 @@ fn test_testnet1_dpc_execute_constraints() {
 
     let alternate_noop_program_snark_pp =
         Testnet1DPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
-    let alternate_noop_program = NoopProgram::<_, <Components as Testnet1Components>::NoopProgramSNARK>::new(
+    let alternate_noop_program = NoopProgram::<Components>::new(
         &system_parameters.program_verification_key_crh,
         alternate_noop_program_snark_pp.proving_key,
         alternate_noop_program_snark_pp.verifying_key,
