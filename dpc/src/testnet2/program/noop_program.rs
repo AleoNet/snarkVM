@@ -77,31 +77,25 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
         position: u8,
         rng: &mut R,
     ) -> Result<Self::PrivateWitness, ProgramError> {
-        let num_records = local_data.old_records.len() + local_data.new_records.len();
-        assert!((position as usize) < num_records);
+        assert!((position as usize) < (local_data.old_records.len() + local_data.new_records.len()));
 
-        let record = if (position as usize) < local_data.old_records.len() {
-            &local_data.old_records[position as usize]
-        } else {
-            &local_data.new_records[position as usize - local_data.old_records.len()]
+        let record = match (position as usize) < local_data.old_records.len() {
+            true => &local_data.old_records[position as usize],
+            false => &local_data.new_records[position as usize - local_data.old_records.len()],
         };
 
-        if (position as usize) < C::NUM_INPUT_RECORDS {
-            assert_eq!(self.id, record.death_program_id());
-        } else {
-            assert_eq!(self.id, record.birth_program_id());
-        }
+        match (position as usize) < C::NUM_INPUT_RECORDS {
+            true => assert_eq!(self.id, record.death_program_id()),
+            false => assert_eq!(self.id, record.birth_program_id()),
+        };
 
         let local_data_root = local_data.local_data_merkle_tree.root();
 
         let circuit = NoopCircuit::<C>::new(&local_data.system_parameters, &local_data_root, position);
 
-        let proof = Self::ProofSystem::prove(&self.proving_key, &circuit, rng)?;
+        let proof = <Self::ProofSystem as SNARK>::prove(&self.proving_key, &circuit, rng)?;
 
         {
-            let program_snark_pvk: <Self::ProofSystem as SNARK>::PreparedVerifyingKey =
-                self.verifying_key.clone().into();
-
             let program_pub_input: ProgramLocalData<C> = ProgramLocalData {
                 local_data_commitment_parameters: local_data
                     .system_parameters
@@ -111,8 +105,8 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
                 local_data_root,
                 position,
             };
-            assert!(Self::ProofSystem::verify(
-                &program_snark_pvk,
+            assert!(<Self::ProofSystem as SNARK>::verify(
+                &self.verifying_key.clone().into(),
                 &program_pub_input,
                 &proof
             )?);

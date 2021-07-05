@@ -248,14 +248,11 @@ where
         end_timer!(snark_setup_time);
         end_timer!(setup_time);
 
-        let inner_snark_parameters = (Some(inner_snark_parameters.0), inner_snark_parameters.1);
-        let outer_snark_parameters = (Some(outer_snark_parameters.0), outer_snark_parameters.1);
-
         Ok(PublicParameters {
             system_parameters,
             noop_program_snark_parameters,
-            inner_snark_parameters,
-            outer_snark_parameters,
+            inner_snark_parameters: (Some(inner_snark_parameters.0), inner_snark_parameters.1),
+            outer_snark_parameters: (Some(outer_snark_parameters.0), outer_snark_parameters.1),
         })
     }
 
@@ -389,7 +386,6 @@ where
             for id in old_death_program_ids {
                 input.extend_from_slice(&id);
             }
-
             for id in new_birth_program_ids {
                 input.extend_from_slice(&id);
             }
@@ -403,22 +399,18 @@ where
         };
         end_timer!(program_comm_timer);
 
-        // Encrypt the new records
+        // Encrypt the new records and construct the ciphertext hashes
 
         let mut new_records_encryption_randomness = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+        let mut new_encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         let mut new_encrypted_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
         for record in &new_records {
             let (encrypted_record, record_encryption_randomness) = EncryptedRecord::encrypt(&parameters, record, rng)?;
 
             new_records_encryption_randomness.push(record_encryption_randomness);
-            new_encrypted_records.push(encrypted_record);
-        }
-
-        // Construct the ciphertext hashes
-        let mut new_encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-        for encrypted_record in &new_encrypted_records {
             new_encrypted_record_hashes.push(encrypted_record.to_hash(&parameters)?);
+            new_encrypted_records.push(encrypted_record);
         }
 
         Ok(TransactionKernel {

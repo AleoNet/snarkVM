@@ -29,21 +29,17 @@ use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSynthesizer, Co
 pub struct NoopCircuit<C: Testnet1Components> {
     /// System parameters
     pub system_parameters: Option<SystemParameters<C>>,
-
     /// Commitment to the program input.
     pub local_data_root: Option<<C::LocalDataCRH as CRH>::Output>,
-
     /// Record position
     pub position: u8,
 }
 
 impl<C: Testnet1Components> NoopCircuit<C> {
     pub fn blank(system_parameters: &SystemParameters<C>) -> Self {
-        let local_data_root = <C::LocalDataCRH as CRH>::Output::default();
-
         Self {
             system_parameters: Some(system_parameters.clone()),
-            local_data_root: Some(local_data_root),
+            local_data_root: Some(<C::LocalDataCRH as CRH>::Output::default()),
             position: 0u8,
         }
     }
