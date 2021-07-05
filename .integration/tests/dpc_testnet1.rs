@@ -28,6 +28,7 @@ use snarkvm_dpc::{
         instantiated::*,
         program::NoopProgram,
         record::{EncryptedRecord, Payload, Record},
+        SystemParameters,
         Testnet1Components,
         TransactionKernel,
     },
@@ -245,7 +246,7 @@ fn test_transaction_kernel_serialization() {
 
     // Generate parameters for the ledger, commitment schemes, CRH, and the
     // "always-accept" program.
-    let system_parameters = Testnet1DPC::generate_system_parameters(&mut rng).unwrap();
+    let system_parameters = SystemParameters::setup(&mut rng).unwrap();
 
     let noop_program_snark_pp =
         Testnet1DPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
@@ -348,7 +349,7 @@ fn test_testnet1_dpc_execute_constraints() {
     // Generate parameters for the ledger, commitment schemes, CRH, and the
     // "always-accept" program.
     let ledger_parameters = Arc::new(CommitmentMerkleParameters::setup(&mut rng));
-    let system_parameters = Testnet1DPC::generate_system_parameters(&mut rng).unwrap();
+    let system_parameters = SystemParameters::setup(&mut rng).unwrap();
 
     let noop_program_snark_pp =
         Testnet1DPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();

@@ -140,66 +140,6 @@ where
     <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::Commitment:
         ToConstraintField<C::OuterScalarField>,
 {
-    pub fn generate_system_parameters<R: Rng>(rng: &mut R) -> Result<SystemParameters<C>, DPCError> {
-        let time = start_timer!(|| "Account commitment scheme setup");
-        let account_commitment = C::AccountCommitment::setup(rng);
-        end_timer!(time);
-
-        let time = start_timer!(|| "Account encryption scheme setup");
-        let account_encryption = <C::AccountEncryption as EncryptionScheme>::setup(rng);
-        end_timer!(time);
-
-        let time = start_timer!(|| "Account signature setup");
-        let account_signature = C::AccountSignature::setup(rng)?;
-        end_timer!(time);
-
-        let time = start_timer!(|| "Encrypted record CRH setup");
-        let encrypted_record_crh = C::EncryptedRecordCRH::setup(rng);
-        end_timer!(time);
-
-        let time = start_timer!(|| "Inner circuit ID CRH setup");
-        let inner_circuit_id_crh = C::InnerCircuitIDCRH::setup(rng);
-        end_timer!(time);
-
-        let time = start_timer!(|| "Local data commitment setup");
-        let local_data_commitment = C::LocalDataCommitment::setup(rng);
-        end_timer!(time);
-
-        let time = start_timer!(|| "Local data CRH setup");
-        let local_data_crh = C::LocalDataCRH::setup(rng);
-        end_timer!(time);
-
-        let time = start_timer!(|| "Program verifying key CRH setup");
-        let program_verification_key_crh = C::ProgramVerificationKeyCRH::setup(rng);
-        end_timer!(time);
-
-        let time = start_timer!(|| "Program verifying key commitment setup");
-        let program_verification_key_commitment = C::ProgramVerificationKeyCommitment::setup(rng);
-        end_timer!(time);
-
-        let time = start_timer!(|| "Record commitment scheme setup");
-        let record_commitment = C::RecordCommitment::setup(rng);
-        end_timer!(time);
-
-        let time = start_timer!(|| "Serial nonce CRH setup");
-        let serial_number_nonce = C::SerialNumberNonceCRH::setup(rng);
-        end_timer!(time);
-
-        Ok(SystemParameters {
-            account_commitment,
-            account_encryption,
-            account_signature,
-            encrypted_record_crh,
-            inner_circuit_id_crh,
-            local_data_crh,
-            local_data_commitment,
-            program_verification_key_commitment,
-            program_verification_key_crh,
-            record_commitment,
-            serial_number_nonce,
-        })
-    }
-
     pub fn generate_program_snark_universal_srs<R: Rng + CryptoRng>(
         rng: &mut R,
     ) -> Result<ProgramSNARKUniversalSRS<C>, DPCError> {
@@ -267,7 +207,7 @@ where
         rng: &mut R,
     ) -> anyhow::Result<Self::NetworkParameters> {
         let setup_time = start_timer!(|| "DPC::setup");
-        let system_parameters = Self::generate_system_parameters(rng)?;
+        let system_parameters = SystemParameters::<C>::setup(rng)?;
 
         let program_snark_universal_srs = Self::generate_program_snark_universal_srs(rng)?;
 

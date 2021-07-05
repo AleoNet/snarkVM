@@ -36,9 +36,6 @@ pub enum RecordError {
     #[error("{}", _0)]
     CRHError(#[from] CRHError),
 
-    #[error("{}", _0)]
-    DPCError(#[from] crate::DPCError),
-
     #[error("Attempted to set `value: {}` on a dummy record", _0)]
     DummyMustBeZero(u64),
 

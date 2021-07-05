@@ -14,11 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet1::Testnet1Components;
-use snarkvm_algorithms::traits::{EncryptionScheme, SNARK};
+use crate::{testnet1::Testnet1Components, DPCError};
+use snarkvm_algorithms::prelude::*;
 use snarkvm_parameters::{prelude::*, testnet1::*};
 use snarkvm_utilities::bytes::FromBytes;
 
+use rand::{CryptoRng, Rng};
 use std::io::Result as IoResult;
 
 #[derive(Derivative)]
@@ -38,7 +39,67 @@ pub struct SystemParameters<C: Testnet1Components> {
 }
 
 impl<C: Testnet1Components> SystemParameters<C> {
-    // TODO (howardwu): Inspect what is going on with program_verification_key_commitment.
+    pub fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<SystemParameters<C>, DPCError> {
+        let time = start_timer!(|| "Account commitment scheme setup");
+        let account_commitment = C::AccountCommitment::setup(rng);
+        end_timer!(time);
+
+        let time = start_timer!(|| "Account encryption scheme setup");
+        let account_encryption = <C::AccountEncryption as EncryptionScheme>::setup(rng);
+        end_timer!(time);
+
+        let time = start_timer!(|| "Account signature setup");
+        let account_signature = C::AccountSignature::setup(rng)?;
+        end_timer!(time);
+
+        let time = start_timer!(|| "Encrypted record CRH setup");
+        let encrypted_record_crh = C::EncryptedRecordCRH::setup(rng);
+        end_timer!(time);
+
+        let time = start_timer!(|| "Inner circuit ID CRH setup");
+        let inner_circuit_id_crh = C::InnerCircuitIDCRH::setup(rng);
+        end_timer!(time);
+
+        let time = start_timer!(|| "Local data commitment setup");
+        let local_data_commitment = C::LocalDataCommitment::setup(rng);
+        end_timer!(time);
+
+        let time = start_timer!(|| "Local data CRH setup");
+        let local_data_crh = C::LocalDataCRH::setup(rng);
+        end_timer!(time);
+
+        let time = start_timer!(|| "Program verifying key CRH setup");
+        let program_verification_key_crh = C::ProgramVerificationKeyCRH::setup(rng);
+        end_timer!(time);
+
+        let time = start_timer!(|| "Program verification key commitment setup");
+        let program_verification_key_commitment = C::ProgramVerificationKeyCommitment::setup(rng);
+        end_timer!(time);
+
+        let time = start_timer!(|| "Record commitment scheme setup");
+        let record_commitment = C::RecordCommitment::setup(rng);
+        end_timer!(time);
+
+        let time = start_timer!(|| "Serial nonce CRH setup");
+        let serial_number_nonce = C::SerialNumberNonceCRH::setup(rng);
+        end_timer!(time);
+
+        Ok(Self {
+            account_commitment,
+            account_encryption,
+            account_signature,
+            encrypted_record_crh,
+            inner_circuit_id_crh,
+            local_data_crh,
+            local_data_commitment,
+            program_verification_key_commitment,
+            program_verification_key_crh,
+            record_commitment,
+            serial_number_nonce,
+        })
+    }
+
+    /// TODO (howardwu): Inspect what is going on with program_verification_key_commitment.
     pub fn load() -> IoResult<Self> {
         let account_commitment: C::AccountCommitment =
             From::from(FromBytes::read(AccountCommitmentParameters::load_bytes()?.as_slice())?);
@@ -211,32 +272,6 @@ impl<C: Testnet1Components> PublicParameters<C> {
             let outer_snark_vk: <C::OuterSNARK as SNARK>::VerifyingKey =
                 <C::OuterSNARK as SNARK>::VerifyingKey::read(OuterSNARKVKParameters::load_bytes()?.as_slice())?;
 
-            (outer_snark_pk, outer_snark_vk.into())
-        };
-
-        Ok(Self {
-            system_parameters,
-            noop_program_snark_parameters,
-            inner_snark_parameters,
-            outer_snark_parameters,
-        })
-    }
-
-    pub fn load_vk_direct() -> IoResult<Self> {
-        let system_parameters = SystemParameters::<C>::load()?;
-        let noop_program_snark_parameters = NoopProgramSNARKParameters::<C>::load()?;
-
-        let inner_snark_parameters = {
-            let inner_snark_pk = None;
-            let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey =
-                <C::InnerSNARK as SNARK>::VerifyingKey::read(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
-            (inner_snark_pk, inner_snark_vk.into())
-        };
-
-        let outer_snark_parameters = {
-            let outer_snark_pk = None;
-            let outer_snark_vk: <C::OuterSNARK as SNARK>::VerifyingKey =
-                <C::OuterSNARK as SNARK>::VerifyingKey::read(OuterSNARKVKParameters::load_bytes()?.as_slice())?;
             (outer_snark_pk, outer_snark_vk.into())
         };
 

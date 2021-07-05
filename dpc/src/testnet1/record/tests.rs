@@ -16,7 +16,7 @@
 
 use super::{encoded::*, encrypted::*};
 use crate::{
-    testnet1::{instantiated::*, Payload, Record},
+    testnet1::{instantiated::*, Payload, Record, SystemParameters},
     traits::{AccountScheme, DPCComponents, EncodedRecordScheme},
     Account,
     ViewKey,
@@ -37,7 +37,7 @@ fn test_record_encoding() {
     for _ in 0..ITERATIONS {
         // Generate parameters for the ledger, commitment schemes, CRH, and the
         // "always-accept" program.
-        let system_parameters = Testnet1DPC::generate_system_parameters(&mut rng).unwrap();
+        let system_parameters = SystemParameters::setup(&mut rng).unwrap();
         let noop_program_snark_pp =
             Testnet1DPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
 
@@ -103,7 +103,7 @@ fn test_record_encryption() {
     for _ in 0..ITERATIONS {
         // Generate parameters for the ledger, commitment schemes, CRH, and the
         // "always-accept" program.
-        let system_parameters = Testnet1DPC::generate_system_parameters(&mut rng).unwrap();
+        let system_parameters = SystemParameters::setup(&mut rng).unwrap();
         let program_snark_pp =
             Testnet1DPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
 

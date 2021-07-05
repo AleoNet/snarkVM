@@ -60,10 +60,6 @@ pub fn setup_or_load_parameters<R: Rng + CryptoRng, S: Storage>(
     (ledger_merkle_tree_parameters, parameters)
 }
 
-pub fn load_verifying_parameters() -> PublicParameters<Components> {
-    PublicParameters::<Components>::load_vk_direct().unwrap()
-}
-
 pub fn generate_test_accounts<R: Rng + CryptoRng, S: Storage>(
     parameters: &PublicParameters<Components>,
     rng: &mut R,
