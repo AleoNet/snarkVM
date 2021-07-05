@@ -71,17 +71,6 @@ impl<P: Parameters> GroupAffine<P> {
     pub fn scale_by_cofactor(&self) -> GroupProjective<P> {
         self.mul_bits(BitIteratorBE::new(P::COFACTOR))
     }
-
-    pub fn is_on_curve(&self) -> bool {
-        if self.is_zero() {
-            true
-        } else {
-            // Check that the point is on the curve
-            let y2 = self.y.square();
-            let x3b = P::add_b(&((self.x.square() * self.x) + P::mul_by_a(&self.x)));
-            y2 == x3b
-        }
-    }
 }
 
 impl<P: Parameters> Zero for GroupAffine<P> {

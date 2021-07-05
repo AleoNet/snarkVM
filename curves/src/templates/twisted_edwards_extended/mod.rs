@@ -60,12 +60,6 @@ pub struct GroupAffine<P: Parameters> {
     pub y: P::BaseField,
 }
 
-impl<P: Parameters> Display for GroupAffine<P> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "GroupAffine(x={}, y={})", self.x, self.y)
-    }
-}
-
 impl<P: Parameters> GroupAffine<P> {
     pub fn new(x: P::BaseField, y: P::BaseField) -> Self {
         Self { x, y }
@@ -74,17 +68,6 @@ impl<P: Parameters> GroupAffine<P> {
     #[must_use]
     pub fn scale_by_cofactor(&self) -> <Self as AffineCurve>::Projective {
         self.mul_bits(BitIteratorBE::new(P::COFACTOR))
-    }
-
-    /// Checks that the current point is on the elliptic curve.
-    pub fn is_on_curve(&self) -> bool {
-        let x2 = self.x.square();
-        let y2 = self.y.square();
-
-        let lhs = y2 + P::mul_by_a(&x2);
-        let rhs = P::BaseField::one() + (P::COEFF_D * (x2 * y2));
-
-        lhs == rhs
     }
 }
 
@@ -95,6 +78,12 @@ impl<P: Parameters> Zero for GroupAffine<P> {
 
     fn is_zero(&self) -> bool {
         self.x.is_zero() & self.y.is_one()
+    }
+}
+
+impl<P: Parameters> Display for GroupAffine<P> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(f, "GroupAffine(x={}, y={})", self.x, self.y)
     }
 }
 

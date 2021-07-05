@@ -18,7 +18,7 @@ use crate::{
     edwards_bw6::{Fq, Fr},
     errors::GroupError,
     templates::twisted_edwards_extended::{GroupAffine, GroupProjective},
-    traits::{ModelParameters, MontgomeryModelParameters, TEModelParameters},
+    traits::{AffineCurve, ModelParameters, MontgomeryModelParameters, TEModelParameters},
 };
 use snarkvm_fields::field;
 use snarkvm_utilities::biginteger::BigInteger384 as BigInteger;
