@@ -138,6 +138,10 @@ version = "1.8"
 [dev-dependencies.criterion]
 version = "0.3.4"
 
+[dev-dependencies.crypto-mac]
+version = "0.8"
+features = ["dev"]
+
 [dev-dependencies.csv]
 version = "1"
 
