@@ -111,15 +111,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "blobby"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fe5f8c2940b65859ece4b3b2ba02d2b12c87cab455fd42dee2556a187bb2cf6"
-dependencies = [
- "byteorder",
-]
-
-[[package]]
 name = "block-buffer"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -370,7 +361,6 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b584a330336237c1eecd3e94266efb216c56ed91225d634cb2991c5f3fd1aeab"
 dependencies = [
- "blobby",
  "generic-array",
  "subtle",
 ]
@@ -1601,7 +1591,6 @@ dependencies = [
  "blake2",
  "criterion",
  "crossbeam-channel",
- "crypto-mac",
  "csv",
  "cuda-oxide",
  "derivative",

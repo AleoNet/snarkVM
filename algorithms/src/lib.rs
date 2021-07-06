@@ -55,6 +55,9 @@ pub use errors::*;
 #[cfg(feature = "fft")]
 pub mod fft;
 
+#[cfg(feature = "hash_to_curve")]
+pub mod hash_to_curve;
+
 #[cfg(feature = "merkle_tree")]
 pub mod merkle_tree;
 
