@@ -40,7 +40,7 @@ The Bowe-Hopwood Pedersen CRH parameters used to create the local data commitmen
 
 ### Program Verification Key CRH
 
-The Bowe-Hopwood Pedersen CRH parameters used to establish program IDs by hashing Program SNARK verification keys.
+The Bowe-Hopwood Pedersen CRH parameters used to establish program IDs by hashing Program SNARK verifying keys.
 
 ### Serial Number Nonce CRH
 
@@ -62,16 +62,16 @@ The Schnorr signature parameters used to authorize delegation of transaction gen
 
 ### Inner SNARK
 
-The Groth16 proving key and verification key for the InnerSNARK.
+The Groth16 proving key and verifying key for the InnerSNARK.
 
 ### Outer SNARK
 
-The Groth16 proving key and verification key for the OuterSNARK.
+The Groth16 proving key and verifying key for the OuterSNARK.
 
 ### Noop Program SNARK
 
-The GM17 proving key and verification key for the Noop Program SNARK.
+The GM17 proving key and verifying key for the Noop Program SNARK.
 
 ### POSW SNARK
 
-The Marlin proving key and verification key for the Proof of Succinct Work SNARK.
+The Marlin proving key and verifying key for the Proof of Succinct Work SNARK.

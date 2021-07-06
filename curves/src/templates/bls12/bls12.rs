@@ -19,7 +19,7 @@ use crate::{
         g1::{G1Affine, G1Prepared, G1Projective},
         g2::{G2Affine, G2Prepared, G2Projective},
     },
-    traits::{ModelParameters, PairingCurve, PairingEngine, SWModelParameters},
+    traits::{ModelParameters, PairingCurve, PairingEngine, ShortWeierstrassParameters},
 };
 use serde::{Deserialize, Serialize};
 use snarkvm_fields::{
@@ -50,8 +50,8 @@ pub trait Bls12Parameters: 'static {
     type Fp2Params: Fp2Parameters<Fp = Self::Fp>;
     type Fp6Params: Fp6Parameters<Fp2Params = Self::Fp2Params>;
     type Fp12Params: Fp12Parameters<Fp6Params = Self::Fp6Params>;
-    type G1Parameters: SWModelParameters<BaseField = Self::Fp>;
-    type G2Parameters: SWModelParameters<
+    type G1Parameters: ShortWeierstrassParameters<BaseField = Self::Fp>;
+    type G2Parameters: ShortWeierstrassParameters<
         BaseField = Fp2<Self::Fp2Params>,
         ScalarField = <Self::G1Parameters as ModelParameters>::ScalarField,
     >;
@@ -161,7 +161,7 @@ where
     }
 
     fn final_exponentiation(f: &Self::Fqk) -> Option<Self::Fqk> {
-        // Computing the final exponentation following
+        // Computing the final exponentiation following
         // https://eprint.iacr.org/2016/130.pdf.
         // We don't use their "faster" formula because it is difficult to make
         // it work for curves with odd `P::X`.

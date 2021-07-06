@@ -26,6 +26,9 @@ pub use dpc::*;
 pub mod ledger;
 pub use ledger::*;
 
+pub mod program;
+pub use program::*;
+
 pub mod record;
 pub use record::*;
 

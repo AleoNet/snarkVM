@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-gadgets"
-version = "0.6.0"
+version = "0.7.1"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Gadgets for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -24,27 +24,27 @@ harness = false
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.6.0"
+version = "0.7.1"
 default-features = false
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.6.0"
+version = "0.7.1"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.6.0"
+version = "0.7.1"
 default-features = false
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
-version = "0.6.0"
+version = "0.7.1"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.6.0"
+version = "0.7.1"
 default-features = false
 
 [dependencies.derivative]
@@ -90,6 +90,10 @@ version = "0.8"
 version = "0.3"
 default-features = false
 
+[dev-dependencies.rand_chacha]
+version = "0.3"
+default-features = false
+
 [features]
 default = [
   "full",
@@ -99,9 +103,7 @@ default = [
   "snarkvm-r1cs/default",
   "snarkvm-utilities/default"
 ]
-full = [ "algorithms", "curves", "fields", "integers", "nonnative" ]
+full = [ "algorithms", "curves", "nonnative" ]
 algorithms = [ ]
 curves = [ ]
-fields = [ ]
-integers = [ ]
 nonnative = [ "num-bigint", "num-integer", "num-traits" ]

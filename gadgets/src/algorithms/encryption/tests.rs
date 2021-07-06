@@ -28,12 +28,12 @@ use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
 use crate::{
     algorithms::encryption::*,
-    curves::edwards_bls12::EdwardsBlsGadget,
+    curves::edwards_bls12::EdwardsBls12Gadget,
     traits::{algorithms::EncryptionGadget, alloc::AllocGadget, eq::EqGadget},
 };
 
 type TestEncryptionScheme = GroupEncryption<EdwardsProjective, EdwardsAffine, Blake2s>;
-type TestEncryptionSchemeGadget = GroupEncryptionGadget<EdwardsProjective, Fr, EdwardsBlsGadget>;
+type TestEncryptionSchemeGadget = GroupEncryptionGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
 
 fn generate_input<G: Group + ProjectiveCurve, R: Rng>(input_size: usize, rng: &mut R) -> Vec<G> {
     let mut input = vec![];

@@ -16,7 +16,7 @@
 
 use crate::{
     sw6::*,
-    templates::short_weierstrass::tests::sw_tests,
+    templates::short_weierstrass_jacobian::tests::sw_tests,
     traits::{tests_curve::curve_tests, tests_group::group_test, AffineCurve, PairingEngine},
 };
 use snarkvm_fields::{

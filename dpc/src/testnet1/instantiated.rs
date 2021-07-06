@@ -22,26 +22,27 @@ use crate::{
         outer_circuit_verifier_input::OuterCircuitVerifierInput,
         program::{NoopCircuit, ProgramLocalData},
         transaction::Transaction,
-        BaseDPCComponents,
-        LocalData as DPCLocalData,
+        Testnet1Components,
         DPC,
     },
-    traits::DPCComponents,
+    DPCComponents,
+    Network,
 };
 use snarkvm_algorithms::{
     commitment::{Blake2sCommitment, PedersenCompressedCommitment},
-    crh::{BoweHopwoodPedersenCompressedCRH, PedersenSize},
+    crh::BoweHopwoodPedersenCompressedCRH,
     define_merkle_tree_parameters,
     encryption::GroupEncryption,
     prf::Blake2s,
-    signature::SchnorrSignature,
+    signature::Schnorr,
     snark::{gm17::GM17, groth16::Groth16},
 };
 use snarkvm_curves::{
-    bls12_377::{fq::Fq as Bls12_377Fq, fr::Fr as Bls12_377Fr, Bls12_377},
+    bls12_377::Bls12_377,
     bw6_761::BW6_761,
-    edwards_bls12::{EdwardsAffine, EdwardsParameters, EdwardsProjective as EdwardsBls},
-    edwards_sw6::EdwardsProjective as EdwardsSW,
+    edwards_bls12::{EdwardsAffine, EdwardsParameters, EdwardsProjective as EdwardsBls12},
+    edwards_bw6::EdwardsProjective as EdwardsBW6,
+    PairingEngine,
 };
 use snarkvm_gadgets::{
     algorithms::{
@@ -52,181 +53,80 @@ use snarkvm_gadgets::{
         signature::SchnorrPublicKeyRandomizationGadget,
         snark::{GM17VerifierGadget, Groth16VerifierGadget},
     },
-    curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBlsGadget, edwards_sw6::EdwardsSWGadget},
+    curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
+    fields::FpGadget,
 };
 
 use blake2::Blake2s as Blake2sHash;
 
-pub const NUM_INPUT_RECORDS: usize = 2;
-pub const NUM_OUTPUT_RECORDS: usize = 2;
+pub type Testnet1DPC = DPC<Components>;
+pub type Testnet1Transaction = Transaction<Components>;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct AccountWindow;
-impl PedersenSize for AccountWindow {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 192;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct EncryptedRecordWindow;
-
-impl PedersenSize for EncryptedRecordWindow {
-    const NUM_WINDOWS: usize = 48;
-    const WINDOW_SIZE: usize = 44;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct InnerSNARKVkHashWindow;
-
-impl PedersenSize for InnerSNARKVkHashWindow {
-    const NUM_WINDOWS: usize = 296;
-    const WINDOW_SIZE: usize = 63;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct LocalDataCommitmentWindow;
-
-impl PedersenSize for LocalDataCommitmentWindow {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 129;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct LocalDataCRHWindow;
-
-impl PedersenSize for LocalDataCRHWindow {
-    const NUM_WINDOWS: usize = 16;
-    const WINDOW_SIZE: usize = 32;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ProgramVkHashWindow;
-
-impl PedersenSize for ProgramVkHashWindow {
-    const NUM_WINDOWS: usize = 144;
-    const WINDOW_SIZE: usize = 63;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct RecordWindow;
-impl PedersenSize for RecordWindow {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 233;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct SnNonceWindow;
-
-impl PedersenSize for SnNonceWindow {
-    const NUM_WINDOWS: usize = 32;
-    const WINDOW_SIZE: usize = 63;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct TwoToOneWindow;
-impl PedersenSize for TwoToOneWindow {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 32;
-}
+pub type MerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 8, 32>;
 
 define_merkle_tree_parameters!(CommitmentMerkleParameters, MerkleTreeCRH, 32);
 
 pub struct Components;
 
+#[rustfmt::skip]
 impl DPCComponents for Components {
-    type AccountCommitment = AccountCommitment;
-    type AccountCommitmentGadget = AccountCommitmentGadget;
-    type AccountEncryption = AccountEncryption;
-    type AccountEncryptionGadget = AccountEncryptionGadget;
-    type AccountSignature = AccountSignature;
-    type AccountSignatureGadget = AccountSignatureGadget;
-    type EncryptedRecordCRH = EncryptedRecordCRH;
-    type EncryptedRecordCRHGadget = EncryptedRecordCRHGadget;
-    type InnerCircuitIDCRH = InnerCircuitIDCRH;
-    type InnerCircuitIDCRHGadget = InnerCircuitIDCRHGadget;
-    type InnerField = InnerField;
-    type LocalDataCRH = LocalDataCRH;
-    type LocalDataCRHGadget = LocalDataCRHGadget;
-    type LocalDataCommitment = LocalDataCommitment;
-    type LocalDataCommitmentGadget = LocalDataCommitmentGadget;
-    type OuterField = OuterField;
-    type PRF = PRF;
-    type PRFGadget = PRFGadget;
-    type ProgramVerificationKeyCRH = ProgramVerificationKeyCRH;
-    type ProgramVerificationKeyCRHGadget = ProgramVerificationKeyCRHGadget;
-    type ProgramVerificationKeyCommitment = ProgramVerificationKeyCommitment;
-    type ProgramVerificationKeyCommitmentGadget = ProgramVerificationKeyCommitmentGadget;
-    type RecordCommitment = RecordCommitment;
-    type RecordCommitmentGadget = RecordCommitmentGadget;
-    type SerialNumberNonceCRH = SerialNumberNonce;
-    type SerialNumberNonceCRHGadget = SerialNumberNonceGadget;
+    const NETWORK_ID: u8 = Network::Testnet1.id();
+    
+    const NUM_INPUT_RECORDS: usize = 2;
+    const NUM_OUTPUT_RECORDS: usize = 2;
 
-    const NUM_INPUT_RECORDS: usize = NUM_INPUT_RECORDS;
-    const NUM_OUTPUT_RECORDS: usize = NUM_OUTPUT_RECORDS;
+    type InnerCurve = Bls12_377;
+    type OuterCurve = BW6_761;
+
+    type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
+    type OuterScalarField = <Self::OuterCurve as PairingEngine>::Fr;
+    
+    type AccountCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 192>;
+    type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
+    
+    type AccountEncryption = GroupEncryption<EdwardsBls12, EdwardsAffine, Blake2sHash>;
+    type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
+
+    type AccountSignature = Schnorr<EdwardsAffine, Blake2sHash>;
+    type AccountSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, Self::InnerScalarField, EdwardsBls12Gadget, FpGadget<Self::InnerScalarField>>;
+    
+    type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 48, 44>;
+    type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
+    
+    type InnerCircuitIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBW6, 296, 63>;
+    type InnerCircuitIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget>;
+    
+    type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 16, 32>;
+    type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
+    
+    type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 129>;
+    type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
+
+    type PRF = Blake2s;
+    type PRFGadget = Blake2sGadget;
+    
+    type ProgramVerificationKeyCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBW6, 144, 63>;
+    type ProgramVerificationKeyCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget>;
+    
+    type ProgramVerificationKeyCommitment = Blake2sCommitment;
+    type ProgramVerificationKeyCommitmentGadget = Blake2sCommitmentGadget;
+    
+    type RecordCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 233>;
+    type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
+    
+    type SerialNumberNonceCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 32, 63>;
+    type SerialNumberNonceCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
 }
 
-impl BaseDPCComponents for Components {
-    type EncryptionGroup = EdwardsBls;
+impl Testnet1Components for Components {
+    type EncryptionGroup = EdwardsBls12;
     type EncryptionModelParameters = EdwardsParameters;
-    type InnerSNARK = InnerSNARK;
-    type InnerSNARKGadget = InnerSNARKGadget;
-    type MerkleHashGadget = MerkleTreeCRHGadget;
+    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
+    type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, Self::OuterScalarField, PairingGadget>;
+    type MerkleHashGadget =
+        BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
     type MerkleParameters = CommitmentMerkleParameters;
-    type NoopProgramSNARK = NoopProgramSNARK<Self>;
-    type OuterSNARK = OuterSNARK;
-    type ProgramSNARKGadget = ProgramSNARKGadget;
+    type NoopProgramSNARK = GM17<Self::InnerCurve, NoopCircuit<Self>, ProgramLocalData<Self>>;
+    type NoopProgramSNARKGadget = GM17VerifierGadget<Self::InnerCurve, Self::OuterScalarField, PairingGadget>;
+    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
 }
-
-// Native primitives
-
-pub type InnerPairing = Bls12_377;
-pub type OuterPairing = BW6_761;
-pub type InnerField = Bls12_377Fr;
-pub type OuterField = Bls12_377Fq;
-
-pub type AccountCommitment = PedersenCompressedCommitment<EdwardsBls, AccountWindow>;
-pub type AccountEncryption = GroupEncryption<EdwardsBls, EdwardsAffine, Blake2sHash>;
-pub type RecordCommitment = PedersenCompressedCommitment<EdwardsBls, RecordWindow>;
-pub type ProgramVerificationKeyCommitment = Blake2sCommitment;
-pub type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, LocalDataCRHWindow>;
-pub type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls, LocalDataCommitmentWindow>;
-
-pub type AccountSignature = SchnorrSignature<EdwardsAffine, Blake2sHash>;
-
-pub type MerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, TwoToOneWindow>;
-pub type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls, EncryptedRecordWindow>;
-pub type InnerCircuitIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, InnerSNARKVkHashWindow>;
-pub type SerialNumberNonce = BoweHopwoodPedersenCompressedCRH<EdwardsBls, SnNonceWindow>;
-pub type ProgramVerificationKeyCRH = BoweHopwoodPedersenCompressedCRH<EdwardsSW, ProgramVkHashWindow>;
-
-pub type InnerSNARK = Groth16<InnerPairing, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
-pub type OuterSNARK = Groth16<OuterPairing, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
-pub type NoopProgramSNARK<C> = GM17<InnerPairing, NoopCircuit<C>, ProgramLocalData<C>>;
-pub type PRF = Blake2s;
-
-pub type Tx = Transaction<Components>;
-
-pub type InstantiatedDPC = DPC<Components>;
-pub type LocalData = DPCLocalData<Components>;
-
-// Gadgets
-
-pub type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-pub type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-pub type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-pub type ProgramVerificationKeyCommitmentGadget = Blake2sCommitmentGadget;
-pub type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-pub type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-
-pub type AccountSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, InnerField, EdwardsBlsGadget>;
-
-pub type MerkleTreeCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-pub type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-pub type InnerCircuitIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, OuterField, EdwardsSWGadget>;
-pub type SerialNumberNonceGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, InnerField, EdwardsBlsGadget>;
-pub type ProgramVerificationKeyCRHGadget =
-    BoweHopwoodPedersenCompressedCRHGadget<EdwardsSW, OuterField, EdwardsSWGadget>;
-
-pub type PRFGadget = Blake2sGadget;
-pub type ProgramSNARKGadget = GM17VerifierGadget<InnerPairing, OuterField, PairingGadget>;
-pub type InnerSNARKGadget = Groth16VerifierGadget<InnerPairing, OuterField, PairingGadget>;

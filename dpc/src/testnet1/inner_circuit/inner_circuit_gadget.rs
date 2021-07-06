@@ -16,11 +16,22 @@
 
 use std::ops::Mul;
 
+use crate::{
+    testnet1::{
+        encrypted::RecordEncryptionGadgetComponents,
+        parameters::SystemParameters,
+        record::Record,
+        Testnet1Components,
+    },
+    traits::RecordScheme,
+    AleoAmount,
+    PrivateKey,
+};
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, PRF},
 };
-use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryModelParameters, ProjectiveCurve, TEModelParameters};
+use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, One, PrimeField};
 use snarkvm_gadgets::{
     algorithms::{encoding::Elligator2FieldGadget, merkle_tree::merkle_path::MerklePathGadget},
@@ -42,20 +53,8 @@ use snarkvm_utilities::{
     to_bytes,
 };
 
-use crate::{
-    account::AccountPrivateKey,
-    testnet1::{
-        parameters::SystemParameters,
-        record::Record,
-        record_encryption::RecordEncryptionGadgetComponents,
-        AleoAmount,
-        BaseDPCComponents,
-    },
-    traits::RecordScheme,
-};
-
 #[allow(clippy::too_many_arguments)]
-pub fn execute_inner_proof_gadget<C: BaseDPCComponents, CS: ConstraintSystem<C::InnerField>>(
+pub fn execute_inner_circuit<C: Testnet1Components, CS: ConstraintSystem<C::InnerScalarField>>(
     cs: &mut CS,
     // Parameters
     system_parameters: &SystemParameters<C>,
@@ -67,7 +66,7 @@ pub fn execute_inner_proof_gadget<C: BaseDPCComponents, CS: ConstraintSystem<C::
     // Old record stuff
     old_records: &[Record<C>],
     old_witnesses: &[MerklePath<C::MerkleParameters>],
-    old_account_private_keys: &[AccountPrivateKey<C>],
+    old_private_keys: &[PrivateKey<C>],
     old_serial_numbers: &[<C::AccountSignature as SignatureScheme>::PublicKey],
 
     // New record stuff
@@ -88,7 +87,7 @@ pub fn execute_inner_proof_gadget<C: BaseDPCComponents, CS: ConstraintSystem<C::
     value_balance: AleoAmount,
     network_id: u8,
 ) -> Result<(), SynthesisError> {
-    base_dpc_execute_gadget_helper::<
+    inner_circuit_gadget::<
         C,
         CS,
         C::AccountCommitment,
@@ -119,7 +118,7 @@ pub fn execute_inner_proof_gadget<C: BaseDPCComponents, CS: ConstraintSystem<C::
         //
         old_records,
         old_witnesses,
-        old_account_private_keys,
+        old_private_keys,
         old_serial_numbers,
         //
         new_records,
@@ -140,9 +139,9 @@ pub fn execute_inner_proof_gadget<C: BaseDPCComponents, CS: ConstraintSystem<C::
 }
 
 #[allow(clippy::too_many_arguments)]
-fn base_dpc_execute_gadget_helper<
+fn inner_circuit_gadget<
     C,
-    CS: ConstraintSystem<C::InnerField>,
+    CS: ConstraintSystem<C::InnerScalarField>,
     AccountCommitment,
     AccountEncryption,
     AccountSignature,
@@ -174,7 +173,7 @@ fn base_dpc_execute_gadget_helper<
     //
     old_records: &[Record<C>],
     old_witnesses: &[MerklePath<C::MerkleParameters>],
-    old_account_private_keys: &[AccountPrivateKey<C>],
+    old_private_keys: &[PrivateKey<C>],
     old_serial_numbers: &[AccountSignature::PublicKey],
 
     //
@@ -196,7 +195,7 @@ fn base_dpc_execute_gadget_helper<
     network_id: u8,
 ) -> Result<(), SynthesisError>
 where
-    C: BaseDPCComponents<
+    C: Testnet1Components<
         AccountCommitment = AccountCommitment,
         AccountEncryption = AccountEncryption,
         AccountSignature = AccountSignature,
@@ -226,15 +225,15 @@ where
     SerialNumberNonceCRH: CRH,
     P: PRF,
     RecordCommitment::Output: Eq,
-    AccountCommitmentGadget: CommitmentGadget<AccountCommitment, C::InnerField>,
-    AccountEncryptionGadget: EncryptionGadget<AccountEncryption, C::InnerField>,
-    AccountSignatureGadget: SignaturePublicKeyRandomizationGadget<AccountSignature, C::InnerField>,
-    RecordCommitmentGadget: CommitmentGadget<RecordCommitment, C::InnerField>,
-    EncryptedRecordCRHGadget: CRHGadget<EncryptedRecordCRH, C::InnerField>,
-    LocalDataCRHGadget: CRHGadget<LocalDataCRH, C::InnerField>,
-    LocalDataCommitmentGadget: CommitmentGadget<LocalDataCommitment, C::InnerField>,
-    SerialNumberNonceCRHGadget: CRHGadget<SerialNumberNonceCRH, C::InnerField>,
-    PGadget: PRFGadget<P, C::InnerField>,
+    AccountCommitmentGadget: CommitmentGadget<AccountCommitment, C::InnerScalarField>,
+    AccountEncryptionGadget: EncryptionGadget<AccountEncryption, C::InnerScalarField>,
+    AccountSignatureGadget: SignaturePublicKeyRandomizationGadget<AccountSignature, C::InnerScalarField>,
+    RecordCommitmentGadget: CommitmentGadget<RecordCommitment, C::InnerScalarField>,
+    EncryptedRecordCRHGadget: CRHGadget<EncryptedRecordCRH, C::InnerScalarField>,
+    LocalDataCRHGadget: CRHGadget<LocalDataCRH, C::InnerScalarField>,
+    LocalDataCommitmentGadget: CommitmentGadget<LocalDataCommitment, C::InnerScalarField>,
+    SerialNumberNonceCRHGadget: CRHGadget<SerialNumberNonceCRH, C::InnerScalarField>,
+    PGadget: PRFGadget<P, C::InnerScalarField>,
 {
     // Order for allocation of input:
     // 1. account_commitment_parameters
@@ -297,7 +296,7 @@ where
 
         let program_vk_commitment_parameters = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<
             _,
-            C::InnerField,
+            C::InnerScalarField,
         >>::ParametersGadget::alloc_input(
             &mut cs.ns(|| "Declare program vk commitment parameters"),
             || Ok(system_parameters.program_verification_key_commitment.parameters()),
@@ -352,7 +351,7 @@ where
     for (i, (((record, witness), account_private_key), given_serial_number)) in old_records
         .iter()
         .zip(old_witnesses)
-        .zip(old_account_private_keys)
+        .zip(old_private_keys)
         .zip(old_serial_numbers)
         .enumerate()
     {
@@ -853,8 +852,8 @@ where
             // Pack the record bits into serialization format
 
             let scalar_field_bitsize = <C::EncryptionGroup as Group>::ScalarField::size_in_bits();
-            let base_field_bitsize = <C::InnerField as PrimeField>::size_in_bits();
-            let outer_field_bitsize = <C::OuterField as PrimeField>::size_in_bits();
+            let base_field_bitsize = <C::InnerScalarField as PrimeField>::size_in_bits();
+            let outer_field_bitsize = <C::OuterScalarField as PrimeField>::size_in_bits();
 
             // A standard unit for packing bits into data storage
             let data_field_bitsize = base_field_bitsize - 1;
@@ -959,7 +958,7 @@ where
 
             for (i, element) in record_field_elements.iter().enumerate() {
                 let record_field_element_gadget =
-                    Elligator2FieldGadget::<C::EncryptionModelParameters, C::InnerField>::alloc(
+                    Elligator2FieldGadget::<C::EncryptionModelParameters, C::InnerScalarField>::alloc(
                         &mut encryption_cs.ns(|| format!("record_field_element_{}", i)),
                         || Ok(*element),
                     )?;
@@ -1051,7 +1050,7 @@ where
                     &to_bytes![affine.into_projective()]?[..],
                 )?);
 
-                let y_gadget = Elligator2FieldGadget::<C::EncryptionModelParameters, C::InnerField>::alloc(
+                let y_gadget = Elligator2FieldGadget::<C::EncryptionModelParameters, C::InnerScalarField>::alloc(
                     &mut encryption_cs.ns(|| format!("record_group_encoding_y_{}", i)),
                     || Ok(y),
                 )?;
@@ -1061,17 +1060,17 @@ where
 
             assert_eq!(record_field_elements_gadgets.len(), record_group_encoding_gadgets.len());
 
-            let coeff_a = <C::EncryptionModelParameters as MontgomeryModelParameters>::COEFF_A;
-            let coeff_b = <C::EncryptionModelParameters as MontgomeryModelParameters>::COEFF_B;
+            let coeff_a = <C::EncryptionModelParameters as MontgomeryParameters>::COEFF_A;
+            let coeff_b = <C::EncryptionModelParameters as MontgomeryParameters>::COEFF_B;
 
             let a = coeff_a.mul(&coeff_b.inverse().unwrap());
-            let u = <C::EncryptionModelParameters as TEModelParameters>::COEFF_D;
+            let u = <C::EncryptionModelParameters as TwistedEdwardsParameters>::COEFF_D;
             let ua = a.mul(&u);
 
-            let a = C::InnerField::read(&to_bytes![a]?[..])?;
-            let b = C::InnerField::read(&to_bytes![coeff_b]?[..])?;
-            let u = C::InnerField::read(&to_bytes![u]?[..])?;
-            let ua = C::InnerField::read(&to_bytes![ua]?[..])?;
+            let a = C::InnerScalarField::read(&to_bytes![a]?[..])?;
+            let b = C::InnerScalarField::read(&to_bytes![coeff_b]?[..])?;
+            let u = C::InnerScalarField::read(&to_bytes![u]?[..])?;
+            let ua = C::InnerScalarField::read(&to_bytes![ua]?[..])?;
 
             let fp_zero = FpGadget::zero(encryption_cs.ns(|| "fpg zero"))?;
 
@@ -1084,10 +1083,10 @@ where
                 // Get reconstructed x value
                 let numerator = y_gadget
                     .0
-                    .add_constant(encryption_cs.ns(|| format!("1 + y_{}", i)), &C::InnerField::one())?;
+                    .add_constant(encryption_cs.ns(|| format!("1 + y_{}", i)), &C::InnerScalarField::one())?;
                 let neg_y = y_gadget.0.negate(encryption_cs.ns(|| format!("-y_{}", i)))?;
                 let denominator = neg_y
-                    .add_constant(encryption_cs.ns(|| format!("1 - y_{}", i)), &C::InnerField::one())?
+                    .add_constant(encryption_cs.ns(|| format!("1 - y_{}", i)), &C::InnerScalarField::one())?
                     .inverse(encryption_cs.ns(|| format!("(1 - y_{})_inverse", i)))?;
 
                 let temp_u = numerator.mul(
@@ -1228,24 +1227,30 @@ where
             input.extend_from_slice(id_gadget);
         }
 
-        let given_commitment_randomness =
-            <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<_, C::InnerField>>::RandomnessGadget::alloc(
-                &mut commitment_cs.ns(|| "given_commitment_randomness"),
-                || Ok(program_randomness),
-            )?;
-
-        let given_commitment = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<_, C::InnerField>>::OutputGadget::alloc_input(
-            &mut commitment_cs.ns(|| "given_commitment"),
-            || Ok(program_commitment),
+        let given_commitment_randomness = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<
+            _,
+            C::InnerScalarField,
+        >>::RandomnessGadget::alloc(
+            &mut commitment_cs.ns(|| "given_commitment_randomness"),
+            || Ok(program_randomness),
         )?;
 
-        let candidate_commitment =
-            <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<_, C::InnerField>>::check_commitment_gadget(
-                &mut commitment_cs.ns(|| "candidate_commitment"),
-                &program_vk_commitment_parameters,
-                &input,
-                &given_commitment_randomness,
-            )?;
+        let given_commitment = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<
+            _,
+            C::InnerScalarField,
+        >>::OutputGadget::alloc_input(
+            &mut commitment_cs.ns(|| "given_commitment"), || Ok(program_commitment)
+        )?;
+
+        let candidate_commitment = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<
+            _,
+            C::InnerScalarField,
+        >>::check_commitment_gadget(
+            &mut commitment_cs.ns(|| "candidate_commitment"),
+            &program_vk_commitment_parameters,
+            &input,
+            &given_commitment_randomness,
+        )?;
 
         candidate_commitment.enforce_equal(
             &mut commitment_cs.ns(|| "Check that declared and computed commitments are equal"),

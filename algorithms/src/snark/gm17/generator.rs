@@ -306,7 +306,7 @@ where
     end_timer!(proving_key_time);
 
     // Generate R1CS verification key
-    let verifying_key_time = start_timer!(|| "Generate the R1CS verification key");
+    let verifying_key_time = start_timer!(|| "Generate the R1CS verifying key");
     let g_alpha = g.into_affine().mul(alpha);
     let h_beta = h.into_affine().mul(beta);
     end_timer!(verifying_key_time);

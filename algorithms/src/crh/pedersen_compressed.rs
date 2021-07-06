@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub use crate::crh::pedersen_parameters::PedersenSize;
-
 use crate::{
     crh::{PedersenCRH, PedersenCRHParameters},
     errors::CRHError,
@@ -27,15 +25,17 @@ use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use rand::Rng;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PedersenCompressedCRH<G: Group + ProjectiveCurve, S: PedersenSize> {
-    pub parameters: PedersenCRHParameters<G, S>,
+pub struct PedersenCompressedCRH<G: Group + ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+    pub parameters: PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
-impl<G: Group + ProjectiveCurve, S: PedersenSize> CRH for PedersenCompressedCRH<G, S> {
+impl<G: Group + ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
+    for PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+{
     type Output = <G::Affine as AffineCurve>::BaseField;
-    type Parameters = PedersenCRHParameters<G, S>;
+    type Parameters = PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>;
 
-    const INPUT_SIZE_BITS: usize = S::WINDOW_SIZE * S::NUM_WINDOWS;
+    const INPUT_SIZE_BITS: usize = WINDOW_SIZE * NUM_WINDOWS;
 
     fn setup<R: Rng>(rng: &mut R) -> Self {
         Self {
@@ -45,7 +45,7 @@ impl<G: Group + ProjectiveCurve, S: PedersenSize> CRH for PedersenCompressedCRH<
 
     /// Returns the affine x-coordinate as the collision-resistant hash output.
     fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
-        let crh = PedersenCRH::<G, S> {
+        let crh = PedersenCRH::<G, NUM_WINDOWS, WINDOW_SIZE> {
             parameters: self.parameters.clone(),
         };
 
@@ -60,14 +60,16 @@ impl<G: Group + ProjectiveCurve, S: PedersenSize> CRH for PedersenCompressedCRH<
     }
 }
 
-impl<G: Group + ProjectiveCurve, S: PedersenSize> From<PedersenCRHParameters<G, S>> for PedersenCompressedCRH<G, S> {
-    fn from(parameters: PedersenCRHParameters<G, S>) -> Self {
+impl<G: Group + ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    From<PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>> for PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+{
+    fn from(parameters: PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>) -> Self {
         Self { parameters }
     }
 }
 
-impl<F: Field, G: Group + ProjectiveCurve + ToConstraintField<F>, S: PedersenSize> ToConstraintField<F>
-    for PedersenCompressedCRH<G, S>
+impl<F: Field, G: Group + ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    ToConstraintField<F> for PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {

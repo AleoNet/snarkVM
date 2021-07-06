@@ -22,9 +22,9 @@ use crate::{
         tests_group::group_test,
         AffineCurve,
         Group,
-        MontgomeryModelParameters,
+        MontgomeryParameters,
         ProjectiveCurve,
-        TEModelParameters,
+        TwistedEdwardsParameters,
     },
 };
 use snarkvm_fields::{
@@ -124,8 +124,8 @@ fn test_edwards_to_montgomery_point() {
 
     // Ensure (u, v) is a valid Montgomery element
     {
-        const A: Fq = <EdwardsParameters as MontgomeryModelParameters>::COEFF_A;
-        const B: Fq = <EdwardsParameters as MontgomeryModelParameters>::COEFF_B;
+        const A: Fq = <EdwardsParameters as MontgomeryParameters>::COEFF_A;
+        const B: Fq = <EdwardsParameters as MontgomeryParameters>::COEFF_B;
 
         // Enforce B * v^2 == u^3 + A * u^2 + u
         let v2 = v.square();
@@ -152,8 +152,8 @@ fn test_edwards_to_montgomery_point() {
 #[ignore]
 #[test]
 fn print_montgomery_to_weierstrass_parameters() {
-    const A: Fq = <EdwardsParameters as MontgomeryModelParameters>::COEFF_A;
-    const B: Fq = <EdwardsParameters as MontgomeryModelParameters>::COEFF_B;
+    const A: Fq = <EdwardsParameters as MontgomeryParameters>::COEFF_A;
+    const B: Fq = <EdwardsParameters as MontgomeryParameters>::COEFF_B;
 
     let two = Fq::one() + Fq::one();
     let three = Fq::one() + two;
@@ -198,8 +198,8 @@ fn test_isomorphism() {
     println!("Starting Fq element is {:?}", fq_element);
 
     // Declare the parameters for the Montgomery equation: B * v^2 == u^3 + A * u^2 + u.
-    const A: Fq = <EdwardsParameters as MontgomeryModelParameters>::COEFF_A;
-    const B: Fq = <EdwardsParameters as MontgomeryModelParameters>::COEFF_B;
+    const A: Fq = <EdwardsParameters as MontgomeryParameters>::COEFF_A;
+    const B: Fq = <EdwardsParameters as MontgomeryParameters>::COEFF_B;
 
     // Compute the parameters for the alternate Montgomery form: v^2 == u^3 + A * u^2 + B * u.
     let (a, b) = {
@@ -215,7 +215,7 @@ fn test_isomorphism() {
 
         // Let u = D.
         // TODO (howardwu): change to 5.
-        let u = <EdwardsParameters as TEModelParameters>::COEFF_D;
+        let u = <EdwardsParameters as TwistedEdwardsParameters>::COEFF_D;
 
         // Let ur2 = u * r^2;
         let ur2 = r.square() * u;
@@ -349,7 +349,7 @@ fn test_isomorphism() {
 
         // TODO (howardwu): change to 5.
         // Let u = D.
-        let u = <EdwardsParameters as TEModelParameters>::COEFF_D;
+        let u = <EdwardsParameters as TwistedEdwardsParameters>::COEFF_D;
 
         {
             // Verify u is a quadratic nonresidue.

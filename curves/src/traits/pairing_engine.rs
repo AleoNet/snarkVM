@@ -244,7 +244,7 @@ pub trait ModelParameters: Send + Sync + 'static {
     type ScalarField: PrimeField + SquareRootField + Into<<Self::ScalarField as PrimeField>::BigInteger>;
 }
 
-pub trait SWModelParameters: ModelParameters {
+pub trait ShortWeierstrassParameters: ModelParameters {
     const COEFF_A: Self::BaseField;
     const COEFF_B: Self::BaseField;
     const COFACTOR: &'static [u64];
@@ -293,14 +293,14 @@ pub trait SWModelParameters: ModelParameters {
     }
 }
 
-pub trait TEModelParameters: ModelParameters {
+pub trait TwistedEdwardsParameters: ModelParameters {
     const COEFF_A: Self::BaseField;
     const COEFF_D: Self::BaseField;
     const COFACTOR: &'static [u64];
     const COFACTOR_INV: Self::ScalarField;
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField);
 
-    type MontgomeryModelParameters: MontgomeryModelParameters<BaseField = Self::BaseField>;
+    type MontgomeryParameters: MontgomeryParameters<BaseField = Self::BaseField>;
 
     #[inline(always)]
     fn mul_by_a(elem: &Self::BaseField) -> Self::BaseField {
@@ -339,9 +339,9 @@ pub trait TEModelParameters: ModelParameters {
     }
 }
 
-pub trait MontgomeryModelParameters: ModelParameters {
+pub trait MontgomeryParameters: ModelParameters {
     const COEFF_A: Self::BaseField;
     const COEFF_B: Self::BaseField;
 
-    type TEModelParameters: TEModelParameters<BaseField = Self::BaseField>;
+    type TwistedEdwardsParameters: TwistedEdwardsParameters<BaseField = Self::BaseField>;
 }

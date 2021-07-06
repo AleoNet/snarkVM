@@ -26,7 +26,7 @@ use crate::{
         Fq6,
         Fr,
     },
-    traits::{PairingCurve, PairingEngine, SWModelParameters},
+    traits::{PairingCurve, PairingEngine, ShortWeierstrassParameters},
 };
 
 pub type GT = Fq6;

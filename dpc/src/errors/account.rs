@@ -19,16 +19,16 @@ use snarkvm_algorithms::errors::{CRHError, CommitmentError, EncryptionError, PRF
 #[derive(Debug, Error)]
 pub enum AccountError {
     #[error("{}", _0)]
-    CommitmentError(CommitmentError),
+    CommitmentError(#[from] CommitmentError),
 
     #[error("{}", _0)]
-    CRHError(CRHError),
+    CRHError(#[from] CRHError),
 
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
     #[error("{}", _0)]
-    EncryptionError(EncryptionError),
+    EncryptionError(#[from] EncryptionError),
 
     #[error("invalid account commitment")]
     InvalidAccountCommitment,
@@ -52,40 +52,10 @@ pub enum AccountError {
     Message(String),
 
     #[error("{}", _0)]
-    PRFError(PRFError),
+    PRFError(#[from] PRFError),
 
     #[error("{}", _0)]
-    SignatureError(SignatureError),
-}
-
-impl From<CommitmentError> for AccountError {
-    fn from(error: CommitmentError) -> Self {
-        AccountError::CommitmentError(error)
-    }
-}
-
-impl From<CRHError> for AccountError {
-    fn from(error: CRHError) -> Self {
-        AccountError::CRHError(error)
-    }
-}
-
-impl From<EncryptionError> for AccountError {
-    fn from(error: EncryptionError) -> Self {
-        AccountError::EncryptionError(error)
-    }
-}
-
-impl From<PRFError> for AccountError {
-    fn from(error: PRFError) -> Self {
-        AccountError::PRFError(error)
-    }
-}
-
-impl From<SignatureError> for AccountError {
-    fn from(error: SignatureError) -> Self {
-        AccountError::SignatureError(error)
-    }
+    SignatureError(#[from] SignatureError),
 }
 
 impl From<base58::FromBase58Error> for AccountError {

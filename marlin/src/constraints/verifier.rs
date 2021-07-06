@@ -16,19 +16,6 @@
 
 use core::marker::PhantomData;
 
-use snarkvm_fields::{PoseidonMDSField, PrimeField};
-use snarkvm_gadgets::{
-    bits::Boolean,
-    nonnative::{params::OptimizationType, NonNativeFieldVar},
-    traits::{
-        algorithms::SNARKVerifierGadget,
-        eq::EqGadget,
-        fields::{FieldGadget, ToConstraintFieldGadget},
-    },
-};
-use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
-use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, ToConstraintField};
-
 use crate::{
     constraints::{
         ahp::AHPForR1CS,
@@ -46,6 +33,18 @@ use crate::{
     PoseidonSpongeVar,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
+use snarkvm_fields::{PoseidonMDSField, PrimeField};
+use snarkvm_gadgets::{
+    bits::Boolean,
+    nonnative::{params::OptimizationType, NonNativeFieldVar},
+    traits::{
+        algorithms::SNARKVerifierGadget,
+        eq::EqGadget,
+        fields::{FieldGadget, ToConstraintFieldGadget},
+    },
+};
+use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, ToConstraintField};
 
 /// The Marlin verification gadget.
 pub struct MarlinVerificationGadget<
@@ -60,8 +59,6 @@ pub struct MarlinVerificationGadget<
     PhantomData<PCG>,
 );
 
-// TODO (raychu86): Implement SNARKVerifierGadget for MarlinVerificationGadget
-
 /// Fiat Shamir Algebraic Sponge RNG type
 pub type FSA<InnerField, OuterField> = FiatShamirAlgebraicSpongeRng<InnerField, OuterField, PoseidonSponge<OuterField>>;
 
@@ -69,8 +66,8 @@ pub type FSA<InnerField, OuterField> = FiatShamirAlgebraicSpongeRng<InnerField, 
 pub type FSG<InnerField, OuterField> =
     FiatShamirAlgebraicSpongeRngVar<InnerField, OuterField, PoseidonSponge<OuterField>, PoseidonSpongeVar<OuterField>>;
 
-impl<TargetField, BaseField, PC, PCG, FS, MM, C>
-    SNARKVerifierGadget<MarlinSNARK<TargetField, BaseField, PC, FS, MM, C>, BaseField>
+impl<TargetField, BaseField, PC, PCG, FS, MM, C, V>
+    SNARKVerifierGadget<MarlinSNARK<TargetField, BaseField, PC, FS, MM, C, V>, BaseField>
     for MarlinVerificationGadget<TargetField, BaseField, PC, PCG>
 where
     TargetField: PrimeField,
@@ -84,6 +81,7 @@ where
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
     C: ConstraintSynthesizer<TargetField>,
+    V: ToConstraintField<TargetField>,
 {
     type Input = NonNativeFieldVar<TargetField, BaseField>;
     type ProofGadget = ProofVar<TargetField, BaseField, PC, PCG>;
@@ -117,6 +115,7 @@ where
     BaseField: PrimeField + PoseidonMDSField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
+    PC::Commitment: ToConstraintField<BaseField>,
     PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
     PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
 {

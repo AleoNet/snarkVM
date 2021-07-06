@@ -15,8 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod bls12_377;
+
 pub mod edwards_bls12;
-pub mod edwards_sw6;
+
+pub mod edwards_bw6;
 
 #[cfg(test)]
 pub mod tests_curve;

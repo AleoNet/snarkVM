@@ -122,7 +122,7 @@ mod test {
     use rand::thread_rng;
 
     use snarkvm_algorithms::{
-        crh::{PedersenCompressedCRH, PedersenSize},
+        crh::PedersenCompressedCRH,
         define_masked_merkle_tree_parameters,
         snark::gm17::{create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof},
     };
@@ -131,7 +131,7 @@ mod test {
         edwards_bls12::{EdwardsProjective as Edwards, Fq},
     };
     use snarkvm_fields::ToConstraintField;
-    use snarkvm_gadgets::{algorithms::crh::PedersenCompressedCRHGadget, curves::edwards_bls12::EdwardsBlsGadget};
+    use snarkvm_gadgets::{algorithms::crh::PedersenCompressedCRHGadget, curves::edwards_bls12::EdwardsBls12Gadget};
     use snarkvm_utilities::bytes::ToBytes;
 
     use super::{POSWCircuit, POSWCircuitParameters};
@@ -142,17 +142,13 @@ mod test {
         const MASK_LENGTH: usize = 32;
     }
 
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    pub struct Size;
-    impl PedersenSize for Size {
-        const NUM_WINDOWS: usize = 256;
-        const WINDOW_SIZE: usize = 4;
-    }
+    const NUM_WINDOWS: usize = 256;
+    const WINDOW_SIZE: usize = 4;
 
     // We use a small tree in this test
-    define_masked_merkle_tree_parameters!(EdwardsMaskedMerkleParameters, PedersenCompressedCRH<Edwards, Size>, 4);
+    define_masked_merkle_tree_parameters!(EdwardsMaskedMerkleParameters, PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 4);
 
-    type HashGadget = PedersenCompressedCRHGadget<Edwards, Fq, EdwardsBlsGadget>;
+    type HashGadget = PedersenCompressedCRHGadget<Edwards, Fq, EdwardsBls12Gadget>;
     type EdwardsMaskedMerkleTree = MerkleTree<EdwardsMaskedMerkleParameters>;
 
     #[test]
