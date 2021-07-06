@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::{FftParameters, FieldParameters, Fp384, Fp384Parameters};
+use snarkvm_fields::{FftParameters, FieldParameters, Fp384, Fp384Parameters, PoseidonDefaultParameters};
 use snarkvm_utilities::biginteger::BigInteger384 as BigInteger;
 
 pub type Fr = Fp384<FrParameters>;
@@ -112,4 +112,25 @@ impl FieldParameters for FrParameters {
         12328863563483612452,
         1892161136038979
     ]);
+}
+
+impl PoseidonDefaultParameters for FrParameters {
+    const PARAMS_OPT_FOR_CONSTRAINTS: [[usize; 5]; 7] = [
+        [2, 5, 8, 56, 0],
+        [3, 5, 8, 56, 0],
+        [4, 5, 8, 56, 0],
+        [5, 5, 8, 57, 0],
+        [6, 5, 8, 57, 0],
+        [7, 5, 8, 57, 0],
+        [8, 5, 8, 57, 0],
+    ];
+    const PARAMS_OPT_FOR_WEIGHTS: [[usize; 5]; 7] = [
+        [2, 293, 8, 13, 0],
+        [3, 293, 8, 13, 0],
+        [4, 293, 8, 13, 0],
+        [5, 293, 8, 13, 0],
+        [6, 293, 8, 13, 0],
+        [7, 293, 8, 13, 0],
+        [8, 293, 8, 13, 0],
+    ];
 }

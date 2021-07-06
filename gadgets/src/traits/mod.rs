@@ -37,3 +37,6 @@ pub use integers::*;
 
 pub mod select;
 pub use select::*;
+
+pub mod sponge;
+pub use sponge::*;

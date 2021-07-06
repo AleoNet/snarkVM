@@ -14,32 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod fft_field;
-pub use fft_field::*;
+use crate::FieldParameters;
 
-mod fft_parameters;
-pub use fft_parameters::*;
+/// A trait for default Poseidon parameters associated with a prime field
+pub trait PoseidonDefaultParameters: FieldParameters {
+    /// An array of the parameters optimized for constraints
+    /// (rate, alpha, full_rounds, partial_rounds, skip_matrices)
+    /// for rate = 2, 3, 4, 5, 6, 7, 8
+    ///
+    /// Here, `skip_matrices` denote how many matrices to skip before
+    /// finding one that satisfy all the requirements.
+    const PARAMS_OPT_FOR_CONSTRAINTS: [[usize; 5]; 7];
 
-mod field;
-pub use field::*;
-
-mod field_parameters;
-pub use field_parameters::*;
-
-mod one;
-pub use one::*;
-
-mod prime_field;
-pub use prime_field::*;
-
-mod square_root_field;
-pub use square_root_field::*;
-
-mod to_constraint_field;
-pub use to_constraint_field::*;
-
-mod zero;
-pub use zero::*;
-
-mod poseidon_default_parameters;
-pub use poseidon_default_parameters::*;
+    /// An array of the parameters optimized for weights
+    /// (rate, alpha, full_rounds, partial_rounds, skip_matrices)
+    /// for rate = 2, 3, 4, 5, 6, 7, 8
+    const PARAMS_OPT_FOR_WEIGHTS: [[usize; 5]; 7];
+}

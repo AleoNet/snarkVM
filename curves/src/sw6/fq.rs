@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::{FftParameters, FieldParameters, Fp832, Fp832Parameters};
+use snarkvm_fields::{FftParameters, FieldParameters, Fp832, Fp832Parameters, PoseidonDefaultParameters};
 use snarkvm_utilities::biginteger::BigInteger832 as BigInteger;
 
 pub type Fq = Fp832<FqParameters>;
@@ -161,4 +161,25 @@ impl FieldParameters for FqParameters {
         0x8c4d2263babf8941,
         0x384,
     ]);
+}
+
+impl PoseidonDefaultParameters for FqParameters {
+    const PARAMS_OPT_FOR_CONSTRAINTS: [[usize; 5]; 7] = [
+        [2, 17, 8, 31, 0],
+        [3, 5, 8, 56, 0],
+        [4, 5, 8, 56, 0],
+        [5, 5, 8, 57, 0],
+        [6, 5, 8, 57, 0],
+        [7, 5, 8, 57, 0],
+        [8, 5, 8, 57, 0],
+    ];
+    const PARAMS_OPT_FOR_WEIGHTS: [[usize; 5]; 7] = [
+        [2,257,8,13,0],
+        [3,257,8,13,0],
+        [4,257,8,13,0],
+        [5,257,8,13,0],
+        [6,257,8,13,0],
+        [7,257,8,13,0],
+        [8,257,8,13,0],
+    ];
 }

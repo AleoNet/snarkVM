@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::{FftParameters, FieldParameters, Fp256, Fp256Parameters};
+use snarkvm_fields::{FftParameters, FieldParameters, Fp256, Fp256Parameters, PoseidonDefaultParameters};
 use snarkvm_utilities::biginteger::BigInteger256 as BigInteger;
 
 /// BLS12-377 scalar field.
@@ -136,4 +136,25 @@ impl FieldParameters for FrParameters {
         0x655e9a2ca55660b4,
         0x12ab,
     ]);
+}
+
+impl PoseidonDefaultParameters for FrParameters {
+    const PARAMS_OPT_FOR_CONSTRAINTS: [[usize; 5]; 7] = [
+        [2, 17, 8, 31, 0],
+        [3, 17, 8, 31, 0],
+        [4, 17, 8, 31, 0],
+        [5, 17, 8, 31, 0],
+        [6, 17, 8, 31, 0],
+        [7, 17, 8, 31, 0],
+        [8, 17, 8, 31, 0],
+    ];
+    const PARAMS_OPT_FOR_WEIGHTS: [[usize; 5]; 7] = [
+        [2,257,8,13,0],
+        [3,257,8,13,0],
+        [4,257,8,13,0],
+        [5,257,8,13,0],
+        [6,257,8,13,0],
+        [7,257,8,13,0],
+        [8,257,8,13,0],
+    ];
 }
