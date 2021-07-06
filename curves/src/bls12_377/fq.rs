@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::{FftParameters, FieldParameters, Fp384, Fp384Parameters, PoseidonMDSParameters};
+use snarkvm_fields::{FftParameters, FieldParameters, Fp384, Fp384Parameters};
 use snarkvm_utilities::biginteger::BigInteger384 as BigInteger;
 
 pub type Fq = Fp384<FqParameters>;
@@ -119,90 +119,4 @@ impl FieldParameters for FqParameters {
         0x748c2f8a21d58c76,
         0x35c,
     ]);
-}
-
-impl PoseidonMDSParameters for FqParameters {
-    const POSEIDON_ALPHA: u64 = 31;
-    const POSEIDON_FULL_ROUNDS: u32 = 8;
-    const POSEIDON_MDS: [[BigInteger; 3]; 3] = [
-        [
-            BigInteger([
-                16761615102818334957u64,
-                12482138038048699934u64,
-                3817096965469984601u64,
-                6989969318858031733u64,
-                3576610594321980885u64,
-                36490137127210368u64,
-            ]),
-            BigInteger([
-                9566144474383830910u64,
-                11150426687430544949u64,
-                16331460408238788351u64,
-                2005897529228708767u64,
-                3062046737096295036u64,
-                63140901972144186u64,
-            ]),
-            BigInteger([
-                667196415962656604u64,
-                8983143523464838295u64,
-                1678573521440382262u64,
-                2229888761407573441u64,
-                10012085227077399162u64,
-                117093948091414363u64,
-            ]),
-        ],
-        [
-            BigInteger([
-                13587048708902679877u64,
-                8286394602935866198u64,
-                14019498734289822666u64,
-                3540135739465249599u64,
-                4432355063077857820u64,
-                3619990303674074u64,
-            ]),
-            BigInteger([
-                14778968494591858924u64,
-                6237379533604742896u64,
-                7747224932072259059u64,
-                7156068636969940628u64,
-                7832220824164838569u64,
-                98958126183981927u64,
-            ]),
-            BigInteger([
-                5004312693389915478u64,
-                3300178519609569861u64,
-                13640583711772033155u64,
-                4476271394341818444u64,
-                15970828387942405354u64,
-                105191205674577396u64,
-            ]),
-        ],
-        [
-            BigInteger([
-                12771785550679526545u64,
-                6478226502717735083u64,
-                15595525529283996344u64,
-                4618245953347533529u64,
-                10574461518149736257u64,
-                75849574116268738u64,
-            ]),
-            BigInteger([
-                15297186288394220678u64,
-                11433282922109160880u64,
-                17320311942882946516u64,
-                7132752839720018915u64,
-                8433945621090238516u64,
-                62317511368563555u64,
-            ]),
-            BigInteger([
-                81416247066316724u64,
-                14874796636981620039u64,
-                6911864355757151549u64,
-                13271831832425350370u64,
-                17068699463819752399u64,
-                115990511609677769u64,
-            ]),
-        ],
-    ];
-    const POSEIDON_PARTIAL_ROUNDS: u32 = 24;
 }
