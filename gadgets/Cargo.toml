@@ -47,6 +47,11 @@ path = "../utilities"
 version = "0.6.0"
 default-features = false
 
+[dependencies.snarkvm-sponge]
+path = "../sponge"
+version = "0.6.0"
+default-features = false
+
 [dependencies.derivative]
 version = "2"
 
@@ -97,11 +102,13 @@ default = [
   "snarkvm-curves/default",
   "snarkvm-fields/default",
   "snarkvm-r1cs/default",
-  "snarkvm-utilities/default"
+  "snarkvm-utilities/default",
+  "snarkvm-sponge/default"
 ]
-full = [ "algorithms", "curves", "fields", "integers", "nonnative" ]
+full = [ "algorithms", "curves", "fields", "integers", "nonnative", "sponge" ]
 algorithms = [ ]
 curves = [ ]
 fields = [ ]
 integers = [ ]
+sponge = [ ]
 nonnative = [ "num-bigint", "num-integer", "num-traits" ]

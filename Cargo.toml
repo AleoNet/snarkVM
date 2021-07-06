@@ -31,6 +31,7 @@ members = [
   "posw",
   "profiler",
   "r1cs",
+  "sponge",
   "utilities",
   "wasm",
   ".integration"
