@@ -48,21 +48,12 @@ impl FftParameters for FrParameters {
 
     #[rustfmt::skip]
     const TWO_ADICITY: u32 = 47;
-    /// TODO (howardwu): CRITICAL - Fix this after a migration plan has been determined.
-    ///  - 0x3c3d3ca739381fb2,
-    ///  - 0x9a14cda3ec99772b,
-    ///  - 0xd7aacc7c59724826,
-    ///  - 0xd1ba211c5cc349c,
-    ///  + 12646347781564978760u64,
-    ///  + 6783048705277173164u64,
-    ///  + 268534165941069093u64,
-    ///  + 1121515446318641358u64,
     #[rustfmt::skip]
     const TWO_ADIC_ROOT_OF_UNITY: BigInteger = BigInteger([
-        0x3c3d3ca739381fb2,
-        0x9a14cda3ec99772b,
-        0xd7aacc7c59724826,
-        0xd1ba211c5cc349c,
+        12646347781564978760u64,
+        6783048705277173164u64,
+        268534165941069093u64,
+        1121515446318641358u64,
     ]);
 }
 
