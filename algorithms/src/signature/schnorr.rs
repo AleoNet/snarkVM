@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::SignatureError, signature::SchnorrParameters, traits::SignatureScheme};
+use crate::{signature::SchnorrParameters, SignatureError, SignatureScheme};
 use snarkvm_curves::traits::Group;
 use snarkvm_fields::{ConstraintFieldError, Field, One, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
@@ -34,13 +34,19 @@ use std::{
 };
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "G: Group"), Debug(bound = "G: Group"), Default(bound = "G: Group"))]
-pub struct SchnorrOutput<G: Group> {
+#[derivative(
+    Clone(bound = "G: Group"),
+    Debug(bound = "G: Group"),
+    Default(bound = "G: Group"),
+    PartialEq(bound = "G: Group"),
+    Eq(bound = "G: Group")
+)]
+pub struct SchnorrSignature<G: Group> {
     pub prover_response: <G as Group>::ScalarField,
     pub verifier_challenge: <G as Group>::ScalarField,
 }
 
-impl<G: Group> ToBytes for SchnorrOutput<G> {
+impl<G: Group> ToBytes for SchnorrSignature<G> {
     #[inline]
     fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.prover_response.write(&mut writer)?;
@@ -48,7 +54,7 @@ impl<G: Group> ToBytes for SchnorrOutput<G> {
     }
 }
 
-impl<G: Group> FromBytes for SchnorrOutput<G> {
+impl<G: Group> FromBytes for SchnorrSignature<G> {
     #[inline]
     fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let prover_response = <G as Group>::ScalarField::read(&mut reader)?;
@@ -103,19 +109,19 @@ impl<F: Field, G: Group + CanonicalSerialize + CanonicalDeserialize + ToConstrai
     PartialEq(bound = "G: Group, D: Digest"),
     Eq(bound = "G: Group, D: Digest")
 )]
-pub struct SchnorrSignature<G: Group, D: Digest> {
+pub struct Schnorr<G: Group, D: Digest> {
     pub parameters: SchnorrParameters<G, D>,
 }
 
 impl<G: Group + Hash + CanonicalSerialize + CanonicalDeserialize, D: Digest + Send + Sync> SignatureScheme
-    for SchnorrSignature<G, D>
+    for Schnorr<G, D>
 where
     <G as Group>::ScalarField: PrimeField,
 {
-    type Output = SchnorrOutput<G>;
     type Parameters = SchnorrParameters<G, D>;
     type PrivateKey = <G as Group>::ScalarField;
     type PublicKey = SchnorrPublicKey<G>;
+    type Signature = SchnorrSignature<G>;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self, SignatureError> {
         let setup_time = start_timer!(|| "SchnorrSignature::setup");
@@ -155,7 +161,7 @@ where
         private_key: &Self::PrivateKey,
         message: &[u8],
         rng: &mut R,
-    ) -> Result<Self::Output, SignatureError> {
+    ) -> Result<Self::Signature, SignatureError> {
         let sign_time = start_timer!(|| "SchnorrSignature::sign");
         // (k, e);
         let (random_scalar, verifier_challenge) = loop {
@@ -185,7 +191,7 @@ where
 
         // k - xe;
         let prover_response = random_scalar - (verifier_challenge * private_key);
-        let signature = SchnorrOutput {
+        let signature = SchnorrSignature {
             prover_response,
             verifier_challenge,
         };
@@ -198,11 +204,11 @@ where
         &self,
         public_key: &Self::PublicKey,
         message: &[u8],
-        signature: &Self::Output,
+        signature: &Self::Signature,
     ) -> Result<bool, SignatureError> {
         let verify_time = start_timer!(|| "SchnorrSignature::Verify");
 
-        let SchnorrOutput {
+        let SchnorrSignature {
             prover_response,
             verifier_challenge,
         } = signature;
@@ -255,9 +261,13 @@ where
         Ok(SchnorrPublicKey(randomized_pk))
     }
 
-    fn randomize_signature(&self, signature: &Self::Output, randomness: &[u8]) -> Result<Self::Output, SignatureError> {
+    fn randomize_signature(
+        &self,
+        signature: &Self::Signature,
+        randomness: &[u8],
+    ) -> Result<Self::Signature, SignatureError> {
         let rand_signature_time = start_timer!(|| "SchnorrSignature::randomize_signature");
-        let SchnorrOutput {
+        let SchnorrSignature {
             prover_response,
             verifier_challenge,
         } = signature;
@@ -270,7 +280,7 @@ where
             base.double_in_place();
         }
 
-        let new_sig = SchnorrOutput {
+        let new_sig = SchnorrSignature {
             prover_response: *prover_response - (*verifier_challenge * multiplier),
             verifier_challenge: *verifier_challenge,
         };
@@ -279,7 +289,7 @@ where
     }
 }
 
-impl<G: Group, D: Digest> From<SchnorrParameters<G, D>> for SchnorrSignature<G, D> {
+impl<G: Group, D: Digest> From<SchnorrParameters<G, D>> for Schnorr<G, D> {
     fn from(parameters: SchnorrParameters<G, D>) -> Self {
         Self { parameters }
     }

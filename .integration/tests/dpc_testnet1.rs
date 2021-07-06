@@ -22,19 +22,17 @@ use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{
     prelude::*,
     testnet1::{
-        execute_inner_proof_gadget,
-        execute_outer_proof_gadget,
+        execute_inner_circuit,
+        execute_outer_circuit,
         inner_circuit::InnerCircuit,
         instantiated::*,
-        parameters::{NoopProgramSNARKParameters, SystemParameters},
         program::NoopProgram,
-        record::{payload::Payload, record_encryption::RecordEncryption},
-        BaseDPCComponents,
+        record::{EncryptedRecord, Payload, Record},
+        Testnet1Components,
         TransactionKernel,
-        DPC,
     },
 };
-use snarkvm_integration::{dpc::*, ledger::*, memdb::MemDb, storage::*};
+use snarkvm_integration::{ledger::*, memdb::MemDb, storage::*, testnet1::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
@@ -42,30 +40,26 @@ use snarkvm_utilities::{
 };
 
 use itertools::Itertools;
-use rand::{Rng, SeedableRng};
-use rand_xorshift::XorShiftRng;
+use rand::SeedableRng;
+use rand_chacha::ChaChaRng;
 use std::{
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
-type L = Ledger<Tx, CommitmentMerkleParameters, MemDb>;
+type L = Ledger<Testnet1Transaction, CommitmentMerkleParameters, MemDb>;
 
 #[test]
 fn dpc_testnet1_integration_test() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
-    // Generate or load parameters for the ledger, commitment schemes, and CRH
+    // Generate or load parameters for the ledger, commitment schemes, and CRH.
     let (ledger_parameters, parameters) = setup_or_load_parameters::<_, MemDb>(false, &mut rng);
 
-    // Generate accounts
+    // Generate accounts.
     let [genesis_account, recipient, _] = generate_test_accounts::<_, MemDb>(&parameters, &mut rng);
 
-    // Specify network_id
-    let network_id: u8 = 0;
-
-    // Create a genesis block
-
+    // Create a genesis block.
     let genesis_block = Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
@@ -79,111 +73,104 @@ fn dpc_testnet1_integration_test() {
         transactions: Transactions::new(),
     };
 
-    let ledger = initialize_test_blockchain::<Tx, CommitmentMerkleParameters, MemDb>(ledger_parameters, genesis_block);
+    let ledger = initialize_test_blockchain::<Testnet1Transaction, CommitmentMerkleParameters, MemDb>(
+        ledger_parameters,
+        genesis_block,
+    );
 
-    let noop_program_id = to_bytes![
-        ProgramVerificationKeyCRH::hash(
-            &parameters.system_parameters.program_verification_key_crh,
-            &to_bytes![parameters.noop_program_snark_parameters().verification_key].unwrap()
-        )
-        .unwrap()
-    ]
+    let noop_program = NoopProgram::<Components>::new(
+        &parameters.system_parameters.program_verification_key_crh,
+        parameters.noop_program_snark_parameters.proving_key.clone(),
+        parameters.noop_program_snark_parameters.verifying_key.clone(),
+    )
     .unwrap();
+    let noop_program_id = noop_program.id();
 
     // Generate dummy input records having as address the genesis address.
-    let old_account_private_keys = vec![genesis_account.private_key.clone(); NUM_INPUT_RECORDS];
+    let old_private_keys = vec![genesis_account.private_key.clone(); Components::NUM_INPUT_RECORDS];
+
+    let mut joint_serial_numbers = vec![];
     let mut old_records = vec![];
-    for i in 0..NUM_INPUT_RECORDS {
-        let old_sn_nonce = SerialNumberNonce::hash(
+    for i in 0..Components::NUM_INPUT_RECORDS {
+        let old_sn_nonce = <Components as DPCComponents>::SerialNumberNonceCRH::hash(
             &parameters.system_parameters.serial_number_nonce,
             &[64u8 + (i as u8); 1],
         )
         .unwrap();
-        let old_record = DPC::generate_record(
-            &parameters.system_parameters,
-            old_sn_nonce,
+
+        let old_record = Record::new(
+            &parameters.system_parameters.record_commitment,
             genesis_account.address.clone(),
             true, // The input record is dummy
             0,
             Payload::default(),
             noop_program_id.clone(),
             noop_program_id.clone(),
+            old_sn_nonce,
             &mut rng,
         )
         .unwrap();
+
+        let (sn, _) = old_record
+            .to_serial_number(&parameters.system_parameters.account_signature, &old_private_keys[i])
+            .unwrap();
+        joint_serial_numbers.extend_from_slice(&to_bytes![sn].unwrap());
+
         old_records.push(old_record);
     }
 
     // Construct new records.
 
     // Set the new records' program to be the "always-accept" program.
-    let new_record_owners = vec![recipient.address.clone(); NUM_OUTPUT_RECORDS];
-    let new_is_dummy_flags = vec![false; NUM_OUTPUT_RECORDS];
-    let new_values = vec![10; NUM_OUTPUT_RECORDS];
-    let new_payloads = vec![Payload::default(); NUM_OUTPUT_RECORDS];
-    let new_birth_program_ids = vec![noop_program_id.clone(); NUM_OUTPUT_RECORDS];
-    let new_death_program_ids = vec![noop_program_id.clone(); NUM_OUTPUT_RECORDS];
 
+    let mut new_records = vec![];
+    for j in 0..Components::NUM_OUTPUT_RECORDS {
+        new_records.push(
+            Record::new_full(
+                &parameters.system_parameters.serial_number_nonce,
+                &parameters.system_parameters.record_commitment,
+                recipient.address.clone(),
+                false,
+                10,
+                Payload::default(),
+                noop_program_id.clone(),
+                noop_program_id.clone(),
+                j as u8,
+                joint_serial_numbers.clone(),
+                &mut rng,
+            )
+            .unwrap(),
+        );
+    }
+
+    // Offline execution to generate a DPC transaction kernel.
     let memo = [4u8; 32];
-
-    // Offline execution to generate a DPC transaction kernel
-    let transaction_kernel = <InstantiatedDPC as DPCScheme<L>>::execute_offline(
+    let transaction_kernel = <Testnet1DPC as DPCScheme<L>>::execute_offline_phase(
         parameters.system_parameters.clone(),
+        &old_private_keys,
         old_records,
-        old_account_private_keys,
-        new_record_owners,
-        &new_is_dummy_flags,
-        &new_values,
-        new_payloads,
-        new_birth_program_ids,
-        new_death_program_ids,
+        new_records,
         memo,
-        network_id,
         &mut rng,
     )
     .unwrap();
 
-    let local_data = transaction_kernel.into_local_data();
-
     // Generate the program proofs
 
-    let noop_program = NoopProgram::<_, <Components as BaseDPCComponents>::NoopProgramSNARK>::new(noop_program_id);
-
-    let mut old_death_program_proofs = vec![];
-    for i in 0..NUM_INPUT_RECORDS {
-        let private_input = noop_program
-            .execute(
-                &parameters.noop_program_snark_parameters.proving_key,
-                &parameters.noop_program_snark_parameters.verification_key,
-                &local_data,
-                i as u8,
-                &mut rng,
-            )
-            .unwrap();
-
-        old_death_program_proofs.push(private_input);
+    let mut program_proofs = vec![];
+    for i in 0..Components::NUM_TOTAL_RECORDS {
+        program_proofs.push(
+            noop_program
+                .execute(&transaction_kernel.into_local_data(), i as u8, &mut rng)
+                .unwrap(),
+        );
     }
 
-    let mut new_birth_program_proofs = vec![];
-    for j in 0..NUM_OUTPUT_RECORDS {
-        let private_input = noop_program
-            .execute(
-                &parameters.noop_program_snark_parameters.proving_key,
-                &parameters.noop_program_snark_parameters.verification_key,
-                &local_data,
-                (NUM_INPUT_RECORDS + j) as u8,
-                &mut rng,
-            )
-            .unwrap();
-
-        new_birth_program_proofs.push(private_input);
-    }
-
-    let (new_records, transaction) = InstantiatedDPC::execute_online(
+    let (new_records, transaction) = Testnet1DPC::execute_online_phase(
         &parameters,
+        &old_private_keys,
         transaction_kernel,
-        old_death_program_proofs,
-        new_birth_program_proofs,
+        program_proofs,
         &ledger,
         &mut rng,
     )
@@ -191,29 +178,27 @@ fn dpc_testnet1_integration_test() {
 
     // Check that the transaction is serialized and deserialized correctly
     let transaction_bytes = to_bytes![transaction].unwrap();
-    let recovered_transaction = Tx::read(&transaction_bytes[..]).unwrap();
-
+    let recovered_transaction = Testnet1Transaction::read(&transaction_bytes[..]).unwrap();
     assert_eq!(transaction, recovered_transaction);
 
+    // Check that new_records can be decrypted from the transaction.
     {
-        // Check that new_records can be decrypted from the transaction
-
         let encrypted_records = transaction.encrypted_records();
-        let new_account_private_keys = vec![recipient.private_key; NUM_OUTPUT_RECORDS];
+        let new_account_private_keys = vec![recipient.private_key; Components::NUM_OUTPUT_RECORDS];
 
         for ((encrypted_record, private_key), new_record) in
             encrypted_records.iter().zip(new_account_private_keys).zip(new_records)
         {
-            let account_view_key = AccountViewKey::from_private_key(
+            let account_view_key = ViewKey::from_private_key(
                 &parameters.system_parameters.account_signature,
                 &parameters.system_parameters.account_commitment,
                 &private_key,
             )
             .unwrap();
 
-            let decrypted_record =
-                RecordEncryption::decrypt_record(&parameters.system_parameters, &account_view_key, encrypted_record)
-                    .unwrap();
+            let decrypted_record = encrypted_record
+                .decrypt(&parameters.system_parameters, &account_view_key)
+                .unwrap();
 
             assert_eq!(decrypted_record, new_record);
         }
@@ -246,7 +231,7 @@ fn dpc_testnet1_integration_test() {
         proof: ProofOfSuccinctWork([0u8; 972]),
     };
 
-    assert!(InstantiatedDPC::verify_transactions(&parameters, &transactions.0, &ledger).unwrap());
+    assert!(Testnet1DPC::verify_transactions(&parameters, &transactions.0, &ledger));
 
     let block = Block { header, transactions };
 
@@ -254,35 +239,23 @@ fn dpc_testnet1_integration_test() {
     assert_eq!(ledger.len(), 2);
 }
 
-/// Generates and returns noop program parameters and its corresponding program id.
-fn generate_test_noop_program_parameters<R: Rng>(
-    system_parameters: &SystemParameters<Components>,
-    rng: &mut R,
-) -> (NoopProgramSNARKParameters<Components>, Vec<u8>) {
-    let noop_program_snark_pp =
-        InstantiatedDPC::generate_noop_program_snark_parameters(&system_parameters, rng).unwrap();
-
-    let noop_program_id = to_bytes![
-        ProgramVerificationKeyCRH::hash(
-            &system_parameters.program_verification_key_crh,
-            &to_bytes![noop_program_snark_pp.verification_key].unwrap()
-        )
-        .unwrap()
-    ]
-    .unwrap();
-
-    (noop_program_snark_pp, noop_program_id)
-}
-
 #[test]
 fn test_transaction_kernel_serialization() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     // Generate parameters for the ledger, commitment schemes, CRH, and the
     // "always-accept" program.
-    let system_parameters = InstantiatedDPC::generate_system_parameters(&mut rng).unwrap();
+    let system_parameters = Testnet1DPC::generate_system_parameters(&mut rng).unwrap();
 
-    let (_noop_program_snark_pp, noop_program_id) = generate_test_noop_program_parameters(&system_parameters, &mut rng);
+    let noop_program_snark_pp =
+        Testnet1DPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
+    let noop_program = NoopProgram::<Components>::new(
+        &system_parameters.program_verification_key_crh,
+        noop_program_snark_pp.proving_key,
+        noop_program_snark_pp.verifying_key,
+    )
+    .unwrap();
+    let noop_program_id = noop_program.id();
 
     // Generate metadata and an account for a dummy initial record.
     let test_account = Account::new(
@@ -293,47 +266,68 @@ fn test_transaction_kernel_serialization() {
     )
     .unwrap();
 
-    let sn_nonce = SerialNumberNonce::hash(&system_parameters.serial_number_nonce, &[0u8; 1]).unwrap();
-    let old_record = DPC::generate_record(
-        &system_parameters,
-        sn_nonce,
-        test_account.address.clone(),
-        true,
-        0,
-        Payload::default(),
-        noop_program_id.clone(),
-        noop_program_id.clone(),
-        &mut rng,
-    )
-    .unwrap();
+    let old_private_keys = vec![test_account.private_key.clone(); Components::NUM_INPUT_RECORDS];
 
     // Set the input records for our transaction to be the initial dummy records.
-    let old_records = vec![old_record; NUM_INPUT_RECORDS];
-    let old_account_private_keys = vec![test_account.private_key.clone(); NUM_INPUT_RECORDS];
+    let mut joint_serial_numbers = vec![];
+    let mut old_records = vec![];
+    for i in 0..Components::NUM_INPUT_RECORDS {
+        let old_record = Record::new(
+            &system_parameters.record_commitment,
+            test_account.address.clone(),
+            true,
+            0,
+            Payload::default(),
+            noop_program_id.clone(),
+            noop_program_id.clone(),
+            <Components as DPCComponents>::SerialNumberNonceCRH::hash(
+                &system_parameters.serial_number_nonce,
+                &[0u8; 1],
+            )
+            .unwrap(),
+            &mut rng,
+        )
+        .unwrap();
+
+        let (sn, _) = old_record
+            .to_serial_number(&system_parameters.account_signature, &old_private_keys[i])
+            .unwrap();
+        joint_serial_numbers.extend_from_slice(&to_bytes![sn].unwrap());
+
+        old_records.push(old_record);
+    }
 
     // Construct new records.
 
-    let new_record_owners = vec![test_account.address; NUM_OUTPUT_RECORDS];
-    let new_is_dummy_flags = vec![false; NUM_OUTPUT_RECORDS];
-    let new_values = vec![10; NUM_OUTPUT_RECORDS];
-    let new_payloads = vec![Payload::default(); NUM_OUTPUT_RECORDS];
-    let new_birth_program_ids = vec![noop_program_id.clone(); NUM_OUTPUT_RECORDS];
-    let new_death_program_ids = vec![noop_program_id; NUM_OUTPUT_RECORDS];
-    let memo = [0u8; 32];
+    // Set the new record's program to be the "always-accept" program.
+    let mut new_records = vec![];
+    for j in 0..Components::NUM_OUTPUT_RECORDS {
+        new_records.push(
+            Record::new_full(
+                &system_parameters.serial_number_nonce,
+                &system_parameters.record_commitment,
+                test_account.address.clone(),
+                false,
+                10,
+                Payload::default(),
+                noop_program_id.clone(),
+                noop_program_id.clone(),
+                j as u8,
+                joint_serial_numbers.clone(),
+                &mut rng,
+            )
+            .unwrap(),
+        );
+    }
 
     // Generate transaction kernel
-    let transaction_kernel = <InstantiatedDPC as DPCScheme<L>>::execute_offline(
+    let memo = [0u8; 32];
+    let transaction_kernel = <Testnet1DPC as DPCScheme<L>>::execute_offline_phase(
         system_parameters,
+        &old_private_keys,
         old_records,
-        old_account_private_keys,
-        new_record_owners,
-        &new_is_dummy_flags,
-        &new_values,
-        new_payloads,
-        new_birth_program_ids,
-        new_death_program_ids,
+        new_records,
         memo,
-        0,
         &mut rng,
     )
     .unwrap();
@@ -341,27 +335,40 @@ fn test_transaction_kernel_serialization() {
     // Serialize the transaction kernel
     let transaction_kernel_bytes = to_bytes![&transaction_kernel].unwrap();
 
-    let recovered_transaction_kernel: <InstantiatedDPC as DPCScheme<L>>::TransactionKernel =
+    let recovered_transaction_kernel: <Testnet1DPC as DPCScheme<L>>::TransactionKernel =
         FromBytes::read(&transaction_kernel_bytes[..]).unwrap();
 
     assert_eq!(transaction_kernel, recovered_transaction_kernel);
 }
 
 #[test]
-fn test_execute_base_dpc_constraints() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
-
-    // Specify network_id
-    let network_id: u8 = 0;
+fn test_testnet1_dpc_execute_constraints() {
+    let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     // Generate parameters for the ledger, commitment schemes, CRH, and the
     // "always-accept" program.
     let ledger_parameters = Arc::new(CommitmentMerkleParameters::setup(&mut rng));
-    let system_parameters = InstantiatedDPC::generate_system_parameters(&mut rng).unwrap();
+    let system_parameters = Testnet1DPC::generate_system_parameters(&mut rng).unwrap();
 
-    let (noop_program_snark_pp, noop_program_id) = generate_test_noop_program_parameters(&system_parameters, &mut rng);
-    let (alternate_noop_program_snark_pp, alternate_noop_program_id) =
-        generate_test_noop_program_parameters(&system_parameters, &mut rng);
+    let noop_program_snark_pp =
+        Testnet1DPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
+    let noop_program = NoopProgram::<Components>::new(
+        &system_parameters.program_verification_key_crh,
+        noop_program_snark_pp.proving_key,
+        noop_program_snark_pp.verifying_key,
+    )
+    .unwrap();
+    let noop_program_id = noop_program.id();
+
+    let alternate_noop_program_snark_pp =
+        Testnet1DPC::generate_noop_program_snark_parameters(&system_parameters, &mut rng).unwrap();
+    let alternate_noop_program = NoopProgram::<Components>::new(
+        &system_parameters.program_verification_key_crh,
+        alternate_noop_program_snark_pp.proving_key,
+        alternate_noop_program_snark_pp.verifying_key,
+    )
+    .unwrap();
+    let alternate_noop_program_id = alternate_noop_program.id();
 
     let signature_parameters = &system_parameters.account_signature;
     let commitment_parameters = &system_parameters.account_commitment;
@@ -390,30 +397,43 @@ fn test_execute_base_dpc_constraints() {
     };
 
     // Use genesis record, serial number, and memo to initialize the ledger.
-    let ledger = initialize_test_blockchain::<Tx, CommitmentMerkleParameters, MemDb>(ledger_parameters, genesis_block);
+    let ledger = initialize_test_blockchain::<Testnet1Transaction, CommitmentMerkleParameters, MemDb>(
+        ledger_parameters,
+        genesis_block,
+    );
 
-    let sn_nonce = SerialNumberNonce::hash(&system_parameters.serial_number_nonce, &[0u8; 1]).unwrap();
-    let old_record = DPC::generate_record(
-        &system_parameters,
-        sn_nonce,
-        dummy_account.address,
-        true,
-        0,
-        Payload::default(),
-        alternate_noop_program_id.clone(),
-        alternate_noop_program_id.clone(),
-        &mut rng,
-    )
-    .unwrap();
+    let old_private_keys = vec![dummy_account.private_key; Components::NUM_INPUT_RECORDS];
 
     // Set the input records for our transaction to be the initial dummy records.
-    let old_records = vec![old_record; NUM_INPUT_RECORDS];
-    let old_account_private_keys = vec![dummy_account.private_key; NUM_INPUT_RECORDS];
+    let mut joint_serial_numbers = vec![];
+    let mut old_records = vec![];
+    for i in 0..Components::NUM_INPUT_RECORDS {
+        let old_record = Record::new(
+            &system_parameters.record_commitment,
+            dummy_account.address.clone(),
+            true,
+            0,
+            Payload::default(),
+            alternate_noop_program_id.clone(),
+            alternate_noop_program_id.clone(),
+            <Components as DPCComponents>::SerialNumberNonceCRH::hash(
+                &system_parameters.serial_number_nonce,
+                &[0u8; 1],
+            )
+            .unwrap(),
+            &mut rng,
+        )
+        .unwrap();
 
-    // Construct new records.
+        let (sn, _) = old_record
+            .to_serial_number(signature_parameters, &old_private_keys[i])
+            .unwrap();
+        joint_serial_numbers.extend_from_slice(&to_bytes![sn].unwrap());
+
+        old_records.push(old_record);
+    }
 
     // Create an account for an actual new record.
-
     let new_account = Account::new(
         signature_parameters,
         commitment_parameters,
@@ -422,75 +442,66 @@ fn test_execute_base_dpc_constraints() {
     )
     .unwrap();
 
+    // Construct new records.
+
     // Set the new record's program to be the "always-accept" program.
+    let mut new_records = vec![];
+    for j in 0..Components::NUM_OUTPUT_RECORDS {
+        new_records.push(
+            Record::new_full(
+                &system_parameters.serial_number_nonce,
+                &system_parameters.record_commitment,
+                new_account.address.clone(),
+                false,
+                10,
+                Payload::default(),
+                noop_program_id.clone(),
+                noop_program_id.clone(),
+                j as u8,
+                joint_serial_numbers.clone(),
+                &mut rng,
+            )
+            .unwrap(),
+        );
+    }
 
-    let new_record_owners = vec![new_account.address; NUM_OUTPUT_RECORDS];
-    let new_is_dummy_flags = vec![false; NUM_OUTPUT_RECORDS];
-    let new_values = vec![10; NUM_OUTPUT_RECORDS];
-    let new_payloads = vec![Payload::default(); NUM_OUTPUT_RECORDS];
-    let new_birth_program_ids = vec![noop_program_id.clone(); NUM_OUTPUT_RECORDS];
-    let new_death_program_ids = vec![noop_program_id.clone(); NUM_OUTPUT_RECORDS];
     let memo = [0u8; 32];
-
-    let transaction_kernel = <InstantiatedDPC as DPCScheme<L>>::execute_offline(
+    let transaction_kernel = <Testnet1DPC as DPCScheme<L>>::execute_offline_phase(
         system_parameters.clone(),
+        &old_private_keys,
         old_records,
-        old_account_private_keys,
-        new_record_owners,
-        &new_is_dummy_flags,
-        &new_values,
-        new_payloads,
-        new_birth_program_ids,
-        new_death_program_ids,
+        new_records,
         memo,
-        network_id,
         &mut rng,
     )
     .unwrap();
 
-    let local_data = transaction_kernel.into_local_data();
-
     // Generate the program proofs
 
-    let noop_program = NoopProgram::<_, <Components as BaseDPCComponents>::NoopProgramSNARK>::new(noop_program_id);
-    let alternate_noop_program =
-        NoopProgram::<_, <Components as BaseDPCComponents>::NoopProgramSNARK>::new(alternate_noop_program_id);
-
-    let mut old_proof_and_vk = vec![];
-    for i in 0..NUM_INPUT_RECORDS {
-        let private_input = alternate_noop_program
-            .execute(
-                &alternate_noop_program_snark_pp.proving_key,
-                &alternate_noop_program_snark_pp.verification_key,
-                &local_data,
-                i as u8,
-                &mut rng,
-            )
-            .unwrap();
-
-        old_proof_and_vk.push(private_input);
+    let mut program_proofs = vec![];
+    for i in 0..Components::NUM_INPUT_RECORDS {
+        program_proofs.push(
+            alternate_noop_program
+                .execute(&transaction_kernel.into_local_data(), i as u8, &mut rng)
+                .unwrap(),
+        );
     }
-
-    let mut new_proof_and_vk = vec![];
-    for j in 0..NUM_OUTPUT_RECORDS {
-        let private_input = noop_program
-            .execute(
-                &noop_program_snark_pp.proving_key,
-                &noop_program_snark_pp.verification_key,
-                &local_data,
-                (NUM_INPUT_RECORDS + j) as u8,
-                &mut rng,
-            )
-            .unwrap();
-
-        new_proof_and_vk.push(private_input);
+    for j in 0..Components::NUM_OUTPUT_RECORDS {
+        program_proofs.push(
+            noop_program
+                .execute(
+                    &transaction_kernel.into_local_data(),
+                    (Components::NUM_INPUT_RECORDS + j) as u8,
+                    &mut rng,
+                )
+                .unwrap(),
+        );
     }
 
     let TransactionKernel {
         system_parameters: _,
 
         old_records,
-        old_account_private_keys,
         old_serial_numbers,
         old_randomizers: _,
 
@@ -517,7 +528,7 @@ fn test_execute_base_dpc_constraints() {
     let ledger_digest = ledger.digest().expect("could not get digest");
 
     // Generate the ledger membership witnesses
-    let mut old_witnesses = Vec::with_capacity(NUM_INPUT_RECORDS);
+    let mut old_witnesses = Vec::with_capacity(Components::NUM_INPUT_RECORDS);
 
     // Compute the ledger membership witness and serial number from the old records.
     for record in old_records.iter() {
@@ -530,10 +541,10 @@ fn test_execute_base_dpc_constraints() {
     }
 
     // Prepare record encryption components used in the inner SNARK
-    let mut new_records_encryption_gadget_components = Vec::with_capacity(NUM_OUTPUT_RECORDS);
+    let mut new_records_encryption_gadget_components = Vec::with_capacity(Components::NUM_OUTPUT_RECORDS);
     for (record, ciphertext_randomness) in new_records.iter().zip_eq(&new_records_encryption_randomness) {
         let record_encryption_gadget_components =
-            RecordEncryption::prepare_encryption_gadget_components(&system_parameters, &record, ciphertext_randomness)
+            EncryptedRecord::prepare_encryption_gadget_components(&system_parameters, &record, ciphertext_randomness)
                 .unwrap();
 
         new_records_encryption_gadget_components.push(record_encryption_gadget_components);
@@ -541,16 +552,16 @@ fn test_execute_base_dpc_constraints() {
 
     //////////////////////////////////////////////////////////////////////////
     // Check that the core check constraint system was satisfied.
-    let mut core_cs = TestConstraintSystem::<Fr>::new();
+    let mut inner_circuit_cs = TestConstraintSystem::<Fr>::new();
 
-    execute_inner_proof_gadget::<_, _>(
-        &mut core_cs.ns(|| "Core checks"),
+    execute_inner_circuit::<_, _>(
+        &mut inner_circuit_cs.ns(|| "Inner circuit"),
         &system_parameters,
         ledger.parameters(),
         &ledger_digest,
         &old_records,
         &old_witnesses,
-        &old_account_private_keys,
+        &old_private_keys,
         &old_serial_numbers,
         &new_records,
         &new_sn_nonce_randomness,
@@ -568,42 +579,40 @@ fn test_execute_base_dpc_constraints() {
     )
     .unwrap();
 
-    if !core_cs.is_satisfied() {
+    if !inner_circuit_cs.is_satisfied() {
         println!("=========================================================");
-        println!("num constraints: {:?}", core_cs.num_constraints());
         println!("Unsatisfied constraints:");
-        println!("{}", core_cs.which_is_unsatisfied().unwrap());
+        println!("{}", inner_circuit_cs.which_is_unsatisfied().unwrap());
         println!("=========================================================");
     }
 
-    if core_cs.is_satisfied() {
-        println!("\n\n\n\nAll Core check constraints:");
-        //        core_cs.print_named_objects();
-        println!("num constraints: {:?}", core_cs.num_constraints());
+    {
+        println!("=========================================================");
+        let num_constraints = inner_circuit_cs.num_constraints();
+        println!("Inner circuit num constraints: {:?}", num_constraints);
+        assert_eq!(418189, num_constraints);
+        println!("=========================================================");
     }
-    println!("=========================================================");
-    println!("=========================================================");
-    println!("=========================================================\n\n\n");
 
-    assert!(core_cs.is_satisfied());
+    assert!(inner_circuit_cs.is_satisfied());
 
     // Generate inner snark parameters and proof for verification in the outer snark
-    let inner_snark_parameters = <Components as BaseDPCComponents>::InnerSNARK::setup(
+    let inner_snark_parameters = <Components as Testnet1Components>::InnerSNARK::setup(
         &InnerCircuit::blank(&system_parameters, ledger.parameters()),
         &mut rng,
     )
     .unwrap();
 
-    let inner_snark_vk: <<Components as BaseDPCComponents>::InnerSNARK as SNARK>::VerifyingKey =
+    let inner_snark_vk: <<Components as Testnet1Components>::InnerSNARK as SNARK>::VerifyingKey =
         inner_snark_parameters.1.clone().into();
 
-    let inner_snark_id = InnerCircuitIDCRH::hash(
+    let inner_snark_id = <Components as DPCComponents>::InnerCircuitIDCRH::hash(
         &system_parameters.inner_circuit_id_crh,
         &to_bytes![inner_snark_vk].unwrap(),
     )
     .unwrap();
 
-    let inner_snark_proof = <Components as BaseDPCComponents>::InnerSNARK::prove(
+    let inner_snark_proof = <Components as Testnet1Components>::InnerSNARK::prove(
         &inner_snark_parameters.0,
         &InnerCircuit::new(
             system_parameters.clone(),
@@ -611,7 +620,7 @@ fn test_execute_base_dpc_constraints() {
             ledger_digest,
             old_records,
             old_witnesses,
-            old_account_private_keys,
+            old_private_keys,
             old_serial_numbers.clone(),
             new_records,
             new_sn_nonce_randomness,
@@ -632,10 +641,10 @@ fn test_execute_base_dpc_constraints() {
     .unwrap();
 
     // Check that the proof check constraint system was satisfied.
-    let mut pf_check_cs = TestConstraintSystem::<Fq>::new();
+    let mut outer_circuit_cs = TestConstraintSystem::<Fq>::new();
 
-    execute_outer_proof_gadget::<_, _>(
-        &mut pf_check_cs.ns(|| "Check program proofs"),
+    execute_outer_circuit::<_, _>(
+        &mut outer_circuit_cs.ns(|| "Outer circuit"),
         &system_parameters,
         ledger.parameters(),
         &ledger_digest,
@@ -647,8 +656,7 @@ fn test_execute_base_dpc_constraints() {
         network_id,
         &inner_snark_vk,
         &inner_snark_proof,
-        &old_proof_and_vk,
-        &new_proof_and_vk,
+        &program_proofs,
         &program_commitment,
         &program_randomness,
         &local_data_root,
@@ -656,21 +664,24 @@ fn test_execute_base_dpc_constraints() {
     )
     .unwrap();
 
-    if !pf_check_cs.is_satisfied() {
+    if !outer_circuit_cs.is_satisfied() {
         println!("=========================================================");
-        println!("num constraints: {:?}", pf_check_cs.num_constraints());
+        println!(
+            "Outer circuit num constraints: {:?}",
+            outer_circuit_cs.num_constraints()
+        );
         println!("Unsatisfied constraints:");
-        println!("{}", pf_check_cs.which_is_unsatisfied().unwrap());
+        println!("{}", outer_circuit_cs.which_is_unsatisfied().unwrap());
         println!("=========================================================");
     }
-    if pf_check_cs.is_satisfied() {
-        println!("\n\n\n\nAll Proof check constraints:");
-        // pf_check_cs.print_named_objects();
-        println!("num constraints: {:?}", pf_check_cs.num_constraints());
-    }
-    println!("=========================================================");
-    println!("=========================================================");
-    println!("=========================================================");
 
-    assert!(pf_check_cs.is_satisfied());
+    {
+        println!("=========================================================");
+        let num_constraints = outer_circuit_cs.num_constraints();
+        println!("Outer circuit num constraints: {:?}", num_constraints);
+        assert_eq!(519976, num_constraints);
+        println!("=========================================================");
+    }
+
+    assert!(outer_circuit_cs.is_satisfied());
 }

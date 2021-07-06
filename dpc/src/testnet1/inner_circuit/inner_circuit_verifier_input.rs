@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet1::{parameters::SystemParameters, AleoAmount, BaseDPCComponents};
+use crate::{
+    testnet1::{parameters::SystemParameters, Testnet1Components},
+    AleoAmount,
+};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH},
@@ -24,8 +27,8 @@ use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use std::sync::Arc;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: BaseDPCComponents"))]
-pub struct InnerCircuitVerifierInput<C: BaseDPCComponents> {
+#[derivative(Clone(bound = "C: Testnet1Components"))]
+pub struct InnerCircuitVerifierInput<C: Testnet1Components> {
     // Commitment, CRH, and signature parameters
     pub system_parameters: SystemParameters<C>,
 
@@ -51,34 +54,34 @@ pub struct InnerCircuitVerifierInput<C: BaseDPCComponents> {
     pub network_id: u8,
 }
 
-impl<C: BaseDPCComponents> ToConstraintField<C::InnerField> for InnerCircuitVerifierInput<C>
+impl<C: Testnet1Components> ToConstraintField<C::InnerScalarField> for InnerCircuitVerifierInput<C>
 where
-    <C::AccountCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
-    <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerField>,
+    <C::AccountCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
 
-    <C::AccountEncryption as EncryptionScheme>::Parameters: ToConstraintField<C::InnerField>,
+    <C::AccountEncryption as EncryptionScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
 
-    <C::AccountSignature as SignatureScheme>::Parameters: ToConstraintField<C::InnerField>,
-    <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerField>,
+    <C::AccountSignature as SignatureScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
 
-    <C::RecordCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
-    <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerField>,
+    <C::RecordCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
 
-    <C::EncryptedRecordCRH as CRH>::Parameters: ToConstraintField<C::InnerField>,
-    <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerField>,
+    <C::EncryptedRecordCRH as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
 
-    <C::SerialNumberNonceCRH as CRH>::Parameters: ToConstraintField<C::InnerField>,
+    <C::SerialNumberNonceCRH as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
 
-    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
-    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerField>,
+    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
 
-    <C::LocalDataCRH as CRH>::Parameters: ToConstraintField<C::InnerField>,
-    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerField>,
+    <C::LocalDataCRH as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
 
-    <<C::MerkleParameters as MerkleParameters>::H as CRH>::Parameters: ToConstraintField<C::InnerField>,
-    MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerField>,
+    <<C::MerkleParameters as MerkleParameters>::H as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
+    MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerScalarField>,
 {
-    fn to_field_elements(&self) -> Result<Vec<C::InnerField>, ConstraintFieldError> {
+    fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
 
         v.extend_from_slice(
@@ -142,13 +145,15 @@ where
         }
 
         v.extend_from_slice(&self.program_commitment.to_field_elements()?);
-        v.extend_from_slice(&ToConstraintField::<C::InnerField>::to_field_elements(&self.memo)?);
-        v.extend_from_slice(&ToConstraintField::<C::InnerField>::to_field_elements(
+        v.extend_from_slice(&ToConstraintField::<C::InnerScalarField>::to_field_elements(
+            &self.memo,
+        )?);
+        v.extend_from_slice(&ToConstraintField::<C::InnerScalarField>::to_field_elements(
             &[self.network_id][..],
         )?);
         v.extend_from_slice(&self.local_data_root.to_field_elements()?);
 
-        v.extend_from_slice(&ToConstraintField::<C::InnerField>::to_field_elements(
+        v.extend_from_slice(&ToConstraintField::<C::InnerScalarField>::to_field_elements(
             &self.value_balance.0.to_le_bytes()[..],
         )?);
         Ok(v)

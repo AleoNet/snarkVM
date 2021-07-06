@@ -22,6 +22,9 @@ use std::fmt::Debug;
 
 #[derive(Debug, Error)]
 pub enum StorageError {
+    #[error("{}", _0)]
+    BlockError(#[from] BlockError),
+
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
@@ -63,6 +66,9 @@ pub enum StorageError {
 
     #[error("missing transaction with id {}", _0)]
     InvalidTransactionId(String),
+
+    #[error("{}", _0)]
+    MerkleError(#[from] MerkleError),
 
     #[error("{}", _0)]
     Message(String),
@@ -119,16 +125,10 @@ pub enum StorageError {
     NullError(()),
 
     #[error("{}", _0)]
-    BlockError(BlockError),
+    ParameterError(#[from] ParameterError),
 
     #[error("{}", _0)]
-    MerkleError(MerkleError),
-
-    #[error("{}", _0)]
-    ParameterError(ParameterError),
-
-    #[error("{}", _0)]
-    TransactionError(TransactionError),
+    TransactionError(#[from] TransactionError),
 }
 
 impl From<bincode::Error> for StorageError {
@@ -152,29 +152,5 @@ impl From<()> for StorageError {
 impl From<&'static str> for StorageError {
     fn from(msg: &'static str) -> Self {
         StorageError::Message(msg.into())
-    }
-}
-
-impl From<BlockError> for StorageError {
-    fn from(error: BlockError) -> Self {
-        StorageError::BlockError(error)
-    }
-}
-
-impl From<MerkleError> for StorageError {
-    fn from(error: MerkleError) -> Self {
-        StorageError::MerkleError(error)
-    }
-}
-
-impl From<ParameterError> for StorageError {
-    fn from(error: ParameterError) -> Self {
-        StorageError::ParameterError(error)
-    }
-}
-
-impl From<TransactionError> for StorageError {
-    fn from(error: TransactionError) -> Self {
-        StorageError::TransactionError(error)
     }
 }

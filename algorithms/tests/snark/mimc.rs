@@ -180,7 +180,7 @@ fn test_mimc_groth_16() {
         generate_random_parameters::<Bls12_377, _, _>(&c, rng).unwrap()
     };
 
-    // Prepare the verification key (for proof verification)
+    // Prepare the verifying key (for proof verification)
     let pvk = prepare_verifying_key(params.vk.clone());
 
     println!("Creating proofs...");
@@ -267,7 +267,7 @@ fn test_mimc_groth_maller_17() {
         generate_random_parameters::<Bls12_377, _, _>(&c, rng).unwrap()
     };
 
-    // Prepare the verification key (for proof verification)
+    // Prepare the verifying key (for proof verification)
     let pvk = prepare_verifying_key(params.vk.clone());
 
     println!("Creating proofs...");

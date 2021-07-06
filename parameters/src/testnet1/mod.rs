@@ -20,10 +20,11 @@ pub use genesis::*;
 // POSW SNARK
 impl_params_remote!(
     PoswSNARKPKParameters,
-    "https://snarkos-testnet.s3-us-west-2.amazonaws.com",
+    posw_snark_pk_test,
+    "https://s3-us-west-1.amazonaws.com/aleo.parameters",
     "./",
     "posw_snark_pk",
-    171163800
+    172512528
 );
 impl_params_local!(PoswSNARKVKParameters, posw_snark_vk_test, "./", "posw_snark_vk", 40807);
 
@@ -46,7 +47,8 @@ impl_params_local!(
 // Inner SNARK
 impl_params_remote!(
     InnerSNARKPKParameters,
-    "https://snarkos-testnet.s3-us-west-2.amazonaws.com",
+    inner_snark_pk_test,
+    "https://s3-us-west-1.amazonaws.com/aleo.parameters",
     "./",
     "inner_snark_pk",
     250108401
@@ -62,7 +64,8 @@ impl_params_local!(
 // Outer SNARK
 impl_params_remote!(
     OuterSNARKPKParameters,
-    "https://snarkos-testnet.s3-us-west-2.amazonaws.com",
+    outer_snark_pk_test,
+    "https://s3-us-west-1.amazonaws.com/aleo.parameters",
     "./",
     "outer_snark_pk",
     502942005

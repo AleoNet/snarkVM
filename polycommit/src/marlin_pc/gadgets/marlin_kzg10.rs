@@ -141,7 +141,7 @@ where
         > = lc_info.iter().map(|c| (c.0.clone(), c.clone())).collect();
 
         let mut query_to_labels_map: BTreeMap<
-            <TargetCurve as PairingEngine>::Fr,
+            String,
             (
                 NonNativeFieldVar<<TargetCurve as PairingEngine>::Fr, <BaseCurve as PairingEngine>::Fr>,
                 BTreeSet<&String>,
@@ -153,10 +153,8 @@ where
         sorted_query_set_gadgets.sort_by(|a, b| a.0.cmp(&b.0));
 
         for (label, point) in sorted_query_set_gadgets.iter() {
-            // (raychu86): Changed entry `point.name` to `point.value` to preserve the same ordering,
-            // as the native implementation
             let labels = query_to_labels_map
-                .entry(point.value.value()?)
+                .entry(point.name.clone())
                 .or_insert((point.value.clone(), BTreeSet::new()));
             labels.1.insert(label);
         }

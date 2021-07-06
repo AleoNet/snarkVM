@@ -19,7 +19,7 @@ use crate::{
         g1::{G1Affine, G1Prepared, G1Projective},
         g2::{G2Affine, G2Prepared, G2Projective},
     },
-    traits::{ModelParameters, PairingCurve, PairingEngine, SWModelParameters},
+    traits::{ModelParameters, PairingCurve, PairingEngine, ShortWeierstrassParameters},
 };
 use serde::{Deserialize, Serialize};
 use snarkvm_fields::{
@@ -50,8 +50,8 @@ pub trait BW6Parameters: 'static {
     type Fp: PrimeField + SquareRootField + Into<<Self::Fp as PrimeField>::BigInteger>;
     type Fp3Params: Fp3Parameters<Fp = Self::Fp>;
     type Fp6Params: Fp6Parameters<Fp3Params = Self::Fp3Params>;
-    type G1Parameters: SWModelParameters<BaseField = Self::Fp>;
-    type G2Parameters: SWModelParameters<
+    type G1Parameters: ShortWeierstrassParameters<BaseField = Self::Fp>;
+    type G2Parameters: ShortWeierstrassParameters<
         BaseField = Self::Fp,
         ScalarField = <Self::G1Parameters as ModelParameters>::ScalarField,
     >;

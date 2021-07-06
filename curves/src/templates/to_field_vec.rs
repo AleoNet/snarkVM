@@ -16,14 +16,14 @@
 
 use crate::{
     templates::{
-        short_weierstrass::short_weierstrass_jacobian::{GroupAffine as SWAffine, GroupProjective as SWProjective},
-        twisted_edwards_extended::{GroupAffine as TEAffine, GroupProjective as TEProjective},
+        short_weierstrass_jacobian::{Affine as SWAffine, Projective as SWProjective},
+        twisted_edwards_extended::{Affine as TEAffine, Projective as TEProjective},
     },
-    traits::{ProjectiveCurve, SWModelParameters, TEModelParameters},
+    traits::{ProjectiveCurve, ShortWeierstrassParameters, TwistedEdwardsParameters},
 };
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 
-impl<M: TEModelParameters, F: Field> ToConstraintField<F> for TEAffine<M>
+impl<M: TwistedEdwardsParameters, F: Field> ToConstraintField<F> for TEAffine<M>
 where
     M::BaseField: ToConstraintField<F>,
 {
@@ -36,7 +36,7 @@ where
     }
 }
 
-impl<M: TEModelParameters, F: Field> ToConstraintField<F> for TEProjective<M>
+impl<M: TwistedEdwardsParameters, F: Field> ToConstraintField<F> for TEProjective<M>
 where
     M::BaseField: ToConstraintField<F>,
 {
@@ -50,7 +50,7 @@ where
     }
 }
 
-impl<M: SWModelParameters, F: Field> ToConstraintField<F> for SWAffine<M>
+impl<M: ShortWeierstrassParameters, F: Field> ToConstraintField<F> for SWAffine<M>
 where
     M::BaseField: ToConstraintField<F>,
 {
@@ -65,7 +65,7 @@ where
     }
 }
 
-impl<M: SWModelParameters, F: Field> ToConstraintField<F> for SWProjective<M>
+impl<M: ShortWeierstrassParameters, F: Field> ToConstraintField<F> for SWProjective<M>
 where
     M::BaseField: ToConstraintField<F>,
 {

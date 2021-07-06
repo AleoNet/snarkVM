@@ -20,8 +20,8 @@ use crate::{
     traits::{alloc::AllocGadget, curves::GroupGadget, select::CondSelectGadget},
 };
 use snarkvm_curves::{
-    templates::twisted_edwards_extended::GroupAffine as TEAffine,
-    traits::{Group, TEModelParameters},
+    templates::twisted_edwards_extended::Affine as TEAffine,
+    traits::{Group, TwistedEdwardsParameters},
 };
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::ConstraintSystem;
@@ -33,7 +33,7 @@ use rand::thread_rng;
 pub(crate) fn edwards_test<F, P, GG, CS>(cs: &mut CS)
 where
     F: Field,
-    P: TEModelParameters,
+    P: TwistedEdwardsParameters,
     GG: GroupGadget<TEAffine<P>, F, Value = TEAffine<P>>,
     CS: ConstraintSystem<F>,
 {
@@ -64,7 +64,7 @@ where
 pub(crate) fn edwards_constraint_costs<F, P, GG, CS>(cs: &mut CS)
 where
     F: Field,
-    P: TEModelParameters,
+    P: TwistedEdwardsParameters,
     GG: GroupGadget<TEAffine<P>, F, Value = TEAffine<P>>,
     CS: ConstraintSystem<F>,
 {

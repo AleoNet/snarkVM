@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub use crate::crh::pedersen_parameters::PedersenSize;
-
 use crate::{
     crh::{BoweHopwoodPedersenCRH, BoweHopwoodPedersenCRHParameters, PedersenCRH, PedersenCRHParameters},
     errors::CRHError,
@@ -27,22 +25,28 @@ use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use rand::Rng;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BoweHopwoodPedersenCompressedCRH<G: Group + ProjectiveCurve, S: PedersenSize> {
-    pub parameters: PedersenCRHParameters<G, S>,
+pub struct BoweHopwoodPedersenCompressedCRH<
+    G: Group + ProjectiveCurve,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> {
+    pub parameters: PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>,
     pub bowe_hopwood_parameters: BoweHopwoodPedersenCRHParameters<G>,
 }
 
-impl<G: Group + ProjectiveCurve, S: PedersenSize> CRH for BoweHopwoodPedersenCompressedCRH<G, S> {
+impl<G: Group + ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
+    for BoweHopwoodPedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+{
     type Output = <G::Affine as AffineCurve>::BaseField;
-    type Parameters = PedersenCRHParameters<G, S>;
+    type Parameters = PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>;
 
-    const INPUT_SIZE_BITS: usize = PedersenCRH::<G, S>::INPUT_SIZE_BITS;
+    const INPUT_SIZE_BITS: usize = PedersenCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::INPUT_SIZE_BITS;
 
     fn setup<R: Rng>(rng: &mut R) -> Self {
         let BoweHopwoodPedersenCRH {
             parameters,
             bowe_hopwood_parameters,
-        } = BoweHopwoodPedersenCRH::<G, S>::setup(rng);
+        } = BoweHopwoodPedersenCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(rng);
 
         Self {
             parameters,
@@ -51,7 +55,7 @@ impl<G: Group + ProjectiveCurve, S: PedersenSize> CRH for BoweHopwoodPedersenCom
     }
 
     fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
-        let crh = BoweHopwoodPedersenCRH::<G, S> {
+        let crh = BoweHopwoodPedersenCRH::<G, NUM_WINDOWS, WINDOW_SIZE> {
             parameters: self.parameters.clone(),
             bowe_hopwood_parameters: self.bowe_hopwood_parameters.clone(),
         };
@@ -67,10 +71,11 @@ impl<G: Group + ProjectiveCurve, S: PedersenSize> CRH for BoweHopwoodPedersenCom
     }
 }
 
-impl<G: Group + ProjectiveCurve, S: PedersenSize> From<PedersenCRHParameters<G, S>>
-    for BoweHopwoodPedersenCompressedCRH<G, S>
+impl<G: Group + ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    From<PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>>
+    for BoweHopwoodPedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    fn from(parameters: PedersenCRHParameters<G, S>) -> Self {
+    fn from(parameters: PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>) -> Self {
         Self {
             bowe_hopwood_parameters: BoweHopwoodPedersenCRHParameters::new(),
             parameters,
@@ -78,8 +83,8 @@ impl<G: Group + ProjectiveCurve, S: PedersenSize> From<PedersenCRHParameters<G, 
     }
 }
 
-impl<F: Field, G: Group + ProjectiveCurve + ToConstraintField<F>, S: PedersenSize> ToConstraintField<F>
-    for BoweHopwoodPedersenCompressedCRH<G, S>
+impl<F: Field, G: Group + ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    ToConstraintField<F> for BoweHopwoodPedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {

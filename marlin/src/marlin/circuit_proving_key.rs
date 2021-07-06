@@ -17,7 +17,12 @@
 use crate::{ahp::indexer::*, marlin::CircuitVerifyingKey, Vec};
 use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::PolynomialCommitment;
-use snarkvm_utilities::{errors::SerializationError, serialize::*};
+use snarkvm_utilities::{
+    bytes::{FromBytes, ToBytes},
+    error,
+    errors::SerializationError,
+    serialize::*,
+};
 
 use derivative::Derivative;
 use std::io::{Read, Result as IoResult, Write};
@@ -37,17 +42,15 @@ pub struct CircuitProvingKey<F: PrimeField, PC: PolynomialCommitment<F>> {
     pub committer_key: PC::CommitterKey,
 }
 
-// TODO (raychu86): Implement ToBytes and FromBytes for proving key.
-
 impl<F: PrimeField, PC: PolynomialCommitment<F>> ToBytes for CircuitProvingKey<F, PC> {
-    fn write<W: Write>(&self, mut _writer: W) -> IoResult<()> {
-        unimplemented!()
+    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize CircuitProvingKey"))
     }
 }
 
 impl<F: PrimeField, PC: PolynomialCommitment<F>> FromBytes for CircuitProvingKey<F, PC> {
     #[inline]
-    fn read<R: Read>(mut _reader: R) -> IoResult<Self> {
-        unimplemented!()
+    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize CircuitProvingKey"))
     }
 }
