@@ -80,9 +80,14 @@ impl<P: Parameters> PartialEq for Projective<P> {
 impl<P: Parameters> Distribution<Projective<P>> for Standard {
     #[inline]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Projective<P> {
-        let res = Projective::prime_subgroup_generator() * P::ScalarField::rand(rng);
-        debug_assert!(res.into_affine().is_in_correct_subgroup_assuming_on_curve());
-        res
+        loop {
+            let x = P::BaseField::rand(rng);
+            let greatest = rng.gen();
+
+            if let Some(p) = Affine::from_x_coordinate(x, greatest) {
+                return p.scale_by_cofactor();
+            }
+        }
     }
 }
 
