@@ -70,7 +70,7 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
             &(NoopCircuit::blank(local_data_commitment.parameters()), universal_srs),
             rng,
         )?;
-        let verifying_key = prepared_verifying_key.into();
+        let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
 
         // Compute the program ID.
         let id = to_bytes![<C as DPCComponents>::ProgramVerificationKeyCRH::hash(

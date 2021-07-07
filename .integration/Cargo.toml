@@ -44,7 +44,7 @@ version = "0.7.1"
 [dependencies.snarkvm-profiler]
 path = "../profiler"
 version = "0.7.1"
-default-features = false
+features = ["print-trace"]
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
