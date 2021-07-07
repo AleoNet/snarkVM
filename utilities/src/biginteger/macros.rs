@@ -191,6 +191,28 @@ macro_rules! bigint_impl {
             }
 
             #[inline]
+            fn to_bytes_be(&self) -> Vec<u8> {
+                let mut le_bytes = self.to_bytes_le();
+                le_bytes.reverse();
+                le_bytes
+            }
+
+            #[inline]
+            fn to_bytes_le(&self) -> Vec<u8> {
+                let array_map = self.0.iter().map(|limb| limb.to_le_bytes());
+                let mut res = Vec::<u8>::with_capacity($num_limbs * 8);
+                for limb in array_map {
+                    res.extend_from_slice(&limb);
+                }
+                res
+            }
+
+            #[inline]
+            fn to_biguint(&self) -> num_bigint::BigUint {
+                BigUint::from_bytes_le(&self.to_bytes_le())
+            }
+
+            #[inline]
             fn find_wnaf(&self) -> Vec<i64> {
                 let mut res = vec![];
 
@@ -250,7 +272,7 @@ macro_rules! bigint_impl {
                     if is_nonzero {
                         let shift = (($num_limbs - (i + 1)) * 6) as u64;
                         let shifter = 1 << shift;
-                        write!(f, "{}", shifter - 1 + *limb)?;
+                        write!(f, "{} ", shifter - 1 + *limb)?;
                     }
                 }
 

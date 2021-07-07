@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::PrimeField;
-use snarkvm_sponge::CryptographicSponge;
-use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use crate::FpGadget;
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+use snarkvm_sponge::CryptographicSponge;
 
 /// The interface for a cryptographic sponge constraints on field `CF`.
 /// A sponge can `absorb` or take in inputs and later `squeeze` or output bytes or field elements.

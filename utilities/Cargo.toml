@@ -33,6 +33,9 @@ features = [ "std_rng" ]
 [dependencies.thiserror]
 version = "1.0"
 
+[dependencies.num-bigint]
+version = "0.4.0"
+
 [dev-dependencies.rand_xorshift]
 version = "0.3"
 default-features = false
