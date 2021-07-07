@@ -17,9 +17,7 @@
 use crate::errors::EncodingError;
 use snarkvm_curves::traits::{
     pairing_engine::{AffineCurve, ProjectiveCurve},
-    Group,
-    MontgomeryParameters,
-    TwistedEdwardsParameters,
+    Group, MontgomeryParameters, TwistedEdwardsParameters,
 };
 use snarkvm_fields::{Field, LegendreSymbol, One, SquareRootField, Zero};
 use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
@@ -61,7 +59,7 @@ impl<P: MontgomeryParameters + TwistedEdwardsParameters, G: Group + ProjectiveCu
             let r = input;
 
             // Let u = D.
-            // TODO (howardwu): change to 11.
+            // TODO (howardwu): CRITICAL - change to 11, confirm in gadget impl as well.
             let u = Self::D;
 
             // Let ur2 = u * r^2;
