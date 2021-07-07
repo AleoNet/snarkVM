@@ -23,18 +23,13 @@ macro_rules! field {
         }
     };
     ($name:ident, $c0:expr, $c1:expr $(,)?) => {
-        $name {
-            c0: $c0,
-            c1: $c1,
-            _parameters: std::marker::PhantomData,
-        }
+        $name { c0: $c0, c1: $c1 }
     };
     ($name:ident, $c0:expr, $c1:expr, $c2:expr $(,)?) => {
         $name {
             c0: $c0,
             c1: $c1,
             c2: $c2,
-            _parameters: std::marker::PhantomData,
         }
     };
 }

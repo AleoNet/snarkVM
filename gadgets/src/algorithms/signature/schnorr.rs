@@ -48,7 +48,6 @@ use std::{borrow::Borrow, marker::PhantomData};
 #[derive(Clone)]
 pub struct SchnorrParametersGadget<G: Group, F: Field, D: Digest> {
     parameters: SchnorrParameters<G, D>,
-    _group: PhantomData<*const G>,
     _engine: PhantomData<*const F>,
 }
 
@@ -62,7 +61,6 @@ impl<G: Group, F: Field, D: Digest> AllocGadget<SchnorrParameters<G, D>, F> for 
         Ok(Self {
             parameters,
             _engine: PhantomData,
-            _group: PhantomData,
         })
     }
 
@@ -79,7 +77,6 @@ impl<G: Group, F: Field, D: Digest> AllocGadget<SchnorrParameters<G, D>, F> for 
         Ok(Self {
             parameters,
             _engine: PhantomData,
-            _group: PhantomData,
         })
     }
 }

@@ -31,7 +31,6 @@ use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
@@ -65,19 +64,11 @@ pub struct Fp6<P: Fp6Parameters> {
     pub c0: Fp2<P::Fp2Params>,
     pub c1: Fp2<P::Fp2Params>,
     pub c2: Fp2<P::Fp2Params>,
-    #[derivative(Debug = "ignore")]
-    #[doc(hidden)]
-    pub params: PhantomData<P>,
 }
 
 impl<P: Fp6Parameters> Fp6<P> {
     pub fn new(c0: Fp2<P::Fp2Params>, c1: Fp2<P::Fp2Params>, c2: Fp2<P::Fp2Params>) -> Self {
-        Self {
-            c0,
-            c1,
-            c2,
-            params: PhantomData,
-        }
+        Self { c0, c1, c2 }
     }
 
     pub fn mul_by_fp(&mut self, element: &<P::Fp2Params as Fp2Parameters>::Fp) {
