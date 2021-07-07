@@ -36,7 +36,7 @@ use snarkvm_gadgets::{
     CompressedGroupGadget,
 };
 use snarkvm_marlin::{
-    marlin::{MarlinMode, MarlinSNARK, UniversalSRS},
+    marlin::{MarlinMode, UniversalSRS},
     FiatShamirRng,
 };
 use snarkvm_parameters::{prelude::*, testnet2::*};
@@ -139,36 +139,6 @@ pub struct DPC<C: Testnet2Components> {
         Option<<C::OuterSNARK as SNARK>::ProvingKey>,
         <C::OuterSNARK as SNARK>::PreparedVerifyingKey,
     ),
-}
-
-impl<C: Testnet2Components> DPC<C>
-where
-    <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::VerifierKey:
-        ToConstraintField<C::OuterScalarField>,
-    <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::Commitment:
-        ToConstraintField<C::OuterScalarField>,
-{
-    pub fn generate_program_snark_universal_srs<R: Rng + CryptoRng>(
-        rng: &mut R,
-    ) -> Result<ProgramSNARKUniversalSRS<C>, DPCError> {
-        // TODO (raychu86): Specify the `num_constraints`, `num_variables`, and `num_non_zero` variables.
-
-        let num_constraints = 10000;
-        let num_variables = 10000;
-        let num_non_zero = 10000;
-
-        // TODO (raychu86): Handle this unwrap.
-        let universal_srs = MarlinSNARK::<
-            C::InnerScalarField,
-            C::OuterScalarField,
-            C::PolynomialCommitment,
-            C::FiatShamirRng,
-            C::MarlinMode,
-        >::universal_setup(num_constraints, num_variables, num_non_zero, rng)
-        .unwrap();
-
-        Ok(ProgramSNARKUniversalSRS(universal_srs))
-    }
 }
 
 impl<C: Testnet2Components, L: LedgerScheme> DPCScheme<L> for DPC<C>
