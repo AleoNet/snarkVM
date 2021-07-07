@@ -161,7 +161,7 @@ macro_rules! impl_primefield_serializer {
                 const BYTE_SIZE: usize = $byte_size;
 
                 let (output_bit_size, output_byte_size) =
-                    snarkvm_utilities::serialize::buffer_bit_byte_size($field::<P>::size_in_bits());
+                    snarkvm_utilities::serialize::number_of_bits_and_bytes($field::<P>::size_in_bits());
                 if F::len() > (output_bit_size - P::MODULUS_BITS as usize) {
                     return Err(snarkvm_utilities::errors::SerializationError::NotEnoughSpace);
                 }
@@ -177,7 +177,7 @@ macro_rules! impl_primefield_serializer {
         }
 
         impl<P: $params> ConstantSerializedSize for $field<P> {
-            const SERIALIZED_SIZE: usize = snarkvm_utilities::serialize::buffer_byte_size(
+            const SERIALIZED_SIZE: usize = snarkvm_utilities::serialize::number_of_bits_to_number_of_bytes(
                 <$field<P> as crate::PrimeField>::Parameters::MODULUS_BITS as usize,
             );
             const UNCOMPRESSED_SIZE: usize = Self::SERIALIZED_SIZE;
@@ -207,7 +207,7 @@ macro_rules! impl_primefield_serializer {
                 const BYTE_SIZE: usize = $byte_size;
 
                 let (output_bit_size, output_byte_size) =
-                    snarkvm_utilities::serialize::buffer_bit_byte_size($field::<P>::size_in_bits());
+                    snarkvm_utilities::serialize::number_of_bits_and_bytes($field::<P>::size_in_bits());
                 if F::len() > (output_bit_size - P::MODULUS_BITS as usize) {
                     return Err(snarkvm_utilities::errors::SerializationError::NotEnoughSpace);
                 }
@@ -229,7 +229,7 @@ macro_rules! impl_primefield_serializer {
                 const BYTE_SIZE: usize = $byte_size;
 
                 let (_, output_byte_size) =
-                    snarkvm_utilities::serialize::buffer_bit_byte_size($field::<P>::size_in_bits());
+                    snarkvm_utilities::serialize::number_of_bits_and_bytes($field::<P>::size_in_bits());
 
                 let mut masked_bytes = [0; BYTE_SIZE];
                 reader.read_exact(&mut masked_bytes[..output_byte_size])?;
@@ -299,12 +299,15 @@ macro_rules! impl_field_from_random_bytes_with_flags {
     ($limbs: expr) => {
         #[inline]
         fn from_random_bytes_with_flags(bytes: &[u8]) -> Option<(Self, u8)> {
-            let mut result_bytes = [0u8; $limbs * 8];
-            for (result_byte, in_byte) in result_bytes.iter_mut().zip(bytes.iter()) {
-                *result_byte = *in_byte;
-            }
+            // Copy the input into a temporary buffer.
+            let mut result_bytes = [0u8; $limbs * 8 + 1];
+            result_bytes.iter_mut().zip(bytes).for_each(|(result, input)| {
+                *result = *input;
+            });
 
-            let mask: u64 = 0xffffffffffffffff >> P::REPR_SHAVE_BITS;
+            // The `mask` retains everything in the final limb up to `P::MODULUS_BITS`.
+            let mask = u64::MAX >> P::REPR_SHAVE_BITS;
+
             // the flags will be at the same byte with the lowest shaven bits or the one after
             let flags_byte_position: usize = 7 - P::REPR_SHAVE_BITS as usize / 8;
             let flags_mask: u8 = ((1 << P::REPR_SHAVE_BITS % 8) - 1) << (8 - P::REPR_SHAVE_BITS % 8);

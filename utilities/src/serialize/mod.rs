@@ -32,16 +32,23 @@ pub use flags::*;
 #[cfg(feature = "derive")]
 pub use snarkvm_derives::*;
 
-/// Serializer in little endian format allowing to encode flags.
-pub trait CanonicalSerializeWithFlags: CanonicalSerialize {
-    /// Serializes `self` and `flags` into `writer`.
-    fn serialize_with_flags<W: Write, F: Flags>(&self, writer: &mut W, flags: F) -> Result<(), SerializationError>;
+/// Return the number of (byte-aligned) bits and bytes required to represent the given number of bits.
+///
+/// Examples:
+/// - Given `64 bits`, returns `(64, 8)`.
+/// - Given `251 bits`, returns `(256, 32)`.
+/// - Given `999 bits`, returns `(1000, 125)`.
+#[inline]
+pub const fn number_of_bits_and_bytes(num_bits: usize) -> (usize, usize) {
+    let byte_size = number_of_bits_to_number_of_bytes(num_bits);
+    ((byte_size * 8), byte_size)
 }
 
-/// Helper trait to get serialized size for constant sized structs.
-pub trait ConstantSerializedSize: CanonicalSerialize {
-    const SERIALIZED_SIZE: usize;
-    const UNCOMPRESSED_SIZE: usize;
+/// Return the number of bytes required to represent the given number of bits.
+#[inline]
+pub const fn number_of_bits_to_number_of_bytes(num_bits: usize) -> usize {
+    let num_bytes = (num_bits + 7) / 8;
+    num_bytes
 }
 
 /// Serializer in little endian format.
@@ -61,9 +68,6 @@ pub trait ConstantSerializedSize: CanonicalSerialize {
 ///     b: (u64, (u64, u64)),
 /// }
 /// ```
-///
-/// If your code depends on `algebra` instead, the example works analogously
-/// when importing `algebra::serialize::*`.
 pub trait CanonicalSerialize {
     /// Serializes `self` into `writer`.
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError>;
@@ -80,11 +84,16 @@ pub trait CanonicalSerialize {
     }
 }
 
-/// Deserializer in little endian format allowing flags to be encoded.
-pub trait CanonicalDeserializeWithFlags: Sized {
-    /// Reads `Self` and `Flags` from `reader`.
-    /// Returns empty flags by default.
-    fn deserialize_with_flags<R: Read, F: Flags>(reader: &mut R) -> Result<(Self, F), SerializationError>;
+/// Serializer in little endian format allowing to encode flags.
+pub trait CanonicalSerializeWithFlags: CanonicalSerialize {
+    /// Serializes `self` and `flags` into `writer`.
+    fn serialize_with_flags<W: Write, F: Flags>(&self, writer: &mut W, flags: F) -> Result<(), SerializationError>;
+}
+
+/// Helper trait to get serialized size for constant sized structs.
+pub trait ConstantSerializedSize: CanonicalSerialize {
+    const SERIALIZED_SIZE: usize;
+    const UNCOMPRESSED_SIZE: usize;
 }
 
 /// Deserializer in little endian format.
@@ -104,9 +113,6 @@ pub trait CanonicalDeserializeWithFlags: Sized {
 ///     b: (u64, (u64, u64)),
 /// }
 /// ```
-///
-/// If your code depends on `algebra` instead, the example works analogously
-/// when importing `algebra::serialize::*`.
 pub trait CanonicalDeserialize: Sized {
     /// Reads `Self` from `reader`.
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError>;
@@ -116,6 +122,13 @@ pub trait CanonicalDeserialize: Sized {
     fn deserialize_uncompressed<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
         Self::deserialize(reader)
     }
+}
+
+/// Deserializer in little endian format allowing flags to be encoded.
+pub trait CanonicalDeserializeWithFlags: Sized {
+    /// Reads `Self` and `Flags` from `reader`.
+    /// Returns empty flags by default.
+    fn deserialize_with_flags<R: Read, F: Flags>(reader: &mut R) -> Result<(Self, F), SerializationError>;
 }
 
 impl CanonicalSerialize for bool {
@@ -220,6 +233,28 @@ impl<T: CanonicalSerialize> CanonicalSerialize for Option<T> {
         }
 
         Ok(())
+    }
+}
+
+impl<T: CanonicalDeserialize> CanonicalDeserialize for Option<T> {
+    #[inline]
+    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
+        let is_some = bool::deserialize(reader)?;
+        let data = if is_some { Some(T::deserialize(reader)?) } else { None };
+
+        Ok(data)
+    }
+
+    #[inline]
+    fn deserialize_uncompressed<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
+        let is_some = bool::deserialize(reader)?;
+        let data = if is_some {
+            Some(T::deserialize_uncompressed(reader)?)
+        } else {
+            None
+        };
+
+        Ok(data)
     }
 }
 
@@ -344,57 +379,25 @@ where
     }
 }
 
-impl<T: CanonicalDeserialize> CanonicalDeserialize for Option<T> {
-    #[inline]
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        let is_some = bool::deserialize(reader)?;
-        let data = if is_some { Some(T::deserialize(reader)?) } else { None };
-
-        Ok(data)
-    }
-
-    #[inline]
-    fn deserialize_uncompressed<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        let is_some = bool::deserialize(reader)?;
-        let data = if is_some {
-            Some(T::deserialize_uncompressed(reader)?)
-        } else {
-            None
-        };
-
-        Ok(data)
-    }
-}
-
 impl<T: CanonicalSerialize> CanonicalSerialize for Vec<T> {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
-        let len = self.len() as u64;
-        len.serialize(writer)?;
-        for item in self.iter() {
-            item.serialize(writer)?;
-        }
-        Ok(())
+        self.as_slice().serialize(writer)
     }
 
     #[inline]
     fn serialized_size(&self) -> usize {
-        8 + self.iter().map(|item| item.serialized_size()).sum::<usize>()
+        self.as_slice().serialized_size()
     }
 
     #[inline]
     fn serialize_uncompressed<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
-        let len = self.len() as u64;
-        len.serialize(writer)?;
-        for item in self.iter() {
-            item.serialize_uncompressed(writer)?;
-        }
-        Ok(())
+        self.as_slice().serialize_uncompressed(writer)
     }
 
     #[inline]
     fn uncompressed_size(&self) -> usize {
-        8 + self.iter().map(|item| item.uncompressed_size()).sum::<usize>()
+        self.as_slice().uncompressed_size()
     }
 }
 
@@ -541,17 +544,6 @@ impl_tuple!(A:0, B:1,);
 impl_tuple!(A:0, B:1, C:2,);
 impl_tuple!(A:0, B:1, C:2, D:3,);
 
-#[inline]
-pub fn buffer_bit_byte_size(modulus_bits: usize) -> (usize, usize) {
-    let byte_size = buffer_byte_size(modulus_bits);
-    ((byte_size * 8), byte_size)
-}
-
-#[inline]
-pub const fn buffer_byte_size(modulus_bits: usize) -> usize {
-    (modulus_bits + 7) / 8
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -612,6 +604,13 @@ mod test {
     #[test]
     fn test_phantomdata() {
         test_serialize(std::marker::PhantomData::<u64>);
+    }
+
+    #[test]
+    fn test_number_of_bits_and_bytes() {
+        assert_eq!((64, 8), number_of_bits_and_bytes(64));
+        assert_eq!((256, 32), number_of_bits_and_bytes(251));
+        assert_eq!((1000, 125), number_of_bits_and_bytes(999));
     }
 }
 
