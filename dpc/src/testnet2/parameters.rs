@@ -14,10 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{testnet2::Testnet2Components, DPCError};
+use crate::{testnet2::Testnet2Components, DPCError, ProgramError};
 use snarkvm_algorithms::prelude::*;
-use snarkvm_marlin::marlin::UniversalSRS;
+use snarkvm_fields::ToConstraintField;
+use snarkvm_marlin::marlin::{MarlinSNARK, UniversalSRS};
 use snarkvm_parameters::{prelude::*, testnet2::*};
+use snarkvm_polycommit::PolynomialCommitment;
 use snarkvm_utilities::bytes::FromBytes;
 
 use rand::{CryptoRng, Rng};
@@ -150,6 +152,33 @@ impl<C: Testnet2Components> SystemParameters<C> {
 pub struct ProgramSNARKUniversalSRS<C: Testnet2Components>(
     pub UniversalSRS<C::InnerScalarField, C::PolynomialCommitment>,
 );
+
+impl<C: Testnet2Components> ProgramSNARKUniversalSRS<C>
+where
+    <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::VerifierKey:
+        ToConstraintField<C::OuterScalarField>,
+    <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::Commitment:
+        ToConstraintField<C::OuterScalarField>,
+{
+    pub fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, ProgramError> {
+        // TODO (raychu86): CRITICAL - Specify the `num_constraints`, `num_variables`, and `num_non_zero` variables.
+        let num_constraints = 10000;
+        let num_variables = 10000;
+        let num_non_zero = 10000;
+
+        // TODO (raychu86): Handle this unwrap.
+        Ok(Self(
+            MarlinSNARK::<
+                C::InnerScalarField,
+                C::OuterScalarField,
+                C::PolynomialCommitment,
+                C::FiatShamirRng,
+                C::MarlinMode,
+            >::universal_setup(num_constraints, num_variables, num_non_zero, rng)
+            .unwrap(),
+        ))
+    }
+}
 
 impl<C: Testnet2Components> ProgramSNARKUniversalSRS<C> {
     pub fn load() -> IoResult<Self> {
