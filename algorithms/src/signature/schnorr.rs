@@ -18,7 +18,7 @@ use crate::{signature::SchnorrParameters, SignatureError, SignatureScheme};
 use snarkvm_curves::traits::Group;
 use snarkvm_fields::{ConstraintFieldError, Field, One, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
-    bytes::{bytes_to_bits, FromBytes, ToBytes},
+    bytes::{from_bytes_le_to_bits_le, FromBytes, ToBytes},
     errors::SerializationError,
     rand::UniformRand,
     serialize::*,
@@ -146,7 +146,9 @@ where
         let keygen_time = start_timer!(|| "SchnorrSignature::generate_public_key");
 
         let mut public_key = G::zero();
-        for (bit, base_power) in bytes_to_bits(&to_bytes![private_key]?).zip_eq(&self.parameters.generator_powers) {
+        for (bit, base_power) in
+            from_bytes_le_to_bits_le(&to_bytes![private_key]?).zip_eq(&self.parameters.generator_powers)
+        {
             if bit {
                 public_key += base_power;
             }
@@ -170,7 +172,8 @@ where
             // Commit to the random scalar via r := k · g.
             // This is the prover's first msg in the Sigma protocol.
             let mut prover_commitment = G::zero();
-            for (bit, base_power) in bytes_to_bits(&to_bytes![random_scalar]?).zip_eq(&self.parameters.generator_powers)
+            for (bit, base_power) in
+                from_bytes_le_to_bits_le(&to_bytes![random_scalar]?).zip_eq(&self.parameters.generator_powers)
             {
                 if bit {
                     prover_commitment += base_power;
@@ -214,7 +217,9 @@ where
         } = signature;
 
         let mut claimed_prover_commitment = G::zero();
-        for (bit, base_power) in bytes_to_bits(&to_bytes![prover_response]?).zip_eq(&self.parameters.generator_powers) {
+        for (bit, base_power) in
+            from_bytes_le_to_bits_le(&to_bytes![prover_response]?).zip_eq(&self.parameters.generator_powers)
+        {
             if bit {
                 claimed_prover_commitment += base_power;
             }
@@ -249,7 +254,9 @@ where
         let mut randomized_pk = public_key.0;
 
         let mut encoded = G::zero();
-        for (bit, base_power) in bytes_to_bits(&to_bytes![randomness]?).zip_eq(&self.parameters.generator_powers) {
+        for (bit, base_power) in
+            from_bytes_le_to_bits_le(&to_bytes![randomness]?).zip_eq(&self.parameters.generator_powers)
+        {
             if bit {
                 encoded += base_power;
             }
@@ -273,7 +280,7 @@ where
         } = signature;
         let mut base = <G as Group>::ScalarField::one();
         let mut multiplier = <G as Group>::ScalarField::zero();
-        for bit in bytes_to_bits(randomness) {
+        for bit in from_bytes_le_to_bits_le(randomness) {
             if bit {
                 multiplier += base;
             }

@@ -32,7 +32,14 @@ use snarkvm_algorithms::{
 };
 use snarkvm_curves::traits::{AffineCurve, ModelParameters, ProjectiveCurve};
 use snarkvm_fields::One;
-use snarkvm_utilities::{bits_to_bytes, bytes_to_bits, to_bytes, variable_length_integer::*, FromBytes, ToBytes};
+use snarkvm_utilities::{
+    from_bits_le_to_bytes_le,
+    from_bytes_le_to_bits_le,
+    to_bytes,
+    variable_length_integer::*,
+    FromBytes,
+    ToBytes,
+};
 
 use itertools::Itertools;
 use rand::Rng;
@@ -257,7 +264,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
 
         // Concatenate the ciphertext selector bits and the final fq_high selector bit
         selector_bits.push(self.final_fq_high_selector);
-        let selector_bytes = bits_to_bytes(&selector_bits);
+        let selector_bytes = from_bits_le_to_bytes_le(&selector_bits);
 
         Ok(system_parameters
             .encrypted_record_crh
@@ -288,7 +295,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
                 final_element.into_affine(),
                 final_fq_high_selector,
             )?;
-            let final_element_bits = bytes_to_bits(&final_element_bytes);
+            let final_element_bits = from_bytes_le_to_bits_le(&final_element_bytes);
             [
                 &final_element_bits
                     .skip(1)
@@ -422,7 +429,7 @@ impl<C: Testnet2Components> ToBytes for EncryptedRecord<C> {
         ciphertext_selectors.push(self.final_fq_high_selector);
 
         // Write the ciphertext and fq_high selector bits
-        let selector_bytes = bits_to_bytes(&ciphertext_selectors);
+        let selector_bytes = from_bits_le_to_bytes_le(&ciphertext_selectors);
         selector_bytes.write(&mut writer)?;
 
         Ok(())
@@ -447,7 +454,7 @@ impl<C: Testnet2Components> FromBytes for EncryptedRecord<C> {
         let mut selector_bytes = vec![0u8; num_selector_bytes];
         reader.read_exact(&mut selector_bytes)?;
 
-        let mut selector_bits = bytes_to_bits(&selector_bytes);
+        let mut selector_bits = from_bytes_le_to_bits_le(&selector_bytes);
         let ciphertext_selectors = selector_bits.by_ref().take(num_ciphertext_elements);
 
         // Recover the ciphertext

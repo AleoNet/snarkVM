@@ -48,8 +48,8 @@ use snarkvm_gadgets::{
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{
-    bits_to_bytes,
     bytes::{FromBytes, ToBytes},
+    from_bits_le_to_bytes_le,
     to_bytes,
 };
 
@@ -1186,7 +1186,7 @@ where
 
             let ciphertext_and_fq_high_selectors_bytes = UInt8::alloc_vec(
                 &mut encryption_cs.ns(|| format!("ciphertext and fq_high selector bits to bytes {}", j)),
-                &bits_to_bytes(
+                &from_bits_le_to_bytes_le(
                     &[&ciphertext_selectors[..], &[
                         fq_high_selectors[fq_high_selectors.len() - 1]
                     ]]
