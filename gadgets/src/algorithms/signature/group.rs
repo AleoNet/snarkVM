@@ -296,11 +296,13 @@ impl<G: Group, SG: Group, F: Field, FG: FieldGadget<F, F>> ToBytesGadget<F>
 
 pub struct GroupEncryptionPublicKeyRandomizationGadget<
     G: Group,
+    SG: Group,
     F: PrimeField,
     GG: GroupGadget<G, F>,
     FG: FieldGadget<F, F>,
 > {
     pub(crate) _group: PhantomData<*const G>,
+    pub(crate) _signature_group: PhantomData<*const SG>,
     pub(crate) _group_gadget: PhantomData<*const GG>,
     pub(crate) _field_gadget: PhantomData<*const FG>,
     pub(crate) _engine: PhantomData<*const F>,
@@ -314,7 +316,7 @@ impl<
     D: Digest + Send + Sync,
     F: PrimeField,
 > SignaturePublicKeyRandomizationGadget<GroupEncryption<G, SG, D>, F>
-    for GroupEncryptionPublicKeyRandomizationGadget<G, F, GG, FG>
+    for GroupEncryptionPublicKeyRandomizationGadget<G, SG, F, GG, FG>
 {
     type ParametersGadget = GroupEncryptionParametersGadget<G, F>;
     type PublicKeyGadget = GroupEncryptionPublicKeyGadget<G, F, GG>;
