@@ -31,6 +31,7 @@ use rand::Rng;
 use std::{
     hash::Hash,
     io::{Read, Result as IoResult, Write},
+    marker::PhantomData,
 };
 
 #[derive(Derivative)]
@@ -110,7 +111,8 @@ impl<F: Field, G: Group + CanonicalSerialize + CanonicalDeserialize + ToConstrai
     Eq(bound = "G: Group, D: Digest")
 )]
 pub struct Schnorr<G: Group, D: Digest> {
-    pub parameters: SchnorrParameters<G, D>,
+    pub parameters: SchnorrParameters<G>,
+    pub _hash: PhantomData<D>,
 }
 
 impl<G: Group + Hash + CanonicalSerialize + CanonicalDeserialize, D: Digest + Send + Sync> SignatureScheme
@@ -118,7 +120,7 @@ impl<G: Group + Hash + CanonicalSerialize + CanonicalDeserialize, D: Digest + Se
 where
     <G as Group>::ScalarField: PrimeField,
 {
-    type Parameters = SchnorrParameters<G, D>;
+    type Parameters = SchnorrParameters<G>;
     type PrivateKey = <G as Group>::ScalarField;
     type PublicKey = SchnorrPublicKey<G>;
     type Signature = SchnorrSignature<G>;
@@ -128,7 +130,10 @@ where
         let parameters = Self::Parameters::setup(rng, Self::PrivateKey::size_in_bits());
         end_timer!(setup_time);
 
-        Ok(Self { parameters })
+        Ok(Self {
+            parameters,
+            _hash: PhantomData,
+        })
     }
 
     fn parameters(&self) -> &Self::Parameters {
@@ -289,8 +294,11 @@ where
     }
 }
 
-impl<G: Group, D: Digest> From<SchnorrParameters<G, D>> for Schnorr<G, D> {
-    fn from(parameters: SchnorrParameters<G, D>) -> Self {
-        Self { parameters }
+impl<G: Group, D: Digest> From<SchnorrParameters<G>> for Schnorr<G, D> {
+    fn from(parameters: SchnorrParameters<G>) -> Self {
+        Self {
+            parameters,
+            _hash: PhantomData,
+        }
     }
 }

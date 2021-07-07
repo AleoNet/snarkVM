@@ -51,10 +51,12 @@ impl<G: Group + ProjectiveCurve + CanonicalSerialize, SG: Group + CanonicalDeser
         let parameters = SchnorrParameters {
             generator_powers,
             salt: parameters.salt,
-            _hash: PhantomData,
         };
 
-        Self { parameters }
+        Self {
+            parameters,
+            _hash: PhantomData,
+        }
     }
 }
 
