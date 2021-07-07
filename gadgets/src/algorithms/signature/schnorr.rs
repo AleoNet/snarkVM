@@ -46,13 +46,13 @@ use itertools::Itertools;
 use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone)]
-pub struct SchnorrParametersGadget<G: Group, F: Field, D: Digest> {
-    parameters: SchnorrParameters<G, D>,
-    _engine: PhantomData<*const F>,
+pub struct SchnorrParametersGadget<G: Group, F: Field> {
+    pub(crate) parameters: SchnorrParameters<G>,
+    pub(crate) _engine: PhantomData<*const F>,
 }
 
-impl<G: Group, F: Field, D: Digest> AllocGadget<SchnorrParameters<G, D>, F> for SchnorrParametersGadget<G, F, D> {
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrParameters<G, D>>, CS: ConstraintSystem<F>>(
+impl<G: Group, F: Field> AllocGadget<SchnorrParameters<G>, F> for SchnorrParametersGadget<G, F> {
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrParameters<G>>, CS: ConstraintSystem<F>>(
         _cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
@@ -66,7 +66,7 @@ impl<G: Group, F: Field, D: Digest> AllocGadget<SchnorrParameters<G, D>, F> for 
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<SchnorrParameters<G, D>>,
+        T: Borrow<SchnorrParameters<G>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -83,9 +83,9 @@ impl<G: Group, F: Field, D: Digest> AllocGadget<SchnorrParameters<G, D>, F> for 
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SchnorrPublicKeyGadget<G: Group, F: Field, GG: GroupGadget<G, F>> {
-    public_key: GG,
-    _group: PhantomData<G>,
-    _engine: PhantomData<F>,
+    pub(crate) public_key: GG,
+    pub(crate) _group: PhantomData<G>,
+    pub(crate) _engine: PhantomData<F>,
 }
 
 impl<G: Group + CanonicalSerialize + CanonicalDeserialize, F: Field, GG: GroupGadget<G, F>>
@@ -153,10 +153,10 @@ impl<G: Group, F: Field, GG: GroupGadget<G, F>> ToBytesGadget<F> for SchnorrPubl
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SchnorrSignatureGadget<G: Group, F: Field, FG: FieldGadget<F, F>> {
-    prover_response: FG,
-    verifier_challenge: FG,
-    _field: PhantomData<*const F>,
-    _group: PhantomData<*const G>,
+    pub(crate) prover_response: FG,
+    pub(crate) verifier_challenge: FG,
+    pub(crate) _field: PhantomData<*const F>,
+    pub(crate) _group: PhantomData<*const G>,
 }
 
 impl<G: Group, F: Field, FG: FieldGadget<F, F>> AllocGadget<SchnorrSignature<G>, F>
@@ -275,10 +275,10 @@ impl<G: Group, F: Field, FG: FieldGadget<F, F>> ToBytesGadget<F> for SchnorrSign
 }
 
 pub struct SchnorrPublicKeyRandomizationGadget<G: Group, F: PrimeField, GG: GroupGadget<G, F>, FG: FieldGadget<F, F>> {
-    _group: PhantomData<*const G>,
-    _group_gadget: PhantomData<*const GG>,
-    _field_gadget: PhantomData<*const FG>,
-    _engine: PhantomData<*const F>,
+    pub(crate) _group: PhantomData<*const G>,
+    pub(crate) _group_gadget: PhantomData<*const GG>,
+    pub(crate) _field_gadget: PhantomData<*const FG>,
+    pub(crate) _engine: PhantomData<*const F>,
 }
 
 impl<
@@ -289,7 +289,7 @@ impl<
     F: PrimeField,
 > SignaturePublicKeyRandomizationGadget<Schnorr<G, D>, F> for SchnorrPublicKeyRandomizationGadget<G, F, GG, FG>
 {
-    type ParametersGadget = SchnorrParametersGadget<G, F, D>;
+    type ParametersGadget = SchnorrParametersGadget<G, F>;
     type PublicKeyGadget = SchnorrPublicKeyGadget<G, F, GG>;
     type SignatureGadget = SchnorrSignatureGadget<G, F, FG>;
 
