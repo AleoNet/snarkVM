@@ -25,7 +25,7 @@ use snarkvm_algorithms::{
 };
 use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{bits_to_bytes, bytes_to_bits, to_bytes, BigInteger, FromBytes, ToBytes};
+use snarkvm_utilities::{from_bits_le_to_bytes_le, from_bytes_le_to_bits_le, to_bytes, BigInteger, FromBytes, ToBytes};
 
 use itertools::Itertools;
 use std::marker::PhantomData;
@@ -130,7 +130,7 @@ impl<C: Testnet1Components, P: MontgomeryParameters + TwistedEdwardsParameters, 
         let payload = record.payload();
         let payload_bytes = to_bytes![payload]?;
         let payload_bits_count = payload_bytes.len() * 8;
-        let payload_bits = bytes_to_bits(&payload_bytes);
+        let payload_bits = from_bytes_le_to_bits_le(&payload_bytes);
         let num_payload_elements = payload_bits_count / Self::PAYLOAD_ELEMENT_BITSIZE;
 
         // Create the vector for storing data elements.
@@ -194,19 +194,20 @@ impl<C: Testnet1Components, P: MontgomeryParameters + TwistedEdwardsParameters, 
         // (Assumption 3 applies)
 
         let (encoded_birth_program_id, sign_high) =
-            encode_to_group::<Self::Parameters, Self::Group>(&bits_to_bytes(&birth_program_id_bits)[..])?;
+            encode_to_group::<Self::Parameters, Self::Group>(&from_bits_le_to_bytes_le(&birth_program_id_bits)[..])?;
         drop(birth_program_id_bits);
         data_elements.push(encoded_birth_program_id);
         data_high_bits.push(sign_high);
 
         let (encoded_death_program_id, sign_high) =
-            encode_to_group::<Self::Parameters, Self::Group>(&bits_to_bytes(&death_program_id_bits)[..])?;
+            encode_to_group::<Self::Parameters, Self::Group>(&from_bits_le_to_bytes_le(&death_program_id_bits)[..])?;
         drop(death_program_id_bits);
         data_elements.push(encoded_death_program_id);
         data_high_bits.push(sign_high);
 
-        let (encoded_birth_program_id_remainder, sign_high) =
-            encode_to_group::<Self::Parameters, Self::Group>(&bits_to_bytes(&birth_program_id_remainder_bits)[..])?;
+        let (encoded_birth_program_id_remainder, sign_high) = encode_to_group::<Self::Parameters, Self::Group>(
+            &from_bits_le_to_bytes_le(&birth_program_id_remainder_bits)[..],
+        )?;
         drop(birth_program_id_remainder_bits);
         data_elements.push(encoded_birth_program_id_remainder);
         data_high_bits.push(sign_high);
@@ -224,8 +225,9 @@ impl<C: Testnet1Components, P: MontgomeryParameters + TwistedEdwardsParameters, 
             if (i > 0) && ((i + 1) % Self::PAYLOAD_ELEMENT_BITSIZE == 0) {
                 // (Assumption 4)
                 payload_field_bits.push(true);
-                let (encoded_payload_field, sign_high) =
-                    encode_to_group::<Self::Parameters, Self::Group>(&bits_to_bytes(&payload_field_bits)[..])?;
+                let (encoded_payload_field, sign_high) = encode_to_group::<Self::Parameters, Self::Group>(
+                    &from_bits_le_to_bytes_le(&payload_field_bits)[..],
+                )?;
 
                 data_elements.push(encoded_payload_field);
                 data_high_bits.push(sign_high);
@@ -249,7 +251,7 @@ impl<C: Testnet1Components, P: MontgomeryParameters + TwistedEdwardsParameters, 
             payload_field_bits.push(true);
 
             let (encoded_payload_field, fq_high) =
-                encode_to_group::<Self::Parameters, Self::Group>(&bits_to_bytes(&payload_field_bits)[..])?;
+                encode_to_group::<Self::Parameters, Self::Group>(&from_bits_le_to_bytes_le(&payload_field_bits)[..])?;
 
             data_elements.push(encoded_payload_field);
             data_high_bits.push(fq_high);
@@ -263,12 +265,12 @@ impl<C: Testnet1Components, P: MontgomeryParameters + TwistedEdwardsParameters, 
         );
 
         // Append the value bits and create the final base element.
-        let value_bits = bytes_to_bits(&to_bytes![value]?).collect();
+        let value_bits = from_bytes_le_to_bits_le(&to_bytes![value]?).collect();
 
         // (Assumption 4)
         let final_element = [vec![true], data_high_bits, value_bits, payload_field_bits].concat();
         let (encoded_final_element, final_sign_high) =
-            encode_to_group::<Self::Parameters, Self::Group>(&bits_to_bytes(&final_element)[..])?;
+            encode_to_group::<Self::Parameters, Self::Group>(&from_bits_le_to_bytes_le(&final_element)[..])?;
 
         data_elements.push(encoded_final_element);
 
@@ -295,7 +297,7 @@ impl<C: Testnet1Components, P: MontgomeryParameters + TwistedEdwardsParameters, 
         let final_element = &self.encoded_elements[self.encoded_elements.len() - 1];
         let final_element_bytes =
             decode_from_group::<Self::Parameters, Self::Group>(final_element.into_affine(), self.final_sign_high)?;
-        let final_element_bits = bytes_to_bits(&final_element_bytes).collect::<Vec<_>>();
+        let final_element_bits = from_bytes_le_to_bits_le(&final_element_bytes).collect::<Vec<_>>();
 
         let fq_high_bits = &final_element_bits[1..self.encoded_elements.len()];
 
@@ -312,11 +314,11 @@ impl<C: Testnet1Components, P: MontgomeryParameters + TwistedEdwardsParameters, 
             commitment_randomness.into_affine(),
             *commitment_randomness_fq_high,
         )?;
-        let commitment_randomness_bits = &bytes_to_bits(&commitment_randomness_bytes)
+        let commitment_randomness_bits = &from_bytes_le_to_bits_le(&commitment_randomness_bytes)
             .take(Self::DATA_ELEMENT_BITSIZE)
             .collect::<Vec<_>>();
         let commitment_randomness = <C::RecordCommitment as CommitmentScheme>::Randomness::read(
-            &bits_to_bytes(commitment_randomness_bits)[..],
+            &from_bits_le_to_bytes_le(commitment_randomness_bits)[..],
         )?;
 
         // Deserialize birth and death programs
@@ -339,26 +341,26 @@ impl<C: Testnet1Components, P: MontgomeryParameters + TwistedEdwardsParameters, 
             *program_id_sign_high,
         )?;
 
-        let mut birth_program_id_bits = bytes_to_bits(&birth_program_id_bytes)
+        let mut birth_program_id_bits = from_bytes_le_to_bits_le(&birth_program_id_bytes)
             .take(Self::DATA_ELEMENT_BITSIZE)
             .collect::<Vec<_>>();
-        let mut death_program_id_bits = bytes_to_bits(&death_program_id_bytes)
+        let mut death_program_id_bits = from_bytes_le_to_bits_le(&death_program_id_bytes)
             .take(Self::DATA_ELEMENT_BITSIZE)
             .collect::<Vec<_>>();
 
-        let mut program_id_remainder_bits = bytes_to_bits(&program_id_remainder_bytes);
+        let mut program_id_remainder_bits = from_bytes_le_to_bits_le(&program_id_remainder_bytes);
         birth_program_id_bits.extend(program_id_remainder_bits.by_ref().take(remainder_size));
         death_program_id_bits.extend(program_id_remainder_bits.take(remainder_size));
 
-        let birth_program_id = bits_to_bytes(&birth_program_id_bits);
-        let death_program_id = bits_to_bytes(&death_program_id_bits);
+        let birth_program_id = from_bits_le_to_bytes_le(&birth_program_id_bits);
+        let death_program_id = from_bits_le_to_bytes_le(&death_program_id_bits);
 
         // Deserialize the value
 
         let value_start = self.encoded_elements.len();
         let value_end = value_start + (std::mem::size_of_val(&<Self::Record as RecordScheme>::Value::default()) * 8);
         let value: <Self::Record as RecordScheme>::Value =
-            FromBytes::read(&bits_to_bytes(&final_element_bits[value_start..value_end])[..])?;
+            FromBytes::read(&from_bits_le_to_bytes_le(&final_element_bits[value_start..value_end])[..])?;
 
         // Deserialize payload
 
@@ -368,11 +370,11 @@ impl<C: Testnet1Components, P: MontgomeryParameters + TwistedEdwardsParameters, 
             .zip_eq(&fq_high_bits[5..])
         {
             let element_bytes = decode_from_group::<Self::Parameters, Self::Group>(element.into_affine(), *fq_high)?;
-            payload_bits.extend(bytes_to_bits(&element_bytes).take(Self::PAYLOAD_ELEMENT_BITSIZE));
+            payload_bits.extend(from_bytes_le_to_bits_le(&element_bytes).take(Self::PAYLOAD_ELEMENT_BITSIZE));
         }
         payload_bits.extend_from_slice(&final_element_bits[value_end..]);
 
-        let payload = Payload::read(&bits_to_bytes(&payload_bits)[..])?;
+        let payload = Payload::read(&from_bits_le_to_bytes_le(&payload_bits)[..])?;
 
         Ok(DecodedRecord {
             value,

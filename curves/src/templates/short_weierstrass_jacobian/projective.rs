@@ -18,7 +18,7 @@ use crate::{
     templates::short_weierstrass_jacobian::Affine,
     traits::{AffineCurve, Group, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
-use snarkvm_fields::{impl_additive_ops_from_ref, Field, One, PrimeField, Zero};
+use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
     bytes::{FromBytes, ToBytes},
@@ -400,7 +400,7 @@ impl<P: Parameters> Neg for Projective<P> {
     }
 }
 
-impl_additive_ops_from_ref!(Projective, Parameters);
+impl_add_sub_from_field_ref!(Projective, Parameters);
 
 impl<'a, P: Parameters> Add<&'a Self> for Projective<P> {
     type Output = Self;

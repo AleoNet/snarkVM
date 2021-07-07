@@ -32,7 +32,6 @@ use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
@@ -57,9 +56,6 @@ pub trait Fp12Parameters: 'static + Send + Sync + Copy {
 pub struct Fp12<P: Fp12Parameters> {
     pub c0: Fp6<P::Fp6Params>,
     pub c1: Fp6<P::Fp6Params>,
-    #[derivative(Debug = "ignore")]
-    #[doc(hidden)]
-    pub params: PhantomData<P>,
 }
 
 type Fp2Params<P> = <<P as Fp12Parameters>::Fp6Params as Fp6Parameters>::Fp2Params;
@@ -75,11 +71,7 @@ impl<P: Fp12Parameters> Fp12<P> {
     }
 
     pub fn new(c0: Fp6<P::Fp6Params>, c1: Fp6<P::Fp6Params>) -> Self {
-        Self {
-            c0,
-            c1,
-            params: PhantomData,
-        }
+        Self { c0, c1 }
     }
 
     pub fn mul_by_fp(&mut self, element: &<<P::Fp6Params as Fp6Parameters>::Fp2Params as Fp2Parameters>::Fp) {
@@ -367,8 +359,8 @@ impl<P: Fp12Parameters> Neg for Fp12<P> {
     }
 }
 
-impl_additive_ops_from_ref!(Fp12, Fp12Parameters);
-impl_multiplicative_ops_from_ref!(Fp12, Fp12Parameters);
+impl_add_sub_from_field_ref!(Fp12, Fp12Parameters);
+impl_mul_div_from_field_ref!(Fp12, Fp12Parameters);
 
 impl<'a, P: Fp12Parameters> Add<&'a Self> for Fp12<P> {
     type Output = Self;

@@ -23,33 +23,28 @@ macro_rules! field {
         }
     };
     ($name:ident, $c0:expr, $c1:expr $(,)?) => {
-        $name {
-            c0: $c0,
-            c1: $c1,
-            _parameters: std::marker::PhantomData,
-        }
+        $name { c0: $c0, c1: $c1 }
     };
     ($name:ident, $c0:expr, $c1:expr, $c2:expr $(,)?) => {
         $name {
             c0: $c0,
             c1: $c1,
             c2: $c2,
-            _parameters: std::marker::PhantomData,
         }
     };
 }
 
-macro_rules! impl_field_into_bigint {
-    ($field: ident, $bigint: ident, $params: ident) => {
-        impl<P: $params> Into<$bigint> for $field<P> {
-            fn into(self) -> $bigint {
+macro_rules! impl_field_into_biginteger {
+    ($field: ident, $biginteger: ident, $parameters: ident) => {
+        impl<P: $parameters> Into<$biginteger> for $field<P> {
+            fn into(self) -> $biginteger {
                 self.into_repr()
             }
         }
     };
 }
 
-macro_rules! impl_prime_field_standard_sample {
+macro_rules! impl_primefield_standard_sample {
     ($field: ident, $params: ident) => {
         impl<P: $params> rand::distributions::Distribution<$field<P>> for rand::distributions::Standard {
             #[inline]
@@ -71,7 +66,7 @@ macro_rules! impl_prime_field_standard_sample {
     };
 }
 
-macro_rules! impl_prime_field_from_int {
+macro_rules! impl_primefield_from_int {
     ($field: ident, u128, $params: ident) => {
         impl<P: $params> From<u128> for $field<P> {
             /// Attempts to convert an integer into a field element.
@@ -154,7 +149,7 @@ macro_rules! sqrt_impl {
     }};
 }
 
-macro_rules! impl_prime_field_serializer {
+macro_rules! impl_primefield_serializer {
     ($field: ident, $params: ident, $byte_size: expr) => {
         impl<P: $params> CanonicalSerializeWithFlags for $field<P> {
             #[allow(unused_qualifications)]
@@ -166,7 +161,7 @@ macro_rules! impl_prime_field_serializer {
                 const BYTE_SIZE: usize = $byte_size;
 
                 let (output_bit_size, output_byte_size) =
-                    snarkvm_utilities::serialize::buffer_bit_byte_size($field::<P>::size_in_bits());
+                    snarkvm_utilities::serialize::number_of_bits_and_bytes($field::<P>::size_in_bits());
                 if F::len() > (output_bit_size - P::MODULUS_BITS as usize) {
                     return Err(snarkvm_utilities::errors::SerializationError::NotEnoughSpace);
                 }
@@ -182,7 +177,7 @@ macro_rules! impl_prime_field_serializer {
         }
 
         impl<P: $params> ConstantSerializedSize for $field<P> {
-            const SERIALIZED_SIZE: usize = snarkvm_utilities::serialize::buffer_byte_size(
+            const SERIALIZED_SIZE: usize = snarkvm_utilities::serialize::number_of_bits_to_number_of_bytes(
                 <$field<P> as crate::PrimeField>::Parameters::MODULUS_BITS as usize,
             );
             const UNCOMPRESSED_SIZE: usize = Self::SERIALIZED_SIZE;
@@ -212,7 +207,7 @@ macro_rules! impl_prime_field_serializer {
                 const BYTE_SIZE: usize = $byte_size;
 
                 let (output_bit_size, output_byte_size) =
-                    snarkvm_utilities::serialize::buffer_bit_byte_size($field::<P>::size_in_bits());
+                    snarkvm_utilities::serialize::number_of_bits_and_bytes($field::<P>::size_in_bits());
                 if F::len() > (output_bit_size - P::MODULUS_BITS as usize) {
                     return Err(snarkvm_utilities::errors::SerializationError::NotEnoughSpace);
                 }
@@ -234,7 +229,7 @@ macro_rules! impl_prime_field_serializer {
                 const BYTE_SIZE: usize = $byte_size;
 
                 let (_, output_byte_size) =
-                    snarkvm_utilities::serialize::buffer_bit_byte_size($field::<P>::size_in_bits());
+                    snarkvm_utilities::serialize::number_of_bits_and_bytes($field::<P>::size_in_bits());
 
                 let mut masked_bytes = [0; BYTE_SIZE];
                 reader.read_exact(&mut masked_bytes[..output_byte_size])?;
@@ -304,12 +299,15 @@ macro_rules! impl_field_from_random_bytes_with_flags {
     ($limbs: expr) => {
         #[inline]
         fn from_random_bytes_with_flags(bytes: &[u8]) -> Option<(Self, u8)> {
-            let mut result_bytes = [0u8; $limbs * 8];
-            for (result_byte, in_byte) in result_bytes.iter_mut().zip(bytes.iter()) {
-                *result_byte = *in_byte;
-            }
+            // Copy the input into a temporary buffer.
+            let mut result_bytes = [0u8; $limbs * 8 + 1];
+            result_bytes.iter_mut().zip(bytes).for_each(|(result, input)| {
+                *result = *input;
+            });
 
-            let mask: u64 = 0xffffffffffffffff >> P::REPR_SHAVE_BITS;
+            // The `mask` retains everything in the final limb up to `P::MODULUS_BITS`.
+            let mask = u64::MAX >> P::REPR_SHAVE_BITS;
+
             // the flags will be at the same byte with the lowest shaven bits or the one after
             let flags_byte_position: usize = 7 - P::REPR_SHAVE_BITS as usize / 8;
             let flags_mask: u8 = ((1 << P::REPR_SHAVE_BITS % 8) - 1) << (8 - P::REPR_SHAVE_BITS % 8);
@@ -330,9 +328,9 @@ macro_rules! impl_field_from_random_bytes_with_flags {
     };
 }
 
-// Implements AddAssign on Self by deferring to an implementation on &Self
+// Implements Add, Sub, AddAssign, and SubAssign on Self by deferring to an implementation on &Self
 #[macro_export]
-macro_rules! impl_additive_ops_from_ref {
+macro_rules! impl_add_sub_from_field_ref {
     ($type: ident, $params: ident) => {
         #[allow(unused_qualifications)]
         impl<P: $params> core::ops::Add<Self> for $type<P> {
@@ -464,9 +462,9 @@ macro_rules! impl_additive_ops_from_ref {
     };
 }
 
-// Implements AddAssign on Self by deferring to an implementation on &Self
+// Implements Mul, Div, MulAssign, and DivAssign on Self by deferring to an implementation on &Self
 #[macro_export]
-macro_rules! impl_multiplicative_ops_from_ref {
+macro_rules! impl_mul_div_from_field_ref {
     ($type: ident, $params: ident) => {
         #[allow(unused_qualifications)]
         impl<P: $params> core::ops::Mul<Self> for $type<P> {

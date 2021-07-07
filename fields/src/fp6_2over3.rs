@@ -32,7 +32,6 @@ use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
@@ -63,18 +62,11 @@ pub trait Fp6Parameters: 'static + Send + Sync {
 pub struct Fp6<P: Fp6Parameters> {
     pub c0: Fp3<P::Fp3Params>,
     pub c1: Fp3<P::Fp3Params>,
-    #[derivative(Debug = "ignore")]
-    #[doc(hidden)]
-    pub _parameters: PhantomData<P>,
 }
 
 impl<P: Fp6Parameters> Fp6<P> {
     pub fn new(c0: Fp3<P::Fp3Params>, c1: Fp3<P::Fp3Params>) -> Self {
-        Fp6 {
-            c0,
-            c1,
-            _parameters: PhantomData,
-        }
+        Fp6 { c0, c1 }
     }
 
     pub fn conjugate(&mut self) {
@@ -187,7 +179,6 @@ impl<P: Fp6Parameters> Zero for Fp6<P> {
         Fp6 {
             c0: Fp3::zero(),
             c1: Fp3::zero(),
-            _parameters: PhantomData,
         }
     }
 
@@ -201,7 +192,6 @@ impl<P: Fp6Parameters> One for Fp6<P> {
         Fp6 {
             c0: Fp3::one(),
             c1: Fp3::zero(),
-            _parameters: PhantomData,
         }
     }
 
@@ -391,8 +381,8 @@ impl<P: Fp6Parameters> Distribution<Fp6<P>> for Standard {
     }
 }
 
-impl_additive_ops_from_ref!(Fp6, Fp6Parameters);
-impl_multiplicative_ops_from_ref!(Fp6, Fp6Parameters);
+impl_add_sub_from_field_ref!(Fp6, Fp6Parameters);
+impl_mul_div_from_field_ref!(Fp6, Fp6Parameters);
 
 impl<'a, P: Fp6Parameters> Add<&'a Fp6<P>> for Fp6<P> {
     type Output = Self;

@@ -20,6 +20,35 @@ use crate::{
     Vec,
 };
 
+#[inline]
+pub fn from_bytes_le_to_bits_le(bytes: &[u8]) -> impl Iterator<Item = bool> + '_ {
+    bytes
+        .iter()
+        .map(|byte| (0..8).map(move |i| (*byte >> i) & 1 == 1))
+        .flatten()
+}
+
+#[inline]
+pub fn from_bits_le_to_bytes_le(bits: &[bool]) -> Vec<u8> {
+    // Pad the bits if it not a correct size
+    let mut bits = std::borrow::Cow::from(bits);
+    if bits.len() % 8 != 0 {
+        let current_length = bits.len();
+        bits.to_mut().resize(current_length + 8 - (current_length % 8), false);
+    }
+
+    let mut bytes = Vec::with_capacity(bits.len() / 8);
+    for bits in bits.chunks(8) {
+        let mut result = 0u8;
+        for (i, bit) in bits.iter().enumerate() {
+            let bit_value = *bit as u8;
+            result += bit_value << i as u8;
+        }
+        bytes.push(result);
+    }
+    bytes
+}
+
 pub trait ToBytes {
     /// Serializes `self` into `writer`.
     fn write<W: Write>(&self, writer: W) -> IoResult<()>;
@@ -303,36 +332,9 @@ impl<'a, T: 'a + ToBytes> ToBytes for &'a T {
     }
 }
 
-pub fn bytes_to_bits(bytes: &[u8]) -> impl Iterator<Item = bool> + '_ {
-    bytes
-        .iter()
-        .map(|byte| (0..8).map(move |i| (*byte >> i) & 1 == 1))
-        .flatten()
-}
-
-pub fn bits_to_bytes(bits: &[bool]) -> Vec<u8> {
-    // Pad the bits if it not a correct size
-    let mut bits = std::borrow::Cow::from(bits);
-    if bits.len() % 8 != 0 {
-        let current_length = bits.len();
-        bits.to_mut().resize(current_length + 8 - (current_length % 8), false);
-    }
-
-    let mut bytes = Vec::with_capacity(bits.len() / 8);
-    for bits in bits.chunks(8) {
-        let mut result = 0u8;
-        for (i, bit) in bits.iter().enumerate() {
-            let bit_value = *bit as u8;
-            result += bit_value << i as u8;
-        }
-        bytes.push(result);
-    }
-    bytes
-}
-
 #[cfg(test)]
 mod test {
-    use super::{bits_to_bytes, bytes_to_bits, ToBytes};
+    use super::{from_bits_le_to_bytes_le, from_bytes_le_to_bits_le, ToBytes};
     use crate::Vec;
 
     use rand::{Rng, SeedableRng};
@@ -364,14 +366,31 @@ mod test {
     }
 
     #[test]
-    fn test_bits_to_bytes() {
+    fn test_from_bytes_le_to_bits_le() {
+        assert_eq!(from_bytes_le_to_bits_le(&[204, 76]).collect::<Vec<bool>>(), [
+            false, false, true, true, false, false, true, true, // 204
+            false, false, true, true, false, false, true, false, // 76
+        ]);
+    }
+
+    #[test]
+    fn test_from_bits_le_to_bytes_le() {
+        let bits = [
+            false, false, true, true, false, false, true, true, // 204
+            false, false, true, true, false, false, true, false, // 76
+        ];
+        assert_eq!(from_bits_le_to_bytes_le(&bits), [204, 76]);
+    }
+
+    #[test]
+    fn test_from_bits_le_to_bytes_le_roundtrip() {
         let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
         for _ in 0..ITERATIONS {
             let given_bytes: [u8; 32] = rng.gen();
 
-            let bits = bytes_to_bits(&given_bytes).collect::<Vec<_>>();
-            let recovered_bytes = bits_to_bytes(&bits);
+            let bits = from_bytes_le_to_bits_le(&given_bytes).collect::<Vec<_>>();
+            let recovered_bytes = from_bits_le_to_bytes_le(&bits);
 
             assert_eq!(given_bytes.to_vec(), recovered_bytes);
         }
