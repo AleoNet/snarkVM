@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    impl_additive_ops_from_ref,
-    impl_multiplicative_ops_from_ref,
+    impl_add_sub_from_field_ref,
+    impl_mul_div_from_field_ref,
     FftField,
     Field,
     FieldError,
@@ -434,16 +434,16 @@ impl<P: Fp320Parameters> PartialOrd for Fp320<P> {
     }
 }
 
-impl_prime_field_from_int!(Fp320, u128, Fp320Parameters);
-impl_prime_field_from_int!(Fp320, u64, Fp320Parameters);
-impl_prime_field_from_int!(Fp320, u32, Fp320Parameters);
-impl_prime_field_from_int!(Fp320, u16, Fp320Parameters);
-impl_prime_field_from_int!(Fp320, u8, Fp320Parameters);
+impl_primefield_from_int!(Fp320, u128, Fp320Parameters);
+impl_primefield_from_int!(Fp320, u64, Fp320Parameters);
+impl_primefield_from_int!(Fp320, u32, Fp320Parameters);
+impl_primefield_from_int!(Fp320, u16, Fp320Parameters);
+impl_primefield_from_int!(Fp320, u8, Fp320Parameters);
 
-impl_prime_field_standard_sample!(Fp320, Fp320Parameters);
+impl_primefield_standard_sample!(Fp320, Fp320Parameters);
 
-impl_additive_ops_from_ref!(Fp320, Fp320Parameters);
-impl_multiplicative_ops_from_ref!(Fp320, Fp320Parameters);
+impl_add_sub_from_field_ref!(Fp320, Fp320Parameters);
+impl_mul_div_from_field_ref!(Fp320, Fp320Parameters);
 
 impl<P: Fp320Parameters> ToBytes for Fp320<P> {
     #[inline]

@@ -381,8 +381,8 @@ impl<P: Fp6Parameters> Distribution<Fp6<P>> for Standard {
     }
 }
 
-impl_additive_ops_from_ref!(Fp6, Fp6Parameters);
-impl_multiplicative_ops_from_ref!(Fp6, Fp6Parameters);
+impl_add_sub_from_field_ref!(Fp6, Fp6Parameters);
+impl_mul_div_from_field_ref!(Fp6, Fp6Parameters);
 
 impl<'a, P: Fp6Parameters> Add<&'a Fp6<P>> for Fp6<P> {
     type Output = Self;

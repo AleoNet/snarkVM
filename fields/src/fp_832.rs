@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    impl_additive_ops_from_ref,
-    impl_multiplicative_ops_from_ref,
+    impl_add_sub_from_field_ref,
+    impl_mul_div_from_field_ref,
     FftField,
     Field,
     FieldError,
@@ -765,16 +765,16 @@ impl<P: Fp832Parameters> PartialOrd for Fp832<P> {
     }
 }
 
-impl_prime_field_from_int!(Fp832, u128, Fp832Parameters);
-impl_prime_field_from_int!(Fp832, u64, Fp832Parameters);
-impl_prime_field_from_int!(Fp832, u32, Fp832Parameters);
-impl_prime_field_from_int!(Fp832, u16, Fp832Parameters);
-impl_prime_field_from_int!(Fp832, u8, Fp832Parameters);
+impl_primefield_from_int!(Fp832, u128, Fp832Parameters);
+impl_primefield_from_int!(Fp832, u64, Fp832Parameters);
+impl_primefield_from_int!(Fp832, u32, Fp832Parameters);
+impl_primefield_from_int!(Fp832, u16, Fp832Parameters);
+impl_primefield_from_int!(Fp832, u8, Fp832Parameters);
 
-impl_prime_field_standard_sample!(Fp832, Fp832Parameters);
+impl_primefield_standard_sample!(Fp832, Fp832Parameters);
 
-impl_additive_ops_from_ref!(Fp832, Fp832Parameters);
-impl_multiplicative_ops_from_ref!(Fp832, Fp832Parameters);
+impl_add_sub_from_field_ref!(Fp832, Fp832Parameters);
+impl_mul_div_from_field_ref!(Fp832, Fp832Parameters);
 
 impl<P: Fp832Parameters> ToBytes for Fp832<P> {
     #[inline]

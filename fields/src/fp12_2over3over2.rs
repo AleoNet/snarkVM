@@ -359,8 +359,8 @@ impl<P: Fp12Parameters> Neg for Fp12<P> {
     }
 }
 
-impl_additive_ops_from_ref!(Fp12, Fp12Parameters);
-impl_multiplicative_ops_from_ref!(Fp12, Fp12Parameters);
+impl_add_sub_from_field_ref!(Fp12, Fp12Parameters);
+impl_mul_div_from_field_ref!(Fp12, Fp12Parameters);
 
 impl<'a, P: Fp12Parameters> Add<&'a Self> for Fp12<P> {
     type Output = Self;

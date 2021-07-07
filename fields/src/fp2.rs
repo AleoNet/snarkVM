@@ -329,8 +329,8 @@ impl<P: Fp2Parameters> Distribution<Fp2<P>> for Standard {
     }
 }
 
-impl_additive_ops_from_ref!(Fp2, Fp2Parameters);
-impl_multiplicative_ops_from_ref!(Fp2, Fp2Parameters);
+impl_add_sub_from_field_ref!(Fp2, Fp2Parameters);
+impl_mul_div_from_field_ref!(Fp2, Fp2Parameters);
 
 impl<'a, P: Fp2Parameters> Add<&'a Fp2<P>> for Fp2<P> {
     type Output = Self;

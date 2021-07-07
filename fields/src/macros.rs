@@ -34,17 +34,17 @@ macro_rules! field {
     };
 }
 
-macro_rules! impl_field_into_bigint {
-    ($field: ident, $bigint: ident, $params: ident) => {
-        impl<P: $params> Into<$bigint> for $field<P> {
-            fn into(self) -> $bigint {
+macro_rules! impl_field_into_biginteger {
+    ($field: ident, $biginteger: ident, $parameters: ident) => {
+        impl<P: $parameters> Into<$biginteger> for $field<P> {
+            fn into(self) -> $biginteger {
                 self.into_repr()
             }
         }
     };
 }
 
-macro_rules! impl_prime_field_standard_sample {
+macro_rules! impl_primefield_standard_sample {
     ($field: ident, $params: ident) => {
         impl<P: $params> rand::distributions::Distribution<$field<P>> for rand::distributions::Standard {
             #[inline]
@@ -66,7 +66,7 @@ macro_rules! impl_prime_field_standard_sample {
     };
 }
 
-macro_rules! impl_prime_field_from_int {
+macro_rules! impl_primefield_from_int {
     ($field: ident, u128, $params: ident) => {
         impl<P: $params> From<u128> for $field<P> {
             /// Attempts to convert an integer into a field element.
@@ -149,7 +149,7 @@ macro_rules! sqrt_impl {
     }};
 }
 
-macro_rules! impl_prime_field_serializer {
+macro_rules! impl_primefield_serializer {
     ($field: ident, $params: ident, $byte_size: expr) => {
         impl<P: $params> CanonicalSerializeWithFlags for $field<P> {
             #[allow(unused_qualifications)]
@@ -325,9 +325,9 @@ macro_rules! impl_field_from_random_bytes_with_flags {
     };
 }
 
-// Implements AddAssign on Self by deferring to an implementation on &Self
+// Implements Add, Sub, AddAssign, and SubAssign on Self by deferring to an implementation on &Self
 #[macro_export]
-macro_rules! impl_additive_ops_from_ref {
+macro_rules! impl_add_sub_from_field_ref {
     ($type: ident, $params: ident) => {
         #[allow(unused_qualifications)]
         impl<P: $params> core::ops::Add<Self> for $type<P> {
@@ -459,9 +459,9 @@ macro_rules! impl_additive_ops_from_ref {
     };
 }
 
-// Implements AddAssign on Self by deferring to an implementation on &Self
+// Implements Mul, Div, MulAssign, and DivAssign on Self by deferring to an implementation on &Self
 #[macro_export]
-macro_rules! impl_multiplicative_ops_from_ref {
+macro_rules! impl_mul_div_from_field_ref {
     ($type: ident, $params: ident) => {
         #[allow(unused_qualifications)]
         impl<P: $params> core::ops::Mul<Self> for $type<P> {

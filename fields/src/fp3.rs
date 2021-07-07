@@ -376,8 +376,8 @@ impl<P: Fp3Parameters> Distribution<Fp3<P>> for Standard {
     }
 }
 
-impl_additive_ops_from_ref!(Fp3, Fp3Parameters);
-impl_multiplicative_ops_from_ref!(Fp3, Fp3Parameters);
+impl_add_sub_from_field_ref!(Fp3, Fp3Parameters);
+impl_mul_div_from_field_ref!(Fp3, Fp3Parameters);
 
 impl<'a, P: Fp3Parameters> Add<&'a Fp3<P>> for Fp3<P> {
     type Output = Self;
