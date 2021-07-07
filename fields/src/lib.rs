@@ -29,17 +29,11 @@ pub use errors::*;
 mod fp_256;
 pub use fp_256::*;
 
-mod fp_320;
-pub use fp_320::*;
-
 mod fp_384;
 pub use fp_384::*;
 
 mod fp_768;
 pub use fp_768::*;
-
-mod fp_832;
-pub use fp_832::*;
 
 mod fp2;
 pub use fp2::*;
@@ -78,16 +72,12 @@ use snarkvm_utilities::{
 };
 
 impl_field_into_biginteger!(Fp256, BigInteger256, Fp256Parameters);
-impl_field_into_biginteger!(Fp320, BigInteger320, Fp320Parameters);
 impl_field_into_biginteger!(Fp384, BigInteger384, Fp384Parameters);
 impl_field_into_biginteger!(Fp768, BigInteger768, Fp768Parameters);
-impl_field_into_biginteger!(Fp832, BigInteger832, Fp832Parameters);
 
 impl_primefield_serializer!(Fp256, Fp256Parameters, 32);
-impl_primefield_serializer!(Fp320, Fp320Parameters, 40);
 impl_primefield_serializer!(Fp384, Fp384Parameters, 48);
 impl_primefield_serializer!(Fp768, Fp768Parameters, 96);
-impl_primefield_serializer!(Fp832, Fp832Parameters, 104);
 
 pub fn batch_inversion<F: Field>(v: &mut [F]) {
     // Montgomery’s Trick and Fast Implementation of Masked AES
