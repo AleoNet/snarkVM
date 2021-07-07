@@ -21,12 +21,12 @@ use crate::{
     rand::UniformRand,
 };
 
+use num_bigint::BigUint;
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
 use std::fmt::{Debug, Display};
-use num_bigint::BigUint;
 
 bigint_impl!(BigInteger64, 1);
 bigint_impl!(BigInteger128, 2);
