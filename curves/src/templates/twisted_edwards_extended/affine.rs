@@ -116,15 +116,14 @@ impl<P: Parameters> AffineCurve for Affine<P> {
 
     #[inline]
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
-        if let Some((x, flags)) = Self::BaseField::from_random_bytes_with_flags(bytes) {
+        Self::BaseField::from_random_bytes_with_flags::<EdwardsFlags>(bytes).and_then(|(x, flags)| {
+            // If x is valid and is zero, then parse this point as infinity.
             if x.is_zero() {
                 Some(Self::zero())
             } else {
-                Self::from_x_coordinate(x, EdwardsFlags::from_u8(flags).is_positive())
+                Self::from_x_coordinate(x, flags.is_positive())
             }
-        } else {
-            None
-        }
+        })
     }
 
     /// Attempts to construct an affine point given an x-coordinate. The

@@ -45,7 +45,7 @@ pub trait Flags: Default + Clone + Copy + Sized {
     }
 
     /// Number of bits required for these flags.
-    fn len() -> usize;
+    fn num_bits() -> usize;
 }
 
 /// Serializer in little endian format.

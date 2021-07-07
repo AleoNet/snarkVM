@@ -17,7 +17,6 @@
 use crate::{Field, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
-    div_ceil,
     errors::SerializationError,
     rand::UniformRand,
     serialize::*,
@@ -128,13 +127,10 @@ impl<P: Fp2Parameters> Field for Fp2<P> {
     }
 
     #[inline]
-    fn from_random_bytes_with_flags(bytes: &[u8]) -> Option<(Self, u8)> {
-        if bytes.len() < 2 * div_ceil(P::Fp::size_in_bits(), 8) {
-            return None;
-        }
+    fn from_random_bytes_with_flags<F: Flags>(bytes: &[u8]) -> Option<(Self, F)> {
         let split_at = bytes.len() / 2;
         if let Some(c0) = P::Fp::from_random_bytes(&bytes[..split_at]) {
-            if let Some((c1, flags)) = P::Fp::from_random_bytes_with_flags(&bytes[split_at..]) {
+            if let Some((c1, flags)) = P::Fp::from_random_bytes_with_flags::<F>(&bytes[split_at..]) {
                 return Some((Fp2::new(c0, c1), flags));
             }
         }
@@ -143,7 +139,7 @@ impl<P: Fp2Parameters> Field for Fp2<P> {
 
     #[inline]
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
-        Self::from_random_bytes_with_flags(bytes).map(|f| f.0)
+        Self::from_random_bytes_with_flags::<EmptyFlags>(bytes).map(|f| f.0)
     }
 
     fn square_in_place(&mut self) -> &mut Self {
