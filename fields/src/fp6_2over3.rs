@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Field, Fp3, Fp3Parameters, One, PrimeField, Zero};
+use crate::{Field, Fp3, Fp3Parameters, One, Zero};
 use snarkvm_utilities::{
     biginteger::BigInteger,
     bytes::{FromBytes, ToBytes},
-    div_ceil,
     errors::SerializationError,
     rand::UniformRand,
     serialize::*,
@@ -224,13 +223,10 @@ impl<P: Fp6Parameters> Field for Fp6<P> {
     }
 
     #[inline]
-    fn from_random_bytes_with_flags(bytes: &[u8]) -> Option<(Self, u8)> {
-        if bytes.len() != 6 * div_ceil(<P::Fp3Params as Fp3Parameters>::Fp::size_in_bits(), 8) {
-            return None;
-        }
+    fn from_random_bytes_with_flags<F: Flags>(bytes: &[u8]) -> Option<(Self, F)> {
         let split_at = bytes.len() / 2;
         if let Some(c0) = Fp3::<P::Fp3Params>::from_random_bytes(&bytes[..split_at]) {
-            if let Some((c1, flags)) = Fp3::<P::Fp3Params>::from_random_bytes_with_flags(&bytes[split_at..]) {
+            if let Some((c1, flags)) = Fp3::<P::Fp3Params>::from_random_bytes_with_flags::<F>(&bytes[split_at..]) {
                 return Some((Fp6::new(c0, c1), flags));
             }
         }
@@ -239,7 +235,7 @@ impl<P: Fp6Parameters> Field for Fp6<P> {
 
     #[inline]
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
-        Self::from_random_bytes_with_flags(bytes).map(|f| f.0)
+        Self::from_random_bytes_with_flags::<EmptyFlags>(bytes).map(|f| f.0)
     }
 
     fn square_in_place(&mut self) -> &mut Self {

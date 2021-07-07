@@ -37,7 +37,7 @@ impl Flags for EmptyFlags {
     }
 
     #[inline]
-    fn len() -> usize {
+    fn num_bits() -> usize {
         0
     }
 }
@@ -121,7 +121,7 @@ impl Flags for SWFlags {
 
     /// Number of bits required for these flags.
     #[inline]
-    fn len() -> usize {
+    fn num_bits() -> usize {
         2
     }
 }
@@ -191,7 +191,7 @@ impl Flags for EdwardsFlags {
 
     /// Number of bits required for these flags.
     #[inline]
-    fn len() -> usize {
+    fn num_bits() -> usize {
         1
     }
 }

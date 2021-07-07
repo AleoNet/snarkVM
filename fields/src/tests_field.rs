@@ -465,7 +465,7 @@ pub fn field_serialization_test<F: Field>() {
                 DummyFlags
             }
 
-            fn len() -> usize {
+            fn num_bits() -> usize {
                 200
             }
         }
