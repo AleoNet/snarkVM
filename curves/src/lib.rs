@@ -62,10 +62,6 @@ pub mod edwards_bw6;
 pub mod errors;
 pub use errors::*;
 
-#[cfg(feature = "sw6")]
-#[deprecated(since = "0.8.0", note = "Please use the `bw6_761` module instead")]
-pub mod sw6;
-
 pub mod templates;
 
 #[cfg_attr(test, macro_use)]

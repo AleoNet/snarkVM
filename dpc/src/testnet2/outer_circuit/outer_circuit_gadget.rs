@@ -17,7 +17,7 @@
 use itertools::Itertools;
 
 use crate::{
-    testnet2::{parameters::SystemParameters, program::PrivateProgramInput, Testnet2Components},
+    testnet2::{parameters::SystemParameters, program::Execution, Testnet2Components},
     AleoAmount,
 };
 use snarkvm_algorithms::{
@@ -81,7 +81,7 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
     inner_snark_proof: &<C::InnerSNARK as SNARK>::Proof,
 
     // Program verifying keys and proofs
-    program_proofs: &[PrivateProgramInput],
+    program_proofs: &[Execution],
 
     // Rest
     program_commitment: &<C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,

@@ -19,15 +19,16 @@ use snarkvm_algorithms::{
     traits::{MerkleParameters, SNARK},
 };
 use snarkvm_dpc::{
-    errors::DPCError,
     testnet2::{
-        inner_circuit::InnerCircuit,
         instantiated::Components,
-        outer_circuit::OuterCircuit,
-        parameters::{NoopProgramSNARKParameters, SystemParameters},
-        program::{NoopCircuit, PrivateProgramInput},
+        InnerCircuit,
+        NoopProgram,
+        OuterCircuit,
+        SystemParameters,
         Testnet2Components,
     },
+    DPCError,
+    ProgramScheme,
 };
 use snarkvm_parameters::{
     testnet2::{InnerSNARKPKParameters, InnerSNARKVKParameters},
@@ -65,18 +66,10 @@ pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
         rng,
     )?;
 
-    // TODO (howardwu): Check why is the PrivateProgramInput necessary for running the setup? Blank should take option?
-    let noop_program_snark_parameters = NoopProgramSNARKParameters::<C>::load()?;
-
-    let program_snark_proof = C::NoopProgramSNARK::prove(
-        &noop_program_snark_parameters.proving_key,
-        &NoopCircuit::blank(&system_parameters),
-        rng,
+    let noop_program = NoopProgram::<C>::load(
+        &system_parameters.local_data_commitment,
+        &system_parameters.program_verification_key_crh,
     )?;
-    let private_program_input = PrivateProgramInput {
-        verifying_key: to_bytes![noop_program_snark_parameters.verifying_key]?,
-        proof: to_bytes![program_snark_proof]?,
-    };
 
     let outer_snark_parameters = C::OuterSNARK::setup(
         &OuterCircuit::blank(
@@ -84,7 +77,7 @@ pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
             ledger_merkle_tree_parameters,
             inner_snark_vk,
             inner_snark_proof,
-            private_program_input,
+            noop_program.execute_blank(rng)?,
         ),
         rng,
     )?;

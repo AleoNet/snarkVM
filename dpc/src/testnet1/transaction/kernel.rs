@@ -39,9 +39,6 @@ use std::{
     Debug(bound = "C: Testnet1Components")
 )]
 pub struct TransactionKernel<C: Testnet1Components> {
-    #[derivative(PartialEq = "ignore", Debug = "ignore")]
-    pub system_parameters: SystemParameters<C>,
-
     // Old record stuff
     pub old_records: Vec<Record<C>>,
     pub old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
@@ -72,8 +69,6 @@ impl<C: Testnet1Components> TransactionKernel<C> {
     #[allow(clippy::wrong_self_convention)]
     pub fn into_local_data(&self) -> LocalData<C> {
         LocalData {
-            system_parameters: self.system_parameters.clone(),
-
             old_records: self.old_records.to_vec(),
             old_serial_numbers: self.old_serial_numbers.to_vec(),
 
@@ -244,8 +239,6 @@ impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
         let network_id: u8 = FromBytes::read(&mut reader)?;
 
         Ok(Self {
-            system_parameters,
-
             old_records,
             old_serial_numbers,
             old_randomizers,

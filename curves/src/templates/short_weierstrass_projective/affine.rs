@@ -19,7 +19,7 @@ use crate::{
     templates::short_weierstrass_projective::Projective,
     traits::{AffineCurve, Group, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
-use snarkvm_fields::{impl_additive_ops_from_ref, Field, One, PrimeField, SquareRootField, Zero};
+use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
     bytes::{FromBytes, ToBytes},
@@ -84,14 +84,15 @@ impl<P: Parameters> AffineCurve for Affine<P> {
 
     #[inline]
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
-        Self::BaseField::from_random_bytes_with_flags(bytes).and_then(|(x, flags)| {
+        Self::BaseField::from_random_bytes_with_flags::<SWFlags>(bytes).and_then(|(x, flags)| {
             // If x is valid and is zero and only the infinity flag is set, then parse this
             // point as infinity. For all other choices, get the original point.
-            if x.is_zero() && flags == SWFlags::Infinity.u8_bitmask() {
+            if x.is_zero() && flags.is_infinity() {
                 Some(Self::zero())
+            } else if let Some(is_positive_y) = flags.is_positive() {
+                Self::from_x_coordinate(x, is_positive_y) // Unwrap is safe because it's not zero.
             } else {
-                let is_positive = flags & SWFlags::PositiveY.u8_bitmask() != 0;
-                Self::from_x_coordinate(x, is_positive)
+                None
             }
         })
     }
@@ -201,7 +202,7 @@ impl<P: Parameters> Neg for Affine<P> {
     }
 }
 
-impl_additive_ops_from_ref!(Affine, Parameters);
+impl_add_sub_from_field_ref!(Affine, Parameters);
 
 impl<'a, P: Parameters> Add<&'a Self> for Affine<P> {
     type Output = Self;

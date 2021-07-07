@@ -32,13 +32,20 @@ use snarkvm_algorithms::{
 };
 use snarkvm_curves::traits::{AffineCurve, ModelParameters, ProjectiveCurve};
 use snarkvm_fields::One;
-use snarkvm_utilities::{bits_to_bytes, bytes_to_bits, to_bytes, variable_length_integer::*, FromBytes, ToBytes};
+use snarkvm_utilities::{
+    from_bits_le_to_bytes_le,
+    from_bytes_le_to_bits_le,
+    to_bytes,
+    variable_length_integer::*,
+    FromBytes,
+    ToBytes,
+};
 
 use itertools::Itertools;
 use rand::Rng;
 use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
 
-type BaseField<T> = <<T as Testnet2Components>::EncryptionModelParameters as ModelParameters>::BaseField;
+type BaseField<T> = <<T as Testnet2Components>::EncryptionParameters as ModelParameters>::BaseField;
 
 #[derive(Derivative)]
 #[derivative(
@@ -48,7 +55,7 @@ type BaseField<T> = <<T as Testnet2Components>::EncryptionModelParameters as Mod
 )]
 pub struct RecordEncryptionGadgetComponents<C: Testnet2Components> {
     /// Record field element representations
-    pub record_field_elements: Vec<<C::EncryptionModelParameters as ModelParameters>::BaseField>,
+    pub record_field_elements: Vec<<C::EncryptionParameters as ModelParameters>::BaseField>,
     /// Record group element encodings - Represented in (x,y) affine coordinates
     pub record_group_encoding: Vec<(BaseField<C>, BaseField<C>)>,
     /// Record ciphertext selectors - Used for ciphertext compression/decompression
@@ -63,8 +70,8 @@ impl<C: Testnet2Components> Default for RecordEncryptionGadgetComponents<C> {
     fn default() -> Self {
         // TODO (raychu86) Fix the lengths to be generic
         let record_encoding_length = 7;
-        let base_field_one = <C::EncryptionModelParameters as ModelParameters>::BaseField::one();
-        let base_field_default = <C::EncryptionModelParameters as ModelParameters>::BaseField::default();
+        let base_field_one = <C::EncryptionParameters as ModelParameters>::BaseField::one();
+        let base_field_default = <C::EncryptionParameters as ModelParameters>::BaseField::default();
 
         let record_field_elements = vec![base_field_one; record_encoding_length];
         let record_group_encoding = vec![(base_field_default, base_field_default); record_encoding_length];
@@ -113,7 +120,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
         DPCError,
     > {
         // Serialize the record into group elements and fq_high bits
-        let encoded_record = EncodedRecord::<C, C::EncryptionModelParameters, C::EncryptionGroup>::encode(record)?;
+        let encoded_record = EncodedRecord::<C, C::EncryptionParameters, C::EncryptionGroup>::encode(record)?;
         let final_fq_high_selector = encoded_record.final_sign_high;
 
         let mut record_plaintexts = Vec::with_capacity(encoded_record.encoded_elements.len());
@@ -168,7 +175,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
         // Deserialize the plaintext record into record components
         let encoded_record = EncodedRecord::<
             C,
-            <C as Testnet2Components>::EncryptionModelParameters,
+            <C as Testnet2Components>::EncryptionParameters,
             <C as Testnet2Components>::EncryptionGroup,
         >::new(plaintext, self.final_fq_high_selector);
         let record_components = encoded_record.decode()?;
@@ -257,7 +264,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
 
         // Concatenate the ciphertext selector bits and the final fq_high selector bit
         selector_bits.push(self.final_fq_high_selector);
-        let selector_bytes = bits_to_bytes(&selector_bits);
+        let selector_bytes = from_bits_le_to_bytes_le(&selector_bits);
 
         Ok(system_parameters
             .encrypted_record_crh
@@ -277,18 +284,18 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
         encryption_randomness: &<<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Randomness,
     ) -> Result<RecordEncryptionGadgetComponents<C>, DPCError> {
         // Serialize the record into group elements and fq_high bits
-        let encoded_record = EncodedRecord::<C, C::EncryptionModelParameters, C::EncryptionGroup>::encode(record)?;
+        let encoded_record = EncodedRecord::<C, C::EncryptionParameters, C::EncryptionGroup>::encode(record)?;
         let num_encoded_elements = encoded_record.encoded_elements.len();
         let final_fq_high_selector = encoded_record.final_sign_high;
 
         // Extract the fq_bits from the serialized record
         let fq_high_selectors = {
             let final_element = &encoded_record.encoded_elements[num_encoded_elements - 1];
-            let final_element_bytes = decode_from_group::<C::EncryptionModelParameters, C::EncryptionGroup>(
+            let final_element_bytes = decode_from_group::<C::EncryptionParameters, C::EncryptionGroup>(
                 final_element.into_affine(),
                 final_fq_high_selector,
             )?;
-            let final_element_bits = bytes_to_bits(&final_element_bytes);
+            let final_element_bits = from_bytes_le_to_bits_le(&final_element_bytes);
             [
                 &final_element_bits
                     .skip(1)
@@ -316,14 +323,14 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
             if i == 0 {
                 // Serial number nonce
                 let record_field_element =
-                    <<C as Testnet2Components>::EncryptionModelParameters as ModelParameters>::BaseField::read(
+                    <<C as Testnet2Components>::EncryptionParameters as ModelParameters>::BaseField::read(
                         &to_bytes![element]?[..],
                     )?;
                 record_field_elements.push(record_field_element);
             } else {
                 // Decode the encoded groups into their respective field elements
                 let record_field_element = Elligator2::<
-                    <C as Testnet2Components>::EncryptionModelParameters,
+                    <C as Testnet2Components>::EncryptionParameters,
                     <C as Testnet2Components>::EncryptionGroup,
                 >::decode(&element_affine, *fq_high)?;
 
@@ -332,10 +339,10 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
 
             // Fetch the x and y coordinates of the serialized group elements
             // These values will be used in the inner circuit to validate the Elligator2 encoding
-            let x = <<C as Testnet2Components>::EncryptionModelParameters as ModelParameters>::BaseField::read(
+            let x = <<C as Testnet2Components>::EncryptionParameters as ModelParameters>::BaseField::read(
                 &to_bytes![element_affine.to_x_coordinate()]?[..],
             )?;
-            let y = <<C as Testnet2Components>::EncryptionModelParameters as ModelParameters>::BaseField::read(
+            let y = <<C as Testnet2Components>::EncryptionParameters as ModelParameters>::BaseField::read(
                 &to_bytes![element_affine.to_y_coordinate()]?[..],
             )?;
             record_group_encoding.push((x, y));
@@ -422,7 +429,7 @@ impl<C: Testnet2Components> ToBytes for EncryptedRecord<C> {
         ciphertext_selectors.push(self.final_fq_high_selector);
 
         // Write the ciphertext and fq_high selector bits
-        let selector_bytes = bits_to_bytes(&ciphertext_selectors);
+        let selector_bytes = from_bits_le_to_bytes_le(&ciphertext_selectors);
         selector_bytes.write(&mut writer)?;
 
         Ok(())
@@ -447,7 +454,7 @@ impl<C: Testnet2Components> FromBytes for EncryptedRecord<C> {
         let mut selector_bytes = vec![0u8; num_selector_bytes];
         reader.read_exact(&mut selector_bytes)?;
 
-        let mut selector_bits = bytes_to_bits(&selector_bytes);
+        let mut selector_bits = from_bytes_le_to_bits_le(&selector_bytes);
         let ciphertext_selectors = selector_bits.by_ref().take(num_ciphertext_elements);
 
         // Recover the ciphertext

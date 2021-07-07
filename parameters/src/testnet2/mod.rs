@@ -34,14 +34,14 @@ impl_params_local!(
     noop_program_snark_pk_test,
     "./",
     "noop_program_snark_pk",
-    348514
+    1320733
 );
 impl_params_local!(
     NoopProgramSNARKVKParameters,
     noop_program_snark_vk_test,
     "./",
     "noop_program_snark_vk",
-    1068
+    40849
 );
 
 // Inner SNARK

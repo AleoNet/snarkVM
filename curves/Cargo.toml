@@ -62,4 +62,3 @@ rustc_version = "0.3"
 
 [features]
 default = [ "snarkvm-fields/default", "snarkvm-utilities/default" ]
-sw6 = [ ]

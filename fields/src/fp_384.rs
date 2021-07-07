@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    impl_additive_ops_from_ref,
-    impl_multiplicative_ops_from_ref,
+    impl_add_sub_from_field_ref,
+    impl_mul_div_from_field_ref,
     FftField,
     Field,
     FieldError,
@@ -461,16 +461,16 @@ impl<P: Fp384Parameters> PartialOrd for Fp384<P> {
     }
 }
 
-impl_prime_field_from_int!(Fp384, u128, Fp384Parameters);
-impl_prime_field_from_int!(Fp384, u64, Fp384Parameters);
-impl_prime_field_from_int!(Fp384, u32, Fp384Parameters);
-impl_prime_field_from_int!(Fp384, u16, Fp384Parameters);
-impl_prime_field_from_int!(Fp384, u8, Fp384Parameters);
+impl_primefield_from_int!(Fp384, u128, Fp384Parameters);
+impl_primefield_from_int!(Fp384, u64, Fp384Parameters);
+impl_primefield_from_int!(Fp384, u32, Fp384Parameters);
+impl_primefield_from_int!(Fp384, u16, Fp384Parameters);
+impl_primefield_from_int!(Fp384, u8, Fp384Parameters);
 
-impl_prime_field_standard_sample!(Fp384, Fp384Parameters);
+impl_primefield_standard_sample!(Fp384, Fp384Parameters);
 
-impl_additive_ops_from_ref!(Fp384, Fp384Parameters);
-impl_multiplicative_ops_from_ref!(Fp384, Fp384Parameters);
+impl_add_sub_from_field_ref!(Fp384, Fp384Parameters);
+impl_mul_div_from_field_ref!(Fp384, Fp384Parameters);
 
 impl<P: Fp384Parameters> ToBytes for Fp384<P> {
     #[inline]

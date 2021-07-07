@@ -18,7 +18,7 @@ use crate::{
     templates::short_weierstrass_projective::Affine,
     traits::{AffineCurve, Group, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
-use snarkvm_fields::{impl_additive_ops_from_ref, Field, One, PrimeField, Zero};
+use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
     bytes::{FromBytes, ToBytes},
@@ -80,9 +80,14 @@ impl<P: Parameters> PartialEq for Projective<P> {
 impl<P: Parameters> Distribution<Projective<P>> for Standard {
     #[inline]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Projective<P> {
-        let res = Projective::prime_subgroup_generator() * P::ScalarField::rand(rng);
-        debug_assert!(res.into_affine().is_in_correct_subgroup_assuming_on_curve());
-        res
+        loop {
+            let x = P::BaseField::rand(rng);
+            let greatest = rng.gen();
+
+            if let Some(p) = Affine::from_x_coordinate(x, greatest) {
+                return p.scale_by_cofactor();
+            }
+        }
     }
 }
 
@@ -303,7 +308,7 @@ impl<P: Parameters> Neg for Projective<P> {
     }
 }
 
-impl_additive_ops_from_ref!(Projective, Parameters);
+impl_add_sub_from_field_ref!(Projective, Parameters);
 
 impl<'a, P: Parameters> Add<&'a Self> for Projective<P> {
     type Output = Self;

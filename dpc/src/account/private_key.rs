@@ -19,7 +19,7 @@ use snarkvm_algorithms::{
     prf::Blake2s,
     traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, PRF},
 };
-use snarkvm_utilities::{bytes_to_bits, to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{from_bytes_le_to_bits_le, to_bytes, FromBytes, ToBytes};
 
 use base58::{FromBase58, ToBase58};
 use rand::{CryptoRng, Rng};
@@ -151,7 +151,7 @@ impl<C: DPCComponents> PrivateKey<C> {
         // to the scalar field in the `inner_snark`, we additionally enforce
         // that the MSB bit of the scalar field is also set to 0.
         if !self.is_dummy {
-            let account_decryption_key_bits = bytes_to_bits(&decryption_key_bytes[..]).collect::<Vec<_>>();
+            let account_decryption_key_bits = from_bytes_le_to_bits_le(&decryption_key_bytes[..]).collect::<Vec<_>>();
             let account_decryption_key_length = account_decryption_key_bits.len();
 
             let decryption_private_key_length = C::AccountEncryption::private_key_size_in_bits();

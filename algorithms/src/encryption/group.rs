@@ -18,8 +18,8 @@ use crate::{encryption::GroupEncryptionParameters, errors::EncryptionError, trai
 use snarkvm_curves::traits::{AffineCurve, Group, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_utilities::{
-    bytes_to_bits,
     errors::SerializationError,
+    from_bytes_le_to_bits_le,
     rand::UniformRand,
     serialize::*,
     to_bytes,
@@ -133,7 +133,9 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
         let keygen_time = start_timer!(|| "GroupEncryption::generate_public_key");
 
         let mut public_key = G::zero();
-        for (bit, base_power) in bytes_to_bits(&to_bytes![private_key]?).zip_eq(&self.parameters.generator_powers) {
+        for (bit, base_power) in
+            from_bytes_le_to_bits_le(&to_bytes![private_key]?).zip_eq(&self.parameters.generator_powers)
+        {
             if bit {
                 public_key += base_power;
             }
@@ -202,7 +204,9 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
         let record_view_key = public_key.0.mul(*randomness);
 
         let mut c_0 = G::zero();
-        for (bit, base_power) in bytes_to_bits(&to_bytes![randomness]?).zip_eq(&self.parameters.generator_powers) {
+        for (bit, base_power) in
+            from_bytes_le_to_bits_le(&to_bytes![randomness]?).zip_eq(&self.parameters.generator_powers)
+        {
             if bit {
                 c_0 += base_power;
             }
