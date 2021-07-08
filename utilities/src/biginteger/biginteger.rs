@@ -58,6 +58,9 @@ pub trait BigInteger:
     + AsRef<[u64]>
     + From<u64>
 {
+    /// The number of limbs used in this BigInteger.
+    const NUM_LIMBS: usize;
+
     /// Add another representation to this one, returning the carry bit.
     fn add_nocarry(&mut self, other: &Self) -> bool;
 

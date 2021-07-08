@@ -26,6 +26,8 @@ macro_rules! bigint_impl {
         }
 
         impl BigInteger for $name {
+            const NUM_LIMBS: usize = $num_limbs;
+
             #[inline]
             fn add_nocarry(&mut self, other: &Self) -> bool {
                 let mut carry = 0;
@@ -167,16 +169,15 @@ macro_rules! bigint_impl {
             #[inline]
             fn from_bits_be(mut bits: Vec<bool>) -> Self {
                 let mut res = Self::default();
-                let mut acc: u64 = 0;
 
                 bits.reverse();
                 for (i, bits64) in bits.chunks(64).enumerate() {
+                    let mut acc: u64 = 0;
                     for bit in bits64.iter().rev() {
                         acc <<= 1;
                         acc += *bit as u64;
                     }
                     res.0[i] = acc;
-                    acc = 0;
                 }
                 res
             }
