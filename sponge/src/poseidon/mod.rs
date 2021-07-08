@@ -80,13 +80,13 @@ impl<F: PrimeField> PoseidonParameters<F> {
 /// [cos]: https://eprint.iacr.org/2019/1076
 pub struct PoseidonSponge<F: PrimeField> {
     // Sponge Parameters
-    parameters: PoseidonParameters<F>,
+    pub parameters: PoseidonParameters<F>,
 
     // Sponge State
     /// current sponge's state (current elements in the permutation block)
-    state: Vec<F>,
+    pub state: Vec<F>,
     /// current mode (whether its absorbing or squeezing)
-    mode: DuplexSpongeMode,
+    pub mode: DuplexSpongeMode,
 }
 
 impl<F: PrimeField> PoseidonSponge<F> {
@@ -150,6 +150,10 @@ impl<F: PrimeField> PoseidonSponge<F> {
 
     // Absorbs everything in elements, this does not end in an absorbtion.
     fn absorb_internal(&mut self, mut rate_start_index: usize, elements: &[F]) {
+        if elements.len() == 0 {
+            return;
+        }
+
         let mut remaining_elements = elements;
 
         loop {
@@ -224,6 +228,10 @@ impl<F: PrimeField> CryptographicSponge<F> for PoseidonSponge<F> {
     }
 
     fn absorb(&mut self, input: &[F]) {
+        if input.len() == 0 {
+            return;
+        }
+
         match self.mode {
             DuplexSpongeMode::Absorbing { next_absorb_index } => {
                 let mut absorb_index = next_absorb_index;
@@ -269,7 +277,7 @@ mod test {
 
     #[test]
     fn test_poseidon_sponge_consistency() {
-        let sponge_param = Fr::get_default_parameters(2, false).unwrap();
+        let sponge_param = Fr::get_default_poseidon_parameters(2, false).unwrap();
 
         let mut sponge = PoseidonSponge::<Fr>::new(&sponge_param);
         sponge.absorb(&vec![Fr::from(0u8), Fr::from(1u8), Fr::from(2u8)]);

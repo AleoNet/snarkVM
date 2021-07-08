@@ -64,10 +64,16 @@ path = "../r1cs"
 version = "0.7.1"
 default-features = false
 
+[dependencies.snarkvm-sponge]
+path = "../sponge"
+version = "0.7.1"
+default-features = false
+
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.7.1"
 default-features = false
+
 
 [dependencies.blake2]
 version = "0.9"

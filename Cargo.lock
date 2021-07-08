@@ -1608,6 +1608,7 @@ dependencies = [
  "snarkvm-fields",
  "snarkvm-profiler",
  "snarkvm-r1cs",
+ "snarkvm-sponge",
  "snarkvm-utilities",
  "thiserror",
 ]

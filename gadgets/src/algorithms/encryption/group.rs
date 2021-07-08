@@ -16,12 +16,11 @@
 
 use std::{borrow::Borrow, marker::PhantomData};
 
-use digest::Digest;
 use itertools::Itertools;
 
 use snarkvm_algorithms::encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey};
 use snarkvm_curves::traits::{Group, ProjectiveCurve};
-use snarkvm_fields::{Field, PrimeField};
+use snarkvm_fields::{Field, PrimeField, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{to_bytes, CanonicalDeserialize, CanonicalSerialize, ToBytes};
 
@@ -36,6 +35,8 @@ use crate::{
         integers::integer::Integer,
     },
 };
+use snarkvm_curves::AffineCurve;
+use snarkvm_sponge::PoseidonDefaultParametersField;
 
 /// Group encryption parameters gadget
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -484,11 +485,13 @@ pub struct GroupEncryptionGadget<G: Group + ProjectiveCurve, F: PrimeField, GG: 
 
 impl<
     G: Group + ProjectiveCurve,
-    SG: Group + CanonicalSerialize + CanonicalDeserialize,
-    D: Digest + Send + Sync,
+    SG: Group + CanonicalSerialize + CanonicalDeserialize + AffineCurve,
     F: PrimeField,
     GG: CompressedGroupGadget<G, F>,
-> EncryptionGadget<GroupEncryption<G, SG, D>, F> for GroupEncryptionGadget<G, F, GG>
+> EncryptionGadget<GroupEncryption<G, SG>, F> for GroupEncryptionGadget<G, F, GG>
+where
+    <SG as AffineCurve>::BaseField: PoseidonDefaultParametersField,
+    SG: ToConstraintField<<SG as AffineCurve>::BaseField>,
 {
     type BlindingExponentGadget = GroupEncryptionBlindingExponentsGadget<G>;
     type CiphertextGadget = GroupEncryptionCiphertextGadget<G, F, GG>;

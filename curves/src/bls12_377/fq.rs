@@ -14,7 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::{FftParameters, FieldParameters, Fp384, Fp384Parameters, PoseidonDefaultParameters};
+use snarkvm_fields::{
+    FftParameters,
+    FieldParameters,
+    Fp384,
+    Fp384Parameters,
+    PoseidonDefaultParameters,
+    PoseidonDefaultParametersEntry,
+};
 use snarkvm_utilities::biginteger::BigInteger384 as BigInteger;
 
 pub type Fq = Fp384<FqParameters>;
@@ -122,22 +129,22 @@ impl FieldParameters for FqParameters {
 }
 
 impl PoseidonDefaultParameters for FqParameters {
-    const PARAMS_OPT_FOR_CONSTRAINTS: [[usize; 5]; 7] = [
-        [2, 17, 8, 31, 0],
-        [3, 5, 8, 56, 0],
-        [4, 5, 8, 56, 0],
-        [5, 5, 8, 57, 0],
-        [6, 5, 8, 57, 0],
-        [7, 5, 8, 57, 0],
-        [8, 5, 8, 57, 0],
+    const PARAMS_OPT_FOR_CONSTRAINTS: [PoseidonDefaultParametersEntry; 7] = [
+        PoseidonDefaultParametersEntry::new(2, 17, 8, 31, 0),
+        PoseidonDefaultParametersEntry::new(3, 5, 8, 56, 0),
+        PoseidonDefaultParametersEntry::new(4, 5, 8, 56, 0),
+        PoseidonDefaultParametersEntry::new(5, 5, 8, 57, 0),
+        PoseidonDefaultParametersEntry::new(6, 5, 8, 57, 0),
+        PoseidonDefaultParametersEntry::new(7, 5, 8, 57, 0),
+        PoseidonDefaultParametersEntry::new(8, 5, 8, 57, 0),
     ];
-    const PARAMS_OPT_FOR_WEIGHTS: [[usize; 5]; 7] = [
-        [2, 257, 8, 13, 0],
-        [3, 257, 8, 13, 0],
-        [4, 257, 8, 13, 0],
-        [5, 257, 8, 13, 0],
-        [6, 257, 8, 13, 0],
-        [7, 257, 8, 13, 0],
-        [8, 257, 8, 13, 0],
+    const PARAMS_OPT_FOR_WEIGHTS: [PoseidonDefaultParametersEntry; 7] = [
+        PoseidonDefaultParametersEntry::new(2, 257, 8, 13, 0),
+        PoseidonDefaultParametersEntry::new(3, 257, 8, 13, 0),
+        PoseidonDefaultParametersEntry::new(4, 257, 8, 13, 0),
+        PoseidonDefaultParametersEntry::new(5, 257, 8, 13, 0),
+        PoseidonDefaultParametersEntry::new(6, 257, 8, 13, 0),
+        PoseidonDefaultParametersEntry::new(7, 257, 8, 13, 0),
+        PoseidonDefaultParametersEntry::new(8, 257, 8, 13, 0),
     ];
 }
