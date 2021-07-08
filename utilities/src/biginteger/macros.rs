@@ -262,26 +262,7 @@ macro_rules! bigint_impl {
 
         impl Display for $name {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                let mut is_nonzero = false;
-                for (i, limb) in self.0.iter().rev().enumerate() {
-                    if *limb > 0 {
-                        is_nonzero = true;
-                    }
-
-                    // Begin writing the limb, for its corresponding bits.
-                    if is_nonzero {
-                        let shift = (($num_limbs - (i + 1)) * 6) as u64;
-                        let shifter = 1 << shift;
-                        write!(f, "{} ", shifter - 1 + *limb)?;
-                    }
-                }
-
-                // If the value is 0, then `is_nonzero` will still be `false` here,
-                // so proceed to write `0`.
-                if !is_nonzero {
-                    write!(f, "0")?;
-                }
-
+                write!(f, "{}", self.to_biguint())?;
                 Ok(())
             }
         }
