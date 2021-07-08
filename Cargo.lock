@@ -1608,6 +1608,7 @@ dependencies = [
  "snarkvm-fields",
  "snarkvm-profiler",
  "snarkvm-r1cs",
+ "snarkvm-sponge",
  "snarkvm-utilities",
  "thiserror",
 ]
@@ -1702,6 +1703,7 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-r1cs",
+ "snarkvm-sponge",
  "snarkvm-utilities",
  "thiserror",
 ]
@@ -1753,6 +1755,7 @@ dependencies = [
  "snarkvm-polycommit",
  "snarkvm-profiler",
  "snarkvm-r1cs",
+ "snarkvm-sponge",
  "snarkvm-utilities",
 ]
 
@@ -1841,10 +1844,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "snarkvm-sponge"
+version = "0.7.1"
+dependencies = [
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-utilities",
+]
+
+[[package]]
 name = "snarkvm-utilities"
 version = "0.7.1"
 dependencies = [
  "bincode",
+ "num-bigint",
  "rand",
  "rand_xorshift",
  "snarkvm-derives",

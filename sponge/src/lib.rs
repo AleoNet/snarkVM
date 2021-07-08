@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod group;
-pub use group::*;
+// This repo implements a subset of the interfaces from https://github.com/arkworks-rs/sponge.
+// In the future, the interfaces may get closer.
 
-pub mod schnorr;
-pub use schnorr::*;
+pub mod poseidon;
 
-#[cfg(test)]
-pub mod tests;
+pub mod traits;
+pub use traits::*;

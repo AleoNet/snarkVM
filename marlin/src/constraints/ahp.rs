@@ -19,7 +19,7 @@ use core::marker::PhantomData;
 use hashbrown::{HashMap, HashSet};
 
 use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_fields::{PoseidonMDSField, PrimeField};
+use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     bits::{Boolean, ToBitsLEGadget},
     fields::FpGadget,
@@ -54,6 +54,7 @@ use crate::{
     FiatShamirRngVar,
     PolynomialCommitment,
 };
+use snarkvm_sponge::PoseidonDefaultParametersField;
 
 /// The Marlin verifier round state gadget used to output the state of each round.
 #[derive(Clone)]
@@ -97,7 +98,7 @@ pub struct VerifierThirdMsgVar<TargetField: PrimeField, BaseField: PrimeField> {
 /// The AHP gadget.
 pub struct AHPForR1CS<
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField + PoseidonDefaultParametersField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > where
@@ -112,7 +113,7 @@ pub struct AHPForR1CS<
 
 impl<
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField + PoseidonDefaultParametersField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > AHPForR1CS<TargetField, BaseField, PC, PCG>
@@ -226,11 +227,13 @@ where
             });
 
             fs_rng.absorb_native_field_elements(cs.ns(|| "absorb_native_field_elements"), &elems)?;
-            fs_rng.absorb_nonnative_field_elements(
-                cs.ns(|| "absorb_nonnative_field_elements"),
-                &message,
-                OptimizationType::Weight,
-            )?;
+            if !message.is_empty() {
+                fs_rng.absorb_nonnative_field_elements(
+                    cs.ns(|| "absorb_nonnative_field_elements"),
+                    &message,
+                    OptimizationType::Weight,
+                )?;
+            }
         }
 
         // obtain one element from the sponge
@@ -282,11 +285,13 @@ where
                 );
             });
             fs_rng.absorb_native_field_elements(cs.ns(|| "absorb_native_field_elements"), &elems)?;
-            fs_rng.absorb_nonnative_field_elements(
-                cs.ns(|| "absorb_nonnative_field_elements"),
-                &message,
-                OptimizationType::Weight,
-            )?;
+            if !message.is_empty() {
+                fs_rng.absorb_nonnative_field_elements(
+                    cs.ns(|| "absorb_nonnative_field_elements"),
+                    &message,
+                    OptimizationType::Weight,
+                )?;
+            }
         }
 
         // obtain one element from the sponge

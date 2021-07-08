@@ -21,6 +21,7 @@ use crate::{
     rand::UniformRand,
 };
 
+use num_bigint::BigUint;
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
@@ -106,6 +107,17 @@ pub trait BigInteger:
     fn to_bits_le(&self) -> Vec<bool> {
         BitIteratorLE::new(self).collect::<Vec<_>>()
     }
+
+    /// Returns the byte representation in a big endian byte array,
+    /// with leading zeros.
+    fn to_bytes_be(&self) -> Vec<u8>;
+
+    /// Returns the byte representation in a little endian byte array,
+    /// with trailing zeros.
+    fn to_bytes_le(&self) -> Vec<u8>;
+
+    /// Returns the BigUint representation.
+    fn to_biguint(&self) -> BigUint;
 
     /// Returns a vector for wnaf.
     fn find_wnaf(&self) -> Vec<i64>;

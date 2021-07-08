@@ -67,6 +67,8 @@ pub use integers::*;
 #[cfg(feature = "nonnative")]
 pub mod nonnative;
 
+pub mod sponge;
+
 pub mod traits;
 pub use traits::*;
 

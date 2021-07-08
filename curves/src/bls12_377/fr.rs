@@ -14,7 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::{FftParameters, FieldParameters, Fp256, Fp256Parameters, PoseidonMDSParameters};
+use snarkvm_fields::{
+    FftParameters,
+    FieldParameters,
+    Fp256,
+    Fp256Parameters,
+    PoseidonDefaultParameters,
+    PoseidonDefaultParametersEntry,
+};
 use snarkvm_utilities::biginteger::BigInteger256 as BigInteger;
 
 /// BLS12-377 scalar field.
@@ -138,70 +145,23 @@ impl FieldParameters for FrParameters {
     ]);
 }
 
-impl PoseidonMDSParameters for FrParameters {
-    const POSEIDON_ALPHA: u64 = 31;
-    const POSEIDON_FULL_ROUNDS: u32 = 8;
-    const POSEIDON_MDS: [[Self::BigInteger; 3]; 3] = [
-        [
-            BigInteger([
-                6188388238584018532u64,
-                11493802278950735459u64,
-                3100744182014751308u64,
-                1190114621496827950u64,
-            ]),
-            BigInteger([
-                17594902315437386256u64,
-                597147877102719717u64,
-                17038129296668416920u64,
-                1250277385588220453u64,
-            ]),
-            BigInteger([
-                10602453801858052976u64,
-                7717482802395536114u64,
-                5951494603031420825u64,
-                915103628542843298u64,
-            ]),
-        ],
-        [
-            BigInteger([
-                5415947615825563052u64,
-                14987250947647202891u64,
-                2281490614117461870u64,
-                1270200951347544313u64,
-            ]),
-            BigInteger([
-                1195495711192445917u64,
-                12073112637052905598u64,
-                52142075209668561u64,
-                256304278199212045u64,
-            ]),
-            BigInteger([
-                10023928304612151122u64,
-                600128969147059959u64,
-                10777307523434938806u64,
-                203414260656692706u64,
-            ]),
-        ],
-        [
-            BigInteger([
-                12456382071145223368u64,
-                13015953546224803425u64,
-                5417472913321643039u64,
-                73519270204018418u64,
-            ]),
-            BigInteger([
-                7336828739055527271u64,
-                3753146417872347057u64,
-                12072987070902568181u64,
-                15146407981871231u64,
-            ]),
-            BigInteger([
-                12539233764021411810u64,
-                2925937769950757701u64,
-                8556172513153506351u64,
-                65472480881547579u64,
-            ]),
-        ],
+impl PoseidonDefaultParameters for FrParameters {
+    const PARAMS_OPT_FOR_CONSTRAINTS: [PoseidonDefaultParametersEntry; 7] = [
+        PoseidonDefaultParametersEntry::new(2, 17, 8, 31, 0),
+        PoseidonDefaultParametersEntry::new(3, 17, 8, 31, 0),
+        PoseidonDefaultParametersEntry::new(4, 17, 8, 31, 0),
+        PoseidonDefaultParametersEntry::new(5, 17, 8, 31, 0),
+        PoseidonDefaultParametersEntry::new(6, 17, 8, 31, 0),
+        PoseidonDefaultParametersEntry::new(7, 17, 8, 31, 0),
+        PoseidonDefaultParametersEntry::new(8, 17, 8, 31, 0),
     ];
-    const POSEIDON_PARTIAL_ROUNDS: u32 = 24;
+    const PARAMS_OPT_FOR_WEIGHTS: [PoseidonDefaultParametersEntry; 7] = [
+        PoseidonDefaultParametersEntry::new(2, 257, 8, 13, 0),
+        PoseidonDefaultParametersEntry::new(3, 257, 8, 13, 0),
+        PoseidonDefaultParametersEntry::new(4, 257, 8, 13, 0),
+        PoseidonDefaultParametersEntry::new(5, 257, 8, 13, 0),
+        PoseidonDefaultParametersEntry::new(6, 257, 8, 13, 0),
+        PoseidonDefaultParametersEntry::new(7, 257, 8, 13, 0),
+        PoseidonDefaultParametersEntry::new(8, 257, 8, 13, 0),
+    ];
 }

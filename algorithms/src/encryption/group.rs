@@ -16,7 +16,7 @@
 
 use crate::{encryption::GroupEncryptionParameters, errors::EncryptionError, traits::EncryptionScheme};
 use snarkvm_curves::traits::{AffineCurve, Group, ProjectiveCurve};
-use snarkvm_fields::{Field, One, PrimeField, Zero};
+use snarkvm_fields::{Field, One, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
     errors::SerializationError,
     from_bytes_le_to_bits_le,
@@ -27,9 +27,9 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use digest::Digest;
 use itertools::Itertools;
 use rand::Rng;
+use snarkvm_sponge::PoseidonDefaultParametersField;
 use std::{
     io::{Read, Result as IoResult, Write},
     marker::PhantomData,
@@ -86,19 +86,21 @@ impl<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> Def
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "G: Group, SG: Group, D: Digest"),
-    Debug(bound = "G: Group, SG: Group, D: Digest"),
-    PartialEq(bound = "G: Group, SG: Group, D: Digest"),
-    Eq(bound = "G: Group, SG: Group, D: Digest")
+    Clone(bound = "G: Group, SG: Group"),
+    Debug(bound = "G: Group, SG: Group"),
+    PartialEq(bound = "G: Group, SG: Group"),
+    Eq(bound = "G: Group, SG: Group")
 )]
-pub struct GroupEncryption<G: Group + ProjectiveCurve, SG: Group, D: Digest> {
+pub struct GroupEncryption<G: Group + ProjectiveCurve, SG: Group> {
     pub parameters: GroupEncryptionParameters<G>,
     pub _signature_group: PhantomData<SG>,
-    pub _hash: PhantomData<D>,
 }
 
-impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeserialize, D: Digest + Send + Sync>
-    EncryptionScheme for GroupEncryption<G, SG, D>
+impl<G: Group + ProjectiveCurve, SG: Group + AffineCurve + CanonicalSerialize + CanonicalDeserialize> EncryptionScheme
+    for GroupEncryption<G, SG>
+where
+    <SG as AffineCurve>::BaseField: PoseidonDefaultParametersField,
+    SG: ToConstraintField<<SG as AffineCurve>::BaseField>,
 {
     type BlindingExponent = <G as Group>::ScalarField;
     type Parameters = GroupEncryptionParameters<G>;
@@ -114,7 +116,6 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
                 <Self as EncryptionScheme>::PrivateKey::size_in_bits(),
             ),
             _signature_group: PhantomData,
-            _hash: PhantomData,
         }
     }
 
@@ -278,14 +279,11 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
     }
 }
 
-impl<G: Group + ProjectiveCurve, SG: Group, D: Digest> From<GroupEncryptionParameters<G>>
-    for GroupEncryption<G, SG, D>
-{
+impl<G: Group + ProjectiveCurve, SG: Group> From<GroupEncryptionParameters<G>> for GroupEncryption<G, SG> {
     fn from(parameters: GroupEncryptionParameters<G>) -> Self {
         Self {
             parameters,
             _signature_group: PhantomData,
-            _hash: PhantomData,
         }
     }
 }
