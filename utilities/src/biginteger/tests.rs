@@ -77,6 +77,41 @@ fn biginteger_bytes_test<B: BigInteger>() {
     assert_eq!(x, y);
 }
 
+fn biginteger_to_string_test<B: BigInteger>() {
+    const ITERATIONS: u64 = 1_000_000;
+
+    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+
+    // Sanity check the integers starting from 0 to ITERATIONS.
+    for integer in 0..ITERATIONS {
+        assert_eq!(format!("{}", integer), B::from(integer).to_string());
+    }
+
+    // If the BigInteger has more than one limb, sanity check
+    // that the second limb conversion is also correct.
+    if B::NUM_LIMBS > 1 {
+        let start = u64::MAX as u128;
+        for integer in start..(start + ITERATIONS as u128) {
+            let mut buffer = vec![0u8; 8 * B::NUM_LIMBS];
+            buffer
+                .iter_mut()
+                .zip(&(integer as u128).to_le_bytes())
+                .for_each(|(buf, val)| {
+                    *buf = *val;
+                });
+            assert_eq!(format!("{}", integer), B::read(&*buffer).unwrap().to_string());
+        }
+    }
+
+    // Sample random integers and check they match against num-bigint.
+    for _ in 0..ITERATIONS {
+        let candidate: B = UniformRand::rand(&mut rng);
+        let candidate_hex = format!("{:?}", candidate);
+        let reference = num_bigint::BigUint::parse_bytes(candidate_hex.as_bytes(), 16).unwrap();
+        assert_eq!(reference.to_str_radix(10), candidate.to_string());
+    }
+}
+
 fn test_biginteger<B: BigInteger>(zero: B) {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
     let a: B = UniformRand::rand(&mut rng);
@@ -84,6 +119,7 @@ fn test_biginteger<B: BigInteger>(zero: B) {
     biginteger_arithmetic_test(a, b, zero);
     biginteger_bytes_test::<B>();
     biginteger_bits_test::<B>();
+    biginteger_to_string_test::<B>();
 }
 
 #[test]
