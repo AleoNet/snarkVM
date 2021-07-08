@@ -113,10 +113,8 @@ macro_rules! impl_poseidon_default_parameters_field {
 }
 
 impl_poseidon_default_parameters_field!(Fp256, Fp256Parameters);
-impl_poseidon_default_parameters_field!(Fp320, Fp320Parameters);
 impl_poseidon_default_parameters_field!(Fp384, Fp384Parameters);
 impl_poseidon_default_parameters_field!(Fp768, Fp768Parameters);
-impl_poseidon_default_parameters_field!(Fp832, Fp832Parameters);
 
 #[cfg(test)]
 mod test {
