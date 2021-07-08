@@ -16,3 +16,6 @@
 
 pub mod hash_to_curve;
 pub use hash_to_curve::*;
+
+#[cfg(test)]
+mod tests;
