@@ -21,7 +21,7 @@ use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 /// Program verifying key and proof
 /// Represented as bytes to be generic for any Program SNARK
 #[derive(Clone)]
-pub struct PrivateProgramInput {
+pub struct Execution {
     pub verifying_key: Vec<u8>,
     pub proof: Vec<u8>,
 }

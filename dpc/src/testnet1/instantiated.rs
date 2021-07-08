@@ -120,7 +120,7 @@ impl DPCComponents for Components {
 
 impl Testnet1Components for Components {
     type EncryptionGroup = EdwardsBls12;
-    type EncryptionModelParameters = EdwardsParameters;
+    type EncryptionParameters = EdwardsParameters;
     type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, Self::OuterScalarField, PairingGadget>;
     type MerkleHashGadget =

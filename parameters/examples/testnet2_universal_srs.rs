@@ -16,7 +16,7 @@
 
 use snarkvm_dpc::{
     errors::DPCError,
-    testnet2::{instantiated::Components, Testnet2Components, DPC},
+    testnet2::{instantiated::Components, ProgramSNARKUniversalSRS, Testnet2Components},
 };
 use snarkvm_fields::ToConstraintField;
 use snarkvm_marlin::PolynomialCommitment;
@@ -37,7 +37,7 @@ where
 {
     let rng = &mut thread_rng();
 
-    let universal_srs = DPC::<C>::generate_program_snark_universal_srs(rng)?;
+    let universal_srs = ProgramSNARKUniversalSRS::<C>::setup(rng)?;
     let universal_srs_bytes = to_bytes![universal_srs.0]?;
 
     println!("universal_srs.params\n\tsize - {}", universal_srs_bytes.len());

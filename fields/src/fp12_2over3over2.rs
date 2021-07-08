@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{fp6_3over2::*, Field, Fp2, Fp2Parameters, One, PrimeField, Zero};
+use crate::{fp6_3over2::*, Field, Fp2, Fp2Parameters, One, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
     bytes::{FromBytes, ToBytes},
-    div_ceil,
     errors::SerializationError,
     rand::UniformRand,
     serialize::*,
@@ -32,7 +31,6 @@ use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
@@ -57,9 +55,6 @@ pub trait Fp12Parameters: 'static + Send + Sync + Copy {
 pub struct Fp12<P: Fp12Parameters> {
     pub c0: Fp6<P::Fp6Params>,
     pub c1: Fp6<P::Fp6Params>,
-    #[derivative(Debug = "ignore")]
-    #[doc(hidden)]
-    pub params: PhantomData<P>,
 }
 
 type Fp2Params<P> = <<P as Fp12Parameters>::Fp6Params as Fp6Parameters>::Fp2Params;
@@ -75,11 +70,7 @@ impl<P: Fp12Parameters> Fp12<P> {
     }
 
     pub fn new(c0: Fp6<P::Fp6Params>, c1: Fp6<P::Fp6Params>) -> Self {
-        Self {
-            c0,
-            c1,
-            params: PhantomData,
-        }
+        Self { c0, c1 }
     }
 
     pub fn mul_by_fp(&mut self, element: &<<P::Fp6Params as Fp6Parameters>::Fp2Params as Fp2Parameters>::Fp) {
@@ -259,19 +250,10 @@ impl<P: Fp12Parameters> Field for Fp12<P> {
     }
 
     #[inline]
-    fn from_random_bytes_with_flags(bytes: &[u8]) -> Option<(Self, u8)> {
-        if bytes.len()
-            != 12
-                * div_ceil(
-                    <<P::Fp6Params as Fp6Parameters>::Fp2Params as Fp2Parameters>::Fp::size_in_bits(),
-                    8,
-                )
-        {
-            return None;
-        }
+    fn from_random_bytes_with_flags<F: Flags>(bytes: &[u8]) -> Option<(Self, F)> {
         let split_at = bytes.len() / 2;
         if let Some(c0) = Fp6::<P::Fp6Params>::from_random_bytes(&bytes[..split_at]) {
-            if let Some((c1, flags)) = Fp6::<P::Fp6Params>::from_random_bytes_with_flags(&bytes[split_at..]) {
+            if let Some((c1, flags)) = Fp6::<P::Fp6Params>::from_random_bytes_with_flags::<F>(&bytes[split_at..]) {
                 return Some((Fp12::new(c0, c1), flags));
             }
         }
@@ -280,7 +262,7 @@ impl<P: Fp12Parameters> Field for Fp12<P> {
 
     #[inline]
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
-        Self::from_random_bytes_with_flags(bytes).map(|f| f.0)
+        Self::from_random_bytes_with_flags::<EmptyFlags>(bytes).map(|f| f.0)
     }
 
     fn double_in_place(&mut self) {
@@ -367,8 +349,8 @@ impl<P: Fp12Parameters> Neg for Fp12<P> {
     }
 }
 
-impl_additive_ops_from_ref!(Fp12, Fp12Parameters);
-impl_multiplicative_ops_from_ref!(Fp12, Fp12Parameters);
+impl_add_sub_from_field_ref!(Fp12, Fp12Parameters);
+impl_mul_div_from_field_ref!(Fp12, Fp12Parameters);
 
 impl<'a, P: Fp12Parameters> Add<&'a Self> for Fp12<P> {
     type Output = Self;

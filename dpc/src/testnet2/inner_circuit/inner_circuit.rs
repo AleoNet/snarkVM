@@ -66,9 +66,7 @@ pub struct InnerCircuit<C: Testnet2Components> {
     local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
 
     memo: [u8; 32],
-
     value_balance: AleoAmount,
-
     network_id: u8,
 }
 

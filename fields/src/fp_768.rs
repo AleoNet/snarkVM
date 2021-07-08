@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    impl_additive_ops_from_ref,
-    impl_multiplicative_ops_from_ref,
+    impl_add_sub_from_field_ref,
+    impl_mul_div_from_field_ref,
     FftField,
     Field,
     FieldError,
@@ -796,16 +796,16 @@ impl<P: Fp768Parameters> PartialOrd for Fp768<P> {
     }
 }
 
-impl_prime_field_from_int!(Fp768, u128, Fp768Parameters);
-impl_prime_field_from_int!(Fp768, u64, Fp768Parameters);
-impl_prime_field_from_int!(Fp768, u32, Fp768Parameters);
-impl_prime_field_from_int!(Fp768, u16, Fp768Parameters);
-impl_prime_field_from_int!(Fp768, u8, Fp768Parameters);
+impl_primefield_from_int!(Fp768, u128, Fp768Parameters);
+impl_primefield_from_int!(Fp768, u64, Fp768Parameters);
+impl_primefield_from_int!(Fp768, u32, Fp768Parameters);
+impl_primefield_from_int!(Fp768, u16, Fp768Parameters);
+impl_primefield_from_int!(Fp768, u8, Fp768Parameters);
 
-impl_prime_field_standard_sample!(Fp768, Fp768Parameters);
+impl_primefield_standard_sample!(Fp768, Fp768Parameters);
 
-impl_additive_ops_from_ref!(Fp768, Fp768Parameters);
-impl_multiplicative_ops_from_ref!(Fp768, Fp768Parameters);
+impl_add_sub_from_field_ref!(Fp768, Fp768Parameters);
+impl_mul_div_from_field_ref!(Fp768, Fp768Parameters);
 
 impl<P: Fp768Parameters> ToBytes for Fp768<P> {
     #[inline]

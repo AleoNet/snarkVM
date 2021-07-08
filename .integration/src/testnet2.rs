@@ -16,13 +16,7 @@
 
 use crate::Ledger;
 use snarkvm_algorithms::{MerkleParameters, CRH};
-use snarkvm_dpc::{
-    testnet2::{instantiated::*, parameters::PublicParameters},
-    Account,
-    AccountScheme,
-    DPCScheme,
-    Storage,
-};
+use snarkvm_dpc::{testnet2::instantiated::*, Account, DPCScheme, Storage};
 use snarkvm_parameters::{LedgerMerkleTreeParameters, Parameter};
 use snarkvm_utilities::bytes::FromBytes;
 
@@ -34,10 +28,7 @@ pub type MerkleTreeLedger<S> = Ledger<Testnet2Transaction, CommitmentMerkleParam
 pub fn setup_or_load_parameters<R: Rng + CryptoRng, S: Storage>(
     verify_only: bool,
     rng: &mut R,
-) -> (
-    Arc<CommitmentMerkleParameters>,
-    <Testnet2DPC as DPCScheme<MerkleTreeLedger<S>>>::NetworkParameters,
-) {
+) -> (Arc<CommitmentMerkleParameters>, Testnet2DPC) {
     // TODO (howardwu): Resolve this inconsistency on import structure with a new model once MerkleParameters are refactored.
     let crh_parameters =
         <MerkleTreeCRH as CRH>::Parameters::read(&LedgerMerkleTreeParameters::load_bytes().unwrap()[..])
@@ -45,8 +36,8 @@ pub fn setup_or_load_parameters<R: Rng + CryptoRng, S: Storage>(
     let merkle_tree_hash_parameters = <CommitmentMerkleParameters as MerkleParameters>::H::from(crh_parameters);
     let ledger_merkle_tree_parameters = Arc::new(From::from(merkle_tree_hash_parameters));
 
-    // let parameters = match <InstantiatedDPC as DPCScheme<MerkleTreeLedger<S>>>::NetworkParameters::load(verify_only) {
-    //     Ok(parameters) => parameters,
+    // let dpc = match <InstantiatedDPC as DPCScheme<MerkleTreeLedger<S>>>::load(verify_only) {
+    //     Ok(dpc) => dpc,
     //     Err(err) => {
     //         println!("error - {}, re-running parameter Setup", err);
     //         <InstantiatedDPC as DPCScheme<MerkleTreeLedger<S>>>::setup(&ledger_merkle_tree_parameters, rng)
@@ -54,28 +45,20 @@ pub fn setup_or_load_parameters<R: Rng + CryptoRng, S: Storage>(
     //     }
     // };
 
-    let parameters = <Testnet2DPC as DPCScheme<MerkleTreeLedger<S>>>::setup(&ledger_merkle_tree_parameters, rng)
+    let dpc = <Testnet2DPC as DPCScheme<MerkleTreeLedger<S>>>::setup(&ledger_merkle_tree_parameters, rng)
         .expect("DPC setup failed");
 
-    (ledger_merkle_tree_parameters, parameters)
-}
-
-pub fn load_verifying_parameters() -> PublicParameters<Components> {
-    PublicParameters::<Components>::load_vk_direct().unwrap()
+    (ledger_merkle_tree_parameters, dpc)
 }
 
 pub fn generate_test_accounts<R: Rng + CryptoRng, S: Storage>(
-    parameters: &PublicParameters<Components>,
+    dpc: &Testnet2DPC,
     rng: &mut R,
 ) -> [Account<Components>; 3] {
-    let signature_parameters = &parameters.system_parameters.account_signature;
-    let commitment_parameters = &parameters.system_parameters.account_commitment;
-    let encryption_parameters = &parameters.system_parameters.account_encryption;
-
-    let genesis_account =
-        Account::new(signature_parameters, commitment_parameters, encryption_parameters, rng).unwrap();
-    let account_1 = Account::new(signature_parameters, commitment_parameters, encryption_parameters, rng).unwrap();
-    let account_2 = Account::new(signature_parameters, commitment_parameters, encryption_parameters, rng).unwrap();
+    // TODO (howardwu): Remove DPCScheme<MerkleTreeLedger<S>> usage after decoupling ledger.
+    let genesis_account = <Testnet2DPC as DPCScheme<MerkleTreeLedger<S>>>::create_account(dpc, rng).unwrap();
+    let account_1 = <Testnet2DPC as DPCScheme<MerkleTreeLedger<S>>>::create_account(dpc, rng).unwrap();
+    let account_2 = <Testnet2DPC as DPCScheme<MerkleTreeLedger<S>>>::create_account(dpc, rng).unwrap();
 
     [genesis_account, account_1, account_2]
 }

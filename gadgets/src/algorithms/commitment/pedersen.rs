@@ -38,7 +38,6 @@ use crate::{
 #[derive(Clone)]
 pub struct PedersenCommitmentParametersGadget<G: Group, F: Field, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     parameters: PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>,
-    _group: PhantomData<G>,
     _engine: PhantomData<F>,
 }
 
@@ -58,7 +57,6 @@ impl<G: Group, F: PrimeField, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize
         let parameters = temp.borrow().clone();
         Ok(PedersenCommitmentParametersGadget {
             parameters,
-            _group: PhantomData,
             _engine: PhantomData,
         })
     }
@@ -75,7 +73,6 @@ impl<G: Group, F: PrimeField, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize
         let parameters = temp.borrow().clone();
         Ok(PedersenCommitmentParametersGadget {
             parameters,
-            _group: PhantomData,
             _engine: PhantomData,
         })
     }

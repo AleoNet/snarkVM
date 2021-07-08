@@ -17,7 +17,6 @@
 use crate::{Field, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
-    div_ceil,
     errors::SerializationError,
     rand::UniformRand,
     serialize::*,
@@ -31,7 +30,6 @@ use serde::{Deserialize, Serialize};
 use std::{
     cmp::{Ord, Ordering, PartialOrd},
     io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
@@ -64,18 +62,11 @@ pub trait Fp2Parameters: 'static + Send + Sync + Serialize + for<'a> Deserialize
 pub struct Fp2<P: Fp2Parameters> {
     pub c0: P::Fp,
     pub c1: P::Fp,
-    #[derivative(Debug = "ignore")]
-    #[doc(hidden)]
-    pub _parameters: PhantomData<P>,
 }
 
 impl<P: Fp2Parameters> Fp2<P> {
     pub fn new(c0: P::Fp, c1: P::Fp) -> Self {
-        Fp2 {
-            c0,
-            c1,
-            _parameters: PhantomData,
-        }
+        Fp2 { c0, c1 }
     }
 
     /// Norm of Fp2 over Fp: Norm(a) = a.x^2 - beta * a.y^2
@@ -136,13 +127,10 @@ impl<P: Fp2Parameters> Field for Fp2<P> {
     }
 
     #[inline]
-    fn from_random_bytes_with_flags(bytes: &[u8]) -> Option<(Self, u8)> {
-        if bytes.len() < 2 * div_ceil(P::Fp::size_in_bits(), 8) {
-            return None;
-        }
+    fn from_random_bytes_with_flags<F: Flags>(bytes: &[u8]) -> Option<(Self, F)> {
         let split_at = bytes.len() / 2;
         if let Some(c0) = P::Fp::from_random_bytes(&bytes[..split_at]) {
-            if let Some((c1, flags)) = P::Fp::from_random_bytes_with_flags(&bytes[split_at..]) {
+            if let Some((c1, flags)) = P::Fp::from_random_bytes_with_flags::<F>(&bytes[split_at..]) {
                 return Some((Fp2::new(c0, c1), flags));
             }
         }
@@ -151,7 +139,7 @@ impl<P: Fp2Parameters> Field for Fp2<P> {
 
     #[inline]
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
-        Self::from_random_bytes_with_flags(bytes).map(|f| f.0)
+        Self::from_random_bytes_with_flags::<EmptyFlags>(bytes).map(|f| f.0)
     }
 
     fn square_in_place(&mut self) -> &mut Self {
@@ -337,8 +325,8 @@ impl<P: Fp2Parameters> Distribution<Fp2<P>> for Standard {
     }
 }
 
-impl_additive_ops_from_ref!(Fp2, Fp2Parameters);
-impl_multiplicative_ops_from_ref!(Fp2, Fp2Parameters);
+impl_add_sub_from_field_ref!(Fp2, Fp2Parameters);
+impl_mul_div_from_field_ref!(Fp2, Fp2Parameters);
 
 impl<'a, P: Fp2Parameters> Add<&'a Fp2<P>> for Fp2<P> {
     type Output = Self;

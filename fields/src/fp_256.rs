@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    impl_additive_ops_from_ref,
-    impl_multiplicative_ops_from_ref,
+    impl_add_sub_from_field_ref,
+    impl_mul_div_from_field_ref,
     FftField,
     Field,
     FieldError,
@@ -386,16 +386,16 @@ impl<P: Fp256Parameters> SquareRootField for Fp256<P> {
     }
 }
 
-impl_prime_field_from_int!(Fp256, u128, Fp256Parameters);
-impl_prime_field_from_int!(Fp256, u64, Fp256Parameters);
-impl_prime_field_from_int!(Fp256, u32, Fp256Parameters);
-impl_prime_field_from_int!(Fp256, u16, Fp256Parameters);
-impl_prime_field_from_int!(Fp256, u8, Fp256Parameters);
+impl_primefield_from_int!(Fp256, u128, Fp256Parameters);
+impl_primefield_from_int!(Fp256, u64, Fp256Parameters);
+impl_primefield_from_int!(Fp256, u32, Fp256Parameters);
+impl_primefield_from_int!(Fp256, u16, Fp256Parameters);
+impl_primefield_from_int!(Fp256, u8, Fp256Parameters);
 
-impl_prime_field_standard_sample!(Fp256, Fp256Parameters);
+impl_primefield_standard_sample!(Fp256, Fp256Parameters);
 
-impl_additive_ops_from_ref!(Fp256, Fp256Parameters);
-impl_multiplicative_ops_from_ref!(Fp256, Fp256Parameters);
+impl_add_sub_from_field_ref!(Fp256, Fp256Parameters);
+impl_mul_div_from_field_ref!(Fp256, Fp256Parameters);
 
 impl<P: Fp256Parameters> ToBytes for Fp256<P> {
     #[inline]

@@ -48,8 +48,8 @@ use snarkvm_gadgets::{
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{
-    bits_to_bytes,
     bytes::{FromBytes, ToBytes},
+    from_bits_le_to_bytes_le,
     to_bytes,
 };
 
@@ -958,7 +958,7 @@ where
 
             for (i, element) in record_field_elements.iter().enumerate() {
                 let record_field_element_gadget =
-                    Elligator2FieldGadget::<C::EncryptionModelParameters, C::InnerScalarField>::alloc(
+                    Elligator2FieldGadget::<C::EncryptionParameters, C::InnerScalarField>::alloc(
                         &mut encryption_cs.ns(|| format!("record_field_element_{}", i)),
                         || Ok(*element),
                     )?;
@@ -1050,7 +1050,7 @@ where
                     &to_bytes![affine.into_projective()]?[..],
                 )?);
 
-                let y_gadget = Elligator2FieldGadget::<C::EncryptionModelParameters, C::InnerScalarField>::alloc(
+                let y_gadget = Elligator2FieldGadget::<C::EncryptionParameters, C::InnerScalarField>::alloc(
                     &mut encryption_cs.ns(|| format!("record_group_encoding_y_{}", i)),
                     || Ok(y),
                 )?;
@@ -1060,11 +1060,11 @@ where
 
             assert_eq!(record_field_elements_gadgets.len(), record_group_encoding_gadgets.len());
 
-            let coeff_a = <C::EncryptionModelParameters as MontgomeryParameters>::COEFF_A;
-            let coeff_b = <C::EncryptionModelParameters as MontgomeryParameters>::COEFF_B;
+            let coeff_a = <C::EncryptionParameters as MontgomeryParameters>::COEFF_A;
+            let coeff_b = <C::EncryptionParameters as MontgomeryParameters>::COEFF_B;
 
             let a = coeff_a.mul(&coeff_b.inverse().unwrap());
-            let u = <C::EncryptionModelParameters as TwistedEdwardsParameters>::COEFF_D;
+            let u = <C::EncryptionParameters as TwistedEdwardsParameters>::COEFF_D;
             let ua = a.mul(&u);
 
             let a = C::InnerScalarField::read(&to_bytes![a]?[..])?;
@@ -1186,7 +1186,7 @@ where
 
             let ciphertext_and_fq_high_selectors_bytes = UInt8::alloc_vec(
                 &mut encryption_cs.ns(|| format!("ciphertext and fq_high selector bits to bytes {}", j)),
-                &bits_to_bytes(
+                &from_bits_le_to_bytes_le(
                     &[&ciphertext_selectors[..], &[
                         fq_high_selectors[fq_high_selectors.len() - 1]
                     ]]
