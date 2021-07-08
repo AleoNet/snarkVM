@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm"
-version = "0.7.1"
+version = "0.7.2"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized virtual machine"
 homepage = "https://aleo.org"
