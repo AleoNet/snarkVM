@@ -26,6 +26,8 @@ macro_rules! bigint_impl {
         }
 
         impl BigInteger for $name {
+            const NUM_LIMBS: usize = $num_limbs;
+
             #[inline]
             fn add_nocarry(&mut self, other: &Self) -> bool {
                 let mut carry = 0;
@@ -167,16 +169,15 @@ macro_rules! bigint_impl {
             #[inline]
             fn from_bits_be(mut bits: Vec<bool>) -> Self {
                 let mut res = Self::default();
-                let mut acc: u64 = 0;
 
                 bits.reverse();
                 for (i, bits64) in bits.chunks(64).enumerate() {
+                    let mut acc: u64 = 0;
                     for bit in bits64.iter().rev() {
                         acc <<= 1;
                         acc += *bit as u64;
                     }
                     res.0[i] = acc;
-                    acc = 0;
                 }
                 res
             }
@@ -240,27 +241,9 @@ macro_rules! bigint_impl {
 
         impl Display for $name {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                let mut is_nonzero = false;
-                for (i, limb) in self.0.iter().rev().enumerate() {
-                    if *limb > 0 {
-                        is_nonzero = true;
-                    }
-
-                    // Begin writing the limb, for its corresponding bits.
-                    if is_nonzero {
-                        let shift = (($num_limbs - (i + 1)) * 6) as u64;
-                        let shifter = 1 << shift;
-                        write!(f, "{}", shifter - 1 + *limb)?;
-                    }
-                }
-
-                // If the value is 0, then `is_nonzero` will still be `false` here,
-                // so proceed to write `0`.
-                if !is_nonzero {
-                    write!(f, "0")?;
-                }
-
-                Ok(())
+                // TODO: Implement a native version, without the unwrap.
+                let bytes = crate::to_bytes![self.0].unwrap();
+                write!(f, "{}", num_bigint::BigUint::from_bytes_le(&bytes))
             }
         }
 

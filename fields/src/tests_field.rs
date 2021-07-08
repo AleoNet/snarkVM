@@ -171,38 +171,43 @@ fn random_expansion_tests<F: Field, R: Rng>(rng: &mut R) {
     }
 }
 
-fn random_field_tests<F: Field>() {
+fn random_string_tests<F: PrimeField>() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    random_negation_tests::<F, _>(&mut rng);
-    random_addition_tests::<F, _>(&mut rng);
-    random_subtraction_tests::<F, _>(&mut rng);
-    random_multiplication_tests::<F, _>(&mut rng);
-    random_inversion_tests::<F, _>(&mut rng);
-    random_doubling_tests::<F, _>(&mut rng);
-    random_squaring_tests::<F, _>(&mut rng);
-    random_expansion_tests::<F, _>(&mut rng);
-
-    assert!(F::zero().is_zero());
     {
-        let z = -F::zero();
-        assert!(z.is_zero());
+        let a = "84395729384759238745923745892374598234705297301958723458712394587103249587213984572934750213947582345792304758273458972349582734958273495872304598234";
+        let b = "38495729084572938457298347502349857029384609283450692834058293405982304598230458230495820394850293845098234059823049582309485203948502938452093482039";
+        let c = "3248875134290623212325429203829831876024364170316860259933542844758450336418538569901990710701240661702808867062612075657861768196242274635305077449545396068598317421057721935408562373834079015873933065667961469731886739181625866970316226171512545167081793907058686908697431878454091011239990119126";
+
+        let mut a = F::from_str(a).map_err(|_| ()).unwrap();
+        let b = F::from_str(b).map_err(|_| ()).unwrap();
+        let c = F::from_str(c).map_err(|_| ()).unwrap();
+
+        a *= &b;
+
+        assert_eq!(a, c);
     }
 
-    assert!(F::zero().inverse().is_none());
+    assert!(F::from_str("").is_err());
+    assert!(F::from_str("0").map_err(|_| ()).unwrap().is_zero());
+    assert!(F::from_str("00").is_err());
+    assert!(F::from_str("00000000000").is_err());
 
-    // Multiplication by zero
-    {
-        let a = F::rand(&mut rng) * F::zero();
-        assert!(a.is_zero());
+    for _ in 0..ITERATIONS {
+        let n: u64 = rng.gen();
+
+        let a = F::from_str(&format!("{}", n)).map_err(|_| ()).unwrap();
+        let b = F::from_repr(n.into()).unwrap();
+
+        assert_eq!(a, b);
     }
 
-    // Addition by zero
-    {
-        let mut a = F::rand(&mut rng);
-        let copy = a;
-        a += &F::zero();
-        assert_eq!(a, copy);
+    for _ in 0..ITERATIONS {
+        let a = F::rand(&mut rng);
+
+        let reference = a.to_string();
+        let candidate = F::from_str(&reference).map_err(|_| panic!()).unwrap().to_string();
+        assert_eq!(reference, candidate);
     }
 }
 
@@ -233,40 +238,6 @@ fn random_sqrt_tests<F: SquareRootField>() {
 
         c += &F::one();
     }
-}
-
-pub fn from_str_test<F: PrimeField>() {
-    {
-        let a = "84395729384759238745923745892374598234705297301958723458712394587103249587213984572934750213947582345792304758273458972349582734958273495872304598234";
-        let b = "38495729084572938457298347502349857029384609283450692834058293405982304598230458230495820394850293845098234059823049582309485203948502938452093482039";
-        let c = "3248875134290623212325429203829831876024364170316860259933542844758450336418538569901990710701240661702808867062612075657861768196242274635305077449545396068598317421057721935408562373834079015873933065667961469731886739181625866970316226171512545167081793907058686908697431878454091011239990119126";
-
-        let mut a = F::from_str(a).map_err(|_| ()).unwrap();
-        let b = F::from_str(b).map_err(|_| ()).unwrap();
-        let c = F::from_str(c).map_err(|_| ()).unwrap();
-
-        a *= &b;
-
-        assert_eq!(a, c);
-    }
-
-    {
-        let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
-
-        for _ in 0..ITERATIONS {
-            let n: u64 = rng.gen();
-
-            let a = F::from_str(&format!("{}", n)).map_err(|_| ()).unwrap();
-            let b = F::from_repr(n.into()).unwrap();
-
-            assert_eq!(a, b);
-        }
-    }
-
-    assert!(F::from_str("").is_err());
-    assert!(F::from_str("0").map_err(|_| ()).unwrap().is_zero());
-    assert!(F::from_str("00").is_err());
-    assert!(F::from_str("00000000000").is_err());
 }
 
 #[allow(clippy::eq_op)]
@@ -331,7 +302,37 @@ pub fn field_test<F: Field>(a: F, b: F) {
     // (a - b)^2 = (-(b - a))^2
     assert_eq!((a - b).square(), (-(b - a)).square());
 
-    random_field_tests::<F>();
+    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    random_negation_tests::<F, _>(&mut rng);
+    random_addition_tests::<F, _>(&mut rng);
+    random_subtraction_tests::<F, _>(&mut rng);
+    random_multiplication_tests::<F, _>(&mut rng);
+    random_inversion_tests::<F, _>(&mut rng);
+    random_doubling_tests::<F, _>(&mut rng);
+    random_squaring_tests::<F, _>(&mut rng);
+    random_expansion_tests::<F, _>(&mut rng);
+
+    assert!(F::zero().is_zero());
+    {
+        let z = -F::zero();
+        assert!(z.is_zero());
+    }
+
+    assert!(F::zero().inverse().is_none());
+
+    // Multiplication by zero
+    {
+        let a = F::rand(&mut rng) * F::zero();
+        assert!(a.is_zero());
+    }
+
+    // Addition by zero
+    {
+        let mut a = F::rand(&mut rng);
+        let copy = a;
+        a += &F::zero();
+        assert_eq!(a, copy);
+    }
 }
 
 pub fn fft_field_test<F: PrimeField + FftField>() {
@@ -372,6 +373,7 @@ pub fn primefield_test<F: PrimeField>() {
     assert_eq!(F::from_str("2").ok().unwrap(), two);
     assert_eq!(F::from_str(&two.to_string()).ok().unwrap(), two);
 
+    random_string_tests::<F>();
     fft_field_test::<F>();
 }
 
