@@ -45,6 +45,7 @@ fn test_bw6_761_fr() {
     field_test(a, b);
     sqrt_field_test(a);
     primefield_test::<Fr>();
+    field_serialization_test::<Fq>();
 }
 
 #[test]
