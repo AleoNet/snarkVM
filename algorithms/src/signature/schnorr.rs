@@ -179,7 +179,9 @@ where
         // Commit to the random scalar via r := k · g.
         // This is the prover's first msg in the Sigma protocol.
         let mut prover_commitment = G::zero();
-        for (bit, base_power) in bytes_to_bits(&to_bytes![random_scalar]?).zip_eq(&self.parameters.generator_powers) {
+        for (bit, base_power) in
+            from_bytes_le_to_bits_le(&to_bytes![random_scalar]?).zip_eq(&self.parameters.generator_powers)
+        {
             if bit {
                 prover_commitment += base_power;
             }
