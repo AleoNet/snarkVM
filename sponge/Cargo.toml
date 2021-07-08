@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-sponge"
-version = "0.7.1"
+version = "0.7.2"
 authors = ["arkworks contributors", "The Aleo Team <hello@aleo.org>" ]
 description = "An implementation of the cryptographic sponge functions for zkSNARK from arkworks-rs/sponge"
 homepage = "https://aleo.org"
@@ -19,17 +19,17 @@ edition = "2018"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.7.1"
+version = "0.7.2"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.7.1"
+version = "0.7.2"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.7.1"
+version = "0.7.2"
 
 [features]
 default = [ ]
