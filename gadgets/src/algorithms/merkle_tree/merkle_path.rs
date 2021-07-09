@@ -82,7 +82,7 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, 
         // At any given bit, the bit being 0 indicates our currently hashed value is the left,
         // and the bit being 1 indicates our currently hashed value is on the right.
         // Thus `left_hash` is the sibling if bit is 1, and it's the computed hash if bit is 0
-        for (i, (bit, sibling)) in self.traversal.iter().rev().zip_eqs(self.path.iter()).enumerate() {
+        for (i, (bit, sibling)) in self.traversal.iter().zip_eq(self.path.iter()).enumerate() {
             let left_hash = HG::OutputGadget::conditionally_select(
                 cs.ns(|| format!("cond_select_left_{}", i)),
                 &bit,
@@ -168,7 +168,7 @@ where
 
         let pos_list: Vec<_> = merkle_path.position_list().collect();
         let mut traversal = vec![];
-        for (i, position) in pos_list.iter().enumerate() {
+        for (i, position) in pos_list[1..].iter().enumerate() {
             traversal.push(Boolean::alloc(cs.ns(|| format!("alloc_position_{}", i)), || {
                 Ok(position)
             })?);
