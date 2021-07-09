@@ -179,7 +179,7 @@ mod serialization {
 
         let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters, rng).unwrap();
 
-        let compressed_serialization = to_bytes![proof].unwrap();
+        let compressed_serialization = proof.to_bytes_le().unwrap();
 
         assert_eq!(
             Proof::<Bls12_377>::compressed_proof_size().unwrap(),

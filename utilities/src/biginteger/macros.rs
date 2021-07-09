@@ -242,7 +242,7 @@ macro_rules! bigint_impl {
         impl Display for $name {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 // TODO: Implement a native version, without the unwrap.
-                let bytes = crate::to_bytes![self.0].unwrap();
+                let bytes = self.0.to_bytes_le().unwrap();
                 write!(f, "{}", num_bigint::BigUint::from_bytes_le(&bytes))
             }
         }

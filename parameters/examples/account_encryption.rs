@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::{errors::EncryptionError, traits::EncryptionScheme};
 use snarkvm_dpc::{testnet1::instantiated::Components, traits::DPCComponents};
-use snarkvm_utilities::{to_bytes, ToBytes};
+use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
 use std::path::PathBuf;
@@ -28,7 +28,7 @@ pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, EncryptionError> {
     let rng = &mut thread_rng();
     let account_encryption = <C::AccountEncryption as EncryptionScheme>::setup(rng);
     let account_encryption_parameters = account_encryption.parameters();
-    let account_encryption_parameters_bytes = to_bytes![account_encryption_parameters]?;
+    let account_encryption_parameters_bytes = account_encryption_parameters.to_bytes_le()?;
 
     let size = account_encryption_parameters_bytes.len();
     println!("account_encryption.params\n\tsize - {}", size);

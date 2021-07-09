@@ -1587,6 +1587,7 @@ dependencies = [
 name = "snarkvm-algorithms"
 version = "0.7.2"
 dependencies = [
+ "anyhow",
  "bitvec",
  "blake2",
  "criterion",
@@ -1673,6 +1674,7 @@ dependencies = [
 name = "snarkvm-fields"
 version = "0.7.2"
 dependencies = [
+ "anyhow",
  "bincode",
  "derivative",
  "rand",

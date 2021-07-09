@@ -109,7 +109,6 @@ mod serialization {
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
     use snarkvm_utilities::{
         rand::{test_rng, UniformRand},
-        to_bytes,
         FromBytes,
         ToBytes,
     };
@@ -126,7 +125,7 @@ mod serialization {
 
         let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters, rng).unwrap();
 
-        let compressed_serialization = to_bytes![proof].unwrap();
+        let compressed_serialization = proof.to_bytes_le().unwrap();
 
         assert_eq!(
             Proof::<Bls12_377>::compressed_proof_size().unwrap(),

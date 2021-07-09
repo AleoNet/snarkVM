@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::{errors::CommitmentError, traits::CommitmentScheme};
 use snarkvm_dpc::{testnet1::instantiated::Components, traits::DPCComponents};
-use snarkvm_utilities::{to_bytes, ToBytes};
+use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
 use std::path::PathBuf;
@@ -28,7 +28,7 @@ pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, CommitmentError> {
     let rng = &mut thread_rng();
     let local_data_commitment = <C::LocalDataCommitment as CommitmentScheme>::setup(rng);
     let local_data_commitment_parameters = local_data_commitment.parameters();
-    let local_data_commitment_parameters_bytes = to_bytes![local_data_commitment_parameters]?;
+    let local_data_commitment_parameters_bytes = local_data_commitment_parameters.to_bytes_le()?;
 
     let size = local_data_commitment_parameters_bytes.len();
     println!("local_data_commitment.params\n\tsize - {}", size);

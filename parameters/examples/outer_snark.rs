@@ -35,7 +35,7 @@ use snarkvm_parameters::{
     traits::Parameter,
     LedgerMerkleTreeParameters,
 };
-use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::thread_rng;
 use std::{path::PathBuf, sync::Arc};
@@ -79,9 +79,9 @@ pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
         rng,
     )?;
 
-    let outer_snark_pk = to_bytes![outer_snark_parameters.0]?;
+    let outer_snark_pk = outer_snark_parameters.0.to_bytes_le()?;
     let outer_snark_vk: <C::OuterSNARK as SNARK>::VerifyingKey = outer_snark_parameters.1.into();
-    let outer_snark_vk = to_bytes![outer_snark_vk]?;
+    let outer_snark_vk = outer_snark_vk.to_bytes_le()?;
 
     println!("outer_snark_pk.params\n\tsize - {}", outer_snark_pk.len());
     println!("outer_snark_vk.params\n\tsize - {}", outer_snark_vk.len());

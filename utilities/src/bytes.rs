@@ -347,9 +347,13 @@ mod test {
     #[test]
     fn test_macro_empty() {
         let array: Vec<u8> = vec![];
-        let bytes: Vec<u8> = to_bytes![array].unwrap();
-        assert_eq!(&bytes, &array);
-        assert_eq!(bytes.len(), 0);
+        let bytes_a: Vec<u8> = to_bytes![array].unwrap();
+        assert_eq!(&array, &bytes_a);
+        assert_eq!(0, bytes_a.len());
+
+        let bytes_b: Vec<u8> = array.to_bytes_le().unwrap();
+        assert_eq!(&array, &bytes_b);
+        assert_eq!(0, bytes_b.len());
     }
 
     #[test]

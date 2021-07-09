@@ -290,7 +290,7 @@ where
 
             let (sn, randomizer) =
                 record.to_serial_number(&self.system_parameters.account_signature, &old_private_keys[i])?;
-            joint_serial_numbers.extend_from_slice(&to_bytes![sn]?);
+            joint_serial_numbers.extend_from_slice(&sn.to_bytes_le()?);
             old_serial_numbers.push(sn);
             old_randomizers.push(randomizer);
             old_death_program_ids.push(record.death_program_id().to_vec());
@@ -594,10 +594,10 @@ where
 
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = self.inner_snark_parameters.1.clone().into();
 
-        let inner_circuit_id =
-            <C::InnerCircuitIDCRH as CRH>::hash(&self.system_parameters.inner_circuit_id_crh, &to_bytes![
-                inner_snark_vk
-            ]?)?;
+        let inner_circuit_id = <C::InnerCircuitIDCRH as CRH>::hash(
+            &self.system_parameters.inner_circuit_id_crh,
+            &inner_snark_vk.to_bytes_le()?,
+        )?;
 
         let transaction_proof = {
             let circuit = OuterCircuit::new(

@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::{errors::SignatureError, traits::SignatureScheme};
 use snarkvm_dpc::{testnet1::instantiated::Components, traits::DPCComponents};
-use snarkvm_utilities::{to_bytes, ToBytes};
+use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
 use std::path::PathBuf;
@@ -28,7 +28,7 @@ pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, SignatureError> {
     let rng = &mut thread_rng();
     let account_signature = <C::AccountSignature as SignatureScheme>::setup(rng)?;
     let account_signature_parameters = account_signature.parameters();
-    let account_signature_parameters_bytes = to_bytes![account_signature_parameters]?;
+    let account_signature_parameters_bytes = account_signature_parameters.to_bytes_le()?;
 
     let size = account_signature_parameters_bytes.len();
     println!("account_signature.params\n\tsize - {}", size);

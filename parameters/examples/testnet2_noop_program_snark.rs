@@ -21,7 +21,7 @@ use snarkvm_dpc::{
 };
 use snarkvm_fields::ToConstraintField;
 use snarkvm_marlin::PolynomialCommitment;
-use snarkvm_utilities::{to_bytes, ToBytes};
+use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
 use std::path::PathBuf;
@@ -46,8 +46,8 @@ where
         rng,
     )?;
     let (proving_key, verifying_key) = noop_program.to_snark_parameters();
-    let noop_program_snark_pk = to_bytes![proving_key]?;
-    let noop_program_snark_vk = to_bytes![verifying_key]?;
+    let noop_program_snark_pk = proving_key.to_bytes_le()?;
+    let noop_program_snark_vk = verifying_key.to_bytes_le()?;
 
     println!("noop_program_snark_pk.params\n\tsize - {}", noop_program_snark_pk.len());
     println!("noop_program_snark_vk.params\n\tsize - {}", noop_program_snark_vk.len());

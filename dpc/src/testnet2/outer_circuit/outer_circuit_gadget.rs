@@ -36,7 +36,7 @@ use snarkvm_gadgets::{
     },
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::{to_bytes, ToBytes};
+use snarkvm_utilities::ToBytes;
 
 fn field_element_to_bytes<C: Testnet2Components, CS: ConstraintSystem<C::OuterScalarField>>(
     cs: &mut CS,
@@ -46,14 +46,18 @@ fn field_element_to_bytes<C: Testnet2Components, CS: ConstraintSystem<C::OuterSc
     if field_elements.len() <= 1 {
         Ok(vec![UInt8::alloc_input_vec_le(
             cs.ns(|| format!("Allocate {}", name)),
-            &to_bytes![field_elements].map_err(|_| SynthesisError::AssignmentMissing)?,
+            &field_elements
+                .to_bytes_le()
+                .map_err(|_| SynthesisError::AssignmentMissing)?,
         )?])
     } else {
         let mut fe_bytes = Vec::with_capacity(field_elements.len());
         for (index, field_element) in field_elements.iter().enumerate() {
             fe_bytes.push(UInt8::alloc_input_vec_le(
                 cs.ns(|| format!("Allocate {} - index {} ", name, index)),
-                &to_bytes![field_element].map_err(|_| SynthesisError::AssignmentMissing)?,
+                &field_element
+                    .to_bytes_le()
+                    .map_err(|_| SynthesisError::AssignmentMissing)?,
             )?);
         }
         Ok(fe_bytes)

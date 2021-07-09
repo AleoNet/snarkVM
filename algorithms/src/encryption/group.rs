@@ -22,7 +22,6 @@ use snarkvm_utilities::{
     from_bytes_le_to_bits_le,
     rand::UniformRand,
     serialize::*,
-    to_bytes,
     FromBytes,
     ToBytes,
 };
@@ -134,7 +133,7 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
 
         let mut public_key = G::zero();
         for (bit, base_power) in
-            from_bytes_le_to_bits_le(&to_bytes![private_key]?).zip_eq(&self.parameters.generator_powers)
+            from_bytes_le_to_bits_le(&private_key.to_bytes_le()?).zip_eq(&self.parameters.generator_powers)
         {
             if bit {
                 public_key += base_power;
@@ -158,7 +157,7 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
 
             let affine = public_key.0.mul(y).into_affine();
             debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
-            z_bytes = to_bytes![affine.to_x_coordinate()]?;
+            z_bytes = affine.to_x_coordinate().to_bytes_le()?;
         }
 
         Ok(y)
@@ -174,7 +173,7 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
 
         let affine = record_view_key.into_affine();
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
-        let z_bytes = to_bytes![affine.to_x_coordinate()]?;
+        let z_bytes = affine.to_x_coordinate().to_bytes_le()?;
 
         let z = Self::Randomness::read_le(&z_bytes[..])?;
 
@@ -205,7 +204,7 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
 
         let mut c_0 = G::zero();
         for (bit, base_power) in
-            from_bytes_le_to_bits_le(&to_bytes![randomness]?).zip_eq(&self.parameters.generator_powers)
+            from_bytes_le_to_bits_le(&randomness.to_bytes_le()?).zip_eq(&self.parameters.generator_powers)
         {
             if bit {
                 c_0 += base_power;
@@ -244,7 +243,7 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
 
         let affine = record_view_key.into_affine();
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
-        let z_bytes = to_bytes![affine.to_x_coordinate()]?;
+        let z_bytes = affine.to_x_coordinate().to_bytes_le()?;
 
         let z = Self::Randomness::read_le(&z_bytes[..])?;
 

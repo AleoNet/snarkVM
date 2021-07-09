@@ -17,7 +17,7 @@
 use snarkvm_algorithms::crh::sha256;
 use snarkvm_dpc::errors::DPCError;
 use snarkvm_posw::PoswMarlin;
-use snarkvm_utilities::{to_bytes, ToBytes};
+use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
 use std::path::PathBuf;
@@ -31,12 +31,15 @@ pub fn setup() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), DPCError> {
 
     let srs = snarkvm_marlin::MarlinTestnet1::universal_setup(10000, 10000, 100000, rng).unwrap();
 
-    let srs_bytes = to_bytes![srs]?;
+    let srs_bytes = srs.to_bytes_le()?;
     let posw_snark = PoswMarlin::index(srs).expect("could not setup params");
 
-    let posw_snark_pk = to_bytes![posw_snark.pk.expect("posw_snark_pk should be populated")]?;
+    let posw_snark_pk = posw_snark
+        .pk
+        .expect("posw_snark_pk should be populated")
+        .to_bytes_le()?;
     let posw_snark_vk = posw_snark.vk;
-    let posw_snark_vk = to_bytes![posw_snark_vk]?;
+    let posw_snark_vk = posw_snark_vk.to_bytes_le()?;
 
     println!("posw_snark_pk.params\n\tsize - {}", posw_snark_pk.len());
     println!("posw_snark_vk.params\n\tsize - {}", posw_snark_vk.len());

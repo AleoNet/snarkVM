@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::{errors::CRHError, traits::CRH};
 use snarkvm_dpc::{testnet1::instantiated::Components, traits::DPCComponents};
-use snarkvm_utilities::{to_bytes, ToBytes};
+use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
 use std::path::PathBuf;
@@ -28,7 +28,7 @@ pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, CRHError> {
     let rng = &mut thread_rng();
     let inner_circuit_id_crh = <C::InnerCircuitIDCRH as CRH>::setup(rng);
     let inner_circuit_id_crh_parameters = inner_circuit_id_crh.parameters();
-    let inner_circuit_id_crh_parameters_bytes = to_bytes![inner_circuit_id_crh_parameters]?;
+    let inner_circuit_id_crh_parameters_bytes = inner_circuit_id_crh_parameters.to_bytes_le()?;
 
     let size = inner_circuit_id_crh_parameters_bytes.len();
     println!("inner_circuit_id_crh.params\n\tsize - {}", size);

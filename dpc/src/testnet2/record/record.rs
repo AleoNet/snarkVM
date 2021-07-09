@@ -62,7 +62,7 @@ pub struct Record<C: Testnet2Components> {
 }
 
 fn default_program_id<C: CRH>() -> Vec<u8> {
-    to_bytes![C::Output::default()].unwrap()
+    C::Output::default().to_bytes_le().unwrap()
 }
 
 impl<C: Testnet2Components> Record<C> {

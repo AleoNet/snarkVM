@@ -28,7 +28,7 @@ use snarkvm_dpc::{
     },
 };
 use snarkvm_parameters::{traits::Parameter, LedgerMerkleTreeParameters};
-use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::thread_rng;
 use std::{path::PathBuf, sync::Arc};
@@ -49,9 +49,9 @@ pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
         &InnerCircuit::blank(&system_parameters, &ledger_merkle_tree_parameters),
         rng,
     )?;
-    let inner_snark_pk = to_bytes![inner_snark_parameters.0]?;
+    let inner_snark_pk = inner_snark_parameters.0.to_bytes_le()?;
     let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = inner_snark_parameters.1.into();
-    let inner_snark_vk = to_bytes![inner_snark_vk]?;
+    let inner_snark_vk = inner_snark_vk.to_bytes_le()?;
 
     println!("inner_snark_pk.params\n\tsize - {}", inner_snark_pk.len());
     println!("inner_snark_vk.params\n\tsize - {}", inner_snark_vk.len());
