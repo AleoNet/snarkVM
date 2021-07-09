@@ -285,6 +285,43 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         &self.tree[self.hashed_leaves_index..]
     }
 
+    // /// Returns the authentication path from leaf at `index` to root.
+    // pub fn generate_proof(&self, index: usize) -> Result<Path<P>, crate::Error> {
+    //     // gather basic tree information
+    //     let tree_height = tree_height(self.leaf_nodes.len());
+    //
+    //     // Get Leaf hash, and leaf sibling hash,
+    //     let leaf_index_in_tree = convert_index_to_last_level(index, tree_height);
+    //     let leaf_sibling_hash = if index & 1 == 0 {
+    //         // leaf is left child
+    //         self.leaf_nodes[index + 1].clone()
+    //     } else {
+    //         // leaf is right child
+    //         self.leaf_nodes[index - 1].clone()
+    //     };
+    //
+    //     // path.len() = `tree height - 2`, the two missing elements being the leaf sibling hash and the root
+    //     let mut path = Vec::with_capacity(tree_height - 2);
+    //     // Iterate from the bottom layer after the leaves, to the top, storing all sibling node's hash values.
+    //     let mut current_node = parent(leaf_index_in_tree).unwrap();
+    //     while !is_root(current_node) {
+    //         let sibling_node = sibling(current_node).unwrap();
+    //         path.push(self.non_leaf_nodes[sibling_node].clone());
+    //         current_node = parent(current_node).unwrap();
+    //     }
+    //
+    //     debug_assert_eq!(path.len(), tree_height - 2);
+    //
+    //     // we want to make path from root to bottom
+    //     path.reverse();
+    //
+    //     Ok(Path {
+    //         leaf_index: index,
+    //         auth_path: path,
+    //         leaf_sibling_hash,
+    //     })
+    // }
+
     pub fn generate_proof<L: ToBytes>(&self, index: usize, leaf: &L) -> Result<MerklePath<P>, MerkleError> {
         let prove_time = start_timer!(|| "MerkleTree::generate_proof");
         let mut path = vec![];
@@ -302,40 +339,41 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
             return Err(MerkleError::IncorrectLeafIndex(tree_index));
         }
 
-        // Iterate from the leaf up to the root, storing all intermediate hash values.
-        let mut current_node = tree_index;
+        // Get Leaf hash, and leaf sibling hash
+        let leaf_sibling_index = sibling(tree_index).unwrap();
+        let leaf_sibling_hash = self.tree[leaf_sibling_index].clone();
+
+        // Iterate from the leaf's parent up to the root, storing all intermediate hash values.
+        let mut current_node = parent(tree_index).unwrap();
         while !is_root(current_node) {
             let sibling_node = sibling(current_node).unwrap();
-            let (curr_hash, sibling_hash) = (self.tree[current_node].clone(), self.tree[sibling_node].clone());
-            if is_left_child(current_node) {
-                path.push((curr_hash, sibling_hash));
-            } else {
-                path.push((sibling_hash, curr_hash));
-            }
+            path.push(self.tree[sibling_node].clone());
             current_node = parent(current_node).unwrap();
         }
 
         // Store the root node. Set boolean as true for consistency with digest location.
-        if path.len() > Self::DEPTH as usize {
+        if path.len() > Self::DEPTH as usize - 1 {
             return Err(MerkleError::InvalidPathLength(path.len(), Self::DEPTH as usize));
         }
 
-        if path.len() != Self::DEPTH as usize {
+        if path.len() != Self::DEPTH as usize - 1 {
             let empty_hash = self.parameters.hash_empty()?;
-            path.push((self.tree[0].clone(), empty_hash));
+            path.push(empty_hash);
 
-            for &(ref hash, ref sibling_hash) in &self.padding_tree {
-                path.push((hash.clone(), sibling_hash.clone()));
+            for &(ref _hash, ref sibling_hash) in &self.padding_tree {
+                path.push(sibling_hash.clone());
             }
         }
         end_timer!(prove_time);
 
-        if path.len() != Self::DEPTH as usize {
+        if path.len() != Self::DEPTH as usize - 1 {
             Err(MerkleError::IncorrectPathLength(path.len()))
         } else {
             Ok(MerklePath {
                 parameters: self.parameters.clone(),
                 path,
+                leaf_index: index,
+                leaf_sibling_hash,
             })
         }
     }
