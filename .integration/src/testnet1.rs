@@ -18,7 +18,7 @@ use crate::Ledger;
 use snarkvm_algorithms::{MerkleParameters, CRH};
 use snarkvm_dpc::{testnet1::instantiated::*, Account, DPCScheme, Storage};
 use snarkvm_parameters::{LedgerMerkleTreeParameters, Parameter};
-use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::FromBytes;
 
 use rand::{CryptoRng, Rng};
 use std::sync::Arc;

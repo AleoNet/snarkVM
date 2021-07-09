@@ -77,7 +77,7 @@ mod tests {
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
     use snarkvm_algorithms::traits::SNARK;
-    use snarkvm_utilities::bytes::FromBytes;
+    use snarkvm_utilities::FromBytes;
 
     #[test]
     fn test_load_verify_only() {

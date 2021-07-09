@@ -20,7 +20,7 @@ use snarkvm_fields::ToConstraintField;
 use snarkvm_marlin::marlin::{MarlinSNARK, UniversalSRS};
 use snarkvm_parameters::{prelude::*, testnet2::*};
 use snarkvm_polycommit::PolynomialCommitment;
-use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::FromBytes;
 
 use rand::{CryptoRng, Rng};
 use std::io::Result as IoResult;

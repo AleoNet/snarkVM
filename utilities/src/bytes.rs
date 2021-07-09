@@ -153,26 +153,24 @@ impl<L: ToBytes, R: ToBytes> ToBytes for (L, R) {
 }
 
 /// Takes as input a sequence of structs, and converts them to a series of
-/// bytes. All traits that implement `Bytes` can be automatically converted to
+/// bytes. All traits that implement `ToBytes` can be automatically converted to
 /// bytes in this manner.
 #[macro_export]
 macro_rules! to_bytes {
     ($($x:expr),*) => ({
-        let mut buf = $crate::vec![];
-        {$crate::push_to_vec!(buf, $($x),*)}.map(|_| buf)
+        let mut buffer = $crate::vec![];
+        {$crate::push_to_vec!(buffer, $($x),*)}.map(|_| buffer)
     });
 }
 
 #[macro_export]
 macro_rules! push_to_vec {
-    ($buf:expr, $y:expr, $($x:expr),*) => ({
-        {
-            ToBytes::write_le(&$y, &mut $buf)
-        }.and({$crate::push_to_vec!($buf, $($x),*)})
+    ($buffer:expr, $y:expr, $($x:expr),*) => ({
+        {ToBytes::write_le(&$y, &mut $buffer)}.and({$crate::push_to_vec!($buffer, $($x),*)})
     });
 
-    ($buf:expr, $x:expr) => ({
-        ToBytes::write_le(&$x, &mut $buf)
+    ($buffer:expr, $x:expr) => ({
+        ToBytes::write_le(&$x, &mut $buffer)
     })
 }
 

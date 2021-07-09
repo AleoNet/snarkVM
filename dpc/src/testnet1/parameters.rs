@@ -17,7 +17,7 @@
 use crate::{testnet1::Testnet1Components, DPCError};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_parameters::prelude::*;
-use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::FromBytes;
 
 use rand::{CryptoRng, Rng};
 use std::io::Result as IoResult;

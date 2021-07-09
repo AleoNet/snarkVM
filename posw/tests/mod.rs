@@ -18,7 +18,7 @@ use snarkvm_algorithms::traits::SNARK;
 use snarkvm_curves::bls12_377::Bls12_377;
 use snarkvm_dpc::block::PedersenMerkleRootHash;
 use snarkvm_posw::{txids_to_roots, Marlin, PoswMarlin};
-use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::FromBytes;
 
 use rand::SeedableRng;
 
