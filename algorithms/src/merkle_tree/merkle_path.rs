@@ -99,6 +99,14 @@ impl<P: MerkleParameters> MerklePath<P> {
         }
         Ok((left_bytes.clone(), right_bytes.clone()))
     }
+
+    /// The position of on_path node in `leaf_and_sibling_hash` and `non_leaf_and_sibling_hash_path`.
+    /// `position[i]` is 0 (false) iff `i`th on-path node from top to bottom is on the left.
+    ///
+    /// This function simply converts `self.leaf_index` to boolean array in big endian form.
+    pub fn position_list(&'_ self) -> impl '_ + Iterator<Item = bool> {
+        (0..self.path.len() + 1).map(move |i| ((self.leaf_index >> i) & 1) != 0)
+    }
 }
 
 impl<P: MerkleParameters> Default for MerklePath<P> {

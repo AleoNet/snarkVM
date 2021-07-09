@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use itertools::Itertools;
 use std::borrow::Borrow;
 
 use snarkvm_algorithms::{
@@ -24,22 +25,90 @@ use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
-    bits::{
-        boolean::{AllocatedBit, Boolean},
-        ToBytesGadget,
-    },
-    traits::{
-        algorithms::CRHGadget,
-        alloc::AllocGadget,
-        eq::{ConditionalEqGadget, ConditionalOrEqualsGadget},
-    },
+    bits::{boolean::Boolean, ToBytesGadget},
+    traits::{algorithms::CRHGadget, alloc::AllocGadget, eq::ConditionalEqGadget, select::CondSelectGadget},
 };
 
 pub struct MerklePathGadget<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> {
-    path: Vec<(HG::OutputGadget, HG::OutputGadget)>,
+    /// `traversal[i]` is 0 (false) iff ith non-leaf node from top to bottom is left.
+    traversal: Vec<Boolean>,
+    /// `path[i]` is the entry of sibling of ith non-leaf node from top to bottom.
+    path: Vec<HG::OutputGadget>,
+    /// The sibling of leaf.
+    leaf_sibling: HG::OutputGadget,
+    /// Is this leaf the right child?
+    leaf_is_right_child: Boolean,
 }
 
 impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, HG, F> {
+    pub fn calculate_root<CS: ConstraintSystem<F>>(
+        &self,
+        mut cs: CS,
+        parameters: &HG::ParametersGadget,
+        leaf: impl ToBytesGadget<F>,
+    ) -> Result<HG::OutputGadget, SynthesisError> {
+        let leaf_bytes = leaf.to_bytes(&mut cs.ns(|| "leaf_to_bytes"))?;
+        let claimed_leaf_hash = HG::check_evaluation_gadget(cs.ns(|| "leaf_hash"), parameters, leaf_bytes)?;
+        let leaf_sibling_hash = &self.leaf_sibling;
+
+        // calculate hash for the bottom non_leaf_layer
+
+        // We assume that when a bit is 0, it indicates that the currently hashed value H is the left child,
+        // and when bit is 1, it indicates our H is the right child.
+        // Thus `left_hash` is sibling if the bit `leaf_is_right_child` is 1, and is leaf otherwise.
+
+        let left_hash = HG::OutputGadget::conditionally_select(
+            cs.ns(|| "conditionally_select_left"),
+            &self.leaf_is_right_child,
+            &leaf_sibling_hash,
+            &claimed_leaf_hash,
+        )?;
+        let right_hash = HG::OutputGadget::conditionally_select(
+            cs.ns(|| "conditionally_select_right"),
+            &self.leaf_is_right_child,
+            &claimed_leaf_hash,
+            &leaf_sibling_hash,
+        )?;
+
+        let mut curr_hash = hash_inner_node_gadget::<P::H, HG, F, _>(
+            &mut cs.ns(|| "hash_inner_node"),
+            parameters,
+            &left_hash,
+            &right_hash,
+        )?;
+
+        // To traverse up a MT, we iterate over the path from bottom to top
+
+        // At any given bit, the bit being 0 indicates our currently hashed value is the left,
+        // and the bit being 1 indicates our currently hashed value is on the right.
+        // Thus `left_hash` is the sibling if bit is 1, and it's the computed hash if bit is 0
+        for (i, (bit, sibling)) in self.traversal.iter().rev().zip_eqs(self.path.iter()).enumerate() {
+            let left_hash = HG::OutputGadget::conditionally_select(
+                cs.ns(|| format!("cond_select_left_{}", i)),
+                &bit,
+                &sibling,
+                &curr_hash,
+            )?;
+            let right_hash = HG::OutputGadget::conditionally_select(
+                cs.ns(|| format!("cond_select_right_{}", i)),
+                &bit,
+                &curr_hash,
+                &sibling,
+            )?;
+
+            curr_hash = hash_inner_node_gadget::<P::H, HG, F, _>(
+                &mut cs.ns(|| format!("hash_inner_node_{}", i)),
+                parameters,
+                &left_hash,
+                &right_hash,
+            )?;
+        }
+
+        Ok(curr_hash)
+    }
+
+    // TODO (raychu86): Implement `update_leaf` and `update_and_check`
+
     pub fn check_membership<CS: ConstraintSystem<F>>(
         &self,
         cs: CS,
@@ -58,51 +127,9 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, 
         leaf: impl ToBytesGadget<F>,
         should_enforce: &Boolean,
     ) -> Result<(), SynthesisError> {
-        assert_eq!(self.path.len(), P::DEPTH);
-        // Check that the hash of the given leaf matches the leaf hash in the membership
-        // proof.
-        let leaf_bits = leaf.to_bytes(&mut cs.ns(|| "leaf_to_bytes"))?;
-        let leaf_hash = HG::check_evaluation_gadget(cs.ns(|| "check_evaluation_gadget"), parameters, leaf_bits)?;
+        let expected_root = self.calculate_root(cs.ns(|| "calculate_root"), parameters, leaf)?;
 
-        // Check if leaf is one of the bottom-most siblings.
-        let leaf_is_left =
-            AllocatedBit::alloc(&mut cs.ns(|| "leaf_is_left"), || Ok(leaf_hash == self.path[0].0))?.into();
-        HG::OutputGadget::conditional_enforce_equal_or(
-            &mut cs.ns(|| "check_leaf_is_left"),
-            &leaf_is_left,
-            &leaf_hash,
-            &self.path[0].0,
-            &self.path[0].1,
-            should_enforce,
-        )?;
-
-        // Check levels between leaf level and root.
-        let mut previous_hash = leaf_hash;
-        for (i, &(ref left_hash, ref right_hash)) in self.path.iter().enumerate() {
-            // Check if the previous_hash matches the correct current hash.
-            let previous_is_left = AllocatedBit::alloc(&mut cs.ns(|| format!("previous_is_left_{}", i)), || {
-                Ok(&previous_hash == left_hash)
-            })?
-            .into();
-
-            HG::OutputGadget::conditional_enforce_equal_or(
-                &mut cs.ns(|| format!("check_equals_which_{}", i)),
-                &previous_is_left,
-                &previous_hash,
-                left_hash,
-                right_hash,
-                should_enforce,
-            )?;
-
-            previous_hash = hash_inner_node_gadget::<P::H, HG, F, _>(
-                &mut cs.ns(|| format!("hash_inner_node_{}", i)),
-                parameters,
-                left_hash,
-                right_hash,
-            )?;
-        }
-
-        root.conditional_enforce_equal(&mut cs.ns(|| "root_is_last"), &previous_hash, should_enforce)
+        root.conditional_enforce_equal(&mut cs.ns(|| "root_is_eq"), &expected_root, should_enforce)
     }
 }
 
@@ -137,13 +164,38 @@ where
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<MerklePath<P>>,
     {
-        let mut path = Vec::new();
-        for (i, &(ref l, ref r)) in value_gen()?.borrow().path.iter().enumerate() {
-            let l_hash = HGadget::OutputGadget::alloc(&mut cs.ns(|| format!("l_child_{}", i)), || Ok(l.clone()))?;
-            let r_hash = HGadget::OutputGadget::alloc(&mut cs.ns(|| format!("r_child_{}", i)), || Ok(r.clone()))?;
-            path.push((l_hash, r_hash));
+        let merkle_path = value_gen()?.borrow().clone();
+
+        let pos_list: Vec<_> = merkle_path.position_list().collect();
+        let mut traversal = vec![];
+        for (i, position) in pos_list.iter().enumerate() {
+            traversal.push(Boolean::alloc(cs.ns(|| format!("alloc_position_{}", i)), || {
+                Ok(position)
+            })?);
         }
-        Ok(MerklePathGadget { path })
+
+        let mut path = vec![];
+        for (i, node) in merkle_path.path.iter().enumerate() {
+            path.push(HGadget::OutputGadget::alloc(
+                &mut cs.ns(|| format!("alloc_node_{}", i)),
+                || Ok(node.clone()),
+            )?);
+        }
+
+        let leaf_sibling = HGadget::OutputGadget::alloc(&mut cs.ns(|| "alloc_leaf_sibling"), || {
+            Ok(merkle_path.leaf_sibling_hash.clone())
+        })?;
+
+        let leaf_position_bit = Boolean::alloc(cs.ns(|| "alloc_leaf_position_bit"), || {
+            Ok(merkle_path.leaf_index & 1 == 1)
+        })?;
+
+        Ok(MerklePathGadget {
+            traversal,
+            path,
+            leaf_sibling,
+            leaf_is_right_child: leaf_position_bit,
+        })
     }
 
     fn alloc_input<Fn, T, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
@@ -151,13 +203,38 @@ where
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<MerklePath<P>>,
     {
-        let mut path = Vec::new();
-        for (i, &(ref l, ref r)) in value_gen()?.borrow().path.iter().enumerate() {
-            let l_hash = HGadget::OutputGadget::alloc_input(&mut cs.ns(|| format!("l_child_{}", i)), || Ok(l.clone()))?;
-            let r_hash = HGadget::OutputGadget::alloc_input(&mut cs.ns(|| format!("r_child_{}", i)), || Ok(r.clone()))?;
-            path.push((l_hash, r_hash));
+        let merkle_path = value_gen()?.borrow().clone();
+
+        let pos_list: Vec<_> = merkle_path.position_list().collect();
+        let mut traversal = vec![];
+        for (i, position) in pos_list.iter().enumerate() {
+            traversal.push(Boolean::alloc_input(
+                cs.ns(|| format!("alloc_input_position_{}", i)),
+                || Ok(position),
+            )?);
         }
 
-        Ok(MerklePathGadget { path })
+        let mut path = vec![];
+        for (i, node) in merkle_path.path.iter().enumerate() {
+            path.push(HGadget::OutputGadget::alloc_input(
+                &mut cs.ns(|| format!("alloc_input_node_{}", i)),
+                || Ok(node.clone()),
+            )?);
+        }
+
+        let leaf_sibling = HGadget::OutputGadget::alloc_input(&mut cs.ns(|| "alloc_input_leaf_sibling"), || {
+            Ok(merkle_path.leaf_sibling_hash.clone())
+        })?;
+
+        let leaf_position_bit = Boolean::alloc_input(cs.ns(|| "alloc_input_leaf_position_bit"), || {
+            Ok(merkle_path.leaf_index & 1 == 1)
+        })?;
+
+        Ok(MerklePathGadget {
+            traversal,
+            path,
+            leaf_sibling,
+            leaf_is_right_child: leaf_position_bit,
+        })
     }
 }
