@@ -49,20 +49,20 @@ pub fn from_bits_le_to_bytes_le(bits: &[bool]) -> Vec<u8> {
     bytes
 }
 
-/// Takes as input a sequence of structs, and converts them to a series of bytes.
+/// Takes as input a sequence of structs, and converts them to a series of little-endian bytes.
 /// All traits that implement `ToBytes` can be automatically converted to bytes in this manner.
 #[macro_export]
 macro_rules! to_bytes_le {
     ($($x:expr),*) => ({
         let mut buffer = $crate::vec![];
-        {$crate::push_to_vec!(buffer, $($x),*)}.map(|_| buffer)
+        {$crate::push_bytes_to_vec!(buffer, $($x),*)}.map(|_| buffer)
     });
 }
 
 #[macro_export]
-macro_rules! push_to_vec {
+macro_rules! push_bytes_to_vec {
     ($buffer:expr, $y:expr, $($x:expr),*) => ({
-        {ToBytes::write_le(&$y, &mut $buffer)}.and({$crate::push_to_vec!($buffer, $($x),*)})
+        {ToBytes::write_le(&$y, &mut $buffer)}.and({$crate::push_bytes_to_vec!($buffer, $($x),*)})
     });
 
     ($buffer:expr, $x:expr) => ({
