@@ -200,7 +200,7 @@ where
         hash_input.extend_from_slice(&message.to_field_elements().unwrap());
 
         let raw_hash =
-            PoseidonCryptoHash::<<G as AffineCurve>::BaseField, 4, false>::evaluate_fixed_length_vector(&hash_input)
+            PoseidonCryptoHash::<<G as AffineCurve>::BaseField, 4, false>::evaluate_dynamic_length_vector(&hash_input)
                 .unwrap();
 
         // Bit decompose the raw_hash
@@ -260,7 +260,7 @@ where
         hash_input.extend_from_slice(&message.to_field_elements().unwrap());
 
         let raw_hash =
-            PoseidonCryptoHash::<<G as AffineCurve>::BaseField, 4, false>::evaluate_fixed_length_vector(&hash_input)
+            PoseidonCryptoHash::<<G as AffineCurve>::BaseField, 4, false>::evaluate_dynamic_length_vector(&hash_input)
                 .unwrap();
 
         // Bit decompose the raw_hash
