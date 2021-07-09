@@ -83,6 +83,11 @@ pub trait ToBytes: Sized {
 pub trait FromBytes: Sized {
     /// Reads `Self` from `reader` as little-endian bytes.
     fn read_le<R: Read>(reader: R) -> IoResult<Self>;
+
+    /// Returns `Self` from a byte array in little-endian order.
+    fn from_bytes_le(bytes: &[u8]) -> anyhow::Result<Self> {
+        Ok(Self::read_le(bytes)?)
+    }
 }
 
 impl<const N: usize> ToBytes for [u8; N] {
