@@ -15,15 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use criterion::Criterion;
+
 use snarkvm_algorithms::hash_to_curve::{hash_to_curve, try_hash_to_curve};
-use snarkvm_curves::{
-    bls12_377::{FqParameters, G1Affine},
-    ProjectiveCurve,
-};
+use snarkvm_curves::bls12_377::{FqParameters, G1Affine};
 use snarkvm_fields::FieldParameters;
 
-use rand::{distributions::Alphanumeric, thread_rng, Rng, SeedableRng};
-use rand_xorshift::XorShiftRng;
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
 #[macro_use]
 extern crate criterion;
@@ -39,7 +36,7 @@ fn try_hash_to_g1_on_bls12_377(c: &mut Criterion) {
 
     c.bench_function("try_hash_to_g1_on_bls12_377", move |b| {
         b.iter(|| {
-            let _ = try_hash_to_curve::<G1Affine, FIELD_BITS, 512>(&message);
+            let _ = try_hash_to_curve::<G1Affine, FIELD_BITS, 512>(&message).unwrap();
         })
     });
 }
