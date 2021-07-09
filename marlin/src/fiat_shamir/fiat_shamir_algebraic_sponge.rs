@@ -26,7 +26,7 @@ use snarkvm_gadgets::{
     },
     overhead,
 };
-use snarkvm_utilities::BigInteger;
+use snarkvm_utilities::{FromBits, ToBits};
 
 use rand_core::{Error, RngCore};
 
@@ -80,7 +80,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseFiel
         }
         let elements = bits
             .chunks(capacity)
-            .map(|bits| BaseField::from_repr(BaseField::BigInteger::from_bits_be(bits.to_vec())).unwrap())
+            .map(|bits| BaseField::from_repr(BaseField::BigInteger::from_bits_be(bits)).unwrap())
             .collect::<Vec<BaseField>>();
 
         self.s.absorb(&elements);

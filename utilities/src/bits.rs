@@ -39,10 +39,16 @@ macro_rules! push_bits_to_vec {
 
 pub trait ToBits: Sized {
     /// Returns `self` as a boolean array in little-endian order.
-    fn to_bits_le(&self) -> anyhow::Result<Vec<bool>>;
+    fn to_bits_le(&self) -> Vec<bool>;
+
+    /// Returns `self` as a boolean array in big-endian order.
+    fn to_bits_be(&self) -> Vec<bool>;
 }
 
 pub trait FromBits: Sized {
-    /// Reads `Self` from `reader` as little-endian bits.
+    /// Reads `Self` from a boolean array in little-endian order.
     fn from_bits_le(bits: &[bool]) -> Self;
+
+    /// Reads `Self` from a boolean array in big-endian order.
+    fn from_bits_be(bits: &[bool]) -> Self;
 }

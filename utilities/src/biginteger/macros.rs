@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-macro_rules! bigint_impl {
+macro_rules! biginteger {
     ($name:ident, $num_limbs:expr) => {
         #[derive(Copy, Clone, PartialEq, Eq, Default, Hash)]
         pub struct $name(pub [u64; $num_limbs]);
@@ -164,33 +164,6 @@ macro_rules! bigint_impl {
                 }
             }
 
-            /// Constructs a `BigInteger` by parsing a vector of bits in big endian format
-            /// and transforms it into a vector of little endian u64 elements.
-            #[inline]
-            fn from_bits_be(mut bits: Vec<bool>) -> Self {
-                let mut res = Self::default();
-
-                bits.reverse();
-                for (i, bits64) in bits.chunks(64).enumerate() {
-                    let mut acc: u64 = 0;
-                    for bit in bits64.iter().rev() {
-                        acc <<= 1;
-                        acc += *bit as u64;
-                    }
-                    res.0[i] = acc;
-                }
-                res
-            }
-
-            #[inline]
-            fn to_bits_be(&self) -> Vec<bool> {
-                let mut res = Vec::with_capacity(256);
-                for b in BitIteratorBE::new(self.0) {
-                    res.push(b);
-                }
-                res
-            }
-
             #[inline]
             fn find_wnaf(&self) -> Vec<i64> {
                 let mut res = vec![];
@@ -213,6 +186,45 @@ macro_rules! bigint_impl {
                 }
 
                 res
+            }
+        }
+
+        impl ToBits for $name {
+            /// Returns `self` as a boolean array in little-endian order, with trailing zeros.
+            fn to_bits_le(&self) -> Vec<bool> {
+                BitIteratorLE::new(self).collect::<Vec<_>>()
+            }
+
+            /// Returns `self` as a boolean array in big-endian order, without leading zeros.
+            fn to_bits_be(&self) -> Vec<bool> {
+                BitIteratorBE::new(self).collect::<Vec<_>>()
+            }
+        }
+
+        impl FromBits for $name {
+            /// Returns a `BigInteger` by parsing a slice of bits in little-endian format
+            /// and transforms it into a slice of little-endian u64 elements.
+            fn from_bits_le(bits: &[bool]) -> Self {
+                let mut res = Self::default();
+
+                for (i, bits64) in bits.chunks(64).enumerate() {
+                    let mut acc: u64 = 0;
+                    for bit in bits64.iter().rev() {
+                        acc <<= 1;
+                        acc += *bit as u64;
+                    }
+                    res.0[i] = acc;
+                }
+                res
+            }
+
+            /// Returns a `BigInteger` by parsing a slice of bits in big-endian format
+            /// and transforms it into a slice of little-endian u64 elements.
+            fn from_bits_be(bits: &[bool]) -> Self {
+                let mut bits_reversed = bits.to_vec();
+                bits_reversed.reverse();
+
+                Self::from_bits_le(&bits_reversed)
             }
         }
 
