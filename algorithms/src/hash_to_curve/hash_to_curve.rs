@@ -33,7 +33,7 @@ pub fn try_hash_to_curve<G: AffineCurve, const FIELD_BITS: u32, const XOF_DIGEST
 
         // Output the generator if a valid generator was found.
         if let Some(g) = hash_to_curve::<G, FIELD_BITS, XOF_DIGEST_LENGTH>(&message) {
-            println!("{}", message);
+            // println!("{}", message);
             return Some((g, k));
         }
     }
