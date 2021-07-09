@@ -49,9 +49,35 @@ pub fn from_bits_le_to_bytes_le(bits: &[bool]) -> Vec<u8> {
     bytes
 }
 
-pub trait ToBytes {
+/// Takes as input a sequence of structs, and converts them to a series of bytes.
+/// All traits that implement `ToBytes` can be automatically converted to bytes in this manner.
+#[macro_export]
+macro_rules! to_bytes {
+    ($($x:expr),*) => ({
+        let mut buffer = $crate::vec![];
+        {$crate::push_to_vec!(buffer, $($x),*)}.map(|_| buffer)
+    });
+}
+
+#[macro_export]
+macro_rules! push_to_vec {
+    ($buffer:expr, $y:expr, $($x:expr),*) => ({
+        {ToBytes::write_le(&$y, &mut $buffer)}.and({$crate::push_to_vec!($buffer, $($x),*)})
+    });
+
+    ($buffer:expr, $x:expr) => ({
+        ToBytes::write_le(&$x, &mut $buffer)
+    })
+}
+
+pub trait ToBytes: Sized {
     /// Writes `self` into `writer` as little-endian bytes.
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()>;
+
+    /// Returns `self` as a byte array in little-endian order.
+    fn to_bytes_le(&self) -> anyhow::Result<Vec<u8>> {
+        Ok(to_bytes![self]?)
+    }
 }
 
 pub trait FromBytes: Sized {
@@ -150,28 +176,6 @@ impl<L: ToBytes, R: ToBytes> ToBytes for (L, R) {
         self.1.write_le(&mut writer)?;
         Ok(())
     }
-}
-
-/// Takes as input a sequence of structs, and converts them to a series of
-/// bytes. All traits that implement `ToBytes` can be automatically converted to
-/// bytes in this manner.
-#[macro_export]
-macro_rules! to_bytes {
-    ($($x:expr),*) => ({
-        let mut buffer = $crate::vec![];
-        {$crate::push_to_vec!(buffer, $($x),*)}.map(|_| buffer)
-    });
-}
-
-#[macro_export]
-macro_rules! push_to_vec {
-    ($buffer:expr, $y:expr, $($x:expr),*) => ({
-        {ToBytes::write_le(&$y, &mut $buffer)}.and({$crate::push_to_vec!($buffer, $($x),*)})
-    });
-
-    ($buffer:expr, $x:expr) => ({
-        ToBytes::write_le(&$x, &mut $buffer)
-    })
 }
 
 impl ToBytes for u8 {

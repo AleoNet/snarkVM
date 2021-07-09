@@ -1844,6 +1844,7 @@ dependencies = [
 name = "snarkvm-utilities"
 version = "0.7.2"
 dependencies = [
+ "anyhow",
  "bincode",
  "num-bigint",
  "rand",
