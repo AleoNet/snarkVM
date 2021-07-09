@@ -17,11 +17,7 @@
 use crate::*;
 use snarkvm_algorithms::{merkle_tree::*, traits::LoadableMerkleParameters};
 use snarkvm_dpc::prelude::*;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    has_duplicates,
-    to_bytes,
-};
+use snarkvm_utilities::{has_duplicates, to_bytes, FromBytes, ToBytes};
 
 use parking_lot::RwLock;
 use std::{

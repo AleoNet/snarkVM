@@ -132,7 +132,7 @@ mod test {
     };
     use snarkvm_fields::ToConstraintField;
     use snarkvm_gadgets::{algorithms::crh::PedersenCompressedCRHGadget, curves::edwards_bls12::EdwardsBls12Gadget};
-    use snarkvm_utilities::bytes::ToBytes;
+    use snarkvm_utilities::ToBytes;
 
     use super::{POSWCircuit, POSWCircuitParameters};
 

@@ -108,9 +108,10 @@ mod serialization {
     use crate::snark::groth16::{create_random_proof, generate_random_parameters, Proof};
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
     use snarkvm_utilities::{
-        bytes::{FromBytes, ToBytes},
         rand::{test_rng, UniformRand},
         to_bytes,
+        FromBytes,
+        ToBytes,
     };
 
     #[test]

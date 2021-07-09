@@ -17,12 +17,7 @@
 use crate::{ahp::indexer::*, marlin::CircuitVerifyingKey, Vec};
 use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::PolynomialCommitment;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    error,
-    errors::SerializationError,
-    serialize::*,
-};
+use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 use derivative::Derivative;
 use std::io::{Read, Result as IoResult, Write};

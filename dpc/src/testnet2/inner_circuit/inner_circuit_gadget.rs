@@ -47,11 +47,7 @@ use snarkvm_gadgets::{
     },
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    from_bits_le_to_bytes_le,
-    to_bytes,
-};
+use snarkvm_utilities::{from_bits_le_to_bytes_le, to_bytes, FromBytes, ToBytes};
 
 #[allow(clippy::too_many_arguments)]
 pub fn execute_inner_circuit<C: Testnet2Components, CS: ConstraintSystem<C::InnerScalarField>>(

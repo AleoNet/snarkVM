@@ -36,7 +36,7 @@ use snarkvm_gadgets::{
     },
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::{bytes::ToBytes, to_bytes};
+use snarkvm_utilities::{to_bytes, ToBytes};
 
 fn field_element_to_bytes<C: Testnet1Components, CS: ConstraintSystem<C::OuterScalarField>>(
     cs: &mut CS,

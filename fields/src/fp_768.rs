@@ -31,8 +31,9 @@ use crate::{
 };
 use snarkvm_utilities::{
     biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger768 as BigInteger},
-    bytes::{FromBytes, ToBytes},
     serialize::CanonicalDeserialize,
+    FromBytes,
+    ToBytes,
 };
 
 use std::{

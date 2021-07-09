@@ -20,7 +20,7 @@ use snarkvm_algorithms::{
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH},
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
-use snarkvm_utilities::{bytes::ToBytes, to_bytes};
+use snarkvm_utilities::{to_bytes, ToBytes};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet1Components"))]

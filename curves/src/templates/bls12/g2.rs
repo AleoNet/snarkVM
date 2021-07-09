@@ -22,7 +22,7 @@ use crate::{
     traits::{AffineCurve, ShortWeierstrassParameters},
 };
 use snarkvm_fields::{Field, Fp2, One, Zero};
-use snarkvm_utilities::{bititerator::BitIteratorBE, bytes::ToBytes, errors::SerializationError, serialize::*};
+use snarkvm_utilities::{bititerator::BitIteratorBE, errors::SerializationError, serialize::*, ToBytes};
 
 use std::io::{Result as IoResult, Write};
 

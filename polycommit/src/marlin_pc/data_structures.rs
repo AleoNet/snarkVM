@@ -26,12 +26,7 @@ use crate::{
 };
 use snarkvm_curves::{traits::PairingEngine, Group};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    error,
-    errors::SerializationError,
-    serialize::*,
-};
+use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 use core::ops::{Add, AddAssign};
 use rand_core::RngCore;

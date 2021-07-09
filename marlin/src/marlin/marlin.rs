@@ -24,7 +24,7 @@ use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::nonnative::params::OptimizationType;
 use snarkvm_polycommit::{Evaluations, LabeledCommitment, LabeledPolynomial, PCUniversalParams, PolynomialCommitment};
 use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError};
-use snarkvm_utilities::{bytes::ToBytes, to_bytes};
+use snarkvm_utilities::{to_bytes, ToBytes};
 
 use crate::marlin::PreparedCircuitVerifyingKey;
 use core::marker::PhantomData;

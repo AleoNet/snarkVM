@@ -46,10 +46,7 @@ use snarkvm_parameters::{
 };
 use snarkvm_polycommit::optional_rng::OptionalRng;
 use snarkvm_profiler::{end_timer, start_timer};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-};
+use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
 use blake2::{digest::Digest, Blake2s};
 use rand::{rngs::OsRng, Rng};

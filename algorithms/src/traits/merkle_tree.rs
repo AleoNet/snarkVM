@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{errors::MerkleError, CRH};
-use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::ToBytes;
 
 use rand::Rng;
 use std::io::Cursor;

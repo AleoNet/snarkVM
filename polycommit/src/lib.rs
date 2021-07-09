@@ -32,12 +32,7 @@ extern crate snarkvm_profiler;
 
 pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
 use snarkvm_fields::Field;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    error as error_fn,
-    errors::SerializationError,
-    serialize::*,
-};
+use snarkvm_utilities::{error as error_fn, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 use core::fmt::Debug;
 use rand_core::RngCore;

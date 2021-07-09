@@ -17,10 +17,11 @@
 use crate::{Field, Fp3, Fp3Parameters, One, Zero};
 use snarkvm_utilities::{
     biginteger::BigInteger,
-    bytes::{FromBytes, ToBytes},
     errors::SerializationError,
     rand::UniformRand,
     serialize::*,
+    FromBytes,
+    ToBytes,
 };
 
 use rand::{

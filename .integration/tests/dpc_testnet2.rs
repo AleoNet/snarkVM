@@ -36,10 +36,7 @@ use snarkvm_dpc::{
 };
 use snarkvm_integration::{ledger::*, memdb::MemDb, storage::*, testnet2::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-};
+use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
 use itertools::Itertools;
 use rand::SeedableRng;

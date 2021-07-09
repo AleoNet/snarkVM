@@ -162,11 +162,7 @@ mod serialization {
     use crate::snark::gm17::{create_random_proof, generate_random_parameters, Proof, ProvingKey, VerifyingKey};
 
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-    use snarkvm_utilities::{
-        bytes::{FromBytes, ToBytes},
-        rand::UniformRand,
-        to_bytes,
-    };
+    use snarkvm_utilities::{rand::UniformRand, to_bytes, FromBytes, ToBytes};
 
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;

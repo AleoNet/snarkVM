@@ -18,7 +18,7 @@ use snarkvm_fields::{Field, FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearCombination};
 use snarkvm_utilities::{
     biginteger::{BigInteger, BigInteger256},
-    bytes::ToBytes,
+    ToBytes,
 };
 
 use crate::{

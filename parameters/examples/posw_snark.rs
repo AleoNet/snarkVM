@@ -17,7 +17,7 @@
 use snarkvm_algorithms::crh::sha256;
 use snarkvm_dpc::errors::DPCError;
 use snarkvm_posw::PoswMarlin;
-use snarkvm_utilities::{bytes::ToBytes, to_bytes};
+use snarkvm_utilities::{to_bytes, ToBytes};
 
 use rand::thread_rng;
 use std::path::PathBuf;

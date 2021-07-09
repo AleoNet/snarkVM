@@ -21,11 +21,7 @@ use crate::{
     traits::{CommitmentScheme, CRH},
 };
 use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    to_bytes,
-};
+use snarkvm_utilities::{rand::UniformRand, to_bytes, FromBytes, ToBytes};
 
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;

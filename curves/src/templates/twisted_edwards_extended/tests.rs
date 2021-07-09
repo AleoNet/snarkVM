@@ -17,11 +17,11 @@
 use super::{Affine, Projective};
 
 use snarkvm_utilities::{
-    bytes::ToBytes,
     io::Cursor,
     rand::UniformRand,
     serialize::{CanonicalDeserialize, CanonicalSerialize},
     to_bytes,
+    ToBytes,
 };
 
 use crate::traits::{

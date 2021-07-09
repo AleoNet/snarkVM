@@ -22,12 +22,7 @@ use crate::{
     RecordError,
 };
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH, PRF};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-    variable_length_integer::*,
-    UniformRand,
-};
+use snarkvm_utilities::{to_bytes, variable_length_integer::*, FromBytes, ToBytes, UniformRand};
 
 use rand::{CryptoRng, Rng};
 use std::{

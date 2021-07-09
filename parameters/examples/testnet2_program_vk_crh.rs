@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::{errors::CRHError, traits::CRH};
 use snarkvm_dpc::{testnet2::instantiated::Components, traits::DPCComponents};
-use snarkvm_utilities::{bytes::ToBytes, to_bytes};
+use snarkvm_utilities::{to_bytes, ToBytes};
 
 use rand::thread_rng;
 use std::path::PathBuf;

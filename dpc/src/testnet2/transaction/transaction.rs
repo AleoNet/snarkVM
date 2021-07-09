@@ -26,9 +26,10 @@ use snarkvm_algorithms::{
     traits::{CommitmentScheme, SignatureScheme, CRH, SNARK},
 };
 use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
     serialize::{CanonicalDeserialize, CanonicalSerialize},
     to_bytes,
+    FromBytes,
+    ToBytes,
 };
 
 use blake2::{digest::Digest, Blake2s as b2s};

@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::{errors::MerkleError, traits::MerkleParameters};
 use snarkvm_dpc::testnet1::{instantiated::Components, Testnet1Components};
-use snarkvm_utilities::{bytes::ToBytes, to_bytes};
+use snarkvm_utilities::{to_bytes, ToBytes};
 
 use rand::thread_rng;
 use std::path::PathBuf;

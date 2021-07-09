@@ -20,11 +20,7 @@ use snarkvm_curves::{
     edwards_bw6::EdwardsAffine as Edwards,
     traits::Group,
 };
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    to_bytes,
-};
+use snarkvm_utilities::{rand::UniformRand, to_bytes, FromBytes, ToBytes};
 
 use blake2::Blake2s;
 use rand::SeedableRng;

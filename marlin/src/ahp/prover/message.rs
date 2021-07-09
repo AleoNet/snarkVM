@@ -16,7 +16,7 @@
 
 use crate::Vec;
 use snarkvm_fields::Field;
-use snarkvm_utilities::{bytes::ToBytes, error, errors::SerializationError, serialize::*, Write};
+use snarkvm_utilities::{error, errors::SerializationError, serialize::*, ToBytes, Write};
 
 /// Each prover message that is not a list of oracles is a list of field elements.
 #[repr(transparent)]

@@ -19,10 +19,7 @@ use crate::{
     traits::CRH,
 };
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-};
+use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;

@@ -20,11 +20,12 @@ use snarkvm_curves::traits::{AffineCurve, PairingEngine};
 pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PCCommitment};
 use snarkvm_r1cs::{ConstraintSynthesizer, ToConstraintField};
 use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
     error,
     errors::SerializationError,
     io,
     serialize::*,
+    FromBytes,
+    ToBytes,
     PROCESSING_SNARK_PARAMS,
     SNARK_PARAMS_AFFINE_COUNT,
 };

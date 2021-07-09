@@ -20,11 +20,7 @@ use crate::{
     BlockHeader,
     Transactions,
 };
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-    variable_length_integer::variable_length_integer,
-};
+use snarkvm_utilities::{to_bytes, variable_length_integer::variable_length_integer, FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
 

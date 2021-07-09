@@ -16,10 +16,11 @@
 
 use crate::{traits::TransactionScheme, TransactionError};
 use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
     has_duplicates,
     to_bytes,
     variable_length_integer::{read_variable_length_integer, variable_length_integer},
+    FromBytes,
+    ToBytes,
 };
 
 use std::{

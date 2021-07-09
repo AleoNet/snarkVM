@@ -22,12 +22,7 @@ use crate::{
 };
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_polycommit::PolynomialCommitment;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    error,
-    errors::SerializationError,
-    serialize::*,
-};
+use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 use derivative::Derivative;
 use std::io::{

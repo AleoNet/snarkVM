@@ -16,7 +16,7 @@
 
 use crate::{BlockHeaderHash, MerkleRootHash, PedersenMerkleRootHash, ProofOfSuccinctWork};
 use snarkvm_algorithms::crh::{double_sha256, sha256d_to_u64};
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use serde::{Deserialize, Serialize};
 use std::{

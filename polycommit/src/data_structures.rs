@@ -17,12 +17,7 @@
 use crate::{Arc, String, Vec};
 pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    error as error_fn,
-    errors::SerializationError,
-    serialize::*,
-};
+use snarkvm_utilities::{error as error_fn, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 use core::{
     borrow::Borrow,

@@ -15,12 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub use crate::{
-    bytes::{FromBytes, ToBytes},
     io::{
         Read,
         Write,
         {self},
     },
+    FromBytes,
+    ToBytes,
     Vec,
 };
 use crate::{serialize::traits::*, SerializationError};

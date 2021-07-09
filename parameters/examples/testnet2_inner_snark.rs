@@ -28,10 +28,7 @@ use snarkvm_dpc::{
     },
 };
 use snarkvm_parameters::{traits::Parameter, LedgerMerkleTreeParameters};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-};
+use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
 
 use rand::thread_rng;
 use std::{path::PathBuf, sync::Arc};

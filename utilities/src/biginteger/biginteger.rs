@@ -16,9 +16,10 @@
 
 use crate::{
     bititerator::{BitIteratorBE, BitIteratorLE},
-    bytes::{FromBytes, ToBytes},
     io::{Read, Result as IoResult, Write},
     rand::UniformRand,
+    FromBytes,
+    ToBytes,
 };
 
 use rand::{

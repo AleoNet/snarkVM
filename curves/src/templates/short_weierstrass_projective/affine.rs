@@ -20,12 +20,7 @@ use crate::{
     traits::{AffineCurve, Group, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
 use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{
-    bititerator::BitIteratorBE,
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    serialize::*,
-};
+use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand, serialize::*, FromBytes, ToBytes};
 
 use rand::{
     distributions::{Distribution, Standard},

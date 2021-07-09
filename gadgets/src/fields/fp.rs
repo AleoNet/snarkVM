@@ -30,8 +30,8 @@ use snarkvm_r1cs::{
 };
 use snarkvm_utilities::{
     bititerator::{BitIteratorBE, BitIteratorLE},
-    bytes::ToBytes,
     to_bytes,
+    ToBytes,
 };
 
 use crate::{

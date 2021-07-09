@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::{crh::sha256::sha256, errors::CRHError, traits::CRH};
 use snarkvm_dpc::{testnet1::instantiated::Components, traits::DPCComponents};
-use snarkvm_utilities::{bytes::ToBytes, to_bytes};
+use snarkvm_utilities::{to_bytes, ToBytes};
 
 use rand::thread_rng;
 use std::{
