@@ -44,7 +44,7 @@ impl<P: MontgomeryParameters, F: PrimeField> AllocGadget<<P as ModelParameters>:
     ) -> Result<Self, SynthesisError> {
         Ok(Elligator2FieldGadget(
             FpGadget::alloc(cs, || match value_gen() {
-                Ok(value) => Ok(F::read(&to_bytes![value.borrow()]?[..])?),
+                Ok(value) => Ok(F::read_le(&to_bytes![value.borrow()]?[..])?),
                 Err(_) => Err(SynthesisError::AssignmentMissing),
             })?,
             PhantomData,
@@ -61,7 +61,7 @@ impl<P: MontgomeryParameters, F: PrimeField> AllocGadget<<P as ModelParameters>:
     ) -> Result<Self, SynthesisError> {
         Ok(Elligator2FieldGadget(
             FpGadget::alloc_input(cs, || match value_gen() {
-                Ok(value) => Ok(F::read(&to_bytes![value.borrow()]?[..])?),
+                Ok(value) => Ok(F::read_le(&to_bytes![value.borrow()]?[..])?),
                 Err(_) => Err(SynthesisError::AssignmentMissing),
             })?,
             PhantomData,

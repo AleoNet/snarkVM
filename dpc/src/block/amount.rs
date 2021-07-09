@@ -117,8 +117,8 @@ impl ToBytes for AleoAmount {
 
 impl FromBytes for AleoAmount {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let amount: i64 = FromBytes::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let amount: i64 = FromBytes::read_le(&mut reader)?;
 
         Ok(Self(amount))
     }

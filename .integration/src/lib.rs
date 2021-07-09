@@ -74,9 +74,9 @@ impl ToBytes for TransactionLocation {
 
 impl FromBytes for TransactionLocation {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let index: u32 = FromBytes::read(&mut reader)?;
-        let block_hash: [u8; 32] = FromBytes::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let index: u32 = FromBytes::read_le(&mut reader)?;
+        let block_hash: [u8; 32] = FromBytes::read_le(&mut reader)?;
 
         Ok(Self { index, block_hash })
     }

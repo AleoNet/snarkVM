@@ -122,7 +122,7 @@ impl ToBytes for TestTx {
 
 impl FromBytes for TestTx {
     #[inline]
-    fn read<R: Read>(mut _reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut _reader: R) -> IoResult<Self> {
         Ok(Self)
     }
 }

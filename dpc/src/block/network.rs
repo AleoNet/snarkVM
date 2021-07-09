@@ -61,8 +61,8 @@ impl ToBytes for Network {
 
 impl FromBytes for Network {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let network_id: u8 = FromBytes::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let network_id: u8 = FromBytes::read_le(&mut reader)?;
         Ok(Self::from_id(network_id))
     }
 }

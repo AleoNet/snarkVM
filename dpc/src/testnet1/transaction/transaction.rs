@@ -246,7 +246,7 @@ impl<C: Testnet1Components> ToBytes for Transaction<C> {
 
 impl<C: Testnet1Components> FromBytes for Transaction<C> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the old serial numbers
         let num_old_serial_numbers = C::NUM_INPUT_RECORDS;
         let mut old_serial_numbers = Vec::with_capacity(num_old_serial_numbers);
@@ -261,27 +261,27 @@ impl<C: Testnet1Components> FromBytes for Transaction<C> {
         let num_new_commitments = C::NUM_OUTPUT_RECORDS;
         let mut new_commitments = Vec::with_capacity(num_new_commitments);
         for _ in 0..num_new_commitments {
-            let new_commitment: <C::RecordCommitment as CommitmentScheme>::Output = FromBytes::read(&mut reader)?;
+            let new_commitment: <C::RecordCommitment as CommitmentScheme>::Output = FromBytes::read_le(&mut reader)?;
             new_commitments.push(new_commitment);
         }
 
-        let memorandum: [u8; 32] = FromBytes::read(&mut reader)?;
+        let memorandum: [u8; 32] = FromBytes::read_le(&mut reader)?;
 
-        let ledger_digest: MerkleTreeDigest<C::MerkleParameters> = FromBytes::read(&mut reader)?;
-        let inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output = FromBytes::read(&mut reader)?;
-        let transaction_proof: <C::OuterSNARK as SNARK>::Proof = FromBytes::read(&mut reader)?;
+        let ledger_digest: MerkleTreeDigest<C::MerkleParameters> = FromBytes::read_le(&mut reader)?;
+        let inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output = FromBytes::read_le(&mut reader)?;
+        let transaction_proof: <C::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
         let program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output =
-            FromBytes::read(&mut reader)?;
-        let local_data_root: <C::LocalDataCRH as CRH>::Output = FromBytes::read(&mut reader)?;
+            FromBytes::read_le(&mut reader)?;
+        let local_data_root: <C::LocalDataCRH as CRH>::Output = FromBytes::read_le(&mut reader)?;
 
-        let value_balance: AleoAmount = FromBytes::read(&mut reader)?;
-        let network: Network = FromBytes::read(&mut reader)?;
+        let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
+        let network: Network = FromBytes::read_le(&mut reader)?;
 
         // Read the signatures
         let num_signatures = C::NUM_INPUT_RECORDS;
         let mut signatures = Vec::with_capacity(num_signatures);
         for _ in 0..num_signatures {
-            let signature: <C::AccountSignature as SignatureScheme>::Signature = FromBytes::read(&mut reader)?;
+            let signature: <C::AccountSignature as SignatureScheme>::Signature = FromBytes::read_le(&mut reader)?;
             signatures.push(signature);
         }
 
@@ -289,7 +289,7 @@ impl<C: Testnet1Components> FromBytes for Transaction<C> {
         let num_encrypted_records = C::NUM_OUTPUT_RECORDS;
         let mut encrypted_records = Vec::with_capacity(num_encrypted_records);
         for _ in 0..num_encrypted_records {
-            let encrypted_record: EncryptedRecord<C> = FromBytes::read(&mut reader)?;
+            let encrypted_record: EncryptedRecord<C> = FromBytes::read_le(&mut reader)?;
 
             encrypted_records.push(encrypted_record);
         }

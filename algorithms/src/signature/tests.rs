@@ -72,7 +72,7 @@ fn signature_scheme_parameter_serialization<S: SignatureScheme>() {
 
     let signature_scheme_parameters_bytes = to_bytes![signature_scheme_parameters].unwrap();
     let recovered_signature_scheme_parameters: <S as SignatureScheme>::Parameters =
-        FromBytes::read(&signature_scheme_parameters_bytes[..]).unwrap();
+        FromBytes::read_le(&signature_scheme_parameters_bytes[..]).unwrap();
 
     assert_eq!(signature_scheme_parameters, &recovered_signature_scheme_parameters);
 }

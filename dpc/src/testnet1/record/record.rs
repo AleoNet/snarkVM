@@ -193,8 +193,8 @@ impl<C: Testnet1Components> Record<C> {
         // }
 
         // Compute the serial number.
-        let seed = FromBytes::read(to_bytes!(&private_key.sk_prf)?.as_slice())?;
-        let input = FromBytes::read(to_bytes!(self.serial_number_nonce)?.as_slice())?;
+        let seed = FromBytes::read_le(to_bytes!(&private_key.sk_prf)?.as_slice())?;
+        let input = FromBytes::read_le(to_bytes!(self.serial_number_nonce)?.as_slice())?;
         let randomizer = to_bytes![C::PRF::evaluate(&seed, &input)?]?;
         let serial_number = C::AccountSignature::randomize_public_key(
             &signature_parameters,
@@ -279,17 +279,17 @@ impl<C: Testnet1Components> ToBytes for Record<C> {
 
 impl<C: Testnet1Components> FromBytes for Record<C> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let owner: Address<C> = FromBytes::read(&mut reader)?;
-        let is_dummy: bool = FromBytes::read(&mut reader)?;
-        let value: u64 = FromBytes::read(&mut reader)?;
-        let payload: Payload = FromBytes::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let owner: Address<C> = FromBytes::read_le(&mut reader)?;
+        let is_dummy: bool = FromBytes::read_le(&mut reader)?;
+        let value: u64 = FromBytes::read_le(&mut reader)?;
+        let payload: Payload = FromBytes::read_le(&mut reader)?;
 
         let birth_program_id_size: usize = read_variable_length_integer(&mut reader)?;
 
         let mut birth_program_id = Vec::with_capacity(birth_program_id_size);
         for _ in 0..birth_program_id_size {
-            let byte: u8 = FromBytes::read(&mut reader)?;
+            let byte: u8 = FromBytes::read_le(&mut reader)?;
             birth_program_id.push(byte);
         }
 
@@ -297,14 +297,14 @@ impl<C: Testnet1Components> FromBytes for Record<C> {
 
         let mut death_program_id = Vec::with_capacity(death_program_id_size);
         for _ in 0..death_program_id_size {
-            let byte: u8 = FromBytes::read(&mut reader)?;
+            let byte: u8 = FromBytes::read_le(&mut reader)?;
             death_program_id.push(byte);
         }
 
-        let serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output = FromBytes::read(&mut reader)?;
-        let commitment: <C::RecordCommitment as CommitmentScheme>::Output = FromBytes::read(&mut reader)?;
+        let serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output = FromBytes::read_le(&mut reader)?;
+        let commitment: <C::RecordCommitment as CommitmentScheme>::Output = FromBytes::read_le(&mut reader)?;
         let commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness =
-            FromBytes::read(&mut reader)?;
+            FromBytes::read_le(&mut reader)?;
 
         Ok(Self {
             owner,
@@ -327,7 +327,7 @@ impl<C: Testnet1Components> FromStr for Record<C> {
     type Err = RecordError;
 
     fn from_str(record: &str) -> Result<Self, Self::Err> {
-        Ok(Self::read(&hex::decode(record)?[..])?)
+        Ok(Self::read_le(&hex::decode(record)?[..])?)
     }
 }
 

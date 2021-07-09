@@ -339,10 +339,10 @@ impl<P: Fp3Parameters> ToBytes for Fp3<P> {
 
 impl<P: Fp3Parameters> FromBytes for Fp3<P> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let c0 = P::Fp::read(&mut reader)?;
-        let c1 = P::Fp::read(&mut reader)?;
-        let c2 = P::Fp::read(reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let c0 = P::Fp::read_le(&mut reader)?;
+        let c1 = P::Fp::read_le(&mut reader)?;
+        let c2 = P::Fp::read_le(reader)?;
         Ok(Fp3::new(c0, c1, c2))
     }
 }

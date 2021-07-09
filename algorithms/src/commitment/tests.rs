@@ -34,7 +34,7 @@ fn commitment_parameters_serialization<C: CommitmentScheme>() {
     let commitment_parameters_bytes = to_bytes![commitment.parameters()].unwrap();
 
     let recovered_commitment_parameters =
-        <C as CommitmentScheme>::Parameters::read(&commitment_parameters_bytes[..]).unwrap();
+        <C as CommitmentScheme>::Parameters::read_le(&commitment_parameters_bytes[..]).unwrap();
 
     assert_eq!(commitment.parameters(), &recovered_commitment_parameters);
 }

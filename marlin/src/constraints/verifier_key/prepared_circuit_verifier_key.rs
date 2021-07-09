@@ -472,7 +472,7 @@ where
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|vk_bytes| {
-            let circuit_vk: CircuitVerifyingKey<TargetField, PC> = FromBytes::read(&vk_bytes.borrow()[..])?;
+            let circuit_vk: CircuitVerifyingKey<TargetField, PC> = FromBytes::read_le(&vk_bytes.borrow()[..])?;
             // TODO (raychu86): Preparing the verifying key natively is more efficient, however it is currently broken.
 
             let unprepared_vk_gadget =
@@ -494,7 +494,7 @@ where
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|vk_bytes| {
-            let circuit_vk: CircuitVerifyingKey<TargetField, PC> = FromBytes::read(&vk_bytes.borrow()[..])?;
+            let circuit_vk: CircuitVerifyingKey<TargetField, PC> = FromBytes::read_le(&vk_bytes.borrow()[..])?;
             // TODO (raychu86): Preparing the verifying key natively is more efficient, however it is currently broken.
 
             let unprepared_vk_gadget = CircuitVerifyingKeyVar::<TargetField, BaseField, PC, PCG>::alloc_input(

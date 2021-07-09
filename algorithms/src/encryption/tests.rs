@@ -63,7 +63,7 @@ fn encryption_public_key_serialization() {
 
         let public_key_bytes = to_bytes![public_key].unwrap();
         let recovered_public_key =
-            <TestEncryptionScheme as EncryptionScheme>::PublicKey::read(&public_key_bytes[..]).unwrap();
+            <TestEncryptionScheme as EncryptionScheme>::PublicKey::read_le(&public_key_bytes[..]).unwrap();
 
         assert_eq!(public_key, recovered_public_key);
     }

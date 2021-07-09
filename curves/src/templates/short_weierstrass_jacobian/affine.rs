@@ -272,10 +272,10 @@ impl<P: Parameters> ToBytes for Affine<P> {
 
 impl<P: Parameters> FromBytes for Affine<P> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let x = P::BaseField::read(&mut reader)?;
-        let y = P::BaseField::read(&mut reader)?;
-        let infinity = bool::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let x = P::BaseField::read_le(&mut reader)?;
+        let y = P::BaseField::read_le(&mut reader)?;
+        let infinity = bool::read_le(&mut reader)?;
 
         if infinity != x.is_zero() && y.is_one() {
             return Err(Error::new(ErrorKind::InvalidData, "Infinity flag is not valid"));

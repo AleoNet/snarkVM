@@ -114,7 +114,7 @@ fn test_serialize_commitment_path() {
         let proof = merkle_tree.generate_proof(&leaf).unwrap();
 
         let proof_bytes = to_bytes![proof].unwrap();
-        let recovered_proof = CM::read(&proof_bytes[..]).unwrap();
+        let recovered_proof = CM::read_le(&proof_bytes[..]).unwrap();
 
         assert!(proof == recovered_proof);
 

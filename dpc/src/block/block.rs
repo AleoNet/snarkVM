@@ -57,9 +57,9 @@ impl<T: TransactionScheme> ToBytes for Block<T> {
 
 impl<T: TransactionScheme> FromBytes for Block<T> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let header: BlockHeader = FromBytes::read(&mut reader)?;
-        let transactions: Transactions<T> = FromBytes::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let header: BlockHeader = FromBytes::read_le(&mut reader)?;
+        let transactions: Transactions<T> = FromBytes::read_le(&mut reader)?;
 
         Ok(Self { header, transactions })
     }
@@ -86,7 +86,7 @@ impl<T: TransactionScheme> Block<T> {
         header_array.copy_from_slice(&header_bytes[0..HEADER_SIZE]);
         let header = BlockHeader::deserialize(&header_array);
 
-        let transactions: Transactions<T> = FromBytes::read(transactions_bytes)?;
+        let transactions: Transactions<T> = FromBytes::read_le(transactions_bytes)?;
 
         Ok(Block { header, transactions })
     }

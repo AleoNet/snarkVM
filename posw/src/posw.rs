@@ -94,7 +94,7 @@ where
     /// Loads the PoSW runner from the locally stored parameters.
     pub fn verify_only() -> Result<Self, PoswError> {
         let params = PoswSNARKVKParameters::load_bytes()?;
-        let vk = S::VerifyingKey::read(&params[..])?;
+        let vk = S::VerifyingKey::read_le(&params[..])?;
 
         Ok(Self {
             pk: None,
@@ -105,8 +105,8 @@ where
 
     /// Loads the PoSW runner from the locally stored parameters.
     pub fn load() -> Result<Self, PoswError> {
-        let vk = S::VerifyingKey::read(&PoswSNARKVKParameters::load_bytes()?[..])?;
-        let pk = S::ProvingKey::read(&PoswSNARKPKParameters::load_bytes()?[..])?;
+        let vk = S::VerifyingKey::read_le(&PoswSNARKVKParameters::load_bytes()?[..])?;
+        let pk = S::ProvingKey::read_le(&PoswSNARKPKParameters::load_bytes()?[..])?;
 
         Ok(Self {
             pk: Some(pk),
@@ -270,7 +270,7 @@ where
         let mask = commit(nonce, pedersen_merkle_root);
 
         // get the mask and the root in public inputs format
-        let merkle_root = F::read(&pedersen_merkle_root.0[..])?;
+        let merkle_root = F::read_le(&pedersen_merkle_root.0[..])?;
         let inputs = [mask.to_field_elements()?, vec![merkle_root]].concat();
 
         let res = S::verify(&self.vk, &inputs, &proof)?;

@@ -817,8 +817,8 @@ impl<P: Fp768Parameters> ToBytes for Fp768<P> {
 
 impl<P: Fp768Parameters> FromBytes for Fp768<P> {
     #[inline]
-    fn read<R: Read>(reader: R) -> IoResult<Self> {
-        BigInteger::read(reader).and_then(|b| match Self::from_repr(b) {
+    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
+        BigInteger::read_le(reader).and_then(|b| match Self::from_repr(b) {
             Some(f) => Ok(f),
             None => Err(FieldError::InvalidFieldElement.into()),
         })

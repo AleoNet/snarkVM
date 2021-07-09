@@ -125,7 +125,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> ToBytes for Proof<F, PC> {
 }
 
 impl<F: PrimeField, PC: PolynomialCommitment<F>> FromBytes for Proof<F, PC> {
-    fn read<R: Read>(mut r: R) -> io::Result<Self> {
+    fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
         CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize Proof"))
     }
 }

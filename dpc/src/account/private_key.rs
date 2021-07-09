@@ -79,11 +79,11 @@ impl<C: DPCComponents> PrivateKey<C> {
     ) -> Result<Self, AccountError> {
         // Generate the SIG key pair.
         let sk_sig_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_SIG)?;
-        let sk_sig = <C::AccountSignature as SignatureScheme>::PrivateKey::read(&sk_sig_bytes[..])?;
+        let sk_sig = <C::AccountSignature as SignatureScheme>::PrivateKey::read_le(&sk_sig_bytes[..])?;
 
         // Generate the PRF secret key.
         let sk_prf_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_PRF)?;
-        let sk_prf = <C::PRF as PRF>::Seed::read(&sk_prf_bytes[..])?;
+        let sk_prf = <C::PRF as PRF>::Seed::read_le(&sk_prf_bytes[..])?;
 
         let mut r_pk_counter = Self::INITIAL_R_PK_COUNTER;
         loop {
@@ -141,7 +141,7 @@ impl<C: DPCComponents> PrivateKey<C> {
         // for the scalar field representation are correctly set to 0.
         let decryption_key = match self.is_dummy {
             true => <C::AccountEncryption as EncryptionScheme>::PrivateKey::default(),
-            false => <C::AccountEncryption as EncryptionScheme>::PrivateKey::read(&decryption_key_bytes[..])?,
+            false => <C::AccountEncryption as EncryptionScheme>::PrivateKey::read_le(&decryption_key_bytes[..])?,
         };
 
         // This operation explicitly enforces that the unused MSB bits
@@ -184,11 +184,11 @@ impl<C: DPCComponents> PrivateKey<C> {
     fn from_seed_and_counter_unsafe(seed: &[u8; 32], r_pk_counter: u16) -> Result<Self, AccountError> {
         // Generate the SIG key pair.
         let sk_sig_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_SIG)?;
-        let sk_sig = <C::AccountSignature as SignatureScheme>::PrivateKey::read(&sk_sig_bytes[..])?;
+        let sk_sig = <C::AccountSignature as SignatureScheme>::PrivateKey::read_le(&sk_sig_bytes[..])?;
 
         // Generate the PRF secret key.
         let sk_prf_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_PRF)?;
-        let sk_prf = <C::PRF as PRF>::Seed::read(&sk_prf_bytes[..])?;
+        let sk_prf = <C::PRF as PRF>::Seed::read_le(&sk_prf_bytes[..])?;
 
         // Generate the randomness rpk for the commitment scheme.
         let r_pk = Self::derive_r_pk(seed, r_pk_counter)?;
@@ -213,7 +213,7 @@ impl<C: DPCComponents> PrivateKey<C> {
 
         // Generate the randomness rpk for the commitment scheme.
         let r_pk_bytes = Blake2s::evaluate(seed, &r_pk_input)?;
-        let r_pk = <C::AccountCommitment as CommitmentScheme>::Randomness::read(&r_pk_bytes[..])?;
+        let r_pk = <C::AccountCommitment as CommitmentScheme>::Randomness::read_le(&r_pk_bytes[..])?;
 
         Ok(r_pk)
     }
@@ -251,8 +251,8 @@ impl<C: DPCComponents> FromStr for PrivateKey<C> {
         }
 
         let mut reader = &data[9..];
-        let counter_bytes: [u8; 2] = FromBytes::read(&mut reader)?;
-        let seed: [u8; 32] = FromBytes::read(&mut reader)?;
+        let counter_bytes: [u8; 2] = FromBytes::read_le(&mut reader)?;
+        let seed: [u8; 32] = FromBytes::read_le(&mut reader)?;
 
         Self::from_seed_and_counter_unsafe(&seed, u16::from_le_bytes(counter_bytes))
     }

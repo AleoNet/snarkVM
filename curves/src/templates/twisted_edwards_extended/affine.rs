@@ -305,9 +305,9 @@ impl<P: Parameters> ToBytes for Affine<P> {
 
 impl<P: Parameters> FromBytes for Affine<P> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let x = P::BaseField::read(&mut reader)?;
-        let y = P::BaseField::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let x = P::BaseField::read_le(&mut reader)?;
+        let y = P::BaseField::read_le(&mut reader)?;
         Ok(Self::new(x, y))
     }
 }

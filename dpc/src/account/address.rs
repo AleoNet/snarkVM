@@ -90,8 +90,8 @@ impl<C: DPCComponents> ToBytes for Address<C> {
 impl<C: DPCComponents> FromBytes for Address<C> {
     /// Reads in an account address buffer.
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let encryption_key: <C::AccountEncryption as EncryptionScheme>::PublicKey = FromBytes::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let encryption_key: <C::AccountEncryption as EncryptionScheme>::PublicKey = FromBytes::read_le(&mut reader)?;
 
         Ok(Self { encryption_key })
     }
@@ -117,7 +117,7 @@ impl<C: DPCComponents> FromStr for Address<C> {
         }
 
         let buffer = Vec::from_base32(&data)?;
-        Ok(Self::read(&buffer[..])?)
+        Ok(Self::read_le(&buffer[..])?)
     }
 }
 

@@ -93,9 +93,10 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
         program_verifying_key_crh: &Self::ProgramVerifyingKeyCRH,
     ) -> Result<Self, ProgramError> {
         let proving_key: <Self::ProofSystem as SNARK>::ProvingKey =
-            FromBytes::read(NoopProgramSNARKPKParameters::load_bytes()?.as_slice())?;
-        let verifying_key =
-            <Self::ProofSystem as SNARK>::VerifyingKey::read(NoopProgramSNARKVKParameters::load_bytes()?.as_slice())?;
+            FromBytes::read_le(NoopProgramSNARKPKParameters::load_bytes()?.as_slice())?;
+        let verifying_key = <Self::ProofSystem as SNARK>::VerifyingKey::read_le(
+            NoopProgramSNARKVKParameters::load_bytes()?.as_slice(),
+        )?;
 
         // Compute the program ID.
         let program_id = to_bytes![<C as DPCComponents>::ProgramVerificationKeyCRH::hash(

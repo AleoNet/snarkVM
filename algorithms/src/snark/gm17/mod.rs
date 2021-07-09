@@ -72,7 +72,7 @@ impl<E: PairingEngine> ToBytes for Proof<E> {
 
 impl<E: PairingEngine> FromBytes for Proof<E> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Self::read(&mut reader)
     }
 }
@@ -118,9 +118,9 @@ impl<E: PairingEngine> Proof<E> {
 
     /// Deserialize the proof from uncompressed bytes.
     pub fn read_uncompressed<R: Read>(mut reader: R) -> IoResult<Self> {
-        let a: E::G1Affine = FromBytes::read(&mut reader)?;
-        let b: E::G2Affine = FromBytes::read(&mut reader)?;
-        let c: E::G1Affine = FromBytes::read(&mut reader)?;
+        let a: E::G1Affine = FromBytes::read_le(&mut reader)?;
+        let b: E::G2Affine = FromBytes::read_le(&mut reader)?;
+        let c: E::G1Affine = FromBytes::read_le(&mut reader)?;
 
         Ok(Self {
             a,
@@ -198,7 +198,7 @@ impl<E: PairingEngine> ToBytes for VerifyingKey<E> {
 
 impl<E: PairingEngine> FromBytes for VerifyingKey<E> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Self::read(&mut reader)
     }
 }
@@ -230,16 +230,16 @@ impl<E: PairingEngine> PartialEq for VerifyingKey<E> {
 impl<E: PairingEngine> VerifyingKey<E> {
     /// Deserialize the verifying key from bytes.
     pub fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let h_g2: E::G2Affine = FromBytes::read(&mut reader)?;
-        let g_alpha_g1: E::G1Affine = FromBytes::read(&mut reader)?;
-        let h_beta_g2: E::G2Affine = FromBytes::read(&mut reader)?;
-        let g_gamma_g1: E::G1Affine = FromBytes::read(&mut reader)?;
-        let h_gamma_g2: E::G2Affine = FromBytes::read(&mut reader)?;
+        let h_g2: E::G2Affine = FromBytes::read_le(&mut reader)?;
+        let g_alpha_g1: E::G1Affine = FromBytes::read_le(&mut reader)?;
+        let h_beta_g2: E::G2Affine = FromBytes::read_le(&mut reader)?;
+        let g_gamma_g1: E::G1Affine = FromBytes::read_le(&mut reader)?;
+        let h_gamma_g2: E::G2Affine = FromBytes::read_le(&mut reader)?;
 
-        let query_len: u32 = FromBytes::read(&mut reader)?;
+        let query_len: u32 = FromBytes::read_le(&mut reader)?;
         let mut query: Vec<E::G1Affine> = Vec::with_capacity(query_len as usize);
         for _ in 0..query_len {
-            let query_element: E::G1Affine = FromBytes::read(&mut reader)?;
+            let query_element: E::G1Affine = FromBytes::read_le(&mut reader)?;
             query.push(query_element);
         }
 
@@ -328,7 +328,7 @@ impl<E: PairingEngine> ToBytes for ProvingKey<E> {
 
 impl<E: PairingEngine> FromBytes for ProvingKey<E> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Self::read(&mut reader, false)
     }
 }
@@ -349,7 +349,7 @@ impl<E: PairingEngine> ProvingKey<E> {
     /// Deserialize the public parameters from bytes.
     pub fn read<R: Read>(mut reader: R, checked: bool) -> IoResult<Self> {
         let read_g1_affine = |mut reader: &mut R| -> IoResult<E::G1Affine> {
-            let g1_affine: E::G1Affine = FromBytes::read(&mut reader)?;
+            let g1_affine: E::G1Affine = FromBytes::read_le(&mut reader)?;
 
             if checked && !g1_affine.is_in_correct_subgroup_assuming_on_curve() {
                 return Err(io::Error::new(
@@ -362,7 +362,7 @@ impl<E: PairingEngine> ProvingKey<E> {
         };
 
         let read_g2_affine = |mut reader: &mut R| -> IoResult<E::G2Affine> {
-            let g2_affine: E::G2Affine = FromBytes::read(&mut reader)?;
+            let g2_affine: E::G2Affine = FromBytes::read_le(&mut reader)?;
 
             if checked && !g2_affine.is_in_correct_subgroup_assuming_on_curve() {
                 return Err(io::Error::new(
@@ -376,36 +376,36 @@ impl<E: PairingEngine> ProvingKey<E> {
 
         let vk = VerifyingKey::<E>::read(&mut reader)?;
 
-        let a_query_len: u32 = FromBytes::read(&mut reader)?;
+        let a_query_len: u32 = FromBytes::read_le(&mut reader)?;
         let mut a_query = Vec::with_capacity(a_query_len as usize);
         for _ in 0..a_query_len {
             a_query.push(read_g1_affine(&mut reader)?);
         }
 
-        let b_query_len: u32 = FromBytes::read(&mut reader)?;
+        let b_query_len: u32 = FromBytes::read_le(&mut reader)?;
         let mut b_query = Vec::with_capacity(b_query_len as usize);
         for _ in 0..b_query_len {
             b_query.push(read_g2_affine(&mut reader)?);
         }
 
-        let c_query_1_len: u32 = FromBytes::read(&mut reader)?;
+        let c_query_1_len: u32 = FromBytes::read_le(&mut reader)?;
         let mut c_query_1 = Vec::with_capacity(c_query_1_len as usize);
         for _ in 0..c_query_1_len {
             c_query_1.push(read_g1_affine(&mut reader)?);
         }
 
-        let c_query_2_len: u32 = FromBytes::read(&mut reader)?;
+        let c_query_2_len: u32 = FromBytes::read_le(&mut reader)?;
         let mut c_query_2 = Vec::with_capacity(c_query_2_len as usize);
         for _ in 0..c_query_2_len {
             c_query_2.push(read_g1_affine(&mut reader)?);
         }
 
-        let g_gamma_z: E::G1Affine = FromBytes::read(&mut reader)?;
-        let h_gamma_z: E::G2Affine = FromBytes::read(&mut reader)?;
-        let g_ab_gamma_z: E::G1Affine = FromBytes::read(&mut reader)?;
-        let g_gamma2_z2: E::G1Affine = FromBytes::read(&mut reader)?;
+        let g_gamma_z: E::G1Affine = FromBytes::read_le(&mut reader)?;
+        let h_gamma_z: E::G2Affine = FromBytes::read_le(&mut reader)?;
+        let g_ab_gamma_z: E::G1Affine = FromBytes::read_le(&mut reader)?;
+        let g_gamma2_z2: E::G1Affine = FromBytes::read_le(&mut reader)?;
 
-        let g_gamma2_z_t_len: u32 = FromBytes::read(&mut reader)?;
+        let g_gamma2_z_t_len: u32 = FromBytes::read_le(&mut reader)?;
         let mut g_gamma2_z_t = Vec::with_capacity(g_gamma2_z_t_len as usize);
         for _ in 0..g_gamma2_z_t_len {
             g_gamma2_z_t.push(read_g1_affine(&mut reader)?);

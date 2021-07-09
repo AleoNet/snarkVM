@@ -225,8 +225,8 @@ macro_rules! bigint_impl {
 
         impl FromBytes for $name {
             #[inline]
-            fn read<R: Read>(reader: R) -> IoResult<Self> {
-                <[u64; $num_limbs]>::read(reader).map(Self::new)
+            fn read_le<R: Read>(reader: R) -> IoResult<Self> {
+                <[u64; $num_limbs]>::read_le(reader).map(Self::new)
             }
         }
 

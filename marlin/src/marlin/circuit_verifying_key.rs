@@ -51,7 +51,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> ToBytes for CircuitVerifyingKey
 }
 
 impl<F: PrimeField, PC: PolynomialCommitment<F>> FromBytes for CircuitVerifyingKey<F, PC> {
-    fn read<R: Read>(mut r: R) -> io::Result<Self> {
+    fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
         CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize CircuitVerifyingKey"))
     }
 }

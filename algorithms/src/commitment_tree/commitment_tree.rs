@@ -104,16 +104,16 @@ impl<C: CommitmentScheme, H: CRH> CommitmentMerkleTree<C, H> {
     }
 
     pub fn from_bytes<R: Read>(mut reader: R, parameters: H) -> IoResult<Self> {
-        let root = <H as CRH>::Output::read(&mut reader)?;
+        let root = <H as CRH>::Output::read_le(&mut reader)?;
 
-        let left_inner_hash = <H as CRH>::Output::read(&mut reader)?;
-        let right_inner_hash = <H as CRH>::Output::read(&mut reader)?;
+        let left_inner_hash = <H as CRH>::Output::read_le(&mut reader)?;
+        let right_inner_hash = <H as CRH>::Output::read_le(&mut reader)?;
 
         let inner_hashes = (left_inner_hash, right_inner_hash);
 
         let mut leaves = vec![];
         for _ in 0..4 {
-            let leaf = <C as CommitmentScheme>::Output::read(&mut reader)?;
+            let leaf = <C as CommitmentScheme>::Output::read_le(&mut reader)?;
             leaves.push(leaf);
         }
 

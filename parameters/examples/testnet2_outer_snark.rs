@@ -48,14 +48,14 @@ pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let system_parameters = SystemParameters::<C>::load()?;
 
     let merkle_tree_hash_parameters: <C::MerkleParameters as MerkleParameters>::H =
-        From::from(FromBytes::read(&LedgerMerkleTreeParameters::load_bytes()?[..])?);
+        From::from(FromBytes::read_le(&LedgerMerkleTreeParameters::load_bytes()?[..])?);
     let ledger_merkle_tree_parameters = Arc::new(From::from(merkle_tree_hash_parameters));
 
     let inner_snark_pk: <C::InnerSNARK as SNARK>::ProvingKey =
-        <C::InnerSNARK as SNARK>::ProvingKey::read(InnerSNARKPKParameters::load_bytes()?.as_slice())?;
+        <C::InnerSNARK as SNARK>::ProvingKey::read_le(InnerSNARKPKParameters::load_bytes()?.as_slice())?;
 
     let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey =
-        <C::InnerSNARK as SNARK>::VerifyingKey::read(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
+        <C::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
 
     let inner_snark_proof = C::InnerSNARK::prove(
         &inner_snark_pk,

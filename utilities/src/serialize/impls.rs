@@ -43,7 +43,7 @@ impl CanonicalSerialize for bool {
 impl CanonicalDeserialize for bool {
     #[inline]
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        Ok(bool::read(reader)?)
+        Ok(bool::read_le(reader)?)
     }
 }
 

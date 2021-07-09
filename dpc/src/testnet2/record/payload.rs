@@ -49,7 +49,7 @@ impl ToBytes for Payload {
 
 impl FromBytes for Payload {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self(FromBytes::read(&mut reader)?))
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(Self(FromBytes::read_le(&mut reader)?))
     }
 }

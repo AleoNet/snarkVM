@@ -41,7 +41,7 @@ pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
 
     // TODO (howardwu): Resolve this inconsistency on import structure with a new model once MerkleParameters are refactored.
     let merkle_tree_hash_parameters: <C::MerkleParameters as MerkleParameters>::H =
-        From::from(FromBytes::read(&LedgerMerkleTreeParameters::load_bytes()?[..])?);
+        From::from(FromBytes::read_le(&LedgerMerkleTreeParameters::load_bytes()?[..])?);
     let ledger_merkle_tree_parameters = Arc::new(From::from(merkle_tree_hash_parameters));
 
     let system_parameters = SystemParameters::<C>::load()?;

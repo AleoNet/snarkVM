@@ -81,7 +81,7 @@ fn marlin_posw(c: &mut Criterion) {
     });
 
     let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, std::u32::MAX).unwrap();
-    let proof = <Marlin<Bls12_377> as SNARK>::Proof::read(&proof[..]).unwrap();
+    let proof = <Marlin<Bls12_377> as SNARK>::Proof::read_le(&proof[..]).unwrap();
 
     group.bench_function("verify", |b| {
         b.iter(|| {

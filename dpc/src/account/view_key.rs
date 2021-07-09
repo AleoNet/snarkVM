@@ -68,9 +68,9 @@ impl<C: DPCComponents> ToBytes for ViewKey<C> {
 
 impl<C: DPCComponents> FromBytes for ViewKey<C> {
     /// Reads in an account view key buffer.
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Ok(Self {
-            decryption_key: <C::AccountEncryption as EncryptionScheme>::PrivateKey::read(&mut reader)?,
+            decryption_key: <C::AccountEncryption as EncryptionScheme>::PrivateKey::read_le(&mut reader)?,
         })
     }
 }
@@ -92,7 +92,7 @@ impl<C: DPCComponents> FromStr for ViewKey<C> {
         let mut reader = &data[7..];
 
         Ok(Self {
-            decryption_key: FromBytes::read(&mut reader)?,
+            decryption_key: FromBytes::read_le(&mut reader)?,
         })
     }
 }

@@ -132,11 +132,11 @@ impl<T: TransactionScheme> ToBytes for Transactions<T> {
 
 impl<T: TransactionScheme> FromBytes for Transactions<T> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let num_transactions = read_variable_length_integer(&mut reader)?;
         let mut transactions = Vec::with_capacity(num_transactions);
         for _ in 0..num_transactions {
-            let transaction: T = FromBytes::read(&mut reader)?;
+            let transaction: T = FromBytes::read_le(&mut reader)?;
             transactions.push(transaction);
         }
 

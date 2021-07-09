@@ -82,7 +82,7 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> Ledger<T, P,
     /// Get the list of transaction ids given a block hash.
     pub fn get_block_transactions(&self, block_hash: &BlockHeaderHash) -> Result<Transactions<T>, StorageError> {
         match self.storage.get(COL_BLOCK_TRANSACTIONS, &block_hash.0)? {
-            Some(encoded_block_transactions) => Ok(Transactions::read(&encoded_block_transactions[..])?),
+            Some(encoded_block_transactions) => Ok(Transactions::read_le(&encoded_block_transactions[..])?),
             None => Err(StorageError::MissingBlockTransactions(block_hash.to_string())),
         }
     }
@@ -123,7 +123,7 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> Ledger<T, P,
     /// Get a block header given the block hash.
     pub fn get_block_header(&self, block_hash: &BlockHeaderHash) -> Result<BlockHeader, StorageError> {
         match self.storage.get(COL_BLOCK_HEADER, &block_hash.0)? {
-            Some(block_header_bytes) => Ok(BlockHeader::read(&block_header_bytes[..])?),
+            Some(block_header_bytes) => Ok(BlockHeader::read_le(&block_header_bytes[..])?),
             None => Err(StorageError::MissingBlockHeader(block_hash.to_string())),
         }
     }
@@ -213,7 +213,7 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> Ledger<T, P,
 
         let mut old_cm_and_indices = vec![];
         for (commitment_key, index_value) in self.storage.get_col(COL_COMMITMENT)? {
-            let commitment: T::Commitment = FromBytes::read(&commitment_key[..])?;
+            let commitment: T::Commitment = FromBytes::read_le(&commitment_key[..])?;
             let index = bytes_to_u32(&index_value) as usize;
 
             old_cm_and_indices.push((commitment, index));
@@ -289,7 +289,7 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> LedgerScheme
 
     /// Return a digest of the latest ledger Merkle tree.
     fn digest(&self) -> Option<Self::MerkleTreeDigest> {
-        let digest: Self::MerkleTreeDigest = FromBytes::read(&self.current_digest().unwrap()[..]).unwrap();
+        let digest: Self::MerkleTreeDigest = FromBytes::read_le(&self.current_digest().unwrap()[..]).unwrap();
         Some(digest)
     }
 

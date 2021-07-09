@@ -389,7 +389,7 @@ where
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|proof_bytes| {
-            let proof: Proof<TargetField, PC> = FromBytes::read(&proof_bytes.borrow()[..])?;
+            let proof: Proof<TargetField, PC> = FromBytes::read_le(&proof_bytes.borrow()[..])?;
 
             Self::alloc(cs.ns(|| "alloc_bytes"), || Ok(proof))
         })
@@ -405,7 +405,7 @@ where
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|proof_bytes| {
-            let proof: Proof<TargetField, PC> = FromBytes::read(&proof_bytes.borrow()[..])?;
+            let proof: Proof<TargetField, PC> = FromBytes::read_le(&proof_bytes.borrow()[..])?;
 
             Self::alloc_input(cs.ns(|| "alloc_input_bytes"), || Ok(proof))
         })

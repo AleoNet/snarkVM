@@ -56,9 +56,9 @@ impl<G: Group> ToBytes for SchnorrSignature<G> {
 
 impl<G: Group> FromBytes for SchnorrSignature<G> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let prover_response = <G as Group>::ScalarField::read(&mut reader)?;
-        let verifier_challenge = <G as Group>::ScalarField::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let prover_response = <G as Group>::ScalarField::read_le(&mut reader)?;
+        let verifier_challenge = <G as Group>::ScalarField::read_le(&mut reader)?;
 
         Ok(Self {
             prover_response,
@@ -88,8 +88,8 @@ impl<G: Group + CanonicalSerialize + CanonicalDeserialize> ToBytes for SchnorrPu
 
 impl<G: Group + CanonicalSerialize + CanonicalDeserialize> FromBytes for SchnorrPublicKey<G> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self(G::read(&mut reader)?))
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(Self(G::read_le(&mut reader)?))
     }
 }
 

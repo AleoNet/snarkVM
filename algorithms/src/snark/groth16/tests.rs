@@ -134,7 +134,7 @@ mod serialization {
         );
         assert!(Proof::<Bls12_377>::read_uncompressed(&compressed_serialization[..]).is_err());
 
-        let recovered_proof: Proof<Bls12_377> = FromBytes::read(&compressed_serialization[..]).unwrap();
+        let recovered_proof: Proof<Bls12_377> = FromBytes::read_le(&compressed_serialization[..]).unwrap();
         assert_eq!(recovered_proof.compressed, true);
     }
 
@@ -159,7 +159,7 @@ mod serialization {
         );
         assert!(Proof::<Bls12_377>::read_compressed(&uncompressed_serialization[..]).is_err());
 
-        let recovered_proof: Proof<Bls12_377> = FromBytes::read(&uncompressed_serialization[..]).unwrap();
+        let recovered_proof: Proof<Bls12_377> = FromBytes::read_le(&uncompressed_serialization[..]).unwrap();
         assert_eq!(recovered_proof.compressed, false);
     }
 }

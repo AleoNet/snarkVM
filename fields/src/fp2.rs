@@ -293,9 +293,9 @@ impl<P: Fp2Parameters> ToBytes for Fp2<P> {
 
 impl<P: Fp2Parameters> FromBytes for Fp2<P> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let c0 = P::Fp::read(&mut reader)?;
-        let c1 = P::Fp::read(reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let c0 = P::Fp::read_le(&mut reader)?;
+        let c1 = P::Fp::read_le(reader)?;
         Ok(Fp2::new(c0, c1))
     }
 }

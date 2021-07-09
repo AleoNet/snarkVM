@@ -132,7 +132,7 @@ pub struct BatchLCProof<F: Field, PC: PolynomialCommitment<F>> {
 }
 
 impl<F: Field, PC: PolynomialCommitment<F>> FromBytes for BatchLCProof<F, PC> {
-    fn read<R: Read>(mut reader: R) -> io::Result<Self> {
+    fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
         CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error_fn("could not deserialize struct"))
     }
 }

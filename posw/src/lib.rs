@@ -138,7 +138,7 @@ mod tests {
 
         assert_eq!(proof.len(), 972); // NOTE: Marlin proofs use compressed serialization
 
-        let proof = <Marlin<Bls12_377> as SNARK>::Proof::read(&proof[..]).unwrap();
+        let proof = <Marlin<Bls12_377> as SNARK>::Proof::read_le(&proof[..]).unwrap();
         posw.verify(nonce, &proof, &pedersen_merkle_root).unwrap();
     }
 }

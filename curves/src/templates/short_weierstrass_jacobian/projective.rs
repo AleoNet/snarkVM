@@ -102,10 +102,10 @@ impl<P: Parameters> ToBytes for Projective<P> {
 
 impl<P: Parameters> FromBytes for Projective<P> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let x = P::BaseField::read(&mut reader)?;
-        let y = P::BaseField::read(&mut reader)?;
-        let z = P::BaseField::read(reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let x = P::BaseField::read_le(&mut reader)?;
+        let y = P::BaseField::read_le(&mut reader)?;
+        let z = P::BaseField::read_le(reader)?;
         Ok(Self::new(x, y, z))
     }
 }

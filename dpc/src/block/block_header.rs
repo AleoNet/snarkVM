@@ -175,14 +175,14 @@ impl ToBytes for BlockHeader {
 
 impl FromBytes for BlockHeader {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let previous_block_hash = <[u8; 32]>::read(&mut reader)?;
-        let merkle_root_hash = <[u8; 32]>::read(&mut reader)?;
-        let pedersen_merkle_root_hash = <[u8; 32]>::read(&mut reader)?;
-        let proof = ProofOfSuccinctWork::read(&mut reader)?;
-        let time = <[u8; 8]>::read(&mut reader)?;
-        let difficulty_target = <[u8; 8]>::read(&mut reader)?;
-        let nonce = <[u8; 4]>::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let previous_block_hash = <[u8; 32]>::read_le(&mut reader)?;
+        let merkle_root_hash = <[u8; 32]>::read_le(&mut reader)?;
+        let pedersen_merkle_root_hash = <[u8; 32]>::read_le(&mut reader)?;
+        let proof = ProofOfSuccinctWork::read_le(&mut reader)?;
+        let time = <[u8; 8]>::read_le(&mut reader)?;
+        let difficulty_target = <[u8; 8]>::read_le(&mut reader)?;
+        let nonce = <[u8; 4]>::read_le(&mut reader)?;
 
         Ok(Self {
             previous_block_hash: BlockHeaderHash(previous_block_hash),
@@ -219,7 +219,7 @@ mod tests {
 
         let mut serialized2 = vec![];
         block_header.write_le(&mut serialized2).unwrap();
-        let de = BlockHeader::read(&serialized2[..]).unwrap();
+        let de = BlockHeader::read_le(&serialized2[..]).unwrap();
 
         assert_eq!(&serialized1[..], &serialized2[..]);
         assert_eq!(&serialized1[..], &bincode::serialize(&block_header).unwrap()[..]);

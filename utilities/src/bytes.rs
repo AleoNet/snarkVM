@@ -56,7 +56,7 @@ pub trait ToBytes {
 
 pub trait FromBytes: Sized {
     /// Reads `Self` from `reader` as little-endian bytes.
-    fn read<R: Read>(reader: R) -> IoResult<Self>;
+    fn read_le<R: Read>(reader: R) -> IoResult<Self>;
 }
 
 impl<const N: usize> ToBytes for [u8; N] {
@@ -68,7 +68,7 @@ impl<const N: usize> ToBytes for [u8; N] {
 
 impl<const N: usize> FromBytes for [u8; N] {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mut arr = [0u8; N];
         reader.read_exact(&mut arr)?;
         Ok(arr)
@@ -87,7 +87,7 @@ impl<const N: usize> ToBytes for [u16; N] {
 
 impl<const N: usize> FromBytes for [u16; N] {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mut res = [0u16; N];
         for num in res.iter_mut() {
             let mut bytes = [0u8; 2];
@@ -110,7 +110,7 @@ impl<const N: usize> ToBytes for [u32; N] {
 
 impl<const N: usize> FromBytes for [u32; N] {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mut res = [0u32; N];
         for num in res.iter_mut() {
             let mut bytes = [0u8; 4];
@@ -133,7 +133,7 @@ impl<const N: usize> ToBytes for [u64; N] {
 
 impl<const N: usize> FromBytes for [u64; N] {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mut res = [0u64; N];
         for num in res.iter_mut() {
             let mut bytes = [0u8; 8];
@@ -185,7 +185,7 @@ impl ToBytes for u8 {
 
 impl FromBytes for u8 {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mut byte = [0u8];
         reader.read_exact(&mut byte)?;
         Ok(byte[0])
@@ -201,7 +201,7 @@ impl ToBytes for u16 {
 
 impl FromBytes for u16 {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mut bytes = [0u8; 2];
         reader.read_exact(&mut bytes)?;
         Ok(u16::from_le_bytes(bytes))
@@ -217,7 +217,7 @@ impl ToBytes for u32 {
 
 impl FromBytes for u32 {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mut bytes = [0u8; 4];
         reader.read_exact(&mut bytes)?;
         Ok(u32::from_le_bytes(bytes))
@@ -233,7 +233,7 @@ impl ToBytes for u64 {
 
 impl FromBytes for u64 {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mut bytes = [0u8; 8];
         reader.read_exact(&mut bytes)?;
         Ok(u64::from_le_bytes(bytes))
@@ -249,7 +249,7 @@ impl ToBytes for u128 {
 
 impl FromBytes for u128 {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mut bytes = [0u8; 16];
         reader.read_exact(&mut bytes)?;
         Ok(u128::from_le_bytes(bytes))
@@ -265,7 +265,7 @@ impl ToBytes for i64 {
 
 impl FromBytes for i64 {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mut bytes = [0u8; 8];
         reader.read_exact(&mut bytes)?;
         Ok(i64::from_le_bytes(bytes))
@@ -281,7 +281,7 @@ impl ToBytes for () {
 
 impl FromBytes for () {
     #[inline]
-    fn read<R: Read>(_bytes: R) -> IoResult<Self> {
+    fn read_le<R: Read>(_bytes: R) -> IoResult<Self> {
         Ok(())
     }
 }
@@ -295,8 +295,8 @@ impl ToBytes for bool {
 
 impl FromBytes for bool {
     #[inline]
-    fn read<R: Read>(reader: R) -> IoResult<Self> {
-        match u8::read(reader) {
+    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
+        match u8::read_le(reader) {
             Ok(0) => Ok(false),
             Ok(1) => Ok(true),
             Ok(_) => Err(error("FromBytes::read failed")),

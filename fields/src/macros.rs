@@ -217,7 +217,7 @@ macro_rules! impl_primefield_serializer {
 
                 let flags = F::from_u8_remove_flags(&mut masked_bytes[output_byte_size - 1]);
 
-                Ok((Self::read(&masked_bytes[..])?, flags))
+                Ok((Self::read_le(&masked_bytes[..])?, flags))
             }
         }
 
@@ -233,7 +233,7 @@ macro_rules! impl_primefield_serializer {
 
                 let mut masked_bytes = [0; BYTE_SIZE];
                 reader.read_exact(&mut masked_bytes[..output_byte_size])?;
-                Ok(Self::read(&masked_bytes[..])?)
+                Ok(Self::read_le(&masked_bytes[..])?)
             }
         }
 

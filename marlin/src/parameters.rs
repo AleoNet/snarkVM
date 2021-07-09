@@ -76,7 +76,7 @@ impl<E: PairingEngine> ToBytes for Parameters<E> {
 }
 
 impl<E: PairingEngine> FromBytes for Parameters<E> {
-    fn read<R: Read>(mut r: R) -> io::Result<Self> {
+    fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
         // Signal that the SNARK params are being processed in order for the validation of affine values to be
         // deferred, while ensuring that this method is not called recursively; the expected number of entries is
         // counted with a thread-local SNARK_PARAMS_AFFINE_COUNT, which does not support recursion in its current form

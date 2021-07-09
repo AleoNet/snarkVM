@@ -59,8 +59,8 @@ impl<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> ToB
 impl<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> FromBytes for GroupEncryptionPublicKey<G> {
     /// Reads the x-coordinate of the encryption public key.
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let x_coordinate = <G::Affine as AffineCurve>::BaseField::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let x_coordinate = <G::Affine as AffineCurve>::BaseField::read_le(&mut reader)?;
 
         if let Some(element) = <G as ProjectiveCurve>::Affine::from_x_coordinate(x_coordinate, true) {
             if element.is_in_correct_subgroup_assuming_on_curve() {
@@ -153,7 +153,7 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
         let mut y = Self::Randomness::zero();
         let mut z_bytes = vec![];
 
-        while Self::Randomness::read(&z_bytes[..]).is_err() {
+        while Self::Randomness::read_le(&z_bytes[..]).is_err() {
             y = Self::Randomness::rand(rng);
 
             let affine = public_key.0.mul(y).into_affine();
@@ -176,7 +176,7 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
         let z_bytes = to_bytes![affine.to_x_coordinate()]?;
 
-        let z = Self::Randomness::read(&z_bytes[..])?;
+        let z = Self::Randomness::read_le(&z_bytes[..])?;
 
         let one = Self::Randomness::one();
         let mut i = Self::Randomness::one();
@@ -246,7 +246,7 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
         let z_bytes = to_bytes![affine.to_x_coordinate()]?;
 
-        let z = Self::Randomness::read(&z_bytes[..])?;
+        let z = Self::Randomness::read_le(&z_bytes[..])?;
 
         let one = Self::Randomness::one();
         let mut plaintext = Vec::with_capacity(ciphertext.len().saturating_sub(1));

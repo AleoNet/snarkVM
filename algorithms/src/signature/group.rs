@@ -100,7 +100,7 @@ where
         rng: &mut R,
     ) -> Result<Self::Signature, SignatureError> {
         let schnorr_signature: Schnorr<SG, D> = self.parameters.clone().into();
-        let private_key = <SG as Group>::ScalarField::read(&to_bytes![private_key]?[..])?;
+        let private_key = <SG as Group>::ScalarField::read_le(&to_bytes![private_key]?[..])?;
 
         Ok(schnorr_signature.sign(&private_key, message, rng)?)
     }

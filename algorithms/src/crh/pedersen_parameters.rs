@@ -75,16 +75,16 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
     for PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let num_bases: u32 = FromBytes::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let num_bases: u32 = FromBytes::read_le(&mut reader)?;
         let mut bases = Vec::with_capacity(num_bases as usize);
 
         for _ in 0..num_bases {
-            let base_len: u32 = FromBytes::read(&mut reader)?;
+            let base_len: u32 = FromBytes::read_le(&mut reader)?;
             let mut base = Vec::with_capacity(base_len as usize);
 
             for _ in 0..base_len {
-                let g: G = FromBytes::read(&mut reader)?;
+                let g: G = FromBytes::read_le(&mut reader)?;
                 base.push(g);
             }
             bases.push(base);

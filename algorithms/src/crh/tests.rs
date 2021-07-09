@@ -37,7 +37,7 @@ fn crh_parameters_serialization<C: CRH>() {
     let crh_parameters = crh.parameters();
 
     let crh_parameters_bytes = to_bytes![crh_parameters].unwrap();
-    let recovered_crh_parameters: <C as CRH>::Parameters = FromBytes::read(&crh_parameters_bytes[..]).unwrap();
+    let recovered_crh_parameters: <C as CRH>::Parameters = FromBytes::read_le(&crh_parameters_bytes[..]).unwrap();
 
     assert_eq!(crh_parameters, &recovered_crh_parameters);
 }

@@ -185,7 +185,7 @@ fn dpc_testnet1_integration_test() {
 
     // Check that the transaction is serialized and deserialized correctly
     let transaction_bytes = to_bytes![transaction].unwrap();
-    let recovered_transaction = Testnet1Transaction::read(&transaction_bytes[..]).unwrap();
+    let recovered_transaction = Testnet1Transaction::read_le(&transaction_bytes[..]).unwrap();
     assert_eq!(transaction, recovered_transaction);
 
     // Check that new_records can be decrypted from the transaction.
@@ -334,7 +334,7 @@ fn test_transaction_kernel_serialization() {
     let transaction_kernel_bytes = to_bytes![&transaction_kernel].unwrap();
 
     let recovered_transaction_kernel: <Testnet1DPC as DPCScheme<L>>::TransactionKernel =
-        FromBytes::read(&transaction_kernel_bytes[..]).unwrap();
+        FromBytes::read_le(&transaction_kernel_bytes[..]).unwrap();
 
     assert_eq!(transaction_kernel, recovered_transaction_kernel);
 }

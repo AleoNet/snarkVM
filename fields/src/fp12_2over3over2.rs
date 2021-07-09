@@ -490,9 +490,9 @@ impl<P: Fp12Parameters> ToBytes for Fp12<P> {
 
 impl<P: Fp12Parameters> FromBytes for Fp12<P> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let c0 = Fp6::read(&mut reader)?;
-        let c1 = Fp6::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let c0 = Fp6::read_le(&mut reader)?;
+        let c1 = Fp6::read_le(&mut reader)?;
         Ok(Fp12::new(c0, c1))
     }
 }

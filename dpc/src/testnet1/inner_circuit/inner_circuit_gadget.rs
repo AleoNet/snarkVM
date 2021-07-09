@@ -1041,8 +1041,8 @@ where
             let mut encryption_plaintext = Vec::with_capacity(record_group_encoding.len());
 
             for (i, (x, y)) in record_group_encoding.iter().enumerate() {
-                let affine = <C::EncryptionGroup as ProjectiveCurve>::Affine::read(&to_bytes![x, y]?[..])?;
-                encryption_plaintext.push(<C::AccountEncryption as EncryptionScheme>::Text::read(
+                let affine = <C::EncryptionGroup as ProjectiveCurve>::Affine::read_le(&to_bytes![x, y]?[..])?;
+                encryption_plaintext.push(<C::AccountEncryption as EncryptionScheme>::Text::read_le(
                     &to_bytes![affine.into_projective()]?[..],
                 )?);
 
@@ -1063,10 +1063,10 @@ where
             let u = <C::EncryptionParameters as TwistedEdwardsParameters>::COEFF_D;
             let ua = a.mul(&u);
 
-            let a = C::InnerScalarField::read(&to_bytes![a]?[..])?;
-            let b = C::InnerScalarField::read(&to_bytes![coeff_b]?[..])?;
-            let u = C::InnerScalarField::read(&to_bytes![u]?[..])?;
-            let ua = C::InnerScalarField::read(&to_bytes![ua]?[..])?;
+            let a = C::InnerScalarField::read_le(&to_bytes![a]?[..])?;
+            let b = C::InnerScalarField::read_le(&to_bytes![coeff_b]?[..])?;
+            let u = C::InnerScalarField::read_le(&to_bytes![u]?[..])?;
+            let ua = C::InnerScalarField::read_le(&to_bytes![ua]?[..])?;
 
             let fp_zero = FpGadget::zero(encryption_cs.ns(|| "fpg zero"))?;
 

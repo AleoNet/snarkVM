@@ -190,12 +190,12 @@ where
         let inner_snark_parameters = {
             let inner_snark_pk = match verify_only {
                 true => None,
-                false => Some(<C::InnerSNARK as SNARK>::ProvingKey::read(
+                false => Some(<C::InnerSNARK as SNARK>::ProvingKey::read_le(
                     InnerSNARKPKParameters::load_bytes()?.as_slice(),
                 )?),
             };
             let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey =
-                <C::InnerSNARK as SNARK>::VerifyingKey::read(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
+                <C::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
 
             (inner_snark_pk, inner_snark_vk.into())
         };
@@ -203,12 +203,12 @@ where
         let outer_snark_parameters = {
             let outer_snark_pk = match verify_only {
                 true => None,
-                false => Some(<C::OuterSNARK as SNARK>::ProvingKey::read(
+                false => Some(<C::OuterSNARK as SNARK>::ProvingKey::read_le(
                     OuterSNARKPKParameters::load_bytes()?.as_slice(),
                 )?),
             };
             let outer_snark_vk: <C::OuterSNARK as SNARK>::VerifyingKey =
-                <C::OuterSNARK as SNARK>::VerifyingKey::read(OuterSNARKVKParameters::load_bytes()?.as_slice())?;
+                <C::OuterSNARK as SNARK>::VerifyingKey::read_le(OuterSNARKVKParameters::load_bytes()?.as_slice())?;
 
             (outer_snark_pk, outer_snark_vk.into())
         };

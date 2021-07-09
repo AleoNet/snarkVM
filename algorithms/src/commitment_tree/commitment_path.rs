@@ -80,9 +80,9 @@ impl<C: CommitmentScheme, H: CRH> ToBytes for CommitmentMerklePath<C, H> {
 
 impl<C: CommitmentScheme, H: CRH> FromBytes for CommitmentMerklePath<C, H> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let leaves = (C::Output::read(&mut reader)?, C::Output::read(&mut reader)?);
-        let inner_hashes = (H::Output::read(&mut reader)?, H::Output::read(&mut reader)?);
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let leaves = (C::Output::read_le(&mut reader)?, C::Output::read_le(&mut reader)?);
+        let inner_hashes = (H::Output::read_le(&mut reader)?, H::Output::read_le(&mut reader)?);
 
         Ok(Self { leaves, inner_hashes })
     }

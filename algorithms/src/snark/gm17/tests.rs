@@ -187,7 +187,7 @@ mod serialization {
         );
         assert!(Proof::<Bls12_377>::read_uncompressed(&compressed_serialization[..]).is_err());
 
-        let recovered_proof: Proof<Bls12_377> = FromBytes::read(&compressed_serialization[..]).unwrap();
+        let recovered_proof: Proof<Bls12_377> = FromBytes::read_le(&compressed_serialization[..]).unwrap();
         assert_eq!(recovered_proof.compressed, true);
     }
 
@@ -212,7 +212,7 @@ mod serialization {
         );
         assert!(Proof::<Bls12_377>::read_compressed(&uncompressed_serialization[..]).is_err());
 
-        let recovered_proof: Proof<Bls12_377> = FromBytes::read(&uncompressed_serialization[..]).unwrap();
+        let recovered_proof: Proof<Bls12_377> = FromBytes::read_le(&uncompressed_serialization[..]).unwrap();
         assert_eq!(recovered_proof.compressed, false);
     }
 
@@ -227,8 +227,8 @@ mod serialization {
         let parameter_bytes = to_bytes![&parameters].unwrap();
         let vk_bytes = to_bytes![&vk].unwrap();
 
-        let recovered_parameters: ProvingKey<Bls12_377> = FromBytes::read(&parameter_bytes[..]).unwrap();
-        let recovered_vk: VerifyingKey<Bls12_377> = FromBytes::read(&vk_bytes[..]).unwrap();
+        let recovered_parameters: ProvingKey<Bls12_377> = FromBytes::read_le(&parameter_bytes[..]).unwrap();
+        let recovered_vk: VerifyingKey<Bls12_377> = FromBytes::read_le(&vk_bytes[..]).unwrap();
 
         assert_eq!(parameters, recovered_parameters);
         assert_eq!(vk, recovered_vk);

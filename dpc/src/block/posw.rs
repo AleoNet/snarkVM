@@ -119,7 +119,7 @@ impl ToBytes for ProofOfSuccinctWork {
 
 impl FromBytes for ProofOfSuccinctWork {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mut proof = [0; PROOF_SIZE];
         reader.read_exact(&mut proof)?;
         Ok(ProofOfSuccinctWork(proof))

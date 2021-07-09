@@ -113,19 +113,6 @@ pub trait BigInteger:
 
     /// Returns a vector for wnaf.
     fn find_wnaf(&self) -> Vec<i64>;
-
-    // /// Writes this `BigInteger` as little-endian bytes. Always writes
-    // /// `(num_bits` / 8) bytes.
-    // fn write_le<W: Write>(&self, writer: &mut W) -> IoResult<()> {
-    //     ToBytes::write_le(self, writer)
-    // }
-
-    /// Reads little-endian bytes occupying (`num_bits` / 8) bytes into this
-    /// representation.
-    fn read_le<R: Read>(&mut self, reader: &mut R) -> IoResult<()> {
-        *self = Self::read(reader)?;
-        Ok(())
-    }
 }
 
 pub mod arithmetic {
@@ -170,7 +157,7 @@ impl BigInteger256 {
 
         num.write_le(bytes.as_mut()).unwrap();
 
-        Self::read(&bytes[..]).unwrap()
+        Self::read_le(&bytes[..]).unwrap()
     }
 
     pub fn to_u128(&self) -> u128 {
@@ -179,6 +166,6 @@ impl BigInteger256 {
         self.write_le(bytes.as_mut()).unwrap();
 
         // We cut off the last 128 bits here
-        u128::read(&bytes[..16]).unwrap()
+        u128::read_le(&bytes[..16]).unwrap()
     }
 }
