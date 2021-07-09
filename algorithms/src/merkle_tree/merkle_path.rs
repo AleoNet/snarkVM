@@ -29,14 +29,49 @@ pub type MerkleTreeDigest<P> = <<P as MerkleParameters>::H as CRH>::Output;
 #[derive(Clone, Debug)]
 pub struct MerklePath<P: MerkleParameters> {
     pub parameters: Arc<P>,
-    pub path: Vec<(MerkleTreeDigest<P>, MerkleTreeDigest<P>)>,
+    pub path: Vec<MerkleTreeDigest<P>>,
+    pub leaf_index: usize,
+    pub leaf_sibling_hash: MerkleTreeDigest<P>,
 }
 
 impl<P: MerkleParameters> MerklePath<P> {
     pub fn verify<L: ToBytes>(&self, root_hash: &MerkleTreeDigest<P>, leaf: &L) -> Result<bool, MerkleError> {
-        if self.path.len() != P::DEPTH {
-            return Ok(false);
-        }
+        //
+        // // calculate leaf hash
+        // let claimed_leaf_hash =
+        //     P::LeafHash::evaluate(&leaf_hash_params, &ark_ff::to_bytes!(&leaf)?)?;
+        // // check hash along the path from bottom to root
+        // let (left_bytes, right_bytes) =
+        //     select_left_right_bytes(self.leaf_index, &claimed_leaf_hash, &self.leaf_sibling_hash)?;
+        //
+        // let mut curr_path_node =
+        //     P::TwoToOneHash::evaluate(&two_to_one_hash_params, &left_bytes, &right_bytes)?;
+        //
+        // // we will use `index` variable to track the position of path
+        // let mut index = self.leaf_index;
+        // index >>= 1;
+        //
+        // // Check levels between leaf level and root
+        // for level in (0..self.auth_path.len()).rev() {
+        //     // check if path node at this level is left or right
+        //     let (left_bytes, right_bytes) =
+        //         select_left_right_bytes(index, &curr_path_node, &self.auth_path[level])?;
+        //     // update curr_path_node
+        //     curr_path_node =
+        //         P::TwoToOneHash::evaluate(&two_to_one_hash_params, &left_bytes, &right_bytes)?;
+        //     index >>= 1;
+        // }
+        //
+        // // check if final hash is root
+        // if &curr_path_node != root_hash {
+        //     return Ok(false);
+        // }
+        //
+        // Ok(true)
+
+        // if self.path.len() != P::DEPTH {
+        //     return Ok(false);
+        // }
 
         // Check that the given leaf matches the leaf in the membership proof.
         if !self.path.is_empty() {
@@ -45,23 +80,32 @@ impl<P: MerkleParameters> MerklePath<P> {
 
             let claimed_leaf_hash = self.parameters.hash_leaf::<L>(leaf, &mut buffer)?;
 
-            // Check if leaf is one of the bottom-most siblings.
-            if claimed_leaf_hash != self.path[0].0 && claimed_leaf_hash != self.path[0].1 {
-                return Ok(false);
-            };
-
             // Check levels between leaf level and root.
-            let mut previous_hash = claimed_leaf_hash;
+            let (left_bytes, right_bytes) =
+                Self::select_left_right_bytes(self.leaf_index, &claimed_leaf_hash, &self.leaf_sibling_hash)?;
+
             let mut buffer = vec![0u8; hash_input_size_in_bytes];
-            for &(ref hash, ref sibling_hash) in &self.path {
-                // Check if the previous hash matches the correct current hash.
-                if &previous_hash != hash && &previous_hash != sibling_hash {
-                    return Ok(false);
-                };
-                previous_hash = self.parameters.hash_inner_node(hash, sibling_hash, &mut buffer)?;
+            let mut curr_path_node = self
+                .parameters
+                .hash_inner_node(&left_bytes, &right_bytes, &mut buffer)?;
+
+            let mut index = self.leaf_index;
+            index >>= 1;
+
+            // Check levels between leaf level and root
+            for level in 0..self.path.len() {
+                // check if path node at this level is left or right
+                let (left_bytes, right_bytes) =
+                    Self::select_left_right_bytes(index, &curr_path_node, &self.path[level])?;
+                // update curr_path_node
+                curr_path_node = self
+                    .parameters
+                    .hash_inner_node(&left_bytes, &right_bytes, &mut buffer)?;
+                index >>= 1;
             }
 
-            if root_hash != &previous_hash {
+            // check if final hash is root
+            if &curr_path_node != root_hash {
                 return Ok(false);
             }
 
@@ -70,17 +114,40 @@ impl<P: MerkleParameters> MerklePath<P> {
             Ok(false)
         }
     }
+
+    /// Convert `computed_hash` and `sibling_hash` to bytes. `index` is the first `path.len()` bits of
+    /// the position of tree.
+    ///
+    /// If the least significant bit of `index` is 0, then `input_1` will be left and `input_2` will be right.
+    /// Otherwise, `input_1` will be right and `input_2` will be left.
+    ///
+    /// Returns: (left, right)
+    fn select_left_right_bytes(
+        index: usize,
+        computed_hash: &<P::H as CRH>::Output,
+        sibling_hash: &<P::H as CRH>::Output,
+    ) -> Result<(<P::H as CRH>::Output, <P::H as CRH>::Output), MerkleError> {
+        let is_left = index & 1 == 0;
+        let mut left_bytes = computed_hash;
+        let mut right_bytes = sibling_hash;
+        if !is_left {
+            core::mem::swap(&mut left_bytes, &mut right_bytes);
+        }
+        Ok((left_bytes.clone(), right_bytes.clone()))
+    }
 }
 
 impl<P: MerkleParameters> Default for MerklePath<P> {
     fn default() -> Self {
         let mut path = Vec::with_capacity(P::DEPTH);
         for _i in 0..P::DEPTH {
-            path.push((MerkleTreeDigest::<P>::default(), MerkleTreeDigest::<P>::default()));
+            path.push(MerkleTreeDigest::<P>::default());
         }
         Self {
             parameters: Arc::new(P::default()),
             path,
+            leaf_index: 0,
+            leaf_sibling_hash: MerkleTreeDigest::<P>::default(),
         }
     }
 }
