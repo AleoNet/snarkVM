@@ -176,8 +176,8 @@ impl<C: Testnet1Components, P: MontgomeryParameters + TwistedEdwardsParameters, 
 
         // Process birth_program_id and death_program_id. (Assumption 2 and 3 applies)
 
-        let birth_program_id_biginteger = Self::OuterField::read_le(birth_program_id)?.into_repr();
-        let death_program_id_biginteger = Self::OuterField::read_le(death_program_id)?.into_repr();
+        let birth_program_id_biginteger = Self::OuterField::read_le(birth_program_id)?.to_repr();
+        let death_program_id_biginteger = Self::OuterField::read_le(death_program_id)?.to_repr();
 
         let mut birth_program_id_bits = Vec::with_capacity(Self::INNER_FIELD_BITSIZE);
         let mut death_program_id_bits = Vec::with_capacity(Self::INNER_FIELD_BITSIZE);

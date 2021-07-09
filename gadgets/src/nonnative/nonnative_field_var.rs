@@ -360,7 +360,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsBEGadget<BaseField>
 
     fn to_bits_be_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         match self {
-            Self::Constant(c) => Ok(BitIteratorBE::new(&c.into_repr())
+            Self::Constant(c) => Ok(BitIteratorBE::new(&c.to_repr())
                 .take((TargetField::Parameters::MODULUS_BITS) as usize)
                 .map(Boolean::constant)
                 .collect::<Vec<_>>()),
@@ -381,7 +381,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsLEGadget<BaseField>
 
     fn to_bits_le_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         match self {
-            Self::Constant(c) => Ok(BitIteratorLE::new(&c.into_repr())
+            Self::Constant(c) => Ok(BitIteratorLE::new(&c.to_repr())
                 .take((TargetField::Parameters::MODULUS_BITS) as usize)
                 .map(Boolean::constant)
                 .collect::<Vec<_>>()),

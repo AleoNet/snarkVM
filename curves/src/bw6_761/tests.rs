@@ -128,7 +128,7 @@ fn test_bilinearity() {
 
     let ans1 = BW6_761::pairing(sa, b);
     let ans2 = BW6_761::pairing(a, sb);
-    let ans3 = BW6_761::pairing(a, b).pow(s.into_repr());
+    let ans3 = BW6_761::pairing(a, b).pow(s.to_repr());
 
     assert_eq!(ans1, ans2);
     assert_eq!(ans2, ans3);

@@ -156,7 +156,7 @@ mod test {
         let native_result = aa.mul(scalar) + b;
         let native_result = native_result.into_affine();
 
-        let mut scalar: Vec<bool> = BitIteratorBE::new(scalar.into_repr()).collect();
+        let mut scalar: Vec<bool> = BitIteratorBE::new(scalar.to_repr()).collect();
         // Get the scalar bits into little-endian form.
         scalar.reverse();
         let input = Vec::<Boolean>::alloc(cs.ns(|| "Input"), || Ok(scalar)).unwrap();

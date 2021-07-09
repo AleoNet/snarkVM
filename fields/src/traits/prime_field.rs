@@ -29,13 +29,13 @@ pub trait PrimeField: FftField<FftParameters = <Self as PrimeField>::Parameters>
     fn from_repr(repr: Self::BigInteger) -> Option<Self>;
 
     /// Returns the underlying representation of the prime field element.
-    fn into_repr(&self) -> Self::BigInteger;
+    fn to_repr(&self) -> Self::BigInteger;
 
     /// Returns a prime field element from its underlying raw representation.
     fn from_repr_unsafe(repr: Self::BigInteger) -> Self;
 
     /// Returns the underlying raw representation of the prime field element.
-    fn into_repr_unsafe(&self) -> Self::BigInteger;
+    fn to_repr_unsafe(&self) -> Self::BigInteger;
 
     /// Returns the field size in bits.
     fn size_in_bits() -> usize {

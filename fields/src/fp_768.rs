@@ -669,7 +669,7 @@ impl<P: Fp768Parameters> PrimeField for Fp768<P> {
     }
 
     #[inline]
-    fn into_repr(&self) -> BigInteger {
+    fn to_repr(&self) -> BigInteger {
         let mut r = *self;
         r.mont_reduce(
             (self.0).0[0],
@@ -707,7 +707,7 @@ impl<P: Fp768Parameters> PrimeField for Fp768<P> {
     }
 
     #[inline]
-    fn into_repr_unsafe(&self) -> BigInteger {
+    fn to_repr_unsafe(&self) -> BigInteger {
         let r = *self;
         r.0
     }
@@ -786,7 +786,7 @@ impl<P: Fp768Parameters> SquareRootField for Fp768<P> {
 impl<P: Fp768Parameters> Ord for Fp768<P> {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
-        self.into_repr().cmp(&other.into_repr())
+        self.to_repr().cmp(&other.to_repr())
     }
 }
 
@@ -811,7 +811,7 @@ impl_mul_div_from_field_ref!(Fp768, Fp768Parameters);
 impl<P: Fp768Parameters> ToBytes for Fp768<P> {
     #[inline]
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.into_repr().write_le(writer)
+        self.to_repr().write_le(writer)
     }
 }
 
@@ -879,14 +879,14 @@ impl<P: Fp768Parameters> FromStr for Fp768<P> {
 impl<P: Fp768Parameters> Debug for Fp768<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "Fp768({})", self.into_repr())
+        write!(f, "Fp768({})", self.to_repr())
     }
 }
 
 impl<P: Fp768Parameters> Display for Fp768<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", self.into_repr())
+        write!(f, "{}", self.to_repr())
     }
 }
 

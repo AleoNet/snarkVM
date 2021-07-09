@@ -65,7 +65,7 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
         // convert the elements into booleans (little-endian)
         let mut res = Vec::<Vec<Boolean>>::new();
         for (i, elem) in obj.borrow().iter().enumerate() {
-            let mut bits = elem.into_repr().to_bits_le();
+            let mut bits = elem.to_repr().to_bits_le();
             bits.truncate(F::size_in_bits());
 
             let mut booleans = Vec::<Boolean>::new();
@@ -95,7 +95,7 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
         // convert the elements into booleans (little-endian)
         let mut res = Vec::<Vec<Boolean>>::new();
         for (i, elem) in obj.borrow().iter().enumerate() {
-            let mut bits = elem.into_repr().to_bits_le();
+            let mut bits = elem.to_repr().to_bits_le();
             bits.truncate(F::size_in_bits());
 
             let mut booleans = Vec::<Boolean>::new();
@@ -122,7 +122,7 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
         // Step 1: obtain the bits of the F field elements (little-endian)
         let mut src_bits = Vec::<bool>::new();
         for elem in obj.borrow().iter() {
-            let mut bits = elem.into_repr().to_bits_le();
+            let mut bits = elem.to_repr().to_bits_le();
             bits.truncate(F::size_in_bits());
             for _ in bits.len()..F::size_in_bits() {
                 bits.push(false);

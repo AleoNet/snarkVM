@@ -315,7 +315,7 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
     }
 
     #[inline]
-    fn into_repr(&self) -> BigInteger {
+    fn to_repr(&self) -> BigInteger {
         let mut r = *self;
         r.mont_reduce((self.0).0[0], (self.0).0[1], (self.0).0[2], (self.0).0[3], 0, 0, 0, 0);
         r.0
@@ -328,7 +328,7 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
     }
 
     #[inline]
-    fn into_repr_unsafe(&self) -> BigInteger {
+    fn to_repr_unsafe(&self) -> BigInteger {
         let r = *self;
         r.0
     }
@@ -401,7 +401,7 @@ impl_mul_div_from_field_ref!(Fp256, Fp256Parameters);
 impl<P: Fp256Parameters> ToBytes for Fp256<P> {
     #[inline]
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.into_repr().write_le(writer)
+        self.to_repr().write_le(writer)
     }
 }
 
@@ -419,7 +419,7 @@ impl<P: Fp256Parameters> FromBytes for Fp256<P> {
 impl<P: Fp256Parameters> Ord for Fp256<P> {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
-        self.into_repr().cmp(&other.into_repr())
+        self.to_repr().cmp(&other.to_repr())
     }
 }
 
@@ -484,14 +484,14 @@ impl<P: Fp256Parameters> FromStr for Fp256<P> {
 impl<P: Fp256Parameters> Debug for Fp256<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "Fp256({})", self.into_repr())
+        write!(f, "Fp256({})", self.to_repr())
     }
 }
 
 impl<P: Fp256Parameters> Display for Fp256<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", self.into_repr())
+        write!(f, "{}", self.to_repr())
     }
 }
 

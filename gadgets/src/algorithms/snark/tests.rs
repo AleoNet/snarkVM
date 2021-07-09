@@ -120,7 +120,7 @@ fn gm17_verifier_test() {
         {
             let mut cs = cs.ns(|| "Allocate Input");
             for (i, input) in inputs.into_iter().enumerate() {
-                let mut input_bits = BitIteratorBE::new(input.into_repr()).collect::<Vec<_>>();
+                let mut input_bits = BitIteratorBE::new(input.to_repr()).collect::<Vec<_>>();
                 // Input must be in little-endian, but BitIterator outputs in big-endian.
                 input_bits.reverse();
 
@@ -193,7 +193,7 @@ fn gm17_verifier_bytes_test() {
         {
             let mut cs = cs.ns(|| "Allocate Input");
             for (i, input) in inputs.into_iter().enumerate() {
-                let mut input_bits = BitIteratorBE::new(input.into_repr()).collect::<Vec<_>>();
+                let mut input_bits = BitIteratorBE::new(input.to_repr()).collect::<Vec<_>>();
                 // Input must be in little-endian, but BitIterator outputs in big-endian.
                 input_bits.reverse();
 
@@ -269,7 +269,7 @@ fn gm17_verifier_num_constraints_test() {
         {
             let mut cs = cs.ns(|| "Allocate Input");
             for (i, input) in inputs.into_iter().enumerate() {
-                let mut input_bits = BitIteratorBE::new(input.into_repr()).collect::<Vec<_>>();
+                let mut input_bits = BitIteratorBE::new(input.to_repr()).collect::<Vec<_>>();
                 // Input must be in little-endian, but BitIterator outputs in big-endian.
                 input_bits.reverse();
 

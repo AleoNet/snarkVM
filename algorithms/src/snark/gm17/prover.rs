@@ -258,20 +258,20 @@ where
 
     let input_assignment = full_input_assignment[1..prover.num_public_variables]
         .iter()
-        .map(|s| s.into_repr())
+        .map(|s| s.to_repr())
         .collect::<Vec<_>>();
 
     let aux_assignment = cfg_into_iter!(full_input_assignment[prover.num_public_variables..])
-        .map(|s| s.into_repr())
+        .map(|s| s.to_repr())
         .collect::<Vec<_>>();
     drop(full_input_assignment);
 
     let h_input = h[0..prover.num_public_variables]
         .iter()
-        .map(|s| s.into_repr())
+        .map(|s| s.to_repr())
         .collect::<Vec<_>>();
     let h_aux = cfg_into_iter!(h[prover.num_public_variables..])
-        .map(|s| s.into_repr())
+        .map(|s| s.to_repr())
         .collect::<Vec<_>>();
     drop(h);
 

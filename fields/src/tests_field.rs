@@ -365,12 +365,12 @@ pub fn fft_field_test<F: PrimeField + FftField>() {
 
 pub fn primefield_test<F: PrimeField>() {
     let one = F::one();
-    assert_eq!(F::from_repr(one.into_repr()).unwrap(), one);
+    assert_eq!(F::from_repr(one.to_repr()).unwrap(), one);
     assert_eq!(F::from_str("1").ok().unwrap(), one);
     assert_eq!(F::from_str(&one.to_string()).ok().unwrap(), one);
 
     let two = F::one().double();
-    assert_eq!(F::from_repr(two.into_repr()).unwrap(), two);
+    assert_eq!(F::from_repr(two.to_repr()).unwrap(), two);
     assert_eq!(F::from_str("2").ok().unwrap(), two);
     assert_eq!(F::from_str(&two.to_string()).ok().unwrap(), two);
 
