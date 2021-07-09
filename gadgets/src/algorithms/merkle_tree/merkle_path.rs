@@ -27,6 +27,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use crate::{
     bits::{boolean::Boolean, ToBytesGadget},
     traits::{algorithms::CRHGadget, alloc::AllocGadget, eq::ConditionalEqGadget, select::CondSelectGadget},
+    EqGadget,
 };
 
 pub struct MerklePathGadget<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> {
@@ -107,7 +108,39 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, 
         Ok(curr_hash)
     }
 
-    // TODO (raychu86): Implement `update_leaf` and `update_and_check`
+    pub fn update_leaf<CS: ConstraintSystem<F>>(
+        &self,
+        mut cs: CS,
+        parameters: &HG::ParametersGadget,
+        old_root: &HG::OutputGadget,
+        old_leaf: impl ToBytesGadget<F>,
+        new_leaf: impl ToBytesGadget<F>,
+    ) -> Result<HG::OutputGadget, SynthesisError> {
+        self.check_membership(cs.ns(|| "check_membership"), &parameters, &old_root, &old_leaf)?;
+        Ok(self.calculate_root(cs.ns(|| "calculate_root"), &parameters, &new_leaf)?)
+    }
+
+    pub fn update_and_check<CS: ConstraintSystem<F>>(
+        &self,
+        mut cs: CS,
+        parameters: &HG::ParametersGadget,
+        old_root: &HG::OutputGadget,
+        new_root: &HG::OutputGadget,
+        old_leaf: impl ToBytesGadget<F>,
+        new_leaf: impl ToBytesGadget<F>,
+    ) -> Result<(), SynthesisError> {
+        let actual_new_root = self.update_leaf(
+            cs.ns(|| "check_membership"),
+            &parameters,
+            &old_root,
+            &old_leaf,
+            &new_leaf,
+        )?;
+
+        actual_new_root.enforce_equal(cs.ns(|| "enforce_equal_roots"), &new_root)?;
+
+        Ok(())
+    }
 
     pub fn check_membership<CS: ConstraintSystem<F>>(
         &self,

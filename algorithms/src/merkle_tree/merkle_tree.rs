@@ -285,43 +285,6 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         &self.tree[self.hashed_leaves_index..]
     }
 
-    // /// Returns the authentication path from leaf at `index` to root.
-    // pub fn generate_proof(&self, index: usize) -> Result<Path<P>, crate::Error> {
-    //     // gather basic tree information
-    //     let tree_height = tree_height(self.leaf_nodes.len());
-    //
-    //     // Get Leaf hash, and leaf sibling hash,
-    //     let leaf_index_in_tree = convert_index_to_last_level(index, tree_height);
-    //     let leaf_sibling_hash = if index & 1 == 0 {
-    //         // leaf is left child
-    //         self.leaf_nodes[index + 1].clone()
-    //     } else {
-    //         // leaf is right child
-    //         self.leaf_nodes[index - 1].clone()
-    //     };
-    //
-    //     // path.len() = `tree height - 2`, the two missing elements being the leaf sibling hash and the root
-    //     let mut path = Vec::with_capacity(tree_height - 2);
-    //     // Iterate from the bottom layer after the leaves, to the top, storing all sibling node's hash values.
-    //     let mut current_node = parent(leaf_index_in_tree).unwrap();
-    //     while !is_root(current_node) {
-    //         let sibling_node = sibling(current_node).unwrap();
-    //         path.push(self.non_leaf_nodes[sibling_node].clone());
-    //         current_node = parent(current_node).unwrap();
-    //     }
-    //
-    //     debug_assert_eq!(path.len(), tree_height - 2);
-    //
-    //     // we want to make path from root to bottom
-    //     path.reverse();
-    //
-    //     Ok(Path {
-    //         leaf_index: index,
-    //         auth_path: path,
-    //         leaf_sibling_hash,
-    //     })
-    // }
-
     pub fn generate_proof<L: ToBytes>(&self, index: usize, leaf: &L) -> Result<MerklePath<P>, MerkleError> {
         let prove_time = start_timer!(|| "MerkleTree::generate_proof");
         let mut path = vec![];
