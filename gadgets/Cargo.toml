@@ -47,11 +47,6 @@ path = "../utilities"
 version = "0.7.2"
 default-features = false
 
-[dependencies.snarkvm-sponge]
-path = "../sponge"
-version = "0.7.1"
-default-features = false
-
 [dependencies.derivative]
 version = "2"
 
@@ -107,7 +102,6 @@ default = [
   "snarkvm-fields/default",
   "snarkvm-r1cs/default",
   "snarkvm-utilities/default",
-  "snarkvm-sponge/default"
 ]
 full = [ "algorithms", "curves", "nonnative" ]
 algorithms = [ ]

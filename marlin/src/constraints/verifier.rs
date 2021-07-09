@@ -32,7 +32,7 @@ use crate::{
     PoseidonSponge,
     PoseidonSpongeVar,
 };
-use snarkvm_algorithms::fft::EvaluationDomain;
+use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, fft::EvaluationDomain};
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     bits::Boolean,
@@ -45,7 +45,6 @@ use snarkvm_gadgets::{
 };
 use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, ToConstraintField};
-use snarkvm_sponge::PoseidonDefaultParametersField;
 
 /// The Marlin verification gadget.
 pub struct MarlinVerificationGadget<

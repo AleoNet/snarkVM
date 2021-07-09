@@ -18,7 +18,7 @@ use core::marker::PhantomData;
 
 use hashbrown::{HashMap, HashSet};
 
-use snarkvm_algorithms::fft::EvaluationDomain;
+use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, fft::EvaluationDomain};
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     bits::{Boolean, ToBitsLEGadget},
@@ -54,7 +54,6 @@ use crate::{
     FiatShamirRngVar,
     PolynomialCommitment,
 };
-use snarkvm_sponge::PoseidonDefaultParametersField;
 
 /// The Marlin verifier round state gadget used to output the state of each round.
 #[derive(Clone)]

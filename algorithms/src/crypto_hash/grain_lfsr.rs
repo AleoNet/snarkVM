@@ -200,24 +200,3 @@ impl PoseidonGrainLFSR {
         }
     }
 }
-
-#[cfg(test)]
-mod test {
-    use crate::poseidon::grain_lfsr::PoseidonGrainLFSR;
-    use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_utilities::str::FromStr;
-
-    #[test]
-    fn test_grain_lfsr_consistency() {
-        let mut lfsr = PoseidonGrainLFSR::new(false, 253, 3, 8, 31);
-
-        assert_eq!(
-            lfsr.get_field_elements_rejection_sampling::<Fr>(1)[0],
-            Fr::from_str("1370773116404421539888881648821194629032979299946048429076387284005101684675").unwrap()
-        );
-        assert_eq!(
-            lfsr.get_field_elements_rejection_sampling::<Fr>(1)[0],
-            Fr::from_str("4673035637825817609038514733539555185313791666023633961663352080665830654830").unwrap()
-        );
-    }
-}

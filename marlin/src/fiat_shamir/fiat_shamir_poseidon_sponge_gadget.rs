@@ -22,29 +22,33 @@
 //
 
 use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::{fields::FpGadget, traits::alloc::AllocGadget, CryptographicSpongeVar};
+use snarkvm_gadgets::{
+    algorithms::crypto_hash::{CryptographicSpongeVar, PoseidonSpongeGadget},
+    fields::FpGadget,
+    traits::alloc::AllocGadget,
+};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use crate::fiat_shamir::{fiat_shamir_poseidon_sponge::PoseidonSponge, traits::AlgebraicSpongeVar};
-use snarkvm_sponge::PoseidonDefaultParametersField;
+use snarkvm_algorithms::crypto_hash::PoseidonDefaultParametersField;
 
 #[derive(Clone)]
 /// the gadget for Poseidon sponge
 pub struct PoseidonSpongeVar<F: PrimeField + PoseidonDefaultParametersField> {
     /// The actual sponge
-    pub sponge_var: snarkvm_gadgets::sponge::PoseidonSpongeVar<F>,
+    pub sponge_var: PoseidonSpongeGadget<F>,
 }
 
 impl<F: PrimeField + PoseidonDefaultParametersField> AlgebraicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpongeVar<F> {
     fn new<CS: ConstraintSystem<F>>(mut cs: CS) -> Self {
         let params = F::get_default_poseidon_parameters(6, true).unwrap();
-        let sponge_var = snarkvm_gadgets::sponge::PoseidonSpongeVar::<F>::new(cs.ns(|| "alloc sponge"), &params);
+        let sponge_var = PoseidonSpongeGadget::<F>::new(cs.ns(|| "alloc sponge"), &params);
         Self { sponge_var }
     }
 
     fn constant<CS: ConstraintSystem<F>>(mut cs: CS, pfs: &PoseidonSponge<F>) -> Self {
         let params = F::get_default_poseidon_parameters(6, true).unwrap();
-        let mut sponge_var = snarkvm_gadgets::sponge::PoseidonSpongeVar::<F>::new(cs.ns(|| "alloc sponge"), &params);
+        let mut sponge_var = PoseidonSpongeGadget::<F>::new(cs.ns(|| "alloc sponge"), &params);
 
         for (i, state_elem) in pfs.sponge.state.iter().enumerate() {
             sponge_var.state[i] =

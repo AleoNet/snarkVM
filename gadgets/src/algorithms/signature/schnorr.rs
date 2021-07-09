@@ -24,12 +24,15 @@ use crate::{
         eq::{ConditionalEqGadget, EqGadget},
         integers::Integer,
     },
-    CryptographicSpongeVar,
+    CryptoHashGadget,
     FpGadget,
     ToBitsLEGadget,
     ToConstraintFieldGadget,
 };
-use snarkvm_algorithms::signature::{Schnorr, SchnorrParameters, SchnorrPublicKey, SchnorrSignature};
+use snarkvm_algorithms::{
+    crypto_hash::PoseidonDefaultParametersField,
+    signature::{Schnorr, SchnorrParameters, SchnorrPublicKey, SchnorrSignature},
+};
 use snarkvm_curves::traits::Group;
 use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -40,10 +43,9 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use crate::sponge::PoseidonSpongeVar;
+use crate::algorithms::crypto_hash::PoseidonCryptoHashGadget;
 use itertools::Itertools;
 use snarkvm_curves::AffineCurve;
-use snarkvm_sponge::PoseidonDefaultParametersField;
 use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone)]
@@ -385,13 +387,10 @@ where
         hash_input.extend_from_slice(&message.to_constraint_field(cs.ns(|| "convert message into field elements"))?);
 
         // Compute the hash on the base field
-        let params = F::get_default_poseidon_parameters(4, false).unwrap();
-        let mut sponge = PoseidonSpongeVar::<F>::new(cs.ns(|| "alloc sponge"), &params);
-        sponge.absorb(cs.ns(|| "absorb"), hash_input.iter())?;
-        let raw_hash = {
-            let res = sponge.squeeze_field_elements(cs.ns(|| "squeeze"), 1)?;
-            res[0].clone()
-        };
+        let raw_hash = PoseidonCryptoHashGadget::<F, 4, false>::check_dynamic_length_vector_evaluation_gadget(
+            cs.ns(|| "poseidon"),
+            &hash_input,
+        )?;
 
         // Bit decompose the raw_hash
         let mut raw_hash_bits = raw_hash.to_bits_le(cs.ns(|| "convert the hash into bits"))?;

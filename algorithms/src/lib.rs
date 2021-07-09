@@ -43,6 +43,9 @@ pub mod commitment_tree;
 #[cfg(feature = "crh")]
 pub mod crh;
 
+#[cfg(feature = "crypto_hash")]
+pub mod crypto_hash;
+
 #[cfg(feature = "encoding")]
 pub mod encoding;
 

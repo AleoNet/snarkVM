@@ -16,9 +16,6 @@
 
 use snarkvm_fields::PrimeField;
 
-pub mod poseidon;
-pub use poseidon::*;
-
 /// The interface for a cryptographic sponge.
 /// A sponge can `absorb` or take in inputs and later `squeeze` or output bytes or field elements.
 /// The outputs are dependent on previous `absorb` and `squeeze` calls.

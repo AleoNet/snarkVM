@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// This repo implements a subset of the interfaces from https://github.com/arkworks-rs/sponge.
-// In the future, the interfaces may get closer.
+#[derive(Debug, Error)]
+pub enum CryptoHashError {
+    #[error("{}: {}", _0, _1)]
+    Crate(&'static str, String),
 
-pub mod poseidon;
-
-pub mod traits;
-pub use traits::*;
+    #[error("{}", _0)]
+    Message(String),
+}

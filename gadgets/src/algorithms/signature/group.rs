@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    algorithms::crypto_hash::{CryptographicSpongeVar, PoseidonSpongeGadget},
     bits::{Boolean, ToBytesGadget},
     integers::uint::UInt8,
-    sponge::PoseidonSpongeVar,
     traits::{
         algorithms::SignaturePublicKeyRandomizationGadget,
         alloc::AllocGadget,
@@ -26,12 +26,12 @@ use crate::{
         integers::Integer,
     },
     ConditionalEqGadget,
-    CryptographicSpongeVar,
     FpGadget,
     ToBitsLEGadget,
     ToConstraintFieldGadget,
 };
 use snarkvm_algorithms::{
+    crypto_hash::PoseidonDefaultParametersField,
     encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey},
     signature::SchnorrSignature,
 };
@@ -46,7 +46,6 @@ use snarkvm_utilities::{
 };
 
 use itertools::Itertools;
-use snarkvm_sponge::PoseidonDefaultParametersField;
 use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone)]
@@ -403,7 +402,7 @@ where
 
         // Compute the hash on the base field
         let params = F::get_default_poseidon_parameters(4, false).unwrap();
-        let mut sponge = PoseidonSpongeVar::<F>::new(cs.ns(|| "alloc sponge"), &params);
+        let mut sponge = PoseidonSpongeGadget::<F>::new(cs.ns(|| "alloc sponge"), &params);
         sponge.absorb(cs.ns(|| "absorb"), hash_input.iter())?;
         let raw_hash = {
             let res = sponge.squeeze_field_elements(cs.ns(|| "squeeze"), 1)?;

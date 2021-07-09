@@ -14,11 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CryptographicSponge, DuplexSpongeMode};
-use snarkvm_fields::PrimeField;
-use snarkvm_utilities::Vec;
-
-pub mod grain_lfsr;
+use crate::{
+    crypto_hash::{CryptographicSponge, DuplexSpongeMode, PoseidonGrainLFSR},
+    CryptoHash,
+    CryptoHashError,
+};
+use snarkvm_fields::{
+    Fp256,
+    Fp256Parameters,
+    Fp384,
+    Fp384Parameters,
+    Fp768,
+    Fp768Parameters,
+    PoseidonDefaultParameters,
+    PrimeField,
+};
+use snarkvm_utilities::marker::PhantomData;
 
 /// Parameters and RNG used
 #[derive(Clone, Debug)]
@@ -269,30 +280,123 @@ impl<F: PrimeField> CryptographicSponge<F> for PoseidonSponge<F> {
     }
 }
 
-#[cfg(test)]
-mod test {
-    use crate::{poseidon::PoseidonSponge, CryptographicSponge, PoseidonDefaultParametersField};
-    use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_utilities::str::FromStr;
+pub struct PoseidonCryptoHash<
+    F: PrimeField + PoseidonDefaultParametersField,
+    const RATE: usize,
+    const OPTIMIZED_FOR_WEIGHTS: bool,
+> {
+    field_phantom: PhantomData<F>,
+}
 
-    #[test]
-    fn test_poseidon_sponge_consistency() {
-        let sponge_param = Fr::get_default_poseidon_parameters(2, false).unwrap();
+impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> CryptoHash
+    for PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>
+{
+    type Input = F;
+    type Output = F;
 
-        let mut sponge = PoseidonSponge::<Fr>::new(&sponge_param);
-        sponge.absorb(&vec![Fr::from(0u8), Fr::from(1u8), Fr::from(2u8)]);
-        let res = sponge.squeeze_field_elements(3);
-        assert_eq!(
-            res[0],
-            Fr::from_str("183803686790727238772081675071619852436369913800063772017078999980142670759").unwrap()
-        );
-        assert_eq!(
-            res[1],
-            Fr::from_str("4548112345443734132894035556889689684115621521009206145281409895966219453604").unwrap()
-        );
-        assert_eq!(
-            res[2],
-            Fr::from_str("3896484493085020103611477367225908772657110714417081386200143313456038982706").unwrap()
-        );
+    fn evaluate_fixed_length_vector(input: &[Self::Input]) -> Result<Self::Output, CryptoHashError> {
+        let params = F::get_default_poseidon_parameters(RATE, OPTIMIZED_FOR_WEIGHTS).unwrap();
+        let mut sponge = PoseidonSponge::<F>::new(&params);
+        sponge.absorb(input);
+        let res = sponge.squeeze_field_elements(1);
+        Ok(res[0].clone())
     }
 }
+
+/// A field with Poseidon parameters associated
+pub trait PoseidonDefaultParametersField: PrimeField {
+    /// Obtain the default Poseidon parameters for this rate and for this prime field,
+    /// with a specific optimization goal.
+    fn get_default_poseidon_parameters(rate: usize, optimized_for_weights: bool) -> Option<PoseidonParameters<Self>>;
+}
+
+/// Internal function that uses the `PoseidonDefaultParameters` to compute the Poseidon parameters.
+pub fn get_default_poseidon_parameters_internal<F: PrimeField, P: PoseidonDefaultParameters>(
+    rate: usize,
+    optimized_for_weights: bool,
+) -> Option<PoseidonParameters<F>> {
+    let params_set = if !optimized_for_weights {
+        P::PARAMS_OPT_FOR_CONSTRAINTS
+    } else {
+        P::PARAMS_OPT_FOR_WEIGHTS
+    };
+
+    for param in params_set.iter() {
+        if param.rate == rate {
+            let (ark, mds) = find_poseidon_ark_and_mds::<F>(
+                P::MODULUS_BITS as u64,
+                rate,
+                param.full_rounds as u64,
+                param.partial_rounds as u64,
+                param.skip_matrices as u64,
+            );
+
+            return Some(PoseidonParameters {
+                full_rounds: param.full_rounds,
+                partial_rounds: param.partial_rounds,
+                alpha: param.alpha as u64,
+                ark,
+                mds,
+                rate: param.rate,
+                capacity: 1,
+            });
+        }
+    }
+
+    None
+}
+
+/// Internal function that computes the ark and mds from the Poseidon Grain LFSR.
+pub fn find_poseidon_ark_and_mds<F: PrimeField>(
+    prime_bits: u64,
+    rate: usize,
+    full_rounds: u64,
+    partial_rounds: u64,
+    skip_matrices: u64,
+) -> (Vec<Vec<F>>, Vec<Vec<F>>) {
+    let mut lfsr = PoseidonGrainLFSR::new(false, prime_bits, (rate + 1) as u64, full_rounds, partial_rounds);
+
+    let mut ark = Vec::<Vec<F>>::new();
+    for _ in 0..(full_rounds + partial_rounds) {
+        ark.push(lfsr.get_field_elements_rejection_sampling(rate + 1));
+    }
+
+    let mut mds = Vec::<Vec<F>>::new();
+    mds.resize(rate + 1, vec![F::zero(); rate + 1]);
+    for _ in 0..skip_matrices {
+        let _ = lfsr.get_field_elements_mod_p::<F>(2 * (rate + 1));
+    }
+
+    // a qualifying matrix must satisfy the following requirements
+    // - there is no duplication among the elements in x or y
+    // - there is no i and j such that x[i] + y[j] = p
+    // - the resultant MDS passes all the three tests
+
+    let xs = lfsr.get_field_elements_mod_p::<F>(rate + 1);
+    let ys = lfsr.get_field_elements_mod_p::<F>(rate + 1);
+
+    for i in 0..(rate + 1) {
+        for j in 0..(rate + 1) {
+            mds[i][j] = (xs[i] + &ys[j]).inverse().unwrap();
+        }
+    }
+
+    (ark, mds)
+}
+
+macro_rules! impl_poseidon_default_parameters_field {
+    ($field: ident, $params: ident) => {
+        impl<P: $params + PoseidonDefaultParameters> PoseidonDefaultParametersField for $field<P> {
+            fn get_default_poseidon_parameters(
+                rate: usize,
+                optimized_for_weights: bool,
+            ) -> Option<PoseidonParameters<Self>> {
+                get_default_poseidon_parameters_internal::<Self, P>(rate, optimized_for_weights)
+            }
+        }
+    };
+}
+
+impl_poseidon_default_parameters_field!(Fp256, Fp256Parameters);
+impl_poseidon_default_parameters_field!(Fp384, Fp384Parameters);
+impl_poseidon_default_parameters_field!(Fp768, Fp768Parameters);

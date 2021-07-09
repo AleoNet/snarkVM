@@ -27,9 +27,9 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
+use crate::crypto_hash::PoseidonDefaultParametersField;
 use itertools::Itertools;
 use rand::Rng;
-use snarkvm_sponge::PoseidonDefaultParametersField;
 use std::{
     io::{Read, Result as IoResult, Write},
     marker::PhantomData,

@@ -18,7 +18,10 @@ use std::{borrow::Borrow, marker::PhantomData};
 
 use itertools::Itertools;
 
-use snarkvm_algorithms::encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey};
+use snarkvm_algorithms::{
+    crypto_hash::PoseidonDefaultParametersField,
+    encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey},
+};
 use snarkvm_curves::traits::{Group, ProjectiveCurve};
 use snarkvm_fields::{Field, PrimeField, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -36,7 +39,6 @@ use crate::{
     },
 };
 use snarkvm_curves::AffineCurve;
-use snarkvm_sponge::PoseidonDefaultParametersField;
 
 /// Group encryption parameters gadget
 #[derive(Clone, Debug, PartialEq, Eq)]

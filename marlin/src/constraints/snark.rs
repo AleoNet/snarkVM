@@ -21,7 +21,7 @@ use std::{
 
 use rand::{CryptoRng, Rng, RngCore};
 
-use snarkvm_algorithms::{SNARKError, SNARK};
+use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, SNARKError, SNARK};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     bits::Boolean,
@@ -51,7 +51,6 @@ use crate::{
     },
     FiatShamirRngVar,
 };
-use snarkvm_sponge::PoseidonDefaultParametersField;
 
 /// Marlin bound.
 #[derive(Clone, PartialEq, PartialOrd)]

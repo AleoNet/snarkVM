@@ -38,7 +38,7 @@ use crate::{
     FiatShamirRngVar,
     PolynomialCommitment,
 };
-use snarkvm_sponge::PoseidonDefaultParametersField;
+use snarkvm_algorithms::crypto_hash::PoseidonDefaultParametersField;
 
 /// The prepared circuit verifying key gadget
 pub struct PreparedCircuitVerifyingKeyVar<

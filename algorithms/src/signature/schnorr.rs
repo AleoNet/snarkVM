@@ -14,7 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{signature::SchnorrParameters, SignatureError, SignatureScheme};
+use crate::{
+    crypto_hash::PoseidonDefaultParametersField,
+    signature::SchnorrParameters,
+    CryptoHash,
+    SignatureError,
+    SignatureScheme,
+};
 use snarkvm_curves::traits::Group;
 use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, One, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
@@ -26,10 +32,10 @@ use snarkvm_utilities::{
     BigInteger,
 };
 
+use crate::crypto_hash::PoseidonCryptoHash;
 use itertools::Itertools;
 use rand::Rng;
 use snarkvm_curves::AffineCurve;
-use snarkvm_sponge::{poseidon::PoseidonSponge, CryptographicSponge, PoseidonDefaultParametersField};
 use std::{
     hash::Hash,
     io::{Read, Result as IoResult, Write},
@@ -193,18 +199,9 @@ where
         hash_input.extend_from_slice(&prover_commitment.to_field_elements().unwrap());
         hash_input.extend_from_slice(&message.to_field_elements().unwrap());
 
-        // Compute the hash on the base field
-        let params =
-            <<G as AffineCurve>::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(
-                4, false,
-            )
-            .unwrap();
-        let mut sponge = PoseidonSponge::<<G as AffineCurve>::BaseField>::new(&params);
-        sponge.absorb(&hash_input);
-        let raw_hash = {
-            let res = sponge.squeeze_field_elements(1);
-            res[0].clone()
-        };
+        let raw_hash =
+            PoseidonCryptoHash::<<G as AffineCurve>::BaseField, 4, false>::evaluate_fixed_length_vector(&hash_input)
+                .unwrap();
 
         // Bit decompose the raw_hash
         let mut raw_hash_bits = raw_hash.into_repr().to_bits_le();
@@ -262,18 +259,9 @@ where
         hash_input.extend_from_slice(&claimed_prover_commitment.to_field_elements().unwrap());
         hash_input.extend_from_slice(&message.to_field_elements().unwrap());
 
-        // Compute the hash on the base field
-        let params =
-            <<G as AffineCurve>::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(
-                4, false,
-            )
-            .unwrap();
-        let mut sponge = PoseidonSponge::<<G as AffineCurve>::BaseField>::new(&params);
-        sponge.absorb(&hash_input);
-        let raw_hash = {
-            let res = sponge.squeeze_field_elements(1);
-            res[0].clone()
-        };
+        let raw_hash =
+            PoseidonCryptoHash::<<G as AffineCurve>::BaseField, 4, false>::evaluate_fixed_length_vector(&hash_input)
+                .unwrap();
 
         // Bit decompose the raw_hash
         let mut raw_hash_bits = raw_hash.into_repr().to_bits_le();

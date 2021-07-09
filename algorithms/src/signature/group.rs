@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    crypto_hash::PoseidonDefaultParametersField,
     encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey},
     errors::SignatureError,
     signature::{Schnorr, SchnorrParameters, SchnorrPublicKey, SchnorrSignature},
@@ -26,7 +27,6 @@ use snarkvm_utilities::{serialize::*, to_bytes, FromBytes, ToBytes};
 use rand::Rng;
 use snarkvm_curves::AffineCurve;
 use snarkvm_fields::ToConstraintField;
-use snarkvm_sponge::PoseidonDefaultParametersField;
 use std::hash::Hash;
 
 /// Map the encryption group into the signature group.

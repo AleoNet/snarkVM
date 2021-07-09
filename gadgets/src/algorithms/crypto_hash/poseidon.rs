@@ -14,13 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CryptographicSpongeVar, FieldGadget, FpGadget};
+use crate::{algorithms::crypto_hash::CryptographicSpongeVar, CryptoHashGadget, FieldGadget, FpGadget};
+use snarkvm_algorithms::crypto_hash::{
+    DuplexSpongeMode,
+    PoseidonCryptoHash,
+    PoseidonDefaultParametersField,
+    PoseidonParameters,
+    PoseidonSponge,
+};
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
-use snarkvm_sponge::{
-    poseidon::{PoseidonParameters, PoseidonSponge},
-    DuplexSpongeMode,
-};
+use snarkvm_utilities::marker::PhantomData;
 
 #[derive(Clone)]
 /// the gadget for Poseidon sponge
@@ -29,7 +33,7 @@ use snarkvm_sponge::{
 /// with small syntax changes.
 ///
 /// [cos]: https://eprint.iacr.org/2019/1076
-pub struct PoseidonSpongeVar<F: PrimeField> {
+pub struct PoseidonSpongeGadget<F: PrimeField> {
     /// Sponge Parameters
     pub parameters: PoseidonParameters<F>,
 
@@ -40,7 +44,7 @@ pub struct PoseidonSpongeVar<F: PrimeField> {
     pub mode: DuplexSpongeMode,
 }
 
-impl<F: PrimeField> PoseidonSpongeVar<F> {
+impl<F: PrimeField> PoseidonSpongeGadget<F> {
     fn apply_s_box<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
@@ -201,7 +205,7 @@ impl<F: PrimeField> PoseidonSpongeVar<F> {
     }
 }
 
-impl<F: PrimeField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpongeVar<F> {
+impl<F: PrimeField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpongeGadget<F> {
     type Parameters = PoseidonParameters<F>;
 
     fn new<CS: ConstraintSystem<F>>(mut cs: CS, parameters: &Self::Parameters) -> Self {
@@ -277,43 +281,28 @@ impl<F: PrimeField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpo
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{sponge::PoseidonSpongeVar, AllocGadget, CryptographicSpongeVar, FieldGadget, FpGadget};
-    use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-    use snarkvm_sponge::{poseidon::PoseidonSponge, CryptographicSponge, PoseidonDefaultParametersField};
-    use snarkvm_utilities::{test_rng, UniformRand};
+pub struct PoseidonCryptoHashGadget<
+    F: PrimeField + PoseidonDefaultParametersField,
+    const RATE: usize,
+    const OPTIMIZED_FOR_WEIGHTS: bool,
+> {
+    field_phantom: PhantomData<F>,
+}
 
-    #[test]
-    fn absorb_test() {
-        let mut rng = test_rng();
+impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
+    CryptoHashGadget<PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>, F>
+    for PoseidonCryptoHashGadget<F, RATE, OPTIMIZED_FOR_WEIGHTS>
+{
+    type OutputGadget = FpGadget<F>;
 
-        let mut cs = TestConstraintSystem::<Fr>::new();
-
-        let absorb: Vec<_> = (0..256).map(|_| Fr::rand(&mut rng)).collect();
-        let absorb_var: Vec<_> = absorb
-            .iter()
-            .enumerate()
-            .map(|(i, v)| {
-                FpGadget::<Fr>::alloc_input(cs.ns(|| format!("alloc input {}", i)), || Ok((*v).clone())).unwrap()
-            })
-            .collect();
-
-        let sponge_params = Fr::get_default_poseidon_parameters(2, false).unwrap();
-
-        let mut native_sponge = PoseidonSponge::<Fr>::new(&sponge_params);
-        let mut constraint_sponge = PoseidonSpongeVar::<Fr>::new(cs.ns(|| "new sponge"), &sponge_params);
-
-        native_sponge.absorb(&absorb);
-        constraint_sponge.absorb(cs.ns(|| "absorb"), absorb_var.iter()).unwrap();
-
-        let native_squeeze = native_sponge.squeeze_field_elements(1);
-        let constraint_squeeze = constraint_sponge
-            .squeeze_field_elements(cs.ns(|| "squeeze"), 1)
-            .unwrap();
-
-        assert_eq!(constraint_squeeze[0].get_value().unwrap(), native_squeeze[0]);
-        assert!(cs.is_satisfied());
+    fn check_fixed_length_vector_evaluation_gadget<CS: ConstraintSystem<F>>(
+        mut cs: CS,
+        input: &[FpGadget<F>],
+    ) -> Result<Self::OutputGadget, SynthesisError> {
+        let params = F::get_default_poseidon_parameters(RATE, OPTIMIZED_FOR_WEIGHTS).unwrap();
+        let mut sponge = PoseidonSpongeGadget::<F>::new(cs.ns(|| "alloc"), &params);
+        sponge.absorb(cs.ns(|| "absorb"), input.iter())?;
+        let res = sponge.squeeze_field_elements(cs.ns(|| "squeeze"), 1)?;
+        Ok(res[0].clone())
     }
 }

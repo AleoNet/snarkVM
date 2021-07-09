@@ -1608,7 +1608,6 @@ dependencies = [
  "snarkvm-fields",
  "snarkvm-profiler",
  "snarkvm-r1cs",
- "snarkvm-sponge",
  "snarkvm-utilities",
  "thiserror",
 ]
@@ -1703,7 +1702,6 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-r1cs",
- "snarkvm-sponge",
  "snarkvm-utilities",
  "thiserror",
 ]
@@ -1755,7 +1753,6 @@ dependencies = [
  "snarkvm-polycommit",
  "snarkvm-profiler",
  "snarkvm-r1cs",
- "snarkvm-sponge",
  "snarkvm-utilities",
 ]
 
@@ -1838,15 +1835,6 @@ dependencies = [
  "fxhash",
  "indexmap",
  "itertools 0.10.1",
- "snarkvm-curves",
- "snarkvm-fields",
- "snarkvm-utilities",
-]
-
-[[package]]
-name = "snarkvm-sponge"
-version = "0.7.2"
-dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-utilities",
