@@ -162,11 +162,7 @@ mod serialization {
     use crate::snark::gm17::{create_random_proof, generate_random_parameters, Proof, ProvingKey, VerifyingKey};
 
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-    use snarkvm_utilities::{
-        bytes::{FromBytes, ToBytes},
-        rand::UniformRand,
-        to_bytes,
-    };
+    use snarkvm_utilities::{rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
 
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
@@ -183,7 +179,7 @@ mod serialization {
 
         let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters, rng).unwrap();
 
-        let compressed_serialization = to_bytes![proof].unwrap();
+        let compressed_serialization = proof.to_bytes_le().unwrap();
 
         assert_eq!(
             Proof::<Bls12_377>::compressed_proof_size().unwrap(),
@@ -191,7 +187,7 @@ mod serialization {
         );
         assert!(Proof::<Bls12_377>::read_uncompressed(&compressed_serialization[..]).is_err());
 
-        let recovered_proof: Proof<Bls12_377> = FromBytes::read(&compressed_serialization[..]).unwrap();
+        let recovered_proof: Proof<Bls12_377> = FromBytes::read_le(&compressed_serialization[..]).unwrap();
         assert_eq!(recovered_proof.compressed, true);
     }
 
@@ -216,7 +212,7 @@ mod serialization {
         );
         assert!(Proof::<Bls12_377>::read_compressed(&uncompressed_serialization[..]).is_err());
 
-        let recovered_proof: Proof<Bls12_377> = FromBytes::read(&uncompressed_serialization[..]).unwrap();
+        let recovered_proof: Proof<Bls12_377> = FromBytes::read_le(&uncompressed_serialization[..]).unwrap();
         assert_eq!(recovered_proof.compressed, false);
     }
 
@@ -228,11 +224,11 @@ mod serialization {
             generate_random_parameters::<Bls12_377, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
         let vk = parameters.vk.clone();
 
-        let parameter_bytes = to_bytes![&parameters].unwrap();
-        let vk_bytes = to_bytes![&vk].unwrap();
+        let parameter_bytes = to_bytes_le![&parameters].unwrap();
+        let vk_bytes = to_bytes_le![&vk].unwrap();
 
-        let recovered_parameters: ProvingKey<Bls12_377> = FromBytes::read(&parameter_bytes[..]).unwrap();
-        let recovered_vk: VerifyingKey<Bls12_377> = FromBytes::read(&vk_bytes[..]).unwrap();
+        let recovered_parameters: ProvingKey<Bls12_377> = FromBytes::read_le(&parameter_bytes[..]).unwrap();
+        let recovered_vk: VerifyingKey<Bls12_377> = FromBytes::read_le(&vk_bytes[..]).unwrap();
 
         assert_eq!(parameters, recovered_parameters);
         assert_eq!(vk, recovered_vk);

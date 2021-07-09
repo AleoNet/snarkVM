@@ -31,7 +31,7 @@ use crate::{
 };
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::{biginteger::BigInteger, bititerator::BitIteratorBE};
+use snarkvm_utilities::{BigInteger, BitIteratorBE, ToBits};
 
 use crate::{
     nonnative::{params::get_params, AllocatedNonNativeFieldVar},

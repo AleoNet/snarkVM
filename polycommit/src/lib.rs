@@ -32,12 +32,7 @@ extern crate snarkvm_profiler;
 
 pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
 use snarkvm_fields::Field;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    error as error_fn,
-    errors::SerializationError,
-    serialize::*,
-};
+use snarkvm_utilities::{error as error_fn, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 use core::fmt::Debug;
 use rand_core::RngCore;
@@ -137,13 +132,13 @@ pub struct BatchLCProof<F: Field, PC: PolynomialCommitment<F>> {
 }
 
 impl<F: Field, PC: PolynomialCommitment<F>> FromBytes for BatchLCProof<F, PC> {
-    fn read<R: Read>(mut reader: R) -> io::Result<Self> {
+    fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
         CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error_fn("could not deserialize struct"))
     }
 }
 
 impl<F: Field, PC: PolynomialCommitment<F>> ToBytes for BatchLCProof<F, PC> {
-    fn write<W: Write>(&self, mut writer: W) -> io::Result<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error_fn("could not serialize struct"))
     }
 }

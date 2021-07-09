@@ -20,7 +20,7 @@ use snarkvm_algorithms::snark::groth16::{Groth16, Proof, VerifyingKey};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
 use snarkvm_fields::{Field, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
-use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::FromBytes;
 
 use crate::{
     bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
@@ -274,7 +274,7 @@ where
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|vk_bytes| {
-            let vk: VerifyingKey<PairingE> = FromBytes::read(&vk_bytes.borrow()[..])?;
+            let vk: VerifyingKey<PairingE> = FromBytes::read_le(&vk_bytes.borrow()[..])?;
 
             Self::alloc(cs.ns(|| "alloc_bytes"), || Ok(vk))
         })
@@ -290,7 +290,7 @@ where
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|vk_bytes| {
-            let vk: VerifyingKey<PairingE> = FromBytes::read(&vk_bytes.borrow()[..])?;
+            let vk: VerifyingKey<PairingE> = FromBytes::read_le(&vk_bytes.borrow()[..])?;
 
             Self::alloc_input(cs.ns(|| "alloc_input_bytes"), || Ok(vk))
         })
@@ -349,7 +349,7 @@ where
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|proof_bytes| {
-            let proof: Proof<PairingE> = FromBytes::read(&proof_bytes.borrow()[..])?;
+            let proof: Proof<PairingE> = FromBytes::read_le(&proof_bytes.borrow()[..])?;
 
             Self::alloc(cs.ns(|| "alloc_bytes"), || Ok(proof))
         })
@@ -365,7 +365,7 @@ where
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|proof_bytes| {
-            let proof: Proof<PairingE> = FromBytes::read(&proof_bytes.borrow()[..])?;
+            let proof: Proof<PairingE> = FromBytes::read_le(&proof_bytes.borrow()[..])?;
 
             Self::alloc_input(cs.ns(|| "alloc_input_bytes"), || Ok(proof))
         })
@@ -423,7 +423,7 @@ mod test {
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_fields::PrimeField;
     use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
-    use snarkvm_utilities::{test_rng, to_bytes, BitIteratorBE, ToBytes};
+    use snarkvm_utilities::{test_rng, to_bytes_le, BitIteratorBE, ToBytes};
 
     use crate::{bits::Boolean, curves::bls12_377::PairingGadget as Bls12_377PairingGadget};
 
@@ -596,8 +596,8 @@ mod test {
                 }
             }
 
-            let vk_bytes = to_bytes![params.vk].unwrap();
-            let proof_bytes = to_bytes![proof].unwrap();
+            let vk_bytes = to_bytes_le![params.vk].unwrap();
+            let proof_bytes = to_bytes_le![proof].unwrap();
 
             let vk_gadget = TestVkGadget::alloc_input_bytes(cs.ns(|| "Vk"), || Ok(vk_bytes)).unwrap();
             let proof_gadget = TestProofGadget::alloc_bytes(cs.ns(|| "Proof"), || Ok(proof_bytes)).unwrap();

@@ -16,10 +16,11 @@
 
 use crate::{traits::TransactionScheme, TransactionError};
 use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
     has_duplicates,
-    to_bytes,
+    to_bytes_le,
     variable_length_integer::{read_variable_length_integer, variable_length_integer},
+    FromBytes,
+    ToBytes,
 };
 
 use std::{
@@ -55,7 +56,7 @@ impl<T: TransactionScheme> Transactions<T> {
     pub fn serialize(&self) -> Result<Vec<Vec<u8>>, TransactionError> {
         self.0
             .iter()
-            .map(|transaction| -> Result<Vec<u8>, TransactionError> { Ok(to_bytes![transaction]?) })
+            .map(|transaction| -> Result<Vec<u8>, TransactionError> { Ok(to_bytes_le![transaction]?) })
             .collect::<Result<Vec<Vec<u8>>, TransactionError>>()
     }
 
@@ -63,7 +64,7 @@ impl<T: TransactionScheme> Transactions<T> {
     pub fn serialize_as_str(&self) -> Result<Vec<String>, TransactionError> {
         self.0
             .iter()
-            .map(|transaction| -> Result<String, TransactionError> { Ok(hex::encode(to_bytes![transaction]?)) })
+            .map(|transaction| -> Result<String, TransactionError> { Ok(hex::encode(to_bytes_le![transaction]?)) })
             .collect::<Result<Vec<String>, TransactionError>>()
     }
 
@@ -118,11 +119,11 @@ impl<T: TransactionScheme> Transactions<T> {
 
 impl<T: TransactionScheme> ToBytes for Transactions<T> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        variable_length_integer(self.0.len() as u64).write(&mut writer)?;
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        variable_length_integer(self.0.len() as u64).write_le(&mut writer)?;
 
         for transaction in &self.0 {
-            transaction.write(&mut writer)?;
+            transaction.write_le(&mut writer)?;
         }
 
         Ok(())
@@ -131,11 +132,11 @@ impl<T: TransactionScheme> ToBytes for Transactions<T> {
 
 impl<T: TransactionScheme> FromBytes for Transactions<T> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let num_transactions = read_variable_length_integer(&mut reader)?;
         let mut transactions = Vec::with_capacity(num_transactions);
         for _ in 0..num_transactions {
-            let transaction: T = FromBytes::read(&mut reader)?;
+            let transaction: T = FromBytes::read_le(&mut reader)?;
             transactions.push(transaction);
         }
 

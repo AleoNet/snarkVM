@@ -22,7 +22,6 @@ use snarkvm_utilities::{
     from_bytes_le_to_bits_le,
     rand::UniformRand,
     serialize::*,
-    to_bytes,
     FromBytes,
     ToBytes,
 };
@@ -49,18 +48,18 @@ pub struct GroupEncryptionPublicKey<G: Group + ProjectiveCurve + CanonicalSerial
 impl<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> ToBytes for GroupEncryptionPublicKey<G> {
     /// Writes the x-coordinate of the encryption public key.
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         let affine = self.0.into_affine();
         let x_coordinate = affine.to_x_coordinate();
-        x_coordinate.write(&mut writer)
+        x_coordinate.write_le(&mut writer)
     }
 }
 
 impl<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> FromBytes for GroupEncryptionPublicKey<G> {
     /// Reads the x-coordinate of the encryption public key.
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let x_coordinate = <G::Affine as AffineCurve>::BaseField::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let x_coordinate = <G::Affine as AffineCurve>::BaseField::read_le(&mut reader)?;
 
         if let Some(element) = <G as ProjectiveCurve>::Affine::from_x_coordinate(x_coordinate, true) {
             if element.is_in_correct_subgroup_assuming_on_curve() {
@@ -134,7 +133,7 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
 
         let mut public_key = G::zero();
         for (bit, base_power) in
-            from_bytes_le_to_bits_le(&to_bytes![private_key]?).zip_eq(&self.parameters.generator_powers)
+            from_bytes_le_to_bits_le(&private_key.to_bytes_le()?).zip_eq(&self.parameters.generator_powers)
         {
             if bit {
                 public_key += base_power;
@@ -153,12 +152,12 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
         let mut y = Self::Randomness::zero();
         let mut z_bytes = vec![];
 
-        while Self::Randomness::read(&z_bytes[..]).is_err() {
+        while Self::Randomness::read_le(&z_bytes[..]).is_err() {
             y = Self::Randomness::rand(rng);
 
             let affine = public_key.0.mul(y).into_affine();
             debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
-            z_bytes = to_bytes![affine.to_x_coordinate()]?;
+            z_bytes = affine.to_x_coordinate().to_bytes_le()?;
         }
 
         Ok(y)
@@ -174,9 +173,9 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
 
         let affine = record_view_key.into_affine();
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
-        let z_bytes = to_bytes![affine.to_x_coordinate()]?;
+        let z_bytes = affine.to_x_coordinate().to_bytes_le()?;
 
-        let z = Self::Randomness::read(&z_bytes[..])?;
+        let z = Self::Randomness::read_le(&z_bytes[..])?;
 
         let one = Self::Randomness::one();
         let mut i = Self::Randomness::one();
@@ -205,7 +204,7 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
 
         let mut c_0 = G::zero();
         for (bit, base_power) in
-            from_bytes_le_to_bits_le(&to_bytes![randomness]?).zip_eq(&self.parameters.generator_powers)
+            from_bytes_le_to_bits_le(&randomness.to_bytes_le()?).zip_eq(&self.parameters.generator_powers)
         {
             if bit {
                 c_0 += base_power;
@@ -244,9 +243,9 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
 
         let affine = record_view_key.into_affine();
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
-        let z_bytes = to_bytes![affine.to_x_coordinate()]?;
+        let z_bytes = affine.to_x_coordinate().to_bytes_le()?;
 
-        let z = Self::Randomness::read(&z_bytes[..])?;
+        let z = Self::Randomness::read_le(&z_bytes[..])?;
 
         let one = Self::Randomness::one();
         let mut plaintext = Vec::with_capacity(ciphertext.len().saturating_sub(1));

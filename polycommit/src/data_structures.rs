@@ -17,12 +17,7 @@
 use crate::{Arc, String, Vec};
 pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    error as error_fn,
-    errors::SerializationError,
-    serialize::*,
-};
+use snarkvm_utilities::{error as error_fn, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 use core::{
     borrow::Borrow,
@@ -192,7 +187,7 @@ impl<F: Field, C: PCCommitment + ToConstraintField<F>> ToConstraintField<F> for 
 // and you should construct the struct via the `LabeledCommitment::new` method after
 // deserializing the Commitment.
 impl<C: PCCommitment> ToBytes for LabeledCommitment<C> {
-    fn write<W: Write>(&self, mut writer: W) -> io::Result<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         CanonicalSerialize::serialize(&self.commitment, &mut writer).map_err(|_| error_fn("could not serialize struct"))
     }
 }
@@ -387,13 +382,13 @@ impl<F: Field> core::ops::Deref for LinearCombination<F> {
 macro_rules! impl_bytes {
     ($ty: ident) => {
         impl<E: PairingEngine> FromBytes for $ty<E> {
-            fn read<R: Read>(mut reader: R) -> io::Result<Self> {
+            fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
                 CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize struct"))
             }
         }
 
         impl<E: PairingEngine> ToBytes for $ty<E> {
-            fn write<W: Write>(&self, mut writer: W) -> io::Result<()> {
+            fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
                 CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize struct"))
             }
         }

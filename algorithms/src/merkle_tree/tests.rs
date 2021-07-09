@@ -22,7 +22,7 @@ use crate::{
     merkle_tree::MerkleTree,
     traits::{crh::CRH, merkle_tree::LoadableMerkleParameters},
 };
-use snarkvm_utilities::{to_bytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 /// Generates a valid Merkle tree and verifies the Merkle path witness for each leaf.
 fn generate_merkle_tree<P: LoadableMerkleParameters, L: ToBytes + Send + Sync + Clone + Eq>(
@@ -111,11 +111,11 @@ fn run_merkle_tree_matches_hashing_test<P: LoadableMerkleParameters>() {
     let leaf4 = pedersen.hash(&leaves[3]).unwrap();
 
     // depth 1
-    let left = pedersen.hash(&to_bytes![leaf1, leaf2].unwrap()).unwrap();
-    let right = pedersen.hash(&to_bytes![leaf3, leaf4].unwrap()).unwrap();
+    let left = pedersen.hash(&to_bytes_le![leaf1, leaf2].unwrap()).unwrap();
+    let right = pedersen.hash(&to_bytes_le![leaf3, leaf4].unwrap()).unwrap();
 
     // depth 0
-    let expected_root = pedersen.hash(&to_bytes![left, right].unwrap()).unwrap();
+    let expected_root = pedersen.hash(&to_bytes_le![left, right].unwrap()).unwrap();
 
     println!(
         "merkle_root == expected_root\n\t{} == {}",
@@ -149,16 +149,16 @@ fn run_padded_merkle_tree_matches_hashing_test<P: LoadableMerkleParameters>() {
     let leaf4 = pedersen.hash(&leaves[3]).unwrap();
 
     // depth 2
-    let left = pedersen.hash(&to_bytes![leaf1, leaf2].unwrap()).unwrap();
-    let right = pedersen.hash(&to_bytes![leaf3, leaf4].unwrap()).unwrap();
+    let left = pedersen.hash(&to_bytes_le![leaf1, leaf2].unwrap()).unwrap();
+    let right = pedersen.hash(&to_bytes_le![leaf3, leaf4].unwrap()).unwrap();
 
     // depth 1
-    let penultimate_left = pedersen.hash(&to_bytes![left, right].unwrap()).unwrap();
+    let penultimate_left = pedersen.hash(&to_bytes_le![left, right].unwrap()).unwrap();
     let penultimate_right = parameters.hash_empty().unwrap();
 
     // depth 0
     let expected_root = pedersen
-        .hash(&to_bytes![penultimate_left, penultimate_right].unwrap())
+        .hash(&to_bytes_le![penultimate_left, penultimate_right].unwrap())
         .unwrap();
 
     println!(

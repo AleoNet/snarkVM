@@ -72,8 +72,8 @@ fn biginteger_bytes_test<B: BigInteger>() {
     let mut bytes = [0u8; 256];
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
     let x: B = UniformRand::rand(&mut rng);
-    x.write(bytes.as_mut()).unwrap();
-    let y = B::read(bytes.as_ref()).unwrap();
+    x.write_le(bytes.as_mut()).unwrap();
+    let y = B::read_le(bytes.as_ref()).unwrap();
     assert_eq!(x, y);
 }
 
@@ -99,7 +99,7 @@ fn biginteger_to_string_test<B: BigInteger>() {
                 .for_each(|(buf, val)| {
                     *buf = *val;
                 });
-            assert_eq!(format!("{}", integer), B::read(&*buffer).unwrap().to_string());
+            assert_eq!(format!("{}", integer), B::read_le(&*buffer).unwrap().to_string());
         }
     }
 

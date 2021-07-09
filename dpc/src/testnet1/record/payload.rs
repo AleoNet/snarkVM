@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
 
@@ -42,14 +42,14 @@ impl Payload {
 
 impl ToBytes for Payload {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.0.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.0.write_le(&mut writer)
     }
 }
 
 impl FromBytes for Payload {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self(FromBytes::read(&mut reader)?))
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(Self(FromBytes::read_le(&mut reader)?))
     }
 }

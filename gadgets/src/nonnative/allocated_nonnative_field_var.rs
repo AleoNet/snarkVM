@@ -35,7 +35,7 @@ use crate::{
 };
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
-use snarkvm_utilities::BigInteger;
+use snarkvm_utilities::{BigInteger, FromBits, ToBits};
 
 use crate::nonnative::{
     allocated_nonnative_field_mul_result_var::AllocatedNonNativeFieldMulResultVar,
@@ -362,9 +362,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         let mut cur = *elem;
         for _ in 0..params.num_limbs {
             let cur_bits = cur.to_bits_be(); // `to_bits` is big endian
-            let cur_mod_r = <BaseField as PrimeField>::BigInteger::from_bits_be(
-                cur_bits[cur_bits.len() - params.bits_per_limb..].to_vec(),
-            ); // therefore, the lowest `bits_per_non_top_limb` bits is what we want.
+            let cur_mod_r =
+                <BaseField as PrimeField>::BigInteger::from_bits_be(&cur_bits[cur_bits.len() - params.bits_per_limb..]); // therefore, the lowest `bits_per_non_top_limb` bits is what we want.
             limbs.push(BaseField::from_repr(cur_mod_r).unwrap());
             cur.divn(params.bits_per_limb as u32);
         }

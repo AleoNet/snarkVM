@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::{
     fmt,
@@ -54,15 +54,15 @@ impl Network {
 
 impl ToBytes for Network {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.id().write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.id().write_le(&mut writer)
     }
 }
 
 impl FromBytes for Network {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let network_id: u8 = FromBytes::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let network_id: u8 = FromBytes::read_le(&mut reader)?;
         Ok(Self::from_id(network_id))
     }
 }

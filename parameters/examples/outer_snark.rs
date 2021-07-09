@@ -35,10 +35,7 @@ use snarkvm_parameters::{
     traits::Parameter,
     LedgerMerkleTreeParameters,
 };
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::thread_rng;
 use std::{path::PathBuf, sync::Arc};
@@ -51,14 +48,14 @@ pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let system_parameters = SystemParameters::<C>::load()?;
 
     let merkle_tree_hash_parameters: <C::MerkleParameters as MerkleParameters>::H =
-        From::from(FromBytes::read(&LedgerMerkleTreeParameters::load_bytes()?[..])?);
+        From::from(FromBytes::read_le(&LedgerMerkleTreeParameters::load_bytes()?[..])?);
     let ledger_merkle_tree_parameters = Arc::new(From::from(merkle_tree_hash_parameters));
 
     let inner_snark_pk: <C::InnerSNARK as SNARK>::ProvingKey =
-        <C::InnerSNARK as SNARK>::ProvingKey::read(InnerSNARKPKParameters::load_bytes()?.as_slice())?;
+        <C::InnerSNARK as SNARK>::ProvingKey::read_le(InnerSNARKPKParameters::load_bytes()?.as_slice())?;
 
     let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey =
-        <C::InnerSNARK as SNARK>::VerifyingKey::read(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
+        <C::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
 
     let inner_snark_proof = C::InnerSNARK::prove(
         &inner_snark_pk,
@@ -82,9 +79,9 @@ pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
         rng,
     )?;
 
-    let outer_snark_pk = to_bytes![outer_snark_parameters.0]?;
+    let outer_snark_pk = outer_snark_parameters.0.to_bytes_le()?;
     let outer_snark_vk: <C::OuterSNARK as SNARK>::VerifyingKey = outer_snark_parameters.1.into();
-    let outer_snark_vk = to_bytes![outer_snark_vk]?;
+    let outer_snark_vk = outer_snark_vk.to_bytes_le()?;
 
     println!("outer_snark_pk.params\n\tsize - {}", outer_snark_pk.len());
     println!("outer_snark_vk.params\n\tsize - {}", outer_snark_vk.len());

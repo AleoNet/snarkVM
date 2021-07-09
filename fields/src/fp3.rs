@@ -15,12 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Field, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    errors::SerializationError,
-    rand::UniformRand,
-    serialize::*,
-};
+use snarkvm_utilities::{errors::SerializationError, rand::UniformRand, serialize::*, FromBytes, ToBytes};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -335,19 +330,19 @@ impl<P: Fp3Parameters> From<u8> for Fp3<P> {
 
 impl<P: Fp3Parameters> ToBytes for Fp3<P> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.c0.write(&mut writer)?;
-        self.c1.write(&mut writer)?;
-        self.c2.write(writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.c0.write_le(&mut writer)?;
+        self.c1.write_le(&mut writer)?;
+        self.c2.write_le(writer)
     }
 }
 
 impl<P: Fp3Parameters> FromBytes for Fp3<P> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let c0 = P::Fp::read(&mut reader)?;
-        let c1 = P::Fp::read(&mut reader)?;
-        let c2 = P::Fp::read(reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let c0 = P::Fp::read_le(&mut reader)?;
+        let c1 = P::Fp::read_le(&mut reader)?;
+        let c2 = P::Fp::read_le(reader)?;
         Ok(Fp3::new(c0, c1, c2))
     }
 }
