@@ -59,6 +59,7 @@ macro_rules! to_bytes_le {
     });
 }
 
+#[macro_export]
 macro_rules! push_to_vec {
     ($buffer:expr, $y:expr, $($x:expr),*) => ({
         {ToBytes::write_le(&$y, &mut $buffer)}.and({$crate::push_to_vec!($buffer, $($x),*)})
