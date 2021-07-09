@@ -17,7 +17,7 @@
 use crate::*;
 use snarkvm_algorithms::{merkle_tree::*, traits::LoadableMerkleParameters};
 use snarkvm_dpc::prelude::*;
-use snarkvm_utilities::{has_duplicates, to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
 
 use parking_lot::RwLock;
 use std::{
@@ -156,7 +156,7 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> Ledger<T, P,
     pub fn current_digest(&self) -> Result<Vec<u8>, StorageError> {
         match self.storage.get(COL_META, KEY_CURR_DIGEST.as_bytes())? {
             Some(current_digest) => Ok(current_digest),
-            None => Ok(to_bytes![self.cm_merkle_tree.read().root()].unwrap()),
+            None => Ok(to_bytes_le![self.cm_merkle_tree.read().root()].unwrap()),
         }
     }
 
@@ -295,28 +295,30 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> LedgerScheme
 
     /// Check that st_{ts} is a valid digest for some (past) ledger state.
     fn validate_digest(&self, digest: &Self::MerkleTreeDigest) -> bool {
-        self.storage.exists(COL_DIGEST, &to_bytes![digest].unwrap())
+        self.storage.exists(COL_DIGEST, &to_bytes_le![digest].unwrap())
     }
 
     /// Returns true if the given commitment exists in the ledger.
     fn contains_cm(&self, cm: &Self::Commitment) -> bool {
-        self.storage.exists(COL_COMMITMENT, &to_bytes![cm].unwrap())
+        self.storage.exists(COL_COMMITMENT, &to_bytes_le![cm].unwrap())
     }
 
     /// Returns true if the given serial number exists in the ledger.
     fn contains_sn(&self, sn: &Self::SerialNumber) -> bool {
-        self.storage.exists(COL_SERIAL_NUMBER, &to_bytes![sn].unwrap())
+        self.storage.exists(COL_SERIAL_NUMBER, &to_bytes_le![sn].unwrap())
     }
 
     /// Returns true if the given memo exists in the ledger.
     fn contains_memo(&self, memo: &<Self::Transaction as TransactionScheme>::Memorandum) -> bool {
-        self.storage.exists(COL_MEMO, &to_bytes![memo].unwrap())
+        self.storage.exists(COL_MEMO, &to_bytes_le![memo].unwrap())
     }
 
     /// Returns the Merkle path to the latest ledger digest
     /// for a given commitment, if it exists in the ledger.
     fn prove_cm(&self, cm: &Self::Commitment) -> anyhow::Result<Self::MerklePath> {
-        let cm_index = self.get_cm_index(&to_bytes![cm]?)?.ok_or(LedgerError::InvalidCmIndex)?;
+        let cm_index = self
+            .get_cm_index(&to_bytes_le![cm]?)?
+            .ok_or(LedgerError::InvalidCmIndex)?;
         let result = self.cm_merkle_tree.read().generate_proof(cm_index, cm)?;
 
         Ok(result)
@@ -351,7 +353,7 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> Ledger<T, P,
         let mut cms = Vec::with_capacity(new_commitments.len());
 
         for sn in old_serial_numbers {
-            let sn_bytes = to_bytes![sn]?;
+            let sn_bytes = to_bytes_le![sn]?;
             if self.get_sn_index(&sn_bytes)?.is_some() {
                 return Err(StorageError::ExistingSn(sn_bytes.to_vec()));
             }
@@ -365,7 +367,7 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> Ledger<T, P,
         }
 
         for cm in new_commitments {
-            let cm_bytes = to_bytes![cm]?;
+            let cm_bytes = to_bytes_le![cm]?;
             if self.get_cm_index(&cm_bytes)?.is_some() {
                 return Err(StorageError::ExistingCm(cm_bytes.to_vec()));
             }
@@ -380,7 +382,7 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> Ledger<T, P,
             *cm_index += 1;
         }
 
-        let memo_bytes = to_bytes![transaction.memorandum()]?;
+        let memo_bytes = to_bytes_le![transaction.memorandum()]?;
         if self.get_memo_index(&memo_bytes)?.is_some() {
             return Err(StorageError::ExistingMemo(memo_bytes.to_vec()));
         } else {
@@ -443,19 +445,19 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> Ledger<T, P,
             database_transaction.push(Op::Insert {
                 col: COL_TRANSACTION_LOCATION,
                 key: transaction.transaction_id()?.to_vec(),
-                value: to_bytes![transaction_location]?.to_vec(),
+                value: to_bytes_le![transaction_location]?.to_vec(),
             });
         }
 
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_HEADER,
             key: block_hash.0.to_vec(),
-            value: to_bytes![block.header]?.to_vec(),
+            value: to_bytes_le![block.header]?.to_vec(),
         });
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_TRANSACTIONS,
             key: block.header.get_hash().0.to_vec(),
-            value: to_bytes![block.transactions]?.to_vec(),
+            value: to_bytes_le![block.transactions]?.to_vec(),
         });
 
         let mut child_hashes = self.get_child_block_hashes(&block.header.previous_block_hash)?;
@@ -473,7 +475,7 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> Ledger<T, P,
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_TRANSACTIONS,
             key: block.header.get_hash().0.to_vec(),
-            value: to_bytes![block.transactions]?.to_vec(),
+            value: to_bytes_le![block.transactions]?.to_vec(),
         });
 
         self.storage.batch(database_transaction)?;
@@ -588,13 +590,13 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> Ledger<T, P,
 
         database_transaction.push(Op::Insert {
             col: COL_DIGEST,
-            key: to_bytes![new_digest]?.to_vec(),
+            key: to_bytes_le![new_digest]?.to_vec(),
             value: new_best_block_number.to_le_bytes().to_vec(),
         });
         database_transaction.push(Op::Insert {
             col: COL_META,
             key: KEY_CURR_DIGEST.as_bytes().to_vec(),
-            value: to_bytes![new_digest]?.to_vec(),
+            value: to_bytes_le![new_digest]?.to_vec(),
         });
 
         self.storage.batch(database_transaction)?;

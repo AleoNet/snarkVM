@@ -25,7 +25,14 @@ use snarkvm_algorithms::{
 };
 use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{from_bits_le_to_bytes_le, from_bytes_le_to_bits_le, to_bytes, BigInteger, FromBytes, ToBytes};
+use snarkvm_utilities::{
+    from_bits_le_to_bytes_le,
+    from_bytes_le_to_bits_le,
+    to_bytes_le,
+    BigInteger,
+    FromBytes,
+    ToBytes,
+};
 
 use itertools::Itertools;
 use std::marker::PhantomData;
@@ -51,7 +58,7 @@ pub fn decode_from_group<P: MontgomeryParameters + TwistedEdwardsParameters, G: 
     fq_high: bool,
 ) -> Result<Vec<u8>, DPCError> {
     let output = Elligator2::<P, G>::decode(&affine, fq_high)?;
-    Ok(to_bytes![output]?)
+    Ok(to_bytes_le![output]?)
 }
 
 pub struct DecodedRecord<C: Testnet1Components> {
@@ -128,7 +135,7 @@ impl<C: Testnet1Components, P: MontgomeryParameters + TwistedEdwardsParameters, 
         // This element needs to be represented in the constraint field; its bits and the number of elements
         // are calculated early, so that the storage vectors can be pre-allocated.
         let payload = record.payload();
-        let payload_bytes = to_bytes![payload]?;
+        let payload_bytes = to_bytes_le![payload]?;
         let payload_bits_count = payload_bytes.len() * 8;
         let payload_bits = from_bytes_le_to_bits_le(&payload_bytes);
         let num_payload_elements = payload_bits_count / Self::PAYLOAD_ELEMENT_BITSIZE;
@@ -141,7 +148,7 @@ impl<C: Testnet1Components, P: MontgomeryParameters + TwistedEdwardsParameters, 
 
         let serial_number_nonce = record.serial_number_nonce();
         let serial_number_nonce_encoded =
-            <Self::Group as ProjectiveCurve>::Affine::from_random_bytes(&to_bytes![serial_number_nonce]?.to_vec())
+            <Self::Group as ProjectiveCurve>::Affine::from_random_bytes(&to_bytes_le![serial_number_nonce]?.to_vec())
                 .unwrap();
 
         data_elements.push(serial_number_nonce_encoded);
@@ -160,7 +167,7 @@ impl<C: Testnet1Components, P: MontgomeryParameters + TwistedEdwardsParameters, 
         // Process commitment_randomness. (Assumption 1 applies)
 
         let (encoded_commitment_randomness, sign_high) =
-            encode_to_group::<Self::Parameters, Self::Group>(&to_bytes![commitment_randomness]?[..])?;
+            encode_to_group::<Self::Parameters, Self::Group>(&to_bytes_le![commitment_randomness]?[..])?;
         data_elements.push(encoded_commitment_randomness);
         data_high_bits.push(sign_high);
 
@@ -265,7 +272,7 @@ impl<C: Testnet1Components, P: MontgomeryParameters + TwistedEdwardsParameters, 
         );
 
         // Append the value bits and create the final base element.
-        let value_bits = from_bytes_le_to_bits_le(&to_bytes![value]?).collect();
+        let value_bits = from_bytes_le_to_bits_le(&to_bytes_le![value]?).collect();
 
         // (Assumption 4)
         let final_element = [vec![true], data_high_bits, value_bits, payload_field_bits].concat();
@@ -304,7 +311,7 @@ impl<C: Testnet1Components, P: MontgomeryParameters + TwistedEdwardsParameters, 
         // Deserialize serial number nonce
 
         let (serial_number_nonce, _) = &(self.encoded_elements[0], fq_high_bits[0]);
-        let serial_number_nonce_bytes = to_bytes![serial_number_nonce.into_affine().to_x_coordinate()]?;
+        let serial_number_nonce_bytes = to_bytes_le![serial_number_nonce.into_affine().to_x_coordinate()]?;
         let serial_number_nonce = <C::SerialNumberNonceCRH as CRH>::Output::read_le(&serial_number_nonce_bytes[..])?;
 
         // Deserialize commitment randomness

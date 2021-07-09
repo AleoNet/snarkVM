@@ -52,14 +52,13 @@ pub fn from_bits_le_to_bytes_le(bits: &[bool]) -> Vec<u8> {
 /// Takes as input a sequence of structs, and converts them to a series of bytes.
 /// All traits that implement `ToBytes` can be automatically converted to bytes in this manner.
 #[macro_export]
-macro_rules! to_bytes {
+macro_rules! to_bytes_le {
     ($($x:expr),*) => ({
         let mut buffer = $crate::vec![];
         {$crate::push_to_vec!(buffer, $($x),*)}.map(|_| buffer)
     });
 }
 
-#[macro_export]
 macro_rules! push_to_vec {
     ($buffer:expr, $y:expr, $($x:expr),*) => ({
         {ToBytes::write_le(&$y, &mut $buffer)}.and({$crate::push_to_vec!($buffer, $($x),*)})
@@ -76,7 +75,7 @@ pub trait ToBytes: Sized {
 
     /// Returns `self` as a byte array in little-endian order.
     fn to_bytes_le(&self) -> anyhow::Result<Vec<u8>> {
-        Ok(to_bytes![self]?)
+        Ok(to_bytes_le![self]?)
     }
 }
 
@@ -347,7 +346,7 @@ mod test {
     #[test]
     fn test_macro_empty() {
         let array: Vec<u8> = vec![];
-        let bytes_a: Vec<u8> = to_bytes![array].unwrap();
+        let bytes_a: Vec<u8> = to_bytes_le![array].unwrap();
         assert_eq!(&array, &bytes_a);
         assert_eq!(0, bytes_a.len());
 
@@ -361,7 +360,7 @@ mod test {
         let array1 = [1u8; 32];
         let array2 = [2u8; 16];
         let array3 = [3u8; 8];
-        let bytes = to_bytes![array1, array2, array3].unwrap();
+        let bytes = to_bytes_le![array1, array2, array3].unwrap();
         assert_eq!(bytes.len(), 56);
 
         let mut actual_bytes = Vec::new();

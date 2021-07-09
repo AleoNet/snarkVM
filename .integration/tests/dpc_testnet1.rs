@@ -36,7 +36,7 @@ use snarkvm_dpc::{
 };
 use snarkvm_integration::{ledger::*, memdb::MemDb, storage::*, testnet1::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use itertools::Itertools;
 use rand::SeedableRng;
@@ -56,10 +56,10 @@ fn testnet1_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
 
     let inner_circuit_id = <<Components as DPCComponents>::InnerCircuitIDCRH as CRH>::hash(
         &dpc.system_parameters.inner_circuit_id_crh,
-        &to_bytes![inner_snark_vk]?,
+        &to_bytes_le![inner_snark_vk]?,
     )?;
 
-    Ok(to_bytes![inner_circuit_id]?)
+    Ok(to_bytes_le![inner_circuit_id]?)
 }
 
 #[test]
@@ -129,7 +129,7 @@ fn dpc_testnet1_integration_test() {
         let (sn, _) = old_record
             .to_serial_number(&dpc.system_parameters.account_signature, &old_private_keys[i])
             .unwrap();
-        joint_serial_numbers.extend_from_slice(&to_bytes![sn].unwrap());
+        joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());
 
         old_records.push(old_record);
     }
@@ -184,7 +184,7 @@ fn dpc_testnet1_integration_test() {
         .unwrap();
 
     // Check that the transaction is serialized and deserialized correctly
-    let transaction_bytes = to_bytes![transaction].unwrap();
+    let transaction_bytes = to_bytes_le![transaction].unwrap();
     let recovered_transaction = Testnet1Transaction::read_le(&transaction_bytes[..]).unwrap();
     assert_eq!(transaction, recovered_transaction);
 
@@ -290,7 +290,7 @@ fn test_transaction_kernel_serialization() {
         let (sn, _) = old_record
             .to_serial_number(&system_parameters.account_signature, &old_private_keys[i])
             .unwrap();
-        joint_serial_numbers.extend_from_slice(&to_bytes![sn].unwrap());
+        joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());
 
         old_records.push(old_record);
     }
@@ -331,7 +331,7 @@ fn test_transaction_kernel_serialization() {
     .unwrap();
 
     // Serialize the transaction kernel
-    let transaction_kernel_bytes = to_bytes![&transaction_kernel].unwrap();
+    let transaction_kernel_bytes = to_bytes_le![&transaction_kernel].unwrap();
 
     let recovered_transaction_kernel: <Testnet1DPC as DPCScheme<L>>::TransactionKernel =
         FromBytes::read_le(&transaction_kernel_bytes[..]).unwrap();
@@ -415,7 +415,7 @@ fn test_testnet1_dpc_execute_constraints() {
         let (sn, _) = old_record
             .to_serial_number(signature_parameters, &old_private_keys[i])
             .unwrap();
-        joint_serial_numbers.extend_from_slice(&to_bytes![sn].unwrap());
+        joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());
 
         old_records.push(old_record);
     }
@@ -593,7 +593,7 @@ fn test_testnet1_dpc_execute_constraints() {
 
     let inner_snark_id = <Components as DPCComponents>::InnerCircuitIDCRH::hash(
         &system_parameters.inner_circuit_id_crh,
-        &to_bytes![inner_snark_vk].unwrap(),
+        &to_bytes_le![inner_snark_vk].unwrap(),
     )
     .unwrap();
 

@@ -28,7 +28,7 @@ use crate::{
 use snarkvm_algorithms::{signature::Schnorr, traits::SignatureScheme};
 use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsAffine, traits::Group};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::{rand::UniformRand, to_bytes, ToBytes};
+use snarkvm_utilities::{rand::UniformRand, to_bytes_le, ToBytes};
 
 use blake2::Blake2s;
 use rand::{thread_rng, Rng, SeedableRng};
@@ -60,7 +60,7 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
 
     // Native Schnorr randomization
 
-    let random_scalar = to_bytes!(<EdwardsAffine as Group>::ScalarField::rand(rng)).unwrap();
+    let random_scalar = to_bytes_le!(<EdwardsAffine as Group>::ScalarField::rand(rng)).unwrap();
     let randomized_public_key = schnorr_signature
         .randomize_public_key(&public_key, &random_scalar)
         .unwrap();

@@ -47,7 +47,7 @@ use snarkvm_gadgets::{
     },
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::{from_bits_le_to_bytes_le, to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{from_bits_le_to_bytes_le, to_bytes_le, FromBytes, ToBytes};
 
 #[allow(clippy::too_many_arguments)]
 pub fn execute_inner_circuit<C: Testnet1Components, CS: ConstraintSystem<C::InnerScalarField>>(
@@ -332,7 +332,7 @@ where
         )
     };
 
-    let zero_value = UInt8::alloc_vec(&mut cs.ns(|| "Declare record zero value"), &to_bytes![0u64]?)?;
+    let zero_value = UInt8::alloc_vec(&mut cs.ns(|| "Declare record zero value"), &to_bytes_le![0u64]?)?;
 
     let digest_gadget = <C::MerkleHashGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
         &mut cs.ns(|| "Declare ledger digest"),
@@ -385,7 +385,7 @@ where
 
             let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
 
-            let given_value = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &to_bytes![record.value()]?)?;
+            let given_value = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &to_bytes_le![record.value()]?)?;
 
             let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes())?;
 
@@ -689,7 +689,7 @@ where
 
             let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
 
-            let given_value = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &to_bytes![record.value()]?)?;
+            let given_value = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &to_bytes_le![record.value()]?)?;
 
             let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes())?;
 
@@ -821,10 +821,10 @@ where
             let serial_number_nonce_bits = serial_number_nonce_bytes
                 .to_bits_le(&mut encryption_cs.ns(|| "Convert serial_number_nonce_bytes to bits"))?;
 
-            let commitment_randomness_bytes =
-                UInt8::alloc_vec(encryption_cs.ns(|| "Allocate commitment randomness bytes"), &to_bytes![
-                    record.commitment_randomness()
-                ]?)?;
+            let commitment_randomness_bytes = UInt8::alloc_vec(
+                encryption_cs.ns(|| "Allocate commitment randomness bytes"),
+                &to_bytes_le![record.commitment_randomness()]?,
+            )?;
 
             let commitment_randomness_bits = commitment_randomness_bytes
                 .to_bits_le(&mut encryption_cs.ns(|| "Convert commitment_randomness_bytes to bits"))?;
@@ -1041,9 +1041,9 @@ where
             let mut encryption_plaintext = Vec::with_capacity(record_group_encoding.len());
 
             for (i, (x, y)) in record_group_encoding.iter().enumerate() {
-                let affine = <C::EncryptionGroup as ProjectiveCurve>::Affine::read_le(&to_bytes![x, y]?[..])?;
+                let affine = <C::EncryptionGroup as ProjectiveCurve>::Affine::read_le(&to_bytes_le![x, y]?[..])?;
                 encryption_plaintext.push(<C::AccountEncryption as EncryptionScheme>::Text::read_le(
-                    &to_bytes![affine.into_projective()]?[..],
+                    &to_bytes_le![affine.into_projective()]?[..],
                 )?);
 
                 let y_gadget = Elligator2FieldGadget::<C::EncryptionParameters, C::InnerScalarField>::alloc(
@@ -1063,10 +1063,10 @@ where
             let u = <C::EncryptionParameters as TwistedEdwardsParameters>::COEFF_D;
             let ua = a.mul(&u);
 
-            let a = C::InnerScalarField::read_le(&to_bytes![a]?[..])?;
-            let b = C::InnerScalarField::read_le(&to_bytes![coeff_b]?[..])?;
-            let u = C::InnerScalarField::read_le(&to_bytes![u]?[..])?;
-            let ua = C::InnerScalarField::read_le(&to_bytes![ua]?[..])?;
+            let a = C::InnerScalarField::read_le(&to_bytes_le![a]?[..])?;
+            let b = C::InnerScalarField::read_le(&to_bytes_le![coeff_b]?[..])?;
+            let u = C::InnerScalarField::read_le(&to_bytes_le![u]?[..])?;
+            let ua = C::InnerScalarField::read_le(&to_bytes_le![ua]?[..])?;
 
             let fp_zero = FpGadget::zero(encryption_cs.ns(|| "fpg zero"))?;
 

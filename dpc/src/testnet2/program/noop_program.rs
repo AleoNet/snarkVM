@@ -27,7 +27,7 @@ use snarkvm_parameters::{
     testnet2::{NoopProgramSNARKPKParameters, NoopProgramSNARKVKParameters},
     Parameter,
 };
-use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use rand::{CryptoRng, Rng};
 
@@ -73,9 +73,9 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
         let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
 
         // Compute the program ID.
-        let id = to_bytes![<C as DPCComponents>::ProgramVerificationKeyCRH::hash(
+        let id = to_bytes_le![<C as DPCComponents>::ProgramVerificationKeyCRH::hash(
             program_verifying_key_crh,
-            &to_bytes![verifying_key]?
+            &to_bytes_le![verifying_key]?
         )?]?;
 
         Ok(Self {
@@ -99,9 +99,9 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
         )?;
 
         // Compute the program ID.
-        let program_id = to_bytes![<C as DPCComponents>::ProgramVerificationKeyCRH::hash(
+        let program_id = to_bytes_le![<C as DPCComponents>::ProgramVerificationKeyCRH::hash(
             program_verifying_key_crh,
-            &to_bytes![verifying_key]?
+            &to_bytes_le![verifying_key]?
         )?]?;
 
         Ok(Self {
@@ -152,8 +152,8 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
         }
 
         Ok(Self::Execution {
-            verifying_key: to_bytes![self.verifying_key]?,
-            proof: to_bytes![proof]?,
+            verifying_key: to_bytes_le![self.verifying_key]?,
+            proof: to_bytes_le![proof]?,
         })
     }
 
@@ -165,8 +165,8 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
         )?;
 
         Ok(Self::Execution {
-            verifying_key: to_bytes![self.verifying_key]?,
-            proof: to_bytes![proof]?,
+            verifying_key: to_bytes_le![self.verifying_key]?,
+            proof: to_bytes_le![proof]?,
         })
     }
 

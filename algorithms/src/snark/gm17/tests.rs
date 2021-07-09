@@ -162,7 +162,7 @@ mod serialization {
     use crate::snark::gm17::{create_random_proof, generate_random_parameters, Proof, ProvingKey, VerifyingKey};
 
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-    use snarkvm_utilities::{rand::UniformRand, to_bytes, FromBytes, ToBytes};
+    use snarkvm_utilities::{rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
 
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
@@ -224,8 +224,8 @@ mod serialization {
             generate_random_parameters::<Bls12_377, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
         let vk = parameters.vk.clone();
 
-        let parameter_bytes = to_bytes![&parameters].unwrap();
-        let vk_bytes = to_bytes![&vk].unwrap();
+        let parameter_bytes = to_bytes_le![&parameters].unwrap();
+        let vk_bytes = to_bytes_le![&vk].unwrap();
 
         let recovered_parameters: ProvingKey<Bls12_377> = FromBytes::read_le(&parameter_bytes[..]).unwrap();
         let recovered_vk: VerifyingKey<Bls12_377> = FromBytes::read_le(&vk_bytes[..]).unwrap();

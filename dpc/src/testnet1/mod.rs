@@ -33,7 +33,7 @@ use snarkvm_gadgets::{
     traits::algorithms::{CRHGadget, SNARKVerifierGadget},
 };
 use snarkvm_parameters::{prelude::*, testnet1::*};
-use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
 
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
@@ -263,7 +263,7 @@ where
 
             let (sn, randomizer) =
                 record.to_serial_number(&self.system_parameters.account_signature, &old_private_keys[i])?;
-            joint_serial_numbers.extend_from_slice(&to_bytes![sn]?);
+            joint_serial_numbers.extend_from_slice(&to_bytes_le![sn]?);
             old_serial_numbers.push(sn);
             old_randomizers.push(randomizer);
             old_death_program_ids.push(record.death_program_id().to_vec());
@@ -304,7 +304,7 @@ where
         let mut local_data_commitment_randomizers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         let mut old_record_commitments = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for i in 0..C::NUM_INPUT_RECORDS {
-            let input_bytes = to_bytes![
+            let input_bytes = to_bytes_le![
                 old_serial_numbers[i],
                 &old_records[i].commitment(),
                 memorandum,
@@ -324,7 +324,7 @@ where
 
         let mut new_record_commitments = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         for record in new_records.iter().take(C::NUM_OUTPUT_RECORDS) {
-            let input_bytes = to_bytes![record.commitment(), memorandum, C::NETWORK_ID]?;
+            let input_bytes = to_bytes_le![record.commitment(), memorandum, C::NETWORK_ID]?;
 
             let commitment_randomness = <C::LocalDataCommitment as CommitmentScheme>::Randomness::rand(rng);
             let commitment = C::LocalDataCommitment::commit(
@@ -463,7 +463,7 @@ where
         // TODO (raychu86): Remove ledger_digest from signature and move the schnorr signing into `execute_offline_phase`
         let signature_time = start_timer!(|| "Sign and randomize transaction contents");
 
-        let signature_message = to_bytes![
+        let signature_message = to_bytes_le![
             network_id,
             ledger_digest,
             old_serial_numbers,
@@ -568,7 +568,7 @@ where
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = self.inner_snark_parameters.1.clone().into();
 
         let inner_circuit_id =
-            <C::InnerCircuitIDCRH as CRH>::hash(&self.system_parameters.inner_circuit_id_crh, &to_bytes![
+            <C::InnerCircuitIDCRH as CRH>::hash(&self.system_parameters.inner_circuit_id_crh, &to_bytes_le![
                 inner_snark_vk
             ]?)?;
 
@@ -687,7 +687,7 @@ where
             return false;
         }
 
-        let signature_message = match to_bytes![
+        let signature_message = match to_bytes_le![
             transaction.network_id(),
             transaction.ledger_digest(),
             transaction.old_serial_numbers(),
@@ -758,7 +758,7 @@ where
         let inner_snark_vk: <<C as Testnet1Components>::InnerSNARK as SNARK>::VerifyingKey =
             self.inner_snark_parameters.1.clone().into();
 
-        let inner_snark_vk_bytes = match to_bytes![inner_snark_vk] {
+        let inner_snark_vk_bytes = match to_bytes_le![inner_snark_vk] {
             Ok(bytes) => bytes,
             _ => {
                 eprintln!("Unable to convert inner snark vk into bytes.");

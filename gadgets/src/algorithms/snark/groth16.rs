@@ -423,7 +423,7 @@ mod test {
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_fields::PrimeField;
     use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
-    use snarkvm_utilities::{test_rng, to_bytes, BitIteratorBE, ToBytes};
+    use snarkvm_utilities::{test_rng, to_bytes_le, BitIteratorBE, ToBytes};
 
     use crate::{bits::Boolean, curves::bls12_377::PairingGadget as Bls12_377PairingGadget};
 
@@ -596,8 +596,8 @@ mod test {
                 }
             }
 
-            let vk_bytes = to_bytes![params.vk].unwrap();
-            let proof_bytes = to_bytes![proof].unwrap();
+            let vk_bytes = to_bytes_le![params.vk].unwrap();
+            let proof_bytes = to_bytes_le![proof].unwrap();
 
             let vk_gadget = TestVkGadget::alloc_input_bytes(cs.ns(|| "Vk"), || Ok(vk_bytes)).unwrap();
             let proof_gadget = TestProofGadget::alloc_bytes(cs.ns(|| "Proof"), || Ok(proof_bytes)).unwrap();

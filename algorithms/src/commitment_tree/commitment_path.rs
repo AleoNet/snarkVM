@@ -18,7 +18,7 @@ use crate::{
     errors::MerkleError,
     traits::{CommitmentScheme, CRH},
 };
-use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Derivative)]
@@ -64,7 +64,7 @@ impl<C: CommitmentScheme, H: CRH> CommitmentMerklePath<C, H> {
 
 /// Returns the output hash, given a left and right hash value.
 fn hash_inner_node<H: CRH, L: ToBytes>(crh: &H, left: &L, right: &L) -> Result<<H as CRH>::Output, MerkleError> {
-    let input = to_bytes![left, right]?;
+    let input = to_bytes_le![left, right]?;
     Ok(crh.hash(&input)?)
 }
 

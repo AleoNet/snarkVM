@@ -29,7 +29,7 @@ use snarkvm_gadgets::{
 };
 use snarkvm_polycommit::{PCCheckVar, PrepareGadget};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
-use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use crate::{
     constraints::{verifier::MarlinVerificationGadget, verifier_key::CircuitVerifyingKeyVar},
@@ -107,7 +107,7 @@ where
         vk: &CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>,
     ) -> Result<Self, SynthesisError> {
         let mut fs_rng_raw = PR::new();
-        fs_rng_raw.absorb_bytes(&to_bytes![
+        fs_rng_raw.absorb_bytes(&to_bytes_le![
             &MarlinVerificationGadget::<TargetField, BaseField, PC, PCG>::PROTOCOL_NAME
         ]?);
 
@@ -203,7 +203,7 @@ where
         };
 
         let mut fs_rng_raw = PR::new();
-        fs_rng_raw.absorb_bytes(&to_bytes![
+        fs_rng_raw.absorb_bytes(&to_bytes_le![
             &MarlinVerificationGadget::<TargetField, BaseField, PC, PCG>::PROTOCOL_NAME
         ]?);
 
@@ -267,7 +267,7 @@ where
         };
 
         let mut fs_rng_raw = PR::new();
-        fs_rng_raw.absorb_bytes(&to_bytes![
+        fs_rng_raw.absorb_bytes(&to_bytes_le![
             &MarlinVerificationGadget::<TargetField, BaseField, PC, PCG>::PROTOCOL_NAME
         ]?);
 
@@ -331,7 +331,7 @@ where
         };
 
         let mut fs_rng_raw = PR::new();
-        fs_rng_raw.absorb_bytes(&to_bytes![
+        fs_rng_raw.absorb_bytes(&to_bytes_le![
             &MarlinVerificationGadget::<TargetField, BaseField, PC, PCG>::PROTOCOL_NAME
         ]?);
 

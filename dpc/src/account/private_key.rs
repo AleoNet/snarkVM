@@ -19,7 +19,7 @@ use snarkvm_algorithms::{
     prf::Blake2s,
     traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, PRF},
 };
-use snarkvm_utilities::{from_bytes_le_to_bits_le, to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{from_bytes_le_to_bits_le, to_bytes_le, FromBytes, ToBytes};
 
 use base58::{FromBase58, ToBase58};
 use rand::{CryptoRng, Rng};
@@ -135,7 +135,7 @@ impl<C: DPCComponents> PrivateKey<C> {
         commitment_parameters: &C::AccountCommitment,
     ) -> Result<<C::AccountEncryption as EncryptionScheme>::PrivateKey, AccountError> {
         let commitment = self.commit(signature_parameters, commitment_parameters)?;
-        let decryption_key_bytes = to_bytes![commitment]?;
+        let decryption_key_bytes = to_bytes_le![commitment]?;
 
         // This operation implicitly enforces that the unused MSB bits
         // for the scalar field representation are correctly set to 0.
@@ -226,7 +226,7 @@ impl<C: DPCComponents> PrivateKey<C> {
     ) -> Result<<C::AccountCommitment as CommitmentScheme>::Output, AccountError> {
         // Construct the commitment input for the account address.
         let pk_sig = self.pk_sig(signature_parameters)?;
-        let commit_input = to_bytes![pk_sig, self.sk_prf]?;
+        let commit_input = to_bytes_le![pk_sig, self.sk_prf]?;
 
         Ok(C::AccountCommitment::commit(
             commitment_parameters,

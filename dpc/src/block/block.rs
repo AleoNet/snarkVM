@@ -20,7 +20,7 @@ use crate::{
     BlockHeader,
     Transactions,
 };
-use snarkvm_utilities::{to_bytes, variable_length_integer::variable_length_integer, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, variable_length_integer::variable_length_integer, FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
 
@@ -72,7 +72,7 @@ impl<T: TransactionScheme> Block<T> {
         serialization.extend(&variable_length_integer(self.transactions.len() as u64));
 
         for transaction in self.transactions.iter() {
-            serialization.extend(to_bytes![transaction]?)
+            serialization.extend(to_bytes_le![transaction]?)
         }
 
         Ok(serialization)

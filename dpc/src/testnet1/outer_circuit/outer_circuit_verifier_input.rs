@@ -20,7 +20,7 @@ use snarkvm_algorithms::{
     traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH},
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
-use snarkvm_utilities::{to_bytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet1Components"))]
@@ -95,7 +95,7 @@ where
         let inner_snark_field_elements = &self.inner_snark_verifier_input.to_field_elements()?;
 
         for inner_snark_fe in inner_snark_field_elements {
-            let inner_snark_fe_bytes = to_bytes![inner_snark_fe]?;
+            let inner_snark_fe_bytes = to_bytes_le![inner_snark_fe]?;
             v.extend_from_slice(&ToConstraintField::<C::OuterScalarField>::to_field_elements(
                 inner_snark_fe_bytes.as_slice(),
             )?);

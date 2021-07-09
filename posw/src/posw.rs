@@ -46,7 +46,7 @@ use snarkvm_parameters::{
 };
 use snarkvm_polycommit::optional_rng::OptionalRng;
 use snarkvm_profiler::{end_timer, start_timer};
-use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use blake2::{digest::Digest, Blake2s};
 use rand::{rngs::OsRng, Rng};
@@ -229,7 +229,7 @@ where
             nonce = rng.gen_range(0..max_nonce);
             proof = Self::prove(&pk, nonce, subroots, rng)?;
 
-            serialized_proof = to_bytes!(proof)?;
+            serialized_proof = to_bytes_le!(proof)?;
             if self.check_difficulty(&serialized_proof, difficulty_target) {
                 break;
             }

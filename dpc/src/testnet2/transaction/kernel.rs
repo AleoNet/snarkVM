@@ -19,7 +19,7 @@ use crate::{
     testnet2::{EncryptedRecord, LocalData, Record, SystemParameters, Testnet2Components, Transaction},
 };
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, prelude::*};
-use snarkvm_utilities::{to_bytes, variable_length_integer::*, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, variable_length_integer::*, FromBytes, ToBytes};
 
 use std::{
     fmt,
@@ -276,7 +276,7 @@ impl<C: Testnet2Components> fmt::Display for TransactionKernel<C> {
         write!(
             f,
             "{}",
-            hex::encode(to_bytes![self].expect("couldn't serialize to bytes"))
+            hex::encode(to_bytes_le![self].expect("couldn't serialize to bytes"))
         )
     }
 }

@@ -30,7 +30,7 @@ use snarkvm_r1cs::{
 };
 use snarkvm_utilities::{
     bititerator::{BitIteratorBE, BitIteratorLE},
-    to_bytes,
+    to_bytes_le,
     ToBytes,
 };
 
@@ -540,10 +540,13 @@ impl<F: PrimeField> ToBitsLEGadget<F> for AllocatedFp<F> {
 impl<F: PrimeField> ToBytesGadget<F> for AllocatedFp<F> {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let byte_values = match self.value {
-            Some(value) => to_bytes![&value.into_repr()]?.into_iter().map(Some).collect::<Vec<_>>(),
+            Some(value) => to_bytes_le![&value.into_repr()]?
+                .into_iter()
+                .map(Some)
+                .collect::<Vec<_>>(),
             None => {
                 let default = F::default();
-                let default_len = to_bytes![&default].unwrap().len();
+                let default_len = to_bytes_le![&default].unwrap().len();
                 vec![None; default_len]
             }
         };
@@ -1153,14 +1156,14 @@ impl<F: PrimeField> ToBitsLEGadget<F> for FpGadget<F> {
 impl<F: PrimeField> ToBytesGadget<F> for FpGadget<F> {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         match self {
-            Self::Constant(c) => Ok(UInt8::constant_vec(&to_bytes![c].unwrap())),
+            Self::Constant(c) => Ok(UInt8::constant_vec(&to_bytes_le![c].unwrap())),
             Self::Variable(v) => v.to_bytes(cs),
         }
     }
 
     fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         match self {
-            Self::Constant(c) => Ok(UInt8::constant_vec(&to_bytes![c].unwrap())),
+            Self::Constant(c) => Ok(UInt8::constant_vec(&to_bytes_le![c].unwrap())),
             Self::Variable(v) => v.to_bytes_strict(cs),
         }
     }

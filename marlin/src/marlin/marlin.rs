@@ -24,7 +24,7 @@ use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::nonnative::params::OptimizationType;
 use snarkvm_polycommit::{Evaluations, LabeledCommitment, LabeledPolynomial, PCUniversalParams, PolynomialCommitment};
 use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError};
-use snarkvm_utilities::{to_bytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use crate::marlin::PreparedCircuitVerifyingKey;
 use core::marker::PhantomData;
@@ -258,14 +258,14 @@ where
         let hiding = !is_recursion;
 
         if is_recursion {
-            fs_rng.absorb_bytes(&to_bytes![&Self::PROTOCOL_NAME].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
             fs_rng.absorb_native_field_elements(&compute_vk_hash::<TargetField, BaseField, PC, FS>(
                 &circuit_proving_key.circuit_verifying_key,
             )?);
             fs_rng.absorb_nonnative_field_elements(&public_input, OptimizationType::Weight);
         } else {
             fs_rng.absorb_bytes(
-                &to_bytes![
+                &to_bytes_le![
                     &Self::PROTOCOL_NAME,
                     &circuit_proving_key.circuit_verifying_key,
                     &public_input
@@ -295,7 +295,7 @@ where
                 fs_rng.absorb_nonnative_field_elements(&prover_first_message.field_elements, OptimizationType::Weight);
             }
         } else {
-            fs_rng.absorb_bytes(&to_bytes![first_commitments, prover_first_message].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![first_commitments, prover_first_message].unwrap());
         }
 
         let (verifier_first_message, verifier_state) =
@@ -323,7 +323,7 @@ where
                 fs_rng.absorb_nonnative_field_elements(&prover_second_message.field_elements, OptimizationType::Weight);
             }
         } else {
-            fs_rng.absorb_bytes(&to_bytes![second_commitments, prover_second_message].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![second_commitments, prover_second_message].unwrap());
         }
 
         let (verifier_second_msg, verifier_state) = AHPForR1CS::verifier_second_round(verifier_state, &mut fs_rng)?;
@@ -349,7 +349,7 @@ where
                 fs_rng.absorb_nonnative_field_elements(&prover_third_message.field_elements, OptimizationType::Weight);
             }
         } else {
-            fs_rng.absorb_bytes(&to_bytes![third_commitments, prover_third_message].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![third_commitments, prover_third_message].unwrap());
         }
 
         let verifier_state = AHPForR1CS::verifier_third_round(verifier_state, &mut fs_rng)?;
@@ -457,7 +457,7 @@ where
         if is_recursion {
             fs_rng.absorb_nonnative_field_elements(&evaluations, OptimizationType::Weight);
         } else {
-            fs_rng.absorb_bytes(&to_bytes![&evaluations].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![&evaluations].unwrap());
         }
 
         let pc_proof = if is_recursion {
@@ -538,13 +538,13 @@ where
         let mut fs_rng = FS::new();
 
         if is_recursion {
-            fs_rng.absorb_bytes(&to_bytes![&Self::PROTOCOL_NAME].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
             fs_rng.absorb_native_field_elements(&compute_vk_hash::<TargetField, BaseField, PC, FS>(
                 circuit_verifying_key,
             )?);
             fs_rng.absorb_nonnative_field_elements(&public_input, OptimizationType::Weight);
         } else {
-            fs_rng.absorb_bytes(&to_bytes![&Self::PROTOCOL_NAME, &circuit_verifying_key, &public_input].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME, &circuit_verifying_key, &public_input].unwrap());
         }
 
         // --------------------------------------------------------------------
@@ -561,7 +561,7 @@ where
                 );
             };
         } else {
-            fs_rng.absorb_bytes(&to_bytes![first_commitments, proof.prover_messages[0]].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![first_commitments, proof.prover_messages[0]].unwrap());
         }
 
         let (_, verifier_state) = AHPForR1CS::verifier_first_round(circuit_verifying_key.circuit_info, &mut fs_rng)?;
@@ -580,7 +580,7 @@ where
                 );
             };
         } else {
-            fs_rng.absorb_bytes(&to_bytes![second_commitments, proof.prover_messages[1]].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![second_commitments, proof.prover_messages[1]].unwrap());
         }
 
         let (_, verifier_state) = AHPForR1CS::verifier_second_round(verifier_state, &mut fs_rng)?;
@@ -599,7 +599,7 @@ where
                 );
             };
         } else {
-            fs_rng.absorb_bytes(&to_bytes![third_commitments, proof.prover_messages[2]].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![third_commitments, proof.prover_messages[2]].unwrap());
         }
 
         let verifier_state = AHPForR1CS::verifier_third_round(verifier_state, &mut fs_rng)?;
@@ -638,7 +638,7 @@ where
         if is_recursion {
             fs_rng.absorb_nonnative_field_elements(&proof.evaluations, OptimizationType::Weight);
         } else {
-            fs_rng.absorb_bytes(&to_bytes![&proof.evaluations].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![&proof.evaluations].unwrap());
         }
 
         let mut evaluations = Evaluations::new();

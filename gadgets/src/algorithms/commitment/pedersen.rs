@@ -23,7 +23,7 @@ use snarkvm_algorithms::commitment::{PedersenCommitment, PedersenCommitmentParam
 use snarkvm_curves::traits::{Group, ProjectiveCurve};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::{to_bytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use crate::{
     integers::uint::UInt8,
@@ -86,7 +86,7 @@ impl<G: Group, F: PrimeField> AllocGadget<G::ScalarField, F> for PedersenRandomn
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let randomness = to_bytes![value_gen()?.borrow()].unwrap();
+        let randomness = to_bytes_le![value_gen()?.borrow()].unwrap();
         Ok(PedersenRandomnessGadget(
             UInt8::alloc_vec(cs, &randomness)?,
             PhantomData,
@@ -97,7 +97,7 @@ impl<G: Group, F: PrimeField> AllocGadget<G::ScalarField, F> for PedersenRandomn
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let randomness = to_bytes![value_gen()?.borrow()].unwrap();
+        let randomness = to_bytes_le![value_gen()?.borrow()].unwrap();
         Ok(PedersenRandomnessGadget(
             UInt8::alloc_input_vec_le(cs, &randomness)?,
             PhantomData,

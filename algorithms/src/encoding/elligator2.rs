@@ -22,7 +22,7 @@ use snarkvm_curves::traits::{
     TwistedEdwardsParameters,
 };
 use snarkvm_fields::{Field, LegendreSymbol, One, SquareRootField, Zero};
-use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use std::{cmp, marker::PhantomData, ops::Neg};
 
@@ -152,7 +152,7 @@ impl<P: MontgomeryParameters + TwistedEdwardsParameters, G: Group + ProjectiveCu
         };
 
         Ok((
-            <G as ProjectiveCurve>::Affine::read_le(&to_bytes![x, y]?[..])?,
+            <G as ProjectiveCurve>::Affine::read_le(&to_bytes_le![x, y]?[..])?,
             sign_high,
         ))
     }
@@ -167,8 +167,8 @@ impl<P: MontgomeryParameters + TwistedEdwardsParameters, G: Group + ProjectiveCu
             return Err(EncodingError::InputMustBeNonzero);
         }
 
-        let x = P::BaseField::read_le(&to_bytes![group_element.to_x_coordinate()]?[..])?;
-        let y = P::BaseField::read_le(&to_bytes![group_element.to_y_coordinate()]?[..])?;
+        let x = P::BaseField::read_le(&to_bytes_le![group_element.to_x_coordinate()]?[..])?;
+        let y = P::BaseField::read_le(&to_bytes_le![group_element.to_y_coordinate()]?[..])?;
 
         // Compute the parameters for the alternate Montgomery form: v^2 == u^3 + A * u^2 + B * u.
         let (a, b) = {

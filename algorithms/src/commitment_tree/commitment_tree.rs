@@ -19,7 +19,7 @@ use crate::{
     errors::MerkleError,
     traits::{CommitmentScheme, CRH},
 };
-use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
 
@@ -48,13 +48,13 @@ pub struct CommitmentMerkleTree<C: CommitmentScheme, H: CRH> {
 impl<C: CommitmentScheme, H: CRH> CommitmentMerkleTree<C, H> {
     /// Construct a new commitment Merkle tree.
     pub fn new(parameters: H, leaves: &[<C as CommitmentScheme>::Output; 4]) -> Result<Self, MerkleError> {
-        let input_1 = to_bytes![leaves[0], leaves[1]]?;
+        let input_1 = to_bytes_le![leaves[0], leaves[1]]?;
         let inner_hash1 = H::hash(&parameters, &input_1)?;
 
-        let input_2 = to_bytes![leaves[2], leaves[3]]?;
+        let input_2 = to_bytes_le![leaves[2], leaves[3]]?;
         let inner_hash2 = H::hash(&parameters, &input_2)?;
 
-        let root = H::hash(&parameters, &to_bytes![inner_hash1, inner_hash2]?)?;
+        let root = H::hash(&parameters, &to_bytes_le![inner_hash1, inner_hash2]?)?;
 
         Ok(Self {
             root,

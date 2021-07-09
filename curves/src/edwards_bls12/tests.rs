@@ -35,7 +35,7 @@ use snarkvm_fields::{
     SquareRootField,
     Zero,
 };
-use snarkvm_utilities::{rand::UniformRand, to_bytes, ToBytes};
+use snarkvm_utilities::{rand::UniformRand, to_bytes_le, ToBytes};
 
 use rand::thread_rng;
 
@@ -190,7 +190,7 @@ fn test_isomorphism() {
 
     // Map it to its corresponding Fq element.
     let fq_element = {
-        let output = Fq::from_random_bytes(&to_bytes![fr_element].unwrap());
+        let output = Fq::from_random_bytes(&to_bytes_le![fr_element].unwrap());
         assert!(output.is_some());
         output.unwrap()
     };
@@ -410,7 +410,7 @@ fn test_isomorphism() {
     };
 
     let fr_element_reconstructed = {
-        let output = Fr::from_random_bytes(&to_bytes![fq_element_reconstructed].unwrap());
+        let output = Fr::from_random_bytes(&to_bytes_le![fq_element_reconstructed].unwrap());
         assert!(output.is_some());
         output.unwrap()
     };

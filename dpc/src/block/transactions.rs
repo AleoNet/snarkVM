@@ -17,7 +17,7 @@
 use crate::{traits::TransactionScheme, TransactionError};
 use snarkvm_utilities::{
     has_duplicates,
-    to_bytes,
+    to_bytes_le,
     variable_length_integer::{read_variable_length_integer, variable_length_integer},
     FromBytes,
     ToBytes,
@@ -56,7 +56,7 @@ impl<T: TransactionScheme> Transactions<T> {
     pub fn serialize(&self) -> Result<Vec<Vec<u8>>, TransactionError> {
         self.0
             .iter()
-            .map(|transaction| -> Result<Vec<u8>, TransactionError> { Ok(to_bytes![transaction]?) })
+            .map(|transaction| -> Result<Vec<u8>, TransactionError> { Ok(to_bytes_le![transaction]?) })
             .collect::<Result<Vec<Vec<u8>>, TransactionError>>()
     }
 
@@ -64,7 +64,7 @@ impl<T: TransactionScheme> Transactions<T> {
     pub fn serialize_as_str(&self) -> Result<Vec<String>, TransactionError> {
         self.0
             .iter()
-            .map(|transaction| -> Result<String, TransactionError> { Ok(hex::encode(to_bytes![transaction]?)) })
+            .map(|transaction| -> Result<String, TransactionError> { Ok(hex::encode(to_bytes_le![transaction]?)) })
             .collect::<Result<Vec<String>, TransactionError>>()
     }
 

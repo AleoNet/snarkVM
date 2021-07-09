@@ -22,7 +22,7 @@ use crate::{
     RecordError,
 };
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH, PRF};
-use snarkvm_utilities::{to_bytes, variable_length_integer::*, FromBytes, ToBytes, UniformRand};
+use snarkvm_utilities::{to_bytes_le, variable_length_integer::*, FromBytes, ToBytes, UniformRand};
 
 use rand::{CryptoRng, Rng};
 use std::{
@@ -32,7 +32,7 @@ use std::{
 };
 
 fn default_program_id<C: CRH>() -> Vec<u8> {
-    to_bytes![C::Output::default()].unwrap()
+    to_bytes_le![C::Output::default()].unwrap()
 }
 
 #[derive(Derivative)]
@@ -85,7 +85,7 @@ impl<C: Testnet1Components> Record<C> {
         // Sample randomness sn_randomness for the CRH input.
         let sn_randomness: [u8; 32] = rng.gen();
 
-        let crh_input = to_bytes![position, sn_randomness, joint_serial_numbers]?;
+        let crh_input = to_bytes_le![position, sn_randomness, joint_serial_numbers]?;
         let serial_number_nonce = C::SerialNumberNonceCRH::hash(&serial_number_nonce_parameters, &crh_input)?;
 
         let mut record = Self::new(
@@ -123,7 +123,7 @@ impl<C: Testnet1Components> Record<C> {
         let commitment_randomness = <C::RecordCommitment as CommitmentScheme>::Randomness::rand(rng);
 
         // Total = 32 + 1 + 8 + 32 + 48 + 48 + 32 = 201 bytes
-        let commitment_input = to_bytes![
+        let commitment_input = to_bytes_le![
             owner,               // 256 bits = 32 bytes
             is_dummy,            // 1 bit = 1 byte
             value,               // 64 bits = 8 bytes
@@ -193,9 +193,9 @@ impl<C: Testnet1Components> Record<C> {
         // }
 
         // Compute the serial number.
-        let seed = FromBytes::read_le(to_bytes!(&private_key.sk_prf)?.as_slice())?;
-        let input = FromBytes::read_le(to_bytes!(self.serial_number_nonce)?.as_slice())?;
-        let randomizer = to_bytes![C::PRF::evaluate(&seed, &input)?]?;
+        let seed = FromBytes::read_le(to_bytes_le!(&private_key.sk_prf)?.as_slice())?;
+        let input = FromBytes::read_le(to_bytes_le!(self.serial_number_nonce)?.as_slice())?;
+        let randomizer = to_bytes_le![C::PRF::evaluate(&seed, &input)?]?;
         let serial_number = C::AccountSignature::randomize_public_key(
             &signature_parameters,
             &private_key.pk_sig(&signature_parameters)?,
@@ -336,7 +336,7 @@ impl<C: Testnet1Components> fmt::Display for Record<C> {
         write!(
             f,
             "{}",
-            hex::encode(to_bytes![self].expect("serialization to bytes failed"))
+            hex::encode(to_bytes_le![self].expect("serialization to bytes failed"))
         )
     }
 }

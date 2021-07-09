@@ -27,7 +27,7 @@ use snarkvm_algorithms::{
 };
 use snarkvm_utilities::{
     serialize::{CanonicalDeserialize, CanonicalSerialize},
-    to_bytes,
+    to_bytes_le,
     FromBytes,
     ToBytes,
 };
@@ -143,11 +143,11 @@ impl<C: Testnet1Components> TransactionScheme for Transaction<C> {
         let mut pre_image_bytes: Vec<u8> = vec![];
 
         for serial_number in self.old_serial_numbers() {
-            pre_image_bytes.extend(&to_bytes![serial_number]?);
+            pre_image_bytes.extend(&to_bytes_le![serial_number]?);
         }
 
         for commitment in self.new_commitments() {
-            pre_image_bytes.extend(&to_bytes![commitment]?);
+            pre_image_bytes.extend(&to_bytes_le![commitment]?);
         }
 
         pre_image_bytes.extend(self.memorandum());
@@ -205,7 +205,7 @@ impl<C: Testnet1Components> TransactionScheme for Transaction<C> {
     }
 
     fn size(&self) -> usize {
-        let transaction_bytes = to_bytes![self].unwrap();
+        let transaction_bytes = to_bytes_le![self].unwrap();
         transaction_bytes.len()
     }
 }
