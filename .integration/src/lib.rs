@@ -66,9 +66,9 @@ pub struct TransactionLocation {
 
 impl ToBytes for TransactionLocation {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.index.write(&mut writer)?;
-        self.block_hash.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.index.write_le(&mut writer)?;
+        self.block_hash.write_le(&mut writer)
     }
 }
 

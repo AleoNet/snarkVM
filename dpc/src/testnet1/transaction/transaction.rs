@@ -211,32 +211,32 @@ impl<C: Testnet1Components> TransactionScheme for Transaction<C> {
 
 impl<C: Testnet1Components> ToBytes for Transaction<C> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         for old_serial_number in &self.old_serial_numbers {
             CanonicalSerialize::serialize(old_serial_number, &mut writer).unwrap();
         }
 
         for new_commitment in &self.new_commitments {
-            new_commitment.write(&mut writer)?;
+            new_commitment.write_le(&mut writer)?;
         }
 
-        self.memorandum.write(&mut writer)?;
+        self.memorandum.write_le(&mut writer)?;
 
-        self.ledger_digest.write(&mut writer)?;
-        self.inner_circuit_id.write(&mut writer)?;
-        self.transaction_proof.write(&mut writer)?;
-        self.program_commitment.write(&mut writer)?;
-        self.local_data_root.write(&mut writer)?;
+        self.ledger_digest.write_le(&mut writer)?;
+        self.inner_circuit_id.write_le(&mut writer)?;
+        self.transaction_proof.write_le(&mut writer)?;
+        self.program_commitment.write_le(&mut writer)?;
+        self.local_data_root.write_le(&mut writer)?;
 
-        self.value_balance.write(&mut writer)?;
-        self.network.write(&mut writer)?;
+        self.value_balance.write_le(&mut writer)?;
+        self.network.write_le(&mut writer)?;
 
         for signature in &self.signatures {
-            signature.write(&mut writer)?;
+            signature.write_le(&mut writer)?;
         }
 
         for encrypted_record in &self.encrypted_records {
-            encrypted_record.write(&mut writer)?;
+            encrypted_record.write_le(&mut writer)?;
         }
 
         Ok(())

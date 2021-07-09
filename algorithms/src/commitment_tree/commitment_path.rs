@@ -70,11 +70,11 @@ fn hash_inner_node<H: CRH, L: ToBytes>(crh: &H, left: &L, right: &L) -> Result<<
 
 impl<C: CommitmentScheme, H: CRH> ToBytes for CommitmentMerklePath<C, H> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.leaves.0.write(&mut writer)?;
-        self.leaves.1.write(&mut writer)?;
-        self.inner_hashes.0.write(&mut writer)?;
-        self.inner_hashes.1.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.leaves.0.write_le(&mut writer)?;
+        self.leaves.1.write_le(&mut writer)?;
+        self.inner_hashes.0.write_le(&mut writer)?;
+        self.inner_hashes.1.write_le(&mut writer)
     }
 }
 

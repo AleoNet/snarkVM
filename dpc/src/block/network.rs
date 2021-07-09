@@ -54,8 +54,8 @@ impl Network {
 
 impl ToBytes for Network {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.id().write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.id().write_le(&mut writer)
     }
 }
 

@@ -30,7 +30,7 @@ use std::{borrow::Cow, collections::BTreeMap, rc::Rc, sync::Arc};
 impl CanonicalSerialize for bool {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
-        Ok(self.write(writer)?)
+        Ok(self.write_le(writer)?)
     }
 
     #[inline]

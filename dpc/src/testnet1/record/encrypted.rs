@@ -401,18 +401,18 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
 
 impl<C: Testnet1Components> ToBytes for EncryptedRecord<C> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         let mut ciphertext_selectors = Vec::with_capacity(self.encrypted_elements.len() + 1);
 
         // Write the encrypted record
-        variable_length_integer(self.encrypted_elements.len() as u64).write(&mut writer)?;
+        variable_length_integer(self.encrypted_elements.len() as u64).write_le(&mut writer)?;
         for ciphertext_element in &self.encrypted_elements {
             // Compress the ciphertext representation to the affine x-coordinate and the selector bit
             let ciphertext_element_affine =
                 <C as Testnet1Components>::EncryptionGroup::read(&to_bytes![ciphertext_element]?[..])?.into_affine();
 
             let x_coordinate = ciphertext_element_affine.to_x_coordinate();
-            x_coordinate.write(&mut writer)?;
+            x_coordinate.write_le(&mut writer)?;
 
             let selector =
                 match <<C as Testnet1Components>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
@@ -430,7 +430,7 @@ impl<C: Testnet1Components> ToBytes for EncryptedRecord<C> {
 
         // Write the ciphertext and fq_high selector bits
         let selector_bytes = from_bits_le_to_bytes_le(&ciphertext_selectors);
-        selector_bytes.write(&mut writer)?;
+        selector_bytes.write_le(&mut writer)?;
 
         Ok(())
     }

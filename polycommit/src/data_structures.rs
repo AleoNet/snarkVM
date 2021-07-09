@@ -192,7 +192,7 @@ impl<F: Field, C: PCCommitment + ToConstraintField<F>> ToConstraintField<F> for 
 // and you should construct the struct via the `LabeledCommitment::new` method after
 // deserializing the Commitment.
 impl<C: PCCommitment> ToBytes for LabeledCommitment<C> {
-    fn write<W: Write>(&self, mut writer: W) -> io::Result<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         CanonicalSerialize::serialize(&self.commitment, &mut writer).map_err(|_| error_fn("could not serialize struct"))
     }
 }
@@ -393,7 +393,7 @@ macro_rules! impl_bytes {
         }
 
         impl<E: PairingEngine> ToBytes for $ty<E> {
-            fn write<W: Write>(&self, mut writer: W) -> io::Result<()> {
+            fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
                 CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize struct"))
             }
         }

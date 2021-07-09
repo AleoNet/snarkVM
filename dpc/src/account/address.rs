@@ -82,8 +82,8 @@ impl<C: DPCComponents> Address<C> {
 }
 
 impl<C: DPCComponents> ToBytes for Address<C> {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.encryption_key.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.encryption_key.write_le(&mut writer)
     }
 }
 
@@ -126,7 +126,7 @@ impl<C: DPCComponents> fmt::Display for Address<C> {
         // Write the encryption key to a buffer.
         let mut address = [0u8; 32];
         self.encryption_key
-            .write(&mut address[0..32])
+            .write_le(&mut address[0..32])
             .expect("address formatting failed");
 
         bech32::encode(

@@ -162,14 +162,14 @@ impl BlockHeader {
 
 impl ToBytes for BlockHeader {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.previous_block_hash.0.write(&mut writer)?;
-        self.merkle_root_hash.0.write(&mut writer)?;
-        self.pedersen_merkle_root_hash.0.write(&mut writer)?;
-        self.proof.write(&mut writer)?;
-        self.time.to_le_bytes().write(&mut writer)?;
-        self.difficulty_target.to_le_bytes().write(&mut writer)?;
-        self.nonce.to_le_bytes().write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.previous_block_hash.0.write_le(&mut writer)?;
+        self.merkle_root_hash.0.write_le(&mut writer)?;
+        self.pedersen_merkle_root_hash.0.write_le(&mut writer)?;
+        self.proof.write_le(&mut writer)?;
+        self.time.to_le_bytes().write_le(&mut writer)?;
+        self.difficulty_target.to_le_bytes().write_le(&mut writer)?;
+        self.nonce.to_le_bytes().write_le(&mut writer)
     }
 }
 
@@ -218,7 +218,7 @@ mod tests {
         let result = BlockHeader::deserialize(&serialized1);
 
         let mut serialized2 = vec![];
-        block_header.write(&mut serialized2).unwrap();
+        block_header.write_le(&mut serialized2).unwrap();
         let de = BlockHeader::read(&serialized2[..]).unwrap();
 
         assert_eq!(&serialized1[..], &serialized2[..]);

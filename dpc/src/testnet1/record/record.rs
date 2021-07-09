@@ -264,21 +264,21 @@ impl<C: Testnet1Components> RecordScheme for Record<C> {
 
 impl<C: Testnet1Components> ToBytes for Record<C> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.owner.write(&mut writer)?;
-        self.is_dummy.write(&mut writer)?;
-        self.value.write(&mut writer)?;
-        self.payload.write(&mut writer)?;
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.owner.write_le(&mut writer)?;
+        self.is_dummy.write_le(&mut writer)?;
+        self.value.write_le(&mut writer)?;
+        self.payload.write_le(&mut writer)?;
 
-        variable_length_integer(self.birth_program_id.len() as u64).write(&mut writer)?;
-        self.birth_program_id.write(&mut writer)?;
+        variable_length_integer(self.birth_program_id.len() as u64).write_le(&mut writer)?;
+        self.birth_program_id.write_le(&mut writer)?;
 
-        variable_length_integer(self.death_program_id.len() as u64).write(&mut writer)?;
-        self.death_program_id.write(&mut writer)?;
+        variable_length_integer(self.death_program_id.len() as u64).write_le(&mut writer)?;
+        self.death_program_id.write_le(&mut writer)?;
 
-        self.serial_number_nonce.write(&mut writer)?;
-        self.commitment.write(&mut writer)?;
-        self.commitment_randomness.write(&mut writer)
+        self.serial_number_nonce.write_le(&mut writer)?;
+        self.commitment.write_le(&mut writer)?;
+        self.commitment_randomness.write_le(&mut writer)
     }
 }
 

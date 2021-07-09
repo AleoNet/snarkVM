@@ -399,8 +399,8 @@ impl_mul_div_from_field_ref!(Fp256, Fp256Parameters);
 
 impl<P: Fp256Parameters> ToBytes for Fp256<P> {
     #[inline]
-    fn write<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.into_repr().write(writer)
+    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
+        self.into_repr().write_le(writer)
     }
 }
 

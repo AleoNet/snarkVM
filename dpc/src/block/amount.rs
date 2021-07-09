@@ -110,8 +110,8 @@ impl AleoAmount {
 }
 
 impl ToBytes for AleoAmount {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.0.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.0.write_le(&mut writer)
     }
 }
 

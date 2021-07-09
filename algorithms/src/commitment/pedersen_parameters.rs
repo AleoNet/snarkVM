@@ -72,21 +72,21 @@ impl<F: Field, G: Group + ToConstraintField<F>, const NUM_WINDOWS: usize, const 
 impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
     for PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.bases.len() as u32).write(&mut writer)?;
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.bases.len() as u32).write_le(&mut writer)?;
         for base in &self.bases {
-            (base.len() as u32).write(&mut writer)?;
+            (base.len() as u32).write_le(&mut writer)?;
             for g in base {
-                g.write(&mut writer)?;
+                g.write_le(&mut writer)?;
             }
         }
 
-        (self.random_base.len() as u32).write(&mut writer)?;
+        (self.random_base.len() as u32).write_le(&mut writer)?;
         for g in &self.random_base {
-            g.write(&mut writer)?;
+            g.write_le(&mut writer)?;
         }
 
-        self.crh.parameters().write(&mut writer)?;
+        self.crh.parameters().write_le(&mut writer)?;
 
         Ok(())
     }

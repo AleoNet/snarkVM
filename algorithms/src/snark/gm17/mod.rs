@@ -62,7 +62,7 @@ pub struct Proof<E: PairingEngine> {
 
 impl<E: PairingEngine> ToBytes for Proof<E> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self.compressed {
             true => self.write_compressed(&mut writer),
             false => self.write_uncompressed(&mut writer),
@@ -106,9 +106,9 @@ impl<E: PairingEngine> Proof<E> {
     /// Serialize the proof into bytes in uncompressed form, for storage
     /// on disk or transmission over the network.
     pub fn write_uncompressed<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.a.write(&mut writer)?;
-        self.b.write(&mut writer)?;
-        self.c.write(&mut writer)
+        self.a.write_le(&mut writer)?;
+        self.b.write_le(&mut writer)?;
+        self.c.write_le(&mut writer)
     }
 
     /// Deserialize the proof from compressed bytes.
@@ -180,8 +180,19 @@ pub struct VerifyingKey<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> ToBytes for VerifyingKey<E> {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.write(&mut writer)
+    /// Writes the verifying key into little-endian bytes,
+    /// for storage on disk or transmission over the network.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.h_g2.write_le(&mut writer)?;
+        self.g_alpha_g1.write_le(&mut writer)?;
+        self.h_beta_g2.write_le(&mut writer)?;
+        self.g_gamma_g1.write_le(&mut writer)?;
+        self.h_gamma_g2.write_le(&mut writer)?;
+        (self.query.len() as u32).write_le(&mut writer)?;
+        for q in &self.query {
+            q.write_le(&mut writer)?;
+        }
+        Ok(())
     }
 }
 
@@ -217,21 +228,6 @@ impl<E: PairingEngine> PartialEq for VerifyingKey<E> {
 }
 
 impl<E: PairingEngine> VerifyingKey<E> {
-    /// Serialize the verifying key into bytes, for storage on disk
-    /// or transmission over the network.
-    pub fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.h_g2.write(&mut writer)?;
-        self.g_alpha_g1.write(&mut writer)?;
-        self.h_beta_g2.write(&mut writer)?;
-        self.g_gamma_g1.write(&mut writer)?;
-        self.h_gamma_g2.write(&mut writer)?;
-        (self.query.len() as u32).write(&mut writer)?;
-        for q in &self.query {
-            q.write(&mut writer)?;
-        }
-        Ok(())
-    }
-
     /// Deserialize the verifying key from bytes.
     pub fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         let h_g2: E::G2Affine = FromBytes::read(&mut reader)?;
@@ -289,8 +285,44 @@ impl<E: PairingEngine> PartialEq for ProvingKey<E> {
 }
 
 impl<E: PairingEngine> ToBytes for ProvingKey<E> {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.write(&mut writer)
+    /// Serialize the parameters to little-endian bytes.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.vk.write_le(&mut writer)?;
+
+        (self.a_query.len() as u32).write_le(&mut writer)?;
+        for g in &self.a_query[..] {
+            g.write_le(&mut writer)?;
+        }
+
+        (self.b_query.len() as u32).write_le(&mut writer)?;
+        for g in &self.b_query[..] {
+            g.write_le(&mut writer)?;
+        }
+
+        (self.c_query_1.len() as u32).write_le(&mut writer)?;
+        for g in &self.c_query_1[..] {
+            g.write_le(&mut writer)?;
+        }
+
+        (self.c_query_2.len() as u32).write_le(&mut writer)?;
+        for g in &self.c_query_2[..] {
+            g.write_le(&mut writer)?;
+        }
+
+        self.g_gamma_z.write_le(&mut writer)?;
+
+        self.h_gamma_z.write_le(&mut writer)?;
+
+        self.g_ab_gamma_z.write_le(&mut writer)?;
+
+        self.g_gamma2_z2.write_le(&mut writer)?;
+
+        (self.g_gamma2_z_t.len() as u32).write_le(&mut writer)?;
+        for g in &self.g_gamma2_z_t[..] {
+            g.write_le(&mut writer)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -314,46 +346,6 @@ impl<E: PairingEngine> From<ProvingKey<E>> for PreparedVerifyingKey<E> {
 }
 
 impl<E: PairingEngine> ProvingKey<E> {
-    /// Serialize the parameters to bytes.
-    pub fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.vk.write(&mut writer)?;
-
-        (self.a_query.len() as u32).write(&mut writer)?;
-        for g in &self.a_query[..] {
-            g.write(&mut writer)?;
-        }
-
-        (self.b_query.len() as u32).write(&mut writer)?;
-        for g in &self.b_query[..] {
-            g.write(&mut writer)?;
-        }
-
-        (self.c_query_1.len() as u32).write(&mut writer)?;
-        for g in &self.c_query_1[..] {
-            g.write(&mut writer)?;
-        }
-
-        (self.c_query_2.len() as u32).write(&mut writer)?;
-        for g in &self.c_query_2[..] {
-            g.write(&mut writer)?;
-        }
-
-        self.g_gamma_z.write(&mut writer)?;
-
-        self.h_gamma_z.write(&mut writer)?;
-
-        self.g_ab_gamma_z.write(&mut writer)?;
-
-        self.g_gamma2_z2.write(&mut writer)?;
-
-        (self.g_gamma2_z_t.len() as u32).write(&mut writer)?;
-        for g in &self.g_gamma2_z_t[..] {
-            g.write(&mut writer)?;
-        }
-
-        Ok(())
-    }
-
     /// Deserialize the public parameters from bytes.
     pub fn read<R: Read>(mut reader: R, checked: bool) -> IoResult<Self> {
         let read_g1_affine = |mut reader: &mut R| -> IoResult<E::G1Affine> {
@@ -480,16 +472,16 @@ impl<E: PairingEngine> Default for PreparedVerifyingKey<E> {
 }
 
 impl<E: PairingEngine> ToBytes for PreparedVerifyingKey<E> {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.vk.write(&mut writer)?;
-        self.g_alpha.write(&mut writer)?;
-        self.h_beta.write(&mut writer)?;
-        self.g_alpha_h_beta_ml.write(&mut writer)?;
-        self.g_gamma_pc.write(&mut writer)?;
-        self.h_gamma_pc.write(&mut writer)?;
-        self.h_pc.write(&mut writer)?;
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.vk.write_le(&mut writer)?;
+        self.g_alpha.write_le(&mut writer)?;
+        self.h_beta.write_le(&mut writer)?;
+        self.g_alpha_h_beta_ml.write_le(&mut writer)?;
+        self.g_gamma_pc.write_le(&mut writer)?;
+        self.h_gamma_pc.write_le(&mut writer)?;
+        self.h_pc.write_le(&mut writer)?;
         for q in self.query() {
-            q.write(&mut writer)?;
+            q.write_le(&mut writer)?;
         }
         Ok(())
     }

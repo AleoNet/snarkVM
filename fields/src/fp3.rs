@@ -335,10 +335,10 @@ impl<P: Fp3Parameters> From<u8> for Fp3<P> {
 
 impl<P: Fp3Parameters> ToBytes for Fp3<P> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.c0.write(&mut writer)?;
-        self.c1.write(&mut writer)?;
-        self.c2.write(writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.c0.write_le(&mut writer)?;
+        self.c1.write_le(&mut writer)?;
+        self.c2.write_le(writer)
     }
 }
 

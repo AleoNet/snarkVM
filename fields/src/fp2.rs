@@ -290,9 +290,9 @@ impl<P: Fp2Parameters> From<u8> for Fp2<P> {
 
 impl<P: Fp2Parameters> ToBytes for Fp2<P> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.c0.write(&mut writer)?;
-        self.c1.write(writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.c0.write_le(&mut writer)?;
+        self.c1.write_le(writer)
     }
 }
 

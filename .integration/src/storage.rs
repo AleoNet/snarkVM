@@ -115,7 +115,7 @@ impl TransactionScheme for TestTx {
 
 impl ToBytes for TestTx {
     #[inline]
-    fn write<W: Write>(&self, mut _writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut _writer: W) -> IoResult<()> {
         Ok(())
     }
 }

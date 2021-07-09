@@ -113,13 +113,13 @@ pub trait BigInteger:
     /// Returns a vector for wnaf.
     fn find_wnaf(&self) -> Vec<i64>;
 
-    /// Writes this `BigInteger` as a big endian integer. Always writes
-    /// `(num_bits` / 8) bytes.
-    fn write_le<W: Write>(&self, writer: &mut W) -> IoResult<()> {
-        self.write(writer)
-    }
+    // /// Writes this `BigInteger` as little-endian bytes. Always writes
+    // /// `(num_bits` / 8) bytes.
+    // fn write_le<W: Write>(&self, writer: &mut W) -> IoResult<()> {
+    //     ToBytes::write_le(self, writer)
+    // }
 
-    /// Reads a big endian integer occupying (`num_bits` / 8) bytes into this
+    /// Reads little-endian bytes occupying (`num_bits` / 8) bytes into this
     /// representation.
     fn read_le<R: Read>(&mut self, reader: &mut R) -> IoResult<()> {
         *self = Self::read(reader)?;
@@ -167,7 +167,7 @@ impl BigInteger256 {
         // Takes a 256 bit buffer
         let mut bytes = [0u8; 32];
 
-        num.write(bytes.as_mut()).unwrap();
+        num.write_le(bytes.as_mut()).unwrap();
 
         Self::read(&bytes[..]).unwrap()
     }
@@ -175,7 +175,7 @@ impl BigInteger256 {
     pub fn to_u128(&self) -> u128 {
         let mut bytes = [0u8; 32];
 
-        self.write(bytes.as_mut()).unwrap();
+        self.write_le(bytes.as_mut()).unwrap();
 
         // We cut off the last 128 bits here
         u128::read(&bytes[..16]).unwrap()

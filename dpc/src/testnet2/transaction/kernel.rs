@@ -85,62 +85,62 @@ impl<C: Testnet2Components> TransactionKernel<C> {
 
 impl<C: Testnet2Components> ToBytes for TransactionKernel<C> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write old record components
 
         for old_record in &self.old_records {
-            old_record.write(&mut writer)?;
+            old_record.write_le(&mut writer)?;
         }
 
         for old_serial_number in &self.old_serial_numbers {
-            old_serial_number.write(&mut writer)?;
+            old_serial_number.write_le(&mut writer)?;
         }
 
         for old_randomizer in &self.old_randomizers {
-            variable_length_integer(old_randomizer.len() as u64).write(&mut writer)?;
-            old_randomizer.write(&mut writer)?;
+            variable_length_integer(old_randomizer.len() as u64).write_le(&mut writer)?;
+            old_randomizer.write_le(&mut writer)?;
         }
 
         // Write new record components
 
         for new_record in &self.new_records {
-            new_record.write(&mut writer)?;
+            new_record.write_le(&mut writer)?;
         }
 
         for new_sn_nonce_randomness in &self.new_sn_nonce_randomness {
-            new_sn_nonce_randomness.write(&mut writer)?;
+            new_sn_nonce_randomness.write_le(&mut writer)?;
         }
 
         for new_commitment in &self.new_commitments {
-            new_commitment.write(&mut writer)?;
+            new_commitment.write_le(&mut writer)?;
         }
 
         for new_records_encryption_randomness in &self.new_records_encryption_randomness {
-            new_records_encryption_randomness.write(&mut writer)?;
+            new_records_encryption_randomness.write_le(&mut writer)?;
         }
 
         for new_encrypted_record in &self.new_encrypted_records {
-            new_encrypted_record.write(&mut writer)?;
+            new_encrypted_record.write_le(&mut writer)?;
         }
 
         for new_encrypted_record_hash in &self.new_encrypted_record_hashes {
-            new_encrypted_record_hash.write(&mut writer)?;
+            new_encrypted_record_hash.write_le(&mut writer)?;
         }
 
         // Write transaction components
 
-        self.program_commitment.write(&mut writer)?;
-        self.program_randomness.write(&mut writer)?;
+        self.program_commitment.write_le(&mut writer)?;
+        self.program_randomness.write_le(&mut writer)?;
 
-        self.local_data_merkle_tree.write(&mut writer)?;
+        self.local_data_merkle_tree.write_le(&mut writer)?;
 
         for local_data_commitment_randomizer in &self.local_data_commitment_randomizers {
-            local_data_commitment_randomizer.write(&mut writer)?;
+            local_data_commitment_randomizer.write_le(&mut writer)?;
         }
 
-        self.value_balance.write(&mut writer)?;
-        self.memorandum.write(&mut writer)?;
-        self.network_id.write(&mut writer)
+        self.value_balance.write_le(&mut writer)?;
+        self.memorandum.write_le(&mut writer)?;
+        self.network_id.write_le(&mut writer)
     }
 }
 

@@ -143,7 +143,7 @@ impl<F: Field, PC: PolynomialCommitment<F>> FromBytes for BatchLCProof<F, PC> {
 }
 
 impl<F: Field, PC: PolynomialCommitment<F>> ToBytes for BatchLCProof<F, PC> {
-    fn write<W: Write>(&self, mut writer: W) -> io::Result<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error_fn("could not serialize struct"))
     }
 }

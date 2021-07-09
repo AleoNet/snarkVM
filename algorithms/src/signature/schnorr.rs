@@ -48,9 +48,9 @@ pub struct SchnorrSignature<G: Group> {
 
 impl<G: Group> ToBytes for SchnorrSignature<G> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.prover_response.write(&mut writer)?;
-        self.verifier_challenge.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.prover_response.write_le(&mut writer)?;
+        self.verifier_challenge.write_le(&mut writer)
     }
 }
 
@@ -81,8 +81,8 @@ pub struct SchnorrPublicKey<G: Group + CanonicalSerialize + CanonicalDeserialize
 
 impl<G: Group + CanonicalSerialize + CanonicalDeserialize> ToBytes for SchnorrPublicKey<G> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.0.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.0.write_le(&mut writer)
     }
 }
 

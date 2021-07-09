@@ -50,18 +50,18 @@ pub fn from_bits_le_to_bytes_le(bits: &[bool]) -> Vec<u8> {
 }
 
 pub trait ToBytes {
-    /// Serializes `self` into `writer`.
-    fn write<W: Write>(&self, writer: W) -> IoResult<()>;
+    /// Writes `self` into `writer` as little-endian bytes.
+    fn write_le<W: Write>(&self, writer: W) -> IoResult<()>;
 }
 
 pub trait FromBytes: Sized {
-    /// Reads `Self` from `reader`.
+    /// Reads `Self` from `reader` as little-endian bytes.
     fn read<R: Read>(reader: R) -> IoResult<Self>;
 }
 
 impl<const N: usize> ToBytes for [u8; N] {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         writer.write_all(self)
     }
 }
@@ -77,7 +77,7 @@ impl<const N: usize> FromBytes for [u8; N] {
 
 impl<const N: usize> ToBytes for [u16; N] {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         for num in self {
             writer.write_all(&num.to_le_bytes())?;
         }
@@ -100,7 +100,7 @@ impl<const N: usize> FromBytes for [u16; N] {
 
 impl<const N: usize> ToBytes for [u32; N] {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         for num in self {
             writer.write_all(&num.to_le_bytes())?;
         }
@@ -123,7 +123,7 @@ impl<const N: usize> FromBytes for [u32; N] {
 
 impl<const N: usize> ToBytes for [u64; N] {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         for num in self {
             writer.write_all(&num.to_le_bytes())?;
         }
@@ -145,9 +145,9 @@ impl<const N: usize> FromBytes for [u64; N] {
 }
 
 impl<L: ToBytes, R: ToBytes> ToBytes for (L, R) {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.0.write(&mut writer)?;
-        self.1.write(&mut writer)?;
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.0.write_le(&mut writer)?;
+        self.1.write_le(&mut writer)?;
         Ok(())
     }
 }
@@ -167,18 +167,18 @@ macro_rules! to_bytes {
 macro_rules! push_to_vec {
     ($buf:expr, $y:expr, $($x:expr),*) => ({
         {
-            ToBytes::write(&$y, &mut $buf)
+            ToBytes::write_le(&$y, &mut $buf)
         }.and({$crate::push_to_vec!($buf, $($x),*)})
     });
 
     ($buf:expr, $x:expr) => ({
-        ToBytes::write(&$x, &mut $buf)
+        ToBytes::write_le(&$x, &mut $buf)
     })
 }
 
 impl ToBytes for u8 {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         writer.write_all(&[*self])
     }
 }
@@ -194,7 +194,7 @@ impl FromBytes for u8 {
 
 impl ToBytes for u16 {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         writer.write_all(&self.to_le_bytes())
     }
 }
@@ -210,7 +210,7 @@ impl FromBytes for u16 {
 
 impl ToBytes for u32 {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         writer.write_all(&self.to_le_bytes())
     }
 }
@@ -226,7 +226,7 @@ impl FromBytes for u32 {
 
 impl ToBytes for u64 {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         writer.write_all(&self.to_le_bytes())
     }
 }
@@ -242,7 +242,7 @@ impl FromBytes for u64 {
 
 impl ToBytes for u128 {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         writer.write_all(&self.to_le_bytes())
     }
 }
@@ -258,7 +258,7 @@ impl FromBytes for u128 {
 
 impl ToBytes for i64 {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         writer.write_all(&self.to_le_bytes())
     }
 }
@@ -274,7 +274,7 @@ impl FromBytes for i64 {
 
 impl ToBytes for () {
     #[inline]
-    fn write<W: Write>(&self, _writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, _writer: W) -> IoResult<()> {
         Ok(())
     }
 }
@@ -288,8 +288,8 @@ impl FromBytes for () {
 
 impl ToBytes for bool {
     #[inline]
-    fn write<W: Write>(&self, writer: W) -> IoResult<()> {
-        u8::write(&(*self as u8), writer)
+    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
+        u8::write_le(&(*self as u8), writer)
     }
 }
 
@@ -307,9 +307,9 @@ impl FromBytes for bool {
 
 impl<T: ToBytes> ToBytes for Vec<T> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         for item in self {
-            item.write(&mut writer)?;
+            item.write_le(&mut writer)?;
         }
         Ok(())
     }
@@ -317,9 +317,9 @@ impl<T: ToBytes> ToBytes for Vec<T> {
 
 impl<'a, T: 'a + ToBytes> ToBytes for &'a [T] {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         for item in *self {
-            item.write(&mut writer)?;
+            item.write_le(&mut writer)?;
         }
         Ok(())
     }
@@ -327,8 +327,8 @@ impl<'a, T: 'a + ToBytes> ToBytes for &'a [T] {
 
 impl<'a, T: 'a + ToBytes> ToBytes for &'a T {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (*self).write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (*self).write_le(&mut writer)
     }
 }
 

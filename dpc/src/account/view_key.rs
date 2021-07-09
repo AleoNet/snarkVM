@@ -61,8 +61,8 @@ impl<C: DPCComponents> ViewKey<C> {
 }
 
 impl<C: DPCComponents> ToBytes for ViewKey<C> {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.decryption_key.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.decryption_key.write_le(&mut writer)
     }
 }
 
@@ -103,7 +103,7 @@ impl<C: DPCComponents> fmt::Display for ViewKey<C> {
         view_key[0..7].copy_from_slice(&account_format::VIEW_KEY_PREFIX);
 
         self.decryption_key
-            .write(&mut view_key[7..39])
+            .write_le(&mut view_key[7..39])
             .expect("decryption_key formatting failed");
 
         write!(f, "{}", view_key.to_base58())

@@ -63,13 +63,13 @@ impl<P: Bls12Parameters> Default for G2Prepared<P> {
 }
 
 impl<P: Bls12Parameters> ToBytes for G2Prepared<P> {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         for coeff in &self.ell_coeffs {
-            coeff.0.write(&mut writer)?;
-            coeff.1.write(&mut writer)?;
-            coeff.2.write(&mut writer)?;
+            coeff.0.write_le(&mut writer)?;
+            coeff.1.write_le(&mut writer)?;
+            coeff.2.write_le(&mut writer)?;
         }
-        self.infinity.write(writer)
+        self.infinity.write_le(writer)
     }
 }
 

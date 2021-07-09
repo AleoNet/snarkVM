@@ -118,11 +118,11 @@ impl<T: TransactionScheme> Transactions<T> {
 
 impl<T: TransactionScheme> ToBytes for Transactions<T> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        variable_length_integer(self.0.len() as u64).write(&mut writer)?;
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        variable_length_integer(self.0.len() as u64).write_le(&mut writer)?;
 
         for transaction in &self.0 {
-            transaction.write(&mut writer)?;
+            transaction.write_le(&mut writer)?;
         }
 
         Ok(())

@@ -49,10 +49,10 @@ pub struct GroupEncryptionPublicKey<G: Group + ProjectiveCurve + CanonicalSerial
 impl<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> ToBytes for GroupEncryptionPublicKey<G> {
     /// Writes the x-coordinate of the encryption public key.
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         let affine = self.0.into_affine();
         let x_coordinate = affine.to_x_coordinate();
-        x_coordinate.write(&mut writer)
+        x_coordinate.write_le(&mut writer)
     }
 }
 

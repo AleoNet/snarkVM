@@ -62,12 +62,12 @@ impl<G: Group, D: Digest> SchnorrParameters<G, D> {
 }
 
 impl<G: Group, D: Digest> ToBytes for SchnorrParameters<G, D> {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.generator_powers.len() as u32).write(&mut writer)?;
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.generator_powers.len() as u32).write_le(&mut writer)?;
         for g in &self.generator_powers {
-            g.write(&mut writer)?;
+            g.write_le(&mut writer)?;
         }
-        self.salt.write(&mut writer)
+        self.salt.write_le(&mut writer)
     }
 }
 

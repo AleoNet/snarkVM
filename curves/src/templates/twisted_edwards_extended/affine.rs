@@ -302,9 +302,9 @@ impl<P: Parameters> MulAssign<P::ScalarField> for Affine<P> {
 
 impl<P: Parameters> ToBytes for Affine<P> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.x.write(&mut writer)?;
-        self.y.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.x.write_le(&mut writer)?;
+        self.y.write_le(&mut writer)
     }
 }
 

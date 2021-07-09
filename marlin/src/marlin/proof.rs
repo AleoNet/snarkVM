@@ -124,7 +124,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> Proof<F, PC> {
 }
 
 impl<F: PrimeField, PC: PolynomialCommitment<F>> ToBytes for Proof<F, PC> {
-    fn write<W: Write>(&self, mut w: W) -> io::Result<()> {
+    fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize Proof"))
     }
 }

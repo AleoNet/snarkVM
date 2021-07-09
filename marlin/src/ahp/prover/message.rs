@@ -27,7 +27,7 @@ pub struct ProverMessage<F: Field> {
 }
 
 impl<F: Field> ToBytes for ProverMessage<F> {
-    fn write<W: Write>(&self, mut w: W) -> io::Result<()> {
+    fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("Could not serialize ProverMsg"))
     }
 }

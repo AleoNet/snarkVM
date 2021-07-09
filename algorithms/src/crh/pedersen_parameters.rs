@@ -59,12 +59,12 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> PedersenCRHPa
 impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
     for PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.bases.len() as u32).write(&mut writer)?;
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.bases.len() as u32).write_le(&mut writer)?;
         for base in &self.bases {
-            (base.len() as u32).write(&mut writer)?;
+            (base.len() as u32).write_le(&mut writer)?;
             for g in base {
-                g.write(&mut writer)?;
+                g.write_le(&mut writer)?;
             }
         }
         Ok(())

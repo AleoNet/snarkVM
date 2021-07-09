@@ -53,9 +53,9 @@ impl<T: TransactionScheme> BlockScheme for Block<T> {
 
 impl<T: TransactionScheme> ToBytes for Block<T> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.header.write(&mut writer)?;
-        self.transactions.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.header.write_le(&mut writer)?;
+        self.transactions.write_le(&mut writer)
     }
 }
 

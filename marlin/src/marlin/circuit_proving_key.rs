@@ -43,7 +43,7 @@ pub struct CircuitProvingKey<F: PrimeField, PC: PolynomialCommitment<F>> {
 }
 
 impl<F: PrimeField, PC: PolynomialCommitment<F>> ToBytes for CircuitProvingKey<F, PC> {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize CircuitProvingKey"))
     }
 }

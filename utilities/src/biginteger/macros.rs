@@ -218,8 +218,8 @@ macro_rules! bigint_impl {
 
         impl ToBytes for $name {
             #[inline]
-            fn write<W: Write>(&self, writer: W) -> IoResult<()> {
-                self.0.write(writer)
+            fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
+                self.0.write_le(writer)
             }
         }
 

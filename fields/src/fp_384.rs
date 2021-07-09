@@ -474,8 +474,8 @@ impl_mul_div_from_field_ref!(Fp384, Fp384Parameters);
 
 impl<P: Fp384Parameters> ToBytes for Fp384<P> {
     #[inline]
-    fn write<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.into_repr().write(writer)
+    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
+        self.into_repr().write_le(writer)
     }
 }
 

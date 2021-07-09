@@ -267,7 +267,7 @@ impl<C: DPCComponents> fmt::Display for PrivateKey<C> {
         private_key[9..11].copy_from_slice(&self.r_pk_counter.to_le_bytes());
 
         self.seed
-            .write(&mut private_key[11..43])
+            .write_le(&mut private_key[11..43])
             .expect("seed formatting failed");
 
         write!(f, "{}", private_key.to_base58())

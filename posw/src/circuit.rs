@@ -175,7 +175,7 @@ mod test {
         let tree = EdwardsMaskedMerkleTree::new(Arc::new(parameters.clone()), &leaves[..]).unwrap();
         let root = tree.root();
         let mut root_bytes = [0; 32];
-        root.write(&mut root_bytes[..]).unwrap();
+        root.write_le(&mut root_bytes[..]).unwrap();
 
         let mut h = Blake2s::new();
         h.update(nonce.as_ref());

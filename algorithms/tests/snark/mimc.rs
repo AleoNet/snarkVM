@@ -216,7 +216,7 @@ fn test_mimc_groth_16() {
             let proof = create_random_proof(&c, &params, rng).unwrap();
             assert!(verify_proof(&pvk, &proof, &[image]).unwrap());
 
-            // proof.write(&mut proof_vec).unwrap();
+            // proof.write_le(&mut proof_vec).unwrap();
         }
 
         total_proving += start.elapsed();
@@ -303,7 +303,7 @@ fn test_mimc_groth_maller_17() {
             let proof = create_random_proof(&c, &params, rng).unwrap();
             assert!(verify_proof(&pvk, &proof, &[image]).unwrap());
 
-            // proof.write(&mut proof_vec).unwrap();
+            // proof.write_le(&mut proof_vec).unwrap();
         }
 
         total_proving += start.elapsed();

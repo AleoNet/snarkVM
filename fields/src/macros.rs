@@ -167,7 +167,7 @@ macro_rules! impl_primefield_serializer {
                 }
 
                 let mut bytes = [0u8; BYTE_SIZE];
-                self.write(&mut bytes[..])?;
+                self.write_le(&mut bytes[..])?;
 
                 bytes[output_byte_size - 1] |= flags.u8_bitmask();
 

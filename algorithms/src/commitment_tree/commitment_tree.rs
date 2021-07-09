@@ -137,12 +137,12 @@ impl<C: CommitmentScheme, H: CRH> CommitmentMerkleTree<C, H> {
 
 impl<C: CommitmentScheme, H: CRH> ToBytes for CommitmentMerkleTree<C, H> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.root.write(&mut writer)?;
-        self.inner_hashes.0.write(&mut writer)?;
-        self.inner_hashes.1.write(&mut writer)?;
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.root.write_le(&mut writer)?;
+        self.inner_hashes.0.write_le(&mut writer)?;
+        self.inner_hashes.1.write_le(&mut writer)?;
         for leaf in &self.leaves {
-            leaf.write(&mut writer)?;
+            leaf.write_le(&mut writer)?;
         }
 
         Ok(())

@@ -69,7 +69,7 @@ where
 }
 
 impl<E: PairingEngine> ToBytes for Parameters<E> {
-    fn write<W: Write>(&self, mut w: W) -> io::Result<()> {
+    fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize parameters"))
     }
 }
