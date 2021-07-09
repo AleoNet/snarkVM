@@ -31,8 +31,9 @@ use crate::{
 };
 use snarkvm_utilities::{
     biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger256 as BigInteger},
-    bytes::{FromBytes, ToBytes},
     serialize::CanonicalDeserialize,
+    FromBytes,
+    ToBytes,
 };
 
 use std::{
@@ -399,15 +400,15 @@ impl_mul_div_from_field_ref!(Fp256, Fp256Parameters);
 
 impl<P: Fp256Parameters> ToBytes for Fp256<P> {
     #[inline]
-    fn write<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.into_repr().write(writer)
+    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
+        self.into_repr().write_le(writer)
     }
 }
 
 impl<P: Fp256Parameters> FromBytes for Fp256<P> {
     #[inline]
-    fn read<R: Read>(reader: R) -> IoResult<Self> {
-        BigInteger::read(reader).and_then(|b| match Self::from_repr(b) {
+    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
+        BigInteger::read_le(reader).and_then(|b| match Self::from_repr(b) {
             Some(f) => Ok(f),
             None => Err(FieldError::InvalidFieldElement.into()),
         })

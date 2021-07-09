@@ -16,7 +16,7 @@
 
 use crate::{BlockHeaderHash, MerkleRootHash, PedersenMerkleRootHash, ProofOfSuccinctWork};
 use snarkvm_algorithms::crh::{double_sha256, sha256d_to_u64};
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use serde::{Deserialize, Serialize};
 use std::{
@@ -162,27 +162,27 @@ impl BlockHeader {
 
 impl ToBytes for BlockHeader {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.previous_block_hash.0.write(&mut writer)?;
-        self.merkle_root_hash.0.write(&mut writer)?;
-        self.pedersen_merkle_root_hash.0.write(&mut writer)?;
-        self.proof.write(&mut writer)?;
-        self.time.to_le_bytes().write(&mut writer)?;
-        self.difficulty_target.to_le_bytes().write(&mut writer)?;
-        self.nonce.to_le_bytes().write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.previous_block_hash.0.write_le(&mut writer)?;
+        self.merkle_root_hash.0.write_le(&mut writer)?;
+        self.pedersen_merkle_root_hash.0.write_le(&mut writer)?;
+        self.proof.write_le(&mut writer)?;
+        self.time.to_le_bytes().write_le(&mut writer)?;
+        self.difficulty_target.to_le_bytes().write_le(&mut writer)?;
+        self.nonce.to_le_bytes().write_le(&mut writer)
     }
 }
 
 impl FromBytes for BlockHeader {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let previous_block_hash = <[u8; 32]>::read(&mut reader)?;
-        let merkle_root_hash = <[u8; 32]>::read(&mut reader)?;
-        let pedersen_merkle_root_hash = <[u8; 32]>::read(&mut reader)?;
-        let proof = ProofOfSuccinctWork::read(&mut reader)?;
-        let time = <[u8; 8]>::read(&mut reader)?;
-        let difficulty_target = <[u8; 8]>::read(&mut reader)?;
-        let nonce = <[u8; 4]>::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let previous_block_hash = <[u8; 32]>::read_le(&mut reader)?;
+        let merkle_root_hash = <[u8; 32]>::read_le(&mut reader)?;
+        let pedersen_merkle_root_hash = <[u8; 32]>::read_le(&mut reader)?;
+        let proof = ProofOfSuccinctWork::read_le(&mut reader)?;
+        let time = <[u8; 8]>::read_le(&mut reader)?;
+        let difficulty_target = <[u8; 8]>::read_le(&mut reader)?;
+        let nonce = <[u8; 4]>::read_le(&mut reader)?;
 
         Ok(Self {
             previous_block_hash: BlockHeaderHash(previous_block_hash),
@@ -218,8 +218,8 @@ mod tests {
         let result = BlockHeader::deserialize(&serialized1);
 
         let mut serialized2 = vec![];
-        block_header.write(&mut serialized2).unwrap();
-        let de = BlockHeader::read(&serialized2[..]).unwrap();
+        block_header.write_le(&mut serialized2).unwrap();
+        let de = BlockHeader::read_le(&serialized2[..]).unwrap();
 
         assert_eq!(&serialized1[..], &serialized2[..]);
         assert_eq!(&serialized1[..], &bincode::serialize(&block_header).unwrap()[..]);

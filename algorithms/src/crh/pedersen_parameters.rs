@@ -17,7 +17,7 @@
 use crate::traits::crh::CRHParameters;
 use snarkvm_curves::Group;
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::Rng;
 use std::{
@@ -59,12 +59,12 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> PedersenCRHPa
 impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
     for PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.bases.len() as u32).write(&mut writer)?;
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.bases.len() as u32).write_le(&mut writer)?;
         for base in &self.bases {
-            (base.len() as u32).write(&mut writer)?;
+            (base.len() as u32).write_le(&mut writer)?;
             for g in base {
-                g.write(&mut writer)?;
+                g.write_le(&mut writer)?;
             }
         }
         Ok(())
@@ -75,16 +75,16 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
     for PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let num_bases: u32 = FromBytes::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let num_bases: u32 = FromBytes::read_le(&mut reader)?;
         let mut bases = Vec::with_capacity(num_bases as usize);
 
         for _ in 0..num_bases {
-            let base_len: u32 = FromBytes::read(&mut reader)?;
+            let base_len: u32 = FromBytes::read_le(&mut reader)?;
             let mut base = Vec::with_capacity(base_len as usize);
 
             for _ in 0..base_len {
-                let g: G = FromBytes::read(&mut reader)?;
+                let g: G = FromBytes::read_le(&mut reader)?;
                 base.push(g);
             }
             bases.push(base);

@@ -92,7 +92,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest> FiatShamirRng<Ta
     fn absorb_nonnative_field_elements(&mut self, elems: &[TargetField], _: OptimizationType) {
         let mut bytes = Vec::new();
         for elem in elems {
-            elem.write(&mut bytes).expect("failed to convert to bytes");
+            elem.write_le(&mut bytes).expect("failed to convert to bytes");
         }
         self.absorb_bytes(&bytes);
     }
@@ -105,7 +105,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest> FiatShamirRng<Ta
 
         let mut bytes = Vec::new();
         for elem in elems.iter() {
-            elem.write(&mut bytes).expect("failed to convert to bytes");
+            elem.write_le(&mut bytes).expect("failed to convert to bytes");
         }
         self.absorb_bytes(&bytes);
     }

@@ -18,7 +18,7 @@ use std::{borrow::Borrow, marker::PhantomData};
 
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
-use snarkvm_utilities::BigInteger;
+use snarkvm_utilities::{FromBits, ToBits};
 
 use crate::{
     bits::{Boolean, ToBitsLEGadget},
@@ -167,7 +167,7 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
         // Step 3: allocate the CF field elements as input
         let mut src_booleans = Vec::<Boolean>::new();
         for (i, chunk) in src_bits.chunks(capacity).enumerate() {
-            let elem = CF::from_repr(<CF as PrimeField>::BigInteger::from_bits_be(chunk.to_vec())).unwrap(); // big endian
+            let elem = CF::from_repr(<CF as PrimeField>::BigInteger::from_bits_be(chunk)).unwrap(); // big endian
 
             let elem_gadget = FpGadget::<CF>::alloc_input(cs.ns(|| format!("alloc_elem_{}", i)), || Ok(elem))?;
             let mut booleans = elem_gadget.to_bits_le(cs.ns(|| format!("elem_to_bits_{}", i)))?;
@@ -262,7 +262,7 @@ mod test {
     use snarkvm_r1cs::{Fr, TestConstraintSystem};
     use snarkvm_utilities::{
         rand::{test_rng, UniformRand},
-        to_bytes,
+        to_bytes_le,
         ToBytes,
     };
 
@@ -277,7 +277,7 @@ mod test {
             vec![
                 UInt8::alloc_input_vec_le(
                     cs.ns(|| format!("Allocate field elements")),
-                    &to_bytes![field_elements].unwrap(),
+                    &to_bytes_le![field_elements].unwrap(),
                 )
                 .unwrap(),
             ]
@@ -287,7 +287,7 @@ mod test {
                 fe_bytes.push(
                     UInt8::alloc_input_vec_le(
                         cs.ns(|| format!("Allocate field elements - index {} ", index)),
-                        &to_bytes![field_element].unwrap(),
+                        &to_bytes_le![field_element].unwrap(),
                     )
                     .unwrap(),
                 );

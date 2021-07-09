@@ -20,7 +20,7 @@ use snarkvm_dpc::{
 };
 use snarkvm_fields::ToConstraintField;
 use snarkvm_marlin::PolynomialCommitment;
-use snarkvm_utilities::{bytes::ToBytes, to_bytes};
+use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
 use std::path::PathBuf;
@@ -38,7 +38,7 @@ where
     let rng = &mut thread_rng();
 
     let universal_srs = ProgramSNARKUniversalSRS::<C>::setup(rng)?;
-    let universal_srs_bytes = to_bytes![universal_srs.0]?;
+    let universal_srs_bytes = universal_srs.0.to_bytes_le()?;
 
     println!("universal_srs.params\n\tsize - {}", universal_srs_bytes.len());
     Ok(universal_srs_bytes)

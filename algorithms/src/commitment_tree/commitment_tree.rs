@@ -19,7 +19,7 @@ use crate::{
     errors::MerkleError,
     traits::{CommitmentScheme, CRH},
 };
-use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
 
@@ -48,13 +48,13 @@ pub struct CommitmentMerkleTree<C: CommitmentScheme, H: CRH> {
 impl<C: CommitmentScheme, H: CRH> CommitmentMerkleTree<C, H> {
     /// Construct a new commitment Merkle tree.
     pub fn new(parameters: H, leaves: &[<C as CommitmentScheme>::Output; 4]) -> Result<Self, MerkleError> {
-        let input_1 = to_bytes![leaves[0], leaves[1]]?;
+        let input_1 = to_bytes_le![leaves[0], leaves[1]]?;
         let inner_hash1 = H::hash(&parameters, &input_1)?;
 
-        let input_2 = to_bytes![leaves[2], leaves[3]]?;
+        let input_2 = to_bytes_le![leaves[2], leaves[3]]?;
         let inner_hash2 = H::hash(&parameters, &input_2)?;
 
-        let root = H::hash(&parameters, &to_bytes![inner_hash1, inner_hash2]?)?;
+        let root = H::hash(&parameters, &to_bytes_le![inner_hash1, inner_hash2]?)?;
 
         Ok(Self {
             root,
@@ -104,16 +104,16 @@ impl<C: CommitmentScheme, H: CRH> CommitmentMerkleTree<C, H> {
     }
 
     pub fn from_bytes<R: Read>(mut reader: R, parameters: H) -> IoResult<Self> {
-        let root = <H as CRH>::Output::read(&mut reader)?;
+        let root = <H as CRH>::Output::read_le(&mut reader)?;
 
-        let left_inner_hash = <H as CRH>::Output::read(&mut reader)?;
-        let right_inner_hash = <H as CRH>::Output::read(&mut reader)?;
+        let left_inner_hash = <H as CRH>::Output::read_le(&mut reader)?;
+        let right_inner_hash = <H as CRH>::Output::read_le(&mut reader)?;
 
         let inner_hashes = (left_inner_hash, right_inner_hash);
 
         let mut leaves = vec![];
         for _ in 0..4 {
-            let leaf = <C as CommitmentScheme>::Output::read(&mut reader)?;
+            let leaf = <C as CommitmentScheme>::Output::read_le(&mut reader)?;
             leaves.push(leaf);
         }
 
@@ -137,12 +137,12 @@ impl<C: CommitmentScheme, H: CRH> CommitmentMerkleTree<C, H> {
 
 impl<C: CommitmentScheme, H: CRH> ToBytes for CommitmentMerkleTree<C, H> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.root.write(&mut writer)?;
-        self.inner_hashes.0.write(&mut writer)?;
-        self.inner_hashes.1.write(&mut writer)?;
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.root.write_le(&mut writer)?;
+        self.inner_hashes.0.write_le(&mut writer)?;
+        self.inner_hashes.1.write_le(&mut writer)?;
         for leaf in &self.leaves {
-            leaf.write(&mut writer)?;
+            leaf.write_le(&mut writer)?;
         }
 
         Ok(())

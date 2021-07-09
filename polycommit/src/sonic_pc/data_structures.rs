@@ -29,12 +29,7 @@ use snarkvm_curves::{
     Group,
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    error,
-    errors::SerializationError,
-    serialize::*,
-};
+use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 pub type UniversalParams<E> = kzg10::UniversalParams<E>;

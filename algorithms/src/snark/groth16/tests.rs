@@ -108,9 +108,9 @@ mod serialization {
     use crate::snark::groth16::{create_random_proof, generate_random_parameters, Proof};
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
     use snarkvm_utilities::{
-        bytes::{FromBytes, ToBytes},
         rand::{test_rng, UniformRand},
-        to_bytes,
+        FromBytes,
+        ToBytes,
     };
 
     #[test]
@@ -125,7 +125,7 @@ mod serialization {
 
         let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters, rng).unwrap();
 
-        let compressed_serialization = to_bytes![proof].unwrap();
+        let compressed_serialization = proof.to_bytes_le().unwrap();
 
         assert_eq!(
             Proof::<Bls12_377>::compressed_proof_size().unwrap(),
@@ -133,7 +133,7 @@ mod serialization {
         );
         assert!(Proof::<Bls12_377>::read_uncompressed(&compressed_serialization[..]).is_err());
 
-        let recovered_proof: Proof<Bls12_377> = FromBytes::read(&compressed_serialization[..]).unwrap();
+        let recovered_proof: Proof<Bls12_377> = FromBytes::read_le(&compressed_serialization[..]).unwrap();
         assert_eq!(recovered_proof.compressed, true);
     }
 
@@ -158,7 +158,7 @@ mod serialization {
         );
         assert!(Proof::<Bls12_377>::read_compressed(&uncompressed_serialization[..]).is_err());
 
-        let recovered_proof: Proof<Bls12_377> = FromBytes::read(&uncompressed_serialization[..]).unwrap();
+        let recovered_proof: Proof<Bls12_377> = FromBytes::read_le(&uncompressed_serialization[..]).unwrap();
         assert_eq!(recovered_proof.compressed, false);
     }
 }

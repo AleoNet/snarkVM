@@ -22,7 +22,7 @@ use snarkvm_utilities::{
     errors::SerializationError,
     rand::UniformRand,
     serialize::*,
-    to_bytes,
+    to_bytes_le,
 };
 
 use digest::Digest;
@@ -48,17 +48,17 @@ pub struct SchnorrSignature<G: Group> {
 
 impl<G: Group> ToBytes for SchnorrSignature<G> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.prover_response.write(&mut writer)?;
-        self.verifier_challenge.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.prover_response.write_le(&mut writer)?;
+        self.verifier_challenge.write_le(&mut writer)
     }
 }
 
 impl<G: Group> FromBytes for SchnorrSignature<G> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let prover_response = <G as Group>::ScalarField::read(&mut reader)?;
-        let verifier_challenge = <G as Group>::ScalarField::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let prover_response = <G as Group>::ScalarField::read_le(&mut reader)?;
+        let verifier_challenge = <G as Group>::ScalarField::read_le(&mut reader)?;
 
         Ok(Self {
             prover_response,
@@ -81,15 +81,15 @@ pub struct SchnorrPublicKey<G: Group + CanonicalSerialize + CanonicalDeserialize
 
 impl<G: Group + CanonicalSerialize + CanonicalDeserialize> ToBytes for SchnorrPublicKey<G> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.0.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.0.write_le(&mut writer)
     }
 }
 
 impl<G: Group + CanonicalSerialize + CanonicalDeserialize> FromBytes for SchnorrPublicKey<G> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self(G::read(&mut reader)?))
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(Self(G::read_le(&mut reader)?))
     }
 }
 
@@ -147,7 +147,7 @@ where
 
         let mut public_key = G::zero();
         for (bit, base_power) in
-            from_bytes_le_to_bits_le(&to_bytes![private_key]?).zip_eq(&self.parameters.generator_powers)
+            from_bytes_le_to_bits_le(&to_bytes_le![private_key]?).zip_eq(&self.parameters.generator_powers)
         {
             if bit {
                 public_key += base_power;
@@ -173,7 +173,7 @@ where
             // This is the prover's first msg in the Sigma protocol.
             let mut prover_commitment = G::zero();
             for (bit, base_power) in
-                from_bytes_le_to_bits_le(&to_bytes![random_scalar]?).zip_eq(&self.parameters.generator_powers)
+                from_bytes_le_to_bits_le(&to_bytes_le![random_scalar]?).zip_eq(&self.parameters.generator_powers)
             {
                 if bit {
                     prover_commitment += base_power;
@@ -183,7 +183,7 @@ where
             // Hash everything to get verifier challenge.
             let mut hash_input = Vec::new();
             hash_input.extend_from_slice(&self.parameters.salt);
-            hash_input.extend_from_slice(&to_bytes![prover_commitment]?);
+            hash_input.extend_from_slice(&to_bytes_le![prover_commitment]?);
             hash_input.extend_from_slice(message);
 
             // Compute the supposed verifier response: e := H(salt || r || msg);
@@ -218,7 +218,7 @@ where
 
         let mut claimed_prover_commitment = G::zero();
         for (bit, base_power) in
-            from_bytes_le_to_bits_le(&to_bytes![prover_response]?).zip_eq(&self.parameters.generator_powers)
+            from_bytes_le_to_bits_le(&to_bytes_le![prover_response]?).zip_eq(&self.parameters.generator_powers)
         {
             if bit {
                 claimed_prover_commitment += base_power;
@@ -230,7 +230,7 @@ where
 
         let mut hash_input = Vec::new();
         hash_input.extend_from_slice(&self.parameters.salt);
-        hash_input.extend_from_slice(&to_bytes![claimed_prover_commitment]?);
+        hash_input.extend_from_slice(&to_bytes_le![claimed_prover_commitment]?);
         hash_input.extend_from_slice(&message);
 
         let obtained_verifier_challenge = if let Some(obtained_verifier_challenge) =
@@ -255,7 +255,7 @@ where
 
         let mut encoded = G::zero();
         for (bit, base_power) in
-            from_bytes_le_to_bits_le(&to_bytes![randomness]?).zip_eq(&self.parameters.generator_powers)
+            from_bytes_le_to_bits_le(&to_bytes_le![randomness]?).zip_eq(&self.parameters.generator_powers)
         {
             if bit {
                 encoded += base_power;

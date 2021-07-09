@@ -21,11 +21,7 @@ use crate::{
     traits::{CommitmentScheme, CRH},
 };
 use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    to_bytes,
-};
+use snarkvm_utilities::{rand::UniformRand, FromBytes, ToBytes};
 
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
@@ -99,7 +95,7 @@ fn test_serialize_commitment_merkle_tree() {
 
     let merkle_tree = generate_merkle_tree(&commitment, &crh, rng);
 
-    let merkle_tree_bytes = to_bytes![merkle_tree].unwrap();
+    let merkle_tree_bytes = merkle_tree.to_bytes_le().unwrap();
     let recovered_merkle_tree = CommitmentMerkleTree::<C, H>::from_bytes(&merkle_tree_bytes[..], crh).unwrap();
 
     assert!(merkle_tree == recovered_merkle_tree);
@@ -117,8 +113,8 @@ fn test_serialize_commitment_path() {
     for leaf in merkle_tree.leaves().iter() {
         let proof = merkle_tree.generate_proof(&leaf).unwrap();
 
-        let proof_bytes = to_bytes![proof].unwrap();
-        let recovered_proof = CM::read(&proof_bytes[..]).unwrap();
+        let proof_bytes = proof.to_bytes_le().unwrap();
+        let recovered_proof = CM::read_le(&proof_bytes[..]).unwrap();
 
         assert!(proof == recovered_proof);
 

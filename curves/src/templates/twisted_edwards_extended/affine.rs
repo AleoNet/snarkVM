@@ -20,12 +20,7 @@ use crate::{
     traits::{AffineCurve, Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters as Parameters},
 };
 use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{
-    bititerator::BitIteratorBE,
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    serialize::*,
-};
+use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand, serialize::*, FromBytes, ToBytes};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -302,17 +297,17 @@ impl<P: Parameters> MulAssign<P::ScalarField> for Affine<P> {
 
 impl<P: Parameters> ToBytes for Affine<P> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.x.write(&mut writer)?;
-        self.y.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.x.write_le(&mut writer)?;
+        self.y.write_le(&mut writer)
     }
 }
 
 impl<P: Parameters> FromBytes for Affine<P> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let x = P::BaseField::read(&mut reader)?;
-        let y = P::BaseField::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let x = P::BaseField::read_le(&mut reader)?;
+        let y = P::BaseField::read_le(&mut reader)?;
         Ok(Self::new(x, y))
     }
 }

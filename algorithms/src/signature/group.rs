@@ -22,7 +22,7 @@ use crate::{
 };
 use snarkvm_curves::traits::{Group, ProjectiveCurve};
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{serialize::*, to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{serialize::*, to_bytes_le, FromBytes, ToBytes};
 
 use digest::Digest;
 use rand::Rng;
@@ -100,7 +100,7 @@ where
         rng: &mut R,
     ) -> Result<Self::Signature, SignatureError> {
         let schnorr_signature: Schnorr<SG, D> = self.parameters.clone().into();
-        let private_key = <SG as Group>::ScalarField::read(&to_bytes![private_key]?[..])?;
+        let private_key = <SG as Group>::ScalarField::read_le(&to_bytes_le![private_key]?[..])?;
 
         Ok(schnorr_signature.sign(&private_key, message, rng)?)
     }

@@ -64,7 +64,7 @@ use std::fmt::Debug;
 #[macro_export]
 macro_rules! overhead {
     ($x:expr) => {{
-        use snarkvm_utilities::biginteger::BigInteger;
+        use snarkvm_utilities::ToBits;
         let num = $x;
         let num_bits = num.into_repr().to_bits_be();
         let mut skipped_bits = 0;

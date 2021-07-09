@@ -41,7 +41,7 @@ use snarkvm_marlin::{
 };
 use snarkvm_parameters::{prelude::*, testnet2::*};
 use snarkvm_polycommit::PolynomialCommitment;
-use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
 
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
@@ -217,12 +217,12 @@ where
         let inner_snark_parameters = {
             let inner_snark_pk = match verify_only {
                 true => None,
-                false => Some(<C::InnerSNARK as SNARK>::ProvingKey::read(
+                false => Some(<C::InnerSNARK as SNARK>::ProvingKey::read_le(
                     InnerSNARKPKParameters::load_bytes()?.as_slice(),
                 )?),
             };
             let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey =
-                <C::InnerSNARK as SNARK>::VerifyingKey::read(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
+                <C::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
 
             (inner_snark_pk, inner_snark_vk.into())
         };
@@ -230,12 +230,12 @@ where
         let outer_snark_parameters = {
             let outer_snark_pk = match verify_only {
                 true => None,
-                false => Some(<C::OuterSNARK as SNARK>::ProvingKey::read(
+                false => Some(<C::OuterSNARK as SNARK>::ProvingKey::read_le(
                     OuterSNARKPKParameters::load_bytes()?.as_slice(),
                 )?),
             };
             let outer_snark_vk: <C::OuterSNARK as SNARK>::VerifyingKey =
-                <C::OuterSNARK as SNARK>::VerifyingKey::read(OuterSNARKVKParameters::load_bytes()?.as_slice())?;
+                <C::OuterSNARK as SNARK>::VerifyingKey::read_le(OuterSNARKVKParameters::load_bytes()?.as_slice())?;
 
             (outer_snark_pk, outer_snark_vk.into())
         };
@@ -290,7 +290,7 @@ where
 
             let (sn, randomizer) =
                 record.to_serial_number(&self.system_parameters.account_signature, &old_private_keys[i])?;
-            joint_serial_numbers.extend_from_slice(&to_bytes![sn]?);
+            joint_serial_numbers.extend_from_slice(&sn.to_bytes_le()?);
             old_serial_numbers.push(sn);
             old_randomizers.push(randomizer);
             old_death_program_ids.push(record.death_program_id().to_vec());
@@ -331,7 +331,7 @@ where
         let mut local_data_commitment_randomizers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         let mut old_record_commitments = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for i in 0..C::NUM_INPUT_RECORDS {
-            let input_bytes = to_bytes![
+            let input_bytes = to_bytes_le![
                 old_serial_numbers[i],
                 &old_records[i].commitment(),
                 memorandum,
@@ -351,7 +351,7 @@ where
 
         let mut new_record_commitments = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         for record in new_records.iter().take(C::NUM_OUTPUT_RECORDS) {
-            let input_bytes = to_bytes![record.commitment(), memorandum, C::NETWORK_ID]?;
+            let input_bytes = to_bytes_le![record.commitment(), memorandum, C::NETWORK_ID]?;
 
             let commitment_randomness = <C::LocalDataCommitment as CommitmentScheme>::Randomness::rand(rng);
             let commitment = C::LocalDataCommitment::commit(
@@ -490,7 +490,7 @@ where
         // TODO (raychu86): Remove ledger_digest from signature and move the schnorr signing into `execute_offline_phase`
         let signature_time = start_timer!(|| "Sign and randomize transaction contents");
 
-        let signature_message = to_bytes![
+        let signature_message = to_bytes_le![
             network_id,
             ledger_digest,
             old_serial_numbers,
@@ -594,10 +594,10 @@ where
 
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = self.inner_snark_parameters.1.clone().into();
 
-        let inner_circuit_id =
-            <C::InnerCircuitIDCRH as CRH>::hash(&self.system_parameters.inner_circuit_id_crh, &to_bytes![
-                inner_snark_vk
-            ]?)?;
+        let inner_circuit_id = <C::InnerCircuitIDCRH as CRH>::hash(
+            &self.system_parameters.inner_circuit_id_crh,
+            &inner_snark_vk.to_bytes_le()?,
+        )?;
 
         let transaction_proof = {
             let circuit = OuterCircuit::new(
@@ -714,7 +714,7 @@ where
             return false;
         }
 
-        let signature_message = match to_bytes![
+        let signature_message = match to_bytes_le![
             transaction.network_id(),
             transaction.ledger_digest(),
             transaction.old_serial_numbers(),
@@ -785,7 +785,7 @@ where
         let inner_snark_vk: <<C as Testnet2Components>::InnerSNARK as SNARK>::VerifyingKey =
             self.inner_snark_parameters.1.clone().into();
 
-        let inner_snark_vk_bytes = match to_bytes![inner_snark_vk] {
+        let inner_snark_vk_bytes = match to_bytes_le![inner_snark_vk] {
             Ok(bytes) => bytes,
             _ => {
                 eprintln!("Unable to convert inner snark vk into bytes.");

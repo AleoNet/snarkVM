@@ -20,11 +20,7 @@ use crate::{
     BlockHeader,
     Transactions,
 };
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-    variable_length_integer::variable_length_integer,
-};
+use snarkvm_utilities::{to_bytes_le, variable_length_integer::variable_length_integer, FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
 
@@ -53,17 +49,17 @@ impl<T: TransactionScheme> BlockScheme for Block<T> {
 
 impl<T: TransactionScheme> ToBytes for Block<T> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.header.write(&mut writer)?;
-        self.transactions.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.header.write_le(&mut writer)?;
+        self.transactions.write_le(&mut writer)
     }
 }
 
 impl<T: TransactionScheme> FromBytes for Block<T> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let header: BlockHeader = FromBytes::read(&mut reader)?;
-        let transactions: Transactions<T> = FromBytes::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let header: BlockHeader = FromBytes::read_le(&mut reader)?;
+        let transactions: Transactions<T> = FromBytes::read_le(&mut reader)?;
 
         Ok(Self { header, transactions })
     }
@@ -76,7 +72,7 @@ impl<T: TransactionScheme> Block<T> {
         serialization.extend(&variable_length_integer(self.transactions.len() as u64));
 
         for transaction in self.transactions.iter() {
-            serialization.extend(to_bytes![transaction]?)
+            serialization.extend(to_bytes_le![transaction]?)
         }
 
         Ok(serialization)
@@ -90,7 +86,7 @@ impl<T: TransactionScheme> Block<T> {
         header_array.copy_from_slice(&header_bytes[0..HEADER_SIZE]);
         let header = BlockHeader::deserialize(&header_array);
 
-        let transactions: Transactions<T> = FromBytes::read(transactions_bytes)?;
+        let transactions: Transactions<T> = FromBytes::read_le(transactions_bytes)?;
 
         Ok(Block { header, transactions })
     }

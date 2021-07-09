@@ -47,9 +47,9 @@ impl<F: PrimeField> CircuitInfo<F> {
 }
 
 impl<F: PrimeField> ToBytes for CircuitInfo<F> {
-    fn write<W: Write>(&self, mut w: W) -> Result<(), std::io::Error> {
-        (self.num_variables as u64).write(&mut w)?;
-        (self.num_constraints as u64).write(&mut w)?;
-        (self.num_non_zero as u64).write(&mut w)
+    fn write_le<W: Write>(&self, mut w: W) -> Result<(), std::io::Error> {
+        (self.num_variables as u64).write_le(&mut w)?;
+        (self.num_constraints as u64).write_le(&mut w)?;
+        (self.num_non_zero as u64).write_le(&mut w)
     }
 }

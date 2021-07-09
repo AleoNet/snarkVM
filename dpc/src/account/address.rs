@@ -82,16 +82,16 @@ impl<C: DPCComponents> Address<C> {
 }
 
 impl<C: DPCComponents> ToBytes for Address<C> {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.encryption_key.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.encryption_key.write_le(&mut writer)
     }
 }
 
 impl<C: DPCComponents> FromBytes for Address<C> {
     /// Reads in an account address buffer.
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let encryption_key: <C::AccountEncryption as EncryptionScheme>::PublicKey = FromBytes::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let encryption_key: <C::AccountEncryption as EncryptionScheme>::PublicKey = FromBytes::read_le(&mut reader)?;
 
         Ok(Self { encryption_key })
     }
@@ -117,7 +117,7 @@ impl<C: DPCComponents> FromStr for Address<C> {
         }
 
         let buffer = Vec::from_base32(&data)?;
-        Ok(Self::read(&buffer[..])?)
+        Ok(Self::read_le(&buffer[..])?)
     }
 }
 
@@ -126,7 +126,7 @@ impl<C: DPCComponents> fmt::Display for Address<C> {
         // Write the encryption key to a buffer.
         let mut address = [0u8; 32];
         self.encryption_key
-            .write(&mut address[0..32])
+            .write_le(&mut address[0..32])
             .expect("address formatting failed");
 
         bech32::encode(

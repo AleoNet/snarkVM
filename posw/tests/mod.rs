@@ -18,7 +18,7 @@ use snarkvm_algorithms::traits::SNARK;
 use snarkvm_curves::bls12_377::Bls12_377;
 use snarkvm_dpc::block::PedersenMerkleRootHash;
 use snarkvm_posw::{txids_to_roots, Marlin, PoswMarlin};
-use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::FromBytes;
 
 use rand::SeedableRng;
 
@@ -42,7 +42,7 @@ fn test_posw_load_and_mine() {
     assert_eq!(proof.len(), 972); // NOTE: Marlin proofs use compressed serialization
 
     // Verify the proof is valid.
-    let posw_proof = <Marlin<Bls12_377> as SNARK>::Proof::read(&proof[..]).unwrap();
+    let posw_proof = <Marlin<Bls12_377> as SNARK>::Proof::read_le(&proof[..]).unwrap();
     assert!(posw.verify(nonce, &posw_proof, &pedersen_merkle_root).is_ok());
 
     println!("Nonce - {}", nonce);
@@ -71,7 +71,7 @@ fn test_posw_verify_testnet1() {
     let proof = {
         let bytes = hex::decode(POSW_PROOF).unwrap();
         assert_eq!(bytes.len(), 972); // NOTE: Marlin proofs use compressed serialization
-        <Marlin<Bls12_377> as SNARK>::Proof::read(&bytes[..]).unwrap()
+        <Marlin<Bls12_377> as SNARK>::Proof::read_le(&bytes[..]).unwrap()
     };
 
     let posw = PoswMarlin::load().unwrap();

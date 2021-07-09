@@ -20,11 +20,12 @@ use snarkvm_curves::traits::{AffineCurve, PairingEngine};
 pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PCCommitment};
 use snarkvm_r1cs::{ConstraintSynthesizer, ToConstraintField};
 use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
     error,
     errors::SerializationError,
     io,
     serialize::*,
+    FromBytes,
+    ToBytes,
     PROCESSING_SNARK_PARAMS,
     SNARK_PARAMS_AFFINE_COUNT,
 };
@@ -69,13 +70,13 @@ where
 }
 
 impl<E: PairingEngine> ToBytes for Parameters<E> {
-    fn write<W: Write>(&self, mut w: W) -> io::Result<()> {
+    fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize parameters"))
     }
 }
 
 impl<E: PairingEngine> FromBytes for Parameters<E> {
-    fn read<R: Read>(mut r: R) -> io::Result<Self> {
+    fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
         // Signal that the SNARK params are being processed in order for the validation of affine values to be
         // deferred, while ensuring that this method is not called recursively; the expected number of entries is
         // counted with a thread-local SNARK_PARAMS_AFFINE_COUNT, which does not support recursion in its current form

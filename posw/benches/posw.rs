@@ -17,7 +17,7 @@
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_curves::bls12_377::Bls12_377;
 use snarkvm_posw::{txids_to_roots, Marlin, Posw, PoswMarlin, GM17};
-use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::FromBytes;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::SeedableRng;
@@ -81,7 +81,7 @@ fn marlin_posw(c: &mut Criterion) {
     });
 
     let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, std::u32::MAX).unwrap();
-    let proof = <Marlin<Bls12_377> as SNARK>::Proof::read(&proof[..]).unwrap();
+    let proof = <Marlin<Bls12_377> as SNARK>::Proof::read_le(&proof[..]).unwrap();
 
     group.bench_function("verify", |b| {
         b.iter(|| {
