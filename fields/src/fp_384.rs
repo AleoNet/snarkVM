@@ -389,13 +389,13 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
     }
 
     #[inline]
-    fn from_repr_raw(r: BigInteger) -> Self {
+    fn from_repr_unsafe(r: BigInteger) -> Self {
         let r = Fp384(r, PhantomData);
         if r.is_valid() { r } else { Self::zero() }
     }
 
     #[inline]
-    fn into_repr_raw(&self) -> BigInteger {
+    fn into_repr_unsafe(&self) -> BigInteger {
         self.0
     }
 }
@@ -705,7 +705,7 @@ impl<P: Fp384Parameters + PoseidonMDSParameters> PoseidonMDSField for Fp384<P> {
         for row in P::POSEIDON_MDS.iter() {
             mds.push(
                 row.iter()
-                    .map(|b| Self::from_repr_raw(*b))
+                    .map(|b| Self::from_repr_unsafe(*b))
                     .collect::<Vec<Self>>()
                     .to_vec(),
             );
