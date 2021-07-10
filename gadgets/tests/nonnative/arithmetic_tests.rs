@@ -80,8 +80,8 @@ fn multiplication_test<TargetField: PrimeField, BaseField: PrimeField, CS: Const
         a_times_b_actual.eq(&a_times_b_expected),
         "a_times_b = {:?}, a_times_b_actual = {:?}, a_times_b_expected = {:?}",
         a_times_b,
-        a_times_b_actual.into_repr().as_ref(),
-        a_times_b_expected.into_repr().as_ref()
+        a_times_b_actual.to_repr().as_ref(),
+        a_times_b_expected.to_repr().as_ref()
     );
 }
 
@@ -141,51 +141,51 @@ fn edge_cases_test<TargetField: PrimeField, BaseField: PrimeField, CS: Constrain
     assert!(
         a_plus_zero_native.eq(&a_native),
         "a_plus_zero = {:?}, a = {:?}",
-        a_plus_zero_native.into_repr().as_ref(),
-        a_native.into_repr().as_ref()
+        a_plus_zero_native.to_repr().as_ref(),
+        a_native.to_repr().as_ref()
     );
     assert!(
         a_minus_zero_native.eq(&a_native),
         "a_minus_zero = {:?}, a = {:?}",
-        a_minus_zero_native.into_repr().as_ref(),
-        a_native.into_repr().as_ref()
+        a_minus_zero_native.to_repr().as_ref(),
+        a_native.to_repr().as_ref()
     );
 
     assert!(
         zero_minus_a_native.eq(&minus_a_native),
         "zero_minus_a = {:?}, minus_a = {:?}",
-        zero_minus_a_native.into_repr().as_ref(),
-        minus_a_native.into_repr().as_ref()
+        zero_minus_a_native.to_repr().as_ref(),
+        minus_a_native.to_repr().as_ref()
     );
     assert!(
         a_times_zero_native.eq(&zero_native),
         "a_times_zero = {:?}, zero = {:?}",
-        a_times_zero_native.into_repr().as_ref(),
-        zero_native.into_repr().as_ref()
+        a_times_zero_native.to_repr().as_ref(),
+        zero_native.to_repr().as_ref()
     );
     assert!(
         zero_plus_a_native.eq(&a_native),
         "zero_plus_a = {:?}, a = {:?}",
-        zero_plus_a_native.into_repr().as_ref(),
-        a_native.into_repr().as_ref()
+        zero_plus_a_native.to_repr().as_ref(),
+        a_native.to_repr().as_ref()
     );
     assert!(
         zero_times_a_native.eq(&zero_native),
         "zero_times_a = {:?}, zero = {:?}",
-        zero_times_a_native.into_repr().as_ref(),
-        zero_native.into_repr().as_ref()
+        zero_times_a_native.to_repr().as_ref(),
+        zero_native.to_repr().as_ref()
     );
     assert!(
         a_times_one_native.eq(&a_native),
         "a_times_one = {:?}, a = {:?}",
-        a_times_one_native.into_repr().as_ref(),
-        a_native.into_repr().as_ref()
+        a_times_one_native.to_repr().as_ref(),
+        a_native.to_repr().as_ref()
     );
     assert!(
         one_times_a_native.eq(&a_native),
         "one_times_a = {:?}, a = {:?}",
-        one_times_a_native.into_repr().as_ref(),
-        a_native.into_repr().as_ref()
+        one_times_a_native.to_repr().as_ref(),
+        a_native.to_repr().as_ref()
     );
 }
 

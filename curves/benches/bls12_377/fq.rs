@@ -293,7 +293,7 @@ pub(crate) fn bench_fq_into_repr(c: &mut Criterion) {
     c.bench_function("bls12_377: fq_into_repr", |c| {
         c.iter(|| {
             count = (count + 1) % SAMPLES;
-            v[count].into_repr()
+            v[count].to_repr()
         })
     });
 }
@@ -303,7 +303,7 @@ pub(crate) fn bench_fq_from_repr(c: &mut Criterion) {
 
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    let v: Vec<FqRepr> = (0..SAMPLES).map(|_| Fq::rand(&mut rng).into_repr()).collect();
+    let v: Vec<FqRepr> = (0..SAMPLES).map(|_| Fq::rand(&mut rng).to_repr()).collect();
 
     let mut count = 0;
     c.bench_function("bls12_377: fq_from_repr", |c| {

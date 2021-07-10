@@ -56,7 +56,7 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentSch
         let mut output = self.parameters.crh.hash(&input)?;
 
         // Compute h^r.
-        let mut scalar_bits = BitIteratorBE::new(randomness.into_repr()).collect::<Vec<_>>();
+        let mut scalar_bits = BitIteratorBE::new(randomness.to_repr()).collect::<Vec<_>>();
         scalar_bits.reverse();
         for (bit, power) in scalar_bits.into_iter().zip(&self.parameters.random_base) {
             if bit {

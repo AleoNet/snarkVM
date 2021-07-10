@@ -144,7 +144,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseFiel
 
         let mut bits = Vec::<bool>::new();
         for elem in elements.iter() {
-            let mut elem_bits = elem.into_repr().to_bits_be();
+            let mut elem_bits = elem.to_repr().to_bits_be();
             elem_bits.reverse();
             bits.extend_from_slice(&elem_bits[0..capacity]);
         }
@@ -255,7 +255,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: AlgebraicSponge<BaseFiel
         let skip = (BaseField::Parameters::REPR_SHAVE_BITS + 1) as usize;
         for elem in src_elements.iter() {
             // discard the highest bit
-            let elem_bits = elem.into_repr().to_bits_be();
+            let elem_bits = elem.to_repr().to_bits_be();
             dest_bits.extend_from_slice(&elem_bits[skip..]);
         }
 

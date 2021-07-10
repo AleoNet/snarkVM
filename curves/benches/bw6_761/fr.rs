@@ -293,7 +293,7 @@ pub fn bench_fr_into_repr(c: &mut Criterion) {
     c.bench_function("bw6_761: fr_into_repr", |c| {
         c.iter(|| {
             count = (count + 1) % SAMPLES;
-            v[count].into_repr()
+            v[count].to_repr()
         })
     });
 }
@@ -303,7 +303,7 @@ pub fn bench_fr_from_repr(c: &mut Criterion) {
 
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    let v: Vec<FrRepr> = (0..SAMPLES).map(|_| Fr::rand(&mut rng).into_repr()).collect();
+    let v: Vec<FrRepr> = (0..SAMPLES).map(|_| Fr::rand(&mut rng).to_repr()).collect();
 
     let mut count = 0;
     c.bench_function("bw6_761: fr_from_repr", |c| {

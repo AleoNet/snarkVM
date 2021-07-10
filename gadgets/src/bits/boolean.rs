@@ -1681,7 +1681,7 @@ mod test {
             let mut cs = TestConstraintSystem::<Fr>::new();
 
             let mut bits = vec![];
-            for (i, b) in BitIteratorBE::new(r.into_repr()).skip(1).enumerate() {
+            for (i, b) in BitIteratorBE::new(r.to_repr()).skip(1).enumerate() {
                 bits.push(Boolean::from(
                     AllocatedBit::alloc(cs.ns(|| format!("bit_gadget {}", i)), || Ok(b)).unwrap(),
                 ));
