@@ -62,6 +62,7 @@ fn testnet1_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
     Ok(to_bytes_le![inner_circuit_id]?)
 }
 
+#[ignore]
 #[test]
 fn test_testnet1_inner_circuit_sanity_check() {
     let expected_testnet1_inner_circuit_id = vec![
@@ -72,6 +73,7 @@ fn test_testnet1_inner_circuit_sanity_check() {
     assert_eq!(expected_testnet1_inner_circuit_id, candidate_testnet1_inner_circuit_id);
 }
 
+#[ignore]
 #[test]
 fn dpc_testnet1_integration_test() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
@@ -339,6 +341,7 @@ fn test_transaction_kernel_serialization() {
     assert_eq!(transaction_kernel, recovered_transaction_kernel);
 }
 
+#[ignore]
 #[test]
 fn test_testnet1_dpc_execute_constraints() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
