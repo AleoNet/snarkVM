@@ -35,7 +35,7 @@ const BIG_WINDOW_SIZE: usize = 63;
 fn bowe_pedersen_crh_setup(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
-    c.bench_function("Bowe Pedersen Commitment Setup", move |b| {
+    c.bench_function("Bowe Pedersen CRH Setup", move |b| {
         b.iter(|| <BoweHopwoodPedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup(rng))
     });
 }
@@ -43,7 +43,7 @@ fn bowe_pedersen_crh_setup(c: &mut Criterion) {
 fn big_bowe_pedersen_crh_setup(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
-    c.bench_function("Big Bowe Pedersen Commitment Setup", move |b| {
+    c.bench_function("Big Bowe Pedersen CRH Setup", move |b| {
         b.iter(|| <BoweHopwoodPedersenCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::setup(rng))
     });
 }
@@ -66,7 +66,7 @@ fn big_bowe_pedersen_crh_hash(c: &mut Criterion) {
     let parameters = <BoweHopwoodPedersenCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::setup(rng);
     let input = vec![127u8; 32];
 
-    c.bench_function("Bowe Pedersen Commitment Evaluation", move |b| {
+    c.bench_function("Bowe Pedersen CRH Evaluation", move |b| {
         b.iter(|| {
             <BoweHopwoodPedersenCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::hash(
                 &parameters,

@@ -32,7 +32,7 @@ const WINDOW_SIZE: usize = 32;
 fn pedersen_crh_setup(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
-    c.bench_function("Pedersen Commitment Setup", move |b| {
+    c.bench_function("Pedersen CRH Setup", move |b| {
         b.iter(|| <PedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup(rng))
     });
 }
@@ -42,7 +42,7 @@ fn pedersen_crh_hash(c: &mut Criterion) {
     let parameters = <PedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup(rng);
     let input = vec![127u8; 32];
 
-    c.bench_function("Pedersen Commitment Evaluation", move |b| {
+    c.bench_function("Pedersen CRH Evaluation", move |b| {
         b.iter(|| <PedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::hash(&parameters, &input).unwrap())
     });
 }
