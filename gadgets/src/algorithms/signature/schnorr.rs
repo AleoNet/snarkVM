@@ -389,10 +389,8 @@ where
         hash_input.extend_from_slice(&message.to_constraint_field(cs.ns(|| "convert message into field elements"))?);
 
         // Compute the hash on the base field
-        let raw_hash = PoseidonCryptoHashGadget::<F, 4, false>::check_evaluation_gadget(
-            cs.ns(|| "poseidon"),
-            &hash_input,
-        )?;
+        let raw_hash =
+            PoseidonCryptoHashGadget::<F, 4, false>::check_evaluation_gadget(cs.ns(|| "poseidon"), &hash_input)?;
 
         // Bit decompose the raw_hash
         let mut raw_hash_bits = raw_hash.to_bits_le(cs.ns(|| "convert the hash into bits"))?;

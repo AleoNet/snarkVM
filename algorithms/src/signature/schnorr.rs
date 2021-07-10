@@ -23,7 +23,15 @@ use crate::{
 };
 use snarkvm_curves::traits::Group;
 use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, One, PrimeField, ToConstraintField, Zero};
-use snarkvm_utilities::{bytes::{from_bytes_le_to_bits_le, FromBytes, ToBytes}, errors::SerializationError, rand::UniformRand, serialize::*, to_bytes_le, FromBits, ToBits};
+use snarkvm_utilities::{
+    bytes::{from_bytes_le_to_bits_le, FromBytes, ToBytes},
+    errors::SerializationError,
+    rand::UniformRand,
+    serialize::*,
+    to_bytes_le,
+    FromBits,
+    ToBits,
+};
 
 use crate::crypto_hash::PoseidonCryptoHash;
 use itertools::Itertools;
@@ -193,9 +201,7 @@ where
         hash_input.push(<G as AffineCurve>::BaseField::from(message.len() as u128));
         hash_input.extend_from_slice(&message.to_field_elements().unwrap());
 
-        let raw_hash =
-            PoseidonCryptoHash::<<G as AffineCurve>::BaseField, 4, false>::evaluate(&hash_input)
-                .unwrap();
+        let raw_hash = PoseidonCryptoHash::<<G as AffineCurve>::BaseField, 4, false>::evaluate(&hash_input).unwrap();
 
         // Bit decompose the raw_hash
         let mut raw_hash_bits = raw_hash.to_repr().to_bits_le();
@@ -254,9 +260,7 @@ where
         hash_input.push(<G as AffineCurve>::BaseField::from(message.len() as u128));
         hash_input.extend_from_slice(&message.to_field_elements().unwrap());
 
-        let raw_hash =
-            PoseidonCryptoHash::<<G as AffineCurve>::BaseField, 4, false>::evaluate(&hash_input)
-                .unwrap();
+        let raw_hash = PoseidonCryptoHash::<<G as AffineCurve>::BaseField, 4, false>::evaluate(&hash_input).unwrap();
 
         // Bit decompose the raw_hash
         let mut raw_hash_bits = raw_hash.to_repr().to_bits_le();
