@@ -258,8 +258,7 @@ macro_rules! biginteger {
 
         impl Display for $name {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                write!(f, "{}", self.to_biguint())?;
-                Ok(())
+                write!(f, "{}", self.to_biguint())
             }
         }
 
