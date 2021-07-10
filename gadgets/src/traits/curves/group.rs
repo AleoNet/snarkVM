@@ -257,7 +257,7 @@ pub trait GroupGadget<G: Group, F: Field>:
     fn cost_of_double() -> usize;
 }
 
-pub trait CompressedGroupGadget<G: Group + ProjectiveCurve, F: Field>: GroupGadget<G, F> {
+pub trait CompressedGroupGadget<G: ProjectiveCurve, F: Field>: GroupGadget<G, F> {
     type BaseFieldGadget: ToBytesGadget<F>
         + EqGadget<F>
         + CondSelectGadget<F>

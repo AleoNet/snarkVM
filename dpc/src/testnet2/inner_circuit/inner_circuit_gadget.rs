@@ -29,7 +29,12 @@ use crate::{
 };
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
-    traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, PRF},
+    CommitmentScheme,
+    EncryptionScheme,
+    MerkleParameters,
+    SignatureScheme,
+    CRH,
+    PRF,
 };
 use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, One, PrimeField};
@@ -252,11 +257,11 @@ where
         account_encryption_parameters,
         account_signature_parameters,
         record_commitment_parameters,
-        encrypted_record_crh_parameters,
+        encrypted_record_crh,
         program_vk_commitment_parameters,
-        local_data_crh_parameters,
+        local_data_crh,
         local_data_commitment_parameters,
-        serial_number_nonce_crh_parameters,
+        serial_number_nonce_crh,
         ledger_parameters,
     ) = {
         let cs = &mut cs.ns(|| "Declare commitment and CRH parameters");
@@ -285,10 +290,11 @@ where
             || Ok(system_parameters.record_commitment.parameters()),
         )?;
 
-        let encrypted_record_crh_parameters = EncryptedRecordCRHGadget::ParametersGadget::alloc_input(
-            &mut cs.ns(|| "Declare record ciphertext CRH parameters"),
-            || Ok(system_parameters.encrypted_record_crh.parameters()),
-        )?;
+        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
+        let encrypted_record_crh_parameters =
+            EncryptedRecordCRHGadget::alloc_input(&mut cs.ns(|| "Declare record ciphertext CRH parameters"), || {
+                Ok(system_parameters.encrypted_record_crh.clone())
+            })?;
 
         let program_vk_commitment_parameters = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<
             _,
@@ -298,25 +304,27 @@ where
             || Ok(system_parameters.program_verification_key_commitment.parameters()),
         )?;
 
-        let local_data_crh_parameters = LocalDataCRHGadget::ParametersGadget::alloc_input(
-            &mut cs.ns(|| "Declare local data CRH parameters"),
-            || Ok(system_parameters.local_data_crh.parameters()),
-        )?;
+        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
+        let local_data_crh_parameters =
+            LocalDataCRHGadget::alloc_input(&mut cs.ns(|| "Declare local data CRH parameters"), || {
+                Ok(system_parameters.local_data_crh.clone())
+            })?;
 
         let local_data_commitment_parameters = LocalDataCommitmentGadget::ParametersGadget::alloc_input(
             &mut cs.ns(|| "Declare local data commitment parameters"),
             || Ok(system_parameters.local_data_commitment.parameters()),
         )?;
 
-        let serial_number_nonce_crh_parameters = SerialNumberNonceCRHGadget::ParametersGadget::alloc_input(
+        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
+        let serial_number_nonce_crh_parameters = SerialNumberNonceCRHGadget::alloc_input(
             &mut cs.ns(|| "Declare serial number nonce CRH parameters"),
-            || Ok(system_parameters.serial_number_nonce.parameters()),
+            || Ok(system_parameters.serial_number_nonce.clone()),
         )?;
 
-        let ledger_parameters = <C::MerkleHashGadget as CRHGadget<_, _>>::ParametersGadget::alloc_input(
-            &mut cs.ns(|| "Declare ledger parameters"),
-            || Ok(ledger_parameters.parameters()),
-        )?;
+        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
+        let ledger_parameters = C::MerkleHashGadget::alloc_input(&mut cs.ns(|| "Declare ledger parameters"), || {
+            Ok(ledger_parameters.crh())
+        })?;
 
         (
             account_commitment_parameters,
@@ -751,11 +759,8 @@ where
 
             let sn_nonce_input = current_record_number_bytes_le;
 
-            let candidate_sn_nonce = SerialNumberNonceCRHGadget::check_evaluation_gadget(
-                &mut sn_cs.ns(|| "Compute serial number nonce"),
-                &serial_number_nonce_crh_parameters,
-                sn_nonce_input,
-            )?;
+            let candidate_sn_nonce = serial_number_nonce_crh
+                .check_evaluation_gadget(&mut sn_cs.ns(|| "Compute serial number nonce"), sn_nonce_input)?;
             candidate_sn_nonce.enforce_equal(
                 &mut sn_cs.ns(|| "Check that computed nonce matches provided nonce"),
                 &serial_number_nonce,
@@ -1194,9 +1199,8 @@ where
             encrypted_record_hash_input.extend_from_slice(&candidate_encrypted_record_bytes);
             encrypted_record_hash_input.extend_from_slice(&ciphertext_and_fq_high_selectors_bytes);
 
-            let candidate_encrypted_record_hash = EncryptedRecordCRHGadget::check_evaluation_gadget(
+            let candidate_encrypted_record_hash = encrypted_record_crh.check_evaluation_gadget(
                 &mut encryption_cs.ns(|| format!("Compute encrypted record hash {}", j)),
-                &encrypted_record_crh_parameters,
                 encrypted_record_hash_input,
             )?;
 
@@ -1324,15 +1328,13 @@ where
         }
         drop(input_bytes);
 
-        let inner1_commitment_hash = LocalDataCRHGadget::check_evaluation_gadget(
+        let inner1_commitment_hash = local_data_crh.check_evaluation_gadget(
             cs.ns(|| "Compute to local data commitment inner1 hash"),
-            &local_data_crh_parameters,
             old_record_commitment_bytes,
         )?;
 
-        let inner2_commitment_hash = LocalDataCRHGadget::check_evaluation_gadget(
+        let inner2_commitment_hash = local_data_crh.check_evaluation_gadget(
             cs.ns(|| "Compute to local data commitment inner2 hash"),
-            &local_data_crh_parameters,
             new_record_commitment_bytes,
         )?;
 
@@ -1342,9 +1344,8 @@ where
         inner_commitment_hash_bytes
             .extend_from_slice(&inner2_commitment_hash.to_bytes(&mut cs.ns(|| "inner2_commitment_hash"))?);
 
-        let candidate_local_data_root = LocalDataCRHGadget::check_evaluation_gadget(
+        let candidate_local_data_root = local_data_crh.check_evaluation_gadget(
             cs.ns(|| "Compute to local data commitment root"),
-            &local_data_crh_parameters,
             inner_commitment_hash_bytes,
         )?;
 

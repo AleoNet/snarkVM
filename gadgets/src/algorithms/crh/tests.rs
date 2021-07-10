@@ -18,7 +18,7 @@ use rand::{thread_rng, Rng};
 
 use snarkvm_algorithms::{
     crh::{BoweHopwoodPedersenCRH, BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH},
-    traits::{CRHParameters, CRH},
+    CRH,
 };
 use snarkvm_curves::{
     bls12_377::Fr,
@@ -87,17 +87,12 @@ fn primitive_crh_gadget_test<F: Field, H: CRH, CG: CRHGadget<H, F>>(hash_constra
     let crh = H::setup(rng);
     let native_result = crh.hash(&input).unwrap();
 
-    let parameters_gadget =
-        <CG as CRHGadget<_, _>>::ParametersGadget::alloc(&mut cs.ns(|| "gadget_parameters"), || Ok(crh.parameters()))
-            .unwrap();
+    let crh_gadget = CG::alloc(&mut cs.ns(|| "gadget_parameters"), || Ok(crh)).unwrap();
     assert_eq!(cs.num_constraints(), 1536);
 
-    let output_gadget = <CG as CRHGadget<_, _>>::check_evaluation_gadget(
-        &mut cs.ns(|| "gadget_evaluation"),
-        &parameters_gadget,
-        input_bytes,
-    )
-    .unwrap();
+    let output_gadget = crh_gadget
+        .check_evaluation_gadget(&mut cs.ns(|| "gadget_evaluation"), input_bytes)
+        .unwrap();
     assert_eq!(cs.num_constraints(), hash_constraints);
 
     let native_result_gadget =
@@ -121,24 +116,19 @@ fn masked_crh_gadget_test<F: PrimeField, H: CRH, CG: MaskedCRHGadget<H, F>>() {
     assert_eq!(cs.num_constraints(), 1536);
 
     let crh = H::setup(rng);
-    let mask_parameters = H::Parameters::setup(rng);
+    let mask_parameters = H::setup(rng);
     let native_result = crh.hash(&input).unwrap();
 
-    let parameters_gadget =
-        <CG as CRHGadget<_, _>>::ParametersGadget::alloc(&mut cs.ns(|| "gadget_parameters"), || Ok(crh.parameters()))
-            .unwrap();
+    let crh_gadget = CG::alloc(&mut cs.ns(|| "gadget_parameters"), || Ok(crh)).unwrap();
     assert_eq!(cs.num_constraints(), 1536);
 
     let mask_parameters_gadget =
-        <CG as CRHGadget<_, _>>::ParametersGadget::alloc(&mut cs.ns(|| "gadget_mask_parameters"), || {
-            Ok(mask_parameters)
-        })
-        .unwrap();
+        CG::MaskParametersGadget::alloc(&mut cs.ns(|| "gadget_mask_parameters"), || Ok(mask_parameters)).unwrap();
     assert_eq!(cs.num_constraints(), 1536);
 
     let masked_output_gadget = <CG as MaskedCRHGadget<_, _>>::check_evaluation_gadget_masked(
+        &crh_gadget,
         &mut cs.ns(|| "masked_gadget_evaluation"),
-        &parameters_gadget,
         input_bytes,
         &mask_parameters_gadget,
         mask_bytes,
@@ -163,7 +153,8 @@ mod pedersen_crh_gadget_on_projective {
     use super::*;
 
     type TestCRH = PedersenCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-    type TestCRHGadget = PedersenCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
+    type TestCRHGadget =
+        PedersenCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
 
     #[test]
     fn primitive_gadget_test() {
@@ -180,7 +171,8 @@ mod pedersen_crh_gadget_on_affine {
     use super::*;
 
     type TestCRH = PedersenCRH<EdwardsAffine, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-    type TestCRHGadget = PedersenCRHGadget<EdwardsAffine, Fr, EdwardsBls12Gadget>;
+    type TestCRHGadget =
+        PedersenCRHGadget<EdwardsAffine, Fr, EdwardsBls12Gadget, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
 
     #[test]
     fn primitive_gadget_test() {
@@ -192,7 +184,13 @@ mod pedersen_compressed_crh_gadget_on_projective {
     use super::*;
 
     type TestCRH = PedersenCompressedCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-    type TestCRHGadget = PedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
+    type TestCRHGadget = PedersenCompressedCRHGadget<
+        EdwardsProjective,
+        Fr,
+        EdwardsBls12Gadget,
+        PEDERSEN_NUM_WINDOWS,
+        PEDERSEN_WINDOW_SIZE,
+    >;
 
     #[test]
     fn primitive_gadget_test() {
@@ -211,7 +209,8 @@ mod bowe_hopwood_pedersen_crh_gadget_on_projective {
     use super::*;
 
     type TestCRH = BoweHopwoodPedersenCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
-    type TestCRHGadget = BoweHopwoodPedersenCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
+    type TestCRHGadget =
+        BoweHopwoodPedersenCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
 
     #[test]
     fn primitive_gadget_test() {
@@ -223,7 +222,13 @@ mod bowe_hopwood_pedersen_compressed_crh_gadget_on_projective {
     use super::*;
 
     type TestCRH = BoweHopwoodPedersenCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
-    type TestCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
+    type TestCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<
+        EdwardsProjective,
+        Fr,
+        EdwardsBls12Gadget,
+        BHP_NUM_WINDOWS,
+        BHP_WINDOW_SIZE,
+    >;
 
     #[test]
     fn primitive_gadget_test() {

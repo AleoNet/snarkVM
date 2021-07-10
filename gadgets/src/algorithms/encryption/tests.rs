@@ -22,7 +22,7 @@ use snarkvm_algorithms::{encryption::GroupEncryption, traits::EncryptionScheme};
 use snarkvm_curves::{
     bls12_377::Fr,
     edwards_bls12::{EdwardsAffine, EdwardsProjective},
-    traits::{Group, ProjectiveCurve},
+    traits::ProjectiveCurve,
 };
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
@@ -35,7 +35,7 @@ use crate::{
 type TestEncryptionScheme = GroupEncryption<EdwardsProjective, EdwardsAffine, Blake2s>;
 type TestEncryptionSchemeGadget = GroupEncryptionGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
 
-fn generate_input<G: Group + ProjectiveCurve, R: Rng>(input_size: usize, rng: &mut R) -> Vec<G> {
+fn generate_input<G: ProjectiveCurve, R: Rng>(input_size: usize, rng: &mut R) -> Vec<G> {
     let mut input = vec![];
     for _ in 0..input_size {
         input.push(G::rand(rng))

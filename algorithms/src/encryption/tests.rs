@@ -17,7 +17,7 @@
 use crate::{encryption::GroupEncryption, traits::EncryptionScheme};
 use snarkvm_curves::{
     edwards_bls12::{EdwardsAffine, EdwardsProjective},
-    traits::{Group, ProjectiveCurve},
+    traits::ProjectiveCurve,
 };
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
@@ -29,7 +29,7 @@ type TestEncryptionScheme = GroupEncryption<EdwardsProjective, EdwardsAffine, Bl
 
 pub const ITERATIONS: usize = 1000;
 
-fn generate_input<G: Group + ProjectiveCurve, R: Rng>(input_size: usize, rng: &mut R) -> Vec<G> {
+fn generate_input<G: ProjectiveCurve, R: Rng>(input_size: usize, rng: &mut R) -> Vec<G> {
     (0..input_size).map(|_| G::rand(rng)).collect()
 }
 

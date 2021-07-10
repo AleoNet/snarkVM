@@ -31,9 +31,6 @@ pub trait MerkleParameters: Send + Sync + Clone + Default {
     /// Returns the collision-resistant hash function used by the Merkle tree.
     fn crh(&self) -> &Self::H;
 
-    /// Returns the collision-resistant hash function parameters used by the Merkle tree.
-    fn parameters(&self) -> &<<Self as MerkleParameters>::H as CRH>::Parameters;
-
     /// Returns the hash of a given leaf.
     fn hash_leaf<L: ToBytes>(&self, leaf: &L, buffer: &mut [u8]) -> Result<<Self::H as CRH>::Output, MerkleError> {
         let mut writer = Cursor::new(buffer);
@@ -72,5 +69,5 @@ pub trait LoadableMerkleParameters: MerkleParameters + From<<Self as MerkleParam
 
 pub trait MaskedMerkleParameters: MerkleParameters {
     /// Returns the collision-resistant hash function masking parameters used by the Merkle tree.
-    fn mask_parameters(&self) -> &<<Self as MerkleParameters>::H as CRH>::Parameters;
+    fn mask_parameters(&self) -> &Self::H;
 }

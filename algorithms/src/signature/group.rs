@@ -29,7 +29,7 @@ use rand::Rng;
 use std::{hash::Hash, marker::PhantomData};
 
 /// Map the encryption group into the signature group.
-fn into_signature_group<G: Group + ProjectiveCurve + CanonicalSerialize, SG: Group + CanonicalDeserialize>(
+fn into_signature_group<G: ProjectiveCurve + CanonicalSerialize, SG: Group + CanonicalDeserialize>(
     projective: G,
 ) -> SG {
     let mut bytes = vec![];
@@ -38,7 +38,7 @@ fn into_signature_group<G: Group + ProjectiveCurve + CanonicalSerialize, SG: Gro
 }
 
 /// Map the GroupEncryption parameters into a Schnorr signature scheme.
-impl<G: Group + ProjectiveCurve + CanonicalSerialize, SG: Group + CanonicalDeserialize, D: Digest>
+impl<G: ProjectiveCurve + CanonicalSerialize, SG: Group + CanonicalDeserialize, D: Digest>
     From<GroupEncryptionParameters<G>> for Schnorr<SG, D>
 {
     fn from(parameters: GroupEncryptionParameters<G>) -> Self {
@@ -59,15 +59,15 @@ impl<G: Group + ProjectiveCurve + CanonicalSerialize, SG: Group + CanonicalDeser
 }
 
 /// Map the GroupEncryption public key into a Schnorr public key.
-impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeserialize>
-    From<GroupEncryptionPublicKey<G>> for SchnorrPublicKey<SG>
+impl<G: ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeserialize> From<GroupEncryptionPublicKey<G>>
+    for SchnorrPublicKey<SG>
 {
     fn from(public_key: GroupEncryptionPublicKey<G>) -> Self {
         Self(into_signature_group(public_key.0))
     }
 }
 
-impl<G: Group + ProjectiveCurve, SG: Group + Hash + CanonicalSerialize + CanonicalDeserialize, D: Digest + Send + Sync>
+impl<G: ProjectiveCurve, SG: Group + Hash + CanonicalSerialize + CanonicalDeserialize, D: Digest + Send + Sync>
     SignatureScheme for GroupEncryption<G, SG, D>
 where
     <G as Group>::ScalarField: PrimeField,

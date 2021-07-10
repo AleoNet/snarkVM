@@ -135,7 +135,7 @@ impl<F: PrimeField, G: Group, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, c
         }
         assert_eq!(padded_input.len() * 8, WINDOW_SIZE * NUM_WINDOWS);
 
-        let bases = &parameters.parameters.crh.parameters.bases;
+        let bases = &parameters.parameters.crh.bases;
         assert_eq!(bases.len(), NUM_WINDOWS);
 
         // Allocate new variable for commitment output.
@@ -154,7 +154,7 @@ impl<F: PrimeField, G: Group, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, c
     }
 }
 
-pub struct PedersenCompressedCommitmentGadget<G: Group + ProjectiveCurve, F: Field, GG: CompressedGroupGadget<G, F>>(
+pub struct PedersenCompressedCommitmentGadget<G: ProjectiveCurve, F: Field, GG: CompressedGroupGadget<G, F>>(
     PhantomData<G>,
     PhantomData<GG>,
     PhantomData<F>,
@@ -162,7 +162,7 @@ pub struct PedersenCompressedCommitmentGadget<G: Group + ProjectiveCurve, F: Fie
 
 impl<
     F: PrimeField,
-    G: Group + ProjectiveCurve,
+    G: ProjectiveCurve,
     GG: CompressedGroupGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,

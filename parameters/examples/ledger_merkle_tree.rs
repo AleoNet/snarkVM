@@ -28,7 +28,7 @@ pub fn setup<C: Testnet1Components>() -> Result<Vec<u8>, MerkleError> {
     let rng = &mut thread_rng();
 
     let ledger_merkle_tree_parameters = <C::MerkleParameters as MerkleParameters>::setup(rng);
-    let ledger_merkle_tree_parameters_bytes = ledger_merkle_tree_parameters.parameters().to_bytes_le()?;
+    let ledger_merkle_tree_parameters_bytes = ledger_merkle_tree_parameters.crh().to_bytes_le()?;
 
     let size = ledger_merkle_tree_parameters_bytes.len();
     println!("ledger_merkle_tree.params\n\tsize - {}", size);

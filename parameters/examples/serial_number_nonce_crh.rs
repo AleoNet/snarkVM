@@ -27,8 +27,7 @@ use utils::store;
 pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, CRHError> {
     let rng = &mut thread_rng();
     let serial_number_nonce_crh = <C::SerialNumberNonceCRH as CRH>::setup(rng);
-    let serial_number_nonce_crh_parameters = serial_number_nonce_crh.parameters();
-    let serial_number_nonce_crh_parameters_bytes = serial_number_nonce_crh_parameters.to_bytes_le()?;
+    let serial_number_nonce_crh_parameters_bytes = serial_number_nonce_crh.to_bytes_le()?;
 
     let size = serial_number_nonce_crh_parameters_bytes.len();
     println!("serial_number_nonce_crh.params\n\tsize - {}", size);

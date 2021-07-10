@@ -48,7 +48,8 @@ const COMMITMENT_NUM_WINDOWS: usize = 8;
 const COMMITMENT_WINDOW_SIZE: usize = 32;
 
 pub type H = BoweHopwoodPedersenCompressedCRH<EdwardsBls, CRH_NUM_WINDOWS, CRH_WINDOW_SIZE>;
-pub type HG = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Fr, EdwardsBls12Gadget>;
+pub type HG =
+    BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Fr, EdwardsBls12Gadget, CRH_NUM_WINDOWS, CRH_WINDOW_SIZE>;
 
 pub type C = PedersenCompressedCommitment<EdwardsBls, COMMITMENT_NUM_WINDOWS, COMMITMENT_WINDOW_SIZE>;
 pub type CG = PedersenCompressedCommitmentGadget<EdwardsBls, Fr, EdwardsBls12Gadget>;
@@ -111,12 +112,8 @@ fn commitment_tree_test<
         println!("constraints from root: {}", cs.num_constraints() - num_constraints);
         num_constraints = cs.num_constraints();
 
-        // Allocate Parameters for CRH
-        let crh_parameters = <HG as CRHGadget<_, _>>::ParametersGadget::alloc(
-            &mut cs.ns(|| format!("new_crh_parameters_{}", i)),
-            || Ok(crh.parameters()),
-        )
-        .unwrap();
+        // Allocate CRH
+        let crh_parameters = HG::alloc(&mut cs.ns(|| format!("new_crh_parameters_{}", i)), || Ok(crh.clone())).unwrap();
 
         println!(
             "constraints from crh parameters: {}",

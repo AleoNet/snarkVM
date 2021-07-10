@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    crh::{PedersenCRH, PedersenCRHParameters},
-    traits::CRH,
-};
+use crate::{crh::PedersenCRH, traits::CRH};
 use snarkvm_curves::traits::Group;
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
@@ -35,25 +32,17 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     pub fn setup<R: Rng>(rng: &mut R) -> Self {
-        Self {
-            crh: PedersenCRHParameters::from(
-                (0..NUM_WINDOWS)
-                    .map(|_| Self::base(WINDOW_SIZE, rng))
-                    .collect::<Vec<Vec<G>>>(),
-            )
-            .into(),
-            random_base: Self::base(WINDOW_SIZE, rng),
-        }
-    }
-
-    fn base<R: Rng>(num_powers: usize, rng: &mut R) -> Vec<G> {
-        let mut powers = Vec::with_capacity(num_powers);
+        let mut random_base = Vec::with_capacity(WINDOW_SIZE);
         let mut base = G::rand(rng);
-        for _ in 0..num_powers {
-            powers.push(base);
+        for _ in 0..WINDOW_SIZE {
+            random_base.push(base);
             base.double_in_place();
         }
-        powers
+
+        Self {
+            crh: PedersenCRH::setup(rng),
+            random_base,
+        }
     }
 }
 
@@ -61,8 +50,8 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
     for PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.crh.parameters().bases.len() as u32).write_le(&mut writer)?;
-        for base in &self.crh.parameters().bases {
+        (self.crh.bases.len() as u32).write_le(&mut writer)?;
+        for base in &self.crh.bases {
             (base.len() as u32).write_le(&mut writer)?;
             for g in base {
                 g.write_le(&mut writer)?;
@@ -104,8 +93,8 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
         }
 
         Ok(Self {
+            crh: PedersenCRH::from(bases).into(),
             random_base,
-            crh: PedersenCRHParameters::from(bases).into(),
         })
     }
 }

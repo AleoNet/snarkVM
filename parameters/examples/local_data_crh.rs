@@ -31,8 +31,7 @@ use std::{
 pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, CRHError> {
     let rng = &mut thread_rng();
     let local_data_crh = <C::LocalDataCRH as CRH>::setup(rng);
-    let local_data_crh_parameters = local_data_crh.parameters();
-    let local_data_crh_parameters_bytes = local_data_crh_parameters.to_bytes_le()?;
+    let local_data_crh_parameters_bytes = local_data_crh.to_bytes_le()?;
 
     let size = local_data_crh_parameters_bytes.len();
     println!("local_data_crh.params\n\tsize - {}", size);

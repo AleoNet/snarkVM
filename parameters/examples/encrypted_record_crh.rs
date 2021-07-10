@@ -31,8 +31,7 @@ use std::{
 pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, CRHError> {
     let rng = &mut thread_rng();
     let encrypted_record_crh = <C::EncryptedRecordCRH as CRH>::setup(rng);
-    let encrypted_record_crh_parameters = encrypted_record_crh.parameters();
-    let encrypted_record_crh_parameters_bytes = encrypted_record_crh_parameters.to_bytes_le()?;
+    let encrypted_record_crh_parameters_bytes = encrypted_record_crh.to_bytes_le()?;
 
     let size = encrypted_record_crh_parameters_bytes.len();
     println!("encrypted_record_crh.params\n\tsize - {}", size);

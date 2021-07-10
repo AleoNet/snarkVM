@@ -141,7 +141,7 @@ where
                 .to_field_elements()?,
         );
 
-        v.extend_from_slice(&self.ledger_parameters.parameters().to_field_elements()?);
+        v.extend_from_slice(&self.ledger_parameters.crh().parameters().to_field_elements()?);
         v.extend_from_slice(&self.ledger_digest.to_field_elements()?);
 
         for sn in &self.old_serial_numbers {

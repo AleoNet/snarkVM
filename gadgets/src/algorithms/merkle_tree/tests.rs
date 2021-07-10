@@ -78,12 +78,11 @@ fn generate_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, 
         let constraints_from_digest = cs.num_constraints();
         println!("constraints from digest: {}", constraints_from_digest);
 
-        // Allocate Parameters for CRH
-        let crh_parameters =
-            <HG as CRHGadget<_, _>>::ParametersGadget::alloc(&mut cs.ns(|| format!("new_parameters_{}", i)), || {
-                Ok(parameters.parameters())
-            })
-            .unwrap();
+        // Allocate CRH
+        let crh_parameters = HG::alloc(&mut cs.ns(|| format!("new_parameters_{}", i)), || {
+            Ok(parameters.crh().clone())
+        })
+        .unwrap();
 
         let constraints_from_parameters = cs.num_constraints() - constraints_from_digest;
         println!("constraints from parameters: {}", constraints_from_parameters);
@@ -148,14 +147,11 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
     let mask = h.finalize().to_vec();
     let mask_bytes = UInt8::alloc_vec(cs.ns(|| "mask"), &mask).unwrap();
 
-    let crh_parameters = <HG as CRHGadget<_, _>>::ParametersGadget::alloc(&mut cs.ns(|| "new_parameters"), || {
-        Ok(parameters.parameters())
-    })
-    .unwrap();
+    let crh_parameters = HG::alloc(&mut cs.ns(|| "new_parameters"), || Ok(parameters.crh().clone())).unwrap();
 
     let mask_crh_parameters =
-        <HG as CRHGadget<_, _>>::ParametersGadget::alloc(&mut cs.ns(|| "new_mask_parameters"), || {
-            Ok(parameters.mask_parameters())
+        <HG as MaskedCRHGadget<_, _>>::MaskParametersGadget::alloc(&mut cs.ns(|| "new_mask_parameters"), || {
+            Ok(parameters.mask_parameters().clone())
         })
         .unwrap();
 
@@ -196,7 +192,7 @@ mod merkle_tree_pedersen_crh_on_affine {
     define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
 
     type H = PedersenCRH<EdwardsAffine, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-    type HG = PedersenCRHGadget<EdwardsAffine, Fr, EdwardsBls12Gadget>;
+    type HG = PedersenCRHGadget<EdwardsAffine, Fr, EdwardsBls12Gadget, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
 
     #[test]
     fn good_root_test() {
@@ -226,7 +222,13 @@ mod merkle_tree_compressed_pedersen_crh_on_projective {
     define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
 
     type H = PedersenCompressedCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-    type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
+    type HG = PedersenCompressedCRHGadget<
+        EdwardsProjective,
+        Fr,
+        EdwardsBls12Gadget,
+        PEDERSEN_NUM_WINDOWS,
+        PEDERSEN_WINDOW_SIZE,
+    >;
 
     #[test]
     fn good_root_test() {
@@ -277,7 +279,13 @@ mod merkle_tree_bowe_hopwood_pedersen_compressed_crh_on_projective {
     define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
 
     type H = BoweHopwoodPedersenCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
-    type HG = BoweHopwoodPedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
+    type HG = BoweHopwoodPedersenCompressedCRHGadget<
+        EdwardsProjective,
+        Fr,
+        EdwardsBls12Gadget,
+        BHP_NUM_WINDOWS,
+        BHP_WINDOW_SIZE,
+    >;
 
     #[test]
     fn good_root_test() {

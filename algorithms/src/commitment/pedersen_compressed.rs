@@ -24,12 +24,11 @@ use snarkvm_curves::traits::{AffineCurve, Group, ProjectiveCurve};
 use rand::Rng;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PedersenCompressedCommitment<G: Group + ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-{
+pub struct PedersenCompressedCommitment<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub parameters: PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
-impl<G: Group + ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
     for PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Output = <G::Affine as AffineCurve>::BaseField;
@@ -57,7 +56,7 @@ impl<G: Group + ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: us
     }
 }
 
-impl<G: Group + ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     From<PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>>
     for PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {

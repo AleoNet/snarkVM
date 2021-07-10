@@ -27,7 +27,7 @@ use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
     prelude::*,
 };
-use snarkvm_curves::traits::{Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
+use snarkvm_curves::traits::{MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     bits::Boolean,
@@ -76,7 +76,7 @@ pub trait Testnet2Components: DPCComponents {
     type MerkleHashGadget: CRHGadget<<Self::MerkleParameters as MerkleParameters>::H, Self::InnerScalarField>;
 
     /// Group and Model Parameters for record encryption
-    type EncryptionGroup: Group + ProjectiveCurve;
+    type EncryptionGroup: ProjectiveCurve;
     type EncryptionGroupGadget: CompressedGroupGadget<Self::EncryptionGroup, Self::InnerScalarField>;
     type EncryptionParameters: MontgomeryParameters + TwistedEdwardsParameters;
 

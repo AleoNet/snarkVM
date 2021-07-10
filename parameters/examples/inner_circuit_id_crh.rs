@@ -27,8 +27,7 @@ use utils::store;
 pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, CRHError> {
     let rng = &mut thread_rng();
     let inner_circuit_id_crh = <C::InnerCircuitIDCRH as CRH>::setup(rng);
-    let inner_circuit_id_crh_parameters = inner_circuit_id_crh.parameters();
-    let inner_circuit_id_crh_parameters_bytes = inner_circuit_id_crh_parameters.to_bytes_le()?;
+    let inner_circuit_id_crh_parameters_bytes = inner_circuit_id_crh.to_bytes_le()?;
 
     let size = inner_circuit_id_crh_parameters_bytes.len();
     println!("inner_circuit_id_crh.params\n\tsize - {}", size);

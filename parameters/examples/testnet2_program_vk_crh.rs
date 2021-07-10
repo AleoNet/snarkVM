@@ -27,8 +27,7 @@ use utils::store;
 pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, CRHError> {
     let rng = &mut thread_rng();
     let program_vk_crh = <C::ProgramVerificationKeyCRH as CRH>::setup(rng);
-    let program_vk_crh_parameters = program_vk_crh.parameters();
-    let program_vk_crh_parameters_bytes = program_vk_crh_parameters.to_bytes_le()?;
+    let program_vk_crh_parameters_bytes = program_vk_crh.to_bytes_le()?;
 
     let size = program_vk_crh_parameters_bytes.len();
     println!("program_vk_crh.params\n\tsize - {}", size);

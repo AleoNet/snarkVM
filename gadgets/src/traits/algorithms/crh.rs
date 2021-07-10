@@ -31,8 +31,7 @@ use crate::{
     },
 };
 
-pub trait CRHGadget<H: CRH, F: Field>: Sized + Clone {
-    type ParametersGadget: AllocGadget<H::Parameters, F> + Clone;
+pub trait CRHGadget<H: CRH, F: Field>: AllocGadget<H, F> + Sized + Clone {
     type OutputGadget: ConditionalEqGadget<F>
         + EqGadget<F>
         + ToBytesGadget<F>
@@ -43,13 +42,23 @@ pub trait CRHGadget<H: CRH, F: Field>: Sized + Clone {
         + Sized;
 
     fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
+        &self,
         cs: CS,
-        parameters: &Self::ParametersGadget,
         input: Vec<UInt8>,
     ) -> Result<Self::OutputGadget, SynthesisError>;
 }
 
 pub trait MaskedCRHGadget<H: CRH, F: PrimeField>: CRHGadget<H, F> {
+    type MaskParametersGadget: AllocGadget<H, F> + Clone;
+
+    fn check_evaluation_gadget_masked<CS: ConstraintSystem<F>>(
+        &self,
+        cs: CS,
+        input: Vec<UInt8>,
+        mask_parameters: &Self::MaskParametersGadget,
+        mask: Vec<UInt8>,
+    ) -> Result<Self::OutputGadget, SynthesisError>;
+
     /// Extends the mask such that 0 => 01, 1 => 10.
     fn extend_mask<CS: ConstraintSystem<F>>(_: CS, mask: &[UInt8]) -> Result<Vec<UInt8>, SynthesisError> {
         let extended_mask = mask
@@ -67,12 +76,4 @@ pub trait MaskedCRHGadget<H: CRH, F: PrimeField>: CRHGadget<H, F> {
 
         Ok(extended_mask)
     }
-
-    fn check_evaluation_gadget_masked<CS: ConstraintSystem<F>>(
-        cs: CS,
-        parameters: &Self::ParametersGadget,
-        input: Vec<UInt8>,
-        mask_parameters: &Self::ParametersGadget,
-        mask: Vec<UInt8>,
-    ) -> Result<Self::OutputGadget, SynthesisError>;
 }

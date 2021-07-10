@@ -43,9 +43,9 @@ use std::{
     Debug(bound = "G: Group"),
     Hash(bound = "G: Group")
 )]
-pub struct GroupEncryptionPublicKey<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize>(pub G);
+pub struct GroupEncryptionPublicKey<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize>(pub G);
 
-impl<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> ToBytes for GroupEncryptionPublicKey<G> {
+impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> ToBytes for GroupEncryptionPublicKey<G> {
     /// Writes the x-coordinate of the encryption public key.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -55,7 +55,7 @@ impl<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> ToB
     }
 }
 
-impl<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> FromBytes for GroupEncryptionPublicKey<G> {
+impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> FromBytes for GroupEncryptionPublicKey<G> {
     /// Reads the x-coordinate of the encryption public key.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -77,7 +77,7 @@ impl<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> Fro
     }
 }
 
-impl<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> Default for GroupEncryptionPublicKey<G> {
+impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> Default for GroupEncryptionPublicKey<G> {
     fn default() -> Self {
         Self(G::default())
     }
@@ -90,13 +90,13 @@ impl<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> Def
     PartialEq(bound = "G: Group, SG: Group, D: Digest"),
     Eq(bound = "G: Group, SG: Group, D: Digest")
 )]
-pub struct GroupEncryption<G: Group + ProjectiveCurve, SG: Group, D: Digest> {
+pub struct GroupEncryption<G: ProjectiveCurve, SG: Group, D: Digest> {
     pub parameters: GroupEncryptionParameters<G>,
     pub _signature_group: PhantomData<SG>,
     pub _hash: PhantomData<D>,
 }
 
-impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeserialize, D: Digest + Send + Sync>
+impl<G: ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeserialize, D: Digest + Send + Sync>
     EncryptionScheme for GroupEncryption<G, SG, D>
 {
     type BlindingExponent = <G as Group>::ScalarField;
@@ -277,9 +277,7 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
     }
 }
 
-impl<G: Group + ProjectiveCurve, SG: Group, D: Digest> From<GroupEncryptionParameters<G>>
-    for GroupEncryption<G, SG, D>
-{
+impl<G: ProjectiveCurve, SG: Group, D: Digest> From<GroupEncryptionParameters<G>> for GroupEncryption<G, SG, D> {
     fn from(parameters: GroupEncryptionParameters<G>) -> Self {
         Self {
             parameters,
