@@ -165,23 +165,6 @@ macro_rules! biginteger {
             }
 
             #[inline]
-            fn to_bytes_be(&self) -> Vec<u8> {
-                let mut le_bytes = self.to_bytes_le();
-                le_bytes.reverse();
-                le_bytes
-            }
-
-            #[inline]
-            fn to_bytes_le(&self) -> Vec<u8> {
-                let array_map = self.0.iter().map(|limb| limb.to_le_bytes());
-                let mut res = Vec::<u8>::with_capacity($num_limbs * 8);
-                for limb in array_map {
-                    res.extend_from_slice(&limb);
-                }
-                res
-            }
-
-            #[inline]
             fn to_biguint(&self) -> num_bigint::BigUint {
                 BigUint::from_bytes_le(&self.to_bytes_le())
             }
