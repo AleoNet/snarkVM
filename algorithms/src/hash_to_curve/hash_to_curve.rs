@@ -62,7 +62,13 @@ pub fn hash_to_curve<G: AffineCurve, const FIELD_BITS: u32, const XOF_DIGEST_LEN
 
     // Attempt to use the digest to derive a generator.
     G::from_random_bytes(&digest).and_then(|g| {
+        debug_assert!(g.is_on_curve());
+        debug_assert!(!g.is_in_correct_subgroup_assuming_on_curve());
+
         let g = g.mul_by_cofactor();
+        debug_assert!(g.is_on_curve());
+        debug_assert!(g.is_in_correct_subgroup_assuming_on_curve());
+
         match !g.is_zero() {
             true => return Some(g),
             false => None,
