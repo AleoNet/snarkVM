@@ -166,7 +166,7 @@ macro_rules! biginteger {
 
             #[inline]
             fn to_biguint(&self) -> num_bigint::BigUint {
-                BigUint::from_bytes_le(&self.to_bytes_le())
+                BigUint::from_bytes_le(&self.to_bytes_le().unwrap())
             }
 
             #[inline]
