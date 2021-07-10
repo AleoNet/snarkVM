@@ -41,10 +41,6 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRHParameters
 }
 
 impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE> {
-    pub fn from(bases: Vec<Vec<G>>) -> Self {
-        Self { bases }
-    }
-
     fn base<R: Rng>(num_powers: usize, rng: &mut R) -> Vec<G> {
         let mut powers = Vec::with_capacity(num_powers);
         let mut base = G::rand(rng);
@@ -53,6 +49,14 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> PedersenCRHPa
             base.double_in_place();
         }
         powers
+    }
+}
+
+impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<Vec<Vec<G>>>
+    for PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>
+{
+    fn from(bases: Vec<Vec<G>>) -> Self {
+        Self { bases }
     }
 }
 

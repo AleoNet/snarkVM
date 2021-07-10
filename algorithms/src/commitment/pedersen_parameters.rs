@@ -27,25 +27,22 @@ use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PedersenCommitmentParameters<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
-    pub bases: Vec<Vec<G>>,
-    pub random_base: Vec<G>,
     pub crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
+    pub random_base: Vec<G>,
 }
 
 impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     pub fn setup<R: Rng>(rng: &mut R) -> Self {
-        let bases = (0..NUM_WINDOWS)
-            .map(|_| Self::base(WINDOW_SIZE, rng))
-            .collect::<Vec<Vec<G>>>();
-        let random_base = Self::base(WINDOW_SIZE, rng);
-        let crh_parameters = PedersenCRHParameters::from(bases.clone());
-        let crh = PedersenCRH::from(crh_parameters);
         Self {
-            bases,
-            random_base,
-            crh,
+            crh: PedersenCRHParameters::from(
+                (0..NUM_WINDOWS)
+                    .map(|_| Self::base(WINDOW_SIZE, rng))
+                    .collect::<Vec<Vec<G>>>(),
+            )
+            .into(),
+            random_base: Self::base(WINDOW_SIZE, rng),
         }
     }
 
@@ -60,21 +57,12 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     }
 }
 
-impl<F: Field, G: Group + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToConstraintField<F>
-    for PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        Ok(Vec::new())
-    }
-}
-
 impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
     for PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.bases.len() as u32).write_le(&mut writer)?;
-        for base in &self.bases {
+        (self.crh.parameters().bases.len() as u32).write_le(&mut writer)?;
+        for base in &self.crh.parameters().bases {
             (base.len() as u32).write_le(&mut writer)?;
             for g in base {
                 g.write_le(&mut writer)?;
@@ -85,8 +73,6 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
         for g in &self.random_base {
             g.write_le(&mut writer)?;
         }
-
-        self.crh.parameters().write_le(&mut writer)?;
 
         Ok(())
     }
@@ -99,7 +85,6 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let num_bases: u32 = FromBytes::read_le(&mut reader)?;
         let mut bases = Vec::with_capacity(num_bases as usize);
-
         for _ in 0..num_bases {
             let base_len: u32 = FromBytes::read_le(&mut reader)?;
             let mut base = Vec::with_capacity(base_len as usize);
@@ -113,20 +98,23 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
 
         let random_base_len: u32 = FromBytes::read_le(&mut reader)?;
         let mut random_base = Vec::with_capacity(random_base_len as usize);
-
         for _ in 0..random_base_len {
             let g: G = FromBytes::read_le(&mut reader)?;
             random_base.push(g);
         }
 
-        let crh_parameters: <PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE> as CRH>::Parameters =
-            FromBytes::read_le(&mut reader)?;
-        let crh = PedersenCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::from(crh_parameters);
-
         Ok(Self {
-            bases,
             random_base,
-            crh,
+            crh: PedersenCRHParameters::from(bases).into(),
         })
+    }
+}
+
+impl<F: Field, G: Group + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToConstraintField<F>
+    for PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
+{
+    #[inline]
+    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
+        Ok(Vec::new())
     }
 }
