@@ -37,9 +37,7 @@ impl<G: Group + ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: us
     type Randomness = <G as Group>::ScalarField;
 
     fn setup<R: Rng>(rng: &mut R) -> Self {
-        Self {
-            parameters: PedersenCommitmentParameters::setup(rng),
-        }
+        PedersenCommitmentParameters::setup(rng).into()
     }
 
     /// Returns the affine x-coordinate as the commitment.

@@ -38,9 +38,7 @@ impl<G: Group + ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: us
     const INPUT_SIZE_BITS: usize = WINDOW_SIZE * NUM_WINDOWS;
 
     fn setup<R: Rng>(rng: &mut R) -> Self {
-        Self {
-            parameters: PedersenCRHParameters::setup(rng),
-        }
+        PedersenCRHParameters::setup(rng).into()
     }
 
     /// Returns the affine x-coordinate as the collision-resistant hash output.

@@ -37,9 +37,7 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH for Peder
     const INPUT_SIZE_BITS: usize = WINDOW_SIZE * NUM_WINDOWS;
 
     fn setup<R: Rng>(rng: &mut R) -> Self {
-        Self {
-            parameters: PedersenCRHParameters::setup(rng),
-        }
+        PedersenCRHParameters::setup(rng).into()
     }
 
     fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {

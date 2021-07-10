@@ -21,7 +21,7 @@ use crate::{
 };
 use snarkvm_curves::traits::Group;
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::bititerator::BitIteratorBE;
+use snarkvm_utilities::BitIteratorLE;
 
 use rand::Rng;
 
@@ -38,9 +38,7 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentSch
     type Randomness = G::ScalarField;
 
     fn setup<R: Rng>(rng: &mut R) -> Self {
-        Self {
-            parameters: PedersenCommitmentParameters::setup(rng),
-        }
+        PedersenCommitmentParameters::setup(rng).into()
     }
 
     fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
@@ -56,8 +54,7 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentSch
         let mut output = self.parameters.crh.hash(&input)?;
 
         // Compute h^r.
-        let mut scalar_bits = BitIteratorBE::new(randomness.to_repr()).collect::<Vec<_>>();
-        scalar_bits.reverse();
+        let scalar_bits = BitIteratorLE::new(randomness.to_repr());
         for (bit, power) in scalar_bits.into_iter().zip(&self.parameters.random_base) {
             if bit {
                 output += power
