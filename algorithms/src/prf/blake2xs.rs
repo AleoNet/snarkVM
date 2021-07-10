@@ -51,6 +51,8 @@ pub struct Blake2Xs;
 impl Blake2Xs {
     #[rustfmt::skip]
     pub fn evaluate<const NODE_OFFSET: u32, const XOF_DIGEST_LENGTH: u16, const PERSONA: u64>(input: &[u8]) -> [u8; 32] {
+        debug_assert!(XOF_DIGEST_LENGTH % 32 == 0);
+
         let mut h = VarBlake2s::with_parameter_block(&Self::blake2xs_parameter_block::<NODE_OFFSET, XOF_DIGEST_LENGTH, PERSONA>());
         let mut output = [0u8; 32];
         h.update(input);
