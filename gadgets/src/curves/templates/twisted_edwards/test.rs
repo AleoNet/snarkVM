@@ -49,7 +49,7 @@ where
     let scalar: <TEAffine<P> as Group>::ScalarField = UniformRand::rand(&mut thread_rng());
     let native_result = a.mul(scalar);
 
-    let mut scalar: Vec<bool> = BitIteratorBE::new(scalar.into_repr()).collect();
+    let mut scalar: Vec<bool> = BitIteratorBE::new(scalar.to_repr()).collect();
     // Get the scalar bits into little-endian form.
     scalar.reverse();
     let input = Vec::<Boolean>::alloc(cs.ns(|| "Input"), || Ok(scalar)).unwrap();

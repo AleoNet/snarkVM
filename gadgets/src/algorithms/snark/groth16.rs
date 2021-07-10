@@ -515,7 +515,7 @@ mod test {
             {
                 let mut cs = cs.ns(|| "Allocate Input");
                 for (i, input) in inputs.enumerate() {
-                    let mut input_bits = BitIteratorBE::new(input.into_repr()).collect::<Vec<_>>();
+                    let mut input_bits = BitIteratorBE::new(input.to_repr()).collect::<Vec<_>>();
                     // Input must be in little-endian, but BitIterator outputs in big-endian.
                     input_bits.reverse();
 
@@ -586,7 +586,7 @@ mod test {
             {
                 let mut cs = cs.ns(|| "Allocate Input");
                 for (i, input) in inputs.into_iter().enumerate() {
-                    let mut input_bits = BitIteratorBE::new(input.into_repr()).collect::<Vec<_>>();
+                    let mut input_bits = BitIteratorBE::new(input.to_repr()).collect::<Vec<_>>();
                     // Input must be in little-endian, but BitIterator outputs in big-endian.
                     input_bits.reverse();
 
@@ -660,7 +660,7 @@ mod test {
             {
                 let mut cs = cs.ns(|| "Allocate Input");
                 for (i, input) in inputs.enumerate() {
-                    let mut input_bits = BitIteratorBE::new(input.into_repr()).collect::<Vec<_>>();
+                    let mut input_bits = BitIteratorBE::new(input.to_repr()).collect::<Vec<_>>();
                     // Input must be in little-endian, but BitIterator outputs in big-endian.
                     input_bits.reverse();
 

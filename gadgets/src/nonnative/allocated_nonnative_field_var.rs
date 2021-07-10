@@ -65,7 +65,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
             optimization_type,
         );
 
-        let mut base_repr: <TargetField as PrimeField>::BigInteger = TargetField::one().into_repr();
+        let mut base_repr: <TargetField as PrimeField>::BigInteger = TargetField::one().to_repr();
 
         // Convert 2^{(params.bits_per_limb - 1)} into the TargetField and then double the base
         // This is because 2^{(params.bits_per_limb)} might indeed be larger than the target field's prime.
@@ -81,7 +81,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
             let mut cur = TargetField::one();
 
             // Iterate over limb bits (big endian).
-            for bit in limb.into_repr().to_bits_be().iter().rev() {
+            for bit in limb.to_repr().to_bits_be().iter().rev() {
                 if *bit {
                     val += &cur;
                 }
@@ -218,7 +218,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         }
 
         // Step 2: Construct the padding
-        let mut pad_non_top_limb_repr: <BaseField as PrimeField>::BigInteger = BaseField::one().into_repr();
+        let mut pad_non_top_limb_repr: <BaseField as PrimeField>::BigInteger = BaseField::one().to_repr();
         let mut pad_top_limb_repr: <BaseField as PrimeField>::BigInteger = pad_non_top_limb_repr;
 
         pad_non_top_limb_repr.muln((surfeit + params.bits_per_limb) as u32);
@@ -343,7 +343,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocatedNonNativeFieldVar<
         elem: &TargetField,
         optimization_type: OptimizationType,
     ) -> Result<Vec<BaseField>, SynthesisError> {
-        Self::get_limbs_representations_from_big_integer(&elem.into_repr(), optimization_type)
+        Self::get_limbs_representations_from_big_integer(&elem.to_repr(), optimization_type)
     }
 
     /// Obtain the limbs directly from a big int

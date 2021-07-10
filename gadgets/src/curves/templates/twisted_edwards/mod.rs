@@ -498,7 +498,7 @@ mod affine_impl {
         ) -> Result<Self, SynthesisError> {
             let cofactor_weight = BitIteratorBE::new(P::COFACTOR).filter(|b| *b).count();
             // If we multiply by r, we actually multiply by r - 2.
-            let r_minus_1 = (-P::ScalarField::one()).into_repr();
+            let r_minus_1 = (-P::ScalarField::one()).to_repr();
             let r_weight = BitIteratorBE::new(&r_minus_1).filter(|b| *b).count();
 
             // We pick the most efficient method of performing the prime order check:
@@ -1134,7 +1134,7 @@ mod projective_impl {
         {
             let cofactor_weight = BitIteratorBE::new(P::COFACTOR).filter(|b| *b).count();
             // If we multiply by r, we actually multiply by r - 2.
-            let r_minus_1 = (-P::ScalarField::one()).into_repr();
+            let r_minus_1 = (-P::ScalarField::one()).to_repr();
             let r_weight = BitIteratorBE::new(&r_minus_1).filter(|b| *b).count();
 
             // We pick the most efficient method of performing the prime order check:
