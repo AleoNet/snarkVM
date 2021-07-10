@@ -25,8 +25,8 @@ const THREE_OFFSET: u32 = 3;
 /// Attempts to run hash-to-curve and returns the generator, message, and counter on sucess.
 #[inline]
 pub fn try_hash_to_curve<G: AffineCurve, const XOF_DIGEST_LENGTH: u16>(input: &str) -> Option<(G, String, usize)> {
-    // Attempt to increment counter `k` at most `G::SERIALIZED_SIZE` times.
-    for k in 0..G::SERIALIZED_SIZE {
+    // Attempt to increment counter `k` at most `8 * G::SERIALIZED_SIZE` times.
+    for k in 0..(8 * G::SERIALIZED_SIZE) {
         // Construct a new message.
         let message = format!("{} in {}", input, k);
 
@@ -43,6 +43,7 @@ pub fn try_hash_to_curve<G: AffineCurve, const XOF_DIGEST_LENGTH: u16>(input: &s
 pub fn hash_to_curve<G: AffineCurve, const XOF_DIGEST_LENGTH: u16>(input: &str) -> Option<G> {
     debug_assert!(G::SERIALIZED_SIZE > 0);
     debug_assert!(G::SERIALIZED_SIZE <= XOF_DIGEST_LENGTH as usize);
+    debug_assert!(XOF_DIGEST_LENGTH as usize - G::SERIALIZED_SIZE < 32);
 
     // The number of Blake2Xs invocations needed.
     let num_rounds: u16 = match G::SERIALIZED_SIZE % 32 > 0 {
