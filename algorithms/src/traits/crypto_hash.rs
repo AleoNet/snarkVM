@@ -22,13 +22,13 @@ pub trait CryptoHash {
     type Output: ToBytes + Eq + Clone + Default;
 
     /// Evaluate the cryptographic hash function over a fixed-length vector as input.
-    fn evaluate_fixed_length_vector(input: &[Self::Input]) -> Result<Self::Output, CryptoHashError>;
+    fn evaluate(input: &[Self::Input]) -> Result<Self::Output, CryptoHashError>;
 
     /// Evaluate the cryptographic hash function over a non-fixed-length vector,
     /// in which the length also needs to be hashed.
-    fn evaluate_dynamic_length_vector(input: &[Self::Input]) -> Result<Self::Output, CryptoHashError> {
+    fn evaluate_with_len(input: &[Self::Input]) -> Result<Self::Output, CryptoHashError> {
         let mut header = vec![<Self::Input as From<u64>>::from(input.len() as u64)];
         header.extend_from_slice(input);
-        Self::evaluate_fixed_length_vector(&header)
+        Self::evaluate(&header)
     }
 }

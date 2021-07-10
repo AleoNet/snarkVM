@@ -294,7 +294,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     type Input = F;
     type Output = F;
 
-    fn evaluate_fixed_length_vector(input: &[Self::Input]) -> Result<Self::Output, CryptoHashError> {
+    fn evaluate(input: &[Self::Input]) -> Result<Self::Output, CryptoHashError> {
         let params = F::get_default_poseidon_parameters(RATE, OPTIMIZED_FOR_WEIGHTS).unwrap();
         let mut sponge = PoseidonSponge::<F>::new(&params);
         sponge.absorb(input);

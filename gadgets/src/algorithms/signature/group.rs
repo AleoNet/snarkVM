@@ -40,7 +40,7 @@ use snarkvm_fields::{Field, FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{
     serialize::{CanonicalDeserialize, CanonicalSerialize},
-    to_bytes,
+    to_bytes_le,
     FromBytes,
     ToBytes,
 };
@@ -184,8 +184,8 @@ impl<G: Group, SG: Group, F: PrimeField> AllocGadget<SchnorrSignature<SG>, F>
         // TODO (raychu86): Check that this conversion is valid.
         //  This will work for EdwardsBls Fr and Bls12_377 Fr because they are both represented with Fp256.
         // Cast <G as Group>::ScalarField as F.
-        let prover_response: F = FromBytes::read(&to_bytes![schnorr_output.prover_response]?[..])?;
-        let verifier_challenge: F = FromBytes::read(&to_bytes![schnorr_output.verifier_challenge]?[..])?;
+        let prover_response: F = FromBytes::read_le(&to_bytes_le![schnorr_output.prover_response]?[..])?;
+        let verifier_challenge: F = FromBytes::read_le(&to_bytes_le![schnorr_output.verifier_challenge]?[..])?;
 
         let prover_response = FpGadget::<F>::alloc(cs.ns(|| "alloc_prover_response"), || Ok(&prover_response))?;
         let verifier_challenge =
@@ -212,8 +212,8 @@ impl<G: Group, SG: Group, F: PrimeField> AllocGadget<SchnorrSignature<SG>, F>
         let schnorr_output = value.borrow().clone();
 
         // Cast <G as Group>::ScalarField as F.
-        let prover_response: F = FromBytes::read(&to_bytes![schnorr_output.prover_response]?[..])?;
-        let verifier_challenge: F = FromBytes::read(&to_bytes![schnorr_output.verifier_challenge]?[..])?;
+        let prover_response: F = FromBytes::read_le(&to_bytes_le![schnorr_output.prover_response]?[..])?;
+        let verifier_challenge: F = FromBytes::read_le(&to_bytes_le![schnorr_output.verifier_challenge]?[..])?;
 
         let prover_response =
             FpGadget::<F>::alloc_input(cs.ns(|| "alloc_input_prover_response"), || Ok(&prover_response))?;

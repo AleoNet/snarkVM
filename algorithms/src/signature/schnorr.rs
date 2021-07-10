@@ -23,13 +23,7 @@ use crate::{
 };
 use snarkvm_curves::traits::Group;
 use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, One, PrimeField, ToConstraintField, Zero};
-use snarkvm_utilities::{
-    bytes::{from_bytes_le_to_bits_le, FromBytes, ToBytes},
-    errors::SerializationError,
-    rand::UniformRand,
-    serialize::*,
-    to_bytes_le,
-};
+use snarkvm_utilities::{bytes::{from_bytes_le_to_bits_le, FromBytes, ToBytes}, errors::SerializationError, rand::UniformRand, serialize::*, to_bytes_le, FromBits, ToBits};
 
 use crate::crypto_hash::PoseidonCryptoHash;
 use itertools::Itertools;
@@ -196,14 +190,15 @@ where
         let mut hash_input = Vec::<<G as AffineCurve>::BaseField>::new();
         hash_input.extend_from_slice(&self.parameters.salt.to_field_elements().unwrap());
         hash_input.extend_from_slice(&prover_commitment.to_field_elements().unwrap());
+        hash_input.push(<G as AffineCurve>::BaseField::from(message.len() as u128));
         hash_input.extend_from_slice(&message.to_field_elements().unwrap());
 
         let raw_hash =
-            PoseidonCryptoHash::<<G as AffineCurve>::BaseField, 4, false>::evaluate_dynamic_length_vector(&hash_input)
+            PoseidonCryptoHash::<<G as AffineCurve>::BaseField, 4, false>::evaluate(&hash_input)
                 .unwrap();
 
         // Bit decompose the raw_hash
-        let mut raw_hash_bits = raw_hash.into_repr().to_bits_le();
+        let mut raw_hash_bits = raw_hash.to_repr().to_bits_le();
         raw_hash_bits.resize(
             <<G as Group>::ScalarField as PrimeField>::Parameters::CAPACITY as usize,
             false,
@@ -212,7 +207,7 @@ where
 
         // Compute the supposed verifier response: e := H(salt || r || msg);
         let verifier_challenge = <<G as Group>::ScalarField as PrimeField>::from_repr(
-            <<G as Group>::ScalarField as PrimeField>::BigInteger::from_bits_be(raw_hash_bits),
+            <<G as Group>::ScalarField as PrimeField>::BigInteger::from_bits_be(&raw_hash_bits),
         )
         .unwrap();
 
@@ -256,14 +251,15 @@ where
         let mut hash_input = Vec::<<G as AffineCurve>::BaseField>::new();
         hash_input.extend_from_slice(&self.parameters.salt.to_field_elements().unwrap());
         hash_input.extend_from_slice(&claimed_prover_commitment.to_field_elements().unwrap());
+        hash_input.push(<G as AffineCurve>::BaseField::from(message.len() as u128));
         hash_input.extend_from_slice(&message.to_field_elements().unwrap());
 
         let raw_hash =
-            PoseidonCryptoHash::<<G as AffineCurve>::BaseField, 4, false>::evaluate_dynamic_length_vector(&hash_input)
+            PoseidonCryptoHash::<<G as AffineCurve>::BaseField, 4, false>::evaluate(&hash_input)
                 .unwrap();
 
         // Bit decompose the raw_hash
-        let mut raw_hash_bits = raw_hash.into_repr().to_bits_le();
+        let mut raw_hash_bits = raw_hash.to_repr().to_bits_le();
         raw_hash_bits.resize(
             <<G as Group>::ScalarField as PrimeField>::Parameters::CAPACITY as usize,
             false,
@@ -272,7 +268,7 @@ where
 
         // Compute the supposed verifier response: e := H(salt || r || msg);
         let obtained_verifier_challenge = <<G as Group>::ScalarField as PrimeField>::from_repr(
-            <<G as Group>::ScalarField as PrimeField>::BigInteger::from_bits_be(raw_hash_bits),
+            <<G as Group>::ScalarField as PrimeField>::BigInteger::from_bits_be(&raw_hash_bits),
         )
         .unwrap();
 

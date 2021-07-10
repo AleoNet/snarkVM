@@ -372,6 +372,7 @@ where
             let salt_bytes_field_elements: Vec<F> = parameters.parameters.salt.to_field_elements().unwrap();
 
             let mut res = Vec::new();
+
             for (i, elem) in salt_bytes_field_elements.iter().enumerate() {
                 res.push(FpGadget::<F>::alloc_constant(
                     cs.ns(|| format!("alloc salt byte field element {}", i)),
@@ -384,10 +385,11 @@ where
             &claimed_prover_commitment
                 .to_constraint_field(cs.ns(|| "convert claimed_prover_commitment into field elements"))?,
         );
+        hash_input.push(FpGadget::<F>::Constant(F::from(message.len() as u128)));
         hash_input.extend_from_slice(&message.to_constraint_field(cs.ns(|| "convert message into field elements"))?);
 
         // Compute the hash on the base field
-        let raw_hash = PoseidonCryptoHashGadget::<F, 4, false>::check_dynamic_length_vector_evaluation_gadget(
+        let raw_hash = PoseidonCryptoHashGadget::<F, 4, false>::check_evaluation_gadget(
             cs.ns(|| "poseidon"),
             &hash_input,
         )?;

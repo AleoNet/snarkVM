@@ -55,7 +55,7 @@ impl<G: Group> SchnorrParameters<G> {
     }
 }
 
-impl<G: Group, D: Digest> ToBytes for SchnorrParameters<G, D> {
+impl<G: Group> ToBytes for SchnorrParameters<G> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (self.generator_powers.len() as u32).write_le(&mut writer)?;
         for g in &self.generator_powers {

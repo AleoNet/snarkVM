@@ -23,17 +23,17 @@ use snarkvm_utilities::fmt::Debug;
 pub trait CryptoHashGadget<P: CryptoHash, F: PrimeField> {
     type OutputGadget: EqGadget<F> + ToBytesGadget<F> + AllocGadget<P::Output, F> + Clone + Debug;
 
-    fn check_fixed_length_vector_evaluation_gadget<CS: ConstraintSystem<F>>(
+    fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
         cs: CS,
         input: &[FpGadget<F>],
     ) -> Result<Self::OutputGadget, SynthesisError>;
 
-    fn check_dynamic_length_vector_evaluation_gadget<CS: ConstraintSystem<F>>(
+    fn check_evaluation_with_len_gadget<CS: ConstraintSystem<F>>(
         cs: CS,
         input: &[FpGadget<F>],
     ) -> Result<Self::OutputGadget, SynthesisError> {
         let mut header = vec![FpGadget::<F>::Constant(F::from(input.len() as u128))];
         header.extend_from_slice(input);
-        Self::check_fixed_length_vector_evaluation_gadget(cs, &header)
+        Self::check_evaluation_gadget(cs, &header)
     }
 }

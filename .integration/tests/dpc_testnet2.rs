@@ -668,7 +668,7 @@ fn test_testnet2_dpc_execute_constraints() {
         let num_constraints = outer_circuit_cs.num_constraints();
         println!("Outer circuit num constraints: {:?}", num_constraints);
         // TODO (howardwu): This constraint count is wrong. Update it after the bug source has been found.
-        assert_eq!(4359972, num_constraints);
+        assert_eq!(4347556, num_constraints);
         println!("=========================================================");
     }
 

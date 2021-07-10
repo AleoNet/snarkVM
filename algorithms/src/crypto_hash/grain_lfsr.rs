@@ -17,7 +17,7 @@
 #![allow(dead_code)]
 
 use snarkvm_fields::{FieldParameters, PrimeField};
-use snarkvm_utilities::{cmp::Ordering, vec::Vec, BigInteger};
+use snarkvm_utilities::{cmp::Ordering, vec::Vec, FromBits};
 
 pub struct PoseidonGrainLFSR {
     pub prime_num_bits: u64,
@@ -131,7 +131,7 @@ impl PoseidonGrainLFSR {
                 let bits = self.get_bits(self.prime_num_bits as usize);
 
                 // Construct the number
-                let bigint = F::BigInteger::from_bits_be(bits);
+                let bigint = F::BigInteger::from_bits_be(&bits);
 
                 if bigint.cmp(&F::Parameters::MODULUS) == Ordering::Less {
                     res.push(F::from_repr(bigint).unwrap());

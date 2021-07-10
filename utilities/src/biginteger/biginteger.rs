@@ -102,12 +102,6 @@ pub trait BigInteger:
     /// Compute the `i`-th bit of `self`.
     fn get_bit(&self, i: usize) -> bool;
 
-    /// Returns the bit representation of the big integer in a little endian boolean array,
-    /// with trailing zeroes.
-    fn to_bits_le(&self) -> Vec<bool> {
-        BitIteratorLE::new(self).collect::<Vec<_>>()
-    }
-
     /// Returns the BigUint representation.
     fn to_biguint(&self) -> BigUint;
 

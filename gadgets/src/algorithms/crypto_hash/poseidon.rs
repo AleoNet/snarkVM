@@ -295,7 +295,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
 {
     type OutputGadget = FpGadget<F>;
 
-    fn check_fixed_length_vector_evaluation_gadget<CS: ConstraintSystem<F>>(
+    fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
         mut cs: CS,
         input: &[FpGadget<F>],
     ) -> Result<Self::OutputGadget, SynthesisError> {
