@@ -322,13 +322,13 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
     }
 
     #[inline]
-    fn from_repr_unsafe(r: BigInteger) -> Self {
+    fn from_repr_unchecked(r: BigInteger) -> Self {
         let r = Fp256(r, PhantomData);
         if r.is_valid() { r } else { Self::zero() }
     }
 
     #[inline]
-    fn to_repr_unsafe(&self) -> BigInteger {
+    fn to_repr_unchecked(&self) -> BigInteger {
         let r = *self;
         r.0
     }
@@ -622,7 +622,7 @@ impl<P: Fp256Parameters + PoseidonMDSParameters> PoseidonMDSField for Fp256<P> {
         for row in P::POSEIDON_MDS.iter() {
             mds.push(
                 row.iter()
-                    .map(|b| Self::from_repr_unsafe(*b))
+                    .map(|b| Self::from_repr_unchecked(*b))
                     .collect::<Vec<Self>>()
                     .to_vec(),
             );

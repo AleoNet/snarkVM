@@ -32,10 +32,10 @@ pub trait PrimeField: FftField<FftParameters = <Self as PrimeField>::Parameters>
     fn to_repr(&self) -> Self::BigInteger;
 
     /// Returns a prime field element from its underlying raw representation.
-    fn from_repr_unsafe(repr: Self::BigInteger) -> Self;
+    fn from_repr_unchecked(repr: Self::BigInteger) -> Self;
 
     /// Returns the underlying raw representation of the prime field element.
-    fn to_repr_unsafe(&self) -> Self::BigInteger;
+    fn to_repr_unchecked(&self) -> Self::BigInteger;
 
     /// Returns the field size in bits.
     fn size_in_bits() -> usize {
