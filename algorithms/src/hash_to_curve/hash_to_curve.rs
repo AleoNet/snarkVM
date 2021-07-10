@@ -41,12 +41,14 @@ pub fn try_hash_to_curve<G: AffineCurve, const XOF_DIGEST_LENGTH: u16>(input: &s
 /// Executes one round of hash-to-curve and returns a generator on success.
 #[inline]
 pub fn hash_to_curve<G: AffineCurve, const XOF_DIGEST_LENGTH: u16>(input: &str) -> Option<G> {
+    debug_assert!(G::SERIALIZED_SIZE > 0);
+    debug_assert!(G::SERIALIZED_SIZE <= XOF_DIGEST_LENGTH as usize);
+
     // The number of Blake2Xs invocations needed.
     let num_rounds: u16 = match G::SERIALIZED_SIZE % 32 > 0 {
         true => ((G::SERIALIZED_SIZE / 32) + 1) as u16,
         false => (G::SERIALIZED_SIZE / 32) as u16,
     };
-    debug_assert!(G::SERIALIZED_SIZE > 0);
     debug_assert!(num_rounds > 0);
 
     // Compute the digest for sampling the generator.
