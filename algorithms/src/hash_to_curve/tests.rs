@@ -18,22 +18,21 @@
 mod bls12_377 {
     use crate::hash_to_curve::{hash_to_curve, try_hash_to_curve};
     use snarkvm_curves::{
-        bls12_377::{FqParameters, G1Affine, G2Affine},
+        bls12_377::{G1Affine, G2Affine},
         AffineCurve,
     };
-    use snarkvm_fields::{FieldParameters, PrimeField};
-    use snarkvm_utilities::BigInteger384;
-
-    const FIELD_BITS: u32 = FqParameters::MODULUS_BITS;
+    use snarkvm_fields::PrimeField;
+    use snarkvm_utilities::{BigInteger384, ConstantSerializedSize};
 
     #[test]
     fn hash_bls12_377_g1() {
-        let g1 = hash_to_curve::<G1Affine, FIELD_BITS, 512>("Aleo BLS12-377 G1 in 2").unwrap();
+        let g1 = hash_to_curve::<G1Affine, 512>("Aleo BLS12-377 G1 in 2").unwrap();
         assert!(g1.is_on_curve());
         assert!(g1.is_in_correct_subgroup_assuming_on_curve());
+        assert_eq!(G1Affine::SERIALIZED_SIZE, 384 / 8);
         assert_eq!(
-            try_hash_to_curve::<G1Affine, FIELD_BITS, 512>("Aleo BLS12-377 G1"),
-            Some((g1, 2))
+            try_hash_to_curve::<G1Affine, 512>("Aleo BLS12-377 G1"),
+            Some((g1, "Aleo BLS12-377 G1 in 2".to_string(), 2))
         );
 
         // String representation
@@ -97,67 +96,68 @@ mod bls12_377 {
 
     #[test]
     fn hash_bls12_377_g2() {
-        let g2 = hash_to_curve::<G2Affine, FIELD_BITS, 512>("Aleo BLS12-377 G2 in 0").unwrap();
+        let g2 = hash_to_curve::<G2Affine, 768>("Aleo BLS12-377 G2 in 0").unwrap();
         assert!(g2.is_on_curve());
         assert!(g2.is_in_correct_subgroup_assuming_on_curve());
+        assert_eq!(G2Affine::SERIALIZED_SIZE, 2 * 384 / 8);
         assert_eq!(
-            try_hash_to_curve::<G2Affine, FIELD_BITS, 512>("Aleo BLS12-377 G2"),
-            Some((g2, 0)),
+            try_hash_to_curve::<G2Affine, 768>("Aleo BLS12-377 G2"),
+            Some((g2, "Aleo BLS12-377 G2 in 0".to_string(), 0)),
         );
 
         // String representation
         assert_eq!(
             g2.x.to_string(),
-            "Fp2(18530967594235566243335187101752570107616176349552784968178098996818868750252111351392075324115454717813888945791 + 249109238597864858227740027174673999737378771274637856066753519982906549035341230102237437984449583493201730309992 * u)",
+            "Fp2(46569348160334319069206848238213973843469189214461431993285766877825396394318396555703037114246793801437027641255 + 188412368947954446259048493756673862317357819827884613309550352254310070810851839417320244506424991334079916039560 * u)",
         );
         assert_eq!(
             g2.y.to_string(),
-            "Fp2(162411681306238058413572478072422455473006141666469347219463629164083502715167424891268870041372045373590873694831 + 242659755380625277054368746168481273389655769841276332694767846852600636897945523549638958523260502082430026303549 * u)",
+            "Fp2(158561138871920333147708562303794116026060566044009338691828247707987279531554093137508523592988442410034102129831 + 32057641082752786628002279460430111176039873268008259885923512719033298568522407836278114602800860283800447442580 * u)",
         );
 
         // Montgomery BigInteger representation
         assert_eq!(
             g2.x.c0.to_repr(),
             BigInteger384::new([
-                9329452611231846015,
-                8792950918801334804,
-                4523229430185034581,
-                15651789139955128560,
-                3609164636334335099,
-                8675599281550002
+                7815297578803799975,
+                1256652247824780446,
+                2165683822386192182,
+                1981634023590447877,
+                13308069146233194505,
+                21802261613566580
             ])
         );
         assert_eq!(
             g2.x.c1.to_repr(),
             BigInteger384::new([
-                1376524554983280488,
-                10406020321972407161,
-                6426446564995126621,
-                5671424054764911792,
-                18241767988478723229,
-                116624883207900101
+                14122182214842211720,
+                5303985461877534268,
+                12486585805689871449,
+                12681834428822374109,
+                7971568359598912423,
+                88208573263518091
             ])
         );
         assert_eq!(
             g2.y.c0.to_repr(),
             BigInteger384::new([
-                8721605417431851631,
-                2728844593816855904,
-                15880900592053032399,
-                6988067945587771436,
-                9002822667476395852,
-                76035892809721964
+                10807864999618925735,
+                16927832071050864732,
+                12684721141277008509,
+                10521726286972171821,
+                6176890681155422518,
+                74233193462973541
             ])
         );
         assert_eq!(
             g2.y.c1.to_repr(),
             BigInteger384::new([
-                2375843859815909437,
-                1458086711624452503,
-                14704517538236290116,
-                15600284112411805549,
-                11183621525253435444,
-                113605443900086630
+                1775659310734466708,
+                1234416438526110671,
+                13459598036553415632,
+                1282021653714635349,
+                7219999880771783868,
+                15008350024433292
             ])
         );
 
@@ -165,45 +165,45 @@ mod bls12_377 {
         assert_eq!(
             g2.x.c0.to_repr_unchecked(),
             BigInteger384::new([
-                1970932785276074212,
-                5313855799015095490,
-                13710104135971762041,
-                9664454070231379298,
-                1816926557282441884,
-                71411904752082374
+                11973342190133476562,
+                7932516760210873444,
+                3123660938736867083,
+                3711726067984912930,
+                10170985402718536061,
+                102187153343817403
             ])
         );
         assert_eq!(
             g2.x.c1.to_repr_unchecked(),
             BigInteger384::new([
-                5965396486954107648,
-                16111224712623400997,
-                2703376652134200593,
-                18355826742575396191,
-                9498717423363744549,
-                4329860068425854
+                16848003768709251513,
+                8558673495899769328,
+                5083675993247777120,
+                3470484689664808427,
+                4319033446732408080,
+                22004849378974139
             ])
         );
         assert_eq!(
             g2.y.c0.to_repr_unchecked(),
             BigInteger384::new([
-                767052386591684706,
-                4046053330946717442,
-                107140035638630851,
-                1214901647713936718,
-                3003138019557670046,
-                114940352679405637
+                17087946985508632415,
+                6250381662614363525,
+                1686999626994196013,
+                13584694043776821853,
+                8523762154632676039,
+                108956758486672228
             ])
         );
         assert_eq!(
             g2.y.c1.to_repr_unchecked(),
             BigInteger384::new([
-                9167062495373079174,
-                3246999820078391825,
-                17519529885154895381,
-                1494814734789040059,
-                17572559064583668264,
-                118822025774994277
+                5428705130058419830,
+                13435523325207739993,
+                9912851198364072856,
+                10812231845306851609,
+                11214316695400868122,
+                90921991426512422
             ])
         );
     }
@@ -213,22 +213,21 @@ mod bls12_377 {
 mod bw6_761 {
     use crate::hash_to_curve::{hash_to_curve, try_hash_to_curve};
     use snarkvm_curves::{
-        bw6_761::{FqParameters, G1Affine, G2Affine},
+        bw6_761::{G1Affine, G2Affine},
         AffineCurve,
     };
-    use snarkvm_fields::{FieldParameters, PrimeField};
-    use snarkvm_utilities::BigInteger768;
-
-    const FIELD_BITS: u32 = FqParameters::MODULUS_BITS;
+    use snarkvm_fields::PrimeField;
+    use snarkvm_utilities::{BigInteger768, ConstantSerializedSize};
 
     #[test]
     fn hash_bw6_761_g1() {
-        let g1 = hash_to_curve::<G1Affine, FIELD_BITS, 768>("Aleo BW6-761 G1 in 6").unwrap();
+        let g1 = hash_to_curve::<G1Affine, 768>("Aleo BW6-761 G1 in 6").unwrap();
         assert!(g1.is_on_curve());
         assert!(g1.is_in_correct_subgroup_assuming_on_curve());
+        assert_eq!(G1Affine::SERIALIZED_SIZE, 768 / 8);
         assert_eq!(
-            try_hash_to_curve::<G1Affine, FIELD_BITS, 768>("Aleo BW6-761 G1"),
-            Some((g1, 6)),
+            try_hash_to_curve::<G1Affine, 768>("Aleo BW6-761 G1"),
+            Some((g1, "Aleo BW6-761 G1 in 6".to_string(), 6)),
         );
 
         // String representation
@@ -316,12 +315,13 @@ mod bw6_761 {
 
     #[test]
     fn hash_bw6_761_g2() {
-        let g2 = hash_to_curve::<G2Affine, FIELD_BITS, 768>("Aleo BW6-761 G2 in 2").unwrap();
+        let g2 = hash_to_curve::<G2Affine, 768>("Aleo BW6-761 G2 in 2").unwrap();
         assert!(g2.is_on_curve());
         assert!(g2.is_in_correct_subgroup_assuming_on_curve());
+        assert_eq!(G2Affine::SERIALIZED_SIZE, 768 / 8);
         assert_eq!(
-            try_hash_to_curve::<G2Affine, FIELD_BITS, 768>("Aleo BW6-761 G2"),
-            Some((g2, 2)),
+            try_hash_to_curve::<G2Affine, 768>("Aleo BW6-761 G2"),
+            Some((g2, "Aleo BW6-761 G2 in 2".to_string(), 2)),
         );
 
         // String representation

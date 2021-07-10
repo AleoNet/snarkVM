@@ -22,35 +22,36 @@ const ONE_OFFSET: u32 = 1;
 const TWO_OFFSET: u32 = 2;
 const THREE_OFFSET: u32 = 3;
 
+/// Attempts to run hash-to-curve and returns the generator, message, and counter on sucess.
 #[inline]
-pub fn try_hash_to_curve<G: AffineCurve, const FIELD_BITS: u32, const XOF_DIGEST_LENGTH: u16>(
-    input: &str,
-) -> Option<(G, u32)> {
-    // Try incrementing counter `k` FIELD_BITS times.
-    for k in 0..FIELD_BITS {
+pub fn try_hash_to_curve<G: AffineCurve, const XOF_DIGEST_LENGTH: u16>(input: &str) -> Option<(G, String, usize)> {
+    // Attempt to increment counter `k` at most `G::SERIALIZED_SIZE` times.
+    for k in 0..G::SERIALIZED_SIZE {
         // Construct a new message.
         let message = format!("{} in {}", input, k);
 
         // Output the generator if a valid generator was found.
-        if let Some(g) = hash_to_curve::<G, FIELD_BITS, XOF_DIGEST_LENGTH>(&message) {
-            // println!("{}", message);
-            return Some((g, k));
+        if let Some(g) = hash_to_curve::<G, XOF_DIGEST_LENGTH>(&message) {
+            return Some((g, message, k));
         }
     }
     None
 }
 
+/// Executes one round of hash-to-curve and returns a generator on success.
 #[inline]
-pub fn hash_to_curve<G: AffineCurve, const FIELD_BITS: u32, const XOF_DIGEST_LENGTH: u16>(input: &str) -> Option<G> {
+pub fn hash_to_curve<G: AffineCurve, const XOF_DIGEST_LENGTH: u16>(input: &str) -> Option<G> {
     // The number of Blake2Xs invocations needed.
-    let num_rounds: u16 = match FIELD_BITS % 256 > 0 {
-        true => ((FIELD_BITS / 256) + 1) as u16,
-        false => (FIELD_BITS / 256) as u16,
+    let num_rounds: u16 = match G::SERIALIZED_SIZE % 32 > 0 {
+        true => ((G::SERIALIZED_SIZE / 32) + 1) as u16,
+        false => (G::SERIALIZED_SIZE / 32) as u16,
     };
+    debug_assert!(G::SERIALIZED_SIZE > 0);
+    debug_assert!(num_rounds > 0);
 
-    // Compute the digest for deriving the generator.
+    // Compute the digest for sampling the generator.
     let mut digest = Vec::with_capacity(XOF_DIGEST_LENGTH as usize);
-    for offset in 0..=num_rounds {
+    for offset in 0..num_rounds {
         digest.extend_from_slice(&match offset {
             0 => Blake2Xs::evaluate::<ZERO_OFFSET, XOF_DIGEST_LENGTH, ALEO_PERSONA>(input.as_bytes()),
             1 => Blake2Xs::evaluate::<ONE_OFFSET, XOF_DIGEST_LENGTH, ALEO_PERSONA>(input.as_bytes()),
@@ -59,6 +60,7 @@ pub fn hash_to_curve<G: AffineCurve, const FIELD_BITS: u32, const XOF_DIGEST_LEN
             _ => unimplemented!("hash_to_curve supports up to a 1024-bit base field element"),
         });
     }
+    debug_assert!(digest.len() == (32 * num_rounds) as usize);
 
     // Attempt to use the digest to derive a generator.
     G::from_random_bytes(&digest).and_then(|g| {
