@@ -17,10 +17,11 @@
 use crate::{Field, Fp3, Fp3Parameters, One, Zero};
 use snarkvm_utilities::{
     biginteger::BigInteger,
-    bytes::{FromBytes, ToBytes},
     errors::SerializationError,
     rand::UniformRand,
     serialize::*,
+    FromBytes,
+    ToBytes,
 };
 
 use rand::{
@@ -344,17 +345,17 @@ impl<P: Fp6Parameters> From<u8> for Fp6<P> {
 
 impl<P: Fp6Parameters> ToBytes for Fp6<P> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.c0.write(&mut writer)?;
-        self.c1.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.c0.write_le(&mut writer)?;
+        self.c1.write_le(&mut writer)
     }
 }
 
 impl<P: Fp6Parameters> FromBytes for Fp6<P> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let c0 = Fp3::read(&mut reader)?;
-        let c1 = Fp3::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let c0 = Fp3::read_le(&mut reader)?;
+        let c1 = Fp3::read_le(&mut reader)?;
         Ok(Fp6::new(c0, c1))
     }
 }

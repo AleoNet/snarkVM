@@ -19,7 +19,7 @@ use snarkvm_dpc::{
     DPCError,
     ProgramScheme,
 };
-use snarkvm_utilities::{bytes::ToBytes, to_bytes};
+use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
 use std::path::PathBuf;
@@ -38,8 +38,8 @@ pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
         rng,
     )?;
     let (proving_key, verifying_key) = noop_program.to_snark_parameters();
-    let noop_program_snark_pk = to_bytes![proving_key]?;
-    let noop_program_snark_vk = to_bytes![verifying_key]?;
+    let noop_program_snark_pk = proving_key.to_bytes_le()?;
+    let noop_program_snark_vk = verifying_key.to_bytes_le()?;
 
     println!("noop_program_snark_pk.params\n\tsize - {}", noop_program_snark_pk.len());
     println!("noop_program_snark_vk.params\n\tsize - {}", noop_program_snark_vk.len());

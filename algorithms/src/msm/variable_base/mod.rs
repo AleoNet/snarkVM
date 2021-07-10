@@ -81,7 +81,7 @@ mod tests {
     fn test_data(seed: u64, samples: usize) -> (Vec<G1Affine>, Vec<BigInteger256>) {
         let mut rng = XorShiftRng::seed_from_u64(seed);
 
-        let v = (0..samples).map(|_| Fr::rand(&mut rng).into_repr()).collect::<Vec<_>>();
+        let v = (0..samples).map(|_| Fr::rand(&mut rng).to_repr()).collect::<Vec<_>>();
         let g = (0..samples)
             .map(|_| G1Projective::rand(&mut rng).into_affine())
             .collect::<Vec<_>>();

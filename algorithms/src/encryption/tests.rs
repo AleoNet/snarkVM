@@ -19,7 +19,7 @@ use snarkvm_curves::{
     edwards_bls12::{EdwardsAffine, EdwardsProjective},
     traits::{Group, ProjectiveCurve},
 };
-use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
@@ -60,9 +60,9 @@ fn encryption_public_key_serialization() {
         let private_key = encryption_scheme.generate_private_key(rng);
         let public_key = encryption_scheme.generate_public_key(&private_key).unwrap();
 
-        let public_key_bytes = to_bytes![public_key].unwrap();
+        let public_key_bytes = to_bytes_le![public_key].unwrap();
         let recovered_public_key =
-            <TestEncryptionScheme as EncryptionScheme>::PublicKey::read(&public_key_bytes[..]).unwrap();
+            <TestEncryptionScheme as EncryptionScheme>::PublicKey::read_le(&public_key_bytes[..]).unwrap();
 
         assert_eq!(public_key, recovered_public_key);
     }

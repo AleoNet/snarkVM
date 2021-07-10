@@ -20,6 +20,9 @@ use snarkvm_r1cs::SynthesisError;
 #[derive(Debug, Error)]
 pub enum SNARKError {
     #[error("{}", _0)]
+    AnyhowError(#[from] anyhow::Error),
+
+    #[error("{}", _0)]
     ConstraintFieldError(ConstraintFieldError),
 
     #[error("{}: {}", _0, _1)]

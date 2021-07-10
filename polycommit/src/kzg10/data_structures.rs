@@ -22,10 +22,10 @@ use snarkvm_curves::{
 };
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
-    bytes::ToBytes,
     error,
     errors::SerializationError,
     serialize::{CanonicalDeserialize, CanonicalSerialize},
+    ToBytes,
 };
 
 use core::ops::Mul;

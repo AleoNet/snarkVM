@@ -959,7 +959,7 @@ mod test {
         LabeledCommitment,
     };
     use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError, TestConstraintSystem};
-    use snarkvm_utilities::{test_rng, to_bytes, ToBytes, UniformRand};
+    use snarkvm_utilities::{test_rng, to_bytes_le, ToBytes, UniformRand};
 
     use crate::{
         ahp::AHPForR1CS as AHPForR1CSNative,
@@ -1095,11 +1095,11 @@ mod test {
         let fs_rng = &mut FS::new();
 
         if is_recursion {
-            fs_rng.absorb_bytes(&to_bytes![&MarlinInst::PROTOCOL_NAME].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![&MarlinInst::PROTOCOL_NAME].unwrap());
             fs_rng.absorb_native_field_elements(&compute_vk_hash::<Fr, Fq, MultiPC, FS>(&circuit_vk).unwrap());
             fs_rng.absorb_nonnative_field_elements(&public_input, OptimizationType::Weight);
         } else {
-            fs_rng.absorb_bytes(&to_bytes![&MarlinInst::PROTOCOL_NAME, &circuit_vk, &public_input].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![&MarlinInst::PROTOCOL_NAME, &circuit_vk, &public_input].unwrap());
         }
 
         // Start first round.
@@ -1138,7 +1138,7 @@ mod test {
                 );
             };
         } else {
-            fs_rng.absorb_bytes(&to_bytes![first_commitments, proof.prover_messages[0]].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![first_commitments, proof.prover_messages[0]].unwrap());
         }
         // Execute the verifier first round.
         let (first_round_message, first_round_state) =
@@ -1227,11 +1227,11 @@ mod test {
         let fs_rng = &mut FS::new();
 
         if is_recursion {
-            fs_rng.absorb_bytes(&to_bytes![&MarlinInst::PROTOCOL_NAME].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![&MarlinInst::PROTOCOL_NAME].unwrap());
             fs_rng.absorb_native_field_elements(&compute_vk_hash::<Fr, Fq, MultiPC, FS>(&circuit_vk).unwrap());
             fs_rng.absorb_nonnative_field_elements(&public_input, OptimizationType::Weight);
         } else {
-            fs_rng.absorb_bytes(&to_bytes![&MarlinInst::PROTOCOL_NAME, &circuit_vk, &public_input].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![&MarlinInst::PROTOCOL_NAME, &circuit_vk, &public_input].unwrap());
         }
 
         // Start first round.
@@ -1268,7 +1268,7 @@ mod test {
                 );
             };
         } else {
-            fs_rng.absorb_bytes(&to_bytes![first_commitments, proof.prover_messages[0]].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![first_commitments, proof.prover_messages[0]].unwrap());
         }
         // Execute the verifier first round.
         let (_first_round_message, first_round_state) =
@@ -1319,7 +1319,7 @@ mod test {
                 );
             };
         } else {
-            fs_rng.absorb_bytes(&to_bytes![second_commitments, proof.prover_messages[1]].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![second_commitments, proof.prover_messages[1]].unwrap());
         }
 
         // Execute the verifier second round.
@@ -1394,11 +1394,11 @@ mod test {
         let fs_rng = &mut FS::new();
 
         if is_recursion {
-            fs_rng.absorb_bytes(&to_bytes![&MarlinInst::PROTOCOL_NAME].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![&MarlinInst::PROTOCOL_NAME].unwrap());
             fs_rng.absorb_native_field_elements(&compute_vk_hash::<Fr, Fq, MultiPC, FS>(&circuit_vk).unwrap());
             fs_rng.absorb_nonnative_field_elements(&public_input, OptimizationType::Weight);
         } else {
-            fs_rng.absorb_bytes(&to_bytes![&MarlinInst::PROTOCOL_NAME, &circuit_vk, &public_input].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![&MarlinInst::PROTOCOL_NAME, &circuit_vk, &public_input].unwrap());
         }
 
         // Start first round.
@@ -1435,7 +1435,7 @@ mod test {
                 );
             };
         } else {
-            fs_rng.absorb_bytes(&to_bytes![first_commitments, proof.prover_messages[0]].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![first_commitments, proof.prover_messages[0]].unwrap());
         }
         // Execute the verifier first round.
         let (_first_round_message, first_round_state) =
@@ -1486,7 +1486,7 @@ mod test {
                 );
             };
         } else {
-            fs_rng.absorb_bytes(&to_bytes![second_commitments, proof.prover_messages[1]].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![second_commitments, proof.prover_messages[1]].unwrap());
         }
 
         // Execute the verifier second round.
@@ -1537,7 +1537,7 @@ mod test {
                 );
             };
         } else {
-            fs_rng.absorb_bytes(&to_bytes![third_commitments, proof.prover_messages[2]].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![third_commitments, proof.prover_messages[2]].unwrap());
         }
 
         // Execute the verifier third round.
@@ -1614,11 +1614,11 @@ mod test {
         let fs_rng = &mut FS::new();
 
         if is_recursion {
-            fs_rng.absorb_bytes(&to_bytes![&MarlinInst::PROTOCOL_NAME].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![&MarlinInst::PROTOCOL_NAME].unwrap());
             fs_rng.absorb_native_field_elements(&compute_vk_hash::<Fr, Fq, MultiPC, FS>(&circuit_vk).unwrap());
             fs_rng.absorb_nonnative_field_elements(&public_input, OptimizationType::Weight);
         } else {
-            fs_rng.absorb_bytes(&to_bytes![&MarlinInst::PROTOCOL_NAME, &circuit_vk, &public_input].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![&MarlinInst::PROTOCOL_NAME, &circuit_vk, &public_input].unwrap());
         }
 
         // Start first round.
@@ -1655,7 +1655,7 @@ mod test {
                 );
             };
         } else {
-            fs_rng.absorb_bytes(&to_bytes![first_commitments, proof.prover_messages[0]].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![first_commitments, proof.prover_messages[0]].unwrap());
         }
         // Execute the verifier first round.
         let (_first_round_message, first_round_state) =
@@ -1706,7 +1706,7 @@ mod test {
                 );
             };
         } else {
-            fs_rng.absorb_bytes(&to_bytes![second_commitments, proof.prover_messages[1]].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![second_commitments, proof.prover_messages[1]].unwrap());
         }
 
         // Execute the verifier second round.
@@ -1757,7 +1757,7 @@ mod test {
                 );
             };
         } else {
-            fs_rng.absorb_bytes(&to_bytes![third_commitments, proof.prover_messages[2]].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![third_commitments, proof.prover_messages[2]].unwrap());
         }
 
         // Execute the verifier third round.
@@ -1783,7 +1783,7 @@ mod test {
         if is_recursion {
             fs_rng.absorb_nonnative_field_elements(&proof.evaluations, OptimizationType::Weight);
         } else {
-            fs_rng.absorb_bytes(&to_bytes![&proof.evaluations].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![&proof.evaluations].unwrap());
         }
 
         let mut evaluations = Evaluations::new();
@@ -1915,11 +1915,11 @@ mod test {
         let fs_rng = &mut FS::new();
 
         if is_recursion {
-            fs_rng.absorb_bytes(&to_bytes![&MarlinInst::PROTOCOL_NAME].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![&MarlinInst::PROTOCOL_NAME].unwrap());
             fs_rng.absorb_native_field_elements(&compute_vk_hash::<Fr, Fq, MultiPC, FS>(&circuit_vk).unwrap());
             fs_rng.absorb_nonnative_field_elements(&public_input, OptimizationType::Weight);
         } else {
-            fs_rng.absorb_bytes(&to_bytes![&MarlinInst::PROTOCOL_NAME, &circuit_vk, &public_input].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![&MarlinInst::PROTOCOL_NAME, &circuit_vk, &public_input].unwrap());
         }
 
         // Start first round.
@@ -1956,7 +1956,7 @@ mod test {
                 );
             };
         } else {
-            fs_rng.absorb_bytes(&to_bytes![first_commitments, proof.prover_messages[0]].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![first_commitments, proof.prover_messages[0]].unwrap());
         }
         // Execute the verifier first round.
         let (_first_round_message, first_round_state) =
@@ -2007,7 +2007,7 @@ mod test {
                 );
             };
         } else {
-            fs_rng.absorb_bytes(&to_bytes![second_commitments, proof.prover_messages[1]].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![second_commitments, proof.prover_messages[1]].unwrap());
         }
 
         // Execute the verifier second round.
@@ -2058,7 +2058,7 @@ mod test {
                 );
             };
         } else {
-            fs_rng.absorb_bytes(&to_bytes![third_commitments, proof.prover_messages[2]].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![third_commitments, proof.prover_messages[2]].unwrap());
         }
 
         // Execute the verifier third round.
@@ -2084,7 +2084,7 @@ mod test {
         if is_recursion {
             fs_rng.absorb_nonnative_field_elements(&proof.evaluations, OptimizationType::Weight);
         } else {
-            fs_rng.absorb_bytes(&to_bytes![&proof.evaluations].unwrap());
+            fs_rng.absorb_bytes(&to_bytes_le![&proof.evaluations].unwrap());
         }
 
         let mut evaluations = Evaluations::new();

@@ -16,7 +16,7 @@
 
 use snarkvm_curves::traits::ProjectiveCurve;
 use snarkvm_fields::{FieldParameters, PrimeField};
-use snarkvm_utilities::biginteger::BigInteger;
+use snarkvm_utilities::ToBits;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -60,7 +60,7 @@ impl FixedBaseMSM {
         multiples_of_g: &[Vec<T>],
         scalar: &T::ScalarField,
     ) -> T {
-        let mut scalar_val = scalar.into_repr().to_bits_be();
+        let mut scalar_val = scalar.to_repr().to_bits_be();
         scalar_val.reverse();
 
         let mut res = multiples_of_g[0][0];

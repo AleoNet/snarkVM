@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::{crh::sha256::sha256, errors::CRHError, traits::CRH};
 use snarkvm_dpc::{testnet1::instantiated::Components, traits::DPCComponents};
-use snarkvm_utilities::{bytes::ToBytes, to_bytes};
+use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
 use std::{
@@ -32,7 +32,7 @@ pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, CRHError> {
     let rng = &mut thread_rng();
     let local_data_crh = <C::LocalDataCRH as CRH>::setup(rng);
     let local_data_crh_parameters = local_data_crh.parameters();
-    let local_data_crh_parameters_bytes = to_bytes![local_data_crh_parameters]?;
+    let local_data_crh_parameters_bytes = local_data_crh_parameters.to_bytes_le()?;
 
     let size = local_data_crh_parameters_bytes.len();
     println!("local_data_crh.params\n\tsize - {}", size);

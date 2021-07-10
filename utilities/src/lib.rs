@@ -52,6 +52,10 @@ pub mod bititerator;
 pub use bititerator::*;
 
 #[macro_use]
+pub mod bits;
+pub use bits::*;
+
+#[macro_use]
 pub mod bytes;
 pub use bytes::*;
 

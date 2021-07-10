@@ -22,7 +22,7 @@ use crate::{
     traits::pairing_engine::AffineCurve,
 };
 use snarkvm_fields::Zero;
-use snarkvm_utilities::{bytes::ToBytes, errors::SerializationError, serialize::*};
+use snarkvm_utilities::{errors::SerializationError, serialize::*, ToBytes};
 
 use std::io::{Result as IoResult, Write};
 
@@ -55,7 +55,7 @@ impl<P: Bls12Parameters> Default for G1Prepared<P> {
 }
 
 impl<P: Bls12Parameters> ToBytes for G1Prepared<P> {
-    fn write<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.0.write(writer)
+    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
+        self.0.write_le(writer)
     }
 }

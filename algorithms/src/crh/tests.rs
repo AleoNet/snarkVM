@@ -19,10 +19,7 @@ use crate::{
     traits::CRH,
 };
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
@@ -39,8 +36,8 @@ fn crh_parameters_serialization<C: CRH>() {
     let crh = C::setup(rng);
     let crh_parameters = crh.parameters();
 
-    let crh_parameters_bytes = to_bytes![crh_parameters].unwrap();
-    let recovered_crh_parameters: <C as CRH>::Parameters = FromBytes::read(&crh_parameters_bytes[..]).unwrap();
+    let crh_parameters_bytes = crh_parameters.to_bytes_le().unwrap();
+    let recovered_crh_parameters: <C as CRH>::Parameters = FromBytes::read_le(&crh_parameters_bytes[..]).unwrap();
 
     assert_eq!(crh_parameters, &recovered_crh_parameters);
 }

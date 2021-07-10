@@ -20,11 +20,7 @@ use snarkvm_curves::{
     edwards_bw6::EdwardsAffine as Edwards,
     traits::Group,
 };
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    to_bytes,
-};
+use snarkvm_utilities::{rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
@@ -73,9 +69,9 @@ fn signature_scheme_parameter_serialization<S: SignatureScheme>() {
     let signature_scheme = S::setup(rng).unwrap();
     let signature_scheme_parameters = signature_scheme.parameters();
 
-    let signature_scheme_parameters_bytes = to_bytes![signature_scheme_parameters].unwrap();
+    let signature_scheme_parameters_bytes = to_bytes_le![signature_scheme_parameters].unwrap();
     let recovered_signature_scheme_parameters: <S as SignatureScheme>::Parameters =
-        FromBytes::read(&signature_scheme_parameters_bytes[..]).unwrap();
+        FromBytes::read_le(&signature_scheme_parameters_bytes[..]).unwrap();
 
     assert_eq!(signature_scheme_parameters, &recovered_signature_scheme_parameters);
 }
@@ -86,7 +82,7 @@ fn schnorr_signature_test() {
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
     sign_and_verify::<TestSignature>(message.as_bytes());
     failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
-    let random_scalar = to_bytes!(<Edwards as Group>::ScalarField::rand(rng)).unwrap();
+    let random_scalar = to_bytes_le!(<Edwards as Group>::ScalarField::rand(rng)).unwrap();
     randomize_and_verify::<TestSignature>(message.as_bytes(), &random_scalar.as_slice());
 }
 

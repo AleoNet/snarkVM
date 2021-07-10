@@ -26,9 +26,10 @@ use snarkvm_algorithms::{
     traits::{CommitmentScheme, SignatureScheme, CRH, SNARK},
 };
 use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
     serialize::{CanonicalDeserialize, CanonicalSerialize},
-    to_bytes,
+    to_bytes_le,
+    FromBytes,
+    ToBytes,
 };
 
 use blake2::{digest::Digest, Blake2s as b2s};
@@ -142,11 +143,11 @@ impl<C: Testnet2Components> TransactionScheme for Transaction<C> {
         let mut pre_image_bytes: Vec<u8> = vec![];
 
         for serial_number in self.old_serial_numbers() {
-            pre_image_bytes.extend(&to_bytes![serial_number]?);
+            pre_image_bytes.extend(&to_bytes_le![serial_number]?);
         }
 
         for commitment in self.new_commitments() {
-            pre_image_bytes.extend(&to_bytes![commitment]?);
+            pre_image_bytes.extend(&to_bytes_le![commitment]?);
         }
 
         pre_image_bytes.extend(self.memorandum());
@@ -204,39 +205,39 @@ impl<C: Testnet2Components> TransactionScheme for Transaction<C> {
     }
 
     fn size(&self) -> usize {
-        let transaction_bytes = to_bytes![self].unwrap();
+        let transaction_bytes = to_bytes_le![self].unwrap();
         transaction_bytes.len()
     }
 }
 
 impl<C: Testnet2Components> ToBytes for Transaction<C> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         for old_serial_number in &self.old_serial_numbers {
             CanonicalSerialize::serialize(old_serial_number, &mut writer).unwrap();
         }
 
         for new_commitment in &self.new_commitments {
-            new_commitment.write(&mut writer)?;
+            new_commitment.write_le(&mut writer)?;
         }
 
-        self.memorandum.write(&mut writer)?;
+        self.memorandum.write_le(&mut writer)?;
 
-        self.ledger_digest.write(&mut writer)?;
-        self.inner_circuit_id.write(&mut writer)?;
-        self.transaction_proof.write(&mut writer)?;
-        self.program_commitment.write(&mut writer)?;
-        self.local_data_root.write(&mut writer)?;
+        self.ledger_digest.write_le(&mut writer)?;
+        self.inner_circuit_id.write_le(&mut writer)?;
+        self.transaction_proof.write_le(&mut writer)?;
+        self.program_commitment.write_le(&mut writer)?;
+        self.local_data_root.write_le(&mut writer)?;
 
-        self.value_balance.write(&mut writer)?;
-        self.network.write(&mut writer)?;
+        self.value_balance.write_le(&mut writer)?;
+        self.network.write_le(&mut writer)?;
 
         for signature in &self.signatures {
-            signature.write(&mut writer)?;
+            signature.write_le(&mut writer)?;
         }
 
         for encrypted_record in &self.encrypted_records {
-            encrypted_record.write(&mut writer)?;
+            encrypted_record.write_le(&mut writer)?;
         }
 
         Ok(())
@@ -245,7 +246,7 @@ impl<C: Testnet2Components> ToBytes for Transaction<C> {
 
 impl<C: Testnet2Components> FromBytes for Transaction<C> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the old serial numbers
         let num_old_serial_numbers = C::NUM_INPUT_RECORDS;
         let mut old_serial_numbers = Vec::with_capacity(num_old_serial_numbers);
@@ -260,27 +261,27 @@ impl<C: Testnet2Components> FromBytes for Transaction<C> {
         let num_new_commitments = C::NUM_OUTPUT_RECORDS;
         let mut new_commitments = Vec::with_capacity(num_new_commitments);
         for _ in 0..num_new_commitments {
-            let new_commitment: <C::RecordCommitment as CommitmentScheme>::Output = FromBytes::read(&mut reader)?;
+            let new_commitment: <C::RecordCommitment as CommitmentScheme>::Output = FromBytes::read_le(&mut reader)?;
             new_commitments.push(new_commitment);
         }
 
-        let memorandum: [u8; 32] = FromBytes::read(&mut reader)?;
+        let memorandum: [u8; 32] = FromBytes::read_le(&mut reader)?;
 
-        let ledger_digest: MerkleTreeDigest<C::MerkleParameters> = FromBytes::read(&mut reader)?;
-        let inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output = FromBytes::read(&mut reader)?;
-        let transaction_proof: <C::OuterSNARK as SNARK>::Proof = FromBytes::read(&mut reader)?;
+        let ledger_digest: MerkleTreeDigest<C::MerkleParameters> = FromBytes::read_le(&mut reader)?;
+        let inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output = FromBytes::read_le(&mut reader)?;
+        let transaction_proof: <C::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
         let program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output =
-            FromBytes::read(&mut reader)?;
-        let local_data_root: <C::LocalDataCRH as CRH>::Output = FromBytes::read(&mut reader)?;
+            FromBytes::read_le(&mut reader)?;
+        let local_data_root: <C::LocalDataCRH as CRH>::Output = FromBytes::read_le(&mut reader)?;
 
-        let value_balance: AleoAmount = FromBytes::read(&mut reader)?;
-        let network: Network = FromBytes::read(&mut reader)?;
+        let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
+        let network: Network = FromBytes::read_le(&mut reader)?;
 
         // Read the signatures
         let num_signatures = C::NUM_INPUT_RECORDS;
         let mut signatures = Vec::with_capacity(num_signatures);
         for _ in 0..num_signatures {
-            let signature: <C::AccountSignature as SignatureScheme>::Signature = FromBytes::read(&mut reader)?;
+            let signature: <C::AccountSignature as SignatureScheme>::Signature = FromBytes::read_le(&mut reader)?;
             signatures.push(signature);
         }
 
@@ -288,7 +289,7 @@ impl<C: Testnet2Components> FromBytes for Transaction<C> {
         let num_encrypted_records = C::NUM_OUTPUT_RECORDS;
         let mut encrypted_records = Vec::with_capacity(num_encrypted_records);
         for _ in 0..num_encrypted_records {
-            let encrypted_record: EncryptedRecord<C> = FromBytes::read(&mut reader)?;
+            let encrypted_record: EncryptedRecord<C> = FromBytes::read_le(&mut reader)?;
 
             encrypted_records.push(encrypted_record);
         }

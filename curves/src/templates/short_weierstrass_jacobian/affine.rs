@@ -20,12 +20,7 @@ use crate::{
     traits::{AffineCurve, Group, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
 use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{
-    bititerator::BitIteratorBE,
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    serialize::*,
-};
+use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand, serialize::*, FromBytes, ToBytes};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -256,7 +251,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Affine<P> {
     type Output = Self;
 
     fn mul(self, other: P::ScalarField) -> Self {
-        self.mul_bits(BitIteratorBE::new(other.into_repr())).into()
+        self.mul_bits(BitIteratorBE::new(other.to_repr())).into()
     }
 }
 
@@ -268,19 +263,19 @@ impl<P: Parameters> MulAssign<P::ScalarField> for Affine<P> {
 
 impl<P: Parameters> ToBytes for Affine<P> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.x.write(&mut writer)?;
-        self.y.write(&mut writer)?;
-        self.infinity.write(writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.x.write_le(&mut writer)?;
+        self.y.write_le(&mut writer)?;
+        self.infinity.write_le(writer)
     }
 }
 
 impl<P: Parameters> FromBytes for Affine<P> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let x = P::BaseField::read(&mut reader)?;
-        let y = P::BaseField::read(&mut reader)?;
-        let infinity = bool::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let x = P::BaseField::read_le(&mut reader)?;
+        let y = P::BaseField::read_le(&mut reader)?;
+        let infinity = bool::read_le(&mut reader)?;
 
         if infinity != x.is_zero() && y.is_one() {
             return Err(Error::new(ErrorKind::InvalidData, "Infinity flag is not valid"));

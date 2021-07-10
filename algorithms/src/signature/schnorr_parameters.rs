@@ -16,7 +16,7 @@
 
 use snarkvm_curves::traits::Group;
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::Rng;
 use std::io::{Read, Result as IoResult, Write};
@@ -55,27 +55,27 @@ impl<G: Group> SchnorrParameters<G> {
     }
 }
 
-impl<G: Group> ToBytes for SchnorrParameters<G> {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.generator_powers.len() as u32).write(&mut writer)?;
+impl<G: Group, D: Digest> ToBytes for SchnorrParameters<G, D> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.generator_powers.len() as u32).write_le(&mut writer)?;
         for g in &self.generator_powers {
-            g.write(&mut writer)?;
+            g.write_le(&mut writer)?;
         }
-        self.salt.write(&mut writer)
+        self.salt.write_le(&mut writer)
     }
 }
 
 impl<G: Group> FromBytes for SchnorrParameters<G> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let generator_powers_length: u32 = FromBytes::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let generator_powers_length: u32 = FromBytes::read_le(&mut reader)?;
         let mut generator_powers = Vec::with_capacity(generator_powers_length as usize);
         for _ in 0..generator_powers_length {
-            let g: G = FromBytes::read(&mut reader)?;
+            let g: G = FromBytes::read_le(&mut reader)?;
             generator_powers.push(g);
         }
 
-        let salt: [u8; 32] = FromBytes::read(&mut reader)?;
+        let salt: [u8; 32] = FromBytes::read_le(&mut reader)?;
 
         Ok(Self { generator_powers, salt })
     }

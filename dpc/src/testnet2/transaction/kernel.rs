@@ -19,7 +19,7 @@ use crate::{
     testnet2::{EncryptedRecord, LocalData, Record, SystemParameters, Testnet2Components, Transaction},
 };
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, prelude::*};
-use snarkvm_utilities::{to_bytes, variable_length_integer::*, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, variable_length_integer::*, FromBytes, ToBytes};
 
 use std::{
     fmt,
@@ -85,81 +85,82 @@ impl<C: Testnet2Components> TransactionKernel<C> {
 
 impl<C: Testnet2Components> ToBytes for TransactionKernel<C> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write old record components
 
         for old_record in &self.old_records {
-            old_record.write(&mut writer)?;
+            old_record.write_le(&mut writer)?;
         }
 
         for old_serial_number in &self.old_serial_numbers {
-            old_serial_number.write(&mut writer)?;
+            old_serial_number.write_le(&mut writer)?;
         }
 
         for old_randomizer in &self.old_randomizers {
-            variable_length_integer(old_randomizer.len() as u64).write(&mut writer)?;
-            old_randomizer.write(&mut writer)?;
+            variable_length_integer(old_randomizer.len() as u64).write_le(&mut writer)?;
+            old_randomizer.write_le(&mut writer)?;
         }
 
         // Write new record components
 
         for new_record in &self.new_records {
-            new_record.write(&mut writer)?;
+            new_record.write_le(&mut writer)?;
         }
 
         for new_sn_nonce_randomness in &self.new_sn_nonce_randomness {
-            new_sn_nonce_randomness.write(&mut writer)?;
+            new_sn_nonce_randomness.write_le(&mut writer)?;
         }
 
         for new_commitment in &self.new_commitments {
-            new_commitment.write(&mut writer)?;
+            new_commitment.write_le(&mut writer)?;
         }
 
         for new_records_encryption_randomness in &self.new_records_encryption_randomness {
-            new_records_encryption_randomness.write(&mut writer)?;
+            new_records_encryption_randomness.write_le(&mut writer)?;
         }
 
         for new_encrypted_record in &self.new_encrypted_records {
-            new_encrypted_record.write(&mut writer)?;
+            new_encrypted_record.write_le(&mut writer)?;
         }
 
         for new_encrypted_record_hash in &self.new_encrypted_record_hashes {
-            new_encrypted_record_hash.write(&mut writer)?;
+            new_encrypted_record_hash.write_le(&mut writer)?;
         }
 
         // Write transaction components
 
-        self.program_commitment.write(&mut writer)?;
-        self.program_randomness.write(&mut writer)?;
+        self.program_commitment.write_le(&mut writer)?;
+        self.program_randomness.write_le(&mut writer)?;
 
-        self.local_data_merkle_tree.write(&mut writer)?;
+        self.local_data_merkle_tree.write_le(&mut writer)?;
 
         for local_data_commitment_randomizer in &self.local_data_commitment_randomizers {
-            local_data_commitment_randomizer.write(&mut writer)?;
+            local_data_commitment_randomizer.write_le(&mut writer)?;
         }
 
-        self.value_balance.write(&mut writer)?;
-        self.memorandum.write(&mut writer)?;
-        self.network_id.write(&mut writer)
+        self.value_balance.write_le(&mut writer)?;
+        self.memorandum.write_le(&mut writer)?;
+        self.network_id.write_le(&mut writer)
     }
 }
 
 impl<C: Testnet2Components> FromBytes for TransactionKernel<C> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let system_parameters = SystemParameters::<C>::load().expect("Could not load system parameters");
 
         // Read old record components
 
         let mut old_records = vec![];
         for _ in 0..C::NUM_INPUT_RECORDS {
-            let old_record: Record<C> = FromBytes::read(&mut reader)?;
+            let old_record: Record<C> = FromBytes::read_le(&mut reader)?;
             old_records.push(old_record);
         }
 
         let mut old_serial_numbers = vec![];
         for _ in 0..C::NUM_INPUT_RECORDS {
-            let old_serial_number: <C::AccountSignature as SignatureScheme>::PublicKey = FromBytes::read(&mut reader)?;
+            let old_serial_number: <C::AccountSignature as SignatureScheme>::PublicKey =
+                FromBytes::read_le(&mut reader)?;
             old_serial_numbers.push(old_serial_number);
         }
 
@@ -168,7 +169,7 @@ impl<C: Testnet2Components> FromBytes for TransactionKernel<C> {
             let num_bytes = read_variable_length_integer(&mut reader)?;
             let mut randomizer = vec![];
             for _ in 0..num_bytes {
-                let byte: u8 = FromBytes::read(&mut reader)?;
+                let byte: u8 = FromBytes::read_le(&mut reader)?;
                 randomizer.push(byte);
             }
 
@@ -179,47 +180,47 @@ impl<C: Testnet2Components> FromBytes for TransactionKernel<C> {
 
         let mut new_records = vec![];
         for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let new_record: Record<C> = FromBytes::read(&mut reader)?;
+            let new_record: Record<C> = FromBytes::read_le(&mut reader)?;
             new_records.push(new_record);
         }
 
         let mut new_sn_nonce_randomness = vec![];
         for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let randomness: [u8; 32] = FromBytes::read(&mut reader)?;
+            let randomness: [u8; 32] = FromBytes::read_le(&mut reader)?;
             new_sn_nonce_randomness.push(randomness);
         }
 
         let mut new_commitments = vec![];
         for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let new_commitment: <C::RecordCommitment as CommitmentScheme>::Output = FromBytes::read(&mut reader)?;
+            let new_commitment: <C::RecordCommitment as CommitmentScheme>::Output = FromBytes::read_le(&mut reader)?;
             new_commitments.push(new_commitment);
         }
 
         let mut new_records_encryption_randomness = vec![];
         for _ in 0..C::NUM_OUTPUT_RECORDS {
             let encryption_randomness: <C::AccountEncryption as EncryptionScheme>::Randomness =
-                FromBytes::read(&mut reader)?;
+                FromBytes::read_le(&mut reader)?;
             new_records_encryption_randomness.push(encryption_randomness);
         }
 
         let mut new_encrypted_records = vec![];
         for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let encrypted_record: EncryptedRecord<C> = FromBytes::read(&mut reader)?;
+            let encrypted_record: EncryptedRecord<C> = FromBytes::read_le(&mut reader)?;
             new_encrypted_records.push(encrypted_record);
         }
 
         let mut new_encrypted_record_hashes = vec![];
         for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let encrypted_record_hash: <C::EncryptedRecordCRH as CRH>::Output = FromBytes::read(&mut reader)?;
+            let encrypted_record_hash: <C::EncryptedRecordCRH as CRH>::Output = FromBytes::read_le(&mut reader)?;
             new_encrypted_record_hashes.push(encrypted_record_hash);
         }
 
         // Read transaction components
 
         let program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output =
-            FromBytes::read(&mut reader)?;
+            FromBytes::read_le(&mut reader)?;
         let program_randomness: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness =
-            FromBytes::read(&mut reader)?;
+            FromBytes::read_le(&mut reader)?;
 
         let local_data_merkle_tree = CommitmentMerkleTree::<C::LocalDataCommitment, C::LocalDataCRH>::from_bytes(
             &mut reader,
@@ -230,13 +231,13 @@ impl<C: Testnet2Components> FromBytes for TransactionKernel<C> {
         let mut local_data_commitment_randomizers = vec![];
         for _ in 0..4 {
             let local_data_commitment_randomizer: <C::LocalDataCommitment as CommitmentScheme>::Randomness =
-                FromBytes::read(&mut reader)?;
+                FromBytes::read_le(&mut reader)?;
             local_data_commitment_randomizers.push(local_data_commitment_randomizer);
         }
 
-        let value_balance: AleoAmount = FromBytes::read(&mut reader)?;
-        let memorandum: <Transaction<C> as TransactionScheme>::Memorandum = FromBytes::read(&mut reader)?;
-        let network_id: u8 = FromBytes::read(&mut reader)?;
+        let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
+        let memorandum: <Transaction<C> as TransactionScheme>::Memorandum = FromBytes::read_le(&mut reader)?;
+        let network_id: u8 = FromBytes::read_le(&mut reader)?;
 
         Ok(Self {
             old_records,
@@ -266,7 +267,7 @@ impl<C: Testnet2Components> FromStr for TransactionKernel<C> {
     type Err = DPCError;
 
     fn from_str(kernel: &str) -> Result<Self, Self::Err> {
-        Ok(Self::read(&hex::decode(kernel)?[..])?)
+        Ok(Self::read_le(&hex::decode(kernel)?[..])?)
     }
 }
 
@@ -275,7 +276,7 @@ impl<C: Testnet2Components> fmt::Display for TransactionKernel<C> {
         write!(
             f,
             "{}",
-            hex::encode(to_bytes![self].expect("couldn't serialize to bytes"))
+            hex::encode(to_bytes_le![self].expect("couldn't serialize to bytes"))
         )
     }
 }

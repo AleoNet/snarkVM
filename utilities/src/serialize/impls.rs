@@ -15,12 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub use crate::{
-    bytes::{FromBytes, ToBytes},
     io::{
         Read,
         Write,
         {self},
     },
+    FromBytes,
+    ToBytes,
     Vec,
 };
 use crate::{serialize::traits::*, SerializationError};
@@ -30,7 +31,7 @@ use std::{borrow::Cow, collections::BTreeMap, rc::Rc, sync::Arc};
 impl CanonicalSerialize for bool {
     #[inline]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
-        Ok(self.write(writer)?)
+        Ok(self.write_le(writer)?)
     }
 
     #[inline]
@@ -42,7 +43,7 @@ impl CanonicalSerialize for bool {
 impl CanonicalDeserialize for bool {
     #[inline]
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        Ok(bool::read(reader)?)
+        Ok(bool::read_le(reader)?)
     }
 }
 

@@ -31,7 +31,7 @@ use crate::{
 };
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::{biginteger::BigInteger, bititerator::BitIteratorBE};
+use snarkvm_utilities::{BigInteger, BitIteratorBE, ToBits};
 
 use crate::{
     nonnative::{params::get_params, AllocatedNonNativeFieldVar},
@@ -52,7 +52,7 @@ pub fn limbs_to_bigint<BaseField: PrimeField>(bits_per_limb: usize, limbs: &[Bas
     let mut big_cur = BigUint::one();
     let two = BigUint::from(2u32);
     for limb in limbs.iter().rev() {
-        let limb_repr = limb.into_repr().to_bits_le();
+        let limb_repr = limb.to_repr().to_bits_le();
         let mut small_cur = big_cur.clone();
         for limb_bit in limb_repr.iter() {
             if *limb_bit {
@@ -102,7 +102,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
         let mut bits_considered = Vec::with_capacity(num_bits);
         let limb_value = limb.get_value().unwrap_or_default();
 
-        for b in BitIteratorBE::new(limb_value.into_repr()).skip(
+        for b in BitIteratorBE::new(limb_value.to_repr()).skip(
             <<BaseField as PrimeField>::Parameters as FieldParameters>::REPR_SHAVE_BITS as usize
                 + (BaseField::size_in_bits() - num_bits),
         ) {
@@ -250,7 +250,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
 
         let shift_array = {
             let mut array = Vec::new();
-            let mut cur = BaseField::one().into_repr();
+            let mut cur = BaseField::one().to_repr();
             for _ in 0..num_limb_in_a_group {
                 array.push(BaseField::from_repr(cur).unwrap());
                 cur.muln(shift_per_limb as u32);
@@ -293,7 +293,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
         for (group_id, (left_total_limb, right_total_limb, num_limb_in_this_group)) in
             groupped_limb_pairs.iter().enumerate()
         {
-            let mut pad_limb_repr: <BaseField as PrimeField>::BigInteger = BaseField::one().into_repr();
+            let mut pad_limb_repr: <BaseField as PrimeField>::BigInteger = BaseField::one().to_repr();
 
             pad_limb_repr.muln(
                 (surfeit + (bits_per_limb - shift_per_limb) + shift_per_limb * num_limb_in_this_group + 1 + 1) as u32,
@@ -305,7 +305,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
 
             let mut carry_value = left_total_limb_value + carry_in_value + pad_limb - right_total_limb_value;
 
-            let mut carry_repr = carry_value.into_repr();
+            let mut carry_repr = carry_value.to_repr();
             carry_repr.divn((shift_per_limb * num_limb_in_this_group) as u32);
 
             carry_value = BaseField::from_repr(carry_repr).unwrap();

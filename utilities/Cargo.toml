@@ -22,6 +22,9 @@ path = "../derives"
 version = "0.7.2"
 optional = true
 
+[dependencies.anyhow]
+version = "1.0"
+
 [dependencies.bincode]
 version = "1.3.3"
 

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::{
     fmt,
@@ -110,15 +110,15 @@ impl AleoAmount {
 }
 
 impl ToBytes for AleoAmount {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.0.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.0.write_le(&mut writer)
     }
 }
 
 impl FromBytes for AleoAmount {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let amount: i64 = FromBytes::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let amount: i64 = FromBytes::read_le(&mut reader)?;
 
         Ok(Self(amount))
     }

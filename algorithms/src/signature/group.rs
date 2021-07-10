@@ -22,7 +22,8 @@ use crate::{
     traits::{EncryptionScheme, SignatureScheme},
 };
 use snarkvm_curves::traits::{Group, ProjectiveCurve};
-use snarkvm_utilities::{serialize::*, to_bytes, FromBytes, ToBytes};
+use snarkvm_fields::PrimeField;
+use snarkvm_utilities::{serialize::*, to_bytes_le, FromBytes, ToBytes};
 
 use rand::Rng;
 use snarkvm_curves::AffineCurve;

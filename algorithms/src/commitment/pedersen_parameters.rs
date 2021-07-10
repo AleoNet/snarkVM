@@ -20,7 +20,7 @@ use crate::{
 };
 use snarkvm_curves::traits::Group;
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::Rng;
 use std::io::{Read, Result as IoResult, Write};
@@ -72,21 +72,21 @@ impl<F: Field, G: Group + ToConstraintField<F>, const NUM_WINDOWS: usize, const 
 impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
     for PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.bases.len() as u32).write(&mut writer)?;
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.bases.len() as u32).write_le(&mut writer)?;
         for base in &self.bases {
-            (base.len() as u32).write(&mut writer)?;
+            (base.len() as u32).write_le(&mut writer)?;
             for g in base {
-                g.write(&mut writer)?;
+                g.write_le(&mut writer)?;
             }
         }
 
-        (self.random_base.len() as u32).write(&mut writer)?;
+        (self.random_base.len() as u32).write_le(&mut writer)?;
         for g in &self.random_base {
-            g.write(&mut writer)?;
+            g.write_le(&mut writer)?;
         }
 
-        self.crh.parameters().write(&mut writer)?;
+        self.crh.parameters().write_le(&mut writer)?;
 
         Ok(())
     }
@@ -96,31 +96,31 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
     for PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let num_bases: u32 = FromBytes::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let num_bases: u32 = FromBytes::read_le(&mut reader)?;
         let mut bases = Vec::with_capacity(num_bases as usize);
 
         for _ in 0..num_bases {
-            let base_len: u32 = FromBytes::read(&mut reader)?;
+            let base_len: u32 = FromBytes::read_le(&mut reader)?;
             let mut base = Vec::with_capacity(base_len as usize);
 
             for _ in 0..base_len {
-                let g: G = FromBytes::read(&mut reader)?;
+                let g: G = FromBytes::read_le(&mut reader)?;
                 base.push(g);
             }
             bases.push(base);
         }
 
-        let random_base_len: u32 = FromBytes::read(&mut reader)?;
+        let random_base_len: u32 = FromBytes::read_le(&mut reader)?;
         let mut random_base = Vec::with_capacity(random_base_len as usize);
 
         for _ in 0..random_base_len {
-            let g: G = FromBytes::read(&mut reader)?;
+            let g: G = FromBytes::read_le(&mut reader)?;
             random_base.push(g);
         }
 
         let crh_parameters: <PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE> as CRH>::Parameters =
-            FromBytes::read(&mut reader)?;
+            FromBytes::read_le(&mut reader)?;
         let crh = PedersenCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::from(crh_parameters);
 
         Ok(Self {
