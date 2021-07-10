@@ -41,13 +41,13 @@ pub struct PoseidonSpongeVar<F: PrimeField + PoseidonDefaultParametersField> {
 
 impl<F: PrimeField + PoseidonDefaultParametersField> AlgebraicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpongeVar<F> {
     fn new<CS: ConstraintSystem<F>>(mut cs: CS) -> Self {
-        let params = F::get_default_poseidon_parameters(6, true).unwrap();
+        let params = F::get_default_poseidon_parameters(6, false).unwrap();
         let sponge_var = PoseidonSpongeGadget::<F>::new(cs.ns(|| "alloc sponge"), &params);
         Self { sponge_var }
     }
 
     fn constant<CS: ConstraintSystem<F>>(mut cs: CS, pfs: &PoseidonSponge<F>) -> Self {
-        let params = F::get_default_poseidon_parameters(6, true).unwrap();
+        let params = F::get_default_poseidon_parameters(6, false).unwrap();
         let mut sponge_var = PoseidonSpongeGadget::<F>::new(cs.ns(|| "alloc sponge"), &params);
 
         for (i, state_elem) in pfs.sponge.state.iter().enumerate() {

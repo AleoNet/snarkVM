@@ -1154,4 +1154,3 @@ impl<'a, P: Fp768Parameters> DivAssign<&'a Self> for Fp768<P> {
         self.mul_assign(&other.inverse().unwrap());
     }
 }
-

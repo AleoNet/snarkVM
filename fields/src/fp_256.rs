@@ -613,4 +613,3 @@ impl<'a, P: Fp256Parameters> DivAssign<&'a Self> for Fp256<P> {
         self.mul_assign(&other.inverse().unwrap());
     }
 }
-

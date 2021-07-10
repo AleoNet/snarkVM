@@ -34,7 +34,7 @@ pub struct PoseidonSponge<F: PrimeField + PoseidonDefaultParametersField> {
 
 impl<F: PrimeField + PoseidonDefaultParametersField> AlgebraicSponge<F> for PoseidonSponge<F> {
     fn new() -> Self {
-        let params = F::get_default_poseidon_parameters(6, true).unwrap();
+        let params = F::get_default_poseidon_parameters(6, false).unwrap();
         let sponge = snarkvm_algorithms::crypto_hash::PoseidonSponge::<F>::new(&params);
         Self { sponge }
     }
