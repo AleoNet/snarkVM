@@ -41,7 +41,7 @@ name = "snarkvm"
 path = "snarkvm/main.rs"
 
 [dependencies.anyhow]
-version = "1.0.41"
+version = "1.0.42"
 
 [dependencies.colored]
 version = "2"
