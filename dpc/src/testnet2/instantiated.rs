@@ -54,7 +54,6 @@ use snarkvm_gadgets::{
         snark::Groth16VerifierGadget,
     },
     curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
-    fields::FpGadget,
 };
 use snarkvm_marlin::{
     constraints::{snark::MarlinSNARK, verifier::MarlinVerificationGadget},
@@ -63,8 +62,6 @@ use snarkvm_marlin::{
     PoseidonSponge,
 };
 use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
-
-use blake2::Blake2s as Blake2sHash;
 
 pub type Testnet2DPC = DPC<Components>;
 pub type Testnet2Transaction = Transaction<Components>;
@@ -92,11 +89,11 @@ impl DPCComponents for Components {
     type AccountCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 192>;
     type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
     
-    type AccountEncryption = GroupEncryption<EdwardsBls12, EdwardsAffine, Blake2sHash>;
+    type AccountEncryption = GroupEncryption<EdwardsBls12, EdwardsAffine>;
     type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
 
-    type AccountSignature = Schnorr<EdwardsAffine, Blake2sHash>;
-    type AccountSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, Self::InnerScalarField, EdwardsBls12Gadget, FpGadget<Self::InnerScalarField>>;
+    type AccountSignature = Schnorr<EdwardsAffine>;
+    type AccountSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, Self::InnerScalarField, EdwardsBls12Gadget>;
     
     type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 48, 44>;
     type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;

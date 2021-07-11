@@ -15,12 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    algorithms::{
-        prf::Blake2sGadget,
-        signature::{SchnorrParametersGadget, SchnorrPublicKeyGadget, SchnorrPublicKeyRandomizationGadget},
-    },
+    algorithms::signature::{SchnorrParametersGadget, SchnorrPublicKeyGadget, SchnorrPublicKeyRandomizationGadget},
     curves::edwards_bls12::EdwardsBls12Gadget,
-    fields::FpGadget,
     integers::uint::UInt8,
     traits::{algorithms::SignaturePublicKeyRandomizationGadget, alloc::AllocGadget, eq::EqGadget},
     Boolean,
@@ -30,13 +26,12 @@ use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsAffine, traits::Group}
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{rand::UniformRand, to_bytes_le, ToBytes};
 
-use blake2::Blake2s;
 use rand::{thread_rng, Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 
-type SchnorrScheme = Schnorr<EdwardsAffine, Blake2s>;
-type TestSignature = Schnorr<EdwardsAffine, Blake2s>;
-type TestSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, Fr, EdwardsBls12Gadget, FpGadget<Fr>>;
+type SchnorrScheme = Schnorr<EdwardsAffine>;
+type TestSignature = Schnorr<EdwardsAffine>;
+type TestSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, Fr, EdwardsBls12Gadget>;
 
 #[test]
 fn test_schnorr_signature_randomize_public_key_gadget() {
@@ -75,11 +70,11 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
 
     // Circuit Schnorr randomized public key (candidate)
 
-    let candidate_parameters_gadget = SchnorrParametersGadget::<EdwardsAffine, Fr, Blake2s>::alloc_input(
-        &mut cs.ns(|| "candidate_parameters"),
-        || Ok(schnorr_signature.parameters()),
-    )
-    .unwrap();
+    let candidate_parameters_gadget =
+        SchnorrParametersGadget::<EdwardsAffine, Fr>::alloc_input(&mut cs.ns(|| "candidate_parameters"), || {
+            Ok(schnorr_signature.parameters())
+        })
+        .unwrap();
 
     let candidate_public_key_gadget = SchnorrPublicKeyGadget::<EdwardsAffine, Fr, EdwardsBls12Gadget>::alloc(
         &mut cs.ns(|| "candidate_public_key"),
@@ -93,7 +88,6 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
         EdwardsAffine,
         Fr,
         EdwardsBls12Gadget,
-        FpGadget<Fr>,
     > as SignaturePublicKeyRandomizationGadget<SchnorrScheme, Fr>>::check_randomization_gadget(
         &mut cs.ns(|| "candidate_randomized_public_key"),
         &candidate_parameters_gadget,
@@ -166,17 +160,16 @@ fn schnorr_signature_verification_test() {
 
     assert_eq!(cs.num_constraints(), 245);
 
-    let verification =
-        <TestSignatureGadget as SignaturePublicKeyRandomizationGadget<SchnorrScheme, Fr>>::verify::<_, Blake2sGadget>(
-            cs.ns(|| "verify"),
-            &parameter_gadget,
-            &public_key_gadget,
-            &message_gadget,
-            &signature_gadget,
-        )
-        .unwrap();
+    let verification = <TestSignatureGadget as SignaturePublicKeyRandomizationGadget<SchnorrScheme, Fr>>::verify(
+        cs.ns(|| "verify"),
+        &parameter_gadget,
+        &public_key_gadget,
+        &message_gadget,
+        &signature_gadget,
+    )
+    .unwrap();
 
-    assert_eq!(cs.num_constraints(), 49803);
+    assert_eq!(cs.num_constraints(), 6582);
 
     verification
         .enforce_equal(cs.ns(|| "check_verification"), &Boolean::constant(true))
@@ -227,15 +220,14 @@ fn failed_schnorr_signature_verification_test() {
         )
         .unwrap();
 
-    let verification =
-        <TestSignatureGadget as SignaturePublicKeyRandomizationGadget<SchnorrScheme, Fr>>::verify::<_, Blake2sGadget>(
-            cs.ns(|| "verify"),
-            &parameter_gadget,
-            &public_key_gadget,
-            &bad_message_gadget,
-            &signature_gadget,
-        )
-        .unwrap();
+    let verification = <TestSignatureGadget as SignaturePublicKeyRandomizationGadget<SchnorrScheme, Fr>>::verify(
+        cs.ns(|| "verify"),
+        &parameter_gadget,
+        &public_key_gadget,
+        &bad_message_gadget,
+        &signature_gadget,
+    )
+    .unwrap();
 
     verification
         .enforce_equal(cs.ns(|| "check_verification"), &Boolean::constant(false))

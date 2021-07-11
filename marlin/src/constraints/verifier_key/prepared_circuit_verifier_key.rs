@@ -17,7 +17,7 @@
 use core::borrow::Borrow;
 use std::marker::PhantomData;
 
-use snarkvm_fields::{PoseidonMDSField, PrimeField, ToConstraintField};
+use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     bits::ToBytesGadget,
     fields::FpGadget,
@@ -38,11 +38,12 @@ use crate::{
     FiatShamirRngVar,
     PolynomialCommitment,
 };
+use snarkvm_algorithms::crypto_hash::PoseidonDefaultParametersField;
 
 /// The prepared circuit verifying key gadget
 pub struct PreparedCircuitVerifyingKeyVar<
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField + PoseidonDefaultParametersField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -68,7 +69,7 @@ pub struct PreparedCircuitVerifyingKeyVar<
 
 impl<
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField + PoseidonDefaultParametersField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -92,7 +93,7 @@ impl<
 impl<TargetField, BaseField, PC, PCG, PR, R> PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField + PoseidonDefaultParametersField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -156,7 +157,7 @@ impl<TargetField, BaseField, PC, PCG, PR, R> AllocGadget<PreparedCircuitVerifyin
     for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField + PoseidonDefaultParametersField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -365,7 +366,7 @@ impl<TargetField, BaseField, PC, PCG, PR, R> AllocGadget<CircuitVerifyingKey<Tar
     for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField + PoseidonDefaultParametersField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -420,7 +421,7 @@ impl<TargetField, BaseField, PC, PCG, PR, R> ToBytesGadget<BaseField>
     for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField + PoseidonDefaultParametersField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -455,7 +456,7 @@ impl<TargetField, BaseField, PC, PCG, PR, R> AllocBytesGadget<Vec<u8>, BaseField
     for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField + PoseidonDefaultParametersField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,

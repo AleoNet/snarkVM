@@ -21,11 +21,10 @@ use snarkvm_curves::{
 };
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
-use blake2::Blake2s;
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
-type TestEncryptionScheme = GroupEncryption<EdwardsProjective, EdwardsAffine, Blake2s>;
+type TestEncryptionScheme = GroupEncryption<EdwardsProjective, EdwardsAffine>;
 
 pub const ITERATIONS: usize = 1000;
 

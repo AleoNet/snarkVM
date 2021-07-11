@@ -15,18 +15,19 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    crypto_hash::PoseidonDefaultParametersField,
     encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey},
     errors::SignatureError,
     signature::{Schnorr, SchnorrParameters, SchnorrPublicKey, SchnorrSignature},
     traits::{EncryptionScheme, SignatureScheme},
 };
 use snarkvm_curves::traits::{Group, ProjectiveCurve};
-use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{serialize::*, to_bytes_le, FromBytes, ToBytes};
 
-use digest::Digest;
 use rand::Rng;
-use std::{hash::Hash, marker::PhantomData};
+use snarkvm_curves::AffineCurve;
+use snarkvm_fields::ToConstraintField;
+use std::hash::Hash;
 
 /// Map the encryption group into the signature group.
 fn into_signature_group<G: Group + ProjectiveCurve + CanonicalSerialize, SG: Group + CanonicalDeserialize>(
@@ -38,8 +39,8 @@ fn into_signature_group<G: Group + ProjectiveCurve + CanonicalSerialize, SG: Gro
 }
 
 /// Map the GroupEncryption parameters into a Schnorr signature scheme.
-impl<G: Group + ProjectiveCurve + CanonicalSerialize, SG: Group + CanonicalDeserialize, D: Digest>
-    From<GroupEncryptionParameters<G>> for Schnorr<SG, D>
+impl<G: Group + ProjectiveCurve + CanonicalSerialize, SG: Group + CanonicalDeserialize>
+    From<GroupEncryptionParameters<G>> for Schnorr<SG>
 {
     fn from(parameters: GroupEncryptionParameters<G>) -> Self {
         let generator_powers: Vec<SG> = parameters
@@ -51,7 +52,6 @@ impl<G: Group + ProjectiveCurve + CanonicalSerialize, SG: Group + CanonicalDeser
         let parameters = SchnorrParameters {
             generator_powers,
             salt: parameters.salt,
-            _hash: PhantomData,
         };
 
         Self { parameters }
@@ -67,10 +67,11 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
     }
 }
 
-impl<G: Group + ProjectiveCurve, SG: Group + Hash + CanonicalSerialize + CanonicalDeserialize, D: Digest + Send + Sync>
-    SignatureScheme for GroupEncryption<G, SG, D>
+impl<G: Group + ProjectiveCurve, SG: Group + AffineCurve + Hash + CanonicalSerialize + CanonicalDeserialize>
+    SignatureScheme for GroupEncryption<G, SG>
 where
-    <G as Group>::ScalarField: PrimeField,
+    <SG as AffineCurve>::BaseField: PoseidonDefaultParametersField,
+    SG: ToConstraintField<<SG as AffineCurve>::BaseField>,
 {
     type Parameters = GroupEncryptionParameters<G>;
     type PrivateKey = <G as Group>::ScalarField;
@@ -99,7 +100,7 @@ where
         message: &[u8],
         rng: &mut R,
     ) -> Result<Self::Signature, SignatureError> {
-        let schnorr_signature: Schnorr<SG, D> = self.parameters.clone().into();
+        let schnorr_signature: Schnorr<SG> = self.parameters.clone().into();
         let private_key = <SG as Group>::ScalarField::read_le(&to_bytes_le![private_key]?[..])?;
 
         Ok(schnorr_signature.sign(&private_key, message, rng)?)
@@ -111,7 +112,7 @@ where
         message: &[u8],
         signature: &Self::Signature,
     ) -> Result<bool, SignatureError> {
-        let schnorr_signature: Schnorr<SG, D> = self.parameters.clone().into();
+        let schnorr_signature: Schnorr<SG> = self.parameters.clone().into();
         let schnorr_public_key: SchnorrPublicKey<SG> = (*public_key).into();
 
         Ok(schnorr_signature.verify(&schnorr_public_key, message, signature)?)

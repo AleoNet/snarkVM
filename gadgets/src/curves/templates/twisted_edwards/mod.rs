@@ -20,7 +20,7 @@ use snarkvm_curves::{
     templates::twisted_edwards_extended::Affine as TEAffine,
     traits::{MontgomeryParameters, TwistedEdwardsParameters},
 };
-use snarkvm_fields::Field;
+use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem, Namespace};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
@@ -34,6 +34,8 @@ use crate::{
         fields::FieldGadget,
         select::CondSelectGadget,
     },
+    FpGadget,
+    ToConstraintFieldGadget,
 };
 
 #[cfg(test)]
@@ -1335,5 +1337,17 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> To
         x_bytes.extend_from_slice(&y_bytes);
 
         Ok(x_bytes)
+    }
+}
+
+impl<P: TwistedEdwardsParameters, F: PrimeField> ToConstraintFieldGadget<F> for AffineGadget<P, F, FpGadget<F>>
+where
+    P: TwistedEdwardsParameters<BaseField = F>,
+{
+    fn to_constraint_field<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<FpGadget<F>>, SynthesisError> {
+        let mut res = Vec::new();
+        res.extend_from_slice(&self.x.to_constraint_field(cs.ns(|| "x_to_constraint_field"))?);
+        res.extend_from_slice(&self.y.to_constraint_field(cs.ns(|| "y_to_constraint_field"))?);
+        Ok(res)
     }
 }

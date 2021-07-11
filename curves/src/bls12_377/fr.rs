@@ -14,7 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::{FftParameters, FieldParameters, Fp256, Fp256Parameters};
+use snarkvm_fields::{
+    FftParameters,
+    FieldParameters,
+    Fp256,
+    Fp256Parameters,
+    PoseidonDefaultParameters,
+    PoseidonDefaultParametersEntry,
+};
 use snarkvm_utilities::biginteger::BigInteger256 as BigInteger;
 
 /// BLS12-377 scalar field.
@@ -127,4 +134,25 @@ impl FieldParameters for FrParameters {
         0x655e9a2ca55660b4,
         0x12ab,
     ]);
+}
+
+impl PoseidonDefaultParameters for FrParameters {
+    const PARAMS_OPT_FOR_CONSTRAINTS: [PoseidonDefaultParametersEntry; 7] = [
+        PoseidonDefaultParametersEntry::new(2, 17, 8, 31, 0),
+        PoseidonDefaultParametersEntry::new(3, 17, 8, 31, 0),
+        PoseidonDefaultParametersEntry::new(4, 17, 8, 31, 0),
+        PoseidonDefaultParametersEntry::new(5, 17, 8, 31, 0),
+        PoseidonDefaultParametersEntry::new(6, 17, 8, 31, 0),
+        PoseidonDefaultParametersEntry::new(7, 17, 8, 31, 0),
+        PoseidonDefaultParametersEntry::new(8, 17, 8, 31, 0),
+    ];
+    const PARAMS_OPT_FOR_WEIGHTS: [PoseidonDefaultParametersEntry; 7] = [
+        PoseidonDefaultParametersEntry::new(2, 257, 8, 13, 0),
+        PoseidonDefaultParametersEntry::new(3, 257, 8, 13, 0),
+        PoseidonDefaultParametersEntry::new(4, 257, 8, 13, 0),
+        PoseidonDefaultParametersEntry::new(5, 257, 8, 13, 0),
+        PoseidonDefaultParametersEntry::new(6, 257, 8, 13, 0),
+        PoseidonDefaultParametersEntry::new(7, 257, 8, 13, 0),
+        PoseidonDefaultParametersEntry::new(8, 257, 8, 13, 0),
+    ];
 }
