@@ -14,11 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod group;
-pub use group::*;
+pub mod grain_lfsr;
+pub use grain_lfsr::*;
 
-pub mod schnorr;
-pub use schnorr::*;
+pub mod sponge;
+pub use sponge::*;
+
+pub mod poseidon;
+pub use poseidon::*;
 
 #[cfg(test)]
 pub mod tests;

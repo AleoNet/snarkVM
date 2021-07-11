@@ -22,12 +22,11 @@ use snarkvm_curves::{
 };
 use snarkvm_utilities::{rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
 
-use blake2::Blake2s;
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 
-type TestSignature = Schnorr<Edwards, Blake2s>;
-type TestGroupEncryptionSignature = GroupEncryption<EdwardsProjective, EdwardsAffine, Blake2s>;
+type TestSignature = Schnorr<Edwards>;
+type TestGroupEncryptionSignature = GroupEncryption<EdwardsProjective, EdwardsAffine>;
 
 fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);

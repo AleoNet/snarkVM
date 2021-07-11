@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod group;
-pub use group::*;
+#[derive(Debug, Error)]
+pub enum CryptoHashError {
+    #[error("{}: {}", _0, _1)]
+    Crate(&'static str, String),
 
-pub mod schnorr;
-pub use schnorr::*;
-
-#[cfg(test)]
-pub mod tests;
+    #[error("{}", _0)]
+    Message(String),
+}

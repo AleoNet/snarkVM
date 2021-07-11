@@ -173,6 +173,7 @@ wasm = [
   "commitment",
   "commitment_tree",
   "crh",
+  "crypto_hash",
   "encoding",
   "encryption",
   "fft",
@@ -185,13 +186,14 @@ wasm = [
 commitment = [ "blake2", "crh" ]
 commitment_tree = [ ]
 crh = [ ]
+crypto_hash = [ ]
 encoding = [ ]
 encryption = [ "signature" ]
 fft = [ ]
 merkle_tree = [ ]
 msm = [ ]
 prf = [ "blake2" ]
-signature = [ "encryption" ]
+signature = [ "encryption", "crypto_hash" ]
 snark = [ "fft", "msm" ]
 parallel = [ ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
