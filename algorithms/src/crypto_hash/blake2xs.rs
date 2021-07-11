@@ -44,8 +44,6 @@ macro_rules! personalization {
     }};
 }
 
-pub const ALEO_PERSONA: u64 = personalization!("AleoB2Xs");
-
 pub struct Blake2Xs;
 
 impl Blake2Xs {
@@ -179,7 +177,7 @@ impl Blake2Xs {
 
 #[cfg(test)]
 mod tests {
-    use crate::crypto_hash::{Blake2Xs, ALEO_PERSONA};
+    use crate::crypto_hash::Blake2Xs;
 
     use blake2::{Blake2s, VarBlake2s};
     use rand::{Rng, SeedableRng};
@@ -200,6 +198,8 @@ mod tests {
 
     #[test]
     fn test_aleo_personalization() {
+        const ALEO_PERSONA: u64 = personalization!("AleoB2Xs");
+
         assert_eq!(8311448373230398529, ALEO_PERSONA);
         assert_eq!(ALEO_PERSONA, u64::from_le_bytes(ALEO_PERSONA.to_le_bytes()));
         assert_eq!([65, 108, 101, 111, 66, 50, 88, 115], ALEO_PERSONA.to_le_bytes());
