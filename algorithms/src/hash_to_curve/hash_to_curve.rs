@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prf::Blake2Xs;
+use crate::crypto_hash::Blake2Xs;
 use snarkvm_curves::AffineCurve;
 
 /// Attempts to run hash-to-curve and returns the generator, message, and counter on sucess.

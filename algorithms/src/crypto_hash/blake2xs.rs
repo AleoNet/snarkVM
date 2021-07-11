@@ -179,7 +179,7 @@ impl Blake2Xs {
 
 #[cfg(test)]
 mod tests {
-    use crate::prf::{Blake2Xs, ALEO_PERSONA};
+    use crate::crypto_hash::{Blake2Xs, ALEO_PERSONA};
 
     use blake2::{Blake2s, VarBlake2s};
     use rand::{Rng, SeedableRng};
