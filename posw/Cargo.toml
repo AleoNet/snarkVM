@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-posw"
-version = "0.7.2"
+version = "0.7.3"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Proof of Succinct Work circuit implementation based on [KB20]"
 homepage = "https://aleo.org"
@@ -24,56 +24,56 @@ harness = false
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.7.2"
+version = "0.7.3"
 default-features = false
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.7.2"
+version = "0.7.3"
 default-features = false
 
 [dependencies.snarkvm-dpc]
 path = "../dpc"
-version = "0.7.2"
+version = "0.7.3"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.7.2"
+version = "0.7.3"
 default-features = false
 
 [dependencies.snarkvm-gadgets]
 path = "../gadgets"
-version = "0.7.2"
+version = "0.7.3"
 default-features = false
 
 [dependencies.snarkvm-marlin]
 path = "../marlin"
-version = "0.7.2"
+version = "0.7.3"
 
 [dependencies.snarkvm-parameters]
 path = "../parameters"
-version = "0.7.2"
+version = "0.7.3"
 default-features = false
 
 [dependencies.snarkvm-polycommit]
 path = "../polycommit"
-version = "0.7.2"
+version = "0.7.3"
 default-features = false
 
 [dependencies.snarkvm-profiler]
 path = "../profiler"
-version = "0.7.2"
+version = "0.7.3"
 default-features = false
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
-version = "0.7.2"
+version = "0.7.3"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.7.2"
+version = "0.7.3"
 default-features = false
 
 [dependencies.blake2]
