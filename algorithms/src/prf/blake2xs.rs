@@ -53,16 +53,63 @@ impl Blake2Xs {
     pub fn evaluate<const NODE_OFFSET: u32, const XOF_DIGEST_LENGTH: u16, const PERSONA: u64>(input: &[u8]) -> [u8; 32] {
         debug_assert!(XOF_DIGEST_LENGTH % 32 == 0);
 
-        let mut h = VarBlake2s::with_parameter_block(&Self::blake2xs_parameter_block::<NODE_OFFSET, XOF_DIGEST_LENGTH, PERSONA>());
+        let mut h = VarBlake2s::with_parameter_block(&Self::blake2xs_parameter_block(32, NODE_OFFSET, XOF_DIGEST_LENGTH, PERSONA));
         let mut output = [0u8; 32];
         h.update(input);
         h.finalize_variable(|buffer| output.copy_from_slice(buffer));
         output
     }
 
+    /// Returns the BLAKE2Xs digest given:
+    ///  - `input` is an input message as a slice of bytes,
+    ///  - `XOF_DIGEST_LENGTH` is a `u16` set to the length of the final output digest in bytes,
+    ///  - `PERSONALIZATION` is a `u64` representing a UTF-8 string of 8 characters.
     #[rustfmt::skip]
-    pub fn evaluate_blake2s(input: &[u8; 32]) -> [u8; 32] {
-        let mut h = VarBlake2s::with_parameter_block(&Self::blake2s_parameter_block());
+    pub fn evaluate_blake2xs(input: &[u8], xof_digest_length: u16, persona: &[u8]) -> Vec<u8> {
+        debug_assert!(xof_digest_length > 0, "Output digest must be of non-zero length");
+        debug_assert!(persona.len() <= 8, "Personalization may be at most 8 characters");
+
+        // Start by computing the digest of the input bytes.
+        let xof_digest_length_node_offset = (xof_digest_length as u64) << 32;
+        let input_digest = blake2s_simd::Params::new()
+            .hash_length(32)
+            .node_offset(xof_digest_length_node_offset)
+            .personal(persona)
+            .hash(&input)
+            .as_bytes()
+            .to_vec();
+
+        let mut output = vec![];
+
+        let num_rounds = (xof_digest_length + 31) / 32;
+        for node_offset in 0..num_rounds {
+            // Calculate the digest length for this round.
+            let is_final_round = node_offset == num_rounds - 1;
+            let has_remainder =  xof_digest_length % 32 != 0;
+            let digest_length = match is_final_round && has_remainder {
+                true => (xof_digest_length % 32) as usize,
+                false => 32
+            };
+
+            // Compute the next part of the output digest.
+            output.extend_from_slice(&blake2s_simd::Params::new()
+                .hash_length(digest_length)
+                .fanout(0)
+                .max_depth(0)
+                .max_leaf_length(32)
+                .node_offset(xof_digest_length_node_offset | (node_offset as u64))
+                .inner_hash_length(32)
+                .personal(persona)
+                .hash(&input_digest)
+                .as_bytes());
+        }
+
+        output
+    }
+
+    #[rustfmt::skip]
+    pub fn evaluate_blake2s(input: &[u8], persona: u64) -> [u8; 32] {
+        let mut h = VarBlake2s::with_parameter_block(&Self::blake2s_parameter_block(persona));
         let mut output = [0u8; 32];
         h.update(input);
         h.finalize_variable(|buffer| output.copy_from_slice(buffer));
@@ -70,13 +117,12 @@ impl Blake2Xs {
     }
 
     /// Returns the parameter block for BLAKE2Xs where:
+    ///  - `DIGEST_LENGTH` is a `u8` set to the expected output length of this evaluation of Blake2Xs,
     ///  - `NODE_OFFSET` is a `u32` representing the current multiple of the digest length (starting from 0),
     ///  - `XOF_DIGEST_LENGTH` is a `u16` set to the length of the final output digest in bytes,
     ///  - `PERSONALIZATION` is a `u64` representing a UTF-8 string of 8 characters.
     #[rustfmt::skip]
-    pub fn blake2xs_parameter_block<const NODE_OFFSET: u32, const XOF_DIGEST_LENGTH: u16, const PERSONALIZATION: u64>() -> [u32; 8] {
-        // Blake2s sets digest length to 32.
-        const DIGEST_LENGTH: u8 = 32u8;
+    pub fn blake2xs_parameter_block(digest_length: u8, node_offset: u32, xof_digest_length: u16, persona: u64) -> [u32; 8] {
         // • “Key length” is set to 0 (even if the root hash was keyed)
         const KEY_LENGTH: u8 = 0u8;
         // • “Fanout” is set to 0 (unlimited)
@@ -92,58 +138,52 @@ impl Blake2Xs {
         // • Other fields are left to the same values as in the underlying BLAKE2 instance
         const SALT: u64 = 0u64;
 
-        Self::parameter_block::<
-            DIGEST_LENGTH,
-            KEY_LENGTH,
-            FANOUT,
-            DEPTH,
-            LEAF_LENGTH,
-            NODE_OFFSET,
-            XOF_DIGEST_LENGTH,
-            NODE_DEPTH,
-            INNER_LENGTH,
-            SALT,
-            PERSONALIZATION,
-        >()
+        Self::parameter_block::<KEY_LENGTH, FANOUT, DEPTH, LEAF_LENGTH, NODE_DEPTH, INNER_LENGTH, SALT>(
+            digest_length,
+            node_offset,
+            xof_digest_length,
+            persona,
+        )
     }
 
     /// Returns the parameter block for BLAKE2s.
     #[rustfmt::skip]
-    pub const fn blake2s_parameter_block() -> [u32; 8] {
-        Self::parameter_block::<32u8, 0u8, 1u8, 1u8, 0u32, 0u32, 0u16, 0u8, 0u8, 0u64, 0u64>()
+    pub const fn blake2s_parameter_block(persona: u64) -> [u32; 8] {
+        Self::parameter_block::<0u8, 1u8, 1u8, 0u32, 0u8, 0u8, 0u64>(32u8, 0u32, 0u16, persona)
     }
 
+    /// Returns the parameter block for BLAKE2 where:
+    ///  - `DIGEST_LENGTH` is a `u8` set to the expected output length of this evaluation,
+    ///  - `NODE_OFFSET` is a `u32` representing the current multiple of the digest length (starting from 0),
+    ///  - `XOF_DIGEST_LENGTH` is a `u16` set to the length of the final output digest in bytes,
+    ///  - `PERSONALIZATION` is a `u64` representing a UTF-8 string of 8 characters.
     #[rustfmt::skip]
     pub const fn parameter_block<
-        const DIGEST_LENGTH: u8,
         const KEY_LENGTH: u8,
         const FANOUT: u8,
         const DEPTH: u8,
         const LEAF_LENGTH: u32,
-        const NODE_OFFSET: u32,
-        const XOF_DIGEST_LENGTH: u16,
         const NODE_DEPTH: u8,
         const INNER_LENGTH: u8,
         const SALT: u64,
-        const PERSONALIZATION: u64,
-    >() -> [u32; 8] {
+    >(digest_length: u8, node_offset: u32, xof_digest_length: u16, persona: u64) -> [u32; 8] {
         [
             // Offset 0 - Digest length || Key length || Fanout || Depth
-            u32::from_le_bytes([DIGEST_LENGTH, KEY_LENGTH, FANOUT, DEPTH]),
+            u32::from_le_bytes([digest_length, KEY_LENGTH, FANOUT, DEPTH]),
             // Offset 4 - Leaf length
             LEAF_LENGTH,
             // Offset 8 - Node offset
-            NODE_OFFSET,
+            node_offset,
             // Offset 12 - XOF digest length || Node depth || Inner length
-            u32::from_le_bytes([XOF_DIGEST_LENGTH as u8, (XOF_DIGEST_LENGTH >> 8) as u8, NODE_DEPTH, INNER_LENGTH]),
+            u32::from_le_bytes([xof_digest_length as u8, (xof_digest_length >> 8) as u8, NODE_DEPTH, INNER_LENGTH]),
             // Offset 16 - Salt
             u32::from_le_bytes([SALT as u8, (SALT >> 8) as u8, (SALT >> 16) as u8, (SALT >> 24) as u8]),
             // Offset 20 - Salt (continued)
             u32::from_le_bytes([(SALT >> 32) as u8, (SALT >> 40) as u8, (SALT >> 48) as u8, (SALT >> 56) as u8]),
             // Offset 24 - Personalization
-            u32::from_le_bytes([PERSONALIZATION as u8, (PERSONALIZATION >> 8) as u8, (PERSONALIZATION >> 16) as u8, (PERSONALIZATION >> 24) as u8]),
+            u32::from_le_bytes([persona as u8, (persona >> 8) as u8, (persona >> 16) as u8, (persona >> 24) as u8]),
             // Offset 24 - Personalization (continued)
-            u32::from_le_bytes([(PERSONALIZATION >> 32) as u8, (PERSONALIZATION >> 40) as u8, (PERSONALIZATION >> 48) as u8, (PERSONALIZATION >> 56) as u8]),
+            u32::from_le_bytes([(persona >> 32) as u8, (persona >> 40) as u8, (persona >> 48) as u8, (persona >> 56) as u8]),
         ]
     }
 }
@@ -155,8 +195,19 @@ mod tests {
     use blake2::{Blake2s, VarBlake2s};
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaChaRng;
+    use serde::Deserialize;
 
     const ITERATIONS: usize = 10_000;
+
+    #[derive(Deserialize)]
+    struct Case {
+        hash: String,
+        #[serde(rename = "in")]
+        input: String,
+        key: String,
+        #[serde(rename = "out")]
+        output: String,
+    }
 
     #[test]
     fn test_aleo_personalization() {
@@ -169,70 +220,25 @@ mod tests {
 
     #[test]
     fn test_blake2xs() {
-        use rand::distributions::Uniform;
-
-        const NODE_OFFSET: u32 = 0u32;
-
-        // Run evaluations and enforce size.
-        for input_size in 0..1000 {
-            // Sample a new input.
-            let input: Vec<u8> = rand::thread_rng()
-                .sample_iter(Uniform::from(0..255))
-                .take(input_size)
-                .collect();
-
-            // 256 bits / 32 bytes
-            const XOF_DIGEST_32: u16 = 32u16;
-            let digest = Blake2Xs::evaluate::<NODE_OFFSET, XOF_DIGEST_32, ALEO_PERSONA>(&input);
-            println!("{} to 32: {:?}\n", input_size, digest);
-            assert_eq!(32, digest.len());
+        // Run test vector cases.
+        let vectors: Vec<Case> = serde_json::from_str(include_str!("./resources/blake2-kat.json")).unwrap();
+        for case in vectors.iter().filter(|v| &v.hash == "blake2xs" && v.key.is_empty()) {
+            let input = hex::decode(case.input.as_bytes()).unwrap();
+            let xof_digest_length = case.output.len() as u16 / 2;
+            let output = hex::encode(Blake2Xs::evaluate_blake2xs(&input, xof_digest_length, "".as_bytes()));
+            assert_eq!(output, case.output);
         }
     }
 
     #[rustfmt::skip]
     #[test]
-    fn test_blake2s_correctness() {
-        use digest::generic_array::typenum::{Unsigned, U32};
-        use digest::{Update, VariableOutput};
-
-        fn evaluate(mut h: VarBlake2s, input: [u8; 32]) -> Vec<u8> {
-            let mut output = vec![0u8; digest::VariableOutput::output_size(&h)];
-            h.update(input.as_ref());
-            h.finalize_variable(|buffer| output.copy_from_slice(buffer));
-            assert_eq!(32, output.len());
-            output
-        }
-
-        fn evaluate_with_blake2s_parameters(input: [u8; 32]) -> Vec<u8> {
-            let mut h = VarBlake2s::with_parameter_block(&Blake2Xs::blake2s_parameter_block());
-            let mut output = vec![0u8; digest::VariableOutput::output_size(&h)];
-            assert_eq!(32, output.len());
-
-            h.update(input.as_ref());
-            h.finalize_variable(|buffer| output.copy_from_slice(buffer));
-            assert_eq!(32, output.len());
-            output
-        }
-        
-        // Initialize a random number generator.
-        let rng = &mut ChaChaRng::seed_from_u64(123456789u64);
-
-        // Initialize the reference salt, and persona.
-        const REFERENCE_SALT: [u8; 8] = [0u8; 8];
-        const REFERENCE_PERSONA: [u8; 8] = 0u64.to_le_bytes();
-        
-        // Run evaluations and enforce equality.
-        for _ in 0..ITERATIONS {
-
-            // Initialize a reference implementation of VarBlake2s.
-            let reference = VarBlake2s::with_params(&[], &REFERENCE_SALT, &REFERENCE_PERSONA, U32::to_usize());
-
-            // Sample a new input.
-            let input: [u8; 32] = rng.gen();
-
-            // Compare the evaluation of the implementations.
-            assert_eq!(evaluate(reference, input), Blake2Xs::evaluate_blake2s(&input));
-            assert_eq!(evaluate_with_blake2s_parameters(input), Blake2Xs::evaluate_blake2s(&input));
+    fn test_blake2s() {
+        // Run test vector cases.
+        let vectors: Vec<Case> = serde_json::from_str(include_str!("./resources/blake2-kat.json")).unwrap();
+        for case in vectors.iter().filter(|v| &v.hash == "blake2s" && v.key.is_empty()) {            
+            let input = hex::decode(case.input.as_bytes()).unwrap();
+            let output = hex::encode(Blake2Xs::evaluate_blake2s(&input, 0u64));
+            assert_eq!(output, case.output);
         }
     }
 
@@ -241,10 +247,9 @@ mod tests {
     fn test_blake2s_parameter_block_correctness() {
         use digest::generic_array::typenum::{Unsigned, U32};
 
-        fn evaluate_blake2s(mut h: Blake2s, seed: [u8; 32], input: [u8; 32]) -> Vec<u8> {
+        fn evaluate_blake2s(mut h: Blake2s, input: [u8; 32]) -> Vec<u8> {
             use digest::Digest;
 
-            h.update(seed.as_ref());
             h.update(input.as_ref());
 
             let mut output = [0u8; 32];
@@ -252,10 +257,9 @@ mod tests {
             output.to_vec()
         }
 
-        fn evaluate_varblake2s(mut h: VarBlake2s, seed: [u8; 32], input: [u8; 32]) -> Vec<u8> {
+        fn evaluate_varblake2s(mut h: VarBlake2s, input: [u8; 32]) -> Vec<u8> {
             use digest::{Update, VariableOutput};
 
-            h.update(seed.as_ref());
             h.update(input.as_ref());
 
             let mut output = vec![0u8; digest::VariableOutput::output_size(&h)];
@@ -329,16 +333,15 @@ mod tests {
             let reference_c = VarBlake2s::with_parameter_block(&u32_params_to_parameter_block(&[], &REFERENCE_SALT, &REFERENCE_PERSONA));
 
             // Initialize a candidate implementation of Blake2s from the parameter block.
-            let candidate = VarBlake2s::with_parameter_block(&Blake2Xs::blake2s_parameter_block());
+            let candidate = VarBlake2s::with_parameter_block(&Blake2Xs::blake2s_parameter_block(0u64));
             
-            // Sample a new seed and input.
-            let seed: [u8; 32] = rng.gen();
+            // Sample a new input.
             let input: [u8; 32] = rng.gen();
             
             // Compare the evaluation of the implementations.
-            assert_eq!(evaluate_blake2s(reference_a, seed, input), evaluate_varblake2s(reference_b.clone(), seed, input));
-            assert_eq!(evaluate_varblake2s(reference_b, seed, input), evaluate_varblake2s(reference_c.clone(), seed, input));
-            assert_eq!(evaluate_varblake2s(reference_c, seed, input), evaluate_varblake2s(candidate, seed, input));
+            assert_eq!(evaluate_blake2s(reference_a, input), evaluate_varblake2s(reference_b.clone(), input));
+            assert_eq!(evaluate_varblake2s(reference_b, input), evaluate_varblake2s(reference_c.clone(), input));
+            assert_eq!(evaluate_varblake2s(reference_c, input), evaluate_varblake2s(candidate, input));
         }
     }
 }
