@@ -49,23 +49,12 @@ pub const ALEO_PERSONA: u64 = personalization!("AleoB2Xs");
 pub struct Blake2Xs;
 
 impl Blake2Xs {
-    #[rustfmt::skip]
-    pub fn evaluate<const NODE_OFFSET: u32, const XOF_DIGEST_LENGTH: u16, const PERSONA: u64>(input: &[u8]) -> [u8; 32] {
-        debug_assert!(XOF_DIGEST_LENGTH % 32 == 0);
-
-        let mut h = VarBlake2s::with_parameter_block(&Self::blake2xs_parameter_block(32, NODE_OFFSET, XOF_DIGEST_LENGTH, PERSONA));
-        let mut output = [0u8; 32];
-        h.update(input);
-        h.finalize_variable(|buffer| output.copy_from_slice(buffer));
-        output
-    }
-
     /// Returns the BLAKE2Xs digest given:
     ///  - `input` is an input message as a slice of bytes,
     ///  - `XOF_DIGEST_LENGTH` is a `u16` set to the length of the final output digest in bytes,
     ///  - `PERSONALIZATION` is a `u64` representing a UTF-8 string of 8 characters.
     #[rustfmt::skip]
-    pub fn evaluate_blake2xs(input: &[u8], xof_digest_length: u16, persona: &[u8]) -> Vec<u8> {
+    pub fn evaluate(input: &[u8], xof_digest_length: u16, persona: &[u8]) -> Vec<u8> {
         debug_assert!(xof_digest_length > 0, "Output digest must be of non-zero length");
         debug_assert!(persona.len() <= 8, "Personalization may be at most 8 characters");
 
@@ -225,7 +214,7 @@ mod tests {
         for case in vectors.iter().filter(|v| &v.hash == "blake2xs" && v.key.is_empty()) {
             let input = hex::decode(case.input.as_bytes()).unwrap();
             let xof_digest_length = case.output.len() as u16 / 2;
-            let output = hex::encode(Blake2Xs::evaluate_blake2xs(&input, xof_digest_length, "".as_bytes()));
+            let output = hex::encode(Blake2Xs::evaluate(&input, xof_digest_length, "".as_bytes()));
             assert_eq!(output, case.output);
         }
     }
