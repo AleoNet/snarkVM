@@ -302,12 +302,8 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
             return Err(MerkleError::IncorrectLeafIndex(tree_index));
         }
 
-        // Get Leaf hash, and leaf sibling hash
-        let leaf_sibling_index = sibling(tree_index).unwrap();
-        let leaf_sibling_hash = self.tree[leaf_sibling_index].clone();
-
         // Iterate from the leaf's parent up to the root, storing all intermediate hash values.
-        let mut current_node = parent(tree_index).unwrap();
+        let mut current_node = tree_index;
         while !is_root(current_node) {
             let sibling_node = sibling(current_node).unwrap();
             path.push(self.tree[sibling_node].clone());
@@ -315,11 +311,11 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         }
 
         // Store the root node. Set boolean as true for consistency with digest location.
-        if path.len() > Self::DEPTH as usize - 1 {
+        if path.len() > Self::DEPTH as usize {
             return Err(MerkleError::InvalidPathLength(path.len(), Self::DEPTH as usize));
         }
 
-        if path.len() != Self::DEPTH as usize - 1 {
+        if path.len() != Self::DEPTH as usize {
             let empty_hash = self.parameters.hash_empty()?;
             path.push(empty_hash);
 
@@ -329,14 +325,13 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         }
         end_timer!(prove_time);
 
-        if path.len() != Self::DEPTH as usize - 1 {
+        if path.len() != Self::DEPTH as usize {
             Err(MerkleError::IncorrectPathLength(path.len()))
         } else {
             Ok(MerklePath {
                 parameters: self.parameters.clone(),
                 path,
                 leaf_index: index,
-                leaf_sibling_hash,
             })
         }
     }

@@ -31,7 +31,7 @@ pub struct MerklePath<P: MerkleParameters> {
     pub parameters: Arc<P>,
     pub path: Vec<MerkleTreeDigest<P>>,
     pub leaf_index: usize,
-    pub leaf_sibling_hash: MerkleTreeDigest<P>,
+    // pub leaf_sibling_hash: MerkleTreeDigest<P>,
 }
 
 impl<P: MerkleParameters> MerklePath<P> {
@@ -43,18 +43,20 @@ impl<P: MerkleParameters> MerklePath<P> {
 
             let claimed_leaf_hash = self.parameters.hash_leaf::<L>(leaf, &mut buffer)?;
 
-            // Check levels between leaf level and root.
-            let (left_bytes, right_bytes) =
-                Self::select_left_right_bytes(self.leaf_index, &claimed_leaf_hash, &self.leaf_sibling_hash)?;
-
-            // Construct the first path node.
-            let mut buffer = vec![0u8; hash_input_size_in_bytes];
-            let mut curr_path_node = self
-                .parameters
-                .hash_inner_node(&left_bytes, &right_bytes, &mut buffer)?;
-
+            // // Check levels between leaf level and root.
+            // let (left_bytes, right_bytes) =
+            //     Self::select_left_right_bytes(self.leaf_index, &claimed_leaf_hash, &self.leaf_sibling_hash)?;
+            //
+            // // Construct the first path node.
+            // let mut buffer = vec![0u8; hash_input_size_in_bytes];
+            // let mut curr_path_node = self
+            //     .parameters
+            //     .hash_inner_node(&left_bytes, &right_bytes, &mut buffer)?;
+            //
             let mut index = self.leaf_index;
-            index >>= 1;
+            // index >>= 1;
+
+            let mut curr_path_node = claimed_leaf_hash;
 
             // Check levels between leaf level and root.
             for level in 0..self.path.len() {
@@ -105,7 +107,7 @@ impl<P: MerkleParameters> MerklePath<P> {
     ///
     /// This function simply converts `self.leaf_index` to boolean array in big endian form.
     pub fn position_list(&'_ self) -> impl '_ + Iterator<Item = bool> {
-        (0..self.path.len() + 1).map(move |i| ((self.leaf_index >> i) & 1) != 0)
+        (0..self.path.len()).map(move |i| ((self.leaf_index >> i) & 1) != 0)
     }
 }
 
@@ -119,7 +121,7 @@ impl<P: MerkleParameters> Default for MerklePath<P> {
             parameters: Arc::new(P::default()),
             path,
             leaf_index: 0,
-            leaf_sibling_hash: MerkleTreeDigest::<P>::default(),
+            // leaf_sibling_hash: MerkleTreeDigest::<P>::default(),
         }
     }
 }

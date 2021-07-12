@@ -32,7 +32,7 @@ fn generate_merkle_tree<P: LoadableMerkleParameters, L: ToBytes + Send + Sync + 
     let tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), &leaves[..]).unwrap();
     for (i, leaf) in leaves.iter().enumerate() {
         let proof = tree.generate_proof(i, &leaf).unwrap();
-        assert_eq!(P::DEPTH - 1, proof.path.len());
+        assert_eq!(P::DEPTH, proof.path.len());
         assert!(proof.verify(&tree.root(), &leaf).unwrap());
     }
     tree
