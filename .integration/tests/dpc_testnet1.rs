@@ -341,7 +341,6 @@ fn test_transaction_kernel_serialization() {
     assert_eq!(transaction_kernel, recovered_transaction_kernel);
 }
 
-#[ignore]
 #[test]
 fn test_testnet1_dpc_execute_constraints() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
@@ -350,7 +349,7 @@ fn test_testnet1_dpc_execute_constraints() {
     // "always-accept" program.
     let ledger_parameters = Arc::new(CommitmentMerkleParameters::setup(&mut rng));
 
-    let dpc = <Testnet1DPC as DPCScheme<L>>::load(false).unwrap();
+    let dpc = <Testnet1DPC as DPCScheme<L>>::setup(&ledger_parameters, &mut rng).unwrap();
     let system_parameters = &dpc.system_parameters;
 
     let alternate_noop_program = NoopProgram::<Components>::setup(
