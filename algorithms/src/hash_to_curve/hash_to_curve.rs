@@ -45,7 +45,6 @@ pub fn hash_to_curve<G: AffineCurve>(input: &str) -> Option<G> {
     // Attempt to use the digest to derive a generator.
     G::from_random_bytes(&digest).and_then(|g| {
         debug_assert!(g.is_on_curve());
-        debug_assert!(!g.is_in_correct_subgroup_assuming_on_curve());
 
         let g = g.mul_by_cofactor();
         debug_assert!(g.is_on_curve());
