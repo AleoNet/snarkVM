@@ -476,4 +476,9 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintSystem<F> {
     fn num_private_variables(&self) -> usize {
         self.private_variables.len()
     }
+
+    #[inline]
+    fn is_in_setup_mode(&self) -> bool {
+        false
+    }
 }

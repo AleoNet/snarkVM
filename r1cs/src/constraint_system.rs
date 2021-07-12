@@ -102,6 +102,9 @@ pub trait ConstraintSystem<F: Field>: Sized {
 
     /// Output the number of private input variables to the system.
     fn num_private_variables(&self) -> usize;
+
+    /// Output whether the constraint system is in the setup mode.
+    fn is_in_setup_mode(&self) -> bool;
 }
 
 /// Convenience implementation of ConstraintSystem<F> for mutable references to
@@ -178,5 +181,10 @@ impl<F: Field, CS: ConstraintSystem<F>> ConstraintSystem<F> for &mut CS {
     #[inline]
     fn num_private_variables(&self) -> usize {
         (**self).num_private_variables()
+    }
+
+    #[inline]
+    fn is_in_setup_mode(&self) -> bool {
+        (**self).is_in_setup_mode()
     }
 }
