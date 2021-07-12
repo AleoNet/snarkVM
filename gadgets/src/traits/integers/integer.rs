@@ -21,6 +21,8 @@ use std::fmt::Debug;
 /// The interface for a singed or unsigned integer gadget.
 pub trait Integer: Debug + Clone {
     type IntegerType;
+    type UnsignedGadgetType;
+    type UnsignedIntegerType;
 
     const SIZE: usize;
 

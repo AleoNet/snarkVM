@@ -18,14 +18,12 @@ use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSystem;
 
 use crate::{
-    bits::boolean::{AllocatedBit, Boolean},
-    errors::SignedIntegerError,
+    bits::boolean::Boolean,
+    errors::{SignedIntegerError, UnsignedIntegerError},
     integers::int::*,
     traits::{
-        alloc::AllocGadget,
-        bits::ComparatorGadget,
-        eq::EvaluateEqGadget,
-        integers::{Add, Div, Integer, Neg, Sub},
+        eq::{EqGadget, EvaluateEqGadget},
+        integers::{Div, Integer, Neg},
         select::CondSelectGadget,
     },
 };
@@ -63,191 +61,80 @@ macro_rules! div_int_impl {
                 // else
                 //    !Q                      -- negative result
 
-                if other.eq(&Self::constant(0 as <$gadget as Integer>::IntegerType)) {
-                    return Err(SignedIntegerError::DivisionByZero);
+                // If `self` and `other` are both constants, return the constant results instead of generating constraints
+                if self.is_constant() && other.is_constant() {
+                    return Ok(Self::constant(self.value.unwrap().wrapping_div(other.value.unwrap())));
                 }
 
-                let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
+                // If `self` = MIN and `other` = -1, reject as this causes an overflow.
+                if self.value.is_some() && other.value.is_some() {
+                    if self.value.unwrap() == <$gadget as Integer>::IntegerType::MIN && other.value.unwrap() == -1 {
+                        return Err(SignedIntegerError::Overflow.into());
+                    }
+                }
+                let self_is_min = self.evaluate_equal(cs.ns(||"is_self_min"), &Self::constant(<$gadget as Integer>::IntegerType::MIN))?;
+                let other_is_minus_one = other.evaluate_equal(cs.ns(||"is_other_minus_one"), &Self::constant(-1 as <$gadget as Integer>::IntegerType))?;
+                Boolean::and(cs.ns(||"is_result_overflowing"), &self_is_min, &other_is_minus_one)?.enforce_equal(cs.ns(||"result_cannot_be_overflowing"), &Boolean::constant(false))?;
 
-                let allocated_true = Boolean::from(AllocatedBit::alloc(&mut cs.ns(|| "true"), || Ok(true)).unwrap());
-                let true_bit = Boolean::conditionally_select(
-                    &mut cs.ns(|| "constant_or_allocated_true"),
-                    &is_constant,
-                    &Boolean::constant(true),
-                    &allocated_true,
-                )?;
+                let is_a_negative = self.bits.last().unwrap();
+                let is_b_negative = other.bits.last().unwrap();
+                let positive_result = is_a_negative.evaluate_equal(cs.ns(|| "compare_msb"), &is_b_negative)?;
 
-                let allocated_one = Self::alloc(&mut cs.ns(|| "one"), || Ok(1 as <$gadget as Integer>::IntegerType))?;
-                let one = Self::conditionally_select(
-                    &mut cs.ns(|| "constant_or_allocated_1"),
-                    &is_constant,
-                    &Self::constant(1 as <$gadget as Integer>::IntegerType),
-                    &allocated_one,
-                )?;
+                // Get the absolute value of each number.
+                let a_absolute : <$gadget as Integer>::UnsignedGadgetType = {
+                    let negated_bits = self.bits.neg(cs.ns(||"neg_self_bits"))?;
 
-                let allocated_zero = Self::alloc(&mut cs.ns(|| "zero"), || Ok(0 as <$gadget as Integer>::IntegerType))?;
-                let zero = Self::conditionally_select(
-                    &mut cs.ns(|| "constant_or_allocated_0"),
-                    &is_constant,
-                    &Self::constant(0 as <$gadget as Integer>::IntegerType),
-                    &allocated_zero,
-                )?;
-
-                // if the numerator is 0, return 0
-                let self_is_zero = Boolean::Constant(self.eq(&Self::constant(0 as <$gadget as Integer>::IntegerType)));
-
-                // if other is the minimum number, the result will be zero or one
-                // -128 / -128 = 1
-                // x / -128 = 0 fractional result rounds to 0
-                let min = Self::constant(<$gadget as Integer>::IntegerType::MIN);
-                let other_is_min = other.evaluate_equal(
-                    &mut cs.ns(|| "other_min_check"),
-                    &min
-                )?;
-                let self_is_min = self.evaluate_equal(
-                    &mut cs.ns(|| "self_min_check"),
-                    &min
-                )?;
-                let both_min = Boolean::and(
-                    &mut cs.ns(|| "both_min"),
-                    &other_is_min,
-                    &self_is_min
-                )?;
-
-
-                // if other is the minimum, set other to -1 so the calculation will not fail
-                let negative_one = allocated_one.neg(&mut cs.ns(|| "allocated_one"))?;
-                let a_valid = min.add(&mut cs.ns(||"a_valid"), &allocated_one);
-                let a_set = Self::conditionally_select(
-                    &mut cs.ns(|| "a_set"),
-                    &self_is_min,
-                    &a_valid?,
-                    &self
-                )?;
-
-                let b_set = Self::conditionally_select(
-                    &mut cs.ns(|| "b_set"),
-                    &other_is_min,
-                    &negative_one,
-                    &other
-                )?;
-
-                // If the most significant bits of both numbers are equal, the quotient will be positive
-                let b_msb = other.bits.last().unwrap();
-                let a_msb = self.bits.last().unwrap();
-                let positive = a_msb.evaluate_equal(cs.ns(|| "compare_msb"), &b_msb)?;
-
-                // Get the absolute value of each number
-                let a_comp = a_set.neg(&mut cs.ns(|| "a_neg"))?;
-                let a = Self::conditionally_select(
-                    &mut cs.ns(|| "a_abs"),
-                    &a_msb,
-                    &a_comp,
-                    &self
-                )?;
-
-                let b_comp = b_set.neg(&mut cs.ns(|| "b_neg"))?;
-                let b = Self::conditionally_select(
-                    &mut cs.ns(|| "b_abs"),
-                    &b_msb,
-                    &b_comp,
-                    &b_set,
-                )?;
-
-                let mut q = zero.clone();
-                let mut r = zero;
-
-                let mut index = <$gadget as Integer>::SIZE - 1 as usize;
-                let mut bit_value = (1 as <$gadget as Integer>::IntegerType) << ((index - 1) as <$gadget as Integer>::IntegerType);
-
-                for (i, bit) in a.bits.iter().rev().enumerate().skip(1) {
-
-                    // Left shift remainder by 1
-                    r = r.add(
-                        &mut cs.ns(|| format!("shift_left_{}", i)),
-                        &r
-                    )?;
-
-                    // Set the least-significant bit of remainder to bit i of the numerator
-                    let r_new = r.add(
-                        &mut cs.ns(|| format!("set_remainder_bit_{}", i)),
-                        &one,
-                    )?;
-
-                    r = Self::conditionally_select(
-                        &mut cs.ns(|| format!("increment_or_remainder_{}", i)),
-                        &bit,
-                        &r_new,
-                        &r
-                    )?;
-
-                    let can_sub = r.greater_than_or_equal(
-                        &mut cs.ns(|| format!("compare_remainder_{}", i)),
-                        &b
-                    )?;
-
-                    let sub = r.sub(
-                        &mut cs.ns(|| format!("subtract_divisor_{}", i)),
-                        &b
-                    )?;
-
-                    r = Self::conditionally_select(
-                        &mut cs.ns(|| format!("subtract_or_same_{}", i)),
-                        &can_sub,
-                        &sub,
-                        &r
-                    )?;
-
-                    index -= 1;
-
-                    let mut q_new = q.clone();
-                    q_new.bits[index] = true_bit;
-                    if let Some(ref mut value) = q_new.value {
-                        *value += bit_value;
+                    let mut absolute_value_bits = Vec::new();
+                    for i in 0..self.bits.len() {
+                        absolute_value_bits.push(Boolean::conditionally_select(
+                            cs.ns(|| format!("select_the_self_absolute_value_bit_{}", i)),
+                            &is_a_negative,
+                            &negated_bits[i],
+                            &self.bits[i],
+                        )?);
                     }
 
-                    bit_value >>= 1;
+                    <$gadget as Integer>::UnsignedGadgetType::from_bits_le(&absolute_value_bits)
+                };
+                let b_absolute : <$gadget as Integer>::UnsignedGadgetType = {
+                    let negated_bits = other.bits.neg(cs.ns(||"neg_other_bits"))?;
 
-                    q = Self::conditionally_select(
-                        &mut cs.ns(|| format!("set_bit_or_same_{}", i)),
-                        &can_sub,
-                        &q_new,
-                        &q,
-                    )?;
+                    let mut absolute_value_bits = Vec::new();
+                    for i in 0..self.bits.len() {
+                        absolute_value_bits.push(Boolean::conditionally_select(
+                            cs.ns(|| format!("select_the_other_absolute_value_bit_{}", i)),
+                            &is_b_negative,
+                            &negated_bits[i],
+                            &other.bits[i],
+                        )?);
+                    }
 
+                    <$gadget as Integer>::UnsignedGadgetType::from_bits_le(&absolute_value_bits)
+                };
+
+                let quotient = a_absolute.div(cs.ns(||"div_absolute_value"), &b_absolute).map_err(
+                    |err|
+                    match err {
+                        UnsignedIntegerError::Overflow => SignedIntegerError::Overflow,
+                        UnsignedIntegerError::DivisionByZero => SignedIntegerError::DivisionByZero,
+                        UnsignedIntegerError::SynthesisError(e) => SignedIntegerError::SynthesisError(e),
+                    }
+                )?;
+
+                let negated_quotient_bits = quotient.bits.neg(cs.ns(||"neg_quotient_bits"))?;
+
+                let mut result_bits = Vec::<Boolean>::new();
+                for i in 0..quotient.bits.len() {
+                    result_bits.push(Boolean::conditionally_select(
+                        cs.ns(|| format!("select_final_bits_{}", i)),
+                        &positive_result,
+                        &quotient.bits[i],
+                        &negated_quotient_bits[i],
+                    )?);
                 }
 
-                let q_neg = q.neg(&mut cs.ns(|| "negate"))?;
-
-                q = Self::conditionally_select(
-                    &mut cs.ns(|| "positive or negative"),
-                    &positive,
-                    &q,
-                    &q_neg,
-                )?;
-
-                // set to zero if we know result is fractional
-                q = Self::conditionally_select(
-                    &mut cs.ns(|| "fraction"),
-                    &other_is_min,
-                    &allocated_zero,
-                    &q,
-                )?;
-
-                // set to one if we know result is division of the minimum number by itself
-                q = Self::conditionally_select(
-                    &mut cs.ns(|| "one_result"),
-                    &both_min,
-                    &allocated_one,
-                    &q,
-                )?;
-
-                Ok(Self::conditionally_select(
-                    &mut cs.ns(|| "self_or_quotient"),
-                    &self_is_zero,
-                    self,
-                    &q
-                )?)
+                let quotient = Self::from_bits_le(&result_bits);
+                Ok(quotient)
             }
         }
     )*)

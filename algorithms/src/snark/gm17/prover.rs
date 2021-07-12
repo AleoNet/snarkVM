@@ -199,6 +199,10 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
     fn num_private_variables(&self) -> usize {
         self.num_private_variables
     }
+
+    fn is_in_setup_mode(&self) -> bool {
+        false
+    }
 }
 
 pub fn create_random_proof<E, C, R>(

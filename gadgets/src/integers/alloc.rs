@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::borrow::Borrow;
+use core::borrow::Borrow;
 
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -35,33 +35,44 @@ macro_rules! alloc_gadget_fn_impl {
             mut cs: CS,
             value_gen: Fn,
         ) -> Result<Self, SynthesisError> {
-            let value = value_gen().map(|val| *val.borrow());
-            let values = match value {
-                Ok(mut val) => {
-                    let mut v = Vec::with_capacity(<$gadget as Integer>::SIZE);
-
-                    for _ in 0..<$gadget as Integer>::SIZE {
-                        v.push(Some(val & 1 == 1));
-                        val >>= 1;
-                    }
-
-                    v
+            if cs.is_in_setup_mode() {
+                let mut bits = Vec::new();
+                for i in 0..<$gadget as Integer>::SIZE {
+                    bits.push(Boolean::from(AllocatedBit::$fn_name(
+                        cs.ns(|| format!("allocated bit_gadget {}", i)),
+                        || Ok(false),
+                    )?));
                 }
-                _ => vec![None; <$gadget as Integer>::SIZE],
-            };
+                Ok(Self::new(bits, None))
+            } else {
+                let value = value_gen().map(|val| *val.borrow());
+                let values = match value {
+                    Ok(mut val) => {
+                        let mut v = Vec::with_capacity(<$gadget as Integer>::SIZE);
 
-            let bits = values
-                .into_iter()
-                .enumerate()
-                .map(|(i, v)| {
-                    Ok(Boolean::from(AllocatedBit::$fn_name(
-                        &mut cs.ns(|| format!("allocated bit_gadget {}", i)),
-                        || v.ok_or(SynthesisError::AssignmentMissing),
-                    )?))
-                })
-                .collect::<Result<Vec<_>, SynthesisError>>()?;
+                        for _ in 0..<$gadget as Integer>::SIZE {
+                            v.push(Some(val & 1 == 1));
+                            val >>= 1;
+                        }
 
-            Ok(Self::new(bits, value.ok()))
+                        v
+                    }
+                    _ => vec![None; <$gadget as Integer>::SIZE],
+                };
+
+                let bits = values
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, v)| {
+                        Ok(Boolean::from(AllocatedBit::$fn_name(
+                            &mut cs.ns(|| format!("allocated bit_gadget {}", i)),
+                            || v.ok_or(SynthesisError::AssignmentMissing),
+                        )?))
+                    })
+                    .collect::<Result<Vec<_>, SynthesisError>>()?;
+
+                Ok(Self::new(bits, value.ok()))
+            }
         }
     };
 }
@@ -70,7 +81,6 @@ macro_rules! alloc_gadget_int_impl {
     ($($gadget: ident)*) => ($(
         impl<F: Field> AllocGadget<<$gadget as Integer>::IntegerType, F> for $gadget {
             alloc_gadget_fn_impl!($gadget, alloc);
-
             alloc_gadget_fn_impl!($gadget, alloc_input);
         }
     )*)

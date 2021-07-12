@@ -14,13 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{bits::Boolean, traits::integers::Integer};
+use crate::{
+    bits::Boolean,
+    integers::uint::{UInt128, UInt16, UInt32, UInt64, UInt8},
+    traits::integers::Integer,
+};
 
 use std::fmt::Debug;
 
 /// Implements the base struct for a signed integer gadget
 macro_rules! int_impl {
-    ($name: ident, $type_: ty, $utype_: ty, $size: expr) => {
+    ($name: ident, $type_: ty, $uname_: ty, $utype_: ty, $size: expr) => {
         #[derive(Clone, Debug)]
         pub struct $name {
             pub bits: Vec<Boolean>,
@@ -29,6 +33,8 @@ macro_rules! int_impl {
 
         impl Integer for $name {
             type IntegerType = $type_;
+            type UnsignedGadgetType = $uname_;
+            type UnsignedIntegerType = $utype_;
 
             const SIZE: usize = $size;
 
@@ -120,8 +126,8 @@ macro_rules! int_impl {
     };
 }
 
-int_impl!(Int8, i8, u8, 8);
-int_impl!(Int16, i16, u16, 16);
-int_impl!(Int32, i32, u32, 32);
-int_impl!(Int64, i64, u64, 64);
-int_impl!(Int128, i128, u128, 128);
+int_impl!(Int8, i8, UInt8, u8, 8);
+int_impl!(Int16, i16, UInt16, u16, 16);
+int_impl!(Int32, i32, UInt32, u32, 32);
+int_impl!(Int64, i64, UInt64, u64, 64);
+int_impl!(Int128, i128, UInt128, u128, 128);
