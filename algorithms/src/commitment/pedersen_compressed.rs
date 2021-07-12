@@ -19,24 +19,22 @@ use crate::{
     errors::CommitmentError,
     traits::CommitmentScheme,
 };
-use snarkvm_curves::traits::{AffineCurve, Group, ProjectiveCurve};
-
-use rand::Rng;
+use snarkvm_curves::traits::{AffineCurve, Group};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PedersenCompressedCommitment<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct PedersenCompressedCommitment<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub parameters: PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
+impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
     for PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Output = <G::Affine as AffineCurve>::BaseField;
+    type Output = G::BaseField;
     type Parameters = PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>;
     type Randomness = <G as Group>::ScalarField;
 
-    fn setup<R: Rng>(rng: &mut R) -> Self {
-        PedersenCommitmentParameters::setup(rng).into()
+    fn setup(message: &str) -> Result<Self, CommitmentError> {
+        Ok(PedersenCommitmentParameters::setup(message)?.into())
     }
 
     /// Returns the affine x-coordinate as the commitment.
@@ -46,9 +44,9 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
         };
 
         let output = commitment.commit(input, randomness)?;
-        let affine = output.into_affine();
-        debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
-        Ok(affine.to_x_coordinate())
+        debug_assert!(output.is_in_correct_subgroup_assuming_on_curve());
+
+        Ok(output.to_x_coordinate())
     }
 
     fn parameters(&self) -> &Self::Parameters {
@@ -56,7 +54,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
     }
 }
 
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     From<PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>>
     for PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {

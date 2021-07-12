@@ -17,7 +17,6 @@
 use crate::errors::CommitmentError;
 use snarkvm_utilities::{rand::UniformRand, FromBytes, ToBytes};
 
-use rand::Rng;
 use std::{fmt::Debug, hash::Hash};
 
 pub trait CommitmentScheme: Sized + Clone + From<<Self as CommitmentScheme>::Parameters> {
@@ -25,7 +24,7 @@ pub trait CommitmentScheme: Sized + Clone + From<<Self as CommitmentScheme>::Par
     type Parameters: Clone + Debug + Eq + ToBytes + FromBytes;
     type Randomness: Clone + Debug + Default + Eq + UniformRand + ToBytes + FromBytes;
 
-    fn setup<R: Rng>(r: &mut R) -> Self;
+    fn setup(message: &str) -> Result<Self, CommitmentError>;
 
     fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError>;
 

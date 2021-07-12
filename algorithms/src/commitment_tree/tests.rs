@@ -20,7 +20,7 @@ use crate::{
     crh::BoweHopwoodPedersenCompressedCRH,
     traits::{CommitmentScheme, CRH},
 };
-use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
+use snarkvm_curves::edwards_bls12::EdwardsAffine as EdwardsBls;
 use snarkvm_utilities::{rand::UniformRand, FromBytes, ToBytes};
 
 use rand::{Rng, SeedableRng};
@@ -59,8 +59,8 @@ fn generate_merkle_tree<C: CommitmentScheme, H: CRH, R: Rng>(
 fn commitment_tree_good_root_test() {
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
 
-    let commitment = C::setup(rng);
-    let crh = H::setup(rng);
+    let commitment = C::setup("a").unwrap();
+    let crh = H::setup("b").unwrap();
 
     let merkle_tree = generate_merkle_tree(&commitment, &crh, rng);
 
@@ -75,8 +75,8 @@ fn commitment_tree_good_root_test() {
 fn commitment_tree_bad_root_test() {
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
 
-    let commitment = C::setup(rng);
-    let crh = H::setup(rng);
+    let commitment = C::setup("a").unwrap();
+    let crh = H::setup("b").unwrap();
 
     let merkle_tree = generate_merkle_tree(&commitment, &crh, rng);
 
@@ -90,8 +90,8 @@ fn commitment_tree_bad_root_test() {
 fn test_serialize_commitment_merkle_tree() {
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
 
-    let commitment = C::setup(rng);
-    let crh = H::setup(rng);
+    let commitment = C::setup("a").unwrap();
+    let crh = H::setup("b").unwrap();
 
     let merkle_tree = generate_merkle_tree(&commitment, &crh, rng);
 
@@ -105,8 +105,8 @@ fn test_serialize_commitment_merkle_tree() {
 fn test_serialize_commitment_path() {
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
 
-    let commitment = C::setup(rng);
-    let crh = H::setup(rng);
+    let commitment = C::setup("a").unwrap();
+    let crh = H::setup("b").unwrap();
 
     let merkle_tree = generate_merkle_tree(&commitment, &crh, rng);
 
@@ -117,7 +117,6 @@ fn test_serialize_commitment_path() {
         let recovered_proof = CM::read_le(&proof_bytes[..]).unwrap();
 
         assert!(proof == recovered_proof);
-
         assert!(recovered_proof.verify(&crh, &merkle_tree.root(), &leaf).unwrap());
     }
 }

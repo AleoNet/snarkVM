@@ -14,17 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::{
-    borrow::{Borrow, Cow},
-    marker::PhantomData,
-};
-
-use snarkvm_algorithms::commitment::{PedersenCommitment, PedersenCommitmentParameters, PedersenCompressedCommitment};
-use snarkvm_curves::traits::{Group, ProjectiveCurve};
-use snarkvm_fields::{Field, PrimeField};
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::{to_bytes_le, ToBytes};
-
 use crate::{
     integers::uint::UInt8,
     traits::{
@@ -34,14 +23,29 @@ use crate::{
         integers::Integer,
     },
 };
+use snarkvm_algorithms::commitment::{PedersenCommitment, PedersenCommitmentParameters, PedersenCompressedCommitment};
+use snarkvm_curves::traits::AffineCurve;
+use snarkvm_fields::{Field, PrimeField};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+use snarkvm_utilities::{to_bytes_le, ToBytes};
+
+use std::{
+    borrow::{Borrow, Cow},
+    marker::PhantomData,
+};
 
 #[derive(Clone)]
-pub struct PedersenCommitmentParametersGadget<G: Group, F: Field, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct PedersenCommitmentParametersGadget<
+    G: AffineCurve,
+    F: Field,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> {
     parameters: PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>,
     _engine: PhantomData<F>,
 }
 
-impl<G: Group, F: PrimeField, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<G: AffineCurve, F: PrimeField, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     AllocGadget<PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCommitmentParametersGadget<G, F, NUM_WINDOWS, WINDOW_SIZE>
 {
@@ -79,9 +83,9 @@ impl<G: Group, F: PrimeField, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize
 }
 
 #[derive(Clone, Debug)]
-pub struct PedersenRandomnessGadget<G: Group>(pub Vec<UInt8>, PhantomData<G>);
+pub struct PedersenRandomnessGadget<G: AffineCurve>(pub Vec<UInt8>, PhantomData<G>);
 
-impl<G: Group, F: PrimeField> AllocGadget<G::ScalarField, F> for PedersenRandomnessGadget<G> {
+impl<G: AffineCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for PedersenRandomnessGadget<G> {
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<G::ScalarField>, CS: ConstraintSystem<F>>(
         cs: CS,
         value_gen: Fn,
@@ -105,13 +109,13 @@ impl<G: Group, F: PrimeField> AllocGadget<G::ScalarField, F> for PedersenRandomn
     }
 }
 
-pub struct PedersenCommitmentGadget<G: Group, F: Field, GG: GroupGadget<G, F>>(
+pub struct PedersenCommitmentGadget<G: AffineCurve, F: Field, GG: GroupGadget<G, F>>(
     PhantomData<G>,
     PhantomData<GG>,
     PhantomData<F>,
 );
 
-impl<F: PrimeField, G: Group, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<F: PrimeField, G: AffineCurve, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     CommitmentGadget<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F> for PedersenCommitmentGadget<G, F, GG>
 {
     type OutputGadget = GG;
@@ -154,19 +158,14 @@ impl<F: PrimeField, G: Group, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, c
     }
 }
 
-pub struct PedersenCompressedCommitmentGadget<G: ProjectiveCurve, F: Field, GG: CompressedGroupGadget<G, F>>(
+pub struct PedersenCompressedCommitmentGadget<G: AffineCurve, F: Field, GG: CompressedGroupGadget<G, F>>(
     PhantomData<G>,
     PhantomData<GG>,
     PhantomData<F>,
 );
 
-impl<
-    F: PrimeField,
-    G: ProjectiveCurve,
-    GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> CommitmentGadget<PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+impl<F: PrimeField, G: AffineCurve, GG: CompressedGroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    CommitmentGadget<PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCompressedCommitmentGadget<G, F, GG>
 {
     type OutputGadget = GG::BaseFieldGadget;

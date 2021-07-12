@@ -18,7 +18,6 @@ use crate::{errors::CommitmentError, traits::CommitmentScheme};
 
 use blake2::Blake2s as blake2s;
 use digest::Digest;
-use rand::Rng;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Blake2sCommitment;
@@ -28,8 +27,8 @@ impl CommitmentScheme for Blake2sCommitment {
     type Parameters = ();
     type Randomness = [u8; 32];
 
-    fn setup<R: Rng>(_: &mut R) -> Self {
-        Self
+    fn setup(_: &str) -> Result<Self, CommitmentError> {
+        Ok(Self)
     }
 
     fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {

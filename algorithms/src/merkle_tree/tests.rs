@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
 use crate::{
     crh::{PedersenCRH, PedersenCompressedCRH},
     define_merkle_tree_parameters,
@@ -23,6 +21,8 @@ use crate::{
     traits::{crh::CRH, merkle_tree::LoadableMerkleParameters},
 };
 use snarkvm_utilities::{to_bytes_le, ToBytes};
+
+use std::sync::Arc;
 
 /// Generates a valid Merkle tree and verifies the Merkle path witness for each leaf.
 fn generate_merkle_tree<P: LoadableMerkleParameters, L: ToBytes + Send + Sync + Clone + Eq>(
@@ -210,7 +210,7 @@ mod pedersen_crh_on_affine {
 
 mod pedersen_crh_on_projective {
     use super::*;
-    use snarkvm_curves::edwards_bls12::EdwardsProjective as Edwards;
+    use snarkvm_curves::edwards_bls12::EdwardsAffine as Edwards;
 
     const NUM_WINDOWS: usize = 256;
     const WINDOW_SIZE: usize = 4;
@@ -253,7 +253,7 @@ mod pedersen_crh_on_projective {
 
 mod pedersen_compressed_crh_on_projective {
     use super::*;
-    use snarkvm_curves::edwards_bls12::EdwardsProjective as Edwards;
+    use snarkvm_curves::edwards_bls12::EdwardsAffine as Edwards;
 
     const NUM_WINDOWS: usize = 256;
     const WINDOW_SIZE: usize = 4;

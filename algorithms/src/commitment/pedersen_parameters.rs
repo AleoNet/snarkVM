@@ -14,39 +14,42 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{crh::PedersenCRH, traits::CRH};
-use snarkvm_curves::traits::Group;
+use crate::{crh::PedersenCRH, hash_to_curve::try_hash_to_curve, traits::CRH, CommitmentError};
+use snarkvm_curves::AffineCurve;
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use rand::Rng;
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PedersenCommitmentParameters<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct PedersenCommitmentParameters<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
     pub random_base: Vec<G>,
 }
 
-impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    pub fn setup<R: Rng>(rng: &mut R) -> Self {
-        let mut random_base = Vec::with_capacity(WINDOW_SIZE);
-        let mut base = G::rand(rng);
-        for _ in 0..WINDOW_SIZE {
-            random_base.push(base);
-            base.double_in_place();
-        }
+    pub fn setup(message: &str) -> Result<Self, CommitmentError> {
+        // First, compute the bases.
+        let crh = PedersenCRH::setup(message)?;
 
-        Self {
-            crh: PedersenCRH::setup(rng),
-            random_base,
+        // Next, compute the random base.
+        let random_base_message = format!("{} for random base", message);
+        if let Some((mut base, _, _)) = try_hash_to_curve::<G>(&random_base_message) {
+            let mut random_base = Vec::with_capacity(WINDOW_SIZE);
+            for _ in 0..WINDOW_SIZE {
+                random_base.push(base);
+                base.double_in_place();
+            }
+            Ok(Self { crh, random_base })
+        } else {
+            Err(CommitmentError::UnableToHashToCurve(random_base_message))
         }
     }
 }
 
-impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
+impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
     for PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -67,7 +70,7 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
     }
 }
 
-impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
+impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
     for PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
@@ -99,8 +102,8 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
     }
 }
 
-impl<F: Field, G: Group + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToConstraintField<F>
-    for PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
+impl<F: Field, G: AffineCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    ToConstraintField<F> for PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {

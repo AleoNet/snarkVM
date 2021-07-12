@@ -17,7 +17,6 @@
 use crate::errors::CRHError;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use rand::Rng;
 use std::{
     fmt::{Debug, Display},
     hash::Hash,
@@ -29,7 +28,7 @@ pub trait CRH: Clone + ToBytes + FromBytes {
 
     const INPUT_SIZE_BITS: usize;
 
-    fn setup<R: Rng>(r: &mut R) -> Self;
+    fn setup(message: &str) -> Result<Self, CRHError>;
 
     fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError>;
 

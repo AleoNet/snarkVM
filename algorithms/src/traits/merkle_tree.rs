@@ -17,7 +17,6 @@
 use crate::{errors::MerkleError, CRH};
 use snarkvm_utilities::ToBytes;
 
-use rand::Rng;
 use std::io::Cursor;
 
 pub trait MerkleParameters: Send + Sync + Clone + Default {
@@ -26,7 +25,7 @@ pub trait MerkleParameters: Send + Sync + Clone + Default {
     const DEPTH: usize;
 
     /// Setup the MerkleParameters
-    fn setup<R: Rng>(rng: &mut R) -> Self;
+    fn setup(message: &str) -> Result<Self, MerkleError>;
 
     /// Returns the collision-resistant hash function used by the Merkle tree.
     fn crh(&self) -> &Self::H;

@@ -19,26 +19,24 @@ use crate::{
     errors::CommitmentError,
     traits::{CommitmentScheme, CRH},
 };
-use snarkvm_curves::traits::Group;
+use snarkvm_curves::AffineCurve;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::BitIteratorLE;
 
-use rand::Rng;
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PedersenCommitment<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct PedersenCommitment<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub parameters: PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
-impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
+impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
     for PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Output = G;
     type Parameters = PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>;
     type Randomness = G::ScalarField;
 
-    fn setup<R: Rng>(rng: &mut R) -> Self {
-        PedersenCommitmentParameters::setup(rng).into()
+    fn setup(message: &str) -> Result<Self, CommitmentError> {
+        Ok(PedersenCommitmentParameters::setup(message)?.into())
     }
 
     fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
@@ -69,7 +67,7 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentSch
     }
 }
 
-impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     From<PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>>
     for PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {

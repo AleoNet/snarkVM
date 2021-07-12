@@ -14,34 +14,32 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CRHError, CRH};
-use snarkvm_curves::Group;
+use crate::{hash_to_curve::try_hash_to_curve, CRHError, CRH};
+use snarkvm_curves::AffineCurve;
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use bitvec::{order::Lsb0, view::BitView};
-use rand::Rng;
 use std::{
     fmt::Debug,
     io::{Read, Result as IoResult, Write},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PedersenCRH<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct PedersenCRH<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub bases: Vec<Vec<G>>,
 }
 
-impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH for PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE> {
+impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
+    for PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+{
     type Output = G;
     type Parameters = Vec<Vec<G>>;
 
     const INPUT_SIZE_BITS: usize = WINDOW_SIZE * NUM_WINDOWS;
 
-    fn setup<R: Rng>(rng: &mut R) -> Self {
-        (0..NUM_WINDOWS)
-            .map(|_| Self::base(WINDOW_SIZE, rng))
-            .collect::<Vec<Vec<G>>>()
-            .into()
+    fn setup(message: &str) -> Result<Self, CRHError> {
+        Ok(Self::bases(message)?.into())
     }
 
     fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
@@ -91,19 +89,28 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH for Peder
     }
 }
 
-impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE> {
-    fn base<R: Rng>(num_powers: usize, rng: &mut R) -> Vec<G> {
-        let mut powers = Vec::with_capacity(num_powers);
-        let mut base = G::rand(rng);
-        for _ in 0..num_powers {
-            powers.push(base);
-            base.double_in_place();
+impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE> {
+    fn bases(message: &str) -> Result<Vec<Vec<G>>, CRHError> {
+        let mut bases = Vec::with_capacity(NUM_WINDOWS);
+        for index in 0..NUM_WINDOWS {
+            // Construct an indexed message to attempt to sample a base.
+            let indexed_message = format!("{} at {}", message, index);
+            if let Some((mut base, _, _)) = try_hash_to_curve::<G>(&indexed_message) {
+                let mut powers = Vec::with_capacity(WINDOW_SIZE);
+                for _ in 0..WINDOW_SIZE {
+                    powers.push(base);
+                    base.double_in_place();
+                }
+                bases.push(powers);
+            } else {
+                return Err(CRHError::UnableToHashToCurve(indexed_message));
+            }
         }
-        powers
+        Ok(bases)
     }
 }
 
-impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<Vec<Vec<G>>>
+impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<Vec<Vec<G>>>
     for PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn from(bases: Vec<Vec<G>>) -> Self {
@@ -111,7 +118,7 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<Vec<Vec<
     }
 }
 
-impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
+impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
     for PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -126,7 +133,7 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
     }
 }
 
-impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
+impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
     for PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
@@ -149,8 +156,8 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
     }
 }
 
-impl<F: Field, G: Group + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToConstraintField<F>
-    for PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+impl<F: Field, G: AffineCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    ToConstraintField<F> for PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
