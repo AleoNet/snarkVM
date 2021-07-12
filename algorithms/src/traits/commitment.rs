@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::CommitmentError;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-};
+use snarkvm_utilities::{rand::UniformRand, FromBytes, ToBytes};
 
 use rand::Rng;
 use std::{fmt::Debug, hash::Hash};

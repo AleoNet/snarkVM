@@ -25,6 +25,7 @@ use crate::{
         fields::ToConstraintFieldGadget,
         select::CondSelectGadget,
     },
+    FieldGadget,
 };
 use snarkvm_fields::{Field, FieldParameters, PrimeField};
 use snarkvm_r1cs::{
@@ -772,6 +773,27 @@ impl Boolean {
         assert!(bits_iter.next().is_none());
 
         Ok(current_run)
+    }
+
+    /// Convert a little-endian bitwise representation of a field element to `FpGadget<F>`
+    pub fn le_bits_to_fp_var<CS: ConstraintSystem<F>, F: PrimeField>(
+        mut cs: CS,
+        bits: &[Self],
+    ) -> Result<FpGadget<F>, SynthesisError> {
+        assert!(bits.len() <= F::Parameters::CAPACITY as usize);
+
+        let mut value = FpGadget::<F>::zero(cs.ns(|| "zero"))?;
+
+        let mut power = F::one();
+        for (i, bit) in bits.iter().enumerate() {
+            let fp_bit = FpGadget::<F>::from_boolean(cs.ns(|| format!("convert from boolean {}", i)), *bit)?;
+            let fp_bit_times_power = fp_bit.mul_by_constant(cs.ns(|| format!("multiply by power {}", i)), &power)?;
+            value.add_in_place(cs.ns(|| format!("sum {}", i)), &fp_bit_times_power)?;
+
+            power.double_in_place();
+        }
+
+        Ok(value)
     }
 }
 
@@ -1681,7 +1703,7 @@ mod test {
             let mut cs = TestConstraintSystem::<Fr>::new();
 
             let mut bits = vec![];
-            for (i, b) in BitIteratorBE::new(r.into_repr()).skip(1).enumerate() {
+            for (i, b) in BitIteratorBE::new(r.to_repr()).skip(1).enumerate() {
                 bits.push(Boolean::from(
                     AllocatedBit::alloc(cs.ns(|| format!("bit_gadget {}", i)), || Ok(b)).unwrap(),
                 ));

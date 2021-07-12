@@ -16,14 +16,16 @@
 
 use std::{borrow::Borrow, marker::PhantomData};
 
-use digest::Digest;
 use itertools::Itertools;
 
-use snarkvm_algorithms::encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey};
+use snarkvm_algorithms::{
+    crypto_hash::PoseidonDefaultParametersField,
+    encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey},
+};
 use snarkvm_curves::traits::{Group, ProjectiveCurve};
-use snarkvm_fields::{Field, PrimeField};
+use snarkvm_fields::{Field, PrimeField, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::{to_bytes, CanonicalDeserialize, CanonicalSerialize, ToBytes};
+use snarkvm_utilities::{to_bytes_le, CanonicalDeserialize, CanonicalSerialize, ToBytes};
 
 use crate::{
     bits::{Boolean, ToBytesGadget},
@@ -36,6 +38,7 @@ use crate::{
         integers::integer::Integer,
     },
 };
+use snarkvm_curves::AffineCurve;
 
 /// Group encryption parameters gadget
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -82,7 +85,7 @@ impl<G: Group, F: PrimeField> AllocGadget<G::ScalarField, F> for GroupEncryption
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let private_key = to_bytes![value_gen()?.borrow()].unwrap();
+        let private_key = to_bytes_le![value_gen()?.borrow()].unwrap();
         Ok(GroupEncryptionPrivateKeyGadget(
             UInt8::alloc_vec(cs, &private_key)?,
             PhantomData,
@@ -93,7 +96,7 @@ impl<G: Group, F: PrimeField> AllocGadget<G::ScalarField, F> for GroupEncryption
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let private_key = to_bytes![value_gen()?.borrow()].unwrap();
+        let private_key = to_bytes_le![value_gen()?.borrow()].unwrap();
         Ok(GroupEncryptionPrivateKeyGadget(
             UInt8::alloc_vec(cs, &private_key)?,
             PhantomData,
@@ -120,7 +123,7 @@ impl<G: Group, F: PrimeField> AllocGadget<G::ScalarField, F> for GroupEncryption
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let randomness = to_bytes![value_gen()?.borrow()].unwrap();
+        let randomness = to_bytes_le![value_gen()?.borrow()].unwrap();
         Ok(GroupEncryptionRandomnessGadget(
             UInt8::alloc_vec(cs, &randomness)?,
             PhantomData,
@@ -131,7 +134,7 @@ impl<G: Group, F: PrimeField> AllocGadget<G::ScalarField, F> for GroupEncryption
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let randomness = to_bytes![value_gen()?.borrow()].unwrap();
+        let randomness = to_bytes_le![value_gen()?.borrow()].unwrap();
         Ok(GroupEncryptionRandomnessGadget(
             UInt8::alloc_vec(cs, &randomness)?,
             PhantomData,
@@ -152,7 +155,7 @@ impl<G: Group, F: PrimeField> AllocGadget<Vec<G::ScalarField>, F> for GroupEncry
 
         let mut blinding_exponents = Vec::with_capacity(values.len());
         for (i, value) in values.into_iter().enumerate() {
-            let alloc = UInt8::alloc_vec(cs.ns(|| format!("Blinding Exponent Iteration {}", i)), &to_bytes![
+            let alloc = UInt8::alloc_vec(cs.ns(|| format!("Blinding Exponent Iteration {}", i)), &to_bytes_le![
                 value.borrow()
             ]?)?;
             blinding_exponents.push(alloc);
@@ -173,9 +176,10 @@ impl<G: Group, F: PrimeField> AllocGadget<Vec<G::ScalarField>, F> for GroupEncry
 
         let mut blinding_exponents = Vec::with_capacity(values.len());
         for (i, value) in values.into_iter().enumerate() {
-            let alloc = UInt8::alloc_input_vec_le(cs.ns(|| format!("Blinding Exponent Iteration {}", i)), &to_bytes![
-                value.borrow()
-            ]?)?;
+            let alloc =
+                UInt8::alloc_input_vec_le(cs.ns(|| format!("Blinding Exponent Iteration {}", i)), &to_bytes_le![
+                    value.borrow()
+                ]?)?;
             blinding_exponents.push(alloc);
         }
 
@@ -484,11 +488,13 @@ pub struct GroupEncryptionGadget<G: Group + ProjectiveCurve, F: PrimeField, GG: 
 
 impl<
     G: Group + ProjectiveCurve,
-    SG: Group + CanonicalSerialize + CanonicalDeserialize,
-    D: Digest + Send + Sync,
+    SG: Group + CanonicalSerialize + CanonicalDeserialize + AffineCurve,
     F: PrimeField,
     GG: CompressedGroupGadget<G, F>,
-> EncryptionGadget<GroupEncryption<G, SG, D>, F> for GroupEncryptionGadget<G, F, GG>
+> EncryptionGadget<GroupEncryption<G, SG>, F> for GroupEncryptionGadget<G, F, GG>
+where
+    <SG as AffineCurve>::BaseField: PoseidonDefaultParametersField,
+    SG: ToConstraintField<<SG as AffineCurve>::BaseField>,
 {
     type BlindingExponentGadget = GroupEncryptionBlindingExponentsGadget<G>;
     type CiphertextGadget = GroupEncryptionCiphertextGadget<G, F, GG>;

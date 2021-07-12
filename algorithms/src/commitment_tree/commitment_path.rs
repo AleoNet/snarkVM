@@ -18,7 +18,7 @@ use crate::{
     errors::MerkleError,
     traits::{CommitmentScheme, CRH},
 };
-use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Derivative)]
@@ -64,25 +64,25 @@ impl<C: CommitmentScheme, H: CRH> CommitmentMerklePath<C, H> {
 
 /// Returns the output hash, given a left and right hash value.
 fn hash_inner_node<H: CRH, L: ToBytes>(crh: &H, left: &L, right: &L) -> Result<<H as CRH>::Output, MerkleError> {
-    let input = to_bytes![left, right]?;
+    let input = to_bytes_le![left, right]?;
     Ok(crh.hash(&input)?)
 }
 
 impl<C: CommitmentScheme, H: CRH> ToBytes for CommitmentMerklePath<C, H> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.leaves.0.write(&mut writer)?;
-        self.leaves.1.write(&mut writer)?;
-        self.inner_hashes.0.write(&mut writer)?;
-        self.inner_hashes.1.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.leaves.0.write_le(&mut writer)?;
+        self.leaves.1.write_le(&mut writer)?;
+        self.inner_hashes.0.write_le(&mut writer)?;
+        self.inner_hashes.1.write_le(&mut writer)
     }
 }
 
 impl<C: CommitmentScheme, H: CRH> FromBytes for CommitmentMerklePath<C, H> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let leaves = (C::Output::read(&mut reader)?, C::Output::read(&mut reader)?);
-        let inner_hashes = (H::Output::read(&mut reader)?, H::Output::read(&mut reader)?);
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let leaves = (C::Output::read_le(&mut reader)?, C::Output::read_le(&mut reader)?);
+        let inner_hashes = (H::Output::read_le(&mut reader)?, H::Output::read_le(&mut reader)?);
 
         Ok(Self { leaves, inner_hashes })
     }

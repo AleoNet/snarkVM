@@ -140,7 +140,7 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
 
     let nonce: [u8; 4] = rand::random();
     let mut root_bytes = [0u8; 32];
-    root.write(&mut root_bytes[..]).unwrap();
+    root.write_le(&mut root_bytes[..]).unwrap();
 
     let mut h = Blake2s::new();
     h.update(nonce.as_ref());

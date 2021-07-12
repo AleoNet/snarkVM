@@ -19,12 +19,7 @@ use crate::{
     traits::{AffineCurve, Group, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
 use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, Zero};
-use snarkvm_utilities::{
-    bititerator::BitIteratorBE,
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    serialize::*,
-};
+use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand, serialize::*, FromBytes, ToBytes};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -98,19 +93,19 @@ impl<P: Parameters> Distribution<Projective<P>> for Standard {
 
 impl<P: Parameters> ToBytes for Projective<P> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.x.write(&mut writer)?;
-        self.y.write(&mut writer)?;
-        self.z.write(writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.x.write_le(&mut writer)?;
+        self.y.write_le(&mut writer)?;
+        self.z.write_le(writer)
     }
 }
 
 impl<P: Parameters> FromBytes for Projective<P> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let x = P::BaseField::read(&mut reader)?;
-        let y = P::BaseField::read(&mut reader)?;
-        let z = P::BaseField::read(reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let x = P::BaseField::read_le(&mut reader)?;
+        let y = P::BaseField::read_le(&mut reader)?;
+        let z = P::BaseField::read_le(reader)?;
         Ok(Self::new(x, y, z))
     }
 }
@@ -514,7 +509,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
 
         let mut found_one = false;
 
-        for i in BitIteratorBE::new(other.into_repr()) {
+        for i in BitIteratorBE::new(other.to_repr()) {
             if found_one {
                 res.double_in_place();
             } else {

@@ -22,12 +22,7 @@ use crate::{
 };
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_polycommit::PolynomialCommitment;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    error,
-    errors::SerializationError,
-    serialize::*,
-};
+use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 use derivative::Derivative;
 use std::io::{
@@ -50,13 +45,13 @@ pub struct CircuitVerifyingKey<F: PrimeField, PC: PolynomialCommitment<F>> {
 }
 
 impl<F: PrimeField, PC: PolynomialCommitment<F>> ToBytes for CircuitVerifyingKey<F, PC> {
-    fn write<W: Write>(&self, mut w: W) -> io::Result<()> {
+    fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize CircuitVerifyingKey"))
     }
 }
 
 impl<F: PrimeField, PC: PolynomialCommitment<F>> FromBytes for CircuitVerifyingKey<F, PC> {
-    fn read<R: Read>(mut r: R) -> io::Result<Self> {
+    fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
         CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize CircuitVerifyingKey"))
     }
 }

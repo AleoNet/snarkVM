@@ -566,12 +566,12 @@ mod tests {
             .enumerate()
         {
             assert_eq!(
-                left.into_repr(),
-                right.value().unwrap().into_repr(),
+                left.to_repr(),
+                right.value().unwrap().to_repr(),
                 "{}: left = {:?}, right = {:?}",
                 i,
-                left.into_repr(),
-                right.value().unwrap().into_repr()
+                left.to_repr(),
+                right.value().unwrap().to_repr()
             );
         }
 
@@ -582,11 +582,11 @@ mod tests {
             .enumerate()
         {
             assert!(
-                left.into_repr().eq(&right.value().unwrap().into_repr()),
+                left.to_repr().eq(&right.value().unwrap().to_repr()),
                 "{}: left = {:?}, right = {:?}",
                 i,
-                left.into_repr(),
-                right.value().unwrap().into_repr()
+                left.to_repr(),
+                right.value().unwrap().to_repr()
             );
         }
 

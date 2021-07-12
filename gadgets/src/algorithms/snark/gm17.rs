@@ -20,7 +20,7 @@ use snarkvm_algorithms::snark::gm17::{Proof, VerifyingKey, GM17};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
 use snarkvm_fields::{Field, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
-use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_utilities::FromBytes;
 
 use crate::{
     bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
@@ -280,7 +280,7 @@ impl<Pairing: PairingEngine, F: Field, P: PairingGadget<Pairing, F>> AllocBytesG
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|vk_bytes| {
-            let vk: VerifyingKey<Pairing> = FromBytes::read(&vk_bytes.borrow().clone()[..])?;
+            let vk: VerifyingKey<Pairing> = FromBytes::read_le(&vk_bytes.borrow().clone()[..])?;
 
             Self::alloc(cs.ns(|| "alloc_bytes"), || Ok(vk))
         })
@@ -293,7 +293,7 @@ impl<Pairing: PairingEngine, F: Field, P: PairingGadget<Pairing, F>> AllocBytesG
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|vk_bytes| {
-            let vk: VerifyingKey<Pairing> = FromBytes::read(&vk_bytes.borrow().clone()[..])?;
+            let vk: VerifyingKey<Pairing> = FromBytes::read_le(&vk_bytes.borrow().clone()[..])?;
 
             Self::alloc_input(cs.ns(|| "alloc_input_bytes"), || Ok(vk))
         })
@@ -344,7 +344,7 @@ impl<Pairing: PairingEngine, F: Field, P: PairingGadget<Pairing, F>> AllocBytesG
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|proof_bytes| {
-            let proof: Proof<Pairing> = FromBytes::read(&proof_bytes.borrow().clone()[..])?;
+            let proof: Proof<Pairing> = FromBytes::read_le(&proof_bytes.borrow().clone()[..])?;
 
             Self::alloc(cs.ns(|| "alloc_bytes"), || Ok(proof))
         })
@@ -357,7 +357,7 @@ impl<Pairing: PairingEngine, F: Field, P: PairingGadget<Pairing, F>> AllocBytesG
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|proof_bytes| {
-            let proof: Proof<Pairing> = FromBytes::read(&proof_bytes.borrow().clone()[..])?;
+            let proof: Proof<Pairing> = FromBytes::read_le(&proof_bytes.borrow().clone()[..])?;
 
             Self::alloc_input(cs.ns(|| "alloc_input_bytes"), || Ok(proof))
         })

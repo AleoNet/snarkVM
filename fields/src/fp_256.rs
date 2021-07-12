@@ -23,16 +23,15 @@ use crate::{
     FieldParameters,
     LegendreSymbol,
     One,
-    PoseidonMDSField,
-    PoseidonMDSParameters,
     PrimeField,
     SquareRootField,
     Zero,
 };
 use snarkvm_utilities::{
     biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger256 as BigInteger},
-    bytes::{FromBytes, ToBytes},
     serialize::CanonicalDeserialize,
+    FromBytes,
+    ToBytes,
 };
 
 use std::{
@@ -314,20 +313,20 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
     }
 
     #[inline]
-    fn into_repr(&self) -> BigInteger {
+    fn to_repr(&self) -> BigInteger {
         let mut r = *self;
         r.mont_reduce((self.0).0[0], (self.0).0[1], (self.0).0[2], (self.0).0[3], 0, 0, 0, 0);
         r.0
     }
 
     #[inline]
-    fn from_repr_raw(r: BigInteger) -> Self {
+    fn from_repr_unchecked(r: BigInteger) -> Self {
         let r = Fp256(r, PhantomData);
         if r.is_valid() { r } else { Self::zero() }
     }
 
     #[inline]
-    fn into_repr_raw(&self) -> BigInteger {
+    fn to_repr_unchecked(&self) -> BigInteger {
         let r = *self;
         r.0
     }
@@ -399,15 +398,15 @@ impl_mul_div_from_field_ref!(Fp256, Fp256Parameters);
 
 impl<P: Fp256Parameters> ToBytes for Fp256<P> {
     #[inline]
-    fn write<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.into_repr().write(writer)
+    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
+        self.to_repr().write_le(writer)
     }
 }
 
 impl<P: Fp256Parameters> FromBytes for Fp256<P> {
     #[inline]
-    fn read<R: Read>(reader: R) -> IoResult<Self> {
-        BigInteger::read(reader).and_then(|b| match Self::from_repr(b) {
+    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
+        BigInteger::read_le(reader).and_then(|b| match Self::from_repr(b) {
             Some(f) => Ok(f),
             None => Err(FieldError::InvalidFieldElement.into()),
         })
@@ -418,7 +417,7 @@ impl<P: Fp256Parameters> FromBytes for Fp256<P> {
 impl<P: Fp256Parameters> Ord for Fp256<P> {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
-        self.into_repr().cmp(&other.into_repr())
+        self.to_repr().cmp(&other.to_repr())
     }
 }
 
@@ -483,14 +482,14 @@ impl<P: Fp256Parameters> FromStr for Fp256<P> {
 impl<P: Fp256Parameters> Debug for Fp256<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "Fp256({})", self.into_repr())
+        write!(f, "Fp256({})", self.to_repr())
     }
 }
 
 impl<P: Fp256Parameters> Display for Fp256<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", self.into_repr())
+        write!(f, "{}", self.to_repr())
     }
 }
 
@@ -612,32 +611,5 @@ impl<'a, P: Fp256Parameters> DivAssign<&'a Self> for Fp256<P> {
     #[inline]
     fn div_assign(&mut self, other: &Self) {
         self.mul_assign(&other.inverse().unwrap());
-    }
-}
-
-impl<P: Fp256Parameters + PoseidonMDSParameters> PoseidonMDSField for Fp256<P> {
-    fn poseidon_mds_matrix() -> Vec<Vec<Self>> {
-        let mut mds = Vec::<Vec<Self>>::new();
-        for row in P::POSEIDON_MDS.iter() {
-            mds.push(
-                row.iter()
-                    .map(|b| Self::from_repr_raw(*b))
-                    .collect::<Vec<Self>>()
-                    .to_vec(),
-            );
-        }
-        mds
-    }
-
-    fn poseidon_alpha() -> u64 {
-        P::POSEIDON_ALPHA
-    }
-
-    fn poseidon_number_full_rounds() -> u32 {
-        P::POSEIDON_FULL_ROUNDS
-    }
-
-    fn poseidon_number_partial_rounds() -> u32 {
-        P::POSEIDON_PARTIAL_ROUNDS
     }
 }

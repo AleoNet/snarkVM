@@ -36,10 +36,7 @@ use snarkvm_dpc::{
 };
 use snarkvm_integration::{ledger::*, memdb::MemDb, storage::*, testnet2::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use itertools::Itertools;
 use rand::SeedableRng;
@@ -59,10 +56,10 @@ fn testnet2_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
 
     let inner_circuit_id = <<Components as DPCComponents>::InnerCircuitIDCRH as CRH>::hash(
         &dpc.system_parameters.inner_circuit_id_crh,
-        &to_bytes![inner_snark_vk]?,
+        &to_bytes_le![inner_snark_vk]?,
     )?;
 
-    Ok(to_bytes![inner_circuit_id]?)
+    Ok(to_bytes_le![inner_circuit_id]?)
 }
 
 /// TODO (howardwu): Update this to the correct inner circuit ID when the final parameters are set.
@@ -133,7 +130,7 @@ fn dpc_testnet2_integration_test() {
         let (sn, _) = old_record
             .to_serial_number(&dpc.system_parameters.account_signature, &old_private_keys[i])
             .unwrap();
-        joint_serial_numbers.extend_from_slice(&to_bytes![sn].unwrap());
+        joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());
 
         old_records.push(old_record);
     }
@@ -188,8 +185,8 @@ fn dpc_testnet2_integration_test() {
         .unwrap();
 
     // Check that the transaction is serialized and deserialized correctly
-    let transaction_bytes = to_bytes![transaction].unwrap();
-    let recovered_transaction = Testnet2Transaction::read(&transaction_bytes[..]).unwrap();
+    let transaction_bytes = to_bytes_le![transaction].unwrap();
+    let recovered_transaction = Testnet2Transaction::read_le(&transaction_bytes[..]).unwrap();
     assert_eq!(transaction, recovered_transaction);
 
     // Check that new_records can be decrypted from the transaction
@@ -294,7 +291,7 @@ fn test_testnet_2_transaction_kernel_serialization() {
         let (sn, _) = old_record
             .to_serial_number(&system_parameters.account_signature, &old_private_keys[i])
             .unwrap();
-        joint_serial_numbers.extend_from_slice(&to_bytes![sn].unwrap());
+        joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());
 
         old_records.push(old_record);
     }
@@ -335,9 +332,9 @@ fn test_testnet_2_transaction_kernel_serialization() {
     .unwrap();
 
     // Serialize the transaction kernel
-    let transaction_kernel_bytes = to_bytes![&transaction_kernel].unwrap();
+    let transaction_kernel_bytes = to_bytes_le![&transaction_kernel].unwrap();
     let recovered_transaction_kernel: <Testnet2DPC as DPCScheme<L>>::TransactionKernel =
-        FromBytes::read(&transaction_kernel_bytes[..]).unwrap();
+        FromBytes::read_le(&transaction_kernel_bytes[..]).unwrap();
     assert_eq!(transaction_kernel, recovered_transaction_kernel);
 }
 
@@ -417,7 +414,7 @@ fn test_testnet2_dpc_execute_constraints() {
         let (sn, _) = old_record
             .to_serial_number(signature_parameters, &old_private_keys[i])
             .unwrap();
-        joint_serial_numbers.extend_from_slice(&to_bytes![sn].unwrap());
+        joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());
 
         old_records.push(old_record);
     }
@@ -599,7 +596,7 @@ fn test_testnet2_dpc_execute_constraints() {
 
     let inner_snark_id = <Components as DPCComponents>::InnerCircuitIDCRH::hash(
         &system_parameters.inner_circuit_id_crh,
-        &to_bytes![inner_snark_vk].unwrap(),
+        &to_bytes_le![inner_snark_vk].unwrap(),
     )
     .unwrap();
 
@@ -671,7 +668,7 @@ fn test_testnet2_dpc_execute_constraints() {
         let num_constraints = outer_circuit_cs.num_constraints();
         println!("Outer circuit num constraints: {:?}", num_constraints);
         // TODO (howardwu): This constraint count is wrong. Update it after the bug source has been found.
-        assert_eq!(4372996, num_constraints);
+        assert_eq!(4347556, num_constraints);
         println!("=========================================================");
     }
 

@@ -23,16 +23,15 @@ use crate::{
     FieldParameters,
     LegendreSymbol,
     One,
-    PoseidonMDSField,
-    PoseidonMDSParameters,
     PrimeField,
     SquareRootField,
     Zero,
 };
 use snarkvm_utilities::{
     biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger768 as BigInteger},
-    bytes::{FromBytes, ToBytes},
     serialize::CanonicalDeserialize,
+    FromBytes,
+    ToBytes,
 };
 
 use std::{
@@ -668,7 +667,7 @@ impl<P: Fp768Parameters> PrimeField for Fp768<P> {
     }
 
     #[inline]
-    fn into_repr(&self) -> BigInteger {
+    fn to_repr(&self) -> BigInteger {
         let mut r = *self;
         r.mont_reduce(
             (self.0).0[0],
@@ -700,13 +699,13 @@ impl<P: Fp768Parameters> PrimeField for Fp768<P> {
     }
 
     #[inline]
-    fn from_repr_raw(r: BigInteger) -> Self {
+    fn from_repr_unchecked(r: BigInteger) -> Self {
         let r = Fp768(r, PhantomData);
         if r.is_valid() { r } else { Self::zero() }
     }
 
     #[inline]
-    fn into_repr_raw(&self) -> BigInteger {
+    fn to_repr_unchecked(&self) -> BigInteger {
         let r = *self;
         r.0
     }
@@ -785,7 +784,7 @@ impl<P: Fp768Parameters> SquareRootField for Fp768<P> {
 impl<P: Fp768Parameters> Ord for Fp768<P> {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
-        self.into_repr().cmp(&other.into_repr())
+        self.to_repr().cmp(&other.to_repr())
     }
 }
 
@@ -809,15 +808,15 @@ impl_mul_div_from_field_ref!(Fp768, Fp768Parameters);
 
 impl<P: Fp768Parameters> ToBytes for Fp768<P> {
     #[inline]
-    fn write<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.into_repr().write(writer)
+    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
+        self.to_repr().write_le(writer)
     }
 }
 
 impl<P: Fp768Parameters> FromBytes for Fp768<P> {
     #[inline]
-    fn read<R: Read>(reader: R) -> IoResult<Self> {
-        BigInteger::read(reader).and_then(|b| match Self::from_repr(b) {
+    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
+        BigInteger::read_le(reader).and_then(|b| match Self::from_repr(b) {
             Some(f) => Ok(f),
             None => Err(FieldError::InvalidFieldElement.into()),
         })
@@ -878,14 +877,14 @@ impl<P: Fp768Parameters> FromStr for Fp768<P> {
 impl<P: Fp768Parameters> Debug for Fp768<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "Fp768({})", self.into_repr())
+        write!(f, "Fp768({})", self.to_repr())
     }
 }
 
 impl<P: Fp768Parameters> Display for Fp768<P> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", self.into_repr())
+        write!(f, "{}", self.to_repr())
     }
 }
 
@@ -1153,32 +1152,5 @@ impl<'a, P: Fp768Parameters> DivAssign<&'a Self> for Fp768<P> {
     #[inline]
     fn div_assign(&mut self, other: &Self) {
         self.mul_assign(&other.inverse().unwrap());
-    }
-}
-
-impl<P: Fp768Parameters + PoseidonMDSParameters> PoseidonMDSField for Fp768<P> {
-    fn poseidon_mds_matrix() -> Vec<Vec<Self>> {
-        let mut mds = Vec::<Vec<Self>>::new();
-        for row in P::POSEIDON_MDS.iter() {
-            mds.push(
-                row.iter()
-                    .map(|b| Self::from_repr_raw(*b))
-                    .collect::<Vec<Self>>()
-                    .to_vec(),
-            );
-        }
-        mds
-    }
-
-    fn poseidon_alpha() -> u64 {
-        P::POSEIDON_ALPHA
-    }
-
-    fn poseidon_number_full_rounds() -> u32 {
-        P::POSEIDON_FULL_ROUNDS
-    }
-
-    fn poseidon_number_partial_rounds() -> u32 {
-        P::POSEIDON_PARTIAL_ROUNDS
     }
 }

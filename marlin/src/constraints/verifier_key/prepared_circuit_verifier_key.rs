@@ -17,7 +17,7 @@
 use core::borrow::Borrow;
 use std::marker::PhantomData;
 
-use snarkvm_fields::{PoseidonMDSField, PrimeField, ToConstraintField};
+use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     bits::ToBytesGadget,
     fields::FpGadget,
@@ -29,7 +29,7 @@ use snarkvm_gadgets::{
 };
 use snarkvm_polycommit::{PCCheckVar, PrepareGadget};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
-use snarkvm_utilities::{to_bytes, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use crate::{
     constraints::{verifier::MarlinVerificationGadget, verifier_key::CircuitVerifyingKeyVar},
@@ -38,11 +38,12 @@ use crate::{
     FiatShamirRngVar,
     PolynomialCommitment,
 };
+use snarkvm_algorithms::crypto_hash::PoseidonDefaultParametersField;
 
 /// The prepared circuit verifying key gadget
 pub struct PreparedCircuitVerifyingKeyVar<
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField + PoseidonDefaultParametersField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -68,7 +69,7 @@ pub struct PreparedCircuitVerifyingKeyVar<
 
 impl<
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField + PoseidonDefaultParametersField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -92,7 +93,7 @@ impl<
 impl<TargetField, BaseField, PC, PCG, PR, R> PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField + PoseidonDefaultParametersField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -107,7 +108,7 @@ where
         vk: &CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>,
     ) -> Result<Self, SynthesisError> {
         let mut fs_rng_raw = PR::new();
-        fs_rng_raw.absorb_bytes(&to_bytes![
+        fs_rng_raw.absorb_bytes(&to_bytes_le![
             &MarlinVerificationGadget::<TargetField, BaseField, PC, PCG>::PROTOCOL_NAME
         ]?);
 
@@ -156,7 +157,7 @@ impl<TargetField, BaseField, PC, PCG, PR, R> AllocGadget<PreparedCircuitVerifyin
     for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField + PoseidonDefaultParametersField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -203,7 +204,7 @@ where
         };
 
         let mut fs_rng_raw = PR::new();
-        fs_rng_raw.absorb_bytes(&to_bytes![
+        fs_rng_raw.absorb_bytes(&to_bytes_le![
             &MarlinVerificationGadget::<TargetField, BaseField, PC, PCG>::PROTOCOL_NAME
         ]?);
 
@@ -267,7 +268,7 @@ where
         };
 
         let mut fs_rng_raw = PR::new();
-        fs_rng_raw.absorb_bytes(&to_bytes![
+        fs_rng_raw.absorb_bytes(&to_bytes_le![
             &MarlinVerificationGadget::<TargetField, BaseField, PC, PCG>::PROTOCOL_NAME
         ]?);
 
@@ -331,7 +332,7 @@ where
         };
 
         let mut fs_rng_raw = PR::new();
-        fs_rng_raw.absorb_bytes(&to_bytes![
+        fs_rng_raw.absorb_bytes(&to_bytes_le![
             &MarlinVerificationGadget::<TargetField, BaseField, PC, PCG>::PROTOCOL_NAME
         ]?);
 
@@ -365,7 +366,7 @@ impl<TargetField, BaseField, PC, PCG, PR, R> AllocGadget<CircuitVerifyingKey<Tar
     for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField + PoseidonDefaultParametersField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -420,7 +421,7 @@ impl<TargetField, BaseField, PC, PCG, PR, R> ToBytesGadget<BaseField>
     for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField + PoseidonDefaultParametersField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -455,7 +456,7 @@ impl<TargetField, BaseField, PC, PCG, PR, R> AllocBytesGadget<Vec<u8>, BaseField
     for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField + PoseidonDefaultParametersField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
@@ -472,7 +473,7 @@ where
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|vk_bytes| {
-            let circuit_vk: CircuitVerifyingKey<TargetField, PC> = FromBytes::read(&vk_bytes.borrow()[..])?;
+            let circuit_vk: CircuitVerifyingKey<TargetField, PC> = FromBytes::read_le(&vk_bytes.borrow()[..])?;
             // TODO (raychu86): Preparing the verifying key natively is more efficient, however it is currently broken.
 
             let unprepared_vk_gadget =
@@ -494,7 +495,7 @@ where
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|vk_bytes| {
-            let circuit_vk: CircuitVerifyingKey<TargetField, PC> = FromBytes::read(&vk_bytes.borrow()[..])?;
+            let circuit_vk: CircuitVerifyingKey<TargetField, PC> = FromBytes::read_le(&vk_bytes.borrow()[..])?;
             // TODO (raychu86): Preparing the verifying key natively is more efficient, however it is currently broken.
 
             let unprepared_vk_gadget = CircuitVerifyingKeyVar::<TargetField, BaseField, PC, PCG>::alloc_input(

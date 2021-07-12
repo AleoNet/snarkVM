@@ -22,7 +22,7 @@ use crate::{
     traits::{AffineCurve, ShortWeierstrassParameters},
 };
 use snarkvm_fields::{Field, One, Zero};
-use snarkvm_utilities::{bititerator::BitIteratorBE, bytes::ToBytes, errors::SerializationError, serialize::*};
+use snarkvm_utilities::{bititerator::BitIteratorBE, errors::SerializationError, serialize::*, ToBytes};
 
 use std::{
     io::{Result as IoResult, Write},
@@ -66,18 +66,18 @@ impl<P: BW6Parameters> Default for G2Prepared<P> {
 }
 
 impl<P: BW6Parameters> ToBytes for G2Prepared<P> {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         for coeff_1 in &self.ell_coeffs_1 {
-            coeff_1.0.write(&mut writer)?;
-            coeff_1.1.write(&mut writer)?;
-            coeff_1.2.write(&mut writer)?;
+            coeff_1.0.write_le(&mut writer)?;
+            coeff_1.1.write_le(&mut writer)?;
+            coeff_1.2.write_le(&mut writer)?;
         }
         for coeff_2 in &self.ell_coeffs_2 {
-            coeff_2.0.write(&mut writer)?;
-            coeff_2.1.write(&mut writer)?;
-            coeff_2.2.write(&mut writer)?;
+            coeff_2.0.write_le(&mut writer)?;
+            coeff_2.1.write_le(&mut writer)?;
+            coeff_2.2.write_le(&mut writer)?;
         }
-        self.infinity.write(writer)
+        self.infinity.write_le(writer)
     }
 }
 

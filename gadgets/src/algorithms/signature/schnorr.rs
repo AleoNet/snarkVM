@@ -24,35 +24,38 @@ use crate::{
         eq::{ConditionalEqGadget, EqGadget},
         integers::Integer,
     },
-    FieldGadget,
-    PRFGadget,
+    CryptoHashGadget,
+    FpGadget,
+    ToBitsLEGadget,
+    ToConstraintFieldGadget,
 };
 use snarkvm_algorithms::{
-    prf::Blake2s,
+    crypto_hash::PoseidonDefaultParametersField,
     signature::{Schnorr, SchnorrParameters, SchnorrPublicKey, SchnorrSignature},
 };
 use snarkvm_curves::traits::Group;
-use snarkvm_fields::{Field, PrimeField};
+use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{
     serialize::{CanonicalDeserialize, CanonicalSerialize},
-    to_bytes,
+    to_bytes_le,
     FromBytes,
     ToBytes,
 };
 
-use digest::Digest;
+use crate::algorithms::crypto_hash::PoseidonCryptoHashGadget;
 use itertools::Itertools;
+use snarkvm_curves::AffineCurve;
 use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone)]
-pub struct SchnorrParametersGadget<G: Group, F: Field, D: Digest> {
-    parameters: SchnorrParameters<G, D>,
-    _engine: PhantomData<*const F>,
+pub struct SchnorrParametersGadget<G: Group, F: PrimeField> {
+    pub(crate) parameters: SchnorrParameters<G>,
+    pub(crate) _engine: PhantomData<*const F>,
 }
 
-impl<G: Group, F: Field, D: Digest> AllocGadget<SchnorrParameters<G, D>, F> for SchnorrParametersGadget<G, F, D> {
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrParameters<G, D>>, CS: ConstraintSystem<F>>(
+impl<G: Group, F: PrimeField> AllocGadget<SchnorrParameters<G>, F> for SchnorrParametersGadget<G, F> {
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrParameters<G>>, CS: ConstraintSystem<F>>(
         _cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
@@ -66,7 +69,7 @@ impl<G: Group, F: Field, D: Digest> AllocGadget<SchnorrParameters<G, D>, F> for 
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<SchnorrParameters<G, D>>,
+        T: Borrow<SchnorrParameters<G>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -82,13 +85,13 @@ impl<G: Group, F: Field, D: Digest> AllocGadget<SchnorrParameters<G, D>, F> for 
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SchnorrPublicKeyGadget<G: Group, F: Field, GG: GroupGadget<G, F>> {
-    public_key: GG,
-    _group: PhantomData<G>,
-    _engine: PhantomData<F>,
+pub struct SchnorrPublicKeyGadget<G: Group, F: PrimeField, GG: GroupGadget<G, F>> {
+    pub(crate) public_key: GG,
+    pub(crate) _group: PhantomData<G>,
+    pub(crate) _engine: PhantomData<F>,
 }
 
-impl<G: Group + CanonicalSerialize + CanonicalDeserialize, F: Field, GG: GroupGadget<G, F>>
+impl<G: Group + CanonicalSerialize + CanonicalDeserialize, F: PrimeField, GG: GroupGadget<G, F>>
     AllocGadget<SchnorrPublicKey<G>, F> for SchnorrPublicKeyGadget<G, F, GG>
 {
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrPublicKey<G>>, CS: ConstraintSystem<F>>(
@@ -118,7 +121,7 @@ impl<G: Group + CanonicalSerialize + CanonicalDeserialize, F: Field, GG: GroupGa
     }
 }
 
-impl<G: Group, F: Field, GG: GroupGadget<G, F>> ConditionalEqGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {
+impl<G: Group, F: PrimeField, GG: GroupGadget<G, F>> ConditionalEqGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {
     #[inline]
     fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
         &self,
@@ -139,9 +142,9 @@ impl<G: Group, F: Field, GG: GroupGadget<G, F>> ConditionalEqGadget<F> for Schno
     }
 }
 
-impl<G: Group, F: Field, GG: GroupGadget<G, F>> EqGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {}
+impl<G: Group, F: PrimeField, GG: GroupGadget<G, F>> EqGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {}
 
-impl<G: Group, F: Field, GG: GroupGadget<G, F>> ToBytesGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {
+impl<G: Group, F: PrimeField, GG: GroupGadget<G, F>> ToBytesGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.public_key.to_bytes(&mut cs.ns(|| "to_bytes"))
     }
@@ -152,16 +155,13 @@ impl<G: Group, F: Field, GG: GroupGadget<G, F>> ToBytesGadget<F> for SchnorrPubl
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SchnorrSignatureGadget<G: Group, F: Field, FG: FieldGadget<F, F>> {
-    prover_response: FG,
-    verifier_challenge: FG,
-    _field: PhantomData<*const F>,
-    _group: PhantomData<*const G>,
+pub struct SchnorrSignatureGadget<G: Group, F: PrimeField> {
+    pub(crate) prover_response: FpGadget<F>,
+    pub(crate) verifier_challenge: FpGadget<F>,
+    pub(crate) _group: PhantomData<*const G>,
 }
 
-impl<G: Group, F: Field, FG: FieldGadget<F, F>> AllocGadget<SchnorrSignature<G>, F>
-    for SchnorrSignatureGadget<G, F, FG>
-{
+impl<G: Group, F: PrimeField> AllocGadget<SchnorrSignature<G>, F> for SchnorrSignatureGadget<G, F> {
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrSignature<G>>, CS: ConstraintSystem<F>>(
         mut cs: CS,
         value_gen: Fn,
@@ -172,16 +172,16 @@ impl<G: Group, F: Field, FG: FieldGadget<F, F>> AllocGadget<SchnorrSignature<G>,
         // TODO (raychu86): Check that this conversion is valid.
         //  This will work for EdwardsBls Fr and Bls12_377 Fr because they are both represented with Fp256.
         // Cast <G as Group>::ScalarField as F.
-        let prover_response: F = FromBytes::read(&to_bytes![schnorr_output.prover_response]?[..])?;
-        let verifier_challenge: F = FromBytes::read(&to_bytes![schnorr_output.verifier_challenge]?[..])?;
+        let prover_response: F = FromBytes::read_le(&to_bytes_le![schnorr_output.prover_response]?[..])?;
+        let verifier_challenge: F = FromBytes::read_le(&to_bytes_le![schnorr_output.verifier_challenge]?[..])?;
 
-        let prover_response = FG::alloc(cs.ns(|| "alloc_prover_response"), || Ok(&prover_response))?;
-        let verifier_challenge = FG::alloc(cs.ns(|| "alloc_verifier_challenge"), || Ok(&verifier_challenge))?;
+        let prover_response = FpGadget::<F>::alloc(cs.ns(|| "alloc_prover_response"), || Ok(&prover_response))?;
+        let verifier_challenge =
+            FpGadget::<F>::alloc(cs.ns(|| "alloc_verifier_challenge"), || Ok(&verifier_challenge))?;
 
         Ok(Self {
             prover_response,
             verifier_challenge,
-            _field: PhantomData,
             _group: PhantomData,
         })
     }
@@ -198,23 +198,23 @@ impl<G: Group, F: Field, FG: FieldGadget<F, F>> AllocGadget<SchnorrSignature<G>,
         let schnorr_output = value.borrow().clone();
 
         // Cast <G as Group>::ScalarField as F.
-        let prover_response: F = FromBytes::read(&to_bytes![schnorr_output.prover_response]?[..])?;
-        let verifier_challenge: F = FromBytes::read(&to_bytes![schnorr_output.verifier_challenge]?[..])?;
+        let prover_response: F = FromBytes::read_le(&to_bytes_le![schnorr_output.prover_response]?[..])?;
+        let verifier_challenge: F = FromBytes::read_le(&to_bytes_le![schnorr_output.verifier_challenge]?[..])?;
 
-        let prover_response = FG::alloc_input(cs.ns(|| "alloc_input_prover_response"), || Ok(&prover_response))?;
+        let prover_response =
+            FpGadget::<F>::alloc_input(cs.ns(|| "alloc_input_prover_response"), || Ok(&prover_response))?;
         let verifier_challenge =
-            FG::alloc_input(cs.ns(|| "alloc_input_verifier_challenge"), || Ok(&verifier_challenge))?;
+            FpGadget::<F>::alloc_input(cs.ns(|| "alloc_input_verifier_challenge"), || Ok(&verifier_challenge))?;
 
         Ok(Self {
             prover_response,
             verifier_challenge,
-            _field: PhantomData,
             _group: PhantomData,
         })
     }
 }
 
-impl<G: Group, F: Field, FG: FieldGadget<F, F>> ConditionalEqGadget<F> for SchnorrSignatureGadget<G, F, FG> {
+impl<G: Group, F: PrimeField> ConditionalEqGadget<F> for SchnorrSignatureGadget<G, F> {
     #[inline]
     fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
         &self,
@@ -236,13 +236,13 @@ impl<G: Group, F: Field, FG: FieldGadget<F, F>> ConditionalEqGadget<F> for Schno
     }
 
     fn cost() -> usize {
-        <FG as ConditionalEqGadget<F>>::cost() * 2
+        <FpGadget<F> as ConditionalEqGadget<F>>::cost() * 2
     }
 }
 
-impl<G: Group, F: Field, FG: FieldGadget<F, F>> EqGadget<F> for SchnorrSignatureGadget<G, F, FG> {}
+impl<G: Group, F: PrimeField> EqGadget<F> for SchnorrSignatureGadget<G, F> {}
 
-impl<G: Group, F: Field, FG: FieldGadget<F, F>> ToBytesGadget<F> for SchnorrSignatureGadget<G, F, FG> {
+impl<G: Group, F: PrimeField> ToBytesGadget<F> for SchnorrSignatureGadget<G, F> {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut result = Vec::new();
 
@@ -274,24 +274,28 @@ impl<G: Group, F: Field, FG: FieldGadget<F, F>> ToBytesGadget<F> for SchnorrSign
     }
 }
 
-pub struct SchnorrPublicKeyRandomizationGadget<G: Group, F: PrimeField, GG: GroupGadget<G, F>, FG: FieldGadget<F, F>> {
-    _group: PhantomData<*const G>,
-    _group_gadget: PhantomData<*const GG>,
-    _field_gadget: PhantomData<*const FG>,
-    _engine: PhantomData<*const F>,
+pub struct SchnorrPublicKeyRandomizationGadget<
+    G: Group,
+    F: PrimeField + PoseidonDefaultParametersField,
+    GG: GroupGadget<G, F> + ToConstraintFieldGadget<F>,
+> {
+    pub(crate) _group: PhantomData<*const G>,
+    pub(crate) _group_gadget: PhantomData<*const GG>,
+    pub(crate) _engine: PhantomData<*const F>,
 }
 
 impl<
-    G: Group + CanonicalSerialize + CanonicalDeserialize,
-    GG: GroupGadget<G, F>,
-    FG: FieldGadget<F, F>,
-    D: Digest + Send + Sync,
-    F: PrimeField,
-> SignaturePublicKeyRandomizationGadget<Schnorr<G, D>, F> for SchnorrPublicKeyRandomizationGadget<G, F, GG, FG>
+    G: Group + CanonicalSerialize + CanonicalDeserialize + AffineCurve,
+    GG: GroupGadget<G, F> + ToConstraintFieldGadget<F>,
+    F: PrimeField + PoseidonDefaultParametersField,
+> SignaturePublicKeyRandomizationGadget<Schnorr<G>, F> for SchnorrPublicKeyRandomizationGadget<G, F, GG>
+where
+    <G as AffineCurve>::BaseField: PoseidonDefaultParametersField,
+    G: ToConstraintField<<G as AffineCurve>::BaseField>,
 {
-    type ParametersGadget = SchnorrParametersGadget<G, F, D>;
+    type ParametersGadget = SchnorrParametersGadget<G, F>;
     type PublicKeyGadget = SchnorrPublicKeyGadget<G, F, GG>;
-    type SignatureGadget = SchnorrSignatureGadget<G, F, FG>;
+    type SignatureGadget = SchnorrSignatureGadget<G, F>;
 
     fn check_randomization_gadget<CS: ConstraintSystem<F>>(
         mut cs: CS,
@@ -314,7 +318,7 @@ impl<
     }
 
     // TODO (raychu86): Make the blake2s usage generic for all PRFs.
-    fn verify<CS: ConstraintSystem<F>, PG: PRFGadget<Blake2s, F>>(
+    fn verify<CS: ConstraintSystem<F>>(
         mut cs: CS,
         parameters: &Self::ParametersGadget,
         public_key: &Self::PublicKeyGadget,
@@ -363,45 +367,42 @@ impl<
             &public_key_times_verifier_challenge,
         )?;
 
-        let salt_bytes = UInt8::alloc_vec(cs.ns(|| "alloc_salt"), &parameters.parameters.salt)?;
-        let claimed_prover_commitment_bytes =
-            claimed_prover_commitment.to_bytes(cs.ns(|| "claimed_prover_commitment_to_bytes"))?;
-
         // Construct the hash
+        let mut hash_input = {
+            let salt_bytes_field_elements: Vec<F> = parameters.parameters.salt.to_field_elements().unwrap();
 
-        let mut hash_input = Vec::new();
-        hash_input.extend_from_slice(&claimed_prover_commitment_bytes);
-        hash_input.extend_from_slice(&message);
+            let mut res = Vec::new();
 
-        let hash = PG::check_evaluation_gadget(cs.ns(|| "schnorr_hash"), &salt_bytes, &hash_input)?;
-
-        // Check that the hash bytes are equivalent to the Field gadget.
-
-        let hash_bytes = hash.to_bytes(cs.ns(|| "hash_to_bytes"))?;
-        let verifier_challenge_bytes = signature
-            .verifier_challenge
-            .to_bytes(cs.ns(|| "verifier_challenge_to_bytes"))?;
-
-        let total_bits = <G as Group>::ScalarField::size_in_bits();
-        let mut expected_bits = Vec::with_capacity(total_bits);
-        let mut found_bits = Vec::with_capacity(total_bits);
-
-        // Check all the bits up to the bit size of the Field gadget.
-        for (i, (expected_byte, found_byte)) in verifier_challenge_bytes.iter().zip_eq(&hash_bytes).enumerate() {
-            for (j, (expected_bit, found_bit)) in expected_byte
-                .to_bits_le()
-                .iter()
-                .zip_eq(found_byte.to_bits_le())
-                .enumerate()
-            {
-                if (i * 8 + j) < total_bits {
-                    expected_bits.push(expected_bit.clone());
-                    found_bits.push(found_bit.clone());
-                }
+            for (i, elem) in salt_bytes_field_elements.iter().enumerate() {
+                res.push(FpGadget::<F>::alloc_constant(
+                    cs.ns(|| format!("alloc salt byte field element {}", i)),
+                    || Ok((*elem).clone()),
+                )?);
             }
-        }
+            res
+        };
+        hash_input.extend_from_slice(
+            &claimed_prover_commitment
+                .to_constraint_field(cs.ns(|| "convert claimed_prover_commitment into field elements"))?,
+        );
+        hash_input.push(FpGadget::<F>::Constant(F::from(message.len() as u128)));
+        hash_input.extend_from_slice(&message.to_constraint_field(cs.ns(|| "convert message into field elements"))?);
 
-        let result = expected_bits.is_eq(cs.ns(|| "is_eq"), &found_bits)?;
+        // Compute the hash on the base field
+        let raw_hash =
+            PoseidonCryptoHashGadget::<F, 4, false>::check_evaluation_gadget(cs.ns(|| "poseidon"), &hash_input)?;
+
+        // Bit decompose the raw_hash
+        let mut raw_hash_bits = raw_hash.to_bits_le(cs.ns(|| "convert the hash into bits"))?;
+        raw_hash_bits.resize(
+            <G::ScalarField as PrimeField>::Parameters::CAPACITY as usize,
+            Boolean::Constant(false),
+        );
+
+        let hash = Boolean::le_bits_to_fp_var(cs.ns(|| "obtain the truncated hash"), &raw_hash_bits)?;
+        let result = signature
+            .verifier_challenge
+            .is_eq(cs.ns(|| "check verifier challenge"), &hash)?;
 
         return Ok(result);
     }

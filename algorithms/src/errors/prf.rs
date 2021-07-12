@@ -16,6 +16,9 @@
 
 #[derive(Debug, Error)]
 pub enum PRFError {
+    #[error("{}", _0)]
+    AnyhowError(#[from] anyhow::Error),
+
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 

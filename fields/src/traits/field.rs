@@ -17,7 +17,6 @@
 use crate::{One, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
-    bytes::{FromBytes, ToBytes},
     rand::UniformRand,
     serialize::{
         CanonicalDeserialize,
@@ -28,6 +27,8 @@ use snarkvm_utilities::{
         EmptyFlags,
         Flags,
     },
+    FromBytes,
+    ToBytes,
 };
 
 use std::{

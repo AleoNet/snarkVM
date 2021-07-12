@@ -16,29 +16,24 @@
 
 use snarkvm_curves::traits::Group;
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
-use digest::Digest;
 use rand::Rng;
-use std::{
-    io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
-};
+use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "G: Group, D: Digest"),
-    Debug(bound = "G: Group, D: Digest"),
-    PartialEq(bound = "G: Group, D: Digest"),
-    Eq(bound = "G: Group, D: Digest")
+    Clone(bound = "G: Group"),
+    Debug(bound = "G: Group"),
+    PartialEq(bound = "G: Group"),
+    Eq(bound = "G: Group")
 )]
-pub struct SchnorrParameters<G: Group, D: Digest> {
+pub struct SchnorrParameters<G: Group> {
     pub generator_powers: Vec<G>,
     pub salt: [u8; 32],
-    pub _hash: PhantomData<D>,
 }
 
-impl<G: Group, D: Digest> SchnorrParameters<G, D> {
+impl<G: Group> SchnorrParameters<G> {
     pub fn setup<R: Rng>(rng: &mut R, private_key_size_in_bits: usize) -> Self {
         // Round to the closest multiple of 64 to factor bit and byte encoding differences.
         assert!(private_key_size_in_bits < usize::MAX - 63);
@@ -46,7 +41,6 @@ impl<G: Group, D: Digest> SchnorrParameters<G, D> {
         Self {
             generator_powers: Self::generator(num_powers, rng),
             salt: rng.gen(),
-            _hash: PhantomData,
         }
     }
 
@@ -61,37 +55,33 @@ impl<G: Group, D: Digest> SchnorrParameters<G, D> {
     }
 }
 
-impl<G: Group, D: Digest> ToBytes for SchnorrParameters<G, D> {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.generator_powers.len() as u32).write(&mut writer)?;
+impl<G: Group> ToBytes for SchnorrParameters<G> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.generator_powers.len() as u32).write_le(&mut writer)?;
         for g in &self.generator_powers {
-            g.write(&mut writer)?;
+            g.write_le(&mut writer)?;
         }
-        self.salt.write(&mut writer)
+        self.salt.write_le(&mut writer)
     }
 }
 
-impl<G: Group, D: Digest> FromBytes for SchnorrParameters<G, D> {
+impl<G: Group> FromBytes for SchnorrParameters<G> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let generator_powers_length: u32 = FromBytes::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let generator_powers_length: u32 = FromBytes::read_le(&mut reader)?;
         let mut generator_powers = Vec::with_capacity(generator_powers_length as usize);
         for _ in 0..generator_powers_length {
-            let g: G = FromBytes::read(&mut reader)?;
+            let g: G = FromBytes::read_le(&mut reader)?;
             generator_powers.push(g);
         }
 
-        let salt: [u8; 32] = FromBytes::read(&mut reader)?;
+        let salt: [u8; 32] = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self {
-            generator_powers,
-            salt,
-            _hash: PhantomData,
-        })
+        Ok(Self { generator_powers, salt })
     }
 }
 
-impl<F: Field, G: Group + ToConstraintField<F>, D: Digest> ToConstraintField<F> for SchnorrParameters<G, D> {
+impl<F: Field, G: Group + ToConstraintField<F>> ToConstraintField<F> for SchnorrParameters<G> {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         Ok(Vec::new())

@@ -16,12 +16,13 @@
 
 use crate::SerializationError;
 pub use crate::{
-    bytes::{FromBytes, ToBytes},
     io::{
         Read,
         Write,
         {self},
     },
+    FromBytes,
+    ToBytes,
     Vec,
 };
 

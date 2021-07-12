@@ -17,11 +17,11 @@
 use super::{Affine, Projective};
 
 use snarkvm_utilities::{
-    bytes::ToBytes,
     io::Cursor,
     rand::UniformRand,
     serialize::{CanonicalDeserialize, CanonicalSerialize},
-    to_bytes,
+    to_bytes_le,
+    ToBytes,
 };
 
 use crate::traits::{
@@ -146,7 +146,7 @@ where
 
     for _ in 0..ITERATIONS {
         let biginteger = <<Affine<P> as AffineCurve>::BaseField as PrimeField>::BigInteger::rand(&mut rng);
-        let mut bytes = to_bytes![biginteger].unwrap();
+        let mut bytes = to_bytes_le![biginteger].unwrap();
         let mut g = Affine::<P>::from_random_bytes(&bytes);
         while g.is_none() {
             bytes.iter_mut().for_each(|i| *i = i.wrapping_sub(1));

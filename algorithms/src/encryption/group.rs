@@ -16,18 +16,17 @@
 
 use crate::{encryption::GroupEncryptionParameters, errors::EncryptionError, traits::EncryptionScheme};
 use snarkvm_curves::traits::{AffineCurve, Group, ProjectiveCurve};
-use snarkvm_fields::{Field, One, PrimeField, Zero};
+use snarkvm_fields::{Field, One, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
     errors::SerializationError,
     from_bytes_le_to_bits_le,
     rand::UniformRand,
     serialize::*,
-    to_bytes,
     FromBytes,
     ToBytes,
 };
 
-use digest::Digest;
+use crate::crypto_hash::PoseidonDefaultParametersField;
 use itertools::Itertools;
 use rand::Rng;
 use std::{
@@ -49,18 +48,18 @@ pub struct GroupEncryptionPublicKey<G: Group + ProjectiveCurve + CanonicalSerial
 impl<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> ToBytes for GroupEncryptionPublicKey<G> {
     /// Writes the x-coordinate of the encryption public key.
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         let affine = self.0.into_affine();
         let x_coordinate = affine.to_x_coordinate();
-        x_coordinate.write(&mut writer)
+        x_coordinate.write_le(&mut writer)
     }
 }
 
 impl<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> FromBytes for GroupEncryptionPublicKey<G> {
     /// Reads the x-coordinate of the encryption public key.
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let x_coordinate = <G::Affine as AffineCurve>::BaseField::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let x_coordinate = <G::Affine as AffineCurve>::BaseField::read_le(&mut reader)?;
 
         if let Some(element) = <G as ProjectiveCurve>::Affine::from_x_coordinate(x_coordinate, true) {
             if element.is_in_correct_subgroup_assuming_on_curve() {
@@ -86,19 +85,21 @@ impl<G: Group + ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> Def
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "G: Group, SG: Group, D: Digest"),
-    Debug(bound = "G: Group, SG: Group, D: Digest"),
-    PartialEq(bound = "G: Group, SG: Group, D: Digest"),
-    Eq(bound = "G: Group, SG: Group, D: Digest")
+    Clone(bound = "G: Group, SG: Group"),
+    Debug(bound = "G: Group, SG: Group"),
+    PartialEq(bound = "G: Group, SG: Group"),
+    Eq(bound = "G: Group, SG: Group")
 )]
-pub struct GroupEncryption<G: Group + ProjectiveCurve, SG: Group, D: Digest> {
+pub struct GroupEncryption<G: Group + ProjectiveCurve, SG: Group> {
     pub parameters: GroupEncryptionParameters<G>,
     pub _signature_group: PhantomData<SG>,
-    pub _hash: PhantomData<D>,
 }
 
-impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeserialize, D: Digest + Send + Sync>
-    EncryptionScheme for GroupEncryption<G, SG, D>
+impl<G: Group + ProjectiveCurve, SG: Group + AffineCurve + CanonicalSerialize + CanonicalDeserialize> EncryptionScheme
+    for GroupEncryption<G, SG>
+where
+    <SG as AffineCurve>::BaseField: PoseidonDefaultParametersField,
+    SG: ToConstraintField<<SG as AffineCurve>::BaseField>,
 {
     type BlindingExponent = <G as Group>::ScalarField;
     type Parameters = GroupEncryptionParameters<G>;
@@ -114,7 +115,6 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
                 <Self as EncryptionScheme>::PrivateKey::size_in_bits(),
             ),
             _signature_group: PhantomData,
-            _hash: PhantomData,
         }
     }
 
@@ -134,7 +134,7 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
 
         let mut public_key = G::zero();
         for (bit, base_power) in
-            from_bytes_le_to_bits_le(&to_bytes![private_key]?).zip_eq(&self.parameters.generator_powers)
+            from_bytes_le_to_bits_le(&private_key.to_bytes_le()?).zip_eq(&self.parameters.generator_powers)
         {
             if bit {
                 public_key += base_power;
@@ -153,12 +153,12 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
         let mut y = Self::Randomness::zero();
         let mut z_bytes = vec![];
 
-        while Self::Randomness::read(&z_bytes[..]).is_err() {
+        while Self::Randomness::read_le(&z_bytes[..]).is_err() {
             y = Self::Randomness::rand(rng);
 
             let affine = public_key.0.mul(y).into_affine();
             debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
-            z_bytes = to_bytes![affine.to_x_coordinate()]?;
+            z_bytes = affine.to_x_coordinate().to_bytes_le()?;
         }
 
         Ok(y)
@@ -174,9 +174,9 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
 
         let affine = record_view_key.into_affine();
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
-        let z_bytes = to_bytes![affine.to_x_coordinate()]?;
+        let z_bytes = affine.to_x_coordinate().to_bytes_le()?;
 
-        let z = Self::Randomness::read(&z_bytes[..])?;
+        let z = Self::Randomness::read_le(&z_bytes[..])?;
 
         let one = Self::Randomness::one();
         let mut i = Self::Randomness::one();
@@ -205,7 +205,7 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
 
         let mut c_0 = G::zero();
         for (bit, base_power) in
-            from_bytes_le_to_bits_le(&to_bytes![randomness]?).zip_eq(&self.parameters.generator_powers)
+            from_bytes_le_to_bits_le(&randomness.to_bytes_le()?).zip_eq(&self.parameters.generator_powers)
         {
             if bit {
                 c_0 += base_power;
@@ -244,9 +244,9 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
 
         let affine = record_view_key.into_affine();
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
-        let z_bytes = to_bytes![affine.to_x_coordinate()]?;
+        let z_bytes = affine.to_x_coordinate().to_bytes_le()?;
 
-        let z = Self::Randomness::read(&z_bytes[..])?;
+        let z = Self::Randomness::read_le(&z_bytes[..])?;
 
         let one = Self::Randomness::one();
         let mut plaintext = Vec::with_capacity(ciphertext.len().saturating_sub(1));
@@ -278,14 +278,11 @@ impl<G: Group + ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeser
     }
 }
 
-impl<G: Group + ProjectiveCurve, SG: Group, D: Digest> From<GroupEncryptionParameters<G>>
-    for GroupEncryption<G, SG, D>
-{
+impl<G: Group + ProjectiveCurve, SG: Group> From<GroupEncryptionParameters<G>> for GroupEncryption<G, SG> {
     fn from(parameters: GroupEncryptionParameters<G>) -> Self {
         Self {
             parameters,
             _signature_group: PhantomData,
-            _hash: PhantomData,
         }
     }
 }

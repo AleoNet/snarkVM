@@ -33,6 +33,9 @@ pub enum DPCError {
     AccountError(#[from] AccountError),
 
     #[error("{}", _0)]
+    AnyhowError(#[from] anyhow::Error),
+
+    #[error("{}", _0)]
     CommitmentError(#[from] CommitmentError),
 
     #[error("{}", _0)]
