@@ -18,13 +18,12 @@
 extern crate criterion;
 
 use snarkvm_algorithms::{signature::schnorr::Schnorr as SchnorrSignature, traits::SignatureScheme};
-use snarkvm_curves::edwards_bls12::EdwardsProjective;
+use snarkvm_curves::edwards_bls12::EdwardsAffine;
 
-use blake2::Blake2s;
 use criterion::Criterion;
 use rand::{self, thread_rng, Rng};
 
-type Schnorr = SchnorrSignature<EdwardsProjective, Blake2s>;
+type Schnorr = SchnorrSignature<EdwardsAffine>;
 
 fn schnorr_signature_setup(c: &mut Criterion) {
     let rng = &mut rand::thread_rng();

@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-algorithms"
-version = "0.7.2"
+version = "0.7.3"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Algorithms for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -68,34 +68,47 @@ path = "examples/snark/gm17.rs"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.7.2"
+version = "0.7.3"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.7.2"
+version = "0.7.3"
 default-features = false
 
 [dependencies.snarkvm-profiler]
 path = "../profiler"
-version = "0.7.2"
+version = "0.7.3"
 default-features = false
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
-version = "0.7.2"
+version = "0.7.3"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.7.2"
+version = "0.7.3"
 default-features = false
 
 [dependencies.anyhow]
 version = "1.0"
 
+[dependencies.bitvec]
+version = "0.22"
+
 [dependencies.blake2]
 version = "0.9"
+optional = true
+
+[dependencies.blake2s_simd]
+version = "0.5"
+
+[dependencies.crossbeam-channel]
+version = "0.5"
+
+[dependencies.cuda-oxide]
+version = "0.3"
 optional = true
 
 [dependencies.derivative]
@@ -106,6 +119,12 @@ version = "0.9"
 
 [dependencies.itertools]
 version = "0.10.1"
+
+[dependencies.lazy_static]
+version = "1.4"
+
+[dependencies.once_cell]
+version = "1.8"
 
 [dependencies.rand]
 version = "0.8"
@@ -124,24 +143,8 @@ default-features = false
 [dependencies.smallvec]
 version = "1.6"
 
-[dependencies.cuda-oxide]
-version = "0.3"
-optional = true
-
-[dependencies.lazy_static]
-version = "1.4"
-
-[dependencies.crossbeam-channel]
-version = "0.5"
-
 [dependencies.thiserror]
 version = "1.0"
-
-[dependencies.bitvec]
-version = "0.22"
-
-[dependencies.once_cell]
-version = "1.8"
 
 [dev-dependencies.criterion]
 version = "0.3.4"
@@ -149,8 +152,18 @@ version = "0.3.4"
 [dev-dependencies.csv]
 version = "1"
 
+[dev-dependencies.hex]
+version = "0.4"
+
 [dev-dependencies.rand_xorshift]
 version = "0.3"
+
+[dev-dependencies.serde]
+version = "1"
+features = ["derive"]
+
+[dev-dependencies.serde_json]
+version = "1"
 
 [features]
 default = [
@@ -179,6 +192,7 @@ wasm = [
   "commitment",
   "commitment_tree",
   "crh",
+  "crypto_hash",
   "encoding",
   "encryption",
   "fft",
@@ -192,6 +206,7 @@ wasm = [
 commitment = [ "blake2", "crh" ]
 commitment_tree = [ ]
 crh = [ ]
+crypto_hash = [ ]
 encoding = [ ]
 encryption = [ "signature" ]
 fft = [ ]
@@ -199,7 +214,7 @@ hash_to_curve = [ ]
 merkle_tree = [ ]
 msm = [ ]
 prf = [ "blake2" ]
-signature = [ "encryption" ]
+signature = [ "encryption", "crypto_hash" ]
 snark = [ "fft", "msm" ]
 parallel = [ ]
 print-trace = [ "snarkvm-profiler/print-trace" ]

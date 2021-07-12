@@ -14,17 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::{borrow::Borrow, marker::PhantomData};
-
-use digest::Digest;
-use itertools::Itertools;
-
-use snarkvm_algorithms::encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey};
-use snarkvm_curves::traits::{Group, ProjectiveCurve};
-use snarkvm_fields::{Field, PrimeField};
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::{to_bytes_le, CanonicalDeserialize, CanonicalSerialize, ToBytes};
-
 use crate::{
     bits::{Boolean, ToBytesGadget},
     integers::uint::UInt8,
@@ -36,6 +25,20 @@ use crate::{
         integers::integer::Integer,
     },
 };
+use snarkvm_algorithms::{
+    crypto_hash::PoseidonDefaultParametersField,
+    encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey},
+};
+use snarkvm_curves::{
+    traits::{Group, ProjectiveCurve},
+    AffineCurve,
+};
+use snarkvm_fields::{Field, PrimeField, ToConstraintField};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+use snarkvm_utilities::{to_bytes_le, CanonicalDeserialize, CanonicalSerialize, ToBytes};
+
+use itertools::Itertools;
+use std::{borrow::Borrow, marker::PhantomData};
 
 /// Group encryption parameters gadget
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -480,11 +483,13 @@ pub struct GroupEncryptionGadget<G: ProjectiveCurve, F: PrimeField, GG: Compress
 
 impl<
     G: ProjectiveCurve,
-    SG: Group + CanonicalSerialize + CanonicalDeserialize,
-    D: Digest + Send + Sync,
+    SG: Group + CanonicalSerialize + CanonicalDeserialize + AffineCurve,
     F: PrimeField,
     GG: CompressedGroupGadget<G, F>,
-> EncryptionGadget<GroupEncryption<G, SG, D>, F> for GroupEncryptionGadget<G, F, GG>
+> EncryptionGadget<GroupEncryption<G, SG>, F> for GroupEncryptionGadget<G, F, GG>
+where
+    <SG as AffineCurve>::BaseField: PoseidonDefaultParametersField,
+    SG: ToConstraintField<<SG as AffineCurve>::BaseField>,
 {
     type BlindingExponentGadget = GroupEncryptionBlindingExponentsGadget<G>;
     type CiphertextGadget = GroupEncryptionCiphertextGadget<G, F, GG>;

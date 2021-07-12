@@ -33,9 +33,21 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.41"
+version = "1.0.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15af2628f6890fe2609a3b91bef4c83450512802e59489f9c1cb1fa5df064a61"
+checksum = "595d3cfa7a60d4555cb5067b99f07142a08ea778de5cf993f7b75c7d8fabc486"
+
+[[package]]
+name = "arrayref"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4c527152e37cf757a3f78aae5a06fbeefdb07ccc535c980a3208ee3060dd544"
+
+[[package]]
+name = "arrayvec"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
 
 [[package]]
 name = "atty"
@@ -108,6 +120,17 @@ dependencies = [
  "crypto-mac",
  "digest",
  "opaque-debug",
+]
+
+[[package]]
+name = "blake2s_simd"
+version = "0.5.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e461a7034e85b211a4acb57ee2e6730b32912b06c08cc242243c39fc21ae6a2"
+dependencies = [
+ "arrayref",
+ "arrayvec",
+ "constant_time_eq",
 ]
 
 [[package]]
@@ -249,6 +272,12 @@ dependencies = [
  "cfg-if 0.1.10",
  "wasm-bindgen",
 ]
+
+[[package]]
+name = "constant_time_eq"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "245097e9a4535ee1e3e3931fcfcd55a796a44c643e8596ff6566d68f09b87bbc"
 
 [[package]]
 name = "core-foundation"
@@ -1573,7 +1602,7 @@ checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
 
 [[package]]
 name = "snarkvm"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "colored",
@@ -1585,17 +1614,19 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-algorithms"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "bitvec",
  "blake2",
+ "blake2s_simd",
  "criterion",
  "crossbeam-channel",
  "csv",
  "cuda-oxide",
  "derivative",
  "digest",
+ "hex",
  "itertools 0.10.1",
  "lazy_static",
  "once_cell",
@@ -1603,6 +1634,8 @@ dependencies = [
  "rand_chacha",
  "rand_xorshift",
  "rayon",
+ "serde",
+ "serde_json",
  "sha2",
  "smallvec",
  "snarkvm-curves",
@@ -1615,7 +1648,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-curves"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "criterion",
  "derivative",
@@ -1630,7 +1663,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-derives"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "proc-macro-crate",
  "proc-macro-error",
@@ -1641,7 +1674,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-dpc"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "base58",
@@ -1672,7 +1705,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-fields"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1686,7 +1719,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-gadgets"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "blake2",
  "criterion",
@@ -1710,7 +1743,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-integration"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "base58",
@@ -1737,7 +1770,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-marlin"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "blake2",
  "criterion",
@@ -1760,7 +1793,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-parameters"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "blake2",
  "curl",
@@ -1779,7 +1812,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-polycommit"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "blake2",
  "derivative",
@@ -1800,7 +1833,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-posw"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "blake2",
  "criterion",
@@ -1824,14 +1857,14 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-profiler"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "colored",
 ]
 
 [[package]]
 name = "snarkvm-r1cs"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "cfg-if 1.0.0",
  "fxhash",
@@ -1844,7 +1877,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-utilities"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1857,7 +1890,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-wasm"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "derivative",
  "getrandom",

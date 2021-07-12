@@ -14,20 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{signature::SchnorrParameters, SignatureError, SignatureScheme};
+use crate::{
+    crypto_hash::PoseidonDefaultParametersField,
+    signature::SchnorrParameters,
+    CryptoHash,
+    SignatureError,
+    SignatureScheme,
+};
 use snarkvm_curves::traits::Group;
-use snarkvm_fields::{ConstraintFieldError, Field, One, PrimeField, ToConstraintField, Zero};
+use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, One, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
     bytes::{from_bytes_le_to_bits_le, FromBytes, ToBytes},
     errors::SerializationError,
     rand::UniformRand,
     serialize::*,
     to_bytes_le,
+    FromBits,
+    ToBits,
 };
 
-use digest::Digest;
+use crate::crypto_hash::PoseidonCryptoHash;
 use itertools::Itertools;
 use rand::Rng;
+use snarkvm_curves::AffineCurve;
 use std::{
     hash::Hash,
     io::{Read, Result as IoResult, Write},
@@ -104,26 +113,31 @@ impl<F: Field, G: Group + CanonicalSerialize + CanonicalDeserialize + ToConstrai
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "G: Group, D: Digest"),
-    Debug(bound = "G: Group, D: Digest"),
-    PartialEq(bound = "G: Group, D: Digest"),
-    Eq(bound = "G: Group, D: Digest")
+    Clone(bound = "G: Group"),
+    Debug(bound = "G: Group"),
+    PartialEq(bound = "G: Group"),
+    Eq(bound = "G: Group")
 )]
-pub struct Schnorr<G: Group, D: Digest> {
-    pub parameters: SchnorrParameters<G, D>,
+pub struct Schnorr<G: Group> {
+    pub parameters: SchnorrParameters<G>,
 }
 
-impl<G: Group + Hash + CanonicalSerialize + CanonicalDeserialize, D: Digest + Send + Sync> SignatureScheme
-    for Schnorr<G, D>
+impl<G: Group + Hash + CanonicalSerialize + CanonicalDeserialize + AffineCurve> SignatureScheme for Schnorr<G>
 where
-    <G as Group>::ScalarField: PrimeField,
+    <G as AffineCurve>::BaseField: PoseidonDefaultParametersField,
+    G: ToConstraintField<<G as AffineCurve>::BaseField>,
 {
-    type Parameters = SchnorrParameters<G, D>;
+    type Parameters = SchnorrParameters<G>;
     type PrivateKey = <G as Group>::ScalarField;
     type PublicKey = SchnorrPublicKey<G>;
     type Signature = SchnorrSignature<G>;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self, SignatureError> {
+        assert!(
+            <<G as Group>::ScalarField as PrimeField>::Parameters::CAPACITY
+                < <<G as AffineCurve>::BaseField as PrimeField>::Parameters::CAPACITY
+        );
+
         let setup_time = start_timer!(|| "SchnorrSignature::setup");
         let parameters = Self::Parameters::setup(rng, Self::PrivateKey::size_in_bits());
         end_timer!(setup_time);
@@ -166,31 +180,42 @@ where
     ) -> Result<Self::Signature, SignatureError> {
         let sign_time = start_timer!(|| "SchnorrSignature::sign");
         // (k, e);
-        let (random_scalar, verifier_challenge) = loop {
-            // Sample a random scalar `k` from the prime scalar field.
-            let random_scalar: <G as Group>::ScalarField = <G as Group>::ScalarField::rand(rng);
-            // Commit to the random scalar via r := k · g.
-            // This is the prover's first msg in the Sigma protocol.
-            let mut prover_commitment = G::zero();
-            for (bit, base_power) in
-                from_bytes_le_to_bits_le(&to_bytes_le![random_scalar]?).zip_eq(&self.parameters.generator_powers)
-            {
-                if bit {
-                    prover_commitment += base_power;
-                }
+
+        // Sample a random scalar `k` from the prime scalar field.
+        let random_scalar: <G as Group>::ScalarField = <G as Group>::ScalarField::rand(rng);
+        // Commit to the random scalar via r := k · g.
+        // This is the prover's first msg in the Sigma protocol.
+        let mut prover_commitment = G::zero();
+        for (bit, base_power) in
+            from_bytes_le_to_bits_le(&to_bytes_le![random_scalar]?).zip_eq(&self.parameters.generator_powers)
+        {
+            if bit {
+                prover_commitment += base_power;
             }
+        }
 
-            // Hash everything to get verifier challenge.
-            let mut hash_input = Vec::new();
-            hash_input.extend_from_slice(&self.parameters.salt);
-            hash_input.extend_from_slice(&to_bytes_le![prover_commitment]?);
-            hash_input.extend_from_slice(message);
+        // Hash everything to get verifier challenge.
+        let mut hash_input = Vec::<<G as AffineCurve>::BaseField>::new();
+        hash_input.extend_from_slice(&self.parameters.salt.to_field_elements().unwrap());
+        hash_input.extend_from_slice(&prover_commitment.to_field_elements().unwrap());
+        hash_input.push(<G as AffineCurve>::BaseField::from(message.len() as u128));
+        hash_input.extend_from_slice(&message.to_field_elements().unwrap());
 
-            // Compute the supposed verifier response: e := H(salt || r || msg);
-            if let Some(verifier_challenge) = <G as Group>::ScalarField::from_random_bytes(&D::digest(&hash_input)) {
-                break (random_scalar, verifier_challenge);
-            };
-        };
+        let raw_hash = PoseidonCryptoHash::<<G as AffineCurve>::BaseField, 4, false>::evaluate(&hash_input).unwrap();
+
+        // Bit decompose the raw_hash
+        let mut raw_hash_bits = raw_hash.to_repr().to_bits_le();
+        raw_hash_bits.resize(
+            <<G as Group>::ScalarField as PrimeField>::Parameters::CAPACITY as usize,
+            false,
+        );
+        raw_hash_bits.reverse();
+
+        // Compute the supposed verifier response: e := H(salt || r || msg);
+        let verifier_challenge = <<G as Group>::ScalarField as PrimeField>::from_repr(
+            <<G as Group>::ScalarField as PrimeField>::BigInteger::from_bits_be(&raw_hash_bits),
+        )
+        .unwrap();
 
         // k - xe;
         let prover_response = random_scalar - (verifier_challenge * private_key);
@@ -228,18 +253,29 @@ where
         let public_key_times_verifier_challenge = public_key.0.mul(*verifier_challenge);
         claimed_prover_commitment += public_key_times_verifier_challenge;
 
-        let mut hash_input = Vec::new();
-        hash_input.extend_from_slice(&self.parameters.salt);
-        hash_input.extend_from_slice(&to_bytes_le![claimed_prover_commitment]?);
-        hash_input.extend_from_slice(&message);
+        // Hash everything to get verifier challenge.
+        let mut hash_input = Vec::<<G as AffineCurve>::BaseField>::new();
+        hash_input.extend_from_slice(&self.parameters.salt.to_field_elements().unwrap());
+        hash_input.extend_from_slice(&claimed_prover_commitment.to_field_elements().unwrap());
+        hash_input.push(<G as AffineCurve>::BaseField::from(message.len() as u128));
+        hash_input.extend_from_slice(&message.to_field_elements().unwrap());
 
-        let obtained_verifier_challenge = if let Some(obtained_verifier_challenge) =
-            <G as Group>::ScalarField::from_random_bytes(&D::digest(&hash_input))
-        {
-            obtained_verifier_challenge
-        } else {
-            return Ok(false);
-        };
+        let raw_hash = PoseidonCryptoHash::<<G as AffineCurve>::BaseField, 4, false>::evaluate(&hash_input).unwrap();
+
+        // Bit decompose the raw_hash
+        let mut raw_hash_bits = raw_hash.to_repr().to_bits_le();
+        raw_hash_bits.resize(
+            <<G as Group>::ScalarField as PrimeField>::Parameters::CAPACITY as usize,
+            false,
+        );
+        raw_hash_bits.reverse();
+
+        // Compute the supposed verifier response: e := H(salt || r || msg);
+        let obtained_verifier_challenge = <<G as Group>::ScalarField as PrimeField>::from_repr(
+            <<G as Group>::ScalarField as PrimeField>::BigInteger::from_bits_be(&raw_hash_bits),
+        )
+        .unwrap();
+
         end_timer!(verify_time);
         Ok(verifier_challenge == &obtained_verifier_challenge)
     }
@@ -296,8 +332,8 @@ where
     }
 }
 
-impl<G: Group, D: Digest> From<SchnorrParameters<G, D>> for Schnorr<G, D> {
-    fn from(parameters: SchnorrParameters<G, D>) -> Self {
+impl<G: Group> From<SchnorrParameters<G>> for Schnorr<G> {
+    fn from(parameters: SchnorrParameters<G>) -> Self {
         Self { parameters }
     }
 }

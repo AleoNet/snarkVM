@@ -346,7 +346,7 @@ fn test_testnet2_dpc_execute_constraints() {
     // "always-accept" program.
     let ledger_parameters = Arc::new(CommitmentMerkleParameters::setup(&mut rng));
 
-    let dpc = <Testnet2DPC as DPCScheme<L>>::load(false).unwrap();
+    let dpc = <Testnet2DPC as DPCScheme<L>>::setup(&ledger_parameters, &mut rng).unwrap();
     let system_parameters = &dpc.system_parameters;
 
     let alternate_noop_program = NoopProgram::<Components>::setup(
@@ -668,7 +668,7 @@ fn test_testnet2_dpc_execute_constraints() {
         let num_constraints = outer_circuit_cs.num_constraints();
         println!("Outer circuit num constraints: {:?}", num_constraints);
         // TODO (howardwu): This constraint count is wrong. Update it after the bug source has been found.
-        assert_eq!(4372996, num_constraints);
+        assert_eq!(4347556, num_constraints);
         println!("=========================================================");
     }
 

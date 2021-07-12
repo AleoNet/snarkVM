@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use blake2::Blake2s;
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
@@ -32,7 +31,7 @@ use crate::{
     traits::{algorithms::EncryptionGadget, alloc::AllocGadget, eq::EqGadget},
 };
 
-type TestEncryptionScheme = GroupEncryption<EdwardsProjective, EdwardsAffine, Blake2s>;
+type TestEncryptionScheme = GroupEncryption<EdwardsProjective, EdwardsAffine>;
 type TestEncryptionSchemeGadget = GroupEncryptionGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
 
 fn generate_input<G: ProjectiveCurve, R: Rng>(input_size: usize, rng: &mut R) -> Vec<G> {
