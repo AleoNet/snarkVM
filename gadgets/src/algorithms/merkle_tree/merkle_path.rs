@@ -31,14 +31,10 @@ use crate::{
 };
 
 pub struct MerklePathGadget<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> {
-    /// `traversal[i]` is 0 (false) iff ith non-leaf node from top to bottom is left.
+    /// `traversal[i]` is 0 (false) iff ith node from bottom to top is left.
     traversal: Vec<Boolean>,
-    /// `path[i]` is the entry of sibling of ith non-leaf node from top to bottom.
+    /// `path[i]` is the entry of sibling of ith node from bottom to top.
     path: Vec<HG::OutputGadget>,
-    /// The sibling of leaf.
-    leaf_sibling: HG::OutputGadget,
-    /// Is this leaf the right child?
-    leaf_is_right_child: Boolean,
 }
 
 impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, HG, F> {
@@ -49,34 +45,7 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, 
         leaf: impl ToBytesGadget<F>,
     ) -> Result<HG::OutputGadget, SynthesisError> {
         let leaf_bytes = leaf.to_bytes(&mut cs.ns(|| "leaf_to_bytes"))?;
-        let claimed_leaf_hash = HG::check_evaluation_gadget(cs.ns(|| "leaf_hash"), parameters, leaf_bytes)?;
-        let leaf_sibling_hash = &self.leaf_sibling;
-
-        // calculate hash for the bottom non_leaf_layer
-
-        // We assume that when a bit is 0, it indicates that the currently hashed value H is the left child,
-        // and when bit is 1, it indicates our H is the right child.
-        // Thus `left_hash` is sibling if the bit `leaf_is_right_child` is 1, and is leaf otherwise.
-
-        let left_hash = HG::OutputGadget::conditionally_select(
-            cs.ns(|| "conditionally_select_left"),
-            &self.leaf_is_right_child,
-            &leaf_sibling_hash,
-            &claimed_leaf_hash,
-        )?;
-        let right_hash = HG::OutputGadget::conditionally_select(
-            cs.ns(|| "conditionally_select_right"),
-            &self.leaf_is_right_child,
-            &claimed_leaf_hash,
-            &leaf_sibling_hash,
-        )?;
-
-        let mut curr_hash = hash_inner_node_gadget::<P::H, HG, F, _>(
-            &mut cs.ns(|| "hash_inner_node"),
-            parameters,
-            &left_hash,
-            &right_hash,
-        )?;
+        let mut curr_hash = HG::check_evaluation_gadget(cs.ns(|| "leaf_hash"), parameters, leaf_bytes)?;
 
         // To traverse up a MT, we iterate over the path from bottom to top
 
@@ -201,11 +170,13 @@ where
 
         let pos_list: Vec<_> = merkle_path.position_list().collect();
         let mut traversal = vec![];
-        for (i, position) in pos_list[1..].iter().enumerate() {
+        for (i, position) in pos_list.iter().enumerate() {
             traversal.push(Boolean::alloc(cs.ns(|| format!("alloc_position_{}", i)), || {
                 Ok(position)
             })?);
         }
+
+        println!("AAAAAA pos_list: {:?}", pos_list.len());
 
         let mut path = vec![];
         for (i, node) in merkle_path.path.iter().enumerate() {
@@ -215,20 +186,7 @@ where
             )?);
         }
 
-        let leaf_sibling = HGadget::OutputGadget::alloc(&mut cs.ns(|| "alloc_leaf_sibling"), || {
-            Ok(merkle_path.leaf_sibling_hash.clone())
-        })?;
-
-        let leaf_position_bit = Boolean::alloc(cs.ns(|| "alloc_leaf_position_bit"), || {
-            Ok(merkle_path.leaf_index & 1 == 1)
-        })?;
-
-        Ok(MerklePathGadget {
-            traversal,
-            path,
-            leaf_sibling,
-            leaf_is_right_child: leaf_position_bit,
-        })
+        Ok(MerklePathGadget { traversal, path })
     }
 
     fn alloc_input<Fn, T, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
@@ -255,19 +213,6 @@ where
             )?);
         }
 
-        let leaf_sibling = HGadget::OutputGadget::alloc_input(&mut cs.ns(|| "alloc_input_leaf_sibling"), || {
-            Ok(merkle_path.leaf_sibling_hash.clone())
-        })?;
-
-        let leaf_position_bit = Boolean::alloc_input(cs.ns(|| "alloc_input_leaf_position_bit"), || {
-            Ok(merkle_path.leaf_index & 1 == 1)
-        })?;
-
-        Ok(MerklePathGadget {
-            traversal,
-            path,
-            leaf_sibling,
-            leaf_is_right_child: leaf_position_bit,
-        })
+        Ok(MerklePathGadget { traversal, path })
     }
 }
