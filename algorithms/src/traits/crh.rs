@@ -22,7 +22,7 @@ use std::{
     hash::Hash,
 };
 
-pub trait CRH: Clone + ToBytes + FromBytes {
+pub trait CRH: Clone + ToBytes + FromBytes + From<<Self as CRH>::Parameters> {
     type Output: Clone + Debug + Display + ToBytes + FromBytes + Eq + Hash + Default + Send + Sync + Copy;
     type Parameters: Clone + Debug + Eq;
 

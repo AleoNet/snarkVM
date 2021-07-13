@@ -15,9 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{errors::CommitmentError, traits::CommitmentScheme};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use blake2::Blake2s as blake2s;
 use digest::Digest;
+use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Blake2sCommitment;
@@ -41,13 +43,26 @@ impl CommitmentScheme for Blake2sCommitment {
         Ok(result)
     }
 
-    fn parameters(&self) -> &Self::Parameters {
-        &()
+    fn parameters(&self) -> Self::Parameters {
+        ()
     }
 }
 
 impl From<()> for Blake2sCommitment {
     fn from(_: ()) -> Self {
         Self
+    }
+}
+
+impl ToBytes for Blake2sCommitment {
+    fn write_le<W: Write>(&self, _: W) -> IoResult<()> {
+        Ok(())
+    }
+}
+
+impl FromBytes for Blake2sCommitment {
+    #[inline]
+    fn read_le<R: Read>(_: R) -> IoResult<Self> {
+        Ok(Self)
     }
 }

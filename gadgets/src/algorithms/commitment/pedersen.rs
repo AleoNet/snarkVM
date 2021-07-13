@@ -23,7 +23,7 @@ use crate::{
         integers::Integer,
     },
 };
-use snarkvm_algorithms::commitment::{PedersenCommitment, PedersenCommitmentParameters, PedersenCompressedCommitment};
+use snarkvm_algorithms::commitment::{PedersenCommitment, PedersenCompressedCommitment};
 use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};

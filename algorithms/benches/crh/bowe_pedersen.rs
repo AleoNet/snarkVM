@@ -21,10 +21,6 @@ use snarkvm_algorithms::{crh::BoweHopwoodPedersenCRH, traits::CRH};
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
 
 use criterion::Criterion;
-use rand::{
-    thread_rng,
-    {self},
-};
 
 const NUM_WINDOWS: usize = 8;
 const WINDOW_SIZE: usize = 32;
@@ -33,8 +29,6 @@ const BIG_NUM_WINDOWS: usize = 296;
 const BIG_WINDOW_SIZE: usize = 63;
 
 fn bowe_pedersen_crh_setup(c: &mut Criterion) {
-    let rng = &mut thread_rng();
-
     c.bench_function("Bowe Pedersen CRH Setup", move |b| {
         b.iter(|| {
             <BoweHopwoodPedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup("bhp_crh_benchmark")
@@ -43,8 +37,6 @@ fn bowe_pedersen_crh_setup(c: &mut Criterion) {
 }
 
 fn big_bowe_pedersen_crh_setup(c: &mut Criterion) {
-    let rng = &mut thread_rng();
-
     c.bench_function("Big Bowe Pedersen CRH Setup", move |b| {
         b.iter(|| {
             <BoweHopwoodPedersenCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::setup(
@@ -55,7 +47,6 @@ fn big_bowe_pedersen_crh_setup(c: &mut Criterion) {
 }
 
 fn bowe_pedersen_crh_hash(c: &mut Criterion) {
-    let rng = &mut thread_rng();
     let crh = <BoweHopwoodPedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup("bhp_crh_benchmark");
     let input = vec![127u8; 32];
 
@@ -65,7 +56,6 @@ fn bowe_pedersen_crh_hash(c: &mut Criterion) {
 }
 
 fn big_bowe_pedersen_crh_hash(c: &mut Criterion) {
-    let rng = &mut thread_rng();
     let crh = <BoweHopwoodPedersenCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::setup(
         "bhp_crh_benchmark",
     );

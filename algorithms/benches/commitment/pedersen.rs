@@ -31,8 +31,6 @@ const NUM_WINDOWS: usize = 8;
 const WINDOW_SIZE: usize = 256;
 
 fn pedersen_commitment_setup(c: &mut Criterion) {
-    let rng = &mut thread_rng();
-
     c.bench_function("Pedersen Commitment Setup", move |b| {
         b.iter(|| {
             <PedersenCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::setup(
