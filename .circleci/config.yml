@@ -42,23 +42,41 @@ commands:
             - .cargo
 jobs:
 
-  integration:
+  integration-testnet1:
     docker:
       - image: cimg/rust:1.53.0
     resource_class: 2xlarge
     steps:
       - checkout
       - setup_environment:
-          cache_key: snarkvm-stable-cache
+          cache_key: snarkvm-stable-testnet1-cache
       - run:
           name: Build and run tests
           no_output_timeout: 60m
-          command: cd .integration && RUST_MIN_STACK=67108864 cargo test
+          command: cd .integration && RUST_MIN_STACK=67108864 cargo test testnet1
       - persist_to_workspace:
           root: ~/
           paths: project/
       - clear_environment:
-          cache_key: snarkvm-stable-cache
+          cache_key: snarkvm-stable-testnet1-cache
+
+  integration-testnet2:
+    docker:
+      - image: cimg/rust:1.53.0
+    resource_class: 2xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-stable-testnet2-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 60m
+          command: cd .integration && RUST_MIN_STACK=67108864 cargo test testnet1
+      - persist_to_workspace:
+          root: ~/
+          paths: project/
+      - clear_environment:
+          cache_key: snarkvm-stable-testnet2-cache
 
   codecov:
     machine:
@@ -76,20 +94,35 @@ jobs:
             howardwu/snarkos-codecov:2021-03-25 bash /home/circleci/project/.resources/kcov.sh
       - run: cd ./project/ && bash <(curl -s https://codecov.io/bash)
 
-  integration-nightly:
+  integration-testnet1-nightly:
     docker:
       - image: howardwu/snarkos-ci:2021-03-25
     resource_class: 2xlarge
     steps:
       - checkout
       - setup_environment:
-          cache_key: snarkvm-nightly-cache
+          cache_key: snarkvm-nightly-testnet1-cache
       - run:
           name: Build and test
           no_output_timeout: 60m
-          command: cd .integration && RUST_MIN_STACK=67108864 cargo test
+          command: cd .integration && RUST_MIN_STACK=67108864 cargo test testnet1
       - clear_environment:
-          cache_key: snarkvm-nightly-cache
+          cache_key: snarkvm-nightly-testnet1-cache
+
+  integration-testnet2-nightly:
+    docker:
+      - image: howardwu/snarkos-ci:2021-03-25
+    resource_class: 2xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-nightly-testnet2-cache
+      - run:
+          name: Build and test
+          no_output_timeout: 60m
+          command: cd .integration && RUST_MIN_STACK=67108864 cargo test testnet2
+      - clear_environment:
+          cache_key: snarkvm-nightly-testnet2-cache
 
   algorithms:
     docker:
@@ -500,11 +533,14 @@ workflows:
   version: 2
   main-workflow:
     jobs:
-      - integration
-      - integration-nightly
+      - integration-testnet1
+      - integration-testnet1-nightly
+      - integration-testnet2
+      - integration-testnet2-nightly
       - codecov:
           requires:
-            - integration
+            - integration-testnet1
+            - integration-testnet2
             - algorithms
             - curves
             - derives
