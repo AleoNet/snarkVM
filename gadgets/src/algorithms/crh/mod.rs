@@ -20,5 +20,8 @@ pub use bowe_hopwood_pedersen::*;
 pub mod pedersen;
 pub use pedersen::*;
 
+pub mod poseidon;
+pub use poseidon::*;
+
 #[cfg(test)]
 pub mod tests;
