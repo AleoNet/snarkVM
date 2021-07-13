@@ -29,7 +29,6 @@ use snarkvm_fields::{
     PoseidonDefaultParameters,
     PrimeField,
 };
-use snarkvm_utilities::marker::PhantomData;
 
 /// Parameters and RNG used
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -286,7 +285,7 @@ pub struct PoseidonCryptoHash<
     const RATE: usize,
     const OPTIMIZED_FOR_WEIGHTS: bool,
 > {
-    pub field_phantom: PhantomData<F>,
+    pub parameters: PoseidonParameters<F>,
 }
 
 impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> CryptoHash

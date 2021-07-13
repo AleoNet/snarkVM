@@ -34,7 +34,10 @@ use std::{
 
 impl<F: PrimeField + PoseidonDefaultParametersField> CRHParameters for PoseidonParameters<F> {
     fn setup<R: Rng>(_r: &mut R) -> Self {
-        unimplemented!()
+        // TODO (raychu86): Don't use the hard coded rate and optimization flag.
+        let params = F::get_default_poseidon_parameters(4, false).unwrap();
+
+        params
     }
 }
 
@@ -59,11 +62,11 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     type Parameters = PoseidonParameters<F>;
 
     // TODO (raychu86): Specify this value correctly. Currently an arbitrary value
-    const INPUT_SIZE_BITS: usize = 64 * 64;
+    const INPUT_SIZE_BITS: usize = 48 * 48;
 
     fn setup<R: Rng>(_rng: &mut R) -> Self {
         Self {
-            field_phantom: PhantomData,
+            parameters: F::get_default_poseidon_parameters(RATE, OPTIMIZED_FOR_WEIGHTS).unwrap(),
         }
     }
 
@@ -72,16 +75,14 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     }
 
     fn parameters(&self) -> &Self::Parameters {
-        unimplemented!()
+        &self.parameters
     }
 }
 
 impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
     From<PoseidonParameters<F>> for PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {
-    fn from(_parameters: PoseidonParameters<F>) -> Self {
-        Self {
-            field_phantom: PhantomData,
-        }
+    fn from(parameters: PoseidonParameters<F>) -> Self {
+        Self { parameters }
     }
 }
