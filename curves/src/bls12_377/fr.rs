@@ -40,9 +40,12 @@ use snarkvm_utilities::biginteger::BigInteger256 as BigInteger;
 /// assert g2.multiplicative_order() == 2**s
 /// def into_chunks(val, width, n):
 ///     return [int(int(val) // (2 ** (width * i)) % 2 ** width) for i in range(n)]
-/// print("Gen: ", g * R % q)
-/// print("Gen: ", into_chunks(g * R % q, 64, 4))
-/// print("2-adic gen: ", into_chunks(g2 * R % q, 64, 4))
+/// print("Gen (g % q): ", g % q)
+/// print("Gen (g * R % q): ", g * R % q)
+/// print("Gen into_chunks(g * R % q): ", into_chunks(g * R % q, 64, 4))
+/// print("2-adic gen (g2 % q): ", g2 % q)
+/// print("2-adic gen (g2 * R % q): ", g2 * R % q)
+/// print("2-adic gen into_chunks(g2 * R % q): ", into_chunks(g2 * R % q, 64, 4))
 /// ```
 pub type Fr = Fp256<FrParameters>;
 
@@ -55,6 +58,10 @@ impl FftParameters for FrParameters {
 
     #[rustfmt::skip]
     const TWO_ADICITY: u32 = 47;
+    /// TWO_ADIC_ROOT_OF_UNITY = 8065159656716812877374967518403273466521432693661810619979959746626482506078
+    /// Encoded in Montgomery form, the value is
+    /// (8065159656716812877374967518403273466521432693661810619979959746626482506078 * R % q) =
+    /// 7039866554349711480672062101017509031917008525101396696252683426045173093960
     #[rustfmt::skip]
     const TWO_ADIC_ROOT_OF_UNITY: BigInteger = BigInteger([
         12646347781564978760u64,
