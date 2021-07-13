@@ -72,27 +72,8 @@ jobs:
           name: Build and run tests
           no_output_timeout: 60m
           command: cd .integration && RUST_MIN_STACK=67108864 cargo test testnet1
-      - persist_to_workspace:
-          root: ~/
-          paths: project/
       - clear_environment:
           cache_key: snarkvm-stable-testnet2-cache
-
-  codecov:
-    machine:
-      image: ubuntu-1604:202004-01
-      docker_layer_caching: true
-    resource_class: 2xlarge
-    steps:
-      - attach_workspace:
-          at: /home/circleci/project/
-      - run:
-          name: Run kcov
-          command: >
-            cd ~/project/project/ &&
-            docker run --security-opt seccomp=unconfined -v ~/project/project/:/home/circleci/project/
-            howardwu/snarkos-codecov:2021-03-25 bash /home/circleci/project/.resources/kcov.sh
-      - run: cd ./project/ && bash <(curl -s https://codecov.io/bash)
 
   integration-testnet1-nightly:
     docker:
@@ -537,23 +518,6 @@ workflows:
       - integration-testnet1-nightly
       - integration-testnet2
       - integration-testnet2-nightly
-      - codecov:
-          requires:
-            - integration-testnet1
-            - integration-testnet2
-            - algorithms
-            - curves
-            - derives
-            - dpc
-            - fields
-            - gadgets
-            - marlin
-            - parameters
-            - polycommit
-            - posw
-            - profiler
-            - r1cs
-            - utilities
       - algorithms
       - curves
       - derives
