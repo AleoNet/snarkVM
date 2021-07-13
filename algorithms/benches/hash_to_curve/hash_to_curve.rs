@@ -47,7 +47,7 @@ fn one_step_of_hash_to_g1_on_bls12_377(c: &mut Criterion) {
 
     c.bench_function("one_step_of_hash_to_g1_on_bls12_377", move |b| {
         b.iter(|| {
-            let _ = try_hash_to_curve::<G1Affine>(&message);
+            let _ = hash_to_curve::<G1Affine>(&message);
         })
     });
 }
@@ -75,7 +75,7 @@ fn one_step_of_hash_to_g2_on_bls12_377(c: &mut Criterion) {
 
     c.bench_function("one_step_of_hash_to_g2_on_bls12_377", move |b| {
         b.iter(|| {
-            let _ = try_hash_to_curve::<G2Affine>(&message);
+            let _ = hash_to_curve::<G2Affine>(&message);
         })
     });
 }
