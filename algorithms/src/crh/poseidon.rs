@@ -59,7 +59,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     type Parameters = PoseidonParameters<F>;
 
     // TODO (raychu86): Specify this value correctly. Currently an arbitrary value
-    const INPUT_SIZE_BITS: usize = 48 * 48;
+    const INPUT_SIZE_BITS: usize = 20 * 48;
 
     fn setup<R: Rng>(_rng: &mut R) -> Self {
         Self {

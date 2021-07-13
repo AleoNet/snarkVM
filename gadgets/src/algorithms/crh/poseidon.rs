@@ -18,7 +18,6 @@ use crate::{
     algorithms::crypto_hash::{CryptographicSpongeVar, PoseidonCryptoHashGadget, PoseidonSpongeGadget},
     traits::{integers::Integer, ToConstraintFieldGadget},
     CRHGadget,
-    FieldGadget,
     FpGadget,
     UInt8,
 };
