@@ -94,10 +94,6 @@ default-features = false
 version = "0.3"
 default-features = false
 
-[dev-dependencies.num-bigint]
-version = "0.4.0"
-default-features = false
-
 [features]
 default = [
   "full",
