@@ -42,7 +42,7 @@ commands:
             - .cargo
 jobs:
 
-  rust-stable-integration:
+  integration:
     docker:
       - image: cimg/rust:1.53.0
     resource_class: 2xlarge
@@ -76,7 +76,7 @@ jobs:
             howardwu/snarkos-codecov:2021-03-25 bash /home/circleci/project/.resources/kcov.sh
       - run: cd ./project/ && bash <(curl -s https://codecov.io/bash)
 
-  rust-nightly-integration:
+  integration-nightly:
     docker:
       - image: howardwu/snarkos-ci:2021-03-25
     resource_class: 2xlarge
@@ -91,7 +91,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-nightly-cache
 
-  snarkvm-algorithms:
+  algorithms:
     docker:
       - image: cimg/rust:1.53.0
     resource_class: xlarge
@@ -106,7 +106,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-algorithms-cache
 
-  snarkvm-curves:
+  curves:
     docker:
       - image: cimg/rust:1.53.0
     resource_class: xlarge
@@ -121,7 +121,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-curves-cache
 
-  snarkvm-derives:
+  derives:
     docker:
       - image: cimg/rust:1.53.0
     resource_class: xlarge
@@ -136,7 +136,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-derives-cache
 
-  snarkvm-dpc:
+  dpc:
     docker:
       - image: cimg/rust:1.53.0
     resource_class: xlarge
@@ -151,7 +151,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-dpc-cache
 
-  snarkvm-fields:
+  fields:
     docker:
       - image: cimg/rust:1.53.0
     resource_class: xlarge
@@ -166,7 +166,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-fields-cache
 
-  snarkvm-gadgets:
+  gadgets:
     docker:
       - image: cimg/rust:1.53.0
     resource_class: xlarge
@@ -181,7 +181,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-gadgets-cache
 
-  snarkvm-marlin:
+  marlin:
     docker:
       - image: cimg/rust:1.53.0
     resource_class: xlarge
@@ -196,7 +196,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-marlin-cache
 
-  snarkvm-parameters:
+  parameters:
     docker:
       - image: cimg/rust:1.53.0
     resource_class: xlarge
@@ -211,7 +211,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-parameters-cache
 
-  snarkvm-polycommit:
+  polycommit:
     docker:
       - image: cimg/rust:1.53.0
     resource_class: xlarge
@@ -226,7 +226,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-polycommit-cache
 
-  snarkvm-posw:
+  posw:
     docker:
       - image: cimg/rust:1.53.0
     resource_class: xlarge
@@ -241,7 +241,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-posw-cache
 
-  snarkvm-profiler:
+  profiler:
     docker:
       - image: cimg/rust:1.53.0
     resource_class: xlarge
@@ -256,7 +256,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-profiler-cache
 
-  snarkvm-r1cs:
+  r1cs:
     docker:
       - image: cimg/rust:1.53.0
     resource_class: xlarge
@@ -271,7 +271,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-r1cs-cache
 
-  snarkvm-utilities:
+  utilities:
     docker:
       - image: cimg/rust:1.53.0
     resource_class: xlarge
@@ -286,7 +286,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-utilities-cache
 
-  snarkvm-algorithms-nightly:
+  algorithms-nightly:
     docker:
       - image: howardwu/snarkos-ci:2021-03-25
     resource_class: xlarge
@@ -301,7 +301,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-algorithms-nightly-cache
 
-  snarkvm-curves-nightly:
+  curves-nightly:
     docker:
       - image: howardwu/snarkos-ci:2021-03-25
     resource_class: xlarge
@@ -316,7 +316,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-curves-nightly-cache
 
-  snarkvm-derives-nightly:
+  derives-nightly:
     docker:
       - image: howardwu/snarkos-ci:2021-03-25
     resource_class: xlarge
@@ -331,7 +331,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-derives-nightly-cache
 
-  snarkvm-dpc-nightly:
+  dpc-nightly:
     docker:
       - image: howardwu/snarkos-ci:2021-03-25
     resource_class: xlarge
@@ -346,7 +346,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-dpc-nightly-cache
 
-  snarkvm-fields-nightly:
+  fields-nightly:
     docker:
       - image: howardwu/snarkos-ci:2021-03-25
     resource_class: xlarge
@@ -361,7 +361,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-fields-nightly-cache
 
-  snarkvm-gadgets-nightly:
+  gadgets-nightly:
     docker:
       - image: howardwu/snarkos-ci:2021-03-25
     resource_class: xlarge
@@ -376,7 +376,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-gadgets-nightly-cache
 
-  snarkvm-marlin-nightly:
+  marlin-nightly:
     docker:
       - image: howardwu/snarkos-ci:2021-03-25
     resource_class: xlarge
@@ -391,7 +391,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-marlin-nightly-cache
 
-  snarkvm-parameters-nightly:
+  parameters-nightly:
     docker:
       - image: howardwu/snarkos-ci:2021-03-25
     resource_class: xlarge
@@ -406,7 +406,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-parameters-nightly-cache
 
-  snarkvm-polycommit-nightly:
+  polycommit-nightly:
     docker:
       - image: howardwu/snarkos-ci:2021-03-25
     resource_class: xlarge
@@ -421,7 +421,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-polycommit-nightly-cache
 
-  snarkvm-posw-nightly:
+  posw-nightly:
     docker:
       - image: howardwu/snarkos-ci:2021-03-25
     resource_class: xlarge
@@ -436,7 +436,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-posw-nightly-cache
 
-  snarkvm-profiler-nightly:
+  profiler-nightly:
     docker:
       - image: howardwu/snarkos-ci:2021-03-25
     resource_class: xlarge
@@ -451,7 +451,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-profiler-nightly-cache
 
-  snarkvm-r1cs-nightly:
+  r1cs-nightly:
     docker:
       - image: howardwu/snarkos-ci:2021-03-25
     resource_class: xlarge
@@ -466,7 +466,7 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-r1cs-nightly-cache
 
-  snarkvm-utilities-nightly:
+  utilities-nightly:
     docker:
       - image: howardwu/snarkos-ci:2021-03-25
     resource_class: xlarge
@@ -485,47 +485,47 @@ workflows:
   version: 2
   main-workflow:
     jobs:
-      - rust-stable-integration
-      - rust-nightly-integration
+      - integration
+      - integration-nightly
       - codecov:
           requires:
-            - rust-stable-integration
-            - snarkvm-algorithms
-            - snarkvm-curves
-            - snarkvm-derives
-            - snarkvm-dpc
-            - snarkvm-fields
-            - snarkvm-gadgets
-            - snarkvm-marlin
-            - snarkvm-parameters
-            - snarkvm-polycommit
-            - snarkvm-posw
-            - snarkvm-profiler
-            - snarkvm-r1cs
-            - snarkvm-utilities
-      - snarkvm-algorithms
-      - snarkvm-curves
-      - snarkvm-derives
-      - snarkvm-dpc
-      - snarkvm-fields
-      - snarkvm-gadgets
-      - snarkvm-marlin
-      - snarkvm-parameters
-      - snarkvm-polycommit
-      - snarkvm-posw
-      - snarkvm-profiler
-      - snarkvm-r1cs
-      - snarkvm-utilities
-      - snarkvm-algorithms-nightly
-      - snarkvm-curves-nightly
-      - snarkvm-derives-nightly
-      - snarkvm-dpc-nightly
-      - snarkvm-fields-nightly
-      - snarkvm-gadgets-nightly
-      - snarkvm-marlin-nightly
-      - snarkvm-parameters-nightly
-      - snarkvm-polycommit-nightly
-      - snarkvm-posw-nightly
-      - snarkvm-profiler-nightly
-      - snarkvm-r1cs-nightly
-      - snarkvm-utilities-nightly
+            - integration
+            - algorithms
+            - curves
+            - derives
+            - dpc
+            - fields
+            - gadgets
+            - marlin
+            - parameters
+            - polycommit
+            - posw
+            - profiler
+            - r1cs
+            - utilities
+      - algorithms
+      - curves
+      - derives
+      - dpc
+      - fields
+      - gadgets
+      - marlin
+      - parameters
+      - polycommit
+      - posw
+      - profiler
+      - r1cs
+      - utilities
+      - algorithms-nightly
+      - curves-nightly
+      - derives-nightly
+      - dpc-nightly
+      - fields-nightly
+      - gadgets-nightly
+      - marlin-nightly
+      - parameters-nightly
+      - polycommit-nightly
+      - posw-nightly
+      - profiler-nightly
+      - r1cs-nightly
+      - utilities-nightly
