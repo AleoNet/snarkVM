@@ -370,6 +370,7 @@ fn test_uint128_div_constants() {
 }
 
 #[test]
+#[ignore]
 fn test_uint128_div() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
