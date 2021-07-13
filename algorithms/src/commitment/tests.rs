@@ -25,7 +25,7 @@ const NUM_WINDOWS: usize = 8;
 const WINDOW_SIZE: usize = 128;
 
 fn commitment_parameters_serialization<C: CommitmentScheme>() {
-    let commitment = C::setup("commitment_parameters_serialization").unwrap();
+    let commitment = C::setup("commitment_parameters_serialization");
     let commitment_parameters_bytes = commitment.parameters().to_bytes_le().unwrap();
 
     let recovered_commitment_parameters =

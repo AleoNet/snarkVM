@@ -41,8 +41,8 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 
     const INPUT_SIZE_BITS: usize = PedersenCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::INPUT_SIZE_BITS;
 
-    fn setup(message: &str) -> Result<Self, CRHError> {
-        Ok(BoweHopwoodPedersenCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(message)?.into())
+    fn setup(message: &str) -> Self {
+        BoweHopwoodPedersenCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(message).into()
     }
 
     fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {

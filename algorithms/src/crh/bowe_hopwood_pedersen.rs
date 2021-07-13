@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{crh::PedersenCRH, hash_to_curve::try_hash_to_curve, CRHError, CRH};
+use crate::{crh::PedersenCRH, hash_to_curve::hash_to_curve, CRHError, CRH};
 use snarkvm_curves::AffineCurve;
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::{BigInteger, FromBytes, ToBytes};
@@ -50,7 +50,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 
     const INPUT_SIZE_BITS: usize = PedersenCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::INPUT_SIZE_BITS;
 
-    fn setup(message: &str) -> Result<Self, CRHError> {
+    fn setup(message: &str) -> Self {
         fn calculate_num_chunks_in_segment<F: PrimeField>() -> usize {
             let upper_limit = F::modulus_minus_one_div_two();
             let mut c = 0;
@@ -78,13 +78,13 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
             WINDOW_SIZE,
             WINDOW_SIZE * NUM_WINDOWS * BOWE_HOPWOOD_CHUNK_SIZE
         ));
-        let bases = Self::create_generators(message)?;
+        let bases = Self::create_generators(message);
         end_timer!(time);
 
-        Ok(Self {
+        Self {
             crh: bases.into(),
             base_lookup: OnceCell::new(),
-        })
+        }
     }
 
     fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
@@ -160,26 +160,23 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    pub fn create_generators(message: &str) -> Result<Vec<Vec<G>>, CRHError> {
+    pub fn create_generators(message: &str) -> Vec<Vec<G>> {
         let mut generators = Vec::with_capacity(NUM_WINDOWS);
         for index in 0..NUM_WINDOWS {
             // Construct an indexed message to attempt to sample a base.
             let indexed_message = format!("{} at {}", message, index);
-            if let Some((mut base, _, _)) = try_hash_to_curve::<G>(&indexed_message) {
-                // Compute the generators for the sampled base.
-                let mut generators_for_segment = Vec::with_capacity(WINDOW_SIZE);
-                for _ in 0..WINDOW_SIZE {
-                    generators_for_segment.push(base);
-                    for _ in 0..4 {
-                        base.double_in_place();
-                    }
+            let (mut base, _, _) = hash_to_curve::<G>(&indexed_message);
+            // Compute the generators for the sampled base.
+            let mut generators_for_segment = Vec::with_capacity(WINDOW_SIZE);
+            for _ in 0..WINDOW_SIZE {
+                generators_for_segment.push(base);
+                for _ in 0..4 {
+                    base.double_in_place();
                 }
-                generators.push(generators_for_segment);
-            } else {
-                return Err(CRHError::UnableToHashToCurve(indexed_message));
             }
+            generators.push(generators_for_segment);
         }
-        Ok(generators)
+        generators
     }
 
     pub fn base_lookup(
@@ -274,8 +271,7 @@ mod tests {
 
     #[test]
     fn test_bowe_pedersen() {
-        let crh = <BoweHopwoodPedersenCRH<EdwardsAffine, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup("test_bowe_pedersen")
-            .unwrap();
+        let crh = <BoweHopwoodPedersenCRH<EdwardsAffine, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup("test_bowe_pedersen");
         let input = vec![127u8; 32];
 
         let output = crh.hash(&input).unwrap();

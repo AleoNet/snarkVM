@@ -33,8 +33,8 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commitm
     type Parameters = PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>;
     type Randomness = <G as Group>::ScalarField;
 
-    fn setup(message: &str) -> Result<Self, CommitmentError> {
-        Ok(PedersenCommitmentParameters::setup(message)?.into())
+    fn setup(message: &str) -> Self {
+        PedersenCommitmentParameters::setup(message).into()
     }
 
     /// Returns the affine x-coordinate as the commitment.

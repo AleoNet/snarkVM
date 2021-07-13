@@ -28,7 +28,7 @@ pub trait CRH: Clone + ToBytes + FromBytes {
 
     const INPUT_SIZE_BITS: usize;
 
-    fn setup(message: &str) -> Result<Self, CRHError>;
+    fn setup(message: &str) -> Self;
 
     fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError>;
 

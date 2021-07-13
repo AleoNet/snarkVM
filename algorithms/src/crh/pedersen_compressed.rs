@@ -37,8 +37,8 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 
     const INPUT_SIZE_BITS: usize = WINDOW_SIZE * NUM_WINDOWS;
 
-    fn setup(message: &str) -> Result<Self, CRHError> {
-        Ok(PedersenCRH::setup(message)?.into())
+    fn setup(message: &str) -> Self {
+        PedersenCRH::setup(message).into()
     }
 
     /// Returns the affine x-coordinate as the collision-resistant hash output.

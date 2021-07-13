@@ -50,8 +50,8 @@ macro_rules! define_merkle_tree_parameters {
 
             const DEPTH: usize = $depth;
 
-            fn setup(message: &str) -> Result<Self, MerkleError> {
-                Ok(Self(Self::H::setup(message)?))
+            fn setup(message: &str) -> Self {
+                Self(Self::H::setup(message))
             }
 
             fn crh(&self) -> &Self::H {
@@ -69,8 +69,10 @@ macro_rules! define_merkle_tree_parameters {
 
         impl Default for $struct_name {
             fn default() -> Self {
-                // TODO (howardwu): Remove this unwrap and switch to a better default.
-                Self(<Self as MerkleParameters>::H::setup($crate::merkle_tree::setup_message()).unwrap())
+                // TODO (howardwu): Switch to a better default.
+                Self(<Self as MerkleParameters>::H::setup(
+                    $crate::merkle_tree::setup_message(),
+                ))
             }
         }
     };
@@ -94,8 +96,8 @@ macro_rules! define_masked_merkle_tree_parameters {
 
             const DEPTH: usize = $depth;
 
-            fn setup(message: &str) -> Result<Self, MerkleError> {
-                Ok(Self(Self::H::setup(message)?, Self::H::setup(message)?))
+            fn setup(message: &str) -> Self {
+                Self(Self::H::setup(message), Self::H::setup(message))
             }
 
             fn crh(&self) -> &Self::H {
@@ -113,8 +115,8 @@ macro_rules! define_masked_merkle_tree_parameters {
             fn default() -> Self {
                 Self(
                     // TODO (howardwu): Remove this unwrap and switch to a better default.
-                    <Self as MerkleParameters>::H::setup($crate::merkle_tree::setup_message()).unwrap(),
-                    <Self as MerkleParameters>::H::setup($crate::merkle_tree::setup_message()).unwrap(),
+                    <Self as MerkleParameters>::H::setup($crate::merkle_tree::setup_message()),
+                    <Self as MerkleParameters>::H::setup($crate::merkle_tree::setup_message()),
                 )
             }
         }

@@ -25,7 +25,7 @@ pub trait MerkleParameters: Send + Sync + Clone + Default {
     const DEPTH: usize;
 
     /// Setup the MerkleParameters
-    fn setup(message: &str) -> Result<Self, MerkleError>;
+    fn setup(message: &str) -> Self;
 
     /// Returns the collision-resistant hash function used by the Merkle tree.
     fn crh(&self) -> &Self::H;

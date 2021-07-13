@@ -27,8 +27,8 @@ impl CommitmentScheme for Blake2sCommitment {
     type Parameters = ();
     type Randomness = [u8; 32];
 
-    fn setup(_: &str) -> Result<Self, CommitmentError> {
-        Ok(Self)
+    fn setup(_: &str) -> Self {
+        Self
     }
 
     fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {

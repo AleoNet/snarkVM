@@ -28,7 +28,7 @@ const BHP_NUM_WINDOWS: usize = 8;
 const BHP_WINDOW_SIZE: usize = 63;
 
 fn crh_serialization<C: CRH>() {
-    let crh = C::setup("crh_serialization").unwrap().to_bytes_le().unwrap();
+    let crh = C::setup("crh_serialization").to_bytes_le().unwrap();
     let recovered_crh: C = FromBytes::read_le(&crh[..]).unwrap();
     assert_eq!(crh, recovered_crh.to_bytes_le().unwrap());
 }
@@ -56,7 +56,6 @@ fn bowe_hopwood_compressed_crh_serialization() {
 #[test]
 fn simple_bowe_hopwood_crh() {
     let crh =
-        BoweHopwoodPedersenCRH::<EdwardsAffine, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>::setup("simple_bowe_hopwood_crh")
-            .unwrap();
+        BoweHopwoodPedersenCRH::<EdwardsAffine, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>::setup("simple_bowe_hopwood_crh");
     crh.hash(&[1, 2, 3]).unwrap();
 }

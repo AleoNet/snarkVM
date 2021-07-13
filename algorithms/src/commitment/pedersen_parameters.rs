@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{crh::PedersenCRH, hash_to_curve::try_hash_to_curve, traits::CRH, CommitmentError};
+use crate::{crh::PedersenCRH, hash_to_curve::hash_to_curve, traits::CRH};
 use snarkvm_curves::AffineCurve;
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
@@ -30,22 +30,19 @@ pub struct PedersenCommitmentParameters<G: AffineCurve, const NUM_WINDOWS: usize
 impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    pub fn setup(message: &str) -> Result<Self, CommitmentError> {
+    pub fn setup(message: &str) -> Self {
         // First, compute the bases.
-        let crh = PedersenCRH::setup(message)?;
+        let crh = PedersenCRH::setup(message);
 
         // Next, compute the random base.
         let random_base_message = format!("{} for random base", message);
-        if let Some((mut base, _, _)) = try_hash_to_curve::<G>(&random_base_message) {
-            let mut random_base = Vec::with_capacity(WINDOW_SIZE);
-            for _ in 0..WINDOW_SIZE {
-                random_base.push(base);
-                base.double_in_place();
-            }
-            Ok(Self { crh, random_base })
-        } else {
-            Err(CommitmentError::UnableToHashToCurve(random_base_message))
+        let (mut base, _, _) = hash_to_curve::<G>(&random_base_message);
+        let mut random_base = Vec::with_capacity(WINDOW_SIZE);
+        for _ in 0..WINDOW_SIZE {
+            random_base.push(base);
+            base.double_in_place();
         }
+        Self { crh, random_base }
     }
 }
 
