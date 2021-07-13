@@ -50,9 +50,6 @@ pub fn try_hash_to_curve<G: AffineCurve>(input: &str) -> Option<G> {
         debug_assert!(g.is_on_curve());
         debug_assert!(g.is_in_correct_subgroup_assuming_on_curve());
 
-        match !g.is_zero() {
-            true => return Some(g),
-            false => None,
-        }
+        (!g.is_zero()).then(|| g)
     })
 }
