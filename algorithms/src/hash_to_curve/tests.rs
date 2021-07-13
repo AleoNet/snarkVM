@@ -26,12 +26,12 @@ mod bls12_377 {
 
     #[test]
     fn hash_bls12_377_g1() {
-        let g1 = hash_to_curve::<G1Affine>("Aleo BLS12-377 G1 in 0").unwrap();
+        let g1 = try_hash_to_curve::<G1Affine>("Aleo BLS12-377 G1 in 0").unwrap();
         assert!(g1.is_on_curve());
         assert!(g1.is_in_correct_subgroup_assuming_on_curve());
         assert_eq!(G1Affine::SERIALIZED_SIZE, 384 / 8);
         assert_eq!(
-            try_hash_to_curve::<G1Affine>("Aleo BLS12-377 G1"),
+            hash_to_curve::<G1Affine>("Aleo BLS12-377 G1"),
             Some((g1, "Aleo BLS12-377 G1 in 0".to_string(), 0))
         );
 
@@ -96,12 +96,12 @@ mod bls12_377 {
 
     #[test]
     fn hash_bls12_377_g2() {
-        let g2 = hash_to_curve::<G2Affine>("Aleo BLS12-377 G2 in 6").unwrap();
+        let g2 = try_hash_to_curve::<G2Affine>("Aleo BLS12-377 G2 in 6").unwrap();
         assert!(g2.is_on_curve());
         assert!(g2.is_in_correct_subgroup_assuming_on_curve());
         assert_eq!(G2Affine::SERIALIZED_SIZE, 2 * 384 / 8);
         assert_eq!(
-            try_hash_to_curve::<G2Affine>("Aleo BLS12-377 G2"),
+            hash_to_curve::<G2Affine>("Aleo BLS12-377 G2"),
             Some((g2, "Aleo BLS12-377 G2 in 6".to_string(), 6)),
         );
 
@@ -221,12 +221,12 @@ mod bw6_761 {
 
     #[test]
     fn hash_bw6_761_g1() {
-        let g1 = hash_to_curve::<G1Affine>("Aleo BW6-761 G1 in 2").unwrap();
+        let g1 = try_hash_to_curve::<G1Affine>("Aleo BW6-761 G1 in 2").unwrap();
         assert!(g1.is_on_curve());
         assert!(g1.is_in_correct_subgroup_assuming_on_curve());
         assert_eq!(G1Affine::SERIALIZED_SIZE, 768 / 8);
         assert_eq!(
-            try_hash_to_curve::<G1Affine>("Aleo BW6-761 G1"),
+            hash_to_curve::<G1Affine>("Aleo BW6-761 G1"),
             Some((g1, "Aleo BW6-761 G1 in 2".to_string(), 2)),
         );
 
@@ -315,12 +315,12 @@ mod bw6_761 {
 
     #[test]
     fn hash_bw6_761_g2() {
-        let g2 = hash_to_curve::<G2Affine>("Aleo BW6-761 G2 in 14").unwrap();
+        let g2 = try_hash_to_curve::<G2Affine>("Aleo BW6-761 G2 in 14").unwrap();
         assert!(g2.is_on_curve());
         assert!(g2.is_in_correct_subgroup_assuming_on_curve());
         assert_eq!(G2Affine::SERIALIZED_SIZE, 768 / 8);
         assert_eq!(
-            try_hash_to_curve::<G2Affine>("Aleo BW6-761 G2"),
+            hash_to_curve::<G2Affine>("Aleo BW6-761 G2"),
             Some((g2, "Aleo BW6-761 G2 in 14".to_string(), 14)),
         );
 

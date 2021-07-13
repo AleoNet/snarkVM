@@ -17,16 +17,16 @@
 use crate::crypto_hash::Blake2Xs;
 use snarkvm_curves::AffineCurve;
 
-/// Attempts to run hash-to-curve and returns the generator, message, and counter on sucess.
+/// Runs hash-to-curve and returns the generator, message, and counter on success.
 #[inline]
-pub fn try_hash_to_curve<G: AffineCurve>(input: &str) -> Option<(G, String, usize)> {
+pub fn hash_to_curve<G: AffineCurve>(input: &str) -> Option<(G, String, usize)> {
     // Attempt to increment counter `k` at most `8 * G::SERIALIZED_SIZE` times.
     for k in 0..(8 * G::SERIALIZED_SIZE) {
         // Construct a new message.
         let message = format!("{} in {}", input, k);
 
         // Output the generator if a valid generator was found.
-        if let Some(g) = hash_to_curve::<G>(&message) {
+        if let Some(g) = try_hash_to_curve::<G>(&message) {
             return Some((g, message, k));
         }
     }
@@ -35,7 +35,7 @@ pub fn try_hash_to_curve<G: AffineCurve>(input: &str) -> Option<(G, String, usiz
 
 /// Executes one round of hash-to-curve and returns a generator on success.
 #[inline]
-pub fn hash_to_curve<G: AffineCurve>(input: &str) -> Option<G> {
+pub fn try_hash_to_curve<G: AffineCurve>(input: &str) -> Option<G> {
     debug_assert!(G::SERIALIZED_SIZE > 0);
 
     // Compute the digest for sampling the generator.

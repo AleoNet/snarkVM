@@ -16,7 +16,7 @@
 
 use criterion::Criterion;
 
-use snarkvm_algorithms::hash_to_curve::{hash_to_curve, try_hash_to_curve};
+use snarkvm_algorithms::hash_to_curve::hash_to_curve;
 use snarkvm_curves::bls12_377::{G1Affine, G2Affine};
 
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
@@ -33,7 +33,7 @@ fn try_hash_to_g1_on_bls12_377(c: &mut Criterion) {
 
     c.bench_function("try_hash_to_g1_on_bls12_377", move |b| {
         b.iter(|| {
-            let _ = try_hash_to_curve::<G1Affine>(&message).unwrap();
+            let _ = hash_to_curve::<G1Affine>(&message).unwrap();
         })
     });
 }
@@ -47,7 +47,7 @@ fn one_step_of_hash_to_g1_on_bls12_377(c: &mut Criterion) {
 
     c.bench_function("one_step_of_hash_to_g1_on_bls12_377", move |b| {
         b.iter(|| {
-            let _ = hash_to_curve::<G1Affine>(&message);
+            let _ = try_hash_to_curve::<G1Affine>(&message);
         })
     });
 }
@@ -61,7 +61,7 @@ fn try_hash_to_g2_on_bls12_377(c: &mut Criterion) {
 
     c.bench_function("try_hash_to_g1_on_bls12_377", move |b| {
         b.iter(|| {
-            let _ = try_hash_to_curve::<G2Affine>(&message).unwrap();
+            let _ = hash_to_curve::<G2Affine>(&message).unwrap();
         })
     });
 }
@@ -75,7 +75,7 @@ fn one_step_of_hash_to_g2_on_bls12_377(c: &mut Criterion) {
 
     c.bench_function("one_step_of_hash_to_g2_on_bls12_377", move |b| {
         b.iter(|| {
-            let _ = hash_to_curve::<G2Affine>(&message);
+            let _ = try_hash_to_curve::<G2Affine>(&message);
         })
     });
 }
