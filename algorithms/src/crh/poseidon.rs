@@ -25,10 +25,7 @@ use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::Rng;
-use std::{
-    io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
-};
+use std::io::{Read, Result as IoResult, Write};
 
 // TODO (raychu86): Implement these trait functions.
 

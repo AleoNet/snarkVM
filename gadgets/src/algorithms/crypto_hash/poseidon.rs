@@ -26,7 +26,7 @@ use snarkvm_algorithms::crypto_hash::{
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-use std::borrow::Borrow;
+use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone)]
 /// the gadget for Poseidon sponge
