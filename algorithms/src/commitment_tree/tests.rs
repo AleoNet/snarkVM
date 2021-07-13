@@ -20,7 +20,7 @@ use crate::{
     crh::BoweHopwoodPedersenCompressedCRH,
     traits::{CommitmentScheme, CRH},
 };
-use snarkvm_curves::edwards_bls12::EdwardsAffine as EdwardsBls;
+use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
 use snarkvm_utilities::{rand::UniformRand, FromBytes, ToBytes};
 
 use rand::{Rng, SeedableRng};

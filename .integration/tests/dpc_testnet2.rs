@@ -344,7 +344,7 @@ fn test_testnet2_dpc_execute_constraints() {
 
     // Generate parameters for the ledger, commitment schemes, CRH, and the
     // "always-accept" program.
-    let ledger_parameters = Arc::new(CommitmentMerkleParameters::setup(&mut rng));
+    let ledger_parameters = Arc::new(CommitmentMerkleParameters::setup("Testnet2CommitmentMerkleParameters"));
 
     let dpc = <Testnet2DPC as DPCScheme<L>>::setup(&ledger_parameters, &mut rng).unwrap();
     let system_parameters = &dpc.system_parameters;

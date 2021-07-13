@@ -82,10 +82,11 @@ fn commitment_tree_test<
     R: Rng,
 >(
     use_bad_root: bool,
+    setup_message: &str,
     rng: &mut R,
 ) {
-    let commitment = C::setup(rng);
-    let crh = H::setup(rng);
+    let commitment = C::setup(&format!("{} for commitment", setup_message));
+    let crh = H::setup(&format!("{} for crh", setup_message));
 
     let merkle_tree = generate_merkle_tree(&commitment, &crh, rng);
 
@@ -166,7 +167,7 @@ fn commitment_tree_test<
 fn commitment_tree_good_root_test() {
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
 
-    commitment_tree_test::<C, H, CG, HG, _, _>(false, rng);
+    commitment_tree_test::<C, H, CG, HG, _, _>(false, "commitment_tree_good_root_test", rng);
 }
 
 #[should_panic]
@@ -174,5 +175,5 @@ fn commitment_tree_good_root_test() {
 fn commitment_tree_bad_root_test() {
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
 
-    commitment_tree_test::<C, H, CG, HG, _, _>(true, rng);
+    commitment_tree_test::<C, H, CG, HG, _, _>(true, "commitment_tree_bad_root_test", rng);
 }

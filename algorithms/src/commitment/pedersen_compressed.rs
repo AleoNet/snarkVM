@@ -19,17 +19,17 @@ use crate::{
     errors::CommitmentError,
     traits::CommitmentScheme,
 };
-use snarkvm_curves::traits::{AffineCurve, Group};
+use snarkvm_curves::traits::{AffineCurve, Group, ProjectiveCurve};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PedersenCompressedCommitment<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct PedersenCompressedCommitment<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub parameters: PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
-impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
     for PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Output = G::BaseField;
+    type Output = <G::Affine as AffineCurve>::BaseField;
     type Parameters = PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>;
     type Randomness = <G as Group>::ScalarField;
 
@@ -43,7 +43,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commitm
             parameters: self.parameters.clone(),
         };
 
-        let output = commitment.commit(input, randomness)?;
+        let output = commitment.commit(input, randomness)?.into_affine();
         debug_assert!(output.is_in_correct_subgroup_assuming_on_curve());
 
         Ok(output.to_x_coordinate())
@@ -54,7 +54,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commitm
     }
 }
 
-impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     From<PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>>
     for PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {

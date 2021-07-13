@@ -24,7 +24,7 @@ use crate::{
     },
 };
 use snarkvm_algorithms::commitment::{PedersenCommitment, PedersenCommitmentParameters, PedersenCompressedCommitment};
-use snarkvm_curves::traits::AffineCurve;
+use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, ToBytes};
@@ -36,7 +36,7 @@ use std::{
 
 #[derive(Clone)]
 pub struct PedersenCommitmentParametersGadget<
-    G: AffineCurve,
+    G: ProjectiveCurve,
     F: Field,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
@@ -45,7 +45,7 @@ pub struct PedersenCommitmentParametersGadget<
     _engine: PhantomData<F>,
 }
 
-impl<G: AffineCurve, F: PrimeField, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<G: ProjectiveCurve, F: PrimeField, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     AllocGadget<PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCommitmentParametersGadget<G, F, NUM_WINDOWS, WINDOW_SIZE>
 {
@@ -83,9 +83,9 @@ impl<G: AffineCurve, F: PrimeField, const NUM_WINDOWS: usize, const WINDOW_SIZE:
 }
 
 #[derive(Clone, Debug)]
-pub struct PedersenRandomnessGadget<G: AffineCurve>(pub Vec<UInt8>, PhantomData<G>);
+pub struct PedersenRandomnessGadget<G: ProjectiveCurve>(pub Vec<UInt8>, PhantomData<G>);
 
-impl<G: AffineCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for PedersenRandomnessGadget<G> {
+impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for PedersenRandomnessGadget<G> {
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<G::ScalarField>, CS: ConstraintSystem<F>>(
         cs: CS,
         value_gen: Fn,
@@ -109,13 +109,13 @@ impl<G: AffineCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for PedersenR
     }
 }
 
-pub struct PedersenCommitmentGadget<G: AffineCurve, F: Field, GG: GroupGadget<G, F>>(
+pub struct PedersenCommitmentGadget<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>>(
     PhantomData<G>,
     PhantomData<GG>,
     PhantomData<F>,
 );
 
-impl<F: PrimeField, G: AffineCurve, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<F: PrimeField, G: ProjectiveCurve, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     CommitmentGadget<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F> for PedersenCommitmentGadget<G, F, GG>
 {
     type OutputGadget = GG;
@@ -158,14 +158,19 @@ impl<F: PrimeField, G: AffineCurve, GG: GroupGadget<G, F>, const NUM_WINDOWS: us
     }
 }
 
-pub struct PedersenCompressedCommitmentGadget<G: AffineCurve, F: Field, GG: CompressedGroupGadget<G, F>>(
+pub struct PedersenCompressedCommitmentGadget<G: ProjectiveCurve, F: Field, GG: CompressedGroupGadget<G, F>>(
     PhantomData<G>,
     PhantomData<GG>,
     PhantomData<F>,
 );
 
-impl<F: PrimeField, G: AffineCurve, GG: CompressedGroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    CommitmentGadget<PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+impl<
+    F: PrimeField,
+    G: ProjectiveCurve,
+    GG: CompressedGroupGadget<G, F>,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> CommitmentGadget<PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCompressedCommitmentGadget<G, F, GG>
 {
     type OutputGadget = GG::BaseFieldGadget;

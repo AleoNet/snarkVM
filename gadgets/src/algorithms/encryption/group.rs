@@ -29,10 +29,7 @@ use snarkvm_algorithms::{
     crypto_hash::PoseidonDefaultParametersField,
     encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey},
 };
-use snarkvm_curves::{
-    traits::{Group, ProjectiveCurve},
-    AffineCurve,
-};
+use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{Field, PrimeField, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, CanonicalDeserialize, CanonicalSerialize, ToBytes};
@@ -42,7 +39,7 @@ use std::{borrow::Borrow, marker::PhantomData};
 
 /// Group encryption parameters gadget
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GroupEncryptionParametersGadget<G: Group> {
+pub struct GroupEncryptionParametersGadget<G: ProjectiveCurve> {
     parameters: GroupEncryptionParameters<G>,
 }
 
@@ -76,9 +73,9 @@ impl<G: ProjectiveCurve, F: Field> AllocGadget<GroupEncryptionParameters<G>, F> 
 
 /// Group encryption private key gadget
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GroupEncryptionPrivateKeyGadget<G: Group>(pub Vec<UInt8>, PhantomData<G>);
+pub struct GroupEncryptionPrivateKeyGadget<G: ProjectiveCurve>(pub Vec<UInt8>, PhantomData<G>);
 
-impl<G: Group, F: PrimeField> AllocGadget<G::ScalarField, F> for GroupEncryptionPrivateKeyGadget<G> {
+impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for GroupEncryptionPrivateKeyGadget<G> {
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<G::ScalarField>, CS: ConstraintSystem<F>>(
         cs: CS,
         value_gen: Fn,
@@ -102,7 +99,7 @@ impl<G: Group, F: PrimeField> AllocGadget<G::ScalarField, F> for GroupEncryption
     }
 }
 
-impl<G: Group, F: PrimeField> ToBytesGadget<F> for GroupEncryptionPrivateKeyGadget<G> {
+impl<G: ProjectiveCurve, F: PrimeField> ToBytesGadget<F> for GroupEncryptionPrivateKeyGadget<G> {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.0.to_bytes(&mut cs.ns(|| "to_bytes"))
     }
@@ -114,9 +111,9 @@ impl<G: Group, F: PrimeField> ToBytesGadget<F> for GroupEncryptionPrivateKeyGadg
 
 /// Group encryption randomness gadget
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GroupEncryptionRandomnessGadget<G: Group>(pub Vec<UInt8>, PhantomData<G>);
+pub struct GroupEncryptionRandomnessGadget<G: ProjectiveCurve>(pub Vec<UInt8>, PhantomData<G>);
 
-impl<G: Group, F: PrimeField> AllocGadget<G::ScalarField, F> for GroupEncryptionRandomnessGadget<G> {
+impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for GroupEncryptionRandomnessGadget<G> {
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<G::ScalarField>, CS: ConstraintSystem<F>>(
         cs: CS,
         value_gen: Fn,
@@ -142,9 +139,11 @@ impl<G: Group, F: PrimeField> AllocGadget<G::ScalarField, F> for GroupEncryption
 
 /// Group encryption blinding exponents gadget
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GroupEncryptionBlindingExponentsGadget<G: Group>(pub Vec<Vec<UInt8>>, PhantomData<G>);
+pub struct GroupEncryptionBlindingExponentsGadget<G: ProjectiveCurve>(pub Vec<Vec<UInt8>>, PhantomData<G>);
 
-impl<G: Group, F: PrimeField> AllocGadget<Vec<G::ScalarField>, F> for GroupEncryptionBlindingExponentsGadget<G> {
+impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<Vec<G::ScalarField>, F>
+    for GroupEncryptionBlindingExponentsGadget<G>
+{
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Vec<G::ScalarField>>, CS: ConstraintSystem<F>>(
         mut cs: CS,
         value_gen: Fn,
@@ -187,7 +186,7 @@ impl<G: Group, F: PrimeField> AllocGadget<Vec<G::ScalarField>, F> for GroupEncry
 
 /// Group encryption public key gadget
 #[derive(Debug, PartialEq, Eq)]
-pub struct GroupEncryptionPublicKeyGadget<G: Group, F: Field, GG: GroupGadget<G, F>> {
+pub struct GroupEncryptionPublicKeyGadget<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> {
     public_key: GG,
     _group: PhantomData<*const G>,
     _engine: PhantomData<*const F>,
@@ -254,7 +253,9 @@ impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> Clone for GroupEncrypt
     }
 }
 
-impl<G: Group, F: Field, GG: GroupGadget<G, F>> ConditionalEqGadget<F> for GroupEncryptionPublicKeyGadget<G, F, GG> {
+impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> ConditionalEqGadget<F>
+    for GroupEncryptionPublicKeyGadget<G, F, GG>
+{
     #[inline]
     fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
         &self,
@@ -276,11 +277,11 @@ impl<G: Group, F: Field, GG: GroupGadget<G, F>> ConditionalEqGadget<F> for Group
     }
 }
 
-impl<G: Group, F: Field, GG: GroupGadget<G, F>> EqGadget<F> for GroupEncryptionPublicKeyGadget<G, F, GG> {}
+impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> EqGadget<F> for GroupEncryptionPublicKeyGadget<G, F, GG> {}
 
 /// Group encryption plaintext gadget
 #[derive(Debug, PartialEq, Eq)]
-pub struct GroupEncryptionPlaintextGadget<G: Group, F: Field, GG: GroupGadget<G, F>> {
+pub struct GroupEncryptionPlaintextGadget<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> {
     plaintext: Vec<GG>,
     _group: PhantomData<*const G>,
     _engine: PhantomData<*const F>,
@@ -338,7 +339,9 @@ impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> Clone for GroupEncrypt
     }
 }
 
-impl<G: Group, F: Field, GG: GroupGadget<G, F>> ConditionalEqGadget<F> for GroupEncryptionPlaintextGadget<G, F, GG> {
+impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> ConditionalEqGadget<F>
+    for GroupEncryptionPlaintextGadget<G, F, GG>
+{
     #[inline]
     fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
         &self,
@@ -483,13 +486,13 @@ pub struct GroupEncryptionGadget<G: ProjectiveCurve, F: PrimeField, GG: Compress
 
 impl<
     G: ProjectiveCurve,
-    SG: Group + CanonicalSerialize + CanonicalDeserialize + AffineCurve,
+    SG: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize,
     F: PrimeField,
     GG: CompressedGroupGadget<G, F>,
 > EncryptionGadget<GroupEncryption<G, SG>, F> for GroupEncryptionGadget<G, F, GG>
 where
-    <SG as AffineCurve>::BaseField: PoseidonDefaultParametersField,
-    SG: ToConstraintField<<SG as AffineCurve>::BaseField>,
+    <SG::Affine as AffineCurve>::BaseField: PoseidonDefaultParametersField,
+    SG: ToConstraintField<<SG::Affine as AffineCurve>::BaseField>,
 {
     type BlindingExponentGadget = GroupEncryptionBlindingExponentsGadget<G>;
     type CiphertextGadget = GroupEncryptionCiphertextGadget<G, F, GG>;

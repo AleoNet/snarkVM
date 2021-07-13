@@ -33,7 +33,7 @@ use snarkvm_algorithms::{
     crypto_hash::PoseidonDefaultParametersField,
     signature::{Schnorr, SchnorrParameters, SchnorrPublicKey, SchnorrSignature},
 };
-use snarkvm_curves::traits::Group;
+use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{
@@ -49,12 +49,12 @@ use snarkvm_curves::AffineCurve;
 use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone)]
-pub struct SchnorrParametersGadget<G: Group, F: PrimeField> {
+pub struct SchnorrParametersGadget<G: ProjectiveCurve, F: PrimeField> {
     pub(crate) parameters: SchnorrParameters<G>,
     pub(crate) _engine: PhantomData<*const F>,
 }
 
-impl<G: Group, F: PrimeField> AllocGadget<SchnorrParameters<G>, F> for SchnorrParametersGadget<G, F> {
+impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<SchnorrParameters<G>, F> for SchnorrParametersGadget<G, F> {
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrParameters<G>>, CS: ConstraintSystem<F>>(
         _cs: CS,
         value_gen: Fn,
@@ -85,13 +85,13 @@ impl<G: Group, F: PrimeField> AllocGadget<SchnorrParameters<G>, F> for SchnorrPa
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SchnorrPublicKeyGadget<G: Group, F: PrimeField, GG: GroupGadget<G, F>> {
+pub struct SchnorrPublicKeyGadget<G: ProjectiveCurve, F: PrimeField, GG: GroupGadget<G, F>> {
     pub(crate) public_key: GG,
     pub(crate) _group: PhantomData<G>,
     pub(crate) _engine: PhantomData<F>,
 }
 
-impl<G: Group + CanonicalSerialize + CanonicalDeserialize, F: PrimeField, GG: GroupGadget<G, F>>
+impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize, F: PrimeField, GG: GroupGadget<G, F>>
     AllocGadget<SchnorrPublicKey<G>, F> for SchnorrPublicKeyGadget<G, F, GG>
 {
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrPublicKey<G>>, CS: ConstraintSystem<F>>(
@@ -121,7 +121,9 @@ impl<G: Group + CanonicalSerialize + CanonicalDeserialize, F: PrimeField, GG: Gr
     }
 }
 
-impl<G: Group, F: PrimeField, GG: GroupGadget<G, F>> ConditionalEqGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {
+impl<G: ProjectiveCurve, F: PrimeField, GG: GroupGadget<G, F>> ConditionalEqGadget<F>
+    for SchnorrPublicKeyGadget<G, F, GG>
+{
     #[inline]
     fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
         &self,
@@ -142,9 +144,9 @@ impl<G: Group, F: PrimeField, GG: GroupGadget<G, F>> ConditionalEqGadget<F> for 
     }
 }
 
-impl<G: Group, F: PrimeField, GG: GroupGadget<G, F>> EqGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {}
+impl<G: ProjectiveCurve, F: PrimeField, GG: GroupGadget<G, F>> EqGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {}
 
-impl<G: Group, F: PrimeField, GG: GroupGadget<G, F>> ToBytesGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {
+impl<G: ProjectiveCurve, F: PrimeField, GG: GroupGadget<G, F>> ToBytesGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.public_key.to_bytes(&mut cs.ns(|| "to_bytes"))
     }
@@ -155,13 +157,13 @@ impl<G: Group, F: PrimeField, GG: GroupGadget<G, F>> ToBytesGadget<F> for Schnor
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SchnorrSignatureGadget<G: Group, F: PrimeField> {
+pub struct SchnorrSignatureGadget<G: ProjectiveCurve, F: PrimeField> {
     pub(crate) prover_response: FpGadget<F>,
     pub(crate) verifier_challenge: FpGadget<F>,
     pub(crate) _group: PhantomData<*const G>,
 }
 
-impl<G: Group, F: PrimeField> AllocGadget<SchnorrSignature<G>, F> for SchnorrSignatureGadget<G, F> {
+impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<SchnorrSignature<G>, F> for SchnorrSignatureGadget<G, F> {
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrSignature<G>>, CS: ConstraintSystem<F>>(
         mut cs: CS,
         value_gen: Fn,
@@ -214,7 +216,7 @@ impl<G: Group, F: PrimeField> AllocGadget<SchnorrSignature<G>, F> for SchnorrSig
     }
 }
 
-impl<G: Group, F: PrimeField> ConditionalEqGadget<F> for SchnorrSignatureGadget<G, F> {
+impl<G: ProjectiveCurve, F: PrimeField> ConditionalEqGadget<F> for SchnorrSignatureGadget<G, F> {
     #[inline]
     fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
         &self,
@@ -240,9 +242,9 @@ impl<G: Group, F: PrimeField> ConditionalEqGadget<F> for SchnorrSignatureGadget<
     }
 }
 
-impl<G: Group, F: PrimeField> EqGadget<F> for SchnorrSignatureGadget<G, F> {}
+impl<G: ProjectiveCurve, F: PrimeField> EqGadget<F> for SchnorrSignatureGadget<G, F> {}
 
-impl<G: Group, F: PrimeField> ToBytesGadget<F> for SchnorrSignatureGadget<G, F> {
+impl<G: ProjectiveCurve, F: PrimeField> ToBytesGadget<F> for SchnorrSignatureGadget<G, F> {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut result = Vec::new();
 
@@ -275,7 +277,7 @@ impl<G: Group, F: PrimeField> ToBytesGadget<F> for SchnorrSignatureGadget<G, F> 
 }
 
 pub struct SchnorrPublicKeyRandomizationGadget<
-    G: Group,
+    G: ProjectiveCurve,
     F: PrimeField + PoseidonDefaultParametersField,
     GG: GroupGadget<G, F> + ToConstraintFieldGadget<F>,
 > {
@@ -285,13 +287,13 @@ pub struct SchnorrPublicKeyRandomizationGadget<
 }
 
 impl<
-    G: Group + CanonicalSerialize + CanonicalDeserialize + AffineCurve,
+    G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize,
     GG: GroupGadget<G, F> + ToConstraintFieldGadget<F>,
     F: PrimeField + PoseidonDefaultParametersField,
 > SignaturePublicKeyRandomizationGadget<Schnorr<G>, F> for SchnorrPublicKeyRandomizationGadget<G, F, GG>
 where
-    <G as AffineCurve>::BaseField: PoseidonDefaultParametersField,
-    G: ToConstraintField<<G as AffineCurve>::BaseField>,
+    <G::Affine as AffineCurve>::BaseField: PoseidonDefaultParametersField,
+    G: ToConstraintField<<G::Affine as AffineCurve>::BaseField>,
 {
     type ParametersGadget = SchnorrParametersGadget<G, F>;
     type PublicKeyGadget = SchnorrPublicKeyGadget<G, F, GG>;

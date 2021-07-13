@@ -18,15 +18,13 @@ use snarkvm_algorithms::{errors::CRHError, traits::CRH};
 use snarkvm_dpc::{testnet1::instantiated::Components, traits::DPCComponents};
 use snarkvm_utilities::ToBytes;
 
-use rand::thread_rng;
 use std::path::PathBuf;
 
 mod utils;
 use utils::store;
 
 pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, CRHError> {
-    let rng = &mut thread_rng();
-    let inner_circuit_id_crh = <C::InnerCircuitIDCRH as CRH>::setup(rng);
+    let inner_circuit_id_crh = <C::InnerCircuitIDCRH as CRH>::setup("InnerCircuitIDCRH");
     let inner_circuit_id_crh_parameters_bytes = inner_circuit_id_crh.to_bytes_le()?;
 
     let size = inner_circuit_id_crh_parameters_bytes.len();

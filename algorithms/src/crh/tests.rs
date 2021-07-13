@@ -18,7 +18,7 @@ use crate::{
     crh::{BoweHopwoodPedersenCRH, BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH},
     traits::CRH,
 };
-use snarkvm_curves::edwards_bls12::EdwardsAffine;
+use snarkvm_curves::edwards_bls12::EdwardsProjective;
 use snarkvm_utilities::FromBytes;
 
 const PEDERSEN_NUM_WINDOWS: usize = 8;
@@ -35,27 +35,27 @@ fn crh_serialization<C: CRH>() {
 
 #[test]
 fn pedersen_crh_serialization() {
-    crh_serialization::<PedersenCRH<EdwardsAffine, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>>();
+    crh_serialization::<PedersenCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>>();
 }
 
 #[test]
 fn pedersen_compressed_crh_serialization() {
-    crh_serialization::<PedersenCompressedCRH<EdwardsAffine, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>>();
+    crh_serialization::<PedersenCompressedCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>>();
 }
 
 #[test]
 fn bowe_hopwood_crh_serialization() {
-    crh_serialization::<BoweHopwoodPedersenCRH<EdwardsAffine, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>>();
+    crh_serialization::<BoweHopwoodPedersenCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>>();
 }
 
 #[test]
 fn bowe_hopwood_compressed_crh_serialization() {
-    crh_serialization::<BoweHopwoodPedersenCompressedCRH<EdwardsAffine, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>>();
+    crh_serialization::<BoweHopwoodPedersenCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>>();
 }
 
 #[test]
 fn simple_bowe_hopwood_crh() {
     let crh =
-        BoweHopwoodPedersenCRH::<EdwardsAffine, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>::setup("simple_bowe_hopwood_crh");
+        BoweHopwoodPedersenCRH::<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>::setup("simple_bowe_hopwood_crh");
     crh.hash(&[1, 2, 3]).unwrap();
 }

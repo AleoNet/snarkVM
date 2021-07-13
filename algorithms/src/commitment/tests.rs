@@ -18,7 +18,7 @@ use crate::{
     commitment::{PedersenCommitment, PedersenCompressedCommitment},
     traits::CommitmentScheme,
 };
-use snarkvm_curves::edwards_bls12::EdwardsAffine;
+use snarkvm_curves::edwards_bls12::EdwardsProjective;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 const NUM_WINDOWS: usize = 8;
@@ -36,10 +36,10 @@ fn commitment_parameters_serialization<C: CommitmentScheme>() {
 
 #[test]
 fn pedersen_commitment_parameters_serialization() {
-    commitment_parameters_serialization::<PedersenCommitment<EdwardsAffine, NUM_WINDOWS, WINDOW_SIZE>>();
+    commitment_parameters_serialization::<PedersenCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE>>();
 }
 
 #[test]
 fn pedersen_compressed_commitment_parameters_serialization() {
-    commitment_parameters_serialization::<PedersenCompressedCommitment<EdwardsAffine, NUM_WINDOWS, WINDOW_SIZE>>();
+    commitment_parameters_serialization::<PedersenCompressedCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE>>();
 }

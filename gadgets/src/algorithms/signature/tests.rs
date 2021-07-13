@@ -22,16 +22,16 @@ use crate::{
     Boolean,
 };
 use snarkvm_algorithms::{signature::Schnorr, traits::SignatureScheme};
-use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsAffine, traits::Group};
+use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective, traits::Group};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{rand::UniformRand, to_bytes_le, ToBytes};
 
 use rand::{thread_rng, Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 
-type SchnorrScheme = Schnorr<EdwardsAffine>;
-type TestSignature = Schnorr<EdwardsAffine>;
-type TestSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, Fr, EdwardsBls12Gadget>;
+type SchnorrScheme = Schnorr<EdwardsProjective>;
+type TestSignature = Schnorr<EdwardsProjective>;
+type TestSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
 
 #[test]
 fn test_schnorr_signature_randomize_public_key_gadget() {
@@ -55,7 +55,7 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
 
     // Native Schnorr randomization
 
-    let random_scalar = to_bytes_le!(<EdwardsAffine as Group>::ScalarField::rand(rng)).unwrap();
+    let random_scalar = to_bytes_le!(<EdwardsProjective as Group>::ScalarField::rand(rng)).unwrap();
     let randomized_public_key = schnorr_signature
         .randomize_public_key(&public_key, &random_scalar)
         .unwrap();
@@ -71,12 +71,12 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
     // Circuit Schnorr randomized public key (candidate)
 
     let candidate_parameters_gadget =
-        SchnorrParametersGadget::<EdwardsAffine, Fr>::alloc_input(&mut cs.ns(|| "candidate_parameters"), || {
+        SchnorrParametersGadget::<EdwardsProjective, Fr>::alloc_input(&mut cs.ns(|| "candidate_parameters"), || {
             Ok(schnorr_signature.parameters())
         })
         .unwrap();
 
-    let candidate_public_key_gadget = SchnorrPublicKeyGadget::<EdwardsAffine, Fr, EdwardsBls12Gadget>::alloc(
+    let candidate_public_key_gadget = SchnorrPublicKeyGadget::<EdwardsProjective, Fr, EdwardsBls12Gadget>::alloc(
         &mut cs.ns(|| "candidate_public_key"),
         || Ok(&public_key),
     )
@@ -85,7 +85,7 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
     let candidate_randomizer = UInt8::alloc_vec(&mut cs.ns(|| "candidate_randomizer"), &random_scalar).unwrap();
 
     let candidate_randomized_public_key_gadget = <SchnorrPublicKeyRandomizationGadget<
-        EdwardsAffine,
+        EdwardsProjective,
         Fr,
         EdwardsBls12Gadget,
     > as SignaturePublicKeyRandomizationGadget<SchnorrScheme, Fr>>::check_randomization_gadget(
@@ -99,7 +99,7 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
     // Circuit Schnorr randomized public key (given)
 
     let given_randomized_public_key_gadget =
-        SchnorrPublicKeyGadget::<EdwardsAffine, Fr, EdwardsBls12Gadget>::alloc_input(
+        SchnorrPublicKeyGadget::<EdwardsProjective, Fr, EdwardsBls12Gadget>::alloc_input(
             &mut cs.ns(|| "given_randomized_public_key"),
             || Ok(randomized_public_key),
         )

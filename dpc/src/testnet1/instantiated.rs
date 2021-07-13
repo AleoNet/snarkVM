@@ -40,7 +40,7 @@ use snarkvm_algorithms::{
 use snarkvm_curves::{
     bls12_377::Bls12_377,
     bw6_761::BW6_761,
-    edwards_bls12::{EdwardsAffine, EdwardsParameters, EdwardsProjective as EdwardsBls12},
+    edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls12},
     edwards_bw6::EdwardsProjective as EdwardsBW6,
     PairingEngine,
 };
@@ -81,11 +81,11 @@ impl DPCComponents for Components {
     type AccountCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 192>;
     type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
     
-    type AccountEncryption = GroupEncryption<EdwardsBls12, EdwardsAffine>;
+    type AccountEncryption = GroupEncryption<EdwardsBls12, EdwardsBls12>;
     type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
 
-    type AccountSignature = Schnorr<EdwardsAffine>;
-    type AccountSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsAffine, Self::InnerScalarField, EdwardsBls12Gadget>;
+    type AccountSignature = Schnorr<EdwardsBls12>;
+    type AccountSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
     
     type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 48, 44>;
     type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 44>;

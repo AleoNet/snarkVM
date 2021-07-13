@@ -24,10 +24,7 @@ use snarkvm_algorithms::{
     merkle_tree::MerkleTree,
     traits::{MaskedMerkleParameters, MerkleParameters, CRH},
 };
-use snarkvm_curves::{
-    bls12_377::Fr,
-    edwards_bls12::{EdwardsAffine, EdwardsProjective},
-};
+use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective};
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::ToBytes;
@@ -186,13 +183,13 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
     assert!(cs.is_satisfied());
 }
 
-mod merkle_tree_pedersen_crh_on_affine {
+mod merkle_tree_pedersen_crh_on_projective {
     use super::*;
 
     define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
 
-    type H = PedersenCRH<EdwardsAffine, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-    type HG = PedersenCRHGadget<EdwardsAffine, Fr, EdwardsBls12Gadget, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
+    type H = PedersenCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
+    type HG = PedersenCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
 
     #[test]
     fn good_root_test() {

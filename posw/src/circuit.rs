@@ -149,7 +149,7 @@ mod test {
     fn test_tree_proof() {
         let mut rng = thread_rng();
 
-        let parameters = EdwardsMaskedMerkleParameters::setup(&mut rng);
+        let parameters = EdwardsMaskedMerkleParameters::setup("test_tree_proof");
         let params = generate_random_parameters::<Bls12_377, _, _>(
             &POSWCircuit::<_, EdwardsMaskedMerkleParameters, HashGadget, TestPOSWCircuitParameters> {
                 leaves: vec![None; 7],

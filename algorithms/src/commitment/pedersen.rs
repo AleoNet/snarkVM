@@ -19,16 +19,16 @@ use crate::{
     errors::CommitmentError,
     traits::{CommitmentScheme, CRH},
 };
-use snarkvm_curves::AffineCurve;
+use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::BitIteratorLE;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PedersenCommitment<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct PedersenCommitment<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub parameters: PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
-impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
     for PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Output = G;
@@ -67,7 +67,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commitm
     }
 }
 
-impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     From<PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>>
     for PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {

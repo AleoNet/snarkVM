@@ -15,19 +15,19 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{crh::PedersenCRH, hash_to_curve::hash_to_curve, traits::CRH};
-use snarkvm_curves::AffineCurve;
+use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PedersenCommitmentParameters<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct PedersenCommitmentParameters<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
     pub random_base: Vec<G>,
 }
 
-impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     pub fn setup(message: &str) -> Self {
@@ -36,7 +36,8 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
 
         // Next, compute the random base.
         let random_base_message = format!("{} for random base", message);
-        let (mut base, _, _) = hash_to_curve::<G>(&random_base_message);
+        let (generator, _, _) = hash_to_curve::<G::Affine>(&random_base_message);
+        let mut base = generator.into_projective();
         let mut random_base = Vec::with_capacity(WINDOW_SIZE);
         for _ in 0..WINDOW_SIZE {
             random_base.push(base);
@@ -46,7 +47,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     }
 }
 
-impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
     for PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -67,7 +68,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
     }
 }
 
-impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
     for PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
@@ -99,7 +100,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromByt
     }
 }
 
-impl<F: Field, G: AffineCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     ToConstraintField<F> for PedersenCommitmentParameters<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]

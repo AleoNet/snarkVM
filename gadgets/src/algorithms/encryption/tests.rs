@@ -18,11 +18,7 @@ use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
 use snarkvm_algorithms::{encryption::GroupEncryption, traits::EncryptionScheme};
-use snarkvm_curves::{
-    bls12_377::Fr,
-    edwards_bls12::{EdwardsAffine, EdwardsProjective},
-    traits::ProjectiveCurve,
-};
+use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective, traits::ProjectiveCurve};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
 use crate::{
@@ -31,7 +27,7 @@ use crate::{
     traits::{algorithms::EncryptionGadget, alloc::AllocGadget, eq::EqGadget},
 };
 
-type TestEncryptionScheme = GroupEncryption<EdwardsProjective, EdwardsAffine>;
+type TestEncryptionScheme = GroupEncryption<EdwardsProjective, EdwardsProjective>;
 type TestEncryptionSchemeGadget = GroupEncryptionGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
 
 fn generate_input<G: ProjectiveCurve, R: Rng>(input_size: usize, rng: &mut R) -> Vec<G> {

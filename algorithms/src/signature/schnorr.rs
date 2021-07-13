@@ -15,13 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::PoseidonDefaultParametersField,
+    crypto_hash::{PoseidonCryptoHash, PoseidonDefaultParametersField},
     signature::SchnorrParameters,
     CryptoHash,
     SignatureError,
     SignatureScheme,
 };
-use snarkvm_curves::traits::Group;
+use snarkvm_curves::{AffineCurve, Group, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, One, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
     bytes::{from_bytes_le_to_bits_le, FromBytes, ToBytes},
@@ -33,10 +33,8 @@ use snarkvm_utilities::{
     ToBits,
 };
 
-use crate::crypto_hash::PoseidonCryptoHash;
 use itertools::Itertools;
 use rand::Rng;
-use snarkvm_curves::AffineCurve;
 use std::{
     hash::Hash,
     io::{Read, Result as IoResult, Write},
@@ -44,18 +42,18 @@ use std::{
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "G: Group"),
-    Debug(bound = "G: Group"),
-    Default(bound = "G: Group"),
-    PartialEq(bound = "G: Group"),
-    Eq(bound = "G: Group")
+    Clone(bound = "G: ProjectiveCurve"),
+    Debug(bound = "G: ProjectiveCurve"),
+    Default(bound = "G: ProjectiveCurve"),
+    PartialEq(bound = "G: ProjectiveCurve"),
+    Eq(bound = "G: ProjectiveCurve")
 )]
-pub struct SchnorrSignature<G: Group> {
+pub struct SchnorrSignature<G: ProjectiveCurve> {
     pub prover_response: <G as Group>::ScalarField,
     pub verifier_challenge: <G as Group>::ScalarField,
 }
 
-impl<G: Group> ToBytes for SchnorrSignature<G> {
+impl<G: ProjectiveCurve> ToBytes for SchnorrSignature<G> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.prover_response.write_le(&mut writer)?;
@@ -63,7 +61,7 @@ impl<G: Group> ToBytes for SchnorrSignature<G> {
     }
 }
 
-impl<G: Group> FromBytes for SchnorrSignature<G> {
+impl<G: ProjectiveCurve> FromBytes for SchnorrSignature<G> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let prover_response = <G as Group>::ScalarField::read_le(&mut reader)?;
@@ -78,32 +76,32 @@ impl<G: Group> FromBytes for SchnorrSignature<G> {
 
 #[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(
-    Copy(bound = "G: Group"),
-    Clone(bound = "G: Group"),
-    PartialEq(bound = "G: Group"),
-    Eq(bound = "G: Group"),
-    Debug(bound = "G: Group"),
-    Hash(bound = "G: Group"),
-    Default(bound = "G: Group")
+    Copy(bound = "G: ProjectiveCurve"),
+    Clone(bound = "G: ProjectiveCurve"),
+    PartialEq(bound = "G: ProjectiveCurve"),
+    Eq(bound = "G: ProjectiveCurve"),
+    Debug(bound = "G: ProjectiveCurve"),
+    Hash(bound = "G: ProjectiveCurve"),
+    Default(bound = "G: ProjectiveCurve")
 )]
-pub struct SchnorrPublicKey<G: Group + CanonicalSerialize + CanonicalDeserialize>(pub G);
+pub struct SchnorrPublicKey<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize>(pub G);
 
-impl<G: Group + CanonicalSerialize + CanonicalDeserialize> ToBytes for SchnorrPublicKey<G> {
+impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> ToBytes for SchnorrPublicKey<G> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.0.write_le(&mut writer)
     }
 }
 
-impl<G: Group + CanonicalSerialize + CanonicalDeserialize> FromBytes for SchnorrPublicKey<G> {
+impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> FromBytes for SchnorrPublicKey<G> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Ok(Self(G::read_le(&mut reader)?))
     }
 }
 
-impl<F: Field, G: Group + CanonicalSerialize + CanonicalDeserialize + ToConstraintField<F>> ToConstraintField<F>
-    for SchnorrPublicKey<G>
+impl<F: Field, G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize + ToConstraintField<F>>
+    ToConstraintField<F> for SchnorrPublicKey<G>
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
@@ -113,19 +111,19 @@ impl<F: Field, G: Group + CanonicalSerialize + CanonicalDeserialize + ToConstrai
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "G: Group"),
-    Debug(bound = "G: Group"),
-    PartialEq(bound = "G: Group"),
-    Eq(bound = "G: Group")
+    Clone(bound = "G: ProjectiveCurve"),
+    Debug(bound = "G: ProjectiveCurve"),
+    PartialEq(bound = "G: ProjectiveCurve"),
+    Eq(bound = "G: ProjectiveCurve")
 )]
-pub struct Schnorr<G: Group> {
+pub struct Schnorr<G: ProjectiveCurve> {
     pub parameters: SchnorrParameters<G>,
 }
 
-impl<G: Group + Hash + CanonicalSerialize + CanonicalDeserialize + AffineCurve> SignatureScheme for Schnorr<G>
+impl<G: ProjectiveCurve + Hash + CanonicalSerialize + CanonicalDeserialize> SignatureScheme for Schnorr<G>
 where
-    <G as AffineCurve>::BaseField: PoseidonDefaultParametersField,
-    G: ToConstraintField<<G as AffineCurve>::BaseField>,
+    <G::Affine as AffineCurve>::BaseField: PoseidonDefaultParametersField,
+    G: ToConstraintField<<G::Affine as AffineCurve>::BaseField>,
 {
     type Parameters = SchnorrParameters<G>;
     type PrivateKey = <G as Group>::ScalarField;
@@ -135,7 +133,7 @@ where
     fn setup<R: Rng>(rng: &mut R) -> Result<Self, SignatureError> {
         assert!(
             <<G as Group>::ScalarField as PrimeField>::Parameters::CAPACITY
-                < <<G as AffineCurve>::BaseField as PrimeField>::Parameters::CAPACITY
+                < <<G::Affine as AffineCurve>::BaseField as PrimeField>::Parameters::CAPACITY
         );
 
         let setup_time = start_timer!(|| "SchnorrSignature::setup");
@@ -195,13 +193,14 @@ where
         }
 
         // Hash everything to get verifier challenge.
-        let mut hash_input = Vec::<<G as AffineCurve>::BaseField>::new();
+        let mut hash_input = Vec::<<G::Affine as AffineCurve>::BaseField>::new();
         hash_input.extend_from_slice(&self.parameters.salt.to_field_elements().unwrap());
         hash_input.extend_from_slice(&prover_commitment.to_field_elements().unwrap());
-        hash_input.push(<G as AffineCurve>::BaseField::from(message.len() as u128));
+        hash_input.push(<G::Affine as AffineCurve>::BaseField::from(message.len() as u128));
         hash_input.extend_from_slice(&message.to_field_elements().unwrap());
 
-        let raw_hash = PoseidonCryptoHash::<<G as AffineCurve>::BaseField, 4, false>::evaluate(&hash_input).unwrap();
+        let raw_hash =
+            PoseidonCryptoHash::<<G::Affine as AffineCurve>::BaseField, 4, false>::evaluate(&hash_input).unwrap();
 
         // Bit decompose the raw_hash
         let mut raw_hash_bits = raw_hash.to_repr().to_bits_le();
@@ -254,13 +253,14 @@ where
         claimed_prover_commitment += public_key_times_verifier_challenge;
 
         // Hash everything to get verifier challenge.
-        let mut hash_input = Vec::<<G as AffineCurve>::BaseField>::new();
+        let mut hash_input = Vec::<<G::Affine as AffineCurve>::BaseField>::new();
         hash_input.extend_from_slice(&self.parameters.salt.to_field_elements().unwrap());
         hash_input.extend_from_slice(&claimed_prover_commitment.to_field_elements().unwrap());
-        hash_input.push(<G as AffineCurve>::BaseField::from(message.len() as u128));
+        hash_input.push(<G::Affine as AffineCurve>::BaseField::from(message.len() as u128));
         hash_input.extend_from_slice(&message.to_field_elements().unwrap());
 
-        let raw_hash = PoseidonCryptoHash::<<G as AffineCurve>::BaseField, 4, false>::evaluate(&hash_input).unwrap();
+        let raw_hash =
+            PoseidonCryptoHash::<<G::Affine as AffineCurve>::BaseField, 4, false>::evaluate(&hash_input).unwrap();
 
         // Bit decompose the raw_hash
         let mut raw_hash_bits = raw_hash.to_repr().to_bits_le();
@@ -332,7 +332,7 @@ where
     }
 }
 
-impl<G: Group> From<SchnorrParameters<G>> for Schnorr<G> {
+impl<G: ProjectiveCurve> From<SchnorrParameters<G>> for Schnorr<G> {
     fn from(parameters: SchnorrParameters<G>) -> Self {
         Self { parameters }
     }

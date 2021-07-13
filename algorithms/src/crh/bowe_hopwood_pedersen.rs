@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{crh::PedersenCRH, hash_to_curve::hash_to_curve, CRHError, CRH};
-use snarkvm_curves::AffineCurve;
+use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::{BigInteger, FromBytes, ToBytes};
 
@@ -37,12 +37,12 @@ pub const BOWE_HOPWOOD_CHUNK_SIZE: usize = 3;
 pub const BOWE_HOPWOOD_LOOKUP_SIZE: usize = 2usize.pow(BOWE_HOPWOOD_CHUNK_SIZE as u32);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BoweHopwoodPedersenCRH<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct BoweHopwoodPedersenCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
     base_lookup: OnceCell<Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>>>,
 }
 
-impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     for BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Output = G;
@@ -157,7 +157,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     }
 }
 
-impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     pub fn create_generators(message: &str) -> Vec<Vec<G>> {
@@ -165,7 +165,8 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
         for index in 0..NUM_WINDOWS {
             // Construct an indexed message to attempt to sample a base.
             let indexed_message = format!("{} at {}", message, index);
-            let (mut base, _, _) = hash_to_curve::<G>(&indexed_message);
+            let (generator, _, _) = hash_to_curve::<G::Affine>(&indexed_message);
+            let mut base = generator.into_projective();
             // Compute the generators for the sampled base.
             let mut generators_for_segment = Vec::with_capacity(WINDOW_SIZE);
             for _ in 0..WINDOW_SIZE {
@@ -213,8 +214,8 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     }
 }
 
-impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>>
-    for BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    From<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>> for BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn from(crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>) -> Self {
         Self {
@@ -224,7 +225,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<Pe
     }
 }
 
-impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<Vec<Vec<G>>>
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<Vec<Vec<G>>>
     for BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn from(bases: Vec<Vec<G>>) -> Self {
@@ -235,7 +236,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<Ve
     }
 }
 
-impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
     for BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
@@ -243,7 +244,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
     }
 }
 
-impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
     for BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
@@ -252,7 +253,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromByt
     }
 }
 
-impl<F: Field, G: AffineCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     ToConstraintField<F> for BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
@@ -264,14 +265,15 @@ impl<F: Field, G: AffineCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_curves::edwards_bls12::EdwardsAffine;
+    use snarkvm_curves::edwards_bls12::EdwardsProjective;
 
     const NUM_WINDOWS: usize = 8;
     const WINDOW_SIZE: usize = 32;
 
     #[test]
     fn test_bowe_pedersen() {
-        let crh = <BoweHopwoodPedersenCRH<EdwardsAffine, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup("test_bowe_pedersen");
+        let crh =
+            <BoweHopwoodPedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup("test_bowe_pedersen");
         let input = vec![127u8; 32];
 
         let output = crh.hash(&input).unwrap();

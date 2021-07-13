@@ -18,15 +18,13 @@ use snarkvm_algorithms::{errors::CRHError, traits::CRH};
 use snarkvm_dpc::{testnet1::instantiated::Components, traits::DPCComponents};
 use snarkvm_utilities::ToBytes;
 
-use rand::thread_rng;
 use std::path::PathBuf;
 
 mod utils;
 use utils::store;
 
 pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, CRHError> {
-    let rng = &mut thread_rng();
-    let serial_number_nonce_crh = <C::SerialNumberNonceCRH as CRH>::setup(rng);
+    let serial_number_nonce_crh = <C::SerialNumberNonceCRH as CRH>::setup("SerialNumberNonceCRH");
     let serial_number_nonce_crh_parameters_bytes = serial_number_nonce_crh.to_bytes_le()?;
 
     let size = serial_number_nonce_crh_parameters_bytes.len();

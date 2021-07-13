@@ -21,16 +21,18 @@ use crate::{
     signature::{Schnorr, SchnorrParameters, SchnorrPublicKey, SchnorrSignature},
     traits::{EncryptionScheme, SignatureScheme},
 };
-use snarkvm_curves::traits::{Group, ProjectiveCurve};
+use snarkvm_curves::{
+    traits::{AffineCurve, Group},
+    ProjectiveCurve,
+};
+use snarkvm_fields::ToConstraintField;
 use snarkvm_utilities::{serialize::*, to_bytes_le, FromBytes, ToBytes};
 
 use rand::Rng;
-use snarkvm_curves::AffineCurve;
-use snarkvm_fields::ToConstraintField;
 use std::hash::Hash;
 
 /// Map the encryption group into the signature group.
-fn into_signature_group<G: ProjectiveCurve + CanonicalSerialize, SG: Group + CanonicalDeserialize>(
+fn into_signature_group<G: ProjectiveCurve + CanonicalSerialize, SG: ProjectiveCurve + CanonicalDeserialize>(
     projective: G,
 ) -> SG {
     let mut bytes = vec![];
@@ -39,8 +41,8 @@ fn into_signature_group<G: ProjectiveCurve + CanonicalSerialize, SG: Group + Can
 }
 
 /// Map the GroupEncryption parameters into a Schnorr signature scheme.
-impl<G: ProjectiveCurve + CanonicalSerialize, SG: Group + CanonicalDeserialize> From<GroupEncryptionParameters<G>>
-    for Schnorr<SG>
+impl<G: ProjectiveCurve + CanonicalSerialize, SG: ProjectiveCurve + CanonicalDeserialize>
+    From<GroupEncryptionParameters<G>> for Schnorr<SG>
 {
     fn from(parameters: GroupEncryptionParameters<G>) -> Self {
         let generator_powers: Vec<SG> = parameters
@@ -59,19 +61,19 @@ impl<G: ProjectiveCurve + CanonicalSerialize, SG: Group + CanonicalDeserialize> 
 }
 
 /// Map the GroupEncryption public key into a Schnorr public key.
-impl<G: ProjectiveCurve, SG: Group + CanonicalSerialize + CanonicalDeserialize> From<GroupEncryptionPublicKey<G>>
-    for SchnorrPublicKey<SG>
+impl<G: ProjectiveCurve, SG: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize>
+    From<GroupEncryptionPublicKey<G>> for SchnorrPublicKey<SG>
 {
     fn from(public_key: GroupEncryptionPublicKey<G>) -> Self {
         Self(into_signature_group(public_key.0))
     }
 }
 
-impl<G: ProjectiveCurve, SG: Group + AffineCurve + Hash + CanonicalSerialize + CanonicalDeserialize> SignatureScheme
+impl<G: ProjectiveCurve, SG: ProjectiveCurve + Hash + CanonicalSerialize + CanonicalDeserialize> SignatureScheme
     for GroupEncryption<G, SG>
 where
-    <SG as AffineCurve>::BaseField: PoseidonDefaultParametersField,
-    SG: ToConstraintField<<SG as AffineCurve>::BaseField>,
+    <SG::Affine as AffineCurve>::BaseField: PoseidonDefaultParametersField,
+    SG: ToConstraintField<<SG::Affine as AffineCurve>::BaseField>,
 {
     type Parameters = GroupEncryptionParameters<G>;
     type PrivateKey = <G as Group>::ScalarField;

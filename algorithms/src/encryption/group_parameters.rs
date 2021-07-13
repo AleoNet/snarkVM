@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_curves::traits::Group;
+use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -23,17 +23,17 @@ use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "G: Group"),
-    Debug(bound = "G: Group"),
-    PartialEq(bound = "G: Group"),
-    Eq(bound = "G: Group")
+    Clone(bound = "G: ProjectiveCurve"),
+    Debug(bound = "G: ProjectiveCurve"),
+    PartialEq(bound = "G: ProjectiveCurve"),
+    Eq(bound = "G: ProjectiveCurve")
 )]
-pub struct GroupEncryptionParameters<G: Group> {
+pub struct GroupEncryptionParameters<G: ProjectiveCurve> {
     pub generator_powers: Vec<G>,
     pub salt: [u8; 32],
 }
 
-impl<G: Group> GroupEncryptionParameters<G> {
+impl<G: ProjectiveCurve> GroupEncryptionParameters<G> {
     pub fn setup<R: Rng>(rng: &mut R, private_key_size_in_bits: usize) -> Self {
         // Round to the closest multiple of 64 to factor bit and byte encoding differences.
         assert!(private_key_size_in_bits < usize::MAX - 63);
@@ -55,7 +55,7 @@ impl<G: Group> GroupEncryptionParameters<G> {
     }
 }
 
-impl<G: Group> ToBytes for GroupEncryptionParameters<G> {
+impl<G: ProjectiveCurve> ToBytes for GroupEncryptionParameters<G> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (self.generator_powers.len() as u32).write_le(&mut writer)?;
         for g in &self.generator_powers {
@@ -65,7 +65,7 @@ impl<G: Group> ToBytes for GroupEncryptionParameters<G> {
     }
 }
 
-impl<G: Group> FromBytes for GroupEncryptionParameters<G> {
+impl<G: ProjectiveCurve> FromBytes for GroupEncryptionParameters<G> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let generator_powers_length: u32 = FromBytes::read_le(&mut reader)?;
@@ -81,7 +81,7 @@ impl<G: Group> FromBytes for GroupEncryptionParameters<G> {
     }
 }
 
-impl<F: Field, G: Group + ToConstraintField<F>> ToConstraintField<F> for GroupEncryptionParameters<G> {
+impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>> ToConstraintField<F> for GroupEncryptionParameters<G> {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         Ok(Vec::new())

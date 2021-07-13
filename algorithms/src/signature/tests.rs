@@ -15,18 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{encryption::GroupEncryption, signature::Schnorr, traits::SignatureScheme};
-use snarkvm_curves::{
-    edwards_bls12::{EdwardsAffine, EdwardsProjective},
-    edwards_bw6::EdwardsAffine as Edwards,
-    traits::Group,
-};
+use snarkvm_curves::{edwards_bls12::EdwardsProjective, edwards_bw6::EdwardsProjective as Edwards, traits::Group};
 use snarkvm_utilities::{rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 
 type TestSignature = Schnorr<Edwards>;
-type TestGroupEncryptionSignature = GroupEncryption<EdwardsProjective, EdwardsAffine>;
+type TestGroupEncryptionSignature = GroupEncryption<EdwardsProjective, EdwardsProjective>;
 
 fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);

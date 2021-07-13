@@ -18,7 +18,6 @@ use snarkvm_algorithms::{crh::sha256::sha256, errors::CRHError, traits::CRH};
 use snarkvm_dpc::{testnet1::instantiated::Components, traits::DPCComponents};
 use snarkvm_utilities::ToBytes;
 
-use rand::thread_rng;
 use std::{
     fs::{
         File,
@@ -29,8 +28,7 @@ use std::{
 };
 
 pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, CRHError> {
-    let rng = &mut thread_rng();
-    let local_data_crh = <C::LocalDataCRH as CRH>::setup(rng);
+    let local_data_crh = <C::LocalDataCRH as CRH>::setup("LocalDataCRH");
     let local_data_crh_parameters_bytes = local_data_crh.to_bytes_le()?;
 
     let size = local_data_crh_parameters_bytes.len();

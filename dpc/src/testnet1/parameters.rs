@@ -41,7 +41,7 @@ pub struct SystemParameters<C: Testnet1Components> {
 impl<C: Testnet1Components> SystemParameters<C> {
     pub fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<SystemParameters<C>, DPCError> {
         let time = start_timer!(|| "Account commitment scheme setup");
-        let account_commitment = C::AccountCommitment::setup(rng);
+        let account_commitment = C::AccountCommitment::setup("AccountCommitment");
         end_timer!(time);
 
         let time = start_timer!(|| "Account encryption scheme setup");
@@ -53,35 +53,36 @@ impl<C: Testnet1Components> SystemParameters<C> {
         end_timer!(time);
 
         let time = start_timer!(|| "Encrypted record CRH setup");
-        let encrypted_record_crh = C::EncryptedRecordCRH::setup(rng);
+        let encrypted_record_crh = C::EncryptedRecordCRH::setup("EncryptedRecordCRH");
         end_timer!(time);
 
         let time = start_timer!(|| "Inner circuit ID CRH setup");
-        let inner_circuit_id_crh = C::InnerCircuitIDCRH::setup(rng);
+        let inner_circuit_id_crh = C::InnerCircuitIDCRH::setup("InnerCircuitIDCRH");
         end_timer!(time);
 
         let time = start_timer!(|| "Local data commitment setup");
-        let local_data_commitment = C::LocalDataCommitment::setup(rng);
+        let local_data_commitment = C::LocalDataCommitment::setup("LocalDataCommitment");
         end_timer!(time);
 
         let time = start_timer!(|| "Local data CRH setup");
-        let local_data_crh = C::LocalDataCRH::setup(rng);
+        let local_data_crh = C::LocalDataCRH::setup("LocalDataCRH");
         end_timer!(time);
 
         let time = start_timer!(|| "Program verifying key CRH setup");
-        let program_verification_key_crh = C::ProgramVerificationKeyCRH::setup(rng);
+        let program_verification_key_crh = C::ProgramVerificationKeyCRH::setup("ProgramVerificationKeyCRH");
         end_timer!(time);
 
         let time = start_timer!(|| "Program verification key commitment setup");
-        let program_verification_key_commitment = C::ProgramVerificationKeyCommitment::setup(rng);
+        let program_verification_key_commitment =
+            C::ProgramVerificationKeyCommitment::setup("ProgramVerificationKeyCommitment");
         end_timer!(time);
 
         let time = start_timer!(|| "Record commitment scheme setup");
-        let record_commitment = C::RecordCommitment::setup(rng);
+        let record_commitment = C::RecordCommitment::setup("RecordCommitment");
         end_timer!(time);
 
         let time = start_timer!(|| "Serial nonce CRH setup");
-        let serial_number_nonce = C::SerialNumberNonceCRH::setup(rng);
+        let serial_number_nonce = C::SerialNumberNonceCRH::setup("SerialNumberNonceCRH");
         end_timer!(time);
 
         Ok(Self {

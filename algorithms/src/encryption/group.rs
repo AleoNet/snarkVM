@@ -36,12 +36,12 @@ use std::{
 
 #[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(
-    Copy(bound = "G: Group"),
-    Clone(bound = "G: Group"),
-    PartialEq(bound = "G: Group"),
-    Eq(bound = "G: Group"),
-    Debug(bound = "G: Group"),
-    Hash(bound = "G: Group")
+    Copy(bound = "G: ProjectiveCurve"),
+    Clone(bound = "G: ProjectiveCurve"),
+    PartialEq(bound = "G: ProjectiveCurve"),
+    Eq(bound = "G: ProjectiveCurve"),
+    Debug(bound = "G: ProjectiveCurve"),
+    Hash(bound = "G: ProjectiveCurve")
 )]
 pub struct GroupEncryptionPublicKey<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize>(pub G);
 
@@ -61,13 +61,13 @@ impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> FromBytes f
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let x_coordinate = <G::Affine as AffineCurve>::BaseField::read_le(&mut reader)?;
 
-        if let Some(element) = <G as ProjectiveCurve>::Affine::from_x_coordinate(x_coordinate, true) {
+        if let Some(element) = <G::Affine as AffineCurve>::from_x_coordinate(x_coordinate, true) {
             if element.is_in_correct_subgroup_assuming_on_curve() {
                 return Ok(Self(element.into_projective()));
             }
         }
 
-        if let Some(element) = <G as ProjectiveCurve>::Affine::from_x_coordinate(x_coordinate, false) {
+        if let Some(element) = <G::Affine as AffineCurve>::from_x_coordinate(x_coordinate, false) {
             if element.is_in_correct_subgroup_assuming_on_curve() {
                 return Ok(Self(element.into_projective()));
             }
@@ -90,16 +90,16 @@ impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> Default for
     PartialEq(bound = "G: ProjectiveCurve, SG: Group"),
     Eq(bound = "G: ProjectiveCurve, SG: Group")
 )]
-pub struct GroupEncryption<G: ProjectiveCurve, SG: Group> {
+pub struct GroupEncryption<G: ProjectiveCurve, SG: ProjectiveCurve> {
     pub parameters: GroupEncryptionParameters<G>,
     pub _signature_group: PhantomData<SG>,
 }
 
-impl<G: ProjectiveCurve, SG: Group + AffineCurve + CanonicalSerialize + CanonicalDeserialize> EncryptionScheme
+impl<G: ProjectiveCurve, SG: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> EncryptionScheme
     for GroupEncryption<G, SG>
 where
-    <SG as AffineCurve>::BaseField: PoseidonDefaultParametersField,
-    SG: ToConstraintField<<SG as AffineCurve>::BaseField>,
+    <SG::Affine as AffineCurve>::BaseField: PoseidonDefaultParametersField,
+    SG: ToConstraintField<<SG::Affine as AffineCurve>::BaseField>,
 {
     type BlindingExponent = <G as Group>::ScalarField;
     type Parameters = GroupEncryptionParameters<G>;
@@ -278,7 +278,7 @@ where
     }
 }
 
-impl<G: ProjectiveCurve, SG: Group> From<GroupEncryptionParameters<G>> for GroupEncryption<G, SG> {
+impl<G: ProjectiveCurve, SG: ProjectiveCurve> From<GroupEncryptionParameters<G>> for GroupEncryption<G, SG> {
     fn from(parameters: GroupEncryptionParameters<G>) -> Self {
         Self {
             parameters,

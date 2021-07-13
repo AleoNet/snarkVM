@@ -18,7 +18,6 @@ use snarkvm_algorithms::{crh::sha256::sha256, errors::CRHError, traits::CRH};
 use snarkvm_dpc::{testnet1::instantiated::Components, traits::DPCComponents};
 use snarkvm_utilities::ToBytes;
 
-use rand::thread_rng;
 use std::{
     fs::{
         File,
@@ -29,8 +28,7 @@ use std::{
 };
 
 pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, CRHError> {
-    let rng = &mut thread_rng();
-    let encrypted_record_crh = <C::EncryptedRecordCRH as CRH>::setup(rng);
+    let encrypted_record_crh = <C::EncryptedRecordCRH as CRH>::setup("EncryptedRecordCRH");
     let encrypted_record_crh_parameters_bytes = encrypted_record_crh.to_bytes_le()?;
 
     let size = encrypted_record_crh_parameters_bytes.len();

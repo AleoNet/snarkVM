@@ -18,15 +18,13 @@ use snarkvm_algorithms::{errors::CommitmentError, traits::CommitmentScheme};
 use snarkvm_dpc::{testnet1::instantiated::Components, traits::DPCComponents};
 use snarkvm_utilities::ToBytes;
 
-use rand::thread_rng;
 use std::path::PathBuf;
 
 mod utils;
 use utils::store;
 
 pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, CommitmentError> {
-    let rng = &mut thread_rng();
-    let record_commitment = <C::RecordCommitment as CommitmentScheme>::setup(rng);
+    let record_commitment = <C::RecordCommitment as CommitmentScheme>::setup("RecordCommitment");
     let record_commitment_parameters = record_commitment.parameters();
     let record_commitment_parameters_bytes = record_commitment_parameters.to_bytes_le()?;
 

@@ -27,7 +27,7 @@ use snarkvm_algorithms::{
     crh::{PedersenCRH, PedersenCompressedCRH},
     CRH,
 };
-use snarkvm_curves::AffineCurve;
+use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
@@ -35,7 +35,7 @@ use std::borrow::Borrow;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PedersenCompressedCRHGadget<
-    G: AffineCurve,
+    G: ProjectiveCurve,
     F: Field,
     GG: CompressedGroupGadget<G, F>,
     const NUM_WINDOWS: usize,
@@ -45,7 +45,7 @@ pub struct PedersenCompressedCRHGadget<
 }
 
 // TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
-impl<G: AffineCurve, F: Field, GG: CompressedGroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<G: ProjectiveCurve, F: Field, GG: CompressedGroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     AllocGadget<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCompressedCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
@@ -78,7 +78,7 @@ impl<G: AffineCurve, F: Field, GG: CompressedGroupGadget<G, F>, const NUM_WINDOW
     }
 }
 
-impl<G: AffineCurve, F: Field, GG: CompressedGroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<G: ProjectiveCurve, F: Field, GG: CompressedGroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     CRHGadget<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCompressedCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
@@ -94,8 +94,13 @@ impl<G: AffineCurve, F: Field, GG: CompressedGroupGadget<G, F>, const NUM_WINDOW
     }
 }
 
-impl<G: AffineCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    MaskedCRHGadget<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+impl<
+    G: ProjectiveCurve,
+    F: PrimeField,
+    GG: CompressedGroupGadget<G, F>,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> MaskedCRHGadget<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCompressedCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     type MaskParametersGadget = Self;

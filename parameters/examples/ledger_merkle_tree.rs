@@ -18,16 +18,13 @@ use snarkvm_algorithms::{errors::MerkleError, traits::MerkleParameters};
 use snarkvm_dpc::testnet1::{instantiated::Components, Testnet1Components};
 use snarkvm_utilities::ToBytes;
 
-use rand::thread_rng;
 use std::path::PathBuf;
 
 mod utils;
 use utils::store;
 
 pub fn setup<C: Testnet1Components>() -> Result<Vec<u8>, MerkleError> {
-    let rng = &mut thread_rng();
-
-    let ledger_merkle_tree_parameters = <C::MerkleParameters as MerkleParameters>::setup(rng);
+    let ledger_merkle_tree_parameters = <C::MerkleParameters as MerkleParameters>::setup("MerkleParameters");
     let ledger_merkle_tree_parameters_bytes = ledger_merkle_tree_parameters.crh().to_bytes_le()?;
 
     let size = ledger_merkle_tree_parameters_bytes.len();
