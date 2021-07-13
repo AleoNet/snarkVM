@@ -177,7 +177,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd gadgets && RUST_MIN_STACK=8388608 cargo test
+          command: cd gadgets && RUST_MIN_STACK=83886080 cargo test
       - clear_environment:
           cache_key: snarkvm-gadgets-cache
 
