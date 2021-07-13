@@ -60,8 +60,7 @@ macro_rules! div_int_impl {
                 if !other.is_constant() {
                     other.evaluate_equal(cs.ns(||"is_divisor_zero"), &Self::constant(0 as <$gadget as Integer>::IntegerType))?.enforce_equal(cs.ns(||"divisor_is_not_zero"), &Boolean::constant(false))?;
                 }
-                if other.value.is_some() {
-                    let value = other.value.unwrap();
+                if let Some(value) = other.value {
                     if value == 0 as <$gadget as Integer>::IntegerType {
                         return Err(UnsignedIntegerError::DivisionByZero.into());
                     }

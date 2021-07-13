@@ -84,7 +84,7 @@ macro_rules! div_int_impl {
                 let a_absolute : <$gadget as Integer>::UnsignedGadgetType = {
                     let negated_bits = self.bits.neg(cs.ns(||"neg_self_bits"))?;
 
-                    let mut absolute_value_bits = Vec::new();
+                    let mut absolute_value_bits = Vec::with_capacity(self.bits.len());
                     for i in 0..self.bits.len() {
                         absolute_value_bits.push(Boolean::conditionally_select(
                             cs.ns(|| format!("select_the_self_absolute_value_bit_{}", i)),
@@ -99,7 +99,7 @@ macro_rules! div_int_impl {
                 let b_absolute : <$gadget as Integer>::UnsignedGadgetType = {
                     let negated_bits = other.bits.neg(cs.ns(||"neg_other_bits"))?;
 
-                    let mut absolute_value_bits = Vec::new();
+                    let mut absolute_value_bits = Vec::with_capacity(self.bits.len());
                     for i in 0..self.bits.len() {
                         absolute_value_bits.push(Boolean::conditionally_select(
                             cs.ns(|| format!("select_the_other_absolute_value_bit_{}", i)),
@@ -123,7 +123,7 @@ macro_rules! div_int_impl {
 
                 let negated_quotient_bits = quotient.bits.neg(cs.ns(||"neg_quotient_bits"))?;
 
-                let mut result_bits = Vec::<Boolean>::new();
+                let mut result_bits = Vec::<Boolean>::with_capacity(quotient.bits.len());
                 for i in 0..quotient.bits.len() {
                     result_bits.push(Boolean::conditionally_select(
                         cs.ns(|| format!("select_final_bits_{}", i)),
