@@ -16,7 +16,7 @@
 
 use criterion::Criterion;
 
-use snarkvm_algorithms::hash_to_curve::hash_to_curve;
+use snarkvm_algorithms::hash_to_curve::{hash_to_curve, try_hash_to_curve};
 use snarkvm_curves::bls12_377::{G1Affine, G2Affine};
 
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
@@ -24,7 +24,7 @@ use rand::{distributions::Alphanumeric, thread_rng, Rng};
 #[macro_use]
 extern crate criterion;
 
-fn try_hash_to_g1_on_bls12_377(c: &mut Criterion) {
+fn hash_to_g1_on_bls12_377(c: &mut Criterion) {
     let message: String = thread_rng()
         .sample_iter(&Alphanumeric)
         .take(30)
@@ -33,12 +33,12 @@ fn try_hash_to_g1_on_bls12_377(c: &mut Criterion) {
 
     c.bench_function("try_hash_to_g1_on_bls12_377", move |b| {
         b.iter(|| {
-            let _ = hash_to_curve::<G1Affine>(&message).unwrap();
+            let _ = hash_to_curve::<G1Affine>(&message);
         })
     });
 }
 
-fn one_step_of_hash_to_g1_on_bls12_377(c: &mut Criterion) {
+fn try_hash_to_g1_on_bls12_377(c: &mut Criterion) {
     let message: String = thread_rng()
         .sample_iter(&Alphanumeric)
         .take(30)
@@ -47,7 +47,21 @@ fn one_step_of_hash_to_g1_on_bls12_377(c: &mut Criterion) {
 
     c.bench_function("one_step_of_hash_to_g1_on_bls12_377", move |b| {
         b.iter(|| {
-            let _ = hash_to_curve::<G1Affine>(&message);
+            let _ = try_hash_to_curve::<G1Affine>(&message);
+        })
+    });
+}
+
+fn hash_to_g2_on_bls12_377(c: &mut Criterion) {
+    let message: String = thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(30)
+        .map(char::from)
+        .collect();
+
+    c.bench_function("try_hash_to_g1_on_bls12_377", move |b| {
+        b.iter(|| {
+            let _ = hash_to_curve::<G2Affine>(&message);
         })
     });
 }
@@ -59,23 +73,9 @@ fn try_hash_to_g2_on_bls12_377(c: &mut Criterion) {
         .map(char::from)
         .collect();
 
-    c.bench_function("try_hash_to_g1_on_bls12_377", move |b| {
-        b.iter(|| {
-            let _ = hash_to_curve::<G2Affine>(&message).unwrap();
-        })
-    });
-}
-
-fn one_step_of_hash_to_g2_on_bls12_377(c: &mut Criterion) {
-    let message: String = thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(30)
-        .map(char::from)
-        .collect();
-
     c.bench_function("one_step_of_hash_to_g2_on_bls12_377", move |b| {
         b.iter(|| {
-            let _ = hash_to_curve::<G2Affine>(&message);
+            let _ = try_hash_to_curve::<G2Affine>(&message);
         })
     });
 }
@@ -83,7 +83,7 @@ fn one_step_of_hash_to_g2_on_bls12_377(c: &mut Criterion) {
 criterion_group! {
     name = hash_to_curve_group;
     config = Criterion::default().sample_size(10);
-    targets = try_hash_to_g1_on_bls12_377, one_step_of_hash_to_g1_on_bls12_377, try_hash_to_g2_on_bls12_377, one_step_of_hash_to_g2_on_bls12_377
+    targets = hash_to_g1_on_bls12_377, try_hash_to_g1_on_bls12_377, hash_to_g2_on_bls12_377, try_hash_to_g2_on_bls12_377
 }
 
 criterion_main!(hash_to_curve_group);
