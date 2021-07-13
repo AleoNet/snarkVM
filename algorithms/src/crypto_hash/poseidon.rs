@@ -32,7 +32,7 @@ use snarkvm_fields::{
 use snarkvm_utilities::marker::PhantomData;
 
 /// Parameters and RNG used
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PoseidonParameters<F: PrimeField> {
     /// number of rounds in a full-round operation
     pub full_rounds: usize,
@@ -280,12 +280,13 @@ impl<F: PrimeField> CryptographicSponge<F> for PoseidonSponge<F> {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PoseidonCryptoHash<
     F: PrimeField + PoseidonDefaultParametersField,
     const RATE: usize,
     const OPTIMIZED_FOR_WEIGHTS: bool,
 > {
-    field_phantom: PhantomData<F>,
+    pub field_phantom: PhantomData<F>,
 }
 
 impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> CryptoHash
