@@ -61,7 +61,7 @@ macro_rules! div_int_impl {
                 // else
                 //    !Q                      -- negative result
 
-                // If `self` and `other` are both constants, return the constant results instead of generating constraints
+                // If `self` and `other` are both constants, return the constant result instead of generating constraints.
                 if self.is_constant() && other.is_constant() {
                     return Ok(Self::constant(self.value.unwrap().wrapping_div(other.value.unwrap())));
                 }
@@ -81,7 +81,7 @@ macro_rules! div_int_impl {
                 let positive_result = is_a_negative.evaluate_equal(cs.ns(|| "compare_msb"), &is_b_negative)?;
 
                 // Get the absolute value of each number.
-                let a_absolute : <$gadget as Integer>::UnsignedGadgetType = {
+                let a_absolute : <$gadget as Integer>::UnsignedGadget = {
                     let negated_bits = self.bits.neg(cs.ns(||"neg_self_bits"))?;
 
                     let mut absolute_value_bits = Vec::with_capacity(self.bits.len());
@@ -94,9 +94,9 @@ macro_rules! div_int_impl {
                         )?);
                     }
 
-                    <$gadget as Integer>::UnsignedGadgetType::from_bits_le(&absolute_value_bits)
+                    <$gadget as Integer>::UnsignedGadget::from_bits_le(&absolute_value_bits)
                 };
-                let b_absolute : <$gadget as Integer>::UnsignedGadgetType = {
+                let b_absolute : <$gadget as Integer>::UnsignedGadget = {
                     let negated_bits = other.bits.neg(cs.ns(||"neg_other_bits"))?;
 
                     let mut absolute_value_bits = Vec::with_capacity(self.bits.len());
@@ -109,7 +109,7 @@ macro_rules! div_int_impl {
                         )?);
                     }
 
-                    <$gadget as Integer>::UnsignedGadgetType::from_bits_le(&absolute_value_bits)
+                    <$gadget as Integer>::UnsignedGadget::from_bits_le(&absolute_value_bits)
                 };
 
                 let quotient = a_absolute.div(cs.ns(||"div_absolute_value"), &b_absolute).map_err(

@@ -374,7 +374,7 @@ fn test_uint128_div_constants() {
 fn test_uint128_div() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    for _ in 0..2 {
+    for _ in 0..10 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
         let a: u128 = rng.gen();

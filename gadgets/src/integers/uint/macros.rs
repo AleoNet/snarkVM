@@ -125,7 +125,7 @@ macro_rules! uint_impl_common {
 
         impl crate::traits::integers::Integer for $name {
             type IntegerType = $_type;
-            type UnsignedGadgetType = $name;
+            type UnsignedGadget = $name;
             type UnsignedIntegerType = $_type;
 
             const SIZE: usize = $size;

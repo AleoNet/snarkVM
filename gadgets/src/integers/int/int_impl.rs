@@ -33,7 +33,7 @@ macro_rules! int_impl {
 
         impl Integer for $name {
             type IntegerType = $type_;
-            type UnsignedGadgetType = $uname_;
+            type UnsignedGadget = $uname_;
             type UnsignedIntegerType = $utype_;
 
             const SIZE: usize = $size;

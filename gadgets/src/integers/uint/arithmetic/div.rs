@@ -66,7 +66,7 @@ macro_rules! div_int_impl {
                     }
                 }
 
-                // If `self` and `other` are both constants, return the constant results instead of generating constraints
+                // If `self` and `other` are both constants, return the constant result instead of generating constraints.
                 if self.is_constant() && other.is_constant() {
                     return Ok(Self::constant(self.value.unwrap().wrapping_div(other.value.unwrap())));
                 }
@@ -98,7 +98,7 @@ macro_rules! div_int_impl {
                     // if R ≥ D
                     let r_larger_or_equal_to_d = remainder.less_than(cs.ns(|| format!("check_if_R_greater_than_D_{}", i)), &other)?.not();
 
-                    // compute R - D, which may have an overflow, but we will only select the one with no overflow
+                    // compute R - D
                     let r_sub_d = {
                         let result = Self::alloc(cs.ns(||format!("r_sub_d_result_{}", i)), || {
                             let remainder_value = remainder.value.unwrap();
