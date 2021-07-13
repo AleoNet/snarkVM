@@ -16,13 +16,17 @@
 
 use crate::{
     algorithms::crypto_hash::{CryptographicSpongeVar, PoseidonCryptoHashGadget, PoseidonSpongeGadget},
-    traits::ToConstraintFieldGadget,
+    traits::{integers::Integer, ToConstraintFieldGadget},
     CRHGadget,
+    FieldGadget,
     FpGadget,
     UInt8,
 };
 
-use snarkvm_algorithms::crypto_hash::{PoseidonCryptoHash, PoseidonDefaultParametersField};
+use snarkvm_algorithms::{
+    crypto_hash::{PoseidonCryptoHash, PoseidonDefaultParametersField},
+    traits::CRH,
+};
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
@@ -40,7 +44,13 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     ) -> Result<Self::OutputGadget, SynthesisError> {
         let params = F::get_default_poseidon_parameters(RATE, OPTIMIZED_FOR_WEIGHTS).unwrap();
 
-        let field_input = &input.to_constraint_field(cs.ns(|| "convert input into field gadgets"))?;
+        let mut padded_input_bytes = input;
+        padded_input_bytes.resize(
+            PoseidonCryptoHash::<F, RATE, OPTIMIZED_FOR_WEIGHTS>::INPUT_SIZE_BITS / 8,
+            UInt8::constant(0u8),
+        );
+
+        let field_input = &padded_input_bytes.to_constraint_field(cs.ns(|| "convert input into field gadgets"))?;
 
         let mut sponge = PoseidonSpongeGadget::<F>::new(cs.ns(|| "alloc"), &params);
         sponge.absorb(cs.ns(|| "absorb"), field_input.iter())?;
