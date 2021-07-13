@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{errors::CommitmentError, traits::CommitmentScheme};
+use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use blake2::Blake2s as blake2s;
@@ -64,5 +65,12 @@ impl FromBytes for Blake2sCommitment {
     #[inline]
     fn read_le<R: Read>(_: R) -> IoResult<Self> {
         Ok(Self)
+    }
+}
+
+impl<F: Field> ToConstraintField<F> for Blake2sCommitment {
+    #[inline]
+    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
+        Ok(Vec::new())
     }
 }

@@ -56,7 +56,7 @@ pub struct InnerCircuitVerifierInput<C: Testnet1Components> {
 
 impl<C: Testnet1Components> ToConstraintField<C::InnerScalarField> for InnerCircuitVerifierInput<C>
 where
-    <C::AccountCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    C::AccountCommitment: ToConstraintField<C::InnerScalarField>,
     <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
 
     <C::AccountEncryption as EncryptionScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
@@ -64,7 +64,7 @@ where
     <C::AccountSignature as SignatureScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
 
-    <C::RecordCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    C::RecordCommitment: ToConstraintField<C::InnerScalarField>,
     <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
 
     <C::EncryptedRecordCRH as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
@@ -72,7 +72,7 @@ where
 
     <C::SerialNumberNonceCRH as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
 
-    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    C::ProgramVerificationKeyCommitment: ToConstraintField<C::InnerScalarField>,
     <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
 
     <C::LocalDataCRH as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
@@ -84,13 +84,7 @@ where
     fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
 
-        v.extend_from_slice(
-            &self
-                .system_parameters
-                .account_commitment
-                .parameters()
-                .to_field_elements()?,
-        );
+        v.extend_from_slice(&self.system_parameters.account_commitment.to_field_elements()?);
         v.extend_from_slice(
             &<C::AccountEncryption as EncryptionScheme>::parameters(&self.system_parameters.account_encryption)
                 .to_field_elements()?,
@@ -102,13 +96,7 @@ where
                 .parameters()
                 .to_field_elements()?,
         );
-        v.extend_from_slice(
-            &self
-                .system_parameters
-                .record_commitment
-                .parameters()
-                .to_field_elements()?,
-        );
+        v.extend_from_slice(&self.system_parameters.record_commitment.to_field_elements()?);
         v.extend_from_slice(
             &self
                 .system_parameters
@@ -120,7 +108,6 @@ where
             &self
                 .system_parameters
                 .program_verification_key_commitment
-                .parameters()
                 .to_field_elements()?,
         );
         v.extend_from_slice(&self.system_parameters.local_data_crh.parameters().to_field_elements()?);

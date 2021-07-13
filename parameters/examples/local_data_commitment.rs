@@ -25,8 +25,7 @@ use utils::store;
 
 pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, CommitmentError> {
     let local_data_commitment = <C::LocalDataCommitment as CommitmentScheme>::setup("LocalDataCommitment");
-    let local_data_commitment_parameters = local_data_commitment.parameters();
-    let local_data_commitment_parameters_bytes = local_data_commitment_parameters.to_bytes_le()?;
+    let local_data_commitment_parameters_bytes = local_data_commitment.to_bytes_le()?;
 
     let size = local_data_commitment_parameters_bytes.len();
     println!("local_data_commitment.params\n\tsize - {}", size);

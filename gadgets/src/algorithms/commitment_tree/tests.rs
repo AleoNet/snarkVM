@@ -52,7 +52,13 @@ pub type HG =
     BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Fr, EdwardsBls12Gadget, CRH_NUM_WINDOWS, CRH_WINDOW_SIZE>;
 
 pub type C = PedersenCompressedCommitment<EdwardsBls, COMMITMENT_NUM_WINDOWS, COMMITMENT_WINDOW_SIZE>;
-pub type CG = PedersenCompressedCommitmentGadget<EdwardsBls, Fr, EdwardsBls12Gadget>;
+pub type CG = PedersenCompressedCommitmentGadget<
+    EdwardsBls,
+    Fr,
+    EdwardsBls12Gadget,
+    COMMITMENT_NUM_WINDOWS,
+    COMMITMENT_WINDOW_SIZE,
+>;
 
 /// Generates a valid Merkle tree and verifies the Merkle path witness for each leaf.
 fn generate_merkle_tree<C: CommitmentScheme, H: CRH, R: Rng>(

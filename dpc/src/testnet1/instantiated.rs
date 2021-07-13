@@ -79,7 +79,7 @@ impl DPCComponents for Components {
     type OuterScalarField = <Self::OuterCurve as PairingEngine>::Fr;
     
     type AccountCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 192>;
-    type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
+    type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 192>;
     
     type AccountEncryption = GroupEncryption<EdwardsBls12, EdwardsBls12>;
     type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
@@ -97,7 +97,7 @@ impl DPCComponents for Components {
     type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
     
     type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 129>;
-    type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
+    type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 129>;
 
     type PRF = Blake2s;
     type PRFGadget = Blake2sGadget;
@@ -109,7 +109,7 @@ impl DPCComponents for Components {
     type ProgramVerificationKeyCommitmentGadget = Blake2sCommitmentGadget;
     
     type RecordCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 233>;
-    type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
+    type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 233>;
     
     type SerialNumberNonceCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 32, 63>;
     type SerialNumberNonceCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;

@@ -105,36 +105,28 @@ impl<C: Testnet2Components> SystemParameters<C> {
 
     /// TODO (howardwu): Inspect what is going on with program_verification_key_commitment.
     pub fn load() -> IoResult<Self> {
-        let account_commitment: C::AccountCommitment = From::from(FromBytes::read_le(
-            AccountCommitmentParameters::load_bytes()?.as_slice(),
-        )?);
+        let account_commitment: C::AccountCommitment =
+            FromBytes::read_le(AccountCommitmentParameters::load_bytes()?.as_slice())?;
         let account_encryption_parameters: <C::AccountEncryption as EncryptionScheme>::Parameters =
             FromBytes::read_le(AccountEncryptionParameters::load_bytes()?.as_slice())?;
         let account_encryption: C::AccountEncryption = From::from(account_encryption_parameters);
         let account_signature: C::AccountSignature = From::from(FromBytes::read_le(
             AccountSignatureParameters::load_bytes()?.as_slice(),
         )?);
-        let encrypted_record_crh: C::EncryptedRecordCRH = From::from(FromBytes::read_le(
-            EncryptedRecordCRHParameters::load_bytes()?.as_slice(),
-        )?);
+        let encrypted_record_crh: C::EncryptedRecordCRH =
+            FromBytes::read_le(EncryptedRecordCRHParameters::load_bytes()?.as_slice())?;
         let inner_circuit_id_crh: C::InnerCircuitIDCRH =
-            From::from(FromBytes::read_le(InnerCircuitIDCRH::load_bytes()?.as_slice())?);
-        let local_data_crh: C::LocalDataCRH =
-            From::from(FromBytes::read_le(LocalDataCRHParameters::load_bytes()?.as_slice())?);
-        let local_data_commitment: C::LocalDataCommitment = From::from(FromBytes::read_le(
-            LocalDataCommitmentParameters::load_bytes()?.as_slice(),
-        )?);
-        let program_verification_key_commitment: C::ProgramVerificationKeyCommitment =
-            From::from(FromBytes::read_le(&[][..])?);
-        let program_verification_key_crh: C::ProgramVerificationKeyCRH = From::from(FromBytes::read_le(
-            Testnet2ProgramVKCRHParameters::load_bytes()?.as_slice(),
-        )?);
-        let record_commitment: C::RecordCommitment = From::from(FromBytes::read_le(
-            RecordCommitmentParameters::load_bytes()?.as_slice(),
-        )?);
-        let serial_number_nonce: C::SerialNumberNonceCRH = From::from(FromBytes::read_le(
-            SerialNumberNonceCRHParameters::load_bytes()?.as_slice(),
-        )?);
+            FromBytes::read_le(InnerCircuitIDCRH::load_bytes()?.as_slice())?;
+        let local_data_crh: C::LocalDataCRH = FromBytes::read_le(LocalDataCRHParameters::load_bytes()?.as_slice())?;
+        let local_data_commitment: C::LocalDataCommitment =
+            FromBytes::read_le(LocalDataCommitmentParameters::load_bytes()?.as_slice())?;
+        let program_verification_key_commitment: C::ProgramVerificationKeyCommitment = FromBytes::read_le(&[][..])?;
+        let program_verification_key_crh: C::ProgramVerificationKeyCRH =
+            FromBytes::read_le(ProgramVKCRHParameters::load_bytes()?.as_slice())?;
+        let record_commitment: C::RecordCommitment =
+            FromBytes::read_le(RecordCommitmentParameters::load_bytes()?.as_slice())?;
+        let serial_number_nonce: C::SerialNumberNonceCRH =
+            FromBytes::read_le(SerialNumberNonceCRHParameters::load_bytes()?.as_slice())?;
 
         Ok(Self {
             account_commitment,

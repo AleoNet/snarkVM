@@ -16,6 +16,7 @@
 
 use crate::{commitment::PedersenCommitment, errors::CommitmentError, traits::CommitmentScheme};
 use snarkvm_curves::traits::{AffineCurve, Group, ProjectiveCurve};
+use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
@@ -81,5 +82,14 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
     #[inline]
     fn read_le<R: Read>(reader: R) -> IoResult<Self> {
         Ok(PedersenCommitment::read_le(reader)?.into())
+    }
+}
+
+impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    ToConstraintField<F> for PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
+{
+    #[inline]
+    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
+        self.pedersen.to_field_elements()
     }
 }

@@ -25,8 +25,7 @@ use utils::store;
 
 pub fn setup<C: DPCComponents>() -> Result<Vec<u8>, CommitmentError> {
     let account_commitment = <C::AccountCommitment as CommitmentScheme>::setup("AccountCommitment");
-    let account_commitment_parameters = account_commitment.parameters();
-    let account_commitment_parameters_bytes = account_commitment_parameters.to_bytes_le()?;
+    let account_commitment_parameters_bytes = account_commitment.to_bytes_le()?;
 
     let size = account_commitment_parameters_bytes.len();
     println!("account_commitment.params\n\tsize - {}", size);

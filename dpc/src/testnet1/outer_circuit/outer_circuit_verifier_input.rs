@@ -31,14 +31,14 @@ pub struct OuterCircuitVerifierInput<C: Testnet1Components> {
 
 impl<C: Testnet1Components> ToConstraintField<C::OuterScalarField> for OuterCircuitVerifierInput<C>
 where
-    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::OuterScalarField>,
+    C::ProgramVerificationKeyCommitment: ToConstraintField<C::OuterScalarField>,
     <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::OuterScalarField>,
     <C::ProgramVerificationKeyCRH as CRH>::Parameters: ToConstraintField<C::OuterScalarField>,
 
     <C::InnerCircuitIDCRH as CRH>::Parameters: ToConstraintField<C::OuterScalarField>,
     <C::InnerCircuitIDCRH as CRH>::Output: ToConstraintField<C::OuterScalarField>,
 
-    <C::AccountCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    C::AccountCommitment: ToConstraintField<C::InnerScalarField>,
     <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
 
     <C::AccountEncryption as EncryptionScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
@@ -46,7 +46,7 @@ where
     <C::AccountSignature as SignatureScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
 
-    <C::RecordCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    C::RecordCommitment: ToConstraintField<C::InnerScalarField>,
     <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
 
     <C::EncryptedRecordCRH as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
@@ -54,7 +54,7 @@ where
 
     <C::SerialNumberNonceCRH as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
 
-    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    C::ProgramVerificationKeyCommitment: ToConstraintField<C::InnerScalarField>,
     <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
 
     <C::LocalDataCRH as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
@@ -71,7 +71,6 @@ where
                 .inner_snark_verifier_input
                 .system_parameters
                 .program_verification_key_commitment
-                .parameters()
                 .to_field_elements()?,
         );
         v.extend_from_slice(

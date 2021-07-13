@@ -266,10 +266,11 @@ where
     ) = {
         let cs = &mut cs.ns(|| "Declare commitment and CRH parameters");
 
-        let account_commitment_parameters = AccountCommitmentGadget::ParametersGadget::alloc_input(
-            &mut cs.ns(|| "Declare account commit parameters"),
-            || Ok(system_parameters.account_commitment.parameters()),
-        )?;
+        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
+        let account_commitment_parameters =
+            AccountCommitmentGadget::alloc_input(&mut cs.ns(|| "Declare account commit parameters"), || {
+                Ok(system_parameters.account_commitment.clone())
+            })?;
 
         let account_encryption_parameters = AccountEncryptionGadget::ParametersGadget::alloc_input(
             &mut cs.ns(|| "Declare account encryption parameters"),
@@ -285,10 +286,11 @@ where
             || Ok(system_parameters.account_signature.parameters()),
         )?;
 
-        let record_commitment_parameters = RecordCommitmentGadget::ParametersGadget::alloc_input(
-            &mut cs.ns(|| "Declare record commitment parameters"),
-            || Ok(system_parameters.record_commitment.parameters()),
-        )?;
+        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
+        let record_commitment_parameters =
+            RecordCommitmentGadget::alloc_input(&mut cs.ns(|| "Declare record commitment parameters"), || {
+                Ok(system_parameters.record_commitment.clone())
+            })?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let encrypted_record_crh_parameters =
@@ -296,12 +298,10 @@ where
                 Ok(system_parameters.encrypted_record_crh.clone())
             })?;
 
-        let program_vk_commitment_parameters = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<
-            _,
-            C::InnerScalarField,
-        >>::ParametersGadget::alloc_input(
+        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
+        let program_vk_commitment_parameters = C::ProgramVerificationKeyCommitmentGadget::alloc_input(
             &mut cs.ns(|| "Declare program vk commitment parameters"),
-            || Ok(system_parameters.program_verification_key_commitment.parameters()),
+            || Ok(system_parameters.program_verification_key_commitment.clone()),
         )?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
@@ -310,10 +310,11 @@ where
                 Ok(system_parameters.local_data_crh.clone())
             })?;
 
-        let local_data_commitment_parameters = LocalDataCommitmentGadget::ParametersGadget::alloc_input(
-            &mut cs.ns(|| "Declare local data commitment parameters"),
-            || Ok(system_parameters.local_data_commitment.parameters()),
-        )?;
+        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
+        let local_data_commitment_parameters =
+            LocalDataCommitmentGadget::alloc_input(&mut cs.ns(|| "Declare local data commitment parameters"), || {
+                Ok(system_parameters.local_data_commitment.clone())
+            })?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let serial_number_nonce_crh_parameters = SerialNumberNonceCRHGadget::alloc_input(
@@ -486,9 +487,8 @@ where
                 account_view_key_input.extend_from_slice(&sk_prf);
 
                 // This is the record decryption key.
-                let candidate_account_commitment = AccountCommitmentGadget::check_commitment_gadget(
+                let candidate_account_commitment = account_commitment_parameters.check_commitment_gadget(
                     &mut account_cs.ns(|| "Compute the account commitment."),
-                    &account_commitment_parameters,
                     &account_view_key_input,
                     &r_pk,
                 )?;
@@ -622,9 +622,8 @@ where
             commitment_input.extend_from_slice(&given_death_program_id);
             commitment_input.extend_from_slice(&serial_number_nonce_bytes);
 
-            let candidate_commitment = RecordCommitmentGadget::check_commitment_gadget(
+            let candidate_commitment = record_commitment_parameters.check_commitment_gadget(
                 &mut commitment_cs.ns(|| "Compute commitment"),
-                &record_commitment_parameters,
                 &commitment_input,
                 &given_commitment_randomness,
             )?;
@@ -794,9 +793,8 @@ where
             commitment_input.extend_from_slice(&given_death_program_id);
             commitment_input.extend_from_slice(&serial_number_nonce_bytes);
 
-            let candidate_commitment = RecordCommitmentGadget::check_commitment_gadget(
+            let candidate_commitment = record_commitment_parameters.check_commitment_gadget(
                 &mut commitment_cs.ns(|| "Compute record commitment"),
-                &record_commitment_parameters,
                 &commitment_input,
                 &given_commitment_randomness,
             )?;
@@ -1242,12 +1240,8 @@ where
             &mut commitment_cs.ns(|| "given_commitment"), || Ok(program_commitment)
         )?;
 
-        let candidate_commitment = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<
-            _,
-            C::InnerScalarField,
-        >>::check_commitment_gadget(
+        let candidate_commitment = program_vk_commitment_parameters.check_commitment_gadget(
             &mut commitment_cs.ns(|| "candidate_commitment"),
-            &program_vk_commitment_parameters,
             &input,
             &given_commitment_randomness,
         )?;
@@ -1285,9 +1279,8 @@ where
                 || Ok(&local_data_commitment_randomizers[i]),
             )?;
 
-            let commitment = LocalDataCommitmentGadget::check_commitment_gadget(
+            let commitment = local_data_commitment_parameters.check_commitment_gadget(
                 cs.ns(|| format!("Commit to old record local data {}", i)),
-                &local_data_commitment_parameters,
                 &input_bytes,
                 &commitment_randomness,
             )?;
@@ -1314,9 +1307,8 @@ where
                 || Ok(&local_data_commitment_randomizers[C::NUM_INPUT_RECORDS + j]),
             )?;
 
-            let commitment = LocalDataCommitmentGadget::check_commitment_gadget(
+            let commitment = local_data_commitment_parameters.check_commitment_gadget(
                 cs.ns(|| format!("Commit to new record local data {}", j)),
-                &local_data_commitment_parameters,
                 &input_bytes,
                 &commitment_randomness,
             )?;
