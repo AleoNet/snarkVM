@@ -38,20 +38,18 @@ impl<G: Group> SchnorrParameters<G> {
         // Round to the closest multiple of 64 to factor bit and byte encoding differences.
         assert!(private_key_size_in_bits < usize::MAX - 63);
         let num_powers = (private_key_size_in_bits + 63) & !63usize;
-        Self {
-            generator_powers: Self::generator(num_powers, rng),
-            salt: rng.gen(),
-        }
-    }
 
-    fn generator<R: Rng>(num_powers: usize, rng: &mut R) -> Vec<G> {
         let mut generator_powers = Vec::with_capacity(num_powers);
         let mut generator = G::rand(rng);
         for _ in 0..num_powers {
             generator_powers.push(generator);
             generator.double_in_place();
         }
-        generator_powers
+
+        Self {
+            generator_powers,
+            salt: rng.gen(),
+        }
     }
 }
 
