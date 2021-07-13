@@ -176,8 +176,6 @@ where
             })?);
         }
 
-        println!("AAAAAA pos_list: {:?}", pos_list.len());
-
         let mut path = vec![];
         for (i, node) in merkle_path.path.iter().enumerate() {
             path.push(HGadget::OutputGadget::alloc(
