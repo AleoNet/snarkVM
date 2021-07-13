@@ -53,7 +53,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 60m
-          command: cd .integration && RUST_MIN_STACK=8388608 cargo test
+          command: cd .integration && RUST_MIN_STACK=67108864 cargo test
       - persist_to_workspace:
           root: ~/
           paths: project/
@@ -87,7 +87,7 @@ jobs:
       - run:
           name: Build and test
           no_output_timeout: 60m
-          command: cd .integration && RUST_MIN_STACK=8388608 cargo test
+          command: cd .integration && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-nightly-cache
 
@@ -102,7 +102,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd algorithms && RUST_MIN_STACK=8388608 cargo test
+          command: cd algorithms && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-algorithms-cache
 
@@ -117,7 +117,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd curves && RUST_MIN_STACK=8388608 cargo test
+          command: cd curves && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-curves-cache
 
@@ -132,7 +132,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd derives && RUST_MIN_STACK=8388608 cargo test
+          command: cd derives && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-derives-cache
 
@@ -147,7 +147,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd dpc && RUST_MIN_STACK=8388608 cargo test
+          command: cd dpc && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-dpc-cache
 
@@ -162,7 +162,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd fields && RUST_MIN_STACK=8388608 cargo test
+          command: cd fields && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-fields-cache
 
@@ -177,7 +177,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd gadgets && RUST_MIN_STACK=83886080 cargo test
+          command: cd gadgets && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-gadgets-cache
 
@@ -192,7 +192,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd marlin && RUST_MIN_STACK=8388608 cargo test
+          command: cd marlin && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-marlin-cache
 
@@ -207,7 +207,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd parameters && RUST_MIN_STACK=8388608 cargo test
+          command: cd parameters && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-parameters-cache
 
@@ -222,7 +222,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd polycommit && RUST_MIN_STACK=8388608 cargo test
+          command: cd polycommit && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-polycommit-cache
 
@@ -237,7 +237,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd posw && RUST_MIN_STACK=8388608 cargo test
+          command: cd posw && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-posw-cache
 
@@ -252,7 +252,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd profiler && RUST_MIN_STACK=8388608 cargo test
+          command: cd profiler && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-profiler-cache
 
@@ -267,7 +267,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd r1cs && RUST_MIN_STACK=8388608 cargo test
+          command: cd r1cs && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-r1cs-cache
 
@@ -282,7 +282,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd utilities && RUST_MIN_STACK=8388608 cargo test
+          command: cd utilities && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-utilities-cache
 
@@ -297,7 +297,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd algorithms && RUST_MIN_STACK=8388608 cargo test
+          command: cd algorithms && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-algorithms-nightly-cache
 
@@ -312,7 +312,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd curves && RUST_MIN_STACK=8388608 cargo test
+          command: cd curves && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-curves-nightly-cache
 
@@ -327,7 +327,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd derives && RUST_MIN_STACK=8388608 cargo test
+          command: cd derives && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-derives-nightly-cache
 
@@ -342,7 +342,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd dpc && RUST_MIN_STACK=8388608 cargo test
+          command: cd dpc && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-dpc-nightly-cache
 
@@ -357,7 +357,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd fields && RUST_MIN_STACK=8388608 cargo test
+          command: cd fields && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-fields-nightly-cache
 
@@ -372,7 +372,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd gadgets && RUST_MIN_STACK=83886080 cargo test
+          command: cd gadgets && RUST_MIN_STACK=671088640 cargo test
       - clear_environment:
           cache_key: snarkvm-gadgets-nightly-cache
 
@@ -387,7 +387,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd marlin && RUST_MIN_STACK=8388608 cargo test
+          command: cd marlin && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-marlin-nightly-cache
 
@@ -402,7 +402,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd parameters && RUST_MIN_STACK=8388608 cargo test
+          command: cd parameters && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-parameters-nightly-cache
 
@@ -417,7 +417,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd polycommit && RUST_MIN_STACK=8388608 cargo test
+          command: cd polycommit && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-polycommit-nightly-cache
 
@@ -432,7 +432,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd posw && RUST_MIN_STACK=8388608 cargo test
+          command: cd posw && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-posw-nightly-cache
 
@@ -447,7 +447,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd profiler && RUST_MIN_STACK=8388608 cargo test
+          command: cd profiler && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-profiler-nightly-cache
 
@@ -462,7 +462,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd r1cs && RUST_MIN_STACK=8388608 cargo test
+          command: cd r1cs && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-r1cs-nightly-cache
 
@@ -477,7 +477,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd utilities && RUST_MIN_STACK=8388608 cargo test
+          command: cd utilities && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-utilities-nightly-cache
 
@@ -489,7 +489,20 @@ workflows:
       - rust-nightly-integration
       - codecov:
           requires:
-            - rust-stable
+            - rust-stable-integration
+            - snarkvm-algorithms
+            - snarkvm-curves
+            - snarkvm-derives
+            - snarkvm-dpc
+            - snarkvm-fields
+            - snarkvm-gadgets
+            - snarkvm-marlin
+            - snarkvm-parameters
+            - snarkvm-polycommit
+            - snarkvm-posw
+            - snarkvm-profiler
+            - snarkvm-r1cs
+            - snarkvm-utilities
       - snarkvm-algorithms
       - snarkvm-curves
       - snarkvm-derives
