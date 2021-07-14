@@ -22,7 +22,7 @@ use crate::{
     SignatureScheme,
 };
 use snarkvm_curves::{AffineCurve, Group, ProjectiveCurve};
-use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, One, PrimeField, ToConstraintField, Zero};
+use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_utilities::{
     bytes::{from_bytes_le_to_bits_le, FromBytes, ToBytes},
     errors::SerializationError,
@@ -128,6 +128,7 @@ where
     type PrivateKey = <G as Group>::ScalarField;
     type PublicKey = SchnorrPublicKey<G>;
     type RandomizedPrivateKey = <G as Group>::ScalarField;
+    type Randomizer = <G as Group>::ScalarField;
     type Signature = SchnorrSignature<G>;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self, SignatureError> {
@@ -154,18 +155,6 @@ where
         Ok(private_key)
     }
 
-    fn generate_randomized_private_key<R: Rng>(
-        &self,
-        private_key: &Self::PrivateKey,
-        rng: &mut R,
-    ) -> Result<Self::RandomizedPrivateKey, SignatureError> {
-        let timer = start_timer!(|| "SchnorrSignature::generated_randomized_private_key");
-        let randomizer = <G as Group>::ScalarField::rand(rng);
-        let randomized_private_key = randomizer * private_key;
-        end_timer!(timer);
-        Ok(randomized_private_key)
-    }
-
     fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Result<Self::PublicKey, SignatureError> {
         let keygen_time = start_timer!(|| "SchnorrSignature::generate_public_key");
 
@@ -180,6 +169,29 @@ where
         end_timer!(keygen_time);
 
         Ok(SchnorrPublicKey(public_key))
+    }
+
+    fn randomize_private_key(
+        &self,
+        private_key: &Self::PrivateKey,
+        randomizer: &Self::Randomizer,
+    ) -> Result<Self::RandomizedPrivateKey, SignatureError> {
+        let timer = start_timer!(|| "SchnorrSignature::randomize_private_key");
+        let randomized_private_key = *randomizer + private_key;
+        end_timer!(timer);
+        Ok(randomized_private_key)
+    }
+
+    fn randomize_public_key(
+        &self,
+        public_key: &Self::PublicKey,
+        randomizer: &Self::Randomizer,
+    ) -> Result<Self::PublicKey, SignatureError> {
+        let timer = start_timer!(|| "SchnorrSignature::randomize_public_key");
+        let group_randomizer = self.generate_public_key(randomizer)?;
+        let randomized_public_key = public_key.0 + group_randomizer.0;
+        end_timer!(timer);
+        Ok(SchnorrPublicKey(randomized_public_key))
     }
 
     fn sign<R: Rng>(
@@ -260,7 +272,7 @@ where
         message: &[u8],
         signature: &Self::Signature,
     ) -> Result<bool, SignatureError> {
-        let verify_time = start_timer!(|| "SchnorrSignature::Verify");
+        let verify_time = start_timer!(|| "SchnorrSignature::verify");
 
         let SchnorrSignature {
             prover_response,

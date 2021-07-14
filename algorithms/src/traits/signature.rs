@@ -39,6 +39,7 @@ pub trait SignatureScheme: Sized + Clone + From<<Self as SignatureScheme>::Param
         + CanonicalDeserialize;
     type PrivateKey: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
     type RandomizedPrivateKey: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq + Into<Self::PrivateKey>;
+    type Randomizer: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
     type Signature: Clone + Debug + Default + ToBytes + FromBytes + Send + Sync + PartialEq + Eq;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self, SignatureError>;
@@ -47,13 +48,19 @@ pub trait SignatureScheme: Sized + Clone + From<<Self as SignatureScheme>::Param
 
     fn generate_private_key<R: Rng>(&self, rng: &mut R) -> Result<Self::PrivateKey, SignatureError>;
 
-    fn generate_randomized_private_key<R: Rng>(
+    fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Result<Self::PublicKey, SignatureError>;
+
+    fn randomize_private_key(
         &self,
         private_key: &Self::PrivateKey,
-        rng: &mut R,
+        randomizer: &Self::Randomizer,
     ) -> Result<Self::RandomizedPrivateKey, SignatureError>;
 
-    fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Result<Self::PublicKey, SignatureError>;
+    fn randomize_public_key(
+        &self,
+        public_key: &Self::PublicKey,
+        randomizer: &Self::Randomizer,
+    ) -> Result<Self::PublicKey, SignatureError>;
 
     fn sign<R: Rng>(
         &self,

@@ -17,13 +17,7 @@
 use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, CRH, PRF};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::traits::algorithms::{
-    CRHGadget,
-    CommitmentGadget,
-    EncryptionGadget,
-    PRFGadget,
-    SignaturePublicKeyRandomizationGadget,
-};
+use snarkvm_gadgets::traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget};
 
 pub trait DPCComponents: 'static + Sized {
     const NETWORK_ID: u8;
@@ -48,7 +42,7 @@ pub trait DPCComponents: 'static + Sized {
 
     /// Signature scheme for delegated compute.
     type AccountSignature: SignatureScheme;
-    type AccountSignatureGadget: SignaturePublicKeyRandomizationGadget<Self::AccountSignature, Self::InnerScalarField>;
+    type AccountSignatureGadget: SignatureGadget<Self::AccountSignature, Self::InnerScalarField>;
 
     /// CRH for the encrypted record.
     type EncryptedRecordCRH: CRH;

@@ -76,6 +76,7 @@ where
     type PrivateKey = <G as Group>::ScalarField;
     type PublicKey = GroupEncryptionPublicKey<G>;
     type RandomizedPrivateKey = <G as Group>::ScalarField;
+    type Randomizer = <G as Group>::ScalarField;
     type Signature = SchnorrSignature<SG>;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self, SignatureError> {
@@ -90,16 +91,24 @@ where
         Ok(<Self as EncryptionScheme>::generate_private_key(self, rng))
     }
 
-    fn generate_randomized_private_key<R: Rng>(
+    fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Result<Self::PublicKey, SignatureError> {
+        Ok(<Self as EncryptionScheme>::generate_public_key(self, private_key).unwrap())
+    }
+
+    fn randomize_private_key(
         &self,
         _private_key: &Self::PrivateKey,
-        _rng: &mut R,
+        _randomizer: &Self::Randomizer,
     ) -> Result<Self::RandomizedPrivateKey, SignatureError> {
         unimplemented!()
     }
 
-    fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Result<Self::PublicKey, SignatureError> {
-        Ok(<Self as EncryptionScheme>::generate_public_key(self, private_key).unwrap())
+    fn randomize_public_key(
+        &self,
+        _public_key: &Self::PublicKey,
+        _randomizer: &Self::Randomizer,
+    ) -> Result<Self::PublicKey, SignatureError> {
+        unimplemented!()
     }
 
     fn sign<R: Rng>(

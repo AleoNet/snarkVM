@@ -50,7 +50,7 @@ use snarkvm_gadgets::{
         crh::BoweHopwoodPedersenCompressedCRHGadget,
         encryption::GroupEncryptionGadget,
         prf::Blake2sGadget,
-        signature::SchnorrPublicKeyRandomizationGadget,
+        signature::SchnorrGadget,
         snark::Groth16VerifierGadget,
     },
     curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
@@ -93,7 +93,7 @@ impl DPCComponents for Components {
     type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
 
     type AccountSignature = Schnorr<EdwardsBls12>;
-    type AccountSignatureGadget = SchnorrPublicKeyRandomizationGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
+    type AccountSignatureGadget = SchnorrGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
     
     type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 48, 44>;
     type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 44>;

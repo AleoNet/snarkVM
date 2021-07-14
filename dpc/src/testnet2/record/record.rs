@@ -179,11 +179,18 @@ impl<C: Testnet2Components> Record<C> {
         }
     }
 
+    // TODO (howardwu) - Change the private_key input to a signature_public_key.
     pub fn to_serial_number(
         &self,
         signature_parameters: &C::AccountSignature,
         private_key: &PrivateKey<C>,
-    ) -> Result<(<C::AccountSignature as SignatureScheme>::PublicKey, Vec<u8>), RecordError> {
+    ) -> Result<
+        (
+            <C::AccountSignature as SignatureScheme>::PublicKey,
+            <C::AccountSignature as SignatureScheme>::Randomizer,
+        ),
+        RecordError,
+    > {
         let timer = start_timer!(|| "Generate serial number");
 
         // TODO (howardwu) - Implement after removing parameters from the inputs.
@@ -195,8 +202,8 @@ impl<C: Testnet2Components> Record<C> {
         // Compute the serial number.
         let seed = FromBytes::read_le(to_bytes_le!(&private_key.sk_prf)?.as_slice())?;
         let input = FromBytes::read_le(to_bytes_le!(self.serial_number_nonce)?.as_slice())?;
-        let randomizer = to_bytes_le![C::PRF::evaluate(&seed, &input)?]?;
-        let serial_number = C::AccountSignature::randomize_private_key(
+        let randomizer = FromBytes::from_bytes_le(&C::PRF::evaluate(&seed, &input)?.to_bytes_le()?)?;
+        let serial_number = C::AccountSignature::randomize_public_key(
             &signature_parameters,
             &private_key.pk_sig(&signature_parameters)?,
             &randomizer,

@@ -18,13 +18,7 @@ use crate::{
     algorithms::crypto_hash::{CryptographicSpongeVar, PoseidonSpongeGadget},
     bits::{Boolean, ToBytesGadget},
     integers::uint::UInt8,
-    traits::{
-        algorithms::SignaturePublicKeyRandomizationGadget,
-        alloc::AllocGadget,
-        curves::GroupGadget,
-        eq::EqGadget,
-        integers::Integer,
-    },
+    traits::{algorithms::SignatureGadget, alloc::AllocGadget, curves::GroupGadget, eq::EqGadget, integers::Integer},
     ConditionalEqGadget,
     FpGadget,
     ToBitsLEGadget,
@@ -317,8 +311,7 @@ impl<
     SG: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize,
     GG: GroupGadget<G, F> + ToConstraintFieldGadget<F>,
     F: PrimeField + PoseidonDefaultParametersField,
-> SignaturePublicKeyRandomizationGadget<GroupEncryption<G, SG>, F>
-    for GroupEncryptionPublicKeyRandomizationGadget<G, SG, F, GG>
+> SignatureGadget<GroupEncryption<G, SG>, F> for GroupEncryptionPublicKeyRandomizationGadget<G, SG, F, GG>
 where
     <SG::Affine as AffineCurve>::BaseField: PoseidonDefaultParametersField,
     SG: ToConstraintField<<SG::Affine as AffineCurve>::BaseField>,
@@ -327,21 +320,23 @@ where
     type PublicKeyGadget = GroupEncryptionPublicKeyGadget<G, F, GG>;
     type SignatureGadget = GroupEncryptionSignatureGadget<G, SG, F>;
 
-    fn check_randomization_gadget<CS: ConstraintSystem<F>>(
+    fn randomize_public_key<CS: ConstraintSystem<F>>(
         mut cs: CS,
         parameters: &Self::ParametersGadget,
         public_key: &Self::PublicKeyGadget,
-        randomness: &[UInt8],
+        randomizer: &[UInt8],
     ) -> Result<Self::PublicKeyGadget, SynthesisError> {
-        let randomness = randomness.iter().flat_map(|b| b.to_bits_le()).collect::<Vec<_>>();
-        let mut rand_pk = public_key.public_key.clone();
-        rand_pk.scalar_multiplication(
+        let randomness = randomizer.iter().flat_map(|b| b.to_bits_le()).collect::<Vec<_>>();
+
+        let mut randomized_public_key = GG::zero(cs.ns(|| "zero"))?;
+        randomized_public_key.scalar_multiplication(
             cs.ns(|| "check_randomization_gadget"),
             randomness.iter().zip_eq(&parameters.parameters.generator_powers),
         )?;
+        randomized_public_key = randomized_public_key.add(cs.ns(|| "pk + rG"), &public_key.public_key)?;
 
         Ok(GroupEncryptionPublicKeyGadget {
-            public_key: rand_pk,
+            public_key: randomized_public_key,
             _group: PhantomData,
             _engine: PhantomData,
         })
@@ -397,21 +392,15 @@ where
         )?;
 
         // Construct the hash
-        let mut hash_input = {
-            let salt_bytes_field_elements: Vec<F> = parameters.parameters.salt.to_field_elements().unwrap();
-
-            let mut res = Vec::new();
-            for (i, elem) in salt_bytes_field_elements.iter().enumerate() {
-                res.push(FpGadget::<F>::alloc_constant(
-                    cs.ns(|| format!("alloc salt byte field element {}", i)),
-                    || Ok((*elem).clone()),
-                )?);
-            }
-            res
-        };
+        let mut hash_input = Vec::new();
         hash_input.extend_from_slice(
             &claimed_prover_commitment
                 .to_constraint_field(cs.ns(|| "convert claimed_prover_commitment into field elements"))?,
+        );
+        hash_input.extend_from_slice(
+            &public_key
+                .public_key
+                .to_constraint_field(cs.ns(|| "convert public key into field elements"))?,
         );
         hash_input.extend_from_slice(&message.to_constraint_field(cs.ns(|| "convert message into field elements"))?);
 
