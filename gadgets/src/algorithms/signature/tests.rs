@@ -26,8 +26,10 @@ use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective, traits::Gr
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{ToBytes, UniformRand};
 
+use crate::algorithms::signature::GroupEncryptionPublicKeyRandomizationGadget;
 use rand::{thread_rng, Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
+use snarkvm_algorithms::encryption::GroupEncryption;
 
 type SchnorrScheme = Schnorr<EdwardsProjective>;
 type TestSignature = Schnorr<EdwardsProjective>;
@@ -146,6 +148,76 @@ fn schnorr_signature_verification_test() {
     assert_eq!(cs.num_constraints(), 245);
 
     let verification = <TestSignatureGadget as SignatureGadget<SchnorrScheme, Fr>>::verify(
+        cs.ns(|| "verify"),
+        &parameter_gadget,
+        &public_key_gadget,
+        &message_gadget,
+        &signature_gadget,
+    )
+    .unwrap();
+
+    assert_eq!(cs.num_constraints(), 6582);
+
+    verification
+        .enforce_equal(cs.ns(|| "check_verification"), &Boolean::constant(true))
+        .unwrap();
+
+    if !cs.is_satisfied() {
+        println!("which is unsatisfied: {:?}", cs.which_is_unsatisfied().unwrap());
+    }
+    assert!(cs.is_satisfied());
+}
+
+#[test]
+fn group_schnorr_signature_verification_test() {
+    type GroupSignature = GroupEncryption<EdwardsProjective, EdwardsProjective>;
+    type GroupSignatureGadget =
+        GroupEncryptionPublicKeyRandomizationGadget<EdwardsProjective, EdwardsProjective, Fr, EdwardsBls12Gadget>;
+
+    let message = "Hi, I am a Schnorr signature!".as_bytes();
+    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+
+    let schnorr_signature = GroupSignature::setup::<_>(rng).unwrap();
+    let private_key = schnorr_signature.generate_private_key(rng).unwrap();
+    let public_key = schnorr_signature.generate_public_key(&private_key).unwrap();
+    let signature = schnorr_signature.sign(&private_key, &message, rng).unwrap();
+
+    assert!(schnorr_signature.verify(&public_key, &message, &signature).unwrap());
+
+    let mut cs = TestConstraintSystem::<Fr>::new();
+
+    let parameter_gadget =
+        <GroupSignatureGadget as SignaturePublicKeyRandomizationGadget<GroupSignature, Fr>>::ParametersGadget::alloc(
+            cs.ns(|| "alloc_parameters"),
+            || Ok(&schnorr_signature.parameters),
+        )
+        .unwrap();
+
+    assert_eq!(cs.num_constraints(), 0);
+
+    let public_key_gadget =
+        <GroupSignatureGadget as SignaturePublicKeyRandomizationGadget<GroupSignature, Fr>>::PublicKeyGadget::alloc(
+            cs.ns(|| "alloc_public_key"),
+            || Ok(public_key),
+        )
+        .unwrap();
+
+    assert_eq!(cs.num_constraints(), 13);
+
+    let message_gadget = UInt8::alloc_vec(cs.ns(|| "alloc_message"), message).unwrap();
+    //
+    assert_eq!(cs.num_constraints(), 245);
+
+    let signature_gadget =
+        <GroupSignatureGadget as SignaturePublicKeyRandomizationGadget<GroupSignature, Fr>>::SignatureGadget::alloc(
+            cs.ns(|| "alloc_signature"),
+            || Ok(signature),
+        )
+        .unwrap();
+
+    assert_eq!(cs.num_constraints(), 245);
+
+    let verification = <GroupSignatureGadget as SignaturePublicKeyRandomizationGadget<GroupSignature, Fr>>::verify(
         cs.ns(|| "verify"),
         &parameter_gadget,
         &public_key_gadget,
