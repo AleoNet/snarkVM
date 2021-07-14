@@ -133,13 +133,12 @@ where
     type Execution = Execution;
     type LocalData = LocalData<C>;
     type Record = Record<C>;
-    type SystemParameters = SystemParameters<C>;
     type Transaction = Transaction<C>;
     type TransactionKernel = TransactionKernel<C>;
 
     fn setup<R: Rng + CryptoRng>(ledger_parameters: &Arc<C::MerkleParameters>, rng: &mut R) -> anyhow::Result<Self> {
         let setup_time = start_timer!(|| "DPC::setup");
-        let system_parameters = Self::SystemParameters::setup(rng)?;
+        let system_parameters = SystemParameters::<C>::setup(rng)?;
 
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
         let noop_program = NoopProgram::setup(
@@ -182,7 +181,7 @@ where
 
     fn load(verify_only: bool) -> anyhow::Result<Self> {
         let timer = start_timer!(|| "DPC::load");
-        let system_parameters = Self::SystemParameters::load()?;
+        let system_parameters = SystemParameters::<C>::load()?;
         let noop_program = NoopProgram::load(
             &system_parameters.local_data_commitment,
             &system_parameters.program_verification_key_crh,
