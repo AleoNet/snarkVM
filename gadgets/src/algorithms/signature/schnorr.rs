@@ -48,36 +48,6 @@ use itertools::Itertools;
 use snarkvm_curves::AffineCurve;
 use std::{borrow::Borrow, marker::PhantomData};
 
-#[derive(Clone)]
-pub struct SchnorrParametersGadget<G: ProjectiveCurve, F: PrimeField> {
-    pub(crate) generator_powers: Vec<G>,
-    pub(crate) _engine: PhantomData<*const F>,
-}
-
-impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<Vec<G>, F> for SchnorrParametersGadget<G, F> {
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Vec<G>>, CS: ConstraintSystem<F>>(
-        _cs: CS,
-        value_gen: Fn,
-    ) -> Result<Self, SynthesisError> {
-        let value = value_gen()?;
-        Ok(Self {
-            generator_powers: value.borrow().clone(),
-            _engine: PhantomData,
-        })
-    }
-
-    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Vec<G>>, CS: ConstraintSystem<F>>(
-        _cs: CS,
-        value_gen: Fn,
-    ) -> Result<Self, SynthesisError> {
-        let value = value_gen()?;
-        Ok(Self {
-            generator_powers: value.borrow().clone(),
-            _engine: PhantomData,
-        })
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SchnorrPublicKeyGadget<G: ProjectiveCurve, F: PrimeField, GG: GroupGadget<G, F>> {
     pub(crate) public_key: GG,
@@ -275,9 +245,41 @@ pub struct SchnorrGadget<
     F: PrimeField + PoseidonDefaultParametersField,
     GG: GroupGadget<G, F> + ToConstraintFieldGadget<F>,
 > {
-    pub(crate) _group: PhantomData<*const G>,
+    pub(crate) signature: Schnorr<G>,
     pub(crate) _group_gadget: PhantomData<*const GG>,
     pub(crate) _engine: PhantomData<*const F>,
+}
+
+impl<
+    G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize,
+    GG: GroupGadget<G, F> + ToConstraintFieldGadget<F>,
+    F: PrimeField + PoseidonDefaultParametersField,
+> AllocGadget<Schnorr<G>, F> for SchnorrGadget<G, F, GG>
+where
+    <G::Affine as AffineCurve>::BaseField: PoseidonDefaultParametersField,
+    G: ToConstraintField<<G::Affine as AffineCurve>::BaseField>,
+{
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Schnorr<G>>, CS: ConstraintSystem<F>>(
+        _cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        Ok(Self {
+            signature: value_gen()?.borrow().clone(),
+            _group_gadget: PhantomData,
+            _engine: PhantomData,
+        })
+    }
+
+    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Schnorr<G>>, CS: ConstraintSystem<F>>(
+        _cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        Ok(Self {
+            signature: value_gen()?.borrow().clone(),
+            _group_gadget: PhantomData,
+            _engine: PhantomData,
+        })
+    }
 }
 
 impl<
@@ -289,13 +291,12 @@ where
     <G::Affine as AffineCurve>::BaseField: PoseidonDefaultParametersField,
     G: ToConstraintField<<G::Affine as AffineCurve>::BaseField>,
 {
-    type ParametersGadget = SchnorrParametersGadget<G, F>;
     type PublicKeyGadget = SchnorrPublicKeyGadget<G, F, GG>;
     type SignatureGadget = SchnorrSignatureGadget<G, F>;
 
     fn randomize_public_key<CS: ConstraintSystem<F>>(
+        &self,
         mut cs: CS,
-        parameters: &Self::ParametersGadget,
         public_key: &Self::PublicKeyGadget,
         randomizer: &[UInt8],
     ) -> Result<Self::PublicKeyGadget, SynthesisError> {
@@ -304,7 +305,7 @@ where
         let mut randomized_public_key = GG::zero(cs.ns(|| "zero"))?;
         randomized_public_key.scalar_multiplication(
             cs.ns(|| "check_randomization_gadget"),
-            randomness.iter().zip_eq(&parameters.generator_powers),
+            randomness.iter().zip_eq(&self.signature.generator_powers),
         )?;
         randomized_public_key = randomized_public_key.add(cs.ns(|| "pk + rG"), &public_key.public_key)?;
 
@@ -317,8 +318,8 @@ where
 
     // TODO (raychu86): Make the blake2s usage generic for all PRFs.
     fn verify<CS: ConstraintSystem<F>>(
+        &self,
         mut cs: CS,
-        parameters: &Self::ParametersGadget,
         public_key: &Self::PublicKeyGadget,
         message: &[UInt8],
         signature: &Self::SignatureGadget,
@@ -340,7 +341,7 @@ where
         let mut claimed_prover_commitment = GG::zero(cs.ns(|| "zero_claimed_prover_commitment"))?;
         for (i, (bit, base_power)) in prover_response_bits
             .iter()
-            .zip_eq(&parameters.generator_powers)
+            .zip_eq(&self.signature.generator_powers)
             .enumerate()
         {
             let added =

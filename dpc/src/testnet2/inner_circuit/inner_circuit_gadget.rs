@@ -562,9 +562,8 @@ where
             )?;
             let randomizer_bytes = randomizer.to_bytes(&mut sn_cs.ns(|| "Convert randomizer to bytes"))?;
 
-            let candidate_serial_number_gadget = AccountSignatureGadget::randomize_public_key(
+            let candidate_serial_number_gadget = account_signature_parameters.randomize_public_key(
                 &mut sn_cs.ns(|| "Compute serial number"),
-                &account_signature_parameters,
                 &pk_sig,
                 &randomizer_bytes,
             )?;

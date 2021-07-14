@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    algorithms::signature::{SchnorrGadget, SchnorrParametersGadget, SchnorrPublicKeyGadget},
+    algorithms::signature::{SchnorrGadget, SchnorrPublicKeyGadget},
     curves::edwards_bls12::EdwardsBls12Gadget,
     integers::uint::UInt8,
     traits::{algorithms::SignatureGadget, alloc::AllocGadget, eq::EqGadget},
@@ -61,13 +61,8 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
             .unwrap()
     );
 
-    let candidate_parameters_gadget =
-        SchnorrParametersGadget::<EdwardsProjective, Fr>::alloc_input(&mut cs.ns(|| "candidate_parameters"), || {
-            Ok(schnorr.parameters())
-        })
-        .unwrap();
-
     // Circuit Schnorr randomized public key (candidate)
+    let schnorr_gadget = TestSignatureGadget::alloc_input(&mut cs.ns(|| "schnorr_gadget"), || Ok(schnorr)).unwrap();
     let candidate_public_key = SchnorrPublicKeyGadget::<EdwardsProjective, Fr, EdwardsBls12Gadget>::alloc(
         &mut cs.ns(|| "candidate_public_key"),
         || Ok(&public_key),
@@ -78,10 +73,9 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
         &randomizer.to_bytes_le().unwrap(),
     )
     .unwrap();
-    let candidate_randomized_public_key =
-        <TestSignatureGadget as SignatureGadget<SchnorrScheme, Fr>>::randomize_public_key(
+    let candidate_randomized_public_key = schnorr_gadget
+        .randomize_public_key(
             &mut cs.ns(|| "candidate_randomized_public_key"),
-            &candidate_parameters_gadget,
             &candidate_public_key,
             &candidate_randomizer,
         )
@@ -117,11 +111,7 @@ fn schnorr_signature_verification_test() {
 
     let mut cs = TestConstraintSystem::<Fr>::new();
 
-    let parameter_gadget = <TestSignatureGadget as SignatureGadget<SchnorrScheme, Fr>>::ParametersGadget::alloc(
-        cs.ns(|| "alloc_parameters"),
-        || Ok(schnorr.generator_powers),
-    )
-    .unwrap();
+    let schnorr_gadget = TestSignatureGadget::alloc_input(&mut cs.ns(|| "schnorr_gadget"), || Ok(schnorr)).unwrap();
 
     assert_eq!(cs.num_constraints(), 0);
 
@@ -145,14 +135,14 @@ fn schnorr_signature_verification_test() {
 
     assert_eq!(cs.num_constraints(), 245);
 
-    let verification = <TestSignatureGadget as SignatureGadget<SchnorrScheme, Fr>>::verify(
-        cs.ns(|| "verify"),
-        &parameter_gadget,
-        &public_key_gadget,
-        &message_gadget,
-        &signature_gadget,
-    )
-    .unwrap();
+    let verification = schnorr_gadget
+        .verify(
+            cs.ns(|| "verify"),
+            &public_key_gadget,
+            &message_gadget,
+            &signature_gadget,
+        )
+        .unwrap();
 
     assert_eq!(cs.num_constraints(), 6582);
 
@@ -182,11 +172,7 @@ fn failed_schnorr_signature_verification_test() {
 
     let mut cs = TestConstraintSystem::<Fr>::new();
 
-    let parameter_gadget = <TestSignatureGadget as SignatureGadget<SchnorrScheme, Fr>>::ParametersGadget::alloc(
-        cs.ns(|| "alloc_parameters"),
-        || Ok(schnorr.generator_powers),
-    )
-    .unwrap();
+    let schnorr_gadget = TestSignatureGadget::alloc_input(&mut cs.ns(|| "schnorr_gadget"), || Ok(schnorr)).unwrap();
 
     let public_key_gadget = <TestSignatureGadget as SignatureGadget<SchnorrScheme, Fr>>::PublicKeyGadget::alloc(
         cs.ns(|| "alloc_public_key"),
@@ -202,14 +188,14 @@ fn failed_schnorr_signature_verification_test() {
     )
     .unwrap();
 
-    let verification = <TestSignatureGadget as SignatureGadget<SchnorrScheme, Fr>>::verify(
-        cs.ns(|| "verify"),
-        &parameter_gadget,
-        &public_key_gadget,
-        &bad_message_gadget,
-        &signature_gadget,
-    )
-    .unwrap();
+    let verification = schnorr_gadget
+        .verify(
+            cs.ns(|| "verify"),
+            &public_key_gadget,
+            &bad_message_gadget,
+            &signature_gadget,
+        )
+        .unwrap();
 
     verification
         .enforce_equal(cs.ns(|| "check_verification"), &Boolean::constant(false))
