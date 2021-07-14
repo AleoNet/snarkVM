@@ -131,7 +131,6 @@ where
 {
     type Account = Account<C>;
     type Execution = Execution;
-    type LocalData = LocalData<C>;
     type Record = Record<C>;
     type Transaction = Transaction<C>;
     type TransactionKernel = TransactionKernel<C>;
