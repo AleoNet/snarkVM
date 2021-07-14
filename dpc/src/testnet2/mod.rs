@@ -164,7 +164,7 @@ where
 
     fn setup<R: Rng + CryptoRng>(ledger_parameters: &Arc<C::MerkleParameters>, rng: &mut R) -> anyhow::Result<Self> {
         let setup_time = start_timer!(|| "DPC::setup");
-        let system_parameters = SystemParameters::<C>::setup(rng)?;
+        let system_parameters = SystemParameters::<C>::setup();
 
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
         let noop_program = NoopProgram::setup(

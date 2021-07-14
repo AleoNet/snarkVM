@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{testnet2::Testnet2Components, DPCError, ProgramError};
+use crate::{testnet2::Testnet2Components, ProgramError};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_fields::ToConstraintField;
 use snarkvm_marlin::marlin::{MarlinSNARK, UniversalSRS};
@@ -39,7 +39,7 @@ pub struct SystemParameters<C: Testnet2Components> {
 }
 
 impl<C: Testnet2Components> SystemParameters<C> {
-    pub fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<SystemParameters<C>, DPCError> {
+    pub fn setup() -> Self {
         let time = start_timer!(|| "Encrypted record CRH setup");
         let encrypted_record_crh = C::EncryptedRecordCRH::setup("EncryptedRecordCRH");
         end_timer!(time);
@@ -73,7 +73,7 @@ impl<C: Testnet2Components> SystemParameters<C> {
         let serial_number_nonce = C::SerialNumberNonceCRH::setup("SerialNumberNonceCRH");
         end_timer!(time);
 
-        Ok(Self {
+        Self {
             encrypted_record_crh,
             inner_circuit_id_crh,
             local_data_crh,
@@ -82,36 +82,12 @@ impl<C: Testnet2Components> SystemParameters<C> {
             program_verification_key_crh,
             record_commitment,
             serial_number_nonce,
-        })
+        }
     }
 
-    /// TODO (howardwu): Inspect what is going on with program_verification_key_commitment.
+    /// TODO (howardwu): TEMPORARY FOR PR #251.
     pub fn load() -> IoResult<Self> {
-        let encrypted_record_crh: C::EncryptedRecordCRH =
-            FromBytes::read_le(EncryptedRecordCRHParameters::load_bytes()?.as_slice())?;
-        let inner_circuit_id_crh: C::InnerCircuitIDCRH =
-            FromBytes::read_le(InnerCircuitIDCRH::load_bytes()?.as_slice())?;
-        let local_data_crh: C::LocalDataCRH = FromBytes::read_le(LocalDataCRHParameters::load_bytes()?.as_slice())?;
-        let local_data_commitment: C::LocalDataCommitment =
-            FromBytes::read_le(LocalDataCommitmentParameters::load_bytes()?.as_slice())?;
-        let program_verification_key_commitment: C::ProgramVerificationKeyCommitment = FromBytes::read_le(&[][..])?;
-        let program_verification_key_crh: C::ProgramVerificationKeyCRH =
-            FromBytes::read_le(ProgramVKCRHParameters::load_bytes()?.as_slice())?;
-        let record_commitment: C::RecordCommitment =
-            FromBytes::read_le(RecordCommitmentParameters::load_bytes()?.as_slice())?;
-        let serial_number_nonce: C::SerialNumberNonceCRH =
-            FromBytes::read_le(SerialNumberNonceCRHParameters::load_bytes()?.as_slice())?;
-
-        Ok(Self {
-            encrypted_record_crh,
-            inner_circuit_id_crh,
-            local_data_crh,
-            local_data_commitment,
-            program_verification_key_commitment,
-            program_verification_key_crh,
-            record_commitment,
-            serial_number_nonce,
-        })
+        Ok(Self::setup())
     }
 }
 
