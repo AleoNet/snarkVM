@@ -376,20 +376,6 @@ fn test_int8_div_corner_case_1() {
 }
 
 #[test]
-#[should_panic]
-fn test_int8_div_corner_case_2() {
-    let mut cs = TestConstraintSystem::<Fr>::new();
-
-    let a: i8 = i8::MIN;
-    let b: i8 = -1;
-
-    let a_bit = Int8::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-    let b_bit = Int8::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap();
-
-    let _ = a_bit.div(cs.ns(|| "division"), &b_bit).unwrap();
-}
-
-#[test]
 fn test_int8_div_setup_mode() {
     let mut cs = KeypairAssembly::<Bls12_377> {
         num_public_variables: 0,
