@@ -52,7 +52,7 @@ fn test_group_encryption_public_key_gadget() {
     let parameters_gadget =
         <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::ParametersGadget::alloc(
             &mut cs.ns(|| "parameters_gadget"),
-            || Ok(&encryption_scheme.parameters),
+            || Ok(&encryption_scheme.generator_powers),
         )
         .unwrap();
     let private_key_gadget =
@@ -114,7 +114,7 @@ fn test_group_encryption_gadget() {
     let parameters_gadget =
         <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::ParametersGadget::alloc(
             &mut cs.ns(|| "parameters_gadget"),
-            || Ok(&encryption_scheme.parameters),
+            || Ok(&encryption_scheme.generator_powers),
         )
         .unwrap();
     let public_key_gadget =

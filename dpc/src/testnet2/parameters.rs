@@ -107,9 +107,8 @@ impl<C: Testnet2Components> SystemParameters<C> {
     pub fn load() -> IoResult<Self> {
         let account_commitment: C::AccountCommitment =
             FromBytes::read_le(AccountCommitmentParameters::load_bytes()?.as_slice())?;
-        let account_encryption_parameters: <C::AccountEncryption as EncryptionScheme>::Parameters =
+        let account_encryption: C::AccountEncryption =
             FromBytes::read_le(AccountEncryptionParameters::load_bytes()?.as_slice())?;
-        let account_encryption: C::AccountEncryption = From::from(account_encryption_parameters);
         let account_signature: C::AccountSignature = From::from(FromBytes::read_le(
             AccountSignatureParameters::load_bytes()?.as_slice(),
         )?);

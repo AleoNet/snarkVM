@@ -25,7 +25,7 @@ use crate::{
 };
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
+    traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
 };
 use snarkvm_fields::ToConstraintField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
@@ -162,7 +162,7 @@ where
     C::AccountCommitment: ToConstraintField<C::InnerScalarField>,
     <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
 
-    <C::AccountEncryption as EncryptionScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    C::AccountEncryption: ToConstraintField<C::InnerScalarField>,
 
     <C::AccountSignature as SignatureScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,

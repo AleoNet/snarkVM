@@ -27,7 +27,7 @@ use crate::{
 };
 use snarkvm_algorithms::{
     crypto_hash::PoseidonDefaultParametersField,
-    encryption::{GroupEncryption, GroupEncryptionParameters, GroupEncryptionPublicKey},
+    encryption::{GroupEncryption, GroupEncryptionPublicKey},
 };
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{Field, PrimeField, ToConstraintField};
@@ -40,34 +40,30 @@ use std::{borrow::Borrow, marker::PhantomData};
 /// Group encryption parameters gadget
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GroupEncryptionParametersGadget<G: ProjectiveCurve> {
-    parameters: GroupEncryptionParameters<G>,
+    generator_powers: Vec<G>,
 }
 
-impl<G: ProjectiveCurve, F: Field> AllocGadget<GroupEncryptionParameters<G>, F> for GroupEncryptionParametersGadget<G> {
-    fn alloc<
-        Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<GroupEncryptionParameters<G>>,
-        CS: ConstraintSystem<F>,
-    >(
+impl<G: ProjectiveCurve, F: Field> AllocGadget<Vec<G>, F> for GroupEncryptionParametersGadget<G> {
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Vec<G>>, CS: ConstraintSystem<F>>(
         _cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let value = value_gen()?;
         let parameters = value.borrow().clone();
-        Ok(Self { parameters })
+        Ok(Self {
+            generator_powers: parameters,
+        })
     }
 
-    fn alloc_input<
-        Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<GroupEncryptionParameters<G>>,
-        CS: ConstraintSystem<F>,
-    >(
+    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Vec<G>>, CS: ConstraintSystem<F>>(
         _cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let value = value_gen()?;
         let parameters = value.borrow().clone();
-        Ok(Self { parameters })
+        Ok(Self {
+            generator_powers: parameters,
+        })
     }
 }
 
@@ -511,7 +507,7 @@ where
         let mut public_key = GG::zero(&mut cs.ns(|| "zero"))?;
         public_key.scalar_multiplication(
             cs.ns(|| "check_public_key_gadget"),
-            private_key_bits.iter().zip_eq(&parameters.parameters.generator_powers),
+            private_key_bits.iter().zip_eq(&parameters.generator_powers),
         )?;
 
         Ok(GroupEncryptionPublicKeyGadget {
@@ -536,7 +532,7 @@ where
         let mut c_0 = zero.clone();
         c_0.scalar_multiplication(
             cs.ns(|| "c_0"),
-            randomness_bits.iter().zip_eq(&parameters.parameters.generator_powers),
+            randomness_bits.iter().zip_eq(&parameters.generator_powers),
         )?;
 
         let record_view_key_gadget =

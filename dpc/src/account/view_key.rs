@@ -51,11 +51,11 @@ impl<C: DPCComponents> ViewKey<C> {
     /// Signs a message using the account view key.
     pub fn sign<R: Rng + CryptoRng>(
         &self,
-        encryption_parameters: &C::AccountEncryption,
+        signature_parameters: &C::AccountSignature,
         message: &[u8],
         rng: &mut R,
-    ) -> Result<<C::AccountEncryption as SignatureScheme>::Signature, AccountError> {
-        Ok(encryption_parameters.sign(&self.decryption_key.clone().into(), message, rng)?)
+    ) -> Result<<C::AccountSignature as SignatureScheme>::Signature, AccountError> {
+        Ok(signature_parameters.sign(&self.decryption_key.clone().into(), message, rng)?)
     }
 }
 

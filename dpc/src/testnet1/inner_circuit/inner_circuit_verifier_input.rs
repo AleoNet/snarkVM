@@ -20,7 +20,7 @@ use crate::{
 };
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH},
+    traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH},
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
@@ -59,7 +59,7 @@ where
     C::AccountCommitment: ToConstraintField<C::InnerScalarField>,
     <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
 
-    <C::AccountEncryption as EncryptionScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    C::AccountEncryption: ToConstraintField<C::InnerScalarField>,
 
     <C::AccountSignature as SignatureScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
@@ -85,10 +85,7 @@ where
         let mut v = Vec::new();
 
         v.extend_from_slice(&self.system_parameters.account_commitment.to_field_elements()?);
-        v.extend_from_slice(
-            &<C::AccountEncryption as EncryptionScheme>::parameters(&self.system_parameters.account_encryption)
-                .to_field_elements()?,
-        );
+        v.extend_from_slice(&&self.system_parameters.account_encryption.to_field_elements()?);
         v.extend_from_slice(
             &self
                 .system_parameters

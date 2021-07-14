@@ -17,7 +17,7 @@
 use crate::testnet1::{inner_circuit_verifier_input::InnerCircuitVerifierInput, Testnet1Components};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH},
+    traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH},
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{to_bytes_le, ToBytes};
@@ -41,7 +41,7 @@ where
     C::AccountCommitment: ToConstraintField<C::InnerScalarField>,
     <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
 
-    <C::AccountEncryption as EncryptionScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    C::AccountEncryption: ToConstraintField<C::InnerScalarField>,
 
     <C::AccountSignature as SignatureScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,

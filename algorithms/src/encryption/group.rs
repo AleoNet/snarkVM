@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{encryption::GroupEncryptionParameters, errors::EncryptionError, traits::EncryptionScheme};
+use crate::{crypto_hash::PoseidonDefaultParametersField, EncryptionError, EncryptionScheme};
 use snarkvm_curves::traits::{AffineCurve, Group, ProjectiveCurve};
-use snarkvm_fields::{Field, One, PrimeField, ToConstraintField, Zero};
+use snarkvm_fields::{ConstraintFieldError, Field, One, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
     errors::SerializationError,
     from_bytes_le_to_bits_le,
@@ -26,7 +26,6 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use crate::crypto_hash::PoseidonDefaultParametersField;
 use itertools::Itertools;
 use rand::Rng;
 use std::{
@@ -91,7 +90,7 @@ impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> Default for
     Eq(bound = "G: ProjectiveCurve, SG: Group")
 )]
 pub struct GroupEncryption<G: ProjectiveCurve, SG: ProjectiveCurve> {
-    pub parameters: GroupEncryptionParameters<G>,
+    pub generator_powers: Vec<G>,
     pub _signature_group: PhantomData<SG>,
 }
 
@@ -102,18 +101,27 @@ where
     SG: ToConstraintField<<SG::Affine as AffineCurve>::BaseField>,
 {
     type BlindingExponent = <G as Group>::ScalarField;
-    type Parameters = GroupEncryptionParameters<G>;
+    type Parameters = Vec<G>;
     type PrivateKey = <G as Group>::ScalarField;
     type PublicKey = GroupEncryptionPublicKey<G>;
     type Randomness = <G as Group>::ScalarField;
     type Text = G;
 
     fn setup<R: Rng>(rng: &mut R) -> Self {
+        // Round to the closest multiple of 64 to factor bit and byte encoding differences.
+        let private_key_size_in_bits = <Self as EncryptionScheme>::PrivateKey::size_in_bits();
+        assert!(private_key_size_in_bits < usize::MAX - 63);
+        let num_powers = (private_key_size_in_bits + 63) & !63usize;
+
+        let mut generator_powers = Vec::with_capacity(num_powers);
+        let mut generator = G::rand(rng);
+        for _ in 0..num_powers {
+            generator_powers.push(generator);
+            generator.double_in_place();
+        }
+
         Self {
-            parameters: <Self as EncryptionScheme>::Parameters::setup(
-                rng,
-                <Self as EncryptionScheme>::PrivateKey::size_in_bits(),
-            ),
+            generator_powers,
             _signature_group: PhantomData,
         }
     }
@@ -133,9 +141,7 @@ where
         let keygen_time = start_timer!(|| "GroupEncryption::generate_public_key");
 
         let mut public_key = G::zero();
-        for (bit, base_power) in
-            from_bytes_le_to_bits_le(&private_key.to_bytes_le()?).zip_eq(&self.parameters.generator_powers)
-        {
+        for (bit, base_power) in from_bytes_le_to_bits_le(&private_key.to_bytes_le()?).zip_eq(&self.generator_powers) {
             if bit {
                 public_key += base_power;
             }
@@ -204,9 +210,7 @@ where
         let record_view_key = public_key.0.mul(*randomness);
 
         let mut c_0 = G::zero();
-        for (bit, base_power) in
-            from_bytes_le_to_bits_le(&randomness.to_bytes_le()?).zip_eq(&self.parameters.generator_powers)
-        {
+        for (bit, base_power) in from_bytes_le_to_bits_le(&randomness.to_bytes_le()?).zip_eq(&self.generator_powers) {
             if bit {
                 c_0 += base_power;
             }
@@ -270,7 +274,7 @@ where
     }
 
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters {
-        &self.parameters
+        &self.generator_powers
     }
 
     fn private_key_size_in_bits() -> usize {
@@ -278,11 +282,46 @@ where
     }
 }
 
-impl<G: ProjectiveCurve, SG: ProjectiveCurve> From<GroupEncryptionParameters<G>> for GroupEncryption<G, SG> {
-    fn from(parameters: GroupEncryptionParameters<G>) -> Self {
+impl<G: ProjectiveCurve, SG: ProjectiveCurve> From<Vec<G>> for GroupEncryption<G, SG> {
+    fn from(generator_powers: Vec<G>) -> Self {
         Self {
-            parameters,
+            generator_powers,
             _signature_group: PhantomData,
         }
+    }
+}
+
+impl<G: ProjectiveCurve, SG: ProjectiveCurve> ToBytes for GroupEncryption<G, SG> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.generator_powers.len() as u32).write_le(&mut writer)?;
+        for g in &self.generator_powers {
+            g.write_le(&mut writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl<G: ProjectiveCurve, SG: ProjectiveCurve> FromBytes for GroupEncryption<G, SG> {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let generator_powers_length: u32 = FromBytes::read_le(&mut reader)?;
+        let mut generator_powers = Vec::with_capacity(generator_powers_length as usize);
+        for _ in 0..generator_powers_length {
+            let g: G = FromBytes::read_le(&mut reader)?;
+            generator_powers.push(g);
+        }
+        Ok(Self {
+            generator_powers,
+            _signature_group: PhantomData,
+        })
+    }
+}
+
+impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, SG: ProjectiveCurve> ToConstraintField<F>
+    for GroupEncryption<G, SG>
+{
+    #[inline]
+    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
+        Ok(Vec::new())
     }
 }

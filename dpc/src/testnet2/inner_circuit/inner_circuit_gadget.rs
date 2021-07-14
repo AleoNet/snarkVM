@@ -272,14 +272,11 @@ where
                 Ok(system_parameters.account_commitment.clone())
             })?;
 
-        let account_encryption_parameters = AccountEncryptionGadget::ParametersGadget::alloc_input(
-            &mut cs.ns(|| "Declare account encryption parameters"),
-            || {
-                Ok(<C::AccountEncryption as EncryptionScheme>::parameters(
-                    &system_parameters.account_encryption,
-                ))
-            },
-        )?;
+        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
+        let account_encryption_parameters =
+            AccountEncryptionGadget::alloc_input(&mut cs.ns(|| "Declare account encryption parameters"), || {
+                Ok(&system_parameters.account_encryption.clone())
+            })?;
 
         let account_signature_parameters = AccountSignatureGadget::ParametersGadget::alloc_input(
             &mut cs.ns(|| "Declare account signature parameters"),

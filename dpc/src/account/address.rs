@@ -55,10 +55,8 @@ impl<C: DPCComponents> Address<C> {
         encryption_parameters: &C::AccountEncryption,
         view_key: &ViewKey<C>,
     ) -> Result<Self, AccountError> {
-        let encryption_key = <C::AccountEncryption as EncryptionScheme>::generate_public_key(
-            encryption_parameters,
-            &view_key.decryption_key,
-        )?;
+        let encryption_key =
+            C::AccountEncryption::generate_public_key(encryption_parameters, &view_key.decryption_key)?;
 
         Ok(Self { encryption_key })
     }
@@ -72,11 +70,11 @@ impl<C: DPCComponents> Address<C> {
     /// Returns `true` if the signature is valid. Otherwise, returns `false`.
     pub fn verify_signature(
         &self,
-        encryption_parameters: &C::AccountEncryption,
+        signature_parameters: &C::AccountSignature,
         message: &[u8],
-        signature: &<C::AccountEncryption as SignatureScheme>::Signature,
+        signature: &<C::AccountSignature as SignatureScheme>::Signature,
     ) -> Result<bool, AccountError> {
-        Ok(encryption_parameters.verify(&self.encryption_key.clone().into(), message, signature)?)
+        Ok(signature_parameters.verify(&self.encryption_key.clone().into(), message, signature)?)
     }
 }
 

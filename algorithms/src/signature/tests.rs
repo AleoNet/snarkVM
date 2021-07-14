@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{encryption::GroupEncryption, signature::Schnorr, SignatureScheme};
+use crate::{signature::Schnorr, SignatureScheme};
 use snarkvm_curves::{edwards_bls12::EdwardsProjective, edwards_bw6::EdwardsProjective as Edwards, Group};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
@@ -23,7 +23,6 @@ use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 
 type TestSignature = Schnorr<Edwards>;
-type TestGroupEncryptionSignature = GroupEncryption<EdwardsProjective, EdwardsProjective>;
 
 fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
@@ -98,17 +97,4 @@ fn schnorr_signature_test() {
 #[test]
 fn schnorr_signature_scheme_parameters_serialization() {
     signature_scheme_parameter_serialization::<TestSignature>();
-}
-
-#[test]
-fn group_encryption_signature_test() {
-    // Test the encryption scheme's Schnorr signature implementation, excluding randomized signatures
-    let message = "Hi, I am a Group Encryption signature!";
-    sign_and_verify::<TestGroupEncryptionSignature>(message.as_bytes());
-    failed_verification::<TestGroupEncryptionSignature>(message.as_bytes(), "Bad message".as_bytes());
-}
-
-#[test]
-fn group_encryption_signature_scheme_parameters_serialization() {
-    signature_scheme_parameter_serialization::<TestGroupEncryptionSignature>();
 }
