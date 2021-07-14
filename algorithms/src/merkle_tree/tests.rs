@@ -169,45 +169,6 @@ fn run_padded_merkle_tree_matches_hashing_test<P: LoadableMerkleParameters>() {
     assert_eq!(merkle_tree_root, expected_root);
 }
 
-// mod pedersen_crh_on_affine {
-//     use super::*;
-//     use snarkvm_curves::edwards_bls12::EdwardsAffine as Edwards;
-//
-//     const NUM_WINDOWS: usize = 256;
-//     const WINDOW_SIZE: usize = 4;
-//
-//     #[test]
-//     fn empty_merkle_tree_test() {
-//         define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32);
-//         run_empty_merkle_tree_test::<MTParameters>();
-//     }
-//
-//     #[test]
-//     fn good_root_test() {
-//         define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32);
-//         run_good_root_test::<MTParameters>();
-//     }
-//
-//     #[should_panic]
-//     #[test]
-//     fn bad_root_test() {
-//         define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32);
-//         run_bad_root_test::<MTParameters>();
-//     }
-//
-//     #[test]
-//     fn depth2_merkle_tree_matches_hashing_test() {
-//         define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 2);
-//         run_merkle_tree_matches_hashing_test::<MTParameters>();
-//     }
-//
-//     #[test]
-//     fn depth3_padded_merkle_tree_matches_hashing_test() {
-//         define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 3);
-//         run_padded_merkle_tree_matches_hashing_test::<MTParameters>();
-//     }
-// }
-
 mod pedersen_crh_on_projective {
     use super::*;
     use snarkvm_curves::edwards_bls12::EdwardsProjective as Edwards;

@@ -47,7 +47,6 @@ const BHP_NUM_WINDOWS: usize = 32;
 const BHP_WINDOW_SIZE: usize = 48;
 
 const PEDERSEN_HASH_CONSTRAINTS: usize = 5632;
-const PEDERSEN_HASH_CONSTRAINTS_ON_AFFINE: usize = 6656;
 const BOWE_HOPWOOD_HASH_CONSTRAINTS: usize = 3974;
 
 fn generate_input<F: Field, CS: ConstraintSystem<F>, R: Rng>(
@@ -163,19 +162,6 @@ mod pedersen_crh_gadget_on_projective {
         masked_crh_gadget_test::<Fr, TestCRH, TestCRHGadget>()
     }
 }
-
-// mod pedersen_crh_gadget_on_affine {
-//     use super::*;
-//
-//     type TestCRH = PedersenCRH<EdwardsAffine, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-//     type TestCRHGadget =
-//         PedersenCRHGadget<EdwardsAffine, Fr, EdwardsBls12Gadget, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-//
-//     #[test]
-//     fn primitive_gadget_test() {
-//         primitive_crh_gadget_test::<Fr, TestCRH, TestCRHGadget>(PEDERSEN_HASH_CONSTRAINTS_ON_AFFINE)
-//     }
-// }
 
 mod pedersen_compressed_crh_gadget_on_projective {
     use super::*;

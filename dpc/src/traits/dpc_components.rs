@@ -17,7 +17,7 @@
 use crate::account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_INPUT, ACCOUNT_SIGNATURE_INPUT};
 use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, CRH, PRF};
 use snarkvm_curves::PairingEngine;
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget};
 
 pub trait DPCComponents: 'static + Sized {
@@ -34,19 +34,19 @@ pub trait DPCComponents: 'static + Sized {
     type OuterScalarField: PrimeField;
 
     /// Commitment scheme for account contents. Invoked only over `Self::InnerScalarField`.
-    type AccountCommitment: CommitmentScheme;
+    type AccountCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
     type AccountCommitmentGadget: CommitmentGadget<Self::AccountCommitment, Self::InnerScalarField>;
 
-    /// Encryption scheme for account records.
-    type AccountEncryption: EncryptionScheme;
+    /// Encryption scheme for account records. Invoked only over `Self::InnerScalarField`.
+    type AccountEncryption: EncryptionScheme + ToConstraintField<Self::InnerScalarField>;
     type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryption, Self::InnerScalarField>;
 
-    /// Signature scheme for delegated compute.
-    type AccountSignature: SignatureScheme;
+    /// Signature scheme for delegated compute. Invoked only over `Self::InnerScalarField`.
+    type AccountSignature: SignatureScheme + ToConstraintField<Self::InnerScalarField>;
     type AccountSignatureGadget: SignatureGadget<Self::AccountSignature, Self::InnerScalarField>;
 
-    /// CRH for the encrypted record.
-    type EncryptedRecordCRH: CRH;
+    /// CRH for the encrypted record. Invoked only over `Self::InnerScalarField`.
+    type EncryptedRecordCRH: CRH + ToConstraintField<Self::InnerScalarField>;
     type EncryptedRecordCRHGadget: CRHGadget<Self::EncryptedRecordCRH, Self::InnerScalarField>;
 
     /// CRH for hash of the `Self::InnerSNARK` verification keys.
@@ -56,9 +56,9 @@ pub trait DPCComponents: 'static + Sized {
 
     /// CRH and commitment scheme for committing to program input. Invoked inside
     /// `Self::InnerSNARK` and every program SNARK.
-    type LocalDataCRH: CRH;
+    type LocalDataCRH: CRH + ToConstraintField<Self::InnerScalarField>;
     type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
-    type LocalDataCommitment: CommitmentScheme;
+    type LocalDataCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
     type LocalDataCommitmentGadget: CommitmentGadget<Self::LocalDataCommitment, Self::InnerScalarField>;
 
     /// CRH for hashes of birth and death verification keys.
@@ -66,8 +66,8 @@ pub trait DPCComponents: 'static + Sized {
     type ProgramVerificationKeyCRH: CRH;
     type ProgramVerificationKeyCRHGadget: CRHGadget<Self::ProgramVerificationKeyCRH, Self::OuterScalarField>;
 
-    /// Commitment scheme for committing to hashes of birth and death verification keys
-    type ProgramVerificationKeyCommitment: CommitmentScheme;
+    /// Commitment scheme for committing to hashes of birth and death verification keys.
+    type ProgramVerificationKeyCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
     /// Used to commit to hashes of verification keys on the smaller curve and to decommit hashes
     /// of verification keys on the larger curve
     type ProgramVerificationKeyCommitmentGadget: CommitmentGadget<Self::ProgramVerificationKeyCommitment, Self::InnerScalarField>
@@ -78,11 +78,11 @@ pub trait DPCComponents: 'static + Sized {
     type PRFGadget: PRFGadget<Self::PRF, Self::InnerScalarField>;
 
     /// Commitment scheme for record contents. Invoked only over `Self::InnerScalarField`.
-    type RecordCommitment: CommitmentScheme;
+    type RecordCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
     type RecordCommitmentGadget: CommitmentGadget<Self::RecordCommitment, Self::InnerScalarField>;
 
     /// CRH for computing the serial number nonce. Invoked only over `Self::InnerScalarField`.
-    type SerialNumberNonceCRH: CRH;
+    type SerialNumberNonceCRH: CRH + ToConstraintField<Self::InnerScalarField>;
     type SerialNumberNonceCRHGadget: CRHGadget<Self::SerialNumberNonceCRH, Self::InnerScalarField>;
 
     /// TODO (howardwu): TEMPORARY FOR PR #251 - Move this into SystemParameters, lazy_static!, or Arc'ed context.
