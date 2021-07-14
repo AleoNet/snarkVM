@@ -16,20 +16,6 @@
 
 // Commitments
 impl_params_local!(
-    AccountCommitmentParameters,
-    account_commitment_test,
-    "./",
-    "account_commitment",
-    417868
-);
-impl_params_local!(
-    AccountSignatureParameters,
-    account_signature_test,
-    "./",
-    "account_signature",
-    16420
-);
-impl_params_local!(
     LedgerMerkleTreeParameters,
     ledger_merkle_tree_test,
     "./",
@@ -95,13 +81,4 @@ impl_params_local!(
     "./",
     "serial_number_nonce_crh",
     258180
-);
-
-// Encryption
-impl_params_local!(
-    AccountEncryptionParameters,
-    account_encryption_test,
-    "./",
-    "account_encryption",
-    32804
 );

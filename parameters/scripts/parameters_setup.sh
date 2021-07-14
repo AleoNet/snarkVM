@@ -2,8 +2,6 @@
 # and `.checksum` files to `params` folder under the `src` directory.
 # If the parameter size has changed, you will need to manually update these in each corresponding struct.
 
-cargo run --release --example account_encryption
-cargo run --release --example account_signature
 cargo run --release --example encrypted_record_crh
 cargo run --release --example inner_circuit_id_crh
 cargo run --release --example ledger_merkle_tree
@@ -12,12 +10,6 @@ cargo run --release --example local_data_commitment
 cargo run --release --example program_vk_crh
 cargo run --release --example record_commitment
 cargo run --release --example serial_number_nonce_crh
-
-mv account_encryption.params ../src/global
-mv account_encryption.checksum ../src/global
-
-mv account_signature.params ../src/global
-mv account_signature.checksum ../src/global
 
 mv encrypted_record_crh.params ../src/global
 mv encrypted_record_crh.checksum ../src/global
