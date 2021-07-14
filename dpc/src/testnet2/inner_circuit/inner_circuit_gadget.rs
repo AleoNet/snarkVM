@@ -278,10 +278,11 @@ where
                 Ok(&system_parameters.account_encryption.clone())
             })?;
 
-        let account_signature_parameters = AccountSignatureGadget::ParametersGadget::alloc_input(
-            &mut cs.ns(|| "Declare account signature parameters"),
-            || Ok(system_parameters.account_signature.parameters()),
-        )?;
+        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
+        let account_signature_parameters =
+            AccountSignatureGadget::alloc_input(&mut cs.ns(|| "Declare account signature parameters"), || {
+                Ok(system_parameters.account_signature.clone())
+            })?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let record_commitment_parameters =

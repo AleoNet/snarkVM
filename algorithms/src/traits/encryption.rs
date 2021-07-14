@@ -20,7 +20,9 @@ use snarkvm_utilities::{rand::UniformRand, FromBytes, ToBytes};
 use rand::{CryptoRng, Rng};
 use std::{fmt::Debug, hash::Hash};
 
-pub trait EncryptionScheme: ToBytes + FromBytes + Sized + Clone + From<<Self as EncryptionScheme>::Parameters> {
+pub trait EncryptionScheme:
+    Sized + ToBytes + FromBytes + Debug + Clone + Eq + From<<Self as EncryptionScheme>::Parameters>
+{
     type Parameters: Clone + Debug + Eq;
     type PrivateKey: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
     type PublicKey: Clone + Debug + Default + Eq + ToBytes + FromBytes;

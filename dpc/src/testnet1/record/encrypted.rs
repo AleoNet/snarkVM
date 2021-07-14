@@ -42,7 +42,7 @@ use snarkvm_utilities::{
 };
 
 use itertools::Itertools;
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
 
 type BaseField<T> = <<T as Testnet1Components>::EncryptionParameters as ModelParameters>::BaseField;
@@ -108,7 +108,7 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
     /// Encrypt the given vector of records and returns
     /// 1. Encryption randomness
     /// 2. Encrypted record
-    pub fn encrypt<R: Rng>(
+    pub fn encrypt<R: Rng + CryptoRng>(
         system_parameters: &SystemParameters<C>,
         record: &Record<C>,
         rng: &mut R,

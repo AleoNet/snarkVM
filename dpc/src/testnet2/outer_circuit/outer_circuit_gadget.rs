@@ -100,7 +100,7 @@ where
 
     C::AccountEncryption: ToConstraintField<C::InnerScalarField>,
 
-    <C::AccountSignature as SignatureScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    C::AccountSignature: ToConstraintField<C::InnerScalarField>,
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
 
     C::RecordCommitment: ToConstraintField<C::InnerScalarField>,
@@ -160,9 +160,10 @@ where
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let account_signature_fe =
-        ToConstraintField::<C::InnerScalarField>::to_field_elements(system_parameters.account_signature.parameters())
-            .map_err(|_| SynthesisError::AssignmentMissing)?;
+    let account_signature_fe = system_parameters
+        .account_signature
+        .to_field_elements()
+        .map_err(|_| SynthesisError::AssignmentMissing)?;
 
     let record_commitment_parameters_fe = system_parameters
         .record_commitment

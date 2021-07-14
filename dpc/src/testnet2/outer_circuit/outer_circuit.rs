@@ -164,7 +164,7 @@ where
 
     C::AccountEncryption: ToConstraintField<C::InnerScalarField>,
 
-    <C::AccountSignature as SignatureScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    C::AccountSignature: ToConstraintField<C::InnerScalarField>,
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
 
     C::RecordCommitment: ToConstraintField<C::InnerScalarField>,
