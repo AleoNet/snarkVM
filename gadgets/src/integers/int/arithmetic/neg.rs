@@ -37,7 +37,7 @@ macro_rules! neg_int_impl {
                     None => None,
                 };
 
-                // calculate two's complement
+                // calculate the complement
                 let bits = self.bits.neg(cs)?;
 
                 Ok(Self {

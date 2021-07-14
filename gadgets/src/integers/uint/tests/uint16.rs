@@ -229,8 +229,8 @@ fn test_uint16_sub_constants() {
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u16 = rng.gen_range(u16::max_value() / 2u16..u16::max_value());
-        let b: u16 = rng.gen_range(0u16..u16::max_value() / 2u16);
+        let a: u16 = rng.gen_range(u16::MAX / 2u16..u16::MAX);
+        let b: u16 = rng.gen_range(0u16..u16::MAX / 2u16);
 
         let a_bit = UInt16::constant(a);
         let b_bit = UInt16::constant(b);
@@ -252,13 +252,13 @@ fn test_uint16_sub() {
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u16 = rng.gen_range(u16::max_value() / 2u16..u16::max_value());
-        let b: u16 = rng.gen_range(0u16..u16::max_value() / 2u16);
+        let a: u16 = rng.gen_range(u16::MAX / 2u16..u16::MAX);
+        let b: u16 = rng.gen_range(0u16..u16::MAX / 2u16);
 
         let expected = a.wrapping_sub(b);
 
         let a_bit = UInt16::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = if b > u16::max_value() / 4 {
+        let b_bit = if b > u16::MAX / 4 {
             UInt16::constant(b)
         } else {
             UInt16::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap()
@@ -290,8 +290,8 @@ fn test_uint16_mul_constants() {
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u16 = rng.gen_range(0..u16::max_value());
-        let b: u16 = rng.gen_range(0..u16::max_value());
+        let a: u16 = rng.gen_range(0..u16::MAX);
+        let b: u16 = rng.gen_range(0..u16::MAX);
 
         let a_bit = UInt16::constant(a);
         let b_bit = UInt16::constant(b);
@@ -313,13 +313,13 @@ fn test_uint16_mul() {
     for _ in 0..100 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u16 = rng.gen_range(0..u16::max_value());
-        let b: u16 = rng.gen_range(0..u16::max_value());
+        let a: u16 = rng.gen_range(0..u16::MAX);
+        let b: u16 = rng.gen_range(0..u16::MAX);
 
         let expected = a.wrapping_mul(b);
 
         let a_bit = UInt16::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = if b > u16::max_value() / 2 {
+        let b_bit = if b > u16::MAX / 2 {
             UInt16::constant(b)
         } else {
             UInt16::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap()
@@ -358,7 +358,7 @@ fn test_uint16_div_constants() {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
         let a: u16 = rng.gen();
-        let b: u16 = rng.gen_range(0u16..u16::max_value());
+        let b: u16 = rng.gen_range(0u16..u16::MAX);
 
         let a_bit = UInt16::constant(a);
         let b_bit = UInt16::constant(b);
@@ -381,12 +381,12 @@ fn test_uint16_div() {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
         let a: u16 = rng.gen();
-        let b: u16 = rng.gen_range(0u16..u16::max_value());
+        let b: u16 = rng.gen_range(0u16..u16::MAX);
 
         let expected = a.wrapping_div(b);
 
         let a_bit = UInt16::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = if b > u16::max_value() / 2 {
+        let b_bit = if b > u16::MAX / 2 {
             UInt16::constant(b)
         } else {
             UInt16::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap()
@@ -402,12 +402,12 @@ fn test_uint16_div() {
 
         // Flip a bit_gadget and see if the division constraint still works
         if cs
-            .get("division/subtract_divisor_0/result bit_gadget 0/boolean")
+            .get("division/r_sub_d_result_0/allocated bit_gadget 0/boolean")
             .is_zero()
         {
-            cs.set("division/subtract_divisor_0/result bit_gadget 0/boolean", Fr::one());
+            cs.set("division/r_sub_d_result_0/allocated bit_gadget 0/boolean", Fr::one());
         } else {
-            cs.set("division/subtract_divisor_0/result bit_gadget 0/boolean", Fr::zero());
+            cs.set("division/r_sub_d_result_0/allocated bit_gadget 0/boolean", Fr::zero());
         }
 
         assert!(!cs.is_satisfied());
@@ -444,7 +444,7 @@ fn test_uint16_pow() {
     for _ in 0..10 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u16 = rng.gen_range(0..u16::from(u8::max_value()));
+        let a: u16 = rng.gen_range(0..u16::from(u8::MAX));
         let b: u16 = rng.gen_range(0..4);
 
         let expected = a.wrapping_pow(b.into());
