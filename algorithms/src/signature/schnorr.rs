@@ -16,7 +16,6 @@
 
 use crate::{
     crypto_hash::{PoseidonCryptoHash, PoseidonDefaultParametersField},
-    signature::SchnorrParameters,
     CryptoHash,
     SignatureError,
     SignatureScheme,
@@ -116,7 +115,7 @@ impl<F: Field, G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize + 
     Eq(bound = "G: ProjectiveCurve")
 )]
 pub struct Schnorr<G: ProjectiveCurve> {
-    pub parameters: SchnorrParameters<G>,
+    pub generator_powers: Vec<G>,
 }
 
 impl<G: ProjectiveCurve + Hash + CanonicalSerialize + CanonicalDeserialize> SignatureScheme for Schnorr<G>
@@ -124,28 +123,38 @@ where
     <G::Affine as AffineCurve>::BaseField: PoseidonDefaultParametersField,
     G: ToConstraintField<<G::Affine as AffineCurve>::BaseField>,
 {
-    type Parameters = SchnorrParameters<G>;
+    type Parameters = Vec<G>;
     type PrivateKey = <G as Group>::ScalarField;
     type PublicKey = SchnorrPublicKey<G>;
     type RandomizedPrivateKey = <G as Group>::ScalarField;
     type Randomizer = <G as Group>::ScalarField;
     type Signature = SchnorrSignature<G>;
 
-    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, SignatureError> {
+    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         assert!(
             <<G as Group>::ScalarField as PrimeField>::Parameters::CAPACITY
                 < <<G::Affine as AffineCurve>::BaseField as PrimeField>::Parameters::CAPACITY
         );
 
         let setup_time = start_timer!(|| "SchnorrSignature::setup");
-        let parameters = Self::Parameters::setup(rng, Self::PrivateKey::size_in_bits());
+        // Round to the closest multiple of 64 to factor bit and byte encoding differences.
+        let private_key_size_in_bits = Self::PrivateKey::size_in_bits();
+        assert!(private_key_size_in_bits < usize::MAX - 63);
+        let num_powers = (private_key_size_in_bits + 63) & !63usize;
+
+        let mut generator_powers = Vec::with_capacity(num_powers);
+        let mut generator = G::rand(rng);
+        for _ in 0..num_powers {
+            generator_powers.push(generator);
+            generator.double_in_place();
+        }
         end_timer!(setup_time);
 
-        Ok(Self { parameters })
+        Self { generator_powers }
     }
 
     fn parameters(&self) -> &Self::Parameters {
-        &self.parameters
+        &self.generator_powers
     }
 
     fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::PrivateKey, SignatureError> {
@@ -159,9 +168,7 @@ where
         let keygen_time = start_timer!(|| "SchnorrSignature::generate_public_key");
 
         let mut public_key = G::zero();
-        for (bit, base_power) in
-            from_bytes_le_to_bits_le(&to_bytes_le![private_key]?).zip_eq(&self.parameters.generator_powers)
-        {
+        for (bit, base_power) in from_bytes_le_to_bits_le(&to_bytes_le![private_key]?).zip_eq(&self.generator_powers) {
             if bit {
                 public_key += base_power;
             }
@@ -208,8 +215,7 @@ where
         // Commit to the random scalar via r := k · g.
         // This is the prover's first msg in the Sigma protocol.
         let mut prover_commitment = G::zero();
-        for (bit, base_power) in
-            from_bytes_le_to_bits_le(&to_bytes_le![random_scalar]?).zip_eq(&self.parameters.generator_powers)
+        for (bit, base_power) in from_bytes_le_to_bits_le(&to_bytes_le![random_scalar]?).zip_eq(&self.generator_powers)
         {
             if bit {
                 prover_commitment += base_power;
@@ -281,7 +287,7 @@ where
 
         let mut claimed_prover_commitment = G::zero();
         for (bit, base_power) in
-            from_bytes_le_to_bits_le(&to_bytes_le![prover_response]?).zip_eq(&self.parameters.generator_powers)
+            from_bytes_le_to_bits_le(&to_bytes_le![prover_response]?).zip_eq(&self.generator_powers)
         {
             if bit {
                 claimed_prover_commitment += base_power;
@@ -320,8 +326,39 @@ where
     }
 }
 
-impl<G: ProjectiveCurve> From<SchnorrParameters<G>> for Schnorr<G> {
-    fn from(parameters: SchnorrParameters<G>) -> Self {
-        Self { parameters }
+impl<G: ProjectiveCurve> From<Vec<G>> for Schnorr<G> {
+    fn from(generator_powers: Vec<G>) -> Self {
+        Self { generator_powers }
+    }
+}
+
+impl<G: ProjectiveCurve> ToBytes for Schnorr<G> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.generator_powers.len() as u32).write_le(&mut writer)?;
+        for g in &self.generator_powers {
+            g.write_le(&mut writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl<G: ProjectiveCurve> FromBytes for Schnorr<G> {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let generator_powers_length: u32 = FromBytes::read_le(&mut reader)?;
+        let mut generator_powers = Vec::with_capacity(generator_powers_length as usize);
+        for _ in 0..generator_powers_length {
+            let g: G = FromBytes::read_le(&mut reader)?;
+            generator_powers.push(g);
+        }
+
+        Ok(Self { generator_powers })
+    }
+}
+
+impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>> ToConstraintField<F> for Schnorr<G> {
+    #[inline]
+    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
+        Ok(Vec::new())
     }
 }

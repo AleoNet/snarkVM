@@ -31,7 +31,7 @@ use crate::{
 };
 use snarkvm_algorithms::{
     crypto_hash::PoseidonDefaultParametersField,
-    signature::{Schnorr, SchnorrParameters, SchnorrPublicKey, SchnorrSignature},
+    signature::{Schnorr, SchnorrPublicKey, SchnorrSignature},
 };
 use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
@@ -50,35 +50,29 @@ use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone)]
 pub struct SchnorrParametersGadget<G: ProjectiveCurve, F: PrimeField> {
-    pub(crate) parameters: SchnorrParameters<G>,
+    pub(crate) generator_powers: Vec<G>,
     pub(crate) _engine: PhantomData<*const F>,
 }
 
-impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<SchnorrParameters<G>, F> for SchnorrParametersGadget<G, F> {
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrParameters<G>>, CS: ConstraintSystem<F>>(
+impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<Vec<G>, F> for SchnorrParametersGadget<G, F> {
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Vec<G>>, CS: ConstraintSystem<F>>(
         _cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let value = value_gen()?;
-        let parameters = value.borrow().clone();
         Ok(Self {
-            parameters,
+            generator_powers: value.borrow().clone(),
             _engine: PhantomData,
         })
     }
 
-    fn alloc_input<
-        Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<SchnorrParameters<G>>,
-        CS: ConstraintSystem<F>,
-    >(
+    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Vec<G>>, CS: ConstraintSystem<F>>(
         _cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let value = value_gen()?;
-        let parameters = value.borrow().clone();
         Ok(Self {
-            parameters,
+            generator_powers: value.borrow().clone(),
             _engine: PhantomData,
         })
     }
@@ -310,7 +304,7 @@ where
         let mut randomized_public_key = GG::zero(cs.ns(|| "zero"))?;
         randomized_public_key.scalar_multiplication(
             cs.ns(|| "check_randomization_gadget"),
-            randomness.iter().zip_eq(&parameters.parameters.generator_powers),
+            randomness.iter().zip_eq(&parameters.generator_powers),
         )?;
         randomized_public_key = randomized_public_key.add(cs.ns(|| "pk + rG"), &public_key.public_key)?;
 
@@ -346,7 +340,7 @@ where
         let mut claimed_prover_commitment = GG::zero(cs.ns(|| "zero_claimed_prover_commitment"))?;
         for (i, (bit, base_power)) in prover_response_bits
             .iter()
-            .zip_eq(&parameters.parameters.generator_powers)
+            .zip_eq(&parameters.generator_powers)
             .enumerate()
         {
             let added =

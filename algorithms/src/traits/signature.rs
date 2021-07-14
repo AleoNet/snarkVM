@@ -24,8 +24,10 @@ use snarkvm_utilities::{
 use rand::{CryptoRng, Rng};
 use std::{fmt::Debug, hash::Hash};
 
-pub trait SignatureScheme: Sized + Clone + From<<Self as SignatureScheme>::Parameters> {
-    type Parameters: Clone + Debug + ToBytes + FromBytes + Eq + Send + Sync;
+pub trait SignatureScheme:
+    Sized + ToBytes + FromBytes + Debug + Clone + Eq + Send + Sync + From<<Self as SignatureScheme>::Parameters>
+{
+    type Parameters: Clone + Debug + Eq;
     type PublicKey: Clone
         + Debug
         + Default
@@ -42,7 +44,7 @@ pub trait SignatureScheme: Sized + Clone + From<<Self as SignatureScheme>::Param
     type Randomizer: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
     type Signature: Clone + Debug + Default + ToBytes + FromBytes + Send + Sync + PartialEq + Eq;
 
-    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, SignatureError>;
+    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Self;
 
     fn parameters(&self) -> &Self::Parameters;
 
