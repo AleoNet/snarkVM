@@ -55,7 +55,6 @@ impl<C: DPCComponents> PrivateKey<C> {
     /// Creates a new account private key.
     pub fn new<R: Rng + CryptoRng>(
         signature_parameters: &C::AccountSignature,
-        commitment_parameters: &C::AccountCommitment,
         rng: &mut R,
     ) -> Result<Self, AccountError> {
         // Sample randomly until a valid private key is found.
@@ -64,7 +63,7 @@ impl<C: DPCComponents> PrivateKey<C> {
             let seed: [u8; 32] = rng.gen();
 
             // Returns the private key if it is valid.
-            match Self::from_seed(signature_parameters, commitment_parameters, &seed) {
+            match Self::from_seed(signature_parameters, &seed) {
                 Ok(private_key) => return Ok(private_key),
                 _ => continue,
             };
@@ -72,11 +71,7 @@ impl<C: DPCComponents> PrivateKey<C> {
     }
 
     /// Derives the account private key from a given seed and verifies it is well-formed.
-    pub fn from_seed(
-        signature_parameters: &C::AccountSignature,
-        commitment_parameters: &C::AccountCommitment,
-        seed: &[u8; 32],
-    ) -> Result<Self, AccountError> {
+    pub fn from_seed(signature_parameters: &C::AccountSignature, seed: &[u8; 32]) -> Result<Self, AccountError> {
         // Generate the SIG key pair.
         let sk_sig_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_SIG)?;
         let sk_sig = <C::AccountSignature as SignatureScheme>::PrivateKey::read_le(&sk_sig_bytes[..])?;
@@ -108,7 +103,7 @@ impl<C: DPCComponents> PrivateKey<C> {
             };
 
             // Returns the private key if it is valid.
-            match private_key.is_valid(signature_parameters, commitment_parameters) {
+            match private_key.is_valid(signature_parameters) {
                 true => return Ok(private_key),
                 false => {
                     r_pk_counter += 1;
@@ -119,22 +114,16 @@ impl<C: DPCComponents> PrivateKey<C> {
     }
 
     /// Returns `true` if the private key is well-formed. Otherwise, returns `false`.
-    pub fn is_valid(
-        &self,
-        signature_parameters: &C::AccountSignature,
-        commitment_parameters: &C::AccountCommitment,
-    ) -> bool {
-        self.to_decryption_key(signature_parameters, commitment_parameters)
-            .is_ok()
+    pub fn is_valid(&self, signature_parameters: &C::AccountSignature) -> bool {
+        self.to_decryption_key(signature_parameters).is_ok()
     }
 
     /// Returns the decryption key for the account view key.
     pub fn to_decryption_key(
         &self,
         signature_parameters: &C::AccountSignature,
-        commitment_parameters: &C::AccountCommitment,
     ) -> Result<<C::AccountEncryption as EncryptionScheme>::PrivateKey, AccountError> {
-        let commitment = self.commit(signature_parameters, commitment_parameters)?;
+        let commitment = self.commit(signature_parameters)?;
         let decryption_key_bytes = to_bytes_le![commitment]?;
 
         // This operation implicitly enforces that the unused MSB bits
@@ -222,17 +211,12 @@ impl<C: DPCComponents> PrivateKey<C> {
     fn commit(
         &self,
         signature_parameters: &C::AccountSignature,
-        commitment_parameters: &C::AccountCommitment,
     ) -> Result<<C::AccountCommitment as CommitmentScheme>::Output, AccountError> {
         // Construct the commitment input for the account address.
         let pk_sig = self.pk_sig(signature_parameters)?;
         let commit_input = to_bytes_le![pk_sig, self.sk_prf]?;
 
-        Ok(C::AccountCommitment::commit(
-            commitment_parameters,
-            &commit_input,
-            &self.r_pk,
-        )?)
+        Ok(C::account_commitment().commit(&commit_input, &self.r_pk)?)
     }
 }
 

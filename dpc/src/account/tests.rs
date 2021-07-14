@@ -28,12 +28,7 @@ fn test_account_new() {
     let rng = &mut thread_rng();
     let parameters = SystemParameters::<Components>::load().unwrap();
 
-    let account = Account::<Components>::new(
-        &parameters.account_signature,
-        &parameters.account_commitment,
-        &parameters.account_encryption,
-        rng,
-    );
+    let account = Account::<Components>::new(&parameters.account_signature, &parameters.account_encryption, rng);
 
     println!("{:?}", account);
     assert!(account.is_ok());

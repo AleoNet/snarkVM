@@ -253,7 +253,6 @@ where
         let time = start_timer!(|| "DPC::create_account");
         let account = Account::new(
             &self.system_parameters.account_signature,
-            &self.system_parameters.account_commitment,
             &self.system_parameters.account_encryption,
             rng,
         )?;

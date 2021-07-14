@@ -49,7 +49,6 @@ fn test_record_serialization() {
         for _ in 0..ITERATIONS {
             let dummy_account = Account::<Components>::new(
                 &system_parameters.account_signature,
-                &system_parameters.account_commitment,
                 &system_parameters.account_encryption,
                 &mut rng,
             )
@@ -110,7 +109,6 @@ fn test_record_encryption() {
         for _ in 0..ITERATIONS {
             let dummy_account = Account::new(
                 &system_parameters.account_signature,
-                &system_parameters.account_commitment,
                 &system_parameters.account_encryption,
                 &mut rng,
             )
@@ -139,12 +137,8 @@ fn test_record_encryption() {
 
             // Encrypt the record
             let (encryped_record, _) = EncryptedRecord::encrypt(&system_parameters, &given_record, &mut rng).unwrap();
-            let account_view_key = ViewKey::from_private_key(
-                &system_parameters.account_signature,
-                &system_parameters.account_commitment,
-                &dummy_account.private_key,
-            )
-            .unwrap();
+            let account_view_key =
+                ViewKey::from_private_key(&system_parameters.account_signature, &dummy_account.private_key).unwrap();
 
             // Decrypt the record
             let decrypted_record = encryped_record.decrypt(&system_parameters, &account_view_key).unwrap();

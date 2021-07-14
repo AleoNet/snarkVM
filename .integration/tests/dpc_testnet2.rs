@@ -197,12 +197,8 @@ fn dpc_testnet2_integration_test() {
         for ((encrypted_record, private_key), new_record) in
             encrypted_records.iter().zip(new_account_private_keys).zip(new_records)
         {
-            let account_view_key = ViewKey::from_private_key(
-                &dpc.system_parameters.account_signature,
-                &dpc.system_parameters.account_commitment,
-                &private_key,
-            )
-            .unwrap();
+            let account_view_key =
+                ViewKey::from_private_key(&dpc.system_parameters.account_signature, &private_key).unwrap();
 
             let decrypted_record = encrypted_record
                 .decrypt(&dpc.system_parameters, &account_view_key)
@@ -259,7 +255,6 @@ fn test_testnet_2_transaction_kernel_serialization() {
     // Generate metadata and an account for a dummy initial record.
     let test_account = Account::new(
         &system_parameters.account_signature,
-        &system_parameters.account_commitment,
         &system_parameters.account_encryption,
         &mut rng,
     )
@@ -357,17 +352,10 @@ fn test_testnet2_dpc_execute_constraints() {
     .unwrap();
 
     let signature_parameters = &system_parameters.account_signature;
-    let commitment_parameters = &system_parameters.account_commitment;
     let encryption_parameters = &system_parameters.account_encryption;
 
     // Generate metadata and an account for a dummy initial record.
-    let dummy_account = Account::new(
-        signature_parameters,
-        commitment_parameters,
-        encryption_parameters,
-        &mut rng,
-    )
-    .unwrap();
+    let dummy_account = Account::new(signature_parameters, encryption_parameters, &mut rng).unwrap();
 
     let genesis_block = Block {
         header: BlockHeader {
@@ -420,13 +408,7 @@ fn test_testnet2_dpc_execute_constraints() {
     }
 
     // Create an account for an actual new record.
-    let new_account = Account::new(
-        signature_parameters,
-        commitment_parameters,
-        encryption_parameters,
-        &mut rng,
-    )
-    .unwrap();
+    let new_account = Account::new(signature_parameters, encryption_parameters, &mut rng).unwrap();
 
     // Construct new records.
 

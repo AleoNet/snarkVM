@@ -41,11 +41,10 @@ impl<C: DPCComponents> ViewKey<C> {
     /// Creates a new account view key from an account private key.
     pub fn from_private_key(
         signature_parameters: &C::AccountSignature,
-        commitment_parameters: &C::AccountCommitment,
         private_key: &PrivateKey<C>,
     ) -> Result<Self, AccountError> {
         Ok(Self {
-            decryption_key: private_key.to_decryption_key(signature_parameters, commitment_parameters)?,
+            decryption_key: private_key.to_decryption_key(signature_parameters)?,
         })
     }
 

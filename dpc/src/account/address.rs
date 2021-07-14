@@ -40,11 +40,10 @@ impl<C: DPCComponents> Address<C> {
     /// Derives the account address from an account private key.
     pub fn from_private_key(
         signature_parameters: &C::AccountSignature,
-        commitment_parameters: &C::AccountCommitment,
         encryption_parameters: &C::AccountEncryption,
         private_key: &PrivateKey<C>,
     ) -> Result<Self, AccountError> {
-        let decryption_key = private_key.to_decryption_key(signature_parameters, commitment_parameters)?;
+        let decryption_key = private_key.to_decryption_key(signature_parameters)?;
         let encryption_key =
             <C::AccountEncryption as EncryptionScheme>::generate_public_key(encryption_parameters, &decryption_key)?;
 

@@ -33,7 +33,6 @@ pub struct Account<C: DPCComponents> {
 
 impl<C: DPCComponents> AccountScheme for Account<C> {
     type Address = Address<C>;
-    type CommitmentScheme = C::AccountCommitment;
     type EncryptionScheme = C::AccountEncryption;
     type PrivateKey = PrivateKey<C>;
     type SignatureScheme = C::AccountSignature;
@@ -41,17 +40,11 @@ impl<C: DPCComponents> AccountScheme for Account<C> {
     /// Creates a new account.
     fn new<R: Rng + CryptoRng>(
         signature_parameters: &Self::SignatureScheme,
-        commitment_parameters: &Self::CommitmentScheme,
         encryption_parameters: &Self::EncryptionScheme,
         rng: &mut R,
     ) -> Result<Self, AccountError> {
-        let private_key = PrivateKey::new(signature_parameters, commitment_parameters, rng)?;
-        let address = Address::from_private_key(
-            signature_parameters,
-            commitment_parameters,
-            encryption_parameters,
-            &private_key,
-        )?;
+        let private_key = PrivateKey::new(signature_parameters, rng)?;
+        let address = Address::from_private_key(signature_parameters, encryption_parameters, &private_key)?;
 
         Ok(Self { private_key, address })
     }

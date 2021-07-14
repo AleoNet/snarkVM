@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::account::ACCOUNT_COMMITMENT_INPUT;
 use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, CRH, PRF};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
@@ -83,4 +84,10 @@ pub trait DPCComponents: 'static + Sized {
     /// CRH for computing the serial number nonce. Invoked only over `Self::InnerScalarField`.
     type SerialNumberNonceCRH: CRH;
     type SerialNumberNonceCRHGadget: CRHGadget<Self::SerialNumberNonceCRH, Self::InnerScalarField>;
+
+    /// TODO (howardwu): TEMPORARY FOR PR #251 - Move this into a lazy_static! or Arc'ed context.
+    #[inline]
+    fn account_commitment() -> Self::AccountCommitment {
+        Self::AccountCommitment::setup(ACCOUNT_COMMITMENT_INPUT)
+    }
 }

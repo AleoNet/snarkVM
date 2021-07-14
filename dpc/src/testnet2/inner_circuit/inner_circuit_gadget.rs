@@ -509,10 +509,7 @@ where
                         &mut account_cs.ns(|| "Allocate account view key"),
                         || {
                             account_private_key
-                                .to_decryption_key(
-                                    &system_parameters.account_signature,
-                                    &system_parameters.account_commitment,
-                                )
+                                .to_decryption_key(&system_parameters.account_signature)
                                 .map_err(|_| SynthesisError::AssignmentMissing)
                         },
                     )?;
