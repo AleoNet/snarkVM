@@ -413,6 +413,7 @@ where
             &claimed_prover_commitment
                 .to_constraint_field(cs.ns(|| "convert claimed_prover_commitment into field elements"))?,
         );
+        hash_input.push(FpGadget::<F>::Constant(F::from(message.len() as u128)));
         hash_input.extend_from_slice(&message.to_constraint_field(cs.ns(|| "convert message into field elements"))?);
 
         // Compute the hash on the base field
