@@ -159,30 +159,12 @@ impl<C: Testnet2Components> OuterCircuit<C> {
 
 impl<C: Testnet2Components> ConstraintSynthesizer<C::OuterScalarField> for OuterCircuit<C>
 where
-    C::AccountCommitment: ToConstraintField<C::InnerScalarField>,
     <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-
-    C::AccountEncryption: ToConstraintField<C::InnerScalarField>,
-
-    C::AccountSignature: ToConstraintField<C::InnerScalarField>,
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
-
-    C::RecordCommitment: ToConstraintField<C::InnerScalarField>,
     <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-
-    C::EncryptedRecordCRH: ToConstraintField<C::InnerScalarField>,
     <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-
-    C::SerialNumberNonceCRH: ToConstraintField<C::InnerScalarField>,
-
-    C::ProgramVerificationKeyCommitment: ToConstraintField<C::InnerScalarField>,
     <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-
-    C::LocalDataCRH: ToConstraintField<C::InnerScalarField>,
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-
-    C::LocalDataCommitment: ToConstraintField<C::InnerScalarField>,
-
     <C::MerkleParameters as MerkleParameters>::H: ToConstraintField<C::InnerScalarField>,
     MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerScalarField>,
 {
