@@ -20,13 +20,13 @@ use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
 
 use rand::SeedableRng;
-use rand_xorshift::XorShiftRng;
+use rand_chacha::ChaChaRng;
 
 type TestSignature = Schnorr<Edwards>;
 type TestGroupEncryptionSignature = GroupEncryption<EdwardsProjective, EdwardsProjective>;
 
 fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
-    let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
+    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
     let schnorr = S::setup::<_>(rng).unwrap();
 
     let private_key = schnorr.generate_private_key(rng).unwrap();
@@ -36,7 +36,7 @@ fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
 }
 
 fn failed_verification<S: SignatureScheme>(message: &[u8], bad_message: &[u8]) {
-    let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
+    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
     let schnorr = S::setup::<_>(rng).unwrap();
 
     let private_key = schnorr.generate_private_key(rng).unwrap();
@@ -46,7 +46,7 @@ fn failed_verification<S: SignatureScheme>(message: &[u8], bad_message: &[u8]) {
 }
 
 fn randomize_and_verify<S: SignatureScheme<Randomizer = F>, F: PrimeField>(message: &[u8], randomizer: F) {
-    let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
+    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
     let schnorr = S::setup::<_>(rng).unwrap();
 
     let private_key = schnorr.generate_private_key(rng).unwrap();
@@ -73,7 +73,7 @@ fn randomize_and_verify<S: SignatureScheme<Randomizer = F>, F: PrimeField>(messa
 }
 
 fn signature_scheme_parameter_serialization<S: SignatureScheme>() {
-    let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
+    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
     let signature_scheme = S::setup(rng).unwrap();
 
     let signature_scheme_parameters = signature_scheme.parameters();
@@ -84,40 +84,13 @@ fn signature_scheme_parameter_serialization<S: SignatureScheme>() {
     assert_eq!(signature_scheme_parameters, &recovered_signature_scheme_parameters);
 }
 
-// #[test]
-// fn test_schnorr_randomize_public_key() {
-//     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
-//
-//     let schnorr = TestSignature::setup::<_>(rng).unwrap();
-//     let generator_powers = schnorr.parameters.generator_powers;
-//
-//     let private_key = schnorr.generate_private_key(rng).unwrap();
-//     let public_key = schnorr.generate_public_key(&private_key).unwrap();
-//
-//     let randomizer = <Edwards as Group>::ScalarField::rand(rng);
-//     let randomized_private_key = schnorr.randomize_private_key(&private_key, &randomizer).unwrap();
-//     let randomized_public_key = schnorr.randomize_public_key(&public_key, &randomizer).unwrap();
-//     assert_eq!(randomized_public_key, schnorr.generate_public_key(&randomized_private_key)?);
-//
-//     let mut randomized_group = Edwards::zero();
-//     for (bit, base_power) in
-//         snarkvm_utilities::from_bytes_le_to_bits_le(&randomizer.to_bytes_le()?).zip_eq(&generator_powers)
-//     {
-//         if bit {
-//             randomized_group += base_power;
-//         }
-//     }
-//
-//     assert_eq!(randomized_public_key, randomized_private_key)
-// }
-
 #[test]
 fn schnorr_signature_test() {
     let message = "Hi, I am a Schnorr signature!";
     sign_and_verify::<TestSignature>(message.as_bytes());
     failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
 
-    let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
+    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
     let randomizer = <Edwards as Group>::ScalarField::rand(rng);
     randomize_and_verify::<TestSignature, <Edwards as Group>::ScalarField>(message.as_bytes(), randomizer);
 }

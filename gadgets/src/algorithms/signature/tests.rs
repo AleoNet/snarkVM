@@ -15,21 +15,24 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    algorithms::signature::{SchnorrGadget, SchnorrParametersGadget, SchnorrPublicKeyGadget},
+    algorithms::signature::{
+        GroupEncryptionPublicKeyRandomizationGadget,
+        SchnorrGadget,
+        SchnorrParametersGadget,
+        SchnorrPublicKeyGadget,
+    },
     curves::edwards_bls12::EdwardsBls12Gadget,
     integers::uint::UInt8,
     traits::{algorithms::SignatureGadget, alloc::AllocGadget, eq::EqGadget},
     Boolean,
 };
-use snarkvm_algorithms::{signature::Schnorr, traits::SignatureScheme};
+use snarkvm_algorithms::{encryption::GroupEncryption, signature::Schnorr, traits::SignatureScheme};
 use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective, traits::Group};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{ToBytes, UniformRand};
 
-use crate::algorithms::signature::GroupEncryptionPublicKeyRandomizationGadget;
 use rand::{thread_rng, Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
-use snarkvm_algorithms::encryption::GroupEncryption;
 
 type SchnorrScheme = Schnorr<EdwardsProjective>;
 type TestSignature = Schnorr<EdwardsProjective>;
@@ -111,17 +114,17 @@ fn schnorr_signature_verification_test() {
     let message = "Hi, I am a Schnorr signature!".as_bytes();
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
-    let schnorr_signature = TestSignature::setup::<_>(rng).unwrap();
-    let private_key = schnorr_signature.generate_private_key(rng).unwrap();
-    let public_key = schnorr_signature.generate_public_key(&private_key).unwrap();
-    let signature = schnorr_signature.sign(&private_key, &message, rng).unwrap();
-    assert!(schnorr_signature.verify(&public_key, &message, &signature).unwrap());
+    let schnorr = TestSignature::setup::<_>(rng).unwrap();
+    let private_key = schnorr.generate_private_key(rng).unwrap();
+    let public_key = schnorr.generate_public_key(&private_key).unwrap();
+    let signature = schnorr.sign(&private_key, &message, rng).unwrap();
+    assert!(schnorr.verify(&public_key, &message, &signature).unwrap());
 
     let mut cs = TestConstraintSystem::<Fr>::new();
 
     let parameter_gadget = <TestSignatureGadget as SignatureGadget<SchnorrScheme, Fr>>::ParametersGadget::alloc(
         cs.ns(|| "alloc_parameters"),
-        || Ok(schnorr_signature.parameters),
+        || Ok(schnorr.parameters),
     )
     .unwrap();
 
@@ -177,30 +180,28 @@ fn group_schnorr_signature_verification_test() {
     let message = "Hi, I am a Schnorr signature!".as_bytes();
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
-    let schnorr_signature = GroupSignature::setup::<_>(rng).unwrap();
-    let private_key = schnorr_signature.generate_private_key(rng).unwrap();
-    let public_key = schnorr_signature.generate_public_key(&private_key).unwrap();
-    let signature = schnorr_signature.sign(&private_key, &message, rng).unwrap();
+    let schnorr = GroupSignature::setup::<_>(rng).unwrap();
+    let private_key = schnorr.generate_private_key(rng).unwrap();
+    let public_key = schnorr.generate_public_key(&private_key).unwrap();
+    let signature = schnorr.sign(&private_key, &message, rng).unwrap();
 
-    assert!(schnorr_signature.verify(&public_key, &message, &signature).unwrap());
+    assert!(schnorr.verify(&public_key, &message, &signature).unwrap());
 
     let mut cs = TestConstraintSystem::<Fr>::new();
 
-    let parameter_gadget =
-        <GroupSignatureGadget as SignaturePublicKeyRandomizationGadget<GroupSignature, Fr>>::ParametersGadget::alloc(
-            cs.ns(|| "alloc_parameters"),
-            || Ok(&schnorr_signature.parameters),
-        )
-        .unwrap();
+    let parameter_gadget = <GroupSignatureGadget as SignatureGadget<GroupSignature, Fr>>::ParametersGadget::alloc(
+        cs.ns(|| "alloc_parameters"),
+        || Ok(&schnorr.parameters),
+    )
+    .unwrap();
 
     assert_eq!(cs.num_constraints(), 0);
 
-    let public_key_gadget =
-        <GroupSignatureGadget as SignaturePublicKeyRandomizationGadget<GroupSignature, Fr>>::PublicKeyGadget::alloc(
-            cs.ns(|| "alloc_public_key"),
-            || Ok(public_key),
-        )
-        .unwrap();
+    let public_key_gadget = <GroupSignatureGadget as SignatureGadget<GroupSignature, Fr>>::PublicKeyGadget::alloc(
+        cs.ns(|| "alloc_public_key"),
+        || Ok(public_key),
+    )
+    .unwrap();
 
     assert_eq!(cs.num_constraints(), 13);
 
@@ -208,16 +209,15 @@ fn group_schnorr_signature_verification_test() {
     //
     assert_eq!(cs.num_constraints(), 245);
 
-    let signature_gadget =
-        <GroupSignatureGadget as SignaturePublicKeyRandomizationGadget<GroupSignature, Fr>>::SignatureGadget::alloc(
-            cs.ns(|| "alloc_signature"),
-            || Ok(signature),
-        )
-        .unwrap();
+    let signature_gadget = <GroupSignatureGadget as SignatureGadget<GroupSignature, Fr>>::SignatureGadget::alloc(
+        cs.ns(|| "alloc_signature"),
+        || Ok(signature),
+    )
+    .unwrap();
 
     assert_eq!(cs.num_constraints(), 245);
 
-    let verification = <GroupSignatureGadget as SignaturePublicKeyRandomizationGadget<GroupSignature, Fr>>::verify(
+    let verification = <GroupSignatureGadget as SignatureGadget<GroupSignature, Fr>>::verify(
         cs.ns(|| "verify"),
         &parameter_gadget,
         &public_key_gadget,
@@ -244,19 +244,19 @@ fn failed_schnorr_signature_verification_test() {
     let bad_message = "Bad Message".as_bytes();
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
-    let schnorr_signature = TestSignature::setup::<_>(rng).unwrap();
-    let private_key = schnorr_signature.generate_private_key(rng).unwrap();
-    let public_key = schnorr_signature.generate_public_key(&private_key).unwrap();
-    let signature = schnorr_signature.sign(&private_key, &message, rng).unwrap();
+    let schnorr = TestSignature::setup::<_>(rng).unwrap();
+    let private_key = schnorr.generate_private_key(rng).unwrap();
+    let public_key = schnorr.generate_public_key(&private_key).unwrap();
+    let signature = schnorr.sign(&private_key, &message, rng).unwrap();
 
-    assert!(schnorr_signature.verify(&public_key, &message, &signature).unwrap());
-    assert!(!schnorr_signature.verify(&public_key, &bad_message, &signature).unwrap());
+    assert!(schnorr.verify(&public_key, &message, &signature).unwrap());
+    assert!(!schnorr.verify(&public_key, &bad_message, &signature).unwrap());
 
     let mut cs = TestConstraintSystem::<Fr>::new();
 
     let parameter_gadget = <TestSignatureGadget as SignatureGadget<SchnorrScheme, Fr>>::ParametersGadget::alloc(
         cs.ns(|| "alloc_parameters"),
-        || Ok(schnorr_signature.parameters),
+        || Ok(schnorr.parameters),
     )
     .unwrap();
 

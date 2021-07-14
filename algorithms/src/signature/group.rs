@@ -28,7 +28,7 @@ use snarkvm_curves::{
 use snarkvm_fields::ToConstraintField;
 use snarkvm_utilities::{serialize::*, to_bytes_le, FromBytes, ToBytes};
 
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 use std::hash::Hash;
 
 /// Map the encryption group into the signature group.
@@ -79,7 +79,7 @@ where
     type Randomizer = <G as Group>::ScalarField;
     type Signature = SchnorrSignature<SG>;
 
-    fn setup<R: Rng>(rng: &mut R) -> Result<Self, SignatureError> {
+    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, SignatureError> {
         Ok(<Self as EncryptionScheme>::setup(rng))
     }
 
@@ -87,7 +87,7 @@ where
         &self.parameters
     }
 
-    fn generate_private_key<R: Rng>(&self, rng: &mut R) -> Result<Self::PrivateKey, SignatureError> {
+    fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::PrivateKey, SignatureError> {
         Ok(<Self as EncryptionScheme>::generate_private_key(self, rng))
     }
 
@@ -111,7 +111,7 @@ where
         unimplemented!()
     }
 
-    fn sign<R: Rng>(
+    fn sign<R: Rng + CryptoRng>(
         &self,
         private_key: &Self::PrivateKey,
         message: &[u8],
@@ -123,7 +123,7 @@ where
         Ok(schnorr_signature.sign(&private_key, message, rng)?)
     }
 
-    fn sign_randomized<R: Rng>(
+    fn sign_randomized<R: Rng + CryptoRng>(
         &self,
         _randomized_private_key: &Self::RandomizedPrivateKey,
         _message: &[u8],

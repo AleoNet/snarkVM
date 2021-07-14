@@ -34,7 +34,7 @@ use snarkvm_utilities::{
 };
 
 use itertools::Itertools;
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 use std::{
     hash::Hash,
     io::{Read, Result as IoResult, Write},
@@ -131,7 +131,7 @@ where
     type Randomizer = <G as Group>::ScalarField;
     type Signature = SchnorrSignature<G>;
 
-    fn setup<R: Rng>(rng: &mut R) -> Result<Self, SignatureError> {
+    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, SignatureError> {
         assert!(
             <<G as Group>::ScalarField as PrimeField>::Parameters::CAPACITY
                 < <<G::Affine as AffineCurve>::BaseField as PrimeField>::Parameters::CAPACITY
@@ -148,7 +148,7 @@ where
         &self.parameters
     }
 
-    fn generate_private_key<R: Rng>(&self, rng: &mut R) -> Result<Self::PrivateKey, SignatureError> {
+    fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::PrivateKey, SignatureError> {
         let keygen_time = start_timer!(|| "SchnorrSignature::generate_private_key");
         let private_key = <G as Group>::ScalarField::rand(rng);
         end_timer!(keygen_time);
@@ -194,7 +194,7 @@ where
         Ok(SchnorrPublicKey(randomized_public_key))
     }
 
-    fn sign<R: Rng>(
+    fn sign<R: Rng + CryptoRng>(
         &self,
         private_key: &Self::PrivateKey,
         message: &[u8],
@@ -254,7 +254,7 @@ where
         Ok(signature)
     }
 
-    fn sign_randomized<R: Rng>(
+    fn sign_randomized<R: Rng + CryptoRng>(
         &self,
         randomized_private_key: &Self::RandomizedPrivateKey,
         message: &[u8],
