@@ -25,14 +25,11 @@ use crate::{
         integers::integer::Integer,
     },
 };
-use snarkvm_algorithms::{
-    crypto_hash::PoseidonDefaultParametersField,
-    encryption::{GroupEncryption, GroupEncryptionPublicKey},
-};
-use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::{Field, PrimeField, ToConstraintField};
+use snarkvm_algorithms::encryption::{GroupEncryption, GroupEncryptionPublicKey};
+use snarkvm_curves::ProjectiveCurve;
+use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::{to_bytes_le, CanonicalDeserialize, CanonicalSerialize, ToBytes};
+use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use itertools::Itertools;
 use std::{borrow::Borrow, marker::PhantomData};
@@ -480,15 +477,8 @@ pub struct GroupEncryptionGadget<G: ProjectiveCurve, F: PrimeField, GG: Compress
     _engine: PhantomData<F>,
 }
 
-impl<
-    G: ProjectiveCurve,
-    SG: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize,
-    F: PrimeField,
-    GG: CompressedGroupGadget<G, F>,
-> EncryptionGadget<GroupEncryption<G, SG>, F> for GroupEncryptionGadget<G, F, GG>
-where
-    <SG::Affine as AffineCurve>::BaseField: PoseidonDefaultParametersField,
-    SG: ToConstraintField<<SG::Affine as AffineCurve>::BaseField>,
+impl<G: ProjectiveCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>> EncryptionGadget<GroupEncryption<G>, F>
+    for GroupEncryptionGadget<G, F, GG>
 {
     type BlindingExponentGadget = GroupEncryptionBlindingExponentsGadget<G>;
     type CiphertextGadget = GroupEncryptionCiphertextGadget<G, F, GG>;

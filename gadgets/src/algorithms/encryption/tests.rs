@@ -14,23 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use rand::{Rng, SeedableRng};
-use rand_xorshift::XorShiftRng;
-
-use snarkvm_algorithms::{encryption::GroupEncryption, traits::EncryptionScheme};
-use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective, traits::ProjectiveCurve};
-use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-
 use crate::{
     algorithms::encryption::*,
     curves::edwards_bls12::EdwardsBls12Gadget,
     traits::{algorithms::EncryptionGadget, alloc::AllocGadget, eq::EqGadget},
 };
+use snarkvm_algorithms::{encryption::GroupEncryption, traits::EncryptionScheme};
+use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective, traits::ProjectiveCurve};
+use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
-type TestEncryptionScheme = GroupEncryption<EdwardsProjective, EdwardsProjective>;
+use rand::{CryptoRng, Rng, SeedableRng};
+use rand_chacha::ChaChaRng;
+
+type TestEncryptionScheme = GroupEncryption<EdwardsProjective>;
 type TestEncryptionSchemeGadget = GroupEncryptionGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
 
-fn generate_input<G: ProjectiveCurve, R: Rng>(input_size: usize, rng: &mut R) -> Vec<G> {
+fn generate_input<G: ProjectiveCurve, R: Rng + CryptoRng>(input_size: usize, rng: &mut R) -> Vec<G> {
     let mut input = vec![];
     for _ in 0..input_size {
         input.push(G::rand(rng))
@@ -42,7 +41,7 @@ fn generate_input<G: ProjectiveCurve, R: Rng>(input_size: usize, rng: &mut R) ->
 #[test]
 fn test_group_encryption_public_key_gadget() {
     let mut cs = TestConstraintSystem::<Fr>::new();
-    let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
+    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
     let encryption_scheme = TestEncryptionScheme::setup("test_group_encryption_public_key_gadget");
 
@@ -96,7 +95,7 @@ fn test_group_encryption_public_key_gadget() {
 #[test]
 fn test_group_encryption_gadget() {
     let mut cs = TestConstraintSystem::<Fr>::new();
-    let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
+    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
     let encryption_scheme = TestEncryptionScheme::setup("test_group_encryption_gadget");
 

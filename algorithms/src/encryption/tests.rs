@@ -19,9 +19,9 @@ use snarkvm_curves::{edwards_bls12::EdwardsProjective, traits::ProjectiveCurve};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use rand::{Rng, SeedableRng};
-use rand_xorshift::XorShiftRng;
+use rand_chacha::ChaChaRng;
 
-type TestEncryptionScheme = GroupEncryption<EdwardsProjective, EdwardsProjective>;
+type TestEncryptionScheme = GroupEncryption<EdwardsProjective>;
 
 pub const ITERATIONS: usize = 1000;
 
@@ -31,7 +31,7 @@ fn generate_input<G: ProjectiveCurve, R: Rng>(input_size: usize, rng: &mut R) ->
 
 #[test]
 fn simple_encryption() {
-    let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
+    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
     let encryption_scheme = TestEncryptionScheme::setup("simple_encryption");
 
@@ -49,7 +49,7 @@ fn simple_encryption() {
 
 #[test]
 fn encryption_public_key_serialization() {
-    let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
+    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
     let encryption_scheme = TestEncryptionScheme::setup("encryption_public_key_serialization");
 

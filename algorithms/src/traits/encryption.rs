@@ -17,7 +17,7 @@
 use crate::EncryptionError;
 use snarkvm_utilities::{rand::UniformRand, FromBytes, ToBytes};
 
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 use std::{fmt::Debug, hash::Hash};
 
 pub trait EncryptionScheme: ToBytes + FromBytes + Sized + Clone + From<<Self as EncryptionScheme>::Parameters> {
@@ -30,14 +30,14 @@ pub trait EncryptionScheme: ToBytes + FromBytes + Sized + Clone + From<<Self as 
 
     fn setup(message: &str) -> Self;
 
-    fn generate_private_key<R: Rng>(&self, rng: &mut R) -> <Self as EncryptionScheme>::PrivateKey;
+    fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> <Self as EncryptionScheme>::PrivateKey;
 
     fn generate_public_key(
         &self,
         private_key: &<Self as EncryptionScheme>::PrivateKey,
     ) -> Result<<Self as EncryptionScheme>::PublicKey, EncryptionError>;
 
-    fn generate_randomness<R: Rng>(
+    fn generate_randomness<R: Rng + CryptoRng>(
         &self,
         public_key: &<Self as EncryptionScheme>::PublicKey,
         rng: &mut R,
