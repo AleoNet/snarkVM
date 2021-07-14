@@ -531,9 +531,8 @@ where
 
             // Construct and verify the record owner - account address.
             {
-                let candidate_record_owner = AccountEncryptionGadget::check_public_key_gadget(
+                let candidate_record_owner = account_encryption_parameters.check_public_key_gadget(
                     &mut account_cs.ns(|| "Compute the candidate record owner - account address"),
-                    &account_encryption_parameters,
                     &candidate_account_view_key,
                 )?;
 
@@ -1158,9 +1157,8 @@ where
                 || Ok(encryption_plaintext),
             )?;
 
-            let candidate_encrypted_record_gadget = AccountEncryptionGadget::check_encryption_gadget(
+            let candidate_encrypted_record_gadget = account_encryption_parameters.check_encryption_gadget(
                 &mut encryption_cs.ns(|| format!("output record {} check_encryption_gadget", j)),
-                &account_encryption_parameters,
                 &encryption_randomness_gadget,
                 &given_record_owner,
                 &encryption_plaintext_gadget,

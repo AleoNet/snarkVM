@@ -48,12 +48,8 @@ fn test_group_encryption_public_key_gadget() {
     let private_key = encryption_scheme.generate_private_key(rng);
     let public_key = encryption_scheme.generate_public_key(&private_key).unwrap();
 
-    let parameters_gadget =
-        <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::ParametersGadget::alloc(
-            &mut cs.ns(|| "parameters_gadget"),
-            || Ok(&encryption_scheme.generator_powers),
-        )
-        .unwrap();
+    let encryption =
+        TestEncryptionSchemeGadget::alloc(&mut cs.ns(|| "parameters_gadget"), || Ok(&encryption_scheme)).unwrap();
     let private_key_gadget =
         <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::PrivateKeyGadget::alloc(
             &mut cs.ns(|| "private_key_gadget"),
@@ -69,12 +65,8 @@ fn test_group_encryption_public_key_gadget() {
 
     println!("number of constraints for inputs: {}", cs.num_constraints());
 
-    let public_key_gadget =
-        <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::check_public_key_gadget(
-            &mut cs.ns(|| "public_key_gadget_evaluation"),
-            &parameters_gadget,
-            &private_key_gadget,
-        )
+    let public_key_gadget = encryption
+        .check_public_key_gadget(&mut cs.ns(|| "public_key_gadget_evaluation"), &private_key_gadget)
         .unwrap();
 
     expected_public_key_gadget
@@ -110,12 +102,8 @@ fn test_group_encryption_gadget() {
     let ciphertext = encryption_scheme.encrypt(&public_key, &randomness, &message).unwrap();
 
     // Alloc parameters, public key, plaintext, randomness, and blinding exponents
-    let parameters_gadget =
-        <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::ParametersGadget::alloc(
-            &mut cs.ns(|| "parameters_gadget"),
-            || Ok(&encryption_scheme.generator_powers),
-        )
-        .unwrap();
+    let encryption =
+        TestEncryptionSchemeGadget::alloc(&mut cs.ns(|| "parameters_gadget"), || Ok(&encryption_scheme)).unwrap();
     let public_key_gadget =
         <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::PublicKeyGadget::alloc(
             &mut cs.ns(|| "public_key_gadget"),
@@ -151,10 +139,9 @@ fn test_group_encryption_gadget() {
 
     println!("number of constraints for inputs: {}", cs.num_constraints());
 
-    let ciphertext_gadget =
-        <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::check_encryption_gadget(
+    let ciphertext_gadget = encryption
+        .check_encryption_gadget(
             &mut cs.ns(|| "ciphertext_gadget_evaluation"),
-            &parameters_gadget,
             &randomness_gadget,
             &public_key_gadget,
             &plaintext_gadget,
