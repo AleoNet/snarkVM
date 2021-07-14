@@ -388,7 +388,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
 
         let mut found_one = false;
 
-        for i in BitIteratorBE::new(other.into_repr()) {
+        for i in BitIteratorBE::new(other.to_repr()) {
             if found_one {
                 res.double_in_place();
             } else {

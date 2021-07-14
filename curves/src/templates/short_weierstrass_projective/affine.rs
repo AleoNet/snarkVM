@@ -237,7 +237,7 @@ impl<P: Parameters> Mul<P::ScalarField> for Affine<P> {
     type Output = Self;
 
     fn mul(self, other: P::ScalarField) -> Self {
-        self.mul_bits(BitIteratorBE::new(other.into_repr())).into()
+        self.mul_bits(BitIteratorBE::new(other.to_repr())).into()
     }
 }
 

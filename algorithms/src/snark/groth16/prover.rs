@@ -169,16 +169,16 @@ where
         .public_variables
         .iter()
         .skip(1)
-        .map(|s| s.into_repr())
+        .map(|s| s.to_repr())
         .collect::<Vec<_>>();
 
     let aux_assignment = cfg_into_iter!(prover.private_variables)
-        .map(|s| s.into_repr())
+        .map(|s| s.to_repr())
         .collect::<Vec<_>>();
 
     let assignment = [&input_assignment[..], &aux_assignment[..]].concat();
 
-    let h_assignment = cfg_into_iter!(h).map(|s| s.into_repr()).collect::<Vec<_>>();
+    let h_assignment = cfg_into_iter!(h).map(|s| s.to_repr()).collect::<Vec<_>>();
 
     // Compute A
     let a_acc_time = start_timer!(|| "Compute A");

@@ -38,7 +38,7 @@ macro_rules! impl_field_into_biginteger {
     ($field: ident, $biginteger: ident, $parameters: ident) => {
         impl<P: $parameters> Into<$biginteger> for $field<P> {
             fn into(self) -> $biginteger {
-                self.into_repr()
+                self.to_repr()
             }
         }
     };
