@@ -47,12 +47,7 @@ fn test_record_serialization() {
         .unwrap();
 
         for _ in 0..ITERATIONS {
-            let dummy_account = Account::<Components>::new(
-                &system_parameters.account_signature,
-                &system_parameters.account_encryption,
-                &mut rng,
-            )
-            .unwrap();
+            let dummy_account = Account::<Components>::new(&mut rng).unwrap();
 
             let sn_nonce_input: [u8; 32] = rng.gen();
             let value = rng.gen();
@@ -107,12 +102,7 @@ fn test_record_encryption() {
         .unwrap();
 
         for _ in 0..ITERATIONS {
-            let dummy_account = Account::new(
-                &system_parameters.account_signature,
-                &system_parameters.account_encryption,
-                &mut rng,
-            )
-            .unwrap();
+            let dummy_account = Account::new(&mut rng).unwrap();
 
             let sn_nonce_input: [u8; 32] = rng.gen();
             let value = rng.gen();
@@ -136,9 +126,8 @@ fn test_record_encryption() {
             .unwrap();
 
             // Encrypt the record
-            let (encryped_record, _) = EncryptedRecord::encrypt(&system_parameters, &given_record, &mut rng).unwrap();
-            let account_view_key =
-                ViewKey::from_private_key(&system_parameters.account_signature, &dummy_account.private_key).unwrap();
+            let (encryped_record, _) = EncryptedRecord::encrypt(&given_record, &mut rng).unwrap();
+            let account_view_key = ViewKey::from_private_key(&dummy_account.private_key).unwrap();
 
             // Decrypt the record
             let decrypted_record = encryped_record.decrypt(&system_parameters, &account_view_key).unwrap();

@@ -182,7 +182,6 @@ impl<C: Testnet1Components> Record<C> {
     // TODO (howardwu) - Change the private_key input to a signature_public_key.
     pub fn to_serial_number(
         &self,
-        signature_parameters: &C::AccountSignature,
         private_key: &PrivateKey<C>,
     ) -> Result<
         (
@@ -203,11 +202,7 @@ impl<C: Testnet1Components> Record<C> {
         let seed = FromBytes::read_le(to_bytes_le!(&private_key.sk_prf)?.as_slice())?;
         let input = FromBytes::read_le(to_bytes_le!(self.serial_number_nonce)?.as_slice())?;
         let randomizer = FromBytes::from_bytes_le(&C::PRF::evaluate(&seed, &input)?.to_bytes_le()?)?;
-        let serial_number = C::AccountSignature::randomize_public_key(
-            &signature_parameters,
-            &private_key.pk_sig(&signature_parameters)?,
-            &randomizer,
-        )?;
+        let serial_number = C::account_signature().randomize_public_key(&private_key.pk_sig()?, &randomizer)?;
 
         end_timer!(timer);
         Ok((serial_number, randomizer))

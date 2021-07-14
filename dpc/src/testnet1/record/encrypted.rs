@@ -109,7 +109,6 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
     /// 1. Encryption randomness
     /// 2. Encrypted record
     pub fn encrypt<R: Rng + CryptoRng>(
-        system_parameters: &SystemParameters<C>,
         record: &Record<C>,
         rng: &mut R,
     ) -> Result<
@@ -135,15 +134,9 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
 
         // Encrypt the record plaintext
         let record_public_key = record.owner().into_repr();
-        let encryption_randomness = system_parameters
-            .account_encryption
-            .generate_randomness(record_public_key, rng)?;
-        let encrypted_record = C::AccountEncryption::encrypt(
-            &system_parameters.account_encryption,
-            record_public_key,
-            &encryption_randomness,
-            &record_plaintexts,
-        )?;
+        let encryption_randomness = C::account_encryption().generate_randomness(record_public_key, rng)?;
+        let encrypted_record =
+            C::account_encryption().encrypt(record_public_key, &encryption_randomness, &record_plaintexts)?;
 
         let encrypted_record = Self {
             encrypted_elements: encrypted_record,
@@ -160,11 +153,8 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
         account_view_key: &ViewKey<C>,
     ) -> Result<Record<C>, DPCError> {
         // Decrypt the encrypted record
-        let plaintext_elements = C::AccountEncryption::decrypt(
-            &system_parameters.account_encryption,
-            &account_view_key.decryption_key,
-            &self.encrypted_elements,
-        )?;
+        let plaintext_elements =
+            C::account_encryption().decrypt(&account_view_key.decryption_key, &self.encrypted_elements)?;
 
         let mut plaintext = Vec::with_capacity(plaintext_elements.len());
         for element in plaintext_elements {
@@ -192,7 +182,7 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
 
         // Construct the record account address
 
-        let owner = Address::from_view_key(&system_parameters.account_encryption, &account_view_key)?;
+        let owner = Address::from_view_key(&account_view_key)?;
 
         // Determine if the record is a dummy
 
@@ -281,7 +271,6 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
     /// 4. Record fq high selectors - Used for plaintext serialization/deserialization
     /// 5. Record ciphertext blinding exponents used to encrypt the record
     pub fn prepare_encryption_gadget_components(
-        system_parameters: &SystemParameters<C>,
         record: &Record<C>,
         encryption_randomness: &<<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Randomness,
     ) -> Result<RecordEncryptionGadgetComponents<C>, DPCError> {
@@ -359,18 +348,14 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
 
         // Encrypt the record plaintext
         let record_public_key = record.owner().into_repr();
-        let encryption_blinding_exponents = system_parameters.account_encryption.generate_blinding_exponents(
+        let encryption_blinding_exponents = C::account_encryption().generate_blinding_exponents(
             record_public_key,
             encryption_randomness,
             record_plaintexts.len(),
         )?;
 
-        let encrypted_record = C::AccountEncryption::encrypt(
-            &system_parameters.account_encryption,
-            record_public_key,
-            &encryption_randomness,
-            &record_plaintexts,
-        )?;
+        let encrypted_record =
+            C::account_encryption().encrypt(record_public_key, &encryption_randomness, &record_plaintexts)?;
 
         // Compute the compressed ciphertext selector bits
         let mut ciphertext_selectors = Vec::with_capacity(encrypted_record.len());

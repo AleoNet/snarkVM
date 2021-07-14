@@ -148,13 +148,11 @@ where
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let account_encryption_parameters_fe = system_parameters
-        .account_encryption
+    let account_encryption_parameters_fe = C::account_encryption()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let account_signature_fe = system_parameters
-        .account_signature
+    let account_signature_fe = C::account_signature()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 

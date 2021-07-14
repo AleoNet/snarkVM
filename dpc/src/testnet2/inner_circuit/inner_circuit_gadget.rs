@@ -275,13 +275,13 @@ where
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let account_encryption_parameters =
             AccountEncryptionGadget::alloc_input(&mut cs.ns(|| "Declare account encryption parameters"), || {
-                Ok(&system_parameters.account_encryption.clone())
+                Ok(C::account_encryption())
             })?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let account_signature_parameters =
             AccountSignatureGadget::alloc_input(&mut cs.ns(|| "Declare account signature parameters"), || {
-                Ok(system_parameters.account_signature.clone())
+                Ok(C::account_signature())
             })?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
@@ -464,7 +464,7 @@ where
             // Allocate the account private key.
             let (pk_sig, sk_prf, r_pk) = {
                 let pk_sig_native = account_private_key
-                    .pk_sig(&system_parameters.account_signature)
+                    .pk_sig()
                     .map_err(|_| SynthesisError::AssignmentMissing)?;
                 let pk_sig =
                     AccountSignatureGadget::PublicKeyGadget::alloc(&mut account_cs.ns(|| "Declare pk_sig"), || {
@@ -507,7 +507,7 @@ where
                         &mut account_cs.ns(|| "Allocate account view key"),
                         || {
                             account_private_key
-                                .to_decryption_key(&system_parameters.account_signature)
+                                .to_decryption_key()
                                 .map_err(|_| SynthesisError::AssignmentMissing)
                         },
                     )?;

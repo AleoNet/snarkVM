@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::account::ACCOUNT_COMMITMENT_INPUT;
+use crate::account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_INPUT, ACCOUNT_SIGNATURE_INPUT};
 use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, CRH, PRF};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
@@ -33,13 +33,13 @@ pub trait DPCComponents: 'static + Sized {
     type InnerScalarField: PrimeField;
     type OuterScalarField: PrimeField;
 
-    /// Encryption scheme for account records.
-    type AccountEncryption: EncryptionScheme;
-    type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryption, Self::InnerScalarField>;
-
     /// Commitment scheme for account contents. Invoked only over `Self::InnerScalarField`.
     type AccountCommitment: CommitmentScheme;
     type AccountCommitmentGadget: CommitmentGadget<Self::AccountCommitment, Self::InnerScalarField>;
+
+    /// Encryption scheme for account records.
+    type AccountEncryption: EncryptionScheme;
+    type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryption, Self::InnerScalarField>;
 
     /// Signature scheme for delegated compute.
     type AccountSignature: SignatureScheme;
@@ -85,9 +85,21 @@ pub trait DPCComponents: 'static + Sized {
     type SerialNumberNonceCRH: CRH;
     type SerialNumberNonceCRHGadget: CRHGadget<Self::SerialNumberNonceCRH, Self::InnerScalarField>;
 
-    /// TODO (howardwu): TEMPORARY FOR PR #251 - Move this into a lazy_static! or Arc'ed context.
+    /// TODO (howardwu): TEMPORARY FOR PR #251 - Move this into SystemParameters, lazy_static!, or Arc'ed context.
     #[inline]
     fn account_commitment() -> Self::AccountCommitment {
         Self::AccountCommitment::setup(ACCOUNT_COMMITMENT_INPUT)
+    }
+
+    /// TODO (howardwu): TEMPORARY FOR PR #251 - Move this into SystemParameters, lazy_static!, or Arc'ed context.
+    #[inline]
+    fn account_encryption() -> Self::AccountEncryption {
+        Self::AccountEncryption::setup(ACCOUNT_ENCRYPTION_INPUT)
+    }
+
+    /// TODO (howardwu): TEMPORARY FOR PR #251 - Move this into SystemParameters, lazy_static!, or Arc'ed context.
+    #[inline]
+    fn account_signature() -> Self::AccountSignature {
+        Self::AccountSignature::setup(ACCOUNT_SIGNATURE_INPUT)
     }
 }

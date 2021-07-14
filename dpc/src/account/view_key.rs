@@ -39,23 +39,19 @@ pub struct ViewKey<C: DPCComponents> {
 
 impl<C: DPCComponents> ViewKey<C> {
     /// Creates a new account view key from an account private key.
-    pub fn from_private_key(
-        signature_parameters: &C::AccountSignature,
-        private_key: &PrivateKey<C>,
-    ) -> Result<Self, AccountError> {
+    pub fn from_private_key(private_key: &PrivateKey<C>) -> Result<Self, AccountError> {
         Ok(Self {
-            decryption_key: private_key.to_decryption_key(signature_parameters)?,
+            decryption_key: private_key.to_decryption_key()?,
         })
     }
 
     /// Signs a message using the account view key.
     pub fn sign<R: Rng + CryptoRng>(
         &self,
-        signature_parameters: &C::AccountSignature,
         message: &[u8],
         rng: &mut R,
     ) -> Result<<C::AccountSignature as SignatureScheme>::Signature, AccountError> {
-        Ok(signature_parameters.sign(&self.decryption_key.clone().into(), message, rng)?)
+        Ok(C::account_signature().sign(&self.decryption_key.clone().into(), message, rng)?)
     }
 }
 

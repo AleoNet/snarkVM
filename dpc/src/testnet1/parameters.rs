@@ -25,8 +25,6 @@ use std::io::Result as IoResult;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet1Components"))]
 pub struct SystemParameters<C: Testnet1Components> {
-    pub account_encryption: C::AccountEncryption,
-    pub account_signature: C::AccountSignature,
     pub record_commitment: C::RecordCommitment,
     pub encrypted_record_crh: C::EncryptedRecordCRH,
     pub inner_circuit_id_crh: C::InnerCircuitIDCRH,
@@ -39,14 +37,6 @@ pub struct SystemParameters<C: Testnet1Components> {
 
 impl<C: Testnet1Components> SystemParameters<C> {
     pub fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<SystemParameters<C>, DPCError> {
-        let time = start_timer!(|| "Account encryption scheme setup");
-        let account_encryption = <C::AccountEncryption as EncryptionScheme>::setup(rng);
-        end_timer!(time);
-
-        let time = start_timer!(|| "Account signature setup");
-        let account_signature = C::AccountSignature::setup(rng)?;
-        end_timer!(time);
-
         let time = start_timer!(|| "Encrypted record CRH setup");
         let encrypted_record_crh = C::EncryptedRecordCRH::setup("EncryptedRecordCRH");
         end_timer!(time);
@@ -81,8 +71,6 @@ impl<C: Testnet1Components> SystemParameters<C> {
         end_timer!(time);
 
         Ok(Self {
-            account_encryption,
-            account_signature,
             encrypted_record_crh,
             inner_circuit_id_crh,
             local_data_crh,
@@ -96,11 +84,6 @@ impl<C: Testnet1Components> SystemParameters<C> {
 
     /// TODO (howardwu): Inspect what is going on with program_verification_key_commitment.
     pub fn load() -> IoResult<Self> {
-        let account_encryption: C::AccountEncryption =
-            FromBytes::read_le(AccountEncryptionParameters::load_bytes()?.as_slice())?;
-        let account_signature: C::AccountSignature = From::from(FromBytes::read_le(
-            AccountSignatureParameters::load_bytes()?.as_slice(),
-        )?);
         let encrypted_record_crh: C::EncryptedRecordCRH =
             FromBytes::read_le(EncryptedRecordCRHParameters::load_bytes()?.as_slice())?;
         let inner_circuit_id_crh: C::InnerCircuitIDCRH =
@@ -117,8 +100,6 @@ impl<C: Testnet1Components> SystemParameters<C> {
             FromBytes::read_le(SerialNumberNonceCRHParameters::load_bytes()?.as_slice())?;
 
         Ok(Self {
-            account_encryption,
-            account_signature,
             encrypted_record_crh,
             inner_circuit_id_crh,
             local_data_crh,

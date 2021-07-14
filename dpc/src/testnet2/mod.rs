@@ -251,11 +251,7 @@ where
 
     fn create_account<R: Rng + CryptoRng>(&self, rng: &mut R) -> anyhow::Result<Self::Account> {
         let time = start_timer!(|| "DPC::create_account");
-        let account = Account::new(
-            &self.system_parameters.account_signature,
-            &self.system_parameters.account_encryption,
-            rng,
-        )?;
+        let account = Account::new(rng)?;
         end_timer!(time);
         Ok(account)
     }
@@ -287,8 +283,7 @@ where
                 value_balance = value_balance.add(AleoAmount::from_bytes(record.value() as i64));
             }
 
-            let (sn, randomizer) =
-                record.to_serial_number(&self.system_parameters.account_signature, &old_private_keys[i])?;
+            let (sn, randomizer) = record.to_serial_number(&old_private_keys[i])?;
             joint_serial_numbers.extend_from_slice(&sn.to_bytes_le()?);
             old_serial_numbers.push(sn);
             old_randomizers.push(randomizer);
@@ -399,8 +394,7 @@ where
         let mut new_encrypted_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
         for record in &new_records {
-            let (encrypted_record, record_encryption_randomness) =
-                EncryptedRecord::encrypt(&self.system_parameters, record, rng)?;
+            let (encrypted_record, record_encryption_randomness) = EncryptedRecord::encrypt(record, rng)?;
 
             new_records_encryption_randomness.push(record_encryption_randomness);
             new_encrypted_record_hashes.push(encrypted_record.to_hash(&self.system_parameters)?);
@@ -503,19 +497,12 @@ where
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for i in 0..C::NUM_INPUT_RECORDS {
             // Randomize the private key.
-            let randomized_private_key = C::AccountSignature::randomize_private_key(
-                &self.system_parameters.account_signature,
-                &old_private_keys[i].sk_sig,
-                &old_randomizers[i],
-            )?;
+            let randomized_private_key =
+                C::account_signature().randomize_private_key(&old_private_keys[i].sk_sig, &old_randomizers[i])?;
 
             // Sign the transaction data.
-            let randomized_signature = C::AccountSignature::sign_randomized(
-                &self.system_parameters.account_signature,
-                &randomized_private_key,
-                &signature_message,
-                rng,
-            )?;
+            let randomized_signature =
+                C::account_signature().sign_randomized(&randomized_private_key, &signature_message, rng)?;
 
             signatures.push(randomized_signature);
         }
@@ -527,11 +514,8 @@ where
         let mut new_records_encryption_gadget_components = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
         for (record, ciphertext_randomness) in new_records.iter().zip_eq(&new_records_encryption_randomness) {
-            let record_encryption_gadget_components = EncryptedRecord::prepare_encryption_gadget_components(
-                &self.system_parameters,
-                &record,
-                ciphertext_randomness,
-            )?;
+            let record_encryption_gadget_components =
+                EncryptedRecord::prepare_encryption_gadget_components(&record, ciphertext_randomness)?;
 
             new_records_encryption_gadget_components.push(record_encryption_gadget_components);
         }
@@ -730,9 +714,8 @@ where
             }
         };
 
-        let account_signature = &self.system_parameters.account_signature;
         for (pk, sig) in transaction.old_serial_numbers().iter().zip(transaction.signatures()) {
-            match C::AccountSignature::verify(account_signature, pk, &signature_message, sig) {
+            match C::account_signature().verify(pk, &signature_message, sig) {
                 Ok(is_valid) => {
                     if !is_valid {
                         eprintln!("Signature failed to verify.");

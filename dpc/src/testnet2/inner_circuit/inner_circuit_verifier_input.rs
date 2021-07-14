@@ -86,8 +86,8 @@ where
     fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
         v.extend_from_slice(&C::account_commitment().to_field_elements()?);
-        v.extend_from_slice(&self.system_parameters.account_encryption.to_field_elements()?);
-        v.extend_from_slice(&self.system_parameters.account_signature.to_field_elements()?);
+        v.extend_from_slice(&C::account_encryption().to_field_elements()?);
+        v.extend_from_slice(&C::account_signature().to_field_elements()?);
         v.extend_from_slice(&self.system_parameters.record_commitment.to_field_elements()?);
         v.extend_from_slice(
             &self
