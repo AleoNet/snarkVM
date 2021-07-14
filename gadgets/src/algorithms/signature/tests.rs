@@ -57,7 +57,7 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
 
     let random_scalar = to_bytes_le!(<EdwardsProjective as Group>::ScalarField::rand(rng)).unwrap();
     let randomized_public_key = schnorr_signature
-        .randomize_public_key(&public_key, &random_scalar)
+        .randomize_private_key(&public_key, &random_scalar)
         .unwrap();
     let randomized_signature = schnorr_signature
         .randomize_signature(&signature, &random_scalar)

@@ -38,6 +38,7 @@ pub trait SignatureScheme: Sized + Clone + From<<Self as SignatureScheme>::Param
         + CanonicalSerialize
         + CanonicalDeserialize;
     type PrivateKey: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
+    type RandomizedPrivateKey: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq + Into<Self::PrivateKey>;
     type Signature: Clone + Debug + Default + ToBytes + FromBytes + Send + Sync + PartialEq + Eq;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self, SignatureError>;
@@ -45,6 +46,12 @@ pub trait SignatureScheme: Sized + Clone + From<<Self as SignatureScheme>::Param
     fn parameters(&self) -> &Self::Parameters;
 
     fn generate_private_key<R: Rng>(&self, rng: &mut R) -> Result<Self::PrivateKey, SignatureError>;
+
+    fn generate_randomized_private_key<R: Rng>(
+        &self,
+        private_key: &Self::PrivateKey,
+        rng: &mut R,
+    ) -> Result<Self::RandomizedPrivateKey, SignatureError>;
 
     fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Result<Self::PublicKey, SignatureError>;
 
@@ -55,22 +62,17 @@ pub trait SignatureScheme: Sized + Clone + From<<Self as SignatureScheme>::Param
         rng: &mut R,
     ) -> Result<Self::Signature, SignatureError>;
 
+    fn sign_randomized<R: Rng>(
+        &self,
+        randomized_private_key: &Self::RandomizedPrivateKey,
+        message: &[u8],
+        rng: &mut R,
+    ) -> Result<Self::Signature, SignatureError>;
+
     fn verify(
         &self,
         public_key: &Self::PublicKey,
         message: &[u8],
         signature: &Self::Signature,
     ) -> Result<bool, SignatureError>;
-
-    fn randomize_public_key(
-        &self,
-        public_key: &Self::PublicKey,
-        randomness: &[u8],
-    ) -> Result<Self::PublicKey, SignatureError>;
-
-    fn randomize_signature(
-        &self,
-        signature: &Self::Signature,
-        randomness: &[u8],
-    ) -> Result<Self::Signature, SignatureError>;
 }

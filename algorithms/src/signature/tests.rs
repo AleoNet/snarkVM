@@ -27,6 +27,7 @@ type TestGroupEncryptionSignature = GroupEncryption<EdwardsProjective, EdwardsPr
 fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
     let schnorr_signature = S::setup::<_>(rng).unwrap();
+
     let private_key = schnorr_signature.generate_private_key(rng).unwrap();
     let public_key = schnorr_signature.generate_public_key(&private_key).unwrap();
     let signature = schnorr_signature.sign(&private_key, message, rng).unwrap();
@@ -36,35 +37,35 @@ fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
 fn failed_verification<S: SignatureScheme>(message: &[u8], bad_message: &[u8]) {
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
     let schnorr_signature = S::setup::<_>(rng).unwrap();
+
     let private_key = schnorr_signature.generate_private_key(rng).unwrap();
     let public_key = schnorr_signature.generate_public_key(&private_key).unwrap();
     let signature = schnorr_signature.sign(&private_key, message, rng).unwrap();
     assert!(!schnorr_signature.verify(&public_key, bad_message, &signature).unwrap());
 }
 
-fn randomize_and_verify<S: SignatureScheme>(message: &[u8], randomness: &[u8]) {
+#[rustfmt::skip]
+fn randomize_and_verify<S: SignatureScheme>(message: &[u8]) {
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
     let schnorr_signature = S::setup::<_>(rng).unwrap();
+
     let private_key = schnorr_signature.generate_private_key(rng).unwrap();
     let public_key = schnorr_signature.generate_public_key(&private_key).unwrap();
     let signature = schnorr_signature.sign(&private_key, message, rng).unwrap();
     assert!(schnorr_signature.verify(&public_key, message, &signature).unwrap());
 
-    let randomized_public_key = schnorr_signature.randomize_public_key(&public_key, randomness).unwrap();
-    let randomized_signature = schnorr_signature.randomize_signature(&signature, randomness).unwrap();
-    assert!(
-        schnorr_signature
-            .verify(&randomized_public_key, &message, &randomized_signature)
-            .unwrap()
-    );
+    let randomized_private_key = schnorr_signature.generate_randomized_private_key(&private_key, rng).unwrap();
+    let randomized_signature = schnorr_signature.sign_randomized(&randomized_private_key, message, rng).unwrap();
+    let randomized_public_key = schnorr_signature.generate_public_key(&randomized_private_key.into()).unwrap();
+    assert!(signature != randomized_signature);
+    assert!(schnorr_signature.verify(&randomized_public_key, &message, &randomized_signature).unwrap());
 }
 
 fn signature_scheme_parameter_serialization<S: SignatureScheme>() {
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
-
     let signature_scheme = S::setup(rng).unwrap();
-    let signature_scheme_parameters = signature_scheme.parameters();
 
+    let signature_scheme_parameters = signature_scheme.parameters();
     let signature_scheme_parameters_bytes = to_bytes_le![signature_scheme_parameters].unwrap();
     let recovered_signature_scheme_parameters: <S as SignatureScheme>::Parameters =
         FromBytes::read_le(&signature_scheme_parameters_bytes[..]).unwrap();
@@ -75,11 +76,9 @@ fn signature_scheme_parameter_serialization<S: SignatureScheme>() {
 #[test]
 fn schnorr_signature_test() {
     let message = "Hi, I am a Schnorr signature!";
-    let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
     sign_and_verify::<TestSignature>(message.as_bytes());
     failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
-    let random_scalar = to_bytes_le!(<Edwards as Group>::ScalarField::rand(rng)).unwrap();
-    randomize_and_verify::<TestSignature>(message.as_bytes(), &random_scalar.as_slice());
+    randomize_and_verify::<TestSignature>(message.as_bytes());
 }
 
 #[test]

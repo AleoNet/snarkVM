@@ -196,7 +196,7 @@ impl<C: Testnet1Components> Record<C> {
         let seed = FromBytes::read_le(to_bytes_le!(&private_key.sk_prf)?.as_slice())?;
         let input = FromBytes::read_le(to_bytes_le!(self.serial_number_nonce)?.as_slice())?;
         let randomizer = to_bytes_le![C::PRF::evaluate(&seed, &input)?]?;
-        let serial_number = C::AccountSignature::randomize_public_key(
+        let serial_number = C::AccountSignature::randomize_private_key(
             &signature_parameters,
             &private_key.pk_sig(&signature_parameters)?,
             &randomizer,

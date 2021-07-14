@@ -51,10 +51,7 @@ impl<G: ProjectiveCurve + CanonicalSerialize, SG: ProjectiveCurve + CanonicalDes
             .map(|p| into_signature_group(*p))
             .collect();
 
-        let parameters = SchnorrParameters {
-            generator_powers,
-            salt: parameters.salt,
-        };
+        let parameters = SchnorrParameters { generator_powers };
 
         Self { parameters }
     }
@@ -78,6 +75,7 @@ where
     type Parameters = GroupEncryptionParameters<G>;
     type PrivateKey = <G as Group>::ScalarField;
     type PublicKey = GroupEncryptionPublicKey<G>;
+    type RandomizedPrivateKey = <G as Group>::ScalarField;
     type Signature = SchnorrSignature<SG>;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self, SignatureError> {
@@ -90,6 +88,14 @@ where
 
     fn generate_private_key<R: Rng>(&self, rng: &mut R) -> Result<Self::PrivateKey, SignatureError> {
         Ok(<Self as EncryptionScheme>::generate_private_key(self, rng))
+    }
+
+    fn generate_randomized_private_key<R: Rng>(
+        &self,
+        _private_key: &Self::PrivateKey,
+        _rng: &mut R,
+    ) -> Result<Self::RandomizedPrivateKey, SignatureError> {
+        unimplemented!()
     }
 
     fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Result<Self::PublicKey, SignatureError> {
@@ -108,6 +114,15 @@ where
         Ok(schnorr_signature.sign(&private_key, message, rng)?)
     }
 
+    fn sign_randomized<R: Rng>(
+        &self,
+        _randomized_private_key: &Self::RandomizedPrivateKey,
+        _message: &[u8],
+        _rng: &mut R,
+    ) -> Result<Self::Signature, SignatureError> {
+        unimplemented!()
+    }
+
     fn verify(
         &self,
         public_key: &Self::PublicKey,
@@ -118,21 +133,5 @@ where
         let schnorr_public_key: SchnorrPublicKey<SG> = (*public_key).into();
 
         Ok(schnorr_signature.verify(&schnorr_public_key, message, signature)?)
-    }
-
-    fn randomize_public_key(
-        &self,
-        _public_key: &Self::PublicKey,
-        _randomness: &[u8],
-    ) -> Result<Self::PublicKey, SignatureError> {
-        unimplemented!()
-    }
-
-    fn randomize_signature(
-        &self,
-        _signature: &Self::Signature,
-        _randomness: &[u8],
-    ) -> Result<Self::Signature, SignatureError> {
-        unimplemented!()
     }
 }

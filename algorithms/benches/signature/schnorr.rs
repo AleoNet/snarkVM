@@ -84,7 +84,7 @@ fn schnorr_signature_randomize_public_key(c: &mut Criterion) {
     let randomness: [u8; 32] = rng.gen();
 
     c.bench_function("Schnorr Signature Randomize Public Key", move |b| {
-        b.iter(|| Schnorr::randomize_public_key(&parameters, &public_key, &randomness).unwrap())
+        b.iter(|| Schnorr::randomize_private_key(&parameters, &public_key, &randomness).unwrap())
     });
 }
 
