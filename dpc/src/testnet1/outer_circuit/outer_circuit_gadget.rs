@@ -144,8 +144,7 @@ where
 
     // Declare inner snark verifier inputs as `CoreCheckF` field elements
 
-    let account_commitment_parameters_fe = system_parameters
-        .account_commitment
+    let account_commitment_parameters_fe = C::account_commitment()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 

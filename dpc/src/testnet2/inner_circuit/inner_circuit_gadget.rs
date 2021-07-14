@@ -269,7 +269,7 @@ where
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let account_commitment_parameters =
             AccountCommitmentGadget::alloc_input(&mut cs.ns(|| "Declare account commit parameters"), || {
-                Ok(system_parameters.account_commitment.clone())
+                Ok(C::account_commitment())
             })?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
