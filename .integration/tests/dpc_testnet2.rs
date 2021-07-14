@@ -346,7 +346,7 @@ fn test_testnet2_dpc_execute_constraints() {
     // "always-accept" program.
     let ledger_parameters = Arc::new(CommitmentMerkleParameters::setup(&mut rng));
 
-    let dpc = <Testnet2DPC as DPCScheme<L>>::load(false).unwrap();
+    let dpc = <Testnet2DPC as DPCScheme<L>>::setup(&ledger_parameters, &mut rng).unwrap();
     let system_parameters = &dpc.system_parameters;
 
     let alternate_noop_program = NoopProgram::<Components>::setup(
