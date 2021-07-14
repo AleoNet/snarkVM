@@ -22,43 +22,8 @@ impl_params_local!(
     "ledger_merkle_tree",
     32804
 );
-impl_params_local!(
-    LocalDataCommitmentParameters,
-    local_data_commitment_test,
-    "./",
-    "local_data_commitment",
-    280780
-);
-impl_params_local!(
-    RecordCommitmentParameters,
-    record_commitment_test,
-    "./",
-    "record_commitment",
-    507084
-);
 
 // CRH
-impl_params_local!(
-    EncryptedRecordCRHParameters,
-    encrypted_record_crh_test,
-    "./",
-    "encrypted_record_crh",
-    270532
-);
-impl_params_local!(
-    InnerCircuitIDCRH,
-    inner_circuit_id_crh_test,
-    "./",
-    "inner_circuit_id_crh",
-    3581604
-);
-impl_params_local!(
-    LocalDataCRHParameters,
-    local_data_crh_test,
-    "./",
-    "local_data_crh",
-    65604
-);
 impl_params_local!(
     ProgramVKCRHParameters,
     program_vk_crh_test,
@@ -73,12 +38,4 @@ impl_params_remote!(
     "./",
     "testnet2_program_vk_crh",
     62930948
-);
-
-impl_params_local!(
-    SerialNumberNonceCRHParameters,
-    serial_number_nonce_crh_test,
-    "./",
-    "serial_number_nonce_crh",
-    258180
 );
