@@ -41,14 +41,12 @@ impl<C: DPCComponents> Address<C> {
     pub fn from_private_key(private_key: &PrivateKey<C>) -> Result<Self, AccountError> {
         let decryption_key = private_key.to_decryption_key()?;
         let encryption_key = C::account_encryption().generate_public_key(&decryption_key)?;
-
         Ok(Self { encryption_key })
     }
 
     /// Derives the account address from an account view key.
     pub fn from_view_key(view_key: &ViewKey<C>) -> Result<Self, AccountError> {
         let encryption_key = C::account_encryption().generate_public_key(&view_key.decryption_key)?;
-
         Ok(Self { encryption_key })
     }
 
@@ -59,7 +57,8 @@ impl<C: DPCComponents> Address<C> {
         message: &[u8],
         signature: &<C::AccountSignature as SignatureScheme>::Signature,
     ) -> Result<bool, AccountError> {
-        Ok(C::account_signature().verify(&self.encryption_key.clone().into(), message, signature)?)
+        let signature_public_key = FromBytes::from_bytes_le(&self.encryption_key.to_bytes_le()?)?;
+        Ok(C::account_signature().verify(&signature_public_key, message, signature)?)
     }
 
     #[allow(clippy::wrong_self_convention)]

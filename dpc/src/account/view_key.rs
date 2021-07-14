@@ -51,7 +51,8 @@ impl<C: DPCComponents> ViewKey<C> {
         message: &[u8],
         rng: &mut R,
     ) -> Result<<C::AccountSignature as SignatureScheme>::Signature, AccountError> {
-        Ok(C::account_signature().sign(&self.decryption_key.clone().into(), message, rng)?)
+        let signature_private_key = FromBytes::from_bytes_le(&self.decryption_key.to_bytes_le()?)?;
+        Ok(C::account_signature().sign(&signature_private_key, message, rng)?)
     }
 }
 
