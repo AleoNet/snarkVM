@@ -30,7 +30,6 @@ use std::io::{Read, Result as IoResult, Write};
 )]
 pub struct SchnorrParameters<G: Group> {
     pub generator_powers: Vec<G>,
-    pub salt: [u8; 32],
 }
 
 impl<G: Group> SchnorrParameters<G> {
@@ -46,10 +45,7 @@ impl<G: Group> SchnorrParameters<G> {
             generator.double_in_place();
         }
 
-        Self {
-            generator_powers,
-            salt: rng.gen(),
-        }
+        Self { generator_powers }
     }
 }
 
@@ -59,7 +55,7 @@ impl<G: Group> ToBytes for SchnorrParameters<G> {
         for g in &self.generator_powers {
             g.write_le(&mut writer)?;
         }
-        self.salt.write_le(&mut writer)
+        Ok(())
     }
 }
 
@@ -73,9 +69,7 @@ impl<G: Group> FromBytes for SchnorrParameters<G> {
             generator_powers.push(g);
         }
 
-        let salt: [u8; 32] = FromBytes::read_le(&mut reader)?;
-
-        Ok(Self { generator_powers, salt })
+        Ok(Self { generator_powers })
     }
 }
 

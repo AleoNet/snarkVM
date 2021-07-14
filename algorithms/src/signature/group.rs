@@ -28,7 +28,7 @@ use snarkvm_curves::{
 use snarkvm_fields::ToConstraintField;
 use snarkvm_utilities::{serialize::*, to_bytes_le, FromBytes, ToBytes};
 
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 use std::hash::Hash;
 
 /// Map the encryption group into the signature group.
@@ -51,10 +51,7 @@ impl<G: ProjectiveCurve + CanonicalSerialize, SG: ProjectiveCurve + CanonicalDes
             .map(|p| into_signature_group(*p))
             .collect();
 
-        let parameters = SchnorrParameters {
-            generator_powers,
-            salt: parameters.salt,
-        };
+        let parameters = SchnorrParameters { generator_powers };
 
         Self { parameters }
     }
@@ -78,9 +75,11 @@ where
     type Parameters = GroupEncryptionParameters<G>;
     type PrivateKey = <G as Group>::ScalarField;
     type PublicKey = GroupEncryptionPublicKey<G>;
+    type RandomizedPrivateKey = <G as Group>::ScalarField;
+    type Randomizer = <G as Group>::ScalarField;
     type Signature = SchnorrSignature<SG>;
 
-    fn setup<R: Rng>(rng: &mut R) -> Result<Self, SignatureError> {
+    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, SignatureError> {
         Ok(<Self as EncryptionScheme>::setup(rng))
     }
 
@@ -88,7 +87,7 @@ where
         &self.parameters
     }
 
-    fn generate_private_key<R: Rng>(&self, rng: &mut R) -> Result<Self::PrivateKey, SignatureError> {
+    fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::PrivateKey, SignatureError> {
         Ok(<Self as EncryptionScheme>::generate_private_key(self, rng))
     }
 
@@ -96,7 +95,23 @@ where
         Ok(<Self as EncryptionScheme>::generate_public_key(self, private_key).unwrap())
     }
 
-    fn sign<R: Rng>(
+    fn randomize_private_key(
+        &self,
+        _private_key: &Self::PrivateKey,
+        _randomizer: &Self::Randomizer,
+    ) -> Result<Self::RandomizedPrivateKey, SignatureError> {
+        unimplemented!()
+    }
+
+    fn randomize_public_key(
+        &self,
+        _public_key: &Self::PublicKey,
+        _randomizer: &Self::Randomizer,
+    ) -> Result<Self::PublicKey, SignatureError> {
+        unimplemented!()
+    }
+
+    fn sign<R: Rng + CryptoRng>(
         &self,
         private_key: &Self::PrivateKey,
         message: &[u8],
@@ -106,6 +121,15 @@ where
         let private_key = <SG as Group>::ScalarField::read_le(&to_bytes_le![private_key]?[..])?;
 
         Ok(schnorr_signature.sign(&private_key, message, rng)?)
+    }
+
+    fn sign_randomized<R: Rng + CryptoRng>(
+        &self,
+        _randomized_private_key: &Self::RandomizedPrivateKey,
+        _message: &[u8],
+        _rng: &mut R,
+    ) -> Result<Self::Signature, SignatureError> {
+        unimplemented!()
     }
 
     fn verify(
@@ -118,21 +142,5 @@ where
         let schnorr_public_key: SchnorrPublicKey<SG> = (*public_key).into();
 
         Ok(schnorr_signature.verify(&schnorr_public_key, message, signature)?)
-    }
-
-    fn randomize_public_key(
-        &self,
-        _public_key: &Self::PublicKey,
-        _randomness: &[u8],
-    ) -> Result<Self::PublicKey, SignatureError> {
-        unimplemented!()
-    }
-
-    fn randomize_signature(
-        &self,
-        _signature: &Self::Signature,
-        _randomness: &[u8],
-    ) -> Result<Self::Signature, SignatureError> {
-        unimplemented!()
     }
 }

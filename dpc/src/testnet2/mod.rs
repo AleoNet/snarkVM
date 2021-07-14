@@ -503,19 +503,19 @@ where
 
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for i in 0..C::NUM_INPUT_RECORDS {
-            // Sign the transaction data
-            let account_signature = C::AccountSignature::sign(
+            // Randomize the private key.
+            let randomized_private_key = C::AccountSignature::randomize_private_key(
                 &self.system_parameters.account_signature,
                 &old_private_keys[i].sk_sig,
-                &signature_message,
-                rng,
+                &old_randomizers[i],
             )?;
 
-            // Randomize the signature
-            let randomized_signature = C::AccountSignature::randomize_signature(
+            // Sign the transaction data.
+            let randomized_signature = C::AccountSignature::sign_randomized(
                 &self.system_parameters.account_signature,
-                &account_signature,
-                &old_randomizers[i],
+                &randomized_private_key,
+                &signature_message,
+                rng,
             )?;
 
             signatures.push(randomized_signature);

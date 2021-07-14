@@ -44,7 +44,7 @@ use snarkvm_gadgets::{
     fields::FpGadget,
     integers::{int::Int64, uint::UInt8},
     traits::{
-        algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignaturePublicKeyRandomizationGadget},
+        algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
         alloc::AllocGadget,
         eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         fields::FieldGadget,
@@ -228,7 +228,7 @@ where
     RecordCommitment::Output: Eq,
     AccountCommitmentGadget: CommitmentGadget<AccountCommitment, C::InnerScalarField>,
     AccountEncryptionGadget: EncryptionGadget<AccountEncryption, C::InnerScalarField>,
-    AccountSignatureGadget: SignaturePublicKeyRandomizationGadget<AccountSignature, C::InnerScalarField>,
+    AccountSignatureGadget: SignatureGadget<AccountSignature, C::InnerScalarField>,
     RecordCommitmentGadget: CommitmentGadget<RecordCommitment, C::InnerScalarField>,
     EncryptedRecordCRHGadget: CRHGadget<EncryptedRecordCRH, C::InnerScalarField>,
     LocalDataCRHGadget: CRHGadget<LocalDataCRH, C::InnerScalarField>,
@@ -568,7 +568,7 @@ where
             )?;
             let randomizer_bytes = randomizer.to_bytes(&mut sn_cs.ns(|| "Convert randomizer to bytes"))?;
 
-            let candidate_serial_number_gadget = AccountSignatureGadget::check_randomization_gadget(
+            let candidate_serial_number_gadget = AccountSignatureGadget::randomize_public_key(
                 &mut sn_cs.ns(|| "Compute serial number"),
                 &account_signature_parameters,
                 &pk_sig,

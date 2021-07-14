@@ -22,7 +22,7 @@ use crate::{
     SignatureScheme,
 };
 use snarkvm_curves::{AffineCurve, Group, ProjectiveCurve};
-use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, One, PrimeField, ToConstraintField, Zero};
+use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_utilities::{
     bytes::{from_bytes_le_to_bits_le, FromBytes, ToBytes},
     errors::SerializationError,
@@ -34,7 +34,7 @@ use snarkvm_utilities::{
 };
 
 use itertools::Itertools;
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 use std::{
     hash::Hash,
     io::{Read, Result as IoResult, Write},
@@ -66,7 +66,6 @@ impl<G: ProjectiveCurve> FromBytes for SchnorrSignature<G> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let prover_response = <G as Group>::ScalarField::read_le(&mut reader)?;
         let verifier_challenge = <G as Group>::ScalarField::read_le(&mut reader)?;
-
         Ok(Self {
             prover_response,
             verifier_challenge,
@@ -128,9 +127,11 @@ where
     type Parameters = SchnorrParameters<G>;
     type PrivateKey = <G as Group>::ScalarField;
     type PublicKey = SchnorrPublicKey<G>;
+    type RandomizedPrivateKey = <G as Group>::ScalarField;
+    type Randomizer = <G as Group>::ScalarField;
     type Signature = SchnorrSignature<G>;
 
-    fn setup<R: Rng>(rng: &mut R) -> Result<Self, SignatureError> {
+    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, SignatureError> {
         assert!(
             <<G as Group>::ScalarField as PrimeField>::Parameters::CAPACITY
                 < <<G::Affine as AffineCurve>::BaseField as PrimeField>::Parameters::CAPACITY
@@ -147,7 +148,7 @@ where
         &self.parameters
     }
 
-    fn generate_private_key<R: Rng>(&self, rng: &mut R) -> Result<Self::PrivateKey, SignatureError> {
+    fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::PrivateKey, SignatureError> {
         let keygen_time = start_timer!(|| "SchnorrSignature::generate_private_key");
         let private_key = <G as Group>::ScalarField::rand(rng);
         end_timer!(keygen_time);
@@ -170,7 +171,30 @@ where
         Ok(SchnorrPublicKey(public_key))
     }
 
-    fn sign<R: Rng>(
+    fn randomize_private_key(
+        &self,
+        private_key: &Self::PrivateKey,
+        randomizer: &Self::Randomizer,
+    ) -> Result<Self::RandomizedPrivateKey, SignatureError> {
+        let timer = start_timer!(|| "SchnorrSignature::randomize_private_key");
+        let randomized_private_key = *randomizer + private_key;
+        end_timer!(timer);
+        Ok(randomized_private_key)
+    }
+
+    fn randomize_public_key(
+        &self,
+        public_key: &Self::PublicKey,
+        randomizer: &Self::Randomizer,
+    ) -> Result<Self::PublicKey, SignatureError> {
+        let timer = start_timer!(|| "SchnorrSignature::randomize_public_key");
+        let group_randomizer = self.generate_public_key(randomizer)?;
+        let randomized_public_key = public_key.0 + group_randomizer.0;
+        end_timer!(timer);
+        Ok(SchnorrPublicKey(randomized_public_key))
+    }
+
+    fn sign<R: Rng + CryptoRng>(
         &self,
         private_key: &Self::PrivateKey,
         message: &[u8],
@@ -192,10 +216,13 @@ where
             }
         }
 
+        // Derive the public key.
+        let public_key = self.generate_public_key(private_key)?;
+
         // Hash everything to get verifier challenge.
         let mut hash_input = Vec::<<G::Affine as AffineCurve>::BaseField>::new();
-        hash_input.extend_from_slice(&self.parameters.salt.to_field_elements().unwrap());
         hash_input.extend_from_slice(&prover_commitment.to_field_elements().unwrap());
+        hash_input.extend_from_slice(&public_key.to_field_elements().unwrap());
         hash_input.push(<G::Affine as AffineCurve>::BaseField::from(message.len() as u128));
         hash_input.extend_from_slice(&message.to_field_elements().unwrap());
 
@@ -210,7 +237,7 @@ where
         );
         raw_hash_bits.reverse();
 
-        // Compute the supposed verifier response: e := H(salt || r || msg);
+        // Compute the supposed verifier response: e := H(r || pubkey || msg);
         let verifier_challenge = <<G as Group>::ScalarField as PrimeField>::from_repr(
             <<G as Group>::ScalarField as PrimeField>::BigInteger::from_bits_be(&raw_hash_bits),
         )
@@ -227,13 +254,25 @@ where
         Ok(signature)
     }
 
+    fn sign_randomized<R: Rng + CryptoRng>(
+        &self,
+        randomized_private_key: &Self::RandomizedPrivateKey,
+        message: &[u8],
+        rng: &mut R,
+    ) -> Result<Self::Signature, SignatureError> {
+        let timer = start_timer!(|| "SchnorrSignature::sign_randomized");
+        let randomized_signature = self.sign(randomized_private_key, message, rng)?;
+        end_timer!(timer);
+        Ok(randomized_signature)
+    }
+
     fn verify(
         &self,
         public_key: &Self::PublicKey,
         message: &[u8],
         signature: &Self::Signature,
     ) -> Result<bool, SignatureError> {
-        let verify_time = start_timer!(|| "SchnorrSignature::Verify");
+        let verify_time = start_timer!(|| "SchnorrSignature::verify");
 
         let SchnorrSignature {
             prover_response,
@@ -254,8 +293,8 @@ where
 
         // Hash everything to get verifier challenge.
         let mut hash_input = Vec::<<G::Affine as AffineCurve>::BaseField>::new();
-        hash_input.extend_from_slice(&self.parameters.salt.to_field_elements().unwrap());
         hash_input.extend_from_slice(&claimed_prover_commitment.to_field_elements().unwrap());
+        hash_input.extend_from_slice(&public_key.to_field_elements().unwrap());
         hash_input.push(<G::Affine as AffineCurve>::BaseField::from(message.len() as u128));
         hash_input.extend_from_slice(&message.to_field_elements().unwrap());
 
@@ -270,7 +309,7 @@ where
         );
         raw_hash_bits.reverse();
 
-        // Compute the supposed verifier response: e := H(salt || r || msg);
+        // Compute the supposed verifier response: e := H(r || pubkey || msg);
         let obtained_verifier_challenge = <<G as Group>::ScalarField as PrimeField>::from_repr(
             <<G as Group>::ScalarField as PrimeField>::BigInteger::from_bits_be(&raw_hash_bits),
         )
@@ -278,57 +317,6 @@ where
 
         end_timer!(verify_time);
         Ok(verifier_challenge == &obtained_verifier_challenge)
-    }
-
-    fn randomize_public_key(
-        &self,
-        public_key: &Self::PublicKey,
-        randomness: &[u8],
-    ) -> Result<Self::PublicKey, SignatureError> {
-        let rand_pk_time = start_timer!(|| "SchnorrSignature::randomize_public_key");
-
-        let mut randomized_pk = public_key.0;
-
-        let mut encoded = G::zero();
-        for (bit, base_power) in
-            from_bytes_le_to_bits_le(&to_bytes_le![randomness]?).zip_eq(&self.parameters.generator_powers)
-        {
-            if bit {
-                encoded += base_power;
-            }
-        }
-        randomized_pk += encoded;
-
-        end_timer!(rand_pk_time);
-
-        Ok(SchnorrPublicKey(randomized_pk))
-    }
-
-    fn randomize_signature(
-        &self,
-        signature: &Self::Signature,
-        randomness: &[u8],
-    ) -> Result<Self::Signature, SignatureError> {
-        let rand_signature_time = start_timer!(|| "SchnorrSignature::randomize_signature");
-        let SchnorrSignature {
-            prover_response,
-            verifier_challenge,
-        } = signature;
-        let mut base = <G as Group>::ScalarField::one();
-        let mut multiplier = <G as Group>::ScalarField::zero();
-        for bit in from_bytes_le_to_bits_le(randomness) {
-            if bit {
-                multiplier += base;
-            }
-            base.double_in_place();
-        }
-
-        let new_sig = SchnorrSignature {
-            prover_response: *prover_response - (*verifier_challenge * multiplier),
-            verifier_challenge: *verifier_challenge,
-        };
-        end_timer!(rand_signature_time);
-        Ok(new_sig)
     }
 }
 

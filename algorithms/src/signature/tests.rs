@@ -14,57 +14,69 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{encryption::GroupEncryption, signature::Schnorr, traits::SignatureScheme};
-use snarkvm_curves::{edwards_bls12::EdwardsProjective, edwards_bw6::EdwardsProjective as Edwards, traits::Group};
-use snarkvm_utilities::{rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
+use crate::{encryption::GroupEncryption, signature::Schnorr, SignatureScheme};
+use snarkvm_curves::{edwards_bls12::EdwardsProjective, edwards_bw6::EdwardsProjective as Edwards, Group};
+use snarkvm_fields::PrimeField;
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
 
 use rand::SeedableRng;
-use rand_xorshift::XorShiftRng;
+use rand_chacha::ChaChaRng;
 
 type TestSignature = Schnorr<Edwards>;
 type TestGroupEncryptionSignature = GroupEncryption<EdwardsProjective, EdwardsProjective>;
 
 fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
-    let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
-    let schnorr_signature = S::setup::<_>(rng).unwrap();
-    let private_key = schnorr_signature.generate_private_key(rng).unwrap();
-    let public_key = schnorr_signature.generate_public_key(&private_key).unwrap();
-    let signature = schnorr_signature.sign(&private_key, message, rng).unwrap();
-    assert!(schnorr_signature.verify(&public_key, &message, &signature).unwrap());
+    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+    let schnorr = S::setup::<_>(rng).unwrap();
+
+    let private_key = schnorr.generate_private_key(rng).unwrap();
+    let public_key = schnorr.generate_public_key(&private_key).unwrap();
+    let signature = schnorr.sign(&private_key, message, rng).unwrap();
+    assert!(schnorr.verify(&public_key, &message, &signature).unwrap());
 }
 
 fn failed_verification<S: SignatureScheme>(message: &[u8], bad_message: &[u8]) {
-    let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
-    let schnorr_signature = S::setup::<_>(rng).unwrap();
-    let private_key = schnorr_signature.generate_private_key(rng).unwrap();
-    let public_key = schnorr_signature.generate_public_key(&private_key).unwrap();
-    let signature = schnorr_signature.sign(&private_key, message, rng).unwrap();
-    assert!(!schnorr_signature.verify(&public_key, bad_message, &signature).unwrap());
+    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+    let schnorr = S::setup::<_>(rng).unwrap();
+
+    let private_key = schnorr.generate_private_key(rng).unwrap();
+    let public_key = schnorr.generate_public_key(&private_key).unwrap();
+    let signature = schnorr.sign(&private_key, message, rng).unwrap();
+    assert!(!schnorr.verify(&public_key, bad_message, &signature).unwrap());
 }
 
-fn randomize_and_verify<S: SignatureScheme>(message: &[u8], randomness: &[u8]) {
-    let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
-    let schnorr_signature = S::setup::<_>(rng).unwrap();
-    let private_key = schnorr_signature.generate_private_key(rng).unwrap();
-    let public_key = schnorr_signature.generate_public_key(&private_key).unwrap();
-    let signature = schnorr_signature.sign(&private_key, message, rng).unwrap();
-    assert!(schnorr_signature.verify(&public_key, message, &signature).unwrap());
+fn randomize_and_verify<S: SignatureScheme<Randomizer = F>, F: PrimeField>(message: &[u8], randomizer: F) {
+    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+    let schnorr = S::setup::<_>(rng).unwrap();
 
-    let randomized_public_key = schnorr_signature.randomize_public_key(&public_key, randomness).unwrap();
-    let randomized_signature = schnorr_signature.randomize_signature(&signature, randomness).unwrap();
+    let private_key = schnorr.generate_private_key(rng).unwrap();
+    let public_key = schnorr.generate_public_key(&private_key).unwrap();
+    let signature = schnorr.sign(&private_key, message, rng).unwrap();
+    assert!(schnorr.verify(&public_key, message, &signature).unwrap());
+
+    let randomized_private_key = schnorr.randomize_private_key(&private_key, &randomizer).unwrap();
+    let randomized_public_key = schnorr.randomize_public_key(&public_key, &randomizer).unwrap();
+    assert_eq!(
+        randomized_public_key,
+        schnorr
+            .generate_public_key(&randomized_private_key.clone().into())
+            .unwrap()
+    );
+
+    let randomized_signature = schnorr.sign_randomized(&randomized_private_key, message, rng).unwrap();
+    assert!(signature != randomized_signature);
     assert!(
-        schnorr_signature
+        schnorr
             .verify(&randomized_public_key, &message, &randomized_signature)
             .unwrap()
     );
 }
 
 fn signature_scheme_parameter_serialization<S: SignatureScheme>() {
-    let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
-
+    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
     let signature_scheme = S::setup(rng).unwrap();
-    let signature_scheme_parameters = signature_scheme.parameters();
 
+    let signature_scheme_parameters = signature_scheme.parameters();
     let signature_scheme_parameters_bytes = to_bytes_le![signature_scheme_parameters].unwrap();
     let recovered_signature_scheme_parameters: <S as SignatureScheme>::Parameters =
         FromBytes::read_le(&signature_scheme_parameters_bytes[..]).unwrap();
@@ -75,11 +87,12 @@ fn signature_scheme_parameter_serialization<S: SignatureScheme>() {
 #[test]
 fn schnorr_signature_test() {
     let message = "Hi, I am a Schnorr signature!";
-    let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
     sign_and_verify::<TestSignature>(message.as_bytes());
     failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
-    let random_scalar = to_bytes_le!(<Edwards as Group>::ScalarField::rand(rng)).unwrap();
-    randomize_and_verify::<TestSignature>(message.as_bytes(), &random_scalar.as_slice());
+
+    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
+    let randomizer = <Edwards as Group>::ScalarField::rand(rng);
+    randomize_and_verify::<TestSignature, <Edwards as Group>::ScalarField>(message.as_bytes(), randomizer);
 }
 
 #[test]
