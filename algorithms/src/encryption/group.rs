@@ -14,7 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{crypto_hash::PoseidonDefaultParametersField, EncryptionError, EncryptionScheme};
+use crate::{
+    crypto_hash::PoseidonDefaultParametersField,
+    hash_to_curve::hash_to_curve,
+    EncryptionError,
+    EncryptionScheme,
+};
 use snarkvm_curves::traits::{AffineCurve, Group, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, One, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
@@ -107,14 +112,15 @@ where
     type Randomness = <G as Group>::ScalarField;
     type Text = G;
 
-    fn setup<R: Rng>(rng: &mut R) -> Self {
+    fn setup(message: &str) -> Self {
         // Round to the closest multiple of 64 to factor bit and byte encoding differences.
         let private_key_size_in_bits = <Self as EncryptionScheme>::PrivateKey::size_in_bits();
         assert!(private_key_size_in_bits < usize::MAX - 63);
         let num_powers = (private_key_size_in_bits + 63) & !63usize;
 
         let mut generator_powers = Vec::with_capacity(num_powers);
-        let mut generator = G::rand(rng);
+        let (base, _, _) = hash_to_curve::<G::Affine>(message);
+        let mut generator = base.into_projective();
         for _ in 0..num_powers {
             generator_powers.push(generator);
             generator.double_in_place();

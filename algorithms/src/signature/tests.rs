@@ -28,7 +28,7 @@ use rand_chacha::ChaChaRng;
 
 fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-    let schnorr = S::setup(rng);
+    let schnorr = S::setup("sign_and_verify");
 
     let private_key = schnorr.generate_private_key(rng).unwrap();
     let public_key = schnorr.generate_public_key(&private_key).unwrap();
@@ -38,7 +38,7 @@ fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
 
 fn failed_verification<S: SignatureScheme>(message: &[u8], bad_message: &[u8]) {
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-    let schnorr = S::setup(rng);
+    let schnorr = S::setup("failed_verification");
 
     let private_key = schnorr.generate_private_key(rng).unwrap();
     let public_key = schnorr.generate_public_key(&private_key).unwrap();
@@ -48,7 +48,7 @@ fn failed_verification<S: SignatureScheme>(message: &[u8], bad_message: &[u8]) {
 
 fn randomize_and_verify<S: SignatureScheme<Randomizer = F>, F: PrimeField>(message: &[u8], randomizer: F) {
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-    let schnorr = S::setup(rng);
+    let schnorr = S::setup("randomize_and_verify");
 
     let private_key = schnorr.generate_private_key(rng).unwrap();
     let public_key = schnorr.generate_public_key(&private_key).unwrap();
@@ -74,8 +74,7 @@ fn randomize_and_verify<S: SignatureScheme<Randomizer = F>, F: PrimeField>(messa
 }
 
 fn signature_scheme_serialization<S: SignatureScheme>() {
-    let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-    let signature_scheme = S::setup(rng);
+    let signature_scheme = S::setup("signature_scheme_serialization");
     let recovered_signature_scheme: S = FromBytes::read_le(&signature_scheme.to_bytes_le().unwrap()[..]).unwrap();
     assert_eq!(signature_scheme, recovered_signature_scheme);
 }

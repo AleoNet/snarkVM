@@ -44,7 +44,7 @@ fn test_group_encryption_public_key_gadget() {
     let mut cs = TestConstraintSystem::<Fr>::new();
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
 
-    let encryption_scheme = TestEncryptionScheme::setup(rng);
+    let encryption_scheme = TestEncryptionScheme::setup("test_group_encryption_public_key_gadget");
 
     let private_key = encryption_scheme.generate_private_key(rng);
     let public_key = encryption_scheme.generate_public_key(&private_key).unwrap();
@@ -98,7 +98,7 @@ fn test_group_encryption_gadget() {
     let mut cs = TestConstraintSystem::<Fr>::new();
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
 
-    let encryption_scheme = TestEncryptionScheme::setup(rng);
+    let encryption_scheme = TestEncryptionScheme::setup("test_group_encryption_gadget");
 
     let private_key = encryption_scheme.generate_private_key(rng);
     let public_key = encryption_scheme.generate_public_key(&private_key).unwrap();

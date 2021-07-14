@@ -44,7 +44,7 @@ pub trait SignatureScheme:
     type Randomizer: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
     type Signature: Clone + Debug + Default + ToBytes + FromBytes + Send + Sync + PartialEq + Eq;
 
-    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Self;
+    fn setup(message: &str) -> Self;
 
     fn parameters(&self) -> &Self::Parameters;
 

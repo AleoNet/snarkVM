@@ -16,6 +16,7 @@
 
 use crate::{
     crypto_hash::{PoseidonCryptoHash, PoseidonDefaultParametersField},
+    hash_to_curve::hash_to_curve,
     CryptoHash,
     SignatureError,
     SignatureScheme,
@@ -130,7 +131,7 @@ where
     type Randomizer = <G as Group>::ScalarField;
     type Signature = SchnorrSignature<G>;
 
-    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Self {
+    fn setup(message: &str) -> Self {
         assert!(
             <<G as Group>::ScalarField as PrimeField>::Parameters::CAPACITY
                 < <<G::Affine as AffineCurve>::BaseField as PrimeField>::Parameters::CAPACITY
@@ -143,7 +144,8 @@ where
         let num_powers = (private_key_size_in_bits + 63) & !63usize;
 
         let mut generator_powers = Vec::with_capacity(num_powers);
-        let mut generator = G::rand(rng);
+        let (base, _, _) = hash_to_curve::<G::Affine>(message);
+        let mut generator = base.into_projective();
         for _ in 0..num_powers {
             generator_powers.push(generator);
             generator.double_in_place();

@@ -43,7 +43,7 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
     let message: [u8; 32] = rng.gen();
 
     // Native Schnorr signing
-    let schnorr = SchnorrScheme::setup::<_>(rng);
+    let schnorr = SchnorrScheme::setup("test_schnorr_signature_randomize_public_key_gadget");
     let private_key = schnorr.generate_private_key(rng).unwrap();
     let public_key = schnorr.generate_public_key(&private_key).unwrap();
     let signature = schnorr.sign(&private_key, &message, rng).unwrap();
@@ -109,7 +109,7 @@ fn schnorr_signature_verification_test() {
     let message = "Hi, I am a Schnorr signature!".as_bytes();
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
-    let schnorr = TestSignature::setup::<_>(rng);
+    let schnorr = TestSignature::setup("schnorr_signature_verification_test");
     let private_key = schnorr.generate_private_key(rng).unwrap();
     let public_key = schnorr.generate_public_key(&private_key).unwrap();
     let signature = schnorr.sign(&private_key, &message, rng).unwrap();
@@ -172,7 +172,7 @@ fn failed_schnorr_signature_verification_test() {
     let bad_message = "Bad Message".as_bytes();
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
-    let schnorr = TestSignature::setup::<_>(rng);
+    let schnorr = TestSignature::setup("failed_schnorr_signature_verification_test");
     let private_key = schnorr.generate_private_key(rng).unwrap();
     let public_key = schnorr.generate_public_key(&private_key).unwrap();
     let signature = schnorr.sign(&private_key, &message, rng).unwrap();

@@ -28,7 +28,7 @@ pub trait EncryptionScheme: ToBytes + FromBytes + Sized + Clone + From<<Self as 
     type Randomness: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
     type BlindingExponent: Clone + Debug + Default + Eq + Hash + ToBytes;
 
-    fn setup<R: Rng>(rng: &mut R) -> Self;
+    fn setup(message: &str) -> Self;
 
     fn generate_private_key<R: Rng>(&self, rng: &mut R) -> <Self as EncryptionScheme>::PrivateKey;
 

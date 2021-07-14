@@ -33,7 +33,7 @@ fn generate_input<G: ProjectiveCurve, R: Rng>(input_size: usize, rng: &mut R) ->
 fn simple_encryption() {
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
 
-    let encryption_scheme = TestEncryptionScheme::setup(rng);
+    let encryption_scheme = TestEncryptionScheme::setup("simple_encryption");
 
     let private_key = encryption_scheme.generate_private_key(rng);
     let public_key = encryption_scheme.generate_public_key(&private_key).unwrap();
@@ -51,7 +51,7 @@ fn simple_encryption() {
 fn encryption_public_key_serialization() {
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
 
-    let encryption_scheme = TestEncryptionScheme::setup(rng);
+    let encryption_scheme = TestEncryptionScheme::setup("encryption_public_key_serialization");
 
     for _ in 0..ITERATIONS {
         let private_key = encryption_scheme.generate_private_key(rng);
