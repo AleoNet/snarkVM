@@ -112,6 +112,9 @@ impl DPCComponents for Components {
 
     type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 16, 32>;
     type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
+
+    type MerkleHashGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
+    type MerkleParameters = CommitmentMerkleParameters;
     
     type PRF = Blake2s;
     type PRFGadget = Blake2sGadget;
@@ -146,9 +149,6 @@ impl Testnet1Components for Components {
     type EncryptionParameters = EdwardsParameters;
     type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, Self::OuterScalarField, PairingGadget>;
-    type MerkleHashGadget =
-        BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
-    type MerkleParameters = CommitmentMerkleParameters;
     type NoopProgramSNARK = GM17<Self::InnerCurve, NoopCircuit<Self>, ProgramLocalData<Self>>;
     type NoopProgramSNARKGadget = GM17VerifierGadget<Self::InnerCurve, Self::OuterScalarField, PairingGadget>;
     type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;

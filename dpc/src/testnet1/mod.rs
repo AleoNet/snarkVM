@@ -28,10 +28,7 @@ use snarkvm_algorithms::{
     prelude::*,
 };
 use snarkvm_curves::traits::{MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
-use snarkvm_gadgets::{
-    bits::Boolean,
-    traits::algorithms::{CRHGadget, SNARKVerifierGadget},
-};
+use snarkvm_gadgets::{bits::Boolean, traits::algorithms::SNARKVerifierGadget};
 use snarkvm_parameters::{prelude::*, testnet1::*};
 use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
 
@@ -60,10 +57,6 @@ pub mod instantiated;
 
 /// Trait that stores information about the testnet1 DPC scheme.
 pub trait Testnet1Components: DPCComponents {
-    /// Ledger digest type.
-    type MerkleParameters: LoadableMerkleParameters;
-    type MerkleHashGadget: CRHGadget<<Self::MerkleParameters as MerkleParameters>::H, Self::InnerScalarField>;
-
     /// Group and Model Parameters for record encryption
     type EncryptionGroup: ProjectiveCurve;
     type EncryptionParameters: MontgomeryParameters + TwistedEdwardsParameters;

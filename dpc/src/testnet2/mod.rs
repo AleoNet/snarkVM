@@ -32,7 +32,7 @@ use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     bits::Boolean,
     nonnative::NonNativeFieldVar,
-    traits::algorithms::{CRHGadget, SNARKVerifierGadget},
+    traits::algorithms::SNARKVerifierGadget,
     CompressedGroupGadget,
 };
 use snarkvm_marlin::{
@@ -71,10 +71,6 @@ pub mod instantiated;
 
 /// Trait that stores information about the testnet2 DPC scheme.
 pub trait Testnet2Components: DPCComponents {
-    /// Ledger digest type.
-    type MerkleParameters: LoadableMerkleParameters;
-    type MerkleHashGadget: CRHGadget<<Self::MerkleParameters as MerkleParameters>::H, Self::InnerScalarField>;
-
     /// Group and Model Parameters for record encryption
     type EncryptionGroup: ProjectiveCurve;
     type EncryptionGroupGadget: CompressedGroupGadget<Self::EncryptionGroup, Self::InnerScalarField>;

@@ -120,6 +120,9 @@ impl DPCComponents for Components {
 
     type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 16, 32>;
     type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
+
+    type MerkleHashGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
+    type MerkleParameters = CommitmentMerkleParameters;
     
     type PRF = Blake2s;
     type PRFGadget = Blake2sGadget;
@@ -161,9 +164,6 @@ impl Testnet2Components for Components {
     type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, Self::OuterScalarField, PairingGadget>;
     type MarlinMode = MarlinTestnet2Mode;
-    type MerkleHashGadget =
-        BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
-    type MerkleParameters = CommitmentMerkleParameters;
     type NoopProgramSNARK = MarlinSNARK<
         Self::InnerScalarField,
         Self::OuterScalarField,

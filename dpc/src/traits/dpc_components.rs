@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, CRH, PRF};
+use snarkvm_algorithms::prelude::*;
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget};
@@ -59,6 +59,10 @@ pub trait DPCComponents: 'static + Sized {
     type LocalDataCommitmentGadget: CommitmentGadget<Self::LocalDataCommitment, Self::InnerScalarField>;
     type LocalDataCRH: CRH + ToConstraintField<Self::InnerScalarField>;
     type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
+
+    /// Ledger digest type.
+    type MerkleHashGadget: CRHGadget<<Self::MerkleParameters as MerkleParameters>::H, Self::InnerScalarField>;
+    type MerkleParameters: LoadableMerkleParameters;
 
     /// Commitment scheme for committing to hashes of birth and death verifying keys.
     type ProgramIDCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
