@@ -82,7 +82,7 @@ pub type Testnet2Transaction = Transaction<Components>;
 
 define_merkle_tree_parameters!(
     CommitmentMerkleParameters,
-    <Components as DPCComponents>::MerkleTreeCRH,
+    <Components as DPCComponents>::LedgerMerkleTreeCRH,
     32
 );
 
@@ -117,16 +117,16 @@ impl DPCComponents for Components {
     type InnerCircuitIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBW6, 296, 63>;
     type InnerCircuitIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 296, 63>;
 
+    type LedgerMerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 8, 32>;
+    type LedgerMerkleTreeCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
+    type LedgerMerkleParameters = CommitmentMerkleParameters;
+
     type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 129>;
     type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 129>;
 
     type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 16, 32>;
     type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
 
-    type MerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 8, 32>;
-    type MerkleTreeCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
-    type MerkleParameters = CommitmentMerkleParameters;
-    
     type PRF = Blake2s;
     type PRFGadget = Blake2sGadget;
 
@@ -147,9 +147,9 @@ impl DPCComponents for Components {
     dpc_setup!{account_signature, ACCOUNT_SIGNATURE, AccountSignature, ACCOUNT_SIGNATURE_INPUT}
     dpc_setup!{encrypted_record_crh, ENCRYPTED_RECORD_CRH, EncryptedRecordCRH, "AleoEncryptedRecordCRH0"}
     dpc_setup!{inner_circuit_id_crh, INNER_CIRCUIT_ID_CRH, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
+    dpc_setup!{ledger_merkle_tree_crh, LEDGER_MERKLE_TREE_CRH, LedgerMerkleTreeCRH, "AleoLedgerMerkleTreeCRH0"}
     dpc_setup!{local_data_commitment, LOCAL_DATA_COMMITMENT, LocalDataCommitment, "AleoLocalDataCommitment0"}
     dpc_setup!{local_data_crh, LOCAL_DATA_CRH, LocalDataCRH, "AleoLocalDataCRH0"}
-    dpc_setup!{merkle_tree_crh, MERKLE_TREE_CRH, MerkleTreeCRH, "AleoMerkleTreeCRH0"}
     dpc_setup!{program_id_commitment, PROGRAM_ID_COMMITMENT, ProgramIDCommitment, "AleoProgramIDCommitment0"}
     dpc_setup!{program_id_crh, PROGRAM_ID_CRH, ProgramIDCRH, "AleoProgramIDCRH0"}
     dpc_setup!{record_commitment, RECORD_COMMITMENT, RecordCommitment, "AleoRecordCommitment0"}

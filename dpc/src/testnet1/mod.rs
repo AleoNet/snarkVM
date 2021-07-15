@@ -111,9 +111,9 @@ impl<C: Testnet1Components, L: LedgerScheme> DPCScheme<L> for DPC<C>
 where
     L: LedgerScheme<
         Commitment = <C::RecordCommitment as CommitmentScheme>::Output,
-        MerkleParameters = C::MerkleParameters,
-        MerklePath = MerklePath<C::MerkleParameters>,
-        MerkleTreeDigest = MerkleTreeDigest<C::MerkleParameters>,
+        MerkleParameters = C::LedgerMerkleParameters,
+        MerklePath = MerklePath<C::LedgerMerkleParameters>,
+        MerkleTreeDigest = MerkleTreeDigest<C::LedgerMerkleParameters>,
         SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey,
         Transaction = Transaction<C>,
     >,
@@ -124,7 +124,10 @@ where
     type Transaction = Transaction<C>;
     type TransactionKernel = TransactionKernel<C>;
 
-    fn setup<R: Rng + CryptoRng>(ledger_parameters: &Arc<C::MerkleParameters>, rng: &mut R) -> anyhow::Result<Self> {
+    fn setup<R: Rng + CryptoRng>(
+        ledger_parameters: &Arc<C::LedgerMerkleParameters>,
+        rng: &mut R,
+    ) -> anyhow::Result<Self> {
         let setup_time = start_timer!(|| "DPC::setup");
 
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");

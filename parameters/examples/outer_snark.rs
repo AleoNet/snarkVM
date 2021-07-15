@@ -39,7 +39,7 @@ use utils::store;
 pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
-    let merkle_tree_hash_parameters: <C::MerkleParameters as MerkleParameters>::H =
+    let merkle_tree_hash_parameters: <C::LedgerMerkleParameters as MerkleParameters>::H =
         FromBytes::read_le(&LedgerMerkleTreeParameters::load_bytes()?[..])?;
     let ledger_merkle_tree_parameters = Arc::new(From::from(merkle_tree_hash_parameters));
 

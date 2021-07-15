@@ -27,8 +27,8 @@ use std::sync::Arc;
 #[derivative(Clone(bound = "C: Testnet1Components"))]
 pub struct InnerCircuitVerifierInput<C: Testnet1Components> {
     // Ledger parameters and digest
-    pub ledger_parameters: Arc<C::MerkleParameters>,
-    pub ledger_digest: MerkleTreeDigest<C::MerkleParameters>,
+    pub ledger_parameters: Arc<C::LedgerMerkleParameters>,
+    pub ledger_digest: MerkleTreeDigest<C::LedgerMerkleParameters>,
 
     // Input record serial numbers
     pub old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
@@ -56,8 +56,8 @@ where
     <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
     <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <<C::MerkleParameters as MerkleParameters>::H as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
-    MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerScalarField>,
+    <<C::LedgerMerkleParameters as MerkleParameters>::H as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
+    MerkleTreeDigest<C::LedgerMerkleParameters>: ToConstraintField<C::InnerScalarField>,
 {
     fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();

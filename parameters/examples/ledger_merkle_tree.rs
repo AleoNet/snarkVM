@@ -24,7 +24,7 @@ mod utils;
 use utils::store;
 
 pub fn setup<C: Testnet1Components>() -> Result<Vec<u8>, MerkleError> {
-    let ledger_merkle_tree_parameters = <C::MerkleParameters as MerkleParameters>::setup("MerkleParameters");
+    let ledger_merkle_tree_parameters = <C::LedgerMerkleParameters as MerkleParameters>::setup("MerkleParameters");
     let ledger_merkle_tree_parameters_bytes = ledger_merkle_tree_parameters.crh().to_bytes_le()?;
 
     let size = ledger_merkle_tree_parameters_bytes.len();

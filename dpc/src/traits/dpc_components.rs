@@ -53,17 +53,20 @@ pub trait DPCComponents: 'static + Sized {
     type InnerCircuitIDCRH: CRH;
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
 
+    /// Ledger digest type.
+    type LedgerMerkleTreeCRH: CRH;
+    type LedgerMerkleTreeCRHGadget: CRHGadget<
+        <Self::LedgerMerkleParameters as MerkleParameters>::H,
+        Self::InnerScalarField,
+    >;
+    type LedgerMerkleParameters: LoadableMerkleParameters;
+
     /// CRH and commitment scheme for committing to program input. Invoked inside
     /// `Self::InnerSNARK` and every program SNARK.
     type LocalDataCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
     type LocalDataCommitmentGadget: CommitmentGadget<Self::LocalDataCommitment, Self::InnerScalarField>;
     type LocalDataCRH: CRH + ToConstraintField<Self::InnerScalarField>;
     type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
-
-    /// Ledger digest type.
-    type MerkleTreeCRH: CRH;
-    type MerkleTreeCRHGadget: CRHGadget<<Self::MerkleParameters as MerkleParameters>::H, Self::InnerScalarField>;
-    type MerkleParameters: LoadableMerkleParameters;
 
     /// Commitment scheme for committing to hashes of birth and death verifying keys.
     type ProgramIDCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
@@ -99,11 +102,11 @@ pub trait DPCComponents: 'static + Sized {
 
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
 
+    fn ledger_merkle_tree_crh() -> &'static Self::LedgerMerkleTreeCRH;
+
     fn local_data_commitment() -> &'static Self::LocalDataCommitment;
 
     fn local_data_crh() -> &'static Self::LocalDataCRH;
-
-    fn merkle_tree_crh() -> &'static Self::MerkleTreeCRH;
 
     fn program_id_commitment() -> &'static Self::ProgramIDCommitment;
 
