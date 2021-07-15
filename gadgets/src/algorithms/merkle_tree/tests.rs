@@ -203,7 +203,7 @@ fn update_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, F>
         let mut updated_leaves = leaves.to_vec();
         updated_leaves[i] = [u8::MAX; 30];
 
-        let new_tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), &updated_leaves[..]).unwrap();
+        let new_tree = MerkleTree::<P>::new(parameters.clone(), &updated_leaves[..]).unwrap();
         let new_proof = new_tree.generate_proof(i, &updated_leaves[i]).unwrap();
         let new_root = new_tree.root();
 
