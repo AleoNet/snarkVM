@@ -20,12 +20,7 @@ use snarkvm_algorithms::{
 };
 use snarkvm_dpc::{
     errors::DPCError,
-    testnet1::{
-        inner_circuit::InnerCircuit,
-        instantiated::Components,
-        parameters::SystemParameters,
-        Testnet1Components,
-    },
+    testnet1::{inner_circuit::InnerCircuit, instantiated::Components, Testnet1Components},
 };
 use snarkvm_parameters::{traits::Parameter, LedgerMerkleTreeParameters};
 use snarkvm_utilities::{FromBytes, ToBytes};
@@ -41,14 +36,10 @@ pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
 
     // TODO (howardwu): Resolve this inconsistency on import structure with a new model once MerkleParameters are refactored.
     let merkle_tree_hash_parameters: <C::MerkleParameters as MerkleParameters>::H =
-        From::from(FromBytes::read_le(&LedgerMerkleTreeParameters::load_bytes()?[..])?);
+        FromBytes::read_le(&LedgerMerkleTreeParameters::load_bytes()?[..])?;
     let ledger_merkle_tree_parameters = Arc::new(From::from(merkle_tree_hash_parameters));
 
-    let system_parameters = SystemParameters::<C>::load()?;
-    let inner_snark_parameters = C::InnerSNARK::setup(
-        &InnerCircuit::blank(&system_parameters, &ledger_merkle_tree_parameters),
-        rng,
-    )?;
+    let inner_snark_parameters = C::InnerSNARK::setup(&InnerCircuit::blank(&ledger_merkle_tree_parameters), rng)?;
     let inner_snark_pk = inner_snark_parameters.0.to_bytes_le()?;
     let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = inner_snark_parameters.1.into();
     let inner_snark_vk = inner_snark_vk.to_bytes_le()?;

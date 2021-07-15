@@ -41,11 +41,11 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, 
     pub fn calculate_root<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
-        parameters: &HG::ParametersGadget,
+        crh: &HG,
         leaf: impl ToBytesGadget<F>,
     ) -> Result<HG::OutputGadget, SynthesisError> {
         let leaf_bytes = leaf.to_bytes(&mut cs.ns(|| "leaf_to_bytes"))?;
-        let mut curr_hash = HG::check_evaluation_gadget(cs.ns(|| "leaf_hash"), parameters, leaf_bytes)?;
+        let mut curr_hash = crh.check_evaluation_gadget(cs.ns(|| "leaf_hash"), leaf_bytes)?;
 
         // To traverse up a MT, we iterate over the path from bottom to top
 
@@ -68,7 +68,7 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, 
 
             curr_hash = hash_inner_node_gadget::<P::H, HG, F, _>(
                 &mut cs.ns(|| format!("hash_inner_node_{}", i)),
-                parameters,
+                crh,
                 &left_hash,
                 &right_hash,
             )?;
@@ -80,31 +80,25 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, 
     pub fn update_leaf<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
-        parameters: &HG::ParametersGadget,
+        crh: &HG,
         old_root: &HG::OutputGadget,
         old_leaf: impl ToBytesGadget<F>,
         new_leaf: impl ToBytesGadget<F>,
     ) -> Result<HG::OutputGadget, SynthesisError> {
-        self.check_membership(cs.ns(|| "check_membership"), &parameters, &old_root, &old_leaf)?;
-        Ok(self.calculate_root(cs.ns(|| "calculate_root"), &parameters, &new_leaf)?)
+        self.check_membership(cs.ns(|| "check_membership"), &crh, &old_root, &old_leaf)?;
+        Ok(self.calculate_root(cs.ns(|| "calculate_root"), &crh, &new_leaf)?)
     }
 
     pub fn update_and_check<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
-        parameters: &HG::ParametersGadget,
+        crh: &HG,
         old_root: &HG::OutputGadget,
         new_root: &HG::OutputGadget,
         old_leaf: impl ToBytesGadget<F>,
         new_leaf: impl ToBytesGadget<F>,
     ) -> Result<(), SynthesisError> {
-        let actual_new_root = self.update_leaf(
-            cs.ns(|| "check_membership"),
-            &parameters,
-            &old_root,
-            &old_leaf,
-            &new_leaf,
-        )?;
+        let actual_new_root = self.update_leaf(cs.ns(|| "check_membership"), &crh, &old_root, &old_leaf, &new_leaf)?;
 
         actual_new_root.enforce_equal(cs.ns(|| "enforce_equal_roots"), &new_root)?;
 
@@ -114,22 +108,22 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, 
     pub fn check_membership<CS: ConstraintSystem<F>>(
         &self,
         cs: CS,
-        parameters: &HG::ParametersGadget,
+        crh: &HG,
         root: &HG::OutputGadget,
         leaf: impl ToBytesGadget<F>,
     ) -> Result<(), SynthesisError> {
-        self.conditionally_check_membership(cs, parameters, root, leaf, &Boolean::Constant(true))
+        self.conditionally_check_membership(cs, crh, root, leaf, &Boolean::Constant(true))
     }
 
     pub fn conditionally_check_membership<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
-        parameters: &HG::ParametersGadget,
+        crh: &HG,
         root: &HG::OutputGadget,
         leaf: impl ToBytesGadget<F>,
         should_enforce: &Boolean,
     ) -> Result<(), SynthesisError> {
-        let expected_root = self.calculate_root(cs.ns(|| "calculate_root"), parameters, leaf)?;
+        let expected_root = self.calculate_root(cs.ns(|| "calculate_root"), crh, leaf)?;
 
         root.conditional_enforce_equal(&mut cs.ns(|| "root_is_eq"), &expected_root, should_enforce)
     }
@@ -137,7 +131,7 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, 
 
 pub(crate) fn hash_inner_node_gadget<H, HG, F, CS>(
     mut cs: CS,
-    parameters: &HG::ParametersGadget,
+    crh: &HG,
     left_child: &HG::OutputGadget,
     right_child: &HG::OutputGadget,
 ) -> Result<HG::OutputGadget, SynthesisError>
@@ -152,7 +146,7 @@ where
     let mut bytes = left_bytes;
     bytes.extend_from_slice(&right_bytes);
 
-    HG::check_evaluation_gadget(cs, parameters, bytes)
+    crh.check_evaluation_gadget(cs, bytes)
 }
 
 impl<P, HGadget, F> AllocGadget<MerklePath<P>, F> for MerklePathGadget<P, HGadget, F>
@@ -168,15 +162,14 @@ where
     {
         let merkle_path = value_gen()?.borrow().clone();
 
-        let pos_list: Vec<_> = merkle_path.position_list().collect();
         let mut traversal = vec![];
-        for (i, position) in pos_list.iter().enumerate() {
+        for (i, position) in merkle_path.position_list().enumerate() {
             traversal.push(Boolean::alloc(cs.ns(|| format!("alloc_position_{}", i)), || {
                 Ok(position)
             })?);
         }
 
-        let mut path = vec![];
+        let mut path = Vec::with_capacity(merkle_path.path.len());
         for (i, node) in merkle_path.path.iter().enumerate() {
             path.push(HGadget::OutputGadget::alloc(
                 &mut cs.ns(|| format!("alloc_node_{}", i)),
@@ -194,16 +187,15 @@ where
     {
         let merkle_path = value_gen()?.borrow().clone();
 
-        let pos_list: Vec<_> = merkle_path.position_list().collect();
         let mut traversal = vec![];
-        for (i, position) in pos_list.iter().enumerate() {
+        for (i, position) in merkle_path.position_list().enumerate() {
             traversal.push(Boolean::alloc_input(
                 cs.ns(|| format!("alloc_input_position_{}", i)),
                 || Ok(position),
             )?);
         }
 
-        let mut path = vec![];
+        let mut path = Vec::with_capacity(merkle_path.path.len());
         for (i, node) in merkle_path.path.iter().enumerate() {
             path.push(HGadget::OutputGadget::alloc_input(
                 &mut cs.ns(|| format!("alloc_input_node_{}", i)),
