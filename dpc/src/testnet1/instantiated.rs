@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_INPUT, ACCOUNT_SIGNATURE_INPUT},
     testnet1::{
         inner_circuit::InnerCircuit,
         inner_circuit_verifier_input::InnerCircuitVerifierInput,
@@ -33,6 +34,7 @@ use snarkvm_algorithms::{
     crh::BoweHopwoodPedersenCompressedCRH,
     define_merkle_tree_parameters,
     encryption::GroupEncryption,
+    prelude::*,
     prf::Blake2s,
     signature::Schnorr,
     snark::{gm17::GM17, groth16::Groth16},
@@ -56,12 +58,24 @@ use snarkvm_gadgets::{
     curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
 };
 
+use once_cell::sync::OnceCell;
+
 pub type Testnet1DPC = DPC<Components>;
 pub type Testnet1Transaction = Transaction<Components>;
 
 pub type MerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 8, 32>;
 
 define_merkle_tree_parameters!(CommitmentMerkleParameters, MerkleTreeCRH, 32);
+
+macro_rules! dpc_setup {
+    ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
+        #[inline]
+        fn $fn_name() -> &'static Self::$type_name {
+            static $static_name: OnceCell<<Components as DPCComponents>::$type_name> = OnceCell::new();
+            $static_name.get_or_init(|| Self::$type_name::setup($setup_msg))
+        }
+    };
+}
 
 pub struct Components;
 
@@ -113,6 +127,11 @@ impl DPCComponents for Components {
     
     type SerialNumberNonceCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 32, 63>;
     type SerialNumberNonceCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
+    
+    dpc_setup!{account_commitment, ACCOUNT_COMMITMENT, AccountCommitment, ACCOUNT_COMMITMENT_INPUT}
+    dpc_setup!{account_encryption, ACCOUNT_ENCRYPTION, AccountEncryption, ACCOUNT_ENCRYPTION_INPUT}
+    dpc_setup!{account_signature, ACCOUNT_SIGNATURE, AccountSignature, ACCOUNT_SIGNATURE_INPUT}
+    dpc_setup!{encrypted_record_crh, ENCRYPTED_RECORD_CRH, EncryptedRecordCRH, "AleoEncryptedRecordCRH0"}
 }
 
 impl Testnet1Components for Components {

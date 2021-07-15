@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_INPUT, ACCOUNT_SIGNATURE_INPUT};
 use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, CRH, PRF};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, ToConstraintField};
@@ -85,21 +84,11 @@ pub trait DPCComponents: 'static + Sized {
     type SerialNumberNonceCRH: CRH + ToConstraintField<Self::InnerScalarField>;
     type SerialNumberNonceCRHGadget: CRHGadget<Self::SerialNumberNonceCRH, Self::InnerScalarField>;
 
-    /// TODO (howardwu): TEMPORARY FOR PR #251 - Move this into SystemParameters, lazy_static!, or Arc'ed context.
-    #[inline]
-    fn account_commitment() -> Self::AccountCommitment {
-        Self::AccountCommitment::setup(ACCOUNT_COMMITMENT_INPUT)
-    }
+    fn account_commitment() -> &'static Self::AccountCommitment;
 
-    /// TODO (howardwu): TEMPORARY FOR PR #251 - Move this into SystemParameters, lazy_static!, or Arc'ed context.
-    #[inline]
-    fn account_encryption() -> Self::AccountEncryption {
-        Self::AccountEncryption::setup(ACCOUNT_ENCRYPTION_INPUT)
-    }
+    fn account_encryption() -> &'static Self::AccountEncryption;
 
-    /// TODO (howardwu): TEMPORARY FOR PR #251 - Move this into SystemParameters, lazy_static!, or Arc'ed context.
-    #[inline]
-    fn account_signature() -> Self::AccountSignature {
-        Self::AccountSignature::setup(ACCOUNT_SIGNATURE_INPUT)
-    }
+    fn account_signature() -> &'static Self::AccountSignature;
+
+    fn encrypted_record_crh() -> &'static Self::EncryptedRecordCRH;
 }

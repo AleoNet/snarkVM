@@ -29,7 +29,6 @@ use std::io::Result as IoResult;
 #[derivative(Clone(bound = "C: Testnet2Components"))]
 pub struct SystemParameters<C: Testnet2Components> {
     pub record_commitment: C::RecordCommitment,
-    pub encrypted_record_crh: C::EncryptedRecordCRH,
     pub inner_circuit_id_crh: C::InnerCircuitIDCRH,
     pub program_verification_key_commitment: C::ProgramVerificationKeyCommitment,
     pub program_verification_key_crh: C::ProgramVerificationKeyCRH,
@@ -40,10 +39,6 @@ pub struct SystemParameters<C: Testnet2Components> {
 
 impl<C: Testnet2Components> SystemParameters<C> {
     pub fn setup() -> Self {
-        let time = start_timer!(|| "Encrypted record CRH setup");
-        let encrypted_record_crh = C::EncryptedRecordCRH::setup("EncryptedRecordCRH");
-        end_timer!(time);
-
         let time = start_timer!(|| "Inner circuit ID CRH setup");
         let inner_circuit_id_crh = C::InnerCircuitIDCRH::setup("InnerCircuitIDCRH");
         end_timer!(time);
@@ -74,7 +69,6 @@ impl<C: Testnet2Components> SystemParameters<C> {
         end_timer!(time);
 
         Self {
-            encrypted_record_crh,
             inner_circuit_id_crh,
             local_data_crh,
             local_data_commitment,

@@ -145,8 +145,7 @@ where
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let encrypted_record_crh_parameters_fe = system_parameters
-        .encrypted_record_crh
+    let encrypted_record_crh_parameters_fe = C::encrypted_record_crh()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 

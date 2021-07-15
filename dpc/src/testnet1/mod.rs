@@ -368,7 +368,7 @@ where
             let (encrypted_record, record_encryption_randomness) = EncryptedRecord::encrypt(record, rng)?;
 
             new_records_encryption_randomness.push(record_encryption_randomness);
-            new_encrypted_record_hashes.push(encrypted_record.to_hash(&self.system_parameters)?);
+            new_encrypted_record_hashes.push(encrypted_record.to_hash()?);
             new_encrypted_records.push(encrypted_record);
         }
 
@@ -712,7 +712,7 @@ where
 
         let mut new_encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         for encrypted_record in transaction.encrypted_records() {
-            match encrypted_record.to_hash(&self.system_parameters) {
+            match encrypted_record.to_hash() {
                 Ok(hash) => new_encrypted_record_hashes.push(hash),
                 _ => {
                     eprintln!("Unable to hash encrypted record.");
