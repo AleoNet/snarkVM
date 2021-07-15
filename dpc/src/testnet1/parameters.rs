@@ -22,7 +22,6 @@ use std::io::Result as IoResult;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet1Components"))]
 pub struct SystemParameters<C: Testnet1Components> {
-    pub inner_circuit_id_crh: C::InnerCircuitIDCRH,
     pub program_verification_key_commitment: C::ProgramVerificationKeyCommitment,
     pub program_verification_key_crh: C::ProgramVerificationKeyCRH,
     pub local_data_crh: C::LocalDataCRH,
@@ -31,10 +30,6 @@ pub struct SystemParameters<C: Testnet1Components> {
 
 impl<C: Testnet1Components> SystemParameters<C> {
     pub fn setup() -> Self {
-        let time = start_timer!(|| "Inner circuit ID CRH setup");
-        let inner_circuit_id_crh = C::InnerCircuitIDCRH::setup("InnerCircuitIDCRH");
-        end_timer!(time);
-
         let time = start_timer!(|| "Local data commitment setup");
         let local_data_commitment = C::LocalDataCommitment::setup("LocalDataCommitment");
         end_timer!(time);
@@ -53,7 +48,6 @@ impl<C: Testnet1Components> SystemParameters<C> {
         end_timer!(time);
 
         Self {
-            inner_circuit_id_crh,
             local_data_crh,
             local_data_commitment,
             program_verification_key_commitment,

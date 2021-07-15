@@ -547,11 +547,7 @@ where
         }
 
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = self.inner_snark_parameters.1.clone().into();
-
-        let inner_circuit_id =
-            <C::InnerCircuitIDCRH as CRH>::hash(&self.system_parameters.inner_circuit_id_crh, &to_bytes_le![
-                inner_snark_vk
-            ]?)?;
+        let inner_circuit_id = C::inner_circuit_id_crh().hash(&inner_snark_vk.to_bytes_le()?)?;
 
         let transaction_proof = {
             let circuit = OuterCircuit::new(
@@ -748,10 +744,7 @@ where
 
         let outer_snark_input = OuterCircuitVerifierInput {
             inner_snark_verifier_input: inner_snark_input,
-            inner_circuit_id: match C::InnerCircuitIDCRH::hash(
-                &self.system_parameters.inner_circuit_id_crh,
-                &inner_snark_vk_bytes,
-            ) {
+            inner_circuit_id: match C::inner_circuit_id_crh().hash(&inner_snark_vk_bytes) {
                 Ok(hash) => hash,
                 _ => {
                     eprintln!("Unable to hash inner snark vk.");

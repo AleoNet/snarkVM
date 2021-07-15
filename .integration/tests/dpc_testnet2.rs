@@ -54,10 +54,8 @@ fn testnet2_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
     let inner_snark_vk: <<Components as Testnet2Components>::InnerSNARK as SNARK>::VerifyingKey =
         dpc.inner_snark_parameters.1.clone().into();
 
-    let inner_circuit_id = <<Components as DPCComponents>::InnerCircuitIDCRH as CRH>::hash(
-        &dpc.system_parameters.inner_circuit_id_crh,
-        &to_bytes_le![inner_snark_vk]?,
-    )?;
+    let inner_circuit_id =
+        <Components as DPCComponents>::inner_circuit_id_crh().hash(&inner_snark_vk.to_bytes_le()?)?;
 
     Ok(to_bytes_le![inner_circuit_id]?)
 }
@@ -541,11 +539,9 @@ fn test_testnet2_dpc_execute_constraints() {
     let inner_snark_vk: <<Components as Testnet2Components>::InnerSNARK as SNARK>::VerifyingKey =
         inner_snark_parameters.1.clone().into();
 
-    let inner_snark_id = <Components as DPCComponents>::InnerCircuitIDCRH::hash(
-        &system_parameters.inner_circuit_id_crh,
-        &to_bytes_le![inner_snark_vk].unwrap(),
-    )
-    .unwrap();
+    let inner_circuit_id = <Components as DPCComponents>::inner_circuit_id_crh()
+        .hash(&inner_snark_vk.to_bytes_le().unwrap())
+        .unwrap();
 
     let inner_snark_proof = <Components as Testnet2Components>::InnerSNARK::prove(
         &inner_snark_parameters.0,
@@ -595,7 +591,7 @@ fn test_testnet2_dpc_execute_constraints() {
         &program_commitment,
         &program_randomness,
         &local_data_root,
-        &inner_snark_id,
+        &inner_circuit_id,
     )
     .unwrap();
 

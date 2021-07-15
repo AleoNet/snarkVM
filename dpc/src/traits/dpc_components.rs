@@ -92,6 +92,8 @@ pub trait DPCComponents: 'static + Sized {
 
     fn encrypted_record_crh() -> &'static Self::EncryptedRecordCRH;
 
+    fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
+
     fn record_commitment() -> &'static Self::RecordCommitment;
 
     fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;

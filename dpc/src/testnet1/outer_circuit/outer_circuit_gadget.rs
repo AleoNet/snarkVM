@@ -116,7 +116,7 @@ where
 
         let inner_circuit_id_crh =
             C::InnerCircuitIDCRHGadget::alloc_input(&mut cs.ns(|| "Declare inner_circuit_id_crh_parameters"), || {
-                Ok(system_parameters.inner_circuit_id_crh.clone())
+                Ok(C::inner_circuit_id_crh().clone())
             })?;
 
         (program_vk_commitment_parameters, program_vk_crh, inner_circuit_id_crh)

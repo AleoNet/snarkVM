@@ -65,14 +65,8 @@ where
                 .parameters()
                 .to_field_elements()?,
         );
-        v.extend_from_slice(
-            &self
-                .inner_snark_verifier_input
-                .system_parameters
-                .inner_circuit_id_crh
-                .parameters()
-                .to_field_elements()?,
-        );
+        v.extend_from_slice(&C::inner_circuit_id_crh().parameters().to_field_elements()?);
+
         // Convert inner snark verifier inputs into `OuterField` field elements
 
         let inner_snark_field_elements = &self.inner_snark_verifier_input.to_field_elements()?;
