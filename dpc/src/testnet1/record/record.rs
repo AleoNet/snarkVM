@@ -68,7 +68,6 @@ pub struct Record<C: Testnet1Components> {
 impl<C: Testnet1Components> Record<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new_full<R: Rng + CryptoRng>(
-        serial_number_nonce_parameters: &C::SerialNumberNonceCRH,
         owner: Address<C>,
         is_dummy: bool,
         value: u64,
@@ -85,7 +84,7 @@ impl<C: Testnet1Components> Record<C> {
         let sn_randomness: [u8; 32] = rng.gen();
 
         let crh_input = to_bytes_le![position, sn_randomness, joint_serial_numbers]?;
-        let serial_number_nonce = C::SerialNumberNonceCRH::hash(&serial_number_nonce_parameters, &crh_input)?;
+        let serial_number_nonce = C::serial_number_nonce_crh().hash(&crh_input)?;
 
         let mut record = Self::new(
             owner,

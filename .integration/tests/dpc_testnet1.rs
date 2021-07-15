@@ -109,11 +109,9 @@ fn dpc_testnet1_integration_test() {
     let mut joint_serial_numbers = vec![];
     let mut old_records = vec![];
     for i in 0..Components::NUM_INPUT_RECORDS {
-        let old_sn_nonce = <Components as DPCComponents>::SerialNumberNonceCRH::hash(
-            &dpc.system_parameters.serial_number_nonce,
-            &[64u8 + (i as u8); 1],
-        )
-        .unwrap();
+        let old_sn_nonce = <Components as DPCComponents>::serial_number_nonce_crh()
+            .hash(&[64u8 + (i as u8); 1])
+            .unwrap();
 
         let old_record = Record::new(
             genesis_account.address.clone(),
@@ -140,7 +138,6 @@ fn dpc_testnet1_integration_test() {
     for j in 0..Components::NUM_OUTPUT_RECORDS {
         new_records.push(
             Record::new_full(
-                &dpc.system_parameters.serial_number_nonce,
                 recipient.address.clone(),
                 false,
                 10,
@@ -242,7 +239,6 @@ fn test_transaction_kernel_serialization() {
     // Generate parameters for the ledger, commitment schemes, CRH, and the
     // "always-accept" program.
     let dpc = <Testnet1DPC as DPCScheme<L>>::load(false).unwrap();
-    let system_parameters = &dpc.system_parameters;
 
     // Generate metadata and an account for a dummy initial record.
     let test_account = Account::new(&mut rng).unwrap();
@@ -260,11 +256,9 @@ fn test_transaction_kernel_serialization() {
             Payload::default(),
             dpc.noop_program.id(),
             dpc.noop_program.id(),
-            <Components as DPCComponents>::SerialNumberNonceCRH::hash(
-                &system_parameters.serial_number_nonce,
-                &[0u8; 1],
-            )
-            .unwrap(),
+            <Components as DPCComponents>::serial_number_nonce_crh()
+                .hash(&[0u8; 1])
+                .unwrap(),
             &mut rng,
         )
         .unwrap();
@@ -282,7 +276,6 @@ fn test_transaction_kernel_serialization() {
     for j in 0..Components::NUM_OUTPUT_RECORDS {
         new_records.push(
             Record::new_full(
-                &system_parameters.serial_number_nonce,
                 test_account.address.clone(),
                 false,
                 10,
@@ -372,11 +365,9 @@ fn test_testnet1_dpc_execute_constraints() {
             Payload::default(),
             alternate_noop_program.id(),
             alternate_noop_program.id(),
-            <Components as DPCComponents>::SerialNumberNonceCRH::hash(
-                &system_parameters.serial_number_nonce,
-                &[0u8; 1],
-            )
-            .unwrap(),
+            <Components as DPCComponents>::serial_number_nonce_crh()
+                .hash(&[0u8; 1])
+                .unwrap(),
             &mut rng,
         )
         .unwrap();
@@ -397,7 +388,6 @@ fn test_testnet1_dpc_execute_constraints() {
     for j in 0..Components::NUM_OUTPUT_RECORDS {
         new_records.push(
             Record::new_full(
-                &system_parameters.serial_number_nonce,
                 new_account.address.clone(),
                 false,
                 10,

@@ -158,8 +158,7 @@ where
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let serial_number_nonce_crh_parameters_fe = system_parameters
-        .serial_number_nonce
+    let serial_number_nonce_crh_parameters_fe = C::serial_number_nonce_crh()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 

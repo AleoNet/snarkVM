@@ -93,7 +93,6 @@ pub fn execute_inner_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Inne
         CS,
         C::LocalDataCRH,
         C::LocalDataCommitment,
-        C::SerialNumberNonceCRH,
         C::PRF,
         C::AccountCommitmentGadget,
         C::AccountEncryptionGadget,
@@ -140,7 +139,6 @@ fn inner_circuit_gadget<
     CS: ConstraintSystem<C::InnerScalarField>,
     LocalDataCRH,
     LocalDataCommitment,
-    SerialNumberNonceCRH,
     P,
     AccountCommitmentGadget,
     AccountEncryptionGadget,
@@ -189,7 +187,6 @@ where
     C: Testnet2Components<
         LocalDataCRH = LocalDataCRH,
         LocalDataCommitment = LocalDataCommitment,
-        SerialNumberNonceCRH = SerialNumberNonceCRH,
         PRF = P,
         AccountCommitmentGadget = AccountCommitmentGadget,
         AccountEncryptionGadget = AccountEncryptionGadget,
@@ -203,7 +200,6 @@ where
     >,
     LocalDataCRH: CRH,
     LocalDataCommitment: CommitmentScheme,
-    SerialNumberNonceCRH: CRH,
     P: PRF,
     AccountCommitmentGadget: CommitmentGadget<C::AccountCommitment, C::InnerScalarField>,
     AccountEncryptionGadget: EncryptionGadget<C::AccountEncryption, C::InnerScalarField>,
@@ -212,7 +208,7 @@ where
     EncryptedRecordCRHGadget: CRHGadget<C::EncryptedRecordCRH, C::InnerScalarField>,
     LocalDataCRHGadget: CRHGadget<LocalDataCRH, C::InnerScalarField>,
     LocalDataCommitmentGadget: CommitmentGadget<LocalDataCommitment, C::InnerScalarField>,
-    SerialNumberNonceCRHGadget: CRHGadget<SerialNumberNonceCRH, C::InnerScalarField>,
+    SerialNumberNonceCRHGadget: CRHGadget<C::SerialNumberNonceCRH, C::InnerScalarField>,
     PGadget: PRFGadget<P, C::InnerScalarField>,
 {
     // Order for allocation of input:
@@ -294,9 +290,9 @@ where
             })?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
-        let serial_number_nonce_crh_parameters = SerialNumberNonceCRHGadget::alloc_input(
+        let serial_number_nonce_crh_parameters = C::SerialNumberNonceCRHGadget::alloc_input(
             &mut cs.ns(|| "Declare serial number nonce CRH parameters"),
-            || Ok(system_parameters.serial_number_nonce.clone()),
+            || Ok(C::serial_number_nonce_crh().clone()),
         )?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.

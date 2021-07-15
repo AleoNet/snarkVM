@@ -27,7 +27,6 @@ pub struct SystemParameters<C: Testnet1Components> {
     pub program_verification_key_crh: C::ProgramVerificationKeyCRH,
     pub local_data_crh: C::LocalDataCRH,
     pub local_data_commitment: C::LocalDataCommitment,
-    pub serial_number_nonce: C::SerialNumberNonceCRH,
 }
 
 impl<C: Testnet1Components> SystemParameters<C> {
@@ -53,17 +52,12 @@ impl<C: Testnet1Components> SystemParameters<C> {
             C::ProgramVerificationKeyCommitment::setup("ProgramVerificationKeyCommitment");
         end_timer!(time);
 
-        let time = start_timer!(|| "Serial nonce CRH setup");
-        let serial_number_nonce = C::SerialNumberNonceCRH::setup("SerialNumberNonceCRH");
-        end_timer!(time);
-
         Self {
             inner_circuit_id_crh,
             local_data_crh,
             local_data_commitment,
             program_verification_key_commitment,
             program_verification_key_crh,
-            serial_number_nonce,
         }
     }
 

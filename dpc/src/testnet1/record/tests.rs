@@ -61,11 +61,9 @@ fn test_record_encoding() {
                 Payload::from_bytes(&payload),
                 noop_program.id(),
                 noop_program.id(),
-                <Components as DPCComponents>::SerialNumberNonceCRH::hash(
-                    &system_parameters.serial_number_nonce,
-                    &sn_nonce_input,
-                )
-                .unwrap(),
+                <Components as DPCComponents>::serial_number_nonce_crh()
+                    .hash(&sn_nonce_input)
+                    .unwrap(),
                 &mut rng,
             )
             .unwrap();
@@ -115,11 +113,9 @@ fn test_record_encryption() {
                 Payload::from_bytes(&payload),
                 noop_program.id(),
                 noop_program.id(),
-                <Components as DPCComponents>::SerialNumberNonceCRH::hash(
-                    &system_parameters.serial_number_nonce,
-                    &sn_nonce_input,
-                )
-                .unwrap(),
+                <Components as DPCComponents>::serial_number_nonce_crh()
+                    .hash(&sn_nonce_input)
+                    .unwrap(),
                 &mut rng,
             )
             .unwrap();
