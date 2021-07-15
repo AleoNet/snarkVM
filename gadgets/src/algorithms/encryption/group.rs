@@ -20,11 +20,10 @@ use crate::{
     traits::{
         algorithms::EncryptionGadget,
         alloc::AllocGadget,
-        curves::CompressedGroupGadget,
+        curves::{CompressedGroupGadget, CurveGadget},
         eq::{ConditionalEqGadget, EqGadget},
         integers::integer::Integer,
     },
-    CurveGadget,
 };
 use snarkvm_algorithms::encryption::{GroupEncryption, GroupEncryptionPublicKey};
 use snarkvm_curves::ProjectiveCurve;

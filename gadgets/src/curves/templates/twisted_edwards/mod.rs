@@ -29,7 +29,7 @@ use crate::{
     integers::uint::UInt8,
     traits::{
         alloc::AllocGadget,
-        curves::{CompressedGroupGadget, GroupGadget},
+        curves::{CompressedGroupGadget, CurveGadget, GroupGadget},
         eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         fields::FieldGadget,
         select::CondSelectGadget,
@@ -616,7 +616,6 @@ mod projective_impl {
     use snarkvm_r1cs::Assignment;
 
     use super::*;
-    use crate::CurveGadget;
 
     /// Based on 2 input bits, output on a group element from a 4 element table.
     /// 00 => table[0]

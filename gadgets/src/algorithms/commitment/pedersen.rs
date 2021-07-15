@@ -16,8 +16,7 @@
 
 use crate::{
     integers::uint::UInt8,
-    traits::{algorithms::CommitmentGadget, alloc::AllocGadget, integers::Integer},
-    CurveGadget,
+    traits::{algorithms::CommitmentGadget, alloc::AllocGadget, curves::CurveGadget, integers::Integer},
 };
 use snarkvm_algorithms::commitment::PedersenCommitment;
 use snarkvm_curves::ProjectiveCurve;

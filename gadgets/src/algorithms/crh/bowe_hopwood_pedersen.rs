@@ -18,8 +18,7 @@ use crate::{
     algorithms::crh::pedersen::PedersenCRHGadget,
     bits::Boolean,
     integers::uint::UInt8,
-    traits::{algorithms::CRHGadget, alloc::AllocGadget, integers::Integer},
-    CurveGadget,
+    traits::{algorithms::CRHGadget, alloc::AllocGadget, curves::CurveGadget, integers::Integer},
 };
 use snarkvm_algorithms::{
     crh::{BoweHopwoodPedersenCRH, PedersenCRH, BOWE_HOPWOOD_CHUNK_SIZE},

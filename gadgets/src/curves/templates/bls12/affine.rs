@@ -30,12 +30,11 @@ use crate::{
     integers::uint::UInt8,
     traits::{
         alloc::AllocGadget,
-        curves::GroupGadget,
+        curves::{CurveGadget, GroupGadget},
         eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         fields::{FieldGadget, ToConstraintFieldGadget},
         select::CondSelectGadget,
     },
-    CurveGadget,
 };
 
 #[derive(Derivative)]

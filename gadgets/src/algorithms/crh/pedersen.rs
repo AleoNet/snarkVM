@@ -20,9 +20,9 @@ use crate::{
     traits::{
         algorithms::{CRHGadget, MaskedCRHGadget},
         alloc::AllocGadget,
+        curves::CurveGadget,
         integers::Integer,
     },
-    CurveGadget,
 };
 use snarkvm_algorithms::crh::PedersenCRH;
 use snarkvm_curves::ProjectiveCurve;
