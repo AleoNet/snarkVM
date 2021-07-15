@@ -18,39 +18,9 @@ use crate::{
     crypto_hash::{PoseidonCryptoHash, PoseidonDefaultParametersField, PoseidonParameters},
     traits::{CryptoHash, CRH},
     CRHError,
-    CRHParameters,
 };
 
 use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_utilities::{FromBytes, ToBytes};
-
-use rand::Rng;
-use std::io::{Read, Result as IoResult, Write};
-
-// TODO (raychu86): Implement these trait functions.
-
-impl<F: PrimeField + PoseidonDefaultParametersField> CRHParameters for PoseidonParameters<F> {
-    fn setup<R: Rng>(_r: &mut R) -> Self {
-        // TODO (raychu86): Don't use the hard coded rate and optimization flag.
-        let params = F::get_default_poseidon_parameters(4, false).unwrap();
-
-        params
-    }
-}
-
-impl<F: PrimeField + PoseidonDefaultParametersField> ToBytes for PoseidonParameters<F> {
-    #[inline]
-    fn write_le<W: Write>(&self, mut _writer: W) -> IoResult<()> {
-        unimplemented!()
-    }
-}
-
-impl<F: PrimeField + PoseidonDefaultParametersField> FromBytes for PoseidonParameters<F> {
-    #[inline]
-    fn read_le<R: Read>(mut _reader: R) -> IoResult<Self> {
-        unimplemented!()
-    }
-}
 
 impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> CRH
     for PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>
@@ -61,7 +31,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     // TODO (raychu86): Specify this value correctly. Currently an arbitrary value
     const INPUT_SIZE_BITS: usize = 20 * 48;
 
-    fn setup<R: Rng>(_rng: &mut R) -> Self {
+    fn setup(_message: &str) -> Self {
         Self {
             parameters: F::get_default_poseidon_parameters(RATE, OPTIMIZED_FOR_WEIGHTS).unwrap(),
         }
