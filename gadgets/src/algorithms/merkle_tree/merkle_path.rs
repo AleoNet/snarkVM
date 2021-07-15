@@ -168,7 +168,6 @@ where
     {
         let merkle_path = value_gen()?.borrow().clone();
 
-        let pos_list: Vec<_> = merkle_path.position_list().collect();
         let mut traversal = vec![];
         for (i, position) in pos_list.iter().enumerate() {
             traversal.push(Boolean::alloc(cs.ns(|| format!("alloc_position_{}", i)), || {
