@@ -192,7 +192,7 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
 
 fn update_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, F>>(leaves: &[[u8; 30]]) {
     let parameters = Arc::new(P::default());
-    let tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), &leaves[..]).unwrap();
+    let tree = MerkleTree::<P>::new(parameters.clone(), &leaves[..]).unwrap();
     let root = tree.root();
 
     let mut satisfied = true;
