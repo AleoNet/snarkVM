@@ -94,7 +94,7 @@ impl<P: MerkleParameters> MerklePath<P> {
     /// `position[i]` is 0 (false) iff `i`th on-path node from top to bottom is on the left.
     ///
     /// This function simply converts `self.leaf_index` to boolean array in big endian form.
-    pub fn position_list(&'_ self) -> impl '_ + Iterator<Item = bool> {
+    pub fn position_list(&self) -> impl Iterator<Item = bool> + '_ {
         (0..self.path.len()).map(move |i| ((self.leaf_index >> i) & 1) != 0)
     }
 }
