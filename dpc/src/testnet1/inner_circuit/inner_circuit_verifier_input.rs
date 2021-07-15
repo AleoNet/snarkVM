@@ -20,7 +20,7 @@ use crate::{
 };
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, EncryptionScheme, MerkleParameters, SignatureScheme, CRH},
+    traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH},
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
@@ -56,26 +56,11 @@ pub struct InnerCircuitVerifierInput<C: Testnet1Components> {
 
 impl<C: Testnet1Components> ToConstraintField<C::InnerScalarField> for InnerCircuitVerifierInput<C>
 where
-    <C::AccountCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
     <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-
-    <C::AccountEncryption as EncryptionScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
-
-    <C::AccountSignature as SignatureScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
-
-    <C::RecordCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
     <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-
-    <C::EncryptedRecordCRH as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
     <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-
-    <C::SerialNumberNonceCRH as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
-
-    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
     <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-
-    <C::LocalDataCRH as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
 
     <<C::MerkleParameters as MerkleParameters>::H as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
@@ -83,56 +68,21 @@ where
 {
     fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
-
-        v.extend_from_slice(
-            &self
-                .system_parameters
-                .account_commitment
-                .parameters()
-                .to_field_elements()?,
-        );
-        v.extend_from_slice(
-            &<C::AccountEncryption as EncryptionScheme>::parameters(&self.system_parameters.account_encryption)
-                .to_field_elements()?,
-        );
-        v.extend_from_slice(
-            &self
-                .system_parameters
-                .account_signature
-                .parameters()
-                .to_field_elements()?,
-        );
-        v.extend_from_slice(
-            &self
-                .system_parameters
-                .record_commitment
-                .parameters()
-                .to_field_elements()?,
-        );
-        v.extend_from_slice(
-            &self
-                .system_parameters
-                .encrypted_record_crh
-                .parameters()
-                .to_field_elements()?,
-        );
+        v.extend_from_slice(&C::account_commitment().to_field_elements()?);
+        v.extend_from_slice(&C::account_encryption().to_field_elements()?);
+        v.extend_from_slice(&C::account_signature().to_field_elements()?);
+        v.extend_from_slice(&self.system_parameters.record_commitment.to_field_elements()?);
+        v.extend_from_slice(&self.system_parameters.encrypted_record_crh.to_field_elements()?);
         v.extend_from_slice(
             &self
                 .system_parameters
                 .program_verification_key_commitment
-                .parameters()
                 .to_field_elements()?,
         );
-        v.extend_from_slice(&self.system_parameters.local_data_crh.parameters().to_field_elements()?);
-        v.extend_from_slice(
-            &self
-                .system_parameters
-                .serial_number_nonce
-                .parameters()
-                .to_field_elements()?,
-        );
+        v.extend_from_slice(&self.system_parameters.local_data_crh.to_field_elements()?);
+        v.extend_from_slice(&self.system_parameters.serial_number_nonce.to_field_elements()?);
 
-        v.extend_from_slice(&self.ledger_parameters.parameters().to_field_elements()?);
+        v.extend_from_slice(&self.ledger_parameters.crh().parameters().to_field_elements()?);
         v.extend_from_slice(&self.ledger_digest.to_field_elements()?);
 
         for sn in &self.old_serial_numbers {

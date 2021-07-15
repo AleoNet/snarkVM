@@ -43,7 +43,7 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, 
     pub fn check_membership<CS: ConstraintSystem<F>>(
         &self,
         cs: CS,
-        parameters: &HG::ParametersGadget,
+        parameters: &HG,
         root: &HG::OutputGadget,
         leaf: impl ToBytesGadget<F>,
     ) -> Result<(), SynthesisError> {
@@ -53,7 +53,7 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, 
     pub fn conditionally_check_membership<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
-        parameters: &HG::ParametersGadget,
+        parameters: &HG,
         root: &HG::OutputGadget,
         leaf: impl ToBytesGadget<F>,
         should_enforce: &Boolean,
@@ -62,7 +62,7 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, 
         // Check that the hash of the given leaf matches the leaf hash in the membership
         // proof.
         let leaf_bits = leaf.to_bytes(&mut cs.ns(|| "leaf_to_bytes"))?;
-        let leaf_hash = HG::check_evaluation_gadget(cs.ns(|| "check_evaluation_gadget"), parameters, leaf_bits)?;
+        let leaf_hash = HG::check_evaluation_gadget(parameters, cs.ns(|| "check_evaluation_gadget"), leaf_bits)?;
 
         // Check if leaf is one of the bottom-most siblings.
         let leaf_is_left =
@@ -108,7 +108,7 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, 
 
 pub(crate) fn hash_inner_node_gadget<H, HG, F, CS>(
     mut cs: CS,
-    parameters: &HG::ParametersGadget,
+    parameters: &HG,
     left_child: &HG::OutputGadget,
     right_child: &HG::OutputGadget,
 ) -> Result<HG::OutputGadget, SynthesisError>
@@ -123,7 +123,7 @@ where
     let mut bytes = left_bytes;
     bytes.extend_from_slice(&right_bytes);
 
-    HG::check_evaluation_gadget(cs, parameters, bytes)
+    HG::check_evaluation_gadget(parameters, cs, bytes)
 }
 
 impl<P, HGadget, F> AllocGadget<MerklePath<P>, F> for MerklePathGadget<P, HGadget, F>

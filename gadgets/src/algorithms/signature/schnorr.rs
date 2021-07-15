@@ -18,7 +18,7 @@ use crate::{
     bits::{Boolean, ToBytesGadget},
     integers::uint::UInt8,
     traits::{
-        algorithms::SignaturePublicKeyRandomizationGadget,
+        algorithms::SignatureGadget,
         alloc::AllocGadget,
         curves::GroupGadget,
         eq::{ConditionalEqGadget, EqGadget},
@@ -31,9 +31,9 @@ use crate::{
 };
 use snarkvm_algorithms::{
     crypto_hash::PoseidonDefaultParametersField,
-    signature::{Schnorr, SchnorrParameters, SchnorrPublicKey, SchnorrSignature},
+    signature::{Schnorr, SchnorrPublicKey, SchnorrSignature},
 };
-use snarkvm_curves::traits::Group;
+use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{
@@ -48,50 +48,14 @@ use itertools::Itertools;
 use snarkvm_curves::AffineCurve;
 use std::{borrow::Borrow, marker::PhantomData};
 
-#[derive(Clone)]
-pub struct SchnorrParametersGadget<G: Group, F: PrimeField> {
-    pub(crate) parameters: SchnorrParameters<G>,
-    pub(crate) _engine: PhantomData<*const F>,
-}
-
-impl<G: Group, F: PrimeField> AllocGadget<SchnorrParameters<G>, F> for SchnorrParametersGadget<G, F> {
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrParameters<G>>, CS: ConstraintSystem<F>>(
-        _cs: CS,
-        value_gen: Fn,
-    ) -> Result<Self, SynthesisError> {
-        let value = value_gen()?;
-        let parameters = value.borrow().clone();
-        Ok(Self {
-            parameters,
-            _engine: PhantomData,
-        })
-    }
-
-    fn alloc_input<
-        Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<SchnorrParameters<G>>,
-        CS: ConstraintSystem<F>,
-    >(
-        _cs: CS,
-        value_gen: Fn,
-    ) -> Result<Self, SynthesisError> {
-        let value = value_gen()?;
-        let parameters = value.borrow().clone();
-        Ok(Self {
-            parameters,
-            _engine: PhantomData,
-        })
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SchnorrPublicKeyGadget<G: Group, F: PrimeField, GG: GroupGadget<G, F>> {
+pub struct SchnorrPublicKeyGadget<G: ProjectiveCurve, F: PrimeField, GG: GroupGadget<G, F>> {
     pub(crate) public_key: GG,
     pub(crate) _group: PhantomData<G>,
     pub(crate) _engine: PhantomData<F>,
 }
 
-impl<G: Group + CanonicalSerialize + CanonicalDeserialize, F: PrimeField, GG: GroupGadget<G, F>>
+impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize, F: PrimeField, GG: GroupGadget<G, F>>
     AllocGadget<SchnorrPublicKey<G>, F> for SchnorrPublicKeyGadget<G, F, GG>
 {
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrPublicKey<G>>, CS: ConstraintSystem<F>>(
@@ -121,7 +85,9 @@ impl<G: Group + CanonicalSerialize + CanonicalDeserialize, F: PrimeField, GG: Gr
     }
 }
 
-impl<G: Group, F: PrimeField, GG: GroupGadget<G, F>> ConditionalEqGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {
+impl<G: ProjectiveCurve, F: PrimeField, GG: GroupGadget<G, F>> ConditionalEqGadget<F>
+    for SchnorrPublicKeyGadget<G, F, GG>
+{
     #[inline]
     fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
         &self,
@@ -142,9 +108,9 @@ impl<G: Group, F: PrimeField, GG: GroupGadget<G, F>> ConditionalEqGadget<F> for 
     }
 }
 
-impl<G: Group, F: PrimeField, GG: GroupGadget<G, F>> EqGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {}
+impl<G: ProjectiveCurve, F: PrimeField, GG: GroupGadget<G, F>> EqGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {}
 
-impl<G: Group, F: PrimeField, GG: GroupGadget<G, F>> ToBytesGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {
+impl<G: ProjectiveCurve, F: PrimeField, GG: GroupGadget<G, F>> ToBytesGadget<F> for SchnorrPublicKeyGadget<G, F, GG> {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.public_key.to_bytes(&mut cs.ns(|| "to_bytes"))
     }
@@ -155,13 +121,13 @@ impl<G: Group, F: PrimeField, GG: GroupGadget<G, F>> ToBytesGadget<F> for Schnor
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SchnorrSignatureGadget<G: Group, F: PrimeField> {
+pub struct SchnorrSignatureGadget<G: ProjectiveCurve, F: PrimeField> {
     pub(crate) prover_response: FpGadget<F>,
     pub(crate) verifier_challenge: FpGadget<F>,
     pub(crate) _group: PhantomData<*const G>,
 }
 
-impl<G: Group, F: PrimeField> AllocGadget<SchnorrSignature<G>, F> for SchnorrSignatureGadget<G, F> {
+impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<SchnorrSignature<G>, F> for SchnorrSignatureGadget<G, F> {
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SchnorrSignature<G>>, CS: ConstraintSystem<F>>(
         mut cs: CS,
         value_gen: Fn,
@@ -214,7 +180,7 @@ impl<G: Group, F: PrimeField> AllocGadget<SchnorrSignature<G>, F> for SchnorrSig
     }
 }
 
-impl<G: Group, F: PrimeField> ConditionalEqGadget<F> for SchnorrSignatureGadget<G, F> {
+impl<G: ProjectiveCurve, F: PrimeField> ConditionalEqGadget<F> for SchnorrSignatureGadget<G, F> {
     #[inline]
     fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
         &self,
@@ -240,9 +206,9 @@ impl<G: Group, F: PrimeField> ConditionalEqGadget<F> for SchnorrSignatureGadget<
     }
 }
 
-impl<G: Group, F: PrimeField> EqGadget<F> for SchnorrSignatureGadget<G, F> {}
+impl<G: ProjectiveCurve, F: PrimeField> EqGadget<F> for SchnorrSignatureGadget<G, F> {}
 
-impl<G: Group, F: PrimeField> ToBytesGadget<F> for SchnorrSignatureGadget<G, F> {
+impl<G: ProjectiveCurve, F: PrimeField> ToBytesGadget<F> for SchnorrSignatureGadget<G, F> {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut result = Vec::new();
 
@@ -274,44 +240,77 @@ impl<G: Group, F: PrimeField> ToBytesGadget<F> for SchnorrSignatureGadget<G, F> 
     }
 }
 
-pub struct SchnorrPublicKeyRandomizationGadget<
-    G: Group,
+pub struct SchnorrGadget<
+    G: ProjectiveCurve,
     F: PrimeField + PoseidonDefaultParametersField,
     GG: GroupGadget<G, F> + ToConstraintFieldGadget<F>,
 > {
-    pub(crate) _group: PhantomData<*const G>,
+    pub(crate) signature: Schnorr<G>,
     pub(crate) _group_gadget: PhantomData<*const GG>,
     pub(crate) _engine: PhantomData<*const F>,
 }
 
 impl<
-    G: Group + CanonicalSerialize + CanonicalDeserialize + AffineCurve,
+    G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize,
     GG: GroupGadget<G, F> + ToConstraintFieldGadget<F>,
     F: PrimeField + PoseidonDefaultParametersField,
-> SignaturePublicKeyRandomizationGadget<Schnorr<G>, F> for SchnorrPublicKeyRandomizationGadget<G, F, GG>
+> AllocGadget<Schnorr<G>, F> for SchnorrGadget<G, F, GG>
 where
-    <G as AffineCurve>::BaseField: PoseidonDefaultParametersField,
-    G: ToConstraintField<<G as AffineCurve>::BaseField>,
+    <G::Affine as AffineCurve>::BaseField: PoseidonDefaultParametersField,
+    G: ToConstraintField<<G::Affine as AffineCurve>::BaseField>,
 {
-    type ParametersGadget = SchnorrParametersGadget<G, F>;
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Schnorr<G>>, CS: ConstraintSystem<F>>(
+        _cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        Ok(Self {
+            signature: value_gen()?.borrow().clone(),
+            _group_gadget: PhantomData,
+            _engine: PhantomData,
+        })
+    }
+
+    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Schnorr<G>>, CS: ConstraintSystem<F>>(
+        _cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        Ok(Self {
+            signature: value_gen()?.borrow().clone(),
+            _group_gadget: PhantomData,
+            _engine: PhantomData,
+        })
+    }
+}
+
+impl<
+    G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize,
+    GG: GroupGadget<G, F> + ToConstraintFieldGadget<F>,
+    F: PrimeField + PoseidonDefaultParametersField,
+> SignatureGadget<Schnorr<G>, F> for SchnorrGadget<G, F, GG>
+where
+    <G::Affine as AffineCurve>::BaseField: PoseidonDefaultParametersField,
+    G: ToConstraintField<<G::Affine as AffineCurve>::BaseField>,
+{
     type PublicKeyGadget = SchnorrPublicKeyGadget<G, F, GG>;
     type SignatureGadget = SchnorrSignatureGadget<G, F>;
 
-    fn check_randomization_gadget<CS: ConstraintSystem<F>>(
+    fn randomize_public_key<CS: ConstraintSystem<F>>(
+        &self,
         mut cs: CS,
-        parameters: &Self::ParametersGadget,
         public_key: &Self::PublicKeyGadget,
-        randomness: &[UInt8],
+        randomizer: &[UInt8],
     ) -> Result<Self::PublicKeyGadget, SynthesisError> {
-        let randomness = randomness.iter().flat_map(|b| b.to_bits_le()).collect::<Vec<_>>();
-        let mut rand_pk = public_key.public_key.clone();
-        rand_pk.scalar_multiplication(
+        let randomness = randomizer.iter().flat_map(|b| b.to_bits_le()).collect::<Vec<_>>();
+
+        let mut randomized_public_key = GG::zero(cs.ns(|| "zero"))?;
+        randomized_public_key.scalar_multiplication(
             cs.ns(|| "check_randomization_gadget"),
-            randomness.iter().zip_eq(&parameters.parameters.generator_powers),
+            randomness.iter().zip_eq(&self.signature.generator_powers),
         )?;
+        randomized_public_key = randomized_public_key.add(cs.ns(|| "pk + rG"), &public_key.public_key)?;
 
         Ok(SchnorrPublicKeyGadget {
-            public_key: rand_pk,
+            public_key: randomized_public_key,
             _group: PhantomData,
             _engine: PhantomData,
         })
@@ -319,8 +318,8 @@ where
 
     // TODO (raychu86): Make the blake2s usage generic for all PRFs.
     fn verify<CS: ConstraintSystem<F>>(
+        &self,
         mut cs: CS,
-        parameters: &Self::ParametersGadget,
         public_key: &Self::PublicKeyGadget,
         message: &[UInt8],
         signature: &Self::SignatureGadget,
@@ -342,7 +341,7 @@ where
         let mut claimed_prover_commitment = GG::zero(cs.ns(|| "zero_claimed_prover_commitment"))?;
         for (i, (bit, base_power)) in prover_response_bits
             .iter()
-            .zip_eq(&parameters.parameters.generator_powers)
+            .zip_eq(&self.signature.generator_powers)
             .enumerate()
         {
             let added =
@@ -368,22 +367,15 @@ where
         )?;
 
         // Construct the hash
-        let mut hash_input = {
-            let salt_bytes_field_elements: Vec<F> = parameters.parameters.salt.to_field_elements().unwrap();
-
-            let mut res = Vec::new();
-
-            for (i, elem) in salt_bytes_field_elements.iter().enumerate() {
-                res.push(FpGadget::<F>::alloc_constant(
-                    cs.ns(|| format!("alloc salt byte field element {}", i)),
-                    || Ok((*elem).clone()),
-                )?);
-            }
-            res
-        };
+        let mut hash_input = Vec::new();
         hash_input.extend_from_slice(
             &claimed_prover_commitment
                 .to_constraint_field(cs.ns(|| "convert claimed_prover_commitment into field elements"))?,
+        );
+        hash_input.extend_from_slice(
+            &public_key
+                .public_key
+                .to_constraint_field(cs.ns(|| "convert public key into field elements"))?,
         );
         hash_input.push(FpGadget::<F>::Constant(F::from(message.len() as u128)));
         hash_input.extend_from_slice(&message.to_constraint_field(cs.ns(|| "convert message into field elements"))?);

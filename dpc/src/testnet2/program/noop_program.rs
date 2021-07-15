@@ -41,7 +41,7 @@ pub struct NoopProgram<C: Testnet2Components> {
     #[derivative(Debug = "ignore")]
     verifying_key: <<C as Testnet2Components>::NoopProgramSNARK as SNARK>::VerifyingKey,
     #[derivative(Debug = "ignore")]
-    local_data_commitment_parameters: <C::LocalDataCommitment as CommitmentScheme>::Parameters,
+    local_data_commitment_parameters: C::LocalDataCommitment,
 }
 
 impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
@@ -64,12 +64,10 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
         let universal_srs: UniversalSRS<C::InnerScalarField, C::PolynomialCommitment> =
             ProgramSNARKUniversalSRS::<C>::load()?.0.clone();
 
-        let local_data_commitment_parameters = local_data_commitment.parameters().clone();
+        let local_data_commitment_parameters = local_data_commitment.clone();
 
-        let (proving_key, prepared_verifying_key) = <Self::ProofSystem as SNARK>::setup(
-            &(NoopCircuit::blank(local_data_commitment.parameters()), universal_srs),
-            rng,
-        )?;
+        let (proving_key, prepared_verifying_key) =
+            <Self::ProofSystem as SNARK>::setup(&(NoopCircuit::blank(local_data_commitment), universal_srs), rng)?;
         let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
 
         // Compute the program ID.
@@ -108,7 +106,7 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
             id: program_id,
             proving_key,
             verifying_key,
-            local_data_commitment_parameters: local_data_commitment.parameters().clone(),
+            local_data_commitment_parameters: local_data_commitment.clone(),
         })
     }
 

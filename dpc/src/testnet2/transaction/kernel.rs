@@ -19,7 +19,7 @@ use crate::{
     testnet2::{EncryptedRecord, LocalData, Record, SystemParameters, Testnet2Components, Transaction},
 };
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, prelude::*};
-use snarkvm_utilities::{to_bytes_le, variable_length_integer::*, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use std::{
     fmt,
@@ -42,7 +42,7 @@ pub struct TransactionKernel<C: Testnet2Components> {
     // Old record stuff
     pub old_records: Vec<Record<C>>,
     pub old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
-    pub old_randomizers: Vec<Vec<u8>>,
+    pub old_randomizers: Vec<<C::AccountSignature as SignatureScheme>::Randomizer>,
 
     // New record stuff
     pub new_records: Vec<Record<C>>,
@@ -97,7 +97,6 @@ impl<C: Testnet2Components> ToBytes for TransactionKernel<C> {
         }
 
         for old_randomizer in &self.old_randomizers {
-            variable_length_integer(old_randomizer.len() as u64).write_le(&mut writer)?;
             old_randomizer.write_le(&mut writer)?;
         }
 
@@ -166,14 +165,8 @@ impl<C: Testnet2Components> FromBytes for TransactionKernel<C> {
 
         let mut old_randomizers = vec![];
         for _ in 0..C::NUM_INPUT_RECORDS {
-            let num_bytes = read_variable_length_integer(&mut reader)?;
-            let mut randomizer = vec![];
-            for _ in 0..num_bytes {
-                let byte: u8 = FromBytes::read_le(&mut reader)?;
-                randomizer.push(byte);
-            }
-
-            old_randomizers.push(randomizer);
+            let old_randomizer: <C::AccountSignature as SignatureScheme>::Randomizer = FromBytes::read_le(&mut reader)?;
+            old_randomizers.push(old_randomizer);
         }
 
         // Read new record components

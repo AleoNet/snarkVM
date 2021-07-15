@@ -39,7 +39,7 @@ fn test_record_encoding() {
     for _ in 0..ITERATIONS {
         // Generate parameters for the ledger, commitment schemes, CRH, and the
         // "always-accept" program.
-        let system_parameters = SystemParameters::<Components>::setup(&mut rng).unwrap();
+        let system_parameters = SystemParameters::<Components>::setup();
         let noop_program = NoopProgram::<Components>::setup(
             &system_parameters.local_data_commitment,
             &system_parameters.program_verification_key_crh,
@@ -48,13 +48,7 @@ fn test_record_encoding() {
         .unwrap();
 
         for _ in 0..ITERATIONS {
-            let dummy_account = Account::<Components>::new(
-                &system_parameters.account_signature,
-                &system_parameters.account_commitment,
-                &system_parameters.account_encryption,
-                &mut rng,
-            )
-            .unwrap();
+            let dummy_account = Account::<Components>::new(&mut rng).unwrap();
 
             let sn_nonce_input: [u8; 32] = rng.gen();
             let value = rng.gen();
@@ -100,7 +94,7 @@ fn test_record_encryption() {
     for _ in 0..ITERATIONS {
         // Generate parameters for the ledger, commitment schemes, CRH, and the
         // "always-accept" program.
-        let system_parameters = SystemParameters::<Components>::setup(&mut rng).unwrap();
+        let system_parameters = SystemParameters::<Components>::setup();
         let noop_program = NoopProgram::<Components>::setup(
             &system_parameters.local_data_commitment,
             &system_parameters.program_verification_key_crh,
@@ -109,13 +103,7 @@ fn test_record_encryption() {
         .unwrap();
 
         for _ in 0..ITERATIONS {
-            let dummy_account = Account::new(
-                &system_parameters.account_signature,
-                &system_parameters.account_commitment,
-                &system_parameters.account_encryption,
-                &mut rng,
-            )
-            .unwrap();
+            let dummy_account = Account::new(&mut rng).unwrap();
 
             let sn_nonce_input: [u8; 32] = rng.gen();
             let value = rng.gen();
@@ -139,13 +127,8 @@ fn test_record_encryption() {
             .unwrap();
 
             // Encrypt the record
-            let (encryped_record, _) = EncryptedRecord::encrypt(&system_parameters, &given_record, &mut rng).unwrap();
-            let account_view_key = ViewKey::from_private_key(
-                &system_parameters.account_signature,
-                &system_parameters.account_commitment,
-                &dummy_account.private_key,
-            )
-            .unwrap();
+            let (encryped_record, _) = EncryptedRecord::encrypt(&given_record, &mut rng).unwrap();
+            let account_view_key = ViewKey::from_private_key(&dummy_account.private_key).unwrap();
 
             // Decrypt the record
             let decrypted_record = encryped_record.decrypt(&system_parameters, &account_view_key).unwrap();
