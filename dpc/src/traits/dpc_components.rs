@@ -103,6 +103,8 @@ pub trait DPCComponents: 'static + Sized {
 
     fn local_data_crh() -> &'static Self::LocalDataCRH;
 
+    fn merkle_tree_crh() -> &'static Self::MerkleTreeCRH;
+
     fn program_id_commitment() -> &'static Self::ProgramIDCommitment;
 
     fn program_id_crh() -> &'static Self::ProgramIDCRH;
