@@ -200,7 +200,7 @@ fn update_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, F>
         let proof = tree.generate_proof(i, &leaf).unwrap();
         assert!(proof.verify(&root, &leaf).unwrap());
 
-        let mut updated_leaves = leaves.to_vec().clone();
+        let mut updated_leaves = leaves.to_vec();
         updated_leaves[i] = [u8::MAX; 30];
 
         let new_tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), &updated_leaves[..]).unwrap();
