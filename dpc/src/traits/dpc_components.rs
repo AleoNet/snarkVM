@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, CRH, PRF};
+use snarkvm_algorithms::{
+    crypto_hash::PoseidonDefaultParametersField,
+    traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, CRH, PRF},
+};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget};
@@ -29,7 +32,7 @@ pub trait DPCComponents: 'static + Sized {
     type InnerCurve: PairingEngine;
     type OuterCurve: PairingEngine;
 
-    type InnerScalarField: PrimeField;
+    type InnerScalarField: PrimeField + PoseidonDefaultParametersField;
     type OuterScalarField: PrimeField;
 
     /// Commitment scheme for account contents. Invoked only over `Self::InnerScalarField`.

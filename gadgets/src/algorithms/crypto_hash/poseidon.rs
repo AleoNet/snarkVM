@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{algorithms::crypto_hash::CryptographicSpongeVar, CryptoHashGadget, FieldGadget, FpGadget};
+use crate::{algorithms::crypto_hash::CryptographicSpongeVar, AllocGadget, CryptoHashGadget, FieldGadget, FpGadget};
+
 use snarkvm_algorithms::crypto_hash::{
     DuplexSpongeMode,
     PoseidonCryptoHash,
@@ -24,7 +25,8 @@ use snarkvm_algorithms::crypto_hash::{
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
-use snarkvm_utilities::marker::PhantomData;
+
+use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone)]
 /// the gadget for Poseidon sponge
@@ -205,6 +207,30 @@ impl<F: PrimeField> PoseidonSpongeGadget<F> {
     }
 }
 
+impl<F: PrimeField> AllocGadget<PoseidonParameters<F>, F> for PoseidonSpongeGadget<F> {
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<PoseidonParameters<F>>, CS: ConstraintSystem<F>>(
+        cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        let parameters = value_gen()?.borrow().clone();
+
+        Ok(Self::new(cs, &parameters))
+    }
+
+    fn alloc_input<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PoseidonParameters<F>>,
+        CS: ConstraintSystem<F>,
+    >(
+        cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        let parameters = value_gen()?.borrow().clone();
+
+        Ok(Self::new(cs, &parameters))
+    }
+}
+
 impl<F: PrimeField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpongeGadget<F> {
     type Parameters = PoseidonParameters<F>;
 
@@ -281,6 +307,7 @@ impl<F: PrimeField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpo
     }
 }
 
+#[derive(Clone)]
 pub struct PoseidonCryptoHashGadget<
     F: PrimeField + PoseidonDefaultParametersField,
     const RATE: usize,
@@ -304,5 +331,36 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
         sponge.absorb(cs.ns(|| "absorb"), input.iter())?;
         let res = sponge.squeeze_field_elements(cs.ns(|| "squeeze"), 1)?;
         Ok(res[0].clone())
+    }
+}
+
+impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
+    AllocGadget<PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>, F>
+    for PoseidonCryptoHashGadget<F, RATE, OPTIMIZED_FOR_WEIGHTS>
+{
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>>,
+        CS: ConstraintSystem<F>,
+    >(
+        _cs: CS,
+        _f: Fn,
+    ) -> Result<Self, SynthesisError> {
+        Ok(Self {
+            field_phantom: PhantomData,
+        })
+    }
+
+    fn alloc_input<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>>,
+        CS: ConstraintSystem<F>,
+    >(
+        _cs: CS,
+        _f: Fn,
+    ) -> Result<Self, SynthesisError> {
+        Ok(Self {
+            field_phantom: PhantomData,
+        })
     }
 }
