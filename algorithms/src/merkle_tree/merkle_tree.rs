@@ -149,14 +149,10 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         })
     }
 
-    pub fn rebuild<L: ToBytes + Send + Sync, I: ExactSizeIterator<Item = L>>(
-        &self,
-        old_leaves: I,
-        new_leaves: &[L],
-    ) -> Result<Self, MerkleError> {
+    pub fn rebuild<L: ToBytes + Send + Sync>(&self, start_index: usize, new_leaves: &[L]) -> Result<Self, MerkleError> {
         let new_time = start_timer!(|| "MerkleTree::rebuild");
 
-        let last_level_size = (old_leaves.len() + new_leaves.len()).next_power_of_two();
+        let last_level_size = (start_index + new_leaves.len()).next_power_of_two();
         let tree_size = 2 * last_level_size - 1;
         let tree_depth = tree_depth(tree_size);
 
@@ -177,20 +173,20 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         }
 
         // Track the indices of newly added leaves.
-        let new_indices = (old_leaves.len()..old_leaves.len() + new_leaves.len()).collect::<Vec<_>>();
+        let new_indices = (start_index..start_index + new_leaves.len()).collect::<Vec<_>>();
 
         // Compute and store the hash values for each leaf.
         let hash_input_size_in_bytes = (P::H::INPUT_SIZE_BITS / 8) * 2;
         let last_level_index = level_indices.pop().unwrap_or(0);
 
         // The beginning of the tree can be reconstructed from pre-existing hashed leaves.
-        tree[last_level_index..][..old_leaves.len()].clone_from_slice(&self.hashed_leaves()[..old_leaves.len()]);
+        tree[last_level_index..][..start_index].clone_from_slice(&self.hashed_leaves()[..start_index]);
 
         // The new leaves require hashing.
         let subsections = Self::hash_row(&*self.parameters, new_leaves)?;
 
         for (i, subsection) in subsections.into_iter().enumerate() {
-            tree[last_level_index + old_leaves.len() + i..last_level_index + old_leaves.len() + i + subsection.len()]
+            tree[last_level_index + start_index + i..last_level_index + start_index + i + subsection.len()]
                 .copy_from_slice(&subsection[..]);
         }
 
