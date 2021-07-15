@@ -18,7 +18,6 @@ use crate::{
     testnet2::{
         encrypted::RecordEncryptionGadgetComponents,
         inner_circuit_gadget::execute_inner_circuit,
-        parameters::SystemParameters,
         record::Record,
         Testnet2Components,
     },
@@ -36,10 +35,8 @@ use std::sync::Arc;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet2Components"))]
 pub struct InnerCircuit<C: Testnet2Components> {
-    // Parameters
-    system_parameters: SystemParameters<C>,
+    // Ledger
     ledger_parameters: Arc<C::MerkleParameters>,
-
     ledger_digest: MerkleTreeDigest<C::MerkleParameters>,
 
     // Inputs for old records.
@@ -71,7 +68,7 @@ pub struct InnerCircuit<C: Testnet2Components> {
 }
 
 impl<C: Testnet2Components> InnerCircuit<C> {
-    pub fn blank(system_parameters: &SystemParameters<C>, ledger_parameters: &Arc<C::MerkleParameters>) -> Self {
+    pub fn blank(ledger_parameters: &Arc<C::MerkleParameters>) -> Self {
         let num_input_records = C::NUM_INPUT_RECORDS;
         let num_output_records = C::NUM_OUTPUT_RECORDS;
         let digest = MerkleTreeDigest::<C::MerkleParameters>::default();
@@ -106,15 +103,11 @@ impl<C: Testnet2Components> InnerCircuit<C> {
         ];
 
         let value_balance = AleoAmount::ZERO;
-
-        let network_id: u8 = 0;
+        let network_id: u8 = C::NETWORK_ID;
 
         Self {
-            // Parameters
-            system_parameters: system_parameters.clone(),
+            // Ledger
             ledger_parameters: ledger_parameters.clone(),
-
-            // Digest
             ledger_digest: digest,
 
             // Input records
@@ -145,11 +138,8 @@ impl<C: Testnet2Components> InnerCircuit<C> {
 
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        // Parameters
-        system_parameters: SystemParameters<C>,
+        // Ledger
         ledger_parameters: Arc<C::MerkleParameters>,
-
-        // Digest
         ledger_digest: MerkleTreeDigest<C::MerkleParameters>,
 
         // Old records
@@ -175,9 +165,7 @@ impl<C: Testnet2Components> InnerCircuit<C> {
         local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
 
         memo: [u8; 32],
-
         value_balance: AleoAmount,
-
         network_id: u8,
     ) -> Self {
         let num_input_records = C::NUM_INPUT_RECORDS;
@@ -211,11 +199,8 @@ impl<C: Testnet2Components> InnerCircuit<C> {
         }
 
         Self {
-            // Parameters
-            system_parameters,
+            // Ledger
             ledger_parameters,
-
-            // Digest
             ledger_digest,
 
             // Input records
@@ -252,10 +237,8 @@ impl<C: Testnet2Components> ConstraintSynthesizer<C::InnerScalarField> for Inner
     ) -> Result<(), SynthesisError> {
         execute_inner_circuit::<C, CS>(
             cs,
-            // Parameters
-            &self.system_parameters,
+            // Ledger
             &self.ledger_parameters,
-            // Digest
             &self.ledger_digest,
             // Old records
             &self.old_records,

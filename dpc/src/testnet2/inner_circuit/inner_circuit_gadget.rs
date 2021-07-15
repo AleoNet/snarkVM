@@ -17,12 +17,7 @@
 use std::ops::Mul;
 
 use crate::{
-    testnet2::{
-        encrypted::RecordEncryptionGadgetComponents,
-        parameters::SystemParameters,
-        record::Record,
-        Testnet2Components,
-    },
+    testnet2::{encrypted::RecordEncryptionGadgetComponents, record::Record, Testnet2Components},
     traits::RecordScheme,
     AleoAmount,
     PrivateKey,
@@ -54,14 +49,13 @@ use snarkvm_gadgets::{
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{from_bits_le_to_bytes_le, to_bytes_le, FromBytes, ToBytes};
 
+use std::sync::Arc;
+
 #[allow(clippy::too_many_arguments)]
 pub fn execute_inner_circuit<C: Testnet2Components, CS: ConstraintSystem<C::InnerScalarField>>(
     cs: &mut CS,
-    // Parameters
-    system_parameters: &SystemParameters<C>,
-    ledger_parameters: &C::MerkleParameters,
-
-    // Digest
+    // Ledger
+    ledger_parameters: &Arc<C::MerkleParameters>,
     ledger_digest: &MerkleTreeDigest<C::MerkleParameters>,
 
     // Old record stuff
@@ -103,10 +97,7 @@ pub fn execute_inner_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Inne
         C::PRFGadget,
     >(
         cs,
-        //
-        system_parameters,
         ledger_parameters,
-        //
         ledger_digest,
         //
         old_records,
@@ -147,12 +138,7 @@ fn inner_circuit_gadget<
     PGadget,
 >(
     cs: &mut CS,
-
-    //
-    system_parameters: &SystemParameters<C>,
     ledger_parameters: &C::MerkleParameters,
-
-    //
     ledger_digest: &MerkleTreeDigest<C::MerkleParameters>,
 
     //
@@ -165,7 +151,6 @@ fn inner_circuit_gadget<
     new_records: &[Record<C>],
     new_sn_nonce_randomness: &[[u8; 32]],
     new_commitments: &[<C::RecordCommitment as CommitmentScheme>::Output],
-
     new_records_encryption_randomness: &[<C::AccountEncryption as EncryptionScheme>::Randomness],
     new_records_encryption_gadget_components: &[RecordEncryptionGadgetComponents<C>],
     new_encrypted_record_hashes: &[<C::EncryptedRecordCRH as CRH>::Output],

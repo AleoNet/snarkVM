@@ -15,12 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet2::{
-        outer_circuit_gadget::execute_outer_circuit,
-        parameters::SystemParameters,
-        program::Execution,
-        Testnet2Components,
-    },
+    testnet2::{outer_circuit_gadget::execute_outer_circuit, program::Execution, Testnet2Components},
     AleoAmount,
 };
 use snarkvm_algorithms::{
@@ -35,8 +30,6 @@ use std::sync::Arc;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet2Components"))]
 pub struct OuterCircuit<C: Testnet2Components> {
-    system_parameters: SystemParameters<C>,
-
     // Inner snark verifier public inputs
     ledger_parameters: Arc<C::MerkleParameters>,
     ledger_digest: MerkleTreeDigest<C::MerkleParameters>,
@@ -61,7 +54,6 @@ pub struct OuterCircuit<C: Testnet2Components> {
 
 impl<C: Testnet2Components> OuterCircuit<C> {
     pub fn blank(
-        system_parameters: SystemParameters<C>,
         ledger_parameters: Arc<C::MerkleParameters>,
         inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
@@ -85,7 +77,6 @@ impl<C: Testnet2Components> OuterCircuit<C> {
         let inner_circuit_id = <C::InnerCircuitIDCRH as CRH>::Output::default();
 
         Self {
-            system_parameters,
             ledger_parameters,
             ledger_digest,
             old_serial_numbers,
@@ -106,8 +97,6 @@ impl<C: Testnet2Components> OuterCircuit<C> {
 
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        system_parameters: SystemParameters<C>,
-
         // Inner SNARK public inputs
         ledger_parameters: Arc<C::MerkleParameters>,
         ledger_digest: MerkleTreeDigest<C::MerkleParameters>,
@@ -137,7 +126,6 @@ impl<C: Testnet2Components> OuterCircuit<C> {
         assert_eq!(C::NUM_OUTPUT_RECORDS, new_encrypted_record_hashes.len());
 
         Self {
-            system_parameters,
             ledger_parameters,
             ledger_digest,
             old_serial_numbers,
@@ -174,7 +162,6 @@ where
     ) -> Result<(), SynthesisError> {
         execute_outer_circuit::<C, CS>(
             cs,
-            &self.system_parameters,
             &self.ledger_parameters,
             &self.ledger_digest,
             &self.old_serial_numbers,

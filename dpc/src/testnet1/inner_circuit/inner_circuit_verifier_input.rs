@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    testnet1::{parameters::SystemParameters, Testnet1Components},
-    AleoAmount,
-};
+use crate::{testnet1::Testnet1Components, AleoAmount};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH},
@@ -29,9 +26,6 @@ use std::sync::Arc;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet1Components"))]
 pub struct InnerCircuitVerifierInput<C: Testnet1Components> {
-    // Commitment, CRH, and signature parameters
-    pub system_parameters: SystemParameters<C>,
-
     // Ledger parameters and digest
     pub ledger_parameters: Arc<C::MerkleParameters>,
     pub ledger_digest: MerkleTreeDigest<C::MerkleParameters>,

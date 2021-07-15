@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_dpc::{
-    testnet1::{instantiated::Components, NoopProgram, SystemParameters, Testnet1Components},
+    testnet1::{instantiated::Components, NoopProgram, Testnet1Components},
     DPCError,
     ProgramScheme,
 };
@@ -30,8 +30,6 @@ use utils::store;
 #[allow(deprecated)]
 pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
-    let system_parameters = SystemParameters::<C>::load()?;
-
     let noop_program = NoopProgram::<C>::setup(rng)?;
     let (proving_key, verifying_key) = noop_program.to_snark_parameters();
     let noop_program_snark_pk = proving_key.to_bytes_le()?;

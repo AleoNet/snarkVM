@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_dpc::{
-    testnet2::{instantiated::Components, parameters::SystemParameters, NoopProgram, Testnet2Components},
+    testnet2::{instantiated::Components, NoopProgram, Testnet2Components},
     DPCError,
     ProgramScheme,
 };
@@ -38,8 +38,6 @@ where
         ToConstraintField<C::OuterScalarField>,
 {
     let rng = &mut thread_rng();
-    let system_parameters = SystemParameters::<C>::load()?;
-
     let noop_program = NoopProgram::<C>::setup(rng)?;
     let (proving_key, verifying_key) = noop_program.to_snark_parameters();
     let noop_program_snark_pk = proving_key.to_bytes_le()?;

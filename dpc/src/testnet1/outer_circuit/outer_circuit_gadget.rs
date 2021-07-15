@@ -17,7 +17,7 @@
 use itertools::Itertools;
 
 use crate::{
-    testnet1::{parameters::SystemParameters, program::Execution, Testnet1Components},
+    testnet1::{program::Execution, Testnet1Components},
     AleoAmount,
 };
 use snarkvm_algorithms::{
@@ -63,8 +63,6 @@ fn field_element_to_bytes<C: Testnet1Components, CS: ConstraintSystem<C::OuterSc
 #[allow(clippy::too_many_arguments)]
 pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::OuterScalarField>>(
     cs: &mut CS,
-    // Parameters
-    system_parameters: &SystemParameters<C>,
 
     // Inner snark verifier public inputs
     ledger_parameters: &C::MerkleParameters,

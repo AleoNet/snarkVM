@@ -106,7 +106,6 @@ pub trait Testnet1Components: DPCComponents {
 ///////////////////////////////////////////////////////////////////////////////
 
 pub struct DPC<C: Testnet1Components> {
-    pub system_parameters: SystemParameters<C>,
     pub noop_program: NoopProgram<C>,
     pub inner_snark_parameters: (
         Option<<C::InnerSNARK as SNARK>::ProvingKey>,
@@ -137,7 +136,6 @@ where
 
     fn setup<R: Rng + CryptoRng>(ledger_parameters: &Arc<C::MerkleParameters>, rng: &mut R) -> anyhow::Result<Self> {
         let setup_time = start_timer!(|| "DPC::setup");
-        let system_parameters = SystemParameters::<C>::setup();
 
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
         let noop_program = NoopProgram::setup(rng)?;
@@ -145,7 +143,7 @@ where
         end_timer!(noop_program_timer);
 
         let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");
-        let inner_circuit = InnerCircuit::blank(&system_parameters, ledger_parameters);
+        let inner_circuit = InnerCircuit::blank(ledger_parameters);
         let inner_snark_parameters = C::InnerSNARK::setup(&inner_circuit, rng)?;
         end_timer!(snark_setup_time);
 
@@ -155,7 +153,6 @@ where
 
         let outer_snark_parameters = C::OuterSNARK::setup(
             &OuterCircuit::blank(
-                system_parameters.clone(),
                 ledger_parameters.clone(),
                 inner_snark_vk,
                 inner_snark_proof,
@@ -167,7 +164,6 @@ where
         end_timer!(setup_time);
 
         Ok(Self {
-            system_parameters,
             noop_program,
             inner_snark_parameters: (Some(inner_snark_parameters.0), inner_snark_parameters.1),
             outer_snark_parameters: (Some(outer_snark_parameters.0), outer_snark_parameters.1),
@@ -176,7 +172,6 @@ where
 
     fn load(verify_only: bool) -> anyhow::Result<Self> {
         let timer = start_timer!(|| "DPC::load");
-        let system_parameters = SystemParameters::<C>::load()?;
         let noop_program = NoopProgram::load()?;
         let inner_snark_parameters = {
             let inner_snark_pk = match verify_only {
@@ -206,7 +201,6 @@ where
         end_timer!(timer);
 
         Ok(Self {
-            system_parameters,
             noop_program,
             inner_snark_parameters,
             outer_snark_parameters,
@@ -474,7 +468,6 @@ where
 
         let inner_proof = {
             let circuit = InnerCircuit::new(
-                self.system_parameters.clone(),
                 ledger.parameters().clone(),
                 ledger_digest.clone(),
                 old_records,
@@ -507,7 +500,6 @@ where
         // Verify that the inner proof passes
         {
             let input = InnerCircuitVerifierInput {
-                system_parameters: self.system_parameters.clone(),
                 ledger_parameters: ledger.parameters().clone(),
                 ledger_digest: ledger_digest.clone(),
                 old_serial_numbers: old_serial_numbers.clone(),
@@ -532,7 +524,6 @@ where
 
         let transaction_proof = {
             let circuit = OuterCircuit::new(
-                self.system_parameters.clone(),
                 ledger.parameters().clone(),
                 ledger_digest.clone(),
                 old_serial_numbers.clone(),
@@ -699,7 +690,6 @@ where
         }
 
         let inner_snark_input = InnerCircuitVerifierInput {
-            system_parameters: self.system_parameters.clone(),
             ledger_parameters: ledger.parameters().clone(),
             ledger_digest: transaction.ledger_digest().clone(),
             old_serial_numbers: transaction.old_serial_numbers().to_vec(),

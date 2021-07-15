@@ -19,14 +19,7 @@ use snarkvm_algorithms::{
     traits::{MerkleParameters, SNARK},
 };
 use snarkvm_dpc::{
-    testnet2::{
-        instantiated::Components,
-        InnerCircuit,
-        NoopProgram,
-        OuterCircuit,
-        SystemParameters,
-        Testnet2Components,
-    },
+    testnet2::{instantiated::Components, InnerCircuit, NoopProgram, OuterCircuit, Testnet2Components},
     DPCError,
     ProgramScheme,
 };
@@ -45,7 +38,6 @@ use utils::store;
 
 pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
-    let system_parameters = SystemParameters::<C>::load()?;
 
     let merkle_tree_hash_parameters: <C::MerkleParameters as MerkleParameters>::H =
         FromBytes::read_le(&LedgerMerkleTreeParameters::load_bytes()?[..])?;
@@ -59,7 +51,7 @@ pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
 
     let inner_snark_proof = C::InnerSNARK::prove(
         &inner_snark_pk,
-        &InnerCircuit::blank(&system_parameters, &ledger_merkle_tree_parameters),
+        &InnerCircuit::blank(&ledger_merkle_tree_parameters),
         rng,
     )?;
 
@@ -67,7 +59,6 @@ pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
 
     let outer_snark_parameters = C::OuterSNARK::setup(
         &OuterCircuit::blank(
-            system_parameters,
             ledger_merkle_tree_parameters,
             inner_snark_vk,
             inner_snark_proof,

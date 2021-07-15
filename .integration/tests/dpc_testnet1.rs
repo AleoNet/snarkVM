@@ -319,7 +319,6 @@ fn test_testnet1_dpc_execute_constraints() {
     let ledger_parameters = Arc::new(CommitmentMerkleParameters::setup("Testnet1CommitmentMerkleParameters"));
 
     let dpc = <Testnet1DPC as DPCScheme<L>>::setup(&ledger_parameters, &mut rng).unwrap();
-    let system_parameters = &dpc.system_parameters;
 
     let alternate_noop_program = NoopProgram::<Components>::setup(&mut rng).unwrap();
 
@@ -481,9 +480,8 @@ fn test_testnet1_dpc_execute_constraints() {
     // Check that the core check constraint system was satisfied.
     let mut inner_circuit_cs = TestConstraintSystem::<Fr>::new();
 
-    execute_inner_circuit::<_, _>(
+    execute_inner_circuit(
         &mut inner_circuit_cs.ns(|| "Inner circuit"),
-        &system_parameters,
         ledger.parameters(),
         &ledger_digest,
         &old_records,
@@ -524,11 +522,9 @@ fn test_testnet1_dpc_execute_constraints() {
     assert!(inner_circuit_cs.is_satisfied());
 
     // Generate inner snark parameters and proof for verification in the outer snark
-    let inner_snark_parameters = <Components as Testnet1Components>::InnerSNARK::setup(
-        &InnerCircuit::blank(&system_parameters, ledger.parameters()),
-        &mut rng,
-    )
-    .unwrap();
+    let inner_snark_parameters =
+        <Components as Testnet1Components>::InnerSNARK::setup(&InnerCircuit::blank(ledger.parameters()), &mut rng)
+            .unwrap();
 
     let inner_snark_vk: <<Components as Testnet1Components>::InnerSNARK as SNARK>::VerifyingKey =
         inner_snark_parameters.1.clone().into();
@@ -540,7 +536,6 @@ fn test_testnet1_dpc_execute_constraints() {
     let inner_snark_proof = <Components as Testnet1Components>::InnerSNARK::prove(
         &inner_snark_parameters.0,
         &InnerCircuit::new(
-            system_parameters.clone(),
             ledger.parameters().clone(),
             ledger_digest,
             old_records,
@@ -568,10 +563,9 @@ fn test_testnet1_dpc_execute_constraints() {
     // Check that the proof check constraint system was satisfied.
     let mut outer_circuit_cs = TestConstraintSystem::<Fq>::new();
 
-    execute_outer_circuit::<_, _>(
+    execute_outer_circuit::<Components, _>(
         &mut outer_circuit_cs.ns(|| "Outer circuit"),
-        &system_parameters,
-        ledger.parameters(),
+        &ledger.parameters(),
         &ledger_digest,
         &old_serial_numbers,
         &new_commitments,
