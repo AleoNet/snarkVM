@@ -194,7 +194,7 @@ where
         let merkle_path = value_gen()?.borrow().clone();
 
         let mut traversal = vec![];
-        for (i, position) in pos_list.iter().enumerate() {
+        for (i, position) in merkle_path.position_list().enumerate() {
             traversal.push(Boolean::alloc_input(
                 cs.ns(|| format!("alloc_input_position_{}", i)),
                 || Ok(position),
