@@ -24,20 +24,10 @@ use std::io::Result as IoResult;
 pub struct SystemParameters<C: Testnet1Components> {
     pub program_verification_key_commitment: C::ProgramVerificationKeyCommitment,
     pub program_verification_key_crh: C::ProgramVerificationKeyCRH,
-    pub local_data_crh: C::LocalDataCRH,
-    pub local_data_commitment: C::LocalDataCommitment,
 }
 
 impl<C: Testnet1Components> SystemParameters<C> {
     pub fn setup() -> Self {
-        let time = start_timer!(|| "Local data commitment setup");
-        let local_data_commitment = C::LocalDataCommitment::setup("LocalDataCommitment");
-        end_timer!(time);
-
-        let time = start_timer!(|| "Local data CRH setup");
-        let local_data_crh = C::LocalDataCRH::setup("LocalDataCRH");
-        end_timer!(time);
-
         let time = start_timer!(|| "Program verifying key CRH setup");
         let program_verification_key_crh = C::ProgramVerificationKeyCRH::setup("ProgramVerificationKeyCRH");
         end_timer!(time);
@@ -48,8 +38,6 @@ impl<C: Testnet1Components> SystemParameters<C> {
         end_timer!(time);
 
         Self {
-            local_data_crh,
-            local_data_commitment,
             program_verification_key_commitment,
             program_verification_key_crh,
         }

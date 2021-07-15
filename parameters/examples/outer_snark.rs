@@ -63,10 +63,7 @@ pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
         rng,
     )?;
 
-    let noop_program = NoopProgram::<C>::load(
-        &system_parameters.local_data_commitment,
-        &system_parameters.program_verification_key_crh,
-    )?;
+    let noop_program = NoopProgram::<C>::load(&system_parameters.program_verification_key_crh)?;
 
     let outer_snark_parameters = C::OuterSNARK::setup(
         &OuterCircuit::blank(

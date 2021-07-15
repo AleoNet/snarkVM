@@ -79,7 +79,7 @@ where
                 .program_verification_key_commitment
                 .to_field_elements()?,
         );
-        v.extend_from_slice(&self.system_parameters.local_data_crh.to_field_elements()?);
+        v.extend_from_slice(&C::local_data_crh().to_field_elements()?);
         v.extend_from_slice(&C::serial_number_nonce_crh().to_field_elements()?);
 
         v.extend_from_slice(&self.ledger_parameters.crh().parameters().to_field_elements()?);

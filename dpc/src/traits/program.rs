@@ -33,16 +33,12 @@ pub trait ProgramScheme: Clone {
 
     /// Initializes a new instance of a program.
     fn setup<R: Rng + CryptoRng>(
-        local_data_commitment: &Self::LocalDataCommitment,
         program_verifying_key_crh: &Self::ProgramVerifyingKeyCRH,
         rng: &mut R,
     ) -> Result<Self, ProgramError>;
 
     /// Loads an instance of a program.
-    fn load(
-        local_data_commitment: &Self::LocalDataCommitment,
-        program_verifying_key_crh: &Self::ProgramVerifyingKeyCRH,
-    ) -> Result<Self, ProgramError>;
+    fn load(program_verifying_key_crh: &Self::ProgramVerifyingKeyCRH) -> Result<Self, ProgramError>;
 
     /// Returns the execution of the program.
     fn execute<R: Rng + CryptoRng>(

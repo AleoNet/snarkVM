@@ -16,7 +16,7 @@
 
 use crate::{
     prelude::*,
-    testnet2::{EncryptedRecord, LocalData, Record, SystemParameters, Testnet2Components, Transaction},
+    testnet2::{EncryptedRecord, LocalData, Record, Testnet2Components, Transaction},
 };
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, prelude::*};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
@@ -146,8 +146,6 @@ impl<C: Testnet2Components> ToBytes for TransactionKernel<C> {
 impl<C: Testnet2Components> FromBytes for TransactionKernel<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let system_parameters = SystemParameters::<C>::load().expect("Could not load system parameters");
-
         // Read old record components
 
         let mut old_records = vec![];
@@ -217,7 +215,7 @@ impl<C: Testnet2Components> FromBytes for TransactionKernel<C> {
 
         let local_data_merkle_tree = CommitmentMerkleTree::<C::LocalDataCommitment, C::LocalDataCRH>::from_bytes(
             &mut reader,
-            system_parameters.local_data_crh.clone(),
+            C::local_data_crh().clone(),
         )
         .expect("Could not load local data merkle tree");
 

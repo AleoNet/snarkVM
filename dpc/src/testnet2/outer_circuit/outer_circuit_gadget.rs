@@ -157,13 +157,11 @@ where
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let local_data_crh_parameters_fe = system_parameters
-        .local_data_crh
+    let local_data_crh_parameters_fe = C::local_data_crh()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let local_data_commitment_parameters_fe = system_parameters
-        .local_data_commitment
+    let local_data_commitment_parameters_fe = C::local_data_commitment()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 

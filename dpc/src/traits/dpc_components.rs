@@ -48,26 +48,26 @@ pub trait DPCComponents: 'static + Sized {
     type EncryptedRecordCRH: CRH + ToConstraintField<Self::InnerScalarField>;
     type EncryptedRecordCRHGadget: CRHGadget<Self::EncryptedRecordCRH, Self::InnerScalarField>;
 
-    /// CRH for hash of the `Self::InnerSNARK` verification keys.
+    /// CRH for hash of the `Self::InnerSNARK` verifying keys.
     /// This is invoked only on the larger curve.
     type InnerCircuitIDCRH: CRH;
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
 
     /// CRH and commitment scheme for committing to program input. Invoked inside
     /// `Self::InnerSNARK` and every program SNARK.
-    type LocalDataCRH: CRH + ToConstraintField<Self::InnerScalarField>;
-    type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
     type LocalDataCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
     type LocalDataCommitmentGadget: CommitmentGadget<Self::LocalDataCommitment, Self::InnerScalarField>;
+    type LocalDataCRH: CRH + ToConstraintField<Self::InnerScalarField>;
+    type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
 
-    /// CRH for hashes of birth and death verification keys.
+    /// CRH for hashes of birth and death verifying keys.
     /// This is invoked only on the larger curve.
     type ProgramVerificationKeyCRH: CRH;
     type ProgramVerificationKeyCRHGadget: CRHGadget<Self::ProgramVerificationKeyCRH, Self::OuterScalarField>;
 
-    /// Commitment scheme for committing to hashes of birth and death verification keys.
+    /// Commitment scheme for committing to hashes of birth and death verifying keys.
     type ProgramVerificationKeyCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
-    /// Used to commit to hashes of verification keys on the smaller curve and to decommit hashes
+    /// Used to commit to hashes of verifying keys on the smaller curve and to decommit hashes
     /// of verification keys on the larger curve
     type ProgramVerificationKeyCommitmentGadget: CommitmentGadget<Self::ProgramVerificationKeyCommitment, Self::InnerScalarField>
         + CommitmentGadget<Self::ProgramVerificationKeyCommitment, Self::OuterScalarField>;
@@ -93,6 +93,10 @@ pub trait DPCComponents: 'static + Sized {
     fn encrypted_record_crh() -> &'static Self::EncryptedRecordCRH;
 
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
+
+    fn local_data_commitment() -> &'static Self::LocalDataCommitment;
+
+    fn local_data_crh() -> &'static Self::LocalDataCRH;
 
     fn record_commitment() -> &'static Self::RecordCommitment;
 

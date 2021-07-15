@@ -167,11 +167,7 @@ where
         let system_parameters = SystemParameters::<C>::setup();
 
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
-        let noop_program = NoopProgram::setup(
-            &system_parameters.local_data_commitment,
-            &system_parameters.program_verification_key_crh,
-            rng,
-        )?;
+        let noop_program = NoopProgram::setup(&system_parameters.program_verification_key_crh, rng)?;
         let noop_program_execution = noop_program.execute_blank(rng)?;
         end_timer!(noop_program_timer);
 
@@ -208,10 +204,7 @@ where
     fn load(verify_only: bool) -> anyhow::Result<Self> {
         let timer = start_timer!(|| "DPC::load");
         let system_parameters = SystemParameters::<C>::load()?;
-        let noop_program = NoopProgram::load(
-            &system_parameters.local_data_commitment,
-            &system_parameters.program_verification_key_crh,
-        )?;
+        let noop_program = NoopProgram::load(&system_parameters.program_verification_key_crh)?;
         let inner_snark_parameters = {
             let inner_snark_pk = match verify_only {
                 true => None,
@@ -331,11 +324,7 @@ where
             ]?;
 
             let commitment_randomness = <C::LocalDataCommitment as CommitmentScheme>::Randomness::rand(rng);
-            let commitment = C::LocalDataCommitment::commit(
-                &self.system_parameters.local_data_commitment,
-                &input_bytes,
-                &commitment_randomness,
-            )?;
+            let commitment = C::local_data_commitment().commit(&input_bytes, &commitment_randomness)?;
 
             old_record_commitments.push(commitment);
             local_data_commitment_randomizers.push(commitment_randomness);
@@ -346,11 +335,7 @@ where
             let input_bytes = to_bytes_le![record.commitment(), memorandum, C::NETWORK_ID]?;
 
             let commitment_randomness = <C::LocalDataCommitment as CommitmentScheme>::Randomness::rand(rng);
-            let commitment = C::LocalDataCommitment::commit(
-                &self.system_parameters.local_data_commitment,
-                &input_bytes,
-                &commitment_randomness,
-            )?;
+            let commitment = C::local_data_commitment().commit(&input_bytes, &commitment_randomness)?;
 
             new_record_commitments.push(commitment);
             local_data_commitment_randomizers.push(commitment_randomness);
@@ -362,7 +347,7 @@ where
             new_record_commitments[0].clone(),
             new_record_commitments[1].clone(),
         ];
-        let local_data_merkle_tree = CommitmentMerkleTree::new(self.system_parameters.local_data_crh.clone(), &leaves)?;
+        let local_data_merkle_tree = CommitmentMerkleTree::new(C::local_data_crh().clone(), &leaves)?;
 
         end_timer!(local_data_merkle_tree_timer);
 

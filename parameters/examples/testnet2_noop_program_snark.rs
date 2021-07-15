@@ -40,11 +40,7 @@ where
     let rng = &mut thread_rng();
     let system_parameters = SystemParameters::<C>::load()?;
 
-    let noop_program = NoopProgram::<C>::setup(
-        &system_parameters.local_data_commitment,
-        &system_parameters.program_verification_key_crh,
-        rng,
-    )?;
+    let noop_program = NoopProgram::<C>::setup(&system_parameters.program_verification_key_crh, rng)?;
     let (proving_key, verifying_key) = noop_program.to_snark_parameters();
     let noop_program_snark_pk = proving_key.to_bytes_le()?;
     let noop_program_snark_vk = verifying_key.to_bytes_le()?;

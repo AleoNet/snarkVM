@@ -39,12 +39,8 @@ fn test_record_serialization() {
         // Generate parameters for the ledger, commitment schemes, CRH, and the
         // "always-accept" program.
         let system_parameters = SystemParameters::<Components>::setup();
-        let noop_program = NoopProgram::<Components>::setup(
-            &system_parameters.local_data_commitment,
-            &system_parameters.program_verification_key_crh,
-            &mut rng,
-        )
-        .unwrap();
+        let noop_program =
+            NoopProgram::<Components>::setup(&system_parameters.program_verification_key_crh, &mut rng).unwrap();
 
         for _ in 0..ITERATIONS {
             let dummy_account = Account::<Components>::new(&mut rng).unwrap();
@@ -91,12 +87,8 @@ fn test_record_encryption() {
         // Generate parameters for the ledger, commitment schemes, CRH, and the
         // "always-accept" program.
         let system_parameters = SystemParameters::<Components>::setup();
-        let noop_program = NoopProgram::<Components>::setup(
-            &system_parameters.local_data_commitment,
-            &system_parameters.program_verification_key_crh,
-            &mut rng,
-        )
-        .unwrap();
+        let noop_program =
+            NoopProgram::<Components>::setup(&system_parameters.program_verification_key_crh, &mut rng).unwrap();
 
         for _ in 0..ITERATIONS {
             let dummy_account = Account::<Components>::new(&mut rng).unwrap();
