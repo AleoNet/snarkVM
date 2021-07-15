@@ -360,8 +360,8 @@ where
             for id in new_birth_program_ids {
                 input.extend_from_slice(&id);
             }
-            let program_randomness = <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness::rand(rng);
-            let program_commitment = C::ProgramVerificationKeyCommitment::commit(
+            let program_randomness = <C::ProgramIDCommitment as CommitmentScheme>::Randomness::rand(rng);
+            let program_commitment = C::ProgramIDCommitment::commit(
                 &self.system_parameters.program_verification_key_commitment,
                 &input,
                 &program_randomness,

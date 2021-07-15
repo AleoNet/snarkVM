@@ -59,8 +59,8 @@ pub struct InnerCircuit<C: Testnet1Components> {
     new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
 
     // Commitment to Programs and to local data.
-    program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
-    program_randomness: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
+    program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
+    program_randomness: <C::ProgramIDCommitment as CommitmentScheme>::Randomness,
 
     local_data_root: <C::LocalDataCRH as CRH>::Output,
     local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
@@ -96,8 +96,8 @@ impl<C: Testnet1Components> InnerCircuit<C> {
 
         let memo = [0u8; 32];
 
-        let program_commitment = <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output::default();
-        let program_randomness = <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness::default();
+        let program_commitment = <C::ProgramIDCommitment as CommitmentScheme>::Output::default();
+        let program_randomness = <C::ProgramIDCommitment as CommitmentScheme>::Randomness::default();
 
         let local_data_root = <C::LocalDataCRH as CRH>::Output::default();
         let local_data_commitment_randomizers = vec![
@@ -168,8 +168,8 @@ impl<C: Testnet1Components> InnerCircuit<C> {
         new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
 
         // Other stuff
-        program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
-        program_randomness: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
+        program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
+        program_randomness: <C::ProgramIDCommitment as CommitmentScheme>::Randomness,
 
         local_data_root: <C::LocalDataCRH as CRH>::Output,
         local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,

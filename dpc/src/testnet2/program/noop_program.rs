@@ -47,7 +47,7 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
     type ID = Vec<u8>;
     type LocalData = LocalData<C>;
     type LocalDataCommitment = C::LocalDataCommitment;
-    type ProgramVerifyingKeyCRH = C::ProgramVerificationKeyCRH;
+    type ProgramIDCRH = C::ProgramIDCRH;
     type ProofSystem = <C as Testnet2Components>::NoopProgramSNARK;
     type ProvingKey = <Self::ProofSystem as SNARK>::ProvingKey;
     type PublicInput = ();
@@ -55,7 +55,7 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
 
     /// Initializes a new instance of the noop program.
     fn setup<R: Rng + CryptoRng>(
-        program_verifying_key_crh: &Self::ProgramVerifyingKeyCRH,
+        program_verifying_key_crh: &Self::ProgramIDCRH,
         rng: &mut R,
     ) -> Result<Self, ProgramError> {
         let universal_srs: UniversalSRS<C::InnerScalarField, C::PolynomialCommitment> =
@@ -66,7 +66,7 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
         let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
 
         // Compute the program ID.
-        let id = to_bytes_le![<C as DPCComponents>::ProgramVerificationKeyCRH::hash(
+        let id = to_bytes_le![<C as DPCComponents>::ProgramIDCRH::hash(
             program_verifying_key_crh,
             &to_bytes_le![verifying_key]?
         )?]?;
@@ -80,7 +80,7 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
 
     // TODO (howardwu): Why are we not preparing the VK here?
     /// Loads an instance of the noop program.
-    fn load(program_verifying_key_crh: &Self::ProgramVerifyingKeyCRH) -> Result<Self, ProgramError> {
+    fn load(program_verifying_key_crh: &Self::ProgramIDCRH) -> Result<Self, ProgramError> {
         let proving_key: <Self::ProofSystem as SNARK>::ProvingKey =
             FromBytes::read_le(NoopProgramSNARKPKParameters::load_bytes()?.as_slice())?;
         let verifying_key = <Self::ProofSystem as SNARK>::VerifyingKey::read_le(
@@ -88,7 +88,7 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
         )?;
 
         // Compute the program ID.
-        let program_id = to_bytes_le![<C as DPCComponents>::ProgramVerificationKeyCRH::hash(
+        let program_id = to_bytes_le![<C as DPCComponents>::ProgramIDCRH::hash(
             program_verifying_key_crh,
             &to_bytes_le![verifying_key]?
         )?]?;

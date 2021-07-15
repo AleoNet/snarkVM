@@ -124,11 +124,11 @@ impl DPCComponents for Components {
     type PRF = Blake2s;
     type PRFGadget = Blake2sGadget;
     
-    type ProgramVerificationKeyCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBW6, 4096, 80>;
-    type ProgramVerificationKeyCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 4096, 80>;
+    type ProgramIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBW6, 4096, 80>;
+    type ProgramIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 4096, 80>;
     
-    type ProgramVerificationKeyCommitment = Blake2sCommitment;
-    type ProgramVerificationKeyCommitmentGadget = Blake2sCommitmentGadget;
+    type ProgramIDCommitment = Blake2sCommitment;
+    type ProgramIDCommitmentGadget = Blake2sCommitmentGadget;
     
     type RecordCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 233>;
     type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 233>;

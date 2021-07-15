@@ -88,8 +88,8 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
     program_proofs: &[Execution],
 
     // Rest
-    program_commitment: &<C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
-    program_randomness: &<C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
+    program_commitment: &<C::ProgramIDCommitment as CommitmentScheme>::Output,
+    program_randomness: &<C::ProgramIDCommitment as CommitmentScheme>::Randomness,
     local_data_root: &<C::LocalDataCRH as CRH>::Output,
 
     inner_circuit_id: &<C::InnerCircuitIDCRH as CRH>::Output,
@@ -99,7 +99,7 @@ where
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
     <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
     <C::MerkleParameters as MerkleParameters>::H: ToConstraintField<C::InnerScalarField>,
     MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerScalarField>,
@@ -108,15 +108,15 @@ where
     let (program_vk_commitment_parameters, program_vk_crh, inner_circuit_id_crh) = {
         let cs = &mut cs.ns(|| "Declare Comm and CRH parameters");
 
-        let program_vk_commitment_parameters = C::ProgramVerificationKeyCommitmentGadget::alloc_input(
+        let program_vk_commitment_parameters = C::ProgramIDCommitmentGadget::alloc_input(
             &mut cs.ns(|| "Declare program_vk_commitment_parameters"),
             || Ok(system_parameters.program_verification_key_commitment.clone()),
         )?;
 
-        let program_vk_crh = C::ProgramVerificationKeyCRHGadget::alloc_input(
-            &mut cs.ns(|| "Declare program_vk_crh_parameters"),
-            || Ok(system_parameters.program_verification_key_crh.clone()),
-        )?;
+        let program_vk_crh =
+            C::ProgramIDCRHGadget::alloc_input(&mut cs.ns(|| "Declare program_vk_crh_parameters"), || {
+                Ok(system_parameters.program_verification_key_crh.clone())
+            })?;
 
         let inner_circuit_id_crh =
             C::InnerCircuitIDCRHGadget::alloc_input(&mut cs.ns(|| "Declare inner_circuit_id_crh_parameters"), || {
@@ -477,20 +477,17 @@ where
             input.extend_from_slice(&id);
         }
 
-        let given_commitment_randomness = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<
-            _,
-            C::OuterScalarField,
-        >>::RandomnessGadget::alloc(
-            &mut commitment_cs.ns(|| "Commitment randomness"),
-            || Ok(program_randomness),
-        )?;
+        let given_commitment_randomness =
+            <C::ProgramIDCommitmentGadget as CommitmentGadget<_, C::OuterScalarField>>::RandomnessGadget::alloc(
+                &mut commitment_cs.ns(|| "Commitment randomness"),
+                || Ok(program_randomness),
+            )?;
 
-        let given_commitment = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<
-            _,
-            C::OuterScalarField,
-        >>::OutputGadget::alloc_input(
-            &mut commitment_cs.ns(|| "Commitment output"), || Ok(program_commitment)
-        )?;
+        let given_commitment =
+            <C::ProgramIDCommitmentGadget as CommitmentGadget<_, C::OuterScalarField>>::OutputGadget::alloc_input(
+                &mut commitment_cs.ns(|| "Commitment output"),
+                || Ok(program_commitment),
+            )?;
 
         let candidate_commitment = program_vk_commitment_parameters.check_commitment_gadget(
             &mut commitment_cs.ns(|| "Compute commitment"),

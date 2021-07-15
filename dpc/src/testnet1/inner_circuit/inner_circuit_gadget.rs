@@ -80,8 +80,8 @@ pub fn execute_inner_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Inne
     new_encrypted_record_hashes: &[<C::EncryptedRecordCRH as CRH>::Output],
 
     // Rest
-    program_commitment: &<C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
-    program_randomness: &<C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
+    program_commitment: &<C::ProgramIDCommitment as CommitmentScheme>::Output,
+    program_randomness: &<C::ProgramIDCommitment as CommitmentScheme>::Randomness,
     local_data_root: &<C::LocalDataCRH as CRH>::Output,
     local_data_commitment_randomizers: &[<C::LocalDataCommitment as CommitmentScheme>::Randomness],
     memo: &[u8; 32],
@@ -171,8 +171,8 @@ fn inner_circuit_gadget<
     new_encrypted_record_hashes: &[<C::EncryptedRecordCRH as CRH>::Output],
 
     //
-    program_commitment: &<C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
-    program_randomness: &<C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
+    program_commitment: &<C::ProgramIDCommitment as CommitmentScheme>::Output,
+    program_randomness: &<C::ProgramIDCommitment as CommitmentScheme>::Randomness,
     local_data_root: &<C::LocalDataCRH as CRH>::Output,
     local_data_commitment_randomizers: &[<C::LocalDataCommitment as CommitmentScheme>::Randomness],
     memo: &[u8; 32],
@@ -264,7 +264,7 @@ where
         )?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
-        let program_vk_commitment_parameters = C::ProgramVerificationKeyCommitmentGadget::alloc_input(
+        let program_vk_commitment_parameters = C::ProgramIDCommitmentGadget::alloc_input(
             &mut cs.ns(|| "Declare program vk commitment parameters"),
             || Ok(system_parameters.program_verification_key_commitment.clone()),
         )?;
@@ -1184,20 +1184,17 @@ where
             input.extend_from_slice(id_gadget);
         }
 
-        let given_commitment_randomness = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<
-            _,
-            C::InnerScalarField,
-        >>::RandomnessGadget::alloc(
-            &mut commitment_cs.ns(|| "given_commitment_randomness"),
-            || Ok(program_randomness),
-        )?;
+        let given_commitment_randomness =
+            <C::ProgramIDCommitmentGadget as CommitmentGadget<_, C::InnerScalarField>>::RandomnessGadget::alloc(
+                &mut commitment_cs.ns(|| "given_commitment_randomness"),
+                || Ok(program_randomness),
+            )?;
 
-        let given_commitment = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<
-            _,
-            C::InnerScalarField,
-        >>::OutputGadget::alloc_input(
-            &mut commitment_cs.ns(|| "given_commitment"), || Ok(program_commitment)
-        )?;
+        let given_commitment =
+            <C::ProgramIDCommitmentGadget as CommitmentGadget<_, C::InnerScalarField>>::OutputGadget::alloc_input(
+                &mut commitment_cs.ns(|| "given_commitment"),
+                || Ok(program_commitment),
+            )?;
 
         let candidate_commitment = program_vk_commitment_parameters.check_commitment_gadget(
             &mut commitment_cs.ns(|| "candidate_commitment"),

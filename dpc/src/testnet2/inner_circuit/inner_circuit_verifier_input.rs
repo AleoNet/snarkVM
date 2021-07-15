@@ -46,7 +46,7 @@ pub struct InnerCircuitVerifierInput<C: Testnet2Components> {
     pub new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
 
     // Program input commitment and local data root
-    pub program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
+    pub program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
     pub local_data_root: <C::LocalDataCRH as CRH>::Output,
 
     pub memo: [u8; 32],
@@ -60,7 +60,7 @@ where
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
     <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
     <<C::MerkleParameters as MerkleParameters>::H as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
     MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerScalarField>,

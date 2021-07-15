@@ -50,9 +50,9 @@ pub struct Record<C: Testnet1Components> {
     pub(crate) value: u64,
     pub(crate) payload: Payload,
 
-    #[derivative(Default(value = "default_program_id::<C::ProgramVerificationKeyCRH>()"))]
+    #[derivative(Default(value = "default_program_id::<C::ProgramIDCRH>()"))]
     pub(crate) birth_program_id: Vec<u8>,
-    #[derivative(Default(value = "default_program_id::<C::ProgramVerificationKeyCRH>()"))]
+    #[derivative(Default(value = "default_program_id::<C::ProgramIDCRH>()"))]
     pub(crate) death_program_id: Vec<u8>,
 
     pub(crate) serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,

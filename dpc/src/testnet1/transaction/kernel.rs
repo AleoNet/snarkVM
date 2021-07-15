@@ -54,8 +54,8 @@ pub struct TransactionKernel<C: Testnet1Components> {
     pub new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
 
     // Program and local data root and randomness
-    pub program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
-    pub program_randomness: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
+    pub program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
+    pub program_randomness: <C::ProgramIDCommitment as CommitmentScheme>::Randomness,
 
     pub local_data_merkle_tree: CommitmentMerkleTree<C::LocalDataCommitment, C::LocalDataCRH>,
     pub local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
@@ -208,9 +208,8 @@ impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
 
         // Read transaction components
 
-        let program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output =
-            FromBytes::read_le(&mut reader)?;
-        let program_randomness: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness =
+        let program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output = FromBytes::read_le(&mut reader)?;
+        let program_randomness: <C::ProgramIDCommitment as CommitmentScheme>::Randomness =
             FromBytes::read_le(&mut reader)?;
 
         let local_data_merkle_tree = CommitmentMerkleTree::<C::LocalDataCommitment, C::LocalDataCRH>::from_bytes(

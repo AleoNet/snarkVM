@@ -62,15 +62,15 @@ pub trait DPCComponents: 'static + Sized {
 
     /// CRH for hashes of birth and death verifying keys.
     /// This is invoked only on the larger curve.
-    type ProgramVerificationKeyCRH: CRH;
-    type ProgramVerificationKeyCRHGadget: CRHGadget<Self::ProgramVerificationKeyCRH, Self::OuterScalarField>;
+    type ProgramIDCRH: CRH;
+    type ProgramIDCRHGadget: CRHGadget<Self::ProgramIDCRH, Self::OuterScalarField>;
 
     /// Commitment scheme for committing to hashes of birth and death verifying keys.
-    type ProgramVerificationKeyCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
+    type ProgramIDCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
     /// Used to commit to hashes of verifying keys on the smaller curve and to decommit hashes
     /// of verification keys on the larger curve
-    type ProgramVerificationKeyCommitmentGadget: CommitmentGadget<Self::ProgramVerificationKeyCommitment, Self::InnerScalarField>
-        + CommitmentGadget<Self::ProgramVerificationKeyCommitment, Self::OuterScalarField>;
+    type ProgramIDCommitmentGadget: CommitmentGadget<Self::ProgramIDCommitment, Self::InnerScalarField>
+        + CommitmentGadget<Self::ProgramIDCommitment, Self::OuterScalarField>;
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
     type PRF: PRF;

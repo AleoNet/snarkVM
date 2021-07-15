@@ -28,19 +28,18 @@ use std::io::Result as IoResult;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet2Components"))]
 pub struct SystemParameters<C: Testnet2Components> {
-    pub program_verification_key_commitment: C::ProgramVerificationKeyCommitment,
-    pub program_verification_key_crh: C::ProgramVerificationKeyCRH,
+    pub program_verification_key_commitment: C::ProgramIDCommitment,
+    pub program_verification_key_crh: C::ProgramIDCRH,
 }
 
 impl<C: Testnet2Components> SystemParameters<C> {
     pub fn setup() -> Self {
         let time = start_timer!(|| "Program verifying key CRH setup");
-        let program_verification_key_crh = C::ProgramVerificationKeyCRH::setup("ProgramVerificationKeyCRH");
+        let program_verification_key_crh = C::ProgramIDCRH::setup("ProgramVerificationKeyCRH");
         end_timer!(time);
 
         let time = start_timer!(|| "Program verification key commitment setup");
-        let program_verification_key_commitment =
-            C::ProgramVerificationKeyCommitment::setup("ProgramVerificationKeyCommitment");
+        let program_verification_key_commitment = C::ProgramIDCommitment::setup("ProgramVerificationKeyCommitment");
         end_timer!(time);
 
         Self {
