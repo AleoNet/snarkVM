@@ -34,11 +34,10 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     for PoseidonCryptoHashGadget<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {
     type OutputGadget = FpGadget<F>;
-    type ParametersGadget = PoseidonSpongeGadget<F>;
 
     fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
+        &self,
         mut cs: CS,
-        _parameters: &Self::ParametersGadget,
         input: Vec<UInt8>,
     ) -> Result<Self::OutputGadget, SynthesisError> {
         let params = F::get_default_poseidon_parameters(RATE, OPTIMIZED_FOR_WEIGHTS).unwrap();

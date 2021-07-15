@@ -333,3 +333,34 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
         Ok(res[0].clone())
     }
 }
+
+impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
+    AllocGadget<PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>, F>
+    for PoseidonCryptoHashGadget<F, RATE, OPTIMIZED_FOR_WEIGHTS>
+{
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>>,
+        CS: ConstraintSystem<F>,
+    >(
+        _cs: CS,
+        _f: Fn,
+    ) -> Result<Self, SynthesisError> {
+        Ok(Self {
+            field_phantom: PhantomData,
+        })
+    }
+
+    fn alloc_input<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>>,
+        CS: ConstraintSystem<F>,
+    >(
+        _cs: CS,
+        _f: Fn,
+    ) -> Result<Self, SynthesisError> {
+        Ok(Self {
+            field_phantom: PhantomData,
+        })
+    }
+}
