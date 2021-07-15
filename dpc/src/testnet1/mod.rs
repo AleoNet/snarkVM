@@ -45,9 +45,6 @@ pub use inner_circuit::*;
 pub mod outer_circuit;
 pub use outer_circuit::*;
 
-pub mod parameters;
-pub use parameters::*;
-
 pub mod program;
 pub use program::*;
 

@@ -26,21 +26,6 @@ use std::io::Result as IoResult;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet2Components"))]
-pub struct SystemParameters<C: Testnet2Components>(std::marker::PhantomData<C>);
-
-impl<C: Testnet2Components> SystemParameters<C> {
-    pub fn setup() -> Self {
-        Self(std::marker::PhantomData)
-    }
-
-    /// TODO (howardwu): TEMPORARY FOR PR #251.
-    pub fn load() -> IoResult<Self> {
-        Ok(Self::setup())
-    }
-}
-
-#[derive(Derivative)]
-#[derivative(Clone(bound = "C: Testnet2Components"))]
 pub struct ProgramSNARKUniversalSRS<C: Testnet2Components>(
     pub UniversalSRS<C::InnerScalarField, C::PolynomialCommitment>,
 );
