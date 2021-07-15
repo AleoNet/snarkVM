@@ -116,6 +116,6 @@ pub trait DPCComponents: 'static + Sized {
 
     fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
 
-    // TODO (howardwu): Deprecate this with a ledger rearchitecture.
+    // TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
     fn ledger_merkle_tree_parameters() -> &'static Self::LedgerMerkleTreeParameters;
 }
