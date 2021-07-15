@@ -29,7 +29,7 @@ use crate::{
     integers::uint::UInt8,
     traits::{
         alloc::AllocGadget,
-        curves::{CompressedGroupGadget, GroupGadget},
+        curves::{CompressedGroupGadget, CurveGadget, GroupGadget},
         eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         fields::FieldGadget,
         select::CondSelectGadget,
@@ -1072,6 +1072,11 @@ mod projective_impl {
         fn cost_of_double() -> usize {
             4 + FG::cost_of_mul()
         }
+    }
+
+    impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> CurveGadget<TEProjective<P>, F>
+        for AffineGadget<P, F, FG>
+    {
     }
 
     impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>>

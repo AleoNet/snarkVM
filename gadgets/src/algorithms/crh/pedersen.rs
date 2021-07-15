@@ -20,7 +20,7 @@ use crate::{
     traits::{
         algorithms::{CRHGadget, MaskedCRHGadget},
         alloc::AllocGadget,
-        curves::GroupGadget,
+        curves::CurveGadget,
         integers::Integer,
     },
 };
@@ -35,7 +35,7 @@ use std::{borrow::Borrow, marker::PhantomData};
 pub struct PedersenCRHGadget<
     G: ProjectiveCurve,
     F: Field,
-    GG: GroupGadget<G, F>,
+    GG: CurveGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
 > {
@@ -45,7 +45,7 @@ pub struct PedersenCRHGadget<
 }
 
 // TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
-impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<G: ProjectiveCurve, F: Field, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     AllocGadget<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for PedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc<
@@ -79,7 +79,7 @@ impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>, const NUM_WINDOWS: usi
     }
 }
 
-impl<F: Field, G: ProjectiveCurve, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<F: Field, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     CRHGadget<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for PedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     type OutputGadget = GG;
@@ -104,7 +104,7 @@ fn pad_input_and_bitify<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(inpu
     padded_input.into_iter().flat_map(|byte| byte.to_bits_le()).collect()
 }
 
-impl<F: PrimeField, G: ProjectiveCurve, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     MaskedCRHGadget<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {

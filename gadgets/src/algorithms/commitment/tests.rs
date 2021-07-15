@@ -24,10 +24,7 @@ use snarkvm_algorithms::{
     commitment::{Blake2sCommitment, PedersenCommitment},
     traits::CommitmentScheme,
 };
-use snarkvm_curves::{
-    edwards_bls12::{EdwardsProjective, Fq, Fr},
-    traits::ProjectiveCurve,
-};
+use snarkvm_curves::edwards_bls12::{EdwardsProjective, Fq, Fr};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::rand::UniformRand;
 
@@ -106,7 +103,7 @@ fn pedersen_commitment_gadget_test() {
         .check_commitment_gadget(&mut cs.ns(|| "commitment_gadget"), &input_bytes, &randomness_gadget)
         .unwrap();
 
-    let native_output = native_output.into_affine();
+    let native_output = native_output;
     assert_eq!(native_output.x, output_gadget.x.get_value().unwrap());
     assert_eq!(native_output.y, output_gadget.y.get_value().unwrap());
     assert!(cs.is_satisfied());
