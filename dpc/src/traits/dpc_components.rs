@@ -56,10 +56,10 @@ pub trait DPCComponents: 'static + Sized {
     /// Ledger digest type.
     type LedgerMerkleTreeCRH: CRH;
     type LedgerMerkleTreeCRHGadget: CRHGadget<
-        <Self::LedgerMerkleParameters as MerkleParameters>::H,
+        <Self::LedgerMerkleTreeParameters as MerkleParameters>::H,
         Self::InnerScalarField,
     >;
-    type LedgerMerkleParameters: LoadableMerkleParameters;
+    type LedgerMerkleTreeParameters: LoadableMerkleParameters;
 
     /// CRH and commitment scheme for committing to program input. Invoked inside
     /// `Self::InnerSNARK` and every program SNARK.
@@ -115,4 +115,7 @@ pub trait DPCComponents: 'static + Sized {
     fn record_commitment() -> &'static Self::RecordCommitment;
 
     fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
+
+    // TODO (howardwu): Deprecate this with a ledger rearchitecture.
+    fn ledger_merkle_tree_parameters() -> &'static Self::LedgerMerkleTreeParameters;
 }

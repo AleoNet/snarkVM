@@ -55,12 +55,12 @@ use std::sync::Arc;
 pub fn execute_inner_circuit<C: Testnet2Components, CS: ConstraintSystem<C::InnerScalarField>>(
     cs: &mut CS,
     // Ledger
-    ledger_parameters: &Arc<C::LedgerMerkleParameters>,
-    ledger_digest: &MerkleTreeDigest<C::LedgerMerkleParameters>,
+    ledger_parameters: &Arc<C::LedgerMerkleTreeParameters>,
+    ledger_digest: &MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
 
     // Old record stuff
     old_records: &[Record<C>],
-    old_witnesses: &[MerklePath<C::LedgerMerkleParameters>],
+    old_witnesses: &[MerklePath<C::LedgerMerkleTreeParameters>],
     old_private_keys: &[PrivateKey<C>],
     old_serial_numbers: &[<C::AccountSignature as SignatureScheme>::PublicKey],
 
@@ -138,12 +138,12 @@ fn inner_circuit_gadget<
     PGadget,
 >(
     cs: &mut CS,
-    ledger_parameters: &C::LedgerMerkleParameters,
-    ledger_digest: &MerkleTreeDigest<C::LedgerMerkleParameters>,
+    ledger_parameters: &C::LedgerMerkleTreeParameters,
+    ledger_digest: &MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
 
     //
     old_records: &[Record<C>],
-    old_witnesses: &[MerklePath<C::LedgerMerkleParameters>],
+    old_witnesses: &[MerklePath<C::LedgerMerkleTreeParameters>],
     old_private_keys: &[PrivateKey<C>],
     old_serial_numbers: &[<C::AccountSignature as SignatureScheme>::PublicKey],
 
