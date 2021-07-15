@@ -31,9 +31,9 @@ pub struct OuterCircuitVerifierInput<C: Testnet2Components> {
 
 impl<C: Testnet2Components> ToConstraintField<C::OuterScalarField> for OuterCircuitVerifierInput<C>
 where
-    C::ProgramVerificationKeyCommitment: ToConstraintField<C::OuterScalarField>,
-    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::OuterScalarField>,
-    <C::ProgramVerificationKeyCRH as CRH>::Parameters: ToConstraintField<C::OuterScalarField>,
+    C::ProgramIDCommitment: ToConstraintField<C::OuterScalarField>,
+    <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::OuterScalarField>,
+    <C::ProgramIDCRH as CRH>::Parameters: ToConstraintField<C::OuterScalarField>,
 
     <C::InnerCircuitIDCRH as CRH>::Parameters: ToConstraintField<C::OuterScalarField>,
     <C::InnerCircuitIDCRH as CRH>::Output: ToConstraintField<C::OuterScalarField>,
@@ -42,37 +42,17 @@ where
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
     <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
     <<C::MerkleParameters as MerkleParameters>::H as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
     MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerScalarField>,
 {
     fn to_field_elements(&self) -> Result<Vec<C::OuterScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
+        v.extend_from_slice(&C::program_id_commitment().to_field_elements()?);
+        v.extend_from_slice(&C::program_id_crh().parameters().to_field_elements()?);
+        v.extend_from_slice(&C::inner_circuit_id_crh().parameters().to_field_elements()?);
 
-        v.extend_from_slice(
-            &self
-                .inner_snark_verifier_input
-                .system_parameters
-                .program_verification_key_commitment
-                .to_field_elements()?,
-        );
-        v.extend_from_slice(
-            &self
-                .inner_snark_verifier_input
-                .system_parameters
-                .program_verification_key_crh
-                .parameters()
-                .to_field_elements()?,
-        );
-        v.extend_from_slice(
-            &self
-                .inner_snark_verifier_input
-                .system_parameters
-                .inner_circuit_id_crh
-                .parameters()
-                .to_field_elements()?,
-        );
         // Convert inner snark verifier inputs into `OuterField` field elements
 
         let inner_snark_field_elements = &self.inner_snark_verifier_input.to_field_elements()?;

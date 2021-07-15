@@ -22,20 +22,3 @@ impl_params_local!(
     "ledger_merkle_tree",
     32804
 );
-
-// CRH
-impl_params_local!(
-    ProgramVKCRHParameters,
-    program_vk_crh_test,
-    "./",
-    "program_vk_crh",
-    1742404
-);
-impl_params_remote!(
-    Testnet2ProgramVKCRHParameters,
-    testnet2_program_vk_crh_test,
-    "https://s3-us-west-1.amazonaws.com/aleo.parameters",
-    "./",
-    "testnet2_program_vk_crh",
-    62930948
-);

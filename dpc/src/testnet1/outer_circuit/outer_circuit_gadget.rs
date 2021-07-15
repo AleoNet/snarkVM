@@ -17,7 +17,7 @@
 use itertools::Itertools;
 
 use crate::{
-    testnet1::{parameters::SystemParameters, program::Execution, Testnet1Components},
+    testnet1::{program::Execution, Testnet1Components},
     AleoAmount,
 };
 use snarkvm_algorithms::{
@@ -63,8 +63,6 @@ fn field_element_to_bytes<C: Testnet1Components, CS: ConstraintSystem<C::OuterSc
 #[allow(clippy::too_many_arguments)]
 pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::OuterScalarField>>(
     cs: &mut CS,
-    // Parameters
-    system_parameters: &SystemParameters<C>,
 
     // Inner snark verifier public inputs
     ledger_parameters: &C::MerkleParameters,
@@ -84,8 +82,8 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     program_proofs: &[Execution],
 
     // Rest
-    program_commitment: &<C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
-    program_randomness: &<C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
+    program_commitment: &<C::ProgramIDCommitment as CommitmentScheme>::Output,
+    program_randomness: &<C::ProgramIDCommitment as CommitmentScheme>::Randomness,
     local_data_root: &<C::LocalDataCRH as CRH>::Output,
 
     inner_circuit_id: &<C::InnerCircuitIDCRH as CRH>::Output,
@@ -95,31 +93,31 @@ where
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
     <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
     <C::MerkleParameters as MerkleParameters>::H: ToConstraintField<C::InnerScalarField>,
     MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerScalarField>,
 {
     // Declare public parameters.
-    let (program_vk_commitment_parameters, program_vk_crh, inner_circuit_id_crh) = {
+    let (program_id_commitment_parameters, program_id_crh, inner_circuit_id_crh) = {
         let cs = &mut cs.ns(|| "Declare Comm and CRH parameters");
 
-        let program_vk_commitment_parameters = C::ProgramVerificationKeyCommitmentGadget::alloc_input(
-            &mut cs.ns(|| "Declare program_vk_commitment_parameters"),
-            || Ok(system_parameters.program_verification_key_commitment.clone()),
+        let program_id_commitment_parameters = C::ProgramIDCommitmentGadget::alloc_input(
+            &mut cs.ns(|| "Declare program_id_commitment_parameters"),
+            || Ok(C::program_id_commitment().clone()),
         )?;
 
-        let program_vk_crh = C::ProgramVerificationKeyCRHGadget::alloc_input(
-            &mut cs.ns(|| "Declare program_vk_crh_parameters"),
-            || Ok(system_parameters.program_verification_key_crh.clone()),
-        )?;
+        let program_id_crh =
+            C::ProgramIDCRHGadget::alloc_input(&mut cs.ns(|| "Declare program_id_crh_parameters"), || {
+                Ok(C::program_id_crh().clone())
+            })?;
 
         let inner_circuit_id_crh =
             C::InnerCircuitIDCRHGadget::alloc_input(&mut cs.ns(|| "Declare inner_circuit_id_crh_parameters"), || {
-                Ok(system_parameters.inner_circuit_id_crh.clone())
+                Ok(C::inner_circuit_id_crh().clone())
             })?;
 
-        (program_vk_commitment_parameters, program_vk_crh, inner_circuit_id_crh)
+        (program_id_commitment_parameters, program_id_crh, inner_circuit_id_crh)
     };
 
     // ************************************************************************
@@ -140,28 +138,23 @@ where
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let record_commitment_parameters_fe = system_parameters
-        .record_commitment
+    let record_commitment_parameters_fe = C::record_commitment()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let encrypted_record_crh_parameters_fe = system_parameters
-        .encrypted_record_crh
+    let encrypted_record_crh_parameters_fe = C::encrypted_record_crh()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let program_vk_commitment_parameters_fe = system_parameters
-        .program_verification_key_commitment
+    let program_id_commitment_parameters_fe = C::program_id_commitment()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let local_data_crh_parameters_fe = system_parameters
-        .local_data_crh
+    let local_data_crh_parameters_fe = C::local_data_crh()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let serial_number_nonce_crh_parameters_fe = system_parameters
-        .serial_number_nonce
+    let serial_number_nonce_crh_parameters_fe = C::serial_number_nonce_crh()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
@@ -194,17 +187,15 @@ where
 
     let account_commitment_fe_bytes =
         field_element_to_bytes::<C, _>(cs, account_commitment_parameters_fe, "account commitment pp")?;
-
     let account_encryption_fe_bytes =
         field_element_to_bytes::<C, _>(cs, account_encryption_parameters_fe, "account encryption pp")?;
-
     let account_signature_fe_bytes = field_element_to_bytes::<C, _>(cs, account_signature_fe, "account signature pp")?;
     let record_commitment_parameters_fe_bytes =
         field_element_to_bytes::<C, _>(cs, record_commitment_parameters_fe, "record commitment pp")?;
     let encrypted_record_crh_parameters_fe_bytes =
         field_element_to_bytes::<C, _>(cs, encrypted_record_crh_parameters_fe, "encrypted record crh pp")?;
-    let program_vk_commitment_parameters_fe_bytes =
-        field_element_to_bytes::<C, _>(cs, program_vk_commitment_parameters_fe, "program vk commitment pp")?;
+    let program_id_commitment_parameters_fe_bytes =
+        field_element_to_bytes::<C, _>(cs, program_id_commitment_parameters_fe, "program id commitment pp")?;
     let local_data_commitment_parameters_fe_bytes =
         field_element_to_bytes::<C, _>(cs, local_data_crh_parameters_fe, "local data commitment pp")?;
     let serial_number_nonce_crh_parameters_fe_bytes =
@@ -263,7 +254,7 @@ where
     inner_snark_input_bytes.extend(account_signature_fe_bytes);
     inner_snark_input_bytes.extend(record_commitment_parameters_fe_bytes);
     inner_snark_input_bytes.extend(encrypted_record_crh_parameters_fe_bytes);
-    inner_snark_input_bytes.extend(program_vk_commitment_parameters_fe_bytes);
+    inner_snark_input_bytes.extend(program_id_commitment_parameters_fe_bytes);
     inner_snark_input_bytes.extend(local_data_commitment_parameters_fe_bytes.clone());
     inner_snark_input_bytes.extend(serial_number_nonce_crh_parameters_fe_bytes);
     inner_snark_input_bytes.extend(ledger_parameters_fe_bytes);
@@ -354,7 +345,7 @@ where
 
         let death_program_vk_bytes = death_program_vk.to_bytes(&mut cs.ns(|| "Convert death pred vk to bytes"))?;
 
-        let claimed_death_program_id = program_vk_crh
+        let claimed_death_program_id = program_id_crh
             .check_evaluation_gadget(&mut cs.ns(|| "Compute death program ID"), death_program_vk_bytes)?;
 
         let claimed_death_program_id_bytes =
@@ -393,7 +384,7 @@ where
 
         let birth_program_vk_bytes = birth_program_vk.to_bytes(&mut cs.ns(|| "Convert birth pred vk to bytes"))?;
 
-        let claimed_birth_program_id = program_vk_crh
+        let claimed_birth_program_id = program_id_crh
             .check_evaluation_gadget(&mut cs.ns(|| "Compute birth program ID"), birth_program_vk_bytes)?;
 
         let claimed_birth_program_id_bytes =
@@ -427,22 +418,19 @@ where
             input.extend_from_slice(&id);
         }
 
-        let given_commitment_randomness = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<
-            _,
-            C::OuterScalarField,
-        >>::RandomnessGadget::alloc(
-            &mut commitment_cs.ns(|| "Commitment randomness"),
-            || Ok(program_randomness),
-        )?;
+        let given_commitment_randomness =
+            <C::ProgramIDCommitmentGadget as CommitmentGadget<_, C::OuterScalarField>>::RandomnessGadget::alloc(
+                &mut commitment_cs.ns(|| "Commitment randomness"),
+                || Ok(program_randomness),
+            )?;
 
-        let given_commitment = <C::ProgramVerificationKeyCommitmentGadget as CommitmentGadget<
-            _,
-            C::OuterScalarField,
-        >>::OutputGadget::alloc_input(
-            &mut commitment_cs.ns(|| "Commitment output"), || Ok(program_commitment)
-        )?;
+        let given_commitment =
+            <C::ProgramIDCommitmentGadget as CommitmentGadget<_, C::OuterScalarField>>::OutputGadget::alloc_input(
+                &mut commitment_cs.ns(|| "Commitment output"),
+                || Ok(program_commitment),
+            )?;
 
-        let candidate_commitment = program_vk_commitment_parameters.check_commitment_gadget(
+        let candidate_commitment = program_id_commitment_parameters.check_commitment_gadget(
             &mut commitment_cs.ns(|| "Compute commitment"),
             &input,
             &given_commitment_randomness,

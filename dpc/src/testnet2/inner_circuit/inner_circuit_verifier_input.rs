@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    testnet2::{parameters::SystemParameters, Testnet2Components},
-    AleoAmount,
-};
+use crate::{testnet2::Testnet2Components, AleoAmount};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH},
@@ -29,9 +26,6 @@ use std::sync::Arc;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet2Components"))]
 pub struct InnerCircuitVerifierInput<C: Testnet2Components> {
-    // Commitment, CRH, and signature parameters
-    pub system_parameters: SystemParameters<C>,
-
     // Ledger parameters and digest
     pub ledger_parameters: Arc<C::MerkleParameters>,
     pub ledger_digest: MerkleTreeDigest<C::MerkleParameters>,
@@ -46,7 +40,7 @@ pub struct InnerCircuitVerifierInput<C: Testnet2Components> {
     pub new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
 
     // Program input commitment and local data root
-    pub program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
+    pub program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
     pub local_data_root: <C::LocalDataCRH as CRH>::Output,
 
     pub memo: [u8; 32],
@@ -60,7 +54,7 @@ where
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
     <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
     <<C::MerkleParameters as MerkleParameters>::H as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
     MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerScalarField>,
@@ -70,17 +64,12 @@ where
         v.extend_from_slice(&C::account_commitment().to_field_elements()?);
         v.extend_from_slice(&C::account_encryption().to_field_elements()?);
         v.extend_from_slice(&C::account_signature().to_field_elements()?);
-        v.extend_from_slice(&self.system_parameters.record_commitment.to_field_elements()?);
-        v.extend_from_slice(&self.system_parameters.encrypted_record_crh.to_field_elements()?);
-        v.extend_from_slice(
-            &self
-                .system_parameters
-                .program_verification_key_commitment
-                .to_field_elements()?,
-        );
-        v.extend_from_slice(&self.system_parameters.local_data_crh.to_field_elements()?);
-        v.extend_from_slice(&self.system_parameters.local_data_commitment.to_field_elements()?);
-        v.extend_from_slice(&self.system_parameters.serial_number_nonce.to_field_elements()?);
+        v.extend_from_slice(&C::record_commitment().to_field_elements()?);
+        v.extend_from_slice(&C::encrypted_record_crh().to_field_elements()?);
+        v.extend_from_slice(&C::program_id_commitment().to_field_elements()?);
+        v.extend_from_slice(&C::local_data_crh().to_field_elements()?);
+        v.extend_from_slice(&C::local_data_commitment().to_field_elements()?);
+        v.extend_from_slice(&C::serial_number_nonce_crh().to_field_elements()?);
 
         v.extend_from_slice(&self.ledger_parameters.crh().parameters().to_field_elements()?);
         v.extend_from_slice(&self.ledger_digest.to_field_elements()?);

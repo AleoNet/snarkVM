@@ -16,7 +16,6 @@
 
 use crate::{
     testnet2::{
-        parameters::SystemParameters,
         payload::Payload,
         record::{encoded::*, Record},
         Testnet2Components,
@@ -147,11 +146,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
     }
 
     /// Decrypt and reconstruct the encrypted record.
-    pub fn decrypt(
-        &self,
-        system_parameters: &SystemParameters<C>,
-        account_view_key: &ViewKey<C>,
-    ) -> Result<Record<C>, DPCError> {
+    pub fn decrypt(&self, account_view_key: &ViewKey<C>) -> Result<Record<C>, DPCError> {
         // Decrypt the encrypted record
         let plaintext_elements =
             C::account_encryption().decrypt(&account_view_key.decryption_key, &self.encrypted_elements)?;
@@ -206,11 +201,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
             serial_number_nonce
         ]?;
 
-        let commitment = C::RecordCommitment::commit(
-            &system_parameters.record_commitment,
-            &commitment_input,
-            &commitment_randomness,
-        )?;
+        let commitment = C::record_commitment().commit(&commitment_input, &commitment_randomness)?;
 
         Ok(Record::from(
             owner,
@@ -227,10 +218,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
 
     /// Returns the encrypted record hash.
     /// The hash input is the ciphertext x-coordinates appended with the selector bits.
-    pub fn to_hash(
-        &self,
-        system_parameters: &SystemParameters<C>,
-    ) -> Result<<<C as DPCComponents>::EncryptedRecordCRH as CRH>::Output, DPCError> {
+    pub fn to_hash(&self) -> Result<<<C as DPCComponents>::EncryptedRecordCRH as CRH>::Output, DPCError> {
         let mut ciphertext_affine_x = Vec::with_capacity(self.encrypted_elements.len());
         let mut selector_bits = Vec::with_capacity(self.encrypted_elements.len() + 1);
         for ciphertext_element in &self.encrypted_elements {
@@ -258,9 +246,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
         selector_bits.push(self.final_fq_high_selector);
         let selector_bytes = from_bits_le_to_bytes_le(&selector_bits);
 
-        Ok(system_parameters
-            .encrypted_record_crh
-            .hash(&to_bytes_le![ciphertext_affine_x, selector_bytes]?)?)
+        Ok(C::encrypted_record_crh().hash(&to_bytes_le![ciphertext_affine_x, selector_bytes]?)?)
     }
 
     /// Returns the intermediate components of the encryption algorithm that the inner SNARK

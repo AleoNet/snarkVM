@@ -16,7 +16,7 @@
 
 use crate::{
     prelude::*,
-    testnet1::{EncryptedRecord, LocalData, Record, SystemParameters, Testnet1Components, Transaction},
+    testnet1::{EncryptedRecord, LocalData, Record, Testnet1Components, Transaction},
 };
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, prelude::*};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
@@ -54,8 +54,8 @@ pub struct TransactionKernel<C: Testnet1Components> {
     pub new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
 
     // Program and local data root and randomness
-    pub program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
-    pub program_randomness: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
+    pub program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
+    pub program_randomness: <C::ProgramIDCommitment as CommitmentScheme>::Randomness,
 
     pub local_data_merkle_tree: CommitmentMerkleTree<C::LocalDataCommitment, C::LocalDataCRH>,
     pub local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
@@ -146,8 +146,6 @@ impl<C: Testnet1Components> ToBytes for TransactionKernel<C> {
 impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let system_parameters = SystemParameters::<C>::load().expect("Could not load system parameters");
-
         // Read old record components
 
         let mut old_records = vec![];
@@ -210,14 +208,13 @@ impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
 
         // Read transaction components
 
-        let program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output =
-            FromBytes::read_le(&mut reader)?;
-        let program_randomness: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness =
+        let program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output = FromBytes::read_le(&mut reader)?;
+        let program_randomness: <C::ProgramIDCommitment as CommitmentScheme>::Randomness =
             FromBytes::read_le(&mut reader)?;
 
         let local_data_merkle_tree = CommitmentMerkleTree::<C::LocalDataCommitment, C::LocalDataCRH>::from_bytes(
             &mut reader,
-            system_parameters.local_data_crh.clone(),
+            C::local_data_crh().clone(),
         )
         .expect("Could not load local data merkle tree");
 
