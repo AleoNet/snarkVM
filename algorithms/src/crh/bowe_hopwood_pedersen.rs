@@ -45,7 +45,7 @@ pub struct BoweHopwoodPedersenCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     for BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Output = G;
+    type Output = G::Affine;
     type Parameters = PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>;
 
     const INPUT_SIZE_BITS: usize = PedersenCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::INPUT_SIZE_BITS;
@@ -149,7 +149,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 
         end_timer!(eval_time);
 
-        Ok(result)
+        Ok(result.into_affine())
     }
 
     fn parameters(&self) -> &Self::Parameters {

@@ -20,7 +20,7 @@ use crate::{
     traits::{
         algorithms::EncryptionGadget,
         alloc::AllocGadget,
-        curves::{CompressedGroupGadget, GroupGadget},
+        curves::{CompressedGroupGadget, CurveGadget},
         eq::{ConditionalEqGadget, EqGadget},
         integers::integer::Integer,
     },
@@ -149,13 +149,13 @@ impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<Vec<G::ScalarField>, F>
 
 /// Group encryption public key gadget
 #[derive(Debug, PartialEq, Eq)]
-pub struct GroupEncryptionPublicKeyGadget<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> {
+pub struct GroupEncryptionPublicKeyGadget<G: ProjectiveCurve, F: Field, GG: CurveGadget<G, F>> {
     public_key: GG,
     _group: PhantomData<*const G>,
     _engine: PhantomData<*const F>,
 }
 
-impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> AllocGadget<GroupEncryptionPublicKey<G>, F>
+impl<G: ProjectiveCurve, F: Field, GG: CurveGadget<G, F>> AllocGadget<GroupEncryptionPublicKey<G>, F>
     for GroupEncryptionPublicKeyGadget<G, F, GG>
 {
     fn alloc<
@@ -206,7 +206,7 @@ impl<G: ProjectiveCurve, F: Field, GG: CompressedGroupGadget<G, F>> ToBytesGadge
     }
 }
 
-impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> Clone for GroupEncryptionPublicKeyGadget<G, F, GG> {
+impl<G: ProjectiveCurve, F: Field, GG: CurveGadget<G, F>> Clone for GroupEncryptionPublicKeyGadget<G, F, GG> {
     fn clone(&self) -> Self {
         Self {
             public_key: self.public_key.clone(),
@@ -216,7 +216,7 @@ impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> Clone for GroupEncrypt
     }
 }
 
-impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> ConditionalEqGadget<F>
+impl<G: ProjectiveCurve, F: Field, GG: CurveGadget<G, F>> ConditionalEqGadget<F>
     for GroupEncryptionPublicKeyGadget<G, F, GG>
 {
     #[inline]
@@ -240,17 +240,17 @@ impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> ConditionalEqGadget<F>
     }
 }
 
-impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> EqGadget<F> for GroupEncryptionPublicKeyGadget<G, F, GG> {}
+impl<G: ProjectiveCurve, F: Field, GG: CurveGadget<G, F>> EqGadget<F> for GroupEncryptionPublicKeyGadget<G, F, GG> {}
 
 /// Group encryption plaintext gadget
 #[derive(Debug, PartialEq, Eq)]
-pub struct GroupEncryptionPlaintextGadget<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> {
+pub struct GroupEncryptionPlaintextGadget<G: ProjectiveCurve, F: Field, GG: CurveGadget<G, F>> {
     plaintext: Vec<GG>,
     _group: PhantomData<*const G>,
     _engine: PhantomData<*const F>,
 }
 
-impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> AllocGadget<Vec<G>, F>
+impl<G: ProjectiveCurve, F: Field, GG: CurveGadget<G, F>> AllocGadget<Vec<G>, F>
     for GroupEncryptionPlaintextGadget<G, F, GG>
 {
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Vec<G>>, CS: ConstraintSystem<F>>(
@@ -261,7 +261,11 @@ impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> AllocGadget<Vec<G>, F>
 
         let mut plaintext = Vec::with_capacity(values.len());
         for (i, value) in values.into_iter().enumerate() {
-            let alloc_group = GG::alloc(cs.ns(|| format!("Plaintext Iteration {}", i)), || Ok(value.borrow()))?;
+            let alloc_group =
+                <GG as AllocGadget<G, F>>::alloc(
+                    cs.ns(|| format!("Plaintext Iteration {}", i)),
+                    || Ok(value.borrow()),
+                )?;
             plaintext.push(alloc_group);
         }
 
@@ -280,7 +284,10 @@ impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> AllocGadget<Vec<G>, F>
 
         let mut plaintext = Vec::with_capacity(values.len());
         for (i, value) in values.into_iter().enumerate() {
-            let alloc_group = GG::alloc_input(cs.ns(|| format!("Plaintext Iteration {}", i)), || Ok(value.borrow()))?;
+            let alloc_group =
+                <GG as AllocGadget<G, F>>::alloc_input(cs.ns(|| format!("Plaintext Iteration {}", i)), || {
+                    Ok(value.borrow())
+                })?;
             plaintext.push(alloc_group);
         }
 
@@ -292,7 +299,7 @@ impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> AllocGadget<Vec<G>, F>
     }
 }
 
-impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> Clone for GroupEncryptionPlaintextGadget<G, F, GG> {
+impl<G: ProjectiveCurve, F: Field, GG: CurveGadget<G, F>> Clone for GroupEncryptionPlaintextGadget<G, F, GG> {
     fn clone(&self) -> Self {
         Self {
             plaintext: self.plaintext.clone(),
@@ -302,7 +309,7 @@ impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> Clone for GroupEncrypt
     }
 }
 
-impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> ConditionalEqGadget<F>
+impl<G: ProjectiveCurve, F: Field, GG: CurveGadget<G, F>> ConditionalEqGadget<F>
     for GroupEncryptionPlaintextGadget<G, F, GG>
 {
     #[inline]
@@ -328,7 +335,7 @@ impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> ConditionalEqGadget<F>
     }
 }
 
-impl<G: ProjectiveCurve, F: Field, GG: GroupGadget<G, F>> EqGadget<F> for GroupEncryptionPlaintextGadget<G, F, GG> {}
+impl<G: ProjectiveCurve, F: Field, GG: CurveGadget<G, F>> EqGadget<F> for GroupEncryptionPlaintextGadget<G, F, GG> {}
 
 /// Group encryption ciphertext gadget
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -349,7 +356,10 @@ impl<G: ProjectiveCurve, F: Field, GG: CompressedGroupGadget<G, F>> AllocGadget<
 
         let mut ciphertext = Vec::with_capacity(values.len());
         for (i, value) in values.into_iter().enumerate() {
-            let alloc_group = GG::alloc(cs.ns(|| format!("Ciphertext Iteration {}", i)), || Ok(value.borrow()))?;
+            let alloc_group =
+                <GG as AllocGadget<G, F>>::alloc(cs.ns(|| format!("Ciphertext Iteration {}", i)), || {
+                    Ok(value.borrow())
+                })?;
             ciphertext.push(alloc_group);
         }
 
@@ -368,7 +378,10 @@ impl<G: ProjectiveCurve, F: Field, GG: CompressedGroupGadget<G, F>> AllocGadget<
 
         let mut ciphertext = Vec::with_capacity(values.len());
         for (i, value) in values.into_iter().enumerate() {
-            let alloc_group = GG::alloc_input(cs.ns(|| format!("Ciphertext Iteration {}", i)), || Ok(value.borrow()))?;
+            let alloc_group =
+                <GG as AllocGadget<G, F>>::alloc_input(cs.ns(|| format!("Ciphertext Iteration {}", i)), || {
+                    Ok(value.borrow())
+                })?;
             ciphertext.push(alloc_group);
         }
 

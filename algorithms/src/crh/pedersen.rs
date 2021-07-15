@@ -33,7 +33,7 @@ pub struct PedersenCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDO
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     for PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Output = G;
+    type Output = G::Affine;
     type Parameters = Vec<Vec<G>>;
 
     const INPUT_SIZE_BITS: usize = WINDOW_SIZE * NUM_WINDOWS;
@@ -81,7 +81,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
             })
             .fold(G::zero(), |a, b| a + b);
 
-        Ok(result)
+        Ok(result.into_affine())
     }
 
     fn parameters(&self) -> &Self::Parameters {
