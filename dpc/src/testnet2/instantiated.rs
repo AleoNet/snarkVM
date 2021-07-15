@@ -67,13 +67,6 @@ use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10
 
 use once_cell::sync::OnceCell;
 
-pub type Testnet2DPC = DPC<Components>;
-pub type Testnet2Transaction = Transaction<Components>;
-
-pub type MerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 8, 32>;
-
-define_merkle_tree_parameters!(CommitmentMerkleParameters, MerkleTreeCRH, 32);
-
 macro_rules! dpc_setup {
     ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
         #[inline]
@@ -83,6 +76,15 @@ macro_rules! dpc_setup {
         }
     };
 }
+
+pub type Testnet2DPC = DPC<Components>;
+pub type Testnet2Transaction = Transaction<Components>;
+
+define_merkle_tree_parameters!(
+    CommitmentMerkleParameters,
+    <Components as DPCComponents>::MerkleTreeCRH,
+    32
+);
 
 pub struct Components;
 
@@ -121,7 +123,8 @@ impl DPCComponents for Components {
     type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 16, 32>;
     type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
 
-    type MerkleHashGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
+    type MerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 8, 32>;
+    type MerkleTreeCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
     type MerkleParameters = CommitmentMerkleParameters;
     
     type PRF = Blake2s;

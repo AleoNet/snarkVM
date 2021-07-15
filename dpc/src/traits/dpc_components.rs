@@ -61,7 +61,8 @@ pub trait DPCComponents: 'static + Sized {
     type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
 
     /// Ledger digest type.
-    type MerkleHashGadget: CRHGadget<<Self::MerkleParameters as MerkleParameters>::H, Self::InnerScalarField>;
+    type MerkleTreeCRH: CRH;
+    type MerkleTreeCRHGadget: CRHGadget<<Self::MerkleParameters as MerkleParameters>::H, Self::InnerScalarField>;
     type MerkleParameters: LoadableMerkleParameters;
 
     /// Commitment scheme for committing to hashes of birth and death verifying keys.
