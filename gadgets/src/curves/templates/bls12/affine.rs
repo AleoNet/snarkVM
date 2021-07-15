@@ -35,6 +35,7 @@ use crate::{
         fields::{FieldGadget, ToConstraintFieldGadget},
         select::CondSelectGadget,
     },
+    CurveGadget,
 };
 
 #[derive(Derivative)]
@@ -554,6 +555,31 @@ impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField,
     }
 }
 
+impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField, F>> AllocGadget<SWAffine<P>, F>
+    for AffineGadget<P, F, FG>
+{
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SWAffine<P>>, CS: ConstraintSystem<F>>(
+        cs: CS,
+        f: Fn,
+    ) -> Result<Self, SynthesisError> {
+        Self::alloc(cs, || Ok(f()?.borrow().into_projective()))
+    }
+
+    fn alloc_checked<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SWAffine<P>>, CS: ConstraintSystem<F>>(
+        cs: CS,
+        f: Fn,
+    ) -> Result<Self, SynthesisError> {
+        Self::alloc_checked(cs, || Ok(f()?.borrow().into_projective()))
+    }
+
+    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SWAffine<P>>, CS: ConstraintSystem<F>>(
+        cs: CS,
+        f: Fn,
+    ) -> Result<Self, SynthesisError> {
+        Self::alloc_input(cs, || Ok(f()?.borrow().into_projective()))
+    }
+}
+
 impl<P, F, FG> ToBitsBEGadget<F> for AffineGadget<P, F, FG>
 where
     P: ShortWeierstrassParameters,
@@ -623,4 +649,12 @@ where
 
         Ok(res)
     }
+}
+
+impl<P, F, FG> CurveGadget<SWProjective<P>, F> for AffineGadget<P, F, FG>
+where
+    P: ShortWeierstrassParameters,
+    F: PrimeField,
+    FG: FieldGadget<P::BaseField, F>,
+{
 }

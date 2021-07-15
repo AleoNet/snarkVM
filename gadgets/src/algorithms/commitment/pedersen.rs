@@ -16,7 +16,8 @@
 
 use crate::{
     integers::uint::UInt8,
-    traits::{algorithms::CommitmentGadget, alloc::AllocGadget, curves::GroupGadget, integers::Integer},
+    traits::{algorithms::CommitmentGadget, alloc::AllocGadget, integers::Integer},
+    CurveGadget,
 };
 use snarkvm_algorithms::commitment::PedersenCommitment;
 use snarkvm_curves::ProjectiveCurve;
@@ -60,7 +61,7 @@ impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for Peder
 pub struct PedersenCommitmentGadget<
     G: ProjectiveCurve,
     F: Field,
-    GG: GroupGadget<G, F>,
+    GG: CurveGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
 > {
@@ -70,7 +71,7 @@ pub struct PedersenCommitmentGadget<
 }
 
 // TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
-impl<G: ProjectiveCurve, F: PrimeField, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     AllocGadget<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
@@ -105,7 +106,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: GroupGadget<G, F>, const NUM_WINDOWS
     }
 }
 
-impl<G: ProjectiveCurve, F: PrimeField, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     CommitmentGadget<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {

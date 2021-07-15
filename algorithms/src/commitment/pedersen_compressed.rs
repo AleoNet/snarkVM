@@ -39,7 +39,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
 
     /// Returns the affine x-coordinate as the commitment.
     fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
-        let affine = self.pedersen.commit(input, randomness)?.into_affine();
+        let affine = self.pedersen.commit(input, randomness)?;
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
         Ok(affine.to_x_coordinate())
     }

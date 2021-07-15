@@ -46,7 +46,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     }
 
     fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
-        let affine = self.bhp.hash(input)?.into_affine();
+        let affine = self.bhp.hash(input)?;
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
         Ok(affine.to_x_coordinate())
     }

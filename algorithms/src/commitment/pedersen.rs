@@ -30,7 +30,7 @@ pub struct PedersenCommitment<G: ProjectiveCurve, const NUM_WINDOWS: usize, cons
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
     for PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Output = G;
+    type Output = G::Affine;
     type Parameters = (Vec<Vec<G>>, Vec<G>);
     type Randomness = G::ScalarField;
 
@@ -60,7 +60,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
             ));
         }
 
-        let mut output = self.crh.hash(&input)?;
+        let mut output = self.crh.hash(&input)?.into_projective();
 
         // Compute h^r.
         let scalar_bits = BitIteratorLE::new(randomness.to_repr());
@@ -70,7 +70,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
             }
         }
 
-        Ok(output)
+        Ok(output.into_affine())
     }
 
     fn parameters(&self) -> Self::Parameters {

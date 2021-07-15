@@ -616,6 +616,7 @@ mod projective_impl {
     use snarkvm_r1cs::Assignment;
 
     use super::*;
+    use crate::CurveGadget;
 
     /// Based on 2 input bits, output on a group element from a 4 element table.
     /// 00 => table[0]
@@ -1072,6 +1073,11 @@ mod projective_impl {
         fn cost_of_double() -> usize {
             4 + FG::cost_of_mul()
         }
+    }
+
+    impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> CurveGadget<TEProjective<P>, F>
+        for AffineGadget<P, F, FG>
+    {
     }
 
     impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>>
