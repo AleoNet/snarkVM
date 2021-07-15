@@ -115,12 +115,12 @@ impl DPCComponents for Components {
     
     type PRF = Blake2s;
     type PRFGadget = Blake2sGadget;
+
+    type ProgramIDCommitment = Blake2sCommitment;
+    type ProgramIDCommitmentGadget = Blake2sCommitmentGadget;
     
     type ProgramIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBW6, 144, 63>;
     type ProgramIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 144, 63>;
-    
-    type ProgramIDCommitment = Blake2sCommitment;
-    type ProgramIDCommitmentGadget = Blake2sCommitmentGadget;
     
     type RecordCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 233>;
     type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 233>;
@@ -135,6 +135,8 @@ impl DPCComponents for Components {
     dpc_setup!{inner_circuit_id_crh, INNER_CIRCUIT_ID_CRH, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
     dpc_setup!{local_data_commitment, LOCAL_DATA_COMMITMENT, LocalDataCommitment, "AleoLocalDataCommitment0"}
     dpc_setup!{local_data_crh, LOCAL_DATA_CRH, LocalDataCRH, "AleoLocalDataCRH0"}
+    dpc_setup!{program_id_commitment, PROGRAM_ID_COMMITMENT, ProgramIDCommitment, "AleoProgramIDCommitment0"}
+    dpc_setup!{program_id_crh, PROGRAM_ID_CRH, ProgramIDCRH, "AleoProgramIDCRH0"}
     dpc_setup!{record_commitment, RECORD_COMMITMENT, RecordCommitment, "AleoRecordCommitment0"}
     dpc_setup!{serial_number_nonce_crh, SERIAL_NUMBER_NONCE_CRH, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
 }

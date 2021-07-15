@@ -60,17 +60,17 @@ pub trait DPCComponents: 'static + Sized {
     type LocalDataCRH: CRH + ToConstraintField<Self::InnerScalarField>;
     type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
 
-    /// CRH for hashes of birth and death verifying keys.
-    /// This is invoked only on the larger curve.
-    type ProgramIDCRH: CRH;
-    type ProgramIDCRHGadget: CRHGadget<Self::ProgramIDCRH, Self::OuterScalarField>;
-
     /// Commitment scheme for committing to hashes of birth and death verifying keys.
     type ProgramIDCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
     /// Used to commit to hashes of verifying keys on the smaller curve and to decommit hashes
     /// of verification keys on the larger curve
     type ProgramIDCommitmentGadget: CommitmentGadget<Self::ProgramIDCommitment, Self::InnerScalarField>
         + CommitmentGadget<Self::ProgramIDCommitment, Self::OuterScalarField>;
+
+    /// CRH for hashes of birth and death verifying keys.
+    /// This is invoked only on the larger curve.
+    type ProgramIDCRH: CRH;
+    type ProgramIDCRHGadget: CRHGadget<Self::ProgramIDCRH, Self::OuterScalarField>;
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
     type PRF: PRF;
@@ -97,6 +97,10 @@ pub trait DPCComponents: 'static + Sized {
     fn local_data_commitment() -> &'static Self::LocalDataCommitment;
 
     fn local_data_crh() -> &'static Self::LocalDataCRH;
+
+    fn program_id_commitment() -> &'static Self::ProgramIDCommitment;
+
+    fn program_id_crh() -> &'static Self::ProgramIDCRH;
 
     fn record_commitment() -> &'static Self::RecordCommitment;
 

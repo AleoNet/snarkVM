@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet2::{encoded::*, encrypted::*, instantiated::*, NoopProgram, Payload, Record, SystemParameters},
+    testnet2::{encoded::*, encrypted::*, instantiated::*, NoopProgram, Payload, Record},
     Account,
     AccountScheme,
     DPCComponents,
@@ -36,11 +36,7 @@ fn test_record_serialization() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     for _ in 0..ITERATIONS {
-        // Generate parameters for the ledger, commitment schemes, CRH, and the
-        // "always-accept" program.
-        let system_parameters = SystemParameters::<Components>::setup();
-        let noop_program =
-            NoopProgram::<Components>::setup(&system_parameters.program_verification_key_crh, &mut rng).unwrap();
+        let noop_program = NoopProgram::<Components>::setup(&mut rng).unwrap();
 
         for _ in 0..ITERATIONS {
             let dummy_account = Account::<Components>::new(&mut rng).unwrap();
@@ -84,11 +80,7 @@ fn test_record_encryption() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     for _ in 0..ITERATIONS {
-        // Generate parameters for the ledger, commitment schemes, CRH, and the
-        // "always-accept" program.
-        let system_parameters = SystemParameters::<Components>::setup();
-        let noop_program =
-            NoopProgram::<Components>::setup(&system_parameters.program_verification_key_crh, &mut rng).unwrap();
+        let noop_program = NoopProgram::<Components>::setup(&mut rng).unwrap();
 
         for _ in 0..ITERATIONS {
             let dummy_account = Account::<Components>::new(&mut rng).unwrap();

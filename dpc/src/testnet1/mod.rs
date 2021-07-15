@@ -140,7 +140,7 @@ where
         let system_parameters = SystemParameters::<C>::setup();
 
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
-        let noop_program = NoopProgram::setup(&system_parameters.program_verification_key_crh, rng)?;
+        let noop_program = NoopProgram::setup(rng)?;
         let noop_program_execution = noop_program.execute_blank(rng)?;
         end_timer!(noop_program_timer);
 
@@ -177,7 +177,7 @@ where
     fn load(verify_only: bool) -> anyhow::Result<Self> {
         let timer = start_timer!(|| "DPC::load");
         let system_parameters = SystemParameters::<C>::load()?;
-        let noop_program = NoopProgram::load(&system_parameters.program_verification_key_crh)?;
+        let noop_program = NoopProgram::load()?;
         let inner_snark_parameters = {
             let inner_snark_pk = match verify_only {
                 true => None,
@@ -334,11 +334,7 @@ where
                 input.extend_from_slice(&id);
             }
             let program_randomness = <C::ProgramIDCommitment as CommitmentScheme>::Randomness::rand(rng);
-            let program_commitment = C::ProgramIDCommitment::commit(
-                &self.system_parameters.program_verification_key_commitment,
-                &input,
-                &program_randomness,
-            )?;
+            let program_commitment = C::program_id_commitment().commit(&input, &program_randomness)?;
             (program_commitment, program_randomness)
         };
         end_timer!(program_comm_timer);

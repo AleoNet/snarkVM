@@ -32,10 +32,10 @@ pub trait ProgramScheme: Clone {
     type VerifyingKey;
 
     /// Initializes a new instance of a program.
-    fn setup<R: Rng + CryptoRng>(program_id_crh: &Self::ProgramIDCRH, rng: &mut R) -> Result<Self, ProgramError>;
+    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, ProgramError>;
 
     /// Loads an instance of a program.
-    fn load(program_id_crh: &Self::ProgramIDCRH) -> Result<Self, ProgramError>;
+    fn load() -> Result<Self, ProgramError>;
 
     /// Returns the execution of the program.
     fn execute<R: Rng + CryptoRng>(

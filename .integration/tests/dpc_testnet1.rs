@@ -321,8 +321,7 @@ fn test_testnet1_dpc_execute_constraints() {
     let dpc = <Testnet1DPC as DPCScheme<L>>::setup(&ledger_parameters, &mut rng).unwrap();
     let system_parameters = &dpc.system_parameters;
 
-    let alternate_noop_program =
-        NoopProgram::<Components>::setup(&system_parameters.program_verification_key_crh, &mut rng).unwrap();
+    let alternate_noop_program = NoopProgram::<Components>::setup(&mut rng).unwrap();
 
     // Generate metadata and an account for a dummy initial record.
     let dummy_account = Account::new(&mut rng).unwrap();

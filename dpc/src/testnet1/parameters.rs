@@ -15,31 +15,16 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::testnet1::Testnet1Components;
-use snarkvm_algorithms::prelude::*;
 
 use std::io::Result as IoResult;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet1Components"))]
-pub struct SystemParameters<C: Testnet1Components> {
-    pub program_verification_key_commitment: C::ProgramIDCommitment,
-    pub program_verification_key_crh: C::ProgramIDCRH,
-}
+pub struct SystemParameters<C: Testnet1Components>(std::marker::PhantomData<C>);
 
 impl<C: Testnet1Components> SystemParameters<C> {
     pub fn setup() -> Self {
-        let time = start_timer!(|| "Program verifying key CRH setup");
-        let program_verification_key_crh = C::ProgramIDCRH::setup("ProgramVerificationKeyCRH");
-        end_timer!(time);
-
-        let time = start_timer!(|| "Program verification key commitment setup");
-        let program_verification_key_commitment = C::ProgramIDCommitment::setup("ProgramVerificationKeyCommitment");
-        end_timer!(time);
-
-        Self {
-            program_verification_key_commitment,
-            program_verification_key_crh,
-        }
+        Self(std::marker::PhantomData)
     }
 
     /// TODO (howardwu): TEMPORARY FOR PR #251.

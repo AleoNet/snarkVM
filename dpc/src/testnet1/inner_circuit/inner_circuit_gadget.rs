@@ -225,7 +225,7 @@ where
         account_signature_parameters,
         record_commitment_parameters,
         encrypted_record_crh,
-        program_vk_commitment_parameters,
+        program_id_commitment_parameters,
         local_data_crh,
         local_data_commitment_parameters,
         serial_number_nonce_crh,
@@ -264,9 +264,9 @@ where
         )?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
-        let program_vk_commitment_parameters = C::ProgramIDCommitmentGadget::alloc_input(
-            &mut cs.ns(|| "Declare program vk commitment parameters"),
-            || Ok(system_parameters.program_verification_key_commitment.clone()),
+        let program_id_commitment_parameters = C::ProgramIDCommitmentGadget::alloc_input(
+            &mut cs.ns(|| "Declare program ID commitment parameters"),
+            || Ok(C::program_id_commitment().clone()),
         )?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
@@ -298,7 +298,7 @@ where
             account_signature_parameters,
             record_commitment_parameters,
             encrypted_record_crh_parameters,
-            program_vk_commitment_parameters,
+            program_id_commitment_parameters,
             local_data_crh_parameters,
             local_data_commitment_parameters,
             serial_number_nonce_crh_parameters,
@@ -1196,7 +1196,7 @@ where
                 || Ok(program_commitment),
             )?;
 
-        let candidate_commitment = program_vk_commitment_parameters.check_commitment_gadget(
+        let candidate_commitment = program_id_commitment_parameters.check_commitment_gadget(
             &mut commitment_cs.ns(|| "candidate_commitment"),
             &input,
             &given_commitment_randomness,

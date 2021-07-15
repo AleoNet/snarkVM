@@ -72,12 +72,7 @@ where
         v.extend_from_slice(&C::account_signature().to_field_elements()?);
         v.extend_from_slice(&C::record_commitment().to_field_elements()?);
         v.extend_from_slice(&C::encrypted_record_crh().to_field_elements()?);
-        v.extend_from_slice(
-            &self
-                .system_parameters
-                .program_verification_key_commitment
-                .to_field_elements()?,
-        );
+        v.extend_from_slice(&C::program_id_commitment().to_field_elements()?);
         v.extend_from_slice(&C::local_data_crh().to_field_elements()?);
         v.extend_from_slice(&C::local_data_commitment().to_field_elements()?);
         v.extend_from_slice(&C::serial_number_nonce_crh().to_field_elements()?);

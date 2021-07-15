@@ -53,18 +53,14 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
     type VerifyingKey = <Self::ProofSystem as SNARK>::VerifyingKey;
 
     /// Initializes a new instance of the noop program.
-    fn setup<R: Rng + CryptoRng>(
-        program_verifying_key_crh: &Self::ProgramIDCRH,
-        rng: &mut R,
-    ) -> Result<Self, ProgramError> {
+    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, ProgramError> {
         let (proving_key, prepared_verifying_key) = <Self::ProofSystem as SNARK>::setup(&NoopCircuit::blank(), rng)?;
-        let verifying_key = prepared_verifying_key.into();
+        let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
 
         // Compute the program ID.
-        let id = to_bytes_le![<C as DPCComponents>::ProgramIDCRH::hash(
-            program_verifying_key_crh,
-            &to_bytes_le![verifying_key]?
-        )?]?;
+        let id = <C as DPCComponents>::program_id_crh()
+            .hash(&verifying_key.to_bytes_le()?)?
+            .to_bytes_le()?;
 
         Ok(Self {
             id,
@@ -75,7 +71,7 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
 
     // TODO (howardwu): Why are we not preparing the VK here?
     /// Loads an instance of the noop program.
-    fn load(program_verifying_key_crh: &Self::ProgramIDCRH) -> Result<Self, ProgramError> {
+    fn load() -> Result<Self, ProgramError> {
         let proving_key: <Self::ProofSystem as SNARK>::ProvingKey =
             FromBytes::read_le(NoopProgramSNARKPKParameters::load_bytes()?.as_slice())?;
         let verifying_key = <Self::ProofSystem as SNARK>::VerifyingKey::read_le(
@@ -83,13 +79,12 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
         )?;
 
         // Compute the program ID.
-        let program_id = to_bytes_le![<C as DPCComponents>::ProgramIDCRH::hash(
-            program_verifying_key_crh,
-            &to_bytes_le![verifying_key]?
-        )?]?;
+        let id = <C as DPCComponents>::program_id_crh()
+            .hash(&verifying_key.to_bytes_le()?)?
+            .to_bytes_le()?;
 
         Ok(Self {
-            id: program_id,
+            id,
             proving_key,
             verifying_key,
         })

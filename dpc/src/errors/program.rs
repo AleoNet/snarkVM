@@ -22,6 +22,9 @@ pub enum ProgramError {
     #[error("{}", _0)]
     AccountError(#[from] crate::AccountError),
 
+    #[error("{}", _0)]
+    AnyhowError(#[from] anyhow::Error),
+
     #[error("Cannot verify the provided record commitment")]
     CannotVerifyCommitment,
 

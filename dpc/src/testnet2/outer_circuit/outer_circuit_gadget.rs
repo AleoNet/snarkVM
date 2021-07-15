@@ -105,17 +105,17 @@ where
     MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerScalarField>,
 {
     // Declare public parameters.
-    let (program_vk_commitment_parameters, program_vk_crh, inner_circuit_id_crh) = {
+    let (program_id_commitment_parameters, program_id_crh, inner_circuit_id_crh) = {
         let cs = &mut cs.ns(|| "Declare Comm and CRH parameters");
 
-        let program_vk_commitment_parameters = C::ProgramIDCommitmentGadget::alloc_input(
-            &mut cs.ns(|| "Declare program_vk_commitment_parameters"),
-            || Ok(system_parameters.program_verification_key_commitment.clone()),
+        let program_id_commitment_parameters = C::ProgramIDCommitmentGadget::alloc_input(
+            &mut cs.ns(|| "Declare program_id_commitment_parameters"),
+            || Ok(C::program_id_commitment().clone()),
         )?;
 
-        let program_vk_crh =
-            C::ProgramIDCRHGadget::alloc_input(&mut cs.ns(|| "Declare program_vk_crh_parameters"), || {
-                Ok(system_parameters.program_verification_key_crh.clone())
+        let program_id_crh =
+            C::ProgramIDCRHGadget::alloc_input(&mut cs.ns(|| "Declare program_id_crh_parameters"), || {
+                Ok(C::program_id_crh().clone())
             })?;
 
         let inner_circuit_id_crh =
@@ -123,7 +123,7 @@ where
                 Ok(C::inner_circuit_id_crh().clone())
             })?;
 
-        (program_vk_commitment_parameters, program_vk_crh, inner_circuit_id_crh)
+        (program_id_commitment_parameters, program_id_crh, inner_circuit_id_crh)
     };
 
     // ************************************************************************
@@ -152,8 +152,7 @@ where
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let program_vk_commitment_parameters_fe = system_parameters
-        .program_verification_key_commitment
+    let program_id_commitment_parameters_fe = C::program_id_commitment()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
@@ -198,17 +197,15 @@ where
 
     let account_commitment_fe_bytes =
         field_element_to_bytes::<C, _>(cs, account_commitment_parameters_fe, "account commitment pp")?;
-
     let account_encryption_fe_bytes =
         field_element_to_bytes::<C, _>(cs, account_encryption_parameters_fe, "account encryption pp")?;
-
     let account_signature_fe_bytes = field_element_to_bytes::<C, _>(cs, account_signature_fe, "account signature pp")?;
     let record_commitment_parameters_fe_bytes =
         field_element_to_bytes::<C, _>(cs, record_commitment_parameters_fe, "record commitment pp")?;
     let encrypted_record_crh_parameters_fe_bytes =
         field_element_to_bytes::<C, _>(cs, encrypted_record_crh_parameters_fe, "encrypted record crh pp")?;
-    let program_vk_commitment_parameters_fe_bytes =
-        field_element_to_bytes::<C, _>(cs, program_vk_commitment_parameters_fe, "program vk commitment pp")?;
+    let program_id_commitment_parameters_fe_bytes =
+        field_element_to_bytes::<C, _>(cs, program_id_commitment_parameters_fe, "program ID commitment pp")?;
     let local_data_crh_parameters_fe_bytes =
         field_element_to_bytes::<C, _>(cs, local_data_crh_parameters_fe.clone(), "local data crh pp")?;
     let local_data_commitment_parameters_fe_bytes = field_element_to_bytes::<C, _>(
@@ -272,7 +269,7 @@ where
     inner_snark_input_bytes.extend(account_signature_fe_bytes);
     inner_snark_input_bytes.extend(record_commitment_parameters_fe_bytes);
     inner_snark_input_bytes.extend(encrypted_record_crh_parameters_fe_bytes);
-    inner_snark_input_bytes.extend(program_vk_commitment_parameters_fe_bytes);
+    inner_snark_input_bytes.extend(program_id_commitment_parameters_fe_bytes);
     inner_snark_input_bytes.extend(local_data_crh_parameters_fe_bytes);
     inner_snark_input_bytes.extend(local_data_commitment_parameters_fe_bytes.clone());
     inner_snark_input_bytes.extend(serial_number_nonce_crh_parameters_fe_bytes);
@@ -327,7 +324,6 @@ where
     // Reuse inner snark verifier inputs
 
     let mut program_input_bytes = vec![];
-
     program_input_bytes.extend(local_data_commitment_parameters_fe_bytes);
     program_input_bytes.extend(local_data_root_fe_bytes);
 
@@ -368,7 +364,7 @@ where
             &input.verifying_key,
         )?;
 
-        let claimed_death_program_id = program_vk_crh
+        let claimed_death_program_id = program_id_crh
             .check_evaluation_gadget(&mut cs.ns(|| "Compute death program ID"), death_program_vk_bytes)?;
 
         let claimed_death_program_id_bytes =
@@ -427,7 +423,7 @@ where
             &input.verifying_key,
         )?;
 
-        let claimed_birth_program_id = program_vk_crh
+        let claimed_birth_program_id = program_id_crh
             .check_evaluation_gadget(&mut cs.ns(|| "Compute birth program ID"), birth_program_vk_bytes)?;
 
         let claimed_birth_program_id_bytes =
@@ -489,7 +485,7 @@ where
                 || Ok(program_commitment),
             )?;
 
-        let candidate_commitment = program_vk_commitment_parameters.check_commitment_gadget(
+        let candidate_commitment = program_id_commitment_parameters.check_commitment_gadget(
             &mut commitment_cs.ns(|| "Compute commitment"),
             &input,
             &given_commitment_randomness,
