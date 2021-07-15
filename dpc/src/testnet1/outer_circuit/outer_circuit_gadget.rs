@@ -140,8 +140,7 @@ where
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let record_commitment_parameters_fe = system_parameters
-        .record_commitment
+    let record_commitment_parameters_fe = C::record_commitment()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 

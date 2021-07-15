@@ -91,7 +91,6 @@ pub fn execute_inner_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Inne
     inner_circuit_gadget::<
         C,
         CS,
-        C::RecordCommitment,
         C::LocalDataCRH,
         C::LocalDataCommitment,
         C::SerialNumberNonceCRH,
@@ -139,7 +138,6 @@ pub fn execute_inner_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Inne
 fn inner_circuit_gadget<
     C,
     CS: ConstraintSystem<C::InnerScalarField>,
-    RecordCommitment,
     LocalDataCRH,
     LocalDataCommitment,
     SerialNumberNonceCRH,
@@ -172,7 +170,7 @@ fn inner_circuit_gadget<
     //
     new_records: &[Record<C>],
     new_sn_nonce_randomness: &[[u8; 32]],
-    new_commitments: &[RecordCommitment::Output],
+    new_commitments: &[<C::RecordCommitment as CommitmentScheme>::Output],
 
     new_records_encryption_randomness: &[<C::AccountEncryption as EncryptionScheme>::Randomness],
     new_records_encryption_gadget_components: &[RecordEncryptionGadgetComponents<C>],
@@ -189,7 +187,6 @@ fn inner_circuit_gadget<
 ) -> Result<(), SynthesisError>
 where
     C: Testnet1Components<
-        RecordCommitment = RecordCommitment,
         LocalDataCRH = LocalDataCRH,
         LocalDataCommitment = LocalDataCommitment,
         SerialNumberNonceCRH = SerialNumberNonceCRH,
@@ -204,16 +201,14 @@ where
         SerialNumberNonceCRHGadget = SerialNumberNonceCRHGadget,
         PRFGadget = PGadget,
     >,
-    RecordCommitment: CommitmentScheme,
     LocalDataCRH: CRH,
     LocalDataCommitment: CommitmentScheme,
     SerialNumberNonceCRH: CRH,
     P: PRF,
-    RecordCommitment::Output: Eq,
     AccountCommitmentGadget: CommitmentGadget<C::AccountCommitment, C::InnerScalarField>,
     AccountEncryptionGadget: EncryptionGadget<C::AccountEncryption, C::InnerScalarField>,
     AccountSignatureGadget: SignatureGadget<C::AccountSignature, C::InnerScalarField>,
-    RecordCommitmentGadget: CommitmentGadget<RecordCommitment, C::InnerScalarField>,
+    RecordCommitmentGadget: CommitmentGadget<C::RecordCommitment, C::InnerScalarField>,
     EncryptedRecordCRHGadget: CRHGadget<C::EncryptedRecordCRH, C::InnerScalarField>,
     LocalDataCRHGadget: CRHGadget<LocalDataCRH, C::InnerScalarField>,
     LocalDataCommitmentGadget: CommitmentGadget<LocalDataCommitment, C::InnerScalarField>,
@@ -271,7 +266,7 @@ where
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let record_commitment_parameters =
             RecordCommitmentGadget::alloc_input(&mut cs.ns(|| "Declare record commitment parameters"), || {
-                Ok(system_parameters.record_commitment.clone())
+                Ok(C::record_commitment().clone())
             })?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.

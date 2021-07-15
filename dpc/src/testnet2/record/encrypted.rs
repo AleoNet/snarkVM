@@ -16,7 +16,6 @@
 
 use crate::{
     testnet2::{
-        parameters::SystemParameters,
         payload::Payload,
         record::{encoded::*, Record},
         Testnet2Components,
@@ -147,11 +146,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
     }
 
     /// Decrypt and reconstruct the encrypted record.
-    pub fn decrypt(
-        &self,
-        system_parameters: &SystemParameters<C>,
-        account_view_key: &ViewKey<C>,
-    ) -> Result<Record<C>, DPCError> {
+    pub fn decrypt(&self, account_view_key: &ViewKey<C>) -> Result<Record<C>, DPCError> {
         // Decrypt the encrypted record
         let plaintext_elements =
             C::account_encryption().decrypt(&account_view_key.decryption_key, &self.encrypted_elements)?;
@@ -206,11 +201,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
             serial_number_nonce
         ]?;
 
-        let commitment = C::RecordCommitment::commit(
-            &system_parameters.record_commitment,
-            &commitment_input,
-            &commitment_randomness,
-        )?;
+        let commitment = C::record_commitment().commit(&commitment_input, &commitment_randomness)?;
 
         Ok(Record::from(
             owner,

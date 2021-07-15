@@ -55,7 +55,6 @@ fn test_record_encoding() {
             let payload: [u8; 32] = rng.gen();
 
             let given_record = Record::new(
-                &system_parameters.record_commitment,
                 dummy_account.address,
                 false,
                 value,
@@ -103,14 +102,13 @@ fn test_record_encryption() {
         .unwrap();
 
         for _ in 0..ITERATIONS {
-            let dummy_account = Account::new(&mut rng).unwrap();
+            let dummy_account = Account::<Components>::new(&mut rng).unwrap();
 
             let sn_nonce_input: [u8; 32] = rng.gen();
             let value = rng.gen();
             let payload: [u8; 32] = rng.gen();
 
             let given_record = Record::new(
-                &system_parameters.record_commitment,
                 dummy_account.address,
                 false,
                 value,
@@ -131,7 +129,7 @@ fn test_record_encryption() {
             let account_view_key = ViewKey::from_private_key(&dummy_account.private_key).unwrap();
 
             // Decrypt the record
-            let decrypted_record = encryped_record.decrypt(&system_parameters, &account_view_key).unwrap();
+            let decrypted_record = encryped_record.decrypt(&account_view_key).unwrap();
 
             assert_eq!(given_record, decrypted_record);
         }

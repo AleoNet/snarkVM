@@ -91,4 +91,6 @@ pub trait DPCComponents: 'static + Sized {
     fn account_signature() -> &'static Self::AccountSignature;
 
     fn encrypted_record_crh() -> &'static Self::EncryptedRecordCRH;
+
+    fn record_commitment() -> &'static Self::RecordCommitment;
 }

@@ -70,7 +70,7 @@ where
         v.extend_from_slice(&C::account_commitment().to_field_elements()?);
         v.extend_from_slice(&C::account_encryption().to_field_elements()?);
         v.extend_from_slice(&C::account_signature().to_field_elements()?);
-        v.extend_from_slice(&self.system_parameters.record_commitment.to_field_elements()?);
+        v.extend_from_slice(&C::record_commitment().to_field_elements()?);
         v.extend_from_slice(&C::encrypted_record_crh().to_field_elements()?);
         v.extend_from_slice(
             &self

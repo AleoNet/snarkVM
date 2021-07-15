@@ -69,7 +69,6 @@ impl<C: Testnet2Components> Record<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new_full<R: Rng + CryptoRng>(
         serial_number_nonce_parameters: &C::SerialNumberNonceCRH,
-        record_commitment_parameters: &C::RecordCommitment,
         owner: Address<C>,
         is_dummy: bool,
         value: u64,
@@ -89,7 +88,6 @@ impl<C: Testnet2Components> Record<C> {
         let serial_number_nonce = C::SerialNumberNonceCRH::hash(&serial_number_nonce_parameters, &crh_input)?;
 
         let mut record = Self::new(
-            record_commitment_parameters,
             owner,
             is_dummy,
             value,
@@ -108,7 +106,6 @@ impl<C: Testnet2Components> Record<C> {
 
     #[allow(clippy::too_many_arguments)]
     pub fn new<R: Rng + CryptoRng>(
-        record_commitment_parameters: &C::RecordCommitment,
         owner: Address<C>,
         is_dummy: bool,
         value: u64,
@@ -133,8 +130,7 @@ impl<C: Testnet2Components> Record<C> {
             serial_number_nonce  // 256 bits = 32 bytes
         ]?;
 
-        let commitment =
-            C::RecordCommitment::commit(&record_commitment_parameters, &commitment_input, &commitment_randomness)?;
+        let commitment = C::record_commitment().commit(&commitment_input, &commitment_randomness)?;
 
         end_timer!(record_time);
 

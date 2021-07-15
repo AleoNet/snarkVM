@@ -22,7 +22,6 @@ use std::io::Result as IoResult;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet1Components"))]
 pub struct SystemParameters<C: Testnet1Components> {
-    pub record_commitment: C::RecordCommitment,
     pub inner_circuit_id_crh: C::InnerCircuitIDCRH,
     pub program_verification_key_commitment: C::ProgramVerificationKeyCommitment,
     pub program_verification_key_crh: C::ProgramVerificationKeyCRH,
@@ -54,10 +53,6 @@ impl<C: Testnet1Components> SystemParameters<C> {
             C::ProgramVerificationKeyCommitment::setup("ProgramVerificationKeyCommitment");
         end_timer!(time);
 
-        let time = start_timer!(|| "Record commitment scheme setup");
-        let record_commitment = C::RecordCommitment::setup("RecordCommitment");
-        end_timer!(time);
-
         let time = start_timer!(|| "Serial nonce CRH setup");
         let serial_number_nonce = C::SerialNumberNonceCRH::setup("SerialNumberNonceCRH");
         end_timer!(time);
@@ -68,7 +63,6 @@ impl<C: Testnet1Components> SystemParameters<C> {
             local_data_commitment,
             program_verification_key_commitment,
             program_verification_key_crh,
-            record_commitment,
             serial_number_nonce,
         }
     }

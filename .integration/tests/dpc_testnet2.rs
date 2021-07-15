@@ -115,7 +115,6 @@ fn dpc_testnet2_integration_test() {
         )
         .unwrap();
         let old_record = Record::new(
-            &dpc.system_parameters.record_commitment,
             genesis_account.address.clone(),
             true, // The input record is dummy
             0,
@@ -141,7 +140,6 @@ fn dpc_testnet2_integration_test() {
         new_records.push(
             Record::new_full(
                 &dpc.system_parameters.serial_number_nonce,
-                &dpc.system_parameters.record_commitment,
                 recipient.address.clone(),
                 false,
                 10,
@@ -196,11 +194,7 @@ fn dpc_testnet2_integration_test() {
             encrypted_records.iter().zip(new_account_private_keys).zip(new_records)
         {
             let account_view_key = ViewKey::from_private_key(&private_key).unwrap();
-
-            let decrypted_record = encrypted_record
-                .decrypt(&dpc.system_parameters, &account_view_key)
-                .unwrap();
-
+            let decrypted_record = encrypted_record.decrypt(&account_view_key).unwrap();
             assert_eq!(decrypted_record, new_record);
         }
     }
@@ -259,7 +253,6 @@ fn test_testnet_2_transaction_kernel_serialization() {
     let mut old_records = vec![];
     for i in 0..Components::NUM_INPUT_RECORDS {
         let old_record = Record::new(
-            &system_parameters.record_commitment,
             test_account.address.clone(),
             true,
             0,
@@ -289,7 +282,6 @@ fn test_testnet_2_transaction_kernel_serialization() {
         new_records.push(
             Record::new_full(
                 &system_parameters.serial_number_nonce,
-                &system_parameters.record_commitment,
                 test_account.address.clone(),
                 false,
                 10,
@@ -371,7 +363,6 @@ fn test_testnet2_dpc_execute_constraints() {
     let mut old_records = vec![];
     for i in 0..Components::NUM_INPUT_RECORDS {
         let old_record = Record::new(
-            &system_parameters.record_commitment,
             dummy_account.address.clone(),
             true,
             0,
@@ -404,7 +395,6 @@ fn test_testnet2_dpc_execute_constraints() {
         new_records.push(
             Record::new_full(
                 &system_parameters.serial_number_nonce,
-                &system_parameters.record_commitment,
                 new_account.address.clone(),
                 false,
                 10,
