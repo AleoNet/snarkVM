@@ -87,7 +87,7 @@ impl<P: MerkleParameters> MerklePath<P> {
         if !is_left {
             core::mem::swap(&mut left_bytes, &mut right_bytes);
         }
-        Ok((left_bytes.clone(), right_bytes.clone()))
+        Ok((*left_bytes, *right_bytes))
     }
 
     /// The position of on_path node in `leaf_and_sibling_hash` and `non_leaf_and_sibling_hash_path`.
