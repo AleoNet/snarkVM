@@ -183,6 +183,60 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
     assert!(cs.is_satisfied());
 }
 
+fn update_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, F>>(leaves: &[[u8; 30]]) {
+    let merkle_parameters = Arc::new(P::default());
+    let tree = MerkleTree::<P>::new(merkle_parameters.clone(), &leaves[..]).unwrap();
+    let root = tree.root();
+
+    let mut satisfied = true;
+    for (i, leaf) in leaves.iter().enumerate() {
+        let proof = tree.generate_proof(i, &leaf).unwrap();
+        assert!(proof.verify(&root, &leaf).unwrap());
+
+        let mut updated_leaves = leaves.to_vec();
+        updated_leaves[i] = [u8::MAX; 30];
+
+        let new_tree = MerkleTree::<P>::new(merkle_parameters.clone(), &updated_leaves[..]).unwrap();
+        let new_proof = new_tree.generate_proof(i, &updated_leaves[i]).unwrap();
+        let new_root = new_tree.root();
+
+        assert!(new_proof.verify(&new_root, &updated_leaves[i]).unwrap());
+
+        let mut cs = TestConstraintSystem::<F>::new();
+
+        let crh = HG::alloc(&mut cs.ns(|| "crh"), || Ok(merkle_parameters.crh())).unwrap();
+
+        // Allocate Merkle tree root
+        let root = <HG as CRHGadget<_, _>>::OutputGadget::alloc(&mut cs.ns(|| "root"), || Ok(root.clone())).unwrap();
+
+        // Allocate new Merkle tree root
+        let new_root =
+            <HG as CRHGadget<_, _>>::OutputGadget::alloc(&mut cs.ns(|| "new_root"), || Ok(new_root.clone())).unwrap();
+
+        let path = MerklePathGadget::<_, HG, _>::alloc(&mut cs.ns(|| "path"), || Ok(proof)).unwrap();
+
+        let leaf_gadget = UInt8::alloc_vec(cs.ns(|| "alloc_leaf"), &leaves[i]).unwrap();
+        let new_leaf_gadget = UInt8::alloc_vec(cs.ns(|| "alloc_new_leaf"), &updated_leaves[i]).unwrap();
+
+        path.update_and_check(
+            cs.ns(|| "update_and_check"),
+            &crh,
+            &root,
+            &new_root,
+            &leaf_gadget,
+            &new_leaf_gadget,
+        )
+        .unwrap();
+
+        if !cs.is_satisfied() {
+            satisfied = false;
+            println!("Unsatisfied constraint: {}", cs.which_is_unsatisfied().unwrap());
+        }
+    }
+
+    assert!(satisfied);
+}
+
 mod merkle_tree_pedersen_crh_on_projective {
     use super::*;
 
@@ -210,6 +264,16 @@ mod merkle_tree_pedersen_crh_on_projective {
             leaves.push(input);
         }
         generate_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves, true);
+    }
+
+    #[test]
+    fn update_merkle_tree_test() {
+        let mut leaves = Vec::new();
+        for i in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let input = [i; 30];
+            leaves.push(input);
+        }
+        update_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves);
     }
 }
 
@@ -268,6 +332,16 @@ mod merkle_tree_compressed_pedersen_crh_on_projective {
         }
         generate_masked_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves, true);
     }
+
+    #[test]
+    fn update_merkle_tree_test() {
+        let mut leaves = Vec::new();
+        for i in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let input = [i; 30];
+            leaves.push(input);
+        }
+        update_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves);
+    }
 }
 
 mod merkle_tree_bowe_hopwood_pedersen_compressed_crh_on_projective {
@@ -303,5 +377,15 @@ mod merkle_tree_bowe_hopwood_pedersen_compressed_crh_on_projective {
             leaves.push(input);
         }
         generate_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves, true);
+    }
+
+    #[test]
+    fn update_merkle_tree_test() {
+        let mut leaves = Vec::new();
+        for i in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let input = [i; 30];
+            leaves.push(input);
+        }
+        update_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves);
     }
 }
