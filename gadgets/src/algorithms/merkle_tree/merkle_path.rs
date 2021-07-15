@@ -176,7 +176,7 @@ where
             })?);
         }
 
-        let mut path = vec![];
+        let mut path = Vec::with_capacity(merkle_path.path.len());
         for (i, node) in merkle_path.path.iter().enumerate() {
             path.push(HGadget::OutputGadget::alloc(
                 &mut cs.ns(|| format!("alloc_node_{}", i)),
