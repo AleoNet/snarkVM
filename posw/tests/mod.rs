@@ -22,6 +22,7 @@ use snarkvm_utilities::FromBytes;
 
 use rand::SeedableRng;
 
+#[ignore]
 #[test]
 fn test_posw_load_and_mine() {
     // Load the PoSW Marlin parameters.

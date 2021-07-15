@@ -40,7 +40,7 @@ pub struct NoopProgram<C: Testnet1Components> {
     #[derivative(Debug = "ignore")]
     verifying_key: <<C as Testnet1Components>::NoopProgramSNARK as SNARK>::VerifyingKey,
     #[derivative(Debug = "ignore")]
-    local_data_commitment_parameters: <C::LocalDataCommitment as CommitmentScheme>::Parameters,
+    local_data_commitment_parameters: C::LocalDataCommitment,
 }
 
 impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
@@ -60,7 +60,7 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
         program_verifying_key_crh: &Self::ProgramVerifyingKeyCRH,
         rng: &mut R,
     ) -> Result<Self, ProgramError> {
-        let local_data_commitment_parameters = local_data_commitment.parameters().clone();
+        let local_data_commitment_parameters = local_data_commitment.clone();
 
         let (proving_key, prepared_verifying_key) =
             <Self::ProofSystem as SNARK>::setup(&NoopCircuit::blank(&local_data_commitment_parameters), rng)?;
@@ -102,7 +102,7 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
             id: program_id,
             proving_key,
             verifying_key,
-            local_data_commitment_parameters: local_data_commitment.parameters().clone(),
+            local_data_commitment_parameters: local_data_commitment.clone(),
         })
     }
 

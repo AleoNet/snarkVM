@@ -27,7 +27,7 @@ use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
     prelude::*,
 };
-use snarkvm_curves::traits::{Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
+use snarkvm_curves::traits::{MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_gadgets::{
     bits::Boolean,
     traits::algorithms::{CRHGadget, SNARKVerifierGadget},
@@ -68,7 +68,7 @@ pub trait Testnet1Components: DPCComponents {
     type MerkleHashGadget: CRHGadget<<Self::MerkleParameters as MerkleParameters>::H, Self::InnerScalarField>;
 
     /// Group and Model Parameters for record encryption
-    type EncryptionGroup: Group + ProjectiveCurve;
+    type EncryptionGroup: ProjectiveCurve;
     type EncryptionParameters: MontgomeryParameters + TwistedEdwardsParameters;
 
     /// SNARK for non-proof-verification checks
@@ -131,15 +131,13 @@ where
 {
     type Account = Account<C>;
     type Execution = Execution;
-    type LocalData = LocalData<C>;
     type Record = Record<C>;
-    type SystemParameters = SystemParameters<C>;
     type Transaction = Transaction<C>;
     type TransactionKernel = TransactionKernel<C>;
 
     fn setup<R: Rng + CryptoRng>(ledger_parameters: &Arc<C::MerkleParameters>, rng: &mut R) -> anyhow::Result<Self> {
         let setup_time = start_timer!(|| "DPC::setup");
-        let system_parameters = Self::SystemParameters::setup(rng)?;
+        let system_parameters = SystemParameters::<C>::setup();
 
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
         let noop_program = NoopProgram::setup(
@@ -182,7 +180,7 @@ where
 
     fn load(verify_only: bool) -> anyhow::Result<Self> {
         let timer = start_timer!(|| "DPC::load");
-        let system_parameters = Self::SystemParameters::load()?;
+        let system_parameters = SystemParameters::<C>::load()?;
         let noop_program = NoopProgram::load(
             &system_parameters.local_data_commitment,
             &system_parameters.program_verification_key_crh,
@@ -224,12 +222,7 @@ where
 
     fn create_account<R: Rng + CryptoRng>(&self, rng: &mut R) -> anyhow::Result<Self::Account> {
         let time = start_timer!(|| "DPC::create_account");
-        let account = Account::new(
-            &self.system_parameters.account_signature,
-            &self.system_parameters.account_commitment,
-            &self.system_parameters.account_encryption,
-            rng,
-        )?;
+        let account = Account::new(rng)?;
         end_timer!(time);
         Ok(account)
     }
@@ -261,8 +254,7 @@ where
                 value_balance = value_balance.add(AleoAmount::from_bytes(record.value() as i64));
             }
 
-            let (sn, randomizer) =
-                record.to_serial_number(&self.system_parameters.account_signature, &old_private_keys[i])?;
+            let (sn, randomizer) = record.to_serial_number(&old_private_keys[i])?;
             joint_serial_numbers.extend_from_slice(&to_bytes_le![sn]?);
             old_serial_numbers.push(sn);
             old_randomizers.push(randomizer);
@@ -373,8 +365,7 @@ where
         let mut new_encrypted_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
         for record in &new_records {
-            let (encrypted_record, record_encryption_randomness) =
-                EncryptedRecord::encrypt(&self.system_parameters, record, rng)?;
+            let (encrypted_record, record_encryption_randomness) = EncryptedRecord::encrypt(record, rng)?;
 
             new_records_encryption_randomness.push(record_encryption_randomness);
             new_encrypted_record_hashes.push(encrypted_record.to_hash(&self.system_parameters)?);
@@ -476,20 +467,13 @@ where
 
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for i in 0..C::NUM_INPUT_RECORDS {
-            // Sign the transaction data
-            let account_signature = C::AccountSignature::sign(
-                &self.system_parameters.account_signature,
-                &old_private_keys[i].sk_sig,
-                &signature_message,
-                rng,
-            )?;
+            // Randomize the private key.
+            let randomized_private_key =
+                C::account_signature().randomize_private_key(&old_private_keys[i].sk_sig, &old_randomizers[i])?;
 
-            // Randomize the signature
-            let randomized_signature = C::AccountSignature::randomize_signature(
-                &self.system_parameters.account_signature,
-                &account_signature,
-                &old_randomizers[i],
-            )?;
+            // Sign the transaction data.
+            let randomized_signature =
+                C::account_signature().sign_randomized(&randomized_private_key, &signature_message, rng)?;
 
             signatures.push(randomized_signature);
         }
@@ -501,11 +485,8 @@ where
         let mut new_records_encryption_gadget_components = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
         for (record, ciphertext_randomness) in new_records.iter().zip_eq(&new_records_encryption_randomness) {
-            let record_encryption_gadget_components = EncryptedRecord::prepare_encryption_gadget_components(
-                &self.system_parameters,
-                &record,
-                ciphertext_randomness,
-            )?;
+            let record_encryption_gadget_components =
+                EncryptedRecord::prepare_encryption_gadget_components(&record, ciphertext_randomness)?;
 
             new_records_encryption_gadget_components.push(record_encryption_gadget_components);
         }
@@ -704,9 +685,8 @@ where
             }
         };
 
-        let account_signature = &self.system_parameters.account_signature;
         for (pk, sig) in transaction.old_serial_numbers().iter().zip(transaction.signatures()) {
-            match C::AccountSignature::verify(account_signature, pk, &signature_message, sig) {
+            match C::account_signature().verify(pk, &signature_message, sig) {
                 Ok(is_valid) => {
                     if !is_valid {
                         eprintln!("Signature failed to verify.");

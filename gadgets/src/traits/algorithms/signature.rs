@@ -25,21 +25,20 @@ use crate::{
     Boolean,
 };
 
-pub trait SignaturePublicKeyRandomizationGadget<S: SignatureScheme, F: Field> {
-    type ParametersGadget: AllocGadget<S::Parameters, F>;
+pub trait SignatureGadget<S: SignatureScheme, F: Field>: AllocGadget<S, F> {
     type PublicKeyGadget: ToBytesGadget<F> + EqGadget<F> + AllocGadget<S::PublicKey, F> + Clone;
     type SignatureGadget: ToBytesGadget<F> + EqGadget<F> + AllocGadget<S::Signature, F> + Clone;
 
-    fn check_randomization_gadget<CS: ConstraintSystem<F>>(
+    fn randomize_public_key<CS: ConstraintSystem<F>>(
+        &self,
         cs: CS,
-        parameters: &Self::ParametersGadget,
         public_key: &Self::PublicKeyGadget,
-        randomness: &[UInt8],
+        randomizer: &[UInt8],
     ) -> Result<Self::PublicKeyGadget, SynthesisError>;
 
     fn verify<CS: ConstraintSystem<F>>(
+        &self,
         cs: CS,
-        parameters: &Self::ParametersGadget,
         public_key: &Self::PublicKeyGadget,
         message: &[UInt8],
         signature: &Self::SignatureGadget,

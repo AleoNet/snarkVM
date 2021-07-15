@@ -48,7 +48,7 @@ pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let system_parameters = SystemParameters::<C>::load()?;
 
     let merkle_tree_hash_parameters: <C::MerkleParameters as MerkleParameters>::H =
-        From::from(FromBytes::read_le(&LedgerMerkleTreeParameters::load_bytes()?[..])?);
+        FromBytes::read_le(&LedgerMerkleTreeParameters::load_bytes()?[..])?;
     let ledger_merkle_tree_parameters = Arc::new(From::from(merkle_tree_hash_parameters));
 
     let inner_snark_pk: <C::InnerSNARK as SNARK>::ProvingKey =
