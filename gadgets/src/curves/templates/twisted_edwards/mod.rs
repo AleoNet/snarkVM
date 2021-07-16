@@ -1279,7 +1279,13 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> Co
     }
 }
 
-impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> EqGadget<F> for AffineGadget<P, F, FG> {}
+impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> EqGadget<F> for AffineGadget<P, F, FG> {
+    fn is_eq<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
+        let x = self.x.is_eq(cs.ns(|| "x_is_eq"), &other.x)?;
+        let y = self.y.is_eq(cs.ns(|| "y_is_eq"), &other.y)?;
+        Boolean::and(cs.ns(|| "x_and_y"), &x, &y)
+    }
+}
 
 impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> ConditionalEqGadget<F>
     for AffineGadget<P, F, FG>
