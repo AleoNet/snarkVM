@@ -42,9 +42,10 @@ use snarkvm_gadgets::{
         eq::EqGadget,
         fields::{FieldGadget, ToConstraintFieldGadget},
     },
+    PrepareGadget,
 };
 use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
-use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, ToConstraintField};
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
 
 /// The Marlin verification gadget.
 pub struct MarlinVerificationGadget<
@@ -66,8 +67,8 @@ pub type FSA<InnerField, OuterField> = FiatShamirAlgebraicSpongeRng<InnerField, 
 pub type FSG<InnerField, OuterField> =
     FiatShamirAlgebraicSpongeRngVar<InnerField, OuterField, PoseidonSponge<OuterField>, PoseidonSpongeVar<OuterField>>;
 
-impl<TargetField, BaseField, PC, PCG, FS, MM, C, V>
-    SNARKVerifierGadget<MarlinSNARK<TargetField, BaseField, PC, FS, MM, C, V>, BaseField>
+impl<TargetField, BaseField, PC, PCG, FS, MM, V>
+    SNARKVerifierGadget<TargetField, BaseField, MarlinSNARK<TargetField, BaseField, PC, FS, MM, V>>
     for MarlinVerificationGadget<TargetField, BaseField, PC, PCG>
 where
     TargetField: PrimeField,
@@ -80,12 +81,10 @@ where
     PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
-    C: ConstraintSynthesizer<TargetField>,
     V: ToConstraintField<TargetField>,
 {
     type Input = NonNativeFieldVar<TargetField, BaseField>;
-    type ProofGadget = ProofVar<TargetField, BaseField, PC, PCG>;
-    type VerificationKeyGadget = PreparedCircuitVerifyingKeyVar<
+    type PreparedVerificationKeyGadget = PreparedCircuitVerifyingKeyVar<
         TargetField,
         BaseField,
         PC,
@@ -93,6 +92,8 @@ where
         FSA<TargetField, BaseField>,
         FSG<TargetField, BaseField>,
     >;
+    type ProofGadget = ProofVar<TargetField, BaseField, PC, PCG>;
+    type VerificationKeyGadget = CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>;
 
     fn check_verify<CS: ConstraintSystem<BaseField>, I: Iterator<Item = Self::Input>>(
         mut cs: CS,
@@ -100,11 +101,19 @@ where
         input: I,
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError> {
+        let pvk = verification_key.prepare(cs.ns(|| "prepare vk"))?;
+        <Self as SNARKVerifierGadget<TargetField, BaseField, MarlinSNARK<TargetField, BaseField, PC, FS, MM, V>>>::prepared_check_verify(cs, &pvk, input, proof)
+    }
+
+    fn prepared_check_verify<'a, CS: ConstraintSystem<BaseField>, I: Iterator<Item = Self::Input>>(
+        mut cs: CS,
+        pvk: &Self::PreparedVerificationKeyGadget,
+        input: I,
+        proof: &Self::ProofGadget,
+    ) -> Result<(), SynthesisError> {
         let inputs: Vec<_> = input.collect();
-        let result = Self::prepared_verify(cs.ns(|| "prepared_verify"), verification_key, &inputs, proof).unwrap();
-
+        let result = Self::prepared_verify(cs.ns(|| "prepared_verify"), pvk, &inputs, proof).unwrap();
         result.enforce_equal(cs.ns(|| "enforce_verification_correctness"), &Boolean::Constant(true))?;
-
         Ok(())
     }
 }
@@ -260,11 +269,10 @@ where
         public_input: &[NonNativeFieldVar<TargetField, BaseField>],
         proof: &ProofVar<TargetField, BaseField, PC, PCG>,
     ) -> Result<Boolean, MarlinError<PC::Error>> {
-        let prepared_verifying_key = PreparedCircuitVerifyingKeyVar::<TargetField, BaseField, PC, PCG, PR, R>::prepare(
-            cs.ns(|| "prepare"),
-            &verifying_key,
-        )?;
-        Self::prepared_verify(
+        eprintln!("before prepared_VK: constraints: {}", cs.num_constraints());
+
+        let prepared_verifying_key = verifying_key.prepare(cs.ns(|| "prepare"))?;
+        Self::prepared_verify::<_, PR, R>(
             cs.ns(|| "prepared_verify"),
             &prepared_verifying_key,
             public_input,

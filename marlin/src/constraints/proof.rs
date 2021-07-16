@@ -21,14 +21,10 @@ use hashbrown::HashMap;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     nonnative::NonNativeFieldVar,
-    traits::{
-        alloc::{AllocBytesGadget, AllocGadget},
-        fields::ToConstraintFieldGadget,
-    },
+    traits::{alloc::AllocGadget, fields::ToConstraintFieldGadget},
 };
 use snarkvm_polycommit::PCCheckVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
-use snarkvm_utilities::FromBytes;
 
 use crate::{marlin::Proof, PolynomialCommitment};
 
@@ -367,47 +363,6 @@ where
             evaluations: evaluation_gadgets,
             prover_messages: prover_message_gadgets,
             pc_batch_proof,
-        })
-    }
-}
-
-impl<TargetField, BaseField, PC, PCG> AllocBytesGadget<Vec<u8>, BaseField> for ProofVar<TargetField, BaseField, PC, PCG>
-where
-    TargetField: PrimeField,
-    BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField>,
-    PCG: PCCheckVar<TargetField, PC, BaseField>,
-    PC::VerifierKey: ToConstraintField<BaseField>,
-    PC::Commitment: ToConstraintField<BaseField>,
-    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
-    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
-{
-    #[inline]
-    fn alloc_bytes<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
-    where
-        FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<Vec<u8>>,
-    {
-        value_gen().and_then(|proof_bytes| {
-            let proof: Proof<TargetField, PC> = FromBytes::read_le(&proof_bytes.borrow()[..])?;
-
-            Self::alloc(cs.ns(|| "alloc_bytes"), || Ok(proof))
-        })
-    }
-
-    #[inline]
-    fn alloc_input_bytes<FN, T, CS: ConstraintSystem<BaseField>>(
-        mut cs: CS,
-        value_gen: FN,
-    ) -> Result<Self, SynthesisError>
-    where
-        FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<Vec<u8>>,
-    {
-        value_gen().and_then(|proof_bytes| {
-            let proof: Proof<TargetField, PC> = FromBytes::read_le(&proof_bytes.borrow()[..])?;
-
-            Self::alloc_input(cs.ns(|| "alloc_input_bytes"), || Ok(proof))
         })
     }
 }

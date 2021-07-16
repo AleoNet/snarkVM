@@ -34,6 +34,7 @@ use snarkvm_gadgets::{
     nonnative::NonNativeFieldVar,
     traits::algorithms::{CRHGadget, SNARKVerifierGadget},
     CompressedGroupGadget,
+    CryptoHashGadget,
 };
 use snarkvm_marlin::{
     marlin::{MarlinMode, UniversalSRS},
@@ -81,38 +82,29 @@ pub trait Testnet2Components: DPCComponents {
     type EncryptionParameters: MontgomeryParameters + TwistedEdwardsParameters;
 
     /// SNARK for non-proof-verification checks
-    type InnerSNARK: SNARK<
-        Circuit = InnerCircuit<Self>,
-        AllocatedCircuit = InnerCircuit<Self>,
-        VerifierInput = InnerCircuitVerifierInput<Self>,
-    >;
+    type InnerSNARK: SNARK<Self::InnerScalarField, VerifierInput = InnerCircuitVerifierInput<Self>>;
 
     /// SNARK Verifier gadget for the inner snark
-    type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK, Self::OuterScalarField, Input = Vec<Boolean>>;
+    type InnerSNARKGadget: SNARKVerifierGadget<
+        Self::InnerScalarField,
+        Self::OuterScalarField,
+        Self::InnerSNARK,
+        Input = Vec<Boolean>,
+    >;
 
     /// SNARK for proof-verification checks
-    type OuterSNARK: SNARK<
-        Circuit = OuterCircuit<Self>,
-        AllocatedCircuit = OuterCircuit<Self>,
-        VerifierInput = OuterCircuitVerifierInput<Self>,
-    >;
+    type OuterSNARK: SNARK<Self::OuterScalarField, VerifierInput = OuterCircuitVerifierInput<Self>>;
 
     // TODO (raychu86) Declare a proper marlin circuit w/ a UniversalSRS tuple.
     /// SNARK for the no-op "always-accept" that does nothing with its input.
-    type NoopProgramSNARK: SNARK<
-        Circuit = (
-            NoopCircuit<Self>,
-            UniversalSRS<Self::InnerScalarField, Self::PolynomialCommitment>,
-        ),
-        AllocatedCircuit = NoopCircuit<Self>,
-        VerifierInput = ProgramLocalData<Self>,
-    >;
+    type NoopProgramSNARK: SNARK<Self::InnerScalarField, VerifierInput = ProgramLocalData<Self>>;
 
     // TODO (raychu86): Look into properly declaring a proper input. i.e. Self::MarlinInputGadget.
     /// SNARK Verifier gadget for the no-op "always-accept" that does nothing with its input.
     type NoopProgramSNARKGadget: SNARKVerifierGadget<
-        Self::NoopProgramSNARK,
+        Self::InnerScalarField,
         Self::OuterScalarField,
+        Self::NoopProgramSNARK,
         Input = NonNativeFieldVar<Self::InnerScalarField, Self::OuterScalarField>,
     >;
 
@@ -124,6 +116,15 @@ pub trait Testnet2Components: DPCComponents {
 
     /// Specify the Marlin mode (recursive or non-recursive) for program SNARKS.
     type MarlinMode: MarlinMode;
+
+    /// Specify the crypto hash function for program verification key.
+    type ProgramVerificationCryptoHash: CryptoHash<Input = Self::OuterScalarField>;
+
+    /// Specify the crypto hash function gadget for program verification key.
+    type ProgramVerificationCryptoHashGadget: CryptoHashGadget<
+        Self::ProgramVerificationCryptoHash,
+        Self::OuterScalarField,
+    >;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -132,12 +133,12 @@ pub struct DPC<C: Testnet2Components> {
     pub system_parameters: SystemParameters<C>,
     pub noop_program: NoopProgram<C>,
     pub inner_snark_parameters: (
-        Option<<C::InnerSNARK as SNARK>::ProvingKey>,
-        <C::InnerSNARK as SNARK>::PreparedVerifyingKey,
+        Option<<C::InnerSNARK as SNARK<C::InnerScalarField>>::ProvingKey>,
+        <C::InnerSNARK as SNARK<C::InnerScalarField>>::PreparedVerifyingKey,
     ),
     pub outer_snark_parameters: (
-        Option<<C::OuterSNARK as SNARK>::ProvingKey>,
-        <C::OuterSNARK as SNARK>::PreparedVerifyingKey,
+        Option<<C::OuterSNARK as SNARK<C::InnerScalarField>>::ProvingKey>,
+        <C::OuterSNARK as SNARK<C::InnerScalarField>>::PreparedVerifyingKey,
     ),
 }
 
@@ -157,7 +158,7 @@ where
         ToConstraintField<C::OuterScalarField>,
 {
     type Account = Account<C>;
-    type Execution = Execution;
+    type Execution = Execution<C::InnerSNARK>;
     type Record = Record<C>;
     type Transaction = Transaction<C>;
     type TransactionKernel = TransactionKernel<C>;
@@ -181,7 +182,8 @@ where
         end_timer!(snark_setup_time);
 
         let snark_setup_time = start_timer!(|| "Execute outer SNARK setup");
-        let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = inner_snark_parameters.1.clone().into();
+        let inner_snark_vk: <C::InnerSNARK as SNARK<C::InnerScalarField>>::VerifyingKey =
+            inner_snark_parameters.1.clone().into();
         let inner_snark_proof = C::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, rng)?;
 
         let outer_snark_parameters = C::OuterSNARK::setup(

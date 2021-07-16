@@ -45,7 +45,7 @@ pub struct NoopProgram<C: Testnet2Components> {
 }
 
 impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
-    type Execution = Execution;
+    type Execution = Execution<Self::ProofSystem>;
     type ID = Vec<u8>;
     type LocalData = LocalData<C>;
     type LocalDataCommitment = C::LocalDataCommitment;
@@ -150,8 +150,8 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
         }
 
         Ok(Self::Execution {
-            verifying_key: to_bytes_le![self.verifying_key]?,
-            proof: to_bytes_le![proof]?,
+            verifying_key: self.verifying_key.clone(),
+            proof,
         })
     }
 
@@ -163,8 +163,8 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
         )?;
 
         Ok(Self::Execution {
-            verifying_key: to_bytes_le![self.verifying_key]?,
-            proof: to_bytes_le![proof]?,
+            verifying_key: self.verifying_key.clone(),
+            proof,
         })
     }
 

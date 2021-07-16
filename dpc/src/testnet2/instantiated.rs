@@ -31,6 +31,7 @@ use crate::{
 use snarkvm_algorithms::{
     commitment::{Blake2sCommitment, PedersenCompressedCommitment},
     crh::BoweHopwoodPedersenCompressedCRH,
+    crypto_hash::PoseidonCryptoHash,
     define_merkle_tree_parameters,
     encryption::GroupEncryption,
     prf::Blake2s,
@@ -48,6 +49,7 @@ use snarkvm_gadgets::{
     algorithms::{
         commitment::{Blake2sCommitmentGadget, PedersenCompressedCommitmentGadget},
         crh::BoweHopwoodPedersenCompressedCRHGadget,
+        crypto_hash::PoseidonCryptoHashGadget,
         encryption::GroupEncryptionGadget,
         prf::Blake2sGadget,
         signature::SchnorrGadget,
@@ -109,7 +111,8 @@ impl DPCComponents for Components {
     
     type PRF = Blake2s;
     type PRFGadget = Blake2sGadget;
-    
+
+    // testnet2 does not use them.
     type ProgramVerificationKeyCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBW6, 4096, 80>;
     type ProgramVerificationKeyCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 4096, 80>;
     
@@ -132,8 +135,8 @@ impl Testnet2Components for Components {
         Self::OuterScalarField,
         PoseidonSponge<Self::OuterScalarField>,
     >;
-    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
-    type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, Self::OuterScalarField, PairingGadget>;
+    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Components>>;
+    type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
     type MarlinMode = MarlinTestnet2Mode;
     type MerkleHashGadget =
         BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
@@ -144,7 +147,6 @@ impl Testnet2Components for Components {
         Self::PolynomialCommitment,
         Self::FiatShamirRng,
         Self::MarlinMode,
-        NoopCircuit<Self>,
         ProgramLocalData<Self>,
     >;
     type NoopProgramSNARKGadget = MarlinVerificationGadget<
@@ -153,8 +155,10 @@ impl Testnet2Components for Components {
         Self::PolynomialCommitment,
         MarlinKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>,
     >;
-    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
+    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Components>>;
     type PolynomialCommitment = MarlinKZG10<Self::InnerCurve>;
+    type ProgramVerificationCryptoHash = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
+    type ProgramVerificationCryptoHashGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
 }
 
 // This is currently unused.

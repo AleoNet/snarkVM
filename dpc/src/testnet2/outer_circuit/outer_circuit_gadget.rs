@@ -34,6 +34,7 @@ use snarkvm_gadgets::{
         eq::EqGadget,
         integers::integer::Integer,
     },
+    CryptoHashGadget,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::ToBytes;
@@ -85,7 +86,7 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
     inner_snark_proof: &<C::InnerSNARK as SNARK>::Proof,
 
     // Program verifying keys and proofs
-    program_proofs: &[Execution],
+    program_proofs: &[Execution<C::NoopProgramSNARK>],
 
     // Rest
     program_commitment: &<C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
@@ -105,7 +106,7 @@ where
     MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerScalarField>,
 {
     // Declare public parameters.
-    let (program_vk_commitment_parameters, program_vk_crh, inner_circuit_id_crh) = {
+    let (program_vk_commitment_parameters, inner_circuit_id_crh) = {
         let cs = &mut cs.ns(|| "Declare Comm and CRH parameters");
 
         let program_vk_commitment_parameters = C::ProgramVerificationKeyCommitmentGadget::alloc_input(
@@ -113,17 +114,12 @@ where
             || Ok(system_parameters.program_verification_key_commitment.clone()),
         )?;
 
-        let program_vk_crh = C::ProgramVerificationKeyCRHGadget::alloc_input(
-            &mut cs.ns(|| "Declare program_vk_crh_parameters"),
-            || Ok(system_parameters.program_verification_key_crh.clone()),
-        )?;
-
         let inner_circuit_id_crh =
             C::InnerCircuitIDCRHGadget::alloc_input(&mut cs.ns(|| "Declare inner_circuit_id_crh_parameters"), || {
                 Ok(system_parameters.inner_circuit_id_crh.clone())
             })?;
 
-        (program_vk_commitment_parameters, program_vk_crh, inner_circuit_id_crh)
+        (program_vk_commitment_parameters, inner_circuit_id_crh)
     };
 
     // ************************************************************************
@@ -356,25 +352,23 @@ where
     for (i, input) in program_proofs.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
         let cs = &mut cs.ns(|| format!("Check death program for input record {}", i));
 
-        let death_program_proof = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::ProofGadget::alloc_bytes(
+        let death_program_proof = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate proof"),
             || Ok(&input.proof),
         )?;
 
-        let death_program_vk =
-            <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::VerificationKeyGadget::alloc_bytes(
-                &mut cs.ns(|| "Allocate verifying key"),
-                || Ok(&input.verifying_key),
-            )?;
-
-        // Manually allocate the death program bytes instead of the conversion
-        let death_program_vk_bytes = UInt8::alloc_vec(
-            cs.ns(|| format!("alloc_death_program_vk_bytes_{}", i)),
-            &input.verifying_key,
+        let death_program_vk = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::VerificationKeyGadget::alloc(
+            &mut cs.ns(|| "Allocate verifying key"),
+            || Ok(&input.verifying_key),
         )?;
 
-        let claimed_death_program_id = program_vk_crh
-            .check_evaluation_gadget(&mut cs.ns(|| "Compute death program ID"), death_program_vk_bytes)?;
+        let death_program_vk_field_elements =
+            death_program_vk.to_field_elements(cs.ns(|| "alloc_death_program_vk_field_elements"))?;
+
+        let claimed_death_program_id = C::ProgramVerificationCryptoHashGadget::check_evaluation_gadget(
+            cs.ns("Compute death program ID"),
+            &death_program_vk_field_elements,
+        )?;
 
         let claimed_death_program_id_bytes =
             claimed_death_program_id.to_bytes(&mut cs.ns(|| "Convert death program ID to bytes"))?;
@@ -415,25 +409,24 @@ where
     {
         let cs = &mut cs.ns(|| format!("Check birth program for output record {}", j));
 
-        let birth_program_proof = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::ProofGadget::alloc_bytes(
+        let birth_program_proof = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate proof"),
             || Ok(&input.proof),
         )?;
 
-        let birth_program_vk =
-            <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::VerificationKeyGadget::alloc_bytes(
-                &mut cs.ns(|| "Allocate verifying key"),
-                || Ok(&input.verifying_key),
-            )?;
-
-        // Manually allocate the death program bytes instead of the conversion
-        let birth_program_vk_bytes = UInt8::alloc_vec(
-            cs.ns(|| format!("birth_death_program_vk_bytes_{}", j)),
-            &input.verifying_key,
+        let birth_program_vk = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::VerificationKeyGadget::alloc(
+            &mut cs.ns(|| "Allocate verifying key"),
+            || Ok(&input.verifying_key),
         )?;
 
-        let claimed_birth_program_id = program_vk_crh
-            .check_evaluation_gadget(&mut cs.ns(|| "Compute birth program ID"), birth_program_vk_bytes)?;
+        // Manually allocate the death program bytes instead of the conversion
+        let birth_program_vk_field_elementstes =
+            birth_program_vk.to_field_elements(cs.ns(|| "birth_death_program_vk_field_elements"))?;
+
+        let claimed_birth_program_id = C::ProgramVerificationCryptoHashGadget::check_evaluation_gadget(
+            &mut cs.ns(|| "Compute birth program ID"),
+            &birth_program_vk_field_elementstes,
+        )?;
 
         let claimed_birth_program_id_bytes =
             claimed_birth_program_id.to_bytes(&mut cs.ns(|| "Convert birth program ID to bytes"))?;

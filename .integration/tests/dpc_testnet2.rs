@@ -323,7 +323,6 @@ fn test_testnet_2_transaction_kernel_serialization() {
     assert_eq!(transaction_kernel, recovered_transaction_kernel);
 }
 
-#[ignore]
 #[test]
 fn test_testnet2_dpc_execute_constraints() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);

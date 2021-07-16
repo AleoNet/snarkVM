@@ -20,11 +20,14 @@ use crate::{
     marlin::{CircuitProvingKey, PreparedCircuitVerifyingKey},
     Vec,
 };
+use snarkvm_algorithms::Prepare;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_polycommit::PolynomialCommitment;
 use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 use derivative::Derivative;
+use snarkvm_algorithms::fft::EvaluationDomain;
+use snarkvm_r1cs::SynthesisError;
 use std::io::{
     Read,
     Write,
@@ -91,4 +94,38 @@ where
     let mut vk_hash_rng = FS::new();
     vk_hash_rng.absorb_native_field_elements(&vk.circuit_commitments);
     vk_hash_rng.squeeze_native_field_elements(1)
+}
+
+impl<F, PC> Prepare<PreparedCircuitVerifyingKey<F, PC>> for CircuitVerifyingKey<F, PC>
+where
+    F: PrimeField,
+    PC: PolynomialCommitment<F>,
+{
+    /// Prepare the circuit verifying key.
+    fn prepare(&self) -> PreparedCircuitVerifyingKey<F, PC> {
+        let mut prepared_index_comms = Vec::<PC::PreparedCommitment>::new();
+        for (_, comm) in self.circuit_commitments.iter().enumerate() {
+            prepared_index_comms.push(comm.prepare());
+        }
+
+        let prepared_verifier_key = self.verifier_key.prepare();
+
+        let domain_h = EvaluationDomain::<F>::new(self.circuit_info.num_constraints)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
+            .unwrap();
+        let domain_k = EvaluationDomain::<F>::new(self.circuit_info.num_non_zero)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
+            .unwrap();
+
+        let domain_h_size = domain_h.size();
+        let domain_k_size = domain_k.size();
+
+        PreparedCircuitVerifyingKey::<F, PC> {
+            domain_h_size: domain_h_size as u64,
+            domain_k_size: domain_k_size as u64,
+            prepared_index_comms,
+            prepared_verifier_key,
+            orig_vk: (*self).clone(),
+        }
+    }
 }

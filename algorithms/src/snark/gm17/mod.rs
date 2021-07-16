@@ -47,6 +47,7 @@ mod verifier;
 #[cfg(test)]
 mod tests;
 
+use crate::Prepare;
 pub use generator::*;
 pub use prover::*;
 pub use verifier::*;
@@ -251,6 +252,12 @@ impl<E: PairingEngine> VerifyingKey<E> {
             h_gamma_g2,
             query,
         })
+    }
+}
+
+impl<E: PairingEngine> Prepare<PreparedVerifyingKey<E>> for VerifyingKey<E> {
+    fn prepare(&self) -> PreparedVerifyingKey<E> {
+        prepare_verifying_key(self.clone())
     }
 }
 

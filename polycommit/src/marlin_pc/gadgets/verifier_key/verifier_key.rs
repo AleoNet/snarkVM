@@ -29,10 +29,15 @@ use snarkvm_gadgets::{
         fields::{FieldGadget, ToConstraintFieldGadget},
         select::CondSelectGadget,
     },
+    PrepareGadget,
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-use crate::{kzg10::VerifierKey as KZG10VerifierKey, marlin_pc::data_structures::VerifierKey, Vec};
+use crate::{
+    kzg10::VerifierKey as KZG10VerifierKey,
+    marlin_pc::{data_structures::VerifierKey, gadgets::verifier_key::prepared_verifier_key::PreparedVerifierKeyVar},
+    Vec,
+};
 
 /// Var for the verification key of the Marlin-KZG10 polynomial commitment scheme.
 #[allow(clippy::type_complexity)]
@@ -335,6 +340,55 @@ where
         cs: CS,
     ) -> Result<Vec<UInt8>, SynthesisError> {
         self.to_bytes(cs)
+    }
+}
+
+impl<TargetCurve, BaseCurve, PG>
+    PrepareGadget<PreparedVerifierKeyVar<TargetCurve, BaseCurve, PG>, <BaseCurve as PairingEngine>::Fr>
+    for VerifierKeyVar<TargetCurve, BaseCurve, PG>
+where
+    TargetCurve: PairingEngine,
+    BaseCurve: PairingEngine,
+    PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
+    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
+    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
+{
+    fn prepare<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
+        &self,
+        mut cs: CS,
+    ) -> Result<PreparedVerifierKeyVar<TargetCurve, BaseCurve, PG>, SynthesisError> {
+        let supported_bits = <<TargetCurve as PairingEngine>::Fr as PrimeField>::size_in_bits();
+        let mut prepared_g = Vec::<PG::G1Gadget>::new();
+
+        let mut g: PG::G1Gadget = self.g.clone();
+        for i in 0..supported_bits {
+            prepared_g.push(g.clone());
+            g.double_in_place(cs.ns(|| format!("double_in_place_{}", i)))?;
+        }
+
+        let prepared_h = PG::prepare_g2(cs.ns(|| "prepared_h"), self.h.clone())?;
+        let prepared_beta_h = PG::prepare_g2(cs.ns(|| "prepared_beta_h"), self.beta_h.clone())?;
+
+        let prepared_degree_bounds_and_shift_powers = if self.degree_bounds_and_shift_powers.is_some() {
+            let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G1Gadget>)>::new();
+
+            for (d, d_gadget, shift_power) in self.degree_bounds_and_shift_powers.as_ref().unwrap().iter() {
+                res.push((*d, (*d_gadget).clone(), vec![shift_power.clone()]));
+            }
+
+            Some(res)
+        } else {
+            None
+        };
+
+        Ok(PreparedVerifierKeyVar::<TargetCurve, BaseCurve, PG> {
+            prepared_g,
+            prepared_h,
+            prepared_beta_h,
+            prepared_degree_bounds_and_shift_powers,
+            constant_allocation: false,
+            origin_vk: Some(self.clone()),
+        })
     }
 }
 

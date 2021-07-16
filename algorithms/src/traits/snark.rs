@@ -18,31 +18,52 @@ use crate::errors::SNARKError;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::Rng;
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::ConstraintSynthesizer;
 use std::fmt::Debug;
 
-pub trait SNARK {
-    type AllocatedCircuit;
-    type Circuit;
-    type PreparedVerifyingKey: Clone + From<Self::ProvingKey> + From<Self::VerifyingKey>;
+/// Defines a trait that describes preparing from an unprepared version to a prepare version
+pub trait Prepare<T> {
+    fn prepare(&self) -> T;
+}
+
+pub trait SNARK<F: PrimeField> {
+    type UniversalReferenceString: Clone;
+    type PreparedVerifyingKey: Clone;
     type Proof: Clone + Debug + ToBytes + FromBytes;
     type ProvingKey: Clone + ToBytes + FromBytes;
     type VerifierInput: ?Sized;
-    type VerifyingKey: Clone + ToBytes + FromBytes + From<Self::PreparedVerifyingKey> + From<Self::ProvingKey>;
+    type VerifyingKey: Clone
+        + ToBytes
+        + FromBytes
+        + Prepare<Self::PreparedVerifyingKey>
+        + From<Self::PreparedVerifyingKey>
+        + From<Self::ProvingKey>;
 
-    fn setup<R: Rng>(
-        circuit: &Self::Circuit,
+    fn setup<C: ConstraintSynthesizer<F>, R: Rng>(
+        circuit: &C,
+        urs: &Self::UniversalReferenceString,
         rng: &mut R,
-    ) -> Result<(Self::ProvingKey, Self::PreparedVerifyingKey), SNARKError>;
+    ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError>;
 
-    fn prove<R: Rng>(
+    fn prove<C: ConstraintSynthesizer<F>, R: Rng>(
         proving_key: &Self::ProvingKey,
-        input_and_witness: &Self::AllocatedCircuit,
+        input_and_witness: &C,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError>;
 
-    fn verify(
-        verifying_key: &Self::PreparedVerifyingKey,
+    fn verify_with_processed_key(
+        processed_verifying_key: &Self::PreparedVerifyingKey,
         input: &Self::VerifierInput,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError>;
+
+    fn verify(
+        verifying_key: &Self::VerifyingKey,
+        input: &Self::VerifierInput,
+        proof: &Self::Proof,
+    ) -> Result<bool, SNARKError> {
+        let processed_verifying_key = verifying_key.prepare();
+        Self::verify_with_processed_key(&processed_verifying_key, input, proof)
+    }
 }
