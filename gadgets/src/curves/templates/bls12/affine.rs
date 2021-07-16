@@ -360,6 +360,14 @@ where
     F: Field,
     FG: FieldGadget<P::BaseField, F>,
 {
+    fn is_eq<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
+        let x = self.x.is_eq(cs.ns(|| "x_is_eq"), &other.x)?;
+        let y = self.y.is_eq(cs.ns(|| "y_is_eq"), &other.y)?;
+        let infinity = self.infinity.is_eq(cs.ns(|| "infinity_is_eq"), &other.infinity)?;
+
+        let x_and_y = Boolean::and(cs.ns(|| "x_and_y"), &x, &y)?;
+        Boolean::and(cs.ns(|| "x_and_y_and_infinity"), &x_and_y, &infinity)
+    }
 }
 
 impl<P, F, FG> ConditionalEqGadget<F> for AffineGadget<P, F, FG>
