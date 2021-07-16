@@ -15,8 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::CryptoHashError;
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
-use snarkvm_utilities::fmt::Debug;
+use snarkvm_utilities::{
+    bytes::{FromBytes, ToBytes},
+    fmt::Debug,
+};
 
 pub trait CryptoHash {
     type Input: FromBytes + From<u64> + Clone;

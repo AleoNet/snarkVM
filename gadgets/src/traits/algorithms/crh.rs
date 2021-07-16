@@ -29,6 +29,7 @@ use crate::{
         integers::Integer,
         select::CondSelectGadget,
     },
+    FpGadget,
 };
 
 pub trait CRHGadget<H: CRH, F: Field>: AllocGadget<H, F> + Sized + Clone {
@@ -46,6 +47,18 @@ pub trait CRHGadget<H: CRH, F: Field>: AllocGadget<H, F> + Sized + Clone {
         cs: CS,
         input: Vec<UInt8>,
     ) -> Result<Self::OutputGadget, SynthesisError>;
+
+    fn check_evaluation_gadget_on_field_elements<CS: ConstraintSystem<F>>(
+        &self,
+        mut cs: CS,
+        input: Vec<FpGadget<F>>,
+    ) -> Result<Self::OutputGadget, SynthesisError> {
+        let mut input_bytes = vec![];
+        for (i, elem) in input.iter().enumerate() {
+            input_bytes.append(&mut elem.to_bytes(cs.ns(|| format!("convert_to_bytes_{}", i)))?);
+        }
+        self.check_evaluation_gadget(cs.ns(|| "crh"), input_bytes)
+    }
 }
 
 pub trait MaskedCRHGadget<H: CRH, F: PrimeField>: CRHGadget<H, F> {

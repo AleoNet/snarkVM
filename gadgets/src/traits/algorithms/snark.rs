@@ -20,7 +20,14 @@ use snarkvm_algorithms::traits::SNARK;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
-use crate::{bits::Boolean, traits::alloc::AllocGadget, FromFieldElementsGadget, ToConstraintFieldGadget};
+use crate::{
+    bits::Boolean,
+    traits::alloc::AllocGadget,
+    AllocBytesGadget,
+    FromFieldElementsGadget,
+    ToBytesGadget,
+    ToConstraintFieldGadget,
+};
 
 pub trait PrepareGadget<T, F: PrimeField> {
     fn prepare<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<T, SynthesisError>;
@@ -30,8 +37,9 @@ pub trait SNARKVerifierGadget<F: PrimeField, CF: PrimeField, S: SNARK> {
     type PreparedVerificationKeyGadget: Clone;
     type VerificationKeyGadget: AllocGadget<S::VerifyingKey, CF>
         + ToConstraintFieldGadget<CF>
-        + PrepareGadget<Self::PreparedVerificationKeyGadget, CF>;
-    type ProofGadget: AllocGadget<S::Proof, CF>;
+        + PrepareGadget<Self::PreparedVerificationKeyGadget, CF>
+        + AllocBytesGadget<Vec<u8>, F>;
+    type ProofGadget: AllocGadget<S::Proof, CF> + AllocBytesGadget<Vec<u8>, F>;
     type Input: Clone + ?Sized;
 
     fn check_verify<'a, CS: ConstraintSystem<CF>, I: Iterator<Item = Self::Input>>(
@@ -54,7 +62,7 @@ pub trait SNARKVerifierGadget<F: PrimeField, CF: PrimeField, S: SNARK> {
 /// This implements constraints for SNARK verifiers.
 pub trait SNARKGadget<F: PrimeField, CF: PrimeField, S: SNARK> {
     type PreparedVerifyingKeyVar: AllocGadget<S::PreparedVerifyingKey, CF> + Clone;
-    type VerifyingKeyVar: AllocGadget<S::VerifyingKey, CF> + Clone;
+    type VerifyingKeyVar: AllocGadget<S::VerifyingKey, CF> + ToBytesGadget<CF> + Clone;
     type InputVar: AllocGadget<Vec<F>, CF> + Clone + FromFieldElementsGadget<F, CF>;
     type ProofVar: AllocGadget<S::Proof, CF> + Clone;
 

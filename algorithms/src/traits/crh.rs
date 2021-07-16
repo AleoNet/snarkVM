@@ -17,11 +17,11 @@
 use crate::errors::CRHError;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use snarkvm_fields::PrimeField;
 use std::{
     fmt::{Debug, Display},
     hash::Hash,
 };
-use snarkvm_fields::PrimeField;
 
 pub trait CRH: Clone + ToBytes + FromBytes + From<<Self as CRH>::Parameters> {
     type Output: Clone + Debug + Display + ToBytes + FromBytes + Eq + Hash + Default + Send + Sync + Copy;

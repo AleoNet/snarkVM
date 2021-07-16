@@ -127,15 +127,6 @@ pub trait Testnet2Components: DPCComponents {
 
     /// Specify the Marlin mode (recursive or non-recursive) for program SNARKS.
     type MarlinMode: MarlinMode;
-
-    /// Specify the crypto hash function for program verification key.
-    type ProgramVerificationCryptoHash: CryptoHash<Input = Self::OuterScalarField>;
-
-    /// Specify the crypto hash function gadget for program verification key.
-    type ProgramVerificationCryptoHashGadget: CryptoHashGadget<
-        Self::ProgramVerificationCryptoHash,
-        Self::OuterScalarField,
-    >;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -144,11 +135,11 @@ pub struct DPC<C: Testnet2Components> {
     pub noop_program: NoopProgram<C>,
     pub inner_snark_parameters: (
         Option<<C::InnerSNARK as SNARK>::ProvingKey>,
-        <C::InnerSNARK as SNARK>::PreparedVerifyingKey,
+        <C::InnerSNARK as SNARK>::VerifyingKey,
     ),
     pub outer_snark_parameters: (
         Option<<C::InnerSNARK as SNARK>::ProvingKey>,
-        <C::InnerSNARK as SNARK>::PreparedVerifyingKey,
+        <C::InnerSNARK as SNARK>::VerifyingKey,
     ),
 }
 

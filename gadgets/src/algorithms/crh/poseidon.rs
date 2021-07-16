@@ -55,4 +55,15 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
         let res = sponge.squeeze_field_elements(cs.ns(|| "squeeze"), 1)?;
         Ok(res[0].clone())
     }
+
+    fn check_evaluation_gadget_on_field_elements<CS: ConstraintSystem<F>>(
+        &self,
+        mut cs: CS,
+        input: Vec<FpGadget<F>>,
+    ) -> Result<Self::OutputGadget, SynthesisError> {
+        let mut sponge = PoseidonSpongeGadget::<F>::new(cs.ns(|| "alloc"), &params);
+        sponge.absorb(cs.ns(|| "absorb"), input.iter())?;
+        let res = sponge.squeeze_field_elements(cs.ns(|| "squeeze"), 1)?;
+        Ok(res[0].clone())
+    }
 }
