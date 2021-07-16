@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::{
     merkle_tree::MerklePath,
-    traits::{MerkleParameters, CRH, SNARK},
+    traits::{CRH, SNARK},
 };
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{
@@ -46,7 +46,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-type L = Ledger<Testnet1Transaction, CommitmentMerkleParameters, MemDb>;
+type L = Ledger<Testnet1Transaction, CommitmentMerkleTreeParameters, MemDb>;
 
 fn testnet1_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
     let dpc = <Testnet1DPC as DPCScheme<L>>::load(false)?;
@@ -96,7 +96,7 @@ fn dpc_testnet1_integration_test() {
         transactions: Transactions::new(),
     };
 
-    let ledger = initialize_test_blockchain::<Testnet1Transaction, CommitmentMerkleParameters, MemDb>(
+    let ledger = initialize_test_blockchain::<Testnet1Transaction, CommitmentMerkleTreeParameters, MemDb>(
         ledger_parameters,
         genesis_block,
     );
@@ -314,9 +314,8 @@ fn test_transaction_kernel_serialization() {
 fn test_testnet1_dpc_execute_constraints() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
-    // Generate parameters for the ledger, commitment schemes, CRH, and the
-    // "always-accept" program.
-    let ledger_parameters = Arc::new(CommitmentMerkleParameters::setup("Testnet1CommitmentMerkleParameters"));
+    // TODO (howardwu): TEMPORARY - Resolve this inconsistency on import structure with a new model once MerkleParameters are refactored.
+    let ledger_parameters = Arc::new(Components::ledger_merkle_tree_parameters().clone());
 
     let dpc = <Testnet1DPC as DPCScheme<L>>::setup(&ledger_parameters, &mut rng).unwrap();
 
@@ -339,7 +338,7 @@ fn test_testnet1_dpc_execute_constraints() {
     };
 
     // Use genesis record, serial number, and memo to initialize the ledger.
-    let ledger = initialize_test_blockchain::<Testnet1Transaction, CommitmentMerkleParameters, MemDb>(
+    let ledger = initialize_test_blockchain::<Testnet1Transaction, CommitmentMerkleTreeParameters, MemDb>(
         ledger_parameters,
         genesis_block,
     );

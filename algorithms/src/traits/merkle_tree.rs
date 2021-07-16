@@ -64,6 +64,7 @@ pub trait MerkleParameters: Send + Sync + Clone + Default {
     }
 }
 
+// TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
 pub trait LoadableMerkleParameters: MerkleParameters + From<<Self as MerkleParameters>::H> {}
 
 pub trait MaskedMerkleParameters: MerkleParameters {

@@ -15,22 +15,19 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Ledger;
-use snarkvm_algorithms::MerkleParameters;
 use snarkvm_dpc::{testnet2::instantiated::*, Account, DPCComponents, DPCScheme, Storage};
 
 use rand::{CryptoRng, Rng};
 use std::sync::Arc;
 
-pub type MerkleTreeLedger<S> = Ledger<Testnet2Transaction, CommitmentMerkleParameters, S>;
+pub type MerkleTreeLedger<S> = Ledger<Testnet2Transaction, CommitmentMerkleTreeParameters, S>;
 
 pub fn setup_or_load_parameters<R: Rng + CryptoRng, S: Storage>(
     verify_only: bool,
     rng: &mut R,
-) -> (Arc<CommitmentMerkleParameters>, Testnet2DPC) {
-    // TODO (howardwu): Resolve this inconsistency on import structure with a new model once MerkleParameters are refactored.
-    let crh_parameters = <Components as DPCComponents>::ledger_merkle_tree_crh().clone();
-    let merkle_tree_hash_parameters = <CommitmentMerkleParameters as MerkleParameters>::H::from(crh_parameters);
-    let ledger_merkle_tree_parameters = Arc::new(From::from(merkle_tree_hash_parameters));
+) -> (Arc<CommitmentMerkleTreeParameters>, Testnet2DPC) {
+    // TODO (howardwu): TEMPORARY - Resolve this inconsistency on import structure with a new model once MerkleParameters are refactored.
+    let ledger_merkle_tree_parameters = Arc::new(Components::ledger_merkle_tree_parameters().clone());
 
     // let dpc = match <InstantiatedDPC as DPCScheme<MerkleTreeLedger<S>>>::load(verify_only) {
     //     Ok(dpc) => dpc,

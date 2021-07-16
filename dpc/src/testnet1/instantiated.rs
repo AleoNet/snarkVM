@@ -74,7 +74,7 @@ pub type Testnet1DPC = DPC<Components>;
 pub type Testnet1Transaction = Transaction<Components>;
 
 define_merkle_tree_parameters!(
-    CommitmentMerkleParameters,
+    CommitmentMerkleTreeParameters,
     <Components as DPCComponents>::LedgerMerkleTreeCRH,
     32
 );
@@ -111,7 +111,7 @@ impl DPCComponents for Components {
 
     type LedgerMerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 8, 32>;
     type LedgerMerkleTreeCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
-    type LedgerMerkleParameters = CommitmentMerkleParameters;
+    type LedgerMerkleTreeParameters = CommitmentMerkleTreeParameters;
 
     type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 129>;
     type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 129>;
@@ -146,6 +146,12 @@ impl DPCComponents for Components {
     dpc_setup!{program_id_crh, PROGRAM_ID_CRH, ProgramIDCRH, "AleoProgramIDCRH0"}
     dpc_setup!{record_commitment, RECORD_COMMITMENT, RecordCommitment, "AleoRecordCommitment0"}
     dpc_setup!{serial_number_nonce_crh, SERIAL_NUMBER_NONCE_CRH, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
+
+    // TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
+    fn ledger_merkle_tree_parameters() -> &'static Self::LedgerMerkleTreeParameters {
+        static LEDGER_MERKLE_TREE_PARAMETERS: OnceCell<<Components as DPCComponents>::LedgerMerkleTreeParameters> = OnceCell::new();
+        LEDGER_MERKLE_TREE_PARAMETERS.get_or_init(|| Self::LedgerMerkleTreeParameters::from(Self::ledger_merkle_tree_crh().clone()))
+    }
 }
 
 impl Testnet1Components for Components {

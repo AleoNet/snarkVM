@@ -31,8 +31,8 @@ use std::sync::Arc;
 #[derivative(Clone(bound = "C: Testnet1Components"))]
 pub struct OuterCircuit<C: Testnet1Components> {
     // Inner snark verifier public inputs
-    ledger_parameters: Arc<C::LedgerMerkleParameters>,
-    ledger_digest: MerkleTreeDigest<C::LedgerMerkleParameters>,
+    ledger_parameters: Arc<C::LedgerMerkleTreeParameters>,
+    ledger_digest: MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
     old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
     new_commitments: Vec<<C::RecordCommitment as CommitmentScheme>::Output>,
     new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
@@ -54,12 +54,12 @@ pub struct OuterCircuit<C: Testnet1Components> {
 
 impl<C: Testnet1Components> OuterCircuit<C> {
     pub fn blank(
-        ledger_parameters: Arc<C::LedgerMerkleParameters>,
+        ledger_parameters: Arc<C::LedgerMerkleTreeParameters>,
         inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
         program_snark_vk_and_proof: Execution,
     ) -> Self {
-        let ledger_digest = MerkleTreeDigest::<C::LedgerMerkleParameters>::default();
+        let ledger_digest = MerkleTreeDigest::<C::LedgerMerkleTreeParameters>::default();
         let old_serial_numbers =
             vec![<C::AccountSignature as SignatureScheme>::PublicKey::default(); C::NUM_INPUT_RECORDS];
         let new_commitments = vec![<C::RecordCommitment as CommitmentScheme>::Output::default(); C::NUM_OUTPUT_RECORDS];
@@ -98,8 +98,8 @@ impl<C: Testnet1Components> OuterCircuit<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         // Inner SNARK public inputs
-        ledger_parameters: Arc<C::LedgerMerkleParameters>,
-        ledger_digest: MerkleTreeDigest<C::LedgerMerkleParameters>,
+        ledger_parameters: Arc<C::LedgerMerkleTreeParameters>,
+        ledger_digest: MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
         old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
         new_commitments: Vec<<C::RecordCommitment as CommitmentScheme>::Output>,
         new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
@@ -153,8 +153,8 @@ where
     <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
     <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::LedgerMerkleParameters as MerkleParameters>::H: ToConstraintField<C::InnerScalarField>,
-    MerkleTreeDigest<C::LedgerMerkleParameters>: ToConstraintField<C::InnerScalarField>,
+    <C::LedgerMerkleTreeParameters as MerkleParameters>::H: ToConstraintField<C::InnerScalarField>,
+    MerkleTreeDigest<C::LedgerMerkleTreeParameters>: ToConstraintField<C::InnerScalarField>,
 {
     fn generate_constraints<CS: ConstraintSystem<C::OuterScalarField>>(
         &self,

@@ -25,7 +25,7 @@ pub use merkle_tree::*;
 #[cfg(test)]
 pub mod tests;
 
-// TODO: How should this default message be chosen?
+// TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
 // Setup message to instantiate the Merkle Tree parameters
 pub const fn setup_message() -> &'static str {
     "MerkleTreeParameters"
@@ -67,6 +67,7 @@ macro_rules! define_merkle_tree_parameters {
 
         impl LoadableMerkleParameters for $struct_name {}
 
+        // TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
         impl Default for $struct_name {
             fn default() -> Self {
                 // TODO (howardwu): Switch to a better default.

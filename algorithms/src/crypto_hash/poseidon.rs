@@ -29,10 +29,12 @@ use snarkvm_fields::{
     PoseidonDefaultParameters,
     PrimeField,
 };
-use snarkvm_utilities::marker::PhantomData;
+use snarkvm_utilities::{FromBytes, ToBytes};
+
+use std::io::{Read, Result as IoResult, Write};
 
 /// Parameters and RNG used
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PoseidonParameters<F: PrimeField> {
     /// number of rounds in a full-round operation
     pub full_rounds: usize,
@@ -79,6 +81,82 @@ impl<F: PrimeField> PoseidonParameters<F> {
             rate,
             capacity,
         }
+    }
+}
+
+impl<F: PrimeField> ToBytes for PoseidonParameters<F> {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.full_rounds as u32).write_le(&mut writer)?;
+        (self.partial_rounds as u32).write_le(&mut writer)?;
+        self.alpha.write_le(&mut writer)?;
+
+        (self.ark.len() as u32).write_le(&mut writer)?;
+        for fields in &self.ark {
+            (fields.len() as u32).write_le(&mut writer)?;
+            for field in fields {
+                field.write_le(&mut writer)?;
+            }
+        }
+
+        (self.mds.len() as u32).write_le(&mut writer)?;
+        for fields in &self.mds {
+            (fields.len() as u32).write_le(&mut writer)?;
+            for field in fields {
+                field.write_le(&mut writer)?;
+            }
+        }
+
+        (self.rate as u32).write_le(&mut writer)?;
+        (self.capacity as u32).write_le(&mut writer)
+    }
+}
+
+impl<F: PrimeField> FromBytes for PoseidonParameters<F> {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let full_rounds: u32 = FromBytes::read_le(&mut reader)?;
+        let partial_rounds: u32 = FromBytes::read_le(&mut reader)?;
+        let alpha: u64 = FromBytes::read_le(&mut reader)?;
+
+        let ark_length: u32 = FromBytes::read_le(&mut reader)?;
+        let mut ark = Vec::with_capacity(ark_length as usize);
+        for _ in 0..ark_length {
+            let num_fields: u32 = FromBytes::read_le(&mut reader)?;
+            let mut fields = Vec::with_capacity(num_fields as usize);
+
+            for _ in 0..num_fields {
+                let field: F = FromBytes::read_le(&mut reader)?;
+                fields.push(field);
+            }
+            ark.push(fields);
+        }
+
+        let mds_length: u32 = FromBytes::read_le(&mut reader)?;
+        let mut mds = Vec::with_capacity(mds_length as usize);
+        for _ in 0..mds_length {
+            let num_fields: u32 = FromBytes::read_le(&mut reader)?;
+            let mut fields = Vec::with_capacity(num_fields as usize);
+
+            for _ in 0..num_fields {
+                let field: F = FromBytes::read_le(&mut reader)?;
+                fields.push(field);
+            }
+            mds.push(fields);
+        }
+
+        let rate: u32 = FromBytes::read_le(&mut reader)?;
+        let capacity: u32 = FromBytes::read_le(&mut reader)?;
+
+        Ok(Self::new(
+            full_rounds as usize,
+            partial_rounds as usize,
+            alpha,
+            mds,
+            ark,
+            rate as usize,
+            capacity as usize,
+        ))
     }
 }
 
@@ -280,12 +358,13 @@ impl<F: PrimeField> CryptographicSponge<F> for PoseidonSponge<F> {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PoseidonCryptoHash<
     F: PrimeField + PoseidonDefaultParametersField,
     const RATE: usize,
     const OPTIMIZED_FOR_WEIGHTS: bool,
 > {
-    field_phantom: PhantomData<F>,
+    pub parameters: PoseidonParameters<F>,
 }
 
 impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> CryptoHash
@@ -300,6 +379,26 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
         sponge.absorb(input);
         let res = sponge.squeeze_field_elements(1);
         Ok(res[0].clone())
+    }
+}
+
+impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> ToBytes
+    for PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>
+{
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.parameters.write_le(&mut writer)
+    }
+}
+
+impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> FromBytes
+    for PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>
+{
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let parameters: PoseidonParameters<F> = FromBytes::read_le(&mut reader)?;
+
+        Ok(Self { parameters })
     }
 }
 
