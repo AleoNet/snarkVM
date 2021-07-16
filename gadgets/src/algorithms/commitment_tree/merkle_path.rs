@@ -20,7 +20,7 @@ use snarkvm_algorithms::{
     commitment_tree::CommitmentMerklePath,
     traits::{CommitmentScheme, CRH},
 };
-use snarkvm_fields::{Field, PrimeField};
+use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{

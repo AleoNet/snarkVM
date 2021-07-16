@@ -20,9 +20,15 @@ use snarkvm_algorithms::snark::gm17::{create_random_proof, generate_random_param
 use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::{to_bytes_le, bititerator::BitIteratorBE};
+use snarkvm_utilities::{bititerator::BitIteratorBE, to_bytes_le, ToBytes};
 
-use crate::{algorithms::snark::*, bits::Boolean, curves::bls12_377::PairingGadget as Bls12_377PairingGadget, traits::{algorithms::snark::SNARKVerifierGadget, alloc::AllocGadget}, AllocBytesGadget};
+use crate::{
+    algorithms::snark::*,
+    bits::Boolean,
+    curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
+    traits::{algorithms::snark::SNARKVerifierGadget, alloc::AllocGadget},
+    AllocBytesGadget,
+};
 
 type TestProofSystem = GM17<Bls12_377, Bench<Fr>, Fr>;
 type TestVerifierGadget = GM17VerifierGadget<Bls12_377, Bls12_377PairingGadget>;
@@ -144,7 +150,6 @@ fn gm17_verifier_test() {
     }
 }
 
-
 #[test]
 fn gm17_verifier_bytes_test() {
     let num_inputs = 100;
@@ -161,7 +166,7 @@ fn gm17_verifier_bytes_test() {
         },
         rng,
     )
-        .unwrap();
+    .unwrap();
 
     {
         let proof = {
@@ -175,7 +180,7 @@ fn gm17_verifier_bytes_test() {
                 &params,
                 rng,
             )
-                .unwrap()
+            .unwrap()
         };
 
         let mut cs = TestConstraintSystem::<Fq>::new();
@@ -208,7 +213,7 @@ fn gm17_verifier_bytes_test() {
             input_gadgets.iter().cloned(),
             &proof_gadget,
         )
-            .unwrap();
+        .unwrap();
         if !cs.is_satisfied() {
             println!("=========================================================");
             println!("Unsatisfied constraints:");

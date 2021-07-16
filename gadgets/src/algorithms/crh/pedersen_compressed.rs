@@ -45,8 +45,13 @@ pub struct PedersenCompressedCRHGadget<
 }
 
 // TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
-impl<G: ProjectiveCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    AllocGadget<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+impl<
+    G: ProjectiveCurve,
+    F: PrimeField,
+    GG: CompressedGroupGadget<G, F>,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> AllocGadget<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCompressedCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc<
@@ -78,8 +83,13 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>, const N
     }
 }
 
-impl<G: ProjectiveCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    CRHGadget<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+impl<
+    G: ProjectiveCurve,
+    F: PrimeField,
+    GG: CompressedGroupGadget<G, F>,
+    const NUM_WINDOWS: usize,
+    const WINDOW_SIZE: usize,
+> CRHGadget<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCompressedCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     type OutputGadget = GG::BaseFieldGadget;

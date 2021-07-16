@@ -17,7 +17,7 @@
 use std::fmt::Debug;
 
 use snarkvm_algorithms::traits::CRH;
-use snarkvm_fields::{Field, PrimeField};
+use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{

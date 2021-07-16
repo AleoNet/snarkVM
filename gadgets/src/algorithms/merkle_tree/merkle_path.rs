@@ -21,7 +21,7 @@ use snarkvm_algorithms::{
     merkle_tree::MerklePath,
     traits::{MerkleParameters, CRH},
 };
-use snarkvm_fields::{Field, PrimeField};
+use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{

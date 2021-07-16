@@ -26,7 +26,7 @@ use crate::{
 };
 use snarkvm_algorithms::crh::PedersenCRH;
 use snarkvm_curves::ProjectiveCurve;
-use snarkvm_fields::{Field, PrimeField};
+use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use std::{borrow::Borrow, marker::PhantomData};

@@ -21,13 +21,22 @@ use snarkvm_curves::traits::{AffineCurve, PairingEngine};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
-use crate::{UInt8, bits::{Boolean, ToBitsBEGadget}, traits::{
-    algorithms::SNARKVerifierGadget,
-    alloc::AllocGadget,
-    curves::{GroupGadget, PairingGadget},
-    eq::EqGadget,
-    fields::FieldGadget,
-}, FpGadget, PrepareGadget, ToConstraintFieldGadget, AllocBytesGadget, ToBytesGadget};
+use crate::{
+    bits::{Boolean, ToBitsBEGadget},
+    traits::{
+        algorithms::SNARKVerifierGadget,
+        alloc::AllocGadget,
+        curves::{GroupGadget, PairingGadget},
+        eq::EqGadget,
+        fields::FieldGadget,
+    },
+    AllocBytesGadget,
+    FpGadget,
+    PrepareGadget,
+    ToBytesGadget,
+    ToConstraintFieldGadget,
+    UInt8,
+};
 use snarkvm_utilities::FromBytes;
 
 #[derive(Derivative)]
@@ -288,9 +297,9 @@ impl<Pairing: PairingEngine, P: PairingGadget<Pairing, Pairing::Fq>> AllocBytesG
 {
     #[inline]
     fn alloc_bytes<FN, T, CS: ConstraintSystem<Pairing::Fq>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
-        where
-            FN: FnOnce() -> Result<T, SynthesisError>,
-            T: Borrow<Vec<u8>>,
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|vk_bytes| {
             let vk: VerifyingKey<Pairing> = FromBytes::read_le(&vk_bytes.borrow().clone()[..])?;
@@ -300,10 +309,13 @@ impl<Pairing: PairingEngine, P: PairingGadget<Pairing, Pairing::Fq>> AllocBytesG
     }
 
     #[inline]
-    fn alloc_input_bytes<FN, T, CS: ConstraintSystem<Pairing::Fq>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
-        where
-            FN: FnOnce() -> Result<T, SynthesisError>,
-            T: Borrow<Vec<u8>>,
+    fn alloc_input_bytes<FN, T, CS: ConstraintSystem<Pairing::Fq>>(
+        mut cs: CS,
+        value_gen: FN,
+    ) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|vk_bytes| {
             let vk: VerifyingKey<Pairing> = FromBytes::read_le(&vk_bytes.borrow().clone()[..])?;
@@ -377,13 +389,13 @@ impl<Pairing: PairingEngine, P: PairingGadget<Pairing>> AllocGadget<Proof<Pairin
 }
 
 impl<Pairing: PairingEngine, P: PairingGadget<Pairing, Pairing::Fq>> AllocBytesGadget<Vec<u8>, Pairing::Fq>
-    for GM17ProofGadget<Pairing,  P>
+    for GM17ProofGadget<Pairing, P>
 {
     #[inline]
     fn alloc_bytes<FN, T, CS: ConstraintSystem<Pairing::Fq>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
-        where
-            FN: FnOnce() -> Result<T, SynthesisError>,
-            T: Borrow<Vec<u8>>,
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|proof_bytes| {
             let proof: Proof<Pairing> = FromBytes::read_le(&proof_bytes.borrow().clone()[..])?;
@@ -393,10 +405,13 @@ impl<Pairing: PairingEngine, P: PairingGadget<Pairing, Pairing::Fq>> AllocBytesG
     }
 
     #[inline]
-    fn alloc_input_bytes<FN, T, CS: ConstraintSystem<Pairing::Fq>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
-        where
-            FN: FnOnce() -> Result<T, SynthesisError>,
-            T: Borrow<Vec<u8>>,
+    fn alloc_input_bytes<FN, T, CS: ConstraintSystem<Pairing::Fq>>(
+        mut cs: CS,
+        value_gen: FN,
+    ) -> Result<Self, SynthesisError>
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|proof_bytes| {
             let proof: Proof<Pairing> = FromBytes::read_le(&proof_bytes.borrow().clone()[..])?;
@@ -407,7 +422,7 @@ impl<Pairing: PairingEngine, P: PairingGadget<Pairing, Pairing::Fq>> AllocBytesG
 }
 
 impl<Pairing: PairingEngine, P: PairingGadget<Pairing, Pairing::Fq>> ToBytesGadget<Pairing::Fq>
-for GM17VerifyingKeyGadget<Pairing, P>
+    for GM17VerifyingKeyGadget<Pairing, P>
 {
     #[inline]
     fn to_bytes<CS: ConstraintSystem<Pairing::Fq>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {

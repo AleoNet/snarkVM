@@ -21,13 +21,22 @@ use snarkvm_curves::traits::{AffineCurve, PairingEngine};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
-use crate::{UInt8, bits::{Boolean, ToBitsBEGadget}, traits::{
-    algorithms::snark::SNARKVerifierGadget,
-    alloc::AllocGadget,
-    curves::{GroupGadget, PairingGadget},
-    eq::EqGadget,
-}, FpGadget, PrepareGadget, ToConstraintFieldGadget, AllocBytesGadget, ToBytesGadget};
-use snarkvm_utilities::{to_bytes_le, FromBytes};
+use crate::{
+    bits::{Boolean, ToBitsBEGadget},
+    traits::{
+        algorithms::snark::SNARKVerifierGadget,
+        alloc::AllocGadget,
+        curves::{GroupGadget, PairingGadget},
+        eq::EqGadget,
+    },
+    AllocBytesGadget,
+    FpGadget,
+    PrepareGadget,
+    ToBytesGadget,
+    ToConstraintFieldGadget,
+    UInt8,
+};
+use snarkvm_utilities::FromBytes;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "P::G1Gadget: Clone, P::G2Gadget: Clone"))]
@@ -285,15 +294,15 @@ where
 }
 
 impl<PairingE, P> AllocBytesGadget<Vec<u8>, PairingE::Fq> for VerifyingKeyGadget<PairingE, P>
-    where
-        PairingE: PairingEngine,
-        P: PairingGadget<PairingE>,
+where
+    PairingE: PairingEngine,
+    P: PairingGadget<PairingE>,
 {
     #[inline]
     fn alloc_bytes<FN, T, CS: ConstraintSystem<PairingE::Fq>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
-        where
-            FN: FnOnce() -> Result<T, SynthesisError>,
-            T: Borrow<Vec<u8>>,
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|vk_bytes| {
             let vk: VerifyingKey<PairingE> = FromBytes::read_le(&vk_bytes.borrow()[..])?;
@@ -307,9 +316,9 @@ impl<PairingE, P> AllocBytesGadget<Vec<u8>, PairingE::Fq> for VerifyingKeyGadget
         mut cs: CS,
         value_gen: FN,
     ) -> Result<Self, SynthesisError>
-        where
-            FN: FnOnce() -> Result<T, SynthesisError>,
-            T: Borrow<Vec<u8>>,
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|vk_bytes| {
             let vk: VerifyingKey<PairingE> = FromBytes::read_le(&vk_bytes.borrow()[..])?;
@@ -358,15 +367,15 @@ where
 }
 
 impl<PairingE, P> AllocBytesGadget<Vec<u8>, PairingE::Fq> for ProofGadget<PairingE, P>
-    where
-        PairingE: PairingEngine,
-        P: PairingGadget<PairingE, PairingE::Fq>,
+where
+    PairingE: PairingEngine,
+    P: PairingGadget<PairingE, PairingE::Fq>,
 {
     #[inline]
     fn alloc_bytes<FN, T, CS: ConstraintSystem<PairingE::Fq>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
-        where
-            FN: FnOnce() -> Result<T, SynthesisError>,
-            T: Borrow<Vec<u8>>,
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|proof_bytes| {
             let proof: Proof<PairingE> = FromBytes::read_le(&proof_bytes.borrow()[..])?;
@@ -380,9 +389,9 @@ impl<PairingE, P> AllocBytesGadget<Vec<u8>, PairingE::Fq> for ProofGadget<Pairin
         mut cs: CS,
         value_gen: FN,
     ) -> Result<Self, SynthesisError>
-        where
-            FN: FnOnce() -> Result<T, SynthesisError>,
-            T: Borrow<Vec<u8>>,
+    where
+        FN: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|proof_bytes| {
             let proof: Proof<PairingE> = FromBytes::read_le(&proof_bytes.borrow()[..])?;
@@ -393,9 +402,9 @@ impl<PairingE, P> AllocBytesGadget<Vec<u8>, PairingE::Fq> for ProofGadget<Pairin
 }
 
 impl<PairingE, P> ToBytesGadget<PairingE::Fq> for VerifyingKeyGadget<PairingE, P>
-    where
-        PairingE: PairingEngine,
-        P: PairingGadget<PairingE>,
+where
+    PairingE: PairingEngine,
+    P: PairingGadget<PairingE>,
 {
     #[inline]
     fn to_bytes<CS: ConstraintSystem<PairingE::Fq>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
@@ -442,9 +451,9 @@ mod test {
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_fields::{Field, PrimeField};
     use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
-    use snarkvm_utilities::{test_rng, BitIteratorBE};
+    use snarkvm_utilities::{test_rng, to_bytes_le, BitIteratorBE, ToBytes};
 
-    use crate::{UInt8, bits::Boolean, curves::bls12_377::PairingGadget as Bls12_377PairingGadget};
+    use crate::{bits::Boolean, curves::bls12_377::PairingGadget as Bls12_377PairingGadget};
 
     use super::*;
 
@@ -627,7 +636,7 @@ mod test {
                 input_gadgets.iter().cloned(),
                 &proof_gadget,
             )
-                .unwrap();
+            .unwrap();
             if !cs.is_satisfied() {
                 println!("=========================================================");
                 println!("Unsatisfied constraints:");
