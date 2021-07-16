@@ -34,7 +34,6 @@ use snarkvm_gadgets::{
     nonnative::NonNativeFieldVar,
     traits::algorithms::SNARKVerifierGadget,
     CompressedGroupGadget,
-    CryptoHashGadget,
 };
 use snarkvm_marlin::{
     marlin::{MarlinMode, UniversalSRS},
@@ -138,8 +137,8 @@ pub struct DPC<C: Testnet2Components> {
         <C::InnerSNARK as SNARK>::VerifyingKey,
     ),
     pub outer_snark_parameters: (
-        Option<<C::InnerSNARK as SNARK>::ProvingKey>,
-        <C::InnerSNARK as SNARK>::VerifyingKey,
+        Option<<C::OuterSNARK as SNARK>::ProvingKey>,
+        <C::OuterSNARK as SNARK>::VerifyingKey,
     ),
 }
 
@@ -159,7 +158,7 @@ where
         ToConstraintField<C::OuterScalarField>,
 {
     type Account = Account<C>;
-    type Execution = Execution<C::InnerSNARK>;
+    type Execution = Execution<C::NoopProgramSNARK>;
     type Record = Record<C>;
     type Transaction = Transaction<C>;
     type TransactionKernel = TransactionKernel<C>;
@@ -216,7 +215,7 @@ where
             let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey =
                 <C::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
 
-            (inner_snark_pk, inner_snark_vk.into())
+            (inner_snark_pk, inner_snark_vk)
         };
 
         let outer_snark_parameters = {
@@ -229,7 +228,7 @@ where
             let outer_snark_vk: <C::OuterSNARK as SNARK>::VerifyingKey =
                 <C::OuterSNARK as SNARK>::VerifyingKey::read_le(OuterSNARKVKParameters::load_bytes()?.as_slice())?;
 
-            (outer_snark_pk, outer_snark_vk.into())
+            (outer_snark_pk, outer_snark_vk)
         };
         end_timer!(timer);
 
@@ -579,7 +578,7 @@ where
                 None => return Err(DPCError::MissingOuterSnarkProvingParameters.into()),
             };
 
-            C::OuterSNARK::prove(&outer_snark_parameters, &circuit, rng)?
+            C::OuterSNARK::prove(outer_snark_parameters, &circuit, rng)?
         };
 
         let transaction = Self::Transaction::new(

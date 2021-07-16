@@ -105,11 +105,11 @@ pub struct DPC<C: Testnet1Components> {
     pub noop_program: NoopProgram<C>,
     pub inner_snark_parameters: (
         Option<<C::InnerSNARK as SNARK>::ProvingKey>,
-        <C::InnerSNARK as SNARK>::PreparedVerifyingKey,
+        <C::InnerSNARK as SNARK>::VerifyingKey,
     ),
     pub outer_snark_parameters: (
         Option<<C::OuterSNARK as SNARK>::ProvingKey>,
-        <C::OuterSNARK as SNARK>::PreparedVerifyingKey,
+        <C::OuterSNARK as SNARK>::VerifyingKey,
     ),
 }
 
@@ -182,7 +182,7 @@ where
             let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey =
                 <C::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
 
-            (inner_snark_pk, inner_snark_vk.into())
+            (inner_snark_pk, inner_snark_vk)
         };
 
         let outer_snark_parameters = {
@@ -195,7 +195,7 @@ where
             let outer_snark_vk: <C::OuterSNARK as SNARK>::VerifyingKey =
                 <C::OuterSNARK as SNARK>::VerifyingKey::read_le(OuterSNARKVKParameters::load_bytes()?.as_slice())?;
 
-            (outer_snark_pk, outer_snark_vk.into())
+            (outer_snark_pk, outer_snark_vk)
         };
         end_timer!(timer);
 

@@ -27,7 +27,7 @@ use snarkvm_parameters::{
     testnet2::{NoopProgramSNARKPKParameters, NoopProgramSNARKVKParameters},
     Parameter,
 };
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::{CryptoRng, Rng};
 

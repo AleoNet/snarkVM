@@ -20,7 +20,7 @@ use crate::{
     CRHError,
 };
 
-use snarkvm_fields::{PrimeField, ToConstraintField};
+use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField};
 use snarkvm_utilities::any::TypeId;
 
 impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> CRH
@@ -64,5 +64,12 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
 {
     fn from(parameters: PoseidonParameters<F>) -> Self {
         Self { parameters }
+    }
+}
+
+impl<F: PrimeField + PoseidonDefaultParametersField> ToConstraintField<F> for PoseidonParameters<F> {
+    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
+        // do not write into field elements
+        Ok(vec![])
     }
 }

@@ -19,7 +19,8 @@ use snarkvm_algorithms::{traits::CRH, SNARK};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
 /// Program verifying key and proof.
-#[derive(Clone)]
+#[derive(Derivative)]
+#[derivative(Clone(bound = "S: SNARK"))]
 pub struct Execution<S: SNARK> {
     pub verifying_key: S::VerifyingKey,
     pub proof: S::Proof,

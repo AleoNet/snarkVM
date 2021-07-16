@@ -37,6 +37,7 @@ pub trait SNARKVerifierGadget<F: PrimeField, CF: PrimeField, S: SNARK> {
     type PreparedVerificationKeyGadget: Clone;
     type VerificationKeyGadget: AllocGadget<S::VerifyingKey, CF>
         + ToConstraintFieldGadget<CF>
+        + ToBytesGadget<CF>
         + PrepareGadget<Self::PreparedVerificationKeyGadget, CF>
         + AllocBytesGadget<Vec<u8>, CF>;
     type ProofGadget: AllocGadget<S::Proof, CF> + AllocBytesGadget<Vec<u8>, CF>;

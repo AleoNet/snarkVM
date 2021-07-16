@@ -25,6 +25,7 @@ use snarkvm_gadgets::{
     nonnative::NonNativeFieldVar,
     traits::alloc::AllocGadget,
     PrepareGadget,
+    ToBytesGadget,
     ToConstraintFieldGadget,
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
@@ -155,6 +156,7 @@ pub trait PCCheckVar<PCF: PrimeField, PC: PolynomialCommitment<PCF>, ConstraintF
     /// An allocated version of `PC::VerifierKey`.
     type VerifierKeyVar: AllocGadget<PC::VerifierKey, ConstraintF>
         + Clone
+        + ToBytesGadget<ConstraintF>
         + ToConstraintFieldGadget<ConstraintF>
         + PrepareGadget<Self::PreparedVerifierKeyVar, ConstraintF>;
     /// An allocated version of `PC::PreparedVerifierKey`.
@@ -162,6 +164,7 @@ pub trait PCCheckVar<PCF: PrimeField, PC: PolynomialCommitment<PCF>, ConstraintF
     /// An allocated version of `PC::Commitment`.
     type CommitmentVar: AllocGadget<PC::Commitment, ConstraintF>
         + Clone
+        + ToBytesGadget<ConstraintF>
         + ToConstraintFieldGadget<ConstraintF>
         + PrepareGadget<Self::PreparedCommitmentVar, ConstraintF>;
     /// An allocated version of `PC::PreparedCommitment`.
