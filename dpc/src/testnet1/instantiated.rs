@@ -37,7 +37,7 @@ use snarkvm_algorithms::{
     prelude::*,
     prf::Blake2s,
     signature::Schnorr,
-    snark::{gm17::GM17, groth16::Groth16},
+    snark::groth16::Groth16,
 };
 use snarkvm_curves::{
     bls12_377::Bls12_377,
@@ -53,7 +53,7 @@ use snarkvm_gadgets::{
         encryption::GroupEncryptionGadget,
         prf::Blake2sGadget,
         signature::SchnorrGadget,
-        snark::{GM17VerifierGadget, Groth16VerifierGadget},
+        snark::Groth16VerifierGadget,
     },
     curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
 };
@@ -159,7 +159,7 @@ impl Testnet1Components for Components {
     type EncryptionParameters = EdwardsParameters;
     type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, Self::OuterScalarField, PairingGadget>;
-    type NoopProgramSNARK = GM17<Self::InnerCurve, NoopCircuit<Self>, ProgramLocalData<Self>>;
-    type NoopProgramSNARKGadget = GM17VerifierGadget<Self::InnerCurve, Self::OuterScalarField, PairingGadget>;
+    type NoopProgramSNARK = Groth16<Self::InnerCurve, NoopCircuit<Self>, ProgramLocalData<Self>>;
+    type NoopProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, Self::OuterScalarField, PairingGadget>;
     type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
 }
