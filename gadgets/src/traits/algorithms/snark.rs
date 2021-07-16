@@ -26,7 +26,7 @@ pub trait PrepareGadget<T, F: PrimeField> {
     fn prepare<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<T, SynthesisError>;
 }
 
-pub trait SNARKVerifierGadget<F: PrimeField, CF: PrimeField, S: SNARK<F>> {
+pub trait SNARKVerifierGadget<F: PrimeField, CF: PrimeField, S: SNARK> {
     type PreparedVerificationKeyGadget: Clone;
     type VerificationKeyGadget: AllocGadget<S::VerifyingKey, CF>
         + ToConstraintFieldGadget<CF>
@@ -52,7 +52,7 @@ pub trait SNARKVerifierGadget<F: PrimeField, CF: PrimeField, S: SNARK<F>> {
 // TODO (raychu86): Unify with the `SNARK` trait. Currently the `SNARKGadget` is only used for `marlin`.
 
 /// This implements constraints for SNARK verifiers.
-pub trait SNARKGadget<F: PrimeField, CF: PrimeField, S: SNARK<F>> {
+pub trait SNARKGadget<F: PrimeField, CF: PrimeField, S: SNARK> {
     type PreparedVerifyingKeyVar: AllocGadget<S::PreparedVerifyingKey, CF> + Clone;
     type VerifyingKeyVar: AllocGadget<S::VerifyingKey, CF> + Clone;
     type InputVar: AllocGadget<Vec<F>, CF> + Clone + FromFieldElementsGadget<F, CF>;

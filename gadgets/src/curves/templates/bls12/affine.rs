@@ -416,6 +416,33 @@ impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField,
     for AffineGadget<P, F, FG>
 {
     #[inline]
+    fn alloc_constant<Fn, T, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
+    where
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<SWProjective<P>>,
+    {
+        // When allocating the input we assume that the verifier has performed
+        // any on curve checks already.
+        let (x, y, infinity) = match value_gen() {
+            Ok(ge) => {
+                let ge = ge.borrow().into_affine();
+                (Ok(ge.x), Ok(ge.y), Ok(ge.infinity))
+            }
+            _ => (
+                Err(SynthesisError::AssignmentMissing),
+                Err(SynthesisError::AssignmentMissing),
+                Err(SynthesisError::AssignmentMissing),
+            ),
+        };
+
+        let x = FG::alloc_constant(&mut cs.ns(|| "x"), || x)?;
+        let y = FG::alloc_constant(&mut cs.ns(|| "y"), || y)?;
+        let infinity = Boolean::alloc_constant(&mut cs.ns(|| "infinity"), || infinity)?;
+
+        Ok(Self::new(x, y, infinity))
+    }
+
+    #[inline]
     fn alloc<Fn, T, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
     where
         Fn: FnOnce() -> Result<T, SynthesisError>,
@@ -557,6 +584,13 @@ impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField,
 impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField, F>> AllocGadget<SWAffine<P>, F>
     for AffineGadget<P, F, FG>
 {
+    fn alloc_constant<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SWAffine<P>>, CS: ConstraintSystem<F>>(
+        cs: CS,
+        f: Fn,
+    ) -> Result<Self, SynthesisError> {
+        Self::alloc_constant(cs, || Ok(f()?.borrow().into_projective()))
+    }
+
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SWAffine<P>>, CS: ConstraintSystem<F>>(
         cs: CS,
         f: Fn,

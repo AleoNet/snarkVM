@@ -78,7 +78,11 @@ pub trait Testnet2Components: DPCComponents {
     type EncryptionParameters: MontgomeryParameters + TwistedEdwardsParameters;
 
     /// SNARK for non-proof-verification checks
-    type InnerSNARK: SNARK<Self::InnerScalarField, VerifierInput = InnerCircuitVerifierInput<Self>>;
+    type InnerSNARK: SNARK<
+        Circuit = InnerCircuit<Self>,
+        AllocatedCircuit = InnerCircuit<Self>,
+        VerifierInput = InnerCircuitVerifierInput<Self>,
+    >;
 
     /// SNARK Verifier gadget for the inner snark
     type InnerSNARKGadget: SNARKVerifierGadget<
@@ -89,11 +93,22 @@ pub trait Testnet2Components: DPCComponents {
     >;
 
     /// SNARK for proof-verification checks
-    type OuterSNARK: SNARK<Self::OuterScalarField, VerifierInput = OuterCircuitVerifierInput<Self>>;
+    type OuterSNARK: SNARK<
+        Circuit = OuterCircuit<Self>,
+        AllocatedCircuit = OuterCircuit<Self>,
+        VerifierInput = OuterCircuitVerifierInput<Self>,
+    >;
 
     // TODO (raychu86) Declare a proper marlin circuit w/ a UniversalSRS tuple.
     /// SNARK for the no-op "always-accept" that does nothing with its input.
-    type NoopProgramSNARK: SNARK<Self::InnerScalarField, VerifierInput = ProgramLocalData<Self>>;
+    type NoopProgramSNARK: SNARK<
+        Circuit = (
+            NoopCircuit<Self>,
+            UniversalSRS<Self::InnerScalarField, Self::PolynomialCommitment>,
+        ),
+        AllocatedCircuit = NoopCircuit<Self>,
+        VerifierInput = ProgramLocalData<Self>,
+    >;
 
     // TODO (raychu86): Look into properly declaring a proper input. i.e. Self::MarlinInputGadget.
     /// SNARK Verifier gadget for the no-op "always-accept" that does nothing with its input.
@@ -128,12 +143,12 @@ pub trait Testnet2Components: DPCComponents {
 pub struct DPC<C: Testnet2Components> {
     pub noop_program: NoopProgram<C>,
     pub inner_snark_parameters: (
-        Option<<C::InnerSNARK as SNARK<C::InnerScalarField>>::ProvingKey>,
-        <C::InnerSNARK as SNARK<C::InnerScalarField>>::PreparedVerifyingKey,
+        Option<<C::InnerSNARK as SNARK>::ProvingKey>,
+        <C::InnerSNARK as SNARK>::PreparedVerifyingKey,
     ),
     pub outer_snark_parameters: (
-        Option<<C::OuterSNARK as SNARK<C::InnerScalarField>>::ProvingKey>,
-        <C::OuterSNARK as SNARK<C::InnerScalarField>>::PreparedVerifyingKey,
+        Option<<C::InnerSNARK as SNARK>::ProvingKey>,
+        <C::InnerSNARK as SNARK>::PreparedVerifyingKey,
     ),
 }
 
@@ -175,8 +190,7 @@ where
         end_timer!(snark_setup_time);
 
         let snark_setup_time = start_timer!(|| "Execute outer SNARK setup");
-        let inner_snark_vk: <C::InnerSNARK as SNARK<C::InnerScalarField>>::VerifyingKey =
-            inner_snark_parameters.1.clone().into();
+        let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = inner_snark_parameters.1.clone().into();
         let inner_snark_proof = C::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, rng)?;
 
         let outer_snark_parameters = C::OuterSNARK::setup(

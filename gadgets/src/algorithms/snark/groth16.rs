@@ -19,7 +19,7 @@ use std::{borrow::Borrow, marker::PhantomData};
 use snarkvm_algorithms::snark::groth16::{Groth16, Proof, VerifyingKey};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
 use snarkvm_fields::ToConstraintField;
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
 use crate::{
     bits::{Boolean, ToBitsBEGadget},
@@ -105,11 +105,12 @@ where
     _pairing_gadget: PhantomData<P>,
 }
 
-impl<PairingE, P, V> SNARKVerifierGadget<PairingE::Fr, PairingE::Fq, Groth16<PairingE, V>>
+impl<PairingE, P, V, C> SNARKVerifierGadget<PairingE::Fr, PairingE::Fq, Groth16<PairingE, C, V>>
     for Groth16VerifierGadget<PairingE, P>
 where
     PairingE: PairingEngine,
     V: ToConstraintField<PairingE::Fr>,
+    C: ConstraintSynthesizer<PairingE::Fr>,
     P: PairingGadget<PairingE>,
 {
     type Input = Vec<Boolean>;
@@ -174,7 +175,7 @@ where
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError> {
         let pvk = vk.prepare(cs.ns(|| "Prepare vk"))?;
-        <Self as SNARKVerifierGadget<PairingE::Fr, PairingE::Fq, Groth16<PairingE, V>>>::prepared_check_verify(
+        <Self as SNARKVerifierGadget<PairingE::Fr, PairingE::Fq, Groth16<PairingE, C, V>>>::prepared_check_verify(
             cs.ns(|| "prepared_verification"),
             &pvk,
             input,
@@ -340,7 +341,7 @@ mod test {
 
     use super::*;
 
-    type TestProofSystem = Groth16<Bls12_377, Fr>;
+    type TestProofSystem = Groth16<Bls12_377, Bench<Fr>, Fr>;
     type TestVerifierGadget = Groth16VerifierGadget<Bls12_377, Bls12_377PairingGadget>;
     type TestProofGadget = ProofGadget<Bls12_377, Bls12_377PairingGadget>;
     type TestVkGadget = VerifyingKeyGadget<Bls12_377, Bls12_377PairingGadget>;

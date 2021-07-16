@@ -29,7 +29,7 @@ use crate::{
     traits::{algorithms::snark::SNARKVerifierGadget, alloc::AllocGadget},
 };
 
-type TestProofSystem = GM17<Bls12_377, Fr>;
+type TestProofSystem = GM17<Bls12_377, Bench<Fr>, Fr>;
 type TestVerifierGadget = GM17VerifierGadget<Bls12_377, Bls12_377PairingGadget>;
 type TestProofGadget = GM17ProofGadget<Bls12_377, Bls12_377PairingGadget>;
 type TestVkGadget = GM17VerifyingKeyGadget<Bls12_377, Bls12_377PairingGadget>;

@@ -173,7 +173,7 @@ impl Testnet2Components for Components {
         Self::OuterScalarField,
         PoseidonSponge<Self::OuterScalarField>,
     >;
-    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Components>>;
+    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
     type MarlinMode = MarlinTestnet2Mode;
     type NoopProgramSNARK = MarlinSNARK<
@@ -190,7 +190,7 @@ impl Testnet2Components for Components {
         Self::PolynomialCommitment,
         MarlinKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>,
     >;
-    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Components>>;
+    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
     type PolynomialCommitment = MarlinKZG10<Self::InnerCurve>;
     type ProgramVerificationCryptoHash = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type ProgramVerificationCryptoHashGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;

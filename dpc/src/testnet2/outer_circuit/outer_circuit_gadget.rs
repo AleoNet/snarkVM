@@ -104,7 +104,7 @@ where
     MerkleTreeDigest<C::LedgerMerkleTreeParameters>: ToConstraintField<C::InnerScalarField>,
 {
     // Declare public parameters.
-    let (program_vk_commitment_parameters, inner_circuit_id_crh) = {
+    let (program_id_commitment_parameters, inner_circuit_id_crh) = {
         let cs = &mut cs.ns(|| "Declare Comm and CRH parameters");
 
         let program_id_commitment_parameters = C::ProgramIDCommitmentGadget::alloc_input(
@@ -112,13 +112,12 @@ where
             || Ok(C::program_id_commitment().clone()),
         )?;
 
-
         let inner_circuit_id_crh =
             C::InnerCircuitIDCRHGadget::alloc_input(&mut cs.ns(|| "Declare inner_circuit_id_crh_parameters"), || {
                 Ok(C::inner_circuit_id_crh().clone())
             })?;
 
-        (program_vk_commitment_parameters, inner_circuit_id_crh)
+        (program_id_commitment_parameters, inner_circuit_id_crh)
     };
 
     // ************************************************************************

@@ -40,7 +40,7 @@ pub struct GM17<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, V: ToConstrai
     _verifier_input: PhantomData<V>,
 }
 
-impl<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, V: ToConstraintField<E::Fr> + ?Sized> SNARK for GM17<E, V> {
+impl<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, V: ToConstraintField<E::Fr> + ?Sized> SNARK for GM17<E, C, V> {
     type AllocatedCircuit = C;
     type Circuit = C;
     type PreparedVerifyingKey = PreparedVerifyingKey<E>;

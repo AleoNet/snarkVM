@@ -69,7 +69,12 @@ pub trait Testnet1Components: DPCComponents {
     >;
 
     /// SNARK Verifier gadget for the inner snark
-    type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK, Self::OuterScalarField, Input = Vec<Boolean>>;
+    type InnerSNARKGadget: SNARKVerifierGadget<
+        Self::InnerScalarField,
+        Self::OuterScalarField,
+        Self::InnerSNARK,
+        Input = Vec<Boolean>,
+    >;
 
     /// SNARK for proof-verification checks
     type OuterSNARK: SNARK<
@@ -87,8 +92,9 @@ pub trait Testnet1Components: DPCComponents {
 
     /// SNARK Verifier gadget for the no-op "always-accept" that does nothing with its input.
     type NoopProgramSNARKGadget: SNARKVerifierGadget<
-        Self::NoopProgramSNARK,
+        Self::InnerScalarField,
         Self::OuterScalarField,
+        Self::NoopProgramSNARK,
         Input = Vec<Boolean>,
     >;
 }

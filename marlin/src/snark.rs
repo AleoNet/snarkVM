@@ -38,7 +38,7 @@ use rand_core::RngCore;
 pub type SRS<E> = UniversalSRS<<E as PairingEngine>::Fr, MultiPC<E>>;
 
 /// Type alias for a Marlin instance using the KZG10 polynomial commitment and Blake2s
-//pub type Marlin<E> = MarlinSystem<<E as PairingEngine>::Fr, MultiPC<E>, Blake2s>;
+pub type Marlin<E> = MarlinSystem<<E as PairingEngine>::Fr, MultiPC<E>, Blake2s>;
 
 /// A circuit-specific proving key.
 pub type ProvingKey<E> = CircuitProvingKey<<E as PairingEngine>::Fr, MultiPC<E>>;
@@ -66,35 +66,38 @@ pub type MarlinTestnet1<E> = MarlinSNARK<
 
 /// A Marlin instance using the KZG10 polynomial commitment and Blake2s
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct MarlinSystem<E, V>
+pub struct MarlinSystem<E, C, V>
 where
     E: PairingEngine,
+    C: ConstraintSynthesizer<E::Fr>,
     V: ToConstraintField<E::Fr>,
     <MultiPC<E> as PolynomialCommitment<E::Fr>>::Commitment: ToConstraintField<E::Fq>,
     <MultiPC<E> as PolynomialCommitment<E::Fr>>::VerifierKey: ToConstraintField<E::Fq>,
 {
     _engine: PhantomData<E>,
+    _circuit: PhantomData<C>,
     _verifier_input: PhantomData<V>,
 }
 
-impl<E, V> SNARK<E::Fr> for MarlinSystem<E, V>
+impl<E, C, V> SNARK for MarlinSystem<E, C, V>
 where
     E: PairingEngine,
+    C: ConstraintSynthesizer<E::Fr>,
     V: ToConstraintField<E::Fr>,
     <MultiPC<E> as PolynomialCommitment<E::Fr>>::Commitment: ToConstraintField<E::Fq>,
     <MultiPC<E> as PolynomialCommitment<E::Fr>>::VerifierKey: ToConstraintField<E::Fq>,
 {
+    type AllocatedCircuit = C;
+    type Circuit = (C, SRS<E>);
     // Abuse the Circuit type to pass the SRS as well.
     type PreparedVerifyingKey = PreparedVerifyingKey<E>;
     type Proof = Proof<<E as PairingEngine>::Fr, MultiPC<E>>;
     type ProvingKey = Parameters<E>;
-    type UniversalReferenceString = SRS<E>;
     type VerifierInput = V;
     type VerifyingKey = VerifyingKey<E>;
 
-    fn setup<C: ConstraintSynthesizer<E::Fr>, R: RngCore>(
-        circuit: &C,
-        srs: &Self::UniversalReferenceString,
+    fn setup<R: RngCore>(
+        (circuit, srs): &Self::Circuit,
         _rng: &mut R, // The Marlin circuit setup is deterministic.
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
         let setup_time = start_timer!(|| "{Marlin}::Setup");
@@ -105,9 +108,9 @@ where
         Ok((parameters, verifying_key))
     }
 
-    fn prove<C: ConstraintSynthesizer<E::Fr>, R: RngCore>(
+    fn prove<R: RngCore>(
         proving_key: &Self::ProvingKey,
-        input_and_witness: &C,
+        input_and_witness: &Self::AllocatedCircuit,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         let proving_time = start_timer!(|| "{Marlin}::Proving");

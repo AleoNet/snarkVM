@@ -18,8 +18,6 @@ use crate::errors::SNARKError;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::Rng;
-use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::ConstraintSynthesizer;
 use std::fmt::Debug;
 
 /// Defines a trait that describes preparing from an unprepared version to a prepare version

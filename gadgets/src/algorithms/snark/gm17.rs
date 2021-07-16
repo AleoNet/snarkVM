@@ -19,7 +19,7 @@ use std::{borrow::Borrow, marker::PhantomData};
 use snarkvm_algorithms::snark::gm17::{Proof, VerifyingKey, GM17};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
 use snarkvm_fields::ToConstraintField;
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
 use crate::{
     bits::{Boolean, ToBitsBEGadget},
@@ -100,8 +100,10 @@ pub struct GM17VerifierGadget<Pairing: PairingEngine, P: PairingGadget<Pairing>>
     _pairing_gadget: PhantomData<P>,
 }
 
-impl<Pairing: PairingEngine, P: PairingGadget<Pairing>, V: ToConstraintField<Pairing::Fr>>
-    SNARKVerifierGadget<Pairing::Fr, Pairing::Fq, GM17<Pairing, V>> for GM17VerifierGadget<Pairing, P>
+impl<Pairing: PairingEngine, P: PairingGadget<Pairing>, V: ToConstraintField<Pairing::Fr>, C>
+    SNARKVerifierGadget<Pairing::Fr, Pairing::Fq, GM17<Pairing, C, V>> for GM17VerifierGadget<Pairing, P>
+where
+    C: ConstraintSynthesizer<Pairing::Fr>,
 {
     type Input = Vec<Boolean>;
     type PreparedVerificationKeyGadget = GM17PreparedVerifyingKeyGadget<Pairing, P>;
@@ -185,7 +187,7 @@ impl<Pairing: PairingEngine, P: PairingGadget<Pairing>, V: ToConstraintField<Pai
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError> {
         let pvk = vk.prepare(cs.ns(|| "Prepare vk"))?;
-        <Self as SNARKVerifierGadget<Pairing::Fr, Pairing::Fq, GM17<Pairing, V>>>::prepared_check_verify(
+        <Self as SNARKVerifierGadget<Pairing::Fr, Pairing::Fq, GM17<Pairing, C, V>>>::prepared_check_verify(
             cs.ns(|| "prepared_verification"),
             &pvk,
             input,

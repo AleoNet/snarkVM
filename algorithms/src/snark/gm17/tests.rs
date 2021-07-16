@@ -148,7 +148,7 @@ mod gm17 {
 
         let rng = &mut thread_rng();
 
-        let parameters = GM17::<Bls12_377, R1CSCircuit, [Fr]>::setup(&circuit, &(), rng).unwrap();
+        let parameters = GM17::<Bls12_377, R1CSCircuit, [Fr]>::setup(&circuit, rng).unwrap();
 
         let proof = GM17::<Bls12_377, R1CSCircuit, [Fr]>::prove(&parameters.0, &circuit, rng).unwrap();
 
