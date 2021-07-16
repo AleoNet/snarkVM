@@ -26,8 +26,6 @@ pub struct Execution<S: SNARK> {
 }
 
 pub struct ProgramLocalData<C: Testnet2Components> {
-    pub local_data_commitment_parameters: C::LocalDataCommitment,
-    // TODO (raychu86) add local_data_crh_parameters
     pub local_data_root: <C::LocalDataCRH as CRH>::Output,
     pub position: u8,
 }
@@ -35,12 +33,11 @@ pub struct ProgramLocalData<C: Testnet2Components> {
 /// Convert each component to bytes and pack into field elements.
 impl<C: Testnet2Components> ToConstraintField<C::InnerScalarField> for ProgramLocalData<C>
 where
-    C::LocalDataCommitment: ToConstraintField<C::InnerScalarField>,
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
 {
     fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
         let mut v = ToConstraintField::<C::InnerScalarField>::to_field_elements(&[self.position][..])?;
-        v.extend_from_slice(&self.local_data_commitment_parameters.to_field_elements()?);
+        v.extend_from_slice(&C::local_data_commitment().to_field_elements()?);
         v.extend_from_slice(&self.local_data_root.to_field_elements()?);
         Ok(v)
     }

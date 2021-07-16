@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_INPUT, ACCOUNT_SIGNATURE_INPUT};
-use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, CRH, PRF};
+use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget};
@@ -30,7 +29,7 @@ pub trait DPCComponents: 'static + Sized {
     type InnerCurve: PairingEngine;
     type OuterCurve: PairingEngine;
 
-    type InnerScalarField: PrimeField;
+    type InnerScalarField: PrimeField + PoseidonDefaultParametersField;
     type OuterScalarField: PrimeField;
 
     /// Commitment scheme for account contents. Invoked only over `Self::InnerScalarField`.
@@ -49,29 +48,37 @@ pub trait DPCComponents: 'static + Sized {
     type EncryptedRecordCRH: CRH + ToConstraintField<Self::InnerScalarField>;
     type EncryptedRecordCRHGadget: CRHGadget<Self::EncryptedRecordCRH, Self::InnerScalarField>;
 
-    /// CRH for hash of the `Self::InnerSNARK` verification keys.
+    /// CRH for hash of the `Self::InnerSNARK` verifying keys.
     /// This is invoked only on the larger curve.
     type InnerCircuitIDCRH: CRH;
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
 
+    /// Ledger digest type.
+    type LedgerMerkleTreeCRH: CRH;
+    type LedgerMerkleTreeCRHGadget: CRHGadget<
+        <Self::LedgerMerkleTreeParameters as MerkleParameters>::H,
+        Self::InnerScalarField,
+    >;
+    type LedgerMerkleTreeParameters: LoadableMerkleParameters;
+
     /// CRH and commitment scheme for committing to program input. Invoked inside
     /// `Self::InnerSNARK` and every program SNARK.
-    type LocalDataCRH: CRH + ToConstraintField<Self::InnerScalarField>;
-    type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
     type LocalDataCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
     type LocalDataCommitmentGadget: CommitmentGadget<Self::LocalDataCommitment, Self::InnerScalarField>;
+    type LocalDataCRH: CRH + ToConstraintField<Self::InnerScalarField>;
+    type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
 
-    /// CRH for hashes of birth and death verification keys.
-    /// This is invoked only on the larger curve.
-    type ProgramVerificationKeyCRH: CRH;
-    type ProgramVerificationKeyCRHGadget: CRHGadget<Self::ProgramVerificationKeyCRH, Self::OuterScalarField>;
-
-    /// Commitment scheme for committing to hashes of birth and death verification keys.
-    type ProgramVerificationKeyCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
-    /// Used to commit to hashes of verification keys on the smaller curve and to decommit hashes
+    /// Commitment scheme for committing to hashes of birth and death verifying keys.
+    type ProgramIDCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
+    /// Used to commit to hashes of verifying keys on the smaller curve and to decommit hashes
     /// of verification keys on the larger curve
-    type ProgramVerificationKeyCommitmentGadget: CommitmentGadget<Self::ProgramVerificationKeyCommitment, Self::InnerScalarField>
-        + CommitmentGadget<Self::ProgramVerificationKeyCommitment, Self::OuterScalarField>;
+    type ProgramIDCommitmentGadget: CommitmentGadget<Self::ProgramIDCommitment, Self::InnerScalarField>
+        + CommitmentGadget<Self::ProgramIDCommitment, Self::OuterScalarField>;
+
+    /// CRH for hashes of birth and death verifying keys.
+    /// This is invoked only on the larger curve.
+    type ProgramIDCRH: CRH;
+    type ProgramIDCRHGadget: CRHGadget<Self::ProgramIDCRH, Self::OuterScalarField>;
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
     type PRF: PRF;
@@ -85,21 +92,30 @@ pub trait DPCComponents: 'static + Sized {
     type SerialNumberNonceCRH: CRH + ToConstraintField<Self::InnerScalarField>;
     type SerialNumberNonceCRHGadget: CRHGadget<Self::SerialNumberNonceCRH, Self::InnerScalarField>;
 
-    /// TODO (howardwu): TEMPORARY FOR PR #251 - Move this into SystemParameters, lazy_static!, or Arc'ed context.
-    #[inline]
-    fn account_commitment() -> Self::AccountCommitment {
-        Self::AccountCommitment::setup(ACCOUNT_COMMITMENT_INPUT)
-    }
+    fn account_commitment() -> &'static Self::AccountCommitment;
 
-    /// TODO (howardwu): TEMPORARY FOR PR #251 - Move this into SystemParameters, lazy_static!, or Arc'ed context.
-    #[inline]
-    fn account_encryption() -> Self::AccountEncryption {
-        Self::AccountEncryption::setup(ACCOUNT_ENCRYPTION_INPUT)
-    }
+    fn account_encryption() -> &'static Self::AccountEncryption;
 
-    /// TODO (howardwu): TEMPORARY FOR PR #251 - Move this into SystemParameters, lazy_static!, or Arc'ed context.
-    #[inline]
-    fn account_signature() -> Self::AccountSignature {
-        Self::AccountSignature::setup(ACCOUNT_SIGNATURE_INPUT)
-    }
+    fn account_signature() -> &'static Self::AccountSignature;
+
+    fn encrypted_record_crh() -> &'static Self::EncryptedRecordCRH;
+
+    fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
+
+    fn ledger_merkle_tree_crh() -> &'static Self::LedgerMerkleTreeCRH;
+
+    fn local_data_commitment() -> &'static Self::LocalDataCommitment;
+
+    fn local_data_crh() -> &'static Self::LocalDataCRH;
+
+    fn program_id_commitment() -> &'static Self::ProgramIDCommitment;
+
+    fn program_id_crh() -> &'static Self::ProgramIDCRH;
+
+    fn record_commitment() -> &'static Self::RecordCommitment;
+
+    fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
+
+    // TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
+    fn ledger_merkle_tree_parameters() -> &'static Self::LedgerMerkleTreeParameters;
 }

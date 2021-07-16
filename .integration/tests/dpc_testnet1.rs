@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::{
     merkle_tree::MerklePath,
-    traits::{MerkleParameters, CRH, SNARK},
+    traits::{CRH, SNARK},
 };
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{
@@ -46,7 +46,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-type L = Ledger<Testnet1Transaction, CommitmentMerkleParameters, MemDb>;
+type L = Ledger<Testnet1Transaction, CommitmentMerkleTreeParameters, MemDb>;
 
 fn testnet1_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
     let dpc = <Testnet1DPC as DPCScheme<L>>::load(false)?;
@@ -54,10 +54,8 @@ fn testnet1_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
     let inner_snark_vk: <<Components as Testnet1Components>::InnerSNARK as SNARK>::VerifyingKey =
         dpc.inner_snark_parameters.1.clone().into();
 
-    let inner_circuit_id = <<Components as DPCComponents>::InnerCircuitIDCRH as CRH>::hash(
-        &dpc.system_parameters.inner_circuit_id_crh,
-        &to_bytes_le![inner_snark_vk]?,
-    )?;
+    let inner_circuit_id =
+        <Components as DPCComponents>::inner_circuit_id_crh().hash(&inner_snark_vk.to_bytes_le()?)?;
 
     Ok(to_bytes_le![inner_circuit_id]?)
 }
@@ -98,7 +96,7 @@ fn dpc_testnet1_integration_test() {
         transactions: Transactions::new(),
     };
 
-    let ledger = initialize_test_blockchain::<Testnet1Transaction, CommitmentMerkleParameters, MemDb>(
+    let ledger = initialize_test_blockchain::<Testnet1Transaction, CommitmentMerkleTreeParameters, MemDb>(
         ledger_parameters,
         genesis_block,
     );
@@ -109,14 +107,11 @@ fn dpc_testnet1_integration_test() {
     let mut joint_serial_numbers = vec![];
     let mut old_records = vec![];
     for i in 0..Components::NUM_INPUT_RECORDS {
-        let old_sn_nonce = <Components as DPCComponents>::SerialNumberNonceCRH::hash(
-            &dpc.system_parameters.serial_number_nonce,
-            &[64u8 + (i as u8); 1],
-        )
-        .unwrap();
+        let old_sn_nonce = <Components as DPCComponents>::serial_number_nonce_crh()
+            .hash(&[64u8 + (i as u8); 1])
+            .unwrap();
 
         let old_record = Record::new(
-            &dpc.system_parameters.record_commitment,
             genesis_account.address.clone(),
             true, // The input record is dummy
             0,
@@ -141,8 +136,6 @@ fn dpc_testnet1_integration_test() {
     for j in 0..Components::NUM_OUTPUT_RECORDS {
         new_records.push(
             Record::new_full(
-                &dpc.system_parameters.serial_number_nonce,
-                &dpc.system_parameters.record_commitment,
                 recipient.address.clone(),
                 false,
                 10,
@@ -197,11 +190,7 @@ fn dpc_testnet1_integration_test() {
             encrypted_records.iter().zip(new_account_private_keys).zip(new_records)
         {
             let account_view_key = ViewKey::from_private_key(&private_key).unwrap();
-
-            let decrypted_record = encrypted_record
-                .decrypt(&dpc.system_parameters, &account_view_key)
-                .unwrap();
-
+            let decrypted_record = encrypted_record.decrypt(&account_view_key).unwrap();
             assert_eq!(decrypted_record, new_record);
         }
     }
@@ -248,7 +237,6 @@ fn test_transaction_kernel_serialization() {
     // Generate parameters for the ledger, commitment schemes, CRH, and the
     // "always-accept" program.
     let dpc = <Testnet1DPC as DPCScheme<L>>::load(false).unwrap();
-    let system_parameters = &dpc.system_parameters;
 
     // Generate metadata and an account for a dummy initial record.
     let test_account = Account::new(&mut rng).unwrap();
@@ -260,18 +248,15 @@ fn test_transaction_kernel_serialization() {
     let mut old_records = vec![];
     for i in 0..Components::NUM_INPUT_RECORDS {
         let old_record = Record::new(
-            &system_parameters.record_commitment,
             test_account.address.clone(),
             true,
             0,
             Payload::default(),
             dpc.noop_program.id(),
             dpc.noop_program.id(),
-            <Components as DPCComponents>::SerialNumberNonceCRH::hash(
-                &system_parameters.serial_number_nonce,
-                &[0u8; 1],
-            )
-            .unwrap(),
+            <Components as DPCComponents>::serial_number_nonce_crh()
+                .hash(&[0u8; 1])
+                .unwrap(),
             &mut rng,
         )
         .unwrap();
@@ -289,8 +274,6 @@ fn test_transaction_kernel_serialization() {
     for j in 0..Components::NUM_OUTPUT_RECORDS {
         new_records.push(
             Record::new_full(
-                &system_parameters.serial_number_nonce,
-                &system_parameters.record_commitment,
                 test_account.address.clone(),
                 false,
                 10,
@@ -331,19 +314,12 @@ fn test_transaction_kernel_serialization() {
 fn test_testnet1_dpc_execute_constraints() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
-    // Generate parameters for the ledger, commitment schemes, CRH, and the
-    // "always-accept" program.
-    let ledger_parameters = Arc::new(CommitmentMerkleParameters::setup("Testnet1CommitmentMerkleParameters"));
+    // TODO (howardwu): TEMPORARY - Resolve this inconsistency on import structure with a new model once MerkleParameters are refactored.
+    let ledger_parameters = Arc::new(Components::ledger_merkle_tree_parameters().clone());
 
     let dpc = <Testnet1DPC as DPCScheme<L>>::setup(&ledger_parameters, &mut rng).unwrap();
-    let system_parameters = &dpc.system_parameters;
 
-    let alternate_noop_program = NoopProgram::<Components>::setup(
-        &system_parameters.local_data_commitment,
-        &system_parameters.program_verification_key_crh,
-        &mut rng,
-    )
-    .unwrap();
+    let alternate_noop_program = NoopProgram::<Components>::setup(&mut rng).unwrap();
 
     // Generate metadata and an account for a dummy initial record.
     let dummy_account = Account::new(&mut rng).unwrap();
@@ -362,7 +338,7 @@ fn test_testnet1_dpc_execute_constraints() {
     };
 
     // Use genesis record, serial number, and memo to initialize the ledger.
-    let ledger = initialize_test_blockchain::<Testnet1Transaction, CommitmentMerkleParameters, MemDb>(
+    let ledger = initialize_test_blockchain::<Testnet1Transaction, CommitmentMerkleTreeParameters, MemDb>(
         ledger_parameters,
         genesis_block,
     );
@@ -374,18 +350,15 @@ fn test_testnet1_dpc_execute_constraints() {
     let mut old_records = vec![];
     for i in 0..Components::NUM_INPUT_RECORDS {
         let old_record = Record::new(
-            &system_parameters.record_commitment,
             dummy_account.address.clone(),
             true,
             0,
             Payload::default(),
             alternate_noop_program.id(),
             alternate_noop_program.id(),
-            <Components as DPCComponents>::SerialNumberNonceCRH::hash(
-                &system_parameters.serial_number_nonce,
-                &[0u8; 1],
-            )
-            .unwrap(),
+            <Components as DPCComponents>::serial_number_nonce_crh()
+                .hash(&[0u8; 1])
+                .unwrap(),
             &mut rng,
         )
         .unwrap();
@@ -406,8 +379,6 @@ fn test_testnet1_dpc_execute_constraints() {
     for j in 0..Components::NUM_OUTPUT_RECORDS {
         new_records.push(
             Record::new_full(
-                &system_parameters.serial_number_nonce,
-                &system_parameters.record_commitment,
                 new_account.address.clone(),
                 false,
                 10,
@@ -508,9 +479,8 @@ fn test_testnet1_dpc_execute_constraints() {
     // Check that the core check constraint system was satisfied.
     let mut inner_circuit_cs = TestConstraintSystem::<Fr>::new();
 
-    execute_inner_circuit::<_, _>(
+    execute_inner_circuit(
         &mut inner_circuit_cs.ns(|| "Inner circuit"),
-        &system_parameters,
         ledger.parameters(),
         &ledger_digest,
         &old_records,
@@ -551,25 +521,20 @@ fn test_testnet1_dpc_execute_constraints() {
     assert!(inner_circuit_cs.is_satisfied());
 
     // Generate inner snark parameters and proof for verification in the outer snark
-    let inner_snark_parameters = <Components as Testnet1Components>::InnerSNARK::setup(
-        &InnerCircuit::blank(&system_parameters, ledger.parameters()),
-        &mut rng,
-    )
-    .unwrap();
+    let inner_snark_parameters =
+        <Components as Testnet1Components>::InnerSNARK::setup(&InnerCircuit::blank(ledger.parameters()), &mut rng)
+            .unwrap();
 
     let inner_snark_vk: <<Components as Testnet1Components>::InnerSNARK as SNARK>::VerifyingKey =
         inner_snark_parameters.1.clone().into();
 
-    let inner_snark_id = <Components as DPCComponents>::InnerCircuitIDCRH::hash(
-        &system_parameters.inner_circuit_id_crh,
-        &to_bytes_le![inner_snark_vk].unwrap(),
-    )
-    .unwrap();
+    let inner_circuit_id = <Components as DPCComponents>::inner_circuit_id_crh()
+        .hash(&inner_snark_vk.to_bytes_le().unwrap())
+        .unwrap();
 
     let inner_snark_proof = <Components as Testnet1Components>::InnerSNARK::prove(
         &inner_snark_parameters.0,
         &InnerCircuit::new(
-            system_parameters.clone(),
             ledger.parameters().clone(),
             ledger_digest,
             old_records,
@@ -597,10 +562,9 @@ fn test_testnet1_dpc_execute_constraints() {
     // Check that the proof check constraint system was satisfied.
     let mut outer_circuit_cs = TestConstraintSystem::<Fq>::new();
 
-    execute_outer_circuit::<_, _>(
+    execute_outer_circuit::<Components, _>(
         &mut outer_circuit_cs.ns(|| "Outer circuit"),
-        &system_parameters,
-        ledger.parameters(),
+        &ledger.parameters(),
         &ledger_digest,
         &old_serial_numbers,
         &new_commitments,
@@ -614,7 +578,7 @@ fn test_testnet1_dpc_execute_constraints() {
         &program_commitment,
         &program_randomness,
         &local_data_root,
-        &inner_snark_id,
+        &inner_circuit_id,
     )
     .unwrap();
 

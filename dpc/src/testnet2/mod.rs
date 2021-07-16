@@ -32,7 +32,7 @@ use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     bits::Boolean,
     nonnative::NonNativeFieldVar,
-    traits::algorithms::{CRHGadget, SNARKVerifierGadget},
+    traits::algorithms::SNARKVerifierGadget,
     CompressedGroupGadget,
     CryptoHashGadget,
 };
@@ -72,10 +72,6 @@ pub mod instantiated;
 
 /// Trait that stores information about the testnet2 DPC scheme.
 pub trait Testnet2Components: DPCComponents {
-    /// Ledger digest type.
-    type MerkleParameters: LoadableMerkleParameters;
-    type MerkleHashGadget: CRHGadget<<Self::MerkleParameters as MerkleParameters>::H, Self::InnerScalarField>;
-
     /// Group and Model Parameters for record encryption
     type EncryptionGroup: ProjectiveCurve;
     type EncryptionGroupGadget: CompressedGroupGadget<Self::EncryptionGroup, Self::InnerScalarField>;
@@ -130,7 +126,6 @@ pub trait Testnet2Components: DPCComponents {
 ///////////////////////////////////////////////////////////////////////////////
 
 pub struct DPC<C: Testnet2Components> {
-    pub system_parameters: SystemParameters<C>,
     pub noop_program: NoopProgram<C>,
     pub inner_snark_parameters: (
         Option<<C::InnerSNARK as SNARK<C::InnerScalarField>>::ProvingKey>,
@@ -146,9 +141,9 @@ impl<C: Testnet2Components, L: LedgerScheme> DPCScheme<L> for DPC<C>
 where
     L: LedgerScheme<
         Commitment = <C::RecordCommitment as CommitmentScheme>::Output,
-        MerkleParameters = C::MerkleParameters,
-        MerklePath = MerklePath<C::MerkleParameters>,
-        MerkleTreeDigest = MerkleTreeDigest<C::MerkleParameters>,
+        MerkleParameters = C::LedgerMerkleTreeParameters,
+        MerklePath = MerklePath<C::LedgerMerkleTreeParameters>,
+        MerkleTreeDigest = MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
         SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey,
         Transaction = Transaction<C>,
     >,
@@ -163,21 +158,19 @@ where
     type Transaction = Transaction<C>;
     type TransactionKernel = TransactionKernel<C>;
 
-    fn setup<R: Rng + CryptoRng>(ledger_parameters: &Arc<C::MerkleParameters>, rng: &mut R) -> anyhow::Result<Self> {
+    fn setup<R: Rng + CryptoRng>(
+        ledger_parameters: &Arc<C::LedgerMerkleTreeParameters>,
+        rng: &mut R,
+    ) -> anyhow::Result<Self> {
         let setup_time = start_timer!(|| "DPC::setup");
-        let system_parameters = SystemParameters::<C>::setup();
 
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
-        let noop_program = NoopProgram::setup(
-            &system_parameters.local_data_commitment,
-            &system_parameters.program_verification_key_crh,
-            rng,
-        )?;
+        let noop_program = NoopProgram::setup(rng)?;
         let noop_program_execution = noop_program.execute_blank(rng)?;
         end_timer!(noop_program_timer);
 
         let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");
-        let inner_circuit = InnerCircuit::blank(&system_parameters, ledger_parameters);
+        let inner_circuit = InnerCircuit::blank(ledger_parameters);
         let inner_snark_parameters = C::InnerSNARK::setup(&inner_circuit, rng)?;
         end_timer!(snark_setup_time);
 
@@ -188,7 +181,6 @@ where
 
         let outer_snark_parameters = C::OuterSNARK::setup(
             &OuterCircuit::blank(
-                system_parameters.clone(),
                 ledger_parameters.clone(),
                 inner_snark_vk,
                 inner_snark_proof,
@@ -200,7 +192,6 @@ where
         end_timer!(setup_time);
 
         Ok(Self {
-            system_parameters,
             noop_program,
             inner_snark_parameters: (Some(inner_snark_parameters.0), inner_snark_parameters.1),
             outer_snark_parameters: (Some(outer_snark_parameters.0), outer_snark_parameters.1),
@@ -209,11 +200,7 @@ where
 
     fn load(verify_only: bool) -> anyhow::Result<Self> {
         let timer = start_timer!(|| "DPC::load");
-        let system_parameters = SystemParameters::<C>::load()?;
-        let noop_program = NoopProgram::load(
-            &system_parameters.local_data_commitment,
-            &system_parameters.program_verification_key_crh,
-        )?;
+        let noop_program = NoopProgram::load()?;
         let inner_snark_parameters = {
             let inner_snark_pk = match verify_only {
                 true => None,
@@ -242,7 +229,6 @@ where
         end_timer!(timer);
 
         Ok(Self {
-            system_parameters,
             noop_program,
             inner_snark_parameters,
             outer_snark_parameters,
@@ -333,11 +319,7 @@ where
             ]?;
 
             let commitment_randomness = <C::LocalDataCommitment as CommitmentScheme>::Randomness::rand(rng);
-            let commitment = C::LocalDataCommitment::commit(
-                &self.system_parameters.local_data_commitment,
-                &input_bytes,
-                &commitment_randomness,
-            )?;
+            let commitment = C::local_data_commitment().commit(&input_bytes, &commitment_randomness)?;
 
             old_record_commitments.push(commitment);
             local_data_commitment_randomizers.push(commitment_randomness);
@@ -348,11 +330,7 @@ where
             let input_bytes = to_bytes_le![record.commitment(), memorandum, C::NETWORK_ID]?;
 
             let commitment_randomness = <C::LocalDataCommitment as CommitmentScheme>::Randomness::rand(rng);
-            let commitment = C::LocalDataCommitment::commit(
-                &self.system_parameters.local_data_commitment,
-                &input_bytes,
-                &commitment_randomness,
-            )?;
+            let commitment = C::local_data_commitment().commit(&input_bytes, &commitment_randomness)?;
 
             new_record_commitments.push(commitment);
             local_data_commitment_randomizers.push(commitment_randomness);
@@ -364,7 +342,7 @@ where
             new_record_commitments[0].clone(),
             new_record_commitments[1].clone(),
         ];
-        let local_data_merkle_tree = CommitmentMerkleTree::new(self.system_parameters.local_data_crh.clone(), &leaves)?;
+        let local_data_merkle_tree = CommitmentMerkleTree::new(C::local_data_crh().clone(), &leaves)?;
 
         end_timer!(local_data_merkle_tree_timer);
 
@@ -377,12 +355,8 @@ where
             for id in new_birth_program_ids {
                 input.extend_from_slice(&id);
             }
-            let program_randomness = <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness::rand(rng);
-            let program_commitment = C::ProgramVerificationKeyCommitment::commit(
-                &self.system_parameters.program_verification_key_commitment,
-                &input,
-                &program_randomness,
-            )?;
+            let program_randomness = <C::ProgramIDCommitment as CommitmentScheme>::Randomness::rand(rng);
+            let program_commitment = C::program_id_commitment().commit(&input, &program_randomness)?;
             (program_commitment, program_randomness)
         };
         end_timer!(program_comm_timer);
@@ -397,7 +371,7 @@ where
             let (encrypted_record, record_encryption_randomness) = EncryptedRecord::encrypt(record, rng)?;
 
             new_records_encryption_randomness.push(record_encryption_randomness);
-            new_encrypted_record_hashes.push(encrypted_record.to_hash(&self.system_parameters)?);
+            new_encrypted_record_hashes.push(encrypted_record.to_hash()?);
             new_encrypted_records.push(encrypted_record);
         }
 
@@ -522,7 +496,6 @@ where
 
         let inner_proof = {
             let circuit = InnerCircuit::new(
-                self.system_parameters.clone(),
                 ledger.parameters().clone(),
                 ledger_digest.clone(),
                 old_records,
@@ -555,7 +528,6 @@ where
         // Verify that the inner proof passes
         {
             let input = InnerCircuitVerifierInput {
-                system_parameters: self.system_parameters.clone(),
                 ledger_parameters: ledger.parameters().clone(),
                 ledger_digest: ledger_digest.clone(),
                 old_serial_numbers: old_serial_numbers.clone(),
@@ -576,15 +548,10 @@ where
         }
 
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = self.inner_snark_parameters.1.clone().into();
-
-        let inner_circuit_id = <C::InnerCircuitIDCRH as CRH>::hash(
-            &self.system_parameters.inner_circuit_id_crh,
-            &inner_snark_vk.to_bytes_le()?,
-        )?;
+        let inner_circuit_id = C::inner_circuit_id_crh().hash(&inner_snark_vk.to_bytes_le()?)?;
 
         let transaction_proof = {
             let circuit = OuterCircuit::new(
-                self.system_parameters.clone(),
                 ledger.parameters().clone(),
                 ledger_digest.clone(),
                 old_serial_numbers.clone(),
@@ -741,7 +708,7 @@ where
 
         let mut new_encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         for encrypted_record in transaction.encrypted_records() {
-            match encrypted_record.to_hash(&self.system_parameters) {
+            match encrypted_record.to_hash() {
                 Ok(hash) => new_encrypted_record_hashes.push(hash),
                 _ => {
                     eprintln!("Unable to hash encrypted record.");
@@ -751,7 +718,6 @@ where
         }
 
         let inner_snark_input = InnerCircuitVerifierInput {
-            system_parameters: self.system_parameters.clone(),
             ledger_parameters: ledger.parameters().clone(),
             ledger_digest: transaction.ledger_digest().clone(),
             old_serial_numbers: transaction.old_serial_numbers().to_vec(),
@@ -777,10 +743,7 @@ where
 
         let outer_snark_input = OuterCircuitVerifierInput {
             inner_snark_verifier_input: inner_snark_input,
-            inner_circuit_id: match C::InnerCircuitIDCRH::hash(
-                &self.system_parameters.inner_circuit_id_crh,
-                &inner_snark_vk_bytes,
-            ) {
+            inner_circuit_id: match C::inner_circuit_id_crh().hash(&inner_snark_vk_bytes) {
                 Ok(hash) => hash,
                 _ => {
                     eprintln!("Unable to hash inner snark vk.");

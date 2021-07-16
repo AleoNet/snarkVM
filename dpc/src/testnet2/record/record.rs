@@ -46,9 +46,9 @@ pub struct Record<C: Testnet2Components> {
     pub(crate) value: u64,
     pub(crate) payload: Payload,
 
-    #[derivative(Default(value = "default_program_id::<C::ProgramVerificationKeyCRH>()"))]
+    #[derivative(Default(value = "default_program_id::<C::ProgramIDCRH>()"))]
     pub(crate) birth_program_id: Vec<u8>,
-    #[derivative(Default(value = "default_program_id::<C::ProgramVerificationKeyCRH>()"))]
+    #[derivative(Default(value = "default_program_id::<C::ProgramIDCRH>()"))]
     pub(crate) death_program_id: Vec<u8>,
 
     pub(crate) serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
@@ -68,8 +68,6 @@ fn default_program_id<C: CRH>() -> Vec<u8> {
 impl<C: Testnet2Components> Record<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new_full<R: Rng + CryptoRng>(
-        serial_number_nonce_parameters: &C::SerialNumberNonceCRH,
-        record_commitment_parameters: &C::RecordCommitment,
         owner: Address<C>,
         is_dummy: bool,
         value: u64,
@@ -86,10 +84,9 @@ impl<C: Testnet2Components> Record<C> {
         let sn_randomness: [u8; 32] = rng.gen();
 
         let crh_input = to_bytes_le![position, sn_randomness, joint_serial_numbers]?;
-        let serial_number_nonce = C::SerialNumberNonceCRH::hash(&serial_number_nonce_parameters, &crh_input)?;
+        let serial_number_nonce = C::serial_number_nonce_crh().hash(&crh_input)?;
 
         let mut record = Self::new(
-            record_commitment_parameters,
             owner,
             is_dummy,
             value,
@@ -108,7 +105,6 @@ impl<C: Testnet2Components> Record<C> {
 
     #[allow(clippy::too_many_arguments)]
     pub fn new<R: Rng + CryptoRng>(
-        record_commitment_parameters: &C::RecordCommitment,
         owner: Address<C>,
         is_dummy: bool,
         value: u64,
@@ -133,8 +129,7 @@ impl<C: Testnet2Components> Record<C> {
             serial_number_nonce  // 256 bits = 32 bytes
         ]?;
 
-        let commitment =
-            C::RecordCommitment::commit(&record_commitment_parameters, &commitment_input, &commitment_randomness)?;
+        let commitment = C::record_commitment().commit(&commitment_input, &commitment_randomness)?;
 
         end_timer!(record_time);
 
