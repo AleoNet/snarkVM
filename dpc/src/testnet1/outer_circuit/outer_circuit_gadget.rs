@@ -65,8 +65,8 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     cs: &mut CS,
 
     // Inner snark verifier public inputs
-    ledger_parameters: &C::MerkleParameters,
-    ledger_digest: &MerkleTreeDigest<C::MerkleParameters>,
+    ledger_parameters: &C::LedgerMerkleTreeParameters,
+    ledger_digest: &MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
     old_serial_numbers: &[<C::AccountSignature as SignatureScheme>::PublicKey],
     new_commitments: &[<C::RecordCommitment as CommitmentScheme>::Output],
     new_encrypted_record_hashes: &[<C::EncryptedRecordCRH as CRH>::Output],
@@ -95,8 +95,8 @@ where
     <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
     <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::MerkleParameters as MerkleParameters>::H: ToConstraintField<C::InnerScalarField>,
-    MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerScalarField>,
+    <C::LedgerMerkleTreeParameters as MerkleParameters>::H: ToConstraintField<C::InnerScalarField>,
+    MerkleTreeDigest<C::LedgerMerkleTreeParameters>: ToConstraintField<C::InnerScalarField>,
 {
     // Declare public parameters.
     let (program_id_commitment_parameters, program_id_crh, inner_circuit_id_crh) = {

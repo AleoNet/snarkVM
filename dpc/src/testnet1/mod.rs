@@ -28,10 +28,7 @@ use snarkvm_algorithms::{
     prelude::*,
 };
 use snarkvm_curves::traits::{MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
-use snarkvm_gadgets::{
-    bits::Boolean,
-    traits::algorithms::{CRHGadget, SNARKVerifierGadget},
-};
+use snarkvm_gadgets::{bits::Boolean, traits::algorithms::SNARKVerifierGadget};
 use snarkvm_parameters::{prelude::*, testnet1::*};
 use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
 
@@ -60,10 +57,6 @@ pub mod instantiated;
 
 /// Trait that stores information about the testnet1 DPC scheme.
 pub trait Testnet1Components: DPCComponents {
-    /// Ledger digest type.
-    type MerkleParameters: LoadableMerkleParameters;
-    type MerkleHashGadget: CRHGadget<<Self::MerkleParameters as MerkleParameters>::H, Self::InnerScalarField>;
-
     /// Group and Model Parameters for record encryption
     type EncryptionGroup: ProjectiveCurve;
     type EncryptionParameters: MontgomeryParameters + TwistedEdwardsParameters;
@@ -118,9 +111,9 @@ impl<C: Testnet1Components, L: LedgerScheme> DPCScheme<L> for DPC<C>
 where
     L: LedgerScheme<
         Commitment = <C::RecordCommitment as CommitmentScheme>::Output,
-        MerkleParameters = C::MerkleParameters,
-        MerklePath = MerklePath<C::MerkleParameters>,
-        MerkleTreeDigest = MerkleTreeDigest<C::MerkleParameters>,
+        MerkleParameters = C::LedgerMerkleTreeParameters,
+        MerklePath = MerklePath<C::LedgerMerkleTreeParameters>,
+        MerkleTreeDigest = MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
         SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey,
         Transaction = Transaction<C>,
     >,
@@ -131,7 +124,10 @@ where
     type Transaction = Transaction<C>;
     type TransactionKernel = TransactionKernel<C>;
 
-    fn setup<R: Rng + CryptoRng>(ledger_parameters: &Arc<C::MerkleParameters>, rng: &mut R) -> anyhow::Result<Self> {
+    fn setup<R: Rng + CryptoRng>(
+        ledger_parameters: &Arc<C::LedgerMerkleTreeParameters>,
+        rng: &mut R,
+    ) -> anyhow::Result<Self> {
         let setup_time = start_timer!(|| "DPC::setup");
 
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");

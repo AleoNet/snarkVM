@@ -55,12 +55,12 @@ use std::sync::Arc;
 pub fn execute_inner_circuit<C: Testnet2Components, CS: ConstraintSystem<C::InnerScalarField>>(
     cs: &mut CS,
     // Ledger
-    ledger_parameters: &Arc<C::MerkleParameters>,
-    ledger_digest: &MerkleTreeDigest<C::MerkleParameters>,
+    ledger_parameters: &Arc<C::LedgerMerkleTreeParameters>,
+    ledger_digest: &MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
 
     // Old record stuff
     old_records: &[Record<C>],
-    old_witnesses: &[MerklePath<C::MerkleParameters>],
+    old_witnesses: &[MerklePath<C::LedgerMerkleTreeParameters>],
     old_private_keys: &[PrivateKey<C>],
     old_serial_numbers: &[<C::AccountSignature as SignatureScheme>::PublicKey],
 
@@ -138,12 +138,12 @@ fn inner_circuit_gadget<
     PGadget,
 >(
     cs: &mut CS,
-    ledger_parameters: &C::MerkleParameters,
-    ledger_digest: &MerkleTreeDigest<C::MerkleParameters>,
+    ledger_parameters: &C::LedgerMerkleTreeParameters,
+    ledger_digest: &MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
 
     //
     old_records: &[Record<C>],
-    old_witnesses: &[MerklePath<C::MerkleParameters>],
+    old_witnesses: &[MerklePath<C::LedgerMerkleTreeParameters>],
     old_private_keys: &[PrivateKey<C>],
     old_serial_numbers: &[<C::AccountSignature as SignatureScheme>::PublicKey],
 
@@ -273,9 +273,10 @@ where
         )?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
-        let ledger_parameters = C::MerkleHashGadget::alloc_input(&mut cs.ns(|| "Declare ledger parameters"), || {
-            Ok(ledger_parameters.crh())
-        })?;
+        let ledger_parameters =
+            C::LedgerMerkleTreeCRHGadget::alloc_input(&mut cs.ns(|| "Declare ledger parameters"), || {
+                Ok(ledger_parameters.crh())
+            })?;
 
         (
             account_commitment_parameters,
@@ -293,7 +294,7 @@ where
 
     let zero_value = UInt8::alloc_vec(&mut cs.ns(|| "Declare record zero value"), &to_bytes_le![0u64]?)?;
 
-    let digest_gadget = <C::MerkleHashGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
+    let digest_gadget = <C::LedgerMerkleTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
         &mut cs.ns(|| "Declare ledger digest"),
         || Ok(ledger_digest),
     )?;
@@ -389,7 +390,7 @@ where
         {
             let witness_cs = &mut cs.ns(|| "Check ledger membership witness");
 
-            let witness_gadget = MerklePathGadget::<_, C::MerkleHashGadget, _>::alloc(
+            let witness_gadget = MerklePathGadget::<_, C::LedgerMerkleTreeCRHGadget, _>::alloc(
                 &mut witness_cs.ns(|| "Declare membership witness"),
                 || Ok(witness),
             )?;

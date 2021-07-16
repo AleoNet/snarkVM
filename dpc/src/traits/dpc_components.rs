@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{
-    crypto_hash::PoseidonDefaultParametersField,
-    traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, CRH, PRF},
-};
+use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget};
@@ -55,6 +52,14 @@ pub trait DPCComponents: 'static + Sized {
     /// This is invoked only on the larger curve.
     type InnerCircuitIDCRH: CRH;
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
+
+    /// Ledger digest type.
+    type LedgerMerkleTreeCRH: CRH;
+    type LedgerMerkleTreeCRHGadget: CRHGadget<
+        <Self::LedgerMerkleTreeParameters as MerkleParameters>::H,
+        Self::InnerScalarField,
+    >;
+    type LedgerMerkleTreeParameters: LoadableMerkleParameters;
 
     /// CRH and commitment scheme for committing to program input. Invoked inside
     /// `Self::InnerSNARK` and every program SNARK.
@@ -97,6 +102,8 @@ pub trait DPCComponents: 'static + Sized {
 
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
 
+    fn ledger_merkle_tree_crh() -> &'static Self::LedgerMerkleTreeCRH;
+
     fn local_data_commitment() -> &'static Self::LocalDataCommitment;
 
     fn local_data_crh() -> &'static Self::LocalDataCRH;
@@ -108,4 +115,7 @@ pub trait DPCComponents: 'static + Sized {
     fn record_commitment() -> &'static Self::RecordCommitment;
 
     fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
+
+    // TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
+    fn ledger_merkle_tree_parameters() -> &'static Self::LedgerMerkleTreeParameters;
 }

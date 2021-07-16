@@ -32,7 +32,7 @@ use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     bits::Boolean,
     nonnative::NonNativeFieldVar,
-    traits::algorithms::{CRHGadget, SNARKVerifierGadget},
+    traits::algorithms::SNARKVerifierGadget,
     CompressedGroupGadget,
 };
 use snarkvm_marlin::{
@@ -71,10 +71,6 @@ pub mod instantiated;
 
 /// Trait that stores information about the testnet2 DPC scheme.
 pub trait Testnet2Components: DPCComponents {
-    /// Ledger digest type.
-    type MerkleParameters: LoadableMerkleParameters;
-    type MerkleHashGadget: CRHGadget<<Self::MerkleParameters as MerkleParameters>::H, Self::InnerScalarField>;
-
     /// Group and Model Parameters for record encryption
     type EncryptionGroup: ProjectiveCurve;
     type EncryptionGroupGadget: CompressedGroupGadget<Self::EncryptionGroup, Self::InnerScalarField>;
@@ -144,9 +140,9 @@ impl<C: Testnet2Components, L: LedgerScheme> DPCScheme<L> for DPC<C>
 where
     L: LedgerScheme<
         Commitment = <C::RecordCommitment as CommitmentScheme>::Output,
-        MerkleParameters = C::MerkleParameters,
-        MerklePath = MerklePath<C::MerkleParameters>,
-        MerkleTreeDigest = MerkleTreeDigest<C::MerkleParameters>,
+        MerkleParameters = C::LedgerMerkleTreeParameters,
+        MerklePath = MerklePath<C::LedgerMerkleTreeParameters>,
+        MerkleTreeDigest = MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
         SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey,
         Transaction = Transaction<C>,
     >,
@@ -161,7 +157,10 @@ where
     type Transaction = Transaction<C>;
     type TransactionKernel = TransactionKernel<C>;
 
-    fn setup<R: Rng + CryptoRng>(ledger_parameters: &Arc<C::MerkleParameters>, rng: &mut R) -> anyhow::Result<Self> {
+    fn setup<R: Rng + CryptoRng>(
+        ledger_parameters: &Arc<C::LedgerMerkleTreeParameters>,
+        rng: &mut R,
+    ) -> anyhow::Result<Self> {
         let setup_time = start_timer!(|| "DPC::setup");
 
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");

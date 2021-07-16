@@ -36,12 +36,12 @@ use std::sync::Arc;
 #[derivative(Clone(bound = "C: Testnet2Components"))]
 pub struct InnerCircuit<C: Testnet2Components> {
     // Ledger
-    ledger_parameters: Arc<C::MerkleParameters>,
-    ledger_digest: MerkleTreeDigest<C::MerkleParameters>,
+    ledger_parameters: Arc<C::LedgerMerkleTreeParameters>,
+    ledger_digest: MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
 
     // Inputs for old records.
     old_records: Vec<Record<C>>,
-    old_witnesses: Vec<MerklePath<C::MerkleParameters>>,
+    old_witnesses: Vec<MerklePath<C::LedgerMerkleTreeParameters>>,
     old_private_keys: Vec<PrivateKey<C>>,
     old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
 
@@ -68,10 +68,10 @@ pub struct InnerCircuit<C: Testnet2Components> {
 }
 
 impl<C: Testnet2Components> InnerCircuit<C> {
-    pub fn blank(ledger_parameters: &Arc<C::MerkleParameters>) -> Self {
+    pub fn blank(ledger_parameters: &Arc<C::LedgerMerkleTreeParameters>) -> Self {
         let num_input_records = C::NUM_INPUT_RECORDS;
         let num_output_records = C::NUM_OUTPUT_RECORDS;
-        let digest = MerkleTreeDigest::<C::MerkleParameters>::default();
+        let digest = MerkleTreeDigest::<C::LedgerMerkleTreeParameters>::default();
 
         let old_serial_numbers =
             vec![<C::AccountSignature as SignatureScheme>::PublicKey::default(); num_input_records];
@@ -139,12 +139,12 @@ impl<C: Testnet2Components> InnerCircuit<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         // Ledger
-        ledger_parameters: Arc<C::MerkleParameters>,
-        ledger_digest: MerkleTreeDigest<C::MerkleParameters>,
+        ledger_parameters: Arc<C::LedgerMerkleTreeParameters>,
+        ledger_digest: MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
 
         // Old records
         old_records: Vec<Record<C>>,
-        old_witnesses: Vec<MerklePath<C::MerkleParameters>>,
+        old_witnesses: Vec<MerklePath<C::LedgerMerkleTreeParameters>>,
         old_private_keys: Vec<PrivateKey<C>>,
         old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
 

@@ -67,13 +67,6 @@ use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10
 
 use once_cell::sync::OnceCell;
 
-pub type Testnet2DPC = DPC<Components>;
-pub type Testnet2Transaction = Transaction<Components>;
-
-pub type MerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 8, 32>;
-
-define_merkle_tree_parameters!(CommitmentMerkleParameters, MerkleTreeCRH, 32);
-
 macro_rules! dpc_setup {
     ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
         #[inline]
@@ -83,6 +76,15 @@ macro_rules! dpc_setup {
         }
     };
 }
+
+pub type Testnet2DPC = DPC<Components>;
+pub type Testnet2Transaction = Transaction<Components>;
+
+define_merkle_tree_parameters!(
+    CommitmentMerkleTreeParameters,
+    <Components as DPCComponents>::LedgerMerkleTreeCRH,
+    32
+);
 
 pub struct Components;
 
@@ -115,12 +117,16 @@ impl DPCComponents for Components {
     type InnerCircuitIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBW6, 296, 63>;
     type InnerCircuitIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 296, 63>;
 
+    type LedgerMerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 8, 32>;
+    type LedgerMerkleTreeCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
+    type LedgerMerkleTreeParameters = CommitmentMerkleTreeParameters;
+
     type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 129>;
     type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 129>;
 
     type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 16, 32>;
     type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
-    
+
     type PRF = Blake2s;
     type PRFGadget = Blake2sGadget;
 
@@ -141,12 +147,19 @@ impl DPCComponents for Components {
     dpc_setup!{account_signature, ACCOUNT_SIGNATURE, AccountSignature, ACCOUNT_SIGNATURE_INPUT}
     dpc_setup!{encrypted_record_crh, ENCRYPTED_RECORD_CRH, EncryptedRecordCRH, "AleoEncryptedRecordCRH0"}
     dpc_setup!{inner_circuit_id_crh, INNER_CIRCUIT_ID_CRH, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
+    dpc_setup!{ledger_merkle_tree_crh, LEDGER_MERKLE_TREE_CRH, LedgerMerkleTreeCRH, "AleoLedgerMerkleTreeCRH0"}
     dpc_setup!{local_data_commitment, LOCAL_DATA_COMMITMENT, LocalDataCommitment, "AleoLocalDataCommitment0"}
     dpc_setup!{local_data_crh, LOCAL_DATA_CRH, LocalDataCRH, "AleoLocalDataCRH0"}
     dpc_setup!{program_id_commitment, PROGRAM_ID_COMMITMENT, ProgramIDCommitment, "AleoProgramIDCommitment0"}
     dpc_setup!{program_id_crh, PROGRAM_ID_CRH, ProgramIDCRH, "AleoProgramIDCRH0"}
     dpc_setup!{record_commitment, RECORD_COMMITMENT, RecordCommitment, "AleoRecordCommitment0"}
     dpc_setup!{serial_number_nonce_crh, SERIAL_NUMBER_NONCE_CRH, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
+
+    // TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
+    fn ledger_merkle_tree_parameters() -> &'static Self::LedgerMerkleTreeParameters {
+        static LEDGER_MERKLE_TREE_PARAMETERS: OnceCell<<Components as DPCComponents>::LedgerMerkleTreeParameters> = OnceCell::new();
+        LEDGER_MERKLE_TREE_PARAMETERS.get_or_init(|| Self::LedgerMerkleTreeParameters::from(Self::ledger_merkle_tree_crh().clone()))
+    }
 }
 
 impl Testnet2Components for Components {
@@ -161,9 +174,6 @@ impl Testnet2Components for Components {
     type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, Self::OuterScalarField, PairingGadget>;
     type MarlinMode = MarlinTestnet2Mode;
-    type MerkleHashGadget =
-        BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
-    type MerkleParameters = CommitmentMerkleParameters;
     type NoopProgramSNARK = MarlinSNARK<
         Self::InnerScalarField,
         Self::OuterScalarField,
