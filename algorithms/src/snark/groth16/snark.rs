@@ -34,34 +34,37 @@ use std::marker::PhantomData;
 /// Note: V should serialize its contents to `Vec<E::Fr>` in the same order as
 /// during the constraint generation.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Groth16<E: PairingEngine, V: ToConstraintField<E::Fr> + ?Sized> {
+pub struct Groth16<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, V: ToConstraintField<E::Fr> + ?Sized> {
     _engine: PhantomData<E>,
+    _circuit: PhantomData<C>,
     _verifier_input: PhantomData<V>,
 }
 
-impl<E: PairingEngine, V: ToConstraintField<E::Fr> + ?Sized> SNARK<E::Fr> for Groth16<E, V> {
+impl<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, V: ToConstraintField<E::Fr> + ?Sized> SNARK
+    for Groth16<E, C, V>
+{
+    type AllocatedCircuit = C;
+    type Circuit = C;
     type PreparedVerifyingKey = PreparedVerifyingKey<E>;
     type Proof = Proof<E>;
     type ProvingKey = ProvingKey<E>;
-    type UniversalReferenceString = ();
     type VerifierInput = V;
     type VerifyingKey = VerifyingKey<E>;
 
-    fn setup<C: ConstraintSynthesizer<E::Fr>, R: Rng>(
-        circuit: &C,
-        _: &Self::UniversalReferenceString,
+    fn setup<R: Rng>(
+        circuit: &Self::Circuit,
         rng: &mut R,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
         let setup_time = start_timer!(|| "{Groth 2016}::Setup");
-        let pp = generate_random_parameters::<E, C, R>(circuit, rng)?;
+        let pp = generate_random_parameters::<E, Self::Circuit, R>(circuit, rng)?;
         let vk = pp.vk.clone();
         end_timer!(setup_time);
         Ok((pp, vk))
     }
 
-    fn prove<C: ConstraintSynthesizer<E::Fr>, R: Rng>(
+    fn prove<R: Rng>(
         proving_key: &Self::ProvingKey,
-        input_and_witness: &C,
+        input_and_witness: &Self::AllocatedCircuit,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         let proof_time = start_timer!(|| "{Groth 2016}::Prove");

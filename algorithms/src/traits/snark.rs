@@ -27,8 +27,9 @@ pub trait Prepare<T> {
     fn prepare(&self) -> T;
 }
 
-pub trait SNARK<F: PrimeField> {
-    type UniversalReferenceString: Clone;
+pub trait SNARK {
+    type AllocatedCircuit;
+    type Circuit;
     type PreparedVerifyingKey: Clone;
     type Proof: Clone + Debug + ToBytes + FromBytes;
     type ProvingKey: Clone + ToBytes + FromBytes;
@@ -40,15 +41,14 @@ pub trait SNARK<F: PrimeField> {
         + From<Self::PreparedVerifyingKey>
         + From<Self::ProvingKey>;
 
-    fn setup<C: ConstraintSynthesizer<F>, R: Rng>(
-        circuit: &C,
-        urs: &Self::UniversalReferenceString,
+    fn setup<R: Rng>(
+        circuit: &Self::Circuit,
         rng: &mut R,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError>;
 
-    fn prove<C: ConstraintSynthesizer<F>, R: Rng>(
+    fn prove<R: Rng>(
         proving_key: &Self::ProvingKey,
-        input_and_witness: &C,
+        input_and_witness: &Self::AllocatedCircuit,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError>;
 
