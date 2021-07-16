@@ -21,18 +21,13 @@ use snarkvm_curves::traits::{AffineCurve, PairingEngine};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
-use crate::{
-    bits::{Boolean, ToBitsBEGadget},
-    traits::{
-        algorithms::snark::SNARKVerifierGadget,
-        alloc::AllocGadget,
-        curves::{GroupGadget, PairingGadget},
-        eq::EqGadget,
-    },
-    FpGadget,
-    PrepareGadget,
-    ToConstraintFieldGadget,
-};
+use crate::{UInt8, bits::{Boolean, ToBitsBEGadget}, traits::{
+    algorithms::snark::SNARKVerifierGadget,
+    alloc::AllocGadget,
+    curves::{GroupGadget, PairingGadget},
+    eq::EqGadget,
+}, FpGadget, PrepareGadget, ToConstraintFieldGadget, AllocBytesGadget, ToBytesGadget};
+use snarkvm_utilities::{to_bytes_le, FromBytes};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "P::G1Gadget: Clone, P::G2Gadget: Clone"))]
@@ -289,6 +284,41 @@ where
     }
 }
 
+impl<PairingE, P> AllocBytesGadget<Vec<u8>, PairingE::Fq> for VerifyingKeyGadget<PairingE, P>
+    where
+        PairingE: PairingEngine,
+        P: PairingGadget<PairingE>,
+{
+    #[inline]
+    fn alloc_bytes<FN, T, CS: ConstraintSystem<PairingE::Fq>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+        where
+            FN: FnOnce() -> Result<T, SynthesisError>,
+            T: Borrow<Vec<u8>>,
+    {
+        value_gen().and_then(|vk_bytes| {
+            let vk: VerifyingKey<PairingE> = FromBytes::read_le(&vk_bytes.borrow()[..])?;
+
+            Self::alloc(cs.ns(|| "alloc_bytes"), || Ok(vk))
+        })
+    }
+
+    #[inline]
+    fn alloc_input_bytes<FN, T, CS: ConstraintSystem<PairingE::Fq>>(
+        mut cs: CS,
+        value_gen: FN,
+    ) -> Result<Self, SynthesisError>
+        where
+            FN: FnOnce() -> Result<T, SynthesisError>,
+            T: Borrow<Vec<u8>>,
+    {
+        value_gen().and_then(|vk_bytes| {
+            let vk: VerifyingKey<PairingE> = FromBytes::read_le(&vk_bytes.borrow()[..])?;
+
+            Self::alloc_input(cs.ns(|| "alloc_input_bytes"), || Ok(vk))
+        })
+    }
+}
+
 impl<PairingE, P> AllocGadget<Proof<PairingE>, PairingE::Fq> for ProofGadget<PairingE, P>
 where
     PairingE: PairingEngine,
@@ -327,6 +357,83 @@ where
     }
 }
 
+impl<PairingE, P> AllocBytesGadget<Vec<u8>, PairingE::Fq> for ProofGadget<PairingE, P>
+    where
+        PairingE: PairingEngine,
+        P: PairingGadget<PairingE, PairingE::Fq>,
+{
+    #[inline]
+    fn alloc_bytes<FN, T, CS: ConstraintSystem<PairingE::Fq>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+        where
+            FN: FnOnce() -> Result<T, SynthesisError>,
+            T: Borrow<Vec<u8>>,
+    {
+        value_gen().and_then(|proof_bytes| {
+            let proof: Proof<PairingE> = FromBytes::read_le(&proof_bytes.borrow()[..])?;
+
+            Self::alloc(cs.ns(|| "alloc_bytes"), || Ok(proof))
+        })
+    }
+
+    #[inline]
+    fn alloc_input_bytes<FN, T, CS: ConstraintSystem<PairingE::Fq>>(
+        mut cs: CS,
+        value_gen: FN,
+    ) -> Result<Self, SynthesisError>
+        where
+            FN: FnOnce() -> Result<T, SynthesisError>,
+            T: Borrow<Vec<u8>>,
+    {
+        value_gen().and_then(|proof_bytes| {
+            let proof: Proof<PairingE> = FromBytes::read_le(&proof_bytes.borrow()[..])?;
+
+            Self::alloc_input(cs.ns(|| "alloc_input_bytes"), || Ok(proof))
+        })
+    }
+}
+
+impl<PairingE, P> ToBytesGadget<PairingE::Fq> for VerifyingKeyGadget<PairingE, P>
+    where
+        PairingE: PairingEngine,
+        P: PairingGadget<PairingE>,
+{
+    #[inline]
+    fn to_bytes<CS: ConstraintSystem<PairingE::Fq>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&self.alpha_g1.to_bytes(&mut cs.ns(|| "alpha_g1 to bytes"))?);
+        bytes.extend_from_slice(&self.beta_g2.to_bytes(&mut cs.ns(|| "beta_g2 to bytes"))?);
+        bytes.extend_from_slice(&self.gamma_g2.to_bytes(&mut cs.ns(|| "gamma_g2 to bytes"))?);
+        bytes.extend_from_slice(&self.delta_g2.to_bytes(&mut cs.ns(|| "delta_g2 to bytes"))?);
+        bytes.extend_from_slice(&UInt8::alloc_vec(
+            &mut cs.ns(|| "gamma_abc_g1_length"),
+            &(self.gamma_abc_g1.len() as u32).to_le_bytes()[..],
+        )?);
+        for (i, g) in self.gamma_abc_g1.iter().enumerate() {
+            let mut cs = cs.ns(|| format!("Iteration {}", i));
+            bytes.extend_from_slice(&g.to_bytes(&mut cs.ns(|| "g"))?);
+        }
+        Ok(bytes)
+    }
+
+    #[inline]
+    fn to_bytes_strict<CS: ConstraintSystem<PairingE::Fq>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&self.alpha_g1.to_bytes_strict(&mut cs.ns(|| "alpha_g1 to bytes"))?);
+        bytes.extend_from_slice(&self.beta_g2.to_bytes_strict(&mut cs.ns(|| "beta_g2 to bytes"))?);
+        bytes.extend_from_slice(&self.gamma_g2.to_bytes_strict(&mut cs.ns(|| "gamma_g2 to bytes"))?);
+        bytes.extend_from_slice(&self.delta_g2.to_bytes_strict(&mut cs.ns(|| "delta_g2 to bytes"))?);
+        bytes.extend_from_slice(&UInt8::alloc_vec(
+            &mut cs.ns(|| "gamma_abc_g1_length"),
+            &(self.gamma_abc_g1.len() as u32).to_le_bytes()[..],
+        )?);
+        for (i, g) in self.gamma_abc_g1.iter().enumerate() {
+            let mut cs = cs.ns(|| format!("Iteration {}", i));
+            bytes.extend_from_slice(&g.to_bytes_strict(&mut cs.ns(|| "g"))?);
+        }
+        Ok(bytes)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use rand::Rng;
@@ -337,7 +444,7 @@ mod test {
     use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
     use snarkvm_utilities::{test_rng, BitIteratorBE};
 
-    use crate::{bits::Boolean, curves::bls12_377::PairingGadget as Bls12_377PairingGadget};
+    use crate::{UInt8, bits::Boolean, curves::bls12_377::PairingGadget as Bls12_377PairingGadget};
 
     use super::*;
 
@@ -454,6 +561,79 @@ mod test {
                 println!("=========================================================");
             }
 
+            // cs.print_named_objects();
+            assert!(cs.is_satisfied());
+        }
+    }
+
+    #[test]
+    fn groth16_verifier_bytes_test() {
+        let num_inputs = 100;
+        let num_constraints = num_inputs;
+        let rng = &mut test_rng();
+        let mut inputs: Vec<Option<Fr>> = Vec::with_capacity(num_inputs);
+        for _ in 0..num_inputs {
+            inputs.push(Some(rng.gen()));
+        }
+        let params = {
+            let c = Bench::<Fr> {
+                inputs: vec![None; num_inputs],
+                num_constraints,
+            };
+
+            generate_random_parameters::<Bls12_377, _, _>(&c, rng).unwrap()
+        };
+
+        {
+            let proof = {
+                // Create an instance of our circuit (with the
+                // witness)
+                let c = Bench {
+                    inputs: inputs.clone(),
+                    num_constraints,
+                };
+                // Create a groth16 proof with our parameters.
+                create_random_proof(&c, &params, rng).unwrap()
+            };
+
+            // assert!(!verify_proof(&pvk, &proof, &[a]).unwrap());
+            let mut cs = TestConstraintSystem::<Fq>::new();
+
+            let inputs: Vec<_> = inputs.into_iter().map(|input| input.unwrap()).collect();
+            let mut input_gadgets = Vec::new();
+
+            {
+                let mut cs = cs.ns(|| "Allocate Input");
+                for (i, input) in inputs.into_iter().enumerate() {
+                    let mut input_bits = BitIteratorBE::new(input.to_repr()).collect::<Vec<_>>();
+                    // Input must be in little-endian, but BitIterator outputs in big-endian.
+                    input_bits.reverse();
+
+                    let input_bits =
+                        Vec::<Boolean>::alloc_input(cs.ns(|| format!("Input {}", i)), || Ok(input_bits)).unwrap();
+                    input_gadgets.push(input_bits);
+                }
+            }
+
+            let vk_bytes = to_bytes_le![params.vk].unwrap();
+            let proof_bytes = to_bytes_le![proof].unwrap();
+
+            let vk_gadget = TestVkGadget::alloc_input_bytes(cs.ns(|| "Vk"), || Ok(vk_bytes)).unwrap();
+            let proof_gadget = TestProofGadget::alloc_bytes(cs.ns(|| "Proof"), || Ok(proof_bytes)).unwrap();
+            println!("Time to verify!\n\n\n\n");
+            <TestVerifierGadget as SNARKVerifierGadget<Fr, Fq, TestProofSystem>>::check_verify(
+                cs.ns(|| "Verify"),
+                &vk_gadget,
+                input_gadgets.iter().cloned(),
+                &proof_gadget,
+            )
+                .unwrap();
+            if !cs.is_satisfied() {
+                println!("=========================================================");
+                println!("Unsatisfied constraints:");
+                println!("{:?}", cs.which_is_unsatisfied().unwrap());
+                println!("=========================================================");
+            }
             // cs.print_named_objects();
             assert!(cs.is_satisfied());
         }

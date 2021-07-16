@@ -24,7 +24,7 @@ use snarkvm_algorithms::{
     traits::{CommitmentScheme, CRH},
 };
 use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective as EdwardsBls};
-use snarkvm_fields::Field;
+use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::rand::UniformRand;
 
@@ -84,7 +84,7 @@ fn commitment_tree_test<
     H: CRH,
     CG: CommitmentGadget<C, F>,
     HG: CRHGadget<H, F>,
-    F: Field,
+    F: PrimeField,
     R: Rng,
 >(
     use_bad_root: bool,

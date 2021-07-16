@@ -21,7 +21,7 @@ use snarkvm_algorithms::{
     merkle_tree::MerklePath,
     traits::{MerkleParameters, CRH},
 };
-use snarkvm_fields::Field;
+use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
@@ -30,14 +30,14 @@ use crate::{
     EqGadget,
 };
 
-pub struct MerklePathGadget<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> {
+pub struct MerklePathGadget<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: PrimeField> {
     /// `traversal[i]` is 0 (false) iff ith node from bottom to top is left.
     traversal: Vec<Boolean>,
     /// `path[i]` is the entry of sibling of ith node from bottom to top.
     path: Vec<HG::OutputGadget>,
 }
 
-impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: Field> MerklePathGadget<P, HG, F> {
+impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerklePathGadget<P, HG, F> {
     pub fn calculate_root<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
@@ -136,7 +136,7 @@ pub(crate) fn hash_inner_node_gadget<H, HG, F, CS>(
     right_child: &HG::OutputGadget,
 ) -> Result<HG::OutputGadget, SynthesisError>
 where
-    F: Field,
+    F: PrimeField,
     CS: ConstraintSystem<F>,
     H: CRH,
     HG: CRHGadget<H, F>,
@@ -153,7 +153,7 @@ impl<P, HGadget, F> AllocGadget<MerklePath<P>, F> for MerklePathGadget<P, HGadge
 where
     P: MerkleParameters,
     HGadget: CRHGadget<P::H, F>,
-    F: Field,
+    F: PrimeField,
 {
     fn alloc<Fn, T, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
     where

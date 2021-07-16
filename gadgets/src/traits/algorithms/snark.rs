@@ -38,8 +38,8 @@ pub trait SNARKVerifierGadget<F: PrimeField, CF: PrimeField, S: SNARK> {
     type VerificationKeyGadget: AllocGadget<S::VerifyingKey, CF>
         + ToConstraintFieldGadget<CF>
         + PrepareGadget<Self::PreparedVerificationKeyGadget, CF>
-        + AllocBytesGadget<Vec<u8>, F>;
-    type ProofGadget: AllocGadget<S::Proof, CF> + AllocBytesGadget<Vec<u8>, F>;
+        + AllocBytesGadget<Vec<u8>, CF>;
+    type ProofGadget: AllocGadget<S::Proof, CF> + AllocBytesGadget<Vec<u8>, CF>;
     type Input: Clone + ?Sized;
 
     fn check_verify<'a, CS: ConstraintSystem<CF>, I: Iterator<Item = Self::Input>>(

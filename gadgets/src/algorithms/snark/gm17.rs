@@ -21,19 +21,14 @@ use snarkvm_curves::traits::{AffineCurve, PairingEngine};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
-use crate::{
-    bits::{Boolean, ToBitsBEGadget},
-    traits::{
-        algorithms::SNARKVerifierGadget,
-        alloc::AllocGadget,
-        curves::{GroupGadget, PairingGadget},
-        eq::EqGadget,
-        fields::FieldGadget,
-    },
-    FpGadget,
-    PrepareGadget,
-    ToConstraintFieldGadget,
-};
+use crate::{UInt8, bits::{Boolean, ToBitsBEGadget}, traits::{
+    algorithms::SNARKVerifierGadget,
+    alloc::AllocGadget,
+    curves::{GroupGadget, PairingGadget},
+    eq::EqGadget,
+    fields::FieldGadget,
+}, FpGadget, PrepareGadget, ToConstraintFieldGadget, AllocBytesGadget, ToBytesGadget};
+use snarkvm_utilities::FromBytes;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "P::G1Gadget: Clone, P::G2Gadget: Clone"))]
@@ -288,6 +283,36 @@ impl<Pairing: PairingEngine, P: PairingGadget<Pairing>> AllocGadget<VerifyingKey
     }
 }
 
+impl<Pairing: PairingEngine, P: PairingGadget<Pairing, Pairing::Fq>> AllocBytesGadget<Vec<u8>, Pairing::Fq>
+    for GM17VerifyingKeyGadget<Pairing, P>
+{
+    #[inline]
+    fn alloc_bytes<FN, T, CS: ConstraintSystem<Pairing::Fq>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+        where
+            FN: FnOnce() -> Result<T, SynthesisError>,
+            T: Borrow<Vec<u8>>,
+    {
+        value_gen().and_then(|vk_bytes| {
+            let vk: VerifyingKey<Pairing> = FromBytes::read_le(&vk_bytes.borrow().clone()[..])?;
+
+            Self::alloc(cs.ns(|| "alloc_bytes"), || Ok(vk))
+        })
+    }
+
+    #[inline]
+    fn alloc_input_bytes<FN, T, CS: ConstraintSystem<Pairing::Fq>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+        where
+            FN: FnOnce() -> Result<T, SynthesisError>,
+            T: Borrow<Vec<u8>>,
+    {
+        value_gen().and_then(|vk_bytes| {
+            let vk: VerifyingKey<Pairing> = FromBytes::read_le(&vk_bytes.borrow().clone()[..])?;
+
+            Self::alloc_input(cs.ns(|| "alloc_input_bytes"), || Ok(vk))
+        })
+    }
+}
+
 impl<Pairing: PairingEngine, P: PairingGadget<Pairing>> ToConstraintFieldGadget<Pairing::Fq>
     for GM17VerifyingKeyGadget<Pairing, P>
 {
@@ -348,5 +373,62 @@ impl<Pairing: PairingEngine, P: PairingGadget<Pairing>> AllocGadget<Proof<Pairin
             let c = P::G1Gadget::alloc_input(cs.ns(|| "c"), || Ok(c.into_projective()))?;
             Ok(Self { a, b, c })
         })
+    }
+}
+
+impl<Pairing: PairingEngine, P: PairingGadget<Pairing, Pairing::Fq>> AllocBytesGadget<Vec<u8>, Pairing::Fq>
+    for GM17ProofGadget<Pairing,  P>
+{
+    #[inline]
+    fn alloc_bytes<FN, T, CS: ConstraintSystem<Pairing::Fq>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+        where
+            FN: FnOnce() -> Result<T, SynthesisError>,
+            T: Borrow<Vec<u8>>,
+    {
+        value_gen().and_then(|proof_bytes| {
+            let proof: Proof<Pairing> = FromBytes::read_le(&proof_bytes.borrow().clone()[..])?;
+
+            Self::alloc(cs.ns(|| "alloc_bytes"), || Ok(proof))
+        })
+    }
+
+    #[inline]
+    fn alloc_input_bytes<FN, T, CS: ConstraintSystem<Pairing::Fq>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+        where
+            FN: FnOnce() -> Result<T, SynthesisError>,
+            T: Borrow<Vec<u8>>,
+    {
+        value_gen().and_then(|proof_bytes| {
+            let proof: Proof<Pairing> = FromBytes::read_le(&proof_bytes.borrow().clone()[..])?;
+
+            Self::alloc_input(cs.ns(|| "alloc_input_bytes"), || Ok(proof))
+        })
+    }
+}
+
+impl<Pairing: PairingEngine, P: PairingGadget<Pairing, Pairing::Fq>> ToBytesGadget<Pairing::Fq>
+for GM17VerifyingKeyGadget<Pairing, P>
+{
+    #[inline]
+    fn to_bytes<CS: ConstraintSystem<Pairing::Fq>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&self.h_g2.to_bytes(&mut cs.ns(|| "h_g2 to bytes"))?);
+        bytes.extend_from_slice(&self.g_alpha_g1.to_bytes(&mut cs.ns(|| "g_alpha_g1 to bytes"))?);
+        bytes.extend_from_slice(&self.h_beta_g2.to_bytes(&mut cs.ns(|| "h_beta_g2 to bytes"))?);
+        bytes.extend_from_slice(&self.g_gamma_g1.to_bytes(&mut cs.ns(|| "g_gamma_g1 to bytes"))?);
+        bytes.extend_from_slice(&self.h_gamma_g2.to_bytes(&mut cs.ns(|| "h_gamma_g2 to bytes"))?);
+        bytes.extend_from_slice(&UInt8::alloc_vec(
+            &mut cs.ns(|| "query_length"),
+            &(self.query.len() as u32).to_le_bytes()[..],
+        )?);
+        for (i, q) in self.query.iter().enumerate() {
+            let mut cs = cs.ns(|| format!("Iteration {}", i));
+            bytes.extend_from_slice(&q.to_bytes(&mut cs.ns(|| "q"))?);
+        }
+        Ok(bytes)
+    }
+
+    fn to_bytes_strict<CS: ConstraintSystem<Pairing::Fq>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.to_bytes(cs)
     }
 }

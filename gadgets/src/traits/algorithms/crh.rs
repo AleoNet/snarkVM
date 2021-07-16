@@ -32,7 +32,7 @@ use crate::{
     FpGadget,
 };
 
-pub trait CRHGadget<H: CRH, F: Field>: AllocGadget<H, F> + Sized + Clone {
+pub trait CRHGadget<H: CRH, F: PrimeField>: AllocGadget<H, F> + Sized + Clone {
     type OutputGadget: ConditionalEqGadget<F>
         + EqGadget<F>
         + ToBytesGadget<F>

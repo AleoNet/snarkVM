@@ -25,7 +25,7 @@ use snarkvm_algorithms::{
     CRH,
 };
 use snarkvm_curves::ProjectiveCurve;
-use snarkvm_fields::Field;
+use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use std::borrow::Borrow;
@@ -33,7 +33,7 @@ use std::borrow::Borrow;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BoweHopwoodPedersenCRHGadget<
     G: ProjectiveCurve,
-    F: Field,
+    F: PrimeField,
     GG: CurveGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
@@ -42,7 +42,7 @@ pub struct BoweHopwoodPedersenCRHGadget<
 }
 
 // TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
-impl<G: ProjectiveCurve, F: Field, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     AllocGadget<BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for BoweHopwoodPedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
@@ -75,7 +75,7 @@ impl<G: ProjectiveCurve, F: Field, GG: CurveGadget<G, F>, const NUM_WINDOWS: usi
     }
 }
 
-impl<F: Field, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     CRHGadget<BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for BoweHopwoodPedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {

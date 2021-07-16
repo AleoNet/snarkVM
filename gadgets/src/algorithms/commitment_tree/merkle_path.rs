@@ -20,7 +20,7 @@ use snarkvm_algorithms::{
     commitment_tree::CommitmentMerklePath,
     traits::{CommitmentScheme, CRH},
 };
-use snarkvm_fields::Field;
+use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
@@ -40,13 +40,13 @@ pub struct CommitmentMerklePathGadget<
     H: CRH,
     CG: CommitmentGadget<C, F>,
     HG: CRHGadget<H, F>,
-    F: Field,
+    F: PrimeField,
 > {
     inner_hashes: (HG::OutputGadget, HG::OutputGadget),
     leaves: (CG::OutputGadget, CG::OutputGadget),
 }
 
-impl<C: CommitmentScheme, H: CRH, CG: CommitmentGadget<C, F>, HG: CRHGadget<H, F>, F: Field>
+impl<C: CommitmentScheme, H: CRH, CG: CommitmentGadget<C, F>, HG: CRHGadget<H, F>, F: PrimeField>
     CommitmentMerklePathGadget<C, H, CG, HG, F>
 {
     pub fn check_membership<CS: ConstraintSystem<F>>(
@@ -122,7 +122,7 @@ where
     H: CRH,
     CGadget: CommitmentGadget<C, F>,
     HGadget: CRHGadget<H, F>,
-    F: Field,
+    F: PrimeField,
 {
     fn alloc<Fn, T, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
     where

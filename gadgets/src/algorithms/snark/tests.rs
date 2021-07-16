@@ -20,14 +20,9 @@ use snarkvm_algorithms::snark::gm17::{create_random_proof, generate_random_param
 use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::bititerator::BitIteratorBE;
+use snarkvm_utilities::{to_bytes_le, bititerator::BitIteratorBE};
 
-use crate::{
-    algorithms::snark::*,
-    bits::Boolean,
-    curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
-    traits::{algorithms::snark::SNARKVerifierGadget, alloc::AllocGadget},
-};
+use crate::{algorithms::snark::*, bits::Boolean, curves::bls12_377::PairingGadget as Bls12_377PairingGadget, traits::{algorithms::snark::SNARKVerifierGadget, alloc::AllocGadget}, AllocBytesGadget};
 
 type TestProofSystem = GM17<Bls12_377, Bench<Fr>, Fr>;
 type TestVerifierGadget = GM17VerifierGadget<Bls12_377, Bls12_377PairingGadget>;
@@ -144,6 +139,82 @@ fn gm17_verifier_test() {
             println!("=========================================================");
         }
 
+        // cs.print_named_objects();
+        assert!(cs.is_satisfied());
+    }
+}
+
+
+#[test]
+fn gm17_verifier_bytes_test() {
+    let num_inputs = 100;
+    let num_constraints = num_inputs;
+    let rng = &mut thread_rng();
+    let mut inputs: Vec<Option<Fr>> = Vec::with_capacity(num_inputs);
+    for _ in 0..num_inputs {
+        inputs.push(Some(rng.gen()));
+    }
+    let params = generate_random_parameters::<Bls12_377, _, _>(
+        &Bench::<Fr> {
+            inputs: vec![None; num_inputs],
+            num_constraints,
+        },
+        rng,
+    )
+        .unwrap();
+
+    {
+        let proof = {
+            // Create an instance of our circuit (with the witness).
+            // Create a gm17 proof with our parameters.
+            create_random_proof(
+                &Bench {
+                    inputs: inputs.clone(),
+                    num_constraints,
+                },
+                &params,
+                rng,
+            )
+                .unwrap()
+        };
+
+        let mut cs = TestConstraintSystem::<Fq>::new();
+
+        let inputs: Vec<_> = inputs.into_iter().map(|input| input.unwrap()).collect();
+        let mut input_gadgets = Vec::new();
+
+        {
+            let mut cs = cs.ns(|| "Allocate Input");
+            for (i, input) in inputs.into_iter().enumerate() {
+                let mut input_bits = BitIteratorBE::new(input.to_repr()).collect::<Vec<_>>();
+                // Input must be in little-endian, but BitIterator outputs in big-endian.
+                input_bits.reverse();
+
+                let input_bits =
+                    Vec::<Boolean>::alloc_input(cs.ns(|| format!("Input {}", i)), || Ok(input_bits)).unwrap();
+                input_gadgets.push(input_bits);
+            }
+        }
+
+        let vk_bytes = to_bytes_le![params.vk].unwrap();
+        let proof_bytes = to_bytes_le![proof].unwrap();
+
+        let vk_gadget = TestVkGadget::alloc_input_bytes(cs.ns(|| "Vk"), || Ok(vk_bytes)).unwrap();
+        let proof_gadget = TestProofGadget::alloc_bytes(cs.ns(|| "Proof"), || Ok(proof_bytes)).unwrap();
+        println!("Time to verify!");
+        <TestVerifierGadget as SNARKVerifierGadget<Fr, Fq, TestProofSystem>>::check_verify(
+            cs.ns(|| "Verify"),
+            &vk_gadget,
+            input_gadgets.iter().cloned(),
+            &proof_gadget,
+        )
+            .unwrap();
+        if !cs.is_satisfied() {
+            println!("=========================================================");
+            println!("Unsatisfied constraints:");
+            println!("{:?}", cs.which_is_unsatisfied().unwrap());
+            println!("=========================================================");
+        }
         // cs.print_named_objects();
         assert!(cs.is_satisfied());
     }
