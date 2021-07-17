@@ -231,7 +231,7 @@ fn dpc_testnet1_integration_test() {
 }
 
 #[test]
-fn test_transaction_kernel_serialization() {
+fn test_testnet1_transaction_kernel_serialization() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     // Generate parameters for the ledger, commitment schemes, CRH, and the
@@ -513,7 +513,7 @@ fn test_testnet1_dpc_execute_constraints() {
         println!("=========================================================");
         let num_constraints = inner_circuit_cs.num_constraints();
         println!("Inner circuit num constraints: {:?}", num_constraints);
-        assert_eq!(418189, num_constraints);
+        assert_eq!(417677, num_constraints);
         println!("=========================================================");
     }
 
