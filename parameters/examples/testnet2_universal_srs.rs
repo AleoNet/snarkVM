@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_algorithms::crh::sha256::sha256;
 use snarkvm_dpc::{
     errors::DPCError,
     testnet2::{instantiated::Components, ProgramSNARKUniversalSRS, Testnet2Components},
