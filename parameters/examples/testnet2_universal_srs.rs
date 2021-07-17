@@ -44,10 +44,18 @@ where
     Ok(universal_srs_bytes)
 }
 
+fn versioned_filename(checksum: &str) -> String {
+    match checksum.get(0..7) {
+        Some(sum) => format!("universal_srs-{}.params", sum),
+        _ => "universal_srs.params".to_string(),
+    }
+}
+
 pub fn main() {
     let universal_srs = setup::<Components>().unwrap();
+    let inner_snark_pk_checksum = hex::encode(sha256(&universal_srs));
     store(
-        &PathBuf::from("universal_srs.params"),
+        &PathBuf::from(&versioned_filename(&inner_snark_pk_checksum)),
         &PathBuf::from("universal_srs.checksum"),
         &universal_srs,
     )
