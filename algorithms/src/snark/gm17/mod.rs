@@ -50,6 +50,7 @@ mod tests;
 use crate::Prepare;
 pub use generator::*;
 pub use prover::*;
+use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 pub use verifier::*;
 
 /// A proof in the GM17 SNARK.
@@ -225,6 +226,22 @@ impl<E: PairingEngine> PartialEq for VerifyingKey<E> {
             && self.g_gamma_g1 == other.g_gamma_g1
             && self.h_gamma_g2 == other.h_gamma_g2
             && self.query == other.query
+    }
+}
+
+impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifyingKey<E> {
+    fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
+        let mut res = vec![];
+        res.append(&mut self.h_g2.to_field_elements()?);
+        res.append(&mut self.g_alpha_g1.to_field_elements()?);
+        res.append(&mut self.h_beta_g2.to_field_elements()?);
+        res.append(&mut self.g_gamma_g1.to_field_elements()?);
+        res.append(&mut self.h_gamma_g2.to_field_elements()?);
+        for elem in self.query.iter() {
+            res.append(&mut elem.to_field_elements()?);
+        }
+
+        Ok(res)
     }
 }
 

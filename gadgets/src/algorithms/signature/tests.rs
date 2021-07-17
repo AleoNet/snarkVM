@@ -22,9 +22,9 @@ use crate::{
     Boolean,
 };
 use snarkvm_algorithms::{signature::Schnorr, traits::SignatureScheme};
-use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective, traits::Group};
+use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::{ToBytes, UniformRand};
+use snarkvm_utilities::ToBytes;
 
 use rand::{thread_rng, Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
@@ -50,7 +50,7 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
     assert!(schnorr.verify(&public_key, &message, &signature).unwrap());
 
     // Native Schnorr randomization
-    let randomizer = <EdwardsProjective as Group>::ScalarField::rand(rng);
+    let randomizer: [u8; 32] = rng.gen();
     let randomized_private_key = schnorr.randomize_private_key(&private_key, &randomizer).unwrap();
     let randomized_public_key = schnorr.randomize_public_key(&public_key, &randomizer).unwrap();
     let randomized_signature = schnorr.sign_randomized(&randomized_private_key, &message, rng).unwrap();

@@ -1682,6 +1682,7 @@ dependencies = [
  "bincode",
  "blake2",
  "chrono",
+ "criterion",
  "derivative",
  "hex",
  "itertools 0.10.1",

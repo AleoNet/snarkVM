@@ -63,7 +63,7 @@ impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize, F: PrimeFie
         f: Fn,
     ) -> Result<Self, SynthesisError> {
         Ok(Self {
-            public_key: GG::alloc_checked(cs, || f().map(|pk| pk.borrow().0))?,
+            public_key: GG::alloc_checked(cs, || f().map(|pk| pk.borrow().0.into_projective()))?,
             _engine: PhantomData,
             _group: PhantomData,
         })
@@ -78,7 +78,7 @@ impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize, F: PrimeFie
         f: Fn,
     ) -> Result<Self, SynthesisError> {
         Ok(Self {
-            public_key: GG::alloc_input(cs, || f().map(|pk| pk.borrow().0))?,
+            public_key: GG::alloc_input(cs, || f().map(|pk| pk.borrow().0.into_projective()))?,
             _engine: PhantomData,
             _group: PhantomData,
         })
@@ -290,6 +290,7 @@ impl<
 where
     <G::Affine as AffineCurve>::BaseField: PoseidonDefaultParametersField,
     G: ToConstraintField<<G::Affine as AffineCurve>::BaseField>,
+    G::Affine: ToConstraintField<<G::Affine as AffineCurve>::BaseField>,
 {
     type PublicKeyGadget = SchnorrPublicKeyGadget<G, F, GG>;
     type SignatureGadget = SchnorrSignatureGadget<G, F>;

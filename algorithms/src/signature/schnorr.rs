@@ -83,7 +83,7 @@ impl<G: ProjectiveCurve> FromBytes for SchnorrSignature<G> {
     Hash(bound = "G: ProjectiveCurve"),
     Default(bound = "G: ProjectiveCurve")
 )]
-pub struct SchnorrPublicKey<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize>(pub G);
+pub struct SchnorrPublicKey<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize>(pub G::Affine);
 
 impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> ToBytes for SchnorrPublicKey<G> {
     #[inline]
@@ -95,12 +95,14 @@ impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> ToBytes for
 impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> FromBytes for SchnorrPublicKey<G> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self(G::read_le(&mut reader)?))
+        Ok(Self(G::Affine::read_le(&mut reader)?))
     }
 }
 
 impl<F: Field, G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize + ToConstraintField<F>>
     ToConstraintField<F> for SchnorrPublicKey<G>
+where
+    G::Affine: ToConstraintField<F>,
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
@@ -123,12 +125,13 @@ impl<G: ProjectiveCurve + Hash + CanonicalSerialize + CanonicalDeserialize> Sign
 where
     <G::Affine as AffineCurve>::BaseField: PoseidonDefaultParametersField,
     G: ToConstraintField<<G::Affine as AffineCurve>::BaseField>,
+    G::Affine: ToConstraintField<<G::Affine as AffineCurve>::BaseField>,
 {
     type Parameters = Vec<G>;
     type PrivateKey = <G as Group>::ScalarField;
     type PublicKey = SchnorrPublicKey<G>;
     type RandomizedPrivateKey = <G as Group>::ScalarField;
-    type Randomizer = <G as Group>::ScalarField;
+    type Randomizer = [u8; 32];
     type Signature = SchnorrSignature<G>;
 
     fn setup(message: &str) -> Self {
@@ -177,7 +180,7 @@ where
         }
         end_timer!(keygen_time);
 
-        Ok(SchnorrPublicKey(public_key))
+        Ok(SchnorrPublicKey(public_key.into_affine()))
     }
 
     fn randomize_private_key(
@@ -186,7 +189,7 @@ where
         randomizer: &Self::Randomizer,
     ) -> Result<Self::RandomizedPrivateKey, SignatureError> {
         let timer = start_timer!(|| "SchnorrSignature::randomize_private_key");
-        let randomized_private_key = *randomizer + private_key;
+        let randomized_private_key = *private_key + G::ScalarField::from_le_bytes_mod_order(randomizer);
         end_timer!(timer);
         Ok(randomized_private_key)
     }
@@ -197,10 +200,10 @@ where
         randomizer: &Self::Randomizer,
     ) -> Result<Self::PublicKey, SignatureError> {
         let timer = start_timer!(|| "SchnorrSignature::randomize_public_key");
-        let group_randomizer = self.generate_public_key(randomizer)?;
+        let group_randomizer = self.generate_public_key(&G::ScalarField::from_le_bytes_mod_order(randomizer))?;
         let randomized_public_key = public_key.0 + group_randomizer.0;
         end_timer!(timer);
-        Ok(SchnorrPublicKey(randomized_public_key))
+        Ok(SchnorrPublicKey::<G>(randomized_public_key))
     }
 
     fn sign<R: Rng + CryptoRng>(
@@ -296,7 +299,7 @@ where
             }
         }
 
-        let public_key_times_verifier_challenge = public_key.0.mul(*verifier_challenge);
+        let public_key_times_verifier_challenge = public_key.0.into_projective().mul(*verifier_challenge);
         claimed_prover_commitment += public_key_times_verifier_challenge;
 
         // Hash everything to get verifier challenge.

@@ -48,6 +48,8 @@ pub struct VerifierKeyVar<
 > {
     /// Generator of G1.
     pub g: PG::G1Gadget,
+    /// The generator of G1 that is used for making a commitment hiding.
+    pub gamma_g: PG::G1Gadget,
     /// Generator of G2.
     pub h: PG::G2Gadget,
     /// Generator of G1, times first monomial.
@@ -150,6 +152,7 @@ where
     fn clone(&self) -> Self {
         Self {
             g: self.g.clone(),
+            gamma_g: self.gamma_g.clone(),
             h: self.h.clone(),
             beta_h: self.beta_h.clone(),
             degree_bounds_and_shift_powers: self.degree_bounds_and_shift_powers.clone(),
@@ -198,14 +201,18 @@ where
                 .collect()
         });
 
-        let KZG10VerifierKey { g, h, beta_h, .. } = vk;
+        let KZG10VerifierKey {
+            g, gamma_g, h, beta_h, ..
+        } = vk;
 
         let g = PG::G1Gadget::alloc_constant(cs.ns(|| "g"), || Ok(g.into_projective()))?;
+        let gamma_g = PG::G1Gadget::alloc_constant(cs.ns(|| "gamma_g"), || Ok(gamma_g.into_projective()))?;
         let h = PG::G2Gadget::alloc_constant(cs.ns(|| "h"), || Ok(h.into_projective()))?;
         let beta_h = PG::G2Gadget::alloc_constant(cs.ns(|| "beta_h"), || Ok(beta_h.into_projective()))?;
 
         Ok(Self {
             g,
+            gamma_g,
             h,
             beta_h,
             degree_bounds_and_shift_powers,
@@ -245,14 +252,18 @@ where
                 .collect()
         });
 
-        let KZG10VerifierKey { g, h, beta_h, .. } = vk;
+        let KZG10VerifierKey {
+            g, gamma_g, h, beta_h, ..
+        } = vk;
 
         let g = PG::G1Gadget::alloc(cs.ns(|| "g"), || Ok(g.into_projective()))?;
+        let gamma_g = PG::G1Gadget::alloc(cs.ns(|| "gamma_g"), || Ok(gamma_g.into_projective()))?;
         let h = PG::G2Gadget::alloc(cs.ns(|| "h"), || Ok(h.into_projective()))?;
         let beta_h = PG::G2Gadget::alloc(cs.ns(|| "beta_h"), || Ok(beta_h.into_projective()))?;
 
         Ok(Self {
             g,
+            gamma_g,
             h,
             beta_h,
             degree_bounds_and_shift_powers,
@@ -292,14 +303,18 @@ where
                 .collect()
         });
 
-        let KZG10VerifierKey { g, h, beta_h, .. } = vk;
+        let KZG10VerifierKey {
+            g, gamma_g, h, beta_h, ..
+        } = vk;
 
         let g = PG::G1Gadget::alloc_input(cs.ns(|| "g"), || Ok(g.into_projective()))?;
+        let gamma_g = PG::G1Gadget::alloc_constant(cs.ns(|| "gamma_g"), || Ok(gamma_g.into_projective()))?;
         let h = PG::G2Gadget::alloc_input(cs.ns(|| "h"), || Ok(h.into_projective()))?;
         let beta_h = PG::G2Gadget::alloc_input(cs.ns(|| "beta_h"), || Ok(beta_h.into_projective()))?;
 
         Ok(Self {
             g,
+            gamma_g,
             h,
             beta_h,
             degree_bounds_and_shift_powers,
@@ -321,6 +336,7 @@ where
         let mut bytes = Vec::new();
 
         bytes.extend_from_slice(&self.g.to_bytes(cs.ns(|| "g_to_bytes"))?);
+        bytes.extend_from_slice(&self.gamma_g.to_bytes(cs.ns(|| "gamma_g_to_bytes"))?);
         bytes.extend_from_slice(&self.h.to_bytes(cs.ns(|| "h_to_bytes"))?);
         bytes.extend_from_slice(&self.beta_h.to_bytes(cs.ns(|| "beta_h_to_bytes"))?);
 
@@ -359,11 +375,18 @@ where
     ) -> Result<PreparedVerifierKeyVar<TargetCurve, BaseCurve, PG>, SynthesisError> {
         let supported_bits = <<TargetCurve as PairingEngine>::Fr as PrimeField>::size_in_bits();
         let mut prepared_g = Vec::<PG::G1Gadget>::new();
+        let mut prepared_gamma_g = Vec::<PG::G1Gadget>::new();
 
         let mut g: PG::G1Gadget = self.g.clone();
         for i in 0..supported_bits {
             prepared_g.push(g.clone());
             g.double_in_place(cs.ns(|| format!("double_in_place_{}", i)))?;
+        }
+
+        let mut gamma_g: PG::G1Gadget = self.gamma_g.clone();
+        for i in 0..supported_bits {
+            prepared_gamma_g.push(gamma_g.clone());
+            gamma_g.double_in_place(cs.ns(|| format!("double_in_place_{}_gamma_g", i)))?;
         }
 
         let prepared_h = PG::prepare_g2(cs.ns(|| "prepared_h"), self.h.clone())?;
@@ -383,6 +406,7 @@ where
 
         Ok(PreparedVerifierKeyVar::<TargetCurve, BaseCurve, PG> {
             prepared_g,
+            prepared_gamma_g,
             prepared_h,
             prepared_beta_h,
             prepared_degree_bounds_and_shift_powers,
@@ -411,12 +435,16 @@ where
         let mut res = Vec::new();
 
         let mut g_gadget = self.g.to_constraint_field(cs.ns(|| "g_to_constraint_field"))?;
+        let mut gamma_g_gadget = self
+            .gamma_g
+            .to_constraint_field(cs.ns(|| "gamma_g_to_constraint_field"))?;
         let mut h_gadget = self.h.to_constraint_field(cs.ns(|| "h_to_constraint_field"))?;
         let mut beta_h_gadget = self
             .beta_h
             .to_constraint_field(cs.ns(|| "beta_h_to_constraint_field"))?;
 
         res.append(&mut g_gadget);
+        res.append(&mut gamma_g_gadget);
         res.append(&mut h_gadget);
         res.append(&mut beta_h_gadget);
 

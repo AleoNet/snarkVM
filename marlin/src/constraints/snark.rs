@@ -604,8 +604,8 @@ pub mod test {
 
         const INPUT_GADGET_CONSTRAINTS: usize = 383;
         const PROOF_GADGET_CONSTRAINTS: usize = 56;
-        const VK_GADGET_CONSTRAINTS: usize = 136;
-        const VERIFIER_GADGET_CONSTRAINTS: usize = 146730;
+        const VK_GADGET_CONSTRAINTS: usize = 140;
+        const VERIFIER_GADGET_CONSTRAINTS: usize = 150594;
 
         assert_eq!(input_gadget_constraints, INPUT_GADGET_CONSTRAINTS);
         assert_eq!(proof_gadget_constraints, PROOF_GADGET_CONSTRAINTS);
