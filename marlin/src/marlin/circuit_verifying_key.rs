@@ -21,7 +21,7 @@ use crate::{
     Vec,
 };
 use snarkvm_algorithms::Prepare;
-use snarkvm_fields::{PrimeField, ToConstraintField};
+use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField};
 use snarkvm_polycommit::PolynomialCommitment;
 use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
@@ -81,6 +81,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> From<PreparedCircuitVerifyingKe
 }
 
 /// Compute the hash of the circuit verifying key.
+/// Used internally in Marlin
 pub(crate) fn compute_vk_hash<TargetField, BaseField, PC, FS>(
     vk: &CircuitVerifyingKey<TargetField, PC>,
 ) -> Result<Vec<BaseField>, FiatShamirError>
@@ -127,5 +128,34 @@ where
             prepared_verifier_key,
             orig_vk: (*self).clone(),
         }
+    }
+}
+
+impl<F, CF, PC> ToConstraintField<CF> for CircuitVerifyingKey<F, PC>
+where
+    F: PrimeField,
+    CF: PrimeField,
+    PC: PolynomialCommitment<F>,
+    PC::Commitment: ToConstraintField<CF>,
+    PC::VerifierKey: ToConstraintField<CF>,
+{
+    fn to_field_elements(&self) -> Result<Vec<CF>, ConstraintFieldError> {
+        let domain_h = EvaluationDomain::<CF>::new(self.circuit_info.num_constraints)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
+            .unwrap();
+        let domain_k = EvaluationDomain::<CF>::new(self.circuit_info.num_non_zero)
+            .ok_or(SynthesisError::PolynomialDegreeTooLarge)
+            .unwrap();
+
+        let mut res = Vec::new();
+        res.append(&mut CF::from(domain_h.size() as u128).to_field_elements()?);
+        res.append(&mut CF::from(domain_k.size() as u128).to_field_elements()?);
+        for comm in self.circuit_commitments.iter() {
+            res.append(&mut comm.to_field_elements()?);
+        }
+        // TODO: this overhead can be cut.
+        res.append(&mut self.verifier_key.to_field_elements()?);
+
+        Ok(res)
     }
 }

@@ -41,6 +41,7 @@ use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 use itertools::Itertools;
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
+use snarkvm_fields::ToConstraintField;
 use std::{
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
@@ -54,19 +55,20 @@ fn testnet2_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
     let inner_snark_vk: <<Components as Testnet2Components>::InnerSNARK as SNARK>::VerifyingKey =
         dpc.inner_snark_parameters.1.clone().into();
 
+    let inner_snark_vk_field_elements = inner_snark_vk.to_field_elements()?;
+
     let inner_circuit_id =
-        <Components as DPCComponents>::inner_circuit_id_crh().hash(&inner_snark_vk.to_bytes_le()?)?;
+        <Components as DPCComponents>::inner_circuit_id_crh().hash_field_elements(&inner_snark_vk_field_elements)?;
 
     Ok(to_bytes_le![inner_circuit_id]?)
 }
 
 /// TODO (howardwu): Update this to the correct inner circuit ID when the final parameters are set.
-#[ignore]
 #[test]
 fn test_testnet2_inner_circuit_sanity_check() {
     let expected_testnet2_inner_circuit_id = vec![
-        132, 243, 19, 234, 73, 219, 14, 105, 124, 12, 23, 229, 144, 168, 24, 163, 93, 33, 139, 247, 16, 201, 132, 0,
-        141, 28, 29, 2, 131, 75, 18, 78, 248, 57, 118, 61, 81, 53, 11, 91, 196, 233, 80, 186, 167, 144, 163, 0,
+        70, 187, 221, 37, 4, 78, 200, 68, 34, 184, 229, 110, 24, 7, 142, 8, 62, 42, 234, 231, 96, 86, 201, 94, 143,
+        197, 248, 117, 32, 218, 44, 219, 109, 191, 72, 112, 157, 76, 212, 91, 7, 14, 32, 183, 79, 1, 194, 0,
     ];
     let candidate_testnet2_inner_circuit_id = testnet2_inner_circuit_id().unwrap();
     assert_eq!(expected_testnet2_inner_circuit_id, candidate_testnet2_inner_circuit_id);
@@ -514,7 +516,7 @@ fn test_testnet2_dpc_execute_constraints() {
         println!("=========================================================");
         let num_constraints = inner_circuit_cs.num_constraints();
         println!("Inner circuit num constraints: {:?}", num_constraints);
-        assert_eq!(418189, num_constraints);
+        assert_eq!(417677, num_constraints);
         println!("=========================================================");
     }
 
@@ -528,8 +530,10 @@ fn test_testnet2_dpc_execute_constraints() {
     let inner_snark_vk: <<Components as Testnet2Components>::InnerSNARK as SNARK>::VerifyingKey =
         inner_snark_parameters.1.clone().into();
 
+    let inner_snark_vk_field_elements = inner_snark_vk.to_field_elements().unwrap();
+
     let inner_circuit_id = <Components as DPCComponents>::inner_circuit_id_crh()
-        .hash(&inner_snark_vk.to_bytes_le().unwrap())
+        .hash_field_elements(&inner_snark_vk_field_elements)
         .unwrap();
 
     let inner_snark_proof = <Components as Testnet2Components>::InnerSNARK::prove(
@@ -597,8 +601,7 @@ fn test_testnet2_dpc_execute_constraints() {
         println!("=========================================================");
         let num_constraints = outer_circuit_cs.num_constraints();
         println!("Outer circuit num constraints: {:?}", num_constraints);
-        // TODO (howardwu): This constraint count is wrong. Update it after the bug source has been found.
-        assert_eq!(4347556, num_constraints);
+        assert_eq!(834532, num_constraints);
         println!("=========================================================");
     }
 

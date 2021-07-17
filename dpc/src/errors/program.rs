@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::{CRHError, CommitmentError, EncryptionError, PRFError, SNARKError, SignatureError};
+use snarkvm_fields::ConstraintFieldError;
 use snarkvm_parameters::ParameterError;
 
 #[derive(Debug, Error)]
@@ -54,6 +55,9 @@ pub enum ProgramError {
 
     #[error("{}", _0)]
     PRFError(#[from] PRFError),
+
+    #[error("{}", _0)]
+    ConstraintFieldError(#[from] ConstraintFieldError),
 
     #[error("{}", _0)]
     SignatureError(#[from] SignatureError),

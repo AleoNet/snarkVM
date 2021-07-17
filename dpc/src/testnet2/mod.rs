@@ -28,7 +28,6 @@ use snarkvm_algorithms::{
     prelude::*,
 };
 use snarkvm_curves::traits::{MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
-use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     bits::Boolean,
     nonnative::NonNativeFieldVar,
@@ -63,6 +62,7 @@ pub mod record;
 pub use record::*;
 
 pub mod transaction;
+use snarkvm_fields::ToConstraintField;
 pub use transaction::*;
 
 pub mod instantiated;
@@ -152,6 +152,8 @@ where
         SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey,
         Transaction = Transaction<C>,
     >,
+    <C::NoopProgramSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
+    <C::InnerSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
     <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::VerifierKey:
         ToConstraintField<C::OuterScalarField>,
     <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::Commitment:
@@ -361,6 +363,7 @@ where
             }
             let program_randomness = <C::ProgramIDCommitment as CommitmentScheme>::Randomness::rand(rng);
             let program_commitment = C::program_id_commitment().commit(&input, &program_randomness)?;
+
             (program_commitment, program_randomness)
         };
         end_timer!(program_comm_timer);
@@ -552,7 +555,8 @@ where
         }
 
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = self.inner_snark_parameters.1.clone().into();
-        let inner_circuit_id = C::inner_circuit_id_crh().hash(&inner_snark_vk.to_bytes_le()?)?;
+        let inner_snark_vk_field_elements = inner_snark_vk.to_field_elements()?;
+        let inner_circuit_id = C::inner_circuit_id_crh().hash_field_elements(&inner_snark_vk_field_elements)?;
 
         let transaction_proof = {
             let circuit = OuterCircuit::new(
@@ -737,17 +741,12 @@ where
         let inner_snark_vk: <<C as Testnet2Components>::InnerSNARK as SNARK>::VerifyingKey =
             self.inner_snark_parameters.1.clone().into();
 
-        let inner_snark_vk_bytes = match to_bytes_le![inner_snark_vk] {
-            Ok(bytes) => bytes,
-            _ => {
-                eprintln!("Unable to convert inner snark vk into bytes.");
-                return false;
-            }
-        };
+        let inner_snark_vk_field_elements =
+            ToConstraintField::<C::OuterScalarField>::to_field_elements(&inner_snark_vk).unwrap();
 
         let outer_snark_input = OuterCircuitVerifierInput {
             inner_snark_verifier_input: inner_snark_input,
-            inner_circuit_id: match C::inner_circuit_id_crh().hash(&inner_snark_vk_bytes) {
+            inner_circuit_id: match C::inner_circuit_id_crh().hash_field_elements(&inner_snark_vk_field_elements) {
                 Ok(hash) => hash,
                 _ => {
                     eprintln!("Unable to hash inner snark vk.");
