@@ -45,6 +45,8 @@ pub struct PreparedVerifierKeyVar<
 {
     /// Generator of G1.
     pub prepared_g: Vec<PG::G1Gadget>,
+    /// The generator of G1 that is used for making a commitment hiding.
+    pub prepared_gamma_g: Vec<PG::G1Gadget>,
     /// Generator of G2.
     pub prepared_h: PG::G2PreparedGadget,
     /// Generator of G1, times first monomial.
@@ -126,6 +128,7 @@ where
     fn clone(&self) -> Self {
         Self {
             prepared_g: self.prepared_g.clone(),
+            prepared_gamma_g: self.prepared_gamma_g.clone(),
             prepared_h: self.prepared_h.clone(),
             prepared_beta_h: self.prepared_beta_h.clone(),
             prepared_degree_bounds_and_shift_powers: self.prepared_degree_bounds_and_shift_powers.clone(),
@@ -184,6 +187,16 @@ where
             })?);
         }
 
+        let mut prepared_gamma_g = Vec::<PG::G1Gadget>::new();
+        for (i, gamma_g) in obj.prepared_vk.prepared_gamma_g.iter().enumerate() {
+            prepared_gamma_g.push(<PG::G1Gadget as AllocGadget<
+                <TargetCurve as PairingEngine>::G1Projective,
+                <BaseCurve as PairingEngine>::Fr,
+            >>::alloc_constant(
+                cs.ns(|| format!("gamma_g_{}", i)), || Ok(gamma_g.into_projective())
+            )?);
+        }
+
         let prepared_h = PG::G2PreparedGadget::alloc(cs.ns(|| "prepared_h"), || Ok(&obj.prepared_vk.prepared_h))?;
         let prepared_beta_h =
             PG::G2PreparedGadget::alloc(cs.ns(|| "prepared_beta_h"), || Ok(&obj.prepared_vk.prepared_beta_h))?;
@@ -223,6 +236,7 @@ where
 
         Ok(Self {
             prepared_g,
+            prepared_gamma_g,
             prepared_h,
             prepared_beta_h,
             prepared_degree_bounds_and_shift_powers,
@@ -248,6 +262,16 @@ where
                 <BaseCurve as PairingEngine>::Fr,
             >>::alloc(cs.ns(|| format!("g_{}", i)), || {
                 Ok(g.into_projective())
+            })?);
+        }
+
+        let mut prepared_gamma_g = Vec::<PG::G1Gadget>::new();
+        for (i, gamma_g) in obj.prepared_vk.prepared_gamma_g.iter().enumerate() {
+            prepared_gamma_g.push(<PG::G1Gadget as AllocGadget<
+                <TargetCurve as PairingEngine>::G1Projective,
+                <BaseCurve as PairingEngine>::Fr,
+            >>::alloc(cs.ns(|| format!("gamma_g_{}", i)), || {
+                Ok(gamma_g.into_projective())
             })?);
         }
 
@@ -289,6 +313,7 @@ where
 
         Ok(Self {
             prepared_g,
+            prepared_gamma_g,
             prepared_h,
             prepared_beta_h,
             prepared_degree_bounds_and_shift_powers,
@@ -314,6 +339,16 @@ where
                 <BaseCurve as PairingEngine>::Fr,
             >>::alloc_input(cs.ns(|| format!("g_{}", i)), || {
                 Ok(g.into_projective())
+            })?);
+        }
+
+        let mut prepared_gamma_g = Vec::<PG::G1Gadget>::new();
+        for (i, gamma_g) in obj.prepared_vk.prepared_gamma_g.iter().enumerate() {
+            prepared_gamma_g.push(<PG::G1Gadget as AllocGadget<
+                <TargetCurve as PairingEngine>::G1Projective,
+                <BaseCurve as PairingEngine>::Fr,
+            >>::alloc_input(cs.ns(|| format!("gamma_g_{}", i)), || {
+                Ok(gamma_g.into_projective())
             })?);
         }
 
@@ -356,6 +391,7 @@ where
 
         Ok(Self {
             prepared_g,
+            prepared_gamma_g,
             prepared_h,
             prepared_beta_h,
             prepared_degree_bounds_and_shift_powers,

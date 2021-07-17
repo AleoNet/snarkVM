@@ -19,7 +19,7 @@
 //! [`Groth16`]: https://eprint.iacr.org/2016/260.pdf
 
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine};
-use snarkvm_fields::Field;
+use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_r1cs::{Index, LinearCombination};
 use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
@@ -194,6 +194,21 @@ impl<E: PairingEngine> ToBytes for VerifyingKey<E> {
             g.write_le(&mut writer)?;
         }
         Ok(())
+    }
+}
+
+impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifyingKey<E> {
+    fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
+        let mut res = vec![];
+        res.append(&mut self.alpha_g1.to_field_elements()?);
+        res.append(&mut self.beta_g2.to_field_elements()?);
+        res.append(&mut self.gamma_g2.to_field_elements()?);
+        res.append(&mut self.delta_g2.to_field_elements()?);
+        for elem in self.gamma_abc_g1.iter() {
+            res.append(&mut elem.to_field_elements()?);
+        }
+
+        Ok(res)
     }
 }
 
