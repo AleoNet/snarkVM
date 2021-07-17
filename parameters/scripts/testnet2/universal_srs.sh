@@ -4,5 +4,5 @@
 
 cargo run --release --example testnet2_universal_srs || exit
 
-mv universal_srs.params ../../src/testnet2
+mv universal_srs*.params ../../src/testnet2
 mv universal_srs.checksum ../../src/testnet2
