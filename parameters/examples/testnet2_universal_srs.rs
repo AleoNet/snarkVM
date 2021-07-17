@@ -54,9 +54,9 @@ fn versioned_filename(checksum: &str) -> String {
 
 pub fn main() {
     let universal_srs = setup::<Components>().unwrap();
-    let inner_snark_pk_checksum = hex::encode(sha256(&universal_srs));
+    let universal_srs_checksum = hex::encode(sha256(&universal_srs));
     store(
-        &PathBuf::from(&versioned_filename(&inner_snark_pk_checksum)),
+        &PathBuf::from(&versioned_filename(&universal_srs_checksum)),
         &PathBuf::from("universal_srs.checksum"),
         &universal_srs,
     )
