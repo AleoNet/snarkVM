@@ -211,21 +211,13 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> Ledger<T, P,
     pub fn rebuild_merkle_tree(&self, additional_cms: Vec<(T::Commitment, usize)>) -> Result<(), StorageError> {
         let mut new_cm_and_indices = additional_cms;
 
-        let mut old_cm_and_indices = vec![];
-        for (commitment_key, index_value) in self.storage.get_col(COL_COMMITMENT)? {
-            let commitment: T::Commitment = FromBytes::read_le(&commitment_key[..])?;
-            let index = bytes_to_u32(&index_value) as usize;
+        let current_len = self.storage.get_keys(COL_COMMITMENT)?.len();
 
-            old_cm_and_indices.push((commitment, index));
-        }
-
-        old_cm_and_indices.sort_by(|&(_, i), &(_, j)| i.cmp(&j));
         new_cm_and_indices.sort_by(|&(_, i), &(_, j)| i.cmp(&j));
 
-        let old_commitments = old_cm_and_indices.into_iter().map(|(cm, _)| cm);
         let new_commitments: Vec<_> = new_cm_and_indices.into_iter().map(|(cm, _)| cm).collect();
 
-        let new_tree = { self.cm_merkle_tree.read().rebuild(old_commitments, &new_commitments)? };
+        let new_tree = { self.cm_merkle_tree.read().rebuild(current_len, &new_commitments)? };
         *self.cm_merkle_tree.write() = new_tree;
 
         Ok(())

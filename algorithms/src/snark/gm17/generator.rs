@@ -155,6 +155,10 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
     fn num_private_variables(&self) -> usize {
         self.num_private_variables
     }
+
+    fn is_in_setup_mode(&self) -> bool {
+        true
+    }
 }
 
 /// Create parameters for a circuit, given some toxic waste.

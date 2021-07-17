@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::i8;
-
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
@@ -27,6 +25,8 @@ use crate::{
     integers::int::*,
     traits::{alloc::AllocGadget, integers::*},
 };
+use snarkvm_algorithms::snark::groth16::KeypairAssembly;
+use snarkvm_curves::bls12_377::Bls12_377;
 
 fn check_all_constant_bits(expected: i8, actual: Int8) {
     for (i, b) in actual.bits.iter().enumerate() {
@@ -351,6 +351,61 @@ fn test_int8_div() {
 
         check_all_allocated_bits(expected, r);
     }
+}
+
+#[test]
+fn test_int8_div_corner_case_1() {
+    let mut cs = TestConstraintSystem::<Fr>::new();
+
+    let a: i8 = i8::MIN;
+    let b: i8 = 2;
+
+    let expected = match a.checked_div(b) {
+        Some(valid) => valid,
+        None => return,
+    };
+
+    let a_bit = Int8::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
+    let b_bit = Int8::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap();
+
+    let r = a_bit.div(cs.ns(|| "division"), &b_bit).unwrap();
+
+    assert!(cs.is_satisfied());
+    assert_eq!(r.value.unwrap(), expected);
+    check_all_allocated_bits(expected, r);
+}
+
+#[test]
+#[should_panic]
+fn test_int8_div_corner_case_2() {
+    let mut cs = TestConstraintSystem::<Fr>::new();
+
+    let a: i8 = i8::MIN;
+    let b: i8 = -1;
+
+    let a_bit = Int8::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
+    let b_bit = Int8::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap();
+
+    let _ = a_bit.div(cs.ns(|| "division"), &b_bit).unwrap();
+}
+
+#[test]
+fn test_int8_div_setup_mode() {
+    let mut cs = KeypairAssembly::<Bls12_377> {
+        num_public_variables: 0,
+        num_private_variables: 0,
+        at: vec![],
+        bt: vec![],
+        ct: vec![],
+    };
+
+    let a: i8 = 1i8;
+    let b: i8 = 2i8;
+
+    let a_bit = Int8::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
+    let b_bit = Int8::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap();
+
+    let _ = a_bit.div(cs.ns(|| "division"), &b_bit).unwrap();
 }
 
 #[test]

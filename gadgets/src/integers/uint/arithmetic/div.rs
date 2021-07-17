@@ -15,15 +15,17 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+use snarkvm_r1cs::ConstraintSystem;
 
 use crate::{
-    bits::boolean::{AllocatedBit, Boolean},
+    bits::boolean::Boolean,
     errors::UnsignedIntegerError,
     integers::uint::*,
     traits::{
         alloc::AllocGadget,
-        integers::{Div, Integer},
+        bits::EvaluateLtGadget,
+        eq::{EqGadget, EvaluateEqGadget},
+        integers::{Add, Div, Integer},
         select::CondSelectGadget,
     },
 };
@@ -54,100 +56,88 @@ macro_rules! div_int_impl {
                 //   end
                 // end
 
-                if other.eq(&Self::constant(0 as <$gadget as Integer>::IntegerType)) {
-                    return Err(SynthesisError::DivisionByZero.into());
+                // Enforce D != 0
+                if !other.is_constant() {
+                    other.evaluate_equal(cs.ns(||"is_divisor_zero"), &Self::constant(0 as <$gadget as Integer>::IntegerType))?.enforce_equal(cs.ns(||"divisor_is_not_zero"), &Boolean::constant(false))?;
+                }
+                if let Some(value) = other.value {
+                    if value == 0 as <$gadget as Integer>::IntegerType {
+                        return Err(UnsignedIntegerError::DivisionByZero.into());
+                    }
                 }
 
-                let is_constant = Boolean::constant(Self::result_is_constant(&self, &other));
+                // If `self` and `other` are both constants, return the constant result instead of generating constraints.
+                if self.is_constant() && other.is_constant() {
+                    return Ok(Self::constant(self.value.unwrap().wrapping_div(other.value.unwrap())));
+                }
 
-                let allocated_true = Boolean::from(AllocatedBit::alloc(&mut cs.ns(|| "true"), || Ok(true)).unwrap());
-                let true_bit = Boolean::conditionally_select(
-                    &mut cs.ns(|| "constant_or_allocated_true"),
-                    &is_constant,
-                    &Boolean::constant(true),
-                    &allocated_true,
-                )?;
+                // Initialize some constants
+                let one = Self::constant(1 as <$gadget as Integer>::IntegerType);
+                let zero = Self::constant(0 as <$gadget as Integer>::IntegerType);
 
-                let allocated_one = Self::alloc(&mut cs.ns(|| "one"), || Ok(1 as <$gadget as Integer>::IntegerType))?;
-                let one = Self::conditionally_select(
-                    &mut cs.ns(|| "constant_or_allocated_1"),
-                    &is_constant,
-                    &Self::constant(1 as <$gadget as Integer>::IntegerType),
-                    &allocated_one,
-                )?;
+                // Q := 0
+                let mut quotient_bits = Vec::new();
 
-                let allocated_zero = Self::alloc(&mut cs.ns(|| "zero"), || Ok(0 as <$gadget as Integer>::IntegerType))?;
-                let zero = Self::conditionally_select(
-                    &mut cs.ns(|| "constant_or_allocated_0"),
-                    &is_constant,
-                    &Self::constant(0 as <$gadget as Integer>::IntegerType),
-                    &allocated_zero,
-                )?;
-
-                let self_is_zero = Boolean::Constant(self.eq(&Self::constant(0 as <$gadget as Integer>::IntegerType)));
-                let mut quotient = zero.clone();
+                // R := 0
                 let mut remainder = zero.clone();
 
+                // for i := n - 1 .. 0 do
                 for (i, bit) in self.bits.iter().rev().enumerate() {
-                    // Left shift remainder by 1
-                    remainder = Self::addmany(&mut cs.ns(|| format!("shift_left_{}", i)), &[
-                        remainder.clone(),
-                        remainder.clone(),
-                    ])?;
+                    // R := R << 1
+                    remainder = remainder.add(cs.ns(|| format!("R_double_{}", i)), &remainder)?;
 
-                    // Set the least-significant bit of remainder to bit i of the numerator
-                    let bit_is_true = Boolean::constant(bit.eq(&Boolean::constant(true)));
-                    let new_remainder = Self::addmany(&mut cs.ns(|| format!("set_remainder_bit_{}", i)), &[
-                        remainder.clone(),
-                        one.clone(),
-                    ])?;
-
+                    // R(0) := N(i)
+                    let remainder_plus_one = remainder.add(cs.ns(|| format!("set_remainder_bit_{}", i)), &one)?;
                     remainder = Self::conditionally_select(
                         &mut cs.ns(|| format!("increment_or_remainder_{}", i)),
-                        &bit_is_true,
-                        &new_remainder,
+                        &bit,
+                        &remainder_plus_one,
                         &remainder,
                     )?;
 
-                    // Greater than or equal to:
-                    //   R >= D
-                    //   (R == D) || (R > D)
-                    //   (R == D) || ((R !=D) && ((R - D) != 0))
-                    //
-                    //  (R > D)                     checks subtraction overflow before evaluation
-                    //  (R != D) && ((R - D) != 0)  instead evaluate subtraction and check for overflow after
+                    // if R ≥ D
+                    let r_larger_or_equal_to_d = remainder.less_than(cs.ns(|| format!("check_if_R_greater_than_D_{}", i)), &other)?.not();
 
-                    let no_remainder = Boolean::constant(remainder.eq(&other));
-                    let subtraction = remainder.sub_unsafe(&mut cs.ns(|| format!("subtract_divisor_{}", i)), &other)?;
-                    let sub_is_zero = Boolean::constant(subtraction.eq(&Self::constant(0 as <$gadget as Integer>::IntegerType)));
-                    let cond1 = Boolean::and(
-                        &mut cs.ns(|| format!("cond_1_{}", i)),
-                        &no_remainder.not(),
-                        &sub_is_zero.not(),
-                    )?;
-                    let cond2 = Boolean::or(&mut cs.ns(|| format!("cond_2_{}", i)), &no_remainder, &cond1)?;
+                    // compute R - D
+                    let r_sub_d = {
+                        let result = Self::alloc(cs.ns(||format!("r_sub_d_result_{}", i)), || {
+                            let remainder_value = remainder.value.unwrap();
+                            let divisor_value = other.value.unwrap();
+
+                            if remainder_value < divisor_value {
+                                Ok(0 as <$gadget as Integer>::IntegerType)
+                            } else{
+                                Ok(remainder_value - divisor_value)
+                            }
+                        })?;
+                        let result_plus_d = result.add(cs.ns(|| format!("r_sub_d_add_d_{}", i)), &other)?;
+                        let result_plus_d_sub_r = result_plus_d.sub(cs.ns(|| format!("r_sub_d_add_d_sub_r_{}", i)), &remainder)?;
+                        let should_be_zero = Self::conditionally_select(
+                            cs.ns(|| format!("select_result_plus_d_sub_r_or_zero_{}", i)),
+                            &r_larger_or_equal_to_d,
+                            &result_plus_d_sub_r,
+                            &zero,
+                        )?;
+                        should_be_zero.enforce_equal(cs.ns(|| format!("should_be_zero_{}", i)), &zero)?;
+
+                        result
+                    };
 
                     remainder = Self::conditionally_select(
                         &mut cs.ns(|| format!("subtract_or_same_{}", i)),
-                        &cond2,
-                        &subtraction,
+                        &r_larger_or_equal_to_d,
+                        &r_sub_d,
                         &remainder,
                     )?;
 
-                    let index = <$gadget as Integer>::SIZE - 1 - i as usize;
-                    let bit_value = (1 as <$gadget as Integer>::IntegerType) << (index as <$gadget as Integer>::IntegerType);
-                    let mut new_quotient = quotient.clone();
-                    new_quotient.bits[index] = true_bit;
-                    new_quotient.value = Some(new_quotient.value.unwrap() + bit_value);
-
-                    quotient = Self::conditionally_select(
-                        &mut cs.ns(|| format!("set_bit_or_same_{}", i)),
-                        &cond2,
-                        &new_quotient,
-                        &quotient,
-                    )?;
+                    // Q(i) := 1
+                    quotient_bits.push(r_larger_or_equal_to_d);
                 }
-                Self::conditionally_select(&mut cs.ns(|| "self_or_quotient"), &self_is_zero, self, &quotient).map_err(UnsignedIntegerError::SynthesisError)
+
+                quotient_bits.reverse();
+
+                let quotient = Self::from_bits_le(&quotient_bits);
+                Ok(quotient)
             }
         }
     )*)
