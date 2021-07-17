@@ -86,4 +86,8 @@ impl<ConstraintF: Field> ConstraintSystem<ConstraintF> for ConstraintCounter {
     fn num_private_variables(&self) -> usize {
         self.num_private_variables
     }
+
+    fn is_in_setup_mode(&self) -> bool {
+        true
+    }
 }

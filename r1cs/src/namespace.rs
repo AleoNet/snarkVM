@@ -100,6 +100,11 @@ impl<F: Field, CS: ConstraintSystem<F>> ConstraintSystem<F> for Namespace<'_, F,
     fn num_private_variables(&self) -> usize {
         self.0.num_private_variables()
     }
+
+    #[inline]
+    fn is_in_setup_mode(&self) -> bool {
+        self.0.is_in_setup_mode()
+    }
 }
 
 impl<F: Field, CS: ConstraintSystem<F>> Drop for Namespace<'_, F, CS> {

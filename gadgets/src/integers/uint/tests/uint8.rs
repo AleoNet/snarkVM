@@ -253,8 +253,8 @@ fn test_uint8_sub_constants() {
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u8 = rng.gen_range(u8::max_value() / 2u8..u8::max_value());
-        let b: u8 = rng.gen_range(0u8..u8::max_value() / 2u8);
+        let a: u8 = rng.gen_range(u8::MAX / 2u8..u8::MAX);
+        let b: u8 = rng.gen_range(0u8..u8::MAX / 2u8);
 
         let a_bit = UInt8::constant(a);
         let b_bit = UInt8::constant(b);
@@ -276,13 +276,13 @@ fn test_uint8_sub() {
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u8 = rng.gen_range(u8::max_value() / 2u8..u8::max_value());
-        let b: u8 = rng.gen_range(0u8..u8::max_value() / 2u8);
+        let a: u8 = rng.gen_range(u8::MAX / 2u8..u8::MAX);
+        let b: u8 = rng.gen_range(0u8..u8::MAX / 2u8);
 
         let expected = a.wrapping_sub(b);
 
         let a_bit = UInt8::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = if b > u8::max_value() / 4 {
+        let b_bit = if b > u8::MAX / 4 {
             UInt8::constant(b)
         } else {
             UInt8::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap()
@@ -314,8 +314,8 @@ fn test_uint8_mul_constants() {
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u8 = rng.gen_range(0..u8::max_value());
-        let b: u8 = rng.gen_range(0..u8::max_value());
+        let a: u8 = rng.gen_range(0..u8::MAX);
+        let b: u8 = rng.gen_range(0..u8::MAX);
 
         let a_bit = UInt8::constant(a);
         let b_bit = UInt8::constant(b);
@@ -337,13 +337,13 @@ fn test_uint8_mul() {
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u8 = rng.gen_range(0..u8::max_value());
-        let b: u8 = rng.gen_range(0..u8::max_value());
+        let a: u8 = rng.gen_range(0..u8::MAX);
+        let b: u8 = rng.gen_range(0..u8::MAX);
 
         let expected = a.wrapping_mul(b);
 
         let a_bit = UInt8::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = if b > u8::max_value() / 2 {
+        let b_bit = if b > u8::MAX / 2 {
             UInt8::constant(b)
         } else {
             UInt8::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap()
@@ -382,7 +382,7 @@ fn test_uint8_div_constants() {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
         let a: u8 = rng.gen();
-        let b: u8 = rng.gen_range(1..u8::max_value());
+        let b: u8 = rng.gen_range(1..u8::MAX);
 
         let a_bit = UInt8::constant(a);
         let b_bit = UInt8::constant(b);
@@ -405,12 +405,12 @@ fn test_uint8_div() {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
         let a: u8 = rng.gen();
-        let b: u8 = rng.gen_range(1..u8::max_value());
+        let b: u8 = rng.gen_range(1..u8::MAX);
 
         let expected = a.wrapping_div(b);
 
         let a_bit = UInt8::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = if b > u8::max_value() / 2 {
+        let b_bit = if b > u8::MAX / 2 {
             UInt8::constant(b)
         } else {
             UInt8::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap()
@@ -426,12 +426,12 @@ fn test_uint8_div() {
 
         // Flip a bit_gadget and see if the division constraint still works
         if cs
-            .get("division/subtract_divisor_0/result bit_gadget 0/boolean")
+            .get("division/r_sub_d_result_0/allocated bit_gadget 0/boolean")
             .is_zero()
         {
-            cs.set("division/subtract_divisor_0/result bit_gadget 0/boolean", Fr::one());
+            cs.set("division/r_sub_d_result_0/allocated bit_gadget 0/boolean", Fr::one());
         } else {
-            cs.set("division/subtract_divisor_0/result bit_gadget 0/boolean", Fr::zero());
+            cs.set("division/r_sub_d_result_0/allocated bit_gadget 0/boolean", Fr::zero());
         }
 
         assert!(!cs.is_satisfied());
@@ -474,7 +474,7 @@ fn test_uint8_pow() {
         let expected = a.wrapping_pow(b.into());
 
         let a_bit = UInt8::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = if b > u8::max_value() / 2 {
+        let b_bit = if b > u8::MAX / 2 {
             UInt8::constant(b)
         } else {
             UInt8::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap()
