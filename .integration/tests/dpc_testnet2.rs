@@ -64,6 +64,7 @@ fn testnet2_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
 }
 
 /// TODO (howardwu): Update this to the correct inner circuit ID when the final parameters are set.
+#[ignore]
 #[test]
 fn test_testnet2_inner_circuit_sanity_check() {
     let expected_testnet2_inner_circuit_id = vec![
