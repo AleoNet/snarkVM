@@ -72,7 +72,7 @@ impl<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, V: ToConstraintField<E::
     }
 
     fn verify_prepared(
-        processed_verifying_key: &Self::PreparedVerifyingKey,
+        prepared_verifying_key: &Self::PreparedVerifyingKey,
         input: &Self::VerifierInput,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
@@ -81,7 +81,7 @@ impl<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, V: ToConstraintField<E::
         let input = input.to_field_elements()?;
         end_timer!(conversion_time);
         let verification = start_timer!(|| format!("Verify proof w/ input len: {}", input.len()));
-        let result = verify_proof(&processed_verifying_key, proof, &input)?;
+        let result = verify_proof(&prepared_verifying_key, proof, &input)?;
         end_timer!(verification);
         end_timer!(verify_time);
         Ok(result)
