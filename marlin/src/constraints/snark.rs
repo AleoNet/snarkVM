@@ -202,7 +202,7 @@ where
         }
     }
 
-    fn verify_with_processed_key(
+    fn verify_prepared(
         verifying_key: &Self::PreparedVerifyingKey,
         input: &Self::VerifierInput,
         proof: &Self::Proof,

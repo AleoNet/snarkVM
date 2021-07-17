@@ -50,8 +50,8 @@ pub trait SNARK {
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError>;
 
-    fn verify_with_processed_key(
-        processed_verifying_key: &Self::PreparedVerifyingKey,
+    fn verify_prepared(
+        prepared_verifying_key: &Self::PreparedVerifyingKey,
         input: &Self::VerifierInput,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError>;
@@ -62,6 +62,6 @@ pub trait SNARK {
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
         let processed_verifying_key = verifying_key.prepare();
-        Self::verify_with_processed_key(&processed_verifying_key, input, proof)
+        Self::verify_prepared(&processed_verifying_key, input, proof)
     }
 }

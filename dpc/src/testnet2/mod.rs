@@ -28,6 +28,7 @@ use snarkvm_algorithms::{
     prelude::*,
 };
 use snarkvm_curves::traits::{MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
+use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     bits::Boolean,
     nonnative::NonNativeFieldVar,
@@ -62,7 +63,6 @@ pub mod record;
 pub use record::*;
 
 pub mod transaction;
-use snarkvm_fields::ToConstraintField;
 pub use transaction::*;
 
 pub mod instantiated;

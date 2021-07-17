@@ -73,7 +73,7 @@ impl<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, V: ToConstraintField<E::
         Ok(result)
     }
 
-    fn verify_with_processed_key(
+    fn verify_prepared(
         processed_verifying_key: &Self::PreparedVerifyingKey,
         input: &Self::VerifierInput,
         proof: &Self::Proof,

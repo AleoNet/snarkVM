@@ -32,6 +32,9 @@ pub enum ProgramError {
     #[error("{}", _0)]
     CommitmentError(#[from] CommitmentError),
 
+    #[error("{}", _0)]
+    ConstraintFieldError(#[from] ConstraintFieldError),
+
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
@@ -55,9 +58,6 @@ pub enum ProgramError {
 
     #[error("{}", _0)]
     PRFError(#[from] PRFError),
-
-    #[error("{}", _0)]
-    ConstraintFieldError(#[from] ConstraintFieldError),
 
     #[error("{}", _0)]
     SignatureError(#[from] SignatureError),
