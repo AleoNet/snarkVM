@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet1::{inner_circuit_verifier_input::InnerCircuitVerifierInput, Testnet1Components};
+use crate::{testnet1::Testnet1Components, InnerCircuitVerifierInput};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH},

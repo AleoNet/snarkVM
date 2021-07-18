@@ -17,7 +17,7 @@
 use snarkvm_algorithms::crh::sha256::sha256;
 use snarkvm_dpc::{
     errors::DPCError,
-    testnet2::{instantiated::Components, ProgramSNARKUniversalSRS, Testnet2Components},
+    testnet2::{marlin::Components, ProgramSNARKUniversalSRS, Testnet2Components},
 };
 use snarkvm_fields::ToConstraintField;
 use snarkvm_marlin::PolynomialCommitment;

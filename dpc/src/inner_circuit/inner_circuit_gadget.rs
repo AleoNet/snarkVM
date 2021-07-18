@@ -17,10 +17,12 @@
 use std::ops::Mul;
 
 use crate::{
-    testnet2::{encrypted::RecordEncryptionGadgetComponents, record::Record, Testnet2Components},
-    traits::RecordScheme,
+    encrypted::RecordEncryptionGadgetComponents,
+    record::Record,
     AleoAmount,
+    DPCComponents,
     PrivateKey,
+    RecordScheme,
 };
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
@@ -52,7 +54,7 @@ use snarkvm_utilities::{from_bits_le_to_bytes_le, to_bytes_le, FromBytes, ToByte
 use std::sync::Arc;
 
 #[allow(clippy::too_many_arguments)]
-pub fn execute_inner_circuit<C: Testnet2Components, CS: ConstraintSystem<C::InnerScalarField>>(
+pub fn execute_inner_circuit<C: DPCComponents, CS: ConstraintSystem<C::InnerScalarField>>(
     cs: &mut CS,
     // Ledger
     ledger_parameters: &Arc<C::LedgerMerkleTreeParameters>,
@@ -165,7 +167,7 @@ fn inner_circuit_gadget<
     network_id: u8,
 ) -> Result<(), SynthesisError>
 where
-    C: Testnet2Components<
+    C: DPCComponents<
         PRF = P,
         AccountCommitmentGadget = AccountCommitmentGadget,
         AccountEncryptionGadget = AccountEncryptionGadget,

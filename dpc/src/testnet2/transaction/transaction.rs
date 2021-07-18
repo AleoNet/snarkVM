@@ -15,11 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet2::{record::encrypted::*, Testnet2Components},
-    traits::TransactionScheme,
+    record::encrypted::*,
+    testnet2::Testnet2Components,
     AleoAmount,
     Network,
     TransactionError,
+    TransactionScheme,
 };
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
@@ -65,9 +66,9 @@ pub struct Transaction<C: Testnet2Components> {
     /// The root of the local data merkle tree
     pub local_data_root: <C::LocalDataCRH as CRH>::Output,
 
-    /// A transaction value balance is the difference between input and output record balances.
-    /// This value effectively becomes the transaction fee for the miner. Only coinbase transactions
-    /// can have a negative value balance representing tokens being minted.
+    /// A value balance is the difference between the input and output record values.
+    /// The value balance serves as the transaction fee for the miner. Only coinbase transactions
+    /// may possess a negative value balance representing tokens being minted.
     pub value_balance: AleoAmount,
 
     #[derivative(PartialEq = "ignore")]
@@ -78,7 +79,7 @@ pub struct Transaction<C: Testnet2Components> {
     pub encrypted_records: Vec<EncryptedRecord<C>>,
 
     #[derivative(PartialEq = "ignore")]
-    /// Zero-knowledge proof attesting to the valididty of the transaction
+    /// Zero-knowledge proof attesting to the validity of the transaction
     pub transaction_proof: <C::OuterSNARK as SNARK>::Proof,
 
     /// Public data associated with the transaction that must be unique among all transactions

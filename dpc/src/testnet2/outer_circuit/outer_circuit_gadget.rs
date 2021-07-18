@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use itertools::Itertools;
-
 use crate::{
     testnet2::{program::Execution, Testnet2Components},
     AleoAmount,
@@ -38,6 +36,8 @@ use snarkvm_gadgets::{
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::ToBytes;
+
+use itertools::Itertools;
 
 fn field_element_to_bytes<C: Testnet2Components, CS: ConstraintSystem<C::OuterScalarField>>(
     cs: &mut CS,

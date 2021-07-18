@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_dpc::{
-    testnet2::{instantiated::Components, NoopProgram, Testnet2Components},
+    testnet2::{marlin::Components, NoopProgram, Testnet2Components},
     DPCError,
     ProgramScheme,
 };

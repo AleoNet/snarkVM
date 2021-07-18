@@ -16,8 +16,9 @@
 
 use snarkvm_algorithms::{crh::sha256::sha256, traits::SNARK};
 use snarkvm_dpc::{
-    testnet2::{inner_circuit::InnerCircuit, instantiated::Components, Testnet2Components},
+    testnet2::{marlin::Components, Testnet2Components},
     DPCError,
+    InnerCircuit,
 };
 use snarkvm_utilities::ToBytes;
 

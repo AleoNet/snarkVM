@@ -15,12 +15,21 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    traits::{AccountScheme, DPCComponents, DPCScheme, LedgerScheme, RecordScheme, TransactionScheme},
     Account,
+    AccountScheme,
     AleoAmount,
+    DPCComponents,
     DPCError,
+    DPCScheme,
+    EncryptedRecord,
+    InnerCircuit,
+    InnerCircuitVerifierInput,
+    LedgerScheme,
     Network,
     ProgramScheme,
+    Record,
+    RecordScheme,
+    TransactionScheme,
 };
 use snarkvm_algorithms::{
     commitment_tree::CommitmentMerkleTree,
@@ -41,9 +50,6 @@ use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 use std::sync::Arc;
 
-pub mod inner_circuit;
-pub use inner_circuit::*;
-
 pub mod outer_circuit;
 pub use outer_circuit::*;
 
@@ -53,26 +59,23 @@ pub use parameters::*;
 pub mod program;
 pub use program::*;
 
-pub mod record;
-pub use record::*;
-
 pub mod transaction;
 pub use transaction::*;
 
-pub mod instantiated;
+pub mod marlin;
 
 ///////////////////////////////////////////////////////////////////////////////
 
 /// Trait that stores information about the testnet2 DPC scheme.
 pub trait Testnet2Components: DPCComponents {
-    /// SNARK for non-proof-verification checks
+    /// SNARK for inner circuit proof generation.
     type InnerSNARK: SNARK<
         Circuit = InnerCircuit<Self>,
         AllocatedCircuit = InnerCircuit<Self>,
         VerifierInput = InnerCircuitVerifierInput<Self>,
     >;
 
-    /// SNARK Verifier gadget for the inner snark
+    /// SNARK verifier gadget for the inner circuit.
     type InnerSNARKGadget: SNARKVerifierGadget<
         Self::InnerScalarField,
         Self::OuterScalarField,

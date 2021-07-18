@@ -16,47 +16,55 @@
 
 use crate::{
     account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_INPUT, ACCOUNT_SIGNATURE_INPUT},
-    testnet1::{
-        inner_circuit::InnerCircuit,
-        inner_circuit_verifier_input::InnerCircuitVerifierInput,
+    testnet2::{
         outer_circuit::OuterCircuit,
         outer_circuit_verifier_input::OuterCircuitVerifierInput,
         program::{NoopCircuit, ProgramLocalData},
         transaction::Transaction,
-        Testnet1Components,
+        Testnet2Components,
         DPC,
     },
     DPCComponents,
+    InnerCircuit,
+    InnerCircuitVerifierInput,
     Network,
 };
 use snarkvm_algorithms::{
     commitment::{Blake2sCommitment, PedersenCompressedCommitment},
     crh::BoweHopwoodPedersenCompressedCRH,
+    crypto_hash::PoseidonCryptoHash,
     define_merkle_tree_parameters,
     encryption::GroupEncryption,
     prelude::*,
     prf::Blake2s,
     signature::Schnorr,
-    snark::{gm17::GM17, groth16::Groth16},
+    snark::groth16::Groth16,
 };
 use snarkvm_curves::{
     bls12_377::Bls12_377,
     bw6_761::BW6_761,
     edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls12},
-    edwards_bw6::EdwardsProjective as EdwardsBW6,
     PairingEngine,
 };
 use snarkvm_gadgets::{
     algorithms::{
         commitment::{Blake2sCommitmentGadget, PedersenCompressedCommitmentGadget},
         crh::BoweHopwoodPedersenCompressedCRHGadget,
+        crypto_hash::PoseidonCryptoHashGadget,
         encryption::GroupEncryptionGadget,
         prf::Blake2sGadget,
         signature::SchnorrGadget,
-        snark::{GM17VerifierGadget, Groth16VerifierGadget},
+        snark::Groth16VerifierGadget,
     },
-    curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
+    curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget},
 };
+use snarkvm_marlin::{
+    constraints::{snark::MarlinSNARK, verifier::MarlinVerificationGadget},
+    marlin::MarlinTestnet2Mode,
+    FiatShamirAlgebraicSpongeRng,
+    PoseidonSponge,
+};
+use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
 
 use once_cell::sync::OnceCell;
 
@@ -70,8 +78,8 @@ macro_rules! dpc_setup {
     };
 }
 
-pub type Testnet1DPC = DPC<Components>;
-pub type Testnet1Transaction = Transaction<Components>;
+pub type Testnet2DPC = DPC<Components>;
+pub type Testnet2Transaction = Transaction<Components>;
 
 define_merkle_tree_parameters!(
     CommitmentMerkleTreeParameters,
@@ -81,13 +89,14 @@ define_merkle_tree_parameters!(
 
 pub struct Components;
 
+// TODO (raychu86): Optimize each of the window sizes in the type declarations below.
 #[rustfmt::skip]
 impl DPCComponents for Components {
-    const NETWORK_ID: u8 = Network::Testnet1.id();
-    
+    const NETWORK_ID: u8 = Network::Testnet2.id();
+
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
-
+    
     type InnerCurve = Bls12_377;
     type OuterCurve = BW6_761;
 
@@ -105,13 +114,13 @@ impl DPCComponents for Components {
     
     type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 48, 44>;
     type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 44>;
-
+    
     type EncryptionGroup = EdwardsBls12;
     type EncryptionGroupGadget = EdwardsBls12Gadget;
     type EncryptionParameters = EdwardsParameters;
     
-    type InnerCircuitIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBW6, 296, 63>;
-    type InnerCircuitIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 296, 63>;
+    type InnerCircuitIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
+    type InnerCircuitIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
 
     type LedgerMerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 8, 32>;
     type LedgerMerkleTreeCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
@@ -129,15 +138,15 @@ impl DPCComponents for Components {
     type ProgramIDCommitment = Blake2sCommitment;
     type ProgramIDCommitmentGadget = Blake2sCommitmentGadget;
     
-    type ProgramIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBW6, 144, 63>;
-    type ProgramIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 144, 63>;
+    type ProgramIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
+    type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
     
     type RecordCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 233>;
     type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 233>;
     
     type SerialNumberNonceCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 32, 63>;
     type SerialNumberNonceCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
-    
+
     dpc_setup!{account_commitment, ACCOUNT_COMMITMENT, AccountCommitment, ACCOUNT_COMMITMENT_INPUT}
     dpc_setup!{account_encryption, ACCOUNT_ENCRYPTION, AccountEncryption, ACCOUNT_ENCRYPTION_INPUT}
     dpc_setup!{account_signature, ACCOUNT_SIGNATURE, AccountSignature, ACCOUNT_SIGNATURE_INPUT}
@@ -158,10 +167,41 @@ impl DPCComponents for Components {
     }
 }
 
-impl Testnet1Components for Components {
+impl Testnet2Components for Components {
+    type FiatShamirRng = FiatShamirAlgebraicSpongeRng<
+        Self::InnerScalarField,
+        Self::OuterScalarField,
+        PoseidonSponge<Self::OuterScalarField>,
+    >;
     type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
-    type NoopProgramSNARK = GM17<Self::InnerCurve, NoopCircuit<Self>, ProgramLocalData<Self>>;
-    type NoopProgramSNARKGadget = GM17VerifierGadget<Self::InnerCurve, PairingGadget>;
+    type MarlinMode = MarlinTestnet2Mode;
+    type NoopProgramSNARK = MarlinSNARK<
+        Self::InnerScalarField,
+        Self::OuterScalarField,
+        Self::PolynomialCommitment,
+        Self::FiatShamirRng,
+        Self::MarlinMode,
+        NoopCircuit<Self>,
+        ProgramLocalData<Self>,
+    >;
+    type NoopProgramSNARKGadget = MarlinVerificationGadget<
+        Self::InnerScalarField,
+        Self::OuterScalarField,
+        Self::PolynomialCommitment,
+        MarlinKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>,
+    >;
     type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
+    type PolynomialCommitment = MarlinKZG10<Self::InnerCurve>;
 }
+
+// This is currently unused.
+//
+// use snarkvm_marlin::{FiatShamirAlgebraicSpongeRngVar, PoseidonSpongeVar};
+//
+// pub type FSG = FiatShamirAlgebraicSpongeRngVar<
+//     Self::InnerScalarField,
+//     Self::OuterScalarField,
+//     PoseidonSponge<Self::OuterScalarField>,
+//     PoseidonSpongeVar<Self::OuterScalarField>,
+// >;

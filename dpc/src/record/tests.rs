@@ -14,14 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{encoded::*, encrypted::*};
 use crate::{
-    testnet1::{instantiated::*, NoopProgram, Payload, Record},
+    record::{encoded::*, encrypted::*},
+    testnet2::{marlin::*, NoopProgram},
     Account,
     AccountScheme,
     DPCComponents,
     EncodedRecordScheme,
+    Payload,
     ProgramScheme,
+    Record,
     ViewKey,
 };
 use snarkvm_algorithms::traits::CRH;
@@ -33,7 +35,7 @@ use rand_chacha::ChaChaRng;
 pub(crate) const ITERATIONS: usize = 5;
 
 #[test]
-fn test_record_encoding() {
+fn test_record_serialization() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     for _ in 0..ITERATIONS {

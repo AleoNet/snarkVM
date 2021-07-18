@@ -16,7 +16,9 @@
 
 use crate::{
     prelude::*,
-    testnet1::{EncryptedRecord, LocalData, Record, Testnet1Components, Transaction},
+    testnet1::{LocalData, Testnet1Components, Transaction},
+    EncryptedRecord,
+    Record,
 };
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, prelude::*};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};

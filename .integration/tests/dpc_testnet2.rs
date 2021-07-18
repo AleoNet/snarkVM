@@ -20,19 +20,13 @@ use snarkvm_algorithms::{
 };
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{
+    execute_inner_circuit,
     prelude::*,
-    testnet2::{
-        execute_inner_circuit,
-        execute_outer_circuit,
-        instantiated::*,
-        program::NoopProgram,
-        EncryptedRecord,
-        InnerCircuit,
-        Payload,
-        Record,
-        Testnet2Components,
-        TransactionKernel,
-    },
+    testnet2::{execute_outer_circuit, marlin::*, program::NoopProgram, Testnet2Components, TransactionKernel},
+    EncryptedRecord,
+    InnerCircuit,
+    Payload,
+    Record,
 };
 use snarkvm_integration::{ledger::*, memdb::MemDb, storage::*, testnet2::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};

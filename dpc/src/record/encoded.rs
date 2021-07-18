@@ -14,11 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    testnet2::{payload::Payload, record::Record, Testnet2Components},
-    traits::{DPCComponents, EncodedRecordScheme, RecordScheme},
-    DPCError,
-};
+use crate::{DPCComponents, DPCError, EncodedRecordScheme, Payload, Record, RecordScheme};
 use snarkvm_algorithms::{
     encoding::Elligator2,
     traits::{CommitmentScheme, CRH},
@@ -61,7 +57,7 @@ pub fn decode_from_group<P: MontgomeryParameters + TwistedEdwardsParameters, G: 
     Ok(to_bytes_le![output]?)
 }
 
-pub struct DecodedRecord<C: Testnet2Components> {
+pub struct DecodedRecord<C: DPCComponents> {
     pub value: u64,
     pub payload: Payload,
     pub birth_program_id: Vec<u8>,
@@ -70,17 +66,14 @@ pub struct DecodedRecord<C: Testnet2Components> {
     pub commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
 }
 
-pub struct EncodedRecord<C: Testnet2Components, P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve>
-{
+pub struct EncodedRecord<C: DPCComponents, P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve> {
     pub(super) encoded_elements: Vec<G>,
     pub(super) final_sign_high: bool,
     _components: PhantomData<C>,
     _parameters: PhantomData<P>,
 }
 
-impl<C: Testnet2Components, P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve>
-    EncodedRecord<C, P, G>
-{
+impl<C: DPCComponents, P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve> EncodedRecord<C, P, G> {
     pub fn new(encoded_elements: Vec<G>, final_sign_high: bool) -> Self {
         Self {
             encoded_elements,
@@ -91,7 +84,7 @@ impl<C: Testnet2Components, P: MontgomeryParameters + TwistedEdwardsParameters, 
     }
 }
 
-impl<C: Testnet2Components, P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve> EncodedRecordScheme
+impl<C: DPCComponents, P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve> EncodedRecordScheme
     for EncodedRecord<C, P, G>
 {
     type DecodedRecord = DecodedRecord<C>;

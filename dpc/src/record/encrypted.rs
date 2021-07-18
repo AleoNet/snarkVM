@@ -15,14 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet2::{
-        payload::Payload,
-        record::{encoded::*, Record},
-        Testnet2Components,
-    },
-    traits::{DPCComponents, EncodedRecordScheme, RecordScheme},
+    record::encoded::*,
     Address,
+    DPCComponents,
     DPCError,
+    EncodedRecordScheme,
+    Payload,
+    Record,
+    RecordScheme,
     ViewKey,
 };
 use snarkvm_algorithms::{
@@ -48,11 +48,11 @@ type BaseField<T> = <<T as DPCComponents>::EncryptionParameters as ModelParamete
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: Testnet2Components"),
-    PartialEq(bound = "C: Testnet2Components"),
-    Eq(bound = "C: Testnet2Components")
+    Clone(bound = "C: DPCComponents"),
+    PartialEq(bound = "C: DPCComponents"),
+    Eq(bound = "C: DPCComponents")
 )]
-pub struct RecordEncryptionGadgetComponents<C: Testnet2Components> {
+pub struct RecordEncryptionGadgetComponents<C: DPCComponents> {
     /// Record field element representations
     pub record_field_elements: Vec<<C::EncryptionParameters as ModelParameters>::BaseField>,
     /// Record group element encodings - Represented in (x,y) affine coordinates
@@ -65,7 +65,7 @@ pub struct RecordEncryptionGadgetComponents<C: Testnet2Components> {
     pub encryption_blinding_exponents: Vec<<C::AccountEncryption as EncryptionScheme>::BlindingExponent>,
 }
 
-impl<C: Testnet2Components> Default for RecordEncryptionGadgetComponents<C> {
+impl<C: DPCComponents> Default for RecordEncryptionGadgetComponents<C> {
     fn default() -> Self {
         // TODO (raychu86) Fix the lengths to be generic
         let record_encoding_length = 7;
@@ -93,17 +93,17 @@ impl<C: Testnet2Components> Default for RecordEncryptionGadgetComponents<C> {
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: Testnet2Components"),
-    PartialEq(bound = "C: Testnet2Components"),
-    Eq(bound = "C: Testnet2Components"),
-    Debug(bound = "C: Testnet2Components")
+    Clone(bound = "C: DPCComponents"),
+    PartialEq(bound = "C: DPCComponents"),
+    Eq(bound = "C: DPCComponents"),
+    Debug(bound = "C: DPCComponents")
 )]
-pub struct EncryptedRecord<C: Testnet2Components> {
+pub struct EncryptedRecord<C: DPCComponents> {
     pub encrypted_elements: Vec<<<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Text>,
     pub final_fq_high_selector: bool,
 }
 
-impl<C: Testnet2Components> EncryptedRecord<C> {
+impl<C: DPCComponents> EncryptedRecord<C> {
     /// Encrypt the given vector of records and returns
     /// 1. Encryption randomness
     /// 2. Encrypted record
@@ -370,7 +370,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
     }
 }
 
-impl<C: Testnet2Components> ToBytes for EncryptedRecord<C> {
+impl<C: DPCComponents> ToBytes for EncryptedRecord<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         let mut ciphertext_selectors = Vec::with_capacity(self.encrypted_elements.len() + 1);
@@ -406,7 +406,7 @@ impl<C: Testnet2Components> ToBytes for EncryptedRecord<C> {
     }
 }
 
-impl<C: Testnet2Components> FromBytes for EncryptedRecord<C> {
+impl<C: DPCComponents> FromBytes for EncryptedRecord<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the ciphertext x coordinates

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{testnet1::Testnet1Components, AleoAmount};
+use crate::{AleoAmount, DPCComponents};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH},
@@ -24,8 +24,8 @@ use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use std::sync::Arc;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Testnet1Components"))]
-pub struct InnerCircuitVerifierInput<C: Testnet1Components> {
+#[derivative(Clone(bound = "C: DPCComponents"))]
+pub struct InnerCircuitVerifierInput<C: DPCComponents> {
     // Ledger parameters and digest
     pub ledger_parameters: Arc<C::LedgerMerkleTreeParameters>,
     pub ledger_digest: MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
@@ -48,7 +48,7 @@ pub struct InnerCircuitVerifierInput<C: Testnet1Components> {
     pub network_id: u8,
 }
 
-impl<C: Testnet1Components> ToConstraintField<C::InnerScalarField> for InnerCircuitVerifierInput<C>
+impl<C: DPCComponents> ToConstraintField<C::InnerScalarField> for InnerCircuitVerifierInput<C>
 where
     <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
@@ -68,6 +68,7 @@ where
         v.extend_from_slice(&C::encrypted_record_crh().to_field_elements()?);
         v.extend_from_slice(&C::program_id_commitment().to_field_elements()?);
         v.extend_from_slice(&C::local_data_crh().to_field_elements()?);
+        v.extend_from_slice(&C::local_data_commitment().to_field_elements()?);
         v.extend_from_slice(&C::serial_number_nonce_crh().to_field_elements()?);
 
         v.extend_from_slice(&self.ledger_parameters.crh().parameters().to_field_elements()?);

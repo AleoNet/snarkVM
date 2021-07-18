@@ -16,8 +16,9 @@
 
 use snarkvm_algorithms::{crh::sha256::sha256, traits::SNARK};
 use snarkvm_dpc::{
-    testnet1::{instantiated::Components, InnerCircuit, NoopProgram, OuterCircuit, Testnet1Components},
+    testnet1::{gm17::Components, NoopProgram, OuterCircuit, Testnet1Components},
     DPCError,
+    InnerCircuit,
     ProgramScheme,
 };
 use snarkvm_parameters::{

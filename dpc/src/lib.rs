@@ -70,6 +70,12 @@ pub use account::*;
 pub mod block;
 pub use block::*;
 
+pub mod inner_circuit;
+pub use inner_circuit::*;
+
+pub mod record;
+pub use record::*;
+
 #[cfg(feature = "testnet1")]
 pub mod testnet1;
 
