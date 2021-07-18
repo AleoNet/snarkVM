@@ -311,7 +311,7 @@ fn gm17_verifier_num_constraints_test() {
         println!("verifier_gadget_constraints : {:?}", verifier_gadget_constraints);
 
         const INPUT_GADGET_CONSTRAINTS: usize = 25600;
-        const VK_GADGET_CONSTRAINTS: usize = 106;
+        const VK_GADGET_CONSTRAINTS: usize = 436;
         const PROOF_GADGET_CONSTRAINTS: usize = 30199;
         const VERIFIER_GADGET_CONSTRAINTS: usize = 323348;
 
