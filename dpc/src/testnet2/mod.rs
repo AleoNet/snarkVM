@@ -27,14 +27,8 @@ use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
     prelude::*,
 };
-use snarkvm_curves::traits::{MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::ToConstraintField;
-use snarkvm_gadgets::{
-    bits::Boolean,
-    nonnative::NonNativeFieldVar,
-    traits::algorithms::SNARKVerifierGadget,
-    CompressedGroupGadget,
-};
+use snarkvm_gadgets::{bits::Boolean, nonnative::NonNativeFieldVar, traits::algorithms::SNARKVerifierGadget};
 use snarkvm_marlin::{
     marlin::{MarlinMode, UniversalSRS},
     FiatShamirRng,
@@ -71,11 +65,6 @@ pub mod instantiated;
 
 /// Trait that stores information about the testnet2 DPC scheme.
 pub trait Testnet2Components: DPCComponents {
-    /// Group and Model Parameters for record encryption
-    type EncryptionGroup: ProjectiveCurve;
-    type EncryptionGroupGadget: CompressedGroupGadget<Self::EncryptionGroup, Self::InnerScalarField>;
-    type EncryptionParameters: MontgomeryParameters + TwistedEdwardsParameters;
-
     /// SNARK for non-proof-verification checks
     type InnerSNARK: SNARK<
         Circuit = InnerCircuit<Self>,
