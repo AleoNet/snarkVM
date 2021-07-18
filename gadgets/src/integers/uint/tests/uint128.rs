@@ -20,7 +20,7 @@ use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
 use snarkvm_fields::{One, Zero};
-use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem, TestConstraintChecker};
+use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintChecker, TestConstraintSystem};
 
 use crate::{
     bits::Boolean,
