@@ -16,7 +16,7 @@
 
 use crate::{
     account::{Account, Address, PrivateKey, ViewKey},
-    testnet2::marlin::DPC,
+    testnet2::dpc::DPC,
     traits::AccountScheme,
 };
 

@@ -22,7 +22,7 @@ use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{
     execute_inner_circuit,
     prelude::*,
-    testnet2::{execute_outer_circuit, marlin::*, program::NoopProgram, Testnet2Components, TransactionKernel},
+    testnet2::{dpc::*, execute_outer_circuit, program::NoopProgram, Testnet2Components, TransactionKernel},
     EncryptedRecord,
     InnerCircuit,
     Payload,
@@ -223,7 +223,7 @@ fn dpc_testnet2_integration_test() {
     let block = Block { header, transactions };
 
     ledger.insert_and_commit(&block).unwrap();
-    assert_eq!(ledger.len(), 2);
+    assert_eq!(ledger.block_height(), 2);
 }
 
 #[test]
@@ -444,7 +444,7 @@ fn test_testnet2_dpc_execute_constraints() {
     let local_data_root = local_data_merkle_tree.root();
 
     // Construct the ledger witnesses
-    let ledger_digest = ledger.digest().expect("could not get digest");
+    let ledger_digest = ledger.latest_digest().expect("could not get digest");
 
     // Generate the ledger membership witnesses
     let mut old_witnesses = Vec::with_capacity(DPC::NUM_INPUT_RECORDS);

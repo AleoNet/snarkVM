@@ -53,7 +53,7 @@ pub use program::*;
 pub mod transaction;
 pub use transaction::*;
 
-pub mod gm17;
+pub mod dpc;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -400,7 +400,7 @@ where
 
         // Construct the ledger witnesses
 
-        let ledger_digest = ledger.digest().expect("could not get digest");
+        let ledger_digest = ledger.latest_digest().expect("could not get digest");
 
         // Generate the ledger membership witnesses
         let mut old_witnesses = Vec::with_capacity(C::NUM_INPUT_RECORDS);
@@ -587,12 +587,6 @@ where
         }
 
         let ledger_time = start_timer!(|| "Ledger checks");
-
-        // Returns false if the transaction memo previously existed in the ledger.
-        if ledger.contains_memo(transaction.memorandum()) {
-            eprintln!("Ledger already contains this transaction memo.");
-            return false;
-        }
 
         // Returns false if any transaction serial number previously existed in the ledger.
         for sn in transaction.old_serial_numbers() {

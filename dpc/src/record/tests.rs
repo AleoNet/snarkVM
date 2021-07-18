@@ -16,7 +16,7 @@
 
 use crate::{
     record::{encoded::*, encrypted::*},
-    testnet2::{marlin::*, NoopProgram},
+    testnet2::{dpc::*, NoopProgram},
     Account,
     AccountScheme,
     DPCComponents,

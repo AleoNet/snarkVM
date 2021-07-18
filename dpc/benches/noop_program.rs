@@ -19,7 +19,7 @@ extern crate criterion;
 
 use snarkvm_dpc::{
     prelude::*,
-    testnet2::{marlin::DPC, NoopProgram},
+    testnet2::{dpc::DPC, NoopProgram},
 };
 
 use criterion::Criterion;

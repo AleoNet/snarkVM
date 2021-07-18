@@ -152,14 +152,6 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> Ledger<T, P,
         }
     }
 
-    /// Get the current ledger digest
-    pub fn current_digest(&self) -> Result<Vec<u8>, StorageError> {
-        match self.storage.get(COL_META, KEY_CURR_DIGEST.as_bytes())? {
-            Some(current_digest) => Ok(current_digest),
-            None => Ok(to_bytes_le![self.cm_merkle_tree.read().root()].unwrap()),
-        }
-    }
-
     /// Get the set of past ledger digests
     pub fn past_digests(&self) -> Result<HashSet<Box<[u8]>>, StorageError> {
         let keys = self.storage.get_keys(COL_DIGEST)?;
@@ -270,7 +262,7 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> LedgerScheme
     }
 
     /// Returns the number of blocks including the genesis block
-    fn len(&self) -> usize {
+    fn block_height(&self) -> usize {
         self.get_current_block_height() as usize + 1
     }
 
@@ -280,9 +272,12 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> LedgerScheme
     }
 
     /// Return a digest of the latest ledger Merkle tree.
-    fn digest(&self) -> Option<Self::MerkleTreeDigest> {
-        let digest: Self::MerkleTreeDigest = FromBytes::read_le(&self.current_digest().unwrap()[..]).unwrap();
-        Some(digest)
+    fn latest_digest(&self) -> Option<Self::MerkleTreeDigest> {
+        let digest = match self.storage.get(COL_META, KEY_CURR_DIGEST.as_bytes()).unwrap() {
+            Some(current_digest) => current_digest,
+            None => to_bytes_le![self.cm_merkle_tree.read().root()].unwrap(),
+        };
+        Some(FromBytes::read_le(digest.as_slice()).unwrap())
     }
 
     /// Check that st_{ts} is a valid digest for some (past) ledger state.
@@ -300,11 +295,6 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> LedgerScheme
         self.storage.exists(COL_SERIAL_NUMBER, &to_bytes_le![sn].unwrap())
     }
 
-    /// Returns true if the given memo exists in the ledger.
-    fn contains_memo(&self, memo: &<Self::Transaction as TransactionScheme>::Memorandum) -> bool {
-        self.storage.exists(COL_MEMO, &to_bytes_le![memo].unwrap())
-    }
-
     /// Returns the Merkle path to the latest ledger digest
     /// for a given commitment, if it exists in the ledger.
     fn prove_cm(&self, cm: &Self::Commitment) -> anyhow::Result<Self::MerklePath> {
@@ -314,17 +304,6 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> LedgerScheme
         let result = self.cm_merkle_tree.read().generate_proof(cm_index, cm)?;
 
         Ok(result)
-    }
-
-    /// Returns true if the given Merkle path is a valid witness for
-    /// the given ledger digest and commitment.
-    fn verify_cm(
-        _parameters: &Arc<Self::MerkleParameters>,
-        digest: &Self::MerkleTreeDigest,
-        cm: &Self::Commitment,
-        witness: &Self::MerklePath,
-    ) -> bool {
-        witness.verify(&digest, cm).unwrap()
     }
 }
 

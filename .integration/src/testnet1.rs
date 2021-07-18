@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Ledger;
-use snarkvm_dpc::{testnet1::gm17::*, Account, AccountScheme, DPCComponents, DPCScheme, Storage};
+use snarkvm_dpc::{testnet1::dpc::*, Account, AccountScheme, DPCComponents, DPCScheme, Storage};
 
 use rand::{CryptoRng, Rng};
 use std::sync::Arc;
