@@ -443,9 +443,23 @@ impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField,
             ),
         };
 
+        // Perform on-curve check.
+        let b = P::COEFF_B;
+        let a = P::COEFF_A;
+
         let x = FG::alloc_constant(&mut cs.ns(|| "x"), || x)?;
         let y = FG::alloc_constant(&mut cs.ns(|| "y"), || y)?;
         let infinity = Boolean::alloc_constant(&mut cs.ns(|| "infinity"), || infinity)?;
+
+        // Check that y^2 = x^3 + ax +b
+        // We do this by checking that y^2 - b = x * (x^2 +a)
+        let x2 = x.square(&mut cs.ns(|| "x^2"))?;
+        let y2 = y.square(&mut cs.ns(|| "y^2"))?;
+
+        let x2_plus_a = x2.add_constant(cs.ns(|| "x^2 + a"), &a)?;
+        let y2_minus_b = y2.add_constant(cs.ns(|| "y^2 - b"), &b.neg())?;
+
+        x2_plus_a.mul_equals(cs.ns(|| "on curve check"), &x, &y2_minus_b)?;
 
         Ok(Self::new(x, y, infinity))
     }
@@ -581,9 +595,23 @@ impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField,
             ),
         };
 
+        // Perform on-curve check.
+        let b = P::COEFF_B;
+        let a = P::COEFF_A;
+
         let x = FG::alloc_input(&mut cs.ns(|| "x"), || x)?;
         let y = FG::alloc_input(&mut cs.ns(|| "y"), || y)?;
         let infinity = Boolean::alloc_input(&mut cs.ns(|| "infinity"), || infinity)?;
+
+        // Check that y^2 = x^3 + ax +b
+        // We do this by checking that y^2 - b = x * (x^2 +a)
+        let x2 = x.square(&mut cs.ns(|| "x^2"))?;
+        let y2 = y.square(&mut cs.ns(|| "y^2"))?;
+
+        let x2_plus_a = x2.add_constant(cs.ns(|| "x^2 + a"), &a)?;
+        let y2_minus_b = y2.add_constant(cs.ns(|| "y^2 - b"), &b.neg())?;
+
+        x2_plus_a.mul_equals(cs.ns(|| "on curve check"), &x, &y2_minus_b)?;
 
         Ok(Self::new(x, y, infinity))
     }
