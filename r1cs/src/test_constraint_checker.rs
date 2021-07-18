@@ -122,9 +122,9 @@ impl<F: Field> ConstraintSystem<F> for TestConstraintChecker<F> {
         let c = eval_lc(c(LinearCombination::zero()).0);
 
         if a * b != c {
-            self.found_unsatisfactory_constraint = true;
-
             if self.first_unsatisfied_constraint.is_none() {
+                self.found_unsatisfactory_constraint = true;
+
                 let new = annotation().as_ref().to_string();
                 assert!(!new.contains('/'), "'/' is not allowed in names");
 
