@@ -20,7 +20,7 @@ use snarkvm_algorithms::{
     traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH},
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
-use snarkvm_utilities::{to_bytes_le, ToBytes};
+use snarkvm_utilities::ToBytes;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet1Components"))]
@@ -31,7 +31,6 @@ pub struct OuterCircuitVerifierInput<C: Testnet1Components> {
 
 impl<C: Testnet1Components> ToConstraintField<C::OuterScalarField> for OuterCircuitVerifierInput<C>
 where
-    C::ProgramIDCommitment: ToConstraintField<C::OuterScalarField>,
     <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::OuterScalarField>,
     <C::ProgramIDCRH as CRH>::Parameters: ToConstraintField<C::OuterScalarField>,
 
@@ -58,9 +57,8 @@ where
         let inner_snark_field_elements = &self.inner_snark_verifier_input.to_field_elements()?;
 
         for inner_snark_fe in inner_snark_field_elements {
-            let inner_snark_fe_bytes = to_bytes_le![inner_snark_fe]?;
             v.extend_from_slice(&ToConstraintField::<C::OuterScalarField>::to_field_elements(
-                inner_snark_fe_bytes.as_slice(),
+                inner_snark_fe.to_bytes_le()?.as_slice(),
             )?);
         }
 

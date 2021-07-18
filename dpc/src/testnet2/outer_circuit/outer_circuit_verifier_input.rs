@@ -31,7 +31,6 @@ pub struct OuterCircuitVerifierInput<C: Testnet2Components> {
 
 impl<C: Testnet2Components> ToConstraintField<C::OuterScalarField> for OuterCircuitVerifierInput<C>
 where
-    C::ProgramIDCommitment: ToConstraintField<C::OuterScalarField>,
     <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::OuterScalarField>,
     <C::ProgramIDCRH as CRH>::Parameters: ToConstraintField<C::OuterScalarField>,
 
