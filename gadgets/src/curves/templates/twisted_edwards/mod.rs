@@ -644,7 +644,6 @@ mod affine_impl {
                 .add_constant(cs.ns(|| "a * x^2 - 1"), &one.neg())?;
 
             d_x2_minus_one.mul_equals(cs.ns(|| "on curve check"), &y2, &a_x2_minus_one)?;
-
             Ok(Self::new(x, y))
         }
     }
