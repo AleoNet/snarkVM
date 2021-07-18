@@ -39,9 +39,11 @@ pub struct InnerCircuitVerifierInput<C: DPCComponents> {
     // New encrypted record hashes
     pub new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
 
-    // Program input commitment and local data root
-    pub program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
-    pub local_data_root: <C::LocalDataCRH as CRH>::Output,
+    // Program input commitment and local data root.
+    // These are required in natively verifying an inner circuit proof.
+    // However for verification in the outer circuit, these must be provided as witness.
+    pub program_commitment: Option<<C::ProgramIDCommitment as CommitmentScheme>::Output>,
+    pub local_data_root: Option<<C::LocalDataCRH as CRH>::Output>,
 
     pub memo: [u8; 32],
     pub value_balance: AleoAmount,
@@ -83,14 +85,20 @@ where
             v.extend_from_slice(&encrypted_record_hash.to_field_elements()?);
         }
 
-        v.extend_from_slice(&self.program_commitment.to_field_elements()?);
+        if let Some(program_commitment) = &self.program_commitment {
+            v.extend_from_slice(&program_commitment.to_field_elements()?);
+        }
+
         v.extend_from_slice(&ToConstraintField::<C::InnerScalarField>::to_field_elements(
             &self.memo,
         )?);
         v.extend_from_slice(&ToConstraintField::<C::InnerScalarField>::to_field_elements(
             &[self.network_id][..],
         )?);
-        v.extend_from_slice(&self.local_data_root.to_field_elements()?);
+
+        if let Some(local_data_root) = &self.local_data_root {
+            v.extend_from_slice(&local_data_root.to_field_elements()?);
+        }
 
         v.extend_from_slice(&ToConstraintField::<C::InnerScalarField>::to_field_elements(
             &self.value_balance.0.to_le_bytes()[..],

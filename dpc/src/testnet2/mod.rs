@@ -522,8 +522,8 @@ where
                 new_commitments: new_commitments.clone(),
                 new_encrypted_record_hashes: new_encrypted_record_hashes.clone(),
                 memo: memorandum,
-                program_commitment: program_commitment.clone(),
-                local_data_root: local_data_root.clone(),
+                program_commitment: Some(program_commitment.clone()),
+                local_data_root: Some(local_data_root.clone()),
                 value_balance,
                 network_id,
             };
@@ -704,8 +704,8 @@ where
             new_commitments: transaction.new_commitments().to_vec(),
             new_encrypted_record_hashes,
             memo: *transaction.memorandum(),
-            program_commitment: transaction.program_commitment().clone(),
-            local_data_root: transaction.local_data_root().clone(),
+            program_commitment: None,
+            local_data_root: None,
             value_balance: transaction.value_balance(),
             network_id: transaction.network_id(),
         };

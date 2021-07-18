@@ -62,7 +62,6 @@ where
             )?);
         }
 
-        v.extend_from_slice(&self.inner_snark_verifier_input.program_commitment.to_field_elements()?);
         v.extend_from_slice(&self.inner_circuit_id.to_field_elements()?);
         Ok(v)
     }
