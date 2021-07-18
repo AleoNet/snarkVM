@@ -425,7 +425,6 @@ fn test_testnet1_dpc_execute_constraints() {
     let TransactionKernel {
         old_records,
         old_serial_numbers,
-        old_randomizers: _,
 
         new_records,
         new_sn_nonce_randomness,
@@ -442,6 +441,7 @@ fn test_testnet1_dpc_execute_constraints() {
         value_balance,
         memorandum,
         network_id,
+        signatures: _,
     } = transaction_kernel;
 
     let local_data_root = local_data_merkle_tree.root();
