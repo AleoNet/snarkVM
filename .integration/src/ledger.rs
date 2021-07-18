@@ -286,12 +286,12 @@ impl<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> LedgerScheme
     }
 
     /// Returns true if the given commitment exists in the ledger.
-    fn contains_cm(&self, cm: &Self::Commitment) -> bool {
+    fn contains_commitment(&self, cm: &Self::Commitment) -> bool {
         self.storage.exists(COL_COMMITMENT, &to_bytes_le![cm].unwrap())
     }
 
     /// Returns true if the given serial number exists in the ledger.
-    fn contains_sn(&self, sn: &Self::SerialNumber) -> bool {
+    fn contains_serial_number(&self, sn: &Self::SerialNumber) -> bool {
         self.storage.exists(COL_SERIAL_NUMBER, &to_bytes_le![sn].unwrap())
     }
 

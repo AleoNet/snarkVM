@@ -590,7 +590,7 @@ where
 
         // Returns false if any transaction serial number previously existed in the ledger.
         for sn in transaction.old_serial_numbers() {
-            if ledger.contains_sn(sn) {
+            if ledger.contains_serial_number(sn) {
                 eprintln!("Ledger already contains this transaction serial number.");
                 return false;
             }
@@ -598,7 +598,7 @@ where
 
         // Returns false if any transaction commitment previously existed in the ledger.
         for cm in transaction.new_commitments() {
-            if ledger.contains_cm(cm) {
+            if ledger.contains_commitment(cm) {
                 eprintln!("Ledger already contains this transaction commitment.");
                 return false;
             }
