@@ -4,8 +4,8 @@
 
 cargo run --release --example noop_program_snark || exit
 
-mv noop_program_snark_pk.params ../src/testnet1
-mv noop_program_snark_pk.checksum ../src/testnet1
+mv noop_program_snark_pk.params ../../src/testnet1
+mv noop_program_snark_pk.checksum ../../src/testnet1
 
-mv noop_program_snark_vk.params ../src/testnet1
-mv noop_program_snark_vk.checksum ../src/testnet1
+mv noop_program_snark_vk.params ../../src/testnet1
+mv noop_program_snark_vk.checksum ../../src/testnet1
