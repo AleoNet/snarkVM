@@ -735,7 +735,7 @@ mod test {
             const INPUT_GADGET_CONSTRAINTS: usize = 25600;
             const VK_GADGET_CONSTRAINTS: usize = 432;
             const PROOF_GADGET_CONSTRAINTS: usize = 30199;
-            const VERIFIER_GADGET_CONSTRAINTS: usize = 316635;
+            const VERIFIER_GADGET_CONSTRAINTS: usize = 316962;
 
             assert_eq!(input_gadget_constraints, INPUT_GADGET_CONSTRAINTS);
             assert_eq!(vk_gadget_constraints, VK_GADGET_CONSTRAINTS);

@@ -313,7 +313,7 @@ fn gm17_verifier_num_constraints_test() {
         const INPUT_GADGET_CONSTRAINTS: usize = 25600;
         const VK_GADGET_CONSTRAINTS: usize = 436;
         const PROOF_GADGET_CONSTRAINTS: usize = 30199;
-        const VERIFIER_GADGET_CONSTRAINTS: usize = 323348;
+        const VERIFIER_GADGET_CONSTRAINTS: usize = 323678;
 
         assert_eq!(input_gadget_constraints, INPUT_GADGET_CONSTRAINTS);
         assert_eq!(vk_gadget_constraints, VK_GADGET_CONSTRAINTS);
