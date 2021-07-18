@@ -39,10 +39,10 @@ fn test_record_serialization() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     for _ in 0..ITERATIONS {
-        let noop_program = NoopProgram::<Components>::setup(&mut rng).unwrap();
+        let noop_program = NoopProgram::<DPC>::setup(&mut rng).unwrap();
 
         for _ in 0..ITERATIONS {
-            let dummy_account = Account::<Components>::new(&mut rng).unwrap();
+            let dummy_account = Account::<DPC>::new(&mut rng).unwrap();
 
             let sn_nonce_input: [u8; 32] = rng.gen();
             let value = rng.gen();
@@ -55,7 +55,7 @@ fn test_record_serialization() {
                 Payload::from_bytes(&payload),
                 noop_program.id(),
                 noop_program.id(),
-                <Components as DPCComponents>::serial_number_nonce_crh()
+                <DPC as DPCComponents>::serial_number_nonce_crh()
                     .hash(&sn_nonce_input)
                     .unwrap(),
                 &mut rng,
@@ -83,10 +83,10 @@ fn test_record_encryption() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     for _ in 0..ITERATIONS {
-        let noop_program = NoopProgram::<Components>::setup(&mut rng).unwrap();
+        let noop_program = NoopProgram::<DPC>::setup(&mut rng).unwrap();
 
         for _ in 0..ITERATIONS {
-            let dummy_account = Account::<Components>::new(&mut rng).unwrap();
+            let dummy_account = Account::<DPC>::new(&mut rng).unwrap();
 
             let sn_nonce_input: [u8; 32] = rng.gen();
             let value = rng.gen();
@@ -99,7 +99,7 @@ fn test_record_encryption() {
                 Payload::from_bytes(&payload),
                 noop_program.id(),
                 noop_program.id(),
-                <Components as DPCComponents>::serial_number_nonce_crh()
+                <DPC as DPCComponents>::serial_number_nonce_crh()
                     .hash(&sn_nonce_input)
                     .unwrap(),
                 &mut rng,

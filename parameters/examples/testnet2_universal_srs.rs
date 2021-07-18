@@ -17,7 +17,7 @@
 use snarkvm_algorithms::crh::sha256::sha256;
 use snarkvm_dpc::{
     errors::DPCError,
-    testnet2::{marlin::Components, ProgramSNARKUniversalSRS, Testnet2Components},
+    testnet2::{marlin::DPC, ProgramSNARKUniversalSRS, Testnet2Components},
 };
 use snarkvm_fields::ToConstraintField;
 use snarkvm_marlin::PolynomialCommitment;
@@ -53,7 +53,7 @@ fn versioned_filename(checksum: &str) -> String {
 }
 
 pub fn main() {
-    let universal_srs = setup::<Components>().unwrap();
+    let universal_srs = setup::<DPC>().unwrap();
     let universal_srs_checksum = hex::encode(sha256(&universal_srs));
     store(
         &PathBuf::from(&versioned_filename(&universal_srs_checksum)),

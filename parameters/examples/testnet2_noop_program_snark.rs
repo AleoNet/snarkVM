@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_dpc::{
-    testnet2::{marlin::Components, NoopProgram, Testnet2Components},
+    testnet2::{marlin::DPC, NoopProgram, Testnet2Components},
     DPCError,
     ProgramScheme,
 };
@@ -51,7 +51,7 @@ where
 }
 
 pub fn main() {
-    let (program_snark_pk, program_snark_vk) = setup::<Components>().unwrap();
+    let (program_snark_pk, program_snark_vk) = setup::<DPC>().unwrap();
     store(
         &PathBuf::from("noop_program_snark_pk.params"),
         &PathBuf::from("noop_program_snark_pk.checksum"),

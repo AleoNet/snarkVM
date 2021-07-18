@@ -64,25 +64,25 @@ macro_rules! dpc_setup {
     ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
         #[inline]
         fn $fn_name() -> &'static Self::$type_name {
-            static $static_name: OnceCell<<Components as DPCComponents>::$type_name> = OnceCell::new();
+            static $static_name: OnceCell<<DPC as DPCComponents>::$type_name> = OnceCell::new();
             $static_name.get_or_init(|| Self::$type_name::setup($setup_msg))
         }
     };
 }
 
-pub type Testnet1DPC = TransactionEngine<Components>;
-pub type Testnet1Transaction = Transaction<Components>;
+pub type Testnet1TransactionEngine = TransactionEngine<DPC>;
+pub type Testnet1Transaction = Transaction<DPC>;
 
 define_merkle_tree_parameters!(
     CommitmentMerkleTreeParameters,
-    <Components as DPCComponents>::LedgerMerkleTreeCRH,
+    <DPC as DPCComponents>::LedgerMerkleTreeCRH,
     32
 );
 
-pub struct Components;
+pub struct DPC;
 
 #[rustfmt::skip]
-impl DPCComponents for Components {
+impl DPCComponents for DPC {
     const NETWORK_ID: u8 = Network::Testnet1.id();
     
     const NUM_INPUT_RECORDS: usize = 2;
@@ -153,15 +153,15 @@ impl DPCComponents for Components {
 
     // TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
     fn ledger_merkle_tree_parameters() -> &'static Self::LedgerMerkleTreeParameters {
-        static LEDGER_MERKLE_TREE_PARAMETERS: OnceCell<<Components as DPCComponents>::LedgerMerkleTreeParameters> = OnceCell::new();
+        static LEDGER_MERKLE_TREE_PARAMETERS: OnceCell<<DPC as DPCComponents>::LedgerMerkleTreeParameters> = OnceCell::new();
         LEDGER_MERKLE_TREE_PARAMETERS.get_or_init(|| Self::LedgerMerkleTreeParameters::from(Self::ledger_merkle_tree_crh().clone()))
     }
 }
 
-impl Testnet1Components for Components {
-    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
+impl Testnet1Components for DPC {
+    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuit<DPC>, InnerCircuitVerifierInput<DPC>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
     type NoopProgramSNARK = GM17<Self::InnerCurve, NoopCircuit<Self>, ProgramLocalData<Self>>;
     type NoopProgramSNARKGadget = GM17VerifierGadget<Self::InnerCurve, PairingGadget>;
-    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
+    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuit<DPC>, OuterCircuitVerifierInput<DPC>>;
 }
