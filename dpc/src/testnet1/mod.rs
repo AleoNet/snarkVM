@@ -617,12 +617,9 @@ where
         }
 
         let signature_message = match to_bytes_le![
-            transaction.network_id(),
             transaction.ledger_digest(),
             transaction.old_serial_numbers(),
             transaction.new_commitments(),
-            transaction.program_commitment(),
-            transaction.local_data_root(),
             transaction.value_balance(),
             transaction.memorandum()
         ] {
