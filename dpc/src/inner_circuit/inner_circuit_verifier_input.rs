@@ -39,8 +39,7 @@ pub struct InnerCircuitVerifierInput<C: DPCComponents> {
     // New encrypted record hashes
     pub new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
 
-    // Program input commitment and local data root
-    pub program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
+    // Local data root
     pub local_data_root: <C::LocalDataCRH as CRH>::Output,
 
     pub memo: [u8; 32],
@@ -54,7 +53,6 @@ where
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
     <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
     <<C::LedgerMerkleTreeParameters as MerkleParameters>::H as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
     MerkleTreeDigest<C::LedgerMerkleTreeParameters>: ToConstraintField<C::InnerScalarField>,
@@ -66,7 +64,6 @@ where
         v.extend_from_slice(&C::account_signature().to_field_elements()?);
         v.extend_from_slice(&C::record_commitment().to_field_elements()?);
         v.extend_from_slice(&C::encrypted_record_crh().to_field_elements()?);
-        v.extend_from_slice(&C::program_id_commitment().to_field_elements()?);
         v.extend_from_slice(&C::local_data_crh().to_field_elements()?);
         v.extend_from_slice(&C::local_data_commitment().to_field_elements()?);
         v.extend_from_slice(&C::serial_number_nonce_crh().to_field_elements()?);
@@ -83,7 +80,6 @@ where
             v.extend_from_slice(&encrypted_record_hash.to_field_elements()?);
         }
 
-        v.extend_from_slice(&self.program_commitment.to_field_elements()?);
         v.extend_from_slice(&ToConstraintField::<C::InnerScalarField>::to_field_elements(
             &self.memo,
         )?);

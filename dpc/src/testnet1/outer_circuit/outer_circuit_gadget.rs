@@ -166,10 +166,6 @@ where
     let ledger_digest_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(ledger_digest)
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let program_commitment_fe = program_commitment
-        .to_field_elements()
-        .map_err(|_| SynthesisError::AssignmentMissing)?;
-
     let memo_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(memo)
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
@@ -240,7 +236,6 @@ where
         )?);
     }
 
-    let program_commitment_fe_bytes = field_element_to_bytes::<C, _>(cs, program_commitment_fe, "program commitment")?;
     let memo_fe_bytes = field_element_to_bytes::<C, _>(cs, memo_fe, "memo")?;
     let network_id_fe_bytes = field_element_to_bytes::<C, _>(cs, network_id_fe, "network id")?;
     let local_data_root_fe_bytes = field_element_to_bytes::<C, _>(cs, local_data_root_fe, "local data root")?;
@@ -261,7 +256,6 @@ where
     inner_snark_input_bytes.extend(ledger_digest_fe_bytes);
     inner_snark_input_bytes.extend(serial_number_fe_bytes);
     inner_snark_input_bytes.extend(commitment_and_encrypted_record_hash_fe_bytes);
-    inner_snark_input_bytes.extend(program_commitment_fe_bytes);
     inner_snark_input_bytes.extend(memo_fe_bytes);
     inner_snark_input_bytes.extend(network_id_fe_bytes);
     inner_snark_input_bytes.extend(local_data_root_fe_bytes.clone());
