@@ -581,8 +581,6 @@ impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField,
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<SWProjective<P>>,
     {
-        // When allocating the input we assume that the verifier has performed
-        // any on curve checks already.
         let (x, y, infinity) = match value_gen() {
             Ok(ge) => {
                 let ge = ge.borrow().into_affine();
@@ -594,6 +592,11 @@ impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField,
                 Err(SynthesisError::AssignmentMissing),
             ),
         };
+
+        // When allocating the input we **do not** assume that
+        // the verifier has performed any on curve checks already,
+        // since this has been implemented in the application level,
+        // and can be complicated.
 
         // Perform on-curve check.
         let b = P::COEFF_B;
