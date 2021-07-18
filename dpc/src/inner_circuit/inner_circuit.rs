@@ -60,7 +60,7 @@ pub struct InnerCircuit<C: DPCComponents> {
     local_data_root: <C::LocalDataCRH as CRH>::Output,
     local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
 
-    memo: [u8; 32],
+    memo: [u8; 64],
     value_balance: AleoAmount,
     network_id: u8,
 }
@@ -89,7 +89,7 @@ impl<C: DPCComponents> InnerCircuit<C> {
 
         let new_encrypted_record_hashes = vec![<C::EncryptedRecordCRH as CRH>::Output::default(); num_output_records];
 
-        let memo = [0u8; 32];
+        let memo = [0u8; 64];
 
         let program_commitment = <C::ProgramIDCommitment as CommitmentScheme>::Output::default();
         let program_randomness = <C::ProgramIDCommitment as CommitmentScheme>::Randomness::default();
@@ -162,7 +162,7 @@ impl<C: DPCComponents> InnerCircuit<C> {
         local_data_root: <C::LocalDataCRH as CRH>::Output,
         local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
 
-        memo: [u8; 32],
+        memo: [u8; 64],
         value_balance: AleoAmount,
         network_id: u8,
     ) -> Self {

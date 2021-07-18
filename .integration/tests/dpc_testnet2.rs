@@ -147,7 +147,7 @@ fn dpc_testnet2_integration_test() {
     }
 
     // Offline execution to generate a DPC transaction kernel.
-    let memo = [4u8; 32];
+    let memo = [4u8; 64];
     let transaction_kernel = <Testnet2TransactionEngine as DPCScheme<L>>::execute_offline_phase(
         &dpc,
         &old_private_keys,
@@ -285,7 +285,7 @@ fn test_testnet_2_transaction_kernel_serialization() {
     }
 
     // Generate transaction kernel
-    let memo = [0u8; 32];
+    let memo = [0u8; 64];
     let transaction_kernel = <Testnet2TransactionEngine as DPCScheme<L>>::execute_offline_phase(
         &dpc,
         &old_private_keys,
@@ -386,7 +386,7 @@ fn test_testnet2_dpc_execute_constraints() {
         );
     }
 
-    let memo = [0u8; 32];
+    let memo = [0u8; 64];
     let transaction_kernel = <Testnet2TransactionEngine as DPCScheme<L>>::execute_offline_phase(
         &dpc,
         &old_private_keys,

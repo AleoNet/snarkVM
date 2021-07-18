@@ -80,7 +80,7 @@ pub fn execute_inner_circuit<C: DPCComponents, CS: ConstraintSystem<C::InnerScal
     program_randomness: &<C::ProgramIDCommitment as CommitmentScheme>::Randomness,
     local_data_root: &<C::LocalDataCRH as CRH>::Output,
     local_data_commitment_randomizers: &[<C::LocalDataCommitment as CommitmentScheme>::Randomness],
-    memo: &[u8; 32],
+    memo: &[u8; 64],
     value_balance: AleoAmount,
     network_id: u8,
 ) -> Result<(), SynthesisError> {
@@ -162,7 +162,7 @@ fn inner_circuit_gadget<
     program_randomness: &<C::ProgramIDCommitment as CommitmentScheme>::Randomness,
     local_data_root: &<C::LocalDataCRH as CRH>::Output,
     local_data_commitment_randomizers: &[<C::LocalDataCommitment as CommitmentScheme>::Randomness],
-    memo: &[u8; 32],
+    memo: &[u8; 64],
     value_balance: AleoAmount,
     network_id: u8,
 ) -> Result<(), SynthesisError>

@@ -63,6 +63,10 @@ pub struct Transaction<C: Testnet1Components> {
     /// can have a negative value balance representing tokens being minted.
     pub value_balance: AleoAmount,
 
+    /// Publicly-visible data associated with the transaction.
+    #[derivative(Default(value = "[0u8; 64]"))]
+    pub memorandum: [u8; 64],
+
     #[derivative(PartialEq = "ignore")]
     /// Randomized signatures that allow for authorized delegation of transaction generation
     pub signatures: Vec<<C::AccountSignature as SignatureScheme>::Signature>,
@@ -74,10 +78,7 @@ pub struct Transaction<C: Testnet1Components> {
     /// Zero-knowledge proof attesting to the valididty of the transaction
     pub transaction_proof: <C::OuterSNARK as SNARK>::Proof,
 
-    /// Public data associated with the transaction that must be unique among all transactions
-    pub memorandum: [u8; 32],
-
-    /// The ID of the inner SNARK being used
+    /// The ID of the inner circuit used to execute this transaction.
     pub inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
 }
 
@@ -120,7 +121,7 @@ impl<C: Testnet1Components> TransactionScheme for Transaction<C> {
     type Digest = MerkleTreeDigest<C::LedgerMerkleTreeParameters>;
     type EncryptedRecord = EncryptedRecord<C>;
     type InnerCircuitID = <C::InnerCircuitIDCRH as CRH>::Output;
-    type Memorandum = [u8; 32];
+    type Memorandum = [u8; 64];
     type SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey;
     type Signature = <C::AccountSignature as SignatureScheme>::Signature;
     type ValueBalance = AleoAmount;
@@ -246,7 +247,7 @@ impl<C: Testnet1Components> FromBytes for Transaction<C> {
             new_commitments.push(new_commitment);
         }
 
-        let memorandum: [u8; 32] = FromBytes::read_le(&mut reader)?;
+        let memorandum: <Self as TransactionScheme>::Memorandum = FromBytes::read_le(&mut reader)?;
 
         let ledger_digest: MerkleTreeDigest<C::LedgerMerkleTreeParameters> = FromBytes::read_le(&mut reader)?;
         let inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output = FromBytes::read_le(&mut reader)?;

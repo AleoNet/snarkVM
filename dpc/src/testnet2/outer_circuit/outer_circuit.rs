@@ -15,8 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet2::{outer_circuit_gadget::execute_outer_circuit, program::Execution, Testnet2Components},
+    testnet2::{outer_circuit_gadget::execute_outer_circuit, program::Execution, Testnet2Components, Transaction},
     AleoAmount,
+    TransactionScheme,
 };
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
@@ -36,7 +37,7 @@ pub struct OuterCircuit<C: Testnet2Components> {
     old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
     new_commitments: Vec<<C::RecordCommitment as CommitmentScheme>::Output>,
     new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
-    memo: [u8; 32],
+    memo: <Transaction<C> as TransactionScheme>::Memorandum,
     value_balance: AleoAmount,
     network_id: u8,
 
@@ -65,7 +66,7 @@ impl<C: Testnet2Components> OuterCircuit<C> {
         let new_commitments = vec![<C::RecordCommitment as CommitmentScheme>::Output::default(); C::NUM_OUTPUT_RECORDS];
         let new_encrypted_record_hashes =
             vec![<C::EncryptedRecordCRH as CRH>::Output::default(); C::NUM_OUTPUT_RECORDS];
-        let memo = [0u8; 32];
+        let memo = [0u8; 64];
         let value_balance = AleoAmount::ZERO;
         let network_id = C::NETWORK_ID;
 
@@ -103,7 +104,7 @@ impl<C: Testnet2Components> OuterCircuit<C> {
         old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
         new_commitments: Vec<<C::RecordCommitment as CommitmentScheme>::Output>,
         new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
-        memo: [u8; 32],
+        memo: <Transaction<C> as TransactionScheme>::Memorandum,
         value_balance: AleoAmount,
         network_id: u8,
 

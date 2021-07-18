@@ -53,7 +53,7 @@ impl TransactionScheme for TestTx {
     type Digest = [u8; 32];
     type EncryptedRecord = [u8; 32];
     type InnerCircuitID = [u8; 32];
-    type Memorandum = [u8; 32];
+    type Memorandum = [u8; 64];
     type SerialNumber = [u8; 32];
     type Signature = [u8; 32];
     type ValueBalance = i64;
@@ -87,7 +87,7 @@ impl TransactionScheme for TestTx {
     }
 
     fn memorandum(&self) -> &Self::Memorandum {
-        &[0u8; 32]
+        &[0u8; 64]
     }
 
     fn signatures(&self) -> &[Self::Signature] {

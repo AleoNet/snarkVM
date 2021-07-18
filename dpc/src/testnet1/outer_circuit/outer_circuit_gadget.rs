@@ -15,8 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet1::{program::Execution, Testnet1Components},
+    testnet1::{program::Execution, Testnet1Components, Transaction},
     AleoAmount,
+    TransactionScheme,
 };
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
@@ -70,7 +71,7 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     old_serial_numbers: &[<C::AccountSignature as SignatureScheme>::PublicKey],
     new_commitments: &[<C::RecordCommitment as CommitmentScheme>::Output],
     new_encrypted_record_hashes: &[<C::EncryptedRecordCRH as CRH>::Output],
-    memo: &[u8; 32],
+    memo: &<Transaction<C> as TransactionScheme>::Memorandum,
     value_balance: AleoAmount,
     network_id: u8,
 

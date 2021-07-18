@@ -45,7 +45,7 @@ pub struct InnerCircuitVerifierInput<C: DPCComponents> {
     pub program_commitment: Option<<C::ProgramIDCommitment as CommitmentScheme>::Output>,
     pub local_data_root: Option<<C::LocalDataCRH as CRH>::Output>,
 
-    pub memo: [u8; 32],
+    pub memo: [u8; 64],
     pub value_balance: AleoAmount,
     pub network_id: u8,
 }
