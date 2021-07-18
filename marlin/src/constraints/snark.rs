@@ -21,7 +21,7 @@ use std::{
 
 use rand::{CryptoRng, Rng, RngCore};
 
-use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, SNARKError, SNARK};
+use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, Prepare, SNARKError, SNARK};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     bits::Boolean,
@@ -144,7 +144,7 @@ where
     pub fn process_vk(
         vk: &CircuitVerifyingKey<TargetField, PC>,
     ) -> Result<PreparedCircuitVerifyingKey<TargetField, PC>, Box<MarlinConstraintsError>> {
-        Ok(PreparedCircuitVerifyingKey::prepare(vk))
+        Ok(vk.prepare())
     }
 
     /// Verify the proof with the prepared verifying key.
@@ -182,12 +182,13 @@ where
 
     fn setup<R: RngCore>(
         (circuit, _srs): &Self::Circuit,
-        rng: &mut R, // The Marlin circuit setup is deterministic.
-    ) -> Result<(Self::ProvingKey, Self::PreparedVerifyingKey), SNARKError> {
+        rng: &mut R,
+    ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
+        // TODO: This is a trusted setup.
         let (circuit_proving_key, circuit_verifier_key) =
             MarlinCore::<TargetField, BaseField, PC, FS, MM>::circuit_specific_setup(circuit, rng).unwrap();
 
-        Ok((circuit_proving_key, circuit_verifier_key.into()))
+        Ok((circuit_proving_key, circuit_verifier_key))
     }
 
     fn prove<R: Rng>(
@@ -201,7 +202,7 @@ where
         }
     }
 
-    fn verify(
+    fn verify_prepared(
         verifying_key: &Self::PreparedVerifyingKey,
         input: &Self::VerifierInput,
         proof: &Self::Proof,
@@ -603,8 +604,8 @@ pub mod test {
 
         const INPUT_GADGET_CONSTRAINTS: usize = 383;
         const PROOF_GADGET_CONSTRAINTS: usize = 56;
-        const VK_GADGET_CONSTRAINTS: usize = 136;
-        const VERIFIER_GADGET_CONSTRAINTS: usize = 146730;
+        const VK_GADGET_CONSTRAINTS: usize = 140;
+        const VERIFIER_GADGET_CONSTRAINTS: usize = 150594;
 
         assert_eq!(input_gadget_constraints, INPUT_GADGET_CONSTRAINTS);
         assert_eq!(proof_gadget_constraints, PROOF_GADGET_CONSTRAINTS);

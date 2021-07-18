@@ -30,10 +30,11 @@ use snarkvm_gadgets::{
     integers::uint::UInt8,
     traits::{
         algorithms::{CRHGadget, CommitmentGadget, SNARKVerifierGadget},
-        alloc::{AllocBytesGadget, AllocGadget},
+        alloc::AllocGadget,
         eq::EqGadget,
         integers::integer::Integer,
     },
+    ToConstraintFieldGadget,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::ToBytes;
@@ -83,7 +84,7 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
     inner_snark_proof: &<C::InnerSNARK as SNARK>::Proof,
 
     // Program verifying keys and proofs
-    program_proofs: &[Execution],
+    program_proofs: &[Execution<C::NoopProgramSNARK>],
 
     // Rest
     program_commitment: &<C::ProgramIDCommitment as CommitmentScheme>::Output,
@@ -111,7 +112,7 @@ where
             || Ok(C::program_id_commitment().clone()),
         )?;
 
-        let program_id_crh =
+        let program_id_crh: C::ProgramIDCRHGadget =
             C::ProgramIDCRHGadget::alloc_input(&mut cs.ns(|| "Declare program_id_crh_parameters"), || {
                 Ok(C::program_id_crh().clone())
             })?;
@@ -296,12 +297,12 @@ where
     // Verify the InnerSNARK proof
     // ************************************************************************
 
-    let inner_snark_vk = <C::InnerSNARKGadget as SNARKVerifierGadget<_, _>>::VerificationKeyGadget::alloc(
+    let inner_snark_vk = <C::InnerSNARKGadget as SNARKVerifierGadget<_, _, _>>::VerificationKeyGadget::alloc(
         &mut cs.ns(|| "Allocate inner snark verifying key"),
         || Ok(inner_snark_vk),
     )?;
 
-    let inner_snark_proof = <C::InnerSNARKGadget as SNARKVerifierGadget<_, _>>::ProofGadget::alloc(
+    let inner_snark_proof = <C::InnerSNARKGadget as SNARKVerifierGadget<_, _, _>>::ProofGadget::alloc(
         &mut cs.ns(|| "Allocate inner snark proof"),
         || Ok(inner_snark_proof),
     )?;
@@ -345,25 +346,24 @@ where
     for (i, input) in program_proofs.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
         let cs = &mut cs.ns(|| format!("Check death program for input record {}", i));
 
-        let death_program_proof = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::ProofGadget::alloc_bytes(
+        let death_program_proof = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _, _>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate proof"),
             || Ok(&input.proof),
         )?;
 
         let death_program_vk =
-            <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::VerificationKeyGadget::alloc_bytes(
+            <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _, _>>::VerificationKeyGadget::alloc(
                 &mut cs.ns(|| "Allocate verifying key"),
                 || Ok(&input.verifying_key),
             )?;
 
-        // Manually allocate the death program bytes instead of the conversion
-        let death_program_vk_bytes = UInt8::alloc_vec(
-            cs.ns(|| format!("alloc_death_program_vk_bytes_{}", i)),
-            &input.verifying_key,
-        )?;
+        let death_program_vk_field_elements =
+            death_program_vk.to_constraint_field(cs.ns(|| "alloc_death_program_vk_field_elements"))?;
 
-        let claimed_death_program_id = program_id_crh
-            .check_evaluation_gadget(&mut cs.ns(|| "Compute death program ID"), death_program_vk_bytes)?;
+        let claimed_death_program_id = program_id_crh.check_evaluation_gadget_on_field_elements(
+            &mut cs.ns(|| "Compute death program ID"),
+            death_program_vk_field_elements,
+        )?;
 
         let claimed_death_program_id_bytes =
             claimed_death_program_id.to_bytes(&mut cs.ns(|| "Convert death program ID to bytes"))?;
@@ -380,7 +380,7 @@ where
         let mut program_snark_input = vec![];
 
         for (j, input) in program_input_field_elements.iter().enumerate() {
-            let input_element = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::Input::alloc(
+            let input_element = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _, _>>::Input::alloc(
                 cs.ns(|| format!("alloc_death_program_input_{}_{}", i, j)),
                 || Ok(input),
             )?;
@@ -404,25 +404,25 @@ where
     {
         let cs = &mut cs.ns(|| format!("Check birth program for output record {}", j));
 
-        let birth_program_proof = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::ProofGadget::alloc_bytes(
+        let birth_program_proof = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _, _>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate proof"),
             || Ok(&input.proof),
         )?;
 
         let birth_program_vk =
-            <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::VerificationKeyGadget::alloc_bytes(
+            <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _, _>>::VerificationKeyGadget::alloc(
                 &mut cs.ns(|| "Allocate verifying key"),
                 || Ok(&input.verifying_key),
             )?;
 
         // Manually allocate the death program bytes instead of the conversion
-        let birth_program_vk_bytes = UInt8::alloc_vec(
-            cs.ns(|| format!("birth_death_program_vk_bytes_{}", j)),
-            &input.verifying_key,
-        )?;
+        let birth_program_vk_field_elements =
+            birth_program_vk.to_constraint_field(cs.ns(|| "birth_death_program_vk_field_elements"))?;
 
-        let claimed_birth_program_id = program_id_crh
-            .check_evaluation_gadget(&mut cs.ns(|| "Compute birth program ID"), birth_program_vk_bytes)?;
+        let claimed_birth_program_id = program_id_crh.check_evaluation_gadget_on_field_elements(
+            &mut cs.ns(|| "Compute birth program ID"),
+            birth_program_vk_field_elements,
+        )?;
 
         let claimed_birth_program_id_bytes =
             claimed_birth_program_id.to_bytes(&mut cs.ns(|| "Convert birth program ID to bytes"))?;
@@ -439,7 +439,7 @@ where
         let mut program_snark_input = vec![];
 
         for (k, input) in program_input_field_elements.iter().enumerate() {
-            let input_element = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _>>::Input::alloc(
+            let input_element = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _, _>>::Input::alloc(
                 cs.ns(|| format!("alloc_birth_program_input_{}_{}", j, k)),
                 || Ok(input),
             )?;
@@ -501,7 +501,8 @@ where
     // Check that the inner circuit ID is derived correctly.
     // ********************************************************************
 
-    let inner_snark_vk_bytes = inner_snark_vk.to_bytes(&mut cs.ns(|| "Convert inner snark vk to bytes"))?;
+    let inner_snark_vk_field_elements =
+        inner_snark_vk.to_constraint_field(&mut cs.ns(|| "Convert inner snark vk to field elements"))?;
 
     let given_inner_circuit_id =
         <C::InnerCircuitIDCRHGadget as CRHGadget<_, C::OuterScalarField>>::OutputGadget::alloc_input(
@@ -509,8 +510,10 @@ where
             || Ok(inner_circuit_id),
         )?;
 
-    let candidate_inner_circuit_id = inner_circuit_id_crh
-        .check_evaluation_gadget(&mut cs.ns(|| "Compute inner circuit ID"), inner_snark_vk_bytes)?;
+    let candidate_inner_circuit_id = inner_circuit_id_crh.check_evaluation_gadget_on_field_elements(
+        &mut cs.ns(|| "Compute inner circuit ID"),
+        inner_snark_vk_field_elements,
+    )?;
 
     candidate_inner_circuit_id.enforce_equal(
         &mut cs.ns(|| "Check that declared and computed inner circuit IDs are equal"),

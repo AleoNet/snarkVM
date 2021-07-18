@@ -158,8 +158,8 @@ impl Testnet1Components for Components {
     type EncryptionGroup = EdwardsBls12;
     type EncryptionParameters = EdwardsParameters;
     type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
-    type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, Self::OuterScalarField, PairingGadget>;
+    type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
     type NoopProgramSNARK = Groth16<Self::InnerCurve, NoopCircuit<Self>, ProgramLocalData<Self>>;
-    type NoopProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, Self::OuterScalarField, PairingGadget>;
+    type NoopProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
     type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
 }

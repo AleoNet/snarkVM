@@ -15,11 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::CryptoHashError;
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{
+    bytes::{FromBytes, ToBytes},
+    fmt::Debug,
+};
 
 pub trait CryptoHash {
     type Input: FromBytes + From<u64> + Clone;
-    type Output: ToBytes + Eq + Clone + Default;
+    type Output: ToBytes + Eq + Clone + Default + Debug;
 
     /// Evaluate the cryptographic hash function over a fixed-length vector as input.
     fn evaluate(input: &[Self::Input]) -> Result<Self::Output, CryptoHashError>;

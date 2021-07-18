@@ -83,7 +83,7 @@ where
     pub pk: Option<S::ProvingKey>,
 
     /// The (prepared) verifying key.
-    pub vk: S::PreparedVerifyingKey,
+    pub vk: S::VerifyingKey,
 
     _circuit: PhantomData<POSWCircuit<F, M, HG, CP>>,
 }

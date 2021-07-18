@@ -27,9 +27,10 @@ use snarkvm_parameters::{
     testnet2::{NoopProgramSNARKPKParameters, NoopProgramSNARKVKParameters},
     Parameter,
 };
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::{CryptoRng, Rng};
+use snarkvm_r1cs::ToConstraintField;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet2Components"), Debug(bound = "C: Testnet2Components"))]
@@ -42,8 +43,11 @@ pub struct NoopProgram<C: Testnet2Components> {
     verifying_key: <<C as Testnet2Components>::NoopProgramSNARK as SNARK>::VerifyingKey,
 }
 
-impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
-    type Execution = Execution;
+impl<C: Testnet2Components> ProgramScheme for NoopProgram<C>
+where
+    <C::NoopProgramSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
+{
+    type Execution = Execution<Self::ProofSystem>;
     type ID = Vec<u8>;
     type LocalData = LocalData<C>;
     type LocalDataCommitment = C::LocalDataCommitment;
@@ -62,9 +66,11 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
             <Self::ProofSystem as SNARK>::setup(&(NoopCircuit::blank(), universal_srs), rng)?;
         let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
 
+        let verifying_key_group_elements = verifying_key.to_field_elements()?;
+
         // Compute the program ID.
         let id = <C as DPCComponents>::program_id_crh()
-            .hash(&verifying_key.to_bytes_le()?)?
+            .hash_field_elements(&verifying_key_group_elements)?
             .to_bytes_le()?;
 
         Ok(Self {
@@ -83,9 +89,11 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
             NoopProgramSNARKVKParameters::load_bytes()?.as_slice(),
         )?;
 
+        let verifying_key_group_elements = verifying_key.to_field_elements()?;
+
         // Compute the program ID.
         let id = <C as DPCComponents>::program_id_crh()
-            .hash(&verifying_key.to_bytes_le()?)?
+            .hash_field_elements(&verifying_key_group_elements)?
             .to_bytes_le()?;
 
         Ok(Self {
@@ -134,8 +142,8 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
         }
 
         Ok(Self::Execution {
-            verifying_key: to_bytes_le![self.verifying_key]?,
-            proof: to_bytes_le![proof]?,
+            verifying_key: self.verifying_key.clone(),
+            proof,
         })
     }
 
@@ -143,8 +151,8 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
         let proof = <Self::ProofSystem as SNARK>::prove(&self.proving_key, &NoopCircuit::<C>::blank(), rng)?;
 
         Ok(Self::Execution {
-            verifying_key: to_bytes_le![self.verifying_key]?,
-            proof: to_bytes_le![proof]?,
+            verifying_key: self.verifying_key.clone(),
+            proof,
         })
     }
 

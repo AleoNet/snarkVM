@@ -21,7 +21,7 @@ use snarkvm_algorithms::{
     CRH,
 };
 use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective};
-use snarkvm_fields::{Field, PrimeField};
+use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
 use crate::{
@@ -49,7 +49,7 @@ const BHP_WINDOW_SIZE: usize = 48;
 const PEDERSEN_HASH_CONSTRAINTS: usize = 5632;
 const BOWE_HOPWOOD_HASH_CONSTRAINTS: usize = 3974;
 
-fn generate_input<F: Field, CS: ConstraintSystem<F>, R: Rng>(
+fn generate_input<F: PrimeField, CS: ConstraintSystem<F>, R: Rng>(
     mut cs: CS,
     rng: &mut R,
 ) -> ([u8; 128], Vec<UInt8>, Vec<UInt8>) {
@@ -73,7 +73,7 @@ fn generate_input<F: Field, CS: ConstraintSystem<F>, R: Rng>(
     (input, input_bytes, mask_bytes)
 }
 
-fn primitive_crh_gadget_test<F: Field, H: CRH, CG: CRHGadget<H, F>>(hash_constraints: usize) {
+fn primitive_crh_gadget_test<F: PrimeField, H: CRH, CG: CRHGadget<H, F>>(hash_constraints: usize) {
     let rng = &mut thread_rng();
     let mut cs = TestConstraintSystem::<F>::new();
 

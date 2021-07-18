@@ -845,6 +845,14 @@ impl<F: PrimeField> EvaluateEqGadget<F> for Boolean {
 }
 
 impl<F: Field> AllocGadget<bool, F> for Boolean {
+    fn alloc_constant<Fn, T, CS: ConstraintSystem<F>>(_cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
+    where
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<bool>,
+    {
+        Ok(Boolean::Constant(*value_gen()?.borrow()))
+    }
+
     fn alloc<Fn, T, CS: ConstraintSystem<F>>(cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
     where
         Fn: FnOnce() -> Result<T, SynthesisError>,

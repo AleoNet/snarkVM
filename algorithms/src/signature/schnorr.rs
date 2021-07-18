@@ -83,14 +83,13 @@ impl<G: ProjectiveCurve> FromBytes for SchnorrSignature<G> {
     Hash(bound = "G: ProjectiveCurve"),
     Default(bound = "G: ProjectiveCurve")
 )]
-pub struct SchnorrPublicKey<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize>(pub G);
+pub struct SchnorrPublicKey<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize>(pub G::Affine);
 
 impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> ToBytes for SchnorrPublicKey<G> {
     /// Writes the x-coordinate of the encryption public key.
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        let affine = self.0.into_affine();
-        let x_coordinate = affine.to_x_coordinate();
+        let x_coordinate = self.0.to_x_coordinate();
         x_coordinate.write_le(&mut writer)
     }
 }
@@ -103,13 +102,13 @@ impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> FromBytes f
 
         if let Some(element) = <G::Affine as AffineCurve>::from_x_coordinate(x_coordinate, true) {
             if element.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(Self(element.into_projective()));
+                return Ok(Self(element));
             }
         }
 
         if let Some(element) = <G::Affine as AffineCurve>::from_x_coordinate(x_coordinate, false) {
             if element.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(Self(element.into_projective()));
+                return Ok(Self(element));
             }
         }
 
@@ -119,6 +118,8 @@ impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> FromBytes f
 
 impl<F: Field, G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize + ToConstraintField<F>>
     ToConstraintField<F> for SchnorrPublicKey<G>
+where
+    G::Affine: ToConstraintField<F>,
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
@@ -141,12 +142,13 @@ impl<G: ProjectiveCurve + Hash + CanonicalSerialize + CanonicalDeserialize> Sign
 where
     <G::Affine as AffineCurve>::BaseField: PoseidonDefaultParametersField,
     G: ToConstraintField<<G::Affine as AffineCurve>::BaseField>,
+    G::Affine: ToConstraintField<<G::Affine as AffineCurve>::BaseField>,
 {
     type Parameters = Vec<G>;
     type PrivateKey = <G as Group>::ScalarField;
     type PublicKey = SchnorrPublicKey<G>;
     type RandomizedPrivateKey = <G as Group>::ScalarField;
-    type Randomizer = <G as Group>::ScalarField;
+    type Randomizer = [u8; 32];
     type Signature = SchnorrSignature<G>;
 
     fn setup(message: &str) -> Self {
@@ -195,7 +197,7 @@ where
         }
         end_timer!(keygen_time);
 
-        Ok(SchnorrPublicKey(public_key))
+        Ok(SchnorrPublicKey(public_key.into_affine()))
     }
 
     fn randomize_private_key(
@@ -204,7 +206,7 @@ where
         randomizer: &Self::Randomizer,
     ) -> Result<Self::RandomizedPrivateKey, SignatureError> {
         let timer = start_timer!(|| "SchnorrSignature::randomize_private_key");
-        let randomized_private_key = *randomizer + private_key;
+        let randomized_private_key = *private_key + G::ScalarField::from_le_bytes_mod_order(randomizer);
         end_timer!(timer);
         Ok(randomized_private_key)
     }
@@ -215,10 +217,10 @@ where
         randomizer: &Self::Randomizer,
     ) -> Result<Self::PublicKey, SignatureError> {
         let timer = start_timer!(|| "SchnorrSignature::randomize_public_key");
-        let group_randomizer = self.generate_public_key(randomizer)?;
+        let group_randomizer = self.generate_public_key(&G::ScalarField::from_le_bytes_mod_order(randomizer))?;
         let randomized_public_key = public_key.0 + group_randomizer.0;
         end_timer!(timer);
-        Ok(SchnorrPublicKey(randomized_public_key))
+        Ok(SchnorrPublicKey::<G>(randomized_public_key))
     }
 
     fn sign<R: Rng + CryptoRng>(
@@ -314,7 +316,7 @@ where
             }
         }
 
-        let public_key_times_verifier_challenge = public_key.0.mul(*verifier_challenge);
+        let public_key_times_verifier_challenge = public_key.0.into_projective().mul(*verifier_challenge);
         claimed_prover_commitment += public_key_times_verifier_challenge;
 
         // Hash everything to get verifier challenge.
