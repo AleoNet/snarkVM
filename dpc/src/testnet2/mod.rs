@@ -122,7 +122,7 @@ pub trait Testnet2Components: DPCComponents {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-pub struct DPC<C: Testnet2Components> {
+pub struct TransactionEngine<C: Testnet2Components> {
     pub noop_program: NoopProgram<C>,
     pub inner_snark_parameters: (
         Option<<C::InnerSNARK as SNARK>::ProvingKey>,
@@ -134,7 +134,7 @@ pub struct DPC<C: Testnet2Components> {
     ),
 }
 
-impl<C: Testnet2Components, L: LedgerScheme> DPCScheme<L> for DPC<C>
+impl<C: Testnet2Components, L: LedgerScheme> DPCScheme<L> for TransactionEngine<C>
 where
     L: LedgerScheme<
         Commitment = <C::RecordCommitment as CommitmentScheme>::Output,
@@ -231,13 +231,6 @@ where
             inner_snark_parameters,
             outer_snark_parameters,
         })
-    }
-
-    fn create_account<R: Rng + CryptoRng>(&self, rng: &mut R) -> anyhow::Result<Self::Account> {
-        let time = start_timer!(|| "DPC::create_account");
-        let account = Account::new(rng)?;
-        end_timer!(time);
-        Ok(account)
     }
 
     fn execute_offline_phase<R: Rng + CryptoRng>(

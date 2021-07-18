@@ -22,7 +22,7 @@ use crate::{
         program::{NoopCircuit, ProgramLocalData},
         transaction::Transaction,
         Testnet1Components,
-        DPC,
+        TransactionEngine,
     },
     DPCComponents,
     InnerCircuit,
@@ -70,7 +70,7 @@ macro_rules! dpc_setup {
     };
 }
 
-pub type Testnet1DPC = DPC<Components>;
+pub type Testnet1DPC = TransactionEngine<Components>;
 pub type Testnet1Transaction = Transaction<Components>;
 
 define_merkle_tree_parameters!(

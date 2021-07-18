@@ -74,7 +74,7 @@ fn dpc_testnet1_integration_test() {
     let (ledger_parameters, dpc) = setup_or_load_parameters::<_, MemDb>(false, &mut rng);
 
     // Generate accounts.
-    let [genesis_account, recipient, _] = generate_test_accounts::<_, MemDb>(&dpc, &mut rng);
+    let [genesis_account, recipient, _] = generate_test_accounts::<_>(&mut rng);
 
     // Create a genesis block.
     let genesis_block = Block {

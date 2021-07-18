@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Ledger;
-use snarkvm_dpc::{testnet1::gm17::*, Account, DPCComponents, DPCScheme, Storage};
+use snarkvm_dpc::{testnet1::gm17::*, Account, AccountScheme, DPCComponents, DPCScheme, Storage};
 
 use rand::{CryptoRng, Rng};
 use std::sync::Arc;
@@ -41,14 +41,10 @@ pub fn setup_or_load_parameters<R: Rng + CryptoRng, S: Storage>(
     (ledger_merkle_tree_parameters, dpc)
 }
 
-pub fn generate_test_accounts<R: Rng + CryptoRng, S: Storage>(
-    dpc: &Testnet1DPC,
-    rng: &mut R,
-) -> [Account<Components>; 3] {
-    // TODO (howardwu): Remove DPCScheme<MerkleTreeLedger<S>> usage after decoupling ledger.
-    let genesis_account = <Testnet1DPC as DPCScheme<MerkleTreeLedger<S>>>::create_account(dpc, rng).unwrap();
-    let account_1 = <Testnet1DPC as DPCScheme<MerkleTreeLedger<S>>>::create_account(dpc, rng).unwrap();
-    let account_2 = <Testnet1DPC as DPCScheme<MerkleTreeLedger<S>>>::create_account(dpc, rng).unwrap();
+pub fn generate_test_accounts<R: Rng + CryptoRng>(rng: &mut R) -> [Account<Components>; 3] {
+    let genesis_account = Account::new(rng).unwrap();
+    let account_1 = Account::new(rng).unwrap();
+    let account_2 = Account::new(rng).unwrap();
 
     [genesis_account, account_1, account_2]
 }
