@@ -15,14 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::testnet2::Testnet2Components;
-use snarkvm_algorithms::traits::CRH;
+use snarkvm_algorithms::{traits::CRH, SNARK};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
-/// Program verifying key and proof, represented as bytes to be generic for any program SNARK.
-#[derive(Clone)]
-pub struct Execution {
-    pub verifying_key: Vec<u8>,
-    pub proof: Vec<u8>,
+/// Program verifying key and proof.
+#[derive(Derivative)]
+#[derivative(Clone(bound = "S: SNARK"))]
+pub struct Execution<S: SNARK> {
+    pub verifying_key: S::VerifyingKey,
+    pub proof: S::Proof,
 }
 
 pub struct ProgramLocalData<C: Testnet2Components> {

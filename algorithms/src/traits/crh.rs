@@ -17,6 +17,7 @@
 use crate::errors::CRHError;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use snarkvm_fields::PrimeField;
 use std::{
     fmt::{Debug, Display},
     hash::Hash,
@@ -31,6 +32,14 @@ pub trait CRH: Clone + ToBytes + FromBytes + From<<Self as CRH>::Parameters> {
     fn setup(message: &str) -> Self;
 
     fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError>;
+
+    fn hash_field_elements<F: PrimeField>(&self, input: &[F]) -> Result<Self::Output, CRHError> {
+        let mut input_bytes = vec![];
+        for elem in input.iter() {
+            input_bytes.append(&mut elem.to_bytes_le()?);
+        }
+        self.hash(&input_bytes)
+    }
 
     fn parameters(&self) -> &Self::Parameters;
 }

@@ -23,7 +23,7 @@ use snarkvm_curves::{
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{FromBytes, UniformRand};
 
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 
 fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
@@ -46,7 +46,7 @@ fn failed_verification<S: SignatureScheme>(message: &[u8], bad_message: &[u8]) {
     assert!(!schnorr.verify(&public_key, bad_message, &signature).unwrap());
 }
 
-fn randomize_and_verify<S: SignatureScheme<Randomizer = F>, F: PrimeField>(message: &[u8], randomizer: F) {
+fn randomize_and_verify<S: SignatureScheme<Randomizer = [u8; 32]>>(message: &[u8], randomizer: [u8; 32]) {
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
     let schnorr = S::setup("randomize_and_verify");
 
@@ -88,8 +88,8 @@ fn test_schnorr_signature_on_edwards_bls12_377() {
     failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
 
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-    let randomizer = <EdwardsBls12 as Group>::ScalarField::rand(rng);
-    randomize_and_verify::<TestSignature, <EdwardsBls12 as Group>::ScalarField>(message.as_bytes(), randomizer);
+    let randomizer: [u8; 32] = rng.gen();
+    randomize_and_verify::<TestSignature>(message.as_bytes(), randomizer);
 }
 
 #[test]
@@ -101,8 +101,8 @@ fn test_schnorr_signature_on_edwards_bw6() {
     failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
 
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
-    let randomizer = <EdwardsBW6 as Group>::ScalarField::rand(rng);
-    randomize_and_verify::<TestSignature, <EdwardsBW6 as Group>::ScalarField>(message.as_bytes(), randomizer);
+    let randomizer: [u8; 32] = rng.gen();
+    randomize_and_verify::<TestSignature>(message.as_bytes(), randomizer);
 }
 
 #[test]

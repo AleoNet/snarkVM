@@ -44,7 +44,7 @@ pub struct OuterCircuit<C: Testnet2Components> {
     inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
     inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
 
-    program_proofs: Vec<Execution>,
+    program_proofs: Vec<Execution<C::NoopProgramSNARK>>,
     program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
     program_randomness: <C::ProgramIDCommitment as CommitmentScheme>::Randomness,
     local_data_root: <C::LocalDataCRH as CRH>::Output,
@@ -57,7 +57,7 @@ impl<C: Testnet2Components> OuterCircuit<C> {
         ledger_parameters: Arc<C::LedgerMerkleTreeParameters>,
         inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
-        program_snark_vk_and_proof: Execution,
+        program_snark_vk_and_proof: Execution<C::NoopProgramSNARK>,
     ) -> Self {
         let ledger_digest = MerkleTreeDigest::<C::LedgerMerkleTreeParameters>::default();
         let old_serial_numbers =
@@ -113,7 +113,7 @@ impl<C: Testnet2Components> OuterCircuit<C> {
 
         // Private program input = Verification key and input
         // Commitment contains commitment to hash of death program vk.
-        program_proofs: Vec<Execution>,
+        program_proofs: Vec<Execution<C::NoopProgramSNARK>>,
         program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
         program_randomness: <C::ProgramIDCommitment as CommitmentScheme>::Randomness,
         local_data_root: <C::LocalDataCRH as CRH>::Output,

@@ -30,9 +30,13 @@ use rand::thread_rng;
 use std::{path::PathBuf, sync::Arc};
 
 mod utils;
+use snarkvm_fields::ToConstraintField;
 use utils::store;
 
-pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
+pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError>
+where
+    <C::NoopProgramSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
+{
     let rng = &mut thread_rng();
 
     // TODO (howardwu): TEMPORARY - Resolve this inconsistency on import structure with a new model once MerkleParameters are refactored.

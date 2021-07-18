@@ -28,6 +28,7 @@ use snarkvm_gadgets::{
         alloc::AllocGadget,
         eq::{EqGadget, NEqGadget},
         fields::{FieldGadget, ToConstraintFieldGadget},
+        snark::PrepareGadget,
     },
 };
 use snarkvm_polycommit::{
@@ -37,7 +38,6 @@ use snarkvm_polycommit::{
     LinearCombinationCoeffVar,
     LinearCombinationVar,
     PCCheckVar,
-    PrepareGadget,
     QuerySetVar,
 };
 use snarkvm_r1cs::ConstraintSystem;
@@ -868,7 +868,7 @@ where
         // 4 comms for beta from the round 1
         const PROOF_1_LABELS: [&str; 4] = ["w", "z_a", "z_b", "mask_poly"];
         for (i, (comm, label)) in proof.commitments[0].iter().zip(PROOF_1_LABELS.iter()).enumerate() {
-            let prepared_comm = PCG::PreparedCommitmentVar::prepare(cs.ns(|| format!("prepare_1_{}", i)), comm)?;
+            let prepared_comm = comm.prepare(cs.ns(|| format!("prepare_1_{}", i)))?;
             comms.push(PCG::create_prepared_labeled_commitment(
                 label.to_string(),
                 prepared_comm,
@@ -890,7 +890,7 @@ where
             .zip(proof_2_bounds.iter())
             .enumerate()
         {
-            let prepared_comm = PCG::PreparedCommitmentVar::prepare(cs.ns(|| format!("prepare_2_{}", i)), comm)?;
+            let prepared_comm = comm.prepare(cs.ns(|| format!("prepare_2_{}", i)))?;
             comms.push(PCG::create_prepared_labeled_commitment(
                 label.to_string(),
                 prepared_comm,
@@ -911,7 +911,7 @@ where
             .zip(proof_3_bounds.iter())
             .enumerate()
         {
-            let prepared_comm = PCG::PreparedCommitmentVar::prepare(cs.ns(|| format!("prepare_3_{}", i)), comm)?;
+            let prepared_comm = comm.prepare(cs.ns(|| format!("prepare_3_{}", i)))?;
             comms.push(PCG::create_prepared_labeled_commitment(
                 label.to_string(),
                 prepared_comm,
@@ -947,11 +947,7 @@ mod test {
     use snarkvm_gadgets::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, traits::eq::EqGadget};
     use snarkvm_polycommit::{
         marlin_pc::{
-            commitment::{
-                commitment::CommitmentVar,
-                labeled_commitment::LabeledCommitmentVar,
-                prepared_commitment::PreparedCommitmentVar,
-            },
+            commitment::{commitment::CommitmentVar, labeled_commitment::LabeledCommitmentVar},
             marlin_kzg10::MarlinKZG10Gadget,
             MarlinKZG10,
         },
@@ -970,7 +966,6 @@ mod test {
             MarlinMode,
             MarlinRecursiveMode,
             MarlinSNARK,
-            PreparedCircuitVerifyingKey,
             Proof,
         },
         FiatShamirAlgebraicSpongeRng,
@@ -980,6 +975,8 @@ mod test {
     };
 
     use super::*;
+    use crate::constraints::verifier_key::CircuitVerifyingKeyVar;
+    use snarkvm_algorithms::Prepare;
 
     type MultiPC = MarlinKZG10<Bls12_377>;
     type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FS, MarlinRecursiveMode>;
@@ -1078,7 +1075,7 @@ mod test {
         let (circuit_pk, circuit_vk, proof, public_input) =
             construct_circuit_parameters(num_variables, num_constraints);
 
-        let prepared_circuit_vk = PreparedCircuitVerifyingKey::prepare(&circuit_vk);
+        let prepared_circuit_vk = circuit_vk.prepare();
 
         // Attempt verification.
 
@@ -1210,7 +1207,7 @@ mod test {
         let (circuit_pk, circuit_vk, proof, public_input) =
             construct_circuit_parameters(num_variables, num_constraints);
 
-        let prepared_circuit_vk = PreparedCircuitVerifyingKey::prepare(&circuit_vk);
+        let prepared_circuit_vk = circuit_vk.prepare();
 
         // Attempt verification.
 
@@ -1377,7 +1374,7 @@ mod test {
         let (circuit_pk, circuit_vk, proof, public_input) =
             construct_circuit_parameters(num_variables, num_constraints);
 
-        let prepared_circuit_vk = PreparedCircuitVerifyingKey::prepare(&circuit_vk);
+        let prepared_circuit_vk = circuit_vk.prepare();
 
         // Attempt verification.
 
@@ -1597,8 +1594,6 @@ mod test {
         let (circuit_pk, circuit_vk, proof, public_input) =
             construct_circuit_parameters(num_variables, num_constraints);
 
-        let prepared_circuit_vk = PreparedCircuitVerifyingKey::prepare(&circuit_vk);
-
         // Attempt verification.
 
         let public_input = {
@@ -1661,12 +1656,23 @@ mod test {
         let (_first_round_message, first_round_state) =
             AHPForR1CSNative::verifier_first_round(circuit_pk.circuit.index_info.clone(), fs_rng).unwrap();
 
+        let (domain_h_size, domain_k_size) = {
+            let domain_h = EvaluationDomain::<Fr>::new(circuit_vk.circuit_info.num_constraints)
+                .ok_or(SynthesisError::PolynomialDegreeTooLarge)
+                .unwrap();
+            let domain_k = EvaluationDomain::<Fr>::new(circuit_vk.circuit_info.num_non_zero)
+                .ok_or(SynthesisError::PolynomialDegreeTooLarge)
+                .unwrap();
+
+            (domain_h.size(), domain_k.size())
+        };
+
         // Execute the verifier first round gadget.
         let (_first_round_message_gadget, first_round_state_gadget) =
             AHPForR1CS::<_, _, _, MultiPCVar>::verifier_first_round(
                 cs.ns(|| "verifier_first_round"),
-                prepared_circuit_vk.domain_h_size,
-                prepared_circuit_vk.domain_k_size,
+                domain_h_size as u64,
+                domain_k_size as u64,
                 fs_rng_gadget,
                 &comm_gadgets,
                 &message_gadgets,
@@ -1825,11 +1831,9 @@ mod test {
             formatted_public_input.push(elem);
         }
 
-        let prepared_vk_gadget = PreparedCircuitVerifyingKeyVar::<_, _, _, MultiPCVar, FS, FSG>::alloc(
-            cs.ns(|| "alloc_prepared_vk"),
-            || Ok(prepared_circuit_vk),
-        )
-        .unwrap();
+        let vk_gadget =
+            CircuitVerifyingKeyVar::<_, _, _, MultiPCVar>::alloc(cs.ns(|| "alloc_prepared_vk"), || Ok(circuit_vk))
+                .unwrap();
 
         let proof_gadget =
             ProofVar::<_, _, _, MultiPCVar>::alloc(cs.ns(|| "proof_gadget"), || Ok(proof.clone())).unwrap();
@@ -1839,7 +1843,7 @@ mod test {
             &formatted_public_input,
             &proof_gadget.evaluations,
             third_round_state_gadget.clone(),
-            &prepared_vk_gadget.domain_k_size_gadget,
+            &vk_gadget.domain_k_size_gadget,
         )
         .unwrap();
 
@@ -1897,8 +1901,6 @@ mod test {
 
         let (circuit_pk, circuit_vk, proof, public_input) =
             construct_circuit_parameters(num_variables, num_constraints);
-
-        let prepared_circuit_vk = PreparedCircuitVerifyingKey::prepare(&circuit_vk);
 
         // Attempt verification.
 
@@ -1962,12 +1964,23 @@ mod test {
         let (_first_round_message, first_round_state) =
             AHPForR1CSNative::verifier_first_round(circuit_pk.circuit.index_info.clone(), fs_rng).unwrap();
 
+        let (domain_h_size, domain_k_size) = {
+            let domain_h = EvaluationDomain::<Fr>::new(circuit_vk.circuit_info.num_constraints)
+                .ok_or(SynthesisError::PolynomialDegreeTooLarge)
+                .unwrap();
+            let domain_k = EvaluationDomain::<Fr>::new(circuit_vk.circuit_info.num_non_zero)
+                .ok_or(SynthesisError::PolynomialDegreeTooLarge)
+                .unwrap();
+
+            (domain_h.size(), domain_k.size())
+        };
+
         // Execute the verifier first round gadget.
         let (_first_round_message_gadget, first_round_state_gadget) =
             AHPForR1CS::<_, _, _, MultiPCVar>::verifier_first_round(
                 cs.ns(|| "verifier_first_round"),
-                prepared_circuit_vk.domain_h_size,
-                prepared_circuit_vk.domain_k_size,
+                domain_h_size as u64,
+                domain_k_size as u64,
                 fs_rng_gadget,
                 &comm_gadgets,
                 &message_gadgets,
@@ -2103,11 +2116,12 @@ mod test {
             evaluations.insert(q, *eval);
         }
 
-        let prepared_vk_gadget = PreparedCircuitVerifyingKeyVar::<_, _, _, MultiPCVar, FS, FSG>::alloc(
-            cs.ns(|| "alloc_prepared_vk"),
-            || Ok(prepared_circuit_vk),
-        )
-        .unwrap();
+        let vk_gadget =
+            CircuitVerifyingKeyVar::<_, _, _, MultiPCVar>::alloc(cs.ns(|| "alloc_vk"), || Ok(circuit_vk.clone()))
+                .unwrap();
+
+        let prepared_vk_gadget: PreparedCircuitVerifyingKeyVar<_, _, _, _, FS, FSG> =
+            vk_gadget.prepare(cs.ns(|| "prepare_vk")).unwrap();
 
         let proof_gadget =
             ProofVar::<_, _, _, MultiPCVar>::alloc(cs.ns(|| "proof_gadget"), || Ok(proof.clone())).unwrap();
@@ -2194,11 +2208,10 @@ mod test {
             )
             .unwrap();
 
-            let expected_prepared_commitment = PreparedCommitmentVar::prepare(
-                cs.ns(|| format!("prepare_comm_{}", i)),
-                &expected_commitment.commitment,
-            )
-            .unwrap();
+            let expected_prepared_commitment = expected_commitment
+                .commitment
+                .prepare(cs.ns(|| format!("prepare_comm_{}", i)))
+                .unwrap();
 
             expected_prepared_commitment
                 .prepared_comm

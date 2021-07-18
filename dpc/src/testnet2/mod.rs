@@ -84,7 +84,12 @@ pub trait Testnet2Components: DPCComponents {
     >;
 
     /// SNARK Verifier gadget for the inner snark
-    type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK, Self::OuterScalarField, Input = Vec<Boolean>>;
+    type InnerSNARKGadget: SNARKVerifierGadget<
+        Self::InnerScalarField,
+        Self::OuterScalarField,
+        Self::InnerSNARK,
+        Input = Vec<Boolean>,
+    >;
 
     /// SNARK for proof-verification checks
     type OuterSNARK: SNARK<
@@ -107,8 +112,9 @@ pub trait Testnet2Components: DPCComponents {
     // TODO (raychu86): Look into properly declaring a proper input. i.e. Self::MarlinInputGadget.
     /// SNARK Verifier gadget for the no-op "always-accept" that does nothing with its input.
     type NoopProgramSNARKGadget: SNARKVerifierGadget<
-        Self::NoopProgramSNARK,
+        Self::InnerScalarField,
         Self::OuterScalarField,
+        Self::NoopProgramSNARK,
         Input = NonNativeFieldVar<Self::InnerScalarField, Self::OuterScalarField>,
     >;
 
@@ -128,11 +134,11 @@ pub struct DPC<C: Testnet2Components> {
     pub noop_program: NoopProgram<C>,
     pub inner_snark_parameters: (
         Option<<C::InnerSNARK as SNARK>::ProvingKey>,
-        <C::InnerSNARK as SNARK>::PreparedVerifyingKey,
+        <C::InnerSNARK as SNARK>::VerifyingKey,
     ),
     pub outer_snark_parameters: (
         Option<<C::OuterSNARK as SNARK>::ProvingKey>,
-        <C::OuterSNARK as SNARK>::PreparedVerifyingKey,
+        <C::OuterSNARK as SNARK>::VerifyingKey,
     ),
 }
 
@@ -146,13 +152,15 @@ where
         SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey,
         Transaction = Transaction<C>,
     >,
+    <C::NoopProgramSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
+    <C::InnerSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
     <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::VerifierKey:
         ToConstraintField<C::OuterScalarField>,
     <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::Commitment:
         ToConstraintField<C::OuterScalarField>,
 {
     type Account = Account<C>;
-    type Execution = Execution;
+    type Execution = Execution<C::NoopProgramSNARK>;
     type Record = Record<C>;
     type Transaction = Transaction<C>;
     type TransactionKernel = TransactionKernel<C>;
@@ -209,7 +217,7 @@ where
             let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey =
                 <C::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
 
-            (inner_snark_pk, inner_snark_vk.into())
+            (inner_snark_pk, inner_snark_vk)
         };
 
         let outer_snark_parameters = {
@@ -222,7 +230,7 @@ where
             let outer_snark_vk: <C::OuterSNARK as SNARK>::VerifyingKey =
                 <C::OuterSNARK as SNARK>::VerifyingKey::read_le(OuterSNARKVKParameters::load_bytes()?.as_slice())?;
 
-            (outer_snark_pk, outer_snark_vk.into())
+            (outer_snark_pk, outer_snark_vk)
         };
         end_timer!(timer);
 
@@ -355,6 +363,7 @@ where
             }
             let program_randomness = <C::ProgramIDCommitment as CommitmentScheme>::Randomness::rand(rng);
             let program_commitment = C::program_id_commitment().commit(&input, &program_randomness)?;
+
             (program_commitment, program_randomness)
         };
         end_timer!(program_comm_timer);
@@ -546,7 +555,8 @@ where
         }
 
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = self.inner_snark_parameters.1.clone().into();
-        let inner_circuit_id = C::inner_circuit_id_crh().hash(&inner_snark_vk.to_bytes_le()?)?;
+        let inner_snark_vk_field_elements = inner_snark_vk.to_field_elements()?;
+        let inner_circuit_id = C::inner_circuit_id_crh().hash_field_elements(&inner_snark_vk_field_elements)?;
 
         let transaction_proof = {
             let circuit = OuterCircuit::new(
@@ -572,7 +582,7 @@ where
                 None => return Err(DPCError::MissingOuterSnarkProvingParameters.into()),
             };
 
-            C::OuterSNARK::prove(&outer_snark_parameters, &circuit, rng)?
+            C::OuterSNARK::prove(outer_snark_parameters, &circuit, rng)?
         };
 
         let transaction = Self::Transaction::new(
@@ -731,17 +741,12 @@ where
         let inner_snark_vk: <<C as Testnet2Components>::InnerSNARK as SNARK>::VerifyingKey =
             self.inner_snark_parameters.1.clone().into();
 
-        let inner_snark_vk_bytes = match to_bytes_le![inner_snark_vk] {
-            Ok(bytes) => bytes,
-            _ => {
-                eprintln!("Unable to convert inner snark vk into bytes.");
-                return false;
-            }
-        };
+        let inner_snark_vk_field_elements =
+            ToConstraintField::<C::OuterScalarField>::to_field_elements(&inner_snark_vk).unwrap();
 
         let outer_snark_input = OuterCircuitVerifierInput {
             inner_snark_verifier_input: inner_snark_input,
-            inner_circuit_id: match C::inner_circuit_id_crh().hash(&inner_snark_vk_bytes) {
+            inner_circuit_id: match C::inner_circuit_id_crh().hash_field_elements(&inner_snark_vk_field_elements) {
                 Ok(hash) => hash,
                 _ => {
                     eprintln!("Unable to hash inner snark vk.");

@@ -22,7 +22,7 @@ use snarkvm_curves::{edwards_bls12::EdwardsProjective, Group};
 use snarkvm_utilities::UniformRand;
 
 use criterion::Criterion;
-use rand::{self, thread_rng};
+use rand::{self, thread_rng, Rng};
 
 type Schnorr = SchnorrSignature<EdwardsProjective>;
 
@@ -80,7 +80,7 @@ fn schnorr_signature_randomize_public_key(c: &mut Criterion) {
     let parameters = Schnorr::setup("schnorr_signature_randomize_public_key");
     let private_key = Schnorr::generate_private_key(&parameters, rng).unwrap();
     let public_key = Schnorr::generate_public_key(&parameters, &private_key).unwrap();
-    let randomizer = <EdwardsProjective as Group>::ScalarField::rand(rng);
+    let randomizer: [u8; 32] = rng.gen();
 
     c.bench_function("Schnorr Signature Randomize Public Key", move |b| {
         b.iter(|| Schnorr::randomize_public_key(&parameters, &public_key, &randomizer).unwrap())
@@ -93,7 +93,7 @@ fn schnorr_signature_randomize_signature(c: &mut Criterion) {
     let private_key = Schnorr::generate_private_key(&parameters, rng).unwrap();
     let message = [100u8; 128];
 
-    let randomizer = <EdwardsProjective as Group>::ScalarField::rand(rng);
+    let randomizer: [u8; 32] = rng.gen();
     let randomized_private_key = Schnorr::randomize_private_key(&parameters, &private_key, &randomizer).unwrap();
 
     c.bench_function("Schnorr Signature Randomize Signature", move |b| {

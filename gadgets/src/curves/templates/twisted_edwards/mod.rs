@@ -455,6 +455,50 @@ mod affine_impl {
     where
         Self: GroupGadget<TEAffine<P>, F>,
     {
+        fn alloc_constant<
+            Fn: FnOnce() -> Result<T, SynthesisError>,
+            T: Borrow<TEAffine<P>>,
+            CS: ConstraintSystem<F>,
+        >(
+            mut cs: CS,
+            value_gen: Fn,
+        ) -> Result<Self, SynthesisError> {
+            let (x, y) = match value_gen() {
+                Ok(ge) => {
+                    let ge = *ge.borrow();
+                    (Ok(ge.x), Ok(ge.y))
+                }
+                _ => (
+                    Err(SynthesisError::AssignmentMissing),
+                    Err(SynthesisError::AssignmentMissing),
+                ),
+            };
+
+            let d = P::COEFF_D;
+            let a = P::COEFF_A;
+
+            let x = FG::alloc_constant(&mut cs.ns(|| "x"), || x)?;
+            let y = FG::alloc_constant(&mut cs.ns(|| "y"), || y)?;
+
+            // Check that ax^2 + y^2 = 1 + dx^2y^2
+            // We do this by checking that ax^2 - 1 = y^2 * (dx^2 - 1)
+            let x2 = x.square(&mut cs.ns(|| "x^2"))?;
+            let y2 = y.square(&mut cs.ns(|| "y^2"))?;
+
+            let one = P::BaseField::one();
+            let d_x2_minus_one = x2
+                .mul_by_constant(cs.ns(|| "d * x^2"), &d)?
+                .add_constant(cs.ns(|| "d * x^2 - 1"), &one.neg())?;
+
+            let a_x2_minus_one = x2
+                .mul_by_constant(cs.ns(|| "a * x^2"), &a)?
+                .add_constant(cs.ns(|| "a * x^2 - 1"), &one.neg())?;
+
+            d_x2_minus_one.mul_equals(cs.ns(|| "on curve check"), &y2, &a_x2_minus_one)?;
+
+            Ok(Self::new(x, y))
+        }
+
         fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<TEAffine<P>>, CS: ConstraintSystem<F>>(
             mut cs: CS,
             value_gen: Fn,
@@ -1094,6 +1138,47 @@ mod projective_impl {
     where
         Self: GroupGadget<TEProjective<P>, F>,
     {
+        fn alloc_constant<FN, T, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+        where
+            FN: FnOnce() -> Result<T, SynthesisError>,
+            T: Borrow<TEProjective<P>>,
+        {
+            let (x, y) = match value_gen() {
+                Ok(ge) => {
+                    let ge = ge.borrow().into_affine();
+                    (Ok(ge.x), Ok(ge.y))
+                }
+                _ => (
+                    Err(SynthesisError::AssignmentMissing),
+                    Err(SynthesisError::AssignmentMissing),
+                ),
+            };
+
+            let d = P::COEFF_D;
+            let a = P::COEFF_A;
+
+            let x = FG::alloc_constant(&mut cs.ns(|| "x"), || x)?;
+            let y = FG::alloc_constant(&mut cs.ns(|| "y"), || y)?;
+
+            // Check that ax^2 + y^2 = 1 + dx^2y^2
+            // We do this by checking that ax^2 - 1 = y^2 * (dx^2 - 1)
+            let x2 = x.square(&mut cs.ns(|| "x^2"))?;
+            let y2 = y.square(&mut cs.ns(|| "y^2"))?;
+
+            let one = P::BaseField::one();
+            let d_x2_minus_one = x2
+                .mul_by_constant(cs.ns(|| "d * x^2"), &d)?
+                .add_constant(cs.ns(|| "d * x^2 - 1"), &one.neg())?;
+
+            let a_x2_minus_one = x2
+                .mul_by_constant(cs.ns(|| "a * x^2"), &a)?
+                .add_constant(cs.ns(|| "a * x^2 - 1"), &one.neg())?;
+
+            d_x2_minus_one.mul_equals(cs.ns(|| "on curve check"), &y2, &a_x2_minus_one)?;
+
+            Ok(Self::new(x, y))
+        }
+
         fn alloc<FN, T, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
         where
             FN: FnOnce() -> Result<T, SynthesisError>,
@@ -1242,6 +1327,7 @@ mod projective_impl {
                 .add_constant(cs.ns(|| "a * x^2 - 1"), &one.neg())?;
 
             d_x2_minus_one.mul_equals(cs.ns(|| "on curve check"), &y2, &a_x2_minus_one)?;
+
             Ok(Self::new(x, y))
         }
     }
