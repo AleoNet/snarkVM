@@ -595,7 +595,7 @@ impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField,
 
         // When allocating the input we **do not** assume that
         // the verifier has performed any on curve checks already,
-        // since this has been implemented in the application level,
+        // since this may not be implemented in the application level,
         // and can be complicated.
 
         // Perform on-curve check.
