@@ -53,9 +53,7 @@ impl TransactionScheme for TestTx {
     type Digest = [u8; 32];
     type EncryptedRecord = [u8; 32];
     type InnerCircuitID = [u8; 32];
-    type LocalDataRoot = [u8; 32];
     type Memorandum = [u8; 32];
-    type ProgramCommitment = [u8; 32];
     type SerialNumber = [u8; 32];
     type Signature = [u8; 32];
     type ValueBalance = i64;
@@ -82,14 +80,6 @@ impl TransactionScheme for TestTx {
 
     fn new_commitments(&self) -> &[Self::Commitment] {
         &[[0u8; 32]; 2]
-    }
-
-    fn program_commitment(&self) -> &Self::ProgramCommitment {
-        &[0u8; 32]
-    }
-
-    fn local_data_root(&self) -> &Self::LocalDataRoot {
-        &[0u8; 32]
     }
 
     fn value_balance(&self) -> i64 {

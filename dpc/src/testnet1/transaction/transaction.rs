@@ -58,14 +58,6 @@ pub struct Transaction<C: Testnet1Components> {
     /// The commitment of the new records
     pub new_commitments: Vec<<C::RecordCommitment as CommitmentScheme>::Output>,
 
-    #[derivative(PartialEq = "ignore")]
-    /// The commitment to the old record death and new record birth programs
-    pub program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
-
-    #[derivative(PartialEq = "ignore")]
-    /// The root of the local data merkle tree
-    pub local_data_root: <C::LocalDataCRH as CRH>::Output,
-
     /// A transaction value balance is the difference between input and output record balances.
     /// This value effectively becomes the transaction fee for the miner. Only coinbase transactions
     /// can have a negative value balance representing tokens being minted.
@@ -92,16 +84,14 @@ pub struct Transaction<C: Testnet1Components> {
 impl<C: Testnet1Components> Transaction<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
+        network: Network,
         old_serial_numbers: Vec<<Self as TransactionScheme>::SerialNumber>,
         new_commitments: Vec<<Self as TransactionScheme>::Commitment>,
         memorandum: <Self as TransactionScheme>::Memorandum,
         ledger_digest: MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
         inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
         transaction_proof: <C::OuterSNARK as SNARK>::Proof,
-        program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
-        local_data_root: <C::LocalDataCRH as CRH>::Output,
         value_balance: AleoAmount,
-        network: Network,
         signatures: Vec<<C::AccountSignature as SignatureScheme>::Signature>,
         encrypted_records: Vec<EncryptedRecord<C>>,
     ) -> Self {
@@ -111,16 +101,14 @@ impl<C: Testnet1Components> Transaction<C> {
         assert_eq!(C::NUM_OUTPUT_RECORDS, encrypted_records.len());
 
         Self {
+            network,
             old_serial_numbers,
             new_commitments,
             memorandum,
             ledger_digest,
             inner_circuit_id,
             transaction_proof,
-            program_commitment,
-            local_data_root,
             value_balance,
-            network,
             signatures,
             encrypted_records,
         }
@@ -132,9 +120,7 @@ impl<C: Testnet1Components> TransactionScheme for Transaction<C> {
     type Digest = MerkleTreeDigest<C::LedgerMerkleTreeParameters>;
     type EncryptedRecord = EncryptedRecord<C>;
     type InnerCircuitID = <C::InnerCircuitIDCRH as CRH>::Output;
-    type LocalDataRoot = <C::LocalDataCRH as CRH>::Output;
     type Memorandum = [u8; 32];
-    type ProgramCommitment = <C::ProgramIDCommitment as CommitmentScheme>::Output;
     type SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey;
     type Signature = <C::AccountSignature as SignatureScheme>::Signature;
     type ValueBalance = AleoAmount;
@@ -185,14 +171,6 @@ impl<C: Testnet1Components> TransactionScheme for Transaction<C> {
         &self.memorandum
     }
 
-    fn program_commitment(&self) -> &Self::ProgramCommitment {
-        &self.program_commitment
-    }
-
-    fn local_data_root(&self) -> &Self::LocalDataRoot {
-        &self.local_data_root
-    }
-
     fn value_balance(&self) -> Self::ValueBalance {
         self.value_balance
     }
@@ -214,6 +192,8 @@ impl<C: Testnet1Components> TransactionScheme for Transaction<C> {
 impl<C: Testnet1Components> ToBytes for Transaction<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.network.write_le(&mut writer)?;
+
         for old_serial_number in &self.old_serial_numbers {
             CanonicalSerialize::serialize(old_serial_number, &mut writer).unwrap();
         }
@@ -227,11 +207,8 @@ impl<C: Testnet1Components> ToBytes for Transaction<C> {
         self.ledger_digest.write_le(&mut writer)?;
         self.inner_circuit_id.write_le(&mut writer)?;
         self.transaction_proof.write_le(&mut writer)?;
-        self.program_commitment.write_le(&mut writer)?;
-        self.local_data_root.write_le(&mut writer)?;
 
         self.value_balance.write_le(&mut writer)?;
-        self.network.write_le(&mut writer)?;
 
         for signature in &self.signatures {
             signature.write_le(&mut writer)?;
@@ -248,6 +225,9 @@ impl<C: Testnet1Components> ToBytes for Transaction<C> {
 impl<C: Testnet1Components> FromBytes for Transaction<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the network ID.
+        let network: Network = FromBytes::read_le(&mut reader)?;
+
         // Read the old serial numbers
         let num_old_serial_numbers = C::NUM_INPUT_RECORDS;
         let mut old_serial_numbers = Vec::with_capacity(num_old_serial_numbers);
@@ -271,11 +251,8 @@ impl<C: Testnet1Components> FromBytes for Transaction<C> {
         let ledger_digest: MerkleTreeDigest<C::LedgerMerkleTreeParameters> = FromBytes::read_le(&mut reader)?;
         let inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output = FromBytes::read_le(&mut reader)?;
         let transaction_proof: <C::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
-        let program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output = FromBytes::read_le(&mut reader)?;
-        let local_data_root: <C::LocalDataCRH as CRH>::Output = FromBytes::read_le(&mut reader)?;
 
         let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
-        let network: Network = FromBytes::read_le(&mut reader)?;
 
         // Read the signatures
         let num_signatures = C::NUM_INPUT_RECORDS;
@@ -299,8 +276,6 @@ impl<C: Testnet1Components> FromBytes for Transaction<C> {
             ledger_digest,
             old_serial_numbers,
             new_commitments,
-            program_commitment,
-            local_data_root,
             value_balance,
             signatures,
             encrypted_records,
@@ -316,14 +291,12 @@ impl<C: Testnet1Components> fmt::Debug for Transaction<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Transaction {{ network_id: {:?}, digest: {:?}, inner_circuit_id: {:?}, old_serial_numbers: {:?}, new_commitments: {:?}, program_commitment: {:?}, local_data_root: {:?}, value_balance: {:?}, signatures: {:?}, transaction_proof: {:?}, memorandum: {:?} }}",
+            "Transaction {{ network_id: {:?}, digest: {:?}, inner_circuit_id: {:?}, old_serial_numbers: {:?}, new_commitments: {:?}, value_balance: {:?}, signatures: {:?}, transaction_proof: {:?}, memorandum: {:?} }}",
             self.network,
             self.ledger_digest,
             self.inner_circuit_id,
             self.old_serial_numbers,
             self.new_commitments,
-            self.program_commitment,
-            self.local_data_root,
             self.value_balance,
             self.signatures,
             self.transaction_proof,

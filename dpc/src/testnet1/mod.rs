@@ -536,16 +536,14 @@ where
         };
 
         let transaction = Self::Transaction::new(
+            Network::from_id(network_id),
             old_serial_numbers,
             new_commitments,
             memorandum,
             ledger_digest,
             inner_circuit_id,
             transaction_proof,
-            program_commitment,
-            local_data_root,
             value_balance,
-            Network::from_id(network_id),
             signatures,
             new_encrypted_records,
         );
