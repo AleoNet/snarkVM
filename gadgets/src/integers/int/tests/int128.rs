@@ -18,7 +18,7 @@ use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
 use snarkvm_fields::{One, Zero};
-use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
+use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintChecker, TestConstraintSystem};
 
 use crate::{
     bits::Boolean,
@@ -330,7 +330,7 @@ fn test_int128_div() {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
     for _ in 0..2 {
-        let mut cs = TestConstraintSystem::<Fr>::new();
+        let mut cs = TestConstraintChecker::<Fr>::new();
 
         let a: i128 = rng.gen();
         let b: i128 = rng.gen();
