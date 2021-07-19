@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet2::{inner_circuit_verifier_input::InnerCircuitVerifierInput, Testnet2Components};
+use crate::{testnet2::Testnet2Components, InnerCircuitVerifierInput};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH},
@@ -31,7 +31,6 @@ pub struct OuterCircuitVerifierInput<C: Testnet2Components> {
 
 impl<C: Testnet2Components> ToConstraintField<C::OuterScalarField> for OuterCircuitVerifierInput<C>
 where
-    C::ProgramIDCommitment: ToConstraintField<C::OuterScalarField>,
     <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::OuterScalarField>,
     <C::ProgramIDCRH as CRH>::Parameters: ToConstraintField<C::OuterScalarField>,
 
@@ -63,7 +62,6 @@ where
             )?);
         }
 
-        v.extend_from_slice(&self.inner_snark_verifier_input.program_commitment.to_field_elements()?);
         v.extend_from_slice(&self.inner_circuit_id.to_field_elements()?);
         Ok(v)
     }

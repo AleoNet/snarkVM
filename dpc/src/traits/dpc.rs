@@ -32,9 +32,6 @@ pub trait DPCScheme<L: LedgerScheme>: Sized {
     /// Loads the saved instance of DPC.
     fn load(verify_only: bool) -> anyhow::Result<Self>;
 
-    /// Returns an account, given the system parameters, metadata, and an RNG.
-    fn create_account<R: Rng + CryptoRng>(&self, rng: &mut R) -> anyhow::Result<Self::Account>;
-
     /// Returns the execution context required for program snark and DPC transaction generation.
     #[allow(clippy::too_many_arguments)]
     fn execute_offline_phase<R: Rng + CryptoRng>(

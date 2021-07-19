@@ -14,7 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet1::{Record, Testnet1Components, Transaction, TransactionScheme};
+use crate::{
+    testnet1::{Testnet1Components, Transaction},
+    Record,
+    TransactionScheme,
+};
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, prelude::*};
 
 /// Stores local data required to produce program proofs.

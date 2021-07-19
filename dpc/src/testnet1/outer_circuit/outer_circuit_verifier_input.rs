@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet1::{inner_circuit_verifier_input::InnerCircuitVerifierInput, Testnet1Components};
+use crate::{testnet1::Testnet1Components, InnerCircuitVerifierInput};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH},
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
-use snarkvm_utilities::{to_bytes_le, ToBytes};
+use snarkvm_utilities::ToBytes;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet1Components"))]
@@ -31,7 +31,6 @@ pub struct OuterCircuitVerifierInput<C: Testnet1Components> {
 
 impl<C: Testnet1Components> ToConstraintField<C::OuterScalarField> for OuterCircuitVerifierInput<C>
 where
-    C::ProgramIDCommitment: ToConstraintField<C::OuterScalarField>,
     <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::OuterScalarField>,
     <C::ProgramIDCRH as CRH>::Parameters: ToConstraintField<C::OuterScalarField>,
 
@@ -58,13 +57,11 @@ where
         let inner_snark_field_elements = &self.inner_snark_verifier_input.to_field_elements()?;
 
         for inner_snark_fe in inner_snark_field_elements {
-            let inner_snark_fe_bytes = to_bytes_le![inner_snark_fe]?;
             v.extend_from_slice(&ToConstraintField::<C::OuterScalarField>::to_field_elements(
-                inner_snark_fe_bytes.as_slice(),
+                inner_snark_fe.to_bytes_le()?.as_slice(),
             )?);
         }
 
-        v.extend_from_slice(&self.inner_snark_verifier_input.program_commitment.to_field_elements()?);
         v.extend_from_slice(&self.inner_circuit_id.to_field_elements()?);
         Ok(v)
     }

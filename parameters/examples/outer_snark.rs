@@ -16,8 +16,9 @@
 
 use snarkvm_algorithms::{crh::sha256::sha256, traits::SNARK};
 use snarkvm_dpc::{
-    testnet1::{instantiated::Components, InnerCircuit, NoopProgram, OuterCircuit, Testnet1Components},
+    testnet1::{dpc::DPC, NoopProgram, OuterCircuit, Testnet1Components},
     DPCError,
+    InnerCircuit,
     ProgramScheme,
 };
 use snarkvm_parameters::{
@@ -79,7 +80,7 @@ fn versioned_filename(checksum: &str) -> String {
 }
 
 pub fn main() {
-    let (outer_snark_pk, outer_snark_vk) = setup::<Components>().unwrap();
+    let (outer_snark_pk, outer_snark_vk) = setup::<DPC>().unwrap();
     let outer_snark_pk_checksum = hex::encode(sha256(&outer_snark_pk));
     store(
         &PathBuf::from(&versioned_filename(&outer_snark_pk_checksum)),

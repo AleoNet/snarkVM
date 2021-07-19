@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet2::Testnet2Components;
-use snarkvm_algorithms::{traits::CRH, SNARK};
+use crate::DPCComponents;
+use snarkvm_algorithms::{CRH, SNARK};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
 /// Program verifying key and proof.
@@ -26,13 +26,13 @@ pub struct Execution<S: SNARK> {
     pub proof: S::Proof,
 }
 
-pub struct ProgramLocalData<C: Testnet2Components> {
+pub struct ProgramLocalData<C: DPCComponents> {
     pub local_data_root: <C::LocalDataCRH as CRH>::Output,
     pub position: u8,
 }
 
 /// Convert each component to bytes and pack into field elements.
-impl<C: Testnet2Components> ToConstraintField<C::InnerScalarField> for ProgramLocalData<C>
+impl<C: DPCComponents> ToConstraintField<C::InnerScalarField> for ProgramLocalData<C>
 where
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
 {

@@ -14,13 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    testnet2::{payload::Payload, Testnet2Components},
-    traits::RecordScheme,
-    Address,
-    PrivateKey,
-    RecordError,
-};
+use crate::{Address, DPCComponents, Payload, PrivateKey, RecordError, RecordScheme};
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH, PRF};
 use snarkvm_utilities::{to_bytes_le, variable_length_integer::*, FromBytes, ToBytes, UniformRand};
 
@@ -31,15 +25,19 @@ use std::{
     str::FromStr,
 };
 
+fn default_program_id<C: CRH>() -> Vec<u8> {
+    C::Output::default().to_bytes_le().unwrap()
+}
+
 #[derive(Derivative)]
 #[derivative(
-    Default(bound = "C: Testnet2Components"),
-    Debug(bound = "C: Testnet2Components"),
-    Clone(bound = "C: Testnet2Components"),
-    PartialEq(bound = "C: Testnet2Components"),
-    Eq(bound = "C: Testnet2Components")
+    Default(bound = "C: DPCComponents"),
+    Debug(bound = "C: DPCComponents"),
+    Clone(bound = "C: DPCComponents"),
+    PartialEq(bound = "C: DPCComponents"),
+    Eq(bound = "C: DPCComponents")
 )]
-pub struct Record<C: Testnet2Components> {
+pub struct Record<C: DPCComponents> {
     pub(crate) owner: Address<C>,
     pub(crate) is_dummy: bool,
     // TODO (raychu86) use AleoAmount which will guard the value range
@@ -61,11 +59,7 @@ pub struct Record<C: Testnet2Components> {
     pub(crate) position: Option<u8>,
 }
 
-fn default_program_id<C: CRH>() -> Vec<u8> {
-    C::Output::default().to_bytes_le().unwrap()
-}
-
-impl<C: Testnet2Components> Record<C> {
+impl<C: DPCComponents> Record<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new_full<R: Rng + CryptoRng>(
         owner: Address<C>,
@@ -204,7 +198,7 @@ impl<C: Testnet2Components> Record<C> {
     }
 }
 
-impl<C: Testnet2Components> RecordScheme for Record<C> {
+impl<C: DPCComponents> RecordScheme for Record<C> {
     type Commitment = <C::RecordCommitment as CommitmentScheme>::Output;
     type CommitmentRandomness = <C::RecordCommitment as CommitmentScheme>::Randomness;
     type Owner = Address<C>;
@@ -219,6 +213,10 @@ impl<C: Testnet2Components> RecordScheme for Record<C> {
 
     fn is_dummy(&self) -> bool {
         self.is_dummy
+    }
+
+    fn value(&self) -> Self::Value {
+        self.value
     }
 
     fn payload(&self) -> &Self::Payload {
@@ -248,13 +246,9 @@ impl<C: Testnet2Components> RecordScheme for Record<C> {
     fn commitment_randomness(&self) -> Self::CommitmentRandomness {
         self.commitment_randomness.clone()
     }
-
-    fn value(&self) -> Self::Value {
-        self.value
-    }
 }
 
-impl<C: Testnet2Components> ToBytes for Record<C> {
+impl<C: DPCComponents> ToBytes for Record<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.owner.write_le(&mut writer)?;
@@ -274,7 +268,7 @@ impl<C: Testnet2Components> ToBytes for Record<C> {
     }
 }
 
-impl<C: Testnet2Components> FromBytes for Record<C> {
+impl<C: DPCComponents> FromBytes for Record<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let owner: Address<C> = FromBytes::read_le(&mut reader)?;
@@ -320,7 +314,7 @@ impl<C: Testnet2Components> FromBytes for Record<C> {
     }
 }
 
-impl<C: Testnet2Components> FromStr for Record<C> {
+impl<C: DPCComponents> FromStr for Record<C> {
     type Err = RecordError;
 
     fn from_str(record: &str) -> Result<Self, Self::Err> {
@@ -328,7 +322,7 @@ impl<C: Testnet2Components> FromStr for Record<C> {
     }
 }
 
-impl<C: Testnet2Components> fmt::Display for Record<C> {
+impl<C: DPCComponents> fmt::Display for Record<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

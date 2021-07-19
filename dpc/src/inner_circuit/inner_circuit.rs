@@ -15,13 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet1::{
-        encrypted::RecordEncryptionGadgetComponents,
-        inner_circuit_gadget::execute_inner_circuit,
-        record::Record,
-        Testnet1Components,
-    },
+    encrypted::RecordEncryptionGadgetComponents,
+    execute_inner_circuit,
+    record::Record,
     AleoAmount,
+    DPCComponents,
     PrivateKey,
 };
 use snarkvm_algorithms::{
@@ -33,8 +31,8 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSyst
 use std::sync::Arc;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Testnet1Components"))]
-pub struct InnerCircuit<C: Testnet1Components> {
+#[derivative(Clone(bound = "C: DPCComponents"))]
+pub struct InnerCircuit<C: DPCComponents> {
     // Ledger
     ledger_parameters: Arc<C::LedgerMerkleTreeParameters>,
     ledger_digest: MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
@@ -62,12 +60,12 @@ pub struct InnerCircuit<C: Testnet1Components> {
     local_data_root: <C::LocalDataCRH as CRH>::Output,
     local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
 
-    memo: [u8; 32],
+    memo: [u8; 64],
     value_balance: AleoAmount,
     network_id: u8,
 }
 
-impl<C: Testnet1Components> InnerCircuit<C> {
+impl<C: DPCComponents> InnerCircuit<C> {
     pub fn blank(ledger_parameters: &Arc<C::LedgerMerkleTreeParameters>) -> Self {
         let num_input_records = C::NUM_INPUT_RECORDS;
         let num_output_records = C::NUM_OUTPUT_RECORDS;
@@ -91,7 +89,7 @@ impl<C: Testnet1Components> InnerCircuit<C> {
 
         let new_encrypted_record_hashes = vec![<C::EncryptedRecordCRH as CRH>::Output::default(); num_output_records];
 
-        let memo = [0u8; 32];
+        let memo = [0u8; 64];
 
         let program_commitment = <C::ProgramIDCommitment as CommitmentScheme>::Output::default();
         let program_randomness = <C::ProgramIDCommitment as CommitmentScheme>::Randomness::default();
@@ -120,6 +118,7 @@ impl<C: Testnet1Components> InnerCircuit<C> {
             new_records,
             new_serial_number_nonce_randomness,
             new_commitments,
+
             new_records_encryption_randomness,
             new_records_encryption_gadget_components,
             new_encrypted_record_hashes,
@@ -159,9 +158,11 @@ impl<C: Testnet1Components> InnerCircuit<C> {
         // Other stuff
         program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
         program_randomness: <C::ProgramIDCommitment as CommitmentScheme>::Randomness,
+
         local_data_root: <C::LocalDataCRH as CRH>::Output,
         local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
-        memo: [u8; 32],
+
+        memo: [u8; 64],
         value_balance: AleoAmount,
         network_id: u8,
     ) -> Self {
@@ -227,7 +228,7 @@ impl<C: Testnet1Components> InnerCircuit<C> {
     }
 }
 
-impl<C: Testnet1Components> ConstraintSynthesizer<C::InnerScalarField> for InnerCircuit<C> {
+impl<C: DPCComponents> ConstraintSynthesizer<C::InnerScalarField> for InnerCircuit<C> {
     fn generate_constraints<CS: ConstraintSystem<C::InnerScalarField>>(
         &self,
         cs: &mut CS,
