@@ -43,10 +43,7 @@ pub struct NoopProgram<C: Testnet2Components> {
     verifying_key: <<C as Testnet2Components>::NoopProgramSNARK as SNARK>::VerifyingKey,
 }
 
-impl<C: Testnet2Components> ProgramScheme for NoopProgram<C>
-where
-    <C::NoopProgramSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
-{
+impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
     type Execution = Execution<Self::ProofSystem>;
     type ID = Vec<u8>;
     type LocalData = LocalData<C>;
@@ -58,12 +55,12 @@ where
     type VerifyingKey = <Self::ProofSystem as SNARK>::VerifyingKey;
 
     /// Initializes a new instance of the noop program.
-    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, ProgramError> {
+    fn setup<R: Rng + CryptoRng>(_rng: &mut R) -> Result<Self, ProgramError> {
         let universal_srs: UniversalSRS<C::InnerScalarField, C::PolynomialCommitment> =
             ProgramSNARKUniversalSRS::<C>::load()?.0.clone();
 
         let (proving_key, prepared_verifying_key) =
-            <Self::ProofSystem as SNARK>::circuit_specific_setup(&(NoopCircuit::blank(), universal_srs), rng)?;
+            <Self::ProofSystem as SNARK>::index(&NoopCircuit::<C>::blank(), &universal_srs)?;
         let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
 
         let verifying_key_group_elements = verifying_key.to_field_elements()?;

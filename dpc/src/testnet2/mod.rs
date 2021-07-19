@@ -142,8 +142,14 @@ where
         SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey,
         Transaction = Transaction<C>,
     >,
-    <C::NoopProgramSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
-    <C::InnerSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
+    <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
+    <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::LedgerMerkleTreeParameters as MerkleParameters>::H: ToConstraintField<C::InnerScalarField>,
+    <<C::LedgerMerkleTreeParameters as MerkleParameters>::H as CRH>::Output: ToConstraintField<C::InnerScalarField>,
     <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::VerifierKey:
         ToConstraintField<C::OuterScalarField>,
     <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::Commitment:
@@ -167,7 +173,7 @@ where
         end_timer!(noop_program_timer);
 
         let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");
-        let inner_circuit = InnerCircuit::blank(ledger_parameters);
+        let inner_circuit = InnerCircuit::<C>::blank(ledger_parameters);
         let inner_snark_parameters = C::InnerSNARK::circuit_specific_setup(&inner_circuit, rng)?;
         end_timer!(snark_setup_time);
 
@@ -176,7 +182,7 @@ where
         let inner_snark_proof = C::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, rng)?;
 
         let outer_snark_parameters = C::OuterSNARK::circuit_specific_setup(
-            &OuterCircuit::blank(
+            &OuterCircuit::<C>::blank(
                 ledger_parameters.clone(),
                 inner_snark_vk,
                 inner_snark_proof,
@@ -492,7 +498,7 @@ where
         }
 
         let inner_proof = {
-            let circuit = InnerCircuit::new(
+            let circuit = InnerCircuit::<C>::new(
                 ledger.parameters().clone(),
                 ledger_digest.clone(),
                 old_records,
@@ -549,7 +555,7 @@ where
         let inner_circuit_id = C::inner_circuit_id_crh().hash_field_elements(&inner_snark_vk_field_elements)?;
 
         let transaction_proof = {
-            let circuit = OuterCircuit::new(
+            let circuit = OuterCircuit::<C>::new(
                 ledger.parameters().clone(),
                 ledger_digest.clone(),
                 old_serial_numbers.clone(),

@@ -17,11 +17,9 @@
 use crate::{
     account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_INPUT, ACCOUNT_SIGNATURE_INPUT},
     testnet2::{
-        inner_circuit::InnerCircuit,
         inner_circuit_verifier_input::InnerCircuitVerifierInput,
-        outer_circuit::OuterCircuit,
         outer_circuit_verifier_input::OuterCircuitVerifierInput,
-        program::{NoopCircuit, ProgramLocalData},
+        program::ProgramLocalData,
         transaction::Transaction,
         Testnet2Components,
         DPC,
