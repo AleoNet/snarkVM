@@ -15,90 +15,85 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet1::{
-        encrypted::RecordEncryptionGadgetComponents,
-        inner_circuit_gadget::execute_inner_circuit,
-        record::Record,
-        Testnet1Components,
-    },
+    encrypted::RecordEncryptionGadgetComponents,
+    execute_inner_circuit,
+    record::Record,
     AleoAmount,
+    Parameters,
     PrivateKey,
 };
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
-    traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, CRH},
+    traits::{CommitmentScheme, EncryptionScheme, SignatureScheme},
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
-use std::sync::Arc;
-
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Testnet1Components"))]
-pub struct InnerCircuit<C: Testnet1Components> {
+#[derivative(Clone(bound = "C: Parameters"))]
+pub struct InnerCircuit<C: Parameters> {
     // Ledger
-    ledger_parameters: Arc<C::LedgerMerkleTreeParameters>,
-    ledger_digest: MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
+    ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
 
     // Inputs for old records.
     old_records: Vec<Record<C>>,
-    old_witnesses: Vec<MerklePath<C::LedgerMerkleTreeParameters>>,
+    old_witnesses: Vec<MerklePath<C::RecordCommitmentTreeParameters>>,
     old_private_keys: Vec<PrivateKey<C>>,
-    old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
+    old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
 
     // Inputs for new records.
     new_records: Vec<Record<C>>,
     new_serial_number_nonce_randomness: Vec<[u8; 32]>,
-    new_commitments: Vec<<C::RecordCommitment as CommitmentScheme>::Output>,
+    new_commitments: Vec<C::RecordCommitment>,
 
     // Inputs for encryption of new records.
-    new_records_encryption_randomness: Vec<<C::AccountEncryption as EncryptionScheme>::Randomness>,
+    new_records_encryption_randomness: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
     new_records_encryption_gadget_components: Vec<RecordEncryptionGadgetComponents<C>>,
-    new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
+    new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
 
     // Commitment to Programs and to local data.
-    program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
-    program_randomness: <C::ProgramIDCommitment as CommitmentScheme>::Randomness,
+    program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
+    program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
 
-    local_data_root: <C::LocalDataCRH as CRH>::Output,
-    local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
+    local_data_root: C::LocalDataDigest,
+    local_data_commitment_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
 
-    memo: [u8; 32],
+    memo: [u8; 64],
     value_balance: AleoAmount,
     network_id: u8,
 }
 
-impl<C: Testnet1Components> InnerCircuit<C> {
-    pub fn blank(ledger_parameters: &Arc<C::LedgerMerkleTreeParameters>) -> Self {
+impl<C: Parameters> InnerCircuit<C> {
+    pub fn blank() -> Self {
         let num_input_records = C::NUM_INPUT_RECORDS;
         let num_output_records = C::NUM_OUTPUT_RECORDS;
-        let digest = MerkleTreeDigest::<C::LedgerMerkleTreeParameters>::default();
+        let digest = MerkleTreeDigest::<C::RecordCommitmentTreeParameters>::default();
 
         let old_serial_numbers =
-            vec![<C::AccountSignature as SignatureScheme>::PublicKey::default(); num_input_records];
+            vec![<C::AccountSignatureScheme as SignatureScheme>::PublicKey::default(); num_input_records];
         let old_records = vec![Record::default(); num_input_records];
         let old_witnesses = vec![MerklePath::default(); num_input_records];
         let old_private_keys = vec![PrivateKey::default(); num_input_records];
 
-        let new_commitments = vec![<C::RecordCommitment as CommitmentScheme>::Output::default(); num_output_records];
+        let new_commitments = vec![C::RecordCommitment::default(); num_output_records];
         let new_serial_number_nonce_randomness = vec![[0u8; 32]; num_output_records];
         let new_records = vec![Record::default(); num_output_records];
 
         let new_records_encryption_randomness =
-            vec![<C::AccountEncryption as EncryptionScheme>::Randomness::default(); num_output_records];
+            vec![<C::AccountEncryptionScheme as EncryptionScheme>::Randomness::default(); num_output_records];
 
         let new_records_encryption_gadget_components =
             vec![RecordEncryptionGadgetComponents::<C>::default(); num_output_records];
 
-        let new_encrypted_record_hashes = vec![<C::EncryptedRecordCRH as CRH>::Output::default(); num_output_records];
+        let new_encrypted_record_hashes = vec![C::EncryptedRecordDigest::default(); num_output_records];
 
-        let memo = [0u8; 32];
+        let memo = [0u8; 64];
 
-        let program_commitment = <C::ProgramIDCommitment as CommitmentScheme>::Output::default();
-        let program_randomness = <C::ProgramIDCommitment as CommitmentScheme>::Randomness::default();
+        let program_commitment = <C::ProgramCommitmentScheme as CommitmentScheme>::Output::default();
+        let program_randomness = <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default();
 
-        let local_data_root = <C::LocalDataCRH as CRH>::Output::default();
+        let local_data_root = C::LocalDataDigest::default();
         let local_data_commitment_randomizers = vec![
-            <C::LocalDataCommitment as CommitmentScheme>::Randomness::default();
+            <C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::default();
             num_input_records + num_output_records
         ];
 
@@ -107,7 +102,6 @@ impl<C: Testnet1Components> InnerCircuit<C> {
 
         Self {
             // Ledger
-            ledger_parameters: ledger_parameters.clone(),
             ledger_digest: digest,
 
             // Input records
@@ -120,6 +114,7 @@ impl<C: Testnet1Components> InnerCircuit<C> {
             new_records,
             new_serial_number_nonce_randomness,
             new_commitments,
+
             new_records_encryption_randomness,
             new_records_encryption_gadget_components,
             new_encrypted_record_hashes,
@@ -138,30 +133,31 @@ impl<C: Testnet1Components> InnerCircuit<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         // Ledger
-        ledger_parameters: Arc<C::LedgerMerkleTreeParameters>,
-        ledger_digest: MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
+        ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
 
         // Old records
         old_records: Vec<Record<C>>,
-        old_witnesses: Vec<MerklePath<C::LedgerMerkleTreeParameters>>,
+        old_witnesses: Vec<MerklePath<C::RecordCommitmentTreeParameters>>,
         old_private_keys: Vec<PrivateKey<C>>,
-        old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
+        old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
 
         // New records
         new_records: Vec<Record<C>>,
         new_serial_number_nonce_randomness: Vec<[u8; 32]>,
-        new_commitments: Vec<<C::RecordCommitment as CommitmentScheme>::Output>,
+        new_commitments: Vec<C::RecordCommitment>,
 
-        new_records_encryption_randomness: Vec<<C::AccountEncryption as EncryptionScheme>::Randomness>,
+        new_records_encryption_randomness: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
         new_records_encryption_gadget_components: Vec<RecordEncryptionGadgetComponents<C>>,
-        new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
+        new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
 
         // Other stuff
-        program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
-        program_randomness: <C::ProgramIDCommitment as CommitmentScheme>::Randomness,
-        local_data_root: <C::LocalDataCRH as CRH>::Output,
-        local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
-        memo: [u8; 32],
+        program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
+        program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
+
+        local_data_root: C::LocalDataDigest,
+        local_data_commitment_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
+
+        memo: [u8; 64],
         value_balance: AleoAmount,
         network_id: u8,
     ) -> Self {
@@ -197,7 +193,6 @@ impl<C: Testnet1Components> InnerCircuit<C> {
 
         Self {
             // Ledger
-            ledger_parameters,
             ledger_digest,
 
             // Input records
@@ -227,7 +222,7 @@ impl<C: Testnet1Components> InnerCircuit<C> {
     }
 }
 
-impl<C: Testnet1Components> ConstraintSynthesizer<C::InnerScalarField> for InnerCircuit<C> {
+impl<C: Parameters> ConstraintSynthesizer<C::InnerScalarField> for InnerCircuit<C> {
     fn generate_constraints<CS: ConstraintSystem<C::InnerScalarField>>(
         &self,
         cs: &mut CS,
@@ -235,7 +230,6 @@ impl<C: Testnet1Components> ConstraintSynthesizer<C::InnerScalarField> for Inner
         execute_inner_circuit::<C, CS>(
             cs,
             // Ledger
-            &self.ledger_parameters,
             &self.ledger_digest,
             // Old records
             &self.old_records,

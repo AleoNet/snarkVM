@@ -14,13 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    testnet2::{payload::Payload, Testnet2Components},
-    traits::RecordScheme,
-    Address,
-    PrivateKey,
-    RecordError,
-};
+use crate::{Address, Parameters, Payload, PrivateKey, RecordError, RecordScheme};
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH, PRF};
 use snarkvm_utilities::{to_bytes_le, variable_length_integer::*, FromBytes, ToBytes, UniformRand};
 
@@ -31,15 +25,19 @@ use std::{
     str::FromStr,
 };
 
+fn default_program_id<C: CRH>() -> Vec<u8> {
+    C::Output::default().to_bytes_le().unwrap()
+}
+
 #[derive(Derivative)]
 #[derivative(
-    Default(bound = "C: Testnet2Components"),
-    Debug(bound = "C: Testnet2Components"),
-    Clone(bound = "C: Testnet2Components"),
-    PartialEq(bound = "C: Testnet2Components"),
-    Eq(bound = "C: Testnet2Components")
+    Default(bound = "C: Parameters"),
+    Debug(bound = "C: Parameters"),
+    Clone(bound = "C: Parameters"),
+    PartialEq(bound = "C: Parameters"),
+    Eq(bound = "C: Parameters")
 )]
-pub struct Record<C: Testnet2Components> {
+pub struct Record<C: Parameters> {
     pub(crate) owner: Address<C>,
     pub(crate) is_dummy: bool,
     // TODO (raychu86) use AleoAmount which will guard the value range
@@ -52,8 +50,8 @@ pub struct Record<C: Testnet2Components> {
     pub(crate) death_program_id: Vec<u8>,
 
     pub(crate) serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
-    pub(crate) commitment: <C::RecordCommitment as CommitmentScheme>::Output,
-    pub(crate) commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
+    pub(crate) commitment: C::RecordCommitment,
+    pub(crate) commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
 
     #[derivative(PartialEq = "ignore")]
     pub(crate) serial_number_nonce_randomness: Option<[u8; 32]>,
@@ -61,11 +59,7 @@ pub struct Record<C: Testnet2Components> {
     pub(crate) position: Option<u8>,
 }
 
-fn default_program_id<C: CRH>() -> Vec<u8> {
-    C::Output::default().to_bytes_le().unwrap()
-}
-
-impl<C: Testnet2Components> Record<C> {
+impl<C: Parameters> Record<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new_full<R: Rng + CryptoRng>(
         owner: Address<C>,
@@ -116,7 +110,7 @@ impl<C: Testnet2Components> Record<C> {
     ) -> Result<Self, RecordError> {
         let record_time = start_timer!(|| "Generate record");
         // Sample new commitment randomness.
-        let commitment_randomness = <C::RecordCommitment as CommitmentScheme>::Randomness::rand(rng);
+        let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
 
         // Total = 32 + 1 + 8 + 32 + 48 + 48 + 32 = 201 bytes
         let commitment_input = to_bytes_le![
@@ -129,7 +123,7 @@ impl<C: Testnet2Components> Record<C> {
             serial_number_nonce  // 256 bits = 32 bytes
         ]?;
 
-        let commitment = C::record_commitment().commit(&commitment_input, &commitment_randomness)?;
+        let commitment = C::record_commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
 
         end_timer!(record_time);
 
@@ -155,8 +149,8 @@ impl<C: Testnet2Components> Record<C> {
         birth_program_id: Vec<u8>,
         death_program_id: Vec<u8>,
         serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
-        commitment: <C::RecordCommitment as CommitmentScheme>::Output,
-        commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
+        commitment: C::RecordCommitment,
+        commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Self {
         Self {
             owner,
@@ -180,8 +174,8 @@ impl<C: Testnet2Components> Record<C> {
         private_key: &PrivateKey<C>,
     ) -> Result<
         (
-            <C::AccountSignature as SignatureScheme>::PublicKey,
-            <C::AccountSignature as SignatureScheme>::Randomizer,
+            <C::AccountSignatureScheme as SignatureScheme>::PublicKey,
+            <C::AccountSignatureScheme as SignatureScheme>::Randomizer,
         ),
         RecordError,
     > {
@@ -197,19 +191,19 @@ impl<C: Testnet2Components> Record<C> {
         let seed = FromBytes::read_le(to_bytes_le!(&private_key.sk_prf)?.as_slice())?;
         let input = FromBytes::read_le(to_bytes_le!(self.serial_number_nonce)?.as_slice())?;
         let randomizer = FromBytes::from_bytes_le(&C::PRF::evaluate(&seed, &input)?.to_bytes_le()?)?;
-        let serial_number = C::account_signature().randomize_public_key(&private_key.pk_sig()?, &randomizer)?;
+        let serial_number = C::account_signature_scheme().randomize_public_key(&private_key.pk_sig()?, &randomizer)?;
 
         end_timer!(timer);
         Ok((serial_number, randomizer))
     }
 }
 
-impl<C: Testnet2Components> RecordScheme for Record<C> {
-    type Commitment = <C::RecordCommitment as CommitmentScheme>::Output;
-    type CommitmentRandomness = <C::RecordCommitment as CommitmentScheme>::Randomness;
+impl<C: Parameters> RecordScheme for Record<C> {
+    type Commitment = C::RecordCommitment;
+    type CommitmentRandomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness;
     type Owner = Address<C>;
     type Payload = Payload;
-    type SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey;
+    type SerialNumber = <C::AccountSignatureScheme as SignatureScheme>::PublicKey;
     type SerialNumberNonce = <C::SerialNumberNonceCRH as CRH>::Output;
     type Value = u64;
 
@@ -219,6 +213,10 @@ impl<C: Testnet2Components> RecordScheme for Record<C> {
 
     fn is_dummy(&self) -> bool {
         self.is_dummy
+    }
+
+    fn value(&self) -> Self::Value {
+        self.value
     }
 
     fn payload(&self) -> &Self::Payload {
@@ -248,13 +246,9 @@ impl<C: Testnet2Components> RecordScheme for Record<C> {
     fn commitment_randomness(&self) -> Self::CommitmentRandomness {
         self.commitment_randomness.clone()
     }
-
-    fn value(&self) -> Self::Value {
-        self.value
-    }
 }
 
-impl<C: Testnet2Components> ToBytes for Record<C> {
+impl<C: Parameters> ToBytes for Record<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.owner.write_le(&mut writer)?;
@@ -274,7 +268,7 @@ impl<C: Testnet2Components> ToBytes for Record<C> {
     }
 }
 
-impl<C: Testnet2Components> FromBytes for Record<C> {
+impl<C: Parameters> FromBytes for Record<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let owner: Address<C> = FromBytes::read_le(&mut reader)?;
@@ -299,8 +293,8 @@ impl<C: Testnet2Components> FromBytes for Record<C> {
         }
 
         let serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output = FromBytes::read_le(&mut reader)?;
-        let commitment: <C::RecordCommitment as CommitmentScheme>::Output = FromBytes::read_le(&mut reader)?;
-        let commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness =
+        let commitment: C::RecordCommitment = FromBytes::read_le(&mut reader)?;
+        let commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness =
             FromBytes::read_le(&mut reader)?;
 
         Ok(Self {
@@ -320,7 +314,7 @@ impl<C: Testnet2Components> FromBytes for Record<C> {
     }
 }
 
-impl<C: Testnet2Components> FromStr for Record<C> {
+impl<C: Parameters> FromStr for Record<C> {
     type Err = RecordError;
 
     fn from_str(record: &str) -> Result<Self, Self::Err> {
@@ -328,7 +322,7 @@ impl<C: Testnet2Components> FromStr for Record<C> {
     }
 }
 
-impl<C: Testnet2Components> fmt::Display for Record<C> {
+impl<C: Parameters> fmt::Display for Record<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

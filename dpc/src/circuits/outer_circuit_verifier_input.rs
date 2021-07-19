@@ -14,42 +14,36 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet2::{inner_circuit_verifier_input::InnerCircuitVerifierInput, Testnet2Components};
+use crate::{InnerCircuitVerifierInput, Parameters};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH},
+    traits::{CommitmentScheme, MerkleParameters, CRH},
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::ToBytes;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Testnet2Components"))]
-pub struct OuterCircuitVerifierInput<C: Testnet2Components> {
+#[derivative(Clone(bound = "C: Parameters"))]
+pub struct OuterCircuitVerifierInput<C: Parameters> {
     pub inner_snark_verifier_input: InnerCircuitVerifierInput<C>,
     pub inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
 }
 
-impl<C: Testnet2Components> ToConstraintField<C::OuterScalarField> for OuterCircuitVerifierInput<C>
+impl<C: Parameters> ToConstraintField<C::OuterScalarField> for OuterCircuitVerifierInput<C>
 where
-    C::ProgramIDCommitment: ToConstraintField<C::OuterScalarField>,
-    <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::OuterScalarField>,
+    <C::ProgramCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::OuterScalarField>,
     <C::ProgramIDCRH as CRH>::Parameters: ToConstraintField<C::OuterScalarField>,
-
     <C::InnerCircuitIDCRH as CRH>::Parameters: ToConstraintField<C::OuterScalarField>,
     <C::InnerCircuitIDCRH as CRH>::Output: ToConstraintField<C::OuterScalarField>,
 
-    <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
-    <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <<C::LedgerMerkleTreeParameters as MerkleParameters>::H as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
-    MerkleTreeDigest<C::LedgerMerkleTreeParameters>: ToConstraintField<C::InnerScalarField>,
+    <C::AccountCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
+    <<C::RecordCommitmentTreeParameters as MerkleParameters>::H as CRH>::Parameters:
+        ToConstraintField<C::InnerScalarField>,
+    MerkleTreeDigest<C::RecordCommitmentTreeParameters>: ToConstraintField<C::InnerScalarField>,
 {
     fn to_field_elements(&self) -> Result<Vec<C::OuterScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
-        v.extend_from_slice(&C::program_id_commitment().to_field_elements()?);
+        v.extend_from_slice(&C::program_commitment_scheme().to_field_elements()?);
         v.extend_from_slice(&C::program_id_crh().parameters().to_field_elements()?);
         v.extend_from_slice(&C::inner_circuit_id_crh().parameters().to_field_elements()?);
 
@@ -63,7 +57,6 @@ where
             )?);
         }
 
-        v.extend_from_slice(&self.inner_snark_verifier_input.program_commitment.to_field_elements()?);
         v.extend_from_slice(&self.inner_circuit_id.to_field_elements()?);
         Ok(v)
     }

@@ -35,7 +35,7 @@ pub enum SynthesisError {
     /// During proof generation, we encountered an I/O error with the CRS
     IoError(io::Error),
     /// During verification, our verifying key was malformed.
-    MalformedVerifyingKey,
+    MalformedVerifyingKey(usize, usize),
     /// During CRS generation, we observed an unconstrained auxiliary variable
     UnconstrainedVariable,
 }
@@ -55,7 +55,7 @@ impl Error for SynthesisError {
             SynthesisError::PolynomialDegreeTooLarge => "polynomial degree is too large",
             SynthesisError::UnexpectedIdentity => "encountered an identity element in the CRS",
             SynthesisError::IoError(_) => "encountered an I/O error",
-            SynthesisError::MalformedVerifyingKey => "malformed verifying key",
+            SynthesisError::MalformedVerifyingKey(_, _) => "malformed verifying key",
             SynthesisError::UnconstrainedVariable => "auxiliary variable was unconstrained",
         }
     }

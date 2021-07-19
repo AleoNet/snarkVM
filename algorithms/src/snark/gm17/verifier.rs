@@ -49,7 +49,10 @@ pub fn verify_proof<E: PairingEngine>(
     public_inputs: &[E::Fr],
 ) -> Result<bool, SynthesisError> {
     if (public_inputs.len() + 1) != pvk.query().len() {
-        return Err(SynthesisError::MalformedVerifyingKey);
+        return Err(SynthesisError::MalformedVerifyingKey(
+            public_inputs.len() + 1,
+            pvk.query().len(),
+        ));
     }
 
     // e(A*G^{alpha}, B*H^{beta}) = e(G^{alpha}, H^{beta}) * e(G^{psi}, H^{gamma}) *

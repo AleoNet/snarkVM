@@ -23,6 +23,9 @@ use std::fmt::Debug;
 #[derive(Debug, Error)]
 pub enum StorageError {
     #[error("{}", _0)]
+    AnyhowError(#[from] anyhow::Error),
+
+    #[error("{}", _0)]
     BlockError(#[from] BlockError),
 
     #[error("{}: {}", _0, _1)]

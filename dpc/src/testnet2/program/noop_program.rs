@@ -15,9 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet2::{Execution, LocalData, NoopCircuit, ProgramLocalData, ProgramSNARKUniversalSRS, Testnet2Components},
-    DPCComponents,
+    testnet2::{NoopCircuit, ProgramSNARKUniversalSRS, Testnet2Components},
+    Execution,
+    LocalData,
+    Parameters,
     ProgramError,
+    ProgramLocalData,
     ProgramScheme,
     RecordScheme,
 };
@@ -27,10 +30,10 @@ use snarkvm_parameters::{
     testnet2::{NoopProgramSNARKPKParameters, NoopProgramSNARKVKParameters},
     Parameter,
 };
+use snarkvm_r1cs::ToConstraintField;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::{CryptoRng, Rng};
-use snarkvm_r1cs::ToConstraintField;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet2Components"), Debug(bound = "C: Testnet2Components"))]
@@ -38,38 +41,35 @@ pub struct NoopProgram<C: Testnet2Components> {
     #[derivative(Default(value = "vec![0u8; 48]"))]
     id: Vec<u8>,
     #[derivative(Debug = "ignore")]
-    proving_key: <<C as Testnet2Components>::NoopProgramSNARK as SNARK>::ProvingKey,
+    proving_key: <<C as Testnet2Components>::ProgramSNARK as SNARK>::ProvingKey,
     #[derivative(Debug = "ignore")]
-    verifying_key: <<C as Testnet2Components>::NoopProgramSNARK as SNARK>::VerifyingKey,
+    verifying_key: <<C as Testnet2Components>::ProgramSNARK as SNARK>::VerifyingKey,
 }
 
-impl<C: Testnet2Components> ProgramScheme for NoopProgram<C>
-where
-    <C::NoopProgramSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
-{
+impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
     type Execution = Execution<Self::ProofSystem>;
     type ID = Vec<u8>;
     type LocalData = LocalData<C>;
-    type LocalDataCommitment = C::LocalDataCommitment;
+    type LocalDataCommitment = C::LocalDataCommitmentScheme;
     type ProgramIDCRH = C::ProgramIDCRH;
-    type ProofSystem = <C as Testnet2Components>::NoopProgramSNARK;
+    type ProofSystem = <C as Testnet2Components>::ProgramSNARK;
     type ProvingKey = <Self::ProofSystem as SNARK>::ProvingKey;
     type PublicInput = ();
     type VerifyingKey = <Self::ProofSystem as SNARK>::VerifyingKey;
 
     /// Initializes a new instance of the noop program.
-    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, ProgramError> {
+    fn setup<R: Rng + CryptoRng>(_rng: &mut R) -> Result<Self, ProgramError> {
         let universal_srs: UniversalSRS<C::InnerScalarField, C::PolynomialCommitment> =
             ProgramSNARKUniversalSRS::<C>::load()?.0.clone();
 
         let (proving_key, prepared_verifying_key) =
-            <Self::ProofSystem as SNARK>::setup(&(NoopCircuit::blank(), universal_srs), rng)?;
+            <Self::ProofSystem as SNARK>::index(&NoopCircuit::<C>::blank(), &universal_srs)?;
         let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
 
         let verifying_key_group_elements = verifying_key.to_field_elements()?;
 
         // Compute the program ID.
-        let id = <C as DPCComponents>::program_id_crh()
+        let id = <C as Parameters>::program_id_crh()
             .hash_field_elements(&verifying_key_group_elements)?
             .to_bytes_le()?;
 
@@ -92,7 +92,7 @@ where
         let verifying_key_group_elements = verifying_key.to_field_elements()?;
 
         // Compute the program ID.
-        let id = <C as DPCComponents>::program_id_crh()
+        let id = <C as Parameters>::program_id_crh()
             .hash_field_elements(&verifying_key_group_elements)?
             .to_bytes_le()?;
 
@@ -103,7 +103,7 @@ where
         })
     }
 
-    fn execute<R: Rng>(
+    fn execute<R: Rng + CryptoRng>(
         &self,
         local_data: &Self::LocalData,
         position: u8,
@@ -171,8 +171,8 @@ impl<C: Testnet2Components> NoopProgram<C> {
     pub fn to_snark_parameters(
         &self,
     ) -> (
-        <<C as Testnet2Components>::NoopProgramSNARK as SNARK>::ProvingKey,
-        <<C as Testnet2Components>::NoopProgramSNARK as SNARK>::VerifyingKey,
+        <<C as Testnet2Components>::ProgramSNARK as SNARK>::ProvingKey,
+        <<C as Testnet2Components>::ProgramSNARK as SNARK>::VerifyingKey,
     ) {
         (self.proving_key.clone(), self.verifying_key.clone())
     }

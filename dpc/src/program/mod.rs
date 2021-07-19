@@ -14,11 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod inner_circuit;
-pub use inner_circuit::*;
+pub mod execution;
+pub use execution::*;
 
-pub mod inner_circuit_gadget;
-pub use inner_circuit_gadget::*;
-
-pub mod inner_circuit_verifier_input;
-pub use inner_circuit_verifier_input::*;
+pub mod local_data;
+pub use local_data::*;

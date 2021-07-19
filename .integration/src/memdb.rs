@@ -18,7 +18,6 @@ use crate::NUM_COLS;
 use snarkvm_dpc::prelude::*;
 
 use parking_lot::RwLock;
-
 use std::{collections::HashMap, path::Path};
 
 #[allow(clippy::type_complexity)]

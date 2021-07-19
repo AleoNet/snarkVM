@@ -46,9 +46,6 @@ pub use ledger::*;
 pub mod memdb;
 pub use memdb::*;
 
-pub mod storage;
-pub use storage::*;
-
 pub mod testnet1;
 pub use testnet1::*;
 

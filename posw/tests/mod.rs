@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::traits::SNARK;
-use snarkvm_curves::bls12_377::Bls12_377;
+use snarkvm_curves::bls12_377::{Bls12_377, Fr};
 use snarkvm_dpc::block::PedersenMerkleRootHash;
 use snarkvm_posw::{txids_to_roots, Marlin, PoswMarlin};
 use snarkvm_utilities::FromBytes;
@@ -88,7 +88,8 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
         // Load the PoSW Marlin parameters.
         let rng = &mut rand_xorshift::XorShiftRng::seed_from_u64(1234567);
         // Run the universal setup.
-        let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(10000, 10000, 100000, rng).unwrap();
+        let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
+        let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(max_degree, rng).unwrap();
         // Run the circuit setup.
         PoswMarlin::index(universal_srs).unwrap()
     };

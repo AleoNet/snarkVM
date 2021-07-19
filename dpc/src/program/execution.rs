@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet2::Testnet2Components;
-use snarkvm_algorithms::{traits::CRH, SNARK};
+use crate::Parameters;
+use snarkvm_algorithms::SNARK;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
 /// Program verifying key and proof.
@@ -26,19 +26,16 @@ pub struct Execution<S: SNARK> {
     pub proof: S::Proof,
 }
 
-pub struct ProgramLocalData<C: Testnet2Components> {
-    pub local_data_root: <C::LocalDataCRH as CRH>::Output,
+pub struct ProgramLocalData<C: Parameters> {
+    pub local_data_root: C::LocalDataDigest,
     pub position: u8,
 }
 
 /// Convert each component to bytes and pack into field elements.
-impl<C: Testnet2Components> ToConstraintField<C::InnerScalarField> for ProgramLocalData<C>
-where
-    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-{
+impl<C: Parameters> ToConstraintField<C::InnerScalarField> for ProgramLocalData<C> {
     fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
         let mut v = ToConstraintField::<C::InnerScalarField>::to_field_elements(&[self.position][..])?;
-        v.extend_from_slice(&C::local_data_commitment().to_field_elements()?);
+        v.extend_from_slice(&C::local_data_commitment_scheme().to_field_elements()?);
         v.extend_from_slice(&self.local_data_root.to_field_elements()?);
         Ok(v)
     }

@@ -20,6 +20,9 @@ use std::fmt::Debug;
 
 #[derive(Debug, Error)]
 pub enum BlockError {
+    #[error("{}", _0)]
+    AnyhowError(#[from] anyhow::Error),
+
     #[error("block already exists {}", _0)]
     BlockExists(String),
 

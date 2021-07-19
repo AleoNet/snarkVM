@@ -15,14 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet2::{
-        payload::Payload,
-        record::{encoded::*, Record},
-        Testnet2Components,
-    },
-    traits::{DPCComponents, EncodedRecordScheme, RecordScheme},
+    record::encoded::*,
     Address,
     DPCError,
+    EncodedRecordScheme,
+    Parameters,
+    Payload,
+    Record,
+    RecordScheme,
     ViewKey,
 };
 use snarkvm_algorithms::{
@@ -44,15 +44,15 @@ use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
 
-type BaseField<T> = <<T as Testnet2Components>::EncryptionParameters as ModelParameters>::BaseField;
+type BaseField<T> = <<T as Parameters>::EncryptionParameters as ModelParameters>::BaseField;
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: Testnet2Components"),
-    PartialEq(bound = "C: Testnet2Components"),
-    Eq(bound = "C: Testnet2Components")
+    Clone(bound = "C: Parameters"),
+    PartialEq(bound = "C: Parameters"),
+    Eq(bound = "C: Parameters")
 )]
-pub struct RecordEncryptionGadgetComponents<C: Testnet2Components> {
+pub struct RecordEncryptionGadgetComponents<C: Parameters> {
     /// Record field element representations
     pub record_field_elements: Vec<<C::EncryptionParameters as ModelParameters>::BaseField>,
     /// Record group element encodings - Represented in (x,y) affine coordinates
@@ -62,10 +62,10 @@ pub struct RecordEncryptionGadgetComponents<C: Testnet2Components> {
     /// Record fq high selectors - Used for plaintext serialization/deserialization
     pub fq_high_selectors: Vec<bool>,
     /// Record ciphertext blinding exponents used to encrypt the record
-    pub encryption_blinding_exponents: Vec<<C::AccountEncryption as EncryptionScheme>::BlindingExponent>,
+    pub encryption_blinding_exponents: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::BlindingExponent>,
 }
 
-impl<C: Testnet2Components> Default for RecordEncryptionGadgetComponents<C> {
+impl<C: Parameters> Default for RecordEncryptionGadgetComponents<C> {
     fn default() -> Self {
         // TODO (raychu86) Fix the lengths to be generic
         let record_encoding_length = 7;
@@ -79,7 +79,7 @@ impl<C: Testnet2Components> Default for RecordEncryptionGadgetComponents<C> {
         let fq_high_selectors = vec![false; record_encoding_length];
 
         let encryption_blinding_exponents =
-            vec![<C::AccountEncryption as EncryptionScheme>::BlindingExponent::default(); record_encoding_length];
+            vec![<C::AccountEncryptionScheme as EncryptionScheme>::BlindingExponent::default(); record_encoding_length];
 
         Self {
             record_field_elements,
@@ -93,17 +93,17 @@ impl<C: Testnet2Components> Default for RecordEncryptionGadgetComponents<C> {
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: Testnet2Components"),
-    PartialEq(bound = "C: Testnet2Components"),
-    Eq(bound = "C: Testnet2Components"),
-    Debug(bound = "C: Testnet2Components")
+    Clone(bound = "C: Parameters"),
+    PartialEq(bound = "C: Parameters"),
+    Eq(bound = "C: Parameters"),
+    Debug(bound = "C: Parameters")
 )]
-pub struct EncryptedRecord<C: Testnet2Components> {
-    pub encrypted_elements: Vec<<<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Text>,
+pub struct EncryptedRecord<C: Parameters> {
+    pub encrypted_elements: Vec<<<C as Parameters>::AccountEncryptionScheme as EncryptionScheme>::Text>,
     pub final_fq_high_selector: bool,
 }
 
-impl<C: Testnet2Components> EncryptedRecord<C> {
+impl<C: Parameters> EncryptedRecord<C> {
     /// Encrypt the given vector of records and returns
     /// 1. Encryption randomness
     /// 2. Encrypted record
@@ -113,7 +113,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
     ) -> Result<
         (
             Self,
-            <<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Randomness,
+            <<C as Parameters>::AccountEncryptionScheme as EncryptionScheme>::Randomness,
         ),
         DPCError,
     > {
@@ -125,7 +125,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
         for element in encoded_record.encoded_elements.iter() {
             // Construct the plaintext element from the serialized group elements
             // This value will be used in the inner circuit to validate the encryption
-            let plaintext_element = <<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Text::read_le(
+            let plaintext_element = <<C as Parameters>::AccountEncryptionScheme as EncryptionScheme>::Text::read_le(
                 &to_bytes_le![element]?[..],
             )?;
             record_plaintexts.push(plaintext_element);
@@ -133,9 +133,9 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
 
         // Encrypt the record plaintext
         let record_public_key = record.owner().into_repr();
-        let encryption_randomness = C::account_encryption().generate_randomness(record_public_key, rng)?;
+        let encryption_randomness = C::account_encryption_scheme().generate_randomness(record_public_key, rng)?;
         let encrypted_record =
-            C::account_encryption().encrypt(record_public_key, &encryption_randomness, &record_plaintexts)?;
+            C::account_encryption_scheme().encrypt(record_public_key, &encryption_randomness, &record_plaintexts)?;
 
         let encrypted_record = Self {
             encrypted_elements: encrypted_record,
@@ -149,11 +149,11 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
     pub fn decrypt(&self, account_view_key: &ViewKey<C>) -> Result<Record<C>, DPCError> {
         // Decrypt the encrypted record
         let plaintext_elements =
-            C::account_encryption().decrypt(&account_view_key.decryption_key, &self.encrypted_elements)?;
+            C::account_encryption_scheme().decrypt(&account_view_key.decryption_key, &self.encrypted_elements)?;
 
         let mut plaintext = Vec::with_capacity(plaintext_elements.len());
         for element in plaintext_elements {
-            let plaintext_element = <C as Testnet2Components>::EncryptionGroup::read_le(&to_bytes_le![element]?[..])?;
+            let plaintext_element = <C as Parameters>::EncryptionGroup::read_le(&to_bytes_le![element]?[..])?;
 
             plaintext.push(plaintext_element);
         }
@@ -161,8 +161,8 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
         // Deserialize the plaintext record into record components
         let encoded_record = EncodedRecord::<
             C,
-            <C as Testnet2Components>::EncryptionParameters,
-            <C as Testnet2Components>::EncryptionGroup,
+            <C as Parameters>::EncryptionParameters,
+            <C as Parameters>::EncryptionGroup,
         >::new(plaintext, self.final_fq_high_selector);
         let record_components = encoded_record.decode()?;
 
@@ -201,7 +201,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
             serial_number_nonce
         ]?;
 
-        let commitment = C::record_commitment().commit(&commitment_input, &commitment_randomness)?;
+        let commitment = C::record_commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
 
         Ok(Record::from(
             owner,
@@ -218,25 +218,23 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
 
     /// Returns the encrypted record hash.
     /// The hash input is the ciphertext x-coordinates appended with the selector bits.
-    pub fn to_hash(&self) -> Result<<<C as DPCComponents>::EncryptedRecordCRH as CRH>::Output, DPCError> {
+    pub fn to_hash(&self) -> Result<<<C as Parameters>::EncryptedRecordCRH as CRH>::Output, DPCError> {
         let mut ciphertext_affine_x = Vec::with_capacity(self.encrypted_elements.len());
         let mut selector_bits = Vec::with_capacity(self.encrypted_elements.len() + 1);
         for ciphertext_element in &self.encrypted_elements {
             // Compress the ciphertext element to the affine x coordinate
             let ciphertext_element_affine =
-                <C as Testnet2Components>::EncryptionGroup::read_le(&to_bytes_le![ciphertext_element]?[..])?
-                    .into_affine();
+                <C as Parameters>::EncryptionGroup::read_le(&to_bytes_le![ciphertext_element]?[..])?.into_affine();
             let ciphertext_x_coordinate = ciphertext_element_affine.to_x_coordinate();
 
             // Fetch the ciphertext selector bit
-            let selector =
-                match <<C as Testnet2Components>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
-                    ciphertext_x_coordinate,
-                    true,
-                ) {
-                    Some(affine) => ciphertext_element_affine == affine,
-                    None => false,
-                };
+            let selector = match <<C as Parameters>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
+                ciphertext_x_coordinate,
+                true,
+            ) {
+                Some(affine) => ciphertext_element_affine == affine,
+                None => false,
+            };
 
             selector_bits.push(selector);
             ciphertext_affine_x.push(ciphertext_x_coordinate);
@@ -258,7 +256,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
     /// 5. Record ciphertext blinding exponents used to encrypt the record
     pub fn prepare_encryption_gadget_components(
         record: &Record<C>,
-        encryption_randomness: &<<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Randomness,
+        encryption_randomness: &<<C as Parameters>::AccountEncryptionScheme as EncryptionScheme>::Randomness,
     ) -> Result<RecordEncryptionGadgetComponents<C>, DPCError> {
         // Serialize the record into group elements and fq_high bits
         let encoded_record = EncodedRecord::<C, C::EncryptionParameters, C::EncryptionGroup>::encode(record)?;
@@ -300,15 +298,15 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
             if i == 0 {
                 // Serial number nonce
                 let record_field_element =
-                    <<C as Testnet2Components>::EncryptionParameters as ModelParameters>::BaseField::read_le(
+                    <<C as Parameters>::EncryptionParameters as ModelParameters>::BaseField::read_le(
                         &to_bytes_le![element]?[..],
                     )?;
                 record_field_elements.push(record_field_element);
             } else {
                 // Decode the encoded groups into their respective field elements
                 let record_field_element = Elligator2::<
-                    <C as Testnet2Components>::EncryptionParameters,
-                    <C as Testnet2Components>::EncryptionGroup,
+                    <C as Parameters>::EncryptionParameters,
+                    <C as Parameters>::EncryptionGroup,
                 >::decode(&element_affine, *fq_high)?;
 
                 record_field_elements.push(record_field_element);
@@ -316,17 +314,17 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
 
             // Fetch the x and y coordinates of the serialized group elements
             // These values will be used in the inner circuit to validate the Elligator2 encoding
-            let x = <<C as Testnet2Components>::EncryptionParameters as ModelParameters>::BaseField::read_le(
+            let x = <<C as Parameters>::EncryptionParameters as ModelParameters>::BaseField::read_le(
                 &to_bytes_le![element_affine.to_x_coordinate()]?[..],
             )?;
-            let y = <<C as Testnet2Components>::EncryptionParameters as ModelParameters>::BaseField::read_le(
+            let y = <<C as Parameters>::EncryptionParameters as ModelParameters>::BaseField::read_le(
                 &to_bytes_le![element_affine.to_y_coordinate()]?[..],
             )?;
             record_group_encoding.push((x, y));
 
             // Construct the plaintext element from the serialized group elements
             // This value will be used in the inner circuit to validate the encryption
-            let plaintext_element = <<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Text::read_le(
+            let plaintext_element = <<C as Parameters>::AccountEncryptionScheme as EncryptionScheme>::Text::read_le(
                 &to_bytes_le![element]?[..],
             )?;
             record_plaintexts.push(plaintext_element);
@@ -334,32 +332,30 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
 
         // Encrypt the record plaintext
         let record_public_key = record.owner().into_repr();
-        let encryption_blinding_exponents = C::account_encryption().generate_blinding_exponents(
+        let encryption_blinding_exponents = C::account_encryption_scheme().generate_blinding_exponents(
             record_public_key,
             encryption_randomness,
             record_plaintexts.len(),
         )?;
 
         let encrypted_record =
-            C::account_encryption().encrypt(record_public_key, &encryption_randomness, &record_plaintexts)?;
+            C::account_encryption_scheme().encrypt(record_public_key, &encryption_randomness, &record_plaintexts)?;
 
         // Compute the compressed ciphertext selector bits
         let mut ciphertext_selectors = Vec::with_capacity(encrypted_record.len());
         for ciphertext_element in encrypted_record.iter() {
             // Compress the ciphertext element to the affine x coordinate
             let ciphertext_element_affine =
-                <C as Testnet2Components>::EncryptionGroup::read_le(&to_bytes_le![ciphertext_element]?[..])?
-                    .into_affine();
+                <C as Parameters>::EncryptionGroup::read_le(&to_bytes_le![ciphertext_element]?[..])?.into_affine();
 
             // Fetch the ciphertext selector bit
-            let selector =
-                match <<C as Testnet2Components>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
-                    ciphertext_element_affine.to_x_coordinate(),
-                    true,
-                ) {
-                    Some(affine) => ciphertext_element_affine == affine,
-                    None => false,
-                };
+            let selector = match <<C as Parameters>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
+                ciphertext_element_affine.to_x_coordinate(),
+                true,
+            ) {
+                Some(affine) => ciphertext_element_affine == affine,
+                None => false,
+            };
 
             ciphertext_selectors.push(selector);
         }
@@ -374,7 +370,7 @@ impl<C: Testnet2Components> EncryptedRecord<C> {
     }
 }
 
-impl<C: Testnet2Components> ToBytes for EncryptedRecord<C> {
+impl<C: Parameters> ToBytes for EncryptedRecord<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         let mut ciphertext_selectors = Vec::with_capacity(self.encrypted_elements.len() + 1);
@@ -384,20 +380,18 @@ impl<C: Testnet2Components> ToBytes for EncryptedRecord<C> {
         for ciphertext_element in &self.encrypted_elements {
             // Compress the ciphertext representation to the affine x-coordinate and the selector bit
             let ciphertext_element_affine =
-                <C as Testnet2Components>::EncryptionGroup::read_le(&to_bytes_le![ciphertext_element]?[..])?
-                    .into_affine();
+                <C as Parameters>::EncryptionGroup::read_le(&to_bytes_le![ciphertext_element]?[..])?.into_affine();
 
             let x_coordinate = ciphertext_element_affine.to_x_coordinate();
             x_coordinate.write_le(&mut writer)?;
 
-            let selector =
-                match <<C as Testnet2Components>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
-                    x_coordinate,
-                    true,
-                ) {
-                    Some(affine) => ciphertext_element_affine == affine,
-                    None => false,
-                };
+            let selector = match <<C as Parameters>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
+                x_coordinate,
+                true,
+            ) {
+                Some(affine) => ciphertext_element_affine == affine,
+                None => false,
+            };
 
             ciphertext_selectors.push(selector);
         }
@@ -412,14 +406,14 @@ impl<C: Testnet2Components> ToBytes for EncryptedRecord<C> {
     }
 }
 
-impl<C: Testnet2Components> FromBytes for EncryptedRecord<C> {
+impl<C: Parameters> FromBytes for EncryptedRecord<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the ciphertext x coordinates
         let num_ciphertext_elements = read_variable_length_integer(&mut reader)?;
         let mut ciphertext_x_coordinates = Vec::with_capacity(num_ciphertext_elements);
         for _ in 0..num_ciphertext_elements {
-            let ciphertext_element_x_coordinate: <<<C as Testnet2Components>::EncryptionGroup as ProjectiveCurve>::Affine as AffineCurve>::BaseField =
+            let ciphertext_element_x_coordinate: <<<C as Parameters>::EncryptionGroup as ProjectiveCurve>::Affine as AffineCurve>::BaseField =
                 FromBytes::read_le(&mut reader)?;
             ciphertext_x_coordinates.push(ciphertext_element_x_coordinate);
         }
@@ -437,7 +431,7 @@ impl<C: Testnet2Components> FromBytes for EncryptedRecord<C> {
         let mut ciphertext = Vec::with_capacity(ciphertext_x_coordinates.len());
         for (x_coordinate, ciphertext_selector_bit) in ciphertext_x_coordinates.iter().zip_eq(ciphertext_selectors) {
             let ciphertext_element_affine =
-                match <<C as Testnet2Components>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
+                match <<C as Parameters>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
                     *x_coordinate,
                     ciphertext_selector_bit,
                 ) {
@@ -445,7 +439,7 @@ impl<C: Testnet2Components> FromBytes for EncryptedRecord<C> {
                     None => return Err(Error::new(ErrorKind::Other, "Could not read ciphertext")),
                 };
 
-            let ciphertext_element: <C::AccountEncryption as EncryptionScheme>::Text =
+            let ciphertext_element: <C::AccountEncryptionScheme as EncryptionScheme>::Text =
                 FromBytes::read_le(&to_bytes_le![ciphertext_element_affine.into_projective()]?[..])?;
 
             ciphertext.push(ciphertext_element);

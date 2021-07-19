@@ -56,6 +56,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 4 || args[1] == "-h" || args[1] == "--help" {
         println!("\nHelp: Invoke this as <program> <num_inputs> <num_constraints> <output_file_path>\n");
+        process::exit(1);
     }
     let num_inputs: usize = args[1].parse().unwrap();
     let num_constraints: usize = args[2].parse().unwrap();
