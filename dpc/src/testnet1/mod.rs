@@ -267,6 +267,32 @@ where
             end_timer!(output_record_time);
         }
 
+        // Generate Schnorr signature on transaction data.
+        let signature_time = start_timer!(|| "Sign and randomize signature");
+
+        let signature_message = to_bytes_le![
+            C::NETWORK_ID,
+            old_serial_numbers,
+            new_commitments,
+            value_balance,
+            memorandum
+        ]?;
+
+        let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+        for i in 0..C::NUM_INPUT_RECORDS {
+            // Randomize the private key.
+            let randomized_private_key =
+                C::account_signature().randomize_private_key(&old_private_keys[i].sk_sig, &old_randomizers[i])?;
+
+            // Sign the transaction data.
+            let randomized_signature =
+                C::account_signature().sign_randomized(&randomized_private_key, &signature_message, rng)?;
+
+            signatures.push(randomized_signature);
+        }
+
+        end_timer!(signature_time);
+
         // TODO (raychu86): Add index and program register inputs + outputs to local data commitment leaves
         let local_data_merkle_tree_timer = start_timer!(|| "Compute local data merkle tree");
 
@@ -340,7 +366,6 @@ where
         Ok(TransactionKernel {
             old_records,
             old_serial_numbers,
-            old_randomizers,
 
             new_records,
             new_sn_nonce_randomness,
@@ -358,6 +383,7 @@ where
             value_balance,
             memorandum,
             network_id: C::NETWORK_ID,
+            signatures,
         })
     }
 
@@ -377,7 +403,6 @@ where
         let TransactionKernel {
             old_records,
             old_serial_numbers,
-            old_randomizers,
 
             new_records,
             new_sn_nonce_randomness,
@@ -394,6 +419,7 @@ where
             value_balance,
             memorandum,
             network_id,
+            signatures,
         } = transaction_kernel;
 
         let local_data_root = local_data_merkle_tree.root();
@@ -414,36 +440,6 @@ where
                 old_witnesses.push(witness);
             }
         }
-
-        // Generate Schnorr signature on transaction data
-        // TODO (raychu86): Remove ledger_digest from signature and move the schnorr signing into `execute_offline_phase`
-        let signature_time = start_timer!(|| "Sign and randomize transaction contents");
-
-        let signature_message = to_bytes_le![
-            network_id,
-            ledger_digest,
-            old_serial_numbers,
-            new_commitments,
-            program_commitment,
-            local_data_root,
-            value_balance,
-            memorandum
-        ]?;
-
-        let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for i in 0..C::NUM_INPUT_RECORDS {
-            // Randomize the private key.
-            let randomized_private_key =
-                C::account_signature().randomize_private_key(&old_private_keys[i].sk_sig, &old_randomizers[i])?;
-
-            // Sign the transaction data.
-            let randomized_signature =
-                C::account_signature().sign_randomized(&randomized_private_key, &signature_message, rng)?;
-
-            signatures.push(randomized_signature);
-        }
-
-        end_timer!(signature_time);
 
         // Prepare record encryption components used in the inner SNARK
 
@@ -496,8 +492,8 @@ where
                 new_commitments: new_commitments.clone(),
                 new_encrypted_record_hashes: new_encrypted_record_hashes.clone(),
                 memo: memorandum,
-                program_commitment: program_commitment.clone(),
-                local_data_root: local_data_root.clone(),
+                program_commitment: Some(program_commitment.clone()),
+                local_data_root: Some(local_data_root.clone()),
                 value_balance,
                 network_id,
             };
@@ -540,16 +536,14 @@ where
         };
 
         let transaction = Self::Transaction::new(
+            Network::from_id(network_id),
             old_serial_numbers,
             new_commitments,
             memorandum,
             ledger_digest,
             inner_circuit_id,
             transaction_proof,
-            program_commitment,
-            local_data_root,
             value_balance,
-            Network::from_id(network_id),
             signatures,
             new_encrypted_records,
         );
@@ -622,11 +616,8 @@ where
 
         let signature_message = match to_bytes_le![
             transaction.network_id(),
-            transaction.ledger_digest(),
             transaction.old_serial_numbers(),
             transaction.new_commitments(),
-            transaction.program_commitment(),
-            transaction.local_data_root(),
             transaction.value_balance(),
             transaction.memorandum()
         ] {
@@ -680,8 +671,8 @@ where
             new_commitments: transaction.new_commitments().to_vec(),
             new_encrypted_record_hashes,
             memo: *transaction.memorandum(),
-            program_commitment: transaction.program_commitment().clone(),
-            local_data_root: transaction.local_data_root().clone(),
+            program_commitment: None,
+            local_data_root: None,
             value_balance: transaction.value_balance(),
             network_id: transaction.network_id(),
         };
@@ -719,8 +710,8 @@ where
                     return false;
                 }
             }
-            _ => {
-                eprintln!("Unable to verify transaction proof.");
+            Err(error) => {
+                eprintln!("Unable to verify transaction proof: {:?}", error);
                 return false;
             }
         }

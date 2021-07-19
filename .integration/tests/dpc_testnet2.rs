@@ -147,7 +147,7 @@ fn dpc_testnet2_integration_test() {
     }
 
     // Offline execution to generate a DPC transaction kernel.
-    let memo = [4u8; 32];
+    let memo = [4u8; 64];
     let transaction_kernel = <Testnet2TransactionEngine as DPCScheme<L>>::execute_offline_phase(
         &dpc,
         &old_private_keys,
@@ -285,7 +285,7 @@ fn test_testnet_2_transaction_kernel_serialization() {
     }
 
     // Generate transaction kernel
-    let memo = [0u8; 32];
+    let memo = [0u8; 64];
     let transaction_kernel = <Testnet2TransactionEngine as DPCScheme<L>>::execute_offline_phase(
         &dpc,
         &old_private_keys,
@@ -386,7 +386,7 @@ fn test_testnet2_dpc_execute_constraints() {
         );
     }
 
-    let memo = [0u8; 32];
+    let memo = [0u8; 64];
     let transaction_kernel = <Testnet2TransactionEngine as DPCScheme<L>>::execute_offline_phase(
         &dpc,
         &old_private_keys,
@@ -422,7 +422,6 @@ fn test_testnet2_dpc_execute_constraints() {
     let TransactionKernel {
         old_records,
         old_serial_numbers,
-        old_randomizers: _,
 
         new_records,
         new_sn_nonce_randomness,
@@ -439,6 +438,7 @@ fn test_testnet2_dpc_execute_constraints() {
         value_balance,
         memorandum,
         network_id,
+        signatures: _,
     } = transaction_kernel;
 
     let local_data_root = local_data_merkle_tree.root();
@@ -511,7 +511,7 @@ fn test_testnet2_dpc_execute_constraints() {
         println!("=========================================================");
         let num_constraints = inner_circuit_cs.num_constraints();
         println!("Inner circuit num constraints: {:?}", num_constraints);
-        assert_eq!(417683, num_constraints);
+        assert_eq!(422669, num_constraints);
         println!("=========================================================");
     }
 
@@ -595,7 +595,7 @@ fn test_testnet2_dpc_execute_constraints() {
         println!("=========================================================");
         let num_constraints = outer_circuit_cs.num_constraints();
         println!("Outer circuit num constraints: {:?}", num_constraints);
-        assert_eq!(834532, num_constraints);
+        assert_eq!(837242, num_constraints);
         println!("=========================================================");
     }
 
