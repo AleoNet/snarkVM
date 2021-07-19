@@ -29,7 +29,7 @@ use snarkvm_dpc::{
     Record,
     TransactionKernel,
 };
-use snarkvm_integration::{memdb::MemDb, storage::*, testnet2::*};
+use snarkvm_integration::{ledger::*, memdb::MemDb, testnet2::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
@@ -69,11 +69,12 @@ fn test_testnet2_inner_circuit_sanity_check() {
 fn dpc_testnet2_integration_test() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
-    // Generate or load parameters for the ledger, commitment schemes, and CRH.
-    let dpc = setup_or_load_parameters::<_>(false, &mut rng);
+    // Generate or load DPC.
+    let dpc = setup_or_load_dpc(false, &mut rng);
 
     // Generate accounts.
-    let [genesis_account, recipient, _] = generate_test_accounts::<_>(&mut rng);
+    let genesis_account = Account::new(&mut rng).unwrap();
+    let recipient = Account::new(&mut rng).unwrap();
 
     // Create a genesis block.
     let genesis_block = Block {

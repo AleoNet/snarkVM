@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::{testnet1::parameters::*, Account, AccountScheme, DPCScheme};
+use snarkvm_dpc::{testnet1::parameters::*, DPCScheme};
 
 use rand::{CryptoRng, Rng};
 
-pub fn setup_or_load_parameters<R: Rng + CryptoRng>(verify_only: bool, rng: &mut R) -> Testnet1DPC {
+pub fn setup_or_load_dpc<R: Rng + CryptoRng>(verify_only: bool, rng: &mut R) -> Testnet1DPC {
     match Testnet1DPC::load(verify_only) {
         Ok(dpc) => dpc,
         Err(err) => {
@@ -26,12 +26,4 @@ pub fn setup_or_load_parameters<R: Rng + CryptoRng>(verify_only: bool, rng: &mut
             Testnet1DPC::setup(rng).expect("DPC setup failed")
         }
     }
-}
-
-pub fn generate_test_accounts<R: Rng + CryptoRng>(rng: &mut R) -> [Account<Testnet1Parameters>; 3] {
-    let genesis_account = Account::new(rng).unwrap();
-    let account_1 = Account::new(rng).unwrap();
-    let account_2 = Account::new(rng).unwrap();
-
-    [genesis_account, account_1, account_2]
 }

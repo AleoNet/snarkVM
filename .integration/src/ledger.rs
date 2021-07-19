@@ -20,6 +20,7 @@ use snarkvm_dpc::prelude::*;
 use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
 
 use parking_lot::RwLock;
+use rand::{thread_rng, Rng};
 use std::{
     collections::HashSet,
     fs,
@@ -30,6 +31,21 @@ use std::{
         Arc,
     },
 };
+
+pub fn random_storage_path() -> String {
+    let random_path: usize = thread_rng().gen();
+    format!("./test_db-{}", random_path)
+}
+
+/// Initializes a test ledger given a genesis block.
+pub fn initialize_test_blockchain<C: Parameters, T: TransactionScheme, S: Storage>(
+    genesis_block: Block<T>,
+) -> Ledger<C, T, S> {
+    let mut path = std::env::temp_dir();
+    path.push(random_storage_path());
+
+    Ledger::new(Some(&path), genesis_block).unwrap()
+}
 
 pub type BlockHeight = u32;
 
