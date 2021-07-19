@@ -54,7 +54,8 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
 
     /// Initializes a new instance of the noop program.
     fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, ProgramError> {
-        let (proving_key, prepared_verifying_key) = <Self::ProofSystem as SNARK>::setup(&NoopCircuit::blank(), rng)?;
+        let (proving_key, prepared_verifying_key) =
+            <Self::ProofSystem as SNARK>::circuit_specific_setup(&NoopCircuit::<C>::blank(), rng)?;
         let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
 
         // Compute the program ID.

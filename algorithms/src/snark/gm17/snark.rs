@@ -34,39 +34,40 @@ use std::marker::PhantomData;
 /// Note: V should serialize its contents to `Vec<E::Fr>` in the same order as
 /// during the constraint generation.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GM17<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, V: ToConstraintField<E::Fr> + ?Sized> {
+pub struct GM17<E: PairingEngine, V: ToConstraintField<E::Fr> + ?Sized> {
     _engine: PhantomData<E>,
-    _circuit: PhantomData<C>,
     _verifier_input: PhantomData<V>,
 }
 
-impl<E: PairingEngine, C: ConstraintSynthesizer<E::Fr>, V: ToConstraintField<E::Fr> + ?Sized> SNARK for GM17<E, C, V> {
-    type AllocatedCircuit = C;
-    type Circuit = C;
+impl<E: PairingEngine, V: ToConstraintField<E::Fr> + ?Sized> SNARK for GM17<E, V> {
+    type BaseField = E::Fq;
     type PreparedVerifyingKey = PreparedVerifyingKey<E>;
     type Proof = Proof<E>;
     type ProvingKey = ProvingKey<E>;
+    type ScalarField = E::Fr;
+    type UniversalSetupConfig = ();
+    type UniversalSetupParameters = ();
     type VerifierInput = V;
     type VerifyingKey = VerifyingKey<E>;
 
-    fn setup<R: Rng>(
-        circuit: &Self::Circuit,
+    fn circuit_specific_setup<C: ConstraintSynthesizer<E::Fr>, R: Rng>(
+        circuit: &C,
         rng: &mut R,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
         let setup_time = start_timer!(|| "{Groth-Maller 2017}::Setup");
-        let pp = generate_random_parameters::<E, Self::Circuit, R>(&circuit, rng)?;
+        let pp = generate_random_parameters::<E, C, R>(&circuit, rng)?;
         let vk = pp.vk.clone();
         end_timer!(setup_time);
         Ok((pp, vk))
     }
 
-    fn prove<R: Rng>(
+    fn prove<C: ConstraintSynthesizer<E::Fr>, R: Rng>(
         proving_key: &Self::ProvingKey,
-        input_and_witness: &Self::AllocatedCircuit,
+        input_and_witness: &C,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         let proof_time = start_timer!(|| "{Groth-Maller 2017}::Prove");
-        let result = create_random_proof::<E, _, _>(input_and_witness, proving_key, rng)?;
+        let result = create_random_proof::<E, C, R>(input_and_witness, proving_key, rng)?;
         end_timer!(proof_time);
         Ok(result)
     }

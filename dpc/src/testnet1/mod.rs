@@ -61,40 +61,30 @@ pub mod dpc;
 pub trait Testnet1Components: DPCComponents {
     /// SNARK for inner circuit proof generation.
     type InnerSNARK: SNARK<
-        Circuit = InnerCircuit<Self>,
-        AllocatedCircuit = InnerCircuit<Self>,
+        ScalarField = Self::InnerScalarField,
+        BaseField = Self::OuterScalarField,
         VerifierInput = InnerCircuitVerifierInput<Self>,
     >;
 
-    /// SNARK verifier gadget for the inner circuit.
-    type InnerSNARKGadget: SNARKVerifierGadget<
-        Self::InnerScalarField,
-        Self::OuterScalarField,
-        Self::InnerSNARK,
-        Input = Vec<Boolean>,
-    >;
+    /// SNARK Verifier gadget for the inner circuit.
+    type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK, Input = Vec<Boolean>>;
 
     /// SNARK for proof-verification checks
     type OuterSNARK: SNARK<
-        Circuit = OuterCircuit<Self>,
-        AllocatedCircuit = OuterCircuit<Self>,
+        ScalarField = Self::OuterScalarField,
+        BaseField = Self::OuterBaseField,
         VerifierInput = OuterCircuitVerifierInput<Self>,
     >;
 
     /// SNARK for the no-op "always-accept" that does nothing with its input.
     type NoopProgramSNARK: SNARK<
-        Circuit = NoopCircuit<Self>,
-        AllocatedCircuit = NoopCircuit<Self>,
+        ScalarField = Self::InnerScalarField,
+        BaseField = Self::OuterScalarField,
         VerifierInput = ProgramLocalData<Self>,
     >;
 
     /// SNARK Verifier gadget for the no-op "always-accept" that does nothing with its input.
-    type NoopProgramSNARKGadget: SNARKVerifierGadget<
-        Self::InnerScalarField,
-        Self::OuterScalarField,
-        Self::NoopProgramSNARK,
-        Input = Vec<Boolean>,
-    >;
+    type NoopProgramSNARKGadget: SNARKVerifierGadget<Self::NoopProgramSNARK, Input = Vec<Boolean>>;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -135,21 +125,21 @@ where
         let setup_time = start_timer!(|| "DPC::setup");
 
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
-        let noop_program = NoopProgram::setup(rng)?;
+        let noop_program = NoopProgram::<C>::setup(rng)?;
         let noop_program_execution = noop_program.execute_blank(rng)?;
         end_timer!(noop_program_timer);
 
         let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");
-        let inner_circuit = InnerCircuit::blank(ledger_parameters);
-        let inner_snark_parameters = C::InnerSNARK::setup(&inner_circuit, rng)?;
+        let inner_circuit = InnerCircuit::<C>::blank(ledger_parameters);
+        let inner_snark_parameters = C::InnerSNARK::circuit_specific_setup(&inner_circuit, rng)?;
         end_timer!(snark_setup_time);
 
         let snark_setup_time = start_timer!(|| "Execute outer SNARK setup");
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = inner_snark_parameters.1.clone().into();
         let inner_snark_proof = C::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, rng)?;
 
-        let outer_snark_parameters = C::OuterSNARK::setup(
-            &OuterCircuit::blank(
+        let outer_snark_parameters = C::OuterSNARK::circuit_specific_setup(
+            &OuterCircuit::<C>::blank(
                 ledger_parameters.clone(),
                 inner_snark_vk,
                 inner_snark_proof,
@@ -509,7 +499,7 @@ where
         let inner_circuit_id = C::inner_circuit_id_crh().hash(&inner_snark_vk.to_bytes_le()?)?;
 
         let transaction_proof = {
-            let circuit = OuterCircuit::new(
+            let circuit = OuterCircuit::<C>::new(
                 ledger.parameters().clone(),
                 ledger_digest.clone(),
                 old_serial_numbers.clone(),

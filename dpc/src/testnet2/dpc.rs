@@ -17,15 +17,13 @@
 use crate::{
     account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_INPUT, ACCOUNT_SIGNATURE_INPUT},
     testnet2::{
-        outer_circuit::OuterCircuit,
         outer_circuit_verifier_input::OuterCircuitVerifierInput,
-        program::{NoopCircuit, ProgramLocalData},
+        program::ProgramLocalData,
         transaction::Transaction,
         Testnet2Components,
         TransactionEngine,
     },
     DPCComponents,
-    InnerCircuit,
     InnerCircuitVerifierInput,
     Network,
 };
@@ -67,6 +65,7 @@ use snarkvm_marlin::{
 use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
 
 use once_cell::sync::OnceCell;
+use snarkvm_polycommit::PolynomialCommitment;
 
 macro_rules! dpc_setup {
     ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
@@ -96,34 +95,39 @@ impl DPCComponents for DPC {
 
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
-    
+
     type InnerCurve = Bls12_377;
     type OuterCurve = BW6_761;
 
     type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
     type OuterScalarField = <Self::OuterCurve as PairingEngine>::Fr;
-    
+    type OuterBaseField = <Self::OuterCurve as PairingEngine>::Fq;
+
     type AccountCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 192>;
     type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 192>;
-    
+    type AccountCommitmentOutput = <Self::AccountCommitment as CommitmentScheme>::Output;
+
     type AccountEncryption = GroupEncryption<EdwardsBls12>;
     type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
 
     type AccountSignature = Schnorr<EdwardsBls12>;
     type AccountSignatureGadget = SchnorrGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
-    
+    type AccountSignaturePublicKey = <Self::AccountSignature as SignatureScheme>::PublicKey;
+
     type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 48, 44>;
     type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 44>;
-    
+    type EncryptedRecordCRHOutput = <Self::EncryptedRecordCRH as CRH>::Output;
+
     type EncryptionGroup = EdwardsBls12;
     type EncryptionGroupGadget = EdwardsBls12Gadget;
     type EncryptionParameters = EdwardsParameters;
-    
+
     type InnerCircuitIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type InnerCircuitIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
 
     type LedgerMerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 8, 32>;
     type LedgerMerkleTreeCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
+    type LedgerMerkleTreeCRHOutput = <Self::LedgerMerkleTreeCRH as CRH>::Output;
     type LedgerMerkleTreeParameters = CommitmentMerkleTreeParameters;
 
     type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 162>;
@@ -131,19 +135,22 @@ impl DPCComponents for DPC {
 
     type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 16, 32>;
     type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
+    type LocalDataCRHOutput = <Self::LocalDataCRH as CRH>::Output;
 
     type PRF = Blake2s;
     type PRFGadget = Blake2sGadget;
 
     type ProgramIDCommitment = Blake2sCommitment;
     type ProgramIDCommitmentGadget = Blake2sCommitmentGadget;
-    
+    type ProgramIDCommitmentOutput = <Self::ProgramIDCommitment as CommitmentScheme>::Output;
+
     type ProgramIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
-    
+
     type RecordCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 233>;
     type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 233>;
-    
+    type RecordCommitmentOutput = <Self::RecordCommitment as CommitmentScheme>::Output;
+
     type SerialNumberNonceCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 32, 63>;
     type SerialNumberNonceCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
 
@@ -173,7 +180,7 @@ impl Testnet2Components for DPC {
         Self::OuterScalarField,
         PoseidonSponge<Self::OuterScalarField>,
     >;
-    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuit<DPC>, InnerCircuitVerifierInput<DPC>>;
+    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<DPC>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
     type MarlinMode = MarlinTestnet2Mode;
     type NoopProgramSNARK = MarlinSNARK<
@@ -182,7 +189,6 @@ impl Testnet2Components for DPC {
         Self::PolynomialCommitment,
         Self::FiatShamirRng,
         Self::MarlinMode,
-        NoopCircuit<Self>,
         ProgramLocalData<Self>,
     >;
     type NoopProgramSNARKGadget = MarlinVerificationGadget<
@@ -191,8 +197,12 @@ impl Testnet2Components for DPC {
         Self::PolynomialCommitment,
         MarlinKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>,
     >;
-    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuit<DPC>, OuterCircuitVerifierInput<DPC>>;
+    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<DPC>>;
     type PolynomialCommitment = MarlinKZG10<Self::InnerCurve>;
+    type PolynomialCommitmentCommitment =
+        <Self::PolynomialCommitment as PolynomialCommitment<Self::InnerScalarField>>::Commitment;
+    type PolynomialCommitmentVerifierKey =
+        <Self::PolynomialCommitment as PolynomialCommitment<Self::InnerScalarField>>::VerifierKey;
 }
 
 // This is currently unused.

@@ -62,18 +62,10 @@ where
 
     /// Generates the universal proving and verifying keys for the argument system.
     pub fn universal_setup<R: RngCore>(
-        num_constraints: usize,
-        num_variables: usize,
-        num_non_zero: usize,
+        max_degree: usize,
         rng: &mut R,
     ) -> Result<UniversalSRS<TargetField, PC>, MarlinError<PC::Error>> {
-        let max_degree = AHPForR1CS::<TargetField>::max_degree(num_constraints, num_variables, num_non_zero)?;
-        let setup_time = start_timer!(|| {
-            format!(
-                "Marlin::UniversalSetup with max_degree {}, computed for a maximum of {} constraints, {} vars, {} non_zero",
-                max_degree, num_constraints, num_variables, num_non_zero,
-            )
-        });
+        let setup_time = start_timer!(|| { format!("Marlin::UniversalSetup with max_degree {}", max_degree,) });
 
         let srs = PC::setup(max_degree, rng).map_err(MarlinError::from_pc_err);
         end_timer!(setup_time);
