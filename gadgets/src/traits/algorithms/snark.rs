@@ -33,24 +33,24 @@ pub trait PrepareGadget<T, F: PrimeField> {
     fn prepare<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<T, SynthesisError>;
 }
 
-pub trait SNARKVerifierGadget<F: PrimeField, CF: PrimeField, S: SNARK> {
+pub trait SNARKVerifierGadget<S: SNARK> {
     type PreparedVerificationKeyGadget: Clone;
-    type VerificationKeyGadget: AllocGadget<S::VerifyingKey, CF>
-        + ToConstraintFieldGadget<CF>
-        + ToBytesGadget<CF>
-        + PrepareGadget<Self::PreparedVerificationKeyGadget, CF>
-        + AllocBytesGadget<Vec<u8>, CF>;
-    type ProofGadget: AllocGadget<S::Proof, CF> + AllocBytesGadget<Vec<u8>, CF>;
+    type VerificationKeyGadget: AllocGadget<S::VerifyingKey, S::BaseField>
+        + ToConstraintFieldGadget<S::BaseField>
+        + ToBytesGadget<S::BaseField>
+        + PrepareGadget<Self::PreparedVerificationKeyGadget, S::BaseField>
+        + AllocBytesGadget<Vec<u8>, S::BaseField>;
+    type ProofGadget: AllocGadget<S::Proof, S::BaseField> + AllocBytesGadget<Vec<u8>, S::BaseField>;
     type Input: Clone + ?Sized;
 
-    fn check_verify<'a, CS: ConstraintSystem<CF>, I: Iterator<Item = Self::Input>>(
+    fn check_verify<'a, CS: ConstraintSystem<S::BaseField>, I: Iterator<Item = Self::Input>>(
         cs: CS,
         verification_key: &Self::VerificationKeyGadget,
         input: I,
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError>;
 
-    fn prepared_check_verify<'a, CS: ConstraintSystem<CF>, I: Iterator<Item = Self::Input>>(
+    fn prepared_check_verify<'a, CS: ConstraintSystem<S::BaseField>, I: Iterator<Item = Self::Input>>(
         cs: CS,
         prepared_verification_key: &Self::PreparedVerificationKeyGadget,
         input: I,
@@ -61,11 +61,13 @@ pub trait SNARKVerifierGadget<F: PrimeField, CF: PrimeField, S: SNARK> {
 // TODO (raychu86): Unify with the `SNARK` trait. Currently the `SNARKGadget` is only used for `marlin`.
 
 /// This implements constraints for SNARK verifiers.
-pub trait SNARKGadget<F: PrimeField, CF: PrimeField, S: SNARK> {
-    type PreparedVerifyingKeyVar: AllocGadget<S::PreparedVerifyingKey, CF> + Clone;
-    type VerifyingKeyVar: AllocGadget<S::VerifyingKey, CF> + ToBytesGadget<CF> + Clone;
-    type InputVar: AllocGadget<Vec<F>, CF> + Clone + FromFieldElementsGadget<F, CF>;
-    type ProofVar: AllocGadget<S::Proof, CF> + Clone;
+pub trait SNARKGadget<S: SNARK> {
+    type PreparedVerifyingKeyVar: AllocGadget<S::PreparedVerifyingKey, S::BaseField> + Clone;
+    type VerifyingKeyVar: AllocGadget<S::VerifyingKey, S::BaseField> + ToBytesGadget<S::BaseField> + Clone;
+    type InputVar: AllocGadget<Vec<S::ScalarField>, S::BaseField>
+        + Clone
+        + FromFieldElementsGadget<S::ScalarField, S::BaseField>;
+    type ProofVar: AllocGadget<S::Proof, S::BaseField> + Clone;
 
     /// Information about the R1CS constraints required to check proofs relative
     /// a given verification key. In the context of a LPCP-based pairing-based SNARK
@@ -80,14 +82,14 @@ pub trait SNARKGadget<F: PrimeField, CF: PrimeField, S: SNARK> {
     /// to the verification key `circuit_vk`.
     fn verifier_size(circuit_vk: &S::VerifyingKey) -> Self::VerifierSize;
 
-    fn verify_with_processed_vk<CS: ConstraintSystem<CF>>(
+    fn verify_with_processed_vk<CS: ConstraintSystem<S::BaseField>>(
         cs: CS,
         circuit_pvk: &Self::PreparedVerifyingKeyVar,
         x: &Self::InputVar,
         proof: &Self::ProofVar,
     ) -> Result<Boolean, SynthesisError>;
 
-    fn verify<CS: ConstraintSystem<CF>>(
+    fn verify<CS: ConstraintSystem<S::BaseField>>(
         cs: CS,
         circuit_vk: &Self::VerifyingKeyVar,
         x: &Self::InputVar,

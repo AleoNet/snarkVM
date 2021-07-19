@@ -23,8 +23,8 @@ pub use block::*;
 pub mod dpc;
 pub use dpc::*;
 
-pub mod dpc_components;
-pub use dpc_components::*;
+pub mod parameters;
+pub use parameters::*;
 
 pub mod ledger;
 pub use ledger::*;

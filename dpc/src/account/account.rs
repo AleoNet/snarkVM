@@ -16,7 +16,7 @@
 
 use crate::{
     errors::AccountError,
-    traits::{AccountScheme, DPCComponents},
+    traits::{AccountScheme, Parameters},
     Address,
     PrivateKey,
 };
@@ -25,13 +25,13 @@ use rand::{CryptoRng, Rng};
 use std::fmt;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: DPCComponents"))]
-pub struct Account<C: DPCComponents> {
+#[derivative(Clone(bound = "C: Parameters"))]
+pub struct Account<C: Parameters> {
     pub private_key: PrivateKey<C>,
     pub address: Address<C>,
 }
 
-impl<C: DPCComponents> AccountScheme for Account<C> {
+impl<C: Parameters> AccountScheme for Account<C> {
     type Address = Address<C>;
     type PrivateKey = PrivateKey<C>;
 
@@ -44,7 +44,7 @@ impl<C: DPCComponents> AccountScheme for Account<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Display for Account<C> {
+impl<C: Parameters> fmt::Display for Account<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -54,7 +54,7 @@ impl<C: DPCComponents> fmt::Display for Account<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Debug for Account<C> {
+impl<C: Parameters> fmt::Debug for Account<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

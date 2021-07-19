@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, traits::DPCComponents, AccountError, PrivateKey, ViewKey};
+use crate::{account_format, traits::Parameters, AccountError, PrivateKey, ViewKey};
 use snarkvm_algorithms::{EncryptionScheme, SignatureScheme};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -27,26 +27,26 @@ use std::{
 
 #[derive(Derivative)]
 #[derivative(
-    Default(bound = "C: DPCComponents"),
-    Clone(bound = "C: DPCComponents"),
-    PartialEq(bound = "C: DPCComponents"),
-    Eq(bound = "C: DPCComponents")
+    Default(bound = "C: Parameters"),
+    Clone(bound = "C: Parameters"),
+    PartialEq(bound = "C: Parameters"),
+    Eq(bound = "C: Parameters")
 )]
-pub struct Address<C: DPCComponents> {
-    pub encryption_key: <C::AccountEncryption as EncryptionScheme>::PublicKey,
+pub struct Address<C: Parameters> {
+    pub encryption_key: <C::AccountEncryptionScheme as EncryptionScheme>::PublicKey,
 }
 
-impl<C: DPCComponents> Address<C> {
+impl<C: Parameters> Address<C> {
     /// Derives the account address from an account private key.
     pub fn from_private_key(private_key: &PrivateKey<C>) -> Result<Self, AccountError> {
         let decryption_key = private_key.to_decryption_key()?;
-        let encryption_key = C::account_encryption().generate_public_key(&decryption_key)?;
+        let encryption_key = C::account_encryption_scheme().generate_public_key(&decryption_key)?;
         Ok(Self { encryption_key })
     }
 
     /// Derives the account address from an account view key.
     pub fn from_view_key(view_key: &ViewKey<C>) -> Result<Self, AccountError> {
-        let encryption_key = C::account_encryption().generate_public_key(&view_key.decryption_key)?;
+        let encryption_key = C::account_encryption_scheme().generate_public_key(&view_key.decryption_key)?;
         Ok(Self { encryption_key })
     }
 
@@ -55,35 +55,58 @@ impl<C: DPCComponents> Address<C> {
     pub fn verify_signature(
         &self,
         message: &[u8],
-        signature: &<C::AccountSignature as SignatureScheme>::Signature,
+        signature: &<C::AccountSignatureScheme as SignatureScheme>::Signature,
     ) -> Result<bool, AccountError> {
-        let signature_public_key = FromBytes::from_bytes_le(&self.encryption_key.to_bytes_le()?)?;
-        Ok(C::account_signature().verify(&signature_public_key, message, signature)?)
+        fn perform_recovery_from_compressed_form_unsafe<R: Read>(mut reader: R) -> anyhow::Result<Vec<u8>> {
+            use snarkvm_curves::{edwards_bls12::EdwardsAffine as EdwardsBls12, AffineCurve};
+
+            let x_coordinate = <EdwardsBls12 as AffineCurve>::BaseField::read_le(&mut reader)?;
+
+            if let Some(element) = <EdwardsBls12 as AffineCurve>::from_x_coordinate(x_coordinate, true) {
+                if element.is_in_correct_subgroup_assuming_on_curve() {
+                    return Ok(element.to_bytes_le()?);
+                }
+            }
+
+            if let Some(element) = <EdwardsBls12 as AffineCurve>::from_x_coordinate(x_coordinate, false) {
+                if element.is_in_correct_subgroup_assuming_on_curve() {
+                    return Ok(element.to_bytes_le()?);
+                }
+            }
+
+            Err(snarkvm_algorithms::SignatureError::Message("Failed to read signature public key".into()).into())
+        }
+
+        let signature_public_key = FromBytes::from_bytes_le(&perform_recovery_from_compressed_form_unsafe(
+            &*self.encryption_key.to_bytes_le()?,
+        )?)?;
+        Ok(C::account_signature_scheme().verify(&signature_public_key, message, signature)?)
     }
 
     #[allow(clippy::wrong_self_convention)]
-    pub fn into_repr(&self) -> &<C::AccountEncryption as EncryptionScheme>::PublicKey {
+    pub fn into_repr(&self) -> &<C::AccountEncryptionScheme as EncryptionScheme>::PublicKey {
         &self.encryption_key
     }
 }
 
-impl<C: DPCComponents> ToBytes for Address<C> {
+impl<C: Parameters> ToBytes for Address<C> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.encryption_key.write_le(&mut writer)
     }
 }
 
-impl<C: DPCComponents> FromBytes for Address<C> {
+impl<C: Parameters> FromBytes for Address<C> {
     /// Reads in an account address buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let encryption_key: <C::AccountEncryption as EncryptionScheme>::PublicKey = FromBytes::read_le(&mut reader)?;
+        let encryption_key: <C::AccountEncryptionScheme as EncryptionScheme>::PublicKey =
+            FromBytes::read_le(&mut reader)?;
 
         Ok(Self { encryption_key })
     }
 }
 
-impl<C: DPCComponents> FromStr for Address<C> {
+impl<C: Parameters> FromStr for Address<C> {
     type Err = AccountError;
 
     /// Reads in an account address string.
@@ -107,7 +130,7 @@ impl<C: DPCComponents> FromStr for Address<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Display for Address<C> {
+impl<C: Parameters> fmt::Display for Address<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Write the encryption key to a buffer.
         let mut address = [0u8; 32];
@@ -125,7 +148,7 @@ impl<C: DPCComponents> fmt::Display for Address<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Debug for Address<C> {
+impl<C: Parameters> fmt::Debug for Address<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Address {{ encryption_key: {:?} }}", self.encryption_key)
     }

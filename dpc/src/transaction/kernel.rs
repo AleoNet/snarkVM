@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    prelude::*,
-    testnet1::{EncryptedRecord, LocalData, Record, Testnet1Components, Transaction},
-};
+use crate::{prelude::*, EncryptedRecord, LocalData, Parameters, Record, Transaction};
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, prelude::*};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
@@ -27,45 +24,44 @@ use std::{
     str::FromStr,
 };
 
-/// Returned by `DPC::execute_offline_phase`. Stores data required to produce the
-/// final transaction after `execute_offline_phase` has created old serial numbers,
-/// new records and commitments. For convenience, it also
-/// stores references to existing information such as old records.
+/// Returned by `DPC::execute_offline_phase`. Stores data required to produce the final transaction
+/// after `execute_offline_phase` has created old serial numbers, new records and commitments.
+/// For convenience, it also stores references to existing information such as old records.
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: Testnet1Components"),
-    PartialEq(bound = "C: Testnet1Components"),
-    Eq(bound = "C: Testnet1Components"),
-    Debug(bound = "C: Testnet1Components")
+    Clone(bound = "C: Parameters"),
+    PartialEq(bound = "C: Parameters"),
+    Eq(bound = "C: Parameters"),
+    Debug(bound = "C: Parameters")
 )]
-pub struct TransactionKernel<C: Testnet1Components> {
+pub struct TransactionKernel<C: Parameters> {
     // Old record stuff
     pub old_records: Vec<Record<C>>,
-    pub old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
-    pub old_randomizers: Vec<<C::AccountSignature as SignatureScheme>::Randomizer>,
+    pub old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
 
     // New record stuff
     pub new_records: Vec<Record<C>>,
     pub new_sn_nonce_randomness: Vec<[u8; 32]>,
-    pub new_commitments: Vec<<C::RecordCommitment as CommitmentScheme>::Output>,
+    pub new_commitments: Vec<C::RecordCommitment>,
 
-    pub new_records_encryption_randomness: Vec<<C::AccountEncryption as EncryptionScheme>::Randomness>,
+    pub new_records_encryption_randomness: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
     pub new_encrypted_records: Vec<EncryptedRecord<C>>,
-    pub new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
+    pub new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
 
     // Program and local data root and randomness
-    pub program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
-    pub program_randomness: <C::ProgramIDCommitment as CommitmentScheme>::Randomness,
+    pub program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
+    pub program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
 
-    pub local_data_merkle_tree: CommitmentMerkleTree<C::LocalDataCommitment, C::LocalDataCRH>,
-    pub local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
+    pub local_data_merkle_tree: CommitmentMerkleTree<C::LocalDataCommitmentScheme, C::LocalDataCRH>,
+    pub local_data_commitment_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
 
     pub value_balance: AleoAmount,
     pub memorandum: <Transaction<C> as TransactionScheme>::Memorandum,
     pub network_id: u8,
+    pub signatures: Vec<<C::AccountSignatureScheme as SignatureScheme>::Signature>,
 }
 
-impl<C: Testnet1Components> TransactionKernel<C> {
+impl<C: Parameters> TransactionKernel<C> {
     #[allow(clippy::wrong_self_convention)]
     pub fn into_local_data(&self) -> LocalData<C> {
         LocalData {
@@ -83,7 +79,7 @@ impl<C: Testnet1Components> TransactionKernel<C> {
     }
 }
 
-impl<C: Testnet1Components> ToBytes for TransactionKernel<C> {
+impl<C: Parameters> ToBytes for TransactionKernel<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write old record components
@@ -94,10 +90,6 @@ impl<C: Testnet1Components> ToBytes for TransactionKernel<C> {
 
         for old_serial_number in &self.old_serial_numbers {
             old_serial_number.write_le(&mut writer)?;
-        }
-
-        for old_randomizer in &self.old_randomizers {
-            old_randomizer.write_le(&mut writer)?;
         }
 
         // Write new record components
@@ -139,11 +131,17 @@ impl<C: Testnet1Components> ToBytes for TransactionKernel<C> {
 
         self.value_balance.write_le(&mut writer)?;
         self.memorandum.write_le(&mut writer)?;
-        self.network_id.write_le(&mut writer)
+        self.network_id.write_le(&mut writer)?;
+
+        for signature in &self.signatures {
+            signature.write_le(&mut writer)?;
+        }
+
+        Ok(())
     }
 }
 
-impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
+impl<C: Parameters> FromBytes for TransactionKernel<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read old record components
@@ -156,15 +154,9 @@ impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
 
         let mut old_serial_numbers = vec![];
         for _ in 0..C::NUM_INPUT_RECORDS {
-            let old_serial_number: <C::AccountSignature as SignatureScheme>::PublicKey =
+            let old_serial_number: <C::AccountSignatureScheme as SignatureScheme>::PublicKey =
                 FromBytes::read_le(&mut reader)?;
             old_serial_numbers.push(old_serial_number);
-        }
-
-        let mut old_randomizers = vec![];
-        for _ in 0..C::NUM_INPUT_RECORDS {
-            let old_randomizer: <C::AccountSignature as SignatureScheme>::Randomizer = FromBytes::read_le(&mut reader)?;
-            old_randomizers.push(old_randomizer);
         }
 
         // Read new record components
@@ -183,13 +175,13 @@ impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
 
         let mut new_commitments = vec![];
         for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let new_commitment: <C::RecordCommitment as CommitmentScheme>::Output = FromBytes::read_le(&mut reader)?;
+            let new_commitment: C::RecordCommitment = FromBytes::read_le(&mut reader)?;
             new_commitments.push(new_commitment);
         }
 
         let mut new_records_encryption_randomness = vec![];
         for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let encryption_randomness: <C::AccountEncryption as EncryptionScheme>::Randomness =
+            let encryption_randomness: <C::AccountEncryptionScheme as EncryptionScheme>::Randomness =
                 FromBytes::read_le(&mut reader)?;
             new_records_encryption_randomness.push(encryption_randomness);
         }
@@ -202,17 +194,18 @@ impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
 
         let mut new_encrypted_record_hashes = vec![];
         for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let encrypted_record_hash: <C::EncryptedRecordCRH as CRH>::Output = FromBytes::read_le(&mut reader)?;
+            let encrypted_record_hash: C::EncryptedRecordDigest = FromBytes::read_le(&mut reader)?;
             new_encrypted_record_hashes.push(encrypted_record_hash);
         }
 
         // Read transaction components
 
-        let program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output = FromBytes::read_le(&mut reader)?;
-        let program_randomness: <C::ProgramIDCommitment as CommitmentScheme>::Randomness =
+        let program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output =
+            FromBytes::read_le(&mut reader)?;
+        let program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness =
             FromBytes::read_le(&mut reader)?;
 
-        let local_data_merkle_tree = CommitmentMerkleTree::<C::LocalDataCommitment, C::LocalDataCRH>::from_bytes(
+        let local_data_merkle_tree = CommitmentMerkleTree::<C::LocalDataCommitmentScheme, C::LocalDataCRH>::from_bytes(
             &mut reader,
             C::local_data_crh().clone(),
         )
@@ -220,7 +213,7 @@ impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
 
         let mut local_data_commitment_randomizers = vec![];
         for _ in 0..4 {
-            let local_data_commitment_randomizer: <C::LocalDataCommitment as CommitmentScheme>::Randomness =
+            let local_data_commitment_randomizer: <C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness =
                 FromBytes::read_le(&mut reader)?;
             local_data_commitment_randomizers.push(local_data_commitment_randomizer);
         }
@@ -229,10 +222,15 @@ impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
         let memorandum: <Transaction<C> as TransactionScheme>::Memorandum = FromBytes::read_le(&mut reader)?;
         let network_id: u8 = FromBytes::read_le(&mut reader)?;
 
+        let mut signatures = vec![];
+        for _ in 0..C::NUM_INPUT_RECORDS {
+            let signature: <C::AccountSignatureScheme as SignatureScheme>::Signature = FromBytes::read_le(&mut reader)?;
+            signatures.push(signature);
+        }
+
         Ok(Self {
             old_records,
             old_serial_numbers,
-            old_randomizers,
 
             new_records,
             new_sn_nonce_randomness,
@@ -249,19 +247,20 @@ impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
             value_balance,
             memorandum,
             network_id,
+            signatures,
         })
     }
 }
 
-impl<C: Testnet1Components> FromStr for TransactionKernel<C> {
-    type Err = TransactionError;
+impl<C: Parameters> FromStr for TransactionKernel<C> {
+    type Err = DPCError;
 
     fn from_str(kernel: &str) -> Result<Self, Self::Err> {
         Ok(Self::read_le(&hex::decode(kernel)?[..])?)
     }
 }
 
-impl<C: Testnet1Components> fmt::Display for TransactionKernel<C> {
+impl<C: Parameters> fmt::Display for TransactionKernel<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

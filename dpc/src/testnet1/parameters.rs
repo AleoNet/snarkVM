@@ -16,7 +16,7 @@
 
 use crate::{
     account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_INPUT},
-    testnet2::{Testnet2Components, DPC},
+    testnet1::{Testnet1Components, DPC},
     InnerCircuitVerifierInput,
     Network,
     OuterCircuitVerifierInput,
@@ -27,7 +27,6 @@ use crate::{
 use snarkvm_algorithms::{
     commitment::{Blake2sCommitment, PedersenCompressedCommitment},
     crh::BoweHopwoodPedersenCompressedCRH,
-    crypto_hash::PoseidonCryptoHash,
     define_merkle_tree_parameters,
     encryption::GroupEncryption,
     prelude::*,
@@ -39,56 +38,47 @@ use snarkvm_curves::{
     bls12_377::Bls12_377,
     bw6_761::BW6_761,
     edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls12},
+    edwards_bw6::EdwardsProjective as EdwardsBW6,
     PairingEngine,
 };
 use snarkvm_gadgets::{
     algorithms::{
         commitment::{Blake2sCommitmentGadget, PedersenCompressedCommitmentGadget},
         crh::BoweHopwoodPedersenCompressedCRHGadget,
-        crypto_hash::PoseidonCryptoHashGadget,
         encryption::GroupEncryptionGadget,
         prf::Blake2sGadget,
         signature::SchnorrGadget,
         snark::Groth16VerifierGadget,
     },
-    curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget},
+    curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
 };
-use snarkvm_marlin::{
-    constraints::{snark::MarlinSNARK, verifier::MarlinVerificationGadget},
-    marlin::MarlinTestnet2Mode,
-    FiatShamirAlgebraicSpongeRng,
-    PoseidonSponge,
-};
-use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
 
 use once_cell::sync::OnceCell;
-use snarkvm_polycommit::PolynomialCommitment;
 
 macro_rules! dpc_setup {
     ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
         #[inline]
         fn $fn_name() -> &'static Self::$type_name {
-            static $static_name: OnceCell<<Testnet2Parameters as Parameters>::$type_name> = OnceCell::new();
+            static $static_name: OnceCell<<Testnet1Parameters as Parameters>::$type_name> = OnceCell::new();
             $static_name.get_or_init(|| Self::$type_name::setup($setup_msg))
         }
     };
 }
 
-pub type Testnet2DPC = DPC<Testnet2Parameters>;
-pub type Testnet2Transaction = Transaction<Testnet2Parameters>;
+pub type Testnet1DPC = DPC<Testnet1Parameters>;
+pub type Testnet1Transaction = Transaction<Testnet1Parameters>;
 
 define_merkle_tree_parameters!(
     CommitmentMerkleTreeParameters,
-    <Testnet2Parameters as Parameters>::RecordCommitmentTreeCRH,
+    <Testnet1Parameters as Parameters>::RecordCommitmentTreeCRH,
     32
 );
 
-pub struct Testnet2Parameters;
+pub struct Testnet1Parameters;
 
-// TODO (raychu86): Optimize each of the window sizes in the type declarations below.
 #[rustfmt::skip]
-impl Parameters for Testnet2Parameters {
-    const NETWORK_ID: u8 = Network::Testnet2.id();
+impl Parameters for Testnet1Parameters {
+    const NETWORK_ID: u8 = Network::Testnet1.id();
 
     const NUM_INPUT_RECORDS: usize = 2;
     const NUM_OUTPUT_RECORDS: usize = 2;
@@ -100,8 +90,8 @@ impl Parameters for Testnet2Parameters {
     type OuterScalarField = <Self::OuterCurve as PairingEngine>::Fr;
     type OuterBaseField = <Self::OuterCurve as PairingEngine>::Fq;
 
-    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Testnet2Parameters>>;
-    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet2Parameters>>;
+    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Testnet1Parameters>>;
+    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet1Parameters>>;
 
     type AccountCommitmentScheme = PedersenCompressedCommitment<EdwardsBls12, 8, 192>;
     type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 192>;
@@ -122,8 +112,8 @@ impl Parameters for Testnet2Parameters {
     type EncryptionGroupGadget = EdwardsBls12Gadget;
     type EncryptionParameters = EdwardsParameters;
 
-    type InnerCircuitIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
-    type InnerCircuitIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
+    type InnerCircuitIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBW6, 304, 64>;
+    type InnerCircuitIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 304, 64>;
 
     type LocalDataCommitmentScheme = PedersenCompressedCommitment<EdwardsBls12, 8, 162>;
     type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 162>;
@@ -139,8 +129,8 @@ impl Parameters for Testnet2Parameters {
     type ProgramCommitmentGadget = Blake2sCommitmentGadget;
     type ProgramCommitment = <Self::ProgramCommitmentScheme as CommitmentScheme>::Output;
 
-    type ProgramIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
-    type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
+    type ProgramIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBW6, 144, 63>;
+    type ProgramIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 144, 63>;
 
     type RecordCommitmentScheme = PedersenCompressedCommitment<EdwardsBls12, 8, 233>;
     type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 233>;
@@ -169,47 +159,13 @@ impl Parameters for Testnet2Parameters {
 
     // TODO (howardwu): TEMPORARY - Refactor this to a proper tree.
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters {
-        static RECORD_COMMITMENT_TREE_PARAMETERS: OnceCell<<Testnet2Parameters as Parameters>::RecordCommitmentTreeParameters> = OnceCell::new();
+        static RECORD_COMMITMENT_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::RecordCommitmentTreeParameters> = OnceCell::new();
         RECORD_COMMITMENT_TREE_PARAMETERS.get_or_init(|| Self::RecordCommitmentTreeParameters::from(Self::record_commitment_tree_crh().clone()))
     }
 }
 
-impl Testnet2Components for Testnet2Parameters {
-    type FiatShamirRng = FiatShamirAlgebraicSpongeRng<
-        Self::InnerScalarField,
-        Self::OuterScalarField,
-        PoseidonSponge<Self::OuterScalarField>,
-    >;
+impl Testnet1Components for Testnet1Parameters {
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
-    type MarlinMode = MarlinTestnet2Mode;
-    type PolynomialCommitment = MarlinKZG10<Self::InnerCurve>;
-    type PolynomialCommitmentCommitment =
-        <Self::PolynomialCommitment as PolynomialCommitment<Self::InnerScalarField>>::Commitment;
-    type PolynomialCommitmentVerifierKey =
-        <Self::PolynomialCommitment as PolynomialCommitment<Self::InnerScalarField>>::VerifierKey;
-    type ProgramSNARK = MarlinSNARK<
-        Self::InnerScalarField,
-        Self::OuterScalarField,
-        Self::PolynomialCommitment,
-        Self::FiatShamirRng,
-        Self::MarlinMode,
-        ProgramLocalData<Self>,
-    >;
-    type ProgramSNARKGadget = MarlinVerificationGadget<
-        Self::InnerScalarField,
-        Self::OuterScalarField,
-        Self::PolynomialCommitment,
-        MarlinKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>,
-    >;
+    type ProgramSNARK = Groth16<Self::InnerCurve, ProgramLocalData<Self>>;
+    type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
 }
-
-// This is currently unused.
-//
-// use snarkvm_marlin::{FiatShamirAlgebraicSpongeRngVar, PoseidonSpongeVar};
-//
-// pub type FSG = FiatShamirAlgebraicSpongeRngVar<
-//     Self::InnerScalarField,
-//     Self::OuterScalarField,
-//     PoseidonSponge<Self::OuterScalarField>,
-//     PoseidonSpongeVar<Self::OuterScalarField>,
-// >;

@@ -14,12 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use itertools::Itertools;
-
-use crate::{
-    testnet2::{program::Execution, Testnet2Components},
-    AleoAmount,
-};
+use crate::{testnet2::Testnet2Components, AleoAmount, Execution, Transaction, TransactionScheme};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
@@ -39,30 +34,40 @@ use snarkvm_gadgets::{
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::ToBytes;
 
-fn field_element_to_bytes<C: Testnet2Components, CS: ConstraintSystem<C::OuterScalarField>>(
+use itertools::Itertools;
+
+fn alloc_field_element_to_bytes<C: Testnet2Components, CS: ConstraintSystem<C::OuterScalarField>>(
     cs: &mut CS,
     field_elements: Vec<C::InnerScalarField>,
     name: &str,
 ) -> Result<Vec<Vec<UInt8>>, SynthesisError> {
-    if field_elements.len() <= 1 {
-        Ok(vec![UInt8::alloc_input_vec_le(
-            cs.ns(|| format!("Allocate {}", name)),
-            &field_elements
+    let mut fe_bytes = Vec::with_capacity(field_elements.len());
+    for (index, field_element) in field_elements.iter().enumerate() {
+        fe_bytes.push(UInt8::alloc_vec(
+            cs.ns(|| format!("Allocate {} - index {} ", name, index)),
+            &field_element
                 .to_bytes_le()
                 .map_err(|_| SynthesisError::AssignmentMissing)?,
-        )?])
-    } else {
-        let mut fe_bytes = Vec::with_capacity(field_elements.len());
-        for (index, field_element) in field_elements.iter().enumerate() {
-            fe_bytes.push(UInt8::alloc_input_vec_le(
-                cs.ns(|| format!("Allocate {} - index {} ", name, index)),
-                &field_element
-                    .to_bytes_le()
-                    .map_err(|_| SynthesisError::AssignmentMissing)?,
-            )?);
-        }
-        Ok(fe_bytes)
+        )?);
     }
+    Ok(fe_bytes)
+}
+
+fn alloc_input_field_element_to_bytes<C: Testnet2Components, CS: ConstraintSystem<C::OuterScalarField>>(
+    cs: &mut CS,
+    field_elements: Vec<C::InnerScalarField>,
+    name: &str,
+) -> Result<Vec<Vec<UInt8>>, SynthesisError> {
+    let mut fe_bytes = Vec::with_capacity(field_elements.len());
+    for (index, field_element) in field_elements.iter().enumerate() {
+        fe_bytes.push(UInt8::alloc_input_vec_le(
+            cs.ns(|| format!("Allocate {} - index {} ", name, index)),
+            &field_element
+                .to_bytes_le()
+                .map_err(|_| SynthesisError::AssignmentMissing)?,
+        )?);
+    }
+    Ok(fe_bytes)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -70,12 +75,11 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
     cs: &mut CS,
 
     // Inner snark verifier public inputs
-    ledger_parameters: &C::LedgerMerkleTreeParameters,
-    ledger_digest: &MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
-    old_serial_numbers: &[<C::AccountSignature as SignatureScheme>::PublicKey],
-    new_commitments: &[<C::RecordCommitment as CommitmentScheme>::Output],
-    new_encrypted_record_hashes: &[<C::EncryptedRecordCRH as CRH>::Output],
-    memo: &[u8; 32],
+    ledger_digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
+    old_serial_numbers: &[<C::AccountSignatureScheme as SignatureScheme>::PublicKey],
+    new_commitments: &[C::RecordCommitment],
+    new_encrypted_record_hashes: &[C::EncryptedRecordDigest],
+    memo: &<Transaction<C> as TransactionScheme>::Memorandum,
     value_balance: AleoAmount,
     network_id: u8,
 
@@ -84,33 +88,23 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
     inner_snark_proof: &<C::InnerSNARK as SNARK>::Proof,
 
     // Program verifying keys and proofs
-    program_proofs: &[Execution<C::NoopProgramSNARK>],
+    program_proofs: &[Execution<C::ProgramSNARK>],
 
     // Rest
-    program_commitment: &<C::ProgramIDCommitment as CommitmentScheme>::Output,
-    program_randomness: &<C::ProgramIDCommitment as CommitmentScheme>::Randomness,
-    local_data_root: &<C::LocalDataCRH as CRH>::Output,
+    program_commitment: &<C::ProgramCommitmentScheme as CommitmentScheme>::Output,
+    program_randomness: &<C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
+    local_data_root: &C::LocalDataDigest,
 
     inner_circuit_id: &<C::InnerCircuitIDCRH as CRH>::Output,
-) -> Result<(), SynthesisError>
-where
-    <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
-    <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::LedgerMerkleTreeParameters as MerkleParameters>::H: ToConstraintField<C::InnerScalarField>,
-    MerkleTreeDigest<C::LedgerMerkleTreeParameters>: ToConstraintField<C::InnerScalarField>,
-{
+) -> Result<(), SynthesisError> {
     // Declare public parameters.
     let (program_id_commitment_parameters, program_id_crh, inner_circuit_id_crh) = {
         let cs = &mut cs.ns(|| "Declare Comm and CRH parameters");
 
-        let program_id_commitment_parameters = C::ProgramIDCommitmentGadget::alloc_input(
-            &mut cs.ns(|| "Declare program_id_commitment_parameters"),
-            || Ok(C::program_id_commitment().clone()),
-        )?;
+        let program_id_commitment_parameters =
+            C::ProgramCommitmentGadget::alloc_input(&mut cs.ns(|| "Declare program_id_commitment_parameters"), || {
+                Ok(C::program_commitment_scheme().clone())
+            })?;
 
         let program_id_crh: C::ProgramIDCRHGadget =
             C::ProgramIDCRHGadget::alloc_input(&mut cs.ns(|| "Declare program_id_crh_parameters"), || {
@@ -131,19 +125,19 @@ where
 
     // Declare inner snark verifier inputs as `CoreCheckF` field elements
 
-    let account_commitment_parameters_fe = C::account_commitment()
+    let account_commitment_parameters_fe = C::account_commitment_scheme()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let account_encryption_parameters_fe = C::account_encryption()
+    let account_encryption_parameters_fe = C::account_encryption_scheme()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let account_signature_fe = C::account_signature()
+    let account_signature_fe = C::account_signature_scheme()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let record_commitment_parameters_fe = C::record_commitment()
+    let record_commitment_parameters_fe = C::record_commitment_scheme()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
@@ -151,7 +145,7 @@ where
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let program_id_commitment_parameters_fe = C::program_id_commitment()
+    let program_id_commitment_parameters_fe = C::program_commitment_scheme()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
@@ -159,7 +153,7 @@ where
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let local_data_commitment_parameters_fe = C::local_data_commitment()
+    let local_data_commitment_parameters_fe = C::local_data_commitment_scheme()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
@@ -167,7 +161,7 @@ where
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let ledger_parameters_fe = ledger_parameters
+    let record_commitment_tree_parameters_fe = C::record_commitment_tree_parameters()
         .crh()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
@@ -195,34 +189,42 @@ where
     // Allocate field element bytes
 
     let account_commitment_fe_bytes =
-        field_element_to_bytes::<C, _>(cs, account_commitment_parameters_fe, "account commitment pp")?;
+        alloc_input_field_element_to_bytes::<C, _>(cs, account_commitment_parameters_fe, "account commitment pp")?;
     let account_encryption_fe_bytes =
-        field_element_to_bytes::<C, _>(cs, account_encryption_parameters_fe, "account encryption pp")?;
-    let account_signature_fe_bytes = field_element_to_bytes::<C, _>(cs, account_signature_fe, "account signature pp")?;
+        alloc_input_field_element_to_bytes::<C, _>(cs, account_encryption_parameters_fe, "account encryption pp")?;
+    let account_signature_fe_bytes =
+        alloc_input_field_element_to_bytes::<C, _>(cs, account_signature_fe, "account signature pp")?;
     let record_commitment_parameters_fe_bytes =
-        field_element_to_bytes::<C, _>(cs, record_commitment_parameters_fe, "record commitment pp")?;
+        alloc_input_field_element_to_bytes::<C, _>(cs, record_commitment_parameters_fe, "record commitment pp")?;
     let encrypted_record_crh_parameters_fe_bytes =
-        field_element_to_bytes::<C, _>(cs, encrypted_record_crh_parameters_fe, "encrypted record crh pp")?;
-    let program_id_commitment_parameters_fe_bytes =
-        field_element_to_bytes::<C, _>(cs, program_id_commitment_parameters_fe, "program ID commitment pp")?;
+        alloc_input_field_element_to_bytes::<C, _>(cs, encrypted_record_crh_parameters_fe, "encrypted record crh pp")?;
+    let program_id_commitment_parameters_fe_bytes = alloc_input_field_element_to_bytes::<C, _>(
+        cs,
+        program_id_commitment_parameters_fe,
+        "program ID commitment pp",
+    )?;
     let local_data_crh_parameters_fe_bytes =
-        field_element_to_bytes::<C, _>(cs, local_data_crh_parameters_fe.clone(), "local data crh pp")?;
-    let local_data_commitment_parameters_fe_bytes = field_element_to_bytes::<C, _>(
+        alloc_input_field_element_to_bytes::<C, _>(cs, local_data_crh_parameters_fe.clone(), "local data crh pp")?;
+    let local_data_commitment_parameters_fe_bytes = alloc_input_field_element_to_bytes::<C, _>(
         cs,
         local_data_commitment_parameters_fe.clone(),
         "local data commitment pp",
     )?;
-    let serial_number_nonce_crh_parameters_fe_bytes =
-        field_element_to_bytes::<C, _>(cs, serial_number_nonce_crh_parameters_fe, "serial number nonce crh pp")?;
-    let ledger_parameters_fe_bytes = field_element_to_bytes::<C, _>(cs, ledger_parameters_fe, "ledger pp")?;
-    let ledger_digest_fe_bytes = field_element_to_bytes::<C, _>(cs, ledger_digest_fe, "ledger digest")?;
+    let serial_number_nonce_crh_parameters_fe_bytes = alloc_input_field_element_to_bytes::<C, _>(
+        cs,
+        serial_number_nonce_crh_parameters_fe,
+        "serial number nonce crh pp",
+    )?;
+    let record_commitment_tree_parameters_fe_bytes =
+        alloc_input_field_element_to_bytes::<C, _>(cs, record_commitment_tree_parameters_fe, "ledger pp")?;
+    let ledger_digest_fe_bytes = alloc_input_field_element_to_bytes::<C, _>(cs, ledger_digest_fe, "ledger digest")?;
 
     let mut serial_number_fe_bytes = vec![];
     for (index, sn) in old_serial_numbers.iter().enumerate() {
         let serial_number_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(sn)
             .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-        serial_number_fe_bytes.extend(field_element_to_bytes::<C, _>(
+        serial_number_fe_bytes.extend(alloc_input_field_element_to_bytes::<C, _>(
             cs,
             serial_number_fe,
             &format!("Allocate serial number {:?}", index),
@@ -241,24 +243,26 @@ where
             ToConstraintField::<C::InnerScalarField>::to_field_elements(encrypted_record_hash)
                 .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-        commitment_and_encrypted_record_hash_fe_bytes.extend(field_element_to_bytes::<C, _>(
+        commitment_and_encrypted_record_hash_fe_bytes.extend(alloc_input_field_element_to_bytes::<C, _>(
             cs,
             commitment_fe,
             &format!("Allocate record commitment {:?}", index),
         )?);
 
-        commitment_and_encrypted_record_hash_fe_bytes.extend(field_element_to_bytes::<C, _>(
+        commitment_and_encrypted_record_hash_fe_bytes.extend(alloc_input_field_element_to_bytes::<C, _>(
             cs,
             encrypted_record_hash_fe,
             &format!("Allocate encrypted record hash {:?}", index),
         )?);
     }
 
-    let program_commitment_fe_bytes = field_element_to_bytes::<C, _>(cs, program_commitment_fe, "program commitment")?;
-    let memo_fe_bytes = field_element_to_bytes::<C, _>(cs, memo_fe, "memo")?;
-    let network_id_fe_bytes = field_element_to_bytes::<C, _>(cs, network_id_fe, "network id")?;
-    let local_data_root_fe_bytes = field_element_to_bytes::<C, _>(cs, local_data_root_fe.clone(), "local data root")?;
-    let value_balance_fe_bytes = field_element_to_bytes::<C, _>(cs, value_balance_fe, "value balance")?;
+    let program_commitment_fe_bytes =
+        alloc_field_element_to_bytes::<C, _>(cs, program_commitment_fe, "program commitment")?;
+    let memo_fe_bytes = alloc_input_field_element_to_bytes::<C, _>(cs, memo_fe, "memo")?;
+    let network_id_fe_bytes = alloc_input_field_element_to_bytes::<C, _>(cs, network_id_fe, "network id")?;
+    let local_data_root_fe_bytes =
+        alloc_field_element_to_bytes::<C, _>(cs, local_data_root_fe.clone(), "local data root")?;
+    let value_balance_fe_bytes = alloc_input_field_element_to_bytes::<C, _>(cs, value_balance_fe, "value balance")?;
 
     // Construct inner snark input as bytes
 
@@ -272,7 +276,7 @@ where
     inner_snark_input_bytes.extend(local_data_crh_parameters_fe_bytes);
     inner_snark_input_bytes.extend(local_data_commitment_parameters_fe_bytes.clone());
     inner_snark_input_bytes.extend(serial_number_nonce_crh_parameters_fe_bytes);
-    inner_snark_input_bytes.extend(ledger_parameters_fe_bytes);
+    inner_snark_input_bytes.extend(record_commitment_tree_parameters_fe_bytes);
     inner_snark_input_bytes.extend(ledger_digest_fe_bytes);
     inner_snark_input_bytes.extend(serial_number_fe_bytes);
     inner_snark_input_bytes.extend(commitment_and_encrypted_record_hash_fe_bytes);
@@ -297,12 +301,12 @@ where
     // Verify the InnerSNARK proof
     // ************************************************************************
 
-    let inner_snark_vk = <C::InnerSNARKGadget as SNARKVerifierGadget<_, _, _>>::VerificationKeyGadget::alloc(
+    let inner_snark_vk = <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
         &mut cs.ns(|| "Allocate inner snark verifying key"),
         || Ok(inner_snark_vk),
     )?;
 
-    let inner_snark_proof = <C::InnerSNARKGadget as SNARKVerifierGadget<_, _, _>>::ProofGadget::alloc(
+    let inner_snark_proof = <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
         &mut cs.ns(|| "Allocate inner snark proof"),
         || Ok(inner_snark_proof),
     )?;
@@ -346,16 +350,15 @@ where
     for (i, input) in program_proofs.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
         let cs = &mut cs.ns(|| format!("Check death program for input record {}", i));
 
-        let death_program_proof = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _, _>>::ProofGadget::alloc(
+        let death_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate proof"),
             || Ok(&input.proof),
         )?;
 
-        let death_program_vk =
-            <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _, _>>::VerificationKeyGadget::alloc(
-                &mut cs.ns(|| "Allocate verifying key"),
-                || Ok(&input.verifying_key),
-            )?;
+        let death_program_vk = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
+            &mut cs.ns(|| "Allocate verifying key"),
+            || Ok(&input.verifying_key),
+        )?;
 
         let death_program_vk_field_elements =
             death_program_vk.to_constraint_field(cs.ns(|| "alloc_death_program_vk_field_elements"))?;
@@ -380,7 +383,7 @@ where
         let mut program_snark_input = vec![];
 
         for (j, input) in program_input_field_elements.iter().enumerate() {
-            let input_element = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _, _>>::Input::alloc(
+            let input_element = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::Input::alloc(
                 cs.ns(|| format!("alloc_death_program_input_{}_{}", i, j)),
                 || Ok(input),
             )?;
@@ -388,7 +391,7 @@ where
             program_snark_input.push(input_element);
         }
 
-        C::NoopProgramSNARKGadget::check_verify(
+        C::ProgramSNARKGadget::check_verify(
             &mut cs.ns(|| "Check that proof is satisfied"),
             &death_program_vk,
             program_snark_input.iter().cloned(),
@@ -404,16 +407,15 @@ where
     {
         let cs = &mut cs.ns(|| format!("Check birth program for output record {}", j));
 
-        let birth_program_proof = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _, _>>::ProofGadget::alloc(
+        let birth_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate proof"),
             || Ok(&input.proof),
         )?;
 
-        let birth_program_vk =
-            <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _, _>>::VerificationKeyGadget::alloc(
-                &mut cs.ns(|| "Allocate verifying key"),
-                || Ok(&input.verifying_key),
-            )?;
+        let birth_program_vk = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
+            &mut cs.ns(|| "Allocate verifying key"),
+            || Ok(&input.verifying_key),
+        )?;
 
         // Manually allocate the death program bytes instead of the conversion
         let birth_program_vk_field_elements =
@@ -439,7 +441,7 @@ where
         let mut program_snark_input = vec![];
 
         for (k, input) in program_input_field_elements.iter().enumerate() {
-            let input_element = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_, _, _>>::Input::alloc(
+            let input_element = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::Input::alloc(
                 cs.ns(|| format!("alloc_birth_program_input_{}_{}", j, k)),
                 || Ok(input),
             )?;
@@ -447,7 +449,7 @@ where
             program_snark_input.push(input_element);
         }
 
-        C::NoopProgramSNARKGadget::check_verify(
+        C::ProgramSNARKGadget::check_verify(
             &mut cs.ns(|| "Check that proof is satisfied"),
             &birth_program_vk,
             program_snark_input.iter().cloned(),
@@ -472,13 +474,13 @@ where
         }
 
         let given_commitment_randomness =
-            <C::ProgramIDCommitmentGadget as CommitmentGadget<_, C::OuterScalarField>>::RandomnessGadget::alloc(
+            <C::ProgramCommitmentGadget as CommitmentGadget<_, C::OuterScalarField>>::RandomnessGadget::alloc(
                 &mut commitment_cs.ns(|| "Commitment randomness"),
                 || Ok(program_randomness),
             )?;
 
         let given_commitment =
-            <C::ProgramIDCommitmentGadget as CommitmentGadget<_, C::OuterScalarField>>::OutputGadget::alloc_input(
+            <C::ProgramCommitmentGadget as CommitmentGadget<_, C::OuterScalarField>>::OutputGadget::alloc(
                 &mut commitment_cs.ns(|| "Commitment output"),
                 || Ok(program_commitment),
             )?;

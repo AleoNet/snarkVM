@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_dpc::{
-    testnet2::{instantiated::Components, NoopProgram, Testnet2Components},
+    testnet2::{parameters::Testnet2Parameters, NoopProgram, Testnet2Components},
     DPCError,
     ProgramScheme,
 };
@@ -33,7 +33,7 @@ use utils::store;
 #[allow(deprecated)]
 pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError>
 where
-    <C::NoopProgramSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
+    <C::ProgramSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
     <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::VerifierKey:
         ToConstraintField<C::OuterScalarField>,
     <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::Commitment:
@@ -51,7 +51,7 @@ where
 }
 
 pub fn main() {
-    let (program_snark_pk, program_snark_vk) = setup::<Components>().unwrap();
+    let (program_snark_pk, program_snark_vk) = setup::<Testnet2Parameters>().unwrap();
     store(
         &PathBuf::from("noop_program_snark_pk.params"),
         &PathBuf::from("noop_program_snark_pk.checksum"),

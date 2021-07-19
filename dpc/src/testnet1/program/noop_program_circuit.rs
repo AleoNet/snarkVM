@@ -15,14 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::testnet1::Testnet1Components;
-use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::prelude::*;
 use snarkvm_r1cs::{Assignment, ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
 /// Always-accept program
 pub struct NoopCircuit<C: Testnet1Components> {
     /// Commitment to the program input.
-    pub local_data_root: Option<<C::LocalDataCRH as CRH>::Output>,
+    pub local_data_root: Option<C::LocalDataDigest>,
     /// Record position
     pub position: u8,
 }
@@ -30,12 +29,12 @@ pub struct NoopCircuit<C: Testnet1Components> {
 impl<C: Testnet1Components> NoopCircuit<C> {
     pub fn blank() -> Self {
         Self {
-            local_data_root: Some(<C::LocalDataCRH as CRH>::Output::default()),
+            local_data_root: Some(C::LocalDataDigest::default()),
             position: 0u8,
         }
     }
 
-    pub fn new(local_data_root: &<C::LocalDataCRH as CRH>::Output, position: u8) -> Self {
+    pub fn new(local_data_root: &C::LocalDataDigest, position: u8) -> Self {
         Self {
             local_data_root: Some(local_data_root.clone()),
             position,
@@ -55,7 +54,7 @@ impl<C: Testnet1Components> ConstraintSynthesizer<C::InnerScalarField> for NoopC
 
         let _local_data_commitment_parameters_gadget = C::LocalDataCommitmentGadget::alloc_input(
             &mut cs.ns(|| "Declare local data commitment parameters"),
-            || Ok(C::local_data_commitment().clone()),
+            || Ok(C::local_data_commitment_scheme().clone()),
         )?;
 
         let _local_data_root_gadget = <C::LocalDataCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(

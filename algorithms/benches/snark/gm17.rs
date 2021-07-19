@@ -29,7 +29,7 @@ use rand::{
     {self},
 };
 
-type GM17SNARK = GM17<Bls12_377, Benchmark<Fr>, Fr>;
+type GM17SNARK = GM17<Bls12_377, Fr>;
 
 struct Benchmark<F: Field> {
     inputs: Vec<Option<F>>,
@@ -84,7 +84,7 @@ fn snark_setup(c: &mut Criterion) {
 
     c.bench_function("snark_setup", move |b| {
         b.iter(|| {
-            GM17SNARK::setup(
+            GM17SNARK::circuit_specific_setup(
                 &Benchmark::<Fr> {
                     inputs: vec![None; num_inputs],
                     num_constraints,
@@ -105,7 +105,7 @@ fn snark_prove(c: &mut Criterion) {
         inputs.push(Some(rng.gen()));
     }
 
-    let params = GM17SNARK::setup(
+    let params = GM17SNARK::circuit_specific_setup(
         &Benchmark::<Fr> {
             inputs: vec![None; num_inputs],
             num_constraints,

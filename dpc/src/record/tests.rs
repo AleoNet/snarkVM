@@ -14,14 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{encoded::*, encrypted::*};
 use crate::{
-    testnet1::{instantiated::*, NoopProgram, Payload, Record},
+    record::{encoded::*, encrypted::*},
+    testnet2::{parameters::*, NoopProgram},
     Account,
     AccountScheme,
-    DPCComponents,
     EncodedRecordScheme,
+    Parameters,
+    Payload,
     ProgramScheme,
+    Record,
     ViewKey,
 };
 use snarkvm_algorithms::traits::CRH;
@@ -33,14 +35,14 @@ use rand_chacha::ChaChaRng;
 pub(crate) const ITERATIONS: usize = 5;
 
 #[test]
-fn test_record_encoding() {
+fn test_record_serialization() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     for _ in 0..ITERATIONS {
-        let noop_program = NoopProgram::<Components>::setup(&mut rng).unwrap();
+        let noop_program = NoopProgram::<Testnet2Parameters>::setup(&mut rng).unwrap();
 
         for _ in 0..ITERATIONS {
-            let dummy_account = Account::<Components>::new(&mut rng).unwrap();
+            let dummy_account = Account::<Testnet2Parameters>::new(&mut rng).unwrap();
 
             let sn_nonce_input: [u8; 32] = rng.gen();
             let value = rng.gen();
@@ -53,7 +55,7 @@ fn test_record_encoding() {
                 Payload::from_bytes(&payload),
                 noop_program.id(),
                 noop_program.id(),
-                <Components as DPCComponents>::serial_number_nonce_crh()
+                <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
                     .hash(&sn_nonce_input)
                     .unwrap(),
                 &mut rng,
@@ -81,10 +83,10 @@ fn test_record_encryption() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     for _ in 0..ITERATIONS {
-        let noop_program = NoopProgram::<Components>::setup(&mut rng).unwrap();
+        let noop_program = NoopProgram::<Testnet2Parameters>::setup(&mut rng).unwrap();
 
         for _ in 0..ITERATIONS {
-            let dummy_account = Account::<Components>::new(&mut rng).unwrap();
+            let dummy_account = Account::<Testnet2Parameters>::new(&mut rng).unwrap();
 
             let sn_nonce_input: [u8; 32] = rng.gen();
             let value = rng.gen();
@@ -97,7 +99,7 @@ fn test_record_encryption() {
                 Payload::from_bytes(&payload),
                 noop_program.id(),
                 noop_program.id(),
-                <Components as DPCComponents>::serial_number_nonce_crh()
+                <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
                     .hash(&sn_nonce_input)
                     .unwrap(),
                 &mut rng,

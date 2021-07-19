@@ -45,7 +45,7 @@ use snarkvm_gadgets::{
     PrepareGadget,
 };
 use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
-use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, ToConstraintField};
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
 
 /// The Marlin verification gadget.
 pub struct MarlinVerificationGadget<
@@ -67,8 +67,7 @@ pub type FSA<InnerField, OuterField> = FiatShamirAlgebraicSpongeRng<InnerField, 
 pub type FSG<InnerField, OuterField> =
     FiatShamirAlgebraicSpongeRngVar<InnerField, OuterField, PoseidonSponge<OuterField>, PoseidonSpongeVar<OuterField>>;
 
-impl<TargetField, BaseField, PC, PCG, FS, MM, C, V>
-    SNARKVerifierGadget<TargetField, BaseField, MarlinSNARK<TargetField, BaseField, PC, FS, MM, C, V>>
+impl<TargetField, BaseField, PC, PCG, FS, MM, V> SNARKVerifierGadget<MarlinSNARK<TargetField, BaseField, PC, FS, MM, V>>
     for MarlinVerificationGadget<TargetField, BaseField, PC, PCG>
 where
     TargetField: PrimeField,
@@ -81,7 +80,6 @@ where
     PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
-    C: ConstraintSynthesizer<TargetField>,
     V: ToConstraintField<TargetField>,
 {
     type Input = NonNativeFieldVar<TargetField, BaseField>;
@@ -103,7 +101,9 @@ where
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError> {
         let pvk = verification_key.prepare(cs.ns(|| "prepare vk"))?;
-        <Self as SNARKVerifierGadget<TargetField, BaseField, MarlinSNARK<TargetField, BaseField, PC, FS, MM, C, V>>>::prepared_check_verify(cs, &pvk, input, proof)
+        <Self as SNARKVerifierGadget<MarlinSNARK<TargetField, BaseField, PC, FS, MM, V>>>::prepared_check_verify(
+            cs, &pvk, input, proof,
+        )
     }
 
     fn prepared_check_verify<'a, CS: ConstraintSystem<BaseField>, I: Iterator<Item = Self::Input>>(
@@ -330,7 +330,8 @@ mod test {
     fn verifier_test() {
         let rng = &mut test_rng();
 
-        let universal_srs = MarlinInst::universal_setup(10000, 25, 10000, rng).unwrap();
+        let max_degree = crate::ahp::AHPForR1CS::<Fr>::max_degree(10000, 25, 10000).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
         let num_constraints = 10000;
         let num_variables = 25;

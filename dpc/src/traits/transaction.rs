@@ -23,9 +23,7 @@ pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes {
     type Commitment: Clone + Eq + Hash + FromBytes + ToBytes + Sync + Send;
     type Digest: Clone + Eq + Hash + FromBytes + ToBytes;
     type InnerCircuitID: Clone + Eq + FromBytes + ToBytes;
-    type LocalDataRoot: Clone + Eq + Hash + FromBytes + ToBytes;
     type Memorandum: Clone + Eq + Hash + FromBytes + ToBytes;
-    type ProgramCommitment: Clone + Eq + Hash + FromBytes + ToBytes;
     type SerialNumber: Clone + Eq + Hash + FromBytes + ToBytes;
     type EncryptedRecord: Clone + Eq + FromBytes + ToBytes;
     type ValueBalance: Clone + Eq + FromBytes + ToBytes;
@@ -51,12 +49,6 @@ pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes {
 
     /// Returns the memorandum.
     fn memorandum(&self) -> &Self::Memorandum;
-
-    /// Returns the program commitment in the transaction.
-    fn program_commitment(&self) -> &Self::ProgramCommitment;
-
-    /// Returns the local data root in the transaction.
-    fn local_data_root(&self) -> &Self::LocalDataRoot;
 
     /// Returns the value balance in the transaction.
     fn value_balance(&self) -> Self::ValueBalance;

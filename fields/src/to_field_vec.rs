@@ -72,7 +72,7 @@ impl<F: PrimeField> ToConstraintField<F> for [u8] {
     }
 }
 
-impl<F: PrimeField> ToConstraintField<F> for [u8; 32] {
+impl<F: PrimeField, const NUM_BYTES: usize> ToConstraintField<F> for [u8; NUM_BYTES] {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         self.as_ref().to_field_elements()

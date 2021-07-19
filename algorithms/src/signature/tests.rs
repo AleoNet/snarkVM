@@ -15,13 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{signature::Schnorr, SignatureScheme};
-use snarkvm_curves::{
-    edwards_bls12::EdwardsProjective as EdwardsBls12,
-    edwards_bw6::EdwardsProjective as EdwardsBW6,
-    Group,
-};
-use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{FromBytes, UniformRand};
+use snarkvm_curves::{edwards_bls12::EdwardsProjective as EdwardsBls12, edwards_bw6::EdwardsProjective as EdwardsBW6};
+use snarkvm_utilities::FromBytes;
 
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;

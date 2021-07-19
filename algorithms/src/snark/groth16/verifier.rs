@@ -39,7 +39,10 @@ pub fn verify_proof<E: PairingEngine>(
     public_inputs: &[E::Fr],
 ) -> Result<bool, SynthesisError> {
     if (public_inputs.len() + 1) != pvk.gamma_abc_g1().len() {
-        return Err(SynthesisError::MalformedVerifyingKey);
+        return Err(SynthesisError::MalformedVerifyingKey(
+            public_inputs.len() + 1,
+            pvk.gamma_abc_g1().len(),
+        ));
     }
 
     let mut g_ic = pvk.gamma_abc_g1()[0];

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, traits::DPCComponents, AccountError};
+use crate::{account_format, traits::Parameters, AccountError};
 use snarkvm_algorithms::{
     prf::Blake2s,
     traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, PRF},
@@ -27,24 +27,24 @@ use std::{fmt, str::FromStr};
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: DPCComponents"),
-    Default(bound = "C: DPCComponents"),
-    PartialEq(bound = "C: DPCComponents"),
-    Eq(bound = "C: DPCComponents")
+    Clone(bound = "C: Parameters"),
+    Default(bound = "C: Parameters"),
+    PartialEq(bound = "C: Parameters"),
+    Eq(bound = "C: Parameters")
 )]
-pub struct PrivateKey<C: DPCComponents> {
+pub struct PrivateKey<C: Parameters> {
     pub seed: [u8; 32],
     // Derived private attributes from the seed.
-    pub sk_sig: <C::AccountSignature as SignatureScheme>::PrivateKey,
+    pub sk_sig: <C::AccountSignatureScheme as SignatureScheme>::PrivateKey,
     pub sk_prf: <C::PRF as PRF>::Seed,
-    pub r_pk: <C::AccountCommitment as CommitmentScheme>::Randomness,
+    pub r_pk: <C::AccountCommitmentScheme as CommitmentScheme>::Randomness,
     pub r_pk_counter: u16,
     // This dummy flag is set to true for use in the `inner_snark` setup.
     #[derivative(Default(value = "true"))]
     pub is_dummy: bool,
 }
 
-impl<C: DPCComponents> PrivateKey<C> {
+impl<C: Parameters> PrivateKey<C> {
     const INITIAL_R_PK_COUNTER: u16 = 2;
     const INPUT_SK_PRF: [u8; 32] = [
         0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -71,7 +71,7 @@ impl<C: DPCComponents> PrivateKey<C> {
     pub fn from_seed(seed: &[u8; 32]) -> Result<Self, AccountError> {
         // Generate the SIG key pair.
         let sk_sig_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_SIG)?;
-        let sk_sig = <C::AccountSignature as SignatureScheme>::PrivateKey::read_le(&sk_sig_bytes[..])?;
+        let sk_sig = <C::AccountSignatureScheme as SignatureScheme>::PrivateKey::read_le(&sk_sig_bytes[..])?;
 
         // Generate the PRF secret key.
         let sk_prf_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_PRF)?;
@@ -116,15 +116,17 @@ impl<C: DPCComponents> PrivateKey<C> {
     }
 
     /// Returns the decryption key for the account view key.
-    pub fn to_decryption_key(&self) -> Result<<C::AccountEncryption as EncryptionScheme>::PrivateKey, AccountError> {
+    pub fn to_decryption_key(
+        &self,
+    ) -> Result<<C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey, AccountError> {
         let commitment = self.commit()?;
         let decryption_key_bytes = to_bytes_le![commitment]?;
 
         // This operation implicitly enforces that the unused MSB bits
         // for the scalar field representation are correctly set to 0.
         let decryption_key = match self.is_dummy {
-            true => <C::AccountEncryption as EncryptionScheme>::PrivateKey::default(),
-            false => <C::AccountEncryption as EncryptionScheme>::PrivateKey::read_le(&decryption_key_bytes[..])?,
+            true => <C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey::default(),
+            false => <C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey::read_le(&decryption_key_bytes[..])?,
         };
 
         // This operation explicitly enforces that the unused MSB bits
@@ -137,7 +139,7 @@ impl<C: DPCComponents> PrivateKey<C> {
             let account_decryption_key_bits = from_bytes_le_to_bits_le(&decryption_key_bytes[..]).collect::<Vec<_>>();
             let account_decryption_key_length = account_decryption_key_bits.len();
 
-            let decryption_private_key_length = C::AccountEncryption::private_key_size_in_bits();
+            let decryption_private_key_length = C::AccountEncryptionScheme::private_key_size_in_bits();
             assert!(decryption_private_key_length > 0);
             assert!(decryption_private_key_length <= account_decryption_key_length);
 
@@ -153,15 +155,15 @@ impl<C: DPCComponents> PrivateKey<C> {
     }
 
     /// Returns the signature public key for deriving the account view key.
-    pub fn pk_sig(&self) -> Result<<C::AccountSignature as SignatureScheme>::PublicKey, AccountError> {
-        Ok(C::account_signature().generate_public_key(&self.sk_sig)?)
+    pub fn pk_sig(&self) -> Result<<C::AccountSignatureScheme as SignatureScheme>::PublicKey, AccountError> {
+        Ok(C::account_signature_scheme().generate_public_key(&self.sk_sig)?)
     }
 
     /// Derives the account private key from a given seed and counter without verifying if it is well-formed.
     fn from_seed_and_counter_unsafe(seed: &[u8; 32], r_pk_counter: u16) -> Result<Self, AccountError> {
         // Generate the SIG key pair.
         let sk_sig_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_SIG)?;
-        let sk_sig = <C::AccountSignature as SignatureScheme>::PrivateKey::read_le(&sk_sig_bytes[..])?;
+        let sk_sig = <C::AccountSignatureScheme as SignatureScheme>::PrivateKey::read_le(&sk_sig_bytes[..])?;
 
         // Generate the PRF secret key.
         let sk_prf_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_PRF)?;
@@ -184,27 +186,27 @@ impl<C: DPCComponents> PrivateKey<C> {
     fn derive_r_pk(
         seed: &[u8; 32],
         counter: u16,
-    ) -> Result<<C::AccountCommitment as CommitmentScheme>::Randomness, AccountError> {
+    ) -> Result<<C::AccountCommitmentScheme as CommitmentScheme>::Randomness, AccountError> {
         let mut r_pk_input = [0u8; 32];
         r_pk_input[0..2].copy_from_slice(&counter.to_le_bytes());
 
         // Generate the randomness rpk for the commitment scheme.
         let r_pk_bytes = Blake2s::evaluate(seed, &r_pk_input)?;
-        let r_pk = <C::AccountCommitment as CommitmentScheme>::Randomness::read_le(&r_pk_bytes[..])?;
+        let r_pk = <C::AccountCommitmentScheme as CommitmentScheme>::Randomness::read_le(&r_pk_bytes[..])?;
 
         Ok(r_pk)
     }
 
     /// Returns the commitment output of the private key.
-    fn commit(&self) -> Result<<C::AccountCommitment as CommitmentScheme>::Output, AccountError> {
+    fn commit(&self) -> Result<<C::AccountCommitmentScheme as CommitmentScheme>::Output, AccountError> {
         // Construct the commitment input for the account address.
         let commit_input = to_bytes_le![self.pk_sig()?, self.sk_prf]?;
 
-        Ok(C::account_commitment().commit(&commit_input, &self.r_pk)?)
+        Ok(C::account_commitment_scheme().commit(&commit_input, &self.r_pk)?)
     }
 }
 
-impl<C: DPCComponents> FromStr for PrivateKey<C> {
+impl<C: Parameters> FromStr for PrivateKey<C> {
     type Err = AccountError;
 
     /// Reads in an account private key string.
@@ -226,7 +228,7 @@ impl<C: DPCComponents> FromStr for PrivateKey<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Display for PrivateKey<C> {
+impl<C: Parameters> fmt::Display for PrivateKey<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut private_key = [0u8; 43];
         let prefix = account_format::PRIVATE_KEY_PREFIX;
@@ -242,7 +244,7 @@ impl<C: DPCComponents> fmt::Display for PrivateKey<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Debug for PrivateKey<C> {
+impl<C: Parameters> fmt::Debug for PrivateKey<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

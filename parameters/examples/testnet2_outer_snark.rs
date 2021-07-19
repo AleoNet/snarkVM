@@ -16,8 +16,9 @@
 
 use snarkvm_algorithms::{crh::sha256::sha256, traits::SNARK};
 use snarkvm_dpc::{
-    testnet2::{instantiated::Components, InnerCircuit, NoopProgram, OuterCircuit, Testnet2Components},
+    testnet2::{parameters::Testnet2Parameters, NoopProgram, OuterCircuit, Testnet2Components},
     DPCError,
+    InnerCircuit,
     ProgramScheme,
 };
 use snarkvm_parameters::{
@@ -27,7 +28,7 @@ use snarkvm_parameters::{
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::thread_rng;
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 
 mod utils;
 use snarkvm_fields::ToConstraintField;
@@ -35,12 +36,9 @@ use utils::store;
 
 pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError>
 where
-    <C::NoopProgramSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
+    <C::ProgramSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
 {
     let rng = &mut thread_rng();
-
-    // TODO (howardwu): TEMPORARY - Resolve this inconsistency on import structure with a new model once MerkleParameters are refactored.
-    let ledger_merkle_tree_parameters = Arc::new(C::ledger_merkle_tree_parameters().clone());
 
     let inner_snark_pk: <C::InnerSNARK as SNARK>::ProvingKey =
         <C::InnerSNARK as SNARK>::ProvingKey::read_le(InnerSNARKPKParameters::load_bytes()?.as_slice())?;
@@ -48,21 +46,12 @@ where
     let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey =
         <C::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
 
-    let inner_snark_proof = C::InnerSNARK::prove(
-        &inner_snark_pk,
-        &InnerCircuit::blank(&ledger_merkle_tree_parameters),
-        rng,
-    )?;
+    let inner_snark_proof = C::InnerSNARK::prove(&inner_snark_pk, &InnerCircuit::<C>::blank(), rng)?;
 
     let noop_program = NoopProgram::<C>::load()?;
 
-    let outer_snark_parameters = C::OuterSNARK::setup(
-        &OuterCircuit::blank(
-            ledger_merkle_tree_parameters,
-            inner_snark_vk,
-            inner_snark_proof,
-            noop_program.execute_blank(rng)?,
-        ),
+    let outer_snark_parameters = C::OuterSNARK::circuit_specific_setup(
+        &OuterCircuit::<C>::blank(inner_snark_vk, inner_snark_proof, noop_program.execute_blank(rng)?),
         rng,
     )?;
 
@@ -83,7 +72,7 @@ fn versioned_filename(checksum: &str) -> String {
 }
 
 pub fn main() {
-    let (outer_snark_pk, outer_snark_vk) = setup::<Components>().unwrap();
+    let (outer_snark_pk, outer_snark_vk) = setup::<Testnet2Parameters>().unwrap();
     let outer_snark_pk_checksum = hex::encode(sha256(&outer_snark_pk));
     store(
         &PathBuf::from(&versioned_filename(&outer_snark_pk_checksum)),

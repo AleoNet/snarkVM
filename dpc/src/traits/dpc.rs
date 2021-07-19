@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{AccountScheme, LedgerScheme, RecordScheme, TransactionScheme};
+use crate::traits::{AccountScheme, LedgerScheme, Parameters, RecordScheme, TransactionScheme};
 
 use rand::{CryptoRng, Rng};
-use std::sync::Arc;
 
-pub trait DPCScheme<L: LedgerScheme>: Sized {
+pub trait DPCScheme<C: Parameters>: Sized {
     type Account: AccountScheme;
     type Execution;
     type Record: RecordScheme<Owner = <Self::Account as AccountScheme>::Address>;
@@ -27,13 +26,10 @@ pub trait DPCScheme<L: LedgerScheme>: Sized {
     type TransactionKernel;
 
     /// Initializes a new instance of DPC.
-    fn setup<R: Rng + CryptoRng>(ledger_parameters: &Arc<L::MerkleParameters>, rng: &mut R) -> anyhow::Result<Self>;
+    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> anyhow::Result<Self>;
 
     /// Loads the saved instance of DPC.
     fn load(verify_only: bool) -> anyhow::Result<Self>;
-
-    /// Returns an account, given the system parameters, metadata, and an RNG.
-    fn create_account<R: Rng + CryptoRng>(&self, rng: &mut R) -> anyhow::Result<Self::Account>;
 
     /// Returns the execution context required for program snark and DPC transaction generation.
     #[allow(clippy::too_many_arguments)]
@@ -48,7 +44,7 @@ pub trait DPCScheme<L: LedgerScheme>: Sized {
 
     /// Returns new records and a transaction based on the authorized
     /// consumption of old records.
-    fn execute_online_phase<R: Rng + CryptoRng>(
+    fn execute_online_phase<L: LedgerScheme<C>, R: Rng + CryptoRng>(
         &self,
         old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         transaction_kernel: Self::TransactionKernel,
@@ -58,8 +54,8 @@ pub trait DPCScheme<L: LedgerScheme>: Sized {
     ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)>;
 
     /// Returns true iff the transaction is valid according to the ledger.
-    fn verify(&self, transaction: &Self::Transaction, ledger: &L) -> bool;
+    fn verify<L: LedgerScheme<C>>(&self, transaction: &Self::Transaction, ledger: &L) -> bool;
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions(&self, block: &[Self::Transaction], ledger: &L) -> bool;
+    fn verify_transactions<L: LedgerScheme<C>>(&self, block: &[Self::Transaction], ledger: &L) -> bool;
 }

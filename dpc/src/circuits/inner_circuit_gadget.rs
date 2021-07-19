@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::ops::Mul;
-
 use crate::{
-    testnet2::{encrypted::RecordEncryptionGadgetComponents, record::Record, Testnet2Components},
-    traits::RecordScheme,
+    encrypted::RecordEncryptionGadgetComponents,
+    record::Record,
     AleoAmount,
+    Parameters,
     PrivateKey,
+    RecordScheme,
 };
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
@@ -28,7 +28,6 @@ use snarkvm_algorithms::{
     EncryptionScheme,
     MerkleParameters,
     SignatureScheme,
-    CRH,
     PRF,
 };
 use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
@@ -49,36 +48,35 @@ use snarkvm_gadgets::{
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{from_bits_le_to_bytes_le, to_bytes_le, FromBytes, ToBytes};
 
-use std::sync::Arc;
+use std::ops::Mul;
 
 #[allow(clippy::too_many_arguments)]
-pub fn execute_inner_circuit<C: Testnet2Components, CS: ConstraintSystem<C::InnerScalarField>>(
+pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarField>>(
     cs: &mut CS,
     // Ledger
-    ledger_parameters: &Arc<C::LedgerMerkleTreeParameters>,
-    ledger_digest: &MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
+    ledger_digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
 
     // Old record stuff
     old_records: &[Record<C>],
-    old_witnesses: &[MerklePath<C::LedgerMerkleTreeParameters>],
+    old_witnesses: &[MerklePath<C::RecordCommitmentTreeParameters>],
     old_private_keys: &[PrivateKey<C>],
-    old_serial_numbers: &[<C::AccountSignature as SignatureScheme>::PublicKey],
+    old_serial_numbers: &[<C::AccountSignatureScheme as SignatureScheme>::PublicKey],
 
     // New record stuff
     new_records: &[Record<C>],
     new_sn_nonce_randomness: &[[u8; 32]],
-    new_commitments: &[<C::RecordCommitment as CommitmentScheme>::Output],
+    new_commitments: &[C::RecordCommitment],
 
-    new_records_encryption_randomness: &[<C::AccountEncryption as EncryptionScheme>::Randomness],
+    new_records_encryption_randomness: &[<C::AccountEncryptionScheme as EncryptionScheme>::Randomness],
     new_records_encryption_gadget_components: &[RecordEncryptionGadgetComponents<C>],
-    new_encrypted_record_hashes: &[<C::EncryptedRecordCRH as CRH>::Output],
+    new_encrypted_record_hashes: &[C::EncryptedRecordDigest],
 
     // Rest
-    program_commitment: &<C::ProgramIDCommitment as CommitmentScheme>::Output,
-    program_randomness: &<C::ProgramIDCommitment as CommitmentScheme>::Randomness,
-    local_data_root: &<C::LocalDataCRH as CRH>::Output,
-    local_data_commitment_randomizers: &[<C::LocalDataCommitment as CommitmentScheme>::Randomness],
-    memo: &[u8; 32],
+    program_commitment: &<C::ProgramCommitmentScheme as CommitmentScheme>::Output,
+    program_randomness: &<C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
+    local_data_root: &C::LocalDataDigest,
+    local_data_commitment_randomizers: &[<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness],
+    memo: &[u8; 64],
     value_balance: AleoAmount,
     network_id: u8,
 ) -> Result<(), SynthesisError> {
@@ -97,7 +95,6 @@ pub fn execute_inner_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Inne
         C::PRFGadget,
     >(
         cs,
-        ledger_parameters,
         ledger_digest,
         //
         old_records,
@@ -138,34 +135,33 @@ fn inner_circuit_gadget<
     PGadget,
 >(
     cs: &mut CS,
-    ledger_parameters: &C::LedgerMerkleTreeParameters,
-    ledger_digest: &MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
+    ledger_digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
 
     //
     old_records: &[Record<C>],
-    old_witnesses: &[MerklePath<C::LedgerMerkleTreeParameters>],
+    old_witnesses: &[MerklePath<C::RecordCommitmentTreeParameters>],
     old_private_keys: &[PrivateKey<C>],
-    old_serial_numbers: &[<C::AccountSignature as SignatureScheme>::PublicKey],
+    old_serial_numbers: &[<C::AccountSignatureScheme as SignatureScheme>::PublicKey],
 
     //
     new_records: &[Record<C>],
     new_sn_nonce_randomness: &[[u8; 32]],
-    new_commitments: &[<C::RecordCommitment as CommitmentScheme>::Output],
-    new_records_encryption_randomness: &[<C::AccountEncryption as EncryptionScheme>::Randomness],
+    new_commitments: &[C::RecordCommitment],
+    new_records_encryption_randomness: &[<C::AccountEncryptionScheme as EncryptionScheme>::Randomness],
     new_records_encryption_gadget_components: &[RecordEncryptionGadgetComponents<C>],
-    new_encrypted_record_hashes: &[<C::EncryptedRecordCRH as CRH>::Output],
+    new_encrypted_record_hashes: &[C::EncryptedRecordDigest],
 
     //
-    program_commitment: &<C::ProgramIDCommitment as CommitmentScheme>::Output,
-    program_randomness: &<C::ProgramIDCommitment as CommitmentScheme>::Randomness,
-    local_data_root: &<C::LocalDataCRH as CRH>::Output,
-    local_data_commitment_randomizers: &[<C::LocalDataCommitment as CommitmentScheme>::Randomness],
-    memo: &[u8; 32],
+    program_commitment: &<C::ProgramCommitmentScheme as CommitmentScheme>::Output,
+    program_randomness: &<C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
+    local_data_root: &C::LocalDataDigest,
+    local_data_commitment_randomizers: &[<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness],
+    memo: &[u8; 64],
     value_balance: AleoAmount,
     network_id: u8,
 ) -> Result<(), SynthesisError>
 where
-    C: Testnet2Components<
+    C: Parameters<
         PRF = P,
         AccountCommitmentGadget = AccountCommitmentGadget,
         AccountEncryptionGadget = AccountEncryptionGadget,
@@ -178,13 +174,13 @@ where
         PRFGadget = PGadget,
     >,
     P: PRF,
-    AccountCommitmentGadget: CommitmentGadget<C::AccountCommitment, C::InnerScalarField>,
-    AccountEncryptionGadget: EncryptionGadget<C::AccountEncryption, C::InnerScalarField>,
-    AccountSignatureGadget: SignatureGadget<C::AccountSignature, C::InnerScalarField>,
-    RecordCommitmentGadget: CommitmentGadget<C::RecordCommitment, C::InnerScalarField>,
+    AccountCommitmentGadget: CommitmentGadget<C::AccountCommitmentScheme, C::InnerScalarField>,
+    AccountEncryptionGadget: EncryptionGadget<C::AccountEncryptionScheme, C::InnerScalarField>,
+    AccountSignatureGadget: SignatureGadget<C::AccountSignatureScheme, C::InnerScalarField>,
+    RecordCommitmentGadget: CommitmentGadget<C::RecordCommitmentScheme, C::InnerScalarField>,
     EncryptedRecordCRHGadget: CRHGadget<C::EncryptedRecordCRH, C::InnerScalarField>,
     LocalDataCRHGadget: CRHGadget<C::LocalDataCRH, C::InnerScalarField>,
-    LocalDataCommitmentGadget: CommitmentGadget<C::LocalDataCommitment, C::InnerScalarField>,
+    LocalDataCommitmentGadget: CommitmentGadget<C::LocalDataCommitmentScheme, C::InnerScalarField>,
     SerialNumberNonceCRHGadget: CRHGadget<C::SerialNumberNonceCRH, C::InnerScalarField>,
     PGadget: PRFGadget<P, C::InnerScalarField>,
 {
@@ -198,7 +194,7 @@ where
     // 7. local_data_crh_parameters
     // 8. local_data_commitment_parameters
     // 9. serial_number_nonce_crh_parameters
-    // 10. ledger_parameters
+    // 10. record_commitment_tree_parameters
     // 11. ledger_digest
     // 12. for i in 0..NUM_INPUT_RECORDS: old_serial_numbers[i]
     // 13. for j in 0..NUM_OUTPUT_RECORDS: new_commitments[i], new_encrypted_record_hashes[i]
@@ -214,32 +210,32 @@ where
         local_data_crh,
         local_data_commitment_parameters,
         serial_number_nonce_crh,
-        ledger_parameters,
+        record_commitment_tree_parameters,
     ) = {
         let cs = &mut cs.ns(|| "Declare commitment and CRH parameters");
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let account_commitment_parameters =
             C::AccountCommitmentGadget::alloc_input(&mut cs.ns(|| "Declare account commit parameters"), || {
-                Ok(C::account_commitment().clone())
+                Ok(C::account_commitment_scheme().clone())
             })?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let account_encryption_parameters =
             C::AccountEncryptionGadget::alloc_input(&mut cs.ns(|| "Declare account encryption parameters"), || {
-                Ok(C::account_encryption().clone())
+                Ok(C::account_encryption_scheme().clone())
             })?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let account_signature_parameters =
             C::AccountSignatureGadget::alloc_input(&mut cs.ns(|| "Declare account signature parameters"), || {
-                Ok(C::account_signature().clone())
+                Ok(C::account_signature_scheme().clone())
             })?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let record_commitment_parameters =
             C::RecordCommitmentGadget::alloc_input(&mut cs.ns(|| "Declare record commitment parameters"), || {
-                Ok(C::record_commitment().clone())
+                Ok(C::record_commitment_scheme().clone())
             })?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
@@ -249,10 +245,10 @@ where
         )?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
-        let program_id_commitment_parameters = C::ProgramIDCommitmentGadget::alloc_input(
-            &mut cs.ns(|| "Declare program ID commitment parameters"),
-            || Ok(C::program_id_commitment().clone()),
-        )?;
+        let program_id_commitment_parameters =
+            C::ProgramCommitmentGadget::alloc_input(&mut cs.ns(|| "Declare program ID commitment parameters"), || {
+                Ok(C::program_commitment_scheme().clone())
+            })?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let local_data_crh_parameters =
@@ -263,7 +259,7 @@ where
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let local_data_commitment_parameters = C::LocalDataCommitmentGadget::alloc_input(
             &mut cs.ns(|| "Declare local data commitment parameters"),
-            || Ok(C::local_data_commitment().clone()),
+            || Ok(C::local_data_commitment_scheme().clone()),
         )?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
@@ -273,9 +269,9 @@ where
         )?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
-        let ledger_parameters =
-            C::LedgerMerkleTreeCRHGadget::alloc_input(&mut cs.ns(|| "Declare ledger parameters"), || {
-                Ok(ledger_parameters.crh())
+        let record_commitment_tree_parameters =
+            C::RecordCommitmentTreeCRHGadget::alloc_input(&mut cs.ns(|| "Declare ledger parameters"), || {
+                Ok(C::record_commitment_tree_parameters().crh())
             })?;
 
         (
@@ -288,13 +284,13 @@ where
             local_data_crh_parameters,
             local_data_commitment_parameters,
             serial_number_nonce_crh_parameters,
-            ledger_parameters,
+            record_commitment_tree_parameters,
         )
     };
 
     let zero_value = UInt8::alloc_vec(&mut cs.ns(|| "Declare record zero value"), &to_bytes_le![0u64]?)?;
 
-    let digest_gadget = <C::LedgerMerkleTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
+    let digest_gadget = <C::RecordCommitmentTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
         &mut cs.ns(|| "Declare ledger digest"),
         || Ok(ledger_digest),
     )?;
@@ -390,14 +386,14 @@ where
         {
             let witness_cs = &mut cs.ns(|| "Check ledger membership witness");
 
-            let witness_gadget = MerklePathGadget::<_, C::LedgerMerkleTreeCRHGadget, _>::alloc(
+            let witness_gadget = MerklePathGadget::<_, C::RecordCommitmentTreeCRHGadget, _>::alloc(
                 &mut witness_cs.ns(|| "Declare membership witness"),
                 || Ok(witness),
             )?;
 
             witness_gadget.conditionally_check_membership(
                 &mut witness_cs.ns(|| "Perform ledger membership witness check"),
-                &ledger_parameters,
+                &record_commitment_tree_parameters,
                 &digest_gadget,
                 &given_commitment,
                 &given_is_dummy.not(),
@@ -991,7 +987,7 @@ where
 
             for (i, (x, y)) in record_group_encoding.iter().enumerate() {
                 let affine = <C::EncryptionGroup as ProjectiveCurve>::Affine::read_le(&to_bytes_le![x, y]?[..])?;
-                encryption_plaintext.push(<C::AccountEncryption as EncryptionScheme>::Text::read_le(
+                encryption_plaintext.push(<C::AccountEncryptionScheme as EncryptionScheme>::Text::read_le(
                     &to_bytes_le![affine.into_projective()]?[..],
                 )?);
 
@@ -1171,13 +1167,13 @@ where
         }
 
         let given_commitment_randomness =
-            <C::ProgramIDCommitmentGadget as CommitmentGadget<_, C::InnerScalarField>>::RandomnessGadget::alloc(
+            <C::ProgramCommitmentGadget as CommitmentGadget<_, C::InnerScalarField>>::RandomnessGadget::alloc(
                 &mut commitment_cs.ns(|| "given_commitment_randomness"),
                 || Ok(program_randomness),
             )?;
 
         let given_commitment =
-            <C::ProgramIDCommitmentGadget as CommitmentGadget<_, C::InnerScalarField>>::OutputGadget::alloc_input(
+            <C::ProgramCommitmentGadget as CommitmentGadget<_, C::InnerScalarField>>::OutputGadget::alloc_input(
                 &mut commitment_cs.ns(|| "given_commitment"),
                 || Ok(program_commitment),
             )?;

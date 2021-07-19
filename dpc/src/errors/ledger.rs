@@ -19,6 +19,9 @@ use snarkvm_algorithms::errors::MerkleError;
 
 #[derive(Debug, Error)]
 pub enum LedgerError {
+    #[error("{}", _0)]
+    AnyhowError(#[from] anyhow::Error),
+
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
