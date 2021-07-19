@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::testnet1::Testnet1Components;
-use snarkvm_algorithms::traits::CRH;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
 /// Program verifying key and proof
@@ -28,15 +27,12 @@ pub struct Execution {
 
 pub struct ProgramLocalData<C: Testnet1Components> {
     // TODO (raychu86) add local_data_crh_parameters
-    pub local_data_root: <C::LocalDataCRH as CRH>::Output,
+    pub local_data_root: C::LocalDataDigest,
     pub position: u8,
 }
 
 /// Convert each component to bytes and pack into field elements.
-impl<C: Testnet1Components> ToConstraintField<C::InnerScalarField> for ProgramLocalData<C>
-where
-    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-{
+impl<C: Testnet1Components> ToConstraintField<C::InnerScalarField> for ProgramLocalData<C> {
     fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
         let mut v = ToConstraintField::<C::InnerScalarField>::to_field_elements(&[self.position][..])?;
         v.extend_from_slice(&C::local_data_commitment_scheme().to_field_elements()?);

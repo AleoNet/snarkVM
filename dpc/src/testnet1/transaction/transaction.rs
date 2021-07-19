@@ -24,7 +24,7 @@ use crate::{
 };
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, SignatureScheme, CRH, SNARK},
+    traits::{SignatureScheme, CRH, SNARK},
 };
 use snarkvm_utilities::{
     serialize::{CanonicalDeserialize, CanonicalSerialize},
@@ -56,7 +56,7 @@ pub struct Transaction<C: Testnet1Components> {
     pub old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
 
     /// The commitment of the new records
-    pub new_commitments: Vec<<C::RecordCommitmentScheme as CommitmentScheme>::Output>,
+    pub new_commitments: Vec<C::RecordCommitment>,
 
     /// A transaction value balance is the difference between input and output record balances.
     /// This value effectively becomes the transaction fee for the miner. Only coinbase transactions
@@ -117,7 +117,7 @@ impl<C: Testnet1Components> Transaction<C> {
 }
 
 impl<C: Testnet1Components> TransactionScheme for Transaction<C> {
-    type Commitment = <C::RecordCommitmentScheme as CommitmentScheme>::Output;
+    type Commitment = C::RecordCommitment;
     type Digest = MerkleTreeDigest<C::RecordCommitmentTreeParameters>;
     type EncryptedRecord = EncryptedRecord<C>;
     type InnerCircuitID = <C::InnerCircuitIDCRH as CRH>::Output;
@@ -243,8 +243,7 @@ impl<C: Testnet1Components> FromBytes for Transaction<C> {
         let num_new_commitments = C::NUM_OUTPUT_RECORDS;
         let mut new_commitments = Vec::with_capacity(num_new_commitments);
         for _ in 0..num_new_commitments {
-            let new_commitment: <C::RecordCommitmentScheme as CommitmentScheme>::Output =
-                FromBytes::read_le(&mut reader)?;
+            let new_commitment: C::RecordCommitment = FromBytes::read_le(&mut reader)?;
             new_commitments.push(new_commitment);
         }
 

@@ -48,11 +48,11 @@ pub struct TransactionKernel<C: Testnet1Components> {
     // New record stuff
     pub new_records: Vec<Record<C>>,
     pub new_sn_nonce_randomness: Vec<[u8; 32]>,
-    pub new_commitments: Vec<<C::RecordCommitmentScheme as CommitmentScheme>::Output>,
+    pub new_commitments: Vec<C::RecordCommitment>,
 
     pub new_records_encryption_randomness: Vec<<C::AccountEncryption as EncryptionScheme>::Randomness>,
     pub new_encrypted_records: Vec<EncryptedRecord<C>>,
-    pub new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
+    pub new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
 
     // Program and local data root and randomness
     pub program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
@@ -181,8 +181,7 @@ impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
 
         let mut new_commitments = vec![];
         for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let new_commitment: <C::RecordCommitmentScheme as CommitmentScheme>::Output =
-                FromBytes::read_le(&mut reader)?;
+            let new_commitment: C::RecordCommitment = FromBytes::read_le(&mut reader)?;
             new_commitments.push(new_commitment);
         }
 
@@ -201,7 +200,7 @@ impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
 
         let mut new_encrypted_record_hashes = vec![];
         for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let encrypted_record_hash: <C::EncryptedRecordCRH as CRH>::Output = FromBytes::read_le(&mut reader)?;
+            let encrypted_record_hash: C::EncryptedRecordDigest = FromBytes::read_le(&mut reader)?;
             new_encrypted_record_hashes.push(encrypted_record_hash);
         }
 

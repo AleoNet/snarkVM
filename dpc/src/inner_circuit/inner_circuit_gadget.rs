@@ -28,7 +28,6 @@ use snarkvm_algorithms::{
     EncryptionScheme,
     MerkleParameters,
     SignatureScheme,
-    CRH,
     PRF,
 };
 use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
@@ -66,16 +65,16 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     // New record stuff
     new_records: &[Record<C>],
     new_sn_nonce_randomness: &[[u8; 32]],
-    new_commitments: &[<C::RecordCommitmentScheme as CommitmentScheme>::Output],
+    new_commitments: &[C::RecordCommitment],
 
     new_records_encryption_randomness: &[<C::AccountEncryption as EncryptionScheme>::Randomness],
     new_records_encryption_gadget_components: &[RecordEncryptionGadgetComponents<C>],
-    new_encrypted_record_hashes: &[<C::EncryptedRecordCRH as CRH>::Output],
+    new_encrypted_record_hashes: &[C::EncryptedRecordDigest],
 
     // Rest
     program_commitment: &<C::ProgramCommitmentScheme as CommitmentScheme>::Output,
     program_randomness: &<C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-    local_data_root: &<C::LocalDataCRH as CRH>::Output,
+    local_data_root: &C::LocalDataDigest,
     local_data_commitment_randomizers: &[<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness],
     memo: &[u8; 64],
     value_balance: AleoAmount,
@@ -147,15 +146,15 @@ fn inner_circuit_gadget<
     //
     new_records: &[Record<C>],
     new_sn_nonce_randomness: &[[u8; 32]],
-    new_commitments: &[<C::RecordCommitmentScheme as CommitmentScheme>::Output],
+    new_commitments: &[C::RecordCommitment],
     new_records_encryption_randomness: &[<C::AccountEncryption as EncryptionScheme>::Randomness],
     new_records_encryption_gadget_components: &[RecordEncryptionGadgetComponents<C>],
-    new_encrypted_record_hashes: &[<C::EncryptedRecordCRH as CRH>::Output],
+    new_encrypted_record_hashes: &[C::EncryptedRecordDigest],
 
     //
     program_commitment: &<C::ProgramCommitmentScheme as CommitmentScheme>::Output,
     program_randomness: &<C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-    local_data_root: &<C::LocalDataCRH as CRH>::Output,
+    local_data_root: &C::LocalDataDigest,
     local_data_commitment_randomizers: &[<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness],
     memo: &[u8; 64],
     value_balance: AleoAmount,

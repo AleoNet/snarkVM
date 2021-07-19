@@ -50,7 +50,7 @@ pub struct Record<C: Parameters> {
     pub(crate) death_program_id: Vec<u8>,
 
     pub(crate) serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
-    pub(crate) commitment: <C::RecordCommitmentScheme as CommitmentScheme>::Output,
+    pub(crate) commitment: C::RecordCommitment,
     pub(crate) commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
 
     #[derivative(PartialEq = "ignore")]
@@ -149,7 +149,7 @@ impl<C: Parameters> Record<C> {
         birth_program_id: Vec<u8>,
         death_program_id: Vec<u8>,
         serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
-        commitment: <C::RecordCommitmentScheme as CommitmentScheme>::Output,
+        commitment: C::RecordCommitment,
         commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Self {
         Self {
@@ -199,7 +199,7 @@ impl<C: Parameters> Record<C> {
 }
 
 impl<C: Parameters> RecordScheme for Record<C> {
-    type Commitment = <C::RecordCommitmentScheme as CommitmentScheme>::Output;
+    type Commitment = C::RecordCommitment;
     type CommitmentRandomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness;
     type Owner = Address<C>;
     type Payload = Payload;
@@ -293,7 +293,7 @@ impl<C: Parameters> FromBytes for Record<C> {
         }
 
         let serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output = FromBytes::read_le(&mut reader)?;
-        let commitment: <C::RecordCommitmentScheme as CommitmentScheme>::Output = FromBytes::read_le(&mut reader)?;
+        let commitment: C::RecordCommitment = FromBytes::read_le(&mut reader)?;
         let commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness =
             FromBytes::read_le(&mut reader)?;
 

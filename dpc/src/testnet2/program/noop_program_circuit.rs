@@ -15,14 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Parameters;
-use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::prelude::*;
 use snarkvm_r1cs::{Assignment, ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
 /// Always-accept program
 pub struct NoopCircuit<C: Parameters> {
     /// Commitment to the program input.
-    pub local_data_root: Option<<C::LocalDataCRH as CRH>::Output>,
+    pub local_data_root: Option<C::LocalDataDigest>,
     /// Record position
     pub position: u8,
 }
@@ -30,12 +29,12 @@ pub struct NoopCircuit<C: Parameters> {
 impl<C: Parameters> NoopCircuit<C> {
     pub fn blank() -> Self {
         Self {
-            local_data_root: Some(<C::LocalDataCRH as CRH>::Output::default()),
+            local_data_root: Some(C::LocalDataDigest::default()),
             position: 0u8,
         }
     }
 
-    pub fn new(local_data_root: &<C::LocalDataCRH as CRH>::Output, position: u8) -> Self {
+    pub fn new(local_data_root: &C::LocalDataDigest, position: u8) -> Self {
         Self {
             local_data_root: Some(local_data_root.clone()),
             position,

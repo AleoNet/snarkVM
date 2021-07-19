@@ -24,7 +24,7 @@ use crate::{
 };
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
-    traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, CRH},
+    traits::{CommitmentScheme, EncryptionScheme, SignatureScheme},
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
@@ -43,18 +43,18 @@ pub struct InnerCircuit<C: Parameters> {
     // Inputs for new records.
     new_records: Vec<Record<C>>,
     new_serial_number_nonce_randomness: Vec<[u8; 32]>,
-    new_commitments: Vec<<C::RecordCommitmentScheme as CommitmentScheme>::Output>,
+    new_commitments: Vec<C::RecordCommitment>,
 
     // Inputs for encryption of new records.
     new_records_encryption_randomness: Vec<<C::AccountEncryption as EncryptionScheme>::Randomness>,
     new_records_encryption_gadget_components: Vec<RecordEncryptionGadgetComponents<C>>,
-    new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
+    new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
 
     // Commitment to Programs and to local data.
     program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
     program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
 
-    local_data_root: <C::LocalDataCRH as CRH>::Output,
+    local_data_root: C::LocalDataDigest,
     local_data_commitment_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
 
     memo: [u8; 64],
@@ -74,8 +74,7 @@ impl<C: Parameters> InnerCircuit<C> {
         let old_witnesses = vec![MerklePath::default(); num_input_records];
         let old_private_keys = vec![PrivateKey::default(); num_input_records];
 
-        let new_commitments =
-            vec![<C::RecordCommitmentScheme as CommitmentScheme>::Output::default(); num_output_records];
+        let new_commitments = vec![C::RecordCommitment::default(); num_output_records];
         let new_serial_number_nonce_randomness = vec![[0u8; 32]; num_output_records];
         let new_records = vec![Record::default(); num_output_records];
 
@@ -85,14 +84,14 @@ impl<C: Parameters> InnerCircuit<C> {
         let new_records_encryption_gadget_components =
             vec![RecordEncryptionGadgetComponents::<C>::default(); num_output_records];
 
-        let new_encrypted_record_hashes = vec![<C::EncryptedRecordCRH as CRH>::Output::default(); num_output_records];
+        let new_encrypted_record_hashes = vec![C::EncryptedRecordDigest::default(); num_output_records];
 
         let memo = [0u8; 64];
 
         let program_commitment = <C::ProgramCommitmentScheme as CommitmentScheme>::Output::default();
         let program_randomness = <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default();
 
-        let local_data_root = <C::LocalDataCRH as CRH>::Output::default();
+        let local_data_root = C::LocalDataDigest::default();
         let local_data_commitment_randomizers = vec![
             <C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::default();
             num_input_records + num_output_records
@@ -145,17 +144,17 @@ impl<C: Parameters> InnerCircuit<C> {
         // New records
         new_records: Vec<Record<C>>,
         new_serial_number_nonce_randomness: Vec<[u8; 32]>,
-        new_commitments: Vec<<C::RecordCommitmentScheme as CommitmentScheme>::Output>,
+        new_commitments: Vec<C::RecordCommitment>,
 
         new_records_encryption_randomness: Vec<<C::AccountEncryption as EncryptionScheme>::Randomness>,
         new_records_encryption_gadget_components: Vec<RecordEncryptionGadgetComponents<C>>,
-        new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
+        new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
 
         // Other stuff
         program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
         program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
 
-        local_data_root: <C::LocalDataCRH as CRH>::Output,
+        local_data_root: C::LocalDataDigest,
         local_data_commitment_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
 
         memo: [u8; 64],

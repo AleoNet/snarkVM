@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Parameters;
-use snarkvm_algorithms::{CRH, SNARK};
+use snarkvm_algorithms::SNARK;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
 /// Program verifying key and proof.
@@ -27,15 +27,12 @@ pub struct Execution<S: SNARK> {
 }
 
 pub struct ProgramLocalData<C: Parameters> {
-    pub local_data_root: <C::LocalDataCRH as CRH>::Output,
+    pub local_data_root: C::LocalDataDigest,
     pub position: u8,
 }
 
 /// Convert each component to bytes and pack into field elements.
-impl<C: Parameters> ToConstraintField<C::InnerScalarField> for ProgramLocalData<C>
-where
-    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-{
+impl<C: Parameters> ToConstraintField<C::InnerScalarField> for ProgramLocalData<C> {
     fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
         let mut v = ToConstraintField::<C::InnerScalarField>::to_field_elements(&[self.position][..])?;
         v.extend_from_slice(&C::local_data_commitment_scheme().to_field_elements()?);

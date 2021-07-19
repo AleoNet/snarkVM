@@ -81,8 +81,8 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
     // Inner snark verifier public inputs
     ledger_digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
     old_serial_numbers: &[<C::AccountSignature as SignatureScheme>::PublicKey],
-    new_commitments: &[<C::RecordCommitmentScheme as CommitmentScheme>::Output],
-    new_encrypted_record_hashes: &[<C::EncryptedRecordCRH as CRH>::Output],
+    new_commitments: &[C::RecordCommitment],
+    new_encrypted_record_hashes: &[C::EncryptedRecordDigest],
     memo: &<Transaction<C> as TransactionScheme>::Memorandum,
     value_balance: AleoAmount,
     network_id: u8,
@@ -97,7 +97,7 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
     // Rest
     program_commitment: &<C::ProgramCommitmentScheme as CommitmentScheme>::Output,
     program_randomness: &<C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-    local_data_root: &<C::LocalDataCRH as CRH>::Output,
+    local_data_root: &C::LocalDataDigest,
 
     inner_circuit_id: &<C::InnerCircuitIDCRH as CRH>::Output,
 ) -> Result<(), SynthesisError> {

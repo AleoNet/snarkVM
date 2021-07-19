@@ -31,16 +31,16 @@ pub struct InnerCircuitVerifierInput<C: Parameters> {
     pub old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
 
     // Output record commitments
-    pub new_commitments: Vec<<C::RecordCommitmentScheme as CommitmentScheme>::Output>,
+    pub new_commitments: Vec<C::RecordCommitment>,
 
     // New encrypted record hashes
-    pub new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
+    pub new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
 
     // Program input commitment and local data root.
     // These are required in natively verifying an inner circuit proof.
     // However for verification in the outer circuit, these must be provided as witness.
     pub program_commitment: Option<<C::ProgramCommitmentScheme as CommitmentScheme>::Output>,
-    pub local_data_root: Option<<C::LocalDataCRH as CRH>::Output>,
+    pub local_data_root: Option<C::LocalDataDigest>,
 
     pub memo: [u8; 64],
     pub value_balance: AleoAmount,
@@ -50,7 +50,6 @@ pub struct InnerCircuitVerifierInput<C: Parameters> {
 impl<C: Parameters> ToConstraintField<C::InnerScalarField> for InnerCircuitVerifierInput<C>
 where
     <C::AccountCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::RecordCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::ProgramCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <<C::RecordCommitmentTreeParameters as MerkleParameters>::H as CRH>::Parameters:
         ToConstraintField<C::InnerScalarField>,
