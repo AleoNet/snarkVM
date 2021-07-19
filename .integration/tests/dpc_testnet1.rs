@@ -516,7 +516,7 @@ fn test_testnet1_dpc_execute_constraints() {
 
     // Generate inner snark parameters and proof for verification in the outer snark
     let inner_snark_parameters = <DPC as Testnet1Components>::InnerSNARK::circuit_specific_setup(
-        &InnerCircuit::blank(ledger.parameters()),
+        &InnerCircuit::<DPC>::blank(ledger.parameters()),
         &mut rng,
     )
     .unwrap();
