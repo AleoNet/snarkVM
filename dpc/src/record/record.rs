@@ -50,8 +50,8 @@ pub struct Record<C: DPCComponents> {
     pub(crate) death_program_id: Vec<u8>,
 
     pub(crate) serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
-    pub(crate) commitment: <C::RecordCommitment as CommitmentScheme>::Output,
-    pub(crate) commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
+    pub(crate) commitment: <C::RecordCommitmentScheme as CommitmentScheme>::Output,
+    pub(crate) commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
 
     #[derivative(PartialEq = "ignore")]
     pub(crate) serial_number_nonce_randomness: Option<[u8; 32]>,
@@ -110,7 +110,7 @@ impl<C: DPCComponents> Record<C> {
     ) -> Result<Self, RecordError> {
         let record_time = start_timer!(|| "Generate record");
         // Sample new commitment randomness.
-        let commitment_randomness = <C::RecordCommitment as CommitmentScheme>::Randomness::rand(rng);
+        let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
 
         // Total = 32 + 1 + 8 + 32 + 48 + 48 + 32 = 201 bytes
         let commitment_input = to_bytes_le![
@@ -149,8 +149,8 @@ impl<C: DPCComponents> Record<C> {
         birth_program_id: Vec<u8>,
         death_program_id: Vec<u8>,
         serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
-        commitment: <C::RecordCommitment as CommitmentScheme>::Output,
-        commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
+        commitment: <C::RecordCommitmentScheme as CommitmentScheme>::Output,
+        commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Self {
         Self {
             owner,
@@ -199,8 +199,8 @@ impl<C: DPCComponents> Record<C> {
 }
 
 impl<C: DPCComponents> RecordScheme for Record<C> {
-    type Commitment = <C::RecordCommitment as CommitmentScheme>::Output;
-    type CommitmentRandomness = <C::RecordCommitment as CommitmentScheme>::Randomness;
+    type Commitment = <C::RecordCommitmentScheme as CommitmentScheme>::Output;
+    type CommitmentRandomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness;
     type Owner = Address<C>;
     type Payload = Payload;
     type SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey;
@@ -293,8 +293,8 @@ impl<C: DPCComponents> FromBytes for Record<C> {
         }
 
         let serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output = FromBytes::read_le(&mut reader)?;
-        let commitment: <C::RecordCommitment as CommitmentScheme>::Output = FromBytes::read_le(&mut reader)?;
-        let commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness =
+        let commitment: <C::RecordCommitmentScheme as CommitmentScheme>::Output = FromBytes::read_le(&mut reader)?;
+        let commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness =
             FromBytes::read_le(&mut reader)?;
 
         Ok(Self {

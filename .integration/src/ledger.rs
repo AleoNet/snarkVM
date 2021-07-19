@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::*;
-use snarkvm_algorithms::{merkle_tree::*, traits::LoadableMerkleParameters};
+use snarkvm_algorithms::merkle_tree::*;
 use snarkvm_dpc::prelude::*;
 use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
 
@@ -33,16 +33,14 @@ use std::{
 
 pub type BlockHeight = u32;
 
-pub struct Ledger<C: DPCComponents, T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> {
+pub struct Ledger<C: DPCComponents, T: TransactionScheme, S: Storage> {
     pub current_block_height: AtomicU32,
-    pub ledger_parameters: Arc<P>,
-    pub cm_merkle_tree: RwLock<MerkleTree<P>>,
+    pub cm_merkle_tree: RwLock<MerkleTree<C::RecordCommitmentTreeParameters>>,
     pub storage: S,
     pub _transaction: PhantomData<T>,
-    pub _dpc: PhantomData<C>,
 }
 
-impl<C: DPCComponents, T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> Ledger<C, T, P, S> {
+impl<C: DPCComponents, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
     /// Returns true if there are no blocks in the ledger.
     pub fn is_empty(&self) -> bool {
         self.get_latest_block().is_err()
@@ -217,18 +215,12 @@ impl<C: DPCComponents, T: TransactionScheme, P: LoadableMerkleParameters, S: Sto
     }
 }
 
-impl<C: DPCComponents, T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> LedgerScheme<C>
-    for Ledger<C, T, P, S>
-{
+impl<C: DPCComponents, T: TransactionScheme, S: Storage> LedgerScheme<C> for Ledger<C, T, S> {
     type Block = Block<Self::Transaction>;
     type Transaction = T;
 
     /// Instantiates a new ledger with a genesis block.
-    fn new(
-        path: Option<&Path>,
-        parameters: Arc<C::LedgerMerkleTreeParameters>,
-        genesis_block: Self::Block,
-    ) -> anyhow::Result<Self> {
+    fn new(path: Option<&Path>, genesis_block: Self::Block) -> anyhow::Result<Self> {
         let storage = if let Some(path) = path {
             fs::create_dir_all(&path).map_err(|err| LedgerError::Message(err.to_string()))?;
 
@@ -244,25 +236,19 @@ impl<C: DPCComponents, T: TransactionScheme, P: LoadableMerkleParameters, S: Sto
         }
 
         let leaves: &[[u8; 32]] = &[];
-        let empty_cm_merkle_tree = MerkleTree::<Self::MerkleParameters>::new(parameters.clone(), leaves)?;
+        let parameters = Arc::new(C::record_commitment_tree_parameters().clone());
+        let empty_cm_merkle_tree = MerkleTree::<C::RecordCommitmentTreeParameters>::new(parameters, leaves)?;
 
         let ledger_storage = Self {
             current_block_height: Default::default(),
             storage,
             cm_merkle_tree: RwLock::new(empty_cm_merkle_tree),
-            ledger_parameters: parameters,
             _transaction: PhantomData,
-            _dpc: PhantomData,
         };
 
         ledger_storage.insert_and_commit(&genesis_block)?;
 
         Ok(ledger_storage)
-    }
-
-    /// Return the parameters used to construct the ledger Merkle tree.
-    fn parameters(&self) -> &Arc<C::LedgerMerkleTreeParameters> {
-        &self.ledger_parameters
     }
 
     /// Returns the number of blocks including the genesis block
@@ -271,7 +257,7 @@ impl<C: DPCComponents, T: TransactionScheme, P: LoadableMerkleParameters, S: Sto
     }
 
     /// Return a digest of the latest ledger Merkle tree.
-    fn latest_digest(&self) -> Option<MerkleTreeDigest<C::LedgerMerkleTreeParameters>> {
+    fn latest_digest(&self) -> Option<MerkleTreeDigest<C::RecordCommitmentTreeParameters>> {
         let digest = match self.storage.get(COL_META, KEY_CURR_DIGEST.as_bytes()).unwrap() {
             Some(current_digest) => current_digest,
             None => to_bytes_le![self.cm_merkle_tree.read().root()].unwrap(),
@@ -280,25 +266,26 @@ impl<C: DPCComponents, T: TransactionScheme, P: LoadableMerkleParameters, S: Sto
     }
 
     /// Check that st_{ts} is a valid digest for some (past) ledger state.
-    fn validate_digest(&self, digest: &MerkleTreeDigest<C::LedgerMerkleTreeParameters>) -> bool {
+    fn validate_digest(&self, digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>) -> bool {
         self.storage.exists(COL_DIGEST, &to_bytes_le![digest].unwrap())
     }
 
     /// Returns true if the given commitment exists in the ledger.
-    fn contains_commitment(&self, commitment: &C::RecordCommitmentOutput) -> bool {
-        self.storage.exists(COL_COMMITMENT, &to_bytes_le![cm].unwrap())
+    fn contains_commitment(&self, commitment: &C::RecordCommitment) -> bool {
+        self.storage.exists(COL_COMMITMENT, &commitment.to_bytes_le().unwrap())
     }
 
     /// Returns true if the given serial number exists in the ledger.
     fn contains_serial_number(&self, serial_number: &C::AccountSignaturePublicKey) -> bool {
-        self.storage.exists(COL_SERIAL_NUMBER, &to_bytes_le![sn].unwrap())
+        self.storage
+            .exists(COL_SERIAL_NUMBER, &serial_number.to_bytes_le().unwrap())
     }
 
     /// Returns the Merkle path to the latest ledger digest
     /// for a given commitment, if it exists in the ledger.
-    fn prove_cm(&self, cm: &C::RecordCommitmentOutput) -> anyhow::Result<MerklePath<C::LedgerMerkleTreeParameters>> {
+    fn prove_cm(&self, cm: &C::RecordCommitment) -> anyhow::Result<MerklePath<C::RecordCommitmentTreeParameters>> {
         let cm_index = self
-            .get_cm_index(&to_bytes_le![cm]?)?
+            .get_cm_index(&cm.to_bytes_le()?)?
             .ok_or(LedgerError::InvalidCmIndex)?;
         let result = self.cm_merkle_tree.read().generate_proof(cm_index, cm)?;
 
@@ -306,7 +293,7 @@ impl<C: DPCComponents, T: TransactionScheme, P: LoadableMerkleParameters, S: Sto
     }
 }
 
-impl<C: DPCComponents, T: TransactionScheme, P: LoadableMerkleParameters, S: Storage> Ledger<C, T, P, S> {
+impl<C: DPCComponents, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
     /// Commit a transaction to the canon chain
     #[allow(clippy::type_complexity)]
     pub(crate) fn commit_transaction(

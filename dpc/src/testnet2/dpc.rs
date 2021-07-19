@@ -21,7 +21,7 @@ use crate::{
         program::ProgramLocalData,
         transaction::Transaction,
         Testnet2Components,
-        TransactionEngine,
+        DPC,
     },
     DPCComponents,
     InnerCircuitVerifierInput,
@@ -71,26 +71,26 @@ macro_rules! dpc_setup {
     ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
         #[inline]
         fn $fn_name() -> &'static Self::$type_name {
-            static $static_name: OnceCell<<DPC as DPCComponents>::$type_name> = OnceCell::new();
+            static $static_name: OnceCell<<Testnet2Parameters as DPCComponents>::$type_name> = OnceCell::new();
             $static_name.get_or_init(|| Self::$type_name::setup($setup_msg))
         }
     };
 }
 
-pub type Testnet2TransactionEngine = TransactionEngine<DPC>;
-pub type Testnet2Transaction = Transaction<DPC>;
+pub type Testnet2DPC = DPC<Testnet2Parameters>;
+pub type Testnet2Transaction = Transaction<Testnet2Parameters>;
 
 define_merkle_tree_parameters!(
     CommitmentMerkleTreeParameters,
-    <DPC as DPCComponents>::LedgerMerkleTreeCRH,
+    <Testnet2Parameters as DPCComponents>::RecordCommitmentTreeCRH,
     32
 );
 
-pub struct DPC;
+pub struct Testnet2Parameters;
 
 // TODO (raychu86): Optimize each of the window sizes in the type declarations below.
 #[rustfmt::skip]
-impl DPCComponents for DPC {
+impl DPCComponents for Testnet2Parameters {
     const NETWORK_ID: u8 = Network::Testnet2.id();
 
     const NUM_INPUT_RECORDS: usize = 2;
@@ -103,9 +103,9 @@ impl DPCComponents for DPC {
     type OuterScalarField = <Self::OuterCurve as PairingEngine>::Fr;
     type OuterBaseField = <Self::OuterCurve as PairingEngine>::Fq;
 
-    type AccountCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 192>;
+    type AccountCommitmentScheme = PedersenCompressedCommitment<EdwardsBls12, 8, 192>;
     type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 192>;
-    type AccountCommitmentOutput = <Self::AccountCommitment as CommitmentScheme>::Output;
+    type AccountCommitment = <Self::AccountCommitmentScheme as CommitmentScheme>::Output;
 
     type AccountEncryption = GroupEncryption<EdwardsBls12>;
     type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
@@ -116,7 +116,7 @@ impl DPCComponents for DPC {
 
     type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 48, 44>;
     type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 44>;
-    type EncryptedRecordCRHOutput = <Self::EncryptedRecordCRH as CRH>::Output;
+    type EncryptedRecordDigest = <Self::EncryptedRecordCRH as CRH>::Output;
 
     type EncryptionGroup = EdwardsBls12;
     type EncryptionGroupGadget = EdwardsBls12Gadget;
@@ -125,62 +125,62 @@ impl DPCComponents for DPC {
     type InnerCircuitIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type InnerCircuitIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
 
-    type LedgerMerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 8, 32>;
-    type LedgerMerkleTreeCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
-    type LedgerMerkleTreeCRHOutput = <Self::LedgerMerkleTreeCRH as CRH>::Output;
-    type LedgerMerkleTreeParameters = CommitmentMerkleTreeParameters;
-
-    type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 162>;
+    type LocalDataCommitmentScheme = PedersenCompressedCommitment<EdwardsBls12, 8, 162>;
     type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 162>;
 
     type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 16, 32>;
     type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
-    type LocalDataCRHOutput = <Self::LocalDataCRH as CRH>::Output;
+    type LocalDataDigest = <Self::LocalDataCRH as CRH>::Output;
 
     type PRF = Blake2s;
     type PRFGadget = Blake2sGadget;
 
-    type ProgramIDCommitment = Blake2sCommitment;
-    type ProgramIDCommitmentGadget = Blake2sCommitmentGadget;
-    type ProgramIDCommitmentOutput = <Self::ProgramIDCommitment as CommitmentScheme>::Output;
+    type ProgramCommitmentScheme = Blake2sCommitment;
+    type ProgramCommitmentGadget = Blake2sCommitmentGadget;
+    type ProgramCommitment = <Self::ProgramCommitmentScheme as CommitmentScheme>::Output;
 
     type ProgramIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
 
-    type RecordCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 233>;
+    type RecordCommitmentScheme = PedersenCompressedCommitment<EdwardsBls12, 8, 233>;
     type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 233>;
-    type RecordCommitmentOutput = <Self::RecordCommitment as CommitmentScheme>::Output;
+    type RecordCommitment = <Self::RecordCommitmentScheme as CommitmentScheme>::Output;
+
+    type RecordCommitmentTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 8, 32>;
+    type RecordCommitmentTreeCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
+    type RecordCommitmentTreeDigest = <Self::RecordCommitmentTreeCRH as CRH>::Output;
+    type RecordCommitmentTreeParameters = CommitmentMerkleTreeParameters;
 
     type SerialNumberNonceCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 32, 63>;
     type SerialNumberNonceCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
 
-    dpc_setup!{account_commitment, ACCOUNT_COMMITMENT, AccountCommitment, ACCOUNT_COMMITMENT_INPUT}
+    dpc_setup!{account_commitment, ACCOUNT_COMMITMENT, AccountCommitmentScheme, ACCOUNT_COMMITMENT_INPUT}
     dpc_setup!{account_encryption, ACCOUNT_ENCRYPTION, AccountEncryption, ACCOUNT_ENCRYPTION_INPUT}
     dpc_setup!{account_signature, ACCOUNT_SIGNATURE, AccountSignature, ACCOUNT_SIGNATURE_INPUT}
     dpc_setup!{encrypted_record_crh, ENCRYPTED_RECORD_CRH, EncryptedRecordCRH, "AleoEncryptedRecordCRH0"}
     dpc_setup!{inner_circuit_id_crh, INNER_CIRCUIT_ID_CRH, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
-    dpc_setup!{ledger_merkle_tree_crh, LEDGER_MERKLE_TREE_CRH, LedgerMerkleTreeCRH, "AleoLedgerMerkleTreeCRH0"}
-    dpc_setup!{local_data_commitment, LOCAL_DATA_COMMITMENT, LocalDataCommitment, "AleoLocalDataCommitment0"}
+    dpc_setup!{record_commitment_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoRecordCommitmentTreeCRH0"}
+    dpc_setup!{local_data_commitment, LOCAL_DATA_COMMITMENT, LocalDataCommitmentScheme, "AleoLocalDataCommitment0"}
     dpc_setup!{local_data_crh, LOCAL_DATA_CRH, LocalDataCRH, "AleoLocalDataCRH0"}
-    dpc_setup!{program_id_commitment, PROGRAM_ID_COMMITMENT, ProgramIDCommitment, "AleoProgramIDCommitment0"}
+    dpc_setup!{program_id_commitment, PROGRAM_ID_COMMITMENT, ProgramCommitmentScheme, "AleoProgramIDCommitment0"}
     dpc_setup!{program_id_crh, PROGRAM_ID_CRH, ProgramIDCRH, "AleoProgramIDCRH0"}
-    dpc_setup!{record_commitment, RECORD_COMMITMENT, RecordCommitment, "AleoRecordCommitment0"}
+    dpc_setup!{record_commitment, RECORD_COMMITMENT, RecordCommitmentScheme, "AleoRecordCommitment0"}
     dpc_setup!{serial_number_nonce_crh, SERIAL_NUMBER_NONCE_CRH, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
 
-    // TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
-    fn ledger_merkle_tree_parameters() -> &'static Self::LedgerMerkleTreeParameters {
-        static LEDGER_MERKLE_TREE_PARAMETERS: OnceCell<<DPC as DPCComponents>::LedgerMerkleTreeParameters> = OnceCell::new();
-        LEDGER_MERKLE_TREE_PARAMETERS.get_or_init(|| Self::LedgerMerkleTreeParameters::from(Self::ledger_merkle_tree_crh().clone()))
+    // TODO (howardwu): TEMPORARY - Refactor this to a proper tree.
+    fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters {
+        static RECORD_COMMITMENT_TREE_PARAMETERS: OnceCell<<Testnet2Parameters as DPCComponents>::RecordCommitmentTreeParameters> = OnceCell::new();
+        RECORD_COMMITMENT_TREE_PARAMETERS.get_or_init(|| Self::RecordCommitmentTreeParameters::from(Self::record_commitment_tree_crh().clone()))
     }
 }
 
-impl Testnet2Components for DPC {
+impl Testnet2Components for Testnet2Parameters {
     type FiatShamirRng = FiatShamirAlgebraicSpongeRng<
         Self::InnerScalarField,
         Self::OuterScalarField,
         PoseidonSponge<Self::OuterScalarField>,
     >;
-    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<DPC>>;
+    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Testnet2Parameters>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
     type MarlinMode = MarlinTestnet2Mode;
     type NoopProgramSNARK = MarlinSNARK<
@@ -197,7 +197,7 @@ impl Testnet2Components for DPC {
         Self::PolynomialCommitment,
         MarlinKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>,
     >;
-    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<DPC>>;
+    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet2Parameters>>;
     type PolynomialCommitment = MarlinKZG10<Self::InnerCurve>;
     type PolynomialCommitmentCommitment =
         <Self::PolynomialCommitment as PolynomialCommitment<Self::InnerScalarField>>::Commitment;

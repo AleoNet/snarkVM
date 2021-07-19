@@ -38,7 +38,6 @@ use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes_le, FromByte
 
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
-use std::sync::Arc;
 
 pub mod outer_circuit;
 pub use outer_circuit::*;
@@ -85,7 +84,7 @@ pub trait Testnet1Components: DPCComponents {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-pub struct TransactionEngine<C: Testnet1Components> {
+pub struct DPC<C: Testnet1Components> {
     pub noop_program: NoopProgram<C>,
     pub inner_snark_parameters: (
         Option<<C::InnerSNARK as SNARK>::ProvingKey>,
@@ -97,17 +96,7 @@ pub struct TransactionEngine<C: Testnet1Components> {
     ),
 }
 
-impl<C: Testnet1Components> DPCScheme<C> for TransactionEngine<C>
-// where
-//     L: LedgerScheme<
-//         Commitment = <C::RecordCommitment as CommitmentScheme>::Output,
-//         MerkleParameters = C::LedgerMerkleTreeParameters,
-//         MerklePath = MerklePath<C::LedgerMerkleTreeParameters>,
-//         MerkleTreeDigest = MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
-//         SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey,
-//         Transaction = Transaction<C>,
-//     >,
-{
+impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
     type Account = Account<C>;
     type Execution = Execution;
     type Record = Record<C>;
@@ -117,15 +106,13 @@ impl<C: Testnet1Components> DPCScheme<C> for TransactionEngine<C>
     fn setup<R: Rng + CryptoRng>(rng: &mut R) -> anyhow::Result<Self> {
         let setup_time = start_timer!(|| "DPC::setup");
 
-        let ledger_parameters = &Arc::new(C::ledger_merkle_tree_parameters().clone());
-
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
         let noop_program = NoopProgram::<C>::setup(rng)?;
         let noop_program_execution = noop_program.execute_blank(rng)?;
         end_timer!(noop_program_timer);
 
         let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");
-        let inner_circuit = InnerCircuit::<C>::blank(ledger_parameters);
+        let inner_circuit = InnerCircuit::<C>::blank();
         let inner_snark_parameters = C::InnerSNARK::circuit_specific_setup(&inner_circuit, rng)?;
         end_timer!(snark_setup_time);
 
@@ -134,12 +121,7 @@ impl<C: Testnet1Components> DPCScheme<C> for TransactionEngine<C>
         let inner_snark_proof = C::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, rng)?;
 
         let outer_snark_parameters = C::OuterSNARK::circuit_specific_setup(
-            &OuterCircuit::<C>::blank(
-                ledger_parameters.clone(),
-                inner_snark_vk,
-                inner_snark_proof,
-                noop_program_execution,
-            ),
+            &OuterCircuit::<C>::blank(inner_snark_vk, inner_snark_proof, noop_program_execution),
             rng,
         )?;
         end_timer!(snark_setup_time);
@@ -291,7 +273,7 @@ impl<C: Testnet1Components> DPCScheme<C> for TransactionEngine<C>
                 C::NETWORK_ID
             ]?;
 
-            let commitment_randomness = <C::LocalDataCommitment as CommitmentScheme>::Randomness::rand(rng);
+            let commitment_randomness = <C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
             let commitment = C::local_data_commitment().commit(&input_bytes, &commitment_randomness)?;
 
             old_record_commitments.push(commitment);
@@ -302,7 +284,7 @@ impl<C: Testnet1Components> DPCScheme<C> for TransactionEngine<C>
         for record in new_records.iter().take(C::NUM_OUTPUT_RECORDS) {
             let input_bytes = to_bytes_le![record.commitment(), memorandum, C::NETWORK_ID]?;
 
-            let commitment_randomness = <C::LocalDataCommitment as CommitmentScheme>::Randomness::rand(rng);
+            let commitment_randomness = <C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
             let commitment = C::local_data_commitment().commit(&input_bytes, &commitment_randomness)?;
 
             new_record_commitments.push(commitment);
@@ -328,7 +310,7 @@ impl<C: Testnet1Components> DPCScheme<C> for TransactionEngine<C>
             for id in new_birth_program_ids {
                 input.extend_from_slice(&id);
             }
-            let program_randomness = <C::ProgramIDCommitment as CommitmentScheme>::Randomness::rand(rng);
+            let program_randomness = <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
             let program_commitment = C::program_id_commitment().commit(&input, &program_randomness)?;
             (program_commitment, program_randomness)
         };
@@ -439,7 +421,6 @@ impl<C: Testnet1Components> DPCScheme<C> for TransactionEngine<C>
 
         let inner_proof = {
             let circuit = InnerCircuit::new(
-                ledger.parameters().clone(),
                 ledger_digest.clone(),
                 old_records,
                 old_witnesses,
@@ -471,7 +452,6 @@ impl<C: Testnet1Components> DPCScheme<C> for TransactionEngine<C>
         // Verify that the inner proof passes
         {
             let input = InnerCircuitVerifierInput {
-                ledger_parameters: ledger.parameters().clone(),
                 ledger_digest: ledger_digest.clone(),
                 old_serial_numbers: old_serial_numbers.clone(),
                 new_commitments: new_commitments.clone(),
@@ -495,7 +475,6 @@ impl<C: Testnet1Components> DPCScheme<C> for TransactionEngine<C>
 
         let transaction_proof = {
             let circuit = OuterCircuit::<C>::new(
-                ledger.parameters().clone(),
                 ledger_digest.clone(),
                 old_serial_numbers.clone(),
                 new_commitments.clone(),
@@ -650,7 +629,6 @@ impl<C: Testnet1Components> DPCScheme<C> for TransactionEngine<C>
         }
 
         let inner_snark_input = InnerCircuitVerifierInput {
-            ledger_parameters: ledger.parameters().clone(),
             ledger_digest: transaction.ledger_digest().clone(),
             old_serial_numbers: transaction.old_serial_numbers().to_vec(),
             new_commitments: transaction.new_commitments().to_vec(),
@@ -706,14 +684,14 @@ impl<C: Testnet1Components> DPCScheme<C> for TransactionEngine<C>
         true
     }
 
-    // /// Returns true iff all the transactions in the block are valid according to the ledger.
-    // fn verify_transactions(&self, transactions: &[Self::Transaction], ledger: &L) -> bool {
-    //     for transaction in transactions {
-    //         if !self.verify(transaction, ledger) {
-    //             return false;
-    //         }
-    //     }
-    //
-    //     true
-    // }
+    /// Returns true iff all the transactions in the block are valid according to the ledger.
+    fn verify_transactions<L: LedgerScheme<C>>(&self, transactions: &[Self::Transaction], ledger: &L) -> bool {
+        for transaction in transactions {
+            if !self.verify(transaction, ledger) {
+                return false;
+            }
+        }
+
+        true
+    }
 }

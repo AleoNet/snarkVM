@@ -47,7 +47,7 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
     type Execution = Execution<Self::ProofSystem>;
     type ID = Vec<u8>;
     type LocalData = LocalData<C>;
-    type LocalDataCommitment = C::LocalDataCommitment;
+    type LocalDataCommitment = C::LocalDataCommitmentScheme;
     type ProgramIDCRH = C::ProgramIDCRH;
     type ProofSystem = <C as Testnet2Components>::NoopProgramSNARK;
     type ProvingKey = <Self::ProofSystem as SNARK>::ProvingKey;

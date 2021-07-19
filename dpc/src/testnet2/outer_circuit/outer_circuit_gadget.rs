@@ -79,10 +79,9 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
     cs: &mut CS,
 
     // Inner snark verifier public inputs
-    ledger_parameters: &C::LedgerMerkleTreeParameters,
-    ledger_digest: &MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
+    ledger_digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
     old_serial_numbers: &[<C::AccountSignature as SignatureScheme>::PublicKey],
-    new_commitments: &[<C::RecordCommitment as CommitmentScheme>::Output],
+    new_commitments: &[<C::RecordCommitmentScheme as CommitmentScheme>::Output],
     new_encrypted_record_hashes: &[<C::EncryptedRecordCRH as CRH>::Output],
     memo: &<Transaction<C> as TransactionScheme>::Memorandum,
     value_balance: AleoAmount,
@@ -96,8 +95,8 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
     program_proofs: &[Execution<C::NoopProgramSNARK>],
 
     // Rest
-    program_commitment: &<C::ProgramIDCommitment as CommitmentScheme>::Output,
-    program_randomness: &<C::ProgramIDCommitment as CommitmentScheme>::Randomness,
+    program_commitment: &<C::ProgramCommitmentScheme as CommitmentScheme>::Output,
+    program_randomness: &<C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
     local_data_root: &<C::LocalDataCRH as CRH>::Output,
 
     inner_circuit_id: &<C::InnerCircuitIDCRH as CRH>::Output,
@@ -106,10 +105,10 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
     let (program_id_commitment_parameters, program_id_crh, inner_circuit_id_crh) = {
         let cs = &mut cs.ns(|| "Declare Comm and CRH parameters");
 
-        let program_id_commitment_parameters = C::ProgramIDCommitmentGadget::alloc_input(
-            &mut cs.ns(|| "Declare program_id_commitment_parameters"),
-            || Ok(C::program_id_commitment().clone()),
-        )?;
+        let program_id_commitment_parameters =
+            C::ProgramCommitmentGadget::alloc_input(&mut cs.ns(|| "Declare program_id_commitment_parameters"), || {
+                Ok(C::program_id_commitment().clone())
+            })?;
 
         let program_id_crh: C::ProgramIDCRHGadget =
             C::ProgramIDCRHGadget::alloc_input(&mut cs.ns(|| "Declare program_id_crh_parameters"), || {
@@ -166,7 +165,7 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let ledger_parameters_fe = ledger_parameters
+    let record_commitment_tree_parameters_fe = C::record_commitment_tree_parameters()
         .crh()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
@@ -220,7 +219,8 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
         serial_number_nonce_crh_parameters_fe,
         "serial number nonce crh pp",
     )?;
-    let ledger_parameters_fe_bytes = alloc_input_field_element_to_bytes::<C, _>(cs, ledger_parameters_fe, "ledger pp")?;
+    let record_commitment_tree_parameters_fe_bytes =
+        alloc_input_field_element_to_bytes::<C, _>(cs, record_commitment_tree_parameters_fe, "ledger pp")?;
     let ledger_digest_fe_bytes = alloc_input_field_element_to_bytes::<C, _>(cs, ledger_digest_fe, "ledger digest")?;
 
     let mut serial_number_fe_bytes = vec![];
@@ -280,7 +280,7 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
     inner_snark_input_bytes.extend(local_data_crh_parameters_fe_bytes);
     inner_snark_input_bytes.extend(local_data_commitment_parameters_fe_bytes.clone());
     inner_snark_input_bytes.extend(serial_number_nonce_crh_parameters_fe_bytes);
-    inner_snark_input_bytes.extend(ledger_parameters_fe_bytes);
+    inner_snark_input_bytes.extend(record_commitment_tree_parameters_fe_bytes);
     inner_snark_input_bytes.extend(ledger_digest_fe_bytes);
     inner_snark_input_bytes.extend(serial_number_fe_bytes);
     inner_snark_input_bytes.extend(commitment_and_encrypted_record_hash_fe_bytes);
@@ -478,13 +478,13 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
         }
 
         let given_commitment_randomness =
-            <C::ProgramIDCommitmentGadget as CommitmentGadget<_, C::OuterScalarField>>::RandomnessGadget::alloc(
+            <C::ProgramCommitmentGadget as CommitmentGadget<_, C::OuterScalarField>>::RandomnessGadget::alloc(
                 &mut commitment_cs.ns(|| "Commitment randomness"),
                 || Ok(program_randomness),
             )?;
 
         let given_commitment =
-            <C::ProgramIDCommitmentGadget as CommitmentGadget<_, C::OuterScalarField>>::OutputGadget::alloc(
+            <C::ProgramCommitmentGadget as CommitmentGadget<_, C::OuterScalarField>>::OutputGadget::alloc(
                 &mut commitment_cs.ns(|| "Commitment output"),
                 || Ok(program_commitment),
             )?;

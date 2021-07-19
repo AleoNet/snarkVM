@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_dpc::{
-    testnet1::{dpc::DPC, NoopProgram, Testnet1Components},
+    testnet1::{dpc::Testnet1Parameters, NoopProgram, Testnet1Components},
     DPCError,
     ProgramScheme,
 };
@@ -41,7 +41,7 @@ pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
 }
 
 pub fn main() {
-    let (program_snark_pk, program_snark_vk) = setup::<DPC>().unwrap();
+    let (program_snark_pk, program_snark_vk) = setup::<Testnet1Parameters>().unwrap();
     store(
         &PathBuf::from("noop_program_snark_pk.params"),
         &PathBuf::from("noop_program_snark_pk.checksum"),

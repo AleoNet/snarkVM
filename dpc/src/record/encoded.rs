@@ -63,7 +63,7 @@ pub struct DecodedRecord<C: DPCComponents> {
     pub birth_program_id: Vec<u8>,
     pub death_program_id: Vec<u8>,
     pub serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
-    pub commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
+    pub commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
 }
 
 pub struct EncodedRecord<C: DPCComponents, P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve> {
@@ -314,7 +314,7 @@ impl<C: DPCComponents, P: MontgomeryParameters + TwistedEdwardsParameters, G: Pr
         let commitment_randomness_bits = &from_bytes_le_to_bits_le(&commitment_randomness_bytes)
             .take(Self::DATA_ELEMENT_BITSIZE)
             .collect::<Vec<_>>();
-        let commitment_randomness = <C::RecordCommitment as CommitmentScheme>::Randomness::read_le(
+        let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::read_le(
             &from_bits_le_to_bytes_le(commitment_randomness_bits)[..],
         )?;
 

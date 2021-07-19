@@ -16,14 +16,14 @@
 
 use snarkvm_algorithms::{crh::sha256::sha256, traits::SNARK};
 use snarkvm_dpc::{
-    testnet2::{dpc::DPC, Testnet2Components},
+    testnet2::{dpc::Testnet2Parameters, Testnet2Components},
     DPCError,
     InnerCircuit,
 };
 use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 
 mod utils;
 use utils::store;
@@ -31,11 +31,7 @@ use utils::store;
 pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
-    // TODO (howardwu): TEMPORARY - Resolve this inconsistency on import structure with a new model once MerkleParameters are refactored.
-    let ledger_merkle_tree_parameters = Arc::new(C::ledger_merkle_tree_parameters().clone());
-
-    let inner_snark_parameters =
-        C::InnerSNARK::circuit_specific_setup(&InnerCircuit::<C>::blank(&ledger_merkle_tree_parameters), rng)?;
+    let inner_snark_parameters = C::InnerSNARK::circuit_specific_setup(&InnerCircuit::<C>::blank(), rng)?;
     let inner_snark_pk = inner_snark_parameters.0.to_bytes_le()?;
     let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = inner_snark_parameters.1.into();
     let inner_snark_vk = inner_snark_vk.to_bytes_le()?;
@@ -53,7 +49,7 @@ fn versioned_filename(checksum: &str) -> String {
 }
 
 pub fn main() {
-    let (inner_snark_pk, inner_snark_vk) = setup::<DPC>().unwrap();
+    let (inner_snark_pk, inner_snark_vk) = setup::<Testnet2Parameters>().unwrap();
     let inner_snark_pk_checksum = hex::encode(sha256(&inner_snark_pk));
     store(
         &PathBuf::from(&versioned_filename(&inner_snark_pk_checksum)),

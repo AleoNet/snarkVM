@@ -26,16 +26,13 @@ use snarkvm_algorithms::{
 use snarkvm_fields::ToConstraintField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
-use std::sync::Arc;
-
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet1Components"))]
 pub struct OuterCircuit<C: Testnet1Components> {
     // Inner snark verifier public inputs
-    ledger_parameters: Arc<C::LedgerMerkleTreeParameters>,
-    ledger_digest: MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
+    ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
     old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
-    new_commitments: Vec<<C::RecordCommitment as CommitmentScheme>::Output>,
+    new_commitments: Vec<<C::RecordCommitmentScheme as CommitmentScheme>::Output>,
     new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
     memo: <Transaction<C> as TransactionScheme>::Memorandum,
     value_balance: AleoAmount,
@@ -46,8 +43,8 @@ pub struct OuterCircuit<C: Testnet1Components> {
     inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
 
     program_proofs: Vec<Execution>,
-    program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
-    program_randomness: <C::ProgramIDCommitment as CommitmentScheme>::Randomness,
+    program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
+    program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
     local_data_root: <C::LocalDataCRH as CRH>::Output,
 
     inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
@@ -55,15 +52,15 @@ pub struct OuterCircuit<C: Testnet1Components> {
 
 impl<C: Testnet1Components> OuterCircuit<C> {
     pub fn blank(
-        ledger_parameters: Arc<C::LedgerMerkleTreeParameters>,
         inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
         program_snark_vk_and_proof: Execution,
     ) -> Self {
-        let ledger_digest = MerkleTreeDigest::<C::LedgerMerkleTreeParameters>::default();
+        let ledger_digest = MerkleTreeDigest::<C::RecordCommitmentTreeParameters>::default();
         let old_serial_numbers =
             vec![<C::AccountSignature as SignatureScheme>::PublicKey::default(); C::NUM_INPUT_RECORDS];
-        let new_commitments = vec![<C::RecordCommitment as CommitmentScheme>::Output::default(); C::NUM_OUTPUT_RECORDS];
+        let new_commitments =
+            vec![<C::RecordCommitmentScheme as CommitmentScheme>::Output::default(); C::NUM_OUTPUT_RECORDS];
         let new_encrypted_record_hashes =
             vec![<C::EncryptedRecordCRH as CRH>::Output::default(); C::NUM_OUTPUT_RECORDS];
         let memo = [0u8; 64];
@@ -71,14 +68,13 @@ impl<C: Testnet1Components> OuterCircuit<C> {
         let network_id = C::NETWORK_ID;
 
         let program_proofs = vec![program_snark_vk_and_proof.clone(); C::NUM_TOTAL_RECORDS];
-        let program_commitment = <C::ProgramIDCommitment as CommitmentScheme>::Output::default();
-        let program_randomness = <C::ProgramIDCommitment as CommitmentScheme>::Randomness::default();
+        let program_commitment = <C::ProgramCommitmentScheme as CommitmentScheme>::Output::default();
+        let program_randomness = <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default();
         let local_data_root = <C::LocalDataCRH as CRH>::Output::default();
 
         let inner_circuit_id = <C::InnerCircuitIDCRH as CRH>::Output::default();
 
         Self {
-            ledger_parameters,
             ledger_digest,
             old_serial_numbers,
             new_commitments,
@@ -99,10 +95,9 @@ impl<C: Testnet1Components> OuterCircuit<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         // Inner SNARK public inputs
-        ledger_parameters: Arc<C::LedgerMerkleTreeParameters>,
-        ledger_digest: MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
+        ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
         old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
-        new_commitments: Vec<<C::RecordCommitment as CommitmentScheme>::Output>,
+        new_commitments: Vec<<C::RecordCommitmentScheme as CommitmentScheme>::Output>,
         new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
         memo: <Transaction<C> as TransactionScheme>::Memorandum,
         value_balance: AleoAmount,
@@ -115,8 +110,8 @@ impl<C: Testnet1Components> OuterCircuit<C> {
         // Private program input = Verification key and input
         // Commitment contains commitment to hash of death program vk.
         program_proofs: Vec<Execution>,
-        program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
-        program_randomness: <C::ProgramIDCommitment as CommitmentScheme>::Randomness,
+        program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
+        program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
         local_data_root: <C::LocalDataCRH as CRH>::Output,
 
         // Inner circuit ID
@@ -127,7 +122,6 @@ impl<C: Testnet1Components> OuterCircuit<C> {
         assert_eq!(C::NUM_OUTPUT_RECORDS, new_encrypted_record_hashes.len());
 
         Self {
-            ledger_parameters,
             ledger_digest,
             old_serial_numbers,
             new_commitments,
@@ -148,14 +142,14 @@ impl<C: Testnet1Components> OuterCircuit<C> {
 
 impl<C: Testnet1Components> ConstraintSynthesizer<C::OuterScalarField> for OuterCircuit<C>
 where
-    <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::AccountCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
-    <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::RecordCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::ProgramCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::LedgerMerkleTreeParameters as MerkleParameters>::H: ToConstraintField<C::InnerScalarField>,
-    MerkleTreeDigest<C::LedgerMerkleTreeParameters>: ToConstraintField<C::InnerScalarField>,
+    <C::RecordCommitmentTreeParameters as MerkleParameters>::H: ToConstraintField<C::InnerScalarField>,
+    MerkleTreeDigest<C::RecordCommitmentTreeParameters>: ToConstraintField<C::InnerScalarField>,
 {
     fn generate_constraints<CS: ConstraintSystem<C::OuterScalarField>>(
         &self,
@@ -163,7 +157,6 @@ where
     ) -> Result<(), SynthesisError> {
         execute_outer_circuit::<C, CS>(
             cs,
-            &self.ledger_parameters,
             &self.ledger_digest,
             &self.old_serial_numbers,
             &self.new_commitments,

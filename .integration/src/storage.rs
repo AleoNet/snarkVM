@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Ledger;
-use snarkvm_algorithms::traits::merkle_tree::LoadableMerkleParameters;
 use snarkvm_dpc::{
     block::Block,
     traits::{DPCComponents, LedgerScheme, Storage, TransactionScheme},
@@ -24,10 +23,7 @@ use snarkvm_dpc::{
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::{thread_rng, Rng};
-use std::{
-    io::{Read, Result as IoResult, Write},
-    sync::Arc,
-};
+use std::io::{Read, Result as IoResult, Write};
 
 pub fn random_storage_path() -> String {
     let random_path: usize = thread_rng().gen();
@@ -35,14 +31,13 @@ pub fn random_storage_path() -> String {
 }
 
 // Initialize a test blockchain given genesis attributes
-pub fn initialize_test_blockchain<C: DPCComponents, T: TransactionScheme, P: LoadableMerkleParameters, S: Storage>(
-    parameters: Arc<P>,
+pub fn initialize_test_blockchain<C: DPCComponents, T: TransactionScheme, S: Storage>(
     genesis_block: Block<T>,
-) -> Ledger<C, T, P, S> {
+) -> Ledger<C, T, S> {
     let mut path = std::env::temp_dir();
     path.push(random_storage_path());
 
-    Ledger::new(Some(&path), parameters, genesis_block).unwrap()
+    Ledger::new(Some(&path), genesis_block).unwrap()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

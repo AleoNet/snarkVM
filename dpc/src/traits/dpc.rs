@@ -56,6 +56,6 @@ pub trait DPCScheme<C: DPCComponents>: Sized {
     /// Returns true iff the transaction is valid according to the ledger.
     fn verify<L: LedgerScheme<C>>(&self, transaction: &Self::Transaction, ledger: &L) -> bool;
 
-    // /// Returns true iff all the transactions in the block are valid according to the ledger.
-    // fn verify_transactions(&self, block: &[Self::Transaction], ledger: &L) -> bool;
+    /// Returns true iff all the transactions in the block are valid according to the ledger.
+    fn verify_transactions<L: LedgerScheme<C>>(&self, block: &[Self::Transaction], ledger: &L) -> bool;
 }

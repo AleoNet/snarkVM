@@ -48,18 +48,18 @@ pub struct TransactionKernel<C: Testnet1Components> {
     // New record stuff
     pub new_records: Vec<Record<C>>,
     pub new_sn_nonce_randomness: Vec<[u8; 32]>,
-    pub new_commitments: Vec<<C::RecordCommitment as CommitmentScheme>::Output>,
+    pub new_commitments: Vec<<C::RecordCommitmentScheme as CommitmentScheme>::Output>,
 
     pub new_records_encryption_randomness: Vec<<C::AccountEncryption as EncryptionScheme>::Randomness>,
     pub new_encrypted_records: Vec<EncryptedRecord<C>>,
     pub new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
 
     // Program and local data root and randomness
-    pub program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output,
-    pub program_randomness: <C::ProgramIDCommitment as CommitmentScheme>::Randomness,
+    pub program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
+    pub program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
 
-    pub local_data_merkle_tree: CommitmentMerkleTree<C::LocalDataCommitment, C::LocalDataCRH>,
-    pub local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
+    pub local_data_merkle_tree: CommitmentMerkleTree<C::LocalDataCommitmentScheme, C::LocalDataCRH>,
+    pub local_data_commitment_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
 
     pub value_balance: AleoAmount,
     pub memorandum: <Transaction<C> as TransactionScheme>::Memorandum,
@@ -181,7 +181,8 @@ impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
 
         let mut new_commitments = vec![];
         for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let new_commitment: <C::RecordCommitment as CommitmentScheme>::Output = FromBytes::read_le(&mut reader)?;
+            let new_commitment: <C::RecordCommitmentScheme as CommitmentScheme>::Output =
+                FromBytes::read_le(&mut reader)?;
             new_commitments.push(new_commitment);
         }
 
@@ -206,11 +207,12 @@ impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
 
         // Read transaction components
 
-        let program_commitment: <C::ProgramIDCommitment as CommitmentScheme>::Output = FromBytes::read_le(&mut reader)?;
-        let program_randomness: <C::ProgramIDCommitment as CommitmentScheme>::Randomness =
+        let program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output =
+            FromBytes::read_le(&mut reader)?;
+        let program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness =
             FromBytes::read_le(&mut reader)?;
 
-        let local_data_merkle_tree = CommitmentMerkleTree::<C::LocalDataCommitment, C::LocalDataCRH>::from_bytes(
+        let local_data_merkle_tree = CommitmentMerkleTree::<C::LocalDataCommitmentScheme, C::LocalDataCRH>::from_bytes(
             &mut reader,
             C::local_data_crh().clone(),
         )
@@ -218,7 +220,7 @@ impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
 
         let mut local_data_commitment_randomizers = vec![];
         for _ in 0..4 {
-            let local_data_commitment_randomizer: <C::LocalDataCommitment as CommitmentScheme>::Randomness =
+            let local_data_commitment_randomizer: <C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness =
                 FromBytes::read_le(&mut reader)?;
             local_data_commitment_randomizers.push(local_data_commitment_randomizer);
         }

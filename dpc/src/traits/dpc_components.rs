@@ -48,10 +48,10 @@ pub trait DPCComponents: 'static + Sized {
     type OuterBaseField: PrimeField;
 
     /// Commitment scheme for account contents. Invoked only over `Self::InnerScalarField`.
-    type AccountCommitment: CommitmentScheme<Output = Self::AccountCommitmentOutput>
+    type AccountCommitmentScheme: CommitmentScheme<Output = Self::AccountCommitment>
         + ToConstraintField<Self::InnerScalarField>;
-    type AccountCommitmentGadget: CommitmentGadget<Self::AccountCommitment, Self::InnerScalarField>;
-    type AccountCommitmentOutput: ToConstraintField<Self::InnerScalarField>
+    type AccountCommitmentGadget: CommitmentGadget<Self::AccountCommitmentScheme, Self::InnerScalarField>;
+    type AccountCommitment: ToConstraintField<Self::InnerScalarField>
         + Clone
         + Debug
         + Default
@@ -84,9 +84,9 @@ pub trait DPCComponents: 'static + Sized {
         + CanonicalDeserialize;
 
     /// CRH for the encrypted record. Invoked only over `Self::InnerScalarField`.
-    type EncryptedRecordCRH: CRH<Output = Self::EncryptedRecordCRHOutput> + ToConstraintField<Self::InnerScalarField>;
+    type EncryptedRecordCRH: CRH<Output = Self::EncryptedRecordDigest> + ToConstraintField<Self::InnerScalarField>;
     type EncryptedRecordCRHGadget: CRHGadget<Self::EncryptedRecordCRH, Self::InnerScalarField>;
-    type EncryptedRecordCRHOutput: ToConstraintField<Self::InnerScalarField>
+    type EncryptedRecordDigest: ToConstraintField<Self::InnerScalarField>
         + Clone
         + Debug
         + Display
@@ -109,31 +109,14 @@ pub trait DPCComponents: 'static + Sized {
     type InnerCircuitIDCRH: CRH;
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
 
-    /// Ledger digest type.
-    type LedgerMerkleTreeCRH: CRH<Output = Self::LedgerMerkleTreeCRHOutput> + ToConstraintField<Self::InnerScalarField>;
-    type LedgerMerkleTreeCRHGadget: CRHGadget<Self::LedgerMerkleTreeCRH, Self::InnerScalarField>;
-    type LedgerMerkleTreeCRHOutput: ToConstraintField<Self::InnerScalarField>
-        + Clone
-        + Debug
-        + Display
-        + ToBytes
-        + FromBytes
-        + Eq
-        + Hash
-        + Default
-        + Send
-        + Sync
-        + Copy;
-    type LedgerMerkleTreeParameters: LoadableMerkleParameters<H = Self::LedgerMerkleTreeCRH>;
-
     /// CRH and commitment scheme for committing to program input. Invoked inside
     /// `Self::InnerSNARK` and every program SNARK.
-    type LocalDataCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
-    type LocalDataCommitmentGadget: CommitmentGadget<Self::LocalDataCommitment, Self::InnerScalarField>;
+    type LocalDataCommitmentScheme: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
+    type LocalDataCommitmentGadget: CommitmentGadget<Self::LocalDataCommitmentScheme, Self::InnerScalarField>;
 
-    type LocalDataCRH: CRH<Output = Self::LocalDataCRHOutput> + ToConstraintField<Self::InnerScalarField>;
+    type LocalDataCRH: CRH<Output = Self::LocalDataDigest> + ToConstraintField<Self::InnerScalarField>;
     type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
-    type LocalDataCRHOutput: ToConstraintField<Self::InnerScalarField>
+    type LocalDataDigest: ToConstraintField<Self::InnerScalarField>
         + Clone
         + Debug
         + Display
@@ -147,14 +130,14 @@ pub trait DPCComponents: 'static + Sized {
         + Copy;
 
     /// Commitment scheme for committing to hashes of birth and death verifying keys.
-    type ProgramIDCommitment: CommitmentScheme<Output = Self::ProgramIDCommitmentOutput>
+    type ProgramCommitmentScheme: CommitmentScheme<Output = Self::ProgramCommitment>
         + ToConstraintField<Self::InnerScalarField>
         + ToConstraintField<Self::OuterScalarField>;
     /// Used to commit to hashes of verifying keys on the smaller curve and to decommit hashes
     /// of verification keys on the larger curve
-    type ProgramIDCommitmentGadget: CommitmentGadget<Self::ProgramIDCommitment, Self::InnerScalarField>
-        + CommitmentGadget<Self::ProgramIDCommitment, Self::OuterScalarField>;
-    type ProgramIDCommitmentOutput: ToConstraintField<Self::InnerScalarField>
+    type ProgramCommitmentGadget: CommitmentGadget<Self::ProgramCommitmentScheme, Self::InnerScalarField>
+        + CommitmentGadget<Self::ProgramCommitmentScheme, Self::OuterScalarField>;
+    type ProgramCommitment: ToConstraintField<Self::InnerScalarField>
         + Clone
         + Debug
         + Default
@@ -174,10 +157,10 @@ pub trait DPCComponents: 'static + Sized {
     type PRFGadget: PRFGadget<Self::PRF, Self::InnerScalarField>;
 
     /// Commitment scheme for record contents. Invoked only over `Self::InnerScalarField`.
-    type RecordCommitment: CommitmentScheme<Output = Self::RecordCommitmentOutput>
+    type RecordCommitmentScheme: CommitmentScheme<Output = Self::RecordCommitment>
         + ToConstraintField<Self::InnerScalarField>;
-    type RecordCommitmentGadget: CommitmentGadget<Self::RecordCommitment, Self::InnerScalarField>;
-    type RecordCommitmentOutput: ToConstraintField<Self::InnerScalarField>
+    type RecordCommitmentGadget: CommitmentGadget<Self::RecordCommitmentScheme, Self::InnerScalarField>;
+    type RecordCommitment: ToConstraintField<Self::InnerScalarField>
         + Clone
         + Debug
         + Default
@@ -188,11 +171,29 @@ pub trait DPCComponents: 'static + Sized {
         + Sync
         + Send;
 
+    /// Record commitment tree instantiation for the ledger digest.
+    type RecordCommitmentTreeCRH: CRH<Output = Self::RecordCommitmentTreeDigest>
+        + ToConstraintField<Self::InnerScalarField>;
+    type RecordCommitmentTreeCRHGadget: CRHGadget<Self::RecordCommitmentTreeCRH, Self::InnerScalarField>;
+    type RecordCommitmentTreeDigest: ToConstraintField<Self::InnerScalarField>
+        + Clone
+        + Debug
+        + Display
+        + ToBytes
+        + FromBytes
+        + Eq
+        + Hash
+        + Default
+        + Send
+        + Sync
+        + Copy;
+    type RecordCommitmentTreeParameters: LoadableMerkleParameters<H = Self::RecordCommitmentTreeCRH>;
+
     /// CRH for computing the serial number nonce. Invoked only over `Self::InnerScalarField`.
     type SerialNumberNonceCRH: CRH + ToConstraintField<Self::InnerScalarField>;
     type SerialNumberNonceCRHGadget: CRHGadget<Self::SerialNumberNonceCRH, Self::InnerScalarField>;
 
-    fn account_commitment() -> &'static Self::AccountCommitment;
+    fn account_commitment() -> &'static Self::AccountCommitmentScheme;
 
     fn account_encryption() -> &'static Self::AccountEncryption;
 
@@ -202,20 +203,19 @@ pub trait DPCComponents: 'static + Sized {
 
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
 
-    fn ledger_merkle_tree_crh() -> &'static Self::LedgerMerkleTreeCRH;
+    fn record_commitment_tree_crh() -> &'static Self::RecordCommitmentTreeCRH;
 
-    fn local_data_commitment() -> &'static Self::LocalDataCommitment;
+    fn local_data_commitment() -> &'static Self::LocalDataCommitmentScheme;
 
     fn local_data_crh() -> &'static Self::LocalDataCRH;
 
-    fn program_id_commitment() -> &'static Self::ProgramIDCommitment;
+    fn program_id_commitment() -> &'static Self::ProgramCommitmentScheme;
 
     fn program_id_crh() -> &'static Self::ProgramIDCRH;
 
-    fn record_commitment() -> &'static Self::RecordCommitment;
+    fn record_commitment() -> &'static Self::RecordCommitmentScheme;
+
+    fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters;
 
     fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
-
-    // TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
-    fn ledger_merkle_tree_parameters() -> &'static Self::LedgerMerkleTreeParameters;
 }

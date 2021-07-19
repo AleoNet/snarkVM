@@ -31,8 +31,8 @@ pub struct LocalData<C: Testnet2Components> {
     pub new_records: Vec<Record<C>>,
 
     // Commitment to the above information.
-    pub local_data_merkle_tree: CommitmentMerkleTree<C::LocalDataCommitment, C::LocalDataCRH>,
-    pub local_data_commitment_randomizers: Vec<<C::LocalDataCommitment as CommitmentScheme>::Randomness>,
+    pub local_data_merkle_tree: CommitmentMerkleTree<C::LocalDataCommitmentScheme, C::LocalDataCRH>,
+    pub local_data_commitment_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
 
     pub memorandum: <Transaction<C> as TransactionScheme>::Memorandum,
     pub network_id: u8,

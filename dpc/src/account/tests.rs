@@ -16,7 +16,7 @@
 
 use crate::{
     account::{Account, Address, PrivateKey, ViewKey},
-    testnet2::dpc::DPC,
+    testnet2::dpc::Testnet2Parameters,
     traits::AccountScheme,
 };
 
@@ -27,7 +27,7 @@ use std::str::FromStr;
 fn test_account_new() {
     let rng = &mut thread_rng();
 
-    let account = Account::<DPC>::new(rng);
+    let account = Account::<Testnet2Parameters>::new(rng);
     println!("{:?}", account);
     assert!(account.is_ok());
     println!("{}", account.unwrap());
@@ -36,7 +36,7 @@ fn test_account_new() {
 #[test]
 pub fn test_private_key_from_str() {
     let private_key_string = "APrivateKey1uaf51GJ6LuMzLi2jy9zJJC3doAtngx52WGFZrcvK6aBsEgo";
-    let private_key = PrivateKey::<DPC>::from_str(private_key_string);
+    let private_key = PrivateKey::<Testnet2Parameters>::from_str(private_key_string);
     println!("{:?}", private_key);
 
     assert!(private_key.is_ok());
@@ -46,7 +46,7 @@ pub fn test_private_key_from_str() {
 #[test]
 pub fn test_view_key_from_str() {
     let view_key_string = "AViewKey1m8gvywHKHKfUzZiLiLoHedcdHEjKwo5TWo6efz8gK7wF";
-    let view_key = ViewKey::<DPC>::from_str(view_key_string);
+    let view_key = ViewKey::<Testnet2Parameters>::from_str(view_key_string);
     println!("{:?}", view_key);
 
     assert!(view_key.is_ok());
@@ -56,7 +56,7 @@ pub fn test_view_key_from_str() {
 #[test]
 pub fn test_address_from_str() {
     let address_string = "aleo1ag4alvc4g7d4apzgvr5f4jt44l0aezev2dx8m0klgwypnh9u5uxs42rclr";
-    let address = Address::<DPC>::from_str(address_string);
+    let address = Address::<Testnet2Parameters>::from_str(address_string);
     assert!(address.is_ok());
     assert_eq!(address_string, address.unwrap().to_string());
 }

@@ -37,7 +37,7 @@ pub struct PrivateKey<C: DPCComponents> {
     // Derived private attributes from the seed.
     pub sk_sig: <C::AccountSignature as SignatureScheme>::PrivateKey,
     pub sk_prf: <C::PRF as PRF>::Seed,
-    pub r_pk: <C::AccountCommitment as CommitmentScheme>::Randomness,
+    pub r_pk: <C::AccountCommitmentScheme as CommitmentScheme>::Randomness,
     pub r_pk_counter: u16,
     // This dummy flag is set to true for use in the `inner_snark` setup.
     #[derivative(Default(value = "true"))]
@@ -184,19 +184,19 @@ impl<C: DPCComponents> PrivateKey<C> {
     fn derive_r_pk(
         seed: &[u8; 32],
         counter: u16,
-    ) -> Result<<C::AccountCommitment as CommitmentScheme>::Randomness, AccountError> {
+    ) -> Result<<C::AccountCommitmentScheme as CommitmentScheme>::Randomness, AccountError> {
         let mut r_pk_input = [0u8; 32];
         r_pk_input[0..2].copy_from_slice(&counter.to_le_bytes());
 
         // Generate the randomness rpk for the commitment scheme.
         let r_pk_bytes = Blake2s::evaluate(seed, &r_pk_input)?;
-        let r_pk = <C::AccountCommitment as CommitmentScheme>::Randomness::read_le(&r_pk_bytes[..])?;
+        let r_pk = <C::AccountCommitmentScheme as CommitmentScheme>::Randomness::read_le(&r_pk_bytes[..])?;
 
         Ok(r_pk)
     }
 
     /// Returns the commitment output of the private key.
-    fn commit(&self) -> Result<<C::AccountCommitment as CommitmentScheme>::Output, AccountError> {
+    fn commit(&self) -> Result<<C::AccountCommitmentScheme as CommitmentScheme>::Output, AccountError> {
         // Construct the commitment input for the account address.
         let commit_input = to_bytes_le![self.pk_sig()?, self.sk_prf]?;
 

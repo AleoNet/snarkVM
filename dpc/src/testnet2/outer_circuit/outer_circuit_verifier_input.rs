@@ -31,20 +31,21 @@ pub struct OuterCircuitVerifierInput<C: Testnet2Components> {
 
 impl<C: Testnet2Components> ToConstraintField<C::OuterScalarField> for OuterCircuitVerifierInput<C>
 where
-    <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::OuterScalarField>,
+    <C::ProgramCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::OuterScalarField>,
     <C::ProgramIDCRH as CRH>::Parameters: ToConstraintField<C::OuterScalarField>,
 
     <C::InnerCircuitIDCRH as CRH>::Parameters: ToConstraintField<C::OuterScalarField>,
     <C::InnerCircuitIDCRH as CRH>::Output: ToConstraintField<C::OuterScalarField>,
 
-    <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::AccountCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
-    <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::RecordCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::ProgramCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <<C::LedgerMerkleTreeParameters as MerkleParameters>::H as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
-    MerkleTreeDigest<C::LedgerMerkleTreeParameters>: ToConstraintField<C::InnerScalarField>,
+    <<C::RecordCommitmentTreeParameters as MerkleParameters>::H as CRH>::Parameters:
+        ToConstraintField<C::InnerScalarField>,
+    MerkleTreeDigest<C::RecordCommitmentTreeParameters>: ToConstraintField<C::InnerScalarField>,
 {
     fn to_field_elements(&self) -> Result<Vec<C::OuterScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();

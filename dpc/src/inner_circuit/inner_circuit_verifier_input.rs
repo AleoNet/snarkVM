@@ -21,20 +21,17 @@ use snarkvm_algorithms::{
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
-use std::sync::Arc;
-
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: DPCComponents"))]
 pub struct InnerCircuitVerifierInput<C: DPCComponents> {
-    // Ledger parameters and digest
-    pub ledger_parameters: Arc<C::LedgerMerkleTreeParameters>,
-    pub ledger_digest: MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
+    // Ledger digest
+    pub ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
 
     // Input record serial numbers
     pub old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
 
     // Output record commitments
-    pub new_commitments: Vec<<C::RecordCommitment as CommitmentScheme>::Output>,
+    pub new_commitments: Vec<<C::RecordCommitmentScheme as CommitmentScheme>::Output>,
 
     // New encrypted record hashes
     pub new_encrypted_record_hashes: Vec<<C::EncryptedRecordCRH as CRH>::Output>,
@@ -42,7 +39,7 @@ pub struct InnerCircuitVerifierInput<C: DPCComponents> {
     // Program input commitment and local data root.
     // These are required in natively verifying an inner circuit proof.
     // However for verification in the outer circuit, these must be provided as witness.
-    pub program_commitment: Option<<C::ProgramIDCommitment as CommitmentScheme>::Output>,
+    pub program_commitment: Option<<C::ProgramCommitmentScheme as CommitmentScheme>::Output>,
     pub local_data_root: Option<<C::LocalDataCRH as CRH>::Output>,
 
     pub memo: [u8; 64],
@@ -52,14 +49,15 @@ pub struct InnerCircuitVerifierInput<C: DPCComponents> {
 
 impl<C: DPCComponents> ToConstraintField<C::InnerScalarField> for InnerCircuitVerifierInput<C>
 where
-    <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::AccountCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
-    <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::RecordCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
+    <C::ProgramCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <<C::LedgerMerkleTreeParameters as MerkleParameters>::H as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
-    MerkleTreeDigest<C::LedgerMerkleTreeParameters>: ToConstraintField<C::InnerScalarField>,
+    <<C::RecordCommitmentTreeParameters as MerkleParameters>::H as CRH>::Parameters:
+        ToConstraintField<C::InnerScalarField>,
+    MerkleTreeDigest<C::RecordCommitmentTreeParameters>: ToConstraintField<C::InnerScalarField>,
 {
     fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
@@ -72,8 +70,13 @@ where
         v.extend_from_slice(&C::local_data_crh().to_field_elements()?);
         v.extend_from_slice(&C::local_data_commitment().to_field_elements()?);
         v.extend_from_slice(&C::serial_number_nonce_crh().to_field_elements()?);
+        v.extend_from_slice(
+            &C::record_commitment_tree_parameters()
+                .crh()
+                .parameters()
+                .to_field_elements()?,
+        );
 
-        v.extend_from_slice(&self.ledger_parameters.crh().parameters().to_field_elements()?);
         v.extend_from_slice(&self.ledger_digest.to_field_elements()?);
 
         for sn in &self.old_serial_numbers {
