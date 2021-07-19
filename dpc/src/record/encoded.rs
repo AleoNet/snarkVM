@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{DPCComponents, DPCError, EncodedRecordScheme, Payload, Record, RecordScheme};
+use crate::{DPCError, EncodedRecordScheme, Parameters, Payload, Record, RecordScheme};
 use snarkvm_algorithms::{
     encoding::Elligator2,
     traits::{CommitmentScheme, CRH},
@@ -57,7 +57,7 @@ pub fn decode_from_group<P: MontgomeryParameters + TwistedEdwardsParameters, G: 
     Ok(to_bytes_le![output]?)
 }
 
-pub struct DecodedRecord<C: DPCComponents> {
+pub struct DecodedRecord<C: Parameters> {
     pub value: u64,
     pub payload: Payload,
     pub birth_program_id: Vec<u8>,
@@ -66,14 +66,14 @@ pub struct DecodedRecord<C: DPCComponents> {
     pub commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
 }
 
-pub struct EncodedRecord<C: DPCComponents, P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve> {
+pub struct EncodedRecord<C: Parameters, P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve> {
     pub(super) encoded_elements: Vec<G>,
     pub(super) final_sign_high: bool,
     _components: PhantomData<C>,
     _parameters: PhantomData<P>,
 }
 
-impl<C: DPCComponents, P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve> EncodedRecord<C, P, G> {
+impl<C: Parameters, P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve> EncodedRecord<C, P, G> {
     pub fn new(encoded_elements: Vec<G>, final_sign_high: bool) -> Self {
         Self {
             encoded_elements,
@@ -84,13 +84,13 @@ impl<C: DPCComponents, P: MontgomeryParameters + TwistedEdwardsParameters, G: Pr
     }
 }
 
-impl<C: DPCComponents, P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve> EncodedRecordScheme
+impl<C: Parameters, P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve> EncodedRecordScheme
     for EncodedRecord<C, P, G>
 {
     type DecodedRecord = DecodedRecord<C>;
     type Group = G;
-    type InnerField = <C as DPCComponents>::InnerScalarField;
-    type OuterField = <C as DPCComponents>::OuterScalarField;
+    type InnerField = <C as Parameters>::InnerScalarField;
+    type OuterField = <C as Parameters>::OuterScalarField;
     type Parameters = P;
     type Record = Record<C>;
 

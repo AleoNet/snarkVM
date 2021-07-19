@@ -17,9 +17,9 @@
 use crate::{
     record::encoded::*,
     Address,
-    DPCComponents,
     DPCError,
     EncodedRecordScheme,
+    Parameters,
     Payload,
     Record,
     RecordScheme,
@@ -44,15 +44,15 @@ use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
 
-type BaseField<T> = <<T as DPCComponents>::EncryptionParameters as ModelParameters>::BaseField;
+type BaseField<T> = <<T as Parameters>::EncryptionParameters as ModelParameters>::BaseField;
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: DPCComponents"),
-    PartialEq(bound = "C: DPCComponents"),
-    Eq(bound = "C: DPCComponents")
+    Clone(bound = "C: Parameters"),
+    PartialEq(bound = "C: Parameters"),
+    Eq(bound = "C: Parameters")
 )]
-pub struct RecordEncryptionGadgetComponents<C: DPCComponents> {
+pub struct RecordEncryptionGadgetComponents<C: Parameters> {
     /// Record field element representations
     pub record_field_elements: Vec<<C::EncryptionParameters as ModelParameters>::BaseField>,
     /// Record group element encodings - Represented in (x,y) affine coordinates
@@ -65,7 +65,7 @@ pub struct RecordEncryptionGadgetComponents<C: DPCComponents> {
     pub encryption_blinding_exponents: Vec<<C::AccountEncryption as EncryptionScheme>::BlindingExponent>,
 }
 
-impl<C: DPCComponents> Default for RecordEncryptionGadgetComponents<C> {
+impl<C: Parameters> Default for RecordEncryptionGadgetComponents<C> {
     fn default() -> Self {
         // TODO (raychu86) Fix the lengths to be generic
         let record_encoding_length = 7;
@@ -93,17 +93,17 @@ impl<C: DPCComponents> Default for RecordEncryptionGadgetComponents<C> {
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: DPCComponents"),
-    PartialEq(bound = "C: DPCComponents"),
-    Eq(bound = "C: DPCComponents"),
-    Debug(bound = "C: DPCComponents")
+    Clone(bound = "C: Parameters"),
+    PartialEq(bound = "C: Parameters"),
+    Eq(bound = "C: Parameters"),
+    Debug(bound = "C: Parameters")
 )]
-pub struct EncryptedRecord<C: DPCComponents> {
-    pub encrypted_elements: Vec<<<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Text>,
+pub struct EncryptedRecord<C: Parameters> {
+    pub encrypted_elements: Vec<<<C as Parameters>::AccountEncryption as EncryptionScheme>::Text>,
     pub final_fq_high_selector: bool,
 }
 
-impl<C: DPCComponents> EncryptedRecord<C> {
+impl<C: Parameters> EncryptedRecord<C> {
     /// Encrypt the given vector of records and returns
     /// 1. Encryption randomness
     /// 2. Encrypted record
@@ -113,7 +113,7 @@ impl<C: DPCComponents> EncryptedRecord<C> {
     ) -> Result<
         (
             Self,
-            <<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Randomness,
+            <<C as Parameters>::AccountEncryption as EncryptionScheme>::Randomness,
         ),
         DPCError,
     > {
@@ -125,9 +125,8 @@ impl<C: DPCComponents> EncryptedRecord<C> {
         for element in encoded_record.encoded_elements.iter() {
             // Construct the plaintext element from the serialized group elements
             // This value will be used in the inner circuit to validate the encryption
-            let plaintext_element = <<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Text::read_le(
-                &to_bytes_le![element]?[..],
-            )?;
+            let plaintext_element =
+                <<C as Parameters>::AccountEncryption as EncryptionScheme>::Text::read_le(&to_bytes_le![element]?[..])?;
             record_plaintexts.push(plaintext_element);
         }
 
@@ -153,7 +152,7 @@ impl<C: DPCComponents> EncryptedRecord<C> {
 
         let mut plaintext = Vec::with_capacity(plaintext_elements.len());
         for element in plaintext_elements {
-            let plaintext_element = <C as DPCComponents>::EncryptionGroup::read_le(&to_bytes_le![element]?[..])?;
+            let plaintext_element = <C as Parameters>::EncryptionGroup::read_le(&to_bytes_le![element]?[..])?;
 
             plaintext.push(plaintext_element);
         }
@@ -161,8 +160,8 @@ impl<C: DPCComponents> EncryptedRecord<C> {
         // Deserialize the plaintext record into record components
         let encoded_record = EncodedRecord::<
             C,
-            <C as DPCComponents>::EncryptionParameters,
-            <C as DPCComponents>::EncryptionGroup,
+            <C as Parameters>::EncryptionParameters,
+            <C as Parameters>::EncryptionGroup,
         >::new(plaintext, self.final_fq_high_selector);
         let record_components = encoded_record.decode()?;
 
@@ -218,17 +217,17 @@ impl<C: DPCComponents> EncryptedRecord<C> {
 
     /// Returns the encrypted record hash.
     /// The hash input is the ciphertext x-coordinates appended with the selector bits.
-    pub fn to_hash(&self) -> Result<<<C as DPCComponents>::EncryptedRecordCRH as CRH>::Output, DPCError> {
+    pub fn to_hash(&self) -> Result<<<C as Parameters>::EncryptedRecordCRH as CRH>::Output, DPCError> {
         let mut ciphertext_affine_x = Vec::with_capacity(self.encrypted_elements.len());
         let mut selector_bits = Vec::with_capacity(self.encrypted_elements.len() + 1);
         for ciphertext_element in &self.encrypted_elements {
             // Compress the ciphertext element to the affine x coordinate
             let ciphertext_element_affine =
-                <C as DPCComponents>::EncryptionGroup::read_le(&to_bytes_le![ciphertext_element]?[..])?.into_affine();
+                <C as Parameters>::EncryptionGroup::read_le(&to_bytes_le![ciphertext_element]?[..])?.into_affine();
             let ciphertext_x_coordinate = ciphertext_element_affine.to_x_coordinate();
 
             // Fetch the ciphertext selector bit
-            let selector = match <<C as DPCComponents>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
+            let selector = match <<C as Parameters>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
                 ciphertext_x_coordinate,
                 true,
             ) {
@@ -256,7 +255,7 @@ impl<C: DPCComponents> EncryptedRecord<C> {
     /// 5. Record ciphertext blinding exponents used to encrypt the record
     pub fn prepare_encryption_gadget_components(
         record: &Record<C>,
-        encryption_randomness: &<<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Randomness,
+        encryption_randomness: &<<C as Parameters>::AccountEncryption as EncryptionScheme>::Randomness,
     ) -> Result<RecordEncryptionGadgetComponents<C>, DPCError> {
         // Serialize the record into group elements and fq_high bits
         let encoded_record = EncodedRecord::<C, C::EncryptionParameters, C::EncryptionGroup>::encode(record)?;
@@ -298,15 +297,15 @@ impl<C: DPCComponents> EncryptedRecord<C> {
             if i == 0 {
                 // Serial number nonce
                 let record_field_element =
-                    <<C as DPCComponents>::EncryptionParameters as ModelParameters>::BaseField::read_le(
+                    <<C as Parameters>::EncryptionParameters as ModelParameters>::BaseField::read_le(
                         &to_bytes_le![element]?[..],
                     )?;
                 record_field_elements.push(record_field_element);
             } else {
                 // Decode the encoded groups into their respective field elements
                 let record_field_element = Elligator2::<
-                    <C as DPCComponents>::EncryptionParameters,
-                    <C as DPCComponents>::EncryptionGroup,
+                    <C as Parameters>::EncryptionParameters,
+                    <C as Parameters>::EncryptionGroup,
                 >::decode(&element_affine, *fq_high)?;
 
                 record_field_elements.push(record_field_element);
@@ -314,19 +313,18 @@ impl<C: DPCComponents> EncryptedRecord<C> {
 
             // Fetch the x and y coordinates of the serialized group elements
             // These values will be used in the inner circuit to validate the Elligator2 encoding
-            let x = <<C as DPCComponents>::EncryptionParameters as ModelParameters>::BaseField::read_le(
+            let x = <<C as Parameters>::EncryptionParameters as ModelParameters>::BaseField::read_le(
                 &to_bytes_le![element_affine.to_x_coordinate()]?[..],
             )?;
-            let y = <<C as DPCComponents>::EncryptionParameters as ModelParameters>::BaseField::read_le(
+            let y = <<C as Parameters>::EncryptionParameters as ModelParameters>::BaseField::read_le(
                 &to_bytes_le![element_affine.to_y_coordinate()]?[..],
             )?;
             record_group_encoding.push((x, y));
 
             // Construct the plaintext element from the serialized group elements
             // This value will be used in the inner circuit to validate the encryption
-            let plaintext_element = <<C as DPCComponents>::AccountEncryption as EncryptionScheme>::Text::read_le(
-                &to_bytes_le![element]?[..],
-            )?;
+            let plaintext_element =
+                <<C as Parameters>::AccountEncryption as EncryptionScheme>::Text::read_le(&to_bytes_le![element]?[..])?;
             record_plaintexts.push(plaintext_element);
         }
 
@@ -346,10 +344,10 @@ impl<C: DPCComponents> EncryptedRecord<C> {
         for ciphertext_element in encrypted_record.iter() {
             // Compress the ciphertext element to the affine x coordinate
             let ciphertext_element_affine =
-                <C as DPCComponents>::EncryptionGroup::read_le(&to_bytes_le![ciphertext_element]?[..])?.into_affine();
+                <C as Parameters>::EncryptionGroup::read_le(&to_bytes_le![ciphertext_element]?[..])?.into_affine();
 
             // Fetch the ciphertext selector bit
-            let selector = match <<C as DPCComponents>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
+            let selector = match <<C as Parameters>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
                 ciphertext_element_affine.to_x_coordinate(),
                 true,
             ) {
@@ -370,7 +368,7 @@ impl<C: DPCComponents> EncryptedRecord<C> {
     }
 }
 
-impl<C: DPCComponents> ToBytes for EncryptedRecord<C> {
+impl<C: Parameters> ToBytes for EncryptedRecord<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         let mut ciphertext_selectors = Vec::with_capacity(self.encrypted_elements.len() + 1);
@@ -380,12 +378,12 @@ impl<C: DPCComponents> ToBytes for EncryptedRecord<C> {
         for ciphertext_element in &self.encrypted_elements {
             // Compress the ciphertext representation to the affine x-coordinate and the selector bit
             let ciphertext_element_affine =
-                <C as DPCComponents>::EncryptionGroup::read_le(&to_bytes_le![ciphertext_element]?[..])?.into_affine();
+                <C as Parameters>::EncryptionGroup::read_le(&to_bytes_le![ciphertext_element]?[..])?.into_affine();
 
             let x_coordinate = ciphertext_element_affine.to_x_coordinate();
             x_coordinate.write_le(&mut writer)?;
 
-            let selector = match <<C as DPCComponents>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
+            let selector = match <<C as Parameters>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
                 x_coordinate,
                 true,
             ) {
@@ -406,14 +404,14 @@ impl<C: DPCComponents> ToBytes for EncryptedRecord<C> {
     }
 }
 
-impl<C: DPCComponents> FromBytes for EncryptedRecord<C> {
+impl<C: Parameters> FromBytes for EncryptedRecord<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the ciphertext x coordinates
         let num_ciphertext_elements = read_variable_length_integer(&mut reader)?;
         let mut ciphertext_x_coordinates = Vec::with_capacity(num_ciphertext_elements);
         for _ in 0..num_ciphertext_elements {
-            let ciphertext_element_x_coordinate: <<<C as DPCComponents>::EncryptionGroup as ProjectiveCurve>::Affine as AffineCurve>::BaseField =
+            let ciphertext_element_x_coordinate: <<<C as Parameters>::EncryptionGroup as ProjectiveCurve>::Affine as AffineCurve>::BaseField =
                 FromBytes::read_le(&mut reader)?;
             ciphertext_x_coordinates.push(ciphertext_element_x_coordinate);
         }
@@ -431,7 +429,7 @@ impl<C: DPCComponents> FromBytes for EncryptedRecord<C> {
         let mut ciphertext = Vec::with_capacity(ciphertext_x_coordinates.len());
         for (x_coordinate, ciphertext_selector_bit) in ciphertext_x_coordinates.iter().zip_eq(ciphertext_selectors) {
             let ciphertext_element_affine =
-                match <<C as DPCComponents>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
+                match <<C as Parameters>::EncryptionGroup as ProjectiveCurve>::Affine::from_x_coordinate(
                     *x_coordinate,
                     ciphertext_selector_bit,
                 ) {

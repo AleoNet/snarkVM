@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, traits::DPCComponents, AccountError, PrivateKey};
+use crate::{account_format, traits::Parameters, AccountError, PrivateKey};
 use snarkvm_algorithms::{traits::EncryptionScheme, SignatureScheme};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -28,16 +28,16 @@ use std::{
 
 #[derive(Derivative)]
 #[derivative(
-    Default(bound = "C: DPCComponents"),
-    Clone(bound = "C: DPCComponents"),
-    PartialEq(bound = "C: DPCComponents"),
-    Eq(bound = "C: DPCComponents")
+    Default(bound = "C: Parameters"),
+    Clone(bound = "C: Parameters"),
+    PartialEq(bound = "C: Parameters"),
+    Eq(bound = "C: Parameters")
 )]
-pub struct ViewKey<C: DPCComponents> {
+pub struct ViewKey<C: Parameters> {
     pub decryption_key: <C::AccountEncryption as EncryptionScheme>::PrivateKey,
 }
 
-impl<C: DPCComponents> ViewKey<C> {
+impl<C: Parameters> ViewKey<C> {
     /// Creates a new account view key from an account private key.
     pub fn from_private_key(private_key: &PrivateKey<C>) -> Result<Self, AccountError> {
         Ok(Self {
@@ -56,13 +56,13 @@ impl<C: DPCComponents> ViewKey<C> {
     }
 }
 
-impl<C: DPCComponents> ToBytes for ViewKey<C> {
+impl<C: Parameters> ToBytes for ViewKey<C> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.decryption_key.write_le(&mut writer)
     }
 }
 
-impl<C: DPCComponents> FromBytes for ViewKey<C> {
+impl<C: Parameters> FromBytes for ViewKey<C> {
     /// Reads in an account view key buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Ok(Self {
@@ -71,7 +71,7 @@ impl<C: DPCComponents> FromBytes for ViewKey<C> {
     }
 }
 
-impl<C: DPCComponents> FromStr for ViewKey<C> {
+impl<C: Parameters> FromStr for ViewKey<C> {
     type Err = AccountError;
 
     /// Reads in an account view key string.
@@ -93,7 +93,7 @@ impl<C: DPCComponents> FromStr for ViewKey<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Display for ViewKey<C> {
+impl<C: Parameters> fmt::Display for ViewKey<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut view_key = [0u8; 39];
         view_key[0..7].copy_from_slice(&account_format::VIEW_KEY_PREFIX);
@@ -106,7 +106,7 @@ impl<C: DPCComponents> fmt::Display for ViewKey<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Debug for ViewKey<C> {
+impl<C: Parameters> fmt::Debug for ViewKey<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ViewKey {{ decryption_key: {:?} }}", self.decryption_key)
     }

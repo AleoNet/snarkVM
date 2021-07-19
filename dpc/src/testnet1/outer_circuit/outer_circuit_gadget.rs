@@ -339,16 +339,15 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     for (i, input) in program_proofs.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
         let cs = &mut cs.ns(|| format!("Check death program for input record {}", i));
 
-        let death_program_proof = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc_bytes(
+        let death_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc_bytes(
             &mut cs.ns(|| "Allocate proof"),
             || Ok(&input.proof),
         )?;
 
-        let death_program_vk =
-            <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc_bytes(
-                &mut cs.ns(|| "Allocate verifying key"),
-                || Ok(&input.verifying_key),
-            )?;
+        let death_program_vk = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc_bytes(
+            &mut cs.ns(|| "Allocate verifying key"),
+            || Ok(&input.verifying_key),
+        )?;
 
         let death_program_vk_bytes = death_program_vk.to_bytes(&mut cs.ns(|| "Convert death pred vk to bytes"))?;
 
@@ -362,7 +361,7 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
 
         let position = UInt8::constant(i as u8).to_bits_le();
 
-        C::NoopProgramSNARKGadget::check_verify(
+        C::ProgramSNARKGadget::check_verify(
             &mut cs.ns(|| "Check that proof is satisfied"),
             &death_program_vk,
             ([position].iter()).chain(program_input_bits.iter()).cloned(),
@@ -378,16 +377,15 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     {
         let cs = &mut cs.ns(|| format!("Check birth program for output record {}", j));
 
-        let birth_program_proof = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc_bytes(
+        let birth_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc_bytes(
             &mut cs.ns(|| "Allocate proof"),
             || Ok(&input.proof),
         )?;
 
-        let birth_program_vk =
-            <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc_bytes(
-                &mut cs.ns(|| "Allocate verifying key"),
-                || Ok(&input.verifying_key),
-            )?;
+        let birth_program_vk = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc_bytes(
+            &mut cs.ns(|| "Allocate verifying key"),
+            || Ok(&input.verifying_key),
+        )?;
 
         let birth_program_vk_bytes = birth_program_vk.to_bytes(&mut cs.ns(|| "Convert birth pred vk to bytes"))?;
 
@@ -401,7 +399,7 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
 
         let position = UInt8::constant((C::NUM_INPUT_RECORDS + j) as u8).to_bits_le();
 
-        C::NoopProgramSNARKGadget::check_verify(
+        C::ProgramSNARKGadget::check_verify(
             &mut cs.ns(|| "Check that proof is satisfied"),
             &birth_program_vk,
             ([position].iter()).chain(program_input_bits.iter()).cloned(),

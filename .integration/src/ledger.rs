@@ -33,14 +33,14 @@ use std::{
 
 pub type BlockHeight = u32;
 
-pub struct Ledger<C: DPCComponents, T: TransactionScheme, S: Storage> {
+pub struct Ledger<C: Parameters, T: TransactionScheme, S: Storage> {
     pub current_block_height: AtomicU32,
     pub cm_merkle_tree: RwLock<MerkleTree<C::RecordCommitmentTreeParameters>>,
     pub storage: S,
     pub _transaction: PhantomData<T>,
 }
 
-impl<C: DPCComponents, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
+impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
     /// Returns true if there are no blocks in the ledger.
     pub fn is_empty(&self) -> bool {
         self.get_latest_block().is_err()
@@ -215,7 +215,7 @@ impl<C: DPCComponents, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
     }
 }
 
-impl<C: DPCComponents, T: TransactionScheme, S: Storage> LedgerScheme<C> for Ledger<C, T, S> {
+impl<C: Parameters, T: TransactionScheme, S: Storage> LedgerScheme<C> for Ledger<C, T, S> {
     type Block = Block<Self::Transaction>;
     type Transaction = T;
 
@@ -293,7 +293,7 @@ impl<C: DPCComponents, T: TransactionScheme, S: Storage> LedgerScheme<C> for Led
     }
 }
 
-impl<C: DPCComponents, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
+impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
     /// Commit a transaction to the canon chain
     #[allow(clippy::type_complexity)]
     pub(crate) fn commit_transaction(

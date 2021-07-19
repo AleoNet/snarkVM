@@ -33,7 +33,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-pub trait DPCComponents: 'static + Sized {
+pub trait Parameters: 'static + Sized {
     const NETWORK_ID: u8;
 
     const NUM_INPUT_RECORDS: usize;

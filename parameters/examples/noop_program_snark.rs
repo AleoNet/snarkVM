@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_dpc::{
-    testnet1::{dpc::Testnet1Parameters, NoopProgram, Testnet1Components},
+    testnet1::{parameters::Testnet1Parameters, NoopProgram, Testnet1Components},
     DPCError,
     ProgramScheme,
 };

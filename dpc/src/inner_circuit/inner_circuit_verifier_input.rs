@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, DPCComponents};
+use crate::{AleoAmount, Parameters};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH},
@@ -22,8 +22,8 @@ use snarkvm_algorithms::{
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: DPCComponents"))]
-pub struct InnerCircuitVerifierInput<C: DPCComponents> {
+#[derivative(Clone(bound = "C: Parameters"))]
+pub struct InnerCircuitVerifierInput<C: Parameters> {
     // Ledger digest
     pub ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
 
@@ -47,7 +47,7 @@ pub struct InnerCircuitVerifierInput<C: DPCComponents> {
     pub network_id: u8,
 }
 
-impl<C: DPCComponents> ToConstraintField<C::InnerScalarField> for InnerCircuitVerifierInput<C>
+impl<C: Parameters> ToConstraintField<C::InnerScalarField> for InnerCircuitVerifierInput<C>
 where
     <C::AccountCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::DPCComponents;
+use crate::Parameters;
 use snarkvm_algorithms::{CRH, SNARK};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
@@ -26,13 +26,13 @@ pub struct Execution<S: SNARK> {
     pub proof: S::Proof,
 }
 
-pub struct ProgramLocalData<C: DPCComponents> {
+pub struct ProgramLocalData<C: Parameters> {
     pub local_data_root: <C::LocalDataCRH as CRH>::Output,
     pub position: u8,
 }
 
 /// Convert each component to bytes and pack into field elements.
-impl<C: DPCComponents> ToConstraintField<C::InnerScalarField> for ProgramLocalData<C>
+impl<C: Parameters> ToConstraintField<C::InnerScalarField> for ProgramLocalData<C>
 where
     <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
 {

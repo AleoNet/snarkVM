@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, traits::DPCComponents, AccountError, PrivateKey, ViewKey};
+use crate::{account_format, traits::Parameters, AccountError, PrivateKey, ViewKey};
 use snarkvm_algorithms::{EncryptionScheme, SignatureScheme};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -27,16 +27,16 @@ use std::{
 
 #[derive(Derivative)]
 #[derivative(
-    Default(bound = "C: DPCComponents"),
-    Clone(bound = "C: DPCComponents"),
-    PartialEq(bound = "C: DPCComponents"),
-    Eq(bound = "C: DPCComponents")
+    Default(bound = "C: Parameters"),
+    Clone(bound = "C: Parameters"),
+    PartialEq(bound = "C: Parameters"),
+    Eq(bound = "C: Parameters")
 )]
-pub struct Address<C: DPCComponents> {
+pub struct Address<C: Parameters> {
     pub encryption_key: <C::AccountEncryption as EncryptionScheme>::PublicKey,
 }
 
-impl<C: DPCComponents> Address<C> {
+impl<C: Parameters> Address<C> {
     /// Derives the account address from an account private key.
     pub fn from_private_key(private_key: &PrivateKey<C>) -> Result<Self, AccountError> {
         let decryption_key = private_key.to_decryption_key()?;
@@ -67,13 +67,13 @@ impl<C: DPCComponents> Address<C> {
     }
 }
 
-impl<C: DPCComponents> ToBytes for Address<C> {
+impl<C: Parameters> ToBytes for Address<C> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.encryption_key.write_le(&mut writer)
     }
 }
 
-impl<C: DPCComponents> FromBytes for Address<C> {
+impl<C: Parameters> FromBytes for Address<C> {
     /// Reads in an account address buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -83,7 +83,7 @@ impl<C: DPCComponents> FromBytes for Address<C> {
     }
 }
 
-impl<C: DPCComponents> FromStr for Address<C> {
+impl<C: Parameters> FromStr for Address<C> {
     type Err = AccountError;
 
     /// Reads in an account address string.
@@ -107,7 +107,7 @@ impl<C: DPCComponents> FromStr for Address<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Display for Address<C> {
+impl<C: Parameters> fmt::Display for Address<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Write the encryption key to a buffer.
         let mut address = [0u8; 32];
@@ -125,7 +125,7 @@ impl<C: DPCComponents> fmt::Display for Address<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Debug for Address<C> {
+impl<C: Parameters> fmt::Debug for Address<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Address {{ encryption_key: {:?} }}", self.encryption_key)
     }

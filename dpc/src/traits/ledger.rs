@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{BlockScheme, DPCComponents, TransactionScheme};
+use crate::traits::{BlockScheme, Parameters, TransactionScheme};
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTreeDigest};
 
 use std::path::Path;
 
-pub trait LedgerScheme<C: DPCComponents>: Sized {
+pub trait LedgerScheme<C: Parameters>: Sized {
     type Block: BlockScheme;
     type Transaction: TransactionScheme;
 

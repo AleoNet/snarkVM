@@ -18,7 +18,7 @@ use crate::{
     encrypted::RecordEncryptionGadgetComponents,
     record::Record,
     AleoAmount,
-    DPCComponents,
+    Parameters,
     PrivateKey,
     RecordScheme,
 };
@@ -52,7 +52,7 @@ use snarkvm_utilities::{from_bits_le_to_bytes_le, to_bytes_le, FromBytes, ToByte
 use std::ops::Mul;
 
 #[allow(clippy::too_many_arguments)]
-pub fn execute_inner_circuit<C: DPCComponents, CS: ConstraintSystem<C::InnerScalarField>>(
+pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarField>>(
     cs: &mut CS,
     // Ledger
     ledger_digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
@@ -162,7 +162,7 @@ fn inner_circuit_gadget<
     network_id: u8,
 ) -> Result<(), SynthesisError>
 where
-    C: DPCComponents<
+    C: Parameters<
         PRF = P,
         AccountCommitmentGadget = AccountCommitmentGadget,
         AccountEncryptionGadget = AccountEncryptionGadget,

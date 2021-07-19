@@ -16,11 +16,11 @@
 
 use crate::{
     record::{encoded::*, encrypted::*},
-    testnet2::{dpc::*, NoopProgram},
+    testnet2::{parameters::*, NoopProgram},
     Account,
     AccountScheme,
-    DPCComponents,
     EncodedRecordScheme,
+    Parameters,
     Payload,
     ProgramScheme,
     Record,
@@ -55,7 +55,7 @@ fn test_record_serialization() {
                 Payload::from_bytes(&payload),
                 noop_program.id(),
                 noop_program.id(),
-                <Testnet2Parameters as DPCComponents>::serial_number_nonce_crh()
+                <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
                     .hash(&sn_nonce_input)
                     .unwrap(),
                 &mut rng,
@@ -99,7 +99,7 @@ fn test_record_encryption() {
                 Payload::from_bytes(&payload),
                 noop_program.id(),
                 noop_program.id(),
-                <Testnet2Parameters as DPCComponents>::serial_number_nonce_crh()
+                <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
                     .hash(&sn_nonce_input)
                     .unwrap(),
                 &mut rng,

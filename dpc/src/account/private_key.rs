@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{account_format, traits::DPCComponents, AccountError};
+use crate::{account_format, traits::Parameters, AccountError};
 use snarkvm_algorithms::{
     prf::Blake2s,
     traits::{CommitmentScheme, EncryptionScheme, SignatureScheme, PRF},
@@ -27,12 +27,12 @@ use std::{fmt, str::FromStr};
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: DPCComponents"),
-    Default(bound = "C: DPCComponents"),
-    PartialEq(bound = "C: DPCComponents"),
-    Eq(bound = "C: DPCComponents")
+    Clone(bound = "C: Parameters"),
+    Default(bound = "C: Parameters"),
+    PartialEq(bound = "C: Parameters"),
+    Eq(bound = "C: Parameters")
 )]
-pub struct PrivateKey<C: DPCComponents> {
+pub struct PrivateKey<C: Parameters> {
     pub seed: [u8; 32],
     // Derived private attributes from the seed.
     pub sk_sig: <C::AccountSignature as SignatureScheme>::PrivateKey,
@@ -44,7 +44,7 @@ pub struct PrivateKey<C: DPCComponents> {
     pub is_dummy: bool,
 }
 
-impl<C: DPCComponents> PrivateKey<C> {
+impl<C: Parameters> PrivateKey<C> {
     const INITIAL_R_PK_COUNTER: u16 = 2;
     const INPUT_SK_PRF: [u8; 32] = [
         0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -204,7 +204,7 @@ impl<C: DPCComponents> PrivateKey<C> {
     }
 }
 
-impl<C: DPCComponents> FromStr for PrivateKey<C> {
+impl<C: Parameters> FromStr for PrivateKey<C> {
     type Err = AccountError;
 
     /// Reads in an account private key string.
@@ -226,7 +226,7 @@ impl<C: DPCComponents> FromStr for PrivateKey<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Display for PrivateKey<C> {
+impl<C: Parameters> fmt::Display for PrivateKey<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut private_key = [0u8; 43];
         let prefix = account_format::PRIVATE_KEY_PREFIX;
@@ -242,7 +242,7 @@ impl<C: DPCComponents> fmt::Display for PrivateKey<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Debug for PrivateKey<C> {
+impl<C: Parameters> fmt::Debug for PrivateKey<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

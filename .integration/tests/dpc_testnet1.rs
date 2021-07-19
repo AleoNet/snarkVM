@@ -22,7 +22,7 @@ use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{
     execute_inner_circuit,
     prelude::*,
-    testnet1::{dpc::*, execute_outer_circuit, program::NoopProgram, Testnet1Components, TransactionKernel},
+    testnet1::{execute_outer_circuit, parameters::*, program::NoopProgram, Testnet1Components, TransactionKernel},
     EncryptedRecord,
     InnerCircuit,
     Payload,
@@ -44,7 +44,7 @@ fn testnet1_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
         dpc.inner_snark_parameters.1.clone().into();
 
     let inner_circuit_id =
-        <Testnet1Parameters as DPCComponents>::inner_circuit_id_crh().hash(&inner_snark_vk.to_bytes_le()?)?;
+        <Testnet1Parameters as Parameters>::inner_circuit_id_crh().hash(&inner_snark_vk.to_bytes_le()?)?;
 
     Ok(to_bytes_le![inner_circuit_id]?)
 }
@@ -92,7 +92,7 @@ fn dpc_testnet1_integration_test() {
     let mut joint_serial_numbers = vec![];
     let mut old_records = vec![];
     for i in 0..Testnet1Parameters::NUM_INPUT_RECORDS {
-        let old_sn_nonce = <Testnet1Parameters as DPCComponents>::serial_number_nonce_crh()
+        let old_sn_nonce = <Testnet1Parameters as Parameters>::serial_number_nonce_crh()
             .hash(&[64u8 + (i as u8); 1])
             .unwrap();
 
@@ -231,7 +231,7 @@ fn test_testnet1_transaction_kernel_serialization() {
             Payload::default(),
             dpc.noop_program.id(),
             dpc.noop_program.id(),
-            <Testnet1Parameters as DPCComponents>::serial_number_nonce_crh()
+            <Testnet1Parameters as Parameters>::serial_number_nonce_crh()
                 .hash(&[0u8; 1])
                 .unwrap(),
             &mut rng,
@@ -316,7 +316,7 @@ fn test_testnet1_dpc_execute_constraints() {
             Payload::default(),
             alternate_noop_program.id(),
             alternate_noop_program.id(),
-            <Testnet1Parameters as DPCComponents>::serial_number_nonce_crh()
+            <Testnet1Parameters as Parameters>::serial_number_nonce_crh()
                 .hash(&[0u8; 1])
                 .unwrap(),
             &mut rng,
@@ -483,7 +483,7 @@ fn test_testnet1_dpc_execute_constraints() {
     let inner_snark_vk: <<Testnet1Parameters as Testnet1Components>::InnerSNARK as SNARK>::VerifyingKey =
         inner_snark_parameters.1.clone().into();
 
-    let inner_circuit_id = <Testnet1Parameters as DPCComponents>::inner_circuit_id_crh()
+    let inner_circuit_id = <Testnet1Parameters as Parameters>::inner_circuit_id_crh()
         .hash(&inner_snark_vk.to_bytes_le().unwrap())
         .unwrap();
 

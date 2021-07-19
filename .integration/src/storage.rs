@@ -17,7 +17,7 @@
 use crate::Ledger;
 use snarkvm_dpc::{
     block::Block,
-    traits::{DPCComponents, LedgerScheme, Storage, TransactionScheme},
+    traits::{LedgerScheme, Parameters, Storage, TransactionScheme},
     TransactionError,
 };
 use snarkvm_utilities::{FromBytes, ToBytes};
@@ -31,7 +31,7 @@ pub fn random_storage_path() -> String {
 }
 
 // Initialize a test blockchain given genesis attributes
-pub fn initialize_test_blockchain<C: DPCComponents, T: TransactionScheme, S: Storage>(
+pub fn initialize_test_blockchain<C: Parameters, T: TransactionScheme, S: Storage>(
     genesis_block: Block<T>,
 ) -> Ledger<C, T, S> {
     let mut path = std::env::temp_dir();

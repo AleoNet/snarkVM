@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{AccountScheme, DPCComponents, LedgerScheme, RecordScheme, TransactionScheme};
+use crate::traits::{AccountScheme, LedgerScheme, Parameters, RecordScheme, TransactionScheme};
 
 use rand::{CryptoRng, Rng};
 
-pub trait DPCScheme<C: DPCComponents>: Sized {
+pub trait DPCScheme<C: Parameters>: Sized {
     type Account: AccountScheme;
     type Execution;
     type Record: RecordScheme<Owner = <Self::Account as AccountScheme>::Address>;

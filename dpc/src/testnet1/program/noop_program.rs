@@ -16,7 +16,7 @@
 
 use crate::{
     testnet1::{Execution, LocalData, NoopCircuit, ProgramLocalData, Testnet1Components},
-    DPCComponents,
+    Parameters,
     ProgramError,
     ProgramScheme,
     RecordScheme,
@@ -36,9 +36,9 @@ pub struct NoopProgram<C: Testnet1Components> {
     #[derivative(Default(value = "vec![0u8; 48]"))]
     id: Vec<u8>,
     #[derivative(Debug = "ignore")]
-    proving_key: <<C as Testnet1Components>::NoopProgramSNARK as SNARK>::ProvingKey,
+    proving_key: <<C as Testnet1Components>::ProgramSNARK as SNARK>::ProvingKey,
     #[derivative(Debug = "ignore")]
-    verifying_key: <<C as Testnet1Components>::NoopProgramSNARK as SNARK>::VerifyingKey,
+    verifying_key: <<C as Testnet1Components>::ProgramSNARK as SNARK>::VerifyingKey,
 }
 
 impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
@@ -47,7 +47,7 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
     type LocalData = LocalData<C>;
     type LocalDataCommitment = C::LocalDataCommitmentScheme;
     type ProgramIDCRH = C::ProgramIDCRH;
-    type ProofSystem = <C as Testnet1Components>::NoopProgramSNARK;
+    type ProofSystem = <C as Testnet1Components>::ProgramSNARK;
     type ProvingKey = <Self::ProofSystem as SNARK>::ProvingKey;
     type PublicInput = ();
     type VerifyingKey = <Self::ProofSystem as SNARK>::VerifyingKey;
@@ -59,7 +59,7 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
         let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
 
         // Compute the program ID.
-        let id = <C as DPCComponents>::program_id_crh()
+        let id = <C as Parameters>::program_id_crh()
             .hash(&verifying_key.to_bytes_le()?)?
             .to_bytes_le()?;
 
@@ -80,7 +80,7 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
         )?;
 
         // Compute the program ID.
-        let id = <C as DPCComponents>::program_id_crh()
+        let id = <C as Parameters>::program_id_crh()
             .hash(&verifying_key.to_bytes_le()?)?
             .to_bytes_le()?;
 
@@ -159,8 +159,8 @@ impl<C: Testnet1Components> NoopProgram<C> {
     pub fn to_snark_parameters(
         &self,
     ) -> (
-        <<C as Testnet1Components>::NoopProgramSNARK as SNARK>::ProvingKey,
-        <<C as Testnet1Components>::NoopProgramSNARK as SNARK>::VerifyingKey,
+        <<C as Testnet1Components>::ProgramSNARK as SNARK>::ProvingKey,
+        <<C as Testnet1Components>::ProgramSNARK as SNARK>::VerifyingKey,
     ) {
         (self.proving_key.clone(), self.verifying_key.clone())
     }

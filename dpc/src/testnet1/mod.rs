@@ -18,7 +18,6 @@ use crate::{
     Account,
     AccountScheme,
     AleoAmount,
-    DPCComponents,
     DPCError,
     DPCScheme,
     EncryptedRecord,
@@ -26,6 +25,7 @@ use crate::{
     InnerCircuitVerifierInput,
     LedgerScheme,
     Network,
+    Parameters,
     ProgramScheme,
     Record,
     RecordScheme,
@@ -48,12 +48,12 @@ pub use program::*;
 pub mod transaction;
 pub use transaction::*;
 
-pub mod dpc;
+pub mod parameters;
 
 ///////////////////////////////////////////////////////////////////////////////
 
 /// Trait that stores information about the testnet1 DPC scheme.
-pub trait Testnet1Components: DPCComponents {
+pub trait Testnet1Components: Parameters {
     /// SNARK for inner circuit proof generation.
     type InnerSNARK: SNARK<
         ScalarField = Self::InnerScalarField,
@@ -72,14 +72,14 @@ pub trait Testnet1Components: DPCComponents {
     >;
 
     /// SNARK for the no-op "always-accept" that does nothing with its input.
-    type NoopProgramSNARK: SNARK<
+    type ProgramSNARK: SNARK<
         ScalarField = Self::InnerScalarField,
         BaseField = Self::OuterScalarField,
         VerifierInput = ProgramLocalData<Self>,
     >;
 
     /// SNARK Verifier gadget for the no-op "always-accept" that does nothing with its input.
-    type NoopProgramSNARKGadget: SNARKVerifierGadget<Self::NoopProgramSNARK, Input = Vec<Boolean>>;
+    type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK, Input = Vec<Boolean>>;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -18,7 +18,6 @@ use crate::{
     Account,
     AccountScheme,
     AleoAmount,
-    DPCComponents,
     DPCError,
     DPCScheme,
     EncryptedRecord,
@@ -26,6 +25,7 @@ use crate::{
     InnerCircuitVerifierInput,
     LedgerScheme,
     Network,
+    Parameters,
     ProgramScheme,
     Record,
     RecordScheme,
@@ -48,8 +48,8 @@ use rand::{CryptoRng, Rng};
 pub mod outer_circuit;
 pub use outer_circuit::*;
 
-pub mod parameters;
-pub use parameters::*;
+pub mod universal_parameters;
+pub use universal_parameters::*;
 
 pub mod program;
 pub use program::*;
@@ -57,12 +57,12 @@ pub use program::*;
 pub mod transaction;
 pub use transaction::*;
 
-pub mod dpc;
+pub mod parameters;
 
 ///////////////////////////////////////////////////////////////////////////////
 
 /// Trait that stores information about the testnet2 DPC scheme.
-pub trait Testnet2Components: DPCComponents {
+pub trait Testnet2Components: Parameters {
     /// SNARK for inner circuit proof generation.
     type InnerSNARK: SNARK<
         ScalarField = Self::InnerScalarField,

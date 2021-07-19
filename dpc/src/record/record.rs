@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, DPCComponents, Payload, PrivateKey, RecordError, RecordScheme};
+use crate::{Address, Parameters, Payload, PrivateKey, RecordError, RecordScheme};
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH, PRF};
 use snarkvm_utilities::{to_bytes_le, variable_length_integer::*, FromBytes, ToBytes, UniformRand};
 
@@ -31,13 +31,13 @@ fn default_program_id<C: CRH>() -> Vec<u8> {
 
 #[derive(Derivative)]
 #[derivative(
-    Default(bound = "C: DPCComponents"),
-    Debug(bound = "C: DPCComponents"),
-    Clone(bound = "C: DPCComponents"),
-    PartialEq(bound = "C: DPCComponents"),
-    Eq(bound = "C: DPCComponents")
+    Default(bound = "C: Parameters"),
+    Debug(bound = "C: Parameters"),
+    Clone(bound = "C: Parameters"),
+    PartialEq(bound = "C: Parameters"),
+    Eq(bound = "C: Parameters")
 )]
-pub struct Record<C: DPCComponents> {
+pub struct Record<C: Parameters> {
     pub(crate) owner: Address<C>,
     pub(crate) is_dummy: bool,
     // TODO (raychu86) use AleoAmount which will guard the value range
@@ -59,7 +59,7 @@ pub struct Record<C: DPCComponents> {
     pub(crate) position: Option<u8>,
 }
 
-impl<C: DPCComponents> Record<C> {
+impl<C: Parameters> Record<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new_full<R: Rng + CryptoRng>(
         owner: Address<C>,
@@ -198,7 +198,7 @@ impl<C: DPCComponents> Record<C> {
     }
 }
 
-impl<C: DPCComponents> RecordScheme for Record<C> {
+impl<C: Parameters> RecordScheme for Record<C> {
     type Commitment = <C::RecordCommitmentScheme as CommitmentScheme>::Output;
     type CommitmentRandomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness;
     type Owner = Address<C>;
@@ -248,7 +248,7 @@ impl<C: DPCComponents> RecordScheme for Record<C> {
     }
 }
 
-impl<C: DPCComponents> ToBytes for Record<C> {
+impl<C: Parameters> ToBytes for Record<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.owner.write_le(&mut writer)?;
@@ -268,7 +268,7 @@ impl<C: DPCComponents> ToBytes for Record<C> {
     }
 }
 
-impl<C: DPCComponents> FromBytes for Record<C> {
+impl<C: Parameters> FromBytes for Record<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let owner: Address<C> = FromBytes::read_le(&mut reader)?;
@@ -314,7 +314,7 @@ impl<C: DPCComponents> FromBytes for Record<C> {
     }
 }
 
-impl<C: DPCComponents> FromStr for Record<C> {
+impl<C: Parameters> FromStr for Record<C> {
     type Err = RecordError;
 
     fn from_str(record: &str) -> Result<Self, Self::Err> {
@@ -322,7 +322,7 @@ impl<C: DPCComponents> FromStr for Record<C> {
     }
 }
 
-impl<C: DPCComponents> fmt::Display for Record<C> {
+impl<C: Parameters> fmt::Display for Record<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

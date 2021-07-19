@@ -19,7 +19,7 @@ use crate::{
     execute_inner_circuit,
     record::Record,
     AleoAmount,
-    DPCComponents,
+    Parameters,
     PrivateKey,
 };
 use snarkvm_algorithms::{
@@ -29,8 +29,8 @@ use snarkvm_algorithms::{
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: DPCComponents"))]
-pub struct InnerCircuit<C: DPCComponents> {
+#[derivative(Clone(bound = "C: Parameters"))]
+pub struct InnerCircuit<C: Parameters> {
     // Ledger
     ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
 
@@ -62,7 +62,7 @@ pub struct InnerCircuit<C: DPCComponents> {
     network_id: u8,
 }
 
-impl<C: DPCComponents> InnerCircuit<C> {
+impl<C: Parameters> InnerCircuit<C> {
     pub fn blank() -> Self {
         let num_input_records = C::NUM_INPUT_RECORDS;
         let num_output_records = C::NUM_OUTPUT_RECORDS;
@@ -223,7 +223,7 @@ impl<C: DPCComponents> InnerCircuit<C> {
     }
 }
 
-impl<C: DPCComponents> ConstraintSynthesizer<C::InnerScalarField> for InnerCircuit<C> {
+impl<C: Parameters> ConstraintSynthesizer<C::InnerScalarField> for InnerCircuit<C> {
     fn generate_constraints<CS: ConstraintSystem<C::InnerScalarField>>(
         &self,
         cs: &mut CS,

@@ -16,7 +16,7 @@
 
 use crate::{
     testnet2::{Execution, LocalData, NoopCircuit, ProgramLocalData, ProgramSNARKUniversalSRS, Testnet2Components},
-    DPCComponents,
+    Parameters,
     ProgramError,
     ProgramScheme,
     RecordScheme,
@@ -66,7 +66,7 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
         let verifying_key_group_elements = verifying_key.to_field_elements()?;
 
         // Compute the program ID.
-        let id = <C as DPCComponents>::program_id_crh()
+        let id = <C as Parameters>::program_id_crh()
             .hash_field_elements(&verifying_key_group_elements)?
             .to_bytes_le()?;
 
@@ -89,7 +89,7 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
         let verifying_key_group_elements = verifying_key.to_field_elements()?;
 
         // Compute the program ID.
-        let id = <C as DPCComponents>::program_id_crh()
+        let id = <C as Parameters>::program_id_crh()
             .hash_field_elements(&verifying_key_group_elements)?
             .to_bytes_le()?;
 
