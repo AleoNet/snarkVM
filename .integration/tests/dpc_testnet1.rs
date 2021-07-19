@@ -509,7 +509,7 @@ fn test_testnet1_dpc_execute_constraints() {
         println!("=========================================================");
         let num_constraints = inner_circuit_cs.num_constraints();
         println!("Inner circuit num constraints: {:?}", num_constraints);
-        assert_eq!(417683, num_constraints);
+        assert_eq!(422669, num_constraints);
         println!("=========================================================");
     }
 
@@ -591,7 +591,7 @@ fn test_testnet1_dpc_execute_constraints() {
         println!("=========================================================");
         let num_constraints = outer_circuit_cs.num_constraints();
         println!("Outer circuit num constraints: {:?}", num_constraints);
-        assert_eq!(519976, num_constraints);
+        assert_eq!(525295, num_constraints);
         println!("=========================================================");
     }
 

@@ -126,8 +126,8 @@ impl DPCComponents for DPC {
     type LedgerMerkleTreeCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
     type LedgerMerkleTreeParameters = CommitmentMerkleTreeParameters;
 
-    type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 129>;
-    type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 129>;
+    type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 162>;
+    type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 162>;
 
     type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 16, 32>;
     type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
