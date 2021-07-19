@@ -14,20 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet2::Testnet2Components;
+use crate::DPCComponents;
 use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::prelude::*;
 use snarkvm_r1cs::{Assignment, ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
 /// Always-accept program
-pub struct NoopCircuit<C: Testnet2Components> {
+pub struct NoopCircuit<C: DPCComponents> {
     /// Commitment to the program input.
     pub local_data_root: Option<<C::LocalDataCRH as CRH>::Output>,
     /// Record position
     pub position: u8,
 }
 
-impl<C: Testnet2Components> NoopCircuit<C> {
+impl<C: DPCComponents> NoopCircuit<C> {
     pub fn blank() -> Self {
         Self {
             local_data_root: Some(<C::LocalDataCRH as CRH>::Output::default()),
@@ -43,7 +43,7 @@ impl<C: Testnet2Components> NoopCircuit<C> {
     }
 }
 
-impl<C: Testnet2Components> ConstraintSynthesizer<C::InnerScalarField> for NoopCircuit<C> {
+impl<C: DPCComponents> ConstraintSynthesizer<C::InnerScalarField> for NoopCircuit<C> {
     fn generate_constraints<CS: ConstraintSystem<C::InnerScalarField>>(
         &self,
         cs: &mut CS,

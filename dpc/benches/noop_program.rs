@@ -19,7 +19,7 @@ extern crate criterion;
 
 use snarkvm_dpc::{
     prelude::*,
-    testnet2::{instantiated::Components, NoopProgram},
+    testnet2::{dpc::DPC, NoopProgram},
 };
 
 use criterion::Criterion;
@@ -28,7 +28,7 @@ use rand::thread_rng;
 fn noop_program_setup(c: &mut Criterion) {
     c.bench_function("NoopProgram::setup", move |b| {
         b.iter(|| {
-            let _noop_program = NoopProgram::<Components>::setup(&mut thread_rng()).unwrap();
+            let _noop_program = NoopProgram::<DPC>::setup(&mut thread_rng()).unwrap();
         })
     });
 }
@@ -36,7 +36,7 @@ fn noop_program_setup(c: &mut Criterion) {
 fn noop_program_load(c: &mut Criterion) {
     c.bench_function("NoopProgram::load", move |b| {
         b.iter(|| {
-            let _noop_program = NoopProgram::<Components>::load().unwrap();
+            let _noop_program = NoopProgram::<DPC>::load().unwrap();
         })
     });
 }

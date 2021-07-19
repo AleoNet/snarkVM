@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Ledger;
-use snarkvm_dpc::{testnet1::instantiated::*, Account, DPCComponents, DPCScheme, Storage};
+use snarkvm_dpc::{testnet1::dpc::*, Account, AccountScheme, DPCComponents, DPCScheme, Storage};
 
 use rand::{CryptoRng, Rng};
 use std::sync::Arc;
@@ -25,15 +25,15 @@ pub type MerkleTreeLedger<S> = Ledger<Testnet1Transaction, CommitmentMerkleTreeP
 pub fn setup_or_load_parameters<R: Rng + CryptoRng, S: Storage>(
     verify_only: bool,
     rng: &mut R,
-) -> (Arc<CommitmentMerkleTreeParameters>, Testnet1DPC) {
+) -> (Arc<CommitmentMerkleTreeParameters>, Testnet1TransactionEngine) {
     // TODO (howardwu): TEMPORARY - Resolve this inconsistency on import structure with a new model once MerkleParameters are refactored.
-    let ledger_merkle_tree_parameters = Arc::new(Components::ledger_merkle_tree_parameters().clone());
+    let ledger_merkle_tree_parameters = Arc::new(DPC::ledger_merkle_tree_parameters().clone());
 
-    let dpc = match <Testnet1DPC as DPCScheme<MerkleTreeLedger<S>>>::load(verify_only) {
+    let dpc = match <Testnet1TransactionEngine as DPCScheme<MerkleTreeLedger<S>>>::load(verify_only) {
         Ok(dpc) => dpc,
         Err(err) => {
             println!("error - {}, re-running parameter Setup", err);
-            <Testnet1DPC as DPCScheme<MerkleTreeLedger<S>>>::setup(&ledger_merkle_tree_parameters, rng)
+            <Testnet1TransactionEngine as DPCScheme<MerkleTreeLedger<S>>>::setup(&ledger_merkle_tree_parameters, rng)
                 .expect("DPC setup failed")
         }
     };
@@ -41,14 +41,10 @@ pub fn setup_or_load_parameters<R: Rng + CryptoRng, S: Storage>(
     (ledger_merkle_tree_parameters, dpc)
 }
 
-pub fn generate_test_accounts<R: Rng + CryptoRng, S: Storage>(
-    dpc: &Testnet1DPC,
-    rng: &mut R,
-) -> [Account<Components>; 3] {
-    // TODO (howardwu): Remove DPCScheme<MerkleTreeLedger<S>> usage after decoupling ledger.
-    let genesis_account = <Testnet1DPC as DPCScheme<MerkleTreeLedger<S>>>::create_account(dpc, rng).unwrap();
-    let account_1 = <Testnet1DPC as DPCScheme<MerkleTreeLedger<S>>>::create_account(dpc, rng).unwrap();
-    let account_2 = <Testnet1DPC as DPCScheme<MerkleTreeLedger<S>>>::create_account(dpc, rng).unwrap();
+pub fn generate_test_accounts<R: Rng + CryptoRng>(rng: &mut R) -> [Account<DPC>; 3] {
+    let genesis_account = Account::new(rng).unwrap();
+    let account_1 = Account::new(rng).unwrap();
+    let account_2 = Account::new(rng).unwrap();
 
     [genesis_account, account_1, account_2]
 }

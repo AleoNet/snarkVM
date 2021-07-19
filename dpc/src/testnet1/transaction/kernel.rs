@@ -16,7 +16,9 @@
 
 use crate::{
     prelude::*,
-    testnet1::{EncryptedRecord, LocalData, Record, Testnet1Components, Transaction},
+    testnet1::{LocalData, Testnet1Components, Transaction},
+    EncryptedRecord,
+    Record,
 };
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, prelude::*};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
@@ -42,7 +44,6 @@ pub struct TransactionKernel<C: Testnet1Components> {
     // Old record stuff
     pub old_records: Vec<Record<C>>,
     pub old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
-    pub old_randomizers: Vec<<C::AccountSignature as SignatureScheme>::Randomizer>,
 
     // New record stuff
     pub new_records: Vec<Record<C>>,
@@ -63,6 +64,7 @@ pub struct TransactionKernel<C: Testnet1Components> {
     pub value_balance: AleoAmount,
     pub memorandum: <Transaction<C> as TransactionScheme>::Memorandum,
     pub network_id: u8,
+    pub signatures: Vec<<C::AccountSignature as SignatureScheme>::Signature>,
 }
 
 impl<C: Testnet1Components> TransactionKernel<C> {
@@ -94,10 +96,6 @@ impl<C: Testnet1Components> ToBytes for TransactionKernel<C> {
 
         for old_serial_number in &self.old_serial_numbers {
             old_serial_number.write_le(&mut writer)?;
-        }
-
-        for old_randomizer in &self.old_randomizers {
-            old_randomizer.write_le(&mut writer)?;
         }
 
         // Write new record components
@@ -139,7 +137,13 @@ impl<C: Testnet1Components> ToBytes for TransactionKernel<C> {
 
         self.value_balance.write_le(&mut writer)?;
         self.memorandum.write_le(&mut writer)?;
-        self.network_id.write_le(&mut writer)
+        self.network_id.write_le(&mut writer)?;
+
+        for signature in &self.signatures {
+            signature.write_le(&mut writer)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -159,12 +163,6 @@ impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
             let old_serial_number: <C::AccountSignature as SignatureScheme>::PublicKey =
                 FromBytes::read_le(&mut reader)?;
             old_serial_numbers.push(old_serial_number);
-        }
-
-        let mut old_randomizers = vec![];
-        for _ in 0..C::NUM_INPUT_RECORDS {
-            let old_randomizer: <C::AccountSignature as SignatureScheme>::Randomizer = FromBytes::read_le(&mut reader)?;
-            old_randomizers.push(old_randomizer);
         }
 
         // Read new record components
@@ -229,10 +227,15 @@ impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
         let memorandum: <Transaction<C> as TransactionScheme>::Memorandum = FromBytes::read_le(&mut reader)?;
         let network_id: u8 = FromBytes::read_le(&mut reader)?;
 
+        let mut signatures = vec![];
+        for _ in 0..C::NUM_INPUT_RECORDS {
+            let signature: <C::AccountSignature as SignatureScheme>::Signature = FromBytes::read_le(&mut reader)?;
+            signatures.push(signature);
+        }
+
         Ok(Self {
             old_records,
             old_serial_numbers,
-            old_randomizers,
 
             new_records,
             new_sn_nonce_randomness,
@@ -249,6 +252,7 @@ impl<C: Testnet1Components> FromBytes for TransactionKernel<C> {
             value_balance,
             memorandum,
             network_id,
+            signatures,
         })
     }
 }
