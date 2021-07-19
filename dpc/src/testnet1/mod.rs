@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerCircuitVerifierInput, Parameters};
+use crate::Parameters;
 use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::{bits::Boolean, traits::algorithms::SNARKVerifierGadget};
 
@@ -34,22 +34,8 @@ pub mod parameters;
 
 /// Trait that stores information about the testnet1 DPC scheme.
 pub trait Testnet1Components: Parameters {
-    /// SNARK for inner circuit proof generation.
-    type InnerSNARK: SNARK<
-        ScalarField = Self::InnerScalarField,
-        BaseField = Self::OuterScalarField,
-        VerifierInput = InnerCircuitVerifierInput<Self>,
-    >;
-
     /// SNARK Verifier gadget for the inner circuit.
     type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK, Input = Vec<Boolean>>;
-
-    /// SNARK for proof-verification checks
-    type OuterSNARK: SNARK<
-        ScalarField = Self::OuterScalarField,
-        BaseField = Self::OuterBaseField,
-        VerifierInput = OuterCircuitVerifierInput<Self>,
-    >;
 
     /// Program SNARK for Aleo applications.
     type ProgramSNARK: SNARK<

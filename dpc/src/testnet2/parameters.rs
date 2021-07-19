@@ -16,15 +16,10 @@
 
 use crate::{
     account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_INPUT, ACCOUNT_SIGNATURE_INPUT},
-    testnet2::{
-        outer_circuit_verifier_input::OuterCircuitVerifierInput,
-        program::ProgramLocalData,
-        transaction::Transaction,
-        Testnet2Components,
-        DPC,
-    },
+    testnet2::{program::ProgramLocalData, transaction::Transaction, Testnet2Components, DPC},
     InnerCircuitVerifierInput,
     Network,
+    OuterCircuitVerifierInput,
     Parameters,
 };
 use snarkvm_algorithms::{
@@ -103,6 +98,9 @@ impl Parameters for Testnet2Parameters {
     type OuterScalarField = <Self::OuterCurve as PairingEngine>::Fr;
     type OuterBaseField = <Self::OuterCurve as PairingEngine>::Fq;
 
+    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Testnet2Parameters>>;
+    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet2Parameters>>;
+
     type AccountCommitmentScheme = PedersenCompressedCommitment<EdwardsBls12, 8, 192>;
     type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 192>;
     type AccountCommitment = <Self::AccountCommitmentScheme as CommitmentScheme>::Output;
@@ -180,10 +178,8 @@ impl Testnet2Components for Testnet2Parameters {
         Self::OuterScalarField,
         PoseidonSponge<Self::OuterScalarField>,
     >;
-    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Testnet2Parameters>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
     type MarlinMode = MarlinTestnet2Mode;
-    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet2Parameters>>;
     type PolynomialCommitment = MarlinKZG10<Self::InnerCurve>;
     type PolynomialCommitmentCommitment =
         <Self::PolynomialCommitment as PolynomialCommitment<Self::InnerScalarField>>::Commitment;

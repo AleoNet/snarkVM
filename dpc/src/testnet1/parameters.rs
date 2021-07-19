@@ -16,15 +16,10 @@
 
 use crate::{
     account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_INPUT, ACCOUNT_SIGNATURE_INPUT},
-    testnet1::{
-        outer_circuit_verifier_input::OuterCircuitVerifierInput,
-        program::ProgramLocalData,
-        transaction::Transaction,
-        Testnet1Components,
-        DPC,
-    },
+    testnet1::{program::ProgramLocalData, transaction::Transaction, Testnet1Components, DPC},
     InnerCircuitVerifierInput,
     Network,
+    OuterCircuitVerifierInput,
     Parameters,
 };
 use snarkvm_algorithms::{
@@ -92,6 +87,9 @@ impl Parameters for Testnet1Parameters {
     type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
     type OuterScalarField = <Self::OuterCurve as PairingEngine>::Fr;
     type OuterBaseField = <Self::OuterCurve as PairingEngine>::Fq;
+
+    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Testnet1Parameters>>;
+    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet1Parameters>>;
 
     type AccountCommitmentScheme = PedersenCompressedCommitment<EdwardsBls12, 8, 192>;
     type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 192>;
@@ -165,9 +163,7 @@ impl Parameters for Testnet1Parameters {
 }
 
 impl Testnet1Components for Testnet1Parameters {
-    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Testnet1Parameters>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
-    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet1Parameters>>;
     type ProgramSNARK = GM17<Self::InnerCurve, ProgramLocalData<Self>>;
     type ProgramSNARKGadget = GM17VerifierGadget<Self::InnerCurve, PairingGadget>;
 }

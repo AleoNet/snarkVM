@@ -69,8 +69,8 @@ pub use account::*;
 pub mod block;
 pub use block::*;
 
-pub mod inner_circuit;
-pub use inner_circuit::*;
+pub mod circuits;
+pub use circuits::*;
 
 pub mod record;
 pub use record::*;

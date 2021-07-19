@@ -22,7 +22,7 @@ use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{
     execute_inner_circuit,
     prelude::*,
-    testnet1::{execute_outer_circuit, parameters::*, program::NoopProgram, Testnet1Components, TransactionKernel},
+    testnet1::{execute_outer_circuit, parameters::*, program::NoopProgram, TransactionKernel},
     EncryptedRecord,
     InnerCircuit,
     Payload,
@@ -40,7 +40,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 fn testnet1_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
     let dpc = Testnet1DPC::load(false)?;
 
-    let inner_snark_vk: <<Testnet1Parameters as Testnet1Components>::InnerSNARK as SNARK>::VerifyingKey =
+    let inner_snark_vk: <<Testnet1Parameters as Parameters>::InnerSNARK as SNARK>::VerifyingKey =
         dpc.inner_snark_parameters.1.clone().into();
 
     let inner_circuit_id =
@@ -474,20 +474,20 @@ fn test_testnet1_dpc_execute_constraints() {
     assert!(inner_circuit_cs.is_satisfied());
 
     // Generate inner snark parameters and proof for verification in the outer snark
-    let inner_snark_parameters = <Testnet1Parameters as Testnet1Components>::InnerSNARK::circuit_specific_setup(
+    let inner_snark_parameters = <Testnet1Parameters as Parameters>::InnerSNARK::circuit_specific_setup(
         &InnerCircuit::<Testnet1Parameters>::blank(),
         &mut rng,
     )
     .unwrap();
 
-    let inner_snark_vk: <<Testnet1Parameters as Testnet1Components>::InnerSNARK as SNARK>::VerifyingKey =
+    let inner_snark_vk: <<Testnet1Parameters as Parameters>::InnerSNARK as SNARK>::VerifyingKey =
         inner_snark_parameters.1.clone().into();
 
     let inner_circuit_id = <Testnet1Parameters as Parameters>::inner_circuit_id_crh()
         .hash(&inner_snark_vk.to_bytes_le().unwrap())
         .unwrap();
 
-    let inner_snark_proof = <Testnet1Parameters as Testnet1Components>::InnerSNARK::prove(
+    let inner_snark_proof = <Testnet1Parameters as Parameters>::InnerSNARK::prove(
         &inner_snark_parameters.0,
         &InnerCircuit::new(
             ledger_digest,

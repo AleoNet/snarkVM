@@ -15,15 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet2::{
-        Execution,
-        NoopProgram,
-        OuterCircuit,
-        OuterCircuitVerifierInput,
-        Testnet2Components,
-        Transaction,
-        TransactionKernel,
-    },
+    testnet2::{Execution, NoopProgram, OuterCircuit, Testnet2Components, Transaction, TransactionKernel},
     Account,
     AccountScheme,
     AleoAmount,
@@ -34,6 +26,7 @@ use crate::{
     InnerCircuitVerifierInput,
     LedgerScheme,
     Network,
+    OuterCircuitVerifierInput,
     ProgramScheme,
     Record,
     RecordScheme,
@@ -605,8 +598,7 @@ impl<C: Testnet2Components> DPCScheme<C> for DPC<C> {
             network_id: transaction.network_id(),
         };
 
-        let inner_snark_vk: <<C as Testnet2Components>::InnerSNARK as SNARK>::VerifyingKey =
-            self.inner_snark_parameters.1.clone().into();
+        let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = self.inner_snark_parameters.1.clone().into();
 
         let inner_snark_vk_field_elements =
             ToConstraintField::<C::OuterScalarField>::to_field_elements(&inner_snark_vk).unwrap();

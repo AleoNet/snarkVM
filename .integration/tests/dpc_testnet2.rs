@@ -22,7 +22,7 @@ use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{
     execute_inner_circuit,
     prelude::*,
-    testnet2::{execute_outer_circuit, parameters::*, program::NoopProgram, Testnet2Components, TransactionKernel},
+    testnet2::{execute_outer_circuit, parameters::*, program::NoopProgram, TransactionKernel},
     EncryptedRecord,
     InnerCircuit,
     Payload,
@@ -41,13 +41,13 @@ use std::time::{SystemTime, UNIX_EPOCH};
 fn testnet2_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
     let dpc = Testnet2DPC::load(false)?;
 
-    let inner_snark_vk: <<Testnet2Parameters as Testnet2Components>::InnerSNARK as SNARK>::VerifyingKey =
+    let inner_snark_vk: <<Testnet2Parameters as Parameters>::InnerSNARK as SNARK>::VerifyingKey =
         dpc.inner_snark_parameters.1.clone().into();
 
     let inner_snark_vk_field_elements = inner_snark_vk.to_field_elements()?;
 
-    let inner_circuit_id = <Testnet2Parameters as Parameters>::inner_circuit_id_crh()
-        .hash_field_elements(&inner_snark_vk_field_elements)?;
+    let inner_circuit_id =
+        Testnet2Parameters::inner_circuit_id_crh().hash_field_elements(&inner_snark_vk_field_elements)?;
 
     Ok(to_bytes_le![inner_circuit_id]?)
 }
@@ -480,13 +480,13 @@ fn test_testnet2_dpc_execute_constraints() {
     assert!(inner_circuit_cs.is_satisfied());
 
     // Generate inner snark parameters and proof for verification in the outer snark
-    let inner_snark_parameters = <Testnet2Parameters as Testnet2Components>::InnerSNARK::circuit_specific_setup(
+    let inner_snark_parameters = <Testnet2Parameters as Parameters>::InnerSNARK::circuit_specific_setup(
         &InnerCircuit::<Testnet2Parameters>::blank(),
         &mut rng,
     )
     .unwrap();
 
-    let inner_snark_vk: <<Testnet2Parameters as Testnet2Components>::InnerSNARK as SNARK>::VerifyingKey =
+    let inner_snark_vk: <<Testnet2Parameters as Parameters>::InnerSNARK as SNARK>::VerifyingKey =
         inner_snark_parameters.1.clone().into();
 
     let inner_snark_vk_field_elements = inner_snark_vk.to_field_elements().unwrap();
@@ -495,7 +495,7 @@ fn test_testnet2_dpc_execute_constraints() {
         .hash_field_elements(&inner_snark_vk_field_elements)
         .unwrap();
 
-    let inner_snark_proof = <Testnet2Parameters as Testnet2Components>::InnerSNARK::prove(
+    let inner_snark_proof = <Testnet2Parameters as Parameters>::InnerSNARK::prove(
         &inner_snark_parameters.0,
         &InnerCircuit::new(
             ledger_digest,

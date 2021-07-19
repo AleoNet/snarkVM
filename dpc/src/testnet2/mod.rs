@@ -31,7 +31,7 @@ pub use transaction::*;
 
 pub mod parameters;
 
-use crate::{InnerCircuitVerifierInput, Parameters};
+use crate::Parameters;
 use snarkvm_algorithms::prelude::*;
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{bits::Boolean, nonnative::NonNativeFieldVar, traits::algorithms::SNARKVerifierGadget};
@@ -43,22 +43,8 @@ use snarkvm_polycommit::PolynomialCommitment;
 
 /// Trait that stores information about the testnet2 DPC scheme.
 pub trait Testnet2Components: Parameters {
-    /// SNARK for inner circuit proof generation.
-    type InnerSNARK: SNARK<
-        ScalarField = Self::InnerScalarField,
-        BaseField = Self::OuterScalarField,
-        VerifierInput = InnerCircuitVerifierInput<Self>,
-    >;
-
     /// SNARK Verifier gadget for the inner circuit.
     type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK, Input = Vec<Boolean>>;
-
-    /// SNARK for proof-verification checks
-    type OuterSNARK: SNARK<
-        ScalarField = Self::OuterScalarField,
-        BaseField = Self::OuterBaseField,
-        VerifierInput = OuterCircuitVerifierInput<Self>,
-    >;
 
     /// Program SNARK for Aleo applications.
     type ProgramSNARK: SNARK<

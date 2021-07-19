@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::{InnerCircuitVerifierInput, OuterCircuitVerifierInput};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
 use snarkvm_curves::{
     traits::{MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters},
@@ -46,6 +47,19 @@ pub trait Parameters: 'static + Sized {
     type InnerScalarField: PrimeField + PoseidonDefaultParametersField;
     type OuterScalarField: PrimeField;
     type OuterBaseField: PrimeField;
+
+    /// SNARK for inner circuit proof generation.
+    type InnerSNARK: SNARK<
+        ScalarField = Self::InnerScalarField,
+        BaseField = Self::OuterScalarField,
+        VerifierInput = InnerCircuitVerifierInput<Self>,
+    >;
+    /// SNARK for proof-verification checks.
+    type OuterSNARK: SNARK<
+        ScalarField = Self::OuterScalarField,
+        BaseField = Self::OuterBaseField,
+        VerifierInput = OuterCircuitVerifierInput<Self>,
+    >;
 
     /// Commitment scheme for account contents. Invoked only over `Self::InnerScalarField`.
     type AccountCommitmentScheme: CommitmentScheme<Output = Self::AccountCommitment>
