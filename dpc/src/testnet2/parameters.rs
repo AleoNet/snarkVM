@@ -154,17 +154,17 @@ impl Parameters for Testnet2Parameters {
     type SerialNumberNonceCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 32, 63>;
     type SerialNumberNonceCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
 
-    dpc_setup!{account_commitment, ACCOUNT_COMMITMENT, AccountCommitmentScheme, ACCOUNT_COMMITMENT_INPUT}
+    dpc_setup!{account_commitment, ACCOUNT_COMMITMENT, AccountCommitmentScheme, ACCOUNT_COMMITMENT_INPUT} // TODO (howardwu): Rename to "AleoAccountCommitmentScheme0".
     dpc_setup!{account_encryption, ACCOUNT_ENCRYPTION, AccountEncryption, ACCOUNT_ENCRYPTION_INPUT}
     dpc_setup!{account_signature, ACCOUNT_SIGNATURE, AccountSignature, ACCOUNT_SIGNATURE_INPUT}
     dpc_setup!{encrypted_record_crh, ENCRYPTED_RECORD_CRH, EncryptedRecordCRH, "AleoEncryptedRecordCRH0"}
     dpc_setup!{inner_circuit_id_crh, INNER_CIRCUIT_ID_CRH, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
-    dpc_setup!{record_commitment_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoRecordCommitmentTreeCRH0"}
-    dpc_setup!{local_data_commitment, LOCAL_DATA_COMMITMENT, LocalDataCommitmentScheme, "AleoLocalDataCommitment0"}
+    dpc_setup!{local_data_commitment, LOCAL_DATA_COMMITMENT, LocalDataCommitmentScheme, "AleoLocalDataCommitment0"} // TODO (howardwu): Rename to "AleoLocalDataCommitmentScheme0".
     dpc_setup!{local_data_crh, LOCAL_DATA_CRH, LocalDataCRH, "AleoLocalDataCRH0"}
-    dpc_setup!{program_id_commitment, PROGRAM_ID_COMMITMENT, ProgramCommitmentScheme, "AleoProgramIDCommitment0"}
+    dpc_setup!{program_id_commitment, PROGRAM_ID_COMMITMENT, ProgramCommitmentScheme, "AleoProgramIDCommitment0"} // TODO (howardwu): Rename to "AleoProgramCommitmentScheme0".
     dpc_setup!{program_id_crh, PROGRAM_ID_CRH, ProgramIDCRH, "AleoProgramIDCRH0"}
-    dpc_setup!{record_commitment, RECORD_COMMITMENT, RecordCommitmentScheme, "AleoRecordCommitment0"}
+    dpc_setup!{record_commitment, RECORD_COMMITMENT, RecordCommitmentScheme, "AleoRecordCommitment0"} // TODO (howardwu): Rename to "AleoRecordCommitmentScheme0".
+    dpc_setup!{record_commitment_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoLedgerMerkleTreeCRH0"} // TODO (howardwu): Rename to "AleoRecordCommitmentTreeCRH0".
     dpc_setup!{serial_number_nonce_crh, SERIAL_NUMBER_NONCE_CRH, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
 
     // TODO (howardwu): TEMPORARY - Refactor this to a proper tree.
