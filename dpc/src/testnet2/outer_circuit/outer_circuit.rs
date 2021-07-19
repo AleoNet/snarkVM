@@ -42,7 +42,7 @@ pub struct OuterCircuit<C: Testnet2Components> {
     inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
     inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
 
-    program_proofs: Vec<Execution<C::NoopProgramSNARK>>,
+    program_proofs: Vec<Execution<C::ProgramSNARK>>,
     program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
     program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
     local_data_root: C::LocalDataDigest,
@@ -54,7 +54,7 @@ impl<C: Testnet2Components> OuterCircuit<C> {
     pub fn blank(
         inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
-        program_snark_vk_and_proof: Execution<C::NoopProgramSNARK>,
+        program_snark_vk_and_proof: Execution<C::ProgramSNARK>,
     ) -> Self {
         let ledger_digest = MerkleTreeDigest::<C::RecordCommitmentTreeParameters>::default();
         let old_serial_numbers =
@@ -107,7 +107,7 @@ impl<C: Testnet2Components> OuterCircuit<C> {
 
         // Private program input = Verification key and input
         // Commitment contains commitment to hash of death program vk.
-        program_proofs: Vec<Execution<C::NoopProgramSNARK>>,
+        program_proofs: Vec<Execution<C::ProgramSNARK>>,
         program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
         program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
         local_data_root: C::LocalDataDigest,
@@ -141,7 +141,6 @@ impl<C: Testnet2Components> OuterCircuit<C> {
 impl<C: Testnet2Components> ConstraintSynthesizer<C::OuterScalarField> for OuterCircuit<C>
 where
     <C::AccountCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::ProgramCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::RecordCommitmentTreeParameters as MerkleParameters>::H: ToConstraintField<C::InnerScalarField>,
     MerkleTreeDigest<C::RecordCommitmentTreeParameters>: ToConstraintField<C::InnerScalarField>,
 {

@@ -92,7 +92,7 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
     inner_snark_proof: &<C::InnerSNARK as SNARK>::Proof,
 
     // Program verifying keys and proofs
-    program_proofs: &[Execution<C::NoopProgramSNARK>],
+    program_proofs: &[Execution<C::ProgramSNARK>],
 
     // Rest
     program_commitment: &<C::ProgramCommitmentScheme as CommitmentScheme>::Output,
@@ -354,12 +354,12 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
     for (i, input) in program_proofs.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
         let cs = &mut cs.ns(|| format!("Check death program for input record {}", i));
 
-        let death_program_proof = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
+        let death_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate proof"),
             || Ok(&input.proof),
         )?;
 
-        let death_program_vk = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
+        let death_program_vk = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
             &mut cs.ns(|| "Allocate verifying key"),
             || Ok(&input.verifying_key),
         )?;
@@ -387,7 +387,7 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
         let mut program_snark_input = vec![];
 
         for (j, input) in program_input_field_elements.iter().enumerate() {
-            let input_element = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_>>::Input::alloc(
+            let input_element = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::Input::alloc(
                 cs.ns(|| format!("alloc_death_program_input_{}_{}", i, j)),
                 || Ok(input),
             )?;
@@ -395,7 +395,7 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
             program_snark_input.push(input_element);
         }
 
-        C::NoopProgramSNARKGadget::check_verify(
+        C::ProgramSNARKGadget::check_verify(
             &mut cs.ns(|| "Check that proof is satisfied"),
             &death_program_vk,
             program_snark_input.iter().cloned(),
@@ -411,12 +411,12 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
     {
         let cs = &mut cs.ns(|| format!("Check birth program for output record {}", j));
 
-        let birth_program_proof = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
+        let birth_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate proof"),
             || Ok(&input.proof),
         )?;
 
-        let birth_program_vk = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
+        let birth_program_vk = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
             &mut cs.ns(|| "Allocate verifying key"),
             || Ok(&input.verifying_key),
         )?;
@@ -445,7 +445,7 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
         let mut program_snark_input = vec![];
 
         for (k, input) in program_input_field_elements.iter().enumerate() {
-            let input_element = <C::NoopProgramSNARKGadget as SNARKVerifierGadget<_>>::Input::alloc(
+            let input_element = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::Input::alloc(
                 cs.ns(|| format!("alloc_birth_program_input_{}_{}", j, k)),
                 || Ok(input),
             )?;
@@ -453,7 +453,7 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
             program_snark_input.push(input_element);
         }
 
-        C::NoopProgramSNARKGadget::check_verify(
+        C::ProgramSNARKGadget::check_verify(
             &mut cs.ns(|| "Check that proof is satisfied"),
             &birth_program_vk,
             program_snark_input.iter().cloned(),

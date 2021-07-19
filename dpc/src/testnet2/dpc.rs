@@ -61,7 +61,7 @@ pub struct DPC<C: Testnet2Components> {
 
 impl<C: Testnet2Components> DPCScheme<C> for DPC<C> {
     type Account = Account<C>;
-    type Execution = Execution<C::NoopProgramSNARK>;
+    type Execution = Execution<C::ProgramSNARK>;
     type Record = Record<C>;
     type Transaction = Transaction<C>;
     type TransactionKernel = TransactionKernel<C>;

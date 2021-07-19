@@ -33,7 +33,7 @@ use utils::store;
 #[allow(deprecated)]
 pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError>
 where
-    <C::NoopProgramSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
+    <C::ProgramSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
     <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::VerifierKey:
         ToConstraintField<C::OuterScalarField>,
     <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::Commitment:

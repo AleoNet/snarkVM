@@ -183,7 +183,13 @@ impl Testnet2Components for Testnet2Parameters {
     type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Testnet2Parameters>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
     type MarlinMode = MarlinTestnet2Mode;
-    type NoopProgramSNARK = MarlinSNARK<
+    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet2Parameters>>;
+    type PolynomialCommitment = MarlinKZG10<Self::InnerCurve>;
+    type PolynomialCommitmentCommitment =
+        <Self::PolynomialCommitment as PolynomialCommitment<Self::InnerScalarField>>::Commitment;
+    type PolynomialCommitmentVerifierKey =
+        <Self::PolynomialCommitment as PolynomialCommitment<Self::InnerScalarField>>::VerifierKey;
+    type ProgramSNARK = MarlinSNARK<
         Self::InnerScalarField,
         Self::OuterScalarField,
         Self::PolynomialCommitment,
@@ -191,18 +197,12 @@ impl Testnet2Components for Testnet2Parameters {
         Self::MarlinMode,
         ProgramLocalData<Self>,
     >;
-    type NoopProgramSNARKGadget = MarlinVerificationGadget<
+    type ProgramSNARKGadget = MarlinVerificationGadget<
         Self::InnerScalarField,
         Self::OuterScalarField,
         Self::PolynomialCommitment,
         MarlinKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>,
     >;
-    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet2Parameters>>;
-    type PolynomialCommitment = MarlinKZG10<Self::InnerCurve>;
-    type PolynomialCommitmentCommitment =
-        <Self::PolynomialCommitment as PolynomialCommitment<Self::InnerScalarField>>::Commitment;
-    type PolynomialCommitmentVerifierKey =
-        <Self::PolynomialCommitment as PolynomialCommitment<Self::InnerScalarField>>::VerifierKey;
 }
 
 // This is currently unused.

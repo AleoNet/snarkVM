@@ -60,8 +60,8 @@ pub trait Testnet2Components: Parameters {
         VerifierInput = OuterCircuitVerifierInput<Self>,
     >;
 
-    /// SNARK for the no-op "always-accept" that does nothing with its input.
-    type NoopProgramSNARK: SNARK<
+    /// Program SNARK for Aleo applications.
+    type ProgramSNARK: SNARK<
         ScalarField = Self::InnerScalarField,
         BaseField = Self::OuterScalarField,
         UniversalSetupParameters = UniversalSRS<Self::InnerScalarField, Self::PolynomialCommitment>,
@@ -69,9 +69,9 @@ pub trait Testnet2Components: Parameters {
     >;
 
     // TODO (raychu86): Look into properly declaring a proper input. i.e. Self::MarlinInputGadget.
-    /// SNARK Verifier gadget for the no-op "always-accept" that does nothing with its input.
-    type NoopProgramSNARKGadget: SNARKVerifierGadget<
-        Self::NoopProgramSNARK,
+    /// Program SNARK verifier gadget for Aleo applications.
+    type ProgramSNARKGadget: SNARKVerifierGadget<
+        Self::ProgramSNARK,
         Input = NonNativeFieldVar<Self::InnerScalarField, Self::OuterScalarField>,
     >;
 
