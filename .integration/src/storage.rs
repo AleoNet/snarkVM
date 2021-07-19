@@ -18,7 +18,7 @@ use crate::Ledger;
 use snarkvm_algorithms::traits::merkle_tree::LoadableMerkleParameters;
 use snarkvm_dpc::{
     block::Block,
-    traits::{LedgerScheme, Storage, TransactionScheme},
+    traits::{DPCComponents, LedgerScheme, Storage, TransactionScheme},
     TransactionError,
 };
 use snarkvm_utilities::{FromBytes, ToBytes};
@@ -35,14 +35,14 @@ pub fn random_storage_path() -> String {
 }
 
 // Initialize a test blockchain given genesis attributes
-pub fn initialize_test_blockchain<T: TransactionScheme, P: LoadableMerkleParameters, S: Storage>(
+pub fn initialize_test_blockchain<C: DPCComponents, T: TransactionScheme, P: LoadableMerkleParameters, S: Storage>(
     parameters: Arc<P>,
     genesis_block: Block<T>,
-) -> Ledger<T, P, S> {
+) -> Ledger<C, T, P, S> {
     let mut path = std::env::temp_dir();
     path.push(random_storage_path());
 
-    Ledger::<T, P, S>::new(Some(&path), parameters, genesis_block).unwrap()
+    Ledger::new(Some(&path), parameters, genesis_block).unwrap()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

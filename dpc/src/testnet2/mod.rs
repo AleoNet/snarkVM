@@ -66,48 +66,44 @@ pub mod dpc;
 pub trait Testnet2Components: DPCComponents {
     /// SNARK for inner circuit proof generation.
     type InnerSNARK: SNARK<
-        Circuit = InnerCircuit<Self>,
-        AllocatedCircuit = InnerCircuit<Self>,
+        ScalarField = Self::InnerScalarField,
+        BaseField = Self::OuterScalarField,
         VerifierInput = InnerCircuitVerifierInput<Self>,
     >;
 
-    /// SNARK verifier gadget for the inner circuit.
-    type InnerSNARKGadget: SNARKVerifierGadget<
-        Self::InnerScalarField,
-        Self::OuterScalarField,
-        Self::InnerSNARK,
-        Input = Vec<Boolean>,
-    >;
+    /// SNARK Verifier gadget for the inner circuit.
+    type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK, Input = Vec<Boolean>>;
 
     /// SNARK for proof-verification checks
     type OuterSNARK: SNARK<
-        Circuit = OuterCircuit<Self>,
-        AllocatedCircuit = OuterCircuit<Self>,
+        ScalarField = Self::OuterScalarField,
+        BaseField = Self::OuterBaseField,
         VerifierInput = OuterCircuitVerifierInput<Self>,
     >;
 
-    // TODO (raychu86) Declare a proper marlin circuit w/ a UniversalSRS tuple.
     /// SNARK for the no-op "always-accept" that does nothing with its input.
     type NoopProgramSNARK: SNARK<
-        Circuit = (
-            NoopCircuit<Self>,
-            UniversalSRS<Self::InnerScalarField, Self::PolynomialCommitment>,
-        ),
-        AllocatedCircuit = NoopCircuit<Self>,
+        ScalarField = Self::InnerScalarField,
+        BaseField = Self::OuterScalarField,
+        UniversalSetupParameters = UniversalSRS<Self::InnerScalarField, Self::PolynomialCommitment>,
         VerifierInput = ProgramLocalData<Self>,
     >;
 
     // TODO (raychu86): Look into properly declaring a proper input. i.e. Self::MarlinInputGadget.
     /// SNARK Verifier gadget for the no-op "always-accept" that does nothing with its input.
     type NoopProgramSNARKGadget: SNARKVerifierGadget<
-        Self::InnerScalarField,
-        Self::OuterScalarField,
         Self::NoopProgramSNARK,
         Input = NonNativeFieldVar<Self::InnerScalarField, Self::OuterScalarField>,
     >;
 
     /// Polynomial commitment scheme for Program SNARKS using Marlin.
-    type PolynomialCommitment: PolynomialCommitment<Self::InnerScalarField>;
+    type PolynomialCommitment: PolynomialCommitment<
+        Self::InnerScalarField,
+        VerifierKey = Self::PolynomialCommitmentVerifierKey,
+        Commitment = Self::PolynomialCommitmentCommitment,
+    >;
+    type PolynomialCommitmentVerifierKey: ToConstraintField<Self::OuterScalarField>;
+    type PolynomialCommitmentCommitment: ToConstraintField<Self::OuterScalarField>;
 
     /// Fiat Shamir RNG scheme used for Marlin SNARKS.
     type FiatShamirRng: FiatShamirRng<Self::InnerScalarField, Self::OuterScalarField>;
@@ -131,21 +127,15 @@ pub struct TransactionEngine<C: Testnet2Components> {
 }
 
 impl<C: Testnet2Components> DPCScheme<C> for TransactionEngine<C>
-where
-    // L: LedgerScheme<
-    //     Commitment = <C::RecordCommitment as CommitmentScheme>::Output,
-    //     MerkleParameters = C::LedgerMerkleTreeParameters,
-    //     MerklePath = MerklePath<C::LedgerMerkleTreeParameters>,
-    //     MerkleTreeDigest = MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
-    //     SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey,
-    //     Transaction = Transaction<C>,
-    // >,
-    <C::NoopProgramSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
-    <C::InnerSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
-    <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::VerifierKey:
-        ToConstraintField<C::OuterScalarField>,
-    <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::Commitment:
-        ToConstraintField<C::OuterScalarField>,
+// where
+// L: LedgerScheme<
+//     Commitment = <C::RecordCommitment as CommitmentScheme>::Output,
+//     MerkleParameters = C::LedgerMerkleTreeParameters,
+//     MerklePath = MerklePath<C::LedgerMerkleTreeParameters>,
+//     MerkleTreeDigest = MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
+//     SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey,
+//     Transaction = Transaction<C>,
+// >,
 {
     type Account = Account<C>;
     type Execution = Execution<C::NoopProgramSNARK>;
@@ -164,16 +154,16 @@ where
         end_timer!(noop_program_timer);
 
         let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");
-        let inner_circuit = InnerCircuit::blank(ledger_parameters);
-        let inner_snark_parameters = C::InnerSNARK::setup(&inner_circuit, rng)?;
+        let inner_circuit = InnerCircuit::<C>::blank(ledger_parameters);
+        let inner_snark_parameters = C::InnerSNARK::circuit_specific_setup(&inner_circuit, rng)?;
         end_timer!(snark_setup_time);
 
         let snark_setup_time = start_timer!(|| "Execute outer SNARK setup");
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = inner_snark_parameters.1.clone().into();
         let inner_snark_proof = C::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, rng)?;
 
-        let outer_snark_parameters = C::OuterSNARK::setup(
-            &OuterCircuit::blank(
+        let outer_snark_parameters = C::OuterSNARK::circuit_specific_setup(
+            &OuterCircuit::<C>::blank(
                 ledger_parameters.clone(),
                 inner_snark_vk,
                 inner_snark_proof,
@@ -478,7 +468,7 @@ where
         }
 
         let inner_proof = {
-            let circuit = InnerCircuit::new(
+            let circuit = InnerCircuit::<C>::new(
                 ledger.parameters().clone(),
                 ledger_digest.clone(),
                 old_records,
@@ -535,7 +525,7 @@ where
         let inner_circuit_id = C::inner_circuit_id_crh().hash_field_elements(&inner_snark_vk_field_elements)?;
 
         let transaction_proof = {
-            let circuit = OuterCircuit::new(
+            let circuit = OuterCircuit::<C>::new(
                 ledger.parameters().clone(),
                 ledger_digest.clone(),
                 old_serial_numbers.clone(),

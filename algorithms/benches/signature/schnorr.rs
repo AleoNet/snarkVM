@@ -18,8 +18,7 @@
 extern crate criterion;
 
 use snarkvm_algorithms::{signature::schnorr::Schnorr as SchnorrSignature, traits::SignatureScheme};
-use snarkvm_curves::{edwards_bls12::EdwardsProjective, Group};
-use snarkvm_utilities::UniformRand;
+use snarkvm_curves::edwards_bls12::EdwardsProjective;
 
 use criterion::Criterion;
 use rand::{self, thread_rng, Rng};
@@ -76,7 +75,7 @@ fn schnorr_signature_verify(c: &mut Criterion) {
 }
 
 fn schnorr_signature_randomize_public_key(c: &mut Criterion) {
-    let mut rng = &mut thread_rng();
+    let rng = &mut thread_rng();
     let parameters = Schnorr::setup("schnorr_signature_randomize_public_key");
     let private_key = Schnorr::generate_private_key(&parameters, rng).unwrap();
     let public_key = Schnorr::generate_public_key(&parameters, &private_key).unwrap();
@@ -88,7 +87,7 @@ fn schnorr_signature_randomize_public_key(c: &mut Criterion) {
 }
 
 fn schnorr_signature_randomize_signature(c: &mut Criterion) {
-    let mut rng = &mut thread_rng();
+    let rng = &mut thread_rng();
     let parameters = Schnorr::setup("schnorr_signature_randomize_signature");
     let private_key = Schnorr::generate_private_key(&parameters, rng).unwrap();
     let message = [100u8; 128];
@@ -97,7 +96,7 @@ fn schnorr_signature_randomize_signature(c: &mut Criterion) {
     let randomized_private_key = Schnorr::randomize_private_key(&parameters, &private_key, &randomizer).unwrap();
 
     c.bench_function("Schnorr Signature Randomize Signature", move |b| {
-        b.iter(|| Schnorr::sign_randomized(&parameters, &randomized_private_key, &message, &mut rng).unwrap())
+        b.iter(|| Schnorr::sign_randomized(&parameters, &randomized_private_key, &message, rng).unwrap())
     });
 }
 criterion_group! {

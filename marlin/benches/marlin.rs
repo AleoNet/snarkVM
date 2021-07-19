@@ -27,7 +27,7 @@ use snarkvm_gadgets::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget
 use snarkvm_marlin::{
     constraints::snark::{MarlinSNARK, MarlinSNARKGadget},
     marlin::{MarlinRecursiveMode, MarlinSNARK as MarlinCore},
-    snark::MarlinSystem,
+    snark::MarlinTestnet1System,
     FiatShamirAlgebraicSpongeRng,
     FiatShamirAlgebraicSpongeRngVar,
     PoseidonSponge,
@@ -45,7 +45,7 @@ use std::ops::MulAssign;
 
 // Standard Marlin instances
 
-type Marlin = MarlinSystem<Bls12_377, Benchmark<Fr>, Vec<Fr>>;
+type Marlin = MarlinTestnet1System<Bls12_377, Vec<Fr>>;
 type MarlinInst = MarlinCore<Fr, Fq, PC, FS, MarlinRecursiveMode>;
 
 // Used for Marlin Verification Gadget
@@ -56,7 +56,7 @@ type PCGadget = MarlinKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
 type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
 
-type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Benchmark<Fr>, Vec<Fr>>;
+type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Vec<Fr>>;
 type TestSNARKGadget = MarlinSNARKGadget<Fr, Fq, PC, FS, MarlinRecursiveMode, PCGadget, FSG>;
 
 #[derive(Copy, Clone)]
@@ -99,10 +99,11 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Benchmark<Constr
 
 fn snark_universal_setup(c: &mut Criterion) {
     let rng = &mut thread_rng();
+    let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(1000000, 1000000, 1000000).unwrap();
 
     c.bench_function("snark_universal_setup", move |b| {
         b.iter(|| {
-            MarlinInst::universal_setup(1000000, 1000000, 1000000, rng).unwrap();
+            MarlinInst::universal_setup(max_degree, rng).unwrap();
         })
     });
 }
@@ -115,7 +116,8 @@ fn snark_circuit_setup(c: &mut Criterion) {
     let x = Fr::rand(rng);
     let y = Fr::rand(rng);
 
-    let universal_srs = MarlinInst::universal_setup(100000, 100000, 100000, rng).unwrap();
+    let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(100000, 100000, 100000).unwrap();
+    let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
     c.bench_function("snark_circuit_setup", move |b| {
         b.iter(|| {
@@ -126,7 +128,7 @@ fn snark_circuit_setup(c: &mut Criterion) {
                 num_variables,
             };
 
-            Marlin::setup(&(circuit, universal_srs.clone()), rng).unwrap()
+            Marlin::index(&circuit, &universal_srs).unwrap()
         })
     });
 }
@@ -139,7 +141,8 @@ fn snark_prove(c: &mut Criterion) {
     let x = Fr::rand(rng);
     let y = Fr::rand(rng);
 
-    let universal_srs = MarlinInst::universal_setup(1000, 1000, 1000, rng).unwrap();
+    let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(1000, 1000, 1000).unwrap();
+    let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
     let circuit = Benchmark::<Fr> {
         a: Some(x),
@@ -148,7 +151,7 @@ fn snark_prove(c: &mut Criterion) {
         num_variables,
     };
 
-    let params = Marlin::setup(&(circuit, universal_srs), rng).unwrap();
+    let params = Marlin::index(&circuit, &universal_srs).unwrap();
 
     c.bench_function("snark_prove", move |b| {
         b.iter(|| {
@@ -177,7 +180,8 @@ fn snark_verify(c: &mut Criterion) {
     let mut z = x;
     z.mul_assign(&y);
 
-    let universal_srs = MarlinInst::universal_setup(1000000, 100000, 1000000, rng).unwrap();
+    let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(1000000, 100000, 1000000).unwrap();
+    let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
     let circuit = Benchmark::<Fr> {
         a: Some(x),
@@ -218,7 +222,8 @@ fn snark_verify_gadget(c: &mut Criterion) {
     let mut z = x;
     z.mul_assign(&y);
 
-    let universal_srs = MarlinInst::universal_setup(1000000, 100000, 1000000, rng).unwrap();
+    let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(1000000, 100000, 1000000).unwrap();
+    let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
     let circuit = Benchmark::<Fr> {
         a: Some(x),
@@ -243,27 +248,25 @@ fn snark_verify_gadget(c: &mut Criterion) {
 
     let mut cs = TestConstraintSystem::<Fq>::new();
 
-    let input_gadget = <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::InputVar::alloc_input(
-        cs.ns(|| "alloc_input_gadget"),
-        || Ok(vec![z]),
-    )
-    .unwrap();
-
-    let proof_gadget =
-        <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::ProofVar::alloc(cs.ns(|| "alloc_proof"), || Ok(proof))
-            .unwrap();
-
-    let vk_gadget =
-        <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::VerifyingKeyVar::alloc(cs.ns(|| "alloc_vk"), || {
-            Ok(params.1.clone())
+    let input_gadget =
+        <TestSNARKGadget as SNARKGadget<TestSNARK>>::InputVar::alloc_input(cs.ns(|| "alloc_input_gadget"), || {
+            Ok(vec![z])
         })
         .unwrap();
+
+    let proof_gadget =
+        <TestSNARKGadget as SNARKGadget<TestSNARK>>::ProofVar::alloc(cs.ns(|| "alloc_proof"), || Ok(proof)).unwrap();
+
+    let vk_gadget = <TestSNARKGadget as SNARKGadget<TestSNARK>>::VerifyingKeyVar::alloc(cs.ns(|| "alloc_vk"), || {
+        Ok(params.1.clone())
+    })
+    .unwrap();
 
     c.bench_function("snark_verify_gadget", move |b| {
         b.iter(|| {
             println!("cs: {}", cs.num_constraints());
 
-            let verification_result = <TestSNARKGadget as SNARKGadget<Fr, Fq, TestSNARK>>::verify(
+            let verification_result = <TestSNARKGadget as SNARKGadget<TestSNARK>>::verify(
                 cs.ns(|| "marlin_verify"),
                 &vk_gadget,
                 &input_gadget,

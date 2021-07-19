@@ -20,7 +20,7 @@ use snarkvm_dpc::{testnet2::dpc::*, Account, AccountScheme, DPCComponents, DPCSc
 use rand::{CryptoRng, Rng};
 use std::sync::Arc;
 
-pub type MerkleTreeLedger<S> = Ledger<Testnet2Transaction, CommitmentMerkleTreeParameters, S>;
+pub type MerkleTreeLedger<S> = Ledger<DPC, Testnet2Transaction, CommitmentMerkleTreeParameters, S>;
 
 pub fn setup_or_load_parameters<R: Rng + CryptoRng, S: Storage>(
     verify_only: bool,
