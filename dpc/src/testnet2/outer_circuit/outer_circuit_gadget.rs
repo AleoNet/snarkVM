@@ -101,10 +101,7 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
     local_data_root: &<C::LocalDataCRH as CRH>::Output,
 
     inner_circuit_id: &<C::InnerCircuitIDCRH as CRH>::Output,
-) -> Result<(), SynthesisError>
-where
-    MerkleTreeDigest<C::LedgerMerkleTreeParameters>: ToConstraintField<C::InnerScalarField>,
-{
+) -> Result<(), SynthesisError> {
     // Declare public parameters.
     let (program_id_commitment_parameters, program_id_crh, inner_circuit_id_crh) = {
         let cs = &mut cs.ns(|| "Declare Comm and CRH parameters");
