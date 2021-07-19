@@ -35,7 +35,7 @@ pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let ledger_merkle_tree_parameters = Arc::new(C::ledger_merkle_tree_parameters().clone());
 
     let inner_snark_parameters =
-        C::InnerSNARK::circuit_specific_setup(&InnerCircuit::blank(&ledger_merkle_tree_parameters), rng)?;
+        C::InnerSNARK::circuit_specific_setup(&InnerCircuit::<C>::blank(&ledger_merkle_tree_parameters), rng)?;
     let inner_snark_pk = inner_snark_parameters.0.to_bytes_le()?;
     let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = inner_snark_parameters.1.into();
     let inner_snark_vk = inner_snark_vk.to_bytes_le()?;

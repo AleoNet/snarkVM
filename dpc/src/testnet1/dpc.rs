@@ -95,15 +95,18 @@ impl DPCComponents for DPC {
 
     type AccountCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 192>;
     type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 192>;
+    type AccountCommitmentOutput = <Self::AccountCommitment as CommitmentScheme>::Output;
 
     type AccountEncryption = GroupEncryption<EdwardsBls12>;
     type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
 
     type AccountSignature = Schnorr<EdwardsBls12>;
     type AccountSignatureGadget = SchnorrGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
+    type AccountSignaturePublicKey = <Self::AccountSignature as SignatureScheme>::PublicKey;
 
     type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 48, 44>;
     type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 44>;
+    type EncryptedRecordCRHOutput = <Self::EncryptedRecordCRH as CRH>::Output;
 
     type EncryptionGroup = EdwardsBls12;
     type EncryptionGroupGadget = EdwardsBls12Gadget;
@@ -114,6 +117,7 @@ impl DPCComponents for DPC {
 
     type LedgerMerkleTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 8, 32>;
     type LedgerMerkleTreeCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
+    type LedgerMerkleTreeCRHOutput = <Self::LedgerMerkleTreeCRH as CRH>::Output;
     type LedgerMerkleTreeParameters = CommitmentMerkleTreeParameters;
 
     type LocalDataCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 162>;
@@ -121,18 +125,21 @@ impl DPCComponents for DPC {
 
     type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 16, 32>;
     type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
+    type LocalDataCRHOutput = <Self::LocalDataCRH as CRH>::Output;
 
     type PRF = Blake2s;
     type PRFGadget = Blake2sGadget;
 
     type ProgramIDCommitment = Blake2sCommitment;
     type ProgramIDCommitmentGadget = Blake2sCommitmentGadget;
+    type ProgramIDCommitmentOutput = <Self::ProgramIDCommitment as CommitmentScheme>::Output;
 
     type ProgramIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBW6, 144, 63>;
     type ProgramIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 144, 63>;
 
     type RecordCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 233>;
     type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 233>;
+    type RecordCommitmentOutput = <Self::RecordCommitment as CommitmentScheme>::Output;
 
     type SerialNumberNonceCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 32, 63>;
     type SerialNumberNonceCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;

@@ -103,14 +103,6 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
     inner_circuit_id: &<C::InnerCircuitIDCRH as CRH>::Output,
 ) -> Result<(), SynthesisError>
 where
-    <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
-    <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::LedgerMerkleTreeParameters as MerkleParameters>::H: ToConstraintField<C::InnerScalarField>,
-    <<C::LedgerMerkleTreeParameters as MerkleParameters>::H as CRH>::Output: ToConstraintField<C::InnerScalarField>,
     MerkleTreeDigest<C::LedgerMerkleTreeParameters>: ToConstraintField<C::InnerScalarField>,
 {
     // Declare public parameters.

@@ -51,7 +51,6 @@ pub mod program;
 pub use program::*;
 
 pub mod transaction;
-use snarkvm_fields::ToConstraintField;
 pub use transaction::*;
 
 pub mod dpc;
@@ -112,14 +111,6 @@ where
         SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey,
         Transaction = Transaction<C>,
     >,
-    <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
-    <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::LedgerMerkleTreeParameters as MerkleParameters>::H: ToConstraintField<C::InnerScalarField>,
-    <<C::LedgerMerkleTreeParameters as MerkleParameters>::H as CRH>::Output: ToConstraintField<C::InnerScalarField>,
 {
     type Account = Account<C>;
     type Execution = Execution;

@@ -24,6 +24,14 @@ use snarkvm_gadgets::{
     traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
     CompressedGroupGadget,
 };
+use snarkvm_utilities::{
+    fmt::{Debug, Display},
+    hash::Hash,
+    CanonicalDeserialize,
+    CanonicalSerialize,
+    FromBytes,
+    ToBytes,
+};
 
 pub trait DPCComponents: 'static + Sized {
     const NETWORK_ID: u8;
@@ -40,20 +48,56 @@ pub trait DPCComponents: 'static + Sized {
     type OuterBaseField: PrimeField;
 
     /// Commitment scheme for account contents. Invoked only over `Self::InnerScalarField`.
-    type AccountCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
+    type AccountCommitment: CommitmentScheme<Output = Self::AccountCommitmentOutput>
+        + ToConstraintField<Self::InnerScalarField>;
     type AccountCommitmentGadget: CommitmentGadget<Self::AccountCommitment, Self::InnerScalarField>;
+    type AccountCommitmentOutput: ToConstraintField<Self::InnerScalarField>
+        + Clone
+        + Debug
+        + Default
+        + Eq
+        + Hash
+        + ToBytes
+        + FromBytes
+        + Sync
+        + Send;
 
     /// Encryption scheme for account records. Invoked only over `Self::InnerScalarField`.
     type AccountEncryption: EncryptionScheme + ToConstraintField<Self::InnerScalarField>;
     type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryption, Self::InnerScalarField>;
 
     /// Signature scheme for delegated compute. Invoked only over `Self::InnerScalarField`.
-    type AccountSignature: SignatureScheme + ToConstraintField<Self::InnerScalarField>;
+    type AccountSignature: SignatureScheme<PublicKey = Self::AccountSignaturePublicKey>
+        + ToConstraintField<Self::InnerScalarField>;
     type AccountSignatureGadget: SignatureGadget<Self::AccountSignature, Self::InnerScalarField>;
+    type AccountSignaturePublicKey: ToConstraintField<Self::InnerScalarField>
+        + Clone
+        + Debug
+        + Default
+        + ToBytes
+        + FromBytes
+        + Hash
+        + Eq
+        + Send
+        + Sync
+        + CanonicalSerialize
+        + CanonicalDeserialize;
 
     /// CRH for the encrypted record. Invoked only over `Self::InnerScalarField`.
-    type EncryptedRecordCRH: CRH + ToConstraintField<Self::InnerScalarField>;
+    type EncryptedRecordCRH: CRH<Output = Self::EncryptedRecordCRHOutput> + ToConstraintField<Self::InnerScalarField>;
     type EncryptedRecordCRHGadget: CRHGadget<Self::EncryptedRecordCRH, Self::InnerScalarField>;
+    type EncryptedRecordCRHOutput: ToConstraintField<Self::InnerScalarField>
+        + Clone
+        + Debug
+        + Display
+        + ToBytes
+        + FromBytes
+        + Eq
+        + Hash
+        + Default
+        + Send
+        + Sync
+        + Copy;
 
     /// Group and Model Parameters for record encryption
     type EncryptionGroup: ProjectiveCurve;
@@ -66,28 +110,60 @@ pub trait DPCComponents: 'static + Sized {
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
 
     /// Ledger digest type.
-    type LedgerMerkleTreeCRH: CRH;
-    type LedgerMerkleTreeCRHGadget: CRHGadget<
-        <Self::LedgerMerkleTreeParameters as MerkleParameters>::H,
-        Self::InnerScalarField,
-    >;
-    type LedgerMerkleTreeParameters: LoadableMerkleParameters;
+    type LedgerMerkleTreeCRH: CRH<Output = Self::LedgerMerkleTreeCRHOutput> + ToConstraintField<Self::InnerScalarField>;
+    type LedgerMerkleTreeCRHGadget: CRHGadget<Self::LedgerMerkleTreeCRH, Self::InnerScalarField>;
+    type LedgerMerkleTreeCRHOutput: ToConstraintField<Self::InnerScalarField>
+        + Clone
+        + Debug
+        + Display
+        + ToBytes
+        + FromBytes
+        + Eq
+        + Hash
+        + Default
+        + Send
+        + Sync
+        + Copy;
+    type LedgerMerkleTreeParameters: LoadableMerkleParameters<H = Self::LedgerMerkleTreeCRH>;
 
     /// CRH and commitment scheme for committing to program input. Invoked inside
     /// `Self::InnerSNARK` and every program SNARK.
     type LocalDataCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
     type LocalDataCommitmentGadget: CommitmentGadget<Self::LocalDataCommitment, Self::InnerScalarField>;
-    type LocalDataCRH: CRH + ToConstraintField<Self::InnerScalarField>;
+
+    type LocalDataCRH: CRH<Output = Self::LocalDataCRHOutput> + ToConstraintField<Self::InnerScalarField>;
     type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
+    type LocalDataCRHOutput: ToConstraintField<Self::InnerScalarField>
+        + Clone
+        + Debug
+        + Display
+        + ToBytes
+        + FromBytes
+        + Eq
+        + Hash
+        + Default
+        + Send
+        + Sync
+        + Copy;
 
     /// Commitment scheme for committing to hashes of birth and death verifying keys.
-    type ProgramIDCommitment: CommitmentScheme
+    type ProgramIDCommitment: CommitmentScheme<Output = Self::ProgramIDCommitmentOutput>
         + ToConstraintField<Self::InnerScalarField>
         + ToConstraintField<Self::OuterScalarField>;
     /// Used to commit to hashes of verifying keys on the smaller curve and to decommit hashes
     /// of verification keys on the larger curve
     type ProgramIDCommitmentGadget: CommitmentGadget<Self::ProgramIDCommitment, Self::InnerScalarField>
         + CommitmentGadget<Self::ProgramIDCommitment, Self::OuterScalarField>;
+    type ProgramIDCommitmentOutput: ToConstraintField<Self::InnerScalarField>
+        + Clone
+        + Debug
+        + Default
+        + Eq
+        + Hash
+        + ToBytes
+        + FromBytes
+        + Sync
+        + Send;
 
     /// CRH for hashes of birth and death verifying keys. Invoked only over `Self::OuterScalarField`.
     type ProgramIDCRH: CRH;
@@ -98,8 +174,19 @@ pub trait DPCComponents: 'static + Sized {
     type PRFGadget: PRFGadget<Self::PRF, Self::InnerScalarField>;
 
     /// Commitment scheme for record contents. Invoked only over `Self::InnerScalarField`.
-    type RecordCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;
+    type RecordCommitment: CommitmentScheme<Output = Self::RecordCommitmentOutput>
+        + ToConstraintField<Self::InnerScalarField>;
     type RecordCommitmentGadget: CommitmentGadget<Self::RecordCommitment, Self::InnerScalarField>;
+    type RecordCommitmentOutput: ToConstraintField<Self::InnerScalarField>
+        + Clone
+        + Debug
+        + Default
+        + Eq
+        + Hash
+        + ToBytes
+        + FromBytes
+        + Sync
+        + Send;
 
     /// CRH for computing the serial number nonce. Invoked only over `Self::InnerScalarField`.
     type SerialNumberNonceCRH: CRH + ToConstraintField<Self::InnerScalarField>;

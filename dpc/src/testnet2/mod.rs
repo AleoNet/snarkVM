@@ -101,7 +101,13 @@ pub trait Testnet2Components: DPCComponents {
     >;
 
     /// Polynomial commitment scheme for Program SNARKS using Marlin.
-    type PolynomialCommitment: PolynomialCommitment<Self::InnerScalarField>;
+    type PolynomialCommitment: PolynomialCommitment<
+        Self::InnerScalarField,
+        VerifierKey = Self::PolynomialCommitmentVerifierKey,
+        Commitment = Self::PolynomialCommitmentCommitment,
+    >;
+    type PolynomialCommitmentVerifierKey: ToConstraintField<Self::OuterScalarField>;
+    type PolynomialCommitmentCommitment: ToConstraintField<Self::OuterScalarField>;
 
     /// Fiat Shamir RNG scheme used for Marlin SNARKS.
     type FiatShamirRng: FiatShamirRng<Self::InnerScalarField, Self::OuterScalarField>;
@@ -134,18 +140,6 @@ where
         SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey,
         Transaction = Transaction<C>,
     >,
-    <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
-    <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::ProgramIDCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::LedgerMerkleTreeParameters as MerkleParameters>::H: ToConstraintField<C::InnerScalarField>,
-    <<C::LedgerMerkleTreeParameters as MerkleParameters>::H as CRH>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::VerifierKey:
-        ToConstraintField<C::OuterScalarField>,
-    <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::Commitment:
-        ToConstraintField<C::OuterScalarField>,
 {
     type Account = Account<C>;
     type Execution = Execution<C::NoopProgramSNARK>;

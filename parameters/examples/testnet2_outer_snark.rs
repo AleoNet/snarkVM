@@ -51,14 +51,14 @@ where
 
     let inner_snark_proof = C::InnerSNARK::prove(
         &inner_snark_pk,
-        &InnerCircuit::blank(&ledger_merkle_tree_parameters),
+        &InnerCircuit::<C>::blank(&ledger_merkle_tree_parameters),
         rng,
     )?;
 
     let noop_program = NoopProgram::<C>::load()?;
 
     let outer_snark_parameters = C::OuterSNARK::circuit_specific_setup(
-        &OuterCircuit::blank(
+        &OuterCircuit::<C>::blank(
             ledger_merkle_tree_parameters,
             inner_snark_vk,
             inner_snark_proof,
