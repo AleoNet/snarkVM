@@ -736,8 +736,8 @@ where
                     return false;
                 }
             }
-            _ => {
-                eprintln!("Unable to verify transaction proof.");
+            Err(error) => {
+                eprintln!("Unable to verify transaction proof: {:?}", error);
                 return false;
             }
         }
