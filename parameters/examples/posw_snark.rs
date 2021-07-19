@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::crh::sha256;
+use snarkvm_curves::bls12_377::Fr;
 use snarkvm_dpc::errors::DPCError;
 use snarkvm_posw::PoswMarlin;
 use snarkvm_utilities::ToBytes;
@@ -30,7 +31,7 @@ pub fn setup() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
     // TODO: decide the size of the universal setup
-    let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<C::InnerScalarField>::max_degree(10000, 10000, 100000).unwrap();
+    let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
     let srs = snarkvm_marlin::MarlinTestnet1::universal_setup(max_degree, rng).unwrap();
 
     let srs_bytes = srs.to_bytes_le()?;
