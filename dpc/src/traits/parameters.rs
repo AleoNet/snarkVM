@@ -51,16 +51,7 @@ pub trait Parameters: 'static + Sized {
     type AccountCommitmentScheme: CommitmentScheme<Output = Self::AccountCommitment>
         + ToConstraintField<Self::InnerScalarField>;
     type AccountCommitmentGadget: CommitmentGadget<Self::AccountCommitmentScheme, Self::InnerScalarField>;
-    type AccountCommitment: ToConstraintField<Self::InnerScalarField>
-        + Clone
-        + Debug
-        + Default
-        + Eq
-        + Hash
-        + ToBytes
-        + FromBytes
-        + Sync
-        + Send;
+    type AccountCommitment: ToConstraintField<Self::InnerScalarField> + ToBytes;
 
     /// Encryption scheme for account records. Invoked only over `Self::InnerScalarField`.
     type AccountEncryption: EncryptionScheme + ToConstraintField<Self::InnerScalarField>;

@@ -17,7 +17,7 @@
 use crate::{testnet1::Testnet1Components, InnerCircuitVerifierInput};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH},
+    traits::{CommitmentScheme, MerkleParameters, CRH},
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::ToBytes;
@@ -33,16 +33,11 @@ impl<C: Testnet1Components> ToConstraintField<C::OuterScalarField> for OuterCirc
 where
     <C::ProgramCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::OuterScalarField>,
     <C::ProgramIDCRH as CRH>::Parameters: ToConstraintField<C::OuterScalarField>,
-
     <C::InnerCircuitIDCRH as CRH>::Parameters: ToConstraintField<C::OuterScalarField>,
     <C::InnerCircuitIDCRH as CRH>::Output: ToConstraintField<C::OuterScalarField>,
 
     <C::AccountCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
-    <C::RecordCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
     <C::ProgramCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
     <<C::RecordCommitmentTreeParameters as MerkleParameters>::H as CRH>::Parameters:
         ToConstraintField<C::InnerScalarField>,
     MerkleTreeDigest<C::RecordCommitmentTreeParameters>: ToConstraintField<C::InnerScalarField>,
