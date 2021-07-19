@@ -248,12 +248,12 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for i in 0..C::NUM_INPUT_RECORDS {
             // Randomize the private key.
-            let randomized_private_key =
-                C::account_signature().randomize_private_key(&old_private_keys[i].sk_sig, &old_randomizers[i])?;
+            let randomized_private_key = C::account_signature_scheme()
+                .randomize_private_key(&old_private_keys[i].sk_sig, &old_randomizers[i])?;
 
             // Sign the transaction data.
             let randomized_signature =
-                C::account_signature().sign_randomized(&randomized_private_key, &signature_message, rng)?;
+                C::account_signature_scheme().sign_randomized(&randomized_private_key, &signature_message, rng)?;
 
             signatures.push(randomized_signature);
         }
@@ -593,7 +593,7 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
         };
 
         for (pk, sig) in transaction.old_serial_numbers().iter().zip(transaction.signatures()) {
-            match C::account_signature().verify(pk, &signature_message, sig) {
+            match C::account_signature_scheme().verify(pk, &signature_message, sig) {
                 Ok(is_valid) => {
                     if !is_valid {
                         eprintln!("Signature failed to verify.");

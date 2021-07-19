@@ -25,7 +25,7 @@ use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, prelude::*};
 pub struct LocalData<C: Testnet2Components> {
     // Old records and serial numbers
     pub old_records: Vec<Record<C>>,
-    pub old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
+    pub old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
 
     // New records
     pub new_records: Vec<Record<C>>,

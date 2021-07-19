@@ -35,7 +35,7 @@ use std::{fmt, str::FromStr};
 pub struct PrivateKey<C: Parameters> {
     pub seed: [u8; 32],
     // Derived private attributes from the seed.
-    pub sk_sig: <C::AccountSignature as SignatureScheme>::PrivateKey,
+    pub sk_sig: <C::AccountSignatureScheme as SignatureScheme>::PrivateKey,
     pub sk_prf: <C::PRF as PRF>::Seed,
     pub r_pk: <C::AccountCommitmentScheme as CommitmentScheme>::Randomness,
     pub r_pk_counter: u16,
@@ -71,7 +71,7 @@ impl<C: Parameters> PrivateKey<C> {
     pub fn from_seed(seed: &[u8; 32]) -> Result<Self, AccountError> {
         // Generate the SIG key pair.
         let sk_sig_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_SIG)?;
-        let sk_sig = <C::AccountSignature as SignatureScheme>::PrivateKey::read_le(&sk_sig_bytes[..])?;
+        let sk_sig = <C::AccountSignatureScheme as SignatureScheme>::PrivateKey::read_le(&sk_sig_bytes[..])?;
 
         // Generate the PRF secret key.
         let sk_prf_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_PRF)?;
@@ -116,15 +116,17 @@ impl<C: Parameters> PrivateKey<C> {
     }
 
     /// Returns the decryption key for the account view key.
-    pub fn to_decryption_key(&self) -> Result<<C::AccountEncryption as EncryptionScheme>::PrivateKey, AccountError> {
+    pub fn to_decryption_key(
+        &self,
+    ) -> Result<<C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey, AccountError> {
         let commitment = self.commit()?;
         let decryption_key_bytes = to_bytes_le![commitment]?;
 
         // This operation implicitly enforces that the unused MSB bits
         // for the scalar field representation are correctly set to 0.
         let decryption_key = match self.is_dummy {
-            true => <C::AccountEncryption as EncryptionScheme>::PrivateKey::default(),
-            false => <C::AccountEncryption as EncryptionScheme>::PrivateKey::read_le(&decryption_key_bytes[..])?,
+            true => <C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey::default(),
+            false => <C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey::read_le(&decryption_key_bytes[..])?,
         };
 
         // This operation explicitly enforces that the unused MSB bits
@@ -137,7 +139,7 @@ impl<C: Parameters> PrivateKey<C> {
             let account_decryption_key_bits = from_bytes_le_to_bits_le(&decryption_key_bytes[..]).collect::<Vec<_>>();
             let account_decryption_key_length = account_decryption_key_bits.len();
 
-            let decryption_private_key_length = C::AccountEncryption::private_key_size_in_bits();
+            let decryption_private_key_length = C::AccountEncryptionScheme::private_key_size_in_bits();
             assert!(decryption_private_key_length > 0);
             assert!(decryption_private_key_length <= account_decryption_key_length);
 
@@ -153,15 +155,15 @@ impl<C: Parameters> PrivateKey<C> {
     }
 
     /// Returns the signature public key for deriving the account view key.
-    pub fn pk_sig(&self) -> Result<<C::AccountSignature as SignatureScheme>::PublicKey, AccountError> {
-        Ok(C::account_signature().generate_public_key(&self.sk_sig)?)
+    pub fn pk_sig(&self) -> Result<<C::AccountSignatureScheme as SignatureScheme>::PublicKey, AccountError> {
+        Ok(C::account_signature_scheme().generate_public_key(&self.sk_sig)?)
     }
 
     /// Derives the account private key from a given seed and counter without verifying if it is well-formed.
     fn from_seed_and_counter_unsafe(seed: &[u8; 32], r_pk_counter: u16) -> Result<Self, AccountError> {
         // Generate the SIG key pair.
         let sk_sig_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_SIG)?;
-        let sk_sig = <C::AccountSignature as SignatureScheme>::PrivateKey::read_le(&sk_sig_bytes[..])?;
+        let sk_sig = <C::AccountSignatureScheme as SignatureScheme>::PrivateKey::read_le(&sk_sig_bytes[..])?;
 
         // Generate the PRF secret key.
         let sk_prf_bytes = Blake2s::evaluate(&seed, &Self::INPUT_SK_PRF)?;

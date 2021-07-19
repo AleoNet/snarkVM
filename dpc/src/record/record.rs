@@ -174,8 +174,8 @@ impl<C: Parameters> Record<C> {
         private_key: &PrivateKey<C>,
     ) -> Result<
         (
-            <C::AccountSignature as SignatureScheme>::PublicKey,
-            <C::AccountSignature as SignatureScheme>::Randomizer,
+            <C::AccountSignatureScheme as SignatureScheme>::PublicKey,
+            <C::AccountSignatureScheme as SignatureScheme>::Randomizer,
         ),
         RecordError,
     > {
@@ -191,7 +191,7 @@ impl<C: Parameters> Record<C> {
         let seed = FromBytes::read_le(to_bytes_le!(&private_key.sk_prf)?.as_slice())?;
         let input = FromBytes::read_le(to_bytes_le!(self.serial_number_nonce)?.as_slice())?;
         let randomizer = FromBytes::from_bytes_le(&C::PRF::evaluate(&seed, &input)?.to_bytes_le()?)?;
-        let serial_number = C::account_signature().randomize_public_key(&private_key.pk_sig()?, &randomizer)?;
+        let serial_number = C::account_signature_scheme().randomize_public_key(&private_key.pk_sig()?, &randomizer)?;
 
         end_timer!(timer);
         Ok((serial_number, randomizer))
@@ -203,7 +203,7 @@ impl<C: Parameters> RecordScheme for Record<C> {
     type CommitmentRandomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness;
     type Owner = Address<C>;
     type Payload = Payload;
-    type SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey;
+    type SerialNumber = <C::AccountSignatureScheme as SignatureScheme>::PublicKey;
     type SerialNumberNonce = <C::SerialNumberNonceCRH as CRH>::Output;
     type Value = u64;
 

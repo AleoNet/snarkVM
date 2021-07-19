@@ -43,14 +43,14 @@ use std::{
 pub struct TransactionKernel<C: Testnet2Components> {
     // Old record stuff
     pub old_records: Vec<Record<C>>,
-    pub old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
+    pub old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
 
     // New record stuff
     pub new_records: Vec<Record<C>>,
     pub new_sn_nonce_randomness: Vec<[u8; 32]>,
     pub new_commitments: Vec<C::RecordCommitment>,
 
-    pub new_records_encryption_randomness: Vec<<C::AccountEncryption as EncryptionScheme>::Randomness>,
+    pub new_records_encryption_randomness: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
     pub new_encrypted_records: Vec<EncryptedRecord<C>>,
     pub new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
 
@@ -64,7 +64,7 @@ pub struct TransactionKernel<C: Testnet2Components> {
     pub value_balance: AleoAmount,
     pub memorandum: <Transaction<C> as TransactionScheme>::Memorandum,
     pub network_id: u8,
-    pub signatures: Vec<<C::AccountSignature as SignatureScheme>::Signature>,
+    pub signatures: Vec<<C::AccountSignatureScheme as SignatureScheme>::Signature>,
 }
 
 impl<C: Testnet2Components> TransactionKernel<C> {
@@ -160,7 +160,7 @@ impl<C: Testnet2Components> FromBytes for TransactionKernel<C> {
 
         let mut old_serial_numbers = vec![];
         for _ in 0..C::NUM_INPUT_RECORDS {
-            let old_serial_number: <C::AccountSignature as SignatureScheme>::PublicKey =
+            let old_serial_number: <C::AccountSignatureScheme as SignatureScheme>::PublicKey =
                 FromBytes::read_le(&mut reader)?;
             old_serial_numbers.push(old_serial_number);
         }
@@ -187,7 +187,7 @@ impl<C: Testnet2Components> FromBytes for TransactionKernel<C> {
 
         let mut new_records_encryption_randomness = vec![];
         for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let encryption_randomness: <C::AccountEncryption as EncryptionScheme>::Randomness =
+            let encryption_randomness: <C::AccountEncryptionScheme as EncryptionScheme>::Randomness =
                 FromBytes::read_le(&mut reader)?;
             new_records_encryption_randomness.push(encryption_randomness);
         }
@@ -230,7 +230,7 @@ impl<C: Testnet2Components> FromBytes for TransactionKernel<C> {
 
         let mut signatures = vec![];
         for _ in 0..C::NUM_INPUT_RECORDS {
-            let signature: <C::AccountSignature as SignatureScheme>::Signature = FromBytes::read_le(&mut reader)?;
+            let signature: <C::AccountSignatureScheme as SignatureScheme>::Signature = FromBytes::read_le(&mut reader)?;
             signatures.push(signature);
         }
 

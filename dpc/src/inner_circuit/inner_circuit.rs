@@ -38,7 +38,7 @@ pub struct InnerCircuit<C: Parameters> {
     old_records: Vec<Record<C>>,
     old_witnesses: Vec<MerklePath<C::RecordCommitmentTreeParameters>>,
     old_private_keys: Vec<PrivateKey<C>>,
-    old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
+    old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
 
     // Inputs for new records.
     new_records: Vec<Record<C>>,
@@ -46,7 +46,7 @@ pub struct InnerCircuit<C: Parameters> {
     new_commitments: Vec<C::RecordCommitment>,
 
     // Inputs for encryption of new records.
-    new_records_encryption_randomness: Vec<<C::AccountEncryption as EncryptionScheme>::Randomness>,
+    new_records_encryption_randomness: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
     new_records_encryption_gadget_components: Vec<RecordEncryptionGadgetComponents<C>>,
     new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
 
@@ -69,7 +69,7 @@ impl<C: Parameters> InnerCircuit<C> {
         let digest = MerkleTreeDigest::<C::RecordCommitmentTreeParameters>::default();
 
         let old_serial_numbers =
-            vec![<C::AccountSignature as SignatureScheme>::PublicKey::default(); num_input_records];
+            vec![<C::AccountSignatureScheme as SignatureScheme>::PublicKey::default(); num_input_records];
         let old_records = vec![Record::default(); num_input_records];
         let old_witnesses = vec![MerklePath::default(); num_input_records];
         let old_private_keys = vec![PrivateKey::default(); num_input_records];
@@ -79,7 +79,7 @@ impl<C: Parameters> InnerCircuit<C> {
         let new_records = vec![Record::default(); num_output_records];
 
         let new_records_encryption_randomness =
-            vec![<C::AccountEncryption as EncryptionScheme>::Randomness::default(); num_output_records];
+            vec![<C::AccountEncryptionScheme as EncryptionScheme>::Randomness::default(); num_output_records];
 
         let new_records_encryption_gadget_components =
             vec![RecordEncryptionGadgetComponents::<C>::default(); num_output_records];
@@ -139,14 +139,14 @@ impl<C: Parameters> InnerCircuit<C> {
         old_records: Vec<Record<C>>,
         old_witnesses: Vec<MerklePath<C::RecordCommitmentTreeParameters>>,
         old_private_keys: Vec<PrivateKey<C>>,
-        old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
+        old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
 
         // New records
         new_records: Vec<Record<C>>,
         new_serial_number_nonce_randomness: Vec<[u8; 32]>,
         new_commitments: Vec<C::RecordCommitment>,
 
-        new_records_encryption_randomness: Vec<<C::AccountEncryption as EncryptionScheme>::Randomness>,
+        new_records_encryption_randomness: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
         new_records_encryption_gadget_components: Vec<RecordEncryptionGadgetComponents<C>>,
         new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
 

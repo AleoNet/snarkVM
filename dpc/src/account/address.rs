@@ -33,20 +33,20 @@ use std::{
     Eq(bound = "C: Parameters")
 )]
 pub struct Address<C: Parameters> {
-    pub encryption_key: <C::AccountEncryption as EncryptionScheme>::PublicKey,
+    pub encryption_key: <C::AccountEncryptionScheme as EncryptionScheme>::PublicKey,
 }
 
 impl<C: Parameters> Address<C> {
     /// Derives the account address from an account private key.
     pub fn from_private_key(private_key: &PrivateKey<C>) -> Result<Self, AccountError> {
         let decryption_key = private_key.to_decryption_key()?;
-        let encryption_key = C::account_encryption().generate_public_key(&decryption_key)?;
+        let encryption_key = C::account_encryption_scheme().generate_public_key(&decryption_key)?;
         Ok(Self { encryption_key })
     }
 
     /// Derives the account address from an account view key.
     pub fn from_view_key(view_key: &ViewKey<C>) -> Result<Self, AccountError> {
-        let encryption_key = C::account_encryption().generate_public_key(&view_key.decryption_key)?;
+        let encryption_key = C::account_encryption_scheme().generate_public_key(&view_key.decryption_key)?;
         Ok(Self { encryption_key })
     }
 
@@ -55,14 +55,14 @@ impl<C: Parameters> Address<C> {
     pub fn verify_signature(
         &self,
         message: &[u8],
-        signature: &<C::AccountSignature as SignatureScheme>::Signature,
+        signature: &<C::AccountSignatureScheme as SignatureScheme>::Signature,
     ) -> Result<bool, AccountError> {
         let signature_public_key = FromBytes::from_bytes_le(&self.encryption_key.to_bytes_le()?)?;
-        Ok(C::account_signature().verify(&signature_public_key, message, signature)?)
+        Ok(C::account_signature_scheme().verify(&signature_public_key, message, signature)?)
     }
 
     #[allow(clippy::wrong_self_convention)]
-    pub fn into_repr(&self) -> &<C::AccountEncryption as EncryptionScheme>::PublicKey {
+    pub fn into_repr(&self) -> &<C::AccountEncryptionScheme as EncryptionScheme>::PublicKey {
         &self.encryption_key
     }
 }
@@ -77,7 +77,8 @@ impl<C: Parameters> FromBytes for Address<C> {
     /// Reads in an account address buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let encryption_key: <C::AccountEncryption as EncryptionScheme>::PublicKey = FromBytes::read_le(&mut reader)?;
+        let encryption_key: <C::AccountEncryptionScheme as EncryptionScheme>::PublicKey =
+            FromBytes::read_le(&mut reader)?;
 
         Ok(Self { encryption_key })
     }

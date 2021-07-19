@@ -28,7 +28,7 @@ pub struct InnerCircuitVerifierInput<C: Parameters> {
     pub ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
 
     // Input record serial numbers
-    pub old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
+    pub old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
 
     // Output record commitments
     pub new_commitments: Vec<C::RecordCommitment>,
@@ -58,8 +58,8 @@ where
     fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
         v.extend_from_slice(&C::account_commitment_scheme().to_field_elements()?);
-        v.extend_from_slice(&C::account_encryption().to_field_elements()?);
-        v.extend_from_slice(&C::account_signature().to_field_elements()?);
+        v.extend_from_slice(&C::account_encryption_scheme().to_field_elements()?);
+        v.extend_from_slice(&C::account_signature_scheme().to_field_elements()?);
         v.extend_from_slice(&C::record_commitment_scheme().to_field_elements()?);
         v.extend_from_slice(&C::encrypted_record_crh().to_field_elements()?);
         v.extend_from_slice(&C::program_commitment_scheme().to_field_elements()?);

@@ -62,7 +62,7 @@ pub struct RecordEncryptionGadgetComponents<C: Parameters> {
     /// Record fq high selectors - Used for plaintext serialization/deserialization
     pub fq_high_selectors: Vec<bool>,
     /// Record ciphertext blinding exponents used to encrypt the record
-    pub encryption_blinding_exponents: Vec<<C::AccountEncryption as EncryptionScheme>::BlindingExponent>,
+    pub encryption_blinding_exponents: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::BlindingExponent>,
 }
 
 impl<C: Parameters> Default for RecordEncryptionGadgetComponents<C> {
@@ -79,7 +79,7 @@ impl<C: Parameters> Default for RecordEncryptionGadgetComponents<C> {
         let fq_high_selectors = vec![false; record_encoding_length];
 
         let encryption_blinding_exponents =
-            vec![<C::AccountEncryption as EncryptionScheme>::BlindingExponent::default(); record_encoding_length];
+            vec![<C::AccountEncryptionScheme as EncryptionScheme>::BlindingExponent::default(); record_encoding_length];
 
         Self {
             record_field_elements,
@@ -99,7 +99,7 @@ impl<C: Parameters> Default for RecordEncryptionGadgetComponents<C> {
     Debug(bound = "C: Parameters")
 )]
 pub struct EncryptedRecord<C: Parameters> {
-    pub encrypted_elements: Vec<<<C as Parameters>::AccountEncryption as EncryptionScheme>::Text>,
+    pub encrypted_elements: Vec<<<C as Parameters>::AccountEncryptionScheme as EncryptionScheme>::Text>,
     pub final_fq_high_selector: bool,
 }
 
@@ -113,7 +113,7 @@ impl<C: Parameters> EncryptedRecord<C> {
     ) -> Result<
         (
             Self,
-            <<C as Parameters>::AccountEncryption as EncryptionScheme>::Randomness,
+            <<C as Parameters>::AccountEncryptionScheme as EncryptionScheme>::Randomness,
         ),
         DPCError,
     > {
@@ -125,16 +125,17 @@ impl<C: Parameters> EncryptedRecord<C> {
         for element in encoded_record.encoded_elements.iter() {
             // Construct the plaintext element from the serialized group elements
             // This value will be used in the inner circuit to validate the encryption
-            let plaintext_element =
-                <<C as Parameters>::AccountEncryption as EncryptionScheme>::Text::read_le(&to_bytes_le![element]?[..])?;
+            let plaintext_element = <<C as Parameters>::AccountEncryptionScheme as EncryptionScheme>::Text::read_le(
+                &to_bytes_le![element]?[..],
+            )?;
             record_plaintexts.push(plaintext_element);
         }
 
         // Encrypt the record plaintext
         let record_public_key = record.owner().into_repr();
-        let encryption_randomness = C::account_encryption().generate_randomness(record_public_key, rng)?;
+        let encryption_randomness = C::account_encryption_scheme().generate_randomness(record_public_key, rng)?;
         let encrypted_record =
-            C::account_encryption().encrypt(record_public_key, &encryption_randomness, &record_plaintexts)?;
+            C::account_encryption_scheme().encrypt(record_public_key, &encryption_randomness, &record_plaintexts)?;
 
         let encrypted_record = Self {
             encrypted_elements: encrypted_record,
@@ -148,7 +149,7 @@ impl<C: Parameters> EncryptedRecord<C> {
     pub fn decrypt(&self, account_view_key: &ViewKey<C>) -> Result<Record<C>, DPCError> {
         // Decrypt the encrypted record
         let plaintext_elements =
-            C::account_encryption().decrypt(&account_view_key.decryption_key, &self.encrypted_elements)?;
+            C::account_encryption_scheme().decrypt(&account_view_key.decryption_key, &self.encrypted_elements)?;
 
         let mut plaintext = Vec::with_capacity(plaintext_elements.len());
         for element in plaintext_elements {
@@ -255,7 +256,7 @@ impl<C: Parameters> EncryptedRecord<C> {
     /// 5. Record ciphertext blinding exponents used to encrypt the record
     pub fn prepare_encryption_gadget_components(
         record: &Record<C>,
-        encryption_randomness: &<<C as Parameters>::AccountEncryption as EncryptionScheme>::Randomness,
+        encryption_randomness: &<<C as Parameters>::AccountEncryptionScheme as EncryptionScheme>::Randomness,
     ) -> Result<RecordEncryptionGadgetComponents<C>, DPCError> {
         // Serialize the record into group elements and fq_high bits
         let encoded_record = EncodedRecord::<C, C::EncryptionParameters, C::EncryptionGroup>::encode(record)?;
@@ -323,21 +324,22 @@ impl<C: Parameters> EncryptedRecord<C> {
 
             // Construct the plaintext element from the serialized group elements
             // This value will be used in the inner circuit to validate the encryption
-            let plaintext_element =
-                <<C as Parameters>::AccountEncryption as EncryptionScheme>::Text::read_le(&to_bytes_le![element]?[..])?;
+            let plaintext_element = <<C as Parameters>::AccountEncryptionScheme as EncryptionScheme>::Text::read_le(
+                &to_bytes_le![element]?[..],
+            )?;
             record_plaintexts.push(plaintext_element);
         }
 
         // Encrypt the record plaintext
         let record_public_key = record.owner().into_repr();
-        let encryption_blinding_exponents = C::account_encryption().generate_blinding_exponents(
+        let encryption_blinding_exponents = C::account_encryption_scheme().generate_blinding_exponents(
             record_public_key,
             encryption_randomness,
             record_plaintexts.len(),
         )?;
 
         let encrypted_record =
-            C::account_encryption().encrypt(record_public_key, &encryption_randomness, &record_plaintexts)?;
+            C::account_encryption_scheme().encrypt(record_public_key, &encryption_randomness, &record_plaintexts)?;
 
         // Compute the compressed ciphertext selector bits
         let mut ciphertext_selectors = Vec::with_capacity(encrypted_record.len());
@@ -437,7 +439,7 @@ impl<C: Parameters> FromBytes for EncryptedRecord<C> {
                     None => return Err(Error::new(ErrorKind::Other, "Could not read ciphertext")),
                 };
 
-            let ciphertext_element: <C::AccountEncryption as EncryptionScheme>::Text =
+            let ciphertext_element: <C::AccountEncryptionScheme as EncryptionScheme>::Text =
                 FromBytes::read_le(&to_bytes_le![ciphertext_element_affine.into_projective()]?[..])?;
 
             ciphertext.push(ciphertext_element);

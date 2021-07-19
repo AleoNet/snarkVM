@@ -60,14 +60,14 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     old_records: &[Record<C>],
     old_witnesses: &[MerklePath<C::RecordCommitmentTreeParameters>],
     old_private_keys: &[PrivateKey<C>],
-    old_serial_numbers: &[<C::AccountSignature as SignatureScheme>::PublicKey],
+    old_serial_numbers: &[<C::AccountSignatureScheme as SignatureScheme>::PublicKey],
 
     // New record stuff
     new_records: &[Record<C>],
     new_sn_nonce_randomness: &[[u8; 32]],
     new_commitments: &[C::RecordCommitment],
 
-    new_records_encryption_randomness: &[<C::AccountEncryption as EncryptionScheme>::Randomness],
+    new_records_encryption_randomness: &[<C::AccountEncryptionScheme as EncryptionScheme>::Randomness],
     new_records_encryption_gadget_components: &[RecordEncryptionGadgetComponents<C>],
     new_encrypted_record_hashes: &[C::EncryptedRecordDigest],
 
@@ -141,13 +141,13 @@ fn inner_circuit_gadget<
     old_records: &[Record<C>],
     old_witnesses: &[MerklePath<C::RecordCommitmentTreeParameters>],
     old_private_keys: &[PrivateKey<C>],
-    old_serial_numbers: &[<C::AccountSignature as SignatureScheme>::PublicKey],
+    old_serial_numbers: &[<C::AccountSignatureScheme as SignatureScheme>::PublicKey],
 
     //
     new_records: &[Record<C>],
     new_sn_nonce_randomness: &[[u8; 32]],
     new_commitments: &[C::RecordCommitment],
-    new_records_encryption_randomness: &[<C::AccountEncryption as EncryptionScheme>::Randomness],
+    new_records_encryption_randomness: &[<C::AccountEncryptionScheme as EncryptionScheme>::Randomness],
     new_records_encryption_gadget_components: &[RecordEncryptionGadgetComponents<C>],
     new_encrypted_record_hashes: &[C::EncryptedRecordDigest],
 
@@ -175,8 +175,8 @@ where
     >,
     P: PRF,
     AccountCommitmentGadget: CommitmentGadget<C::AccountCommitmentScheme, C::InnerScalarField>,
-    AccountEncryptionGadget: EncryptionGadget<C::AccountEncryption, C::InnerScalarField>,
-    AccountSignatureGadget: SignatureGadget<C::AccountSignature, C::InnerScalarField>,
+    AccountEncryptionGadget: EncryptionGadget<C::AccountEncryptionScheme, C::InnerScalarField>,
+    AccountSignatureGadget: SignatureGadget<C::AccountSignatureScheme, C::InnerScalarField>,
     RecordCommitmentGadget: CommitmentGadget<C::RecordCommitmentScheme, C::InnerScalarField>,
     EncryptedRecordCRHGadget: CRHGadget<C::EncryptedRecordCRH, C::InnerScalarField>,
     LocalDataCRHGadget: CRHGadget<C::LocalDataCRH, C::InnerScalarField>,
@@ -223,13 +223,13 @@ where
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let account_encryption_parameters =
             C::AccountEncryptionGadget::alloc_input(&mut cs.ns(|| "Declare account encryption parameters"), || {
-                Ok(C::account_encryption().clone())
+                Ok(C::account_encryption_scheme().clone())
             })?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let account_signature_parameters =
             C::AccountSignatureGadget::alloc_input(&mut cs.ns(|| "Declare account signature parameters"), || {
-                Ok(C::account_signature().clone())
+                Ok(C::account_signature_scheme().clone())
             })?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
@@ -987,7 +987,7 @@ where
 
             for (i, (x, y)) in record_group_encoding.iter().enumerate() {
                 let affine = <C::EncryptionGroup as ProjectiveCurve>::Affine::read_le(&to_bytes_le![x, y]?[..])?;
-                encryption_plaintext.push(<C::AccountEncryption as EncryptionScheme>::Text::read_le(
+                encryption_plaintext.push(<C::AccountEncryptionScheme as EncryptionScheme>::Text::read_le(
                     &to_bytes_le![affine.into_projective()]?[..],
                 )?);
 

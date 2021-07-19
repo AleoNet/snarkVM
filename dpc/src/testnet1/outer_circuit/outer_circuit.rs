@@ -31,7 +31,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSyst
 pub struct OuterCircuit<C: Testnet1Components> {
     // Inner snark verifier public inputs
     ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
-    old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
+    old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
     new_commitments: Vec<C::RecordCommitment>,
     new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
     memo: <Transaction<C> as TransactionScheme>::Memorandum,
@@ -58,7 +58,7 @@ impl<C: Testnet1Components> OuterCircuit<C> {
     ) -> Self {
         let ledger_digest = MerkleTreeDigest::<C::RecordCommitmentTreeParameters>::default();
         let old_serial_numbers =
-            vec![<C::AccountSignature as SignatureScheme>::PublicKey::default(); C::NUM_INPUT_RECORDS];
+            vec![<C::AccountSignatureScheme as SignatureScheme>::PublicKey::default(); C::NUM_INPUT_RECORDS];
         let new_commitments = vec![C::RecordCommitment::default(); C::NUM_OUTPUT_RECORDS];
         let new_encrypted_record_hashes = vec![C::EncryptedRecordDigest::default(); C::NUM_OUTPUT_RECORDS];
         let memo = [0u8; 64];
@@ -94,7 +94,7 @@ impl<C: Testnet1Components> OuterCircuit<C> {
     pub fn new(
         // Inner SNARK public inputs
         ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
-        old_serial_numbers: Vec<<C::AccountSignature as SignatureScheme>::PublicKey>,
+        old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
         new_commitments: Vec<C::RecordCommitment>,
         new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
         memo: <Transaction<C> as TransactionScheme>::Memorandum,

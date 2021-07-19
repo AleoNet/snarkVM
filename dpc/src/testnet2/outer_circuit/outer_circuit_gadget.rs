@@ -80,7 +80,7 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
 
     // Inner snark verifier public inputs
     ledger_digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
-    old_serial_numbers: &[<C::AccountSignature as SignatureScheme>::PublicKey],
+    old_serial_numbers: &[<C::AccountSignatureScheme as SignatureScheme>::PublicKey],
     new_commitments: &[C::RecordCommitment],
     new_encrypted_record_hashes: &[C::EncryptedRecordDigest],
     memo: &<Transaction<C> as TransactionScheme>::Memorandum,
@@ -133,11 +133,11 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let account_encryption_parameters_fe = C::account_encryption()
+    let account_encryption_parameters_fe = C::account_encryption_scheme()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let account_signature_fe = C::account_signature()
+    let account_signature_fe = C::account_signature_scheme()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 

@@ -34,7 +34,7 @@ use std::{
     Eq(bound = "C: Parameters")
 )]
 pub struct ViewKey<C: Parameters> {
-    pub decryption_key: <C::AccountEncryption as EncryptionScheme>::PrivateKey,
+    pub decryption_key: <C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey,
 }
 
 impl<C: Parameters> ViewKey<C> {
@@ -50,9 +50,9 @@ impl<C: Parameters> ViewKey<C> {
         &self,
         message: &[u8],
         rng: &mut R,
-    ) -> Result<<C::AccountSignature as SignatureScheme>::Signature, AccountError> {
+    ) -> Result<<C::AccountSignatureScheme as SignatureScheme>::Signature, AccountError> {
         let signature_private_key = FromBytes::from_bytes_le(&self.decryption_key.to_bytes_le()?)?;
-        Ok(C::account_signature().sign(&signature_private_key, message, rng)?)
+        Ok(C::account_signature_scheme().sign(&signature_private_key, message, rng)?)
     }
 }
 
@@ -66,7 +66,7 @@ impl<C: Parameters> FromBytes for ViewKey<C> {
     /// Reads in an account view key buffer.
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Ok(Self {
-            decryption_key: <C::AccountEncryption as EncryptionScheme>::PrivateKey::read_le(&mut reader)?,
+            decryption_key: <C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey::read_le(&mut reader)?,
         })
     }
 }

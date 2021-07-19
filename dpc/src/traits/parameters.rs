@@ -51,16 +51,25 @@ pub trait Parameters: 'static + Sized {
     type AccountCommitmentScheme: CommitmentScheme<Output = Self::AccountCommitment>
         + ToConstraintField<Self::InnerScalarField>;
     type AccountCommitmentGadget: CommitmentGadget<Self::AccountCommitmentScheme, Self::InnerScalarField>;
-    type AccountCommitment: ToConstraintField<Self::InnerScalarField> + ToBytes;
+    type AccountCommitment: ToConstraintField<Self::InnerScalarField>
+        + Clone
+        + Debug
+        + Default
+        + Eq
+        + Hash
+        + ToBytes
+        + FromBytes
+        + Sync
+        + Send;
 
     /// Encryption scheme for account records. Invoked only over `Self::InnerScalarField`.
-    type AccountEncryption: EncryptionScheme + ToConstraintField<Self::InnerScalarField>;
-    type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryption, Self::InnerScalarField>;
+    type AccountEncryptionScheme: EncryptionScheme + ToConstraintField<Self::InnerScalarField>;
+    type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
 
     /// Signature scheme for delegated compute. Invoked only over `Self::InnerScalarField`.
-    type AccountSignature: SignatureScheme<PublicKey = Self::AccountSignaturePublicKey>
+    type AccountSignatureScheme: SignatureScheme<PublicKey = Self::AccountSignaturePublicKey>
         + ToConstraintField<Self::InnerScalarField>;
-    type AccountSignatureGadget: SignatureGadget<Self::AccountSignature, Self::InnerScalarField>;
+    type AccountSignatureGadget: SignatureGadget<Self::AccountSignatureScheme, Self::InnerScalarField>;
     type AccountSignaturePublicKey: ToConstraintField<Self::InnerScalarField>
         + Clone
         + Debug
@@ -186,9 +195,9 @@ pub trait Parameters: 'static + Sized {
 
     fn account_commitment_scheme() -> &'static Self::AccountCommitmentScheme;
 
-    fn account_encryption() -> &'static Self::AccountEncryption;
+    fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
 
-    fn account_signature() -> &'static Self::AccountSignature;
+    fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
 
     fn encrypted_record_crh() -> &'static Self::EncryptedRecordCRH;
 
