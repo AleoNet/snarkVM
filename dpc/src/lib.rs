@@ -94,5 +94,5 @@ pub mod transaction;
 pub use transaction::*;
 
 pub mod prelude {
-    pub use crate::{account::*, block::*, errors::*, traits::*};
+    pub use crate::{account::*, block::*, circuits::*, errors::*, program::*, record::*, traits::*, transaction::*};
 }
