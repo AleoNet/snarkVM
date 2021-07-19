@@ -15,8 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet1::{outer_circuit_gadget::execute_outer_circuit, program::Execution, Testnet1Components, Transaction},
+    testnet1::{execute_outer_circuit, Testnet1Components},
     AleoAmount,
+    Execution,
+    Transaction,
     TransactionScheme,
 };
 use snarkvm_algorithms::{
@@ -42,7 +44,7 @@ pub struct OuterCircuit<C: Testnet1Components> {
     inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
     inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
 
-    program_proofs: Vec<Execution>,
+    program_proofs: Vec<Execution<C::ProgramSNARK>>,
     program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
     program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
     local_data_root: C::LocalDataDigest,
@@ -54,7 +56,7 @@ impl<C: Testnet1Components> OuterCircuit<C> {
     pub fn blank(
         inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
-        program_snark_vk_and_proof: Execution,
+        program_snark_vk_and_proof: Execution<C::ProgramSNARK>,
     ) -> Self {
         let ledger_digest = MerkleTreeDigest::<C::RecordCommitmentTreeParameters>::default();
         let old_serial_numbers =
@@ -107,7 +109,7 @@ impl<C: Testnet1Components> OuterCircuit<C> {
 
         // Private program input = Verification key and input
         // Commitment contains commitment to hash of death program vk.
-        program_proofs: Vec<Execution>,
+        program_proofs: Vec<Execution<C::ProgramSNARK>>,
         program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
         program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
         local_data_root: C::LocalDataDigest,

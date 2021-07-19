@@ -14,15 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    testnet1::{Testnet1Components, Transaction},
-    Record,
-    TransactionScheme,
-};
+use crate::{Parameters, Record, Transaction, TransactionScheme};
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, prelude::*};
 
 /// Stores local data required to produce program proofs.
-pub struct LocalData<C: Testnet1Components> {
+pub struct LocalData<C: Parameters> {
     // Old records and serial numbers
     pub old_records: Vec<Record<C>>,
     pub old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,

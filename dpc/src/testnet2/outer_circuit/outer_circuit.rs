@@ -15,8 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet2::{outer_circuit_gadget::execute_outer_circuit, program::Execution, Testnet2Components, Transaction},
+    testnet2::{execute_outer_circuit, Testnet2Components},
     AleoAmount,
+    Execution,
+    Transaction,
     TransactionScheme,
 };
 use snarkvm_algorithms::{

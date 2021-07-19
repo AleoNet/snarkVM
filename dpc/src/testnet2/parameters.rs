@@ -16,11 +16,13 @@
 
 use crate::{
     account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_INPUT, ACCOUNT_SIGNATURE_INPUT},
-    testnet2::{program::ProgramLocalData, transaction::Transaction, Testnet2Components, DPC},
+    testnet2::{Testnet2Components, DPC},
     InnerCircuitVerifierInput,
     Network,
     OuterCircuitVerifierInput,
     Parameters,
+    ProgramLocalData,
+    Transaction,
 };
 use snarkvm_algorithms::{
     commitment::{Blake2sCommitment, PedersenCompressedCommitment},

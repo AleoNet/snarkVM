@@ -14,10 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Parameters;
-use snarkvm_algorithms::prelude::*;
-use snarkvm_gadgets::{bits::Boolean, traits::algorithms::SNARKVerifierGadget};
-
 pub mod dpc;
 pub use dpc::*;
 
@@ -27,10 +23,11 @@ pub use outer_circuit::*;
 pub mod program;
 pub use program::*;
 
-pub mod transaction;
-pub use transaction::*;
-
 pub mod parameters;
+
+use crate::{Parameters, ProgramLocalData};
+use snarkvm_algorithms::prelude::*;
+use snarkvm_gadgets::{bits::Boolean, traits::algorithms::SNARKVerifierGadget};
 
 /// Trait that stores information about the testnet1 DPC scheme.
 pub trait Testnet1Components: Parameters {

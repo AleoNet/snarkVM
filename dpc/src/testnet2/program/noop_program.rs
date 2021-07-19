@@ -15,9 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet2::{Execution, LocalData, NoopCircuit, ProgramLocalData, ProgramSNARKUniversalSRS, Testnet2Components},
+    testnet2::{NoopCircuit, ProgramSNARKUniversalSRS, Testnet2Components},
+    Execution,
+    LocalData,
     Parameters,
     ProgramError,
+    ProgramLocalData,
     ProgramScheme,
     RecordScheme,
 };
@@ -100,7 +103,7 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
         })
     }
 
-    fn execute<R: Rng>(
+    fn execute<R: Rng + CryptoRng>(
         &self,
         local_data: &Self::LocalData,
         position: u8,

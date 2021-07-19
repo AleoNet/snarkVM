@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod kernel;
-pub use kernel::*;
+pub mod execution;
+pub use execution::*;
 
-pub mod transaction;
-pub use transaction::*;
+pub mod local_data;
+pub use local_data::*;

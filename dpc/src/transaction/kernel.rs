@@ -14,12 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    prelude::*,
-    testnet2::{LocalData, Testnet2Components, Transaction},
-    EncryptedRecord,
-    Record,
-};
+use crate::{prelude::*, EncryptedRecord, LocalData, Parameters, Record, Transaction};
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, prelude::*};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
@@ -29,18 +24,17 @@ use std::{
     str::FromStr,
 };
 
-/// Returned by `DPC::execute_offline_phase`. Stores data required to produce the
-/// final transaction after `execute_offline_phase` has created old serial numbers,
-/// new records and commitments. For convenience, it also
-/// stores references to existing information such as old records.
+/// Returned by `DPC::execute_offline_phase`. Stores data required to produce the final transaction
+/// after `execute_offline_phase` has created old serial numbers, new records and commitments.
+/// For convenience, it also stores references to existing information such as old records.
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: Testnet2Components"),
-    PartialEq(bound = "C: Testnet2Components"),
-    Eq(bound = "C: Testnet2Components"),
-    Debug(bound = "C: Testnet2Components")
+    Clone(bound = "C: Parameters"),
+    PartialEq(bound = "C: Parameters"),
+    Eq(bound = "C: Parameters"),
+    Debug(bound = "C: Parameters")
 )]
-pub struct TransactionKernel<C: Testnet2Components> {
+pub struct TransactionKernel<C: Parameters> {
     // Old record stuff
     pub old_records: Vec<Record<C>>,
     pub old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
@@ -67,7 +61,7 @@ pub struct TransactionKernel<C: Testnet2Components> {
     pub signatures: Vec<<C::AccountSignatureScheme as SignatureScheme>::Signature>,
 }
 
-impl<C: Testnet2Components> TransactionKernel<C> {
+impl<C: Parameters> TransactionKernel<C> {
     #[allow(clippy::wrong_self_convention)]
     pub fn into_local_data(&self) -> LocalData<C> {
         LocalData {
@@ -85,7 +79,7 @@ impl<C: Testnet2Components> TransactionKernel<C> {
     }
 }
 
-impl<C: Testnet2Components> ToBytes for TransactionKernel<C> {
+impl<C: Parameters> ToBytes for TransactionKernel<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Write old record components
@@ -147,7 +141,7 @@ impl<C: Testnet2Components> ToBytes for TransactionKernel<C> {
     }
 }
 
-impl<C: Testnet2Components> FromBytes for TransactionKernel<C> {
+impl<C: Parameters> FromBytes for TransactionKernel<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read old record components
@@ -258,7 +252,7 @@ impl<C: Testnet2Components> FromBytes for TransactionKernel<C> {
     }
 }
 
-impl<C: Testnet2Components> FromStr for TransactionKernel<C> {
+impl<C: Parameters> FromStr for TransactionKernel<C> {
     type Err = DPCError;
 
     fn from_str(kernel: &str) -> Result<Self, Self::Err> {
@@ -266,7 +260,7 @@ impl<C: Testnet2Components> FromStr for TransactionKernel<C> {
     }
 }
 
-impl<C: Testnet2Components> fmt::Display for TransactionKernel<C> {
+impl<C: Parameters> fmt::Display for TransactionKernel<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

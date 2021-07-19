@@ -14,14 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    record::encrypted::*,
-    testnet2::Testnet2Components,
-    AleoAmount,
-    Network,
-    TransactionError,
-    TransactionScheme,
-};
+use crate::{record::encrypted::*, AleoAmount, Network, Parameters, TransactionError, TransactionScheme};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{SignatureScheme, CRH, SNARK},
@@ -41,11 +34,11 @@ use std::{
 
 #[derive(Derivative)]
 #[derivative(
-    Clone(bound = "C: Testnet2Components"),
-    PartialEq(bound = "C: Testnet2Components"),
-    Eq(bound = "C: Testnet2Components")
+    Clone(bound = "C: Parameters"),
+    PartialEq(bound = "C: Parameters"),
+    Eq(bound = "C: Parameters")
 )]
-pub struct Transaction<C: Testnet2Components> {
+pub struct Transaction<C: Parameters> {
     /// The network this transaction is included in
     pub network: Network,
 
@@ -82,7 +75,7 @@ pub struct Transaction<C: Testnet2Components> {
     pub inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
 }
 
-impl<C: Testnet2Components> Transaction<C> {
+impl<C: Parameters> Transaction<C> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         network: Network,
@@ -116,7 +109,7 @@ impl<C: Testnet2Components> Transaction<C> {
     }
 }
 
-impl<C: Testnet2Components> TransactionScheme for Transaction<C> {
+impl<C: Parameters> TransactionScheme for Transaction<C> {
     type Commitment = C::RecordCommitment;
     type Digest = MerkleTreeDigest<C::RecordCommitmentTreeParameters>;
     type EncryptedRecord = EncryptedRecord<C>;
@@ -131,11 +124,11 @@ impl<C: Testnet2Components> TransactionScheme for Transaction<C> {
         let mut pre_image_bytes: Vec<u8> = vec![];
 
         for serial_number in self.old_serial_numbers() {
-            pre_image_bytes.extend(&to_bytes_le![serial_number]?);
+            pre_image_bytes.extend(&serial_number.to_bytes_le()?);
         }
 
         for commitment in self.new_commitments() {
-            pre_image_bytes.extend(&to_bytes_le![commitment]?);
+            pre_image_bytes.extend(&commitment.to_bytes_le()?);
         }
 
         pre_image_bytes.extend(self.memorandum());
@@ -190,7 +183,7 @@ impl<C: Testnet2Components> TransactionScheme for Transaction<C> {
     }
 }
 
-impl<C: Testnet2Components> ToBytes for Transaction<C> {
+impl<C: Parameters> ToBytes for Transaction<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.network.write_le(&mut writer)?;
@@ -223,7 +216,7 @@ impl<C: Testnet2Components> ToBytes for Transaction<C> {
     }
 }
 
-impl<C: Testnet2Components> FromBytes for Transaction<C> {
+impl<C: Parameters> FromBytes for Transaction<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the network ID.
@@ -288,7 +281,7 @@ impl<C: Testnet2Components> FromBytes for Transaction<C> {
 }
 
 // TODO add debug support for record ciphertexts
-impl<C: Testnet2Components> fmt::Debug for Transaction<C> {
+impl<C: Parameters> fmt::Debug for Transaction<C> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

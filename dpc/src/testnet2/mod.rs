@@ -26,12 +26,9 @@ pub use universal_parameters::*;
 pub mod program;
 pub use program::*;
 
-pub mod transaction;
-pub use transaction::*;
-
 pub mod parameters;
 
-use crate::Parameters;
+use crate::{Parameters, ProgramLocalData};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{bits::Boolean, nonnative::NonNativeFieldVar, traits::algorithms::SNARKVerifierGadget};

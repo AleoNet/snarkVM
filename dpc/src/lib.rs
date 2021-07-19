@@ -72,6 +72,12 @@ pub use block::*;
 pub mod circuits;
 pub use circuits::*;
 
+pub mod errors;
+pub use errors::*;
+
+pub mod program;
+pub use program::*;
+
 pub mod record;
 pub use record::*;
 
@@ -81,11 +87,11 @@ pub mod testnet1;
 #[cfg(feature = "testnet2")]
 pub mod testnet2;
 
-pub mod errors;
-pub use errors::*;
-
 pub mod traits;
 pub use traits::*;
+
+pub mod transaction;
+pub use transaction::*;
 
 pub mod prelude {
     pub use crate::{account::*, block::*, errors::*, traits::*};

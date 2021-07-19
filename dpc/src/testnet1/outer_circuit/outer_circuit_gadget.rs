@@ -14,11 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    testnet1::{program::Execution, Testnet1Components, Transaction},
-    AleoAmount,
-    TransactionScheme,
-};
+use crate::{testnet1::Testnet1Components, AleoAmount, Execution, Transaction, TransactionScheme};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
@@ -87,7 +83,7 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     inner_snark_proof: &<C::InnerSNARK as SNARK>::Proof,
 
     // Program verifying keys and proofs
-    program_proofs: &[Execution],
+    program_proofs: &[Execution<C::ProgramSNARK>],
 
     // Rest
     program_commitment: &<C::ProgramCommitmentScheme as CommitmentScheme>::Output,
@@ -339,14 +335,22 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     for (i, input) in program_proofs.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
         let cs = &mut cs.ns(|| format!("Check death program for input record {}", i));
 
+        let death_program_proof_bytes = input
+            .proof
+            .to_bytes_le()
+            .expect("Unable to convert death program proof to bytes");
         let death_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc_bytes(
             &mut cs.ns(|| "Allocate proof"),
-            || Ok(&input.proof),
+            || Ok(&death_program_proof_bytes),
         )?;
 
+        let death_program_vk_bytes = input
+            .verifying_key
+            .to_bytes_le()
+            .expect("Unable to convert death program VK to bytes");
         let death_program_vk = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc_bytes(
             &mut cs.ns(|| "Allocate verifying key"),
-            || Ok(&input.verifying_key),
+            || Ok(&death_program_vk_bytes),
         )?;
 
         let death_program_vk_bytes = death_program_vk.to_bytes(&mut cs.ns(|| "Convert death pred vk to bytes"))?;
@@ -377,14 +381,22 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     {
         let cs = &mut cs.ns(|| format!("Check birth program for output record {}", j));
 
+        let birth_program_proof_bytes = input
+            .proof
+            .to_bytes_le()
+            .expect("Unable to convert birth program proof to bytes");
         let birth_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc_bytes(
             &mut cs.ns(|| "Allocate proof"),
-            || Ok(&input.proof),
+            || Ok(&birth_program_proof_bytes),
         )?;
 
+        let birth_program_vk_bytes = input
+            .verifying_key
+            .to_bytes_le()
+            .expect("Unable to convert birth program VK to bytes");
         let birth_program_vk = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc_bytes(
             &mut cs.ns(|| "Allocate verifying key"),
-            || Ok(&input.verifying_key),
+            || Ok(&birth_program_vk_bytes),
         )?;
 
         let birth_program_vk_bytes = birth_program_vk.to_bytes(&mut cs.ns(|| "Convert birth pred vk to bytes"))?;

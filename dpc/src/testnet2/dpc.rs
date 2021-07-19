@@ -15,13 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet2::{Execution, NoopProgram, OuterCircuit, Testnet2Components, Transaction, TransactionKernel},
+    testnet2::{NoopProgram, OuterCircuit, Testnet2Components},
     Account,
     AccountScheme,
     AleoAmount,
     DPCError,
     DPCScheme,
     EncryptedRecord,
+    Execution,
     InnerCircuit,
     InnerCircuitVerifierInput,
     LedgerScheme,
@@ -30,6 +31,8 @@ use crate::{
     ProgramScheme,
     Record,
     RecordScheme,
+    Transaction,
+    TransactionKernel,
     TransactionScheme,
 };
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, merkle_tree::MerklePath, prelude::*};

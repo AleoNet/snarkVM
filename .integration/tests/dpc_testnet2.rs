@@ -22,11 +22,12 @@ use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{
     execute_inner_circuit,
     prelude::*,
-    testnet2::{execute_outer_circuit, parameters::*, program::NoopProgram, TransactionKernel},
+    testnet2::{execute_outer_circuit, parameters::*, program::NoopProgram},
     EncryptedRecord,
     InnerCircuit,
     Payload,
     Record,
+    TransactionKernel,
 };
 use snarkvm_integration::{memdb::MemDb, storage::*, testnet2::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};

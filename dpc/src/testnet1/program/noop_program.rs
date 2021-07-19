@@ -15,9 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet1::{Execution, LocalData, NoopCircuit, ProgramLocalData, Testnet1Components},
+    testnet1::{NoopCircuit, Testnet1Components},
+    Execution,
+    LocalData,
     Parameters,
     ProgramError,
+    ProgramLocalData,
     ProgramScheme,
     RecordScheme,
 };
@@ -26,7 +29,7 @@ use snarkvm_parameters::{
     testnet1::{NoopProgramSNARKPKParameters, NoopProgramSNARKVKParameters},
     Parameter,
 };
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::{CryptoRng, Rng};
 
@@ -42,7 +45,7 @@ pub struct NoopProgram<C: Testnet1Components> {
 }
 
 impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
-    type Execution = Execution;
+    type Execution = Execution<Self::ProofSystem>;
     type ID = Vec<u8>;
     type LocalData = LocalData<C>;
     type LocalDataCommitment = C::LocalDataCommitmentScheme;
@@ -130,8 +133,8 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
         }
 
         Ok(Self::Execution {
-            verifying_key: to_bytes_le![self.verifying_key]?,
-            proof: to_bytes_le![proof]?,
+            verifying_key: self.verifying_key.clone(),
+            proof,
         })
     }
 
@@ -139,8 +142,8 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
         let proof = <Self::ProofSystem as SNARK>::prove(&self.proving_key, &NoopCircuit::<C>::blank(), rng)?;
 
         Ok(Self::Execution {
-            verifying_key: to_bytes_le![self.verifying_key]?,
-            proof: to_bytes_le![proof]?,
+            verifying_key: self.verifying_key.clone(),
+            proof,
         })
     }
 

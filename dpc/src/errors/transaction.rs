@@ -21,6 +21,9 @@ pub enum TransactionError {
     #[error("UTXO has already been spent {:?} index: {:?}", _0, _1)]
     AlreadySpent(Vec<u8>, u32),
 
+    #[error("{}", _0)]
+    AnyhowError(#[from] anyhow::Error),
+
     #[error("there is a double spend occuring with this transaction {}", _0)]
     DoubleSpend(String),
 

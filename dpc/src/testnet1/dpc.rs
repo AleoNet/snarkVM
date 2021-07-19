@@ -15,13 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet1::{Execution, NoopProgram, OuterCircuit, Testnet1Components, Transaction, TransactionKernel},
+    testnet1::{NoopProgram, OuterCircuit, Testnet1Components},
     Account,
     AccountScheme,
     AleoAmount,
     DPCError,
     DPCScheme,
     EncryptedRecord,
+    Execution,
     InnerCircuit,
     InnerCircuitVerifierInput,
     LedgerScheme,
@@ -30,6 +31,8 @@ use crate::{
     ProgramScheme,
     Record,
     RecordScheme,
+    Transaction,
+    TransactionKernel,
     TransactionScheme,
 };
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, merkle_tree::MerklePath, prelude::*};
@@ -53,7 +56,7 @@ pub struct DPC<C: Testnet1Components> {
 
 impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
     type Account = Account<C>;
-    type Execution = Execution;
+    type Execution = Execution<C::ProgramSNARK>;
     type Record = Record<C>;
     type Transaction = Transaction<C>;
     type TransactionKernel = TransactionKernel<C>;

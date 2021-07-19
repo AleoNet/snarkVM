@@ -14,11 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    testnet2::{program::Execution, Testnet2Components, Transaction},
-    AleoAmount,
-    TransactionScheme,
-};
+use crate::{testnet2::Testnet2Components, AleoAmount, Execution, Transaction, TransactionScheme};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
