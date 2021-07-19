@@ -218,7 +218,7 @@ where
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let account_commitment_parameters =
             C::AccountCommitmentGadget::alloc_input(&mut cs.ns(|| "Declare account commit parameters"), || {
-                Ok(C::account_commitment().clone())
+                Ok(C::account_commitment_scheme().clone())
             })?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
@@ -236,7 +236,7 @@ where
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let record_commitment_parameters =
             C::RecordCommitmentGadget::alloc_input(&mut cs.ns(|| "Declare record commitment parameters"), || {
-                Ok(C::record_commitment().clone())
+                Ok(C::record_commitment_scheme().clone())
             })?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
@@ -248,7 +248,7 @@ where
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let program_id_commitment_parameters =
             C::ProgramCommitmentGadget::alloc_input(&mut cs.ns(|| "Declare program ID commitment parameters"), || {
-                Ok(C::program_id_commitment().clone())
+                Ok(C::program_commitment_scheme().clone())
             })?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
@@ -260,7 +260,7 @@ where
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let local_data_commitment_parameters = C::LocalDataCommitmentGadget::alloc_input(
             &mut cs.ns(|| "Declare local data commitment parameters"),
-            || Ok(C::local_data_commitment().clone()),
+            || Ok(C::local_data_commitment_scheme().clone()),
         )?;
 
         // TODO (howardwu): This is allocating nothing. Why is this an alloc.

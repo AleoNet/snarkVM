@@ -274,7 +274,7 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
             ]?;
 
             let commitment_randomness = <C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
-            let commitment = C::local_data_commitment().commit(&input_bytes, &commitment_randomness)?;
+            let commitment = C::local_data_commitment_scheme().commit(&input_bytes, &commitment_randomness)?;
 
             old_record_commitments.push(commitment);
             local_data_commitment_randomizers.push(commitment_randomness);
@@ -285,7 +285,7 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
             let input_bytes = to_bytes_le![record.commitment(), memorandum, C::NETWORK_ID]?;
 
             let commitment_randomness = <C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
-            let commitment = C::local_data_commitment().commit(&input_bytes, &commitment_randomness)?;
+            let commitment = C::local_data_commitment_scheme().commit(&input_bytes, &commitment_randomness)?;
 
             new_record_commitments.push(commitment);
             local_data_commitment_randomizers.push(commitment_randomness);
@@ -311,7 +311,7 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
                 input.extend_from_slice(&id);
             }
             let program_randomness = <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
-            let program_commitment = C::program_id_commitment().commit(&input, &program_randomness)?;
+            let program_commitment = C::program_commitment_scheme().commit(&input, &program_randomness)?;
             (program_commitment, program_randomness)
         };
         end_timer!(program_comm_timer);

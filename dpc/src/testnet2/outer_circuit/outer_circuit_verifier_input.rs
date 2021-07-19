@@ -49,7 +49,7 @@ where
 {
     fn to_field_elements(&self) -> Result<Vec<C::OuterScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
-        v.extend_from_slice(&C::program_id_commitment().to_field_elements()?);
+        v.extend_from_slice(&C::program_commitment_scheme().to_field_elements()?);
         v.extend_from_slice(&C::program_id_crh().parameters().to_field_elements()?);
         v.extend_from_slice(&C::inner_circuit_id_crh().parameters().to_field_elements()?);
 

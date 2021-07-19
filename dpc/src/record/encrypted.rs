@@ -200,7 +200,7 @@ impl<C: Parameters> EncryptedRecord<C> {
             serial_number_nonce
         ]?;
 
-        let commitment = C::record_commitment().commit(&commitment_input, &commitment_randomness)?;
+        let commitment = C::record_commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
 
         Ok(Record::from(
             owner,

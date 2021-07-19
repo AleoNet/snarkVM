@@ -102,7 +102,7 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
 
         let program_id_commitment_parameters =
             C::ProgramCommitmentGadget::alloc_input(&mut cs.ns(|| "Declare program_id_commitment_parameters"), || {
-                Ok(C::program_id_commitment().clone())
+                Ok(C::program_commitment_scheme().clone())
             })?;
 
         let program_id_crh =
@@ -124,7 +124,7 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
 
     // Declare inner snark verifier inputs as `CoreCheckF` field elements
 
-    let account_commitment_parameters_fe = C::account_commitment()
+    let account_commitment_parameters_fe = C::account_commitment_scheme()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
@@ -136,7 +136,7 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let record_commitment_parameters_fe = C::record_commitment()
+    let record_commitment_parameters_fe = C::record_commitment_scheme()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
@@ -144,7 +144,7 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
-    let program_id_commitment_parameters_fe = C::program_id_commitment()
+    let program_id_commitment_parameters_fe = C::program_commitment_scheme()
         .to_field_elements()
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 

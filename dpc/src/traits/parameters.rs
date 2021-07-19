@@ -193,7 +193,7 @@ pub trait Parameters: 'static + Sized {
     type SerialNumberNonceCRH: CRH + ToConstraintField<Self::InnerScalarField>;
     type SerialNumberNonceCRHGadget: CRHGadget<Self::SerialNumberNonceCRH, Self::InnerScalarField>;
 
-    fn account_commitment() -> &'static Self::AccountCommitmentScheme;
+    fn account_commitment_scheme() -> &'static Self::AccountCommitmentScheme;
 
     fn account_encryption() -> &'static Self::AccountEncryption;
 
@@ -205,15 +205,15 @@ pub trait Parameters: 'static + Sized {
 
     fn record_commitment_tree_crh() -> &'static Self::RecordCommitmentTreeCRH;
 
-    fn local_data_commitment() -> &'static Self::LocalDataCommitmentScheme;
+    fn local_data_commitment_scheme() -> &'static Self::LocalDataCommitmentScheme;
 
     fn local_data_crh() -> &'static Self::LocalDataCRH;
 
-    fn program_id_commitment() -> &'static Self::ProgramCommitmentScheme;
+    fn program_commitment_scheme() -> &'static Self::ProgramCommitmentScheme;
 
     fn program_id_crh() -> &'static Self::ProgramIDCRH;
 
-    fn record_commitment() -> &'static Self::RecordCommitmentScheme;
+    fn record_commitment_scheme() -> &'static Self::RecordCommitmentScheme;
 
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters;
 

@@ -55,7 +55,7 @@ impl<C: Parameters> ConstraintSynthesizer<C::InnerScalarField> for NoopCircuit<C
 
         let _local_data_commitment_parameters_gadget = C::LocalDataCommitmentGadget::alloc_input(
             &mut cs.ns(|| "Declare local data commitment parameters"),
-            || Ok(C::local_data_commitment().clone()),
+            || Ok(C::local_data_commitment_scheme().clone()),
         )?;
 
         let _local_data_root_gadget = <C::LocalDataCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(

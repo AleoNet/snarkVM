@@ -123,7 +123,7 @@ impl<C: Parameters> Record<C> {
             serial_number_nonce  // 256 bits = 32 bytes
         ]?;
 
-        let commitment = C::record_commitment().commit(&commitment_input, &commitment_randomness)?;
+        let commitment = C::record_commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
 
         end_timer!(record_time);
 

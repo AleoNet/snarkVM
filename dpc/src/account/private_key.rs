@@ -200,7 +200,7 @@ impl<C: Parameters> PrivateKey<C> {
         // Construct the commitment input for the account address.
         let commit_input = to_bytes_le![self.pk_sig()?, self.sk_prf]?;
 
-        Ok(C::account_commitment().commit(&commit_input, &self.r_pk)?)
+        Ok(C::account_commitment_scheme().commit(&commit_input, &self.r_pk)?)
     }
 }
 
