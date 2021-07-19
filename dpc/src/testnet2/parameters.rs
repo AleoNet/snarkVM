@@ -39,8 +39,7 @@ where
 {
     pub fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, ProgramError> {
         // TODO (raychu86): CRITICAL - Specify the `max_degree` variables.
-        let max_degree = 30000;
-
+        let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<C::InnerScalarField>::max_degree(1000, 1000, 10000).unwrap();
         // TODO (raychu86): Handle this unwrap.
         Ok(Self(
             MarlinSNARK::<

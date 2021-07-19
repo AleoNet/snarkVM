@@ -33,17 +33,13 @@ use snarkvm_dpc::block::{
 
 /// GM17 type alias for the PoSW circuit
 #[deprecated]
-pub type GM17<E> = snark::gm17::GM17<E, PoswCircuit<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
+pub type GM17<E> = snark::gm17::GM17<E, Vec<<E as PairingEngine>::Fr>>;
 
 /// PoSW instantiated over BLS12-377 with Marlin.
 pub type PoswMarlin = Posw<Marlin<Bls12_377>, Bls12_377>;
 
 /// Marlin proof system on PoSW
-pub type Marlin<E> = snarkvm_marlin::snark::MarlinTestnet1System<
-    E,
-    PoswCircuit<<E as PairingEngine>::Fr>,
-    Vec<<E as PairingEngine>::Fr>,
->;
+pub type Marlin<E> = snarkvm_marlin::snark::MarlinTestnet1System<E, Vec<<E as PairingEngine>::Fr>>;
 
 /// A generic PoSW.
 pub type Posw<S, E> = posw::Posw<S, <E as PairingEngine>::Fr, M, HG, params::PoSWParams>;
@@ -80,6 +76,7 @@ mod tests {
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
     use snarkvm_algorithms::traits::SNARK;
+    use snarkvm_curves::bls12_377::Fr;
     use snarkvm_utilities::FromBytes;
 
     #[test]
@@ -123,7 +120,8 @@ mod tests {
         let rng = &mut XorShiftRng::seed_from_u64(1234567);
 
         // run the trusted setup
-        let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(10000, 10000, 100000, rng).unwrap();
+        let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
+        let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(max_degree, rng).unwrap();
 
         // run the deterministic setup
         let posw = PoswMarlin::index(universal_srs).unwrap();

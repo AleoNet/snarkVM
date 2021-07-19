@@ -19,6 +19,7 @@
 use crate::{
     circuit::{POSWCircuit, POSWCircuitParameters},
     error::PoswError,
+    PoswCircuit,
 };
 use snarkvm_algorithms::{
     crh::sha256d_to_u64,
@@ -44,12 +45,11 @@ use snarkvm_parameters::{
     testnet1::{PoswSNARKPKParameters, PoswSNARKVKParameters},
     traits::Parameter,
 };
-use snarkvm_polycommit::optional_rng::OptionalRng;
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use blake2::{digest::Digest, Blake2s};
-use rand::{rngs::OsRng, Rng};
+use rand::Rng;
 use std::marker::PhantomData;
 
 /// Commits to the nonce and pedersen merkle root
@@ -147,7 +147,7 @@ where
 
 impl<S, CP> Posw<S, F, M, HG, CP>
 where
-    S: SNARK<VerifierInput = Vec<F>, AllocatedCircuit = POSWCircuit<F, M, HG, CP>>,
+    S: SNARK<ScalarField = F, VerifierInput = Vec<F>>,
     CP: POSWCircuitParameters,
 {
     /// Performs a trusted setup for the PoSW circuit and returns an instance of the runner
@@ -159,10 +159,10 @@ where
     #[deprecated]
     pub fn setup<R: Rng>(rng: &mut R) -> Result<Self, PoswError>
     where
-        S: SNARK<Circuit = POSWCircuit<F, M, HG, CP>>,
+        S: SNARK,
     {
-        let params = S::setup(
-            &POSWCircuit {
+        let params = S::circuit_specific_setup(
+            &PoswCircuit::<F> {
                 // the circuit will be padded internally
                 leaves: vec![None; 0],
                 merkle_parameters: PARAMS.clone(),
@@ -186,24 +186,20 @@ where
     pub fn index<E>(srs: SRS<E>) -> Result<Self, PoswError>
     where
         E: PairingEngine,
-        S: SNARK<Circuit = (POSWCircuit<F, M, HG, CP>, SRS<E>)>,
+        S: SNARK<UniversalSetupParameters = SRS<E>>,
     {
-        let params = S::setup(
-            &(
-                POSWCircuit {
-                    // the circuit will be padded internally
-                    leaves: vec![None; 0],
-                    merkle_parameters: PARAMS.clone(),
-                    mask: None,
-                    root: None,
-                    field_type: PhantomData,
-                    crh_gadget_type: PhantomData,
-                    circuit_parameters_type: PhantomData,
-                },
-                srs,
-            ),
-            // we need to specify the RNG type, but it is guaranteed to panic if used
-            &mut OptionalRng(None::<OsRng>),
+        let params = S::index(
+            &PoswCircuit::<F> {
+                // the circuit will be padded internally
+                leaves: vec![None; 0],
+                merkle_parameters: PARAMS.clone(),
+                mask: None,
+                root: None,
+                field_type: PhantomData,
+                crh_gadget_type: PhantomData,
+                circuit_parameters_type: PhantomData,
+            },
+            &srs,
         )?;
 
         Ok(Self {
