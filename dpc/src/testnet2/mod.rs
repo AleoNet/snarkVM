@@ -31,11 +31,7 @@ use crate::{
     RecordScheme,
     TransactionScheme,
 };
-use snarkvm_algorithms::{
-    commitment_tree::CommitmentMerkleTree,
-    merkle_tree::{MerklePath, MerkleTreeDigest},
-    prelude::*,
-};
+use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, merkle_tree::MerklePath, prelude::*};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{bits::Boolean, nonnative::NonNativeFieldVar, traits::algorithms::SNARKVerifierGadget};
 use snarkvm_marlin::{
@@ -134,16 +130,16 @@ pub struct TransactionEngine<C: Testnet2Components> {
     ),
 }
 
-impl<C: Testnet2Components, L: LedgerScheme> DPCScheme<L> for TransactionEngine<C>
+impl<C: Testnet2Components> DPCScheme<C> for TransactionEngine<C>
 where
-    L: LedgerScheme<
-        Commitment = <C::RecordCommitment as CommitmentScheme>::Output,
-        MerkleParameters = C::LedgerMerkleTreeParameters,
-        MerklePath = MerklePath<C::LedgerMerkleTreeParameters>,
-        MerkleTreeDigest = MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
-        SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey,
-        Transaction = Transaction<C>,
-    >,
+    // L: LedgerScheme<
+    //     Commitment = <C::RecordCommitment as CommitmentScheme>::Output,
+    //     MerkleParameters = C::LedgerMerkleTreeParameters,
+    //     MerklePath = MerklePath<C::LedgerMerkleTreeParameters>,
+    //     MerkleTreeDigest = MerkleTreeDigest<C::LedgerMerkleTreeParameters>,
+    //     SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey,
+    //     Transaction = Transaction<C>,
+    // >,
     <C::NoopProgramSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
     <C::InnerSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
     <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::VerifierKey:
@@ -157,11 +153,10 @@ where
     type Transaction = Transaction<C>;
     type TransactionKernel = TransactionKernel<C>;
 
-    fn setup<R: Rng + CryptoRng>(
-        ledger_parameters: &Arc<C::LedgerMerkleTreeParameters>,
-        rng: &mut R,
-    ) -> anyhow::Result<Self> {
+    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> anyhow::Result<Self> {
         let setup_time = start_timer!(|| "DPC::setup");
+
+        let ledger_parameters = &Arc::new(C::ledger_merkle_tree_parameters().clone());
 
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
         let noop_program = NoopProgram::setup(rng)?;
@@ -417,7 +412,7 @@ where
         })
     }
 
-    fn execute_online_phase<R: Rng + CryptoRng>(
+    fn execute_online_phase<L: LedgerScheme<C>, R: Rng + CryptoRng>(
         &self,
         old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         transaction_kernel: Self::TransactionKernel,
@@ -584,7 +579,7 @@ where
         Ok((new_records, transaction))
     }
 
-    fn verify(&self, transaction: &Self::Transaction, ledger: &L) -> bool {
+    fn verify<L: LedgerScheme<C>>(&self, transaction: &Self::Transaction, ledger: &L) -> bool {
         let verify_time = start_timer!(|| "DPC::verify");
 
         // Returns false if the number of serial numbers in the transaction is incorrect.
@@ -747,14 +742,14 @@ where
         true
     }
 
-    /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions(&self, transactions: &[Self::Transaction], ledger: &L) -> bool {
-        for transaction in transactions {
-            if !self.verify(transaction, ledger) {
-                return false;
-            }
-        }
-
-        true
-    }
+    // /// Returns true iff all the transactions in the block are valid according to the ledger.
+    // fn verify_transactions(&self, transactions: &[Self::Transaction], ledger: &L) -> bool {
+    //     for transaction in transactions {
+    //         if !self.verify(transaction, ledger) {
+    //             return false;
+    //         }
+    //     }
+    //
+    //     true
+    // }
 }

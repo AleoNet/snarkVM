@@ -14,18 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{BlockScheme, TransactionScheme};
+use crate::traits::{BlockScheme, DPCComponents, TransactionScheme};
+use snarkvm_algorithms::{
+    merkle_tree::{MerklePath, MerkleTreeDigest},
+    prelude::*,
+};
 
 use std::{path::Path, sync::Arc};
 
-#[allow(clippy::len_without_is_empty)]
-pub trait LedgerScheme: Sized {
+// pub(crate) type RecordCommitment<C: DPCComponents> = ;
+// pub(crate) type RecordCommitmentMerklePath<C: DPCComponents> = ;
+// pub(crate) type RecordCommitmentMerkleTreeParameters<C: DPCComponents> = ;
+// pub(crate) type RecordCommitmentMerkleTreeDigest<C: DPCComponents> = ;
+// pub(crate) type RecordSerialNumber<C: DPCComponents> = ;
+
+pub trait LedgerScheme<C: DPCComponents>: Sized {
     type Block: BlockScheme;
-    type Commitment;
-    type MerkleParameters;
-    type MerklePath;
-    type MerkleTreeDigest;
-    type SerialNumber;
+    type Commitment = <C::RecordCommitment as CommitmentScheme>::Output;
+    type MerkleParameters = C::LedgerMerkleTreeParameters;
+    type MerklePath = MerklePath<Self::MerkleParameters>;
+    type MerkleTreeDigest = MerkleTreeDigest<Self::MerkleParameters>;
+    type SerialNumber = <C::AccountSignature as SignatureScheme>::PublicKey;
     type Transaction: TransactionScheme;
 
     /// Instantiates a new ledger with a genesis block.
