@@ -29,7 +29,8 @@ use utils::store;
 pub fn setup() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
-    let srs = snarkvm_marlin::MarlinTestnet1::universal_setup(10000, 10000, 100000, rng).unwrap();
+    // TODO: decide the size of the universal setup
+    let srs = snarkvm_marlin::MarlinTestnet1::universal_setup(300000, rng).unwrap();
 
     let srs_bytes = srs.to_bytes_le()?;
     let posw_snark = PoswMarlin::index(srs).expect("could not setup params");

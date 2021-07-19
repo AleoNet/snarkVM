@@ -31,6 +31,7 @@ pub trait DPCComponents: 'static + Sized {
 
     type InnerScalarField: PrimeField + PoseidonDefaultParametersField;
     type OuterScalarField: PrimeField;
+    type OuterBaseField: PrimeField;
 
     /// Commitment scheme for account contents. Invoked only over `Self::InnerScalarField`.
     type AccountCommitment: CommitmentScheme + ToConstraintField<Self::InnerScalarField>;

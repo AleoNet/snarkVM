@@ -445,8 +445,8 @@ mod test {
         let num_variables = 25;
 
         // Construct the circuit verifier key.
-
-        let universal_srs = MarlinInst::universal_setup(100, 25, 100, rng).unwrap();
+        let max_degree = crate::ahp::AHPForR1CS::<Fr>::max_degree(100, 25, 100).unwrap();
+        let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
         let a = Fr::rand(rng);
         let b = Fr::rand(rng);

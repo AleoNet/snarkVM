@@ -27,7 +27,7 @@ use snarkvm_gadgets::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget
 use snarkvm_marlin::{
     constraints::snark::{MarlinSNARK, MarlinSNARKGadget},
     marlin::{MarlinRecursiveMode, MarlinSNARK as MarlinCore},
-    snark::MarlinSystem,
+    snark::MarlinTestnet1System,
     FiatShamirAlgebraicSpongeRng,
     FiatShamirAlgebraicSpongeRngVar,
     PoseidonSponge,
@@ -45,7 +45,7 @@ use std::ops::MulAssign;
 
 // Standard Marlin instances
 
-type Marlin = MarlinSystem<Bls12_377, Benchmark<Fr>, Vec<Fr>>;
+type Marlin = MarlinTestnet1System<Bls12_377, Benchmark<Fr>, Vec<Fr>>;
 type MarlinInst = MarlinCore<Fr, Fq, PC, FS, MarlinRecursiveMode>;
 
 // Used for Marlin Verification Gadget
@@ -126,7 +126,7 @@ fn snark_circuit_setup(c: &mut Criterion) {
                 num_variables,
             };
 
-            Marlin::setup(&(circuit, universal_srs.clone()), rng).unwrap()
+            Marlin::circuit_specific_setup(&(circuit, universal_srs.clone()), rng).unwrap()
         })
     });
 }
@@ -148,7 +148,7 @@ fn snark_prove(c: &mut Criterion) {
         num_variables,
     };
 
-    let params = Marlin::setup(&(circuit, universal_srs), rng).unwrap();
+    let params = Marlin::circuit_specific_setup(&(circuit, universal_srs), rng).unwrap();
 
     c.bench_function("snark_prove", move |b| {
         b.iter(|| {

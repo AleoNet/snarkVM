@@ -18,6 +18,8 @@ use crate::errors::SNARKError;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::Rng;
+use snarkvm_fields::{PrimeField, ToConstraintField};
+use snarkvm_r1cs::ConstraintSynthesizer;
 use std::fmt::Debug;
 
 /// Defines a trait that describes preparing from an unprepared version to a prepare version
@@ -26,27 +28,48 @@ pub trait Prepare<T> {
 }
 
 pub trait SNARK {
-    type AllocatedCircuit;
-    type Circuit;
+    type ScalarField: Clone + PrimeField;
+    type BaseField: Clone + PrimeField;
+
     type PreparedVerifyingKey: Clone;
     type Proof: Clone + Debug + ToBytes + FromBytes;
     type ProvingKey: Clone + ToBytes + FromBytes;
     type VerifierInput: ?Sized;
+
+    // We can specify their defaults to `()` when `associated_type_defaults` feature becomes stable in Rust
+    type UniversalSetupConfig: Clone;
+    type UniversalSetupParameters: Clone;
+
     type VerifyingKey: Clone
         + ToBytes
         + FromBytes
         + Prepare<Self::PreparedVerifyingKey>
         + From<Self::PreparedVerifyingKey>
-        + From<Self::ProvingKey>;
+        + From<Self::ProvingKey>
+        + ToConstraintField<Self::BaseField>;
 
-    fn setup<R: Rng>(
-        circuit: &Self::Circuit,
+    fn circuit_specific_setup<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng>(
+        circuit: &C,
         rng: &mut R,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError>;
 
-    fn prove<R: Rng>(
+    fn universal_setup<R: Rng>(
+        _config: &Self::UniversalSetupConfig,
+        _rng: &mut R,
+    ) -> Result<Self::UniversalSetupParameters, SNARKError> {
+        unimplemented!()
+    }
+
+    fn index<C: ConstraintSynthesizer<Self::ScalarField>>(
+        _circuit: &C,
+        _srs: &Self::UniversalSetupParameters,
+    ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
+        unimplemented!()
+    }
+
+    fn prove<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng>(
         proving_key: &Self::ProvingKey,
-        input_and_witness: &Self::AllocatedCircuit,
+        input_and_witness: &C,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError>;
 

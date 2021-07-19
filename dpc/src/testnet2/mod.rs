@@ -78,42 +78,32 @@ pub trait Testnet2Components: DPCComponents {
 
     /// SNARK for non-proof-verification checks
     type InnerSNARK: SNARK<
-        Circuit = InnerCircuit<Self>,
-        AllocatedCircuit = InnerCircuit<Self>,
+        ScalarField = Self::InnerScalarField,
+        BaseField = Self::OuterScalarField,
         VerifierInput = InnerCircuitVerifierInput<Self>,
     >;
 
     /// SNARK Verifier gadget for the inner snark
-    type InnerSNARKGadget: SNARKVerifierGadget<
-        Self::InnerScalarField,
-        Self::OuterScalarField,
-        Self::InnerSNARK,
-        Input = Vec<Boolean>,
-    >;
+    type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK, Input = Vec<Boolean>>;
 
     /// SNARK for proof-verification checks
     type OuterSNARK: SNARK<
-        Circuit = OuterCircuit<Self>,
-        AllocatedCircuit = OuterCircuit<Self>,
+        ScalarField = Self::OuterScalarField,
+        BaseField = Self::OuterBaseField,
         VerifierInput = OuterCircuitVerifierInput<Self>,
     >;
 
-    // TODO (raychu86) Declare a proper marlin circuit w/ a UniversalSRS tuple.
     /// SNARK for the no-op "always-accept" that does nothing with its input.
     type NoopProgramSNARK: SNARK<
-        Circuit = (
-            NoopCircuit<Self>,
-            UniversalSRS<Self::InnerScalarField, Self::PolynomialCommitment>,
-        ),
-        AllocatedCircuit = NoopCircuit<Self>,
+        ScalarField = Self::InnerScalarField,
+        BaseField = Self::OuterScalarField,
+        UniversalSetupParameters = UniversalSRS<Self::InnerScalarField, Self::PolynomialCommitment>,
         VerifierInput = ProgramLocalData<Self>,
     >;
 
     // TODO (raychu86): Look into properly declaring a proper input. i.e. Self::MarlinInputGadget.
     /// SNARK Verifier gadget for the no-op "always-accept" that does nothing with its input.
     type NoopProgramSNARKGadget: SNARKVerifierGadget<
-        Self::InnerScalarField,
-        Self::OuterScalarField,
         Self::NoopProgramSNARK,
         Input = NonNativeFieldVar<Self::InnerScalarField, Self::OuterScalarField>,
     >;
@@ -178,14 +168,14 @@ where
 
         let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");
         let inner_circuit = InnerCircuit::blank(ledger_parameters);
-        let inner_snark_parameters = C::InnerSNARK::setup(&inner_circuit, rng)?;
+        let inner_snark_parameters = C::InnerSNARK::circuit_specific_setup(&inner_circuit, rng)?;
         end_timer!(snark_setup_time);
 
         let snark_setup_time = start_timer!(|| "Execute outer SNARK setup");
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = inner_snark_parameters.1.clone().into();
         let inner_snark_proof = C::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, rng)?;
 
-        let outer_snark_parameters = C::OuterSNARK::setup(
+        let outer_snark_parameters = C::OuterSNARK::circuit_specific_setup(
             &OuterCircuit::blank(
                 ledger_parameters.clone(),
                 inner_snark_vk,

@@ -63,7 +63,7 @@ where
             ProgramSNARKUniversalSRS::<C>::load()?.0.clone();
 
         let (proving_key, prepared_verifying_key) =
-            <Self::ProofSystem as SNARK>::setup(&(NoopCircuit::blank(), universal_srs), rng)?;
+            <Self::ProofSystem as SNARK>::circuit_specific_setup(&(NoopCircuit::blank(), universal_srs), rng)?;
         let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
 
         let verifying_key_group_elements = verifying_key.to_field_elements()?;

@@ -93,6 +93,7 @@ impl DPCComponents for Components {
 
     type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
     type OuterScalarField = <Self::OuterCurve as PairingEngine>::Fr;
+    type OuterBaseField = <Self::OuterCurve as PairingEngine>::Fq;
     
     type AccountCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 192>;
     type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 192>;
@@ -157,9 +158,9 @@ impl DPCComponents for Components {
 impl Testnet1Components for Components {
     type EncryptionGroup = EdwardsBls12;
     type EncryptionParameters = EdwardsParameters;
-    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
+    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Components>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
-    type NoopProgramSNARK = GM17<Self::InnerCurve, NoopCircuit<Self>, ProgramLocalData<Self>>;
+    type NoopProgramSNARK = GM17<Self::InnerCurve, ProgramLocalData<Self>>;
     type NoopProgramSNARKGadget = GM17VerifierGadget<Self::InnerCurve, PairingGadget>;
-    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
+    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Components>>;
 }

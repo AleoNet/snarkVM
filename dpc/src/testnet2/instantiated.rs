@@ -102,6 +102,7 @@ impl DPCComponents for Components {
 
     type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
     type OuterScalarField = <Self::OuterCurve as PairingEngine>::Fr;
+    type OuterBaseField = <Self::OuterCurve as PairingEngine>::Fq;
     
     type AccountCommitment = PedersenCompressedCommitment<EdwardsBls12, 8, 192>;
     type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 192>;
@@ -172,7 +173,7 @@ impl Testnet2Components for Components {
         Self::OuterScalarField,
         PoseidonSponge<Self::OuterScalarField>,
     >;
-    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuit<Components>, InnerCircuitVerifierInput<Components>>;
+    type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Components>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
     type MarlinMode = MarlinTestnet2Mode;
     type NoopProgramSNARK = MarlinSNARK<
@@ -181,7 +182,6 @@ impl Testnet2Components for Components {
         Self::PolynomialCommitment,
         Self::FiatShamirRng,
         Self::MarlinMode,
-        NoopCircuit<Self>,
         ProgramLocalData<Self>,
     >;
     type NoopProgramSNARKGadget = MarlinVerificationGadget<
@@ -190,7 +190,7 @@ impl Testnet2Components for Components {
         Self::PolynomialCommitment,
         MarlinKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>,
     >;
-    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuit<Components>, OuterCircuitVerifierInput<Components>>;
+    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Components>>;
     type PolynomialCommitment = MarlinKZG10<Self::InnerCurve>;
 }
 

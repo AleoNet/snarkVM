@@ -39,8 +39,11 @@ pub type GM17<E> = snark::gm17::GM17<E, PoswCircuit<<E as PairingEngine>::Fr>, V
 pub type PoswMarlin = Posw<Marlin<Bls12_377>, Bls12_377>;
 
 /// Marlin proof system on PoSW
-pub type Marlin<E> =
-    snarkvm_marlin::snark::MarlinSystem<E, PoswCircuit<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
+pub type Marlin<E> = snarkvm_marlin::snark::MarlinTestnet1System<
+    E,
+    PoswCircuit<<E as PairingEngine>::Fr>,
+    Vec<<E as PairingEngine>::Fr>,
+>;
 
 /// A generic PoSW.
 pub type Posw<S, E> = posw::Posw<S, <E as PairingEngine>::Fr, M, HG, params::PoSWParams>;

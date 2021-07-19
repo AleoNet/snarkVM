@@ -520,9 +520,11 @@ fn test_testnet1_dpc_execute_constraints() {
     assert!(inner_circuit_cs.is_satisfied());
 
     // Generate inner snark parameters and proof for verification in the outer snark
-    let inner_snark_parameters =
-        <Components as Testnet1Components>::InnerSNARK::setup(&InnerCircuit::blank(ledger.parameters()), &mut rng)
-            .unwrap();
+    let inner_snark_parameters = <Components as Testnet1Components>::InnerSNARK::circuit_specific_setup(
+        &InnerCircuit::blank(ledger.parameters()),
+        &mut rng,
+    )
+    .unwrap();
 
     let inner_snark_vk: <<Components as Testnet1Components>::InnerSNARK as SNARK>::VerifyingKey =
         inner_snark_parameters.1.clone().into();

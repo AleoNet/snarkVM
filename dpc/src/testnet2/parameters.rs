@@ -38,10 +38,8 @@ where
         ToConstraintField<C::OuterScalarField>,
 {
     pub fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, ProgramError> {
-        // TODO (raychu86): CRITICAL - Specify the `num_constraints`, `num_variables`, and `num_non_zero` variables.
-        let num_constraints = 10000;
-        let num_variables = 10000;
-        let num_non_zero = 10000;
+        // TODO (raychu86): CRITICAL - Specify the `max_degree` variables.
+        let max_degree = 30000;
 
         // TODO (raychu86): Handle this unwrap.
         Ok(Self(
@@ -51,7 +49,7 @@ where
                 C::PolynomialCommitment,
                 C::FiatShamirRng,
                 C::MarlinMode,
-            >::universal_setup(num_constraints, num_variables, num_non_zero, rng)
+            >::universal_setup(max_degree, rng)
             .unwrap(),
         ))
     }

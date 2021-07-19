@@ -1744,7 +1744,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-integration"
-version = "0.7.4"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "base58",

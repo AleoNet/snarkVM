@@ -56,7 +56,7 @@ where
 
     let noop_program = NoopProgram::<C>::load()?;
 
-    let outer_snark_parameters = C::OuterSNARK::setup(
+    let outer_snark_parameters = C::OuterSNARK::circuit_specific_setup(
         &OuterCircuit::blank(
             ledger_merkle_tree_parameters,
             inner_snark_vk,
