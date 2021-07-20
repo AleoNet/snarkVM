@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod bhp;
+pub use bhp::*;
+
+pub mod bhp_compressed;
+pub use bhp_compressed::*;
+
 pub mod blake2s;
 pub use blake2s::*;
-
-pub mod bowe_hopwood_pedersen;
-pub use bowe_hopwood_pedersen::*;
-
-pub mod bowe_hopwood_pedersen_compressed;
-pub use bowe_hopwood_pedersen_compressed::*;
 
 pub mod pedersen;
 pub use pedersen::*;

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{commitment::BoweHopwoodPedersenCommitment, CommitmentError, CommitmentScheme};
+use crate::{commitment::BHPCommitmentScheme, CommitmentError, CommitmentScheme};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
@@ -25,23 +25,19 @@ use std::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BoweHopwoodPedersenCompressedCommitment<
-    G: ProjectiveCurve,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> {
-    pub bhp: BoweHopwoodPedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>,
+pub struct BHPCompressedCommitmentScheme<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+    pub bhp: BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
-    for BoweHopwoodPedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCompressedCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Output = <G::Affine as AffineCurve>::BaseField;
-    type Parameters = BoweHopwoodPedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>;
+    type Parameters = BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>;
     type Randomness = G::ScalarField;
 
     fn setup(message: &str) -> Self {
-        BoweHopwoodPedersenCommitment::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(message).into()
+        BHPCommitmentScheme::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(message).into()
     }
 
     fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
@@ -56,24 +52,24 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    From<BoweHopwoodPedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>
-    for BoweHopwoodPedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
+    From<BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>>
+    for BHPCompressedCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    fn from(bhp: BoweHopwoodPedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>) -> Self {
+    fn from(bhp: BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>) -> Self {
         Self { bhp }
     }
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<(Vec<Vec<G>>, Vec<G>)>
-    for BoweHopwoodPedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCompressedCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn from((bases, random_base): (Vec<Vec<G>>, Vec<G>)) -> Self {
-        BoweHopwoodPedersenCommitment::from((bases, random_base)).into()
+        BHPCommitmentScheme::from((bases, random_base)).into()
     }
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
-    for BoweHopwoodPedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCompressedCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
         self.bhp.write_le(writer)
@@ -81,16 +77,16 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToB
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
-    for BoweHopwoodPedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCompressedCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
     fn read_le<R: Read>(reader: R) -> IoResult<Self> {
-        Ok(BoweHopwoodPedersenCommitment::read_le(reader)?.into())
+        Ok(BHPCommitmentScheme::read_le(reader)?.into())
     }
 }
 
 impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    ToConstraintField<F> for BoweHopwoodPedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
+    ToConstraintField<F> for BHPCompressedCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {

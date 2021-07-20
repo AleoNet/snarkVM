@@ -24,7 +24,7 @@ use crate::{
         integers::integer::Integer,
     },
 };
-use snarkvm_algorithms::{commitment::BoweHopwoodPedersenCommitment, CommitmentScheme};
+use snarkvm_algorithms::{commitment::BHPCommitmentScheme, CommitmentScheme};
 use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -67,18 +67,18 @@ pub struct BoweHopwoodPedersenCommitmentGadget<
 
 // TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
 impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    AllocGadget<BoweHopwoodPedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+    AllocGadget<BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for BoweHopwoodPedersenCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BoweHopwoodPedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let bhp: BoweHopwoodPedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
+        let bhp: BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
         Ok(Self {
             bhp_crh_gadget: BoweHopwoodPedersenCRHGadget::alloc(cs, || Ok(bhp.bhp_crh.clone()))?,
             random_base: bhp.random_base,
@@ -87,13 +87,13 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BoweHopwoodPedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let bhp: BoweHopwoodPedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
+        let bhp: BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
         Ok(Self {
             bhp_crh_gadget: BoweHopwoodPedersenCRHGadget::alloc_input(cs, || Ok(bhp.bhp_crh.clone()))?,
             random_base: bhp.random_base,
@@ -102,7 +102,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
 }
 
 impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    CommitmentGadget<BoweHopwoodPedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+    CommitmentGadget<BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for BoweHopwoodPedersenCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     type OutputGadget = GG;

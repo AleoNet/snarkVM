@@ -16,8 +16,8 @@
 
 use crate::{
     commitment::{
-        BoweHopwoodPedersenCommitment,
-        BoweHopwoodPedersenCompressedCommitment,
+        BHPCommitmentScheme,
+        BHPCompressedCommitmentScheme,
         PedersenCommitment,
         PedersenCompressedCommitment,
     },
@@ -39,15 +39,13 @@ fn commitment_parameters_serialization<C: CommitmentScheme>() {
 
 #[test]
 fn bhp_commitment_parameters_serialization() {
-    commitment_parameters_serialization::<
-        BoweHopwoodPedersenCommitment<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>,
-    >();
+    commitment_parameters_serialization::<BHPCommitmentScheme<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>>();
 }
 
 #[test]
 fn bhp_compressed_commitment_parameters_serialization() {
     commitment_parameters_serialization::<
-        BoweHopwoodPedersenCompressedCommitment<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>,
+        BHPCompressedCommitmentScheme<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>,
     >();
 }
 

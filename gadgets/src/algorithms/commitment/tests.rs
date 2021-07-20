@@ -22,9 +22,9 @@ use crate::{
 };
 use snarkvm_algorithms::{
     commitment::{
+        BHPCommitmentScheme,
+        BHPCompressedCommitmentScheme,
         Blake2sCommitment,
-        BoweHopwoodPedersenCommitment,
-        BoweHopwoodPedersenCompressedCommitment,
         PedersenCommitment,
         PedersenCompressedCommitment,
     },
@@ -75,7 +75,7 @@ fn native_and_gadget_equivalence_test<Native: CommitmentScheme, Gadget: Commitme
 
 #[test]
 fn bhp_commitment_gadget_test() {
-    type TestCommitment = BoweHopwoodPedersenCommitment<EdwardsProjective, 32, 48>;
+    type TestCommitment = BHPCommitmentScheme<EdwardsProjective, 32, 48>;
     type TestCommitmentGadget = BoweHopwoodPedersenCommitmentGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, 32, 48>;
 
     for _ in 0..ITERATIONS {
@@ -88,7 +88,7 @@ fn bhp_commitment_gadget_test() {
 
 #[test]
 fn bhp_compressed_commitment_gadget_test() {
-    type TestCommitment = BoweHopwoodPedersenCompressedCommitment<EdwardsProjective, 32, 48>;
+    type TestCommitment = BHPCompressedCommitmentScheme<EdwardsProjective, 32, 48>;
     type TestCommitmentGadget =
         BoweHopwoodPedersenCompressedCommitmentGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, 32, 48>;
 

@@ -20,7 +20,7 @@ use crate::{
     traits::{algorithms::CommitmentGadget, alloc::AllocGadget, curves::CompressedGroupGadget},
 };
 use snarkvm_algorithms::{
-    commitment::{BoweHopwoodPedersenCommitment, BoweHopwoodPedersenCompressedCommitment},
+    commitment::{BHPCommitmentScheme, BHPCompressedCommitmentScheme},
     CommitmentScheme,
 };
 use snarkvm_curves::ProjectiveCurve;
@@ -47,18 +47,18 @@ impl<
     GG: CompressedGroupGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
-> AllocGadget<BoweHopwoodPedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+> AllocGadget<BHPCompressedCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for BoweHopwoodPedersenCompressedCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BoweHopwoodPedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCompressedCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let bhp: BoweHopwoodPedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
+        let bhp: BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
         Ok(Self {
             bhp_commitment_gadget: BoweHopwoodPedersenCommitmentGadget::alloc(cs, || Ok(bhp))?,
         })
@@ -66,13 +66,13 @@ impl<
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BoweHopwoodPedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCompressedCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let bhp: BoweHopwoodPedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
+        let bhp: BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
         Ok(Self {
             bhp_commitment_gadget: BoweHopwoodPedersenCommitmentGadget::alloc_input(cs, || Ok(bhp))?,
         })
@@ -85,7 +85,7 @@ impl<
     GG: CompressedGroupGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
-> CommitmentGadget<BoweHopwoodPedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+> CommitmentGadget<BHPCompressedCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for BoweHopwoodPedersenCompressedCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     type OutputGadget = GG::BaseFieldGadget;
