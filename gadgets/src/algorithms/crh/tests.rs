@@ -17,7 +17,7 @@
 use rand::{thread_rng, Rng};
 
 use snarkvm_algorithms::{
-    crh::{BoweHopwoodPedersenCRH, BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH},
+    crh::{BHPCompressedCRH, PedersenCRH, PedersenCompressedCRH, BHPCRH},
     CRH,
 };
 use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective};
@@ -191,7 +191,7 @@ mod pedersen_compressed_crh_gadget_on_projective {
 mod bowe_hopwood_pedersen_crh_gadget_on_projective {
     use super::*;
 
-    type TestCRH = BoweHopwoodPedersenCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
+    type TestCRH = BHPCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
     type TestCRHGadget =
         BoweHopwoodPedersenCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
 
@@ -204,7 +204,7 @@ mod bowe_hopwood_pedersen_crh_gadget_on_projective {
 mod bowe_hopwood_pedersen_compressed_crh_gadget_on_projective {
     use super::*;
 
-    type TestCRH = BoweHopwoodPedersenCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
+    type TestCRH = BHPCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
     type TestCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<
         EdwardsProjective,
         Fr,

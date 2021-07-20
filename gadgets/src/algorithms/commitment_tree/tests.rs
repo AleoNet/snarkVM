@@ -20,7 +20,7 @@ use rand_xorshift::XorShiftRng;
 use snarkvm_algorithms::{
     commitment::PedersenCompressedCommitment,
     commitment_tree::*,
-    crh::BoweHopwoodPedersenCompressedCRH,
+    crh::BHPCompressedCRH,
     traits::{CommitmentScheme, CRH},
 };
 use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective as EdwardsBls};
@@ -47,7 +47,7 @@ const CRH_WINDOW_SIZE: usize = 32;
 const COMMITMENT_NUM_WINDOWS: usize = 8;
 const COMMITMENT_WINDOW_SIZE: usize = 32;
 
-pub type H = BoweHopwoodPedersenCompressedCRH<EdwardsBls, CRH_NUM_WINDOWS, CRH_WINDOW_SIZE>;
+pub type H = BHPCompressedCRH<EdwardsBls, CRH_NUM_WINDOWS, CRH_WINDOW_SIZE>;
 pub type HG =
     BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Fr, EdwardsBls12Gadget, CRH_NUM_WINDOWS, CRH_WINDOW_SIZE>;
 

@@ -19,7 +19,7 @@ use crate::{
     integers::uint::UInt8,
     traits::{algorithms::CRHGadget, alloc::AllocGadget, curves::CurveGadget, integers::Integer},
 };
-use snarkvm_algorithms::crh::{BoweHopwoodPedersenCRH, BOWE_HOPWOOD_CHUNK_SIZE};
+use snarkvm_algorithms::crh::{BHPCRH, BOWE_HOPWOOD_CHUNK_SIZE};
 use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -34,19 +34,19 @@ pub struct BoweHopwoodPedersenCRHGadget<
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
 > {
-    pub(crate) crh: BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
+    pub(crate) crh: BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
     _field: PhantomData<F>,
     _group: PhantomData<GG>,
 }
 
 // TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
 impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    AllocGadget<BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+    AllocGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for BoweHopwoodPedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -61,7 +61,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -76,7 +76,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
 }
 
 impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    CRHGadget<BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+    CRHGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for BoweHopwoodPedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     type OutputGadget = GG;

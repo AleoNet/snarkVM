@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{crh::BoweHopwoodPedersenCRH, hash_to_curve::hash_to_curve, CommitmentError, CommitmentScheme, CRH};
+use crate::{crh::BHPCRH, hash_to_curve::hash_to_curve, CommitmentError, CommitmentScheme, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::{BitIteratorLE, FromBytes, ToBytes};
@@ -26,7 +26,7 @@ use std::{
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoweHopwoodPedersenCommitment<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
-    pub bhp_crh: BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
+    pub bhp_crh: BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
     pub random_base: Vec<G>,
 }
 
@@ -39,7 +39,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
 
     fn setup(message: &str) -> Self {
         // First, compute the bases.
-        let bhp = BoweHopwoodPedersenCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(message).into();
+        let bhp = BHPCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(message).into();
 
         // Next, compute the random base.
         let random_base_message = format!("{} for random base", message);
@@ -116,7 +116,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
 {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let bhp = BoweHopwoodPedersenCRH::read_le(&mut reader)?;
+        let bhp = BHPCRH::read_le(&mut reader)?;
 
         let random_base_len: u32 = FromBytes::read_le(&mut reader)?;
         let mut random_base = Vec::with_capacity(random_base_len as usize);

@@ -26,7 +26,7 @@ use crate::{
 };
 use snarkvm_algorithms::{
     commitment::{Blake2sCommitment, PedersenCompressedCommitment},
-    crh::BoweHopwoodPedersenCompressedCRH,
+    crh::BHPCompressedCRH,
     crypto_hash::PoseidonCryptoHash,
     define_merkle_tree_parameters,
     encryption::GroupEncryption,
@@ -105,7 +105,7 @@ impl Parameters for Testnet1Parameters {
     type AccountSignatureGadget = SchnorrGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
 
-    type EncryptedRecordCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 48, 44>;
+    type EncryptedRecordCRH = BHPCompressedCRH<EdwardsBls12, 48, 44>;
     type EncryptedRecordCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 44>;
     type EncryptedRecordDigest = <Self::EncryptedRecordCRH as CRH>::Output;
 
@@ -119,7 +119,7 @@ impl Parameters for Testnet1Parameters {
     type LocalDataCommitmentScheme = PedersenCompressedCommitment<EdwardsBls12, 8, 162>;
     type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 162>;
 
-    type LocalDataCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 16, 32>;
+    type LocalDataCRH = BHPCompressedCRH<EdwardsBls12, 16, 32>;
     type LocalDataCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
     type LocalDataDigest = <Self::LocalDataCRH as CRH>::Output;
 
@@ -137,12 +137,12 @@ impl Parameters for Testnet1Parameters {
     type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 233>;
     type RecordCommitment = <Self::RecordCommitmentScheme as CommitmentScheme>::Output;
 
-    type RecordCommitmentTreeCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 8, 32>;
+    type RecordCommitmentTreeCRH = BHPCompressedCRH<EdwardsBls12, 8, 32>;
     type RecordCommitmentTreeCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
     type RecordCommitmentTreeDigest = <Self::RecordCommitmentTreeCRH as CRH>::Output;
     type RecordCommitmentTreeParameters = CommitmentMerkleTreeParameters;
 
-    type SerialNumberNonceCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBls12, 32, 63>;
+    type SerialNumberNonceCRH = BHPCompressedCRH<EdwardsBls12, 32, 63>;
     type SerialNumberNonceCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
 
     dpc_setup!{account_commitment_scheme, ACCOUNT_COMMITMENT_SCHEME, AccountCommitmentScheme, ACCOUNT_COMMITMENT_INPUT} // TODO (howardwu): Rename to "AleoAccountCommitmentScheme0".

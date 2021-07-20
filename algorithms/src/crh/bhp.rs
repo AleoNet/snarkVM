@@ -37,13 +37,13 @@ pub const BOWE_HOPWOOD_CHUNK_SIZE: usize = 3;
 pub const BOWE_HOPWOOD_LOOKUP_SIZE: usize = 2usize.pow(BOWE_HOPWOOD_CHUNK_SIZE as u32);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BoweHopwoodPedersenCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct BHPCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub bases: Vec<Vec<G>>,
     base_lookup: OnceCell<Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>>>,
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
-    for BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Output = G::Affine;
     type Parameters = Vec<Vec<G>>;
@@ -157,9 +157,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     }
 }
 
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
-{
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE> {
     pub fn create_generators(message: &str) -> Vec<Vec<G>> {
         let mut generators = Vec::with_capacity(NUM_WINDOWS);
         for index in 0..NUM_WINDOWS {
@@ -212,7 +210,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<Vec<Vec<G>>>
-    for BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn from(bases: Vec<Vec<G>>) -> Self {
         Self {
@@ -223,7 +221,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
-    for BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (self.bases.len() as u32).write_le(&mut writer)?;
@@ -238,7 +236,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToB
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
-    for BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -264,7 +262,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
 }
 
 impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    ToConstraintField<F> for BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+    ToConstraintField<F> for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
@@ -282,8 +280,7 @@ mod tests {
 
     #[test]
     fn test_bhp_sanity_check() {
-        let crh =
-            <BoweHopwoodPedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup("test_bowe_pedersen");
+        let crh = <BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup("test_bowe_pedersen");
         let input = vec![127u8; 32];
 
         let output = crh.hash(&input).unwrap();

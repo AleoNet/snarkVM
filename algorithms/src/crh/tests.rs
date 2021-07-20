@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crh::{BoweHopwoodPedersenCRH, BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH},
+    crh::{BHPCompressedCRH, PedersenCRH, PedersenCompressedCRH, BHPCRH},
     traits::CRH,
 };
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
@@ -45,17 +45,16 @@ fn pedersen_compressed_crh_serialization() {
 
 #[test]
 fn bowe_hopwood_crh_serialization() {
-    crh_serialization::<BoweHopwoodPedersenCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>>();
+    crh_serialization::<BHPCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>>();
 }
 
 #[test]
 fn bowe_hopwood_compressed_crh_serialization() {
-    crh_serialization::<BoweHopwoodPedersenCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>>();
+    crh_serialization::<BHPCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>>();
 }
 
 #[test]
 fn simple_bowe_hopwood_crh() {
-    let crh =
-        BoweHopwoodPedersenCRH::<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>::setup("simple_bowe_hopwood_crh");
+    let crh = BHPCRH::<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>::setup("simple_bowe_hopwood_crh");
     crh.hash(&[1, 2, 3]).unwrap();
 }

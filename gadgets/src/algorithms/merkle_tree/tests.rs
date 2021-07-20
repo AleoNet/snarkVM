@@ -19,7 +19,7 @@ use std::sync::Arc;
 use blake2::{digest::Digest, Blake2s};
 
 use snarkvm_algorithms::{
-    crh::{BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH},
+    crh::{BHPCompressedCRH, PedersenCRH, PedersenCompressedCRH},
     define_masked_merkle_tree_parameters,
     merkle_tree::MerkleTree,
     traits::{MaskedMerkleParameters, MerkleParameters, CRH},
@@ -349,7 +349,7 @@ mod merkle_tree_bowe_hopwood_pedersen_compressed_crh_on_projective {
 
     define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
 
-    type H = BoweHopwoodPedersenCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
+    type H = BHPCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
     type HG = BoweHopwoodPedersenCompressedCRHGadget<
         EdwardsProjective,
         Fr,
