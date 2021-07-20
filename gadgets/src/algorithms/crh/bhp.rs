@@ -27,7 +27,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BoweHopwoodPedersenCRHGadget<
+pub struct BHPCRHGadget<
     G: ProjectiveCurve,
     F: PrimeField,
     GG: CurveGadget<G, F>,
@@ -41,8 +41,7 @@ pub struct BoweHopwoodPedersenCRHGadget<
 
 // TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
 impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    AllocGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
-    for BoweHopwoodPedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+    AllocGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
@@ -76,8 +75,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
 }
 
 impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    CRHGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
-    for BoweHopwoodPedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+    CRHGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     type OutputGadget = GG;
 

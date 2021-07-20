@@ -31,7 +31,7 @@ use snarkvm_utilities::ToBytes;
 
 use crate::{
     algorithms::{
-        crh::{BoweHopwoodPedersenCompressedCRHGadget, PedersenCRHGadget, PedersenCompressedCRHGadget},
+        crh::{BHPCompressedCRHGadget, PedersenCRHGadget, PedersenCompressedCRHGadget},
         merkle_tree::*,
     },
     curves::edwards_bls12::EdwardsBls12Gadget,
@@ -350,13 +350,7 @@ mod merkle_tree_bowe_hopwood_pedersen_compressed_crh_on_projective {
     define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
 
     type H = BHPCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
-    type HG = BoweHopwoodPedersenCompressedCRHGadget<
-        EdwardsProjective,
-        Fr,
-        EdwardsBls12Gadget,
-        BHP_NUM_WINDOWS,
-        BHP_WINDOW_SIZE,
-    >;
+    type HG = BHPCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
 
     #[test]
     fn good_root_test() {

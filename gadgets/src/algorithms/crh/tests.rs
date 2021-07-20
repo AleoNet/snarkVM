@@ -25,12 +25,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
 use crate::{
-    algorithms::crh::{
-        BoweHopwoodPedersenCRHGadget,
-        BoweHopwoodPedersenCompressedCRHGadget,
-        PedersenCRHGadget,
-        PedersenCompressedCRHGadget,
-    },
+    algorithms::crh::{BHPCRHGadget, BHPCompressedCRHGadget, PedersenCRHGadget, PedersenCompressedCRHGadget},
     curves::edwards_bls12::EdwardsBls12Gadget,
     integers::uint::UInt8,
     traits::{
@@ -192,8 +187,7 @@ mod bowe_hopwood_pedersen_crh_gadget_on_projective {
     use super::*;
 
     type TestCRH = BHPCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
-    type TestCRHGadget =
-        BoweHopwoodPedersenCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
+    type TestCRHGadget = BHPCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
 
     #[test]
     fn primitive_gadget_test() {
@@ -205,13 +199,8 @@ mod bowe_hopwood_pedersen_compressed_crh_gadget_on_projective {
     use super::*;
 
     type TestCRH = BHPCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
-    type TestCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<
-        EdwardsProjective,
-        Fr,
-        EdwardsBls12Gadget,
-        BHP_NUM_WINDOWS,
-        BHP_WINDOW_SIZE,
-    >;
+    type TestCRHGadget =
+        BHPCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
 
     #[test]
     fn primitive_gadget_test() {

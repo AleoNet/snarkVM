@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    algorithms::crh::BoweHopwoodPedersenCRHGadget,
+    algorithms::crh::BHPCRHGadget,
     integers::uint::UInt8,
     traits::{
         algorithms::{CRHGadget, CommitmentGadget},
@@ -61,7 +61,7 @@ pub struct BoweHopwoodPedersenCommitmentGadget<
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
 > {
-    bhp_crh_gadget: BoweHopwoodPedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>,
+    bhp_crh_gadget: BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>,
     random_base: Vec<G>,
 }
 
@@ -80,7 +80,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
     ) -> Result<Self, SynthesisError> {
         let bhp: BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
         Ok(Self {
-            bhp_crh_gadget: BoweHopwoodPedersenCRHGadget::alloc(cs, || Ok(bhp.bhp_crh.clone()))?,
+            bhp_crh_gadget: BHPCRHGadget::alloc(cs, || Ok(bhp.bhp_crh.clone()))?,
             random_base: bhp.random_base,
         })
     }
@@ -95,7 +95,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
     ) -> Result<Self, SynthesisError> {
         let bhp: BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
         Ok(Self {
-            bhp_crh_gadget: BoweHopwoodPedersenCRHGadget::alloc_input(cs, || Ok(bhp.bhp_crh.clone()))?,
+            bhp_crh_gadget: BHPCRHGadget::alloc_input(cs, || Ok(bhp.bhp_crh.clone()))?,
             random_base: bhp.random_base,
         })
     }

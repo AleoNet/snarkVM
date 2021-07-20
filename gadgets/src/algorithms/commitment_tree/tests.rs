@@ -29,11 +29,7 @@ use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::rand::UniformRand;
 
 use crate::{
-    algorithms::{
-        commitment::PedersenCompressedCommitmentGadget,
-        commitment_tree::*,
-        crh::BoweHopwoodPedersenCompressedCRHGadget,
-    },
+    algorithms::{commitment::PedersenCompressedCommitmentGadget, commitment_tree::*, crh::BHPCompressedCRHGadget},
     curves::edwards_bls12::EdwardsBls12Gadget,
     traits::{
         algorithms::{CRHGadget, CommitmentGadget},
@@ -48,8 +44,7 @@ const COMMITMENT_NUM_WINDOWS: usize = 8;
 const COMMITMENT_WINDOW_SIZE: usize = 32;
 
 pub type H = BHPCompressedCRH<EdwardsBls, CRH_NUM_WINDOWS, CRH_WINDOW_SIZE>;
-pub type HG =
-    BoweHopwoodPedersenCompressedCRHGadget<EdwardsBls, Fr, EdwardsBls12Gadget, CRH_NUM_WINDOWS, CRH_WINDOW_SIZE>;
+pub type HG = BHPCompressedCRHGadget<EdwardsBls, Fr, EdwardsBls12Gadget, CRH_NUM_WINDOWS, CRH_WINDOW_SIZE>;
 
 pub type C = PedersenCompressedCommitment<EdwardsBls, COMMITMENT_NUM_WINDOWS, COMMITMENT_WINDOW_SIZE>;
 pub type CG = PedersenCompressedCommitmentGadget<
