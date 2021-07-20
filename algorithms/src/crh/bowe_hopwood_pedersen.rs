@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{crh::PedersenCRH, hash_to_curve::hash_to_curve, CRHError, CRH};
+use crate::{hash_to_curve::hash_to_curve, CRHError, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::{BigInteger, FromBytes, ToBytes};
@@ -38,7 +38,7 @@ pub const BOWE_HOPWOOD_LOOKUP_SIZE: usize = 2usize.pow(BOWE_HOPWOOD_CHUNK_SIZE a
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoweHopwoodPedersenCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
-    pub crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
+    pub bases: Vec<Vec<G>>,
     base_lookup: OnceCell<Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>>>,
 }
 
@@ -46,9 +46,9 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     for BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Output = G::Affine;
-    type Parameters = PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>;
+    type Parameters = Vec<Vec<G>>;
 
-    const INPUT_SIZE_BITS: usize = PedersenCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::INPUT_SIZE_BITS;
+    const INPUT_SIZE_BITS: usize = WINDOW_SIZE * NUM_WINDOWS;
 
     fn setup(message: &str) -> Self {
         fn calculate_num_chunks_in_segment<F: PrimeField>() -> usize {
@@ -66,7 +66,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         let maximum_num_chunks_in_segment = calculate_num_chunks_in_segment::<G::ScalarField>();
         if WINDOW_SIZE > maximum_num_chunks_in_segment {
             panic!(
-                "Bowe-Hopwood hash must have a window size resulting in scalars < (p-1)/2, \
+                "BHP CRH must have a window size resulting in scalars < (p-1)/2, \
                  maximum segment size is {}",
                 maximum_num_chunks_in_segment
             );
@@ -82,13 +82,13 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         end_timer!(time);
 
         Self {
-            crh: bases.into(),
+            bases,
             base_lookup: OnceCell::new(),
         }
     }
 
     fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
-        let eval_time = start_timer!(|| "BoweHopwoodPedersenCRH::Eval");
+        let eval_time = start_timer!(|| "BoweHopwoodPedersenCRH::hash");
 
         if (input.len() * 8) > WINDOW_SIZE * NUM_WINDOWS {
             return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
@@ -109,19 +109,19 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         assert_eq!(bit_len % BOWE_HOPWOOD_CHUNK_SIZE, 0);
 
         assert_eq!(
-            self.crh.bases.len(),
+            self.bases.len(),
             NUM_WINDOWS,
-            "Incorrect pp of size {:?} for window params {:?}x{:?}x{}",
-            self.crh.bases.len(),
+            "Incorrect number of windows ({:?}) for BHP of {:?}x{:?}x{}",
+            self.bases.len(),
             WINDOW_SIZE,
             NUM_WINDOWS,
             BOWE_HOPWOOD_CHUNK_SIZE,
         );
-        assert_eq!(self.crh.bases.len(), NUM_WINDOWS);
-        for bases in self.crh.bases.iter() {
+        assert_eq!(self.bases.len(), NUM_WINDOWS);
+        for bases in self.bases.iter() {
             assert_eq!(bases.len(), WINDOW_SIZE);
         }
-        let base_lookup = self.base_lookup(&self.crh);
+        let base_lookup = self.base_lookup(&self.bases);
         assert_eq!(base_lookup.len(), NUM_WINDOWS);
         for bases in base_lookup.iter() {
             assert_eq!(bases.len(), WINDOW_SIZE);
@@ -153,7 +153,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     }
 
     fn parameters(&self) -> &Self::Parameters {
-        &self.crh
+        &self.bases
     }
 }
 
@@ -180,13 +180,10 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
         generators
     }
 
-    pub fn base_lookup(
-        &self,
-        input: &PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
-    ) -> &Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>> {
+    pub fn base_lookup(&self, bases: &Vec<Vec<G>>) -> &Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>> {
         self.base_lookup
             .get_or_try_init::<_, ()>(|| {
-                Ok(cfg_iter!(input.bases)
+                Ok(cfg_iter!(bases)
                     .map(|x| {
                         x.iter()
                             .map(|g| {
@@ -214,23 +211,12 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     }
 }
 
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    From<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>> for BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    fn from(crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>) -> Self {
-        Self {
-            crh,
-            base_lookup: OnceCell::new(),
-        }
-    }
-}
-
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<Vec<Vec<G>>>
     for BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn from(bases: Vec<Vec<G>>) -> Self {
         Self {
-            crh: bases.into(),
+            bases,
             base_lookup: OnceCell::new(),
         }
     }
@@ -239,8 +225,15 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
     for BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.crh.write_le(writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.bases.len() as u32).write_le(&mut writer)?;
+        for base in &self.bases {
+            (base.len() as u32).write_le(&mut writer)?;
+            for g in base {
+                g.write_le(&mut writer)?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -248,8 +241,25 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
     for BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
-    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
-        Ok(PedersenCRH::read_le(reader)?.into())
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let num_bases: u32 = FromBytes::read_le(&mut reader)?;
+        let mut bases = Vec::with_capacity(num_bases as usize);
+
+        for _ in 0..num_bases {
+            let base_len: u32 = FromBytes::read_le(&mut reader)?;
+            let mut base = Vec::with_capacity(base_len as usize);
+
+            for _ in 0..base_len {
+                let g: G = FromBytes::read_le(&mut reader)?;
+                base.push(g);
+            }
+            bases.push(base);
+        }
+
+        Ok(Self {
+            bases,
+            base_lookup: OnceCell::new(),
+        })
     }
 }
 
@@ -258,7 +268,7 @@ impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usi
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        self.crh.to_field_elements()
+        Ok(Vec::new())
     }
 }
 
@@ -271,7 +281,7 @@ mod tests {
     const WINDOW_SIZE: usize = 32;
 
     #[test]
-    fn test_bowe_pedersen() {
+    fn test_bhp_sanity_check() {
         let crh =
             <BoweHopwoodPedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup("test_bowe_pedersen");
         let input = vec![127u8; 32];
