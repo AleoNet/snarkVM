@@ -27,6 +27,7 @@ use crate::{
 use snarkvm_algorithms::{
     commitment::{Blake2sCommitment, PedersenCompressedCommitment},
     crh::BoweHopwoodPedersenCompressedCRH,
+    crypto_hash::PoseidonCryptoHash,
     define_merkle_tree_parameters,
     encryption::GroupEncryption,
     prelude::*,
@@ -38,19 +39,19 @@ use snarkvm_curves::{
     bls12_377::Bls12_377,
     bw6_761::BW6_761,
     edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls12},
-    edwards_bw6::EdwardsProjective as EdwardsBW6,
     PairingEngine,
 };
 use snarkvm_gadgets::{
     algorithms::{
         commitment::{Blake2sCommitmentGadget, PedersenCompressedCommitmentGadget},
         crh::BoweHopwoodPedersenCompressedCRHGadget,
+        crypto_hash::PoseidonCryptoHashGadget,
         encryption::GroupEncryptionGadget,
         prf::Blake2sGadget,
         signature::SchnorrGadget,
         snark::{GM17VerifierGadget, Groth16VerifierGadget},
     },
-    curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
+    curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget},
 };
 
 use once_cell::sync::OnceCell;
@@ -112,8 +113,8 @@ impl Parameters for Testnet1Parameters {
     type EncryptionGroupGadget = EdwardsBls12Gadget;
     type EncryptionParameters = EdwardsParameters;
 
-    type InnerCircuitIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBW6, 304, 64>;
-    type InnerCircuitIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 304, 64>;
+    type InnerCircuitIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
+    type InnerCircuitIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
 
     type LocalDataCommitmentScheme = PedersenCompressedCommitment<EdwardsBls12, 8, 162>;
     type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 162>;
@@ -129,8 +130,8 @@ impl Parameters for Testnet1Parameters {
     type ProgramCommitmentGadget = Blake2sCommitmentGadget;
     type ProgramCommitment = <Self::ProgramCommitmentScheme as CommitmentScheme>::Output;
 
-    type ProgramIDCRH = BoweHopwoodPedersenCompressedCRH<EdwardsBW6, 144, 63>;
-    type ProgramIDCRHGadget = BoweHopwoodPedersenCompressedCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 144, 63>;
+    type ProgramIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
+    type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
 
     type RecordCommitmentScheme = PedersenCompressedCommitment<EdwardsBls12, 8, 233>;
     type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 233>;
