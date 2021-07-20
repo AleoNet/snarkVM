@@ -26,7 +26,7 @@ use std::{
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoweHopwoodPedersenCommitment<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
-    pub bhp: BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
+    pub bhp_crh: BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
     pub random_base: Vec<G>,
 }
 
@@ -51,7 +51,10 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
             base.double_in_place();
         }
 
-        Self { bhp, random_base }
+        Self {
+            bhp_crh: bhp,
+            random_base,
+        }
     }
 
     fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
@@ -64,7 +67,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
             ));
         }
 
-        let mut output = self.bhp.hash(&input)?.into_projective();
+        let mut output = self.bhp_crh.hash(&input)?.into_projective();
 
         // Compute h^r.
         let scalar_bits = BitIteratorLE::new(randomness.to_repr());
@@ -78,7 +81,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
     }
 
     fn parameters(&self) -> Self::Parameters {
-        (self.bhp.bases.clone(), self.random_base.clone())
+        (self.bhp_crh.bases.clone(), self.random_base.clone())
     }
 }
 
@@ -87,7 +90,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
 {
     fn from((bases, random_base): (Vec<Vec<G>>, Vec<G>)) -> Self {
         Self {
-            bhp: bases.into(),
+            bhp_crh: bases.into(),
             random_base,
         }
     }
@@ -97,7 +100,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToB
     for BoweHopwoodPedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.bhp.write_le(&mut writer)?;
+        self.bhp_crh.write_le(&mut writer)?;
 
         (self.random_base.len() as u32).write_le(&mut writer)?;
         for g in &self.random_base {
@@ -122,7 +125,10 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
             random_base.push(g);
         }
 
-        Ok(Self { bhp, random_base })
+        Ok(Self {
+            bhp_crh: bhp,
+            random_base,
+        })
     }
 }
 

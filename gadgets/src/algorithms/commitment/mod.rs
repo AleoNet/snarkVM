@@ -17,6 +17,12 @@
 pub mod blake2s;
 pub use blake2s::*;
 
+pub mod bowe_hopwood_pedersen;
+pub use bowe_hopwood_pedersen::*;
+
+pub mod bowe_hopwood_pedersen_compressed;
+pub use bowe_hopwood_pedersen_compressed::*;
+
 pub mod pedersen;
 pub use pedersen::*;
 

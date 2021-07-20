@@ -21,7 +21,7 @@ use crate::{
     traits::{algorithms::CommitmentGadget, alloc::AllocGadget, FieldGadget},
 };
 use snarkvm_algorithms::{
-    commitment::{Blake2sCommitment, PedersenCommitment},
+    commitment::{Blake2sCommitment, BoweHopwoodPedersenCommitment, PedersenCommitment},
     traits::CommitmentScheme,
 };
 use snarkvm_curves::edwards_bls12::{EdwardsProjective, Fq, Fr};
@@ -84,6 +84,47 @@ fn pedersen_commitment_gadget_test() {
     let input = [1u8; 4];
     let randomness = Fr::rand(rng);
     let commitment = TestCommitment::setup("pedersen_commitment_gadget_test");
+    let native_output = commitment.commit(&input, &randomness).unwrap();
+
+    let mut input_bytes = vec![];
+    for (byte_i, input_byte) in input.iter().enumerate() {
+        let cs = cs.ns(|| format!("input_byte_gadget_{}", byte_i));
+        input_bytes.push(UInt8::alloc(cs, || Ok(*input_byte)).unwrap());
+    }
+
+    let randomness_gadget = <TestCommitmentGadget as CommitmentGadget<TestCommitment, Fq>>::RandomnessGadget::alloc(
+        &mut cs.ns(|| "randomness_gadget"),
+        || Ok(&randomness),
+    )
+    .unwrap();
+    let commitment_gadget =
+        TestCommitmentGadget::alloc(&mut cs.ns(|| "parameters_gadget"), || Ok(&commitment)).unwrap();
+    let output_gadget = commitment_gadget
+        .check_commitment_gadget(&mut cs.ns(|| "commitment_gadget"), &input_bytes, &randomness_gadget)
+        .unwrap();
+
+    let native_output = native_output;
+    assert_eq!(native_output.x, output_gadget.x.get_value().unwrap());
+    assert_eq!(native_output.y, output_gadget.y.get_value().unwrap());
+    assert!(cs.is_satisfied());
+}
+
+#[test]
+fn bhp_commitment_gadget_test() {
+    let mut cs = TestConstraintSystem::<Fq>::new();
+
+    const NUM_WINDOWS: usize = 32;
+    const WINDOW_SIZE: usize = 48;
+
+    type TestCommitment = BoweHopwoodPedersenCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE>;
+    type TestCommitmentGadget =
+        BoweHopwoodPedersenCommitmentGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, NUM_WINDOWS, WINDOW_SIZE>;
+
+    let rng = &mut thread_rng();
+
+    let input = [5u8; 32];
+    let randomness = Fr::rand(rng);
+    let commitment = TestCommitment::setup("bhp_commitment_gadget_test");
     let native_output = commitment.commit(&input, &randomness).unwrap();
 
     let mut input_bytes = vec![];
