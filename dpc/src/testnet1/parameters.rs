@@ -94,8 +94,8 @@ impl Parameters for Testnet1Parameters {
     type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Testnet1Parameters>>;
     type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet1Parameters>>;
 
-    type AccountCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 25, 63>;
-    type AccountCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 25, 63>;
+    type AccountCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 33, 48>;
+    type AccountCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 33, 48>;
     type AccountCommitment = <Self::AccountCommitmentScheme as CommitmentScheme>::Output;
 
     type AccountEncryptionScheme = GroupEncryption<EdwardsBls12>;
@@ -116,8 +116,8 @@ impl Parameters for Testnet1Parameters {
     type InnerCircuitIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type InnerCircuitIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
 
-    type LocalDataCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 21, 63>;
-    type LocalDataCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 21, 63>;
+    type LocalDataCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 24, 62>;
+    type LocalDataCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 24, 62>;
 
     type LocalDataCRH = BHPCompressedCRH<EdwardsBls12, 16, 32>;
     type LocalDataCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
@@ -133,8 +133,8 @@ impl Parameters for Testnet1Parameters {
     type ProgramIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
 
-    type RecordCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 30, 63>;
-    type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 30, 63>;
+    type RecordCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 32, 62>;
+    type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 62>;
     type RecordCommitment = <Self::RecordCommitmentScheme as CommitmentScheme>::Output;
 
     type RecordCommitmentTreeCRH = BHPCompressedCRH<EdwardsBls12, 8, 32>;
