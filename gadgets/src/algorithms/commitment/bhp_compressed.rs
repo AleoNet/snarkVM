@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    algorithms::commitment::{BHPRandomnessGadget, BoweHopwoodPedersenCommitmentGadget},
+    algorithms::commitment::{BHPCommitmentGadget, BHPRandomnessGadget},
     integers::uint::UInt8,
     traits::{algorithms::CommitmentGadget, alloc::AllocGadget, curves::CompressedGroupGadget},
 };
@@ -30,14 +30,14 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use std::borrow::Borrow;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BoweHopwoodPedersenCompressedCommitmentGadget<
+pub struct BHPCompressedCommitmentGadget<
     G: ProjectiveCurve,
     F: PrimeField,
     GG: CompressedGroupGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
 > {
-    bhp_commitment_gadget: BoweHopwoodPedersenCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>,
+    bhp_commitment_gadget: BHPCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
 // TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
@@ -48,7 +48,7 @@ impl<
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
 > AllocGadget<BHPCompressedCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>, F>
-    for BoweHopwoodPedersenCompressedCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCompressedCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
@@ -60,7 +60,7 @@ impl<
     ) -> Result<Self, SynthesisError> {
         let bhp: BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
         Ok(Self {
-            bhp_commitment_gadget: BoweHopwoodPedersenCommitmentGadget::alloc(cs, || Ok(bhp))?,
+            bhp_commitment_gadget: BHPCommitmentGadget::alloc(cs, || Ok(bhp))?,
         })
     }
 
@@ -74,7 +74,7 @@ impl<
     ) -> Result<Self, SynthesisError> {
         let bhp: BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
         Ok(Self {
-            bhp_commitment_gadget: BoweHopwoodPedersenCommitmentGadget::alloc_input(cs, || Ok(bhp))?,
+            bhp_commitment_gadget: BHPCommitmentGadget::alloc_input(cs, || Ok(bhp))?,
         })
     }
 }
@@ -86,7 +86,7 @@ impl<
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
 > CommitmentGadget<BHPCompressedCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>, F>
-    for BoweHopwoodPedersenCompressedCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCompressedCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     type OutputGadget = GG::BaseFieldGadget;
     type RandomnessGadget = BHPRandomnessGadget<G>;

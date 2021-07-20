@@ -54,7 +54,7 @@ impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for BHPRa
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BoweHopwoodPedersenCommitmentGadget<
+pub struct BHPCommitmentGadget<
     G: ProjectiveCurve,
     F: PrimeField,
     GG: CurveGadget<G, F>,
@@ -68,7 +68,7 @@ pub struct BoweHopwoodPedersenCommitmentGadget<
 // TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
 impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     AllocGadget<BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>, F>
-    for BoweHopwoodPedersenCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
@@ -103,7 +103,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
 
 impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     CommitmentGadget<BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>, F>
-    for BoweHopwoodPedersenCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     type OutputGadget = GG;
     type RandomnessGadget = BHPRandomnessGadget<G>;
