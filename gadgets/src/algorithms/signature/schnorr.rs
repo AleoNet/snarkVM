@@ -210,7 +210,22 @@ impl<G: ProjectiveCurve, F: PrimeField> ConditionalEqGadget<F> for SchnorrSignat
     }
 }
 
-impl<G: ProjectiveCurve, F: PrimeField> EqGadget<F> for SchnorrSignatureGadget<G, F> {}
+impl<G: ProjectiveCurve, F: PrimeField> EqGadget<F> for SchnorrSignatureGadget<G, F> {
+    fn is_eq<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
+        let prover_response_is_eq = self
+            .prover_response
+            .is_eq(cs.ns(|| "prover_response_is_eq"), &other.prover_response)?;
+        let verifier_challenge_is_eq = self
+            .verifier_challenge
+            .is_eq(cs.ns(|| "verifier_challenge_is_eq"), &other.verifier_challenge)?;
+
+        Boolean::and(
+            cs.ns(|| "signature_is_eq"),
+            &prover_response_is_eq,
+            &verifier_challenge_is_eq,
+        )
+    }
+}
 
 impl<G: ProjectiveCurve, F: PrimeField> ToBytesGadget<F> for SchnorrSignatureGadget<G, F> {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
