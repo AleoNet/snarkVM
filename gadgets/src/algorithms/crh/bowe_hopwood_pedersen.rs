@@ -15,20 +15,16 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    algorithms::crh::pedersen::PedersenCRHGadget,
     bits::Boolean,
     integers::uint::UInt8,
     traits::{algorithms::CRHGadget, alloc::AllocGadget, curves::CurveGadget, integers::Integer},
 };
-use snarkvm_algorithms::{
-    crh::{BoweHopwoodPedersenCRH, PedersenCRH, BOWE_HOPWOOD_CHUNK_SIZE},
-    CRH,
-};
+use snarkvm_algorithms::crh::{BoweHopwoodPedersenCRH, BOWE_HOPWOOD_CHUNK_SIZE};
 use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
-use std::borrow::Borrow;
+use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BoweHopwoodPedersenCRHGadget<
@@ -38,7 +34,9 @@ pub struct BoweHopwoodPedersenCRHGadget<
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
 > {
-    crh_gadget: PedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>,
+    pub(crate) crh: BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
+    _field: PhantomData<F>,
+    _group: PhantomData<GG>,
 }
 
 // TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
@@ -51,12 +49,13 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
         T: Borrow<BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
-        cs: CS,
+        _cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().clone().into();
         Ok(Self {
-            crh_gadget: PedersenCRHGadget::alloc(cs, || Ok(crh))?,
+            crh: value_gen()?.borrow().clone(),
+            _field: PhantomData,
+            _group: PhantomData,
         })
     }
 
@@ -65,12 +64,13 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
         T: Borrow<BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
-        cs: CS,
+        _cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().clone().into();
         Ok(Self {
-            crh_gadget: PedersenCRHGadget::alloc_input(cs, || Ok(crh))?,
+            crh: value_gen()?.borrow().clone(),
+            _field: PhantomData,
+            _group: PhantomData,
         })
     }
 }
@@ -86,7 +86,7 @@ impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS
         cs: CS,
         input: Vec<UInt8>,
     ) -> Result<Self::OutputGadget, SynthesisError> {
-        // Pad the input bytes
+        // Pad the input bytes.
         let mut padded_input_bytes = input;
         padded_input_bytes.resize(WINDOW_SIZE * NUM_WINDOWS / 8, UInt8::constant(0u8));
         assert_eq!(padded_input_bytes.len() * 8, WINDOW_SIZE * NUM_WINDOWS);
@@ -102,8 +102,8 @@ impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS
             input_in_bits.resize(target_length, Boolean::constant(false));
         }
         assert!(input_in_bits.len() % BOWE_HOPWOOD_CHUNK_SIZE == 0);
-        assert_eq!(self.crh_gadget.crh.bases.len(), NUM_WINDOWS);
-        for generators in self.crh_gadget.crh.bases.iter() {
+        assert_eq!(self.crh.bases.len(), NUM_WINDOWS);
+        for generators in self.crh.bases.iter() {
             assert_eq!(generators.len(), WINDOW_SIZE);
         }
 
@@ -112,8 +112,10 @@ impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS
             .chunks(WINDOW_SIZE * BOWE_HOPWOOD_CHUNK_SIZE)
             .map(|x| x.chunks(BOWE_HOPWOOD_CHUNK_SIZE));
 
-        let result = GG::three_bit_signed_digit_scalar_multiplication(cs, &self.crh_gadget.crh.bases, input_in_bits)?;
-
-        Ok(result)
+        Ok(GG::three_bit_signed_digit_scalar_multiplication(
+            cs,
+            &self.crh.bases,
+            input_in_bits,
+        )?)
     }
 }
