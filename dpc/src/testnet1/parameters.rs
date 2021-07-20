@@ -25,7 +25,7 @@ use crate::{
     Transaction,
 };
 use snarkvm_algorithms::{
-    commitment::{Blake2sCommitment, PedersenCompressedCommitment},
+    commitment::{BHPCompressedCommitment, Blake2sCommitment},
     crh::BHPCompressedCRH,
     crypto_hash::PoseidonCryptoHash,
     define_merkle_tree_parameters,
@@ -43,7 +43,7 @@ use snarkvm_curves::{
 };
 use snarkvm_gadgets::{
     algorithms::{
-        commitment::{Blake2sCommitmentGadget, PedersenCompressedCommitmentGadget},
+        commitment::{BHPCompressedCommitmentGadget, Blake2sCommitmentGadget},
         crh::BHPCompressedCRHGadget,
         crypto_hash::PoseidonCryptoHashGadget,
         encryption::GroupEncryptionGadget,
@@ -94,8 +94,8 @@ impl Parameters for Testnet1Parameters {
     type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Testnet1Parameters>>;
     type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet1Parameters>>;
 
-    type AccountCommitmentScheme = PedersenCompressedCommitment<EdwardsBls12, 8, 192>;
-    type AccountCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 192>;
+    type AccountCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 25, 63>;
+    type AccountCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 25, 63>;
     type AccountCommitment = <Self::AccountCommitmentScheme as CommitmentScheme>::Output;
 
     type AccountEncryptionScheme = GroupEncryption<EdwardsBls12>;
@@ -116,8 +116,8 @@ impl Parameters for Testnet1Parameters {
     type InnerCircuitIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type InnerCircuitIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
 
-    type LocalDataCommitmentScheme = PedersenCompressedCommitment<EdwardsBls12, 8, 162>;
-    type LocalDataCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 162>;
+    type LocalDataCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 21, 63>;
+    type LocalDataCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 21, 63>;
 
     type LocalDataCRH = BHPCompressedCRH<EdwardsBls12, 16, 32>;
     type LocalDataCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
@@ -133,8 +133,8 @@ impl Parameters for Testnet1Parameters {
     type ProgramIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
 
-    type RecordCommitmentScheme = PedersenCompressedCommitment<EdwardsBls12, 8, 233>;
-    type RecordCommitmentGadget = PedersenCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 233>;
+    type RecordCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 30, 63>;
+    type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 30, 63>;
     type RecordCommitment = <Self::RecordCommitmentScheme as CommitmentScheme>::Output;
 
     type RecordCommitmentTreeCRH = BHPCompressedCRH<EdwardsBls12, 8, 32>;

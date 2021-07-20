@@ -25,13 +25,13 @@ use std::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BHPCommitmentScheme<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct BHPCommitment<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub bhp_crh: BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
     pub random_base: Vec<G>,
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
-    for BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Output = G::Affine;
     type Parameters = (Vec<Vec<G>>, Vec<G>);
@@ -86,7 +86,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<(Vec<Vec<G>>, Vec<G>)>
-    for BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn from((bases, random_base): (Vec<Vec<G>>, Vec<G>)) -> Self {
         Self {
@@ -97,7 +97,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
-    for BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.bhp_crh.write_le(&mut writer)?;
@@ -112,7 +112,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToB
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
-    for BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>
+    for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -133,7 +133,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
 }
 
 impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    ToConstraintField<F> for BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>
+    ToConstraintField<F> for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {

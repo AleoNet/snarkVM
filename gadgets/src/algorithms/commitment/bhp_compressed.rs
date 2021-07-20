@@ -20,7 +20,7 @@ use crate::{
     traits::{algorithms::CommitmentGadget, alloc::AllocGadget, curves::CompressedGroupGadget},
 };
 use snarkvm_algorithms::{
-    commitment::{BHPCommitmentScheme, BHPCompressedCommitmentScheme},
+    commitment::{BHPCommitment, BHPCompressedCommitment},
     CommitmentScheme,
 };
 use snarkvm_curves::ProjectiveCurve;
@@ -47,18 +47,18 @@ impl<
     GG: CompressedGroupGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
-> AllocGadget<BHPCompressedCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+> AllocGadget<BHPCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for BHPCompressedCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BHPCompressedCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let bhp: BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
+        let bhp: BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
         Ok(Self {
             bhp_commitment_gadget: BHPCommitmentGadget::alloc(cs, || Ok(bhp))?,
         })
@@ -66,13 +66,13 @@ impl<
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BHPCompressedCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let bhp: BHPCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
+        let bhp: BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
         Ok(Self {
             bhp_commitment_gadget: BHPCommitmentGadget::alloc_input(cs, || Ok(bhp))?,
         })
@@ -85,7 +85,7 @@ impl<
     GG: CompressedGroupGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
-> CommitmentGadget<BHPCompressedCommitmentScheme<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+> CommitmentGadget<BHPCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for BHPCompressedCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     type OutputGadget = GG::BaseFieldGadget;
