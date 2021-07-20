@@ -33,7 +33,7 @@ use snarkvm_algorithms::{
     prelude::*,
     prf::Blake2s,
     signature::Schnorr,
-    snark::{gm17::GM17, groth16::Groth16},
+    snark::groth16::Groth16,
 };
 use snarkvm_curves::{
     bls12_377::Bls12_377,
@@ -49,7 +49,7 @@ use snarkvm_gadgets::{
         encryption::GroupEncryptionGadget,
         prf::Blake2sGadget,
         signature::SchnorrGadget,
-        snark::{GM17VerifierGadget, Groth16VerifierGadget},
+        snark::Groth16VerifierGadget,
     },
     curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget},
 };
@@ -167,6 +167,6 @@ impl Parameters for Testnet1Parameters {
 
 impl Testnet1Components for Testnet1Parameters {
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
-    type ProgramSNARK = GM17<Self::InnerCurve, ProgramLocalData<Self>>;
-    type ProgramSNARKGadget = GM17VerifierGadget<Self::InnerCurve, PairingGadget>;
+    type ProgramSNARK = Groth16<Self::InnerCurve, ProgramLocalData<Self>>;
+    type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
 }
