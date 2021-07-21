@@ -21,7 +21,7 @@
 //! proposed by Kate, Zaverucha, and Goldberg ([KZG11](http://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf)).
 //! This construction achieves extractability in the algebraic group model (AGM).
 
-use crate::{BTreeMap, Error, LabeledPolynomial, PCRandomness, Polynomial, ToString, Vec};
+use crate::{BTreeMap, Error, LabeledPolynomial, PCRandomness, Polynomial, ToString, Vec, PCSupportedBounds};
 use snarkvm_algorithms::{
     cfg_iter,
     msm::{FixedBaseMSM, VariableBaseMSM},
@@ -50,62 +50,132 @@ impl<E: PairingEngine> KZG10<E> {
     /// Constructs public parameters when given as input the maximum degree `degree`
     /// for the polynomial commitment scheme.
     pub fn setup<R: RngCore>(
-        max_degree: usize,
-        produce_g2_powers: bool,
+        config: &UniversalSetupConfig,
         rng: &mut R,
     ) -> Result<UniversalParams<E>, Error> {
+        let max_degree = config.supported_degree;
         if max_degree < 1 {
             return Err(Error::DegreeIsZero);
         }
         let setup_time = start_timer!(|| format!("KZG10::Setup with degree {}", max_degree));
+
+        // Sample secret parameters (aka toxic waste)
         let beta = E::Fr::rand(rng);
         let g = E::G1Projective::rand(rng);
         let gamma_g = E::G1Projective::rand(rng);
         let h = E::G2Projective::rand(rng);
 
+        // Precompute powers of beta in the scalar field
         let mut powers_of_beta = vec![E::Fr::one()];
-
         let mut cur = beta;
         for _ in 0..max_degree {
             powers_of_beta.push(cur);
             cur *= &beta;
         }
 
+        // Compute `powers_of_g` up to the `max_degree`
         let window_size = FixedBaseMSM::get_mul_window_size(max_degree + 1);
-
         let scalar_bits = E::Fr::size_in_bits();
         let g_time = start_timer!(|| "Generating powers of G");
         let g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, g);
         let powers_of_g =
             FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, window_size, &g_table, &powers_of_beta);
         end_timer!(g_time);
+        // Normalize them into affine representations
+        let powers_of_g = E::G1Projective::batch_normalization_into_affine(powers_of_g);
+
+        // Compute `powers_of_gamma_g` depending on the configuration
         let gamma_g_time = start_timer!(|| "Generating powers of gamma * G");
-        let gamma_g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, gamma_g);
-        let mut powers_of_gamma_g = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
-            scalar_bits,
-            window_size,
-            &gamma_g_table,
-            &powers_of_beta,
-        );
-        // Add an additional power of gamma_g, because we want to be able to support
-        // up to D queries.
-        powers_of_gamma_g.push(powers_of_gamma_g.last().unwrap().mul(beta));
+        let powers_of_gamma_g = match &config.supported_hiding_bounds {
+            PCSupportedBounds::Empty => {
+                PowersProvider::Empty
+            }
+            PCSupportedBounds::Range(range) => {
+                if range.start == 0 && (range.end == max_degree || range.end == max_degree + 1) {
+                    // reuse the `powers_of_beta`
+                    let gamma_g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, gamma_g);
+                    let mut powers_of_gamma_g = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
+                        scalar_bits,
+                        window_size,
+                        &gamma_g_table,
+                        &powers_of_beta,
+                    );
+                    if end == max_degree + 1 {
+                        // Add an additional power of gamma_g, because we want to be able to support
+                        // up to D queries.
+                        powers_of_gamma_g.push(powers_of_gamma_g.last().unwrap().mul(beta));
+                    }
+
+                    let powers_of_gamma_g = E::G1Projective::batch_normalization_into_affine(powers_of_gamma_g)
+                        .into_iter()
+                        .enumerate()
+                        .collect();
+
+                    PowersProvider::Range(powers_of_gamma_g)
+                } else {
+                    let mut powers_of_beta_for_hiding = powers_of_beta[range].into_vec();
+
+                    let window_size = FixedBaseMSM::get_mul_window_size(powers_of_beta_for_hiding.len());
+                    let gamma_g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, gamma_g);
+                    let powers_of_gamma_g = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
+                        scalar_bits,
+                        window_size,
+                        &gamma_g_table,
+                        &powers_of_beta,
+                    );
+                    let powers_of_gamma_g = E::G1Projective::batch_normalization_into_affine(powers_of_gamma_g)
+                        .into_iter()
+                        .enumerate()
+                        .collect();
+
+                    PowersProvider::Range(powers_of_gamma_g)
+                }
+            }
+            PCSupportedBounds::Subset(set) => {
+                let mut powers_of_beta_for_hiding = vec![];
+                for i in set.iter() {
+                    powers_of_beta_for_hiding.push(powers_of_beta[i]);
+                }
+
+                let window_size = FixedBaseMSM::get_mul_window_size(powers_of_beta_for_hiding.len());
+                let gamma_g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, gamma_g);
+                let powers_of_gamma_g = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
+                    scalar_bits,
+                    window_size,
+                    &gamma_g_table,
+                    &powers_of_beta,
+                );
+                let powers_of_gamma_g = set.iter().zip(
+                    E::G1Projective::batch_normalization_into_affine(powers_of_gamma_g).iter()
+                ).collect();
+
+                PowersProvider::Subset(powers_of_gamma_g)
+            }
+        };
         end_timer!(gamma_g_time);
 
-        let powers_of_g = E::G1Projective::batch_normalization_into_affine(powers_of_g);
-        let powers_of_gamma_g = E::G1Projective::batch_normalization_into_affine(powers_of_gamma_g)
-            .into_iter()
-            .enumerate()
-            .collect();
-
         let prepared_neg_powers_of_h_time = start_timer!(|| "Generating negative powers of h in G2");
-        let prepared_neg_powers_of_h = if produce_g2_powers {
-            let mut neg_powers_of_beta = vec![E::Fr::one()];
-            let mut cur = E::Fr::one() / &beta;
-            for _ in 0..max_degree {
-                neg_powers_of_beta.push(cur);
-                cur /= &beta;
+        let prepared_neg_powers_of_h = match &config.supported_g2_powers.clone() {
+            PCSupportedBounds::Empty => {
+                PowersProvider::Empty
             }
+            PCSupportedBounds::Range(range) => {
+                let mut multiply = E::Fr::one() / &beta;
+                let mut cur = multiply.pow(&[range.start as u64]);
+                let mut neg_powers_of_beta = vec![cur];
+                cur *= &multiply;
+                for _ in start..end {
+                    neg_powers_of_beta.push(cur);
+                    cur *= &multiply;
+                }
+
+                // TO FINISH
+            }
+            PCSupportedBounds::Subset(_) => {}
+        };
+
+        let prepared_neg_powers_of_h = if produce_g2_powers {
+
 
             let neg_h_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, h);
             let neg_powers_of_h = FixedBaseMSM::multi_scalar_mul::<E::G2Projective>(
@@ -137,8 +207,12 @@ impl<E: PairingEngine> KZG10<E> {
         let prepared_beta_h = beta_h.prepare();
 
         let pp = UniversalParams {
+            supported_degree: config.supported_degree,
+            supported_hiding_bounds: config.supported_hiding_bounds.clone(),
+            supported_degree_bounds: config.supported_degree_bounds.clone(),
             powers_of_g,
             powers_of_gamma_g,
+            reverse_powers_of_g: None,
             h,
             beta_h,
             prepared_neg_powers_of_h,

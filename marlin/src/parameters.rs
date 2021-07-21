@@ -40,6 +40,16 @@ use std::{
     },
 };
 
+pub struct UniversalSetupConfig {
+    pub supported_degree : usize,
+    pub supported_hiding_bound : usize,
+}
+
+pub struct UniversalSetupParameters<E: PairingEngine> {
+    pub powers_of_g : Vec<E::G1Affine>,
+
+}
+
 #[derive(Derivative)]
 #[derivative(Clone(bound = ""))]
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]

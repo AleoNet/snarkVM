@@ -30,21 +30,141 @@ use snarkvm_utilities::{
 
 use core::ops::Mul;
 
+/// `UniversalSetupConfig` define what parameters are needed during the setup phase.
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
+pub struct UniversalSetupConfig {
+    pub supported_degree : usize,
+    pub supported_hiding_bounds : PCSupportedBounds,
+    pub supported_degree_bounds : PCSupportedBounds,
+    pub supported_g2_powers: PCSupportedBounds,
+}
+
+impl PCUniversalSetupConfig for UniversalSetupConfig {
+    fn max_degree(&self) -> usize {
+        self.supported_degree
+    }
+
+    fn supported_hiding_bounds(&self) -> PCSupportedBounds {
+        self.supported_hiding_bounds.clone()
+    }
+
+    fn supported_degree_bounds(&self) -> PCSupportedBounds {
+        self.supported_degree_bounds.clone()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum PowersProvider<T: CanonicalSerialize + CanonicalDeserialize> {
+    Empty,
+    Range(Vec<T>),
+    Subset(BTreeMap<usize, T>)
+}
+
+impl<T: CanonicalSerialize + CanonicalDeserialize> Default for PowersProvider<T> {
+    fn default() -> Self {
+        PowersProvider::Empty
+    }
+}
+
+impl<T: CanonicalSerialize + CanonicalDeserialize> CanonicalSerialize for PowersProvider<T>{
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
+        let which_type = match self {
+            PowersProvider::Empty => 0u8,
+            PowersProvider::Range(_) => 1u8,
+            PowersProvider::Subset(_) => 2u8
+        };
+        which_type.serialize(writer)?;
+
+        match self {
+            PowersProvider::Empty => {
+                Ok(())
+            }
+            PowersProvider::Range(vec) => {
+                vec.serialize(writer)
+            }
+            PowersProvider::Subset(map) => {
+                map.serialize(writer)
+            }
+        }
+    }
+
+    fn serialized_size(&self) -> usize {
+        let which_type = match self {
+            PowersProvider::Empty => 0u8,
+            PowersProvider::Range(_) => 1u8,
+            PowersProvider::Subset(_) => 2u8
+        };
+
+        match self {
+            PowersProvider::Empty => {
+                which_type.serialized_size()
+            }
+            PowersProvider::Range(vec) => {
+                vec.serialized_size() + which_type.serialized_size()
+            }
+            PowersProvider::Subset(map) => {
+                map.serialized_size() + which_type.serialized_size()
+            }
+        }
+    }
+}
+
+impl<T: CanonicalSerialize + CanonicalDeserialize> CanonicalDeserialize for PowersProvider<T>{
+    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
+        let which_type = u8::deserialize(reader)?;
+        if which_type > 2u8 {
+            return Err(SerializationError::InvalidData);
+        }
+
+        if which_type == 0 {
+            Ok(PowersProvider::Empty)
+        } else if which_type == 1 {
+            let vec = Vec::<T>::deserialize(reader)?;
+            Ok(PowersProvider::Range(vec))
+        } else if which_type == 2 {
+            let map = BTreeMap::<usize, T>::deserialize(reader)?;
+            Ok(PowersProvider::Subset(map))
+        } else {
+            unreachable!()
+        }
+    }
+}
+
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 #[derive(Derivative)]
 #[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""))]
 #[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct UniversalParams<E: PairingEngine> {
-    /// Group elements of the form `{ \beta^i G }`, where `i` ranges from 0 to `degree`.
+    pub supported_degree : usize,
+    pub supported_hiding_bounds : PCSupportedBounds,
+    pub supported_degree_bounds : PCSupportedBounds,
+    pub supported_g2_powers : PCSupportedBounds,
+
+    /// An array of group elements of the form `{ \beta^i G }`,
+    ///     where `i` ranges from 0 to `supported_degree`.
     pub powers_of_g: Vec<E::G1Affine>,
-    /// Group elements of the form `{ \beta^i \gamma G }`, where `i` ranges from 0 to `degree`.
-    pub powers_of_gamma_g: BTreeMap<usize, E::G1Affine>,
+
+    /// An array of group elements of the form `{ \beta^i \gamma G }`,
+    ///     where `i` is in the set of `supported_hiding_bounds`.
+    pub powers_of_gamma_g: PowersProvider<E::G1Affine>,
+
+    /// An array of group elements of the form `{ \beta^{max_degree - i} G }`,
+    ///     where `i` is in the set of `supported_degree_bounds`.
+    ///
+    /// Initially, it supports the entire range of `powers_of_g`,
+    /// in which case it will be stored as `None`, and the KZG10
+    /// implementation will use `powers_of_g`.
+    ///
+    pub reverse_powers_of_g: Option<PowersProvider<E::G1Affine>>,
+
     /// The generator of G2.
     pub h: E::G2Affine,
     /// \beta times the above generator of G2.
     pub beta_h: E::G2Affine,
-    /// Group elements of the form `{ \beta^i G2 }`, where `i` ranges from `0` to `-degree`.
-    pub prepared_neg_powers_of_h: BTreeMap<usize, <E::G2Affine as PairingCurve>::Prepared>,
+
+    /// Group elements of the form `{ \beta^i G2 }`, where `i` ranges from `0` to `-supported_degree`.
+    pub prepared_neg_powers_of_h: PowersProvider<<E::G2Affine as PairingCurve>::Prepared>,
+
     /// The generator of G2, prepared for use in pairings.
     #[derivative(Debug = "ignore")]
     pub prepared_h: <E::G2Affine as PairingCurve>::Prepared,
@@ -53,12 +173,24 @@ pub struct UniversalParams<E: PairingEngine> {
     pub prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared,
 }
 
+impl<E: PairingEngine> PCUniversalSetupConfig for UniversalParams<E> {
+    fn max_degree(&self) -> usize {
+        self.supported_degree
+        // which equals the len of `powers_of_g` - 1
+    }
+
+    fn supported_hiding_bounds(&self) -> PCSupportedBounds {
+        self.supported_hiding_bounds.clone()
+    }
+
+    fn supported_degree_bounds(&self) -> PCSupportedBounds {
+        self.supported_degree_bounds.clone()
+    }
+}
+
 impl_bytes!(UniversalParams);
 
 impl<E: PairingEngine> PCUniversalParams for UniversalParams<E> {
-    fn max_degree(&self) -> usize {
-        self.powers_of_g.len() - 1
-    }
 }
 
 /// `Powers` is used to commit to and create evaluation proofs for a given

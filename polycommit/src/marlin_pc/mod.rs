@@ -88,6 +88,8 @@ pub struct MarlinKZG10<E: PairingEngine> {
     _engine: PhantomData<E>,
 }
 
+pub type UniversalSetupConfig = kzg10::UniversalSetupConfig;
+
 impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
     type BatchProof = Vec<Self::Proof>;
     type Commitment = Commitment<E>;
@@ -98,6 +100,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
     type Proof = kzg10::Proof<E>;
     type Randomness = Randomness<E>;
     type UniversalParams = UniversalParams<E>;
+    type UniversalSetupConfig = UniversalSetupConfig;
     type VerifierKey = VerifierKey<E>;
 
     /// Constructs public parameters when given as input the maximum degree `max_degree`
@@ -760,6 +763,10 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
             opening_challenges,
             rng,
         )
+    }
+
+    fn trim_srs(parameters: &Self::UniversalParams, new_config: &Self::UniversalSetupConfig) -> Result<Self::UniversalParams, Self::Error> {
+        todo!()
     }
 }
 

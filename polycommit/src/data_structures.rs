@@ -17,7 +17,7 @@
 use crate::{Arc, String, Vec};
 pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
-use snarkvm_utilities::{error as error_fn, errors::SerializationError, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{error as error_fn, ops::Range, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 use core::{
     borrow::Borrow,
@@ -29,11 +29,89 @@ use rand_core::RngCore;
 /// Labels a `LabeledPolynomial` or a `LabeledCommitment`.
 pub type PolynomialLabel = String;
 
-/// Defines the minimal interface for public params for any polynomial
-/// commitment scheme.
-pub trait PCUniversalParams: CanonicalSerialize + CanonicalDeserialize + Clone + Debug + ToBytes + FromBytes {
+/// An enum defining the supported degree bounds
+#[derive(Clone, Debug)]
+pub enum PCSupportedBounds {
+    Empty,                // Does not support this type of bounds (e.g., no hiding)
+    Range(Range<usize>),  // Support a..b bound (b not included)
+    Subset(Vec<usize>)    // Support any bound in the vector
+}
+
+impl CanonicalSerialize for PCSupportedBounds {
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
+        let which_type = match self {
+            PCSupportedBounds::Empty => 0u8,
+            PCSupportedBounds::Range(_) => 1u8,
+            PCSupportedBounds::Subset(_) => 2u8
+        };
+        which_type.serialize(writer)?;
+
+        match self {
+            PCSupportedBounds::Empty => {
+                Ok(())
+            }
+            PCSupportedBounds::Range(range) => {
+                range.serialize(writer)
+            }
+            PCSupportedBounds::Subset(set) => {
+                set.serialize(writer)
+            }
+        }
+    }
+
+    fn serialized_size(&self) -> usize {
+        let which_type = match self {
+            PCSupportedBounds::Empty => 0u8,
+            PCSupportedBounds::Range(_) => 1u8,
+            PCSupportedBounds::Subset(_) => 2u8
+        };
+
+        match self {
+            PCSupportedBounds::Empty => which_type.serialized_size(),
+            PCSupportedBounds::Range(range) => {
+                range.serialized_size() + which_type.serialized_size()
+            }
+            PCSupportedBounds::Subset(set) => {
+                set.serialized_size() + which_type.serialized_size()
+            }
+        }
+    }
+}
+
+impl CanonicalDeserialize for PCSupportedBounds {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
+        let which_type = u8::deserialize(reader)?;
+        if which_type > 2u8 {
+            return Err(SerializationError::InvalidData);
+        }
+
+        if which_type == 0 {
+            Ok(PCSupportedBounds::Empty)
+        } else if which_type == 1 {
+            let range = Range::<usize>::deserialize(reader)?;
+            Ok(PCSupportedBounds::Range(range))
+        } else if which_type == 2 {
+            let set = Vec::<usize>::deserialize(reader)?;
+            Ok(PCSupportedBounds::Subset(set))
+        } else {
+            unreachable!()
+        }
+    }
+}
+
+/// Defines some common interface for the universal setup config.
+pub trait PCUniversalSetupConfig: Clone + Debug {
     /// Outputs the maximum degree supported by the committer key.
     fn max_degree(&self) -> usize;
+    /// Outputs the supported hiding bounds.
+    fn supported_hiding_bounds(&self) -> PCSupportedBounds;
+    /// Outputs the supported degree bounds that the can be enforced.
+    fn supported_degree_bounds(&self) -> PCSupportedBounds;
+}
+
+/// Defines the minimal interface for public params for any polynomial
+/// commitment scheme.
+pub trait PCUniversalParams: PCUniversalSetupConfig + CanonicalSerialize + CanonicalDeserialize + Clone + Debug + ToBytes + FromBytes {
 }
 
 /// Defines the minimal interface of committer keys for any polynomial

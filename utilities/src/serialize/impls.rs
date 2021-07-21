@@ -20,6 +20,7 @@ pub use crate::{
         Write,
         {self},
     },
+    ops::Range,
     FromBytes,
     ToBytes,
     Vec,
@@ -478,6 +479,35 @@ where
             map.insert(K::deserialize(reader)?, V::deserialize(reader)?);
         }
         Ok(map)
+    }
+}
+
+impl<T> CanonicalSerialize for Range<T>
+where
+    T: CanonicalSerialize,
+{
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
+        self.start.serialize(writer)?;
+        self.end.serialize(writer)
+    }
+
+    fn serialized_size(&self) -> usize {
+        self.start.serialized_size() + self.end.serialized_size()
+    }
+}
+
+impl<T> CanonicalDeserialize for Range<T>
+where
+    T: CanonicalDeserialize,
+{
+    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
+        let start = T::deserialize(reader)?;
+        let end = T::deserialize(reader)?;
+
+        Ok(Self {
+            start,
+            end
+        })
     }
 }
 

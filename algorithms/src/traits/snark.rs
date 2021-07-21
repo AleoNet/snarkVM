@@ -60,6 +60,13 @@ pub trait SNARK {
         unimplemented!()
     }
 
+    fn trim_universal_setup_parameters(
+        _long: &Self::UniversalSetupParameters,
+        _new_config: &Self::UniversalSetupConfig,
+    ) -> Result<Self::UniversalSetupParameters, SNARKError> {
+        unimplemented!()
+    }
+
     fn index<C: ConstraintSynthesizer<Self::ScalarField>>(
         _circuit: &C,
         _srs: &Self::UniversalSetupParameters,

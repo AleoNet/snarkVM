@@ -116,6 +116,13 @@ where
         Ok(srs)
     }
 
+    fn trim_universal_setup_parameters(
+        _long: &Self::UniversalSetupParameters,
+        _new_config: &Self::UniversalSetupConfig,
+    ) -> Result<Self::UniversalSetupParameters, SNARKError> {
+        unimplemented!()
+    }
+
     fn index<C: ConstraintSynthesizer<E::Fr>>(
         circuit: &C,
         srs: &Self::UniversalSetupParameters,

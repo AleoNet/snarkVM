@@ -149,6 +149,10 @@ impl<F: Field, PC: PolynomialCommitment<F>> ToBytes for BatchLCProof<F, PC> {
 /// of evaluation for the corresponding commitments at a query set `Q`, while
 /// enforcing per-polynomial degree bounds.
 pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
+    /// The config for universal parameters setup. For example, it can specify
+    /// the degree to support and hiding bounds, such that we are not overly
+    /// generating the parameters
+    type UniversalSetupConfig: PCUniversalSetupConfig + Clone;
     /// The universal parameters for the commitment scheme. These are "trimmed"
     /// down to `Self::CommitterKey` and `Self::VerifierKey` by `Self::trim`.
     type UniversalParams: PCUniversalParams + Clone;
@@ -179,7 +183,13 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
 
     /// Constructs public parameters when given as input the maximum degree `degree`
     /// for the polynomial commitment scheme.
-    fn setup<R: RngCore>(max_degree: usize, rng: &mut R) -> Result<Self::UniversalParams, Self::Error>;
+    fn setup<R: RngCore>(config: &Self::UniversalSetupConfig, rng: &mut R) -> Result<Self::UniversalParams, Self::Error>;
+
+    /// Resizes the universal parameters for a different config (that needs less information).
+    fn trim_srs(
+        parameters: &Self::UniversalParams,
+        new_config: &Self::UniversalSetupConfig,
+    ) -> Result<Self::UniversalParams, Self::Error>;
 
     /// Specializes the public parameters for polynomials up to the given `supported_degree`
     /// and for enforcing degree bounds in the range `1..=supported_degree`.
