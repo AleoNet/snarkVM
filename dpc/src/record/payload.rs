@@ -18,8 +18,10 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
 
+pub const PAYLOAD_SIZE: usize = 128;
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Payload([u8; 128]);
+pub struct Payload([u8; PAYLOAD_SIZE]);
 
 impl Payload {
     pub fn to_bytes(&self) -> &[u8] {
@@ -27,10 +29,10 @@ impl Payload {
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Self {
-        assert_eq!(bytes.len(), 128);
+        assert_eq!(bytes.len(), PAYLOAD_SIZE);
 
         let mut payload = [0u8; 128];
-        payload.copy_from_slice(&bytes[0..128]);
+        payload.copy_from_slice(&bytes[0..PAYLOAD_SIZE]);
 
         Self(payload)
     }
