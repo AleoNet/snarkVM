@@ -114,8 +114,8 @@ impl Parameters for Testnet2Parameters {
     type AccountSignatureGadget = SchnorrGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
 
-    type EncryptedRecordCRH = BHPCompressedCRH<EdwardsBls12, 48, 44>;
-    type EncryptedRecordCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 44>;
+    type EncryptedRecordCRH = BHPCompressedCRH<EdwardsBls12, 48, 60>;
+    type EncryptedRecordCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 60>;
     type EncryptedRecordDigest = <Self::EncryptedRecordCRH as CRH>::Output;
 
     type EncryptionGroup = EdwardsBls12;
