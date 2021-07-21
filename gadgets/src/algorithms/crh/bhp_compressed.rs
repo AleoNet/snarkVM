@@ -15,12 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    algorithms::crh::BoweHopwoodPedersenCRHGadget,
+    algorithms::crh::BHPCRHGadget,
     integers::uint::UInt8,
     traits::{algorithms::CRHGadget, alloc::AllocGadget, curves::CompressedGroupGadget},
 };
 use snarkvm_algorithms::{
-    crh::{BoweHopwoodPedersenCRH, BoweHopwoodPedersenCompressedCRH},
+    crh::{BHPCompressedCRH, BHPCRH},
     CRH,
 };
 use snarkvm_curves::ProjectiveCurve;
@@ -30,14 +30,14 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use std::borrow::Borrow;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BoweHopwoodPedersenCompressedCRHGadget<
+pub struct BHPCompressedCRHGadget<
     G: ProjectiveCurve,
     F: PrimeField,
     GG: CompressedGroupGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
 > {
-    bhp_gadget: BoweHopwoodPedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>,
+    bhp_gadget: BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
 // TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
@@ -47,36 +47,34 @@ impl<
     GG: CompressedGroupGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
-> AllocGadget<BoweHopwoodPedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
-    for BoweHopwoodPedersenCompressedCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+> AllocGadget<BHPCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+    for BHPCompressedCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BoweHopwoodPedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let bhp: BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE> =
-            value_gen()?.borrow().parameters().clone().into();
+        let bhp: BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().clone().into();
         Ok(Self {
-            bhp_gadget: BoweHopwoodPedersenCRHGadget::alloc(cs, || Ok(bhp))?,
+            bhp_gadget: BHPCRHGadget::alloc(cs, || Ok(bhp))?,
         })
     }
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BoweHopwoodPedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let bhp: BoweHopwoodPedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE> =
-            value_gen()?.borrow().parameters().clone().into();
+        let bhp: BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().clone().into();
         Ok(Self {
-            bhp_gadget: BoweHopwoodPedersenCRHGadget::alloc_input(cs, || Ok(bhp))?,
+            bhp_gadget: BHPCRHGadget::alloc_input(cs, || Ok(bhp))?,
         })
     }
 }
@@ -87,8 +85,8 @@ impl<
     GG: CompressedGroupGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
-> CRHGadget<BoweHopwoodPedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
-    for BoweHopwoodPedersenCompressedCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+> CRHGadget<BHPCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+    for BHPCompressedCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     type OutputGadget = GG::BaseFieldGadget;
 

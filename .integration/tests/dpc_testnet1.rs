@@ -36,6 +36,7 @@ use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 use itertools::Itertools;
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
+use snarkvm_fields::ToConstraintField;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn testnet1_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
@@ -469,7 +470,7 @@ fn test_testnet1_dpc_execute_constraints() {
         println!("=========================================================");
         let num_constraints = inner_circuit_cs.num_constraints();
         println!("Inner circuit num constraints: {:?}", num_constraints);
-        assert_eq!(422669, num_constraints);
+        assert_eq!(381519, num_constraints);
         println!("=========================================================");
     }
 
@@ -485,8 +486,10 @@ fn test_testnet1_dpc_execute_constraints() {
     let inner_snark_vk: <<Testnet1Parameters as Parameters>::InnerSNARK as SNARK>::VerifyingKey =
         inner_snark_parameters.1.clone().into();
 
+    let inner_snark_vk_field_elements = inner_snark_vk.to_field_elements().unwrap();
+
     let inner_circuit_id = <Testnet1Parameters as Parameters>::inner_circuit_id_crh()
-        .hash(&inner_snark_vk.to_bytes_le().unwrap())
+        .hash_field_elements(&inner_snark_vk_field_elements)
         .unwrap();
 
     let inner_snark_proof = <Testnet1Parameters as Parameters>::InnerSNARK::prove(
@@ -552,7 +555,7 @@ fn test_testnet1_dpc_execute_constraints() {
         println!("=========================================================");
         let num_constraints = outer_circuit_cs.num_constraints();
         println!("Outer circuit num constraints: {:?}", num_constraints);
-        assert_eq!(524807, num_constraints);
+        assert_eq!(373250, num_constraints);
         println!("=========================================================");
     }
 
