@@ -353,10 +353,13 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
             || Ok(&death_program_vk_bytes),
         )?;
 
-        let death_program_vk_bytes = death_program_vk.to_bytes(&mut cs.ns(|| "Convert death pred vk to bytes"))?;
+        let death_program_vk_field_elements =
+            death_program_vk.to_constraint_field(cs.ns(|| "alloc_death_program_vk_field_elements"))?;
 
-        let claimed_death_program_id = program_id_crh
-            .check_evaluation_gadget(&mut cs.ns(|| "Compute death program ID"), death_program_vk_bytes)?;
+        let claimed_death_program_id = program_id_crh.check_evaluation_gadget_on_field_elements(
+            &mut cs.ns(|| "Compute death program ID"),
+            death_program_vk_field_elements,
+        )?;
 
         let claimed_death_program_id_bytes =
             claimed_death_program_id.to_bytes(&mut cs.ns(|| "Convert death program ID to bytes"))?;
@@ -399,10 +402,13 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
             || Ok(&birth_program_vk_bytes),
         )?;
 
-        let birth_program_vk_bytes = birth_program_vk.to_bytes(&mut cs.ns(|| "Convert birth pred vk to bytes"))?;
+        let birth_program_vk_field_elements =
+            birth_program_vk.to_constraint_field(cs.ns(|| "birth_death_program_vk_field_elements"))?;
 
-        let claimed_birth_program_id = program_id_crh
-            .check_evaluation_gadget(&mut cs.ns(|| "Compute birth program ID"), birth_program_vk_bytes)?;
+        let claimed_birth_program_id = program_id_crh.check_evaluation_gadget_on_field_elements(
+            &mut cs.ns(|| "Compute birth program ID"),
+            birth_program_vk_field_elements,
+        )?;
 
         let claimed_birth_program_id_bytes =
             claimed_birth_program_id.to_bytes(&mut cs.ns(|| "Convert birth program ID to bytes"))?;
@@ -465,7 +471,8 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     // Check that the inner circuit ID is derived correctly.
     // ********************************************************************
 
-    let inner_snark_vk_bytes = inner_snark_vk.to_bytes(&mut cs.ns(|| "Convert inner snark vk to bytes"))?;
+    let inner_snark_vk_field_elements =
+        inner_snark_vk.to_constraint_field(&mut cs.ns(|| "Convert inner snark vk to field elements"))?;
 
     let given_inner_circuit_id =
         <C::InnerCircuitIDCRHGadget as CRHGadget<_, C::OuterScalarField>>::OutputGadget::alloc_input(
@@ -473,8 +480,10 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
             || Ok(inner_circuit_id),
         )?;
 
-    let candidate_inner_circuit_id = inner_circuit_id_crh
-        .check_evaluation_gadget(&mut cs.ns(|| "Compute inner circuit ID"), inner_snark_vk_bytes)?;
+    let candidate_inner_circuit_id = inner_circuit_id_crh.check_evaluation_gadget_on_field_elements(
+        &mut cs.ns(|| "Compute inner circuit ID"),
+        inner_snark_vk_field_elements,
+    )?;
 
     candidate_inner_circuit_id.enforce_equal(
         &mut cs.ns(|| "Check that declared and computed inner circuit IDs are equal"),

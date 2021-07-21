@@ -32,6 +32,7 @@ use snarkvm_parameters::{
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::{CryptoRng, Rng};
+use snarkvm_fields::ToConstraintField;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet1Components"), Debug(bound = "C: Testnet1Components"))]
@@ -61,9 +62,11 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
             <Self::ProofSystem as SNARK>::circuit_specific_setup(&NoopCircuit::<C>::blank(), rng)?;
         let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
 
+        let verifying_key_group_elements = verifying_key.to_field_elements()?;
+
         // Compute the program ID.
         let id = <C as Parameters>::program_id_crh()
-            .hash(&verifying_key.to_bytes_le()?)?
+            .hash_field_elements(&verifying_key_group_elements)?
             .to_bytes_le()?;
 
         Ok(Self {
@@ -82,9 +85,11 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
             NoopProgramSNARKVKParameters::load_bytes()?.as_slice(),
         )?;
 
+        let verifying_key_group_elements = verifying_key.to_field_elements()?;
+
         // Compute the program ID.
         let id = <C as Parameters>::program_id_crh()
-            .hash(&verifying_key.to_bytes_le()?)?
+            .hash_field_elements(&verifying_key_group_elements)?
             .to_bytes_le()?;
 
         Ok(Self {
