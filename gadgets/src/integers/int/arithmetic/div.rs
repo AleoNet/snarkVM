@@ -61,6 +61,13 @@ macro_rules! div_int_impl {
                 // else
                 //    !Q                      -- negative result
 
+                // Check if other is already known to be zero.
+                if let Some(value) = other.value {
+                    if value == 0 as <$gadget as Integer>::IntegerType {
+                        return Err(SignedIntegerError::DivisionByZero.into());
+                    }
+                }
+
                 // If `self` and `other` are both constants, return the constant result instead of generating constraints.
                 if self.is_constant() && other.is_constant() {
                     return Ok(Self::constant(self.value.unwrap().wrapping_div(other.value.unwrap())));
