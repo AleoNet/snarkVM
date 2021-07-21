@@ -68,7 +68,7 @@ pub struct RecordEncryptionGadgetComponents<C: Parameters> {
 impl<C: Parameters> Default for RecordEncryptionGadgetComponents<C> {
     fn default() -> Self {
         // TODO (raychu86) Fix the lengths to be generic
-        let record_encoding_length = 7;
+        let record_encoding_length = 10;
         let base_field_one = <C::EncryptionParameters as ModelParameters>::BaseField::one();
         let base_field_default = <C::EncryptionParameters as ModelParameters>::BaseField::default();
 

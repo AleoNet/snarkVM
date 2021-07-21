@@ -101,8 +101,11 @@ impl<C: Parameters, P: MontgomeryParameters + TwistedEdwardsParameters, G: Proje
     /// Encoded element 3 - [ Birth program id (part 1) ]
     /// Encoded element 4 - [ Death program id (part 1) ]
     /// Encoded element 5 - [ Birth program id (part 2) || Death program id (part 2) ]
-    /// Encoded element 6 - [ Payload (part 1) || 1 ]
-    /// Encoded element 7 - [ 1 || Sign high bits (7 bits) || Value || Payload (part 2) ]
+    /// Encoded element 6 - [ Payload (part 1) ]
+    /// Encoded element 7 - [ Payload (part 2) ]
+    /// Encoded element 8 - [ Payload (part 3) ]
+    /// Encoded element 9 - [ Payload (part 4) ]
+    /// Encoded element 10 - [ 1 || Sign high bits (7 bits) || Value || Payload (part 5) ]
     ///
     fn encode(record: &Self::Record) -> Result<Self, DPCError> {
         // Assumption 1 - The scalar field bit size must be strictly less than the base field bit size
