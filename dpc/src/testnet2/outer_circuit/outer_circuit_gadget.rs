@@ -417,7 +417,6 @@ pub fn execute_outer_circuit<C: Testnet2Components, CS: ConstraintSystem<C::Oute
             || Ok(&input.verifying_key),
         )?;
 
-        // Manually allocate the death program bytes instead of the conversion
         let birth_program_vk_field_elements =
             birth_program_vk.to_constraint_field(cs.ns(|| "birth_death_program_vk_field_elements"))?;
 

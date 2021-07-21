@@ -17,7 +17,7 @@
 use crate::{
     commitment::PedersenCompressedCommitment,
     commitment_tree::*,
-    crh::BoweHopwoodPedersenCompressedCRH,
+    crh::BHPCompressedCRH,
     traits::{CommitmentScheme, CRH},
 };
 use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
@@ -32,7 +32,7 @@ const CRH_WINDOW_SIZE: usize = 32;
 const COMMITMENT_NUM_WINDOWS: usize = 8;
 const COMMITMENT_WINDOW_SIZE: usize = 32;
 
-pub type H = BoweHopwoodPedersenCompressedCRH<EdwardsBls, CRH_NUM_WINDOWS, CRH_WINDOW_SIZE>;
+pub type H = BHPCompressedCRH<EdwardsBls, CRH_NUM_WINDOWS, CRH_WINDOW_SIZE>;
 pub type C = PedersenCompressedCommitment<EdwardsBls, COMMITMENT_NUM_WINDOWS, COMMITMENT_WINDOW_SIZE>;
 pub type CM = CommitmentMerklePath<C, H>;
 

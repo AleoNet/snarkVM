@@ -33,8 +33,8 @@ path = "benches/crh/pedersen.rs"
 harness = false
 
 [[bench]]
-name = "crh-bowe-pedersen"
-path = "benches/crh/bowe_pedersen.rs"
+name = "crh-bhp"
+path = "benches/crh/bhp.rs"
 harness = false
 
 [[bench]]

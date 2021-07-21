@@ -26,7 +26,7 @@ const NUM_WINDOWS: usize = 8;
 const WINDOW_SIZE: usize = 32;
 
 fn pedersen_crh_setup(c: &mut Criterion) {
-    c.bench_function("Pedersen CRH Setup", move |b| {
+    c.bench_function("Pedersen CRH setup", move |b| {
         b.iter(|| <PedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup("pedersen_crh_benchmark"))
     });
 }
@@ -35,7 +35,7 @@ fn pedersen_crh_hash(c: &mut Criterion) {
     let crh = <PedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup("pedersen_crh_benchmark");
     let input = vec![127u8; 32];
 
-    c.bench_function("Pedersen CRH Evaluation", move |b| b.iter(|| crh.hash(&input).unwrap()));
+    c.bench_function("Pedersen CRH hash", move |b| b.iter(|| crh.hash(&input).unwrap()));
 }
 
 criterion_group! {

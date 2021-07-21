@@ -51,7 +51,7 @@ impl_params_remote!(
     "https://s3-us-west-1.amazonaws.com/aleo.parameters",
     "./",
     "inner_snark_pk",
-    252277689
+    232361089
 );
 impl_params_local!(
     InnerSNARKVKParameters,
