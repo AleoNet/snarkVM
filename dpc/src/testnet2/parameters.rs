@@ -142,8 +142,8 @@ impl Parameters for Testnet2Parameters {
     type ProgramIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
 
-    type RecordCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 32, 62>;
-    type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 62>;
+    type RecordCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 48, 50>;
+    type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 50>;
     type RecordCommitment = <Self::RecordCommitmentScheme as CommitmentScheme>::Output;
 
     type RecordCommitmentTreeCRH = BHPCompressedCRH<EdwardsBls12, 8, 32>;
