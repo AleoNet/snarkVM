@@ -25,7 +25,7 @@ use snarkvm_gadgets::{
     integers::uint::UInt8,
     traits::{
         algorithms::{CRHGadget, CommitmentGadget, SNARKVerifierGadget},
-        alloc::{AllocBytesGadget, AllocGadget},
+        alloc::AllocGadget,
         eq::EqGadget,
         integers::integer::Integer,
     },
@@ -336,22 +336,14 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     for (i, input) in program_proofs.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
         let cs = &mut cs.ns(|| format!("Check death program for input record {}", i));
 
-        let death_program_proof_bytes = input
-            .proof
-            .to_bytes_le()
-            .expect("Unable to convert death program proof to bytes");
-        let death_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc_bytes(
+        let death_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate proof"),
-            || Ok(&death_program_proof_bytes),
+            || Ok(&input.proof),
         )?;
 
-        let death_program_vk_bytes = input
-            .verifying_key
-            .to_bytes_le()
-            .expect("Unable to convert death program VK to bytes");
-        let death_program_vk = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc_bytes(
+        let death_program_vk = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
             &mut cs.ns(|| "Allocate verifying key"),
-            || Ok(&death_program_vk_bytes),
+            || Ok(&input.verifying_key),
         )?;
 
         let death_program_vk_field_elements =
@@ -385,22 +377,14 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     {
         let cs = &mut cs.ns(|| format!("Check birth program for output record {}", j));
 
-        let birth_program_proof_bytes = input
-            .proof
-            .to_bytes_le()
-            .expect("Unable to convert birth program proof to bytes");
-        let birth_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc_bytes(
+        let birth_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate proof"),
-            || Ok(&birth_program_proof_bytes),
+            || Ok(&input.proof),
         )?;
 
-        let birth_program_vk_bytes = input
-            .verifying_key
-            .to_bytes_le()
-            .expect("Unable to convert birth program VK to bytes");
-        let birth_program_vk = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc_bytes(
+        let birth_program_vk = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
             &mut cs.ns(|| "Allocate verifying key"),
-            || Ok(&birth_program_vk_bytes),
+            || Ok(&input.verifying_key),
         )?;
 
         let birth_program_vk_field_elements =
