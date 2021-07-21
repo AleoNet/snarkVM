@@ -57,6 +57,13 @@ impl<C: Parameters> Address<C> {
         message: &[u8],
         signature: &<C::AccountSignatureScheme as SignatureScheme>::Signature,
     ) -> Result<bool, AccountError> {
+        let signature_public_key = self.to_signature_public_key()?;
+        // let signature_public_key = FromBytes::from_bytes_le(&self.encryption_key.to_bytes_le()?)?;
+        Ok(C::account_signature_scheme().verify(&signature_public_key, message, signature)?)
+    }
+
+    // TODO (howardwu): Deprecate this.
+    pub fn to_signature_public_key(&self) -> Result<C::AccountSignaturePublicKey, AccountError> {
         fn perform_recovery_from_compressed_form_unsafe<R: Read>(mut reader: R) -> anyhow::Result<Vec<u8>> {
             use snarkvm_curves::{edwards_bls12::EdwardsAffine as EdwardsBls12, AffineCurve};
 
@@ -77,12 +84,9 @@ impl<C: Parameters> Address<C> {
             Err(snarkvm_algorithms::SignatureError::Message("Failed to read signature public key".into()).into())
         }
 
-        let signature_public_key = FromBytes::from_bytes_le(&perform_recovery_from_compressed_form_unsafe(
-            &*self.encryption_key.to_bytes_le()?,
-        )?)?;
-
-        // let signature_public_key = FromBytes::from_bytes_le(&self.encryption_key.to_bytes_le()?)?;
-        Ok(C::account_signature_scheme().verify(&signature_public_key, message, signature)?)
+        Ok(FromBytes::from_bytes_le(
+            &perform_recovery_from_compressed_form_unsafe(&*self.encryption_key.to_bytes_le()?)?,
+        )?)
     }
 
     #[allow(clippy::wrong_self_convention)]
