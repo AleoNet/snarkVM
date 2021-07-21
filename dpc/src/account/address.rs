@@ -57,29 +57,31 @@ impl<C: Parameters> Address<C> {
         message: &[u8],
         signature: &<C::AccountSignatureScheme as SignatureScheme>::Signature,
     ) -> Result<bool, AccountError> {
-        fn perform_recovery_from_compressed_form_unsafe<R: Read>(mut reader: R) -> anyhow::Result<Vec<u8>> {
-            use snarkvm_curves::{edwards_bls12::EdwardsAffine as EdwardsBls12, AffineCurve};
+        // fn perform_recovery_from_compressed_form_unsafe<R: Read>(mut reader: R) -> anyhow::Result<Vec<u8>> {
+        //     use snarkvm_curves::{edwards_bls12::EdwardsAffine as EdwardsBls12, AffineCurve};
+        //
+        //     let x_coordinate = <EdwardsBls12 as AffineCurve>::BaseField::read_le(&mut reader)?;
+        //
+        //     if let Some(element) = <EdwardsBls12 as AffineCurve>::from_x_coordinate(x_coordinate, true) {
+        //         if element.is_in_correct_subgroup_assuming_on_curve() {
+        //             return Ok(element.to_bytes_le()?);
+        //         }
+        //     }
+        //
+        //     if let Some(element) = <EdwardsBls12 as AffineCurve>::from_x_coordinate(x_coordinate, false) {
+        //         if element.is_in_correct_subgroup_assuming_on_curve() {
+        //             return Ok(element.to_bytes_le()?);
+        //         }
+        //     }
+        //
+        //     Err(snarkvm_algorithms::SignatureError::Message("Failed to read signature public key".into()).into())
+        // }
 
-            let x_coordinate = <EdwardsBls12 as AffineCurve>::BaseField::read_le(&mut reader)?;
+        // let signature_public_key = FromBytes::from_bytes_le(&perform_recovery_from_compressed_form_unsafe(
+        //     &*self.encryption_key.to_bytes_le()?,
+        // )?)?;
 
-            if let Some(element) = <EdwardsBls12 as AffineCurve>::from_x_coordinate(x_coordinate, true) {
-                if element.is_in_correct_subgroup_assuming_on_curve() {
-                    return Ok(element.to_bytes_le()?);
-                }
-            }
-
-            if let Some(element) = <EdwardsBls12 as AffineCurve>::from_x_coordinate(x_coordinate, false) {
-                if element.is_in_correct_subgroup_assuming_on_curve() {
-                    return Ok(element.to_bytes_le()?);
-                }
-            }
-
-            Err(snarkvm_algorithms::SignatureError::Message("Failed to read signature public key".into()).into())
-        }
-
-        let signature_public_key = FromBytes::from_bytes_le(&perform_recovery_from_compressed_form_unsafe(
-            &*self.encryption_key.to_bytes_le()?,
-        )?)?;
+        let signature_public_key = FromBytes::from_bytes_le(&self.encryption_key.to_bytes_le()?)?;
         Ok(C::account_signature_scheme().verify(&signature_public_key, message, signature)?)
     }
 
