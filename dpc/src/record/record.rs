@@ -112,12 +112,12 @@ impl<C: Parameters> Record<C> {
         // Sample new commitment randomness.
         let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
 
-        // Total = 32 + 1 + 8 + 32 + 48 + 48 + 32 = 201 bytes
+        // Total = 32 + 1 + 8 + 128 + 48 + 48 + 32 = 297 bytes
         let commitment_input = to_bytes_le![
             owner,               // 256 bits = 32 bytes
             is_dummy,            // 1 bit = 1 byte
             value,               // 64 bits = 8 bytes
-            payload,             // 256 bits = 32 bytes
+            payload,             // 1024 bits = 128 bytes
             birth_program_id,    // 384 bits = 48 bytes
             death_program_id,    // 384 bits = 48 bytes
             serial_number_nonce  // 256 bits = 32 bytes
