@@ -585,13 +585,8 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
 
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = self.inner_snark_parameters.1.clone().into();
 
-        let inner_snark_vk_bytes = match to_bytes_le![inner_snark_vk] {
-            Ok(bytes) => bytes,
-            _ => {
-                eprintln!("Unable to convert inner snark vk into bytes.");
-                return false;
-            }
-        };
+        let inner_snark_vk_field_elements =
+            ToConstraintField::<C::OuterScalarField>::to_field_elements(&inner_snark_vk).unwrap();
 
         let outer_snark_input = OuterCircuitVerifierInput {
             inner_snark_verifier_input: inner_snark_input,

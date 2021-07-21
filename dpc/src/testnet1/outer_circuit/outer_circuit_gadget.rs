@@ -29,6 +29,7 @@ use snarkvm_gadgets::{
         eq::EqGadget,
         integers::integer::Integer,
     },
+    ToConstraintFieldGadget,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, ToBytes};
