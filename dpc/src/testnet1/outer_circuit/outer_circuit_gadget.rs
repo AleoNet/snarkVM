@@ -25,10 +25,11 @@ use snarkvm_gadgets::{
     integers::uint::UInt8,
     traits::{
         algorithms::{CRHGadget, CommitmentGadget, SNARKVerifierGadget},
-        alloc::{AllocBytesGadget, AllocGadget},
+        alloc::AllocGadget,
         eq::EqGadget,
         integers::integer::Integer,
     },
+    ToConstraintFieldGadget,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, ToBytes};
@@ -335,28 +336,23 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     for (i, input) in program_proofs.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
         let cs = &mut cs.ns(|| format!("Check death program for input record {}", i));
 
-        let death_program_proof_bytes = input
-            .proof
-            .to_bytes_le()
-            .expect("Unable to convert death program proof to bytes");
-        let death_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc_bytes(
+        let death_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate proof"),
-            || Ok(&death_program_proof_bytes),
+            || Ok(&input.proof),
         )?;
 
-        let death_program_vk_bytes = input
-            .verifying_key
-            .to_bytes_le()
-            .expect("Unable to convert death program VK to bytes");
-        let death_program_vk = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc_bytes(
+        let death_program_vk = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
             &mut cs.ns(|| "Allocate verifying key"),
-            || Ok(&death_program_vk_bytes),
+            || Ok(&input.verifying_key),
         )?;
 
-        let death_program_vk_bytes = death_program_vk.to_bytes(&mut cs.ns(|| "Convert death pred vk to bytes"))?;
+        let death_program_vk_field_elements =
+            death_program_vk.to_constraint_field(cs.ns(|| "alloc_death_program_vk_field_elements"))?;
 
-        let claimed_death_program_id = program_id_crh
-            .check_evaluation_gadget(&mut cs.ns(|| "Compute death program ID"), death_program_vk_bytes)?;
+        let claimed_death_program_id = program_id_crh.check_evaluation_gadget_on_field_elements(
+            &mut cs.ns(|| "Compute death program ID"),
+            death_program_vk_field_elements,
+        )?;
 
         let claimed_death_program_id_bytes =
             claimed_death_program_id.to_bytes(&mut cs.ns(|| "Convert death program ID to bytes"))?;
@@ -381,28 +377,23 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     {
         let cs = &mut cs.ns(|| format!("Check birth program for output record {}", j));
 
-        let birth_program_proof_bytes = input
-            .proof
-            .to_bytes_le()
-            .expect("Unable to convert birth program proof to bytes");
-        let birth_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc_bytes(
+        let birth_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
             &mut cs.ns(|| "Allocate proof"),
-            || Ok(&birth_program_proof_bytes),
+            || Ok(&input.proof),
         )?;
 
-        let birth_program_vk_bytes = input
-            .verifying_key
-            .to_bytes_le()
-            .expect("Unable to convert birth program VK to bytes");
-        let birth_program_vk = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc_bytes(
+        let birth_program_vk = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
             &mut cs.ns(|| "Allocate verifying key"),
-            || Ok(&birth_program_vk_bytes),
+            || Ok(&input.verifying_key),
         )?;
 
-        let birth_program_vk_bytes = birth_program_vk.to_bytes(&mut cs.ns(|| "Convert birth pred vk to bytes"))?;
+        let birth_program_vk_field_elements =
+            birth_program_vk.to_constraint_field(cs.ns(|| "birth_death_program_vk_field_elements"))?;
 
-        let claimed_birth_program_id = program_id_crh
-            .check_evaluation_gadget(&mut cs.ns(|| "Compute birth program ID"), birth_program_vk_bytes)?;
+        let claimed_birth_program_id = program_id_crh.check_evaluation_gadget_on_field_elements(
+            &mut cs.ns(|| "Compute birth program ID"),
+            birth_program_vk_field_elements,
+        )?;
 
         let claimed_birth_program_id_bytes =
             claimed_birth_program_id.to_bytes(&mut cs.ns(|| "Convert birth program ID to bytes"))?;
@@ -465,7 +456,8 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     // Check that the inner circuit ID is derived correctly.
     // ********************************************************************
 
-    let inner_snark_vk_bytes = inner_snark_vk.to_bytes(&mut cs.ns(|| "Convert inner snark vk to bytes"))?;
+    let inner_snark_vk_field_elements =
+        inner_snark_vk.to_constraint_field(&mut cs.ns(|| "Convert inner snark vk to field elements"))?;
 
     let given_inner_circuit_id =
         <C::InnerCircuitIDCRHGadget as CRHGadget<_, C::OuterScalarField>>::OutputGadget::alloc_input(
@@ -473,8 +465,10 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
             || Ok(inner_circuit_id),
         )?;
 
-    let candidate_inner_circuit_id = inner_circuit_id_crh
-        .check_evaluation_gadget(&mut cs.ns(|| "Compute inner circuit ID"), inner_snark_vk_bytes)?;
+    let candidate_inner_circuit_id = inner_circuit_id_crh.check_evaluation_gadget_on_field_elements(
+        &mut cs.ns(|| "Compute inner circuit ID"),
+        inner_snark_vk_field_elements,
+    )?;
 
     candidate_inner_circuit_id.enforce_equal(
         &mut cs.ns(|| "Check that declared and computed inner circuit IDs are equal"),

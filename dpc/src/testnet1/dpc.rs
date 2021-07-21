@@ -24,6 +24,7 @@ use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes_le, FromByte
 
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
+use snarkvm_fields::ToConstraintField;
 
 pub struct DPC<C: Testnet1Components> {
     pub noop_program: NoopProgram<C>,
@@ -412,7 +413,8 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
         }
 
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = self.inner_snark_parameters.1.clone().into();
-        let inner_circuit_id = C::inner_circuit_id_crh().hash(&inner_snark_vk.to_bytes_le()?)?;
+        let inner_snark_vk_field_elements = inner_snark_vk.to_field_elements()?;
+        let inner_circuit_id = C::inner_circuit_id_crh().hash_field_elements(&inner_snark_vk_field_elements)?;
 
         let transaction_proof = {
             let circuit = OuterCircuit::<C>::new(
@@ -583,17 +585,12 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
 
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = self.inner_snark_parameters.1.clone().into();
 
-        let inner_snark_vk_bytes = match to_bytes_le![inner_snark_vk] {
-            Ok(bytes) => bytes,
-            _ => {
-                eprintln!("Unable to convert inner snark vk into bytes.");
-                return false;
-            }
-        };
+        let inner_snark_vk_field_elements =
+            ToConstraintField::<C::OuterScalarField>::to_field_elements(&inner_snark_vk).unwrap();
 
         let outer_snark_input = OuterCircuitVerifierInput {
             inner_snark_verifier_input: inner_snark_input,
-            inner_circuit_id: match C::inner_circuit_id_crh().hash(&inner_snark_vk_bytes) {
+            inner_circuit_id: match C::inner_circuit_id_crh().hash_field_elements(&inner_snark_vk_field_elements) {
                 Ok(hash) => hash,
                 _ => {
                     eprintln!("Unable to hash inner snark vk.");
