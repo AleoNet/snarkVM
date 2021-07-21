@@ -46,7 +46,7 @@ fn test_record_serialization() {
 
             let sn_nonce_input: [u8; 32] = rng.gen();
             let value = rng.gen();
-            let payload: [u8; 32] = rng.gen();
+            let payload = (0..128).map(|_| rng.gen()).collect::<Vec<u8>>();
 
             let given_record = Record::new(
                 dummy_account.address,
@@ -90,7 +90,7 @@ fn test_record_encryption() {
 
             let sn_nonce_input: [u8; 32] = rng.gen();
             let value = rng.gen();
-            let payload: [u8; 32] = rng.gen();
+            let payload = (0..128).map(|_| rng.gen()).collect::<Vec<u8>>();
 
             let given_record = Record::new(
                 dummy_account.address,
