@@ -29,10 +29,8 @@ impl Payload {
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Self {
-        assert_eq!(bytes.len(), PAYLOAD_SIZE);
-
-        let mut payload = [0u8; 128];
-        payload.copy_from_slice(&bytes[0..PAYLOAD_SIZE]);
+        let mut payload = [0u8; PAYLOAD_SIZE];
+        payload.copy_from_slice(&bytes);
 
         Self(payload)
     }
@@ -58,6 +56,6 @@ impl FromBytes for Payload {
 
 impl Default for Payload {
     fn default() -> Self {
-        Self([0u8; 128])
+        Self([0u8; PAYLOAD_SIZE])
     }
 }
