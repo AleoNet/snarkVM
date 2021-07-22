@@ -146,101 +146,33 @@ impl<L: ToBytes, R: ToBytes> ToBytes for (L, R) {
     }
 }
 
-impl ToBytes for u8 {
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        writer.write_all(&[*self])
-    }
+macro_rules! to_bytes_for_integer {
+    ($int:ty) => {
+        impl ToBytes for $int {
+            #[inline]
+            fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+                writer.write_all(&self.to_le_bytes())
+            }
+        }
+
+        impl FromBytes for $int {
+            #[inline]
+            fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+                let mut bytes = [0u8; core::mem::size_of::<$int>()];
+                reader.read_exact(&mut bytes)?;
+                Ok(<$int>::from_le_bytes(bytes))
+            }
+        }
+    };
 }
 
-impl FromBytes for u8 {
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut byte = [0u8];
-        reader.read_exact(&mut byte)?;
-        Ok(byte[0])
-    }
-}
+to_bytes_for_integer!(u8);
+to_bytes_for_integer!(u16);
+to_bytes_for_integer!(u32);
+to_bytes_for_integer!(u64);
+to_bytes_for_integer!(u128);
 
-impl ToBytes for u16 {
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        writer.write_all(&self.to_le_bytes())
-    }
-}
-
-impl FromBytes for u16 {
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut bytes = [0u8; 2];
-        reader.read_exact(&mut bytes)?;
-        Ok(u16::from_le_bytes(bytes))
-    }
-}
-
-impl ToBytes for u32 {
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        writer.write_all(&self.to_le_bytes())
-    }
-}
-
-impl FromBytes for u32 {
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut bytes = [0u8; 4];
-        reader.read_exact(&mut bytes)?;
-        Ok(u32::from_le_bytes(bytes))
-    }
-}
-
-impl ToBytes for u64 {
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        writer.write_all(&self.to_le_bytes())
-    }
-}
-
-impl FromBytes for u64 {
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut bytes = [0u8; 8];
-        reader.read_exact(&mut bytes)?;
-        Ok(u64::from_le_bytes(bytes))
-    }
-}
-
-impl ToBytes for u128 {
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        writer.write_all(&self.to_le_bytes())
-    }
-}
-
-impl FromBytes for u128 {
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut bytes = [0u8; 16];
-        reader.read_exact(&mut bytes)?;
-        Ok(u128::from_le_bytes(bytes))
-    }
-}
-
-impl ToBytes for i64 {
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        writer.write_all(&self.to_le_bytes())
-    }
-}
-
-impl FromBytes for i64 {
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut bytes = [0u8; 8];
-        reader.read_exact(&mut bytes)?;
-        Ok(i64::from_le_bytes(bytes))
-    }
-}
+to_bytes_for_integer!(i64);
 
 impl ToBytes for () {
     #[inline]
