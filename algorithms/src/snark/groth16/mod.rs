@@ -137,23 +137,21 @@ impl<E: PairingEngine> Proof<E> {
     pub fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         // Construct the compressed reader.
         let compressed_proof_size = Self::compressed_proof_size()?;
-        let mut compressed_reader = vec![0u8; compressed_proof_size];
-        reader.read_exact(&mut compressed_reader)?;
-        let duplicate_compressed_reader = compressed_reader.clone();
+        let mut proof_reader = vec![0u8; compressed_proof_size];
+        reader.read_exact(&mut proof_reader)?;
 
         // Attempt to read the compressed proof.
-        if let Ok(proof) = Self::read_compressed(&compressed_reader[..]) {
+        if let Ok(proof) = Self::read_compressed(&proof_reader[..]) {
             return Ok(proof);
         }
 
         // Construct the uncompressed reader.
         let uncompressed_proof_size = Self::uncompressed_proof_size()?;
-        let mut uncompressed_reader = vec![0u8; uncompressed_proof_size - compressed_proof_size];
-        reader.read_exact(&mut uncompressed_reader)?;
-        uncompressed_reader = [duplicate_compressed_reader, uncompressed_reader].concat();
+        proof_reader.resize(uncompressed_proof_size, 0);
+        reader.read_exact(&mut proof_reader[compressed_proof_size..])?;
 
         // Attempt to read the uncompressed proof.
-        Self::read_uncompressed(&uncompressed_reader[..])
+        Self::read_uncompressed(&proof_reader[..])
     }
 
     /// Returns the number of bytes in a compressed proof serialization.
