@@ -178,7 +178,7 @@ impl<C: Parameters> InnerCircuit<C> {
         assert_eq!(num_output_records, new_encrypted_record_hashes.len());
 
         // TODO (raychu86) Fix the lengths to be generic
-        let record_encoding_length = 7;
+        let record_encoding_length = 10;
 
         for gadget_components in &new_records_encryption_gadget_components {
             assert_eq!(gadget_components.record_field_elements.len(), record_encoding_length);
