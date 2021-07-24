@@ -1095,7 +1095,7 @@ where
                 || Ok(encryption_randomness),
             )?;
 
-            let encryption_blinding_exponents_gadget = AccountEncryptionGadget::BlindingExponentGadget::alloc(
+            let encryption_blinding_exponents_gadget = AccountEncryptionGadget::EncryptionWitnessGadget::alloc(
                 &mut encryption_cs.ns(|| format!("output record {} encryption_blinding_exponents", j)),
                 || Ok(encryption_blinding_exponents),
             )?;
