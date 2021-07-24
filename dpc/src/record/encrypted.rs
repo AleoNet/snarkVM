@@ -78,8 +78,7 @@ impl<C: Parameters> Default for RecordEncryptionGadgetComponents<C> {
         let ciphertext_selectors = vec![false; record_encoding_length + 1];
         let fq_high_selectors = vec![false; record_encoding_length];
 
-        let encryption_blinding_exponents =
-            vec![
+        let encryption_blinding_exponents = vec![
                 <C::AccountEncryptionScheme as EncryptionScheme>::EncryptionWitness::default();
                 record_encoding_length
             ];
