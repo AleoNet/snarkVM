@@ -24,23 +24,17 @@ pub enum CommitmentError {
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
+    #[error("{}", _0)]
+    CRHError(#[from] crate::CRHError),
+
     #[error("incorrect input length {} for window params {}x{}", _0, _1, _2)]
     IncorrectInputLength(usize, usize, usize),
-
-    #[error("{}", _0)]
-    CRHError(crate::CRHError),
 
     #[error("{}", _0)]
     Message(String),
 
     #[error("Unable to hash to curve on message: {}", _0)]
     UnableToHashToCurve(String),
-}
-
-impl From<crate::CRHError> for CommitmentError {
-    fn from(error: crate::CRHError) -> Self {
-        CommitmentError::CRHError(error)
-    }
 }
 
 impl From<Error> for CommitmentError {
