@@ -21,6 +21,7 @@ use rand::{CryptoRng, Rng};
 pub trait AccountScheme: Sized {
     type Address: Default;
     type PrivateKey;
+    type ViewKey;
 
     fn new<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, AccountError>;
 }

@@ -330,7 +330,7 @@ where
             // or hash is incorrect, then it will not match the computed equivalent.
             let given_record_owner =
                 AccountEncryptionGadget::PublicKeyGadget::alloc(&mut declare_cs.ns(|| "given_record_owner"), || {
-                    Ok(record.owner().into_repr())
+                    Ok(record.owner().to_encryption_key())
                 })?;
 
             let given_commitment =
@@ -622,7 +622,7 @@ where
 
             let given_record_owner =
                 AccountEncryptionGadget::PublicKeyGadget::alloc(&mut declare_cs.ns(|| "given_record_owner"), || {
-                    Ok(record.owner().into_repr())
+                    Ok(record.owner().to_encryption_key())
                 })?;
 
             let given_record_commitment =
