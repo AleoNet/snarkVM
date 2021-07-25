@@ -23,7 +23,7 @@ pub enum MerkleError {
     Crate(&'static str, String),
 
     #[error("{}", _0)]
-    CRHError(crate::CRHError),
+    CRHError(#[from] crate::CRHError),
 
     #[error("Incorrect leaf index: {}", _0)]
     IncorrectLeafIndex(usize),
@@ -42,12 +42,6 @@ pub enum MerkleError {
 
     #[error("{}", _0)]
     Message(String),
-}
-
-impl From<crate::CRHError> for MerkleError {
-    fn from(error: crate::CRHError) -> Self {
-        MerkleError::CRHError(error)
-    }
 }
 
 impl From<std::io::Error> for MerkleError {

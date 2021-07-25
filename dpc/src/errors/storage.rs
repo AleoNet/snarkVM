@@ -37,17 +37,11 @@ pub enum StorageError {
     #[error("duplicate serial number")]
     DuplicateSn,
 
-    #[error("duplicate transaction memo")]
-    DuplicateMemo,
-
     #[error("Block has already been committed: {:?}", _0)]
     ExistingCanonBlock(String),
 
     #[error("existing record commitment {:?}", _0)]
     ExistingCm(Vec<u8>),
-
-    #[error("existing transaction memo {:?}", _0)]
-    ExistingMemo(Vec<u8>),
 
     #[error("existing serial number {:?}", _0)]
     ExistingSn(Vec<u8>),
@@ -108,9 +102,6 @@ pub enum StorageError {
 
     #[error("missing genesis commitment")]
     MissingGenesisCm,
-
-    #[error("missing genesis memo")]
-    MissingGenesisMemo,
 
     #[error("missing genesis program vk bytes")]
     MissingGenesisProgramVkBytes,
