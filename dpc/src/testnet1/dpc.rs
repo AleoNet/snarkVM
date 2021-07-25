@@ -506,7 +506,7 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
         }
 
         // Returns false if the ledger digest in the transaction is invalid.
-        if !ledger.validate_digest(&transaction.ledger_digest) {
+        if !ledger.is_valid_digest(&transaction.ledger_digest) {
             eprintln!("Ledger digest is invalid.");
             return false;
         }

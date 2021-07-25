@@ -87,7 +87,7 @@ fn dpc_testnet1_integration_test() {
         transactions: Transactions::new(),
     };
 
-    let ledger = initialize_test_blockchain::<Testnet1Parameters, Testnet1Transaction, MemDb>(genesis_block);
+    let ledger = initialize_test_blockchain::<Testnet1Parameters, MemDb>(genesis_block);
 
     // Generate dummy input records having as address the genesis address.
     let old_private_keys = vec![genesis_account.private_key.clone(); Testnet1Parameters::NUM_INPUT_RECORDS];
@@ -179,7 +179,7 @@ fn dpc_testnet1_integration_test() {
 
     // Craft the block
 
-    let previous_block = ledger.get_latest_block().unwrap();
+    let previous_block = ledger.latest_block().unwrap();
 
     let mut transactions = Transactions::new();
     transactions.push(transaction);
@@ -304,7 +304,7 @@ fn test_testnet1_dpc_execute_constraints() {
     };
 
     // Use genesis record, serial number, and memo to initialize the ledger.
-    let ledger = initialize_test_blockchain::<Testnet1Parameters, Testnet1Transaction, MemDb>(genesis_block);
+    let ledger = initialize_test_blockchain::<Testnet1Parameters, MemDb>(genesis_block);
 
     let old_private_keys = vec![dummy_account.private_key; Testnet1Parameters::NUM_INPUT_RECORDS];
 
