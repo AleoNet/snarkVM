@@ -21,7 +21,7 @@ use snarkvm_gadgets::{
     nonnative::NonNativeFieldVar,
     traits::{alloc::AllocGadget, curves::PairingGadget},
 };
-use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use crate::kzg10::Proof;
 
@@ -31,10 +31,7 @@ pub struct ProofVar<
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-> where
-    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-{
+> {
     /// The commitment to the witness polynomial.
     pub w: PG::G1Gadget,
     /// The evaluation of the random hiding polynomial.
@@ -46,8 +43,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
     fn clone(&self) -> Self {
         Self {
@@ -63,8 +58,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,

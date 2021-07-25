@@ -17,7 +17,7 @@
 use core::borrow::Borrow;
 
 use snarkvm_curves::{AffineCurve, PairingEngine};
-use snarkvm_fields::{PrimeField, ToConstraintField};
+use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     bits::{Boolean, ToBytesGadget},
     fields::FpGadget,
@@ -366,8 +366,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
     fn prepare<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
         &self,
@@ -423,10 +421,6 @@ where
     BaseCurve: PairingEngine,
     <BaseCurve as PairingEngine>::Fr: PrimeField,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    PG::G1Gadget: ToConstraintFieldGadget<<BaseCurve as PairingEngine>::Fr>,
-    PG::G2Gadget: ToConstraintFieldGadget<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
     fn to_constraint_field<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
         &self,
