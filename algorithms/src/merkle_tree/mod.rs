@@ -33,7 +33,7 @@ macro_rules! define_merkle_tree_parameters {
         #[allow(unused_imports)]
         use $crate::{
             merkle_tree::MerkleTree, MerkleError,
-            traits::{CRH, LoadableMerkleParameters, MaskedMerkleParameters, MerkleParameters},
+            traits::{CRH, LoadableMerkleParameters, MerkleParameters},
         };
 
         #[derive(Clone, PartialEq, Eq, Debug)]

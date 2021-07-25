@@ -29,23 +29,17 @@ use std::{
 pub struct BlockHeader {
     /// Hash of the previous block - 32 bytes
     pub previous_block_hash: BlockHeaderHash,
-
     /// Merkle root representing the transactions in the block - 32 bytes
     pub merkle_root_hash: MerkleRootHash,
-
     /// Merkle root of the transactions in the block using a Pedersen hash - 32 bytes
     pub pedersen_merkle_root_hash: PedersenMerkleRootHash,
-
     /// Proof of Succinct Work
     pub proof: ProofOfSuccinctWork,
-
     /// The block timestamp is a Unix epoch time (UTC) when the miner
     /// started hashing the header (according to the miner). - 8 bytes
     pub time: i64,
-
     /// Proof of work algorithm difficulty target for this block - 8 bytes
     pub difficulty_target: u64,
-
     /// Nonce for solving the PoW puzzle - 4 bytes
     pub nonce: u32,
 }

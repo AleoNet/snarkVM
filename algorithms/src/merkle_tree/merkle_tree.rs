@@ -22,47 +22,26 @@ use crate::{
 use snarkvm_utilities::ToBytes;
 use std::sync::Arc;
 
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
+
 #[derive(Default)]
 pub struct MerkleTree<P: MerkleParameters> {
     /// The computed root of the full Merkle tree.
     root: Option<MerkleTreeDigest<P>>,
-
     /// The internal hashes, from root to hashed leaves, of the full Merkle tree.
     tree: Vec<MerkleTreeDigest<P>>,
-
     /// The index from which hashes of each non-empty leaf in the Merkle tree can be obtained.
     hashed_leaves_index: usize,
-
     /// For each level after a full tree has been built from the leaves,
     /// keeps both the roots the siblings that are used to get to the desired depth.
     padding_tree: Vec<(MerkleTreeDigest<P>, MerkleTreeDigest<P>)>,
-
     /// The Merkle tree parameters (e.g. the hash function).
     parameters: Arc<P>,
 }
 
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
-
 impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
     pub const DEPTH: u8 = P::DEPTH as u8;
-
-    fn hash_row<L: ToBytes + Send + Sync>(
-        parameters: &P,
-        leaves: &[L],
-    ) -> Result<Vec<Vec<<<P as MerkleParameters>::H as CRH>::Output>>, MerkleError> {
-        let hash_input_size_in_bytes = (P::H::INPUT_SIZE_BITS / 8) * 2;
-        cfg_chunks!(leaves, 500) // arbitrary, experimentally derived
-            .map(|chunk| -> Result<Vec<_>, MerkleError> {
-                let mut buffer = vec![0u8; hash_input_size_in_bytes];
-                let mut out = Vec::with_capacity(chunk.len());
-                for leaf in chunk.into_iter() {
-                    out.push(parameters.hash_leaf(&leaf, &mut buffer)?);
-                }
-                Ok(out)
-            })
-            .collect::<Result<Vec<_>, MerkleError>>()
-    }
 
     pub fn new<L: ToBytes + Send + Sync>(parameters: Arc<P>, leaves: &[L]) -> Result<Self, MerkleError> {
         let new_time = start_timer!(|| "MerkleTree::new");
@@ -330,6 +309,23 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
                 leaf_index: index,
             })
         }
+    }
+
+    fn hash_row<L: ToBytes + Send + Sync>(
+        parameters: &P,
+        leaves: &[L],
+    ) -> Result<Vec<Vec<<<P as MerkleParameters>::H as CRH>::Output>>, MerkleError> {
+        let hash_input_size_in_bytes = (P::H::INPUT_SIZE_BITS / 8) * 2;
+        cfg_chunks!(leaves, 500) // arbitrary, experimentally derived
+            .map(|chunk| -> Result<Vec<_>, MerkleError> {
+                let mut buffer = vec![0u8; hash_input_size_in_bytes];
+                let mut out = Vec::with_capacity(chunk.len());
+                for leaf in chunk.into_iter() {
+                    out.push(parameters.hash_leaf(&leaf, &mut buffer)?);
+                }
+                Ok(out)
+            })
+            .collect::<Result<Vec<_>, MerkleError>>()
     }
 }
 
