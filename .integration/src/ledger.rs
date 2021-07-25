@@ -76,7 +76,7 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
     }
 
     /// Get a block given the block number.
-    pub fn get_block_from_block_number(&self, block_number: u32) -> Result<Block<T>, StorageError> {
+    pub fn get_block_from_block_number(&self, block_number: BlockHeight) -> Result<Block<T>, StorageError> {
         if block_number > self.get_current_block_height() {
             return Err(StorageError::BlockError(BlockError::InvalidBlockNumber(block_number)));
         }
@@ -87,7 +87,7 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
     }
 
     /// Get the block hash given a block number.
-    pub fn get_block_hash(&self, block_number: u32) -> Result<BlockHeaderHash, StorageError> {
+    pub fn get_block_hash(&self, block_number: BlockHeight) -> Result<BlockHeaderHash, StorageError> {
         match self.storage.get(COL_BLOCK_LOCATOR, &block_number.to_le_bytes())? {
             Some(block_header_hash) => Ok(BlockHeaderHash::new(block_header_hash)),
             None => Err(StorageError::MissingBlockHash(block_number)),
@@ -159,14 +159,6 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
         }
     }
 
-    /// Get the current memo index
-    pub fn current_memo_index(&self) -> Result<usize, StorageError> {
-        match self.storage.get(COL_META, KEY_CURR_MEMO_INDEX.as_bytes())? {
-            Some(memo_index_bytes) => Ok(bytes_to_u32(&memo_index_bytes) as usize),
-            None => Ok(0),
-        }
-    }
-
     /// Get the set of past ledger digests
     pub fn past_digests(&self) -> Result<HashSet<Box<[u8]>>, StorageError> {
         let keys = self.storage.get_keys(COL_DIGEST)?;
@@ -196,19 +188,6 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
                 cm_index.copy_from_slice(&cm_index_bytes[0..4]);
 
                 Ok(Some(u32::from_le_bytes(cm_index) as usize))
-            }
-            None => Ok(None),
-        }
-    }
-
-    /// Get memo index
-    pub fn get_memo_index(&self, memo_bytes: &[u8]) -> Result<Option<usize>, StorageError> {
-        match self.storage.get(COL_MEMO, memo_bytes)? {
-            Some(memo_index_bytes) => {
-                let mut memo_index = [0u8; 4];
-                memo_index.copy_from_slice(&memo_index_bytes[0..4]);
-
-                Ok(Some(u32::from_le_bytes(memo_index) as usize))
             }
             None => Ok(None),
         }
@@ -316,7 +295,6 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
         &self,
         sn_index: &mut usize,
         cm_index: &mut usize,
-        memo_index: &mut usize,
         transaction: &T,
     ) -> Result<(Vec<Op>, Vec<(T::Commitment, usize)>), StorageError> {
         let old_serial_numbers = transaction.old_serial_numbers();
@@ -353,18 +331,6 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
             cms.push((cm.clone(), *cm_index));
 
             *cm_index += 1;
-        }
-
-        let memo_bytes = to_bytes_le![transaction.memorandum()]?;
-        if self.get_memo_index(&memo_bytes)?.is_some() {
-            return Err(StorageError::ExistingMemo(memo_bytes.to_vec()));
-        } else {
-            ops.push(Op::Insert {
-                col: COL_MEMO,
-                key: memo_bytes,
-                value: (*memo_index as u32).to_le_bytes().to_vec(),
-            });
-            *memo_index += 1;
         }
 
         Ok((ops, cms))
@@ -469,12 +435,10 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
 
         let mut transaction_serial_numbers = Vec::with_capacity(block.transactions.0.len());
         let mut transaction_commitments = Vec::with_capacity(block.transactions.0.len());
-        let mut transaction_memos = Vec::with_capacity(block.transactions.0.len());
 
         for transaction in &block.transactions.0 {
             transaction_serial_numbers.push(transaction.transaction_id()?);
             transaction_commitments.push(transaction.new_commitments());
-            transaction_memos.push(transaction.memorandum());
         }
 
         // Sanitize the block inputs
@@ -489,21 +453,15 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
             return Err(StorageError::DuplicateCm);
         }
 
-        // Check if the transactions in the block have duplicate memos
-        if has_duplicates(transaction_memos) {
-            return Err(StorageError::DuplicateMemo);
-        }
-
         let mut sn_index = self.current_sn_index()?;
         let mut cm_index = self.current_cm_index()?;
-        let mut memo_index = self.current_memo_index()?;
 
         // Process the individual transactions
 
         let mut transaction_cms = vec![];
 
         for transaction in block.transactions.0.iter() {
-            let (tx_ops, cms) = self.commit_transaction(&mut sn_index, &mut cm_index, &mut memo_index, transaction)?;
+            let (tx_ops, cms) = self.commit_transaction(&mut sn_index, &mut cm_index, transaction)?;
             database_transaction.push_vec(tx_ops);
             transaction_cms.extend(cms);
         }
@@ -519,11 +477,6 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
             col: COL_META,
             key: KEY_CURR_CM_INDEX.as_bytes().to_vec(),
             value: (cm_index as u32).to_le_bytes().to_vec(),
-        });
-        database_transaction.push(Op::Insert {
-            col: COL_META,
-            key: KEY_CURR_MEMO_INDEX.as_bytes().to_vec(),
-            value: (memo_index as u32).to_le_bytes().to_vec(),
         });
 
         // Update the best block number
