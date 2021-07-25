@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{crh::sha256::sha256, traits::SNARK};
+use snarkvm_algorithms::{crh::sha256::sha256, SNARK, SRS};
 use snarkvm_dpc::{
     testnet1::{parameters::Testnet1Parameters, Testnet1Components},
     DPCError,
@@ -31,7 +31,7 @@ use utils::store;
 pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
-    let inner_snark_parameters = C::InnerSNARK::circuit_specific_setup(&InnerCircuit::<C>::blank(), rng)?;
+    let inner_snark_parameters = C::InnerSNARK::setup(&InnerCircuit::<C>::blank(), &mut SRS::CircuitSpecific(rng))?;
     let inner_snark_pk = inner_snark_parameters.0.to_bytes_le()?;
     let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = inner_snark_parameters.1.into();
     let inner_snark_vk = inner_snark_vk.to_bytes_le()?;

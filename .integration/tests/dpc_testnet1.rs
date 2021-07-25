@@ -17,6 +17,7 @@
 use snarkvm_algorithms::{
     merkle_tree::MerklePath,
     traits::{CRH, SNARK},
+    SRS,
 };
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{
@@ -475,9 +476,9 @@ fn test_testnet1_dpc_execute_constraints() {
     assert!(inner_circuit_cs.is_satisfied());
 
     // Generate inner snark parameters and proof for verification in the outer snark
-    let inner_snark_parameters = <Testnet1Parameters as Parameters>::InnerSNARK::circuit_specific_setup(
+    let inner_snark_parameters = <Testnet1Parameters as Parameters>::InnerSNARK::setup(
         &InnerCircuit::<Testnet1Parameters>::blank(),
-        &mut rng,
+        &mut SRS::CircuitSpecific(&mut rng),
     )
     .unwrap();
 

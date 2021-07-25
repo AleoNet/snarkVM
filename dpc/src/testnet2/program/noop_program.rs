@@ -59,10 +59,11 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
 
     /// Initializes a new instance of the noop program.
     fn setup<R: Rng + CryptoRng>(_rng: &mut R) -> Result<Self, ProgramError> {
-        let universal_srs = ProgramSNARKUniversalSRS::<C>::load()?.0.clone();
+        // TODO (howardwu): TEMPORARY - Clean this usage of bytes (To(From(To))) up.
+        let universal_srs = ProgramSNARKUniversalSRS::<C>::load()?.0.to_bytes_le()?;
 
         let (proving_key, prepared_verifying_key) =
-            <Self::ProofSystem as SNARK>::index(&NoopCircuit::<C>::blank(), &universal_srs)?;
+            <Self::ProofSystem as SNARK>::setup(&NoopCircuit::<C>::blank(), &mut SRS::<R>::Universal(universal_srs))?;
         let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
 
         let verifying_key_group_elements = verifying_key.to_field_elements()?;

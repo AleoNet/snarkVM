@@ -31,8 +31,7 @@ impl<C: Parameters> ProgramSNARKUniversalSRS<C> {
         config: &<C::ProgramSNARK as SNARK>::UniversalSetupConfig,
         rng: &mut R,
     ) -> Result<Self, ProgramError> {
-        // TODO (raychu86): Handle this unwrap.
-        Ok(Self(C::ProgramSNARK::universal_setup(config, rng).unwrap()))
+        Ok(Self(C::ProgramSNARK::universal_setup(config, rng)?))
     }
 }
 
