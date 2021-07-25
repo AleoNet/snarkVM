@@ -41,7 +41,7 @@ pub struct MerkleTree<P: MerkleParameters> {
 }
 
 impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
-    pub const DEPTH: u8 = P::DEPTH as u8;
+    pub const DEPTH: usize = P::DEPTH;
 
     pub fn new<L: ToBytes + Send + Sync>(parameters: Arc<P>, leaves: &[L]) -> Result<Self, MerkleError> {
         let new_time = start_timer!(|| "MerkleTree::new");
@@ -50,8 +50,8 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         let tree_size = 2 * last_level_size - 1;
         let tree_depth = tree_depth(tree_size);
 
-        if tree_depth > Self::DEPTH as usize {
-            return Err(MerkleError::InvalidTreeDepth(tree_depth, Self::DEPTH as usize));
+        if tree_depth > Self::DEPTH {
+            return Err(MerkleError::InvalidTreeDepth(tree_depth, Self::DEPTH));
         }
 
         // Initialize the Merkle tree.
@@ -104,13 +104,13 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         // Finished computing actual tree.
         // Now, we compute the dummy nodes until we hit our DEPTH goal.
         let mut current_depth = tree_depth;
-        let mut padding_tree = Vec::with_capacity((Self::DEPTH as usize).saturating_sub(current_depth + 1));
+        let mut padding_tree = Vec::with_capacity((Self::DEPTH).saturating_sub(current_depth + 1));
         let mut current_hash = tree[0].clone();
-        while current_depth < Self::DEPTH as usize {
+        while current_depth < Self::DEPTH {
             current_hash = parameters.hash_inner_node(&current_hash, &empty_hash, &mut buffer)?;
 
             // do not pad at the top-level of the tree
-            if current_depth < Self::DEPTH as usize - 1 {
+            if current_depth < Self::DEPTH - 1 {
                 padding_tree.push((current_hash.clone(), empty_hash.clone()));
             }
             current_depth += 1;
@@ -135,8 +135,8 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         let tree_size = 2 * last_level_size - 1;
         let tree_depth = tree_depth(tree_size);
 
-        if tree_depth > Self::DEPTH as usize {
-            return Err(MerkleError::InvalidTreeDepth(tree_depth, Self::DEPTH as usize));
+        if tree_depth > Self::DEPTH {
+            return Err(MerkleError::InvalidTreeDepth(tree_depth, Self::DEPTH));
         }
 
         // Initialize the Merkle tree.
@@ -211,15 +211,15 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
 
             None
         } else {
-            let mut padding_tree = Vec::with_capacity((Self::DEPTH as usize).saturating_sub(current_depth + 1));
+            let mut padding_tree = Vec::with_capacity((Self::DEPTH).saturating_sub(current_depth + 1));
 
-            while current_depth < Self::DEPTH as usize {
+            while current_depth < Self::DEPTH {
                 current_hash = self
                     .parameters
                     .hash_inner_node(&current_hash, &empty_hash, &mut buffer)?;
 
                 // do not pad at the top-level of the tree
-                if current_depth < Self::DEPTH as usize - 1 {
+                if current_depth < Self::DEPTH - 1 {
                     padding_tree.push((current_hash.clone(), empty_hash.clone()));
                 }
                 current_depth += 1;
@@ -286,11 +286,11 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         }
 
         // Store the root node. Set boolean as true for consistency with digest location.
-        if path.len() > Self::DEPTH as usize {
-            return Err(MerkleError::InvalidPathLength(path.len(), Self::DEPTH as usize));
+        if path.len() > Self::DEPTH {
+            return Err(MerkleError::InvalidPathLength(path.len(), Self::DEPTH));
         }
 
-        if path.len() != Self::DEPTH as usize {
+        if path.len() != Self::DEPTH {
             let empty_hash = self.parameters.hash_empty()?;
             path.push(empty_hash);
 
@@ -300,7 +300,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         }
         end_timer!(prove_time);
 
-        if path.len() != Self::DEPTH as usize {
+        if path.len() != Self::DEPTH {
             Err(MerkleError::IncorrectPathLength(path.len()))
         } else {
             Ok(MerklePath {
