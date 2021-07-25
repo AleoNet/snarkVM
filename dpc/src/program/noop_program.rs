@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet2::{NoopCircuit, ProgramSNARKUniversalSRS},
     Execution,
     LocalData,
+    NoopCircuit,
     Parameters,
     ProgramError,
     ProgramLocalData,
@@ -32,6 +32,7 @@ use snarkvm_parameters::{
 use snarkvm_r1cs::ToConstraintField;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use crate::testnet1::NoopCircuit;
 use rand::{CryptoRng, Rng};
 
 #[derive(Derivative)]
@@ -40,9 +41,9 @@ pub struct NoopProgram<C: Parameters> {
     #[derivative(Default(value = "vec![0u8; 48]"))]
     id: Vec<u8>,
     #[derivative(Debug = "ignore")]
-    proving_key: <<C as Parameters>::ProgramSNARK as SNARK>::ProvingKey,
+    proving_key: <C::ProgramSNARK as SNARK>::ProvingKey,
     #[derivative(Debug = "ignore")]
-    verifying_key: <<C as Parameters>::ProgramSNARK as SNARK>::VerifyingKey,
+    verifying_key: <C::ProgramSNARK as SNARK>::VerifyingKey,
 }
 
 impl<C: Parameters> ProgramScheme for NoopProgram<C> {
@@ -51,17 +52,15 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
     type LocalData = LocalData<C>;
     type LocalDataCommitment = C::LocalDataCommitmentScheme;
     type ProgramIDCRH = C::ProgramIDCRH;
-    type ProofSystem = <C as Parameters>::ProgramSNARK;
+    type ProofSystem = C::ProgramSNARK;
     type ProvingKey = <Self::ProofSystem as SNARK>::ProvingKey;
     type PublicInput = ();
     type VerifyingKey = <Self::ProofSystem as SNARK>::VerifyingKey;
 
     /// Initializes a new instance of the noop program.
-    fn setup<R: Rng + CryptoRng>(_rng: &mut R) -> Result<Self, ProgramError> {
-        let universal_srs = ProgramSNARKUniversalSRS::<C>::load()?.0.clone();
-
+    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, ProgramError> {
         let (proving_key, prepared_verifying_key) =
-            <Self::ProofSystem as SNARK>::index(&NoopCircuit::<C>::blank(), &universal_srs)?;
+            <Self::ProofSystem as SNARK>::setup(&NoopCircuit::<C>::blank(), &mut C::program_srs::<R>(rng)?)?;
         let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
 
         let verifying_key_group_elements = verifying_key.to_field_elements()?;
@@ -169,8 +168,8 @@ impl<C: Parameters> NoopProgram<C> {
     pub fn to_snark_parameters(
         &self,
     ) -> (
-        <<C as Parameters>::ProgramSNARK as SNARK>::ProvingKey,
-        <<C as Parameters>::ProgramSNARK as SNARK>::VerifyingKey,
+        <C::ProgramSNARK as SNARK>::ProvingKey,
+        <C::ProgramSNARK as SNARK>::VerifyingKey,
     ) {
         (self.proving_key.clone(), self.verifying_key.clone())
     }

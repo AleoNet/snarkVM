@@ -20,7 +20,4 @@ pub use dpc::*;
 pub mod universal_parameters;
 pub use universal_parameters::*;
 
-pub mod program;
-pub use program::*;
-
 pub mod parameters;

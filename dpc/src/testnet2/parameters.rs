@@ -59,9 +59,12 @@ use snarkvm_marlin::{
     FiatShamirAlgebraicSpongeRng,
     PoseidonSponge,
 };
+use snarkvm_parameters::{testnet2::UniversalSRSParameters, Parameter};
 use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
 
+use anyhow::Result;
 use once_cell::sync::OnceCell;
+use rand::{CryptoRng, Rng};
 
 macro_rules! dpc_setup {
     ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
@@ -100,7 +103,24 @@ impl Parameters for Testnet2Parameters {
     type OuterBaseField = <Self::OuterCurve as PairingEngine>::Fq;
 
     type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Testnet2Parameters>>;
+    type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
+
     type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet2Parameters>>;
+
+    type ProgramSNARK = MarlinSNARK<
+        Self::InnerScalarField,
+        Self::OuterScalarField,
+        MarlinKZG10<Self::InnerCurve>,
+        FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>,
+        MarlinTestnet2Mode,
+        ProgramLocalData<Self>,
+    >;
+    type ProgramSNARKGadget = MarlinVerificationGadget<
+        Self::InnerScalarField,
+        Self::OuterScalarField,
+        MarlinKZG10<Self::InnerCurve>,
+        MarlinKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>,
+    >;
 
     type AccountCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 33, 48>;
     type AccountCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 33, 48>;
@@ -153,26 +173,6 @@ impl Parameters for Testnet2Parameters {
 
     type SerialNumberNonceCRH = BHPCompressedCRH<EdwardsBls12, 32, 63>;
     type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
-
-    type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
-    type ProgramSNARK = MarlinSNARK<
-        Self::InnerScalarField,
-        Self::OuterScalarField,
-        MarlinKZG10<Self::InnerCurve>,
-        FiatShamirAlgebraicSpongeRng<
-            Self::InnerScalarField,
-            Self::OuterScalarField,
-            PoseidonSponge<Self::OuterScalarField>,
-        >,
-        MarlinTestnet2Mode,
-        ProgramLocalData<Self>,
-    >;
-    type ProgramSNARKGadget = MarlinVerificationGadget<
-        Self::InnerScalarField,
-        Self::OuterScalarField,
-        MarlinKZG10<Self::InnerCurve>,
-        MarlinKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>,
-    >;
 
     dpc_setup!{account_commitment_scheme, ACCOUNT_COMMITMENT_SCHEME, AccountCommitmentScheme, ACCOUNT_COMMITMENT_INPUT} // TODO (howardwu): Rename to "AleoAccountCommitmentScheme0".
     dpc_setup!{account_encryption_scheme, ACCOUNT_ENCRYPTION_SCHEME, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_INPUT} // TODO (howardwu): Rename to "AleoAccountEncryptionScheme0".

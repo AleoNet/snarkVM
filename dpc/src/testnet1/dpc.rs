@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{prelude::*, testnet1::NoopProgram};
+use crate::prelude::*;
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, merkle_tree::MerklePath, prelude::*};
 use snarkvm_parameters::{prelude::*, testnet1::*};
 use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
@@ -52,16 +52,16 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");
         let inner_circuit = InnerCircuit::<C>::blank();
-        let inner_snark_parameters = C::InnerSNARK::circuit_specific_setup(&inner_circuit, rng)?;
+        let inner_snark_parameters = C::InnerSNARK::setup(&inner_circuit, &mut SRS::CircuitSpecific(rng))?;
         end_timer!(snark_setup_time);
 
         let snark_setup_time = start_timer!(|| "Execute outer SNARK setup");
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = inner_snark_parameters.1.clone().into();
         let inner_snark_proof = C::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, rng)?;
 
-        let outer_snark_parameters = C::OuterSNARK::circuit_specific_setup(
+        let outer_snark_parameters = C::OuterSNARK::setup(
             &OuterCircuit::<C>::blank(inner_snark_vk, inner_snark_proof, noop_program_execution),
-            rng,
+            &mut SRS::CircuitSpecific(rng),
         )?;
         end_timer!(snark_setup_time);
         end_timer!(setup_time);

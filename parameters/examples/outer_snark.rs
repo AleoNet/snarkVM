@@ -14,11 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{crh::sha256::sha256, traits::SNARK};
+use snarkvm_algorithms::{crh::sha256::sha256, SNARK, SRS};
 use snarkvm_dpc::{
-    testnet1::{parameters::Testnet1Parameters, NoopProgram, OuterCircuit, Testnet1Components},
+    testnet1::{parameters::Testnet1Parameters, OuterCircuit, Testnet1Components},
     DPCError,
     InnerCircuit,
+    NoopProgram,
     ProgramScheme,
 };
 use snarkvm_parameters::{
@@ -46,9 +47,9 @@ pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
 
     let noop_program = NoopProgram::<C>::load()?;
 
-    let outer_snark_parameters = C::OuterSNARK::circuit_specific_setup(
+    let outer_snark_parameters = C::OuterSNARK::setup(
         &OuterCircuit::<C>::blank(inner_snark_vk, inner_snark_proof, noop_program.execute_blank(rng)?),
-        rng,
+        &mut SRS::CircuitSpecific(rng),
     )?;
 
     let outer_snark_pk = outer_snark_parameters.0.to_bytes_le()?;

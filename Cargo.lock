@@ -1852,11 +1852,12 @@ dependencies = [
 name = "snarkvm-posw"
 version = "0.7.5"
 dependencies = [
+ "anyhow",
  "blake2",
  "criterion",
  "hex",
  "rand",
- "rand_xorshift",
+ "rand_chacha",
  "serde",
  "snarkvm-algorithms",
  "snarkvm-curves",

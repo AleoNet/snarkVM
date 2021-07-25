@@ -54,7 +54,9 @@ use snarkvm_gadgets::{
     curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget},
 };
 
+use anyhow::Result;
 use once_cell::sync::OnceCell;
+use rand::{CryptoRng, Rng};
 
 macro_rules! dpc_setup {
     ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
@@ -92,7 +94,12 @@ impl Parameters for Testnet1Parameters {
     type OuterBaseField = <Self::OuterCurve as PairingEngine>::Fq;
 
     type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Testnet1Parameters>>;
+    type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
+
     type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet1Parameters>>;
+
+    type ProgramSNARK = Groth16<Self::InnerCurve, ProgramLocalData<Self>>;
+    type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
 
     type AccountCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 33, 48>;
     type AccountCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 33, 48>;
@@ -146,10 +153,6 @@ impl Parameters for Testnet1Parameters {
     type SerialNumberNonceCRH = BHPCompressedCRH<EdwardsBls12, 32, 63>;
     type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
 
-    type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
-    type ProgramSNARK = Groth16<Self::InnerCurve, ProgramLocalData<Self>>;
-    type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
-
     dpc_setup!{account_commitment_scheme, ACCOUNT_COMMITMENT_SCHEME, AccountCommitmentScheme, ACCOUNT_COMMITMENT_INPUT} // TODO (howardwu): Rename to "AleoAccountCommitmentScheme0".
     dpc_setup!{account_encryption_scheme, ACCOUNT_ENCRYPTION_SCHEME, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_INPUT} // TODO (howardwu): Rename to "AleoAccountEncryptionScheme0".
     dpc_setup!{account_signature_scheme, ACCOUNT_SIGNATURE_SCHEME, AccountSignatureScheme, ACCOUNT_SIGNATURE_INPUT} // TODO (howardwu): Rename to "AleoAccountSignatureScheme0".
@@ -167,5 +170,10 @@ impl Parameters for Testnet1Parameters {
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters {
         static RECORD_COMMITMENT_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::RecordCommitmentTreeParameters> = OnceCell::new();
         RECORD_COMMITMENT_TREE_PARAMETERS.get_or_init(|| Self::RecordCommitmentTreeParameters::from(Self::record_commitment_tree_crh().clone()))
+    }
+
+    /// Returns the program SRS for Aleo applications.
+    fn program_srs<R: Rng + CryptoRng>(rng: &mut R) -> Result<SRS<R>> {
+        Ok(SRS::CircuitSpecific(rng))
     }
 }

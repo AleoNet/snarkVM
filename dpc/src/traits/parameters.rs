@@ -35,6 +35,9 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
+use anyhow::Result;
+use rand::{CryptoRng, Rng};
+
 pub trait Parameters: 'static + Sized {
     const NETWORK_ID: u8;
 
@@ -60,6 +63,12 @@ pub trait Parameters: 'static + Sized {
         ScalarField = Self::OuterScalarField,
         BaseField = Self::OuterBaseField,
         VerifierInput = OuterCircuitVerifierInput<Self>,
+    >;
+    /// Program SNARK for Aleo applications.
+    type ProgramSNARK: SNARK<
+        ScalarField = Self::InnerScalarField,
+        BaseField = Self::OuterScalarField,
+        VerifierInput = ProgramLocalData<Self>,
     >;
 
     /// Commitment scheme for account contents. Invoked only over `Self::InnerScalarField`.
@@ -258,4 +267,7 @@ pub trait Parameters: 'static + Sized {
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters;
 
     fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
+
+    /// Returns the program SRS for Aleo applications.
+    fn program_srs<R: Rng + CryptoRng>(rng: &mut R) -> Result<SRS<R>>;
 }

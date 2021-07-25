@@ -16,26 +16,36 @@
 
 //! The Marlin zkSNARK implementation
 use crate::{
+    constraints::snark::MarlinBound,
     fiat_shamir::FiatShamirChaChaRng,
-    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinSNARK, MarlinTestnet1Mode, Proof, UniversalSRS},
+    marlin::{
+        CircuitProvingKey,
+        CircuitVerifyingKey,
+        MarlinSNARK,
+        MarlinTestnet1Mode,
+        PreparedCircuitVerifyingKey,
+        Proof,
+        UniversalSRS,
+    },
     Parameters,
 };
-use snarkvm_algorithms::{errors::SNARKError, traits::SNARK};
+use snarkvm_algorithms::{SNARKError, SNARK, SRS};
 use snarkvm_curves::traits::PairingEngine;
 use snarkvm_fields::ToConstraintField;
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_utilities::FromBytes;
 
 pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PolynomialCommitment};
 
-use crate::{constraints::snark::MarlinBound, marlin::PreparedCircuitVerifyingKey};
 use blake2::Blake2s;
 use core::marker::PhantomData;
+use rand::{CryptoRng, Rng};
 use rand_core::RngCore;
 
 /// A structured reference string which will be used to derive a circuit-specific
 /// common reference string
-pub type SRS<E> = UniversalSRS<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, MultiPC<E>>;
+pub type URS<E> = UniversalSRS<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, MultiPC<E>>;
 
 /// A circuit-specific proving key.
 pub type ProvingKey<E> = CircuitProvingKey<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, MultiPC<E>>;
@@ -43,15 +53,15 @@ pub type ProvingKey<E> = CircuitProvingKey<<E as PairingEngine>::Fr, <E as Pairi
 /// A circuit-specific verifying key.
 pub type VerifyingKey<E> = CircuitVerifyingKey<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, MultiPC<E>>;
 
-/// A prepared circuit-specific verifying key.
-pub type PreparedVerifyingKey<E> =
-    PreparedCircuitVerifyingKey<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, MultiPC<E>>;
-
 impl<E: PairingEngine> From<Parameters<E>> for VerifyingKey<E> {
     fn from(parameters: Parameters<E>) -> Self {
         parameters.verifying_key
     }
 }
+
+/// A prepared circuit-specific verifying key.
+pub type PreparedVerifyingKey<E> =
+    PreparedCircuitVerifyingKey<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, MultiPC<E>>;
 
 /// The Marlin proof system for testnet1.
 pub type MarlinTestnet1<E> = MarlinSNARK<
@@ -84,48 +94,48 @@ where
     type ProvingKey = Parameters<E>;
     type ScalarField = E::Fr;
     type UniversalSetupConfig = MarlinBound;
-    type UniversalSetupParameters = SRS<E>;
+    type UniversalSetupParameters = URS<E>;
     type VerifierInput = V;
     type VerifyingKey = VerifyingKey<E>;
 
-    fn circuit_specific_setup<C: ConstraintSynthesizer<E::Fr>, R: RngCore>(
-        circuit: &C,
-        rng: &mut R,
-    ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
-        let (pk, vk) = MarlinTestnet1::<E>::circuit_specific_setup(circuit, rng)?;
-        Ok((
-            Parameters::<E> {
-                proving_key: pk,
-                verifying_key: vk.clone(),
-            },
-            vk,
-        ))
-    }
-
-    fn universal_setup<R: RngCore>(
+    fn universal_setup<R: Rng + CryptoRng>(
         config: &Self::UniversalSetupConfig,
         rng: &mut R,
     ) -> Result<Self::UniversalSetupParameters, SNARKError> {
         let setup_time = start_timer!(|| "{Marlin}::Setup");
         let srs = MarlinTestnet1::<E>::universal_setup(config.max_degree, rng)?;
         end_timer!(setup_time);
-
         Ok(srs)
     }
 
-    fn index<C: ConstraintSynthesizer<E::Fr>>(
+    fn setup<C: ConstraintSynthesizer<E::Fr>>(
         circuit: &C,
-        srs: &Self::UniversalSetupParameters,
+        srs: &mut SRS<impl Rng + CryptoRng>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
         let setup_time = start_timer!(|| "{Marlin}::Index");
-        let parameters = Parameters::<E>::new(circuit, srs)?;
+        let (pk, vk) = match srs {
+            SRS::CircuitSpecific(rng) => {
+                let (pk, vk) = MarlinTestnet1::<E>::circuit_specific_setup(circuit, rng)?;
+                (
+                    Parameters::<E> {
+                        proving_key: pk,
+                        verifying_key: vk.clone(),
+                    },
+                    vk,
+                )
+            }
+            SRS::Universal(srs) => {
+                let srs: Self::UniversalSetupParameters = FromBytes::from_bytes_le(srs)?;
+                let parameters = Parameters::<E>::new(circuit, &srs)?;
+                let verifying_key = parameters.verifying_key.clone();
+                (parameters, verifying_key)
+            }
+        };
         end_timer!(setup_time);
-
-        let verifying_key = parameters.verifying_key.clone();
-        Ok((parameters, verifying_key))
+        Ok((pk, vk))
     }
 
-    fn prove<C: ConstraintSynthesizer<E::Fr>, R: RngCore>(
+    fn prove<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         proving_key: &Self::ProvingKey,
         input_and_witness: &C,
         rng: &mut R,

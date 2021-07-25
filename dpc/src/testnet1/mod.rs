@@ -17,7 +17,4 @@
 pub mod dpc;
 pub use dpc::*;
 
-pub mod program;
-pub use program::*;
-
 pub mod parameters;

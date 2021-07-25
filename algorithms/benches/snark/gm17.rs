@@ -17,7 +17,7 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_algorithms::{snark::gm17::GM17, traits::SNARK};
+use snarkvm_algorithms::{snark::gm17::GM17, SNARK, SRS};
 use snarkvm_curves::bls12_377::{Bls12_377, Fr};
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
@@ -84,12 +84,12 @@ fn snark_setup(c: &mut Criterion) {
 
     c.bench_function("snark_setup", move |b| {
         b.iter(|| {
-            GM17SNARK::circuit_specific_setup(
+            GM17SNARK::setup(
                 &Benchmark::<Fr> {
                     inputs: vec![None; num_inputs],
                     num_constraints,
                 },
-                rng,
+                SRS::CircuitSpecific(rng),
             )
             .unwrap()
         })
@@ -105,12 +105,12 @@ fn snark_prove(c: &mut Criterion) {
         inputs.push(Some(rng.gen()));
     }
 
-    let params = GM17SNARK::circuit_specific_setup(
+    let params = GM17SNARK::setup(
         &Benchmark::<Fr> {
             inputs: vec![None; num_inputs],
             num_constraints,
         },
-        rng,
+        SRS::CircuitSpecific(rng),
     )
     .unwrap();
 
