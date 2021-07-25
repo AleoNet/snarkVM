@@ -389,7 +389,6 @@ fn test_testnet2_dpc_execute_constraints() {
         old_serial_numbers,
 
         new_records,
-        new_sn_nonce_randomness,
         new_commitments,
 
         new_records_encryption_randomness,
@@ -445,7 +444,6 @@ fn test_testnet2_dpc_execute_constraints() {
         &old_private_keys,
         &old_serial_numbers,
         &new_records,
-        &new_sn_nonce_randomness,
         &new_commitments,
         &new_records_encryption_randomness,
         &new_records_encryption_gadget_components,
@@ -506,7 +504,6 @@ fn test_testnet2_dpc_execute_constraints() {
             old_private_keys,
             old_serial_numbers.clone(),
             new_records,
-            new_sn_nonce_randomness,
             new_commitments.clone(),
             new_records_encryption_randomness,
             new_records_encryption_gadget_components,

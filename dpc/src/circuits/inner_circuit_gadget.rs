@@ -64,7 +64,6 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
     // New record stuff
     new_records: &[Record<C>],
-    new_sn_nonce_randomness: &[[u8; 32]],
     new_commitments: &[C::RecordCommitment],
 
     new_records_encryption_randomness: &[<C::AccountEncryptionScheme as EncryptionScheme>::Randomness],
@@ -103,7 +102,6 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         old_serial_numbers,
         //
         new_records,
-        new_sn_nonce_randomness,
         new_commitments,
         new_records_encryption_randomness,
         new_records_encryption_gadget_components,
@@ -145,7 +143,6 @@ fn inner_circuit_gadget<
 
     //
     new_records: &[Record<C>],
-    new_sn_nonce_randomness: &[[u8; 32]],
     new_commitments: &[C::RecordCommitment],
     new_records_encryption_randomness: &[<C::AccountEncryptionScheme as EncryptionScheme>::Randomness],
     new_records_encryption_gadget_components: &[RecordEncryptionGadgetComponents<C>],
@@ -580,20 +577,14 @@ where
     let mut new_record_commitments_gadgets = Vec::with_capacity(new_records.len());
     let mut new_birth_program_ids_gadgets = Vec::with_capacity(new_records.len());
 
-    for (
-        j,
-        (
-            ((((record, sn_nonce_randomness), commitment), encryption_randomness), encryption_gadget_components),
-            encrypted_record_hash,
-        ),
-    ) in new_records
-        .iter()
-        .zip(new_sn_nonce_randomness)
-        .zip(new_commitments)
-        .zip(new_records_encryption_randomness)
-        .zip(new_records_encryption_gadget_components)
-        .zip(new_encrypted_record_hashes)
-        .enumerate()
+    for (j, ((((record, commitment), encryption_randomness), encryption_gadget_components), encrypted_record_hash)) in
+        new_records
+            .iter()
+            .zip(new_commitments)
+            .zip(new_records_encryption_randomness)
+            .zip(new_records_encryption_gadget_components)
+            .zip(new_encrypted_record_hashes)
+            .enumerate()
     {
         let RecordEncryptionGadgetComponents {
             record_field_elements,
@@ -690,12 +681,6 @@ where
 
             let current_record_number = UInt8::constant(j as u8);
             let mut current_record_number_bytes_le = vec![current_record_number];
-
-            let serial_number_nonce_randomness = UInt8::alloc_vec(
-                sn_cs.ns(|| "Allocate serial number nonce randomness"),
-                sn_nonce_randomness,
-            )?;
-            current_record_number_bytes_le.extend_from_slice(&serial_number_nonce_randomness);
             current_record_number_bytes_le.extend_from_slice(&old_serial_numbers_bytes_gadgets);
 
             let sn_nonce_input = current_record_number_bytes_le;
