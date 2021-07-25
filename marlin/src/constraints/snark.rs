@@ -578,7 +578,7 @@ pub mod test {
         )
         .unwrap();
 
-        let vk_gadget_constraints = cs.num_constraints() - input_gadget_constraints;
+        let vk_gadget_constraints = cs.num_constraints() - input_gadget_constraints - proof_gadget_constraints;
 
         let verification_result = <TestSNARKGadget as SNARKGadget<TestSNARK>>::verify(
             cs.ns(|| "marlin_verify"),
@@ -588,7 +588,8 @@ pub mod test {
         )
         .unwrap();
 
-        let verifier_gadget_constraints = cs.num_constraints() - proof_gadget_constraints;
+        let verifier_gadget_constraints =
+            cs.num_constraints() - input_gadget_constraints - proof_gadget_constraints - vk_gadget_constraints;
 
         verification_result
             .enforce_equal(cs.ns(|| "enforce_equal_verification"), &Boolean::Constant(true))
@@ -600,10 +601,10 @@ pub mod test {
             cs.which_is_unsatisfied().unwrap()
         );
 
-        const INPUT_GADGET_CONSTRAINTS: usize = 383;
+        const INPUT_GADGET_CONSTRAINTS: usize = 259;
         const PROOF_GADGET_CONSTRAINTS: usize = 56;
-        const VK_GADGET_CONSTRAINTS: usize = 140;
-        const VERIFIER_GADGET_CONSTRAINTS: usize = 150594;
+        const VK_GADGET_CONSTRAINTS: usize = 84;
+        const VERIFIER_GADGET_CONSTRAINTS: usize = 150127;
 
         assert_eq!(input_gadget_constraints, INPUT_GADGET_CONSTRAINTS);
         assert_eq!(proof_gadget_constraints, PROOF_GADGET_CONSTRAINTS);
