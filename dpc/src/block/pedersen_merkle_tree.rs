@@ -14,11 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{
-    crh::PedersenCompressedCRH,
-    define_masked_merkle_tree_parameters,
-    merkle_tree::setup_message,
-};
+use snarkvm_algorithms::{crh::PedersenCompressedCRH, define_masked_merkle_tree_parameters};
 use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective as EdwardsBls};
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
@@ -46,6 +42,12 @@ define_masked_merkle_tree_parameters!(MaskedMerkleTreeParameters, MerkleTreeCRH,
 
 /// A Merkle Tree instantiated with the Masked Pedersen hasher over BLS12-377
 pub type EdwardsMaskedMerkleTree = MerkleTree<MaskedMerkleTreeParameters>;
+
+// TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
+// Setup message to instantiate the Merkle Tree parameters
+pub const fn setup_message() -> &'static str {
+    "MerkleTreeParameters"
+}
 
 /// TODO (howardwu): CRITICAL - Change the default setup message to a globally unique message.
 /// Lazily evaluated parameters for the Masked Merkle tree

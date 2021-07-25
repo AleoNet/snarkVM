@@ -99,6 +99,7 @@ impl<P: MerkleParameters> MerklePath<P> {
     }
 }
 
+// TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
 impl<P: MerkleParameters> Default for MerklePath<P> {
     fn default() -> Self {
         let mut path = Vec::with_capacity(P::DEPTH);
@@ -106,7 +107,7 @@ impl<P: MerkleParameters> Default for MerklePath<P> {
             path.push(MerkleTreeDigest::<P>::default());
         }
         Self {
-            parameters: Arc::new(P::default()),
+            parameters: Arc::new(P::setup("unsafe")),
             path,
             leaf_index: 0,
         }

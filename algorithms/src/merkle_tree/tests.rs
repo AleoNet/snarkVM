@@ -51,12 +51,12 @@ fn bad_merkle_tree_verify<P: LoadableMerkleParameters, L: ToBytes + Send + Sync 
 }
 
 fn run_empty_merkle_tree_test<P: LoadableMerkleParameters>() {
-    let parameters = &P::default();
+    let parameters = &P::setup("merkle_tree_test");
     generate_merkle_tree::<P, Vec<u8>>(&[], parameters);
 }
 
 fn run_good_root_test<P: LoadableMerkleParameters>() {
-    let parameters = &P::default();
+    let parameters = &P::setup("merkle_tree_test");
 
     let mut leaves = vec![];
     for i in 0..4u8 {
@@ -72,7 +72,7 @@ fn run_good_root_test<P: LoadableMerkleParameters>() {
 }
 
 fn run_bad_root_test<P: LoadableMerkleParameters>() {
-    let parameters = &P::default();
+    let parameters = &P::setup("merkle_tree_test");
 
     let mut leaves = vec![];
     for i in 0..4u8 {
@@ -88,7 +88,7 @@ fn run_bad_root_test<P: LoadableMerkleParameters>() {
 }
 
 fn run_merkle_tree_matches_hashing_test<P: LoadableMerkleParameters>() {
-    let parameters = &P::default();
+    let parameters = &P::setup("merkle_tree_test");
 
     // Evaluate the Merkle tree root
 
@@ -126,7 +126,7 @@ fn run_merkle_tree_matches_hashing_test<P: LoadableMerkleParameters>() {
 }
 
 fn run_padded_merkle_tree_matches_hashing_test<P: LoadableMerkleParameters>() {
-    let parameters = &P::default();
+    let parameters = &P::setup("merkle_tree_test");
 
     // Evaluate the Merkle tree root
 

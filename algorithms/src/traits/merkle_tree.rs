@@ -19,7 +19,7 @@ use snarkvm_utilities::ToBytes;
 
 use std::io::Cursor;
 
-pub trait MerkleParameters: Send + Sync + Clone + Default {
+pub trait MerkleParameters: Send + Sync + Clone {
     type H: CRH;
 
     const DEPTH: usize;
