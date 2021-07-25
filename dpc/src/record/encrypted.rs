@@ -62,7 +62,7 @@ pub struct RecordEncryptionGadgetComponents<C: Parameters> {
     /// Record fq high selectors - Used for plaintext serialization/deserialization
     pub fq_high_selectors: Vec<bool>,
     /// Record ciphertext blinding exponents used to encrypt the record
-    pub encryption_blinding_exponents: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::BlindingExponent>,
+    pub encryption_blinding_exponents: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::EncryptionWitness>,
 }
 
 impl<C: Parameters> Default for RecordEncryptionGadgetComponents<C> {
@@ -78,8 +78,10 @@ impl<C: Parameters> Default for RecordEncryptionGadgetComponents<C> {
         let ciphertext_selectors = vec![false; record_encoding_length + 1];
         let fq_high_selectors = vec![false; record_encoding_length];
 
-        let encryption_blinding_exponents =
-            vec![<C::AccountEncryptionScheme as EncryptionScheme>::BlindingExponent::default(); record_encoding_length];
+        let encryption_blinding_exponents = vec![
+                <C::AccountEncryptionScheme as EncryptionScheme>::EncryptionWitness::default();
+                record_encoding_length
+            ];
 
         Self {
             record_field_elements,
@@ -332,7 +334,7 @@ impl<C: Parameters> EncryptedRecord<C> {
 
         // Encrypt the record plaintext
         let record_public_key = record.owner().into_repr();
-        let encryption_blinding_exponents = C::account_encryption_scheme().generate_blinding_exponents(
+        let encryption_blinding_exponents = C::account_encryption_scheme().generate_encryption_witness(
             record_public_key,
             encryption_randomness,
             record_plaintexts.len(),

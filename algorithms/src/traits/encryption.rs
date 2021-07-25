@@ -28,7 +28,7 @@ pub trait EncryptionScheme:
     type PublicKey: Clone + Debug + Default + Eq + ToBytes + FromBytes;
     type Text: Clone + Debug + Default + Eq + ToBytes + FromBytes;
     type Randomness: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
-    type BlindingExponent: Clone + Debug + Default + Eq + Hash + ToBytes;
+    type EncryptionWitness: Clone + Debug + Default + Eq + Hash + ToBytes;
 
     fn setup(message: &str) -> Self;
 
@@ -45,12 +45,12 @@ pub trait EncryptionScheme:
         rng: &mut R,
     ) -> Result<Self::Randomness, EncryptionError>;
 
-    fn generate_blinding_exponents(
+    fn generate_encryption_witness(
         &self,
         public_key: &<Self as EncryptionScheme>::PublicKey,
         randomness: &Self::Randomness,
         message_length: usize,
-    ) -> Result<Vec<Self::BlindingExponent>, EncryptionError>;
+    ) -> Result<Vec<Self::EncryptionWitness>, EncryptionError>;
 
     fn encrypt(
         &self,
