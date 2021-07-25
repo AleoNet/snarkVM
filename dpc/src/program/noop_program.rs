@@ -32,7 +32,6 @@ use snarkvm_parameters::{
 use snarkvm_r1cs::ToConstraintField;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use crate::testnet1::NoopCircuit;
 use rand::{CryptoRng, Rng};
 
 #[derive(Derivative)]

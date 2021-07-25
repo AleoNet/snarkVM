@@ -41,7 +41,6 @@ pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PolynomialCommit
 use blake2::Blake2s;
 use core::marker::PhantomData;
 use rand::{CryptoRng, Rng};
-use rand_core::RngCore;
 
 /// A structured reference string which will be used to derive a circuit-specific
 /// common reference string

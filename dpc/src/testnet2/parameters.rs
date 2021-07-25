@@ -192,6 +192,12 @@ impl Parameters for Testnet2Parameters {
         static RECORD_COMMITMENT_TREE_PARAMETERS: OnceCell<<Testnet2Parameters as Parameters>::RecordCommitmentTreeParameters> = OnceCell::new();
         RECORD_COMMITMENT_TREE_PARAMETERS.get_or_init(|| Self::RecordCommitmentTreeParameters::from(Self::record_commitment_tree_crh().clone()))
     }
+
+    // TODO (howardwu): TEMPORARY - Making this oncecell.
+    /// Returns the program SRS for Aleo applications.
+    fn program_srs<R: Rng + CryptoRng>(_: &mut R) -> Result<SRS<R>> {
+        Ok(SRS::<R>::Universal(UniversalSRSParameters::load_bytes()?))
+    }
 }
 
 // This is currently unused.

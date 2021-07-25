@@ -58,18 +58,24 @@ pub trait Parameters: 'static + Sized {
         BaseField = Self::OuterScalarField,
         VerifierInput = InnerCircuitVerifierInput<Self>,
     >;
+    /// SNARK Verifier gadget for the inner circuit.
+    type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK>;
+
     /// SNARK for proof-verification checks.
     type OuterSNARK: SNARK<
         ScalarField = Self::OuterScalarField,
         BaseField = Self::OuterBaseField,
         VerifierInput = OuterCircuitVerifierInput<Self>,
     >;
+
     /// Program SNARK for Aleo applications.
     type ProgramSNARK: SNARK<
         ScalarField = Self::InnerScalarField,
         BaseField = Self::OuterScalarField,
         VerifierInput = ProgramLocalData<Self>,
     >;
+    /// Program SNARK verifier gadget for Aleo applications.
+    type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK>;
 
     /// Commitment scheme for account contents. Invoked only over `Self::InnerScalarField`.
     type AccountCommitmentScheme: CommitmentScheme<Output = Self::AccountCommitment>
@@ -228,19 +234,6 @@ pub trait Parameters: 'static + Sized {
     /// CRH for computing the serial number nonce. Invoked only over `Self::InnerScalarField`.
     type SerialNumberNonceCRH: CRH + ToConstraintField<Self::InnerScalarField>;
     type SerialNumberNonceCRHGadget: CRHGadget<Self::SerialNumberNonceCRH, Self::InnerScalarField>;
-
-    /// SNARK Verifier gadget for the inner circuit.
-    type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK>;
-
-    /// Program SNARK for Aleo applications.
-    type ProgramSNARK: SNARK<
-        ScalarField = Self::InnerScalarField,
-        BaseField = Self::OuterScalarField,
-        VerifierInput = ProgramLocalData<Self>,
-    >;
-
-    /// Program SNARK verifier gadget for Aleo applications.
-    type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK>;
 
     fn account_commitment_scheme() -> &'static Self::AccountCommitmentScheme;
 

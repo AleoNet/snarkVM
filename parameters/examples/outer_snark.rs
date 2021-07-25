@@ -16,10 +16,12 @@
 
 use snarkvm_algorithms::{crh::sha256::sha256, SNARK, SRS};
 use snarkvm_dpc::{
-    testnet1::{parameters::Testnet1Parameters, OuterCircuit, Testnet1Components},
+    testnet1::parameters::Testnet1Parameters,
     DPCError,
     InnerCircuit,
     NoopProgram,
+    OuterCircuit,
+    Parameters,
     ProgramScheme,
 };
 use snarkvm_parameters::{
@@ -34,7 +36,7 @@ use std::path::PathBuf;
 mod utils;
 use utils::store;
 
-pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
+pub fn setup<C: Parameters>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
     let inner_snark_pk: <C::InnerSNARK as SNARK>::ProvingKey =

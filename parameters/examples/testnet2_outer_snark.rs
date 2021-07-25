@@ -16,10 +16,12 @@
 
 use snarkvm_algorithms::{crh::sha256::sha256, SNARK, SRS};
 use snarkvm_dpc::{
-    testnet2::{parameters::Testnet2Parameters, OuterCircuit, Testnet2Components},
+    testnet2::parameters::Testnet2Parameters,
     DPCError,
     InnerCircuit,
     NoopProgram,
+    OuterCircuit,
+    Parameters,
     ProgramScheme,
 };
 use snarkvm_parameters::{
@@ -35,7 +37,7 @@ mod utils;
 use snarkvm_fields::ToConstraintField;
 use utils::store;
 
-pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError>
+pub fn setup<C: Parameters>() -> Result<(Vec<u8>, Vec<u8>), DPCError>
 where
     <C::ProgramSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
 {

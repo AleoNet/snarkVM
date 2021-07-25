@@ -14,12 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::{
-    testnet2::{parameters::Testnet2Parameters, Testnet2Components},
-    DPCError,
-    NoopProgram,
-    ProgramScheme,
-};
+use snarkvm_dpc::{testnet2::parameters::Testnet2Parameters, DPCError, NoopProgram, Parameters, ProgramScheme};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_utilities::ToBytes;
 
@@ -31,7 +26,7 @@ use snarkvm_algorithms::SNARK;
 use utils::store;
 
 #[allow(deprecated)]
-pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError>
+pub fn setup<C: Parameters>() -> Result<(Vec<u8>, Vec<u8>), DPCError>
 where
     <C::ProgramSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
 {

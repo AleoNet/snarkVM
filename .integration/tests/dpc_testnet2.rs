@@ -24,7 +24,7 @@ use snarkvm_dpc::{
     execute_inner_circuit,
     execute_outer_circuit,
     prelude::*,
-    testnet2::parameters::*,,
+    testnet2::parameters::*,
     EncryptedRecord,
     InnerCircuit,
     NoopProgram,

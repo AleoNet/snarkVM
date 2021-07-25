@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use rand::{CryptoRng, Rng, RngCore};
+use rand::{CryptoRng, Rng};
 use std::{
     fmt::{Debug, Formatter},
     marker::PhantomData,
@@ -22,7 +22,6 @@ use std::{
 
 use crate::{
     constraints::{
-        error::MarlinConstraintsError,
         proof::ProofVar,
         verifier::MarlinVerificationGadget,
         verifier_key::{CircuitVerifyingKeyVar, PreparedCircuitVerifyingKeyVar},
@@ -32,7 +31,6 @@ use crate::{
     marlin::{
         CircuitProvingKey,
         CircuitVerifyingKey,
-        MarlinError,
         MarlinMode,
         MarlinSNARK as MarlinCore,
         PreparedCircuitVerifyingKey,
@@ -40,7 +38,7 @@ use crate::{
     },
     FiatShamirRngVar,
 };
-use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, Prepare, SNARKError, SNARK, SRS};
+use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, SNARKError, SNARK, SRS};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{bits::Boolean, nonnative::NonNativeFieldInputVar, traits::algorithms::SNARKGadget};
 use snarkvm_polycommit::{PCCheckVar, PolynomialCommitment};

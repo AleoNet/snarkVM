@@ -14,12 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::{
-    testnet1::{parameters::Testnet1Parameters, Testnet1Components},
-    DPCError,
-    NoopProgram,
-    ProgramScheme,
-};
+use snarkvm_dpc::{testnet1::parameters::Testnet1Parameters, DPCError, NoopProgram, Parameters, ProgramScheme};
 use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
@@ -29,7 +24,7 @@ mod utils;
 use utils::store;
 
 #[allow(deprecated)]
-pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
+pub fn setup<C: Parameters>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
     let noop_program = NoopProgram::<C>::setup(rng)?;
     let (proving_key, verifying_key) = noop_program.to_snark_parameters();
