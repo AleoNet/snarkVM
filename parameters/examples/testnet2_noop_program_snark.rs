@@ -20,7 +20,6 @@ use snarkvm_dpc::{
     ProgramScheme,
 };
 use snarkvm_fields::ToConstraintField;
-use snarkvm_marlin::PolynomialCommitment;
 use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
@@ -34,10 +33,6 @@ use utils::store;
 pub fn setup<C: Testnet2Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError>
 where
     <C::ProgramSNARK as SNARK>::VerifyingKey: ToConstraintField<C::OuterScalarField>,
-    <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::VerifierKey:
-        ToConstraintField<C::OuterScalarField>,
-    <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::Commitment:
-        ToConstraintField<C::OuterScalarField>,
 {
     let rng = &mut thread_rng();
     let noop_program = NoopProgram::<C>::setup(rng)?;
