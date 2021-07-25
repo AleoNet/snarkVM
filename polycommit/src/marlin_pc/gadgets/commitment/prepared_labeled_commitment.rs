@@ -16,7 +16,6 @@
 
 use snarkvm_curves::PairingEngine;
 use snarkvm_gadgets::{fields::FpGadget, traits::curves::PairingGadget};
-use snarkvm_r1cs::ToConstraintField;
 
 use crate::{marlin_pc::PreparedCommitmentVar, String};
 
@@ -25,10 +24,7 @@ pub struct PreparedLabeledCommitmentVar<
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-> where
-    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-{
+> {
     /// A text label for the commitment.
     pub label: String,
     /// The plain commitment.
@@ -42,8 +38,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
     fn clone(&self) -> Self {
         Self {

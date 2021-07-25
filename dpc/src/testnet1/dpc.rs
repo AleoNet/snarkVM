@@ -151,29 +151,14 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
 
         let mut new_birth_program_ids = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         let mut new_commitments = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-        let mut new_sn_nonce_randomness = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
-        for (j, record) in new_records.iter().enumerate().take(C::NUM_OUTPUT_RECORDS) {
-            let output_record_time = start_timer!(|| format!("Process output record {}", j));
-
+        for record in new_records.iter().take(C::NUM_OUTPUT_RECORDS) {
             new_birth_program_ids.push(record.birth_program_id());
             new_commitments.push(record.commitment());
-            new_sn_nonce_randomness.push(match record.serial_number_nonce_randomness() {
-                Some(randomness) => randomness.clone(),
-                None => {
-                    return Err(DPCError::Message(format!(
-                        "New record {} is missing its serial number nonce randomness",
-                        j
-                    ))
-                    .into());
-                }
-            });
 
             if !record.is_dummy() {
                 value_balance = value_balance.sub(AleoAmount::from_bytes(record.value() as i64));
             }
-
-            end_timer!(output_record_time);
         }
 
         // Generate Schnorr signature on transaction data.
@@ -277,7 +262,6 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
             old_serial_numbers,
 
             new_records,
-            new_sn_nonce_randomness,
             new_commitments,
 
             new_records_encryption_randomness,
@@ -314,7 +298,6 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
             old_serial_numbers,
 
             new_records,
-            new_sn_nonce_randomness,
             new_commitments,
 
             new_records_encryption_randomness,
@@ -369,7 +352,6 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
                 old_private_keys.clone(),
                 old_serial_numbers.clone(),
                 new_records.clone(),
-                new_sn_nonce_randomness,
                 new_commitments.clone(),
                 new_records_encryption_randomness,
                 new_records_encryption_gadget_components,
@@ -506,7 +488,7 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
         }
 
         // Returns false if the ledger digest in the transaction is invalid.
-        if !ledger.validate_digest(&transaction.ledger_digest) {
+        if !ledger.is_valid_digest(&transaction.ledger_digest) {
             eprintln!("Ledger digest is invalid.");
             return false;
         }

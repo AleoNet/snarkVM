@@ -38,7 +38,7 @@ pub trait SNARK {
 
     // We can specify their defaults to `()` when `associated_type_defaults` feature becomes stable in Rust
     type UniversalSetupConfig: Clone;
-    type UniversalSetupParameters: Clone;
+    type UniversalSetupParameters: FromBytes + ToBytes + Clone;
 
     type VerifyingKey: Clone
         + ToBytes

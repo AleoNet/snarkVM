@@ -38,7 +38,7 @@ use std::io::{
 #[derive(Derivative)]
 #[derivative(Clone(bound = ""))]
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct CircuitVerifyingKey<F: PrimeField, PC: PolynomialCommitment<F>> {
+pub struct CircuitVerifyingKey<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> {
     /// Stores information about the size of the circuit, as well as its defined field.
     pub circuit_info: CircuitInfo<F>,
     /// Commitments to the indexed polynomials.
@@ -47,35 +47,37 @@ pub struct CircuitVerifyingKey<F: PrimeField, PC: PolynomialCommitment<F>> {
     pub verifier_key: PC::VerifierKey,
 }
 
-impl<F: PrimeField, PC: PolynomialCommitment<F>> ToBytes for CircuitVerifyingKey<F, PC> {
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToBytes for CircuitVerifyingKey<F, CF, PC> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize CircuitVerifyingKey"))
     }
 }
 
-impl<F: PrimeField, PC: PolynomialCommitment<F>> FromBytes for CircuitVerifyingKey<F, PC> {
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> FromBytes for CircuitVerifyingKey<F, CF, PC> {
     fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
         CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize CircuitVerifyingKey"))
     }
 }
 
-impl<F: PrimeField, PC: PolynomialCommitment<F>> CircuitVerifyingKey<F, PC> {
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> CircuitVerifyingKey<F, CF, PC> {
     /// Iterate over the commitments to indexed polynomials in `self`.
     pub fn iter(&self) -> impl Iterator<Item = &PC::Commitment> {
         self.circuit_commitments.iter()
     }
 }
 
-impl<F: PrimeField, PC: PolynomialCommitment<F>> From<CircuitProvingKey<F, PC>> for CircuitVerifyingKey<F, PC> {
-    fn from(other: CircuitProvingKey<F, PC>) -> Self {
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> From<CircuitProvingKey<F, CF, PC>>
+    for CircuitVerifyingKey<F, CF, PC>
+{
+    fn from(other: CircuitProvingKey<F, CF, PC>) -> Self {
         other.circuit_verifying_key
     }
 }
 
-impl<F: PrimeField, PC: PolynomialCommitment<F>> From<PreparedCircuitVerifyingKey<F, PC>>
-    for CircuitVerifyingKey<F, PC>
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> From<PreparedCircuitVerifyingKey<F, CF, PC>>
+    for CircuitVerifyingKey<F, CF, PC>
 {
-    fn from(other: PreparedCircuitVerifyingKey<F, PC>) -> Self {
+    fn from(other: PreparedCircuitVerifyingKey<F, CF, PC>) -> Self {
         other.orig_vk
     }
 }
@@ -83,27 +85,27 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> From<PreparedCircuitVerifyingKe
 /// Compute the hash of the circuit verifying key.
 /// Used internally in Marlin
 pub(crate) fn compute_vk_hash<TargetField, BaseField, PC, FS>(
-    vk: &CircuitVerifyingKey<TargetField, PC>,
+    vk: &CircuitVerifyingKey<TargetField, BaseField, PC>,
 ) -> Result<Vec<BaseField>, FiatShamirError>
 where
     TargetField: PrimeField,
     BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     FS: FiatShamirRng<TargetField, BaseField>,
-    PC::Commitment: ToConstraintField<BaseField>,
 {
     let mut vk_hash_rng = FS::new();
     vk_hash_rng.absorb_native_field_elements(&vk.circuit_commitments);
     vk_hash_rng.squeeze_native_field_elements(1)
 }
 
-impl<F, PC> Prepare<PreparedCircuitVerifyingKey<F, PC>> for CircuitVerifyingKey<F, PC>
+impl<F, CF, PC> Prepare<PreparedCircuitVerifyingKey<F, CF, PC>> for CircuitVerifyingKey<F, CF, PC>
 where
     F: PrimeField,
-    PC: PolynomialCommitment<F>,
+    CF: PrimeField,
+    PC: PolynomialCommitment<F, CF>,
 {
     /// Prepare the circuit verifying key.
-    fn prepare(&self) -> PreparedCircuitVerifyingKey<F, PC> {
+    fn prepare(&self) -> PreparedCircuitVerifyingKey<F, CF, PC> {
         let mut prepared_index_comms = Vec::<PC::PreparedCommitment>::new();
         for (_, comm) in self.circuit_commitments.iter().enumerate() {
             prepared_index_comms.push(comm.prepare());
@@ -121,7 +123,7 @@ where
         let domain_h_size = domain_h.size();
         let domain_k_size = domain_k.size();
 
-        PreparedCircuitVerifyingKey::<F, PC> {
+        PreparedCircuitVerifyingKey::<F, CF, PC> {
             domain_h_size: domain_h_size as u64,
             domain_k_size: domain_k_size as u64,
             prepared_index_comms,
@@ -131,13 +133,11 @@ where
     }
 }
 
-impl<F, CF, PC> ToConstraintField<CF> for CircuitVerifyingKey<F, PC>
+impl<F, CF, PC> ToConstraintField<CF> for CircuitVerifyingKey<F, CF, PC>
 where
     F: PrimeField,
     CF: PrimeField,
-    PC: PolynomialCommitment<F>,
-    PC::Commitment: ToConstraintField<CF>,
-    PC::VerifierKey: ToConstraintField<CF>,
+    PC: PolynomialCommitment<F, CF>,
 {
     fn to_field_elements(&self) -> Result<Vec<CF>, ConstraintFieldError> {
         let domain_h = EvaluationDomain::<CF>::new(self.circuit_info.num_constraints)

@@ -54,7 +54,7 @@ impl<
 > AllocGadget<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCompressedCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
-    fn alloc<
+    fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
@@ -64,8 +64,19 @@ impl<
     ) -> Result<Self, SynthesisError> {
         let crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().clone().into();
         Ok(Self {
-            crh_gadget: PedersenCRHGadget::<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>::alloc(cs, || Ok(crh))?,
+            crh_gadget: PedersenCRHGadget::<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>::alloc_constant(cs, || Ok(crh))?,
         })
+    }
+
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        CS: ConstraintSystem<F>,
+    >(
+        _cs: CS,
+        _value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
     }
 
     fn alloc_input<
@@ -73,13 +84,10 @@ impl<
         T: Borrow<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
-        cs: CS,
-        value_gen: Fn,
+        _cs: CS,
+        _value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().clone().into();
-        Ok(Self {
-            crh_gadget: PedersenCRHGadget::<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>::alloc_input(cs, || Ok(crh))?,
-        })
+        unimplemented!()
     }
 }
 

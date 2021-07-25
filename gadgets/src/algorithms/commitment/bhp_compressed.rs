@@ -40,7 +40,6 @@ pub struct BHPCompressedCommitmentGadget<
     bhp_commitment_gadget: BHPCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
-// TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
 impl<
     G: ProjectiveCurve,
     F: PrimeField,
@@ -50,7 +49,7 @@ impl<
 > AllocGadget<BHPCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for BHPCompressedCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
-    fn alloc<
+    fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<BHPCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
@@ -60,8 +59,19 @@ impl<
     ) -> Result<Self, SynthesisError> {
         let bhp: BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
         Ok(Self {
-            bhp_commitment_gadget: BHPCommitmentGadget::alloc(cs, || Ok(bhp))?,
+            bhp_commitment_gadget: BHPCommitmentGadget::alloc_constant(cs, || Ok(bhp))?,
         })
+    }
+
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<BHPCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        CS: ConstraintSystem<F>,
+    >(
+        _cs: CS,
+        _value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
     }
 
     fn alloc_input<
@@ -69,13 +79,10 @@ impl<
         T: Borrow<BHPCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
-        cs: CS,
-        value_gen: Fn,
+        _cs: CS,
+        _value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let bhp: BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
-        Ok(Self {
-            bhp_commitment_gadget: BHPCommitmentGadget::alloc_input(cs, || Ok(bhp))?,
-        })
+        unimplemented!()
     }
 }
 

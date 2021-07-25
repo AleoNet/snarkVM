@@ -15,43 +15,24 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{testnet2::Testnet2Components, ProgramError};
-use snarkvm_fields::ToConstraintField;
-use snarkvm_marlin::marlin::{MarlinSNARK, UniversalSRS};
 use snarkvm_parameters::{prelude::*, testnet2::*};
-use snarkvm_polycommit::PolynomialCommitment;
 use snarkvm_utilities::FromBytes;
 
 use rand::{CryptoRng, Rng};
+use snarkvm_algorithms::SNARK;
 use std::io::Result as IoResult;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Testnet2Components"))]
-pub struct ProgramSNARKUniversalSRS<C: Testnet2Components>(
-    pub UniversalSRS<C::InnerScalarField, C::PolynomialCommitment>,
-);
+pub struct ProgramSNARKUniversalSRS<C: Testnet2Components>(pub <C::ProgramSNARK as SNARK>::UniversalSetupParameters);
 
-impl<C: Testnet2Components> ProgramSNARKUniversalSRS<C>
-where
-    <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::VerifierKey:
-        ToConstraintField<C::OuterScalarField>,
-    <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::Commitment:
-        ToConstraintField<C::OuterScalarField>,
-{
-    pub fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, ProgramError> {
-        // TODO (raychu86): CRITICAL - Specify the `max_degree` variables.
-        let max_degree =
-            snarkvm_marlin::ahp::AHPForR1CS::<C::InnerScalarField>::max_degree(10000, 10000, 10000).unwrap();
+impl<C: Testnet2Components> ProgramSNARKUniversalSRS<C> {
+    pub fn setup<R: Rng + CryptoRng>(
+        config: &<C::ProgramSNARK as SNARK>::UniversalSetupConfig,
+        rng: &mut R,
+    ) -> Result<Self, ProgramError> {
         // TODO (raychu86): Handle this unwrap.
-        Ok(Self(
-            MarlinSNARK::<
-                C::InnerScalarField,
-                C::OuterScalarField,
-                C::PolynomialCommitment,
-                C::FiatShamirRng,
-                C::MarlinMode,
-            >::universal_setup(max_degree, rng)
-            .unwrap(),
-        ))
+        Ok(Self(C::ProgramSNARK::universal_setup(config, rng).unwrap()))
     }
 }
 

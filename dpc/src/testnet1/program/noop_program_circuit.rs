@@ -52,11 +52,6 @@ impl<C: Testnet1Components> ConstraintSynthesizer<C::InnerScalarField> for NoopC
 
         let _position = UInt8::alloc_input_vec_le(cs.ns(|| "Alloc position"), &[position])?;
 
-        let _local_data_commitment_parameters_gadget = C::LocalDataCommitmentGadget::alloc_input(
-            &mut cs.ns(|| "Declare local data commitment parameters"),
-            || Ok(C::local_data_commitment_scheme().clone()),
-        )?;
-
         let _local_data_root_gadget = <C::LocalDataCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
             cs.ns(|| "Allocate local data root"),
             || Ok(local_data_root),

@@ -90,7 +90,7 @@ fn dpc_testnet2_integration_test() {
         transactions: Transactions::new(),
     };
 
-    let ledger = initialize_test_blockchain::<Testnet2Parameters, Testnet2Transaction, MemDb>(genesis_block);
+    let ledger = initialize_test_blockchain::<Testnet2Parameters, MemDb>(genesis_block);
 
     // Generate dummy input records having as address the genesis address.
     let old_private_keys = vec![genesis_account.private_key.clone(); Testnet2Parameters::NUM_INPUT_RECORDS];
@@ -180,7 +180,7 @@ fn dpc_testnet2_integration_test() {
 
     // Craft the block
 
-    let previous_block = ledger.get_latest_block().unwrap();
+    let previous_block = ledger.latest_block().unwrap();
 
     let mut transactions = Transactions::new();
     transactions.push(transaction);
@@ -210,7 +210,7 @@ fn dpc_testnet2_integration_test() {
     let block = Block { header, transactions };
 
     ledger.insert_and_commit(&block).unwrap();
-    assert_eq!(ledger.block_height(), 2);
+    assert_eq!(ledger.block_height(), 1);
 }
 
 #[test]
@@ -305,7 +305,7 @@ fn test_testnet2_dpc_execute_constraints() {
     };
 
     // Use genesis record, serial number, and memo to initialize the ledger.
-    let ledger = initialize_test_blockchain::<Testnet2Parameters, Testnet2Transaction, MemDb>(genesis_block);
+    let ledger = initialize_test_blockchain::<Testnet2Parameters, MemDb>(genesis_block);
 
     let old_private_keys = vec![dummy_account.private_key; Testnet2Parameters::NUM_INPUT_RECORDS];
 
@@ -389,7 +389,6 @@ fn test_testnet2_dpc_execute_constraints() {
         old_serial_numbers,
 
         new_records,
-        new_sn_nonce_randomness,
         new_commitments,
 
         new_records_encryption_randomness,
@@ -445,7 +444,6 @@ fn test_testnet2_dpc_execute_constraints() {
         &old_private_keys,
         &old_serial_numbers,
         &new_records,
-        &new_sn_nonce_randomness,
         &new_commitments,
         &new_records_encryption_randomness,
         &new_records_encryption_gadget_components,
@@ -475,7 +473,7 @@ fn test_testnet2_dpc_execute_constraints() {
         println!("=========================================================");
         let num_constraints = inner_circuit_cs.num_constraints();
         println!("Inner circuit num constraints: {:?}", num_constraints);
-        assert_eq!(381519, num_constraints);
+        assert_eq!(436013, num_constraints);
         println!("=========================================================");
     }
 
@@ -506,7 +504,6 @@ fn test_testnet2_dpc_execute_constraints() {
             old_private_keys,
             old_serial_numbers.clone(),
             new_records,
-            new_sn_nonce_randomness,
             new_commitments.clone(),
             new_records_encryption_randomness,
             new_records_encryption_gadget_components,

@@ -29,8 +29,18 @@ use std::borrow::Borrow;
 #[derive(Clone)]
 pub struct Blake2sRandomnessGadget(pub Vec<UInt8>);
 
-// TODO (howardwu): Find a better convention than this.
 impl<F: PrimeField> AllocGadget<[u8; 32], F> for Blake2sRandomnessGadget {
+    #[inline]
+    fn alloc_constant<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<[u8; 32]>, CS: ConstraintSystem<F>>(
+        _cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        Ok(Blake2sRandomnessGadget(<UInt8>::constant_vec(&match value_gen() {
+            Ok(val) => *(val.borrow()),
+            Err(_) => [0u8; 32],
+        })))
+    }
+
     #[inline]
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<[u8; 32]>, CS: ConstraintSystem<F>>(
         cs: CS,
@@ -61,18 +71,29 @@ impl<F: PrimeField> AllocGadget<[u8; 32], F> for Blake2sRandomnessGadget {
 pub struct Blake2sCommitmentGadget;
 
 impl<F: Field> AllocGadget<Blake2sCommitment, F> for Blake2sCommitmentGadget {
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Blake2sCommitment>, CS: ConstraintSystem<F>>(
+    fn alloc_constant<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Blake2sCommitment>,
+        CS: ConstraintSystem<F>,
+    >(
         _: CS,
         _: Fn,
     ) -> Result<Self, SynthesisError> {
         Ok(Self)
     }
 
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Blake2sCommitment>, CS: ConstraintSystem<F>>(
+        _: CS,
+        _: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+
     fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Blake2sCommitment>, CS: ConstraintSystem<F>>(
         _: CS,
         _: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Self)
+        unimplemented!()
     }
 }
 
