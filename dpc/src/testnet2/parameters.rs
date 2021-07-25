@@ -62,7 +62,6 @@ use snarkvm_marlin::{
 use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
 
 use once_cell::sync::OnceCell;
-use snarkvm_polycommit::PolynomialCommitment;
 
 macro_rules! dpc_setup {
     ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
@@ -175,30 +174,23 @@ impl Parameters for Testnet2Parameters {
 }
 
 impl Testnet2Components for Testnet2Parameters {
-    type FiatShamirRng = FiatShamirAlgebraicSpongeRng<
-        Self::InnerScalarField,
-        Self::OuterScalarField,
-        PoseidonSponge<Self::OuterScalarField>,
-    >;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
-    type MarlinMode = MarlinTestnet2Mode;
-    type PolynomialCommitment = MarlinKZG10<Self::InnerCurve>;
-    type PolynomialCommitmentCommitment =
-        <Self::PolynomialCommitment as PolynomialCommitment<Self::InnerScalarField>>::Commitment;
-    type PolynomialCommitmentVerifierKey =
-        <Self::PolynomialCommitment as PolynomialCommitment<Self::InnerScalarField>>::VerifierKey;
     type ProgramSNARK = MarlinSNARK<
         Self::InnerScalarField,
         Self::OuterScalarField,
-        Self::PolynomialCommitment,
-        Self::FiatShamirRng,
-        Self::MarlinMode,
+        MarlinKZG10<Self::InnerCurve>,
+        FiatShamirAlgebraicSpongeRng<
+            Self::InnerScalarField,
+            Self::OuterScalarField,
+            PoseidonSponge<Self::OuterScalarField>,
+        >,
+        MarlinTestnet2Mode,
         ProgramLocalData<Self>,
     >;
     type ProgramSNARKGadget = MarlinVerificationGadget<
         Self::InnerScalarField,
         Self::OuterScalarField,
-        Self::PolynomialCommitment,
+        MarlinKZG10<Self::InnerCurve>,
         MarlinKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>,
     >;
 }
