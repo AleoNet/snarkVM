@@ -22,6 +22,9 @@ use fxhash::{FxBuildHasher, FxHashMap};
 use indexmap::{map::Entry, IndexMap, IndexSet};
 use itertools::Itertools;
 
+/// This field is the scalar field (Fr) of BLS12-377.
+pub type Fr = snarkvm_curves::bls12_377::Fr;
+
 #[derive(Debug, Clone)]
 enum NamedObject {
     Constraint(usize),

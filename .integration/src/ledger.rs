@@ -23,7 +23,6 @@ use parking_lot::RwLock;
 use rand::{thread_rng, Rng};
 use std::{
     fs,
-    marker::PhantomData,
     path::Path,
     sync::{
         atomic::{AtomicU32, Ordering},
@@ -76,8 +75,8 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
 
         let ledger_storage = Self {
             current_block_height: Default::default(),
-            storage,
             record_commitment_tree: RwLock::new(MerkleTree::new(parameters, leaves)?),
+            storage,
         };
 
         ledger_storage.insert_and_commit(&genesis_block)?;
