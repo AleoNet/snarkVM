@@ -28,7 +28,6 @@ use snarkvm_algorithms::{
     EncryptionScheme,
     MerkleParameters,
     SignatureScheme,
-    PRF,
 };
 use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, One, PrimeField};
@@ -82,7 +81,6 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     inner_circuit_gadget::<
         C,
         CS,
-        C::PRF,
         C::AccountCommitmentGadget,
         C::AccountEncryptionGadget,
         C::AccountSignatureGadget,
@@ -121,7 +119,6 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 fn inner_circuit_gadget<
     C,
     CS: ConstraintSystem<C::InnerScalarField>,
-    P,
     AccountCommitmentGadget,
     AccountEncryptionGadget,
     AccountSignatureGadget,
@@ -159,7 +156,6 @@ fn inner_circuit_gadget<
 ) -> Result<(), SynthesisError>
 where
     C: Parameters<
-        PRF = P,
         AccountCommitmentGadget = AccountCommitmentGadget,
         AccountEncryptionGadget = AccountEncryptionGadget,
         AccountSignatureGadget = AccountSignatureGadget,
@@ -170,7 +166,6 @@ where
         SerialNumberNonceCRHGadget = SerialNumberNonceCRHGadget,
         PRFGadget = PGadget,
     >,
-    P: PRF,
     AccountCommitmentGadget: CommitmentGadget<C::AccountCommitmentScheme, C::InnerScalarField>,
     AccountEncryptionGadget: EncryptionGadget<C::AccountEncryptionScheme, C::InnerScalarField>,
     AccountSignatureGadget: SignatureGadget<C::AccountSignatureScheme, C::InnerScalarField>,
@@ -179,7 +174,7 @@ where
     LocalDataCRHGadget: CRHGadget<C::LocalDataCRH, C::InnerScalarField>,
     LocalDataCommitmentGadget: CommitmentGadget<C::LocalDataCommitmentScheme, C::InnerScalarField>,
     SerialNumberNonceCRHGadget: CRHGadget<C::SerialNumberNonceCRH, C::InnerScalarField>,
-    PGadget: PRFGadget<P, C::InnerScalarField>,
+    PGadget: PRFGadget<C::PRF, C::InnerScalarField>,
 {
     // Order for allocation of input:
     // 1. account_commitment_parameters
