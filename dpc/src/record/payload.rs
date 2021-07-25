@@ -18,8 +18,10 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
-pub struct Payload([u8; 32]);
+pub const PAYLOAD_SIZE: usize = 128;
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Payload([u8; PAYLOAD_SIZE]);
 
 impl Payload {
     pub fn to_bytes(&self) -> &[u8] {
@@ -27,10 +29,8 @@ impl Payload {
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Self {
-        assert_eq!(bytes.len(), 32);
-
-        let mut payload = [0u8; 32];
-        payload.copy_from_slice(&bytes[0..32]);
+        let mut payload = [0u8; PAYLOAD_SIZE];
+        payload.copy_from_slice(&bytes);
 
         Self(payload)
     }
@@ -51,5 +51,11 @@ impl FromBytes for Payload {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Ok(Self(FromBytes::read_le(&mut reader)?))
+    }
+}
+
+impl Default for Payload {
+    fn default() -> Self {
+        Self([0u8; PAYLOAD_SIZE])
     }
 }

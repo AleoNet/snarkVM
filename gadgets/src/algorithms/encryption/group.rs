@@ -56,7 +56,7 @@ impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for Group
     ) -> Result<Self, SynthesisError> {
         let private_key = to_bytes_le![value_gen()?.borrow()].unwrap();
         Ok(GroupEncryptionPrivateKeyGadget(
-            UInt8::alloc_vec(cs, &private_key)?,
+            UInt8::alloc_input_vec_le(cs, &private_key)?,
             PhantomData,
         ))
     }
@@ -94,7 +94,7 @@ impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for Group
     ) -> Result<Self, SynthesisError> {
         let randomness = to_bytes_le![value_gen()?.borrow()].unwrap();
         Ok(GroupEncryptionRandomnessGadget(
-            UInt8::alloc_vec(cs, &randomness)?,
+            UInt8::alloc_input_vec_le(cs, &randomness)?,
             PhantomData,
         ))
     }
@@ -102,10 +102,10 @@ impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for Group
 
 /// Group encryption blinding exponents gadget
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GroupEncryptionBlindingExponentsGadget<G: ProjectiveCurve>(pub Vec<Vec<UInt8>>, PhantomData<G>);
+pub struct GroupEncryptionEncryptionWitnessGadget<G: ProjectiveCurve>(pub Vec<Vec<UInt8>>, PhantomData<G>);
 
 impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<Vec<G::ScalarField>, F>
-    for GroupEncryptionBlindingExponentsGadget<G>
+    for GroupEncryptionEncryptionWitnessGadget<G>
 {
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Vec<G::ScalarField>>, CS: ConstraintSystem<F>>(
         mut cs: CS,
@@ -121,7 +121,7 @@ impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<Vec<G::ScalarField>, F>
             blinding_exponents.push(alloc);
         }
 
-        Ok(GroupEncryptionBlindingExponentsGadget(blinding_exponents, PhantomData))
+        Ok(GroupEncryptionEncryptionWitnessGadget(blinding_exponents, PhantomData))
     }
 
     fn alloc_input<
@@ -143,7 +143,7 @@ impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<Vec<G::ScalarField>, F>
             blinding_exponents.push(alloc);
         }
 
-        Ok(GroupEncryptionBlindingExponentsGadget(blinding_exponents, PhantomData))
+        Ok(GroupEncryptionEncryptionWitnessGadget(blinding_exponents, PhantomData))
     }
 }
 
@@ -493,8 +493,8 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>> AllocGa
 impl<G: ProjectiveCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>> EncryptionGadget<GroupEncryption<G>, F>
     for GroupEncryptionGadget<G, F, GG>
 {
-    type BlindingExponentGadget = GroupEncryptionBlindingExponentsGadget<G>;
     type CiphertextGadget = GroupEncryptionCiphertextGadget<G, F, GG>;
+    type EncryptionWitnessGadget = GroupEncryptionEncryptionWitnessGadget<G>;
     type PlaintextGadget = GroupEncryptionPlaintextGadget<G, F, GG>;
     type PrivateKeyGadget = GroupEncryptionPrivateKeyGadget<G>;
     type PublicKeyGadget = GroupEncryptionPublicKeyGadget<G, F, GG>;
@@ -522,10 +522,10 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>> Encrypt
     fn check_encryption_gadget<CS: ConstraintSystem<F>>(
         &self, // g
         mut cs: CS,
-        randomness: &Self::RandomnessGadget,               // y
-        public_key: &Self::PublicKeyGadget,                // record_owner
-        input: &Self::PlaintextGadget,                     // m
-        blinding_exponents: &Self::BlindingExponentGadget, // 1 [/] (z [+] j)
+        randomness: &Self::RandomnessGadget,                // y
+        public_key: &Self::PublicKeyGadget,                 // record_owner
+        input: &Self::PlaintextGadget,                      // m
+        encryption_witness: &Self::EncryptionWitnessGadget, // 1 [/] (z [+] j)
     ) -> Result<Self::CiphertextGadget, SynthesisError> {
         let zero = GG::zero(&mut cs.ns(|| "zero")).unwrap();
 
@@ -548,7 +548,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>> Encrypt
 
         let mut ciphertext = vec![c_0];
 
-        for (index, (blinding_exponent, m_j)) in blinding_exponents.0.iter().zip_eq(&input.plaintext).enumerate() {
+        for (index, (blinding_exponent, m_j)) in encryption_witness.0.iter().zip_eq(&input.plaintext).enumerate() {
             let j = index + 1;
 
             let cs = &mut cs.ns(|| format!("c_{}", j));
