@@ -39,11 +39,10 @@ pub struct BHPCRHGadget<
     _group: PhantomData<GG>,
 }
 
-// TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
 impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     AllocGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
-    fn alloc<
+    fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
@@ -58,19 +57,26 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
         })
     }
 
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        CS: ConstraintSystem<F>,
+    >(
+        _cs: CS,
+        _value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
-        value_gen: Fn,
+        _value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Self {
-            crh: value_gen()?.borrow().clone(),
-            _field: PhantomData,
-            _group: PhantomData,
-        })
+        unimplemented!()
     }
 }
 

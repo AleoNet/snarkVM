@@ -65,12 +65,11 @@ pub struct BHPCommitmentGadget<
     random_base: Vec<G>,
 }
 
-// TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
 impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     AllocGadget<BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for BHPCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
-    fn alloc<
+    fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
@@ -80,9 +79,20 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
     ) -> Result<Self, SynthesisError> {
         let bhp: BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
         Ok(Self {
-            bhp_crh_gadget: BHPCRHGadget::alloc(cs, || Ok(bhp.bhp_crh.clone()))?,
+            bhp_crh_gadget: BHPCRHGadget::alloc_constant(cs, || Ok(bhp.bhp_crh.clone()))?,
             random_base: bhp.random_base,
         })
+    }
+
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        CS: ConstraintSystem<F>,
+    >(
+        _cs: CS,
+        _value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
     }
 
     fn alloc_input<
@@ -90,14 +100,10 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
         T: Borrow<BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
-        cs: CS,
-        value_gen: Fn,
+        _cs: CS,
+        _value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let bhp: BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
-        Ok(Self {
-            bhp_crh_gadget: BHPCRHGadget::alloc_input(cs, || Ok(bhp.bhp_crh.clone()))?,
-            random_base: bhp.random_base,
-        })
+        unimplemented!()
     }
 }
 

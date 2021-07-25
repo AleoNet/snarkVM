@@ -40,7 +40,6 @@ pub struct PedersenCompressedCommitmentGadget<
     pedersen: PedersenCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
-// TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
 impl<
     G: ProjectiveCurve,
     F: PrimeField,
@@ -50,7 +49,7 @@ impl<
 > AllocGadget<PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCompressedCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
-    fn alloc<
+    fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
@@ -60,8 +59,21 @@ impl<
     ) -> Result<Self, SynthesisError> {
         let commitment: PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
         Ok(Self {
-            pedersen: PedersenCommitmentGadget::<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>::alloc(cs, || Ok(commitment))?,
+            pedersen: PedersenCommitmentGadget::<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>::alloc_constant(cs, || {
+                Ok(commitment)
+            })?,
         })
+    }
+
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        CS: ConstraintSystem<F>,
+    >(
+        _cs: CS,
+        _value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
     }
 
     fn alloc_input<
@@ -69,13 +81,10 @@ impl<
         T: Borrow<PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
-        cs: CS,
-        value_gen: Fn,
+        _cs: CS,
+        _value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let commitment: PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
-        Ok(Self {
-            pedersen: PedersenCommitmentGadget::<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>::alloc(cs, || Ok(commitment))?,
-        })
+        unimplemented!()
     }
 }
 

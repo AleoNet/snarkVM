@@ -278,7 +278,7 @@ where
     <G::Affine as AffineCurve>::BaseField: PoseidonDefaultParametersField,
     G: ToConstraintField<<G::Affine as AffineCurve>::BaseField>,
 {
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Schnorr<G>>, CS: ConstraintSystem<F>>(
+    fn alloc_constant<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Schnorr<G>>, CS: ConstraintSystem<F>>(
         _cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
@@ -289,15 +289,18 @@ where
         })
     }
 
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Schnorr<G>>, CS: ConstraintSystem<F>>(
+        _cs: CS,
+        _value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+
     fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Schnorr<G>>, CS: ConstraintSystem<F>>(
         _cs: CS,
-        value_gen: Fn,
+        _value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Self {
-            signature: value_gen()?.borrow().clone(),
-            _group_gadget: PhantomData,
-            _engine: PhantomData,
-        })
+        unimplemented!()
     }
 }
 

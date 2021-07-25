@@ -208,16 +208,7 @@ impl<F: PrimeField> PoseidonSpongeGadget<F> {
 }
 
 impl<F: PrimeField> AllocGadget<PoseidonParameters<F>, F> for PoseidonSpongeGadget<F> {
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<PoseidonParameters<F>>, CS: ConstraintSystem<F>>(
-        cs: CS,
-        value_gen: Fn,
-    ) -> Result<Self, SynthesisError> {
-        let parameters = value_gen()?.borrow().clone();
-
-        Ok(Self::new(cs, &parameters))
-    }
-
-    fn alloc_input<
+    fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<PoseidonParameters<F>>,
         CS: ConstraintSystem<F>,
@@ -228,6 +219,24 @@ impl<F: PrimeField> AllocGadget<PoseidonParameters<F>, F> for PoseidonSpongeGadg
         let parameters = value_gen()?.borrow().clone();
 
         Ok(Self::new(cs, &parameters))
+    }
+
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<PoseidonParameters<F>>, CS: ConstraintSystem<F>>(
+        _cs: CS,
+        _value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+
+    fn alloc_input<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PoseidonParameters<F>>,
+        CS: ConstraintSystem<F>,
+    >(
+        _cs: CS,
+        _value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
     }
 }
 
@@ -338,7 +347,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     AllocGadget<PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>, F>
     for PoseidonCryptoHashGadget<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {
-    fn alloc<
+    fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>>,
         CS: ConstraintSystem<F>,
@@ -351,6 +360,17 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
         })
     }
 
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>>,
+        CS: ConstraintSystem<F>,
+    >(
+        _cs: CS,
+        _f: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>>,
@@ -359,8 +379,6 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
         _cs: CS,
         _f: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Self {
-            field_phantom: PhantomData,
-        })
+        unimplemented!()
     }
 }

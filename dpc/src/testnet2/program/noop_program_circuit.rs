@@ -52,7 +52,7 @@ impl<C: Parameters> ConstraintSynthesizer<C::InnerScalarField> for NoopCircuit<C
 
         let _position = UInt8::alloc_input_vec_le(cs.ns(|| "Alloc position"), &[position])?;
 
-        let _local_data_commitment_parameters_gadget = C::LocalDataCommitmentGadget::alloc_input(
+        let _local_data_commitment_parameters_gadget = C::LocalDataCommitmentGadget::alloc_constant(
             &mut cs.ns(|| "Declare local data commitment parameters"),
             || Ok(C::local_data_commitment_scheme().clone()),
         )?;

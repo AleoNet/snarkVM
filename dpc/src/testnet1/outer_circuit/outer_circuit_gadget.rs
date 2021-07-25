@@ -17,7 +17,7 @@
 use crate::{testnet1::Testnet1Components, AleoAmount, Execution, Transaction, TransactionScheme};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
+    traits::{CommitmentScheme, SignatureScheme, CRH, SNARK},
 };
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
@@ -97,20 +97,20 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     let (program_id_commitment_parameters, program_id_crh, inner_circuit_id_crh) = {
         let cs = &mut cs.ns(|| "Declare Comm and CRH parameters");
 
-        let program_id_commitment_parameters =
-            C::ProgramCommitmentGadget::alloc_input(&mut cs.ns(|| "Declare program_id_commitment_parameters"), || {
-                Ok(C::program_commitment_scheme().clone())
-            })?;
+        let program_id_commitment_parameters = C::ProgramCommitmentGadget::alloc_constant(
+            &mut cs.ns(|| "Declare program_id_commitment_parameters"),
+            || Ok(C::program_commitment_scheme().clone()),
+        )?;
 
         let program_id_crh =
-            C::ProgramIDCRHGadget::alloc_input(&mut cs.ns(|| "Declare program_id_crh_parameters"), || {
+            C::ProgramIDCRHGadget::alloc_constant(&mut cs.ns(|| "Declare program_id_crh_parameters"), || {
                 Ok(C::program_id_crh().clone())
             })?;
 
-        let inner_circuit_id_crh =
-            C::InnerCircuitIDCRHGadget::alloc_input(&mut cs.ns(|| "Declare inner_circuit_id_crh_parameters"), || {
-                Ok(C::inner_circuit_id_crh().clone())
-            })?;
+        let inner_circuit_id_crh = C::InnerCircuitIDCRHGadget::alloc_constant(
+            &mut cs.ns(|| "Declare inner_circuit_id_crh_parameters"),
+            || Ok(C::inner_circuit_id_crh().clone()),
+        )?;
 
         (program_id_commitment_parameters, program_id_crh, inner_circuit_id_crh)
     };
@@ -120,43 +120,6 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     // ************************************************************************
 
     // Declare inner snark verifier inputs as `CoreCheckF` field elements
-
-    let account_commitment_parameters_fe = C::account_commitment_scheme()
-        .to_field_elements()
-        .map_err(|_| SynthesisError::AssignmentMissing)?;
-
-    let account_encryption_parameters_fe = C::account_encryption_scheme()
-        .to_field_elements()
-        .map_err(|_| SynthesisError::AssignmentMissing)?;
-
-    let account_signature_fe = C::account_signature_scheme()
-        .to_field_elements()
-        .map_err(|_| SynthesisError::AssignmentMissing)?;
-
-    let record_commitment_parameters_fe = C::record_commitment_scheme()
-        .to_field_elements()
-        .map_err(|_| SynthesisError::AssignmentMissing)?;
-
-    let encrypted_record_crh_parameters_fe = C::encrypted_record_crh()
-        .to_field_elements()
-        .map_err(|_| SynthesisError::AssignmentMissing)?;
-
-    let program_id_commitment_parameters_fe = C::program_commitment_scheme()
-        .to_field_elements()
-        .map_err(|_| SynthesisError::AssignmentMissing)?;
-
-    let local_data_crh_parameters_fe = C::local_data_crh()
-        .to_field_elements()
-        .map_err(|_| SynthesisError::AssignmentMissing)?;
-
-    let serial_number_nonce_crh_parameters_fe = C::serial_number_nonce_crh()
-        .to_field_elements()
-        .map_err(|_| SynthesisError::AssignmentMissing)?;
-
-    let record_commitment_tree_parameters_fe = C::record_commitment_tree_parameters()
-        .crh()
-        .to_field_elements()
-        .map_err(|_| SynthesisError::AssignmentMissing)?;
 
     let ledger_digest_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(ledger_digest)
         .map_err(|_| SynthesisError::AssignmentMissing)?;
@@ -179,31 +142,6 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
         .map_err(|_| SynthesisError::AssignmentMissing)?;
 
     // Allocate field element bytes
-
-    let account_commitment_fe_bytes =
-        alloc_input_field_element_to_bytes::<C, _>(cs, account_commitment_parameters_fe, "account commitment pp")?;
-    let account_encryption_fe_bytes =
-        alloc_input_field_element_to_bytes::<C, _>(cs, account_encryption_parameters_fe, "account encryption pp")?;
-    let account_signature_fe_bytes =
-        alloc_input_field_element_to_bytes::<C, _>(cs, account_signature_fe, "account signature pp")?;
-    let record_commitment_parameters_fe_bytes =
-        alloc_input_field_element_to_bytes::<C, _>(cs, record_commitment_parameters_fe, "record commitment pp")?;
-    let encrypted_record_crh_parameters_fe_bytes =
-        alloc_input_field_element_to_bytes::<C, _>(cs, encrypted_record_crh_parameters_fe, "encrypted record crh pp")?;
-    let program_id_commitment_parameters_fe_bytes = alloc_input_field_element_to_bytes::<C, _>(
-        cs,
-        program_id_commitment_parameters_fe,
-        "program id commitment pp",
-    )?;
-    let local_data_commitment_parameters_fe_bytes =
-        alloc_input_field_element_to_bytes::<C, _>(cs, local_data_crh_parameters_fe, "local data commitment pp")?;
-    let serial_number_nonce_crh_parameters_fe_bytes = alloc_input_field_element_to_bytes::<C, _>(
-        cs,
-        serial_number_nonce_crh_parameters_fe,
-        "serial number nonce crh pp",
-    )?;
-    let record_commitment_tree_parameters_fe_bytes =
-        alloc_input_field_element_to_bytes::<C, _>(cs, record_commitment_tree_parameters_fe, "ledger pp")?;
     let ledger_digest_fe_bytes = alloc_input_field_element_to_bytes::<C, _>(cs, ledger_digest_fe, "ledger digest")?;
 
     let mut serial_number_fe_bytes = vec![];
@@ -253,15 +191,6 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     // Construct inner snark input as bytes
 
     let mut inner_snark_input_bytes = vec![];
-    inner_snark_input_bytes.extend(account_commitment_fe_bytes);
-    inner_snark_input_bytes.extend(account_encryption_fe_bytes);
-    inner_snark_input_bytes.extend(account_signature_fe_bytes);
-    inner_snark_input_bytes.extend(record_commitment_parameters_fe_bytes);
-    inner_snark_input_bytes.extend(encrypted_record_crh_parameters_fe_bytes);
-    inner_snark_input_bytes.extend(program_id_commitment_parameters_fe_bytes);
-    inner_snark_input_bytes.extend(local_data_commitment_parameters_fe_bytes.clone());
-    inner_snark_input_bytes.extend(serial_number_nonce_crh_parameters_fe_bytes);
-    inner_snark_input_bytes.extend(record_commitment_tree_parameters_fe_bytes);
     inner_snark_input_bytes.extend(ledger_digest_fe_bytes);
     inner_snark_input_bytes.extend(serial_number_fe_bytes);
     inner_snark_input_bytes.extend(commitment_and_encrypted_record_hash_fe_bytes);
@@ -312,8 +241,6 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     // Reuse inner snark verifier inputs
 
     let mut program_input_bytes = vec![];
-
-    program_input_bytes.extend(local_data_commitment_parameters_fe_bytes);
     program_input_bytes.extend(local_data_root_fe_bytes);
 
     let mut program_input_bits = Vec::with_capacity(program_input_bytes.len());

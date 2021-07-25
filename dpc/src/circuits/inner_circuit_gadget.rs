@@ -185,21 +185,11 @@ where
     PGadget: PRFGadget<P, C::InnerScalarField>,
 {
     // Order for allocation of input:
-    // 1. account_commitment_parameters
-    // 2. account_encryption_parameters
-    // 3. account_signature_parameters
-    // 4. record_commitment_parameters
-    // 5. encrypted_record_crh_parameters
-    // 6. program_vk_commitment_parameters
-    // 7. local_data_crh_parameters
-    // 8. local_data_commitment_parameters
-    // 9. serial_number_nonce_crh_parameters
-    // 10. record_commitment_tree_parameters
-    // 11. ledger_digest
-    // 12. for i in 0..NUM_INPUT_RECORDS: old_serial_numbers[i]
-    // 13. for j in 0..NUM_OUTPUT_RECORDS: new_commitments[i], new_encrypted_record_hashes[i]
-    // 14. program_commitment
-    // 15. local_data_root
+    // 1. ledger_digest
+    // 2. for i in 0..NUM_INPUT_RECORDS: old_serial_numbers[i]
+    // 3. for j in 0..NUM_OUTPUT_RECORDS: new_commitments[i], new_encrypted_record_hashes[i]
+    // 4. program_commitment
+    // 5. local_data_root
     let (
         account_commitment_parameters,
         account_encryption_parameters,
@@ -214,63 +204,53 @@ where
     ) = {
         let cs = &mut cs.ns(|| "Declare commitment and CRH parameters");
 
-        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let account_commitment_parameters =
-            C::AccountCommitmentGadget::alloc_input(&mut cs.ns(|| "Declare account commit parameters"), || {
+            C::AccountCommitmentGadget::alloc_constant(&mut cs.ns(|| "Declare account commit parameters"), || {
                 Ok(C::account_commitment_scheme().clone())
             })?;
 
-        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let account_encryption_parameters =
-            C::AccountEncryptionGadget::alloc_input(&mut cs.ns(|| "Declare account encryption parameters"), || {
+            C::AccountEncryptionGadget::alloc_constant(&mut cs.ns(|| "Declare account encryption parameters"), || {
                 Ok(C::account_encryption_scheme().clone())
             })?;
 
-        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let account_signature_parameters =
-            C::AccountSignatureGadget::alloc_input(&mut cs.ns(|| "Declare account signature parameters"), || {
+            C::AccountSignatureGadget::alloc_constant(&mut cs.ns(|| "Declare account signature parameters"), || {
                 Ok(C::account_signature_scheme().clone())
             })?;
 
-        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let record_commitment_parameters =
-            C::RecordCommitmentGadget::alloc_input(&mut cs.ns(|| "Declare record commitment parameters"), || {
+            C::RecordCommitmentGadget::alloc_constant(&mut cs.ns(|| "Declare record commitment parameters"), || {
                 Ok(C::record_commitment_scheme().clone())
             })?;
 
-        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
-        let encrypted_record_crh_parameters = C::EncryptedRecordCRHGadget::alloc_input(
+        let encrypted_record_crh_parameters = C::EncryptedRecordCRHGadget::alloc_constant(
             &mut cs.ns(|| "Declare record ciphertext CRH parameters"),
             || Ok(C::encrypted_record_crh().clone()),
         )?;
 
-        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
-        let program_id_commitment_parameters =
-            C::ProgramCommitmentGadget::alloc_input(&mut cs.ns(|| "Declare program ID commitment parameters"), || {
-                Ok(C::program_commitment_scheme().clone())
-            })?;
+        let program_id_commitment_parameters = C::ProgramCommitmentGadget::alloc_constant(
+            &mut cs.ns(|| "Declare program ID commitment parameters"),
+            || Ok(C::program_commitment_scheme().clone()),
+        )?;
 
-        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let local_data_crh_parameters =
-            C::LocalDataCRHGadget::alloc_input(&mut cs.ns(|| "Declare local data CRH parameters"), || {
+            C::LocalDataCRHGadget::alloc_constant(&mut cs.ns(|| "Declare local data CRH parameters"), || {
                 Ok(C::local_data_crh().clone())
             })?;
 
-        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
-        let local_data_commitment_parameters = C::LocalDataCommitmentGadget::alloc_input(
+        let local_data_commitment_parameters = C::LocalDataCommitmentGadget::alloc_constant(
             &mut cs.ns(|| "Declare local data commitment parameters"),
             || Ok(C::local_data_commitment_scheme().clone()),
         )?;
 
-        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
-        let serial_number_nonce_crh_parameters = C::SerialNumberNonceCRHGadget::alloc_input(
+        let serial_number_nonce_crh_parameters = C::SerialNumberNonceCRHGadget::alloc_constant(
             &mut cs.ns(|| "Declare serial number nonce CRH parameters"),
             || Ok(C::serial_number_nonce_crh().clone()),
         )?;
 
-        // TODO (howardwu): This is allocating nothing. Why is this an alloc.
         let record_commitment_tree_parameters =
-            C::RecordCommitmentTreeCRHGadget::alloc_input(&mut cs.ns(|| "Declare ledger parameters"), || {
+            C::RecordCommitmentTreeCRHGadget::alloc_constant(&mut cs.ns(|| "Declare ledger parameters"), || {
                 Ok(C::record_commitment_tree_parameters().crh())
             })?;
 
