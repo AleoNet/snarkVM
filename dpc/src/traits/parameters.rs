@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerCircuitVerifierInput, OuterCircuitVerifierInput};
+use crate::{InnerCircuitVerifierInput, OuterCircuitVerifierInput, ProgramLocalData};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
 use snarkvm_curves::{
     traits::{MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters},
@@ -59,6 +59,12 @@ pub trait Parameters: 'static + Sized {
         ScalarField = Self::OuterScalarField,
         BaseField = Self::OuterBaseField,
         VerifierInput = OuterCircuitVerifierInput<Self>,
+    >;
+    /// Program SNARK for Aleo applications.
+    type ProgramSNARK: SNARK<
+        ScalarField = Self::InnerScalarField,
+        BaseField = Self::OuterScalarField,
+        VerifierInput = ProgramLocalData<Self>,
     >;
 
     /// Commitment scheme for account contents. Invoked only over `Self::InnerScalarField`.

@@ -93,6 +93,7 @@ impl Parameters for Testnet1Parameters {
 
     type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Testnet1Parameters>>;
     type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet1Parameters>>;
+    type ProgramSNARK = Groth16<Self::InnerCurve, ProgramLocalData<Self>>;
 
     type AccountCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 33, 48>;
     type AccountCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 33, 48>;
@@ -167,6 +168,5 @@ impl Parameters for Testnet1Parameters {
 
 impl Testnet1Components for Testnet1Parameters {
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
-    type ProgramSNARK = Groth16<Self::InnerCurve, ProgramLocalData<Self>>;
     type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
 }

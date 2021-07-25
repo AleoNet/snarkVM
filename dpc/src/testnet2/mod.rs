@@ -28,21 +28,13 @@ pub use program::*;
 
 pub mod parameters;
 
-use crate::{Parameters, ProgramLocalData};
-use snarkvm_algorithms::prelude::*;
+use crate::Parameters;
 use snarkvm_gadgets::{bits::Boolean, nonnative::NonNativeFieldVar, traits::algorithms::SNARKVerifierGadget};
 
 /// Trait that stores information about the testnet2 DPC scheme.
 pub trait Testnet2Components: Parameters {
     /// SNARK Verifier gadget for the inner circuit.
     type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK, Input = Vec<Boolean>>;
-
-    /// Program SNARK for Aleo applications.
-    type ProgramSNARK: SNARK<
-        ScalarField = Self::InnerScalarField,
-        BaseField = Self::OuterScalarField,
-        VerifierInput = ProgramLocalData<Self>,
-    >;
 
     // TODO (raychu86): Look into properly declaring a proper input. i.e. Self::MarlinInputGadget.
     /// Program SNARK verifier gadget for Aleo applications.

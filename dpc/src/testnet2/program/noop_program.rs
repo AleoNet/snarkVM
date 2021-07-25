@@ -40,9 +40,9 @@ pub struct NoopProgram<C: Testnet2Components> {
     #[derivative(Default(value = "vec![0u8; 48]"))]
     id: Vec<u8>,
     #[derivative(Debug = "ignore")]
-    proving_key: <<C as Testnet2Components>::ProgramSNARK as SNARK>::ProvingKey,
+    proving_key: <C::ProgramSNARK as SNARK>::ProvingKey,
     #[derivative(Debug = "ignore")]
-    verifying_key: <<C as Testnet2Components>::ProgramSNARK as SNARK>::VerifyingKey,
+    verifying_key: <C::ProgramSNARK as SNARK>::VerifyingKey,
 }
 
 impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
@@ -51,7 +51,7 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
     type LocalData = LocalData<C>;
     type LocalDataCommitment = C::LocalDataCommitmentScheme;
     type ProgramIDCRH = C::ProgramIDCRH;
-    type ProofSystem = <C as Testnet2Components>::ProgramSNARK;
+    type ProofSystem = C::ProgramSNARK;
     type ProvingKey = <Self::ProofSystem as SNARK>::ProvingKey;
     type PublicInput = ();
     type VerifyingKey = <Self::ProofSystem as SNARK>::VerifyingKey;
@@ -169,8 +169,8 @@ impl<C: Testnet2Components> NoopProgram<C> {
     pub fn to_snark_parameters(
         &self,
     ) -> (
-        <<C as Testnet2Components>::ProgramSNARK as SNARK>::ProvingKey,
-        <<C as Testnet2Components>::ProgramSNARK as SNARK>::VerifyingKey,
+        <C::ProgramSNARK as SNARK>::ProvingKey,
+        <C::ProgramSNARK as SNARK>::VerifyingKey,
     ) {
         (self.proving_key.clone(), self.verifying_key.clone())
     }
