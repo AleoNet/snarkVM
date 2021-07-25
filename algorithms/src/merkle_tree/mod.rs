@@ -32,7 +32,7 @@ macro_rules! define_merkle_tree_parameters {
 #[rustfmt::skip]
         #[allow(unused_imports)]
         use $crate::{
-            merkle_tree::MerkleTree,MerkleError,
+            merkle_tree::MerkleTree, MerkleError,
             traits::{CRH, LoadableMerkleParameters, MaskedMerkleParameters, MerkleParameters},
         };
 
@@ -69,7 +69,7 @@ macro_rules! define_masked_merkle_tree_parameters {
 #[rustfmt::skip]
         #[allow(unused_imports)]
         use $crate::{
-            merkle_tree::MerkleTree,MerkleError,
+            merkle_tree::MerkleTree, MerkleError,
             CRH, MaskedMerkleParameters, MerkleParameters,
         };
 

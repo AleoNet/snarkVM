@@ -16,9 +16,6 @@
 
 use snarkvm_algorithms::crh::double_sha256;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct MerkleTreeRootHash([u8; 32]);
-
 fn merkle_round(hashes: &[[u8; 32]]) -> Vec<[u8; 32]> {
     let mut ret_len = hashes.len() / 2;
     if hashes.len() % 2 == 1 {
