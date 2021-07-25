@@ -37,20 +37,12 @@ pub type PoswMarlin = Posw<Marlin<Bls12_377>, Bls12_377>;
 pub type Marlin<E> = snarkvm_marlin::snark::MarlinTestnet1System<E, Vec<<E as PairingEngine>::Fr>>;
 
 /// A generic PoSW.
-pub type Posw<S, E> = posw::Posw<S, <E as PairingEngine>::Fr, M, HG, params::PoSWParams>;
+/// A 32 byte mask is sufficient for Pedersen hashes on BLS12-377, leaves and the root.
+pub type Posw<S, E> = posw::Posw<S, <E as PairingEngine>::Fr, M, HG, 32>;
 
 /// Instantiate the circuit with the CRH to Fq.
-type PoswCircuit<F> = circuit::POSWCircuit<F, M, HG, params::PoSWParams>;
-
-// Do not leak private type
-mod params {
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    pub struct PoSWParams;
-    impl crate::circuit::POSWCircuitParameters for PoSWParams {
-        // A 32 byte mask is sufficient for Pedersen hashes on BLS12-377, leaves and the root
-        const MASK_LENGTH: usize = 32;
-    }
-}
+/// A 32 byte mask is sufficient for Pedersen hashes on BLS12-377, leaves and the root.
+type PoswCircuit<F> = circuit::POSWCircuit<F, M, HG, 32>;
 
 /// Subtree calculation
 pub fn txids_to_roots(transaction_ids: &[[u8; 32]]) -> (MerkleRootHash, PedersenMerkleRootHash, Vec<[u8; 32]>) {

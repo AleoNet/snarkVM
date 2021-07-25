@@ -73,7 +73,7 @@ pub struct Posw<
     F: PrimeField,
     M: MaskedMerkleParameters,
     HG: MaskedCRHGadget<M::H, F>,
-    CP: POSWCircuitParameters,
+    const MASK_NUM_BYTES: usize,
 > {
     /// The proving key. If not provided, the PoSW runner will work in verify-only
     /// mode and the `mine` function will panic.
@@ -82,13 +82,11 @@ pub struct Posw<
     /// The (prepared) verifying key.
     pub vk: S::VerifyingKey,
 
-    _circuit: PhantomData<POSWCircuit<F, M, HG, CP>>,
+    _circuit: PhantomData<POSWCircuit<F, M, HG, MASK_NUM_BYTES>>,
 }
 
-impl<S, CP> Posw<S, Fr, M, HG, CP>
-where
-    S: SNARK,
-    CP: POSWCircuitParameters,
+impl<S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>, const MASK_NUM_BYTES: usize>
+    Posw<S, Fr, M, HG, MASK_NUM_BYTES>
 {
     /// Loads the PoSW runner from the locally stored parameters.
     pub fn verify_only() -> Result<Self, PoswError> {
@@ -115,7 +113,7 @@ where
     }
 
     /// Creates a POSW circuit from the provided transaction ids and nonce.
-    fn circuit_from(nonce: u32, leaves: &[[u8; 32]]) -> POSWCircuit<Fr, M, HG, CP> {
+    fn circuit_from(nonce: u32, leaves: &[[u8; 32]]) -> POSWCircuit<Fr, M, HG, MASK_NUM_BYTES> {
         let (root, leaves) = pedersen_merkle_root_hash_with_leaves(leaves);
 
         // Generate the mask by committing to the nonce and the root
@@ -131,7 +129,6 @@ where
             root: Some(root),
             field_type: PhantomData,
             crh_gadget_type: PhantomData,
-            circuit_parameters_type: PhantomData,
         }
     }
 
@@ -140,13 +137,7 @@ where
         let hash_result = sha256d_to_u64(proof);
         hash_result <= difficulty_target
     }
-}
 
-impl<S, CP> Posw<S, Fr, M, HG, CP>
-where
-    S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>,
-    CP: POSWCircuitParameters,
-{
     /// Performs a trusted setup for the PoSW circuit and returns an instance of the runner
     // TODO (howardwu): Find a workaround to keeping this method disabled.
     //  We need this method for benchmarking currently. There are two options:
@@ -167,7 +158,6 @@ where
                 root: None,
                 field_type: PhantomData,
                 crh_gadget_type: PhantomData,
-                circuit_parameters_type: PhantomData,
             },
             rng,
         )?;
@@ -194,7 +184,6 @@ where
                 root: None,
                 field_type: PhantomData,
                 crh_gadget_type: PhantomData,
-                circuit_parameters_type: PhantomData,
             },
             &srs,
         )?;
