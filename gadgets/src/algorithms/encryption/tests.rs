@@ -50,7 +50,8 @@ mod group_encryption {
         let public_key = encryption_scheme.generate_public_key(&private_key).unwrap();
 
         let encryption =
-            TestEncryptionSchemeGadget::alloc(&mut cs.ns(|| "parameters_gadget"), || Ok(&encryption_scheme)).unwrap();
+            TestEncryptionSchemeGadget::alloc_constant(&mut cs.ns(|| "parameters_gadget"), || Ok(&encryption_scheme))
+                .unwrap();
         let private_key_gadget =
             <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::PrivateKeyGadget::alloc(
                 &mut cs.ns(|| "private_key_gadget"),
@@ -104,7 +105,8 @@ mod group_encryption {
 
         // Alloc parameters, public key, plaintext, randomness, and blinding exponents
         let encryption =
-            TestEncryptionSchemeGadget::alloc(&mut cs.ns(|| "parameters_gadget"), || Ok(&encryption_scheme)).unwrap();
+            TestEncryptionSchemeGadget::alloc_constant(&mut cs.ns(|| "parameters_gadget"), || Ok(&encryption_scheme))
+                .unwrap();
         let public_key_gadget =
             <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::PublicKeyGadget::alloc(
                 &mut cs.ns(|| "public_key_gadget"),
@@ -198,7 +200,8 @@ mod ecies_poseidon {
         let public_key = encryption_scheme.generate_public_key(&private_key).unwrap();
 
         let encryption =
-            TestEncryptionSchemeGadget::alloc(&mut cs.ns(|| "parameters_gadget"), || Ok(&encryption_scheme)).unwrap();
+            TestEncryptionSchemeGadget::alloc_constant(&mut cs.ns(|| "parameters_gadget"), || Ok(&encryption_scheme))
+                .unwrap();
         let private_key_gadget =
             <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::PrivateKeyGadget::alloc(
                 &mut cs.ns(|| "private_key_gadget"),
@@ -252,7 +255,8 @@ mod ecies_poseidon {
 
         // Alloc parameters, public key, plaintext, randomness, and blinding exponents
         let encryption =
-            TestEncryptionSchemeGadget::alloc(&mut cs.ns(|| "parameters_gadget"), || Ok(&encryption_scheme)).unwrap();
+            TestEncryptionSchemeGadget::alloc_constant(&mut cs.ns(|| "parameters_gadget"), || Ok(&encryption_scheme))
+                .unwrap();
         let public_key_gadget =
             <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::PublicKeyGadget::alloc(
                 &mut cs.ns(|| "public_key_gadget"),
