@@ -26,7 +26,7 @@ use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes_le, FromByte
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 
-pub struct DPC<C: Testnet2Components> {
+pub struct DPC<C: Parameters> {
     pub noop_program: NoopProgram<C>,
     pub inner_snark_parameters: (
         Option<<C::InnerSNARK as SNARK>::ProvingKey>,

@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet1::Testnet1Components,
     Execution,
     LocalData,
     NoopCircuit,
@@ -36,8 +35,8 @@ use rand::{CryptoRng, Rng};
 use snarkvm_fields::ToConstraintField;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Testnet1Components"), Debug(bound = "C: Testnet1Components"))]
-pub struct NoopProgram<C: Testnet1Components> {
+#[derivative(Clone(bound = "C: Parameters"), Debug(bound = "C: Parameters"))]
+pub struct NoopProgram<C: Parameters> {
     #[derivative(Default(value = "vec![0u8; 48]"))]
     id: Vec<u8>,
     #[derivative(Debug = "ignore")]
@@ -46,7 +45,7 @@ pub struct NoopProgram<C: Testnet1Components> {
     verifying_key: <C::ProgramSNARK as SNARK>::VerifyingKey,
 }
 
-impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
+impl<C: Parameters> ProgramScheme for NoopProgram<C> {
     type Execution = Execution<Self::ProofSystem>;
     type ID = Vec<u8>;
     type LocalData = LocalData<C>;
@@ -163,7 +162,7 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
     }
 }
 
-impl<C: Testnet1Components> NoopProgram<C> {
+impl<C: Parameters> NoopProgram<C> {
     #[deprecated]
     pub fn to_snark_parameters(
         &self,

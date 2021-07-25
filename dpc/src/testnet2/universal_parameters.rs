@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{testnet2::Testnet2Components, ProgramError};
+use crate::{Parameters, ProgramError};
 use snarkvm_parameters::{prelude::*, testnet2::*};
 use snarkvm_utilities::FromBytes;
 
@@ -23,10 +23,10 @@ use snarkvm_algorithms::SNARK;
 use std::io::Result as IoResult;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Testnet2Components"))]
-pub struct ProgramSNARKUniversalSRS<C: Testnet2Components>(pub <C::ProgramSNARK as SNARK>::UniversalSetupParameters);
+#[derivative(Clone(bound = "C: Parameters"))]
+pub struct ProgramSNARKUniversalSRS<C: Parameters>(pub <C::ProgramSNARK as SNARK>::UniversalSetupParameters);
 
-impl<C: Testnet2Components> ProgramSNARKUniversalSRS<C> {
+impl<C: Parameters> ProgramSNARKUniversalSRS<C> {
     pub fn setup<R: Rng + CryptoRng>(
         config: &<C::ProgramSNARK as SNARK>::UniversalSetupConfig,
         rng: &mut R,
@@ -36,7 +36,7 @@ impl<C: Testnet2Components> ProgramSNARKUniversalSRS<C> {
     }
 }
 
-impl<C: Testnet2Components> ProgramSNARKUniversalSRS<C> {
+impl<C: Parameters> ProgramSNARKUniversalSRS<C> {
     pub fn load() -> IoResult<Self> {
         Ok(Self(From::from(FromBytes::read_le(
             UniversalSRSParameters::load_bytes()?.as_slice(),

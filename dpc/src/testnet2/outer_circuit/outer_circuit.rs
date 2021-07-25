@@ -18,6 +18,7 @@ use crate::{
     testnet2::{execute_outer_circuit, Testnet2Components},
     AleoAmount,
     Execution,
+    Parameters,
     Transaction,
     TransactionScheme,
 };
@@ -29,8 +30,8 @@ use snarkvm_fields::ToConstraintField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Testnet2Components"))]
-pub struct OuterCircuit<C: Testnet2Components> {
+#[derivative(Clone(bound = "C: Parameters"))]
+pub struct OuterCircuit<C: Parameters> {
     // Inner snark verifier public inputs
     ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
     old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
@@ -52,7 +53,7 @@ pub struct OuterCircuit<C: Testnet2Components> {
     inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
 }
 
-impl<C: Testnet2Components> OuterCircuit<C> {
+impl<C: Parameters> OuterCircuit<C> {
     pub fn blank(
         inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,

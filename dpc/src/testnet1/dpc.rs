@@ -26,7 +26,7 @@ use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 use snarkvm_fields::ToConstraintField;
 
-pub struct DPC<C: Testnet1Components> {
+pub struct DPC<C: Parameters> {
     pub noop_program: NoopProgram<C>,
     pub inner_snark_parameters: (
         Option<<C::InnerSNARK as SNARK>::ProvingKey>,
