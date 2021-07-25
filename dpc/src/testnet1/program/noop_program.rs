@@ -15,9 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet1::{NoopCircuit, Testnet1Components},
+    testnet1::Testnet1Components,
     Execution,
     LocalData,
+    NoopCircuit,
     Parameters,
     ProgramError,
     ProgramLocalData,

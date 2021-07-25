@@ -19,3 +19,6 @@ pub use execution::*;
 
 pub mod local_data;
 pub use local_data::*;
+
+pub mod noop_program_circuit;
+pub use noop_program_circuit::*;
