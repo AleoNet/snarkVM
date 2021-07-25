@@ -17,10 +17,7 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_dpc::{
-    prelude::*,
-    testnet2::parameters::Testnet2Parameters,
-};
+use snarkvm_dpc::{prelude::*, testnet2::parameters::Testnet2Parameters};
 
 use criterion::Criterion;
 use rand::thread_rng;
