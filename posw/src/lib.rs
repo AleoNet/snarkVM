@@ -21,7 +21,6 @@ use posw::{HG, M};
 
 pub mod error;
 
-use snarkvm_algorithms::snark;
 use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_dpc::block::{
     merkle_root_with_subroots,
@@ -30,10 +29,6 @@ use snarkvm_dpc::block::{
     PedersenMerkleRootHash,
     MASKED_TREE_DEPTH,
 };
-
-/// GM17 type alias for the PoSW circuit
-#[deprecated]
-pub type GM17<E> = snark::gm17::GM17<E, Vec<<E as PairingEngine>::Fr>>;
 
 /// PoSW instantiated over BLS12-377 with Marlin.
 pub type PoswMarlin = Posw<Marlin<Bls12_377>, Bls12_377>;
@@ -87,32 +82,6 @@ mod tests {
     #[test]
     fn test_load() {
         let _params = PoswMarlin::load().unwrap();
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_posw_gm17() {
-        let rng = &mut XorShiftRng::seed_from_u64(1234567);
-
-        // PoSW instantiated over BLS12-377 with GM17.
-        pub type PoswGM17 = Posw<GM17<Bls12_377>, Bls12_377>;
-
-        // run the trusted setup
-        let posw = PoswGM17::setup(rng).unwrap();
-        // super low difficulty so we find a solution immediately
-        let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
-
-        let transaction_ids = vec![[1u8; 32]; 8];
-        let (_, pedersen_merkle_root, subroots) = txids_to_roots(&transaction_ids);
-
-        // generate the proof
-        let (nonce, proof) = posw
-            .mine(&subroots, difficulty_target, &mut rand::thread_rng(), std::u32::MAX)
-            .unwrap();
-        assert_eq!(proof.len(), 193); // NOTE: GM17 compressed serialization
-
-        let proof = <GM17<Bls12_377> as SNARK>::Proof::read(&proof[..]).unwrap();
-        posw.verify(nonce, &proof, &pedersen_merkle_root).unwrap();
     }
 
     #[test]

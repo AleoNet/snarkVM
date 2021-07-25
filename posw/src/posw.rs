@@ -53,6 +53,7 @@ use rand::Rng;
 use std::marker::PhantomData;
 
 /// Commits to the nonce and pedersen merkle root
+#[deprecated]
 pub fn commit(nonce: u32, root: &PedersenMerkleRootHash) -> Vec<u8> {
     let mut h = Blake2s::new();
     h.update(&nonce.to_le_bytes());
@@ -61,23 +62,19 @@ pub fn commit(nonce: u32, root: &PedersenMerkleRootHash) -> Vec<u8> {
 }
 
 // We need to instantiate the Merkle tree and the Gadget, but these should not be
-// proving system specific
-pub(crate) const NUM_WINDOWS: usize = 4;
-pub(crate) const WINDOW_SIZE: usize = 128;
+// proving system specific.
 pub type M = MaskedMerkleTreeParameters;
-pub type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, NUM_WINDOWS, WINDOW_SIZE>;
-pub type F = Fr;
+pub type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, 4, 128>;
 
 /// A Proof of Succinct Work miner and verifier
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Posw<S, F, M, HG, CP>
-where
+pub struct Posw<
     S: SNARK,
     F: PrimeField,
     M: MaskedMerkleParameters,
     HG: MaskedCRHGadget<M::H, F>,
     CP: POSWCircuitParameters,
-{
+> {
     /// The proving key. If not provided, the PoSW runner will work in verify-only
     /// mode and the `mine` function will panic.
     pub pk: Option<S::ProvingKey>,
@@ -88,7 +85,7 @@ where
     _circuit: PhantomData<POSWCircuit<F, M, HG, CP>>,
 }
 
-impl<S, CP> Posw<S, F, M, HG, CP>
+impl<S, CP> Posw<S, Fr, M, HG, CP>
 where
     S: SNARK,
     CP: POSWCircuitParameters,
@@ -118,7 +115,7 @@ where
     }
 
     /// Creates a POSW circuit from the provided transaction ids and nonce.
-    fn circuit_from(nonce: u32, leaves: &[[u8; 32]]) -> POSWCircuit<F, M, HG, CP> {
+    fn circuit_from(nonce: u32, leaves: &[[u8; 32]]) -> POSWCircuit<Fr, M, HG, CP> {
         let (root, leaves) = pedersen_merkle_root_hash_with_leaves(leaves);
 
         // Generate the mask by committing to the nonce and the root
@@ -145,9 +142,9 @@ where
     }
 }
 
-impl<S, CP> Posw<S, F, M, HG, CP>
+impl<S, CP> Posw<S, Fr, M, HG, CP>
 where
-    S: SNARK<ScalarField = F, VerifierInput = Vec<F>>,
+    S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>,
     CP: POSWCircuitParameters,
 {
     /// Performs a trusted setup for the PoSW circuit and returns an instance of the runner
@@ -162,7 +159,7 @@ where
         S: SNARK,
     {
         let params = S::circuit_specific_setup(
-            &PoswCircuit::<F> {
+            &PoswCircuit::<Fr> {
                 // the circuit will be padded internally
                 leaves: vec![None; 0],
                 merkle_parameters: PARAMS.clone(),
@@ -189,7 +186,7 @@ where
         S: SNARK<UniversalSetupParameters = SRS<E>>,
     {
         let params = S::index(
-            &PoswCircuit::<F> {
+            &PoswCircuit::<Fr> {
                 // the circuit will be padded internally
                 leaves: vec![None; 0],
                 merkle_parameters: PARAMS.clone(),
@@ -268,7 +265,7 @@ where
         let mask = commit(nonce, pedersen_merkle_root);
 
         // get the mask and the root in public inputs format
-        let merkle_root = F::read_le(&pedersen_merkle_root.0[..])?;
+        let merkle_root = Fr::read_le(&pedersen_merkle_root.0[..])?;
         let inputs = [mask.to_field_elements()?, vec![merkle_root]].concat();
 
         let res = S::verify(&self.vk, &inputs, &proof)?;

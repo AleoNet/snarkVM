@@ -136,13 +136,10 @@ mod test {
         const MASK_LENGTH: usize = 32;
     }
 
-    const NUM_WINDOWS: usize = 256;
-    const WINDOW_SIZE: usize = 4;
+    // We use a small tree in this test.
+    define_masked_merkle_tree_parameters!(EdwardsMaskedMerkleParameters, PedersenCompressedCRH<Edwards, 256, 4>, 4);
 
-    // We use a small tree in this test
-    define_masked_merkle_tree_parameters!(EdwardsMaskedMerkleParameters, PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 4);
-
-    type HashGadget = PedersenCompressedCRHGadget<Edwards, Fq, EdwardsBls12Gadget, NUM_WINDOWS, WINDOW_SIZE>;
+    type HashGadget = PedersenCompressedCRHGadget<Edwards, Fq, EdwardsBls12Gadget, 256, 4>;
     type EdwardsMaskedMerkleTree = MerkleTree<EdwardsMaskedMerkleParameters>;
 
     #[test]
