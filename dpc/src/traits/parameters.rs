@@ -34,6 +34,9 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
+use anyhow::Result;
+use rand::{CryptoRng, Rng};
+
 pub trait Parameters: 'static + Sized {
     const NETWORK_ID: u8;
 
@@ -238,4 +241,7 @@ pub trait Parameters: 'static + Sized {
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters;
 
     fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
+
+    /// Returns the program SRS for Aleo applications.
+    fn program_srs<R: Rng + CryptoRng>(rng: &mut R) -> Result<SRS<R>>;
 }

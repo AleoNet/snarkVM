@@ -59,9 +59,12 @@ use snarkvm_marlin::{
     FiatShamirAlgebraicSpongeRng,
     PoseidonSponge,
 };
+use snarkvm_parameters::{testnet2::UniversalSRSParameters, Parameter};
 use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
 
+use anyhow::Result;
 use once_cell::sync::OnceCell;
+use rand::{CryptoRng, Rng};
 
 macro_rules! dpc_setup {
     ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
@@ -178,6 +181,12 @@ impl Parameters for Testnet2Parameters {
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters {
         static RECORD_COMMITMENT_TREE_PARAMETERS: OnceCell<<Testnet2Parameters as Parameters>::RecordCommitmentTreeParameters> = OnceCell::new();
         RECORD_COMMITMENT_TREE_PARAMETERS.get_or_init(|| Self::RecordCommitmentTreeParameters::from(Self::record_commitment_tree_crh().clone()))
+    }
+
+    // TODO (howardwu): TEMPORARY - Making this oncecell.
+    /// Returns the program SRS for Aleo applications.
+    fn program_srs<R: Rng + CryptoRng>(_: &mut R) -> Result<SRS<R>> {
+        Ok(SRS::<R>::Universal(UniversalSRSParameters::load_bytes()?))
     }
 }
 

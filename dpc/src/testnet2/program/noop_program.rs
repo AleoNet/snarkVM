@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet2::ProgramSNARKUniversalSRS,
     Execution,
     LocalData,
     NoopCircuit,
@@ -58,12 +57,10 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
     type VerifyingKey = <Self::ProofSystem as SNARK>::VerifyingKey;
 
     /// Initializes a new instance of the noop program.
-    fn setup<R: Rng + CryptoRng>(_rng: &mut R) -> Result<Self, ProgramError> {
+    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, ProgramError> {
         // TODO (howardwu): TEMPORARY - Clean this usage of bytes (To(From(To))) up.
-        let universal_srs = ProgramSNARKUniversalSRS::<C>::load()?.0.to_bytes_le()?;
-
         let (proving_key, prepared_verifying_key) =
-            <Self::ProofSystem as SNARK>::setup(&NoopCircuit::<C>::blank(), &mut SRS::<R>::Universal(universal_srs))?;
+            <Self::ProofSystem as SNARK>::setup(&NoopCircuit::<C>::blank(), &mut C::program_srs::<R>(rng)?)?;
         let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
 
         let verifying_key_group_elements = verifying_key.to_field_elements()?;

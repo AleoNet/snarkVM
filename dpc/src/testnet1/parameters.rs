@@ -54,7 +54,9 @@ use snarkvm_gadgets::{
     curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget},
 };
 
+use anyhow::Result;
 use once_cell::sync::OnceCell;
+use rand::{CryptoRng, Rng};
 
 macro_rules! dpc_setup {
     ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
@@ -163,6 +165,11 @@ impl Parameters for Testnet1Parameters {
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters {
         static RECORD_COMMITMENT_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::RecordCommitmentTreeParameters> = OnceCell::new();
         RECORD_COMMITMENT_TREE_PARAMETERS.get_or_init(|| Self::RecordCommitmentTreeParameters::from(Self::record_commitment_tree_crh().clone()))
+    }
+
+    /// Returns the program SRS for Aleo applications.
+    fn program_srs<R: Rng + CryptoRng>(rng: &mut R) -> Result<SRS<R>> {
+        Ok(SRS::CircuitSpecific(rng))
     }
 }
 
