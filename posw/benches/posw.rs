@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::traits::SNARK;
+use snarkvm_algorithms::SNARK;
 use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-use snarkvm_posw::{txids_to_roots, Marlin, Posw, PoswMarlin, GM17};
+use snarkvm_posw::{txids_to_roots, Marlin, Posw, PoswMarlin};
 use snarkvm_utilities::FromBytes;
 
 use criterion::{criterion_group, criterion_main, Criterion};

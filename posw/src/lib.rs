@@ -68,11 +68,12 @@ pub fn txids_to_roots(transaction_ids: &[[u8; 32]]) -> (MerkleRootHash, Pedersen
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::SeedableRng;
-    use rand_xorshift::XorShiftRng;
-    use snarkvm_algorithms::traits::SNARK;
+    use snarkvm_algorithms::SNARK;
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_utilities::FromBytes;
+
+    use rand::SeedableRng;
+    use rand_xorshift::XorShiftRng;
 
     #[test]
     fn test_load_verify_only() {

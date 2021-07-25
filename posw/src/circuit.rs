@@ -110,11 +110,12 @@ impl<F: PrimeField, M: MaskedMerkleParameters, HG: MaskedCRHGadget<M::H, F>, CP:
 
 #[cfg(test)]
 mod test {
-    use std::{marker::PhantomData, sync::Arc};
-
     use blake2::{digest::Digest, Blake2s};
     use rand::thread_rng;
+    use std::{marker::PhantomData, sync::Arc};
 
+    use super::{POSWCircuit, POSWCircuitParameters};
+    // TODO (howardwu) - Switch this to Marlin.
     use snarkvm_algorithms::{
         crh::PedersenCompressedCRH,
         define_masked_merkle_tree_parameters,
@@ -127,8 +128,6 @@ mod test {
     use snarkvm_fields::ToConstraintField;
     use snarkvm_gadgets::{algorithms::crh::PedersenCompressedCRHGadget, curves::edwards_bls12::EdwardsBls12Gadget};
     use snarkvm_utilities::ToBytes;
-
-    use super::{POSWCircuit, POSWCircuitParameters};
 
     // We'll use 32 byte masks in this test
     struct TestPOSWCircuitParameters;
