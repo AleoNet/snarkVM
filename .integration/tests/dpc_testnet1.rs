@@ -23,9 +23,10 @@ use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{
     execute_inner_circuit,
     prelude::*,
-    testnet1::{execute_outer_circuit, parameters::*, program::NoopProgram},
+    testnet1::{execute_outer_circuit, parameters::*},
     EncryptedRecord,
     InnerCircuit,
+    NoopProgram,
     Payload,
     Record,
     TransactionKernel,

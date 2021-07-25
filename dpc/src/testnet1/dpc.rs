@@ -16,7 +16,7 @@
 
 use crate::{
     prelude::*,
-    testnet1::{NoopProgram, OuterCircuit, Testnet1Components},
+    testnet1::{OuterCircuit, Testnet1Components},
 };
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, merkle_tree::MerklePath, prelude::*};
 use snarkvm_parameters::{prelude::*, testnet1::*};

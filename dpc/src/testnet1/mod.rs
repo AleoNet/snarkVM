@@ -20,9 +20,6 @@ pub use dpc::*;
 pub mod outer_circuit;
 pub use outer_circuit::*;
 
-pub mod program;
-pub use program::*;
-
 pub mod parameters;
 
 use crate::Parameters;

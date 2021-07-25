@@ -23,9 +23,6 @@ pub use outer_circuit::*;
 pub mod universal_parameters;
 pub use universal_parameters::*;
 
-pub mod program;
-pub use program::*;
-
 pub mod parameters;
 
 use crate::Parameters;

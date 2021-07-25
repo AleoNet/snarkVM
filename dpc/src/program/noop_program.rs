@@ -58,7 +58,6 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
 
     /// Initializes a new instance of the noop program.
     fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, ProgramError> {
-        // TODO (howardwu): TEMPORARY - Clean this usage of bytes (To(From(To))) up.
         let (proving_key, prepared_verifying_key) =
             <Self::ProofSystem as SNARK>::setup(&NoopCircuit::<C>::blank(), &mut C::program_srs::<R>(rng)?)?;
         let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
