@@ -35,16 +35,17 @@ use rand_core::RngCore;
 
 /// A structured reference string which will be used to derive a circuit-specific
 /// common reference string
-pub type SRS<E> = UniversalSRS<<E as PairingEngine>::Fr, MultiPC<E>>;
+pub type SRS<E> = UniversalSRS<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, MultiPC<E>>;
 
 /// A circuit-specific proving key.
-pub type ProvingKey<E> = CircuitProvingKey<<E as PairingEngine>::Fr, MultiPC<E>>;
+pub type ProvingKey<E> = CircuitProvingKey<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, MultiPC<E>>;
 
 /// A circuit-specific verifying key.
-pub type VerifyingKey<E> = CircuitVerifyingKey<<E as PairingEngine>::Fr, MultiPC<E>>;
+pub type VerifyingKey<E> = CircuitVerifyingKey<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, MultiPC<E>>;
 
 /// A prepared circuit-specific verifying key.
-pub type PreparedVerifyingKey<E> = PreparedCircuitVerifyingKey<<E as PairingEngine>::Fr, MultiPC<E>>;
+pub type PreparedVerifyingKey<E> =
+    PreparedCircuitVerifyingKey<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, MultiPC<E>>;
 
 impl<E: PairingEngine> From<Parameters<E>> for VerifyingKey<E> {
     fn from(parameters: Parameters<E>) -> Self {
@@ -67,8 +68,6 @@ pub struct MarlinTestnet1System<E, V>
 where
     E: PairingEngine,
     V: ToConstraintField<E::Fr>,
-    <MultiPC<E> as PolynomialCommitment<E::Fr>>::Commitment: ToConstraintField<E::Fq>,
-    <MultiPC<E> as PolynomialCommitment<E::Fr>>::VerifierKey: ToConstraintField<E::Fq>,
 {
     _engine: PhantomData<E>,
     _verifier_input: PhantomData<V>,
@@ -78,12 +77,10 @@ impl<E, V> SNARK for MarlinTestnet1System<E, V>
 where
     E: PairingEngine,
     V: ToConstraintField<E::Fr>,
-    <MultiPC<E> as PolynomialCommitment<E::Fr>>::Commitment: ToConstraintField<E::Fq>,
-    <MultiPC<E> as PolynomialCommitment<E::Fr>>::VerifierKey: ToConstraintField<E::Fq>,
 {
     type BaseField = E::Fq;
     type PreparedVerifyingKey = PreparedVerifyingKey<E>;
-    type Proof = Proof<<E as PairingEngine>::Fr, MultiPC<E>>;
+    type Proof = Proof<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, MultiPC<E>>;
     type ProvingKey = Parameters<E>;
     type ScalarField = E::Fr;
     type UniversalSetupConfig = MarlinBound;

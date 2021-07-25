@@ -152,7 +152,9 @@ pub struct PCCheckRandomDataVar<TargetField: PrimeField, BaseField: PrimeField> 
 
 /// Describes the interface for a gadget for a `PolynomialCommitment`
 /// verifier.
-pub trait PCCheckVar<PCF: PrimeField, PC: PolynomialCommitment<PCF>, ConstraintF: PrimeField>: Clone {
+pub trait PCCheckVar<PCF: PrimeField, PC: PolynomialCommitment<PCF, ConstraintF>, ConstraintF: PrimeField>:
+    Clone
+{
     /// An allocated version of `PC::VerifierKey`.
     type VerifierKeyVar: AllocGadget<PC::VerifierKey, ConstraintF>
         + Clone
@@ -177,7 +179,7 @@ pub trait PCCheckVar<PCF: PrimeField, PC: PolynomialCommitment<PCF>, ConstraintF
     type ProofVar: AllocGadget<PC::Proof, ConstraintF> + Clone;
 
     /// An allocated version of `PC::BatchLCProof`.
-    type BatchLCProofVar: AllocGadget<BatchLCProof<PCF, PC>, ConstraintF> + Clone;
+    type BatchLCProofVar: AllocGadget<BatchLCProof<PCF, ConstraintF, PC>, ConstraintF> + Clone;
 
     /// Add to `ConstraintSystem<ConstraintF>` new constraints that check that `proof_i` is a valid evaluation
     /// proof at `point_i` for the polynomial in `commitment_i`.
