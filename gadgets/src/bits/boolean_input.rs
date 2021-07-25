@@ -17,15 +17,18 @@
 use std::{borrow::Borrow, marker::PhantomData};
 
 use snarkvm_fields::{FieldParameters, PrimeField};
-use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+use snarkvm_r1cs::{ConstraintSystem, LinearCombination, SynthesisError};
 use snarkvm_utilities::{FromBits, ToBits};
 
 use crate::{
     bits::{Boolean, ToBitsLEGadget},
     fields::FpGadget,
     traits::alloc::AllocGadget,
+    FieldGadget,
     FromFieldElementsGadget,
+    MergeGadget,
 };
+use snarkvm_utilities::ops::Neg;
 
 /// Conversion of field elements by converting them to boolean sequences
 /// Used by Groth16 and Gm17
@@ -119,7 +122,7 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
     ) -> Result<Self, SynthesisError> {
         let obj = value_gen()?;
 
-        // Step 1: obtain the bits of the F field elements (little-endian)
+        // Step 1: obtain the bits of the F field elements
         let mut src_bits = Vec::<bool>::new();
         for elem in obj.borrow().iter() {
             let mut bits = elem.to_repr().to_bits_le();
@@ -127,52 +130,34 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
             for _ in bits.len()..F::size_in_bits() {
                 bits.push(false);
             }
-            bits.reverse();
-
             src_bits.append(&mut bits);
         }
 
         // Step 2: repack the bits as CF field elements
-        // Deciding how many bits can be embedded,
-        //  if CF has the same number of bits as F, but is larger,
-        //  then it is okay to put the entire field element in.
-        let capacity = if CF::size_in_bits() == F::size_in_bits() {
-            let fq = <<CF as PrimeField>::Parameters as FieldParameters>::MODULUS;
-            let fr = <<F as PrimeField>::Parameters as FieldParameters>::MODULUS;
-
-            let fq_u64: &[u64] = fq.as_ref();
-            let fr_u64: &[u64] = fr.as_ref();
-
-            let mut fq_not_smaller_than_fr = true;
-            for (left, right) in fq_u64.iter().zip(fr_u64.iter()).rev() {
-                if left < right {
-                    fq_not_smaller_than_fr = false;
-                    break;
-                }
-
-                if left > right {
-                    break;
-                }
-            }
-
-            if fq_not_smaller_than_fr {
-                CF::size_in_bits()
-            } else {
-                CF::size_in_bits() - 1
-            }
-        } else {
-            CF::size_in_bits() - 1
-        };
+        let capacity = <CF::Parameters as FieldParameters>::CAPACITY;
 
         // Step 3: allocate the CF field elements as input
         let mut src_booleans = Vec::<Boolean>::new();
         for (i, chunk) in src_bits.chunks(capacity).enumerate() {
-            let elem = CF::from_repr(<CF as PrimeField>::BigInteger::from_bits_be(chunk)).unwrap(); // big endian
+            let elem = CF::from_repr(<CF as PrimeField>::BigInteger::from_bits_le(chunk)).unwrap();
 
             let elem_gadget = FpGadget::<CF>::alloc_input(cs.ns(|| format!("alloc_elem_{}", i)), || Ok(elem))?;
-            let mut booleans = elem_gadget.to_bits_le(cs.ns(|| format!("elem_to_bits_{}", i)))?;
-            booleans.truncate(chunk.len());
-            booleans.reverse();
+
+            let mut lc = LinearCombination::zero();
+            let mut coeff = CF::one();
+            let mut booleans = vec![];
+
+            for (j, bit) in chunk.iter().enumerate() {
+                let boolean = Boolean::alloc(cs.ns(|| format!("alloc_bits_{}_{}", i, j)), || Ok(bit))?;
+                booleans.push(boolean);
+
+                lc = &lc + boolean.lc(CS::one(), CF::one()) * coeff;
+                coeff.double_in_place();
+            }
+
+            lc = &elem_gadget.get_variable().clone().neg() + lc;
+
+            cs.enforce(|| format!("bit_decomposition_{}", i), |lc| lc, |lc| lc, |_| lc);
 
             src_booleans.append(&mut booleans);
         }
@@ -180,11 +165,7 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
         // Step 4: unpack them back to bits
         let res = src_booleans
             .chunks(F::size_in_bits())
-            .map(|f| {
-                let mut res = f.to_vec();
-                res.reverse();
-                res
-            })
+            .map(|f| f.to_vec())
             .collect::<Vec<Vec<Boolean>>>();
 
         Ok(Self {
@@ -252,6 +233,40 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
             _snark_field: PhantomData,
             _constraint_field: PhantomData,
         })
+    }
+}
+
+impl<F: PrimeField, CF: PrimeField> MergeGadget<CF> for BooleanInputGadget<F, CF> {
+    fn merge<CS: ConstraintSystem<CF>>(&self, _cs: CS, other: &Self) -> Result<Self, SynthesisError> {
+        let mut elems = vec![];
+        elems.extend_from_slice(&self.val);
+        elems.extend_from_slice(&other.val);
+
+        Ok(Self {
+            val: elems,
+            _snark_field: PhantomData,
+            _constraint_field: PhantomData,
+        })
+    }
+
+    fn merge_in_place<CS: ConstraintSystem<CF>>(&mut self, _cs: CS, other: &Self) -> Result<(), SynthesisError> {
+        self.val.extend_from_slice(&other.val);
+
+        Ok(())
+    }
+}
+
+impl<F: PrimeField, CF: PrimeField> ToBitsLEGadget<CF> for BooleanInputGadget<F, CF> {
+    fn to_bits_le<CS: ConstraintSystem<CF>>(&self, _cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut res = vec![];
+        for elem in self.val.iter() {
+            res.extend_from_slice(elem);
+        }
+        Ok(res)
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<CF>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.to_bits_le(cs)
     }
 }
 

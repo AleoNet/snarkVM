@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerCircuitVerifierInput, OuterCircuitVerifierInput};
+use crate::{InnerCircuitVerifierInput, OuterCircuitVerifierInput, ProgramLocalData};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
 use snarkvm_curves::{
     traits::{MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters},
@@ -24,6 +24,7 @@ use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
     CompressedGroupGadget,
+    SNARKVerifierGadget,
 };
 use snarkvm_utilities::{
     fmt::{Debug, Display},
@@ -120,8 +121,20 @@ pub trait Parameters: 'static + Sized {
 
     /// CRH for hash of the `Self::InnerSNARK` verifying keys.
     /// This is invoked only on the larger curve.
-    type InnerCircuitIDCRH: CRH;
+    type InnerCircuitIDCRH: CRH<Output = Self::InnerCircuitIDCRHDigest>;
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
+    type InnerCircuitIDCRHDigest: ToConstraintField<Self::OuterScalarField>
+        + Clone
+        + Debug
+        + Display
+        + ToBytes
+        + FromBytes
+        + Eq
+        + Hash
+        + Default
+        + Send
+        + Sync
+        + Copy;
 
     /// CRH and commitment scheme for committing to program input. Invoked inside
     /// `Self::InnerSNARK` and every program SNARK.
@@ -206,6 +219,19 @@ pub trait Parameters: 'static + Sized {
     /// CRH for computing the serial number nonce. Invoked only over `Self::InnerScalarField`.
     type SerialNumberNonceCRH: CRH + ToConstraintField<Self::InnerScalarField>;
     type SerialNumberNonceCRHGadget: CRHGadget<Self::SerialNumberNonceCRH, Self::InnerScalarField>;
+
+    /// SNARK Verifier gadget for the inner circuit.
+    type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK>;
+
+    /// Program SNARK for Aleo applications.
+    type ProgramSNARK: SNARK<
+        ScalarField = Self::InnerScalarField,
+        BaseField = Self::OuterScalarField,
+        VerifierInput = ProgramLocalData<Self>,
+    >;
+
+    /// Program SNARK verifier gadget for Aleo applications.
+    type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK>;
 
     fn account_commitment_scheme() -> &'static Self::AccountCommitmentScheme;
 

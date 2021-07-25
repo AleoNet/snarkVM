@@ -14,16 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    testnet1::{NoopCircuit, Testnet1Components},
-    Execution,
-    LocalData,
-    Parameters,
-    ProgramError,
-    ProgramLocalData,
-    ProgramScheme,
-    RecordScheme,
-};
+use crate::{Execution, LocalData, Parameters, ProgramError, ProgramLocalData, ProgramScheme, RecordScheme};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_parameters::{
     testnet1::{NoopProgramSNARKPKParameters, NoopProgramSNARKVKParameters},
@@ -31,27 +22,28 @@ use snarkvm_parameters::{
 };
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use crate::testnet1::NoopCircuit;
 use rand::{CryptoRng, Rng};
 use snarkvm_fields::ToConstraintField;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Testnet1Components"), Debug(bound = "C: Testnet1Components"))]
-pub struct NoopProgram<C: Testnet1Components> {
+#[derivative(Clone(bound = "C: Parameters"), Debug(bound = "C: Parameters"))]
+pub struct NoopProgram<C: Parameters> {
     #[derivative(Default(value = "vec![0u8; 48]"))]
     id: Vec<u8>,
     #[derivative(Debug = "ignore")]
-    proving_key: <<C as Testnet1Components>::ProgramSNARK as SNARK>::ProvingKey,
+    proving_key: <<C as Parameters>::ProgramSNARK as SNARK>::ProvingKey,
     #[derivative(Debug = "ignore")]
-    verifying_key: <<C as Testnet1Components>::ProgramSNARK as SNARK>::VerifyingKey,
+    verifying_key: <<C as Parameters>::ProgramSNARK as SNARK>::VerifyingKey,
 }
 
-impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
+impl<C: Parameters> ProgramScheme for NoopProgram<C> {
     type Execution = Execution<Self::ProofSystem>;
     type ID = Vec<u8>;
     type LocalData = LocalData<C>;
     type LocalDataCommitment = C::LocalDataCommitmentScheme;
     type ProgramIDCRH = C::ProgramIDCRH;
-    type ProofSystem = <C as Testnet1Components>::ProgramSNARK;
+    type ProofSystem = <C as Parameters>::ProgramSNARK;
     type ProvingKey = <Self::ProofSystem as SNARK>::ProvingKey;
     type PublicInput = ();
     type VerifyingKey = <Self::ProofSystem as SNARK>::VerifyingKey;
@@ -162,13 +154,13 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
     }
 }
 
-impl<C: Testnet1Components> NoopProgram<C> {
+impl<C: Parameters> NoopProgram<C> {
     #[deprecated]
     pub fn to_snark_parameters(
         &self,
     ) -> (
-        <<C as Testnet1Components>::ProgramSNARK as SNARK>::ProvingKey,
-        <<C as Testnet1Components>::ProgramSNARK as SNARK>::VerifyingKey,
+        <<C as Parameters>::ProgramSNARK as SNARK>::ProvingKey,
+        <<C as Parameters>::ProgramSNARK as SNARK>::VerifyingKey,
     ) {
         (self.proving_key.clone(), self.verifying_key.clone())
     }

@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{ConstraintFieldError, Field, FieldParameters, Fp2, Fp2Parameters, PrimeField, ToConstraintField};
+use snarkvm_utilities::FromBits;
 
 impl<F: PrimeField> ToConstraintField<F> for F {
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
@@ -52,6 +53,26 @@ impl<P: Fp2Parameters> ToConstraintField<P::Fp> for Fp2<P> {
         let c1 = self.c1.to_field_elements()?;
         c0.extend_from_slice(&c1);
         Ok(c0)
+    }
+}
+
+impl<F: PrimeField> ToConstraintField<F> for [bool] {
+    #[inline]
+    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
+        let max_size = <F as PrimeField>::Parameters::CAPACITY;
+        let max_size = max_size as usize;
+        let fes = self
+            .chunks(max_size)
+            .map(|chunk| F::from_repr(F::BigInteger::from_bits_le(chunk)).unwrap())
+            .collect::<Vec<F>>();
+        Ok(fes)
+    }
+}
+
+impl<F: PrimeField, const NUM_BITS: usize> ToConstraintField<F> for [bool; NUM_BITS] {
+    #[inline]
+    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
+        self.as_ref().to_field_elements()
     }
 }
 

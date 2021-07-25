@@ -16,7 +16,7 @@
 
 use crate::{
     account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_INPUT, ACCOUNT_SIGNATURE_INPUT},
-    testnet1::{Testnet1Components, DPC},
+    testnet1::DPC,
     InnerCircuitVerifierInput,
     Network,
     OuterCircuitVerifierInput,
@@ -115,6 +115,7 @@ impl Parameters for Testnet1Parameters {
 
     type InnerCircuitIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type InnerCircuitIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
+    type InnerCircuitIDCRHDigest = <Self::InnerCircuitIDCRH as CRH>::Output;
 
     type LocalDataCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 24, 62>;
     type LocalDataCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 24, 62>;
@@ -145,6 +146,10 @@ impl Parameters for Testnet1Parameters {
     type SerialNumberNonceCRH = BHPCompressedCRH<EdwardsBls12, 32, 63>;
     type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
 
+    type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
+    type ProgramSNARK = Groth16<Self::InnerCurve, ProgramLocalData<Self>>;
+    type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
+
     dpc_setup!{account_commitment_scheme, ACCOUNT_COMMITMENT_SCHEME, AccountCommitmentScheme, ACCOUNT_COMMITMENT_INPUT} // TODO (howardwu): Rename to "AleoAccountCommitmentScheme0".
     dpc_setup!{account_encryption_scheme, ACCOUNT_ENCRYPTION_SCHEME, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_INPUT} // TODO (howardwu): Rename to "AleoAccountEncryptionScheme0".
     dpc_setup!{account_signature_scheme, ACCOUNT_SIGNATURE_SCHEME, AccountSignatureScheme, ACCOUNT_SIGNATURE_INPUT} // TODO (howardwu): Rename to "AleoAccountSignatureScheme0".
@@ -163,10 +168,4 @@ impl Parameters for Testnet1Parameters {
         static RECORD_COMMITMENT_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::RecordCommitmentTreeParameters> = OnceCell::new();
         RECORD_COMMITMENT_TREE_PARAMETERS.get_or_init(|| Self::RecordCommitmentTreeParameters::from(Self::record_commitment_tree_crh().clone()))
     }
-}
-
-impl Testnet1Components for Testnet1Parameters {
-    type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
-    type ProgramSNARK = Groth16<Self::InnerCurve, ProgramLocalData<Self>>;
-    type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
 }

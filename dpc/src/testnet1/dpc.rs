@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    prelude::*,
-    testnet1::{NoopProgram, OuterCircuit, Testnet1Components},
-};
+use crate::{prelude::*, testnet1::NoopProgram};
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, merkle_tree::MerklePath, prelude::*};
 use snarkvm_parameters::{prelude::*, testnet1::*};
 use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
@@ -26,7 +23,7 @@ use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 use snarkvm_fields::ToConstraintField;
 
-pub struct DPC<C: Testnet1Components> {
+pub struct DPC<C: Parameters> {
     pub noop_program: NoopProgram<C>,
     pub inner_snark_parameters: (
         Option<<C::InnerSNARK as SNARK>::ProvingKey>,
@@ -38,7 +35,7 @@ pub struct DPC<C: Testnet1Components> {
     ),
 }
 
-impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
+impl<C: Parameters> DPCScheme<C> for DPC<C> {
     type Account = Account<C>;
     type Execution = Execution<C::ProgramSNARK>;
     type Record = Record<C>;

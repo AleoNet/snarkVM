@@ -17,7 +17,7 @@
 use crate::{AleoAmount, Parameters};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH},
+    traits::{CommitmentScheme, SignatureScheme},
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
@@ -50,8 +50,6 @@ pub struct InnerCircuitVerifierInput<C: Parameters> {
 impl<C: Parameters> ToConstraintField<C::InnerScalarField> for InnerCircuitVerifierInput<C>
 where
     <C::AccountCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <<C::RecordCommitmentTreeParameters as MerkleParameters>::H as CRH>::Parameters:
-        ToConstraintField<C::InnerScalarField>,
     MerkleTreeDigest<C::RecordCommitmentTreeParameters>: ToConstraintField<C::InnerScalarField>,
 {
     fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {

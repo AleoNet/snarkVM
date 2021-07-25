@@ -31,6 +31,7 @@ use snarkvm_utilities::{
     biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger256 as BigInteger},
     serialize::CanonicalDeserialize,
     FromBytes,
+    ToBits,
     ToBytes,
 };
 
@@ -395,6 +396,22 @@ impl_primefield_standard_sample!(Fp256, Fp256Parameters);
 
 impl_add_sub_from_field_ref!(Fp256, Fp256Parameters);
 impl_mul_div_from_field_ref!(Fp256, Fp256Parameters);
+
+impl<P: Fp256Parameters> ToBits for Fp256<P> {
+    fn to_bits_le(&self) -> Vec<bool> {
+        let mut bits_vec = self.to_repr().to_bits_le();
+        bits_vec.truncate(P::MODULUS_BITS as usize);
+
+        bits_vec
+    }
+
+    fn to_bits_be(&self) -> Vec<bool> {
+        let mut bits_vec = self.to_repr().to_bits_be();
+        bits_vec.truncate(P::MODULUS_BITS as usize);
+
+        bits_vec
+    }
+}
 
 impl<P: Fp256Parameters> ToBytes for Fp256<P> {
     #[inline]

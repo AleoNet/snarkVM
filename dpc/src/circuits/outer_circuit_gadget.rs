@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{testnet1::Testnet1Components, AleoAmount, Execution, Transaction, TransactionScheme};
+use crate::{AleoAmount, Execution, Parameters, Transaction, TransactionScheme};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, SignatureScheme, CRH, SNARK},
@@ -22,52 +22,80 @@ use snarkvm_algorithms::{
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     bits::ToBytesGadget,
-    integers::uint::UInt8,
     traits::{
         algorithms::{CRHGadget, CommitmentGadget, SNARKVerifierGadget},
         alloc::AllocGadget,
         eq::EqGadget,
-        integers::integer::Integer,
     },
+    MergeGadget,
+    ToBitsLEGadget,
     ToConstraintFieldGadget,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use itertools::Itertools;
 
-fn alloc_field_element_to_bytes<C: Testnet1Components, CS: ConstraintSystem<C::OuterScalarField>>(
+fn alloc_inner_snark_field_element<
+    C: Parameters,
+    V: ToConstraintField<C::InnerScalarField>,
+    CS: ConstraintSystem<C::OuterScalarField>,
+>(
     cs: &mut CS,
-    field_elements: Vec<C::InnerScalarField>,
+    var: &V,
     name: &str,
-) -> Result<Vec<Vec<UInt8>>, SynthesisError> {
-    let mut fe_bytes = Vec::with_capacity(field_elements.len());
-    for (index, field_element) in field_elements.iter().enumerate() {
-        fe_bytes.push(UInt8::alloc_vec(
-            cs.ns(|| format!("Allocate {} - index {} ", name, index)),
-            &to_bytes_le![field_element].map_err(|_| SynthesisError::AssignmentMissing)?,
-        )?);
-    }
-    Ok(fe_bytes)
+) -> Result<<C::InnerSNARKGadget as SNARKVerifierGadget<C::InnerSNARK>>::InputGadget, SynthesisError> {
+    let field_elements = var.to_field_elements().map_err(|_| SynthesisError::AssignmentMissing)?;
+    <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc(
+        cs.ns(|| format!("alloc_field_element_{}", name)),
+        || Ok(field_elements),
+    )
 }
 
-fn alloc_input_field_element_to_bytes<C: Testnet1Components, CS: ConstraintSystem<C::OuterScalarField>>(
+fn alloc_inner_snark_input_field_element<
+    'a,
+    C: Parameters,
+    V: ToConstraintField<C::InnerScalarField>,
+    CS: ConstraintSystem<C::OuterScalarField>,
+>(
     cs: &mut CS,
-    field_elements: Vec<C::InnerScalarField>,
+    var: &V,
     name: &str,
-) -> Result<Vec<Vec<UInt8>>, SynthesisError> {
-    let mut fe_bytes = Vec::with_capacity(field_elements.len());
-    for (index, field_element) in field_elements.iter().enumerate() {
-        fe_bytes.push(UInt8::alloc_input_vec_le(
-            cs.ns(|| format!("Allocate {} - index {} ", name, index)),
-            &to_bytes_le![field_element].map_err(|_| SynthesisError::AssignmentMissing)?,
-        )?);
+) -> Result<<C::InnerSNARKGadget as SNARKVerifierGadget<C::InnerSNARK>>::InputGadget, SynthesisError> {
+    let field_elements = var.to_field_elements().map_err(|_| SynthesisError::AssignmentMissing)?;
+    // allocate the field elements one by one
+    let mut input_gadgets = vec![];
+    for (j, field_element) in field_elements.iter().enumerate() {
+        input_gadgets.push(
+            <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc_input(
+                cs.ns(|| format!("alloc_input_field_element_{}_{}", name, j)),
+                || Ok(vec![(*field_element).clone()]),
+            )?,
+        )
     }
-    Ok(fe_bytes)
+    <C::InnerSNARKGadget as SNARKVerifierGadget<C::InnerSNARK>>::InputGadget::merge_many(
+        cs.ns(|| format!("alloc_input_field_element_{}_merge", name)),
+        &input_gadgets,
+    )
+}
+
+fn alloc_program_snark_field_element<
+    C: Parameters,
+    V: ToConstraintField<C::InnerScalarField>,
+    CS: ConstraintSystem<C::OuterScalarField>,
+>(
+    cs: &mut CS,
+    var: &V,
+    name: &str,
+) -> Result<<C::ProgramSNARKGadget as SNARKVerifierGadget<C::ProgramSNARK>>::InputGadget, SynthesisError> {
+    let field_elements = var.to_field_elements().map_err(|_| SynthesisError::AssignmentMissing)?;
+    <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc(
+        cs.ns(|| format!("alloc_field_element_{}", name)),
+        || Ok(field_elements),
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::OuterScalarField>>(
+pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarField>>(
     cs: &mut CS,
 
     // Inner snark verifier public inputs
@@ -121,95 +149,87 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
 
     // Declare inner snark verifier inputs as `CoreCheckF` field elements
 
-    let ledger_digest_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(ledger_digest)
-        .map_err(|_| SynthesisError::AssignmentMissing)?;
+    let ledger_digest_fe = alloc_inner_snark_input_field_element::<C, _, _>(cs, ledger_digest, "ledger digest")?;
 
-    let program_commitment_fe = program_commitment
-        .to_field_elements()
-        .map_err(|_| SynthesisError::AssignmentMissing)?;
+    let serial_number_fe = {
+        let mut serial_number_fe_vec = vec![];
+        for (index, sn) in old_serial_numbers.iter().enumerate() {
+            let this_serial_number_fe =
+                alloc_inner_snark_input_field_element::<C, _, _>(cs, sn, &format!("serial number {}", index))?;
 
-    let memo_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(memo)
-        .map_err(|_| SynthesisError::AssignmentMissing)?;
+            serial_number_fe_vec.push(this_serial_number_fe);
+        }
 
-    let local_data_root_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(local_data_root)
-        .map_err(|_| SynthesisError::AssignmentMissing)?;
+        <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(
+            cs.ns(|| "serial number"),
+            &serial_number_fe_vec,
+        )?
+    };
+
+    let commitment_and_encrypted_record_hash_fe = {
+        let mut commitment_and_encrypted_record_hash_fe_vec = vec![];
+        for (index, (cm, encrypted_record_hash)) in new_commitments
+            .iter()
+            .zip_eq(new_encrypted_record_hashes.iter())
+            .enumerate()
+        {
+            let commitment_fe =
+                alloc_inner_snark_input_field_element::<C, _, _>(cs, cm, &format!("commitment {}", index))?;
+            let encrypted_record_hash_fe = alloc_inner_snark_input_field_element::<C, _, _>(
+                cs,
+                encrypted_record_hash,
+                &format!("encrypted_record_hash {}", index),
+            )?;
+
+            commitment_and_encrypted_record_hash_fe_vec.push(commitment_fe);
+            commitment_and_encrypted_record_hash_fe_vec.push(encrypted_record_hash_fe);
+        }
+
+        <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(
+            cs.ns(|| "commitment_and_encrypted_record_hash"),
+            &commitment_and_encrypted_record_hash_fe_vec,
+        )?
+    };
+
+    let memo_fe = alloc_inner_snark_input_field_element::<C, _, _>(cs, memo, "memo")?;
+
+    let network_id_fe = alloc_inner_snark_input_field_element::<C, _, _>(cs, &[network_id], "network id")?;
 
     let value_balance_fe =
-        ToConstraintField::<C::InnerScalarField>::to_field_elements(&value_balance.0.to_le_bytes()[..])
-            .map_err(|_| SynthesisError::AssignmentMissing)?;
+        alloc_inner_snark_input_field_element::<C, _, _>(cs, &value_balance.0.to_le_bytes(), "value balance")?;
 
-    let network_id_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(&[network_id][..])
-        .map_err(|_| SynthesisError::AssignmentMissing)?;
+    let program_commitment_fe =
+        alloc_inner_snark_field_element::<C, _, _>(cs, program_commitment, "program commitment")?;
 
-    // Allocate field element bytes
-    let ledger_digest_fe_bytes = alloc_input_field_element_to_bytes::<C, _>(cs, ledger_digest_fe, "ledger digest")?;
+    let local_data_root_fe_inner_snark =
+        alloc_inner_snark_field_element::<C, _, _>(cs, local_data_root, "local data root inner snark")?;
 
-    let mut serial_number_fe_bytes = vec![];
-    for (index, sn) in old_serial_numbers.iter().enumerate() {
-        let serial_number_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(sn)
-            .map_err(|_| SynthesisError::AssignmentMissing)?;
+    let local_data_root_fe_program_snark =
+        alloc_program_snark_field_element::<C, _, _>(cs, local_data_root, "local data root program snark")?;
 
-        serial_number_fe_bytes.extend(alloc_input_field_element_to_bytes::<C, _>(
-            cs,
-            serial_number_fe,
-            &format!("Allocate serial number {:?}", index),
-        )?);
-    }
-
-    let mut commitment_and_encrypted_record_hash_fe_bytes = vec![];
-    for (index, (cm, encrypted_record_hash)) in new_commitments
-        .iter()
-        .zip_eq(new_encrypted_record_hashes.iter())
-        .enumerate()
     {
-        let commitment_fe = ToConstraintField::<C::InnerScalarField>::to_field_elements(cm)
-            .map_err(|_| SynthesisError::AssignmentMissing)?;
-        let encrypted_record_hash_fe =
-            ToConstraintField::<C::InnerScalarField>::to_field_elements(encrypted_record_hash)
-                .map_err(|_| SynthesisError::AssignmentMissing)?;
-
-        commitment_and_encrypted_record_hash_fe_bytes.extend(alloc_input_field_element_to_bytes::<C, _>(
-            cs,
-            commitment_fe,
-            &format!("Allocate record commitment {:?}", index),
-        )?);
-
-        commitment_and_encrypted_record_hash_fe_bytes.extend(alloc_input_field_element_to_bytes::<C, _>(
-            cs,
-            encrypted_record_hash_fe,
-            &format!("Allocate encrypted record hash {:?}", index),
-        )?);
+        // Construct inner snark input as bits
+        let local_data_root_input_inner_snark_bits =
+            local_data_root_fe_inner_snark.to_bits_le(cs.ns(|| "local data root inner snark to bits"))?;
+        let local_data_root_input_program_snark_bits =
+            local_data_root_fe_program_snark.to_bits_le(cs.ns(|| "local data root program snark to bits"))?;
+        local_data_root_input_inner_snark_bits.enforce_equal(
+            cs.ns(|| "local data root equality"),
+            &local_data_root_input_program_snark_bits,
+        )?;
     }
 
-    let program_commitment_fe_bytes =
-        alloc_field_element_to_bytes::<C, _>(cs, program_commitment_fe, "program commitment")?;
-    let memo_fe_bytes = alloc_input_field_element_to_bytes::<C, _>(cs, memo_fe, "memo")?;
-    let network_id_fe_bytes = alloc_input_field_element_to_bytes::<C, _>(cs, network_id_fe, "network id")?;
-    let local_data_root_fe_bytes = alloc_field_element_to_bytes::<C, _>(cs, local_data_root_fe, "local data root")?;
-    let value_balance_fe_bytes = alloc_input_field_element_to_bytes::<C, _>(cs, value_balance_fe, "value balance")?;
-
-    // Construct inner snark input as bytes
-
-    let mut inner_snark_input_bytes = vec![];
-    inner_snark_input_bytes.extend(ledger_digest_fe_bytes);
-    inner_snark_input_bytes.extend(serial_number_fe_bytes);
-    inner_snark_input_bytes.extend(commitment_and_encrypted_record_hash_fe_bytes);
-    inner_snark_input_bytes.extend(program_commitment_fe_bytes);
-    inner_snark_input_bytes.extend(memo_fe_bytes);
-    inner_snark_input_bytes.extend(network_id_fe_bytes);
-    inner_snark_input_bytes.extend(local_data_root_fe_bytes.clone());
-    inner_snark_input_bytes.extend(value_balance_fe_bytes);
-
-    // Convert inner snark input bytes to bits
-
-    let mut inner_snark_input_bits = Vec::with_capacity(inner_snark_input_bytes.len());
-    for input_bytes in inner_snark_input_bytes {
-        let input_bits = input_bytes
-            .iter()
-            .flat_map(|byte| byte.to_bits_le())
-            .collect::<Vec<_>>();
-        inner_snark_input_bits.push(input_bits);
-    }
+    let inner_snark_input =
+        <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::merge_many(cs.ns(|| "inner_snark_input"), &[
+            ledger_digest_fe,
+            serial_number_fe,
+            commitment_and_encrypted_record_hash_fe,
+            program_commitment_fe,
+            memo_fe,
+            network_id_fe,
+            local_data_root_fe_inner_snark,
+            value_balance_fe,
+        ])?;
 
     // ************************************************************************
     // Verify the InnerSNARK proof
@@ -228,34 +248,12 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
     C::InnerSNARKGadget::check_verify(
         &mut cs.ns(|| "Check that proof is satisfied"),
         &inner_snark_vk,
-        inner_snark_input_bits.iter().filter(|inp| !inp.is_empty()).cloned(),
+        &inner_snark_input,
         &inner_snark_proof,
     )?;
 
-    drop(inner_snark_input_bits);
-
     // ************************************************************************
     // Construct program input
-    // ************************************************************************
-
-    // Reuse inner snark verifier inputs
-
-    let mut program_input_bytes = vec![];
-    program_input_bytes.extend(local_data_root_fe_bytes);
-
-    let mut program_input_bits = Vec::with_capacity(program_input_bytes.len());
-
-    for input_bytes in program_input_bytes {
-        let input_bits = input_bytes
-            .iter()
-            .flat_map(|byte| byte.to_bits_le())
-            .collect::<Vec<_>>();
-        if !input_bits.is_empty() {
-            program_input_bits.push(input_bits);
-        }
-    }
-
-    // ************************************************************************
     // ************************************************************************
 
     let mut old_death_program_ids = Vec::with_capacity(C::NUM_INPUT_RECORDS);
@@ -286,12 +284,16 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
 
         old_death_program_ids.push(claimed_death_program_id_bytes);
 
-        let position = UInt8::constant(i as u8).to_bits_le();
+        let position_fe = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc_constant(
+            &mut cs.ns(|| "Allocate position"),
+            || Ok(vec![C::InnerScalarField::from(i as u128)]),
+        )?;
+        let program_input = position_fe.merge(cs.ns(|| "Allocate program input"), &local_data_root_fe_program_snark)?;
 
         C::ProgramSNARKGadget::check_verify(
             &mut cs.ns(|| "Check that proof is satisfied"),
             &death_program_vk,
-            ([position].iter()).chain(program_input_bits.iter()).cloned(),
+            &program_input,
             &death_program_proof,
         )?;
     }
@@ -327,12 +329,16 @@ pub fn execute_outer_circuit<C: Testnet1Components, CS: ConstraintSystem<C::Oute
 
         new_birth_program_ids.push(claimed_birth_program_id_bytes);
 
-        let position = UInt8::constant((C::NUM_INPUT_RECORDS + j) as u8).to_bits_le();
+        let position_fe = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc_constant(
+            &mut cs.ns(|| "Allocate position"),
+            || Ok(vec![C::InnerScalarField::from((C::NUM_INPUT_RECORDS + j) as u128)]),
+        )?;
+        let program_input = position_fe.merge(cs.ns(|| "Allocate program input"), &local_data_root_fe_program_snark)?;
 
         C::ProgramSNARKGadget::check_verify(
             &mut cs.ns(|| "Check that proof is satisfied"),
             &birth_program_vk,
-            ([position].iter()).chain(program_input_bits.iter()).cloned(),
+            &program_input,
             &birth_program_proof,
         )?;
     }
