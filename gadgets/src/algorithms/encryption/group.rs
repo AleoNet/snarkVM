@@ -463,18 +463,7 @@ pub struct GroupEncryptionGadget<G: ProjectiveCurve, F: PrimeField, GG: Compress
 impl<G: ProjectiveCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>> AllocGadget<GroupEncryption<G>, F>
     for GroupEncryptionGadget<G, F, GG>
 {
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<GroupEncryption<G>>, CS: ConstraintSystem<F>>(
-        _cs: CS,
-        value_gen: Fn,
-    ) -> Result<Self, SynthesisError> {
-        Ok(Self {
-            encryption: value_gen()?.borrow().clone(),
-            _group_gadget: PhantomData,
-            _engine: PhantomData,
-        })
-    }
-
-    fn alloc_input<
+    fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<GroupEncryption<G>>,
         CS: ConstraintSystem<F>,
@@ -487,6 +476,24 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>> AllocGa
             _group_gadget: PhantomData,
             _engine: PhantomData,
         })
+    }
+
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<GroupEncryption<G>>, CS: ConstraintSystem<F>>(
+        _cs: CS,
+        _value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+
+    fn alloc_input<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<GroupEncryption<G>>,
+        CS: ConstraintSystem<F>,
+    >(
+        _cs: CS,
+        _value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
     }
 }
 

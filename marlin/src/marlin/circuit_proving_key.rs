@@ -26,9 +26,9 @@ use std::io::{Read, Result as IoResult, Write};
 #[derive(Derivative)]
 #[derivative(Clone(bound = ""))]
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct CircuitProvingKey<F: PrimeField, PC: PolynomialCommitment<F>> {
+pub struct CircuitProvingKey<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> {
     /// The circuit verifying key.
-    pub circuit_verifying_key: CircuitVerifyingKey<F, PC>,
+    pub circuit_verifying_key: CircuitVerifyingKey<F, CF, PC>,
     /// The randomness for the circuit polynomial commitments.
     pub circuit_commitment_randomness: Vec<PC::Randomness>,
     /// The circuit itself.
@@ -37,13 +37,13 @@ pub struct CircuitProvingKey<F: PrimeField, PC: PolynomialCommitment<F>> {
     pub committer_key: PC::CommitterKey,
 }
 
-impl<F: PrimeField, PC: PolynomialCommitment<F>> ToBytes for CircuitProvingKey<F, PC> {
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToBytes for CircuitProvingKey<F, CF, PC> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize CircuitProvingKey"))
     }
 }
 
-impl<F: PrimeField, PC: PolynomialCommitment<F>> FromBytes for CircuitProvingKey<F, PC> {
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> FromBytes for CircuitProvingKey<F, CF, PC> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize CircuitProvingKey"))

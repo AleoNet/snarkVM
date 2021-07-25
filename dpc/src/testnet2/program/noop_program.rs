@@ -25,7 +25,6 @@ use crate::{
     RecordScheme,
 };
 use snarkvm_algorithms::prelude::*;
-use snarkvm_marlin::marlin::UniversalSRS;
 use snarkvm_parameters::{
     testnet2::{NoopProgramSNARKPKParameters, NoopProgramSNARKVKParameters},
     Parameter,
@@ -59,8 +58,7 @@ impl<C: Testnet2Components> ProgramScheme for NoopProgram<C> {
 
     /// Initializes a new instance of the noop program.
     fn setup<R: Rng + CryptoRng>(_rng: &mut R) -> Result<Self, ProgramError> {
-        let universal_srs: UniversalSRS<C::InnerScalarField, C::PolynomialCommitment> =
-            ProgramSNARKUniversalSRS::<C>::load()?.0.clone();
+        let universal_srs = ProgramSNARKUniversalSRS::<C>::load()?.0.clone();
 
         let (proving_key, prepared_verifying_key) =
             <Self::ProofSystem as SNARK>::index(&NoopCircuit::<C>::blank(), &universal_srs)?;

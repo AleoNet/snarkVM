@@ -28,7 +28,7 @@ use snarkvm_gadgets::{
         select::CondSelectGadget,
     },
 };
-use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use crate::{
     marlin_pc::{
@@ -59,8 +59,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
     _target_curve: PhantomData<TargetCurve>,
     _base_curve: PhantomData<BaseCurve>,
@@ -72,8 +70,6 @@ where
     TargetCurve: PairingEngine,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
     fn clone(&self) -> Self {
         Self {
@@ -86,11 +82,9 @@ where
 
 impl<TargetCurve, BaseCurve, PG> MarlinKZG10Gadget<TargetCurve, BaseCurve, PG>
 where
-    TargetCurve: PairingEngine,
+    TargetCurve: PairingEngine<Fq = <BaseCurve as PairingEngine>::Fr>,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
     #[allow(clippy::type_complexity, clippy::too_many_arguments)]
     fn prepared_batch_check_evaluations<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
@@ -548,11 +542,9 @@ impl<TargetCurve, BaseCurve, PG>
     PCCheckVar<<TargetCurve as PairingEngine>::Fr, MarlinKZG10<TargetCurve>, <BaseCurve as PairingEngine>::Fr>
     for MarlinKZG10Gadget<TargetCurve, BaseCurve, PG>
 where
-    TargetCurve: PairingEngine,
+    TargetCurve: PairingEngine<Fq = <BaseCurve as PairingEngine>::Fr>,
     BaseCurve: PairingEngine,
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G1Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
-    <TargetCurve as PairingEngine>::G2Affine: ToConstraintField<<BaseCurve as PairingEngine>::Fr>,
 {
     type BatchLCProofVar = BatchLCProofVar<TargetCurve, BaseCurve, PG>;
     type CommitmentVar = CommitmentVar<TargetCurve, BaseCurve, PG>;

@@ -20,7 +20,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::PolynomialCommitment;
 
 /// Verification key, prepared (preprocessed) for use in pairings.
-pub struct PreparedCircuitVerifyingKey<F: PrimeField, PC: PolynomialCommitment<F>> {
+pub struct PreparedCircuitVerifyingKey<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> {
     /// Size of the variable domain.
     pub domain_h_size: u64,
     /// Size of the matrix domain.
@@ -32,10 +32,10 @@ pub struct PreparedCircuitVerifyingKey<F: PrimeField, PC: PolynomialCommitment<F
     /// Non-prepared verification key, for use in native "prepared verify" (which
     /// is actually standard verify), as well as in absorbing the original vk into
     /// the Fiat-Shamir sponge.
-    pub orig_vk: CircuitVerifyingKey<F, PC>,
+    pub orig_vk: CircuitVerifyingKey<F, CF, PC>,
 }
 
-impl<F: PrimeField, PC: PolynomialCommitment<F>> Clone for PreparedCircuitVerifyingKey<F, PC> {
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> Clone for PreparedCircuitVerifyingKey<F, CF, PC> {
     fn clone(&self) -> Self {
         PreparedCircuitVerifyingKey {
             domain_h_size: self.domain_h_size,

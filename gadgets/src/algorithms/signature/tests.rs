@@ -62,7 +62,7 @@ fn test_schnorr_signature_randomize_public_key_gadget() {
     );
 
     // Circuit Schnorr randomized public key (candidate)
-    let schnorr_gadget = TestSignatureGadget::alloc_input(&mut cs.ns(|| "schnorr_gadget"), || Ok(schnorr)).unwrap();
+    let schnorr_gadget = TestSignatureGadget::alloc_constant(&mut cs.ns(|| "schnorr_gadget"), || Ok(schnorr)).unwrap();
     let candidate_public_key = SchnorrPublicKeyGadget::<EdwardsProjective, Fr, EdwardsBls12Gadget>::alloc(
         &mut cs.ns(|| "candidate_public_key"),
         || Ok(&public_key),
@@ -111,7 +111,7 @@ fn schnorr_signature_verification_test() {
 
     let mut cs = TestConstraintSystem::<Fr>::new();
 
-    let schnorr_gadget = TestSignatureGadget::alloc_input(&mut cs.ns(|| "schnorr_gadget"), || Ok(schnorr)).unwrap();
+    let schnorr_gadget = TestSignatureGadget::alloc_constant(&mut cs.ns(|| "schnorr_gadget"), || Ok(schnorr)).unwrap();
 
     assert_eq!(cs.num_constraints(), 0);
 
@@ -172,7 +172,7 @@ fn failed_schnorr_signature_verification_test() {
 
     let mut cs = TestConstraintSystem::<Fr>::new();
 
-    let schnorr_gadget = TestSignatureGadget::alloc_input(&mut cs.ns(|| "schnorr_gadget"), || Ok(schnorr)).unwrap();
+    let schnorr_gadget = TestSignatureGadget::alloc_constant(&mut cs.ns(|| "schnorr_gadget"), || Ok(schnorr)).unwrap();
 
     let public_key_gadget = <TestSignatureGadget as SignatureGadget<SchnorrScheme, Fr>>::PublicKeyGadget::alloc(
         cs.ns(|| "alloc_public_key"),

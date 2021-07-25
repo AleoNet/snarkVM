@@ -30,13 +30,7 @@ pub mod parameters;
 
 use crate::{Parameters, ProgramLocalData};
 use snarkvm_algorithms::prelude::*;
-use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{bits::Boolean, nonnative::NonNativeFieldVar, traits::algorithms::SNARKVerifierGadget};
-use snarkvm_marlin::{
-    marlin::{MarlinMode, UniversalSRS},
-    FiatShamirRng,
-};
-use snarkvm_polycommit::PolynomialCommitment;
 
 /// Trait that stores information about the testnet2 DPC scheme.
 pub trait Testnet2Components: Parameters {
@@ -47,7 +41,6 @@ pub trait Testnet2Components: Parameters {
     type ProgramSNARK: SNARK<
         ScalarField = Self::InnerScalarField,
         BaseField = Self::OuterScalarField,
-        UniversalSetupParameters = UniversalSRS<Self::InnerScalarField, Self::PolynomialCommitment>,
         VerifierInput = ProgramLocalData<Self>,
     >;
 
@@ -57,19 +50,4 @@ pub trait Testnet2Components: Parameters {
         Self::ProgramSNARK,
         Input = NonNativeFieldVar<Self::InnerScalarField, Self::OuterScalarField>,
     >;
-
-    /// Polynomial commitment scheme for Program SNARKS using Marlin.
-    type PolynomialCommitment: PolynomialCommitment<
-        Self::InnerScalarField,
-        VerifierKey = Self::PolynomialCommitmentVerifierKey,
-        Commitment = Self::PolynomialCommitmentCommitment,
-    >;
-    type PolynomialCommitmentVerifierKey: ToConstraintField<Self::OuterScalarField>;
-    type PolynomialCommitmentCommitment: ToConstraintField<Self::OuterScalarField>;
-
-    /// Fiat Shamir RNG scheme used for Marlin SNARKS.
-    type FiatShamirRng: FiatShamirRng<Self::InnerScalarField, Self::OuterScalarField>;
-
-    /// Specify the Marlin mode (recursive or non-recursive) for program SNARKS.
-    type MarlinMode: MarlinMode;
 }

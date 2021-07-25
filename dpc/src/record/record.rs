@@ -54,8 +54,6 @@ pub struct Record<C: Parameters> {
     pub(crate) commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
 
     #[derivative(PartialEq = "ignore")]
-    pub(crate) serial_number_nonce_randomness: Option<[u8; 32]>,
-    #[derivative(PartialEq = "ignore")]
     pub(crate) position: Option<u8>,
 }
 
@@ -74,12 +72,7 @@ impl<C: Parameters> Record<C> {
     ) -> Result<Self, RecordError> {
         let record_time = start_timer!(|| "Generate record");
 
-        // Sample randomness sn_randomness for the CRH input.
-        let sn_randomness: [u8; 32] = rng.gen();
-
-        let crh_input = to_bytes_le![position, sn_randomness, joint_serial_numbers]?;
-        let serial_number_nonce = C::serial_number_nonce_crh().hash(&crh_input)?;
-
+        let serial_number_nonce = C::serial_number_nonce_crh().hash(&to_bytes_le![position, joint_serial_numbers]?)?;
         let mut record = Self::new(
             owner,
             is_dummy,
@@ -90,7 +83,6 @@ impl<C: Parameters> Record<C> {
             serial_number_nonce,
             rng,
         )?;
-        record.serial_number_nonce_randomness = Some(sn_randomness);
         record.position = Some(position);
 
         end_timer!(record_time);
@@ -162,8 +154,6 @@ impl<C: Parameters> Record<C> {
             serial_number_nonce,
             commitment,
             commitment_randomness,
-
-            serial_number_nonce_randomness: None,
             position: None,
         }
     }
@@ -235,10 +225,6 @@ impl<C: Parameters> RecordScheme for Record<C> {
         &self.serial_number_nonce
     }
 
-    fn serial_number_nonce_randomness(&self) -> &Option<[u8; 32]> {
-        &self.serial_number_nonce_randomness
-    }
-
     fn commitment(&self) -> Self::Commitment {
         self.commitment.clone()
     }
@@ -307,8 +293,6 @@ impl<C: Parameters> FromBytes for Record<C> {
             serial_number_nonce,
             commitment,
             commitment_randomness,
-
-            serial_number_nonce_randomness: None,
             position: None,
         })
     }

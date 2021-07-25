@@ -252,12 +252,9 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<ECI
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
-        value_gen: Fn,
+        _value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Self {
-            encryption: (*value_gen()?.borrow()).clone(),
-            f_phantom: PhantomData,
-        })
+        unimplemented!()
     }
 
     fn alloc_input<
@@ -266,12 +263,9 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<ECI
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
-        value_gen: Fn,
+        _value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Self {
-            encryption: (*value_gen()?.borrow()).clone(),
-            f_phantom: PhantomData,
-        })
+        unimplemented!()
     }
 }
 

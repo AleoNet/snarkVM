@@ -76,7 +76,7 @@ fn generate_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, 
         println!("constraints from digest: {}", constraints_from_digest);
 
         // Allocate CRH
-        let crh_parameters = HG::alloc(&mut cs.ns(|| format!("new_parameters_{}", i)), || {
+        let crh_parameters = HG::alloc_constant(&mut cs.ns(|| format!("new_parameters_{}", i)), || {
             Ok(parameters.crh().clone())
         })
         .unwrap();
@@ -144,13 +144,13 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
     let mask = h.finalize().to_vec();
     let mask_bytes = UInt8::alloc_vec(cs.ns(|| "mask"), &mask).unwrap();
 
-    let crh_parameters = HG::alloc(&mut cs.ns(|| "new_parameters"), || Ok(parameters.crh().clone())).unwrap();
+    let crh_parameters = HG::alloc_constant(&mut cs.ns(|| "new_parameters"), || Ok(parameters.crh().clone())).unwrap();
 
-    let mask_crh_parameters =
-        <HG as MaskedCRHGadget<_, _>>::MaskParametersGadget::alloc(&mut cs.ns(|| "new_mask_parameters"), || {
-            Ok(parameters.mask_parameters().clone())
-        })
-        .unwrap();
+    let mask_crh_parameters = <HG as MaskedCRHGadget<_, _>>::MaskParametersGadget::alloc_constant(
+        &mut cs.ns(|| "new_mask_parameters"),
+        || Ok(parameters.mask_parameters().clone()),
+    )
+    .unwrap();
 
     let computed_root = compute_root::<_, HG, _, _, _>(
         cs.ns(|| "compute masked root"),
@@ -204,7 +204,7 @@ fn update_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, F>
 
         let mut cs = TestConstraintSystem::<F>::new();
 
-        let crh = HG::alloc(&mut cs.ns(|| "crh"), || Ok(merkle_parameters.crh())).unwrap();
+        let crh = HG::alloc_constant(&mut cs.ns(|| "crh"), || Ok(merkle_parameters.crh())).unwrap();
 
         // Allocate Merkle tree root
         let root = <HG as CRHGadget<_, _>>::OutputGadget::alloc(&mut cs.ns(|| "root"), || Ok(root.clone())).unwrap();
