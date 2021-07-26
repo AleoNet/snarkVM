@@ -262,5 +262,7 @@ pub trait Parameters: 'static + Sized {
     fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
 
     /// Returns the program SRS for Aleo applications.
-    fn program_srs<R: Rng + CryptoRng>(rng: &mut R) -> Result<SRS<R>>;
+    fn program_srs<R: Rng + CryptoRng>(
+        rng: &mut R,
+    ) -> Result<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>>;
 }

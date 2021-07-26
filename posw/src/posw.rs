@@ -189,7 +189,7 @@ where
         E: PairingEngine,
         S: SNARK<UniversalSetupParameters = MarlinSRS<E>>,
     {
-        let params = S::setup(
+        let params = S::setup::<_, R>(
             &PoswCircuit::<F> {
                 // the circuit will be padded internally
                 leaves: vec![None; 0],
@@ -201,7 +201,7 @@ where
                 circuit_parameters_type: PhantomData,
             },
             // TODO (howardwu) - TEMPORARY - Clean up this extraneous conversion to bytes.
-            &mut SRS::<R>::Universal(srs.to_bytes_le()?),
+            &mut SRS::<R, _>::Universal(srs),
         )?;
 
         Ok(Self {

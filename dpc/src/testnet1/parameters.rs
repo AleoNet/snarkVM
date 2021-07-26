@@ -173,7 +173,7 @@ impl Parameters for Testnet1Parameters {
     }
 
     /// Returns the program SRS for Aleo applications.
-    fn program_srs<R: Rng + CryptoRng>(rng: &mut R) -> Result<SRS<R>> {
+    fn program_srs<R: Rng + CryptoRng>(rng: &mut R) -> Result<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>> {
         Ok(SRS::CircuitSpecific(rng))
     }
 }

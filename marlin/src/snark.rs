@@ -34,7 +34,6 @@ use snarkvm_curves::traits::PairingEngine;
 use snarkvm_fields::ToConstraintField;
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_r1cs::ConstraintSynthesizer;
-use snarkvm_utilities::FromBytes;
 
 pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PolynomialCommitment};
 
@@ -107,9 +106,9 @@ where
         Ok(srs)
     }
 
-    fn setup<C: ConstraintSynthesizer<E::Fr>>(
+    fn setup<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         circuit: &C,
-        srs: &mut SRS<impl Rng + CryptoRng>,
+        srs: &mut SRS<R, Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
         let setup_time = start_timer!(|| "{Marlin}::Index");
         let (pk, vk) = match srs {
@@ -124,8 +123,7 @@ where
                 )
             }
             SRS::Universal(srs) => {
-                let srs: Self::UniversalSetupParameters = FromBytes::from_bytes_le(srs)?;
-                let parameters = Parameters::<E>::new(circuit, &srs)?;
+                let parameters = Parameters::<E>::new(circuit, srs)?;
                 let verifying_key = parameters.verifying_key.clone();
                 (parameters, verifying_key)
             }

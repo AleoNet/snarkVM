@@ -29,9 +29,9 @@ pub trait Prepare<T> {
 
 /// An abstraction layer to enable a circuit-specific SRS or universal SRS.
 /// Forward compatible with future assumptions that proof systems will require.
-pub enum SRS<'a, R: Rng + CryptoRng> {
+pub enum SRS<'a, R: Rng + CryptoRng, T> {
     CircuitSpecific(&'a mut R),
-    Universal(Vec<u8>),
+    Universal(T),
 }
 
 pub trait SNARK {
@@ -62,9 +62,9 @@ pub trait SNARK {
         unimplemented!()
     }
 
-    fn setup<C: ConstraintSynthesizer<Self::ScalarField>>(
+    fn setup<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         circuit: &C,
-        srs: &mut SRS<impl Rng + CryptoRng>,
+        srs: &mut SRS<R, Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError>;
 
     fn prove<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(

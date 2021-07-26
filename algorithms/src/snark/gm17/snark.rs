@@ -50,9 +50,9 @@ impl<E: PairingEngine, V: ToConstraintField<E::Fr> + ?Sized> SNARK for GM17<E, V
     type VerifierInput = V;
     type VerifyingKey = VerifyingKey<E>;
 
-    fn setup<C: ConstraintSynthesizer<E::Fr>>(
+    fn setup<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         circuit: &C,
-        srs: &mut SRS<impl Rng + CryptoRng>,
+        srs: &mut SRS<R, Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
         let setup_time = start_timer!(|| "{Groth-Maller 2017}::Setup");
         let pp = match srs {

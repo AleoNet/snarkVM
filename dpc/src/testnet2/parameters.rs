@@ -61,6 +61,7 @@ use snarkvm_marlin::{
 };
 use snarkvm_parameters::{testnet2::UniversalSRSParameters, Parameter};
 use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
+use snarkvm_utilities::FromBytes;
 
 use anyhow::Result;
 use once_cell::sync::OnceCell;
@@ -195,8 +196,10 @@ impl Parameters for Testnet2Parameters {
 
     // TODO (howardwu): TEMPORARY - Making this oncecell.
     /// Returns the program SRS for Aleo applications.
-    fn program_srs<R: Rng + CryptoRng>(_: &mut R) -> Result<SRS<R>> {
-        Ok(SRS::<R>::Universal(UniversalSRSParameters::load_bytes()?))
+    fn program_srs<R: Rng + CryptoRng>(_rng: &mut R) -> Result<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>> {
+        let bytes = UniversalSRSParameters::load_bytes()?;
+        let srs = <Self::ProgramSNARK as SNARK>::UniversalSetupParameters::from_bytes_le(&bytes)?;
+        Ok(SRS::<R, _>::Universal(srs))
     }
 }
 

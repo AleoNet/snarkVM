@@ -43,7 +43,6 @@ use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{bits::Boolean, nonnative::NonNativeFieldInputVar, traits::algorithms::SNARKGadget};
 use snarkvm_polycommit::{PCCheckVar, PolynomialCommitment};
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable};
-use snarkvm_utilities::FromBytes;
 
 /// Marlin bound.
 #[derive(Clone, PartialEq, PartialOrd)]
@@ -182,18 +181,15 @@ where
         Ok(srs)
     }
 
-    fn setup<C: ConstraintSynthesizer<TargetField>>(
+    fn setup<C: ConstraintSynthesizer<TargetField>, R: Rng + CryptoRng>(
         circuit: &C,
-        srs: &mut SRS<impl Rng + CryptoRng>,
+        srs: &mut SRS<R, Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
         let (pk, vk) = match srs {
             SRS::CircuitSpecific(rng) => {
                 MarlinCore::<TargetField, BaseField, PC, FS, MM>::circuit_specific_setup(circuit, rng)?
             }
-            SRS::Universal(srs) => {
-                let srs: Self::UniversalSetupParameters = FromBytes::from_bytes_le(srs)?;
-                MarlinCore::<TargetField, BaseField, PC, FS, MM>::circuit_setup(&srs, circuit)?
-            }
+            SRS::Universal(srs) => MarlinCore::<TargetField, BaseField, PC, FS, MM>::circuit_setup(srs, circuit)?,
         };
         Ok((pk, vk))
     }

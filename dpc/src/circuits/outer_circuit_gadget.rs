@@ -63,7 +63,7 @@ fn alloc_inner_snark_input_field_element<
 ) -> Result<<C::InnerSNARKGadget as SNARKVerifierGadget<C::InnerSNARK>>::InputGadget, SynthesisError> {
     let field_elements = var.to_field_elements().map_err(|_| SynthesisError::AssignmentMissing)?;
     // allocate the field elements one by one
-    let mut input_gadgets = vec![];
+    let mut input_gadgets = Vec::with_capacity(field_elements.len());
     for (j, field_element) in field_elements.iter().enumerate() {
         input_gadgets.push(
             <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc_input(
@@ -152,7 +152,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     let ledger_digest_fe = alloc_inner_snark_input_field_element::<C, _, _>(cs, ledger_digest, "ledger digest")?;
 
     let serial_number_fe = {
-        let mut serial_number_fe_vec = vec![];
+        let mut serial_number_fe_vec = Vec::with_capacity(old_serial_numbers.len());
         for (index, sn) in old_serial_numbers.iter().enumerate() {
             let this_serial_number_fe =
                 alloc_inner_snark_input_field_element::<C, _, _>(cs, sn, &format!("serial number {}", index))?;
@@ -167,7 +167,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     };
 
     let commitment_and_encrypted_record_hash_fe = {
-        let mut commitment_and_encrypted_record_hash_fe_vec = vec![];
+        let mut commitment_and_encrypted_record_hash_fe_vec = Vec::with_capacity(new_commitments.len() * 2);
         for (index, (cm, encrypted_record_hash)) in new_commitments
             .iter()
             .zip_eq(new_encrypted_record_hashes.iter())
