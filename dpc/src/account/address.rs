@@ -20,6 +20,7 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 
 use bech32::{self, FromBase32, ToBase32};
 use std::{
+    convert::TryFrom,
     fmt,
     io::{Read, Result as IoResult, Write},
     str::FromStr,
@@ -61,26 +62,44 @@ impl<C: Parameters> Address<C> {
         Ok(C::account_signature_scheme().verify(&signature_public_key, message, signature)?)
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    pub fn into_repr(&self) -> &<C::AccountEncryptionScheme as EncryptionScheme>::PublicKey {
+    pub fn to_encryption_key(&self) -> &<C::AccountEncryptionScheme as EncryptionScheme>::PublicKey {
         &self.encryption_key
     }
 }
 
-impl<C: Parameters> ToBytes for Address<C> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.encryption_key.write_le(&mut writer)
+impl<C: Parameters> TryFrom<PrivateKey<C>> for Address<C> {
+    type Error = AccountError;
+
+    /// Derives the account address from an account private key.
+    fn try_from(private_key: PrivateKey<C>) -> Result<Self, Self::Error> {
+        Self::try_from(&private_key)
     }
 }
 
-impl<C: Parameters> FromBytes for Address<C> {
-    /// Reads in an account address buffer.
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let encryption_key: <C::AccountEncryptionScheme as EncryptionScheme>::PublicKey =
-            FromBytes::read_le(&mut reader)?;
+impl<C: Parameters> TryFrom<&PrivateKey<C>> for Address<C> {
+    type Error = AccountError;
 
-        Ok(Self { encryption_key })
+    /// Derives the account address from an account private key.
+    fn try_from(private_key: &PrivateKey<C>) -> Result<Self, Self::Error> {
+        Self::from_private_key(private_key)
+    }
+}
+
+impl<C: Parameters> TryFrom<ViewKey<C>> for Address<C> {
+    type Error = AccountError;
+
+    /// Derives the account address from an account view key.
+    fn try_from(view_key: ViewKey<C>) -> Result<Self, Self::Error> {
+        Self::try_from(&view_key)
+    }
+}
+
+impl<C: Parameters> TryFrom<&ViewKey<C>> for Address<C> {
+    type Error = AccountError;
+
+    /// Derives the account address from an account view key.
+    fn try_from(view_key: &ViewKey<C>) -> Result<Self, Self::Error> {
+        Self::from_view_key(view_key)
     }
 }
 
@@ -105,6 +124,23 @@ impl<C: Parameters> FromStr for Address<C> {
 
         let buffer = Vec::from_base32(&data)?;
         Ok(Self::read_le(&buffer[..])?)
+    }
+}
+
+impl<C: Parameters> FromBytes for Address<C> {
+    /// Reads in an account address buffer.
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let encryption_key: <C::AccountEncryptionScheme as EncryptionScheme>::PublicKey =
+            FromBytes::read_le(&mut reader)?;
+
+        Ok(Self { encryption_key })
+    }
+}
+
+impl<C: Parameters> ToBytes for Address<C> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.encryption_key.write_le(&mut writer)
     }
 }
 
