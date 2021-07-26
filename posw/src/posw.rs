@@ -200,7 +200,6 @@ where
                 crh_gadget_type: PhantomData,
                 circuit_parameters_type: PhantomData,
             },
-            // TODO (howardwu) - TEMPORARY - Clean up this extraneous conversion to bytes.
             &mut SRS::<R, _>::Universal(srs),
         )?;
 
