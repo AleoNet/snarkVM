@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use rand::{CryptoRng, Rng, RngCore};
+use rand::{CryptoRng, Rng};
 use std::{
     fmt::{Debug, Formatter},
     marker::PhantomData,
@@ -22,7 +22,6 @@ use std::{
 
 use crate::{
     constraints::{
-        error::MarlinConstraintsError,
         proof::ProofVar,
         verifier::MarlinVerificationGadget,
         verifier_key::{CircuitVerifyingKeyVar, PreparedCircuitVerifyingKeyVar},
@@ -32,7 +31,6 @@ use crate::{
     marlin::{
         CircuitProvingKey,
         CircuitVerifyingKey,
-        MarlinError,
         MarlinMode,
         MarlinSNARK as MarlinCore,
         PreparedCircuitVerifyingKey,
@@ -40,12 +38,11 @@ use crate::{
     },
     FiatShamirRngVar,
 };
-use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, Prepare, SNARKError, SNARK, SRS};
+use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, SNARKError, SNARK, SRS};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{bits::Boolean, nonnative::NonNativeFieldInputVar, traits::algorithms::SNARKGadget};
 use snarkvm_polycommit::{PCCheckVar, PolynomialCommitment};
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, LinearCombination, SynthesisError, Variable};
-use snarkvm_utilities::FromBytes;
 
 /// Marlin bound.
 #[derive(Clone, PartialEq, PartialOrd)]
@@ -184,18 +181,15 @@ where
         Ok(srs)
     }
 
-    fn setup<C: ConstraintSynthesizer<TargetField>>(
+    fn setup<C: ConstraintSynthesizer<TargetField>, R: Rng + CryptoRng>(
         circuit: &C,
-        srs: &mut SRS<impl Rng + CryptoRng>,
+        srs: &mut SRS<R, Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
         let (pk, vk) = match srs {
             SRS::CircuitSpecific(rng) => {
                 MarlinCore::<TargetField, BaseField, PC, FS, MM>::circuit_specific_setup(circuit, rng)?
             }
-            SRS::Universal(srs) => {
-                let srs: Self::UniversalSetupParameters = FromBytes::from_bytes_le(srs)?;
-                MarlinCore::<TargetField, BaseField, PC, FS, MM>::circuit_setup(&srs, circuit)?
-            }
+            SRS::Universal(srs) => MarlinCore::<TargetField, BaseField, PC, FS, MM>::circuit_setup(srs, circuit)?,
         };
         Ok((pk, vk))
     }
@@ -580,7 +574,7 @@ pub mod test {
         )
         .unwrap();
 
-        let vk_gadget_constraints = cs.num_constraints() - input_gadget_constraints;
+        let vk_gadget_constraints = cs.num_constraints() - input_gadget_constraints - proof_gadget_constraints;
 
         let verification_result = <TestSNARKGadget as SNARKGadget<TestSNARK>>::verify(
             cs.ns(|| "marlin_verify"),
@@ -590,7 +584,8 @@ pub mod test {
         )
         .unwrap();
 
-        let verifier_gadget_constraints = cs.num_constraints() - proof_gadget_constraints;
+        let verifier_gadget_constraints =
+            cs.num_constraints() - input_gadget_constraints - proof_gadget_constraints - vk_gadget_constraints;
 
         verification_result
             .enforce_equal(cs.ns(|| "enforce_equal_verification"), &Boolean::Constant(true))
@@ -602,10 +597,10 @@ pub mod test {
             cs.which_is_unsatisfied().unwrap()
         );
 
-        const INPUT_GADGET_CONSTRAINTS: usize = 383;
+        const INPUT_GADGET_CONSTRAINTS: usize = 259;
         const PROOF_GADGET_CONSTRAINTS: usize = 56;
-        const VK_GADGET_CONSTRAINTS: usize = 140;
-        const VERIFIER_GADGET_CONSTRAINTS: usize = 150594;
+        const VK_GADGET_CONSTRAINTS: usize = 84;
+        const VERIFIER_GADGET_CONSTRAINTS: usize = 150127;
 
         assert_eq!(input_gadget_constraints, INPUT_GADGET_CONSTRAINTS);
         assert_eq!(proof_gadget_constraints, PROOF_GADGET_CONSTRAINTS);

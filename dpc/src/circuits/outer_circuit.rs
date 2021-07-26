@@ -14,14 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    testnet1::{execute_outer_circuit, Testnet1Components},
-    AleoAmount,
-    Execution,
-    Parameters,
-    Transaction,
-    TransactionScheme,
-};
+use crate::{execute_outer_circuit, AleoAmount, Execution, Parameters, Transaction, TransactionScheme};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
@@ -141,7 +134,7 @@ impl<C: Parameters> OuterCircuit<C> {
     }
 }
 
-impl<C: Testnet1Components> ConstraintSynthesizer<C::OuterScalarField> for OuterCircuit<C>
+impl<C: Parameters> ConstraintSynthesizer<C::OuterScalarField> for OuterCircuit<C>
 where
     <C::AccountCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <C::RecordCommitmentTreeParameters as MerkleParameters>::H: ToConstraintField<C::InnerScalarField>,

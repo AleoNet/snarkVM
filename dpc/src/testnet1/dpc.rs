@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    prelude::*,
-    testnet1::{OuterCircuit, Testnet1Components},
-};
+use crate::prelude::*;
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, merkle_tree::MerklePath, prelude::*};
 use snarkvm_parameters::{prelude::*, testnet1::*};
 use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
@@ -38,7 +35,7 @@ pub struct DPC<C: Parameters> {
     ),
 }
 
-impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
+impl<C: Parameters> DPCScheme<C> for DPC<C> {
     type Account = Account<C>;
     type Execution = Execution<C::ProgramSNARK>;
     type Record = Record<C>;

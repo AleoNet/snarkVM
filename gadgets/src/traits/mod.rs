@@ -35,5 +35,8 @@ pub use fields::*;
 pub mod integers;
 pub use integers::*;
 
+pub mod misc;
+pub use misc::*;
+
 pub mod select;
 pub use select::*;

@@ -22,8 +22,9 @@ use snarkvm_algorithms::{
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{
     execute_inner_circuit,
+    execute_outer_circuit,
     prelude::*,
-    testnet2::{execute_outer_circuit, parameters::*},
+    testnet2::parameters::*,
     EncryptedRecord,
     InnerCircuit,
     NoopProgram,
@@ -559,7 +560,7 @@ fn test_testnet2_dpc_execute_constraints() {
         println!("=========================================================");
         let num_constraints = outer_circuit_cs.num_constraints();
         println!("Outer circuit num constraints: {:?}", num_constraints);
-        assert_eq!(837242, num_constraints);
+        assert_eq!(835853, num_constraints);
         println!("=========================================================");
     }
 

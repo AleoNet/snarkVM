@@ -17,23 +17,4 @@
 pub mod dpc;
 pub use dpc::*;
 
-pub mod outer_circuit;
-pub use outer_circuit::*;
-
 pub mod parameters;
-
-use crate::Parameters;
-use snarkvm_gadgets::{bits::Boolean, nonnative::NonNativeFieldVar, traits::algorithms::SNARKVerifierGadget};
-
-/// Trait that stores information about the testnet2 DPC scheme.
-pub trait Testnet2Components: Parameters {
-    /// SNARK Verifier gadget for the inner circuit.
-    type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK, Input = Vec<Boolean>>;
-
-    // TODO (raychu86): Look into properly declaring a proper input. i.e. Self::MarlinInputGadget.
-    /// Program SNARK verifier gadget for Aleo applications.
-    type ProgramSNARKGadget: SNARKVerifierGadget<
-        Self::ProgramSNARK,
-        Input = NonNativeFieldVar<Self::InnerScalarField, Self::OuterScalarField>,
-    >;
-}
