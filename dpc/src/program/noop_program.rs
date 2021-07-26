@@ -17,6 +17,7 @@
 use crate::{
     Execution,
     LocalData,
+    Network,
     NoopCircuit,
     Parameters,
     ProgramError,
@@ -25,10 +26,7 @@ use crate::{
     RecordScheme,
 };
 use snarkvm_algorithms::prelude::*;
-use snarkvm_parameters::{
-    testnet2::{NoopProgramSNARKPKParameters, NoopProgramSNARKVKParameters},
-    Parameter,
-};
+use snarkvm_parameters::Parameter;
 use snarkvm_r1cs::ToConstraintField;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -79,11 +77,29 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
     // TODO (howardwu): Why are we not preparing the VK here?
     /// Loads an instance of the noop program.
     fn load() -> Result<Self, ProgramError> {
-        let proving_key: <Self::ProofSystem as SNARK>::ProvingKey =
-            FromBytes::read_le(NoopProgramSNARKPKParameters::load_bytes()?.as_slice())?;
-        let verifying_key = <Self::ProofSystem as SNARK>::VerifyingKey::read_le(
-            NoopProgramSNARKVKParameters::load_bytes()?.as_slice(),
-        )?;
+        let proving_key: <Self::ProofSystem as SNARK>::ProvingKey = match Network::from_id(C::NETWORK_ID) {
+            Network::Testnet1 => FromBytes::read_le(
+                snarkvm_parameters::testnet1::NoopProgramSNARKPKParameters::load_bytes()?.as_slice(),
+            )?,
+            Network::Testnet2 => FromBytes::read_le(
+                snarkvm_parameters::testnet2::NoopProgramSNARKPKParameters::load_bytes()?.as_slice(),
+            )?,
+            _ => {
+                unimplemented!()
+            }
+        };
+
+        let verifying_key = match Network::from_id(C::NETWORK_ID) {
+            Network::Testnet1 => <Self::ProofSystem as SNARK>::VerifyingKey::read_le(
+                snarkvm_parameters::testnet1::NoopProgramSNARKVKParameters::load_bytes()?.as_slice(),
+            )?,
+            Network::Testnet2 => <Self::ProofSystem as SNARK>::VerifyingKey::read_le(
+                snarkvm_parameters::testnet2::NoopProgramSNARKVKParameters::load_bytes()?.as_slice(),
+            )?,
+            _ => {
+                unimplemented!()
+            }
+        };
 
         let verifying_key_group_elements = verifying_key.to_field_elements()?;
 

@@ -41,7 +41,7 @@ use snarkvm_gadgets::{
     curves::edwards_bls12::EdwardsBls12Gadget,
     traits::algorithms::MaskedCRHGadget,
 };
-use snarkvm_marlin::snark::URS;
+use snarkvm_marlin::snark::MarlinSRS;
 use snarkvm_parameters::{
     testnet1::{PoswSNARKPKParameters, PoswSNARKVKParameters},
     traits::Parameter,
@@ -184,10 +184,10 @@ where
     }
 
     /// Performs a deterministic setup for systems with universal setups
-    pub fn index<E, R: Rng + CryptoRng>(srs: URS<E>) -> Result<Self, PoswError>
+    pub fn index<E, R: Rng + CryptoRng>(srs: MarlinSRS<E>) -> Result<Self, PoswError>
     where
         E: PairingEngine,
-        S: SNARK<UniversalSetupParameters = URS<E>>,
+        S: SNARK<UniversalSetupParameters = MarlinSRS<E>>,
     {
         let params = S::setup(
             &PoswCircuit::<F> {

@@ -44,7 +44,7 @@ use rand::{CryptoRng, Rng};
 
 /// A structured reference string which will be used to derive a circuit-specific
 /// common reference string
-pub type URS<E> = UniversalSRS<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, MultiPC<E>>;
+pub type MarlinSRS<E> = UniversalSRS<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, MultiPC<E>>;
 
 /// A circuit-specific proving key.
 pub type ProvingKey<E> = CircuitProvingKey<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, MultiPC<E>>;
@@ -93,7 +93,7 @@ where
     type ProvingKey = Parameters<E>;
     type ScalarField = E::Fr;
     type UniversalSetupConfig = MarlinBound;
-    type UniversalSetupParameters = URS<E>;
+    type UniversalSetupParameters = MarlinSRS<E>;
     type VerifierInput = V;
     type VerifyingKey = VerifyingKey<E>;
 
