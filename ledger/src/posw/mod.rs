@@ -74,11 +74,11 @@ mod tests {
 
     #[test]
     fn test_posw_marlin() {
-        let rng = &mut ChaChaRng::seed_from_u64(1234567);
+        let mut rng = thread_rng();
 
         // run the trusted setup
         let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
-        let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(max_degree, rng).unwrap();
+        let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(max_degree, &mut rng).unwrap();
 
         // run the deterministic setup
         let posw = PoswMarlin::index::<_, ChaChaRng>(&universal_srs).unwrap();
@@ -86,7 +86,20 @@ mod tests {
         // super low difficulty so we find a solution immediately
         let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
 
-        let transaction_ids = vec![[1u8; 32]; 8];
+        // The number of transactions for which to check subsequent merkle tree root values.
+        let num_txs: usize = rng.gen_range(1..256);
+
+        // Create a vector with transaction ids consisting of random values.
+        let transaction_ids = {
+            let mut vec = Vec::with_capacity(num_txs);
+            for _ in 0..num_txs {
+                let mut id = [0u8; 32];
+                rng.fill(&mut id);
+                vec.push(id);
+            }
+            vec
+        };
+
         let (_, pedersen_merkle_root, subroots) = txids_to_roots(&transaction_ids);
 
         // generate the proof

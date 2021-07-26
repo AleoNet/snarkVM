@@ -22,21 +22,36 @@ use snarkvm_ledger::{
 };
 use snarkvm_utilities::FromBytes;
 
-use rand::SeedableRng;
+use rand::{thread_rng, Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 
 /// TODO (howardwu): Update this when testnet2 is live.
 #[ignore]
 #[test]
 fn test_posw_load_and_mine() {
+    let mut rng = thread_rng();
+
     // Load the PoSW Marlin parameters.
     let posw = PoswMarlin::load().unwrap();
 
     // Use the minimum difficulty to find a solution immediately.
     let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
 
+    // The number of transactions for which to check subsequent merkle tree root values.
+    let num_txs: usize = rng.gen_range(1..256);
+
+    // Create a vector with transaction ids consisting of random values.
+    let transaction_ids = {
+        let mut vec = Vec::with_capacity(num_txs);
+        for _ in 0..num_txs {
+            let mut id = [0u8; 32];
+            rng.fill(&mut id);
+            vec.push(id);
+        }
+        vec
+    };
+
     // Create the Pedersen Merkle tree.
-    let transaction_ids = vec![[1u8; 32]; 8];
     let (_, pedersen_merkle_root, subroots) = txids_to_roots(&transaction_ids);
 
     // Generate the proof.
