@@ -134,7 +134,7 @@ impl<C: Parameters> EncryptedRecord<C> {
         }
 
         // Encrypt the record plaintext
-        let record_public_key = record.owner().into_repr();
+        let record_public_key = record.owner().to_encryption_key();
         let encryption_randomness = C::account_encryption_scheme().generate_randomness(record_public_key, rng)?;
         let encrypted_record =
             C::account_encryption_scheme().encrypt(record_public_key, &encryption_randomness, &record_plaintexts)?;
@@ -333,7 +333,7 @@ impl<C: Parameters> EncryptedRecord<C> {
         }
 
         // Encrypt the record plaintext
-        let record_public_key = record.owner().into_repr();
+        let record_public_key = record.owner().to_encryption_key();
         let encryption_blinding_exponents = C::account_encryption_scheme().generate_encryption_witness(
             record_public_key,
             encryption_randomness,
