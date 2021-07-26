@@ -137,7 +137,7 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
         let capacity = <CF::Parameters as FieldParameters>::CAPACITY;
 
         // Step 3: allocate the CF field elements as input
-        let mut src_booleans = Vec::<Boolean>::new();
+        let mut src_booleans = Vec::<Boolean>::with_capacity(src_bits.len());
         for (i, chunk) in src_bits.chunks(capacity as usize).enumerate() {
             let elem = CF::from_repr(<CF as PrimeField>::BigInteger::from_bits_le(chunk)).unwrap();
 
@@ -145,21 +145,18 @@ impl<F: PrimeField, CF: PrimeField> AllocGadget<Vec<F>, CF> for BooleanInputGadg
 
             let mut lc = LinearCombination::zero();
             let mut coeff = CF::one();
-            let mut booleans = vec![];
 
             for (j, bit) in chunk.iter().enumerate() {
                 let boolean = Boolean::alloc(cs.ns(|| format!("alloc_bits_{}_{}", i, j)), || Ok(bit))?;
-                booleans.push(boolean);
 
                 lc = &lc + boolean.lc(CS::one(), CF::one()) * coeff;
                 coeff.double_in_place();
+
+                src_booleans.push(boolean);
             }
 
             lc = &elem_gadget.get_variable().clone().neg() + lc;
-
             cs.enforce(|| format!("bit_decomposition_{}", i), |lc| lc, |lc| lc, |_| lc);
-
-            src_booleans.append(&mut booleans);
         }
 
         // Step 4: unpack them back to bits
