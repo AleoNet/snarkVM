@@ -83,6 +83,11 @@ Now to use `snarkvm`, in your terminal, run:
 snarkvm
 ```
 
+## 3. Contributing
+
+PRs and issues are welcome. Please see the [contribution guide](./CONTRIBUTING.md) for more
+information about how to create a successful PR.
+
 ## 3. Usage Guide
 
 ## 4. License
