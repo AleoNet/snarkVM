@@ -563,9 +563,6 @@ where
     {
         let RecordEncryptionGadgetComponents {
             record_field_elements,
-            record_group_encoding,
-            ciphertext_selectors,
-            fq_high_selectors,
             encryption_blinding_exponents,
         } = encryption_gadget_components;
 
@@ -836,15 +833,6 @@ where
                 num_payload_elements + (value_does_not_fit as usize)
             );
 
-            let fq_high_and_payload_and_value_bits = [
-                &[Boolean::Constant(true)],
-                &fq_high_bits[..],
-                &value_bits[..],
-                &payload_field_bits[..],
-            ]
-            .concat();
-            payload_elements.push(fq_high_and_payload_and_value_bits.clone());
-
             let num_payload_elements = payload_bits.len() / payload_field_bitsize;
 
             assert_eq!(
@@ -1084,19 +1072,8 @@ where
             let candidate_encrypted_record_bytes = candidate_encrypted_record_gadget
                 .to_bytes(encryption_cs.ns(|| format!("output record {} encrypted record bytes", j)))?;
 
-            let ciphertext_and_fq_high_selectors_bytes = UInt8::alloc_vec(
-                &mut encryption_cs.ns(|| format!("ciphertext and fq_high selector bits to bytes {}", j)),
-                &from_bits_le_to_bytes_le(
-                    &[&ciphertext_selectors[..], &[
-                        fq_high_selectors[fq_high_selectors.len() - 1]
-                    ]]
-                    .concat(),
-                ),
-            )?;
-
             let mut encrypted_record_hash_input = Vec::new();
             encrypted_record_hash_input.extend_from_slice(&candidate_encrypted_record_bytes);
-            encrypted_record_hash_input.extend_from_slice(&ciphertext_and_fq_high_selectors_bytes);
 
             let candidate_encrypted_record_hash = encrypted_record_crh.check_evaluation_gadget(
                 &mut encryption_cs.ns(|| format!("Compute encrypted record hash {}", j)),

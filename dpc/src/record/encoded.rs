@@ -34,9 +34,15 @@ use itertools::Itertools;
 use std::marker::PhantomData;
 
 /// Encode a base field element bytes to a group representation
-pub fn encode_to_group<P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve>(
+pub fn encode_to_field<F: PrimeField>(
     x_bytes: &[u8],
-) -> Result<(<G as ProjectiveCurve>::Affine, bool), DPCError> {
+) -> Result<Vec<F>, DPCError> {
+    let bits = Vec::<bool>::with_capacity(x_bytes.len() * 8);
+    for byte in x_bytes.iter() {
+
+    }
+
+
     // TODO (howardwu): Remove this hardcoded value and use BaseField's size in bits to pad length.
     let mut bytes = x_bytes.to_vec();
     while bytes.len() < 32 {

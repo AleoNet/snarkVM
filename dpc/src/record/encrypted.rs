@@ -55,12 +55,6 @@ type BaseField<T> = <<T as Parameters>::EncryptionParameters as ModelParameters>
 pub struct RecordEncryptionGadgetComponents<C: Parameters> {
     /// Record field element representations
     pub record_field_elements: Vec<<C::EncryptionParameters as ModelParameters>::BaseField>,
-    /// Record group element encodings - Represented in (x,y) affine coordinates
-    pub record_group_encoding: Vec<(BaseField<C>, BaseField<C>)>,
-    /// Record ciphertext selectors - Used for ciphertext compression/decompression
-    pub ciphertext_selectors: Vec<bool>,
-    /// Record fq high selectors - Used for plaintext serialization/deserialization
-    pub fq_high_selectors: Vec<bool>,
     /// Record ciphertext blinding exponents used to encrypt the record
     pub encryption_blinding_exponents: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::EncryptionWitness>,
 }
@@ -73,10 +67,6 @@ impl<C: Parameters> Default for RecordEncryptionGadgetComponents<C> {
         let base_field_default = <C::EncryptionParameters as ModelParameters>::BaseField::default();
 
         let record_field_elements = vec![base_field_one; record_encoding_length];
-        let record_group_encoding = vec![(base_field_default, base_field_default); record_encoding_length];
-
-        let ciphertext_selectors = vec![false; record_encoding_length + 1];
-        let fq_high_selectors = vec![false; record_encoding_length];
 
         let encryption_blinding_exponents = vec![
                 <C::AccountEncryptionScheme as EncryptionScheme>::EncryptionWitness::default();
@@ -85,9 +75,6 @@ impl<C: Parameters> Default for RecordEncryptionGadgetComponents<C> {
 
         Self {
             record_field_elements,
-            record_group_encoding,
-            ciphertext_selectors,
-            fq_high_selectors,
             encryption_blinding_exponents,
         }
     }
