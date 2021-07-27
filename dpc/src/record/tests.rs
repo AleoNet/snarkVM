@@ -29,7 +29,6 @@ use crate::{
     PAYLOAD_SIZE,
 };
 use snarkvm_algorithms::traits::CRH;
-use snarkvm_curves::edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls};
 
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
@@ -65,7 +64,7 @@ fn test_record_serialization() {
             )
             .unwrap();
 
-            let encoded_record = EncodedRecord::<_, EdwardsParameters, EdwardsBls>::encode(&given_record).unwrap();
+            let encoded_record = EncodedRecord::<_>::encode(&given_record).unwrap();
             let record_components = encoded_record.decode().unwrap();
 
             assert_eq!(given_record.serial_number_nonce, record_components.serial_number_nonce);

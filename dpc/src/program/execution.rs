@@ -35,7 +35,6 @@ pub struct ProgramLocalData<C: Parameters> {
 impl<C: Parameters> ToConstraintField<C::InnerScalarField> for ProgramLocalData<C> {
     fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
         let mut v = ToConstraintField::<C::InnerScalarField>::to_field_elements(&[self.position][..])?;
-        v.extend_from_slice(&C::local_data_commitment_scheme().to_field_elements()?);
         v.extend_from_slice(&self.local_data_root.to_field_elements()?);
         Ok(v)
     }

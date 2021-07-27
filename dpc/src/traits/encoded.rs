@@ -15,11 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{errors::DPCError, traits::RecordScheme};
-use snarkvm_curves::{
-    traits::{Group, MontgomeryParameters, TwistedEdwardsParameters},
-    ProjectiveCurve,
-};
-use snarkvm_fields::{FieldParameters, PrimeField};
+use snarkvm_fields::PrimeField;
 
 pub trait EncodedRecordScheme: Sized {
     /// The field that the encoded record is over.
