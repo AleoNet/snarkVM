@@ -22,9 +22,9 @@ mod testnet1 {
     use rand_chacha::ChaChaRng;
     use std::{convert::TryInto, str::FromStr};
 
-    const ALEO_TESTNET1_PRIVATE_KEY: &str = "APrivateKey1vsgCPijUSjfbqDL1Z52b1EE4huyzbnQWfJUn2a1KHGvgEkA";
-    const ALEO_TESTNET1_VIEW_KEY: &str = "AViewKey1cYGQJmDmrjajLCwLvYuR89vv2AW6aF68B7gwvk3hAiNN";
-    const ALEO_TESTNET1_ADDRESS: &str = "aleo17gyptxtlh5vq3yvr3wd2v3x7zz23s49eteep4zj785khhcttkgysss2y0t";
+    const ALEO_TESTNET1_PRIVATE_KEY: &str = "APrivateKey1yGJUiU7virRmFLL7bUkzQ7eGsSFdEqqoU3StUMTHHAkB8ee";
+    const ALEO_TESTNET1_VIEW_KEY: &str = "AViewKey1cWY7CaSDuwAEXoFki7Z1JELj7ksum8JxfZGpsPLHJACx";
+    const ALEO_TESTNET1_ADDRESS: &str = "aleo1fj863p89uulknlzzehemkhpaq5cwhwtvjda0sgpt7ld7jtutk5psh0gqw0";
 
     #[test]
     fn test_account_new() {
@@ -121,9 +121,9 @@ mod testnet2 {
     use rand_chacha::ChaChaRng;
     use std::{convert::TryInto, str::FromStr};
 
-    const ALEO_TESTNET2_PRIVATE_KEY: &str = "APrivateKey1vsgCPijUSjfbqDL1Z52b1EE4huyzbnQWfJUn2a1KHGvgEkA";
-    const ALEO_TESTNET2_VIEW_KEY: &str = "AViewKey1cYGQJmDmrjajLCwLvYuR89vv2AW6aF68B7gwvk3hAiNN";
-    const ALEO_TESTNET2_ADDRESS: &str = "aleo17gyptxtlh5vq3yvr3wd2v3x7zz23s49eteep4zj785khhcttkgysss2y0t";
+    const ALEO_TESTNET2_PRIVATE_KEY: &str = "APrivateKey1yGJUiU7virRmFLL7bUkzQ7eGsSFdEqqoU3StUMTHHAkB8ee";
+    const ALEO_TESTNET2_VIEW_KEY: &str = "AViewKey1cWY7CaSDuwAEXoFki7Z1JELj7ksum8JxfZGpsPLHJACx";
+    const ALEO_TESTNET2_ADDRESS: &str = "aleo1fj863p89uulknlzzehemkhpaq5cwhwtvjda0sgpt7ld7jtutk5psh0gqw0";
 
     #[test]
     fn test_account_new() {
