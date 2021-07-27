@@ -71,7 +71,6 @@ impl<T: TransactionScheme> Transactions<T> {
     pub fn conflicts(&self, transaction: &T) -> bool {
         let mut holding_serial_numbers = vec![];
         let mut holding_commitments = vec![];
-        let mut holding_memos = Vec::with_capacity(self.0.len());
 
         for tx in &self.0 {
             if tx.network_id() != transaction.network_id() {
@@ -80,12 +79,10 @@ impl<T: TransactionScheme> Transactions<T> {
 
             holding_serial_numbers.extend(tx.old_serial_numbers());
             holding_commitments.extend(tx.new_commitments());
-            holding_memos.push(tx.memorandum());
         }
 
         let transaction_serial_numbers = transaction.old_serial_numbers();
         let transaction_commitments = transaction.new_commitments();
-        let transaction_memo = transaction.memorandum();
 
         // Check if the transactions in the block have duplicate serial numbers
         if has_duplicates(transaction_serial_numbers) {
@@ -94,10 +91,6 @@ impl<T: TransactionScheme> Transactions<T> {
 
         // Check if the transactions in the block have duplicate commitments
         if has_duplicates(transaction_commitments) {
-            return true;
-        }
-
-        if holding_memos.contains(&transaction_memo) {
             return true;
         }
 
