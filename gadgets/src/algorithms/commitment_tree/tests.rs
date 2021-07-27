@@ -115,7 +115,8 @@ fn commitment_tree_test<
         num_constraints = cs.num_constraints();
 
         // Allocate CRH
-        let crh_parameters = HG::alloc(&mut cs.ns(|| format!("new_crh_parameters_{}", i)), || Ok(crh.clone())).unwrap();
+        let crh_parameters =
+            HG::alloc_constant(&mut cs.ns(|| format!("new_crh_parameters_{}", i)), || Ok(crh.clone())).unwrap();
 
         println!(
             "constraints from crh parameters: {}",

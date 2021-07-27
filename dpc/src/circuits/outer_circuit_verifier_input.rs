@@ -31,11 +31,7 @@ pub struct OuterCircuitVerifierInput<C: Parameters> {
 
 impl<C: Parameters> ToConstraintField<C::OuterScalarField> for OuterCircuitVerifierInput<C>
 where
-    <C::ProgramCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::OuterScalarField>,
-    <C::ProgramIDCRH as CRH>::Parameters: ToConstraintField<C::OuterScalarField>,
-    <C::InnerCircuitIDCRH as CRH>::Parameters: ToConstraintField<C::OuterScalarField>,
     <C::InnerCircuitIDCRH as CRH>::Output: ToConstraintField<C::OuterScalarField>,
-
     <C::AccountCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
     <<C::RecordCommitmentTreeParameters as MerkleParameters>::H as CRH>::Parameters:
         ToConstraintField<C::InnerScalarField>,
@@ -43,12 +39,8 @@ where
 {
     fn to_field_elements(&self) -> Result<Vec<C::OuterScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
-        v.extend_from_slice(&C::program_commitment_scheme().to_field_elements()?);
-        v.extend_from_slice(&C::program_id_crh().parameters().to_field_elements()?);
-        v.extend_from_slice(&C::inner_circuit_id_crh().parameters().to_field_elements()?);
 
         // Convert inner snark verifier inputs into `OuterField` field elements
-
         let inner_snark_field_elements = &self.inner_snark_verifier_input.to_field_elements()?;
 
         for inner_snark_fe in inner_snark_field_elements {

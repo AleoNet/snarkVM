@@ -62,7 +62,6 @@ use snarkvm_marlin::{
 use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
 
 use once_cell::sync::OnceCell;
-use snarkvm_polycommit::PolynomialCommitment;
 
 macro_rules! dpc_setup {
     ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
@@ -114,8 +113,8 @@ impl Parameters for Testnet2Parameters {
     type AccountSignatureGadget = SchnorrGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
 
-    type EncryptedRecordCRH = BHPCompressedCRH<EdwardsBls12, 48, 44>;
-    type EncryptedRecordCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 44>;
+    type EncryptedRecordCRH = BHPCompressedCRH<EdwardsBls12, 48, 60>;
+    type EncryptedRecordCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 60>;
     type EncryptedRecordDigest = <Self::EncryptedRecordCRH as CRH>::Output;
 
     type EncryptionGroup = EdwardsBls12;
@@ -142,8 +141,8 @@ impl Parameters for Testnet2Parameters {
     type ProgramIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
 
-    type RecordCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 32, 62>;
-    type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 62>;
+    type RecordCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 48, 50>;
+    type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 50>;
     type RecordCommitment = <Self::RecordCommitmentScheme as CommitmentScheme>::Output;
 
     type RecordCommitmentTreeCRH = BHPCompressedCRH<EdwardsBls12, 8, 32>;
@@ -175,30 +174,23 @@ impl Parameters for Testnet2Parameters {
 }
 
 impl Testnet2Components for Testnet2Parameters {
-    type FiatShamirRng = FiatShamirAlgebraicSpongeRng<
-        Self::InnerScalarField,
-        Self::OuterScalarField,
-        PoseidonSponge<Self::OuterScalarField>,
-    >;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
-    type MarlinMode = MarlinTestnet2Mode;
-    type PolynomialCommitment = MarlinKZG10<Self::InnerCurve>;
-    type PolynomialCommitmentCommitment =
-        <Self::PolynomialCommitment as PolynomialCommitment<Self::InnerScalarField>>::Commitment;
-    type PolynomialCommitmentVerifierKey =
-        <Self::PolynomialCommitment as PolynomialCommitment<Self::InnerScalarField>>::VerifierKey;
     type ProgramSNARK = MarlinSNARK<
         Self::InnerScalarField,
         Self::OuterScalarField,
-        Self::PolynomialCommitment,
-        Self::FiatShamirRng,
-        Self::MarlinMode,
+        MarlinKZG10<Self::InnerCurve>,
+        FiatShamirAlgebraicSpongeRng<
+            Self::InnerScalarField,
+            Self::OuterScalarField,
+            PoseidonSponge<Self::OuterScalarField>,
+        >,
+        MarlinTestnet2Mode,
         ProgramLocalData<Self>,
     >;
     type ProgramSNARKGadget = MarlinVerificationGadget<
         Self::InnerScalarField,
         Self::OuterScalarField,
-        Self::PolynomialCommitment,
+        MarlinKZG10<Self::InnerCurve>,
         MarlinKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>,
     >;
 }

@@ -44,11 +44,11 @@ use snarkvm_utilities::{marker::PhantomData, to_bytes_le, FromBytes, ToBytes};
 pub struct CircuitVerifyingKeyVar<
     TargetField: PrimeField,
     BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > {
     /// The original key
-    pub origin_verifier_key: CircuitVerifyingKey<TargetField, PC>,
+    pub origin_verifier_key: CircuitVerifyingKey<TargetField, BaseField, PC>,
     /// The size of domain h
     pub domain_h_size: u64,
     /// The size of domain k
@@ -66,7 +66,7 @@ pub struct CircuitVerifyingKeyVar<
 impl<
     TargetField: PrimeField,
     BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > Clone for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
 {
@@ -86,7 +86,7 @@ impl<
 impl<
     TargetField: PrimeField,
     BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
 {
@@ -99,16 +99,16 @@ impl<
 impl<
     TargetField: PrimeField,
     BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
-> AllocGadget<CircuitVerifyingKey<TargetField, PC>, BaseField>
+> AllocGadget<CircuitVerifyingKey<TargetField, BaseField, PC>, BaseField>
     for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
 {
     #[inline]
     fn alloc_constant<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<CircuitVerifyingKey<TargetField, PC>>,
+        T: Borrow<CircuitVerifyingKey<TargetField, BaseField, PC>>,
     {
         let tmp = value_gen()?;
         let ivk = tmp.borrow();
@@ -150,7 +150,7 @@ impl<
     fn alloc<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<CircuitVerifyingKey<TargetField, PC>>,
+        T: Borrow<CircuitVerifyingKey<TargetField, BaseField, PC>>,
     {
         let tmp = value_gen()?;
         let ivk = tmp.borrow();
@@ -192,7 +192,7 @@ impl<
     fn alloc_input<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<CircuitVerifyingKey<TargetField, PC>>,
+        T: Borrow<CircuitVerifyingKey<TargetField, BaseField, PC>>,
     {
         let tmp = value_gen()?;
         let ivk = tmp.borrow();
@@ -234,7 +234,7 @@ impl<
 impl<
     TargetField: PrimeField,
     BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > ToConstraintFieldGadget<BaseField> for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
 {
@@ -269,13 +269,10 @@ impl<TargetField, BaseField, PC, PCG, PR, R>
 where
     TargetField: PrimeField,
     BaseField: PrimeField + PoseidonDefaultParametersField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
     R: FiatShamirRngVar<TargetField, BaseField, PR>,
-    PC::Commitment: ToConstraintField<BaseField>,
-    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
-    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
 {
     /// Returns an instance of a `PreparedCircuitVerifyingKeyGadget`.
     fn prepare<CS: ConstraintSystem<BaseField>>(
@@ -330,7 +327,7 @@ where
 impl<
     TargetField: PrimeField,
     BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > ToBytesGadget<BaseField> for CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>
 {
@@ -367,12 +364,8 @@ impl<TargetField, BaseField, PC, PCG> AllocBytesGadget<Vec<u8>, BaseField>
 where
     TargetField: PrimeField,
     BaseField: PrimeField + PoseidonDefaultParametersField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
-    PC::VerifierKey: ToConstraintField<BaseField>,
-    PC::Commitment: ToConstraintField<BaseField>,
-    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
-    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
 {
     #[inline]
     fn alloc_bytes<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
@@ -381,7 +374,8 @@ where
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|vk_bytes| {
-            let circuit_vk: CircuitVerifyingKey<TargetField, PC> = FromBytes::read_le(&vk_bytes.borrow()[..])?;
+            let circuit_vk: CircuitVerifyingKey<TargetField, BaseField, PC> =
+                FromBytes::read_le(&vk_bytes.borrow()[..])?;
 
             CircuitVerifyingKeyVar::<TargetField, BaseField, PC, PCG>::alloc(cs.ns(|| "unprepared_vk"), || {
                 Ok(circuit_vk)
@@ -399,7 +393,8 @@ where
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|vk_bytes| {
-            let circuit_vk: CircuitVerifyingKey<TargetField, PC> = FromBytes::read_le(&vk_bytes.borrow()[..])?;
+            let circuit_vk: CircuitVerifyingKey<TargetField, BaseField, PC> =
+                FromBytes::read_le(&vk_bytes.borrow()[..])?;
 
             CircuitVerifyingKeyVar::<TargetField, BaseField, PC, PCG>::alloc_input(cs.ns(|| "unprepared_vk"), || {
                 Ok(circuit_vk)

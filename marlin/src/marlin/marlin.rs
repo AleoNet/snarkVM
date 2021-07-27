@@ -20,7 +20,7 @@ use crate::{
     marlin::{compute_vk_hash, CircuitProvingKey, CircuitVerifyingKey, MarlinError, MarlinMode, Proof, UniversalSRS},
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_fields::{PrimeField, ToConstraintField};
+use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::nonnative::params::OptimizationType;
 use snarkvm_polycommit::{Evaluations, LabeledCommitment, LabeledPolynomial, PCUniversalParams, PolynomialCommitment};
 use snarkvm_r1cs::{ConstraintSynthesizer, SynthesisError};
@@ -34,7 +34,7 @@ use rand_core::RngCore;
 pub struct MarlinSNARK<
     TargetField: PrimeField,
     BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
 >(
@@ -48,13 +48,10 @@ pub struct MarlinSNARK<
 impl<
     TargetField: PrimeField,
     BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
 > MarlinSNARK<TargetField, BaseField, PC, FS, MM>
-where
-    PC::VerifierKey: ToConstraintField<BaseField>,
-    PC::Commitment: ToConstraintField<BaseField>,
 {
     /// The personalization string for this protocol.
     /// Used to personalize the Fiat-Shamir RNG.
@@ -64,7 +61,7 @@ where
     pub fn universal_setup<R: RngCore>(
         max_degree: usize,
         rng: &mut R,
-    ) -> Result<UniversalSRS<TargetField, PC>, MarlinError<PC::Error>> {
+    ) -> Result<UniversalSRS<TargetField, BaseField, PC>, MarlinError<PC::Error>> {
         let setup_time = start_timer!(|| { format!("Marlin::UniversalSetup with max_degree {}", max_degree,) });
 
         let srs = PC::setup(max_degree, rng).map_err(MarlinError::from_pc_err);
@@ -78,8 +75,13 @@ where
     pub fn circuit_specific_setup<C: ConstraintSynthesizer<TargetField>, R: RngCore>(
         c: &C,
         rng: &mut R,
-    ) -> Result<(CircuitProvingKey<TargetField, PC>, CircuitVerifyingKey<TargetField, PC>), MarlinError<PC::Error>>
-    {
+    ) -> Result<
+        (
+            CircuitProvingKey<TargetField, BaseField, PC>,
+            CircuitVerifyingKey<TargetField, BaseField, PC>,
+        ),
+        MarlinError<PC::Error>,
+    > {
         let index_time = start_timer!(|| "Marlin::CircuitSpecificSetup");
 
         let for_recursion = MM::RECURSION;
@@ -151,10 +153,15 @@ where
     /// This is a deterministic algorithm that anyone can rerun.
     #[allow(clippy::type_complexity)]
     pub fn circuit_setup<C: ConstraintSynthesizer<TargetField>>(
-        universal_srs: &UniversalSRS<TargetField, PC>,
+        universal_srs: &UniversalSRS<TargetField, BaseField, PC>,
         circuit: &C,
-    ) -> Result<(CircuitProvingKey<TargetField, PC>, CircuitVerifyingKey<TargetField, PC>), MarlinError<PC::Error>>
-    {
+    ) -> Result<
+        (
+            CircuitProvingKey<TargetField, BaseField, PC>,
+            CircuitVerifyingKey<TargetField, BaseField, PC>,
+        ),
+        MarlinError<PC::Error>,
+    > {
         let index_time = start_timer!(|| "Marlin::CircuitSetup");
 
         let is_recursion = MM::RECURSION;
@@ -233,10 +240,10 @@ where
 
     /// Create a zkSNARK asserting that the constraint system is satisfied.
     pub fn prove<C: ConstraintSynthesizer<TargetField>, R: RngCore>(
-        circuit_proving_key: &CircuitProvingKey<TargetField, PC>,
+        circuit_proving_key: &CircuitProvingKey<TargetField, BaseField, PC>,
         circuit: &C,
         zk_rng: &mut R,
-    ) -> Result<Proof<TargetField, PC>, MarlinError<PC::Error>> {
+    ) -> Result<Proof<TargetField, BaseField, PC>, MarlinError<PC::Error>> {
         let prover_time = start_timer!(|| "Marlin::Prover");
         // TODO: Add check that c is in the correct mode.
 
@@ -499,9 +506,9 @@ where
     /// Verify that a proof for the constraint system defined by `C` asserts that
     /// all constraints are satisfied.
     pub fn verify(
-        circuit_verifying_key: &CircuitVerifyingKey<TargetField, PC>,
+        circuit_verifying_key: &CircuitVerifyingKey<TargetField, BaseField, PC>,
         public_input: &[TargetField],
-        proof: &Proof<TargetField, PC>,
+        proof: &Proof<TargetField, BaseField, PC>,
     ) -> Result<bool, MarlinError<PC::Error>> {
         let verifier_time = start_timer!(|| "Marlin::Verify");
 
@@ -700,9 +707,9 @@ where
     /// Verify that a proof for the constraint system defined by `C` asserts that
     /// all constraints are satisfied using the prepared verifying key.
     pub fn prepared_verify(
-        prepared_vk: &PreparedCircuitVerifyingKey<TargetField, PC>,
+        prepared_vk: &PreparedCircuitVerifyingKey<TargetField, BaseField, PC>,
         public_input: &[TargetField],
-        proof: &Proof<TargetField, PC>,
+        proof: &Proof<TargetField, BaseField, PC>,
     ) -> Result<bool, MarlinError<PC::Error>> {
         Self::verify(&prepared_vk.orig_vk, public_input, proof)
     }

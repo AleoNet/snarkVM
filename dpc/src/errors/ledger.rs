@@ -41,29 +41,17 @@ pub enum LedgerError {
     InvalidCmIndex,
 
     #[error("{}", _0)]
-    MerkleError(MerkleError),
+    MerkleError(#[from] MerkleError),
 
     #[error("{}", _0)]
     Message(String),
 
     #[error("{}", _0)]
-    TransactionError(TransactionError),
+    TransactionError(#[from] TransactionError),
 }
 
 impl From<std::io::Error> for LedgerError {
     fn from(error: std::io::Error) -> Self {
         LedgerError::Crate("std::io", format!("{:?}", error))
-    }
-}
-
-impl From<MerkleError> for LedgerError {
-    fn from(error: MerkleError) -> Self {
-        LedgerError::MerkleError(error)
-    }
-}
-
-impl From<TransactionError> for LedgerError {
-    fn from(error: TransactionError) -> Self {
-        LedgerError::TransactionError(error)
     }
 }

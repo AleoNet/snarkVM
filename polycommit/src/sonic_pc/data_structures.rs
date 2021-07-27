@@ -181,11 +181,7 @@ impl<E: PairingEngine> PCVerifierKey for VerifierKey<E> {
     }
 }
 
-impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E>
-where
-    E::G1Affine: ToConstraintField<E::Fq>,
-    E::G2Affine: ToConstraintField<E::Fq>,
-{
+impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E> {
     fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
         let mut res = Vec::new();
         res.extend_from_slice(&self.g.to_field_elements()?);

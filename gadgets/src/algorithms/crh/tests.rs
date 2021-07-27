@@ -78,7 +78,7 @@ fn primitive_crh_gadget_test<F: PrimeField, H: CRH, CG: CRHGadget<H, F>>(hash_co
     let crh = H::setup("primitive_crh_gadget_test");
     let native_result = crh.hash(&input).unwrap();
 
-    let crh_gadget = CG::alloc(&mut cs.ns(|| "gadget_parameters"), || Ok(crh)).unwrap();
+    let crh_gadget = CG::alloc_constant(&mut cs.ns(|| "gadget_parameters"), || Ok(crh)).unwrap();
     assert_eq!(cs.num_constraints(), 1536);
 
     let output_gadget = crh_gadget
@@ -110,11 +110,12 @@ fn masked_crh_gadget_test<F: PrimeField, H: CRH, CG: MaskedCRHGadget<H, F>>() {
     let mask_parameters = H::setup("masked_crh_gadget_test_1");
     let native_result = crh.hash(&input).unwrap();
 
-    let crh_gadget = CG::alloc(&mut cs.ns(|| "gadget_parameters"), || Ok(crh)).unwrap();
+    let crh_gadget = CG::alloc_constant(&mut cs.ns(|| "gadget_parameters"), || Ok(crh)).unwrap();
     assert_eq!(cs.num_constraints(), 1536);
 
     let mask_parameters_gadget =
-        CG::MaskParametersGadget::alloc(&mut cs.ns(|| "gadget_mask_parameters"), || Ok(mask_parameters)).unwrap();
+        CG::MaskParametersGadget::alloc_constant(&mut cs.ns(|| "gadget_mask_parameters"), || Ok(mask_parameters))
+            .unwrap();
     assert_eq!(cs.num_constraints(), 1536);
 
     let masked_output_gadget = <CG as MaskedCRHGadget<_, _>>::check_evaluation_gadget_masked(

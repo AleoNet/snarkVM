@@ -41,4 +41,4 @@ pub mod verifier_key;
 use crate::PolynomialCommitment;
 
 /// Syntactic sugar for the universal SRS in this context.
-pub type UniversalSRS<F, PC> = <PC as PolynomialCommitment<F>>::UniversalParams;
+pub type UniversalSRS<F, CF, PC> = <PC as PolynomialCommitment<F, CF>>::UniversalParams;

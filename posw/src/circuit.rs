@@ -61,8 +61,8 @@ impl<F: PrimeField, M: MaskedMerkleParameters, HG: MaskedCRHGadget<M::H, F>, CP:
         }
         let mask_bytes = UInt8::alloc_input_vec_le(cs.ns(|| "mask"), &mask)?;
 
-        let crh_parameters = HG::alloc(&mut cs.ns(|| "new_parameters"), || Ok(self.merkle_parameters.crh()))?;
-        let mask_crh_parameters = <HG as MaskedCRHGadget<M::H, F>>::MaskParametersGadget::alloc(
+        let crh_parameters = HG::alloc_constant(&mut cs.ns(|| "new_parameters"), || Ok(self.merkle_parameters.crh()))?;
+        let mask_crh_parameters = <HG as MaskedCRHGadget<M::H, F>>::MaskParametersGadget::alloc_constant(
             &mut cs.ns(|| "new_mask_parameters"),
             || {
                 let crh_parameters = self.merkle_parameters.mask_parameters();

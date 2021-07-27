@@ -26,16 +26,6 @@ pub trait ToBytesGadget<F: Field> {
     fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError>;
 }
 
-impl<F: Field> ToBytesGadget<F> for [UInt8] {
-    fn to_bytes<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        Ok(self.to_vec())
-    }
-
-    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.to_bytes(cs)
-    }
-}
-
 impl<'a, F: Field, T: 'a + ToBytesGadget<F>> ToBytesGadget<F> for &'a T {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         (*self).to_bytes(cs)
@@ -46,22 +36,56 @@ impl<'a, F: Field, T: 'a + ToBytesGadget<F>> ToBytesGadget<F> for &'a T {
     }
 }
 
-impl<'a, F: Field> ToBytesGadget<F> for &'a [UInt8] {
-    fn to_bytes<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        Ok(self.to_vec())
+impl<'a, F: Field, T: 'a + ToBytesGadget<F>> ToBytesGadget<F> for &'a [T] {
+    fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut vec = vec![];
+        for (i, elem) in self.iter().enumerate() {
+            vec.append(&mut elem.to_bytes(cs.ns(|| format!("to_bytes_{}", i)))?);
+        }
+        Ok(vec)
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.to_bytes(cs)
+    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut vec = vec![];
+        for (i, elem) in self.iter().enumerate() {
+            vec.append(&mut elem.to_bytes_strict(cs.ns(|| format!("to_bytes_{}", i)))?);
+        }
+        Ok(vec)
     }
 }
 
-impl<F: Field> ToBytesGadget<F> for Vec<UInt8> {
-    fn to_bytes<CS: ConstraintSystem<F>>(&self, _cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        Ok(self.to_vec())
+impl<F: Field, T: ToBytesGadget<F>> ToBytesGadget<F> for [T] {
+    fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut vec = vec![];
+        for (i, elem) in self.iter().enumerate() {
+            vec.append(&mut elem.to_bytes(cs.ns(|| format!("to_bytes_{}", i)))?);
+        }
+        Ok(vec)
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.to_bytes(cs)
+    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut vec = vec![];
+        for (i, elem) in self.iter().enumerate() {
+            vec.append(&mut elem.to_bytes_strict(cs.ns(|| format!("to_bytes_{}", i)))?);
+        }
+        Ok(vec)
+    }
+}
+
+impl<F: Field, T: ToBytesGadget<F>> ToBytesGadget<F> for Vec<T> {
+    fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut vec = vec![];
+        for (i, elem) in self.iter().enumerate() {
+            vec.append(&mut elem.to_bytes(cs.ns(|| format!("to_bytes_{}", i)))?);
+        }
+        Ok(vec)
+    }
+
+    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        let mut vec = vec![];
+        for (i, elem) in self.iter().enumerate() {
+            vec.append(&mut elem.to_bytes_strict(cs.ns(|| format!("to_bytes_{}", i)))?);
+        }
+        Ok(vec)
     }
 }

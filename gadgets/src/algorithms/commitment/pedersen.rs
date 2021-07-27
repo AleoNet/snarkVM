@@ -33,6 +33,14 @@ use std::{
 pub struct PedersenRandomnessGadget<G: ProjectiveCurve>(pub Vec<UInt8>, PhantomData<G>);
 
 impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for PedersenRandomnessGadget<G> {
+    fn alloc_constant<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<G::ScalarField>, CS: ConstraintSystem<F>>(
+        _cs: CS,
+        value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        let randomness = to_bytes_le![value_gen()?.borrow()].unwrap();
+        Ok(PedersenRandomnessGadget(UInt8::constant_vec(&randomness), PhantomData))
+    }
+
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<G::ScalarField>, CS: ConstraintSystem<F>>(
         cs: CS,
         value_gen: Fn,
@@ -74,7 +82,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
     AllocGadget<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
-    fn alloc<
+    fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
@@ -89,19 +97,26 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
         })
     }
 
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        CS: ConstraintSystem<F>,
+    >(
+        _cs: CS,
+        _value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
-        value_gen: Fn,
+        _value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Self {
-            pedersen: value_gen()?.borrow().clone(),
-            _group_gadget: PhantomData,
-            _field: PhantomData,
-        })
+        unimplemented!()
     }
 }
 

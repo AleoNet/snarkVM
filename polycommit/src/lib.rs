@@ -31,7 +31,7 @@ extern crate derivative;
 extern crate snarkvm_profiler;
 
 pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
-use snarkvm_fields::Field;
+use snarkvm_fields::{Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::{error as error_fn, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 use core::fmt::Debug;
@@ -125,20 +125,20 @@ pub type Evaluations<'a, F> = BTreeMap<(String, F), F>;
 
 /// A proof of satisfaction of linear combinations.
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
-pub struct BatchLCProof<F: Field, PC: PolynomialCommitment<F>> {
+pub struct BatchLCProof<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> {
     /// Evaluation proof.
     pub proof: PC::BatchProof,
     /// Evaluations required to verify the proof.
     pub evaluations: Option<Vec<F>>,
 }
 
-impl<F: Field, PC: PolynomialCommitment<F>> FromBytes for BatchLCProof<F, PC> {
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> FromBytes for BatchLCProof<F, CF, PC> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
         CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error_fn("could not deserialize struct"))
     }
 }
 
-impl<F: Field, PC: PolynomialCommitment<F>> ToBytes for BatchLCProof<F, PC> {
+impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToBytes for BatchLCProof<F, CF, PC> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error_fn("could not serialize struct"))
     }
@@ -148,7 +148,7 @@ impl<F: Field, PC: PolynomialCommitment<F>> ToBytes for BatchLCProof<F, PC> {
 /// a sender to commit to multiple polynomials and later provide a succinct proof
 /// of evaluation for the corresponding commitments at a query set `Q`, while
 /// enforcing per-polynomial degree bounds.
-pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
+pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + Debug {
     /// The universal parameters for the commitment scheme. These are "trimmed"
     /// down to `Self::CommitterKey` and `Self::VerifierKey` by `Self::trim`.
     type UniversalParams: PCUniversalParams + Clone;
@@ -156,11 +156,11 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     /// open the commitment to produce an evaluation proof.
     type CommitterKey: PCCommitterKey + Clone;
     /// The verifier key for the scheme; used to check an evaluation proof.
-    type VerifierKey: PCVerifierKey + Prepare<Self::PreparedVerifierKey> + Clone;
+    type VerifierKey: PCVerifierKey + Prepare<Self::PreparedVerifierKey> + ToConstraintField<CF> + Clone;
     /// The prepared verifier key for the scheme; used to check an evaluation proof.
     type PreparedVerifierKey: Clone;
     /// The commitment to a polynomial.
-    type Commitment: PCCommitment + Prepare<Self::PreparedCommitment> + Clone;
+    type Commitment: PCCommitment + Prepare<Self::PreparedCommitment> + ToConstraintField<CF> + Clone;
     /// The prepared commitment to a polynomial.
     type PreparedCommitment: Clone;
     /// The commitment randomness.
@@ -376,7 +376,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
         opening_challenge: F,
         rands: impl IntoIterator<Item = &'a Self::Randomness>,
         rng: Option<&mut dyn RngCore>,
-    ) -> Result<BatchLCProof<F, Self>, Self::Error>
+    ) -> Result<BatchLCProof<F, CF, Self>, Self::Error>
     where
         Self::Randomness: 'a,
         Self::Commitment: 'a,
@@ -409,7 +409,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
         eqn_query_set: &QuerySet<F>,
         eqn_evaluations: &Evaluations<F>,
-        proof: &BatchLCProof<F, Self>,
+        proof: &BatchLCProof<F, CF, Self>,
         opening_challenge: F,
         rng: &mut R,
     ) -> Result<bool, Self::Error>
@@ -486,7 +486,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
         query_set: &QuerySet<F>,
         opening_challenges: &dyn Fn(u64) -> F,
         rands: impl IntoIterator<Item = &'a Self::Randomness>,
-    ) -> Result<BatchLCProof<F, Self>, Self::Error>
+    ) -> Result<BatchLCProof<F, CF, Self>, Self::Error>
     where
         Self::Randomness: 'a,
         Self::Commitment: 'a;
@@ -498,7 +498,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Self::Commitment>>,
         eqn_query_set: &QuerySet<F>,
         eqn_evaluations: &Evaluations<F>,
-        proof: &BatchLCProof<F, Self>,
+        proof: &BatchLCProof<F, CF, Self>,
         opening_challenges: &dyn Fn(u64) -> F,
         rng: &mut R,
     ) -> Result<bool, Self::Error>
@@ -544,7 +544,6 @@ fn lc_query_set_to_poly_query_set<'a, F: 'a + Field>(
 pub mod tests {
     use crate::*;
     use rand::{distributions::Distribution, Rng};
-    use snarkvm_fields::Field;
     use snarkvm_utilities::rand::test_rng;
 
     #[derive(Default)]
@@ -558,21 +557,22 @@ pub mod tests {
         num_equations: Option<usize>,
     }
 
-    pub struct TestComponents<F: Field, PC: PolynomialCommitment<F>> {
+    pub struct TestComponents<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> {
         pub verification_key: PC::VerifierKey,
         pub commitments: Vec<LabeledCommitment<PC::Commitment>>,
         pub query_set: QuerySet<'static, F>,
         pub evaluations: Evaluations<'static, F>,
-        pub batch_lc_proof: Option<BatchLCProof<F, PC>>,
+        pub batch_lc_proof: Option<BatchLCProof<F, CF, PC>>,
         pub batch_proof: Option<PC::BatchProof>,
         pub opening_challenge: F,
         pub randomness: Vec<PC::Randomness>,
     }
 
-    pub fn bad_degree_bound_test<F, PC>() -> Result<(), PC::Error>
+    pub fn bad_degree_bound_test<F, CF, PC>() -> Result<(), PC::Error>
     where
-        F: Field,
-        PC: PolynomialCommitment<F>,
+        F: PrimeField,
+        CF: PrimeField,
+        PC: PolynomialCommitment<F, CF>,
     {
         let rng = &mut test_rng();
         let max_degree = 100;
@@ -630,10 +630,11 @@ pub mod tests {
         Ok(())
     }
 
-    fn test_template<F, PC>(info: TestInfo) -> Result<Vec<TestComponents<F, PC>>, PC::Error>
+    fn test_template<F, CF, PC>(info: TestInfo) -> Result<Vec<TestComponents<F, CF, PC>>, PC::Error>
     where
-        F: Field,
-        PC: PolynomialCommitment<F>,
+        F: PrimeField,
+        CF: PrimeField,
+        PC: PolynomialCommitment<F, CF>,
     {
         let TestInfo {
             num_iters,
@@ -751,10 +752,11 @@ pub mod tests {
         Ok(test_components)
     }
 
-    fn equation_test_template<F, PC>(info: TestInfo) -> Result<Vec<TestComponents<F, PC>>, PC::Error>
+    fn equation_test_template<F, CF, PC>(info: TestInfo) -> Result<Vec<TestComponents<F, CF, PC>>, PC::Error>
     where
-        F: Field,
-        PC: PolynomialCommitment<F>,
+        F: PrimeField,
+        CF: PrimeField,
+        PC: PolynomialCommitment<F, CF>,
     {
         let TestInfo {
             num_iters,
@@ -920,10 +922,11 @@ pub mod tests {
         Ok(test_components)
     }
 
-    pub fn single_poly_test<F, PC>() -> Result<Vec<TestComponents<F, PC>>, PC::Error>
+    pub fn single_poly_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PC::Error>
     where
-        F: Field,
-        PC: PolynomialCommitment<F>,
+        F: PrimeField,
+        CF: PrimeField,
+        PC: PolynomialCommitment<F, CF>,
     {
         let info = TestInfo {
             num_iters: 100,
@@ -934,13 +937,14 @@ pub mod tests {
             max_num_queries: 1,
             ..Default::default()
         };
-        test_template::<F, PC>(info)
+        test_template::<F, CF, PC>(info)
     }
 
-    pub fn linear_poly_degree_bound_test<F, PC>() -> Result<Vec<TestComponents<F, PC>>, PC::Error>
+    pub fn linear_poly_degree_bound_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PC::Error>
     where
-        F: Field,
-        PC: PolynomialCommitment<F>,
+        F: PrimeField,
+        CF: PrimeField,
+        PC: PolynomialCommitment<F, CF>,
     {
         let info = TestInfo {
             num_iters: 100,
@@ -951,13 +955,14 @@ pub mod tests {
             max_num_queries: 1,
             ..Default::default()
         };
-        test_template::<F, PC>(info)
+        test_template::<F, CF, PC>(info)
     }
 
-    pub fn single_poly_degree_bound_test<F, PC>() -> Result<Vec<TestComponents<F, PC>>, PC::Error>
+    pub fn single_poly_degree_bound_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PC::Error>
     where
-        F: Field,
-        PC: PolynomialCommitment<F>,
+        F: PrimeField,
+        CF: PrimeField,
+        PC: PolynomialCommitment<F, CF>,
     {
         let info = TestInfo {
             num_iters: 100,
@@ -968,13 +973,15 @@ pub mod tests {
             max_num_queries: 1,
             ..Default::default()
         };
-        test_template::<F, PC>(info)
+        test_template::<F, CF, PC>(info)
     }
 
-    pub fn quadratic_poly_degree_bound_multiple_queries_test<F, PC>() -> Result<Vec<TestComponents<F, PC>>, PC::Error>
+    pub fn quadratic_poly_degree_bound_multiple_queries_test<F, CF, PC>()
+    -> Result<Vec<TestComponents<F, CF, PC>>, PC::Error>
     where
-        F: Field,
-        PC: PolynomialCommitment<F>,
+        F: PrimeField,
+        CF: PrimeField,
+        PC: PolynomialCommitment<F, CF>,
     {
         let info = TestInfo {
             num_iters: 100,
@@ -985,13 +992,15 @@ pub mod tests {
             max_num_queries: 2,
             ..Default::default()
         };
-        test_template::<F, PC>(info)
+        test_template::<F, CF, PC>(info)
     }
 
-    pub fn single_poly_degree_bound_multiple_queries_test<F, PC>() -> Result<Vec<TestComponents<F, PC>>, PC::Error>
+    pub fn single_poly_degree_bound_multiple_queries_test<F, CF, PC>()
+    -> Result<Vec<TestComponents<F, CF, PC>>, PC::Error>
     where
-        F: Field,
-        PC: PolynomialCommitment<F>,
+        F: PrimeField,
+        CF: PrimeField,
+        PC: PolynomialCommitment<F, CF>,
     {
         let info = TestInfo {
             num_iters: 100,
@@ -1002,13 +1011,14 @@ pub mod tests {
             max_num_queries: 2,
             ..Default::default()
         };
-        test_template::<F, PC>(info)
+        test_template::<F, CF, PC>(info)
     }
 
-    pub fn two_polys_degree_bound_single_query_test<F, PC>() -> Result<Vec<TestComponents<F, PC>>, PC::Error>
+    pub fn two_polys_degree_bound_single_query_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PC::Error>
     where
-        F: Field,
-        PC: PolynomialCommitment<F>,
+        F: PrimeField,
+        CF: PrimeField,
+        PC: PolynomialCommitment<F, CF>,
     {
         let info = TestInfo {
             num_iters: 100,
@@ -1019,13 +1029,14 @@ pub mod tests {
             max_num_queries: 1,
             ..Default::default()
         };
-        test_template::<F, PC>(info)
+        test_template::<F, CF, PC>(info)
     }
 
-    pub fn full_end_to_end_test<F, PC>() -> Result<Vec<TestComponents<F, PC>>, PC::Error>
+    pub fn full_end_to_end_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PC::Error>
     where
-        F: Field,
-        PC: PolynomialCommitment<F>,
+        F: PrimeField,
+        CF: PrimeField,
+        PC: PolynomialCommitment<F, CF>,
     {
         let info = TestInfo {
             num_iters: 100,
@@ -1036,13 +1047,14 @@ pub mod tests {
             max_num_queries: 5,
             ..Default::default()
         };
-        test_template::<F, PC>(info)
+        test_template::<F, CF, PC>(info)
     }
 
-    pub fn full_end_to_end_equation_test<F, PC>() -> Result<Vec<TestComponents<F, PC>>, PC::Error>
+    pub fn full_end_to_end_equation_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PC::Error>
     where
-        F: Field,
-        PC: PolynomialCommitment<F>,
+        F: PrimeField,
+        CF: PrimeField,
+        PC: PolynomialCommitment<F, CF>,
     {
         let info = TestInfo {
             num_iters: 100,
@@ -1053,13 +1065,14 @@ pub mod tests {
             max_num_queries: 5,
             num_equations: Some(10),
         };
-        equation_test_template::<F, PC>(info)
+        equation_test_template::<F, CF, PC>(info)
     }
 
-    pub fn single_equation_test<F, PC>() -> Result<Vec<TestComponents<F, PC>>, PC::Error>
+    pub fn single_equation_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PC::Error>
     where
-        F: Field,
-        PC: PolynomialCommitment<F>,
+        F: PrimeField,
+        CF: PrimeField,
+        PC: PolynomialCommitment<F, CF>,
     {
         let info = TestInfo {
             num_iters: 100,
@@ -1070,13 +1083,14 @@ pub mod tests {
             max_num_queries: 1,
             num_equations: Some(1),
         };
-        equation_test_template::<F, PC>(info)
+        equation_test_template::<F, CF, PC>(info)
     }
 
-    pub fn two_equation_test<F, PC>() -> Result<Vec<TestComponents<F, PC>>, PC::Error>
+    pub fn two_equation_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PC::Error>
     where
-        F: Field,
-        PC: PolynomialCommitment<F>,
+        F: PrimeField,
+        CF: PrimeField,
+        PC: PolynomialCommitment<F, CF>,
     {
         let info = TestInfo {
             num_iters: 100,
@@ -1087,13 +1101,14 @@ pub mod tests {
             max_num_queries: 1,
             num_equations: Some(2),
         };
-        equation_test_template::<F, PC>(info)
+        equation_test_template::<F, CF, PC>(info)
     }
 
-    pub fn two_equation_degree_bound_test<F, PC>() -> Result<Vec<TestComponents<F, PC>>, PC::Error>
+    pub fn two_equation_degree_bound_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PC::Error>
     where
-        F: Field,
-        PC: PolynomialCommitment<F>,
+        F: PrimeField,
+        CF: PrimeField,
+        PC: PolynomialCommitment<F, CF>,
     {
         let info = TestInfo {
             num_iters: 100,
@@ -1104,6 +1119,6 @@ pub mod tests {
             max_num_queries: 1,
             num_equations: Some(2),
         };
-        equation_test_template::<F, PC>(info)
+        equation_test_template::<F, CF, PC>(info)
     }
 }

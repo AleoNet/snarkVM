@@ -37,11 +37,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     bits::Boolean,
     nonnative::{params::OptimizationType, NonNativeFieldVar},
-    traits::{
-        algorithms::SNARKVerifierGadget,
-        eq::EqGadget,
-        fields::{FieldGadget, ToConstraintFieldGadget},
-    },
+    traits::{algorithms::SNARKVerifierGadget, eq::EqGadget, fields::FieldGadget},
     PrepareGadget,
 };
 use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
@@ -51,7 +47,7 @@ use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
 pub struct MarlinVerificationGadget<
     TargetField: PrimeField,
     BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 >(
     PhantomData<TargetField>,
@@ -72,12 +68,8 @@ impl<TargetField, BaseField, PC, PCG, FS, MM, V> SNARKVerifierGadget<MarlinSNARK
 where
     TargetField: PrimeField,
     BaseField: PrimeField + PoseidonDefaultParametersField,
-    PC: PolynomialCommitment<TargetField>,
-    PC::VerifierKey: ToConstraintField<BaseField>,
-    PC::Commitment: ToConstraintField<BaseField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
-    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
-    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
     V: ToConstraintField<TargetField>,
@@ -123,11 +115,8 @@ impl<TargetField, BaseField, PC, PCG> MarlinVerificationGadget<TargetField, Base
 where
     TargetField: PrimeField,
     BaseField: PrimeField + PoseidonDefaultParametersField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
-    PC::Commitment: ToConstraintField<BaseField>,
-    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
-    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
 {
     /// The encoding of the protocol name for use as seed.
     pub const PROTOCOL_NAME: &'static [u8] = b"MARLIN-2019";

@@ -1893,6 +1893,7 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-utilities",
+ "thiserror",
 ]
 
 [[package]]
