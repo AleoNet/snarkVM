@@ -86,7 +86,12 @@ pub fn decode_from_field<F: PrimeField>(field_elements: &[F]) -> Result<Vec<u8>,
 
     let mut bytes = Vec::with_capacity(bits.len() / 8);
     for chunk in bits.chunks_exact(8) {
-        bytes.push(u8::from_le_bytes(chunk));
+        let mut byte = 0u8;
+        for bit in chunk.iter().rev() {
+            byte <<= 1;
+            byte += *bit as u8;
+        }
+        bytes.push(byte);
     }
 
     Ok(bytes)
