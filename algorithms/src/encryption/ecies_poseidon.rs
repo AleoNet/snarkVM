@@ -28,7 +28,65 @@ use snarkvm_curves::{
     TwistedEdwardsParameters,
 };
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField};
-use snarkvm_utilities::{io::Result as IoResult, ops::Mul, FromBytes, Read, ToBytes, UniformRand, Write};
+use snarkvm_utilities::{
+    io::Result as IoResult,
+    ops::Mul,
+    serialize::*,
+    FromBytes,
+    Read,
+    SerializationError,
+    ToBytes,
+    UniformRand,
+    Write,
+};
+
+#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
+#[derivative(
+    Copy(bound = "TE: TwistedEdwardsParameters"),
+    Clone(bound = "TE: TwistedEdwardsParameters"),
+    PartialEq(bound = "TE: TwistedEdwardsParameters"),
+    Eq(bound = "TE: TwistedEdwardsParameters"),
+    Debug(bound = "TE: TwistedEdwardsParameters"),
+    Hash(bound = "TE: TwistedEdwardsParameters")
+)]
+pub struct ECIESPoseidonPublicKey<TE: TwistedEdwardsParameters>(pub TEAffine<TE>);
+
+impl<TE: TwistedEdwardsParameters> ToBytes for ECIESPoseidonPublicKey<TE> {
+    /// Writes the x-coordinate of the encryption public key.
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        let x_coordinate = self.0.to_x_coordinate();
+        x_coordinate.write_le(&mut writer)
+    }
+}
+
+impl<TE: TwistedEdwardsParameters> FromBytes for ECIESPoseidonPublicKey<TE> {
+    /// Reads the x-coordinate of the encryption public key.
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let x_coordinate = TE::BaseField::read_le(&mut reader)?;
+
+        if let Some(element) = TEAffine::<TE>::from_x_coordinate(x_coordinate, true) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(Self(element));
+            }
+        }
+
+        if let Some(element) = TEAffine::<TE>::from_x_coordinate(x_coordinate, false) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(Self(element));
+            }
+        }
+
+        Err(EncryptionError::Message("Failed to read encryption public key".into()).into())
+    }
+}
+
+impl<TE: TwistedEdwardsParameters> Default for ECIESPoseidonPublicKey<TE> {
+    fn default() -> Self {
+        Self(TEAffine::<TE>::default())
+    }
+}
 
 #[derive(Derivative)]
 #[derivative(
@@ -49,7 +107,7 @@ where
     type EncryptionWitness = ();
     type Parameters = TEAffine<TE>;
     type PrivateKey = TE::ScalarField;
-    type PublicKey = TEAffine<TE>;
+    type PublicKey = ECIESPoseidonPublicKey<TE>;
     type Randomness = TE::ScalarField;
     type Text = TE::BaseField;
 
@@ -66,7 +124,9 @@ where
         &self,
         private_key: &<Self as EncryptionScheme>::PrivateKey,
     ) -> Result<<Self as EncryptionScheme>::PublicKey, EncryptionError> {
-        Ok(self.generator.into_projective().mul(*private_key).into_affine())
+        Ok(ECIESPoseidonPublicKey::<TE> {
+            0: self.generator.into_projective().mul(*private_key).into_affine(),
+        })
     }
 
     fn generate_randomness<R: Rng + CryptoRng>(
@@ -92,7 +152,7 @@ where
         randomness: &Self::Randomness,
         message: &[Self::Text],
     ) -> Result<Vec<Self::Text>, EncryptionError> {
-        let ecdh_value = public_key.into_projective().mul((*randomness).clone()).into_affine();
+        let ecdh_value = public_key.0.into_projective().mul((*randomness).clone()).into_affine();
 
         let params =
             <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap();

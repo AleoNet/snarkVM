@@ -29,7 +29,7 @@ use snarkvm_algorithms::{
     crh::BHPCompressedCRH,
     crypto_hash::PoseidonCryptoHash,
     define_merkle_tree_parameters,
-    encryption::GroupEncryption,
+    encryption::ECIESPoseidonEncryption,
     prelude::*,
     prf::Blake2s,
     signature::Schnorr,
@@ -46,7 +46,7 @@ use snarkvm_gadgets::{
         commitment::{BHPCompressedCommitmentGadget, Blake2sCommitmentGadget},
         crh::BHPCompressedCRHGadget,
         crypto_hash::PoseidonCryptoHashGadget,
-        encryption::GroupEncryptionGadget,
+        encryption::ECIESPoseidonEncryptionGadget,
         prf::Blake2sGadget,
         signature::SchnorrGadget,
         snark::Groth16VerifierGadget,
@@ -105,20 +105,16 @@ impl Parameters for Testnet1Parameters {
     type AccountCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 33, 48>;
     type AccountCommitment = <Self::AccountCommitmentScheme as CommitmentScheme>::Output;
 
-    type AccountEncryptionScheme = GroupEncryption<EdwardsBls12>;
-    type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
+    type AccountEncryptionScheme = ECIESPoseidonEncryption<EdwardsParameters>;
+    type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<EdwardsParameters, Self::InnerScalarField>;
 
     type AccountSignatureScheme = Schnorr<EdwardsBls12>;
     type AccountSignatureGadget = SchnorrGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
 
-    type EncryptedRecordCRH = BHPCompressedCRH<EdwardsBls12, 48, 60>;
-    type EncryptedRecordCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 60>;
+    type EncryptedRecordCRH = PoseidonCryptoHash<Self::InnerScalarField, 4, false>;
+    type EncryptedRecordCRHGadget = PoseidonCryptoHashGadget<Self::InnerScalarField, 4, false>;
     type EncryptedRecordDigest = <Self::EncryptedRecordCRH as CRH>::Output;
-
-    type EncryptionGroup = EdwardsBls12;
-    type EncryptionGroupGadget = EdwardsBls12Gadget;
-    type EncryptionParameters = EdwardsParameters;
 
     type InnerCircuitIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type InnerCircuitIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;

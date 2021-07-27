@@ -67,6 +67,16 @@ impl<F: PrimeField> AllocGadget<[u8; 32], F> for Blake2sRandomnessGadget {
     }
 }
 
+impl<F: PrimeField> ToBytesGadget<F> for Blake2sRandomnessGadget {
+    fn to_bytes<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.0.to_bytes(cs)
+    }
+
+    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.0.to_bytes_strict(cs)
+    }
+}
+
 #[derive(Clone)]
 pub struct Blake2sCommitmentGadget;
 

@@ -16,26 +16,11 @@
 
 use crate::{DPCError, EncodedRecordScheme, Parameters, Payload, Record, RecordScheme};
 use snarkvm_algorithms::{
-    encoding::Elligator2,
     traits::{CommitmentScheme, CRH},
     EncodingError,
 };
-use snarkvm_curves::traits::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{FieldParameters, PrimeField};
-use snarkvm_utilities::{
-    from_bits_le_to_bytes_le,
-    from_bytes_le_to_bits_le,
-    to_bytes_le,
-    BigInteger,
-    FromBits,
-    FromBytes,
-    ToBits,
-    ToBytes,
-};
-
-use itertools::Itertools;
-use snarkvm_utilities::io::Cursor;
-use std::marker::PhantomData;
+use snarkvm_utilities::{io::Cursor, to_bytes_le, FromBits, FromBytes, Read, ToBits, ToBytes};
 
 /// Encode a base field element bytes to a group representation.
 pub fn encode_to_field<F: PrimeField>(x_bytes: &[u8]) -> Result<Vec<F>, DPCError> {
@@ -53,8 +38,8 @@ pub fn encode_to_field<F: PrimeField>(x_bytes: &[u8]) -> Result<Vec<F>, DPCError
     // The last bit indicates the end of the actual data, which is used in decoding to
     // make sure that the length is correct.
 
-    let mut res = Vec::<F>::with_capacity((bits + 1 + capacity - 1) / capacity);
-    for chunk in bits.chunks(capacity).iter() {
+    let mut res = Vec::<F>::with_capacity((bits.len() + capacity - 1) / capacity);
+    for chunk in bits.chunks(capacity) {
         res.push(F::from_repr(F::BigInteger::from_bits_le(chunk)).unwrap());
     }
 
@@ -97,7 +82,7 @@ pub fn decode_from_field<F: PrimeField>(field_elements: &[F]) -> Result<Vec<u8>,
     bits.truncate(last_bit_pos.unwrap());
     // This also removes the additional termination bit.
 
-    if (bits.len() % 8 != 0) {
+    if bits.len() % 8 != 0 {
         return Err(DPCError::EncodingError(EncodingError::Message(
             "The number of bits in the encoded record is not a multiply of 8.".to_string(),
         )));
@@ -109,7 +94,7 @@ pub fn decode_from_field<F: PrimeField>(field_elements: &[F]) -> Result<Vec<u8>,
         let mut byte = 0u8;
         for bit in chunk.iter().rev() {
             byte <<= 1;
-            byte += bit as u8;
+            byte += *bit as u8;
         }
         bytes.push(byte);
     }
@@ -127,7 +112,7 @@ pub struct DecodedRecord<C: Parameters> {
 }
 
 pub struct EncodedRecord<C: Parameters> {
-    pub(super) encoded_elements: Vec<C::InnerScalarField>,
+    pub encoded_elements: Vec<C::InnerScalarField>,
 }
 
 impl<C: Parameters> EncodedRecord<C> {
@@ -195,64 +180,24 @@ impl<C: Parameters> EncodedRecordScheme for EncodedRecord<C> {
         // Commitment randomness
         let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::read_le(&mut cursor)?;
 
+        // Birth program ID and death program ID
         let program_id_length = to_bytes_le!(<C::ProgramIDCRH as CRH>::Output::default())?.len();
+        let birth_program_id = {
+            let mut program_id = vec![0u8; program_id_length];
+            cursor.read_exact(&mut program_id)?;
+            program_id
+        };
+        let death_program_id = {
+            let mut program_id = vec![0u8; program_id_length];
+            cursor.read_exact(&mut program_id)?;
+            program_id
+        };
 
-        // Birth program ID
+        // Value
+        let value = u64::read_le(&mut cursor)?;
 
-        // Deserialize birth and death programs
-
-        let (birth_program_id, birth_program_id_sign_high) = &(self.encoded_elements[2], fq_high_bits[2]);
-        let birth_program_id_bytes = decode_from_group::<Self::Parameters, Self::Group>(
-            birth_program_id.into_affine(),
-            *birth_program_id_sign_high,
-        )?;
-
-        let (death_program_id, death_program_id_sign_high) = &(self.encoded_elements[3], fq_high_bits[3]);
-        let death_program_id_bytes = decode_from_group::<Self::Parameters, Self::Group>(
-            death_program_id.into_affine(),
-            *death_program_id_sign_high,
-        )?;
-
-        let (program_id_remainder, program_id_sign_high) = &(self.encoded_elements[4], fq_high_bits[4]);
-        let program_id_remainder_bytes = decode_from_group::<Self::Parameters, Self::Group>(
-            program_id_remainder.into_affine(),
-            *program_id_sign_high,
-        )?;
-
-        let mut birth_program_id_bits = from_bytes_le_to_bits_le(&birth_program_id_bytes)
-            .take(Self::DATA_ELEMENT_BITSIZE)
-            .collect::<Vec<_>>();
-        let mut death_program_id_bits = from_bytes_le_to_bits_le(&death_program_id_bytes)
-            .take(Self::DATA_ELEMENT_BITSIZE)
-            .collect::<Vec<_>>();
-
-        let mut program_id_remainder_bits = from_bytes_le_to_bits_le(&program_id_remainder_bytes);
-        birth_program_id_bits.extend(program_id_remainder_bits.by_ref().take(remainder_size));
-        death_program_id_bits.extend(program_id_remainder_bits.take(remainder_size));
-
-        let birth_program_id = from_bits_le_to_bytes_le(&birth_program_id_bits);
-        let death_program_id = from_bits_le_to_bytes_le(&death_program_id_bits);
-
-        // Deserialize the value
-
-        let value_start = self.encoded_elements.len();
-        let value_end = value_start + (std::mem::size_of_val(&<Self::Record as RecordScheme>::Value::default()) * 8);
-        let value: <Self::Record as RecordScheme>::Value =
-            FromBytes::read_le(&from_bits_le_to_bytes_le(&final_element_bits[value_start..value_end])[..])?;
-
-        // Deserialize payload
-
-        let mut payload_bits = vec![];
-        for (element, fq_high) in self.encoded_elements[5..self.encoded_elements.len() - 1]
-            .iter()
-            .zip_eq(&fq_high_bits[5..])
-        {
-            let element_bytes = decode_from_group::<Self::Parameters, Self::Group>(element.into_affine(), *fq_high)?;
-            payload_bits.extend(from_bytes_le_to_bits_le(&element_bytes).take(Self::PAYLOAD_ELEMENT_BITSIZE));
-        }
-        payload_bits.extend_from_slice(&final_element_bits[value_end..]);
-
-        let payload = Payload::read_le(&from_bits_le_to_bytes_le(&payload_bits)[..])?;
+        // Payload
+        let payload = Payload::read_le(&mut cursor)?;
 
         Ok(DecodedRecord {
             value,
