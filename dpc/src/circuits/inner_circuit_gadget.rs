@@ -651,7 +651,7 @@ where
         {
             let sn_cs = &mut cs.ns(|| "Check that serial number nonce is computed correctly");
 
-            let current_record_number = UInt8::constant(j as u8);
+            let current_record_number = UInt8::constant((C::NUM_INPUT_RECORDS + j) as u8);
             let mut current_record_number_bytes_le = vec![current_record_number];
             current_record_number_bytes_le.extend_from_slice(&old_serial_numbers_bytes_gadgets);
 
