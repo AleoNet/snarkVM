@@ -42,6 +42,7 @@ impl<T: ConditionalEqGadget<F>, F: Field> ConditionalEqGadget<F> for [T] {
         other: &Self,
         condition: &Boolean,
     ) -> Result<(), SynthesisError> {
+        assert_eq!(self.len(), other.len());
         for (i, (a, b)) in self.iter().zip(other.iter()).enumerate() {
             let mut cs = cs.ns(|| format!("Iteration {}", i));
             a.conditional_enforce_equal(&mut cs, b, condition)?;
@@ -60,6 +61,7 @@ impl<T: ConditionalEqGadget<F>, F: Field> ConditionalEqGadget<F> for Vec<T> {
         other: &Self,
         condition: &Boolean,
     ) -> Result<(), SynthesisError> {
+        assert_eq!(self.len(), other.len());
         for (i, (a, b)) in self.iter().zip(other.iter()).enumerate() {
             let mut cs = cs.ns(|| format!("Iteration {}", i));
             a.conditional_enforce_equal(&mut cs, b, condition)?;

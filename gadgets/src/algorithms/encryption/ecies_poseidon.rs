@@ -29,7 +29,10 @@ use crate::{
     UInt8,
 };
 use itertools::Itertools;
-use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, encryption::ECIESPoseidonEncryption};
+use snarkvm_algorithms::{
+    crypto_hash::PoseidonDefaultParametersField,
+    encryption::{ECIESPoseidonEncryption, ECIESPoseidonPublicKey},
+};
 use snarkvm_curves::{
     templates::twisted_edwards_extended::{Affine as TEAffine, Projective as TEProjective},
     AffineCurve,
@@ -44,7 +47,7 @@ use std::marker::PhantomData;
 
 type TEAffineGadget<TE, F> = crate::curves::templates::twisted_edwards::AffineGadget<TE, F, FpGadget<F>>;
 
-/// Group encryption private key gadget
+/// ECIES encryption private key gadget
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField"),
@@ -114,7 +117,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> ToBytesGadget<F
     }
 }
 
-/// Group encryption randomness gadget
+/// ECIES encryption randomness gadget
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "TE: TwistedEdwardsParameters"),
@@ -175,7 +178,7 @@ where
     }
 }
 
-/// Group encryption blinding exponents gadget
+/// ECIES encryption encryption witness gadget
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "TE: TwistedEdwardsParameters"),
@@ -281,47 +284,47 @@ pub struct ECIESPoseidonEncryptionPublicKeyGadget<TE: TwistedEdwardsParameters<B
     TEAffineGadget<TE, F>,
 );
 
-impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TEAffine<TE>, F>
+impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<ECIESPoseidonPublicKey<TE>, F>
     for ECIESPoseidonEncryptionPublicKeyGadget<TE, F>
 where
     TEAffineGadget<TE, F>: GroupGadget<TEAffine<TE>, F>,
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<TEAffine<TE>>,
+        T: Borrow<ECIESPoseidonPublicKey<TE>>,
         CS: ConstraintSystem<TE::BaseField>,
     >(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         Ok(Self {
-            0: TEAffineGadget::<TE, F>::alloc_constant(cs, value_gen)?,
+            0: TEAffineGadget::<TE, F>::alloc_constant(cs, || Ok(value_gen()?.borrow().0.clone()))?,
         })
     }
 
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<TEAffine<TE>>,
+        T: Borrow<ECIESPoseidonPublicKey<TE>>,
         CS: ConstraintSystem<TE::BaseField>,
     >(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         Ok(Self {
-            0: TEAffineGadget::<TE, F>::alloc(cs, value_gen)?,
+            0: TEAffineGadget::<TE, F>::alloc(cs, || Ok(value_gen()?.borrow().0.clone()))?,
         })
     }
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<TEAffine<TE>>,
+        T: Borrow<ECIESPoseidonPublicKey<TE>>,
         CS: ConstraintSystem<TE::BaseField>,
     >(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         Ok(Self {
-            0: TEAffineGadget::<TE, F>::alloc_input(cs, value_gen)?,
+            0: TEAffineGadget::<TE, F>::alloc_input(cs, || Ok(value_gen()?.borrow().0.clone()))?,
         })
     }
 }
@@ -347,11 +350,11 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> ToBytesGadget<F
     for ECIESPoseidonEncryptionPublicKeyGadget<TE, F>
 {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.0.to_bytes(cs)
+        self.0.x.to_bytes(cs)
     }
 
     fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        self.0.to_bytes_strict(cs)
+        self.0.x.to_bytes_strict(cs)
     }
 }
 
@@ -427,6 +430,18 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         for (i, elem) in input.iter().enumerate() {
             results[i].add_in_place(cs.ns(|| format!("encryption_{}", i)), elem)?;
         }
+
+        let generator_gadget = TEAffineGadget::<TE, F>::alloc_constant(cs.ns(|| "alloc generator"), || {
+            Ok(self.encryption.generator.clone())
+        })?;
+        let randomness_elem = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::mul_bits(
+            &generator_gadget,
+            cs.ns(|| "compute the randomness element"),
+            &zero,
+            randomness_bits.iter().copied(),
+        )?;
+
+        results.push(randomness_elem.x);
 
         Ok(results)
     }
