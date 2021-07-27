@@ -66,7 +66,7 @@ pub fn decode_from_field<F: PrimeField>(field_elements: &[F]) -> Result<Vec<u8>,
     // Find the last bit of `true`, which should be within the last `CAPACITY` bits.
     // If it does not exist, this is a `DPCError::EncodingError`.
     let mut last_bit_pos = None;
-    for i in ((bits.len() - capacity)..(bits.len())).rev() {
+    for i in (0..bits.len()).rev().take(capacity) {
         if bits[i] == true {
             last_bit_pos = Some(i);
             break;
