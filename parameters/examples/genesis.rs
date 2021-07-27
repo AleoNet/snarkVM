@@ -143,23 +143,20 @@ pub fn generate(recipient: &Address<Testnet1Parameters>, value: u64) -> Result<(
     let mut transactions = Transactions::new();
     transactions.push(transaction);
 
+    // Construct the root hashes from the txids.
     let txids = transactions.to_transaction_ids()?;
-
     let (merkle_root_hash, pedersen_merkle_root_hash, subroots) = txids_to_roots(&txids);
 
-    // Mine the block.
+    // Construct the initial block attributes.
     let time = 0; // Utc::now().timestamp();
     let initial_difficulty_target = 0x07FF_FFFF_FFFF_FFFF_u64;
     let max_nonce = u32::MAX;
 
-    let posw = PoswMarlin::load().expect("could not instantiate the miner");
+    // Mine the block.
+    let posw = PoswMarlin::load().expect("could not instantiate the posw miner");
     let (nonce, proof) = posw
         .mine(&subroots, difficulty_target, &mut thread_rng(), max_nonce)
         .unwrap();
-
-    // Establish the merkle root hash of the transactions.
-    let mut merkle_root_bytes = [0u8; 32];
-    merkle_root_bytes[..].copy_from_slice(&merkle_root(&transactions.to_transaction_ids()?));
 
     // Create a genesis header.
     let genesis_header = BlockHeader {
