@@ -69,8 +69,7 @@ pub fn decode_from_field<F: PrimeField>(field_elements: &[F]) -> Result<Vec<u8>,
 
     // Drop all the ending zeros and the last "1" bit.
     //
-    // Note that there must be at least one "1" bit because the last element is not zero,
-    // then this is a `DPCError::EncodingError`.
+    // Note that there must be at least one "1" bit because the last element is not zero.
     loop {
         if let Some(true) = bits.pop() {
             break;
