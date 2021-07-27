@@ -98,12 +98,9 @@ pub struct VerifierThirdMsgVar<TargetField: PrimeField, BaseField: PrimeField> {
 pub struct AHPForR1CS<
     TargetField: PrimeField,
     BaseField: PrimeField + PoseidonDefaultParametersField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
-> where
-    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
-    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
-{
+> {
     field: PhantomData<TargetField>,
     constraint_field: PhantomData<BaseField>,
     polynomial_commitment: PhantomData<PC>,
@@ -113,12 +110,9 @@ pub struct AHPForR1CS<
 impl<
     TargetField: PrimeField,
     BaseField: PrimeField + PoseidonDefaultParametersField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 > AHPForR1CS<TargetField, BaseField, PC, PCG>
-where
-    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
-    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
 {
     /// Returns the first message and next round state.
     #[allow(clippy::type_complexity)]
@@ -1028,9 +1022,9 @@ mod test {
         num_variables: usize,
         num_constraints: usize,
     ) -> (
-        CircuitProvingKey<Fr, MultiPC>,
-        CircuitVerifyingKey<Fr, MultiPC>,
-        Proof<Fr, MultiPC>,
+        CircuitProvingKey<Fr, Fq, MultiPC>,
+        CircuitVerifyingKey<Fr, Fq, MultiPC>,
+        Proof<Fr, Fq, MultiPC>,
         Vec<Fr>,
     ) {
         let rng = &mut test_rng();

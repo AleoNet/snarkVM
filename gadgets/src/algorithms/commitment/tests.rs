@@ -64,7 +64,8 @@ fn native_and_gadget_equivalence_test<Native: CommitmentScheme, Gadget: Commitme
             Ok(&randomness)
         })
         .unwrap();
-    let commitment_gadget = Gadget::alloc(&mut cs.ns(|| "parameters_gadget"), || Ok(&commitment_scheme)).unwrap();
+    let commitment_gadget =
+        Gadget::alloc_constant(&mut cs.ns(|| "parameters_gadget"), || Ok(&commitment_scheme)).unwrap();
     let gadget_output = commitment_gadget
         .check_commitment_gadget(&mut cs.ns(|| "commitment_gadget"), &input_bytes, &randomness_gadget)
         .unwrap();
@@ -150,7 +151,7 @@ fn blake2s_commitment_gadget_test() {
     let randomness_bytes = Blake2sRandomnessGadget(randomness_bytes);
 
     let blake2s_gadget =
-        Blake2sCommitmentGadget::alloc(&mut cs.ns(|| "gadget_parameters"), || Ok(&commitment)).unwrap();
+        Blake2sCommitmentGadget::alloc_constant(&mut cs.ns(|| "gadget_parameters"), || Ok(&commitment)).unwrap();
     let gadget_result = blake2s_gadget
         .check_commitment_gadget(&mut cs.ns(|| "gadget_evaluation"), &input_bytes, &randomness_bytes)
         .unwrap();

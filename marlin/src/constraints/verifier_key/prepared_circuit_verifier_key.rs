@@ -19,10 +19,7 @@ use std::marker::PhantomData;
 
 use snarkvm_algorithms::Prepare;
 use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_gadgets::{
-    fields::FpGadget,
-    traits::{alloc::AllocGadget, fields::ToConstraintFieldGadget},
-};
+use snarkvm_gadgets::{fields::FpGadget, traits::alloc::AllocGadget};
 use snarkvm_polycommit::PCCheckVar;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use snarkvm_utilities::{to_bytes_le, ToBytes};
@@ -40,7 +37,7 @@ use snarkvm_algorithms::crypto_hash::PoseidonDefaultParametersField;
 pub struct PreparedCircuitVerifyingKeyVar<
     TargetField: PrimeField,
     BaseField: PrimeField + PoseidonDefaultParametersField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
     R: FiatShamirRngVar<TargetField, BaseField, PR>,
@@ -66,7 +63,7 @@ pub struct PreparedCircuitVerifyingKeyVar<
 impl<
     TargetField: PrimeField,
     BaseField: PrimeField + PoseidonDefaultParametersField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
     R: FiatShamirRngVar<TargetField, BaseField, PR>,
@@ -86,25 +83,22 @@ impl<
     }
 }
 
-impl<TargetField, BaseField, PC, PCG, PR, R> AllocGadget<PreparedCircuitVerifyingKey<TargetField, PC>, BaseField>
+impl<TargetField, BaseField, PC, PCG, PR, R>
+    AllocGadget<PreparedCircuitVerifyingKey<TargetField, BaseField, PC>, BaseField>
     for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
     TargetField: PrimeField,
     BaseField: PrimeField + PoseidonDefaultParametersField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
     R: FiatShamirRngVar<TargetField, BaseField, PR>,
-    PC::VerifierKey: ToConstraintField<BaseField>,
-    PC::Commitment: ToConstraintField<BaseField>,
-    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
-    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
 {
     #[inline]
     fn alloc_constant<FN, T, CS: ConstraintSystem<BaseField>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PreparedCircuitVerifyingKey<TargetField, PC>>,
+        T: Borrow<PreparedCircuitVerifyingKey<TargetField, BaseField, PC>>,
     {
         let tmp = value_gen()?;
         let obj = tmp.borrow();
@@ -170,7 +164,7 @@ where
     fn alloc<FN, T, CS: ConstraintSystem<BaseField>>(_cs: CS, _value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PreparedCircuitVerifyingKey<TargetField, PC>>,
+        T: Borrow<PreparedCircuitVerifyingKey<TargetField, BaseField, PC>>,
     {
         unimplemented!();
         // the overhead is not worthwhile
@@ -180,32 +174,28 @@ where
     fn alloc_input<FN, T, CS: ConstraintSystem<BaseField>>(_cs: CS, _value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PreparedCircuitVerifyingKey<TargetField, PC>>,
+        T: Borrow<PreparedCircuitVerifyingKey<TargetField, BaseField, PC>>,
     {
         unimplemented!();
         // the overhead is not worthwhile
     }
 }
 
-impl<TargetField, BaseField, PC, PCG, PR, R> AllocGadget<CircuitVerifyingKey<TargetField, PC>, BaseField>
+impl<TargetField, BaseField, PC, PCG, PR, R> AllocGadget<CircuitVerifyingKey<TargetField, BaseField, PC>, BaseField>
     for PreparedCircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG, PR, R>
 where
     TargetField: PrimeField,
     BaseField: PrimeField + PoseidonDefaultParametersField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PR: FiatShamirRng<TargetField, BaseField>,
     R: FiatShamirRngVar<TargetField, BaseField, PR>,
-    PC::VerifierKey: ToConstraintField<BaseField>,
-    PC::Commitment: ToConstraintField<BaseField>,
-    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
-    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
 {
     #[inline]
     fn alloc_constant<FN, T, CS: ConstraintSystem<BaseField>>(cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<CircuitVerifyingKey<TargetField, PC>>,
+        T: Borrow<CircuitVerifyingKey<TargetField, BaseField, PC>>,
     {
         let tmp = value_gen()?;
         let vk = tmp.borrow();
@@ -219,7 +209,7 @@ where
     fn alloc<FN, T, CS: ConstraintSystem<BaseField>>(cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<CircuitVerifyingKey<TargetField, PC>>,
+        T: Borrow<CircuitVerifyingKey<TargetField, BaseField, PC>>,
     {
         let tmp = value_gen()?;
         let vk = tmp.borrow();
@@ -232,7 +222,7 @@ where
     fn alloc_input<FN, T, CS: ConstraintSystem<BaseField>>(cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<CircuitVerifyingKey<TargetField, PC>>,
+        T: Borrow<CircuitVerifyingKey<TargetField, BaseField, PC>>,
     {
         let tmp = value_gen()?;
         let vk = tmp.borrow();

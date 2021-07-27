@@ -17,7 +17,7 @@
 use crate::{AleoAmount, Parameters};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH},
+    traits::{CommitmentScheme, SignatureScheme},
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
@@ -50,28 +50,10 @@ pub struct InnerCircuitVerifierInput<C: Parameters> {
 impl<C: Parameters> ToConstraintField<C::InnerScalarField> for InnerCircuitVerifierInput<C>
 where
     <C::AccountCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <<C::RecordCommitmentTreeParameters as MerkleParameters>::H as CRH>::Parameters:
-        ToConstraintField<C::InnerScalarField>,
     MerkleTreeDigest<C::RecordCommitmentTreeParameters>: ToConstraintField<C::InnerScalarField>,
 {
     fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
-        v.extend_from_slice(&C::account_commitment_scheme().to_field_elements()?);
-        v.extend_from_slice(&C::account_encryption_scheme().to_field_elements()?);
-        v.extend_from_slice(&C::account_signature_scheme().to_field_elements()?);
-        v.extend_from_slice(&C::record_commitment_scheme().to_field_elements()?);
-        v.extend_from_slice(&C::encrypted_record_crh().to_field_elements()?);
-        v.extend_from_slice(&C::program_commitment_scheme().to_field_elements()?);
-        v.extend_from_slice(&C::local_data_crh().to_field_elements()?);
-        v.extend_from_slice(&C::local_data_commitment_scheme().to_field_elements()?);
-        v.extend_from_slice(&C::serial_number_nonce_crh().to_field_elements()?);
-        v.extend_from_slice(
-            &C::record_commitment_tree_parameters()
-                .crh()
-                .parameters()
-                .to_field_elements()?,
-        );
-
         v.extend_from_slice(&self.ledger_digest.to_field_elements()?);
 
         for sn in &self.old_serial_numbers {

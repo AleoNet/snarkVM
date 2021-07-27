@@ -16,15 +16,17 @@
 
 use crate::{
     record::{encoded::*, encrypted::*},
-    testnet2::{parameters::*, NoopProgram},
+    testnet2::parameters::*,
     Account,
     AccountScheme,
     EncodedRecordScheme,
+    NoopProgram,
     Parameters,
     Payload,
     ProgramScheme,
     Record,
     ViewKey,
+    PAYLOAD_SIZE,
 };
 use snarkvm_algorithms::traits::CRH;
 use snarkvm_curves::edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls};
@@ -46,7 +48,8 @@ fn test_record_serialization() {
 
             let sn_nonce_input: [u8; 32] = rng.gen();
             let value = rng.gen();
-            let payload: [u8; 32] = rng.gen();
+            let mut payload = [0u8; PAYLOAD_SIZE];
+            rng.fill(&mut payload);
 
             let given_record = Record::new(
                 dummy_account.address,
@@ -90,7 +93,8 @@ fn test_record_encryption() {
 
             let sn_nonce_input: [u8; 32] = rng.gen();
             let value = rng.gen();
-            let payload: [u8; 32] = rng.gen();
+            let mut payload = [0u8; PAYLOAD_SIZE];
+            rng.fill(&mut payload);
 
             let given_record = Record::new(
                 dummy_account.address,

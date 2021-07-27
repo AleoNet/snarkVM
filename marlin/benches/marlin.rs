@@ -39,6 +39,8 @@ use snarkvm_utilities::UniformRand;
 
 use criterion::Criterion;
 use rand::{self, thread_rng};
+use rand_chacha::ChaChaRng;
+use snarkvm_algorithms::SRS;
 use std::ops::MulAssign;
 
 // TODO (raychu86): Unify the Marlin instances. Currently too convoluted.
@@ -119,6 +121,9 @@ fn snark_circuit_setup(c: &mut Criterion) {
     let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(100000, 100000, 100000).unwrap();
     let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
+    // `ChaChaRng` is a placeholder for SRS.
+    let mut srs = SRS::<ChaChaRng, _>::Universal(universal_srs);
+
     c.bench_function("snark_circuit_setup", move |b| {
         b.iter(|| {
             let circuit = Benchmark::<Fr> {
@@ -128,7 +133,7 @@ fn snark_circuit_setup(c: &mut Criterion) {
                 num_variables,
             };
 
-            Marlin::index(&circuit, &universal_srs).unwrap()
+            Marlin::setup(&circuit, &mut srs).unwrap()
         })
     });
 }
@@ -144,6 +149,9 @@ fn snark_prove(c: &mut Criterion) {
     let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(1000, 1000, 1000).unwrap();
     let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
+    // `ChaChaRng` is a placeholder for SRS.
+    let mut srs = SRS::<ChaChaRng, _>::Universal(universal_srs);
+
     let circuit = Benchmark::<Fr> {
         a: Some(x),
         b: Some(y),
@@ -151,7 +159,7 @@ fn snark_prove(c: &mut Criterion) {
         num_variables,
     };
 
-    let params = Marlin::index(&circuit, &universal_srs).unwrap();
+    let params = Marlin::setup(&circuit, &mut srs).unwrap();
 
     c.bench_function("snark_prove", move |b| {
         b.iter(|| {

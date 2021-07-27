@@ -41,7 +41,6 @@ pub struct TransactionKernel<C: Parameters> {
 
     // New record stuff
     pub new_records: Vec<Record<C>>,
-    pub new_sn_nonce_randomness: Vec<[u8; 32]>,
     pub new_commitments: Vec<C::RecordCommitment>,
 
     pub new_records_encryption_randomness: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
@@ -96,10 +95,6 @@ impl<C: Parameters> ToBytes for TransactionKernel<C> {
 
         for new_record in &self.new_records {
             new_record.write_le(&mut writer)?;
-        }
-
-        for new_sn_nonce_randomness in &self.new_sn_nonce_randomness {
-            new_sn_nonce_randomness.write_le(&mut writer)?;
         }
 
         for new_commitment in &self.new_commitments {
@@ -167,12 +162,6 @@ impl<C: Parameters> FromBytes for TransactionKernel<C> {
             new_records.push(new_record);
         }
 
-        let mut new_sn_nonce_randomness = vec![];
-        for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let randomness: [u8; 32] = FromBytes::read_le(&mut reader)?;
-            new_sn_nonce_randomness.push(randomness);
-        }
-
         let mut new_commitments = vec![];
         for _ in 0..C::NUM_OUTPUT_RECORDS {
             let new_commitment: C::RecordCommitment = FromBytes::read_le(&mut reader)?;
@@ -233,7 +222,6 @@ impl<C: Parameters> FromBytes for TransactionKernel<C> {
             old_serial_numbers,
 
             new_records,
-            new_sn_nonce_randomness,
             new_commitments,
 
             new_records_encryption_randomness,

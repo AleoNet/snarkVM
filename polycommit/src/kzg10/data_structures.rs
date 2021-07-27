@@ -101,11 +101,7 @@ pub struct VerifierKey<E: PairingEngine> {
 }
 impl_bytes!(VerifierKey);
 
-impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E>
-where
-    E::G1Affine: ToConstraintField<E::Fq>,
-    E::G2Affine: ToConstraintField<E::Fq>,
-{
+impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E> {
     fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
         let mut res = Vec::new();
 
@@ -204,10 +200,7 @@ impl<'a, E: PairingEngine> AddAssign<(E::Fr, &'a Commitment<E>)> for Commitment<
     }
 }
 
-impl<E: PairingEngine> ToConstraintField<E::Fq> for Commitment<E>
-where
-    E::G1Affine: ToConstraintField<E::Fq>,
-{
+impl<E: PairingEngine> ToConstraintField<E::Fq> for Commitment<E> {
     fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
         self.0.to_field_elements()
     }

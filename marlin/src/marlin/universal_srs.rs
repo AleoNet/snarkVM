@@ -17,4 +17,4 @@
 use snarkvm_polycommit::PolynomialCommitment;
 
 /// The universal public parameters for the argument system.
-pub type UniversalSRS<F, PC> = <PC as PolynomialCommitment<F>>::UniversalParams;
+pub type UniversalSRS<F, CF, PC> = <PC as PolynomialCommitment<F, CF>>::UniversalParams;

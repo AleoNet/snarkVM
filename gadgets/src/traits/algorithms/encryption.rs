@@ -40,7 +40,7 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: Field>: AllocGadget<E, F> + C
     type CiphertextGadget: AllocGadget<Vec<E::Text>, F> + ToBytesGadget<F> + EqGadget<F> + Clone + Sized + Debug;
     type PlaintextGadget: AllocGadget<Vec<E::Text>, F> + EqGadget<F> + Clone + Sized + Debug;
     type RandomnessGadget: AllocGadget<E::Randomness, F> + Clone + Sized + Debug;
-    type BlindingExponentGadget: AllocGadget<Vec<E::BlindingExponent>, F> + Clone + Sized + Debug;
+    type EncryptionWitnessGadget: AllocGadget<Vec<E::EncryptionWitness>, F> + Clone + Sized + Debug;
 
     fn check_public_key_gadget<CS: ConstraintSystem<F>>(
         &self,
@@ -54,6 +54,6 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: Field>: AllocGadget<E, F> + C
         randomness: &Self::RandomnessGadget,
         public_key: &Self::PublicKeyGadget,
         input: &Self::PlaintextGadget,
-        blinding_exponents: &Self::BlindingExponentGadget,
+        encryption_witness: &Self::EncryptionWitnessGadget,
     ) -> Result<Self::CiphertextGadget, SynthesisError>;
 }

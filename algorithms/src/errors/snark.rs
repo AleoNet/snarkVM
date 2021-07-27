@@ -23,22 +23,19 @@ pub enum SNARKError {
     AnyhowError(#[from] anyhow::Error),
 
     #[error("{}", _0)]
-    ConstraintFieldError(ConstraintFieldError),
+    ConstraintFieldError(#[from] ConstraintFieldError),
 
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
+
+    #[error("Expected a circuit-specific SRS in SNARK")]
+    ExpectedCircuitSpecificSRS,
 
     #[error("{}", _0)]
     Message(String),
 
     #[error("{}", _0)]
     SynthesisError(SynthesisError),
-}
-
-impl From<ConstraintFieldError> for SNARKError {
-    fn from(error: ConstraintFieldError) -> Self {
-        SNARKError::ConstraintFieldError(error)
-    }
 }
 
 impl From<SynthesisError> for SNARKError {

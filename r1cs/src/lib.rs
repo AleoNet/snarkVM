@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#[macro_use]
+extern crate thiserror;
+
 mod assignment;
 pub use assignment::*;
 
@@ -39,13 +42,10 @@ mod optional_vec;
 pub use optional_vec::*;
 
 mod test_constraint_system;
-pub use test_constraint_system::TestConstraintSystem;
+pub use test_constraint_system::{Fr, TestConstraintSystem};
 
 mod test_constraint_checker;
 pub use test_constraint_checker::TestConstraintChecker;
-
-mod test_fr;
-pub use test_fr::*;
 
 pub use snarkvm_fields::ToConstraintField;
 

@@ -36,12 +36,8 @@ use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, fft::Evalu
 use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     bits::Boolean,
-    nonnative::{params::OptimizationType, NonNativeFieldVar},
-    traits::{
-        algorithms::SNARKVerifierGadget,
-        eq::EqGadget,
-        fields::{FieldGadget, ToConstraintFieldGadget},
-    },
+    nonnative::{params::OptimizationType, NonNativeFieldInputVar, NonNativeFieldVar},
+    traits::{algorithms::SNARKVerifierGadget, eq::EqGadget, fields::FieldGadget},
     PrepareGadget,
 };
 use snarkvm_polycommit::{PCCheckRandomDataVar, PCCheckVar};
@@ -51,7 +47,7 @@ use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
 pub struct MarlinVerificationGadget<
     TargetField: PrimeField,
     BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
 >(
     PhantomData<TargetField>,
@@ -72,17 +68,13 @@ impl<TargetField, BaseField, PC, PCG, FS, MM, V> SNARKVerifierGadget<MarlinSNARK
 where
     TargetField: PrimeField,
     BaseField: PrimeField + PoseidonDefaultParametersField,
-    PC: PolynomialCommitment<TargetField>,
-    PC::VerifierKey: ToConstraintField<BaseField>,
-    PC::Commitment: ToConstraintField<BaseField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
-    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
-    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
     V: ToConstraintField<TargetField>,
 {
-    type Input = NonNativeFieldVar<TargetField, BaseField>;
+    type InputGadget = NonNativeFieldInputVar<TargetField, BaseField>;
     type PreparedVerificationKeyGadget = PreparedCircuitVerifyingKeyVar<
         TargetField,
         BaseField,
@@ -94,10 +86,10 @@ where
     type ProofGadget = ProofVar<TargetField, BaseField, PC, PCG>;
     type VerificationKeyGadget = CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>;
 
-    fn check_verify<CS: ConstraintSystem<BaseField>, I: Iterator<Item = Self::Input>>(
+    fn check_verify<CS: ConstraintSystem<BaseField>>(
         mut cs: CS,
         verification_key: &Self::VerificationKeyGadget,
-        input: I,
+        input: &Self::InputGadget,
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError> {
         let pvk = verification_key.prepare(cs.ns(|| "prepare vk"))?;
@@ -106,14 +98,13 @@ where
         )
     }
 
-    fn prepared_check_verify<'a, CS: ConstraintSystem<BaseField>, I: Iterator<Item = Self::Input>>(
+    fn prepared_check_verify<'a, CS: ConstraintSystem<BaseField>>(
         mut cs: CS,
         pvk: &Self::PreparedVerificationKeyGadget,
-        input: I,
+        input: &Self::InputGadget,
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError> {
-        let inputs: Vec<_> = input.collect();
-        let result = Self::prepared_verify(cs.ns(|| "prepared_verify"), pvk, &inputs, proof).unwrap();
+        let result = Self::prepared_verify(cs.ns(|| "prepared_verify"), pvk, &input.val, proof).unwrap();
         result.enforce_equal(cs.ns(|| "enforce_verification_correctness"), &Boolean::Constant(true))?;
         Ok(())
     }
@@ -123,11 +114,8 @@ impl<TargetField, BaseField, PC, PCG> MarlinVerificationGadget<TargetField, Base
 where
     TargetField: PrimeField,
     BaseField: PrimeField + PoseidonDefaultParametersField,
-    PC: PolynomialCommitment<TargetField>,
+    PC: PolynomialCommitment<TargetField, BaseField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
-    PC::Commitment: ToConstraintField<BaseField>,
-    PCG::VerifierKeyVar: ToConstraintFieldGadget<BaseField>,
-    PCG::CommitmentVar: ToConstraintFieldGadget<BaseField>,
 {
     /// The encoding of the protocol name for use as seed.
     pub const PROTOCOL_NAME: &'static [u8] = b"MARLIN-2019";

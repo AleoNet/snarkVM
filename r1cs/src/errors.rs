@@ -14,60 +14,40 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::{error::Error, fmt, io};
-
 pub type SynthesisResult<T> = Result<T, SynthesisError>;
 
 /// This is an error that could occur during circuit synthesis contexts,
 /// such as CRS generation, proving or verification.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum SynthesisError {
     /// During synthesis, we lacked knowledge of a variable assignment.
+    #[error("An assignment for a variable could not be computed")]
     AssignmentMissing,
     /// During synthesis, we divided by zero.
+    #[error("Division by zero during synthesis")]
     DivisionByZero,
     /// During synthesis, we constructed an unsatisfiable constraint system.
+    #[error("Unsatisfiable constraint system")]
     Unsatisfiable,
     /// During synthesis, our polynomials ended up being too high of degree
+    #[error("Polynomial degree is too large")]
     PolynomialDegreeTooLarge,
     /// During proof generation, we encountered an identity in the CRS
+    #[error("Encountered an identity element in the CRS")]
     UnexpectedIdentity,
     /// During proof generation, we encountered an I/O error with the CRS
-    IoError(io::Error),
+    #[error("Encountered an I/O error")]
+    IoError(std::io::Error),
     /// During verification, our verifying key was malformed.
+    #[error("Malformed verifying key, public input count was {} but expected {}", _0, _1)]
     MalformedVerifyingKey(usize, usize),
     /// During CRS generation, we observed an unconstrained auxiliary variable
+    #[error("Auxiliary variable was unconstrained")]
     UnconstrainedVariable,
 }
 
-impl From<io::Error> for SynthesisError {
-    fn from(e: io::Error) -> SynthesisError {
+impl From<std::io::Error> for SynthesisError {
+    fn from(e: std::io::Error) -> SynthesisError {
         SynthesisError::IoError(e)
-    }
-}
-
-impl Error for SynthesisError {
-    fn description(&self) -> &str {
-        match *self {
-            SynthesisError::AssignmentMissing => "an assignment for a variable could not be computed",
-            SynthesisError::DivisionByZero => "division by zero",
-            SynthesisError::Unsatisfiable => "unsatisfiable constraint system",
-            SynthesisError::PolynomialDegreeTooLarge => "polynomial degree is too large",
-            SynthesisError::UnexpectedIdentity => "encountered an identity element in the CRS",
-            SynthesisError::IoError(_) => "encountered an I/O error",
-            SynthesisError::MalformedVerifyingKey(_, _) => "malformed verifying key",
-            SynthesisError::UnconstrainedVariable => "auxiliary variable was unconstrained",
-        }
-    }
-}
-
-impl fmt::Display for SynthesisError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        if let SynthesisError::IoError(ref e) = *self {
-            write!(f, "I/O error: ")?;
-            e.fmt(f)
-        } else {
-            write!(f, "{:?}", self)
-        }
     }
 }

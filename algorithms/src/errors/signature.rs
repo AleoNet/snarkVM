@@ -25,16 +25,10 @@ pub enum SignatureError {
     Crate(&'static str, String),
 
     #[error("{}", _0)]
-    EncryptionError(crate::EncryptionError),
+    EncryptionError(#[from] crate::EncryptionError),
 
     #[error("{}", _0)]
     Message(String),
-}
-
-impl From<crate::EncryptionError> for SignatureError {
-    fn from(error: crate::EncryptionError) -> Self {
-        SignatureError::EncryptionError(error)
-    }
 }
 
 impl From<Error> for SignatureError {

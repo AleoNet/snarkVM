@@ -14,32 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::crh::sha256::sha256;
-use snarkvm_dpc::{
-    errors::DPCError,
-    testnet2::{parameters::Testnet2Parameters, ProgramSNARKUniversalSRS, Testnet2Components},
-};
-use snarkvm_fields::ToConstraintField;
-use snarkvm_marlin::PolynomialCommitment;
+use snarkvm_algorithms::{crh::sha256::sha256, SNARK};
+use snarkvm_dpc::{errors::DPCError, testnet2::parameters::Testnet2Parameters, Parameters};
 use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
 use std::path::PathBuf;
 
 mod utils;
+use snarkvm_marlin::constraints::snark::MarlinBound;
 use utils::store;
 
-pub fn setup<C: Testnet2Components>() -> Result<Vec<u8>, DPCError>
-where
-    <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::VerifierKey:
-        ToConstraintField<C::OuterScalarField>,
-    <C::PolynomialCommitment as PolynomialCommitment<C::InnerScalarField>>::Commitment:
-        ToConstraintField<C::OuterScalarField>,
-{
+pub fn setup() -> Result<Vec<u8>, DPCError> {
+    type C = Testnet2Parameters;
     let rng = &mut thread_rng();
 
-    let universal_srs = ProgramSNARKUniversalSRS::<C>::setup(rng)?;
-    let universal_srs_bytes = universal_srs.0.to_bytes_le()?;
+    let bound = MarlinBound {
+        max_degree: snarkvm_marlin::ahp::AHPForR1CS::<<C as Parameters>::InnerScalarField>::max_degree(
+            10000, 10000, 10000,
+        )
+        .unwrap(),
+    };
+
+    let universal_srs = <<C as Parameters>::ProgramSNARK as SNARK>::universal_setup(&bound, rng)?;
+    let universal_srs_bytes = universal_srs.to_bytes_le()?;
 
     println!("universal_srs.params\n\tsize - {}", universal_srs_bytes.len());
     Ok(universal_srs_bytes)
@@ -53,7 +51,7 @@ fn versioned_filename(checksum: &str) -> String {
 }
 
 pub fn main() {
-    let universal_srs = setup::<Testnet2Parameters>().unwrap();
+    let universal_srs = setup().unwrap();
     let universal_srs_checksum = hex::encode(sha256(&universal_srs));
     store(
         &PathBuf::from(&versioned_filename(&universal_srs_checksum)),

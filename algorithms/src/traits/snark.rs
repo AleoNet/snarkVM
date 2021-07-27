@@ -17,14 +17,21 @@
 use crate::errors::SNARKError;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_r1cs::ConstraintSynthesizer;
 use std::fmt::Debug;
 
-/// Defines a trait that describes preparing from an unprepared version to a prepare version
+/// Defines a trait that describes preparing from an unprepared version to a prepare version.
 pub trait Prepare<T> {
     fn prepare(&self) -> T;
+}
+
+/// An abstraction layer to enable a circuit-specific SRS or universal SRS.
+/// Forward compatible with future assumptions that proof systems will require.
+pub enum SRS<'a, R: Rng + CryptoRng, T> {
+    CircuitSpecific(&'a mut R),
+    Universal(T),
 }
 
 pub trait SNARK {
@@ -38,7 +45,7 @@ pub trait SNARK {
 
     // We can specify their defaults to `()` when `associated_type_defaults` feature becomes stable in Rust
     type UniversalSetupConfig: Clone;
-    type UniversalSetupParameters: Clone;
+    type UniversalSetupParameters: FromBytes + ToBytes + Clone;
 
     type VerifyingKey: Clone
         + ToBytes
@@ -48,26 +55,19 @@ pub trait SNARK {
         + From<Self::ProvingKey>
         + ToConstraintField<Self::BaseField>;
 
-    fn circuit_specific_setup<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng>(
-        circuit: &C,
-        rng: &mut R,
-    ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError>;
-
-    fn universal_setup<R: Rng>(
+    fn universal_setup<R: Rng + CryptoRng>(
         _config: &Self::UniversalSetupConfig,
         _rng: &mut R,
     ) -> Result<Self::UniversalSetupParameters, SNARKError> {
         unimplemented!()
     }
 
-    fn index<C: ConstraintSynthesizer<Self::ScalarField>>(
-        _circuit: &C,
-        _srs: &Self::UniversalSetupParameters,
-    ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
-        unimplemented!()
-    }
+    fn setup<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+        circuit: &C,
+        srs: &mut SRS<R, Self::UniversalSetupParameters>,
+    ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError>;
 
-    fn prove<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng>(
+    fn prove<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         proving_key: &Self::ProvingKey,
         input_and_witness: &C,
         rng: &mut R,

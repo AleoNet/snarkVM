@@ -86,8 +86,8 @@ pub trait AllocGadget<V: ?Sized, F: Field>: Sized {
     }
 }
 
-impl<I, F: Field, A: AllocGadget<I, F>> AllocGadget<[I], F> for Vec<A> {
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<[I]>, CS: ConstraintSystem<F>>(
+impl<I, F: Field, A: AllocGadget<I, F>> AllocGadget<Vec<I>, F> for Vec<A> {
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Vec<I>>, CS: ConstraintSystem<F>>(
         mut cs: CS,
         f: Fn,
     ) -> Result<Self, SynthesisError> {
@@ -99,7 +99,7 @@ impl<I, F: Field, A: AllocGadget<I, F>> AllocGadget<[I], F> for Vec<A> {
         Ok(vec)
     }
 
-    fn alloc_checked<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<[I]>, CS: ConstraintSystem<F>>(
+    fn alloc_checked<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Vec<I>>, CS: ConstraintSystem<F>>(
         mut cs: CS,
         f: Fn,
     ) -> Result<Self, SynthesisError> {
@@ -113,7 +113,7 @@ impl<I, F: Field, A: AllocGadget<I, F>> AllocGadget<[I], F> for Vec<A> {
         Ok(vec)
     }
 
-    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<[I]>, CS: ConstraintSystem<F>>(
+    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Vec<I>>, CS: ConstraintSystem<F>>(
         mut cs: CS,
         f: Fn,
     ) -> Result<Self, SynthesisError> {
@@ -127,7 +127,7 @@ impl<I, F: Field, A: AllocGadget<I, F>> AllocGadget<[I], F> for Vec<A> {
         Ok(vec)
     }
 
-    fn alloc_input_checked<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<[I]>, CS: ConstraintSystem<F>>(
+    fn alloc_input_checked<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<Vec<I>>, CS: ConstraintSystem<F>>(
         mut cs: CS,
         f: Fn,
     ) -> Result<Self, SynthesisError> {

@@ -91,7 +91,7 @@ pub struct GroupEncryption<G: ProjectiveCurve> {
 }
 
 impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> EncryptionScheme for GroupEncryption<G> {
-    type BlindingExponent = <G as Group>::ScalarField;
+    type EncryptionWitness = <G as Group>::ScalarField;
     type Parameters = Vec<G>;
     type PrivateKey = <G as Group>::ScalarField;
     type PublicKey = GroupEncryptionPublicKey<G>;
@@ -159,12 +159,12 @@ impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> EncryptionS
         Ok(y)
     }
 
-    fn generate_blinding_exponents(
+    fn generate_encryption_witness(
         &self,
         public_key: &<Self as EncryptionScheme>::PublicKey,
         randomness: &Self::Randomness,
         message_length: usize,
-    ) -> Result<Vec<Self::BlindingExponent>, EncryptionError> {
+    ) -> Result<Vec<Self::EncryptionWitness>, EncryptionError> {
         let record_view_key = public_key.0.mul(*randomness);
 
         let affine = record_view_key.into_affine();
@@ -209,7 +209,7 @@ impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> EncryptionS
         let one = Self::Randomness::one();
         let mut i = Self::Randomness::one();
 
-        let blinding_exponents = self.generate_blinding_exponents(public_key, randomness, message.len())?;
+        let blinding_exponents = self.generate_encryption_witness(public_key, randomness, message.len())?;
 
         for (m_i, blinding_exp) in message.iter().zip_eq(blinding_exponents) {
             // h_i <- 1 [/] (z [+] i) * record_view_key

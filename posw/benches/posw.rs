@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#![allow(deprecated)]
+
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_curves::bls12_377::{Bls12_377, Fr};
 use snarkvm_posw::{txids_to_roots, Marlin, Posw, PoswMarlin, GM17};
@@ -21,13 +23,12 @@ use snarkvm_utilities::FromBytes;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::SeedableRng;
-use rand_xorshift::XorShiftRng;
+use rand_chacha::ChaChaRng;
 
-#[allow(deprecated)]
 fn gm17_posw(c: &mut Criterion) {
     let mut group = c.benchmark_group("Proof of Succinct Work: GM17");
     group.sample_size(10);
-    let rng = &mut XorShiftRng::seed_from_u64(1234567);
+    let rng = &mut ChaChaRng::seed_from_u64(1234567);
 
     // PoSW instantiated over BLS12-377 with GM17.
     pub type PoswGM17 = Posw<GM17<Bls12_377>, Bls12_377>;
@@ -62,12 +63,12 @@ fn gm17_posw(c: &mut Criterion) {
 fn marlin_posw(c: &mut Criterion) {
     let mut group = c.benchmark_group("Proof of Succinct Work: Marlin");
     group.sample_size(10);
-    let rng = &mut XorShiftRng::seed_from_u64(1234567);
+    let rng = &mut ChaChaRng::seed_from_u64(1234567);
 
     let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
     let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(max_degree, rng).unwrap();
 
-    let posw = PoswMarlin::index(universal_srs).unwrap();
+    let posw = PoswMarlin::index::<_, ChaChaRng>(universal_srs).unwrap();
 
     let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
 
