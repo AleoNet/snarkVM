@@ -31,4 +31,4 @@ labels: feature
     How should this feature be implemented?
 -->
 
-**Are you willing to open a pull request?** (See [CONTRIBUTING](../../CONTRIBUTING.md))
+**Are you willing to open a pull request?** (See [CONTRIBUTING](../CONTRIBUTING.md))
