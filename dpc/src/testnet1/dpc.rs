@@ -400,7 +400,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 ledger_digest.clone(),
                 old_serial_numbers.clone(),
                 new_commitments.clone(),
-                new_encrypted_record_hashes,
+                new_encrypted_record_hashes.clone(),
                 memorandum,
                 value_balance,
                 network_id,
@@ -420,6 +420,32 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
             C::OuterSNARK::prove(&outer_snark_parameters, &circuit, rng)?
         };
+
+        // Verify the outer proof passes.
+        {
+            let inner_snark_input = InnerCircuitVerifierInput {
+                ledger_digest: ledger_digest.clone(),
+                old_serial_numbers: old_serial_numbers.clone(),
+                new_commitments: new_commitments.clone(),
+                new_encrypted_record_hashes,
+                memo: memorandum,
+                program_commitment: None,
+                local_data_root: None,
+                value_balance,
+                network_id,
+            };
+
+            let input = OuterCircuitVerifierInput {
+                inner_snark_verifier_input: inner_snark_input,
+                inner_circuit_id: inner_circuit_id.clone(),
+            };
+
+            assert!(C::OuterSNARK::verify(
+                &self.outer_snark_parameters.1,
+                &input,
+                &transaction_proof
+            )?);
+        }
 
         let transaction = Self::Transaction::new(
             Network::from_id(network_id),

@@ -422,12 +422,13 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             C::OuterSNARK::prove(outer_snark_parameters, &circuit, rng)?
         };
 
+        // Verify the outer proof passes.
         {
             let inner_snark_input = InnerCircuitVerifierInput {
                 ledger_digest: ledger_digest.clone(),
                 old_serial_numbers: old_serial_numbers.clone(),
                 new_commitments: new_commitments.clone(),
-                new_encrypted_record_hashes: new_encrypted_record_hashes.clone(),
+                new_encrypted_record_hashes,
                 memo: memorandum,
                 program_commitment: None,
                 local_data_root: None,
