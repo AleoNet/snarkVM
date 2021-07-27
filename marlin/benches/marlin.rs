@@ -35,7 +35,7 @@ use snarkvm_marlin::{
 };
 use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::{ToBytes, UniformRand};
+use snarkvm_utilities::UniformRand;
 
 use criterion::Criterion;
 use rand::{self, thread_rng};
@@ -122,7 +122,7 @@ fn snark_circuit_setup(c: &mut Criterion) {
     let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
     // `ChaChaRng` is a placeholder for SRS.
-    let mut srs = SRS::<ChaChaRng>::Universal(universal_srs.to_bytes_le().unwrap());
+    let mut srs = SRS::<ChaChaRng, _>::Universal(universal_srs);
 
     c.bench_function("snark_circuit_setup", move |b| {
         b.iter(|| {
@@ -150,7 +150,7 @@ fn snark_prove(c: &mut Criterion) {
     let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
     // `ChaChaRng` is a placeholder for SRS.
-    let mut srs = SRS::<ChaChaRng>::Universal(universal_srs.to_bytes_le().unwrap());
+    let mut srs = SRS::<ChaChaRng, _>::Universal(universal_srs);
 
     let circuit = Benchmark::<Fr> {
         a: Some(x),
