@@ -15,13 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
+use rand::{CryptoRng, Rng};
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, merkle_tree::MerklePath, prelude::*};
+use snarkvm_fields::ToConstraintField;
 use snarkvm_parameters::{prelude::*, testnet1::*};
 use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
-
-use itertools::Itertools;
-use rand::{CryptoRng, Rng};
-use snarkvm_fields::ToConstraintField;
 
 pub struct DPC<C: Parameters> {
     pub noop_program: NoopProgram<C>,
@@ -330,17 +328,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             }
         }
 
-        // Prepare record encryption components used in the inner SNARK
-
-        let mut new_records_encryption_gadget_components = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-
-        for (record, ciphertext_randomness) in new_records.iter().zip_eq(&new_records_encryption_randomness) {
-            let record_encryption_gadget_components =
-                EncryptedRecord::prepare_encryption_gadget_components(&record, ciphertext_randomness)?;
-
-            new_records_encryption_gadget_components.push(record_encryption_gadget_components);
-        }
-
         let inner_proof = {
             let circuit = InnerCircuit::new(
                 ledger_digest.clone(),
@@ -351,7 +338,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 new_records.clone(),
                 new_commitments.clone(),
                 new_records_encryption_randomness,
-                new_records_encryption_gadget_components,
                 new_encrypted_record_hashes.clone(),
                 program_commitment.clone(),
                 program_randomness.clone(),

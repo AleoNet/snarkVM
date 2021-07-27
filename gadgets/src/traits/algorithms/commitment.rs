@@ -39,7 +39,7 @@ pub trait CommitmentGadget<C: CommitmentScheme, F: Field>: AllocGadget<C, F> + C
         + Clone
         + Sized
         + Debug;
-    type RandomnessGadget: AllocGadget<C::Randomness, F> + Clone;
+    type RandomnessGadget: AllocGadget<C::Randomness, F> + ToBytesGadget<F> + Clone;
 
     fn check_commitment_gadget<CS: ConstraintSystem<F>>(
         &self,

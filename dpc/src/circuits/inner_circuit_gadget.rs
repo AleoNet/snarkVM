@@ -14,14 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    encrypted::RecordEncryptionGadgetComponents,
-    record::Record,
-    AleoAmount,
-    Parameters,
-    PrivateKey,
-    RecordScheme,
-};
+use crate::{record::Record, AleoAmount, EncodedRecord, EncodedRecordScheme, Parameters, PrivateKey, RecordScheme};
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
     CommitmentScheme,
@@ -29,25 +22,21 @@ use snarkvm_algorithms::{
     MerkleParameters,
     SignatureScheme,
 };
-use snarkvm_curves::traits::{AffineCurve, Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
-use snarkvm_fields::{Field, One, PrimeField};
+use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_gadgets::{
-    algorithms::{encoding::Elligator2FieldGadget, merkle_tree::merkle_path::MerklePathGadget},
+    algorithms::merkle_tree::merkle_path::MerklePathGadget,
     bits::{Boolean, ToBitsLEGadget, ToBytesGadget},
     fields::FpGadget,
     integers::{int::Int64, uint::UInt8},
     traits::{
         algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
         alloc::AllocGadget,
-        eq::{ConditionalEqGadget, EqGadget, NEqGadget},
-        fields::FieldGadget,
+        eq::{ConditionalEqGadget, EqGadget},
         integers::{add::Add, integer::Integer, sub::Sub},
     },
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::{from_bits_le_to_bytes_le, to_bytes_le, FromBytes, ToBytes};
-
-use std::ops::Mul;
+use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 #[allow(clippy::too_many_arguments)]
 pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarField>>(
@@ -66,7 +55,6 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     new_commitments: &[C::RecordCommitment],
 
     new_records_encryption_randomness: &[<C::AccountEncryptionScheme as EncryptionScheme>::Randomness],
-    new_records_encryption_gadget_components: &[RecordEncryptionGadgetComponents<C>],
     new_encrypted_record_hashes: &[C::EncryptedRecordDigest],
 
     // Rest
@@ -78,19 +66,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     value_balance: AleoAmount,
     network_id: u8,
 ) -> Result<(), SynthesisError> {
-    inner_circuit_gadget::<
-        C,
-        CS,
-        C::AccountCommitmentGadget,
-        C::AccountEncryptionGadget,
-        C::AccountSignatureGadget,
-        C::RecordCommitmentGadget,
-        C::EncryptedRecordCRHGadget,
-        C::LocalDataCRHGadget,
-        C::LocalDataCommitmentGadget,
-        C::SerialNumberNonceCRHGadget,
-        C::PRFGadget,
-    >(
+    inner_circuit_gadget::<C, CS>(
         cs,
         ledger_digest,
         //
@@ -102,7 +78,6 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         new_records,
         new_commitments,
         new_records_encryption_randomness,
-        new_records_encryption_gadget_components,
         new_encrypted_record_hashes,
         //
         program_commitment,
@@ -116,19 +91,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 }
 
 #[allow(clippy::too_many_arguments)]
-fn inner_circuit_gadget<
-    C,
-    CS: ConstraintSystem<C::InnerScalarField>,
-    AccountCommitmentGadget,
-    AccountEncryptionGadget,
-    AccountSignatureGadget,
-    RecordCommitmentGadget,
-    EncryptedRecordCRHGadget,
-    LocalDataCRHGadget,
-    LocalDataCommitmentGadget,
-    SerialNumberNonceCRHGadget,
-    PGadget,
->(
+fn inner_circuit_gadget<C, CS: ConstraintSystem<C::InnerScalarField>>(
     cs: &mut CS,
     ledger_digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
 
@@ -142,7 +105,6 @@ fn inner_circuit_gadget<
     new_records: &[Record<C>],
     new_commitments: &[C::RecordCommitment],
     new_records_encryption_randomness: &[<C::AccountEncryptionScheme as EncryptionScheme>::Randomness],
-    new_records_encryption_gadget_components: &[RecordEncryptionGadgetComponents<C>],
     new_encrypted_record_hashes: &[C::EncryptedRecordDigest],
 
     //
@@ -155,26 +117,7 @@ fn inner_circuit_gadget<
     network_id: u8,
 ) -> Result<(), SynthesisError>
 where
-    C: Parameters<
-        AccountCommitmentGadget = AccountCommitmentGadget,
-        AccountEncryptionGadget = AccountEncryptionGadget,
-        AccountSignatureGadget = AccountSignatureGadget,
-        RecordCommitmentGadget = RecordCommitmentGadget,
-        EncryptedRecordCRHGadget = EncryptedRecordCRHGadget,
-        LocalDataCRHGadget = LocalDataCRHGadget,
-        LocalDataCommitmentGadget = LocalDataCommitmentGadget,
-        SerialNumberNonceCRHGadget = SerialNumberNonceCRHGadget,
-        PRFGadget = PGadget,
-    >,
-    AccountCommitmentGadget: CommitmentGadget<C::AccountCommitmentScheme, C::InnerScalarField>,
-    AccountEncryptionGadget: EncryptionGadget<C::AccountEncryptionScheme, C::InnerScalarField>,
-    AccountSignatureGadget: SignatureGadget<C::AccountSignatureScheme, C::InnerScalarField>,
-    RecordCommitmentGadget: CommitmentGadget<C::RecordCommitmentScheme, C::InnerScalarField>,
-    EncryptedRecordCRHGadget: CRHGadget<C::EncryptedRecordCRH, C::InnerScalarField>,
-    LocalDataCRHGadget: CRHGadget<C::LocalDataCRH, C::InnerScalarField>,
-    LocalDataCommitmentGadget: CommitmentGadget<C::LocalDataCommitmentScheme, C::InnerScalarField>,
-    SerialNumberNonceCRHGadget: CRHGadget<C::SerialNumberNonceCRH, C::InnerScalarField>,
-    PGadget: PRFGadget<C::PRF, C::InnerScalarField>,
+    C: Parameters,
 {
     // Order for allocation of input:
     // 1. ledger_digest
@@ -300,15 +243,20 @@ where
             // are trusted, and so when we recompute these, the newly computed
             // values will always be in correct subgroup. If the input cm, pk
             // or hash is incorrect, then it will not match the computed equivalent.
-            let given_record_owner =
-                AccountEncryptionGadget::PublicKeyGadget::alloc(&mut declare_cs.ns(|| "given_record_owner"), || {
-                    Ok(record.owner().to_encryption_key())
-                })?;
+            let given_record_owner = <C::AccountEncryptionGadget as EncryptionGadget<
+                C::AccountEncryptionScheme,
+                C::InnerScalarField,
+            >>::PublicKeyGadget::alloc(
+                &mut declare_cs.ns(|| "given_record_owner"),
+                || Ok(record.owner().to_encryption_key()),
+            )?;
 
-            let given_commitment =
-                RecordCommitmentGadget::OutputGadget::alloc(&mut declare_cs.ns(|| "given_commitment"), || {
-                    Ok(record.commitment())
-                })?;
+            let given_commitment = <C::RecordCommitmentGadget as CommitmentGadget<
+                C::RecordCommitmentScheme,
+                C::InnerScalarField,
+            >>::OutputGadget::alloc(
+                &mut declare_cs.ns(|| "given_commitment"), || Ok(record.commitment())
+            )?;
             old_record_commitments_gadgets.push(given_commitment.clone());
 
             let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
@@ -328,15 +276,21 @@ where
             )?;
             old_death_program_ids_gadgets.push(given_death_program_id.clone());
 
-            let given_commitment_randomness = RecordCommitmentGadget::RandomnessGadget::alloc(
+            let given_commitment_randomness = <C::RecordCommitmentGadget as CommitmentGadget<
+                C::RecordCommitmentScheme,
+                C::InnerScalarField,
+            >>::RandomnessGadget::alloc(
                 &mut declare_cs.ns(|| "given_commitment_randomness"),
                 || Ok(record.commitment_randomness()),
             )?;
 
-            let serial_number_nonce =
-                SerialNumberNonceCRHGadget::OutputGadget::alloc(&mut declare_cs.ns(|| "serial_number_nonce"), || {
-                    Ok(record.serial_number_nonce())
-                })?;
+            let serial_number_nonce = <C::SerialNumberNonceCRHGadget as CRHGadget<
+                C::SerialNumberNonceCRH,
+                C::InnerScalarField,
+            >>::OutputGadget::alloc(
+                &mut declare_cs.ns(|| "serial_number_nonce"),
+                || Ok(record.serial_number_nonce()),
+            )?;
             (
                 given_record_owner,
                 given_commitment,
@@ -387,15 +341,20 @@ where
                 let pk_sig_native = account_private_key
                     .pk_sig()
                     .map_err(|_| SynthesisError::AssignmentMissing)?;
-                let pk_sig =
-                    AccountSignatureGadget::PublicKeyGadget::alloc(&mut account_cs.ns(|| "Declare pk_sig"), || {
-                        Ok(&pk_sig_native)
-                    })?;
-                let sk_prf = PGadget::new_seed(&mut account_cs.ns(|| "Declare sk_prf"), &account_private_key.sk_prf);
-                let r_pk =
-                    AccountCommitmentGadget::RandomnessGadget::alloc(&mut account_cs.ns(|| "Declare r_pk"), || {
-                        Ok(&account_private_key.r_pk)
-                    })?;
+                let pk_sig = <C::AccountSignatureGadget as SignatureGadget<
+                    C::AccountSignatureScheme,
+                    C::InnerScalarField,
+                >>::PublicKeyGadget::alloc(
+                    &mut account_cs.ns(|| "Declare pk_sig"), || Ok(&pk_sig_native)
+                )?;
+                let sk_prf =
+                    C::PRFGadget::new_seed(&mut account_cs.ns(|| "Declare sk_prf"), &account_private_key.sk_prf);
+                let r_pk = <C::AccountCommitmentGadget as CommitmentGadget<
+                    C::AccountCommitmentScheme,
+                    C::InnerScalarField,
+                >>::RandomnessGadget::alloc(&mut account_cs.ns(|| "Declare r_pk"), || {
+                    Ok(&account_private_key.r_pk)
+                })?;
 
                 (pk_sig, sk_prf, r_pk)
             };
@@ -424,7 +383,10 @@ where
                 // computed from the given account private key.
                 let given_account_view_key = {
                     // Derive the given account view key based on the given account private key.
-                    let given_account_view_key = AccountEncryptionGadget::PrivateKeyGadget::alloc(
+                    let given_account_view_key = <C::AccountEncryptionGadget as EncryptionGadget<
+                        C::AccountEncryptionScheme,
+                        C::InnerScalarField,
+                    >>::PrivateKeyGadget::alloc(
                         &mut account_cs.ns(|| "Allocate account view key"),
                         || {
                             account_private_key
@@ -476,7 +438,7 @@ where
             let serial_number_nonce_bytes = serial_number_nonce.to_bytes(&mut sn_cs.ns(|| "Convert nonce to bytes"))?;
 
             let prf_seed = sk_prf;
-            let randomizer = PGadget::check_evaluation_gadget(
+            let randomizer = <C::PRFGadget as PRFGadget<C::PRF, C::InnerScalarField>>::check_evaluation_gadget(
                 &mut sn_cs.ns(|| "Compute pk_sig randomizer"),
                 &prf_seed,
                 &serial_number_nonce_bytes,
@@ -489,7 +451,10 @@ where
                 &randomizer_bytes,
             )?;
 
-            let given_serial_number_gadget = AccountSignatureGadget::PublicKeyGadget::alloc_input(
+            let given_serial_number_gadget = <C::AccountSignatureGadget as SignatureGadget<
+                C::AccountSignatureScheme,
+                C::InnerScalarField,
+            >>::PublicKeyGadget::alloc_input(
                 &mut sn_cs.ns(|| "Declare given serial number"),
                 || Ok(given_serial_number),
             )?;
@@ -552,23 +517,13 @@ where
     let mut new_record_commitments_gadgets = Vec::with_capacity(new_records.len());
     let mut new_birth_program_ids_gadgets = Vec::with_capacity(new_records.len());
 
-    for (j, ((((record, commitment), encryption_randomness), encryption_gadget_components), encrypted_record_hash)) in
-        new_records
-            .iter()
-            .zip(new_commitments)
-            .zip(new_records_encryption_randomness)
-            .zip(new_records_encryption_gadget_components)
-            .zip(new_encrypted_record_hashes)
-            .enumerate()
+    for (j, (((record, commitment), encryption_randomness), encrypted_record_hash)) in new_records
+        .iter()
+        .zip(new_commitments)
+        .zip(new_records_encryption_randomness)
+        .zip(new_encrypted_record_hashes)
+        .enumerate()
     {
-        let RecordEncryptionGadgetComponents {
-            record_field_elements,
-            record_group_encoding,
-            ciphertext_selectors,
-            fq_high_selectors,
-            encryption_blinding_exponents,
-        } = encryption_gadget_components;
-
         let cs = &mut cs.ns(|| format!("Process output record {}", j));
 
         let (
@@ -586,21 +541,29 @@ where
         ) = {
             let declare_cs = &mut cs.ns(|| "Declare output record");
 
-            let given_record_owner =
-                AccountEncryptionGadget::PublicKeyGadget::alloc(&mut declare_cs.ns(|| "given_record_owner"), || {
-                    Ok(record.owner().to_encryption_key())
-                })?;
+            let given_record_owner = <C::AccountEncryptionGadget as EncryptionGadget<
+                C::AccountEncryptionScheme,
+                C::InnerScalarField,
+            >>::PublicKeyGadget::alloc(
+                &mut declare_cs.ns(|| "given_record_owner"),
+                || Ok(record.owner().to_encryption_key()),
+            )?;
 
-            let given_record_commitment =
-                RecordCommitmentGadget::OutputGadget::alloc(&mut declare_cs.ns(|| "given_record_commitment"), || {
-                    Ok(record.commitment())
-                })?;
+            let given_record_commitment = <C::RecordCommitmentGadget as CommitmentGadget<
+                C::RecordCommitmentScheme,
+                C::InnerScalarField,
+            >>::OutputGadget::alloc(
+                &mut declare_cs.ns(|| "given_record_commitment"),
+                || Ok(record.commitment()),
+            )?;
             new_record_commitments_gadgets.push(given_record_commitment.clone());
 
-            let given_commitment =
-                RecordCommitmentGadget::OutputGadget::alloc_input(&mut declare_cs.ns(|| "given_commitment"), || {
-                    Ok(commitment)
-                })?;
+            let given_commitment = <C::RecordCommitmentGadget as CommitmentGadget<
+                C::RecordCommitmentScheme,
+                C::InnerScalarField,
+            >>::OutputGadget::alloc_input(
+                &mut declare_cs.ns(|| "given_commitment"), || Ok(commitment)
+            )?;
 
             let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
 
@@ -619,15 +582,21 @@ where
                 &record.death_program_id(),
             )?;
 
-            let given_commitment_randomness = RecordCommitmentGadget::RandomnessGadget::alloc(
+            let given_commitment_randomness = <C::RecordCommitmentGadget as CommitmentGadget<
+                C::RecordCommitmentScheme,
+                C::InnerScalarField,
+            >>::RandomnessGadget::alloc(
                 &mut declare_cs.ns(|| "given_commitment_randomness"),
                 || Ok(record.commitment_randomness()),
             )?;
 
-            let serial_number_nonce =
-                SerialNumberNonceCRHGadget::OutputGadget::alloc(&mut declare_cs.ns(|| "serial_number_nonce"), || {
-                    Ok(record.serial_number_nonce())
-                })?;
+            let serial_number_nonce = <C::SerialNumberNonceCRHGadget as CRHGadget<
+                C::SerialNumberNonceCRH,
+                C::InnerScalarField,
+            >>::OutputGadget::alloc(
+                &mut declare_cs.ns(|| "serial_number_nonce"),
+                || Ok(record.serial_number_nonce()),
+            )?;
 
             let serial_number_nonce_bytes =
                 serial_number_nonce.to_bytes(&mut declare_cs.ns(|| "Convert sn nonce to bytes"))?;
@@ -721,386 +690,134 @@ where
             // Check serialization
 
             // *******************************************************************
-            // Convert serial number nonce, commitment_randomness, birth program id, death program id, payload, and value into bits
+            // Convert serial number nonce, commitment_randomness, birth program id, death program id, value, and payload into bits
 
-            let serial_number_nonce_bits = serial_number_nonce_bytes
-                .to_bits_le(&mut encryption_cs.ns(|| "Convert serial_number_nonce_bytes to bits"))?;
+            let inner_scalar_field_capacity = <C::InnerScalarField as PrimeField>::Parameters::CAPACITY as usize;
 
-            let commitment_randomness_bytes = UInt8::alloc_vec(
-                encryption_cs.ns(|| "Allocate commitment randomness bytes"),
-                &to_bytes_le![record.commitment_randomness()]?,
-            )?;
+            let expected_plaintext_bits = {
+                let mut res = vec![];
 
-            let commitment_randomness_bits = commitment_randomness_bytes
-                .to_bits_le(&mut encryption_cs.ns(|| "Convert commitment_randomness_bytes to bits"))?;
-            let full_birth_program_id_bits = given_birth_program_id
-                .to_bits_le(&mut encryption_cs.ns(|| "Convert given_birth_program_id to bits"))?;
-            let full_death_program_id_bits = given_death_program_id
-                .to_bits_le(&mut encryption_cs.ns(|| "Convert given_death_program_id to bits"))?;
-            let value_bits = given_value.to_bits_le(&mut encryption_cs.ns(|| "Convert given_value to bits"))?;
-            let payload_bits = given_payload.to_bits_le(&mut encryption_cs.ns(|| "Convert given_payload to bits"))?;
-            let mut fq_high_bits = Vec::with_capacity(fq_high_selectors.len() - 1);
+                // Serial number nonce
+                let serial_number_nonce_bits = serial_number_nonce_bytes
+                    .to_bits_le(&mut encryption_cs.ns(|| "Convert serial_number_nonce_bytes to bits"))?;
+                res.extend_from_slice(&serial_number_nonce_bits);
 
-            for (i, fq_high_bit) in fq_high_selectors[0..(fq_high_selectors.len() - 1)].iter().enumerate() {
-                let boolean = Boolean::alloc(
-                    encryption_cs.ns(|| format!("Allocate fq_high_bit {} - {}", i, j)),
-                    || Ok(fq_high_bit),
-                )?;
-                fq_high_bits.push(boolean);
-            }
+                // Commitment randomness
+                let given_commitment_randomness_bytes = given_commitment_randomness
+                    .to_bytes(&mut encryption_cs.ns(|| "Convert commitment randomness to bytes"))?;
+                let given_commitment_randomness_bits = given_commitment_randomness_bytes
+                    .to_bits_le(&mut encryption_cs.ns(|| "Convert commitment randomness to bits"))?;
+                res.extend_from_slice(&given_commitment_randomness_bits);
 
-            // *******************************************************************
-            // Pack the record bits into serialization format
+                // Birth program ID
+                res.extend_from_slice(
+                    &given_birth_program_id
+                        .to_bits_le(&mut encryption_cs.ns(|| "Convert given_birth_program_id to bits"))?,
+                );
 
-            let scalar_field_bitsize = <C::EncryptionGroup as Group>::ScalarField::size_in_bits();
-            let base_field_bitsize = <C::InnerScalarField as PrimeField>::size_in_bits();
-            let outer_field_bitsize = <C::OuterScalarField as PrimeField>::size_in_bits();
+                // Death program ID
+                res.extend_from_slice(
+                    &given_death_program_id
+                        .to_bits_le(&mut encryption_cs.ns(|| "Convert given_death_program_id to bits"))?,
+                );
 
-            // A standard unit for packing bits into data storage
-            let data_field_bitsize = base_field_bitsize - 1;
+                // Value
+                res.extend_from_slice(
+                    &given_value.to_bits_le(&mut encryption_cs.ns(|| "Convert given_value to bits"))?,
+                );
 
-            // Assumption 1 - The scalar field bit size must be strictly less than the base field bit size
-            // for the logic below to work correctly.
-            assert!(scalar_field_bitsize < base_field_bitsize);
+                // Payload
+                res.extend_from_slice(
+                    &given_payload.to_bits_le(&mut encryption_cs.ns(|| "Convert given_payload to bits"))?,
+                );
 
-            // Assumption 2 - this implementation assumes the outer field bit size is larger than
-            // the data field bit size by at most one additional scalar field bit size.
-            assert!((outer_field_bitsize - data_field_bitsize) <= data_field_bitsize);
+                res.push(Boolean::Constant(true));
 
-            // Assumption 3 - this implementation assumes the remainder of two outer field bit sizes
-            // can fit within one data field element's bit size.
-            assert!((2 * (outer_field_bitsize - data_field_bitsize)) <= data_field_bitsize);
+                let plaintext_expected_len = (res.len() + inner_scalar_field_capacity - 1)
+                    / inner_scalar_field_capacity
+                    * inner_scalar_field_capacity;
+                res.resize(plaintext_expected_len, Boolean::Constant(false));
 
-            // Assumption 4 - this implementation assumes the payload and value may be zero values.
-            // As such, to ensure the values are non-zero for encoding and decoding, we explicitly
-            // reserve the MSB of the data field element's valid bitsize and set the bit to 1.
-            let payload_field_bitsize = data_field_bitsize - 1;
-
-            // Birth and death programs
-
-            let mut birth_program_id_bits = Vec::with_capacity(base_field_bitsize);
-            let mut death_program_id_bits = Vec::with_capacity(base_field_bitsize);
-            let mut birth_program_id_remainder_bits = Vec::with_capacity(outer_field_bitsize - data_field_bitsize);
-            let mut death_program_id_remainder_bits = Vec::with_capacity(outer_field_bitsize - data_field_bitsize);
-
-            for i in 0..data_field_bitsize {
-                birth_program_id_bits.push(full_birth_program_id_bits[i]);
-                death_program_id_bits.push(full_death_program_id_bits[i]);
-            }
-
-            // (Assumption 2 applies)
-            for i in data_field_bitsize..outer_field_bitsize {
-                birth_program_id_remainder_bits.push(full_birth_program_id_bits[i]);
-                death_program_id_remainder_bits.push(full_death_program_id_bits[i]);
-            }
-            birth_program_id_remainder_bits.extend_from_slice(&death_program_id_remainder_bits);
-
-            // Payload
-
-            let mut payload_elements = vec![];
-
-            let mut payload_field_bits = Vec::with_capacity(payload_field_bitsize + 1);
-
-            for (i, bit) in payload_bits.iter().enumerate() {
-                payload_field_bits.push(*bit);
-
-                if (i > 0) && ((i + 1) % payload_field_bitsize == 0) {
-                    // (Assumption 4)
-                    payload_field_bits.push(Boolean::Constant(true));
-
-                    payload_elements.push(payload_field_bits.clone());
-
-                    payload_field_bits.clear();
-                }
-            }
-
-            let num_payload_elements = payload_bits.len() / payload_field_bitsize;
-            assert_eq!(payload_elements.len(), num_payload_elements);
-
-            // Determine if value can fit in current payload_field_bits.
-
-            let value_does_not_fit =
-                (payload_field_bits.len() + fq_high_bits.len() + value_bits.len()) > payload_field_bitsize;
-
-            if value_does_not_fit {
-                // (Assumption 4)
-                payload_field_bits.push(Boolean::Constant(true));
-
-                payload_elements.push(payload_field_bits.clone());
-
-                payload_field_bits.clear();
-            }
-
-            assert_eq!(
-                payload_elements.len(),
-                num_payload_elements + (value_does_not_fit as usize)
-            );
-
-            let fq_high_and_payload_and_value_bits = [
-                &[Boolean::Constant(true)],
-                &fq_high_bits[..],
-                &value_bits[..],
-                &payload_field_bits[..],
-            ]
-            .concat();
-            payload_elements.push(fq_high_and_payload_and_value_bits.clone());
-
-            let num_payload_elements = payload_bits.len() / payload_field_bitsize;
-
-            assert_eq!(
-                payload_elements.len(),
-                num_payload_elements + (value_does_not_fit as usize) + 1
-            );
+                res
+            };
 
             // *******************************************************************
             // Alloc each of the record field elements as gadgets.
 
-            let mut record_field_elements_gadgets = Vec::with_capacity(record_field_elements.len());
-
-            for (i, element) in record_field_elements.iter().enumerate() {
-                let record_field_element_gadget =
-                    Elligator2FieldGadget::<C::EncryptionParameters, C::InnerScalarField>::alloc(
-                        &mut encryption_cs.ns(|| format!("record_field_element_{}", i)),
-                        || Ok(*element),
-                    )?;
-
-                record_field_elements_gadgets.push(record_field_element_gadget);
-            }
+            let encoded_record = EncodedRecord::<C>::encode(&record).unwrap();
+            let record_field_elements_gadgets =
+                Vec::<FpGadget<C::InnerScalarField>>::alloc(&mut encryption_cs.ns(|| "record_field_element"), || {
+                    Ok(encoded_record.encoded_elements)
+                })?;
 
             // *******************************************************************
-            // Feed in Field elements of the serialization and convert them to bits
+            // Convert the record field elements into bits and check the consistency
+            let actual_plaintext_bits = {
+                let mut res = Vec::with_capacity(expected_plaintext_bits.len());
 
-            let given_serial_number_nonce_bytes = &record_field_elements_gadgets[0]
-                .to_bytes(&mut encryption_cs.ns(|| "given_serial_number_nonce_bytes"))?;
-            let given_serial_number_nonce_bits = given_serial_number_nonce_bytes
-                .to_bits_le(&mut encryption_cs.ns(|| "Convert given_serial_number_nonce_bytes to bits"))?;
+                for (i, record_field_element_gadgets) in record_field_elements_gadgets.iter().enumerate() {
+                    let bits = record_field_element_gadgets
+                        .to_bits_le(&mut encryption_cs.ns(|| format!("convert record_field_element_{} to bits", i)))?;
+                    res.extend_from_slice(&bits[0..inner_scalar_field_capacity]);
+                }
 
-            let given_commitment_randomness_bytes = &record_field_elements_gadgets[1]
-                .to_bytes(&mut encryption_cs.ns(|| "given_commitment_randomness_bytes"))?;
-            let given_commitment_randomness_bits = given_commitment_randomness_bytes
-                .to_bits_le(&mut encryption_cs.ns(|| "Convert given_commitment_randomness_bytes to bits"))?;
+                res
+            };
 
-            let given_birth_program_id_bytes =
-                &record_field_elements_gadgets[2].to_bytes(&mut encryption_cs.ns(|| "given_birth_program_id_bytes"))?;
-            let given_birth_program_id_bits = given_birth_program_id_bytes
-                .to_bits_le(&mut encryption_cs.ns(|| "Convert given_birth_program_id_bytes to bits"))?;
-
-            let given_death_program_id_bytes =
-                &record_field_elements_gadgets[3].to_bytes(&mut encryption_cs.ns(|| "given_death_program_id_bytes"))?;
-            let given_death_program_id_bits = given_death_program_id_bytes
-                .to_bits_le(&mut encryption_cs.ns(|| "Convert given_death_program_id_bytes to bits"))?;
-
-            let given_program_id_remainder_bytes = &record_field_elements_gadgets[4]
-                .to_bytes(&mut encryption_cs.ns(|| "given_program_id_remainder_bytes"))?;
-            let given_program_id_remainder_bits = given_program_id_remainder_bytes
-                .to_bits_le(&mut encryption_cs.ns(|| "Convert given_program_id_remainder_bytes to bits"))?;
-
-            // *******************************************************************
-            // Equate the gadget packed and provided bits
-
-            serial_number_nonce_bits.enforce_equal(
-                &mut encryption_cs.ns(|| "Check that computed and declared serial_number_nonce_bits match"),
-                &given_serial_number_nonce_bits,
+            expected_plaintext_bits.enforce_equal(
+                &mut encryption_cs.ns(|| "encrypted_plaintext_is_consistent_with_the_record"),
+                &actual_plaintext_bits,
             )?;
-
-            commitment_randomness_bits.enforce_equal(
-                &mut encryption_cs.ns(|| "Check that computed and declared commitment_randomness_bits match"),
-                &given_commitment_randomness_bits,
-            )?;
-
-            birth_program_id_bits.enforce_equal(
-                &mut encryption_cs.ns(|| "Check that computed and declared given_birth_program_id_bits match"),
-                &given_birth_program_id_bits,
-            )?;
-
-            death_program_id_bits.enforce_equal(
-                &mut encryption_cs.ns(|| "Check that computed and declared death_program_id_bits match"),
-                &given_death_program_id_bits,
-            )?;
-
-            birth_program_id_remainder_bits.enforce_equal(
-                &mut encryption_cs.ns(|| "Check that computed and declared program_id_remainder_bits match"),
-                &given_program_id_remainder_bits,
-            )?;
-
-            for (i, (payload_element, field_element)) in payload_elements
-                .iter()
-                .zip(&record_field_elements_gadgets[5..])
-                .enumerate()
-            {
-                let given_element_bytes =
-                    field_element.to_bytes(&mut encryption_cs.ns(|| format!("given_payload_bytes - {}", i)))?;
-                let given_element_bits = given_element_bytes
-                    .to_bits_le(&mut encryption_cs.ns(|| format!("Convert given_payload_bytes - {} to bits", i)))?;
-
-                payload_element.enforce_equal(
-                    &mut encryption_cs.ns(|| format!("Check that computed and declared payload_bits match {}", i)),
-                    &given_element_bits,
-                )?;
-            }
-
-            // *******************************************************************
-            // Check group encoding correctness
-
-            let mut record_group_encoding_gadgets = Vec::with_capacity(record_group_encoding.len());
-            let mut encryption_plaintext = Vec::with_capacity(record_group_encoding.len());
-
-            for (i, (x, y)) in record_group_encoding.iter().enumerate() {
-                let affine = <C::EncryptionGroup as ProjectiveCurve>::Affine::read_le(&to_bytes_le![x, y]?[..])?;
-                encryption_plaintext.push(<C::AccountEncryptionScheme as EncryptionScheme>::Text::read_le(
-                    &to_bytes_le![affine.into_projective()]?[..],
-                )?);
-
-                let y_gadget = Elligator2FieldGadget::<C::EncryptionParameters, C::InnerScalarField>::alloc(
-                    &mut encryption_cs.ns(|| format!("record_group_encoding_y_{}", i)),
-                    || Ok(y),
-                )?;
-
-                record_group_encoding_gadgets.push(y_gadget);
-            }
-
-            assert_eq!(record_field_elements_gadgets.len(), record_group_encoding_gadgets.len());
-
-            let coeff_a = <C::EncryptionParameters as MontgomeryParameters>::COEFF_A;
-            let coeff_b = <C::EncryptionParameters as MontgomeryParameters>::COEFF_B;
-
-            let a = coeff_a.mul(&coeff_b.inverse().unwrap());
-            let u = <C::EncryptionParameters as TwistedEdwardsParameters>::COEFF_D;
-            let ua = a.mul(&u);
-
-            let a = C::InnerScalarField::read_le(&to_bytes_le![a]?[..])?;
-            let b = C::InnerScalarField::read_le(&to_bytes_le![coeff_b]?[..])?;
-            let u = C::InnerScalarField::read_le(&to_bytes_le![u]?[..])?;
-            let ua = C::InnerScalarField::read_le(&to_bytes_le![ua]?[..])?;
-
-            let fp_zero = FpGadget::zero(encryption_cs.ns(|| "fpg zero"))?;
-
-            for (i, (element, y_gadget)) in record_field_elements_gadgets
-                .iter()
-                .skip(1)
-                .zip(record_group_encoding_gadgets.iter().skip(1))
-                .enumerate()
-            {
-                // Get reconstructed x value
-                let numerator = y_gadget
-                    .0
-                    .add_constant(encryption_cs.ns(|| format!("1 + y_{}", i)), &C::InnerScalarField::one())?;
-                let neg_y = y_gadget.0.negate(encryption_cs.ns(|| format!("-y_{}", i)))?;
-                let denominator = neg_y
-                    .add_constant(encryption_cs.ns(|| format!("1 - y_{}", i)), &C::InnerScalarField::one())?
-                    .inverse(encryption_cs.ns(|| format!("(1 - y_{})_inverse", i)))?;
-
-                let temp_u = numerator.mul(
-                    encryption_cs.ns(|| format!("u = (1 + y_{}) * (1 - y_{})_inverse", i, i)),
-                    &denominator,
-                )?;
-                let x = temp_u.mul_by_constant(
-                    encryption_cs.ns(|| format!("(1 + y_{}) * (1 - y_{})_inverse * b_inverse", i, i)),
-                    &b.inverse().unwrap(),
-                )?;
-
-                let ux = x.mul_by_constant(encryption_cs.ns(|| format!("x_{} * u", i)), &u)?;
-                let neg_x = x.negate(encryption_cs.ns(|| format!("-x_{}", i)))?;
-
-                // Construct a_i
-                let ux_plus_ua = ux.add_constant(encryption_cs.ns(|| format!("ux_{} + uA", i)), &ua)?;
-                let ux_plus_ua_inverse = ux_plus_ua.inverse(encryption_cs.ns(|| format!("1 d (ux_{} + uA)", i)))?;
-                let a_i = neg_x.mul(
-                    encryption_cs.ns(|| format!("-x_{} * (ux + uA)_inverse", i)),
-                    &ux_plus_ua_inverse,
-                )?;
-
-                // Construct b_i
-                let neg_x_minus_a = neg_x.add_constant(encryption_cs.ns(|| format!("-x_{} - A", i)), &-a)?;
-                let ux_inverse = ux.inverse(encryption_cs.ns(|| format!("ux_{}_inverse", i)))?;
-                let b_i =
-                    neg_x_minus_a.mul(encryption_cs.ns(|| format!("(-x_{} - A) * ux_inverse", i)), &ux_inverse)?;
-
-                let element_squared = element
-                    .0
-                    .mul(encryption_cs.ns(|| format!("element_{} ^ 2", i)), &element.0)?;
-
-                // Enforce that either a_i == element_squared or b_i == element_squared
-
-                let a_i_minus_element_squared = a_i.sub(
-                    encryption_cs.ns(|| format!("a_{} - element_{}^2", i, i)),
-                    &element_squared,
-                )?;
-                let b_i_minus_element_squared = b_i.sub(
-                    encryption_cs.ns(|| format!("b_{} - element_{}^2", i, i)),
-                    &element_squared,
-                )?;
-
-                let expected_zero = a_i_minus_element_squared.mul(
-                    encryption_cs.ns(|| format!("(-a_{} - element_{}^2) * (-b_{} - element_{}^2)", i, i, i, i)),
-                    &b_i_minus_element_squared,
-                )?;
-
-                expected_zero.enforce_equal(
-                    encryption_cs.ns(|| format!("(-a_{} - element_{}^2) * (-b_{} - element_{}^2) == 0", i, i, i, i)),
-                    &fp_zero,
-                )?;
-
-                a_i.enforce_not_equal(encryption_cs.ns(|| format!("a_{} != b_{}", i, i)), &b_i)?;
-
-                element_squared
-                    .enforce_not_equal(encryption_cs.ns(|| format!("element_squared_{} != 0", i)), &fp_zero)?;
-            }
 
             // *******************************************************************
             // Construct the record encryption
 
-            let encryption_randomness_gadget = AccountEncryptionGadget::RandomnessGadget::alloc(
+            let encryption_randomness_gadget = <C::AccountEncryptionGadget as EncryptionGadget<
+                C::AccountEncryptionScheme,
+                C::InnerScalarField,
+            >>::RandomnessGadget::alloc(
                 &mut encryption_cs.ns(|| format!("output record {} encryption_randomness", j)),
                 || Ok(encryption_randomness),
             )?;
 
-            let encryption_blinding_exponents_gadget = AccountEncryptionGadget::EncryptionWitnessGadget::alloc(
+            // Technically, an encryption scheme does not need blinding exponents.
+            //
+            // Before we remove it from the trait, we allocate them by default.
+            let encryption_blinding_exponents = vec![
+                    <C::AccountEncryptionScheme as EncryptionScheme>::EncryptionWitness::default();
+                    record_field_elements_gadgets.len()
+                ];
+
+            let encryption_blinding_exponents_gadget = <C::AccountEncryptionGadget as EncryptionGadget<
+                C::AccountEncryptionScheme,
+                C::InnerScalarField,
+            >>::EncryptionWitnessGadget::alloc(
                 &mut encryption_cs.ns(|| format!("output record {} encryption_blinding_exponents", j)),
                 || Ok(encryption_blinding_exponents),
-            )?;
-
-            let encryption_plaintext_gadget = AccountEncryptionGadget::PlaintextGadget::alloc(
-                &mut encryption_cs.ns(|| format!("output record {} encryption_plaintext", j)),
-                || Ok(encryption_plaintext),
             )?;
 
             let candidate_encrypted_record_gadget = account_encryption_parameters.check_encryption_gadget(
                 &mut encryption_cs.ns(|| format!("output record {} check_encryption_gadget", j)),
                 &encryption_randomness_gadget,
                 &given_record_owner,
-                &encryption_plaintext_gadget,
+                &record_field_elements_gadgets,
                 &encryption_blinding_exponents_gadget,
             )?;
 
             // *******************************************************************
             // Check that the encrypted record hash is correct
 
-            let encrypted_record_hash_gadget = EncryptedRecordCRHGadget::OutputGadget::alloc_input(
+            let encrypted_record_hash_gadget = <C::EncryptedRecordCRHGadget as CRHGadget<
+                C::EncryptedRecordCRH,
+                C::InnerScalarField,
+            >>::OutputGadget::alloc_input(
                 &mut encryption_cs.ns(|| format!("output record {} encrypted record hash", j)),
                 || Ok(encrypted_record_hash),
             )?;
 
-            let candidate_encrypted_record_bytes = candidate_encrypted_record_gadget
-                .to_bytes(encryption_cs.ns(|| format!("output record {} encrypted record bytes", j)))?;
-
-            let ciphertext_and_fq_high_selectors_bytes = UInt8::alloc_vec(
-                &mut encryption_cs.ns(|| format!("ciphertext and fq_high selector bits to bytes {}", j)),
-                &from_bits_le_to_bytes_le(
-                    &[&ciphertext_selectors[..], &[
-                        fq_high_selectors[fq_high_selectors.len() - 1]
-                    ]]
-                    .concat(),
-                ),
-            )?;
-
-            let mut encrypted_record_hash_input = Vec::new();
-            encrypted_record_hash_input.extend_from_slice(&candidate_encrypted_record_bytes);
-            encrypted_record_hash_input.extend_from_slice(&ciphertext_and_fq_high_selectors_bytes);
-
-            let candidate_encrypted_record_hash = encrypted_record_crh.check_evaluation_gadget(
+            let candidate_encrypted_record_hash = encrypted_record_crh.check_evaluation_gadget_on_field_elements(
                 &mut encryption_cs.ns(|| format!("Compute encrypted record hash {}", j)),
-                encrypted_record_hash_input,
+                candidate_encrypted_record_gadget,
             )?;
 
             encrypted_record_hash_gadget.enforce_equal(
@@ -1172,7 +889,10 @@ where
             input_bytes.extend_from_slice(&memo);
             input_bytes.extend_from_slice(&network_id);
 
-            let commitment_randomness = LocalDataCommitmentGadget::RandomnessGadget::alloc(
+            let commitment_randomness = <C::LocalDataCommitmentGadget as CommitmentGadget<
+                C::LocalDataCommitmentScheme,
+                C::InnerScalarField,
+            >>::RandomnessGadget::alloc(
                 cs.ns(|| format!("Allocate old record local data commitment randomness {}", i)),
                 || Ok(&local_data_commitment_randomizers[i]),
             )?;
@@ -1200,7 +920,10 @@ where
             input_bytes.extend_from_slice(&memo);
             input_bytes.extend_from_slice(&network_id);
 
-            let commitment_randomness = LocalDataCommitmentGadget::RandomnessGadget::alloc(
+            let commitment_randomness = <C::LocalDataCommitmentGadget as CommitmentGadget<
+                C::LocalDataCommitmentScheme,
+                C::InnerScalarField,
+            >>::RandomnessGadget::alloc(
                 cs.ns(|| format!("Allocate new record local data commitment randomness {}", j)),
                 || Ok(&local_data_commitment_randomizers[C::NUM_INPUT_RECORDS + j]),
             )?;
@@ -1240,9 +963,10 @@ where
         )?;
 
         let declared_local_data_root =
-            LocalDataCRHGadget::OutputGadget::alloc_input(cs.ns(|| "Allocate local data root"), || {
-                Ok(local_data_root)
-            })?;
+            <C::LocalDataCRHGadget as CRHGadget<C::LocalDataCRH, C::InnerScalarField>>::OutputGadget::alloc_input(
+                cs.ns(|| "Allocate local data root"),
+                || Ok(local_data_root),
+            )?;
 
         candidate_local_data_root.enforce_equal(
             &mut cs.ns(|| "Check that local data root is valid"),
