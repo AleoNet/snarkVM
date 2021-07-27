@@ -38,6 +38,7 @@ use snarkvm_dpc::{
     Record,
     Transactions,
 };
+use snarkvm_posw::{txids_to_roots, PoswMarlin};
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use rand::thread_rng;
@@ -142,6 +143,20 @@ pub fn generate(recipient: &Address<Testnet1Parameters>, value: u64) -> Result<(
     let mut transactions = Transactions::new();
     transactions.push(transaction);
 
+    let txids = transactions.to_transaction_ids()?;
+
+    let (merkle_root_hash, pedersen_merkle_root_hash, subroots) = txids_to_roots(&txids);
+
+    // Mine the block.
+    let time = 0; // Utc::now().timestamp();
+    let initial_difficulty_target = 0x07FF_FFFF_FFFF_FFFF_u64;
+    let max_nonce = u32::MAX;
+
+    let posw = PoswMarlin::load().expect("could not instantiate the miner");
+    let (nonce, proof) = posw
+        .mine(&subroots, difficulty_target, &mut thread_rng(), max_nonce)
+        .unwrap();
+
     // Establish the merkle root hash of the transactions.
     let mut merkle_root_bytes = [0u8; 32];
     merkle_root_bytes[..].copy_from_slice(&merkle_root(&transactions.to_transaction_ids()?));
@@ -149,12 +164,12 @@ pub fn generate(recipient: &Address<Testnet1Parameters>, value: u64) -> Result<(
     // Create a genesis header.
     let genesis_header = BlockHeader {
         previous_block_hash: BlockHeaderHash([0u8; 32]),
-        merkle_root_hash: MerkleRootHash(merkle_root_bytes),
-        pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
-        time: 0,
-        difficulty_target: 0x07FF_FFFF_FFFF_FFFF_u64,
-        nonce: 0,
-        proof: ProofOfSuccinctWork([0u8; 972]),
+        merkle_root_hash,
+        pedersen_merkle_root_hash,
+        time,
+        difficulty_target: initial_difficulty_target,
+        nonce,
+        proof: proof.into(),
     };
 
     // // Create a genesis block.
