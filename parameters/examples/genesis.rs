@@ -148,7 +148,7 @@ pub fn generate(recipient: &Address<Testnet1Parameters>, value: u64) -> Result<(
 
     // Construct the initial block attributes.
     let time = 0; // Utc::now().timestamp();
-    let initial_difficulty_target = 0x07FF_FFFF_FFFF_FFFF_u64;
+    let initial_difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
     let max_nonce = u32::MAX;
 
     // Mine the block.
