@@ -58,10 +58,18 @@ impl<C: Parameters> Address<C> {
         message: &[u8],
         signature: &<C::AccountSignatureScheme as SignatureScheme>::Signature,
     ) -> Result<bool, AccountError> {
-        let signature_public_key = FromBytes::from_bytes_le(&self.encryption_key.to_bytes_le()?)?;
+        let signature_public_key = self.to_signature_public_key()?;
         Ok(C::account_signature_scheme().verify(&signature_public_key, message, signature)?)
     }
 
+    /// Returns the address as a signature public key.
+    pub fn to_signature_public_key(&self) -> Result<C::AccountSignaturePublicKey, AccountError> {
+        // TODO (howardwu): Change the internal representation of the encryption public key to a GroupAffine,
+        //  and add a getter method to return the affine element for the signature public key.
+        Ok(FromBytes::from_bytes_le(&self.encryption_key.to_bytes_le()?)?)
+    }
+
+    /// Returns the address as an encryption public key.
     pub fn to_encryption_key(&self) -> &<C::AccountEncryptionScheme as EncryptionScheme>::PublicKey {
         &self.encryption_key
     }

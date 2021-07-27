@@ -22,18 +22,26 @@ mod testnet1 {
     use rand_chacha::ChaChaRng;
     use std::{convert::TryInto, str::FromStr};
 
-    const ALEO_TESTNET1_PRIVATE_KEY: &str = "APrivateKey1vsgCPijUSjfbqDL1Z52b1EE4huyzbnQWfJUn2a1KHGvgEkA";
-    const ALEO_TESTNET1_VIEW_KEY: &str = "AViewKey1cYGQJmDmrjajLCwLvYuR89vv2AW6aF68B7gwvk3hAiNN";
-    const ALEO_TESTNET1_ADDRESS: &str = "aleo17gyptxtlh5vq3yvr3wd2v3x7zz23s49eteep4zj785khhcttkgysss2y0t";
+    const ALEO_TESTNET1_PRIVATE_KEY: &str = "APrivateKey1xittpFSFfHsTqgAVujN2PXsyNz7Gvt3fK9hEB9RQkeHUHM4";
+    const ALEO_TESTNET1_VIEW_KEY: &str = "AViewKey1cW7MLCbtLzz7esFi7VrKXzd52BukX5xB6x8kCQoReuQv";
+    const ALEO_TESTNET1_ADDRESS: &str = "aleo18wlwzpp04dvtra4fe9yk5xr2aq3kwcrwdepx4s3q2vvrp3tg6yqqxhjevz";
+
+    const ITERATIONS: usize = 25;
 
     #[test]
     fn test_account_new() {
         let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
-        let account = Account::<Testnet1Parameters>::new(&mut rng);
-        println!("{:?}", account);
-        assert!(account.is_ok());
-        println!("{}", account.unwrap());
+        // Check the seeded derivation matches the hardcoded value, as a sanity check.
+        let account = Account::<Testnet1Parameters>::new(&mut rng).unwrap();
+        assert_eq!(ALEO_TESTNET1_PRIVATE_KEY, account.private_key.to_string());
+        assert_eq!(ALEO_TESTNET1_VIEW_KEY, account.view_key.to_string());
+        assert_eq!(ALEO_TESTNET1_ADDRESS, account.address.to_string());
+
+        // Attempt to sample for a new account ITERATIONS times.
+        for _ in 0..ITERATIONS {
+            assert!(Account::<Testnet1Parameters>::new(&mut rng).is_ok());
+        }
     }
 
     #[test]
@@ -121,18 +129,26 @@ mod testnet2 {
     use rand_chacha::ChaChaRng;
     use std::{convert::TryInto, str::FromStr};
 
-    const ALEO_TESTNET2_PRIVATE_KEY: &str = "APrivateKey1vsgCPijUSjfbqDL1Z52b1EE4huyzbnQWfJUn2a1KHGvgEkA";
-    const ALEO_TESTNET2_VIEW_KEY: &str = "AViewKey1cYGQJmDmrjajLCwLvYuR89vv2AW6aF68B7gwvk3hAiNN";
-    const ALEO_TESTNET2_ADDRESS: &str = "aleo17gyptxtlh5vq3yvr3wd2v3x7zz23s49eteep4zj785khhcttkgysss2y0t";
+    const ALEO_TESTNET2_PRIVATE_KEY: &str = "APrivateKey1xittpFSFfHsTqgAVujN2PXsyNz7Gvt3fK9hEB9RQkeHUHM4";
+    const ALEO_TESTNET2_VIEW_KEY: &str = "AViewKey1cW7MLCbtLzz7esFi7VrKXzd52BukX5xB6x8kCQoReuQv";
+    const ALEO_TESTNET2_ADDRESS: &str = "aleo18wlwzpp04dvtra4fe9yk5xr2aq3kwcrwdepx4s3q2vvrp3tg6yqqxhjevz";
+
+    const ITERATIONS: usize = 25;
 
     #[test]
     fn test_account_new() {
         let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
-        let account = Account::<Testnet2Parameters>::new(&mut rng);
-        println!("{:?}", account);
-        assert!(account.is_ok());
-        println!("{}", account.unwrap());
+        // Check the seeded derivation matches the hardcoded value, as a sanity check.
+        let account = Account::<Testnet2Parameters>::new(&mut rng).unwrap();
+        assert_eq!(ALEO_TESTNET2_PRIVATE_KEY, account.private_key.to_string());
+        assert_eq!(ALEO_TESTNET2_VIEW_KEY, account.view_key.to_string());
+        assert_eq!(ALEO_TESTNET2_ADDRESS, account.address.to_string());
+
+        // Attempt to sample for a new account ITERATIONS times.
+        for _ in 0..ITERATIONS {
+            assert!(Account::<Testnet2Parameters>::new(&mut rng).is_ok());
+        }
     }
 
     #[test]
