@@ -14,12 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::crh::sha256::sha256;
-use snarkvm_dpc::{
-    errors::DPCError,
-    testnet2::{parameters::Testnet2Parameters, ProgramSNARKUniversalSRS},
-    Parameters,
-};
+use snarkvm_algorithms::{crh::sha256::sha256, SNARK};
+use snarkvm_dpc::{errors::DPCError, testnet2::parameters::Testnet2Parameters, Parameters};
 use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
@@ -40,8 +36,8 @@ pub fn setup() -> Result<Vec<u8>, DPCError> {
         .unwrap(),
     };
 
-    let universal_srs = ProgramSNARKUniversalSRS::<C>::setup(&bound, rng)?;
-    let universal_srs_bytes = universal_srs.0.to_bytes_le()?;
+    let universal_srs = <<C as Parameters>::ProgramSNARK as SNARK>::universal_setup(&bound, rng)?;
+    let universal_srs_bytes = universal_srs.to_bytes_le()?;
 
     println!("universal_srs.params\n\tsize - {}", universal_srs_bytes.len());
     Ok(universal_srs_bytes)

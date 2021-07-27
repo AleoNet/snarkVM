@@ -28,6 +28,9 @@ pub enum SNARKError {
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
+    #[error("Expected a circuit-specific SRS in SNARK")]
+    ExpectedCircuitSpecificSRS,
+
     #[error("{}", _0)]
     Message(String),
 
