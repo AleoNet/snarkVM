@@ -21,6 +21,7 @@ use snarkvm_utilities::{
     rand::UniformRand,
     serialize::*,
     FromBytes,
+    ToBits,
     ToBytes,
 };
 
@@ -477,6 +478,22 @@ impl<P: Fp12Parameters> From<u16> for Fp12<P> {
 impl<P: Fp12Parameters> From<u8> for Fp12<P> {
     fn from(other: u8) -> Self {
         Self::new(other.into(), Fp6::zero())
+    }
+}
+
+impl<P: Fp12Parameters> ToBits for Fp12<P> {
+    fn to_bits_le(&self) -> Vec<bool> {
+        let mut res = vec![];
+        res.extend_from_slice(&self.c0.to_bits_le());
+        res.extend_from_slice(&self.c1.to_bits_le());
+        res
+    }
+
+    fn to_bits_be(&self) -> Vec<bool> {
+        let mut res = vec![];
+        res.extend_from_slice(&self.c0.to_bits_be());
+        res.extend_from_slice(&self.c1.to_bits_be());
+        res
     }
 }
 

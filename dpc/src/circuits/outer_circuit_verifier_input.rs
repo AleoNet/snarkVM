@@ -17,10 +17,10 @@
 use crate::{InnerCircuitVerifierInput, Parameters};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, MerkleParameters, CRH},
+    traits::{CommitmentScheme, CRH},
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
-use snarkvm_utilities::ToBytes;
+use snarkvm_utilities::ToBits;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
@@ -31,10 +31,7 @@ pub struct OuterCircuitVerifierInput<C: Parameters> {
 
 impl<C: Parameters> ToConstraintField<C::OuterScalarField> for OuterCircuitVerifierInput<C>
 where
-    <C::InnerCircuitIDCRH as CRH>::Output: ToConstraintField<C::OuterScalarField>,
     <C::AccountCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <<C::RecordCommitmentTreeParameters as MerkleParameters>::H as CRH>::Parameters:
-        ToConstraintField<C::InnerScalarField>,
     MerkleTreeDigest<C::RecordCommitmentTreeParameters>: ToConstraintField<C::InnerScalarField>,
 {
     fn to_field_elements(&self) -> Result<Vec<C::OuterScalarField>, ConstraintFieldError> {
@@ -43,9 +40,14 @@ where
         // Convert inner snark verifier inputs into `OuterField` field elements
         let inner_snark_field_elements = &self.inner_snark_verifier_input.to_field_elements()?;
 
+        // We can allocate the inner snark verifier inputs as follows.
+        //
+        // This is because BooleanInput, which is the norm of allocating nonnative field elements into a circuit,
+        // always follow a rule: alloc the original inputs as bits, and pack them into the new fields, all in the
+        // little-endian format.
         for inner_snark_fe in inner_snark_field_elements {
             v.extend_from_slice(&ToConstraintField::<C::OuterScalarField>::to_field_elements(
-                inner_snark_fe.to_bytes_le()?.as_slice(),
+                inner_snark_fe.to_bits_le().as_slice(),
             )?);
         }
 

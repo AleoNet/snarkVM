@@ -25,6 +25,8 @@ use crate::{
     traits::alloc::AllocGadget,
     AllocBytesGadget,
     FromFieldElementsGadget,
+    MergeGadget,
+    ToBitsLEGadget,
     ToBytesGadget,
     ToConstraintFieldGadget,
 };
@@ -41,19 +43,24 @@ pub trait SNARKVerifierGadget<S: SNARK> {
         + PrepareGadget<Self::PreparedVerificationKeyGadget, S::BaseField>
         + AllocBytesGadget<Vec<u8>, S::BaseField>;
     type ProofGadget: AllocGadget<S::Proof, S::BaseField> + AllocBytesGadget<Vec<u8>, S::BaseField>;
-    type Input: Clone + ?Sized;
+    type InputGadget: Clone
+        + AllocGadget<Vec<S::ScalarField>, S::BaseField>
+        + ToBitsLEGadget<S::BaseField>
+        + FromFieldElementsGadget<S::ScalarField, S::BaseField>
+        + MergeGadget<S::BaseField>
+        + ?Sized;
 
-    fn check_verify<'a, CS: ConstraintSystem<S::BaseField>, I: Iterator<Item = Self::Input>>(
+    fn check_verify<'a, CS: ConstraintSystem<S::BaseField>>(
         cs: CS,
         verification_key: &Self::VerificationKeyGadget,
-        input: I,
+        input: &Self::InputGadget,
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError>;
 
-    fn prepared_check_verify<'a, CS: ConstraintSystem<S::BaseField>, I: Iterator<Item = Self::Input>>(
+    fn prepared_check_verify<'a, CS: ConstraintSystem<S::BaseField>>(
         cs: CS,
         prepared_verification_key: &Self::PreparedVerificationKeyGadget,
-        input: I,
+        input: &Self::InputGadget,
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError>;
 }

@@ -14,8 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod noop_program;
-pub use noop_program::*;
+use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-pub mod noop_program_circuit;
-pub use noop_program_circuit::*;
+pub trait MergeGadget<F: PrimeField>: Clone {
+    fn merge<CS: ConstraintSystem<F>>(&self, cs: CS, other: &Self) -> Result<Self, SynthesisError>;
+    fn merge_in_place<CS: ConstraintSystem<F>>(&mut self, cs: CS, other: &Self) -> Result<(), SynthesisError>;
+    fn merge_many<CS: ConstraintSystem<F>>(mut cs: CS, elems: &[Self]) -> Result<Self, SynthesisError> {
+        assert!(elems.len() >= 1);
+
+        let mut res = elems[0].clone();
+        for (i, elem) in elems.iter().skip(1).enumerate() {
+            res.merge_in_place(cs.ns(|| format!("merge_{}", i)), elem)?;
+        }
+
+        Ok(res)
+    }
+}

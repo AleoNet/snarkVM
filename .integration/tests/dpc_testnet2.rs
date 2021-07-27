@@ -17,14 +17,17 @@
 use snarkvm_algorithms::{
     merkle_tree::MerklePath,
     traits::{CRH, SNARK},
+    SRS,
 };
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{
     execute_inner_circuit,
+    execute_outer_circuit,
     prelude::*,
-    testnet2::{execute_outer_circuit, parameters::*, program::NoopProgram},
+    testnet2::parameters::*,
     EncryptedRecord,
     InnerCircuit,
+    NoopProgram,
     Payload,
     Record,
     TransactionKernel,
@@ -480,9 +483,9 @@ fn test_testnet2_dpc_execute_constraints() {
     assert!(inner_circuit_cs.is_satisfied());
 
     // Generate inner snark parameters and proof for verification in the outer snark
-    let inner_snark_parameters = <Testnet2Parameters as Parameters>::InnerSNARK::circuit_specific_setup(
+    let inner_snark_parameters = <Testnet2Parameters as Parameters>::InnerSNARK::setup(
         &InnerCircuit::<Testnet2Parameters>::blank(),
-        &mut rng,
+        &mut SRS::CircuitSpecific(&mut rng),
     )
     .unwrap();
 
@@ -557,7 +560,7 @@ fn test_testnet2_dpc_execute_constraints() {
         println!("=========================================================");
         let num_constraints = outer_circuit_cs.num_constraints();
         println!("Outer circuit num constraints: {:?}", num_constraints);
-        assert_eq!(837242, num_constraints);
+        assert_eq!(835853, num_constraints);
         println!("=========================================================");
     }
 

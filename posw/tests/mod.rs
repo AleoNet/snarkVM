@@ -21,6 +21,7 @@ use snarkvm_posw::{txids_to_roots, Marlin, PoswMarlin};
 use snarkvm_utilities::FromBytes;
 
 use rand::SeedableRng;
+use rand_chacha::ChaChaRng;
 
 /// TODO (howardwu): Update this when testnet2 is live.
 #[ignore]
@@ -86,12 +87,12 @@ fn test_posw_verify_testnet1() {
 fn test_posw_setup_vs_load_weak_sanity_check() {
     let generated_posw = {
         // Load the PoSW Marlin parameters.
-        let rng = &mut rand_xorshift::XorShiftRng::seed_from_u64(1234567);
+        let rng = &mut ChaChaRng::seed_from_u64(1234567);
         // Run the universal setup.
         let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
         let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(max_degree, rng).unwrap();
         // Run the circuit setup.
-        PoswMarlin::index(universal_srs).unwrap()
+        PoswMarlin::index::<_, ChaChaRng>(universal_srs).unwrap()
     };
     let loaded_posw = PoswMarlin::load().unwrap();
 

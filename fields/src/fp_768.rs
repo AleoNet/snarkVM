@@ -31,6 +31,7 @@ use snarkvm_utilities::{
     biginteger::{arithmetic as fa, BigInteger as _BigInteger, BigInteger768 as BigInteger},
     serialize::CanonicalDeserialize,
     FromBytes,
+    ToBits,
     ToBytes,
 };
 
@@ -805,6 +806,22 @@ impl_primefield_standard_sample!(Fp768, Fp768Parameters);
 
 impl_add_sub_from_field_ref!(Fp768, Fp768Parameters);
 impl_mul_div_from_field_ref!(Fp768, Fp768Parameters);
+
+impl<P: Fp768Parameters> ToBits for Fp768<P> {
+    fn to_bits_le(&self) -> Vec<bool> {
+        let mut bits_vec = self.to_repr().to_bits_le();
+        bits_vec.truncate(P::MODULUS_BITS as usize);
+
+        bits_vec
+    }
+
+    fn to_bits_be(&self) -> Vec<bool> {
+        let mut bits_vec = self.to_repr().to_bits_be();
+        bits_vec.truncate(P::MODULUS_BITS as usize);
+
+        bits_vec
+    }
+}
 
 impl<P: Fp768Parameters> ToBytes for Fp768<P> {
     #[inline]

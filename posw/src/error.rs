@@ -24,6 +24,17 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 /// An error when generating/verifying a Proof of Succinct Work
 pub enum PoswError {
+    #[error("{}", _0)]
+    AnyhowError(#[from] anyhow::Error),
+
+    /// Thrown if the mask conversion to a field element fails
+    #[error(transparent)]
+    ConstraintFieldError(#[from] ConstraintFieldError),
+
+    /// Thrown when there's an IO error
+    #[error(transparent)]
+    IoError(#[from] IoError),
+
     /// Thrown when the parameters cannot be loaded
     #[error("could not load PoSW parameters: {0}")]
     Parameters(#[from] ParameterError),
@@ -35,12 +46,4 @@ pub enum PoswError {
     /// Thrown when there's an internal error in the underlying SNARK
     #[error(transparent)]
     SnarkError(#[from] SNARKError),
-
-    /// Thrown when there's an IO error
-    #[error(transparent)]
-    IoError(#[from] IoError),
-
-    /// Thrown if the mask conversion to a field element fails
-    #[error(transparent)]
-    ConstraintFieldError(#[from] ConstraintFieldError),
 }
