@@ -133,7 +133,7 @@ fn dpc_testnet1_integration_test() {
                 Payload::default(),
                 dpc.noop_program.id(),
                 dpc.noop_program.id(),
-                j as u8,
+                (Testnet1Parameters::NUM_INPUT_RECORDS + j) as u8,
                 joint_serial_numbers.clone(),
                 &mut rng,
             )
@@ -263,7 +263,7 @@ fn test_testnet1_transaction_kernel_serialization() {
                 Payload::default(),
                 dpc.noop_program.id(),
                 dpc.noop_program.id(),
-                j as u8,
+                (Testnet1Parameters::NUM_INPUT_RECORDS + j) as u8,
                 joint_serial_numbers.clone(),
                 &mut rng,
             )
@@ -351,7 +351,7 @@ fn test_testnet1_dpc_execute_constraints() {
                 Payload::default(),
                 dpc.noop_program.id(),
                 dpc.noop_program.id(),
-                j as u8,
+                (Testnet1Parameters::NUM_INPUT_RECORDS + j) as u8,
                 joint_serial_numbers.clone(),
                 &mut rng,
             )
