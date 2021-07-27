@@ -19,16 +19,16 @@ mod gm17 {
 
     use snarkvm_algorithms::snark::gm17::{create_random_proof, generate_random_parameters, GM17};
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-    use snarkvm_fields::{Field, PrimeField};
+    use snarkvm_fields::Field;
     use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
-    use snarkvm_utilities::{bititerator::BitIteratorBE, to_bytes_le, ToBytes};
+    use snarkvm_utilities::{to_bytes_le, ToBytes};
 
     use crate::{
         algorithms::snark::*,
-        bits::Boolean,
         curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
         traits::{algorithms::snark::SNARKVerifierGadget, alloc::AllocGadget},
         AllocBytesGadget,
+        BooleanInputGadget,
     };
 
     type TestProofSystem = GM17<Bls12_377, Fr>;
@@ -113,21 +113,8 @@ mod gm17 {
 
             let mut cs = TestConstraintSystem::<Fq>::new();
 
-            let inputs: Vec<_> = inputs.into_iter().map(|input| input.unwrap()).collect();
-            let mut input_gadgets = Vec::new();
-
-            {
-                let mut cs = cs.ns(|| "Allocate Input");
-                for (i, input) in inputs.into_iter().enumerate() {
-                    let mut input_bits = BitIteratorBE::new(input.to_repr()).collect::<Vec<_>>();
-                    // Input must be in little-endian, but BitIterator outputs in big-endian.
-                    input_bits.reverse();
-
-                    let input_bits =
-                        Vec::<Boolean>::alloc_input(cs.ns(|| format!("Input {}", i)), || Ok(input_bits)).unwrap();
-                    input_gadgets.push(input_bits);
-                }
-            }
+            let inputs = inputs.into_iter().map(|input| input.unwrap()).collect::<Vec<_>>();
+            let input_gadgets = BooleanInputGadget::<Fr, Fq>::alloc_input(cs.ns(|| "input"), || Ok(inputs)).unwrap();
 
             let vk_gadget = TestVkGadget::alloc_input(cs.ns(|| "Vk"), || Ok(&params.vk)).unwrap();
             let proof_gadget = TestProofGadget::alloc(cs.ns(|| "Proof"), || Ok(proof.clone())).unwrap();
@@ -135,7 +122,7 @@ mod gm17 {
             <TestVerifierGadget as SNARKVerifierGadget<TestProofSystem>>::check_verify(
                 cs.ns(|| "Verify"),
                 &vk_gadget,
-                input_gadgets.iter().cloned(),
+                &input_gadgets,
                 &proof_gadget,
             )
             .unwrap();
@@ -186,21 +173,8 @@ mod gm17 {
 
             let mut cs = TestConstraintSystem::<Fq>::new();
 
-            let inputs: Vec<_> = inputs.into_iter().map(|input| input.unwrap()).collect();
-            let mut input_gadgets = Vec::new();
-
-            {
-                let mut cs = cs.ns(|| "Allocate Input");
-                for (i, input) in inputs.into_iter().enumerate() {
-                    let mut input_bits = BitIteratorBE::new(input.to_repr()).collect::<Vec<_>>();
-                    // Input must be in little-endian, but BitIterator outputs in big-endian.
-                    input_bits.reverse();
-
-                    let input_bits =
-                        Vec::<Boolean>::alloc_input(cs.ns(|| format!("Input {}", i)), || Ok(input_bits)).unwrap();
-                    input_gadgets.push(input_bits);
-                }
-            }
+            let inputs = inputs.into_iter().map(|input| input.unwrap()).collect::<Vec<_>>();
+            let input_gadgets = BooleanInputGadget::<Fr, Fq>::alloc_input(cs.ns(|| "input"), || Ok(inputs)).unwrap();
 
             let vk_bytes = to_bytes_le![params.vk].unwrap();
             let proof_bytes = to_bytes_le![proof].unwrap();
@@ -211,7 +185,7 @@ mod gm17 {
             <TestVerifierGadget as SNARKVerifierGadget<TestProofSystem>>::check_verify(
                 cs.ns(|| "Verify"),
                 &vk_gadget,
-                input_gadgets.iter().cloned(),
+                &input_gadgets,
                 &proof_gadget,
             )
             .unwrap();
@@ -261,21 +235,8 @@ mod gm17 {
 
             let mut cs = TestConstraintSystem::<Fq>::new();
 
-            let inputs: Vec<_> = inputs.into_iter().map(|input| input.unwrap()).collect();
-            let mut input_gadgets = Vec::new();
-
-            {
-                let mut cs = cs.ns(|| "Allocate Input");
-                for (i, input) in inputs.into_iter().enumerate() {
-                    let mut input_bits = BitIteratorBE::new(input.to_repr()).collect::<Vec<_>>();
-                    // Input must be in little-endian, but BitIterator outputs in big-endian.
-                    input_bits.reverse();
-
-                    let input_bits =
-                        Vec::<Boolean>::alloc_input(cs.ns(|| format!("Input {}", i)), || Ok(input_bits)).unwrap();
-                    input_gadgets.push(input_bits);
-                }
-            }
+            let inputs = inputs.into_iter().map(|input| input.unwrap()).collect::<Vec<_>>();
+            let input_gadgets = BooleanInputGadget::<Fr, Fq>::alloc_input(cs.ns(|| "input"), || Ok(inputs)).unwrap();
 
             let input_gadget_constraints = cs.num_constraints();
 
@@ -285,17 +246,18 @@ mod gm17 {
 
             let proof_gadget = TestProofGadget::alloc(cs.ns(|| "Proof"), || Ok(proof.clone())).unwrap();
 
-            let proof_gadget_constraints = cs.num_constraints() - vk_gadget_constraints;
+            let proof_gadget_constraints = cs.num_constraints() - vk_gadget_constraints - input_gadget_constraints;
 
             <TestVerifierGadget as SNARKVerifierGadget<TestProofSystem>>::check_verify(
                 cs.ns(|| "Verify"),
                 &vk_gadget,
-                input_gadgets.iter().cloned(),
+                &input_gadgets,
                 &proof_gadget,
             )
             .unwrap();
 
-            let verifier_gadget_constraints = cs.num_constraints() - proof_gadget_constraints;
+            let verifier_gadget_constraints =
+                cs.num_constraints() - proof_gadget_constraints - vk_gadget_constraints - input_gadget_constraints;
 
             if !cs.is_satisfied() {
                 println!("=========================================================");
@@ -311,10 +273,10 @@ mod gm17 {
             println!("proof_gadget_constraints : {:?}", proof_gadget_constraints);
             println!("verifier_gadget_constraints : {:?}", verifier_gadget_constraints);
 
-            const INPUT_GADGET_CONSTRAINTS: usize = 25600;
+            const INPUT_GADGET_CONSTRAINTS: usize = 25368;
             const VK_GADGET_CONSTRAINTS: usize = 436;
-            const PROOF_GADGET_CONSTRAINTS: usize = 30199;
-            const VERIFIER_GADGET_CONSTRAINTS: usize = 323678;
+            const PROOF_GADGET_CONSTRAINTS: usize = 4599;
+            const VERIFIER_GADGET_CONSTRAINTS: usize = 319942;
 
             assert_eq!(input_gadget_constraints, INPUT_GADGET_CONSTRAINTS);
             assert_eq!(vk_gadget_constraints, VK_GADGET_CONSTRAINTS);
@@ -330,16 +292,16 @@ mod groth16 {
     use snarkvm_algorithms::snark::groth16::*;
 
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-    use snarkvm_fields::{Field, PrimeField};
+    use snarkvm_fields::Field;
     use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, TestConstraintSystem};
-    use snarkvm_utilities::{test_rng, to_bytes_le, BitIteratorBE, ToBytes};
+    use snarkvm_utilities::{test_rng, to_bytes_le, ToBytes};
 
     use crate::{
         algorithms::snark::groth16::*,
-        bits::Boolean,
         curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
         AllocBytesGadget,
         AllocGadget,
+        BooleanInputGadget,
         SNARKVerifierGadget,
     };
 
@@ -423,21 +385,8 @@ mod groth16 {
             // assert!(!verify_proof(&pvk, &proof, &[a]).unwrap());
             let mut cs = TestConstraintSystem::<Fq>::new();
 
-            let inputs = inputs.into_iter().map(|input| input.unwrap());
-            let mut input_gadgets = Vec::new();
-
-            {
-                let mut cs = cs.ns(|| "Allocate Input");
-                for (i, input) in inputs.enumerate() {
-                    let mut input_bits = BitIteratorBE::new(input.to_repr()).collect::<Vec<_>>();
-                    // Input must be in little-endian, but BitIterator outputs in big-endian.
-                    input_bits.reverse();
-
-                    let input_bits =
-                        Vec::<Boolean>::alloc_input(cs.ns(|| format!("Input {}", i)), || Ok(input_bits)).unwrap();
-                    input_gadgets.push(input_bits);
-                }
-            }
+            let inputs = inputs.into_iter().map(|input| input.unwrap()).collect::<Vec<_>>();
+            let input_gadgets = BooleanInputGadget::<Fr, Fq>::alloc_input(cs.ns(|| "input"), || Ok(inputs)).unwrap();
 
             let vk_gadget = TestVkGadget::alloc_input(cs.ns(|| "Vk"), || Ok(&params.vk)).unwrap();
             let proof_gadget = TestProofGadget::alloc(cs.ns(|| "Proof"), || Ok(proof.clone())).unwrap();
@@ -445,7 +394,7 @@ mod groth16 {
             <TestVerifierGadget as SNARKVerifierGadget<TestProofSystem>>::check_verify(
                 cs.ns(|| "Verify"),
                 &vk_gadget,
-                input_gadgets.iter().cloned(),
+                &input_gadgets,
                 &proof_gadget,
             )
             .unwrap();
@@ -494,21 +443,8 @@ mod groth16 {
             // assert!(!verify_proof(&pvk, &proof, &[a]).unwrap());
             let mut cs = TestConstraintSystem::<Fq>::new();
 
-            let inputs: Vec<_> = inputs.into_iter().map(|input| input.unwrap()).collect();
-            let mut input_gadgets = Vec::new();
-
-            {
-                let mut cs = cs.ns(|| "Allocate Input");
-                for (i, input) in inputs.into_iter().enumerate() {
-                    let mut input_bits = BitIteratorBE::new(input.to_repr()).collect::<Vec<_>>();
-                    // Input must be in little-endian, but BitIterator outputs in big-endian.
-                    input_bits.reverse();
-
-                    let input_bits =
-                        Vec::<Boolean>::alloc_input(cs.ns(|| format!("Input {}", i)), || Ok(input_bits)).unwrap();
-                    input_gadgets.push(input_bits);
-                }
-            }
+            let inputs = inputs.into_iter().map(|input| input.unwrap()).collect::<Vec<_>>();
+            let input_gadgets = BooleanInputGadget::<Fr, Fq>::alloc_input(cs.ns(|| "input"), || Ok(inputs)).unwrap();
 
             let vk_bytes = to_bytes_le![params.vk].unwrap();
             let proof_bytes = to_bytes_le![proof].unwrap();
@@ -519,7 +455,7 @@ mod groth16 {
             <TestVerifierGadget as SNARKVerifierGadget<TestProofSystem>>::check_verify(
                 cs.ns(|| "Verify"),
                 &vk_gadget,
-                input_gadgets.iter().cloned(),
+                &input_gadgets,
                 &proof_gadget,
             )
             .unwrap();
@@ -567,21 +503,8 @@ mod groth16 {
             // assert!(!verify_proof(&pvk, &proof, &[a]).unwrap());
             let mut cs = TestConstraintSystem::<Fq>::new();
 
-            let inputs = inputs.into_iter().map(|input| input.unwrap());
-            let mut input_gadgets = Vec::new();
-
-            {
-                let mut cs = cs.ns(|| "Allocate Input");
-                for (i, input) in inputs.enumerate() {
-                    let mut input_bits = BitIteratorBE::new(input.to_repr()).collect::<Vec<_>>();
-                    // Input must be in little-endian, but BitIterator outputs in big-endian.
-                    input_bits.reverse();
-
-                    let input_bits =
-                        Vec::<Boolean>::alloc_input(cs.ns(|| format!("Input {}", i)), || Ok(input_bits)).unwrap();
-                    input_gadgets.push(input_bits);
-                }
-            }
+            let inputs = inputs.into_iter().map(|input| input.unwrap()).collect::<Vec<_>>();
+            let input_gadgets = BooleanInputGadget::<Fr, Fq>::alloc_input(cs.ns(|| "input"), || Ok(inputs)).unwrap();
 
             let input_gadget_constraints = cs.num_constraints();
 
@@ -591,17 +514,18 @@ mod groth16 {
 
             let proof_gadget = TestProofGadget::alloc(cs.ns(|| "Proof"), || Ok(proof.clone())).unwrap();
 
-            let proof_gadget_constraints = cs.num_constraints() - vk_gadget_constraints;
+            let proof_gadget_constraints = cs.num_constraints() - vk_gadget_constraints - input_gadget_constraints;
 
             <TestVerifierGadget as SNARKVerifierGadget<TestProofSystem>>::check_verify(
                 cs.ns(|| "Verify"),
                 &vk_gadget,
-                input_gadgets.iter().cloned(),
+                &input_gadgets,
                 &proof_gadget,
             )
             .unwrap();
 
-            let verifier_gadget_constraints = cs.num_constraints() - proof_gadget_constraints;
+            let verifier_gadget_constraints =
+                cs.num_constraints() - proof_gadget_constraints - input_gadget_constraints - vk_gadget_constraints;
 
             if !cs.is_satisfied() {
                 println!("=========================================================");
@@ -618,10 +542,10 @@ mod groth16 {
             println!("proof_gadget_constraints : {:?}", proof_gadget_constraints);
             println!("verifier_gadget_constraints : {:?}", verifier_gadget_constraints);
 
-            const INPUT_GADGET_CONSTRAINTS: usize = 25600;
+            const INPUT_GADGET_CONSTRAINTS: usize = 25368;
             const VK_GADGET_CONSTRAINTS: usize = 432;
-            const PROOF_GADGET_CONSTRAINTS: usize = 30199;
-            const VERIFIER_GADGET_CONSTRAINTS: usize = 316962;
+            const PROOF_GADGET_CONSTRAINTS: usize = 4599;
+            const VERIFIER_GADGET_CONSTRAINTS: usize = 313230;
 
             assert_eq!(input_gadget_constraints, INPUT_GADGET_CONSTRAINTS);
             assert_eq!(vk_gadget_constraints, VK_GADGET_CONSTRAINTS);

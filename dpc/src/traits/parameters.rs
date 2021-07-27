@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerCircuitVerifierInput, OuterCircuitVerifierInput};
+use crate::{InnerCircuitVerifierInput, OuterCircuitVerifierInput, ProgramLocalData};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
 use snarkvm_curves::{
     traits::{MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters},
@@ -24,6 +24,7 @@ use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
     CompressedGroupGadget,
+    SNARKVerifierGadget,
 };
 use snarkvm_utilities::{
     fmt::{Debug, Display},
@@ -33,6 +34,9 @@ use snarkvm_utilities::{
     FromBytes,
     ToBytes,
 };
+
+use anyhow::Result;
+use rand::{CryptoRng, Rng};
 
 pub trait Parameters: 'static + Sized {
     const NETWORK_ID: u8;
@@ -54,12 +58,24 @@ pub trait Parameters: 'static + Sized {
         BaseField = Self::OuterScalarField,
         VerifierInput = InnerCircuitVerifierInput<Self>,
     >;
+    /// SNARK Verifier gadget for the inner circuit.
+    type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK>;
+
     /// SNARK for proof-verification checks.
     type OuterSNARK: SNARK<
         ScalarField = Self::OuterScalarField,
         BaseField = Self::OuterBaseField,
         VerifierInput = OuterCircuitVerifierInput<Self>,
     >;
+
+    /// Program SNARK for Aleo applications.
+    type ProgramSNARK: SNARK<
+        ScalarField = Self::InnerScalarField,
+        BaseField = Self::OuterScalarField,
+        VerifierInput = ProgramLocalData<Self>,
+    >;
+    /// Program SNARK verifier gadget for Aleo applications.
+    type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK>;
 
     /// Commitment scheme for account contents. Invoked only over `Self::InnerScalarField`.
     type AccountCommitmentScheme: CommitmentScheme<Output = Self::AccountCommitment>
@@ -120,8 +136,20 @@ pub trait Parameters: 'static + Sized {
 
     /// CRH for hash of the `Self::InnerSNARK` verifying keys.
     /// This is invoked only on the larger curve.
-    type InnerCircuitIDCRH: CRH;
+    type InnerCircuitIDCRH: CRH<Output = Self::InnerCircuitIDCRHDigest>;
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
+    type InnerCircuitIDCRHDigest: ToConstraintField<Self::OuterScalarField>
+        + Clone
+        + Debug
+        + Display
+        + ToBytes
+        + FromBytes
+        + Eq
+        + Hash
+        + Default
+        + Send
+        + Sync
+        + Copy;
 
     /// CRH and commitment scheme for committing to program input. Invoked inside
     /// `Self::InnerSNARK` and every program SNARK.
@@ -232,4 +260,9 @@ pub trait Parameters: 'static + Sized {
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters;
 
     fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
+
+    /// Returns the program SRS for Aleo applications.
+    fn program_srs<R: Rng + CryptoRng>(
+        rng: &mut R,
+    ) -> Result<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>>;
 }

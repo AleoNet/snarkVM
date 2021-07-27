@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::SRS;
 use snarkvm_fields::{Field, Zero};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
@@ -148,7 +149,7 @@ mod gm17 {
 
         let rng = &mut thread_rng();
 
-        let parameters = GM17::<Bls12_377, [Fr]>::circuit_specific_setup(&circuit, rng).unwrap();
+        let parameters = GM17::<Bls12_377, [Fr]>::setup(&circuit, &mut SRS::CircuitSpecific(rng)).unwrap();
 
         let proof = GM17::<Bls12_377, [Fr]>::prove(&parameters.0, &circuit, rng).unwrap();
 

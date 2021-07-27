@@ -15,9 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    testnet1::{NoopCircuit, Testnet1Components},
     Execution,
     LocalData,
+    Network,
+    NoopCircuit,
     Parameters,
     ProgramError,
     ProgramLocalData,
@@ -25,33 +26,30 @@ use crate::{
     RecordScheme,
 };
 use snarkvm_algorithms::prelude::*;
-use snarkvm_parameters::{
-    testnet1::{NoopProgramSNARKPKParameters, NoopProgramSNARKVKParameters},
-    Parameter,
-};
+use snarkvm_parameters::Parameter;
+use snarkvm_r1cs::ToConstraintField;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::{CryptoRng, Rng};
-use snarkvm_fields::ToConstraintField;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Testnet1Components"), Debug(bound = "C: Testnet1Components"))]
-pub struct NoopProgram<C: Testnet1Components> {
+#[derivative(Clone(bound = "C: Parameters"), Debug(bound = "C: Parameters"))]
+pub struct NoopProgram<C: Parameters> {
     #[derivative(Default(value = "vec![0u8; 48]"))]
     id: Vec<u8>,
     #[derivative(Debug = "ignore")]
-    proving_key: <<C as Testnet1Components>::ProgramSNARK as SNARK>::ProvingKey,
+    proving_key: <C::ProgramSNARK as SNARK>::ProvingKey,
     #[derivative(Debug = "ignore")]
-    verifying_key: <<C as Testnet1Components>::ProgramSNARK as SNARK>::VerifyingKey,
+    verifying_key: <C::ProgramSNARK as SNARK>::VerifyingKey,
 }
 
-impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
+impl<C: Parameters> ProgramScheme for NoopProgram<C> {
     type Execution = Execution<Self::ProofSystem>;
     type ID = Vec<u8>;
     type LocalData = LocalData<C>;
     type LocalDataCommitment = C::LocalDataCommitmentScheme;
     type ProgramIDCRH = C::ProgramIDCRH;
-    type ProofSystem = <C as Testnet1Components>::ProgramSNARK;
+    type ProofSystem = C::ProgramSNARK;
     type ProvingKey = <Self::ProofSystem as SNARK>::ProvingKey;
     type PublicInput = ();
     type VerifyingKey = <Self::ProofSystem as SNARK>::VerifyingKey;
@@ -59,7 +57,7 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
     /// Initializes a new instance of the noop program.
     fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, ProgramError> {
         let (proving_key, prepared_verifying_key) =
-            <Self::ProofSystem as SNARK>::circuit_specific_setup(&NoopCircuit::<C>::blank(), rng)?;
+            <Self::ProofSystem as SNARK>::setup(&NoopCircuit::<C>::blank(), &mut C::program_srs::<R>(rng)?)?;
         let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
 
         let verifying_key_group_elements = verifying_key.to_field_elements()?;
@@ -79,11 +77,29 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
     // TODO (howardwu): Why are we not preparing the VK here?
     /// Loads an instance of the noop program.
     fn load() -> Result<Self, ProgramError> {
-        let proving_key: <Self::ProofSystem as SNARK>::ProvingKey =
-            FromBytes::read_le(NoopProgramSNARKPKParameters::load_bytes()?.as_slice())?;
-        let verifying_key = <Self::ProofSystem as SNARK>::VerifyingKey::read_le(
-            NoopProgramSNARKVKParameters::load_bytes()?.as_slice(),
-        )?;
+        let proving_key: <Self::ProofSystem as SNARK>::ProvingKey = match Network::from_id(C::NETWORK_ID) {
+            Network::Testnet1 => FromBytes::read_le(
+                snarkvm_parameters::testnet1::NoopProgramSNARKPKParameters::load_bytes()?.as_slice(),
+            )?,
+            Network::Testnet2 => FromBytes::read_le(
+                snarkvm_parameters::testnet2::NoopProgramSNARKPKParameters::load_bytes()?.as_slice(),
+            )?,
+            _ => {
+                unimplemented!()
+            }
+        };
+
+        let verifying_key = match Network::from_id(C::NETWORK_ID) {
+            Network::Testnet1 => <Self::ProofSystem as SNARK>::VerifyingKey::read_le(
+                snarkvm_parameters::testnet1::NoopProgramSNARKVKParameters::load_bytes()?.as_slice(),
+            )?,
+            Network::Testnet2 => <Self::ProofSystem as SNARK>::VerifyingKey::read_le(
+                snarkvm_parameters::testnet2::NoopProgramSNARKVKParameters::load_bytes()?.as_slice(),
+            )?,
+            _ => {
+                unimplemented!()
+            }
+        };
 
         let verifying_key_group_elements = verifying_key.to_field_elements()?;
 
@@ -162,13 +178,13 @@ impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
     }
 }
 
-impl<C: Testnet1Components> NoopProgram<C> {
+impl<C: Parameters> NoopProgram<C> {
     #[deprecated]
     pub fn to_snark_parameters(
         &self,
     ) -> (
-        <<C as Testnet1Components>::ProgramSNARK as SNARK>::ProvingKey,
-        <<C as Testnet1Components>::ProgramSNARK as SNARK>::VerifyingKey,
+        <C::ProgramSNARK as SNARK>::ProvingKey,
+        <C::ProgramSNARK as SNARK>::VerifyingKey,
     ) {
         (self.proving_key.clone(), self.verifying_key.clone())
     }

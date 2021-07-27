@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Field, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{errors::SerializationError, rand::UniformRand, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{errors::SerializationError, rand::UniformRand, serialize::*, FromBytes, ToBits, ToBytes};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -280,6 +280,22 @@ impl<P: Fp2Parameters> From<u16> for Fp2<P> {
 impl<P: Fp2Parameters> From<u8> for Fp2<P> {
     fn from(other: u8) -> Self {
         Self::new(other.into(), P::Fp::zero())
+    }
+}
+
+impl<P: Fp2Parameters> ToBits for Fp2<P> {
+    fn to_bits_le(&self) -> Vec<bool> {
+        let mut res = vec![];
+        res.extend_from_slice(&self.c0.to_bits_le());
+        res.extend_from_slice(&self.c1.to_bits_le());
+        res
+    }
+
+    fn to_bits_be(&self) -> Vec<bool> {
+        let mut res = vec![];
+        res.extend_from_slice(&self.c0.to_bits_be());
+        res.extend_from_slice(&self.c1.to_bits_be());
+        res
     }
 }
 

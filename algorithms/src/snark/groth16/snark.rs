@@ -23,12 +23,12 @@ use super::{
     ProvingKey,
     VerifyingKey,
 };
-use crate::{errors::SNARKError, traits::SNARK};
+use crate::{SNARKError, SNARK, SRS};
 use snarkvm_curves::traits::PairingEngine;
 use snarkvm_fields::ToConstraintField;
 use snarkvm_r1cs::ConstraintSynthesizer;
 
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 use std::marker::PhantomData;
 
 /// Note: V should serialize its contents to `Vec<E::Fr>` in the same order as
@@ -50,18 +50,21 @@ impl<E: PairingEngine, V: ToConstraintField<E::Fr> + ?Sized> SNARK for Groth16<E
     type VerifierInput = V;
     type VerifyingKey = VerifyingKey<E>;
 
-    fn circuit_specific_setup<C: ConstraintSynthesizer<E::Fr>, R: Rng>(
+    fn setup<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         circuit: &C,
-        rng: &mut R,
+        srs: &mut SRS<R, Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
         let setup_time = start_timer!(|| "{Groth 2016}::Setup");
-        let pp = generate_random_parameters::<E, C, R>(circuit, rng)?;
+        let pp = match srs {
+            SRS::CircuitSpecific(rng) => generate_random_parameters::<E, C, _>(circuit, *rng)?,
+            _ => return Err(SNARKError::ExpectedCircuitSpecificSRS),
+        };
         let vk = pp.vk.clone();
         end_timer!(setup_time);
         Ok((pp, vk))
     }
 
-    fn prove<C: ConstraintSynthesizer<E::Fr>, R: Rng>(
+    fn prove<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         proving_key: &Self::ProvingKey,
         input_and_witness: &C,
         rng: &mut R,

@@ -16,10 +16,11 @@
 
 use crate::{
     record::{encoded::*, encrypted::*},
-    testnet2::{parameters::*, NoopProgram},
+    testnet2::parameters::*,
     Account,
     AccountScheme,
     EncodedRecordScheme,
+    NoopProgram,
     Parameters,
     Payload,
     ProgramScheme,
