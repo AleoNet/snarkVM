@@ -48,10 +48,10 @@ pub fn encode_to_field<F: PrimeField>(x_bytes: &[u8]) -> Result<Vec<F>, DPCError
 
 /// Decode a group into the byte representation of a base field element.
 pub fn decode_from_field<F: PrimeField>(field_elements: &[F]) -> Result<Vec<u8>, DPCError> {
-    if field_elements.len() == 0 {
-        return Err(DPCError::EncodingError(EncodingError::Message(
+    if field_elements.is_empty() {
+        return Err(EncodingError::Message(
             "The encoded record must consist of at least one field element.".to_string(),
-        )));
+        ).into());
     }
     // There is at least one field element due to the additional true bit.
 
@@ -60,7 +60,7 @@ pub fn decode_from_field<F: PrimeField>(field_elements: &[F]) -> Result<Vec<u8>,
     let mut bits = Vec::<bool>::with_capacity(field_elements.len() * capacity);
     for elem in field_elements.iter() {
         let elem_bits = elem.to_repr().to_bits_le();
-        bits.extend_from_slice(&elem_bits[0..capacity]); // only keep `capacity` bits, discarding the highest bit.
+        bits.extend_from_slice(&elem_bits[..capacity]); // only keep `capacity` bits, discarding the highest bit.
     }
 
     // Find the last bit of `true`, which should be within the last `CAPACITY` bits.
@@ -74,18 +74,18 @@ pub fn decode_from_field<F: PrimeField>(field_elements: &[F]) -> Result<Vec<u8>,
     }
 
     if last_bit_pos.is_none() {
-        return Err(DPCError::EncodingError(EncodingError::Message(
+        return Err(EncodingError::Message(
             "The encoded record does not end with an expected termination bit.".to_string(),
-        )));
+        ).into());
     }
 
     bits.truncate(last_bit_pos.unwrap());
     // This also removes the additional termination bit.
 
     if bits.len() % 8 != 0 {
-        return Err(DPCError::EncodingError(EncodingError::Message(
+        return Err(EncodingError::Message(
             "The number of bits in the encoded record is not a multiply of 8.".to_string(),
-        )));
+        ).into());
     }
     // Here we do not use assertion since it can cause Rust panicking.
 
