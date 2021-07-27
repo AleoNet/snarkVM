@@ -51,7 +51,8 @@ pub fn decode_from_field<F: PrimeField>(field_elements: &[F]) -> Result<Vec<u8>,
     if field_elements.is_empty() {
         return Err(EncodingError::Message(
             "The encoded record must consist of at least one field element.".to_string(),
-        ).into());
+        )
+        .into());
     }
     // There is at least one field element due to the additional true bit.
 
@@ -76,7 +77,8 @@ pub fn decode_from_field<F: PrimeField>(field_elements: &[F]) -> Result<Vec<u8>,
     if last_bit_pos.is_none() {
         return Err(EncodingError::Message(
             "The encoded record does not end with an expected termination bit.".to_string(),
-        ).into());
+        )
+        .into());
     }
 
     bits.truncate(last_bit_pos.unwrap());
@@ -85,7 +87,8 @@ pub fn decode_from_field<F: PrimeField>(field_elements: &[F]) -> Result<Vec<u8>,
     if bits.len() % 8 != 0 {
         return Err(EncodingError::Message(
             "The number of bits in the encoded record is not a multiply of 8.".to_string(),
-        ).into());
+        )
+        .into());
     }
     // Here we do not use assertion since it can cause Rust panicking.
 
