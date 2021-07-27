@@ -68,19 +68,13 @@ pub fn decode_from_field<F: PrimeField>(field_elements: &[F]) -> Result<Vec<u8>,
     }
 
     // Drop all the ending zeros and the last "1" bit.
-    // If there is no "1" bit, then this is a `DPCError::EncodingError`.
-    let mut found_last_bit = false;
-    while !found_last_bit {
+    //
+    // Note that there must be at least one "1" bit because the last element is not zero,
+    // then this is a `DPCError::EncodingError`.
+    loop {
         if let Some(true) = bits.pop() {
-            found_last_bit = true;
+            break;
         }
-    }
-
-    if !found_last_bit {
-        return Err(EncodingError::Message(
-            "The encoded record does not end with an expected termination bit.".to_string(),
-        )
-        .into());
     }
 
     if bits.len() % 8 != 0 {
@@ -93,12 +87,7 @@ pub fn decode_from_field<F: PrimeField>(field_elements: &[F]) -> Result<Vec<u8>,
 
     let mut bytes = Vec::with_capacity(bits.len() / 8);
     for chunk in bits.chunks_exact(8) {
-        let mut byte = 0u8;
-        for bit in chunk.iter().rev() {
-            byte <<= 1;
-            byte += *bit as u8;
-        }
-        bytes.push(byte);
+        bytes.push(u8::from_le_bytes(chunk));
     }
 
     Ok(bytes)
