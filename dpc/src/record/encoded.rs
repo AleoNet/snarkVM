@@ -54,6 +54,9 @@ pub fn decode_from_field<F: PrimeField>(field_elements: &[F]) -> Result<Vec<u8>,
         )
         .into());
     }
+    if field_elements.last().unwrap().is_zero() {
+        return Err(EncodingError::Message("The encoded record must end with a non-zero element.".to_string()).into());
+    }
     // There is at least one field element due to the additional true bit.
 
     let capacity = <F::Parameters as FieldParameters>::CAPACITY as usize;
@@ -64,25 +67,21 @@ pub fn decode_from_field<F: PrimeField>(field_elements: &[F]) -> Result<Vec<u8>,
         bits.extend_from_slice(&elem_bits[..capacity]); // only keep `capacity` bits, discarding the highest bit.
     }
 
-    // Find the last bit of `true`, which should be within the last `CAPACITY` bits.
-    // If it does not exist, this is a `DPCError::EncodingError`.
-    let mut last_bit_pos = None;
-    for i in (0..bits.len()).rev().take(capacity) {
-        if bits[i] == true {
-            last_bit_pos = Some(i);
-            break;
+    // Drop all the ending zeros and the last "1" bit.
+    // If there is no "1" bit, then this is a `DPCError::EncodingError`.
+    let mut found_last_bit = false;
+    while !found_last_bit {
+        if let Some(true) = bits.pop() {
+            found_last_bit = true;
         }
     }
 
-    if last_bit_pos.is_none() {
+    if !found_last_bit {
         return Err(EncodingError::Message(
             "The encoded record does not end with an expected termination bit.".to_string(),
         )
         .into());
     }
-
-    bits.truncate(last_bit_pos.unwrap());
-    // This also removes the additional termination bit.
 
     if bits.len() % 8 != 0 {
         return Err(EncodingError::Message(
