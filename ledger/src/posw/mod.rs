@@ -59,8 +59,7 @@ mod tests {
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_utilities::FromBytes;
 
-    use rand::SeedableRng;
-    use rand_chacha::ChaChaRng;
+    use rand::{rngs::ThreadRng, thread_rng, Rng};
 
     #[test]
     fn test_load_verify_only() {
@@ -81,7 +80,7 @@ mod tests {
         let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(max_degree, &mut rng).unwrap();
 
         // run the deterministic setup
-        let posw = PoswMarlin::index::<_, ChaChaRng>(&universal_srs).unwrap();
+        let posw = PoswMarlin::index::<_, ThreadRng>(&universal_srs).unwrap();
 
         // super low difficulty so we find a solution immediately
         let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
@@ -104,7 +103,7 @@ mod tests {
 
         // generate the proof
         let (nonce, proof) = posw
-            .mine(&subroots, difficulty_target, &mut rand::thread_rng(), std::u32::MAX)
+            .mine(&subroots, difficulty_target, &mut rng, std::u32::MAX)
             .unwrap();
 
         assert_eq!(proof.len(), 972); // NOTE: Marlin proofs use compressed serialization

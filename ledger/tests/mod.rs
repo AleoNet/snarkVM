@@ -22,14 +22,13 @@ use snarkvm_ledger::{
 };
 use snarkvm_utilities::FromBytes;
 
-use rand::{thread_rng, Rng, SeedableRng};
-use rand_chacha::ChaChaRng;
+use rand::{rngs::ThreadRng, thread_rng, Rng};
 
 /// TODO (howardwu): Update this when testnet2 is live.
 #[ignore]
 #[test]
 fn test_posw_load_and_mine() {
-    let mut rng = thread_rng();
+    let rng = &mut thread_rng();
 
     // Load the PoSW Marlin parameters.
     let posw = PoswMarlin::load().unwrap();
@@ -55,9 +54,7 @@ fn test_posw_load_and_mine() {
     let (_, pedersen_merkle_root, subroots) = txids_to_roots(&transaction_ids);
 
     // Generate the proof.
-    let (nonce, proof) = posw
-        .mine(&subroots, difficulty_target, &mut rand::thread_rng(), std::u32::MAX)
-        .unwrap();
+    let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, std::u32::MAX).unwrap();
 
     assert_eq!(proof.len(), 972); // NOTE: Marlin proofs use compressed serialization
 
@@ -104,12 +101,12 @@ fn test_posw_verify_testnet1() {
 fn test_posw_setup_vs_load_weak_sanity_check() {
     let generated_posw = {
         // Load the PoSW Marlin parameters.
-        let rng = &mut ChaChaRng::seed_from_u64(1234567);
+        let rng = &mut thread_rng();
         // Run the universal setup.
         let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
         let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(max_degree, rng).unwrap();
         // Run the circuit setup.
-        PoswMarlin::index::<_, ChaChaRng>(&universal_srs).unwrap()
+        PoswMarlin::index::<_, ThreadRng>(&universal_srs).unwrap()
     };
     let loaded_posw = PoswMarlin::load().unwrap();
 
