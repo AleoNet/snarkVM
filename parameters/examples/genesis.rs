@@ -19,7 +19,6 @@ use utils::{initialize_test_blockchain, MemDb};
 
 use snarkvm_algorithms::CRH;
 use snarkvm_dpc::{
-    merkle_root,
     testnet1::parameters::*,
     Account,
     AccountScheme,
@@ -155,7 +154,7 @@ pub fn generate(recipient: &Address<Testnet1Parameters>, value: u64) -> Result<(
     // Mine the block.
     let posw = PoswMarlin::load().expect("could not instantiate the posw miner");
     let (nonce, proof) = posw
-        .mine(&subroots, difficulty_target, &mut thread_rng(), max_nonce)
+        .mine(&subroots, initial_difficulty_target, &mut thread_rng(), max_nonce)
         .unwrap();
 
     // Create a genesis header.
