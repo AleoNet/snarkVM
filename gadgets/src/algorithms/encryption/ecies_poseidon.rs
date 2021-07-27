@@ -47,7 +47,7 @@ use std::marker::PhantomData;
 
 type TEAffineGadget<TE, F> = crate::curves::templates::twisted_edwards::AffineGadget<TE, F, FpGadget<F>>;
 
-/// Group encryption private key gadget
+/// ECIES encryption private key gadget
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField"),
@@ -117,7 +117,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> ToBytesGadget<F
     }
 }
 
-/// Group encryption randomness gadget
+/// ECIES encryption randomness gadget
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "TE: TwistedEdwardsParameters"),
@@ -178,7 +178,7 @@ where
     }
 }
 
-/// Group encryption blinding exponents gadget
+/// ECIES encryption encryption witness gadget
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "TE: TwistedEdwardsParameters"),
