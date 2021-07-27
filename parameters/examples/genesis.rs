@@ -36,7 +36,6 @@ use snarkvm_dpc::{
     ProgramScheme,
     ProofOfSuccinctWork,
     Record,
-    Transaction,
     Transactions,
 };
 use snarkvm_utilities::{to_bytes_le, ToBytes};
@@ -54,7 +53,7 @@ pub fn generate(recipient: &Address<Testnet1Parameters>, value: u64) -> Result<(
 
     let dpc = Testnet1DPC::load(false)?;
 
-    let ledger = initialize_test_blockchain::<Testnet1Parameters, Transaction<Testnet1Parameters>, MemDb>(Block {
+    let ledger = initialize_test_blockchain::<Testnet1Parameters, MemDb>(Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             merkle_root_hash: MerkleRootHash([0u8; 32]),

@@ -22,9 +22,7 @@ use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
 use parking_lot::RwLock;
 use rand::{thread_rng, Rng};
 use std::{
-    collections::HashSet,
     fs,
-    marker::PhantomData,
     path::Path,
     sync::{
         atomic::{AtomicU32, Ordering},
@@ -38,9 +36,7 @@ pub fn random_storage_path() -> String {
 }
 
 /// Initializes a test ledger given a genesis block.
-pub fn initialize_test_blockchain<C: Parameters, T: TransactionScheme, S: Storage>(
-    genesis_block: Block<T>,
-) -> Ledger<C, T, S> {
+pub fn initialize_test_blockchain<C: Parameters, S: Storage>(genesis_block: Block<Transaction<C>>) -> Ledger<C, S> {
     let mut path = std::env::temp_dir();
     path.push(random_storage_path());
 
@@ -49,57 +45,120 @@ pub fn initialize_test_blockchain<C: Parameters, T: TransactionScheme, S: Storag
 
 pub type BlockHeight = u32;
 
-pub struct Ledger<C: Parameters, T: TransactionScheme, S: Storage> {
+pub struct Ledger<C: Parameters, S: Storage> {
     pub current_block_height: AtomicU32,
-    pub cm_merkle_tree: RwLock<MerkleTree<C::RecordCommitmentTreeParameters>>,
+    pub record_commitment_tree: RwLock<MerkleTree<C::RecordCommitmentTreeParameters>>,
     pub storage: S,
-    pub _transaction: PhantomData<T>,
 }
 
-impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
-    /// Returns true if there are no blocks in the ledger.
-    pub fn is_empty(&self) -> bool {
-        self.get_latest_block().is_err()
+impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
+    type Block = Block<Transaction<C>>;
+
+    /// Instantiates a new ledger with a genesis block.
+    fn new(path: Option<&Path>, genesis_block: Self::Block) -> anyhow::Result<Self> {
+        let storage = if let Some(path) = path {
+            fs::create_dir_all(&path).map_err(|err| LedgerError::Message(err.to_string()))?;
+
+            S::open(Some(path), None)
+        } else {
+            S::open(None, None) // this must mean we're using an in-memory storage
+        }?;
+
+        if let Some(block_num) = storage.get(COL_META, KEY_BEST_BLOCK_NUMBER.as_bytes())? {
+            if bytes_to_u32(&block_num) != 0 {
+                return Err(LedgerError::ExistingDatabase.into());
+            }
+        }
+
+        let leaves: &[[u8; 32]] = &[];
+        let parameters = Arc::new(C::record_commitment_tree_parameters().clone());
+
+        let ledger_storage = Self {
+            current_block_height: Default::default(),
+            record_commitment_tree: RwLock::new(MerkleTree::new(parameters, leaves)?),
+            storage,
+        };
+
+        ledger_storage.insert_and_commit(&genesis_block)?;
+
+        Ok(ledger_storage)
     }
 
-    /// Get the latest block in the chain.
-    pub fn get_latest_block(&self) -> Result<Block<T>, StorageError> {
-        self.get_block_from_block_number(self.get_current_block_height())
+    /// Returns the latest number of blocks in the ledger.
+    /// A block height of 0 indicates the ledger is uninitialized.
+    /// A block height of 1 indicates the ledger is initialized with a genesis block.
+    fn block_height(&self) -> u32 {
+        self.current_block_height.load(Ordering::SeqCst)
     }
 
-    /// Get a block given the block hash.
-    pub fn get_block(&self, block_hash: &BlockHeaderHash) -> Result<Block<T>, StorageError> {
-        Ok(Block {
+    /// Returns the latest block in the ledger.
+    fn latest_block(&self) -> anyhow::Result<Self::Block> {
+        let block_hash = self.get_block_hash(self.block_height())?;
+        Ok(self.get_block(&block_hash)?)
+    }
+
+    /// Returns the block given the block hash.
+    fn get_block(&self, block_hash: &BlockHeaderHash) -> anyhow::Result<Self::Block> {
+        Ok(Self::Block {
             header: self.get_block_header(block_hash)?,
             transactions: self.get_block_transactions(block_hash)?,
         })
     }
 
-    /// Get a block given the block number.
-    pub fn get_block_from_block_number(&self, block_number: u32) -> Result<Block<T>, StorageError> {
-        if block_number > self.get_current_block_height() {
-            return Err(StorageError::BlockError(BlockError::InvalidBlockNumber(block_number)));
-        }
-
-        let block_hash = self.get_block_hash(block_number)?;
-
-        self.get_block(&block_hash)
-    }
-
-    /// Get the block hash given a block number.
-    pub fn get_block_hash(&self, block_number: u32) -> Result<BlockHeaderHash, StorageError> {
+    /// Returns the block hash given a block number.
+    fn get_block_hash(&self, block_number: BlockHeight) -> anyhow::Result<BlockHeaderHash> {
         match self.storage.get(COL_BLOCK_LOCATOR, &block_number.to_le_bytes())? {
             Some(block_header_hash) => Ok(BlockHeaderHash::new(block_header_hash)),
-            None => Err(StorageError::MissingBlockHash(block_number)),
+            None => Err(StorageError::MissingBlockHash(block_number).into()),
         }
     }
 
-    /// Get the list of transaction ids given a block hash.
-    pub fn get_block_transactions(&self, block_hash: &BlockHeaderHash) -> Result<Transactions<T>, StorageError> {
-        match self.storage.get(COL_BLOCK_TRANSACTIONS, &block_hash.0)? {
-            Some(encoded_block_transactions) => Ok(Transactions::read_le(&encoded_block_transactions[..])?),
-            None => Err(StorageError::MissingBlockTransactions(block_hash.to_string())),
-        }
+    /// Returns true if the given block hash exists in the ledger.
+    fn contains_block_hash(&self, block_hash: &BlockHeaderHash) -> bool {
+        self.get_block_header(block_hash).is_ok()
+    }
+
+    /// Return a digest of the latest ledger Merkle tree.
+    fn latest_digest(&self) -> Option<MerkleTreeDigest<C::RecordCommitmentTreeParameters>> {
+        let digest = match self.storage.get(COL_META, KEY_CURR_DIGEST.as_bytes()).unwrap() {
+            Some(current_digest) => current_digest,
+            None => to_bytes_le![self.record_commitment_tree.read().root()].unwrap(),
+        };
+        Some(FromBytes::read_le(digest.as_slice()).unwrap())
+    }
+
+    /// Check that st_{ts} is a valid digest for some (past) ledger state.
+    fn is_valid_digest(&self, digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>) -> bool {
+        self.storage.exists(COL_DIGEST, &to_bytes_le![digest].unwrap())
+    }
+
+    /// Returns true if the given commitment exists in the ledger.
+    fn contains_commitment(&self, commitment: &C::RecordCommitment) -> bool {
+        self.storage.exists(COL_COMMITMENT, &commitment.to_bytes_le().unwrap())
+    }
+
+    /// Returns true if the given serial number exists in the ledger.
+    fn contains_serial_number(&self, serial_number: &C::AccountSignaturePublicKey) -> bool {
+        self.storage
+            .exists(COL_SERIAL_NUMBER, &serial_number.to_bytes_le().unwrap())
+    }
+
+    /// Returns the Merkle path to the latest ledger digest
+    /// for a given commitment, if it exists in the ledger.
+    fn prove_cm(&self, cm: &C::RecordCommitment) -> anyhow::Result<MerklePath<C::RecordCommitmentTreeParameters>> {
+        let cm_index = self
+            .get_cm_index(&cm.to_bytes_le()?)?
+            .ok_or(LedgerError::InvalidCmIndex)?;
+        let result = self.record_commitment_tree.read().generate_proof(cm_index, cm)?;
+
+        Ok(result)
+    }
+}
+
+impl<C: Parameters, S: Storage> Ledger<C, S> {
+    /// Returns true if there are no blocks in the ledger.
+    pub fn is_empty(&self) -> bool {
+        self.latest_block().is_err()
     }
 
     /// Find the potential child block hashes given a parent block header.
@@ -113,11 +172,6 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
         }
     }
 
-    /// Get the latest block height of the chain.
-    pub fn get_current_block_height(&self) -> BlockHeight {
-        self.current_block_height.load(Ordering::SeqCst)
-    }
-
     /// Get the block number given a block hash.
     pub fn get_block_number(&self, block_hash: &BlockHeaderHash) -> Result<u32, StorageError> {
         match self.storage.get(COL_BLOCK_LOCATOR, &block_hash.0)? {
@@ -126,20 +180,22 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
         }
     }
 
-    /// Returns true if the block for the given block header hash exists.
-    pub fn block_hash_exists(&self, block_hash: &BlockHeaderHash) -> bool {
-        if self.is_empty() {
-            return false;
-        }
-
-        self.get_block_header(block_hash).is_ok()
-    }
-
     /// Get a block header given the block hash.
     pub fn get_block_header(&self, block_hash: &BlockHeaderHash) -> Result<BlockHeader, StorageError> {
         match self.storage.get(COL_BLOCK_HEADER, &block_hash.0)? {
             Some(block_header_bytes) => Ok(BlockHeader::read_le(&block_header_bytes[..])?),
             None => Err(StorageError::MissingBlockHeader(block_hash.to_string())),
+        }
+    }
+
+    /// Get the list of transaction ids given a block hash.
+    pub fn get_block_transactions(
+        &self,
+        block_hash: &BlockHeaderHash,
+    ) -> Result<Transactions<Transaction<C>>, StorageError> {
+        match self.storage.get(COL_BLOCK_TRANSACTIONS, &block_hash.0)? {
+            Some(encoded_block_transactions) => Ok(Transactions::read_le(&encoded_block_transactions[..])?),
+            None => Err(StorageError::MissingBlockTransactions(block_hash.to_string())),
         }
     }
 
@@ -157,22 +213,6 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
             Some(sn_index_bytes) => Ok(bytes_to_u32(&sn_index_bytes) as usize),
             None => Ok(0),
         }
-    }
-
-    /// Get the current memo index
-    pub fn current_memo_index(&self) -> Result<usize, StorageError> {
-        match self.storage.get(COL_META, KEY_CURR_MEMO_INDEX.as_bytes())? {
-            Some(memo_index_bytes) => Ok(bytes_to_u32(&memo_index_bytes) as usize),
-            None => Ok(0),
-        }
-    }
-
-    /// Get the set of past ledger digests
-    pub fn past_digests(&self) -> Result<HashSet<Box<[u8]>>, StorageError> {
-        let keys = self.storage.get_keys(COL_DIGEST)?;
-        let digests = keys.into_iter().collect();
-
-        Ok(digests)
     }
 
     /// Get serial number index.
@@ -201,21 +241,11 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
         }
     }
 
-    /// Get memo index
-    pub fn get_memo_index(&self, memo_bytes: &[u8]) -> Result<Option<usize>, StorageError> {
-        match self.storage.get(COL_MEMO, memo_bytes)? {
-            Some(memo_index_bytes) => {
-                let mut memo_index = [0u8; 4];
-                memo_index.copy_from_slice(&memo_index_bytes[0..4]);
-
-                Ok(Some(u32::from_le_bytes(memo_index) as usize))
-            }
-            None => Ok(None),
-        }
-    }
-
     /// Build a new commitment merkle tree from the stored commitments
-    pub fn rebuild_merkle_tree(&self, additional_cms: Vec<(T::Commitment, usize)>) -> Result<(), StorageError> {
+    pub fn rebuild_merkle_tree(
+        &self,
+        additional_cms: Vec<(<Transaction<C> as TransactionScheme>::Commitment, usize)>,
+    ) -> Result<(), StorageError> {
         let mut new_cm_and_indices = additional_cms;
 
         let current_len = self.storage.get_keys(COL_COMMITMENT)?.len();
@@ -224,101 +254,24 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
 
         let new_commitments: Vec<_> = new_cm_and_indices.into_iter().map(|(cm, _)| cm).collect();
 
-        let new_tree = { self.cm_merkle_tree.read().rebuild(current_len, &new_commitments)? };
-        *self.cm_merkle_tree.write() = new_tree;
+        let new_tree = {
+            self.record_commitment_tree
+                .read()
+                .rebuild(current_len, &new_commitments)?
+        };
+        *self.record_commitment_tree.write() = new_tree;
 
         Ok(())
     }
-}
 
-impl<C: Parameters, T: TransactionScheme, S: Storage> LedgerScheme<C> for Ledger<C, T, S> {
-    type Block = Block<Self::Transaction>;
-    type Transaction = T;
-
-    /// Instantiates a new ledger with a genesis block.
-    fn new(path: Option<&Path>, genesis_block: Self::Block) -> anyhow::Result<Self> {
-        let storage = if let Some(path) = path {
-            fs::create_dir_all(&path).map_err(|err| LedgerError::Message(err.to_string()))?;
-
-            S::open(Some(path), None)
-        } else {
-            S::open(None, None) // this must mean we're using an in-memory storage
-        }?;
-
-        if let Some(block_num) = storage.get(COL_META, KEY_BEST_BLOCK_NUMBER.as_bytes())? {
-            if bytes_to_u32(&block_num) != 0 {
-                return Err(LedgerError::ExistingDatabase.into());
-            }
-        }
-
-        let leaves: &[[u8; 32]] = &[];
-        let parameters = Arc::new(C::record_commitment_tree_parameters().clone());
-        let empty_cm_merkle_tree = MerkleTree::<C::RecordCommitmentTreeParameters>::new(parameters, leaves)?;
-
-        let ledger_storage = Self {
-            current_block_height: Default::default(),
-            storage,
-            cm_merkle_tree: RwLock::new(empty_cm_merkle_tree),
-            _transaction: PhantomData,
-        };
-
-        ledger_storage.insert_and_commit(&genesis_block)?;
-
-        Ok(ledger_storage)
-    }
-
-    /// Returns the number of blocks including the genesis block
-    fn block_height(&self) -> usize {
-        self.get_current_block_height() as usize + 1
-    }
-
-    /// Return a digest of the latest ledger Merkle tree.
-    fn latest_digest(&self) -> Option<MerkleTreeDigest<C::RecordCommitmentTreeParameters>> {
-        let digest = match self.storage.get(COL_META, KEY_CURR_DIGEST.as_bytes()).unwrap() {
-            Some(current_digest) => current_digest,
-            None => to_bytes_le![self.cm_merkle_tree.read().root()].unwrap(),
-        };
-        Some(FromBytes::read_le(digest.as_slice()).unwrap())
-    }
-
-    /// Check that st_{ts} is a valid digest for some (past) ledger state.
-    fn validate_digest(&self, digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>) -> bool {
-        self.storage.exists(COL_DIGEST, &to_bytes_le![digest].unwrap())
-    }
-
-    /// Returns true if the given commitment exists in the ledger.
-    fn contains_commitment(&self, commitment: &C::RecordCommitment) -> bool {
-        self.storage.exists(COL_COMMITMENT, &commitment.to_bytes_le().unwrap())
-    }
-
-    /// Returns true if the given serial number exists in the ledger.
-    fn contains_serial_number(&self, serial_number: &C::AccountSignaturePublicKey) -> bool {
-        self.storage
-            .exists(COL_SERIAL_NUMBER, &serial_number.to_bytes_le().unwrap())
-    }
-
-    /// Returns the Merkle path to the latest ledger digest
-    /// for a given commitment, if it exists in the ledger.
-    fn prove_cm(&self, cm: &C::RecordCommitment) -> anyhow::Result<MerklePath<C::RecordCommitmentTreeParameters>> {
-        let cm_index = self
-            .get_cm_index(&cm.to_bytes_le()?)?
-            .ok_or(LedgerError::InvalidCmIndex)?;
-        let result = self.cm_merkle_tree.read().generate_proof(cm_index, cm)?;
-
-        Ok(result)
-    }
-}
-
-impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
     /// Commit a transaction to the canon chain
     #[allow(clippy::type_complexity)]
     pub(crate) fn commit_transaction(
         &self,
         sn_index: &mut usize,
         cm_index: &mut usize,
-        memo_index: &mut usize,
-        transaction: &T,
-    ) -> Result<(Vec<Op>, Vec<(T::Commitment, usize)>), StorageError> {
+        transaction: &Transaction<C>,
+    ) -> Result<(Vec<Op>, Vec<(<Transaction<C> as TransactionScheme>::Commitment, usize)>), StorageError> {
         let old_serial_numbers = transaction.old_serial_numbers();
         let new_commitments = transaction.new_commitments();
 
@@ -355,27 +308,15 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
             *cm_index += 1;
         }
 
-        let memo_bytes = to_bytes_le![transaction.memorandum()]?;
-        if self.get_memo_index(&memo_bytes)?.is_some() {
-            return Err(StorageError::ExistingMemo(memo_bytes.to_vec()));
-        } else {
-            ops.push(Op::Insert {
-                col: COL_MEMO,
-                key: memo_bytes,
-                value: (*memo_index as u32).to_le_bytes().to_vec(),
-            });
-            *memo_index += 1;
-        }
-
         Ok((ops, cms))
     }
 
     /// Insert a block into storage without canonizing/committing it.
-    pub fn insert_only(&self, block: &Block<T>) -> Result<(), StorageError> {
+    pub fn insert_only(&self, block: &Block<Transaction<C>>) -> Result<(), StorageError> {
         let block_hash = block.header.get_hash();
 
         // Check that the block does not already exist.
-        if self.block_hash_exists(&block_hash) {
+        if self.contains_block_hash(&block_hash) {
             return Err(StorageError::BlockError(BlockError::BlockExists(
                 block_hash.to_string(),
             )));
@@ -403,11 +344,6 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
         // Check if the transactions in the block have duplicate commitments
         if has_duplicates(transaction_commitments) {
             return Err(StorageError::DuplicateCm);
-        }
-
-        // Check if the transactions in the block have duplicate memos
-        if has_duplicates(transaction_memos) {
-            return Err(StorageError::DuplicateMemo);
         }
 
         for (index, transaction) in block.transactions.0.iter().enumerate() {
@@ -457,7 +393,7 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
     }
 
     /// Commit/canonize a particular block.
-    pub fn commit(&self, block: &Block<T>) -> Result<(), StorageError> {
+    pub fn commit(&self, block: &Block<Transaction<C>>) -> Result<(), StorageError> {
         let block_header_hash = block.header.get_hash();
 
         // Check if the block is already in the canon chain
@@ -469,12 +405,10 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
 
         let mut transaction_serial_numbers = Vec::with_capacity(block.transactions.0.len());
         let mut transaction_commitments = Vec::with_capacity(block.transactions.0.len());
-        let mut transaction_memos = Vec::with_capacity(block.transactions.0.len());
 
         for transaction in &block.transactions.0 {
             transaction_serial_numbers.push(transaction.transaction_id()?);
             transaction_commitments.push(transaction.new_commitments());
-            transaction_memos.push(transaction.memorandum());
         }
 
         // Sanitize the block inputs
@@ -489,21 +423,15 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
             return Err(StorageError::DuplicateCm);
         }
 
-        // Check if the transactions in the block have duplicate memos
-        if has_duplicates(transaction_memos) {
-            return Err(StorageError::DuplicateMemo);
-        }
-
         let mut sn_index = self.current_sn_index()?;
         let mut cm_index = self.current_cm_index()?;
-        let mut memo_index = self.current_memo_index()?;
 
         // Process the individual transactions
 
         let mut transaction_cms = vec![];
 
         for transaction in block.transactions.0.iter() {
-            let (tx_ops, cms) = self.commit_transaction(&mut sn_index, &mut cm_index, &mut memo_index, transaction)?;
+            let (tx_ops, cms) = self.commit_transaction(&mut sn_index, &mut cm_index, transaction)?;
             database_transaction.push_vec(tx_ops);
             transaction_cms.extend(cms);
         }
@@ -520,15 +448,10 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
             key: KEY_CURR_CM_INDEX.as_bytes().to_vec(),
             value: (cm_index as u32).to_le_bytes().to_vec(),
         });
-        database_transaction.push(Op::Insert {
-            col: COL_META,
-            key: KEY_CURR_MEMO_INDEX.as_bytes().to_vec(),
-            value: (memo_index as u32).to_le_bytes().to_vec(),
-        });
 
         // Update the best block number
 
-        let height = self.get_current_block_height();
+        let height = self.block_height();
 
         let is_genesis =
             block.header.previous_block_hash == BlockHeaderHash([0u8; 32]) && height == 0 && self.is_empty();
@@ -559,7 +482,7 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
 
         // Rebuild the new commitment merkle tree
         self.rebuild_merkle_tree(transaction_cms)?;
-        let new_digest = self.cm_merkle_tree.read().root();
+        let new_digest = self.record_commitment_tree.read().root();
 
         database_transaction.push(Op::Insert {
             col: COL_DIGEST,
@@ -582,11 +505,11 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
     }
 
     /// Insert a block into the storage and commit as part of the longest chain.
-    pub fn insert_and_commit(&self, block: &Block<T>) -> Result<(), StorageError> {
+    pub fn insert_and_commit(&self, block: &Block<Transaction<C>>) -> Result<(), StorageError> {
         let block_hash = block.header.get_hash();
 
         // If the block does not exist in the storage
-        if !self.block_hash_exists(&block_hash) {
+        if !self.contains_block_hash(&block_hash) {
             // Insert it first
             self.insert_only(&block)?;
         }
@@ -596,6 +519,6 @@ impl<C: Parameters, T: TransactionScheme, S: Storage> Ledger<C, T, S> {
 
     /// Returns true if the block exists in the canon chain.
     pub fn is_canon(&self, block_hash: &BlockHeaderHash) -> bool {
-        self.block_hash_exists(block_hash) && self.get_block_number(block_hash).is_ok()
+        self.contains_block_hash(block_hash) && self.get_block_number(block_hash).is_ok()
     }
 }
