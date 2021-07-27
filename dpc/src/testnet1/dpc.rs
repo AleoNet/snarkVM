@@ -328,8 +328,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             }
         }
 
-        // Prepare record encryption components used in the inner SNARK
-
         let inner_proof = {
             let circuit = InnerCircuit::new(
                 ledger_digest.clone(),
