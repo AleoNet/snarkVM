@@ -6,7 +6,7 @@
 
 # Inputs: recipient address, amount, genesis filepath, transaction filepath
 
-cargo run --release --example genesis aleo1ag4alvc4g7d4apzgvr5f4jt44l0aezev2dx8m0klgwypnh9u5uxs42rclr 100 header.genesis transaction.genesis || exit
+cargo run --release --example genesis aleo17gyptxtlh5vq3yvr3wd2v3x7zz23s49eteep4zj785khhcttkgysss2y0t 100 header.genesis transaction.genesis || exit
 
 mv transaction.genesis ../../src/testnet1/genesis || exit
 
