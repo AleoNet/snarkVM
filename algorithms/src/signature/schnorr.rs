@@ -88,9 +88,6 @@ pub struct SchnorrPublicKey<G: ProjectiveCurve + CanonicalSerialize + CanonicalD
 impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> ToBytes for SchnorrPublicKey<G> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // let x_coordinate = self.0.to_x_coordinate();
-        // x_coordinate.write_le(&mut writer)
-
         self.0.write_le(&mut writer)
     }
 }
@@ -98,22 +95,6 @@ impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> ToBytes for
 impl<G: ProjectiveCurve + CanonicalSerialize + CanonicalDeserialize> FromBytes for SchnorrPublicKey<G> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // let x_coordinate = <G::Affine as AffineCurve>::BaseField::read_le(&mut reader)?;
-        //
-        // if let Some(element) = <G::Affine as AffineCurve>::from_x_coordinate(x_coordinate, true) {
-        //     if element.is_in_correct_subgroup_assuming_on_curve() {
-        //         return Ok(Self(element));
-        //     }
-        // }
-        //
-        // if let Some(element) = <G::Affine as AffineCurve>::from_x_coordinate(x_coordinate, false) {
-        //     if element.is_in_correct_subgroup_assuming_on_curve() {
-        //         return Ok(Self(element));
-        //     }
-        // }
-        //
-        // Err(SignatureError::Message("Failed to read signature public key".into()).into())
-
         Ok(Self(G::Affine::read_le(&mut reader)?))
     }
 }
