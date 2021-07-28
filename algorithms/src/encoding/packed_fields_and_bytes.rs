@@ -51,7 +51,7 @@ pub struct PackedFieldsAndBytes<F: PrimeField> {
 
 impl<F: PrimeField> ToBytes for PackedFieldsAndBytes<F> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.field_elements.len() as u64).write_le(&mut writer)?;
+        (self.field_elements.len() as u8).write_le(&mut writer)?;
         for elem in self.field_elements.iter() {
             elem.write_le(&mut writer)?;
         }
@@ -67,7 +67,7 @@ impl<F: PrimeField> ToBytes for PackedFieldsAndBytes<F> {
 
 impl<F: PrimeField> FromBytes for PackedFieldsAndBytes<F> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let field_elements_len = u64::read_le(&mut reader)?;
+        let field_elements_len = u8::read_le(&mut reader)?;
         let mut field_elements = Vec::with_capacity(field_elements_len as usize);
         for _ in 0..field_elements_len {
             field_elements.push(F::read_le(&mut reader)?);
@@ -132,6 +132,11 @@ impl<F: PrimeField> EncodingScheme for PackedFieldsAndBytesEncodingScheme<F> {
             remaining_bits_len = 0;
             remaining_bytes_len = 0;
         }
+
+        assert!(
+            field_elements_len <= u8::MAX as usize,
+            "The packed_fields_and_bytes encoding supports up to 255 field elements and 7 bytes."
+        );
 
         // Pack the field elements part.
         let mut field_elements = Vec::<F>::with_capacity(field_elements_len);

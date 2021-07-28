@@ -25,7 +25,6 @@ use crate::{
     ToBitsLEGadget,
     ToBytesGadget,
     ToConstraintFieldGadget,
-    UInt64,
     UInt8,
 };
 use snarkvm_algorithms::encoding::{PackedFieldsAndBytes, PackedFieldsAndBytesEncodingScheme};
@@ -139,8 +138,8 @@ impl<F: PrimeField> ToBytesGadget<F> for PackedFieldsAndBytesGadget<F> {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut res = vec![];
 
-        let field_elements_len = UInt64::constant(self.field_elements.len() as u64);
-        res.extend_from_slice(&field_elements_len.to_bytes(cs.ns(|| "to_bytes the len of field elements"))?);
+        let field_elements_len = UInt8::constant(self.field_elements.len() as u8);
+        res.push(field_elements_len);
 
         for (i, elem) in self.field_elements.iter().enumerate() {
             res.extend_from_slice(&elem.to_bytes(cs.ns(|| format!("to_bytes the field element {}", i)))?);
@@ -154,8 +153,8 @@ impl<F: PrimeField> ToBytesGadget<F> for PackedFieldsAndBytesGadget<F> {
     fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut res = vec![];
 
-        let field_elements_len = UInt64::constant(self.field_elements.len() as u64);
-        res.extend_from_slice(&field_elements_len.to_bytes_strict(cs.ns(|| "to_bytes the len of field elements"))?);
+        let field_elements_len = UInt8::constant(self.field_elements.len() as u8);
+        res.push(field_elements_len);
 
         for (i, elem) in self.field_elements.iter().enumerate() {
             res.extend_from_slice(&elem.to_bytes_strict(cs.ns(|| format!("to_bytes the field element {}", i)))?);
