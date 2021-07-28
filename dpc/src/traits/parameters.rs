@@ -91,8 +91,8 @@ pub trait Parameters: 'static + Sized {
 
     /// Encryption scheme for account records. Invoked only over `Self::InnerScalarField`.
     type AccountEncryptionScheme: EncryptionScheme<
-        PlainText = <Self::RecordEncodingScheme as EncodingScheme>::EncodedData,
-        CipherText = Self::AccountEncryptionCiphertext,
+        Plaintext = <Self::RecordEncodingScheme as EncodingScheme>::EncodedData,
+        Ciphertext = Self::AccountEncryptionCiphertext,
     >;
     type AccountEncryptionGadget: EncryptionGadget<
         Self::AccountEncryptionScheme,

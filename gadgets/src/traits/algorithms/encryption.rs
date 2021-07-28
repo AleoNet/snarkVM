@@ -38,14 +38,14 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F
         + Clone
         + Sized
         + Debug;
-    type CiphertextGadget: AllocGadget<E::CipherText, F>
+    type CiphertextGadget: AllocGadget<E::Ciphertext, F>
         + ToBytesGadget<F>
         + EqGadget<F>
         + ToConstraintFieldGadget<F>
         + Clone
         + Sized
         + Debug;
-    type PlaintextGadget: AllocGadget<E::PlainText, F> + EqGadget<F> + Clone + Sized + Debug;
+    type PlaintextGadget: AllocGadget<E::Plaintext, F> + EqGadget<F> + Clone + Sized + Debug;
     type RandomnessGadget: AllocGadget<E::Randomness, F> + Clone + Sized + Debug;
 
     fn check_public_key_gadget<CS: ConstraintSystem<F>>(

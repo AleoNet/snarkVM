@@ -105,9 +105,9 @@ impl<TE: TwistedEdwardsParameters> EncryptionScheme for ECIESPoseidonEncryption<
 where
     TE::BaseField: PoseidonDefaultParametersField,
 {
-    type CipherText = PackedFieldsAndBytes<TE::BaseField>;
+    type Ciphertext = PackedFieldsAndBytes<TE::BaseField>;
     type Parameters = TEAffine<TE>;
-    type PlainText = PackedFieldsAndBytes<TE::BaseField>;
+    type Plaintext = PackedFieldsAndBytes<TE::BaseField>;
     type PrivateKey = TE::ScalarField;
     type PublicKey = ECIESPoseidonPublicKey<TE>;
     type Randomness = TE::ScalarField;
@@ -142,8 +142,8 @@ where
         &self,
         public_key: &<Self as EncryptionScheme>::PublicKey,
         randomness: &Self::Randomness,
-        message: &Self::PlainText,
-    ) -> Result<Self::CipherText, EncryptionError> {
+        message: &Self::Plaintext,
+    ) -> Result<Self::Ciphertext, EncryptionError> {
         // Compute the ECDH value.
         let ecdh_value = public_key.0.into_projective().mul((*randomness).clone()).into_affine();
 
@@ -181,7 +181,7 @@ where
             remaining_bytes
         };
 
-        Ok(Self::CipherText {
+        Ok(Self::Ciphertext {
             field_elements,
             remaining_bytes,
         })
@@ -190,8 +190,8 @@ where
     fn decrypt(
         &self,
         private_key: &<Self as EncryptionScheme>::PrivateKey,
-        ciphertext: &Self::CipherText,
-    ) -> Result<Self::PlainText, EncryptionError> {
+        ciphertext: &Self::Ciphertext,
+    ) -> Result<Self::Plaintext, EncryptionError> {
         assert!(ciphertext.field_elements.len() >= 1);
 
         // Recover the randomness group element.
@@ -237,7 +237,7 @@ where
             remaining_bytes
         };
 
-        Ok(Self::CipherText {
+        Ok(Self::Ciphertext {
             field_elements,
             remaining_bytes,
         })

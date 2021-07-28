@@ -28,7 +28,7 @@ use snarkvm_utilities::{io::Result as IoResult, to_bytes_le, FromBytes, Read, To
     Eq(bound = "C: Parameters")
 )]
 pub struct EncryptedRecord<C: Parameters> {
-    pub ciphertext: <C::AccountEncryptionScheme as EncryptionScheme>::CipherText,
+    pub ciphertext: <C::AccountEncryptionScheme as EncryptionScheme>::Ciphertext,
 }
 
 impl<C: Parameters> EncryptedRecord<C> {
@@ -150,7 +150,7 @@ impl<C: Parameters> FromBytes for EncryptedRecord<C> {
     #[inline]
     fn read_le<R: Read>(reader: R) -> IoResult<Self> {
         Ok(Self {
-            ciphertext: <C::AccountEncryptionScheme as EncryptionScheme>::CipherText::read_le(reader)?,
+            ciphertext: <C::AccountEncryptionScheme as EncryptionScheme>::Ciphertext::read_le(reader)?,
         })
     }
 }

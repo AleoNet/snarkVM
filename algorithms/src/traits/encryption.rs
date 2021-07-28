@@ -26,8 +26,8 @@ pub trait EncryptionScheme:
     type Parameters: Clone + Debug + Eq;
     type PrivateKey: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
     type PublicKey: Clone + Debug + Default + Eq + ToBytes + FromBytes;
-    type PlainText: Clone + Debug + Default + Eq + ToBytes + FromBytes;
-    type CipherText: Clone + Debug + Default + Eq + ToBytes + FromBytes;
+    type Plaintext: Clone + Debug + Default + Eq + ToBytes + FromBytes;
+    type Ciphertext: Clone + Debug + Default + Eq + ToBytes + FromBytes;
     type Randomness: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
 
     fn setup(message: &str) -> Self;
@@ -49,14 +49,14 @@ pub trait EncryptionScheme:
         &self,
         public_key: &<Self as EncryptionScheme>::PublicKey,
         randomness: &Self::Randomness,
-        message: &Self::PlainText,
-    ) -> Result<Self::CipherText, EncryptionError>;
+        message: &Self::Plaintext,
+    ) -> Result<Self::Ciphertext, EncryptionError>;
 
     fn decrypt(
         &self,
         private_key: &<Self as EncryptionScheme>::PrivateKey,
-        ciphertext: &Self::CipherText,
-    ) -> Result<Self::PlainText, EncryptionError>;
+        ciphertext: &Self::Ciphertext,
+    ) -> Result<Self::Plaintext, EncryptionError>;
 
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters;
 
