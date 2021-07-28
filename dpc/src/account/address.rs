@@ -16,6 +16,7 @@
 
 use crate::{account_format, traits::Parameters, AccountError, PrivateKey, ViewKey};
 use snarkvm_algorithms::{EncryptionScheme, SignatureScheme};
+use snarkvm_curves::AffineCurve;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use bech32::{self, FromBase32, ToBase32};
@@ -64,9 +65,23 @@ impl<C: Parameters> Address<C> {
 
     /// Returns the address as a signature public key.
     pub fn to_signature_public_key(&self) -> Result<C::AccountSignaturePublicKey, AccountError> {
-        // TODO (howardwu): Change the internal representation of the encryption public key to a GroupAffine,
-        //  and add a getter method to return the affine element for the signature public key.
-        Ok(FromBytes::from_bytes_le(&self.encryption_key.to_bytes_le()?)?)
+        use snarkvm_curves::edwards_bls12::EdwardsAffine;
+
+        let x_coordinate = FromBytes::from_bytes_le(&self.encryption_key.to_bytes_le()?)?;
+
+        if let Some(element) = <EdwardsAffine as AffineCurve>::from_x_coordinate(x_coordinate, true) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(FromBytes::from_bytes_le(&element.to_bytes_le()?)?);
+            }
+        }
+
+        if let Some(element) = <EdwardsAffine as AffineCurve>::from_x_coordinate(x_coordinate, false) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(FromBytes::from_bytes_le(&element.to_bytes_le()?)?);
+            }
+        }
+
+        Err(snarkvm_algorithms::SignatureError::Message("Failed to read signature public key".into()).into())
     }
 
     /// Returns the address as an encryption public key.

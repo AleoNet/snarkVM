@@ -422,7 +422,7 @@ where
                 // verifying that the base field element from the computed account
                 // commitment contains the same bit-value as the scalar field element
                 // computed from the given account private key.
-                let given_account_view_key = {
+                {
                     // Derive the given account view key based on the given account private key.
                     let given_account_view_key = AccountEncryptionGadget::PrivateKeyGadget::alloc(
                         &mut account_cs.ns(|| "Allocate account view key"),
@@ -445,9 +445,7 @@ where
                     )?;
 
                     given_account_view_key
-                };
-
-                given_account_view_key
+                }
             };
 
             // Construct and verify the record owner - account address.
