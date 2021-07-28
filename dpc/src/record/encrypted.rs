@@ -14,30 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    record::encoded::*,
-    Address,
-    DPCError,
-    EncodedRecordScheme,
-    Parameters,
-    Payload,
-    Record,
-    RecordScheme,
-    ViewKey,
-};
+use crate::{record::encoded::*, Address, DPCError, Parameters, Payload, Record, RecordScheme, ViewKey};
 use rand::{thread_rng, CryptoRng, Rng};
 use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, CRH};
+use snarkvm_fields::ToConstraintField;
 use snarkvm_utilities::{io::Result as IoResult, to_bytes_le, FromBytes, Read, ToBytes, Write};
 
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "C: Parameters"),
+    Debug(bound = "C: Parameters"),
     PartialEq(bound = "C: Parameters"),
-    Eq(bound = "C: Parameters"),
-    Debug(bound = "C: Parameters")
+    Eq(bound = "C: Parameters")
 )]
 pub struct EncryptedRecord<C: Parameters> {
-    pub encrypted_elements: Vec<C::InnerScalarField>,
+    pub ciphertext: <C::AccountEncryptionScheme as EncryptionScheme>::CipherText,
 }
 
 impl<C: Parameters> EncryptedRecord<C> {
@@ -63,11 +54,11 @@ impl<C: Parameters> EncryptedRecord<C> {
         let encrypted_record = C::account_encryption_scheme().encrypt(
             record_public_key,
             &encryption_randomness,
-            &encoded_record.encoded_elements,
+            &encoded_record.plaintext,
         )?;
 
         let encrypted_record = Self {
-            encrypted_elements: encrypted_record,
+            ciphertext: encrypted_record,
         };
 
         Ok((encrypted_record, encryption_randomness))
@@ -77,7 +68,7 @@ impl<C: Parameters> EncryptedRecord<C> {
     pub fn decrypt(&self, account_view_key: &ViewKey<C>) -> Result<Record<C>, DPCError> {
         // Decrypt the encrypted record
         let plaintext_elements =
-            C::account_encryption_scheme().decrypt(&account_view_key.decryption_key, &self.encrypted_elements)?;
+            C::account_encryption_scheme().decrypt(&account_view_key.decryption_key, &self.ciphertext)?;
 
         // Deserialize the plaintext record into record components
         let encoded_record = EncodedRecord::<C>::new(plaintext_elements);
@@ -134,7 +125,7 @@ impl<C: Parameters> EncryptedRecord<C> {
     /// Returns the encrypted record hash.
     /// The hash input is the ciphertext x-coordinates appended with the selector bits.
     pub fn to_hash(&self) -> Result<<<C as Parameters>::EncryptedRecordCRH as CRH>::Output, DPCError> {
-        Ok(C::encrypted_record_crh().hash_field_elements(&self.encrypted_elements)?)
+        Ok(C::encrypted_record_crh().hash_field_elements(&self.ciphertext.to_field_elements()?)?)
     }
 }
 
@@ -150,22 +141,16 @@ impl<C: Parameters> Default for EncryptedRecord<C> {
 
 impl<C: Parameters> ToBytes for EncryptedRecord<C> {
     #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.encrypted_elements.len() as u64).write_le(&mut writer)?;
-        self.encrypted_elements.write_le(&mut writer)
+    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
+        self.ciphertext.write_le(writer)
     }
 }
 
 impl<C: Parameters> FromBytes for EncryptedRecord<C> {
     #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let encrypted_elements_len = u64::read_le(&mut reader)?;
-
-        let mut encrypted_elements = Vec::with_capacity(encrypted_elements_len as usize);
-        for _ in 0..encrypted_elements_len {
-            encrypted_elements.push(C::InnerScalarField::read_le(&mut reader)?);
-        }
-
-        Ok(Self { encrypted_elements })
+    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
+        Ok(Self {
+            ciphertext: <C::AccountEncryptionScheme as EncryptionScheme>::CipherText::read_le(reader)?,
+        })
     }
 }

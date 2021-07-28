@@ -14,15 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::DPCError, traits::RecordScheme};
+use crate::{AllocGadget, EqGadget, ToBytesGadget};
+use snarkvm_algorithms::EncodingScheme;
 use snarkvm_fields::PrimeField;
+use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-pub trait EncodedRecordScheme: Sized {
-    /// The field that the encoded record is over.
-    type Field: PrimeField;
-    type Record: RecordScheme;
-    type DecodedRecord;
+pub trait EncodingGadget<E: EncodingScheme, F: PrimeField>: AllocGadget<E, F> + Clone {
+    type DataGadget: Clone + Default + EqGadget<F> + ToBytesGadget<F> + AllocGadget<E::Data, F>;
+    type EncodedDataGadget: Clone + Default + EqGadget<F> + ToBytesGadget<F> + AllocGadget<E::EncodedData, F>;
 
-    fn encode(record: &Self::Record) -> Result<Self, DPCError>;
-    fn decode(&self) -> Result<Self::DecodedRecord, DPCError>;
+    fn enforce_encoding_correctness<CS: ConstraintSystem<F>>(
+        &self,
+        cs: CS,
+        data: &Self::DataGadget,
+        encoded_data: &Self::EncodedDataGadget,
+    ) -> Result<(), SynthesisError>;
 }

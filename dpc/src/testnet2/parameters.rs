@@ -66,6 +66,8 @@ use snarkvm_utilities::FromBytes;
 use anyhow::Result;
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
+use snarkvm_algorithms::encoding::PackedFieldsAndBytesEncodingScheme;
+use snarkvm_gadgets::algorithms::encoding::PackedFieldsAndBytesEncodingGadget;
 
 macro_rules! dpc_setup {
     ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
@@ -129,6 +131,7 @@ impl Parameters for Testnet2Parameters {
 
     type AccountEncryptionScheme = ECIESPoseidonEncryption<EdwardsParameters>;
     type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<EdwardsParameters, Self::InnerScalarField>;
+    type AccountEncryptionCiphertext = <Self::AccountEncryptionScheme as EncryptionScheme>::CipherText;
 
     type AccountSignatureScheme = Schnorr<EdwardsBls12>;
     type AccountSignatureGadget = SchnorrGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
@@ -159,6 +162,9 @@ impl Parameters for Testnet2Parameters {
     type ProgramIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
 
+    type RecordEncodingScheme = PackedFieldsAndBytesEncodingScheme<Self::InnerScalarField>;
+    type RecordEncodingGadget = PackedFieldsAndBytesEncodingGadget<Self::InnerScalarField>;
+
     type RecordCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 48, 50>;
     type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 50>;
     type RecordCommitment = <Self::RecordCommitmentScheme as CommitmentScheme>::Output;
@@ -180,6 +186,7 @@ impl Parameters for Testnet2Parameters {
     dpc_setup!{local_data_crh, LOCAL_DATA_CRH, LocalDataCRH, "AleoLocalDataCRH0"}
     dpc_setup!{program_commitment_scheme, PROGRAM_COMMITMENT_SCHEME, ProgramCommitmentScheme, "AleoProgramIDCommitment0"} // TODO (howardwu): Rename to "AleoProgramCommitmentScheme0".
     dpc_setup!{program_id_crh, PROGRAM_ID_CRH, ProgramIDCRH, "AleoProgramIDCRH0"}
+    dpc_setup!{record_encoding_scheme, RECORD_ENCODING_SCHEME, RecordEncodingScheme, "AleoRecordEncoding0"}
     dpc_setup!{record_commitment_scheme, RECORD_COMMITMENT_SCHEME, RecordCommitmentScheme, "AleoRecordCommitment0"} // TODO (howardwu): Rename to "AleoRecordCommitmentScheme0".
     dpc_setup!{record_commitment_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoLedgerMerkleTreeCRH0"} // TODO (howardwu): Rename to "AleoRecordCommitmentTreeCRH0".
     dpc_setup!{serial_number_nonce_crh, SERIAL_NUMBER_NONCE_CRH, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}

@@ -20,8 +20,9 @@ use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
-    FpGadget,
+    EncodingGadget,
     SNARKVerifierGadget,
+    UInt8,
 };
 use snarkvm_utilities::{
     fmt::{Debug, Display},
@@ -89,13 +90,25 @@ pub trait Parameters: 'static + Sized {
         + Send;
 
     /// Encryption scheme for account records. Invoked only over `Self::InnerScalarField`.
-    type AccountEncryptionScheme: EncryptionScheme<Text = Self::InnerScalarField>;
+    type AccountEncryptionScheme: EncryptionScheme<
+        PlainText = <Self::RecordEncodingScheme as EncodingScheme>::EncodedData,
+        CipherText = Self::AccountEncryptionCiphertext,
+    >;
     type AccountEncryptionGadget: EncryptionGadget<
         Self::AccountEncryptionScheme,
         Self::InnerScalarField,
-        CiphertextGadget = Vec<FpGadget<Self::InnerScalarField>>,
-        PlaintextGadget = Vec<FpGadget<Self::InnerScalarField>>,
+        PlaintextGadget = <Self::RecordEncodingGadget as EncodingGadget<
+            Self::RecordEncodingScheme,
+            Self::InnerScalarField,
+        >>::EncodedDataGadget,
     >;
+    type AccountEncryptionCiphertext: ToConstraintField<Self::InnerScalarField>
+        + Clone
+        + Debug
+        + Default
+        + Eq
+        + ToBytes
+        + FromBytes;
 
     /// Signature scheme for delegated compute. Invoked only over `Self::InnerScalarField`.
     type AccountSignatureScheme: SignatureScheme<PublicKey = Self::AccountSignaturePublicKey>;
@@ -191,6 +204,14 @@ pub trait Parameters: 'static + Sized {
     type PRF: PRF;
     type PRFGadget: PRFGadget<Self::PRF, Self::InnerScalarField>;
 
+    /// Encoding scheme for the record. Invoked only over `Self::InnerScalarField`.
+    type RecordEncodingScheme: EncodingScheme<Data = Vec<u8>>;
+    type RecordEncodingGadget: EncodingGadget<
+        Self::RecordEncodingScheme,
+        Self::InnerScalarField,
+        DataGadget = Vec<UInt8>,
+    >;
+
     /// Commitment scheme for record contents. Invoked only over `Self::InnerScalarField`.
     type RecordCommitmentScheme: CommitmentScheme<Output = Self::RecordCommitment>;
     type RecordCommitmentGadget: CommitmentGadget<Self::RecordCommitmentScheme, Self::InnerScalarField>;
@@ -245,6 +266,8 @@ pub trait Parameters: 'static + Sized {
     fn program_commitment_scheme() -> &'static Self::ProgramCommitmentScheme;
 
     fn program_id_crh() -> &'static Self::ProgramIDCRH;
+
+    fn record_encoding_scheme() -> &'static Self::RecordEncodingScheme;
 
     fn record_commitment_scheme() -> &'static Self::RecordCommitmentScheme;
 

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{record::Record, AleoAmount, EncodedRecord, EncodedRecordScheme, Parameters, PrivateKey, RecordScheme};
+use crate::{record::Record, AleoAmount, EncodedRecord, Parameters, PrivateKey, RecordScheme};
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
     CommitmentScheme,
@@ -22,11 +22,9 @@ use snarkvm_algorithms::{
     MerkleParameters,
     SignatureScheme,
 };
-use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_gadgets::{
     algorithms::merkle_tree::merkle_path::MerklePathGadget,
-    bits::{Boolean, ToBitsLEGadget, ToBytesGadget},
-    fields::FpGadget,
+    bits::{Boolean, ToBytesGadget},
     integers::{int::Int64, uint::UInt8},
     traits::{
         algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
@@ -34,6 +32,8 @@ use snarkvm_gadgets::{
         eq::{ConditionalEqGadget, EqGadget},
         integers::{add::Add, integer::Integer, sub::Sub},
     },
+    EncodingGadget,
+    ToConstraintFieldGadget,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, ToBytes};
@@ -129,6 +129,7 @@ where
         account_commitment_parameters,
         account_encryption_parameters,
         account_signature_parameters,
+        record_encoding_parameters,
         record_commitment_parameters,
         encrypted_record_crh,
         program_id_commitment_parameters,
@@ -152,6 +153,11 @@ where
         let account_signature_parameters =
             C::AccountSignatureGadget::alloc_constant(&mut cs.ns(|| "Declare account signature parameters"), || {
                 Ok(C::account_signature_scheme().clone())
+            })?;
+
+        let record_encoding_parameters =
+            C::RecordEncodingGadget::alloc_constant(&mut cs.ns(|| "Declare record encoding parameters"), || {
+                Ok(C::record_encoding_scheme().clone())
             })?;
 
         let record_commitment_parameters =
@@ -193,6 +199,7 @@ where
             account_commitment_parameters,
             account_encryption_parameters,
             account_signature_parameters,
+            record_encoding_parameters,
             record_commitment_parameters,
             encrypted_record_crh_parameters,
             program_id_commitment_parameters,
@@ -370,11 +377,6 @@ where
                     &account_view_key_input,
                     &r_pk,
                 )?;
-
-                // TODO (howardwu): Enforce 6 MSB bits are 0.
-                {
-                    // TODO (howardwu): Enforce 6 MSB bits are 0.
-                }
 
                 // Enforce the account commitment bytes (padded) correspond to the
                 // given account's view key bytes (padded). This is equivalent to
@@ -692,51 +694,28 @@ where
             // *******************************************************************
             // Convert serial number nonce, commitment_randomness, birth program id, death program id, value, and payload into bits
 
-            let inner_scalar_field_capacity = <C::InnerScalarField as PrimeField>::Parameters::CAPACITY as usize;
-
-            let expected_plaintext_bits = {
+            let expected_plaintext_bytes = {
                 let mut res = vec![];
 
                 // Serial number nonce
-                let serial_number_nonce_bits = serial_number_nonce_bytes
-                    .to_bits_le(&mut encryption_cs.ns(|| "Convert serial_number_nonce_bytes to bits"))?;
-                res.extend_from_slice(&serial_number_nonce_bits);
+                res.extend_from_slice(&serial_number_nonce_bytes);
 
                 // Commitment randomness
                 let given_commitment_randomness_bytes = given_commitment_randomness
                     .to_bytes(&mut encryption_cs.ns(|| "Convert commitment randomness to bytes"))?;
-                let given_commitment_randomness_bits = given_commitment_randomness_bytes
-                    .to_bits_le(&mut encryption_cs.ns(|| "Convert commitment randomness to bits"))?;
-                res.extend_from_slice(&given_commitment_randomness_bits);
+                res.extend_from_slice(&given_commitment_randomness_bytes);
 
                 // Birth program ID
-                res.extend_from_slice(
-                    &given_birth_program_id
-                        .to_bits_le(&mut encryption_cs.ns(|| "Convert given_birth_program_id to bits"))?,
-                );
+                res.extend_from_slice(&given_birth_program_id);
 
                 // Death program ID
-                res.extend_from_slice(
-                    &given_death_program_id
-                        .to_bits_le(&mut encryption_cs.ns(|| "Convert given_death_program_id to bits"))?,
-                );
+                res.extend_from_slice(&given_death_program_id);
 
                 // Value
-                res.extend_from_slice(
-                    &given_value.to_bits_le(&mut encryption_cs.ns(|| "Convert given_value to bits"))?,
-                );
+                res.extend_from_slice(&given_value);
 
                 // Payload
-                res.extend_from_slice(
-                    &given_payload.to_bits_le(&mut encryption_cs.ns(|| "Convert given_payload to bits"))?,
-                );
-
-                res.push(Boolean::Constant(true));
-
-                let plaintext_expected_len = (res.len() + inner_scalar_field_capacity - 1)
-                    / inner_scalar_field_capacity
-                    * inner_scalar_field_capacity;
-                res.resize(plaintext_expected_len, Boolean::Constant(false));
+                res.extend_from_slice(&given_payload);
 
                 res
             };
@@ -745,28 +724,20 @@ where
             // Alloc each of the record field elements as gadgets.
 
             let encoded_record = EncodedRecord::<C>::encode(&record).unwrap();
-            let record_field_elements_gadgets =
-                Vec::<FpGadget<C::InnerScalarField>>::alloc(&mut encryption_cs.ns(|| "record_field_element"), || {
-                    Ok(encoded_record.encoded_elements)
-                })?;
+            let record_plaintext_gadget = <C::RecordEncodingGadget as EncodingGadget<
+                C::RecordEncodingScheme,
+                C::InnerScalarField,
+            >>::EncodedDataGadget::alloc(
+                &mut encryption_cs.ns(|| "record_field_element"),
+                || Ok(encoded_record.plaintext),
+            )?;
 
             // *******************************************************************
             // Convert the record field elements into bits and check the consistency
-            let actual_plaintext_bits = {
-                let mut res = Vec::with_capacity(expected_plaintext_bits.len());
-
-                for (i, record_field_element_gadgets) in record_field_elements_gadgets.iter().enumerate() {
-                    let bits = record_field_element_gadgets
-                        .to_bits_le(&mut encryption_cs.ns(|| format!("convert record_field_element_{} to bits", i)))?;
-                    res.extend_from_slice(&bits[0..inner_scalar_field_capacity]);
-                }
-
-                res
-            };
-
-            expected_plaintext_bits.enforce_equal(
+            record_encoding_parameters.enforce_encoding_correctness(
                 &mut encryption_cs.ns(|| "encrypted_plaintext_is_consistent_with_the_record"),
-                &actual_plaintext_bits,
+                &expected_plaintext_bytes,
+                &record_plaintext_gadget,
             )?;
 
             // *******************************************************************
@@ -780,28 +751,11 @@ where
                 || Ok(encryption_randomness),
             )?;
 
-            // Technically, an encryption scheme does not need blinding exponents.
-            //
-            // Before we remove it from the trait, we allocate them by default.
-            let encryption_blinding_exponents = vec![
-                    <C::AccountEncryptionScheme as EncryptionScheme>::EncryptionWitness::default();
-                    record_field_elements_gadgets.len()
-                ];
-
-            let encryption_blinding_exponents_gadget = <C::AccountEncryptionGadget as EncryptionGadget<
-                C::AccountEncryptionScheme,
-                C::InnerScalarField,
-            >>::EncryptionWitnessGadget::alloc(
-                &mut encryption_cs.ns(|| format!("output record {} encryption_blinding_exponents", j)),
-                || Ok(encryption_blinding_exponents),
-            )?;
-
             let candidate_encrypted_record_gadget = account_encryption_parameters.check_encryption_gadget(
                 &mut encryption_cs.ns(|| format!("output record {} check_encryption_gadget", j)),
                 &encryption_randomness_gadget,
                 &given_record_owner,
-                &record_field_elements_gadgets,
-                &encryption_blinding_exponents_gadget,
+                &record_plaintext_gadget,
             )?;
 
             // *******************************************************************
@@ -815,9 +769,14 @@ where
                 || Ok(encrypted_record_hash),
             )?;
 
+            let candidate_encrypted_record_gadget_field_elements = candidate_encrypted_record_gadget
+                .to_constraint_field(
+                    &mut encryption_cs.ns(|| format!("convert encrypted record {} to field elements", j)),
+                )?;
+
             let candidate_encrypted_record_hash = encrypted_record_crh.check_evaluation_gadget_on_field_elements(
                 &mut encryption_cs.ns(|| format!("Compute encrypted record hash {}", j)),
-                candidate_encrypted_record_gadget,
+                candidate_encrypted_record_gadget_field_elements,
             )?;
 
             encrypted_record_hash_gadget.enforce_equal(

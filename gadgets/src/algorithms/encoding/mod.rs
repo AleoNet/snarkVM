@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod elligator2;
-pub use elligator2::*;
-//
-// #[cfg(test)]
-// pub mod tests;
+pub mod packed_fields_and_bytes;
+pub use packed_fields_and_bytes::*;
+
+#[cfg(test)]
+pub mod tests;

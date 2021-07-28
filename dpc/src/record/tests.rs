@@ -19,7 +19,6 @@ use crate::{
     testnet2::parameters::*,
     Account,
     AccountScheme,
-    EncodedRecordScheme,
     NoopProgram,
     Parameters,
     Payload,

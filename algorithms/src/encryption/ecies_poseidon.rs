@@ -16,6 +16,7 @@
 
 use crate::{
     crypto_hash::{CryptographicSponge, PoseidonDefaultParametersField, PoseidonSponge},
+    encoding::PackedFieldsAndBytes,
     hash_to_curve::hash_to_curve,
     EncryptionError,
     EncryptionScheme,
@@ -104,12 +105,12 @@ impl<TE: TwistedEdwardsParameters> EncryptionScheme for ECIESPoseidonEncryption<
 where
     TE::BaseField: PoseidonDefaultParametersField,
 {
-    type EncryptionWitness = ();
+    type CipherText = PackedFieldsAndBytes<TE::BaseField>;
     type Parameters = TEAffine<TE>;
+    type PlainText = PackedFieldsAndBytes<TE::BaseField>;
     type PrivateKey = TE::ScalarField;
     type PublicKey = ECIESPoseidonPublicKey<TE>;
     type Randomness = TE::ScalarField;
-    type Text = TE::BaseField;
 
     fn setup(message: &str) -> Self {
         let (generator, _, _) = hash_to_curve::<TEAffine<TE>>(message);
@@ -137,35 +138,29 @@ where
         Ok(Self::Randomness::rand(rng))
     }
 
-    fn generate_encryption_witness(
-        &self,
-        _public_key: &<Self as EncryptionScheme>::PublicKey,
-        _randomness: &Self::Randomness,
-        _message_length: usize,
-    ) -> Result<Vec<Self::EncryptionWitness>, EncryptionError> {
-        Ok(vec![])
-    }
-
     fn encrypt(
         &self,
         public_key: &<Self as EncryptionScheme>::PublicKey,
         randomness: &Self::Randomness,
-        message: &[Self::Text],
-    ) -> Result<Vec<Self::Text>, EncryptionError> {
+        message: &Self::PlainText,
+    ) -> Result<Self::CipherText, EncryptionError> {
+        // Compute the ECDH value.
         let ecdh_value = public_key.0.into_projective().mul((*randomness).clone()).into_affine();
 
+        // Prepare the Poseidon sponge.
         let params =
             <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap();
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
-
         sponge.absorb(&[ecdh_value.x]); // For TE curves, only one of (x, y) and (x, -y) would be on the curve.
 
-        let mut results = sponge.squeeze_field_elements(message.len());
-        for (i, elem) in message.iter().enumerate() {
-            results[i] += elem;
+        // Encrypt the field elements part by adding the field-F pads directly.
+        let mut field_elements = sponge.squeeze_field_elements(message.field_elements.len());
+        for (i, elem) in message.field_elements.iter().enumerate() {
+            field_elements[i] += elem;
         }
 
-        results.push(
+        // Put the x coordinate of the randomness group element into the end of the field elements array.
+        field_elements.push(
             self.generator
                 .into_projective()
                 .mul((*randomness).clone())
@@ -173,17 +168,34 @@ where
                 .to_x_coordinate(),
         );
 
-        Ok(results)
+        // Encrypt the remaining bytes by first truncating the field-F part into bytes and performing a wrapping addition one by one.
+        let remaining_bytes = if message.remaining_bytes.is_empty() {
+            vec![]
+            // avoid unnecessary call to the sponge
+        } else {
+            let mut remaining_bytes = message.remaining_bytes.clone();
+            let sponge_bytes = sponge.squeeze_field_elements(1).first().unwrap().to_bytes_le()?;
+            for (i, elem) in sponge_bytes.iter().take(remaining_bytes.len()).enumerate() {
+                remaining_bytes[i] = remaining_bytes[i].wrapping_add(*elem);
+            }
+            remaining_bytes
+        };
+
+        Ok(Self::CipherText {
+            field_elements,
+            remaining_bytes,
+        })
     }
 
     fn decrypt(
         &self,
         private_key: &<Self as EncryptionScheme>::PrivateKey,
-        ciphertext: &[Self::Text],
-    ) -> Result<Vec<Self::Text>, EncryptionError> {
-        assert!(ciphertext.len() >= 1);
+        ciphertext: &Self::CipherText,
+    ) -> Result<Self::PlainText, EncryptionError> {
+        assert!(ciphertext.field_elements.len() >= 1);
 
-        let random_elem_x = ciphertext.last().unwrap().clone();
+        // Recover the randomness group element.
+        let random_elem_x = ciphertext.field_elements.last().unwrap().clone();
         let random_elem = {
             let mut first = TEAffine::<TE>::from_x_coordinate(random_elem_x.clone(), true);
             if first.is_some() && !first.unwrap().is_in_correct_subgroup_assuming_on_curve() {
@@ -196,22 +208,39 @@ where
             first.or(second).unwrap()
         };
 
+        // Compute the ECDH value
         let ecdh_value = random_elem.into_projective().mul((*private_key).clone()).into_affine();
 
+        // Prepare the Poseidon sponge.
         let params =
             <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap();
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
-
         sponge.absorb(&[ecdh_value.x]); // For TE curves, only one of (x, y) and (x, -y) would be on the curve.
 
-        let len = ciphertext.len() - 1;
-
-        let mut results = sponge.squeeze_field_elements(len);
-        for (i, elem) in ciphertext.iter().take(len).enumerate() {
-            results[i] = *elem - results[i];
+        // Decrypt the field elements part.
+        let field_elements_len = ciphertext.field_elements.len() - 1;
+        let mut field_elements = sponge.squeeze_field_elements(field_elements_len);
+        for (i, elem) in ciphertext.field_elements.iter().take(field_elements_len).enumerate() {
+            field_elements[i] = *elem - field_elements[i];
         }
 
-        Ok(results)
+        // Decrypt the remaining bytes part.
+        let remaining_bytes = if ciphertext.remaining_bytes.is_empty() {
+            vec![]
+            // avoid unnecessary call to the sponge
+        } else {
+            let mut remaining_bytes = ciphertext.remaining_bytes.clone();
+            let sponge_bytes = sponge.squeeze_field_elements(1).first().unwrap().to_bytes_le()?;
+            for (i, elem) in sponge_bytes.iter().take(remaining_bytes.len()).enumerate() {
+                remaining_bytes[i] = remaining_bytes[i].wrapping_sub(*elem);
+            }
+            remaining_bytes
+        };
+
+        Ok(Self::CipherText {
+            field_elements,
+            remaining_bytes,
+        })
     }
 
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters {

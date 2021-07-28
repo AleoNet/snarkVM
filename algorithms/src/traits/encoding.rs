@@ -14,29 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod account;
-pub use account::*;
+use crate::EncodingError;
+use snarkvm_utilities::{fmt::Debug, FromBytes, ToBytes};
 
-pub mod block;
-pub use block::*;
+pub trait EncodingScheme:
+    Sized + ToBytes + FromBytes + Debug + Clone + Eq + From<<Self as EncodingScheme>::Parameters>
+{
+    type Parameters: Clone + Debug + Eq;
+    type Data: Clone + Debug + Default + Eq + ToBytes + From<Vec<u8>>;
+    type EncodedData: Clone + Debug + Default + Eq + ToBytes;
 
-pub mod dpc;
-pub use dpc::*;
+    fn setup(message: &str) -> Self;
 
-pub mod parameters;
-pub use parameters::*;
+    fn encode(&self, data: &Self::Data) -> Result<Self::EncodedData, EncodingError>;
 
-pub mod ledger;
-pub use ledger::*;
-
-pub mod program;
-pub use program::*;
-
-pub mod record;
-pub use record::*;
-
-pub mod storage;
-pub use storage::*;
-
-pub mod transaction;
-pub use transaction::*;
+    fn decode(&self, data: &Self::EncodedData) -> Result<Self::Data, EncodingError>;
+}

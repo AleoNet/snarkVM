@@ -15,7 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    algorithms::crypto_hash::{CryptographicSpongeVar, PoseidonSpongeGadget},
+    algorithms::{
+        crypto_hash::{CryptographicSpongeVar, PoseidonSpongeGadget},
+        encoding::PackedFieldsAndBytesGadget,
+    },
     AllocGadget,
     Boolean,
     ConditionalEqGadget,
@@ -26,6 +29,7 @@ use crate::{
     GroupGadget,
     Integer,
     ToBytesGadget,
+    UInt,
     UInt8,
 };
 use itertools::Itertools;
@@ -366,9 +370,8 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> EqGadget<F>
 impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultParametersField>
     EncryptionGadget<ECIESPoseidonEncryption<TE>, F> for ECIESPoseidonEncryptionGadget<TE, F>
 {
-    type CiphertextGadget = Vec<FpGadget<F>>;
-    type EncryptionWitnessGadget = ECIESPoseidonEncryptionWitnessGadget<TE>;
-    type PlaintextGadget = Vec<FpGadget<F>>;
+    type CiphertextGadget = PackedFieldsAndBytesGadget<F>;
+    type PlaintextGadget = PackedFieldsAndBytesGadget<F>;
     type PrivateKeyGadget = ECIESPoseidonEncryptionPrivateKeyGadget<TE, F>;
     type PublicKeyGadget = ECIESPoseidonEncryptionPublicKeyGadget<TE, F>;
     type RandomnessGadget = ECIESPoseidonEncryptionRandomnessGadget<TE>;
@@ -408,11 +411,11 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         randomness: &Self::RandomnessGadget,
         public_key: &Self::PublicKeyGadget,
         input: &Self::PlaintextGadget,
-        _encryption_witness: &Self::EncryptionWitnessGadget,
     ) -> Result<Self::CiphertextGadget, SynthesisError> {
         let zero: TEAffineGadget<TE, F> =
             <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::zero(cs.ns(|| "zero")).unwrap();
 
+        // Compute the ECDH value.
         let randomness_bits = randomness.0.iter().flat_map(|b| b.to_bits_le()).collect::<Vec<_>>();
         let ecdh_value = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::mul_bits(
             &public_key.0,
@@ -421,16 +424,19 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
             randomness_bits.iter().copied(),
         )?;
 
+        // Prepare the sponge.
         let params =
             <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap();
         let mut sponge = PoseidonSpongeGadget::<TE::BaseField>::new(cs.ns(|| "sponge"), &params);
         sponge.absorb(cs.ns(|| "absorb"), [ecdh_value.x].iter())?;
 
-        let mut results = sponge.squeeze_field_elements(cs.ns(|| "squeeze"), input.len())?;
-        for (i, elem) in input.iter().enumerate() {
-            results[i].add_in_place(cs.ns(|| format!("encryption_{}", i)), elem)?;
+        // Encrypt the field elements part.
+        let mut field_elements = sponge.squeeze_field_elements(cs.ns(|| "squeeze"), input.field_elements.len())?;
+        for (i, elem) in input.field_elements.iter().enumerate() {
+            field_elements[i].add_in_place(cs.ns(|| format!("encryption_{}", i)), elem)?;
         }
 
+        // Push the x coordinate of the randomness group element.
         let generator_gadget = TEAffineGadget::<TE, F>::alloc_constant(cs.ns(|| "alloc generator"), || {
             Ok(self.encryption.generator.clone())
         })?;
@@ -440,9 +446,31 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
             &zero,
             randomness_bits.iter().copied(),
         )?;
+        field_elements.push(randomness_elem.x);
 
-        results.push(randomness_elem.x);
+        // Encrypt the remaining bytes.
+        let remaining_bytes = if input.remaining_bytes.is_empty() {
+            vec![]
+            // avoid unnecessary call to the sponge
+        } else {
+            let mut remaining_bytes = input.remaining_bytes.clone();
+            let sponge_bytes = sponge
+                .squeeze_field_elements(cs.ns(|| "squeeze for remaining bits"), 1)?
+                .first()
+                .unwrap()
+                .to_bytes(cs.ns(|| "extract the remaining bits"))?;
+            for (i, elem) in sponge_bytes.iter().take(remaining_bytes.len()).enumerate() {
+                remaining_bytes[i] = UInt8::addmany(cs.ns(|| format!("add_bits {}", i)), &[
+                    remaining_bytes[i].clone(),
+                    elem.clone(),
+                ])?;
+            }
+            remaining_bytes
+        };
 
-        Ok(results)
+        Ok(Self::CiphertextGadget {
+            field_elements,
+            remaining_bytes,
+        })
     }
 }

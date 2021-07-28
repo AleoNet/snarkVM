@@ -14,35 +14,54 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::encoding::Elligator2;
-use snarkvm_curves::edwards_bls12::*;
-use snarkvm_fields::Zero;
-use snarkvm_utilities::rand::UniformRand;
+mod packed_fields_and_bytes {
+    use rand::SeedableRng;
+    use rand_chacha::ChaChaRng;
+    use snarkvm_curves::edwards_bw6::Fr;
+    // edwards_bw6 is able to touch the corner cases.
+    use crate::{
+        encoding::{PackedFieldsAndBytes, PackedFieldsAndBytesEncodingScheme},
+        EncodingScheme,
+    };
+    use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
-use rand::SeedableRng;
-use rand_xorshift::XorShiftRng;
+    #[test]
+    fn correctness_test() {
+        let mut rng = ChaChaRng::seed_from_u64(123456789u64);
 
-pub(crate) const ITERATIONS: usize = 10000;
+        for test_len in 0..100 {
+            let mut bytes = Vec::with_capacity(test_len);
+            for _ in 0..test_len {
+                bytes.push(u8::rand(&mut rng));
+            }
 
-#[test]
-fn test_elligator2_encode_decode() {
-    let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
+            let encoder = PackedFieldsAndBytesEncodingScheme::<Fr>::default();
+            let encoded_data = encoder.encode(&bytes).unwrap();
 
-    for _ in 0..ITERATIONS {
-        let original: Fq = Fq::rand(rng);
+            let decoded_result = encoder.decode(&encoded_data).unwrap();
 
-        let (encoded, fq_high) = Elligator2::<EdwardsParameters, EdwardsProjective>::encode(&original).unwrap();
-        let decoded = Elligator2::<EdwardsParameters, EdwardsProjective>::decode(&encoded, fq_high).unwrap();
-
-        assert_eq!(original, decoded)
+            assert_eq!(bytes, decoded_result);
+        }
     }
-}
 
-#[test]
-fn test_elligator2_zero() {
-    let encode = Elligator2::<EdwardsParameters, EdwardsProjective>::encode(&Fq::zero());
-    assert!(encode.is_err());
+    #[test]
+    fn serialization_test() {
+        let mut rng = ChaChaRng::seed_from_u64(123456789u64);
 
-    let decode = Elligator2::<EdwardsParameters, EdwardsProjective>::decode(&EdwardsAffine::zero(), false);
-    assert!(decode.is_err());
+        for test_len in 0..50 {
+            let mut bytes = Vec::with_capacity(test_len);
+            for _ in 0..test_len {
+                bytes.push(u8::rand(&mut rng));
+            }
+
+            let encoder = PackedFieldsAndBytesEncodingScheme::<Fr>::default();
+            let encoded_record = encoder.encode(&bytes).unwrap();
+
+            let serialized_encoded_record = encoded_record.to_bytes_le().unwrap();
+            let deserialized_encoded_record =
+                PackedFieldsAndBytes::<Fr>::from_bytes_le(&serialized_encoded_record).unwrap();
+
+            assert_eq!(encoded_record, deserialized_encoded_record);
+        }
+    }
 }

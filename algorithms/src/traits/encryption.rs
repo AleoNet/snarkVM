@@ -26,9 +26,9 @@ pub trait EncryptionScheme:
     type Parameters: Clone + Debug + Eq;
     type PrivateKey: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
     type PublicKey: Clone + Debug + Default + Eq + ToBytes + FromBytes;
-    type Text: Clone + Debug + Default + Eq + ToBytes + FromBytes;
+    type PlainText: Clone + Debug + Default + Eq + ToBytes + FromBytes;
+    type CipherText: Clone + Debug + Default + Eq + ToBytes + FromBytes;
     type Randomness: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
-    type EncryptionWitness: Clone + Debug + Default + Eq + Hash + ToBytes;
 
     fn setup(message: &str) -> Self;
 
@@ -45,25 +45,18 @@ pub trait EncryptionScheme:
         rng: &mut R,
     ) -> Result<Self::Randomness, EncryptionError>;
 
-    fn generate_encryption_witness(
-        &self,
-        public_key: &<Self as EncryptionScheme>::PublicKey,
-        randomness: &Self::Randomness,
-        message_length: usize,
-    ) -> Result<Vec<Self::EncryptionWitness>, EncryptionError>;
-
     fn encrypt(
         &self,
         public_key: &<Self as EncryptionScheme>::PublicKey,
         randomness: &Self::Randomness,
-        message: &[Self::Text],
-    ) -> Result<Vec<Self::Text>, EncryptionError>;
+        message: &Self::PlainText,
+    ) -> Result<Self::CipherText, EncryptionError>;
 
     fn decrypt(
         &self,
         private_key: &<Self as EncryptionScheme>::PrivateKey,
-        ciphertext: &[Self::Text],
-    ) -> Result<Vec<Self::Text>, EncryptionError>;
+        ciphertext: &Self::CipherText,
+    ) -> Result<Self::PlainText, EncryptionError>;
 
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters;
 
