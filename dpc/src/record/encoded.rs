@@ -16,45 +16,85 @@
 
 use crate::{DPCError, EncodedRecordScheme, Parameters, Payload, Record, RecordScheme};
 use snarkvm_algorithms::{
-    encoding::Elligator2,
     traits::{CommitmentScheme, CRH},
+    EncodingError,
 };
-use snarkvm_curves::traits::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
-use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{
-    from_bits_le_to_bytes_le,
-    from_bytes_le_to_bits_le,
-    to_bytes_le,
-    BigInteger,
-    FromBytes,
-    ToBytes,
-};
+use snarkvm_fields::{FieldParameters, PrimeField};
+use snarkvm_utilities::{io::Cursor, to_bytes_le, FromBits, FromBytes, Read, ToBits, ToBytes};
 
-use itertools::Itertools;
-use std::marker::PhantomData;
+/// Encode a base field element bytes to a group representation.
+pub fn encode_to_field<F: PrimeField>(x_bytes: &[u8]) -> Result<Vec<F>, DPCError> {
+    let capacity = <F::Parameters as FieldParameters>::CAPACITY as usize;
 
-/// Encode a base field element bytes to a group representation
-pub fn encode_to_group<P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve>(
-    x_bytes: &[u8],
-) -> Result<(<G as ProjectiveCurve>::Affine, bool), DPCError> {
-    // TODO (howardwu): Remove this hardcoded value and use BaseField's size in bits to pad length.
-    let mut bytes = x_bytes.to_vec();
-    while bytes.len() < 32 {
-        bytes.push(0)
+    let mut bits = Vec::<bool>::with_capacity(x_bytes.len() * 8 + 1);
+    for byte in x_bytes.iter() {
+        let mut byte = byte.clone();
+        for _ in 0..8 {
+            bits.push(byte & 1 == 1);
+            byte >>= 1;
+        }
+    }
+    bits.push(true);
+    // The last bit indicates the end of the actual data, which is used in decoding to
+    // make sure that the length is correct.
+
+    let mut res = Vec::<F>::with_capacity((bits.len() + capacity - 1) / capacity);
+    for chunk in bits.chunks(capacity) {
+        res.push(F::from_repr(F::BigInteger::from_bits_le(chunk)).unwrap());
     }
 
-    let input = P::BaseField::read_le(&bytes[..])?;
-    let (output, fq_high) = Elligator2::<P, G>::encode(&input)?;
-    Ok((output, fq_high))
+    Ok(res)
 }
 
-/// Decode a group into the byte representation of a base field element
-pub fn decode_from_group<P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve>(
-    affine: <G as ProjectiveCurve>::Affine,
-    fq_high: bool,
-) -> Result<Vec<u8>, DPCError> {
-    let output = Elligator2::<P, G>::decode(&affine, fq_high)?;
-    Ok(to_bytes_le![output]?)
+/// Decode a group into the byte representation of a base field element.
+pub fn decode_from_field<F: PrimeField>(field_elements: &[F]) -> Result<Vec<u8>, DPCError> {
+    if field_elements.is_empty() {
+        return Err(EncodingError::Message(
+            "The encoded record must consist of at least one field element.".to_string(),
+        )
+        .into());
+    }
+    if field_elements.last().unwrap().is_zero() {
+        return Err(EncodingError::Message("The encoded record must end with a non-zero element.".to_string()).into());
+    }
+    // There is at least one field element due to the additional true bit.
+
+    let capacity = <F::Parameters as FieldParameters>::CAPACITY as usize;
+
+    let mut bits = Vec::<bool>::with_capacity(field_elements.len() * capacity);
+    for elem in field_elements.iter() {
+        let elem_bits = elem.to_repr().to_bits_le();
+        bits.extend_from_slice(&elem_bits[..capacity]); // only keep `capacity` bits, discarding the highest bit.
+    }
+
+    // Drop all the ending zeros and the last "1" bit.
+    //
+    // Note that there must be at least one "1" bit because the last element is not zero.
+    loop {
+        if let Some(true) = bits.pop() {
+            break;
+        }
+    }
+
+    if bits.len() % 8 != 0 {
+        return Err(EncodingError::Message(
+            "The number of bits in the encoded record is not a multiply of 8.".to_string(),
+        )
+        .into());
+    }
+    // Here we do not use assertion since it can cause Rust panicking.
+
+    let mut bytes = Vec::with_capacity(bits.len() / 8);
+    for chunk in bits.chunks_exact(8) {
+        let mut byte = 0u8;
+        for bit in chunk.iter().rev() {
+            byte <<= 1;
+            byte += *bit as u8;
+        }
+        bytes.push(byte);
+    }
+
+    Ok(bytes)
 }
 
 pub struct DecodedRecord<C: Parameters> {
@@ -66,315 +106,93 @@ pub struct DecodedRecord<C: Parameters> {
     pub commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
 }
 
-pub struct EncodedRecord<C: Parameters, P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve> {
-    pub(super) encoded_elements: Vec<G>,
-    pub(super) final_sign_high: bool,
-    _components: PhantomData<C>,
-    _parameters: PhantomData<P>,
+pub struct EncodedRecord<C: Parameters> {
+    pub encoded_elements: Vec<C::InnerScalarField>,
 }
 
-impl<C: Parameters, P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve> EncodedRecord<C, P, G> {
-    pub fn new(encoded_elements: Vec<G>, final_sign_high: bool) -> Self {
-        Self {
-            encoded_elements,
-            final_sign_high,
-            _components: PhantomData,
-            _parameters: PhantomData,
-        }
+impl<C: Parameters> EncodedRecord<C> {
+    pub fn new(encoded_elements: Vec<C::InnerScalarField>) -> Self {
+        Self { encoded_elements }
     }
 }
 
-impl<C: Parameters, P: MontgomeryParameters + TwistedEdwardsParameters, G: ProjectiveCurve> EncodedRecordScheme
-    for EncodedRecord<C, P, G>
-{
+impl<C: Parameters> EncodedRecordScheme for EncodedRecord<C> {
     type DecodedRecord = DecodedRecord<C>;
-    type Group = G;
-    type InnerField = <C as Parameters>::InnerScalarField;
-    type OuterField = <C as Parameters>::OuterScalarField;
-    type Parameters = P;
+    type Field = C::InnerScalarField;
     type Record = Record<C>;
 
-    /// Records are serialized in a specialized format to be space-saving.
+    /// Records are serialized by
+    /// - arranging the following elements in bytes
+    /// - converting these bytes into field elements
     ///
-    /// Encoded element 1 - [ Serial number nonce ]
-    /// Encoded element 2 - [ Commitment randomness ]
-    /// Encoded element 3 - [ Birth program id (part 1) ]
-    /// Encoded element 4 - [ Death program id (part 1) ]
-    /// Encoded element 5 - [ Birth program id (part 2) || Death program id (part 2) ]
-    /// Encoded element 6 - [ Payload (part 1) || 1 ]
-    /// Encoded element 7 - [ Payload (part 2) || 1 ]
-    /// Encoded element 8 - [ Payload (part 3) || 1 ]
-    /// Encoded element 9 - [ Payload (part 4) || 1 ]
-    /// Encoded element 10 - [ 1 || Sign high bits (7 bits) || Value || Payload (part 5) ]
+    /// Encoded part 1 - [ Serial number nonce ]
+    /// Encoded part 2 - [ Commitment randomness ]
+    /// Encoded part 3 - [ Birth program id ]
+    /// Encoded part 4 - [ Death program id ]
+    /// Encoded part 5 - [ Value ]
+    /// Encoded part 6 - [ Payload ]
     ///
     fn encode(record: &Self::Record) -> Result<Self, DPCError> {
-        // Assumption 1 - The scalar field bit size must be strictly less than the base field bit size
-        // for the logic below to work correctly.
-        assert!(Self::SCALAR_FIELD_BITSIZE < Self::INNER_FIELD_BITSIZE);
+        let mut bytes = vec![];
 
-        // Assumption 2 - this implementation assumes the outer field bit size is larger than
-        // the data field bit size by at most one additional scalar field bit size.
-        assert!((Self::OUTER_FIELD_BITSIZE - Self::DATA_ELEMENT_BITSIZE) <= Self::DATA_ELEMENT_BITSIZE);
-
-        // Assumption 3 - this implementation assumes the remainder of two outer field bit sizes
-        // can fit within one data field element's bit size.
-        assert!((2 * (Self::OUTER_FIELD_BITSIZE - Self::DATA_ELEMENT_BITSIZE)) <= Self::DATA_ELEMENT_BITSIZE);
-
-        // Assumption 4 - this implementation assumes the payload and value may be zero values.
-        // As such, to ensure the values are non-zero for encoding and decoding, we explicitly
-        // reserve the MSB of the data field element's valid bitsize and set the bit to 1.
-        assert_eq!(Self::PAYLOAD_ELEMENT_BITSIZE, Self::DATA_ELEMENT_BITSIZE - 1);
-
-        // This element needs to be represented in the constraint field; its bits and the number of elements
-        // are calculated early, so that the storage vectors can be pre-allocated.
-        let payload = record.payload();
-        let payload_bytes = to_bytes_le![payload]?;
-        let payload_bits_count = payload_bytes.len() * 8;
-        let payload_bits = from_bytes_le_to_bits_le(&payload_bytes);
-        let num_payload_elements = payload_bits_count / Self::PAYLOAD_ELEMENT_BITSIZE;
-
-        // Create the vector for storing data elements.
-
-        let mut data_elements = Vec::with_capacity(5 + num_payload_elements + 2);
-        let mut data_high_bits = Vec::with_capacity(5 + num_payload_elements);
-
-        // These elements are already in the constraint field.
-
+        // Serial number nonce
         let serial_number_nonce = record.serial_number_nonce();
-        let serial_number_nonce_encoded =
-            <Self::Group as ProjectiveCurve>::Affine::from_random_bytes(&to_bytes_le![serial_number_nonce]?.to_vec())
-                .unwrap();
+        bytes.extend_from_slice(&serial_number_nonce.to_bytes_le()?);
 
-        data_elements.push(serial_number_nonce_encoded);
-        data_high_bits.push(false);
-
-        assert_eq!(data_elements.len(), 1);
-        assert_eq!(data_high_bits.len(), 1);
-
-        // These elements need to be represented in the constraint field.
-
+        // Commitment randomness
         let commitment_randomness = record.commitment_randomness();
+        bytes.extend_from_slice(&commitment_randomness.to_bytes_le()?);
+
+        // Birth program ID
         let birth_program_id = record.birth_program_id();
+        bytes.extend_from_slice(&birth_program_id.to_bytes_le()?);
+
+        // Death program ID
         let death_program_id = record.death_program_id();
+        bytes.extend_from_slice(&death_program_id.to_bytes_le()?);
+
+        // Value
         let value = record.value();
+        bytes.extend_from_slice(&value.to_bytes_le()?);
 
-        // Process commitment_randomness. (Assumption 1 applies)
+        // Payload
+        let payload = record.payload();
+        bytes.extend_from_slice(&payload.to_bytes_le()?);
 
-        let (encoded_commitment_randomness, sign_high) =
-            encode_to_group::<Self::Parameters, Self::Group>(&to_bytes_le![commitment_randomness]?[..])?;
-        data_elements.push(encoded_commitment_randomness);
-        data_high_bits.push(sign_high);
-
-        assert_eq!(data_elements.len(), 2);
-        assert_eq!(data_high_bits.len(), 2);
-
-        // Process birth_program_id and death_program_id. (Assumption 2 and 3 applies)
-
-        let birth_program_id_biginteger = Self::OuterField::read_le(birth_program_id)?.to_repr();
-        let death_program_id_biginteger = Self::OuterField::read_le(death_program_id)?.to_repr();
-
-        let mut birth_program_id_bits = Vec::with_capacity(Self::INNER_FIELD_BITSIZE);
-        let mut death_program_id_bits = Vec::with_capacity(Self::INNER_FIELD_BITSIZE);
-        let mut birth_program_id_remainder_bits =
-            Vec::with_capacity(Self::OUTER_FIELD_BITSIZE - Self::DATA_ELEMENT_BITSIZE);
-        let mut death_program_id_remainder_bits =
-            Vec::with_capacity(Self::OUTER_FIELD_BITSIZE - Self::DATA_ELEMENT_BITSIZE);
-
-        for i in 0..Self::DATA_ELEMENT_BITSIZE {
-            birth_program_id_bits.push(birth_program_id_biginteger.get_bit(i));
-            death_program_id_bits.push(death_program_id_biginteger.get_bit(i));
-        }
-
-        // (Assumption 2 applies)
-        for i in Self::DATA_ELEMENT_BITSIZE..Self::OUTER_FIELD_BITSIZE {
-            birth_program_id_remainder_bits.push(birth_program_id_biginteger.get_bit(i));
-            death_program_id_remainder_bits.push(death_program_id_biginteger.get_bit(i));
-        }
-        birth_program_id_remainder_bits.append(&mut death_program_id_remainder_bits);
-
-        // (Assumption 3 applies)
-
-        let (encoded_birth_program_id, sign_high) =
-            encode_to_group::<Self::Parameters, Self::Group>(&from_bits_le_to_bytes_le(&birth_program_id_bits)[..])?;
-        drop(birth_program_id_bits);
-        data_elements.push(encoded_birth_program_id);
-        data_high_bits.push(sign_high);
-
-        let (encoded_death_program_id, sign_high) =
-            encode_to_group::<Self::Parameters, Self::Group>(&from_bits_le_to_bytes_le(&death_program_id_bits)[..])?;
-        drop(death_program_id_bits);
-        data_elements.push(encoded_death_program_id);
-        data_high_bits.push(sign_high);
-
-        let (encoded_birth_program_id_remainder, sign_high) = encode_to_group::<Self::Parameters, Self::Group>(
-            &from_bits_le_to_bytes_le(&birth_program_id_remainder_bits)[..],
-        )?;
-        drop(birth_program_id_remainder_bits);
-        data_elements.push(encoded_birth_program_id_remainder);
-        data_high_bits.push(sign_high);
-
-        assert_eq!(data_elements.len(), 5);
-        assert_eq!(data_high_bits.len(), 5);
-
-        // Process payload.
-
-        let mut payload_field_bits = Vec::with_capacity(Self::PAYLOAD_ELEMENT_BITSIZE + 1);
-
-        for (i, bit) in payload_bits.enumerate() {
-            payload_field_bits.push(bit);
-
-            if (i > 0) && ((i + 1) % Self::PAYLOAD_ELEMENT_BITSIZE == 0) {
-                // (Assumption 4)
-                payload_field_bits.push(true);
-                let (encoded_payload_field, sign_high) = encode_to_group::<Self::Parameters, Self::Group>(
-                    &from_bits_le_to_bytes_le(&payload_field_bits)[..],
-                )?;
-
-                data_elements.push(encoded_payload_field);
-                data_high_bits.push(sign_high);
-
-                payload_field_bits.clear();
-            }
-        }
-
-        assert_eq!(data_elements.len(), 5 + num_payload_elements);
-        assert_eq!(data_high_bits.len(), 5 + num_payload_elements);
-
-        // Process payload remainder and value.
-
-        // Determine if value can fit in current payload_field_bits.
-        let value_does_not_fit =
-            (payload_field_bits.len() + data_high_bits.len() + (std::mem::size_of_val(&value) * 8))
-                > Self::PAYLOAD_ELEMENT_BITSIZE;
-
-        if value_does_not_fit {
-            // (Assumption 4)
-            payload_field_bits.push(true);
-
-            let (encoded_payload_field, fq_high) =
-                encode_to_group::<Self::Parameters, Self::Group>(&from_bits_le_to_bytes_le(&payload_field_bits)[..])?;
-
-            data_elements.push(encoded_payload_field);
-            data_high_bits.push(fq_high);
-
-            payload_field_bits.clear();
-        }
-
-        assert_eq!(
-            data_elements.len(),
-            5 + num_payload_elements + (value_does_not_fit as usize)
-        );
-
-        // Append the value bits and create the final base element.
-        let value_bits = from_bytes_le_to_bits_le(&to_bytes_le![value]?).collect();
-
-        // (Assumption 4)
-        let final_element = [vec![true], data_high_bits, value_bits, payload_field_bits].concat();
-        let (encoded_final_element, final_sign_high) =
-            encode_to_group::<Self::Parameters, Self::Group>(&from_bits_le_to_bytes_le(&final_element)[..])?;
-
-        data_elements.push(encoded_final_element);
-
-        assert_eq!(
-            data_elements.len(),
-            5 + num_payload_elements + (value_does_not_fit as usize) + 1
-        );
-
-        // Compute the encoded group elements.
-        let mut encoded_elements = Vec::with_capacity(data_elements.len());
-        for element in data_elements.iter() {
-            encoded_elements.push(element.into_projective());
-        }
-
-        Ok(Self::new(encoded_elements, final_sign_high))
+        // Pack as field elements
+        Ok(Self::new(encode_to_field(&bytes)?))
     }
 
     /// Decode and return the record components.
     fn decode(&self) -> Result<Self::DecodedRecord, DPCError> {
-        let remainder_size = Self::OUTER_FIELD_BITSIZE - Self::DATA_ELEMENT_BITSIZE;
+        let bits = decode_from_field(&self.encoded_elements)?;
 
-        // Extract the fq_bits
-        let final_element = &self.encoded_elements[self.encoded_elements.len() - 1];
-        let final_element_bytes =
-            decode_from_group::<Self::Parameters, Self::Group>(final_element.into_affine(), self.final_sign_high)?;
-        let final_element_bits = from_bytes_le_to_bits_le(&final_element_bytes).collect::<Vec<_>>();
+        let mut cursor = Cursor::new(bits);
 
-        let fq_high_bits = &final_element_bits[1..self.encoded_elements.len()];
+        // Serial number nonce
+        let serial_number_nonce = <C::SerialNumberNonceCRH as CRH>::Output::read_le(&mut cursor)?;
 
-        // Deserialize serial number nonce
+        // Commitment randomness
+        let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::read_le(&mut cursor)?;
 
-        let (serial_number_nonce, _) = &(self.encoded_elements[0], fq_high_bits[0]);
-        let serial_number_nonce_bytes = to_bytes_le![serial_number_nonce.into_affine().to_x_coordinate()]?;
-        let serial_number_nonce = <C::SerialNumberNonceCRH as CRH>::Output::read_le(&serial_number_nonce_bytes[..])?;
+        // Birth program ID and death program ID
+        let program_id_length = to_bytes_le!(<C::ProgramIDCRH as CRH>::Output::default())?.len();
+        let birth_program_id = {
+            let mut program_id = vec![0u8; program_id_length];
+            cursor.read_exact(&mut program_id)?;
+            program_id
+        };
+        let death_program_id = {
+            let mut program_id = vec![0u8; program_id_length];
+            cursor.read_exact(&mut program_id)?;
+            program_id
+        };
 
-        // Deserialize commitment randomness
+        // Value
+        let value = u64::read_le(&mut cursor)?;
 
-        let (commitment_randomness, commitment_randomness_fq_high) = &(self.encoded_elements[1], fq_high_bits[1]);
-        let commitment_randomness_bytes = decode_from_group::<Self::Parameters, Self::Group>(
-            commitment_randomness.into_affine(),
-            *commitment_randomness_fq_high,
-        )?;
-        let commitment_randomness_bits = &from_bytes_le_to_bits_le(&commitment_randomness_bytes)
-            .take(Self::DATA_ELEMENT_BITSIZE)
-            .collect::<Vec<_>>();
-        let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::read_le(
-            &from_bits_le_to_bytes_le(commitment_randomness_bits)[..],
-        )?;
-
-        // Deserialize birth and death programs
-
-        let (birth_program_id, birth_program_id_sign_high) = &(self.encoded_elements[2], fq_high_bits[2]);
-        let birth_program_id_bytes = decode_from_group::<Self::Parameters, Self::Group>(
-            birth_program_id.into_affine(),
-            *birth_program_id_sign_high,
-        )?;
-
-        let (death_program_id, death_program_id_sign_high) = &(self.encoded_elements[3], fq_high_bits[3]);
-        let death_program_id_bytes = decode_from_group::<Self::Parameters, Self::Group>(
-            death_program_id.into_affine(),
-            *death_program_id_sign_high,
-        )?;
-
-        let (program_id_remainder, program_id_sign_high) = &(self.encoded_elements[4], fq_high_bits[4]);
-        let program_id_remainder_bytes = decode_from_group::<Self::Parameters, Self::Group>(
-            program_id_remainder.into_affine(),
-            *program_id_sign_high,
-        )?;
-
-        let mut birth_program_id_bits = from_bytes_le_to_bits_le(&birth_program_id_bytes)
-            .take(Self::DATA_ELEMENT_BITSIZE)
-            .collect::<Vec<_>>();
-        let mut death_program_id_bits = from_bytes_le_to_bits_le(&death_program_id_bytes)
-            .take(Self::DATA_ELEMENT_BITSIZE)
-            .collect::<Vec<_>>();
-
-        let mut program_id_remainder_bits = from_bytes_le_to_bits_le(&program_id_remainder_bytes);
-        birth_program_id_bits.extend(program_id_remainder_bits.by_ref().take(remainder_size));
-        death_program_id_bits.extend(program_id_remainder_bits.take(remainder_size));
-
-        let birth_program_id = from_bits_le_to_bytes_le(&birth_program_id_bits);
-        let death_program_id = from_bits_le_to_bytes_le(&death_program_id_bits);
-
-        // Deserialize the value
-
-        let value_start = self.encoded_elements.len();
-        let value_end = value_start + (std::mem::size_of_val(&<Self::Record as RecordScheme>::Value::default()) * 8);
-        let value: <Self::Record as RecordScheme>::Value =
-            FromBytes::read_le(&from_bits_le_to_bytes_le(&final_element_bits[value_start..value_end])[..])?;
-
-        // Deserialize payload
-
-        let mut payload_bits = vec![];
-        for (element, fq_high) in self.encoded_elements[5..self.encoded_elements.len() - 1]
-            .iter()
-            .zip_eq(&fq_high_bits[5..])
-        {
-            let element_bytes = decode_from_group::<Self::Parameters, Self::Group>(element.into_affine(), *fq_high)?;
-            payload_bits.extend(from_bytes_le_to_bits_le(&element_bytes).take(Self::PAYLOAD_ELEMENT_BITSIZE));
-        }
-        payload_bits.extend_from_slice(&final_element_bits[value_end..]);
-
-        let payload = Payload::read_le(&from_bits_le_to_bytes_le(&payload_bits)[..])?;
+        // Payload
+        let payload = Payload::read_le(&mut cursor)?;
 
         Ok(DecodedRecord {
             value,

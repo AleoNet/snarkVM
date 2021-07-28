@@ -592,6 +592,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsBEGadget<BaseField>
                 field_parameters.bits_per_limb,
             )?);
         }
+        bits.truncate(TargetField::size_in_bits());
 
         let mut b = TargetField::characteristic().to_vec();
         assert_eq!(b[0] % 2, 1);
@@ -636,6 +637,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsLEGadget<BaseField>
             )?);
         }
         bits.reverse();
+        bits.truncate(TargetField::size_in_bits());
 
         let mut b = TargetField::characteristic().to_vec();
         assert_eq!(b[0] % 2, 1);
