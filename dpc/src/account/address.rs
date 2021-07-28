@@ -16,6 +16,7 @@
 
 use crate::{account_format, traits::Parameters, AccountError, PrivateKey, ViewKey};
 use snarkvm_algorithms::{EncryptionScheme, SignatureScheme};
+use snarkvm_curves::AffineCurve;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use bech32::{self, FromBase32, ToBase32};
@@ -59,37 +60,31 @@ impl<C: Parameters> Address<C> {
         signature: &<C::AccountSignatureScheme as SignatureScheme>::Signature,
     ) -> Result<bool, AccountError> {
         let signature_public_key = self.to_signature_public_key()?;
-        // let signature_public_key = FromBytes::from_bytes_le(&self.encryption_key.to_bytes_le()?)?;
         Ok(C::account_signature_scheme().verify(&signature_public_key, message, signature)?)
     }
 
-    // TODO (howardwu): Deprecate this.
+    /// Returns the address as a signature public key.
     pub fn to_signature_public_key(&self) -> Result<C::AccountSignaturePublicKey, AccountError> {
-        fn perform_recovery_from_compressed_form_unsafe<R: Read>(mut reader: R) -> anyhow::Result<Vec<u8>> {
-            use snarkvm_curves::{edwards_bls12::EdwardsAffine as EdwardsBls12, AffineCurve};
+        use snarkvm_curves::edwards_bls12::EdwardsAffine;
 
-            let x_coordinate = <EdwardsBls12 as AffineCurve>::BaseField::read_le(&mut reader)?;
+        let x_coordinate = FromBytes::from_bytes_le(&self.encryption_key.to_bytes_le()?)?;
 
-            if let Some(element) = <EdwardsBls12 as AffineCurve>::from_x_coordinate(x_coordinate, true) {
-                if element.is_in_correct_subgroup_assuming_on_curve() {
-                    return Ok(element.to_bytes_le()?);
-                }
+        if let Some(element) = <EdwardsAffine as AffineCurve>::from_x_coordinate(x_coordinate, true) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(FromBytes::from_bytes_le(&element.to_bytes_le()?)?);
             }
-
-            if let Some(element) = <EdwardsBls12 as AffineCurve>::from_x_coordinate(x_coordinate, false) {
-                if element.is_in_correct_subgroup_assuming_on_curve() {
-                    return Ok(element.to_bytes_le()?);
-                }
-            }
-
-            Err(snarkvm_algorithms::SignatureError::Message("Failed to read signature public key".into()).into())
         }
 
-        Ok(FromBytes::from_bytes_le(
-            &perform_recovery_from_compressed_form_unsafe(&*self.encryption_key.to_bytes_le()?)?,
-        )?)
+        if let Some(element) = <EdwardsAffine as AffineCurve>::from_x_coordinate(x_coordinate, false) {
+            if element.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(FromBytes::from_bytes_le(&element.to_bytes_le()?)?);
+            }
+        }
+
+        Err(snarkvm_algorithms::SignatureError::Message("Failed to read signature public key".into()).into())
     }
 
+    /// Returns the address as an encryption public key.
     pub fn to_encryption_key(&self) -> &<C::AccountEncryptionScheme as EncryptionScheme>::PublicKey {
         &self.encryption_key
     }
