@@ -180,6 +180,12 @@ impl Parameters for Testnet1Parameters {
         static RECORD_COMMITMENT_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::RecordCommitmentTreeParameters> = OnceCell::new();
         RECORD_COMMITMENT_TREE_PARAMETERS.get_or_init(|| Self::RecordCommitmentTreeParameters::from(Self::record_commitment_tree_crh().clone()))
     }
+    
+    // TODO (howardwu): TEMPORARY - Refactor this to a proper tree.
+    fn program_selector_tree_parameters() -> &'static Self::ProgramSelectorTreeParameters {
+        static PROGRAM_SELEECTOR_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::ProgramSelectorTreeParameters> = OnceCell::new();
+        PROGRAM_SELEECTOR_TREE_PARAMETERS.get_or_init(|| Self::ProgramSelectorTreeParameters::from(Self::program_selector_tree_crh().clone()))
+    }
 
     /// Returns the program SRS for Aleo applications.
     fn program_srs<R: Rng + CryptoRng>(rng: &mut R) -> Result<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>> {

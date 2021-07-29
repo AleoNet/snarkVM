@@ -269,6 +269,8 @@ pub trait Parameters: 'static + Sized {
 
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters;
 
+    fn program_selector_tree_parameters() -> &'static Self::ProgramSelectorTreeParameters;
+
     fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
 
     /// Returns the program SRS for Aleo applications.
