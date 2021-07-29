@@ -150,13 +150,13 @@ impl<F: PrimeField> EncodingScheme for FieldEncodingScheme<F> {
         let mut bits = Vec::with_capacity(encoded_data.num_bits());
 
         // Unpack the field elements.
-        for element in encoded_data.field_elements.iter() {
+        for element in &encoded_data.field_elements {
             let element_bits = element.to_repr().to_bits_le();
             bits.extend_from_slice(&element_bits[..field_capacity]); // only keep `capacity` bits, discarding the highest bit.
         }
 
         // Unpack the remaining bytes.
-        for byte in encoded_data.remaining_bytes.iter() {
+        for byte in &encoded_data.remaining_bytes {
             let mut byte = byte.clone();
             for _ in 0..8 {
                 bits.push(byte & 1 == 1);
