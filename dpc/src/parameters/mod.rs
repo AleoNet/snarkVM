@@ -14,45 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#[macro_use]
+pub mod common;
+
 #[cfg(feature = "testnet1")]
 pub mod testnet1;
 
 #[cfg(feature = "testnet2")]
 pub mod testnet2;
-
-#[rustfmt::skip]
-#[macro_export]
-macro_rules! dpc_snark_setup {
-    ($network_parameters: ident, $fn_name: ident, $static_name: ident, $snark_type: ident, $key_type: ident, $parameter: ident, $message: expr) => {
-        #[inline]
-        fn $fn_name() -> &'static <Self::$snark_type as SNARK>::$key_type {
-            static $static_name: OnceCell<<<$network_parameters as Parameters>::$snark_type as SNARK>::$key_type> = OnceCell::new();
-            $static_name.get_or_init(|| {
-                <Self::$snark_type as SNARK>::$key_type::read_le(
-                    $parameter::load_bytes().expect(&format!("Failed to load parameter bytes for {}", $message)).as_slice()
-                ).expect(&format!("Failed to read {} from bytes", $message))
-            })
-        }
-    };
-}
-
-#[rustfmt::skip]
-#[macro_export]
-macro_rules! dpc_snark_setup_with_mode {
-    ($network_parameters: ident, $fn_name: ident, $static_name: ident, $snark_type: ident, $key_type: ident, $parameter: ident, $message: expr) => {
-        #[inline]
-        fn $fn_name(is_prover: bool) -> &'static Option<<Self::$snark_type as SNARK>::$key_type> {
-            match is_prover {
-                true => {
-                    static $static_name: OnceCell<Option<<<$network_parameters as Parameters>::$snark_type as SNARK>::$key_type>> = OnceCell::new();
-                    $static_name.get_or_init(|| {
-                        Some(<Self::$snark_type as SNARK>::$key_type::read_le(
-                            $parameter::load_bytes().expect(&format!("Failed to load parameter bytes for {}", $message)).as_slice(),
-                        ).expect(&format!("Failed to read {} from bytes", $message)))
-                    })
-                }
-                false => &None,
-            }
-        }
-    };
-}
