@@ -40,6 +40,9 @@ pub enum LedgerError {
     #[error("invalid cm index during proving")]
     InvalidCmIndex,
 
+    #[error("Invalid genesis block header")]
+    InvalidGenesisBlockHeader,
+
     #[error("{}", _0)]
     MerkleError(#[from] MerkleError),
 

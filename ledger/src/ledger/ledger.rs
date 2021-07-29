@@ -51,6 +51,11 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
 
     /// Instantiates a new ledger with a genesis block.
     fn new(path: Option<&Path>, genesis_block: Self::Block) -> anyhow::Result<Self> {
+        // Ensure the given block is a genesis block.
+        if !genesis_block.header().is_genesis() {
+            return Err(LedgerError::InvalidGenesisBlockHeader.into());
+        }
+
         let storage = if let Some(path) = path {
             fs::create_dir_all(&path).map_err(|err| LedgerError::Message(err.to_string()))?;
 

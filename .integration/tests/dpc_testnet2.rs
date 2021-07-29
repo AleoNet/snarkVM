@@ -74,10 +74,10 @@ fn dpc_testnet2_integration_test() {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             merkle_root_hash: MerkleRootHash([0u8; 32]),
             pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
-            time: 0,
-            difficulty_target: 0x07FF_FFFF_FFFF_FFFF_u64,
-            nonce: 0,
             proof: ProofOfSuccinctWork([0u8; 972]),
+            time: 0,
+            difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
+            nonce: 0,
         },
         transactions: Transactions::new(),
     };
@@ -202,7 +202,7 @@ fn dpc_testnet2_integration_test() {
     let block = Block { header, transactions };
 
     ledger.insert_and_commit(&block).unwrap();
-    assert_eq!(ledger.block_height(), 1);
+    assert_eq!(ledger.block_height(), 2);
 }
 
 #[test]
