@@ -63,11 +63,14 @@ pub use block::*;
 pub mod errors;
 pub use errors::*;
 
+pub mod ledger;
+pub use ledger::*;
+
 pub mod posw;
 
 pub mod traits;
 pub use traits::*;
 
 pub mod prelude {
-    pub use crate::{block::*, errors::*, traits::*};
+    pub use crate::{block::*, errors::*, ledger::*, traits::*};
 }
