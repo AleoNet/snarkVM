@@ -179,6 +179,9 @@ mod gm17 {
             let vk_bytes = to_bytes_le![params.vk].unwrap();
             let proof_bytes = to_bytes_le![proof].unwrap();
 
+            let uvp_gadget =
+                TestUvpGadget::alloc_constant(cs.ns(|| "universal verification parameters"), || Ok(&params.vk))
+                    .unwrap();
             let vk_gadget = TestVkGadget::alloc_input_bytes(cs.ns(|| "Vk"), || Ok(vk_bytes)).unwrap();
             let proof_gadget = TestProofGadget::alloc_bytes(cs.ns(|| "Proof"), || Ok(proof_bytes)).unwrap();
             println!("Time to verify!");

@@ -41,7 +41,7 @@ use snarkvm_utilities::FromBytes;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "P::G1Gadget: Clone, P::G2Gadget: Clone"))]
-pub struct GM17ProofGadget<Pairing: PairingEngine, P: PairingGadget<Pairing>> {
+pub struct GM17ProofGadget<PairingE: PairingEngine, P: PairingGadget<PairingE>> {
     pub a: P::G1Gadget,
     pub b: P::G2Gadget,
     pub c: P::G1Gadget,
@@ -50,7 +50,7 @@ pub struct GM17ProofGadget<Pairing: PairingEngine, P: PairingGadget<Pairing>> {
 #[derive(Derivative)]
 #[derivative(Clone(bound = "P::G1Gadget: Clone, P::GTGadget: Clone, P::G1PreparedGadget: Clone, \
                             P::G2PreparedGadget: Clone, "))]
-pub struct GM17VerifyingKeyGadget<Pairing: PairingEngine, P: PairingGadget<Pairing>> {
+pub struct GM17VerifyingKeyGadget<PairingE: PairingEngine, P: PairingGadget<PairingE>> {
     pub h_g2: P::G2Gadget,
     pub g_alpha_g1: P::G1Gadget,
     pub h_beta_g2: P::G2Gadget,
@@ -59,13 +59,13 @@ pub struct GM17VerifyingKeyGadget<Pairing: PairingEngine, P: PairingGadget<Pairi
     pub query: Vec<P::G1Gadget>,
 }
 
-impl<Pairing: PairingEngine, P: PairingGadget<Pairing>>
-    PrepareGadget<GM17PreparedVerifyingKeyGadget<Pairing, P>, Pairing::Fq> for GM17VerifyingKeyGadget<Pairing, P>
+impl<PairingE: PairingEngine, P: PairingGadget<PairingE>>
+    PrepareGadget<GM17PreparedVerifyingKeyGadget<PairingE, P>, PairingE::Fq> for GM17VerifyingKeyGadget<PairingE, P>
 {
-    fn prepare<CS: ConstraintSystem<Pairing::Fq>>(
+    fn prepare<CS: ConstraintSystem<PairingE::Fq>>(
         &self,
         mut cs: CS,
-    ) -> Result<GM17PreparedVerifyingKeyGadget<Pairing, P>, SynthesisError> {
+    ) -> Result<GM17PreparedVerifyingKeyGadget<PairingE, P>, SynthesisError> {
         let mut cs = cs.ns(|| "Preparing verifying key");
         let g_alpha_pc = P::prepare_g1(&mut cs.ns(|| "Prepare g_alpha_g1"), self.g_alpha_g1.clone())?;
         let h_beta_pc = P::prepare_g2(&mut cs.ns(|| "Prepare h_beta_g2"), self.h_beta_g2.clone())?;
@@ -88,7 +88,7 @@ impl<Pairing: PairingEngine, P: PairingGadget<Pairing>>
 #[derive(Derivative)]
 #[derivative(Clone(bound = "P::G1Gadget: Clone, P::GTGadget: Clone, P::G1PreparedGadget: Clone, \
                             P::G2PreparedGadget: Clone, "))]
-pub struct GM17PreparedVerifyingKeyGadget<Pairing: PairingEngine, P: PairingGadget<Pairing>> {
+pub struct GM17PreparedVerifyingKeyGadget<PairingE: PairingEngine, P: PairingGadget<PairingE>> {
     pub g_alpha: P::G1Gadget,
     pub h_beta: P::G2Gadget,
     pub g_alpha_pc: P::G1PreparedGadget,
@@ -99,20 +99,21 @@ pub struct GM17PreparedVerifyingKeyGadget<Pairing: PairingEngine, P: PairingGadg
     pub query: Vec<P::G1Gadget>,
 }
 
-pub struct GM17VerifierGadget<Pairing: PairingEngine, P: PairingGadget<Pairing>> {
-    _pairing_engine: PhantomData<Pairing>,
+pub struct GM17VerifierGadget<PairingE: PairingEngine, P: PairingGadget<PairingE>> {
+    _pairing_engine: PhantomData<PairingE>,
     _pairing_gadget: PhantomData<P>,
 }
 
-impl<Pairing: PairingEngine, P: PairingGadget<Pairing>, V: ToConstraintField<Pairing::Fr>>
-    SNARKVerifierGadget<GM17<Pairing, V>> for GM17VerifierGadget<Pairing, P>
+impl<PairingE: PairingEngine, P: PairingGadget<PairingE>, V: ToConstraintField<PairingE::Fr>>
+    SNARKVerifierGadget<GM17<PairingE, V>> for GM17VerifierGadget<PairingE, P>
 {
-    type InputGadget = BooleanInputGadget<Pairing::Fr, Pairing::Fq>;
-    type PreparedVerificationKeyGadget = GM17PreparedVerifyingKeyGadget<Pairing, P>;
-    type ProofGadget = GM17ProofGadget<Pairing, P>;
-    type VerificationKeyGadget = GM17VerifyingKeyGadget<Pairing, P>;
+    type InputGadget = BooleanInputGadget<PairingE::Fr, PairingE::Fq>;
+    type PreparedVerificationKeyGadget = GM17PreparedVerifyingKeyGadget<PairingE, P>;
+    type ProofGadget = GM17ProofGadget<PairingE, P>;
+    type UniversalVerificationParametersGadget = ();
+    type VerificationKeyGadget = GM17VerifyingKeyGadget<PairingE, P>;
 
-    fn prepared_check_verify<CS: ConstraintSystem<Pairing::Fq>>(
+    fn prepared_check_verify<CS: ConstraintSystem<PairingE::Fq>>(
         mut cs: CS,
         pvk: &Self::PreparedVerificationKeyGadget,
         public_inputs: &Self::InputGadget,
@@ -177,31 +178,16 @@ impl<Pairing: PairingEngine, P: PairingGadget<Pairing>, V: ToConstraintField<Pai
         test2.enforce_equal(cs.ns(|| "Test 2"), &one)?;
         Ok(())
     }
-
-    fn check_verify<'a, CS: ConstraintSystem<Pairing::Fq>>(
-        mut cs: CS,
-        vk: &Self::VerificationKeyGadget,
-        input: &Self::InputGadget,
-        proof: &Self::ProofGadget,
-    ) -> Result<(), SynthesisError> {
-        let pvk = vk.prepare(cs.ns(|| "Prepare vk"))?;
-        <Self as SNARKVerifierGadget<GM17<Pairing, V>>>::prepared_check_verify(
-            cs.ns(|| "prepared_verification"),
-            &pvk,
-            input,
-            proof,
-        )
-    }
 }
 
-impl<Pairing: PairingEngine, P: PairingGadget<Pairing>> AllocGadget<VerifyingKey<Pairing>, Pairing::Fq>
-    for GM17VerifyingKeyGadget<Pairing, P>
+impl<PairingE: PairingEngine, P: PairingGadget<PairingE>> AllocGadget<VerifyingKey<PairingE>, PairingE::Fq>
+    for GM17VerifyingKeyGadget<PairingE, P>
 {
     #[inline]
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<VerifyingKey<Pairing>>,
-        CS: ConstraintSystem<Pairing::Fq>,
+        T: Borrow<VerifyingKey<PairingE>>,
+        CS: ConstraintSystem<PairingE::Fq>,
     >(
         mut cs: CS,
         value_gen: Fn,
@@ -244,8 +230,8 @@ impl<Pairing: PairingEngine, P: PairingGadget<Pairing>> AllocGadget<VerifyingKey
     #[inline]
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<VerifyingKey<Pairing>>,
-        CS: ConstraintSystem<Pairing::Fq>,
+        T: Borrow<VerifyingKey<PairingE>>,
+        CS: ConstraintSystem<PairingE::Fq>,
     >(
         mut cs: CS,
         value_gen: Fn,
@@ -286,24 +272,24 @@ impl<Pairing: PairingEngine, P: PairingGadget<Pairing>> AllocGadget<VerifyingKey
     }
 }
 
-impl<Pairing: PairingEngine, P: PairingGadget<Pairing, Pairing::Fq>> AllocBytesGadget<Vec<u8>, Pairing::Fq>
-    for GM17VerifyingKeyGadget<Pairing, P>
+impl<PairingE: PairingEngine, P: PairingGadget<PairingE, PairingE::Fq>> AllocBytesGadget<Vec<u8>, PairingE::Fq>
+    for GM17VerifyingKeyGadget<PairingE, P>
 {
     #[inline]
-    fn alloc_bytes<FN, T, CS: ConstraintSystem<Pairing::Fq>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    fn alloc_bytes<FN, T, CS: ConstraintSystem<PairingE::Fq>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|vk_bytes| {
-            let vk: VerifyingKey<Pairing> = FromBytes::read_le(&vk_bytes.borrow().clone()[..])?;
+            let vk: VerifyingKey<PairingE> = FromBytes::read_le(&vk_bytes.borrow().clone()[..])?;
 
             Self::alloc(cs.ns(|| "alloc_bytes"), || Ok(vk))
         })
     }
 
     #[inline]
-    fn alloc_input_bytes<FN, T, CS: ConstraintSystem<Pairing::Fq>>(
+    fn alloc_input_bytes<FN, T, CS: ConstraintSystem<PairingE::Fq>>(
         mut cs: CS,
         value_gen: FN,
     ) -> Result<Self, SynthesisError>
@@ -312,20 +298,20 @@ impl<Pairing: PairingEngine, P: PairingGadget<Pairing, Pairing::Fq>> AllocBytesG
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|vk_bytes| {
-            let vk: VerifyingKey<Pairing> = FromBytes::read_le(&vk_bytes.borrow().clone()[..])?;
+            let vk: VerifyingKey<PairingE> = FromBytes::read_le(&vk_bytes.borrow().clone()[..])?;
 
             Self::alloc_input(cs.ns(|| "alloc_input_bytes"), || Ok(vk))
         })
     }
 }
 
-impl<Pairing: PairingEngine, P: PairingGadget<Pairing>> ToConstraintFieldGadget<Pairing::Fq>
-    for GM17VerifyingKeyGadget<Pairing, P>
+impl<PairingE: PairingEngine, P: PairingGadget<PairingE>> ToConstraintFieldGadget<PairingE::Fq>
+    for GM17VerifyingKeyGadget<PairingE, P>
 {
-    fn to_constraint_field<CS: ConstraintSystem<Pairing::Fq>>(
+    fn to_constraint_field<CS: ConstraintSystem<PairingE::Fq>>(
         &self,
         mut cs: CS,
-    ) -> Result<Vec<FpGadget<Pairing::Fq>>, SynthesisError> {
+    ) -> Result<Vec<FpGadget<PairingE::Fq>>, SynthesisError> {
         let mut res = Vec::new();
         res.append(&mut self.h_g2.to_constraint_field(cs.ns(|| "h_g2"))?);
         res.append(&mut self.g_alpha_g1.to_constraint_field(cs.ns(|| "g_alpha_g1"))?);
@@ -340,14 +326,14 @@ impl<Pairing: PairingEngine, P: PairingGadget<Pairing>> ToConstraintFieldGadget<
     }
 }
 
-impl<Pairing: PairingEngine, P: PairingGadget<Pairing>> AllocGadget<Proof<Pairing>, Pairing::Fq>
-    for GM17ProofGadget<Pairing, P>
+impl<PairingE: PairingEngine, P: PairingGadget<PairingE>> AllocGadget<Proof<PairingE>, PairingE::Fq>
+    for GM17ProofGadget<PairingE, P>
 {
     #[inline]
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<Proof<Pairing>>,
-        CS: ConstraintSystem<Pairing::Fq>,
+        T: Borrow<Proof<PairingE>>,
+        CS: ConstraintSystem<PairingE::Fq>,
     >(
         mut cs: CS,
         value_gen: Fn,
@@ -364,8 +350,8 @@ impl<Pairing: PairingEngine, P: PairingGadget<Pairing>> AllocGadget<Proof<Pairin
     #[inline]
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<Proof<Pairing>>,
-        CS: ConstraintSystem<Pairing::Fq>,
+        T: Borrow<Proof<PairingE>>,
+        CS: ConstraintSystem<PairingE::Fq>,
     >(
         mut cs: CS,
         value_gen: Fn,
@@ -382,24 +368,24 @@ impl<Pairing: PairingEngine, P: PairingGadget<Pairing>> AllocGadget<Proof<Pairin
     }
 }
 
-impl<Pairing: PairingEngine, P: PairingGadget<Pairing, Pairing::Fq>> AllocBytesGadget<Vec<u8>, Pairing::Fq>
-    for GM17ProofGadget<Pairing, P>
+impl<PairingE: PairingEngine, P: PairingGadget<PairingE, PairingE::Fq>> AllocBytesGadget<Vec<u8>, PairingE::Fq>
+    for GM17ProofGadget<PairingE, P>
 {
     #[inline]
-    fn alloc_bytes<FN, T, CS: ConstraintSystem<Pairing::Fq>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
+    fn alloc_bytes<FN, T, CS: ConstraintSystem<PairingE::Fq>>(mut cs: CS, value_gen: FN) -> Result<Self, SynthesisError>
     where
         FN: FnOnce() -> Result<T, SynthesisError>,
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|proof_bytes| {
-            let proof: Proof<Pairing> = FromBytes::read_le(&proof_bytes.borrow().clone()[..])?;
+            let proof: Proof<PairingE> = FromBytes::read_le(&proof_bytes.borrow().clone()[..])?;
 
             Self::alloc(cs.ns(|| "alloc_bytes"), || Ok(proof))
         })
     }
 
     #[inline]
-    fn alloc_input_bytes<FN, T, CS: ConstraintSystem<Pairing::Fq>>(
+    fn alloc_input_bytes<FN, T, CS: ConstraintSystem<PairingE::Fq>>(
         mut cs: CS,
         value_gen: FN,
     ) -> Result<Self, SynthesisError>
@@ -408,18 +394,18 @@ impl<Pairing: PairingEngine, P: PairingGadget<Pairing, Pairing::Fq>> AllocBytesG
         T: Borrow<Vec<u8>>,
     {
         value_gen().and_then(|proof_bytes| {
-            let proof: Proof<Pairing> = FromBytes::read_le(&proof_bytes.borrow().clone()[..])?;
+            let proof: Proof<PairingE> = FromBytes::read_le(&proof_bytes.borrow().clone()[..])?;
 
             Self::alloc_input(cs.ns(|| "alloc_input_bytes"), || Ok(proof))
         })
     }
 }
 
-impl<Pairing: PairingEngine, P: PairingGadget<Pairing, Pairing::Fq>> ToBytesGadget<Pairing::Fq>
-    for GM17VerifyingKeyGadget<Pairing, P>
+impl<PairingE: PairingEngine, P: PairingGadget<PairingE, PairingE::Fq>> ToBytesGadget<PairingE::Fq>
+    for GM17VerifyingKeyGadget<PairingE, P>
 {
     #[inline]
-    fn to_bytes<CS: ConstraintSystem<Pairing::Fq>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+    fn to_bytes<CS: ConstraintSystem<PairingE::Fq>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&self.h_g2.to_bytes(&mut cs.ns(|| "h_g2 to bytes"))?);
         bytes.extend_from_slice(&self.g_alpha_g1.to_bytes(&mut cs.ns(|| "g_alpha_g1 to bytes"))?);
@@ -437,7 +423,7 @@ impl<Pairing: PairingEngine, P: PairingGadget<Pairing, Pairing::Fq>> ToBytesGadg
         Ok(bytes)
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<Pairing::Fq>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+    fn to_bytes_strict<CS: ConstraintSystem<PairingE::Fq>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.to_bytes(cs)
     }
 }

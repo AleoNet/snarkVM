@@ -48,6 +48,9 @@ use rand_core::RngCore;
 mod data_structures;
 pub use data_structures::*;
 
+mod gadgets;
+pub use gadgets::*;
+
 /// Polynomial commitment based on [[KZG10]][kzg], with degree enforcement and
 /// batching taken from [[MBKM19, “Sonic”]][sonic] (more precisely, their
 /// counterparts in [[Gabizon19, “AuroraLight”]][al] that avoid negative G1 powers).
@@ -86,7 +89,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         enforced_degree_bounds: Option<&[usize]>,
     ) -> Result<(Self::CommitterKey, Self::VerifierKey), Self::Error> {
         let trim_time = start_timer!(|| "Trimming public parameters");
-        let prepared_neg_powers_of_h = &pp.prepared_neg_powers_of_h;
+        let neg_powers_of_h = &pp.neg_powers_of_h;
         let max_degree = pp.max_degree();
         if supported_degree > max_degree {
             return Err(Error::TrimmingDegreeTooLarge);
@@ -99,7 +102,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             v
         });
 
-        let (shifted_powers_of_g, shifted_powers_of_gamma_g, degree_bounds_and_prepared_neg_powers_of_h) =
+        let (shifted_powers_of_g, shifted_powers_of_gamma_g, degree_bounds_and_neg_powers_of_h) =
             if let Some(enforced_degree_bounds) = enforced_degree_bounds.as_ref() {
                 if enforced_degree_bounds.is_empty() {
                     (None, None, None)
@@ -135,22 +138,22 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
 
                     end_timer!(shifted_ck_time);
 
-                    let prepared_neg_powers_of_h_time = start_timer!(|| format!(
-                        "Constructing `prepared_neg_powers_of_h` of size {}",
+                    let neg_powers_of_h_time = start_timer!(|| format!(
+                        "Constructing `neg_powers_of_h` of size {}",
                         enforced_degree_bounds.len()
                     ));
 
-                    let degree_bounds_and_prepared_neg_powers_of_h = enforced_degree_bounds
+                    let degree_bounds_and_neg_powers_of_h = enforced_degree_bounds
                         .iter()
-                        .map(|bound| (*bound, prepared_neg_powers_of_h[&(max_degree - *bound)].clone()))
+                        .map(|bound| (*bound, neg_powers_of_h[&(max_degree - *bound)].clone()))
                         .collect();
 
-                    end_timer!(prepared_neg_powers_of_h_time);
+                    end_timer!(neg_powers_of_h_time);
 
                     (
                         Some(shifted_powers_of_g),
                         Some(shifted_powers_of_gamma_g),
-                        Some(degree_bounds_and_prepared_neg_powers_of_h),
+                        Some(degree_bounds_and_neg_powers_of_h),
                     )
                 }
             } else {
@@ -178,14 +181,18 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         let prepared_h = (&pp.prepared_h).clone();
         let prepared_beta_h = (&pp.prepared_beta_h).clone();
 
-        let vk = VerifierKey {
+        let kzg10_vk = kzg10::VerifierKey::<E> {
             g,
             gamma_g,
             h,
             beta_h,
             prepared_h,
             prepared_beta_h,
-            degree_bounds_and_prepared_neg_powers_of_h,
+        };
+
+        let vk = VerifierKey {
+            vk: kzg10_vk,
+            degree_bounds_and_neg_powers_of_h,
             supported_degree,
             max_degree,
         };
@@ -917,9 +924,9 @@ impl<E: PairingEngine> SonicKZG10<E> {
 
         // Push expected results into list of elems. Power will be the negative of the expected power
         let mut witness: E::G1Projective = proof.w.into_projective();
-        let mut adjusted_witness = vk.g.mul(combined_values) - proof.w.mul(point);
+        let mut adjusted_witness = vk.vk.g.mul(combined_values) - proof.w.mul(point);
         if let Some(random_v) = proof.random_v {
-            adjusted_witness += &vk.gamma_g.mul(random_v);
+            adjusted_witness += &vk.vk.gamma_g.mul(random_v);
         }
 
         if let Some(randomizer) = randomizer {
@@ -975,9 +982,9 @@ impl<E: PairingEngine> SonicKZG10<E> {
 
         // Push expected results into list of elems. Power will be the negative of the expected power
         let mut witness: E::G1Projective = proof.w.into_projective();
-        let mut adjusted_witness = vk.g.mul(combined_values) - proof.w.mul(point);
+        let mut adjusted_witness = vk.vk.g.mul(combined_values) - proof.w.mul(point);
         if let Some(random_v) = proof.random_v {
-            adjusted_witness += &vk.gamma_g.mul(random_v);
+            adjusted_witness += &vk.vk.gamma_g.mul(random_v);
         }
 
         if let Some(randomizer) = randomizer {
@@ -1006,7 +1013,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
                 vk.get_shift_power(degree_bound)
                     .ok_or(Error::UnsupportedDegreeBound(degree_bound))?
             } else {
-                vk.prepared_h.clone()
+                vk.vk.prepared_h.clone()
             };
 
             g1_projective_elems.push(comm);
@@ -1014,10 +1021,10 @@ impl<E: PairingEngine> SonicKZG10<E> {
         }
 
         g1_projective_elems.push(-combined_adjusted_witness);
-        g2_prepared_elems.push(vk.prepared_h.clone());
+        g2_prepared_elems.push(vk.vk.h.prepare());
 
         g1_projective_elems.push(-combined_witness);
-        g2_prepared_elems.push(vk.prepared_beta_h.clone());
+        g2_prepared_elems.push(vk.vk.beta_h.prepare());
 
         let g1_prepared_elems_iter = E::G1Projective::batch_normalization_into_affine(g1_projective_elems)
             .into_iter()

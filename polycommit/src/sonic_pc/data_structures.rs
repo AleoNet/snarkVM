@@ -20,7 +20,7 @@ use snarkvm_curves::{
     traits::{PairingCurve, PairingEngine},
     Group,
 };
-use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
+use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField};
 use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
@@ -128,27 +128,12 @@ impl<E: PairingEngine> PCCommitterKey for CommitterKey<E> {
 #[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""))]
 #[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct VerifierKey<E: PairingEngine> {
-    /// The generator of G1.
-    pub g: E::G1Affine,
-
-    /// The generator of G1 that is used for making a commitment hiding.
-    pub gamma_g: E::G1Affine,
-
-    /// The generator of G2.
-    pub h: E::G2Affine,
-
-    /// \beta times the generator of G2.
-    pub beta_h: E::G2Affine,
-
-    /// The generator of G2, prepared for use in pairings.
-    pub prepared_h: <E::G2Affine as PairingCurve>::Prepared,
-
-    /// The \beta times the generator of G2, prepared for use in pairings.
-    pub prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared,
+    /// The verification key for the underlying KZG10 scheme.
+    pub vk: kzg10::VerifierKey<E>,
 
     /// Pairs a degree_bound with its corresponding G2 element, which has been prepared for use in pairings.
     /// Each pair is in the form `(degree_bound, \beta^{degree_bound - max_degree} h),` where `h` is the generator of G2 above
-    pub degree_bounds_and_prepared_neg_powers_of_h: Option<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>,
+    pub degree_bounds_and_neg_powers_of_h: Option<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>,
 
     /// The maximum degree supported by the trimmed parameters that `self` is
     /// a part of.
@@ -162,11 +147,11 @@ impl_bytes!(VerifierKey);
 
 impl<E: PairingEngine> VerifierKey<E> {
     /// Find the appropriate shift for the degree bound.
-    pub fn get_shift_power(&self, degree_bound: usize) -> Option<<E::G2Affine as PairingCurve>::Prepared> {
-        self.degree_bounds_and_prepared_neg_powers_of_h.as_ref().and_then(|v| {
+    pub fn get_shift_power(&self, degree_bound: usize) -> Option<E::G2Affine> {
+        self.degree_bounds_and_neg_powers_of_h.as_ref().and_then(|v| {
             v.binary_search_by(|(d, _)| d.cmp(&degree_bound))
                 .ok()
-                .map(|i| v[i].1.clone())
+                .map(|i| v[i].clone())
         })
     }
 }
@@ -184,13 +169,10 @@ impl<E: PairingEngine> PCVerifierKey for VerifierKey<E> {
 impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E> {
     fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
         let mut res = Vec::new();
-        res.extend_from_slice(&self.g.to_field_elements()?);
-        res.extend_from_slice(&self.gamma_g.to_field_elements()?);
-        res.extend_from_slice(&self.h.to_field_elements()?);
-        res.extend_from_slice(&self.beta_h.to_field_elements()?);
+        res.extend_from_slice(&self.vk.to_field_elements()?);
 
-        if let Some(degree_bounds_and_prepared_neg_powers_of_h) = &self.degree_bounds_and_prepared_neg_powers_of_h {
-            for (d, _prepared_neg_powers_of_h) in degree_bounds_and_prepared_neg_powers_of_h.iter() {
+        if let Some(degree_bounds_and_neg_powers_of_h) = &self.degree_bounds_and_neg_powers_of_h {
+            for (d, _neg_powers_of_h) in degree_bounds_and_neg_powers_of_h.iter() {
                 let d_elem: E::Fq = (*d as u64).into();
 
                 res.push(d_elem);
@@ -201,13 +183,50 @@ impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E> {
     }
 }
 
-/// Nothing to do to prepare this verifier key (for now).
-pub type PreparedVerifierKey<E> = VerifierKey<E>;
+/// `PreparedVerifierKey` is used to check evaluation proofs for a given commitment.
+#[derive(Derivative)]
+#[derivative(Clone(bound = ""), Debug(bound = ""))]
+pub struct PreparedVerifierKey<E: PairingEngine> {
+    /// The verification key for the underlying KZG10 scheme.
+    pub prepared_vk: kzg10::PreparedVerifierKey<E>,
+    /// Information required to enforce degree bounds. Each pair
+    /// is of the form `(degree_bound, shifting_advice)`.
+    /// This is `None` if `self` does not support enforcing any degree bounds.
+    pub prepared_degree_bounds_and_prepared_neg_powers_of_h:
+        Option<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>,
+    /// The maximum degree supported by the `UniversalParams` `self` was derived
+    /// from.
+    pub max_degree: usize,
+    /// The maximum degree supported by the trimmed parameters that `self` is
+    /// a part of.
+    pub supported_degree: usize,
+}
 
 impl<E: PairingEngine> Prepare<PreparedVerifierKey<E>> for VerifierKey<E> {
     /// prepare `PreparedVerifierKey` from `VerifierKey`
-    fn prepare(&self) -> Self {
-        (*self).clone()
+    fn prepare(&self) -> PreparedVerifierKey<E> {
+        let prepared_vk = kzg10::PreparedVerifierKey::<E>::prepare(&self.vk);
+        let prepared_degree_bounds_and_prepared_neg_powers_of_h: Option<Vec<(usize, Vec<E::G2Affine>)>> =
+            if self.degree_bounds_and_neg_powers_of_h.is_some() {
+                let mut res = Vec::<(usize, <E::G2Affine as PairingCurve>::Prepared)>::new();
+
+                let degree_bounds_and_neg_powers_of_h = self.degree_bounds_and_neg_powers_of_h.as_ref().unwrap();
+
+                for (d, shift_power) in degree_bounds_and_neg_powers_of_h {
+                    res.push((d.clone(), shift_power.prepare()));
+                }
+
+                Some(res)
+            } else {
+                None
+            };
+
+        PreparedVerifierKey::<E> {
+            prepared_vk,
+            prepared_degree_bounds_and_prepared_neg_powers_of_h,
+            max_degree: self.max_degree,
+            supported_degree: self.supported_degree,
+        }
     }
 }
 

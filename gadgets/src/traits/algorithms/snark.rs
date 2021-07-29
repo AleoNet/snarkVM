@@ -37,6 +37,7 @@ pub trait PrepareGadget<T, F: PrimeField> {
 
 pub trait SNARKVerifierGadget<S: SNARK> {
     type PreparedVerificationKeyGadget: Clone;
+    type UniversalVerificationParametersGadget: AllocGadget<S::UniversalVerificationParameters, S::BaseField>;
     type VerificationKeyGadget: AllocGadget<S::VerifyingKey, S::BaseField>
         + ToConstraintFieldGadget<S::BaseField>
         + ToBytesGadget<S::BaseField>
@@ -51,11 +52,19 @@ pub trait SNARKVerifierGadget<S: SNARK> {
         + ?Sized;
 
     fn check_verify<'a, CS: ConstraintSystem<S::BaseField>>(
-        cs: CS,
+        mut cs: CS,
         verification_key: &Self::VerificationKeyGadget,
         input: &Self::InputGadget,
         proof: &Self::ProofGadget,
-    ) -> Result<(), SynthesisError>;
+    ) -> Result<(), SynthesisError> {
+        let prepared_verification_key = verification_key.prepare(cs.ns(|| "prepare"))?;
+        Self::prepared_check_verify(
+            cs.ns(|| "prepared verification"),
+            &prepared_verification_key,
+            input,
+            proof,
+        )
+    }
 
     fn prepared_check_verify<'a, CS: ConstraintSystem<S::BaseField>>(
         cs: CS,
@@ -63,6 +72,33 @@ pub trait SNARKVerifierGadget<S: SNARK> {
         input: &Self::InputGadget,
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError>;
+
+    fn universal_check_verify<'a, CS: ConstraintSystem<S::BaseField>>(
+        mut cs: CS,
+        universal_verification_parameters: &Self::UniversalVerificationParametersGadget,
+        verification_key: &Self::VerificationKeyGadget,
+        input: &Self::InputGadget,
+        proof: &Self::ProofGadget,
+    ) -> Result<(), SynthesisError> {
+        let prepared_verification_key = verification_key.prepare(cs.ns(|| "prepare"))?;
+        Self::universal_prepared_check_verify(
+            cs.ns(|| "prepared verification"),
+            universal_verification_parameters,
+            &prepared_verification_key,
+            input,
+            proof,
+        )
+    }
+
+    fn universal_prepared_check_verify<'a, CS: ConstraintSystem<S::BaseField>>(
+        cs: CS,
+        _universal_verification_parameters: &Self::UniversalVerificationParametersGadget,
+        prepared_verification_key: &Self::PreparedVerificationKeyGadget,
+        input: &Self::InputGadget,
+        proof: &Self::ProofGadget,
+    ) -> Result<(), SynthesisError> {
+        Self::prepared_check_verify(cs, prepared_verification_key, input, proof)
+    }
 }
 
 // TODO (raychu86): Unify with the `SNARK` trait. Currently the `SNARKGadget` is only used for `marlin`.

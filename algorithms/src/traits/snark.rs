@@ -41,12 +41,13 @@ pub trait SNARK {
     type PreparedVerifyingKey: Clone;
     type Proof: Clone + Debug + ToBytes + FromBytes;
     type ProvingKey: Clone + ToBytes + FromBytes;
-    type VerifierInput: ?Sized;
 
     // We can specify their defaults to `()` when `associated_type_defaults` feature becomes stable in Rust
     type UniversalSetupConfig: Clone;
     type UniversalSetupParameters: FromBytes + ToBytes + Clone;
+    type UniversalVerificationParameters: FromBytes + ToBytes + Clone;
 
+    type VerifierInput: ?Sized;
     type VerifyingKey: Clone
         + ToBytes
         + FromBytes
@@ -86,5 +87,29 @@ pub trait SNARK {
     ) -> Result<bool, SNARKError> {
         let processed_verifying_key = verifying_key.prepare();
         Self::verify_prepared(&processed_verifying_key, input, proof)
+    }
+
+    fn universal_verify_prepared(
+        _universal_verification_parameters: &Self::UniversalVerificationParameters,
+        prepared_verifying_key: &Self::PreparedVerifyingKey,
+        input: &Self::VerifierInput,
+        proof: &Self::Proof,
+    ) -> Result<bool, SNARKError> {
+        Self::verify_prepared(prepared_verifying_key, input, proof)
+    }
+
+    fn universal_verify(
+        universal_verification_parameters: &Self::UniversalVerificationParameters,
+        verifying_key: &Self::VerifyingKey,
+        input: &Self::VerifierInput,
+        proof: &Self::Proof,
+    ) -> Result<bool, SNARKError> {
+        let processed_verifying_key = verifying_key.prepare();
+        Self::universal_verify_prepared(
+            universal_verification_parameters,
+            &processed_verifying_key,
+            input,
+            proof,
+        )
     }
 }

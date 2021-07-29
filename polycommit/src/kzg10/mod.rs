@@ -27,7 +27,7 @@ use snarkvm_algorithms::{
     msm::{FixedBaseMSM, VariableBaseMSM},
 };
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
-use snarkvm_fields::{One, PrimeField, Zero};
+use snarkvm_fields::{FftParameters, Field, One, PrimeField, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
 use core::{marker::PhantomData, ops::Mul};
@@ -38,6 +38,75 @@ use rayon::prelude::*;
 
 mod data_structures;
 pub use data_structures::*;
+
+#[derive(Debug)]
+#[allow(deprecated)]
+pub enum KZG10DegreeBounds {
+    #[deprecated]
+    ALL,
+    MARLIN,
+    LIST(Vec<usize>),
+}
+
+#[allow(deprecated)]
+impl KZG10DegreeBounds {
+    pub fn get_list<F: PrimeField>(&self, max_degree: usize) -> Vec<usize> {
+        match self {
+            KZG10DegreeBounds::ALL => (0..max_degree).collect(),
+            KZG10DegreeBounds::MARLIN => {
+                // In Marlin, the degree bounds are all of the forms `domain_size - 2`.
+                // Consider that we are using radix-2 FFT or mixed-FFT (with only one more prime),
+                // there are only a few possible domain sizes and therefore degree bounds.
+
+                let mut radix_2_possible_domain_sizes = vec![];
+
+                let mut cur = 1usize;
+                while cur <= max_degree {
+                    radix_2_possible_domain_sizes.push(cur);
+                    cur *= 2;
+                }
+
+                let mut mixed_radix_possible_domain_sizes =
+                    if <F::FftParameters as FftParameters>::SMALL_SUBGROUP_BASE.is_some() {
+                        let small_subgroup_base = <F::FftParameters as FftParameters>::SMALL_SUBGROUP_BASE.unwrap();
+                        let small_subgroup_adicity =
+                            <F::FftParameters as FftParameters>::SMALL_SUBGROUP_BASE_ADICITY.unwrap();
+
+                        let mut mixed_radix_possible_domain_sizes =
+                            Vec::with_capacity(radix_2_possible_domain_sizes.len() * small_subgroup_adicity);
+                        for radix_2_possible_domain_size in radix_2_possible_domain_sizes.iter() {
+                            let mut cur = small_subgroup_base as usize;
+                            for _ in 1..=small_subgroup_adicity {
+                                let candidate_degree = radix_2_possible_domain_size * cur;
+                                if candidate_degree <= max_degree {
+                                    mixed_radix_possible_domain_sizes.push(candidate_degree);
+                                }
+                                cur *= small_subgroup_base;
+                            }
+                        }
+                        mixed_radix_possible_domain_sizes
+                    } else {
+                        vec![]
+                    };
+
+                let mut results =
+                    Vec::with_capacity(radix_2_possible_domain_sizes.len() + mixed_radix_possible_domain_sizes.len());
+
+                for i in radix_2_possible_domain_sizes
+                    .iter()
+                    .chain(mixed_radix_possible_domain_sizes.iter())
+                {
+                    if *i >= 2usize {
+                        results.push(*i - 2usize);
+                    }
+                }
+
+                results
+            }
+            KZG10DegreeBounds::LIST(v) => v,
+        }
+    }
+}
 
 /// `KZG10` is an implementation of the polynomial commitment scheme of
 /// [Kate, Zaverucha and Goldbgerg][kzg10]
@@ -51,6 +120,8 @@ impl<E: PairingEngine> KZG10<E> {
     /// for the polynomial commitment scheme.
     pub fn setup<R: RngCore>(
         max_degree: usize,
+        supported_hiding_bounds: usize,
+        supported_degree_bounds: &KZG10DegreeBounds,
         produce_g2_powers: bool,
         rng: &mut R,
     ) -> Result<UniversalParams<E>, Error> {
@@ -58,55 +129,76 @@ impl<E: PairingEngine> KZG10<E> {
             return Err(Error::DegreeIsZero);
         }
         let setup_time = start_timer!(|| format!("KZG10::Setup with degree {}", max_degree));
+        let scalar_bits = E::Fr::size_in_bits();
+
+        // Compute the `toxic waste`.
         let beta = E::Fr::rand(rng);
         let g = E::G1Projective::rand(rng);
         let gamma_g = E::G1Projective::rand(rng);
         let h = E::G2Projective::rand(rng);
 
-        let mut powers_of_beta = vec![E::Fr::one()];
-
-        let mut cur = beta;
-        for _ in 0..max_degree {
-            powers_of_beta.push(cur);
-            cur *= &beta;
-        }
-
+        // Compute `beta^i G`.
+        let powers_of_beta = {
+            let mut powers_of_beta = vec![E::Fr::one()];
+            let mut cur = beta;
+            for _ in 0..max_degree {
+                powers_of_beta.push(cur);
+                cur *= &beta;
+            }
+            powers_of_beta
+        };
         let window_size = FixedBaseMSM::get_mul_window_size(max_degree + 1);
-
-        let scalar_bits = E::Fr::size_in_bits();
         let g_time = start_timer!(|| "Generating powers of G");
         let g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, g);
         let powers_of_g =
             FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, window_size, &g_table, &powers_of_beta);
         end_timer!(g_time);
+
+        // Compute `gamma beta^i G`.
         let gamma_g_time = start_timer!(|| "Generating powers of gamma * G");
-        let gamma_g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, gamma_g);
-        let mut powers_of_gamma_g = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
-            scalar_bits,
-            window_size,
-            &gamma_g_table,
-            &powers_of_beta,
-        );
-        // Add an additional power of gamma_g, because we want to be able to support
-        // up to D queries.
-        powers_of_gamma_g.push(powers_of_gamma_g.last().unwrap().mul(beta));
+        let mut powers_of_gamma_g = {
+            let window_size = FixedBaseMSM::get_mul_window_size(powers_of_gamma_beta.len());
+            let gamma_g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, gamma_g);
+            FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
+                scalar_bits,
+                window_size,
+                &gamma_g_table,
+                &powers_of_beta[1..=supported_hiding_bounds],
+            )
+        };
         end_timer!(gamma_g_time);
 
+        // Reduce `beta^i G` and `gamma beta^i G` to affine representations.
         let powers_of_g = E::G1Projective::batch_normalization_into_affine(powers_of_g);
         let powers_of_gamma_g = E::G1Projective::batch_normalization_into_affine(powers_of_gamma_g)
             .into_iter()
             .enumerate()
             .collect();
 
-        let prepared_neg_powers_of_h_time = start_timer!(|| "Generating negative powers of h in G2");
-        let prepared_neg_powers_of_h = if produce_g2_powers {
-            let mut neg_powers_of_beta = vec![E::Fr::one()];
-            let mut cur = E::Fr::one() / &beta;
-            for _ in 0..max_degree {
-                neg_powers_of_beta.push(cur);
-                cur /= &beta;
+        // Prepare for the degree bounds.
+        let list = supported_degree_bounds.get_list(max_degree);
+
+        // Assemble `inverse_powers_of_g`.
+        let inverse_powers_of_g = {
+            let mut map = BTreeMap::<usize, E::G1Affine>::new();
+            for i in list.iter() {
+                map.insert(*i, powers_of_g[max_degree - i]);
+            }
+            map
+        };
+
+        // Compute `neg_powers_of_h`.
+        let neg_powers_of_h_time = start_timer!(|| "Generating negative powers of h in G2");
+        let neg_powers_of_h = if produce_g2_powers {
+            let mut map = BTreeMap::<usize, E::G2Affine>::new();
+
+            let mut neg_powers_of_beta = vec![];
+            let mut neg_beta: E::Fr = E::Fr::one() / &beta;
+            for i in list.iter() {
+                neg_powers_of_beta.push(neg_beta.pow(&[i as u64]));
             }
 
+            let window_size = FixedBaseMSM::get_mul_window_size(neg_powers_of_beta.len());
             let neg_h_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, h);
             let neg_powers_of_h = FixedBaseMSM::multi_scalar_mul::<E::G2Projective>(
                 scalar_bits,
@@ -116,20 +208,16 @@ impl<E: PairingEngine> KZG10<E> {
             );
 
             let affines = E::G2Projective::batch_normalization_into_affine(neg_powers_of_h);
-            let mut affines_map = BTreeMap::new();
-            affines
-                .into_iter()
-                .enumerate()
-                .map(|(i, a)| (i, a.prepare()))
-                .for_each(|(i, a)| {
-                    affines_map.insert(i, a);
-                });
-            affines_map
+
+            for (i, affine) in list.iter().zip(affines.iter()) {
+                map.insert(*i, affine.clone());
+            }
+
+            map
         } else {
             BTreeMap::new()
         };
-
-        end_timer!(prepared_neg_powers_of_h_time);
+        end_timer!(neg_powers_of_h_time);
 
         let beta_h = h.mul(beta).into_affine();
         let h = h.into_affine();
@@ -141,7 +229,8 @@ impl<E: PairingEngine> KZG10<E> {
             powers_of_gamma_g,
             h,
             beta_h,
-            prepared_neg_powers_of_h,
+            inverse_powers_of_g,
+            neg_powers_of_h,
             prepared_h,
             prepared_beta_h,
         };

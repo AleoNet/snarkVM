@@ -142,3 +142,26 @@ impl<I, F: Field, A: AllocGadget<I, F>> AllocGadget<Vec<I>, F> for Vec<A> {
         Ok(vec)
     }
 }
+
+impl<F: Field> AllocGadget<(), F> for () {
+    fn alloc_constant<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<()>, CS: ConstraintSystem<F>>(
+        _cs: CS,
+        _f: Fn,
+    ) -> Result<Self, SynthesisError> {
+        Ok(())
+    }
+
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<()>, CS: ConstraintSystem<F>>(
+        _cs: CS,
+        _f: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+
+    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<()>, CS: ConstraintSystem<F>>(
+        _cs: CS,
+        _f: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+}

@@ -118,6 +118,7 @@ where
     type InputGadget = BooleanInputGadget<PairingE::Fr, PairingE::Fq>;
     type PreparedVerificationKeyGadget = PreparedVerifyingKeyGadget<PairingE, P>;
     type ProofGadget = ProofGadget<PairingE, P>;
+    type UniversalVerificationParametersGadget = ();
     type VerificationKeyGadget = VerifyingKeyGadget<PairingE, P>;
 
     fn prepared_check_verify<CS: ConstraintSystem<PairingE::Fq>>(
@@ -164,21 +165,6 @@ where
 
         test.enforce_equal(cs.ns(|| "Test 1"), &alpha_g1_beta_g2)?;
         Ok(())
-    }
-
-    fn check_verify<'a, CS: ConstraintSystem<PairingE::Fq>>(
-        mut cs: CS,
-        vk: &Self::VerificationKeyGadget,
-        input: &Self::InputGadget,
-        proof: &Self::ProofGadget,
-    ) -> Result<(), SynthesisError> {
-        let pvk = vk.prepare(cs.ns(|| "Prepare vk"))?;
-        <Self as SNARKVerifierGadget<Groth16<PairingE, V>>>::prepared_check_verify(
-            cs.ns(|| "prepared_verification"),
-            &pvk,
-            input,
-            proof,
-        )
     }
 }
 
