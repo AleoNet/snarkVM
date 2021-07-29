@@ -142,21 +142,21 @@ impl<F: PrimeField> EncodingScheme for FieldEncodingScheme<F> {
         })
     }
 
-    fn decode(data: &Self::EncodedData) -> Result<Self::Data, EncodingError> {
+    fn decode(encoded_data: &Self::EncodedData) -> Result<Self::Data, EncodingError> {
         // Check if the encoded data is well-formed.
         let field_capacity = <F::Parameters as FieldParameters>::CAPACITY as usize;
-        assert!(data.remaining_bytes.len() <= (field_capacity + 7) / 8);
+        assert!(encoded_data.remaining_bytes.len() <= (field_capacity + 7) / 8);
 
-        let mut bits = Vec::with_capacity(data.num_bits());
+        let mut bits = Vec::with_capacity(encoded_data.num_bits());
 
         // Unpack the field elements.
-        for element in data.field_elements.iter() {
+        for element in encoded_data.field_elements.iter() {
             let element_bits = element.to_repr().to_bits_le();
             bits.extend_from_slice(&element_bits[..field_capacity]); // only keep `capacity` bits, discarding the highest bit.
         }
 
         // Unpack the remaining bytes.
-        for byte in data.remaining_bytes.iter() {
+        for byte in encoded_data.remaining_bytes.iter() {
             let mut byte = byte.clone();
             for _ in 0..8 {
                 bits.push(byte & 1 == 1);
