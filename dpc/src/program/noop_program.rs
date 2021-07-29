@@ -25,7 +25,10 @@ use crate::{
     ProgramScheme,
     RecordScheme,
 };
-use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
+use snarkvm_algorithms::{
+    merkle_tree::{MerklePath, MerkleTreeDigest},
+    prelude::*,
+};
 use snarkvm_parameters::Parameter;
 use snarkvm_r1cs::ToConstraintField;
 use snarkvm_utilities::{FromBytes, ToBytes};
@@ -130,9 +133,9 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
             false => &local_data.new_records[position as usize - local_data.old_records.len()],
         };
 
-        match (position as usize) < C::NUM_INPUT_RECORDS {
-            true => assert_eq!(self.id, record.death_program_selector_root()),
-            false => assert_eq!(self.id, record.birth_program_selector_root()),
+        let selector_root_bytes = match (position as usize) < C::NUM_INPUT_RECORDS {
+            true => record.death_program_selector_root(),
+            false => record.birth_program_selector_root(),
         };
 
         let local_data_root = local_data.local_data_merkle_tree.root();
@@ -153,6 +156,20 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
                 &program_pub_input,
                 &proof
             )?);
+        }
+
+        {
+            let verifying_key_group_elements = self.verifying_key.to_field_elements()?;
+
+            // Compute the program ID.
+            let id = <C as Parameters>::program_id_crh()
+                .hash_field_elements(&verifying_key_group_elements)?
+                .to_bytes_le()?;
+
+            let selector_root =
+                MerkleTreeDigest::<C::ProgramSelectorTreeParameters>::from_bytes_le(&selector_root_bytes[..])?;
+
+            assert!(program_selector_path.verify(&selector_root, &id)?);
         }
 
         // TODO (raychu86): Extract the construction of the merkle tree.

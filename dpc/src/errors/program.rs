@@ -14,7 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{CRHError, CommitmentError, EncryptionError, PRFError, SNARKError, SignatureError};
+use snarkvm_algorithms::{
+    CRHError,
+    CommitmentError,
+    EncryptionError,
+    MerkleError,
+    PRFError,
+    SNARKError,
+    SignatureError,
+};
 use snarkvm_fields::ConstraintFieldError;
 use snarkvm_parameters::ParameterError;
 
@@ -52,6 +60,9 @@ pub enum ProgramError {
 
     #[error("Attempted to build a record with an invalid commitment. Try `calculate_commitment()`")]
     InvalidCommitment,
+
+    #[error("{}", _0)]
+    MerkleError(#[from] MerkleError),
 
     #[error("{}", _0)]
     ParameterError(#[from] ParameterError),
