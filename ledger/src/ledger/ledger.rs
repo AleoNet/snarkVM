@@ -73,7 +73,9 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
             storage,
         };
 
+        debug_assert_eq!(ledger.block_height(), 0, "Uninitialized ledger block height must be 0");
         ledger.insert_and_commit(&genesis_block)?;
+        debug_assert_eq!(ledger.block_height(), 1, "Initialized ledger block height must be 1");
 
         Ok(ledger)
     }
@@ -315,21 +317,17 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
 
         // Check that the block does not already exist.
         if self.contains_block_hash(&block_hash) {
-            return Err(StorageError::BlockError(BlockError::BlockExists(
-                block_hash.to_string(),
-            )));
+            return Err(BlockError::BlockExists(block_hash.to_string()).into());
         }
 
         let mut database_transaction = DatabaseTransaction::new();
 
         let mut transaction_serial_numbers = Vec::with_capacity(block.transactions.0.len());
         let mut transaction_commitments = Vec::with_capacity(block.transactions.0.len());
-        let mut transaction_memos = Vec::with_capacity(block.transactions.0.len());
 
         for transaction in &block.transactions.0 {
             transaction_serial_numbers.push(transaction.transaction_id()?);
             transaction_commitments.push(transaction.new_commitments());
-            transaction_memos.push(transaction.memorandum());
         }
 
         // Sanitize the block inputs
@@ -447,22 +445,14 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
             value: (cm_index as u32).to_le_bytes().to_vec(),
         });
 
-        // Update the best block number
+        // Update the best block number.
 
-        let height = self.block_height();
-
-        let is_genesis =
-            block.header.previous_block_hash == BlockHeaderHash([0u8; 32]) && height == 0 && self.is_empty();
-
-        let mut new_best_block_number = 0;
-        if !is_genesis {
-            new_best_block_number = height + 1;
-        }
+        let new_block_height = self.block_height() + 1;
 
         database_transaction.push(Op::Insert {
             col: COL_META,
             key: KEY_BEST_BLOCK_NUMBER.as_bytes().to_vec(),
-            value: new_best_block_number.to_le_bytes().to_vec(),
+            value: new_block_height.to_le_bytes().to_vec(),
         });
 
         // Update the block location
@@ -470,11 +460,11 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_LOCATOR,
             key: block.header.get_hash().0.to_vec(),
-            value: new_best_block_number.to_le_bytes().to_vec(),
+            value: new_block_height.to_le_bytes().to_vec(),
         });
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_LOCATOR,
-            key: new_best_block_number.to_le_bytes().to_vec(),
+            key: new_block_height.to_le_bytes().to_vec(),
             value: block.header.get_hash().0.to_vec(),
         });
 
@@ -485,7 +475,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
         database_transaction.push(Op::Insert {
             col: COL_DIGEST,
             key: to_bytes_le![new_digest]?.to_vec(),
-            value: new_best_block_number.to_le_bytes().to_vec(),
+            value: new_block_height.to_le_bytes().to_vec(),
         });
         database_transaction.push(Op::Insert {
             col: COL_META,
@@ -495,9 +485,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
 
         self.storage.batch(database_transaction)?;
 
-        if !is_genesis {
-            self.current_block_height.fetch_add(1, Ordering::SeqCst);
-        }
+        self.current_block_height.fetch_add(1, Ordering::SeqCst);
 
         Ok(())
     }
