@@ -87,8 +87,8 @@ impl<C: Parameters> EncryptedRecord<C> {
         let DecodedRecord {
             serial_number_nonce,
             commitment_randomness,
-            birth_program_id,
-            death_program_id,
+            birth_program_selector_root,
+            death_program_selector_root,
             payload,
             value,
         } = record_components;
@@ -98,12 +98,12 @@ impl<C: Parameters> EncryptedRecord<C> {
 
         // Determine if the record is a dummy
         // TODO (raychu86) Establish `is_dummy` flag properly by checking that the value is 0 and the programs are equivalent to a global dummy
-        let dummy_program = birth_program_id.clone();
+        let dummy_program = birth_program_selector_root.clone();
 
         let is_dummy = (value == 0)
             && (payload == Payload::default())
-            && (death_program_id == dummy_program)
-            && (birth_program_id == dummy_program);
+            && (death_program_selector_root == dummy_program)
+            && (birth_program_selector_root == dummy_program);
 
         // Calculate record commitment
         let commitment_input = to_bytes_le![
@@ -111,8 +111,8 @@ impl<C: Parameters> EncryptedRecord<C> {
             is_dummy,
             value,
             payload,
-            birth_program_id,
-            death_program_id,
+            birth_program_selector_root,
+            death_program_selector_root,
             serial_number_nonce
         ]?;
 
@@ -123,8 +123,8 @@ impl<C: Parameters> EncryptedRecord<C> {
             is_dummy,
             value,
             payload,
-            birth_program_id,
-            death_program_id,
+            birth_program_selector_root,
+            death_program_selector_root,
             serial_number_nonce,
             commitment,
             commitment_randomness,

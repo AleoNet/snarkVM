@@ -44,10 +44,10 @@ pub struct Record<C: Parameters> {
     pub(crate) value: u64,
     pub(crate) payload: Payload,
 
-    #[derivative(Default(value = "default_program_id::<C::ProgramIDCRH>()"))]
-    pub(crate) birth_program_id: Vec<u8>,
-    #[derivative(Default(value = "default_program_id::<C::ProgramIDCRH>()"))]
-    pub(crate) death_program_id: Vec<u8>,
+    #[derivative(Default(value = "default_program_id::<C::ProgramSelectorTreeCRH>()"))]
+    pub(crate) birth_program_selector_root: Vec<u8>,
+    #[derivative(Default(value = "default_program_id::<C::ProgramSelectorTreeCRH>()"))]
+    pub(crate) death_program_selector_root: Vec<u8>,
 
     pub(crate) serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
     pub(crate) commitment: C::RecordCommitment,
@@ -64,8 +64,8 @@ impl<C: Parameters> Record<C> {
         is_dummy: bool,
         value: u64,
         payload: Payload,
-        birth_program_id: Vec<u8>,
-        death_program_id: Vec<u8>,
+        birth_program_selector_root: Vec<u8>,
+        death_program_selector_root: Vec<u8>,
         position: u8,
         joint_serial_numbers: Vec<u8>,
         rng: &mut R,
@@ -78,8 +78,8 @@ impl<C: Parameters> Record<C> {
             is_dummy,
             value,
             payload,
-            birth_program_id,
-            death_program_id,
+            birth_program_selector_root,
+            death_program_selector_root,
             serial_number_nonce,
             rng,
         )?;
@@ -95,8 +95,8 @@ impl<C: Parameters> Record<C> {
         is_dummy: bool,
         value: u64,
         payload: Payload,
-        birth_program_id: Vec<u8>,
-        death_program_id: Vec<u8>,
+        birth_program_selector_root: Vec<u8>,
+        death_program_selector_root: Vec<u8>,
         serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
@@ -106,13 +106,13 @@ impl<C: Parameters> Record<C> {
 
         // Total = 32 + 1 + 8 + 128 + 48 + 48 + 32 = 297 bytes
         let commitment_input = to_bytes_le![
-            owner,               // 256 bits = 32 bytes
-            is_dummy,            // 1 bit = 1 byte
-            value,               // 64 bits = 8 bytes
-            payload,             // 1024 bits = 128 bytes
-            birth_program_id,    // 384 bits = 48 bytes
-            death_program_id,    // 384 bits = 48 bytes
-            serial_number_nonce  // 256 bits = 32 bytes
+            owner,                       // 256 bits = 32 bytes
+            is_dummy,                    // 1 bit = 1 byte
+            value,                       // 64 bits = 8 bytes
+            payload,                     // 1024 bits = 128 bytes
+            birth_program_selector_root, // 384 bits = 48 bytes
+            death_program_selector_root, // 384 bits = 48 bytes
+            serial_number_nonce          // 256 bits = 32 bytes
         ]?;
 
         let commitment = C::record_commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
@@ -124,8 +124,8 @@ impl<C: Parameters> Record<C> {
             is_dummy,
             value,
             payload,
-            birth_program_id,
-            death_program_id,
+            birth_program_selector_root,
+            death_program_selector_root,
             serial_number_nonce,
             commitment,
             commitment_randomness,
@@ -138,8 +138,8 @@ impl<C: Parameters> Record<C> {
         is_dummy: bool,
         value: u64,
         payload: Payload,
-        birth_program_id: Vec<u8>,
-        death_program_id: Vec<u8>,
+        birth_program_selector_root: Vec<u8>,
+        death_program_selector_root: Vec<u8>,
         serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
         commitment: C::RecordCommitment,
         commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
@@ -149,8 +149,8 @@ impl<C: Parameters> Record<C> {
             is_dummy,
             value,
             payload,
-            birth_program_id,
-            death_program_id,
+            birth_program_selector_root,
+            death_program_selector_root,
             serial_number_nonce,
             commitment,
             commitment_randomness,
@@ -213,12 +213,12 @@ impl<C: Parameters> RecordScheme for Record<C> {
         &self.payload
     }
 
-    fn birth_program_id(&self) -> &[u8] {
-        &self.birth_program_id
+    fn birth_program_selector_root(&self) -> &[u8] {
+        &self.birth_program_selector_root
     }
 
-    fn death_program_id(&self) -> &[u8] {
-        &self.death_program_id
+    fn death_program_selector_root(&self) -> &[u8] {
+        &self.death_program_selector_root
     }
 
     fn serial_number_nonce(&self) -> &Self::SerialNumberNonce {
@@ -242,11 +242,11 @@ impl<C: Parameters> ToBytes for Record<C> {
         self.value.write_le(&mut writer)?;
         self.payload.write_le(&mut writer)?;
 
-        variable_length_integer(self.birth_program_id.len() as u64).write_le(&mut writer)?;
-        self.birth_program_id.write_le(&mut writer)?;
+        variable_length_integer(self.birth_program_selector_root.len() as u64).write_le(&mut writer)?;
+        self.birth_program_selector_root.write_le(&mut writer)?;
 
-        variable_length_integer(self.death_program_id.len() as u64).write_le(&mut writer)?;
-        self.death_program_id.write_le(&mut writer)?;
+        variable_length_integer(self.death_program_selector_root.len() as u64).write_le(&mut writer)?;
+        self.death_program_selector_root.write_le(&mut writer)?;
 
         self.serial_number_nonce.write_le(&mut writer)?;
         self.commitment.write_le(&mut writer)?;
@@ -262,20 +262,20 @@ impl<C: Parameters> FromBytes for Record<C> {
         let value: u64 = FromBytes::read_le(&mut reader)?;
         let payload: Payload = FromBytes::read_le(&mut reader)?;
 
-        let birth_program_id_size: usize = read_variable_length_integer(&mut reader)?;
+        let birth_program_selector_root_size: usize = read_variable_length_integer(&mut reader)?;
 
-        let mut birth_program_id = Vec::with_capacity(birth_program_id_size);
-        for _ in 0..birth_program_id_size {
+        let mut birth_program_selector_root = Vec::with_capacity(birth_program_selector_root_size);
+        for _ in 0..birth_program_selector_root_size {
             let byte: u8 = FromBytes::read_le(&mut reader)?;
-            birth_program_id.push(byte);
+            birth_program_selector_root.push(byte);
         }
 
-        let death_program_id_size: usize = read_variable_length_integer(&mut reader)?;
+        let death_program_selector_root_size: usize = read_variable_length_integer(&mut reader)?;
 
-        let mut death_program_id = Vec::with_capacity(death_program_id_size);
-        for _ in 0..death_program_id_size {
+        let mut death_program_selector_root = Vec::with_capacity(death_program_selector_root_size);
+        for _ in 0..death_program_selector_root_size {
             let byte: u8 = FromBytes::read_le(&mut reader)?;
-            death_program_id.push(byte);
+            death_program_selector_root.push(byte);
         }
 
         let serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output = FromBytes::read_le(&mut reader)?;
@@ -288,8 +288,8 @@ impl<C: Parameters> FromBytes for Record<C> {
             is_dummy,
             value,
             payload,
-            birth_program_id,
-            death_program_id,
+            birth_program_selector_root,
+            death_program_selector_root,
             serial_number_nonce,
             commitment,
             commitment_randomness,

@@ -256,8 +256,8 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     // Construct program input
     // ************************************************************************
 
-    let mut old_death_program_ids = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-    let mut new_birth_program_ids = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+    let mut old_death_program_selector_roots = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+    let mut new_birth_program_selector_roots = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
     for (i, input) in program_proofs.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
         let cs = &mut cs.ns(|| format!("Check death program for input record {}", i));
 
@@ -274,15 +274,15 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
         let death_program_vk_field_elements =
             death_program_vk.to_constraint_field(cs.ns(|| "alloc_death_program_vk_field_elements"))?;
 
-        let claimed_death_program_id = program_id_crh.check_evaluation_gadget_on_field_elements(
+        let claimed_death_program_selector_root = program_id_crh.check_evaluation_gadget_on_field_elements(
             &mut cs.ns(|| "Compute death program ID"),
             death_program_vk_field_elements,
         )?;
 
-        let claimed_death_program_id_bytes =
-            claimed_death_program_id.to_bytes(&mut cs.ns(|| "Convert death program ID to bytes"))?;
+        let claimed_death_program_selector_root_bytes =
+            claimed_death_program_selector_root.to_bytes(&mut cs.ns(|| "Convert death program ID to bytes"))?;
 
-        old_death_program_ids.push(claimed_death_program_id_bytes);
+        old_death_program_selector_roots.push(claimed_death_program_selector_root_bytes);
 
         let position_fe = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc_constant(
             &mut cs.ns(|| "Allocate position"),
@@ -319,15 +319,15 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
         let birth_program_vk_field_elements =
             birth_program_vk.to_constraint_field(cs.ns(|| "birth_death_program_vk_field_elements"))?;
 
-        let claimed_birth_program_id = program_id_crh.check_evaluation_gadget_on_field_elements(
+        let claimed_birth_program_selector_root = program_id_crh.check_evaluation_gadget_on_field_elements(
             &mut cs.ns(|| "Compute birth program ID"),
             birth_program_vk_field_elements,
         )?;
 
-        let claimed_birth_program_id_bytes =
-            claimed_birth_program_id.to_bytes(&mut cs.ns(|| "Convert birth program ID to bytes"))?;
+        let claimed_birth_program_selector_root_bytes =
+            claimed_birth_program_selector_root.to_bytes(&mut cs.ns(|| "Convert birth program ID to bytes"))?;
 
-        new_birth_program_ids.push(claimed_birth_program_id_bytes);
+        new_birth_program_selector_roots.push(claimed_birth_program_selector_root_bytes);
 
         let position_fe = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc_constant(
             &mut cs.ns(|| "Allocate position"),
@@ -351,11 +351,11 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
         let commitment_cs = &mut cs.ns(|| "Check that program commitment is well-formed");
 
         let mut input = Vec::new();
-        for id in old_death_program_ids.iter().take(C::NUM_INPUT_RECORDS) {
+        for id in old_death_program_selector_roots.iter().take(C::NUM_INPUT_RECORDS) {
             input.extend_from_slice(&id);
         }
 
-        for id in new_birth_program_ids.iter().take(C::NUM_OUTPUT_RECORDS) {
+        for id in new_birth_program_selector_roots.iter().take(C::NUM_OUTPUT_RECORDS) {
             input.extend_from_slice(&id);
         }
 

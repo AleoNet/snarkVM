@@ -100,8 +100,8 @@ pub fn decode_from_field<F: PrimeField>(field_elements: &[F]) -> Result<Vec<u8>,
 pub struct DecodedRecord<C: Parameters> {
     pub value: u64,
     pub payload: Payload,
-    pub birth_program_id: Vec<u8>,
-    pub death_program_id: Vec<u8>,
+    pub birth_program_selector_root: Vec<u8>,
+    pub death_program_selector_root: Vec<u8>,
     pub serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
     pub commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
 }
@@ -144,12 +144,12 @@ impl<C: Parameters> EncodedRecordScheme for EncodedRecord<C> {
         bytes.extend_from_slice(&commitment_randomness.to_bytes_le()?);
 
         // Birth program ID
-        let birth_program_id = record.birth_program_id();
-        bytes.extend_from_slice(&birth_program_id.to_bytes_le()?);
+        let birth_program_selector_root = record.birth_program_selector_root();
+        bytes.extend_from_slice(&birth_program_selector_root.to_bytes_le()?);
 
         // Death program ID
-        let death_program_id = record.death_program_id();
-        bytes.extend_from_slice(&death_program_id.to_bytes_le()?);
+        let death_program_selector_root = record.death_program_selector_root();
+        bytes.extend_from_slice(&death_program_selector_root.to_bytes_le()?);
 
         // Value
         let value = record.value();
@@ -175,17 +175,17 @@ impl<C: Parameters> EncodedRecordScheme for EncodedRecord<C> {
         // Commitment randomness
         let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::read_le(&mut cursor)?;
 
-        // Birth program ID and death program ID
-        let program_id_length = to_bytes_le!(<C::ProgramIDCRH as CRH>::Output::default())?.len();
-        let birth_program_id = {
-            let mut program_id = vec![0u8; program_id_length];
-            cursor.read_exact(&mut program_id)?;
-            program_id
+        // Birth program selector root and death program selector root
+        let program_selector_root_length = to_bytes_le!(<C::ProgramSelectorTreeCRH as CRH>::Output::default())?.len();
+        let birth_program_selector_root = {
+            let mut program_selector_root = vec![0u8; program_selector_root_length];
+            cursor.read_exact(&mut program_selector_root)?;
+            program_selector_root
         };
-        let death_program_id = {
-            let mut program_id = vec![0u8; program_id_length];
-            cursor.read_exact(&mut program_id)?;
-            program_id
+        let death_program_selector_root = {
+            let mut program_selector_root = vec![0u8; program_selector_root_length];
+            cursor.read_exact(&mut program_selector_root)?;
+            program_selector_root
         };
 
         // Value
@@ -197,8 +197,8 @@ impl<C: Parameters> EncodedRecordScheme for EncodedRecord<C> {
         Ok(DecodedRecord {
             value,
             payload,
-            birth_program_id,
-            death_program_id,
+            birth_program_selector_root,
+            death_program_selector_root,
             serial_number_nonce,
             commitment_randomness,
         })

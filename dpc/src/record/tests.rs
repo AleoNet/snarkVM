@@ -72,8 +72,14 @@ fn test_record_serialization() {
                 given_record.commitment_randomness,
                 record_components.commitment_randomness
             );
-            assert_eq!(given_record.birth_program_id, record_components.birth_program_id);
-            assert_eq!(given_record.death_program_id, record_components.death_program_id);
+            assert_eq!(
+                given_record.birth_program_selector_root,
+                record_components.birth_program_selector_root
+            );
+            assert_eq!(
+                given_record.death_program_selector_root,
+                record_components.death_program_selector_root
+            );
             assert_eq!(given_record.value, record_components.value);
             assert_eq!(given_record.payload, record_components.payload);
         }

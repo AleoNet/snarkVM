@@ -131,8 +131,8 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
         };
 
         match (position as usize) < C::NUM_INPUT_RECORDS {
-            true => assert_eq!(self.id, record.death_program_id()),
-            false => assert_eq!(self.id, record.birth_program_id()),
+            true => assert_eq!(self.id, record.death_program_selector_root()),
+            false => assert_eq!(self.id, record.birth_program_selector_root()),
         };
 
         let local_data_root = local_data.local_data_merkle_tree.root();
