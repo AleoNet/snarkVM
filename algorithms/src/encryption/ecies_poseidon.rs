@@ -27,11 +27,12 @@ use snarkvm_curves::{
     ProjectiveCurve,
     TwistedEdwardsParameters,
 };
-use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField};
+use snarkvm_fields::{ConstraintFieldError, FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_utilities::{
     io::Result as IoResult,
     ops::Mul,
     serialize::*,
+    BigInteger,
     FromBytes,
     Read,
     SerializationError,
@@ -104,12 +105,10 @@ impl<TE: TwistedEdwardsParameters> EncryptionScheme for ECIESPoseidonEncryption<
 where
     TE::BaseField: PoseidonDefaultParametersField,
 {
-    type EncryptionWitness = ();
     type Parameters = TEAffine<TE>;
     type PrivateKey = TE::ScalarField;
     type PublicKey = ECIESPoseidonPublicKey<TE>;
     type Randomness = TE::ScalarField;
-    type Text = TE::BaseField;
 
     fn setup(message: &str) -> Self {
         let (generator, _, _) = hash_to_curve::<TEAffine<TE>>(message);
@@ -137,53 +136,63 @@ where
         Ok(Self::Randomness::rand(rng))
     }
 
-    fn generate_encryption_witness(
-        &self,
-        _public_key: &<Self as EncryptionScheme>::PublicKey,
-        _randomness: &Self::Randomness,
-        _message_length: usize,
-    ) -> Result<Vec<Self::EncryptionWitness>, EncryptionError> {
-        Ok(vec![])
-    }
-
     fn encrypt(
         &self,
         public_key: &<Self as EncryptionScheme>::PublicKey,
         randomness: &Self::Randomness,
-        message: &[Self::Text],
-    ) -> Result<Vec<Self::Text>, EncryptionError> {
+        message: &[u8],
+    ) -> Result<Vec<u8>, EncryptionError> {
+        // Compute the ECDH value.
         let ecdh_value = public_key.0.into_projective().mul((*randomness).clone()).into_affine();
 
+        // Prepare the Poseidon sponge.
         let params =
             <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap();
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
-
         sponge.absorb(&[ecdh_value.x]); // For TE curves, only one of (x, y) and (x, -y) would be on the curve.
 
-        let mut results = sponge.squeeze_field_elements(message.len());
-        for (i, elem) in message.iter().enumerate() {
-            results[i] += elem;
+        // Compute the number of sponge elements needed.
+        let capacity = <TE::BaseField as PrimeField>::Parameters::CAPACITY as usize;
+        let random_byte_per_sponge_element = capacity / 8;
+        let num_sponge_field_elements =
+            (message.len() + random_byte_per_sponge_element - 1) / random_byte_per_sponge_element;
+
+        // Obtain a mask from Poseidon.
+        let sponge_field_elements = sponge.squeeze_field_elements(num_sponge_field_elements);
+        let mut sponge_bytes = Vec::with_capacity(num_sponge_field_elements * random_byte_per_sponge_element);
+        for elem in sponge_field_elements.iter() {
+            sponge_bytes.extend_from_slice(&elem.to_bytes_le()?[..random_byte_per_sponge_element]);
         }
 
-        results.push(
-            self.generator
-                .into_projective()
-                .mul((*randomness).clone())
-                .into_affine()
-                .to_x_coordinate(),
-        );
+        // Apply the mask to the message.
+        let mut masked_message = vec![0u8; message.len()];
+        for (i, message_byte) in message.iter().enumerate() {
+            masked_message[i] = sponge_bytes[i].wrapping_add(*message_byte);
+        }
 
-        Ok(results)
+        // Put the bytes of the x coordinate of the randomness group element
+        // into the beginning of the ciphertext.
+        let random_element_bytes = self
+            .generator
+            .into_projective()
+            .mul((*randomness).clone())
+            .into_affine()
+            .to_x_coordinate()
+            .to_bytes_le()?;
+
+        Ok([random_element_bytes, masked_message].concat())
     }
 
     fn decrypt(
         &self,
         private_key: &<Self as EncryptionScheme>::PrivateKey,
-        ciphertext: &[Self::Text],
-    ) -> Result<Vec<Self::Text>, EncryptionError> {
-        assert!(ciphertext.len() >= 1);
+        ciphertext: &[u8],
+    ) -> Result<Vec<u8>, EncryptionError> {
+        let x_coordinate_len = <TE::BaseField as PrimeField>::BigInteger::NUM_LIMBS * 8;
+        assert!(ciphertext.len() >= x_coordinate_len);
 
-        let random_elem_x = ciphertext.last().unwrap().clone();
+        // Recover the randomness group element.
+        let random_elem_x = TE::BaseField::from_bytes_le(&ciphertext[..x_coordinate_len])?;
         let random_elem = {
             let mut first = TEAffine::<TE>::from_x_coordinate(random_elem_x.clone(), true);
             if first.is_some() && !first.unwrap().is_in_correct_subgroup_assuming_on_curve() {
@@ -193,25 +202,42 @@ where
             if second.is_some() && !second.unwrap().is_in_correct_subgroup_assuming_on_curve() {
                 second = None;
             }
-            first.or(second).unwrap()
+            let random_elem = first.or(second);
+            if random_elem.is_none() {
+                return Err(EncryptionError::Message("The ciphertext is malformed.".to_string()));
+            }
+            random_elem.unwrap()
         };
 
+        // Compute the ECDH value
         let ecdh_value = random_elem.into_projective().mul((*private_key).clone()).into_affine();
 
+        // Prepare the Poseidon sponge.
         let params =
             <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters(4, false).unwrap();
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
-
         sponge.absorb(&[ecdh_value.x]); // For TE curves, only one of (x, y) and (x, -y) would be on the curve.
 
-        let len = ciphertext.len() - 1;
+        // Compute the number of sponge elements needed.
+        let capacity = <TE::BaseField as PrimeField>::Parameters::CAPACITY as usize;
+        let random_byte_per_sponge_element = capacity / 8;
+        let num_sponge_field_elements =
+            (ciphertext.len() - x_coordinate_len + random_byte_per_sponge_element - 1) / random_byte_per_sponge_element;
 
-        let mut results = sponge.squeeze_field_elements(len);
-        for (i, elem) in ciphertext.iter().take(len).enumerate() {
-            results[i] = *elem - results[i];
+        // Obtain a mask from Poseidon.
+        let sponge_field_elements = sponge.squeeze_field_elements(num_sponge_field_elements);
+        let mut sponge_bytes = Vec::with_capacity(num_sponge_field_elements * random_byte_per_sponge_element);
+        for elem in sponge_field_elements.iter() {
+            sponge_bytes.extend_from_slice(&elem.to_bytes_le()?[..random_byte_per_sponge_element]);
         }
 
-        Ok(results)
+        // Apply the mask to the message.
+        let mut message = vec![0u8; ciphertext.len() - x_coordinate_len];
+        for (i, ciphertext_byte) in ciphertext.iter().skip(x_coordinate_len).enumerate() {
+            message[i] = ciphertext_byte.wrapping_sub(sponge_bytes[i]);
+        }
+
+        Ok(message)
     }
 
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters {

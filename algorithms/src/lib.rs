@@ -46,9 +46,6 @@ pub mod crh;
 #[cfg(feature = "crypto_hash")]
 pub mod crypto_hash;
 
-#[cfg(feature = "encoding")]
-pub mod encoding;
-
 #[cfg(feature = "encryption")]
 pub mod encryption;
 
