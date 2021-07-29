@@ -19,7 +19,7 @@ mod ecies_poseidon {
     use rand::{CryptoRng, Rng, SeedableRng};
     use rand_chacha::ChaChaRng;
     use snarkvm_algorithms::{
-        encoding::PackedFieldsAndBytesEncodingScheme,
+        encoding::FieldEncodingScheme,
         encryption::ECIESPoseidonEncryption,
         EncodingScheme,
         EncryptionScheme,
@@ -30,7 +30,7 @@ mod ecies_poseidon {
 
     type TestEncryptionScheme = ECIESPoseidonEncryption<EdwardsParameters>;
     type TestEncryptionSchemeGadget = ECIESPoseidonEncryptionGadget<EdwardsParameters, Fr>;
-    type TestEncodingScheme = PackedFieldsAndBytesEncodingScheme<Fr>;
+    type TestEncodingScheme = FieldEncodingScheme<Fr>;
 
     fn generate_input<R: Rng + CryptoRng>(input_size: usize, rng: &mut R) -> Vec<u8> {
         let mut input = vec![];

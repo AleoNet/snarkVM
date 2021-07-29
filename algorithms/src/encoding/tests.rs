@@ -20,7 +20,7 @@ mod packed_fields_and_bytes {
     use snarkvm_curves::edwards_bw6::Fr;
     // edwards_bw6 is able to touch the corner cases.
     use crate::{
-        encoding::{PackedFieldsAndBytes, PackedFieldsAndBytesEncodingScheme},
+        encoding::{FieldEncodedData, FieldEncodingScheme},
         EncodingScheme,
     };
     use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
@@ -35,7 +35,7 @@ mod packed_fields_and_bytes {
                 bytes.push(u8::rand(&mut rng));
             }
 
-            let encoder = PackedFieldsAndBytesEncodingScheme::<Fr>::default();
+            let encoder = FieldEncodingScheme::<Fr>::default();
             let encoded_data = encoder.encode(&bytes).unwrap();
 
             let decoded_result = encoder.decode(&encoded_data).unwrap();
@@ -54,12 +54,12 @@ mod packed_fields_and_bytes {
                 bytes.push(u8::rand(&mut rng));
             }
 
-            let encoder = PackedFieldsAndBytesEncodingScheme::<Fr>::default();
+            let encoder = FieldEncodingScheme::<Fr>::default();
             let encoded_record = encoder.encode(&bytes).unwrap();
 
             let serialized_encoded_record = encoded_record.to_bytes_le().unwrap();
             let deserialized_encoded_record =
-                PackedFieldsAndBytes::<Fr>::from_bytes_le(&serialized_encoded_record).unwrap();
+                FieldEncodedData::<Fr>::from_bytes_le(&serialized_encoded_record).unwrap();
 
             assert_eq!(encoded_record, deserialized_encoded_record);
         }

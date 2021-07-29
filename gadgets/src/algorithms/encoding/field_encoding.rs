@@ -27,28 +27,23 @@ use crate::{
     ToConstraintFieldGadget,
     UInt8,
 };
-use snarkvm_algorithms::encoding::{PackedFieldsAndBytes, PackedFieldsAndBytesEncodingScheme};
+use snarkvm_algorithms::encoding::{FieldEncodedData, FieldEncodingScheme};
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use snarkvm_utilities::borrow::Borrow;
 use std::marker::PhantomData;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct PackedFieldsAndBytesEncodingGadget<F: PrimeField> {
-    f_phantom: PhantomData<F>,
-}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct PackedFieldsAndBytesGadget<F: PrimeField> {
+pub struct FieldEncodedDataGadget<F: PrimeField> {
     pub field_elements: Vec<FpGadget<F>>,
     pub remaining_bytes: Vec<UInt8>,
 }
 
 // Note: this function cannot take a function `value_gen` that is not compatible with the setup mode.
-impl<F: PrimeField> AllocGadget<PackedFieldsAndBytes<F>, F> for PackedFieldsAndBytesGadget<F> {
+impl<F: PrimeField> AllocGadget<FieldEncodedData<F>, F> for FieldEncodedDataGadget<F> {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PackedFieldsAndBytes<F>>,
+        T: Borrow<FieldEncodedData<F>>,
         CS: ConstraintSystem<F>,
     >(
         mut cs: CS,
@@ -67,7 +62,7 @@ impl<F: PrimeField> AllocGadget<PackedFieldsAndBytes<F>, F> for PackedFieldsAndB
         })
     }
 
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<PackedFieldsAndBytes<F>>, CS: ConstraintSystem<F>>(
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<FieldEncodedData<F>>, CS: ConstraintSystem<F>>(
         mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
@@ -86,7 +81,7 @@ impl<F: PrimeField> AllocGadget<PackedFieldsAndBytes<F>, F> for PackedFieldsAndB
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PackedFieldsAndBytes<F>>,
+        T: Borrow<FieldEncodedData<F>>,
         CS: ConstraintSystem<F>,
     >(
         mut cs: CS,
@@ -106,7 +101,7 @@ impl<F: PrimeField> AllocGadget<PackedFieldsAndBytes<F>, F> for PackedFieldsAndB
     }
 }
 
-impl<F: PrimeField> ConditionalEqGadget<F> for PackedFieldsAndBytesGadget<F> {
+impl<F: PrimeField> ConditionalEqGadget<F> for FieldEncodedDataGadget<F> {
     fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
@@ -132,9 +127,9 @@ impl<F: PrimeField> ConditionalEqGadget<F> for PackedFieldsAndBytesGadget<F> {
     }
 }
 
-impl<F: PrimeField> EqGadget<F> for PackedFieldsAndBytesGadget<F> {}
+impl<F: PrimeField> EqGadget<F> for FieldEncodedDataGadget<F> {}
 
-impl<F: PrimeField> ToBytesGadget<F> for PackedFieldsAndBytesGadget<F> {
+impl<F: PrimeField> ToBytesGadget<F> for FieldEncodedDataGadget<F> {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut res = vec![];
 
@@ -166,7 +161,7 @@ impl<F: PrimeField> ToBytesGadget<F> for PackedFieldsAndBytesGadget<F> {
     }
 }
 
-impl<F: PrimeField> ToConstraintFieldGadget<F> for PackedFieldsAndBytesGadget<F> {
+impl<F: PrimeField> ToConstraintFieldGadget<F> for FieldEncodedDataGadget<F> {
     fn to_constraint_field<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<FpGadget<F>>, SynthesisError> {
         let mut res = self.field_elements.clone();
         if !self.remaining_bytes.is_empty() {
@@ -180,9 +175,14 @@ impl<F: PrimeField> ToConstraintFieldGadget<F> for PackedFieldsAndBytesGadget<F>
     }
 }
 
-impl<F: PrimeField> EncodingGadget<PackedFieldsAndBytesEncodingScheme<F>, F> for PackedFieldsAndBytesEncodingGadget<F> {
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct FieldEncodingGadget<F: PrimeField> {
+    f_phantom: PhantomData<F>,
+}
+
+impl<F: PrimeField> EncodingGadget<FieldEncodingScheme<F>, F> for FieldEncodingGadget<F> {
     type DataGadget = Vec<UInt8>;
-    type EncodedDataGadget = PackedFieldsAndBytesGadget<F>;
+    type EncodedDataGadget = FieldEncodedDataGadget<F>;
 
     fn enforce_encoding_correctness<CS: ConstraintSystem<F>>(
         &self,
@@ -231,10 +231,10 @@ impl<F: PrimeField> EncodingGadget<PackedFieldsAndBytesEncodingScheme<F>, F> for
     }
 }
 
-impl<F: PrimeField> AllocGadget<PackedFieldsAndBytesEncodingScheme<F>, F> for PackedFieldsAndBytesEncodingGadget<F> {
+impl<F: PrimeField> AllocGadget<FieldEncodingScheme<F>, F> for FieldEncodingGadget<F> {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PackedFieldsAndBytesEncodingScheme<F>>,
+        T: Borrow<FieldEncodingScheme<F>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -243,11 +243,7 @@ impl<F: PrimeField> AllocGadget<PackedFieldsAndBytesEncodingScheme<F>, F> for Pa
         Ok(Self::default())
     }
 
-    fn alloc<
-        Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PackedFieldsAndBytesEncodingScheme<F>>,
-        CS: ConstraintSystem<F>,
-    >(
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<FieldEncodingScheme<F>>, CS: ConstraintSystem<F>>(
         _cs: CS,
         _f: Fn,
     ) -> Result<Self, SynthesisError> {
@@ -256,7 +252,7 @@ impl<F: PrimeField> AllocGadget<PackedFieldsAndBytesEncodingScheme<F>, F> for Pa
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PackedFieldsAndBytesEncodingScheme<F>>,
+        T: Borrow<FieldEncodingScheme<F>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,

@@ -15,12 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod ecies {
-    use crate::{
-        encoding::PackedFieldsAndBytesEncodingScheme,
-        encryption::ECIESPoseidonEncryption,
-        EncodingScheme,
-        EncryptionScheme,
-    };
+    use crate::{encoding::FieldEncodingScheme, encryption::ECIESPoseidonEncryption, EncodingScheme, EncryptionScheme};
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaChaRng;
     use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsParameters};
@@ -45,7 +40,7 @@ mod ecies {
         let randomness = encryption_scheme.generate_randomness(&public_key, rng).unwrap();
         let message = generate_input(32, rng);
 
-        let encoder = PackedFieldsAndBytesEncodingScheme::<Fr>::default();
+        let encoder = FieldEncodingScheme::<Fr>::default();
         let plaintext = encoder.encode(&message).unwrap();
 
         let ciphertext = encryption_scheme.encrypt(&public_key, &randomness, &plaintext).unwrap();

@@ -18,38 +18,16 @@ use crate::{EncodingError, EncodingScheme};
 use snarkvm_fields::{ConstraintFieldError, FieldParameters, PrimeField};
 use snarkvm_r1cs::ToConstraintField;
 use snarkvm_utilities::{io::Result as IoResult, FromBits, FromBytes, Read, ToBits, ToBytes, Write};
+
 use std::marker::PhantomData;
 
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct PackedFieldsAndBytesEncodingScheme<F: PrimeField> {
-    field_phantom: PhantomData<F>,
-}
-
-impl<F: PrimeField> ToBytes for PackedFieldsAndBytesEncodingScheme<F> {
-    fn write_le<W: Write>(&self, _writer: W) -> IoResult<()> {
-        Ok(())
-    }
-}
-
-impl<F: PrimeField> FromBytes for PackedFieldsAndBytesEncodingScheme<F> {
-    fn read_le<R: Read>(_reader: R) -> IoResult<Self> {
-        Ok(Self::default())
-    }
-}
-
-impl<F: PrimeField> From<<Self as EncodingScheme>::Parameters> for PackedFieldsAndBytesEncodingScheme<F> {
-    fn from(_: <Self as EncodingScheme>::Parameters) -> Self {
-        Self::default()
-    }
-}
-
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct PackedFieldsAndBytes<F: PrimeField> {
+pub struct FieldEncodedData<F: PrimeField> {
     pub field_elements: Vec<F>,
     pub remaining_bytes: Vec<u8>,
 }
 
-impl<F: PrimeField> ToBytes for PackedFieldsAndBytes<F> {
+impl<F: PrimeField> ToBytes for FieldEncodedData<F> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (self.field_elements.len() as u8).write_le(&mut writer)?;
         for elem in self.field_elements.iter() {
@@ -65,7 +43,7 @@ impl<F: PrimeField> ToBytes for PackedFieldsAndBytes<F> {
     }
 }
 
-impl<F: PrimeField> FromBytes for PackedFieldsAndBytes<F> {
+impl<F: PrimeField> FromBytes for FieldEncodedData<F> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let field_elements_len = u8::read_le(&mut reader)?;
         let mut field_elements = Vec::with_capacity(field_elements_len as usize);
@@ -86,7 +64,7 @@ impl<F: PrimeField> FromBytes for PackedFieldsAndBytes<F> {
     }
 }
 
-impl<F: PrimeField> ToConstraintField<F> for PackedFieldsAndBytes<F> {
+impl<F: PrimeField> ToConstraintField<F> for FieldEncodedData<F> {
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         let mut res = self.field_elements.clone();
         if !self.remaining_bytes.is_empty() {
@@ -96,9 +74,32 @@ impl<F: PrimeField> ToConstraintField<F> for PackedFieldsAndBytes<F> {
     }
 }
 
-impl<F: PrimeField> EncodingScheme for PackedFieldsAndBytesEncodingScheme<F> {
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
+pub struct FieldEncodingScheme<F: PrimeField> {
+    field_phantom: PhantomData<F>,
+}
+
+impl<F: PrimeField> ToBytes for FieldEncodingScheme<F> {
+    fn write_le<W: Write>(&self, _writer: W) -> IoResult<()> {
+        Ok(())
+    }
+}
+
+impl<F: PrimeField> FromBytes for FieldEncodingScheme<F> {
+    fn read_le<R: Read>(_reader: R) -> IoResult<Self> {
+        Ok(Self::default())
+    }
+}
+
+impl<F: PrimeField> From<<Self as EncodingScheme>::Parameters> for FieldEncodingScheme<F> {
+    fn from(_: <Self as EncodingScheme>::Parameters) -> Self {
+        Self::default()
+    }
+}
+
+impl<F: PrimeField> EncodingScheme for FieldEncodingScheme<F> {
     type Data = Vec<u8>;
-    type EncodedData = PackedFieldsAndBytes<F>;
+    type EncodedData = FieldEncodedData<F>;
     type Parameters = ();
 
     fn setup(_message: &str) -> Self {

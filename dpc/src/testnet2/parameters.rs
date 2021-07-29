@@ -66,8 +66,8 @@ use snarkvm_utilities::FromBytes;
 use anyhow::Result;
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
-use snarkvm_algorithms::encoding::PackedFieldsAndBytesEncodingScheme;
-use snarkvm_gadgets::algorithms::encoding::PackedFieldsAndBytesEncodingGadget;
+use snarkvm_algorithms::encoding::FieldEncodingScheme;
+use snarkvm_gadgets::algorithms::encoding::FieldEncodingGadget;
 
 macro_rules! dpc_setup {
     ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
@@ -162,8 +162,8 @@ impl Parameters for Testnet2Parameters {
     type ProgramIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
 
-    type RecordEncodingScheme = PackedFieldsAndBytesEncodingScheme<Self::InnerScalarField>;
-    type RecordEncodingGadget = PackedFieldsAndBytesEncodingGadget<Self::InnerScalarField>;
+    type RecordEncodingScheme = FieldEncodingScheme<Self::InnerScalarField>;
+    type RecordEncodingGadget = FieldEncodingGadget<Self::InnerScalarField>;
 
     type RecordCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 48, 50>;
     type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 50>;

@@ -16,20 +16,20 @@
 
 mod packed_fields_and_bytes {
     use crate::{
-        algorithms::encoding::{PackedFieldsAndBytesEncodingGadget, PackedFieldsAndBytesGadget},
+        algorithms::encoding::{FieldEncodedDataGadget, FieldEncodingGadget},
         AllocGadget,
         EncodingGadget,
         UInt8,
     };
     use rand::SeedableRng;
     use rand_chacha::ChaChaRng;
-    use snarkvm_algorithms::{encoding::PackedFieldsAndBytesEncodingScheme, EncodingScheme};
+    use snarkvm_algorithms::{encoding::FieldEncodingScheme, EncodingScheme};
     use snarkvm_curves::edwards_bw6::Fr;
     use snarkvm_r1cs::{ConstraintSystem, TestConstraintChecker};
     use snarkvm_utilities::UniformRand;
 
-    type TestEncodingScheme = PackedFieldsAndBytesEncodingScheme<Fr>;
-    type TestEncodingGadget = PackedFieldsAndBytesEncodingGadget<Fr>;
+    type TestEncodingScheme = FieldEncodingScheme<Fr>;
+    type TestEncodingGadget = FieldEncodingGadget<Fr>;
 
     #[test]
     fn test_consistency() {
@@ -52,8 +52,7 @@ mod packed_fields_and_bytes {
 
             let data_gadget = UInt8::alloc_vec(cs.ns(|| "allocate data"), &bytes).unwrap();
             let encoder_data_gadget =
-                PackedFieldsAndBytesGadget::<Fr>::alloc(cs.ns(|| "allocate encoded data"), || Ok(encoded_data))
-                    .unwrap();
+                FieldEncodedDataGadget::<Fr>::alloc(cs.ns(|| "allocate encoded data"), || Ok(encoded_data)).unwrap();
 
             encoding_gadget
                 .enforce_encoding_correctness(cs.ns(|| "enforce consistency"), &data_gadget, &encoder_data_gadget)
