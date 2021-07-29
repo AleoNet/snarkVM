@@ -25,7 +25,7 @@ use crate::{
     ProgramScheme,
     RecordScheme,
 };
-use snarkvm_algorithms::prelude::*;
+use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 use snarkvm_parameters::Parameter;
 use snarkvm_r1cs::ToConstraintField;
 use snarkvm_utilities::{FromBytes, ToBytes};
@@ -120,6 +120,7 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
         &self,
         local_data: &Self::LocalData,
         position: u8,
+        program_selector_path: MerklePath<Self::ProgramSelectorTree>,
         rng: &mut R,
     ) -> Result<Self::Execution, ProgramError> {
         assert!((position as usize) < (local_data.old_records.len() + local_data.new_records.len()));
@@ -159,15 +160,18 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
         Ok(Self::Execution {
             verifying_key: self.verifying_key.clone(),
             proof,
+            program_selector_path,
         })
     }
 
     fn execute_blank<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::Execution, ProgramError> {
         let proof = <Self::ProofSystem as SNARK>::prove(&self.proving_key, &NoopCircuit::<C>::blank(), rng)?;
+        let program_selector_path = MerklePath::<Self::ProgramSelectorTree>::default();
 
         Ok(Self::Execution {
             verifying_key: self.verifying_key.clone(),
             proof,
+            program_selector_path,
         })
     }
 
