@@ -1,8 +1,8 @@
 [package]
-name = "snarkvm-posw"
+name = "snarkvm-ledger"
 version = "0.7.5"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
-description = "Proof of Succinct Work circuit implementation based on [KB20]"
+description = "Ledger for a decentralized virtual machine"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkVM"
 keywords = [

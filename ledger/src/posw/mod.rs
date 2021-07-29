@@ -19,8 +19,6 @@ pub mod circuit;
 mod posw;
 use posw::{HG, M};
 
-pub mod error;
-
 use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_dpc::block::{
     merkle_root_with_subroots,
