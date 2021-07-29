@@ -112,7 +112,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     inner_snark_proof: &<C::InnerSNARK as SNARK>::Proof,
 
     // Program verifying keys and proofs
-    program_proofs: &[Execution<C::ProgramSNARK>],
+    program_proofs: &[Execution<C, C::ProgramSNARK>],
 
     // Rest
     program_commitment: &<C::ProgramCommitmentScheme as CommitmentScheme>::Output,

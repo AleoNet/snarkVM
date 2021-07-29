@@ -15,15 +15,16 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Parameters;
-use snarkvm_algorithms::SNARK;
+use snarkvm_algorithms::{merkle_tree::MerklePath, SNARK};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
 /// Program verifying key and proof.
 #[derive(Derivative)]
 #[derivative(Clone(bound = "S: SNARK"))]
-pub struct Execution<S: SNARK> {
+pub struct Execution<C: Parameters, S: SNARK> {
     pub verifying_key: S::VerifyingKey,
     pub proof: S::Proof,
+    pub program_selector_path: MerklePath<C::ProgramSelectorTreeParameters>,
 }
 
 pub struct ProgramLocalData<C: Parameters> {

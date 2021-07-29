@@ -44,11 +44,12 @@ pub struct NoopProgram<C: Parameters> {
 }
 
 impl<C: Parameters> ProgramScheme for NoopProgram<C> {
-    type Execution = Execution<Self::ProofSystem>;
+    type Execution = Execution<C, Self::ProofSystem>;
     type ID = Vec<u8>;
     type LocalData = LocalData<C>;
     type LocalDataCommitment = C::LocalDataCommitmentScheme;
     type ProgramIDCRH = C::ProgramIDCRH;
+    type ProgramSelectorTree = C::ProgramSelectorTreeParameters;
     type ProofSystem = C::ProgramSNARK;
     type ProvingKey = <Self::ProofSystem as SNARK>::ProvingKey;
     type PublicInput = ();
@@ -152,6 +153,8 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
                 &proof
             )?);
         }
+
+        // TODO (raychu86): Extract the construction of the merkle tree.
 
         Ok(Self::Execution {
             verifying_key: self.verifying_key.clone(),

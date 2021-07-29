@@ -84,10 +84,6 @@ define_additional_merkle_tree_parameters!(
     8
 );
 
-// TODO: Add merkle tree path. Check that the program selector root is constructed correctly.
-// For each program proof, hash the vk, use that as the leaf to construct the leaf.
-// Need 4 merkle paths, and 4 checks
-
 pub struct Testnet1Parameters;
 
 #[rustfmt::skip]

@@ -38,7 +38,7 @@ pub struct OuterCircuit<C: Parameters> {
     inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
     inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
 
-    program_proofs: Vec<Execution<C::ProgramSNARK>>,
+    program_proofs: Vec<Execution<C, C::ProgramSNARK>>,
     program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
     program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
     local_data_root: C::LocalDataDigest,
@@ -50,7 +50,7 @@ impl<C: Parameters> OuterCircuit<C> {
     pub fn blank(
         inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
-        program_snark_vk_and_proof: Execution<C::ProgramSNARK>,
+        program_snark_vk_and_proof: Execution<C, C::ProgramSNARK>,
     ) -> Self {
         let ledger_digest = MerkleTreeDigest::<C::RecordCommitmentTreeParameters>::default();
         let old_serial_numbers =
@@ -103,7 +103,7 @@ impl<C: Parameters> OuterCircuit<C> {
 
         // Private program input = Verification key and input
         // Commitment contains commitment to hash of death program vk.
-        program_proofs: Vec<Execution<C::ProgramSNARK>>,
+        program_proofs: Vec<Execution<C, C::ProgramSNARK>>,
         program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
         program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
         local_data_root: C::LocalDataDigest,
