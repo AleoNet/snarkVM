@@ -28,8 +28,7 @@ pub struct FieldEncodedData<F: PrimeField> {
 }
 
 impl<F: PrimeField> FieldEncodedData<F> {
-    /// Returns the number of bits occupied in field elements. It should be noted this is
-    /// *not* the number of bits the final field elements occupy in bit size.
+    /// Returns the number of bits the encoded data occupies.
     pub fn num_bits(&self) -> usize {
         (self.field_elements.len() * <F::Parameters as FieldParameters>::CAPACITY as usize)
             + (self.remaining_bytes.len() * 8)
