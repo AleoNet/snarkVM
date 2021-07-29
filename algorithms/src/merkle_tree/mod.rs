@@ -123,3 +123,46 @@ macro_rules! define_masked_merkle_tree_parameters {
         }
     };
 }
+
+// TODO (raychu86): Unify the macro definitions.
+#[macro_export]
+/// Defines a Merkle tree using the provided hash and depth.
+macro_rules! define_additional_merkle_tree_parameters {
+    ($struct_name:ident, $hash:ty, $depth:expr) => {
+#[rustfmt::skip]
+        #[derive(Clone, PartialEq, Eq, Debug)]
+        pub struct $struct_name($hash);
+
+        impl MerkleParameters for $struct_name {
+            type H = $hash;
+
+            const DEPTH: usize = $depth;
+
+            fn setup(message: &str) -> Self {
+                Self(Self::H::setup(message))
+            }
+
+            fn crh(&self) -> &Self::H {
+                &self.0
+            }
+        }
+
+        impl From<$hash> for $struct_name {
+            fn from(crh: $hash) -> Self {
+                Self(crh)
+            }
+        }
+
+        impl LoadableMerkleParameters for $struct_name {}
+
+        // TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
+        impl Default for $struct_name {
+            fn default() -> Self {
+                // TODO (howardwu): Switch to a better default.
+                Self(<Self as MerkleParameters>::H::setup(
+                    $crate::merkle_tree::setup_message(),
+                ))
+            }
+        }
+    };
+}
