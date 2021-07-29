@@ -304,8 +304,8 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
             claimed_death_program_id_bytes,
         )?;
 
-        let claimed_death_program_selector_root_bytes =
-            claimed_death_program_selector_root.to_bytes(&mut cs.ns(|| "Convert death program ID to bytes"))?;
+        let claimed_death_program_selector_root_bytes = claimed_death_program_selector_root
+            .to_bytes(&mut cs.ns(|| "Convert death program selector root to bytes"))?;
 
         old_death_program_selector_roots.push(claimed_death_program_selector_root_bytes);
 
@@ -363,8 +363,8 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
             claimed_birth_program_id_bytes,
         )?;
 
-        let claimed_birth_program_selector_root_bytes =
-            claimed_birth_program_selector_root.to_bytes(&mut cs.ns(|| "Convert birth program ID to bytes"))?;
+        let claimed_birth_program_selector_root_bytes = claimed_birth_program_selector_root
+            .to_bytes(&mut cs.ns(|| "Convert birth program selector root to bytes"))?;
 
         new_birth_program_selector_roots.push(claimed_birth_program_selector_root_bytes);
 
