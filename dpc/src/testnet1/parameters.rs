@@ -29,6 +29,7 @@ use snarkvm_algorithms::{
     crh::BHPCompressedCRH,
     crypto_hash::PoseidonCryptoHash,
     define_merkle_tree_parameters,
+    encoding::FieldEncodingScheme,
     encryption::ECIESPoseidonEncryption,
     prelude::*,
     prf::Blake2s,
@@ -46,6 +47,7 @@ use snarkvm_gadgets::{
         commitment::{BHPCompressedCommitmentGadget, Blake2sCommitmentGadget},
         crh::BHPCompressedCRHGadget,
         crypto_hash::PoseidonCryptoHashGadget,
+        encoding::FieldEncodingGadget,
         encryption::ECIESPoseidonEncryptionGadget,
         prf::Blake2sGadget,
         signature::SchnorrGadget,
@@ -57,8 +59,6 @@ use snarkvm_gadgets::{
 use anyhow::Result;
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
-use snarkvm_algorithms::encoding::FieldEncodingScheme;
-use snarkvm_gadgets::algorithms::encoding::FieldEncodingGadget;
 
 macro_rules! dpc_setup {
     ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
