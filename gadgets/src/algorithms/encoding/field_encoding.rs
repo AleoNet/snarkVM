@@ -49,13 +49,11 @@ impl<F: PrimeField> AllocGadget<FieldEncodedData<F>, F> for FieldEncodedDataGadg
         mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let f = value_gen()?;
-        let val = f.borrow();
-
+        let value = value_gen()?;
+        let encoded = value.borrow();
         let field_elements =
-            Vec::<FpGadget<F>>::alloc_constant(cs.ns(|| "alloc field_elements"), || Ok(val.field_elements.clone()))?;
-        let remaining_bytes = UInt8::constant_vec(&val.remaining_bytes);
-
+            Vec::alloc_constant(cs.ns(|| "alloc field_elements"), || Ok(encoded.field_elements.clone()))?;
+        let remaining_bytes = UInt8::constant_vec(&encoded.remaining_bytes);
         Ok(Self {
             field_elements,
             remaining_bytes,
@@ -66,13 +64,10 @@ impl<F: PrimeField> AllocGadget<FieldEncodedData<F>, F> for FieldEncodedDataGadg
         mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let f = value_gen()?;
-        let val = f.borrow();
-
-        let field_elements =
-            Vec::<FpGadget<F>>::alloc(cs.ns(|| "alloc field_elements"), || Ok(val.field_elements.clone()))?;
-        let remaining_bytes = UInt8::alloc_vec(cs.ns(|| "alloc remaining bytes"), &val.remaining_bytes)?;
-
+        let value = value_gen()?;
+        let encoded = value.borrow();
+        let field_elements = Vec::alloc(cs.ns(|| "alloc field_elements"), || Ok(encoded.field_elements.clone()))?;
+        let remaining_bytes = UInt8::alloc_vec(cs.ns(|| "alloc remaining bytes"), &encoded.remaining_bytes)?;
         Ok(Self {
             field_elements,
             remaining_bytes,
@@ -87,13 +82,10 @@ impl<F: PrimeField> AllocGadget<FieldEncodedData<F>, F> for FieldEncodedDataGadg
         mut cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let f = value_gen()?;
-        let val = f.borrow();
-
-        let field_elements =
-            Vec::<FpGadget<F>>::alloc_input(cs.ns(|| "alloc field_elements"), || Ok(val.field_elements.clone()))?;
-        let remaining_bytes = UInt8::alloc_input_vec_le(cs.ns(|| "alloc remaining bytes"), &val.remaining_bytes)?;
-
+        let value = value_gen()?;
+        let encoded = value.borrow();
+        let field_elements = Vec::alloc_input(cs.ns(|| "alloc field_elements"), || Ok(encoded.field_elements.clone()))?;
+        let remaining_bytes = UInt8::alloc_input_vec_le(cs.ns(|| "alloc remaining bytes"), &encoded.remaining_bytes)?;
         Ok(Self {
             field_elements,
             remaining_bytes,
@@ -146,18 +138,7 @@ impl<F: PrimeField> ToBytesGadget<F> for FieldEncodedDataGadget<F> {
     }
 
     fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
-        let mut res = vec![];
-
-        let field_elements_len = UInt8::constant(self.field_elements.len() as u8);
-        res.push(field_elements_len);
-
-        for (i, elem) in self.field_elements.iter().enumerate() {
-            res.extend_from_slice(&elem.to_bytes_strict(cs.ns(|| format!("to_bytes the field element {}", i)))?);
-        }
-
-        res.extend_from_slice(&self.remaining_bytes);
-
-        Ok(res)
+        self.to_bytes(cs)
     }
 }
 
@@ -178,57 +159,6 @@ impl<F: PrimeField> ToConstraintFieldGadget<F> for FieldEncodedDataGadget<F> {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct FieldEncodingGadget<F: PrimeField> {
     f_phantom: PhantomData<F>,
-}
-
-impl<F: PrimeField> EncodingGadget<FieldEncodingScheme<F>, F> for FieldEncodingGadget<F> {
-    type DataGadget = Vec<UInt8>;
-    type EncodedDataGadget = FieldEncodedDataGadget<F>;
-
-    fn enforce_encoding_correctness<CS: ConstraintSystem<F>>(
-        &self,
-        mut cs: CS,
-        data: &Self::DataGadget,
-        encoded_data: &Self::EncodedDataGadget,
-    ) -> Result<(), SynthesisError> {
-        // Enforce the `encoded_data` has a reasonable amount of remaining bytes.
-        let capacity = <F::Parameters as FieldParameters>::CAPACITY as usize;
-        let cutoff_bytes = capacity / 8;
-        assert!(encoded_data.remaining_bytes.len() <= cutoff_bytes);
-
-        // Convert the `data` into bits.
-        let mut left_bits = Vec::<Boolean>::with_capacity(data.len() * 8);
-
-        for byte in data.iter() {
-            let byte_bits = byte.to_bits_le();
-            left_bits.extend_from_slice(&byte_bits);
-        }
-
-        // Convert the `encoded_data` into bits.
-        let mut right_bits = Vec::<Boolean>::with_capacity(
-            encoded_data.field_elements.len() * capacity + encoded_data.remaining_bytes.len() * 8,
-        );
-
-        for (i, elem) in encoded_data.field_elements.iter().enumerate() {
-            let elem_bits = elem.to_bits_le(cs.ns(|| format!("to_bits encoded data element {}", i)))?;
-            right_bits.extend_from_slice(&elem_bits[..capacity]);
-        }
-        for byte in encoded_data.remaining_bytes.iter() {
-            let byte_bits = byte.to_bits_le();
-            right_bits.extend_from_slice(&byte_bits);
-        }
-
-        // Truncate the ending zero bits in the encoded data.
-        let additional_bits = right_bits.len() % 8;
-        right_bits.truncate(right_bits.len() - additional_bits);
-
-        if left_bits.len() != right_bits.len() {
-            return Err(SynthesisError::Unsatisfiable);
-        }
-
-        left_bits.enforce_equal(cs.ns(|| "enforce consistency"), &right_bits)?;
-
-        Ok(())
-    }
 }
 
 impl<F: PrimeField> AllocGadget<FieldEncodingScheme<F>, F> for FieldEncodingGadget<F> {
@@ -259,5 +189,55 @@ impl<F: PrimeField> AllocGadget<FieldEncodingScheme<F>, F> for FieldEncodingGadg
         _f: Fn,
     ) -> Result<Self, SynthesisError> {
         unimplemented!()
+    }
+}
+
+impl<F: PrimeField> EncodingGadget<FieldEncodingScheme<F>, F> for FieldEncodingGadget<F> {
+    type DataGadget = Vec<UInt8>;
+    type EncodedDataGadget = FieldEncodedDataGadget<F>;
+
+    /// Enforces that given data and encoded data matches in their bit representation.
+    fn enforce_encoding_correctness<CS: ConstraintSystem<F>>(
+        &self,
+        mut cs: CS,
+        data: &Self::DataGadget,
+        encoded_data: &Self::EncodedDataGadget,
+    ) -> Result<(), SynthesisError> {
+        // Enforce the `encoded_data` has a reasonable amount of remaining bytes.
+        let field_capacity = <F::Parameters as FieldParameters>::CAPACITY as usize;
+        assert!(
+            encoded_data.remaining_bytes.len() <= (field_capacity / 8),
+            "Remaining bytes should fit within 1 field element"
+        );
+
+        // Convert the `data` into bits.
+        let mut data_bits = Vec::<Boolean>::with_capacity(data.len() * 8);
+        for byte in data.iter() {
+            data_bits.extend_from_slice(&byte.to_bits_le());
+        }
+
+        // Convert the `encoded_data` into bits.
+        let encoded_data_capacity =
+            encoded_data.field_elements.len() * field_capacity + encoded_data.remaining_bytes.len() * 8;
+        let mut encoded_data_bits = Vec::<Boolean>::with_capacity(encoded_data_capacity);
+        for (i, element) in encoded_data.field_elements.iter().enumerate() {
+            let element_bits = element.to_bits_le(cs.ns(|| format!("to_bits encoded data element {}", i)))?;
+            encoded_data_bits.extend_from_slice(&element_bits[..field_capacity]);
+        }
+        for byte in encoded_data.remaining_bytes.iter() {
+            encoded_data_bits.extend_from_slice(&byte.to_bits_le());
+        }
+
+        // Truncate the ending zero bits in the encoded data.
+        let additional_bits = encoded_data_bits.len() % 8;
+        encoded_data_bits.truncate(encoded_data_bits.len() - additional_bits);
+
+        if data_bits.len() != encoded_data_bits.len() {
+            return Err(SynthesisError::Unsatisfiable);
+        }
+
+        data_bits.enforce_equal(cs.ns(|| "enforce consistency"), &encoded_data_bits)?;
+
+        Ok(())
     }
 }
