@@ -16,13 +16,13 @@
 
 use crate::{
     account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT},
-    testnet2::DPC,
     InnerCircuitVerifierInput,
     Network,
     OuterCircuitVerifierInput,
     Parameters,
     ProgramLocalData,
     Transaction,
+    DPC,
 };
 use snarkvm_algorithms::{
     commitment::{BHPCompressedCommitment, Blake2sCommitment},
@@ -59,7 +59,7 @@ use snarkvm_marlin::{
     FiatShamirAlgebraicSpongeRng,
     PoseidonSponge,
 };
-use snarkvm_parameters::{testnet2::UniversalSRSParameters, Parameter};
+use snarkvm_parameters::{testnet2::*, Parameter};
 use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
 use snarkvm_utilities::FromBytes;
 
@@ -73,6 +73,41 @@ macro_rules! dpc_setup {
         fn $fn_name() -> &'static Self::$type_name {
             static $static_name: OnceCell<<Testnet2Parameters as Parameters>::$type_name> = OnceCell::new();
             $static_name.get_or_init(|| Self::$type_name::setup($setup_msg))
+        }
+    };
+}
+
+#[rustfmt::skip]
+macro_rules! dpc_snark_setup {
+    ($fn_name: ident, $static_name: ident, $snark_type: ident, $key_type: ident, $parameter: ident, $message: expr) => {
+        #[inline]
+        fn $fn_name() -> &'static <Self::$snark_type as SNARK>::$key_type {
+            static $static_name: OnceCell<<<Testnet2Parameters as Parameters>::$snark_type as SNARK>::$key_type> = OnceCell::new();
+            $static_name.get_or_init(|| {
+                <Self::$snark_type as SNARK>::$key_type::read_le(
+                    $parameter::load_bytes().expect(&format!("Failed to load parameter bytes for {}", $message)).as_slice()
+                ).expect(&format!("Failed to read {} from bytes", $message))
+            })
+        }
+    };
+}
+
+#[rustfmt::skip]
+macro_rules! dpc_snark_setup_with_mode {
+    ($fn_name: ident, $static_name: ident, $snark_type: ident, $key_type: ident, $parameter: ident, $message: expr) => {
+        #[inline]
+        fn $fn_name(is_prover: bool) -> &'static Option<<Self::$snark_type as SNARK>::$key_type> {
+            match is_prover {
+                true => {
+                    static $static_name: OnceCell<Option<<<Testnet2Parameters as Parameters>::$snark_type as SNARK>::$key_type>> = OnceCell::new();
+                    $static_name.get_or_init(|| {
+                        Some(<Self::$snark_type as SNARK>::$key_type::read_le(
+                            $parameter::load_bytes().expect(&format!("Failed to load parameter bytes for {}", $message)).as_slice(),
+                        ).expect(&format!("Failed to read {} from bytes", $message)))
+                    })
+                }
+                false => &None,
+            }
         }
     };
 }
@@ -183,6 +218,15 @@ impl Parameters for Testnet2Parameters {
     dpc_setup!{record_commitment_scheme, RECORD_COMMITMENT_SCHEME, RecordCommitmentScheme, "AleoRecordCommitment0"} // TODO (howardwu): Rename to "AleoRecordCommitmentScheme0".
     dpc_setup!{record_commitment_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoLedgerMerkleTreeCRH0"} // TODO (howardwu): Rename to "AleoRecordCommitmentTreeCRH0".
     dpc_setup!{serial_number_nonce_crh, SERIAL_NUMBER_NONCE_CRH, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
+
+    dpc_snark_setup_with_mode!{inner_circuit_proving_key, INNER_CIRCUIT_PROVING_KEY, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
+    dpc_snark_setup!{inner_circuit_verifying_key, INNER_CIRCUIT_VERIFYING_KEY, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
+    
+    dpc_snark_setup!{noop_program_proving_key, NOOP_PROGRAM_PROVING_KEY, ProgramSNARK, ProvingKey, NoopProgramSNARKPKParameters, "noop program proving key"}
+    dpc_snark_setup!{noop_program_verifying_key, NOOP_PROGRAM_VERIFYING_KEY, ProgramSNARK, VerifyingKey, NoopProgramSNARKVKParameters, "noop program verifying key"}
+    
+    dpc_snark_setup_with_mode!{outer_circuit_proving_key, OUTER_CIRCUIT_PROVING_KEY, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
+    dpc_snark_setup!{outer_circuit_verifying_key, OUTER_CIRCUIT_VERIFYING_KEY, OuterSNARK, VerifyingKey, OuterSNARKVKParameters, "outer circuit verifying key"}
 
     // TODO (howardwu): TEMPORARY - Refactor this to a proper tree.
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters {

@@ -17,11 +17,9 @@
 use crate::*;
 use snarkvm_algorithms::merkle_tree::*;
 use snarkvm_dpc::prelude::*;
-use snarkvm_ledger::prelude::*;
 use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
 
 use parking_lot::RwLock;
-use rand::{thread_rng, Rng};
 use std::{
     fs,
     path::Path,
@@ -31,17 +29,12 @@ use std::{
     },
 };
 
-pub fn random_storage_path() -> String {
-    let random_path: usize = thread_rng().gen();
-    format!("./test_db-{}", random_path)
-}
+// TODO (howardwu): TEMPORARY - Deprecate this.
+pub fn bytes_to_u32(bytes: &[u8]) -> u32 {
+    let mut num_bytes = [0u8; 4];
+    num_bytes.copy_from_slice(&bytes);
 
-/// Initializes a test ledger given a genesis block.
-pub fn initialize_test_blockchain<C: Parameters, S: Storage>(genesis_block: Block<Transaction<C>>) -> Ledger<C, S> {
-    let mut path = std::env::temp_dir();
-    path.push(random_storage_path());
-
-    Ledger::new(Some(&path), genesis_block).unwrap()
+    u32::from_le_bytes(num_bytes)
 }
 
 pub type BlockHeight = u32;
@@ -74,15 +67,15 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
         let leaves: &[[u8; 32]] = &[];
         let parameters = Arc::new(C::record_commitment_tree_parameters().clone());
 
-        let ledger_storage = Self {
+        let ledger = Self {
             current_block_height: Default::default(),
             record_commitment_tree: RwLock::new(MerkleTree::new(parameters, leaves)?),
             storage,
         };
 
-        ledger_storage.insert_and_commit(&genesis_block)?;
+        ledger.insert_and_commit(&genesis_block)?;
 
-        Ok(ledger_storage)
+        Ok(ledger)
     }
 
     /// Returns the latest number of blocks in the ledger.

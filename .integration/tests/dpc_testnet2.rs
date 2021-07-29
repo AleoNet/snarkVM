@@ -20,8 +20,8 @@ use snarkvm_algorithms::{
     SRS,
 };
 use snarkvm_curves::bls12_377::{Fq, Fr};
-use snarkvm_dpc::{prelude::*, testnet2::parameters::*};
-use snarkvm_integration::{ledger::*, memdb::MemDb, testnet2::*};
+use snarkvm_dpc::{prelude::*, testnet2::*};
+use snarkvm_integration::{testnet2::*, *};
 use snarkvm_ledger::prelude::*;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};

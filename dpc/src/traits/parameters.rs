@@ -246,6 +246,15 @@ pub trait Parameters: 'static + Sized {
 
     fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
 
+    fn inner_circuit_proving_key(is_prover: bool) -> &'static Option<<Self::InnerSNARK as SNARK>::ProvingKey>;
+    fn inner_circuit_verifying_key() -> &'static <Self::InnerSNARK as SNARK>::VerifyingKey;
+
+    fn noop_program_proving_key() -> &'static <Self::ProgramSNARK as SNARK>::ProvingKey;
+    fn noop_program_verifying_key() -> &'static <Self::ProgramSNARK as SNARK>::VerifyingKey;
+
+    fn outer_circuit_proving_key(is_prover: bool) -> &'static Option<<Self::OuterSNARK as SNARK>::ProvingKey>;
+    fn outer_circuit_verifying_key() -> &'static <Self::OuterSNARK as SNARK>::VerifyingKey;
+
     /// Returns the program SRS for Aleo applications.
     fn program_srs<R: Rng + CryptoRng>(
         rng: &mut R,

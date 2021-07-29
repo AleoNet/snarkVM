@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod dpc;
-pub use dpc::*;
+#[cfg(feature = "testnet1")]
+pub mod testnet1;
 
-pub mod parameters;
+#[cfg(feature = "testnet2")]
+pub mod testnet2;

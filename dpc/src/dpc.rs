@@ -15,11 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
-use rand::{CryptoRng, Rng};
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, merkle_tree::MerklePath, prelude::*};
 use snarkvm_fields::ToConstraintField;
-use snarkvm_parameters::{prelude::*, testnet2::*};
-use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
+use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes_le, ToBytes};
+
+use rand::{CryptoRng, Rng};
 
 pub struct DPC<C: Parameters> {
     pub noop_program: NoopProgram<C>,
@@ -75,28 +75,14 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let timer = start_timer!(|| "DPC::load");
         let noop_program = NoopProgram::load()?;
         let inner_snark_parameters = {
-            let inner_snark_pk = match verify_only {
-                true => None,
-                false => Some(<C::InnerSNARK as SNARK>::ProvingKey::read_le(
-                    InnerSNARKPKParameters::load_bytes()?.as_slice(),
-                )?),
-            };
-            let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey =
-                <C::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
-
+            let inner_snark_pk = C::inner_circuit_proving_key(!verify_only).clone();
+            let inner_snark_vk = C::inner_circuit_verifying_key().clone();
             (inner_snark_pk, inner_snark_vk)
         };
 
         let outer_snark_parameters = {
-            let outer_snark_pk = match verify_only {
-                true => None,
-                false => Some(<C::OuterSNARK as SNARK>::ProvingKey::read_le(
-                    OuterSNARKPKParameters::load_bytes()?.as_slice(),
-                )?),
-            };
-            let outer_snark_vk: <C::OuterSNARK as SNARK>::VerifyingKey =
-                <C::OuterSNARK as SNARK>::VerifyingKey::read_le(OuterSNARKVKParameters::load_bytes()?.as_slice())?;
-
+            let outer_snark_pk = C::outer_circuit_proving_key(!verify_only).clone();
+            let outer_snark_vk = C::outer_circuit_verifying_key().clone();
             (outer_snark_pk, outer_snark_vk)
         };
         end_timer!(timer);

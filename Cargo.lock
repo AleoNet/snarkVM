@@ -1796,6 +1796,7 @@ dependencies = [
  "criterion",
  "hex",
  "once_cell",
+ "parking_lot",
  "rand",
  "rand_chacha",
  "serde",
