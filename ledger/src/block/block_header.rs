@@ -201,11 +201,11 @@ mod tests {
         let block_header = BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             merkle_root_hash: MerkleRootHash([0u8; 32]),
+            pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),
             time: Utc::now().timestamp(),
             difficulty_target: 0u64,
             nonce: 0u32,
-            pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
-            proof: ProofOfSuccinctWork([0u8; ProofOfSuccinctWork::size()]),
         };
 
         let serialized1 = block_header.serialize();

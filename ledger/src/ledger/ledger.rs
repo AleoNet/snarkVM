@@ -42,6 +42,7 @@ pub type BlockHeight = u32;
 pub struct Ledger<C: Parameters, S: Storage> {
     pub current_block_height: AtomicU32,
     pub record_commitment_tree: RwLock<MerkleTree<C::RecordCommitmentTreeParameters>>,
+    pub record_serial_number_tree: RwLock<MerkleTree<C::RecordSerialNumberTreeParameters>>,
     pub storage: S,
 }
 
@@ -65,11 +66,14 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
         }
 
         let leaves: &[[u8; 32]] = &[];
-        let parameters = Arc::new(C::record_commitment_tree_parameters().clone());
+        let record_commitment_tree = MerkleTree::new(Arc::new(C::record_commitment_tree_parameters().clone()), leaves)?;
+        let record_serial_number_tree =
+            MerkleTree::new(Arc::new(C::record_serial_number_tree_parameters().clone()), leaves)?;
 
         let ledger = Self {
             current_block_height: Default::default(),
-            record_commitment_tree: RwLock::new(MerkleTree::new(parameters, leaves)?),
+            record_commitment_tree: RwLock::new(record_commitment_tree),
+            record_serial_number_tree: RwLock::new(record_serial_number_tree),
             storage,
         };
 

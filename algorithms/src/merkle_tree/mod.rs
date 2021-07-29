@@ -29,13 +29,6 @@ pub mod tests;
 /// Defines a Merkle tree using the provided hash and depth.
 macro_rules! define_merkle_tree_parameters {
     ($struct_name:ident, $hash:ty, $depth:expr) => {
-#[rustfmt::skip]
-        #[allow(unused_imports)]
-        use $crate::{
-            merkle_tree::MerkleTree, MerkleError,
-            traits::{CRH, LoadableMerkleParameters, MerkleParameters},
-        };
-
         #[derive(Clone, PartialEq, Eq, Debug)]
         pub struct $struct_name($hash);
 
