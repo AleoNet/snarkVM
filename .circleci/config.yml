@@ -165,6 +165,21 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-gadgets-cache
 
+  ledger:
+    docker:
+      - image: cimg/rust:1.53.0
+    resource_class: 2xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-ledger-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 35m
+          command: cd posw && RUST_MIN_STACK=67108864 cargo test
+      - clear_environment:
+          cache_key: snarkvm-ledger-cache
+
   marlin:
     docker:
       - image: cimg/rust:1.53.0
@@ -209,21 +224,6 @@ jobs:
           command: cd polycommit && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-polycommit-cache
-
-  posw:
-    docker:
-      - image: cimg/rust:1.53.0
-    resource_class: 2xlarge
-    steps:
-      - checkout
-      - setup_environment:
-          cache_key: snarkvm-ledger-cache
-      - run:
-          name: Build and run tests
-          no_output_timeout: 35m
-          command: cd posw && RUST_MIN_STACK=67108864 cargo test
-      - clear_environment:
-          cache_key: snarkvm-ledger-cache
 
   profiler:
     docker:
@@ -297,10 +297,10 @@ workflows:
       - dpc
       - fields
       - gadgets
+      - ledger
       - marlin
       - parameters
       - polycommit
-      - posw
       - profiler
       - r1cs
       - utilities
