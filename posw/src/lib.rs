@@ -65,7 +65,7 @@ mod tests {
     use snarkvm_utilities::FromBytes;
 
     use rand::SeedableRng;
-    use rand_xorshift::XorShiftRng;
+    use rand_chacha::ChaChaRng;
 
     #[test]
     fn test_load_verify_only() {
@@ -79,14 +79,14 @@ mod tests {
 
     #[test]
     fn test_posw_marlin() {
-        let rng = &mut XorShiftRng::seed_from_u64(1234567);
+        let rng = &mut ChaChaRng::seed_from_u64(1234567);
 
         // run the trusted setup
         let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
         let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(max_degree, rng).unwrap();
 
         // run the deterministic setup
-        let posw = PoswMarlin::index(universal_srs).unwrap();
+        let posw = PoswMarlin::index::<_, ChaChaRng>(universal_srs).unwrap();
 
         // super low difficulty so we find a solution immediately
         let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;

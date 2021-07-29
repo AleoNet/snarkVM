@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_INPUT, ACCOUNT_SIGNATURE_INPUT},
-    testnet1::{Testnet1Components, DPC},
+    account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT},
+    testnet1::DPC,
     InnerCircuitVerifierInput,
     Network,
     OuterCircuitVerifierInput,
@@ -29,7 +29,7 @@ use snarkvm_algorithms::{
     crh::BHPCompressedCRH,
     crypto_hash::PoseidonCryptoHash,
     define_merkle_tree_parameters,
-    encryption::GroupEncryption,
+    encryption::ECIESPoseidonEncryption,
     prelude::*,
     prf::Blake2s,
     signature::Schnorr,
@@ -46,7 +46,7 @@ use snarkvm_gadgets::{
         commitment::{BHPCompressedCommitmentGadget, Blake2sCommitmentGadget},
         crh::BHPCompressedCRHGadget,
         crypto_hash::PoseidonCryptoHashGadget,
-        encryption::GroupEncryptionGadget,
+        encryption::ECIESPoseidonEncryptionGadget,
         prf::Blake2sGadget,
         signature::SchnorrGadget,
         snark::Groth16VerifierGadget,
@@ -54,7 +54,9 @@ use snarkvm_gadgets::{
     curves::{bls12_377::PairingGadget, edwards_bls12::EdwardsBls12Gadget},
 };
 
+use anyhow::Result;
 use once_cell::sync::OnceCell;
+use rand::{CryptoRng, Rng};
 
 macro_rules! dpc_setup {
     ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
@@ -92,29 +94,31 @@ impl Parameters for Testnet1Parameters {
     type OuterBaseField = <Self::OuterCurve as PairingEngine>::Fq;
 
     type InnerSNARK = Groth16<Self::InnerCurve, InnerCircuitVerifierInput<Testnet1Parameters>>;
+    type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
+
     type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet1Parameters>>;
+
+    type ProgramSNARK = Groth16<Self::InnerCurve, ProgramLocalData<Self>>;
+    type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
 
     type AccountCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 33, 48>;
     type AccountCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 33, 48>;
     type AccountCommitment = <Self::AccountCommitmentScheme as CommitmentScheme>::Output;
 
-    type AccountEncryptionScheme = GroupEncryption<EdwardsBls12>;
-    type AccountEncryptionGadget = GroupEncryptionGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
+    type AccountEncryptionScheme = ECIESPoseidonEncryption<EdwardsParameters>;
+    type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<EdwardsParameters, Self::InnerScalarField>;
 
     type AccountSignatureScheme = Schnorr<EdwardsBls12>;
     type AccountSignatureGadget = SchnorrGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
     type AccountSignaturePublicKey = <Self::AccountSignatureScheme as SignatureScheme>::PublicKey;
 
-    type EncryptedRecordCRH = BHPCompressedCRH<EdwardsBls12, 48, 60>;
-    type EncryptedRecordCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 60>;
+    type EncryptedRecordCRH = PoseidonCryptoHash<Self::InnerScalarField, 4, false>;
+    type EncryptedRecordCRHGadget = PoseidonCryptoHashGadget<Self::InnerScalarField, 4, false>;
     type EncryptedRecordDigest = <Self::EncryptedRecordCRH as CRH>::Output;
-
-    type EncryptionGroup = EdwardsBls12;
-    type EncryptionGroupGadget = EdwardsBls12Gadget;
-    type EncryptionParameters = EdwardsParameters;
 
     type InnerCircuitIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type InnerCircuitIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
+    type InnerCircuitIDCRHDigest = <Self::InnerCircuitIDCRH as CRH>::Output;
 
     type LocalDataCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 24, 62>;
     type LocalDataCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 24, 62>;
@@ -146,8 +150,8 @@ impl Parameters for Testnet1Parameters {
     type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
 
     dpc_setup!{account_commitment_scheme, ACCOUNT_COMMITMENT_SCHEME, AccountCommitmentScheme, ACCOUNT_COMMITMENT_INPUT} // TODO (howardwu): Rename to "AleoAccountCommitmentScheme0".
-    dpc_setup!{account_encryption_scheme, ACCOUNT_ENCRYPTION_SCHEME, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_INPUT} // TODO (howardwu): Rename to "AleoAccountEncryptionScheme0".
-    dpc_setup!{account_signature_scheme, ACCOUNT_SIGNATURE_SCHEME, AccountSignatureScheme, ACCOUNT_SIGNATURE_INPUT} // TODO (howardwu): Rename to "AleoAccountSignatureScheme0".
+    dpc_setup!{account_encryption_scheme, ACCOUNT_ENCRYPTION_SCHEME, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
+    dpc_setup!{account_signature_scheme, ACCOUNT_SIGNATURE_SCHEME, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{encrypted_record_crh, ENCRYPTED_RECORD_CRH, EncryptedRecordCRH, "AleoEncryptedRecordCRH0"}
     dpc_setup!{inner_circuit_id_crh, INNER_CIRCUIT_ID_CRH, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
     dpc_setup!{local_data_commitment_scheme, LOCAL_DATA_COMMITMENT_SCHEME, LocalDataCommitmentScheme, "AleoLocalDataCommitment0"} // TODO (howardwu): Rename to "AleoLocalDataCommitmentScheme0".
@@ -163,10 +167,9 @@ impl Parameters for Testnet1Parameters {
         static RECORD_COMMITMENT_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::RecordCommitmentTreeParameters> = OnceCell::new();
         RECORD_COMMITMENT_TREE_PARAMETERS.get_or_init(|| Self::RecordCommitmentTreeParameters::from(Self::record_commitment_tree_crh().clone()))
     }
-}
 
-impl Testnet1Components for Testnet1Parameters {
-    type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
-    type ProgramSNARK = Groth16<Self::InnerCurve, ProgramLocalData<Self>>;
-    type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
+    /// Returns the program SRS for Aleo applications.
+    fn program_srs<R: Rng + CryptoRng>(rng: &mut R) -> Result<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>> {
+        Ok(SRS::CircuitSpecific(rng))
+    }
 }

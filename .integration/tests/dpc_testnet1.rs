@@ -17,14 +17,16 @@
 use snarkvm_algorithms::{
     merkle_tree::MerklePath,
     traits::{CRH, SNARK},
+    SRS,
 };
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{
     execute_inner_circuit,
+    execute_outer_circuit,
     prelude::*,
-    testnet1::{execute_outer_circuit, parameters::*, program::NoopProgram},
-    EncryptedRecord,
+    testnet1::parameters::*,
     InnerCircuit,
+    NoopProgram,
     Payload,
     Record,
     TransactionKernel,
@@ -33,7 +35,6 @@ use snarkvm_integration::{ledger::*, memdb::MemDb, testnet1::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
-use itertools::Itertools;
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use snarkvm_fields::ToConstraintField;
@@ -130,7 +131,7 @@ fn dpc_testnet1_integration_test() {
                 Payload::default(),
                 dpc.noop_program.id(),
                 dpc.noop_program.id(),
-                j as u8,
+                (Testnet1Parameters::NUM_INPUT_RECORDS + j) as u8,
                 joint_serial_numbers.clone(),
                 &mut rng,
             )
@@ -260,7 +261,7 @@ fn test_testnet1_transaction_kernel_serialization() {
                 Payload::default(),
                 dpc.noop_program.id(),
                 dpc.noop_program.id(),
-                j as u8,
+                (Testnet1Parameters::NUM_INPUT_RECORDS + j) as u8,
                 joint_serial_numbers.clone(),
                 &mut rng,
             )
@@ -348,7 +349,7 @@ fn test_testnet1_dpc_execute_constraints() {
                 Payload::default(),
                 dpc.noop_program.id(),
                 dpc.noop_program.id(),
-                j as u8,
+                (Testnet1Parameters::NUM_INPUT_RECORDS + j) as u8,
                 joint_serial_numbers.clone(),
                 &mut rng,
             )
@@ -422,15 +423,6 @@ fn test_testnet1_dpc_execute_constraints() {
         }
     }
 
-    // Prepare record encryption components used in the inner SNARK
-    let mut new_records_encryption_gadget_components = Vec::with_capacity(Testnet1Parameters::NUM_OUTPUT_RECORDS);
-    for (record, ciphertext_randomness) in new_records.iter().zip_eq(&new_records_encryption_randomness) {
-        let record_encryption_gadget_components =
-            EncryptedRecord::prepare_encryption_gadget_components(&record, ciphertext_randomness).unwrap();
-
-        new_records_encryption_gadget_components.push(record_encryption_gadget_components);
-    }
-
     //////////////////////////////////////////////////////////////////////////
     // Check that the core check constraint system was satisfied.
     let mut inner_circuit_cs = TestConstraintSystem::<Fr>::new();
@@ -445,7 +437,6 @@ fn test_testnet1_dpc_execute_constraints() {
         &new_records,
         &new_commitments,
         &new_records_encryption_randomness,
-        &new_records_encryption_gadget_components,
         &new_encrypted_record_hashes,
         &program_commitment,
         &program_randomness,
@@ -468,16 +459,16 @@ fn test_testnet1_dpc_execute_constraints() {
         println!("=========================================================");
         let num_constraints = inner_circuit_cs.num_constraints();
         println!("Inner circuit num constraints: {:?}", num_constraints);
-        assert_eq!(436013, num_constraints);
+        assert_eq!(291755, num_constraints);
         println!("=========================================================");
     }
 
     assert!(inner_circuit_cs.is_satisfied());
 
     // Generate inner snark parameters and proof for verification in the outer snark
-    let inner_snark_parameters = <Testnet1Parameters as Parameters>::InnerSNARK::circuit_specific_setup(
+    let inner_snark_parameters = <Testnet1Parameters as Parameters>::InnerSNARK::setup(
         &InnerCircuit::<Testnet1Parameters>::blank(),
-        &mut rng,
+        &mut SRS::CircuitSpecific(&mut rng),
     )
     .unwrap();
 
@@ -501,7 +492,6 @@ fn test_testnet1_dpc_execute_constraints() {
             new_records,
             new_commitments.clone(),
             new_records_encryption_randomness,
-            new_records_encryption_gadget_components,
             new_encrypted_record_hashes.clone(),
             program_commitment,
             program_randomness,
@@ -552,7 +542,7 @@ fn test_testnet1_dpc_execute_constraints() {
         println!("=========================================================");
         let num_constraints = outer_circuit_cs.num_constraints();
         println!("Outer circuit num constraints: {:?}", num_constraints);
-        assert_eq!(373250, num_constraints);
+        assert_eq!(379167, num_constraints);
         println!("=========================================================");
     }
 

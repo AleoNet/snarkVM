@@ -21,17 +21,17 @@ use snarkvm_utilities::FromBytes;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::SeedableRng;
-use rand_xorshift::XorShiftRng;
+use rand_chacha::ChaChaRng;
 
 fn marlin_posw(c: &mut Criterion) {
     let mut group = c.benchmark_group("Proof of Succinct Work: Marlin");
     group.sample_size(10);
-    let rng = &mut XorShiftRng::seed_from_u64(1234567);
+    let rng = &mut ChaChaRng::seed_from_u64(1234567);
 
     let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
     let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(max_degree, rng).unwrap();
 
-    let posw = PoswMarlin::index(universal_srs).unwrap();
+    let posw = PoswMarlin::index::<_, ChaChaRng>(universal_srs).unwrap();
 
     let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
 

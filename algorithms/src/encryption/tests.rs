@@ -71,7 +71,7 @@ mod ecies {
     use crate::{encryption::ECIESPoseidonEncryption, EncryptionScheme};
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaChaRng;
-    use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsParameters};
+    use snarkvm_curves::edwards_bls12::EdwardsParameters;
     use snarkvm_fields::PrimeField;
     use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 

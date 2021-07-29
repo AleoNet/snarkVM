@@ -22,6 +22,8 @@ use crate::{
     traits::{alloc::AllocGadget, eq::EqGadget, fields::FieldGadget},
     Boolean,
     FromFieldElementsGadget,
+    MergeGadget,
+    ToBitsLEGadget,
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, LinearCombination, SynthesisError};
@@ -266,6 +268,36 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for NonNative
         }
 
         Ok(Self { val: field_allocation })
+    }
+}
+
+impl<F: PrimeField, CF: PrimeField> MergeGadget<CF> for NonNativeFieldInputVar<F, CF> {
+    fn merge<CS: ConstraintSystem<CF>>(&self, _cs: CS, other: &Self) -> Result<Self, SynthesisError> {
+        let mut elems = vec![];
+        elems.extend_from_slice(&self.val);
+        elems.extend_from_slice(&other.val);
+
+        Ok(Self { val: elems })
+    }
+
+    fn merge_in_place<CS: ConstraintSystem<CF>>(&mut self, _cs: CS, other: &Self) -> Result<(), SynthesisError> {
+        self.val.extend_from_slice(&other.val);
+
+        Ok(())
+    }
+}
+
+impl<F: PrimeField, CF: PrimeField> ToBitsLEGadget<CF> for NonNativeFieldInputVar<F, CF> {
+    fn to_bits_le<CS: ConstraintSystem<CF>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        let mut res = vec![];
+        for (i, elem) in self.val.iter().enumerate() {
+            res.extend_from_slice(&elem.to_bits_le(cs.ns(|| format!("to_bits_{}", i)))?);
+        }
+        Ok(res)
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<CF>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.to_bits_le(cs)
     }
 }
 

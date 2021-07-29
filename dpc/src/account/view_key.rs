@@ -21,6 +21,7 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 use base58::{FromBase58, ToBase58};
 use rand::{CryptoRng, Rng};
 use std::{
+    convert::TryFrom,
     fmt,
     io::{Read, Result as IoResult, Write},
     str::FromStr,
@@ -56,18 +57,21 @@ impl<C: Parameters> ViewKey<C> {
     }
 }
 
-impl<C: Parameters> ToBytes for ViewKey<C> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.decryption_key.write_le(&mut writer)
+impl<C: Parameters> TryFrom<PrivateKey<C>> for ViewKey<C> {
+    type Error = AccountError;
+
+    /// Creates a new account view key from an account private key.
+    fn try_from(private_key: PrivateKey<C>) -> Result<Self, Self::Error> {
+        Self::try_from(&private_key)
     }
 }
 
-impl<C: Parameters> FromBytes for ViewKey<C> {
-    /// Reads in an account view key buffer.
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self {
-            decryption_key: <C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey::read_le(&mut reader)?,
-        })
+impl<C: Parameters> TryFrom<&PrivateKey<C>> for ViewKey<C> {
+    type Error = AccountError;
+
+    /// Creates a new account view key from an account private key.
+    fn try_from(private_key: &PrivateKey<C>) -> Result<Self, Self::Error> {
+        Self::from_private_key(private_key)
     }
 }
 
@@ -90,6 +94,21 @@ impl<C: Parameters> FromStr for ViewKey<C> {
         Ok(Self {
             decryption_key: FromBytes::read_le(&mut reader)?,
         })
+    }
+}
+
+impl<C: Parameters> FromBytes for ViewKey<C> {
+    /// Reads in an account view key buffer.
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(Self {
+            decryption_key: <C::AccountEncryptionScheme as EncryptionScheme>::PrivateKey::read_le(&mut reader)?,
+        })
+    }
+}
+
+impl<C: Parameters> ToBytes for ViewKey<C> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.decryption_key.write_le(&mut writer)
     }
 }
 

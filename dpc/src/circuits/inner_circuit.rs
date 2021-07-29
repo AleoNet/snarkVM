@@ -14,14 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    encrypted::RecordEncryptionGadgetComponents,
-    execute_inner_circuit,
-    record::Record,
-    AleoAmount,
-    Parameters,
-    PrivateKey,
-};
+use crate::{execute_inner_circuit, record::Record, AleoAmount, Parameters, PrivateKey};
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
     traits::{CommitmentScheme, EncryptionScheme, SignatureScheme},
@@ -46,7 +39,6 @@ pub struct InnerCircuit<C: Parameters> {
 
     // Inputs for encryption of new records.
     new_records_encryption_randomness: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
-    new_records_encryption_gadget_components: Vec<RecordEncryptionGadgetComponents<C>>,
     new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
 
     // Commitment to Programs and to local data.
@@ -79,9 +71,6 @@ impl<C: Parameters> InnerCircuit<C> {
         let new_records_encryption_randomness =
             vec![<C::AccountEncryptionScheme as EncryptionScheme>::Randomness::default(); num_output_records];
 
-        let new_records_encryption_gadget_components =
-            vec![RecordEncryptionGadgetComponents::<C>::default(); num_output_records];
-
         let new_encrypted_record_hashes = vec![C::EncryptedRecordDigest::default(); num_output_records];
 
         let memo = [0u8; 64];
@@ -113,7 +102,6 @@ impl<C: Parameters> InnerCircuit<C> {
             new_commitments,
 
             new_records_encryption_randomness,
-            new_records_encryption_gadget_components,
             new_encrypted_record_hashes,
 
             // Other stuff
@@ -143,7 +131,6 @@ impl<C: Parameters> InnerCircuit<C> {
         new_commitments: Vec<C::RecordCommitment>,
 
         new_records_encryption_randomness: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
-        new_records_encryption_gadget_components: Vec<RecordEncryptionGadgetComponents<C>>,
         new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
 
         // Other stuff
@@ -169,22 +156,7 @@ impl<C: Parameters> InnerCircuit<C> {
         assert_eq!(num_output_records, new_commitments.len());
 
         assert_eq!(num_output_records, new_records_encryption_randomness.len());
-        assert_eq!(num_output_records, new_records_encryption_gadget_components.len());
         assert_eq!(num_output_records, new_encrypted_record_hashes.len());
-
-        // TODO (raychu86) Fix the lengths to be generic
-        let record_encoding_length = 10;
-
-        for gadget_components in &new_records_encryption_gadget_components {
-            assert_eq!(gadget_components.record_field_elements.len(), record_encoding_length);
-            assert_eq!(gadget_components.record_group_encoding.len(), record_encoding_length);
-            assert_eq!(gadget_components.ciphertext_selectors.len(), record_encoding_length + 1);
-            assert_eq!(gadget_components.fq_high_selectors.len(), record_encoding_length);
-            assert_eq!(
-                gadget_components.encryption_blinding_exponents.len(),
-                record_encoding_length
-            );
-        }
 
         Self {
             // Ledger
@@ -201,7 +173,6 @@ impl<C: Parameters> InnerCircuit<C> {
             new_commitments,
 
             new_records_encryption_randomness,
-            new_records_encryption_gadget_components,
             new_encrypted_record_hashes,
 
             // Other stuff
@@ -234,7 +205,6 @@ impl<C: Parameters> ConstraintSynthesizer<C::InnerScalarField> for InnerCircuit<
             &self.new_records,
             &self.new_commitments,
             &self.new_records_encryption_randomness,
-            &self.new_records_encryption_gadget_components,
             &self.new_encrypted_record_hashes,
             // Other stuff
             &self.program_commitment,

@@ -14,23 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    testnet2::{execute_outer_circuit, Testnet2Components},
-    AleoAmount,
-    Execution,
-    Transaction,
-    TransactionScheme,
-};
+use crate::{execute_outer_circuit, AleoAmount, Execution, Parameters, Transaction, TransactionScheme};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, MerkleParameters, SignatureScheme, CRH, SNARK},
+    traits::{CommitmentScheme, SignatureScheme, CRH, SNARK},
 };
 use snarkvm_fields::ToConstraintField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Testnet2Components"))]
-pub struct OuterCircuit<C: Testnet2Components> {
+#[derivative(Clone(bound = "C: Parameters"))]
+pub struct OuterCircuit<C: Parameters> {
     // Inner snark verifier public inputs
     ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
     old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
@@ -52,7 +46,7 @@ pub struct OuterCircuit<C: Testnet2Components> {
     inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
 }
 
-impl<C: Testnet2Components> OuterCircuit<C> {
+impl<C: Parameters> OuterCircuit<C> {
     pub fn blank(
         inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
@@ -140,10 +134,9 @@ impl<C: Testnet2Components> OuterCircuit<C> {
     }
 }
 
-impl<C: Testnet2Components> ConstraintSynthesizer<C::OuterScalarField> for OuterCircuit<C>
+impl<C: Parameters> ConstraintSynthesizer<C::OuterScalarField> for OuterCircuit<C>
 where
     <C::AccountCommitmentScheme as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
-    <C::RecordCommitmentTreeParameters as MerkleParameters>::H: ToConstraintField<C::InnerScalarField>,
     MerkleTreeDigest<C::RecordCommitmentTreeParameters>: ToConstraintField<C::InnerScalarField>,
 {
     fn generate_constraints<CS: ConstraintSystem<C::OuterScalarField>>(

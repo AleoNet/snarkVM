@@ -23,6 +23,7 @@ use crate::{
         curves::CurveGadget,
         integers::integer::Integer,
     },
+    ToBytesGadget,
 };
 use snarkvm_algorithms::{commitment::BHPCommitment, CommitmentScheme};
 use snarkvm_curves::ProjectiveCurve;
@@ -50,6 +51,16 @@ impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for BHPRa
     ) -> Result<Self, SynthesisError> {
         let randomness = to_bytes_le![value_gen()?.borrow()].unwrap();
         Ok(Self(UInt8::alloc_input_vec_le(cs, &randomness)?, PhantomData))
+    }
+}
+
+impl<G: ProjectiveCurve, F: PrimeField> ToBytesGadget<F> for BHPRandomnessGadget<G> {
+    fn to_bytes<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.0.to_bytes(cs)
+    }
+
+    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.0.to_bytes_strict(cs)
     }
 }
 

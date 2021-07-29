@@ -22,7 +22,6 @@ use snarkvm_fields::ToConstraintField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
-    bits::{Boolean, ToBitsBEGadget},
     traits::{
         algorithms::snark::SNARKVerifierGadget,
         alloc::AllocGadget,
@@ -30,6 +29,7 @@ use crate::{
         eq::EqGadget,
     },
     AllocBytesGadget,
+    BooleanInputGadget,
     FpGadget,
     PrepareGadget,
     ToBytesGadget,
@@ -115,15 +115,15 @@ where
     V: ToConstraintField<PairingE::Fr>,
     P: PairingGadget<PairingE>,
 {
-    type Input = Vec<Boolean>;
+    type InputGadget = BooleanInputGadget<PairingE::Fr, PairingE::Fq>;
     type PreparedVerificationKeyGadget = PreparedVerifyingKeyGadget<PairingE, P>;
     type ProofGadget = ProofGadget<PairingE, P>;
     type VerificationKeyGadget = VerifyingKeyGadget<PairingE, P>;
 
-    fn prepared_check_verify<CS: ConstraintSystem<PairingE::Fq>, I: Iterator<Item = Self::Input>>(
+    fn prepared_check_verify<CS: ConstraintSystem<PairingE::Fq>>(
         mut cs: CS,
         pvk: &Self::PreparedVerificationKeyGadget,
-        mut public_inputs: I,
+        public_inputs: &Self::InputGadget,
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError> {
         let PreparedVerifyingKeyGadget {
@@ -133,20 +133,16 @@ where
             mut gamma_abc_g1,
         } = pvk.clone();
 
+        assert!(public_inputs.val.len() + 1 == gamma_abc_g1.len());
+
         let mut gamma_abc_g1_iter = gamma_abc_g1.iter_mut();
 
         let g_ic = {
             let mut cs = cs.ns(|| "Process input");
             let mut g_ic = gamma_abc_g1_iter.next().cloned().unwrap();
-            let mut input_len = 1;
-            for (i, (input, b)) in public_inputs.by_ref().zip(gamma_abc_g1_iter).enumerate() {
-                let input_bits = input.to_bits_be(cs.ns(|| format!("Input {}", i)))?;
-                g_ic = b.mul_bits(cs.ns(|| format!("Mul {}", i)), &g_ic, input_bits.into_iter())?;
-                input_len += 1;
+            for (i, (input, b)) in public_inputs.val.iter().zip(gamma_abc_g1_iter).enumerate() {
+                g_ic = b.mul_bits(cs.ns(|| format!("Mul {}", i)), &g_ic, input.into_iter().copied())?;
             }
-            // Check that the input and the query in the verification are of the
-            // same length.
-            assert!(input_len == gamma_abc_g1.len() && public_inputs.next().is_none());
             g_ic
         };
 
@@ -170,10 +166,10 @@ where
         Ok(())
     }
 
-    fn check_verify<'a, CS: ConstraintSystem<PairingE::Fq>, I: Iterator<Item = Self::Input>>(
+    fn check_verify<'a, CS: ConstraintSystem<PairingE::Fq>>(
         mut cs: CS,
         vk: &Self::VerificationKeyGadget,
-        input: I,
+        input: &Self::InputGadget,
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError> {
         let pvk = vk.prepare(cs.ns(|| "Prepare vk"))?;

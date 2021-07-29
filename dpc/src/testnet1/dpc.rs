@@ -14,19 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    prelude::*,
-    testnet1::{NoopProgram, OuterCircuit, Testnet1Components},
-};
+use crate::prelude::*;
+use rand::{CryptoRng, Rng};
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, merkle_tree::MerklePath, prelude::*};
+use snarkvm_fields::ToConstraintField;
 use snarkvm_parameters::{prelude::*, testnet1::*};
 use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
 
-use itertools::Itertools;
-use rand::{CryptoRng, Rng};
-use snarkvm_fields::ToConstraintField;
-
-pub struct DPC<C: Testnet1Components> {
+pub struct DPC<C: Parameters> {
     pub noop_program: NoopProgram<C>,
     pub inner_snark_parameters: (
         Option<<C::InnerSNARK as SNARK>::ProvingKey>,
@@ -38,7 +33,7 @@ pub struct DPC<C: Testnet1Components> {
     ),
 }
 
-impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
+impl<C: Parameters> DPCScheme<C> for DPC<C> {
     type Account = Account<C>;
     type Execution = Execution<C::ProgramSNARK>;
     type Record = Record<C>;
@@ -55,16 +50,16 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
 
         let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");
         let inner_circuit = InnerCircuit::<C>::blank();
-        let inner_snark_parameters = C::InnerSNARK::circuit_specific_setup(&inner_circuit, rng)?;
+        let inner_snark_parameters = C::InnerSNARK::setup(&inner_circuit, &mut SRS::CircuitSpecific(rng))?;
         end_timer!(snark_setup_time);
 
         let snark_setup_time = start_timer!(|| "Execute outer SNARK setup");
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = inner_snark_parameters.1.clone().into();
         let inner_snark_proof = C::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, rng)?;
 
-        let outer_snark_parameters = C::OuterSNARK::circuit_specific_setup(
+        let outer_snark_parameters = C::OuterSNARK::setup(
             &OuterCircuit::<C>::blank(inner_snark_vk, inner_snark_proof, noop_program_execution),
-            rng,
+            &mut SRS::CircuitSpecific(rng),
         )?;
         end_timer!(snark_setup_time);
         end_timer!(setup_time);
@@ -333,17 +328,6 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
             }
         }
 
-        // Prepare record encryption components used in the inner SNARK
-
-        let mut new_records_encryption_gadget_components = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-
-        for (record, ciphertext_randomness) in new_records.iter().zip_eq(&new_records_encryption_randomness) {
-            let record_encryption_gadget_components =
-                EncryptedRecord::prepare_encryption_gadget_components(&record, ciphertext_randomness)?;
-
-            new_records_encryption_gadget_components.push(record_encryption_gadget_components);
-        }
-
         let inner_proof = {
             let circuit = InnerCircuit::new(
                 ledger_digest.clone(),
@@ -354,7 +338,6 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
                 new_records.clone(),
                 new_commitments.clone(),
                 new_records_encryption_randomness,
-                new_records_encryption_gadget_components,
                 new_encrypted_record_hashes.clone(),
                 program_commitment.clone(),
                 program_randomness.clone(),
@@ -403,7 +386,7 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
                 ledger_digest.clone(),
                 old_serial_numbers.clone(),
                 new_commitments.clone(),
-                new_encrypted_record_hashes,
+                new_encrypted_record_hashes.clone(),
                 memorandum,
                 value_balance,
                 network_id,
@@ -423,6 +406,32 @@ impl<C: Testnet1Components> DPCScheme<C> for DPC<C> {
 
             C::OuterSNARK::prove(&outer_snark_parameters, &circuit, rng)?
         };
+
+        // Verify the outer proof passes.
+        {
+            let inner_snark_input = InnerCircuitVerifierInput {
+                ledger_digest: ledger_digest.clone(),
+                old_serial_numbers: old_serial_numbers.clone(),
+                new_commitments: new_commitments.clone(),
+                new_encrypted_record_hashes,
+                memo: memorandum,
+                program_commitment: None,
+                local_data_root: None,
+                value_balance,
+                network_id,
+            };
+
+            let input = OuterCircuitVerifierInput {
+                inner_snark_verifier_input: inner_snark_input,
+                inner_circuit_id: inner_circuit_id.clone(),
+            };
+
+            assert!(C::OuterSNARK::verify(
+                &self.outer_snark_parameters.1,
+                &input,
+                &transaction_proof
+            )?);
+        }
 
         let transaction = Self::Transaction::new(
             Network::from_id(network_id),

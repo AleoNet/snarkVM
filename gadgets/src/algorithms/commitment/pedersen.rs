@@ -17,6 +17,7 @@
 use crate::{
     integers::uint::UInt8,
     traits::{algorithms::CommitmentGadget, alloc::AllocGadget, curves::CurveGadget, integers::Integer},
+    ToBytesGadget,
 };
 use snarkvm_algorithms::commitment::PedersenCommitment;
 use snarkvm_curves::ProjectiveCurve;
@@ -61,6 +62,16 @@ impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for Peder
             UInt8::alloc_input_vec_le(cs, &randomness)?,
             PhantomData,
         ))
+    }
+}
+
+impl<G: ProjectiveCurve, F: PrimeField> ToBytesGadget<F> for PedersenRandomnessGadget<G> {
+    fn to_bytes<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.0.to_bytes(cs)
+    }
+
+    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+        self.0.to_bytes_strict(cs)
     }
 }
 

@@ -24,6 +24,7 @@ use crate::{
 use snarkvm_algorithms::{
     crh::sha256d_to_u64,
     traits::{MaskedMerkleParameters, SNARK},
+    SRS,
 };
 use snarkvm_curves::{
     bls12_377::Fr,
@@ -40,7 +41,7 @@ use snarkvm_gadgets::{
     curves::edwards_bls12::EdwardsBls12Gadget,
     traits::algorithms::MaskedCRHGadget,
 };
-use snarkvm_marlin::snark::SRS;
+use snarkvm_marlin::snark::MarlinSRS;
 use snarkvm_parameters::{
     testnet1::{PoswSNARKPKParameters, PoswSNARKVKParameters},
     traits::Parameter,
@@ -49,7 +50,7 @@ use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use blake2::{digest::Digest, Blake2s};
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 use std::marker::PhantomData;
 
 /// Commits to the nonce and pedersen merkle root
@@ -145,12 +146,12 @@ impl<S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>, const MASK_NUM_BYTES: 
     //  (2) Update `Posw::setup` to take in an `OptionalRng` and account for the universal setup.
     // #[cfg(any(test, feature = "test-helpers"))]
     #[deprecated]
-    pub fn setup<R: Rng>(rng: &mut R) -> Result<Self, PoswError>
+    pub fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, PoswError>
     where
         S: SNARK,
     {
-        let params = S::circuit_specific_setup(
-            &PoswCircuit::<Fr> {
+        let params = S::setup(
+            &PoswCircuit::<F> {
                 // the circuit will be padded internally
                 leaves: vec![None; 0],
                 merkle_parameters: PARAMS.clone(),
@@ -159,7 +160,7 @@ impl<S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>, const MASK_NUM_BYTES: 
                 field_type: PhantomData,
                 crh_gadget_type: PhantomData,
             },
-            rng,
+            &mut SRS::CircuitSpecific(rng),
         )?;
 
         Ok(Self {
@@ -170,13 +171,13 @@ impl<S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>, const MASK_NUM_BYTES: 
     }
 
     /// Performs a deterministic setup for systems with universal setups
-    pub fn index<E>(srs: SRS<E>) -> Result<Self, PoswError>
+    pub fn index<E, R: Rng + CryptoRng>(srs: MarlinSRS<E>) -> Result<Self, PoswError>
     where
         E: PairingEngine,
-        S: SNARK<UniversalSetupParameters = SRS<E>>,
+        S: SNARK<UniversalSetupParameters = MarlinSRS<E>>,
     {
-        let params = S::index(
-            &PoswCircuit::<Fr> {
+        let params = S::setup::<_, R>(
+            &PoswCircuit::<F> {
                 // the circuit will be padded internally
                 leaves: vec![None; 0],
                 merkle_parameters: PARAMS.clone(),
@@ -185,7 +186,7 @@ impl<S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>, const MASK_NUM_BYTES: 
                 field_type: PhantomData,
                 crh_gadget_type: PhantomData,
             },
-            &srs,
+            &mut SRS::<R, _>::Universal(srs),
         )?;
 
         Ok(Self {
@@ -197,7 +198,7 @@ impl<S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>, const MASK_NUM_BYTES: 
 
     /// Given the subroots of the block, it will calculate a POSW and a nonce such that they are
     /// under the difficulty target. These can then be used in the block header's field.
-    pub fn mine<R: Rng>(
+    pub fn mine<R: Rng + CryptoRng>(
         &self,
         subroots: &[[u8; 32]],
         difficulty_target: u64, // TODO: Change to Bignum?
@@ -224,7 +225,7 @@ impl<S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>, const MASK_NUM_BYTES: 
 
     /// Runs the internal SNARK `prove` function on the POSW circuit and returns
     /// the proof serialized as bytes
-    fn prove<R: Rng>(
+    fn prove<R: Rng + CryptoRng>(
         pk: &S::ProvingKey,
         nonce: u32,
         subroots: &[[u8; 32]],
