@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::ProgramError;
-use snarkvm_algorithms::SNARK;
+use snarkvm_algorithms::{merkle_tree::MerklePath, MerkleParameters, SNARK};
 
 use core::fmt::Debug;
 use rand::{CryptoRng, Rng};
@@ -27,6 +27,7 @@ pub trait ProgramScheme: Clone {
     type PublicInput;
     type Execution;
     type ProgramIDCRH;
+    type ProgramSelectorTree: MerkleParameters;
     type ProofSystem: SNARK;
     type ProvingKey;
     type VerifyingKey;
@@ -42,6 +43,7 @@ pub trait ProgramScheme: Clone {
         &self,
         local_data: &Self::LocalData,
         position: u8,
+        program_selector_path: MerklePath<Self::ProgramSelectorTree>,
         rng: &mut R,
     ) -> Result<Self::Execution, ProgramError>;
 
