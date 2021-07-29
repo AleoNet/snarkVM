@@ -156,11 +156,6 @@ impl<C: Parameters, S: Storage> RecordSerialNumberTree<C> for Ledger<C, S> {
 }
 
 impl<C: Parameters, S: Storage> Ledger<C, S> {
-    /// Returns true if there are no blocks in the ledger.
-    pub fn is_empty(&self) -> bool {
-        self.latest_block().is_err()
-    }
-
     /// Find the potential child block hashes given a parent block header.
     pub fn get_child_block_hashes(
         &self,
@@ -200,7 +195,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
     }
 
     /// Get the current commitment index
-    pub fn current_cm_index(&self) -> Result<usize, StorageError> {
+    fn current_cm_index(&self) -> Result<usize, StorageError> {
         match self.storage.get(COL_META, KEY_CURR_CM_INDEX.as_bytes())? {
             Some(cm_index_bytes) => Ok(bytes_to_u32(&cm_index_bytes) as usize),
             None => Ok(0),
@@ -208,7 +203,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
     }
 
     /// Get the current serial number index
-    pub fn current_sn_index(&self) -> Result<usize, StorageError> {
+    fn current_sn_index(&self) -> Result<usize, StorageError> {
         match self.storage.get(COL_META, KEY_CURR_SN_INDEX.as_bytes())? {
             Some(sn_index_bytes) => Ok(bytes_to_u32(&sn_index_bytes) as usize),
             None => Ok(0),
@@ -216,7 +211,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
     }
 
     /// Get serial number index.
-    pub fn get_sn_index(&self, sn_bytes: &[u8]) -> Result<Option<usize>, StorageError> {
+    fn get_sn_index(&self, sn_bytes: &[u8]) -> Result<Option<usize>, StorageError> {
         match self.storage.get(COL_SERIAL_NUMBER, sn_bytes)? {
             Some(sn_index_bytes) => {
                 let mut sn_index = [0u8; 4];
@@ -229,7 +224,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
     }
 
     /// Get commitment index
-    pub fn get_cm_index(&self, cm_bytes: &[u8]) -> Result<Option<usize>, StorageError> {
+    fn get_cm_index(&self, cm_bytes: &[u8]) -> Result<Option<usize>, StorageError> {
         match self.storage.get(COL_COMMITMENT, cm_bytes)? {
             Some(cm_index_bytes) => {
                 let mut cm_index = [0u8; 4];
