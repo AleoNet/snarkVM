@@ -49,6 +49,9 @@ pub enum StorageError {
     #[error("Can't decommit the genesis block")]
     InvalidBlockDecommit,
 
+    #[error("Invalid block header")]
+    InvalidBlockHeader,
+
     #[error("Can't remove a canon block with hash")]
     InvalidBlockRemovalCanon(String),
 
@@ -57,6 +60,9 @@ pub enum StorageError {
 
     #[error("invalid column family {}", _0)]
     InvalidColumnFamily(u32),
+
+    #[error("Invalid genesis block header")]
+    InvalidGenesisBlockHeader,
 
     #[error("missing outpoint with transaction with id {} and index {}", _0, _1)]
     InvalidOutpoint(String, usize),

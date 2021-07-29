@@ -317,6 +317,11 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
 
     /// Insert a block into storage without canonizing/committing it.
     pub fn insert_only(&self, block: &Block<Transaction<C>>) -> Result<(), StorageError> {
+        // If the ledger is initialized, ensure the block header is not a genesis header.
+        if self.block_height() != 0 && block.header().is_genesis() {
+            return Err(StorageError::InvalidBlockHeader);
+        }
+
         let block_hash = block.header.get_hash();
 
         // Check that the block does not already exist.
@@ -394,9 +399,13 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
 
     /// Commit/canonize a particular block.
     pub fn commit(&self, block: &Block<Transaction<C>>) -> Result<(), StorageError> {
-        let block_header_hash = block.header.get_hash();
+        // If the ledger is initialized, ensure the block header is not a genesis header.
+        if self.block_height() != 0 && block.header().is_genesis() {
+            return Err(StorageError::InvalidBlockHeader);
+        }
 
-        // Check if the block is already in the canon chain
+        // Ensure the block is not already in the canon chain.
+        let block_header_hash = block.header.get_hash();
         if self.is_canon(&block_header_hash) {
             return Err(StorageError::ExistingCanonBlock(block_header_hash.to_string()));
         }
