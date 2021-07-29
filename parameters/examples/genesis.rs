@@ -22,7 +22,7 @@ use snarkvm_ledger::{
 };
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
-use rand::{thread_rng, Rng};
+use rand::thread_rng;
 use std::{
     fs::File,
     io::{Result as IoResult, Write},
@@ -34,24 +34,19 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
     let rng = &mut thread_rng();
 
     // TODO (howardwu): Deprecate this in favor of a simple struct with 2 Merkle trees.
-    let temporary_ledger = {
-        let mut temporary_path = std::env::temp_dir();
-        temporary_path.push(format!("./test_db-{}", rand::thread_rng().gen::<usize>()));
-
-        Ledger::<C, MemDb>::new(Some(&temporary_path), Block {
-            header: BlockHeader {
-                previous_block_hash: BlockHeaderHash([0u8; 32]),
-                merkle_root_hash: MerkleRootHash([0u8; 32]),
-                pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
-                time: 0,
-                difficulty_target: 0x07FF_FFFF_FFFF_FFFF_u64,
-                nonce: 0,
-                proof: ProofOfSuccinctWork([0u8; 972]),
-            },
-            transactions: Transactions::new(),
-        })
-        .unwrap()
-    };
+    let temporary_ledger = Ledger::<C, MemDb>::new(None, Block {
+        header: BlockHeader {
+            previous_block_hash: BlockHeaderHash([0u8; 32]),
+            merkle_root_hash: MerkleRootHash([0u8; 32]),
+            pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
+            time: 0,
+            difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
+            nonce: 0,
+            proof: ProofOfSuccinctWork([0u8; 972]),
+        },
+        transactions: Transactions::new(),
+    })
+    .unwrap();
 
     let dpc = DPC::<C>::load(false)?;
 
