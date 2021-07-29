@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{traits::TransactionScheme, TransactionError};
+use snarkvm_dpc::{TransactionError, TransactionScheme};
 use snarkvm_utilities::{
     has_duplicates,
     to_bytes_le,

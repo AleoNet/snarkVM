@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::TransactionError;
-
 use std::fmt::Debug;
 
 #[derive(Debug, Error)]
@@ -33,7 +31,7 @@ pub enum BlockError {
     Message(String),
 
     #[error("{}", _0)]
-    TransactionError(#[from] TransactionError),
+    TransactionError(#[from] snarkvm_dpc::TransactionError),
 
     #[error("block number {} has not been mined yet", _0)]
     InvalidBlockNumber(u32),

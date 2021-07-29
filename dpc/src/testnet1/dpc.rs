@@ -275,7 +275,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         })
     }
 
-    fn execute_online_phase<L: LedgerScheme<C>, R: Rng + CryptoRng>(
+    fn execute_online_phase<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
         &self,
         old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         transaction_kernel: Self::TransactionKernel,
@@ -451,7 +451,11 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         Ok((new_records, transaction))
     }
 
-    fn verify<L: LedgerScheme<C>>(&self, transaction: &Self::Transaction, ledger: &L) -> bool {
+    fn verify<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C>>(
+        &self,
+        transaction: &Self::Transaction,
+        ledger: &L,
+    ) -> bool {
         let verify_time = start_timer!(|| "DPC::verify");
 
         // Returns false if the number of serial numbers in the transaction is incorrect.
@@ -613,7 +617,11 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     }
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions<L: LedgerScheme<C>>(&self, transactions: &[Self::Transaction], ledger: &L) -> bool {
+    fn verify_transactions<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C>>(
+        &self,
+        transactions: &[Self::Transaction],
+        ledger: &L,
+    ) -> bool {
         for transaction in transactions {
             if !self.verify(transaction, ledger) {
                 return false;

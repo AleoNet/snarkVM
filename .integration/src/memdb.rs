@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::NUM_COLS;
-use snarkvm_dpc::prelude::*;
+use snarkvm_ledger::prelude::*;
 
 use parking_lot::RwLock;
 use std::{collections::HashMap, path::Path};

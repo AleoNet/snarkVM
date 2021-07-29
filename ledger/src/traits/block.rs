@@ -14,20 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod account;
-pub use account::*;
+use snarkvm_dpc::traits::TransactionScheme;
+use snarkvm_utilities::{FromBytes, ToBytes};
 
-pub mod dpc;
-pub use dpc::*;
+pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes {
+    type BlockHeader: Clone + Eq + FromBytes + ToBytes;
+    type Transaction: TransactionScheme;
 
-pub mod ledger;
-pub use ledger::*;
+    /// Returns the header.
+    fn header(&self) -> &Self::BlockHeader;
 
-pub mod program;
-pub use program::*;
-
-pub mod record;
-pub use record::*;
-
-pub mod transaction;
-pub use transaction::*;
+    /// Returns the transactions.
+    fn transactions(&self) -> &[Self::Transaction];
+}

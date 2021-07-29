@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod amount;
-pub use amount::*;
-
 pub mod block;
 pub use block::*;
 
@@ -31,9 +28,6 @@ pub use merkle_root_hash::*;
 
 pub mod merkle_tree;
 pub use merkle_tree::*;
-
-pub mod network;
-pub use network::*;
 
 pub mod pedersen_merkle_tree;
 pub use pedersen_merkle_tree::*;

@@ -14,7 +14,60 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod error;
+#![allow(clippy::module_inception)]
+#![deny(unused_import_braces, unused_qualifications, trivial_casts, trivial_numeric_casts)]
+#![deny(
+    single_use_lifetimes,
+    unused_qualifications,
+    variant_size_differences,
+    stable_features,
+    unreachable_pub
+)]
+#![deny(
+    non_shorthand_field_patterns,
+    unused_attributes,
+    unused_imports,
+    unused_extern_crates
+)]
+#![deny(
+    renamed_and_removed_lints,
+    stable_features,
+    unused_allocation,
+    unused_comparisons,
+    bare_trait_objects
+)]
+#![deny(
+    const_err,
+    unused_must_use,
+    unused_mut,
+    unused_unsafe,
+    private_in_public,
+    unsafe_code
+)]
+#![forbid(unsafe_code)]
+#![cfg_attr(feature = "clippy", deny(warnings))]
+#![cfg_attr(feature = "clippy", feature(plugin))]
+#![cfg_attr(feature = "clippy", plugin(clippy))]
+#![cfg_attr(feature = "clippy", allow(inline_always))]
+#![cfg_attr(feature = "clippy", allow(too_many_arguments))]
+#![cfg_attr(feature = "clippy", allow(unreadable_literal))]
+#![cfg_attr(feature = "clippy", allow(many_single_char_names))]
+#![cfg_attr(feature = "clippy", allow(new_without_default_derive))]
+
+#[macro_use]
+extern crate thiserror;
+
+pub mod block;
+pub use block::*;
+
+pub mod errors;
+pub use errors::*;
 
 pub mod posw;
-pub use posw::*;
+
+pub mod traits;
+pub use traits::*;
+
+pub mod prelude {
+    pub use crate::{block::*, errors::*, traits::*};
+}

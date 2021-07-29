@@ -1697,7 +1697,6 @@ dependencies = [
  "bech32",
  "bincode",
  "blake2",
- "chrono",
  "criterion",
  "derivative",
  "hex",
@@ -1778,6 +1777,7 @@ dependencies = [
  "snarkvm-dpc",
  "snarkvm-fields",
  "snarkvm-gadgets",
+ "snarkvm-ledger",
  "snarkvm-parameters",
  "snarkvm-profiler",
  "snarkvm-r1cs",
@@ -1790,9 +1790,12 @@ name = "snarkvm-ledger"
 version = "0.7.5"
 dependencies = [
  "anyhow",
+ "bincode",
  "blake2",
+ "chrono",
  "criterion",
  "hex",
+ "once_cell",
  "rand",
  "rand_chacha",
  "serde",

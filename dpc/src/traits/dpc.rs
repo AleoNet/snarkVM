@@ -14,7 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{AccountScheme, LedgerScheme, Parameters, RecordScheme, TransactionScheme};
+use crate::traits::{
+    AccountScheme,
+    Parameters,
+    RecordCommitmentTree,
+    RecordScheme,
+    RecordSerialNumberTree,
+    TransactionScheme,
+};
 
 use rand::{CryptoRng, Rng};
 
@@ -44,7 +51,7 @@ pub trait DPCScheme<C: Parameters>: Sized {
 
     /// Returns new records and a transaction based on the authorized
     /// consumption of old records.
-    fn execute_online_phase<L: LedgerScheme<C>, R: Rng + CryptoRng>(
+    fn execute_online_phase<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
         &self,
         old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         transaction_kernel: Self::TransactionKernel,
@@ -54,8 +61,16 @@ pub trait DPCScheme<C: Parameters>: Sized {
     ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)>;
 
     /// Returns true iff the transaction is valid according to the ledger.
-    fn verify<L: LedgerScheme<C>>(&self, transaction: &Self::Transaction, ledger: &L) -> bool;
+    fn verify<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C>>(
+        &self,
+        transaction: &Self::Transaction,
+        ledger: &L,
+    ) -> bool;
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions<L: LedgerScheme<C>>(&self, block: &[Self::Transaction], ledger: &L) -> bool;
+    fn verify_transactions<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C>>(
+        &self,
+        block: &[Self::Transaction],
+        ledger: &L,
+    ) -> bool;
 }

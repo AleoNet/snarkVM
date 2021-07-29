@@ -14,16 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::TransactionScheme;
-use snarkvm_utilities::{FromBytes, ToBytes};
+pub mod block;
+pub use block::*;
 
-pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes {
-    type BlockHeader: Clone + Eq + FromBytes + ToBytes;
-    type Transaction: TransactionScheme;
+pub mod posw;
+pub use posw::*;
 
-    /// Returns the header.
-    fn header(&self) -> &Self::BlockHeader;
-
-    /// Returns the transactions.
-    fn transactions(&self) -> &[Self::Transaction];
-}
+pub mod storage;
+pub use storage::*;

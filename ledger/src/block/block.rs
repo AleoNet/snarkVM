@@ -14,12 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    traits::{BlockScheme, TransactionScheme},
-    BlockError,
-    BlockHeader,
-    Transactions,
-};
+use crate::{BlockError, BlockHeader, BlockScheme, Transactions};
+use snarkvm_dpc::TransactionScheme;
 use snarkvm_utilities::{to_bytes_le, variable_length_integer::variable_length_integer, FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
