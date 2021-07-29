@@ -29,20 +29,17 @@ use snarkvm_dpc::block::{
     PedersenMerkleRootHash,
     MASKED_TREE_DEPTH,
 };
+use snarkvm_marlin::snark::MarlinTestnet1System;
 
 /// PoSW instantiated over BLS12-377 with Marlin.
 pub type PoswMarlin = Posw<Marlin<Bls12_377>, Bls12_377>;
-
-/// Marlin proof system on PoSW
-pub type Marlin<E> = snarkvm_marlin::snark::MarlinTestnet1System<E, Vec<<E as PairingEngine>::Fr>>;
 
 /// A generic PoSW.
 /// A 32 byte mask is sufficient for Pedersen hashes on BLS12-377, leaves and the root.
 pub type Posw<S, E> = posw::Posw<S, <E as PairingEngine>::Fr, M, HG, 32>;
 
-/// Instantiate the circuit with the CRH to Fq.
-/// A 32 byte mask is sufficient for Pedersen hashes on BLS12-377, leaves and the root.
-type PoswCircuit<F> = circuit::POSWCircuit<F, M, HG, 32>;
+/// Marlin proof system on PoSW
+pub type Marlin<E> = MarlinTestnet1System<E, Vec<<E as PairingEngine>::Fr>>;
 
 /// Subtree calculation
 pub fn txids_to_roots(transaction_ids: &[[u8; 32]]) -> (MerkleRootHash, PedersenMerkleRootHash, Vec<[u8; 32]>) {

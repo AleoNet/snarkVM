@@ -16,11 +16,7 @@
 
 //! Generic PoSW Miner and Verifier, compatible with any implementer of the SNARK trait.
 
-use crate::{
-    circuit::{POSWCircuit, POSWCircuitParameters},
-    error::PoswError,
-    PoswCircuit,
-};
+use crate::{circuit::POSWCircuit, error::PoswError};
 use snarkvm_algorithms::{
     crh::sha256d_to_u64,
     traits::{MaskedMerkleParameters, SNARK},
@@ -53,8 +49,8 @@ use blake2::{digest::Digest, Blake2s};
 use rand::{CryptoRng, Rng};
 use std::marker::PhantomData;
 
-/// Commits to the nonce and pedersen merkle root
-#[deprecated]
+/// TODO (howardwu): Deprecate this function and use the implementation in `snarkvm-algorithms`.
+/// Commits to the nonce and pedersen merkle root.
 pub fn commit(nonce: u32, root: &PedersenMerkleRootHash) -> Vec<u8> {
     let mut h = Blake2s::new();
     h.update(&nonce.to_le_bytes());
@@ -151,7 +147,7 @@ impl<S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>, const MASK_NUM_BYTES: 
         S: SNARK,
     {
         let params = S::setup(
-            &PoswCircuit::<F> {
+            &POSWCircuit::<Fr, M, HG, MASK_NUM_BYTES> {
                 // the circuit will be padded internally
                 leaves: vec![None; 0],
                 merkle_parameters: PARAMS.clone(),
@@ -177,7 +173,7 @@ impl<S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>, const MASK_NUM_BYTES: 
         S: SNARK<UniversalSetupParameters = MarlinSRS<E>>,
     {
         let params = S::setup::<_, R>(
-            &PoswCircuit::<F> {
+            &POSWCircuit::<Fr, M, HG, MASK_NUM_BYTES> {
                 // the circuit will be padded internally
                 leaves: vec![None; 0],
                 merkle_parameters: PARAMS.clone(),

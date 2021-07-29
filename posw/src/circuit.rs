@@ -28,11 +28,6 @@ use snarkvm_gadgets::{
 };
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSynthesizer, ConstraintSystem};
 
-/// Enforces byte sizes of the mask and leaves.
-pub trait POSWCircuitParameters {
-    const MASK_LENGTH: usize;
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct POSWCircuit<
     F: PrimeField,
@@ -113,7 +108,7 @@ mod test {
     use rand::thread_rng;
     use std::{marker::PhantomData, sync::Arc};
 
-    use super::{POSWCircuit, POSWCircuitParameters};
+    use super::POSWCircuit;
     // TODO (howardwu) - Switch this to Marlin.
     use snarkvm_algorithms::{
         crh::PedersenCompressedCRH,
