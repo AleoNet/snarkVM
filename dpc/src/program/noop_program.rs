@@ -78,9 +78,11 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
     /// Loads an instance of the noop program.
     fn load() -> Result<Self, ProgramError> {
         let proving_key: <Self::ProofSystem as SNARK>::ProvingKey = match Network::from_id(C::NETWORK_ID) {
+            #[cfg(feature = "testnet1")]
             Network::Testnet1 => FromBytes::read_le(
                 snarkvm_parameters::testnet1::NoopProgramSNARKPKParameters::load_bytes()?.as_slice(),
             )?,
+            #[cfg(feature = "testnet2")]
             Network::Testnet2 => FromBytes::read_le(
                 snarkvm_parameters::testnet2::NoopProgramSNARKPKParameters::load_bytes()?.as_slice(),
             )?,
@@ -90,9 +92,11 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
         };
 
         let verifying_key = match Network::from_id(C::NETWORK_ID) {
+            #[cfg(feature = "testnet1")]
             Network::Testnet1 => <Self::ProofSystem as SNARK>::VerifyingKey::read_le(
                 snarkvm_parameters::testnet1::NoopProgramSNARKVKParameters::load_bytes()?.as_slice(),
             )?,
+            #[cfg(feature = "testnet2")]
             Network::Testnet2 => <Self::ProofSystem as SNARK>::VerifyingKey::read_le(
                 snarkvm_parameters::testnet2::NoopProgramSNARKVKParameters::load_bytes()?.as_slice(),
             )?,

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::CRH;
-use snarkvm_dpc::{prelude::*, testnet1::parameters::*};
+use snarkvm_dpc::{prelude::*, testnet1::*};
 use snarkvm_ledger::{
     posw::{txids_to_roots, PoswMarlin},
     prelude::*,

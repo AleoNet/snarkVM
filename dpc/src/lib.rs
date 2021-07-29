@@ -75,17 +75,14 @@ pub use dpc::*;
 pub mod errors;
 pub use errors::*;
 
+pub mod parameters;
+pub use parameters::*;
+
 pub mod program;
 pub use program::*;
 
 pub mod record;
 pub use record::*;
-
-#[cfg(feature = "testnet1")]
-pub mod testnet1;
-
-#[cfg(feature = "testnet2")]
-pub mod testnet2;
 
 pub mod traits;
 pub use traits::*;
