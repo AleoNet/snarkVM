@@ -28,17 +28,12 @@ use snarkvm_gadgets::{
 };
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSynthesizer, ConstraintSystem};
 
-/// Enforces sizes of the mask and leaves.
-pub trait POSWCircuitParameters {
-    const MASK_LENGTH: usize;
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct POSWCircuit<
     F: PrimeField,
     M: MaskedMerkleParameters,
     HG: MaskedCRHGadget<M::H, F>,
-    CP: POSWCircuitParameters,
+    const MASK_NUM_BYTES: usize,
 > {
     pub leaves: Vec<Option<<M::H as CRH>::Output>>,
     pub merkle_parameters: Arc<M>,
@@ -47,16 +42,15 @@ pub struct POSWCircuit<
 
     pub field_type: PhantomData<F>,
     pub crh_gadget_type: PhantomData<HG>,
-    pub circuit_parameters_type: PhantomData<CP>,
 }
 
-impl<F: PrimeField, M: MaskedMerkleParameters, HG: MaskedCRHGadget<M::H, F>, CP: POSWCircuitParameters>
-    ConstraintSynthesizer<F> for POSWCircuit<F, M, HG, CP>
+impl<F: PrimeField, M: MaskedMerkleParameters, HG: MaskedCRHGadget<M::H, F>, const MASK_NUM_BYTES: usize>
+    ConstraintSynthesizer<F> for POSWCircuit<F, M, HG, MASK_NUM_BYTES>
 {
     fn generate_constraints<CS: ConstraintSystem<F>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
         // Compute the mask if it exists.
-        let mask = self.mask.clone().unwrap_or_else(|| vec![0; CP::MASK_LENGTH]);
-        if mask.len() != CP::MASK_LENGTH {
+        let mask = self.mask.clone().unwrap_or_else(|| vec![0; MASK_NUM_BYTES]);
+        if mask.len() != MASK_NUM_BYTES {
             return Err(SynthesisError::Unsatisfiable);
         }
         let mask_bytes = UInt8::alloc_input_vec_le(cs.ns(|| "mask"), &mask)?;
@@ -110,11 +104,12 @@ impl<F: PrimeField, M: MaskedMerkleParameters, HG: MaskedCRHGadget<M::H, F>, CP:
 
 #[cfg(test)]
 mod test {
-    use std::{marker::PhantomData, sync::Arc};
-
     use blake2::{digest::Digest, Blake2s};
     use rand::thread_rng;
+    use std::{marker::PhantomData, sync::Arc};
 
+    use super::POSWCircuit;
+    // TODO (howardwu) - Switch this to Marlin.
     use snarkvm_algorithms::{
         crh::PedersenCompressedCRH,
         define_masked_merkle_tree_parameters,
@@ -128,21 +123,10 @@ mod test {
     use snarkvm_gadgets::{algorithms::crh::PedersenCompressedCRHGadget, curves::edwards_bls12::EdwardsBls12Gadget};
     use snarkvm_utilities::ToBytes;
 
-    use super::{POSWCircuit, POSWCircuitParameters};
+    // We use a small tree in this test.
+    define_masked_merkle_tree_parameters!(EdwardsMaskedMerkleParameters, PedersenCompressedCRH<Edwards, 256, 4>, 4);
 
-    // We'll use 32 byte masks in this test
-    struct TestPOSWCircuitParameters;
-    impl POSWCircuitParameters for TestPOSWCircuitParameters {
-        const MASK_LENGTH: usize = 32;
-    }
-
-    const NUM_WINDOWS: usize = 256;
-    const WINDOW_SIZE: usize = 4;
-
-    // We use a small tree in this test
-    define_masked_merkle_tree_parameters!(EdwardsMaskedMerkleParameters, PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 4);
-
-    type HashGadget = PedersenCompressedCRHGadget<Edwards, Fq, EdwardsBls12Gadget, NUM_WINDOWS, WINDOW_SIZE>;
+    type HashGadget = PedersenCompressedCRHGadget<Edwards, Fq, EdwardsBls12Gadget, 256, 4>;
     type EdwardsMaskedMerkleTree = MerkleTree<EdwardsMaskedMerkleParameters>;
 
     #[test]
@@ -151,14 +135,13 @@ mod test {
 
         let parameters = EdwardsMaskedMerkleParameters::setup("test_tree_proof");
         let params = generate_random_parameters::<Bls12_377, _, _>(
-            &POSWCircuit::<_, EdwardsMaskedMerkleParameters, HashGadget, TestPOSWCircuitParameters> {
+            &POSWCircuit::<_, EdwardsMaskedMerkleParameters, HashGadget, 32> {
                 leaves: vec![None; 7],
                 merkle_parameters: Arc::new(parameters.clone()),
                 mask: None,
                 root: None,
                 field_type: PhantomData,
                 crh_gadget_type: PhantomData,
-                circuit_parameters_type: PhantomData,
             },
             &mut rng,
         )
@@ -178,14 +161,13 @@ mod test {
 
         let snark_leaves = tree.hashed_leaves().to_vec().into_iter().map(Some).collect();
         let proof = create_random_proof(
-            &POSWCircuit::<_, EdwardsMaskedMerkleParameters, HashGadget, TestPOSWCircuitParameters> {
+            &POSWCircuit::<_, EdwardsMaskedMerkleParameters, HashGadget, 32> {
                 leaves: snark_leaves,
                 merkle_parameters: Arc::new(parameters),
                 mask: Some(mask.clone()),
                 root: Some(root),
                 field_type: PhantomData,
                 crh_gadget_type: PhantomData,
-                circuit_parameters_type: PhantomData,
             },
             &params,
             &mut rng,

@@ -53,7 +53,7 @@ fn generate_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, 
     leaves: &[[u8; 30]],
     use_bad_root: bool,
 ) {
-    let parameters = P::default();
+    let parameters = P::setup("merkle_tree_test");
     let tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), &leaves[..]).unwrap();
     let root = tree.root();
     let mut satisfied = true;
@@ -121,7 +121,7 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
     leaves: &[[u8; 30]],
     use_bad_root: bool,
 ) {
-    let parameters = P::default();
+    let parameters = P::setup("merkle_tree_test");
     let tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), &leaves[..]).unwrap();
     let root = tree.root();
 
@@ -184,7 +184,7 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
 }
 
 fn update_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, F>>(leaves: &[[u8; 30]]) {
-    let merkle_parameters = Arc::new(P::default());
+    let merkle_parameters = Arc::new(P::setup("merkle_tree_test"));
     let tree = MerkleTree::<P>::new(merkle_parameters.clone(), &leaves[..]).unwrap();
     let root = tree.root();
 
