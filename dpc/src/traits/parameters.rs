@@ -20,7 +20,6 @@ use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
-    FpGadget,
     SNARKVerifierGadget,
 };
 use snarkvm_utilities::{
@@ -89,13 +88,8 @@ pub trait Parameters: 'static + Sized {
         + Send;
 
     /// Encryption scheme for account records. Invoked only over `Self::InnerScalarField`.
-    type AccountEncryptionScheme: EncryptionScheme<Text = Self::InnerScalarField>;
-    type AccountEncryptionGadget: EncryptionGadget<
-        Self::AccountEncryptionScheme,
-        Self::InnerScalarField,
-        CiphertextGadget = Vec<FpGadget<Self::InnerScalarField>>,
-        PlaintextGadget = Vec<FpGadget<Self::InnerScalarField>>,
-    >;
+    type AccountEncryptionScheme: EncryptionScheme;
+    type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
 
     /// Signature scheme for delegated compute. Invoked only over `Self::InnerScalarField`.
     type AccountSignatureScheme: SignatureScheme<PublicKey = Self::AccountSignaturePublicKey>;

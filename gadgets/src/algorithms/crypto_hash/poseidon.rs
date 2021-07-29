@@ -295,6 +295,10 @@ impl<F: PrimeField> CryptographicSpongeVar<F, PoseidonSponge<F>> for PoseidonSpo
         mut cs: CS,
         num_elements: usize,
     ) -> Result<Vec<FpGadget<F>>, SynthesisError> {
+        if num_elements == 0 {
+            return Ok(vec![]);
+        }
+
         let zero = FpGadget::<F>::zero(cs.ns(|| "zero"))?;
         let mut squeezed_elems = vec![zero; num_elements];
         match self.mode {

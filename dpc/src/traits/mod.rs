@@ -32,8 +32,5 @@ pub use program::*;
 pub mod record;
 pub use record::*;
 
-pub mod encoded;
-pub use encoded::*;
-
 pub mod transaction;
 pub use transaction::*;
