@@ -14,30 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod utils;
-use utils::{initialize_test_blockchain, MemDb};
-
 use snarkvm_algorithms::CRH;
-use snarkvm_dpc::{
-    testnet1::parameters::*,
-    Account,
-    AccountScheme,
-    Address,
-    Block,
-    BlockHeader,
-    BlockHeaderHash,
-    DPCError,
-    DPCScheme,
-    MerkleRootHash,
-    Parameters,
-    Payload,
-    PedersenMerkleRootHash,
-    ProgramScheme,
-    ProofOfSuccinctWork,
-    Record,
-    Transactions,
+use snarkvm_dpc::{prelude::*, testnet1::*, testnet2::*};
+use snarkvm_ledger::{
+    posw::{txids_to_roots, PoswMarlin},
+    prelude::*,
 };
-use snarkvm_posw::{txids_to_roots, PoswMarlin};
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use rand::thread_rng;
@@ -48,33 +30,35 @@ use std::{
     str::FromStr,
 };
 
-pub fn generate(recipient: &Address<Testnet1Parameters>, value: u64) -> Result<(Vec<u8>, Vec<u8>), DPCError> {
+pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
-    let dpc = Testnet1DPC::load(false)?;
-
-    let ledger = initialize_test_blockchain::<Testnet1Parameters, MemDb>(Block {
+    // TODO (howardwu): Deprecate this in favor of a simple struct with 2 Merkle trees.
+    let temporary_ledger = Ledger::<C, MemDb>::new(None, Block {
         header: BlockHeader {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             merkle_root_hash: MerkleRootHash([0u8; 32]),
             pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
             time: 0,
-            difficulty_target: 0x07FF_FFFF_FFFF_FFFF_u64,
+            difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
             nonce: 0,
             proof: ProofOfSuccinctWork([0u8; 972]),
         },
         transactions: Transactions::new(),
-    });
+    })
+    .unwrap();
+
+    let dpc = DPC::<C>::load(false)?;
 
     // Generate accounts.
     let genesis_account = Account::new(rng)?;
 
     // Generate input records having as address the genesis address.
-    let old_private_keys = vec![genesis_account.private_key.clone(); Testnet1Parameters::NUM_INPUT_RECORDS];
+    let old_private_keys = vec![genesis_account.private_key.clone(); C::NUM_INPUT_RECORDS];
 
-    let mut joint_serial_numbers = Vec::with_capacity(Testnet1Parameters::NUM_INPUT_RECORDS);
-    let mut old_records = Vec::with_capacity(Testnet1Parameters::NUM_INPUT_RECORDS);
-    for i in 0..Testnet1Parameters::NUM_INPUT_RECORDS {
+    let mut joint_serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+    let mut old_records = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+    for i in 0..C::NUM_INPUT_RECORDS {
         let old_record = Record::new(
             genesis_account.address.clone(),
             true, // The input record is a noop.
@@ -82,7 +66,7 @@ pub fn generate(recipient: &Address<Testnet1Parameters>, value: u64) -> Result<(
             Payload::default(),
             dpc.noop_program.id(),
             dpc.noop_program.id(),
-            Testnet1Parameters::serial_number_nonce_crh().hash(&[64u8 + (i as u8); 1])?,
+            C::serial_number_nonce_crh().hash(&[64u8 + (i as u8); 1])?,
             rng,
         )?;
 
@@ -93,7 +77,7 @@ pub fn generate(recipient: &Address<Testnet1Parameters>, value: u64) -> Result<(
     }
 
     // Construct the new records.
-    let mut new_records = Vec::with_capacity(Testnet1Parameters::NUM_OUTPUT_RECORDS);
+    let mut new_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
     new_records.push(Record::new_full(
         recipient.clone(),
         false,
@@ -101,7 +85,7 @@ pub fn generate(recipient: &Address<Testnet1Parameters>, value: u64) -> Result<(
         Payload::default(),
         dpc.noop_program.id(),
         dpc.noop_program.id(),
-        Testnet1Parameters::NUM_INPUT_RECORDS as u8,
+        C::NUM_INPUT_RECORDS as u8,
         joint_serial_numbers.clone(),
         rng,
     )?);
@@ -112,7 +96,7 @@ pub fn generate(recipient: &Address<Testnet1Parameters>, value: u64) -> Result<(
         Payload::default(),
         dpc.noop_program.id(),
         dpc.noop_program.id(),
-        (Testnet1Parameters::NUM_INPUT_RECORDS + 1) as u8,
+        (C::NUM_INPUT_RECORDS + 1) as u8,
         joint_serial_numbers.clone(),
         rng,
     )?);
@@ -121,13 +105,13 @@ pub fn generate(recipient: &Address<Testnet1Parameters>, value: u64) -> Result<(
     let kernel = dpc.execute_offline_phase(&old_private_keys, old_records, new_records, [0; 64], rng)?;
 
     // Generate the program proofs
-    let mut program_proofs = Vec::with_capacity(Testnet1Parameters::NUM_TOTAL_RECORDS);
-    for i in 0..Testnet1Parameters::NUM_TOTAL_RECORDS {
+    let mut program_proofs = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
+    for i in 0..C::NUM_TOTAL_RECORDS {
         program_proofs.push(dpc.noop_program.execute(&kernel.into_local_data(), i as u8, rng)?);
     }
 
     let (new_records, transaction) =
-        dpc.execute_online_phase(&old_private_keys, kernel, program_proofs, &ledger, rng)?;
+        dpc.execute_online_phase(&old_private_keys, kernel, program_proofs, &temporary_ledger, rng)?;
 
     let transaction_bytes = transaction.to_bytes_le()?;
     let size = transaction_bytes.len();
@@ -147,7 +131,7 @@ pub fn generate(recipient: &Address<Testnet1Parameters>, value: u64) -> Result<(
     let (merkle_root_hash, pedersen_merkle_root_hash, subroots) = txids_to_roots(&txids);
 
     // Construct the initial block attributes.
-    let time = 0; // Utc::now().timestamp();
+    let time = 0;
     let initial_difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
     let max_nonce = u32::MAX;
 
@@ -167,15 +151,7 @@ pub fn generate(recipient: &Address<Testnet1Parameters>, value: u64) -> Result<(
         nonce,
         proof: proof.into(),
     };
-
-    // // Create a genesis block.
-    // let genesis_block = Block {
-    //     header: genesis_header.clone(),
-    //     transactions: Transactions::new(),
-    // };
-
-    // let ledger =
-    //     initialize_test_blockchain::<Testnet1Parameters, Transaction<Testnet1Parameters>, MemDb>(genesis_block);
+    assert!(genesis_header.is_genesis());
 
     Ok((genesis_header.serialize().to_vec(), transaction_bytes))
 }
@@ -189,17 +165,33 @@ pub fn store<P: AsRef<Path>>(path: P, bytes: &[u8]) -> IoResult<()> {
 
 pub fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() < 5 {
-        println!("Invalid number of arguments. Given: {} - Required: 4", args.len() - 1);
+
+    if args.len() < 6 {
+        println!("Invalid number of arguments. Given: {} - Required: 5", args.len() - 1);
         return;
     }
 
-    let recipient = &Address::<Testnet1Parameters>::from_str(&args[1]).unwrap();
-    let balance = args[2].parse::<u64>().unwrap();
-    let genesis_header_file = &args[3];
-    let transaction_file = &args[4];
+    match args[1].as_str() {
+        "testnet1" => {
+            let recipient = &Address::from_str(&args[2]).unwrap();
+            let balance = args[3].parse::<u64>().unwrap();
+            let genesis_header_file = &args[4];
+            let transaction_file = &args[5];
 
-    let (genesis_header, transaction) = generate(recipient, balance).unwrap();
-    store(genesis_header_file, &genesis_header).unwrap();
-    store(transaction_file, &transaction).unwrap();
+            let (genesis_header, transaction) = generate::<Testnet1Parameters>(recipient, balance).unwrap();
+            store(genesis_header_file, &genesis_header).unwrap();
+            store(transaction_file, &transaction).unwrap();
+        }
+        "testnet2" => {
+            let recipient = &Address::from_str(&args[2]).unwrap();
+            let balance = args[3].parse::<u64>().unwrap();
+            let genesis_header_file = &args[4];
+            let transaction_file = &args[5];
+
+            let (genesis_header, transaction) = generate::<Testnet2Parameters>(recipient, balance).unwrap();
+            store(genesis_header_file, &genesis_header).unwrap();
+            store(transaction_file, &transaction).unwrap();
+        }
+        _ => panic!("Invalid parameters"),
+    };
 }

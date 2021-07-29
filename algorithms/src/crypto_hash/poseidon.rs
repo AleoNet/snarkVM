@@ -338,6 +338,10 @@ impl<F: PrimeField> CryptographicSponge<F> for PoseidonSponge<F> {
     }
 
     fn squeeze_field_elements(&mut self, num_elements: usize) -> Vec<F> {
+        if num_elements == 0 {
+            return vec![];
+        }
+
         let mut squeezed_elems = vec![F::zero(); num_elements];
         match self.mode {
             DuplexSpongeMode::Absorbing { next_absorb_index: _ } => {
