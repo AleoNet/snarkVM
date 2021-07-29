@@ -144,8 +144,8 @@ impl Parameters for Testnet1Parameters {
     type ProgramIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
 
-    type ProgramSelectorTreeCRH = BHPCompressedCRH<EdwardsBls12, 8, 32>;
-    type ProgramSelectorTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
+    type ProgramSelectorTreeCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
+    type ProgramSelectorTreeCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
     type ProgramSelectorTreeDigest = <Self::ProgramSelectorTreeCRH as CRH>::Output;
     type ProgramSelectorTreeParameters = ProgramSelectorMerkleTreeParameters;
     

@@ -163,8 +163,8 @@ impl Parameters for Testnet2Parameters {
     type ProgramCommitmentGadget = Blake2sCommitmentGadget;
     type ProgramCommitment = <Self::ProgramCommitmentScheme as CommitmentScheme>::Output;
 
-    type ProgramSelectorTreeCRH = BHPCompressedCRH<EdwardsBls12, 8, 32>;
-    type ProgramSelectorTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
+    type ProgramSelectorTreeCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
+    type ProgramSelectorTreeCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
     type ProgramSelectorTreeDigest = <Self::ProgramSelectorTreeCRH as CRH>::Output;
     type ProgramSelectorTreeParameters = ProgramSelectorMerkleTreeParameters;
     

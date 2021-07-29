@@ -189,8 +189,8 @@ pub trait Parameters: 'static + Sized {
 
     /// Program selector tree instantiation for the program ids.
     type ProgramSelectorTreeCRH: CRH<Output = Self::ProgramSelectorTreeDigest>;
-    type ProgramSelectorTreeCRHGadget: CRHGadget<Self::ProgramSelectorTreeCRH, Self::InnerScalarField>;
-    type ProgramSelectorTreeDigest: ToConstraintField<Self::InnerScalarField>
+    type ProgramSelectorTreeCRHGadget: CRHGadget<Self::ProgramSelectorTreeCRH, Self::OuterScalarField>;
+    type ProgramSelectorTreeDigest: ToConstraintField<Self::OuterScalarField>
         + Clone
         + Debug
         + Display
