@@ -21,8 +21,8 @@ use snarkvm_parameters::errors::ParameterError;
 use std::io::Error as IoError;
 use thiserror::Error;
 
-#[derive(Debug, Error)]
 /// An error when generating/verifying a Proof of Succinct Work
+#[derive(Debug, Error)]
 pub enum PoswError {
     #[error("{}", _0)]
     AnyhowError(#[from] anyhow::Error),

@@ -17,15 +17,16 @@
 use std::fmt::Debug;
 
 use snarkvm_algorithms::traits::EncryptionScheme;
-use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
     bits::ToBytesGadget,
     traits::{alloc::AllocGadget, eq::EqGadget},
+    UInt8,
 };
+use snarkvm_fields::PrimeField;
 
-pub trait EncryptionGadget<E: EncryptionScheme, F: Field>: AllocGadget<E, F> + Clone {
+pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F> + Clone {
     type PrivateKeyGadget: AllocGadget<<E as EncryptionScheme>::PrivateKey, F>
         + ToBytesGadget<F>
         + Clone
@@ -37,10 +38,7 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: Field>: AllocGadget<E, F> + C
         + Clone
         + Sized
         + Debug;
-    type CiphertextGadget: AllocGadget<Vec<E::Text>, F> + ToBytesGadget<F> + EqGadget<F> + Clone + Sized + Debug;
-    type PlaintextGadget: AllocGadget<Vec<E::Text>, F> + EqGadget<F> + Clone + Sized + Debug;
     type RandomnessGadget: AllocGadget<E::Randomness, F> + Clone + Sized + Debug;
-    type EncryptionWitnessGadget: AllocGadget<Vec<E::EncryptionWitness>, F> + Clone + Sized + Debug;
 
     fn check_public_key_gadget<CS: ConstraintSystem<F>>(
         &self,
@@ -53,7 +51,6 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: Field>: AllocGadget<E, F> + C
         cs: CS,
         randomness: &Self::RandomnessGadget,
         public_key: &Self::PublicKeyGadget,
-        input: &Self::PlaintextGadget,
-        encryption_witness: &Self::EncryptionWitnessGadget,
-    ) -> Result<Self::CiphertextGadget, SynthesisError>;
+        input: &[UInt8],
+    ) -> Result<Vec<UInt8>, SynthesisError>;
 }

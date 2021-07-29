@@ -25,12 +25,6 @@ pub use merkle_tree::*;
 #[cfg(test)]
 pub mod tests;
 
-// TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
-// Setup message to instantiate the Merkle Tree parameters
-pub const fn setup_message() -> &'static str {
-    "MerkleTreeParameters"
-}
-
 #[macro_export]
 /// Defines a Merkle tree using the provided hash and depth.
 macro_rules! define_merkle_tree_parameters {
@@ -38,8 +32,8 @@ macro_rules! define_merkle_tree_parameters {
 #[rustfmt::skip]
         #[allow(unused_imports)]
         use $crate::{
-            merkle_tree::MerkleTree,MerkleError,
-            traits::{CRH, LoadableMerkleParameters, MaskedMerkleParameters, MerkleParameters},
+            merkle_tree::MerkleTree, MerkleError,
+            traits::{CRH, LoadableMerkleParameters, MerkleParameters},
         };
 
         #[derive(Clone, PartialEq, Eq, Debug)]
@@ -66,16 +60,6 @@ macro_rules! define_merkle_tree_parameters {
         }
 
         impl LoadableMerkleParameters for $struct_name {}
-
-        // TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
-        impl Default for $struct_name {
-            fn default() -> Self {
-                // TODO (howardwu): Switch to a better default.
-                Self(<Self as MerkleParameters>::H::setup(
-                    $crate::merkle_tree::setup_message(),
-                ))
-            }
-        }
     };
 }
 
@@ -85,7 +69,7 @@ macro_rules! define_masked_merkle_tree_parameters {
 #[rustfmt::skip]
         #[allow(unused_imports)]
         use $crate::{
-            merkle_tree::MerkleTree,MerkleError,
+            merkle_tree::MerkleTree, MerkleError,
             CRH, MaskedMerkleParameters, MerkleParameters,
         };
 
@@ -109,16 +93,6 @@ macro_rules! define_masked_merkle_tree_parameters {
         impl MaskedMerkleParameters for $struct_name {
             fn mask_parameters(&self) -> &Self::H {
                 &self.1
-            }
-        }
-
-        impl Default for $struct_name {
-            fn default() -> Self {
-                Self(
-                    // TODO (howardwu): Remove this unwrap and switch to a better default.
-                    <Self as MerkleParameters>::H::setup($crate::merkle_tree::setup_message()),
-                    <Self as MerkleParameters>::H::setup($crate::merkle_tree::setup_message()),
-                )
             }
         }
     };
@@ -154,15 +128,5 @@ macro_rules! define_additional_merkle_tree_parameters {
         }
 
         impl LoadableMerkleParameters for $struct_name {}
-
-        // TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
-        impl Default for $struct_name {
-            fn default() -> Self {
-                // TODO (howardwu): Switch to a better default.
-                Self(<Self as MerkleParameters>::H::setup(
-                    $crate::merkle_tree::setup_message(),
-                ))
-            }
-        }
     };
 }

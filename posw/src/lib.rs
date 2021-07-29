@@ -21,7 +21,6 @@ use posw::{HG, M};
 
 pub mod error;
 
-use snarkvm_algorithms::snark;
 use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
 use snarkvm_dpc::block::{
     merkle_root_with_subroots,
@@ -30,32 +29,17 @@ use snarkvm_dpc::block::{
     PedersenMerkleRootHash,
     MASKED_TREE_DEPTH,
 };
-
-/// GM17 type alias for the PoSW circuit
-#[deprecated]
-pub type GM17<E> = snark::gm17::GM17<E, Vec<<E as PairingEngine>::Fr>>;
+use snarkvm_marlin::snark::MarlinTestnet1System;
 
 /// PoSW instantiated over BLS12-377 with Marlin.
 pub type PoswMarlin = Posw<Marlin<Bls12_377>, Bls12_377>;
 
-/// Marlin proof system on PoSW
-pub type Marlin<E> = snarkvm_marlin::snark::MarlinTestnet1System<E, Vec<<E as PairingEngine>::Fr>>;
-
 /// A generic PoSW.
-pub type Posw<S, E> = posw::Posw<S, <E as PairingEngine>::Fr, M, HG, params::PoSWParams>;
+/// A 32 byte mask is sufficient for Pedersen hashes on BLS12-377, leaves and the root.
+pub type Posw<S, E> = posw::Posw<S, <E as PairingEngine>::Fr, M, HG, 32>;
 
-/// Instantiate the circuit with the CRH to Fq.
-type PoswCircuit<F> = circuit::POSWCircuit<F, M, HG, params::PoSWParams>;
-
-// Do not leak private type
-mod params {
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    pub struct PoSWParams;
-    impl crate::circuit::POSWCircuitParameters for PoSWParams {
-        // A 32 byte mask is sufficient for Pedersen hashes on BLS12-377, leaves and the root
-        const MASK_LENGTH: usize = 32;
-    }
-}
+/// Marlin proof system on PoSW
+pub type Marlin<E> = MarlinTestnet1System<E, Vec<<E as PairingEngine>::Fr>>;
 
 /// Subtree calculation
 pub fn txids_to_roots(transaction_ids: &[[u8; 32]]) -> (MerkleRootHash, PedersenMerkleRootHash, Vec<[u8; 32]>) {
@@ -73,11 +57,12 @@ pub fn txids_to_roots(transaction_ids: &[[u8; 32]]) -> (MerkleRootHash, Pedersen
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::SeedableRng;
-    use rand_chacha::ChaChaRng;
-    use snarkvm_algorithms::traits::SNARK;
+    use snarkvm_algorithms::SNARK;
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_utilities::FromBytes;
+
+    use rand::SeedableRng;
+    use rand_chacha::ChaChaRng;
 
     #[test]
     fn test_load_verify_only() {
@@ -87,32 +72,6 @@ mod tests {
     #[test]
     fn test_load() {
         let _params = PoswMarlin::load().unwrap();
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_posw_gm17() {
-        let rng = &mut ChaChaRng::seed_from_u64(1234567);
-
-        // PoSW instantiated over BLS12-377 with GM17.
-        pub type PoswGM17 = Posw<GM17<Bls12_377>, Bls12_377>;
-
-        // run the trusted setup
-        let posw = PoswGM17::setup(rng).unwrap();
-        // super low difficulty so we find a solution immediately
-        let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
-
-        let transaction_ids = vec![[1u8; 32]; 8];
-        let (_, pedersen_merkle_root, subroots) = txids_to_roots(&transaction_ids);
-
-        // generate the proof
-        let (nonce, proof) = posw
-            .mine(&subroots, difficulty_target, &mut rand::thread_rng(), std::u32::MAX)
-            .unwrap();
-        assert_eq!(proof.len(), 193); // NOTE: GM17 compressed serialization
-
-        let proof = <GM17<Bls12_377> as SNARK>::Proof::read(&proof[..]).unwrap();
-        posw.verify(nonce, &proof, &pedersen_merkle_root).unwrap();
     }
 
     #[test]

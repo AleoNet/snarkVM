@@ -14,51 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![allow(deprecated)]
-
-use snarkvm_algorithms::traits::SNARK;
+use snarkvm_algorithms::SNARK;
 use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-use snarkvm_posw::{txids_to_roots, Marlin, Posw, PoswMarlin, GM17};
+use snarkvm_posw::{txids_to_roots, Marlin, Posw, PoswMarlin};
 use snarkvm_utilities::FromBytes;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
-
-fn gm17_posw(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Proof of Succinct Work: GM17");
-    group.sample_size(10);
-    let rng = &mut ChaChaRng::seed_from_u64(1234567);
-
-    // PoSW instantiated over BLS12-377 with GM17.
-    pub type PoswGM17 = Posw<GM17<Bls12_377>, Bls12_377>;
-
-    // run the setup
-    let posw = PoswGM17::setup(rng).unwrap();
-
-    // super low difficulty so we find a solution immediately
-    let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
-
-    // Can we test for different tx id sizes?
-    let transaction_ids = vec![[1u8; 32]; 8];
-    let (_, pedersen_merkle_root, subroots) = txids_to_roots(&transaction_ids);
-
-    // Proof Generation Bench
-    group.bench_function("mine", |b| {
-        b.iter(|| {
-            let (_nonce, _proof) = posw.mine(&subroots, difficulty_target, rng, std::u32::MAX).unwrap();
-        });
-    });
-
-    let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, std::u32::MAX).unwrap();
-    let proof = <GM17<Bls12_377> as SNARK>::Proof::read(&proof[..]).unwrap();
-
-    group.bench_function("verify", |b| {
-        b.iter(|| {
-            let _ = posw.verify(nonce, &proof, &pedersen_merkle_root).unwrap();
-        });
-    });
-}
 
 fn marlin_posw(c: &mut Criterion) {
     let mut group = c.benchmark_group("Proof of Succinct Work: Marlin");
@@ -95,7 +58,7 @@ fn marlin_posw(c: &mut Criterion) {
 criterion_group! {
     name = posw;
     config = Criterion::default().sample_size(10);
-    targets = gm17_posw, marlin_posw
+    targets = marlin_posw
 }
 
 criterion_main!(posw);

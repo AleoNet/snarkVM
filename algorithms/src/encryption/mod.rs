@@ -17,8 +17,5 @@
 pub mod ecies_poseidon;
 pub use ecies_poseidon::*;
 
-pub mod group;
-pub use group::*;
-
 #[cfg(test)]
 pub mod tests;

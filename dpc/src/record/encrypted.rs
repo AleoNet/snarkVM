@@ -14,33 +14,39 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    record::encoded::*,
-    Address,
-    DPCError,
-    EncodedRecordScheme,
-    Parameters,
-    Payload,
-    Record,
-    RecordScheme,
-    ViewKey,
-};
+use crate::{Address, DPCError, Parameters, Payload, Record, RecordScheme, ViewKey};
 use rand::{thread_rng, CryptoRng, Rng};
 use snarkvm_algorithms::traits::{CommitmentScheme, EncryptionScheme, CRH};
-use snarkvm_utilities::{io::Result as IoResult, to_bytes_le, FromBytes, Read, ToBytes, Write};
+use snarkvm_utilities::{
+    io::{Cursor, Result as IoResult},
+    marker::PhantomData,
+    to_bytes_le,
+    FromBytes,
+    Read,
+    ToBytes,
+    Write,
+};
 
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "C: Parameters"),
+    Debug(bound = "C: Parameters"),
     PartialEq(bound = "C: Parameters"),
-    Eq(bound = "C: Parameters"),
-    Debug(bound = "C: Parameters")
+    Eq(bound = "C: Parameters")
 )]
 pub struct EncryptedRecord<C: Parameters> {
-    pub encrypted_elements: Vec<C::InnerScalarField>,
+    pub ciphertext: Vec<u8>,
+    c_phantom: PhantomData<C>,
 }
 
 impl<C: Parameters> EncryptedRecord<C> {
+    pub fn new(ciphertext: Vec<u8>) -> Self {
+        Self {
+            ciphertext,
+            c_phantom: PhantomData,
+        }
+    }
+
     /// Encrypt the given vector of records and returns
     /// 1. Encrypted record
     /// 2. Encryption randomness
@@ -54,21 +60,44 @@ impl<C: Parameters> EncryptedRecord<C> {
         ),
         DPCError,
     > {
-        // Serialize the record into group elements
-        let encoded_record = EncodedRecord::<C>::encode(record)?;
+        // Serialize the record into bytes
+        let mut bytes = vec![];
+
+        // Serial number nonce
+        let serial_number_nonce = record.serial_number_nonce();
+        bytes.extend_from_slice(&serial_number_nonce.to_bytes_le()?);
+
+        // Commitment randomness
+        let commitment_randomness = record.commitment_randomness();
+        bytes.extend_from_slice(&commitment_randomness.to_bytes_le()?);
+
+        // Birth program selector root
+        let birth_program_selector_root = record.birth_program_selector_root();
+        bytes.extend_from_slice(&birth_program_selector_root.to_bytes_le()?);
+
+        // Death program selector root
+        let death_program_selector_root = record.death_program_selector_root();
+        bytes.extend_from_slice(&death_program_selector_root.to_bytes_le()?);
+
+        // Value
+        let value = record.value();
+        bytes.extend_from_slice(&value.to_bytes_le()?);
+
+        // Payload
+        let payload = record.payload();
+        bytes.extend_from_slice(&payload.to_bytes_le()?);
+
+        assert!(
+            bytes.len() <= u16::MAX as usize,
+            "The DPC assumes that the record is less than 65535 bytes."
+        );
 
         // Encrypt the record plaintext
         let record_public_key = record.owner().to_encryption_key();
         let encryption_randomness = C::account_encryption_scheme().generate_randomness(record_public_key, rng)?;
-        let encrypted_record = C::account_encryption_scheme().encrypt(
-            record_public_key,
-            &encryption_randomness,
-            &encoded_record.encoded_elements,
-        )?;
-
-        let encrypted_record = Self {
-            encrypted_elements: encrypted_record,
-        };
+        let encrypted_record =
+            C::account_encryption_scheme().encrypt(record_public_key, &encryption_randomness, &bytes)?;
+        let encrypted_record = Self::new(encrypted_record);
 
         Ok((encrypted_record, encryption_randomness))
     }
@@ -76,22 +105,34 @@ impl<C: Parameters> EncryptedRecord<C> {
     /// Decrypt and reconstruct the encrypted record.
     pub fn decrypt(&self, account_view_key: &ViewKey<C>) -> Result<Record<C>, DPCError> {
         // Decrypt the encrypted record
-        let plaintext_elements =
-            C::account_encryption_scheme().decrypt(&account_view_key.decryption_key, &self.encrypted_elements)?;
+        let plaintext = C::account_encryption_scheme().decrypt(&account_view_key.decryption_key, &self.ciphertext)?;
 
-        // Deserialize the plaintext record into record components
-        let encoded_record = EncodedRecord::<C>::new(plaintext_elements);
+        let mut cursor = Cursor::new(plaintext);
 
-        let record_components = encoded_record.decode()?;
+        // Serial number nonce
+        let serial_number_nonce = <C::SerialNumberNonceCRH as CRH>::Output::read_le(&mut cursor)?;
 
-        let DecodedRecord {
-            serial_number_nonce,
-            commitment_randomness,
-            birth_program_selector_root,
-            death_program_selector_root,
-            payload,
-            value,
-        } = record_components;
+        // Commitment randomness
+        let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::read_le(&mut cursor)?;
+
+        // Birth program selector root and death program selector root
+        let program_selector_root_length = to_bytes_le!(<C::ProgramSelectorTreeCRH as CRH>::Output::default())?.len();
+        let birth_program_selector_root = {
+            let mut program_selector = vec![0u8; program_selector_root_length];
+            cursor.read_exact(&mut program_selector)?;
+            program_selector
+        };
+        let death_program_selector_root = {
+            let mut program_selector = vec![0u8; program_selector_root_length];
+            cursor.read_exact(&mut program_selector)?;
+            program_selector
+        };
+
+        // Value
+        let value = u64::read_le(&mut cursor)?;
+
+        // Payload
+        let payload = Payload::read_le(&mut cursor)?;
 
         // Construct the record account address
         let owner = Address::from_view_key(&account_view_key)?;
@@ -134,7 +175,7 @@ impl<C: Parameters> EncryptedRecord<C> {
     /// Returns the encrypted record hash.
     /// The hash input is the ciphertext x-coordinates appended with the selector bits.
     pub fn to_hash(&self) -> Result<<<C as Parameters>::EncryptedRecordCRH as CRH>::Output, DPCError> {
-        Ok(C::encrypted_record_crh().hash_field_elements(&self.encrypted_elements)?)
+        Ok(C::encrypted_record_crh().hash(&self.ciphertext)?)
     }
 }
 
@@ -151,21 +192,20 @@ impl<C: Parameters> Default for EncryptedRecord<C> {
 impl<C: Parameters> ToBytes for EncryptedRecord<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.encrypted_elements.len() as u64).write_le(&mut writer)?;
-        self.encrypted_elements.write_le(&mut writer)
+        (self.ciphertext.len() as u16).write_le(&mut writer)?;
+        self.ciphertext.write_le(&mut writer)
     }
 }
 
 impl<C: Parameters> FromBytes for EncryptedRecord<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let encrypted_elements_len = u64::read_le(&mut reader)?;
-
-        let mut encrypted_elements = Vec::with_capacity(encrypted_elements_len as usize);
-        for _ in 0..encrypted_elements_len {
-            encrypted_elements.push(C::InnerScalarField::read_le(&mut reader)?);
+        let ciphertext_len = u16::read_le(&mut reader)?;
+        let mut ciphertext = Vec::with_capacity(ciphertext_len as usize);
+        for _ in 0..ciphertext_len {
+            ciphertext.push(u8::read_le(&mut reader)?);
         }
 
-        Ok(Self { encrypted_elements })
+        Ok(Self::new(ciphertext))
     }
 }
