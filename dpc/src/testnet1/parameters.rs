@@ -29,7 +29,6 @@ use snarkvm_algorithms::{
     crh::BHPCompressedCRH,
     crypto_hash::PoseidonCryptoHash,
     define_merkle_tree_parameters,
-    encoding::FieldEncodingScheme,
     encryption::ECIESPoseidonEncryption,
     prelude::*,
     prf::Blake2s,
@@ -47,7 +46,6 @@ use snarkvm_gadgets::{
         commitment::{BHPCompressedCommitmentGadget, Blake2sCommitmentGadget},
         crh::BHPCompressedCRHGadget,
         crypto_hash::PoseidonCryptoHashGadget,
-        encoding::FieldEncodingGadget,
         encryption::ECIESPoseidonEncryptionGadget,
         prf::Blake2sGadget,
         signature::SchnorrGadget,
@@ -109,7 +107,6 @@ impl Parameters for Testnet1Parameters {
 
     type AccountEncryptionScheme = ECIESPoseidonEncryption<EdwardsParameters>;
     type AccountEncryptionGadget = ECIESPoseidonEncryptionGadget<EdwardsParameters, Self::InnerScalarField>;
-    type AccountEncryptionCiphertext = <Self::AccountEncryptionScheme as EncryptionScheme>::Ciphertext;
 
     type AccountSignatureScheme = Schnorr<EdwardsBls12>;
     type AccountSignatureGadget = SchnorrGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget>;
@@ -139,9 +136,6 @@ impl Parameters for Testnet1Parameters {
 
     type ProgramIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
-
-    type RecordEncodingScheme = FieldEncodingScheme<Self::InnerScalarField>;
-    type RecordEncodingGadget = FieldEncodingGadget<Self::InnerScalarField>;
 
     type RecordCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 48, 50>;
     type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 50>;

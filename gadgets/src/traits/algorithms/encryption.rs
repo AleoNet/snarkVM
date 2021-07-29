@@ -22,7 +22,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use crate::{
     bits::ToBytesGadget,
     traits::{alloc::AllocGadget, eq::EqGadget},
-    ToConstraintFieldGadget,
+    UInt8,
 };
 use snarkvm_fields::PrimeField;
 
@@ -38,14 +38,6 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F
         + Clone
         + Sized
         + Debug;
-    type CiphertextGadget: AllocGadget<E::Ciphertext, F>
-        + ToBytesGadget<F>
-        + EqGadget<F>
-        + ToConstraintFieldGadget<F>
-        + Clone
-        + Sized
-        + Debug;
-    type PlaintextGadget: AllocGadget<E::Plaintext, F> + EqGadget<F> + Clone + Sized + Debug;
     type RandomnessGadget: AllocGadget<E::Randomness, F> + Clone + Sized + Debug;
 
     fn check_public_key_gadget<CS: ConstraintSystem<F>>(
@@ -59,6 +51,6 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F
         cs: CS,
         randomness: &Self::RandomnessGadget,
         public_key: &Self::PublicKeyGadget,
-        input: &Self::PlaintextGadget,
-    ) -> Result<Self::CiphertextGadget, SynthesisError>;
+        input: &[UInt8],
+    ) -> Result<Vec<UInt8>, SynthesisError>;
 }

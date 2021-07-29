@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{record::Record, AleoAmount, EncodedRecord, Parameters, PrivateKey, RecordScheme};
+use crate::{record::Record, AleoAmount, Parameters, PrivateKey, RecordScheme};
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
     CommitmentScheme,
@@ -32,7 +32,6 @@ use snarkvm_gadgets::{
         eq::{ConditionalEqGadget, EqGadget},
         integers::{add::Add, integer::Integer, sub::Sub},
     },
-    EncodingGadget,
     ToConstraintFieldGadget,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -687,7 +686,7 @@ where
             // *******************************************************************
             // Convert serial number nonce, commitment_randomness, birth program id, death program id, value, and payload into bits
 
-            let expected_plaintext_bytes = {
+            let plaintext_bytes = {
                 let mut res = vec![];
 
                 // Serial number nonce
@@ -714,26 +713,6 @@ where
             };
 
             // *******************************************************************
-            // Alloc each of the record field elements as gadgets.
-
-            let encoded_record = EncodedRecord::<C>::encode(&record).unwrap();
-            let record_plaintext_gadget = <C::RecordEncodingGadget as EncodingGadget<
-                C::RecordEncodingScheme,
-                C::InnerScalarField,
-            >>::EncodedDataGadget::alloc(
-                &mut encryption_cs.ns(|| "record_field_element"),
-                || Ok(encoded_record.plaintext),
-            )?;
-
-            // *******************************************************************
-            // Convert the record field elements into bits and check the consistency
-            C::RecordEncodingGadget::enforce_encoding_correctness(
-                &mut encryption_cs.ns(|| "encrypted_plaintext_is_consistent_with_the_record"),
-                &expected_plaintext_bytes,
-                &record_plaintext_gadget,
-            )?;
-
-            // *******************************************************************
             // Construct the record encryption
 
             let encryption_randomness_gadget = <C::AccountEncryptionGadget as EncryptionGadget<
@@ -748,7 +727,7 @@ where
                 &mut encryption_cs.ns(|| format!("output record {} check_encryption_gadget", j)),
                 &encryption_randomness_gadget,
                 &given_record_owner,
-                &record_plaintext_gadget,
+                &plaintext_bytes,
             )?;
 
             // *******************************************************************
