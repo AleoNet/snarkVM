@@ -14,54 +14,36 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod packed_fields_and_bytes {
-    use rand::SeedableRng;
-    use rand_chacha::ChaChaRng;
-    use snarkvm_curves::edwards_bw6::Fr;
-    // edwards_bw6 is able to touch the corner cases.
+mod field_encoding_scheme {
     use crate::{
-        encoding::{PackedFieldsAndBytes, PackedFieldsAndBytesEncodingScheme},
+        encoding::{FieldEncodedData, FieldEncodingScheme},
         EncodingScheme,
     };
-    use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
+    // `edwards_bw6` is able to touch the corner cases.
+    use snarkvm_curves::edwards_bw6::Fr;
+    use snarkvm_utilities::{FromBytes, ToBytes};
+
+    const ITERATIONS: usize = 100;
 
     #[test]
-    fn correctness_test() {
-        let mut rng = ChaChaRng::seed_from_u64(123456789u64);
-
-        for test_len in 0..100 {
-            let mut bytes = Vec::with_capacity(test_len);
-            for _ in 0..test_len {
-                bytes.push(u8::rand(&mut rng));
-            }
-
-            let encoder = PackedFieldsAndBytesEncodingScheme::<Fr>::default();
-            let encoded_data = encoder.encode(&bytes).unwrap();
-
-            let decoded_result = encoder.decode(&encoded_data).unwrap();
-
-            assert_eq!(bytes, decoded_result);
+    fn test_encode_and_decode() {
+        for i in 0..ITERATIONS {
+            let data: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
+            let encoded_data = FieldEncodingScheme::<Fr>::encode(&data).unwrap();
+            let decoded_data = FieldEncodingScheme::decode(&encoded_data).unwrap();
+            assert_eq!(data, decoded_data);
         }
     }
 
     #[test]
-    fn serialization_test() {
-        let mut rng = ChaChaRng::seed_from_u64(123456789u64);
+    fn test_to_bytes_le() {
+        for i in 0..ITERATIONS {
+            let data: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
 
-        for test_len in 0..50 {
-            let mut bytes = Vec::with_capacity(test_len);
-            for _ in 0..test_len {
-                bytes.push(u8::rand(&mut rng));
-            }
-
-            let encoder = PackedFieldsAndBytesEncodingScheme::<Fr>::default();
-            let encoded_record = encoder.encode(&bytes).unwrap();
-
-            let serialized_encoded_record = encoded_record.to_bytes_le().unwrap();
-            let deserialized_encoded_record =
-                PackedFieldsAndBytes::<Fr>::from_bytes_le(&serialized_encoded_record).unwrap();
-
-            assert_eq!(encoded_record, deserialized_encoded_record);
+            let encoded_data = FieldEncodingScheme::encode(&data).unwrap();
+            let encoded_data_bytes = encoded_data.to_bytes_le().unwrap();
+            let decoded_data = FieldEncodedData::<Fr>::from_bytes_le(&encoded_data_bytes).unwrap();
+            assert_eq!(encoded_data, decoded_data);
         }
     }
 }

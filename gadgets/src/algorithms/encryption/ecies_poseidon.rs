@@ -17,7 +17,7 @@
 use crate::{
     algorithms::{
         crypto_hash::{CryptographicSpongeVar, PoseidonSpongeGadget},
-        encoding::PackedFieldsAndBytesGadget,
+        encoding::FieldEncodedDataGadget,
     },
     AllocGadget,
     Boolean,
@@ -370,8 +370,8 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> EqGadget<F>
 impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultParametersField>
     EncryptionGadget<ECIESPoseidonEncryption<TE>, F> for ECIESPoseidonEncryptionGadget<TE, F>
 {
-    type CiphertextGadget = PackedFieldsAndBytesGadget<F>;
-    type PlaintextGadget = PackedFieldsAndBytesGadget<F>;
+    type CiphertextGadget = FieldEncodedDataGadget<F>;
+    type PlaintextGadget = FieldEncodedDataGadget<F>;
     type PrivateKeyGadget = ECIESPoseidonEncryptionPrivateKeyGadget<TE, F>;
     type PublicKeyGadget = ECIESPoseidonEncryptionPublicKeyGadget<TE, F>;
     type RandomnessGadget = ECIESPoseidonEncryptionRandomnessGadget<TE>;

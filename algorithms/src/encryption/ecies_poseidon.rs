@@ -16,7 +16,7 @@
 
 use crate::{
     crypto_hash::{CryptographicSponge, PoseidonDefaultParametersField, PoseidonSponge},
-    encoding::PackedFieldsAndBytes,
+    encoding::FieldEncodedData,
     hash_to_curve::hash_to_curve,
     EncryptionError,
     EncryptionScheme,
@@ -105,9 +105,9 @@ impl<TE: TwistedEdwardsParameters> EncryptionScheme for ECIESPoseidonEncryption<
 where
     TE::BaseField: PoseidonDefaultParametersField,
 {
-    type Ciphertext = PackedFieldsAndBytes<TE::BaseField>;
+    type Ciphertext = FieldEncodedData<TE::BaseField>;
     type Parameters = TEAffine<TE>;
-    type Plaintext = PackedFieldsAndBytes<TE::BaseField>;
+    type Plaintext = FieldEncodedData<TE::BaseField>;
     type PrivateKey = TE::ScalarField;
     type PublicKey = ECIESPoseidonPublicKey<TE>;
     type Randomness = TE::ScalarField;

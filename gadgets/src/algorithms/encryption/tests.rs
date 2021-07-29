@@ -16,33 +16,24 @@
 
 mod ecies_poseidon {
     use crate::{algorithms::encryption::ECIESPoseidonEncryptionGadget, AllocGadget, EncryptionGadget, EqGadget};
-    use rand::{CryptoRng, Rng, SeedableRng};
-    use rand_chacha::ChaChaRng;
     use snarkvm_algorithms::{
-        encoding::PackedFieldsAndBytesEncodingScheme,
+        encoding::FieldEncodingScheme,
         encryption::ECIESPoseidonEncryption,
         EncodingScheme,
         EncryptionScheme,
     };
     use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsParameters};
     use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-    use snarkvm_utilities::UniformRand;
+
+    use rand::SeedableRng;
+    use rand_chacha::ChaChaRng;
 
     type TestEncryptionScheme = ECIESPoseidonEncryption<EdwardsParameters>;
     type TestEncryptionSchemeGadget = ECIESPoseidonEncryptionGadget<EdwardsParameters, Fr>;
-    type TestEncodingScheme = PackedFieldsAndBytesEncodingScheme<Fr>;
-
-    fn generate_input<R: Rng + CryptoRng>(input_size: usize, rng: &mut R) -> Vec<u8> {
-        let mut input = vec![];
-        for _ in 0..input_size {
-            input.push(u8::rand(rng))
-        }
-
-        input
-    }
+    type TestEncodingScheme = FieldEncodingScheme<Fr>;
 
     #[test]
-    fn test_ecies_poseidon_encryption_public_key_gadget() {
+    fn test_ecies_poseidon_encryption_public_key_equivalence() {
         let mut cs = TestConstraintSystem::<Fr>::new();
         let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
@@ -89,19 +80,19 @@ mod ecies_poseidon {
     }
 
     #[test]
-    fn test_ecies_poseidon_encryption_gadget() {
+    fn test_ecies_poseidon_encryption_equivalence() {
         let mut cs = TestConstraintSystem::<Fr>::new();
         let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
         let encryption_scheme = TestEncryptionScheme::setup("test_encryption_gadget");
-        let encoding_scheme = TestEncodingScheme::setup("test_encoding_gadget");
 
         let private_key = encryption_scheme.generate_private_key(rng);
         let public_key = encryption_scheme.generate_public_key(&private_key).unwrap();
 
         let randomness = encryption_scheme.generate_randomness(&public_key, rng).unwrap();
-        let message = generate_input(10, rng);
-        let plaintext = encoding_scheme.encode(&message).unwrap();
+        let message: Vec<u8> = (0..10).map(|_| rand::random::<u8>()).collect();
+
+        let plaintext = TestEncodingScheme::encode(&message).unwrap();
         let ciphertext = encryption_scheme.encrypt(&public_key, &randomness, &plaintext).unwrap();
 
         // Alloc parameters, public key, plaintext, randomness, and blinding exponents
