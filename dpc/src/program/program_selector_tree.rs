@@ -28,7 +28,7 @@ use std::sync::Arc;
 pub struct ProgramSelectorTree<C: Parameters>(MerkleTree<C::ProgramSelectorTreeParameters>);
 
 impl<C: Parameters> ProgramSelectorTree<C> {
-    pub fn new_tree(program_ids: Vec<Vec<u8>>) -> Result<Self, MerkleError> {
+    pub fn new(program_ids: Vec<Vec<u8>>) -> Result<Self, MerkleError> {
         let program_selector_tree = MerkleTree::<C::ProgramSelectorTreeParameters>::new(
             Arc::new(C::program_selector_tree_parameters().clone()),
             &program_ids,

@@ -23,6 +23,7 @@ use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes_le, FromByte
 
 pub struct DPC<C: Parameters> {
     pub noop_program: NoopProgram<C>,
+    pub noop_program_selector_tree: ProgramSelectorTree<C>,
     pub inner_snark_parameters: (
         Option<<C::InnerSNARK as SNARK>::ProvingKey>,
         <C::InnerSNARK as SNARK>::VerifyingKey,
@@ -48,6 +49,10 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let noop_program_execution = noop_program.execute_blank(rng)?;
         end_timer!(noop_program_timer);
 
+        let noop_program_selector_tree_timer = start_timer!(|| "Noop program selector tree setup");
+        let noop_program_selector_tree = ProgramSelectorTree::<C>::new(vec![noop_program.id().to_vec()])?;
+        end_timer!(noop_program_selector_tree_timer);
+
         let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");
         let inner_circuit = InnerCircuit::<C>::blank();
         let inner_snark_parameters = C::InnerSNARK::setup(&inner_circuit, &mut SRS::CircuitSpecific(rng))?;
@@ -66,6 +71,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         Ok(Self {
             noop_program,
+            noop_program_selector_tree,
             inner_snark_parameters: (Some(inner_snark_parameters.0), inner_snark_parameters.1),
             outer_snark_parameters: (Some(outer_snark_parameters.0), outer_snark_parameters.1),
         })
@@ -74,6 +80,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     fn load(verify_only: bool) -> anyhow::Result<Self> {
         let timer = start_timer!(|| "DPC::load");
         let noop_program = NoopProgram::load()?;
+        let noop_program_selector_tree = ProgramSelectorTree::<C>::new(vec![noop_program.id().to_vec()])?;
         let inner_snark_parameters = {
             let inner_snark_pk = match verify_only {
                 true => None,
@@ -103,6 +110,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         Ok(Self {
             noop_program,
+            noop_program_selector_tree,
             inner_snark_parameters,
             outer_snark_parameters,
         })
