@@ -155,7 +155,7 @@ impl<C: Parameters> PrivateKey<C> {
     }
 
     /// Returns the signature public key for deriving the account view key.
-    pub fn pk_sig(&self) -> Result<<C::AccountSignatureScheme as SignatureScheme>::PublicKey, AccountError> {
+    pub fn pk_sig(&self) -> Result<C::AccountSignaturePublicKey, AccountError> {
         Ok(C::account_signature_scheme().generate_public_key(&self.sk_sig)?)
     }
 

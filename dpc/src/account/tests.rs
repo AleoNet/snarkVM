@@ -22,18 +22,26 @@ mod testnet1 {
     use rand_chacha::ChaChaRng;
     use std::{convert::TryInto, str::FromStr};
 
-    const ALEO_TESTNET1_PRIVATE_KEY: &str = "APrivateKey1vsgCPijUSjfbqDL1Z52b1EE4huyzbnQWfJUn2a1KHGvgEkA";
-    const ALEO_TESTNET1_VIEW_KEY: &str = "AViewKey1cYGQJmDmrjajLCwLvYuR89vv2AW6aF68B7gwvk3hAiNN";
-    const ALEO_TESTNET1_ADDRESS: &str = "aleo17gyptxtlh5vq3yvr3wd2v3x7zz23s49eteep4zj785khhcttkgysss2y0t";
+    const ALEO_TESTNET1_PRIVATE_KEY: &str = "APrivateKey1tn8cnHPNtcZ9pH89YBMmpPS3fP5kxooguzpbRz3pLWoSzhg";
+    const ALEO_TESTNET1_VIEW_KEY: &str = "AViewKey1m9cmnBtfWziAmT1SBC63a96fo18hLddrjweMxhcqhNo5";
+    const ALEO_TESTNET1_ADDRESS: &str = "aleo1h47qwdqqv25gwp0fkxgnqvm7ykrz0ud2vaw2cj4ac68w8wq5vqqqv58jvr";
+
+    const ITERATIONS: usize = 25;
 
     #[test]
     fn test_account_new() {
         let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
-        let account = Account::<Testnet1Parameters>::new(&mut rng);
-        println!("{:?}", account);
-        assert!(account.is_ok());
-        println!("{}", account.unwrap());
+        // Check the seeded derivation matches the hardcoded value, as a sanity check.
+        let account = Account::<Testnet1Parameters>::new(&mut rng).unwrap();
+        assert_eq!(ALEO_TESTNET1_PRIVATE_KEY, account.private_key.to_string());
+        assert_eq!(ALEO_TESTNET1_VIEW_KEY, account.view_key.to_string());
+        assert_eq!(ALEO_TESTNET1_ADDRESS, account.address.to_string());
+
+        // Attempt to sample for a new account ITERATIONS times.
+        for _ in 0..ITERATIONS {
+            assert!(Account::<Testnet1Parameters>::new(&mut rng).is_ok());
+        }
     }
 
     #[test]
@@ -111,6 +119,40 @@ mod testnet1 {
         assert!(Address::<Testnet1Parameters>::from_str("aleo1").is_err());
         assert!(Address::<Testnet1Parameters>::from_str("").is_err());
     }
+
+    #[test]
+    fn test_account_encryption_and_signature_compatibility() {
+        let rng = &mut rand::thread_rng();
+
+        let private_key = PrivateKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
+        let view_key = ViewKey::<Testnet1Parameters>::from_private_key(&private_key).unwrap();
+        let address = Address::<Testnet1Parameters>::from_private_key(&private_key).unwrap();
+
+        for i in 0..ITERATIONS {
+            let message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
+            let signature = view_key.sign(&message, rng).unwrap();
+            let verification = address.verify_signature(&message, &signature).unwrap();
+            assert!(verification);
+        }
+    }
+
+    #[test]
+    fn test_invalid_account_encryption_and_signature_compatibility() {
+        let rng = &mut rand::thread_rng();
+
+        let private_key = PrivateKey::<Testnet1Parameters>::from_str(ALEO_TESTNET1_PRIVATE_KEY).unwrap();
+        let view_key = ViewKey::<Testnet1Parameters>::from_private_key(&private_key).unwrap();
+        let address = Address::<Testnet1Parameters>::from_private_key(&private_key).unwrap();
+
+        for i in 0..ITERATIONS {
+            let message = "Hi, I'm an Aleo account signature!".as_bytes();
+            let incorrect_message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
+
+            let signature = view_key.sign(&message, rng).unwrap();
+            let verification = address.verify_signature(&incorrect_message, &signature).unwrap();
+            assert!(!verification);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -121,18 +163,26 @@ mod testnet2 {
     use rand_chacha::ChaChaRng;
     use std::{convert::TryInto, str::FromStr};
 
-    const ALEO_TESTNET2_PRIVATE_KEY: &str = "APrivateKey1vsgCPijUSjfbqDL1Z52b1EE4huyzbnQWfJUn2a1KHGvgEkA";
-    const ALEO_TESTNET2_VIEW_KEY: &str = "AViewKey1cYGQJmDmrjajLCwLvYuR89vv2AW6aF68B7gwvk3hAiNN";
-    const ALEO_TESTNET2_ADDRESS: &str = "aleo17gyptxtlh5vq3yvr3wd2v3x7zz23s49eteep4zj785khhcttkgysss2y0t";
+    const ALEO_TESTNET2_PRIVATE_KEY: &str = "APrivateKey1tn8cnHPNtcZ9pH89YBMmpPS3fP5kxooguzpbRz3pLWoSzhg";
+    const ALEO_TESTNET2_VIEW_KEY: &str = "AViewKey1m9cmnBtfWziAmT1SBC63a96fo18hLddrjweMxhcqhNo5";
+    const ALEO_TESTNET2_ADDRESS: &str = "aleo1h47qwdqqv25gwp0fkxgnqvm7ykrz0ud2vaw2cj4ac68w8wq5vqqqv58jvr";
+
+    const ITERATIONS: usize = 25;
 
     #[test]
     fn test_account_new() {
         let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
-        let account = Account::<Testnet2Parameters>::new(&mut rng);
-        println!("{:?}", account);
-        assert!(account.is_ok());
-        println!("{}", account.unwrap());
+        // Check the seeded derivation matches the hardcoded value, as a sanity check.
+        let account = Account::<Testnet2Parameters>::new(&mut rng).unwrap();
+        assert_eq!(ALEO_TESTNET2_PRIVATE_KEY, account.private_key.to_string());
+        assert_eq!(ALEO_TESTNET2_VIEW_KEY, account.view_key.to_string());
+        assert_eq!(ALEO_TESTNET2_ADDRESS, account.address.to_string());
+
+        // Attempt to sample for a new account ITERATIONS times.
+        for _ in 0..ITERATIONS {
+            assert!(Account::<Testnet2Parameters>::new(&mut rng).is_ok());
+        }
     }
 
     #[test]
@@ -210,5 +260,39 @@ mod testnet2 {
         assert!(Address::<Testnet2Parameters>::from_str("aleo1abcdefghijklmnopqrstuvwxyz").is_err());
         assert!(Address::<Testnet2Parameters>::from_str("aleo1").is_err());
         assert!(Address::<Testnet2Parameters>::from_str("").is_err());
+    }
+
+    #[test]
+    fn test_account_encryption_and_signature_compatibility() {
+        let rng = &mut rand::thread_rng();
+
+        let private_key = PrivateKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
+        let view_key = ViewKey::<Testnet2Parameters>::from_private_key(&private_key).unwrap();
+        let address = Address::<Testnet2Parameters>::from_private_key(&private_key).unwrap();
+
+        for i in 0..ITERATIONS {
+            let message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
+            let signature = view_key.sign(&message, rng).unwrap();
+            let verification = address.verify_signature(&message, &signature).unwrap();
+            assert!(verification);
+        }
+    }
+
+    #[test]
+    fn test_invalid_account_encryption_and_signature_compatibility() {
+        let rng = &mut rand::thread_rng();
+
+        let private_key = PrivateKey::<Testnet2Parameters>::from_str(ALEO_TESTNET2_PRIVATE_KEY).unwrap();
+        let view_key = ViewKey::<Testnet2Parameters>::from_private_key(&private_key).unwrap();
+        let address = Address::<Testnet2Parameters>::from_private_key(&private_key).unwrap();
+
+        for i in 0..ITERATIONS {
+            let message = "Hi, I'm an Aleo account signature!".as_bytes();
+            let incorrect_message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
+
+            let signature = view_key.sign(&message, rng).unwrap();
+            let verification = address.verify_signature(&incorrect_message, &signature).unwrap();
+            assert!(!verification);
+        }
     }
 }
