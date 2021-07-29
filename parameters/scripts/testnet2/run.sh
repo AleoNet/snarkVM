@@ -6,3 +6,5 @@
 ./outer_snark.sh || exit
 
 ./posw_snark.sh || exit
+
+./genesis.sh || exit

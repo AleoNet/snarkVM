@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::CRH;
-use snarkvm_dpc::{prelude::*, testnet1::*};
+use snarkvm_dpc::{prelude::*, testnet1::*, testnet2::*};
 use snarkvm_ledger::{
     posw::{txids_to_roots, PoswMarlin},
     prelude::*,
@@ -182,6 +182,16 @@ pub fn main() {
             let transaction_file = &args[5];
 
             let (genesis_header, transaction) = generate::<Testnet1Parameters>(recipient, balance).unwrap();
+            store(genesis_header_file, &genesis_header).unwrap();
+            store(transaction_file, &transaction).unwrap();
+        }
+        "testnet2" => {
+            let recipient = &Address::from_str(&args[2]).unwrap();
+            let balance = args[3].parse::<u64>().unwrap();
+            let genesis_header_file = &args[4];
+            let transaction_file = &args[5];
+
+            let (genesis_header, transaction) = generate::<Testnet2Parameters>(recipient, balance).unwrap();
             store(genesis_header_file, &genesis_header).unwrap();
             store(transaction_file, &transaction).unwrap();
         }
