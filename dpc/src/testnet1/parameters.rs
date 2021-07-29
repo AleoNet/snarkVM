@@ -28,6 +28,7 @@ use snarkvm_algorithms::{
     commitment::{BHPCompressedCommitment, Blake2sCommitment},
     crh::BHPCompressedCRH,
     crypto_hash::PoseidonCryptoHash,
+    define_additional_merkle_tree_parameters,
     define_merkle_tree_parameters,
     encryption::ECIESPoseidonEncryption,
     prelude::*,
@@ -76,6 +77,16 @@ define_merkle_tree_parameters!(
     <Testnet1Parameters as Parameters>::RecordCommitmentTreeCRH,
     32
 );
+
+define_additional_merkle_tree_parameters!(
+    ProgramSelectorMerkleTreeParameters,
+    <Testnet1Parameters as Parameters>::ProgramSelectorTreeCRH,
+    8
+);
+
+// TODO: Add merkle tree path. Check that the program selector root is constructed correctly.
+// For each program proof, hash the vk, use that as the leaf to construct the leaf.
+// Need 4 merkle paths, and 4 checks
 
 pub struct Testnet1Parameters;
 
@@ -137,6 +148,11 @@ impl Parameters for Testnet1Parameters {
     type ProgramIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
 
+    type ProgramSelectorTreeCRH = BHPCompressedCRH<EdwardsBls12, 8, 32>;
+    type ProgramSelectorTreeCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 8, 32>;
+    type ProgramSelectorTreeDigest = <Self::ProgramSelectorTreeCRH as CRH>::Output;
+    type ProgramSelectorTreeParameters = ProgramSelectorMerkleTreeParameters;
+    
     type RecordCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 48, 50>;
     type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 50>;
     type RecordCommitment = <Self::RecordCommitmentScheme as CommitmentScheme>::Output;
@@ -158,6 +174,7 @@ impl Parameters for Testnet1Parameters {
     dpc_setup!{local_data_crh, LOCAL_DATA_CRH, LocalDataCRH, "AleoLocalDataCRH0"}
     dpc_setup!{program_commitment_scheme, PROGRAM_COMMITMENT_SCHEME, ProgramCommitmentScheme, "AleoProgramIDCommitment0"} // TODO (howardwu): Rename to "AleoProgramCommitmentScheme0".
     dpc_setup!{program_id_crh, PROGRAM_ID_CRH, ProgramIDCRH, "AleoProgramIDCRH0"}
+    dpc_setup!{program_selector_tree_crh, PROGRAM_SELECTOR_TREE_CRH, ProgramSelectorTreeCRH, "AleoProgramSelectorTreeCRH0"}
     dpc_setup!{record_commitment_scheme, RECORD_COMMITMENT_SCHEME, RecordCommitmentScheme, "AleoRecordCommitment0"} // TODO (howardwu): Rename to "AleoRecordCommitmentScheme0".
     dpc_setup!{record_commitment_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoLedgerMerkleTreeCRH0"} // TODO (howardwu): Rename to "AleoRecordCommitmentTreeCRH0".
     dpc_setup!{serial_number_nonce_crh, SERIAL_NUMBER_NONCE_CRH, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}

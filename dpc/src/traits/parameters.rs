@@ -187,6 +187,23 @@ pub trait Parameters: 'static + Sized {
     type ProgramIDCRH: CRH;
     type ProgramIDCRHGadget: CRHGadget<Self::ProgramIDCRH, Self::OuterScalarField>;
 
+    /// Program selector tree instantiation for the program ids.
+    type ProgramSelectorTreeCRH: CRH<Output = Self::ProgramSelectorTreeDigest>;
+    type ProgramSelectorTreeCRHGadget: CRHGadget<Self::ProgramSelectorTreeCRH, Self::InnerScalarField>;
+    type ProgramSelectorTreeDigest: ToConstraintField<Self::InnerScalarField>
+        + Clone
+        + Debug
+        + Display
+        + ToBytes
+        + FromBytes
+        + Eq
+        + Hash
+        + Default
+        + Send
+        + Sync
+        + Copy;
+    type ProgramSelectorTreeParameters: LoadableMerkleParameters<H = Self::ProgramSelectorTreeCRH>;
+
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
     type PRF: PRF;
     type PRFGadget: PRFGadget<Self::PRF, Self::InnerScalarField>;
@@ -245,6 +262,8 @@ pub trait Parameters: 'static + Sized {
     fn program_commitment_scheme() -> &'static Self::ProgramCommitmentScheme;
 
     fn program_id_crh() -> &'static Self::ProgramIDCRH;
+
+    fn program_selector_tree_crh() -> &'static Self::ProgramSelectorTreeCRH;
 
     fn record_commitment_scheme() -> &'static Self::RecordCommitmentScheme;
 
