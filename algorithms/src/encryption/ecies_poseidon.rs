@@ -27,15 +27,16 @@ use snarkvm_curves::{
     ProjectiveCurve,
     TwistedEdwardsParameters,
 };
-use snarkvm_fields::{ConstraintFieldError, FieldParameters, PrimeField, ToConstraintField};
+use snarkvm_fields::{ConstraintFieldError, FieldParameters, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
     io::Result as IoResult,
     ops::Mul,
     serialize::*,
-    BigInteger,
+    FromBits,
     FromBytes,
     Read,
     SerializationError,
+    ToBits,
     ToBytes,
     UniformRand,
     Write,
@@ -151,36 +152,44 @@ where
         let mut sponge = PoseidonSponge::<TE::BaseField>::new(&params);
         sponge.absorb(&[ecdh_value.x]); // For TE curves, only one of (x, y) and (x, -y) would be on the curve.
 
-        // Compute the number of sponge elements needed.
-        let capacity = <TE::BaseField as PrimeField>::Parameters::CAPACITY as usize;
-        let random_byte_per_sponge_element = capacity / 8;
-        let num_sponge_field_elements =
-            (message.len() + random_byte_per_sponge_element - 1) / random_byte_per_sponge_element;
+        // Convert the message into bits.
+        let mut bits = Vec::<bool>::with_capacity(message.len() * 8 + 1);
+        for byte in message.iter() {
+            let mut byte = byte.clone();
+            for _ in 0..8 {
+                bits.push(byte & 1 == 1);
+                byte >>= 1;
+            }
+        }
+        bits.push(true);
+        // The last bit indicates the end of the actual data, which is used in decoding to
+        // make sure that the length is correct.
 
-        // Obtain a mask from Poseidon.
-        let sponge_field_elements = sponge.squeeze_field_elements(num_sponge_field_elements);
-        let mut sponge_bytes = Vec::with_capacity(num_sponge_field_elements * random_byte_per_sponge_element);
-        for elem in sponge_field_elements.iter() {
-            sponge_bytes.extend_from_slice(&elem.to_bytes_le()?[..random_byte_per_sponge_element]);
+        // Pack the bits into field elements.
+        let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
+        let mut res = Vec::with_capacity((bits.len() + capacity - 1) / capacity);
+        for chunk in bits.chunks(capacity) {
+            res.push(TE::BaseField::from_repr(<TE::BaseField as PrimeField>::BigInteger::from_bits_le(chunk)).unwrap());
         }
 
-        // Apply the mask to the message.
-        let mut masked_message = vec![0u8; message.len()];
-        for (i, message_byte) in message.iter().enumerate() {
-            masked_message[i] = sponge_bytes[i].wrapping_add(*message_byte);
+        // Obtain random field elements from Poseidon.
+        let sponge_field_elements = sponge.squeeze_field_elements(res.len());
+
+        // Add the random field elements to the packed bits.
+        for (i, sponge_field_element) in sponge_field_elements.iter().enumerate() {
+            res[i] = res[i] + sponge_field_element;
         }
 
         // Put the bytes of the x coordinate of the randomness group element
         // into the beginning of the ciphertext.
-        let random_element_bytes = self
+        let random_element = self
             .generator
             .into_projective()
             .mul((*randomness).clone())
             .into_affine()
-            .to_x_coordinate()
-            .to_bytes_le()?;
+            .to_x_coordinate();
 
-        Ok([random_element_bytes, masked_message].concat())
+        Ok([random_element.to_bytes_le()?, res.to_bytes_le()?].concat())
     }
 
     fn decrypt(
@@ -188,11 +197,11 @@ where
         private_key: &<Self as EncryptionScheme>::PrivateKey,
         ciphertext: &[u8],
     ) -> Result<Vec<u8>, EncryptionError> {
-        let x_coordinate_len = <TE::BaseField as PrimeField>::BigInteger::NUM_LIMBS * 8;
-        assert!(ciphertext.len() >= x_coordinate_len);
+        let per_field_element_bytes = TE::BaseField::zero().to_bytes_le()?.len();
+        assert!(ciphertext.len() >= per_field_element_bytes);
 
         // Recover the randomness group element.
-        let random_elem_x = TE::BaseField::from_bytes_le(&ciphertext[..x_coordinate_len])?;
+        let random_elem_x = TE::BaseField::from_bytes_le(&ciphertext[..per_field_element_bytes])?;
         let random_elem = {
             let mut first = TEAffine::<TE>::from_x_coordinate(random_elem_x.clone(), true);
             if first.is_some() && !first.unwrap().is_in_correct_subgroup_assuming_on_curve() {
@@ -219,22 +228,70 @@ where
         sponge.absorb(&[ecdh_value.x]); // For TE curves, only one of (x, y) and (x, -y) would be on the curve.
 
         // Compute the number of sponge elements needed.
-        let capacity = <TE::BaseField as PrimeField>::Parameters::CAPACITY as usize;
-        let random_byte_per_sponge_element = capacity / 8;
-        let num_sponge_field_elements =
-            (ciphertext.len() - x_coordinate_len + random_byte_per_sponge_element - 1) / random_byte_per_sponge_element;
+        let num_field_elements = (ciphertext.len() - per_field_element_bytes) / per_field_element_bytes;
 
-        // Obtain a mask from Poseidon.
-        let sponge_field_elements = sponge.squeeze_field_elements(num_sponge_field_elements);
-        let mut sponge_bytes = Vec::with_capacity(num_sponge_field_elements * random_byte_per_sponge_element);
-        for elem in sponge_field_elements.iter() {
-            sponge_bytes.extend_from_slice(&elem.to_bytes_le()?[..random_byte_per_sponge_element]);
+        // Obtain random field elements from Poseidon.
+        let sponge_field_elements = sponge.squeeze_field_elements(num_field_elements);
+
+        // Subtract the random field elements to the packed bits.
+        let mut res_field_elements = Vec::with_capacity(num_field_elements);
+        for i in 0..num_field_elements {
+            res_field_elements.push(TE::BaseField::from_bytes_le(
+                &ciphertext[(per_field_element_bytes + i * per_field_element_bytes)
+                    ..(per_field_element_bytes + (i + 1) * per_field_element_bytes)],
+            )?);
+        }
+        for (i, sponge_field_element) in sponge_field_elements.iter().enumerate() {
+            res_field_elements[i] = res_field_elements[i] - sponge_field_element;
         }
 
-        // Apply the mask to the message.
-        let mut message = vec![0u8; ciphertext.len() - x_coordinate_len];
-        for (i, ciphertext_byte) in ciphertext.iter().skip(x_coordinate_len).enumerate() {
-            message[i] = ciphertext_byte.wrapping_sub(sponge_bytes[i]);
+        // Unpack the packed bits.
+        if res_field_elements.is_empty() {
+            return Err(EncryptionError::Message(
+                "The packed field elements must consist of at least one field element.".to_string(),
+            )
+            .into());
+        }
+        if res_field_elements.last().unwrap().is_zero() {
+            return Err(EncryptionError::Message(
+                "The packed field elements must end with a non-zero element.".to_string(),
+            )
+            .into());
+        }
+
+        let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
+
+        let mut bits = Vec::<bool>::with_capacity(res_field_elements.len() * capacity);
+        for elem in res_field_elements.iter() {
+            let elem_bits = elem.to_repr().to_bits_le();
+            bits.extend_from_slice(&elem_bits[..capacity]); // only keep `capacity` bits, discarding the highest bit.
+        }
+
+        // Drop all the ending zeros and the last "1" bit.
+        //
+        // Note that there must be at least one "1" bit because the last element is not zero.
+        loop {
+            if let Some(true) = bits.pop() {
+                break;
+            }
+        }
+
+        if bits.len() % 8 != 0 {
+            return Err(EncryptionError::Message(
+                "The number of bits in the packed field elements is not a multiply of 8.".to_string(),
+            )
+            .into());
+        }
+        // Here we do not use assertion since it can cause Rust panicking.
+
+        let mut message = Vec::with_capacity(bits.len() / 8);
+        for chunk in bits.chunks_exact(8) {
+            let mut byte = 0u8;
+            for bit in chunk.iter().rev() {
+                byte <<= 1;
+                byte += *bit as u8;
+            }
+            message.push(byte);
         }
 
         Ok(message)

@@ -21,11 +21,11 @@ use crate::{
     ConditionalEqGadget,
     EncryptionGadget,
     EqGadget,
+    FieldGadget,
     FpGadget,
     GroupGadget,
     Integer,
     ToBytesGadget,
-    UInt,
     UInt8,
 };
 use itertools::Itertools;
@@ -365,15 +365,16 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         public_key: &Self::PublicKeyGadget,
         message: &[UInt8],
     ) -> Result<Vec<UInt8>, SynthesisError> {
-        let zero: TEAffineGadget<TE, F> =
-            <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::zero(cs.ns(|| "zero")).unwrap();
+        let affine_zero: TEAffineGadget<TE, F> =
+            <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::zero(cs.ns(|| "affine zero")).unwrap();
+        let group_zero = FpGadget::<TE::BaseField>::zero(cs.ns(|| "field zero"))?;
 
         // Compute the ECDH value.
         let randomness_bits = randomness.0.iter().flat_map(|b| b.to_bits_le()).collect::<Vec<_>>();
         let ecdh_value = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::mul_bits(
             &public_key.0,
             cs.ns(|| "compute_ecdh_value"),
-            &zero,
+            &affine_zero,
             randomness_bits.iter().copied(),
         )?;
 
@@ -383,31 +384,50 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         let mut sponge = PoseidonSpongeGadget::<TE::BaseField>::new(cs.ns(|| "sponge"), &params);
         sponge.absorb(cs.ns(|| "absorb"), [ecdh_value.x].iter())?;
 
-        // Compute the number of sponge elements needed.
-        let capacity = <TE::BaseField as PrimeField>::Parameters::CAPACITY as usize;
-        let random_byte_per_sponge_element = capacity / 8;
-        let num_sponge_field_elements =
-            (message.len() + random_byte_per_sponge_element - 1) / random_byte_per_sponge_element;
+        // Convert the message into bits.
+        let mut bits = Vec::with_capacity(message.len() * 8 + 1);
+        for byte in message.iter() {
+            bits.extend_from_slice(&byte.to_bits_le());
+        }
+        bits.push(Boolean::Constant(true));
+        // The last bit indicates the end of the actual data, which is used in decoding to
+        // make sure that the length is correct.
 
-        // Obtain a mask from Poseidon.
+        // Pack the bits into field elements.
+        let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
+        let mut res = Vec::with_capacity((bits.len() + capacity - 1) / capacity);
+        for (i, chunk) in bits.chunks(capacity).enumerate() {
+            let mut sum = group_zero.clone();
+
+            let mut cur = TE::BaseField::one();
+            for (j, bit) in chunk.iter().enumerate() {
+                let add =
+                    FpGadget::from_boolean(cs.ns(|| format!("convert a bit to a field element {} {}", i, j)), *bit)?
+                        .mul_by_constant(cs.ns(|| format!("multiply by the shift {} {}", i, j)), &cur)?;
+                sum.add_in_place(
+                    cs.ns(|| format!("assemble the bit result into field elements {} {}", i, j)),
+                    &add,
+                )?;
+
+                cur.double_in_place();
+            }
+
+            res.push(sum);
+        }
+
+        // Obtain random field elements from Poseidon.
         let sponge_field_elements =
-            sponge.squeeze_field_elements(cs.ns(|| "squeeze for mask"), num_sponge_field_elements)?;
-        let mut sponge_bytes = Vec::with_capacity(num_sponge_field_elements * random_byte_per_sponge_element);
-        for (i, elem) in sponge_field_elements.iter().enumerate() {
-            sponge_bytes.extend_from_slice(
-                &elem.to_bytes(cs.ns(|| format!("extract the bytes from field element {}", i)))?
-                    [..random_byte_per_sponge_element],
-            );
+            sponge.squeeze_field_elements(cs.ns(|| "squeeze for random elements"), res.len())?;
+
+        // Add the random field elements to the packed bits.
+        for (i, sponge_field_element) in sponge_field_elements.iter().enumerate() {
+            res[i].add_in_place(
+                cs.ns(|| format!("add the sponge field element {}", i)),
+                sponge_field_element,
+            )?;
         }
 
-        // Apply the mask to the message.
-        let mut masked_message = Vec::with_capacity(message.len());
-        for (i, message_byte) in message.iter().enumerate() {
-            masked_message.push(UInt8::addmany(cs.ns(|| format!("add_byte {}", i)), &[
-                sponge_bytes[i].clone(),
-                message_byte.clone(),
-            ])?);
-        }
+        let res_bytes = res.to_bytes(cs.ns(|| "convert the masked results into bytes"))?;
 
         // Put the bytes of the x coordinate of the randomness group element
         // into the beginning of the ciphertext.
@@ -417,13 +437,13 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         let randomness_elem = <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::mul_bits(
             &generator_gadget,
             cs.ns(|| "compute the randomness element"),
-            &zero,
+            &affine_zero,
             randomness_bits.iter().copied(),
         )?;
         let random_elem_bytes = randomness_elem
             .x
-            .to_bytes(cs.ns(|| "convertr the randomness element to bytes"))?;
+            .to_bytes(cs.ns(|| "convert the randomness element to bytes"))?;
 
-        Ok([random_elem_bytes, masked_message].concat())
+        Ok([random_elem_bytes, res_bytes].concat())
     }
 }
