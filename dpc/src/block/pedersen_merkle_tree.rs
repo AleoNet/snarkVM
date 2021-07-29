@@ -39,16 +39,9 @@ define_masked_merkle_tree_parameters!(MaskedMerkleTreeParameters, MerkleTreeCRH,
 /// A Merkle Tree instantiated with the Masked Pedersen hasher over BLS12-377
 pub type EdwardsMaskedMerkleTree = MerkleTree<MaskedMerkleTreeParameters>;
 
-// TODO (howardwu): TEMPORARY - Deprecate this with a ledger rearchitecture.
-// Setup message to instantiate the Merkle Tree parameters
-pub const fn setup_message() -> &'static str {
-    "MerkleTreeParameters"
-}
-
-/// TODO (howardwu): CRITICAL - Change the default setup message to a globally unique message.
 /// Lazily evaluated parameters for the Masked Merkle tree
 pub static PARAMS: Lazy<Arc<MaskedMerkleTreeParameters>> =
-    Lazy::new(|| Arc::new(MaskedMerkleTreeParameters::setup(&mut setup_message())));
+    Lazy::new(|| Arc::new(MaskedMerkleTreeParameters::setup("MerkleTreeParameters")));
 
 /// A Pedersen Merkle Root Hash
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
