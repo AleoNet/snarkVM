@@ -267,8 +267,6 @@ pub trait Parameters: 'static + Sized {
 
     fn program_id_crh() -> &'static Self::ProgramIDCRH;
 
-    fn record_encoding_scheme() -> &'static Self::RecordEncodingScheme;
-
     fn record_commitment_scheme() -> &'static Self::RecordCommitmentScheme;
 
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters;

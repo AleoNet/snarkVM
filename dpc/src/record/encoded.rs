@@ -77,7 +77,7 @@ impl<C: Parameters> EncodedRecord<C> {
         let payload = record.payload();
         bytes.extend_from_slice(&payload.to_bytes_le()?);
 
-        let encoded_record = C::record_encoding_scheme().encode(&bytes)?;
+        let encoded_record = C::RecordEncodingScheme::encode(&bytes)?;
 
         // Pack as field elements
         Ok(Self::new(encoded_record))
@@ -85,7 +85,7 @@ impl<C: Parameters> EncodedRecord<C> {
 
     /// Decode and return the record components.
     pub fn decode(&self) -> Result<DecodedRecord<C>, DPCError> {
-        let bits = C::record_encoding_scheme().decode(&self.plaintext)?;
+        let bits = C::RecordEncodingScheme::decode(&self.plaintext)?;
 
         let mut cursor = Cursor::new(bits);
 

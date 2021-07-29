@@ -40,12 +40,9 @@ mod ecies {
         let randomness = encryption_scheme.generate_randomness(&public_key, rng).unwrap();
         let message = generate_input(32, rng);
 
-        let encoder = FieldEncodingScheme::<Fr>::default();
-        let plaintext = encoder.encode(&message).unwrap();
-
+        let plaintext = FieldEncodingScheme::<Fr>::encode(&message).unwrap();
         let ciphertext = encryption_scheme.encrypt(&public_key, &randomness, &plaintext).unwrap();
         let decrypted_plaintext = encryption_scheme.decrypt(&private_key, &ciphertext).unwrap();
-
         assert_eq!(plaintext, decrypted_plaintext);
     }
 
@@ -62,7 +59,6 @@ mod ecies {
             let public_key_bytes = to_bytes_le![public_key].unwrap();
             let recovered_public_key =
                 <TestEncryptionScheme as EncryptionScheme>::PublicKey::read_le(&public_key_bytes[..]).unwrap();
-
             assert_eq!(public_key, recovered_public_key);
         }
     }

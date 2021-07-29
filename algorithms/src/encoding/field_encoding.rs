@@ -27,33 +27,26 @@ pub struct FieldEncodedData<F: PrimeField> {
     pub remaining_bytes: Vec<u8>,
 }
 
-impl<F: PrimeField> ToBytes for FieldEncodedData<F> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.field_elements.len() as u8).write_le(&mut writer)?;
-        for elem in self.field_elements.iter() {
-            elem.write_le(&mut writer)?;
-        }
-
-        (self.remaining_bytes.len() as u8).write_le(&mut writer)?;
-        for byte in self.remaining_bytes.iter() {
-            byte.write_le(&mut writer)?;
-        }
-
-        Ok(())
+impl<F: PrimeField> FieldEncodedData<F> {
+    /// Returns the number of bits occupied in field elements. It should be noted this is
+    /// *not* the number of bits the final field elements occupy in bit size.
+    pub fn num_bits(&self) -> usize {
+        (self.field_elements.len() * <F::Parameters as FieldParameters>::CAPACITY as usize)
+            + (self.remaining_bytes.len() * 8)
     }
 }
 
 impl<F: PrimeField> FromBytes for FieldEncodedData<F> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let field_elements_len = u8::read_le(&mut reader)?;
-        let mut field_elements = Vec::with_capacity(field_elements_len as usize);
-        for _ in 0..field_elements_len {
+        let field_elements_length = u8::read_le(&mut reader)?;
+        let mut field_elements = Vec::with_capacity(field_elements_length as usize);
+        for _ in 0..field_elements_length {
             field_elements.push(F::read_le(&mut reader)?);
         }
 
-        let remaining_bytes_len = u8::read_le(&mut reader)?;
-        let mut remaining_bytes = Vec::with_capacity(remaining_bytes_len as usize);
-        for _ in 0..remaining_bytes_len {
+        let remaining_bytes_length = u8::read_le(&mut reader)?;
+        let mut remaining_bytes = Vec::with_capacity(remaining_bytes_length as usize);
+        for _ in 0..remaining_bytes_length {
             remaining_bytes.push(u8::read_le(&mut reader)?);
         }
 
@@ -64,51 +57,38 @@ impl<F: PrimeField> FromBytes for FieldEncodedData<F> {
     }
 }
 
-impl<F: PrimeField> ToConstraintField<F> for FieldEncodedData<F> {
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        let mut res = self.field_elements.clone();
-        if !self.remaining_bytes.is_empty() {
-            res.extend_from_slice(&self.remaining_bytes.to_field_elements()?);
-        }
-        Ok(res)
-    }
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct FieldEncodingScheme<F: PrimeField> {
-    field_phantom: PhantomData<F>,
-}
-
-impl<F: PrimeField> ToBytes for FieldEncodingScheme<F> {
-    fn write_le<W: Write>(&self, _writer: W) -> IoResult<()> {
+impl<F: PrimeField> ToBytes for FieldEncodedData<F> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.field_elements.len() as u8).write_le(&mut writer)?;
+        self.field_elements.write_le(&mut writer)?;
+        (self.remaining_bytes.len() as u8).write_le(&mut writer)?;
+        self.remaining_bytes.write_le(&mut writer)?;
         Ok(())
     }
 }
 
-impl<F: PrimeField> FromBytes for FieldEncodingScheme<F> {
-    fn read_le<R: Read>(_reader: R) -> IoResult<Self> {
-        Ok(Self::default())
+impl<F: PrimeField> ToConstraintField<F> for FieldEncodedData<F> {
+    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
+        Ok(self
+            .field_elements
+            .clone()
+            .into_iter()
+            .chain(self.remaining_bytes.to_field_elements()?.into_iter())
+            .collect())
     }
 }
 
-impl<F: PrimeField> From<<Self as EncodingScheme>::Parameters> for FieldEncodingScheme<F> {
-    fn from(_: <Self as EncodingScheme>::Parameters) -> Self {
-        Self::default()
-    }
-}
+#[derive(Default, Debug, Clone)]
+pub struct FieldEncodingScheme<F: PrimeField>(PhantomData<F>);
 
 impl<F: PrimeField> EncodingScheme for FieldEncodingScheme<F> {
     type Data = Vec<u8>;
     type EncodedData = FieldEncodedData<F>;
-    type Parameters = ();
 
-    fn setup(_message: &str) -> Self {
-        Self::default()
-    }
+    fn encode(data: &Self::Data) -> Result<Self::EncodedData, EncodingError> {
+        let field_capacity = <F::Parameters as FieldParameters>::CAPACITY as usize;
 
-    fn encode(&self, data: &Self::Data) -> Result<Self::EncodedData, EncodingError> {
         // Convert the input into bits.
-        let capacity = <F::Parameters as FieldParameters>::CAPACITY as usize;
         let mut bits = Vec::<bool>::with_capacity(data.len() * 8 + 1);
         for byte in data.iter() {
             let mut byte = byte.clone();
@@ -122,10 +102,10 @@ impl<F: PrimeField> EncodingScheme for FieldEncodingScheme<F> {
         //
         // We cut off a limit of the remaining bits to capacity / 8 * 8,
         // because Poseidon cannot guarantee so many random bytes.
-        let cutoff = capacity / 8 * 8;
+        let cutoff = field_capacity / 8 * 8;
 
-        let mut field_elements_len = bits.len() / capacity;
-        let mut remaining_bits_len = bits.len() % capacity;
+        let mut field_elements_len = bits.len() / field_capacity;
+        let mut remaining_bits_len = bits.len() % field_capacity;
         let mut remaining_bytes_len = (remaining_bits_len + 7) / 8;
 
         if remaining_bits_len > cutoff {
@@ -141,7 +121,7 @@ impl<F: PrimeField> EncodingScheme for FieldEncodingScheme<F> {
 
         // Pack the field elements part.
         let mut field_elements = Vec::<F>::with_capacity(field_elements_len);
-        for chunk in bits[..core::cmp::min(bits.len(), field_elements_len * capacity)].chunks(capacity) {
+        for chunk in bits[..core::cmp::min(bits.len(), field_elements_len * field_capacity)].chunks(field_capacity) {
             field_elements.push(F::from_repr(F::BigInteger::from_bits_le(chunk)).unwrap());
         }
 
@@ -162,17 +142,17 @@ impl<F: PrimeField> EncodingScheme for FieldEncodingScheme<F> {
         })
     }
 
-    fn decode(&self, data: &Self::EncodedData) -> Result<Self::Data, EncodingError> {
+    fn decode(data: &Self::EncodedData) -> Result<Self::Data, EncodingError> {
         // Check if the encoded data is well-formed.
-        let capacity = <F::Parameters as FieldParameters>::CAPACITY as usize;
-        assert!(data.remaining_bytes.len() <= (capacity + 7) / 8);
+        let field_capacity = <F::Parameters as FieldParameters>::CAPACITY as usize;
+        assert!(data.remaining_bytes.len() <= (field_capacity + 7) / 8);
 
-        let mut bits = Vec::with_capacity(data.field_elements.len() * capacity + data.remaining_bytes.len() * 8);
+        let mut bits = Vec::with_capacity(data.num_bits());
 
         // Unpack the field elements.
-        for elem in data.field_elements.iter() {
-            let elem_bits = elem.to_repr().to_bits_le();
-            bits.extend_from_slice(&elem_bits[..capacity]); // only keep `capacity` bits, discarding the highest bit.
+        for element in data.field_elements.iter() {
+            let element_bits = element.to_repr().to_bits_le();
+            bits.extend_from_slice(&element_bits[..field_capacity]); // only keep `capacity` bits, discarding the highest bit.
         }
 
         // Unpack the remaining bytes.
@@ -184,9 +164,8 @@ impl<F: PrimeField> EncodingScheme for FieldEncodingScheme<F> {
             }
         }
 
-        // Truncate to bits to a multiply of eight.
-        let num_bytes = bits.len() / 8;
-        let mut bytes = Vec::with_capacity(num_bytes);
+        // Truncate to bits to a multiple of eight.
+        let mut bytes = Vec::with_capacity(bits.len() / 8);
         for chunk in bits.chunks_exact(8) {
             let mut byte = 0u8;
             for bit in chunk.iter().rev() {

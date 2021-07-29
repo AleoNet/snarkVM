@@ -129,7 +129,6 @@ where
         account_commitment_parameters,
         account_encryption_parameters,
         account_signature_parameters,
-        record_encoding_parameters,
         record_commitment_parameters,
         encrypted_record_crh,
         program_id_commitment_parameters,
@@ -153,11 +152,6 @@ where
         let account_signature_parameters =
             C::AccountSignatureGadget::alloc_constant(&mut cs.ns(|| "Declare account signature parameters"), || {
                 Ok(C::account_signature_scheme().clone())
-            })?;
-
-        let record_encoding_parameters =
-            C::RecordEncodingGadget::alloc_constant(&mut cs.ns(|| "Declare record encoding parameters"), || {
-                Ok(C::record_encoding_scheme().clone())
             })?;
 
         let record_commitment_parameters =
@@ -199,7 +193,6 @@ where
             account_commitment_parameters,
             account_encryption_parameters,
             account_signature_parameters,
-            record_encoding_parameters,
             record_commitment_parameters,
             encrypted_record_crh_parameters,
             program_id_commitment_parameters,
@@ -734,7 +727,7 @@ where
 
             // *******************************************************************
             // Convert the record field elements into bits and check the consistency
-            record_encoding_parameters.enforce_encoding_correctness(
+            C::RecordEncodingGadget::enforce_encoding_correctness(
                 &mut encryption_cs.ns(|| "encrypted_plaintext_is_consistent_with_the_record"),
                 &expected_plaintext_bytes,
                 &record_plaintext_gadget,

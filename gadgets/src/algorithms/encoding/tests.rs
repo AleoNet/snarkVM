@@ -14,49 +14,40 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod packed_fields_and_bytes {
+mod field_encoding_gadget {
     use crate::{
         algorithms::encoding::{FieldEncodedDataGadget, FieldEncodingGadget},
         AllocGadget,
         EncodingGadget,
         UInt8,
     };
-    use rand::SeedableRng;
-    use rand_chacha::ChaChaRng;
     use snarkvm_algorithms::{encoding::FieldEncodingScheme, EncodingScheme};
     use snarkvm_curves::edwards_bw6::Fr;
     use snarkvm_r1cs::{ConstraintSystem, TestConstraintChecker};
-    use snarkvm_utilities::UniformRand;
 
     type TestEncodingScheme = FieldEncodingScheme<Fr>;
     type TestEncodingGadget = FieldEncodingGadget<Fr>;
 
+    const ITERATIONS: usize = 100;
+
     #[test]
-    fn test_consistency() {
+    fn test_encode_equivalence() {
         let mut cs = TestConstraintChecker::<Fr>::new();
-        let mut rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
-        let encoding_scheme = TestEncodingScheme::setup("test_encoding_gadget");
-        let encoding_gadget = TestEncodingGadget::alloc_constant(&mut cs.ns(|| "allocate encoding gadget"), || {
-            Ok(encoding_scheme.clone())
-        })
-        .unwrap();
+        for i in 0..ITERATIONS {
+            let data: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
+            let encoded_data = TestEncodingScheme::encode(&data).unwrap();
 
-        for test_len in 0..100 {
-            let mut bytes = Vec::with_capacity(test_len);
-            for _ in 0..test_len {
-                bytes.push(u8::rand(&mut rng));
-            }
-
-            let encoded_data = encoding_scheme.encode(&bytes).unwrap();
-
-            let data_gadget = UInt8::alloc_vec(cs.ns(|| "allocate data"), &bytes).unwrap();
+            let data_gadget = UInt8::alloc_vec(cs.ns(|| "allocate data"), &data).unwrap();
             let encoder_data_gadget =
                 FieldEncodedDataGadget::<Fr>::alloc(cs.ns(|| "allocate encoded data"), || Ok(encoded_data)).unwrap();
 
-            encoding_gadget
-                .enforce_encoding_correctness(cs.ns(|| "enforce consistency"), &data_gadget, &encoder_data_gadget)
-                .unwrap();
+            TestEncodingGadget::enforce_encoding_correctness(
+                cs.ns(|| "enforce consistency"),
+                &data_gadget,
+                &encoder_data_gadget,
+            )
+            .unwrap();
 
             if !cs.is_satisfied() {
                 println!("{:?}", cs.which_is_unsatisfied());

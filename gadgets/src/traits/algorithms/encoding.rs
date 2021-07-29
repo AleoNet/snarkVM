@@ -19,12 +19,11 @@ use snarkvm_algorithms::EncodingScheme;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
-pub trait EncodingGadget<E: EncodingScheme, F: PrimeField>: AllocGadget<E, F> + Clone {
+pub trait EncodingGadget<E: EncodingScheme, F: PrimeField> {
     type DataGadget: Clone + Default + EqGadget<F> + ToBytesGadget<F> + AllocGadget<E::Data, F>;
     type EncodedDataGadget: Clone + Default + EqGadget<F> + ToBytesGadget<F> + AllocGadget<E::EncodedData, F>;
 
     fn enforce_encoding_correctness<CS: ConstraintSystem<F>>(
-        &self,
         cs: CS,
         data: &Self::DataGadget,
         encoded_data: &Self::EncodedDataGadget,

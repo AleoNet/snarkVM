@@ -137,7 +137,7 @@ impl<F: PrimeField> ToBytesGadget<F> for FieldEncodedDataGadget<F> {
         Ok(res)
     }
 
-    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
+    fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.to_bytes(cs)
     }
 }
@@ -156,41 +156,8 @@ impl<F: PrimeField> ToConstraintFieldGadget<F> for FieldEncodedDataGadget<F> {
     }
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct FieldEncodingGadget<F: PrimeField> {
-    f_phantom: PhantomData<F>,
-}
-
-impl<F: PrimeField> AllocGadget<FieldEncodingScheme<F>, F> for FieldEncodingGadget<F> {
-    fn alloc_constant<
-        Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<FieldEncodingScheme<F>>,
-        CS: ConstraintSystem<F>,
-    >(
-        _cs: CS,
-        _f: Fn,
-    ) -> Result<Self, SynthesisError> {
-        Ok(Self::default())
-    }
-
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<FieldEncodingScheme<F>>, CS: ConstraintSystem<F>>(
-        _cs: CS,
-        _f: Fn,
-    ) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-
-    fn alloc_input<
-        Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<FieldEncodingScheme<F>>,
-        CS: ConstraintSystem<F>,
-    >(
-        _cs: CS,
-        _f: Fn,
-    ) -> Result<Self, SynthesisError> {
-        unimplemented!()
-    }
-}
+#[derive(Clone, Debug, Default)]
+pub struct FieldEncodingGadget<F: PrimeField>(PhantomData<F>);
 
 impl<F: PrimeField> EncodingGadget<FieldEncodingScheme<F>, F> for FieldEncodingGadget<F> {
     type DataGadget = Vec<UInt8>;
@@ -198,7 +165,6 @@ impl<F: PrimeField> EncodingGadget<FieldEncodingScheme<F>, F> for FieldEncodingG
 
     /// Enforces that given data and encoded data matches in their bit representation.
     fn enforce_encoding_correctness<CS: ConstraintSystem<F>>(
-        &self,
         mut cs: CS,
         data: &Self::DataGadget,
         encoded_data: &Self::EncodedDataGadget,

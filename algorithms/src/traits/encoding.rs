@@ -17,16 +17,11 @@
 use crate::EncodingError;
 use snarkvm_utilities::{fmt::Debug, FromBytes, ToBytes};
 
-pub trait EncodingScheme:
-    Sized + ToBytes + FromBytes + Debug + Clone + Eq + From<<Self as EncodingScheme>::Parameters>
-{
-    type Parameters: Clone + Debug + Eq;
+pub trait EncodingScheme: Debug {
     type Data: Clone + Debug + Default + Eq + ToBytes + From<Vec<u8>>;
-    type EncodedData: Clone + Debug + Default + Eq + ToBytes;
+    type EncodedData: Clone + Debug + Default + Eq + ToBytes + FromBytes;
 
-    fn setup(message: &str) -> Self;
+    fn encode(data: &Self::Data) -> Result<Self::EncodedData, EncodingError>;
 
-    fn encode(&self, data: &Self::Data) -> Result<Self::EncodedData, EncodingError>;
-
-    fn decode(&self, data: &Self::EncodedData) -> Result<Self::Data, EncodingError>;
+    fn decode(data: &Self::EncodedData) -> Result<Self::Data, EncodingError>;
 }
