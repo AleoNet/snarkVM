@@ -165,7 +165,6 @@ pub fn store<P: AsRef<Path>>(path: P, bytes: &[u8]) -> IoResult<()> {
 
 pub fn main() {
     let args: Vec<String> = std::env::args().collect();
-
     if args.len() < 6 {
         println!("Invalid number of arguments. Given: {} - Required: 5", args.len() - 1);
         return;
