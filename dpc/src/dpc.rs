@@ -15,11 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
-use rand::{CryptoRng, Rng};
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, merkle_tree::MerklePath, prelude::*};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_parameters::{prelude::*, testnet2::*};
 use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
+
+use rand::{CryptoRng, Rng};
 
 pub struct DPC<C: Parameters> {
     pub noop_program: NoopProgram<C>,
