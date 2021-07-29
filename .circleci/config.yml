@@ -176,7 +176,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd posw && RUST_MIN_STACK=67108864 cargo test
+          command: cd ledger && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-ledger-cache
 
