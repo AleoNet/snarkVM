@@ -96,6 +96,8 @@ fn dpc_testnet2_integration_test() {
     // Generate dummy input records having as address the genesis address.
     let old_private_keys = vec![genesis_account.private_key.clone(); Testnet2Parameters::NUM_INPUT_RECORDS];
 
+    let dpc_noop_program_selector_tree_root = to_bytes_le![dpc.noop_program_selector_tree.root()].unwrap();
+
     let mut joint_serial_numbers = vec![];
     let mut old_records = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
@@ -107,8 +109,8 @@ fn dpc_testnet2_integration_test() {
             true, // The input record is dummy
             0,
             Payload::default(),
-            dpc.noop_program.id(),
-            dpc.noop_program.id(),
+            dpc_noop_program_selector_tree_root.clone(),
+            dpc_noop_program_selector_tree_root.clone(),
             old_sn_nonce,
             &mut rng,
         )
@@ -131,8 +133,8 @@ fn dpc_testnet2_integration_test() {
                 false,
                 10,
                 Payload::default(),
-                dpc.noop_program.id(),
-                dpc.noop_program.id(),
+                dpc_noop_program_selector_tree_root.clone(),
+                dpc_noop_program_selector_tree_root.clone(),
                 (Testnet2Parameters::NUM_INPUT_RECORDS + j) as u8,
                 joint_serial_numbers.clone(),
                 &mut rng,
@@ -149,9 +151,19 @@ fn dpc_testnet2_integration_test() {
     // Generate the program proofs
     let mut program_proofs = vec![];
     for i in 0..Testnet2Parameters::NUM_TOTAL_RECORDS {
+        let program_selector_path = dpc
+            .noop_program_selector_tree
+            .generate_program_path(0, &dpc.noop_program.id())
+            .unwrap();
+
         program_proofs.push(
             dpc.noop_program
-                .execute(&transaction_kernel.into_local_data(), i as u8, &mut rng)
+                .execute(
+                    &transaction_kernel.into_local_data(),
+                    i as u8,
+                    program_selector_path,
+                    &mut rng,
+                )
                 .unwrap(),
         );
     }
@@ -225,6 +237,8 @@ fn test_testnet_2_transaction_kernel_serialization() {
 
     let old_private_keys = vec![test_account.private_key.clone(); Testnet2Parameters::NUM_INPUT_RECORDS];
 
+    let dpc_noop_program_selector_tree_root = to_bytes_le![dpc.noop_program_selector_tree.root()].unwrap();
+
     // Set the input records for our transaction to be the initial dummy records.
     let mut joint_serial_numbers = vec![];
     let mut old_records = vec![];
@@ -234,8 +248,8 @@ fn test_testnet_2_transaction_kernel_serialization() {
             true,
             0,
             Payload::default(),
-            dpc.noop_program.id(),
-            dpc.noop_program.id(),
+            dpc_noop_program_selector_tree_root.clone(),
+            dpc_noop_program_selector_tree_root.clone(),
             <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
                 .hash(&[0u8; 1])
                 .unwrap(),
@@ -260,8 +274,8 @@ fn test_testnet_2_transaction_kernel_serialization() {
                 false,
                 10,
                 Payload::default(),
-                dpc.noop_program.id(),
-                dpc.noop_program.id(),
+                dpc_noop_program_selector_tree_root.clone(),
+                dpc_noop_program_selector_tree_root.clone(),
                 (Testnet2Parameters::NUM_INPUT_RECORDS + j) as u8,
                 joint_serial_numbers.clone(),
                 &mut rng,
@@ -288,6 +302,9 @@ fn test_testnet2_dpc_execute_constraints() {
     let dpc = Testnet2DPC::setup(&mut rng).unwrap();
 
     let alternate_noop_program = NoopProgram::<Testnet2Parameters>::setup(&mut rng).unwrap();
+    let alternate_noop_program_selector_tree =
+        ProgramSelectorTree::<Testnet2Parameters>::new(vec![alternate_noop_program.id()]).unwrap();
+    let alternate_noop_program_selector_tree_root = to_bytes_le![alternate_noop_program_selector_tree.root()].unwrap();
 
     // Generate metadata and an account for a dummy initial record.
     let dummy_account = Account::new(&mut rng).unwrap();
@@ -310,6 +327,8 @@ fn test_testnet2_dpc_execute_constraints() {
 
     let old_private_keys = vec![dummy_account.private_key; Testnet2Parameters::NUM_INPUT_RECORDS];
 
+    let dpc_noop_program_selector_tree_root = to_bytes_le![dpc.noop_program_selector_tree.root()].unwrap();
+
     // Set the input records for our transaction to be the initial dummy records.
     let mut joint_serial_numbers = vec![];
     let mut old_records = vec![];
@@ -319,8 +338,8 @@ fn test_testnet2_dpc_execute_constraints() {
             true,
             0,
             Payload::default(),
-            alternate_noop_program.id(),
-            alternate_noop_program.id(),
+            alternate_noop_program_selector_tree_root.clone(),
+            alternate_noop_program_selector_tree_root.clone(),
             <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
                 .hash(&[0u8; 1])
                 .unwrap(),
@@ -348,8 +367,8 @@ fn test_testnet2_dpc_execute_constraints() {
                 false,
                 10,
                 Payload::default(),
-                dpc.noop_program.id(),
-                dpc.noop_program.id(),
+                dpc_noop_program_selector_tree_root.clone(),
+                dpc_noop_program_selector_tree_root.clone(),
                 (Testnet2Parameters::NUM_INPUT_RECORDS + j) as u8,
                 joint_serial_numbers.clone(),
                 &mut rng,
@@ -367,18 +386,33 @@ fn test_testnet2_dpc_execute_constraints() {
 
     let mut program_proofs = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
+        let program_selector_path = alternate_noop_program_selector_tree
+            .generate_program_path(0, &alternate_noop_program.id())
+            .unwrap();
+
         program_proofs.push(
             alternate_noop_program
-                .execute(&transaction_kernel.into_local_data(), i as u8, &mut rng)
+                .execute(
+                    &transaction_kernel.into_local_data(),
+                    i as u8,
+                    program_selector_path,
+                    &mut rng,
+                )
                 .unwrap(),
         );
     }
     for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
+        let program_selector_path = dpc
+            .noop_program_selector_tree
+            .generate_program_path(0, &dpc.noop_program.id())
+            .unwrap();
+
         program_proofs.push(
             dpc.noop_program
                 .execute(
                     &transaction_kernel.into_local_data(),
                     (Testnet2Parameters::NUM_INPUT_RECORDS + j) as u8,
+                    program_selector_path,
                     &mut rng,
                 )
                 .unwrap(),
