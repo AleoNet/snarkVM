@@ -67,15 +67,15 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
         let leaves: &[[u8; 32]] = &[];
         let parameters = Arc::new(C::record_commitment_tree_parameters().clone());
 
-        let ledger_storage = Self {
+        let ledger = Self {
             current_block_height: Default::default(),
             record_commitment_tree: RwLock::new(MerkleTree::new(parameters, leaves)?),
             storage,
         };
 
-        ledger_storage.insert_and_commit(&genesis_block)?;
+        ledger.insert_and_commit(&genesis_block)?;
 
-        Ok(ledger_storage)
+        Ok(ledger)
     }
 
     /// Returns the latest number of blocks in the ledger.

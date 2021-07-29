@@ -27,5 +27,5 @@ To perform the PoSW SNARK parameter generation only, run:
 
 To perform the genesis block generation only, run:
 ```$xslt
-./genesis_block_setup.sh
+./genesis.sh
 ```

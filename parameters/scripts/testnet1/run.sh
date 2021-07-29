@@ -5,3 +5,5 @@
 ./outer_snark.sh || exit
 
 ./posw_snark.sh || exit
+
+./outer_snark.sh || exit
