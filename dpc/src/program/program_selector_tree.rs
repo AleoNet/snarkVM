@@ -16,7 +16,7 @@
 
 use crate::Parameters;
 use snarkvm_algorithms::{
-    merkle_tree::{MerklePath, MerkleTree},
+    merkle_tree::{MerklePath, MerkleTree, MerkleTreeDigest},
     prelude::*,
 };
 use std::sync::Arc;
@@ -43,5 +43,9 @@ impl<C: Parameters> ProgramSelectorTree<C> {
         program_id: &Vec<u8>,
     ) -> Result<MerklePath<C::ProgramSelectorTreeParameters>, MerkleError> {
         self.0.generate_proof(index, &program_id)
+    }
+
+    pub fn root(&self) -> MerkleTreeDigest<C::ProgramSelectorTreeParameters> {
+        self.0.root()
     }
 }

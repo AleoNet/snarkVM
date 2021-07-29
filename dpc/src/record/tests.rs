@@ -24,11 +24,13 @@ use crate::{
     Parameters,
     Payload,
     ProgramScheme,
+    ProgramSelectorTree,
     Record,
     ViewKey,
     PAYLOAD_SIZE,
 };
 use snarkvm_algorithms::traits::CRH;
+use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
@@ -41,6 +43,9 @@ fn test_record_serialization() {
 
     for _ in 0..ITERATIONS {
         let noop_program = NoopProgram::<Testnet2Parameters>::setup(&mut rng).unwrap();
+        let noop_program_selector_tree =
+            ProgramSelectorTree::<Testnet2Parameters>::new(vec![noop_program.id()]).unwrap();
+        let noop_program_selector_tree_root = to_bytes_le![noop_program_selector_tree.root()].unwrap();
 
         for _ in 0..ITERATIONS {
             let dummy_account = Account::<Testnet2Parameters>::new(&mut rng).unwrap();
@@ -55,8 +60,8 @@ fn test_record_serialization() {
                 false,
                 value,
                 Payload::from_bytes(&payload),
-                noop_program.id(),
-                noop_program.id(),
+                noop_program_selector_tree_root.clone(),
+                noop_program_selector_tree_root.clone(),
                 <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
                     .hash(&sn_nonce_input)
                     .unwrap(),
@@ -92,6 +97,9 @@ fn test_record_encryption() {
 
     for _ in 0..ITERATIONS {
         let noop_program = NoopProgram::<Testnet2Parameters>::setup(&mut rng).unwrap();
+        let noop_program_selector_tree =
+            ProgramSelectorTree::<Testnet2Parameters>::new(vec![noop_program.id()]).unwrap();
+        let noop_program_selector_tree_root = to_bytes_le![noop_program_selector_tree.root()].unwrap();
 
         for _ in 0..ITERATIONS {
             let dummy_account = Account::<Testnet2Parameters>::new(&mut rng).unwrap();
@@ -106,8 +114,8 @@ fn test_record_encryption() {
                 false,
                 value,
                 Payload::from_bytes(&payload),
-                noop_program.id(),
-                noop_program.id(),
+                noop_program_selector_tree_root.clone(),
+                noop_program_selector_tree_root.clone(),
                 <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
                     .hash(&sn_nonce_input)
                     .unwrap(),
