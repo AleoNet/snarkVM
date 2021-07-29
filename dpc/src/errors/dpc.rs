@@ -25,6 +25,7 @@ use snarkvm_algorithms::{
     SNARKError,
     SignatureError,
 };
+use snarkvm_fields::ConstraintFieldError;
 use snarkvm_parameters::ParameterError;
 
 #[derive(Debug, Error)]
@@ -37,6 +38,9 @@ pub enum DPCError {
 
     #[error("{}", _0)]
     CommitmentError(#[from] CommitmentError),
+
+    #[error("{}", _0)]
+    ConstraintFieldError(#[from] ConstraintFieldError),
 
     #[error("{}", _0)]
     CRHError(#[from] CRHError),
