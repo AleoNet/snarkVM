@@ -16,15 +16,10 @@
 
 use core::borrow::Borrow;
 
-use snarkvm_curves::{AffineCurve, PairingEngine};
-use snarkvm_fields::PrimeField;
+use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine};
 use snarkvm_gadgets::{
     fields::FpGadget,
-    traits::{
-        alloc::AllocGadget,
-        curves::{GroupGadget, PairingGadget},
-        fields::FieldGadget,
-    },
+    traits::{alloc::AllocGadget, curves::PairingGadget, fields::FieldGadget},
 };
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
@@ -49,8 +44,8 @@ pub struct PreparedVerifierKeyVar<
     /// Generator of G1, times first monomial.
     pub prepared_beta_h: PG::G2PreparedGadget,
     /// Used for the shift powers associated with different degree bounds.
-    pub prepared_degree_bounds_and_prepared_neg_powers_of_h:
-        Option<Vec<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G2Gadget>)>>,
+    pub degree_bounds_and_prepared_neg_powers_of_h:
+        Option<Vec<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, PG::G2PreparedGadget)>>,
     /// Indicate whether or not it is a constant allocation (which decides whether or not shift powers are precomputed)
     pub constant_allocation: bool,
     /// If not a constant allocation, the original vk is attached (for computing the shift power series)
@@ -64,24 +59,22 @@ where
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
 {
     /// Find the appropriate shift for the degree bound.
-    pub fn get_shift_power<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
+    pub fn get_prepared_shift_power<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
         &self,
         mut cs: CS,
         bound: &FpGadget<<BaseCurve as PairingEngine>::Fr>,
-    ) -> Option<Vec<PG::G2Gadget>> {
+    ) -> Option<PG::G2PreparedGadget> {
         if self.constant_allocation {
-            if self.prepared_degree_bounds_and_prepared_neg_powers_of_h.is_none() {
+            if self.degree_bounds_and_prepared_neg_powers_of_h.is_none() {
                 None
             } else {
-                let prepared_degree_bounds_and_prepared_neg_powers_of_h = self
-                    .prepared_degree_bounds_and_prepared_neg_powers_of_h
-                    .as_ref()
-                    .unwrap();
+                let degree_bounds_and_prepared_neg_powers_of_h =
+                    self.degree_bounds_and_prepared_neg_powers_of_h.as_ref().unwrap();
                 let bound_value = bound.get_value().unwrap_or_default();
 
-                for (_, bound, prepared_shift_powers) in prepared_degree_bounds_and_prepared_neg_powers_of_h.iter() {
+                for (_, bound, prepared_shift_power) in degree_bounds_and_prepared_neg_powers_of_h.iter() {
                     if bound.get_value().unwrap_or_default() == bound_value {
-                        return Some((*prepared_shift_powers).clone());
+                        return Some((*prepared_shift_power).clone());
                     }
                 }
 
@@ -95,18 +88,8 @@ where
                 .get_shift_power(cs.ns(|| "get_shift_power"), bound);
 
             if let Some(shift_power) = shift_power {
-                let mut prepared_shift_gadgets = Vec::<PG::G2Gadget>::new();
-
-                let supported_bits = <TargetCurve as PairingEngine>::Fr::size_in_bits();
-
-                let mut cur: PG::G2Gadget = shift_power;
-                for i in 0..supported_bits {
-                    prepared_shift_gadgets.push(cur.clone());
-                    cur.double_in_place(cs.ns(|| format!("cur_double_in_place_{}", i)))
-                        .unwrap();
-                }
-
-                Some(prepared_shift_gadgets)
+                let prepared_shift_gadget = PG::prepare_g2(cs.ns(|| "prepare the shift power"), shift_power).ok()?;
+                Some(prepared_shift_gadget)
             } else {
                 None
             }
@@ -126,9 +109,7 @@ where
             prepared_gamma_g: self.prepared_gamma_g.clone(),
             prepared_h: self.prepared_h.clone(),
             prepared_beta_h: self.prepared_beta_h.clone(),
-            prepared_degree_bounds_and_prepared_neg_powers_of_h: self
-                .prepared_degree_bounds_and_prepared_neg_powers_of_h
-                .clone(),
+            degree_bounds_and_prepared_neg_powers_of_h: self.degree_bounds_and_prepared_neg_powers_of_h.clone(),
             constant_allocation: self.constant_allocation,
             origin_vk: self.origin_vk.clone(),
         }
@@ -194,46 +175,42 @@ where
         let prepared_beta_h =
             PG::G2PreparedGadget::alloc(cs.ns(|| "prepared_beta_h"), || Ok(&obj.prepared_vk.prepared_beta_h))?;
 
-        let prepared_degree_bounds_and_prepared_neg_powers_of_h =
-            if obj.prepared_degree_bounds_and_prepared_neg_powers_of_h.is_some() {
-                let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G2Gadget>)>::new();
+        let degree_bounds_and_prepared_neg_powers_of_h = if obj.degree_bounds_and_prepared_neg_powers_of_h.is_some() {
+            let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, PG::G2PreparedGadget)>::new();
 
-                for (i, (d, shift_power_elems)) in obj
-                    .prepared_degree_bounds_and_prepared_neg_powers_of_h
-                    .as_ref()
-                    .unwrap()
-                    .iter()
-                    .enumerate()
-                {
-                    let mut gadgets = Vec::<PG::G2Gadget>::new();
-                    for (j, shift_power_elem) in shift_power_elems.iter().enumerate() {
-                        gadgets.push(<PG::G2Gadget as AllocGadget<
-                            <TargetCurve as PairingEngine>::G2Projective,
-                            <BaseCurve as PairingEngine>::Fr,
-                        >>::alloc_constant(
-                            cs.ns(|| format!("alloc_constant_gadget_{}_{}", i, j)),
-                            || Ok(shift_power_elem.into_projective()),
-                        )?);
-                    }
+            for (i, (d, shift_power_elem)) in obj
+                .degree_bounds_and_prepared_neg_powers_of_h
+                .as_ref()
+                .unwrap()
+                .iter()
+                .enumerate()
+            {
+                let gadget = <PG::G2PreparedGadget as AllocGadget<
+                    <TargetCurve::G2Affine as PairingCurve>::Prepared,
+                    <BaseCurve as PairingEngine>::Fr,
+                >>::alloc_constant(
+                    cs.ns(|| format!("alloc_constant_gadget_{}", i)),
+                    || Ok(shift_power_elem),
+                )?;
 
-                    let d_gadget = FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc_constant(
-                        cs.ns(|| format!("alloc_constant_d_{}", i)),
-                        || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*d as u128)),
-                    )?;
+                let d_gadget = FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc_constant(
+                    cs.ns(|| format!("alloc_constant_d_{}", i)),
+                    || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*d as u128)),
+                )?;
 
-                    res.push((*d, d_gadget, gadgets));
-                }
-                Some(res)
-            } else {
-                None
-            };
+                res.push((*d, d_gadget, gadget));
+            }
+            Some(res)
+        } else {
+            None
+        };
 
         Ok(Self {
             prepared_g,
             prepared_gamma_g,
             prepared_h,
             prepared_beta_h,
-            prepared_degree_bounds_and_prepared_neg_powers_of_h,
+            degree_bounds_and_prepared_neg_powers_of_h,
             constant_allocation: true,
             origin_vk: None,
         })
@@ -272,46 +249,41 @@ where
         let prepared_h = PG::G2PreparedGadget::alloc(cs.ns(|| "h"), || Ok(&obj.prepared_vk.prepared_h))?;
         let prepared_beta_h = PG::G2PreparedGadget::alloc(cs.ns(|| "beta_h"), || Ok(&obj.prepared_vk.prepared_beta_h))?;
 
-        let prepared_degree_bounds_and_prepared_neg_powers_of_h =
-            if obj.prepared_degree_bounds_and_prepared_neg_powers_of_h.is_some() {
-                let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G2Gadget>)>::new();
+        let degree_bounds_and_prepared_neg_powers_of_h = if obj.degree_bounds_and_prepared_neg_powers_of_h.is_some() {
+            let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, PG::G2PreparedGadget)>::new();
 
-                for (i, (d, shift_power_elems)) in obj
-                    .prepared_degree_bounds_and_prepared_neg_powers_of_h
-                    .as_ref()
-                    .unwrap()
-                    .iter()
-                    .enumerate()
-                {
-                    let mut gadgets = Vec::<PG::G2Gadget>::new();
-                    for (j, shift_power_elem) in shift_power_elems.iter().enumerate() {
-                        gadgets.push(<PG::G2Gadget as AllocGadget<
-                            <TargetCurve as PairingEngine>::G2Projective,
-                            <BaseCurve as PairingEngine>::Fr,
-                        >>::alloc(
-                            cs.ns(|| format!("alloc_gadget_{}_{}", i, j)),
-                            || Ok(shift_power_elem.into_projective()),
-                        )?);
-                    }
+            for (i, (d, shift_power_elem)) in obj
+                .degree_bounds_and_prepared_neg_powers_of_h
+                .as_ref()
+                .unwrap()
+                .iter()
+                .enumerate()
+            {
+                let gadget = <PG::G2PreparedGadget as AllocGadget<
+                    <TargetCurve::G2Affine as PairingCurve>::Prepared,
+                    <BaseCurve as PairingEngine>::Fr,
+                >>::alloc(cs.ns(|| format!("alloc_constant_gadget_{}", i)), || {
+                    Ok(shift_power_elem)
+                })?;
 
-                    let d_gadget = FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc(
-                        cs.ns(|| format!("alloc_d_{}", i)),
-                        || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*d as u128)),
-                    )?;
+                let d_gadget =
+                    FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc(cs.ns(|| format!("alloc_d_{}", i)), || {
+                        Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*d as u128))
+                    })?;
 
-                    res.push((*d, d_gadget, gadgets));
-                }
-                Some(res)
-            } else {
-                None
-            };
+                res.push((*d, d_gadget, gadget));
+            }
+            Some(res)
+        } else {
+            None
+        };
 
         Ok(Self {
             prepared_g,
             prepared_gamma_g,
             prepared_h,
             prepared_beta_h,
-            prepared_degree_bounds_and_prepared_neg_powers_of_h,
+            degree_bounds_and_prepared_neg_powers_of_h,
             constant_allocation: true,
             origin_vk: None,
         })
@@ -351,46 +323,41 @@ where
         let prepared_beta_h =
             PG::G2PreparedGadget::alloc_input(cs.ns(|| "beta_h"), || Ok(&obj.prepared_vk.prepared_beta_h))?;
 
-        let prepared_degree_bounds_and_prepared_neg_powers_of_h =
-            if obj.prepared_degree_bounds_and_prepared_neg_powers_of_h.is_some() {
-                let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G2Gadget>)>::new();
+        let degree_bounds_and_prepared_neg_powers_of_h = if obj.degree_bounds_and_prepared_neg_powers_of_h.is_some() {
+            let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, PG::G2PreparedGadget)>::new();
 
-                for (i, (d, shift_power_elems)) in obj
-                    .prepared_degree_bounds_and_prepared_neg_powers_of_h
-                    .as_ref()
-                    .unwrap()
-                    .iter()
-                    .enumerate()
-                {
-                    let mut gadgets = Vec::<PG::G2Gadget>::new();
-                    for (j, shift_power_elem) in shift_power_elems.iter().enumerate() {
-                        gadgets.push(<PG::G2Gadget as AllocGadget<
-                            <TargetCurve as PairingEngine>::G2Projective,
-                            <BaseCurve as PairingEngine>::Fr,
-                        >>::alloc_input(
-                            cs.ns(|| format!("alloc_input_gadget_{}_{}", i, j)),
-                            || Ok(shift_power_elem.into_projective()),
-                        )?);
-                    }
+            for (i, (d, shift_power_elem)) in obj
+                .degree_bounds_and_prepared_neg_powers_of_h
+                .as_ref()
+                .unwrap()
+                .iter()
+                .enumerate()
+            {
+                let gadget = <PG::G2PreparedGadget as AllocGadget<
+                    <TargetCurve::G2Affine as PairingCurve>::Prepared,
+                    <BaseCurve as PairingEngine>::Fr,
+                >>::alloc_input(cs.ns(|| format!("alloc_constant_gadget_{}", i)), || {
+                    Ok(shift_power_elem)
+                })?;
 
-                    let d_gadget = FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc_input(
-                        cs.ns(|| format!("alloc_input_d_{}", i)),
-                        || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*d as u128)),
-                    )?;
+                let d_gadget = FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc_input(
+                    cs.ns(|| format!("alloc_input_d_{}", i)),
+                    || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*d as u128)),
+                )?;
 
-                    res.push((*d, d_gadget, gadgets));
-                }
-                Some(res)
-            } else {
-                None
-            };
+                res.push((*d, d_gadget, gadget));
+            }
+            Some(res)
+        } else {
+            None
+        };
 
         Ok(Self {
             prepared_g,
             prepared_gamma_g,
             prepared_h,
             prepared_beta_h,
-            prepared_degree_bounds_and_prepared_neg_powers_of_h,
+            degree_bounds_and_prepared_neg_powers_of_h,
             constant_allocation: true,
             origin_vk: None,
         })
@@ -491,17 +458,13 @@ mod tests {
         // Native check that degree bounds are equivalent.
 
         assert_eq!(
-            prepared_vk
-                .prepared_degree_bounds_and_prepared_neg_powers_of_h
-                .is_some(),
-            prepared_vk_gadget
-                .prepared_degree_bounds_and_prepared_neg_powers_of_h
-                .is_some()
+            prepared_vk.degree_bounds_and_prepared_neg_powers_of_h.is_some(),
+            prepared_vk_gadget.degree_bounds_and_prepared_neg_powers_of_h.is_some()
         );
 
         if let (Some(native), Some(gadget)) = (
-            &prepared_vk.prepared_degree_bounds_and_prepared_neg_powers_of_h,
-            &prepared_vk_gadget.prepared_degree_bounds_and_prepared_neg_powers_of_h,
+            &prepared_vk.degree_bounds_and_prepared_neg_powers_of_h,
+            &prepared_vk_gadget.degree_bounds_and_prepared_neg_powers_of_h,
         ) {
             // Check each degree bound and shift power.
             for (i, ((native_degree_bounds, native_shift_powers), (degree_bounds, _fp_gadget, shift_powers))) in
@@ -573,17 +536,13 @@ mod tests {
         }
 
         assert_eq!(
-            prepared_vk
-                .prepared_degree_bounds_and_prepared_neg_powers_of_h
-                .is_some(),
-            prepared_vk_gadget
-                .prepared_degree_bounds_and_prepared_neg_powers_of_h
-                .is_some()
+            prepared_vk.degree_bounds_and_prepared_neg_powers_of_h.is_some(),
+            prepared_vk_gadget.degree_bounds_and_prepared_neg_powers_of_h.is_some()
         );
 
         if let (Some(expected), Some(gadget)) = (
-            &expected_prepared_vk_gadget.prepared_degree_bounds_and_prepared_neg_powers_of_h,
-            &prepared_vk_gadget.prepared_degree_bounds_and_prepared_neg_powers_of_h,
+            &expected_prepared_vk_gadget.degree_bounds_and_prepared_neg_powers_of_h,
+            &prepared_vk_gadget.degree_bounds_and_prepared_neg_powers_of_h,
         ) {
             // Check each degree bound and shift power.
             for (

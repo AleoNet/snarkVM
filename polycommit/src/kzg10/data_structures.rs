@@ -43,8 +43,6 @@ pub struct UniversalParams<E: PairingEngine> {
     pub h: E::G2Affine,
     /// \beta times the above generator of G2.
     pub beta_h: E::G2Affine,
-    /// Group elements of the form `{ \beta^{max_degree - i} G }`, where `i` ranges from `0` down to `degree_bound`.
-    pub inverse_powers_of_g: BTreeMap<usize, E::G1Affine>,
     /// Group elements of the form `{ \beta^i G2 }`, where `i` ranges from `0` to `-degree_bound`.
     pub neg_powers_of_h: BTreeMap<usize, E::G2Affine>,
     /// The generator of G2, prepared for use in pairings.

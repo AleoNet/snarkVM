@@ -35,7 +35,6 @@ use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use crate::{
     kzg10,
-    kzg10::VerifierKey as KZG10VerifierKey,
     sonic_pc::{data_structures::VerifierKey, gadgets::verifier_key::prepared_verifier_key::PreparedVerifierKeyVar},
     Vec,
 };
@@ -392,11 +391,15 @@ where
         let prepared_h = PG::prepare_g2(cs.ns(|| "prepared_h"), self.h.clone())?;
         let prepared_beta_h = PG::prepare_g2(cs.ns(|| "prepared_beta_h"), self.beta_h.clone())?;
 
-        let prepared_degree_bounds_and_neg_powers_of_h = if self.degree_bounds_and_neg_powers_of_h.is_some() {
-            let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G2Gadget>)>::new();
+        let degree_bounds_and_prepared_neg_powers_of_h = if self.degree_bounds_and_neg_powers_of_h.is_some() {
+            let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, PG::G2PreparedGadget)>::new();
 
             for (d, d_gadget, shift_power) in self.degree_bounds_and_neg_powers_of_h.as_ref().unwrap().iter() {
-                res.push((*d, (*d_gadget).clone(), vec![shift_power.clone()]));
+                res.push((
+                    *d,
+                    (*d_gadget).clone(),
+                    PG::prepare_g2(cs.ns(|| format!("prepare_neg_powers_of_h {}", d)), shift_power.clone())?,
+                ));
             }
 
             Some(res)
@@ -409,7 +412,7 @@ where
             prepared_gamma_g,
             prepared_h,
             prepared_beta_h,
-            prepared_degree_bounds_and_neg_powers_of_h,
+            degree_bounds_and_prepared_neg_powers_of_h,
             constant_allocation: false,
             origin_vk: Some(self.clone()),
         })

@@ -39,21 +39,22 @@ use rayon::prelude::*;
 mod data_structures;
 pub use data_structures::*;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 #[allow(deprecated)]
-pub enum KZG10DegreeBounds {
+pub enum KZG10G2PowersConfig {
     #[deprecated]
     ALL,
     MARLIN,
     LIST(Vec<usize>),
+    NONE,
 }
 
 #[allow(deprecated)]
-impl KZG10DegreeBounds {
+impl KZG10G2PowersConfig {
     pub fn get_list<F: PrimeField>(&self, max_degree: usize) -> Vec<usize> {
         match self {
-            KZG10DegreeBounds::ALL => (0..max_degree).collect(),
-            KZG10DegreeBounds::MARLIN => {
+            KZG10G2PowersConfig::ALL => (0..max_degree).collect(),
+            KZG10G2PowersConfig::MARLIN => {
                 // In Marlin, the degree bounds are all of the forms `domain_size - 2`.
                 // Consider that we are using radix-2 FFT or mixed-FFT (with only one more prime),
                 // there are only a few possible domain sizes and therefore degree bounds.
@@ -66,16 +67,17 @@ impl KZG10DegreeBounds {
                     cur *= 2;
                 }
 
-                let mut mixed_radix_possible_domain_sizes =
+                let mixed_radix_possible_domain_sizes =
                     if <F::FftParameters as FftParameters>::SMALL_SUBGROUP_BASE.is_some() {
-                        let small_subgroup_base = <F::FftParameters as FftParameters>::SMALL_SUBGROUP_BASE.unwrap();
+                        let small_subgroup_base =
+                            <F::FftParameters as FftParameters>::SMALL_SUBGROUP_BASE.unwrap() as usize;
                         let small_subgroup_adicity =
-                            <F::FftParameters as FftParameters>::SMALL_SUBGROUP_BASE_ADICITY.unwrap();
+                            <F::FftParameters as FftParameters>::SMALL_SUBGROUP_BASE_ADICITY.unwrap() as usize;
 
                         let mut mixed_radix_possible_domain_sizes =
                             Vec::with_capacity(radix_2_possible_domain_sizes.len() * small_subgroup_adicity);
                         for radix_2_possible_domain_size in radix_2_possible_domain_sizes.iter() {
-                            let mut cur = small_subgroup_base as usize;
+                            let mut cur = small_subgroup_base;
                             for _ in 1..=small_subgroup_adicity {
                                 let candidate_degree = radix_2_possible_domain_size * cur;
                                 if candidate_degree <= max_degree {
@@ -103,7 +105,8 @@ impl KZG10DegreeBounds {
 
                 results
             }
-            KZG10DegreeBounds::LIST(v) => v,
+            KZG10G2PowersConfig::LIST(v) => v.clone(),
+            KZG10G2PowersConfig::NONE => vec![],
         }
     }
 }
@@ -120,9 +123,7 @@ impl<E: PairingEngine> KZG10<E> {
     /// for the polynomial commitment scheme.
     pub fn setup<R: RngCore>(
         max_degree: usize,
-        supported_hiding_bounds: usize,
-        supported_degree_bounds: &KZG10DegreeBounds,
-        produce_g2_powers: bool,
+        produce_g2_powers: &KZG10G2PowersConfig,
         rng: &mut R,
     ) -> Result<UniversalParams<E>, Error> {
         if max_degree < 1 {
@@ -156,16 +157,16 @@ impl<E: PairingEngine> KZG10<E> {
 
         // Compute `gamma beta^i G`.
         let gamma_g_time = start_timer!(|| "Generating powers of gamma * G");
-        let mut powers_of_gamma_g = {
-            let window_size = FixedBaseMSM::get_mul_window_size(powers_of_gamma_beta.len());
-            let gamma_g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, gamma_g);
-            FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
-                scalar_bits,
-                window_size,
-                &gamma_g_table,
-                &powers_of_beta[1..=supported_hiding_bounds],
-            )
-        };
+        let gamma_g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, gamma_g);
+        let mut powers_of_gamma_g = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
+            scalar_bits,
+            window_size,
+            &gamma_g_table,
+            &powers_of_beta,
+        );
+        // Add an additional power of gamma_g, because we want to be able to support
+        // up to D queries.
+        powers_of_gamma_g.push(powers_of_gamma_g.last().unwrap().mul(beta));
         end_timer!(gamma_g_time);
 
         // Reduce `beta^i G` and `gamma beta^i G` to affine representations.
@@ -175,27 +176,16 @@ impl<E: PairingEngine> KZG10<E> {
             .enumerate()
             .collect();
 
-        // Prepare for the degree bounds.
-        let list = supported_degree_bounds.get_list(max_degree);
-
-        // Assemble `inverse_powers_of_g`.
-        let inverse_powers_of_g = {
-            let mut map = BTreeMap::<usize, E::G1Affine>::new();
-            for i in list.iter() {
-                map.insert(*i, powers_of_g[max_degree - i]);
-            }
-            map
-        };
-
         // Compute `neg_powers_of_h`.
         let neg_powers_of_h_time = start_timer!(|| "Generating negative powers of h in G2");
-        let neg_powers_of_h = if produce_g2_powers {
+        let neg_powers_of_h = if *produce_g2_powers != KZG10G2PowersConfig::NONE {
             let mut map = BTreeMap::<usize, E::G2Affine>::new();
+            let list = produce_g2_powers.get_list::<E::Fr>(max_degree);
 
             let mut neg_powers_of_beta = vec![];
-            let mut neg_beta: E::Fr = E::Fr::one() / &beta;
+            let neg_beta: E::Fr = E::Fr::one() / &beta;
             for i in list.iter() {
-                neg_powers_of_beta.push(neg_beta.pow(&[i as u64]));
+                neg_powers_of_beta.push(neg_beta.pow(&[*i as u64]));
             }
 
             let window_size = FixedBaseMSM::get_mul_window_size(neg_powers_of_beta.len());
@@ -229,7 +219,6 @@ impl<E: PairingEngine> KZG10<E> {
             powers_of_gamma_g,
             h,
             beta_h,
-            inverse_powers_of_g,
             neg_powers_of_h,
             prepared_h,
             prepared_beta_h,
