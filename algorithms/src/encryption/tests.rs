@@ -16,20 +16,17 @@
 
 mod ecies {
     use crate::{encoding::FieldEncodingScheme, encryption::ECIESPoseidonEncryption, EncodingScheme, EncryptionScheme};
-    use rand::{Rng, SeedableRng};
-    use rand_chacha::ChaChaRng;
     use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsParameters};
     use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
+
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaChaRng;
 
     type TestEncryptionScheme = ECIESPoseidonEncryption<EdwardsParameters>;
     pub const ITERATIONS: usize = 1000;
 
-    fn generate_input<R: Rng>(input_size: usize, rng: &mut R) -> Vec<u8> {
-        (0..input_size).map(|_| u8::rand(rng)).collect()
-    }
-
     #[test]
-    fn simple_encryption() {
+    fn test_encrypt_and_decrypt() {
         let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
         let encryption_scheme = TestEncryptionScheme::setup("simple_encryption");
@@ -38,7 +35,7 @@ mod ecies {
         let public_key = encryption_scheme.generate_public_key(&private_key).unwrap();
 
         let randomness = encryption_scheme.generate_randomness(&public_key, rng).unwrap();
-        let message = generate_input(32, rng);
+        let message = (0..32).map(|_| u8::rand(rng)).collect();
 
         let plaintext = FieldEncodingScheme::<Fr>::encode(&message).unwrap();
         let ciphertext = encryption_scheme.encrypt(&public_key, &randomness, &plaintext).unwrap();
@@ -47,7 +44,7 @@ mod ecies {
     }
 
     #[test]
-    fn encryption_public_key_serialization() {
+    fn test_encryption_public_key_to_bytes_le() {
         let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
         let encryption_scheme = TestEncryptionScheme::setup("encryption_public_key_serialization");
