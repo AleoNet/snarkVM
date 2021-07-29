@@ -159,7 +159,7 @@ pub struct PreparedVerifierKey<E: PairingEngine> {
     /// Information required to enforce degree bounds. Each pair
     /// is of the form `(degree_bound, shifting_advice)`.
     /// This is `None` if `self` does not support enforcing any degree bounds.
-    pub prepared_degree_bounds_and_shift_powers: Option<Vec<(usize, Vec<E::G1Affine>)>>,
+    pub degree_bounds_and_prepared_shift_powers: Option<Vec<(usize, Vec<E::G1Affine>)>>,
     /// The maximum degree supported by the `UniversalParams` `self` was derived
     /// from.
     pub max_degree: usize,
@@ -200,7 +200,7 @@ impl<E: PairingEngine> Prepare<PreparedVerifierKey<E>> for VerifierKey<E> {
 
         PreparedVerifierKey::<E> {
             prepared_vk,
-            prepared_degree_bounds_and_shift_powers,
+            degree_bounds_and_prepared_shift_powers: prepared_degree_bounds_and_shift_powers,
             max_degree: self.max_degree,
             supported_degree: self.supported_degree,
         }

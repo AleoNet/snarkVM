@@ -190,11 +190,11 @@ where
         let prepared_beta_h =
             PG::G2PreparedGadget::alloc(cs.ns(|| "prepared_beta_h"), || Ok(&obj.prepared_vk.prepared_beta_h))?;
 
-        let prepared_degree_bounds_and_shift_powers = if obj.prepared_degree_bounds_and_shift_powers.is_some() {
+        let prepared_degree_bounds_and_shift_powers = if obj.degree_bounds_and_prepared_shift_powers.is_some() {
             let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G1Gadget>)>::new();
 
             for (i, (d, shift_power_elems)) in obj
-                .prepared_degree_bounds_and_shift_powers
+                .degree_bounds_and_prepared_shift_powers
                 .as_ref()
                 .unwrap()
                 .iter()
@@ -267,11 +267,11 @@ where
         let prepared_h = PG::G2PreparedGadget::alloc(cs.ns(|| "h"), || Ok(&obj.prepared_vk.prepared_h))?;
         let prepared_beta_h = PG::G2PreparedGadget::alloc(cs.ns(|| "beta_h"), || Ok(&obj.prepared_vk.prepared_beta_h))?;
 
-        let prepared_degree_bounds_and_shift_powers = if obj.prepared_degree_bounds_and_shift_powers.is_some() {
+        let prepared_degree_bounds_and_shift_powers = if obj.degree_bounds_and_prepared_shift_powers.is_some() {
             let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G1Gadget>)>::new();
 
             for (i, (d, shift_power_elems)) in obj
-                .prepared_degree_bounds_and_shift_powers
+                .degree_bounds_and_prepared_shift_powers
                 .as_ref()
                 .unwrap()
                 .iter()
@@ -345,11 +345,11 @@ where
         let prepared_beta_h =
             PG::G2PreparedGadget::alloc_input(cs.ns(|| "beta_h"), || Ok(&obj.prepared_vk.prepared_beta_h))?;
 
-        let prepared_degree_bounds_and_shift_powers = if obj.prepared_degree_bounds_and_shift_powers.is_some() {
+        let prepared_degree_bounds_and_shift_powers = if obj.degree_bounds_and_prepared_shift_powers.is_some() {
             let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G1Gadget>)>::new();
 
             for (i, (d, shift_power_elems)) in obj
-                .prepared_degree_bounds_and_shift_powers
+                .degree_bounds_and_prepared_shift_powers
                 .as_ref()
                 .unwrap()
                 .iter()
@@ -484,12 +484,12 @@ mod tests {
         // Native check that degree bounds are equivalent.
 
         assert_eq!(
-            prepared_vk.prepared_degree_bounds_and_shift_powers.is_some(),
+            prepared_vk.degree_bounds_and_prepared_shift_powers.is_some(),
             prepared_vk_gadget.prepared_degree_bounds_and_shift_powers.is_some()
         );
 
         if let (Some(native), Some(gadget)) = (
-            &prepared_vk.prepared_degree_bounds_and_shift_powers,
+            &prepared_vk.degree_bounds_and_prepared_shift_powers,
             &prepared_vk_gadget.prepared_degree_bounds_and_shift_powers,
         ) {
             // Check each degree bound and shift power.
@@ -582,7 +582,7 @@ mod tests {
         // Native check that degree bounds are equivalent.
 
         assert_eq!(
-            prepared_vk.prepared_degree_bounds_and_shift_powers.is_some(),
+            prepared_vk.degree_bounds_and_prepared_shift_powers.is_some(),
             prepared_vk_gadget.prepared_degree_bounds_and_shift_powers.is_some()
         );
 

@@ -61,49 +61,13 @@ impl KZG10G2PowersConfig {
 
                 let mut radix_2_possible_domain_sizes = vec![];
 
-                let mut cur = 1usize;
+                let mut cur = 2usize;
                 while cur <= max_degree {
-                    radix_2_possible_domain_sizes.push(cur);
+                    radix_2_possible_domain_sizes.push(cur - 2);
                     cur *= 2;
                 }
 
-                let mixed_radix_possible_domain_sizes =
-                    if <F::FftParameters as FftParameters>::SMALL_SUBGROUP_BASE.is_some() {
-                        let small_subgroup_base =
-                            <F::FftParameters as FftParameters>::SMALL_SUBGROUP_BASE.unwrap() as usize;
-                        let small_subgroup_adicity =
-                            <F::FftParameters as FftParameters>::SMALL_SUBGROUP_BASE_ADICITY.unwrap() as usize;
-
-                        let mut mixed_radix_possible_domain_sizes =
-                            Vec::with_capacity(radix_2_possible_domain_sizes.len() * small_subgroup_adicity);
-                        for radix_2_possible_domain_size in radix_2_possible_domain_sizes.iter() {
-                            let mut cur = small_subgroup_base;
-                            for _ in 1..=small_subgroup_adicity {
-                                let candidate_degree = radix_2_possible_domain_size * cur;
-                                if candidate_degree <= max_degree {
-                                    mixed_radix_possible_domain_sizes.push(candidate_degree);
-                                }
-                                cur *= small_subgroup_base;
-                            }
-                        }
-                        mixed_radix_possible_domain_sizes
-                    } else {
-                        vec![]
-                    };
-
-                let mut results =
-                    Vec::with_capacity(radix_2_possible_domain_sizes.len() + mixed_radix_possible_domain_sizes.len());
-
-                for i in radix_2_possible_domain_sizes
-                    .iter()
-                    .chain(mixed_radix_possible_domain_sizes.iter())
-                {
-                    if *i >= 2usize {
-                        results.push(*i - 2usize);
-                    }
-                }
-
-                results
+                radix_2_possible_domain_sizes
             }
             KZG10G2PowersConfig::LIST(v) => v.clone(),
             KZG10G2PowersConfig::NONE => vec![],
