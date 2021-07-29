@@ -34,6 +34,7 @@ use snarkvm_gadgets::{
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use itertools::Itertools;
+use snarkvm_gadgets::algorithms::merkle_tree::MerklePathGadget;
 
 fn alloc_inner_snark_field_element<
     C: Parameters,
@@ -122,7 +123,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     inner_circuit_id: &<C::InnerCircuitIDCRH as CRH>::Output,
 ) -> Result<(), SynthesisError> {
     // Declare public parameters.
-    let (program_id_commitment_parameters, program_id_crh, inner_circuit_id_crh) = {
+    let (program_id_commitment_parameters, program_id_crh, program_selector_tree_crh, inner_circuit_id_crh) = {
         let cs = &mut cs.ns(|| "Declare Comm and CRH parameters");
 
         let program_id_commitment_parameters = C::ProgramCommitmentGadget::alloc_constant(
@@ -135,12 +136,22 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
                 Ok(C::program_id_crh().clone())
             })?;
 
+        let program_selector_tree_crh = C::ProgramSelectorTreeCRHGadget::alloc_constant(
+            &mut cs.ns(|| "Declare program_selector_tree_crh_parameters"),
+            || Ok(C::program_selector_tree_crh().clone()),
+        )?;
+
         let inner_circuit_id_crh = C::InnerCircuitIDCRHGadget::alloc_constant(
             &mut cs.ns(|| "Declare inner_circuit_id_crh_parameters"),
             || Ok(C::inner_circuit_id_crh().clone()),
         )?;
 
-        (program_id_commitment_parameters, program_id_crh, inner_circuit_id_crh)
+        (
+            program_id_commitment_parameters,
+            program_id_crh,
+            program_selector_tree_crh,
+            inner_circuit_id_crh,
+        )
     };
 
     // ************************************************************************
@@ -253,7 +264,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     )?;
 
     // ************************************************************************
-    // Construct program input
+    // Verify the program exists in the program selector tree and that the proofs are valid
     // ************************************************************************
 
     let mut old_death_program_selector_roots = Vec::with_capacity(C::NUM_INPUT_RECORDS);
@@ -274,9 +285,23 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
         let death_program_vk_field_elements =
             death_program_vk.to_constraint_field(cs.ns(|| "alloc_death_program_vk_field_elements"))?;
 
-        let claimed_death_program_selector_root = program_id_crh.check_evaluation_gadget_on_field_elements(
+        let claimed_death_program_id = program_id_crh.check_evaluation_gadget_on_field_elements(
             &mut cs.ns(|| "Compute death program ID"),
             death_program_vk_field_elements,
+        )?;
+
+        let claimed_death_program_id_bytes =
+            claimed_death_program_id.to_bytes(&mut cs.ns(|| "Convert death program ID to bytes"))?;
+
+        let death_program_merkle_path_gadget = MerklePathGadget::<_, C::ProgramSelectorTreeCRHGadget, _>::alloc(
+            &mut cs.ns(|| "Declare program path for program"),
+            || Ok(&input.program_selector_path),
+        )?;
+
+        let claimed_death_program_selector_root = death_program_merkle_path_gadget.calculate_root(
+            &mut cs.ns(|| "calculate_death_program_selector_root"),
+            &program_selector_tree_crh,
+            claimed_death_program_id_bytes,
         )?;
 
         let claimed_death_program_selector_root_bytes =
@@ -317,11 +342,25 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
         )?;
 
         let birth_program_vk_field_elements =
-            birth_program_vk.to_constraint_field(cs.ns(|| "birth_death_program_vk_field_elements"))?;
+            birth_program_vk.to_constraint_field(cs.ns(|| "birth_birth_program_vk_field_elements"))?;
 
-        let claimed_birth_program_selector_root = program_id_crh.check_evaluation_gadget_on_field_elements(
+        let claimed_birth_program_id = program_id_crh.check_evaluation_gadget_on_field_elements(
             &mut cs.ns(|| "Compute birth program ID"),
             birth_program_vk_field_elements,
+        )?;
+
+        let claimed_birth_program_id_bytes =
+            claimed_birth_program_id.to_bytes(&mut cs.ns(|| "Convert birth program ID to bytes"))?;
+
+        let birth_program_merkle_path_gadget = MerklePathGadget::<_, C::ProgramSelectorTreeCRHGadget, _>::alloc(
+            &mut cs.ns(|| "Declare program path for program"),
+            || Ok(&input.program_selector_path),
+        )?;
+
+        let claimed_birth_program_selector_root = birth_program_merkle_path_gadget.calculate_root(
+            &mut cs.ns(|| "calculate_birth_program_selector_root"),
+            &program_selector_tree_crh,
+            claimed_birth_program_id_bytes,
         )?;
 
         let claimed_birth_program_selector_root_bytes =
