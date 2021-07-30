@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::{crh::sha256::sha256, SNARK, SRS};
-use snarkvm_dpc::{testnet2::parameters::Testnet2Parameters, DPCError, InnerCircuit, Parameters};
+use snarkvm_dpc::{testnet2::Testnet2Parameters, DPCError, InnerCircuit, Parameters};
 use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
