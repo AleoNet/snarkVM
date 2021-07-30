@@ -51,12 +51,12 @@ fn bad_merkle_tree_verify<P: LoadableMerkleParameters, L: ToBytes + Send + Sync 
 }
 
 fn run_empty_merkle_tree_test<P: LoadableMerkleParameters>() {
-    let parameters = &P::default();
+    let parameters = &P::setup("merkle_tree_test");
     generate_merkle_tree::<P, Vec<u8>>(&[], parameters);
 }
 
 fn run_good_root_test<P: LoadableMerkleParameters>() {
-    let parameters = &P::default();
+    let parameters = &P::setup("merkle_tree_test");
 
     let mut leaves = vec![];
     for i in 0..4u8 {
@@ -72,7 +72,7 @@ fn run_good_root_test<P: LoadableMerkleParameters>() {
 }
 
 fn run_bad_root_test<P: LoadableMerkleParameters>() {
-    let parameters = &P::default();
+    let parameters = &P::setup("merkle_tree_test");
 
     let mut leaves = vec![];
     for i in 0..4u8 {
@@ -87,85 +87,78 @@ fn run_bad_root_test<P: LoadableMerkleParameters>() {
     bad_merkle_tree_verify::<P, _>(&leaves, parameters);
 }
 
-fn run_merkle_tree_matches_hashing_test<P: LoadableMerkleParameters>() {
-    let parameters = &P::default();
+fn depth_2_merkle_tree_test<P: LoadableMerkleParameters>() {
+    let parameters = &P::setup("merkle_tree_test");
+    let crh = parameters.crh();
 
-    // Evaluate the Merkle tree root
-
+    // Generate the test leaves.
     let mut leaves = Vec::new();
     for i in 0..4u8 {
         let input = [i; 64];
         leaves.push(input.to_vec());
     }
+
+    // Evaluate the Merkle tree root.
     let merkle_tree = generate_merkle_tree(&leaves, parameters);
     let merkle_tree_root = merkle_tree.root();
 
-    // Evaluate the root by direct hashing
+    // Evaluate the root by direct hashing.
+    let expected_root = {
+        // depth 2
+        let leaf1 = crh.hash(&leaves[0]).unwrap();
+        let leaf2 = crh.hash(&leaves[1]).unwrap();
+        let leaf3 = crh.hash(&leaves[2]).unwrap();
+        let leaf4 = crh.hash(&leaves[3]).unwrap();
 
-    let pedersen = &P::crh(parameters);
+        // depth 1
+        let left = crh.hash(&to_bytes_le![leaf1, leaf2].unwrap()).unwrap();
+        let right = crh.hash(&to_bytes_le![leaf3, leaf4].unwrap()).unwrap();
 
-    // depth 2
-    let leaf1 = pedersen.hash(&leaves[0]).unwrap();
-    let leaf2 = pedersen.hash(&leaves[1]).unwrap();
-    let leaf3 = pedersen.hash(&leaves[2]).unwrap();
-    let leaf4 = pedersen.hash(&leaves[3]).unwrap();
+        // depth 0
+        crh.hash(&to_bytes_le![left, right].unwrap()).unwrap()
+    };
 
-    // depth 1
-    let left = pedersen.hash(&to_bytes_le![leaf1, leaf2].unwrap()).unwrap();
-    let right = pedersen.hash(&to_bytes_le![leaf3, leaf4].unwrap()).unwrap();
-
-    // depth 0
-    let expected_root = pedersen.hash(&to_bytes_le![left, right].unwrap()).unwrap();
-
-    println!(
-        "merkle_root == expected_root\n\t{} == {}",
-        merkle_tree.root(),
-        expected_root
-    );
+    println!("{} == {}", merkle_tree_root, expected_root);
     assert_eq!(merkle_tree_root, expected_root);
 }
 
-fn run_padded_merkle_tree_matches_hashing_test<P: LoadableMerkleParameters>() {
-    let parameters = &P::default();
+fn padded_merkle_tree_test<P: LoadableMerkleParameters>() {
+    let parameters = &P::setup("merkle_tree_test");
+    let crh = parameters.crh();
 
-    // Evaluate the Merkle tree root
-
+    // Generate the test leaves.
     let mut leaves = Vec::new();
     for i in 0..4u8 {
         let input = [i; 64];
         leaves.push(input.to_vec());
     }
+
+    // Evaluate the Merkle tree root.
     let merkle_tree = generate_merkle_tree(&leaves, parameters);
     let merkle_tree_root = merkle_tree.root();
 
-    // Evaluate the root by direct hashing
+    // Evaluate the root by direct hashing.
+    let expected_root = {
+        // depth 3
+        let leaf1 = crh.hash(&leaves[0]).unwrap();
+        let leaf2 = crh.hash(&leaves[1]).unwrap();
+        let leaf3 = crh.hash(&leaves[2]).unwrap();
+        let leaf4 = crh.hash(&leaves[3]).unwrap();
 
-    let pedersen = &P::crh(parameters);
+        // depth 2
+        let left = crh.hash(&to_bytes_le![leaf1, leaf2].unwrap()).unwrap();
+        let right = crh.hash(&to_bytes_le![leaf3, leaf4].unwrap()).unwrap();
 
-    // depth 3
-    let leaf1 = pedersen.hash(&leaves[0]).unwrap();
-    let leaf2 = pedersen.hash(&leaves[1]).unwrap();
-    let leaf3 = pedersen.hash(&leaves[2]).unwrap();
-    let leaf4 = pedersen.hash(&leaves[3]).unwrap();
+        // depth 1
+        let penultimate_left = crh.hash(&to_bytes_le![left, right].unwrap()).unwrap();
+        let penultimate_right = parameters.hash_empty().unwrap();
 
-    // depth 2
-    let left = pedersen.hash(&to_bytes_le![leaf1, leaf2].unwrap()).unwrap();
-    let right = pedersen.hash(&to_bytes_le![leaf3, leaf4].unwrap()).unwrap();
+        // depth 0
+        crh.hash(&to_bytes_le![penultimate_left, penultimate_right].unwrap())
+            .unwrap()
+    };
 
-    // depth 1
-    let penultimate_left = pedersen.hash(&to_bytes_le![left, right].unwrap()).unwrap();
-    let penultimate_right = parameters.hash_empty().unwrap();
-
-    // depth 0
-    let expected_root = pedersen
-        .hash(&to_bytes_le![penultimate_left, penultimate_right].unwrap())
-        .unwrap();
-
-    println!(
-        "merkle_root == expected_root\n\t{} == {}",
-        merkle_tree.root(),
-        expected_root
-    );
+    println!("{} == {}", merkle_tree_root, expected_root);
     assert_eq!(merkle_tree_root, expected_root);
 }
 
@@ -195,20 +188,16 @@ mod pedersen_crh_on_projective {
         run_bad_root_test::<MTParameters>();
     }
 
-    // TODO (howardwu): Debug why PedersenCRH fails and make this test pass.
-    #[ignore]
     #[test]
     fn depth2_merkle_tree_matches_hashing_test() {
         define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 2);
-        run_merkle_tree_matches_hashing_test::<MTParameters>();
+        depth_2_merkle_tree_test::<MTParameters>();
     }
 
-    // TODO (howardwu): Debug why PedersenCRH fails and make this test pass.
-    #[ignore]
     #[test]
     fn depth3_padded_merkle_tree_matches_hashing_test() {
         define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 3);
-        run_padded_merkle_tree_matches_hashing_test::<MTParameters>();
+        padded_merkle_tree_test::<MTParameters>();
     }
 }
 
@@ -241,12 +230,12 @@ mod pedersen_compressed_crh_on_projective {
     #[test]
     fn depth2_merkle_tree_matches_hashing_test() {
         define_merkle_tree_parameters!(MTParameters, PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 2);
-        run_merkle_tree_matches_hashing_test::<MTParameters>();
+        depth_2_merkle_tree_test::<MTParameters>();
     }
 
     #[test]
     fn depth3_padded_merkle_tree_matches_hashing_test() {
         define_merkle_tree_parameters!(MTParameters, PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 3);
-        run_padded_merkle_tree_matches_hashing_test::<MTParameters>();
+        padded_merkle_tree_test::<MTParameters>();
     }
 }

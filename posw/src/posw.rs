@@ -16,11 +16,7 @@
 
 //! Generic PoSW Miner and Verifier, compatible with any implementer of the SNARK trait.
 
-use crate::{
-    circuit::{POSWCircuit, POSWCircuitParameters},
-    error::PoswError,
-    PoswCircuit,
-};
+use crate::{circuit::POSWCircuit, error::PoswError};
 use snarkvm_algorithms::{
     crh::sha256d_to_u64,
     traits::{MaskedMerkleParameters, SNARK},
@@ -53,7 +49,8 @@ use blake2::{digest::Digest, Blake2s};
 use rand::{CryptoRng, Rng};
 use std::marker::PhantomData;
 
-/// Commits to the nonce and pedersen merkle root
+/// TODO (howardwu): Deprecate this function and use the implementation in `snarkvm-algorithms`.
+/// Commits to the nonce and pedersen merkle root.
 pub fn commit(nonce: u32, root: &PedersenMerkleRootHash) -> Vec<u8> {
     let mut h = Blake2s::new();
     h.update(&nonce.to_le_bytes());
@@ -62,23 +59,19 @@ pub fn commit(nonce: u32, root: &PedersenMerkleRootHash) -> Vec<u8> {
 }
 
 // We need to instantiate the Merkle tree and the Gadget, but these should not be
-// proving system specific
-pub(crate) const NUM_WINDOWS: usize = 4;
-pub(crate) const WINDOW_SIZE: usize = 128;
+// proving system specific.
 pub type M = MaskedMerkleTreeParameters;
-pub type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, NUM_WINDOWS, WINDOW_SIZE>;
-pub type F = Fr;
+pub type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, 4, 128>;
 
 /// A Proof of Succinct Work miner and verifier
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Posw<S, F, M, HG, CP>
-where
+pub struct Posw<
     S: SNARK,
     F: PrimeField,
     M: MaskedMerkleParameters,
     HG: MaskedCRHGadget<M::H, F>,
-    CP: POSWCircuitParameters,
-{
+    const MASK_NUM_BYTES: usize,
+> {
     /// The proving key. If not provided, the PoSW runner will work in verify-only
     /// mode and the `mine` function will panic.
     pub pk: Option<S::ProvingKey>,
@@ -86,13 +79,11 @@ where
     /// The (prepared) verifying key.
     pub vk: S::VerifyingKey,
 
-    _circuit: PhantomData<POSWCircuit<F, M, HG, CP>>,
+    _circuit: PhantomData<POSWCircuit<F, M, HG, MASK_NUM_BYTES>>,
 }
 
-impl<S, CP> Posw<S, F, M, HG, CP>
-where
-    S: SNARK,
-    CP: POSWCircuitParameters,
+impl<S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>, const MASK_NUM_BYTES: usize>
+    Posw<S, Fr, M, HG, MASK_NUM_BYTES>
 {
     /// Loads the PoSW runner from the locally stored parameters.
     pub fn verify_only() -> Result<Self, PoswError> {
@@ -119,7 +110,7 @@ where
     }
 
     /// Creates a POSW circuit from the provided transaction ids and nonce.
-    fn circuit_from(nonce: u32, leaves: &[[u8; 32]]) -> POSWCircuit<F, M, HG, CP> {
+    fn circuit_from(nonce: u32, leaves: &[[u8; 32]]) -> POSWCircuit<Fr, M, HG, MASK_NUM_BYTES> {
         let (root, leaves) = pedersen_merkle_root_hash_with_leaves(leaves);
 
         // Generate the mask by committing to the nonce and the root
@@ -135,7 +126,6 @@ where
             root: Some(root),
             field_type: PhantomData,
             crh_gadget_type: PhantomData,
-            circuit_parameters_type: PhantomData,
         }
     }
 
@@ -144,13 +134,7 @@ where
         let hash_result = sha256d_to_u64(proof);
         hash_result <= difficulty_target
     }
-}
 
-impl<S, CP> Posw<S, F, M, HG, CP>
-where
-    S: SNARK<ScalarField = F, VerifierInput = Vec<F>>,
-    CP: POSWCircuitParameters,
-{
     /// Performs a trusted setup for the PoSW circuit and returns an instance of the runner
     // TODO (howardwu): Find a workaround to keeping this method disabled.
     //  We need this method for benchmarking currently. There are two options:
@@ -163,7 +147,7 @@ where
         S: SNARK,
     {
         let params = S::setup(
-            &PoswCircuit::<F> {
+            &POSWCircuit::<Fr, M, HG, MASK_NUM_BYTES> {
                 // the circuit will be padded internally
                 leaves: vec![None; 0],
                 merkle_parameters: PARAMS.clone(),
@@ -171,7 +155,6 @@ where
                 root: None,
                 field_type: PhantomData,
                 crh_gadget_type: PhantomData,
-                circuit_parameters_type: PhantomData,
             },
             &mut SRS::CircuitSpecific(rng),
         )?;
@@ -190,7 +173,7 @@ where
         S: SNARK<UniversalSetupParameters = MarlinSRS<E>>,
     {
         let params = S::setup::<_, R>(
-            &PoswCircuit::<F> {
+            &POSWCircuit::<Fr, M, HG, MASK_NUM_BYTES> {
                 // the circuit will be padded internally
                 leaves: vec![None; 0],
                 merkle_parameters: PARAMS.clone(),
@@ -198,7 +181,6 @@ where
                 root: None,
                 field_type: PhantomData,
                 crh_gadget_type: PhantomData,
-                circuit_parameters_type: PhantomData,
             },
             &mut SRS::<R, _>::Universal(srs),
         )?;
@@ -269,7 +251,7 @@ where
         let mask = commit(nonce, pedersen_merkle_root);
 
         // get the mask and the root in public inputs format
-        let merkle_root = F::read_le(&pedersen_merkle_root.0[..])?;
+        let merkle_root = Fr::read_le(&pedersen_merkle_root.0[..])?;
         let inputs = [mask.to_field_elements()?, vec![merkle_root]].concat();
 
         let res = S::verify(&self.vk, &inputs, &proof)?;

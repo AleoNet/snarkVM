@@ -35,9 +35,6 @@ pub use program::*;
 pub mod record;
 pub use record::*;
 
-pub mod encoded;
-pub use encoded::*;
-
 pub mod storage;
 pub use storage::*;
 
