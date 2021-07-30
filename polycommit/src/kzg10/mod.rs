@@ -41,7 +41,7 @@ pub use data_structures::*;
 
 #[derive(Debug, PartialEq, Eq)]
 #[allow(deprecated)]
-pub enum KZG10G2PowersConfig {
+pub enum KZG10DegreeBoundsConfig {
     #[deprecated]
     ALL,
     MARLIN,
@@ -50,14 +50,17 @@ pub enum KZG10G2PowersConfig {
 }
 
 #[allow(deprecated)]
-impl KZG10G2PowersConfig {
+impl KZG10DegreeBoundsConfig {
     pub fn get_list<F: PrimeField>(&self, max_degree: usize) -> Vec<usize> {
         match self {
-            KZG10G2PowersConfig::ALL => (0..max_degree).collect(),
-            KZG10G2PowersConfig::MARLIN => {
+            KZG10DegreeBoundsConfig::ALL => (0..max_degree).collect(),
+            KZG10DegreeBoundsConfig::MARLIN => {
                 // In Marlin, the degree bounds are all of the forms `domain_size - 2`.
-                // Consider that we are using radix-2 FFT or mixed-FFT (with only one more prime),
+                // Consider that we are using radix-2 FFT,
                 // there are only a few possible domain sizes and therefore degree bounds.
+                //
+                // We do not consider mixed-radix FFT for simplicity, as the curves that we
+                // are using have very high two-arity.
 
                 let mut radix_2_possible_domain_sizes = vec![];
 
@@ -69,8 +72,8 @@ impl KZG10G2PowersConfig {
 
                 radix_2_possible_domain_sizes
             }
-            KZG10G2PowersConfig::LIST(v) => v.clone(),
-            KZG10G2PowersConfig::NONE => vec![],
+            KZG10DegreeBoundsConfig::LIST(v) => v.clone(),
+            KZG10DegreeBoundsConfig::NONE => vec![],
         }
     }
 }
@@ -87,7 +90,8 @@ impl<E: PairingEngine> KZG10<E> {
     /// for the polynomial commitment scheme.
     pub fn setup<R: RngCore>(
         max_degree: usize,
-        produce_g2_powers: &KZG10G2PowersConfig,
+        supported_degree_bounds: &KZG10DegreeBoundsConfig,
+        produce_g2_powers: bool,
         rng: &mut R,
     ) -> Result<UniversalParams<E>, Error> {
         if max_degree < 1 {
@@ -140,9 +144,17 @@ impl<E: PairingEngine> KZG10<E> {
             .enumerate()
             .collect();
 
+        // Compute `inverse_powers_of_g`.
+        //
+        // This part is used to derive the universal verification parameters.
+        let inverse_powers_of_g = if *supported_degree_bounds != KZG10DegreeBoundsConfig::NONE {
+        } else {
+            BTreeMap::new();
+        };
+
         // Compute `neg_powers_of_h`.
         let neg_powers_of_h_time = start_timer!(|| "Generating negative powers of h in G2");
-        let neg_powers_of_h = if *produce_g2_powers != KZG10G2PowersConfig::NONE {
+        let neg_powers_of_h = if produce_g2_powers && *supported_degree_bounds != KZG10DegreeBoundsConfig::NONE {
             let mut map = BTreeMap::<usize, E::G2Affine>::new();
             let list = produce_g2_powers.get_list::<E::Fr>(max_degree);
 
@@ -183,6 +195,7 @@ impl<E: PairingEngine> KZG10<E> {
             powers_of_gamma_g,
             h,
             beta_h,
+            inverse_powers_of_g,
             neg_powers_of_h,
             prepared_h,
             prepared_beta_h,
