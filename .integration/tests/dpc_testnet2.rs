@@ -218,7 +218,7 @@ fn test_testnet_2_transaction_kernel_serialization() {
     let mut old_records = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
         let old_record = Record::new(
-            dpc.noop_program.program_id(),
+            dpc.noop_program.circuit_id(),
             test_account.address.clone(),
             true,
             0,
@@ -243,7 +243,7 @@ fn test_testnet_2_transaction_kernel_serialization() {
     for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
         new_records.push(
             Record::new_full(
-                dpc.noop_program.program_id(),
+                dpc.noop_program.circuit_id(),
                 test_account.address.clone(),
                 false,
                 10,
@@ -301,7 +301,7 @@ fn test_testnet2_dpc_execute_constraints() {
     let mut old_records = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
         let old_record = Record::new(
-            alternate_noop_program.program_id(),
+            alternate_noop_program.circuit_id(),
             dummy_account.address.clone(),
             true,
             0,
@@ -329,7 +329,7 @@ fn test_testnet2_dpc_execute_constraints() {
     for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
         new_records.push(
             Record::new_full(
-                dpc.noop_program.program_id(),
+                dpc.noop_program.circuit_id(),
                 new_account.address.clone(),
                 false,
                 10,

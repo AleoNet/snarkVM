@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::{testnet2::Testnet2Parameters, DPCError, NoopProgram, Parameters, ProgramScheme};
+use snarkvm_dpc::{testnet2::Testnet2Parameters, CircuitScheme, DPCError, NoopProgram, Parameters};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_utilities::ToBytes;
 

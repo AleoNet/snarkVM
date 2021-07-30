@@ -22,20 +22,20 @@ use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 #[derive(Derivative)]
 #[derivative(Clone(bound = "S: SNARK"))]
 pub struct Execution<S: SNARK> {
-    pub predicate_index: u8,
+    pub circuit_index: u8,
     pub verifying_key: S::VerifyingKey,
     pub proof: S::Proof,
 }
 
-pub struct ProgramLocalData<C: Parameters> {
+pub struct ProgramPublicVariables<C: Parameters> {
     pub local_data_root: C::LocalDataDigest,
-    pub position: u8,
+    pub record_position: u8,
 }
 
 /// Convert each component to bytes and pack into field elements.
-impl<C: Parameters> ToConstraintField<C::InnerScalarField> for ProgramLocalData<C> {
+impl<C: Parameters> ToConstraintField<C::InnerScalarField> for ProgramPublicVariables<C> {
     fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
-        let mut v = ToConstraintField::<C::InnerScalarField>::to_field_elements(&[self.position][..])?;
+        let mut v = ToConstraintField::<C::InnerScalarField>::to_field_elements(&[self.record_position][..])?;
         v.extend_from_slice(&self.local_data_root.to_field_elements()?);
         Ok(v)
     }

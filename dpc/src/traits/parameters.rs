@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerCircuitVerifierInput, OuterCircuitVerifierInput, ProgramLocalData};
+use crate::{InnerCircuitVerifierInput, OuterCircuitVerifierInput, ProgramPublicVariables};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, ToConstraintField};
@@ -68,7 +68,7 @@ pub trait Parameters: 'static + Sized {
     type ProgramSNARK: SNARK<
         ScalarField = Self::InnerScalarField,
         BaseField = Self::OuterScalarField,
-        VerifierInput = ProgramLocalData<Self>,
+        VerifierInput = ProgramPublicVariables<Self>,
     >;
     /// Program SNARK verifier gadget for Aleo applications.
     type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK>;

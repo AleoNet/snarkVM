@@ -14,20 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod circuit_tree;
-pub use circuit_tree::*;
+use crate::Parameters;
+use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
-pub mod execution;
-pub use execution::*;
+#[derive(Default)]
+pub struct ProgramPublicVariables<C: Parameters> {
+    pub local_data_root: C::LocalDataDigest,
+    pub record_position: u8,
+}
 
-pub mod local_data;
-pub use local_data::*;
-
-pub mod noop_circuit;
-pub use noop_circuit::*;
-
-pub mod noop_program;
-pub use noop_program::*;
-
-pub mod program;
-pub use program::*;
+/// Converts the program public variables into bytes and packs them into field elements.
+impl<C: Parameters> ToConstraintField<C::InnerScalarField> for ProgramPublicVariables<C> {
+    fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
+        let mut v = ToConstraintField::<C::InnerScalarField>::to_field_elements(&[self.record_position][..])?;
+        v.extend_from_slice(&self.local_data_root.to_field_elements()?);
+        Ok(v)
+    }
+}

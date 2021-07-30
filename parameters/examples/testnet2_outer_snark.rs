@@ -17,12 +17,12 @@
 use snarkvm_algorithms::{crh::sha256::sha256, SNARK, SRS};
 use snarkvm_dpc::{
     testnet2::Testnet2Parameters,
+    CircuitScheme,
     DPCError,
     InnerCircuit,
     NoopProgram,
     OuterCircuit,
     Parameters,
-    ProgramScheme,
 };
 use snarkvm_parameters::{
     testnet2::{InnerSNARKPKParameters, InnerSNARKVKParameters},
