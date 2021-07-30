@@ -77,7 +77,10 @@ impl<C: Parameters> Program<C> for NoopProgram<C> {
             Some(circuit) => circuit,
             _ => return Err(MerkleError::MissingLeafIndex(circuit_index as usize).into()),
         };
+
         let program_path = self.circuit_tree.get_program_path(circuit_index)?;
+        debug_assert!(program_path.verify(self.program_id(), &circuit.circuit_id())?);
+
         let proof = circuit.execute(public, private)?;
         let verifying_key = circuit.verifying_key().clone();
 
@@ -95,7 +98,10 @@ impl<C: Parameters> Program<C> for NoopProgram<C> {
             Some(circuit) => circuit,
             _ => return Err(MerkleError::MissingLeafIndex(circuit_index as usize).into()),
         };
+
         let program_path = self.circuit_tree.get_program_path(circuit_index)?;
+        debug_assert!(program_path.verify(self.program_id(), &circuit.circuit_id())?);
+
         let proof = circuit.execute_blank()?;
         let verifying_key = circuit.verifying_key().clone();
 

@@ -99,9 +99,7 @@ impl<C: Parameters> ProgramCircuitTree<C> {
     /// Returns the program path (the Merkle path for a given circuit index).
     pub fn get_program_path(&self, circuit_index: u8) -> Result<MerklePath<C::ProgramIDTreeParameters>> {
         match self.get_circuit(circuit_index) {
-            Some(circuit) => Ok(self
-                .tree
-                .generate_proof(circuit_index as usize, circuit.verifying_key())?),
+            Some(circuit) => Ok(self.tree.generate_proof(circuit_index as usize, circuit.circuit_id())?),
             _ => Err(MerkleError::MissingLeafIndex(circuit_index as usize).into()),
         }
     }
