@@ -48,7 +48,12 @@ pub trait Program<C: Parameters> {
     fn execute_blank(&self, circuit_index: u8) -> Result<Execution<C>, ProgramError>;
 
     /// Returns the native evaluation of the program on given public and private variables.
-    fn evaluate(&self, _circuit_index: u8, _public: &ProgramPublicVariables<C>, _private: &()) -> bool {
+    fn evaluate(
+        &self,
+        _circuit_index: u8,
+        _public: &ProgramPublicVariables<C>,
+        _private: &dyn ProgramPrivateVariables<C>,
+    ) -> bool {
         unimplemented!("The native evaluation of this program is unimplemented")
     }
 }
@@ -87,35 +92,9 @@ pub trait ProgramCircuit<C: Parameters>: Send + Sync {
     fn verify(&self, public: &ProgramPublicVariables<C>, proof: &<C::ProgramSNARK as SNARK>::Proof) -> bool;
 
     /// Returns the native evaluation of the circuit on given public and private variables.
-    fn evaluate(&self, _public: &ProgramPublicVariables<C>, _private: &()) -> bool {
+    fn evaluate(&self, _public: &ProgramPublicVariables<C>, _private: &dyn ProgramPrivateVariables<C>) -> bool {
         unimplemented!("The native evaluation of this circuit is unimplemented")
     }
 }
 
 pub trait ProgramPrivateVariables<C: Parameters>: Send + Sync {}
-
-// pub trait ProgramExecutable<C: Parameters>: Send + Sync {
-//     /// Returns the execution of the circuit.
-//     fn execute<PrivateVariables: Default, R: Rng + CryptoRng>(
-//         &self,
-//         public: &ProgramPublicVariables<C>,
-//         private: &Self::PrivateVariables,
-//         rng: &mut R,
-//     ) -> Result<<C::ProgramSNARK as SNARK>::Proof, CircuitError>;
-//
-//     /// Returns the blank execution of the circuit, typically used for a SNARK setup.
-//     fn execute_blank<R: Rng + CryptoRng>(&self, rng: &mut R)
-//         -> Result<<C::ProgramSNARK as SNARK>::Proof, CircuitError>;
-//
-//     /// Returns true if the execution of the circuit is valid.
-//     fn verify(&self, public: &ProgramPublicVariables<C>, proof: &<C::ProgramSNARK as SNARK>::Proof) -> bool;
-//
-//     /// Returns the native evaluation of the circuit on given public and private variables.
-//     fn evaluate<PrivateVariables: Default>(
-//         &self,
-//         _public: &ProgramPublicVariables<C>,
-//         _private: &Self::PrivateVariables,
-//     ) -> bool {
-//         unimplemented!("The native evaluation of this circuit is unimplemented")
-//     }
-// }
