@@ -29,13 +29,6 @@ pub mod tests;
 /// Defines a Merkle tree using the provided hash and depth.
 macro_rules! define_merkle_tree_parameters {
     ($struct_name:ident, $hash:ty, $depth:expr) => {
-#[rustfmt::skip]
-        #[allow(unused_imports)]
-        use $crate::{
-            merkle_tree::MerkleTree, MerkleError,
-            traits::{CRH, LoadableMerkleParameters, MerkleParameters},
-        };
-
         #[derive(Clone, PartialEq, Eq, Debug)]
         pub struct $struct_name($hash);
 
@@ -66,12 +59,8 @@ macro_rules! define_merkle_tree_parameters {
 #[macro_export]
 macro_rules! define_masked_merkle_tree_parameters {
     ($struct_name:ident, $hash:ty, $depth:expr) => {
-#[rustfmt::skip]
         #[allow(unused_imports)]
-        use $crate::{
-            merkle_tree::MerkleTree, MerkleError,
-            CRH, MaskedMerkleParameters, MerkleParameters,
-        };
+        use $crate::{merkle_tree::MerkleTree, MaskedMerkleParameters, MerkleError, MerkleParameters, CRH};
 
         #[derive(Clone, PartialEq, Eq, Debug)]
         pub struct $struct_name($hash, $hash);
@@ -95,38 +84,5 @@ macro_rules! define_masked_merkle_tree_parameters {
                 &self.1
             }
         }
-    };
-}
-
-// TODO (raychu86): Unify the macro definitions.
-#[macro_export]
-/// Defines a Merkle tree using the provided hash and depth.
-macro_rules! define_additional_merkle_tree_parameters {
-    ($struct_name:ident, $hash:ty, $depth:expr) => {
-#[rustfmt::skip]
-        #[derive(Clone, PartialEq, Eq, Debug)]
-        pub struct $struct_name($hash);
-
-        impl MerkleParameters for $struct_name {
-            type H = $hash;
-
-            const DEPTH: usize = $depth;
-
-            fn setup(message: &str) -> Self {
-                Self(Self::H::setup(message))
-            }
-
-            fn crh(&self) -> &Self::H {
-                &self.0
-            }
-        }
-
-        impl From<$hash> for $struct_name {
-            fn from(crh: $hash) -> Self {
-                Self(crh)
-            }
-        }
-
-        impl LoadableMerkleParameters for $struct_name {}
     };
 }

@@ -712,7 +712,7 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-dpc",
  "snarkvm-objects",
- "snarkvm-posw",
+ "snarkvm-ledger",
  "snarkvm-utilities",
  "thiserror",
  "tracing",
@@ -773,7 +773,7 @@ dependencies = [
  "snarkvm-dpc",
  "snarkvm-objects",
  "snarkvm-parameters",
- "snarkvm-posw",
+ "snarkvm-ledger",
  "snarkvm-utilities",
 ]
 
@@ -984,7 +984,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "snarkvm-posw"
+name = "snarkvm-ledger"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20358d7f6c523d0706f21593470f14bd2e69b2463c29d6c4263650e5615dabbe"

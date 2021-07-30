@@ -16,7 +16,7 @@
 
 #[cfg(test)]
 mod testnet1 {
-    use crate::{testnet1::parameters::Testnet1Parameters, Account, AccountScheme, Address, PrivateKey, ViewKey};
+    use crate::{testnet1::Testnet1Parameters, Account, AccountScheme, Address, PrivateKey, ViewKey};
 
     use rand::SeedableRng;
     use rand_chacha::ChaChaRng;
@@ -157,7 +157,7 @@ mod testnet1 {
 
 #[cfg(test)]
 mod testnet2 {
-    use crate::{testnet2::parameters::Testnet2Parameters, Account, AccountScheme, Address, PrivateKey, ViewKey};
+    use crate::{testnet2::Testnet2Parameters, Account, AccountScheme, Address, PrivateKey, ViewKey};
 
     use rand::SeedableRng;
     use rand_chacha::ChaChaRng;

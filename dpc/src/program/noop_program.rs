@@ -17,7 +17,6 @@
 use crate::{
     Execution,
     LocalData,
-    Network,
     NoopCircuit,
     Parameters,
     ProgramError,
@@ -29,7 +28,6 @@ use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
     prelude::*,
 };
-use snarkvm_parameters::Parameter;
 use snarkvm_r1cs::ToConstraintField;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -63,7 +61,6 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
         let (proving_key, prepared_verifying_key) =
             <Self::ProofSystem as SNARK>::setup(&NoopCircuit::<C>::blank(), &mut C::program_srs::<R>(rng)?)?;
         let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
-
         let verifying_key_group_elements = verifying_key.to_field_elements()?;
 
         // Compute the program ID.
@@ -78,33 +75,10 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
         })
     }
 
-    // TODO (howardwu): Why are we not preparing the VK here?
     /// Loads an instance of the noop program.
     fn load() -> Result<Self, ProgramError> {
-        let proving_key: <Self::ProofSystem as SNARK>::ProvingKey = match Network::from_id(C::NETWORK_ID) {
-            Network::Testnet1 => FromBytes::read_le(
-                snarkvm_parameters::testnet1::NoopProgramSNARKPKParameters::load_bytes()?.as_slice(),
-            )?,
-            Network::Testnet2 => FromBytes::read_le(
-                snarkvm_parameters::testnet2::NoopProgramSNARKPKParameters::load_bytes()?.as_slice(),
-            )?,
-            _ => {
-                unimplemented!()
-            }
-        };
-
-        let verifying_key = match Network::from_id(C::NETWORK_ID) {
-            Network::Testnet1 => <Self::ProofSystem as SNARK>::VerifyingKey::read_le(
-                snarkvm_parameters::testnet1::NoopProgramSNARKVKParameters::load_bytes()?.as_slice(),
-            )?,
-            Network::Testnet2 => <Self::ProofSystem as SNARK>::VerifyingKey::read_le(
-                snarkvm_parameters::testnet2::NoopProgramSNARKVKParameters::load_bytes()?.as_slice(),
-            )?,
-            _ => {
-                unimplemented!()
-            }
-        };
-
+        let proving_key = C::noop_program_proving_key().clone();
+        let verifying_key = C::noop_program_verifying_key().clone();
         let verifying_key_group_elements = verifying_key.to_field_elements()?;
 
         // Compute the program ID.

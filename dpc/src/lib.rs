@@ -66,26 +66,23 @@ extern crate thiserror;
 pub mod account;
 pub use account::*;
 
-pub mod block;
-pub use block::*;
-
 pub mod circuits;
 pub use circuits::*;
 
+pub mod dpc;
+pub use dpc::*;
+
 pub mod errors;
 pub use errors::*;
+
+pub mod parameters;
+pub use parameters::*;
 
 pub mod program;
 pub use program::*;
 
 pub mod record;
 pub use record::*;
-
-#[cfg(feature = "testnet1")]
-pub mod testnet1;
-
-#[cfg(feature = "testnet2")]
-pub mod testnet2;
 
 pub mod traits;
 pub use traits::*;
@@ -94,5 +91,5 @@ pub mod transaction;
 pub use transaction::*;
 
 pub mod prelude {
-    pub use crate::{account::*, block::*, circuits::*, errors::*, program::*, record::*, traits::*, transaction::*};
+    pub use crate::{account::*, circuits::*, dpc::*, errors::*, program::*, record::*, traits::*, transaction::*};
 }
