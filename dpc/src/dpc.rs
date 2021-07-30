@@ -133,7 +133,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             joint_serial_numbers.extend_from_slice(&sn.to_bytes_le()?);
             old_serial_numbers.push(sn);
             old_randomizers.push(randomizer);
-            old_death_program_selector_roots.push(record.death_program_selector_root().to_vec());
+            old_death_program_selector_roots.push(record.death_program_id().to_vec());
 
             end_timer!(input_record_time);
         }
@@ -142,7 +142,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let mut new_commitments = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
         for record in new_records.iter().take(C::NUM_OUTPUT_RECORDS) {
-            new_birth_program_selector_roots.push(record.birth_program_selector_root());
+            new_birth_program_selector_roots.push(record.birth_program_id());
             new_commitments.push(record.commitment());
 
             if !record.is_dummy() {

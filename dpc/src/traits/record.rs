@@ -36,11 +36,11 @@ pub trait RecordScheme: Default + FromBytes + ToBytes {
     /// Returns the record payload.
     fn payload(&self) -> &Self::Payload;
 
-    /// Returns the birth program selector root of this record.
-    fn birth_program_selector_root(&self) -> &[u8];
+    /// Returns the birth program id of this record.
+    fn birth_program_id(&self) -> &[u8];
 
-    /// Returns the death program selector root of this record.
-    fn death_program_selector_root(&self) -> &[u8];
+    /// Returns the death program id of this record.
+    fn death_program_id(&self) -> &[u8];
 
     /// Returns the nonce used for the serial number.
     fn serial_number_nonce(&self) -> &Self::SerialNumberNonce;

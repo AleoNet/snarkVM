@@ -95,8 +95,8 @@ impl<C: Parameters> Record<C> {
         is_dummy: bool,
         value: u64,
         payload: Payload,
-        birth_program_selector_root: Vec<u8>,
-        death_program_selector_root: Vec<u8>,
+        birth_program_id: Vec<u8>,
+        death_program_id: Vec<u8>,
         serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
@@ -106,13 +106,13 @@ impl<C: Parameters> Record<C> {
 
         // Total = 32 + 1 + 8 + 128 + 48 + 48 + 32 = 297 bytes
         let commitment_input = to_bytes_le![
-            owner,                       // 256 bits = 32 bytes
-            is_dummy,                    // 1 bit = 1 byte
-            value,                       // 64 bits = 8 bytes
-            payload,                     // 1024 bits = 128 bytes
-            birth_program_selector_root, // 384 bits = 48 bytes
-            death_program_selector_root, // 384 bits = 48 bytes
-            serial_number_nonce          // 256 bits = 32 bytes
+            owner,               // 256 bits = 32 bytes
+            is_dummy,            // 1 bit = 1 byte
+            value,               // 64 bits = 8 bytes
+            payload,             // 1024 bits = 128 bytes
+            birth_program_id,    // 384 bits = 48 bytes
+            death_program_id,    // 384 bits = 48 bytes
+            serial_number_nonce  // 256 bits = 32 bytes
         ]?;
 
         let commitment = C::record_commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
@@ -124,8 +124,8 @@ impl<C: Parameters> Record<C> {
             is_dummy,
             value,
             payload,
-            birth_program_selector_root,
-            death_program_selector_root,
+            birth_program_id,
+            death_program_id,
             serial_number_nonce,
             commitment,
             commitment_randomness,
@@ -138,8 +138,8 @@ impl<C: Parameters> Record<C> {
         is_dummy: bool,
         value: u64,
         payload: Payload,
-        birth_program_selector_root: Vec<u8>,
-        death_program_selector_root: Vec<u8>,
+        birth_program_id: Vec<u8>,
+        death_program_id: Vec<u8>,
         serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
         commitment: C::RecordCommitment,
         commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
@@ -149,8 +149,8 @@ impl<C: Parameters> Record<C> {
             is_dummy,
             value,
             payload,
-            birth_program_selector_root,
-            death_program_selector_root,
+            birth_program_selector_root: birth_program_id,
+            death_program_selector_root: death_program_id,
             serial_number_nonce,
             commitment,
             commitment_randomness,
@@ -213,11 +213,11 @@ impl<C: Parameters> RecordScheme for Record<C> {
         &self.payload
     }
 
-    fn birth_program_selector_root(&self) -> &[u8] {
+    fn birth_program_id(&self) -> &[u8] {
         &self.birth_program_selector_root
     }
 
-    fn death_program_selector_root(&self) -> &[u8] {
+    fn death_program_id(&self) -> &[u8] {
         &self.death_program_selector_root
     }
 

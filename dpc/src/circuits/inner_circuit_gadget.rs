@@ -212,7 +212,7 @@ where
     let mut old_serial_numbers_gadgets = Vec::with_capacity(old_records.len());
     let mut old_serial_numbers_bytes_gadgets = Vec::with_capacity(old_records.len() * 32); // Serial numbers are 32 bytes
     let mut old_record_commitments_gadgets = Vec::with_capacity(old_records.len());
-    let mut old_death_program_selector_roots_gadgets = Vec::with_capacity(old_records.len());
+    let mut old_death_program_id_gadgets = Vec::with_capacity(old_records.len());
 
     for (i, (((record, witness), account_private_key), given_serial_number)) in old_records
         .iter()
@@ -230,8 +230,8 @@ where
             given_is_dummy,
             given_value,
             given_payload,
-            given_birth_program_selector_root,
-            given_death_program_selector_root,
+            given_birth_program_id,
+            given_death_program_id,
             given_commitment_randomness,
             serial_number_nonce,
         ) = {
@@ -264,16 +264,16 @@ where
 
             let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes())?;
 
-            let given_birth_program_selector_root = UInt8::alloc_vec(
-                &mut declare_cs.ns(|| "given_birth_program_selector_root"),
-                &record.birth_program_selector_root(),
+            let given_birth_program_id = UInt8::alloc_vec(
+                &mut declare_cs.ns(|| "given_birth_program_id"),
+                &record.birth_program_id(),
             )?;
 
-            let given_death_program_selector_root = UInt8::alloc_vec(
-                &mut declare_cs.ns(|| "given_death_program_selector_root"),
-                &record.death_program_selector_root(),
+            let given_death_program_id = UInt8::alloc_vec(
+                &mut declare_cs.ns(|| "given_death_program_id"),
+                &record.death_program_id(),
             )?;
-            old_death_program_selector_roots_gadgets.push(given_death_program_selector_root.clone());
+            old_death_program_id_gadgets.push(given_death_program_id.clone());
 
             let given_commitment_randomness = <C::RecordCommitmentGadget as CommitmentGadget<
                 C::RecordCommitmentScheme,
@@ -296,8 +296,8 @@ where
                 given_is_dummy,
                 given_value,
                 given_payload,
-                given_birth_program_selector_root,
-                given_death_program_selector_root,
+                given_birth_program_id,
+                given_death_program_id,
                 given_commitment_randomness,
                 serial_number_nonce,
             )
@@ -489,8 +489,8 @@ where
             commitment_input.extend_from_slice(&is_dummy_bytes);
             commitment_input.extend_from_slice(&given_value);
             commitment_input.extend_from_slice(&given_payload);
-            commitment_input.extend_from_slice(&given_birth_program_selector_root);
-            commitment_input.extend_from_slice(&given_death_program_selector_root);
+            commitment_input.extend_from_slice(&given_birth_program_id);
+            commitment_input.extend_from_slice(&given_death_program_id);
             commitment_input.extend_from_slice(&serial_number_nonce_bytes);
 
             let candidate_commitment = record_commitment_parameters.check_commitment_gadget(
@@ -507,7 +507,7 @@ where
     }
 
     let mut new_record_commitments_gadgets = Vec::with_capacity(new_records.len());
-    let mut new_birth_program_selector_roots_gadgets = Vec::with_capacity(new_records.len());
+    let mut new_birth_program_id_gadgets = Vec::with_capacity(new_records.len());
 
     for (j, (((record, commitment), encryption_randomness), encrypted_record_hash)) in new_records
         .iter()
@@ -525,8 +525,8 @@ where
             given_is_dummy,
             given_value,
             given_payload,
-            given_birth_program_selector_root,
-            given_death_program_selector_root,
+            given_birth_program_id,
+            given_death_program_id,
             given_commitment_randomness,
             serial_number_nonce,
             serial_number_nonce_bytes,
@@ -563,15 +563,15 @@ where
 
             let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes())?;
 
-            let given_birth_program_selector_root = UInt8::alloc_vec(
-                &mut declare_cs.ns(|| "given_birth_program_selector_root"),
-                &record.birth_program_selector_root(),
+            let given_birth_program_id = UInt8::alloc_vec(
+                &mut declare_cs.ns(|| "given_birth_program_id"),
+                &record.birth_program_id(),
             )?;
-            new_birth_program_selector_roots_gadgets.push(given_birth_program_selector_root.clone());
+            new_birth_program_id_gadgets.push(given_birth_program_id.clone());
 
-            let given_death_program_selector_root = UInt8::alloc_vec(
-                &mut declare_cs.ns(|| "given_death_program_selector_root"),
-                &record.death_program_selector_root(),
+            let given_death_program_id = UInt8::alloc_vec(
+                &mut declare_cs.ns(|| "given_death_program_id"),
+                &record.death_program_id(),
             )?;
 
             let given_commitment_randomness = <C::RecordCommitmentGadget as CommitmentGadget<
@@ -600,8 +600,8 @@ where
                 given_is_dummy,
                 given_value,
                 given_payload,
-                given_birth_program_selector_root,
-                given_death_program_selector_root,
+                given_birth_program_id,
+                given_death_program_id,
                 given_commitment_randomness,
                 serial_number_nonce,
                 serial_number_nonce_bytes,
@@ -652,8 +652,8 @@ where
             commitment_input.extend_from_slice(&is_dummy_bytes);
             commitment_input.extend_from_slice(&given_value);
             commitment_input.extend_from_slice(&given_payload);
-            commitment_input.extend_from_slice(&given_birth_program_selector_root);
-            commitment_input.extend_from_slice(&given_death_program_selector_root);
+            commitment_input.extend_from_slice(&given_birth_program_id);
+            commitment_input.extend_from_slice(&given_death_program_id);
             commitment_input.extend_from_slice(&serial_number_nonce_bytes);
 
             let candidate_commitment = record_commitment_parameters.check_commitment_gadget(
@@ -696,10 +696,10 @@ where
                 res.extend_from_slice(&given_commitment_randomness_bytes);
 
                 // Birth program selector root
-                res.extend_from_slice(&given_birth_program_selector_root);
+                res.extend_from_slice(&given_birth_program_id);
 
                 // Death program selector root
-                res.extend_from_slice(&given_death_program_selector_root);
+                res.extend_from_slice(&given_death_program_id);
 
                 // Value
                 res.extend_from_slice(&given_value);
@@ -764,17 +764,11 @@ where
         let commitment_cs = &mut cs.ns(|| "Check that program commitment is well-formed");
 
         let mut input = Vec::new();
-        for id_gadget in old_death_program_selector_roots_gadgets
-            .iter()
-            .take(C::NUM_INPUT_RECORDS)
-        {
+        for id_gadget in old_death_program_id_gadgets.iter().take(C::NUM_INPUT_RECORDS) {
             input.extend_from_slice(id_gadget);
         }
 
-        for id_gadget in new_birth_program_selector_roots_gadgets
-            .iter()
-            .take(C::NUM_OUTPUT_RECORDS)
-        {
+        for id_gadget in new_birth_program_id_gadgets.iter().take(C::NUM_OUTPUT_RECORDS) {
             input.extend_from_slice(id_gadget);
         }
 

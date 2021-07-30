@@ -72,11 +72,11 @@ impl<C: Parameters> EncryptedRecord<C> {
         bytes.extend_from_slice(&commitment_randomness.to_bytes_le()?);
 
         // Birth program selector root
-        let birth_program_selector_root = record.birth_program_selector_root();
+        let birth_program_selector_root = record.birth_program_id();
         bytes.extend_from_slice(&birth_program_selector_root.to_bytes_le()?);
 
         // Death program selector root
-        let death_program_selector_root = record.death_program_selector_root();
+        let death_program_selector_root = record.death_program_id();
         bytes.extend_from_slice(&death_program_selector_root.to_bytes_le()?);
 
         // Value
