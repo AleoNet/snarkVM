@@ -283,7 +283,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
         )?;
 
         let death_program_vk_field_elements =
-            death_program_vk.to_constraint_field(cs.ns(|| "alloc_death_program_vk_field_elements"))?;
+            death_program_vk.to_constraint_field(cs.ns(|| "Convert death program VK to field elements"))?;
 
         let claimed_death_program_id = program_id_crh.check_evaluation_gadget_on_field_elements(
             &mut cs.ns(|| "Compute death program ID"),
@@ -342,7 +342,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
         )?;
 
         let birth_program_vk_field_elements =
-            birth_program_vk.to_constraint_field(cs.ns(|| "birth_birth_program_vk_field_elements"))?;
+            birth_program_vk.to_constraint_field(cs.ns(|| "Convert birth program VK to field elements"))?;
 
         let claimed_birth_program_id = program_id_crh.check_evaluation_gadget_on_field_elements(
             &mut cs.ns(|| "Compute birth program ID"),
@@ -358,7 +358,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
         )?;
 
         let claimed_birth_program_selector_root = birth_program_merkle_path_gadget.calculate_root(
-            &mut cs.ns(|| "calculate_birth_program_selector_root"),
+            &mut cs.ns(|| "Calculate birth program selector root"),
             &program_selector_tree_crh,
             claimed_birth_program_id_bytes,
         )?;
