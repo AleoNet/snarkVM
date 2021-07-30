@@ -79,6 +79,12 @@ define_merkle_tree_parameters!(
     32
 );
 
+define_merkle_tree_parameters!(
+    SerialNumberMerkleTreeParameters,
+    <Testnet1Parameters as Parameters>::RecordSerialNumberTreeCRH,
+    32
+);
+
 pub struct Testnet1Parameters;
 
 #[rustfmt::skip]
@@ -148,9 +154,13 @@ impl Parameters for Testnet1Parameters {
     type RecordCommitmentTreeDigest = <Self::RecordCommitmentTreeCRH as CRH>::Output;
     type RecordCommitmentTreeParameters = CommitmentMerkleTreeParameters;
 
+    type RecordSerialNumberTreeCRH = BHPCompressedCRH<EdwardsBls12, 8, 32>;
+    type RecordSerialNumberTreeDigest = <Self::RecordSerialNumberTreeCRH as CRH>::Output;
+    type RecordSerialNumberTreeParameters = SerialNumberMerkleTreeParameters;
+    
     type SerialNumberNonceCRH = BHPCompressedCRH<EdwardsBls12, 32, 63>;
     type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
-
+    
     dpc_setup!{account_commitment_scheme, ACCOUNT_COMMITMENT_SCHEME, AccountCommitmentScheme, ACCOUNT_COMMITMENT_INPUT} // TODO (howardwu): Rename to "AleoAccountCommitmentScheme0".
     dpc_setup!{account_encryption_scheme, ACCOUNT_ENCRYPTION_SCHEME, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{account_signature_scheme, ACCOUNT_SIGNATURE_SCHEME, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
@@ -162,6 +172,7 @@ impl Parameters for Testnet1Parameters {
     dpc_setup!{program_id_crh, PROGRAM_ID_CRH, ProgramIDCRH, "AleoProgramIDCRH0"}
     dpc_setup!{record_commitment_scheme, RECORD_COMMITMENT_SCHEME, RecordCommitmentScheme, "AleoRecordCommitment0"} // TODO (howardwu): Rename to "AleoRecordCommitmentScheme0".
     dpc_setup!{record_commitment_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoLedgerMerkleTreeCRH0"} // TODO (howardwu): Rename to "AleoRecordCommitmentTreeCRH0".
+    dpc_setup!{record_serial_number_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoRecordSerialNumberTreeCRH0"}
     dpc_setup!{serial_number_nonce_crh, SERIAL_NUMBER_NONCE_CRH, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
 
     dpc_snark_setup_with_mode!{Testnet1Parameters, inner_circuit_proving_key, INNER_CIRCUIT_PROVING_KEY, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
@@ -173,10 +184,14 @@ impl Parameters for Testnet1Parameters {
     dpc_snark_setup_with_mode!{Testnet1Parameters, outer_circuit_proving_key, OUTER_CIRCUIT_PROVING_KEY, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
     dpc_snark_setup!{Testnet1Parameters, outer_circuit_verifying_key, OUTER_CIRCUIT_VERIFYING_KEY, OuterSNARK, VerifyingKey, OuterSNARKVKParameters, "outer circuit verifying key"}
 
-    // TODO (howardwu): TEMPORARY - Refactor this to a proper tree.
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters {
         static RECORD_COMMITMENT_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::RecordCommitmentTreeParameters> = OnceCell::new();
         RECORD_COMMITMENT_TREE_PARAMETERS.get_or_init(|| Self::RecordCommitmentTreeParameters::from(Self::record_commitment_tree_crh().clone()))
+    }
+    
+    fn record_serial_number_tree_parameters() -> &'static Self::RecordSerialNumberTreeParameters {
+        static RECORD_SERIAL_NUMBER_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::RecordSerialNumberTreeParameters> = OnceCell::new();
+        RECORD_SERIAL_NUMBER_TREE_PARAMETERS.get_or_init(|| Self::RecordSerialNumberTreeParameters::from(Self::record_serial_number_tree_crh().clone()))
     }
 
     /// Returns the program SRS for Aleo applications.

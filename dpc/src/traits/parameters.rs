@@ -199,7 +199,7 @@ pub trait Parameters: 'static + Sized {
         + Sync
         + Send;
 
-    /// Record commitment tree instantiation for the ledger digest.
+    /// Record commitment tree instantiation.
     type RecordCommitmentTreeCRH: CRH<Output = Self::RecordCommitmentTreeDigest>;
     type RecordCommitmentTreeCRHGadget: CRHGadget<Self::RecordCommitmentTreeCRH, Self::InnerScalarField>;
     type RecordCommitmentTreeDigest: ToConstraintField<Self::InnerScalarField>
@@ -216,21 +216,33 @@ pub trait Parameters: 'static + Sized {
         + Copy;
     type RecordCommitmentTreeParameters: LoadableMerkleParameters<H = Self::RecordCommitmentTreeCRH>;
 
+    /// Record serial number tree instantiation.
+    type RecordSerialNumberTreeCRH: CRH<Output = Self::RecordSerialNumberTreeDigest>;
+    type RecordSerialNumberTreeDigest: ToConstraintField<Self::InnerScalarField>
+        + Clone
+        + Debug
+        + Display
+        + ToBytes
+        + FromBytes
+        + Eq
+        + Hash
+        + Default
+        + Send
+        + Sync
+        + Copy;
+    type RecordSerialNumberTreeParameters: LoadableMerkleParameters<H = Self::RecordSerialNumberTreeCRH>;
+
     /// CRH for computing the serial number nonce. Invoked only over `Self::InnerScalarField`.
     type SerialNumberNonceCRH: CRH;
     type SerialNumberNonceCRHGadget: CRHGadget<Self::SerialNumberNonceCRH, Self::InnerScalarField>;
 
     fn account_commitment_scheme() -> &'static Self::AccountCommitmentScheme;
-
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
-
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
 
     fn encrypted_record_crh() -> &'static Self::EncryptedRecordCRH;
 
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
-
-    fn record_commitment_tree_crh() -> &'static Self::RecordCommitmentTreeCRH;
 
     fn local_data_commitment_scheme() -> &'static Self::LocalDataCommitmentScheme;
 
@@ -242,7 +254,11 @@ pub trait Parameters: 'static + Sized {
 
     fn record_commitment_scheme() -> &'static Self::RecordCommitmentScheme;
 
+    fn record_commitment_tree_crh() -> &'static Self::RecordCommitmentTreeCRH;
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters;
+
+    fn record_serial_number_tree_crh() -> &'static Self::RecordSerialNumberTreeCRH;
+    fn record_serial_number_tree_parameters() -> &'static Self::RecordSerialNumberTreeParameters;
 
     fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
 

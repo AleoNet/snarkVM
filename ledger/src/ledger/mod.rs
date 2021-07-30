@@ -20,6 +20,9 @@ pub use ledger::*;
 pub mod memdb;
 pub use memdb::*;
 
+#[cfg(test)]
+mod tests;
+
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};

@@ -18,7 +18,7 @@ use crate::{
     crh::{PedersenCRH, PedersenCompressedCRH},
     define_merkle_tree_parameters,
     merkle_tree::MerkleTree,
-    traits::{crh::CRH, merkle_tree::LoadableMerkleParameters},
+    traits::{LoadableMerkleParameters, MerkleParameters, CRH},
 };
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 

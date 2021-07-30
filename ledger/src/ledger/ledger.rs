@@ -42,6 +42,7 @@ pub type BlockHeight = u32;
 pub struct Ledger<C: Parameters, S: Storage> {
     pub current_block_height: AtomicU32,
     pub record_commitment_tree: RwLock<MerkleTree<C::RecordCommitmentTreeParameters>>,
+    pub record_serial_number_tree: RwLock<MerkleTree<C::RecordSerialNumberTreeParameters>>,
     pub storage: S,
 }
 
@@ -50,6 +51,11 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
 
     /// Instantiates a new ledger with a genesis block.
     fn new(path: Option<&Path>, genesis_block: Self::Block) -> anyhow::Result<Self> {
+        // Ensure the given block is a genesis block.
+        if !genesis_block.header().is_genesis() {
+            return Err(LedgerError::InvalidGenesisBlockHeader.into());
+        }
+
         let storage = if let Some(path) = path {
             fs::create_dir_all(&path).map_err(|err| LedgerError::Message(err.to_string()))?;
 
@@ -65,15 +71,20 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
         }
 
         let leaves: &[[u8; 32]] = &[];
-        let parameters = Arc::new(C::record_commitment_tree_parameters().clone());
+        let record_commitment_tree = MerkleTree::new(Arc::new(C::record_commitment_tree_parameters().clone()), leaves)?;
+        let record_serial_number_tree =
+            MerkleTree::new(Arc::new(C::record_serial_number_tree_parameters().clone()), leaves)?;
 
         let ledger = Self {
             current_block_height: Default::default(),
-            record_commitment_tree: RwLock::new(MerkleTree::new(parameters, leaves)?),
+            record_commitment_tree: RwLock::new(record_commitment_tree),
+            record_serial_number_tree: RwLock::new(record_serial_number_tree),
             storage,
         };
 
+        debug_assert_eq!(ledger.block_height(), 0, "Uninitialized ledger block height must be 0");
         ledger.insert_and_commit(&genesis_block)?;
+        debug_assert_eq!(ledger.block_height(), 1, "Initialized ledger block height must be 1");
 
         Ok(ledger)
     }
@@ -154,11 +165,6 @@ impl<C: Parameters, S: Storage> RecordSerialNumberTree<C> for Ledger<C, S> {
 }
 
 impl<C: Parameters, S: Storage> Ledger<C, S> {
-    /// Returns true if there are no blocks in the ledger.
-    pub fn is_empty(&self) -> bool {
-        self.latest_block().is_err()
-    }
-
     /// Find the potential child block hashes given a parent block header.
     pub fn get_child_block_hashes(
         &self,
@@ -198,7 +204,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
     }
 
     /// Get the current commitment index
-    pub fn current_cm_index(&self) -> Result<usize, StorageError> {
+    fn current_cm_index(&self) -> Result<usize, StorageError> {
         match self.storage.get(COL_META, KEY_CURR_CM_INDEX.as_bytes())? {
             Some(cm_index_bytes) => Ok(bytes_to_u32(&cm_index_bytes) as usize),
             None => Ok(0),
@@ -206,7 +212,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
     }
 
     /// Get the current serial number index
-    pub fn current_sn_index(&self) -> Result<usize, StorageError> {
+    fn current_sn_index(&self) -> Result<usize, StorageError> {
         match self.storage.get(COL_META, KEY_CURR_SN_INDEX.as_bytes())? {
             Some(sn_index_bytes) => Ok(bytes_to_u32(&sn_index_bytes) as usize),
             None => Ok(0),
@@ -214,7 +220,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
     }
 
     /// Get serial number index.
-    pub fn get_sn_index(&self, sn_bytes: &[u8]) -> Result<Option<usize>, StorageError> {
+    fn get_sn_index(&self, sn_bytes: &[u8]) -> Result<Option<usize>, StorageError> {
         match self.storage.get(COL_SERIAL_NUMBER, sn_bytes)? {
             Some(sn_index_bytes) => {
                 let mut sn_index = [0u8; 4];
@@ -227,7 +233,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
     }
 
     /// Get commitment index
-    pub fn get_cm_index(&self, cm_bytes: &[u8]) -> Result<Option<usize>, StorageError> {
+    fn get_cm_index(&self, cm_bytes: &[u8]) -> Result<Option<usize>, StorageError> {
         match self.storage.get(COL_COMMITMENT, cm_bytes)? {
             Some(cm_index_bytes) => {
                 let mut cm_index = [0u8; 4];
@@ -311,25 +317,26 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
 
     /// Insert a block into storage without canonizing/committing it.
     pub fn insert_only(&self, block: &Block<Transaction<C>>) -> Result<(), StorageError> {
+        // If the ledger is initialized, ensure the block header is not a genesis header.
+        if self.block_height() != 0 && block.header().is_genesis() {
+            return Err(StorageError::InvalidBlockHeader);
+        }
+
         let block_hash = block.header.get_hash();
 
         // Check that the block does not already exist.
         if self.contains_block_hash(&block_hash) {
-            return Err(StorageError::BlockError(BlockError::BlockExists(
-                block_hash.to_string(),
-            )));
+            return Err(BlockError::BlockExists(block_hash.to_string()).into());
         }
 
         let mut database_transaction = DatabaseTransaction::new();
 
         let mut transaction_serial_numbers = Vec::with_capacity(block.transactions.0.len());
         let mut transaction_commitments = Vec::with_capacity(block.transactions.0.len());
-        let mut transaction_memos = Vec::with_capacity(block.transactions.0.len());
 
         for transaction in &block.transactions.0 {
             transaction_serial_numbers.push(transaction.transaction_id()?);
             transaction_commitments.push(transaction.new_commitments());
-            transaction_memos.push(transaction.memorandum());
         }
 
         // Sanitize the block inputs
@@ -392,9 +399,13 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
 
     /// Commit/canonize a particular block.
     pub fn commit(&self, block: &Block<Transaction<C>>) -> Result<(), StorageError> {
-        let block_header_hash = block.header.get_hash();
+        // If the ledger is initialized, ensure the block header is not a genesis header.
+        if self.block_height() != 0 && block.header().is_genesis() {
+            return Err(StorageError::InvalidBlockHeader);
+        }
 
-        // Check if the block is already in the canon chain
+        // Ensure the block is not already in the canon chain.
+        let block_header_hash = block.header.get_hash();
         if self.is_canon(&block_header_hash) {
             return Err(StorageError::ExistingCanonBlock(block_header_hash.to_string()));
         }
@@ -447,22 +458,14 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
             value: (cm_index as u32).to_le_bytes().to_vec(),
         });
 
-        // Update the best block number
+        // Update the best block number.
 
-        let height = self.block_height();
-
-        let is_genesis =
-            block.header.previous_block_hash == BlockHeaderHash([0u8; 32]) && height == 0 && self.is_empty();
-
-        let mut new_best_block_number = 0;
-        if !is_genesis {
-            new_best_block_number = height + 1;
-        }
+        let new_block_height = self.block_height() + 1;
 
         database_transaction.push(Op::Insert {
             col: COL_META,
             key: KEY_BEST_BLOCK_NUMBER.as_bytes().to_vec(),
-            value: new_best_block_number.to_le_bytes().to_vec(),
+            value: new_block_height.to_le_bytes().to_vec(),
         });
 
         // Update the block location
@@ -470,11 +473,11 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_LOCATOR,
             key: block.header.get_hash().0.to_vec(),
-            value: new_best_block_number.to_le_bytes().to_vec(),
+            value: new_block_height.to_le_bytes().to_vec(),
         });
         database_transaction.push(Op::Insert {
             col: COL_BLOCK_LOCATOR,
-            key: new_best_block_number.to_le_bytes().to_vec(),
+            key: new_block_height.to_le_bytes().to_vec(),
             value: block.header.get_hash().0.to_vec(),
         });
 
@@ -485,7 +488,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
         database_transaction.push(Op::Insert {
             col: COL_DIGEST,
             key: to_bytes_le![new_digest]?.to_vec(),
-            value: new_best_block_number.to_le_bytes().to_vec(),
+            value: new_block_height.to_le_bytes().to_vec(),
         });
         database_transaction.push(Op::Insert {
             col: COL_META,
@@ -495,9 +498,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
 
         self.storage.batch(database_transaction)?;
 
-        if !is_genesis {
-            self.current_block_height.fetch_add(1, Ordering::SeqCst);
-        }
+        self.current_block_height.fetch_add(1, Ordering::SeqCst);
 
         Ok(())
     }
