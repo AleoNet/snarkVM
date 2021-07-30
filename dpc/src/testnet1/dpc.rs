@@ -36,7 +36,7 @@ pub struct DPC<C: Parameters> {
 
 impl<C: Parameters> DPCScheme<C> for DPC<C> {
     type Account = Account<C>;
-    type Execution = Execution<C, C::ProgramSNARK>;
+    type Execution = Execution<C>;
     type Record = Record<C>;
     type Transaction = Transaction<C>;
     type TransactionKernel = TransactionKernel<C>;

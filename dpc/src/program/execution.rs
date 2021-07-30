@@ -20,10 +20,10 @@ use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
 /// Program verifying key and proof.
 #[derive(Derivative)]
-#[derivative(Clone(bound = "S: SNARK"))]
-pub struct Execution<C: Parameters, S: SNARK> {
-    pub verifying_key: S::VerifyingKey,
-    pub proof: S::Proof,
+#[derivative(Clone(bound = "C: Parameters"))]
+pub struct Execution<C: Parameters> {
+    pub verifying_key: <C::ProgramSNARK as SNARK>::VerifyingKey,
+    pub proof: <C::ProgramSNARK as SNARK>::Proof,
     pub program_selector_path: MerklePath<C::ProgramSelectorTreeParameters>,
 }
 

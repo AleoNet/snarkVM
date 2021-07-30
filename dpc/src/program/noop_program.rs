@@ -47,7 +47,7 @@ pub struct NoopProgram<C: Parameters> {
 }
 
 impl<C: Parameters> ProgramScheme for NoopProgram<C> {
-    type Execution = Execution<C, Self::ProofSystem>;
+    type Execution = Execution<C>;
     type ID = Vec<u8>;
     type LocalData = LocalData<C>;
     type LocalDataCommitment = C::LocalDataCommitmentScheme;
