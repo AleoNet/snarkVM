@@ -16,13 +16,13 @@
 
 use crate::{
     account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT},
-    testnet2::DPC,
     InnerCircuitVerifierInput,
     Network,
     OuterCircuitVerifierInput,
     Parameters,
     ProgramLocalData,
     Transaction,
+    DPC,
 };
 use snarkvm_algorithms::{
     commitment::{BHPCompressedCommitment, Blake2sCommitment},
@@ -59,7 +59,7 @@ use snarkvm_marlin::{
     FiatShamirAlgebraicSpongeRng,
     PoseidonSponge,
 };
-use snarkvm_parameters::{testnet2::UniversalSRSParameters, Parameter};
+use snarkvm_parameters::{testnet2::*, Parameter};
 use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
 use snarkvm_utilities::FromBytes;
 
@@ -183,6 +183,15 @@ impl Parameters for Testnet2Parameters {
     dpc_setup!{record_commitment_scheme, RECORD_COMMITMENT_SCHEME, RecordCommitmentScheme, "AleoRecordCommitment0"} // TODO (howardwu): Rename to "AleoRecordCommitmentScheme0".
     dpc_setup!{record_commitment_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoLedgerMerkleTreeCRH0"} // TODO (howardwu): Rename to "AleoRecordCommitmentTreeCRH0".
     dpc_setup!{serial_number_nonce_crh, SERIAL_NUMBER_NONCE_CRH, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
+
+    dpc_snark_setup_with_mode!{Testnet2Parameters, inner_circuit_proving_key, INNER_CIRCUIT_PROVING_KEY, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
+    dpc_snark_setup!{Testnet2Parameters, inner_circuit_verifying_key, INNER_CIRCUIT_VERIFYING_KEY, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
+
+    dpc_snark_setup!{Testnet2Parameters, noop_program_proving_key, NOOP_PROGRAM_PROVING_KEY, ProgramSNARK, ProvingKey, NoopProgramSNARKPKParameters, "noop program proving key"}
+    dpc_snark_setup!{Testnet2Parameters, noop_program_verifying_key, NOOP_PROGRAM_VERIFYING_KEY, ProgramSNARK, VerifyingKey, NoopProgramSNARKVKParameters, "noop program verifying key"}
+
+    dpc_snark_setup_with_mode!{Testnet2Parameters, outer_circuit_proving_key, OUTER_CIRCUIT_PROVING_KEY, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
+    dpc_snark_setup!{Testnet2Parameters, outer_circuit_verifying_key, OUTER_CIRCUIT_VERIFYING_KEY, OuterSNARK, VerifyingKey, OuterSNARKVKParameters, "outer circuit verifying key"}
 
     // TODO (howardwu): TEMPORARY - Refactor this to a proper tree.
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters {

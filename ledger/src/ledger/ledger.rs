@@ -20,7 +20,6 @@ use snarkvm_dpc::prelude::*;
 use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
 
 use parking_lot::RwLock;
-use rand::{thread_rng, Rng};
 use std::{
     fs,
     path::Path,
@@ -30,17 +29,12 @@ use std::{
     },
 };
 
-pub fn random_storage_path() -> String {
-    let random_path: usize = thread_rng().gen();
-    format!("./test_db-{}", random_path)
-}
+// TODO (howardwu): TEMPORARY - Deprecate this.
+pub fn bytes_to_u32(bytes: &[u8]) -> u32 {
+    let mut num_bytes = [0u8; 4];
+    num_bytes.copy_from_slice(&bytes);
 
-/// Initializes a test ledger given a genesis block.
-pub fn initialize_test_blockchain<C: Parameters, S: Storage>(genesis_block: Block<Transaction<C>>) -> Ledger<C, S> {
-    let mut path = std::env::temp_dir();
-    path.push(random_storage_path());
-
-    Ledger::new(Some(&path), genesis_block).unwrap()
+    u32::from_le_bytes(num_bytes)
 }
 
 pub type BlockHeight = u32;
@@ -73,15 +67,15 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
         let leaves: &[[u8; 32]] = &[];
         let parameters = Arc::new(C::record_commitment_tree_parameters().clone());
 
-        let ledger_storage = Self {
+        let ledger = Self {
             current_block_height: Default::default(),
             record_commitment_tree: RwLock::new(MerkleTree::new(parameters, leaves)?),
             storage,
         };
 
-        ledger_storage.insert_and_commit(&genesis_block)?;
+        ledger.insert_and_commit(&genesis_block)?;
 
-        Ok(ledger_storage)
+        Ok(ledger)
     }
 
     /// Returns the latest number of blocks in the ledger.
@@ -117,7 +111,9 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
     fn contains_block_hash(&self, block_hash: &BlockHeaderHash) -> bool {
         self.get_block_header(block_hash).is_ok()
     }
+}
 
+impl<C: Parameters, S: Storage> RecordCommitmentTree<C> for Ledger<C, S> {
     /// Return a digest of the latest ledger Merkle tree.
     fn latest_digest(&self) -> Option<MerkleTreeDigest<C::RecordCommitmentTreeParameters>> {
         let digest = match self.storage.get(COL_META, KEY_CURR_DIGEST.as_bytes()).unwrap() {
@@ -137,12 +133,6 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
         self.storage.exists(COL_COMMITMENT, &commitment.to_bytes_le().unwrap())
     }
 
-    /// Returns true if the given serial number exists in the ledger.
-    fn contains_serial_number(&self, serial_number: &C::AccountSignaturePublicKey) -> bool {
-        self.storage
-            .exists(COL_SERIAL_NUMBER, &serial_number.to_bytes_le().unwrap())
-    }
-
     /// Returns the Merkle path to the latest ledger digest
     /// for a given commitment, if it exists in the ledger.
     fn prove_cm(&self, cm: &C::RecordCommitment) -> anyhow::Result<MerklePath<C::RecordCommitmentTreeParameters>> {
@@ -152,6 +142,14 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
         let result = self.record_commitment_tree.read().generate_proof(cm_index, cm)?;
 
         Ok(result)
+    }
+}
+
+impl<C: Parameters, S: Storage> RecordSerialNumberTree<C> for Ledger<C, S> {
+    /// Returns true if the given serial number exists in the ledger.
+    fn contains_serial_number(&self, serial_number: &C::AccountSignaturePublicKey) -> bool {
+        self.storage
+            .exists(COL_SERIAL_NUMBER, &serial_number.to_bytes_le().unwrap())
     }
 }
 

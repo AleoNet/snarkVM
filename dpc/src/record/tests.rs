@@ -16,7 +16,7 @@
 
 use crate::{
     record::encrypted::*,
-    testnet2::parameters::*,
+    testnet2::*,
     Account,
     AccountScheme,
     NoopProgram,

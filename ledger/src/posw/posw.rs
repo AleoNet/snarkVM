@@ -16,7 +16,14 @@
 
 //! Generic PoSW Miner and Verifier, compatible with any implementer of the SNARK trait.
 
-use crate::{circuit::POSWCircuit, error::PoswError};
+use crate::{
+    block::{
+        pedersen_merkle_tree::{pedersen_merkle_root_hash_with_leaves, PedersenMerkleRootHash, PARAMS},
+        MaskedMerkleTreeParameters,
+    },
+    posw::circuit::POSWCircuit,
+    PoswError,
+};
 use snarkvm_algorithms::{
     crh::sha256d_to_u64,
     traits::{MaskedMerkleParameters, SNARK},
@@ -26,10 +33,6 @@ use snarkvm_curves::{
     bls12_377::Fr,
     edwards_bls12::{EdwardsProjective, Fq},
     traits::PairingEngine,
-};
-use snarkvm_dpc::block::{
-    pedersen_merkle_tree::{pedersen_merkle_root_hash_with_leaves, PedersenMerkleRootHash, PARAMS},
-    MaskedMerkleTreeParameters,
 };
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
@@ -51,7 +54,7 @@ use std::marker::PhantomData;
 
 /// TODO (howardwu): Deprecate this function and use the implementation in `snarkvm-algorithms`.
 /// Commits to the nonce and pedersen merkle root.
-pub fn commit(nonce: u32, root: &PedersenMerkleRootHash) -> Vec<u8> {
+fn commit(nonce: u32, root: &PedersenMerkleRootHash) -> Vec<u8> {
     let mut h = Blake2s::new();
     h.update(&nonce.to_le_bytes());
     h.update(root.0.as_ref());
@@ -60,8 +63,8 @@ pub fn commit(nonce: u32, root: &PedersenMerkleRootHash) -> Vec<u8> {
 
 // We need to instantiate the Merkle tree and the Gadget, but these should not be
 // proving system specific.
-pub type M = MaskedMerkleTreeParameters;
-pub type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, 4, 128>;
+pub(crate) type M = MaskedMerkleTreeParameters;
+pub(crate) type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, 4, 128>;
 
 /// A Proof of Succinct Work miner and verifier
 #[derive(Clone, Debug, PartialEq, Eq)]

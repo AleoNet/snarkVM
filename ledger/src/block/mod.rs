@@ -14,7 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod dpc;
-pub use dpc::*;
+pub mod block;
+pub use block::*;
 
-pub mod parameters;
+pub mod block_header;
+pub use block_header::*;
+
+pub mod block_header_hash;
+pub use block_header_hash::*;
+
+pub mod merkle_root_hash;
+pub use merkle_root_hash::*;
+
+pub mod merkle_tree;
+pub use merkle_tree::*;
+
+pub mod pedersen_merkle_tree;
+pub use pedersen_merkle_tree::*;
+
+pub mod posw;
+pub use posw::ProofOfSuccinctWork;
+
+pub mod transactions;
+pub use transactions::*;

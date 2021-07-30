@@ -1697,7 +1697,6 @@ dependencies = [
  "bech32",
  "bincode",
  "blake2",
- "chrono",
  "criterion",
  "derivative",
  "hex",
@@ -1778,7 +1777,37 @@ dependencies = [
  "snarkvm-dpc",
  "snarkvm-fields",
  "snarkvm-gadgets",
+ "snarkvm-ledger",
  "snarkvm-parameters",
+ "snarkvm-profiler",
+ "snarkvm-r1cs",
+ "snarkvm-utilities",
+ "thiserror",
+]
+
+[[package]]
+name = "snarkvm-ledger"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "blake2",
+ "chrono",
+ "criterion",
+ "hex",
+ "once_cell",
+ "parking_lot",
+ "rand",
+ "rand_chacha",
+ "serde",
+ "snarkvm-algorithms",
+ "snarkvm-curves",
+ "snarkvm-dpc",
+ "snarkvm-fields",
+ "snarkvm-gadgets",
+ "snarkvm-marlin",
+ "snarkvm-parameters",
+ "snarkvm-polycommit",
  "snarkvm-profiler",
  "snarkvm-r1cs",
  "snarkvm-utilities",
@@ -1820,9 +1849,9 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-dpc",
  "snarkvm-fields",
+ "snarkvm-ledger",
  "snarkvm-marlin",
  "snarkvm-polycommit",
- "snarkvm-posw",
  "snarkvm-utilities",
  "thiserror",
 ]
@@ -1846,31 +1875,6 @@ dependencies = [
  "snarkvm-profiler",
  "snarkvm-r1cs",
  "snarkvm-utilities",
-]
-
-[[package]]
-name = "snarkvm-posw"
-version = "0.7.5"
-dependencies = [
- "anyhow",
- "blake2",
- "criterion",
- "hex",
- "rand",
- "rand_chacha",
- "serde",
- "snarkvm-algorithms",
- "snarkvm-curves",
- "snarkvm-dpc",
- "snarkvm-fields",
- "snarkvm-gadgets",
- "snarkvm-marlin",
- "snarkvm-parameters",
- "snarkvm-polycommit",
- "snarkvm-profiler",
- "snarkvm-r1cs",
- "snarkvm-utilities",
- "thiserror",
 ]
 
 [[package]]

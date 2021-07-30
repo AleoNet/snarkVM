@@ -56,8 +56,8 @@ default-features = false
 path = "../polycommit"
 default-features = false
 
-[dev-dependencies.snarkvm-posw]
-path = "../posw"
+[dev-dependencies.snarkvm-ledger]
+path = "../ledger"
 default-features = false
 
 [dev-dependencies.blake2]

@@ -55,41 +55,22 @@
 #![cfg_attr(feature = "clippy", allow(new_without_default_derive))]
 
 #[macro_use]
-extern crate snarkvm_profiler;
-
-#[macro_use]
-extern crate derivative;
-
-#[macro_use]
 extern crate thiserror;
 
-pub mod account;
-pub use account::*;
-
-pub mod circuits;
-pub use circuits::*;
-
-pub mod dpc;
-pub use dpc::*;
+pub mod block;
+pub use block::*;
 
 pub mod errors;
 pub use errors::*;
 
-pub mod parameters;
-pub use parameters::*;
+pub mod ledger;
+pub use ledger::*;
 
-pub mod program;
-pub use program::*;
-
-pub mod record;
-pub use record::*;
+pub mod posw;
 
 pub mod traits;
 pub use traits::*;
 
-pub mod transaction;
-pub use transaction::*;
-
 pub mod prelude {
-    pub use crate::{account::*, circuits::*, dpc::*, errors::*, program::*, record::*, traits::*, transaction::*};
+    pub use crate::{block::*, errors::*, ledger::*, traits::*};
 }

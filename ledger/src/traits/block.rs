@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::TransactionScheme;
+use snarkvm_dpc::traits::TransactionScheme;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes {

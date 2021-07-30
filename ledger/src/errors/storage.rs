@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::{BlockError, TransactionError};
+use crate::errors::BlockError;
 use snarkvm_algorithms::errors::MerkleError;
 use snarkvm_parameters::errors::ParameterError;
 
@@ -122,7 +122,7 @@ pub enum StorageError {
     ParameterError(#[from] ParameterError),
 
     #[error("{}", _0)]
-    TransactionError(#[from] TransactionError),
+    TransactionError(#[from] snarkvm_dpc::TransactionError),
 }
 
 impl From<bincode::Error> for StorageError {

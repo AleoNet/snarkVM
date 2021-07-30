@@ -14,26 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+#[macro_use]
+pub mod common;
+
+#[cfg(feature = "testnet1")]
 pub mod testnet1;
-pub use testnet1::*;
 
+#[cfg(feature = "testnet2")]
 pub mod testnet2;
-pub use testnet2::*;
-
-use snarkvm_dpc::prelude::*;
-use snarkvm_ledger::prelude::*;
-
-use rand::Rng;
-
-pub fn random_storage_path() -> String {
-    let random_path: usize = rand::thread_rng().gen();
-    format!("./test_db-{}", random_path)
-}
-
-/// Initializes a test ledger given a genesis block.
-pub fn initialize_test_blockchain<C: Parameters, S: Storage>(genesis_block: Block<Transaction<C>>) -> Ledger<C, S> {
-    let mut path = std::env::temp_dir();
-    path.push(random_storage_path());
-
-    Ledger::new(Some(&path), genesis_block).unwrap()
-}

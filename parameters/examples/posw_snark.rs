@@ -17,7 +17,7 @@
 use snarkvm_algorithms::crh::sha256;
 use snarkvm_curves::bls12_377::Fr;
 use snarkvm_dpc::errors::DPCError;
-use snarkvm_posw::PoswMarlin;
+use snarkvm_ledger::posw::PoswMarlin;
 use snarkvm_utilities::ToBytes;
 
 use rand::{prelude::ThreadRng, thread_rng};
