@@ -139,7 +139,7 @@ impl<C: Parameters> EncryptedRecord<C> {
         let commitment = C::record_commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
 
         Ok(Record::from(
-            program_id,
+            &program_id,
             owner,
             is_dummy,
             value,

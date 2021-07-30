@@ -15,38 +15,30 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    CircuitError,
-    CircuitScheme,
     CircuitTree,
     Execution,
-    LocalData,
     NoopCircuit,
     Parameters,
+    Program,
+    ProgramCircuit,
     ProgramError,
     ProgramPublicVariables,
-    ProgramScheme,
-    RecordScheme,
 };
-use snarkvm_algorithms::prelude::*;
-use snarkvm_r1cs::ToConstraintField;
-use snarkvm_utilities::ToBytes;
+use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, prelude::*};
 
 use rand::{CryptoRng, Rng};
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: Parameters"), Debug(bound = "C: Parameters"))]
+#[derivative(Debug(bound = "C: Parameters"))]
 pub struct NoopProgram<C: Parameters> {
     circuit_tree: CircuitTree<C>,
 }
 
-impl<C: Parameters> ProgramScheme for NoopProgram<C> {
-    type Execution = Execution<Self::ProofSystem>;
+impl<C: Parameters> Program<C> for NoopProgram<C> {
     type PrivateVariables = ();
-    type ProgramID = Vec<u8>;
-    type PublicVariables = ProgramPublicVariables<C>;
 
     /// Initializes a new instance of the program.
-    fn setup(circuits: &[Box<dyn CircuitScheme>]) -> Result<Self, ProgramError> {
+    fn new(circuits: &[Box<dyn ProgramCircuit<C>>]) -> Result<Self, ProgramError> {
         // Initialize a new circuit tree, and add all circuits to the tree.
         let mut circuit_tree = CircuitTree::new()?;
         circuit_tree.add_all(circuits)?;
@@ -56,31 +48,31 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
 
     /// Loads an instance of the program.
     fn load() -> Result<Self, ProgramError> {
-        Self::setup(&[NoopCircuit::load()?])
+        Self::new(&[Box::new(NoopCircuit::load()?)])
     }
 
     /// Returns the program ID.
-    fn program_id(&self) -> Self::ProgramID {
+    fn program_id(&self) -> &MerkleTreeDigest<C::ProgramIDTreeParameters> {
         self.circuit_tree.to_program_id()
     }
 
     fn execute<R: Rng + CryptoRng>(
         &self,
         circuit_index: u8,
-        public: Self::PublicVariables,
-        private: Self::PrivateVariables,
+        public: &ProgramPublicVariables<C>,
+        private: &Self::PrivateVariables,
         rng: &mut R,
-    ) -> Result<Self::Execution, ProgramError> {
+    ) -> Result<Execution<C::ProgramSNARK>, ProgramError> {
         // Fetch the circuit from the tree.
         let circuit = match self.circuit_tree.get_circuit(circuit_index) {
             Some(circuit) => circuit,
-            _ => Err(MerkleError::MissingLeafIndex(circuit_index as usize).into()),
+            _ => return Err(MerkleError::MissingLeafIndex(circuit_index as usize).into()),
         };
 
         let proof = circuit.execute(public, private, rng)?;
         let verifying_key = circuit.verifying_key().clone();
 
-        Ok(Self::Execution {
+        Ok(Execution {
             circuit_index,
             verifying_key,
             proof,
@@ -91,38 +83,22 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
         &self,
         circuit_index: u8,
         rng: &mut R,
-    ) -> Result<Self::Execution, ProgramError> {
+    ) -> Result<Execution<C::ProgramSNARK>, ProgramError> {
         // Fetch the circuit from the tree.
         let circuit = match self.circuit_tree.get_circuit(circuit_index) {
             Some(circuit) => circuit,
-            _ => Err(MerkleError::MissingLeafIndex(circuit_index as usize).into()),
+            _ => return Err(MerkleError::MissingLeafIndex(circuit_index as usize).into()),
         };
 
-        let public = Self::PublicVariables::default();
+        let public = ProgramPublicVariables::<C>::default();
         let private = Self::PrivateVariables::default();
         let proof = circuit.execute(public, private, rng)?;
         let verifying_key = circuit.verifying_key().clone();
 
-        Ok(Self::Execution {
+        Ok(Execution {
             circuit_index,
             verifying_key,
             proof,
         })
-    }
-
-    fn evaluate(&self, _predicate_index: u8, _p: &Self::PublicVariables, _w: &Self::Execution) -> bool {
-        unimplemented!()
-    }
-}
-
-impl<C: Parameters> NoopProgram<C> {
-    #[deprecated]
-    pub fn to_snark_parameters(
-        &self,
-    ) -> (
-        <C::ProgramSNARK as SNARK>::ProvingKey,
-        <C::ProgramSNARK as SNARK>::VerifyingKey,
-    ) {
-        (self.proving_key.clone(), self.verifying_key.clone())
     }
 }

@@ -19,10 +19,10 @@ use crate::{
     testnet2::*,
     Account,
     AccountScheme,
-    CircuitScheme,
     NoopProgram,
     Parameters,
     Payload,
+    Program,
     Record,
     ViewKey,
     PAYLOAD_SIZE,
@@ -38,7 +38,7 @@ fn test_record_encryption() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     for _ in 0..ITERATIONS {
-        let noop_program = NoopProgram::<Testnet2Parameters>::setup(&mut rng).unwrap();
+        let noop_program = NoopProgram::<Testnet2Parameters>::load().unwrap();
 
         for _ in 0..ITERATIONS {
             let dummy_account = Account::<Testnet2Parameters>::new(&mut rng).unwrap();
@@ -49,7 +49,7 @@ fn test_record_encryption() {
             rng.fill(&mut payload);
 
             let given_record = Record::new(
-                noop_program.circuit_id(),
+                &noop_program,
                 dummy_account.address,
                 false,
                 value,

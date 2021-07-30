@@ -17,7 +17,12 @@
 use crate::Parameters;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
-#[derive(Default)]
+#[derive(Derivative)]
+#[derivative(
+    Clone(bound = "C: Parameters"),
+    Debug(bound = "C: Parameters"),
+    Default(bound = "C: Parameters")
+)]
 pub struct ProgramPublicVariables<C: Parameters> {
     pub local_data_root: C::LocalDataDigest,
     pub record_position: u8,

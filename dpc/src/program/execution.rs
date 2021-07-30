@@ -14,9 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Parameters;
 use snarkvm_algorithms::SNARK;
-use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
 /// Predicate index, verifying key, and proof.
 #[derive(Derivative)]
@@ -25,18 +23,4 @@ pub struct Execution<S: SNARK> {
     pub circuit_index: u8,
     pub verifying_key: S::VerifyingKey,
     pub proof: S::Proof,
-}
-
-pub struct ProgramPublicVariables<C: Parameters> {
-    pub local_data_root: C::LocalDataDigest,
-    pub record_position: u8,
-}
-
-/// Convert each component to bytes and pack into field elements.
-impl<C: Parameters> ToConstraintField<C::InnerScalarField> for ProgramPublicVariables<C> {
-    fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
-        let mut v = ToConstraintField::<C::InnerScalarField>::to_field_elements(&[self.record_position][..])?;
-        v.extend_from_slice(&self.local_data_root.to_field_elements()?);
-        Ok(v)
-    }
 }

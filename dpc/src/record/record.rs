@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, Parameters, Payload, PrivateKey, RecordError, RecordScheme};
+use crate::{Address, Parameters, Payload, PrivateKey, Program, RecordError, RecordScheme};
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH, PRF};
 use snarkvm_utilities::{to_bytes_le, variable_length_integer::*, FromBytes, ToBytes, UniformRand};
 
@@ -55,8 +55,8 @@ pub struct Record<C: Parameters> {
 
 impl<C: Parameters> Record<C> {
     #[allow(clippy::too_many_arguments)]
-    pub fn new_full<R: Rng + CryptoRng>(
-        program_id: Vec<u8>,
+    pub fn new_full<P: Program<C>, R: Rng + CryptoRng>(
+        program: &P,
         owner: Address<C>,
         is_dummy: bool,
         value: u64,
@@ -67,15 +67,15 @@ impl<C: Parameters> Record<C> {
     ) -> Result<Self, RecordError> {
         let timer = start_timer!(|| "Generate record");
         let serial_number_nonce = C::serial_number_nonce_crh().hash(&to_bytes_le![position, joint_serial_numbers]?)?;
-        let mut record = Self::new(program_id, owner, is_dummy, value, payload, serial_number_nonce, rng)?;
+        let mut record = Self::new(program, owner, is_dummy, value, payload, serial_number_nonce, rng)?;
         record.position = Some(position);
         end_timer!(timer);
         Ok(record)
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn new<R: Rng + CryptoRng>(
-        program_id: Vec<u8>,
+    pub fn new<P: Program<C>, R: Rng + CryptoRng>(
+        program: &P,
         owner: Address<C>,
         is_dummy: bool,
         value: u64,
@@ -84,6 +84,8 @@ impl<C: Parameters> Record<C> {
         rng: &mut R,
     ) -> Result<Self, RecordError> {
         let timer = start_timer!(|| "Generate record");
+        let program_id = program.program_id().to_bytes_le()?;
+
         // Total = 48 + 32 + 1 + 8 + 128 + 48 + 32 = 297 bytes
         let commitment_input = to_bytes_le![
             program_id,          // 384 bits = 48 bytes
@@ -101,7 +103,7 @@ impl<C: Parameters> Record<C> {
         end_timer!(timer);
 
         Ok(Self::from(
-            program_id,
+            &program_id,
             owner,
             is_dummy,
             value,
@@ -114,7 +116,7 @@ impl<C: Parameters> Record<C> {
 
     #[allow(clippy::too_many_arguments)]
     pub fn from(
-        program_id: Vec<u8>,
+        program_id: &Vec<u8>,
         owner: Address<C>,
         is_dummy: bool,
         value: u64,
@@ -124,7 +126,7 @@ impl<C: Parameters> Record<C> {
         commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Self {
         Self {
-            program_id,
+            program_id: program_id.clone(),
             owner,
             is_dummy,
             value,

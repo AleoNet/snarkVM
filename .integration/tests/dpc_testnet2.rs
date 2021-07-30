@@ -273,7 +273,7 @@ fn test_testnet2_dpc_execute_constraints() {
 
     let dpc = Testnet2DPC::setup(&mut rng).unwrap();
 
-    let alternate_noop_program = NoopProgram::<Testnet2Parameters>::setup(&mut rng).unwrap();
+    let alternate_noop_program = NoopProgram::<Testnet2Parameters>::new(&mut rng).unwrap();
 
     // Generate metadata and an account for a dummy initial record.
     let dummy_account = Account::new(&mut rng).unwrap();

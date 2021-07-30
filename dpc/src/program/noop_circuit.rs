@@ -14,16 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    circuit_tree,
-    CircuitError,
-    CircuitScheme,
-    Execution,
-    LocalData,
-    Parameters,
-    ProgramPublicVariables,
-    RecordScheme,
-};
+use crate::{CircuitError, Parameters, ProgramCircuit, ProgramExecutable, ProgramPublicVariables};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, ToConstraintField};
@@ -42,19 +33,12 @@ pub struct NoopCircuit<C: Parameters> {
     verifying_key: <C::ProgramSNARK as SNARK>::VerifyingKey,
 }
 
-impl<C: Parameters> CircuitScheme for NoopCircuit<C> {
-    type CircuitID = Vec<u8>;
-    type PrivateVariables = ();
-    type Proof = <C::ProgramSNARK as SNARK>::Proof;
-    type ProvingKey = <C::ProgramSNARK as SNARK>::ProvingKey;
-    type PublicVariables = ProgramPublicVariables<C>;
-    type VerifyingKey = <C::ProgramSNARK as SNARK>::VerifyingKey;
-
+impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
     /// Initializes a new instance of the noop circuit.
     fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, CircuitError> {
         let (proving_key, prepared_verifying_key) =
-            <Self::ProofSystem as SNARK>::setup(&Self::blank(), &mut C::program_srs::<R>(rng)?)?;
-        let verifying_key: Self::VerifyingKey = prepared_verifying_key.into();
+            <C::ProgramSNARK as SNARK>::setup(&NoopAllocatedCircuit::<C>::default(), &mut C::program_srs::<R>(rng)?)?;
+        let verifying_key: <C::ProgramSNARK as SNARK>::VerifyingKey = prepared_verifying_key.into();
 
         // Compute the noop circuit ID.
         let circuit_id = <C as Parameters>::program_id_crh()
@@ -86,63 +70,46 @@ impl<C: Parameters> CircuitScheme for NoopCircuit<C> {
     }
 
     /// Returns the circuit ID.
-    fn circuit_id(&self) -> &Self::CircuitID {
+    fn circuit_id(&self) -> &Vec<u8> {
         &self.circuit_id
     }
 
     /// Returns the circuit proving key.
-    fn proving_key(&self) -> &Self::ProvingKey {
+    fn proving_key(&self) -> &<C::ProgramSNARK as SNARK>::ProvingKey {
         &self.proving_key
     }
 
     /// Returns the circuit verifying key.
-    fn verifying_key(&self) -> &Self::VerifyingKey {
+    fn verifying_key(&self) -> &<C::ProgramSNARK as SNARK>::VerifyingKey {
         &self.verifying_key
     }
+}
+
+impl<C: Parameters> ProgramExecutable<C> for NoopCircuit<C> {
+    type PrivateVariables = ();
 
     /// Executes the circuit, returning an execution.
     fn execute<R: Rng + CryptoRng>(
         &self,
-        public: &Self::PublicVariables,
+        public: &ProgramPublicVariables<C>,
         _private: &Self::PrivateVariables,
         rng: &mut R,
-    ) -> Result<Self::Proof, CircuitError> {
-        struct Circuit<C: Parameters> {
-            public: ProgramPublicVariables<C>,
-        }
-
-        impl<C: Parameters> ConstraintSynthesizer<C::InnerScalarField> for Circuit<C> {
-            fn generate_constraints<CS: ConstraintSystem<C::InnerScalarField>>(
-                &self,
-                cs: &mut CS,
-            ) -> Result<(), SynthesisError> {
-                let _record_position =
-                    UInt8::alloc_input_vec_le(cs.ns(|| "Alloc record position"), &[self.public.record_position])?;
-
-                let _local_data_commitment_scheme = C::LocalDataCommitmentGadget::alloc_constant(
-                    &mut cs.ns(|| "Declare the local data commitment scheme"),
-                    || Ok(C::local_data_commitment_scheme().clone()),
-                )?;
-
-                let _local_data_root = <C::LocalDataCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
-                    cs.ns(|| "Alloc local data root"),
-                    || Ok(self.public.local_data_root),
-                )?;
-
-                Ok(())
-            }
-        }
-
+    ) -> Result<<C::ProgramSNARK as SNARK>::Proof, CircuitError> {
         // Compute the proof.
-        let proof = <C::ProgramSNARK as SNARK>::prove(&self.proving_key, &Circuit::<C> { public }, rng)?;
-
-        assert!(<Self::ProofSystem as SNARK>::verify(
-            &self.verifying_key.clone().into(),
-            &Circuit::<C> { public },
-            &proof
-        )?);
+        let allocated_circuit = NoopAllocatedCircuit::<C> { public: public.clone() };
+        let proof = <C::ProgramSNARK as SNARK>::prove(&self.proving_key, &allocated_circuit, rng)?;
 
         Ok(proof)
+    }
+
+    /// Returns true if the execution of the circuit is valid.
+    fn verify<R: Rng + CryptoRng>(
+        &self,
+        public: &ProgramPublicVariables<C>,
+        proof: <C::ProgramSNARK as SNARK>::Proof,
+    ) -> bool {
+        <C::ProgramSNARK as SNARK>::verify(&self.verifying_key.clone().into(), &public, &proof)
+            .expect("Failed to verify program execution proof")
     }
 }
 
@@ -155,5 +122,33 @@ impl<C: Parameters> NoopCircuit<C> {
         <C::ProgramSNARK as SNARK>::VerifyingKey,
     ) {
         (self.proving_key.clone(), self.verifying_key.clone())
+    }
+}
+
+#[derive(Derivative)]
+#[derivative(Default(bound = "C: Parameters"), Debug(bound = "C: Parameters"))]
+struct NoopAllocatedCircuit<C: Parameters> {
+    public: ProgramPublicVariables<C>,
+}
+
+impl<C: Parameters> ConstraintSynthesizer<C::InnerScalarField> for NoopAllocatedCircuit<C> {
+    fn generate_constraints<CS: ConstraintSystem<C::InnerScalarField>>(
+        &self,
+        cs: &mut CS,
+    ) -> Result<(), SynthesisError> {
+        let _record_position =
+            UInt8::alloc_input_vec_le(cs.ns(|| "Alloc record position"), &[self.public.record_position])?;
+
+        let _local_data_commitment_scheme = C::LocalDataCommitmentGadget::alloc_constant(
+            &mut cs.ns(|| "Declare the local data commitment scheme"),
+            || Ok(C::local_data_commitment_scheme().clone()),
+        )?;
+
+        let _local_data_root = <C::LocalDataCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
+            cs.ns(|| "Alloc local data root"),
+            || Ok(self.public.local_data_root),
+        )?;
+
+        Ok(())
     }
 }

@@ -40,7 +40,7 @@ pub trait SNARK {
 
     type PreparedVerifyingKey: Clone;
     type Proof: Clone + Debug + ToBytes + FromBytes;
-    type ProvingKey: Clone + ToBytes + FromBytes;
+    type ProvingKey: Clone + ToBytes + FromBytes + Send + Sync;
     type VerifierInput: ?Sized;
 
     // We can specify their defaults to `()` when `associated_type_defaults` feature becomes stable in Rust
@@ -48,6 +48,8 @@ pub trait SNARK {
     type UniversalSetupParameters: FromBytes + ToBytes + Clone;
 
     type VerifyingKey: Clone
+        + Send
+        + Sync
         + ToBytes
         + FromBytes
         + Prepare<Self::PreparedVerifyingKey>
