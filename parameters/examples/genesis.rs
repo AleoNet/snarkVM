@@ -60,12 +60,11 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
     let mut old_records = Vec::with_capacity(C::NUM_INPUT_RECORDS);
     for i in 0..C::NUM_INPUT_RECORDS {
         let old_record = Record::new(
+            dpc.noop_program.id(),
             genesis_account.address.clone(),
             true, // The input record is a noop.
             0,
             Payload::default(),
-            dpc.noop_program.id(),
-            dpc.noop_program.id(),
             C::serial_number_nonce_crh().hash(&[64u8 + (i as u8); 1])?,
             rng,
         )?;
@@ -79,23 +78,21 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
     // Construct the new records.
     let mut new_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
     new_records.push(Record::new_full(
+        dpc.noop_program.id(),
         recipient.clone(),
         false,
         value,
         Payload::default(),
-        dpc.noop_program.id(),
-        dpc.noop_program.id(),
         C::NUM_INPUT_RECORDS as u8,
         joint_serial_numbers.clone(),
         rng,
     )?);
     new_records.push(Record::new_full(
+        dpc.noop_program.id(),
         recipient.clone(),
         true,
         0,
         Payload::default(),
-        dpc.noop_program.id(),
-        dpc.noop_program.id(),
         (C::NUM_INPUT_RECORDS + 1) as u8,
         joint_serial_numbers.clone(),
         rng,

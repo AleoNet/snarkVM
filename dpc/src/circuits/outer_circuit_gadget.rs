@@ -256,6 +256,8 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     // Construct program input
     // ************************************************************************
 
+    // TODO (howardwu): Update this with the Program Merkle tree. For now, can leave birth and death naming in place.
+
     let mut old_death_program_ids = Vec::with_capacity(C::NUM_INPUT_RECORDS);
     let mut new_birth_program_ids = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
     for (i, input) in program_proofs.iter().enumerate().take(C::NUM_INPUT_RECORDS) {

@@ -63,21 +63,9 @@ impl<C: Parameters> EncryptedRecord<C> {
         // Serialize the record into bytes
         let mut bytes = vec![];
 
-        // Serial number nonce
-        let serial_number_nonce = record.serial_number_nonce();
-        bytes.extend_from_slice(&serial_number_nonce.to_bytes_le()?);
-
-        // Commitment randomness
-        let commitment_randomness = record.commitment_randomness();
-        bytes.extend_from_slice(&commitment_randomness.to_bytes_le()?);
-
-        // Birth program ID
-        let birth_program_id = record.birth_program_id();
-        bytes.extend_from_slice(&birth_program_id.to_bytes_le()?);
-
-        // Death program ID
-        let death_program_id = record.death_program_id();
-        bytes.extend_from_slice(&death_program_id.to_bytes_le()?);
+        // Program ID
+        let program_id = record.program_id();
+        bytes.extend_from_slice(&program_id.to_bytes_le()?);
 
         // Value
         let value = record.value();
@@ -86,6 +74,14 @@ impl<C: Parameters> EncryptedRecord<C> {
         // Payload
         let payload = record.payload();
         bytes.extend_from_slice(&payload.to_bytes_le()?);
+
+        // Serial number nonce
+        let serial_number_nonce = record.serial_number_nonce();
+        bytes.extend_from_slice(&serial_number_nonce.to_bytes_le()?);
+
+        // Commitment randomness
+        let commitment_randomness = record.commitment_randomness();
+        bytes.extend_from_slice(&commitment_randomness.to_bytes_le()?);
 
         assert!(
             bytes.len() <= u16::MAX as usize,
@@ -109,20 +105,9 @@ impl<C: Parameters> EncryptedRecord<C> {
 
         let mut cursor = Cursor::new(plaintext);
 
-        // Serial number nonce
-        let serial_number_nonce = <C::SerialNumberNonceCRH as CRH>::Output::read_le(&mut cursor)?;
-
-        // Commitment randomness
-        let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::read_le(&mut cursor)?;
-
-        // Birth program ID and death program ID
+        // Program ID
         let program_id_length = to_bytes_le!(<C::ProgramIDCRH as CRH>::Output::default())?.len();
-        let birth_program_id = {
-            let mut program_id = vec![0u8; program_id_length];
-            cursor.read_exact(&mut program_id)?;
-            program_id
-        };
-        let death_program_id = {
+        let program_id = {
             let mut program_id = vec![0u8; program_id_length];
             cursor.read_exact(&mut program_id)?;
             program_id
@@ -134,38 +119,31 @@ impl<C: Parameters> EncryptedRecord<C> {
         // Payload
         let payload = Payload::read_le(&mut cursor)?;
 
+        // Serial number nonce
+        let serial_number_nonce = <C::SerialNumberNonceCRH as CRH>::Output::read_le(&mut cursor)?;
+
+        // Commitment randomness
+        let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::read_le(&mut cursor)?;
+
         // Construct the record account address
         let owner = Address::from_view_key(&account_view_key)?;
 
         // Determine if the record is a dummy
         // TODO (raychu86) Establish `is_dummy` flag properly by checking that the value is 0 and the programs are equivalent to a global dummy
-        let dummy_program = birth_program_id.clone();
+        let dummy_program = program_id.clone();
 
-        let is_dummy = (value == 0)
-            && (payload == Payload::default())
-            && (death_program_id == dummy_program)
-            && (birth_program_id == dummy_program);
+        let is_dummy = (value == 0) && (payload == Payload::default()) && (program_id == dummy_program);
 
         // Calculate record commitment
-        let commitment_input = to_bytes_le![
-            owner,
-            is_dummy,
-            value,
-            payload,
-            birth_program_id,
-            death_program_id,
-            serial_number_nonce
-        ]?;
-
+        let commitment_input = to_bytes_le![program_id, owner, is_dummy, value, payload, serial_number_nonce]?;
         let commitment = C::record_commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
 
         Ok(Record::from(
+            program_id,
             owner,
             is_dummy,
             value,
             payload,
-            birth_program_id,
-            death_program_id,
             serial_number_nonce,
             commitment,
             commitment_randomness,

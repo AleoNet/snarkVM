@@ -111,7 +111,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let mut old_serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         let mut old_randomizers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         let mut joint_serial_numbers = Vec::new();
-        let mut old_death_program_ids = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+        let mut old_program_ids = Vec::with_capacity(C::NUM_INPUT_RECORDS);
 
         // Compute the ledger membership witness and serial number from the old records.
         for (i, record) in old_records.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
@@ -125,16 +125,16 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             joint_serial_numbers.extend_from_slice(&sn.to_bytes_le()?);
             old_serial_numbers.push(sn);
             old_randomizers.push(randomizer);
-            old_death_program_ids.push(record.death_program_id().to_vec());
+            old_program_ids.push(record.program_id().to_vec());
 
             end_timer!(input_record_time);
         }
 
-        let mut new_birth_program_ids = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+        let mut new_program_ids = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         let mut new_commitments = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
         for record in new_records.iter().take(C::NUM_OUTPUT_RECORDS) {
-            new_birth_program_ids.push(record.birth_program_id());
+            new_program_ids.push(record.program_id());
             new_commitments.push(record.commitment());
 
             if !record.is_dummy() {
@@ -212,10 +212,10 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let program_comm_timer = start_timer!(|| "Compute program commitment");
         let (program_commitment, program_randomness) = {
             let mut input = Vec::new();
-            for id in old_death_program_ids {
+            for id in old_program_ids {
                 input.extend_from_slice(&id);
             }
-            for id in new_birth_program_ids {
+            for id in new_program_ids {
                 input.extend_from_slice(&id);
             }
             let program_randomness = <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);

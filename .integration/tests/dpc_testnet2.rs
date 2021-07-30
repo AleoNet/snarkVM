@@ -90,17 +90,15 @@ fn dpc_testnet2_integration_test() {
     let mut joint_serial_numbers = vec![];
     let mut old_records = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-        let old_sn_nonce = <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
-            .hash(&[64u8 + (i as u8); 1])
-            .unwrap();
         let old_record = Record::new(
+            dpc.noop_program.id(),
             genesis_account.address.clone(),
             true, // The input record is dummy
             0,
             Payload::default(),
-            dpc.noop_program.id(),
-            dpc.noop_program.id(),
-            old_sn_nonce,
+            <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
+                .hash(&[64u8 + (i as u8); 1])
+                .unwrap(),
             &mut rng,
         )
         .unwrap();
@@ -118,12 +116,11 @@ fn dpc_testnet2_integration_test() {
     for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
         new_records.push(
             Record::new_full(
+                dpc.noop_program.id(),
                 recipient.address.clone(),
                 false,
                 10,
                 Payload::default(),
-                dpc.noop_program.id(),
-                dpc.noop_program.id(),
                 (Testnet2Parameters::NUM_INPUT_RECORDS + j) as u8,
                 joint_serial_numbers.clone(),
                 &mut rng,
@@ -221,12 +218,11 @@ fn test_testnet_2_transaction_kernel_serialization() {
     let mut old_records = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
         let old_record = Record::new(
+            dpc.noop_program.id(),
             test_account.address.clone(),
             true,
             0,
             Payload::default(),
-            dpc.noop_program.id(),
-            dpc.noop_program.id(),
             <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
                 .hash(&[0u8; 1])
                 .unwrap(),
@@ -247,12 +243,11 @@ fn test_testnet_2_transaction_kernel_serialization() {
     for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
         new_records.push(
             Record::new_full(
+                dpc.noop_program.id(),
                 test_account.address.clone(),
                 false,
                 10,
                 Payload::default(),
-                dpc.noop_program.id(),
-                dpc.noop_program.id(),
                 (Testnet2Parameters::NUM_INPUT_RECORDS + j) as u8,
                 joint_serial_numbers.clone(),
                 &mut rng,
@@ -306,12 +301,11 @@ fn test_testnet2_dpc_execute_constraints() {
     let mut old_records = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
         let old_record = Record::new(
+            alternate_noop_program.id(),
             dummy_account.address.clone(),
             true,
             0,
             Payload::default(),
-            alternate_noop_program.id(),
-            alternate_noop_program.id(),
             <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
                 .hash(&[0u8; 1])
                 .unwrap(),
@@ -335,12 +329,11 @@ fn test_testnet2_dpc_execute_constraints() {
     for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
         new_records.push(
             Record::new_full(
+                dpc.noop_program.id(),
                 new_account.address.clone(),
                 false,
                 10,
                 Payload::default(),
-                dpc.noop_program.id(),
-                dpc.noop_program.id(),
                 (Testnet2Parameters::NUM_INPUT_RECORDS + j) as u8,
                 joint_serial_numbers.clone(),
                 &mut rng,
