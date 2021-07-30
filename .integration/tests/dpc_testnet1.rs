@@ -88,7 +88,7 @@ fn dpc_testnet1_integration_test() {
     let mut old_records = vec![];
     for i in 0..Testnet1Parameters::NUM_INPUT_RECORDS {
         let old_record = Record::new(
-            dpc.noop_program.id(),
+            dpc.noop_program.program_id(),
             genesis_account.address.clone(),
             true, // The input record is dummy
             0,
@@ -113,7 +113,7 @@ fn dpc_testnet1_integration_test() {
     for j in 0..Testnet1Parameters::NUM_OUTPUT_RECORDS {
         new_records.push(
             Record::new_full(
-                dpc.noop_program.id(),
+                dpc.noop_program.program_id(),
                 recipient.address.clone(),
                 false,
                 10,
@@ -137,7 +137,7 @@ fn dpc_testnet1_integration_test() {
     for i in 0..Testnet1Parameters::NUM_TOTAL_RECORDS {
         program_proofs.push(
             dpc.noop_program
-                .execute(&transaction_kernel.into_local_data(), i as u8, &mut rng)
+                .execute(0, &transaction_kernel.into_local_data(), i as u8, &mut rng)
                 .unwrap(),
         );
     }
@@ -216,7 +216,7 @@ fn test_testnet1_transaction_kernel_serialization() {
     let mut old_records = vec![];
     for i in 0..Testnet1Parameters::NUM_INPUT_RECORDS {
         let old_record = Record::new(
-            dpc.noop_program.id(),
+            dpc.noop_program.program_id(),
             test_account.address.clone(),
             true,
             0,
@@ -241,7 +241,7 @@ fn test_testnet1_transaction_kernel_serialization() {
     for j in 0..Testnet1Parameters::NUM_OUTPUT_RECORDS {
         new_records.push(
             Record::new_full(
-                dpc.noop_program.id(),
+                dpc.noop_program.program_id(),
                 test_account.address.clone(),
                 false,
                 10,
@@ -299,7 +299,7 @@ fn test_testnet1_dpc_execute_constraints() {
     let mut old_records = vec![];
     for i in 0..Testnet1Parameters::NUM_INPUT_RECORDS {
         let old_record = Record::new(
-            alternate_noop_program.id(),
+            alternate_noop_program.program_id(),
             dummy_account.address.clone(),
             true,
             0,
@@ -327,7 +327,7 @@ fn test_testnet1_dpc_execute_constraints() {
     for j in 0..Testnet1Parameters::NUM_OUTPUT_RECORDS {
         new_records.push(
             Record::new_full(
-                dpc.noop_program.id(),
+                dpc.noop_program.program_id(),
                 new_account.address.clone(),
                 false,
                 10,
@@ -351,7 +351,7 @@ fn test_testnet1_dpc_execute_constraints() {
     for i in 0..Testnet1Parameters::NUM_INPUT_RECORDS {
         program_proofs.push(
             alternate_noop_program
-                .execute(&transaction_kernel.into_local_data(), i as u8, &mut rng)
+                .execute(0, &transaction_kernel.into_local_data(), i as u8, &mut rng)
                 .unwrap(),
         );
     }
@@ -359,6 +359,7 @@ fn test_testnet1_dpc_execute_constraints() {
         program_proofs.push(
             dpc.noop_program
                 .execute(
+                    0,
                     &transaction_kernel.into_local_data(),
                     (Testnet1Parameters::NUM_INPUT_RECORDS + j) as u8,
                     &mut rng,

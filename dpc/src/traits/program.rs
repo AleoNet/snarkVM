@@ -37,20 +37,25 @@ pub trait ProgramScheme: Clone {
     /// Loads an instance of a program.
     fn load() -> Result<Self, ProgramError>;
 
+    /// Returns the program ID.
+    fn program_id(&self) -> Self::ID;
+
     /// Returns the execution of the program.
     fn execute<R: Rng + CryptoRng>(
         &self,
+        predicate_index: u8,
         local_data: &Self::LocalData,
         position: u8,
         rng: &mut R,
     ) -> Result<Self::Execution, ProgramError>;
 
     /// Returns the blank execution of the program, typically used for a SNARK setup.
-    fn execute_blank<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::Execution, ProgramError>;
+    fn execute_blank<R: Rng + CryptoRng>(
+        &self,
+        predicate_index: u8,
+        rng: &mut R,
+    ) -> Result<Self::Execution, ProgramError>;
 
     /// Returns the evaluation of the program on given input and witness.
-    fn evaluate(&self, primary: &Self::PublicInput, witness: &Self::Execution) -> bool;
-
-    /// Returns the program ID.
-    fn id(&self) -> Self::ID;
+    fn evaluate(&self, predicate_index: u8, primary: &Self::PublicInput, witness: &Self::Execution) -> bool;
 }

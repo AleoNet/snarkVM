@@ -18,10 +18,11 @@ use crate::Parameters;
 use snarkvm_algorithms::SNARK;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
-/// Program verifying key and proof.
+/// Predicate index, verifying key, and proof.
 #[derive(Derivative)]
 #[derivative(Clone(bound = "S: SNARK"))]
 pub struct Execution<S: SNARK> {
+    pub predicate_index: u8,
     pub verifying_key: S::VerifyingKey,
     pub proof: S::Proof,
 }

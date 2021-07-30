@@ -45,7 +45,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
         let noop_program = NoopProgram::setup(rng)?;
-        let noop_program_execution = noop_program.execute_blank(rng)?;
+        let noop_program_execution = noop_program.execute_blank(0, rng)?;
         end_timer!(noop_program_timer);
 
         let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");

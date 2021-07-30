@@ -49,7 +49,7 @@ fn test_record_encryption() {
             rng.fill(&mut payload);
 
             let given_record = Record::new(
-                noop_program.id(),
+                noop_program.program_id(),
                 dummy_account.address,
                 false,
                 value,

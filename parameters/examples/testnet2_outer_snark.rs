@@ -54,7 +54,7 @@ where
     let noop_program = NoopProgram::<C>::load()?;
 
     let outer_snark_parameters = C::OuterSNARK::setup(
-        &OuterCircuit::<C>::blank(inner_snark_vk, inner_snark_proof, noop_program.execute_blank(rng)?),
+        &OuterCircuit::<C>::blank(inner_snark_vk, inner_snark_proof, noop_program.execute_blank(0, rng)?),
         &mut SRS::CircuitSpecific(rng),
     )?;
 

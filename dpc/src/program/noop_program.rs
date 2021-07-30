@@ -89,8 +89,14 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
         })
     }
 
+    /// Returns the program ID.
+    fn program_id(&self) -> Self::ID {
+        self.id.clone()
+    }
+
     fn execute<R: Rng + CryptoRng>(
         &self,
+        predicate_index: u8,
         local_data: &Self::LocalData,
         position: u8,
         rng: &mut R,
@@ -124,27 +130,28 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
         }
 
         Ok(Self::Execution {
+            predicate_index,
             verifying_key: self.verifying_key.clone(),
             proof,
         })
     }
 
-    fn execute_blank<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::Execution, ProgramError> {
+    fn execute_blank<R: Rng + CryptoRng>(
+        &self,
+        predicate_index: u8,
+        rng: &mut R,
+    ) -> Result<Self::Execution, ProgramError> {
         let proof = <Self::ProofSystem as SNARK>::prove(&self.proving_key, &NoopCircuit::<C>::blank(), rng)?;
 
         Ok(Self::Execution {
+            predicate_index,
             verifying_key: self.verifying_key.clone(),
             proof,
         })
     }
 
-    fn evaluate(&self, _p: &Self::PublicInput, _w: &Self::Execution) -> bool {
+    fn evaluate(&self, _predicate_index: u8, _p: &Self::PublicInput, _w: &Self::Execution) -> bool {
         unimplemented!()
-    }
-
-    /// Returns the program ID.
-    fn id(&self) -> Self::ID {
-        self.id.clone()
     }
 }
 

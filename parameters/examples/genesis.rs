@@ -60,7 +60,7 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
     let mut old_records = Vec::with_capacity(C::NUM_INPUT_RECORDS);
     for i in 0..C::NUM_INPUT_RECORDS {
         let old_record = Record::new(
-            dpc.noop_program.id(),
+            dpc.noop_program.program_id(),
             genesis_account.address.clone(),
             true, // The input record is a noop.
             0,
@@ -78,7 +78,7 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
     // Construct the new records.
     let mut new_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
     new_records.push(Record::new_full(
-        dpc.noop_program.id(),
+        dpc.noop_program.program_id(),
         recipient.clone(),
         false,
         value,
@@ -88,7 +88,7 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
         rng,
     )?);
     new_records.push(Record::new_full(
-        dpc.noop_program.id(),
+        dpc.noop_program.program_id(),
         recipient.clone(),
         true,
         0,
@@ -104,7 +104,7 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
     // Generate the program proofs
     let mut program_proofs = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
     for i in 0..C::NUM_TOTAL_RECORDS {
-        program_proofs.push(dpc.noop_program.execute(&kernel.into_local_data(), i as u8, rng)?);
+        program_proofs.push(dpc.noop_program.execute(0, &kernel.into_local_data(), i as u8, rng)?);
     }
 
     let (new_records, transaction) =
