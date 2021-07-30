@@ -79,7 +79,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
     type VerifierKey = VerifierKey<E>;
 
     fn setup<R: RngCore>(max_degree: usize, rng: &mut R) -> Result<Self::UniversalParams, Self::Error> {
-        kzg10::KZG10::setup(max_degree, &kzg10::KZG10G2PowersConfig::MARLIN, rng).map_err(Into::into)
+        kzg10::KZG10::setup(max_degree, &kzg10::KZG10DegreeBoundsConfig::MARLIN, rng).map_err(Into::into)
     }
 
     fn trim(

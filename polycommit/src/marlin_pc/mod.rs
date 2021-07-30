@@ -103,7 +103,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
     /// Constructs public parameters when given as input the maximum degree `max_degree`
     /// for the polynomial commitment scheme.
     fn setup<R: RngCore>(max_degree: usize, rng: &mut R) -> Result<Self::UniversalParams, Self::Error> {
-        kzg10::KZG10::setup(max_degree, &kzg10::KZG10G2PowersConfig::NONE, rng).map_err(Into::into)
+        kzg10::KZG10::setup(max_degree, &kzg10::KZG10DegreeBoundsConfig::NONE, rng).map_err(Into::into)
     }
 
     /// Specializes the public parameters for polynomials up to the given `supported_degree`
