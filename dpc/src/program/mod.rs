@@ -14,14 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod circuit_tree;
-pub use circuit_tree::*;
-
-pub mod execution;
-pub use execution::*;
-
-pub mod local_data;
-pub use local_data::*;
+pub mod program_circuit_tree;
+pub use program_circuit_tree::*;
 
 pub mod noop_circuit;
 pub use noop_circuit::*;

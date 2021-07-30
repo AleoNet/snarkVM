@@ -72,12 +72,12 @@ impl Display for PedersenMerkleRootHash {
 /// and returns it serialized
 pub fn pedersen_merkle_root(hashes: &[[u8; 32]]) -> PedersenMerkleRootHash {
     let tree = EdwardsMaskedMerkleTree::new(PARAMS.clone(), hashes).expect("could not create merkle tree");
-    tree.root().into()
+    tree.root().clone().into()
 }
 
 /// Calculates the root of the Merkle tree using a Pedersen Hash instantiated with a PRNG and the
 /// base layer hashes leaved
 pub fn pedersen_merkle_root_hash_with_leaves(hashes: &[[u8; 32]]) -> (Fr, Vec<Fr>) {
     let tree = EdwardsMaskedMerkleTree::new(PARAMS.clone(), hashes).expect("could not create merkle tree");
-    (tree.root(), tree.hashed_leaves().to_vec())
+    (tree.root().clone(), tree.hashed_leaves().to_vec())
 }

@@ -15,15 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{CircuitError, Execution, Parameters, ProgramError, ProgramPublicVariables};
-use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, SNARK};
+use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, CRH, SNARK};
 
 use rand::{CryptoRng, Rng};
 
 pub trait Program<C: Parameters> {
-    type PrivateVariables: Default;
-
     /// Initializes a new instance of the program.
-    fn new(circuits: &[Box<dyn ProgramCircuit<C>>]) -> Result<Self, ProgramError>
+    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, ProgramError>
     where
         Self: Sized;
 
@@ -35,29 +33,22 @@ pub trait Program<C: Parameters> {
     /// Returns the program ID.
     fn program_id(&self) -> &MerkleTreeDigest<C::ProgramIDTreeParameters>;
 
+    /// Returns the circuit given the circuit index.
+    fn get_circuit(&self, circuit_index: u8) -> Result<&Box<dyn ProgramCircuit<C>>, ProgramError>;
+
     /// Returns the execution of the program.
-    fn execute<R: Rng + CryptoRng>(
+    fn execute(
         &self,
         circuit_index: u8,
         public: &ProgramPublicVariables<C>,
-        private: &Self::PrivateVariables,
-        rng: &mut R,
-    ) -> Result<Execution<C::ProgramSNARK>, ProgramError>;
+        private: &(),
+    ) -> Result<Execution<C>, ProgramError>;
 
     /// Returns the blank execution of the program, typically used for a SNARK setup.
-    fn execute_blank<R: Rng + CryptoRng>(
-        &self,
-        circuit_index: u8,
-        rng: &mut R,
-    ) -> Result<Execution<C::ProgramSNARK>, ProgramError>;
+    fn execute_blank(&self, circuit_index: u8) -> Result<Execution<C>, ProgramError>;
 
     /// Returns the native evaluation of the program on given public and private variables.
-    fn evaluate(
-        &self,
-        _circuit_index: u8,
-        _public: &ProgramPublicVariables<C>,
-        _private: &Self::PrivateVariables,
-    ) -> bool {
+    fn evaluate(&self, _circuit_index: u8, _public: &ProgramPublicVariables<C>, _private: &()) -> bool {
         unimplemented!("The native evaluation of this program is unimplemented")
     }
 }
@@ -74,35 +65,55 @@ pub trait ProgramCircuit<C: Parameters>: Send + Sync {
         Self: Sized;
 
     /// Returns the circuit ID.
-    fn circuit_id(&self) -> &Vec<u8>;
+    fn circuit_id(&self) -> &<C::ProgramIDCRH as CRH>::Output;
 
     /// Returns the circuit proving key.
     fn proving_key(&self) -> &<C::ProgramSNARK as SNARK>::ProvingKey;
 
     /// Returns the circuit verifying key.
     fn verifying_key(&self) -> &<C::ProgramSNARK as SNARK>::VerifyingKey;
-}
-
-pub trait ProgramExecutable<C: Parameters>: Send + Sync {
-    type PrivateVariables: Default;
 
     /// Returns the execution of the circuit.
-    fn execute<R: Rng + CryptoRng>(
+    fn execute(
         &self,
         public: &ProgramPublicVariables<C>,
-        private: &Self::PrivateVariables,
-        rng: &mut R,
+        private: &(),
     ) -> Result<<C::ProgramSNARK as SNARK>::Proof, CircuitError>;
 
+    /// Returns the blank execution of the circuit, typically used for a SNARK setup.
+    fn execute_blank(&self) -> Result<<C::ProgramSNARK as SNARK>::Proof, CircuitError>;
+
     /// Returns true if the execution of the circuit is valid.
-    fn verify<R: Rng + CryptoRng>(
-        &self,
-        public: &ProgramPublicVariables<C>,
-        proof: <C::ProgramSNARK as SNARK>::Proof,
-    ) -> bool;
+    fn verify(&self, public: &ProgramPublicVariables<C>, proof: &<C::ProgramSNARK as SNARK>::Proof) -> bool;
 
     /// Returns the native evaluation of the circuit on given public and private variables.
-    fn evaluate(&self, _public: &ProgramPublicVariables<C>, _private: &impl Default) -> bool {
+    fn evaluate(&self, _public: &ProgramPublicVariables<C>, _private: &()) -> bool {
         unimplemented!("The native evaluation of this circuit is unimplemented")
     }
 }
+
+// pub trait ProgramExecutable<C: Parameters>: Send + Sync {
+//     /// Returns the execution of the circuit.
+//     fn execute<PrivateVariables: Default, R: Rng + CryptoRng>(
+//         &self,
+//         public: &ProgramPublicVariables<C>,
+//         private: &Self::PrivateVariables,
+//         rng: &mut R,
+//     ) -> Result<<C::ProgramSNARK as SNARK>::Proof, CircuitError>;
+//
+//     /// Returns the blank execution of the circuit, typically used for a SNARK setup.
+//     fn execute_blank<R: Rng + CryptoRng>(&self, rng: &mut R)
+//         -> Result<<C::ProgramSNARK as SNARK>::Proof, CircuitError>;
+//
+//     /// Returns true if the execution of the circuit is valid.
+//     fn verify(&self, public: &ProgramPublicVariables<C>, proof: &<C::ProgramSNARK as SNARK>::Proof) -> bool;
+//
+//     /// Returns the native evaluation of the circuit on given public and private variables.
+//     fn evaluate<PrivateVariables: Default>(
+//         &self,
+//         _public: &ProgramPublicVariables<C>,
+//         _private: &Self::PrivateVariables,
+//     ) -> bool {
+//         unimplemented!("The native evaluation of this circuit is unimplemented")
+//     }
+// }

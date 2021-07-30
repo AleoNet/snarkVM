@@ -38,7 +38,7 @@ fn test_record_encryption() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
     for _ in 0..ITERATIONS {
-        let noop_program = NoopProgram::<Testnet2Parameters>::load().unwrap();
+        let noop_program = NoopProgram::<Testnet2Parameters>::setup(&mut rng).unwrap();
 
         for _ in 0..ITERATIONS {
             let dummy_account = Account::<Testnet2Parameters>::new(&mut rng).unwrap();

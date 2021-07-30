@@ -35,7 +35,7 @@ pub struct DPC<C: Parameters> {
 
 impl<C: Parameters> DPCScheme<C> for DPC<C> {
     type Account = Account<C>;
-    type Execution = Execution<C::ProgramSNARK>;
+    type Execution = Execution<C>;
     type Record = Record<C>;
     type Transaction = Transaction<C>;
     type TransactionKernel = TransactionKernel<C>;
@@ -43,24 +43,31 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     fn setup<R: Rng + CryptoRng>(rng: &mut R) -> anyhow::Result<Self> {
         let setup_time = start_timer!(|| "DPC::setup");
 
+        println!("A");
+
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
-        let noop_program = NoopProgram::new(rng)?;
-        let noop_program_execution = noop_program.execute_blank(0, rng)?;
+        let noop_program = NoopProgram::setup(rng)?;
+        let noop_program_execution = noop_program.execute_blank(0)?;
         end_timer!(noop_program_timer);
+        println!("B");
 
         let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");
         let inner_circuit = InnerCircuit::<C>::blank();
         let inner_snark_parameters = C::InnerSNARK::setup(&inner_circuit, &mut SRS::CircuitSpecific(rng))?;
         end_timer!(snark_setup_time);
+        println!("C");
 
         let snark_setup_time = start_timer!(|| "Execute outer SNARK setup");
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = inner_snark_parameters.1.clone().into();
         let inner_snark_proof = C::InnerSNARK::prove(&inner_snark_parameters.0, &inner_circuit, rng)?;
+        println!("D");
 
         let outer_snark_parameters = C::OuterSNARK::setup(
             &OuterCircuit::<C>::blank(inner_snark_vk, inner_snark_proof, noop_program_execution),
             &mut SRS::CircuitSpecific(rng),
         )?;
+        println!("E");
+
         end_timer!(snark_setup_time);
         end_timer!(setup_time);
 

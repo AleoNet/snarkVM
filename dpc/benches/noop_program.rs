@@ -25,7 +25,7 @@ use rand::thread_rng;
 fn noop_program_setup(c: &mut Criterion) {
     c.bench_function("NoopProgram::setup", move |b| {
         b.iter(|| {
-            let _noop_program = NoopProgram::<Testnet2Parameters>::new(&mut thread_rng()).unwrap();
+            let _noop_program = NoopProgram::<Testnet2Parameters>::setup(&mut thread_rng()).unwrap();
         })
     });
 }

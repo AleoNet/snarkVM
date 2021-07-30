@@ -15,7 +15,18 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Parameters;
+use snarkvm_algorithms::{merkle_tree::MerklePath, SNARK};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
+
+/// Program index, path, verifying key, and proof.
+#[derive(Derivative)]
+#[derivative(Clone(bound = "C: Parameters"))]
+pub struct Execution<C: Parameters> {
+    pub circuit_index: u8,
+    pub program_path: MerklePath<C::ProgramIDTreeParameters>,
+    pub verifying_key: <C::ProgramSNARK as SNARK>::VerifyingKey,
+    pub proof: <C::ProgramSNARK as SNARK>::Proof,
+}
 
 #[derive(Derivative)]
 #[derivative(
@@ -26,6 +37,15 @@ use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 pub struct ProgramPublicVariables<C: Parameters> {
     pub local_data_root: C::LocalDataDigest,
     pub record_position: u8,
+}
+
+impl<C: Parameters> ProgramPublicVariables<C> {
+    pub fn new(local_data_root: &C::LocalDataDigest, record_position: u8) -> Self {
+        Self {
+            local_data_root: local_data_root.clone(),
+            record_position,
+        }
+    }
 }
 
 /// Converts the program public variables into bytes and packs them into field elements.

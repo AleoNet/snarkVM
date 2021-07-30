@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountError, CircuitError, LedgerError, RecordError, TransactionError};
+use crate::{AccountError, CircuitError, LedgerError, ProgramError, RecordError, TransactionError};
 use snarkvm_algorithms::{
     CRHError,
     CommitmentError,
@@ -47,6 +47,9 @@ pub enum DPCError {
 
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
+
+    #[error("{}", _0)]
+    CircuitError(#[from] CircuitError),
 
     #[error("{}", _0)]
     EncodingError(#[from] EncodingError),
@@ -82,7 +85,7 @@ pub enum DPCError {
     ParameterError(#[from] ParameterError),
 
     #[error("{}", _0)]
-    ProgramError(#[from] CircuitError),
+    ProgramError(#[from] ProgramError),
 
     #[error("{}", _0)]
     PRFError(#[from] PRFError),

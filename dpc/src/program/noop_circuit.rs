@@ -14,19 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitError, Parameters, ProgramCircuit, ProgramExecutable, ProgramPublicVariables};
+use crate::{CircuitError, Parameters, ProgramCircuit, ProgramPublicVariables};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, ToConstraintField};
-use snarkvm_utilities::ToBytes;
 
 use rand::{CryptoRng, Rng};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"), Debug(bound = "C: Parameters"))]
 pub struct NoopCircuit<C: Parameters> {
-    #[derivative(Default(value = "vec![0u8; 48]"))]
-    circuit_id: Vec<u8>,
+    circuit_id: <C::ProgramIDCRH as CRH>::Output,
     #[derivative(Debug = "ignore")]
     proving_key: <C::ProgramSNARK as SNARK>::ProvingKey,
     #[derivative(Debug = "ignore")]
@@ -41,9 +39,8 @@ impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
         let verifying_key: <C::ProgramSNARK as SNARK>::VerifyingKey = prepared_verifying_key.into();
 
         // Compute the noop circuit ID.
-        let circuit_id = <C as Parameters>::program_id_crh()
-            .hash_field_elements(&verifying_key.to_field_elements()?)?
-            .to_bytes_le()?;
+        let circuit_id =
+            <C as Parameters>::program_id_crh().hash_field_elements(&verifying_key.to_field_elements()?)?;
 
         Ok(Self {
             circuit_id,
@@ -58,9 +55,8 @@ impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
         let verifying_key = C::noop_program_verifying_key().clone();
 
         // Compute the circuit ID.
-        let circuit_id = <C as Parameters>::program_id_crh()
-            .hash_field_elements(&verifying_key.to_field_elements()?)?
-            .to_bytes_le()?;
+        let circuit_id =
+            <C as Parameters>::program_id_crh().hash_field_elements(&verifying_key.to_field_elements()?)?;
 
         Ok(Self {
             circuit_id,
@@ -70,7 +66,7 @@ impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
     }
 
     /// Returns the circuit ID.
-    fn circuit_id(&self) -> &Vec<u8> {
+    fn circuit_id(&self) -> &<C::ProgramIDCRH as CRH>::Output {
         &self.circuit_id
     }
 
@@ -83,45 +79,34 @@ impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
     fn verifying_key(&self) -> &<C::ProgramSNARK as SNARK>::VerifyingKey {
         &self.verifying_key
     }
-}
 
-impl<C: Parameters> ProgramExecutable<C> for NoopCircuit<C> {
-    type PrivateVariables = ();
-
-    /// Executes the circuit, returning an execution.
-    fn execute<R: Rng + CryptoRng>(
+    /// Executes the circuit, returning an proof.
+    fn execute(
         &self,
         public: &ProgramPublicVariables<C>,
-        _private: &Self::PrivateVariables,
-        rng: &mut R,
+        _private: &(),
     ) -> Result<<C::ProgramSNARK as SNARK>::Proof, CircuitError> {
         // Compute the proof.
+        let rng = &mut rand::thread_rng();
         let allocated_circuit = NoopAllocatedCircuit::<C> { public: public.clone() };
         let proof = <C::ProgramSNARK as SNARK>::prove(&self.proving_key, &allocated_circuit, rng)?;
+        assert!(self.verify(public, &proof));
+        Ok(proof)
+    }
 
+    /// Executes the circuit, returning an proof.
+    fn execute_blank(&self) -> Result<<C::ProgramSNARK as SNARK>::Proof, CircuitError> {
+        // Compute the proof.
+        let rng = &mut rand::thread_rng();
+        let allocated_circuit = NoopAllocatedCircuit::<C>::default();
+        let proof = <C::ProgramSNARK as SNARK>::prove(&self.proving_key, &allocated_circuit, rng)?;
         Ok(proof)
     }
 
     /// Returns true if the execution of the circuit is valid.
-    fn verify<R: Rng + CryptoRng>(
-        &self,
-        public: &ProgramPublicVariables<C>,
-        proof: <C::ProgramSNARK as SNARK>::Proof,
-    ) -> bool {
-        <C::ProgramSNARK as SNARK>::verify(&self.verifying_key.clone().into(), &public, &proof)
+    fn verify(&self, public: &ProgramPublicVariables<C>, proof: &<C::ProgramSNARK as SNARK>::Proof) -> bool {
+        <C::ProgramSNARK as SNARK>::verify(&self.verifying_key.clone().into(), public, proof)
             .expect("Failed to verify program execution proof")
-    }
-}
-
-impl<C: Parameters> NoopCircuit<C> {
-    #[deprecated]
-    pub fn to_snark_parameters(
-        &self,
-    ) -> (
-        <C::ProgramSNARK as SNARK>::ProvingKey,
-        <C::ProgramSNARK as SNARK>::VerifyingKey,
-    ) {
-        (self.proving_key.clone(), self.verifying_key.clone())
     }
 }
 

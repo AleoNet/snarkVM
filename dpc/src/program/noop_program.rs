@@ -15,12 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    CircuitTree,
     Execution,
     NoopCircuit,
     Parameters,
     Program,
     ProgramCircuit,
+    ProgramCircuitTree,
     ProgramError,
     ProgramPublicVariables,
 };
@@ -31,24 +31,26 @@ use rand::{CryptoRng, Rng};
 #[derive(Derivative)]
 #[derivative(Debug(bound = "C: Parameters"))]
 pub struct NoopProgram<C: Parameters> {
-    circuit_tree: CircuitTree<C>,
+    circuit_tree: ProgramCircuitTree<C>,
 }
 
 impl<C: Parameters> Program<C> for NoopProgram<C> {
-    type PrivateVariables = ();
-
     /// Initializes a new instance of the program.
-    fn new(circuits: &[Box<dyn ProgramCircuit<C>>]) -> Result<Self, ProgramError> {
-        // Initialize a new circuit tree, and add all circuits to the tree.
-        let mut circuit_tree = CircuitTree::new()?;
-        circuit_tree.add_all(circuits)?;
+    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, ProgramError> {
+        // Initialize a new program circuit tree, and add all circuits to the tree.
+        let mut circuit_tree = ProgramCircuitTree::new()?;
+        circuit_tree.add_all(vec![Box::new(NoopCircuit::setup(rng)?)])?;
 
         Ok(Self { circuit_tree })
     }
 
     /// Loads an instance of the program.
     fn load() -> Result<Self, ProgramError> {
-        Self::new(&[Box::new(NoopCircuit::load()?)])
+        // Initialize a new program circuit tree, and add all circuits to the tree.
+        let mut circuit_tree = ProgramCircuitTree::new()?;
+        circuit_tree.add(Box::new(NoopCircuit::load()?))?;
+
+        Ok(Self { circuit_tree })
     }
 
     /// Returns the program ID.
@@ -56,47 +58,50 @@ impl<C: Parameters> Program<C> for NoopProgram<C> {
         self.circuit_tree.to_program_id()
     }
 
-    fn execute<R: Rng + CryptoRng>(
+    fn get_circuit(&self, circuit_index: u8) -> Result<&Box<dyn ProgramCircuit<C>>, ProgramError> {
+        // Fetch the circuit from the tree.
+        match self.circuit_tree.get_circuit(circuit_index) {
+            Some(circuit) => Ok(circuit),
+            _ => Err(MerkleError::MissingLeafIndex(circuit_index as usize).into()),
+        }
+    }
+
+    fn execute(
         &self,
         circuit_index: u8,
         public: &ProgramPublicVariables<C>,
-        private: &Self::PrivateVariables,
-        rng: &mut R,
-    ) -> Result<Execution<C::ProgramSNARK>, ProgramError> {
+        private: &(),
+    ) -> Result<Execution<C>, ProgramError> {
         // Fetch the circuit from the tree.
         let circuit = match self.circuit_tree.get_circuit(circuit_index) {
             Some(circuit) => circuit,
             _ => return Err(MerkleError::MissingLeafIndex(circuit_index as usize).into()),
         };
-
-        let proof = circuit.execute(public, private, rng)?;
+        let program_path = self.circuit_tree.get_program_path(circuit_index)?;
+        let proof = circuit.execute(public, private)?;
         let verifying_key = circuit.verifying_key().clone();
 
         Ok(Execution {
             circuit_index,
+            program_path,
             verifying_key,
             proof,
         })
     }
 
-    fn execute_blank<R: Rng + CryptoRng>(
-        &self,
-        circuit_index: u8,
-        rng: &mut R,
-    ) -> Result<Execution<C::ProgramSNARK>, ProgramError> {
+    fn execute_blank(&self, circuit_index: u8) -> Result<Execution<C>, ProgramError> {
         // Fetch the circuit from the tree.
         let circuit = match self.circuit_tree.get_circuit(circuit_index) {
             Some(circuit) => circuit,
             _ => return Err(MerkleError::MissingLeafIndex(circuit_index as usize).into()),
         };
-
-        let public = ProgramPublicVariables::<C>::default();
-        let private = Self::PrivateVariables::default();
-        let proof = circuit.execute(public, private, rng)?;
+        let program_path = self.circuit_tree.get_program_path(circuit_index)?;
+        let proof = circuit.execute_blank()?;
         let verifying_key = circuit.verifying_key().clone();
 
         Ok(Execution {
             circuit_index,
+            program_path,
             verifying_key,
             proof,
         })

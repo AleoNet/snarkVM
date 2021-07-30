@@ -91,7 +91,7 @@ fn dpc_testnet2_integration_test() {
     let mut old_records = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
         let old_record = Record::new(
-            dpc.noop_program.program_id(),
+            &dpc.noop_program,
             genesis_account.address.clone(),
             true, // The input record is dummy
             0,
@@ -116,7 +116,7 @@ fn dpc_testnet2_integration_test() {
     for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
         new_records.push(
             Record::new_full(
-                dpc.noop_program.program_id(),
+                &dpc.noop_program,
                 recipient.address.clone(),
                 false,
                 10,
@@ -137,11 +137,8 @@ fn dpc_testnet2_integration_test() {
     // Generate the program proofs
     let mut program_proofs = vec![];
     for i in 0..Testnet2Parameters::NUM_TOTAL_RECORDS {
-        program_proofs.push(
-            dpc.noop_program
-                .execute(0, &transaction_kernel.into_local_data(), i as u8, &mut rng)
-                .unwrap(),
-        );
+        let public_variables = ProgramPublicVariables::new(&transaction_kernel.local_data_merkle_tree.root(), i as u8);
+        program_proofs.push(dpc.noop_program.execute(0, &public_variables, &()).unwrap());
     }
 
     let (new_records, transaction) = dpc
@@ -218,7 +215,7 @@ fn test_testnet_2_transaction_kernel_serialization() {
     let mut old_records = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
         let old_record = Record::new(
-            dpc.noop_program.circuit_id(),
+            &dpc.noop_program,
             test_account.address.clone(),
             true,
             0,
@@ -243,7 +240,7 @@ fn test_testnet_2_transaction_kernel_serialization() {
     for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
         new_records.push(
             Record::new_full(
-                dpc.noop_program.circuit_id(),
+                &dpc.noop_program,
                 test_account.address.clone(),
                 false,
                 10,
@@ -273,7 +270,7 @@ fn test_testnet2_dpc_execute_constraints() {
 
     let dpc = Testnet2DPC::setup(&mut rng).unwrap();
 
-    let alternate_noop_program = NoopProgram::<Testnet2Parameters>::new(&mut rng).unwrap();
+    let alternate_noop_program = NoopProgram::<Testnet2Parameters>::setup(&mut rng).unwrap();
 
     // Generate metadata and an account for a dummy initial record.
     let dummy_account = Account::new(&mut rng).unwrap();
@@ -301,7 +298,7 @@ fn test_testnet2_dpc_execute_constraints() {
     let mut old_records = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
         let old_record = Record::new(
-            alternate_noop_program.circuit_id(),
+            &alternate_noop_program,
             dummy_account.address.clone(),
             true,
             0,
@@ -329,7 +326,7 @@ fn test_testnet2_dpc_execute_constraints() {
     for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
         new_records.push(
             Record::new_full(
-                dpc.noop_program.circuit_id(),
+                &dpc.noop_program,
                 new_account.address.clone(),
                 false,
                 10,
@@ -351,23 +348,15 @@ fn test_testnet2_dpc_execute_constraints() {
 
     let mut program_proofs = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-        program_proofs.push(
-            alternate_noop_program
-                .execute(0, &transaction_kernel.into_local_data(), i as u8, &mut rng)
-                .unwrap(),
-        );
+        let public_variables = ProgramPublicVariables::new(&transaction_kernel.local_data_merkle_tree.root(), i as u8);
+        program_proofs.push(alternate_noop_program.execute(0, &public_variables, &()).unwrap());
     }
     for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
-        program_proofs.push(
-            dpc.noop_program
-                .execute(
-                    0,
-                    &transaction_kernel.into_local_data(),
-                    (Testnet2Parameters::NUM_INPUT_RECORDS + j) as u8,
-                    &mut rng,
-                )
-                .unwrap(),
+        let public_variables = ProgramPublicVariables::new(
+            &transaction_kernel.local_data_merkle_tree.root(),
+            (Testnet2Parameters::NUM_INPUT_RECORDS + j) as u8,
         );
+        program_proofs.push(dpc.noop_program.execute(0, &public_variables, &()).unwrap());
     }
 
     let TransactionKernel {
