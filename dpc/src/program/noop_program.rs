@@ -172,8 +172,6 @@ impl<C: Parameters> ProgramScheme for NoopProgram<C> {
             assert!(program_selector_path.verify(&selector_root, &id)?);
         }
 
-        // TODO (raychu86): Extract the construction of the merkle tree.
-
         Ok(Self::Execution {
             verifying_key: self.verifying_key.clone(),
             proof,

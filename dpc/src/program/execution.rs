@@ -18,7 +18,7 @@ use crate::Parameters;
 use snarkvm_algorithms::{merkle_tree::MerklePath, SNARK};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
-/// Program verifying key and proof.
+/// Program verifying key, proof, and selector path.
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
 pub struct Execution<C: Parameters> {
