@@ -177,9 +177,22 @@ pub trait Parameters: 'static + Sized {
         + Sync
         + Send;
 
-    /// CRH for hashes of birth and death verifying keys. Invoked only over `Self::OuterScalarField`.
+    /// CRH for program ID hashing. Invoked only over `Self::OuterScalarField`.
     type ProgramIDCRH: CRH;
     type ProgramIDCRHGadget: CRHGadget<Self::ProgramIDCRH, Self::OuterScalarField>;
+    type ProgramIDTreeDigest: ToConstraintField<Self::OuterScalarField>
+        + Clone
+        + Debug
+        + Display
+        + ToBytes
+        + FromBytes
+        + Eq
+        + Hash
+        + Default
+        + Send
+        + Sync
+        + Copy;
+    type ProgramIDTreeParameters: LoadableMerkleParameters<H = Self::ProgramIDCRH>;
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
     type PRF: PRF;
@@ -251,6 +264,7 @@ pub trait Parameters: 'static + Sized {
     fn program_commitment_scheme() -> &'static Self::ProgramCommitmentScheme;
 
     fn program_id_crh() -> &'static Self::ProgramIDCRH;
+    fn program_id_tree_parameters() -> &'static Self::ProgramIDTreeParameters;
 
     fn record_commitment_scheme() -> &'static Self::RecordCommitmentScheme;
 

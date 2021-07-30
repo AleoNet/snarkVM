@@ -74,6 +74,12 @@ pub type Testnet1DPC = DPC<Testnet1Parameters>;
 pub type Testnet1Transaction = Transaction<Testnet1Parameters>;
 
 define_merkle_tree_parameters!(
+    ProgramIDMerkleTreeParameters,
+    <Testnet1Parameters as Parameters>::ProgramIDCRH,
+    8
+);
+
+define_merkle_tree_parameters!(
     CommitmentMerkleTreeParameters,
     <Testnet1Parameters as Parameters>::RecordCommitmentTreeCRH,
     32
@@ -144,7 +150,9 @@ impl Parameters for Testnet1Parameters {
 
     type ProgramIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
-
+    type ProgramIDTreeDigest = <Self::ProgramIDCRH as CRH>::Output;
+    type ProgramIDTreeParameters = ProgramIDMerkleTreeParameters;
+    
     type RecordCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 48, 50>;
     type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 50>;
     type RecordCommitment = <Self::RecordCommitmentScheme as CommitmentScheme>::Output;
@@ -184,6 +192,11 @@ impl Parameters for Testnet1Parameters {
     dpc_snark_setup_with_mode!{Testnet1Parameters, outer_circuit_proving_key, OUTER_CIRCUIT_PROVING_KEY, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
     dpc_snark_setup!{Testnet1Parameters, outer_circuit_verifying_key, OUTER_CIRCUIT_VERIFYING_KEY, OuterSNARK, VerifyingKey, OuterSNARKVKParameters, "outer circuit verifying key"}
 
+    fn program_id_tree_parameters() -> &'static Self::ProgramIDTreeParameters {
+        static PROGRAM_ID_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::ProgramIDTreeParameters> = OnceCell::new();
+        PROGRAM_ID_TREE_PARAMETERS.get_or_init(|| Self::ProgramIDTreeParameters::from(Self::program_id_crh().clone()))
+    }
+    
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters {
         static RECORD_COMMITMENT_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::RecordCommitmentTreeParameters> = OnceCell::new();
         RECORD_COMMITMENT_TREE_PARAMETERS.get_or_init(|| Self::RecordCommitmentTreeParameters::from(Self::record_commitment_tree_crh().clone()))
