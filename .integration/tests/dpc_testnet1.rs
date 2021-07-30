@@ -136,7 +136,11 @@ fn dpc_testnet1_integration_test() {
     let mut program_proofs = vec![];
     for i in 0..Testnet1Parameters::NUM_TOTAL_RECORDS {
         let public_variables = ProgramPublicVariables::new(&transaction_kernel.local_data_merkle_tree.root(), i as u8);
-        program_proofs.push(dpc.noop_program.execute(0, &public_variables, &()).unwrap());
+        program_proofs.push(
+            dpc.noop_program
+                .execute(0, &public_variables, &NoopPrivateVariables::new())
+                .unwrap(),
+        );
     }
 
     let (new_records, transaction) = dpc
@@ -347,14 +351,22 @@ fn test_testnet1_dpc_execute_constraints() {
     let mut program_proofs = vec![];
     for i in 0..Testnet1Parameters::NUM_INPUT_RECORDS {
         let public_variables = ProgramPublicVariables::new(&transaction_kernel.local_data_merkle_tree.root(), i as u8);
-        program_proofs.push(alternate_noop_program.execute(0, &public_variables, &()).unwrap());
+        program_proofs.push(
+            alternate_noop_program
+                .execute(0, &public_variables, &NoopPrivateVariables::new())
+                .unwrap(),
+        );
     }
     for j in 0..Testnet1Parameters::NUM_OUTPUT_RECORDS {
         let public_variables = ProgramPublicVariables::new(
             &transaction_kernel.local_data_merkle_tree.root(),
             (Testnet1Parameters::NUM_INPUT_RECORDS + j) as u8,
         );
-        program_proofs.push(dpc.noop_program.execute(0, &public_variables, &()).unwrap());
+        program_proofs.push(
+            dpc.noop_program
+                .execute(0, &public_variables, &NoopPrivateVariables::new())
+                .unwrap(),
+        );
     }
 
     let TransactionKernel {

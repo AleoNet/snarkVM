@@ -34,7 +34,7 @@ use snarkvm_utilities::{
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
 
-pub trait Parameters: 'static + Sized {
+pub trait Parameters: 'static + Sized + Send + Sync {
     const NETWORK_ID: u8;
 
     const NUM_INPUT_RECORDS: usize;

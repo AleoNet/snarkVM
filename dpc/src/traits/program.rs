@@ -41,7 +41,7 @@ pub trait Program<C: Parameters> {
         &self,
         circuit_index: u8,
         public: &ProgramPublicVariables<C>,
-        private: &(),
+        private: &dyn ProgramPrivateVariables<C>,
     ) -> Result<Execution<C>, ProgramError>;
 
     /// Returns the blank execution of the program, typically used for a SNARK setup.
@@ -77,7 +77,7 @@ pub trait ProgramCircuit<C: Parameters>: Send + Sync {
     fn execute(
         &self,
         public: &ProgramPublicVariables<C>,
-        private: &(),
+        private: &dyn ProgramPrivateVariables<C>,
     ) -> Result<<C::ProgramSNARK as SNARK>::Proof, CircuitError>;
 
     /// Returns the blank execution of the circuit, typically used for a SNARK setup.
@@ -91,6 +91,8 @@ pub trait ProgramCircuit<C: Parameters>: Send + Sync {
         unimplemented!("The native evaluation of this circuit is unimplemented")
     }
 }
+
+pub trait ProgramPrivateVariables<C: Parameters>: Send + Sync {}
 
 // pub trait ProgramExecutable<C: Parameters>: Send + Sync {
 //     /// Returns the execution of the circuit.

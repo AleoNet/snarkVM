@@ -14,12 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitError, Parameters, ProgramCircuit, ProgramPublicVariables};
+use crate::{CircuitError, Parameters, ProgramCircuit, ProgramPrivateVariables, ProgramPublicVariables};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, ToConstraintField};
 
 use rand::{CryptoRng, Rng};
+use std::marker::PhantomData;
+
+pub struct NoopPrivateVariables<C: Parameters>(PhantomData<C>);
+
+impl<C: Parameters> ProgramPrivateVariables<C> for NoopPrivateVariables<C> {}
+
+impl<C: Parameters> NoopPrivateVariables<C> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+}
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"), Debug(bound = "C: Parameters"))]
@@ -84,7 +95,7 @@ impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
     fn execute(
         &self,
         public: &ProgramPublicVariables<C>,
-        _private: &(),
+        _private: &dyn ProgramPrivateVariables<C>,
     ) -> Result<<C::ProgramSNARK as SNARK>::Proof, CircuitError> {
         // Compute the proof.
         let rng = &mut rand::thread_rng();
