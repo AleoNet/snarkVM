@@ -148,7 +148,6 @@ impl<E: PairingEngine> KZG10<E> {
         //
         // This part is used to derive the universal verification parameters.
         let inverse_powers_of_g = if *supported_degree_bounds != KZG10DegreeBoundsConfig::NONE {
-
         } else {
             BTreeMap::new();
         };
