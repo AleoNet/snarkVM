@@ -86,7 +86,7 @@ impl<C: Parameters> Record<C> {
         let timer = start_timer!(|| "Generate record");
         let program_id = program.program_id().to_bytes_le()?;
 
-        // Total = 48 + 32 + 1 + 8 + 128 + 48 + 32 = 297 bytes
+        // Total = 48 + 32 + 1 + 8 + 128 + 32 = 249 bytes
         let commitment_input = to_bytes_le![
             program_id,          // 384 bits = 48 bytes
             owner,               // 256 bits = 32 bytes
