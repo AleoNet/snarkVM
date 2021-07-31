@@ -291,6 +291,8 @@ pub trait EvaluationsProvider<F: Field> {
 impl<'a, F: Field> EvaluationsProvider<F> for snarkvm_polycommit::Evaluations<'a, F> {
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError> {
         let key = (lc.label.clone(), point);
+        println!("{:?}", self.keys());
+        println!("{:?}", key);
         self.get(&key)
             .copied()
             .ok_or_else(|| AHPError::MissingEval(lc.label.clone()))
