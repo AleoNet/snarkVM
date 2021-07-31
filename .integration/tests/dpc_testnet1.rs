@@ -21,14 +21,14 @@ use snarkvm_algorithms::{
 };
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{prelude::*, testnet1::*};
-use snarkvm_integration::{testnet1::*, *};
+use snarkvm_fields::ToConstraintField;
+use snarkvm_integration::testnet1::*;
 use snarkvm_ledger::{ledger::*, prelude::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
-use snarkvm_fields::ToConstraintField;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn testnet1_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
@@ -79,7 +79,7 @@ fn dpc_testnet1_integration_test() {
         transactions: Transactions::new(),
     };
 
-    let ledger = initialize_test_blockchain::<Testnet1Parameters, MemDb>(genesis_block);
+    let ledger = Ledger::<Testnet1Parameters, MemDb>::new(None, genesis_block).unwrap();
 
     // Generate dummy input records having as address the genesis address.
     let old_private_keys = vec![genesis_account.private_key.clone(); Testnet1Parameters::NUM_INPUT_RECORDS];
@@ -291,7 +291,7 @@ fn test_testnet1_dpc_execute_constraints() {
     };
 
     // Use genesis record, serial number, and memo to initialize the ledger.
-    let ledger = initialize_test_blockchain::<Testnet1Parameters, MemDb>(genesis_block);
+    let ledger = Ledger::<Testnet1Parameters, MemDb>::new(None, genesis_block).unwrap();
 
     let old_private_keys = vec![dummy_account.private_key; Testnet1Parameters::NUM_INPUT_RECORDS];
 
