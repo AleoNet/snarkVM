@@ -37,7 +37,6 @@ pub trait RecordCommitmentTree<C: Parameters>: Sized {
 
 /// The record serial number tree is a core state tree of the ledger.
 pub trait RecordSerialNumberTree<C: Parameters>: Sized {
-    /// TODO (howardwu): TEMPORARY - Move this into a RecordSerialNumberTree.
     /// Returns true if the given serial number exists in the record serial number tree.
     fn contains_serial_number(&self, serial_number: &C::AccountSignaturePublicKey) -> bool;
 }
