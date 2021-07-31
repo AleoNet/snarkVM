@@ -28,11 +28,12 @@ use crate::{
 use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, prelude::*};
 
 use rand::{CryptoRng, Rng};
+use std::sync::Arc;
 
 #[derive(Derivative)]
-#[derivative(Debug(bound = "C: Parameters"))]
+#[derivative(Clone(bound = "C: Parameters"), Debug(bound = "C: Parameters"))]
 pub struct NoopProgram<C: Parameters> {
-    circuit_tree: ProgramCircuitTree<C>,
+    circuit_tree: Arc<ProgramCircuitTree<C>>,
 }
 
 impl<C: Parameters> Program<C> for NoopProgram<C> {
@@ -42,7 +43,9 @@ impl<C: Parameters> Program<C> for NoopProgram<C> {
         let mut circuit_tree = ProgramCircuitTree::new()?;
         circuit_tree.add_all(vec![Box::new(NoopCircuit::setup(rng)?)])?;
 
-        Ok(Self { circuit_tree })
+        Ok(Self {
+            circuit_tree: Arc::new(circuit_tree),
+        })
     }
 
     /// Loads an instance of the program.
@@ -51,7 +54,9 @@ impl<C: Parameters> Program<C> for NoopProgram<C> {
         let mut circuit_tree = ProgramCircuitTree::new()?;
         circuit_tree.add(Box::new(NoopCircuit::load()?))?;
 
-        Ok(Self { circuit_tree })
+        Ok(Self {
+            circuit_tree: Arc::new(circuit_tree),
+        })
     }
 
     /// Returns the program ID.
