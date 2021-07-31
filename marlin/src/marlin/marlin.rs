@@ -439,7 +439,7 @@ where
 
         let eval_time = start_timer!(|| "Evaluating linear combinations over query set");
         let mut evaluations_unsorted = Vec::new();
-        for (label, (_point_name, point)) in &query_set {
+        for (label, point) in &query_set {
             let lc = lc_s
                 .iter()
                 .find(|lc| &lc.label == label)
@@ -645,11 +645,11 @@ where
 
         let mut evaluation_labels = Vec::<(String, TargetField)>::new();
 
-        for (label, (_point_name, q)) in query_set.iter().cloned() {
-            if AHPForR1CS::<TargetField>::LC_WITH_ZERO_EVAL.contains(&label.as_ref()) {
-                evaluations.insert((label, q), TargetField::zero());
+        for q in query_set.iter().cloned() {
+            if AHPForR1CS::<TargetField>::LC_WITH_ZERO_EVAL.contains(&q.0.as_ref()) {
+                evaluations.insert(q, TargetField::zero());
             } else {
-                evaluation_labels.push((label, q));
+                evaluation_labels.push(q);
             }
         }
         evaluation_labels.sort_by(|a, b| a.0.cmp(&b.0));
