@@ -19,6 +19,7 @@ use snarkvm_algorithms::merkle_tree::*;
 use snarkvm_dpc::prelude::*;
 use snarkvm_utilities::{has_duplicates, to_bytes_le, FromBytes, ToBytes};
 
+use anyhow::Result;
 use parking_lot::RwLock;
 use std::{
     fs,
@@ -50,7 +51,7 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
     type Block = Block<Transaction<C>>;
 
     /// Instantiates a new ledger with a genesis block.
-    fn new(path: Option<&Path>, genesis_block: Self::Block) -> anyhow::Result<Self> {
+    fn new(path: Option<&Path>, genesis_block: Self::Block) -> Result<Self> {
         // Ensure the given block is a genesis block.
         if !genesis_block.header().is_genesis() {
             return Err(LedgerError::InvalidGenesisBlockHeader.into());
@@ -94,13 +95,13 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
     }
 
     /// Returns the latest block in the ledger.
-    fn latest_block(&self) -> anyhow::Result<Self::Block> {
+    fn latest_block(&self) -> Result<Self::Block> {
         let block_hash = self.get_block_hash(self.block_height())?;
         Ok(self.get_block(&block_hash)?)
     }
 
     /// Returns the block given the block hash.
-    fn get_block(&self, block_hash: &BlockHeaderHash) -> anyhow::Result<Self::Block> {
+    fn get_block(&self, block_hash: &BlockHeaderHash) -> Result<Self::Block> {
         Ok(Self::Block {
             header: self.get_block_header(block_hash)?,
             transactions: self.get_block_transactions(block_hash)?,
@@ -108,10 +109,18 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
     }
 
     /// Returns the block hash given a block number.
-    fn get_block_hash(&self, block_number: BlockHeight) -> anyhow::Result<BlockHeaderHash> {
+    fn get_block_hash(&self, block_number: BlockHeight) -> Result<BlockHeaderHash> {
         match self.storage.get(COL_BLOCK_LOCATOR, &block_number.to_le_bytes())? {
             Some(block_header_hash) => Ok(BlockHeaderHash::new(block_header_hash)),
             None => Err(StorageError::MissingBlockHash(block_number).into()),
+        }
+    }
+
+    /// Returns the block number given a block hash.
+    fn get_block_number(&self, block_hash: &BlockHeaderHash) -> Result<u32> {
+        match self.storage.get(COL_BLOCK_LOCATOR, &block_hash.0)? {
+            Some(block_num_bytes) => Ok(bytes_to_u32(&block_num_bytes)),
+            None => Err(StorageError::MissingBlockNumber(block_hash.to_string()).into()),
         }
     }
 
@@ -122,13 +131,13 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
 }
 
 impl<C: Parameters, S: Storage> RecordCommitmentTree<C> for Ledger<C, S> {
-    /// Return a digest of the latest ledger Merkle tree.
-    fn latest_digest(&self) -> Option<MerkleTreeDigest<C::RecordCommitmentTreeParameters>> {
-        let digest = match self.storage.get(COL_META, KEY_CURR_DIGEST.as_bytes()).unwrap() {
+    /// Return the latest state root of the record commitment tree.
+    fn latest_digest(&self) -> Result<MerkleTreeDigest<C::RecordCommitmentTreeParameters>> {
+        let digest = match self.storage.get(COL_META, KEY_CURR_DIGEST.as_bytes())? {
             Some(current_digest) => current_digest,
-            None => to_bytes_le![self.record_commitment_tree.read().root()].unwrap(),
+            None => to_bytes_le![self.record_commitment_tree.read().root()]?,
         };
-        Some(FromBytes::read_le(digest.as_slice()).unwrap())
+        Ok(FromBytes::read_le(digest.as_slice())?)
     }
 
     /// Check that st_{ts} is a valid digest for some (past) ledger state.
@@ -143,7 +152,7 @@ impl<C: Parameters, S: Storage> RecordCommitmentTree<C> for Ledger<C, S> {
 
     /// Returns the Merkle path to the latest ledger digest
     /// for a given commitment, if it exists in the ledger.
-    fn prove_cm(&self, cm: &C::RecordCommitment) -> anyhow::Result<MerklePath<C::RecordCommitmentTreeParameters>> {
+    fn prove_cm(&self, cm: &C::RecordCommitment) -> Result<MerklePath<C::RecordCommitmentTreeParameters>> {
         let cm_index = self
             .get_cm_index(&cm.to_bytes_le()?)?
             .ok_or(LedgerError::InvalidCmIndex)?;
@@ -170,14 +179,6 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
         match self.storage.get(COL_CHILD_HASHES, &parent_header.0)? {
             Some(encoded_child_block_hashes) => Ok(bincode::deserialize(&encoded_child_block_hashes[..])?),
             None => Ok(vec![]),
-        }
-    }
-
-    /// Get the block number given a block hash.
-    pub fn get_block_number(&self, block_hash: &BlockHeaderHash) -> Result<u32, StorageError> {
-        match self.storage.get(COL_BLOCK_LOCATOR, &block_hash.0)? {
-            Some(block_num_bytes) => Ok(bytes_to_u32(&block_num_bytes)),
-            None => Err(StorageError::MissingBlockNumber(block_hash.to_string())),
         }
     }
 
@@ -482,6 +483,15 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
             key: new_block_height.to_le_bytes().to_vec(),
             value: block.header.get_hash().0.to_vec(),
         });
+
+        // If it's the genesis block, store its initial applicable digest.
+        if is_genesis {
+            database_transaction.push(Op::Insert {
+                col: COL_DIGEST,
+                key: to_bytes_le![self.latest_digest()?]?,
+                value: 0u32.to_le_bytes().to_vec(),
+            });
+        }
 
         // Rebuild the new commitment merkle tree
         self.rebuild_merkle_tree(transaction_cms)?;

@@ -44,6 +44,7 @@ fn test_new_ledger_with_genesis_block() {
     assert_eq!(ledger.latest_block().unwrap(), genesis_block.clone());
     assert_eq!(ledger.get_block_hash(0).unwrap(), expected_genesis_block_hash.clone());
     assert_eq!(ledger.get_block(&expected_genesis_block_hash).unwrap(), genesis_block);
+    assert_eq!(ledger.get_block_number(&expected_genesis_block_hash).unwrap(), 0);
     assert_eq!(ledger.contains_block_hash(&expected_genesis_block_hash), true);
 
     assert!(ledger.get_block(&BlockHeaderHash([0u8; 32])).is_err());
