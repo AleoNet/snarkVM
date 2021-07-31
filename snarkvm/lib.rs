@@ -15,6 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #[cfg(feature = "cli")]
+#[macro_use]
+extern crate thiserror;
+
+#[cfg(feature = "cli")]
 pub mod cli;
 
 #[cfg(feature = "algorithms")]
