@@ -44,7 +44,7 @@ jobs:
 
   integration-testnet1:
     docker:
-      - image: cimg/rust:1.53.0
+      - image: cimg/rust:1.54.0
     resource_class: 2xlarge
     steps:
       - checkout
@@ -62,7 +62,7 @@ jobs:
 
   integration-testnet2:
     docker:
-      - image: cimg/rust:1.53.0
+      - image: cimg/rust:1.54.0
     resource_class: 2xlarge
     steps:
       - checkout
@@ -77,7 +77,7 @@ jobs:
 
   algorithms:
     docker:
-      - image: cimg/rust:1.53.0
+      - image: cimg/rust:1.54.0
     resource_class: 2xlarge
     steps:
       - checkout
@@ -92,7 +92,7 @@ jobs:
 
   curves:
     docker:
-      - image: cimg/rust:1.53.0
+      - image: cimg/rust:1.54.0
     resource_class: 2xlarge
     steps:
       - checkout
@@ -107,7 +107,7 @@ jobs:
 
   derives:
     docker:
-      - image: cimg/rust:1.53.0
+      - image: cimg/rust:1.54.0
     resource_class: 2xlarge
     steps:
       - checkout
@@ -122,7 +122,7 @@ jobs:
 
   dpc:
     docker:
-      - image: cimg/rust:1.53.0
+      - image: cimg/rust:1.54.0
     resource_class: 2xlarge
     steps:
       - checkout
@@ -137,7 +137,7 @@ jobs:
 
   fields:
     docker:
-      - image: cimg/rust:1.53.0
+      - image: cimg/rust:1.54.0
     resource_class: 2xlarge
     steps:
       - checkout
@@ -152,7 +152,7 @@ jobs:
 
   gadgets:
     docker:
-      - image: cimg/rust:1.53.0
+      - image: cimg/rust:1.54.0
     resource_class: 2xlarge
     steps:
       - checkout
@@ -167,7 +167,7 @@ jobs:
 
   ledger:
     docker:
-      - image: cimg/rust:1.53.0
+      - image: cimg/rust:1.54.0
     resource_class: 2xlarge
     steps:
       - checkout
@@ -182,7 +182,7 @@ jobs:
 
   marlin:
     docker:
-      - image: cimg/rust:1.53.0
+      - image: cimg/rust:1.54.0
     resource_class: 2xlarge
     steps:
       - checkout
@@ -197,7 +197,7 @@ jobs:
 
   parameters:
     docker:
-      - image: cimg/rust:1.53.0
+      - image: cimg/rust:1.54.0
     resource_class: 2xlarge
     steps:
       - checkout
@@ -212,7 +212,7 @@ jobs:
 
   polycommit:
     docker:
-      - image: cimg/rust:1.53.0
+      - image: cimg/rust:1.54.0
     resource_class: 2xlarge
     steps:
       - checkout
@@ -227,7 +227,7 @@ jobs:
 
   profiler:
     docker:
-      - image: cimg/rust:1.53.0
+      - image: cimg/rust:1.54.0
     resource_class: 2xlarge
     steps:
       - checkout
@@ -242,7 +242,7 @@ jobs:
 
   r1cs:
     docker:
-      - image: cimg/rust:1.53.0
+      - image: cimg/rust:1.54.0
     resource_class: 2xlarge
     steps:
       - checkout
@@ -257,7 +257,7 @@ jobs:
 
   utilities:
     docker:
-      - image: cimg/rust:1.53.0
+      - image: cimg/rust:1.54.0
     resource_class: 2xlarge
     steps:
       - checkout
