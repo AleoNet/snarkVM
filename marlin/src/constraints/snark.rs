@@ -22,7 +22,7 @@ use std::{
 use rand::{CryptoRng, Rng, RngCore};
 
 use snarkvm_algorithms::{SNARKError, SNARK};
-use snarkvm_fields::{PoseidonMDSField, PrimeField, ToConstraintField};
+use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     bits::Boolean,
     nonnative::NonNativeFieldInputVar,
@@ -74,7 +74,7 @@ impl Debug for MarlinBound {
 /// The Marlin proof system.
 pub struct MarlinSNARK<
     F: PrimeField,
-    FSF: PrimeField + PoseidonMDSField,
+    FSF: PrimeField,
     PC: PolynomialCommitment<F>,
     FS: FiatShamirRng<F, FSF>,
     MC: MarlinMode,
@@ -93,7 +93,7 @@ pub struct MarlinSNARK<
 impl<TargetField, BaseField, PC, FS, MM, C, V> MarlinSNARK<TargetField, BaseField, PC, FS, MM, C, V>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField,
     PC: PolynomialCommitment<TargetField>,
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
@@ -163,7 +163,7 @@ where
 impl<TargetField, BaseField, PC, FS, MM, C, V> SNARK for MarlinSNARK<TargetField, BaseField, PC, FS, MM, C, V>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField,
     PC: PolynomialCommitment<TargetField>,
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
@@ -221,7 +221,7 @@ where
 pub struct MarlinSNARKGadget<F, FSF, PC, FS, MM, PCG, FSG>
 where
     F: PrimeField,
-    FSF: PrimeField + PoseidonMDSField,
+    FSF: PrimeField,
     PC: PolynomialCommitment<F>,
     FS: FiatShamirRng<F, FSF>,
     MM: MarlinMode,
@@ -242,7 +242,7 @@ impl<TargetField, BaseField, PC, FS, MM, PCG, FSG, C, V>
     for MarlinSNARKGadget<TargetField, BaseField, PC, FS, MM, PCG, FSG>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField,
     PC: PolynomialCommitment<TargetField>,
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,

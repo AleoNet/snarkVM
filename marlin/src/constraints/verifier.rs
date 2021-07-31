@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use core::marker::PhantomData;
-
 use crate::{
     constraints::{
         ahp::AHPForR1CS,
@@ -32,8 +30,9 @@ use crate::{
     PoseidonSponge,
     PoseidonSpongeVar,
 };
+use core::marker::PhantomData;
 use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_fields::{PoseidonMDSField, PrimeField};
+use snarkvm_fields::PrimeField;
 use snarkvm_gadgets::{
     bits::Boolean,
     nonnative::{params::OptimizationType, NonNativeFieldVar},
@@ -71,7 +70,7 @@ impl<TargetField, BaseField, PC, PCG, FS, MM, C, V>
     for MarlinVerificationGadget<TargetField, BaseField, PC, PCG>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField,
     PC: PolynomialCommitment<TargetField>,
     PC::VerifierKey: ToConstraintField<BaseField>,
     PC::Commitment: ToConstraintField<BaseField>,
@@ -112,7 +111,7 @@ where
 impl<TargetField, BaseField, PC, PCG> MarlinVerificationGadget<TargetField, BaseField, PC, PCG>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonMDSField,
+    BaseField: PrimeField,
     PC: PolynomialCommitment<TargetField>,
     PCG: PCCheckVar<TargetField, PC, BaseField>,
     PC::Commitment: ToConstraintField<BaseField>,
