@@ -22,7 +22,7 @@ use snarkvm_algorithms::{
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{prelude::*, testnet2::*};
 use snarkvm_integration::{testnet2::*, *};
-use snarkvm_ledger::prelude::*;
+use snarkvm_ledger::{ledger::*, prelude::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 

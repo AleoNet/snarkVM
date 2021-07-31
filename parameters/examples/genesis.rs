@@ -17,6 +17,7 @@
 use snarkvm_algorithms::CRH;
 use snarkvm_dpc::{prelude::*, testnet1::*, testnet2::*};
 use snarkvm_ledger::{
+    ledger::*,
     posw::{txids_to_roots, PoswMarlin},
     prelude::*,
 };

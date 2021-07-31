@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::UpdaterError;
+use crate::cli::errors::UpdaterError;
 
 use colored::Colorize;
 use self_update::{backends::github, version::bump_is_greater, Status};
