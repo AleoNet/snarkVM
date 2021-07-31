@@ -301,7 +301,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         // Construct the ledger witnesses
 
-        let ledger_digest = ledger.latest_digest().expect("could not get digest");
+        let ledger_digest = ledger.latest_digest()?;
 
         // Generate the ledger membership witnesses
         let mut old_witnesses = Vec::with_capacity(C::NUM_INPUT_RECORDS);

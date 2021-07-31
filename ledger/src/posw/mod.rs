@@ -81,7 +81,7 @@ mod tests {
         let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(max_degree, rng).unwrap();
 
         // run the deterministic setup
-        let posw = PoswMarlin::index::<_, ChaChaRng>(universal_srs).unwrap();
+        let posw = PoswMarlin::index::<_, ChaChaRng>(&universal_srs).unwrap();
 
         // super low difficulty so we find a solution immediately
         let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;

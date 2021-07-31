@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::{crh::sha256::sha256, SNARK, SRS};
-use snarkvm_dpc::{testnet1::Testnet1Parameters, DPCError, InnerCircuit, Parameters};
+use snarkvm_dpc::{DPCError, InnerCircuit, Parameters};
 use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
@@ -45,7 +45,18 @@ fn versioned_filename(checksum: &str) -> String {
 }
 
 pub fn main() {
-    let (inner_snark_pk, inner_snark_vk) = setup::<Testnet1Parameters>().unwrap();
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() < 2 {
+        println!("Invalid number of arguments. Given: {} - Required: 1", args.len() - 1);
+        return;
+    }
+
+    let (inner_snark_pk, inner_snark_vk) = match args[1].as_str() {
+        "testnet1" => setup::<snarkvm_dpc::testnet1::Testnet1Parameters>().unwrap(),
+        "testnet2" => setup::<snarkvm_dpc::testnet2::Testnet2Parameters>().unwrap(),
+        _ => panic!("Invalid parameters"),
+    };
+
     let inner_snark_pk_checksum = hex::encode(sha256(&inner_snark_pk));
     store(
         &PathBuf::from(&versioned_filename(&inner_snark_pk_checksum)),

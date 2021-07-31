@@ -23,7 +23,7 @@ extern crate thiserror;
 #[macro_use]
 mod macros;
 
-mod errors;
+pub mod errors;
 pub use errors::*;
 
 mod fp_256;
@@ -56,7 +56,7 @@ pub mod tests_field;
 mod to_field_vec;
 pub use to_field_vec::*;
 
-mod traits;
+pub mod traits;
 pub use traits::*;
 
 use snarkvm_utilities::{

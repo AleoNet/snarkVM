@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::*;
+use crate::{ledger::*, prelude::*};
 use snarkvm_dpc::parameters::testnet2::Testnet2Parameters;
 
 #[test]
@@ -40,12 +40,12 @@ fn test_new_ledger_with_genesis_block() {
 
     let ledger = Ledger::<Testnet2Parameters, MemDb>::new(None, genesis_block.clone()).unwrap();
 
-    assert_eq!(ledger.block_height(), 1);
+    assert_eq!(ledger.block_height(), 0);
     assert_eq!(ledger.latest_block().unwrap(), genesis_block.clone());
-    assert_eq!(ledger.get_block_hash(1).unwrap(), expected_genesis_block_hash.clone());
+    assert_eq!(ledger.get_block_hash(0).unwrap(), expected_genesis_block_hash.clone());
     assert_eq!(ledger.get_block(&expected_genesis_block_hash).unwrap(), genesis_block);
+    assert_eq!(ledger.get_block_number(&expected_genesis_block_hash).unwrap(), 0);
     assert_eq!(ledger.contains_block_hash(&expected_genesis_block_hash), true);
 
-    assert!(ledger.get_block_hash(0).is_err());
     assert!(ledger.get_block(&BlockHeaderHash([0u8; 32])).is_err());
 }

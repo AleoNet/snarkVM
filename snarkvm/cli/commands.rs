@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{cli::Command, updater::Updater};
+use crate::cli::{Command, Updater};
 
 pub fn parse(command: Command) -> anyhow::Result<String> {
     match command {
