@@ -19,7 +19,7 @@ use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, CRH, SNARK};
 
 use rand::{CryptoRng, Rng};
 
-pub trait Program<C: Parameters>: Clone {
+pub trait Program<C: Parameters>: Send + Sync {
     /// Initializes a new instance of the program.
     fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, ProgramError>
     where
