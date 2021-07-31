@@ -79,7 +79,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
     type VerifierKey = VerifierKey<E>;
 
     fn setup<R: RngCore>(max_degree: usize, rng: &mut R) -> Result<Self::UniversalParams, Self::Error> {
-        kzg10::KZG10::setup(max_degree, &kzg10::KZG10DegreeBoundsConfig::MARLIN, rng).map_err(Into::into)
+        kzg10::KZG10::setup(max_degree, &kzg10::KZG10DegreeBoundsConfig::MARLIN, true, rng).map_err(Into::into)
     }
 
     fn trim(
@@ -89,7 +89,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         enforced_degree_bounds: Option<&[usize]>,
     ) -> Result<(Self::CommitterKey, Self::VerifierKey), Self::Error> {
         let trim_time = start_timer!(|| "Trimming public parameters");
-        let neg_powers_of_h = &pp.neg_powers_of_h;
+        let neg_powers_of_h = &pp.inverse_neg_powers_of_h;
         let max_degree = pp.max_degree();
         if supported_degree > max_degree {
             return Err(Error::TrimmingDegreeTooLarge);

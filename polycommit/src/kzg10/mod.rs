@@ -27,7 +27,7 @@ use snarkvm_algorithms::{
     msm::{FixedBaseMSM, VariableBaseMSM},
 };
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
-use snarkvm_fields::{FftParameters, Field, One, PrimeField, Zero};
+use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_utilities::rand::UniformRand;
 
 use core::{marker::PhantomData, ops::Mul};
@@ -147,21 +147,29 @@ impl<E: PairingEngine> KZG10<E> {
         // Compute `inverse_powers_of_g`.
         //
         // This part is used to derive the universal verification parameters.
+        let list = supported_degree_bounds.get_list::<E::Fr>(max_degree);
+        let max_degree_field = <E::Fr as From<u128>>::from(max_degree as u128);
+
         let inverse_powers_of_g = if *supported_degree_bounds != KZG10DegreeBoundsConfig::NONE {
+            let mut map = BTreeMap::<usize, E::G1Affine>::new();
+            for i in list.iter() {
+                map.insert(*i, powers_of_g[max_degree - i]);
+            }
+            map
         } else {
-            BTreeMap::new();
+            BTreeMap::new()
         };
 
         // Compute `neg_powers_of_h`.
-        let neg_powers_of_h_time = start_timer!(|| "Generating negative powers of h in G2");
-        let neg_powers_of_h = if produce_g2_powers && *supported_degree_bounds != KZG10DegreeBoundsConfig::NONE {
+        let inverse_neg_powers_of_h_time = start_timer!(|| "Generating negative powers of h in G2");
+        let inverse_neg_powers_of_h = if produce_g2_powers && *supported_degree_bounds != KZG10DegreeBoundsConfig::NONE
+        {
             let mut map = BTreeMap::<usize, E::G2Affine>::new();
-            let list = produce_g2_powers.get_list::<E::Fr>(max_degree);
 
             let mut neg_powers_of_beta = vec![];
             let neg_beta: E::Fr = E::Fr::one() / &beta;
             for i in list.iter() {
-                neg_powers_of_beta.push(neg_beta.pow(&[*i as u64]));
+                neg_powers_of_beta.push(max_degree_field - neg_beta.pow(&[*i as u64]));
             }
 
             let window_size = FixedBaseMSM::get_mul_window_size(neg_powers_of_beta.len());
@@ -183,7 +191,7 @@ impl<E: PairingEngine> KZG10<E> {
         } else {
             BTreeMap::new()
         };
-        end_timer!(neg_powers_of_h_time);
+        end_timer!(inverse_neg_powers_of_h_time);
 
         let beta_h = h.mul(beta).into_affine();
         let h = h.into_affine();
@@ -196,7 +204,7 @@ impl<E: PairingEngine> KZG10<E> {
             h,
             beta_h,
             inverse_powers_of_g,
-            neg_powers_of_h,
+            inverse_neg_powers_of_h,
             prepared_h,
             prepared_beta_h,
         };
