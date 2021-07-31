@@ -700,7 +700,7 @@ pub mod multiple_input_tests {
 
     pub struct VerifierCircuit<
         F: PrimeField,
-        ConstraintF: PrimeField + PoseidonMDSField,
+        ConstraintF: PrimeField,
         PC: PolynomialCommitment<F>,
         FS: FiatShamirRng<F, ConstraintF>,
         MM: MarlinMode,
@@ -725,7 +725,7 @@ pub mod multiple_input_tests {
 
     impl<
         F: PrimeField,
-        ConstraintF: PrimeField + PoseidonMDSField,
+        ConstraintF: PrimeField,
         PC: PolynomialCommitment<F>,
         FS: FiatShamirRng<F, ConstraintF>,
         MM: MarlinMode,
