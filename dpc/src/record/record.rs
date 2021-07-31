@@ -55,8 +55,8 @@ pub struct Record<C: Parameters> {
 
 impl<C: Parameters> Record<C> {
     #[allow(clippy::too_many_arguments)]
-    pub fn new_full<P: Program<C>, R: Rng + CryptoRng>(
-        program: &P,
+    pub fn new_full<R: Rng + CryptoRng>(
+        program: &dyn Program<C>,
         owner: Address<C>,
         is_dummy: bool,
         value: u64,
@@ -74,8 +74,8 @@ impl<C: Parameters> Record<C> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn new<P: Program<C>, R: Rng + CryptoRng>(
-        program: &P,
+    pub fn new<R: Rng + CryptoRng>(
+        program: &dyn Program<C>,
         owner: Address<C>,
         is_dummy: bool,
         value: u64,

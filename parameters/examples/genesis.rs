@@ -152,7 +152,6 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
         nonce,
         proof: proof.into(),
     };
-
     assert!(genesis_header.is_genesis());
 
     Ok((genesis_header.serialize().to_vec(), transaction_bytes))
