@@ -170,7 +170,7 @@ impl<S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>, const MASK_NUM_BYTES: 
     }
 
     /// Performs a deterministic setup for systems with universal setups
-    pub fn index<E, R: Rng + CryptoRng>(srs: MarlinSRS<E>) -> Result<Self, PoswError>
+    pub fn index<E, R: Rng + CryptoRng>(srs: &MarlinSRS<E>) -> Result<Self, PoswError>
     where
         E: PairingEngine,
         S: SNARK<UniversalSetupParameters = MarlinSRS<E>>,
@@ -185,7 +185,7 @@ impl<S: SNARK<ScalarField = Fr, VerifierInput = Vec<Fr>>, const MASK_NUM_BYTES: 
                 field_type: PhantomData,
                 crh_gadget_type: PhantomData,
             },
-            &mut SRS::<R, _>::Universal(srs),
+            &mut SRS::<R, _>::Universal(&srs),
         )?;
 
         Ok(Self {

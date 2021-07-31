@@ -122,7 +122,7 @@ fn snark_circuit_setup(c: &mut Criterion) {
     let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
     // `ChaChaRng` is a placeholder for SRS.
-    let mut srs = SRS::<ChaChaRng, _>::Universal(universal_srs);
+    let mut srs = SRS::<ChaChaRng, _>::Universal(&universal_srs);
 
     c.bench_function("snark_circuit_setup", move |b| {
         b.iter(|| {
@@ -150,7 +150,7 @@ fn snark_prove(c: &mut Criterion) {
     let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
     // `ChaChaRng` is a placeholder for SRS.
-    let mut srs = SRS::<ChaChaRng, _>::Universal(universal_srs);
+    let mut srs = SRS::<ChaChaRng, _>::Universal(&universal_srs);
 
     let circuit = Benchmark::<Fr> {
         a: Some(x),

@@ -14,28 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#[macro_use]
-extern crate thiserror;
-
 pub mod cli;
+pub use cli::*;
+
 pub mod commands;
+pub use commands::*;
+
 pub mod errors;
+pub use errors::*;
+
 pub mod updater;
-
-use crate::{cli::CLI, commands::parse, updater::Updater};
-
-use structopt::StructOpt;
-
-fn main() -> anyhow::Result<()> {
-    let cli = CLI::from_args();
-
-    if cli.debug {
-        println!("\n{:#?}\n", cli);
-    }
-
-    println!("{}", Updater::print_cli());
-
-    println!("{}", parse(cli.command)?);
-
-    Ok(())
-}
+pub use updater::*;

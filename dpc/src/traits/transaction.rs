@@ -19,7 +19,7 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::hash::Hash;
 
-pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes {
+pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     type Commitment: Clone + Eq + Hash + FromBytes + ToBytes + Sync + Send;
     type Digest: Clone + Eq + Hash + FromBytes + ToBytes;
     type InnerCircuitID: Clone + Eq + FromBytes + ToBytes;

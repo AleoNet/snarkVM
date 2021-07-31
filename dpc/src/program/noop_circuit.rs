@@ -45,8 +45,10 @@ pub struct NoopCircuit<C: Parameters> {
 impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
     /// Initializes a new instance of the noop circuit.
     fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, CircuitError> {
-        let (proving_key, prepared_verifying_key) =
-            <C::ProgramSNARK as SNARK>::setup(&NoopAllocatedCircuit::<C>::default(), &mut C::program_srs::<R>(rng)?)?;
+        let (proving_key, prepared_verifying_key) = <C::ProgramSNARK as SNARK>::setup(
+            &NoopAllocatedCircuit::<C>::default(),
+            &mut *C::program_srs::<R>(rng).borrow_mut(),
+        )?;
         let verifying_key: <C::ProgramSNARK as SNARK>::VerifyingKey = prepared_verifying_key.into();
 
         // Compute the noop circuit ID.

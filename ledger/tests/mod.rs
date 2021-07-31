@@ -94,7 +94,7 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
         let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
         let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(max_degree, rng).unwrap();
         // Run the circuit setup.
-        PoswMarlin::index::<_, ChaChaRng>(universal_srs).unwrap()
+        PoswMarlin::index::<_, ChaChaRng>(&universal_srs).unwrap()
     };
     let loaded_posw = PoswMarlin::load().unwrap();
 

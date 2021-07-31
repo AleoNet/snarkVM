@@ -33,16 +33,8 @@ version = "0.7.5"
 path = "../fields"
 version = "0.7.5"
 
-[dependencies.snarkvm-gadgets]
-path = "../gadgets"
-version = "0.7.5"
-
 [dependencies.snarkvm-ledger]
 path = "../ledger"
-version = "0.7.5"
-
-[dependencies.snarkvm-parameters]
-path = "../parameters"
 version = "0.7.5"
 
 [dependencies.snarkvm-profiler]

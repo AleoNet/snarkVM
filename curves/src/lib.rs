@@ -37,7 +37,7 @@
 )]
 #![forbid(unsafe_code)]
 // Documentation
-#![cfg_attr(nightly, feature(doc_cfg, external_doc))]
+// #![cfg_attr(nightly, feature(doc_cfg, external_doc))]
 // TODO (howardwu): Reenable after completing documentation in snarkVM-models.
 // #![cfg_attr(nightly, warn(missing_docs))]
 

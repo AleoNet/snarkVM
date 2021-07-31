@@ -17,10 +17,12 @@
 use crate::Parameters;
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTreeDigest};
 
+use anyhow::Result;
+
 /// The record commitment tree is a core state tree of the ledger.
 pub trait RecordCommitmentTree<C: Parameters>: Sized {
     /// Return the latest state root of the record commitment tree.
-    fn latest_digest(&self) -> Option<MerkleTreeDigest<C::RecordCommitmentTreeParameters>>;
+    fn latest_digest(&self) -> Result<MerkleTreeDigest<C::RecordCommitmentTreeParameters>>;
 
     /// Check that st_{ts} is a valid state root for some (past) record commitment tree.
     fn is_valid_digest(&self, digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>) -> bool;
@@ -30,12 +32,11 @@ pub trait RecordCommitmentTree<C: Parameters>: Sized {
 
     /// Returns the Merkle path to the latest state root for a given record commitment,
     /// if it exists in the record commitment tree.
-    fn prove_cm(&self, cm: &C::RecordCommitment) -> anyhow::Result<MerklePath<C::RecordCommitmentTreeParameters>>;
+    fn prove_cm(&self, cm: &C::RecordCommitment) -> Result<MerklePath<C::RecordCommitmentTreeParameters>>;
 }
 
 /// The record serial number tree is a core state tree of the ledger.
 pub trait RecordSerialNumberTree<C: Parameters>: Sized {
-    /// TODO (howardwu): TEMPORARY - Move this into a RecordSerialNumberTree.
     /// Returns true if the given serial number exists in the record serial number tree.
     fn contains_serial_number(&self, serial_number: &C::AccountSignaturePublicKey) -> bool;
 }

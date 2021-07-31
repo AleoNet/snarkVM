@@ -31,8 +31,8 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use anyhow::Result;
 use rand::{CryptoRng, Rng};
+use std::{cell::RefCell, rc::Rc};
 
 pub trait Parameters: 'static + Sized + Send + Sync {
     const NETWORK_ID: u8;
@@ -288,5 +288,5 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     /// Returns the program SRS for Aleo applications.
     fn program_srs<R: Rng + CryptoRng>(
         rng: &mut R,
-    ) -> Result<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>>;
+    ) -> Rc<RefCell<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>>>;
 }
