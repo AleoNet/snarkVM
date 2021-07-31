@@ -17,9 +17,8 @@
 use crate::{hash_to_curve::hash_to_curve, CRHError, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_utilities::{from_bytes_le_to_bits_le, FromBytes, ToBytes};
 
-use bitvec::{order::Lsb0, view::BitView};
 use std::{
     fmt::Debug,
     io::{Read, Result as IoResult, Write},
@@ -66,7 +65,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         }
 
         // Compute sum of h_i^{m_i} for all i.
-        let bits = input.view_bits::<Lsb0>();
+        let bits = from_bytes_le_to_bits_le(input).collect::<Vec<_>>();
         let result = bits
             .chunks(WINDOW_SIZE)
             .zip(&self.bases)
