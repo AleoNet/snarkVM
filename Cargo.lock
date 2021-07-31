@@ -1580,7 +1580,7 @@ checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
 
 [[package]]
 name = "snarkvm"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "anyhow",
  "colored",
@@ -1592,7 +1592,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-algorithms"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "anyhow",
  "bitvec",
@@ -1622,7 +1622,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-curves"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "criterion",
  "derivative",
@@ -1637,7 +1637,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-derives"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "proc-macro-crate 0.1.5",
  "proc-macro-error",
@@ -1648,7 +1648,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-dpc"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "anyhow",
  "base58",
@@ -1679,7 +1679,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-fields"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1693,7 +1693,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-gadgets"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "blake2",
  "criterion",
@@ -1717,7 +1717,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-integration"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "anyhow",
  "base58",
@@ -1744,7 +1744,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-marlin"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "blake2",
  "criterion",
@@ -1767,7 +1767,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-parameters"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "blake2",
  "curl",
@@ -1786,7 +1786,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-polycommit"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "blake2",
  "derivative",
@@ -1807,7 +1807,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-posw"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "blake2",
  "criterion",
@@ -1831,14 +1831,14 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-profiler"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "colored",
 ]
 
 [[package]]
 name = "snarkvm-r1cs"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "cfg-if 1.0.0",
  "fxhash",
@@ -1851,7 +1851,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-utilities"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1864,7 +1864,7 @@ dependencies = [
 
 [[package]]
 name = "snarkvm-wasm"
-version = "0.7.5"
+version = "0.7.6"
 dependencies = [
  "derivative",
  "getrandom",
