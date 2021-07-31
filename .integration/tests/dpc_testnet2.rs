@@ -74,6 +74,7 @@ fn test_testnet2_inner_circuit_sanity_check() {
     assert_eq!(expected_testnet2_inner_circuit_id, candidate_testnet2_inner_circuit_id);
 }
 
+#[ignore]
 #[test]
 fn dpc_testnet2_integration_test() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
@@ -247,6 +248,7 @@ fn dpc_testnet2_integration_test() {
     assert_eq!(ledger.len(), 2);
 }
 
+#[ignore]
 #[test]
 fn test_testnet_2_transaction_kernel_serialization() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
@@ -338,6 +340,7 @@ fn test_testnet_2_transaction_kernel_serialization() {
     assert_eq!(transaction_kernel, recovered_transaction_kernel);
 }
 
+#[ignore]
 #[test]
 fn test_testnet2_dpc_execute_constraints() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
