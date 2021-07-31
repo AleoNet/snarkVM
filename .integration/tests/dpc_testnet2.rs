@@ -200,7 +200,7 @@ fn dpc_testnet2_integration_test() {
     let block = Block { header, transactions };
 
     ledger.insert_and_commit(&block).unwrap();
-    assert_eq!(ledger.block_height(), 2);
+    assert_eq!(ledger.block_height(), 1);
 }
 
 #[test]
