@@ -39,7 +39,7 @@ pub trait SNARK {
     type BaseField: Clone + PrimeField;
 
     type PreparedVerifyingKey: Clone;
-    type Proof: Clone + Debug + ToBytes + FromBytes;
+    type Proof: Clone + Debug + ToBytes + FromBytes + Send + Sync;
     type ProvingKey: Clone + ToBytes + FromBytes + Send + Sync;
     type VerifierInput: ?Sized;
 

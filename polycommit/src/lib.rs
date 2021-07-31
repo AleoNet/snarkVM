@@ -173,7 +173,9 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         + Clone
         + From<Vec<Self::Proof>>
         + Into<Vec<Self::Proof>>
-        + Debug;
+        + Debug
+        + Send
+        + Sync;
     /// The error type for the scheme.
     type Error: snarkvm_utilities::error::Error + From<Error>;
 

@@ -17,7 +17,7 @@
 use snarkvm_dpc::traits::TransactionScheme;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes {
+pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     type BlockHeader: Clone + Eq + FromBytes + ToBytes;
     type Transaction: TransactionScheme;
 
