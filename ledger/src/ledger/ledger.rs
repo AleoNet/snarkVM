@@ -84,14 +84,11 @@ impl<C: Parameters, S: Storage> LedgerScheme<C> for Ledger<C, S> {
 
         debug_assert_eq!(ledger.block_height(), 0, "Uninitialized ledger block height must be 0");
         ledger.insert_and_commit(&genesis_block)?;
-        debug_assert_eq!(ledger.block_height(), 1, "Initialized ledger block height must be 1");
 
         Ok(ledger)
     }
 
     /// Returns the latest number of blocks in the ledger.
-    /// A block height of 0 indicates the ledger is uninitialized.
-    /// A block height of 1 indicates the ledger is initialized with a genesis block.
     fn block_height(&self) -> u32 {
         self.current_block_height.load(Ordering::SeqCst)
     }
@@ -400,7 +397,9 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
     /// Commit/canonize a particular block.
     pub fn commit(&self, block: &Block<Transaction<C>>) -> Result<(), StorageError> {
         // If the ledger is initialized, ensure the block header is not a genesis header.
-        if self.block_height() != 0 && block.header().is_genesis() {
+        let block_height = self.block_height();
+        let is_genesis = block.header().is_genesis();
+        if block_height != 0 && is_genesis {
             return Err(StorageError::InvalidBlockHeader);
         }
 
@@ -460,7 +459,10 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
 
         // Update the best block number.
 
-        let new_block_height = self.block_height() + 1;
+        let new_block_height = match is_genesis {
+            true => block_height,
+            false => block_height + 1,
+        };
 
         database_transaction.push(Op::Insert {
             col: COL_META,
@@ -498,7 +500,9 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
 
         self.storage.batch(database_transaction)?;
 
-        self.current_block_height.fetch_add(1, Ordering::SeqCst);
+        if !is_genesis {
+            self.current_block_height.fetch_add(1, Ordering::SeqCst);
+        }
 
         Ok(())
     }

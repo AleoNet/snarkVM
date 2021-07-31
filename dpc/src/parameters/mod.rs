@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #[macro_use]
-pub mod common;
+pub mod macros;
 
 #[cfg(feature = "testnet1")]
 pub mod testnet1;
