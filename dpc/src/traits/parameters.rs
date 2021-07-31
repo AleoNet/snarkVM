@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerCircuitVerifierInput, OuterCircuitVerifierInput, ProgramLocalData};
+use crate::{InnerCircuitVerifierInput, OuterCircuitVerifierInput, ProgramPublicVariables};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, ToConstraintField};
@@ -34,7 +34,7 @@ use snarkvm_utilities::{
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
 
-pub trait Parameters: 'static + Sized {
+pub trait Parameters: 'static + Sized + Send + Sync {
     const NETWORK_ID: u8;
 
     const NUM_INPUT_RECORDS: usize;
@@ -68,7 +68,7 @@ pub trait Parameters: 'static + Sized {
     type ProgramSNARK: SNARK<
         ScalarField = Self::InnerScalarField,
         BaseField = Self::OuterScalarField,
-        VerifierInput = ProgramLocalData<Self>,
+        VerifierInput = ProgramPublicVariables<Self>,
     >;
     /// Program SNARK verifier gadget for Aleo applications.
     type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK>;
@@ -177,9 +177,22 @@ pub trait Parameters: 'static + Sized {
         + Sync
         + Send;
 
-    /// CRH for hashes of birth and death verifying keys. Invoked only over `Self::OuterScalarField`.
+    /// CRH for program ID hashing. Invoked only over `Self::OuterScalarField`.
     type ProgramIDCRH: CRH;
     type ProgramIDCRHGadget: CRHGadget<Self::ProgramIDCRH, Self::OuterScalarField>;
+    type ProgramIDTreeDigest: ToConstraintField<Self::OuterScalarField>
+        + Clone
+        + Debug
+        + Display
+        + ToBytes
+        + FromBytes
+        + Eq
+        + Hash
+        + Default
+        + Send
+        + Sync
+        + Copy;
+    type ProgramIDTreeParameters: LoadableMerkleParameters<H = Self::ProgramIDCRH>;
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
     type PRF: PRF;
@@ -251,6 +264,7 @@ pub trait Parameters: 'static + Sized {
     fn program_commitment_scheme() -> &'static Self::ProgramCommitmentScheme;
 
     fn program_id_crh() -> &'static Self::ProgramIDCRH;
+    fn program_id_tree_parameters() -> &'static Self::ProgramIDTreeParameters;
 
     fn record_commitment_scheme() -> &'static Self::RecordCommitmentScheme;
 

@@ -14,20 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{
-    CRHError,
-    CommitmentError,
-    EncryptionError,
-    MerkleError,
-    PRFError,
-    SNARKError,
-    SignatureError,
-};
+use snarkvm_algorithms::{CRHError, CommitmentError, EncryptionError, PRFError, SNARKError, SignatureError};
 use snarkvm_fields::ConstraintFieldError;
 use snarkvm_parameters::ParameterError;
 
 #[derive(Debug, Error)]
-pub enum ProgramError {
+pub enum CircuitError {
     #[error("{}", _0)]
     AccountError(#[from] crate::AccountError),
 
@@ -36,9 +28,6 @@ pub enum ProgramError {
 
     #[error("Cannot verify the provided record commitment")]
     CannotVerifyCommitment,
-
-    #[error("{}", _0)]
-    CircuitError(#[from] crate::CircuitError),
 
     #[error("{}", _0)]
     CommitmentError(#[from] CommitmentError),
@@ -65,9 +54,6 @@ pub enum ProgramError {
     InvalidCommitment,
 
     #[error("{}", _0)]
-    MerkleError(#[from] MerkleError),
-
-    #[error("{}", _0)]
     ParameterError(#[from] ParameterError),
 
     #[error("{}", _0)]
@@ -80,8 +66,8 @@ pub enum ProgramError {
     SNARKError(#[from] SNARKError),
 }
 
-impl From<std::io::Error> for ProgramError {
+impl From<std::io::Error> for CircuitError {
     fn from(error: std::io::Error) -> Self {
-        ProgramError::Crate("std::io", format!("{:?}", error))
+        CircuitError::Crate("std::io", format!("{:?}", error))
     }
 }

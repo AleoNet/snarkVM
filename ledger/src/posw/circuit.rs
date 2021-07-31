@@ -165,7 +165,7 @@ mod test {
                 leaves: snark_leaves,
                 merkle_parameters: Arc::new(parameters),
                 mask: Some(mask.clone()),
-                root: Some(root),
+                root: Some(root.clone()),
                 field_type: PhantomData,
                 crh_gadget_type: PhantomData,
             },
@@ -175,7 +175,7 @@ mod test {
         .unwrap();
 
         let inputs = [ToConstraintField::<Fr>::to_field_elements(&mask[..]).unwrap(), vec![
-            root,
+            root.clone(),
         ]]
         .concat();
 

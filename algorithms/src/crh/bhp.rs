@@ -17,9 +17,8 @@
 use crate::{hash_to_curve::hash_to_curve, CRHError, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
-use snarkvm_utilities::{BigInteger, FromBytes, ToBytes};
+use snarkvm_utilities::{from_bytes_le_to_bits_le, BigInteger, FromBytes, ToBytes};
 
-use bitvec::{order::Lsb0, view::BitView};
 use once_cell::sync::OnceCell;
 use std::{
     fmt::Debug,
@@ -99,7 +98,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         // overzealous but stack allocation
         let mut buffer = [0u8; MAX_WINDOW_SIZE * MAX_NUM_WINDOWS / 8 + BOWE_HOPWOOD_CHUNK_SIZE + 1];
         buffer[..input.len()].copy_from_slice(input);
-        let buf_slice = (&buffer[..]).view_bits::<Lsb0>();
+        let buf_slice = from_bytes_le_to_bits_le(&buffer[..]).collect::<Vec<_>>();
 
         let mut bit_len = WINDOW_SIZE * NUM_WINDOWS;
         if bit_len % BOWE_HOPWOOD_CHUNK_SIZE != 0 {

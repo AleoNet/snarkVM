@@ -20,7 +20,7 @@ use crate::{
     Network,
     OuterCircuitVerifierInput,
     Parameters,
-    ProgramLocalData,
+    ProgramPublicVariables,
     Transaction,
     DPC,
 };
@@ -70,43 +70,14 @@ macro_rules! dpc_setup {
     };
 }
 
-#[rustfmt::skip]
-macro_rules! dpc_snark_setup {
-    ($fn_name: ident, $static_name: ident, $snark_type: ident, $key_type: ident, $parameter: ident, $message: expr) => {
-        #[inline]
-        fn $fn_name() -> &'static <Self::$snark_type as SNARK>::$key_type {
-            static $static_name: OnceCell<<<Testnet1Parameters as Parameters>::$snark_type as SNARK>::$key_type> = OnceCell::new();
-            $static_name.get_or_init(|| {
-                <Self::$snark_type as SNARK>::$key_type::read_le(
-                    $parameter::load_bytes().expect(&format!("Failed to load parameter bytes for {}", $message)).as_slice()
-                ).expect(&format!("Failed to read {} from bytes", $message))
-            })
-        }
-    };
-}
-
-#[rustfmt::skip]
-macro_rules! dpc_snark_setup_with_mode {
-    ($fn_name: ident, $static_name: ident, $snark_type: ident, $key_type: ident, $parameter: ident, $message: expr) => {
-        #[inline]
-        fn $fn_name(is_prover: bool) -> &'static Option<<Self::$snark_type as SNARK>::$key_type> {
-            match is_prover {
-                true => {
-                    static $static_name: OnceCell<Option<<<Testnet1Parameters as Parameters>::$snark_type as SNARK>::$key_type>> = OnceCell::new();
-                    $static_name.get_or_init(|| {
-                        Some(<Self::$snark_type as SNARK>::$key_type::read_le(
-                            $parameter::load_bytes().expect(&format!("Failed to load parameter bytes for {}", $message)).as_slice(),
-                        ).expect(&format!("Failed to read {} from bytes", $message)))
-                    })
-                }
-                false => &None,
-            }
-        }
-    };
-}
-
 pub type Testnet1DPC = DPC<Testnet1Parameters>;
 pub type Testnet1Transaction = Transaction<Testnet1Parameters>;
+
+define_merkle_tree_parameters!(
+    ProgramIDMerkleTreeParameters,
+    <Testnet1Parameters as Parameters>::ProgramIDCRH,
+    8
+);
 
 define_merkle_tree_parameters!(
     CommitmentMerkleTreeParameters,
@@ -141,7 +112,7 @@ impl Parameters for Testnet1Parameters {
 
     type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet1Parameters>>;
 
-    type ProgramSNARK = Groth16<Self::InnerCurve, ProgramLocalData<Self>>;
+    type ProgramSNARK = Groth16<Self::InnerCurve, ProgramPublicVariables<Self>>;
     type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
 
     type AccountCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 33, 48>;
@@ -179,7 +150,9 @@ impl Parameters for Testnet1Parameters {
 
     type ProgramIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
-
+    type ProgramIDTreeDigest = <Self::ProgramIDCRH as CRH>::Output;
+    type ProgramIDTreeParameters = ProgramIDMerkleTreeParameters;
+    
     type RecordCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 48, 50>;
     type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 50>;
     type RecordCommitment = <Self::RecordCommitmentScheme as CommitmentScheme>::Output;
@@ -210,15 +183,20 @@ impl Parameters for Testnet1Parameters {
     dpc_setup!{record_serial_number_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoRecordSerialNumberTreeCRH0"}
     dpc_setup!{serial_number_nonce_crh, SERIAL_NUMBER_NONCE_CRH, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
 
-    dpc_snark_setup_with_mode!{inner_circuit_proving_key, INNER_CIRCUIT_PROVING_KEY, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
-    dpc_snark_setup!{inner_circuit_verifying_key, INNER_CIRCUIT_VERIFYING_KEY, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
-    
-    dpc_snark_setup!{noop_program_proving_key, NOOP_PROGRAM_PROVING_KEY, ProgramSNARK, ProvingKey, NoopProgramSNARKPKParameters, "noop program proving key"}
-    dpc_snark_setup!{noop_program_verifying_key, NOOP_PROGRAM_VERIFYING_KEY, ProgramSNARK, VerifyingKey, NoopProgramSNARKVKParameters, "noop program verifying key"}
-    
-    dpc_snark_setup_with_mode!{outer_circuit_proving_key, OUTER_CIRCUIT_PROVING_KEY, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
-    dpc_snark_setup!{outer_circuit_verifying_key, OUTER_CIRCUIT_VERIFYING_KEY, OuterSNARK, VerifyingKey, OuterSNARKVKParameters, "outer circuit verifying key"}
+    dpc_snark_setup_with_mode!{Testnet1Parameters, inner_circuit_proving_key, INNER_CIRCUIT_PROVING_KEY, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
+    dpc_snark_setup!{Testnet1Parameters, inner_circuit_verifying_key, INNER_CIRCUIT_VERIFYING_KEY, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
 
+    dpc_snark_setup!{Testnet1Parameters, noop_program_proving_key, NOOP_PROGRAM_PROVING_KEY, ProgramSNARK, ProvingKey, NoopProgramSNARKPKParameters, "noop program proving key"}
+    dpc_snark_setup!{Testnet1Parameters, noop_program_verifying_key, NOOP_PROGRAM_VERIFYING_KEY, ProgramSNARK, VerifyingKey, NoopProgramSNARKVKParameters, "noop program verifying key"}
+
+    dpc_snark_setup_with_mode!{Testnet1Parameters, outer_circuit_proving_key, OUTER_CIRCUIT_PROVING_KEY, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
+    dpc_snark_setup!{Testnet1Parameters, outer_circuit_verifying_key, OUTER_CIRCUIT_VERIFYING_KEY, OuterSNARK, VerifyingKey, OuterSNARKVKParameters, "outer circuit verifying key"}
+
+    fn program_id_tree_parameters() -> &'static Self::ProgramIDTreeParameters {
+        static PROGRAM_ID_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::ProgramIDTreeParameters> = OnceCell::new();
+        PROGRAM_ID_TREE_PARAMETERS.get_or_init(|| Self::ProgramIDTreeParameters::from(Self::program_id_crh().clone()))
+    }
+    
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters {
         static RECORD_COMMITMENT_TREE_PARAMETERS: OnceCell<<Testnet1Parameters as Parameters>::RecordCommitmentTreeParameters> = OnceCell::new();
         RECORD_COMMITMENT_TREE_PARAMETERS.get_or_init(|| Self::RecordCommitmentTreeParameters::from(Self::record_commitment_tree_crh().clone()))

@@ -22,7 +22,7 @@ use snarkvm_dpc::{
     NoopProgram,
     OuterCircuit,
     Parameters,
-    ProgramScheme,
+    Program,
 };
 use snarkvm_parameters::{
     testnet2::{InnerSNARKPKParameters, InnerSNARKVKParameters},
@@ -54,7 +54,7 @@ where
     let noop_program = NoopProgram::<C>::load()?;
 
     let outer_snark_parameters = C::OuterSNARK::setup(
-        &OuterCircuit::<C>::blank(inner_snark_vk, inner_snark_proof, noop_program.execute_blank(rng)?),
+        &OuterCircuit::<C>::blank(inner_snark_vk, inner_snark_proof, noop_program.execute_blank(0)?),
         &mut SRS::CircuitSpecific(rng),
     )?;
 

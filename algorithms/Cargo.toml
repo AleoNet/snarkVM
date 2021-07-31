@@ -94,9 +94,6 @@ default-features = false
 [dependencies.anyhow]
 version = "1.0"
 
-[dependencies.bitvec]
-version = "0.19.4"
-
 [dependencies.blake2]
 version = "0.9"
 optional = true

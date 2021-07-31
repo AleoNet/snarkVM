@@ -42,6 +42,9 @@ pub enum MerkleError {
 
     #[error("{}", _0)]
     Message(String),
+
+    #[error("Missing entry at leaf index: {}", _0)]
+    MissingLeafIndex(usize),
 }
 
 impl From<std::io::Error> for MerkleError {
