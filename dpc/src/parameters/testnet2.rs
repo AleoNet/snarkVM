@@ -20,7 +20,7 @@ use crate::{
     Network,
     OuterCircuitVerifierInput,
     Parameters,
-    ProgramLocalData,
+    ProgramPublicVariables,
     Transaction,
     DPC,
 };
@@ -81,6 +81,12 @@ pub type Testnet2DPC = DPC<Testnet2Parameters>;
 pub type Testnet2Transaction = Transaction<Testnet2Parameters>;
 
 define_merkle_tree_parameters!(
+    ProgramIDMerkleTreeParameters,
+    <Testnet2Parameters as Parameters>::ProgramIDCRH,
+    8
+);
+
+define_merkle_tree_parameters!(
     CommitmentMerkleTreeParameters,
     <Testnet2Parameters as Parameters>::RecordCommitmentTreeCRH,
     32
@@ -120,7 +126,7 @@ impl Parameters for Testnet2Parameters {
         MarlinKZG10<Self::InnerCurve>,
         FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>,
         MarlinTestnet2Mode,
-        ProgramLocalData<Self>,
+        ProgramPublicVariables<Self>,
     >;
     type ProgramSNARKGadget = MarlinVerificationGadget<
         Self::InnerScalarField,
@@ -164,7 +170,9 @@ impl Parameters for Testnet2Parameters {
 
     type ProgramIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
-
+    type ProgramIDTreeDigest = <Self::ProgramIDCRH as CRH>::Output;
+    type ProgramIDTreeParameters = ProgramIDMerkleTreeParameters;
+    
     type RecordCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 48, 50>;
     type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 50>;
     type RecordCommitment = <Self::RecordCommitmentScheme as CommitmentScheme>::Output;
@@ -203,7 +211,12 @@ impl Parameters for Testnet2Parameters {
 
     dpc_snark_setup_with_mode!{Testnet2Parameters, outer_circuit_proving_key, OUTER_CIRCUIT_PROVING_KEY, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
     dpc_snark_setup!{Testnet2Parameters, outer_circuit_verifying_key, OUTER_CIRCUIT_VERIFYING_KEY, OuterSNARK, VerifyingKey, OuterSNARKVKParameters, "outer circuit verifying key"}
-
+    
+    fn program_id_tree_parameters() -> &'static Self::ProgramIDTreeParameters {
+        static PROGRAM_ID_TREE_PARAMETERS: OnceCell<<Testnet2Parameters as Parameters>::ProgramIDTreeParameters> = OnceCell::new();
+        PROGRAM_ID_TREE_PARAMETERS.get_or_init(|| Self::ProgramIDTreeParameters::from(Self::program_id_crh().clone()))
+    }
+    
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters {
         static RECORD_COMMITMENT_TREE_PARAMETERS: OnceCell<<Testnet2Parameters as Parameters>::RecordCommitmentTreeParameters> = OnceCell::new();
         RECORD_COMMITMENT_TREE_PARAMETERS.get_or_init(|| Self::RecordCommitmentTreeParameters::from(Self::record_commitment_tree_crh().clone()))

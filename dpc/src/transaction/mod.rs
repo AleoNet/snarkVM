@@ -20,6 +20,9 @@ pub use amount::*;
 pub mod kernel;
 pub use kernel::*;
 
+pub mod local_data;
+pub use local_data::*;
+
 pub mod network;
 pub use network::*;
 

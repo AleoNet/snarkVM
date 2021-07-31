@@ -164,7 +164,7 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
     let given_root = if use_bad_root {
         <P::H as CRH>::Output::default()
     } else {
-        root
+        root.clone()
     };
 
     let given_root_gadget =

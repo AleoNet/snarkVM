@@ -154,17 +154,17 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
     type UniversalParams: PCUniversalParams + Clone;
     /// The committer key for the scheme; used to commit to a polynomial and then
     /// open the commitment to produce an evaluation proof.
-    type CommitterKey: PCCommitterKey + Clone;
+    type CommitterKey: PCCommitterKey + Clone + Send + Sync;
     /// The verifier key for the scheme; used to check an evaluation proof.
-    type VerifierKey: PCVerifierKey + Prepare<Self::PreparedVerifierKey> + ToConstraintField<CF> + Clone;
+    type VerifierKey: PCVerifierKey + Prepare<Self::PreparedVerifierKey> + ToConstraintField<CF> + Clone + Send + Sync;
     /// The prepared verifier key for the scheme; used to check an evaluation proof.
     type PreparedVerifierKey: Clone;
     /// The commitment to a polynomial.
-    type Commitment: PCCommitment + Prepare<Self::PreparedCommitment> + ToConstraintField<CF> + Clone;
+    type Commitment: PCCommitment + Prepare<Self::PreparedCommitment> + ToConstraintField<CF> + Clone + Send + Sync;
     /// The prepared commitment to a polynomial.
     type PreparedCommitment: Clone;
     /// The commitment randomness.
-    type Randomness: PCRandomness + Clone;
+    type Randomness: PCRandomness + Clone + Send + Sync;
     /// The evaluation proof for a single point.
     type Proof: PCProof + Clone;
     /// The evaluation proof for a query set.

@@ -483,7 +483,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
 
         // Rebuild the new commitment merkle tree
         self.rebuild_merkle_tree(transaction_cms)?;
-        let new_digest = self.record_commitment_tree.read().root();
+        let new_digest = self.record_commitment_tree.read().root().clone();
 
         database_transaction.push(Op::Insert {
             col: COL_DIGEST,

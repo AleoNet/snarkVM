@@ -28,7 +28,7 @@ use rayon::prelude::*;
 #[derive(Default)]
 pub struct MerkleTree<P: MerkleParameters> {
     /// The computed root of the full Merkle tree.
-    root: Option<MerkleTreeDigest<P>>,
+    root: MerkleTreeDigest<P>,
     /// The internal hashes, from root to hashed leaves, of the full Merkle tree.
     tree: Vec<MerkleTreeDigest<P>>,
     /// The index from which hashes of each non-empty leaf in the Merkle tree can be obtained.
@@ -124,7 +124,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
             padding_tree,
             hashed_leaves_index: last_level_index,
             parameters,
-            root: Some(root_hash),
+            root: root_hash,
         })
     }
 
@@ -233,7 +233,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
 
         // update the values at the very end so the original tree is not altered in case of failure
         Ok(MerkleTree {
-            root: Some(root_hash),
+            root: root_hash,
             tree,
             hashed_leaves_index: last_level_index,
             padding_tree: if let Some(padding_tree) = new_padding_tree {
@@ -246,8 +246,8 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
     }
 
     #[inline]
-    pub fn root(&self) -> <P::H as CRH>::Output {
-        self.root.clone().unwrap()
+    pub fn root(&self) -> &<P::H as CRH>::Output {
+        &self.root
     }
 
     #[inline]
