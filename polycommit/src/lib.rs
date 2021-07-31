@@ -112,9 +112,7 @@ pub mod sonic_pc;
 /// `p` that have previously been committed to. Each element of a `QuerySet` is a `(label, query)`
 /// pair, where `label` is the label of a polynomial in `p`, and `query` is the field element
 /// that `p[label]` is to be queried at.
-///
-/// Added the third field: the point name.
-pub type QuerySet<'a, T> = BTreeSet<(String, (String, T))>;
+pub type QuerySet<'a, F> = BTreeSet<(String, F)>;
 
 /// `Evaluations` is the result of querying a set of labeled polynomials or equations
 /// `p` at a `QuerySet` `Q`. It maps each element of `Q` to the resulting evaluation.
@@ -251,15 +249,13 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
 
         let mut query_to_labels_map = BTreeMap::new();
 
-        for (label, (point_name, point)) in query_set.iter() {
-            let labels = query_to_labels_map
-                .entry(point_name)
-                .or_insert((point, BTreeSet::new()));
-            labels.1.insert(label);
+        for (label, point) in query_set.iter() {
+            let labels = query_to_labels_map.entry(point).or_insert_with(BTreeSet::new);
+            labels.insert(label);
         }
 
         let mut proofs = Vec::with_capacity(query_to_labels_map.len());
-        for (_point_name, (query, labels)) in query_to_labels_map.into_iter() {
+        for (query, labels) in query_to_labels_map.into_iter() {
             let mut query_polys = Vec::with_capacity(labels.len());
             let mut query_rands = Vec::with_capacity(labels.len());
             let mut query_comms = Vec::with_capacity(labels.len());
@@ -324,11 +320,9 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
     {
         let commitments: BTreeMap<_, _> = commitments.into_iter().map(|c| (c.label(), c)).collect();
         let mut query_to_labels_map = BTreeMap::new();
-        for (label, (point_name, point)) in query_set.iter() {
-            let labels = query_to_labels_map
-                .entry(point_name)
-                .or_insert((point, BTreeSet::new()));
-            labels.1.insert(label);
+        for (label, point) in query_set.iter() {
+            let labels = query_to_labels_map.entry(point).or_insert_with(BTreeSet::new);
+            labels.insert(label);
         }
 
         // Implicit assumption: proofs are order in same manner as queries in
@@ -337,7 +331,7 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
         assert_eq!(proofs.len(), query_to_labels_map.len());
 
         let mut result = true;
-        for ((_point_name, (query, labels)), proof) in query_to_labels_map.into_iter().zip(proofs) {
+        for ((query, labels), proof) in query_to_labels_map.into_iter().zip(proofs) {
             let mut comms: Vec<&'_ LabeledCommitment<_>> = Vec::with_capacity(labels.len());
             let mut values = Vec::with_capacity(labels.len());
             for label in labels.into_iter() {
@@ -423,14 +417,9 @@ pub trait PolynomialCommitment<F: Field>: Sized + Clone + Debug {
         let lc_s: BTreeMap<_, _> = linear_combinations.into_iter().map(|lc| (lc.label(), lc)).collect();
 
         let poly_query_set = lc_query_set_to_poly_query_set(lc_s.values().copied(), eqn_query_set);
-        let poly_evals: Evaluations<_> = poly_query_set
-            .iter()
-            .map(|(_, point)| point)
-            .cloned()
-            .zip(evals.clone().unwrap())
-            .collect();
+        let poly_evals: Evaluations<_> = poly_query_set.iter().cloned().zip(evals.clone().unwrap()).collect();
 
-        for &(ref lc_label, (_, point)) in eqn_query_set {
+        for &(ref lc_label, point) in eqn_query_set {
             if let Some(lc) = lc_s.get(lc_label) {
                 let claimed_rhs = *eqn_evaluations
                     .get(&(lc_label.clone(), point))
@@ -512,7 +501,7 @@ pub fn evaluate_query_set<'a, F: Field>(
 ) -> Evaluations<'a, F> {
     let polys: BTreeMap<_, _> = polys.into_iter().map(|p| (p.label(), p)).collect();
     let mut evaluations = Evaluations::new();
-    for (label, (_point_name, point)) in query_set {
+    for (label, point) in query_set {
         let poly = polys.get(label).expect("polynomial in evaluated lc is not found");
         let eval = poly.evaluate(*point);
         evaluations.insert((label.clone(), *point), eval);
@@ -527,11 +516,11 @@ fn lc_query_set_to_poly_query_set<'a, F: 'a + Field>(
     let mut poly_query_set = QuerySet::new();
     let lc_s = linear_combinations.into_iter().map(|lc| (lc.label(), lc));
     let linear_combinations: BTreeMap<_, _> = lc_s.collect();
-    for (lc_label, (point_name, point)) in query_set {
+    for (lc_label, point) in query_set {
         if let Some(lc) = linear_combinations.get(lc_label) {
             for (_, poly_label) in lc.iter().filter(|(_, l)| !l.is_one()) {
                 if let LCTerm::PolyLabel(l) = poly_label {
-                    poly_query_set.insert((l.into(), (point_name.clone(), *point)));
+                    poly_query_set.insert((l.into(), *point));
                 }
             }
         }
@@ -607,7 +596,7 @@ pub mod tests {
             let mut values = Evaluations::new();
             let point = F::rand(rng);
             for (i, label) in labels.iter().enumerate() {
-                query_set.insert((label.clone(), ("rand".into(), point)));
+                query_set.insert((label.clone(), point));
                 let value = polynomials[i].evaluate(point);
                 values.insert((label.clone(), point), value);
             }
@@ -703,10 +692,10 @@ pub mod tests {
             let mut query_set = QuerySet::new();
             let mut values = Evaluations::new();
             // let mut point = F::one();
-            for point_id in 0..num_points_in_query_set {
+            for _ in 0..num_points_in_query_set {
                 let point = F::rand(rng);
                 for (i, label) in labels.iter().enumerate() {
-                    query_set.insert((label.clone(), (format!("rand_{}", point_id), point)));
+                    query_set.insert((label.clone(), point));
                     let value = polynomials[i].evaluate(point);
                     values.insert((label.clone(), point), value);
                 }
@@ -861,7 +850,7 @@ pub mod tests {
                     if !lc.is_empty() {
                         linear_combinations.push(lc);
                         // Insert query
-                        query_set.insert((label.clone(), (format!("rand_{}", i), point)));
+                        query_set.insert((label.clone(), point));
                     }
                 }
             }

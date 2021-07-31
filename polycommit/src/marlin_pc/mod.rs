@@ -373,18 +373,16 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr> for MarlinKZG10<E> {
         let commitments: BTreeMap<_, _> = commitments.into_iter().map(|c| (c.label().to_owned(), c)).collect();
         let mut query_to_labels_map = BTreeMap::new();
 
-        for (label, (point_name, point)) in query_set.iter() {
-            let labels = query_to_labels_map
-                .entry(point_name)
-                .or_insert((point, BTreeSet::new()));
-            labels.1.insert(label);
+        for (label, point) in query_set.iter() {
+            let labels = query_to_labels_map.entry(point).or_insert_with(BTreeSet::new);
+            labels.insert(label);
         }
         assert_eq!(proof.len(), query_to_labels_map.len());
 
         let mut combined_comms = Vec::with_capacity(query_to_labels_map.len());
         let mut combined_queries = Vec::with_capacity(query_to_labels_map.len());
         let mut combined_evals = Vec::with_capacity(query_to_labels_map.len());
-        for (_point_name, (query, labels)) in query_to_labels_map.into_iter() {
+        for (query, labels) in query_to_labels_map.into_iter() {
             let lc_time = start_timer!(|| format!("Randomly combining {} commitments", labels.len()));
             let mut comms_to_combine = Vec::with_capacity(labels.len());
             let mut values_to_combine = Vec::with_capacity(labels.len());
@@ -882,15 +880,13 @@ impl<E: PairingEngine> MarlinKZG10<E> {
 
         let mut query_to_labels_map = BTreeMap::new();
 
-        for (label, (point_name, point)) in query_set.iter() {
-            let labels = query_to_labels_map
-                .entry(point_name)
-                .or_insert((point, BTreeSet::new()));
-            labels.1.insert(label);
+        for (label, point) in query_set.iter() {
+            let labels = query_to_labels_map.entry(point).or_insert_with(BTreeSet::new);
+            labels.insert(label);
         }
 
         let mut proofs = Vec::new();
-        for (_point_name, (query, labels)) in query_to_labels_map.into_iter() {
+        for (query, labels) in query_to_labels_map.into_iter() {
             let mut query_polys: Vec<&'a LabeledPolynomial<_>> = Vec::new();
             let mut query_rands: Vec<&'a <Self as PolynomialCommitment<E::Fr>>::Randomness> = Vec::new();
             let mut query_comms: Vec<&'a LabeledCommitment<<Self as PolynomialCommitment<E::Fr>>::Commitment>> =
@@ -1039,17 +1035,15 @@ impl<E: PairingEngine> MarlinKZG10<E> {
         let commitments: BTreeMap<_, _> = commitments.into_iter().map(|c| (c.label(), c)).collect();
         let mut query_to_labels_map = BTreeMap::new();
 
-        for (label, (point_name, point)) in query_set.iter() {
-            let labels = query_to_labels_map
-                .entry(point_name)
-                .or_insert((point, BTreeSet::new()));
-            labels.1.insert(label);
+        for (label, point) in query_set.iter() {
+            let labels = query_to_labels_map.entry(point).or_insert_with(BTreeSet::new);
+            labels.insert(label);
         }
 
         let mut combined_comms = Vec::new();
         let mut combined_queries = Vec::new();
         let mut combined_evals = Vec::new();
-        for (_point_name, (point, labels)) in query_to_labels_map.into_iter() {
+        for (point, labels) in query_to_labels_map.into_iter() {
             let lc_time = start_timer!(|| format!("Randomly combining {} commitments", labels.len()));
             let mut comms_to_combine: Vec<&'_ LabeledCommitment<_>> = Vec::new();
             let mut values_to_combine = Vec::new();
