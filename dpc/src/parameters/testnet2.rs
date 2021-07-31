@@ -63,9 +63,9 @@ use snarkvm_parameters::{testnet2::*, Parameter};
 use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
 use snarkvm_utilities::FromBytes;
 
-use anyhow::Result;
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
+use std::{cell::RefCell, rc::Rc};
 
 macro_rules! dpc_setup {
     ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
@@ -227,12 +227,13 @@ impl Parameters for Testnet2Parameters {
         RECORD_SERIAL_NUMBER_TREE_PARAMETERS.get_or_init(|| Self::RecordSerialNumberTreeParameters::from(Self::record_serial_number_tree_crh().clone()))
     }
 
-    // TODO (howardwu): TEMPORARY - Making this oncecell.
     /// Returns the program SRS for Aleo applications.
-    fn program_srs<R: Rng + CryptoRng>(_rng: &mut R) -> Result<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>> {
-        let bytes = UniversalSRSParameters::load_bytes()?;
-        let srs = <Self::ProgramSNARK as SNARK>::UniversalSetupParameters::from_bytes_le(&bytes)?;
-        Ok(SRS::<R, _>::Universal(srs))
+    fn program_srs<R: Rng + CryptoRng>(_rng: &mut R) -> Rc<RefCell<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>>> {
+        static UNIVERSAL_SRS: OnceCell<<<Testnet2Parameters as Parameters>::ProgramSNARK as SNARK>::UniversalSetupParameters> = OnceCell::new();
+        let universal_srs = UNIVERSAL_SRS.get_or_init(|| <Self::ProgramSNARK as SNARK>::UniversalSetupParameters::from_bytes_le(
+            &UniversalSRSParameters::load_bytes().expect("Failed to load universal SRS bytes"),
+        ).unwrap());
+        Rc::new(RefCell::new(SRS::<_, _>::Universal(universal_srs)))
     }
 }
 

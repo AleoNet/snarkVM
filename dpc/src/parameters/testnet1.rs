@@ -56,9 +56,9 @@ use snarkvm_gadgets::{
 use snarkvm_parameters::{testnet1::*, Parameter};
 use snarkvm_utilities::FromBytes;
 
-use anyhow::Result;
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
+use std::{cell::RefCell, rc::Rc};
 
 macro_rules! dpc_setup {
     ($fn_name: ident, $static_name: ident, $type_name: ident, $setup_msg: expr) => {
@@ -208,7 +208,7 @@ impl Parameters for Testnet1Parameters {
     }
 
     /// Returns the program SRS for Aleo applications.
-    fn program_srs<R: Rng + CryptoRng>(rng: &mut R) -> Result<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>> {
-        Ok(SRS::CircuitSpecific(rng))
+    fn program_srs<R: Rng + CryptoRng>(rng: &mut R) -> Rc<RefCell<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>>> {
+        Rc::new(RefCell::new(SRS::CircuitSpecific(rng)))
     }
 }
