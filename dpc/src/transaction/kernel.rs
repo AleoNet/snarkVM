@@ -110,10 +110,19 @@ pub struct TransactionKernel<C: Parameters> {
     pub authorized: TransactionAuthorization<C>,
     pub old_records: Vec<Record<C>>,
     pub new_records: Vec<Record<C>>,
-    pub local_data: LocalData<C>,
 }
 
 impl<C: Parameters> TransactionKernel<C> {
+    #[inline]
+    pub fn to_local_data<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<LocalData<C>> {
+        Ok(LocalData::new(
+            &self.authorized,
+            &self.old_records,
+            &self.new_records,
+            rng,
+        )?)
+    }
+
     #[inline]
     pub fn to_program_commitment<R: Rng + CryptoRng>(
         &self,
@@ -162,8 +171,7 @@ impl<C: Parameters> ToBytes for TransactionKernel<C> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.authorized.write_le(&mut writer)?;
         self.old_records.write_le(&mut writer)?;
-        self.new_records.write_le(&mut writer)?;
-        self.local_data.write_le(&mut writer)
+        self.new_records.write_le(&mut writer)
     }
 }
 
@@ -182,13 +190,10 @@ impl<C: Parameters> FromBytes for TransactionKernel<C> {
             new_records.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let local_data: LocalData<C> = FromBytes::read_le(&mut reader)?;
-
         Ok(Self {
             authorized,
             old_records,
             new_records,
-            local_data,
         })
     }
 }

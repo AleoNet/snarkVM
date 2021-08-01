@@ -131,10 +131,13 @@ fn dpc_testnet2_integration_test() {
         .execute_offline_phase(&old_private_keys, old_records, new_records, [4u8; 64], &mut rng)
         .unwrap();
 
+    // Generate the local data.
+    let local_data = transaction_kernel.to_local_data(&mut rng).unwrap();
+
     // Generate the program proofs
     let mut program_proofs = vec![];
     for i in 0..Testnet2Parameters::NUM_TOTAL_RECORDS {
-        let public_variables = ProgramPublicVariables::new(transaction_kernel.local_data.root(), i as u8);
+        let public_variables = ProgramPublicVariables::new(local_data.root(), i as u8);
         program_proofs.push(
             dpc.noop_program
                 .execute(0, &public_variables, &NoopPrivateVariables::new())
@@ -345,11 +348,13 @@ fn test_testnet2_dpc_execute_constraints() {
         .execute_offline_phase(&old_private_keys, old_records, new_records, memo, &mut rng)
         .unwrap();
 
-    // Generate the program proofs
+    // Generate the local data.
+    let local_data = transaction_kernel.to_local_data(&mut rng).unwrap();
 
+    // Generate the program proofs
     let mut program_proofs = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-        let public_variables = ProgramPublicVariables::new(transaction_kernel.local_data.root(), i as u8);
+        let public_variables = ProgramPublicVariables::new(local_data.root(), i as u8);
         program_proofs.push(
             alternate_noop_program
                 .execute(0, &public_variables, &NoopPrivateVariables::new())
@@ -357,10 +362,8 @@ fn test_testnet2_dpc_execute_constraints() {
         );
     }
     for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
-        let public_variables = ProgramPublicVariables::new(
-            transaction_kernel.local_data.root(),
-            (Testnet2Parameters::NUM_INPUT_RECORDS + j) as u8,
-        );
+        let public_variables =
+            ProgramPublicVariables::new(local_data.root(), (Testnet2Parameters::NUM_INPUT_RECORDS + j) as u8);
         program_proofs.push(
             dpc.noop_program
                 .execute(0, &public_variables, &NoopPrivateVariables::new())
@@ -379,7 +382,6 @@ fn test_testnet2_dpc_execute_constraints() {
         authorized,
         old_records,
         new_records,
-        local_data,
     } = transaction_kernel;
 
     let TransactionAuthorization {

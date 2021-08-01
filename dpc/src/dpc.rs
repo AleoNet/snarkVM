@@ -114,13 +114,14 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let mut value_balance = AleoAmount::ZERO;
 
         for (i, record) in old_records.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
-            let (sn, signature_randomizer) = record.to_serial_number(&old_private_keys[i])?;
-            serial_numbers.push(sn);
+            let (serial_number, signature_randomizer) = record.to_serial_number(&old_private_keys[i])?;
+            serial_numbers.push(serial_number);
 
             // Randomize the private key.
-            let randomized_private_key = C::account_signature_scheme()
-                .randomize_private_key(&old_private_keys[i].sk_sig, &signature_randomizer)?;
-            randomized_private_keys.push(randomized_private_key);
+            randomized_private_keys.push(
+                C::account_signature_scheme()
+                    .randomize_private_key(&old_private_keys[i].sk_sig, &signature_randomizer)?,
+            );
 
             if !record.is_dummy() {
                 value_balance = value_balance.add(AleoAmount::from_bytes(record.value() as i64));
@@ -135,14 +136,15 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             }
         }
 
-        // Generate Schnorr signatures to authorize the transaction.
+        // Sign the public data to authorize the transaction.
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         let signature_message = to_bytes_le![C::NETWORK_ID, serial_numbers, commitments, value_balance, memo]?;
         for i in 0..C::NUM_INPUT_RECORDS {
-            // Sign the transaction data.
-            let randomized_signature =
-                C::account_signature_scheme().sign_randomized(&randomized_private_keys[i], &signature_message, rng)?;
-            signatures.push(randomized_signature);
+            signatures.push(C::account_signature_scheme().sign_randomized(
+                &randomized_private_keys[i],
+                &signature_message,
+                rng,
+            )?);
         }
 
         // Construct the transaction authorization.
@@ -155,17 +157,11 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             signatures,
         };
 
-        // Generate the local data.
-        let timer = start_timer!(|| "Generate the local data");
-        let local_data = LocalData::new(&authorized, &old_records, &new_records, rng)?;
-        end_timer!(timer);
-
         // Return the transaction kernel.
         Ok(TransactionKernel {
             authorized,
             old_records,
             new_records,
-            local_data,
         })
     }
 
@@ -182,6 +178,11 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         let execution_timer = start_timer!(|| "DPC::execute_online_phase");
 
+        // Generate the local data.
+        let local_data_timer = start_timer!(|| "Generate the local data");
+        let local_data = transaction_kernel.to_local_data(rng)?;
+        end_timer!(local_data_timer);
+
         // Compute the program commitment.
         let (program_commitment, program_randomness) = transaction_kernel.to_program_commitment(rng)?;
 
@@ -193,7 +194,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             authorized,
             old_records,
             new_records,
-            local_data,
         } = transaction_kernel;
 
         let TransactionAuthorization {
