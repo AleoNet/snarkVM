@@ -286,7 +286,12 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         )?);
 
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = self.inner_snark_parameters.1.clone().into();
-        let inner_circuit_id = C::inner_circuit_id_crh().hash_field_elements(&inner_snark_vk.to_field_elements()?)?;
+        let inner_circuit_id = C::inner_circuit_id();
+        debug_assert_eq!(
+            inner_circuit_id,
+            &C::inner_circuit_id_crh().hash_field_elements(&inner_snark_vk.to_field_elements()?)?,
+            "The DPC-loaded and Parameters-saved inner circuit IDs do not match"
+        );
 
         let transaction_proof = {
             let circuit = OuterCircuit::<C>::new(
@@ -340,7 +345,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             value_balance,
             memo,
             ledger_digest,
-            inner_circuit_id,
+            inner_circuit_id.clone(),
             transaction_proof,
             signatures,
             encrypted_records,
@@ -475,19 +480,18 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         };
 
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = self.inner_snark_parameters.1.clone().into();
-
-        let inner_snark_vk_field_elements =
-            ToConstraintField::<C::OuterScalarField>::to_field_elements(&inner_snark_vk).unwrap();
+        let inner_circuit_id = C::inner_circuit_id();
+        debug_assert_eq!(
+            inner_circuit_id,
+            &C::inner_circuit_id_crh()
+                .hash_field_elements(&inner_snark_vk.to_field_elements().unwrap())
+                .unwrap(),
+            "The DPC-loaded and Parameters-saved inner circuit IDs do not match"
+        );
 
         let outer_snark_input = OuterCircuitVerifierInput {
             inner_snark_verifier_input: inner_snark_input,
-            inner_circuit_id: match C::inner_circuit_id_crh().hash_field_elements(&inner_snark_vk_field_elements) {
-                Ok(hash) => hash,
-                _ => {
-                    eprintln!("Unable to hash inner snark vk.");
-                    return false;
-                }
-            },
+            inner_circuit_id: inner_circuit_id.clone(),
         };
 
         match C::OuterSNARK::verify(&self.outer_snark_parameters.1, &outer_snark_input, &transaction.proof) {
