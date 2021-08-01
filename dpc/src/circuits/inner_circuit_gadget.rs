@@ -17,10 +17,7 @@
 use crate::{record::Record, AleoAmount, Parameters, PrivateKey, RecordScheme};
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
-    CommitmentScheme,
-    EncryptionScheme,
-    MerkleParameters,
-    SignatureScheme,
+    traits::*,
 };
 use snarkvm_gadgets::{
     algorithms::merkle_tree::merkle_path::MerklePathGadget,
@@ -65,59 +62,6 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     value_balance: AleoAmount,
     network_id: u8,
 ) -> Result<(), SynthesisError> {
-    inner_circuit_gadget::<C, CS>(
-        cs,
-        ledger_digest,
-        //
-        old_records,
-        old_witnesses,
-        old_private_keys,
-        old_serial_numbers,
-        //
-        new_records,
-        new_commitments,
-        new_records_encryption_randomness,
-        new_encrypted_record_hashes,
-        //
-        program_commitment,
-        program_randomness,
-        local_data_root,
-        local_data_commitment_randomizers,
-        memo,
-        value_balance,
-        network_id,
-    )
-}
-
-#[allow(clippy::too_many_arguments)]
-fn inner_circuit_gadget<C, CS: ConstraintSystem<C::InnerScalarField>>(
-    cs: &mut CS,
-    ledger_digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
-
-    //
-    old_records: &[Record<C>],
-    old_witnesses: &[MerklePath<C::RecordCommitmentTreeParameters>],
-    old_private_keys: &[PrivateKey<C>],
-    old_serial_numbers: &[<C::AccountSignatureScheme as SignatureScheme>::PublicKey],
-
-    //
-    new_records: &[Record<C>],
-    new_commitments: &[C::RecordCommitment],
-    new_records_encryption_randomness: &[<C::AccountEncryptionScheme as EncryptionScheme>::Randomness],
-    new_encrypted_record_hashes: &[C::EncryptedRecordDigest],
-
-    //
-    program_commitment: &<C::ProgramCommitmentScheme as CommitmentScheme>::Output,
-    program_randomness: &<C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-    local_data_root: &C::LocalDataDigest,
-    local_data_commitment_randomizers: &[<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness],
-    memo: &[u8; 64],
-    value_balance: AleoAmount,
-    network_id: u8,
-) -> Result<(), SynthesisError>
-where
-    C: Parameters,
-{
     // Order for allocation of input:
     // 1. ledger_digest
     // 2. for i in 0..NUM_INPUT_RECORDS: old_serial_numbers[i]
@@ -788,6 +732,7 @@ where
         for i in 0..C::NUM_INPUT_RECORDS {
             let mut cs = cs.ns(|| format!("Construct local data with input record {}", i));
 
+            input_bytes.extend_from_slice(&[UInt8::constant(i as u8)]);
             input_bytes.extend_from_slice(&old_serial_numbers_gadgets[i].to_bytes(&mut cs.ns(|| "old_serial_number"))?);
             input_bytes.extend_from_slice(
                 &old_record_commitments_gadgets[i].to_bytes(&mut cs.ns(|| "old_record_commitment"))?,
@@ -821,6 +766,7 @@ where
         for j in 0..C::NUM_OUTPUT_RECORDS {
             let mut cs = cs.ns(|| format!("Construct local data with output record {}", j));
 
+            input_bytes.extend_from_slice(&[UInt8::constant((C::NUM_INPUT_RECORDS + j) as u8)]);
             input_bytes
                 .extend_from_slice(&new_record_commitments_gadgets[j].to_bytes(&mut cs.ns(|| "record_commitment"))?);
             input_bytes.extend_from_slice(&memo);

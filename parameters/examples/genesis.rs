@@ -99,30 +99,27 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
         rng,
     )?);
 
-    // Offline execution to generate a DPC transaction kernel.
-    let kernel = dpc.execute_offline_phase(&old_private_keys, old_records, new_records, [0; 64], rng)?;
+    // Offline execution to generate a transaction authorization.
+    let authorization = dpc.authorize(&old_private_keys, old_records, new_records, [0; 64], rng)?;
+
+    // Generate the local data.
+    let local_data = authorization.to_local_data(rng)?;
 
     // Generate the program proofs
     let mut program_proofs = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
     for i in 0..C::NUM_TOTAL_RECORDS {
-        let public_variables = ProgramPublicVariables::new(&kernel.local_data_merkle_tree.root(), i as u8);
+        let public_variables = ProgramPublicVariables::new(local_data.root(), i as u8);
         program_proofs.push(
             dpc.noop_program
                 .execute(0, &public_variables, &NoopPrivateVariables::new())?,
         );
     }
 
-    let (new_records, transaction) =
-        dpc.execute_online_phase(&old_private_keys, kernel, program_proofs, &temporary_ledger, rng)?;
+    let transaction = dpc.execute(&old_private_keys, authorization, program_proofs, &temporary_ledger, rng)?;
 
     let transaction_bytes = transaction.to_bytes_le()?;
-    let size = transaction_bytes.len();
-    println!("transaction size - {}\n", size);
-
-    for (i, record) in new_records.iter().enumerate() {
-        let record_bytes = to_bytes_le![record]?;
-        println!("record {}: {:?}\n", i, hex::encode(record_bytes));
-    }
+    let transaction_size = transaction_bytes.len();
+    println!("transaction size - {}\n", transaction_size);
 
     // Add genesis transaction to block.
     let mut transactions = Transactions::new();
@@ -154,6 +151,8 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
         proof: proof.into(),
     };
     assert!(genesis_header.is_genesis());
+
+    println!("block size - {}\n", transaction_size + BlockHeader::size());
 
     Ok((genesis_header.serialize().to_vec(), transaction_bytes))
 }
