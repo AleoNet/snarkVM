@@ -37,7 +37,7 @@ use std::{
 pub struct TransactionKernel<C: Parameters> {
     // Old record stuff
     pub old_records: Vec<Record<C>>,
-    pub old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
+    pub serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
 
     // New record stuff
     pub new_records: Vec<Record<C>>,
@@ -51,7 +51,7 @@ pub struct TransactionKernel<C: Parameters> {
     pub program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
     pub program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
 
-    pub local_data_merkle_tree: CommitmentMerkleTree<C::LocalDataCommitmentScheme, C::LocalDataCRH>,
+    pub local_data_tree: CommitmentMerkleTree<C::LocalDataCommitmentScheme, C::LocalDataCRH>,
     pub local_data_commitment_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
 
     pub value_balance: AleoAmount,
@@ -65,11 +65,11 @@ impl<C: Parameters> TransactionKernel<C> {
     pub fn into_local_data(&self) -> LocalData<C> {
         LocalData {
             old_records: self.old_records.to_vec(),
-            old_serial_numbers: self.old_serial_numbers.to_vec(),
+            old_serial_numbers: self.serial_numbers.to_vec(),
 
             new_records: self.new_records.to_vec(),
 
-            local_data_merkle_tree: self.local_data_merkle_tree.clone(),
+            local_data_merkle_tree: self.local_data_tree.clone(),
             local_data_commitment_randomizers: self.local_data_commitment_randomizers.clone(),
 
             memorandum: self.memorandum,
@@ -87,7 +87,7 @@ impl<C: Parameters> ToBytes for TransactionKernel<C> {
             old_record.write_le(&mut writer)?;
         }
 
-        for old_serial_number in &self.old_serial_numbers {
+        for old_serial_number in &self.serial_numbers {
             old_serial_number.write_le(&mut writer)?;
         }
 
@@ -118,7 +118,7 @@ impl<C: Parameters> ToBytes for TransactionKernel<C> {
         self.program_commitment.write_le(&mut writer)?;
         self.program_randomness.write_le(&mut writer)?;
 
-        self.local_data_merkle_tree.write_le(&mut writer)?;
+        self.local_data_tree.write_le(&mut writer)?;
 
         for local_data_commitment_randomizer in &self.local_data_commitment_randomizers {
             local_data_commitment_randomizer.write_le(&mut writer)?;
@@ -219,7 +219,7 @@ impl<C: Parameters> FromBytes for TransactionKernel<C> {
 
         Ok(Self {
             old_records,
-            old_serial_numbers,
+            serial_numbers: old_serial_numbers,
 
             new_records,
             new_commitments,
@@ -230,7 +230,7 @@ impl<C: Parameters> FromBytes for TransactionKernel<C> {
 
             program_commitment,
             program_randomness,
-            local_data_merkle_tree,
+            local_data_tree: local_data_merkle_tree,
             local_data_commitment_randomizers,
             value_balance,
             memorandum,

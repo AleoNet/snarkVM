@@ -135,7 +135,7 @@ fn dpc_testnet1_integration_test() {
     // Generate the program proofs
     let mut program_proofs = vec![];
     for i in 0..Testnet1Parameters::NUM_TOTAL_RECORDS {
-        let public_variables = ProgramPublicVariables::new(&transaction_kernel.local_data_merkle_tree.root(), i as u8);
+        let public_variables = ProgramPublicVariables::new(&transaction_kernel.local_data_tree.root(), i as u8);
         program_proofs.push(
             dpc.noop_program
                 .execute(0, &public_variables, &NoopPrivateVariables::new())
@@ -350,7 +350,7 @@ fn test_testnet1_dpc_execute_constraints() {
 
     let mut program_proofs = vec![];
     for i in 0..Testnet1Parameters::NUM_INPUT_RECORDS {
-        let public_variables = ProgramPublicVariables::new(&transaction_kernel.local_data_merkle_tree.root(), i as u8);
+        let public_variables = ProgramPublicVariables::new(&transaction_kernel.local_data_tree.root(), i as u8);
         program_proofs.push(
             alternate_noop_program
                 .execute(0, &public_variables, &NoopPrivateVariables::new())
@@ -359,7 +359,7 @@ fn test_testnet1_dpc_execute_constraints() {
     }
     for j in 0..Testnet1Parameters::NUM_OUTPUT_RECORDS {
         let public_variables = ProgramPublicVariables::new(
-            &transaction_kernel.local_data_merkle_tree.root(),
+            &transaction_kernel.local_data_tree.root(),
             (Testnet1Parameters::NUM_INPUT_RECORDS + j) as u8,
         );
         program_proofs.push(
@@ -371,7 +371,7 @@ fn test_testnet1_dpc_execute_constraints() {
 
     let TransactionKernel {
         old_records,
-        old_serial_numbers,
+        serial_numbers: old_serial_numbers,
 
         new_records,
         new_commitments,
@@ -382,7 +382,7 @@ fn test_testnet1_dpc_execute_constraints() {
 
         program_commitment,
         program_randomness,
-        local_data_merkle_tree,
+        local_data_tree: local_data_merkle_tree,
         local_data_commitment_randomizers,
         value_balance,
         memorandum,

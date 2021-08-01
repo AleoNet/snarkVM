@@ -38,7 +38,7 @@ pub struct CommitmentMerkleTree<C: CommitmentScheme, H: CRH> {
     inner_hashes: (<H as CRH>::Output, <H as CRH>::Output),
 
     /// The leaves of the commitment Merkle tree
-    leaves: [<C as CommitmentScheme>::Output; 4],
+    leaves: Vec<<C as CommitmentScheme>::Output>,
 
     /// The CRH parameters used to construct the Merkle tree
     #[derivative(PartialEq = "ignore", Debug = "ignore")]
@@ -47,7 +47,9 @@ pub struct CommitmentMerkleTree<C: CommitmentScheme, H: CRH> {
 
 impl<C: CommitmentScheme, H: CRH> CommitmentMerkleTree<C, H> {
     /// Construct a new commitment Merkle tree.
-    pub fn new(parameters: H, leaves: &[<C as CommitmentScheme>::Output; 4]) -> Result<Self, MerkleError> {
+    pub fn new(parameters: H, leaves: &[<C as CommitmentScheme>::Output]) -> Result<Self, MerkleError> {
+        assert_eq!(leaves.len(), 4, "Commitment Merkle tree supports 4 leaves");
+
         let input_1 = to_bytes_le![leaves[0], leaves[1]]?;
         let inner_hash1 = H::hash(&parameters, &input_1)?;
 
@@ -59,7 +61,7 @@ impl<C: CommitmentScheme, H: CRH> CommitmentMerkleTree<C, H> {
         Ok(Self {
             root,
             inner_hashes: (inner_hash1, inner_hash2),
-            leaves: leaves.clone(),
+            leaves: leaves.to_vec(),
             parameters,
         })
     }
@@ -70,13 +72,13 @@ impl<C: CommitmentScheme, H: CRH> CommitmentMerkleTree<C, H> {
     }
 
     #[inline]
-    pub fn inner_hashes(&self) -> (<H as CRH>::Output, <H as CRH>::Output) {
-        self.inner_hashes.clone()
+    pub fn inner_hashes(&self) -> &(<H as CRH>::Output, <H as CRH>::Output) {
+        &self.inner_hashes
     }
 
     #[inline]
-    pub fn leaves(&self) -> [<C as CommitmentScheme>::Output; 4] {
-        self.leaves.clone()
+    pub fn leaves(&self) -> &Vec<<C as CommitmentScheme>::Output> {
+        &self.leaves
     }
 
     pub fn generate_proof(
@@ -118,13 +120,6 @@ impl<C: CommitmentScheme, H: CRH> CommitmentMerkleTree<C, H> {
         }
 
         assert_eq!(leaves.len(), 4);
-
-        let leaves = [
-            leaves[0].clone(),
-            leaves[1].clone(),
-            leaves[2].clone(),
-            leaves[3].clone(),
-        ];
 
         Ok(Self {
             root,

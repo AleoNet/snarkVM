@@ -105,7 +105,7 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
     // Generate the program proofs
     let mut program_proofs = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
     for i in 0..C::NUM_TOTAL_RECORDS {
-        let public_variables = ProgramPublicVariables::new(&kernel.local_data_merkle_tree.root(), i as u8);
+        let public_variables = ProgramPublicVariables::new(&kernel.local_data_tree.root(), i as u8);
         program_proofs.push(
             dpc.noop_program
                 .execute(0, &public_variables, &NoopPrivateVariables::new())?,
