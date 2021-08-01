@@ -89,7 +89,6 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         enforced_degree_bounds: Option<&[usize]>,
     ) -> Result<(Self::CommitterKey, Self::VerifierKey), Self::Error> {
         let trim_time = start_timer!(|| "Trimming public parameters");
-        let neg_powers_of_h = &pp.inverse_neg_powers_of_h;
         let max_degree = pp.max_degree();
         if supported_degree > max_degree {
             return Err(Error::TrimmingDegreeTooLarge);
@@ -102,14 +101,11 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             v
         });
 
-        let (
-            shifted_powers_of_g,
-            shifted_powers_of_gamma_g,
-            degree_bounds_and_neg_powers_of_h,
-            degree_bounds_and_prepared_neg_powers_of_h,
-        ) = if let Some(enforced_degree_bounds) = enforced_degree_bounds.as_ref() {
+        let (shifted_powers_of_g, shifted_powers_of_gamma_g) = if let Some(enforced_degree_bounds) =
+            enforced_degree_bounds.as_ref()
+        {
             if enforced_degree_bounds.is_empty() {
-                (None, None, None, None)
+                (None, None)
             } else {
                 let highest_enforced_degree_bound = *enforced_degree_bounds.last().unwrap();
                 if highest_enforced_degree_bound > supported_degree {
@@ -141,32 +137,10 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
 
                 end_timer!(shifted_ck_time);
 
-                let neg_powers_of_h_time = start_timer!(|| format!(
-                    "Constructing `neg_powers_of_h` of size {}",
-                    enforced_degree_bounds.len()
-                ));
-
-                let degree_bounds_and_neg_powers_of_h: Vec<(usize, E::G2Affine)> = enforced_degree_bounds
-                    .iter()
-                    .map(|bound| (*bound, neg_powers_of_h[&(max_degree - *bound)].clone()))
-                    .collect();
-
-                let degree_bounds_and_prepared_neg_powers_of_h = degree_bounds_and_neg_powers_of_h
-                    .iter()
-                    .map(|(bound, affine)| (*bound, affine.prepare()))
-                    .collect();
-
-                end_timer!(neg_powers_of_h_time);
-
-                (
-                    Some(shifted_powers_of_g),
-                    Some(shifted_powers_of_gamma_g),
-                    Some(degree_bounds_and_neg_powers_of_h),
-                    Some(degree_bounds_and_prepared_neg_powers_of_h),
-                )
+                (Some(shifted_powers_of_g), Some(shifted_powers_of_gamma_g))
             }
         } else {
-            (None, None, None, None)
+            (None, None)
         };
 
         let powers_of_g = pp.powers_of_g[..=supported_degree].to_vec();
@@ -189,6 +163,29 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         let gamma_g = pp.powers_of_gamma_g[&0];
         let prepared_h = (&pp.prepared_h).clone();
         let prepared_beta_h = (&pp.prepared_beta_h).clone();
+
+        let degree_bounds_and_neg_powers_of_h = if pp.inverse_neg_powers_of_h.is_empty() {
+            None
+        } else {
+            Some(
+                pp.inverse_neg_powers_of_h
+                    .iter()
+                    .map(|(d, affine)| (*d, (*affine).clone()))
+                    .collect::<Vec<(usize, E::G2Affine)>>(),
+            )
+        };
+
+        let degree_bounds_and_prepared_neg_powers_of_h =
+            if let Some(degree_bounds_and_neg_powers_of_h) = &degree_bounds_and_neg_powers_of_h {
+                Some(
+                    degree_bounds_and_neg_powers_of_h
+                        .iter()
+                        .map(|(d, affine)| (*d, affine.prepare()))
+                        .collect::<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>(),
+                )
+            } else {
+                None
+            };
 
         let kzg10_vk = kzg10::VerifierKey::<E> {
             g,

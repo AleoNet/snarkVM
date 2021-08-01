@@ -212,6 +212,15 @@ pub struct PreparedVerifierKey<E: PairingEngine> {
     pub supported_degree: usize,
 }
 
+impl<E: PairingEngine> PreparedVerifierKey<E> {
+    /// Find the appropriate shift for the degree bound.
+    pub fn get_prepared_shift_power(&self, bound: usize) -> Option<<E::G2Affine as PairingCurve>::Prepared> {
+        self.degree_bounds_and_prepared_neg_powers_of_h
+            .as_ref()
+            .and_then(|v| v.binary_search_by(|(d, _)| d.cmp(&bound)).ok().map(|i| v[i].1.clone()))
+    }
+}
+
 impl<E: PairingEngine> Prepare<PreparedVerifierKey<E>> for VerifierKey<E> {
     /// prepare `PreparedVerifierKey` from `VerifierKey`
     fn prepare(&self) -> PreparedVerifierKey<E> {

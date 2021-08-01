@@ -649,12 +649,13 @@ pub mod tests {
         let mut test_components = Vec::new();
 
         let rng = &mut test_rng();
-        let max_degree = max_degree.unwrap_or_else(|| rand::distributions::Uniform::from(2..=64).sample(rng));
+        let max_degree = max_degree.unwrap_or_else(|| rand::distributions::Uniform::from(8..=64).sample(rng));
         let pp = PC::setup(max_degree, rng)?;
+        let supported_degree_bounds = pp.supported_degree_bounds();
 
         for _ in 0..num_iters {
             let supported_degree =
-                supported_degree.unwrap_or_else(|| rand::distributions::Uniform::from(1..=max_degree).sample(rng));
+                supported_degree.unwrap_or_else(|| rand::distributions::Uniform::from(4..=max_degree).sample(rng));
             assert!(max_degree >= supported_degree, "max_degree < supported_degree");
             let mut polynomials = Vec::new();
             let mut degree_bounds = if enforce_degree_bounds { Some(Vec::new()) } else { None };
@@ -670,11 +671,23 @@ pub mod tests {
                 let degree = rand::distributions::Uniform::from(1..=supported_degree).sample(rng);
                 let poly = Polynomial::rand(degree, rng);
 
+                let supported_degree_bounds_after_trimmed = supported_degree_bounds
+                    .iter()
+                    .copied()
+                    .filter(|x| *x >= degree && *x < supported_degree)
+                    .collect::<Vec<usize>>();
+
                 let degree_bound = if let Some(degree_bounds) = &mut degree_bounds {
-                    let range = rand::distributions::Uniform::from(degree..=supported_degree);
-                    let degree_bound = range.sample(rng);
-                    degree_bounds.push(degree_bound);
-                    Some(degree_bound)
+                    if supported_degree_bounds_after_trimmed.len() > 0 && rng.gen() {
+                        let range = rand::distributions::Uniform::from(0..supported_degree_bounds_after_trimmed.len());
+                        let idx = range.sample(rng);
+
+                        let degree_bound = supported_degree_bounds_after_trimmed[idx];
+                        degree_bounds.push(degree_bound);
+                        Some(degree_bound)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 };
@@ -771,12 +784,13 @@ pub mod tests {
         let mut test_components = Vec::new();
 
         let rng = &mut test_rng();
-        let max_degree = max_degree.unwrap_or_else(|| rand::distributions::Uniform::from(2..=64).sample(rng));
+        let max_degree = max_degree.unwrap_or_else(|| rand::distributions::Uniform::from(8..=64).sample(rng));
         let pp = PC::setup(max_degree, rng)?;
+        let supported_degree_bounds = pp.supported_degree_bounds();
 
         for _ in 0..num_iters {
             let supported_degree =
-                supported_degree.unwrap_or_else(|| rand::distributions::Uniform::from(1..=max_degree).sample(rng));
+                supported_degree.unwrap_or_else(|| rand::distributions::Uniform::from(4..=max_degree).sample(rng));
             assert!(max_degree >= supported_degree, "max_degree < supported_degree");
             let mut polynomials = Vec::new();
             let mut degree_bounds = if enforce_degree_bounds { Some(Vec::new()) } else { None };
@@ -792,10 +806,18 @@ pub mod tests {
                 let degree = rand::distributions::Uniform::from(1..=supported_degree).sample(rng);
                 let poly = Polynomial::rand(degree, rng);
 
+                let supported_degree_bounds_after_trimmed = supported_degree_bounds
+                    .iter()
+                    .copied()
+                    .filter(|x| *x >= degree && *x < supported_degree)
+                    .collect::<Vec<usize>>();
+
                 let degree_bound = if let Some(degree_bounds) = &mut degree_bounds {
-                    if rng.gen() {
-                        let range = rand::distributions::Uniform::from(degree..=supported_degree);
-                        let degree_bound = range.sample(rng);
+                    if supported_degree_bounds_after_trimmed.len() > 0 && rng.gen() {
+                        let range = rand::distributions::Uniform::from(0..supported_degree_bounds_after_trimmed.len());
+                        let idx = range.sample(rng);
+
+                        let degree_bound = supported_degree_bounds_after_trimmed[idx];
                         degree_bounds.push(degree_bound);
                         Some(degree_bound)
                     } else {

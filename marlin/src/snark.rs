@@ -61,6 +61,9 @@ impl<E: PairingEngine> From<Parameters<E>> for VerifyingKey<E> {
 pub type PreparedVerifyingKey<E> =
     PreparedCircuitVerifyingKey<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, MultiPC<E>>;
 
+pub type UniversalVerificationParameters<E> =
+    <MultiPC<E> as PolynomialCommitment<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq>>::VerifierKey;
+
 /// The Marlin proof system for testnet1.
 pub type MarlinTestnet1<E> = MarlinSNARK<
     <E as PairingEngine>::Fr,
@@ -93,6 +96,7 @@ where
     type ScalarField = E::Fr;
     type UniversalSetupConfig = MarlinBound;
     type UniversalSetupParameters = MarlinSRS<E>;
+    type UniversalVerificationParameters = UniversalVerificationParameters<E>;
     type VerifierInput = V;
     type VerifyingKey = VerifyingKey<E>;
 

@@ -33,7 +33,7 @@ use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use crate::{BatchLCProof, LCTerm, LabeledCommitment, LinearCombination, PolynomialCommitment, String, Vec};
 
 /// A coefficient of `LinearCombination`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LinearCombinationCoeffVar<TargetField: PrimeField, BaseField: PrimeField> {
     /// Coefficient 1.
     One,
@@ -180,18 +180,6 @@ pub trait PCCheckVar<PCF: PrimeField, PC: PolynomialCommitment<PCF, ConstraintF>
 
     /// An allocated version of `PC::BatchLCProof`.
     type BatchLCProofVar: AllocGadget<BatchLCProof<PCF, ConstraintF, PC>, ConstraintF> + Clone;
-
-    /// Add to `ConstraintSystem<ConstraintF>` new constraints that check that `proof_i` is a valid evaluation
-    /// proof at `point_i` for the polynomial in `commitment_i`.
-    fn batch_check_evaluations<CS: ConstraintSystem<ConstraintF>>(
-        cs: CS,
-        verification_key: &Self::VerifierKeyVar,
-        commitments: &[Self::LabeledCommitmentVar],
-        query_set: &QuerySetVar<PCF, ConstraintF>,
-        evaluations: &EvaluationsVar<PCF, ConstraintF>,
-        proofs: &[Self::ProofVar],
-        rand_data: &PCCheckRandomDataVar<PCF, ConstraintF>,
-    ) -> Result<Boolean, SynthesisError>;
 
     /// Add to `ConstraintSystem<ConstraintF>` new constraints that conditionally check that `proof` is a valid evaluation
     /// proof at the points in `query_set` for the combinations `linear_combinations`.

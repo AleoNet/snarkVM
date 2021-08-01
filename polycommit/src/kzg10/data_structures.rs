@@ -43,6 +43,8 @@ pub struct UniversalParams<E: PairingEngine> {
     pub h: E::G2Affine,
     /// \beta times the above generator of G2.
     pub beta_h: E::G2Affine,
+    /// Supported degree bounds.
+    pub supported_degree_bounds: Vec<usize>,
     /// Group elements of the form `{ \beta^{max_degree - i} G1}`, where `i` is the supported degree bound.
     /// This one is used for deriving the verifying key.
     pub inverse_powers_of_g: BTreeMap<usize, E::G1Affine>,
@@ -62,6 +64,10 @@ impl_bytes!(UniversalParams);
 impl<E: PairingEngine> PCUniversalParams for UniversalParams<E> {
     fn max_degree(&self) -> usize {
         self.powers_of_g.len() - 1
+    }
+
+    fn supported_degree_bounds(&self) -> Vec<usize> {
+        self.supported_degree_bounds.clone()
     }
 }
 

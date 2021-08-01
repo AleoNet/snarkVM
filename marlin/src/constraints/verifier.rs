@@ -84,6 +84,7 @@ where
         FSG<TargetField, BaseField>,
     >;
     type ProofGadget = ProofVar<TargetField, BaseField, PC, PCG>;
+    type UniversalVerificationParametersGadget = PCG::VerifierKeyVar;
     type VerificationKeyGadget = CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>;
 
     fn check_verify<CS: ConstraintSystem<BaseField>>(

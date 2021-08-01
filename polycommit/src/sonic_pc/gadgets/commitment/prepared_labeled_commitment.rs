@@ -113,7 +113,6 @@ mod tests {
                 .unwrap();
 
             for (j, (comm_element, comm_element_gadget)) in prepared_commitment
-                .prepared_comm
                 .0
                 .iter()
                 .zip(prepared_commitment_gadget.prepared_commitment.prepared_comm)

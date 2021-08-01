@@ -103,7 +103,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
     /// Constructs public parameters when given as input the maximum degree `max_degree`
     /// for the polynomial commitment scheme.
     fn setup<R: RngCore>(max_degree: usize, rng: &mut R) -> Result<Self::UniversalParams, Self::Error> {
-        kzg10::KZG10::setup(max_degree, &kzg10::KZG10DegreeBoundsConfig::NONE, false, rng).map_err(Into::into)
+        kzg10::KZG10::setup(max_degree, &kzg10::KZG10DegreeBoundsConfig::MARLIN, false, rng).map_err(Into::into)
     }
 
     /// Specializes the public parameters for polynomials up to the given `supported_degree`
@@ -147,34 +147,41 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
         });
 
         // Check whether we have some degree bounds to enforce
-        let (shifted_powers, degree_bounds_and_shift_powers) =
-            if let Some(enforced_degree_bounds) = enforced_degree_bounds.as_ref() {
-                if enforced_degree_bounds.is_empty() {
-                    (None, None)
-                } else {
-                    let mut sorted_enforced_degree_bounds = enforced_degree_bounds.clone();
-                    sorted_enforced_degree_bounds.sort_unstable();
-
-                    let lowest_shifted_power =
-                        max_degree - sorted_enforced_degree_bounds.last().ok_or(Error::EmptyDegreeBounds)?;
-
-                    let shifted_ck_time = start_timer!(|| format!(
-                        "Constructing `shifted_powers` of size {}",
-                        max_degree - lowest_shifted_power + 1
-                    ));
-
-                    let shifted_powers = parameters.powers_of_g[lowest_shifted_power..].to_vec();
-                    end_timer!(shifted_ck_time);
-
-                    let degree_bounds_and_shift_powers = enforced_degree_bounds
-                        .iter()
-                        .map(|d| (*d, parameters.powers_of_g[max_degree - d]))
-                        .collect();
-                    (Some(shifted_powers), Some(degree_bounds_and_shift_powers))
-                }
+        let shifted_powers = if let Some(enforced_degree_bounds) = enforced_degree_bounds.as_ref() {
+            if enforced_degree_bounds.is_empty() {
+                None
             } else {
-                (None, None)
-            };
+                let mut sorted_enforced_degree_bounds = enforced_degree_bounds.clone();
+                sorted_enforced_degree_bounds.sort_unstable();
+
+                let lowest_shifted_power =
+                    max_degree - sorted_enforced_degree_bounds.last().ok_or(Error::EmptyDegreeBounds)?;
+
+                let shifted_ck_time = start_timer!(|| format!(
+                    "Constructing `shifted_powers` of size {}",
+                    max_degree - lowest_shifted_power + 1
+                ));
+
+                let shifted_powers = parameters.powers_of_g[lowest_shifted_power..].to_vec();
+                end_timer!(shifted_ck_time);
+
+                Some(shifted_powers)
+            }
+        } else {
+            None
+        };
+
+        let degree_bounds_and_shift_powers = if parameters.inverse_powers_of_g.is_empty() {
+            None
+        } else {
+            Some(
+                parameters
+                    .inverse_powers_of_g
+                    .iter()
+                    .map(|(d, affine)| (*d, (*affine).clone()))
+                    .collect::<Vec<(usize, E::G1Affine)>>(),
+            )
+        };
 
         let ck = CommitterKey {
             powers,
@@ -895,6 +902,8 @@ impl<E: PairingEngine> MarlinKZG10<E> {
                 .or_insert((point, BTreeSet::new()));
             labels.1.insert(label);
         }
+
+        // As a result of BTreeMap, the query is sorted by names of the points.
 
         let mut proofs = Vec::new();
         for (_point_name, (query, labels)) in query_to_labels_map.into_iter() {

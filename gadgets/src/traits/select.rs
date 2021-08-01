@@ -33,6 +33,33 @@ where
     fn cost() -> usize;
 }
 
+impl<F: Field, T: CondSelectGadget<F>> CondSelectGadget<F> for Vec<T> {
+    fn conditionally_select<CS: ConstraintSystem<F>>(
+        mut cs: CS,
+        cond: &Boolean,
+        first: &Self,
+        second: &Self,
+    ) -> Result<Self, SynthesisError> {
+        assert_eq!(first.len(), second.len());
+
+        let mut res = Vec::<T>::with_capacity(first.len());
+        for (i, (left, right)) in first.iter().zip(second.iter()).enumerate() {
+            res.push(T::conditionally_select(
+                cs.ns(|| format!("conditional_select_{}", i)),
+                cond,
+                left,
+                right,
+            )?)
+        }
+
+        Ok(res)
+    }
+
+    fn cost() -> usize {
+        unimplemented!()
+    }
+}
+
 /// Uses two bits to perform a lookup into a table
 pub trait TwoBitLookupGadget<F: Field>
 where
