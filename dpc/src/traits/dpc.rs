@@ -28,10 +28,10 @@ use rand::{CryptoRng, Rng};
 
 pub trait DPCScheme<C: Parameters>: Sized {
     type Account: AccountScheme;
+    type Authorization;
     type Execution;
     type Record: RecordScheme<Owner = <Self::Account as AccountScheme>::Address>;
     type Transaction: TransactionScheme<SerialNumber = <Self::Record as RecordScheme>::SerialNumber>;
-    type TransactionKernel;
 
     /// Initializes a new instance of DPC.
     fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self>;
@@ -41,20 +41,20 @@ pub trait DPCScheme<C: Parameters>: Sized {
 
     /// Returns an authorized transaction kernel for use to craft an Aleo transaction.
     #[allow(clippy::too_many_arguments)]
-    fn execute_offline_phase<R: Rng + CryptoRng>(
+    fn authorize<R: Rng + CryptoRng>(
         &self,
         old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         old_records: Vec<Self::Record>,
         new_records: Vec<Self::Record>,
         memo: <Self::Transaction as TransactionScheme>::Memorandum,
         rng: &mut R,
-    ) -> Result<Self::TransactionKernel>;
+    ) -> Result<Self::Authorization>;
 
     /// Returns a transaction based on the authorized transaction kernel.
-    fn execute_online_phase<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
+    fn execute<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
         &self,
         old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        transaction_kernel: Self::TransactionKernel,
+        transaction_kernel: Self::Authorization,
         program_proofs: Vec<Self::Execution>,
         ledger: &L,
         rng: &mut R,

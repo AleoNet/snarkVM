@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{DPCError, LocalDataLeaf, Parameters, Record, RecordScheme, TransactionAuthorization};
+use crate::{DPCError, LocalDataLeaf, Parameters, Record, RecordScheme, TransactionKernel};
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, prelude::*};
 use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
@@ -39,7 +39,7 @@ pub struct LocalData<C: Parameters> {
 
 impl<C: Parameters> LocalData<C> {
     pub fn new<R: Rng + CryptoRng>(
-        authorized: &TransactionAuthorization<C>,
+        authorized: &TransactionKernel<C>,
         old_records: &Vec<Record<C>>,
         new_records: &Vec<Record<C>>,
         rng: &mut R,
@@ -110,7 +110,7 @@ impl<C: Parameters> LocalData<C> {
 
     // TODO (raychu86): Add program register inputs + outputs to local data commitment leaves.
     fn generate_local_data_leaves(
-        authorized: &TransactionAuthorization<C>,
+        authorized: &TransactionKernel<C>,
         old_records: &Vec<Record<C>>,
         new_records: &Vec<Record<C>>,
     ) -> Result<Vec<LocalDataLeaf<C>>> {

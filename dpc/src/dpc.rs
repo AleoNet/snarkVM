@@ -36,10 +36,10 @@ pub struct DPC<C: Parameters> {
 
 impl<C: Parameters> DPCScheme<C> for DPC<C> {
     type Account = Account<C>;
+    type Authorization = TransactionAuthorization<C>;
     type Execution = Execution<C>;
     type Record = Record<C>;
     type Transaction = Transaction<C>;
-    type TransactionKernel = TransactionKernel<C>;
 
     fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
         let setup_time = start_timer!(|| "DPC::setup");
@@ -96,14 +96,14 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         })
     }
 
-    fn execute_offline_phase<R: Rng + CryptoRng>(
+    fn authorize<R: Rng + CryptoRng>(
         &self,
         old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         old_records: Vec<Self::Record>,
         new_records: Vec<Self::Record>,
         memo: <Self::Transaction as TransactionScheme>::Memorandum,
         rng: &mut R,
-    ) -> Result<Self::TransactionKernel> {
+    ) -> Result<Self::Authorization> {
         assert_eq!(C::NUM_INPUT_RECORDS, old_private_keys.len());
         assert_eq!(C::NUM_INPUT_RECORDS, old_records.len());
         assert_eq!(C::NUM_OUTPUT_RECORDS, new_records.len());
@@ -136,9 +136,18 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             }
         }
 
+        // Construct the transaction kernel.
+        let kernel = TransactionKernel {
+            network_id: C::NETWORK_ID,
+            serial_numbers,
+            commitments,
+            value_balance,
+            memo,
+        };
+
         // Sign the public data to authorize the transaction.
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        let signature_message = to_bytes_le![C::NETWORK_ID, serial_numbers, commitments, value_balance, memo]?;
+        let signature_message = kernel.to_signature_message()?;
         for i in 0..C::NUM_INPUT_RECORDS {
             signatures.push(C::account_signature_scheme().sign_randomized(
                 &randomized_private_keys[i],
@@ -147,28 +156,19 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             )?);
         }
 
-        // Construct the transaction authorization.
-        let authorized = TransactionAuthorization {
-            network_id: C::NETWORK_ID,
-            serial_numbers,
-            commitments,
-            value_balance,
-            memo,
-            signatures,
-        };
-
-        // Return the transaction kernel.
-        Ok(TransactionKernel {
-            authorized,
+        // Return the transaction authorization.
+        Ok(TransactionAuthorization {
+            kernel,
             old_records,
             new_records,
+            signatures,
         })
     }
 
-    fn execute_online_phase<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
+    fn execute<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
         &self,
         old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        transaction_kernel: Self::TransactionKernel,
+        authorization: Self::Authorization,
         program_proofs: Vec<Self::Execution>,
         ledger: &L,
         rng: &mut R,
@@ -180,30 +180,30 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         // Generate the local data.
         let local_data_timer = start_timer!(|| "Generate the local data");
-        let local_data = transaction_kernel.to_local_data(rng)?;
+        let local_data = authorization.to_local_data(rng)?;
         end_timer!(local_data_timer);
 
         // Compute the program commitment.
-        let (program_commitment, program_randomness) = transaction_kernel.to_program_commitment(rng)?;
+        let (program_commitment, program_randomness) = authorization.to_program_commitment(rng)?;
 
         // Compute the encrypted records.
         let (encrypted_records, encrypted_record_hashes, encrypted_record_randomizers) =
-            transaction_kernel.to_encrypted_records(rng)?;
-
-        let TransactionKernel {
-            authorized,
-            old_records,
-            new_records,
-        } = transaction_kernel;
+            authorization.to_encrypted_records(rng)?;
 
         let TransactionAuthorization {
+            kernel,
+            old_records,
+            new_records,
+            signatures,
+        } = authorization;
+
+        let TransactionKernel {
             network_id,
             serial_numbers,
             commitments,
             value_balance,
             memo,
-            signatures,
-        } = authorized;
+        } = kernel;
 
         // Construct the ledger witnesses.
         let ledger_digest = ledger.latest_digest()?;

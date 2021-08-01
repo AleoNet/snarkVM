@@ -99,11 +99,11 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
         rng,
     )?);
 
-    // Offline execution to generate a DPC transaction kernel.
-    let transaction_kernel = dpc.execute_offline_phase(&old_private_keys, old_records, new_records, [0; 64], rng)?;
+    // Offline execution to generate a transaction authorization.
+    let authorization = dpc.authorize(&old_private_keys, old_records, new_records, [0; 64], rng)?;
 
     // Generate the local data.
-    let local_data = transaction_kernel.to_local_data(rng)?;
+    let local_data = authorization.to_local_data(rng)?;
 
     // Generate the program proofs
     let mut program_proofs = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
@@ -115,13 +115,7 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
         );
     }
 
-    let transaction = dpc.execute_online_phase(
-        &old_private_keys,
-        transaction_kernel,
-        program_proofs,
-        &temporary_ledger,
-        rng,
-    )?;
+    let transaction = dpc.execute(&old_private_keys, authorization, program_proofs, &temporary_ledger, rng)?;
 
     let transaction_bytes = transaction.to_bytes_le()?;
     let transaction_size = transaction_bytes.len();

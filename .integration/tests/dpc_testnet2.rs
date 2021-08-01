@@ -118,13 +118,13 @@ fn dpc_testnet2_integration_test() {
         );
     }
 
-    // Offline execution to generate a DPC transaction kernel.
-    let transaction_kernel = dpc
-        .execute_offline_phase(&old_private_keys, old_records, new_records, [4u8; 64], &mut rng)
+    // Offline execution to generate a transaction authorization.
+    let authorization = dpc
+        .authorize(&old_private_keys, old_records, new_records, [4u8; 64], &mut rng)
         .unwrap();
 
     // Generate the local data.
-    let local_data = transaction_kernel.to_local_data(&mut rng).unwrap();
+    let local_data = authorization.to_local_data(&mut rng).unwrap();
 
     // Generate the program proofs
     let mut program_proofs = vec![];
@@ -137,10 +137,10 @@ fn dpc_testnet2_integration_test() {
         );
     }
 
-    let new_records = transaction_kernel.new_records.clone();
+    let new_records = authorization.new_records.clone();
 
     let transaction = dpc
-        .execute_online_phase(&old_private_keys, transaction_kernel, program_proofs, &ledger, &mut rng)
+        .execute(&old_private_keys, authorization, program_proofs, &ledger, &mut rng)
         .unwrap();
 
     // Check that the transaction is serialized and deserialized correctly
@@ -253,7 +253,7 @@ fn test_testnet_2_transaction_kernel_serialization() {
 
     // Generate transaction kernel
     let transaction_kernel = dpc
-        .execute_offline_phase(&old_private_keys, old_records, new_records, [0u8; 64], &mut rng)
+        .authorize(&old_private_keys, old_records, new_records, [0u8; 64], &mut rng)
         .unwrap();
 
     // Serialize the transaction kernel
@@ -338,12 +338,12 @@ fn test_testnet2_dpc_execute_constraints() {
     }
 
     let memo = [0u8; 64];
-    let transaction_kernel = dpc
-        .execute_offline_phase(&old_private_keys, old_records, new_records, memo, &mut rng)
+    let authorization = dpc
+        .authorize(&old_private_keys, old_records, new_records, memo, &mut rng)
         .unwrap();
 
     // Generate the local data.
-    let local_data = transaction_kernel.to_local_data(&mut rng).unwrap();
+    let local_data = authorization.to_local_data(&mut rng).unwrap();
 
     // Generate the program proofs
     let mut program_proofs = vec![];
@@ -366,26 +366,26 @@ fn test_testnet2_dpc_execute_constraints() {
     }
 
     // Compute the program commitment.
-    let (program_commitment, program_randomness) = transaction_kernel.to_program_commitment(&mut rng).unwrap();
+    let (program_commitment, program_randomness) = authorization.to_program_commitment(&mut rng).unwrap();
 
     // Compute the encrypted records.
     let (_encrypted_records, encrypted_record_hashes, encrypted_record_randomizers) =
-        transaction_kernel.to_encrypted_records(&mut rng).unwrap();
-
-    let TransactionKernel {
-        authorized,
-        old_records,
-        new_records,
-    } = transaction_kernel;
+        authorization.to_encrypted_records(&mut rng).unwrap();
 
     let TransactionAuthorization {
+        kernel,
+        old_records,
+        new_records,
+        signatures: _,
+    } = authorization;
+
+    let TransactionKernel {
         network_id,
         serial_numbers,
         commitments,
         value_balance,
         memo,
-        signatures: _,
-    } = authorized;
+    } = kernel;
 
     let local_data_root = local_data.root();
 
