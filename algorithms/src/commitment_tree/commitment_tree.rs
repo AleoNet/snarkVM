@@ -67,8 +67,8 @@ impl<C: CommitmentScheme, H: CRH> CommitmentMerkleTree<C, H> {
     }
 
     #[inline]
-    pub fn root(&self) -> <H as CRH>::Output {
-        self.root.clone()
+    pub fn root(&self) -> &<H as CRH>::Output {
+        &self.root
     }
 
     #[inline]

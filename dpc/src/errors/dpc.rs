@@ -105,3 +105,9 @@ impl From<std::io::Error> for DPCError {
         DPCError::Crate("std::io", format!("{:?}", error))
     }
 }
+
+impl From<DPCError> for std::io::Error {
+    fn from(error: DPCError) -> Self {
+        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", error))
+    }
+}

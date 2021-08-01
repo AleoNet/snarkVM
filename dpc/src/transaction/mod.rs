@@ -23,6 +23,9 @@ pub use kernel::*;
 pub mod local_data;
 pub use local_data::*;
 
+pub mod local_data_leaf;
+pub use local_data_leaf::*;
+
 pub mod network;
 pub use network::*;
 

@@ -15,10 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
-use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, merkle_tree::MerklePath, prelude::*};
+use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_utilities::{has_duplicates, rand::UniformRand, to_bytes_le, ToBytes};
 
+use anyhow::Result;
 use rand::{CryptoRng, Rng};
 
 pub struct DPC<C: Parameters> {
@@ -40,7 +41,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
     type Transaction = Transaction<C>;
     type TransactionKernel = TransactionKernel<C>;
 
-    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> anyhow::Result<Self> {
+    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self> {
         let setup_time = start_timer!(|| "DPC::setup");
 
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
@@ -72,7 +73,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         })
     }
 
-    fn load(verify_only: bool) -> anyhow::Result<Self> {
+    fn load(verify_only: bool) -> Result<Self> {
         let timer = start_timer!(|| "DPC::load");
         let noop_program = NoopProgram::load()?;
         let inner_snark_parameters = {
@@ -102,7 +103,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         new_records: Vec<Self::Record>,
         memo: <Self::Transaction as TransactionScheme>::Memorandum,
         rng: &mut R,
-    ) -> anyhow::Result<Self::TransactionKernel> {
+    ) -> Result<Self::TransactionKernel> {
         assert_eq!(C::NUM_INPUT_RECORDS, old_private_keys.len());
         assert_eq!(C::NUM_INPUT_RECORDS, old_records.len());
         assert_eq!(C::NUM_OUTPUT_RECORDS, new_records.len());
@@ -130,9 +131,9 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             }
         }
 
-        // Generate Schnorr signature on transaction data.
+        // Generate Schnorr signatures to authorize the transaction.
         let signature_message = to_bytes_le![C::NETWORK_ID, serial_numbers, commitments, value_balance, memo]?;
-        let signatures = {
+        let authorized = {
             let signature_time = start_timer!(|| "Sign and randomize signature");
             let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
             for i in 0..C::NUM_INPUT_RECORDS {
@@ -147,87 +148,31 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 signatures.push(randomized_signature);
             }
             end_timer!(signature_time);
-            signatures
+
+            TransactionAuthorization {
+                network_id: C::NETWORK_ID,
+                serial_numbers,
+                commitments,
+                value_balance,
+                memo,
+                signatures,
+            }
         };
 
-        // TODO (raychu86): Add index and program register inputs + outputs to local data commitment leaves
-        let (local_data_tree, local_data_commitment_randomizers) = {
-            let timer = start_timer!(|| "Compute local data merkle tree");
+        // Generate the local data.
+        let timer = start_timer!(|| "Generate the local data");
+        let local_data = LocalData::new(&authorized, &old_records, &new_records, rng)?;
+        end_timer!(timer);
 
-            let mut local_data_commitments = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
-            let mut local_data_commitment_randomizers = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
-
-            for (i, record) in old_records.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
-                let commitment_input = to_bytes_le![serial_numbers[i], &record.commitment(), memo, C::NETWORK_ID]?;
-                let commitment_randomness = <C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
-                let commitment = C::local_data_commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
-
-                local_data_commitments.push(commitment);
-                local_data_commitment_randomizers.push(commitment_randomness);
-            }
-
-            for record in new_records.iter().take(C::NUM_OUTPUT_RECORDS) {
-                let commitment_input = to_bytes_le![record.commitment(), memo, C::NETWORK_ID]?;
-                let commitment_randomness = <C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
-                let commitment = C::local_data_commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
-
-                local_data_commitments.push(commitment);
-                local_data_commitment_randomizers.push(commitment_randomness);
-            }
-
-            let local_data_tree = CommitmentMerkleTree::new(C::local_data_crh().clone(), &local_data_commitments)?;
-            end_timer!(timer);
-
-            (local_data_tree, local_data_commitment_randomizers)
-        };
-
-        let (program_commitment, program_randomness) = {
-            let timer = start_timer!(|| "Compute program commitment");
-
-            let mut input = Vec::new();
-            for record in old_records.iter().chain(new_records.iter()) {
-                input.extend_from_slice(record.program_id());
-            }
-
-            let program_randomness = <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
-            let program_commitment = C::program_commitment_scheme().commit(&input, &program_randomness)?;
-            end_timer!(timer);
-
-            (program_commitment, program_randomness)
-        };
-
-        // Encrypt the new records and construct the ciphertext hashes
-
-        let mut new_records_encryption_randomness = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-        let mut new_encrypted_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-
-        for record in &new_records {
-            let (encrypted_record, record_encryption_randomness) = EncryptedRecord::encrypt(record, rng)?;
-            new_records_encryption_randomness.push(record_encryption_randomness);
-            new_encrypted_records.push(encrypted_record);
-        }
-
-        Ok(TransactionKernel {
+        // Construct the transaction kernel.
+        let transaction_kernel = TransactionKernel {
+            authorized,
             old_records,
-            serial_numbers,
-
             new_records,
-            new_commitments: commitments,
+            local_data,
+        };
 
-            new_records_encryption_randomness,
-            new_encrypted_records,
-
-            program_commitment,
-            program_randomness,
-
-            local_data_tree,
-            local_data_commitment_randomizers,
-
-            value_balance,
-            memo,
-            network_id: C::NETWORK_ID,
-            signatures,
-        })
+        Ok(transaction_kernel)
     }
 
     fn execute_online_phase<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
@@ -237,51 +182,50 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         program_proofs: Vec<Self::Execution>,
         ledger: &L,
         rng: &mut R,
-    ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)> {
+    ) -> Result<(Vec<Self::Record>, Self::Transaction)> {
         assert_eq!(C::NUM_INPUT_RECORDS, old_private_keys.len());
         assert_eq!(C::NUM_TOTAL_RECORDS, program_proofs.len());
 
-        let exec_time = start_timer!(|| "DPC::execute_online_phase");
+        let execution_timer = start_timer!(|| "DPC::execute_online_phase");
 
         let TransactionKernel {
+            authorized,
             old_records,
-            serial_numbers,
-
             new_records,
-            new_commitments,
-
-            new_records_encryption_randomness,
-            new_encrypted_records,
-
-            program_commitment,
-            program_randomness,
-
-            local_data_tree,
-            local_data_commitment_randomizers,
-
-            value_balance,
-            memo: memorandum,
-            network_id,
-            signatures,
+            local_data,
         } = transaction_kernel;
 
-        let local_data_root = local_data_tree.root();
+        let TransactionAuthorization {
+            network_id,
+            serial_numbers,
+            commitments,
+            value_balance,
+            memo,
+            signatures,
+        } = authorized;
 
-        // Construct the ledger witnesses
+        let (program_commitment, program_randomness) = {
+            let timer = start_timer!(|| "Compute program commitment");
 
-        let ledger_digest = ledger.latest_digest()?;
-
-        // Generate the ledger membership witnesses
-        let mut old_witnesses = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-
-        // Compute the ledger membership witness and serial number from the old records.
-        for record in old_records.iter() {
-            if record.is_dummy() {
-                old_witnesses.push(MerklePath::default());
-            } else {
-                let witness = ledger.prove_cm(&record.commitment())?;
-                old_witnesses.push(witness);
+            let mut input = Vec::new();
+            for record in old_records.iter().chain(new_records.iter()) {
+                input.extend_from_slice(record.program_id());
             }
+
+            let program_randomness = UniformRand::rand(rng);
+            let program_commitment = C::program_commitment_scheme().commit(&input, &program_randomness)?;
+            end_timer!(timer);
+
+            (program_commitment, program_randomness)
+        };
+
+        // Encrypt the new records and construct the ciphertext hashes.
+        let mut new_records_encryption_randomness = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+        let mut new_encrypted_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+        for record in new_records.iter().take(C::NUM_OUTPUT_RECORDS) {
+            let (encrypted_record, record_encryption_randomness) = EncryptedRecord::encrypt(record, rng)?;
+            new_records_encryption_randomness.push(record_encryption_randomness);
+            new_encrypted_records.push(encrypted_record);
         }
 
         // TODO (howardwu): TEMPORARY - Delete this by making the process integrated with helpers.
@@ -289,6 +233,18 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             .iter()
             .map(|r| r.to_hash().expect("Failed to hash encrypted record"))
             .collect::<Vec<_>>();
+
+        // Construct the ledger witnesses.
+        let ledger_digest = ledger.latest_digest()?;
+
+        // Compute the ledger membership witnesses.
+        let mut old_witnesses = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+        for record in old_records.iter().take(C::NUM_INPUT_RECORDS) {
+            old_witnesses.push(match record.is_dummy() {
+                true => MerklePath::default(),
+                false => ledger.prove_cm(&record.commitment())?,
+            });
+        }
 
         let inner_proof = {
             let circuit = InnerCircuit::<C>::new(
@@ -298,14 +254,14 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 old_private_keys.clone(),
                 serial_numbers.clone(),
                 new_records.clone(),
-                new_commitments.clone(),
+                commitments.clone(),
                 new_records_encryption_randomness,
                 new_encrypted_record_hashes.clone(),
                 program_commitment.clone(),
                 program_randomness.clone(),
-                local_data_root.clone(),
-                local_data_commitment_randomizers,
-                memorandum,
+                local_data.root().clone(),
+                local_data.leaf_randomizers().clone(),
+                memo,
                 value_balance,
                 network_id,
             );
@@ -323,11 +279,11 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             let input = InnerCircuitVerifierInput {
                 ledger_digest: ledger_digest.clone(),
                 old_serial_numbers: serial_numbers.clone(),
-                new_commitments: new_commitments.clone(),
+                new_commitments: commitments.clone(),
                 new_encrypted_record_hashes: new_encrypted_record_hashes.clone(),
-                memo: memorandum,
+                memo,
                 program_commitment: Some(program_commitment.clone()),
-                local_data_root: Some(local_data_root.clone()),
+                local_data_root: Some(local_data.root().clone()),
                 value_balance,
                 network_id,
             };
@@ -347,9 +303,9 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             let circuit = OuterCircuit::<C>::new(
                 ledger_digest.clone(),
                 serial_numbers.clone(),
-                new_commitments.clone(),
+                commitments.clone(),
                 new_encrypted_record_hashes.clone(),
-                memorandum,
+                memo,
                 value_balance,
                 network_id,
                 inner_snark_vk,
@@ -357,7 +313,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 program_proofs,
                 program_commitment.clone(),
                 program_randomness,
-                local_data_root.clone(),
+                local_data.root().clone(),
                 inner_circuit_id.clone(),
             );
 
@@ -374,9 +330,9 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             let inner_snark_input = InnerCircuitVerifierInput {
                 ledger_digest: ledger_digest.clone(),
                 old_serial_numbers: serial_numbers.clone(),
-                new_commitments: new_commitments.clone(),
+                new_commitments: commitments.clone(),
                 new_encrypted_record_hashes,
-                memo: memorandum,
+                memo,
                 program_commitment: None,
                 local_data_root: None,
                 value_balance,
@@ -398,8 +354,8 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let transaction = Self::Transaction::new(
             Network::from_id(network_id),
             serial_numbers,
-            new_commitments,
-            memorandum,
+            commitments,
+            memo,
             ledger_digest,
             inner_circuit_id,
             transaction_proof,
@@ -408,7 +364,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             new_encrypted_records,
         );
 
-        end_timer!(exec_time);
+        end_timer!(execution_timer);
 
         Ok((new_records, transaction))
     }

@@ -14,31 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{
-    merkle_tree::MerklePath,
-    traits::{CRH, SNARK},
-    SRS,
-};
+use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 use snarkvm_curves::bls12_377::{Fq, Fr};
 use snarkvm_dpc::{prelude::*, testnet1::*};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_integration::testnet1::*;
 use snarkvm_ledger::{ledger::*, prelude::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
 
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn testnet1_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
-    let dpc = Testnet1DPC::load(false)?;
+    let dpc = Testnet1DPC::load(false).unwrap();
 
     let inner_snark_vk: <<Testnet1Parameters as Parameters>::InnerSNARK as SNARK>::VerifyingKey =
         dpc.inner_snark_parameters.1.clone().into();
 
-    let inner_circuit_id =
-        <Testnet1Parameters as Parameters>::inner_circuit_id_crh().hash(&inner_snark_vk.to_bytes_le()?)?;
+    let inner_circuit_id = <Testnet1Parameters as Parameters>::inner_circuit_id_crh()
+        .hash(&inner_snark_vk.to_bytes_le().unwrap())
+        .unwrap();
 
     Ok(to_bytes_le![inner_circuit_id]?)
 }
@@ -132,10 +129,10 @@ fn dpc_testnet1_integration_test() {
         .execute_offline_phase(&old_private_keys, old_records, new_records, memo, &mut rng)
         .unwrap();
 
-    // Generate the program proofs
+    // Generate the program proofs.
     let mut program_proofs = vec![];
     for i in 0..Testnet1Parameters::NUM_TOTAL_RECORDS {
-        let public_variables = ProgramPublicVariables::new(&transaction_kernel.local_data_tree.root(), i as u8);
+        let public_variables = ProgramPublicVariables::new(transaction_kernel.local_data.root(), i as u8);
         program_proofs.push(
             dpc.noop_program
                 .execute(0, &public_variables, &NoopPrivateVariables::new())
@@ -350,7 +347,7 @@ fn test_testnet1_dpc_execute_constraints() {
 
     let mut program_proofs = vec![];
     for i in 0..Testnet1Parameters::NUM_INPUT_RECORDS {
-        let public_variables = ProgramPublicVariables::new(&transaction_kernel.local_data_tree.root(), i as u8);
+        let public_variables = ProgramPublicVariables::new(transaction_kernel.local_data.root(), i as u8);
         program_proofs.push(
             alternate_noop_program
                 .execute(0, &public_variables, &NoopPrivateVariables::new())
@@ -359,7 +356,7 @@ fn test_testnet1_dpc_execute_constraints() {
     }
     for j in 0..Testnet1Parameters::NUM_OUTPUT_RECORDS {
         let public_variables = ProgramPublicVariables::new(
-            &transaction_kernel.local_data_tree.root(),
+            transaction_kernel.local_data.root(),
             (Testnet1Parameters::NUM_INPUT_RECORDS + j) as u8,
         );
         program_proofs.push(
@@ -370,26 +367,51 @@ fn test_testnet1_dpc_execute_constraints() {
     }
 
     let TransactionKernel {
+        authorized,
         old_records,
-        serial_numbers: old_serial_numbers,
-
         new_records,
-        new_commitments,
-
-        new_records_encryption_randomness,
-        new_encrypted_records,
-
-        program_commitment,
-        program_randomness,
-        local_data_tree: local_data_merkle_tree,
-        local_data_commitment_randomizers,
-        value_balance,
-        memo: memorandum,
-        network_id,
-        signatures: _,
+        local_data,
     } = transaction_kernel;
 
-    let local_data_root = local_data_merkle_tree.root();
+    let TransactionAuthorization {
+        network_id,
+        serial_numbers,
+        commitments,
+        value_balance,
+        memo,
+        signatures: _,
+    } = authorized;
+
+    let (program_commitment, program_randomness) = {
+        let mut input = Vec::new();
+        for record in old_records.iter().chain(new_records.iter()) {
+            input.extend_from_slice(record.program_id());
+        }
+
+        let program_randomness = UniformRand::rand(&mut rng);
+        let program_commitment = Testnet1Parameters::program_commitment_scheme()
+            .commit(&input, &program_randomness)
+            .unwrap();
+
+        (program_commitment, program_randomness)
+    };
+
+    // Encrypt the new records and construct the ciphertext hashes.
+    let mut new_records_encryption_randomness = Vec::with_capacity(Testnet1Parameters::NUM_OUTPUT_RECORDS);
+    let mut new_encrypted_records = Vec::with_capacity(Testnet1Parameters::NUM_OUTPUT_RECORDS);
+    for record in new_records.iter().take(Testnet1Parameters::NUM_OUTPUT_RECORDS) {
+        let (encrypted_record, record_encryption_randomness) = EncryptedRecord::encrypt(record, &mut rng).unwrap();
+        new_records_encryption_randomness.push(record_encryption_randomness);
+        new_encrypted_records.push(encrypted_record);
+    }
+
+    // TODO (howardwu): TEMPORARY - Delete this by making the process integrated with helpers.
+    let new_encrypted_record_hashes = new_encrypted_records
+        .iter()
+        .map(|r| r.to_hash().expect("Failed to hash encrypted record"))
+        .collect::<Vec<_>>();
+
+    let local_data_root = local_data.root();
 
     // Construct the ledger witnesses
     let ledger_digest = ledger.latest_digest().expect("could not get digest");
@@ -411,27 +433,21 @@ fn test_testnet1_dpc_execute_constraints() {
     // Check that the core check constraint system was satisfied.
     let mut inner_circuit_cs = TestConstraintSystem::<Fr>::new();
 
-    // TODO (howardwu): TEMPORARY - Delete this by making the process integrated with helpers.
-    let new_encrypted_record_hashes = new_encrypted_records
-        .iter()
-        .map(|r| r.to_hash().expect("Failed to hash encrypted record"))
-        .collect::<Vec<_>>();
-
     execute_inner_circuit(
         &mut inner_circuit_cs.ns(|| "Inner circuit"),
         &ledger_digest,
         &old_records,
         &old_witnesses,
         &old_private_keys,
-        &old_serial_numbers,
+        &serial_numbers,
         &new_records,
-        &new_commitments,
+        &commitments,
         &new_records_encryption_randomness,
         &new_encrypted_record_hashes,
         &program_commitment,
         &program_randomness,
         &local_data_root,
-        &local_data_commitment_randomizers,
+        &local_data.leaf_randomizers(),
         &memo,
         value_balance,
         network_id,
@@ -478,15 +494,15 @@ fn test_testnet1_dpc_execute_constraints() {
             old_records,
             old_witnesses,
             old_private_keys,
-            old_serial_numbers.clone(),
+            serial_numbers.clone(),
             new_records,
-            new_commitments.clone(),
+            commitments.clone(),
             new_records_encryption_randomness,
             new_encrypted_record_hashes.clone(),
             program_commitment,
             program_randomness,
-            local_data_root,
-            local_data_commitment_randomizers,
+            local_data_root.clone(),
+            local_data.leaf_randomizers().clone(),
             memo,
             value_balance,
             network_id,
@@ -501,10 +517,10 @@ fn test_testnet1_dpc_execute_constraints() {
     execute_outer_circuit::<Testnet1Parameters, _>(
         &mut outer_circuit_cs.ns(|| "Outer circuit"),
         &ledger_digest,
-        &old_serial_numbers,
-        &new_commitments,
+        &serial_numbers,
+        &commitments,
         &new_encrypted_record_hashes,
-        &memorandum,
+        &memo,
         value_balance,
         network_id,
         &inner_snark_vk,
