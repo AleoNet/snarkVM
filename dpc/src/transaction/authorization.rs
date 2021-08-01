@@ -42,15 +42,20 @@ type ProgramCommitmentRandomness<C> = <<C as Parameters>::ProgramCommitmentSchem
 )]
 pub struct TransactionAuthorization<C: Parameters> {
     pub kernel: TransactionKernel<C>,
-    pub old_records: Vec<Record<C>>,
-    pub new_records: Vec<Record<C>>,
+    pub input_records: Vec<Record<C>>,
+    pub output_records: Vec<Record<C>>,
     pub signatures: Vec<<C::AccountSignatureScheme as SignatureScheme>::Signature>,
 }
 
 impl<C: Parameters> TransactionAuthorization<C> {
     #[inline]
     pub fn to_local_data<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<LocalData<C>> {
-        Ok(LocalData::new(&self.kernel, &self.old_records, &self.new_records, rng)?)
+        Ok(LocalData::new(
+            &self.kernel,
+            &self.input_records,
+            &self.output_records,
+            rng,
+        )?)
     }
 
     #[inline]
@@ -59,9 +64,9 @@ impl<C: Parameters> TransactionAuthorization<C> {
         rng: &mut R,
     ) -> Result<(ProgramCommitment<C>, ProgramCommitmentRandomness<C>)> {
         let program_ids = self
-            .old_records
+            .input_records
             .iter()
-            .chain(self.new_records.iter())
+            .chain(self.output_records.iter())
             .take(C::NUM_TOTAL_RECORDS)
             .flat_map(|r| r.program_id())
             .cloned()
@@ -85,7 +90,7 @@ impl<C: Parameters> TransactionAuthorization<C> {
         let mut encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         let mut encrypted_record_randomizers = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
-        for record in self.new_records.iter().take(C::NUM_OUTPUT_RECORDS) {
+        for record in self.output_records.iter().take(C::NUM_OUTPUT_RECORDS) {
             let (encrypted_record, encrypted_record_randomizer) = EncryptedRecord::encrypt(record, rng)?;
             encrypted_record_hashes.push(encrypted_record.to_hash()?);
             encrypted_records.push(encrypted_record);
@@ -100,8 +105,8 @@ impl<C: Parameters> ToBytes for TransactionAuthorization<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.kernel.write_le(&mut writer)?;
-        self.old_records.write_le(&mut writer)?;
-        self.new_records.write_le(&mut writer)?;
+        self.input_records.write_le(&mut writer)?;
+        self.output_records.write_le(&mut writer)?;
         self.signatures.write_le(&mut writer)
     }
 }
@@ -111,14 +116,14 @@ impl<C: Parameters> FromBytes for TransactionAuthorization<C> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let kernel: TransactionKernel<C> = FromBytes::read_le(&mut reader)?;
 
-        let mut old_records = Vec::<Record<C>>::with_capacity(C::NUM_INPUT_RECORDS);
+        let mut input_records = Vec::<Record<C>>::with_capacity(C::NUM_INPUT_RECORDS);
         for _ in 0..C::NUM_INPUT_RECORDS {
-            old_records.push(FromBytes::read_le(&mut reader)?);
+            input_records.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let mut new_records = Vec::<Record<C>>::with_capacity(C::NUM_OUTPUT_RECORDS);
+        let mut output_records = Vec::<Record<C>>::with_capacity(C::NUM_OUTPUT_RECORDS);
         for _ in 0..C::NUM_OUTPUT_RECORDS {
-            new_records.push(FromBytes::read_le(&mut reader)?);
+            output_records.push(FromBytes::read_le(&mut reader)?);
         }
 
         let mut signatures =
@@ -129,8 +134,8 @@ impl<C: Parameters> FromBytes for TransactionAuthorization<C> {
 
         Ok(Self {
             kernel,
-            old_records,
-            new_records,
+            input_records,
+            output_records,
             signatures,
         })
     }

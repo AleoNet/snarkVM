@@ -55,7 +55,7 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
     let genesis_account = Account::new(rng)?;
 
     // Generate input records having as address the genesis address.
-    let old_private_keys = vec![genesis_account.private_key.clone(); C::NUM_INPUT_RECORDS];
+    let private_keys = vec![genesis_account.private_key.clone(); C::NUM_INPUT_RECORDS];
 
     let mut joint_serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
     let mut old_records = Vec::with_capacity(C::NUM_INPUT_RECORDS);
@@ -70,7 +70,7 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
             rng,
         )?;
 
-        let (sn, _) = old_record.to_serial_number(&old_private_keys[i])?;
+        let (sn, _) = old_record.to_serial_number(&private_keys[i])?;
         joint_serial_numbers.extend_from_slice(&to_bytes_le![sn]?);
 
         old_records.push(old_record);
@@ -100,7 +100,7 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
     )?);
 
     // Offline execution to generate a transaction authorization.
-    let authorization = dpc.authorize(&old_private_keys, old_records, new_records, [0; 64], rng)?;
+    let authorization = dpc.authorize(&private_keys, old_records, new_records, None, rng)?;
 
     // Generate the local data.
     let local_data = authorization.to_local_data(rng)?;
@@ -115,7 +115,14 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
         );
     }
 
-    let transaction = dpc.execute(&old_private_keys, authorization, program_proofs, &temporary_ledger, rng)?;
+    let transaction = dpc.execute(
+        &private_keys,
+        authorization,
+        &local_data,
+        program_proofs,
+        &temporary_ledger,
+        rng,
+    )?;
 
     let transaction_bytes = transaction.to_bytes_le()?;
     let transaction_size = transaction_bytes.len();

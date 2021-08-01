@@ -17,7 +17,7 @@
 use crate::prelude::*;
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 use snarkvm_fields::ToConstraintField;
-use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes};
+use snarkvm_utilities::{has_duplicates, to_bytes_le, ToBytes, UniformRand};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
@@ -98,15 +98,15 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
     fn authorize<R: Rng + CryptoRng>(
         &self,
-        old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        old_records: Vec<Self::Record>,
-        new_records: Vec<Self::Record>,
-        memo: <Self::Transaction as TransactionScheme>::Memo,
+        private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
+        input_records: Vec<Self::Record>,
+        output_records: Vec<Self::Record>,
+        memo: Option<<Self::Transaction as TransactionScheme>::Memo>,
         rng: &mut R,
     ) -> Result<Self::Authorization> {
-        assert_eq!(C::NUM_INPUT_RECORDS, old_private_keys.len());
-        assert_eq!(C::NUM_INPUT_RECORDS, old_records.len());
-        assert_eq!(C::NUM_OUTPUT_RECORDS, new_records.len());
+        assert_eq!(C::NUM_INPUT_RECORDS, private_keys.len());
+        assert_eq!(C::NUM_INPUT_RECORDS, input_records.len());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, output_records.len());
 
         // Initialize the transaction kernel.
         let mut kernel = TransactionKernel {
@@ -114,22 +114,21 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             serial_numbers: Vec::with_capacity(C::NUM_INPUT_RECORDS),
             commitments: Vec::with_capacity(C::NUM_OUTPUT_RECORDS),
             value_balance: AleoAmount::ZERO,
-            memo,
+            memo: [0u8; 64],
         };
 
         // Initialize a vector for randomized private keys.
         let mut randomized_private_keys = Vec::with_capacity(C::NUM_INPUT_RECORDS);
 
         // Process the input records.
-        for (i, record) in old_records.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
+        for (i, record) in input_records.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
             // Compute the serial numbers.
-            let (serial_number, signature_randomizer) = record.to_serial_number(&old_private_keys[i])?;
+            let (serial_number, signature_randomizer) = record.to_serial_number(&private_keys[i])?;
             kernel.serial_numbers.push(serial_number);
 
             // Randomize the private key.
             randomized_private_keys.push(
-                C::account_signature_scheme()
-                    .randomize_private_key(&old_private_keys[i].sk_sig, &signature_randomizer)?,
+                C::account_signature_scheme().randomize_private_key(&private_keys[i].sk_sig, &signature_randomizer)?,
             );
 
             if !record.is_dummy() {
@@ -138,7 +137,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         }
 
         // Process the output records.
-        for record in new_records.iter().take(C::NUM_OUTPUT_RECORDS) {
+        for record in output_records.iter().take(C::NUM_OUTPUT_RECORDS) {
             // Compute the commitments.
             kernel.commitments.push(record.commitment());
 
@@ -146,6 +145,15 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 kernel.value_balance = kernel.value_balance.sub(AleoAmount::from_bytes(record.value() as i64));
             }
         }
+
+        // Process the memo.
+        match memo {
+            Some(memo) => memo.write_le(&mut kernel.memo[..])?,
+            None => (0..64)
+                .map(|_| u8::rand(rng))
+                .collect::<Vec<u8>>()
+                .write_le(&mut kernel.memo[..])?,
+        };
 
         // Construct the signature message.
         let signature_message = match kernel.is_valid() {
@@ -173,29 +181,25 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         // Return the transaction authorization.
         Ok(TransactionAuthorization {
             kernel,
-            old_records,
-            new_records,
+            input_records,
+            output_records,
             signatures,
         })
     }
 
     fn execute<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
         &self,
-        old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
+        private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         authorization: Self::Authorization,
+        local_data: &LocalData<C>,
         program_proofs: Vec<Self::Execution>,
         ledger: &L,
         rng: &mut R,
     ) -> Result<Self::Transaction> {
-        assert_eq!(C::NUM_INPUT_RECORDS, old_private_keys.len());
+        assert_eq!(C::NUM_INPUT_RECORDS, private_keys.len());
         assert_eq!(C::NUM_TOTAL_RECORDS, program_proofs.len());
 
         let execution_timer = start_timer!(|| "DPC::execute_online_phase");
-
-        // Generate the local data.
-        let local_data_timer = start_timer!(|| "Generate the local data");
-        let local_data = authorization.to_local_data(rng)?;
-        end_timer!(local_data_timer);
 
         // Compute the program commitment.
         let (program_commitment, program_randomness) = authorization.to_program_commitment(rng)?;
@@ -206,8 +210,8 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         let TransactionAuthorization {
             kernel,
-            old_records,
-            new_records,
+            input_records,
+            output_records,
             signatures,
         } = authorization;
 
@@ -224,7 +228,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         // Compute the ledger membership witnesses.
         let mut old_witnesses = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for record in old_records.iter().take(C::NUM_INPUT_RECORDS) {
+        for record in input_records.iter().take(C::NUM_INPUT_RECORDS) {
             old_witnesses.push(match record.is_dummy() {
                 true => MerklePath::default(),
                 false => ledger.prove_cm(&record.commitment())?,
@@ -249,11 +253,11 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let inner_proof = {
             let circuit = InnerCircuit::<C>::new(
                 ledger_digest.clone(),
-                old_records,
+                input_records,
                 old_witnesses,
-                old_private_keys.clone(),
+                private_keys.clone(),
                 serial_numbers.clone(),
-                new_records.clone(),
+                output_records.clone(),
                 commitments.clone(),
                 encrypted_record_randomizers,
                 encrypted_record_hashes.clone(),
