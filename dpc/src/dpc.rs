@@ -131,24 +131,24 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         }
 
         // Generate Schnorr signature on transaction data.
-        let signature_time = start_timer!(|| "Sign and randomize signature");
-
         let signature_message = to_bytes_le![C::NETWORK_ID, serial_numbers, commitments, value_balance, memo]?;
+        let signatures = {
+            let signature_time = start_timer!(|| "Sign and randomize signature");
+            let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+            for i in 0..C::NUM_INPUT_RECORDS {
+                // Randomize the private key.
+                let randomized_private_key = C::account_signature_scheme()
+                    .randomize_private_key(&old_private_keys[i].sk_sig, &signature_randomizers[i])?;
 
-        let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for i in 0..C::NUM_INPUT_RECORDS {
-            // Randomize the private key.
-            let randomized_private_key = C::account_signature_scheme()
-                .randomize_private_key(&old_private_keys[i].sk_sig, &signature_randomizers[i])?;
+                // Sign the transaction data.
+                let randomized_signature =
+                    C::account_signature_scheme().sign_randomized(&randomized_private_key, &signature_message, rng)?;
 
-            // Sign the transaction data.
-            let randomized_signature =
-                C::account_signature_scheme().sign_randomized(&randomized_private_key, &signature_message, rng)?;
-
-            signatures.push(randomized_signature);
-        }
-
-        end_timer!(signature_time);
+                signatures.push(randomized_signature);
+            }
+            end_timer!(signature_time);
+            signatures
+        };
 
         // TODO (raychu86): Add index and program register inputs + outputs to local data commitment leaves
         let (local_data_tree, local_data_commitment_randomizers) = {
@@ -199,14 +199,11 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         // Encrypt the new records and construct the ciphertext hashes
 
         let mut new_records_encryption_randomness = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-        let mut new_encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         let mut new_encrypted_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
 
         for record in &new_records {
             let (encrypted_record, record_encryption_randomness) = EncryptedRecord::encrypt(record, rng)?;
-
             new_records_encryption_randomness.push(record_encryption_randomness);
-            new_encrypted_record_hashes.push(encrypted_record.to_hash()?);
             new_encrypted_records.push(encrypted_record);
         }
 
@@ -219,15 +216,15 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
             new_records_encryption_randomness,
             new_encrypted_records,
-            new_encrypted_record_hashes,
 
             program_commitment,
             program_randomness,
+
             local_data_tree,
             local_data_commitment_randomizers,
 
             value_balance,
-            memorandum: memo,
+            memo,
             network_id: C::NETWORK_ID,
             signatures,
         })
@@ -255,19 +252,20 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
             new_records_encryption_randomness,
             new_encrypted_records,
-            new_encrypted_record_hashes,
 
             program_commitment,
             program_randomness,
-            local_data_tree: local_data_merkle_tree,
+
+            local_data_tree,
             local_data_commitment_randomizers,
+
             value_balance,
-            memorandum,
+            memo: memorandum,
             network_id,
             signatures,
         } = transaction_kernel;
 
-        let local_data_root = local_data_merkle_tree.root();
+        let local_data_root = local_data_tree.root();
 
         // Construct the ledger witnesses
 
@@ -285,6 +283,12 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 old_witnesses.push(witness);
             }
         }
+
+        // TODO (howardwu): TEMPORARY - Delete this by making the process integrated with helpers.
+        let new_encrypted_record_hashes = new_encrypted_records
+            .iter()
+            .map(|r| r.to_hash().expect("Failed to hash encrypted record"))
+            .collect::<Vec<_>>();
 
         let inner_proof = {
             let circuit = InnerCircuit::<C>::new(
@@ -552,11 +556,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             },
         };
 
-        match C::OuterSNARK::verify(
-            &self.outer_snark_parameters.1,
-            &outer_snark_input,
-            &transaction.transaction_proof,
-        ) {
+        match C::OuterSNARK::verify(&self.outer_snark_parameters.1, &outer_snark_input, &transaction.proof) {
             Ok(is_valid) => {
                 if !is_valid {
                     eprintln!("Transaction proof failed to verify.");

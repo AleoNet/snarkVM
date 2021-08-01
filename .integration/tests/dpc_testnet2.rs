@@ -379,15 +379,14 @@ fn test_testnet2_dpc_execute_constraints() {
         new_commitments,
 
         new_records_encryption_randomness,
-        new_encrypted_records: _,
-        new_encrypted_record_hashes,
+        new_encrypted_records,
 
         program_commitment,
         program_randomness,
         local_data_tree: local_data_merkle_tree,
         local_data_commitment_randomizers,
         value_balance,
-        memorandum,
+        memo: memorandum,
         network_id,
         signatures: _,
     } = transaction_kernel;
@@ -413,6 +412,12 @@ fn test_testnet2_dpc_execute_constraints() {
     //////////////////////////////////////////////////////////////////////////
     // Check that the core check constraint system was satisfied.
     let mut inner_circuit_cs = TestConstraintSystem::<Fr>::new();
+
+    // TODO (howardwu): TEMPORARY - Delete this by making the process integrated with helpers.
+    let new_encrypted_record_hashes = new_encrypted_records
+        .iter()
+        .map(|r| r.to_hash().expect("Failed to hash encrypted record"))
+        .collect::<Vec<_>>();
 
     execute_inner_circuit(
         &mut inner_circuit_cs.ns(|| "Inner circuit"),

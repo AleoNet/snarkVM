@@ -45,7 +45,6 @@ pub struct TransactionKernel<C: Parameters> {
 
     pub new_records_encryption_randomness: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
     pub new_encrypted_records: Vec<EncryptedRecord<C>>,
-    pub new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
 
     // Program and local data root and randomness
     pub program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
@@ -55,7 +54,7 @@ pub struct TransactionKernel<C: Parameters> {
     pub local_data_commitment_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
 
     pub value_balance: AleoAmount,
-    pub memorandum: <Transaction<C> as TransactionScheme>::Memorandum,
+    pub memo: <Transaction<C> as TransactionScheme>::Memorandum,
     pub network_id: u8,
     pub signatures: Vec<<C::AccountSignatureScheme as SignatureScheme>::Signature>,
 }
@@ -69,10 +68,10 @@ impl<C: Parameters> TransactionKernel<C> {
 
             new_records: self.new_records.to_vec(),
 
-            local_data_merkle_tree: self.local_data_tree.clone(),
+            local_data_tree: self.local_data_tree.clone(),
             local_data_commitment_randomizers: self.local_data_commitment_randomizers.clone(),
 
-            memorandum: self.memorandum,
+            memo: self.memo,
             network_id: self.network_id,
         }
     }
@@ -109,10 +108,6 @@ impl<C: Parameters> ToBytes for TransactionKernel<C> {
             new_encrypted_record.write_le(&mut writer)?;
         }
 
-        for new_encrypted_record_hash in &self.new_encrypted_record_hashes {
-            new_encrypted_record_hash.write_le(&mut writer)?;
-        }
-
         // Write transaction components
 
         self.program_commitment.write_le(&mut writer)?;
@@ -125,7 +120,7 @@ impl<C: Parameters> ToBytes for TransactionKernel<C> {
         }
 
         self.value_balance.write_le(&mut writer)?;
-        self.memorandum.write_le(&mut writer)?;
+        self.memo.write_le(&mut writer)?;
         self.network_id.write_le(&mut writer)?;
 
         for signature in &self.signatures {
@@ -181,12 +176,6 @@ impl<C: Parameters> FromBytes for TransactionKernel<C> {
             new_encrypted_records.push(encrypted_record);
         }
 
-        let mut new_encrypted_record_hashes = vec![];
-        for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let encrypted_record_hash: C::EncryptedRecordDigest = FromBytes::read_le(&mut reader)?;
-            new_encrypted_record_hashes.push(encrypted_record_hash);
-        }
-
         // Read transaction components
 
         let program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output =
@@ -226,14 +215,13 @@ impl<C: Parameters> FromBytes for TransactionKernel<C> {
 
             new_records_encryption_randomness,
             new_encrypted_records,
-            new_encrypted_record_hashes,
 
             program_commitment,
             program_randomness,
             local_data_tree: local_data_merkle_tree,
             local_data_commitment_randomizers,
             value_balance,
-            memorandum,
+            memo: memorandum,
             network_id,
             signatures,
         })
