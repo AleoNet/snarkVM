@@ -23,16 +23,9 @@ use snarkvm_ledger::{ledger::*, prelude::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
-use anyhow::Result;
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use std::time::{SystemTime, UNIX_EPOCH};
-
-fn testnet1_inner_circuit_id() -> Result<Vec<u8>> {
-    let inner_circuit_id = <Testnet1Parameters as Parameters>::inner_circuit_id_crh()
-        .hash_field_elements(&<Testnet1Parameters as Parameters>::inner_circuit_verifying_key().to_field_elements()?)?;
-    Ok(inner_circuit_id.to_bytes_le()?)
-}
 
 #[ignore]
 #[test]
@@ -41,7 +34,9 @@ fn test_testnet1_inner_circuit_sanity_check() {
         132, 243, 19, 234, 73, 219, 14, 105, 124, 12, 23, 229, 144, 168, 24, 163, 93, 33, 139, 247, 16, 201, 132, 0,
         141, 28, 29, 2, 131, 75, 18, 78, 248, 57, 118, 61, 81, 53, 11, 91, 196, 233, 80, 186, 167, 144, 163, 0,
     ];
-    let candidate_testnet1_inner_circuit_id = testnet1_inner_circuit_id().unwrap();
+    let candidate_testnet1_inner_circuit_id = <Testnet1Parameters as Parameters>::inner_circuit_id()
+        .to_bytes_le()
+        .unwrap();
     assert_eq!(expected_testnet1_inner_circuit_id, candidate_testnet1_inner_circuit_id);
 }
 
@@ -462,10 +457,9 @@ fn test_testnet1_dpc_execute_constraints() {
     let inner_snark_vk: <<Testnet1Parameters as Parameters>::InnerSNARK as SNARK>::VerifyingKey =
         inner_snark_parameters.1.clone().into();
 
-    let inner_snark_vk_field_elements = inner_snark_vk.to_field_elements().unwrap();
-
+    // NOTE: Do not change this to `Testnet1Parameters::inner_circuit_id()` as that will load the *saved* inner circuit VK.
     let inner_circuit_id = <Testnet1Parameters as Parameters>::inner_circuit_id_crh()
-        .hash_field_elements(&inner_snark_vk_field_elements)
+        .hash_field_elements(&inner_snark_vk.to_field_elements().unwrap())
         .unwrap();
 
     let inner_snark_proof = <Testnet1Parameters as Parameters>::InnerSNARK::prove(

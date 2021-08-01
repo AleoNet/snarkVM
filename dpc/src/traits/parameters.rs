@@ -276,6 +276,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
 
     fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
 
+    fn inner_circuit_id() -> &'static Self::InnerCircuitID;
     fn inner_circuit_proving_key(is_prover: bool) -> &'static Option<<Self::InnerSNARK as SNARK>::ProvingKey>;
     fn inner_circuit_verifying_key() -> &'static <Self::InnerSNARK as SNARK>::VerifyingKey;
 
