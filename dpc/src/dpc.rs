@@ -147,9 +147,21 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             }
         }
 
+        // Construct the signature message.
+        let signature_message = match kernel.is_valid() {
+            true => kernel.to_signature_message()?,
+            false => {
+                return Err(DPCError::InvalidKernel(
+                    kernel.network_id,
+                    kernel.serial_numbers.len(),
+                    kernel.commitments.len(),
+                )
+                .into());
+            }
+        };
+
         // Sign the transaction kernel to authorize the transaction.
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        let signature_message = kernel.to_signature_message()?;
         for i in 0..C::NUM_INPUT_RECORDS {
             signatures.push(C::account_signature_scheme().sign_randomized(
                 &randomized_private_keys[i],

@@ -40,8 +40,20 @@ pub struct TransactionKernel<C: Parameters> {
 
 impl<C: Parameters> TransactionKernel<C> {
     #[inline]
+    pub fn is_valid(&self) -> bool {
+        self.network_id == C::NETWORK_ID
+            && self.serial_numbers.len() == C::NUM_INPUT_RECORDS
+            && self.commitments.len() == C::NUM_OUTPUT_RECORDS
+    }
+
+    #[inline]
     pub fn to_signature_message(&self) -> Result<Vec<u8>> {
-        self.to_bytes_le()
+        match self.is_valid() {
+            true => self.to_bytes_le(),
+            false => {
+                Err(DPCError::InvalidKernel(self.network_id, self.serial_numbers.len(), self.commitments.len()).into())
+            }
+        }
     }
 }
 
@@ -49,13 +61,10 @@ impl<C: Parameters> ToBytes for TransactionKernel<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         // Ensure the correct number of serial numbers and commitments are provided.
-        if self.serial_numbers.len() != C::NUM_INPUT_RECORDS || self.commitments.len() != C::NUM_OUTPUT_RECORDS {
-            return Err(DPCError::Message(format!(
-                "Transaction kernel size mismatch: serial numbers - {}, commitments - {}",
-                self.serial_numbers.len(),
-                self.commitments.len()
-            ))
-            .into());
+        if !self.is_valid() {
+            return Err(
+                DPCError::InvalidKernel(self.network_id, self.serial_numbers.len(), self.commitments.len()).into(),
+            );
         }
 
         self.network_id.write_le(&mut writer)?;
