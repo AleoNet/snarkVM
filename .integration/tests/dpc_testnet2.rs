@@ -23,23 +23,15 @@ use snarkvm_ledger::{ledger::*, prelude::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
+use anyhow::Result;
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-fn testnet2_inner_circuit_id() -> anyhow::Result<Vec<u8>> {
-    let dpc = Testnet2DPC::load(false).unwrap();
-
-    let inner_snark_vk: <<Testnet2Parameters as Parameters>::InnerSNARK as SNARK>::VerifyingKey =
-        dpc.inner_snark_parameters.1.clone().into();
-
-    let inner_snark_vk_field_elements = inner_snark_vk.to_field_elements().unwrap();
-
-    let inner_circuit_id = Testnet2Parameters::inner_circuit_id_crh()
-        .hash_field_elements(&inner_snark_vk_field_elements)
-        .unwrap();
-
-    Ok(to_bytes_le![inner_circuit_id]?)
+fn testnet2_inner_circuit_id() -> Result<Vec<u8>> {
+    let inner_circuit_id = <Testnet2Parameters as Parameters>::inner_circuit_id_crh()
+        .hash_field_elements(&<Testnet2Parameters as Parameters>::inner_circuit_verifying_key().to_field_elements()?)?;
+    Ok(inner_circuit_id.to_bytes_le()?)
 }
 
 /// TODO (howardwu): Update this to the correct inner circuit ID when the final parameters are set.
