@@ -267,8 +267,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         }
 
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = self.inner_snark_parameters.1.clone().into();
-        let inner_snark_vk_field_elements = inner_snark_vk.to_field_elements()?;
-        let inner_circuit_id = C::inner_circuit_id_crh().hash_field_elements(&inner_snark_vk_field_elements)?;
+        let inner_circuit_id = C::inner_circuit_id_crh().hash_field_elements(&inner_snark_vk.to_field_elements()?)?;
 
         let transaction_proof = {
             let circuit = OuterCircuit::<C>::new(
