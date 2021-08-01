@@ -41,6 +41,7 @@ use snarkvm_curves::{
     edwards_bls12::{EdwardsParameters, EdwardsProjective as EdwardsBls12},
     PairingEngine,
 };
+use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     algorithms::{
         commitment::{BHPCompressedCommitmentGadget, Blake2sCommitmentGadget},
@@ -152,14 +153,14 @@ impl Parameters for Testnet2Parameters {
 
     type InnerCircuitIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type InnerCircuitIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
-    type InnerCircuitIDCRHDigest = <Self::InnerCircuitIDCRH as CRH>::Output;
+    type InnerCircuitID = <Self::InnerCircuitIDCRH as CRH>::Output;
 
     type LocalDataCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 24, 62>;
     type LocalDataCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 24, 62>;
 
     type LocalDataCRH = BHPCompressedCRH<EdwardsBls12, 16, 32>;
     type LocalDataCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
-    type LocalDataDigest = <Self::LocalDataCRH as CRH>::Output;
+    type LocalDataRoot = <Self::LocalDataCRH as CRH>::Output;
 
     type PRF = Blake2s;
     type PRFGadget = Blake2sGadget;
@@ -203,6 +204,13 @@ impl Parameters for Testnet2Parameters {
     dpc_setup!{record_serial_number_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoRecordSerialNumberTreeCRH0"}
     dpc_setup!{serial_number_nonce_crh, SERIAL_NUMBER_NONCE_CRH, SerialNumberNonceCRH, "AleoSerialNumberNonceCRH0"}
 
+    fn inner_circuit_id() -> &'static Self::InnerCircuitID {
+        static INNER_CIRCUIT_ID: OnceCell<<Testnet2Parameters as Parameters>::InnerCircuitID> = OnceCell::new();
+        INNER_CIRCUIT_ID.get_or_init(|| Self::inner_circuit_id_crh()
+            .hash_field_elements(&Self::inner_circuit_verifying_key().to_field_elements().expect("Failed to convert inner circuit verifying key to elements"))
+            .expect("Failed to hash inner circuit verifying key elements"))
+    }
+    
     dpc_snark_setup_with_mode!{Testnet2Parameters, inner_circuit_proving_key, INNER_CIRCUIT_PROVING_KEY, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
     dpc_snark_setup!{Testnet2Parameters, inner_circuit_verifying_key, INNER_CIRCUIT_VERIFYING_KEY, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
 

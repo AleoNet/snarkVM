@@ -96,7 +96,7 @@ impl<C: Parameters> LocalData<C> {
         })
     }
 
-    pub fn root(&self) -> &<C::LocalDataCRH as CRH>::Output {
+    pub fn root(&self) -> &C::LocalDataRoot {
         &self.tree.root()
     }
 

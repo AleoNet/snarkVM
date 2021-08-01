@@ -23,16 +23,9 @@ use snarkvm_ledger::{ledger::*, prelude::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
-use anyhow::Result;
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use std::time::{SystemTime, UNIX_EPOCH};
-
-fn testnet2_inner_circuit_id() -> Result<Vec<u8>> {
-    let inner_circuit_id = <Testnet2Parameters as Parameters>::inner_circuit_id_crh()
-        .hash_field_elements(&<Testnet2Parameters as Parameters>::inner_circuit_verifying_key().to_field_elements()?)?;
-    Ok(inner_circuit_id.to_bytes_le()?)
-}
 
 /// TODO (howardwu): Update this to the correct inner circuit ID when the final parameters are set.
 #[ignore]
@@ -42,7 +35,9 @@ fn test_testnet2_inner_circuit_sanity_check() {
         70, 187, 221, 37, 4, 78, 200, 68, 34, 184, 229, 110, 24, 7, 142, 8, 62, 42, 234, 231, 96, 86, 201, 94, 143,
         197, 248, 117, 32, 218, 44, 219, 109, 191, 72, 112, 157, 76, 212, 91, 7, 14, 32, 183, 79, 1, 194, 0,
     ];
-    let candidate_testnet2_inner_circuit_id = testnet2_inner_circuit_id().unwrap();
+    let candidate_testnet2_inner_circuit_id = <Testnet2Parameters as Parameters>::inner_circuit_id()
+        .to_bytes_le()
+        .unwrap();
     assert_eq!(expected_testnet2_inner_circuit_id, candidate_testnet2_inner_circuit_id);
 }
 
@@ -468,10 +463,9 @@ fn test_testnet2_dpc_execute_constraints() {
     let inner_snark_vk: <<Testnet2Parameters as Parameters>::InnerSNARK as SNARK>::VerifyingKey =
         inner_snark_parameters.1.clone().into();
 
-    let inner_snark_vk_field_elements = inner_snark_vk.to_field_elements().unwrap();
-
+    // NOTE: Do not change this to `Testnet2Parameters::inner_circuit_id()` as that will load the *saved* inner circuit VK.
     let inner_circuit_id = <Testnet2Parameters as Parameters>::inner_circuit_id_crh()
-        .hash_field_elements(&inner_snark_vk_field_elements)
+        .hash_field_elements(&inner_snark_vk.to_field_elements().unwrap())
         .unwrap();
 
     let inner_snark_proof = <Testnet2Parameters as Parameters>::InnerSNARK::prove(
