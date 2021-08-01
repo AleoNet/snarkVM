@@ -172,7 +172,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         program_proofs: Vec<Self::Execution>,
         ledger: &L,
         rng: &mut R,
-    ) -> Result<(Vec<Self::Record>, Self::Transaction)> {
+    ) -> Result<Self::Transaction> {
         assert_eq!(C::NUM_INPUT_RECORDS, old_private_keys.len());
         assert_eq!(C::NUM_TOTAL_RECORDS, program_proofs.len());
 
@@ -322,22 +322,20 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             )?);
         }
 
-        let transaction = Self::Transaction::new(
+        end_timer!(execution_timer);
+
+        Ok(Self::Transaction::new(
             Network::from_id(network_id),
             serial_numbers,
             commitments,
+            value_balance,
             memo,
             ledger_digest,
             inner_circuit_id,
             transaction_proof,
-            value_balance,
             signatures,
             encrypted_records,
-        );
-
-        end_timer!(execution_timer);
-
-        Ok((new_records, transaction))
+        ))
     }
 
     fn verify<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C>>(

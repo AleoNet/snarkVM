@@ -145,7 +145,9 @@ fn dpc_testnet2_integration_test() {
         );
     }
 
-    let (new_records, transaction) = dpc
+    let new_records = transaction_kernel.new_records.clone();
+
+    let transaction = dpc
         .execute_online_phase(&old_private_keys, transaction_kernel, program_proofs, &ledger, &mut rng)
         .unwrap();
 

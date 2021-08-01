@@ -115,7 +115,7 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
         );
     }
 
-    let (new_records, transaction) = dpc.execute_online_phase(
+    let transaction = dpc.execute_online_phase(
         &old_private_keys,
         transaction_kernel,
         program_proofs,
@@ -124,13 +124,8 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
     )?;
 
     let transaction_bytes = transaction.to_bytes_le()?;
-    let size = transaction_bytes.len();
-    println!("transaction size - {}\n", size);
-
-    for (i, record) in new_records.iter().enumerate() {
-        let record_bytes = to_bytes_le![record]?;
-        println!("record {}: {:?}\n", i, hex::encode(record_bytes));
-    }
+    let transaction_size = transaction_bytes.len();
+    println!("transaction size - {}\n", transaction_size);
 
     // Add genesis transaction to block.
     let mut transactions = Transactions::new();
@@ -162,6 +157,8 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
         proof: proof.into(),
     };
     assert!(genesis_header.is_genesis());
+
+    println!("block size - {}\n", transaction_size + BlockHeader::size());
 
     Ok((genesis_header.serialize().to_vec(), transaction_bytes))
 }

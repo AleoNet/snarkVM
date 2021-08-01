@@ -39,7 +39,7 @@ pub trait DPCScheme<C: Parameters>: Sized {
     /// Loads the saved instance of DPC.
     fn load(verify_only: bool) -> Result<Self>;
 
-    /// Returns the execution context required for program snark and DPC transaction generation.
+    /// Returns an authorized transaction kernel for use to craft an Aleo transaction.
     #[allow(clippy::too_many_arguments)]
     fn execute_offline_phase<R: Rng + CryptoRng>(
         &self,
@@ -50,8 +50,7 @@ pub trait DPCScheme<C: Parameters>: Sized {
         rng: &mut R,
     ) -> Result<Self::TransactionKernel>;
 
-    /// Returns new records and a transaction based on the authorized
-    /// consumption of old records.
+    /// Returns a transaction based on the authorized transaction kernel.
     fn execute_online_phase<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
         &self,
         old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
@@ -59,7 +58,7 @@ pub trait DPCScheme<C: Parameters>: Sized {
         program_proofs: Vec<Self::Execution>,
         ledger: &L,
         rng: &mut R,
-    ) -> Result<(Vec<Self::Record>, Self::Transaction)>;
+    ) -> Result<Self::Transaction>;
 
     /// Returns true iff the transaction is valid according to the ledger.
     fn verify<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C>>(

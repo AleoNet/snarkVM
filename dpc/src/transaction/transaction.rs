@@ -72,11 +72,11 @@ impl<C: Parameters> Transaction<C> {
         network: Network,
         serial_numbers: Vec<<Self as TransactionScheme>::SerialNumber>,
         commitments: Vec<<Self as TransactionScheme>::Commitment>,
+        value_balance: AleoAmount,
         memo: <Self as TransactionScheme>::Memorandum,
         ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
         inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
         proof: <C::OuterSNARK as SNARK>::Proof,
-        value_balance: AleoAmount,
         signatures: Vec<<C::AccountSignatureScheme as SignatureScheme>::Signature>,
         encrypted_records: Vec<EncryptedRecord<C>>,
     ) -> Self {
