@@ -48,6 +48,16 @@ impl<C: Parameters> TransactionKernel<C> {
 impl<C: Parameters> ToBytes for TransactionKernel<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // Ensure the correct number of serial numbers and commitments are provided.
+        if self.serial_numbers.len() != C::NUM_INPUT_RECORDS || self.commitments.len() != C::NUM_OUTPUT_RECORDS {
+            return Err(DPCError::Message(format!(
+                "Transaction kernel size mismatch: serial numbers - {}, commitments - {}",
+                self.serial_numbers.len(),
+                self.commitments.len()
+            ))
+            .into());
+        }
+
         self.network_id.write_le(&mut writer)?;
         self.serial_numbers.write_le(&mut writer)?;
         self.commitments.write_le(&mut writer)?;

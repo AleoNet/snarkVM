@@ -108,14 +108,23 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         assert_eq!(C::NUM_INPUT_RECORDS, old_records.len());
         assert_eq!(C::NUM_OUTPUT_RECORDS, new_records.len());
 
-        let mut randomized_private_keys = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        let mut serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        let mut commitments = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-        let mut value_balance = AleoAmount::ZERO;
+        // Initialize the transaction kernel.
+        let mut kernel = TransactionKernel {
+            network_id: C::NETWORK_ID,
+            serial_numbers: Vec::with_capacity(C::NUM_INPUT_RECORDS),
+            commitments: Vec::with_capacity(C::NUM_OUTPUT_RECORDS),
+            value_balance: AleoAmount::ZERO,
+            memo,
+        };
 
+        // Initialize a vector for randomized private keys.
+        let mut randomized_private_keys = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+
+        // Process the input records.
         for (i, record) in old_records.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
+            // Compute the serial numbers.
             let (serial_number, signature_randomizer) = record.to_serial_number(&old_private_keys[i])?;
-            serial_numbers.push(serial_number);
+            kernel.serial_numbers.push(serial_number);
 
             // Randomize the private key.
             randomized_private_keys.push(
@@ -124,28 +133,21 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             );
 
             if !record.is_dummy() {
-                value_balance = value_balance.add(AleoAmount::from_bytes(record.value() as i64));
+                kernel.value_balance = kernel.value_balance.add(AleoAmount::from_bytes(record.value() as i64));
             }
         }
 
+        // Process the output records.
         for record in new_records.iter().take(C::NUM_OUTPUT_RECORDS) {
-            commitments.push(record.commitment());
+            // Compute the commitments.
+            kernel.commitments.push(record.commitment());
 
             if !record.is_dummy() {
-                value_balance = value_balance.sub(AleoAmount::from_bytes(record.value() as i64));
+                kernel.value_balance = kernel.value_balance.sub(AleoAmount::from_bytes(record.value() as i64));
             }
         }
 
-        // Construct the transaction kernel.
-        let kernel = TransactionKernel {
-            network_id: C::NETWORK_ID,
-            serial_numbers,
-            commitments,
-            value_balance,
-            memo,
-        };
-
-        // Sign the public data to authorize the transaction.
+        // Sign the transaction kernel to authorize the transaction.
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         let signature_message = kernel.to_signature_message()?;
         for i in 0..C::NUM_INPUT_RECORDS {
