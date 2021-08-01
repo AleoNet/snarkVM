@@ -106,7 +106,7 @@ fn commitment_tree_test<
                 if use_bad_root {
                     Ok(<H as CRH>::Output::default())
                 } else {
-                    Ok(merkle_tree.root())
+                    Ok(merkle_tree.root().clone())
                 }
             })
             .unwrap();

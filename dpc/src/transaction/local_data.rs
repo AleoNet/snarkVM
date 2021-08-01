@@ -14,22 +14,162 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Parameters, Record, Transaction, TransactionScheme};
+use crate::{DPCError, LocalDataLeaf, Parameters, Record, RecordScheme, TransactionKernel};
 use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, prelude::*};
+use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
-/// Stores local data required to produce program proofs.
+use anyhow::Result;
+use rand::{CryptoRng, Rng};
+use std::io::{Read, Result as IoResult, Write};
+
+/// The tree of local data commitments for use when executing program proofs.
+#[derive(Derivative)]
+#[derivative(
+    Clone(bound = "C: Parameters"),
+    Debug(bound = "C: Parameters"),
+    PartialEq(bound = "C: Parameters"),
+    Eq(bound = "C: Parameters")
+)]
 pub struct LocalData<C: Parameters> {
-    // Old records and serial numbers
-    pub old_records: Vec<Record<C>>,
-    pub old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
+    #[derivative(PartialEq = "ignore", Debug = "ignore")]
+    tree: CommitmentMerkleTree<C::LocalDataCommitmentScheme, C::LocalDataCRH>,
+    leaves: Vec<LocalDataLeaf<C>>,
+    leaf_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
+}
 
-    // New records
-    pub new_records: Vec<Record<C>>,
+impl<C: Parameters> LocalData<C> {
+    pub fn new<R: Rng + CryptoRng>(
+        kernel: &TransactionKernel<C>,
+        input_records: &Vec<Record<C>>,
+        output_records: &Vec<Record<C>>,
+        rng: &mut R,
+    ) -> Result<Self> {
+        let leaves = Self::generate_local_data_leaves(kernel, input_records, output_records)?;
+        Self::from_leaves(leaves, rng)
+    }
 
-    // Commitment to the above information.
-    pub local_data_merkle_tree: CommitmentMerkleTree<C::LocalDataCommitmentScheme, C::LocalDataCRH>,
-    pub local_data_commitment_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
+    pub fn from_leaves<R: Rng + CryptoRng>(leaves: Vec<LocalDataLeaf<C>>, rng: &mut R) -> Result<Self> {
+        let leaf_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness> =
+            (0..C::NUM_TOTAL_RECORDS).map(|_| UniformRand::rand(rng)).collect();
+        Self::from(leaves, leaf_randomizers)
+    }
 
-    pub memorandum: <Transaction<C> as TransactionScheme>::Memorandum,
-    pub network_id: u8,
+    // TODO (raychu86): Add program register inputs + outputs to local data commitment leaves.
+    pub fn from(
+        leaves: Vec<LocalDataLeaf<C>>,
+        leaf_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
+    ) -> Result<Self> {
+        // Ensure the correct number of leaves and randomizers are provided.
+        if leaves.len() != C::NUM_TOTAL_RECORDS || leaf_randomizers.len() != C::NUM_TOTAL_RECORDS {
+            return Err(DPCError::Message(format!(
+                "Local data size mismatch: leaves - {}, randomizers - {}",
+                leaves.len(),
+                leaf_randomizers.len()
+            ))
+            .into());
+        }
+
+        // Compute the leaf commitments.
+        let leaf_pairs = leaves.iter().zip(leaf_randomizers.iter());
+        let leaf_commitments = leaf_pairs
+            .take(C::NUM_TOTAL_RECORDS)
+            .map(|(leaf, randomizer)| {
+                C::local_data_commitment_scheme()
+                    .commit(
+                        &leaf.to_bytes_le().expect("Failed to convert leaf to bytes"),
+                        randomizer,
+                    )
+                    .expect("Failed to compute the leaf commitment")
+            })
+            .collect::<Vec<_>>();
+
+        // Compute the local data tree.
+        let tree = CommitmentMerkleTree::<C::LocalDataCommitmentScheme, _>::new(
+            C::local_data_crh().clone(),
+            &leaf_commitments,
+        )?;
+
+        Ok(Self {
+            tree,
+            leaves,
+            leaf_randomizers,
+        })
+    }
+
+    pub fn root(&self) -> &<C::LocalDataCRH as CRH>::Output {
+        &self.tree.root()
+    }
+
+    pub fn leaves(&self) -> &Vec<LocalDataLeaf<C>> {
+        &self.leaves
+    }
+
+    pub fn leaf_randomizers(&self) -> &Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness> {
+        &self.leaf_randomizers
+    }
+
+    // TODO (raychu86): Add program register inputs + outputs to local data commitment leaves.
+    fn generate_local_data_leaves(
+        kernel: &TransactionKernel<C>,
+        input_records: &Vec<Record<C>>,
+        output_records: &Vec<Record<C>>,
+    ) -> Result<Vec<LocalDataLeaf<C>>> {
+        // Ensure the correct number of input and output records are provided.
+        if input_records.len() != C::NUM_INPUT_RECORDS || output_records.len() != C::NUM_OUTPUT_RECORDS {
+            return Err(DPCError::Message(format!(
+                "Local data number of records mismatch: input - {}, output - {}",
+                input_records.len(),
+                output_records.len()
+            ))
+            .into());
+        }
+
+        let mut leaves = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
+
+        for (i, record) in input_records.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
+            leaves.push(LocalDataLeaf::<C>::InputRecord(
+                i as u8,
+                kernel.serial_numbers[i].clone(),
+                record.commitment(),
+                kernel.memo,
+                C::NETWORK_ID,
+            ));
+        }
+
+        for (j, record) in output_records.iter().enumerate().take(C::NUM_OUTPUT_RECORDS) {
+            leaves.push(LocalDataLeaf::<C>::OutputRecord(
+                (C::NUM_INPUT_RECORDS + j) as u8,
+                record.commitment(),
+                kernel.memo,
+                C::NETWORK_ID,
+            ));
+        }
+
+        Ok(leaves)
+    }
+}
+
+impl<C: Parameters> ToBytes for LocalData<C> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.leaves.write_le(&mut writer)?;
+        self.leaf_randomizers.write_le(&mut writer)
+    }
+}
+
+impl<C: Parameters> FromBytes for LocalData<C> {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let mut leaves = Vec::<LocalDataLeaf<C>>::with_capacity(C::NUM_TOTAL_RECORDS);
+        for _ in 0..C::NUM_TOTAL_RECORDS {
+            leaves.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let mut leaf_randomizers =
+            Vec::<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>::with_capacity(C::NUM_TOTAL_RECORDS);
+        for _ in 0..C::NUM_TOTAL_RECORDS {
+            leaf_randomizers.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        Ok(Self::from(leaves, leaf_randomizers).expect("Unable to create the local data tree"))
+    }
 }
