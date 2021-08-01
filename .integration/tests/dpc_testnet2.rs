@@ -50,9 +50,6 @@ fn test_testnet2_inner_circuit_sanity_check() {
 fn dpc_testnet2_integration_test() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
-    // Generate or load DPC.
-    let dpc = setup_or_load_dpc(false, &mut rng);
-
     // Generate accounts.
     let genesis_account = Account::new(&mut rng).unwrap();
     let recipient = Account::new(&mut rng).unwrap();
@@ -72,6 +69,9 @@ fn dpc_testnet2_integration_test() {
     };
 
     let ledger = Ledger::<Testnet2Parameters, MemDb>::new(None, genesis_block).unwrap();
+
+    // Generate or load DPC.
+    let dpc = setup_or_load_dpc(false, &mut rng);
 
     // Generate dummy input records having as address the genesis address.
     let old_private_keys = vec![genesis_account.private_key.clone(); Testnet2Parameters::NUM_INPUT_RECORDS];

@@ -44,7 +44,7 @@ impl<C: Parameters> LocalData<C> {
         new_records: &Vec<Record<C>>,
         rng: &mut R,
     ) -> Result<Self> {
-        let leaves = Self::generate_local_data_leaves(authorized, old_records, new_records);
+        let leaves = Self::generate_local_data_leaves(authorized, old_records, new_records)?;
         Self::from_leaves(leaves, rng)
     }
 
@@ -113,7 +113,17 @@ impl<C: Parameters> LocalData<C> {
         authorized: &TransactionAuthorization<C>,
         old_records: &Vec<Record<C>>,
         new_records: &Vec<Record<C>>,
-    ) -> Vec<LocalDataLeaf<C>> {
+    ) -> Result<Vec<LocalDataLeaf<C>>> {
+        // Ensure the correct number of input and output records are provided.
+        if old_records.len() != C::NUM_INPUT_RECORDS || new_records.len() != C::NUM_OUTPUT_RECORDS {
+            return Err(DPCError::Message(format!(
+                "Local data number of records mismatch: input - {}, output - {}",
+                old_records.len(),
+                new_records.len()
+            ))
+            .into());
+        }
+
         let mut leaves = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
 
         for (i, record) in old_records.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
@@ -128,14 +138,14 @@ impl<C: Parameters> LocalData<C> {
 
         for (j, record) in new_records.iter().enumerate().take(C::NUM_OUTPUT_RECORDS) {
             leaves.push(LocalDataLeaf::<C>::OutputRecord(
-                (C::NUM_OUTPUT_RECORDS + j) as u8,
+                (C::NUM_INPUT_RECORDS + j) as u8,
                 record.commitment(),
                 authorized.memo,
                 C::NETWORK_ID,
             ));
         }
 
-        leaves
+        Ok(leaves)
     }
 }
 

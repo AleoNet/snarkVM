@@ -43,14 +43,14 @@ impl<C: Parameters> ToBytes for LocalDataLeaf<C> {
         match self {
             Self::InputRecord(leaf_index, serial_number, commitment, memo, network_id) => {
                 if (*leaf_index as usize) >= C::NUM_INPUT_RECORDS {
-                    Err(DPCError::Message("Invalid local data input record leaf index".into()).into())
+                    return Err(DPCError::Message(format!("Invalid local data input index - {}", leaf_index)).into());
                 } else {
                     to_bytes_le![leaf_index, serial_number, commitment, memo, network_id]?.write_le(&mut writer)
                 }
             }
             Self::OutputRecord(leaf_index, commitment, memo, network_id) => {
-                if (*leaf_index as usize) < C::NUM_INPUT_RECORDS || (*leaf_index as usize) >= C::NUM_OUTPUT_RECORDS {
-                    return Err(DPCError::Message("Invalid local data output record leaf index".into()).into());
+                if (*leaf_index as usize) < C::NUM_INPUT_RECORDS || (*leaf_index as usize) >= C::NUM_TOTAL_RECORDS {
+                    return Err(DPCError::Message(format!("Invalid local data output index - {}", leaf_index)).into());
                 } else {
                     to_bytes_le![leaf_index, commitment, memo, network_id]?.write_le(&mut writer)
                 }
@@ -72,14 +72,14 @@ impl<C: Parameters> FromBytes for LocalDataLeaf<C> {
             let network_id: NetworkId = FromBytes::read_le(&mut reader)?;
 
             Ok(Self::InputRecord(index, serial_number, commitment, memo, network_id))
-        } else if (index as usize) >= C::NUM_INPUT_RECORDS || (index as usize) < C::NUM_OUTPUT_RECORDS {
+        } else if (index as usize) >= C::NUM_INPUT_RECORDS && (index as usize) < C::NUM_TOTAL_RECORDS {
             let commitment: Commitment<C> = FromBytes::read_le(&mut reader)?;
             let memo: Memo<C> = FromBytes::read_le(&mut reader)?;
             let network_id: NetworkId = FromBytes::read_le(&mut reader)?;
 
             Ok(Self::OutputRecord(index, commitment, memo, network_id))
         } else {
-            Err(DPCError::Message("Invalid local data leaf index".into()).into())
+            Err(DPCError::Message(format!("Invalid local data leaf index - {}", index)).into())
         }
     }
 }
