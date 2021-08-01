@@ -125,9 +125,9 @@ pub trait Parameters: 'static + Sized + Send + Sync {
 
     /// CRH for hash of the `Self::InnerSNARK` verifying keys.
     /// This is invoked only on the larger curve.
-    type InnerCircuitIDCRH: CRH<Output = Self::InnerCircuitIDCRHDigest>;
+    type InnerCircuitIDCRH: CRH<Output = Self::InnerCircuitID>;
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
-    type InnerCircuitIDCRHDigest: ToConstraintField<Self::OuterScalarField>
+    type InnerCircuitID: ToConstraintField<Self::OuterScalarField>
         + Clone
         + Debug
         + Display

@@ -152,7 +152,7 @@ impl Parameters for Testnet2Parameters {
 
     type InnerCircuitIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
     type InnerCircuitIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
-    type InnerCircuitIDCRHDigest = <Self::InnerCircuitIDCRH as CRH>::Output;
+    type InnerCircuitID = <Self::InnerCircuitIDCRH as CRH>::Output;
 
     type LocalDataCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 24, 62>;
     type LocalDataCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 24, 62>;
