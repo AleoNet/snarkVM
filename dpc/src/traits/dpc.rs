@@ -46,7 +46,7 @@ pub trait DPCScheme<C: Parameters>: Sized {
         old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         old_records: Vec<Self::Record>,
         new_records: Vec<Self::Record>,
-        memo: <Self::Transaction as TransactionScheme>::Memorandum,
+        memo: <Self::Transaction as TransactionScheme>::Memo,
         rng: &mut R,
     ) -> Result<Self::Authorization>;
 

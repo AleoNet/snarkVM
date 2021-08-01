@@ -104,7 +104,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     old_serial_numbers: &[<C::AccountSignatureScheme as SignatureScheme>::PublicKey],
     new_commitments: &[C::RecordCommitment],
     new_encrypted_record_hashes: &[C::EncryptedRecordDigest],
-    memo: &<Transaction<C> as TransactionScheme>::Memorandum,
+    memo: &<Transaction<C> as TransactionScheme>::Memo,
     value_balance: AleoAmount,
     network_id: u8,
 

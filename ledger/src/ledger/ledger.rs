@@ -274,8 +274,8 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
         cm_index: &mut usize,
         transaction: &Transaction<C>,
     ) -> Result<(Vec<Op>, Vec<(<Transaction<C> as TransactionScheme>::Commitment, usize)>), StorageError> {
-        let old_serial_numbers = transaction.old_serial_numbers();
-        let new_commitments = transaction.new_commitments();
+        let old_serial_numbers = transaction.serial_numbers();
+        let new_commitments = transaction.commitments();
 
         let mut ops = Vec::with_capacity(old_serial_numbers.len() + new_commitments.len());
         let mut cms = Vec::with_capacity(new_commitments.len());
@@ -334,7 +334,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
 
         for transaction in &block.transactions.0 {
             transaction_serial_numbers.push(transaction.transaction_id()?);
-            transaction_commitments.push(transaction.new_commitments());
+            transaction_commitments.push(transaction.commitments());
         }
 
         // Sanitize the block inputs
@@ -417,7 +417,7 @@ impl<C: Parameters, S: Storage> Ledger<C, S> {
 
         for transaction in &block.transactions.0 {
             transaction_serial_numbers.push(transaction.transaction_id()?);
-            transaction_commitments.push(transaction.new_commitments());
+            transaction_commitments.push(transaction.commitments());
         }
 
         // Sanitize the block inputs

@@ -23,7 +23,7 @@ pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     type Commitment: Clone + Eq + Hash + FromBytes + ToBytes + Sync + Send;
     type Digest: Clone + Eq + Hash + FromBytes + ToBytes;
     type InnerCircuitID: Clone + Eq + FromBytes + ToBytes;
-    type Memorandum: Clone + Eq + Hash + FromBytes + ToBytes;
+    type Memo: Clone + Eq + Hash + FromBytes + ToBytes;
     type SerialNumber: Clone + Eq + Hash + FromBytes + ToBytes;
     type EncryptedRecord: Clone + Eq + FromBytes + ToBytes;
     type ValueBalance: Clone + Eq + FromBytes + ToBytes;
@@ -42,13 +42,13 @@ pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     fn inner_circuit_id(&self) -> &Self::InnerCircuitID;
 
     /// Returns the old serial numbers.
-    fn old_serial_numbers(&self) -> &[Self::SerialNumber];
+    fn serial_numbers(&self) -> &[Self::SerialNumber];
 
     /// Returns the new commitments.
-    fn new_commitments(&self) -> &[Self::Commitment];
+    fn commitments(&self) -> &[Self::Commitment];
 
     /// Returns the memorandum.
-    fn memorandum(&self) -> &Self::Memorandum;
+    fn memo(&self) -> &Self::Memo;
 
     /// Returns the value balance in the transaction.
     fn value_balance(&self) -> Self::ValueBalance;

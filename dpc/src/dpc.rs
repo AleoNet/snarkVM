@@ -101,7 +101,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         old_records: Vec<Self::Record>,
         new_records: Vec<Self::Record>,
-        memo: <Self::Transaction as TransactionScheme>::Memorandum,
+        memo: <Self::Transaction as TransactionScheme>::Memo,
         rng: &mut R,
     ) -> Result<Self::Authorization> {
         assert_eq!(C::NUM_INPUT_RECORDS, old_private_keys.len());
@@ -351,25 +351,25 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let verify_time = start_timer!(|| "DPC::verify");
 
         // Returns false if the number of serial numbers in the transaction is incorrect.
-        if transaction.old_serial_numbers().len() != C::NUM_INPUT_RECORDS {
+        if transaction.serial_numbers().len() != C::NUM_INPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of serial numbers");
             return false;
         }
 
         // Returns false if there are duplicate serial numbers in the transaction.
-        if has_duplicates(transaction.old_serial_numbers().iter()) {
+        if has_duplicates(transaction.serial_numbers().iter()) {
             eprintln!("Transaction contains duplicate serial numbers");
             return false;
         }
 
         // Returns false if the number of commitments in the transaction is incorrect.
-        if transaction.new_commitments().len() != C::NUM_OUTPUT_RECORDS {
+        if transaction.commitments().len() != C::NUM_OUTPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of commitments");
             return false;
         }
 
         // Returns false if there are duplicate commitments numbers in the transaction.
-        if has_duplicates(transaction.new_commitments().iter()) {
+        if has_duplicates(transaction.commitments().iter()) {
             eprintln!("Transaction contains duplicate commitments");
             return false;
         }
@@ -377,7 +377,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let ledger_time = start_timer!(|| "Ledger checks");
 
         // Returns false if any transaction serial number previously existed in the ledger.
-        for sn in transaction.old_serial_numbers() {
+        for sn in transaction.serial_numbers() {
             if ledger.contains_serial_number(sn) {
                 eprintln!("Ledger already contains this transaction serial number.");
                 return false;
@@ -385,7 +385,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         }
 
         // Returns false if any transaction commitment previously existed in the ledger.
-        for cm in transaction.new_commitments() {
+        for cm in transaction.commitments() {
             if ledger.contains_commitment(cm) {
                 eprintln!("Ledger already contains this transaction commitment.");
                 return false;
@@ -410,10 +410,10 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         let signature_message = match to_bytes_le![
             transaction.network_id(),
-            transaction.old_serial_numbers(),
-            transaction.new_commitments(),
+            transaction.serial_numbers(),
+            transaction.commitments(),
             transaction.value_balance(),
-            transaction.memorandum()
+            transaction.memo()
         ] {
             Ok(message) => message,
             _ => {
@@ -422,7 +422,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             }
         };
 
-        for (pk, sig) in transaction.old_serial_numbers().iter().zip(transaction.signatures()) {
+        for (pk, sig) in transaction.serial_numbers().iter().zip(transaction.signatures()) {
             match C::account_signature_scheme().verify(pk, &signature_message, sig) {
                 Ok(is_valid) => {
                     if !is_valid {
@@ -460,10 +460,10 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         let inner_snark_input = InnerCircuitVerifierInput {
             ledger_digest: transaction.ledger_digest().clone(),
-            old_serial_numbers: transaction.old_serial_numbers().to_vec(),
-            new_commitments: transaction.new_commitments().to_vec(),
+            old_serial_numbers: transaction.serial_numbers().to_vec(),
+            new_commitments: transaction.commitments().to_vec(),
             new_encrypted_record_hashes,
-            memo: *transaction.memorandum(),
+            memo: *transaction.memo(),
             program_commitment: None,
             local_data_root: None,
             value_balance: transaction.value_balance(),

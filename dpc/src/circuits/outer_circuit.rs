@@ -30,7 +30,7 @@ pub struct OuterCircuit<C: Parameters> {
     old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
     new_commitments: Vec<C::RecordCommitment>,
     new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
-    memo: <Transaction<C> as TransactionScheme>::Memorandum,
+    memo: <Transaction<C> as TransactionScheme>::Memo,
     value_balance: AleoAmount,
     network_id: u8,
 
@@ -93,7 +93,7 @@ impl<C: Parameters> OuterCircuit<C> {
         old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
         new_commitments: Vec<C::RecordCommitment>,
         new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
-        memo: <Transaction<C> as TransactionScheme>::Memorandum,
+        memo: <Transaction<C> as TransactionScheme>::Memo,
         value_balance: AleoAmount,
         network_id: u8,
 

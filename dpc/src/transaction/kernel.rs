@@ -31,11 +31,16 @@ use std::io::{Read, Result as IoResult, Write};
     Eq(bound = "C: Parameters")
 )]
 pub struct TransactionKernel<C: Parameters> {
+    /// The network ID.
     pub network_id: u8,
+    /// The serial numbers of the input records.
     pub serial_numbers: Vec<C::AccountSignaturePublicKey>,
+    /// The commitments of the output records.
     pub commitments: Vec<C::RecordCommitment>,
+    /// A value balance is the difference between the input and output record values.
     pub value_balance: AleoAmount,
-    pub memo: <Transaction<C> as TransactionScheme>::Memorandum,
+    /// Publicly-visible data associated with the transaction.
+    pub memo: <Transaction<C> as TransactionScheme>::Memo,
 }
 
 impl<C: Parameters> TransactionKernel<C> {
@@ -91,7 +96,7 @@ impl<C: Parameters> FromBytes for TransactionKernel<C> {
         }
 
         let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
-        let memo: <Transaction<C> as TransactionScheme>::Memorandum = FromBytes::read_le(&mut reader)?;
+        let memo: <Transaction<C> as TransactionScheme>::Memo = FromBytes::read_le(&mut reader)?;
 
         Ok(Self {
             network_id,

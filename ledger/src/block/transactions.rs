@@ -77,12 +77,12 @@ impl<T: TransactionScheme> Transactions<T> {
                 return true;
             };
 
-            holding_serial_numbers.extend(tx.old_serial_numbers());
-            holding_commitments.extend(tx.new_commitments());
+            holding_serial_numbers.extend(tx.serial_numbers());
+            holding_commitments.extend(tx.commitments());
         }
 
-        let transaction_serial_numbers = transaction.old_serial_numbers();
-        let transaction_commitments = transaction.new_commitments();
+        let transaction_serial_numbers = transaction.serial_numbers();
+        let transaction_commitments = transaction.commitments();
 
         // Check if the transactions in the block have duplicate serial numbers
         if has_duplicates(transaction_serial_numbers) {
