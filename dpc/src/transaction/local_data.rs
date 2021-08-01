@@ -39,12 +39,12 @@ pub struct LocalData<C: Parameters> {
 
 impl<C: Parameters> LocalData<C> {
     pub fn new<R: Rng + CryptoRng>(
-        authorized: &TransactionKernel<C>,
-        old_records: &Vec<Record<C>>,
-        new_records: &Vec<Record<C>>,
+        kernel: &TransactionKernel<C>,
+        input_records: &Vec<Record<C>>,
+        output_records: &Vec<Record<C>>,
         rng: &mut R,
     ) -> Result<Self> {
-        let leaves = Self::generate_local_data_leaves(authorized, old_records, new_records)?;
+        let leaves = Self::generate_local_data_leaves(kernel, input_records, output_records)?;
         Self::from_leaves(leaves, rng)
     }
 
@@ -110,37 +110,37 @@ impl<C: Parameters> LocalData<C> {
 
     // TODO (raychu86): Add program register inputs + outputs to local data commitment leaves.
     fn generate_local_data_leaves(
-        authorized: &TransactionKernel<C>,
-        old_records: &Vec<Record<C>>,
-        new_records: &Vec<Record<C>>,
+        kernel: &TransactionKernel<C>,
+        input_records: &Vec<Record<C>>,
+        output_records: &Vec<Record<C>>,
     ) -> Result<Vec<LocalDataLeaf<C>>> {
         // Ensure the correct number of input and output records are provided.
-        if old_records.len() != C::NUM_INPUT_RECORDS || new_records.len() != C::NUM_OUTPUT_RECORDS {
+        if input_records.len() != C::NUM_INPUT_RECORDS || output_records.len() != C::NUM_OUTPUT_RECORDS {
             return Err(DPCError::Message(format!(
                 "Local data number of records mismatch: input - {}, output - {}",
-                old_records.len(),
-                new_records.len()
+                input_records.len(),
+                output_records.len()
             ))
             .into());
         }
 
         let mut leaves = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
 
-        for (i, record) in old_records.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
+        for (i, record) in input_records.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
             leaves.push(LocalDataLeaf::<C>::InputRecord(
                 i as u8,
-                authorized.serial_numbers[i].clone(),
+                kernel.serial_numbers[i].clone(),
                 record.commitment(),
-                authorized.memo,
+                kernel.memo,
                 C::NETWORK_ID,
             ));
         }
 
-        for (j, record) in new_records.iter().enumerate().take(C::NUM_OUTPUT_RECORDS) {
+        for (j, record) in output_records.iter().enumerate().take(C::NUM_OUTPUT_RECORDS) {
             leaves.push(LocalDataLeaf::<C>::OutputRecord(
                 (C::NUM_INPUT_RECORDS + j) as u8,
                 record.commitment(),
-                authorized.memo,
+                kernel.memo,
                 C::NETWORK_ID,
             ));
         }

@@ -14,13 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{
-    AccountScheme,
-    Parameters,
-    RecordCommitmentTree,
-    RecordScheme,
-    RecordSerialNumberTree,
-    TransactionScheme,
+use crate::{
+    traits::{
+        AccountScheme,
+        Parameters,
+        RecordCommitmentTree,
+        RecordScheme,
+        RecordSerialNumberTree,
+        TransactionScheme,
+    },
+    LocalData,
 };
 
 use anyhow::Result;
@@ -39,22 +42,23 @@ pub trait DPCScheme<C: Parameters>: Sized {
     /// Loads the saved instance of DPC.
     fn load(verify_only: bool) -> Result<Self>;
 
-    /// Returns an authorized transaction kernel for use to craft an Aleo transaction.
+    /// Returns a transaction authorization to execute an Aleo transaction.
     #[allow(clippy::too_many_arguments)]
     fn authorize<R: Rng + CryptoRng>(
         &self,
-        old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        old_records: Vec<Self::Record>,
-        new_records: Vec<Self::Record>,
-        memo: <Self::Transaction as TransactionScheme>::Memo,
+        private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
+        input_records: Vec<Self::Record>,
+        output_records: Vec<Self::Record>,
+        memo: Option<<Self::Transaction as TransactionScheme>::Memo>,
         rng: &mut R,
     ) -> Result<Self::Authorization>;
 
-    /// Returns a transaction based on the authorized transaction kernel.
+    /// Returns a transaction based on the transaction authorization.
     fn execute<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
         &self,
-        old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        transaction_kernel: Self::Authorization,
+        private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
+        authorization: Self::Authorization,
+        local_data: &LocalData<C>,
         program_proofs: Vec<Self::Execution>,
         ledger: &L,
         rng: &mut R,
