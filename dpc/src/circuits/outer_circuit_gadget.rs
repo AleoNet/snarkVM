@@ -118,7 +118,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     // Rest
     program_commitment: &<C::ProgramCommitmentScheme as CommitmentScheme>::Output,
     program_randomness: &<C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-    local_data_root: &C::LocalDataDigest,
+    local_data_root: &C::LocalDataRoot,
 
     inner_circuit_id: &C::InnerCircuitID,
 ) -> Result<(), SynthesisError> {

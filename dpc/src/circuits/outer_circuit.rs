@@ -41,7 +41,7 @@ pub struct OuterCircuit<C: Parameters> {
     program_proofs: Vec<Execution<C>>,
     program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
     program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-    local_data_root: C::LocalDataDigest,
+    local_data_root: C::LocalDataRoot,
 
     inner_circuit_id: C::InnerCircuitID,
 }
@@ -64,7 +64,7 @@ impl<C: Parameters> OuterCircuit<C> {
         let program_proofs = vec![program_snark_vk_and_proof.clone(); C::NUM_TOTAL_RECORDS];
         let program_commitment = <C::ProgramCommitmentScheme as CommitmentScheme>::Output::default();
         let program_randomness = <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default();
-        let local_data_root = C::LocalDataDigest::default();
+        let local_data_root = C::LocalDataRoot::default();
 
         let inner_circuit_id = C::InnerCircuitID::default();
 
@@ -106,7 +106,7 @@ impl<C: Parameters> OuterCircuit<C> {
         program_proofs: Vec<Execution<C>>,
         program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
         program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-        local_data_root: C::LocalDataDigest,
+        local_data_root: C::LocalDataRoot,
 
         // Inner circuit ID
         inner_circuit_id: C::InnerCircuitID,

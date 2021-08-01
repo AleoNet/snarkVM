@@ -145,9 +145,9 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type LocalDataCommitmentScheme: CommitmentScheme;
     type LocalDataCommitmentGadget: CommitmentGadget<Self::LocalDataCommitmentScheme, Self::InnerScalarField>;
 
-    type LocalDataCRH: CRH<Output = Self::LocalDataDigest>;
+    type LocalDataCRH: CRH<Output = Self::LocalDataRoot>;
     type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
-    type LocalDataDigest: ToConstraintField<Self::InnerScalarField>
+    type LocalDataRoot: ToConstraintField<Self::InnerScalarField>
         + Clone
         + Debug
         + Display

@@ -159,7 +159,7 @@ impl Parameters for Testnet2Parameters {
 
     type LocalDataCRH = BHPCompressedCRH<EdwardsBls12, 16, 32>;
     type LocalDataCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 16, 32>;
-    type LocalDataDigest = <Self::LocalDataCRH as CRH>::Output;
+    type LocalDataRoot = <Self::LocalDataCRH as CRH>::Output;
 
     type PRF = Blake2s;
     type PRFGadget = Blake2sGadget;
