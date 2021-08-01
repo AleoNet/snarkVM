@@ -16,15 +16,22 @@
 
 use crate::{prelude::*, EncryptedRecord, Parameters, Record, Transaction};
 use snarkvm_algorithms::prelude::*;
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
 
+use anyhow::Result;
+use rand::{CryptoRng, Rng};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
     str::FromStr,
 };
 
-/// The transaction authorization are signatures over critical (public) components,
+type EncryptedRecordHash<C> = <<C as Parameters>::EncryptedRecordCRH as CRH>::Output;
+type EncryptedRecordRandomizer<C> = <<C as Parameters>::AccountEncryptionScheme as EncryptionScheme>::Randomness;
+type ProgramCommitment<C> = <<C as Parameters>::ProgramCommitmentScheme as CommitmentScheme>::Output;
+type ProgramCommitmentRandomness<C> = <<C as Parameters>::ProgramCommitmentScheme as CommitmentScheme>::Randomness;
+
+/// The transaction authorization are signatures over core (public) transaction components,
 /// and authorized by the caller of the transaction. A signed transaction core implies
 /// a transaction generated based on these values will be admissible by the ledger.
 #[derive(Derivative)]
@@ -90,9 +97,8 @@ impl<C: Parameters> FromBytes for TransactionAuthorization<C> {
     }
 }
 
-/// The transaction kernel contains components required to produce the final transaction
-/// after `execute_offline_phase` has created old serial numbers, new records and commitments.
-/// For convenience, it also stores references to existing information such as old records.
+/// The transaction kernel contains components required to produce the final transaction proof
+/// after `execute_offline_phase` has created serial numbers, commitments, and signatures.
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "C: Parameters"),
@@ -105,6 +111,50 @@ pub struct TransactionKernel<C: Parameters> {
     pub old_records: Vec<Record<C>>,
     pub new_records: Vec<Record<C>>,
     pub local_data: LocalData<C>,
+}
+
+impl<C: Parameters> TransactionKernel<C> {
+    #[inline]
+    pub fn to_program_commitment<R: Rng + CryptoRng>(
+        &self,
+        rng: &mut R,
+    ) -> Result<(ProgramCommitment<C>, ProgramCommitmentRandomness<C>)> {
+        let program_ids = self
+            .old_records
+            .iter()
+            .chain(self.new_records.iter())
+            .take(C::NUM_TOTAL_RECORDS)
+            .flat_map(|r| r.program_id())
+            .cloned()
+            .collect::<Vec<u8>>();
+
+        let program_randomness = UniformRand::rand(rng);
+        let program_commitment = C::program_commitment_scheme().commit(&program_ids, &program_randomness)?;
+        Ok((program_commitment, program_randomness))
+    }
+
+    #[inline]
+    pub fn to_encrypted_records<R: Rng + CryptoRng>(
+        &self,
+        rng: &mut R,
+    ) -> Result<(
+        Vec<EncryptedRecord<C>>,
+        Vec<EncryptedRecordHash<C>>,
+        Vec<EncryptedRecordRandomizer<C>>,
+    )> {
+        let mut encrypted_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+        let mut encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+        let mut encrypted_record_randomizers = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+
+        for record in self.new_records.iter().take(C::NUM_OUTPUT_RECORDS) {
+            let (encrypted_record, encrypted_record_randomizer) = EncryptedRecord::encrypt(record, rng)?;
+            encrypted_record_hashes.push(encrypted_record.to_hash()?);
+            encrypted_records.push(encrypted_record);
+            encrypted_record_randomizers.push(encrypted_record_randomizer);
+        }
+
+        Ok((encrypted_records, encrypted_record_hashes, encrypted_record_randomizers))
+    }
 }
 
 impl<C: Parameters> ToBytes for TransactionKernel<C> {
@@ -171,17 +221,13 @@ impl<C: Parameters> fmt::Display for TransactionKernel<C> {
 pub struct ExecutionKernel<C: Parameters> {
     pub new_records_encryption_randomness: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
     pub new_encrypted_records: Vec<EncryptedRecord<C>>,
-    pub program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
-    pub program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
 }
 
 impl<C: Parameters> ToBytes for ExecutionKernel<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.new_records_encryption_randomness.write_le(&mut writer)?;
-        self.new_encrypted_records.write_le(&mut writer)?;
-        self.program_commitment.write_le(&mut writer)?;
-        self.program_randomness.write_le(&mut writer)
+        self.new_encrypted_records.write_le(&mut writer)
     }
 }
 
@@ -201,16 +247,9 @@ impl<C: Parameters> FromBytes for ExecutionKernel<C> {
             new_encrypted_records.push(encrypted_record);
         }
 
-        let program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output =
-            FromBytes::read_le(&mut reader)?;
-        let program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness =
-            FromBytes::read_le(&mut reader)?;
-
         Ok(Self {
             new_records_encryption_randomness,
             new_encrypted_records,
-            program_commitment,
-            program_randomness,
         })
     }
 }

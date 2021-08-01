@@ -21,7 +21,7 @@ use snarkvm_fields::ToConstraintField;
 use snarkvm_integration::testnet1::*;
 use snarkvm_ledger::{ledger::*, prelude::*};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes, UniformRand};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
@@ -366,6 +366,13 @@ fn test_testnet1_dpc_execute_constraints() {
         );
     }
 
+    // Compute the program commitment.
+    let (program_commitment, program_randomness) = transaction_kernel.to_program_commitment(&mut rng).unwrap();
+
+    // Compute the encrypted records.
+    let (_encrypted_records, encrypted_record_hashes, encrypted_record_randomizers) =
+        transaction_kernel.to_encrypted_records(&mut rng).unwrap();
+
     let TransactionKernel {
         authorized,
         old_records,
@@ -381,35 +388,6 @@ fn test_testnet1_dpc_execute_constraints() {
         memo,
         signatures: _,
     } = authorized;
-
-    let (program_commitment, program_randomness) = {
-        let mut input = Vec::new();
-        for record in old_records.iter().chain(new_records.iter()) {
-            input.extend_from_slice(record.program_id());
-        }
-
-        let program_randomness = UniformRand::rand(&mut rng);
-        let program_commitment = Testnet1Parameters::program_commitment_scheme()
-            .commit(&input, &program_randomness)
-            .unwrap();
-
-        (program_commitment, program_randomness)
-    };
-
-    // Encrypt the new records and construct the ciphertext hashes.
-    let mut new_records_encryption_randomness = Vec::with_capacity(Testnet1Parameters::NUM_OUTPUT_RECORDS);
-    let mut new_encrypted_records = Vec::with_capacity(Testnet1Parameters::NUM_OUTPUT_RECORDS);
-    for record in new_records.iter().take(Testnet1Parameters::NUM_OUTPUT_RECORDS) {
-        let (encrypted_record, record_encryption_randomness) = EncryptedRecord::encrypt(record, &mut rng).unwrap();
-        new_records_encryption_randomness.push(record_encryption_randomness);
-        new_encrypted_records.push(encrypted_record);
-    }
-
-    // TODO (howardwu): TEMPORARY - Delete this by making the process integrated with helpers.
-    let new_encrypted_record_hashes = new_encrypted_records
-        .iter()
-        .map(|r| r.to_hash().expect("Failed to hash encrypted record"))
-        .collect::<Vec<_>>();
 
     let local_data_root = local_data.root();
 
@@ -442,8 +420,8 @@ fn test_testnet1_dpc_execute_constraints() {
         &serial_numbers,
         &new_records,
         &commitments,
-        &new_records_encryption_randomness,
-        &new_encrypted_record_hashes,
+        &encrypted_record_randomizers,
+        &encrypted_record_hashes,
         &program_commitment,
         &program_randomness,
         &local_data_root,
@@ -497,8 +475,8 @@ fn test_testnet1_dpc_execute_constraints() {
             serial_numbers.clone(),
             new_records,
             commitments.clone(),
-            new_records_encryption_randomness,
-            new_encrypted_record_hashes.clone(),
+            encrypted_record_randomizers,
+            encrypted_record_hashes.clone(),
             program_commitment,
             program_randomness,
             local_data_root.clone(),
@@ -519,7 +497,7 @@ fn test_testnet1_dpc_execute_constraints() {
         &ledger_digest,
         &serial_numbers,
         &commitments,
-        &new_encrypted_record_hashes,
+        &encrypted_record_hashes,
         &memo,
         value_balance,
         network_id,
