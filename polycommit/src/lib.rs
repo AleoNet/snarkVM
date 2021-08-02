@@ -611,7 +611,7 @@ pub mod tests {
             let point = F::rand(rng);
             for (i, label) in labels.iter().enumerate() {
                 query_set.insert((label.clone(), ("rand".into(), point)));
-                let value = polynomials[i].evaluate(point);
+                let value = polynomials[i].evaluate(&point);
                 values.insert((label.clone(), point), value);
             }
             println!("Generated query set");
@@ -724,7 +724,7 @@ pub mod tests {
                 let point = F::rand(rng);
                 for (i, label) in labels.iter().enumerate() {
                     query_set.insert((label.clone(), (format!("rand_{}", point_id), point)));
-                    let value = polynomials[i].evaluate(point);
+                    let value = polynomials[i].evaluate(&point);
                     values.insert((label.clone(), point), value);
                 }
             }
@@ -869,7 +869,7 @@ pub mod tests {
                     let should_have_degree_bounds: bool = rng.gen();
                     for (k, label) in labels.iter().enumerate() {
                         if should_have_degree_bounds {
-                            value += &polynomials[k].evaluate(point);
+                            value += &polynomials[k].evaluate(&point);
                             lc.push((F::one(), label.to_string().into()));
                             break;
                         } else {
@@ -879,7 +879,7 @@ pub mod tests {
                             } else {
                                 assert!(poly.degree_bound().is_none());
                                 let coeff = F::rand(rng);
-                                value += &(coeff * poly.evaluate(point));
+                                value += &(coeff * poly.evaluate(&point));
                                 lc.push((coeff, label.to_string().into()));
                             }
                         }
