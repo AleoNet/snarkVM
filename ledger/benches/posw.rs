@@ -16,15 +16,12 @@
 
 use snarkvm_algorithms::SNARK;
 use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-use snarkvm_ledger::posw::{txids_to_roots, Marlin, Posw, PoswMarlin};
+use snarkvm_ledger::posw::{txids_to_roots, Marlin, PoswMarlin};
 use snarkvm_utilities::FromBytes;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
-use snarkvm_curves::PairingEngine;
-use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
-use snarkvm_polycommit::sonic_pc::SonicKZG10;
 
 fn marlin_posw(c: &mut Criterion) {
     let mut group = c.benchmark_group("Proof of Succinct Work: Marlin");
@@ -32,7 +29,7 @@ fn marlin_posw(c: &mut Criterion) {
     let rng = &mut ChaChaRng::seed_from_u64(1234567);
 
     let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
-    let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(max_degree, rng).unwrap();
+    let universal_srs = Marlin::<Bls12_377>::universal_setup(&max_degree, rng).unwrap();
 
     let posw = PoswMarlin::index::<_, ChaChaRng>(&universal_srs).unwrap();
 
