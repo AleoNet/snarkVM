@@ -620,7 +620,7 @@ where
                             "Coefficient must be one for degree-bounded equations"
                         );
                     } else if cur_comm.degree_bound.is_some() {
-                        println!(
+                        eprintln!(
                             "A commitment with a degree bound cannot be linearly combined with any other commitment."
                         );
                         return Err(SynthesisError::Unsatisfiable);
