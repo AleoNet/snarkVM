@@ -24,7 +24,7 @@ fn test_new_ledger_with_genesis_block() {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             merkle_root_hash: MerkleRootHash([0u8; 32]),
             pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
-            proof: ProofOfSuccinctWork([0u8; 972]),
+            proof: ProofOfSuccinctWork([0u8; 771]),
             time: 0,
             difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
             nonce: 0,
