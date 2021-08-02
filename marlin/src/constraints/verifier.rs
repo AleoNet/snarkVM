@@ -430,10 +430,7 @@ mod test {
 
         let mut evaluation_gadgets = HashMap::<String, NonNativeFieldVar<Fr, Fq>>::new();
 
-        const ALL_POLYNOMIALS: [&str; 10] = [
-            "a_denom",
-            "b_denom",
-            "c_denom",
+        const ALL_POLYNOMIALS: [&str; 7] = [
             "g_1",
             "g_2",
             "t",

@@ -90,17 +90,17 @@ impl<F: Field> DensePolynomial<F> {
     }
 
     /// Evaluates `self` at the given `point` in the field.
-    pub fn evaluate(&self, point: F) -> F {
+    pub fn evaluate(&self, point: &F) -> F {
         if self.is_zero() {
             return F::zero();
         } else if point.is_zero() {
             return self.coeffs[0];
         }
         let mut powers_of_point = vec![F::one()];
-        let mut cur = point;
+        let mut cur = point.clone();
         for _ in 0..self.degree() {
             powers_of_point.push(cur);
-            cur *= &point;
+            cur *= point;
         }
         assert_eq!(powers_of_point.len(), self.coeffs.len());
         let zero = F::zero();

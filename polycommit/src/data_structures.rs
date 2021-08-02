@@ -137,7 +137,7 @@ impl<F: Field> LabeledPolynomial<F> {
     }
 
     /// Evaluate the polynomial in `self`.
-    pub fn evaluate(&self, point: F) -> F {
+    pub fn evaluate(&self, point: &F) -> F {
         self.polynomial.evaluate(point)
     }
 

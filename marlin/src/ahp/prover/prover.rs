@@ -43,6 +43,7 @@ use rand_core::RngCore;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
+use snarkvm_algorithms::fft::DensePolynomial;
 
 /// The first set of prover oracles.
 pub struct ProverFirstOracles<F: Field> {
@@ -506,85 +507,73 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let v_H_at_alpha = domain_h.evaluate_vanishing_polynomial(alpha);
         let v_H_at_beta = domain_h.evaluate_vanishing_polynomial(beta);
 
-        let (a_star, b_star, c_star) = (&index.a_star_arith, &index.b_star_arith, &index.c_star_arith);
+        let v_H_alpha_v_H_beta = v_H_at_alpha * v_H_at_beta;
+        let eta_a_times_v_H_alpha_v_H_beta = eta_a * v_H_alpha_v_H_beta;
+        let eta_b_times_v_H_alpha_v_H_beta = eta_b * v_H_alpha_v_H_beta;
+        let eta_c_times_v_H_alpha_v_H_beta = eta_c * v_H_alpha_v_H_beta;
+
+        let joint_arith = &index.joint_arith;
+
+        let a_poly_time = start_timer!(|| "Computing a poly");
+        let a_poly = {
+            let a = joint_arith.val_a.coeffs();
+            let b = joint_arith.val_b.coeffs();
+            let c = joint_arith.val_c.coeffs();
+            let coeffs: Vec<F> = cfg_iter!(a)
+                .zip(b)
+                .zip(c)
+                .map(|((a, b), c)| {
+                    eta_a_times_v_H_alpha_v_H_beta * a
+                        + eta_b_times_v_H_alpha_v_H_beta * b
+                        + eta_c_times_v_H_alpha_v_H_beta * c
+                })
+                .collect();
+            DensePolynomial::from_coefficients_vec(coeffs)
+        };
+        end_timer!(a_poly_time);
+
+        let (row_on_K, col_on_K, row_col_on_K) = (
+            &joint_arith.evals_on_K.row,
+            &joint_arith.evals_on_K.col,
+            &joint_arith.evals_on_K.row_col,
+        );
+
+        let b_poly_time = start_timer!(|| "Computing b poly");
+        let alpha_beta = alpha * beta;
+        let b_poly = {
+            let evals: Vec<F> = cfg_iter!(row_on_K.evaluations)
+                .zip(&col_on_K.evaluations)
+                .zip(&row_col_on_K.evaluations)
+                .map(|((r, c), r_c)| alpha_beta - alpha * r - beta * c + r_c)
+                .collect();
+            EvaluationsOnDomain::from_vec_and_domain(evals, domain_k).interpolate()
+        };
+        end_timer!(b_poly_time);
 
         let f_evals_time = start_timer!(|| "Computing f evals on K");
-        let mut f_vals_on_K = Vec::with_capacity(domain_k.size());
-        let mut inverses_a = Vec::with_capacity(domain_k.size());
-        let mut inverses_b = Vec::with_capacity(domain_k.size());
-        let mut inverses_c = Vec::with_capacity(domain_k.size());
+        let mut inverses: Vec<_> = cfg_into_iter!(0..domain_k.size())
+            .map(|i| (beta - row_on_K[i]) * (alpha - col_on_K[i]))
+            .collect();
+        batch_inversion(&mut inverses);
 
-        for i in 0..domain_k.size() {
-            inverses_a.push((beta - a_star.evals_on_K.row[i]) * (alpha - a_star.evals_on_K.col[i]));
-            inverses_b.push((beta - b_star.evals_on_K.row[i]) * (alpha - b_star.evals_on_K.col[i]));
-            inverses_c.push((beta - c_star.evals_on_K.row[i]) * (alpha - c_star.evals_on_K.col[i]));
-        }
-        batch_inversion(&mut inverses_a);
-        batch_inversion(&mut inverses_b);
-        batch_inversion(&mut inverses_c);
-
-        for i in 0..domain_k.size() {
-            let t = eta_a * a_star.evals_on_K.val[i] * inverses_a[i]
-                + (eta_b * b_star.evals_on_K.val[i] * inverses_b[i])
-                + (eta_c * c_star.evals_on_K.val[i] * inverses_c[i]);
-            let f_at_kappa = v_H_at_beta * v_H_at_alpha * t;
-            f_vals_on_K.push(f_at_kappa);
-        }
+        let (val_a_on_K, val_b_on_K, val_c_on_K) = (
+            &joint_arith.evals_on_K.val_a,
+            &joint_arith.evals_on_K.val_b,
+            &joint_arith.evals_on_K.val_c,
+        );
+        let f_evals_on_K: Vec<_> = cfg_into_iter!(0..(domain_k.size()))
+            .map(|i| {
+                inverses[i]
+                    * (eta_a_times_v_H_alpha_v_H_beta * val_a_on_K[i]
+                        + eta_b_times_v_H_alpha_v_H_beta * val_b_on_K[i]
+                        + eta_c_times_v_H_alpha_v_H_beta * val_c_on_K[i])
+            })
+            .collect();
         end_timer!(f_evals_time);
 
         let f_poly_time = start_timer!(|| "Computing f poly");
-        let f = EvaluationsOnDomain::from_vec_and_domain(f_vals_on_K, domain_k).interpolate();
+        let f = EvaluationsOnDomain::from_vec_and_domain(f_evals_on_K, domain_k).interpolate();
         end_timer!(f_poly_time);
-
-        let g_2 = Polynomial::from_coefficients_slice(&f.coeffs[1..]);
-
-        let domain_b =
-            EvaluationDomain::<F>::new(3 * domain_k.size() - 3).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-
-        let denom_eval_time = start_timer!(|| "Computing denominator evals on B");
-        let a_denom: Vec<_> = cfg_iter!(a_star.evals_on_B.row.evaluations)
-            .zip(&a_star.evals_on_B.col.evaluations)
-            .zip(&a_star.row_col_evals_on_B.evaluations)
-            .map(|((&r, c), r_c)| beta * alpha - (r * alpha) - (beta * c) + r_c)
-            .collect();
-
-        let b_denom: Vec<_> = cfg_iter!(b_star.evals_on_B.row.evaluations)
-            .zip(&b_star.evals_on_B.col.evaluations)
-            .zip(&b_star.row_col_evals_on_B.evaluations)
-            .map(|((&r, c), r_c)| beta * alpha - (r * alpha) - (beta * c) + r_c)
-            .collect();
-
-        let c_denom: Vec<_> = cfg_iter!(c_star.evals_on_B.row.evaluations)
-            .zip(&c_star.evals_on_B.col.evaluations)
-            .zip(&c_star.row_col_evals_on_B.evaluations)
-            .map(|((&r, c), r_c)| beta * alpha - (r * alpha) - (beta * c) + r_c)
-            .collect();
-        end_timer!(denom_eval_time);
-
-        let a_evals_time = start_timer!(|| "Computing a evals on B");
-        let a_poly_on_B = cfg_into_iter!(0..domain_b.size())
-            .map(|i| {
-                let t = eta_a * a_star.evals_on_B.val.evaluations[i] * b_denom[i] * c_denom[i]
-                    + (eta_b * b_star.evals_on_B.val.evaluations[i] * a_denom[i] * c_denom[i])
-                    + (eta_c * c_star.evals_on_B.val.evaluations[i] * a_denom[i] * b_denom[i]);
-                v_H_at_beta * v_H_at_alpha * t
-            })
-            .collect();
-        end_timer!(a_evals_time);
-
-        let a_poly_time = start_timer!(|| "Computing a poly");
-        let a_poly = EvaluationsOnDomain::from_vec_and_domain(a_poly_on_B, domain_b).interpolate();
-        end_timer!(a_poly_time);
-
-        let b_evals_time = start_timer!(|| "Computing b evals on B");
-        let b_poly_on_B = cfg_into_iter!(0..domain_b.size())
-            .map(|i| a_denom[i] * b_denom[i] * c_denom[i])
-            .collect();
-        end_timer!(b_evals_time);
-
-        let b_poly_time = start_timer!(|| "Computing b poly");
-        let b_poly = EvaluationsOnDomain::from_vec_and_domain(b_poly_on_B, domain_b).interpolate();
-        end_timer!(b_poly_time);
 
         let h_2_poly_time = start_timer!(|| "Computing sumcheck h poly");
         let h_2 = (&a_poly - &(&b_poly * &f))
@@ -592,9 +581,14 @@ impl<F: PrimeField> AHPForR1CS<F> {
             .unwrap()
             .0;
         end_timer!(h_2_poly_time);
+        drop(a_poly);
+        drop(b_poly);
+        let g_2 = DensePolynomial::from_coefficients_slice(&f.coeffs[1..]);
+        drop(f);
 
         let msg = ProverMessage::default();
 
+        assert!(h_2.degree() <= domain_k.size() - 2);
         assert!(g_2.degree() <= domain_k.size() - 2);
 
         let oracles = ProverThirdOracles {
@@ -608,7 +602,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
 
     /// Output the number of oracles sent by the prover in the third round.
     pub fn prover_num_third_round_oracles() -> usize {
-        3
+        2
     }
 
     /// Output the degree bounds of oracles in the third round.

@@ -95,7 +95,7 @@ mod marlin {
                 pub(crate) fn test_circuit(num_constraints: usize, num_variables: usize) {
                     let rng = &mut test_rng();
 
-                    let max_degree = crate::ahp::AHPForR1CS::<Fr>::max_degree(100, 25, 100).unwrap();
+                    let max_degree = crate::ahp::AHPForR1CS::<Fr>::max_degree(100, 25, 300).unwrap();
                     let universal_srs = $marlin_inst::universal_setup(max_degree, rng).unwrap();
 
                     for _ in 0..100 {
@@ -197,7 +197,7 @@ mod marlin_recursion {
     fn test_circuit(num_constraints: usize, num_variables: usize) {
         let rng = &mut test_rng();
 
-        let max_degree = crate::ahp::AHPForR1CS::<Fr>::max_degree(100, 25, 100).unwrap();
+        let max_degree = crate::ahp::AHPForR1CS::<Fr>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
         for _ in 0..100 {

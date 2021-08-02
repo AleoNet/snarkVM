@@ -65,7 +65,7 @@ impl KZG10DegreeBoundsConfig {
                 let mut radix_2_possible_domain_sizes = vec![];
 
                 let mut cur = 2usize;
-                while cur <= max_degree {
+                while cur - 2 <= max_degree {
                     radix_2_possible_domain_sizes.push(cur - 2);
                     cur *= 2;
                 }
@@ -99,8 +99,6 @@ impl<E: PairingEngine> KZG10<E> {
         }
         let setup_time = start_timer!(|| format!("KZG10::Setup with degree {}", max_degree));
         let scalar_bits = E::Fr::size_in_bits();
-
-        println!("max_degree = {}", max_degree);
 
         // Compute the `toxic waste`.
         let beta = E::Fr::rand(rng);
@@ -311,7 +309,7 @@ impl<E: PairingEngine> KZG10<E> {
         let random_v = if let Some(hiding_witness_polynomial) = hiding_witness_polynomial {
             let blinding_p = &randomness.blinding_polynomial;
             let blinding_eval_time = start_timer!(|| "Evaluating random polynomial");
-            let blinding_evaluation = blinding_p.evaluate(point);
+            let blinding_evaluation = blinding_p.evaluate(&point);
             end_timer!(blinding_eval_time);
 
             let random_witness_coeffs = convert_to_bigints(&hiding_witness_polynomial.coeffs);

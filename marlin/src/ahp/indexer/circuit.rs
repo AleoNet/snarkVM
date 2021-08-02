@@ -14,15 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ahp::matrices::MatrixArithmetization, CircuitInfo, Vec};
+use crate::{ahp::matrices::MatrixArithmetization, CircuitInfo, Matrix};
 use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::LabeledPolynomial;
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 use derivative::Derivative;
-
-/// Represents a matrix.
-pub(crate) type Matrix<F> = Vec<Vec<(F, usize)>>;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "F: PrimeField"))]
@@ -45,12 +42,8 @@ pub struct Circuit<F: PrimeField> {
     /// The C matrix for the R1CS instance
     pub c: Matrix<F>,
 
-    /// Arithmetization of the A* matrix.
-    pub a_star_arith: MatrixArithmetization<F>,
-    /// Arithmetization of the B* matrix.
-    pub b_star_arith: MatrixArithmetization<F>,
-    /// Arithmetization of the C* matrix.
-    pub c_star_arith: MatrixArithmetization<F>,
+    /// Joint arithmetization of the A*, B*, and C* matrices.
+    pub joint_arith: MatrixArithmetization<F>,
 }
 
 impl<F: PrimeField> Circuit<F> {
@@ -62,18 +55,12 @@ impl<F: PrimeField> Circuit<F> {
     /// Iterate over the indexed polynomials.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         vec![
-            &self.a_star_arith.row,
-            &self.a_star_arith.col,
-            &self.a_star_arith.val,
-            &self.a_star_arith.row_col,
-            &self.b_star_arith.row,
-            &self.b_star_arith.col,
-            &self.b_star_arith.val,
-            &self.b_star_arith.row_col,
-            &self.c_star_arith.row,
-            &self.c_star_arith.col,
-            &self.c_star_arith.val,
-            &self.c_star_arith.row_col,
+            &self.joint_arith.row,
+            &self.joint_arith.col,
+            &self.joint_arith.val_a,
+            &self.joint_arith.val_b,
+            &self.joint_arith.val_c,
+            &self.joint_arith.row_col,
         ]
         .into_iter()
     }

@@ -26,6 +26,7 @@ use snarkvm_r1cs::errors::SynthesisError;
 
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem};
 
+use crate::{num_non_zero, sum_matrices};
 use core::marker::PhantomData;
 
 impl<F: PrimeField> AHPForR1CS<F> {
@@ -41,17 +42,20 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let padding_time = start_timer!(|| "Padding matrices to make them square");
         crate::ahp::matrices::pad_input_for_indexer_and_prover(&mut ics);
         ics.make_matrices_square();
-        // balance_matrices(&mut a, &mut b);
+
         let mut a = ics.a_matrix();
         let mut b = ics.b_matrix();
         let mut c = ics.c_matrix();
-        crate::ahp::matrices::balance_matrices(&mut a, &mut b);
+
+        let joint_matrix = sum_matrices(&a, &b, &c);
+
+        // balance_matrices(&mut a, &mut b);
         end_timer!(padding_time);
 
         let num_padded_public_variables = ics.num_public_variables();
         let num_private_variables = ics.num_private_variables();
         let num_constraints = ics.num_constraints();
-        let num_non_zero = ics.num_non_zero();
+        let num_non_zero = num_non_zero(&joint_matrix);
         let num_variables = num_padded_public_variables + num_private_variables;
 
         if cfg!(debug_assertions) {
@@ -84,20 +88,10 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let domain_k = EvaluationDomain::new(num_non_zero).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let x_domain =
             EvaluationDomain::new(num_padded_public_variables).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let b_domain =
-            EvaluationDomain::new(3 * domain_k.size() - 3).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let a_arithmetization_time = start_timer!(|| "Arithmetizing A");
-        let a_star_arith = arithmetize_matrix("a", &mut a, domain_k, domain_h, x_domain, b_domain);
-        end_timer!(a_arithmetization_time);
-
-        let b_arithmetization_time = start_timer!(|| "Arithmetizing B");
-        let b_star_arith = arithmetize_matrix("b", &mut b, domain_k, domain_h, x_domain, b_domain);
-        end_timer!(b_arithmetization_time);
-
-        let c_arithmetization_time = start_timer!(|| "Arithmetizing C");
-        let c_star_arith = arithmetize_matrix("c", &mut c, domain_k, domain_h, x_domain, b_domain);
-        end_timer!(c_arithmetization_time);
+        let joint_arithmetization_time = start_timer!(|| "Arithmetizing A");
+        let joint_arith = arithmetize_matrix(&joint_matrix, &mut a, &mut b, &mut c, domain_k, domain_h, x_domain);
+        end_timer!(joint_arithmetization_time);
 
         end_timer!(index_time);
         Ok(Circuit {
@@ -107,9 +101,7 @@ impl<F: PrimeField> AHPForR1CS<F> {
             b,
             c,
 
-            a_star_arith,
-            b_star_arith,
-            c_star_arith,
+            joint_arith,
         })
     }
 }

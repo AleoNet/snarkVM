@@ -41,23 +41,15 @@ pub struct AHPForR1CS<F: Field> {
 impl<F: PrimeField> AHPForR1CS<F> {
     /// The labels for the polynomials output by the AHP indexer.
     #[rustfmt::skip]
-    pub const INDEXER_POLYNOMIALS: [&'static str; 12] = [
-        // Polynomials for A
-        "a_row", "a_col", "a_val", "a_row_col",
-        // Polynomials for B
-        "b_row", "b_col", "b_val", "b_row_col",
-        // Polynomials for C
-        "c_row", "c_col", "c_val", "c_row_col",
+    pub const INDEXER_POLYNOMIALS: [&'static str; 6] = [
+        // Polynomials for M
+        "row", "col", "a_val", "b_val", "c_val", "row_col",
     ];
     /// The labels for the polynomials output and vanishing polynomials by the AHP indexer.
     #[rustfmt::skip]
-    pub const INDEXER_POLYNOMIALS_WITH_VANISHING: [&'static str; 14] = [
-        // Polynomials for A
-        "a_row", "a_col", "a_val", "a_row_col",
-        // Polynomials for B
-        "b_row", "b_col", "b_val", "b_row_col",
-        // Polynomials for C
-        "c_row", "c_col", "c_val", "c_row_col",
+    pub const INDEXER_POLYNOMIALS_WITH_VANISHING: [&'static str; 8] = [
+        // Polynomials for M
+        "row", "col", "a_val", "b_val", "c_val", "row_col",
         // Vanishing polynomials
         "vanishing_poly_h", "vanishing_poly_k"
     ];
@@ -108,12 +100,14 @@ impl<F: PrimeField> AHPForR1CS<F> {
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let domain_k_size = EvaluationDomain::<F>::compute_size_of_domain(num_non_zero)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+
         Ok(*[
             2 * domain_h_size + zk_bound - 2,
             3 * domain_h_size + 2 * zk_bound - 3, //  mask_poly
             domain_h_size,
             domain_h_size,
-            3 * domain_k_size - 3,
+            domain_k_size - 1,
+            domain_k_size, //  due to vanishing polynomial; for convenience, we increase the number by one regardless of the mode.
         ]
         .iter()
         .max()
@@ -210,55 +204,28 @@ impl<F: PrimeField> AHPForR1CS<F> {
         let beta_alpha = beta * alpha;
         let g_2 = LinearCombination::new("g_2", vec![(F::one(), "g_2")]);
 
-        let a_denom = LinearCombination::new("a_denom", vec![
-            (beta_alpha, LCTerm::One),
-            (-alpha, "a_row".into()),
-            (-beta, "a_col".into()),
-            (F::one(), "a_row_col".into()),
-        ]);
-
-        let b_denom = LinearCombination::new("b_denom", vec![
-            (beta_alpha, LCTerm::One),
-            (-alpha, "b_row".into()),
-            (-beta, "b_col".into()),
-            (F::one(), "b_row_col".into()),
-        ]);
-
-        let c_denom = LinearCombination::new("c_denom", vec![
-            (beta_alpha, LCTerm::One),
-            (-alpha, "c_row".into()),
-            (-beta, "c_col".into()),
-            (F::one(), "c_row_col".into()),
-        ]);
-
-        let a_denom_at_gamma = evals.get_lc_eval(&a_denom, gamma)?;
-        let b_denom_at_gamma = evals.get_lc_eval(&b_denom, gamma)?;
-        let c_denom_at_gamma = evals.get_lc_eval(&c_denom, gamma)?;
         let g_2_at_gamma = evals.get_lc_eval(&g_2, gamma)?;
 
         let v_K_at_gamma = domain_k.evaluate_vanishing_polynomial(gamma);
 
-        let mut a = LinearCombination::new("a_poly", vec![
-            (eta_a * b_denom_at_gamma * c_denom_at_gamma, "a_val"),
-            (eta_b * a_denom_at_gamma * c_denom_at_gamma, "b_val"),
-            (eta_c * b_denom_at_gamma * a_denom_at_gamma, "c_val"),
-        ]);
-
+        let mut a = LinearCombination::new("a_poly", vec![(eta_a, "a_val"), (eta_b, "b_val"), (eta_c, "c_val")]);
         a *= v_H_at_alpha * v_H_at_beta;
-        let b_at_gamma = a_denom_at_gamma * b_denom_at_gamma * c_denom_at_gamma;
-        let b_expr_at_gamma = b_at_gamma * (gamma * g_2_at_gamma + (t_at_beta / &k_size));
 
-        a -= &LinearCombination::new("b_expr", vec![(b_expr_at_gamma, LCTerm::One)]);
-        a -= &LinearCombination::new("h_2", vec![(v_K_at_gamma, "h_2")]);
+        let mut b = LinearCombination::new("denom", vec![
+            (beta_alpha, LCTerm::One),
+            (-alpha, "row".into()),
+            (-beta, "col".into()),
+            (F::one(), "row_col".into()),
+        ]);
+        b *= gamma * g_2_at_gamma + &(t_at_beta / k_size);
 
-        a.label = "inner_sumcheck".into();
-        let inner_sumcheck = a;
+        let mut inner_sumcheck = a;
+        inner_sumcheck -= &b;
+        inner_sumcheck -= &LinearCombination::new("h_2", vec![(v_K_at_gamma, "h_2")]);
+        inner_sumcheck.label = "inner_sumcheck".into();
         debug_assert!(evals.get_lc_eval(&inner_sumcheck, gamma)?.is_zero());
 
         linear_combinations.push(g_2);
-        linear_combinations.push(a_denom);
-        linear_combinations.push(b_denom);
-        linear_combinations.push(c_denom);
         linear_combinations.push(inner_sumcheck);
 
         if with_vanishing {
@@ -309,7 +276,7 @@ impl<F: Field, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F> for Vec<T
                     })
                     .ok_or_else(|| AHPError::MissingEval(format!("Missing {} for {}", label, lc.label)))?
                     .borrow()
-                    .evaluate(point)
+                    .evaluate(&point)
             } else {
                 assert!(term.is_one());
                 F::one()
@@ -402,7 +369,7 @@ mod tests {
         let poly = DensePolynomial::rand(size, rng);
 
         let mut sum: Fr = Fr::zero();
-        for eval in domain.elements().map(|e| poly.evaluate(e)) {
+        for eval in domain.elements().map(|e| poly.evaluate(&e)) {
             sum += &eval;
         }
         let first = poly.coeffs[0] * size_as_fe;
@@ -445,7 +412,7 @@ mod tests {
         );
 
         for e in domain_h.elements() {
-            println!("{:?}", divisor.evaluate(e));
+            println!("{:?}", divisor.evaluate(&e));
         }
         // Let p = v_K / v_H;
         // The alternator polynomial is p * t, where t is defined as

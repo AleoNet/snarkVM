@@ -60,22 +60,8 @@ impl<F: Field> IndexerConstraintSystem<F> {
     }
 
     #[inline]
-    pub(crate) fn num_non_zero(&self) -> usize {
-        let a_density = self.a.iter().map(|row| row.len()).sum();
-        let b_density = self.b.iter().map(|row| row.len()).sum();
-        let c_density = self.c.iter().map(|row| row.len()).sum();
-
-        let max = *[a_density, b_density, c_density]
-            .iter()
-            .max()
-            .expect("iterator is not empty");
-        max
-    }
-
-    #[inline]
     pub(crate) fn make_matrices_square(&mut self) {
         let num_variables = self.num_public_variables + self.num_private_variables;
-        let num_non_zero = self.num_non_zero();
         let matrix_dim = padded_matrix_dim(num_variables, self.num_constraints);
         make_matrices_square(self, num_variables);
         assert_eq!(
@@ -88,7 +74,6 @@ impl<F: Field> IndexerConstraintSystem<F> {
             matrix_dim,
             "padding does not result in expected matrix size!"
         );
-        assert_eq!(self.num_non_zero(), num_non_zero, "padding changed matrix density");
     }
 
     #[inline]

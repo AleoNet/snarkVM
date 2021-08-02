@@ -84,7 +84,7 @@ impl<
     > {
         let index_time = start_timer!(|| "Marlin::CircuitSpecificSetup");
 
-        let for_recursion = MM::RECURSION;
+        let is_recursion = MM::RECURSION;
 
         // TODO: Add check that c is in the correct mode.
         let circuit = AHPForR1CS::index(c)?;
@@ -99,7 +99,7 @@ impl<
                 .map_err(MarlinError::from_pc_err)?;
 
         let mut vanishing_polys = vec![];
-        if for_recursion {
+        if is_recursion {
             let domain_h = EvaluationDomain::new(circuit.index_info.num_constraints)
                 .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
             let domain_k = EvaluationDomain::new(circuit.index_info.num_non_zero)
@@ -390,8 +390,8 @@ impl<
 
         // Sanity check, whose length should be updated if the underlying structs are updated.
         match is_recursion {
-            true => assert_eq!(23, polynomials.len()),
-            false => assert_eq!(21, polynomials.len()),
+            true => assert_eq!(17, polynomials.len()),
+            false => assert_eq!(15, polynomials.len()),
         };
 
         // Gather commitments in one vector.

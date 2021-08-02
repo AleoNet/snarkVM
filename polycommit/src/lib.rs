@@ -517,7 +517,7 @@ pub fn evaluate_query_set<'a, F: Field>(
     let mut evaluations = Evaluations::new();
     for (label, (_point_name, point)) in query_set {
         let poly = polys.get(label).expect("polynomial in evaluated lc is not found");
-        let eval = poly.evaluate(*point);
+        let eval = poly.evaluate(point);
         evaluations.insert((label.clone(), *point), eval);
     }
     evaluations

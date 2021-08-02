@@ -471,57 +471,6 @@ impl<
 
         let beta_alpha = beta.mul(cs.ns(|| "beta_mul_alpha"), &alpha)?;
 
-        let a_denom_lc_gadget = LinearCombinationVar::<TargetField, BaseField> {
-            label: "a_denom".to_string(),
-            terms: vec![
-                (LinearCombinationCoeffVar::Var(beta_alpha.clone()), LCTerm::One),
-                (
-                    LinearCombinationCoeffVar::Var(alpha.negate(cs.ns(|| "a_alpha"))?),
-                    "a_row".into(),
-                ),
-                (
-                    LinearCombinationCoeffVar::Var(beta.negate(cs.ns(|| "a_beta"))?),
-                    "a_col".into(),
-                ),
-                (LinearCombinationCoeffVar::One, "a_row_col".into()),
-            ],
-        };
-
-        let b_denom_lc_gadget = LinearCombinationVar::<TargetField, BaseField> {
-            label: "b_denom".to_string(),
-            terms: vec![
-                (LinearCombinationCoeffVar::Var(beta_alpha.clone()), LCTerm::One),
-                (
-                    LinearCombinationCoeffVar::Var(alpha.negate(cs.ns(|| "b_alpha"))?),
-                    "b_row".into(),
-                ),
-                (
-                    LinearCombinationCoeffVar::Var(beta.negate(cs.ns(|| "b_beta"))?),
-                    "b_col".into(),
-                ),
-                (LinearCombinationCoeffVar::One, "b_row_col".into()),
-            ],
-        };
-
-        let c_denom_lc_gadget = LinearCombinationVar::<TargetField, BaseField> {
-            label: "c_denom".to_string(),
-            terms: vec![
-                (LinearCombinationCoeffVar::Var(beta_alpha.clone()), LCTerm::One),
-                (
-                    LinearCombinationCoeffVar::Var(alpha.negate(cs.ns(|| "c_alpha"))?),
-                    "c_row".into(),
-                ),
-                (
-                    LinearCombinationCoeffVar::Var(beta.negate(cs.ns(|| "c_beta"))?),
-                    "c_col".into(),
-                ),
-                (LinearCombinationCoeffVar::One, "c_row_col".into()),
-            ],
-        };
-
-        let a_denom_at_gamma = evals.get(&a_denom_lc_gadget.label).unwrap();
-        let b_denom_at_gamma = evals.get(&b_denom_lc_gadget.label).unwrap();
-        let c_denom_at_gamma = evals.get(&c_denom_lc_gadget.label).unwrap();
         let g_2_at_gamma = evals.get(&g_2_lc_gadget.label).unwrap();
 
         let v_h_at_alpha_beta = v_h_at_alpha.mul(cs.ns(|| "v_h_alpha_mul_v_h_beta"), &v_h_at_beta)?;
@@ -560,45 +509,49 @@ impl<
         let gamma_mul_g_2 = gamma.mul(cs.ns(|| "gamma_mul_g_2"), &g_2_at_gamma)?;
         let t_div_domain_k = t_at_beta.mul(cs.ns(|| "t_div_domain_k"), &inv_domain_k_size_gadget)?;
         let b_expr_at_gamma_last_term = gamma_mul_g_2.add(cs.ns(|| "b_expr_at_gamma_last_term"), &t_div_domain_k)?;
-        let ab_denom_at_gamma = a_denom_at_gamma.mul(cs.ns(|| "ab_denom_at_gamma"), &b_denom_at_gamma)?;
 
         let inner_sumcheck_lc_gadget = LinearCombinationVar::<TargetField, BaseField> {
             label: "inner_sumcheck".to_string(),
             terms: vec![
                 (
                     LinearCombinationCoeffVar::Var(
-                        eta_a
-                            .mul(cs.ns(|| "eta_a_mul_b_denom"), &b_denom_at_gamma)?
-                            .mul(cs.ns(|| "eta_a_mul_b_denom_mul_c_denom"), &c_denom_at_gamma)?
-                            .mul(cs.ns(|| "eta_a_mul_b_denom_mul_c_denom_mul_v_h"), &v_h_at_alpha_beta)?,
+                        eta_a.mul(cs.ns(|| "eta_a_mul_b_denom_mul_c_denom_mul_v_h"), &v_h_at_alpha_beta)?,
                     ),
                     "a_val".into(),
                 ),
                 (
                     LinearCombinationCoeffVar::Var(
-                        eta_b
-                            .mul(cs.ns(|| "eta_b_mul_a_denom"), &a_denom_at_gamma)?
-                            .mul(cs.ns(|| "eta_b_mul_a_denom_mul_c_denom"), &c_denom_at_gamma)?
-                            .mul(cs.ns(|| "eta_b_mul_a_denom_mul_c_denom_mul_v_h"), &v_h_at_alpha_beta)?,
+                        eta_b.mul(cs.ns(|| "eta_b_mul_a_denom_mul_c_denom_mul_v_h"), &v_h_at_alpha_beta)?,
                     ),
                     "b_val".into(),
                 ),
                 (
                     LinearCombinationCoeffVar::Var(
-                        eta_c
-                            .mul(cs.ns(|| "eta_c_mul_ab_denom"), &ab_denom_at_gamma)?
-                            .mul(cs.ns(|| "eta_c_mul_ab_denom_mul_v_h"), &v_h_at_alpha_beta)?,
+                        eta_c.mul(cs.ns(|| "eta_c_mul_ab_denom_mul_v_h"), &v_h_at_alpha_beta)?,
                     ),
                     "c_val".into(),
                 ),
                 (
                     LinearCombinationCoeffVar::Var(
-                        ab_denom_at_gamma
-                            .mul(cs.ns(|| "ab_denom_mul_c_denom"), &c_denom_at_gamma)?
-                            .mul(cs.ns(|| "ab_denom_mul_c_denom_mul_b_last"), &b_expr_at_gamma_last_term)?
-                            .negate(cs.ns(|| "ab_c_b_negate"))?,
+                        beta_alpha
+                            .mul(cs.ns(|| "beta_alpha_mul_b_last"), &b_expr_at_gamma_last_term)?
+                            .negate(cs.ns(|| "beta_alpha_mul_b_last_negate"))?,
                     ),
                     LCTerm::One,
+                ),
+                (
+                    LinearCombinationCoeffVar::Var(
+                        alpha.mul(cs.ns(|| "alpha_mul_b_last"), &b_expr_at_gamma_last_term)?,
+                    ),
+                    "row".into(),
+                ),
+                (
+                    LinearCombinationCoeffVar::Var(beta.mul(cs.ns(|| "beta_mul_b_last"), &b_expr_at_gamma_last_term)?),
+                    "col".into(),
+                ),
+                (
+                    LinearCombinationCoeffVar::Var(b_expr_at_gamma_last_term.negate(cs.ns(|| "b_last_negate"))?),
+                    "row_col".into(),
                 ),
                 (
                     LinearCombinationCoeffVar::Var(v_k_at_gamma.negate(cs.ns(|| "v_k_negate"))?),
@@ -608,9 +561,6 @@ impl<
         };
 
         linear_combinations.push(g_2_lc_gadget);
-        linear_combinations.push(a_denom_lc_gadget);
-        linear_combinations.push(b_denom_lc_gadget);
-        linear_combinations.push(c_denom_lc_gadget);
         linear_combinations.push(inner_sumcheck_lc_gadget);
 
         let vanishing_poly_h_alpha_lc_gadget = LinearCombinationVar::<TargetField, BaseField> {
@@ -705,18 +655,6 @@ impl<
             name: "gamma".to_string(),
             value: gamma.clone(),
         }));
-        query_set_gadget.0.insert(("a_denom".to_string(), LabeledPointVar {
-            name: "gamma".to_string(),
-            value: gamma.clone(),
-        }));
-        query_set_gadget.0.insert(("b_denom".to_string(), LabeledPointVar {
-            name: "gamma".to_string(),
-            value: gamma.clone(),
-        }));
-        query_set_gadget.0.insert(("c_denom".to_string(), LabeledPointVar {
-            name: "gamma".to_string(),
-            value: gamma.clone(),
-        }));
         query_set_gadget
             .0
             .insert(("inner_sumcheck".to_string(), LabeledPointVar {
@@ -783,27 +721,6 @@ impl<
         );
         evaluations_gadget.0.insert(
             LabeledPointVar {
-                name: "a_denom".to_string(),
-                value: gamma.clone(),
-            },
-            (*proof.evaluations.get("a_denom").unwrap()).clone(),
-        );
-        evaluations_gadget.0.insert(
-            LabeledPointVar {
-                name: "b_denom".to_string(),
-                value: gamma.clone(),
-            },
-            (*proof.evaluations.get("b_denom").unwrap()).clone(),
-        );
-        evaluations_gadget.0.insert(
-            LabeledPointVar {
-                name: "c_denom".to_string(),
-                value: gamma.clone(),
-            },
-            (*proof.evaluations.get("c_denom").unwrap()).clone(),
-        );
-        evaluations_gadget.0.insert(
-            LabeledPointVar {
                 name: "inner_sumcheck".to_string(),
                 value: gamma.clone(),
             },
@@ -833,19 +750,13 @@ impl<
 
         let mut comms = vec![];
 
-        const INDEX_LABELS: [&str; 14] = [
-            "a_row",
-            "a_col",
+        const INDEX_LABELS: [&str; 8] = [
+            "row",
+            "col",
             "a_val",
-            "a_row_col",
-            "b_row",
-            "b_col",
             "b_val",
-            "b_row_col",
-            "c_row",
-            "c_col",
             "c_val",
-            "c_row_col",
+            "row_col",
             "vanishing_poly_h",
             "vanishing_poly_k",
         ];
