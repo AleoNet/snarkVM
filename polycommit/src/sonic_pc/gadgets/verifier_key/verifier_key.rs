@@ -88,7 +88,7 @@ where
                 }
             }
 
-            let mut pir_vector_gadgets = Vec::new();
+            let mut pir_vector_gadgets = Vec::with_capacity(pir_vector.len());
             for (i, bit) in pir_vector.iter().enumerate() {
                 pir_vector_gadgets.push(Boolean::alloc(cs.ns(|| format!("alloc_pir_{}", i)), || Ok(bit))?);
             }

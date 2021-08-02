@@ -276,7 +276,7 @@ impl<F: Field, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F> for Vec<T
                     })
                     .ok_or_else(|| AHPError::MissingEval(format!("Missing {} for {}", label, lc.label)))?
                     .borrow()
-                    .evaluate(&point)
+                    .evaluate(point)
             } else {
                 assert!(term.is_one());
                 F::one()
@@ -369,7 +369,7 @@ mod tests {
         let poly = DensePolynomial::rand(size, rng);
 
         let mut sum: Fr = Fr::zero();
-        for eval in domain.elements().map(|e| poly.evaluate(&e)) {
+        for eval in domain.elements().map(|e| poly.evaluate(e)) {
             sum += &eval;
         }
         let first = poly.coeffs[0] * size_as_fe;
@@ -412,7 +412,7 @@ mod tests {
         );
 
         for e in domain_h.elements() {
-            println!("{:?}", divisor.evaluate(&e));
+            println!("{:?}", divisor.evaluate(e));
         }
         // Let p = v_K / v_H;
         // The alternator polynomial is p * t, where t is defined as

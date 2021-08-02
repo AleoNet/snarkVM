@@ -90,7 +90,7 @@ impl<F: Field> DensePolynomial<F> {
     }
 
     /// Evaluates `self` at the given `point` in the field.
-    pub fn evaluate(&self, point: &F) -> F {
+    pub fn evaluate(&self, point: F) -> F {
         if self.is_zero() {
             return F::zero();
         } else if point.is_zero() {
@@ -484,7 +484,7 @@ mod tests {
             for (i, coeff) in p.coeffs.iter().enumerate() {
                 total += point.pow(&[i as u64]) * coeff;
             }
-            assert_eq!(p.evaluate(&point), total);
+            assert_eq!(p.evaluate(point), total);
         }
     }
 

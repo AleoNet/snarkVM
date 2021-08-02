@@ -135,7 +135,7 @@ pub struct MatrixArithmetization<F: PrimeField> {
 
 // TODO for debugging: add test that checks result of arithmetize_matrix(M).
 pub(crate) fn arithmetize_matrix<F: PrimeField>(
-    joint_matrix: &Vec<Vec<usize>>,
+    joint_matrix: &[Vec<usize>],
     a: &Matrix<F>,
     b: &Matrix<F>,
     c: &Matrix<F>,
@@ -354,15 +354,15 @@ mod tests {
         let eta_b = F::rand(&mut rng);
         let eta_c = F::rand(&mut rng);
         for (k_index, k) in interpolation_domain.elements().enumerate() {
-            let row_val = joint_arith.row.evaluate(&k);
-            let col_val = joint_arith.col.evaluate(&k);
+            let row_val = joint_arith.row.evaluate(k);
+            let col_val = joint_arith.col.evaluate(k);
 
             let inverse = (eq_poly_vals[&row_val]).inverse().unwrap();
             // we're in transpose land.
 
-            let val_a = joint_arith.val_a.evaluate(&k);
-            let val_b = joint_arith.val_b.evaluate(&k);
-            let val_c = joint_arith.val_c.evaluate(&k);
+            let val_a = joint_arith.val_a.evaluate(k);
+            let val_b = joint_arith.val_b.evaluate(k);
+            let val_c = joint_arith.val_c.evaluate(k);
             assert_eq!(joint_arith.evals_on_K.row[k_index], row_val);
             assert_eq!(joint_arith.evals_on_K.col[k_index], col_val);
             assert_eq!(joint_arith.evals_on_K.val_a[k_index], val_a);

@@ -36,7 +36,7 @@ pub trait PCUniversalParams: CanonicalSerialize + CanonicalDeserialize + Clone +
     fn max_degree(&self) -> usize;
 
     /// Supported degree bounds
-    fn supported_degree_bounds(&self) -> Vec<usize>;
+    fn supported_degree_bounds(&self) -> &[usize];
 }
 
 /// Defines the minimal interface of committer keys for any polynomial
@@ -137,7 +137,7 @@ impl<F: Field> LabeledPolynomial<F> {
     }
 
     /// Evaluate the polynomial in `self`.
-    pub fn evaluate(&self, point: &F) -> F {
+    pub fn evaluate(&self, point: F) -> F {
         self.polynomial.evaluate(point)
     }
 

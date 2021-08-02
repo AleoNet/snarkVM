@@ -197,8 +197,8 @@ where
         // Now, for each point, go over all the linear combinations using this point
         for (i, (_, (point, labels))) in query_to_labels_map.into_iter().enumerate() {
             // Initialize the vectors to store the combination decisions.
-            let mut comms_to_combine = Vec::<Vec<LCInfoEntry<TargetCurve, BaseCurve, PG>>>::new();
-            let mut values_to_combine = Vec::new();
+            let mut comms_to_combine = Vec::<Vec<LCInfoEntry<TargetCurve, BaseCurve, PG>>>::with_capacity(labels.len());
+            let mut values_to_combine = Vec::with_capacity(labels.len());
 
             // Go through all the labels
             for label in labels.into_iter() {

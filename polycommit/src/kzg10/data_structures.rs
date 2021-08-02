@@ -66,8 +66,8 @@ impl<E: PairingEngine> PCUniversalParams for UniversalParams<E> {
         self.powers_of_g.len() - 1
     }
 
-    fn supported_degree_bounds(&self) -> Vec<usize> {
-        self.supported_degree_bounds.clone()
+    fn supported_degree_bounds(&self) -> &[usize] {
+        &self.supported_degree_bounds
     }
 }
 

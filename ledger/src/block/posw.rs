@@ -48,6 +48,12 @@ impl ProofOfSuccinctWork {
     }
 }
 
+impl Default for ProofOfSuccinctWork {
+    fn default() -> Self {
+        Self([0u8; PROOF_SIZE])
+    }
+}
+
 impl Display for ProofOfSuccinctWork {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", hex::encode(&self.0[..]))

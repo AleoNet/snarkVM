@@ -345,17 +345,19 @@ impl<P: Bls12Parameters> SumGadget<<P as Bls12Parameters>::Fp> for G2PreparedGad
         mut cs: CS,
         elems: &[Self],
     ) -> Result<Self, SynthesisError> {
-        assert!(!elems.is_empty());
-
-        let mut res = elems.first().unwrap().ell_coeffs.clone();
-        for (i, elem) in elems.iter().skip(1).enumerate() {
+        let mut res = Self::zero(cs.ns(|| "zero"))?;
+        for (i, elem) in elems.iter().enumerate() {
             for (j, (l_coeff, r_coeff)) in elem.ell_coeffs.iter().enumerate() {
-                res[j].0 = res[j].0.add(cs.ns(|| format!("sum_{}_{}_entry_0", i, j)), l_coeff)?;
-                res[j].1 = res[j].1.add(cs.ns(|| format!("sum_{}_{}_entry_1", i, j)), r_coeff)?;
+                res.ell_coeffs[j].0 = res.ell_coeffs[j]
+                    .0
+                    .add(cs.ns(|| format!("sum_{}_{}_entry_0", i, j)), l_coeff)?;
+                res.ell_coeffs[j].1 = res.ell_coeffs[j]
+                    .1
+                    .add(cs.ns(|| format!("sum_{}_{}_entry_1", i, j)), r_coeff)?;
             }
         }
 
-        Ok(Self { ell_coeffs: res })
+        Ok(res)
     }
 }
 
@@ -366,7 +368,7 @@ impl<P: Bls12Parameters> CondSelectGadget<<P as Bls12Parameters>::Fp> for G2Prep
         first: &Self,
         second: &Self,
     ) -> Result<Self, SynthesisError> {
-        let mut res = Vec::new();
+        let mut res = Vec::with_capacity(first.ell_coeffs.len());
 
         for (i, ((l0, l1), (r0, r1))) in first.ell_coeffs.iter().zip(second.ell_coeffs.iter()).enumerate() {
             let s0 =

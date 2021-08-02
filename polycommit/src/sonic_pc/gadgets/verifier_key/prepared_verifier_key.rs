@@ -85,7 +85,7 @@ where
                 }
             }
 
-            let mut pir_vector_gadgets = Vec::new();
+            let mut pir_vector_gadgets = Vec::with_capacity(pir_vector.len());
             for (i, bit) in pir_vector.iter().enumerate() {
                 pir_vector_gadgets.push(Boolean::alloc(cs.ns(|| format!("alloc_pir_{}", i)), || Ok(bit))?);
             }
@@ -194,7 +194,7 @@ where
     ) -> Result<Self, SynthesisError> {
         let obj = value_gen()?.borrow().clone();
 
-        let mut prepared_g = Vec::<PG::G1Gadget>::new();
+        let mut prepared_g = Vec::<PG::G1Gadget>::with_capacity(obj.prepared_vk.prepared_g.len());
         for (i, g) in obj.prepared_vk.prepared_g.iter().enumerate() {
             prepared_g.push(<PG::G1Gadget as AllocGadget<
                 <TargetCurve as PairingEngine>::G1Projective,
@@ -204,7 +204,7 @@ where
             })?);
         }
 
-        let mut prepared_gamma_g = Vec::<PG::G1Gadget>::new();
+        let mut prepared_gamma_g = Vec::<PG::G1Gadget>::with_capacity(obj.prepared_vk.prepared_gamma_g.len());
         for (i, gamma_g) in obj.prepared_vk.prepared_gamma_g.iter().enumerate() {
             prepared_gamma_g.push(<PG::G1Gadget as AllocGadget<
                 <TargetCurve as PairingEngine>::G1Projective,

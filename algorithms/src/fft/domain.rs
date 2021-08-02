@@ -604,7 +604,7 @@ mod tests {
             // Sample the random polynomial, evaluate it over the domain and the random point.
             let random_polynomial = DensePolynomial::<Fr>::rand(domain_size - 1, &mut thread_rng());
             let polynomial_evaluations = domain.fft(random_polynomial.coeffs());
-            let actual_evaluations = random_polynomial.evaluate(&random_point);
+            let actual_evaluations = random_polynomial.evaluate(random_point);
 
             // Do lagrange interpolation, and compare against the actual evaluation
             let mut interpolated_evaluation = Fr::zero();
@@ -677,8 +677,8 @@ mod tests {
             for (i, x) in domain.elements().enumerate() {
                 let coset_x = Fr::multiplicative_generator() * x;
 
-                assert_eq!(polynomial_evaluations[i], random_polynomial.evaluate(&x));
-                assert_eq!(polynomial_coset_evaluations[i], random_polynomial.evaluate(&coset_x));
+                assert_eq!(polynomial_evaluations[i], random_polynomial.evaluate(x));
+                assert_eq!(polynomial_coset_evaluations[i], random_polynomial.evaluate(coset_x));
             }
 
             let randon_polynomial_from_subgroup =

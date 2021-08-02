@@ -517,7 +517,7 @@ pub fn evaluate_query_set<'a, F: Field>(
     let mut evaluations = Evaluations::new();
     for (label, (_point_name, point)) in query_set {
         let poly = polys.get(label).expect("polynomial in evaluated lc is not found");
-        let eval = poly.evaluate(point);
+        let eval = poly.evaluate(*point);
         evaluations.insert((label.clone(), *point), eval);
     }
     evaluations
@@ -611,7 +611,7 @@ pub mod tests {
             let point = F::rand(rng);
             for (i, label) in labels.iter().enumerate() {
                 query_set.insert((label.clone(), ("rand".into(), point)));
-                let value = polynomials[i].evaluate(&point);
+                let value = polynomials[i].evaluate(point);
                 values.insert((label.clone(), point), value);
             }
             println!("Generated query set");
@@ -680,7 +680,7 @@ pub mod tests {
                     .collect::<Vec<usize>>();
 
                 let degree_bound = if let Some(degree_bounds) = &mut degree_bounds {
-                    if supported_degree_bounds_after_trimmed.len() > 0 && rng.gen() {
+                    if !supported_degree_bounds_after_trimmed.is_empty() && rng.gen() {
                         let range = rand::distributions::Uniform::from(0..supported_degree_bounds_after_trimmed.len());
                         let idx = range.sample(rng);
 
@@ -722,9 +722,9 @@ pub mod tests {
             // let mut point = F::one();
             for point_id in 0..num_points_in_query_set {
                 let point = F::rand(rng);
-                for (i, label) in labels.iter().enumerate() {
+                for (polynomial, label) in polynomials.iter().zip(labels.iter()) {
                     query_set.insert((label.clone(), (format!("rand_{}", point_id), point)));
-                    let value = polynomials[i].evaluate(&point);
+                    let value = polynomial.evaluate(point);
                     values.insert((label.clone(), point), value);
                 }
             }
@@ -815,7 +815,7 @@ pub mod tests {
                     .collect::<Vec<usize>>();
 
                 let degree_bound = if let Some(degree_bounds) = &mut degree_bounds {
-                    if supported_degree_bounds_after_trimmed.len() > 0 && rng.gen() {
+                    if !supported_degree_bounds_after_trimmed.is_empty() && rng.gen() {
                         let range = rand::distributions::Uniform::from(0..supported_degree_bounds_after_trimmed.len());
                         let idx = range.sample(rng);
 
@@ -869,7 +869,7 @@ pub mod tests {
                     let should_have_degree_bounds: bool = rng.gen();
                     for (k, label) in labels.iter().enumerate() {
                         if should_have_degree_bounds {
-                            value += &polynomials[k].evaluate(&point);
+                            value += &polynomials[k].evaluate(point);
                             lc.push((F::one(), label.to_string().into()));
                             break;
                         } else {
@@ -879,7 +879,7 @@ pub mod tests {
                             } else {
                                 assert!(poly.degree_bound().is_none());
                                 let coeff = F::rand(rng);
-                                value += &(coeff * poly.evaluate(&point));
+                                value += &(coeff * poly.evaluate(point));
                                 lc.push((coeff, label.to_string().into()));
                             }
                         }

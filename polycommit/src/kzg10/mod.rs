@@ -309,7 +309,7 @@ impl<E: PairingEngine> KZG10<E> {
         let random_v = if let Some(hiding_witness_polynomial) = hiding_witness_polynomial {
             let blinding_p = &randomness.blinding_polynomial;
             let blinding_eval_time = start_timer!(|| "Evaluating random polynomial");
-            let blinding_evaluation = blinding_p.evaluate(&point);
+            let blinding_evaluation = blinding_p.evaluate(point);
             end_timer!(blinding_eval_time);
 
             let random_witness_coeffs = convert_to_bigints(&hiding_witness_polynomial.coeffs);
@@ -578,7 +578,7 @@ mod tests {
             let hiding_bound = Some(1);
             let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, Some(rng))?;
             let point = E::Fr::rand(rng);
-            let value = p.evaluate(&point);
+            let value = p.evaluate(point);
             let proof = KZG10::<E>::open(&ck, &p, point, &rand)?;
             assert!(
                 KZG10::<E>::check(&vk, &comm, point, value, &proof)?,
@@ -601,7 +601,7 @@ mod tests {
             let hiding_bound = Some(1);
             let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, Some(rng))?;
             let point = E::Fr::rand(rng);
-            let value = p.evaluate(&point);
+            let value = p.evaluate(point);
             let proof = KZG10::<E>::open(&ck, &p, point, &rand)?;
             assert!(
                 KZG10::<E>::check(&vk, &comm, point, value, &proof)?,
@@ -634,7 +634,7 @@ mod tests {
                 let hiding_bound = Some(1);
                 let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, Some(rng))?;
                 let point = E::Fr::rand(rng);
-                let value = p.evaluate(&point);
+                let value = p.evaluate(point);
                 let proof = KZG10::<E>::open(&ck, &p, point, &rand)?;
 
                 assert!(KZG10::<E>::check(&vk, &comm, point, value, &proof)?);
