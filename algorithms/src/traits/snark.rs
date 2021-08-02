@@ -31,7 +31,7 @@ pub trait Prepare<T> {
 /// Forward compatible with future assumptions that proof systems will require.
 pub enum SRS<'a, R: Rng + CryptoRng, T> {
     CircuitSpecific(&'a mut R),
-    Universal(T),
+    Universal(&'a T),
 }
 
 pub trait SNARK {
@@ -49,6 +49,8 @@ pub trait SNARK {
 
     type VerifierInput: ?Sized;
     type VerifyingKey: Clone
+        + Send
+        + Sync
         + ToBytes
         + FromBytes
         + Prepare<Self::PreparedVerifyingKey>

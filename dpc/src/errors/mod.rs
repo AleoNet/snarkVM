@@ -17,23 +17,17 @@
 pub mod account;
 pub use account::*;
 
-pub mod block;
-pub use block::*;
+pub mod circuit;
+pub use circuit::*;
 
 pub mod dpc;
 pub use dpc::*;
-
-pub mod ledger;
-pub use ledger::*;
 
 pub mod program;
 pub use program::*;
 
 pub mod record;
 pub use record::*;
-
-pub mod storage;
-pub use storage::*;
 
 pub mod transaction;
 pub use transaction::*;

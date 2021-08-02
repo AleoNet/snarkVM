@@ -14,48 +14,67 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::{AccountScheme, LedgerScheme, Parameters, RecordScheme, TransactionScheme};
+use crate::{
+    traits::{
+        AccountScheme,
+        Parameters,
+        RecordCommitmentTree,
+        RecordScheme,
+        RecordSerialNumberTree,
+        TransactionScheme,
+    },
+    LocalData,
+};
 
+use anyhow::Result;
 use rand::{CryptoRng, Rng};
 
 pub trait DPCScheme<C: Parameters>: Sized {
     type Account: AccountScheme;
+    type Authorization;
     type Execution;
     type Record: RecordScheme<Owner = <Self::Account as AccountScheme>::Address>;
     type Transaction: TransactionScheme<SerialNumber = <Self::Record as RecordScheme>::SerialNumber>;
-    type TransactionKernel;
 
     /// Initializes a new instance of DPC.
-    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> anyhow::Result<Self>;
+    fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self>;
 
     /// Loads the saved instance of DPC.
-    fn load(verify_only: bool) -> anyhow::Result<Self>;
+    fn load(verify_only: bool) -> Result<Self>;
 
-    /// Returns the execution context required for program snark and DPC transaction generation.
+    /// Returns a transaction authorization to execute an Aleo transaction.
     #[allow(clippy::too_many_arguments)]
-    fn execute_offline_phase<R: Rng + CryptoRng>(
+    fn authorize<R: Rng + CryptoRng>(
         &self,
-        old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        old_records: Vec<Self::Record>,
-        new_records: Vec<Self::Record>,
-        memorandum: <Self::Transaction as TransactionScheme>::Memorandum,
+        private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
+        input_records: Vec<Self::Record>,
+        output_records: Vec<Self::Record>,
+        memo: Option<<Self::Transaction as TransactionScheme>::Memo>,
         rng: &mut R,
-    ) -> anyhow::Result<Self::TransactionKernel>;
+    ) -> Result<Self::Authorization>;
 
-    /// Returns new records and a transaction based on the authorized
-    /// consumption of old records.
-    fn execute_online_phase<L: LedgerScheme<C>, R: Rng + CryptoRng>(
+    /// Returns a transaction based on the transaction authorization.
+    fn execute<L: RecordCommitmentTree<C>, R: Rng + CryptoRng>(
         &self,
-        old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
-        transaction_kernel: Self::TransactionKernel,
+        private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
+        authorization: Self::Authorization,
+        local_data: &LocalData<C>,
         program_proofs: Vec<Self::Execution>,
         ledger: &L,
         rng: &mut R,
-    ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)>;
+    ) -> Result<Self::Transaction>;
 
     /// Returns true iff the transaction is valid according to the ledger.
-    fn verify<L: LedgerScheme<C>>(&self, transaction: &Self::Transaction, ledger: &L) -> bool;
+    fn verify<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C>>(
+        &self,
+        transaction: &Self::Transaction,
+        ledger: &L,
+    ) -> bool;
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions<L: LedgerScheme<C>>(&self, block: &[Self::Transaction], ledger: &L) -> bool;
+    fn verify_transactions<L: RecordCommitmentTree<C> + RecordSerialNumberTree<C>>(
+        &self,
+        block: &[Self::Transaction],
+        ledger: &L,
+    ) -> bool;
 }

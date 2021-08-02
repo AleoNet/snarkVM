@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{InnerCircuitVerifierInput, Parameters};
-use snarkvm_algorithms::{
-    merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, CRH},
-};
+use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, traits::CommitmentScheme};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::ToBits;
 
@@ -26,7 +23,7 @@ use snarkvm_utilities::ToBits;
 #[derivative(Clone(bound = "C: Parameters"))]
 pub struct OuterCircuitVerifierInput<C: Parameters> {
     pub inner_snark_verifier_input: InnerCircuitVerifierInput<C>,
-    pub inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
+    pub inner_circuit_id: C::InnerCircuitID,
 }
 
 impl<C: Parameters> ToConstraintField<C::OuterScalarField> for OuterCircuitVerifierInput<C>

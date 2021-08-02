@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::{testnet2::parameters::*, DPCScheme};
+use snarkvm_dpc::{testnet2::*, DPCScheme};
 
 use rand::{CryptoRng, Rng};
 

@@ -18,7 +18,7 @@ use crate::{
     crh::{PedersenCRH, PedersenCompressedCRH},
     define_merkle_tree_parameters,
     merkle_tree::MerkleTree,
-    traits::{crh::CRH, merkle_tree::LoadableMerkleParameters},
+    traits::{LoadableMerkleParameters, MerkleParameters, CRH},
 };
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
@@ -118,8 +118,8 @@ fn depth_2_merkle_tree_test<P: LoadableMerkleParameters>() {
         crh.hash(&to_bytes_le![left, right].unwrap()).unwrap()
     };
 
-    println!("{} == {}", merkle_tree_root, expected_root);
-    assert_eq!(merkle_tree_root, expected_root);
+    println!("{} == {}", merkle_tree_root, &expected_root);
+    assert_eq!(merkle_tree_root, &expected_root);
 }
 
 fn padded_merkle_tree_test<P: LoadableMerkleParameters>() {
@@ -158,8 +158,8 @@ fn padded_merkle_tree_test<P: LoadableMerkleParameters>() {
             .unwrap()
     };
 
-    println!("{} == {}", merkle_tree_root, expected_root);
-    assert_eq!(merkle_tree_root, expected_root);
+    println!("{} == {}", merkle_tree_root, &expected_root);
+    assert_eq!(merkle_tree_root, &expected_root);
 }
 
 mod pedersen_crh_on_projective {

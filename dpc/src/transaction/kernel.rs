@@ -14,66 +14,50 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{prelude::*, EncryptedRecord, LocalData, Parameters, Record, Transaction};
-use snarkvm_algorithms::{commitment_tree::CommitmentMerkleTree, prelude::*};
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
+use crate::{prelude::*, Parameters, Transaction};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
-use std::{
-    fmt,
-    io::{Read, Result as IoResult, Write},
-    str::FromStr,
-};
+use anyhow::Result;
+use std::io::{Read, Result as IoResult, Write};
 
-/// Returned by `DPC::execute_offline_phase`. Stores data required to produce the final transaction
-/// after `execute_offline_phase` has created old serial numbers, new records and commitments.
-/// For convenience, it also stores references to existing information such as old records.
+/// The transaction kernel contains core (public) transaction components,
+/// A signed transaction kernel implies the caller has authorized the execution
+/// of the transaction, and implies these values are admissibleby the ledger.
 #[derive(Derivative)]
 #[derivative(
     Clone(bound = "C: Parameters"),
+    Debug(bound = "C: Parameters"),
     PartialEq(bound = "C: Parameters"),
-    Eq(bound = "C: Parameters"),
-    Debug(bound = "C: Parameters")
+    Eq(bound = "C: Parameters")
 )]
 pub struct TransactionKernel<C: Parameters> {
-    // Old record stuff
-    pub old_records: Vec<Record<C>>,
-    pub old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
-
-    // New record stuff
-    pub new_records: Vec<Record<C>>,
-    pub new_commitments: Vec<C::RecordCommitment>,
-
-    pub new_records_encryption_randomness: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
-    pub new_encrypted_records: Vec<EncryptedRecord<C>>,
-    pub new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
-
-    // Program and local data root and randomness
-    pub program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
-    pub program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-
-    pub local_data_merkle_tree: CommitmentMerkleTree<C::LocalDataCommitmentScheme, C::LocalDataCRH>,
-    pub local_data_commitment_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
-
-    pub value_balance: AleoAmount,
-    pub memorandum: <Transaction<C> as TransactionScheme>::Memorandum,
+    /// The network ID.
     pub network_id: u8,
-    pub signatures: Vec<<C::AccountSignatureScheme as SignatureScheme>::Signature>,
+    /// The serial numbers of the input records.
+    pub serial_numbers: Vec<C::AccountSignaturePublicKey>,
+    /// The commitments of the output records.
+    pub commitments: Vec<C::RecordCommitment>,
+    /// A value balance is the difference between the input and output record values.
+    pub value_balance: AleoAmount,
+    /// Publicly-visible data associated with the transaction.
+    pub memo: <Transaction<C> as TransactionScheme>::Memo,
 }
 
 impl<C: Parameters> TransactionKernel<C> {
-    #[allow(clippy::wrong_self_convention)]
-    pub fn into_local_data(&self) -> LocalData<C> {
-        LocalData {
-            old_records: self.old_records.to_vec(),
-            old_serial_numbers: self.old_serial_numbers.to_vec(),
+    #[inline]
+    pub fn is_valid(&self) -> bool {
+        self.network_id == C::NETWORK_ID
+            && self.serial_numbers.len() == C::NUM_INPUT_RECORDS
+            && self.commitments.len() == C::NUM_OUTPUT_RECORDS
+    }
 
-            new_records: self.new_records.to_vec(),
-
-            local_data_merkle_tree: self.local_data_merkle_tree.clone(),
-            local_data_commitment_randomizers: self.local_data_commitment_randomizers.clone(),
-
-            memorandum: self.memorandum,
-            network_id: self.network_id,
+    #[inline]
+    pub fn to_signature_message(&self) -> Result<Vec<u8>> {
+        match self.is_valid() {
+            true => self.to_bytes_le(),
+            false => {
+                Err(DPCError::InvalidKernel(self.network_id, self.serial_numbers.len(), self.commitments.len()).into())
+            }
         }
     }
 }
@@ -81,179 +65,45 @@ impl<C: Parameters> TransactionKernel<C> {
 impl<C: Parameters> ToBytes for TransactionKernel<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Write old record components
-
-        for old_record in &self.old_records {
-            old_record.write_le(&mut writer)?;
+        // Ensure the correct number of serial numbers and commitments are provided.
+        if !self.is_valid() {
+            return Err(
+                DPCError::InvalidKernel(self.network_id, self.serial_numbers.len(), self.commitments.len()).into(),
+            );
         }
 
-        for old_serial_number in &self.old_serial_numbers {
-            old_serial_number.write_le(&mut writer)?;
-        }
-
-        // Write new record components
-
-        for new_record in &self.new_records {
-            new_record.write_le(&mut writer)?;
-        }
-
-        for new_commitment in &self.new_commitments {
-            new_commitment.write_le(&mut writer)?;
-        }
-
-        for new_records_encryption_randomness in &self.new_records_encryption_randomness {
-            new_records_encryption_randomness.write_le(&mut writer)?;
-        }
-
-        for new_encrypted_record in &self.new_encrypted_records {
-            new_encrypted_record.write_le(&mut writer)?;
-        }
-
-        for new_encrypted_record_hash in &self.new_encrypted_record_hashes {
-            new_encrypted_record_hash.write_le(&mut writer)?;
-        }
-
-        // Write transaction components
-
-        self.program_commitment.write_le(&mut writer)?;
-        self.program_randomness.write_le(&mut writer)?;
-
-        self.local_data_merkle_tree.write_le(&mut writer)?;
-
-        for local_data_commitment_randomizer in &self.local_data_commitment_randomizers {
-            local_data_commitment_randomizer.write_le(&mut writer)?;
-        }
-
-        self.value_balance.write_le(&mut writer)?;
-        self.memorandum.write_le(&mut writer)?;
         self.network_id.write_le(&mut writer)?;
-
-        for signature in &self.signatures {
-            signature.write_le(&mut writer)?;
-        }
-
-        Ok(())
+        self.serial_numbers.write_le(&mut writer)?;
+        self.commitments.write_le(&mut writer)?;
+        self.value_balance.write_le(&mut writer)?;
+        self.memo.write_le(&mut writer)
     }
 }
 
 impl<C: Parameters> FromBytes for TransactionKernel<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read old record components
+        let network_id: u8 = FromBytes::read_le(&mut reader)?;
 
-        let mut old_records = vec![];
+        let mut serial_numbers = Vec::<C::AccountSignaturePublicKey>::with_capacity(C::NUM_INPUT_RECORDS);
         for _ in 0..C::NUM_INPUT_RECORDS {
-            let old_record: Record<C> = FromBytes::read_le(&mut reader)?;
-            old_records.push(old_record);
+            serial_numbers.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let mut old_serial_numbers = vec![];
-        for _ in 0..C::NUM_INPUT_RECORDS {
-            let old_serial_number: <C::AccountSignatureScheme as SignatureScheme>::PublicKey =
-                FromBytes::read_le(&mut reader)?;
-            old_serial_numbers.push(old_serial_number);
-        }
-
-        // Read new record components
-
-        let mut new_records = vec![];
+        let mut commitments = Vec::<C::RecordCommitment>::with_capacity(C::NUM_OUTPUT_RECORDS);
         for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let new_record: Record<C> = FromBytes::read_le(&mut reader)?;
-            new_records.push(new_record);
-        }
-
-        let mut new_commitments = vec![];
-        for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let new_commitment: C::RecordCommitment = FromBytes::read_le(&mut reader)?;
-            new_commitments.push(new_commitment);
-        }
-
-        let mut new_records_encryption_randomness = vec![];
-        for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let encryption_randomness: <C::AccountEncryptionScheme as EncryptionScheme>::Randomness =
-                FromBytes::read_le(&mut reader)?;
-            new_records_encryption_randomness.push(encryption_randomness);
-        }
-
-        let mut new_encrypted_records = vec![];
-        for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let encrypted_record: EncryptedRecord<C> = FromBytes::read_le(&mut reader)?;
-            new_encrypted_records.push(encrypted_record);
-        }
-
-        let mut new_encrypted_record_hashes = vec![];
-        for _ in 0..C::NUM_OUTPUT_RECORDS {
-            let encrypted_record_hash: C::EncryptedRecordDigest = FromBytes::read_le(&mut reader)?;
-            new_encrypted_record_hashes.push(encrypted_record_hash);
-        }
-
-        // Read transaction components
-
-        let program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output =
-            FromBytes::read_le(&mut reader)?;
-        let program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness =
-            FromBytes::read_le(&mut reader)?;
-
-        let local_data_merkle_tree = CommitmentMerkleTree::<C::LocalDataCommitmentScheme, C::LocalDataCRH>::from_bytes(
-            &mut reader,
-            C::local_data_crh().clone(),
-        )
-        .expect("Could not load local data merkle tree");
-
-        let mut local_data_commitment_randomizers = vec![];
-        for _ in 0..4 {
-            let local_data_commitment_randomizer: <C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness =
-                FromBytes::read_le(&mut reader)?;
-            local_data_commitment_randomizers.push(local_data_commitment_randomizer);
+            commitments.push(FromBytes::read_le(&mut reader)?);
         }
 
         let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
-        let memorandum: <Transaction<C> as TransactionScheme>::Memorandum = FromBytes::read_le(&mut reader)?;
-        let network_id: u8 = FromBytes::read_le(&mut reader)?;
-
-        let mut signatures = vec![];
-        for _ in 0..C::NUM_INPUT_RECORDS {
-            let signature: <C::AccountSignatureScheme as SignatureScheme>::Signature = FromBytes::read_le(&mut reader)?;
-            signatures.push(signature);
-        }
+        let memo: <Transaction<C> as TransactionScheme>::Memo = FromBytes::read_le(&mut reader)?;
 
         Ok(Self {
-            old_records,
-            old_serial_numbers,
-
-            new_records,
-            new_commitments,
-
-            new_records_encryption_randomness,
-            new_encrypted_records,
-            new_encrypted_record_hashes,
-
-            program_commitment,
-            program_randomness,
-            local_data_merkle_tree,
-            local_data_commitment_randomizers,
-            value_balance,
-            memorandum,
             network_id,
-            signatures,
+            serial_numbers,
+            commitments,
+            value_balance,
+            memo,
         })
-    }
-}
-
-impl<C: Parameters> FromStr for TransactionKernel<C> {
-    type Err = DPCError;
-
-    fn from_str(kernel: &str) -> Result<Self, Self::Err> {
-        Ok(Self::read_le(&hex::decode(kernel)?[..])?)
-    }
-}
-
-impl<C: Parameters> fmt::Display for TransactionKernel<C> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            hex::encode(to_bytes_le![self].expect("couldn't serialize to bytes"))
-        )
     }
 }

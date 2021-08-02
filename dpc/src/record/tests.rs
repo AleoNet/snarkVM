@@ -16,13 +16,13 @@
 
 use crate::{
     record::encrypted::*,
-    testnet2::parameters::*,
+    testnet2::*,
     Account,
     AccountScheme,
     NoopProgram,
     Parameters,
     Payload,
-    ProgramScheme,
+    Program,
     Record,
     ViewKey,
     PAYLOAD_SIZE,
@@ -49,12 +49,11 @@ fn test_record_encryption() {
             rng.fill(&mut payload);
 
             let given_record = Record::new(
+                &noop_program,
                 dummy_account.address,
                 false,
                 value,
                 Payload::from_bytes(&payload),
-                noop_program.id(),
-                noop_program.id(),
                 <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
                     .hash(&sn_nonce_input)
                     .unwrap(),

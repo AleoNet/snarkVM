@@ -40,7 +40,7 @@ pub struct InnerCircuitVerifierInput<C: Parameters> {
     // These are required in natively verifying an inner circuit proof.
     // However for verification in the outer circuit, these must be provided as witness.
     pub program_commitment: Option<<C::ProgramCommitmentScheme as CommitmentScheme>::Output>,
-    pub local_data_root: Option<C::LocalDataDigest>,
+    pub local_data_root: Option<C::LocalDataRoot>,
 
     pub memo: [u8; 64],
     pub value_balance: AleoAmount,

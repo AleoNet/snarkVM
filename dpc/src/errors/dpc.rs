@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountError, LedgerError, ProgramError, RecordError, TransactionError};
+use crate::{AccountError, CircuitError, ProgramError, RecordError, TransactionError};
 use snarkvm_algorithms::{
     CRHError,
     CommitmentError,
@@ -49,10 +49,21 @@ pub enum DPCError {
     Crate(&'static str, String),
 
     #[error("{}", _0)]
+    CircuitError(#[from] CircuitError),
+
+    #[error("{}", _0)]
     EncodingError(#[from] EncodingError),
 
     #[error("{}", _0)]
     EncryptionError(#[from] EncryptionError),
+
+    #[error(
+        "Invalid transaction kernel: network = {}, |serial numbers| = {}, |commitments| = {}",
+        _0,
+        _1,
+        _2
+    )]
+    InvalidKernel(u8, usize, usize),
 
     #[error("Invalid number of inputs - (current: {}, max: {})", _0, _1)]
     InvalidNumberOfInputs(usize, usize),
@@ -62,9 +73,6 @@ pub enum DPCError {
 
     #[error("{}", _0)]
     FromHexError(#[from] hex::FromHexError),
-
-    #[error("{}", _0)]
-    LedgerError(#[from] LedgerError),
 
     #[error("{}", _0)]
     MerkleError(#[from] MerkleError),
@@ -103,5 +111,11 @@ pub enum DPCError {
 impl From<std::io::Error> for DPCError {
     fn from(error: std::io::Error) -> Self {
         DPCError::Crate("std::io", format!("{:?}", error))
+    }
+}
+
+impl From<DPCError> for std::io::Error {
+    fn from(error: DPCError) -> Self {
+        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", error))
     }
 }

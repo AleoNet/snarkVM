@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_dpc::{testnet1::parameters::Testnet1Parameters, DPCError, NoopProgram, Parameters, ProgramScheme};
+use snarkvm_dpc::{DPCError, NoopProgram, Parameters, Program};
 use snarkvm_utilities::ToBytes;
 
 use rand::thread_rng;
@@ -27,9 +27,9 @@ use utils::store;
 pub fn setup<C: Parameters>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
     let noop_program = NoopProgram::<C>::setup(rng)?;
-    let (proving_key, verifying_key) = noop_program.to_snark_parameters();
-    let noop_program_snark_pk = proving_key.to_bytes_le()?;
-    let noop_program_snark_vk = verifying_key.to_bytes_le()?;
+    let noop_circuit = noop_program.get_circuit(0)?;
+    let noop_program_snark_pk = noop_circuit.proving_key().to_bytes_le()?;
+    let noop_program_snark_vk = noop_circuit.verifying_key().to_bytes_le()?;
 
     println!("noop_program_snark_pk.params\n\tsize - {}", noop_program_snark_pk.len());
     println!("noop_program_snark_vk.params\n\tsize - {}", noop_program_snark_vk.len());
@@ -37,7 +37,18 @@ pub fn setup<C: Parameters>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
 }
 
 pub fn main() {
-    let (program_snark_pk, program_snark_vk) = setup::<Testnet1Parameters>().unwrap();
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() < 2 {
+        println!("Invalid number of arguments. Given: {} - Required: 1", args.len() - 1);
+        return;
+    }
+
+    let (program_snark_pk, program_snark_vk) = match args[1].as_str() {
+        "testnet1" => setup::<snarkvm_dpc::testnet1::Testnet1Parameters>().unwrap(),
+        "testnet2" => setup::<snarkvm_dpc::testnet2::Testnet2Parameters>().unwrap(),
+        _ => panic!("Invalid parameters"),
+    };
+
     store(
         &PathBuf::from("noop_program_snark_pk.params"),
         &PathBuf::from("noop_program_snark_pk.checksum"),

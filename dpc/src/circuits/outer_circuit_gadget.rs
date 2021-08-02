@@ -17,10 +17,11 @@
 use crate::{AleoAmount, Execution, Parameters, Transaction, TransactionScheme};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, SignatureScheme, CRH, SNARK},
+    traits::{CommitmentScheme, SignatureScheme, SNARK},
 };
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
+    algorithms::merkle_tree::MerklePathGadget,
     bits::ToBytesGadget,
     traits::{
         algorithms::{CRHGadget, CommitmentGadget, SNARKVerifierGadget},
@@ -103,7 +104,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     old_serial_numbers: &[<C::AccountSignatureScheme as SignatureScheme>::PublicKey],
     new_commitments: &[C::RecordCommitment],
     new_encrypted_record_hashes: &[C::EncryptedRecordDigest],
-    memo: &<Transaction<C> as TransactionScheme>::Memorandum,
+    memo: &<Transaction<C> as TransactionScheme>::Memo,
     value_balance: AleoAmount,
     network_id: u8,
 
@@ -112,14 +113,14 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     inner_snark_proof: &<C::InnerSNARK as SNARK>::Proof,
 
     // Program verifying keys and proofs
-    program_proofs: &[Execution<C::ProgramSNARK>],
+    program_proofs: &[Execution<C>],
 
     // Rest
     program_commitment: &<C::ProgramCommitmentScheme as CommitmentScheme>::Output,
     program_randomness: &<C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-    local_data_root: &C::LocalDataDigest,
+    local_data_root: &C::LocalDataRoot,
 
-    inner_circuit_id: &<C::InnerCircuitIDCRH as CRH>::Output,
+    inner_circuit_id: &C::InnerCircuitID,
 ) -> Result<(), SynthesisError> {
     // Declare public parameters.
     let (program_id_commitment_parameters, program_id_crh, inner_circuit_id_crh) = {
@@ -253,95 +254,65 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     )?;
 
     // ************************************************************************
-    // Construct program input
+    // Verify each circuit exist in declared program and verify their proofs.
     // ************************************************************************
 
-    let mut old_death_program_ids = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-    let mut new_birth_program_ids = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-    for (i, input) in program_proofs.iter().enumerate().take(C::NUM_INPUT_RECORDS) {
-        let cs = &mut cs.ns(|| format!("Check death program for input record {}", i));
+    let mut program_ids = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
+    for (index, input) in program_proofs.iter().enumerate().take(C::NUM_TOTAL_RECORDS) {
+        let cs = &mut cs.ns(|| format!("Check program for record {}", index));
 
-        let death_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
-            &mut cs.ns(|| "Allocate proof"),
+        let program_circuit_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
+            &mut cs.ns(|| "Allocate program circuit proof"),
             || Ok(&input.proof),
         )?;
 
-        let death_program_vk = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
-            &mut cs.ns(|| "Allocate verifying key"),
-            || Ok(&input.verifying_key),
+        let program_circuit_verifying_key =
+            <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
+                &mut cs.ns(|| "Allocate program circuit verifying key"),
+                || Ok(&input.verifying_key),
+            )?;
+
+        let program_circuit_verifying_key_field_elements = program_circuit_verifying_key
+            .to_constraint_field(cs.ns(|| "alloc_program_circuit_verifying_key_field_elements"))?;
+
+        let claimed_circuit_id = program_id_crh.check_evaluation_gadget_on_field_elements(
+            &mut cs.ns(|| "Compute circuit ID"),
+            program_circuit_verifying_key_field_elements,
         )?;
 
-        let death_program_vk_field_elements =
-            death_program_vk.to_constraint_field(cs.ns(|| "alloc_death_program_vk_field_elements"))?;
+        let claimed_circuit_id_bytes =
+            claimed_circuit_id.to_bytes(&mut cs.ns(|| "Convert death circuit ID to bytes"))?;
 
-        let claimed_death_program_id = program_id_crh.check_evaluation_gadget_on_field_elements(
-            &mut cs.ns(|| "Compute death program ID"),
-            death_program_vk_field_elements,
+        let death_program_merkle_path_gadget = MerklePathGadget::<_, C::ProgramIDCRHGadget, _>::alloc(
+            &mut cs.ns(|| "Declare program path for circuit"),
+            || Ok(&input.program_path),
         )?;
 
-        let claimed_death_program_id_bytes =
-            claimed_death_program_id.to_bytes(&mut cs.ns(|| "Convert death program ID to bytes"))?;
+        let claimed_program_id = death_program_merkle_path_gadget.calculate_root(
+            &mut cs.ns(|| "calculate_program_id"),
+            &program_id_crh,
+            claimed_circuit_id_bytes,
+        )?;
 
-        old_death_program_ids.push(claimed_death_program_id_bytes);
+        let claimed_program_id_bytes =
+            claimed_program_id.to_bytes(&mut cs.ns(|| "Convert program ID root to bytes"))?;
+
+        program_ids.push(claimed_program_id_bytes);
 
         let position_fe = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc_constant(
             &mut cs.ns(|| "Allocate position"),
-            || Ok(vec![C::InnerScalarField::from(i as u128)]),
+            || Ok(vec![C::InnerScalarField::from(index as u128)]),
         )?;
         let program_input = position_fe.merge(cs.ns(|| "Allocate program input"), &local_data_root_fe_program_snark)?;
 
         C::ProgramSNARKGadget::check_verify(
             &mut cs.ns(|| "Check that proof is satisfied"),
-            &death_program_vk,
+            &program_circuit_verifying_key,
             &program_input,
-            &death_program_proof,
+            &program_circuit_proof,
         )?;
     }
 
-    for (j, input) in program_proofs
-        .iter()
-        .skip(C::NUM_INPUT_RECORDS)
-        .enumerate()
-        .take(C::NUM_OUTPUT_RECORDS)
-    {
-        let cs = &mut cs.ns(|| format!("Check birth program for output record {}", j));
-
-        let birth_program_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
-            &mut cs.ns(|| "Allocate proof"),
-            || Ok(&input.proof),
-        )?;
-
-        let birth_program_vk = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
-            &mut cs.ns(|| "Allocate verifying key"),
-            || Ok(&input.verifying_key),
-        )?;
-
-        let birth_program_vk_field_elements =
-            birth_program_vk.to_constraint_field(cs.ns(|| "birth_death_program_vk_field_elements"))?;
-
-        let claimed_birth_program_id = program_id_crh.check_evaluation_gadget_on_field_elements(
-            &mut cs.ns(|| "Compute birth program ID"),
-            birth_program_vk_field_elements,
-        )?;
-
-        let claimed_birth_program_id_bytes =
-            claimed_birth_program_id.to_bytes(&mut cs.ns(|| "Convert birth program ID to bytes"))?;
-
-        new_birth_program_ids.push(claimed_birth_program_id_bytes);
-
-        let position_fe = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::InputGadget::alloc_constant(
-            &mut cs.ns(|| "Allocate position"),
-            || Ok(vec![C::InnerScalarField::from((C::NUM_INPUT_RECORDS + j) as u128)]),
-        )?;
-        let program_input = position_fe.merge(cs.ns(|| "Allocate program input"), &local_data_root_fe_program_snark)?;
-
-        C::ProgramSNARKGadget::check_verify(
-            &mut cs.ns(|| "Check that proof is satisfied"),
-            &birth_program_vk,
-            &program_input,
-            &birth_program_proof,
-        )?;
-    }
     // ********************************************************************
 
     // ********************************************************************
@@ -351,11 +322,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
         let commitment_cs = &mut cs.ns(|| "Check that program commitment is well-formed");
 
         let mut input = Vec::new();
-        for id in old_death_program_ids.iter().take(C::NUM_INPUT_RECORDS) {
-            input.extend_from_slice(&id);
-        }
-
-        for id in new_birth_program_ids.iter().take(C::NUM_OUTPUT_RECORDS) {
+        for id in program_ids.iter().take(C::NUM_TOTAL_RECORDS) {
             input.extend_from_slice(&id);
         }
 

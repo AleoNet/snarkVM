@@ -17,10 +17,7 @@
 use crate::{record::Record, AleoAmount, Parameters, PrivateKey, RecordScheme};
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
-    CommitmentScheme,
-    EncryptionScheme,
-    MerkleParameters,
-    SignatureScheme,
+    traits::*,
 };
 use snarkvm_gadgets::{
     algorithms::merkle_tree::merkle_path::MerklePathGadget,
@@ -59,65 +56,12 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     // Rest
     program_commitment: &<C::ProgramCommitmentScheme as CommitmentScheme>::Output,
     program_randomness: &<C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-    local_data_root: &C::LocalDataDigest,
+    local_data_root: &C::LocalDataRoot,
     local_data_commitment_randomizers: &[<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness],
     memo: &[u8; 64],
     value_balance: AleoAmount,
     network_id: u8,
 ) -> Result<(), SynthesisError> {
-    inner_circuit_gadget::<C, CS>(
-        cs,
-        ledger_digest,
-        //
-        old_records,
-        old_witnesses,
-        old_private_keys,
-        old_serial_numbers,
-        //
-        new_records,
-        new_commitments,
-        new_records_encryption_randomness,
-        new_encrypted_record_hashes,
-        //
-        program_commitment,
-        program_randomness,
-        local_data_root,
-        local_data_commitment_randomizers,
-        memo,
-        value_balance,
-        network_id,
-    )
-}
-
-#[allow(clippy::too_many_arguments)]
-fn inner_circuit_gadget<C, CS: ConstraintSystem<C::InnerScalarField>>(
-    cs: &mut CS,
-    ledger_digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
-
-    //
-    old_records: &[Record<C>],
-    old_witnesses: &[MerklePath<C::RecordCommitmentTreeParameters>],
-    old_private_keys: &[PrivateKey<C>],
-    old_serial_numbers: &[<C::AccountSignatureScheme as SignatureScheme>::PublicKey],
-
-    //
-    new_records: &[Record<C>],
-    new_commitments: &[C::RecordCommitment],
-    new_records_encryption_randomness: &[<C::AccountEncryptionScheme as EncryptionScheme>::Randomness],
-    new_encrypted_record_hashes: &[C::EncryptedRecordDigest],
-
-    //
-    program_commitment: &<C::ProgramCommitmentScheme as CommitmentScheme>::Output,
-    program_randomness: &<C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-    local_data_root: &C::LocalDataDigest,
-    local_data_commitment_randomizers: &[<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness],
-    memo: &[u8; 64],
-    value_balance: AleoAmount,
-    network_id: u8,
-) -> Result<(), SynthesisError>
-where
-    C: Parameters,
-{
     // Order for allocation of input:
     // 1. ledger_digest
     // 2. for i in 0..NUM_INPUT_RECORDS: old_serial_numbers[i]
@@ -212,7 +156,7 @@ where
     let mut old_serial_numbers_gadgets = Vec::with_capacity(old_records.len());
     let mut old_serial_numbers_bytes_gadgets = Vec::with_capacity(old_records.len() * 32); // Serial numbers are 32 bytes
     let mut old_record_commitments_gadgets = Vec::with_capacity(old_records.len());
-    let mut old_death_program_ids_gadgets = Vec::with_capacity(old_records.len());
+    let mut old_program_ids_gadgets = Vec::with_capacity(old_records.len());
 
     for (i, (((record, witness), account_private_key), given_serial_number)) in old_records
         .iter()
@@ -225,17 +169,19 @@ where
 
         // Declare record contents
         let (
+            given_program_id,
             given_record_owner,
-            given_commitment,
             given_is_dummy,
             given_value,
             given_payload,
-            given_birth_program_id,
-            given_death_program_id,
+            given_serial_number_nonce,
+            given_commitment,
             given_commitment_randomness,
-            serial_number_nonce,
         ) = {
             let declare_cs = &mut cs.ns(|| "Declare input record");
+
+            let given_program_id = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &record.program_id())?;
+            old_program_ids_gadgets.push(given_program_id.clone());
 
             // No need to check that commitments, public keys and hashes are in
             // prime order subgroup because the commitment and CRH parameters
@@ -250,6 +196,20 @@ where
                 || Ok(record.owner().to_encryption_key()),
             )?;
 
+            let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
+
+            let given_value = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &to_bytes_le![record.value()]?)?;
+
+            let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes())?;
+
+            let given_serial_number_nonce = <C::SerialNumberNonceCRHGadget as CRHGadget<
+                C::SerialNumberNonceCRH,
+                C::InnerScalarField,
+            >>::OutputGadget::alloc(
+                &mut declare_cs.ns(|| "serial_number_nonce"),
+                || Ok(record.serial_number_nonce()),
+            )?;
+
             let given_commitment = <C::RecordCommitmentGadget as CommitmentGadget<
                 C::RecordCommitmentScheme,
                 C::InnerScalarField,
@@ -257,23 +217,6 @@ where
                 &mut declare_cs.ns(|| "given_commitment"), || Ok(record.commitment())
             )?;
             old_record_commitments_gadgets.push(given_commitment.clone());
-
-            let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
-
-            let given_value = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &to_bytes_le![record.value()]?)?;
-
-            let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes())?;
-
-            let given_birth_program_id = UInt8::alloc_vec(
-                &mut declare_cs.ns(|| "given_birth_program_id"),
-                &record.birth_program_id(),
-            )?;
-
-            let given_death_program_id = UInt8::alloc_vec(
-                &mut declare_cs.ns(|| "given_death_program_id"),
-                &record.death_program_id(),
-            )?;
-            old_death_program_ids_gadgets.push(given_death_program_id.clone());
 
             let given_commitment_randomness = <C::RecordCommitmentGadget as CommitmentGadget<
                 C::RecordCommitmentScheme,
@@ -283,23 +226,15 @@ where
                 || Ok(record.commitment_randomness()),
             )?;
 
-            let serial_number_nonce = <C::SerialNumberNonceCRHGadget as CRHGadget<
-                C::SerialNumberNonceCRH,
-                C::InnerScalarField,
-            >>::OutputGadget::alloc(
-                &mut declare_cs.ns(|| "serial_number_nonce"),
-                || Ok(record.serial_number_nonce()),
-            )?;
             (
+                given_program_id,
                 given_record_owner,
-                given_commitment,
                 given_is_dummy,
                 given_value,
                 given_payload,
-                given_birth_program_id,
-                given_death_program_id,
+                given_serial_number_nonce,
+                given_commitment,
                 given_commitment_randomness,
-                serial_number_nonce,
             )
         };
 
@@ -427,7 +362,8 @@ where
         let serial_number_nonce_bytes = {
             let sn_cs = &mut cs.ns(|| "Check that sn is derived correctly");
 
-            let serial_number_nonce_bytes = serial_number_nonce.to_bytes(&mut sn_cs.ns(|| "Convert nonce to bytes"))?;
+            let serial_number_nonce_bytes =
+                given_serial_number_nonce.to_bytes(&mut sn_cs.ns(|| "Convert nonce to bytes"))?;
 
             let prf_seed = sk_prf;
             let randomizer = <C::PRFGadget as PRFGadget<C::PRF, C::InnerScalarField>>::check_evaluation_gadget(
@@ -485,12 +421,11 @@ where
             let is_dummy_bytes = given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert is_dummy to bytes"))?;
 
             let mut commitment_input = Vec::new();
+            commitment_input.extend_from_slice(&given_program_id);
             commitment_input.extend_from_slice(&record_owner_bytes);
             commitment_input.extend_from_slice(&is_dummy_bytes);
             commitment_input.extend_from_slice(&given_value);
             commitment_input.extend_from_slice(&given_payload);
-            commitment_input.extend_from_slice(&given_birth_program_id);
-            commitment_input.extend_from_slice(&given_death_program_id);
             commitment_input.extend_from_slice(&serial_number_nonce_bytes);
 
             let candidate_commitment = record_commitment_parameters.check_commitment_gadget(
@@ -507,7 +442,7 @@ where
     }
 
     let mut new_record_commitments_gadgets = Vec::with_capacity(new_records.len());
-    let mut new_birth_program_ids_gadgets = Vec::with_capacity(new_records.len());
+    let mut new_program_ids_gadgets = Vec::with_capacity(new_records.len());
 
     for (j, (((record, commitment), encryption_randomness), encrypted_record_hash)) in new_records
         .iter()
@@ -519,19 +454,21 @@ where
         let cs = &mut cs.ns(|| format!("Process output record {}", j));
 
         let (
+            given_program_id,
             given_record_owner,
-            given_record_commitment,
-            given_commitment,
             given_is_dummy,
             given_value,
             given_payload,
-            given_birth_program_id,
-            given_death_program_id,
-            given_commitment_randomness,
             serial_number_nonce,
             serial_number_nonce_bytes,
+            given_record_commitment,
+            given_commitment,
+            given_commitment_randomness,
         ) = {
             let declare_cs = &mut cs.ns(|| "Declare output record");
+
+            let given_program_id = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &record.program_id())?;
+            new_program_ids_gadgets.push(given_program_id.clone());
 
             let given_record_owner = <C::AccountEncryptionGadget as EncryptionGadget<
                 C::AccountEncryptionScheme,
@@ -540,6 +477,23 @@ where
                 &mut declare_cs.ns(|| "given_record_owner"),
                 || Ok(record.owner().to_encryption_key()),
             )?;
+
+            let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
+
+            let given_value = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &to_bytes_le![record.value()]?)?;
+
+            let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes())?;
+
+            let serial_number_nonce = <C::SerialNumberNonceCRHGadget as CRHGadget<
+                C::SerialNumberNonceCRH,
+                C::InnerScalarField,
+            >>::OutputGadget::alloc(
+                &mut declare_cs.ns(|| "serial_number_nonce"),
+                || Ok(record.serial_number_nonce()),
+            )?;
+
+            let serial_number_nonce_bytes =
+                serial_number_nonce.to_bytes(&mut declare_cs.ns(|| "Convert sn nonce to bytes"))?;
 
             let given_record_commitment = <C::RecordCommitmentGadget as CommitmentGadget<
                 C::RecordCommitmentScheme,
@@ -557,23 +511,6 @@ where
                 &mut declare_cs.ns(|| "given_commitment"), || Ok(commitment)
             )?;
 
-            let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
-
-            let given_value = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &to_bytes_le![record.value()]?)?;
-
-            let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes())?;
-
-            let given_birth_program_id = UInt8::alloc_vec(
-                &mut declare_cs.ns(|| "given_birth_program_id"),
-                &record.birth_program_id(),
-            )?;
-            new_birth_program_ids_gadgets.push(given_birth_program_id.clone());
-
-            let given_death_program_id = UInt8::alloc_vec(
-                &mut declare_cs.ns(|| "given_death_program_id"),
-                &record.death_program_id(),
-            )?;
-
             let given_commitment_randomness = <C::RecordCommitmentGadget as CommitmentGadget<
                 C::RecordCommitmentScheme,
                 C::InnerScalarField,
@@ -582,29 +519,17 @@ where
                 || Ok(record.commitment_randomness()),
             )?;
 
-            let serial_number_nonce = <C::SerialNumberNonceCRHGadget as CRHGadget<
-                C::SerialNumberNonceCRH,
-                C::InnerScalarField,
-            >>::OutputGadget::alloc(
-                &mut declare_cs.ns(|| "serial_number_nonce"),
-                || Ok(record.serial_number_nonce()),
-            )?;
-
-            let serial_number_nonce_bytes =
-                serial_number_nonce.to_bytes(&mut declare_cs.ns(|| "Convert sn nonce to bytes"))?;
-
             (
+                given_program_id,
                 given_record_owner,
-                given_record_commitment,
-                given_commitment,
                 given_is_dummy,
                 given_value,
                 given_payload,
-                given_birth_program_id,
-                given_death_program_id,
-                given_commitment_randomness,
                 serial_number_nonce,
                 serial_number_nonce_bytes,
+                given_record_commitment,
+                given_commitment,
+                given_commitment_randomness,
             )
         };
         // ********************************************************************
@@ -648,12 +573,11 @@ where
             let is_dummy_bytes = given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert is_dummy to bytes"))?;
 
             let mut commitment_input = Vec::new();
+            commitment_input.extend_from_slice(&given_program_id);
             commitment_input.extend_from_slice(&record_owner_bytes);
             commitment_input.extend_from_slice(&is_dummy_bytes);
             commitment_input.extend_from_slice(&given_value);
             commitment_input.extend_from_slice(&given_payload);
-            commitment_input.extend_from_slice(&given_birth_program_id);
-            commitment_input.extend_from_slice(&given_death_program_id);
             commitment_input.extend_from_slice(&serial_number_nonce_bytes);
 
             let candidate_commitment = record_commitment_parameters.check_commitment_gadget(
@@ -687,6 +611,15 @@ where
             let plaintext_bytes = {
                 let mut res = vec![];
 
+                // Program ID
+                res.extend_from_slice(&given_program_id);
+
+                // Value
+                res.extend_from_slice(&given_value);
+
+                // Payload
+                res.extend_from_slice(&given_payload);
+
                 // Serial number nonce
                 res.extend_from_slice(&serial_number_nonce_bytes);
 
@@ -694,18 +627,6 @@ where
                 let given_commitment_randomness_bytes = given_commitment_randomness
                     .to_bytes(&mut encryption_cs.ns(|| "Convert commitment randomness to bytes"))?;
                 res.extend_from_slice(&given_commitment_randomness_bytes);
-
-                // Birth program ID
-                res.extend_from_slice(&given_birth_program_id);
-
-                // Death program ID
-                res.extend_from_slice(&given_death_program_id);
-
-                // Value
-                res.extend_from_slice(&given_value);
-
-                // Payload
-                res.extend_from_slice(&given_payload);
 
                 res
             };
@@ -764,11 +685,11 @@ where
         let commitment_cs = &mut cs.ns(|| "Check that program commitment is well-formed");
 
         let mut input = Vec::new();
-        for id_gadget in old_death_program_ids_gadgets.iter().take(C::NUM_INPUT_RECORDS) {
+        for id_gadget in old_program_ids_gadgets.iter().take(C::NUM_INPUT_RECORDS) {
             input.extend_from_slice(id_gadget);
         }
 
-        for id_gadget in new_birth_program_ids_gadgets.iter().take(C::NUM_OUTPUT_RECORDS) {
+        for id_gadget in new_program_ids_gadgets.iter().take(C::NUM_OUTPUT_RECORDS) {
             input.extend_from_slice(id_gadget);
         }
 
@@ -811,6 +732,7 @@ where
         for i in 0..C::NUM_INPUT_RECORDS {
             let mut cs = cs.ns(|| format!("Construct local data with input record {}", i));
 
+            input_bytes.extend_from_slice(&[UInt8::constant(i as u8)]);
             input_bytes.extend_from_slice(&old_serial_numbers_gadgets[i].to_bytes(&mut cs.ns(|| "old_serial_number"))?);
             input_bytes.extend_from_slice(
                 &old_record_commitments_gadgets[i].to_bytes(&mut cs.ns(|| "old_record_commitment"))?,
@@ -844,6 +766,7 @@ where
         for j in 0..C::NUM_OUTPUT_RECORDS {
             let mut cs = cs.ns(|| format!("Construct local data with output record {}", j));
 
+            input_bytes.extend_from_slice(&[UInt8::constant((C::NUM_INPUT_RECORDS + j) as u8)]);
             input_bytes
                 .extend_from_slice(&new_record_commitments_gadgets[j].to_bytes(&mut cs.ns(|| "record_commitment"))?);
             input_bytes.extend_from_slice(&memo);

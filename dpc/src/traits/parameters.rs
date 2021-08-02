@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerCircuitVerifierInput, OuterCircuitVerifierInput, ProgramLocalData};
+use crate::{InnerCircuitVerifierInput, OuterCircuitVerifierInput, ProgramPublicVariables};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, ToConstraintField};
@@ -31,10 +31,10 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use anyhow::Result;
 use rand::{CryptoRng, Rng};
+use std::{cell::RefCell, rc::Rc};
 
-pub trait Parameters: 'static + Sized {
+pub trait Parameters: 'static + Sized + Send + Sync {
     const NETWORK_ID: u8;
 
     const NUM_INPUT_RECORDS: usize;
@@ -68,7 +68,7 @@ pub trait Parameters: 'static + Sized {
     type ProgramSNARK: SNARK<
         ScalarField = Self::InnerScalarField,
         BaseField = Self::OuterScalarField,
-        VerifierInput = ProgramLocalData<Self>,
+        VerifierInput = ProgramPublicVariables<Self>,
     >;
     /// Program SNARK verifier gadget for Aleo applications.
     type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK>;
@@ -125,9 +125,9 @@ pub trait Parameters: 'static + Sized {
 
     /// CRH for hash of the `Self::InnerSNARK` verifying keys.
     /// This is invoked only on the larger curve.
-    type InnerCircuitIDCRH: CRH<Output = Self::InnerCircuitIDCRHDigest>;
+    type InnerCircuitIDCRH: CRH<Output = Self::InnerCircuitID>;
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
-    type InnerCircuitIDCRHDigest: ToConstraintField<Self::OuterScalarField>
+    type InnerCircuitID: ToConstraintField<Self::OuterScalarField>
         + Clone
         + Debug
         + Display
@@ -145,9 +145,9 @@ pub trait Parameters: 'static + Sized {
     type LocalDataCommitmentScheme: CommitmentScheme;
     type LocalDataCommitmentGadget: CommitmentGadget<Self::LocalDataCommitmentScheme, Self::InnerScalarField>;
 
-    type LocalDataCRH: CRH<Output = Self::LocalDataDigest>;
+    type LocalDataCRH: CRH<Output = Self::LocalDataRoot>;
     type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
-    type LocalDataDigest: ToConstraintField<Self::InnerScalarField>
+    type LocalDataRoot: ToConstraintField<Self::InnerScalarField>
         + Clone
         + Debug
         + Display
@@ -177,9 +177,22 @@ pub trait Parameters: 'static + Sized {
         + Sync
         + Send;
 
-    /// CRH for hashes of birth and death verifying keys. Invoked only over `Self::OuterScalarField`.
+    /// CRH for program ID hashing. Invoked only over `Self::OuterScalarField`.
     type ProgramIDCRH: CRH;
     type ProgramIDCRHGadget: CRHGadget<Self::ProgramIDCRH, Self::OuterScalarField>;
+    type ProgramIDTreeDigest: ToConstraintField<Self::OuterScalarField>
+        + Clone
+        + Debug
+        + Display
+        + ToBytes
+        + FromBytes
+        + Eq
+        + Hash
+        + Default
+        + Send
+        + Sync
+        + Copy;
+    type ProgramIDTreeParameters: LoadableMerkleParameters<H = Self::ProgramIDCRH>;
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
     type PRF: PRF;
@@ -199,7 +212,7 @@ pub trait Parameters: 'static + Sized {
         + Sync
         + Send;
 
-    /// Record commitment tree instantiation for the ledger digest.
+    /// Record commitment tree instantiation.
     type RecordCommitmentTreeCRH: CRH<Output = Self::RecordCommitmentTreeDigest>;
     type RecordCommitmentTreeCRHGadget: CRHGadget<Self::RecordCommitmentTreeCRH, Self::InnerScalarField>;
     type RecordCommitmentTreeDigest: ToConstraintField<Self::InnerScalarField>
@@ -216,21 +229,33 @@ pub trait Parameters: 'static + Sized {
         + Copy;
     type RecordCommitmentTreeParameters: LoadableMerkleParameters<H = Self::RecordCommitmentTreeCRH>;
 
+    /// Record serial number tree instantiation.
+    type RecordSerialNumberTreeCRH: CRH<Output = Self::RecordSerialNumberTreeDigest>;
+    type RecordSerialNumberTreeDigest: ToConstraintField<Self::InnerScalarField>
+        + Clone
+        + Debug
+        + Display
+        + ToBytes
+        + FromBytes
+        + Eq
+        + Hash
+        + Default
+        + Send
+        + Sync
+        + Copy;
+    type RecordSerialNumberTreeParameters: LoadableMerkleParameters<H = Self::RecordSerialNumberTreeCRH>;
+
     /// CRH for computing the serial number nonce. Invoked only over `Self::InnerScalarField`.
     type SerialNumberNonceCRH: CRH;
     type SerialNumberNonceCRHGadget: CRHGadget<Self::SerialNumberNonceCRH, Self::InnerScalarField>;
 
     fn account_commitment_scheme() -> &'static Self::AccountCommitmentScheme;
-
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
-
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
 
     fn encrypted_record_crh() -> &'static Self::EncryptedRecordCRH;
 
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
-
-    fn record_commitment_tree_crh() -> &'static Self::RecordCommitmentTreeCRH;
 
     fn local_data_commitment_scheme() -> &'static Self::LocalDataCommitmentScheme;
 
@@ -239,15 +264,30 @@ pub trait Parameters: 'static + Sized {
     fn program_commitment_scheme() -> &'static Self::ProgramCommitmentScheme;
 
     fn program_id_crh() -> &'static Self::ProgramIDCRH;
+    fn program_id_tree_parameters() -> &'static Self::ProgramIDTreeParameters;
 
     fn record_commitment_scheme() -> &'static Self::RecordCommitmentScheme;
 
+    fn record_commitment_tree_crh() -> &'static Self::RecordCommitmentTreeCRH;
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters;
 
+    fn record_serial_number_tree_crh() -> &'static Self::RecordSerialNumberTreeCRH;
+    fn record_serial_number_tree_parameters() -> &'static Self::RecordSerialNumberTreeParameters;
+
     fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
+
+    fn inner_circuit_id() -> &'static Self::InnerCircuitID;
+    fn inner_circuit_proving_key(is_prover: bool) -> &'static Option<<Self::InnerSNARK as SNARK>::ProvingKey>;
+    fn inner_circuit_verifying_key() -> &'static <Self::InnerSNARK as SNARK>::VerifyingKey;
+
+    fn noop_program_proving_key() -> &'static <Self::ProgramSNARK as SNARK>::ProvingKey;
+    fn noop_program_verifying_key() -> &'static <Self::ProgramSNARK as SNARK>::VerifyingKey;
+
+    fn outer_circuit_proving_key(is_prover: bool) -> &'static Option<<Self::OuterSNARK as SNARK>::ProvingKey>;
+    fn outer_circuit_verifying_key() -> &'static <Self::OuterSNARK as SNARK>::VerifyingKey;
 
     /// Returns the program SRS for Aleo applications.
     fn program_srs<R: Rng + CryptoRng>(
         rng: &mut R,
-    ) -> Result<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>>;
+    ) -> Rc<RefCell<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>>>;
 }
