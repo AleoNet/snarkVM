@@ -28,9 +28,10 @@ use snarkvm_gadgets::{
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use crate::{
-    sonic_pc::{gadgets::verifier_key::VerifierKeyVar, PreparedVerifierKey},
+    sonic_pc::{gadgets::verifier_key::VerifierKeyVar, PreparedVerifierKey, VerifierKey},
     Vec,
 };
+use snarkvm_algorithms::Prepare;
 
 /// Var for the verification key of the Marlin-KZG10 polynomial commitment scheme.
 #[allow(clippy::type_complexity)]
@@ -262,71 +263,10 @@ where
         T: Borrow<PreparedVerifierKey<TargetCurve>>,
         CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
     >(
-        mut cs: CS,
-        value_gen: Fn,
+        _cs: CS,
+        _value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let obj = value_gen()?.borrow().clone();
-
-        let mut prepared_g = Vec::<PG::G1Gadget>::new();
-        for (i, g) in obj.prepared_vk.prepared_g.iter().enumerate() {
-            prepared_g.push(<PG::G1Gadget as AllocGadget<
-                <TargetCurve as PairingEngine>::G1Projective,
-                <BaseCurve as PairingEngine>::Fr,
-            >>::alloc(cs.ns(|| format!("g_{}", i)), || {
-                Ok(g.into_projective())
-            })?);
-        }
-
-        let mut prepared_gamma_g = Vec::<PG::G1Gadget>::new();
-        for (i, gamma_g) in obj.prepared_vk.prepared_gamma_g.iter().enumerate() {
-            prepared_gamma_g.push(<PG::G1Gadget as AllocGadget<
-                <TargetCurve as PairingEngine>::G1Projective,
-                <BaseCurve as PairingEngine>::Fr,
-            >>::alloc(cs.ns(|| format!("gamma_g_{}", i)), || {
-                Ok(gamma_g.into_projective())
-            })?);
-        }
-
-        let prepared_h = PG::G2PreparedGadget::alloc(cs.ns(|| "h"), || Ok(&obj.prepared_vk.prepared_h))?;
-        let prepared_beta_h = PG::G2PreparedGadget::alloc(cs.ns(|| "beta_h"), || Ok(&obj.prepared_vk.prepared_beta_h))?;
-
-        let degree_bounds_and_prepared_neg_powers_of_h = if obj.degree_bounds_and_prepared_neg_powers_of_h.is_some() {
-            let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, PG::G2PreparedGadget)>::new();
-
-            for (i, (d, shift_power_elem)) in obj
-                .degree_bounds_and_prepared_neg_powers_of_h
-                .as_ref()
-                .unwrap()
-                .iter()
-                .enumerate()
-            {
-                let gadget = <PG::G2PreparedGadget as AllocGadget<
-                    <TargetCurve::G2Affine as PairingCurve>::Prepared,
-                    <BaseCurve as PairingEngine>::Fr,
-                >>::alloc(cs.ns(|| format!("alloc_constant_gadget_{}", i)), || {
-                    Ok(shift_power_elem)
-                })?;
-
-                let d_gadget =
-                    FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc(cs.ns(|| format!("alloc_d_{}", i)), || {
-                        Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*d as u128))
-                    })?;
-
-                res.push((*d, d_gadget, gadget));
-            }
-            Some(res)
-        } else {
-            None
-        };
-
-        Ok(Self {
-            prepared_g,
-            prepared_gamma_g,
-            prepared_h,
-            prepared_beta_h,
-            degree_bounds_and_prepared_neg_powers_of_h,
-            origin_vk: None,
-        })
+        unimplemented!()
     }
 
     fn alloc_input<
@@ -334,72 +274,56 @@ where
         T: Borrow<PreparedVerifierKey<TargetCurve>>,
         CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
     >(
-        mut cs: CS,
+        _cs: CS,
+        _value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
+}
+
+impl<TargetCurve, BaseCurve, PG> AllocGadget<VerifierKey<TargetCurve>, <BaseCurve as PairingEngine>::Fr>
+    for PreparedVerifierKeyVar<TargetCurve, BaseCurve, PG>
+where
+    TargetCurve: PairingEngine,
+    BaseCurve: PairingEngine,
+    PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
+{
+    fn alloc_constant<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<VerifierKey<TargetCurve>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
         let obj = value_gen()?.borrow().clone();
+        let pvk = VerifierKey::<TargetCurve>::prepare(&obj);
+        <Self as AllocGadget<PreparedVerifierKey<TargetCurve>, <BaseCurve as PairingEngine>::Fr>>::alloc_constant(
+            cs,
+            || Ok(pvk),
+        )
+    }
 
-        let mut prepared_g = Vec::<PG::G1Gadget>::new();
-        for (i, g) in obj.prepared_vk.prepared_g.iter().enumerate() {
-            prepared_g.push(<PG::G1Gadget as AllocGadget<
-                <TargetCurve as PairingEngine>::G1Projective,
-                <BaseCurve as PairingEngine>::Fr,
-            >>::alloc_input(cs.ns(|| format!("g_{}", i)), || {
-                Ok(g.into_projective())
-            })?);
-        }
+    fn alloc<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<VerifierKey<TargetCurve>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        _cs: CS,
+        _value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
+    }
 
-        let mut prepared_gamma_g = Vec::<PG::G1Gadget>::new();
-        for (i, gamma_g) in obj.prepared_vk.prepared_gamma_g.iter().enumerate() {
-            prepared_gamma_g.push(<PG::G1Gadget as AllocGadget<
-                <TargetCurve as PairingEngine>::G1Projective,
-                <BaseCurve as PairingEngine>::Fr,
-            >>::alloc_input(cs.ns(|| format!("gamma_g_{}", i)), || {
-                Ok(gamma_g.into_projective())
-            })?);
-        }
-
-        let prepared_h = PG::G2PreparedGadget::alloc_input(cs.ns(|| "h"), || Ok(&obj.prepared_vk.prepared_h))?;
-        let prepared_beta_h =
-            PG::G2PreparedGadget::alloc_input(cs.ns(|| "beta_h"), || Ok(&obj.prepared_vk.prepared_beta_h))?;
-
-        let degree_bounds_and_prepared_neg_powers_of_h = if obj.degree_bounds_and_prepared_neg_powers_of_h.is_some() {
-            let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, PG::G2PreparedGadget)>::new();
-
-            for (i, (d, shift_power_elem)) in obj
-                .degree_bounds_and_prepared_neg_powers_of_h
-                .as_ref()
-                .unwrap()
-                .iter()
-                .enumerate()
-            {
-                let gadget = <PG::G2PreparedGadget as AllocGadget<
-                    <TargetCurve::G2Affine as PairingCurve>::Prepared,
-                    <BaseCurve as PairingEngine>::Fr,
-                >>::alloc_input(cs.ns(|| format!("alloc_constant_gadget_{}", i)), || {
-                    Ok(shift_power_elem)
-                })?;
-
-                let d_gadget = FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc_input(
-                    cs.ns(|| format!("alloc_input_d_{}", i)),
-                    || Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(*d as u128)),
-                )?;
-
-                res.push((*d, d_gadget, gadget));
-            }
-            Some(res)
-        } else {
-            None
-        };
-
-        Ok(Self {
-            prepared_g,
-            prepared_gamma_g,
-            prepared_h,
-            prepared_beta_h,
-            degree_bounds_and_prepared_neg_powers_of_h,
-            origin_vk: None,
-        })
+    fn alloc_input<
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<VerifierKey<TargetCurve>>,
+        CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>,
+    >(
+        _cs: CS,
+        _value_gen: Fn,
+    ) -> Result<Self, SynthesisError> {
+        unimplemented!()
     }
 }
 
@@ -449,11 +373,11 @@ mod tests {
         let prepared_vk = vk.prepare();
 
         // Allocate the prepared vk gadget.
-        let prepared_vk_gadget = PreparedVerifierKeyVar::<_, BaseCurve, PG>::alloc(
-            cs.ns(|| "alloc_prepared_vk"),
-            || Ok(prepared_vk.clone()),
-        )
-        .unwrap();
+        let prepared_vk_gadget =
+            PreparedVerifierKeyVar::<_, BaseCurve, PG>::alloc_constant(cs.ns(|| "alloc_prepared_vk"), || {
+                Ok(prepared_vk.clone())
+            })
+            .unwrap();
 
         // Gadget enforcement checks.
         let prepared_h_gadget =
@@ -544,11 +468,11 @@ mod tests {
 
         // Allocate the prepared vk gadget.
         let prepared_vk = vk.prepare();
-        let expected_prepared_vk_gadget = PreparedVerifierKeyVar::<_, BaseCurve, PG>::alloc(
-            cs.ns(|| "alloc_prepared_vk"),
-            || Ok(prepared_vk.clone()),
-        )
-        .unwrap();
+        let expected_prepared_vk_gadget =
+            PreparedVerifierKeyVar::<_, BaseCurve, PG>::alloc_constant(cs.ns(|| "alloc_prepared_vk"), || {
+                Ok(prepared_vk.clone())
+            })
+            .unwrap();
 
         let prepared_vk_gadget = vk_gadget.prepare(cs.ns(|| "prepare")).unwrap();
 
@@ -638,7 +562,8 @@ mod tests {
 
         // Allocate the vk gadget.
         let pvk_gadget =
-            PreparedVerifierKeyVar::<_, BaseCurve, PG>::alloc(cs.ns(|| "alloc_pvk"), || Ok(pvk.clone())).unwrap();
+            PreparedVerifierKeyVar::<_, BaseCurve, PG>::alloc_constant(cs.ns(|| "alloc_pvk"), || Ok(pvk.clone()))
+                .unwrap();
 
         assert!(pvk.degree_bounds_and_prepared_neg_powers_of_h.is_some());
         assert!(pvk_gadget.degree_bounds_and_prepared_neg_powers_of_h.is_some());

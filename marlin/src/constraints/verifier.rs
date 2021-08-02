@@ -84,7 +84,6 @@ where
         FSG<TargetField, BaseField>,
     >;
     type ProofGadget = ProofVar<TargetField, BaseField, PC, PCG>;
-    type UniversalVerificationParametersGadget = PCG::VerifierKeyVar;
     type VerificationKeyGadget = CircuitVerifyingKeyVar<TargetField, BaseField, PC, PCG>;
 
     fn check_verify<CS: ConstraintSystem<BaseField>>(
@@ -99,13 +98,19 @@ where
         )
     }
 
-    fn prepared_check_verify<'a, CS: ConstraintSystem<BaseField>>(
+    fn prepared_check_verify<CS: ConstraintSystem<BaseField>>(
         mut cs: CS,
-        pvk: &Self::PreparedVerificationKeyGadget,
+        prepared_verification_key: &Self::PreparedVerificationKeyGadget,
         input: &Self::InputGadget,
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError> {
-        let result = Self::prepared_verify(cs.ns(|| "prepared_verify"), pvk, &input.val, proof).unwrap();
+        let result = Self::prepared_verify(
+            cs.ns(|| "prepared_verify"),
+            prepared_verification_key,
+            &input.val,
+            proof,
+        )
+        .unwrap();
         result.enforce_equal(cs.ns(|| "enforce_verification_correctness"), &Boolean::Constant(true))?;
         Ok(())
     }

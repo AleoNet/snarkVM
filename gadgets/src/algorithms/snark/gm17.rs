@@ -110,7 +110,6 @@ impl<PairingE: PairingEngine, P: PairingGadget<PairingE>, V: ToConstraintField<P
     type InputGadget = BooleanInputGadget<PairingE::Fr, PairingE::Fq>;
     type PreparedVerificationKeyGadget = GM17PreparedVerifyingKeyGadget<PairingE, P>;
     type ProofGadget = GM17ProofGadget<PairingE, P>;
-    type UniversalVerificationParametersGadget = ();
     type VerificationKeyGadget = GM17VerifyingKeyGadget<PairingE, P>;
 
     fn prepared_check_verify<CS: ConstraintSystem<PairingE::Fq>>(

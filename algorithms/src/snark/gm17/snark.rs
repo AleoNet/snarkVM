@@ -47,7 +47,6 @@ impl<E: PairingEngine, V: ToConstraintField<E::Fr> + ?Sized> SNARK for GM17<E, V
     type ScalarField = E::Fr;
     type UniversalSetupConfig = ();
     type UniversalSetupParameters = ();
-    type UniversalVerificationParameters = ();
     type VerifierInput = V;
     type VerifyingKey = VerifyingKey<E>;
 

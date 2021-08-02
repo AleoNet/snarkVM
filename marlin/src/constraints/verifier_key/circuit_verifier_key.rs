@@ -37,7 +37,7 @@ use crate::{
     FiatShamirRngVar,
     PolynomialCommitment,
 };
-use snarkvm_algorithms::crypto_hash::PoseidonDefaultParametersField;
+use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, Prepare};
 use snarkvm_utilities::{marker::PhantomData, to_bytes_le, FromBytes, ToBytes};
 
 /// The circuit verifying key gadget
@@ -121,6 +121,7 @@ impl<
             )?);
         }
 
+        // `alloc_constant` regardless of the mode.
         let verifier_key = PCG::VerifierKeyVar::alloc_constant(cs.ns(|| "verifier_key"), || Ok(&ivk.verifier_key))?;
 
         let domain_h = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_constraints)
@@ -163,7 +164,8 @@ impl<
             )?);
         }
 
-        let verifier_key = PCG::VerifierKeyVar::alloc(cs.ns(|| "verifier_key"), || Ok(&ivk.verifier_key))?;
+        // `alloc_constant` regardless of the mode.
+        let verifier_key = PCG::VerifierKeyVar::alloc_constant(cs.ns(|| "verifier_key"), || Ok(&ivk.verifier_key))?;
 
         let domain_h = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
@@ -205,7 +207,8 @@ impl<
             )?);
         }
 
-        let verifier_key = PCG::VerifierKeyVar::alloc_input(cs.ns(|| "verifier_key"), || Ok(&ivk.verifier_key))?;
+        // `alloc_constant` regardless of the mode.
+        let verifier_key = PCG::VerifierKeyVar::alloc_constant(cs.ns(|| "verifier_key"), || Ok(&ivk.verifier_key))?;
 
         let domain_h = EvaluationDomain::<TargetField>::new(ivk.circuit_info.num_constraints)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
@@ -256,8 +259,8 @@ impl<
         for (i, comm) in self.index_comms.iter().enumerate() {
             res.append(&mut comm.to_constraint_field(cs.ns(|| format!("index_comm_{}", i)))?);
         }
-        // TODO: this overhead can be cut.
-        res.append(&mut self.verifier_key.to_constraint_field(cs.ns(|| "verifier_key"))?);
+
+        // Intentionally skip the PC verifier key
 
         Ok(res)
     }
@@ -307,7 +310,10 @@ where
             prepared_index_comms.push(comm.prepare(cs.ns(|| format!("prepare_{}", i)))?);
         }
 
-        let prepared_verifier_key = self.verifier_key.prepare(cs.ns(|| "prepare_last"))?;
+        // instead of running the prepare algorithm, allocate the constant version.
+        let prepared_verifier_key = PCG::PreparedVerifierKeyVar::alloc_constant(cs.ns(|| "allocate pvk"), || {
+            Ok(self.origin_verifier_key.verifier_key.prepare())
+        })?;
 
         Ok(
             PreparedCircuitVerifyingKeyVar::<TargetField, BaseField, PC, PCG, PR, R> {

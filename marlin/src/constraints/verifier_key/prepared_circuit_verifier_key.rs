@@ -113,7 +113,7 @@ where
 
         let prepared_verifier_key =
             PCG::PreparedVerifierKeyVar::alloc_constant(cs.ns(|| "alloc_constant_pvk"), || {
-                Ok(&obj.prepared_verifier_key)
+                Ok(obj.prepared_verifier_key.clone())
             })?;
 
         let mut vk_elems = Vec::<BaseField>::new();
