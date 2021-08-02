@@ -460,7 +460,7 @@ impl<
         }
 
         let pc_proof = if is_recursion {
-            let num_open_challenges: usize = 7;
+            let num_open_challenges: usize = 5;
 
             let mut opening_challenges = Vec::new();
             opening_challenges.append(&mut fs_rng.squeeze_128_bits_nonnative_field_elements(num_open_challenges)?);

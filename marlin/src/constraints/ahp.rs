@@ -825,7 +825,7 @@ impl<
         }
 
         // For commitments; and combined commitments (degree bounds); and combined commitments again.
-        let num_opening_challenges = 7;
+        let num_opening_challenges = 4;
 
         // Combined commitments.
         let num_batching_rands = 2;
@@ -2073,7 +2073,7 @@ mod test {
             )
             .unwrap();
 
-        assert_eq!(num_opening_challenges, 7);
+        assert_eq!(num_opening_challenges, 4);
         assert_eq!(num_batching_rands, 2);
 
         let (query_set_native, _verifier_state_native) =

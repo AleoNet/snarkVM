@@ -43,7 +43,7 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
             time: 0,
             difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
             nonce: 0,
-            proof: ProofOfSuccinctWork([0u8; 867]),
+            proof: ProofOfSuccinctWork([0u8; 771]),
         },
         transactions: Transactions::new(),
     })

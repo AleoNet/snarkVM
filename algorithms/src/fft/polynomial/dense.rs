@@ -484,7 +484,7 @@ mod tests {
             for (i, coeff) in p.coeffs.iter().enumerate() {
                 total += point.pow(&[i as u64]) * coeff;
             }
-            assert_eq!(p.evaluate(point), total);
+            assert_eq!(p.evaluate(&point), total);
         }
     }
 

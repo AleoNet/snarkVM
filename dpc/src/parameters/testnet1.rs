@@ -153,7 +153,7 @@ impl Parameters for Testnet1Parameters {
     type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
     type ProgramIDTreeDigest = <Self::ProgramIDCRH as CRH>::Output;
     type ProgramIDTreeParameters = ProgramIDMerkleTreeParameters;
-    
+
     type RecordCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 48, 50>;
     type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 50>;
     type RecordCommitment = <Self::RecordCommitmentScheme as CommitmentScheme>::Output;
@@ -166,7 +166,7 @@ impl Parameters for Testnet1Parameters {
     type RecordSerialNumberTreeCRH = BHPCompressedCRH<EdwardsBls12, 8, 32>;
     type RecordSerialNumberTreeDigest = <Self::RecordSerialNumberTreeCRH as CRH>::Output;
     type RecordSerialNumberTreeParameters = SerialNumberMerkleTreeParameters;
-    
+
     type SerialNumberNonceCRH = BHPCompressedCRH<EdwardsBls12, 32, 63>;
     type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
     

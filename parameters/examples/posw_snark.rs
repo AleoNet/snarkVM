@@ -14,21 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::crh::sha256;
-use snarkvm_curves::bls12_377::{Bls12_377, Fr};
+use blake2::Blake2s;
+use rand::{prelude::ThreadRng, thread_rng};
+use snarkvm_algorithms::{crh::sha256, SNARK};
+use snarkvm_curves::{
+    bls12_377::{Bls12_377, Fr},
+    PairingEngine,
+};
 use snarkvm_dpc::errors::DPCError;
 use snarkvm_ledger::posw::PoswMarlin;
-use snarkvm_utilities::ToBytes;
-
-use rand::{prelude::ThreadRng, thread_rng};
-use std::path::PathBuf;
-
-mod utils;
-use blake2::Blake2s;
-use snarkvm_algorithms::SNARK;
-use snarkvm_curves::PairingEngine;
 use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
 use snarkvm_polycommit::sonic_pc::SonicKZG10;
+use snarkvm_utilities::{path::PathBuf, ToBytes};
+
+mod utils;
 use utils::store;
 
 /// Marlin proof system on PoSW
