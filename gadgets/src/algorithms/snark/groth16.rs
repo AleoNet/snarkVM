@@ -118,7 +118,6 @@ where
     type InputGadget = BooleanInputGadget<PairingE::Fr, PairingE::Fq>;
     type PreparedVerificationKeyGadget = PreparedVerifyingKeyGadget<PairingE, P>;
     type ProofGadget = ProofGadget<PairingE, P>;
-    type UniversalVerificationParametersGadget = ();
     type VerificationKeyGadget = VerifyingKeyGadget<PairingE, P>;
 
     fn prepared_check_verify<CS: ConstraintSystem<PairingE::Fq>>(

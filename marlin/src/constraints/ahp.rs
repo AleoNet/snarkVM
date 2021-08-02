@@ -940,10 +940,10 @@ mod test {
     use snarkvm_fields::{Field, Zero};
     use snarkvm_gadgets::{curves::bls12_377::PairingGadget as Bls12_377PairingGadget, traits::eq::EqGadget};
     use snarkvm_polycommit::{
-        marlin_pc::{
+        sonic_pc::{
             commitment::{commitment::CommitmentVar, labeled_commitment::LabeledCommitmentVar},
-            marlin_kzg10::MarlinKZG10Gadget,
-            MarlinKZG10,
+            sonic_kzg10::SonicKZG10Gadget,
+            SonicKZG10,
         },
         Evaluations,
         LabeledCommitment,
@@ -972,10 +972,10 @@ mod test {
     use crate::constraints::verifier_key::CircuitVerifyingKeyVar;
     use snarkvm_algorithms::Prepare;
 
-    type MultiPC = MarlinKZG10<Bls12_377>;
+    type MultiPC = SonicKZG10<Bls12_377>;
     type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FS, MarlinRecursiveMode>;
 
-    type MultiPCVar = MarlinKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
+    type MultiPCVar = SonicKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 
     type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
     type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
@@ -2215,23 +2215,6 @@ mod test {
                     &commitment_gadget.prepared_commitment.prepared_comm,
                 )
                 .unwrap();
-
-            assert_eq!(
-                expected_prepared_commitment.shifted_comm.is_some(),
-                commitment_gadget.prepared_commitment.shifted_comm.is_some()
-            );
-
-            if let (Some(expected_shifted_comm), Some(shifted_comm)) = (
-                expected_prepared_commitment.shifted_comm,
-                commitment_gadget.prepared_commitment.shifted_comm,
-            ) {
-                expected_shifted_comm
-                    .enforce_equal(
-                        cs.ns(|| format!("enforce_eq_commitment_shifted_comm{}", i)),
-                        &shifted_comm,
-                    )
-                    .unwrap();
-            }
 
             // Check degree bound.
 

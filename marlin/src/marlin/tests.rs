@@ -185,12 +185,12 @@ mod marlin_recursion {
         marlin::{MarlinRecursiveMode, MarlinSNARK},
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-    use snarkvm_polycommit::marlin_pc::MarlinKZG10;
+    use snarkvm_polycommit::sonic_pc::SonicKZG10;
     use snarkvm_utilities::rand::{test_rng, UniformRand};
 
     use core::ops::MulAssign;
 
-    type MultiPC = MarlinKZG10<Bls12_377>;
+    type MultiPC = SonicKZG10<Bls12_377>;
     type MarlinInst =
         MarlinSNARK<Fr, Fq, MultiPC, FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>, MarlinRecursiveMode>;
 

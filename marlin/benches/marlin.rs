@@ -33,7 +33,7 @@ use snarkvm_marlin::{
     PoseidonSponge,
     PoseidonSpongeVar,
 };
-use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
+use snarkvm_polycommit::sonic_pc::{sonic_kzg10::SonicKZG10Gadget, SonicKZG10};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::UniformRand;
 
@@ -52,8 +52,8 @@ type MarlinInst = MarlinCore<Fr, Fq, PC, FS, MarlinRecursiveMode>;
 
 // Used for Marlin Verification Gadget
 
-type PC = MarlinKZG10<Bls12_377>;
-type PCGadget = MarlinKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
+type PC = SonicKZG10<Bls12_377>;
+type PCGadget = SonicKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 
 type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
 type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;

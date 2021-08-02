@@ -23,6 +23,8 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use crate::{
     bits::ToBytesGadget,
     traits::{alloc::AllocGadget, curves::GroupGadget, fields::FieldGadget},
+    CondSelectGadget,
+    SumGadget,
     ToConstraintFieldGadget,
 };
 
@@ -30,7 +32,12 @@ pub trait PairingGadget<E: PairingEngine, F: PrimeField = <E as PairingEngine>::
     type G1Gadget: GroupGadget<E::G1Projective, F> + ToConstraintFieldGadget<F>;
     type G2Gadget: GroupGadget<E::G2Projective, F> + ToConstraintFieldGadget<F>;
     type G1PreparedGadget: ToBytesGadget<F> + Clone + Debug;
-    type G2PreparedGadget: ToBytesGadget<F> + AllocGadget<<E::G2Affine as PairingCurve>::Prepared, F> + Clone + Debug;
+    type G2PreparedGadget: ToBytesGadget<F>
+        + AllocGadget<<E::G2Affine as PairingCurve>::Prepared, F>
+        + CondSelectGadget<F>
+        + SumGadget<F>
+        + Clone
+        + Debug;
     type GTGadget: FieldGadget<E::Fqk, F> + Clone;
 
     fn miller_loop<CS: ConstraintSystem<F>>(

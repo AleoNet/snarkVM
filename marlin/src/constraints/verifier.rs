@@ -98,13 +98,19 @@ where
         )
     }
 
-    fn prepared_check_verify<'a, CS: ConstraintSystem<BaseField>>(
+    fn prepared_check_verify<CS: ConstraintSystem<BaseField>>(
         mut cs: CS,
-        pvk: &Self::PreparedVerificationKeyGadget,
+        prepared_verification_key: &Self::PreparedVerificationKeyGadget,
         input: &Self::InputGadget,
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError> {
-        let result = Self::prepared_verify(cs.ns(|| "prepared_verify"), pvk, &input.val, proof).unwrap();
+        let result = Self::prepared_verify(
+            cs.ns(|| "prepared_verify"),
+            prepared_verification_key,
+            &input.val,
+            proof,
+        )
+        .unwrap();
         result.enforce_equal(cs.ns(|| "enforce_verification_correctness"), &Boolean::Constant(true))?;
         Ok(())
     }
@@ -284,11 +290,11 @@ mod test {
         curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
         traits::{alloc::AllocGadget, eq::EqGadget},
     };
-    use snarkvm_polycommit::marlin_pc::{
+    use snarkvm_polycommit::sonic_pc::{
         commitment::commitment::CommitmentVar,
-        marlin_kzg10::MarlinKZG10Gadget,
         proof::batch_lc_proof::BatchLCProofVar,
-        MarlinKZG10,
+        sonic_kzg10::SonicKZG10Gadget,
+        SonicKZG10,
     };
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::{test_rng, UniformRand};
@@ -306,8 +312,8 @@ mod test {
 
     use super::*;
 
-    type PC = MarlinKZG10<Bls12_377>;
-    type PCGadget = MarlinKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
+    type PC = SonicKZG10<Bls12_377>;
+    type PCGadget = SonicKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 
     type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
     type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;

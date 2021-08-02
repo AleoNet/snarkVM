@@ -278,7 +278,7 @@ mod tests {
             // Check commitment.
             let expected_commitment_gadget =
                 <PG as PairingGadget<_, _>>::G1Gadget::alloc(cs.ns(|| format!("commitment_gadget_{}", i)), || {
-                    Ok(commitment.commitment().comm.0.into_projective())
+                    Ok(commitment.commitment().0.into_projective())
                 })
                 .unwrap();
 
