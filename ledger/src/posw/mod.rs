@@ -103,7 +103,7 @@ mod tests {
             .mine(&subroots, difficulty_target, &mut rand::thread_rng(), std::u32::MAX)
             .unwrap();
 
-        assert_eq!(proof.len(), 972); // NOTE: Marlin proofs use compressed serialization
+        assert_eq!(proof.len(), 771); // NOTE: Marlin proofs use compressed serialization
 
         let proof = <Marlin<Bls12_377> as SNARK>::Proof::read_le(&proof[..]).unwrap();
         posw.verify(nonce, &proof, &pedersen_merkle_root).unwrap();
