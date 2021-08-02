@@ -314,7 +314,7 @@ pub mod test {
         curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
         traits::{alloc::AllocGadget, eq::EqGadget},
     };
-    use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
+    use snarkvm_polycommit::sonic_pc::{sonic_kzg10::SonicKZG10Gadget, SonicKZG10};
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::{test_rng, UniformRand};
 
@@ -358,8 +358,8 @@ pub mod test {
         }
     }
 
-    type PC = MarlinKZG10<Bls12_377>;
-    type PCGadget = MarlinKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
+    type PC = SonicKZG10<Bls12_377>;
+    type PCGadget = SonicKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 
     type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
     type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
@@ -528,9 +528,9 @@ pub mod test {
         );
 
         const INPUT_GADGET_CONSTRAINTS: usize = 259;
-        const PROOF_GADGET_CONSTRAINTS: usize = 56;
-        const VK_GADGET_CONSTRAINTS: usize = 148;
-        const VERIFIER_GADGET_CONSTRAINTS: usize = 150177;
+        const PROOF_GADGET_CONSTRAINTS: usize = 48;
+        const VK_GADGET_CONSTRAINTS: usize = 216;
+        const VERIFIER_GADGET_CONSTRAINTS: usize = 175067;
 
         assert_eq!(input_gadget_constraints, INPUT_GADGET_CONSTRAINTS);
         assert_eq!(proof_gadget_constraints, PROOF_GADGET_CONSTRAINTS);
@@ -564,7 +564,7 @@ pub mod multiple_input_tests {
         curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
         traits::{alloc::AllocGadget, eq::EqGadget},
     };
-    use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
+    use snarkvm_polycommit::sonic_pc::{sonic_kzg10::SonicKZG10Gadget, SonicKZG10};
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::{test_rng, UniformRand};
 
@@ -680,8 +680,8 @@ pub mod multiple_input_tests {
         }
     }
 
-    type PC = MarlinKZG10<Bls12_377>;
-    type PCGadget = MarlinKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
+    type PC = SonicKZG10<Bls12_377>;
+    type PCGadget = SonicKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 
     type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
     type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;

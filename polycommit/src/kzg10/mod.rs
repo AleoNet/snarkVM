@@ -100,6 +100,8 @@ impl<E: PairingEngine> KZG10<E> {
         let setup_time = start_timer!(|| format!("KZG10::Setup with degree {}", max_degree));
         let scalar_bits = E::Fr::size_in_bits();
 
+        println!("max_degree = {}", max_degree);
+
         // Compute the `toxic waste`.
         let beta = E::Fr::rand(rng);
         let g = E::G1Projective::rand(rng);

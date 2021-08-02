@@ -35,7 +35,7 @@ use snarkvm_fields::ToConstraintField;
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_r1cs::ConstraintSynthesizer;
 
-pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PolynomialCommitment};
+pub use snarkvm_polycommit::{sonic_pc::SonicKZG10 as MultiPC, PolynomialCommitment};
 
 use blake2::Blake2s;
 use core::marker::PhantomData;

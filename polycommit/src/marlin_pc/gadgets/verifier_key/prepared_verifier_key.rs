@@ -53,8 +53,6 @@ pub struct PreparedVerifierKeyVar<
     /// Used for the shift powers associated with different degree bounds.
     pub degree_bounds_and_prepared_shift_powers:
         Option<Vec<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G1Gadget>)>>,
-    /// Indicate whether or not it is a constant allocation (which decides whether or not shift powers are precomputed)
-    pub constant_allocation: bool,
     /// If not a constant allocation, the original vk is attached (for computing the shift power series)
     pub origin_vk: Option<VerifierKeyVar<TargetCurve, BaseCurve, PG>>,
 }
@@ -135,17 +133,11 @@ where
                     shift_power,
                     &found_shift_power,
                 )?;
-                println!(
-                    "found_shift_power {} {} first elem: {:?}",
-                    desired_bound_value,
-                    degree.get_value().unwrap(),
-                    found_shift_power.first().unwrap().get_value().unwrap()
-                );
             }
 
             sum_bound.enforce_equal(cs.ns(|| "found_bound_enforce_equal"), &bound)?;
 
-            Ok(found_shift_power)
+            return Ok(found_shift_power);
         }
     }
 }
@@ -163,7 +155,6 @@ where
             prepared_h: self.prepared_h.clone(),
             prepared_beta_h: self.prepared_beta_h.clone(),
             degree_bounds_and_prepared_shift_powers: self.degree_bounds_and_prepared_shift_powers.clone(),
-            constant_allocation: self.constant_allocation,
             origin_vk: self.origin_vk.clone(),
         }
     }
@@ -267,7 +258,6 @@ where
             prepared_h,
             prepared_beta_h,
             degree_bounds_and_prepared_shift_powers: prepared_degree_bounds_and_shift_powers,
-            constant_allocation: true,
             origin_vk: None,
         })
     }
@@ -344,7 +334,6 @@ where
             prepared_h,
             prepared_beta_h,
             degree_bounds_and_prepared_shift_powers: prepared_degree_bounds_and_shift_powers,
-            constant_allocation: true,
             origin_vk: None,
         })
     }
@@ -422,7 +411,6 @@ where
             prepared_h,
             prepared_beta_h,
             degree_bounds_and_prepared_shift_powers: prepared_degree_bounds_and_shift_powers,
-            constant_allocation: true,
             origin_vk: None,
         })
     }

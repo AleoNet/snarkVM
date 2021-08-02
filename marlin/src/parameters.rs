@@ -17,7 +17,7 @@
 use crate::{MarlinSRS, MarlinTestnet1, ProvingKey, VerifyingKey};
 use snarkvm_algorithms::errors::SNARKError;
 use snarkvm_curves::traits::{AffineCurve, PairingEngine};
-pub use snarkvm_polycommit::{marlin_pc::MarlinKZG10 as MultiPC, PCCommitment};
+pub use snarkvm_polycommit::{sonic_pc::SonicKZG10 as MultiPC, PCCommitment};
 use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{
     error,
@@ -138,7 +138,7 @@ impl<E: PairingEngine> FromBytes for Parameters<E> {
             }
 
             // check the affine values for marlin_pc::VerifierKey
-            if let Some(dbasp) = &vk.verifier_key.degree_bounds_and_shift_powers {
+            if let Some(dbasp) = &vk.verifier_key.degree_bounds_and_neg_powers_of_h {
                 for (_, p) in dbasp {
                     num_affines_to_verify.fetch_sub(1, atomic::Ordering::Relaxed);
                     if !p.is_in_correct_subgroup_assuming_on_curve() {

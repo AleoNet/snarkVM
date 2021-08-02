@@ -230,7 +230,6 @@ where
 
             for (j, (commitment_lcs, value)) in comms_to_combine.into_iter().zip(values_to_combine).enumerate() {
                 let challenge = opening_challenges[opening_challenges_counter].clone();
-
                 let challenge_bits = opening_challenges_bits[opening_challenges_counter].clone();
                 opening_challenges_counter += 1;
 

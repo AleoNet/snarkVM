@@ -794,6 +794,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
 
         let mut enforce_degree_bound = false;
         let mut opening_challenge_counter = 0;
+
         for (polynomial, rand) in labeled_polynomials.into_iter().zip(rands) {
             let degree_bound = polynomial.degree_bound();
             assert_eq!(degree_bound.is_some(), rand.shifted_rand.is_some());
@@ -808,6 +809,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
             )?;
 
             // compute challenge^j and challenge^{j+1}.
+
             let challenge_j = opening_challenges(opening_challenge_counter);
             opening_challenge_counter += 1;
 
@@ -821,6 +823,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
                 let shifted_rand = rand.shifted_rand.as_ref().unwrap();
                 let (witness, shifted_rand_witness) =
                     kzg10::KZG10::<E>::compute_witness_polynomial(polynomial.polynomial(), *point, &shifted_rand)?;
+
                 let challenge_j_1 = opening_challenges(opening_challenge_counter);
                 opening_challenge_counter += 1;
 
@@ -1160,6 +1163,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
         let mut combined_comm = E::G1Projective::zero();
         let mut combined_value = E::Fr::zero();
         let mut opening_challenge_counter = 0;
+
         for (labeled_commitment, value) in commitments.into_iter().zip(values) {
             let degree_bound = labeled_commitment.degree_bound();
             let commitment = labeled_commitment.commitment();

@@ -60,7 +60,7 @@ use snarkvm_marlin::{
     PoseidonSponge,
 };
 use snarkvm_parameters::{testnet2::UniversalSRSParameters, Parameter};
-use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
+use snarkvm_polycommit::sonic_pc::{sonic_kzg10::SonicKZG10Gadget, SonicKZG10};
 use snarkvm_utilities::FromBytes;
 
 use anyhow::Result;
@@ -111,7 +111,7 @@ impl Parameters for Testnet2Parameters {
     type ProgramSNARK = MarlinSNARK<
         Self::InnerScalarField,
         Self::OuterScalarField,
-        MarlinKZG10<Self::InnerCurve>,
+        SonicKZG10<Self::InnerCurve>,
         FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>,
         MarlinTestnet2Mode,
         ProgramLocalData<Self>,
@@ -119,8 +119,8 @@ impl Parameters for Testnet2Parameters {
     type ProgramSNARKGadget = MarlinVerificationGadget<
         Self::InnerScalarField,
         Self::OuterScalarField,
-        MarlinKZG10<Self::InnerCurve>,
-        MarlinKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>,
+        SonicKZG10<Self::InnerCurve>,
+        SonicKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>,
     >;
 
     type AccountCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 33, 48>;

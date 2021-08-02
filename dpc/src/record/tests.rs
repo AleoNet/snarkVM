@@ -37,39 +37,37 @@ pub(crate) const ITERATIONS: usize = 5;
 fn test_record_encryption() {
     let mut rng = ChaChaRng::seed_from_u64(1231275789u64);
 
+    let noop_program = NoopProgram::<Testnet2Parameters>::setup(&mut rng).unwrap();
+
     for _ in 0..ITERATIONS {
-        let noop_program = NoopProgram::<Testnet2Parameters>::setup(&mut rng).unwrap();
+        let dummy_account = Account::<Testnet2Parameters>::new(&mut rng).unwrap();
 
-        for _ in 0..ITERATIONS {
-            let dummy_account = Account::<Testnet2Parameters>::new(&mut rng).unwrap();
+        let sn_nonce_input: [u8; 32] = rng.gen();
+        let value = rng.gen();
+        let mut payload = [0u8; PAYLOAD_SIZE];
+        rng.fill(&mut payload);
 
-            let sn_nonce_input: [u8; 32] = rng.gen();
-            let value = rng.gen();
-            let mut payload = [0u8; PAYLOAD_SIZE];
-            rng.fill(&mut payload);
+        let given_record = Record::new(
+            dummy_account.address,
+            false,
+            value,
+            Payload::from_bytes(&payload),
+            noop_program.id(),
+            noop_program.id(),
+            <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
+                .hash(&sn_nonce_input)
+                .unwrap(),
+            &mut rng,
+        )
+        .unwrap();
 
-            let given_record = Record::new(
-                dummy_account.address,
-                false,
-                value,
-                Payload::from_bytes(&payload),
-                noop_program.id(),
-                noop_program.id(),
-                <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
-                    .hash(&sn_nonce_input)
-                    .unwrap(),
-                &mut rng,
-            )
-            .unwrap();
+        // Encrypt the record
+        let (encryped_record, _) = EncryptedRecord::encrypt(&given_record, &mut rng).unwrap();
+        let account_view_key = ViewKey::from_private_key(&dummy_account.private_key).unwrap();
 
-            // Encrypt the record
-            let (encryped_record, _) = EncryptedRecord::encrypt(&given_record, &mut rng).unwrap();
-            let account_view_key = ViewKey::from_private_key(&dummy_account.private_key).unwrap();
+        // Decrypt the record
+        let decrypted_record = encryped_record.decrypt(&account_view_key).unwrap();
 
-            // Decrypt the record
-            let decrypted_record = encryped_record.decrypt(&account_view_key).unwrap();
-
-            assert_eq!(given_record, decrypted_record);
-        }
+        assert_eq!(given_record, decrypted_record);
     }
 }

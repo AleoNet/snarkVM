@@ -391,7 +391,14 @@ where
             let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G1Gadget>)>::new();
 
             for (d, d_gadget, shift_power) in self.degree_bounds_and_shift_powers.as_ref().unwrap().iter() {
-                res.push((*d, (*d_gadget).clone(), vec![shift_power.clone()]));
+                let mut prepared_shift_power = Vec::<PG::G1Gadget>::new();
+                let mut shift_power: PG::G1Gadget = shift_power.clone();
+                for i in 0..supported_bits {
+                    prepared_shift_power.push(shift_power.clone());
+                    shift_power.double_in_place(cs.ns(|| format!("double_in_place_{}_{}", d, i)))?;
+                }
+
+                res.push((*d, (*d_gadget).clone(), prepared_shift_power));
             }
 
             Some(res)
@@ -405,7 +412,6 @@ where
             prepared_h,
             prepared_beta_h,
             degree_bounds_and_prepared_shift_powers: prepared_degree_bounds_and_shift_powers,
-            constant_allocation: false,
             origin_vk: Some(self.clone()),
         })
     }

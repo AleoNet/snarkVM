@@ -285,11 +285,11 @@ mod test {
         curves::bls12_377::PairingGadget as Bls12_377PairingGadget,
         traits::{alloc::AllocGadget, eq::EqGadget},
     };
-    use snarkvm_polycommit::marlin_pc::{
+    use snarkvm_polycommit::sonic_pc::{
         commitment::commitment::CommitmentVar,
-        marlin_kzg10::MarlinKZG10Gadget,
         proof::batch_lc_proof::BatchLCProofVar,
-        MarlinKZG10,
+        sonic_kzg10::SonicKZG10Gadget,
+        SonicKZG10,
     };
     use snarkvm_r1cs::TestConstraintSystem;
     use snarkvm_utilities::{test_rng, UniformRand};
@@ -307,8 +307,8 @@ mod test {
 
     use super::*;
 
-    type PC = MarlinKZG10<Bls12_377>;
-    type PCGadget = MarlinKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
+    type PC = SonicKZG10<Bls12_377>;
+    type PCGadget = SonicKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 
     type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
     type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
