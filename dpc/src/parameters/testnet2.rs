@@ -60,7 +60,7 @@ use snarkvm_marlin::{
     FiatShamirAlgebraicSpongeRng,
     PoseidonSponge,
 };
-use snarkvm_parameters::{testnet2::UniversalSRSParameters, Parameter};
+use snarkvm_parameters::{testnet2::*, Parameter};
 use snarkvm_polycommit::sonic_pc::{sonic_kzg10::SonicKZG10Gadget, SonicKZG10};
 use snarkvm_utilities::FromBytes;
 
@@ -244,14 +244,3 @@ impl Parameters for Testnet2Parameters {
         Rc::new(RefCell::new(SRS::<_, _>::Universal(universal_srs)))
     }
 }
-
-// This is currently unused.
-//
-// use snarkvm_marlin::{FiatShamirAlgebraicSpongeRngVar, PoseidonSpongeVar};
-//
-// pub type FSG = FiatShamirAlgebraicSpongeRngVar<
-//     Self::InnerScalarField,
-//     Self::OuterScalarField,
-//     PoseidonSponge<Self::OuterScalarField>,
-//     PoseidonSpongeVar<Self::OuterScalarField>,
-// >;

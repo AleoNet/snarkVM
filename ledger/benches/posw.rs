@@ -22,6 +22,9 @@ use snarkvm_utilities::FromBytes;
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
+use snarkvm_curves::PairingEngine;
+use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
+use snarkvm_polycommit::sonic_pc::SonicKZG10;
 
 fn marlin_posw(c: &mut Criterion) {
     let mut group = c.benchmark_group("Proof of Succinct Work: Marlin");

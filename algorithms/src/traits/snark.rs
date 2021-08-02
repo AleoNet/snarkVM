@@ -39,8 +39,8 @@ pub trait SNARK {
     type BaseField: Clone + PrimeField;
 
     type PreparedVerifyingKey: Clone;
-    type Proof: Clone + Debug + ToBytes + FromBytes;
-    type ProvingKey: Clone + ToBytes + FromBytes;
+    type Proof: Clone + Debug + ToBytes + FromBytes + Send + Sync;
+    type ProvingKey: Clone + ToBytes + FromBytes + Send + Sync;
 
     // We can specify their defaults to `()` when `associated_type_defaults` feature becomes stable in Rust
     type UniversalSetupConfig: Clone;

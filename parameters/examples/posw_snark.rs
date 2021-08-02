@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::crh::sha256;
-use snarkvm_curves::bls12_377::Fr;
+use snarkvm_curves::bls12_377::{Bls12_377, Fr};
 use snarkvm_dpc::errors::DPCError;
 use snarkvm_ledger::posw::PoswMarlin;
 use snarkvm_utilities::ToBytes;
@@ -24,7 +24,22 @@ use rand::{prelude::ThreadRng, thread_rng};
 use std::path::PathBuf;
 
 mod utils;
+use blake2::Blake2s;
+use snarkvm_algorithms::SNARK;
+use snarkvm_curves::PairingEngine;
+use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
+use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use utils::store;
+
+/// Marlin proof system on PoSW
+pub type Marlin<E> = MarlinSNARK<
+    <E as PairingEngine>::Fr,
+    <E as PairingEngine>::Fq,
+    SonicKZG10<E>,
+    FiatShamirChaChaRng<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, Blake2s>,
+    MarlinTestnet1Mode,
+    Vec<<E as PairingEngine>::Fr>,
+>;
 
 #[allow(clippy::type_complexity)]
 pub fn setup() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), DPCError> {
@@ -32,7 +47,7 @@ pub fn setup() -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), DPCError> {
 
     // TODO: decide the size of the universal setup
     let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
-    let srs = snarkvm_marlin::MarlinTestnet1::universal_setup(max_degree, rng).unwrap();
+    let srs = Marlin::<Bls12_377>::universal_setup(&max_degree, rng).unwrap();
 
     let srs_bytes = srs.to_bytes_le()?;
     let posw_snark = PoswMarlin::index::<_, ThreadRng>(&srs).expect("could not setup params");

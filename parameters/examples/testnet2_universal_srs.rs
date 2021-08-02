@@ -22,21 +22,17 @@ use rand::thread_rng;
 use std::path::PathBuf;
 
 mod utils;
-use snarkvm_marlin::constraints::snark::MarlinBound;
 use utils::store;
 
 pub fn setup() -> Result<Vec<u8>, DPCError> {
     type C = Testnet2Parameters;
     let rng = &mut thread_rng();
 
-    let bound = MarlinBound {
-        max_degree: snarkvm_marlin::ahp::AHPForR1CS::<<C as Parameters>::InnerScalarField>::max_degree(
-            10000, 10000, 10000,
-        )
-        .unwrap(),
-    };
+    let max_degree =
+        snarkvm_marlin::ahp::AHPForR1CS::<<C as Parameters>::InnerScalarField>::max_degree(10000, 10000, 10000)
+            .unwrap();
 
-    let universal_srs = <<C as Parameters>::ProgramSNARK as SNARK>::universal_setup(&bound, rng)?;
+    let universal_srs = <<C as Parameters>::ProgramSNARK as SNARK>::universal_setup(&max_degree, rng)?;
     let universal_srs_bytes = universal_srs.to_bytes_le()?;
 
     println!("universal_srs.params\n\tsize - {}", universal_srs_bytes.len());

@@ -92,14 +92,14 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
         let rng = &mut ChaChaRng::seed_from_u64(1234567);
         // Run the universal setup.
         let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
-        let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(max_degree, rng).unwrap();
+        let universal_srs = Marlin::<Bls12_377>::universal_setup(&max_degree, rng).unwrap();
         // Run the circuit setup.
         PoswMarlin::index::<_, ChaChaRng>(&universal_srs).unwrap()
     };
     let loaded_posw = PoswMarlin::load().unwrap();
 
-    let generated_proving_key = generated_posw.pk.unwrap().proving_key;
-    let loaded_proving_key = loaded_posw.pk.unwrap().proving_key;
+    let generated_proving_key = generated_posw.pk.unwrap();
+    let loaded_proving_key = loaded_posw.pk.unwrap();
 
     let a = generated_proving_key.committer_key.max_degree;
     let b = loaded_proving_key.committer_key.max_degree;

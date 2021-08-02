@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use rand::{CryptoRng, Rng};
-use std::{
-    fmt::{Debug, Formatter},
-    marker::PhantomData,
-};
+use std::marker::PhantomData;
 
 use crate::{
     constraints::UniversalSRS,
@@ -36,25 +33,6 @@ use crate::{
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, SNARKError, SNARK, SRS};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_r1cs::ConstraintSynthesizer;
-
-/// Marlin bound.
-#[derive(Clone, PartialEq, PartialOrd)]
-pub struct MarlinBound {
-    /// Maximum degree for universal setup.
-    pub max_degree: usize,
-}
-
-impl Default for MarlinBound {
-    fn default() -> Self {
-        Self { max_degree: 200000 }
-    }
-}
-
-impl Debug for MarlinBound {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.max_degree)
-    }
-}
 
 /// The Marlin proof system.
 pub struct MarlinSNARK<
@@ -87,17 +65,17 @@ where
     type Proof = Proof<TargetField, BaseField, PC>;
     type ProvingKey = CircuitProvingKey<TargetField, BaseField, PC>;
     type ScalarField = TargetField;
-    type UniversalSetupConfig = MarlinBound;
+    type UniversalSetupConfig = usize;
     type UniversalSetupParameters = UniversalSRS<TargetField, BaseField, PC>;
     type VerifierInput = V;
     type VerifyingKey = CircuitVerifyingKey<TargetField, BaseField, PC>;
 
     fn universal_setup<R: Rng + CryptoRng>(
-        config: &Self::UniversalSetupConfig,
+        max_degree: &Self::UniversalSetupConfig,
         rng: &mut R,
     ) -> Result<Self::UniversalSetupParameters, SNARKError> {
         let setup_time = start_timer!(|| "{Marlin}::Setup");
-        let srs = MarlinCore::<TargetField, BaseField, PC, FS, MM>::universal_setup(config.max_degree, rng)?;
+        let srs = MarlinCore::<TargetField, BaseField, PC, FS, MM>::universal_setup(*max_degree, rng)?;
         end_timer!(setup_time);
 
         Ok(srs)

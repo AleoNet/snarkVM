@@ -35,7 +35,7 @@ use std::{
 };
 
 // Marlin PoSW proof size
-const PROOF_SIZE: usize = 972;
+const PROOF_SIZE: usize = 867;
 
 #[derive(Clone)]
 /// A Proof of Succinct Work is a SNARK proof which
