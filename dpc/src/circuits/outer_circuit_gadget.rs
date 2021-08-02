@@ -17,7 +17,7 @@
 use crate::{AleoAmount, Execution, Parameters, Transaction, TransactionScheme};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, SignatureScheme, CRH, SNARK},
+    traits::{CommitmentScheme, SignatureScheme, SNARK},
 };
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
@@ -118,9 +118,9 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     // Rest
     program_commitment: &<C::ProgramCommitmentScheme as CommitmentScheme>::Output,
     program_randomness: &<C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-    local_data_root: &C::LocalDataDigest,
+    local_data_root: &C::LocalDataRoot,
 
-    inner_circuit_id: &<C::InnerCircuitIDCRH as CRH>::Output,
+    inner_circuit_id: &C::InnerCircuitID,
 ) -> Result<(), SynthesisError> {
     // Declare public parameters.
     let (program_id_commitment_parameters, program_id_crh, inner_circuit_id_crh) = {

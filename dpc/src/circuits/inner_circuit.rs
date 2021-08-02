@@ -45,7 +45,7 @@ pub struct InnerCircuit<C: Parameters> {
     program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
     program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
 
-    local_data_root: C::LocalDataDigest,
+    local_data_root: C::LocalDataRoot,
     local_data_commitment_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
 
     memo: [u8; 64],
@@ -78,7 +78,7 @@ impl<C: Parameters> InnerCircuit<C> {
         let program_commitment = <C::ProgramCommitmentScheme as CommitmentScheme>::Output::default();
         let program_randomness = <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default();
 
-        let local_data_root = C::LocalDataDigest::default();
+        let local_data_root = C::LocalDataRoot::default();
         let local_data_commitment_randomizers = vec![
             <C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::default();
             num_input_records + num_output_records
@@ -137,7 +137,7 @@ impl<C: Parameters> InnerCircuit<C> {
         program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
         program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
 
-        local_data_root: C::LocalDataDigest,
+        local_data_root: C::LocalDataRoot,
         local_data_commitment_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
 
         memo: [u8; 64],

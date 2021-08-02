@@ -35,12 +35,12 @@ pub struct Execution<C: Parameters> {
     Default(bound = "C: Parameters")
 )]
 pub struct ProgramPublicVariables<C: Parameters> {
-    pub local_data_root: C::LocalDataDigest,
+    pub local_data_root: C::LocalDataRoot,
     pub record_position: u8,
 }
 
 impl<C: Parameters> ProgramPublicVariables<C> {
-    pub fn new(local_data_root: &C::LocalDataDigest, record_position: u8) -> Self {
+    pub fn new(local_data_root: &C::LocalDataRoot, record_position: u8) -> Self {
         Self {
             local_data_root: local_data_root.clone(),
             record_position,

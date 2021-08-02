@@ -125,9 +125,9 @@ pub trait Parameters: 'static + Sized + Send + Sync {
 
     /// CRH for hash of the `Self::InnerSNARK` verifying keys.
     /// This is invoked only on the larger curve.
-    type InnerCircuitIDCRH: CRH<Output = Self::InnerCircuitIDCRHDigest>;
+    type InnerCircuitIDCRH: CRH<Output = Self::InnerCircuitID>;
     type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
-    type InnerCircuitIDCRHDigest: ToConstraintField<Self::OuterScalarField>
+    type InnerCircuitID: ToConstraintField<Self::OuterScalarField>
         + Clone
         + Debug
         + Display
@@ -145,9 +145,9 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type LocalDataCommitmentScheme: CommitmentScheme;
     type LocalDataCommitmentGadget: CommitmentGadget<Self::LocalDataCommitmentScheme, Self::InnerScalarField>;
 
-    type LocalDataCRH: CRH<Output = Self::LocalDataDigest>;
+    type LocalDataCRH: CRH<Output = Self::LocalDataRoot>;
     type LocalDataCRHGadget: CRHGadget<Self::LocalDataCRH, Self::InnerScalarField>;
-    type LocalDataDigest: ToConstraintField<Self::InnerScalarField>
+    type LocalDataRoot: ToConstraintField<Self::InnerScalarField>
         + Clone
         + Debug
         + Display
@@ -276,6 +276,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
 
     fn serial_number_nonce_crh() -> &'static Self::SerialNumberNonceCRH;
 
+    fn inner_circuit_id() -> &'static Self::InnerCircuitID;
     fn inner_circuit_proving_key(is_prover: bool) -> &'static Option<<Self::InnerSNARK as SNARK>::ProvingKey>;
     fn inner_circuit_verifying_key() -> &'static <Self::InnerSNARK as SNARK>::VerifyingKey;
 

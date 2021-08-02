@@ -17,7 +17,7 @@
 use crate::{record::encrypted::*, AleoAmount, Network, Parameters, TransactionError, TransactionScheme};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
-    traits::{SignatureScheme, CRH, SNARK},
+    traits::{SignatureScheme, SNARK},
 };
 use snarkvm_utilities::{
     serialize::{CanonicalDeserialize, CanonicalSerialize},
@@ -57,7 +57,7 @@ pub struct Transaction<C: Parameters> {
     /// The root of the ledger commitment tree.
     pub ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
     /// The ID of the inner circuit used to execute this transaction.
-    pub inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
+    pub inner_circuit_id: C::InnerCircuitID,
     /// The encrypted output records.
     pub encrypted_records: Vec<EncryptedRecord<C>>,
     #[derivative(PartialEq = "ignore")]
@@ -74,7 +74,7 @@ impl<C: Parameters> Transaction<C> {
         value_balance: AleoAmount,
         memo: <Self as TransactionScheme>::Memo,
         ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
-        inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
+        inner_circuit_id: C::InnerCircuitID,
         proof: <C::OuterSNARK as SNARK>::Proof,
         signatures: Vec<<C::AccountSignatureScheme as SignatureScheme>::Signature>,
         encrypted_records: Vec<EncryptedRecord<C>>,
@@ -103,7 +103,7 @@ impl<C: Parameters> TransactionScheme for Transaction<C> {
     type Commitment = C::RecordCommitment;
     type Digest = MerkleTreeDigest<C::RecordCommitmentTreeParameters>;
     type EncryptedRecord = EncryptedRecord<C>;
-    type InnerCircuitID = <C::InnerCircuitIDCRH as CRH>::Output;
+    type InnerCircuitID = C::InnerCircuitID;
     type Memo = [u8; 64];
     type SerialNumber = <C::AccountSignatureScheme as SignatureScheme>::PublicKey;
     type Signature = <C::AccountSignatureScheme as SignatureScheme>::Signature;
@@ -227,7 +227,7 @@ impl<C: Parameters> FromBytes for Transaction<C> {
         }
 
         let ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters> = FromBytes::read_le(&mut reader)?;
-        let inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output = FromBytes::read_le(&mut reader)?;
+        let inner_circuit_id: C::InnerCircuitID = FromBytes::read_le(&mut reader)?;
 
         // Read the encrypted records.
         let mut encrypted_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);

@@ -17,7 +17,7 @@
 use crate::{execute_outer_circuit, AleoAmount, Execution, Parameters, Transaction, TransactionScheme};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, SignatureScheme, CRH, SNARK},
+    traits::{CommitmentScheme, SignatureScheme, SNARK},
 };
 use snarkvm_fields::ToConstraintField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
@@ -41,9 +41,9 @@ pub struct OuterCircuit<C: Parameters> {
     program_proofs: Vec<Execution<C>>,
     program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
     program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-    local_data_root: C::LocalDataDigest,
+    local_data_root: C::LocalDataRoot,
 
-    inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
+    inner_circuit_id: C::InnerCircuitID,
 }
 
 impl<C: Parameters> OuterCircuit<C> {
@@ -64,9 +64,9 @@ impl<C: Parameters> OuterCircuit<C> {
         let program_proofs = vec![program_snark_vk_and_proof.clone(); C::NUM_TOTAL_RECORDS];
         let program_commitment = <C::ProgramCommitmentScheme as CommitmentScheme>::Output::default();
         let program_randomness = <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default();
-        let local_data_root = C::LocalDataDigest::default();
+        let local_data_root = C::LocalDataRoot::default();
 
-        let inner_circuit_id = <C::InnerCircuitIDCRH as CRH>::Output::default();
+        let inner_circuit_id = C::InnerCircuitID::default();
 
         Self {
             ledger_digest,
@@ -106,10 +106,10 @@ impl<C: Parameters> OuterCircuit<C> {
         program_proofs: Vec<Execution<C>>,
         program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
         program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-        local_data_root: C::LocalDataDigest,
+        local_data_root: C::LocalDataRoot,
 
         // Inner circuit ID
-        inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
+        inner_circuit_id: C::InnerCircuitID,
     ) -> Self {
         assert_eq!(C::NUM_TOTAL_RECORDS, program_proofs.len());
         assert_eq!(C::NUM_OUTPUT_RECORDS, new_commitments.len());
