@@ -233,6 +233,7 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
             commitment,
             commitment_randomness,
             None,
+            None,
         ))
     }
 
