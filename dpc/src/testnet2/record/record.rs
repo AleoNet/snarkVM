@@ -40,25 +40,25 @@ use std::{
     Eq(bound = "C: Testnet2Components")
 )]
 pub struct Record<C: Testnet2Components> {
-    pub owner: Address<C>,
-    pub is_dummy: bool,
+    pub(crate) owner: Address<C>,
+    pub(crate) is_dummy: bool,
     // TODO (raychu86) use AleoAmount which will guard the value range
-    pub value: u64,
-    pub payload: Payload,
+    pub(crate) value: u64,
+    pub(crate) payload: Payload,
 
     #[derivative(Default(value = "default_program_id::<C::ProgramVerificationKeyCRH>()"))]
-    pub birth_program_id: Vec<u8>,
+    pub(crate) birth_program_id: Vec<u8>,
     #[derivative(Default(value = "default_program_id::<C::ProgramVerificationKeyCRH>()"))]
-    pub death_program_id: Vec<u8>,
+    pub(crate) death_program_id: Vec<u8>,
 
-    pub serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
-    pub commitment: <C::RecordCommitment as CommitmentScheme>::Output,
-    pub commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
+    pub(crate) serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
+    pub(crate) commitment: <C::RecordCommitment as CommitmentScheme>::Output,
+    pub(crate) commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
 
     #[derivative(PartialEq = "ignore")]
-    pub serial_number_nonce_randomness: Option<[u8; 32]>,
+    pub(crate) serial_number_nonce_randomness: Option<[u8; 32]>,
     #[derivative(PartialEq = "ignore")]
-    pub position: Option<u8>,
+    pub(crate) position: Option<u8>,
 }
 
 fn default_program_id<C: CRH>() -> Vec<u8> {
