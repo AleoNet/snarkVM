@@ -232,6 +232,7 @@ impl<C: Testnet1Components> EncryptedRecord<C> {
             serial_number_nonce,
             commitment,
             commitment_randomness,
+            None,
         ))
     }
 
