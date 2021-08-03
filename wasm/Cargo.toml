@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-wasm"
-version = "0.6.0"
+version = "0.7.7"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "WASM for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -22,44 +22,44 @@ crate-type = [ "cdylib", "rlib" ]
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.6.0"
+version = "0.7.7"
 optional = true
 default-features = false
 features = [ "wasm", "parallel" ]
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.6.0"
+version = "0.7.7"
 optional = true
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.6.0"
+version = "0.7.7"
 optional = true
 default-features = false
 
 [dependencies.snarkvm-gadgets]
 path = "../gadgets"
-version = "0.6.0"
+version = "0.7.7"
 optional = true
 default-features = false
 
 [dependencies.snarkvm-polycommit]
 path = "../polycommit"
-version = "0.6.0"
+version = "0.7.7"
 optional = true
 default-features = false
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
-version = "0.6.0"
+version = "0.7.7"
 optional = true
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.6.0"
+version = "0.7.7"
 
 [dependencies.derivative]
 version = "2"
@@ -86,7 +86,7 @@ version = "0.2"
 features = [ "js" ]
 
 [dev-dependencies.wasm-bindgen-test]
-version = "0.3.24"
+version = "0.3.25"
 
 [features]
 default = [ "full" ]

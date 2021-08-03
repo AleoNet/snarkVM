@@ -12,7 +12,7 @@
 
 * [1. Overview](#1-overview)
 * [2. Build Guide](#2-build-guide)
-* [3. Usage Guide](#3-usage-guide)
+* [3. Contributing](#3-contributing)
 * [4. License](#4-license)
 
 ## 1. Overview
@@ -83,7 +83,10 @@ Now to use `snarkvm`, in your terminal, run:
 snarkvm
 ```
 
-## 3. Usage Guide
+## 3. Contributing
+
+PRs and issues are welcome. Please see the [contribution guide](./CONTRIBUTING.md) for more
+information about how to create a successful PR.
 
 ## 4. License
 

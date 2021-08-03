@@ -23,7 +23,7 @@ use snarkvm_algorithms::encryption::{GroupEncryption, GroupEncryptionParameters,
 use snarkvm_curves::traits::{Group, ProjectiveCurve};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::{to_bytes, CanonicalDeserialize, CanonicalSerialize, ToBytes};
+use snarkvm_utilities::{to_bytes_le, CanonicalDeserialize, CanonicalSerialize, ToBytes};
 
 use crate::{
     bits::{Boolean, ToBytesGadget},
@@ -82,7 +82,7 @@ impl<G: Group, F: PrimeField> AllocGadget<G::ScalarField, F> for GroupEncryption
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let private_key = to_bytes![value_gen()?.borrow()].unwrap();
+        let private_key = to_bytes_le![value_gen()?.borrow()].unwrap();
         Ok(GroupEncryptionPrivateKeyGadget(
             UInt8::alloc_vec(cs, &private_key)?,
             PhantomData,
@@ -93,7 +93,7 @@ impl<G: Group, F: PrimeField> AllocGadget<G::ScalarField, F> for GroupEncryption
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let private_key = to_bytes![value_gen()?.borrow()].unwrap();
+        let private_key = to_bytes_le![value_gen()?.borrow()].unwrap();
         Ok(GroupEncryptionPrivateKeyGadget(
             UInt8::alloc_vec(cs, &private_key)?,
             PhantomData,
@@ -120,7 +120,7 @@ impl<G: Group, F: PrimeField> AllocGadget<G::ScalarField, F> for GroupEncryption
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let randomness = to_bytes![value_gen()?.borrow()].unwrap();
+        let randomness = to_bytes_le![value_gen()?.borrow()].unwrap();
         Ok(GroupEncryptionRandomnessGadget(
             UInt8::alloc_vec(cs, &randomness)?,
             PhantomData,
@@ -131,7 +131,7 @@ impl<G: Group, F: PrimeField> AllocGadget<G::ScalarField, F> for GroupEncryption
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let randomness = to_bytes![value_gen()?.borrow()].unwrap();
+        let randomness = to_bytes_le![value_gen()?.borrow()].unwrap();
         Ok(GroupEncryptionRandomnessGadget(
             UInt8::alloc_vec(cs, &randomness)?,
             PhantomData,
@@ -152,7 +152,7 @@ impl<G: Group, F: PrimeField> AllocGadget<Vec<G::ScalarField>, F> for GroupEncry
 
         let mut blinding_exponents = Vec::with_capacity(values.len());
         for (i, value) in values.into_iter().enumerate() {
-            let alloc = UInt8::alloc_vec(cs.ns(|| format!("Blinding Exponent Iteration {}", i)), &to_bytes![
+            let alloc = UInt8::alloc_vec(cs.ns(|| format!("Blinding Exponent Iteration {}", i)), &to_bytes_le![
                 value.borrow()
             ]?)?;
             blinding_exponents.push(alloc);
@@ -173,9 +173,10 @@ impl<G: Group, F: PrimeField> AllocGadget<Vec<G::ScalarField>, F> for GroupEncry
 
         let mut blinding_exponents = Vec::with_capacity(values.len());
         for (i, value) in values.into_iter().enumerate() {
-            let alloc = UInt8::alloc_input_vec_le(cs.ns(|| format!("Blinding Exponent Iteration {}", i)), &to_bytes![
-                value.borrow()
-            ]?)?;
+            let alloc =
+                UInt8::alloc_input_vec_le(cs.ns(|| format!("Blinding Exponent Iteration {}", i)), &to_bytes_le![
+                    value.borrow()
+                ]?)?;
             blinding_exponents.push(alloc);
         }
 

@@ -14,14 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Field, Fp2, Fp2Parameters, One, PrimeField, Zero};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    div_ceil,
-    errors::SerializationError,
-    rand::UniformRand,
-    serialize::*,
-};
+use crate::{Field, Fp2, Fp2Parameters, One, Zero};
+use snarkvm_utilities::{errors::SerializationError, rand::UniformRand, serialize::*, FromBytes, ToBytes};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -31,7 +25,6 @@ use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
@@ -65,19 +58,11 @@ pub struct Fp6<P: Fp6Parameters> {
     pub c0: Fp2<P::Fp2Params>,
     pub c1: Fp2<P::Fp2Params>,
     pub c2: Fp2<P::Fp2Params>,
-    #[derivative(Debug = "ignore")]
-    #[doc(hidden)]
-    pub params: PhantomData<P>,
 }
 
 impl<P: Fp6Parameters> Fp6<P> {
     pub fn new(c0: Fp2<P::Fp2Params>, c1: Fp2<P::Fp2Params>, c2: Fp2<P::Fp2Params>) -> Self {
-        Self {
-            c0,
-            c1,
-            c2,
-            params: PhantomData,
-        }
+        Self { c0, c1, c2 }
     }
 
     pub fn mul_by_fp(&mut self, element: &<P::Fp2Params as Fp2Parameters>::Fp) {
@@ -203,14 +188,13 @@ impl<P: Fp6Parameters> Field for Fp6<P> {
     }
 
     #[inline]
-    fn from_random_bytes_with_flags(bytes: &[u8]) -> Option<(Self, u8)> {
-        if bytes.len() != 6 * div_ceil(<P::Fp2Params as Fp2Parameters>::Fp::size_in_bits(), 8) {
-            return None;
-        }
+    fn from_random_bytes_with_flags<F: Flags>(bytes: &[u8]) -> Option<(Self, F)> {
         let split_at = bytes.len() / 3;
         if let Some(c0) = Fp2::<P::Fp2Params>::from_random_bytes(&bytes[..split_at]) {
             if let Some(c1) = Fp2::<P::Fp2Params>::from_random_bytes(&bytes[split_at..2 * split_at]) {
-                if let Some((c2, flags)) = Fp2::<P::Fp2Params>::from_random_bytes_with_flags(&bytes[2 * split_at..]) {
+                if let Some((c2, flags)) =
+                    Fp2::<P::Fp2Params>::from_random_bytes_with_flags::<F>(&bytes[2 * split_at..])
+                {
                     return Some((Fp6::new(c0, c1, c2), flags));
                 }
             }
@@ -220,7 +204,7 @@ impl<P: Fp6Parameters> Field for Fp6<P> {
 
     #[inline]
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
-        Self::from_random_bytes_with_flags(bytes).map(|f| f.0)
+        Self::from_random_bytes_with_flags::<EmptyFlags>(bytes).map(|f| f.0)
     }
 
     fn square(&self) -> Self {
@@ -335,8 +319,8 @@ impl<P: Fp6Parameters> Neg for Fp6<P> {
     }
 }
 
-impl_additive_ops_from_ref!(Fp6, Fp6Parameters);
-impl_multiplicative_ops_from_ref!(Fp6, Fp6Parameters);
+impl_add_sub_from_field_ref!(Fp6, Fp6Parameters);
+impl_mul_div_from_field_ref!(Fp6, Fp6Parameters);
 
 impl<'a, P: Fp6Parameters> Add<&'a Self> for Fp6<P> {
     type Output = Self;
@@ -484,19 +468,19 @@ impl<P: Fp6Parameters> From<u8> for Fp6<P> {
 
 impl<P: Fp6Parameters> ToBytes for Fp6<P> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.c0.write(&mut writer)?;
-        self.c1.write(&mut writer)?;
-        self.c2.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.c0.write_le(&mut writer)?;
+        self.c1.write_le(&mut writer)?;
+        self.c2.write_le(&mut writer)
     }
 }
 
 impl<P: Fp6Parameters> FromBytes for Fp6<P> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let c0 = Fp2::read(&mut reader)?;
-        let c1 = Fp2::read(&mut reader)?;
-        let c2 = Fp2::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let c0 = Fp2::read_le(&mut reader)?;
+        let c1 = Fp2::read_le(&mut reader)?;
+        let c2 = Fp2::read_le(&mut reader)?;
         Ok(Fp6::new(c0, c1, c2))
     }
 }

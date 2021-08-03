@@ -18,7 +18,6 @@ use rand::{thread_rng, Rng};
 
 use snarkvm_algorithms::{
     commitment::{Blake2sCommitment, PedersenCommitment},
-    crh::PedersenSize,
     traits::CommitmentScheme,
 };
 use snarkvm_curves::{
@@ -29,7 +28,7 @@ use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::rand::UniformRand;
 
 use crate::{
-    curves::edwards_bls12::EdwardsBlsGadget,
+    curves::edwards_bls12::EdwardsBls12Gadget,
     integers::uint::UInt8,
     traits::{algorithms::CommitmentGadget, alloc::AllocGadget, fields::FieldGadget},
 };
@@ -81,22 +80,17 @@ fn blake2s_commitment_gadget_test() {
 fn pedersen_commitment_gadget_test() {
     let mut cs = TestConstraintSystem::<Fq>::new();
 
-    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-    pub(super) struct Size;
+    const NUM_WINDOWS: usize = 8;
+    const WINDOW_SIZE: usize = 4;
 
-    impl PedersenSize for Size {
-        const NUM_WINDOWS: usize = 8;
-        const WINDOW_SIZE: usize = 4;
-    }
-
-    type TestCommitment = PedersenCommitment<EdwardsProjective, Size>;
-    type TestCommitmentGadget = PedersenCommitmentGadget<EdwardsProjective, Fq, EdwardsBlsGadget>;
+    type TestCommitment = PedersenCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE>;
+    type TestCommitmentGadget = PedersenCommitmentGadget<EdwardsProjective, Fq, EdwardsBls12Gadget>;
 
     let rng = &mut thread_rng();
 
     let input = [1u8; 4];
     let randomness = Fr::rand(rng);
-    let commitment = PedersenCommitment::<EdwardsProjective, Size>::setup(rng);
+    let commitment = TestCommitment::setup(rng);
     let native_output = commitment.commit(&input, &randomness).unwrap();
 
     let mut input_bytes = vec![];

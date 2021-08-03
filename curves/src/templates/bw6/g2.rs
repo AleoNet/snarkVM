@@ -17,20 +17,20 @@
 use crate::{
     templates::{
         bw6::{BW6Parameters, TwistType},
-        short_weierstrass::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
+        short_weierstrass_jacobian::{Affine, Projective},
     },
-    traits::{AffineCurve, SWModelParameters},
+    traits::{AffineCurve, ShortWeierstrassParameters},
 };
 use snarkvm_fields::{Field, One, Zero};
-use snarkvm_utilities::{bititerator::BitIteratorBE, bytes::ToBytes, errors::SerializationError, serialize::*};
+use snarkvm_utilities::{bititerator::BitIteratorBE, errors::SerializationError, serialize::*, ToBytes};
 
 use std::{
     io::{Result as IoResult, Write},
     ops::Neg,
 };
 
-pub type G2Affine<P> = GroupAffine<<P as BW6Parameters>::G2Parameters>;
-pub type G2Projective<P> = GroupProjective<<P as BW6Parameters>::G2Parameters>;
+pub type G2Affine<P> = Affine<<P as BW6Parameters>::G2Parameters>;
+pub type G2Projective<P> = Projective<<P as BW6Parameters>::G2Parameters>;
 
 #[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(
@@ -66,18 +66,18 @@ impl<P: BW6Parameters> Default for G2Prepared<P> {
 }
 
 impl<P: BW6Parameters> ToBytes for G2Prepared<P> {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         for coeff_1 in &self.ell_coeffs_1 {
-            coeff_1.0.write(&mut writer)?;
-            coeff_1.1.write(&mut writer)?;
-            coeff_1.2.write(&mut writer)?;
+            coeff_1.0.write_le(&mut writer)?;
+            coeff_1.1.write_le(&mut writer)?;
+            coeff_1.2.write_le(&mut writer)?;
         }
         for coeff_2 in &self.ell_coeffs_2 {
-            coeff_2.0.write(&mut writer)?;
-            coeff_2.1.write(&mut writer)?;
-            coeff_2.2.write(&mut writer)?;
+            coeff_2.0.write_le(&mut writer)?;
+            coeff_2.1.write_le(&mut writer)?;
+            coeff_2.2.write_le(&mut writer)?;
         }
-        self.infinity.write(writer)
+        self.infinity.write_le(writer)
     }
 }
 

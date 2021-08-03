@@ -15,13 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Field, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    div_ceil,
-    errors::SerializationError,
-    rand::UniformRand,
-    serialize::*,
-};
+use snarkvm_utilities::{errors::SerializationError, rand::UniformRand, serialize::*, FromBytes, ToBytes};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -31,7 +25,6 @@ use serde::{Deserialize, Serialize};
 use std::{
     cmp::{Ord, Ordering, PartialOrd},
     io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     str::FromStr,
 };
@@ -68,19 +61,11 @@ pub struct Fp3<P: Fp3Parameters> {
     pub c0: P::Fp,
     pub c1: P::Fp,
     pub c2: P::Fp,
-    #[derivative(Debug = "ignore")]
-    #[doc(hidden)]
-    pub _parameters: PhantomData<P>,
 }
 
 impl<P: Fp3Parameters> Fp3<P> {
     pub fn new(c0: P::Fp, c1: P::Fp, c2: P::Fp) -> Self {
-        Fp3 {
-            c0,
-            c1,
-            c2,
-            _parameters: PhantomData,
-        }
+        Fp3 { c0, c1, c2 }
     }
 
     pub fn mul_assign_by_fp(&mut self, value: &P::Fp) {
@@ -117,7 +102,6 @@ impl<P: Fp3Parameters> Zero for Fp3<P> {
             c0: P::Fp::zero(),
             c1: P::Fp::zero(),
             c2: P::Fp::zero(),
-            _parameters: PhantomData,
         }
     }
 
@@ -132,7 +116,6 @@ impl<P: Fp3Parameters> One for Fp3<P> {
             c0: P::Fp::one(),
             c1: P::Fp::zero(),
             c2: P::Fp::zero(),
-            _parameters: PhantomData,
         }
     }
 
@@ -160,14 +143,11 @@ impl<P: Fp3Parameters> Field for Fp3<P> {
     }
 
     #[inline]
-    fn from_random_bytes_with_flags(bytes: &[u8]) -> Option<(Self, u8)> {
-        if bytes.len() != 3 * div_ceil(P::Fp::size_in_bits(), 8) {
-            return None;
-        }
+    fn from_random_bytes_with_flags<F: Flags>(bytes: &[u8]) -> Option<(Self, F)> {
         let split_at = bytes.len() / 3;
         if let Some(c0) = P::Fp::from_random_bytes(&bytes[..split_at]) {
             if let Some(c1) = P::Fp::from_random_bytes(&bytes[split_at..2 * split_at]) {
-                if let Some((c2, flags)) = P::Fp::from_random_bytes_with_flags(&bytes[2 * split_at..]) {
+                if let Some((c2, flags)) = P::Fp::from_random_bytes_with_flags::<F>(&bytes[2 * split_at..]) {
                     return Some((Fp3::new(c0, c1, c2), flags));
                 }
             }
@@ -177,7 +157,7 @@ impl<P: Fp3Parameters> Field for Fp3<P> {
 
     #[inline]
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
-        Self::from_random_bytes_with_flags(bytes).map(|f| f.0)
+        Self::from_random_bytes_with_flags::<EmptyFlags>(bytes).map(|f| f.0)
     }
 
     fn square(&self) -> Self {
@@ -350,19 +330,19 @@ impl<P: Fp3Parameters> From<u8> for Fp3<P> {
 
 impl<P: Fp3Parameters> ToBytes for Fp3<P> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.c0.write(&mut writer)?;
-        self.c1.write(&mut writer)?;
-        self.c2.write(writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.c0.write_le(&mut writer)?;
+        self.c1.write_le(&mut writer)?;
+        self.c2.write_le(writer)
     }
 }
 
 impl<P: Fp3Parameters> FromBytes for Fp3<P> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let c0 = P::Fp::read(&mut reader)?;
-        let c1 = P::Fp::read(&mut reader)?;
-        let c2 = P::Fp::read(reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let c0 = P::Fp::read_le(&mut reader)?;
+        let c1 = P::Fp::read_le(&mut reader)?;
+        let c2 = P::Fp::read_le(reader)?;
         Ok(Fp3::new(c0, c1, c2))
     }
 }
@@ -387,8 +367,8 @@ impl<P: Fp3Parameters> Distribution<Fp3<P>> for Standard {
     }
 }
 
-impl_additive_ops_from_ref!(Fp3, Fp3Parameters);
-impl_multiplicative_ops_from_ref!(Fp3, Fp3Parameters);
+impl_add_sub_from_field_ref!(Fp3, Fp3Parameters);
+impl_mul_div_from_field_ref!(Fp3, Fp3Parameters);
 
 impl<'a, P: Fp3Parameters> Add<&'a Fp3<P>> for Fp3<P> {
     type Output = Self;

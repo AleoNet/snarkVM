@@ -28,7 +28,7 @@ use crate::{
         G2Projective,
         BW6_761,
     },
-    templates::short_weierstrass::tests::sw_tests,
+    templates::short_weierstrass_jacobian::tests::sw_tests,
     traits::{tests_curve::curve_tests, tests_group::group_test, AffineCurve, PairingEngine},
 };
 use snarkvm_fields::{
@@ -45,6 +45,7 @@ fn test_bw6_761_fr() {
     field_test(a, b);
     sqrt_field_test(a);
     primefield_test::<Fr>();
+    field_serialization_test::<Fq>();
 }
 
 #[test]
@@ -127,7 +128,7 @@ fn test_bilinearity() {
 
     let ans1 = BW6_761::pairing(sa, b);
     let ans2 = BW6_761::pairing(a, sb);
-    let ans3 = BW6_761::pairing(a, b).pow(s.into_repr());
+    let ans3 = BW6_761::pairing(a, b).pow(s.to_repr());
 
     assert_eq!(ans1, ans2);
     assert_eq!(ans2, ans3);

@@ -273,8 +273,7 @@ impl<
 
                 let mut limbs = Vec::new();
                 for k in 0..params.num_limbs {
-                    let gadget =
-                        AllocatedFp::alloc_input(cs.ns(|| format!("alloc_input_{}_{}", i, k)), || Ok(val[k])).unwrap();
+                    let gadget = AllocatedFp::alloc(cs.ns(|| format!("alloc_{}_{}", i, k)), || Ok(val[k])).unwrap();
 
                     match &gadget.variable {
                         ConstraintVariable::Var(var) => {
@@ -387,7 +386,7 @@ impl<
                 lc = &lc + bit.lc(CS::one(), BaseField::one()) * *adjustment_factor;
             }
 
-            let gadget = AllocatedFp::alloc_input(cs.ns(|| format!("alloc_input_{}", i)), || Ok(elem))?;
+            let gadget = AllocatedFp::alloc(cs.ns(|| format!("alloc_{}", i)), || Ok(elem))?;
 
             match &gadget.variable {
                 ConstraintVariable::Var(var) => {
@@ -567,12 +566,12 @@ mod tests {
             .enumerate()
         {
             assert_eq!(
-                left.into_repr(),
-                right.value().unwrap().into_repr(),
+                left.to_repr(),
+                right.value().unwrap().to_repr(),
                 "{}: left = {:?}, right = {:?}",
                 i,
-                left.into_repr(),
-                right.value().unwrap().into_repr()
+                left.to_repr(),
+                right.value().unwrap().to_repr()
             );
         }
 
@@ -583,11 +582,11 @@ mod tests {
             .enumerate()
         {
             assert!(
-                left.into_repr().eq(&right.value().unwrap().into_repr()),
+                left.to_repr().eq(&right.value().unwrap().to_repr()),
                 "{}: left = {:?}, right = {:?}",
                 i,
-                left.into_repr(),
-                right.value().unwrap().into_repr()
+                left.to_repr(),
+                right.value().unwrap().to_repr()
             );
         }
 

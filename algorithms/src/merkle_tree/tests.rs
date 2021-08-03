@@ -17,12 +17,12 @@
 use std::sync::Arc;
 
 use crate::{
-    crh::{PedersenCRH, PedersenCompressedCRH, PedersenSize},
+    crh::{PedersenCRH, PedersenCompressedCRH},
     define_merkle_tree_parameters,
     merkle_tree::MerkleTree,
     traits::{crh::CRH, merkle_tree::LoadableMerkleParameters},
 };
-use snarkvm_utilities::{to_bytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 /// Generates a valid Merkle tree and verifies the Merkle path witness for each leaf.
 fn generate_merkle_tree<P: LoadableMerkleParameters, L: ToBytes + Send + Sync + Clone + Eq>(
@@ -111,11 +111,11 @@ fn run_merkle_tree_matches_hashing_test<P: LoadableMerkleParameters>() {
     let leaf4 = pedersen.hash(&leaves[3]).unwrap();
 
     // depth 1
-    let left = pedersen.hash(&to_bytes![leaf1, leaf2].unwrap()).unwrap();
-    let right = pedersen.hash(&to_bytes![leaf3, leaf4].unwrap()).unwrap();
+    let left = pedersen.hash(&to_bytes_le![leaf1, leaf2].unwrap()).unwrap();
+    let right = pedersen.hash(&to_bytes_le![leaf3, leaf4].unwrap()).unwrap();
 
     // depth 0
-    let expected_root = pedersen.hash(&to_bytes![left, right].unwrap()).unwrap();
+    let expected_root = pedersen.hash(&to_bytes_le![left, right].unwrap()).unwrap();
 
     println!(
         "merkle_root == expected_root\n\t{} == {}",
@@ -149,16 +149,16 @@ fn run_padded_merkle_tree_matches_hashing_test<P: LoadableMerkleParameters>() {
     let leaf4 = pedersen.hash(&leaves[3]).unwrap();
 
     // depth 2
-    let left = pedersen.hash(&to_bytes![leaf1, leaf2].unwrap()).unwrap();
-    let right = pedersen.hash(&to_bytes![leaf3, leaf4].unwrap()).unwrap();
+    let left = pedersen.hash(&to_bytes_le![leaf1, leaf2].unwrap()).unwrap();
+    let right = pedersen.hash(&to_bytes_le![leaf3, leaf4].unwrap()).unwrap();
 
     // depth 1
-    let penultimate_left = pedersen.hash(&to_bytes![left, right].unwrap()).unwrap();
+    let penultimate_left = pedersen.hash(&to_bytes_le![left, right].unwrap()).unwrap();
     let penultimate_right = parameters.hash_empty().unwrap();
 
     // depth 0
     let expected_root = pedersen
-        .hash(&to_bytes![penultimate_left, penultimate_right].unwrap())
+        .hash(&to_bytes_le![penultimate_left, penultimate_right].unwrap())
         .unwrap();
 
     println!(
@@ -173,41 +173,37 @@ mod pedersen_crh_on_affine {
     use super::*;
     use snarkvm_curves::edwards_bls12::EdwardsAffine as Edwards;
 
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    pub struct Size;
-    impl PedersenSize for Size {
-        const NUM_WINDOWS: usize = 256;
-        const WINDOW_SIZE: usize = 4;
-    }
+    const NUM_WINDOWS: usize = 256;
+    const WINDOW_SIZE: usize = 4;
 
     #[test]
     fn empty_merkle_tree_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, Size>, 32);
+        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32);
         run_empty_merkle_tree_test::<MTParameters>();
     }
 
     #[test]
     fn good_root_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, Size>, 32);
+        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32);
         run_good_root_test::<MTParameters>();
     }
 
     #[should_panic]
     #[test]
     fn bad_root_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, Size>, 32);
+        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32);
         run_bad_root_test::<MTParameters>();
     }
 
     #[test]
     fn depth2_merkle_tree_matches_hashing_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, Size>, 2);
+        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 2);
         run_merkle_tree_matches_hashing_test::<MTParameters>();
     }
 
     #[test]
     fn depth3_padded_merkle_tree_matches_hashing_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, Size>, 3);
+        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 3);
         run_padded_merkle_tree_matches_hashing_test::<MTParameters>();
     }
 }
@@ -216,29 +212,25 @@ mod pedersen_crh_on_projective {
     use super::*;
     use snarkvm_curves::edwards_bls12::EdwardsProjective as Edwards;
 
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    pub struct Size;
-    impl PedersenSize for Size {
-        const NUM_WINDOWS: usize = 256;
-        const WINDOW_SIZE: usize = 4;
-    }
+    const NUM_WINDOWS: usize = 256;
+    const WINDOW_SIZE: usize = 4;
 
     #[test]
     fn empty_merkle_tree_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, Size>, 32);
+        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32);
         run_empty_merkle_tree_test::<MTParameters>();
     }
 
     #[test]
     fn good_root_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, Size>, 32);
+        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32);
         run_good_root_test::<MTParameters>();
     }
 
     #[should_panic]
     #[test]
     fn bad_root_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, Size>, 32);
+        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32);
         run_bad_root_test::<MTParameters>();
     }
 
@@ -246,7 +238,7 @@ mod pedersen_crh_on_projective {
     #[ignore]
     #[test]
     fn depth2_merkle_tree_matches_hashing_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, Size>, 2);
+        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 2);
         run_merkle_tree_matches_hashing_test::<MTParameters>();
     }
 
@@ -254,7 +246,7 @@ mod pedersen_crh_on_projective {
     #[ignore]
     #[test]
     fn depth3_padded_merkle_tree_matches_hashing_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, Size>, 3);
+        define_merkle_tree_parameters!(MTParameters, PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 3);
         run_padded_merkle_tree_matches_hashing_test::<MTParameters>();
     }
 }
@@ -263,41 +255,37 @@ mod pedersen_compressed_crh_on_projective {
     use super::*;
     use snarkvm_curves::edwards_bls12::EdwardsProjective as Edwards;
 
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    pub struct Size;
-    impl PedersenSize for Size {
-        const NUM_WINDOWS: usize = 256;
-        const WINDOW_SIZE: usize = 4;
-    }
+    const NUM_WINDOWS: usize = 256;
+    const WINDOW_SIZE: usize = 4;
 
     #[test]
     fn empty_merkle_tree_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCompressedCRH<Edwards, Size>, 32);
+        define_merkle_tree_parameters!(MTParameters, PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32);
         run_empty_merkle_tree_test::<MTParameters>();
     }
 
     #[test]
     fn good_root_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCompressedCRH<Edwards, Size>, 32);
+        define_merkle_tree_parameters!(MTParameters, PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32);
         run_good_root_test::<MTParameters>();
     }
 
     #[should_panic]
     #[test]
     fn bad_root_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCompressedCRH<Edwards, Size>, 32);
+        define_merkle_tree_parameters!(MTParameters, PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32);
         run_bad_root_test::<MTParameters>();
     }
 
     #[test]
     fn depth2_merkle_tree_matches_hashing_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCompressedCRH<Edwards, Size>, 2);
+        define_merkle_tree_parameters!(MTParameters, PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 2);
         run_merkle_tree_matches_hashing_test::<MTParameters>();
     }
 
     #[test]
     fn depth3_padded_merkle_tree_matches_hashing_test() {
-        define_merkle_tree_parameters!(MTParameters, PedersenCompressedCRH<Edwards, Size>, 3);
+        define_merkle_tree_parameters!(MTParameters, PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 3);
         run_padded_merkle_tree_matches_hashing_test::<MTParameters>();
     }
 }

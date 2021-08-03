@@ -17,12 +17,7 @@
 use crate::{ahp::prover::ProverMessage, Vec};
 use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::{BatchLCProof, PCCommitment, PolynomialCommitment};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    error,
-    errors::SerializationError,
-    serialize::*,
-};
+use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 use derivative::Derivative;
 use std::io::{
@@ -64,7 +59,7 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> Proof<F, PC> {
 
     /// Prints information about the size of the proof.
     pub fn print_size_info(&self) {
-        let size_of_fe_in_bytes = F::zero().into_repr().as_ref().len() * 8;
+        let size_of_fe_in_bytes = F::zero().to_repr().as_ref().len() * 8;
         let mut num_comms_without_degree_bounds = 0;
         let mut num_comms_with_degree_bounds = 0;
         let mut size_bytes_comms_without_degree_bounds = 0;
@@ -124,13 +119,13 @@ impl<F: PrimeField, PC: PolynomialCommitment<F>> Proof<F, PC> {
 }
 
 impl<F: PrimeField, PC: PolynomialCommitment<F>> ToBytes for Proof<F, PC> {
-    fn write<W: Write>(&self, mut w: W) -> io::Result<()> {
+    fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize Proof"))
     }
 }
 
 impl<F: PrimeField, PC: PolynomialCommitment<F>> FromBytes for Proof<F, PC> {
-    fn read<R: Read>(mut r: R) -> io::Result<Self> {
+    fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
         CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize Proof"))
     }
 }

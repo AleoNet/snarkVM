@@ -847,7 +847,17 @@ impl<F: Field> AllocGadget<bool, F> for Boolean {
     }
 }
 
-impl<F: Field> EqGadget<F> for Boolean {}
+impl<F: Field> EqGadget<F> for Boolean {
+    fn is_eq<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<Boolean, SynthesisError> {
+        // self | other | XNOR(self, other) | self == other
+        // -----|-------|-------------------|--------------
+        //   0  |   0   |         1         |      1
+        //   0  |   1   |         0         |      0
+        //   1  |   0   |         0         |      0
+        //   1  |   1   |         1         |      1
+        Ok(self.xor(cs.ns(|| "xor"), other)?.not())
+    }
+}
 
 impl<F: Field> ConditionalEqGadget<F> for Boolean {
     fn conditional_enforce_equal<CS: ConstraintSystem<F>>(
@@ -1678,7 +1688,7 @@ mod test {
             let mut cs = TestConstraintSystem::<Fr>::new();
 
             let mut bits = vec![];
-            for (i, b) in BitIteratorBE::new(r.into_repr()).skip(1).enumerate() {
+            for (i, b) in BitIteratorBE::new(r.to_repr()).skip(1).enumerate() {
                 bits.push(Boolean::from(
                     AllocatedBit::alloc(cs.ns(|| format!("bit_gadget {}", i)), || Ok(b)).unwrap(),
                 ));

@@ -18,9 +18,9 @@ use std::ops::Mul;
 
 use snarkvm_curves::{
     bls12_377::{Bls12_377, Fq, Fr, G1Projective, G2Projective},
-    traits::{PairingEngine, ProjectiveCurve},
+    traits::PairingEngine,
 };
-use snarkvm_fields::{Field, One, PrimeField};
+use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
@@ -37,13 +37,9 @@ use crate::{
 fn bls12_377_gadget_bilinearity_test() {
     let mut cs = TestConstraintSystem::<Fq>::new();
 
-    // let a: G1Projective = rand::random();
-    // let b: G2Projective = rand::random();
-    // let s: Fr = rand::random();
-
-    let a: G1Projective = G1Projective::prime_subgroup_generator();
-    let b: G2Projective = G2Projective::prime_subgroup_generator();
-    let s: Fr = Fr::one() + Fr::one();
+    let a: G1Projective = rand::random();
+    let b: G2Projective = rand::random();
+    let s: Fr = rand::random();
 
     let sa = a.mul(s);
     let sb = b.mul(s);
@@ -72,13 +68,13 @@ fn bls12_377_gadget_bilinearity_test() {
     };
 
     let (ans3_g, ans3_n) = {
-        let s_iter = BitIteratorBE::new(s.into_repr())
+        let s_iter = BitIteratorBE::new(s.to_repr())
             .map(Boolean::constant)
             .collect::<Vec<_>>();
 
         let mut ans_g = Bls12PairingGadget::pairing(cs.ns(|| "pair(a, b)"), a_prep_g, b_prep_g).unwrap();
         let mut ans_n = Bls12_377::pairing(a, b);
-        ans_n = ans_n.pow(s.into_repr());
+        ans_n = ans_n.pow(s.to_repr());
         ans_g = ans_g.pow(cs.ns(|| "pow"), &s_iter).unwrap();
 
         (ans_g, ans_n)

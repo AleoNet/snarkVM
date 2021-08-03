@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{errors::MerkleError, CRH};
-use snarkvm_utilities::bytes::ToBytes;
+use snarkvm_utilities::ToBytes;
 
 use rand::Rng;
 use std::io::Cursor;
@@ -37,7 +37,7 @@ pub trait MerkleParameters: Send + Sync + Clone + Default {
     /// Returns the hash of a given leaf.
     fn hash_leaf<L: ToBytes>(&self, leaf: &L, buffer: &mut [u8]) -> Result<<Self::H as CRH>::Output, MerkleError> {
         let mut writer = Cursor::new(buffer);
-        leaf.write(&mut writer)?;
+        leaf.write_le(&mut writer)?;
 
         let buffer = writer.into_inner();
         Ok(self.crh().hash(&buffer[..(Self::H::INPUT_SIZE_BITS / 8)])?)
@@ -53,10 +53,10 @@ pub trait MerkleParameters: Send + Sync + Clone + Default {
         let mut writer = Cursor::new(buffer);
 
         // Construct left input.
-        left.write(&mut writer)?;
+        left.write_le(&mut writer)?;
 
         // Construct right input.
-        right.write(&mut writer)?;
+        right.write_le(&mut writer)?;
 
         let buffer = writer.into_inner();
         Ok(self.crh().hash(&buffer[..(<Self::H as CRH>::INPUT_SIZE_BITS / 8)])?)

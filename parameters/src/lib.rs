@@ -30,6 +30,8 @@ pub use global::*;
 
 pub mod testnet1;
 
+pub mod testnet2;
+
 pub mod traits;
 pub use traits::*;
 

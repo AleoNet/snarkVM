@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_fields::{PrimeField, SquareRootField};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-};
+use snarkvm_utilities::{rand::UniformRand, FromBytes, ToBytes};
 
 use std::{
     fmt::{Debug, Display},

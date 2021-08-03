@@ -16,8 +16,9 @@
 
 use crate::errors::SignatureError;
 use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
     serialize::{CanonicalDeserialize, CanonicalSerialize},
+    FromBytes,
+    ToBytes,
 };
 
 use rand::Rng;
@@ -37,7 +38,7 @@ pub trait SignatureScheme: Sized + Clone + From<<Self as SignatureScheme>::Param
         + CanonicalSerialize
         + CanonicalDeserialize;
     type PrivateKey: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
-    type Output: Clone + Debug + Default + ToBytes + FromBytes + Send + Sync;
+    type Signature: Clone + Debug + Default + ToBytes + FromBytes + Send + Sync + PartialEq + Eq;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self, SignatureError>;
 
@@ -52,13 +53,13 @@ pub trait SignatureScheme: Sized + Clone + From<<Self as SignatureScheme>::Param
         private_key: &Self::PrivateKey,
         message: &[u8],
         rng: &mut R,
-    ) -> Result<Self::Output, SignatureError>;
+    ) -> Result<Self::Signature, SignatureError>;
 
     fn verify(
         &self,
         public_key: &Self::PublicKey,
         message: &[u8],
-        signature: &Self::Output,
+        signature: &Self::Signature,
     ) -> Result<bool, SignatureError>;
 
     fn randomize_public_key(
@@ -67,5 +68,9 @@ pub trait SignatureScheme: Sized + Clone + From<<Self as SignatureScheme>::Param
         randomness: &[u8],
     ) -> Result<Self::PublicKey, SignatureError>;
 
-    fn randomize_signature(&self, signature: &Self::Output, randomness: &[u8]) -> Result<Self::Output, SignatureError>;
+    fn randomize_signature(
+        &self,
+        signature: &Self::Signature,
+        randomness: &[u8],
+    ) -> Result<Self::Signature, SignatureError>;
 }

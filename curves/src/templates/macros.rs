@@ -21,14 +21,14 @@
 macro_rules! impl_sw_curve_serializer {
     ($params: ident) => {
         // Projective Group point implementations delegate to the Affine version
-        impl<P: $params> CanonicalSerialize for GroupProjective<P> {
+        impl<P: $params> CanonicalSerialize for Projective<P> {
             #[allow(unused_qualifications)]
             #[inline]
             fn serialize<W: snarkvm_utilities::io::Write>(
                 &self,
                 writer: &mut W,
             ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
-                CanonicalSerialize::serialize(&GroupAffine::<P>::from(*self), writer)
+                CanonicalSerialize::serialize(&Affine::<P>::from(*self), writer)
             }
 
             #[allow(unused_qualifications)]
@@ -36,26 +36,26 @@ macro_rules! impl_sw_curve_serializer {
                 &self,
                 writer: &mut W,
             ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
-                CanonicalSerialize::serialize_uncompressed(&GroupAffine::<P>::from(*self), writer)
+                CanonicalSerialize::serialize_uncompressed(&Affine::<P>::from(*self), writer)
             }
 
             #[inline]
             fn serialized_size(&self) -> usize {
-                GroupAffine::<P>::from(*self).serialized_size()
+                Affine::<P>::from(*self).serialized_size()
             }
 
             #[inline]
             fn uncompressed_size(&self) -> usize {
-                GroupAffine::<P>::from(*self).uncompressed_size()
+                Affine::<P>::from(*self).uncompressed_size()
             }
         }
 
-        impl<P: $params> CanonicalDeserialize for GroupProjective<P> {
+        impl<P: $params> CanonicalDeserialize for Projective<P> {
             #[allow(unused_qualifications)]
             fn deserialize<R: snarkvm_utilities::io::Read>(
                 reader: &mut R,
             ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
-                let el: GroupAffine<P> = CanonicalDeserialize::deserialize(reader)?;
+                let el: Affine<P> = CanonicalDeserialize::deserialize(reader)?;
                 Ok(el.into())
             }
 
@@ -63,17 +63,17 @@ macro_rules! impl_sw_curve_serializer {
             fn deserialize_uncompressed<R: snarkvm_utilities::io::Read>(
                 reader: &mut R,
             ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
-                let el: GroupAffine<P> = CanonicalDeserialize::deserialize_uncompressed(reader)?;
+                let el: Affine<P> = CanonicalDeserialize::deserialize_uncompressed(reader)?;
                 Ok(el.into())
             }
         }
 
-        impl<P: $params> ConstantSerializedSize for GroupProjective<P> {
+        impl<P: $params> ConstantSerializedSize for Projective<P> {
             const SERIALIZED_SIZE: usize = <P::BaseField as ConstantSerializedSize>::SERIALIZED_SIZE;
             const UNCOMPRESSED_SIZE: usize = 2 * <P::BaseField as ConstantSerializedSize>::SERIALIZED_SIZE;
         }
 
-        impl<P: $params> CanonicalSerialize for GroupAffine<P> {
+        impl<P: $params> CanonicalSerialize for Affine<P> {
             #[allow(unused_qualifications)]
             #[inline]
             fn serialize<W: snarkvm_utilities::io::Write>(
@@ -117,12 +117,12 @@ macro_rules! impl_sw_curve_serializer {
             }
         }
 
-        impl<P: $params> ConstantSerializedSize for GroupAffine<P> {
+        impl<P: $params> ConstantSerializedSize for Affine<P> {
             const SERIALIZED_SIZE: usize = <P::BaseField as ConstantSerializedSize>::SERIALIZED_SIZE;
             const UNCOMPRESSED_SIZE: usize = 2 * <P::BaseField as ConstantSerializedSize>::SERIALIZED_SIZE;
         }
 
-        impl<P: $params> CanonicalDeserialize for GroupAffine<P> {
+        impl<P: $params> CanonicalDeserialize for Affine<P> {
             #[allow(unused_qualifications)]
             fn deserialize<R: snarkvm_utilities::io::Read>(
                 reader: &mut R,
@@ -132,7 +132,7 @@ macro_rules! impl_sw_curve_serializer {
                 if flags.is_infinity() {
                     Ok(Self::zero())
                 } else {
-                    let p = GroupAffine::<P>::from_x_coordinate(x, flags.is_positive().unwrap())
+                    let p = Affine::<P>::from_x_coordinate(x, flags.is_positive().unwrap())
                         .ok_or(snarkvm_utilities::errors::SerializationError::InvalidData)?;
                     if !snarkvm_utilities::PROCESSING_SNARK_PARAMS
                         .with(|p| p.load(std::sync::atomic::Ordering::Relaxed))
@@ -156,7 +156,7 @@ macro_rules! impl_sw_curve_serializer {
                 let (y, flags): (P::BaseField, snarkvm_utilities::serialize::SWFlags) =
                     CanonicalDeserializeWithFlags::deserialize_with_flags(reader)?;
 
-                let p = GroupAffine::<P>::new(x, y, flags.is_infinity());
+                let p = Affine::<P>::new(x, y, flags.is_infinity());
                 if !p.is_in_correct_subgroup_assuming_on_curve() {
                     return Err(snarkvm_utilities::errors::SerializationError::InvalidData);
                 }
@@ -169,14 +169,14 @@ macro_rules! impl_sw_curve_serializer {
 #[macro_export]
 macro_rules! impl_edwards_curve_serializer {
     ($params: ident) => {
-        impl<P: $params> CanonicalSerialize for GroupProjective<P> {
+        impl<P: $params> CanonicalSerialize for Projective<P> {
             #[allow(unused_qualifications)]
             #[inline]
             fn serialize<W: snarkvm_utilities::io::Write>(
                 &self,
                 writer: &mut W,
             ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
-                CanonicalSerialize::serialize(&GroupAffine::<P>::from(*self), writer)
+                CanonicalSerialize::serialize(&Affine::<P>::from(*self), writer)
             }
 
             #[allow(unused_qualifications)]
@@ -184,31 +184,31 @@ macro_rules! impl_edwards_curve_serializer {
                 &self,
                 writer: &mut W,
             ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
-                CanonicalSerialize::serialize_uncompressed(&GroupAffine::<P>::from(*self), writer)
+                CanonicalSerialize::serialize_uncompressed(&Affine::<P>::from(*self), writer)
             }
 
             #[inline]
             fn serialized_size(&self) -> usize {
-                GroupAffine::<P>::from(*self).serialized_size()
+                Affine::<P>::from(*self).serialized_size()
             }
 
             #[inline]
             fn uncompressed_size(&self) -> usize {
-                GroupAffine::<P>::from(*self).uncompressed_size()
+                Affine::<P>::from(*self).uncompressed_size()
             }
         }
 
-        impl<P: $params> ConstantSerializedSize for GroupProjective<P> {
+        impl<P: $params> ConstantSerializedSize for Projective<P> {
             const SERIALIZED_SIZE: usize = <P::BaseField as ConstantSerializedSize>::SERIALIZED_SIZE;
             const UNCOMPRESSED_SIZE: usize = 2 * <P::BaseField as ConstantSerializedSize>::SERIALIZED_SIZE;
         }
 
-        impl<P: $params> CanonicalDeserialize for GroupProjective<P> {
+        impl<P: $params> CanonicalDeserialize for Projective<P> {
             #[allow(unused_qualifications)]
             fn deserialize<R: snarkvm_utilities::io::Read>(
                 reader: &mut R,
             ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
-                let el: GroupAffine<P> = CanonicalDeserialize::deserialize(reader)?;
+                let el: Affine<P> = CanonicalDeserialize::deserialize(reader)?;
                 Ok(el.into())
             }
 
@@ -216,12 +216,12 @@ macro_rules! impl_edwards_curve_serializer {
             fn deserialize_uncompressed<R: snarkvm_utilities::io::Read>(
                 reader: &mut R,
             ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
-                let el: GroupAffine<P> = CanonicalDeserialize::deserialize_uncompressed(reader)?;
+                let el: Affine<P> = CanonicalDeserialize::deserialize_uncompressed(reader)?;
                 Ok(el.into())
             }
         }
 
-        impl<P: $params> CanonicalSerialize for GroupAffine<P> {
+        impl<P: $params> CanonicalSerialize for Affine<P> {
             #[allow(unused_qualifications)]
             #[inline]
             fn serialize<W: snarkvm_utilities::io::Write>(
@@ -260,12 +260,12 @@ macro_rules! impl_edwards_curve_serializer {
             }
         }
 
-        impl<P: $params> ConstantSerializedSize for GroupAffine<P> {
+        impl<P: $params> ConstantSerializedSize for Affine<P> {
             const SERIALIZED_SIZE: usize = <P::BaseField as ConstantSerializedSize>::SERIALIZED_SIZE;
             const UNCOMPRESSED_SIZE: usize = 2 * <P::BaseField as ConstantSerializedSize>::SERIALIZED_SIZE;
         }
 
-        impl<P: $params> CanonicalDeserialize for GroupAffine<P> {
+        impl<P: $params> CanonicalDeserialize for Affine<P> {
             #[allow(unused_qualifications)]
             fn deserialize<R: snarkvm_utilities::io::Read>(
                 reader: &mut R,
@@ -275,7 +275,7 @@ macro_rules! impl_edwards_curve_serializer {
                 if x == P::BaseField::zero() {
                     Ok(Self::zero())
                 } else {
-                    let p = GroupAffine::<P>::from_x_coordinate(x, flags.is_positive())
+                    let p = Affine::<P>::from_x_coordinate(x, flags.is_positive())
                         .ok_or(snarkvm_utilities::errors::SerializationError::InvalidData)?;
                     if !p.is_in_correct_subgroup_assuming_on_curve() {
                         return Err(snarkvm_utilities::errors::SerializationError::InvalidData);
@@ -291,7 +291,7 @@ macro_rules! impl_edwards_curve_serializer {
                 let x: P::BaseField = CanonicalDeserialize::deserialize(reader)?;
                 let y: P::BaseField = CanonicalDeserialize::deserialize(reader)?;
 
-                let p = GroupAffine::<P>::new(x, y);
+                let p = Affine::<P>::new(x, y);
                 if !p.is_in_correct_subgroup_assuming_on_curve() {
                     return Err(snarkvm_utilities::errors::SerializationError::InvalidData);
                 }

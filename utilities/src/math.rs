@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 /// Return ceil(x/y)
-pub fn div_ceil(x: usize, y: usize) -> usize {
+#[inline]
+pub const fn div_ceil(x: usize, y: usize) -> usize {
     (x + y - 1) / y
 }

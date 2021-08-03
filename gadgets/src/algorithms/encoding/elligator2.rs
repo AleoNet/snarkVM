@@ -16,10 +16,10 @@
 
 use std::{borrow::Borrow, marker::PhantomData};
 
-use snarkvm_curves::traits::{ModelParameters, MontgomeryModelParameters};
+use snarkvm_curves::traits::{ModelParameters, MontgomeryParameters};
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
-use snarkvm_utilities::{to_bytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use crate::{
     bits::{Boolean, ToBitsBEGadget, ToBytesGadget},
@@ -29,9 +29,9 @@ use crate::{
 };
 
 #[derive(Clone, Debug)]
-pub struct Elligator2FieldGadget<P: MontgomeryModelParameters, F: PrimeField>(pub FpGadget<F>, PhantomData<P>);
+pub struct Elligator2FieldGadget<P: MontgomeryParameters, F: PrimeField>(pub FpGadget<F>, PhantomData<P>);
 
-impl<P: MontgomeryModelParameters, F: PrimeField> AllocGadget<<P as ModelParameters>::BaseField, F>
+impl<P: MontgomeryParameters, F: PrimeField> AllocGadget<<P as ModelParameters>::BaseField, F>
     for Elligator2FieldGadget<P, F>
 {
     fn alloc<
@@ -44,7 +44,7 @@ impl<P: MontgomeryModelParameters, F: PrimeField> AllocGadget<<P as ModelParamet
     ) -> Result<Self, SynthesisError> {
         Ok(Elligator2FieldGadget(
             FpGadget::alloc(cs, || match value_gen() {
-                Ok(value) => Ok(F::read(&to_bytes![value.borrow()]?[..])?),
+                Ok(value) => Ok(F::read_le(&to_bytes_le![value.borrow()]?[..])?),
                 Err(_) => Err(SynthesisError::AssignmentMissing),
             })?,
             PhantomData,
@@ -61,7 +61,7 @@ impl<P: MontgomeryModelParameters, F: PrimeField> AllocGadget<<P as ModelParamet
     ) -> Result<Self, SynthesisError> {
         Ok(Elligator2FieldGadget(
             FpGadget::alloc_input(cs, || match value_gen() {
-                Ok(value) => Ok(F::read(&to_bytes![value.borrow()]?[..])?),
+                Ok(value) => Ok(F::read_le(&to_bytes_le![value.borrow()]?[..])?),
                 Err(_) => Err(SynthesisError::AssignmentMissing),
             })?,
             PhantomData,
@@ -69,7 +69,7 @@ impl<P: MontgomeryModelParameters, F: PrimeField> AllocGadget<<P as ModelParamet
     }
 }
 
-impl<P: MontgomeryModelParameters, F: PrimeField> ToBitsBEGadget<F> for Elligator2FieldGadget<P, F> {
+impl<P: MontgomeryParameters, F: PrimeField> ToBitsBEGadget<F> for Elligator2FieldGadget<P, F> {
     fn to_bits_be<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         self.0.to_bits_be(cs)
     }
@@ -79,7 +79,7 @@ impl<P: MontgomeryModelParameters, F: PrimeField> ToBitsBEGadget<F> for Elligato
     }
 }
 
-impl<P: MontgomeryModelParameters, F: PrimeField> ToBytesGadget<F> for Elligator2FieldGadget<P, F> {
+impl<P: MontgomeryParameters, F: PrimeField> ToBytesGadget<F> for Elligator2FieldGadget<P, F> {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.0.to_bytes(cs)
     }

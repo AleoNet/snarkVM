@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{CRHError, CommitmentError, EncryptionError};
-
-use hex::FromHexError;
+use snarkvm_algorithms::{CRHError, CommitmentError, EncryptionError, PRFError, SignatureError};
 
 #[derive(Debug, Error)]
 pub enum RecordError {
+    #[error("{}", _0)]
+    AccountError(#[from] crate::AccountError),
+
     #[error("Failed to build Record data type. See console logs for error")]
     BuilderError,
 
@@ -35,9 +36,6 @@ pub enum RecordError {
     #[error("{}", _0)]
     CRHError(#[from] CRHError),
 
-    #[error("{}", _0)]
-    DPCError(#[from] crate::DPCError),
-
     #[error("Attempted to set `value: {}` on a dummy record", _0)]
     DummyMustBeZero(u64),
 
@@ -45,7 +43,10 @@ pub enum RecordError {
     EncryptionError(#[from] EncryptionError),
 
     #[error("{}", _0)]
-    FromHexError(#[from] FromHexError),
+    FromHexError(#[from] hex::FromHexError),
+
+    #[error("Given private key does not correspond to the record owner")]
+    IncorrectPrivateKey,
 
     #[error("Attempted to build a record with an invalid commitment. Try `calculate_commitment()`")]
     InvalidCommitment,
@@ -58,6 +59,12 @@ pub enum RecordError {
 
     #[error("Attempted to set `is_dummy: true` on a record with a non-zero value")]
     NonZeroValue,
+
+    #[error("{}", _0)]
+    PRFError(#[from] PRFError),
+
+    #[error("{}", _0)]
+    SignatureError(#[from] SignatureError),
 }
 
 impl From<std::io::Error> for RecordError {

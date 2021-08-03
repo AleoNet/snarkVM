@@ -56,7 +56,7 @@ type PCGadget = MarlinKZG10Gadget<Bls12_377, BW6_761, Bls12_377PairingGadget>;
 type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq>>;
 type FSG = FiatShamirAlgebraicSpongeRngVar<Fr, Fq, PoseidonSponge<Fq>, PoseidonSpongeVar<Fq>>;
 
-type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Benchmark<Fr>>;
+type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Benchmark<Fr>, Vec<Fr>>;
 type TestSNARKGadget = MarlinSNARKGadget<Fr, Fq, PC, FS, MarlinRecursiveMode, PCGadget, FSG>;
 
 #[derive(Copy, Clone)]

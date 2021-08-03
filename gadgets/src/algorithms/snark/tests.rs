@@ -20,7 +20,7 @@ use snarkvm_algorithms::snark::gm17::{create_random_proof, generate_random_param
 use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::{bititerator::BitIteratorBE, to_bytes, ToBytes};
+use snarkvm_utilities::{bititerator::BitIteratorBE, to_bytes_le, ToBytes};
 
 use crate::{
     algorithms::snark::*,
@@ -120,7 +120,7 @@ fn gm17_verifier_test() {
         {
             let mut cs = cs.ns(|| "Allocate Input");
             for (i, input) in inputs.into_iter().enumerate() {
-                let mut input_bits = BitIteratorBE::new(input.into_repr()).collect::<Vec<_>>();
+                let mut input_bits = BitIteratorBE::new(input.to_repr()).collect::<Vec<_>>();
                 // Input must be in little-endian, but BitIterator outputs in big-endian.
                 input_bits.reverse();
 
@@ -193,7 +193,7 @@ fn gm17_verifier_bytes_test() {
         {
             let mut cs = cs.ns(|| "Allocate Input");
             for (i, input) in inputs.into_iter().enumerate() {
-                let mut input_bits = BitIteratorBE::new(input.into_repr()).collect::<Vec<_>>();
+                let mut input_bits = BitIteratorBE::new(input.to_repr()).collect::<Vec<_>>();
                 // Input must be in little-endian, but BitIterator outputs in big-endian.
                 input_bits.reverse();
 
@@ -203,8 +203,8 @@ fn gm17_verifier_bytes_test() {
             }
         }
 
-        let vk_bytes = to_bytes![params.vk].unwrap();
-        let proof_bytes = to_bytes![proof].unwrap();
+        let vk_bytes = to_bytes_le![params.vk].unwrap();
+        let proof_bytes = to_bytes_le![proof].unwrap();
 
         let vk_gadget = TestVkGadget::alloc_input_bytes(cs.ns(|| "Vk"), || Ok(vk_bytes)).unwrap();
         let proof_gadget = TestProofGadget::alloc_bytes(cs.ns(|| "Proof"), || Ok(proof_bytes)).unwrap();
@@ -269,7 +269,7 @@ fn gm17_verifier_num_constraints_test() {
         {
             let mut cs = cs.ns(|| "Allocate Input");
             for (i, input) in inputs.into_iter().enumerate() {
-                let mut input_bits = BitIteratorBE::new(input.into_repr()).collect::<Vec<_>>();
+                let mut input_bits = BitIteratorBE::new(input.to_repr()).collect::<Vec<_>>();
                 // Input must be in little-endian, but BitIterator outputs in big-endian.
                 input_bits.reverse();
 

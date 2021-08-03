@@ -19,25 +19,23 @@ use snarkvm_algorithms::{
     traits::{MerkleParameters, SNARK},
 };
 use snarkvm_dpc::{
-    errors::DPCError,
     testnet1::{
-        inner_circuit::InnerCircuit,
         instantiated::Components,
-        outer_circuit::OuterCircuit,
-        parameters::{NoopProgramSNARKParameters, SystemParameters},
-        program::{NoopCircuit, PrivateProgramInput},
-        BaseDPCComponents,
+        InnerCircuit,
+        NoopProgram,
+        OuterCircuit,
+        SystemParameters,
+        Testnet1Components,
     },
+    DPCError,
+    ProgramScheme,
 };
 use snarkvm_parameters::{
     testnet1::{InnerSNARKPKParameters, InnerSNARKVKParameters},
     traits::Parameter,
     LedgerMerkleTreeParameters,
 };
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::thread_rng;
 use std::{path::PathBuf, sync::Arc};
@@ -45,19 +43,19 @@ use std::{path::PathBuf, sync::Arc};
 mod utils;
 use utils::store;
 
-pub fn setup<C: BaseDPCComponents>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
+pub fn setup<C: Testnet1Components>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
     let system_parameters = SystemParameters::<C>::load()?;
 
     let merkle_tree_hash_parameters: <C::MerkleParameters as MerkleParameters>::H =
-        From::from(FromBytes::read(&LedgerMerkleTreeParameters::load_bytes()?[..])?);
+        From::from(FromBytes::read_le(&LedgerMerkleTreeParameters::load_bytes()?[..])?);
     let ledger_merkle_tree_parameters = Arc::new(From::from(merkle_tree_hash_parameters));
 
     let inner_snark_pk: <C::InnerSNARK as SNARK>::ProvingKey =
-        <C::InnerSNARK as SNARK>::ProvingKey::read(InnerSNARKPKParameters::load_bytes()?.as_slice())?;
+        <C::InnerSNARK as SNARK>::ProvingKey::read_le(InnerSNARKPKParameters::load_bytes()?.as_slice())?;
 
     let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey =
-        <C::InnerSNARK as SNARK>::VerifyingKey::read(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
+        <C::InnerSNARK as SNARK>::VerifyingKey::read_le(InnerSNARKVKParameters::load_bytes()?.as_slice())?;
 
     let inner_snark_proof = C::InnerSNARK::prove(
         &inner_snark_pk,
@@ -65,18 +63,10 @@ pub fn setup<C: BaseDPCComponents>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
         rng,
     )?;
 
-    // TODO (howardwu): Check why is the PrivateProgramInput necessary for running the setup? Blank should take option?
-    let noop_program_snark_parameters = NoopProgramSNARKParameters::<C>::load()?;
-
-    let program_snark_proof = C::NoopProgramSNARK::prove(
-        &noop_program_snark_parameters.proving_key,
-        &NoopCircuit::blank(&system_parameters),
-        rng,
+    let noop_program = NoopProgram::<C>::load(
+        &system_parameters.local_data_commitment,
+        &system_parameters.program_verification_key_crh,
     )?;
-    let private_program_input = PrivateProgramInput {
-        verification_key: to_bytes![noop_program_snark_parameters.verification_key]?,
-        proof: to_bytes![program_snark_proof]?,
-    };
 
     let outer_snark_parameters = C::OuterSNARK::setup(
         &OuterCircuit::blank(
@@ -84,14 +74,14 @@ pub fn setup<C: BaseDPCComponents>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
             ledger_merkle_tree_parameters,
             inner_snark_vk,
             inner_snark_proof,
-            private_program_input,
+            noop_program.execute_blank(rng)?,
         ),
         rng,
     )?;
 
-    let outer_snark_pk = to_bytes![outer_snark_parameters.0]?;
+    let outer_snark_pk = outer_snark_parameters.0.to_bytes_le()?;
     let outer_snark_vk: <C::OuterSNARK as SNARK>::VerifyingKey = outer_snark_parameters.1.into();
-    let outer_snark_vk = to_bytes![outer_snark_vk]?;
+    let outer_snark_vk = outer_snark_vk.to_bytes_le()?;
 
     println!("outer_snark_pk.params\n\tsize - {}", outer_snark_pk.len());
     println!("outer_snark_vk.params\n\tsize - {}", outer_snark_vk.len());

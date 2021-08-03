@@ -31,21 +31,19 @@ use snarkvm_dpc::block::{
     MASKED_TREE_DEPTH,
 };
 
-/// PoSW instantiated over BLS12-377 with GM17.
-pub type PoswGM17 = Posw<GM17<Bls12_377>, Bls12_377>;
+/// GM17 type alias for the PoSW circuit
+#[deprecated]
+pub type GM17<E> = snark::gm17::GM17<E, PoswCircuit<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
 
 /// PoSW instantiated over BLS12-377 with Marlin.
 pub type PoswMarlin = Posw<Marlin<Bls12_377>, Bls12_377>;
-
-/// GM17 type alias for the PoSW circuit
-pub type GM17<E> = snark::gm17::GM17<E, PoswCircuit<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
 
 /// Marlin proof system on PoSW
 pub type Marlin<E> =
     snarkvm_marlin::snark::MarlinSystem<E, PoswCircuit<<E as PairingEngine>::Fr>, Vec<<E as PairingEngine>::Fr>>;
 
 /// A generic PoSW.
-type Posw<S, E> = posw::Posw<S, <E as PairingEngine>::Fr, M, HG, params::PoSWParams>;
+pub type Posw<S, E> = posw::Posw<S, <E as PairingEngine>::Fr, M, HG, params::PoSWParams>;
 
 /// Instantiate the circuit with the CRH to Fq.
 type PoswCircuit<F> = circuit::POSWCircuit<F, M, HG, params::PoSWParams>;
@@ -79,7 +77,7 @@ mod tests {
     use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
     use snarkvm_algorithms::traits::SNARK;
-    use snarkvm_utilities::bytes::FromBytes;
+    use snarkvm_utilities::FromBytes;
 
     #[test]
     fn test_load_verify_only() {
@@ -95,6 +93,9 @@ mod tests {
     #[allow(deprecated)]
     fn test_posw_gm17() {
         let rng = &mut XorShiftRng::seed_from_u64(1234567);
+
+        // PoSW instantiated over BLS12-377 with GM17.
+        pub type PoswGM17 = Posw<GM17<Bls12_377>, Bls12_377>;
 
         // run the trusted setup
         let posw = PoswGM17::setup(rng).unwrap();
@@ -137,7 +138,7 @@ mod tests {
 
         assert_eq!(proof.len(), 972); // NOTE: Marlin proofs use compressed serialization
 
-        let proof = <Marlin<Bls12_377> as SNARK>::Proof::read(&proof[..]).unwrap();
+        let proof = <Marlin<Bls12_377> as SNARK>::Proof::read_le(&proof[..]).unwrap();
         posw.verify(nonce, &proof, &pedersen_merkle_root).unwrap();
     }
 }

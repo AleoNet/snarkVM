@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    account::{Account, AccountAddress, AccountPrivateKey, AccountViewKey},
+    account::{Account, Address, PrivateKey, ViewKey},
     testnet1::{instantiated::Components, parameters::SystemParameters},
     traits::account::AccountScheme,
 };
@@ -44,7 +44,7 @@ fn test_account_new() {
 #[test]
 pub fn test_private_key_from_str() {
     let private_key_string = "APrivateKey1uaf51GJ6LuMzLi2jy9zJJC3doAtngx52WGFZrcvK6aBsEgo";
-    let private_key = AccountPrivateKey::<Components>::from_str(private_key_string);
+    let private_key = PrivateKey::<Components>::from_str(private_key_string);
     println!("{:?}", private_key);
 
     assert!(private_key.is_ok());
@@ -54,7 +54,7 @@ pub fn test_private_key_from_str() {
 #[test]
 pub fn test_view_key_from_str() {
     let view_key_string = "AViewKey1m8gvywHKHKfUzZiLiLoHedcdHEjKwo5TWo6efz8gK7wF";
-    let view_key = AccountViewKey::<Components>::from_str(view_key_string);
+    let view_key = ViewKey::<Components>::from_str(view_key_string);
     println!("{:?}", view_key);
 
     assert!(view_key.is_ok());
@@ -64,7 +64,7 @@ pub fn test_view_key_from_str() {
 #[test]
 pub fn test_address_from_str() {
     let address_string = "aleo1ag4alvc4g7d4apzgvr5f4jt44l0aezev2dx8m0klgwypnh9u5uxs42rclr";
-    let address = AccountAddress::<Components>::from_str(address_string);
+    let address = Address::<Components>::from_str(address_string);
     assert!(address.is_ok());
     assert_eq!(address_string, address.unwrap().to_string());
 }

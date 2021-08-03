@@ -36,7 +36,7 @@ use snarkvm_dpc::block::{
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     algorithms::crh::PedersenCompressedCRHGadget,
-    curves::edwards_bls12::EdwardsBlsGadget,
+    curves::edwards_bls12::EdwardsBls12Gadget,
     traits::algorithms::MaskedCRHGadget,
 };
 use snarkvm_marlin::snark::SRS;
@@ -46,10 +46,7 @@ use snarkvm_parameters::{
 };
 use snarkvm_polycommit::optional_rng::OptionalRng;
 use snarkvm_profiler::{end_timer, start_timer};
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use blake2::{digest::Digest, Blake2s};
 use rand::{rngs::OsRng, Rng};
@@ -66,7 +63,7 @@ pub fn commit(nonce: u32, root: &PedersenMerkleRootHash) -> Vec<u8> {
 // We need to instantiate the Merkle tree and the Gadget, but these should not be
 // proving system specific
 pub type M = MaskedMerkleTreeParameters;
-pub type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fq, EdwardsBlsGadget>;
+pub type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fq, EdwardsBls12Gadget>;
 pub type F = Fr;
 
 /// A Proof of Succinct Work miner and verifier
@@ -97,7 +94,7 @@ where
     /// Loads the PoSW runner from the locally stored parameters.
     pub fn verify_only() -> Result<Self, PoswError> {
         let params = PoswSNARKVKParameters::load_bytes()?;
-        let vk = S::VerifyingKey::read(&params[..])?;
+        let vk = S::VerifyingKey::read_le(&params[..])?;
 
         Ok(Self {
             pk: None,
@@ -108,8 +105,8 @@ where
 
     /// Loads the PoSW runner from the locally stored parameters.
     pub fn load() -> Result<Self, PoswError> {
-        let vk = S::VerifyingKey::read(&PoswSNARKVKParameters::load_bytes()?[..])?;
-        let pk = S::ProvingKey::read(&PoswSNARKPKParameters::load_bytes()?[..])?;
+        let vk = S::VerifyingKey::read_le(&PoswSNARKVKParameters::load_bytes()?[..])?;
+        let pk = S::ProvingKey::read_le(&PoswSNARKPKParameters::load_bytes()?[..])?;
 
         Ok(Self {
             pk: Some(pk),
@@ -232,7 +229,7 @@ where
             nonce = rng.gen_range(0..max_nonce);
             proof = Self::prove(&pk, nonce, subroots, rng)?;
 
-            serialized_proof = to_bytes!(proof)?;
+            serialized_proof = to_bytes_le!(proof)?;
             if self.check_difficulty(&serialized_proof, difficulty_target) {
                 break;
             }
@@ -273,7 +270,7 @@ where
         let mask = commit(nonce, pedersen_merkle_root);
 
         // get the mask and the root in public inputs format
-        let merkle_root = F::read(&pedersen_merkle_root.0[..])?;
+        let merkle_root = F::read_le(&pedersen_merkle_root.0[..])?;
         let inputs = [mask.to_field_elements()?, vec![merkle_root]].concat();
 
         let res = S::verify(&self.vk, &inputs, &proof)?;

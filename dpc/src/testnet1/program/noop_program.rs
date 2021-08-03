@@ -15,105 +15,173 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    errors::DPCError,
-    testnet1::{BaseDPCComponents, LocalData, NoopCircuit, PrivateProgramInput, ProgramLocalData},
-    traits::{ProgramScheme, RecordScheme},
+    testnet1::{Execution, LocalData, NoopCircuit, ProgramLocalData, Testnet1Components},
+    DPCComponents,
+    ProgramError,
+    ProgramScheme,
+    RecordScheme,
 };
-use snarkvm_algorithms::traits::{CommitmentScheme, SNARK};
-use snarkvm_utilities::{to_bytes, ToBytes};
+use snarkvm_algorithms::prelude::*;
+use snarkvm_parameters::{
+    testnet1::{NoopProgramSNARKPKParameters, NoopProgramSNARKVKParameters},
+    Parameter,
+};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
-use rand::Rng;
-use std::marker::PhantomData;
+use rand::{CryptoRng, Rng};
 
 #[derive(Derivative)]
-#[derivative(
-    Clone(bound = "C: BaseDPCComponents, S: SNARK"),
-    Debug(bound = "C: BaseDPCComponents, S: SNARK"),
-    PartialEq(bound = "C: BaseDPCComponents, S: SNARK"),
-    Eq(bound = "C: BaseDPCComponents, S: SNARK")
-)]
-pub struct NoopProgram<C: BaseDPCComponents, S: SNARK> {
+#[derivative(Clone(bound = "C: Testnet1Components"), Debug(bound = "C: Testnet1Components"))]
+pub struct NoopProgram<C: Testnet1Components> {
     #[derivative(Default(value = "vec![0u8; 48]"))]
-    identity: Vec<u8>,
-    _components: PhantomData<C>,
-    _snark: PhantomData<S>,
+    id: Vec<u8>,
+    #[derivative(Debug = "ignore")]
+    proving_key: <<C as Testnet1Components>::NoopProgramSNARK as SNARK>::ProvingKey,
+    #[derivative(Debug = "ignore")]
+    verifying_key: <<C as Testnet1Components>::NoopProgramSNARK as SNARK>::VerifyingKey,
+    #[derivative(Debug = "ignore")]
+    local_data_commitment_parameters: <C::LocalDataCommitment as CommitmentScheme>::Parameters,
 }
 
-impl<C: BaseDPCComponents, S: SNARK> NoopProgram<C, S> {
-    pub fn new(identity: Vec<u8>) -> Self {
-        Self {
-            identity,
-            _components: PhantomData,
-            _snark: PhantomData,
-        }
-    }
-}
-
-impl<C: BaseDPCComponents, S: SNARK> ProgramScheme for NoopProgram<C, S>
-where
-    S: SNARK<AllocatedCircuit = NoopCircuit<C>, VerifierInput = ProgramLocalData<C>>,
-{
+impl<C: Testnet1Components> ProgramScheme for NoopProgram<C> {
+    type Execution = Execution;
+    type ID = Vec<u8>;
     type LocalData = LocalData<C>;
-    type PrivateWitness = PrivateProgramInput;
-    type ProvingKey = S::ProvingKey;
+    type LocalDataCommitment = C::LocalDataCommitment;
+    type ProgramVerifyingKeyCRH = C::ProgramVerificationKeyCRH;
+    type ProofSystem = <C as Testnet1Components>::NoopProgramSNARK;
+    type ProvingKey = <Self::ProofSystem as SNARK>::ProvingKey;
     type PublicInput = ();
-    type VerifyingKey = S::VerifyingKey;
+    type VerifyingKey = <Self::ProofSystem as SNARK>::VerifyingKey;
 
-    fn execute<R: Rng>(
-        &self,
-        proving_key: &Self::ProvingKey,
-        verifying_key: &Self::VerifyingKey,
-        local_data: &Self::LocalData,
-        position: u8,
+    /// Initializes a new instance of the noop program.
+    fn setup<R: Rng + CryptoRng>(
+        local_data_commitment: &Self::LocalDataCommitment,
+        program_verifying_key_crh: &Self::ProgramVerifyingKeyCRH,
         rng: &mut R,
-    ) -> Result<Self::PrivateWitness, DPCError> {
-        let num_records = local_data.old_records.len() + local_data.new_records.len();
-        assert!((position as usize) < num_records);
+    ) -> Result<Self, ProgramError> {
+        let local_data_commitment_parameters = local_data_commitment.parameters().clone();
 
-        let record = if (position as usize) < local_data.old_records.len() {
-            &local_data.old_records[position as usize]
-        } else {
-            &local_data.new_records[position as usize - local_data.old_records.len()]
-        };
+        let (proving_key, prepared_verifying_key) =
+            <Self::ProofSystem as SNARK>::setup(&NoopCircuit::blank(&local_data_commitment_parameters), rng)?;
+        let verifying_key = prepared_verifying_key.into();
 
-        if (position as usize) < C::NUM_INPUT_RECORDS {
-            assert_eq!(self.identity, record.death_program_id());
-        } else {
-            assert_eq!(self.identity, record.birth_program_id());
-        }
+        // Compute the program ID.
+        let id = to_bytes_le![<C as DPCComponents>::ProgramVerificationKeyCRH::hash(
+            program_verifying_key_crh,
+            &to_bytes_le![verifying_key]?
+        )?]?;
 
-        let local_data_root = local_data.local_data_merkle_tree.root();
-
-        let circuit = NoopCircuit::<C>::new(&local_data.system_parameters, &local_data_root, position);
-
-        let proof = S::prove(proving_key, &circuit, rng)?;
-
-        {
-            let program_snark_pvk: <S as SNARK>::PreparedVerifyingKey = verifying_key.clone().into();
-
-            let program_pub_input: ProgramLocalData<C> = ProgramLocalData {
-                local_data_commitment_parameters: local_data
-                    .system_parameters
-                    .local_data_commitment
-                    .parameters()
-                    .clone(),
-                local_data_root,
-                position,
-            };
-            assert!(S::verify(&program_snark_pvk, &program_pub_input, &proof)?);
-        }
-
-        Ok(Self::PrivateWitness {
-            verification_key: to_bytes![verifying_key]?,
-            proof: to_bytes![proof]?,
+        Ok(Self {
+            id,
+            proving_key,
+            verifying_key,
+            local_data_commitment_parameters,
         })
     }
 
-    fn evaluate(&self, _p: &Self::PublicInput, _w: &Self::PrivateWitness) -> bool {
+    // TODO (howardwu): Why are we not preparing the VK here?
+    /// Loads an instance of the noop program.
+    fn load(
+        local_data_commitment: &Self::LocalDataCommitment,
+        program_verifying_key_crh: &Self::ProgramVerifyingKeyCRH,
+    ) -> Result<Self, ProgramError> {
+        let proving_key: <Self::ProofSystem as SNARK>::ProvingKey =
+            FromBytes::read_le(NoopProgramSNARKPKParameters::load_bytes()?.as_slice())?;
+        let verifying_key = <Self::ProofSystem as SNARK>::VerifyingKey::read_le(
+            NoopProgramSNARKVKParameters::load_bytes()?.as_slice(),
+        )?;
+
+        // Compute the program ID.
+        let program_id = to_bytes_le![<C as DPCComponents>::ProgramVerificationKeyCRH::hash(
+            program_verifying_key_crh,
+            &to_bytes_le![verifying_key]?
+        )?]?;
+
+        Ok(Self {
+            id: program_id,
+            proving_key,
+            verifying_key,
+            local_data_commitment_parameters: local_data_commitment.parameters().clone(),
+        })
+    }
+
+    fn execute<R: Rng + CryptoRng>(
+        &self,
+        local_data: &Self::LocalData,
+        position: u8,
+        rng: &mut R,
+    ) -> Result<Self::Execution, ProgramError> {
+        assert!((position as usize) < (local_data.old_records.len() + local_data.new_records.len()));
+
+        let record = match (position as usize) < local_data.old_records.len() {
+            true => &local_data.old_records[position as usize],
+            false => &local_data.new_records[position as usize - local_data.old_records.len()],
+        };
+
+        match (position as usize) < C::NUM_INPUT_RECORDS {
+            true => assert_eq!(self.id, record.death_program_id()),
+            false => assert_eq!(self.id, record.birth_program_id()),
+        };
+
+        let local_data_root = local_data.local_data_merkle_tree.root();
+
+        let proof = <Self::ProofSystem as SNARK>::prove(
+            &self.proving_key,
+            &NoopCircuit::<C>::new(&self.local_data_commitment_parameters, &local_data_root, position),
+            rng,
+        )?;
+
+        {
+            let program_pub_input: ProgramLocalData<C> = ProgramLocalData {
+                local_data_commitment_parameters: self.local_data_commitment_parameters.clone(),
+                local_data_root,
+                position,
+            };
+            assert!(<Self::ProofSystem as SNARK>::verify(
+                &self.verifying_key.clone().into(),
+                &program_pub_input,
+                &proof
+            )?);
+        }
+
+        Ok(Self::Execution {
+            verifying_key: to_bytes_le![self.verifying_key]?,
+            proof: to_bytes_le![proof]?,
+        })
+    }
+
+    fn execute_blank<R: Rng + CryptoRng>(&self, rng: &mut R) -> Result<Self::Execution, ProgramError> {
+        let proof = <Self::ProofSystem as SNARK>::prove(
+            &self.proving_key,
+            &NoopCircuit::<C>::blank(&self.local_data_commitment_parameters),
+            rng,
+        )?;
+
+        Ok(Self::Execution {
+            verifying_key: to_bytes_le![self.verifying_key]?,
+            proof: to_bytes_le![proof]?,
+        })
+    }
+
+    fn evaluate(&self, _p: &Self::PublicInput, _w: &Self::Execution) -> bool {
         unimplemented!()
     }
 
-    fn into_compact_repr(&self) -> Vec<u8> {
-        self.identity.clone()
+    /// Returns the program ID.
+    fn id(&self) -> Self::ID {
+        self.id.clone()
+    }
+}
+
+impl<C: Testnet1Components> NoopProgram<C> {
+    #[deprecated]
+    pub fn to_snark_parameters(
+        &self,
+    ) -> (
+        <<C as Testnet1Components>::NoopProgramSNARK as SNARK>::ProvingKey,
+        <<C as Testnet1Components>::NoopProgramSNARK as SNARK>::VerifyingKey,
+    ) {
+        (self.proving_key.clone(), self.verifying_key.clone())
     }
 }

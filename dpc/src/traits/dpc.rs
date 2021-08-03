@@ -16,68 +16,52 @@
 
 use crate::traits::{AccountScheme, LedgerScheme, RecordScheme, TransactionScheme};
 
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 use std::sync::Arc;
 
-pub trait DPCScheme<L: LedgerScheme> {
+pub trait DPCScheme<L: LedgerScheme>: Sized {
     type Account: AccountScheme;
     type LocalData;
-    type NetworkParameters;
-    type Payload;
-    type PrivateProgramInput;
-    type Record: RecordScheme<Owner = <Self::Account as AccountScheme>::AccountAddress>;
+    type Execution;
+    type Record: RecordScheme<Owner = <Self::Account as AccountScheme>::Address>;
     type SystemParameters;
     type Transaction: TransactionScheme<SerialNumber = <Self::Record as RecordScheme>::SerialNumber>;
     type TransactionKernel;
 
-    /// Returns public parameters for the DPC.
-    fn setup<R: Rng>(
-        ledger_parameters: &Arc<L::MerkleParameters>,
-        rng: &mut R,
-    ) -> anyhow::Result<Self::NetworkParameters>;
+    /// Initializes a new instance of DPC.
+    fn setup<R: Rng + CryptoRng>(ledger_parameters: &Arc<L::MerkleParameters>, rng: &mut R) -> anyhow::Result<Self>;
+
+    /// Loads the saved instance of DPC.
+    fn load(verify_only: bool) -> anyhow::Result<Self>;
 
     /// Returns an account, given the system parameters, metadata, and an RNG.
-    fn create_account<R: Rng>(parameters: &Self::SystemParameters, rng: &mut R) -> anyhow::Result<Self::Account>;
+    fn create_account<R: Rng + CryptoRng>(&self, rng: &mut R) -> anyhow::Result<Self::Account>;
 
     /// Returns the execution context required for program snark and DPC transaction generation.
     #[allow(clippy::too_many_arguments)]
-    fn execute_offline<R: Rng>(
-        parameters: Self::SystemParameters,
+    fn execute_offline_phase<R: Rng + CryptoRng>(
+        &self,
+        old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         old_records: Vec<Self::Record>,
-        old_account_private_keys: Vec<<Self::Account as AccountScheme>::AccountPrivateKey>,
-        new_record_owners: Vec<<Self::Account as AccountScheme>::AccountAddress>,
-        new_is_dummy_flags: &[bool],
-        new_values: &[u64],
-        new_payloads: Vec<Self::Payload>,
-        new_birth_program_ids: Vec<Vec<u8>>,
-        new_death_program_ids: Vec<Vec<u8>>,
+        new_records: Vec<Self::Record>,
         memorandum: <Self::Transaction as TransactionScheme>::Memorandum,
-        network_id: u8,
         rng: &mut R,
     ) -> anyhow::Result<Self::TransactionKernel>;
 
     /// Returns new records and a transaction based on the authorized
     /// consumption of old records.
-    fn execute_online<R: Rng>(
-        parameters: &Self::NetworkParameters,
+    fn execute_online_phase<R: Rng + CryptoRng>(
+        &self,
+        old_private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         transaction_kernel: Self::TransactionKernel,
-        old_death_program_proofs: Vec<Self::PrivateProgramInput>,
-        new_birth_program_proofs: Vec<Self::PrivateProgramInput>,
+        program_proofs: Vec<Self::Execution>,
         ledger: &L,
         rng: &mut R,
     ) -> anyhow::Result<(Vec<Self::Record>, Self::Transaction)>;
 
     /// Returns true iff the transaction is valid according to the ledger.
-    fn verify(
-        parameters: &Self::NetworkParameters,
-        transaction: &Self::Transaction,
-        ledger: &L,
-    ) -> anyhow::Result<bool>;
+    fn verify(&self, transaction: &Self::Transaction, ledger: &L) -> bool;
 
     /// Returns true iff all the transactions in the block are valid according to the ledger.
-    fn verify_transactions(
-        parameters: &Self::NetworkParameters,
-        block: &[Self::Transaction],
-        ledger: &L,
-    ) -> anyhow::Result<bool>;
+    fn verify_transactions(&self, block: &[Self::Transaction], ledger: &L) -> bool;
 }

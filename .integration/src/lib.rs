@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
 
@@ -40,9 +40,6 @@ pub const KEY_CURR_SN_INDEX: &str = "CURRENT_SN_INDEX";
 pub const KEY_CURR_MEMO_INDEX: &str = "CURRENT_MEMO_INDEX";
 pub const KEY_CURR_DIGEST: &str = "CURRENT_DIGEST";
 
-pub mod dpc;
-pub use dpc::*;
-
 pub mod ledger;
 pub use ledger::*;
 
@@ -51,6 +48,12 @@ pub use memdb::*;
 
 pub mod storage;
 pub use storage::*;
+
+pub mod testnet1;
+pub use testnet1::*;
+
+pub mod testnet2;
+pub use testnet2::*;
 
 /// Represents address of certain transaction within block
 #[derive(Debug, PartialEq, Clone)]
@@ -63,17 +66,17 @@ pub struct TransactionLocation {
 
 impl ToBytes for TransactionLocation {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.index.write(&mut writer)?;
-        self.block_hash.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.index.write_le(&mut writer)?;
+        self.block_hash.write_le(&mut writer)
     }
 }
 
 impl FromBytes for TransactionLocation {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let index: u32 = FromBytes::read(&mut reader)?;
-        let block_hash: [u8; 32] = FromBytes::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let index: u32 = FromBytes::read_le(&mut reader)?;
+        let block_hash: [u8; 32] = FromBytes::read_le(&mut reader)?;
 
         Ok(Self { index, block_hash })
     }

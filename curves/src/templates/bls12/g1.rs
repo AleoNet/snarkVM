@@ -17,17 +17,17 @@
 use crate::{
     templates::{
         bls12::Bls12Parameters,
-        short_weierstrass::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
+        short_weierstrass_jacobian::{Affine, Projective},
     },
     traits::pairing_engine::AffineCurve,
 };
 use snarkvm_fields::Zero;
-use snarkvm_utilities::{bytes::ToBytes, errors::SerializationError, serialize::*};
+use snarkvm_utilities::{errors::SerializationError, serialize::*, ToBytes};
 
 use std::io::{Result as IoResult, Write};
 
-pub type G1Affine<P> = GroupAffine<<P as Bls12Parameters>::G1Parameters>;
-pub type G1Projective<P> = GroupProjective<<P as Bls12Parameters>::G1Parameters>;
+pub type G1Affine<P> = Affine<<P as Bls12Parameters>::G1Parameters>;
+pub type G1Projective<P> = Projective<<P as Bls12Parameters>::G1Parameters>;
 
 #[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(
@@ -55,7 +55,7 @@ impl<P: Bls12Parameters> Default for G1Prepared<P> {
 }
 
 impl<P: Bls12Parameters> ToBytes for G1Prepared<P> {
-    fn write<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.0.write(writer)
+    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
+        self.0.write_le(writer)
     }
 }

@@ -32,7 +32,7 @@ pub fn msm_standard<G: AffineCurve>(
     };
 
     let num_bits = <G::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize;
-    let fr_one = G::ScalarField::one().into_repr();
+    let fr_one = G::ScalarField::one().to_repr();
 
     let zero = G::zero().into_projective();
     let window_starts: Vec<_> = (0..num_bits).step_by(c).collect();

@@ -16,7 +16,7 @@
 
 use snarkvm_algorithms::{crh::PedersenCompressedCRH, define_masked_merkle_tree_parameters, merkle_tree::prng};
 use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective as EdwardsBls};
-use snarkvm_utilities::{bytes::ToBytes, to_bytes};
+use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -30,19 +30,10 @@ use std::{
 };
 
 // Do not leak the type
-mod window {
-    use snarkvm_algorithms::crh::PedersenSize;
+pub(crate) const NUM_WINDOWS: usize = 4;
+pub(crate) const WINDOW_SIZE: usize = 128;
 
-    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-    pub struct TwoToOneWindow;
-
-    impl PedersenSize for TwoToOneWindow {
-        const NUM_WINDOWS: usize = 4;
-        const WINDOW_SIZE: usize = 128;
-    }
-}
-
-pub type MerkleTreeCRH = PedersenCompressedCRH<EdwardsBls, window::TwoToOneWindow>;
+pub type MerkleTreeCRH = PedersenCompressedCRH<EdwardsBls, NUM_WINDOWS, WINDOW_SIZE>;
 
 // We instantiate the tree here with depth = 2. This may change in the future.
 pub const MASKED_TREE_DEPTH: usize = 2;
@@ -93,7 +84,7 @@ pub fn pedersen_merkle_root_hash_with_leaves(hashes: &[[u8; 32]]) -> (Fr, Vec<Fr
 
 impl From<Fr> for PedersenMerkleRootHash {
     fn from(src: Fr) -> PedersenMerkleRootHash {
-        let root_bytes = to_bytes![src].expect("could not convert merkle root to bytes");
+        let root_bytes = to_bytes_le![src].expect("could not convert merkle root to bytes");
         let mut pedersen_merkle_root_bytes = [0u8; 32];
         pedersen_merkle_root_bytes[..].copy_from_slice(&root_bytes);
         PedersenMerkleRootHash(pedersen_merkle_root_bytes)

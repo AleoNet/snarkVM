@@ -17,10 +17,7 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_algorithms::{
-    commitment::pedersen::{PedersenCommitment, PedersenSize},
-    traits::CommitmentScheme,
-};
+use snarkvm_algorithms::{commitment::pedersen::PedersenCommitment, traits::CommitmentScheme};
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
 use snarkvm_utilities::rand::UniformRand;
 
@@ -30,32 +27,29 @@ use rand::{
     {self},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CommitmentSize;
-
-impl PedersenSize for CommitmentSize {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 256;
-}
+const NUM_WINDOWS: usize = 8;
+const WINDOW_SIZE: usize = 256;
 
 fn pedersen_commitment_setup(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
     c.bench_function("Pedersen Commitment Setup", move |b| {
-        b.iter(|| <PedersenCommitment<EdwardsProjective, CommitmentSize> as CommitmentScheme>::setup(rng))
+        b.iter(|| <PedersenCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::setup(rng))
     });
 }
 
 fn pedersen_commitment_evaluation(c: &mut Criterion) {
     let rng = &mut thread_rng();
-    let parameters = <PedersenCommitment<EdwardsProjective, CommitmentSize> as CommitmentScheme>::setup(rng);
+    let parameters = <PedersenCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::setup(rng);
     let input = vec![127u8; 256];
 
     c.bench_function("Pedersen Commitment Evaluation", move |b| {
         b.iter(|| {
             let randomness =
-                <PedersenCommitment<EdwardsProjective, CommitmentSize> as CommitmentScheme>::Randomness::rand(rng);
-            <PedersenCommitment<EdwardsProjective, CommitmentSize> as CommitmentScheme>::commit(
+                <PedersenCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::Randomness::rand(
+                    rng,
+                );
+            <PedersenCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::commit(
                 &parameters,
                 &input,
                 &randomness,

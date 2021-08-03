@@ -155,6 +155,10 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
     fn num_private_variables(&self) -> usize {
         self.num_private_variables
     }
+
+    fn is_in_setup_mode(&self) -> bool {
+        true
+    }
 }
 
 /// Create parameters for a circuit, given some toxic waste.
@@ -306,7 +310,7 @@ where
     end_timer!(proving_key_time);
 
     // Generate R1CS verification key
-    let verifying_key_time = start_timer!(|| "Generate the R1CS verification key");
+    let verifying_key_time = start_timer!(|| "Generate the R1CS verifying key");
     let g_alpha = g.into_affine().mul(alpha);
     let h_beta = h.into_affine().mul(beta);
     end_timer!(verifying_key_time);

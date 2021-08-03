@@ -15,33 +15,20 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crh::{BoweHopwoodPedersenCRH, BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH, PedersenSize},
+    crh::{BoweHopwoodPedersenCRH, BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH},
     traits::CRH,
 };
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(super) struct Size;
+const PEDERSEN_NUM_WINDOWS: usize = 8;
+const PEDERSEN_WINDOW_SIZE: usize = 128;
 
-impl PedersenSize for Size {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 128;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(super) struct BoweHopwoodSize;
-
-impl PedersenSize for BoweHopwoodSize {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 63;
-}
+const BHP_NUM_WINDOWS: usize = 8;
+const BHP_WINDOW_SIZE: usize = 63;
 
 fn crh_parameters_serialization<C: CRH>() {
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
@@ -49,35 +36,37 @@ fn crh_parameters_serialization<C: CRH>() {
     let crh = C::setup(rng);
     let crh_parameters = crh.parameters();
 
-    let crh_parameters_bytes = to_bytes![crh_parameters].unwrap();
-    let recovered_crh_parameters: <C as CRH>::Parameters = FromBytes::read(&crh_parameters_bytes[..]).unwrap();
+    let crh_parameters_bytes = crh_parameters.to_bytes_le().unwrap();
+    let recovered_crh_parameters: <C as CRH>::Parameters = FromBytes::read_le(&crh_parameters_bytes[..]).unwrap();
 
     assert_eq!(crh_parameters, &recovered_crh_parameters);
 }
 
 #[test]
 fn pedersen_crh_parameters_serialization() {
-    crh_parameters_serialization::<PedersenCRH<EdwardsProjective, Size>>();
+    crh_parameters_serialization::<PedersenCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>>();
 }
 
 #[test]
 fn pedersen_compressed_crh_parameters_serialization() {
-    crh_parameters_serialization::<PedersenCompressedCRH<EdwardsProjective, Size>>();
+    crh_parameters_serialization::<PedersenCompressedCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>>(
+    );
 }
 
 #[test]
 fn bowe_hopwood_crh_parameters_serialization() {
-    crh_parameters_serialization::<BoweHopwoodPedersenCRH<EdwardsProjective, BoweHopwoodSize>>();
+    crh_parameters_serialization::<BoweHopwoodPedersenCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>>();
 }
 
 #[test]
 fn bowe_hopwood_compressed_crh_parameters_serialization() {
-    crh_parameters_serialization::<BoweHopwoodPedersenCompressedCRH<EdwardsProjective, BoweHopwoodSize>>();
+    crh_parameters_serialization::<BoweHopwoodPedersenCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>>(
+    );
 }
 
 #[test]
 fn simple_bowe_hopwood_crh() {
-    type BoweHopwoodCRH = BoweHopwoodPedersenCRH<EdwardsProjective, BoweHopwoodSize>;
+    type BoweHopwoodCRH = BoweHopwoodPedersenCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
 
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
 

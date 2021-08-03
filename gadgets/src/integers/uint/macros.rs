@@ -25,7 +25,7 @@ macro_rules! to_bytes_int_impl {
 
                 let value_chunks = match self.value.map(|val| {
                     let mut bytes = [0u8; BYTES_SIZE];
-                    val.write(bytes.as_mut()).unwrap();
+                    val.write_le(bytes.as_mut()).unwrap();
                     bytes
                 }) {
                     Some(chunks) => [Some(chunks[0]), Some(chunks[1]), Some(chunks[2]), Some(chunks[3])],
@@ -125,6 +125,8 @@ macro_rules! uint_impl_common {
 
         impl crate::traits::integers::Integer for $name {
             type IntegerType = $_type;
+            type UnsignedGadget = $name;
+            type UnsignedIntegerType = $_type;
 
             const SIZE: usize = $size;
 

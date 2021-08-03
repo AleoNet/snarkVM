@@ -17,37 +17,23 @@
 use crate::{
     commitment::PedersenCompressedCommitment,
     commitment_tree::*,
-    crh::{BoweHopwoodPedersenCompressedCRH, PedersenSize},
+    crh::BoweHopwoodPedersenCompressedCRH,
     traits::{CommitmentScheme, CRH},
 };
 use snarkvm_curves::edwards_bls12::EdwardsProjective as EdwardsBls;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    rand::UniformRand,
-    to_bytes,
-};
+use snarkvm_utilities::{rand::UniformRand, FromBytes, ToBytes};
 
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct CRHWindow;
+const CRH_NUM_WINDOWS: usize = 16;
+const CRH_WINDOW_SIZE: usize = 32;
 
-impl PedersenSize for CRHWindow {
-    const NUM_WINDOWS: usize = 16;
-    const WINDOW_SIZE: usize = 32;
-}
+const COMMITMENT_NUM_WINDOWS: usize = 8;
+const COMMITMENT_WINDOW_SIZE: usize = 32;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct CommitmentWindow;
-
-impl PedersenSize for CommitmentWindow {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 32;
-}
-
-pub type H = BoweHopwoodPedersenCompressedCRH<EdwardsBls, CRHWindow>;
-pub type C = PedersenCompressedCommitment<EdwardsBls, CommitmentWindow>;
+pub type H = BoweHopwoodPedersenCompressedCRH<EdwardsBls, CRH_NUM_WINDOWS, CRH_WINDOW_SIZE>;
+pub type C = PedersenCompressedCommitment<EdwardsBls, COMMITMENT_NUM_WINDOWS, COMMITMENT_WINDOW_SIZE>;
 pub type CM = CommitmentMerklePath<C, H>;
 
 /// Generates a valid Merkle tree and verifies the Merkle path witness for each leaf.
@@ -109,7 +95,7 @@ fn test_serialize_commitment_merkle_tree() {
 
     let merkle_tree = generate_merkle_tree(&commitment, &crh, rng);
 
-    let merkle_tree_bytes = to_bytes![merkle_tree].unwrap();
+    let merkle_tree_bytes = merkle_tree.to_bytes_le().unwrap();
     let recovered_merkle_tree = CommitmentMerkleTree::<C, H>::from_bytes(&merkle_tree_bytes[..], crh).unwrap();
 
     assert!(merkle_tree == recovered_merkle_tree);
@@ -127,8 +113,8 @@ fn test_serialize_commitment_path() {
     for leaf in merkle_tree.leaves().iter() {
         let proof = merkle_tree.generate_proof(&leaf).unwrap();
 
-        let proof_bytes = to_bytes![proof].unwrap();
-        let recovered_proof = CM::read(&proof_bytes[..]).unwrap();
+        let proof_bytes = proof.to_bytes_le().unwrap();
+        let recovered_proof = CM::read_le(&proof_bytes[..]).unwrap();
 
         assert!(proof == recovered_proof);
 

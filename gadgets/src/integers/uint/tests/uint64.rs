@@ -231,8 +231,8 @@ fn test_uint64_sub_constants() {
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u64 = rng.gen_range(u64::max_value() / 2u64..u64::max_value());
-        let b: u64 = rng.gen_range(0u64..u64::max_value() / 2u64);
+        let a: u64 = rng.gen_range(u64::MAX / 2u64..u64::MAX);
+        let b: u64 = rng.gen_range(0u64..u64::MAX / 2u64);
 
         let a_bit = UInt64::constant(a);
         let b_bit = UInt64::constant(b);
@@ -254,13 +254,13 @@ fn test_uint64_sub() {
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u64 = rng.gen_range(u64::max_value() / 2u64..u64::max_value());
-        let b: u64 = rng.gen_range(0u64..u64::max_value() / 2u64);
+        let a: u64 = rng.gen_range(u64::MAX / 2u64..u64::MAX);
+        let b: u64 = rng.gen_range(0u64..u64::MAX / 2u64);
 
         let expected = a.wrapping_sub(b);
 
         let a_bit = UInt64::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = if b > u64::max_value() / 4 {
+        let b_bit = if b > u64::MAX / 4 {
             UInt64::constant(b)
         } else {
             UInt64::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap()
@@ -321,7 +321,7 @@ fn test_uint64_mul() {
         let expected = a.wrapping_mul(b);
 
         let a_bit = UInt64::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = if b > (u64::max_value() / 2) {
+        let b_bit = if b > (u64::MAX / 2) {
             UInt64::constant(b)
         } else {
             UInt64::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap()
@@ -388,7 +388,7 @@ fn test_uint64_div() {
         let expected = a.wrapping_div(b);
 
         let a_bit = UInt64::alloc(cs.ns(|| "a_bit"), || Ok(a)).unwrap();
-        let b_bit = if b > u64::max_value() / 2 {
+        let b_bit = if b > u64::MAX / 2 {
             UInt64::constant(b)
         } else {
             UInt64::alloc(cs.ns(|| "b_bit"), || Ok(b)).unwrap()
@@ -404,12 +404,12 @@ fn test_uint64_div() {
 
         // Flip a bit_gadget and see if the division constraint still works
         if cs
-            .get("division/subtract_divisor_0/result bit_gadget 0/boolean")
+            .get("division/r_sub_d_result_0/allocated bit_gadget 0/boolean")
             .is_zero()
         {
-            cs.set("division/subtract_divisor_0/result bit_gadget 0/boolean", Fr::one());
+            cs.set("division/r_sub_d_result_0/allocated bit_gadget 0/boolean", Fr::one());
         } else {
-            cs.set("division/subtract_divisor_0/result bit_gadget 0/boolean", Fr::zero());
+            cs.set("division/r_sub_d_result_0/allocated bit_gadget 0/boolean", Fr::zero());
         }
 
         assert!(!cs.is_satisfied());
@@ -423,7 +423,7 @@ fn test_uint64_pow_constants() {
     for _ in 0..100 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u64 = rng.gen_range(0..u64::from(u16::max_value()));
+        let a: u64 = rng.gen_range(0..u64::from(u16::MAX));
         let b: u64 = rng.gen_range(0..4);
 
         let a_bit = UInt64::constant(a);
@@ -446,7 +446,7 @@ fn test_uint64_pow() {
     for _ in 0..4 {
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let a: u64 = rng.gen_range(0..u64::from(u16::max_value()));
+        let a: u64 = rng.gen_range(0..u64::from(u16::MAX));
         let b: u64 = rng.gen_range(0..4);
 
         let expected = a.wrapping_pow(b.try_into().unwrap());

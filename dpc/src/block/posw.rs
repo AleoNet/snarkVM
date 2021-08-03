@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use serde::{
     de::{Error as DeserializeError, SeqAccess, Visitor},
@@ -112,14 +112,14 @@ impl Serialize for ProofOfSuccinctWork {
 
 impl ToBytes for ProofOfSuccinctWork {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (&self.0[..]).write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (&self.0[..]).write_le(&mut writer)
     }
 }
 
 impl FromBytes for ProofOfSuccinctWork {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mut proof = [0; PROOF_SIZE];
         reader.read_exact(&mut proof)?;
         Ok(ProofOfSuccinctWork(proof))

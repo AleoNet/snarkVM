@@ -14,15 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub trait Flags: Default + Clone + Copy + Sized {
-    fn u8_bitmask(&self) -> u8;
-
-    fn from_u8(value: u8) -> Self;
-
-    fn from_u8_remove_flags(value: &mut u8) -> Self;
-
-    fn len() -> usize;
-}
+use crate::serialize::Flags;
 
 /// Flags to be encoded into the serialization.
 #[derive(Default, Clone, Copy)]
@@ -45,7 +37,7 @@ impl Flags for EmptyFlags {
     }
 
     #[inline]
-    fn len() -> usize {
+    fn num_bits() -> usize {
         0
     }
 }
@@ -129,7 +121,7 @@ impl Flags for SWFlags {
 
     /// Number of bits required for these flags.
     #[inline]
-    fn len() -> usize {
+    fn num_bits() -> usize {
         2
     }
 }
@@ -199,7 +191,7 @@ impl Flags for EdwardsFlags {
 
     /// Number of bits required for these flags.
     #[inline]
-    fn len() -> usize {
+    fn num_bits() -> usize {
         1
     }
 }

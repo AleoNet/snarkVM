@@ -17,8 +17,8 @@
 use std::{borrow::Borrow, marker::PhantomData};
 
 use snarkvm_curves::{
-    templates::twisted_edwards_extended::GroupAffine as TEAffine,
-    traits::{MontgomeryModelParameters, TEModelParameters},
+    templates::twisted_edwards_extended::Affine as TEAffine,
+    traits::{MontgomeryParameters, TwistedEdwardsParameters},
 };
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem, Namespace};
@@ -41,9 +41,9 @@ pub mod test;
 
 #[derive(Derivative)]
 #[derivative(Debug, Clone)]
-#[derivative(Debug(bound = "P: TEModelParameters, F: Field"))]
+#[derivative(Debug(bound = "P: TwistedEdwardsParameters, F: Field"))]
 #[must_use]
-pub struct MontgomeryAffineGadget<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> {
+pub struct MontgomeryAffineGadget<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> {
     pub x: FG,
     pub y: FG,
     #[derivative(Debug = "ignore")]
@@ -55,13 +55,13 @@ pub struct MontgomeryAffineGadget<P: TEModelParameters, F: Field, FG: FieldGadge
 mod montgomery_affine_impl {
     use std::ops::{AddAssign, MulAssign, SubAssign};
 
-    use snarkvm_curves::templates::twisted_edwards_extended::GroupAffine;
+    use snarkvm_curves::templates::twisted_edwards_extended::Affine;
     use snarkvm_fields::{Field, One, Zero};
     use snarkvm_r1cs::Assignment;
 
     use super::*;
 
-    impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> MontgomeryAffineGadget<P, F, FG> {
+    impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> MontgomeryAffineGadget<P, F, FG> {
         pub fn new(x: FG, y: FG) -> Self {
             Self {
                 x,
@@ -72,14 +72,14 @@ mod montgomery_affine_impl {
         }
 
         pub fn from_edwards_to_coords(p: &TEAffine<P>) -> Result<(P::BaseField, P::BaseField), SynthesisError> {
-            let montgomery_point: GroupAffine<P> = if p.y == P::BaseField::one() {
-                GroupAffine::zero()
+            let montgomery_point: Affine<P> = if p.y == P::BaseField::one() {
+                Affine::zero()
             } else if p.x == P::BaseField::zero() {
-                GroupAffine::new(P::BaseField::zero(), P::BaseField::zero())
+                Affine::new(P::BaseField::zero(), P::BaseField::zero())
             } else {
                 let u = (P::BaseField::one() + p.y) * (P::BaseField::one() - p.y).inverse().unwrap();
                 let v = u * p.x.inverse().unwrap();
-                GroupAffine::new(u, v)
+                Affine::new(u, v)
             };
 
             Ok((montgomery_point.x, montgomery_point.y))
@@ -161,21 +161,19 @@ mod montgomery_affine_impl {
 
             // Compute x'' = B*lambda^2 - A - x - x'
             let xprime = FG::alloc(cs.ns(|| "xprime"), || {
-                Ok(
-                    lambda.get_value().get()?.square() * P::MontgomeryModelParameters::COEFF_B
-                        - P::MontgomeryModelParameters::COEFF_A
-                        - self.x.get_value().get()?
-                        - other.x.get_value().get()?,
-                )
+                Ok(lambda.get_value().get()?.square() * P::MontgomeryParameters::COEFF_B
+                    - P::MontgomeryParameters::COEFF_A
+                    - self.x.get_value().get()?
+                    - other.x.get_value().get()?)
             })?;
 
             let xprime_lc = self
                 .x
                 .add(cs.ns(|| "self.x + other.x"), &other.x)?
                 .add(cs.ns(|| "+ xprime"), &xprime)?
-                .add_constant(cs.ns(|| "+ A"), &P::MontgomeryModelParameters::COEFF_A)?;
+                .add_constant(cs.ns(|| "+ A"), &P::MontgomeryParameters::COEFF_A)?;
             // (lambda) * (lambda) = (A + x + x' + x'')
-            let lambda_b = lambda.mul_by_constant(cs.ns(|| "lambda * b"), &P::MontgomeryModelParameters::COEFF_B)?;
+            let lambda_b = lambda.mul_by_constant(cs.ns(|| "lambda * b"), &P::MontgomeryParameters::COEFF_B)?;
             lambda_b.mul_equals(cs.ns(|| "xprime equals"), &lambda, &xprime_lc)?;
 
             let yprime = FG::alloc(cs.ns(|| "yprime"), || {
@@ -193,9 +191,9 @@ mod montgomery_affine_impl {
 
 #[derive(Derivative)]
 #[derivative(Debug, Clone)]
-#[derivative(Debug(bound = "P: TEModelParameters, F: Field"))]
+#[derivative(Debug(bound = "P: TwistedEdwardsParameters, F: Field"))]
 #[must_use]
-pub struct AffineGadget<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> {
+pub struct AffineGadget<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> {
     pub x: FG,
     pub y: FG,
     #[derivative(Debug = "ignore")]
@@ -204,7 +202,7 @@ pub struct AffineGadget<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseF
     _engine: PhantomData<F>,
 }
 
-impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> AffineGadget<P, F, FG> {
+impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> AffineGadget<P, F, FG> {
     pub fn new(x: FG, y: FG) -> Self {
         Self {
             x,
@@ -233,13 +231,13 @@ impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> AffineGad
     }
 }
 
-impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> PartialEq for AffineGadget<P, F, FG> {
+impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> PartialEq for AffineGadget<P, F, FG> {
     fn eq(&self, other: &Self) -> bool {
         self.x == other.x && self.y == other.y
     }
 }
 
-impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> Eq for AffineGadget<P, F, FG> {}
+impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> Eq for AffineGadget<P, F, FG> {}
 
 mod affine_impl {
     use std::ops::Neg;
@@ -250,7 +248,7 @@ mod affine_impl {
 
     use super::*;
 
-    impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> GroupGadget<TEAffine<P>, F>
+    impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> GroupGadget<TEAffine<P>, F>
         for AffineGadget<P, F, FG>
     {
         type Value = TEAffine<P>;
@@ -450,7 +448,7 @@ mod affine_impl {
         }
     }
 
-    impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> AllocGadget<TEAffine<P>, F>
+    impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> AllocGadget<TEAffine<P>, F>
         for AffineGadget<P, F, FG>
     where
         Self: GroupGadget<TEAffine<P>, F>,
@@ -500,7 +498,7 @@ mod affine_impl {
         ) -> Result<Self, SynthesisError> {
             let cofactor_weight = BitIteratorBE::new(P::COFACTOR).filter(|b| *b).count();
             // If we multiply by r, we actually multiply by r - 2.
-            let r_minus_1 = (-P::ScalarField::one()).into_repr();
+            let r_minus_1 = (-P::ScalarField::one()).to_repr();
             let r_weight = BitIteratorBE::new(&r_minus_1).filter(|b| *b).count();
 
             // We pick the most efficient method of performing the prime order check:
@@ -609,7 +607,7 @@ mod projective_impl {
     use std::ops::Neg;
 
     use snarkvm_curves::{
-        templates::twisted_edwards_extended::GroupProjective as TEProjective,
+        templates::twisted_edwards_extended::Projective as TEProjective,
         traits::{AffineCurve, ProjectiveCurve},
     };
     use snarkvm_fields::{Field, One, PrimeField, Zero};
@@ -622,7 +620,7 @@ mod projective_impl {
     /// 10 => table[1]
     /// 01 => table[2]
     /// 11 => table[3]
-    fn two_bit_lookup_helper<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>, CS>(
+    fn two_bit_lookup_helper<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>, CS>(
         mut cs: CS,
         bits: [Boolean; 2],
         mut table: [TEProjective<P>; 4],
@@ -640,7 +638,7 @@ mod projective_impl {
         Ok(AffineGadget::new(x, y))
     }
 
-    impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> GroupGadget<TEProjective<P>, F>
+    impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> GroupGadget<TEProjective<P>, F>
         for AffineGadget<P, F, FG>
     {
         type Value = TEProjective<P>;
@@ -1074,8 +1072,8 @@ mod projective_impl {
         }
     }
 
-    impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> CompressedGroupGadget<TEProjective<P>, F>
-        for AffineGadget<P, F, FG>
+    impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>>
+        CompressedGroupGadget<TEProjective<P>, F> for AffineGadget<P, F, FG>
     {
         type BaseFieldGadget = FG;
 
@@ -1084,7 +1082,7 @@ mod projective_impl {
         }
     }
 
-    impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> AllocGadget<TEProjective<P>, F>
+    impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> AllocGadget<TEProjective<P>, F>
         for AffineGadget<P, F, FG>
     where
         Self: GroupGadget<TEProjective<P>, F>,
@@ -1136,7 +1134,7 @@ mod projective_impl {
         {
             let cofactor_weight = BitIteratorBE::new(P::COFACTOR).filter(|b| *b).count();
             // If we multiply by r, we actually multiply by r - 2.
-            let r_minus_1 = (-P::ScalarField::one()).into_repr();
+            let r_minus_1 = (-P::ScalarField::one()).to_repr();
             let r_weight = BitIteratorBE::new(&r_minus_1).filter(|b| *b).count();
 
             // We pick the most efficient method of performing the prime order check:
@@ -1242,7 +1240,9 @@ mod projective_impl {
     }
 }
 
-impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> CondSelectGadget<F> for AffineGadget<P, F, FG> {
+impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> CondSelectGadget<F>
+    for AffineGadget<P, F, FG>
+{
     #[inline]
     fn conditionally_select<CS: ConstraintSystem<F>>(
         mut cs: CS,
@@ -1261,9 +1261,9 @@ impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> CondSelec
     }
 }
 
-impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> EqGadget<F> for AffineGadget<P, F, FG> {}
+impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> EqGadget<F> for AffineGadget<P, F, FG> {}
 
-impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> ConditionalEqGadget<F>
+impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> ConditionalEqGadget<F>
     for AffineGadget<P, F, FG>
 {
     #[inline]
@@ -1285,7 +1285,7 @@ impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> Condition
     }
 }
 
-impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> NEqGadget<F> for AffineGadget<P, F, FG> {
+impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> NEqGadget<F> for AffineGadget<P, F, FG> {
     #[inline]
     fn enforce_not_equal<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<(), SynthesisError> {
         self.x
@@ -1300,7 +1300,9 @@ impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> NEqGadget
     }
 }
 
-impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> ToBitsBEGadget<F> for AffineGadget<P, F, FG> {
+impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> ToBitsBEGadget<F>
+    for AffineGadget<P, F, FG>
+{
     fn to_bits_be<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         let mut x_bits = self.x.to_bits_be(cs.ns(|| "X Coordinate To Bits"))?;
         let y_bits = self.y.to_bits_be(cs.ns(|| "Y Coordinate To Bits"))?;
@@ -1317,7 +1319,9 @@ impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> ToBitsBEG
     }
 }
 
-impl<P: TEModelParameters, F: Field, FG: FieldGadget<P::BaseField, F>> ToBytesGadget<F> for AffineGadget<P, F, FG> {
+impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> ToBytesGadget<F>
+    for AffineGadget<P, F, FG>
+{
     fn to_bytes<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         let mut x_bytes = self.x.to_bytes(cs.ns(|| "x"))?;
         let y_bytes = self.y.to_bytes(cs.ns(|| "y"))?;

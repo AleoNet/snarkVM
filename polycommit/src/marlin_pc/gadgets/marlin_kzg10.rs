@@ -152,11 +152,18 @@ where
         let mut sorted_query_set_gadgets: Vec<_> = query_set.0.iter().collect();
         sorted_query_set_gadgets.sort_by(|a, b| a.0.cmp(&b.0));
 
-        for (label, point) in sorted_query_set_gadgets.iter() {
-            // (raychu86): Changed entry `point.name` to `point.value` to preserve the same ordering,
+        for (i, (label, point)) in sorted_query_set_gadgets.iter().enumerate() {
+            // TODO(raychu86): Changed entry `point.name` to `point.value` to preserve the same ordering,
             // as the native implementation
+
+            // TODO (raychu86): Workaround for `AssignmentMissing` error in setup
+            let entry = match point.value.value() {
+                Ok(val) => val,
+                Err(_) => <TargetCurve as PairingEngine>::Fr::from(i as u128),
+            };
+
             let labels = query_to_labels_map
-                .entry(point.value.value()?)
+                .entry(entry)
                 .or_insert((point.value.clone(), BTreeSet::new()));
             labels.1.insert(label);
         }

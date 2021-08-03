@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::{AccountError, LedgerError};
-use snarkvm_algorithms::errors::{
+use crate::{AccountError, LedgerError, ProgramError, RecordError, TransactionError};
+use snarkvm_algorithms::{
     CRHError,
     CommitmentError,
     EncodingError,
@@ -25,33 +25,45 @@ use snarkvm_algorithms::errors::{
     SNARKError,
     SignatureError,
 };
-use snarkvm_parameters::errors::ParameterError;
+use snarkvm_parameters::ParameterError;
 
 #[derive(Debug, Error)]
 pub enum DPCError {
     #[error("{}", _0)]
-    AccountError(AccountError),
+    AccountError(#[from] AccountError),
 
     #[error("{}", _0)]
-    CommitmentError(CommitmentError),
+    AnyhowError(#[from] anyhow::Error),
 
     #[error("{}", _0)]
-    CRHError(CRHError),
+    CommitmentError(#[from] CommitmentError),
+
+    #[error("{}", _0)]
+    CRHError(#[from] CRHError),
 
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
     #[error("{}", _0)]
-    EncodingError(EncodingError),
+    EncodingError(#[from] EncodingError),
 
     #[error("{}", _0)]
-    EncryptionError(EncryptionError),
+    EncryptionError(#[from] EncryptionError),
+
+    #[error("Invalid number of inputs - (current: {}, max: {})", _0, _1)]
+    InvalidNumberOfInputs(usize, usize),
+
+    #[error("Invalid number of outputs - (current: {}, max: {})", _0, _1)]
+    InvalidNumberOfOutputs(usize, usize),
 
     #[error("{}", _0)]
-    LedgerError(LedgerError),
+    FromHexError(#[from] hex::FromHexError),
 
     #[error("{}", _0)]
-    MerkleError(MerkleError),
+    LedgerError(#[from] LedgerError),
+
+    #[error("{}", _0)]
+    MerkleError(#[from] MerkleError),
 
     #[error("{}", _0)]
     Message(String),
@@ -63,82 +75,25 @@ pub enum DPCError {
     MissingOuterSnarkProvingParameters,
 
     #[error("{}", _0)]
-    ParameterError(ParameterError),
+    ParameterError(#[from] ParameterError),
 
     #[error("{}", _0)]
-    PRFError(PRFError),
+    ProgramError(#[from] ProgramError),
 
     #[error("{}", _0)]
-    SignatureError(SignatureError),
+    PRFError(#[from] PRFError),
 
     #[error("{}", _0)]
-    SNARKError(SNARKError),
-}
+    RecordError(#[from] RecordError),
 
-impl From<AccountError> for DPCError {
-    fn from(error: AccountError) -> Self {
-        DPCError::AccountError(error)
-    }
-}
+    #[error("{}", _0)]
+    SignatureError(#[from] SignatureError),
 
-impl From<CommitmentError> for DPCError {
-    fn from(error: CommitmentError) -> Self {
-        DPCError::CommitmentError(error)
-    }
-}
+    #[error("{}", _0)]
+    SNARKError(#[from] SNARKError),
 
-impl From<CRHError> for DPCError {
-    fn from(error: CRHError) -> Self {
-        DPCError::CRHError(error)
-    }
-}
-
-impl From<EncodingError> for DPCError {
-    fn from(error: EncodingError) -> Self {
-        DPCError::EncodingError(error)
-    }
-}
-
-impl From<EncryptionError> for DPCError {
-    fn from(error: EncryptionError) -> Self {
-        DPCError::EncryptionError(error)
-    }
-}
-
-impl From<LedgerError> for DPCError {
-    fn from(error: LedgerError) -> Self {
-        DPCError::LedgerError(error)
-    }
-}
-
-impl From<MerkleError> for DPCError {
-    fn from(error: MerkleError) -> Self {
-        DPCError::MerkleError(error)
-    }
-}
-
-impl From<PRFError> for DPCError {
-    fn from(error: PRFError) -> Self {
-        DPCError::PRFError(error)
-    }
-}
-
-impl From<SignatureError> for DPCError {
-    fn from(error: SignatureError) -> Self {
-        DPCError::SignatureError(error)
-    }
-}
-
-impl From<ParameterError> for DPCError {
-    fn from(error: ParameterError) -> Self {
-        DPCError::ParameterError(error)
-    }
-}
-
-impl From<SNARKError> for DPCError {
-    fn from(error: SNARKError) -> Self {
-        DPCError::SNARKError(error)
-    }
+    #[error("{}", _0)]
+    TransactionError(#[from] TransactionError),
 }
 
 impl From<std::io::Error> for DPCError {

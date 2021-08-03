@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::hash::Hash;
 
@@ -42,8 +42,11 @@ pub trait RecordScheme: Default + FromBytes + ToBytes {
     /// Returns the death program id of this record.
     fn death_program_id(&self) -> &[u8];
 
-    /// Returns the randomness used for the serial number.
+    /// Returns the nonce used for the serial number.
     fn serial_number_nonce(&self) -> &Self::SerialNumberNonce;
+
+    /// Returns the randomness used for the serial number nonce.
+    fn serial_number_nonce_randomness(&self) -> &Option<[u8; 32]>;
 
     /// Returns the commitment of this record.
     fn commitment(&self) -> Self::Commitment;

@@ -19,7 +19,7 @@ use std::sync::Arc;
 use blake2::{digest::Digest, Blake2s};
 
 use snarkvm_algorithms::{
-    crh::{BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH, PedersenSize},
+    crh::{BoweHopwoodPedersenCompressedCRH, PedersenCRH, PedersenCompressedCRH},
     define_masked_merkle_tree_parameters,
     merkle_tree::MerkleTree,
     traits::{MaskedMerkleParameters, MerkleParameters, CRH},
@@ -37,7 +37,7 @@ use crate::{
         crh::{BoweHopwoodPedersenCompressedCRHGadget, PedersenCRHGadget, PedersenCompressedCRHGadget},
         merkle_tree::*,
     },
-    curves::edwards_bls12::EdwardsBlsGadget,
+    curves::edwards_bls12::EdwardsBls12Gadget,
     integers::uint::UInt8,
     traits::{
         algorithms::{CRHGadget, MaskedCRHGadget},
@@ -46,19 +46,11 @@ use crate::{
     },
 };
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Size;
-impl PedersenSize for Size {
-    const NUM_WINDOWS: usize = 256;
-    const WINDOW_SIZE: usize = 4;
-}
+const PEDERSEN_NUM_WINDOWS: usize = 256;
+const PEDERSEN_WINDOW_SIZE: usize = 4;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BoweHopwoodSize;
-impl PedersenSize for BoweHopwoodSize {
-    const NUM_WINDOWS: usize = 32;
-    const WINDOW_SIZE: usize = 60;
-}
+const BHP_NUM_WINDOWS: usize = 32;
+const BHP_WINDOW_SIZE: usize = 60;
 
 fn generate_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, F>>(
     leaves: &[[u8; 30]],
@@ -148,7 +140,7 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
 
     let nonce: [u8; 4] = rand::random();
     let mut root_bytes = [0u8; 32];
-    root.write(&mut root_bytes[..]).unwrap();
+    root.write_le(&mut root_bytes[..]).unwrap();
 
     let mut h = Blake2s::new();
     h.update(nonce.as_ref());
@@ -203,8 +195,8 @@ mod merkle_tree_pedersen_crh_on_affine {
 
     define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
 
-    type H = PedersenCRH<EdwardsAffine, Size>;
-    type HG = PedersenCRHGadget<EdwardsAffine, Fr, EdwardsBlsGadget>;
+    type H = PedersenCRH<EdwardsAffine, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
+    type HG = PedersenCRHGadget<EdwardsAffine, Fr, EdwardsBls12Gadget>;
 
     #[test]
     fn good_root_test() {
@@ -233,8 +225,8 @@ mod merkle_tree_compressed_pedersen_crh_on_projective {
 
     define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
 
-    type H = PedersenCompressedCRH<EdwardsProjective, Size>;
-    type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBlsGadget>;
+    type H = PedersenCompressedCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
+    type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
 
     #[test]
     fn good_root_test() {
@@ -284,8 +276,8 @@ mod merkle_tree_bowe_hopwood_pedersen_compressed_crh_on_projective {
 
     define_masked_merkle_tree_parameters!(EdwardsMerkleParameters, H, 4);
 
-    type H = BoweHopwoodPedersenCompressedCRH<EdwardsProjective, BoweHopwoodSize>;
-    type HG = BoweHopwoodPedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBlsGadget>;
+    type H = BoweHopwoodPedersenCompressedCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
+    type HG = BoweHopwoodPedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget>;
 
     #[test]
     fn good_root_test() {

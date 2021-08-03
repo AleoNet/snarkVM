@@ -62,7 +62,7 @@ pub struct Proof<E: PairingEngine> {
 
 impl<E: PairingEngine> ToBytes for Proof<E> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self.compressed {
             true => self.write_compressed(&mut writer),
             false => self.write_uncompressed(&mut writer),
@@ -72,7 +72,7 @@ impl<E: PairingEngine> ToBytes for Proof<E> {
 
 impl<E: PairingEngine> FromBytes for Proof<E> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Self::read(&mut reader)
     }
 }
@@ -106,9 +106,9 @@ impl<E: PairingEngine> Proof<E> {
     /// Serialize the proof into bytes in uncompressed form, for storage
     /// on disk or transmission over the network.
     pub fn write_uncompressed<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.a.write(&mut writer)?;
-        self.b.write(&mut writer)?;
-        self.c.write(&mut writer)
+        self.a.write_le(&mut writer)?;
+        self.b.write_le(&mut writer)?;
+        self.c.write_le(&mut writer)
     }
 
     /// Deserialize the proof from compressed bytes.
@@ -118,9 +118,9 @@ impl<E: PairingEngine> Proof<E> {
 
     /// Deserialize the proof from uncompressed bytes.
     pub fn read_uncompressed<R: Read>(mut reader: R) -> IoResult<Self> {
-        let a: E::G1Affine = FromBytes::read(&mut reader)?;
-        let b: E::G2Affine = FromBytes::read(&mut reader)?;
-        let c: E::G1Affine = FromBytes::read(&mut reader)?;
+        let a: E::G1Affine = FromBytes::read_le(&mut reader)?;
+        let b: E::G2Affine = FromBytes::read_le(&mut reader)?;
+        let c: E::G1Affine = FromBytes::read_le(&mut reader)?;
 
         Ok(Self {
             a,
@@ -134,23 +134,21 @@ impl<E: PairingEngine> Proof<E> {
     pub fn read<R: Read>(mut reader: R) -> IoResult<Self> {
         // Construct the compressed reader.
         let compressed_proof_size = Self::compressed_proof_size()?;
-        let mut compressed_reader = vec![0u8; compressed_proof_size];
-        reader.read_exact(&mut compressed_reader)?;
-        let duplicate_compressed_reader = compressed_reader.clone();
+        let mut proof_reader = vec![0u8; compressed_proof_size];
+        reader.read_exact(&mut proof_reader)?;
 
         // Attempt to read the compressed proof.
-        if let Ok(proof) = Self::read_compressed(&compressed_reader[..]) {
+        if let Ok(proof) = Self::read_compressed(&proof_reader[..]) {
             return Ok(proof);
         }
 
         // Construct the uncompressed reader.
         let uncompressed_proof_size = Self::uncompressed_proof_size()?;
-        let mut uncompressed_reader = vec![0u8; uncompressed_proof_size - compressed_proof_size];
-        reader.read_exact(&mut uncompressed_reader)?;
-        uncompressed_reader = [duplicate_compressed_reader, uncompressed_reader].concat();
+        proof_reader.resize(uncompressed_proof_size, 0);
+        reader.read_exact(&mut proof_reader[compressed_proof_size..])?;
 
         // Attempt to read the uncompressed proof.
-        Self::read_uncompressed(&uncompressed_reader[..])
+        Self::read_uncompressed(&proof_reader[..])
     }
 
     /// Returns the number of bytes in a compressed proof serialization.
@@ -168,7 +166,7 @@ impl<E: PairingEngine> Proof<E> {
     }
 }
 
-/// A verification key in the GM17 SNARK.
+/// A verifying key in the GM17 SNARK.
 #[derive(Clone, Debug, Eq)]
 pub struct VerifyingKey<E: PairingEngine> {
     pub h_g2: E::G2Affine,
@@ -180,14 +178,25 @@ pub struct VerifyingKey<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> ToBytes for VerifyingKey<E> {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.write(&mut writer)
+    /// Writes the verifying key into little-endian bytes,
+    /// for storage on disk or transmission over the network.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.h_g2.write_le(&mut writer)?;
+        self.g_alpha_g1.write_le(&mut writer)?;
+        self.h_beta_g2.write_le(&mut writer)?;
+        self.g_gamma_g1.write_le(&mut writer)?;
+        self.h_gamma_g2.write_le(&mut writer)?;
+        (self.query.len() as u32).write_le(&mut writer)?;
+        for q in &self.query {
+            q.write_le(&mut writer)?;
+        }
+        Ok(())
     }
 }
 
 impl<E: PairingEngine> FromBytes for VerifyingKey<E> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Self::read(&mut reader)
     }
 }
@@ -217,33 +226,18 @@ impl<E: PairingEngine> PartialEq for VerifyingKey<E> {
 }
 
 impl<E: PairingEngine> VerifyingKey<E> {
-    /// Serialize the verification key into bytes, for storage on disk
-    /// or transmission over the network.
-    pub fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.h_g2.write(&mut writer)?;
-        self.g_alpha_g1.write(&mut writer)?;
-        self.h_beta_g2.write(&mut writer)?;
-        self.g_gamma_g1.write(&mut writer)?;
-        self.h_gamma_g2.write(&mut writer)?;
-        (self.query.len() as u32).write(&mut writer)?;
-        for q in &self.query {
-            q.write(&mut writer)?;
-        }
-        Ok(())
-    }
-
-    /// Deserialize the verification key from bytes.
+    /// Deserialize the verifying key from bytes.
     pub fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let h_g2: E::G2Affine = FromBytes::read(&mut reader)?;
-        let g_alpha_g1: E::G1Affine = FromBytes::read(&mut reader)?;
-        let h_beta_g2: E::G2Affine = FromBytes::read(&mut reader)?;
-        let g_gamma_g1: E::G1Affine = FromBytes::read(&mut reader)?;
-        let h_gamma_g2: E::G2Affine = FromBytes::read(&mut reader)?;
+        let h_g2: E::G2Affine = FromBytes::read_le(&mut reader)?;
+        let g_alpha_g1: E::G1Affine = FromBytes::read_le(&mut reader)?;
+        let h_beta_g2: E::G2Affine = FromBytes::read_le(&mut reader)?;
+        let g_gamma_g1: E::G1Affine = FromBytes::read_le(&mut reader)?;
+        let h_gamma_g2: E::G2Affine = FromBytes::read_le(&mut reader)?;
 
-        let query_len: u32 = FromBytes::read(&mut reader)?;
+        let query_len: u32 = FromBytes::read_le(&mut reader)?;
         let mut query: Vec<E::G1Affine> = Vec::with_capacity(query_len as usize);
         for _ in 0..query_len {
-            let query_element: E::G1Affine = FromBytes::read(&mut reader)?;
+            let query_element: E::G1Affine = FromBytes::read_le(&mut reader)?;
             query.push(query_element);
         }
 
@@ -289,14 +283,50 @@ impl<E: PairingEngine> PartialEq for ProvingKey<E> {
 }
 
 impl<E: PairingEngine> ToBytes for ProvingKey<E> {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.write(&mut writer)
+    /// Serialize the parameters to little-endian bytes.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.vk.write_le(&mut writer)?;
+
+        (self.a_query.len() as u32).write_le(&mut writer)?;
+        for g in &self.a_query[..] {
+            g.write_le(&mut writer)?;
+        }
+
+        (self.b_query.len() as u32).write_le(&mut writer)?;
+        for g in &self.b_query[..] {
+            g.write_le(&mut writer)?;
+        }
+
+        (self.c_query_1.len() as u32).write_le(&mut writer)?;
+        for g in &self.c_query_1[..] {
+            g.write_le(&mut writer)?;
+        }
+
+        (self.c_query_2.len() as u32).write_le(&mut writer)?;
+        for g in &self.c_query_2[..] {
+            g.write_le(&mut writer)?;
+        }
+
+        self.g_gamma_z.write_le(&mut writer)?;
+
+        self.h_gamma_z.write_le(&mut writer)?;
+
+        self.g_ab_gamma_z.write_le(&mut writer)?;
+
+        self.g_gamma2_z2.write_le(&mut writer)?;
+
+        (self.g_gamma2_z_t.len() as u32).write_le(&mut writer)?;
+        for g in &self.g_gamma2_z_t[..] {
+            g.write_le(&mut writer)?;
+        }
+
+        Ok(())
     }
 }
 
 impl<E: PairingEngine> FromBytes for ProvingKey<E> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Self::read(&mut reader, false)
     }
 }
@@ -314,50 +344,10 @@ impl<E: PairingEngine> From<ProvingKey<E>> for PreparedVerifyingKey<E> {
 }
 
 impl<E: PairingEngine> ProvingKey<E> {
-    /// Serialize the parameters to bytes.
-    pub fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.vk.write(&mut writer)?;
-
-        (self.a_query.len() as u32).write(&mut writer)?;
-        for g in &self.a_query[..] {
-            g.write(&mut writer)?;
-        }
-
-        (self.b_query.len() as u32).write(&mut writer)?;
-        for g in &self.b_query[..] {
-            g.write(&mut writer)?;
-        }
-
-        (self.c_query_1.len() as u32).write(&mut writer)?;
-        for g in &self.c_query_1[..] {
-            g.write(&mut writer)?;
-        }
-
-        (self.c_query_2.len() as u32).write(&mut writer)?;
-        for g in &self.c_query_2[..] {
-            g.write(&mut writer)?;
-        }
-
-        self.g_gamma_z.write(&mut writer)?;
-
-        self.h_gamma_z.write(&mut writer)?;
-
-        self.g_ab_gamma_z.write(&mut writer)?;
-
-        self.g_gamma2_z2.write(&mut writer)?;
-
-        (self.g_gamma2_z_t.len() as u32).write(&mut writer)?;
-        for g in &self.g_gamma2_z_t[..] {
-            g.write(&mut writer)?;
-        }
-
-        Ok(())
-    }
-
     /// Deserialize the public parameters from bytes.
     pub fn read<R: Read>(mut reader: R, checked: bool) -> IoResult<Self> {
         let read_g1_affine = |mut reader: &mut R| -> IoResult<E::G1Affine> {
-            let g1_affine: E::G1Affine = FromBytes::read(&mut reader)?;
+            let g1_affine: E::G1Affine = FromBytes::read_le(&mut reader)?;
 
             if checked && !g1_affine.is_in_correct_subgroup_assuming_on_curve() {
                 return Err(io::Error::new(
@@ -370,7 +360,7 @@ impl<E: PairingEngine> ProvingKey<E> {
         };
 
         let read_g2_affine = |mut reader: &mut R| -> IoResult<E::G2Affine> {
-            let g2_affine: E::G2Affine = FromBytes::read(&mut reader)?;
+            let g2_affine: E::G2Affine = FromBytes::read_le(&mut reader)?;
 
             if checked && !g2_affine.is_in_correct_subgroup_assuming_on_curve() {
                 return Err(io::Error::new(
@@ -384,36 +374,36 @@ impl<E: PairingEngine> ProvingKey<E> {
 
         let vk = VerifyingKey::<E>::read(&mut reader)?;
 
-        let a_query_len: u32 = FromBytes::read(&mut reader)?;
+        let a_query_len: u32 = FromBytes::read_le(&mut reader)?;
         let mut a_query = Vec::with_capacity(a_query_len as usize);
         for _ in 0..a_query_len {
             a_query.push(read_g1_affine(&mut reader)?);
         }
 
-        let b_query_len: u32 = FromBytes::read(&mut reader)?;
+        let b_query_len: u32 = FromBytes::read_le(&mut reader)?;
         let mut b_query = Vec::with_capacity(b_query_len as usize);
         for _ in 0..b_query_len {
             b_query.push(read_g2_affine(&mut reader)?);
         }
 
-        let c_query_1_len: u32 = FromBytes::read(&mut reader)?;
+        let c_query_1_len: u32 = FromBytes::read_le(&mut reader)?;
         let mut c_query_1 = Vec::with_capacity(c_query_1_len as usize);
         for _ in 0..c_query_1_len {
             c_query_1.push(read_g1_affine(&mut reader)?);
         }
 
-        let c_query_2_len: u32 = FromBytes::read(&mut reader)?;
+        let c_query_2_len: u32 = FromBytes::read_le(&mut reader)?;
         let mut c_query_2 = Vec::with_capacity(c_query_2_len as usize);
         for _ in 0..c_query_2_len {
             c_query_2.push(read_g1_affine(&mut reader)?);
         }
 
-        let g_gamma_z: E::G1Affine = FromBytes::read(&mut reader)?;
-        let h_gamma_z: E::G2Affine = FromBytes::read(&mut reader)?;
-        let g_ab_gamma_z: E::G1Affine = FromBytes::read(&mut reader)?;
-        let g_gamma2_z2: E::G1Affine = FromBytes::read(&mut reader)?;
+        let g_gamma_z: E::G1Affine = FromBytes::read_le(&mut reader)?;
+        let h_gamma_z: E::G2Affine = FromBytes::read_le(&mut reader)?;
+        let g_ab_gamma_z: E::G1Affine = FromBytes::read_le(&mut reader)?;
+        let g_gamma2_z2: E::G1Affine = FromBytes::read_le(&mut reader)?;
 
-        let g_gamma2_z_t_len: u32 = FromBytes::read(&mut reader)?;
+        let g_gamma2_z_t_len: u32 = FromBytes::read_le(&mut reader)?;
         let mut g_gamma2_z_t = Vec::with_capacity(g_gamma2_z_t_len as usize);
         for _ in 0..g_gamma2_z_t_len {
             g_gamma2_z_t.push(read_g1_affine(&mut reader)?);
@@ -434,7 +424,7 @@ impl<E: PairingEngine> ProvingKey<E> {
     }
 }
 
-/// Preprocessed verification key parameters that enable faster verification
+/// Preprocessed verifying key parameters that enable faster verification
 /// at the expense of larger size in memory.
 #[derive(Clone, Debug)]
 pub struct PreparedVerifyingKey<E: PairingEngine> {
@@ -480,16 +470,16 @@ impl<E: PairingEngine> Default for PreparedVerifyingKey<E> {
 }
 
 impl<E: PairingEngine> ToBytes for PreparedVerifyingKey<E> {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.vk.write(&mut writer)?;
-        self.g_alpha.write(&mut writer)?;
-        self.h_beta.write(&mut writer)?;
-        self.g_alpha_h_beta_ml.write(&mut writer)?;
-        self.g_gamma_pc.write(&mut writer)?;
-        self.h_gamma_pc.write(&mut writer)?;
-        self.h_pc.write(&mut writer)?;
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.vk.write_le(&mut writer)?;
+        self.g_alpha.write_le(&mut writer)?;
+        self.h_beta.write_le(&mut writer)?;
+        self.g_alpha_h_beta_ml.write_le(&mut writer)?;
+        self.g_gamma_pc.write_le(&mut writer)?;
+        self.h_gamma_pc.write_le(&mut writer)?;
+        self.h_pc.write_le(&mut writer)?;
         for q in self.query() {
-            q.write(&mut writer)?;
+            q.write_le(&mut writer)?;
         }
         Ok(())
     }

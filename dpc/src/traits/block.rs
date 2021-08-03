@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::traits::TransactionScheme;
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 pub trait BlockScheme: Clone + Eq + FromBytes + ToBytes {
     type BlockHeader: Clone + Eq + FromBytes + ToBytes;

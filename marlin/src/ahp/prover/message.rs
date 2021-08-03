@@ -16,7 +16,7 @@
 
 use crate::Vec;
 use snarkvm_fields::Field;
-use snarkvm_utilities::{bytes::ToBytes, error, errors::SerializationError, serialize::*, Write};
+use snarkvm_utilities::{error, errors::SerializationError, serialize::*, ToBytes, Write};
 
 /// Each prover message that is not a list of oracles is a list of field elements.
 #[repr(transparent)]
@@ -27,7 +27,7 @@ pub struct ProverMessage<F: Field> {
 }
 
 impl<F: Field> ToBytes for ProverMessage<F> {
-    fn write<W: Write>(&self, mut w: W) -> io::Result<()> {
+    fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("Could not serialize ProverMsg"))
     }
 }

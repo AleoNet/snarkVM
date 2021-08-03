@@ -33,8 +33,8 @@ use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
 use snarkvm_utilities::{
     bititerator::{BitIteratorBE, BitIteratorLE},
-    bytes::ToBytes,
-    to_bytes,
+    to_bytes_le,
+    ToBytes,
 };
 
 use crate::nonnative::{AllocatedNonNativeFieldVar, NonNativeFieldMulResultVar};
@@ -360,7 +360,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsBEGadget<BaseField>
 
     fn to_bits_be_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         match self {
-            Self::Constant(c) => Ok(BitIteratorBE::new(&c.into_repr())
+            Self::Constant(c) => Ok(BitIteratorBE::new(&c.to_repr())
                 .take((TargetField::Parameters::MODULUS_BITS) as usize)
                 .map(Boolean::constant)
                 .collect::<Vec<_>>()),
@@ -381,7 +381,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBitsLEGadget<BaseField>
 
     fn to_bits_le_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         match self {
-            Self::Constant(c) => Ok(BitIteratorLE::new(&c.into_repr())
+            Self::Constant(c) => Ok(BitIteratorLE::new(&c.to_repr())
                 .take((TargetField::Parameters::MODULUS_BITS) as usize)
                 .map(Boolean::constant)
                 .collect::<Vec<_>>()),
@@ -397,14 +397,14 @@ impl<TargetField: PrimeField, BaseField: PrimeField> ToBytesGadget<BaseField>
     /// form.
     fn to_bytes<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         match self {
-            Self::Constant(c) => Ok(UInt8::constant_vec(&to_bytes![c].unwrap())),
+            Self::Constant(c) => Ok(UInt8::constant_vec(&to_bytes_le![c].unwrap())),
             Self::Var(v) => v.to_bytes(cs.ns(|| "to_bytes")),
         }
     }
 
     fn to_bytes_strict<CS: ConstraintSystem<BaseField>>(&self, mut cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         match self {
-            Self::Constant(c) => Ok(UInt8::constant_vec(&to_bytes![c].unwrap())),
+            Self::Constant(c) => Ok(UInt8::constant_vec(&to_bytes_le![c].unwrap())),
             Self::Var(v) => v.to_bytes_strict(cs.ns(|| "to_bytes_strict")),
         }
     }

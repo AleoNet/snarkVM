@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::TransactionError;
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::hash::Hash;
 
@@ -29,6 +29,7 @@ pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes {
     type SerialNumber: Clone + Eq + Hash + FromBytes + ToBytes;
     type EncryptedRecord: Clone + Eq + FromBytes + ToBytes;
     type ValueBalance: Clone + Eq + FromBytes + ToBytes;
+    type Signature: Clone + Eq + FromBytes + ToBytes;
 
     /// Returns the transaction identifier.
     fn transaction_id(&self) -> Result<[u8; 32], TransactionError>;
@@ -39,7 +40,7 @@ pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes {
     /// Returns the ledger digest.
     fn ledger_digest(&self) -> &Self::Digest;
 
-    /// Returns the inner circuit id.
+    /// Returns the inner circuit ID.
     fn inner_circuit_id(&self) -> &Self::InnerCircuitID;
 
     /// Returns the old serial numbers.
@@ -47,6 +48,9 @@ pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes {
 
     /// Returns the new commitments.
     fn new_commitments(&self) -> &[Self::Commitment];
+
+    /// Returns the memorandum.
+    fn memorandum(&self) -> &Self::Memorandum;
 
     /// Returns the program commitment in the transaction.
     fn program_commitment(&self) -> &Self::ProgramCommitment;
@@ -57,11 +61,11 @@ pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes {
     /// Returns the value balance in the transaction.
     fn value_balance(&self) -> Self::ValueBalance;
 
+    /// Returns the signatures.
+    fn signatures(&self) -> &[Self::Signature];
+
     /// Returns the encrypted records
     fn encrypted_records(&self) -> &[Self::EncryptedRecord];
-
-    /// Returns the memorandum.
-    fn memorandum(&self) -> &Self::Memorandum;
 
     /// Returns the transaction size in bytes.
     fn size(&self) -> usize;

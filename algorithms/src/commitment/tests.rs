@@ -16,44 +16,35 @@
 
 use crate::{
     commitment::{PedersenCommitment, PedersenCompressedCommitment},
-    crh::PedersenSize,
     traits::CommitmentScheme,
 };
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
-use snarkvm_utilities::{
-    bytes::{FromBytes, ToBytes},
-    to_bytes,
-};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(super) struct Size;
-
-impl PedersenSize for Size {
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 128;
-}
+const NUM_WINDOWS: usize = 8;
+const WINDOW_SIZE: usize = 128;
 
 fn commitment_parameters_serialization<C: CommitmentScheme>() {
     let rng = &mut XorShiftRng::seed_from_u64(1231275789u64);
     let commitment = C::setup(rng);
 
-    let commitment_parameters_bytes = to_bytes![commitment.parameters()].unwrap();
+    let commitment_parameters_bytes = commitment.parameters().to_bytes_le().unwrap();
 
     let recovered_commitment_parameters =
-        <C as CommitmentScheme>::Parameters::read(&commitment_parameters_bytes[..]).unwrap();
+        <C as CommitmentScheme>::Parameters::read_le(&commitment_parameters_bytes[..]).unwrap();
 
     assert_eq!(commitment.parameters(), &recovered_commitment_parameters);
 }
 
 #[test]
 fn pedersen_commitment_parameters_serialization() {
-    commitment_parameters_serialization::<PedersenCommitment<EdwardsProjective, Size>>();
+    commitment_parameters_serialization::<PedersenCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE>>();
 }
 
 #[test]
 fn pedersen_compressed_commitment_parameters_serialization() {
-    commitment_parameters_serialization::<PedersenCompressedCommitment<EdwardsProjective, Size>>();
+    commitment_parameters_serialization::<PedersenCompressedCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE>>();
 }

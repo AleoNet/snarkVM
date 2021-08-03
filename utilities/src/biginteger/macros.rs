@@ -14,18 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-macro_rules! bigint_impl {
+macro_rules! biginteger {
     ($name:ident, $num_limbs:expr) => {
         #[derive(Copy, Clone, PartialEq, Eq, Default, Hash)]
         pub struct $name(pub [u64; $num_limbs]);
 
         impl $name {
-            pub fn new(value: [u64; $num_limbs]) -> Self {
+            pub const fn new(value: [u64; $num_limbs]) -> Self {
                 $name(value)
             }
         }
 
         impl BigInteger for $name {
+            const NUM_LIMBS: usize = $num_limbs;
+
             #[inline]
             fn add_nocarry(&mut self, other: &Self) -> bool {
                 let mut carry = 0;
@@ -162,34 +164,6 @@ macro_rules! bigint_impl {
                 }
             }
 
-            /// Constructs a `BigInteger` by parsing a vector of bits in big endian format
-            /// and transforms it into a vector of little endian u64 elements.
-            #[inline]
-            fn from_bits_be(mut bits: Vec<bool>) -> Self {
-                let mut res = Self::default();
-                let mut acc: u64 = 0;
-
-                bits.reverse();
-                for (i, bits64) in bits.chunks(64).enumerate() {
-                    for bit in bits64.iter().rev() {
-                        acc <<= 1;
-                        acc += *bit as u64;
-                    }
-                    res.0[i] = acc;
-                    acc = 0;
-                }
-                res
-            }
-
-            #[inline]
-            fn to_bits_be(&self) -> Vec<bool> {
-                let mut res = Vec::with_capacity(256);
-                for b in BitIteratorBE::new(self.0) {
-                    res.push(b);
-                }
-                res
-            }
-
             #[inline]
             fn find_wnaf(&self) -> Vec<i64> {
                 let mut res = vec![];
@@ -222,17 +196,56 @@ macro_rules! bigint_impl {
             }
         }
 
+        impl ToBits for $name {
+            /// Returns `self` as a boolean array in little-endian order, with trailing zeros.
+            fn to_bits_le(&self) -> Vec<bool> {
+                BitIteratorLE::new(self).collect::<Vec<_>>()
+            }
+
+            /// Returns `self` as a boolean array in big-endian order, without leading zeros.
+            fn to_bits_be(&self) -> Vec<bool> {
+                BitIteratorBE::new(self).collect::<Vec<_>>()
+            }
+        }
+
+        impl FromBits for $name {
+            /// Returns a `BigInteger` by parsing a slice of bits in little-endian format
+            /// and transforms it into a slice of little-endian u64 elements.
+            fn from_bits_le(bits: &[bool]) -> Self {
+                let mut res = Self::default();
+
+                for (i, bits64) in bits.chunks(64).enumerate() {
+                    let mut acc: u64 = 0;
+                    for bit in bits64.iter().rev() {
+                        acc <<= 1;
+                        acc += *bit as u64;
+                    }
+                    res.0[i] = acc;
+                }
+                res
+            }
+
+            /// Returns a `BigInteger` by parsing a slice of bits in big-endian format
+            /// and transforms it into a slice of little-endian u64 elements.
+            fn from_bits_be(bits: &[bool]) -> Self {
+                let mut bits_reversed = bits.to_vec();
+                bits_reversed.reverse();
+
+                Self::from_bits_le(&bits_reversed)
+            }
+        }
+
         impl ToBytes for $name {
             #[inline]
-            fn write<W: Write>(&self, writer: W) -> IoResult<()> {
-                self.0.write(writer)
+            fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
+                self.0.write_le(writer)
             }
         }
 
         impl FromBytes for $name {
             #[inline]
-            fn read<R: Read>(reader: R) -> IoResult<Self> {
-                <[u64; $num_limbs]>::read(reader).map(Self::new)
+            fn read_le<R: Read>(reader: R) -> IoResult<Self> {
+                <[u64; $num_limbs]>::read_le(reader).map(Self::new)
             }
         }
 
@@ -247,27 +260,9 @@ macro_rules! bigint_impl {
 
         impl Display for $name {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                let mut is_nonzero = false;
-                for (i, limb) in self.0.iter().rev().enumerate() {
-                    if *limb > 0 {
-                        is_nonzero = true;
-                    }
-
-                    // Begin writing the limb, for its corresponding bits.
-                    if is_nonzero {
-                        let shift = (($num_limbs - (i + 1)) * 6) as u64;
-                        let shifter = 1 << shift;
-                        write!(f, "{}", shifter - 1 + *limb)?;
-                    }
-                }
-
-                // If the value is 0, then `is_nonzero` will still be `false` here,
-                // so proceed to write `0`.
-                if !is_nonzero {
-                    write!(f, "0")?;
-                }
-
-                Ok(())
+                // TODO: Implement a native version, without the unwrap.
+                let bytes = self.0.to_bytes_le().unwrap();
+                write!(f, "{}", num_bigint::BigUint::from_bytes_le(&bytes))
             }
         }
 

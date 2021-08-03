@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Field, Fp3, Fp3Parameters, One, PrimeField, Zero};
+use crate::{Field, Fp3, Fp3Parameters, One, Zero};
 use snarkvm_utilities::{
     biginteger::BigInteger,
-    bytes::{FromBytes, ToBytes},
-    div_ceil,
     errors::SerializationError,
     rand::UniformRand,
     serialize::*,
+    FromBytes,
+    ToBytes,
 };
 
 use rand::{
@@ -32,7 +32,6 @@ use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
@@ -63,18 +62,11 @@ pub trait Fp6Parameters: 'static + Send + Sync {
 pub struct Fp6<P: Fp6Parameters> {
     pub c0: Fp3<P::Fp3Params>,
     pub c1: Fp3<P::Fp3Params>,
-    #[derivative(Debug = "ignore")]
-    #[doc(hidden)]
-    pub _parameters: PhantomData<P>,
 }
 
 impl<P: Fp6Parameters> Fp6<P> {
     pub fn new(c0: Fp3<P::Fp3Params>, c1: Fp3<P::Fp3Params>) -> Self {
-        Fp6 {
-            c0,
-            c1,
-            _parameters: PhantomData,
-        }
+        Fp6 { c0, c1 }
     }
 
     pub fn conjugate(&mut self) {
@@ -187,7 +179,6 @@ impl<P: Fp6Parameters> Zero for Fp6<P> {
         Fp6 {
             c0: Fp3::zero(),
             c1: Fp3::zero(),
-            _parameters: PhantomData,
         }
     }
 
@@ -201,7 +192,6 @@ impl<P: Fp6Parameters> One for Fp6<P> {
         Fp6 {
             c0: Fp3::one(),
             c1: Fp3::zero(),
-            _parameters: PhantomData,
         }
     }
 
@@ -234,13 +224,10 @@ impl<P: Fp6Parameters> Field for Fp6<P> {
     }
 
     #[inline]
-    fn from_random_bytes_with_flags(bytes: &[u8]) -> Option<(Self, u8)> {
-        if bytes.len() != 6 * div_ceil(<P::Fp3Params as Fp3Parameters>::Fp::size_in_bits(), 8) {
-            return None;
-        }
+    fn from_random_bytes_with_flags<F: Flags>(bytes: &[u8]) -> Option<(Self, F)> {
         let split_at = bytes.len() / 2;
         if let Some(c0) = Fp3::<P::Fp3Params>::from_random_bytes(&bytes[..split_at]) {
-            if let Some((c1, flags)) = Fp3::<P::Fp3Params>::from_random_bytes_with_flags(&bytes[split_at..]) {
+            if let Some((c1, flags)) = Fp3::<P::Fp3Params>::from_random_bytes_with_flags::<F>(&bytes[split_at..]) {
                 return Some((Fp6::new(c0, c1), flags));
             }
         }
@@ -249,7 +236,7 @@ impl<P: Fp6Parameters> Field for Fp6<P> {
 
     #[inline]
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
-        Self::from_random_bytes_with_flags(bytes).map(|f| f.0)
+        Self::from_random_bytes_with_flags::<EmptyFlags>(bytes).map(|f| f.0)
     }
 
     fn square_in_place(&mut self) -> &mut Self {
@@ -358,17 +345,17 @@ impl<P: Fp6Parameters> From<u8> for Fp6<P> {
 
 impl<P: Fp6Parameters> ToBytes for Fp6<P> {
     #[inline]
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.c0.write(&mut writer)?;
-        self.c1.write(&mut writer)
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.c0.write_le(&mut writer)?;
+        self.c1.write_le(&mut writer)
     }
 }
 
 impl<P: Fp6Parameters> FromBytes for Fp6<P> {
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let c0 = Fp3::read(&mut reader)?;
-        let c1 = Fp3::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let c0 = Fp3::read_le(&mut reader)?;
+        let c1 = Fp3::read_le(&mut reader)?;
         Ok(Fp6::new(c0, c1))
     }
 }
@@ -391,8 +378,8 @@ impl<P: Fp6Parameters> Distribution<Fp6<P>> for Standard {
     }
 }
 
-impl_additive_ops_from_ref!(Fp6, Fp6Parameters);
-impl_multiplicative_ops_from_ref!(Fp6, Fp6Parameters);
+impl_add_sub_from_field_ref!(Fp6, Fp6Parameters);
+impl_mul_div_from_field_ref!(Fp6, Fp6Parameters);
 
 impl<'a, P: Fp6Parameters> Add<&'a Fp6<P>> for Fp6<P> {
     type Output = Self;

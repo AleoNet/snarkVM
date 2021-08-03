@@ -109,6 +109,10 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
     fn num_private_variables(&self) -> usize {
         self.private_variables.len()
     }
+
+    fn is_in_setup_mode(&self) -> bool {
+        false
+    }
 }
 
 pub fn create_random_proof<E, C, R>(
@@ -165,16 +169,16 @@ where
         .public_variables
         .iter()
         .skip(1)
-        .map(|s| s.into_repr())
+        .map(|s| s.to_repr())
         .collect::<Vec<_>>();
 
     let aux_assignment = cfg_into_iter!(prover.private_variables)
-        .map(|s| s.into_repr())
+        .map(|s| s.to_repr())
         .collect::<Vec<_>>();
 
     let assignment = [&input_assignment[..], &aux_assignment[..]].concat();
 
-    let h_assignment = cfg_into_iter!(h).map(|s| s.into_repr()).collect::<Vec<_>>();
+    let h_assignment = cfg_into_iter!(h).map(|s| s.to_repr()).collect::<Vec<_>>();
 
     // Compute A
     let a_acc_time = start_timer!(|| "Compute A");

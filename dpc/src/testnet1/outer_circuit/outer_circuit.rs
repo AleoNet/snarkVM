@@ -14,12 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::testnet1::{
-    outer_circuit_gadget::execute_outer_proof_gadget,
-    parameters::SystemParameters,
-    program::PrivateProgramInput,
+use crate::{
+    testnet1::{
+        outer_circuit_gadget::execute_outer_circuit,
+        parameters::SystemParameters,
+        program::Execution,
+        Testnet1Components,
+    },
     AleoAmount,
-    BaseDPCComponents,
 };
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
@@ -31,8 +33,8 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSyst
 use std::sync::Arc;
 
 #[derive(Derivative)]
-#[derivative(Clone(bound = "C: BaseDPCComponents"))]
-pub struct OuterCircuit<C: BaseDPCComponents> {
+#[derivative(Clone(bound = "C: Testnet1Components"))]
+pub struct OuterCircuit<C: Testnet1Components> {
     system_parameters: SystemParameters<C>,
 
     // Inner snark verifier public inputs
@@ -49,9 +51,7 @@ pub struct OuterCircuit<C: BaseDPCComponents> {
     inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
     inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
 
-    old_private_program_inputs: Vec<PrivateProgramInput>,
-    new_private_program_inputs: Vec<PrivateProgramInput>,
-
+    program_proofs: Vec<Execution>,
     program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
     program_randomness: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
     local_data_root: <C::LocalDataCRH as CRH>::Output,
@@ -59,29 +59,25 @@ pub struct OuterCircuit<C: BaseDPCComponents> {
     inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
 }
 
-impl<C: BaseDPCComponents> OuterCircuit<C> {
+impl<C: Testnet1Components> OuterCircuit<C> {
     pub fn blank(
         system_parameters: SystemParameters<C>,
         ledger_parameters: Arc<C::MerkleParameters>,
         inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
-        program_snark_vk_and_proof: PrivateProgramInput,
+        program_snark_vk_and_proof: Execution,
     ) -> Self {
-        let num_input_records = C::NUM_INPUT_RECORDS;
-        let num_output_records = C::NUM_OUTPUT_RECORDS;
-
         let ledger_digest = MerkleTreeDigest::<C::MerkleParameters>::default();
         let old_serial_numbers =
-            vec![<C::AccountSignature as SignatureScheme>::PublicKey::default(); num_input_records];
-        let new_commitments = vec![<C::RecordCommitment as CommitmentScheme>::Output::default(); num_output_records];
-        let new_encrypted_record_hashes = vec![<C::EncryptedRecordCRH as CRH>::Output::default(); num_output_records];
+            vec![<C::AccountSignature as SignatureScheme>::PublicKey::default(); C::NUM_INPUT_RECORDS];
+        let new_commitments = vec![<C::RecordCommitment as CommitmentScheme>::Output::default(); C::NUM_OUTPUT_RECORDS];
+        let new_encrypted_record_hashes =
+            vec![<C::EncryptedRecordCRH as CRH>::Output::default(); C::NUM_OUTPUT_RECORDS];
         let memo = [0u8; 32];
         let value_balance = AleoAmount::ZERO;
-        let network_id = 0;
+        let network_id = C::NETWORK_ID;
 
-        let old_private_program_inputs = vec![program_snark_vk_and_proof.clone(); num_input_records];
-        let new_private_program_inputs = vec![program_snark_vk_and_proof; num_output_records];
-
+        let program_proofs = vec![program_snark_vk_and_proof.clone(); C::NUM_TOTAL_RECORDS];
         let program_commitment = <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output::default();
         let program_randomness = <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness::default();
         let local_data_root = <C::LocalDataCRH as CRH>::Output::default();
@@ -100,8 +96,7 @@ impl<C: BaseDPCComponents> OuterCircuit<C> {
             network_id,
             inner_snark_vk,
             inner_snark_proof,
-            old_private_program_inputs,
-            new_private_program_inputs,
+            program_proofs,
             program_commitment,
             program_randomness,
             local_data_root,
@@ -129,12 +124,7 @@ impl<C: BaseDPCComponents> OuterCircuit<C> {
 
         // Private program input = Verification key and input
         // Commitment contains commitment to hash of death program vk.
-        old_private_program_inputs: Vec<PrivateProgramInput>,
-
-        // Private program input = Verification key and input
-        // Commitment contains commitment to hash of birth program vk.
-        new_private_program_inputs: Vec<PrivateProgramInput>,
-
+        program_proofs: Vec<Execution>,
         program_commitment: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output,
         program_randomness: <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Randomness,
         local_data_root: <C::LocalDataCRH as CRH>::Output,
@@ -142,13 +132,9 @@ impl<C: BaseDPCComponents> OuterCircuit<C> {
         // Inner circuit ID
         inner_circuit_id: <C::InnerCircuitIDCRH as CRH>::Output,
     ) -> Self {
-        let num_input_records = C::NUM_INPUT_RECORDS;
-        let num_output_records = C::NUM_OUTPUT_RECORDS;
-
-        assert_eq!(num_input_records, old_private_program_inputs.len());
-        assert_eq!(num_output_records, new_private_program_inputs.len());
-        assert_eq!(num_output_records, new_commitments.len());
-        assert_eq!(num_output_records, new_encrypted_record_hashes.len());
+        assert_eq!(C::NUM_TOTAL_RECORDS, program_proofs.len());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, new_commitments.len());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, new_encrypted_record_hashes.len());
 
         Self {
             system_parameters,
@@ -162,8 +148,7 @@ impl<C: BaseDPCComponents> OuterCircuit<C> {
             network_id,
             inner_snark_vk,
             inner_snark_proof,
-            old_private_program_inputs,
-            new_private_program_inputs,
+            program_proofs,
             program_commitment,
             program_randomness,
             local_data_root,
@@ -172,35 +157,38 @@ impl<C: BaseDPCComponents> OuterCircuit<C> {
     }
 }
 
-impl<C: BaseDPCComponents> ConstraintSynthesizer<C::OuterField> for OuterCircuit<C>
+impl<C: Testnet1Components> ConstraintSynthesizer<C::OuterScalarField> for OuterCircuit<C>
 where
-    <C::AccountCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
-    <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerField>,
+    <C::AccountCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::AccountCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
 
-    <C::AccountEncryption as EncryptionScheme>::Parameters: ToConstraintField<C::InnerField>,
+    <C::AccountEncryption as EncryptionScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
 
-    <C::AccountSignature as SignatureScheme>::Parameters: ToConstraintField<C::InnerField>,
-    <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerField>,
+    <C::AccountSignature as SignatureScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::AccountSignature as SignatureScheme>::PublicKey: ToConstraintField<C::InnerScalarField>,
 
-    <C::RecordCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
-    <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerField>,
+    <C::RecordCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::RecordCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
 
-    <C::EncryptedRecordCRH as CRH>::Parameters: ToConstraintField<C::InnerField>,
-    <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerField>,
+    <C::EncryptedRecordCRH as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::EncryptedRecordCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
 
-    <C::SerialNumberNonceCRH as CRH>::Parameters: ToConstraintField<C::InnerField>,
+    <C::SerialNumberNonceCRH as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
 
-    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerField>,
-    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerField>,
+    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::ProgramVerificationKeyCommitment as CommitmentScheme>::Output: ToConstraintField<C::InnerScalarField>,
 
-    <C::LocalDataCRH as CRH>::Parameters: ToConstraintField<C::InnerField>,
-    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerField>,
+    <C::LocalDataCRH as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
+    <C::LocalDataCRH as CRH>::Output: ToConstraintField<C::InnerScalarField>,
 
-    <<C::MerkleParameters as MerkleParameters>::H as CRH>::Parameters: ToConstraintField<C::InnerField>,
-    MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerField>,
+    <<C::MerkleParameters as MerkleParameters>::H as CRH>::Parameters: ToConstraintField<C::InnerScalarField>,
+    MerkleTreeDigest<C::MerkleParameters>: ToConstraintField<C::InnerScalarField>,
 {
-    fn generate_constraints<CS: ConstraintSystem<C::OuterField>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
-        execute_outer_proof_gadget::<C, CS>(
+    fn generate_constraints<CS: ConstraintSystem<C::OuterScalarField>>(
+        &self,
+        cs: &mut CS,
+    ) -> Result<(), SynthesisError> {
+        execute_outer_circuit::<C, CS>(
             cs,
             &self.system_parameters,
             &self.ledger_parameters,
@@ -213,8 +201,7 @@ where
             self.network_id,
             &self.inner_snark_vk,
             &self.inner_snark_proof,
-            &self.old_private_program_inputs,
-            &self.new_private_program_inputs,
+            &self.program_proofs,
             &self.program_commitment,
             &self.program_randomness,
             &self.local_data_root,

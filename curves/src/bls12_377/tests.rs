@@ -33,14 +33,14 @@ use crate::{
         G2Affine,
         G2Projective,
     },
-    templates::{short_weierstrass::tests::sw_tests, twisted_edwards_extended::tests::edwards_test},
+    templates::{short_weierstrass_jacobian::tests::sw_tests, twisted_edwards_extended::tests::edwards_test},
     traits::{
         tests_curve::curve_tests,
         tests_group::group_test,
         AffineCurve,
         PairingEngine,
         ProjectiveCurve,
-        SWModelParameters,
+        ShortWeierstrassParameters,
     },
 };
 use snarkvm_fields::{
@@ -614,7 +614,7 @@ fn test_bilinearity() {
 
     let ans1 = Bls12_377::pairing(sa, b);
     let ans2 = Bls12_377::pairing(a, sb);
-    let ans3 = Bls12_377::pairing(a, b).pow(s.into_repr());
+    let ans3 = Bls12_377::pairing(a, b).pow(s.to_repr());
 
     assert_eq!(ans1, ans2);
     assert_eq!(ans2, ans3);

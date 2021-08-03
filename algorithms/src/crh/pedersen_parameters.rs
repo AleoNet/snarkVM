@@ -17,42 +17,32 @@
 use crate::traits::crh::CRHParameters;
 use snarkvm_curves::Group;
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
-use snarkvm_utilities::bytes::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::Rng;
 use std::{
     fmt::Debug,
     io::{Read, Result as IoResult, Write},
-    marker::PhantomData,
 };
 
-pub trait PedersenSize: Clone + Debug + Eq {
-    const NUM_WINDOWS: usize;
-    const WINDOW_SIZE: usize;
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PedersenCRHParameters<G: Group, S: PedersenSize> {
+pub struct PedersenCRHParameters<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub bases: Vec<Vec<G>>,
-    _size: PhantomData<S>,
 }
 
-impl<G: Group, S: PedersenSize> CRHParameters for PedersenCRHParameters<G, S> {
+impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRHParameters
+    for PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>
+{
     fn setup<R: Rng>(rng: &mut R) -> Self {
-        let bases = (0..S::NUM_WINDOWS).map(|_| Self::base(S::WINDOW_SIZE, rng)).collect();
         Self {
-            bases,
-            _size: PhantomData,
+            bases: (0..NUM_WINDOWS).map(|_| Self::base(WINDOW_SIZE, rng)).collect(),
         }
     }
 }
 
-impl<G: Group, S: PedersenSize> PedersenCRHParameters<G, S> {
+impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE> {
     pub fn from(bases: Vec<Vec<G>>) -> Self {
-        Self {
-            bases,
-            _size: PhantomData,
-        }
+        Self { bases }
     }
 
     fn base<R: Rng>(num_powers: usize, rng: &mut R) -> Vec<G> {
@@ -66,45 +56,47 @@ impl<G: Group, S: PedersenSize> PedersenCRHParameters<G, S> {
     }
 }
 
-impl<G: Group, S: PedersenSize> ToBytes for PedersenCRHParameters<G, S> {
-    fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.bases.len() as u32).write(&mut writer)?;
+impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
+    for PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>
+{
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.bases.len() as u32).write_le(&mut writer)?;
         for base in &self.bases {
-            (base.len() as u32).write(&mut writer)?;
+            (base.len() as u32).write_le(&mut writer)?;
             for g in base {
-                g.write(&mut writer)?;
+                g.write_le(&mut writer)?;
             }
         }
-
         Ok(())
     }
 }
 
-impl<G: Group, S: PedersenSize> FromBytes for PedersenCRHParameters<G, S> {
+impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
+    for PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>
+{
     #[inline]
-    fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let num_bases: u32 = FromBytes::read(&mut reader)?;
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let num_bases: u32 = FromBytes::read_le(&mut reader)?;
         let mut bases = Vec::with_capacity(num_bases as usize);
 
         for _ in 0..num_bases {
-            let base_len: u32 = FromBytes::read(&mut reader)?;
+            let base_len: u32 = FromBytes::read_le(&mut reader)?;
             let mut base = Vec::with_capacity(base_len as usize);
 
             for _ in 0..base_len {
-                let g: G = FromBytes::read(&mut reader)?;
+                let g: G = FromBytes::read_le(&mut reader)?;
                 base.push(g);
             }
             bases.push(base);
         }
 
-        Ok(Self {
-            bases,
-            _size: PhantomData,
-        })
+        Ok(Self { bases })
     }
 }
 
-impl<F: Field, G: Group + ToConstraintField<F>, S: PedersenSize> ToConstraintField<F> for PedersenCRHParameters<G, S> {
+impl<F: Field, G: Group + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToConstraintField<F>
+    for PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>
+{
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         Ok(Vec::new())

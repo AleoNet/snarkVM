@@ -16,9 +16,12 @@
 
 use crate::{
     bititerator::{BitIteratorBE, BitIteratorLE},
-    bytes::{FromBytes, ToBytes},
     io::{Read, Result as IoResult, Write},
     rand::UniformRand,
+    FromBits,
+    FromBytes,
+    ToBits,
+    ToBytes,
 };
 
 use rand::{
@@ -27,19 +30,21 @@ use rand::{
 };
 use std::fmt::{Debug, Display};
 
-bigint_impl!(BigInteger64, 1);
-bigint_impl!(BigInteger128, 2);
-bigint_impl!(BigInteger256, 4);
-bigint_impl!(BigInteger320, 5);
-bigint_impl!(BigInteger384, 6);
-bigint_impl!(BigInteger768, 12);
-bigint_impl!(BigInteger832, 13);
+biginteger!(BigInteger64, 1);
+biginteger!(BigInteger128, 2);
+biginteger!(BigInteger256, 4);
+biginteger!(BigInteger320, 5);
+biginteger!(BigInteger384, 6);
+biginteger!(BigInteger768, 12);
+biginteger!(BigInteger832, 13);
 
-/// TODO (howardwu): Update to use ToBitsLE and ToBitsBE.
+/// TODO (howardwu): Update to use ToBits.
 /// This defines a `BigInteger`, a smart wrapper around a
 /// sequence of `u64` limbs, least-significant digit first.
 pub trait BigInteger:
-    ToBytes
+    ToBits
+    + FromBits
+    + ToBytes
     + FromBytes
     + Copy
     + Clone
@@ -57,6 +62,9 @@ pub trait BigInteger:
     + AsRef<[u64]>
     + From<u64>
 {
+    /// The number of limbs used in this BigInteger.
+    const NUM_LIMBS: usize;
+
     /// Add another representation to this one, returning the carry bit.
     fn add_nocarry(&mut self, other: &Self) -> bool;
 
@@ -92,20 +100,6 @@ pub trait BigInteger:
 
     /// Compute the `i`-th bit of `self`.
     fn get_bit(&self, i: usize) -> bool;
-
-    /// Returns the big integer representation of a given big endian boolean
-    /// array.
-    fn from_bits_be(bits: Vec<bool>) -> Self;
-
-    /// Returns the bit representation of the big integer in a big endian boolean array, without
-    /// leading zeros.
-    fn to_bits_be(&self) -> Vec<bool>;
-
-    /// Returns the bit representation of the big integer in a little endian boolean array,
-    /// with trailing zeroes.
-    fn to_bits_le(&self) -> Vec<bool> {
-        BitIteratorLE::new(self).collect::<Vec<_>>()
-    }
 
     /// Returns a vector for wnaf.
     fn find_wnaf(&self) -> Vec<i64>;
@@ -167,17 +161,17 @@ impl BigInteger256 {
         // Takes a 256 bit buffer
         let mut bytes = [0u8; 32];
 
-        num.write(bytes.as_mut()).unwrap();
+        num.write_le(bytes.as_mut()).unwrap();
 
-        Self::read(&bytes[..]).unwrap()
+        Self::read_le(&bytes[..]).unwrap()
     }
 
     pub fn to_u128(&self) -> u128 {
         let mut bytes = [0u8; 32];
 
-        self.write(bytes.as_mut()).unwrap();
+        self.write_le(bytes.as_mut()).unwrap();
 
         // We cut off the last 128 bits here
-        u128::read(&bytes[..16]).unwrap()
+        u128::read_le(&bytes[..16]).unwrap()
     }
 }

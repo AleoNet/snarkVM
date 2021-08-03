@@ -16,8 +16,8 @@
 
 use snarkvm_algorithms::traits::SNARK;
 use snarkvm_curves::bls12_377::Bls12_377;
-use snarkvm_posw::{txids_to_roots, Marlin, PoswGM17, PoswMarlin, GM17};
-use snarkvm_utilities::bytes::FromBytes;
+use snarkvm_posw::{txids_to_roots, Marlin, Posw, PoswMarlin, GM17};
+use snarkvm_utilities::FromBytes;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::SeedableRng;
@@ -28,6 +28,9 @@ fn gm17_posw(c: &mut Criterion) {
     let mut group = c.benchmark_group("Proof of Succinct Work: GM17");
     group.sample_size(10);
     let rng = &mut XorShiftRng::seed_from_u64(1234567);
+
+    // PoSW instantiated over BLS12-377 with GM17.
+    pub type PoswGM17 = Posw<GM17<Bls12_377>, Bls12_377>;
 
     // run the setup
     let posw = PoswGM17::setup(rng).unwrap();
@@ -78,7 +81,7 @@ fn marlin_posw(c: &mut Criterion) {
     });
 
     let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, std::u32::MAX).unwrap();
-    let proof = <Marlin<Bls12_377> as SNARK>::Proof::read(&proof[..]).unwrap();
+    let proof = <Marlin<Bls12_377> as SNARK>::Proof::read_le(&proof[..]).unwrap();
 
     group.bench_function("verify", |b| {
         b.iter(|| {
