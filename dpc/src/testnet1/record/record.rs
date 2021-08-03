@@ -148,6 +148,7 @@ impl<C: Testnet1Components> Record<C> {
             serial_number_nonce,
             commitment,
             commitment_randomness,
+            None,
         ))
     }
 
@@ -162,6 +163,7 @@ impl<C: Testnet1Components> Record<C> {
         serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
         commitment: <C::RecordCommitment as CommitmentScheme>::Output,
         commitment_randomness: <C::RecordCommitment as CommitmentScheme>::Randomness,
+        serial_number_nonce_randomness: Option<[u8; 32]>, // todo: remove in testnet2
     ) -> Self {
         Self {
             owner,
@@ -174,7 +176,7 @@ impl<C: Testnet1Components> Record<C> {
             commitment,
             commitment_randomness,
 
-            serial_number_nonce_randomness: None,
+            serial_number_nonce_randomness,
             position: None,
         }
     }
