@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-parameters"
-version = "0.7.6"
+version = "0.7.7"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Parameters for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -19,12 +19,12 @@ edition = "2018"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.7.6"
+version = "0.7.7"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.7.6"
+version = "0.7.7"
 default-features = false
 
 [dependencies.curl]
