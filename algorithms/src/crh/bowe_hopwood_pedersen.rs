@@ -96,7 +96,7 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 
         let parameters = Self::Parameters::from(bases);
 
-        let bowe_hopwood_parameters = BoweHopwoodPedersenCRHParameters::new();
+        let bowe_hopwood_parameters = BoweHopwoodPedersenCRHParameters::setup(&parameters);
 
         Self {
             parameters,
@@ -138,7 +138,7 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         for bases in self.parameters.bases.iter() {
             assert_eq!(bases.len(), WINDOW_SIZE);
         }
-        let base_lookup = self.bowe_hopwood_parameters.base_lookup(&self.parameters);
+        let base_lookup = self.bowe_hopwood_parameters.base_lookup();
         assert_eq!(base_lookup.len(), NUM_WINDOWS);
         for bases in base_lookup.iter() {
             assert_eq!(bases.len(), WINDOW_SIZE);
@@ -179,7 +179,7 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
 {
     fn from(parameters: PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>) -> Self {
         Self {
-            bowe_hopwood_parameters: BoweHopwoodPedersenCRHParameters::new(),
+            bowe_hopwood_parameters: BoweHopwoodPedersenCRHParameters::setup(&parameters),
             parameters,
         }
     }
