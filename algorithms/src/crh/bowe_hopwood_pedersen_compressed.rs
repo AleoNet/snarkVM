@@ -77,7 +77,7 @@ impl<G: Group + ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: us
 {
     fn from(parameters: PedersenCRHParameters<G, NUM_WINDOWS, WINDOW_SIZE>) -> Self {
         Self {
-            bowe_hopwood_parameters: BoweHopwoodPedersenCRHParameters::new(),
+            bowe_hopwood_parameters: BoweHopwoodPedersenCRHParameters::setup(&parameters),
             parameters,
         }
     }
