@@ -86,7 +86,7 @@ mod tests {
 
         // run the trusted setup
         let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
-        let universal_srs = Marlin::<Bls12_377>::universal_setup(&max_degree, rng).unwrap();
+        let universal_srs = Marlin::<Bls12_377>::universal_setup(&max_degree, &mut rng).unwrap();
 
         // run the deterministic setup
         let posw = PoswMarlin::index::<_, ThreadRng>(&universal_srs).unwrap();

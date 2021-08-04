@@ -41,11 +41,11 @@ fn marlin_posw(c: &mut Criterion) {
     // Proof Generation Bench
     group.bench_function("mine", |b| {
         b.iter(|| {
-            let (_nonce, _proof) = posw.mine(&subroots, difficulty_target, rng, std::u32::MAX).unwrap();
+            let (_nonce, _proof) = posw.mine(&subroots, difficulty_target, rng, u32::MAX).unwrap();
         });
     });
 
-    let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, std::u32::MAX).unwrap();
+    let (nonce, proof) = posw.mine(&subroots, difficulty_target, rng, u32::MAX).unwrap();
     let proof = <Marlin<Bls12_377> as SNARK>::Proof::read_le(&proof[..]).unwrap();
 
     group.bench_function("verify", |b| {
