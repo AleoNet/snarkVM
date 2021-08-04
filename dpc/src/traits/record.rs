@@ -48,6 +48,8 @@ pub trait RecordScheme: Default + FromBytes + ToBytes {
     /// Returns the randomness used for the serial number nonce.
     fn serial_number_nonce_randomness(&self) -> &Option<[u8; 32]>;
 
+    fn position(&self) -> &Option<u8>;
+
     /// Returns the commitment of this record.
     fn commitment(&self) -> Self::Commitment;
 
