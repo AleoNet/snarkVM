@@ -68,8 +68,7 @@ mod tests {
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_utilities::FromBytes;
 
-    use rand::SeedableRng;
-    use rand_chacha::ChaChaRng;
+    use rand::{rngs::ThreadRng, thread_rng, Rng};
 
     #[test]
     fn test_load_verify_only() {
@@ -83,29 +82,96 @@ mod tests {
 
     #[test]
     fn test_posw_marlin() {
-        let rng = &mut ChaChaRng::seed_from_u64(1234567);
+        let mut rng = thread_rng();
 
         // run the trusted setup
         let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
         let universal_srs = Marlin::<Bls12_377>::universal_setup(&max_degree, rng).unwrap();
 
         // run the deterministic setup
-        let posw = PoswMarlin::index::<_, ChaChaRng>(&universal_srs).unwrap();
+        let posw = PoswMarlin::index::<_, ThreadRng>(&universal_srs).unwrap();
 
         // super low difficulty so we find a solution immediately
         let difficulty_target = 0xFFFF_FFFF_FFFF_FFFF_u64;
 
-        let transaction_ids = vec![[1u8; 32]; 8];
+        // The number of transactions for which to check subsequent merkle tree root values.
+        let num_txs: usize = rng.gen_range(1..256);
+
+        // Create a vector with transaction ids consisting of random values.
+        let transaction_ids = {
+            let mut vec = Vec::with_capacity(num_txs);
+            for _ in 0..num_txs {
+                let mut id = [0u8; 32];
+                rng.fill(&mut id);
+                vec.push(id);
+            }
+            vec
+        };
+
         let (_, pedersen_merkle_root, subroots) = txids_to_roots(&transaction_ids);
 
         // generate the proof
         let (nonce, proof) = posw
-            .mine(&subroots, difficulty_target, &mut rand::thread_rng(), std::u32::MAX)
+            .mine(&subroots, difficulty_target, &mut rng, std::u32::MAX)
             .unwrap();
 
         assert_eq!(proof.len(), 771); // NOTE: Marlin proofs use compressed serialization
 
         let proof = <Marlin<Bls12_377> as SNARK>::Proof::read_le(&proof[..]).unwrap();
         posw.verify(nonce, &proof, &pedersen_merkle_root).unwrap();
+    }
+
+    #[test]
+    fn test_changing_tx_roots() {
+        let mut rng = thread_rng();
+
+        // The number of transactions for which to check subsequent merkle tree root values.
+        let num_txs: usize = rng.gen_range(1..256);
+
+        // Create a vector with transaction ids consisting of random values.
+        let transaction_ids = {
+            let mut vec = Vec::with_capacity(num_txs);
+            for _ in 0..num_txs {
+                let mut id = [0u8; 32];
+                rng.fill(&mut id);
+                vec.push(id);
+            }
+            vec
+        };
+
+        // Collect the transactions into a collection of their growing sequences, i.e.
+        // [[tx0], [tx0, tx1], [tx0, tx1, tx2], ..., [tx0, ..., num_txs]].
+        let growing_tx_ids = transaction_ids
+            .into_iter()
+            .scan(Vec::with_capacity(num_txs), |acc, tx_id| {
+                acc.push(tx_id);
+                Some(acc.clone())
+            })
+            .collect::<Vec<_>>();
+
+        // Calculate the root hashes for the sequences of transactions.
+        let subsequent_root_hashes = growing_tx_ids
+            .into_iter()
+            .map(|tx_ids| {
+                let (root, pedersen_root, _subroots) = txids_to_roots(&tx_ids);
+                (root, pedersen_root)
+            })
+            .collect::<Vec<_>>();
+
+        // Ensure that the subsequent roots differ for every new transaction.
+        let mut hashes_differ = true;
+        for window in subsequent_root_hashes.windows(2) {
+            match window {
+                [(root1, pedersen_root1), (root2, pedersen_root2)] => {
+                    if root1 == root2 || pedersen_root1 == pedersen_root2 {
+                        hashes_differ = false;
+                        break;
+                    }
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        assert!(hashes_differ);
     }
 }
