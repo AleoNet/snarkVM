@@ -22,7 +22,24 @@ use crate::{
 };
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
+use rand::{thread_rng, Rng};
+
 use std::sync::Arc;
+
+/// Generates the specified number of random Merkle tree leaves.
+macro_rules! generate_random_leaves {
+    ($num_leaves:expr, $leaf_size:expr) => {{
+        let mut rng = thread_rng();
+
+        let mut vec = Vec::with_capacity($num_leaves);
+        for _ in 0..$num_leaves {
+            let mut id = [0u8; $leaf_size];
+            rng.fill(&mut id);
+            vec.push(id);
+        }
+        vec
+    }};
+}
 
 /// Generates a valid Merkle tree and verifies the Merkle path witness for each leaf.
 fn generate_merkle_tree<P: LoadableMerkleParameters, L: ToBytes + Send + Sync + Clone + Eq>(
@@ -58,32 +75,20 @@ fn run_empty_merkle_tree_test<P: LoadableMerkleParameters>() {
 fn run_good_root_test<P: LoadableMerkleParameters>() {
     let parameters = &P::setup("merkle_tree_test");
 
-    let mut leaves = vec![];
-    for i in 0..4u8 {
-        leaves.push([i, i, i, i, i, i, i, i]);
-    }
+    let leaves = generate_random_leaves!(4, 8);
     generate_merkle_tree::<P, _>(&leaves, parameters);
 
-    let mut leaves = vec![];
-    for i in 0..15u8 {
-        leaves.push([i, i, i, i, i, i, i, i]);
-    }
+    let leaves = generate_random_leaves!(15, 8);
     generate_merkle_tree::<P, _>(&leaves, parameters);
 }
 
 fn run_bad_root_test<P: LoadableMerkleParameters>() {
     let parameters = &P::setup("merkle_tree_test");
 
-    let mut leaves = vec![];
-    for i in 0..4u8 {
-        leaves.push([i, i, i, i, i, i, i, i]);
-    }
+    let leaves = generate_random_leaves!(4, 8);
     generate_merkle_tree::<P, _>(&leaves, parameters);
 
-    let mut leaves = vec![];
-    for i in 0..15u8 {
-        leaves.push([i, i, i, i, i, i, i, i]);
-    }
+    let leaves = generate_random_leaves!(15, 8);
     bad_merkle_tree_verify::<P, _>(&leaves, parameters);
 }
 
@@ -91,14 +96,8 @@ fn depth_2_merkle_tree_test<P: LoadableMerkleParameters>() {
     let parameters = &P::setup("merkle_tree_test");
     let crh = parameters.crh();
 
-    // Generate the test leaves.
-    let mut leaves = Vec::new();
-    for i in 0..4u8 {
-        let input = [i; 64];
-        leaves.push(input.to_vec());
-    }
-
     // Evaluate the Merkle tree root.
+    let leaves = generate_random_leaves!(4, 64);
     let merkle_tree = generate_merkle_tree(&leaves, parameters);
     let merkle_tree_root = merkle_tree.root();
 
@@ -126,14 +125,9 @@ fn padded_merkle_tree_test<P: LoadableMerkleParameters>() {
     let parameters = &P::setup("merkle_tree_test");
     let crh = parameters.crh();
 
-    // Generate the test leaves.
-    let mut leaves = Vec::new();
-    for i in 0..4u8 {
-        let input = [i; 64];
-        leaves.push(input.to_vec());
-    }
+    // Evaluate the Merkle tree root
 
-    // Evaluate the Merkle tree root.
+    let leaves = generate_random_leaves!(4, 64);
     let merkle_tree = generate_merkle_tree(&leaves, parameters);
     let merkle_tree_root = merkle_tree.root();
 
