@@ -25,7 +25,7 @@ pub trait EncryptionScheme:
 {
     type Parameters: Clone + Debug + Eq;
     type PrivateKey: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
-    type PublicKey: Clone + Debug + Default + Eq + ToBytes + FromBytes;
+    type PublicKey: Copy + Clone + Debug + Default + Eq + ToBytes + FromBytes;
     type Randomness: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + UniformRand;
 
     fn setup(message: &str) -> Self;

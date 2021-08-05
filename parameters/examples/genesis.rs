@@ -62,7 +62,7 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
     for i in 0..C::NUM_INPUT_RECORDS {
         let old_record = Record::new(
             &dpc.noop_program,
-            genesis_account.address.clone(),
+            genesis_account.address,
             true, // The input record is a noop.
             0,
             Payload::default(),

@@ -30,6 +30,7 @@ use std::{
 #[derive(Derivative)]
 #[derivative(
     Default(bound = "C: Parameters"),
+    Copy(bound = "C: Parameters"),
     Clone(bound = "C: Parameters"),
     PartialEq(bound = "C: Parameters"),
     Eq(bound = "C: Parameters")

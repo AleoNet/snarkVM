@@ -75,7 +75,7 @@ fn dpc_testnet1_integration_test() {
     for i in 0..Testnet1Parameters::NUM_INPUT_RECORDS {
         let input_record = Record::new(
             &dpc.noop_program,
-            genesis_account.address.clone(),
+            genesis_account.address,
             true, // The input record is dummy
             0,
             Payload::default(),
@@ -100,7 +100,7 @@ fn dpc_testnet1_integration_test() {
         output_records.push(
             Record::new_full(
                 &dpc.noop_program,
-                recipient.address.clone(),
+                recipient.address,
                 false,
                 10,
                 Payload::default(),
@@ -215,7 +215,7 @@ fn test_testnet1_transaction_authorization_serialization() {
     for i in 0..Testnet1Parameters::NUM_INPUT_RECORDS {
         let input_record = Record::new(
             &dpc.noop_program,
-            test_account.address.clone(),
+            test_account.address,
             true,
             0,
             Payload::default(),
@@ -240,7 +240,7 @@ fn test_testnet1_transaction_authorization_serialization() {
         output_records.push(
             Record::new_full(
                 &dpc.noop_program,
-                test_account.address.clone(),
+                test_account.address,
                 false,
                 10,
                 Payload::default(),
@@ -298,7 +298,7 @@ fn test_testnet1_dpc_execute_constraints() {
     for i in 0..Testnet1Parameters::NUM_INPUT_RECORDS {
         let input_record = Record::new(
             &alternate_noop_program,
-            dummy_account.address.clone(),
+            dummy_account.address,
             true,
             0,
             Payload::default(),
@@ -326,7 +326,7 @@ fn test_testnet1_dpc_execute_constraints() {
         output_records.push(
             Record::new_full(
                 &dpc.noop_program,
-                new_account.address.clone(),
+                new_account.address,
                 false,
                 10,
                 Payload::default(),
