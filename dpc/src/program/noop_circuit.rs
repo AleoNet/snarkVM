@@ -39,7 +39,7 @@ impl<C: Parameters> NoopPrivateVariables<C> {
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"), Debug(bound = "C: Parameters"))]
 pub struct NoopCircuit<C: Parameters> {
-    circuit_id: <C::ProgramCircuitIDCRH as CRH>::Output,
+    circuit_id: C::ProgramCircuitID,
     #[derivative(Debug = "ignore")]
     proving_key: <C::ProgramSNARK as SNARK>::ProvingKey,
     #[derivative(Debug = "ignore")]
@@ -82,7 +82,7 @@ impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
     }
 
     /// Returns the circuit ID.
-    fn circuit_id(&self) -> &<C::ProgramCircuitIDCRH as CRH>::Output {
+    fn circuit_id(&self) -> &C::ProgramCircuitID {
         &self.circuit_id
     }
 

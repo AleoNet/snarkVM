@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{CircuitError, Execution, Parameters, ProgramError, ProgramPublicVariables};
-use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, CRH, SNARK};
+use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, SNARK};
 
 use rand::{CryptoRng, Rng};
 
@@ -69,8 +69,8 @@ pub trait ProgramCircuit<C: Parameters>: Send + Sync {
     where
         Self: Sized;
 
-    /// Returns the circuit ID.
-    fn circuit_id(&self) -> &<C::ProgramCircuitIDCRH as CRH>::Output;
+    /// Returns the program circuit ID.
+    fn circuit_id(&self) -> &C::ProgramCircuitID;
 
     /// Returns the circuit proving key.
     fn proving_key(&self) -> &<C::ProgramSNARK as SNARK>::ProvingKey;

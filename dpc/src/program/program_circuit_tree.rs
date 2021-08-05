@@ -38,7 +38,7 @@ impl<C: Parameters> ProgramCircuitTree<C> {
     /// Initializes an empty circuit tree.
     pub fn new() -> Result<Self> {
         Ok(Self {
-            tree: MerkleTree::<C::ProgramCircuitTreeParameters>::new::<<C::ProgramCircuitIDCRH as CRH>::Output>(
+            tree: MerkleTree::<C::ProgramCircuitTreeParameters>::new::<C::ProgramCircuitID>(
                 Arc::new(C::program_circuit_tree_parameters().clone()),
                 &vec![],
             )?,
@@ -92,7 +92,7 @@ impl<C: Parameters> ProgramCircuitTree<C> {
     }
 
     /// Returns the circuit ID given the circuit index, if it exists.
-    pub fn get_circuit_id(&self, circuit_index: u8) -> Option<&<C::ProgramCircuitIDCRH as CRH>::Output> {
+    pub fn get_circuit_id(&self, circuit_index: u8) -> Option<&C::ProgramCircuitID> {
         self.circuits.get(&circuit_index).and_then(|c| Some(c.circuit_id()))
     }
 
