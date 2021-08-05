@@ -105,14 +105,22 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
     // Generate the local data.
     let local_data = authorization.to_local_data(rng)?;
 
+    // Fetch the noop circuit ID.
+    let noop_circuit_id = dpc
+        .noop_program
+        .find_circuit_by_index(0)
+        .ok_or(DPCError::MissingNoopCircuit)?
+        .circuit_id();
+
     // Generate the program proofs
     let mut program_proofs = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
     for i in 0..C::NUM_TOTAL_RECORDS {
         let public_variables = ProgramPublicVariables::new(local_data.root(), i as u8);
-        program_proofs.push(
-            dpc.noop_program
-                .execute(0, &public_variables, &NoopPrivateVariables::new())?,
-        );
+        program_proofs.push(dpc.noop_program.execute(
+            noop_circuit_id,
+            &public_variables,
+            &NoopPrivateVariables::new(),
+        )?);
     }
 
     let transaction = dpc.execute(

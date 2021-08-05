@@ -33,24 +33,30 @@ pub trait Program<C: Parameters>: Send + Sync {
     /// Returns the program ID.
     fn program_id(&self) -> &MerkleTreeDigest<C::ProgramCircuitTreeParameters>;
 
-    /// Returns the circuit given the circuit index.
-    fn get_circuit(&self, circuit_index: u8) -> Result<&Box<dyn ProgramCircuit<C>>, ProgramError>;
+    /// Returns `true` if the given circuit ID exists in the program.
+    fn contains_circuit(&self, circuit_id: &C::ProgramCircuitID) -> bool;
+
+    /// Returns the circuit given the circuit ID, if it exists.
+    fn get_circuit(&self, circuit_id: &C::ProgramCircuitID) -> Option<&Box<dyn ProgramCircuit<C>>>;
+
+    /// Returns the circuit given the circuit index, if it exists.
+    fn find_circuit_by_index(&self, circuit_index: u8) -> Option<&Box<dyn ProgramCircuit<C>>>;
 
     /// Returns the execution of the program.
     fn execute(
         &self,
-        circuit_index: u8,
+        circuit_id: &C::ProgramCircuitID,
         public: &ProgramPublicVariables<C>,
         private: &dyn ProgramPrivateVariables<C>,
     ) -> Result<Execution<C>, ProgramError>;
 
     /// Returns the blank execution of the program, typically used for a SNARK setup.
-    fn execute_blank(&self, circuit_index: u8) -> Result<Execution<C>, ProgramError>;
+    fn execute_blank(&self, circuit_id: &C::ProgramCircuitID) -> Result<Execution<C>, ProgramError>;
 
     /// Returns the native evaluation of the program on given public and private variables.
     fn evaluate(
         &self,
-        _circuit_index: u8,
+        _circuit_id: &C::ProgramCircuitID,
         _public: &ProgramPublicVariables<C>,
         _private: &dyn ProgramPrivateVariables<C>,
     ) -> bool {

@@ -22,7 +22,6 @@ use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
 pub struct Execution<C: Parameters> {
-    pub circuit_index: u8,
     pub program_path: MerklePath<C::ProgramCircuitTreeParameters>,
     pub verifying_key: <C::ProgramSNARK as SNARK>::VerifyingKey,
     pub proof: <C::ProgramSNARK as SNARK>::Proof,

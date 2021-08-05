@@ -120,13 +120,21 @@ fn dpc_testnet1_integration_test() {
     // Generate the local data.
     let local_data = authorization.to_local_data(&mut rng).unwrap();
 
+    // Fetch the noop circuit ID.
+    let noop_circuit_id = dpc
+        .noop_program
+        .find_circuit_by_index(0)
+        .ok_or(DPCError::MissingNoopCircuit)
+        .unwrap()
+        .circuit_id();
+
     // Generate the program proofs.
     let mut program_proofs = vec![];
     for i in 0..Testnet1Parameters::NUM_TOTAL_RECORDS {
         let public_variables = ProgramPublicVariables::new(local_data.root(), i as u8);
         program_proofs.push(
             dpc.noop_program
-                .execute(0, &public_variables, &NoopPrivateVariables::new())
+                .execute(noop_circuit_id, &public_variables, &NoopPrivateVariables::new())
                 .unwrap(),
         );
     }
@@ -345,13 +353,21 @@ fn test_testnet1_dpc_execute_constraints() {
     // Generate the local data.
     let local_data = authorization.to_local_data(&mut rng).unwrap();
 
+    // Fetch the noop circuit ID.
+    let noop_circuit_id = dpc
+        .noop_program
+        .find_circuit_by_index(0)
+        .ok_or(DPCError::MissingNoopCircuit)
+        .unwrap()
+        .circuit_id();
+
     // Generate the program proofs.
     let mut program_proofs = vec![];
     for i in 0..Testnet1Parameters::NUM_INPUT_RECORDS {
         let public_variables = ProgramPublicVariables::new(local_data.root(), i as u8);
         program_proofs.push(
             alternate_noop_program
-                .execute(0, &public_variables, &NoopPrivateVariables::new())
+                .execute(noop_circuit_id, &public_variables, &NoopPrivateVariables::new())
                 .unwrap(),
         );
     }
@@ -360,7 +376,7 @@ fn test_testnet1_dpc_execute_constraints() {
             ProgramPublicVariables::new(local_data.root(), (Testnet1Parameters::NUM_INPUT_RECORDS + j) as u8);
         program_proofs.push(
             dpc.noop_program
-                .execute(0, &public_variables, &NoopPrivateVariables::new())
+                .execute(noop_circuit_id, &public_variables, &NoopPrivateVariables::new())
                 .unwrap(),
         );
     }
