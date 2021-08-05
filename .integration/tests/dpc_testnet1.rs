@@ -25,7 +25,10 @@ use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 #[ignore]
 #[test]
@@ -104,9 +107,6 @@ fn dpc_testnet1_integration_test() {
         .authorize(&private_keys, input_records, output_records, None, &mut rng)
         .unwrap();
 
-    // Generate the local data.
-    let local_data = authorization.to_local_data(&mut rng).unwrap();
-
     // Fetch the noop circuit ID.
     let noop_circuit_id = dpc
         .noop_program
@@ -115,28 +115,14 @@ fn dpc_testnet1_integration_test() {
         .unwrap()
         .circuit_id();
 
-    // Generate the program proofs.
-    let mut program_proofs = vec![];
-    for i in 0..Testnet1Parameters::NUM_TOTAL_RECORDS {
-        let public_variables = ProgramPublicVariables::new(i as u8, local_data.root());
-        program_proofs.push(
-            dpc.noop_program
-                .execute(noop_circuit_id, &public_variables, &NoopPrivateVariables::new())
-                .unwrap(),
-        );
-    }
+    // Construct the executable.
+    let noop = Executable::Noop(Arc::new(dpc.noop_program.clone()), *noop_circuit_id);
+    let executables = vec![noop.clone(), noop.clone(), noop.clone(), noop];
 
     let new_records = authorization.output_records.clone();
 
     let transaction = dpc
-        .execute(
-            &private_keys,
-            authorization,
-            &local_data,
-            program_proofs,
-            &ledger,
-            &mut rng,
-        )
+        .execute(&private_keys, authorization, executables, &ledger, &mut rng)
         .unwrap();
 
     // Check that the transaction is serialized and deserialized correctly
@@ -333,28 +319,15 @@ fn test_testnet1_dpc_execute_constraints() {
         .unwrap()
         .circuit_id();
 
-    // Generate the program proofs.
-    let mut program_proofs = vec![];
-    for i in 0..Testnet1Parameters::NUM_INPUT_RECORDS {
-        let public_variables = ProgramPublicVariables::new(i as u8, local_data.root());
-        program_proofs.push(
-            alternate_noop_program
-                .execute(
-                    alternate_noop_circuit_id,
-                    &public_variables,
-                    &NoopPrivateVariables::new(),
-                )
-                .unwrap(),
-        );
-    }
-    for j in 0..Testnet1Parameters::NUM_OUTPUT_RECORDS {
-        let public_variables =
-            ProgramPublicVariables::new((Testnet1Parameters::NUM_INPUT_RECORDS + j) as u8, local_data.root());
-        program_proofs.push(
-            dpc.noop_program
-                .execute(noop_circuit_id, &public_variables, &NoopPrivateVariables::new())
-                .unwrap(),
-        );
+    // Construct the executable.
+    let alternate_noop = Executable::Noop(Arc::new(alternate_noop_program.clone()), *alternate_noop_circuit_id);
+    let noop = Executable::Noop(Arc::new(dpc.noop_program.clone()), *noop_circuit_id);
+    let executables = vec![alternate_noop.clone(), alternate_noop, noop.clone(), noop];
+
+    // Execute the programs.
+    let mut executions = Vec::with_capacity(Testnet1Parameters::NUM_TOTAL_RECORDS);
+    for (i, executable) in executables.iter().enumerate() {
+        executions.push(executable.execute(i as u8, &local_data).unwrap());
     }
 
     // Compute the program commitment.
@@ -492,7 +465,7 @@ fn test_testnet1_dpc_execute_constraints() {
         network_id,
         &inner_snark_vk,
         &inner_snark_proof,
-        &program_proofs,
+        &executions,
         &program_commitment,
         &program_randomness,
         &local_data_root,

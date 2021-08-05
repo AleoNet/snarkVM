@@ -23,7 +23,7 @@ use crate::{
         RecordSerialNumberTree,
         TransactionScheme,
     },
-    LocalData,
+    Executable,
 };
 
 use anyhow::Result;
@@ -58,8 +58,7 @@ pub trait DPCScheme<C: Parameters>: Sized {
         &self,
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         authorization: Self::Authorization,
-        local_data: &LocalData<C>,
-        program_proofs: Vec<Self::Execution>,
+        executables: Vec<Executable<C>>,
         ledger: &L,
         rng: &mut R,
     ) -> Result<Self::Transaction>;

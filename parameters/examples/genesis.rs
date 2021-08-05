@@ -28,6 +28,7 @@ use std::{
     io::{Result as IoResult, Write},
     path::Path,
     str::FromStr,
+    sync::Arc,
 };
 
 pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec<u8>, Vec<u8>), DPCError> {
@@ -90,9 +91,6 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
     // Offline execution to generate a transaction authorization.
     let authorization = dpc.authorize(&private_keys, input_records, output_records, None, rng)?;
 
-    // Generate the local data.
-    let local_data = authorization.to_local_data(rng)?;
-
     // Fetch the noop circuit ID.
     let noop_circuit_id = dpc
         .noop_program
@@ -100,25 +98,11 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
         .ok_or(DPCError::MissingNoopCircuit)?
         .circuit_id();
 
-    // Generate the program proofs
-    let mut program_proofs = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
-    for i in 0..C::NUM_TOTAL_RECORDS {
-        let public_variables = ProgramPublicVariables::new(i as u8, local_data.root());
-        program_proofs.push(dpc.noop_program.execute(
-            noop_circuit_id,
-            &public_variables,
-            &NoopPrivateVariables::new(),
-        )?);
-    }
+    // Construct the executable.
+    let noop = Executable::Noop(Arc::new(dpc.noop_program.clone()), *noop_circuit_id);
+    let executables = vec![noop.clone(), noop.clone(), noop.clone(), noop];
 
-    let transaction = dpc.execute(
-        &private_keys,
-        authorization,
-        &local_data,
-        program_proofs,
-        &temporary_ledger,
-        rng,
-    )?;
+    let transaction = dpc.execute(&private_keys, authorization, executables, &temporary_ledger, rng)?;
 
     let transaction_bytes = transaction.to_bytes_le()?;
     let transaction_size = transaction_bytes.len();
