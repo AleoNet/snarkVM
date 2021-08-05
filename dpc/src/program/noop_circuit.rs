@@ -63,8 +63,8 @@ impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
 
     /// Loads an instance of the noop circuit.
     fn load() -> Result<Self, CircuitError> {
-        let proving_key = C::noop_program_proving_key().clone();
-        let verifying_key = C::noop_program_verifying_key().clone();
+        let proving_key = C::noop_circuit_proving_key().clone();
+        let verifying_key = C::noop_circuit_verifying_key().clone();
 
         Ok(Self {
             circuit_id: <C as Parameters>::program_circuit_id(&verifying_key)?,
