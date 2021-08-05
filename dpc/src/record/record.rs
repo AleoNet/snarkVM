@@ -48,9 +48,6 @@ pub struct Record<C: Parameters> {
     pub(crate) serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
     pub(crate) commitment: C::RecordCommitment,
     pub(crate) commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
-
-    #[derivative(PartialEq = "ignore")]
-    pub(crate) position: Option<u8>,
 }
 
 impl<C: Parameters> Record<C> {
@@ -67,8 +64,7 @@ impl<C: Parameters> Record<C> {
     ) -> Result<Self, RecordError> {
         let timer = start_timer!(|| "Generate record");
         let serial_number_nonce = C::serial_number_nonce_crh().hash(&to_bytes_le![position, joint_serial_numbers]?)?;
-        let mut record = Self::new(program, owner, is_dummy, value, payload, serial_number_nonce, rng)?;
-        record.position = Some(position);
+        let record = Self::new(program, owner, is_dummy, value, payload, serial_number_nonce, rng)?;
         end_timer!(timer);
         Ok(record)
     }
@@ -134,7 +130,6 @@ impl<C: Parameters> Record<C> {
             serial_number_nonce,
             commitment,
             commitment_randomness,
-            position: None,
         }
     }
 
@@ -254,7 +249,6 @@ impl<C: Parameters> FromBytes for Record<C> {
             serial_number_nonce,
             commitment,
             commitment_randomness,
-            position: None,
         })
     }
 }
