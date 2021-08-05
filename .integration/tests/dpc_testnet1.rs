@@ -82,8 +82,6 @@ fn dpc_testnet1_integration_test() {
     }
 
     // Construct new records.
-
-    // Set the new records' program to be the "always-accept" program.
     let mut output_records = vec![];
     for j in 0..Testnet1Parameters::NUM_OUTPUT_RECORDS {
         output_records.push(
@@ -320,6 +318,13 @@ fn test_testnet1_dpc_execute_constraints() {
     // Generate the local data.
     let local_data = authorization.to_local_data(&mut rng).unwrap();
 
+    // Fetch the alternate noop circuit ID.
+    let alternate_noop_circuit_id = alternate_noop_program
+        .find_circuit_by_index(0)
+        .ok_or(DPCError::MissingNoopCircuit)
+        .unwrap()
+        .circuit_id();
+
     // Fetch the noop circuit ID.
     let noop_circuit_id = dpc
         .noop_program
@@ -334,7 +339,11 @@ fn test_testnet1_dpc_execute_constraints() {
         let public_variables = ProgramPublicVariables::new(local_data.root(), i as u8);
         program_proofs.push(
             alternate_noop_program
-                .execute(noop_circuit_id, &public_variables, &NoopPrivateVariables::new())
+                .execute(
+                    alternate_noop_circuit_id,
+                    &public_variables,
+                    &NoopPrivateVariables::new(),
+                )
                 .unwrap(),
         );
     }

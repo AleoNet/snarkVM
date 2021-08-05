@@ -153,10 +153,7 @@ impl<C: Parameters> EncryptedRecord<C> {
 
 impl<C: Parameters> Default for EncryptedRecord<C> {
     fn default() -> Self {
-        let default_record = Record::<C>::default();
-        let mut rng = thread_rng();
-
-        let (record, _randomness) = Self::encrypt(&default_record, &mut rng).unwrap();
+        let (record, _randomness) = Self::encrypt(&Record::default(), &mut thread_rng()).unwrap();
         record
     }
 }
