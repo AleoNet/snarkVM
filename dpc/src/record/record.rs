@@ -218,7 +218,6 @@ impl<C: Parameters> RecordScheme for Record<C> {
     type Payload = Payload;
     type SerialNumber = <C::AccountSignatureScheme as SignatureScheme>::PublicKey;
     type SerialNumberNonce = <C::SerialNumberNonceCRH as CRH>::Output;
-    type Value = u64;
 
     fn program_id(&self) -> &[u8] {
         &self.program_id
@@ -232,7 +231,7 @@ impl<C: Parameters> RecordScheme for Record<C> {
         self.is_dummy
     }
 
-    fn value(&self) -> Self::Value {
+    fn value(&self) -> u64 {
         self.value
     }
 
