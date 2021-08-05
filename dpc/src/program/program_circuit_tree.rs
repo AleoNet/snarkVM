@@ -28,7 +28,7 @@ use std::{collections::HashMap, sync::Arc};
 #[derivative(Debug(bound = "C: Parameters"))]
 pub struct ProgramCircuitTree<C: Parameters> {
     #[derivative(Debug = "ignore")]
-    tree: MerkleTree<C::ProgramIDTreeParameters>,
+    tree: MerkleTree<C::ProgramCircuitTreeParameters>,
     #[derivative(Debug = "ignore")]
     circuits: HashMap<u8, Box<dyn ProgramCircuit<C>>>,
     last_circuit_index: u8,
@@ -38,8 +38,8 @@ impl<C: Parameters> ProgramCircuitTree<C> {
     /// Initializes an empty circuit tree.
     pub fn new() -> Result<Self> {
         Ok(Self {
-            tree: MerkleTree::<C::ProgramIDTreeParameters>::new::<<C::ProgramIDCRH as CRH>::Output>(
-                Arc::new(C::program_id_tree_parameters().clone()),
+            tree: MerkleTree::<C::ProgramCircuitTreeParameters>::new::<<C::ProgramCircuitIDCRH as CRH>::Output>(
+                Arc::new(C::program_circuit_tree_parameters().clone()),
                 &vec![],
             )?,
             circuits: Default::default(),
@@ -92,12 +92,12 @@ impl<C: Parameters> ProgramCircuitTree<C> {
     }
 
     /// Returns the circuit ID given the circuit index, if it exists.
-    pub fn get_circuit_id(&self, circuit_index: u8) -> Option<&<C::ProgramIDCRH as CRH>::Output> {
+    pub fn get_circuit_id(&self, circuit_index: u8) -> Option<&<C::ProgramCircuitIDCRH as CRH>::Output> {
         self.circuits.get(&circuit_index).and_then(|c| Some(c.circuit_id()))
     }
 
     /// Returns the program path (the Merkle path for a given circuit index).
-    pub fn get_program_path(&self, circuit_index: u8) -> Result<MerklePath<C::ProgramIDTreeParameters>> {
+    pub fn get_program_path(&self, circuit_index: u8) -> Result<MerklePath<C::ProgramCircuitTreeParameters>> {
         match self.get_circuit(circuit_index) {
             Some(circuit) => Ok(self.tree.generate_proof(circuit_index as usize, circuit.circuit_id())?),
             _ => Err(MerkleError::MissingLeafIndex(circuit_index as usize).into()),
@@ -105,7 +105,7 @@ impl<C: Parameters> ProgramCircuitTree<C> {
     }
 
     /// Returns the program ID.
-    pub fn to_program_id(&self) -> &MerkleTreeDigest<C::ProgramIDTreeParameters> {
+    pub fn to_program_id(&self) -> &MerkleTreeDigest<C::ProgramCircuitTreeParameters> {
         self.tree.root()
     }
 }

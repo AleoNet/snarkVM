@@ -60,7 +60,7 @@ impl<C: Parameters> Program<C> for NoopProgram<C> {
     }
 
     /// Returns the program ID.
-    fn program_id(&self) -> &MerkleTreeDigest<C::ProgramIDTreeParameters> {
+    fn program_id(&self) -> &MerkleTreeDigest<C::ProgramCircuitTreeParameters> {
         self.circuit_tree.to_program_id()
     }
 

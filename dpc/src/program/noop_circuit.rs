@@ -35,7 +35,7 @@ impl<C: Parameters> NoopPrivateVariables<C> {
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"), Debug(bound = "C: Parameters"))]
 pub struct NoopCircuit<C: Parameters> {
-    circuit_id: <C::ProgramIDCRH as CRH>::Output,
+    circuit_id: <C::ProgramCircuitIDCRH as CRH>::Output,
     #[derivative(Debug = "ignore")]
     proving_key: <C::ProgramSNARK as SNARK>::ProvingKey,
     #[derivative(Debug = "ignore")]
@@ -52,8 +52,7 @@ impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
         let verifying_key: <C::ProgramSNARK as SNARK>::VerifyingKey = prepared_verifying_key.into();
 
         // Compute the noop circuit ID.
-        let circuit_id =
-            <C as Parameters>::program_id_crh().hash_field_elements(&verifying_key.to_field_elements()?)?;
+        let circuit_id = <C as Parameters>::program_circuit_id(&verifying_key)?;
 
         Ok(Self {
             circuit_id,
@@ -69,7 +68,7 @@ impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
 
         // Compute the circuit ID.
         let circuit_id =
-            <C as Parameters>::program_id_crh().hash_field_elements(&verifying_key.to_field_elements()?)?;
+            <C as Parameters>::program_circuit_id_crh().hash_field_elements(&verifying_key.to_field_elements()?)?;
 
         Ok(Self {
             circuit_id,
@@ -79,7 +78,7 @@ impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
     }
 
     /// Returns the circuit ID.
-    fn circuit_id(&self) -> &<C::ProgramIDCRH as CRH>::Output {
+    fn circuit_id(&self) -> &<C::ProgramCircuitIDCRH as CRH>::Output {
         &self.circuit_id
     }
 

@@ -31,7 +31,7 @@ pub trait Program<C: Parameters>: Send + Sync {
         Self: Sized;
 
     /// Returns the program ID.
-    fn program_id(&self) -> &MerkleTreeDigest<C::ProgramIDTreeParameters>;
+    fn program_id(&self) -> &MerkleTreeDigest<C::ProgramCircuitTreeParameters>;
 
     /// Returns the circuit given the circuit index.
     fn get_circuit(&self, circuit_index: u8) -> Result<&Box<dyn ProgramCircuit<C>>, ProgramError>;
@@ -70,7 +70,7 @@ pub trait ProgramCircuit<C: Parameters>: Send + Sync {
         Self: Sized;
 
     /// Returns the circuit ID.
-    fn circuit_id(&self) -> &<C::ProgramIDCRH as CRH>::Output;
+    fn circuit_id(&self) -> &<C::ProgramCircuitIDCRH as CRH>::Output;
 
     /// Returns the circuit proving key.
     fn proving_key(&self) -> &<C::ProgramSNARK as SNARK>::ProvingKey;

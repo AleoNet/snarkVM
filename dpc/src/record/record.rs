@@ -38,7 +38,7 @@ fn default_program_id<C: CRH>() -> Vec<u8> {
     Eq(bound = "C: Parameters")
 )]
 pub struct Record<C: Parameters> {
-    #[derivative(Default(value = "default_program_id::<C::ProgramIDCRH>()"))]
+    #[derivative(Default(value = "default_program_id::<C::ProgramCircuitIDCRH>()"))]
     pub(crate) program_id: Vec<u8>,
     pub(crate) owner: Address<C>,
     pub(crate) is_dummy: bool,

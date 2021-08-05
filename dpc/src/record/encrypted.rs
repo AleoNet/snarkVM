@@ -106,7 +106,7 @@ impl<C: Parameters> EncryptedRecord<C> {
         let mut cursor = Cursor::new(plaintext);
 
         // Program ID
-        let program_id_length = to_bytes_le!(<C::ProgramIDCRH as CRH>::Output::default())?.len();
+        let program_id_length = to_bytes_le!(<C::ProgramCircuitIDCRH as CRH>::Output::default())?.len();
         let program_id = {
             let mut program_id = vec![0u8; program_id_length];
             cursor.read_exact(&mut program_id)?;
