@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitError, Parameters, ProgramCircuit, ProgramPrivateVariables, ProgramPublicVariables};
+use crate::{CircuitError, Parameters, PrivateVariables, ProgramCircuit, PublicVariables};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
@@ -24,7 +24,7 @@ use std::marker::PhantomData;
 
 pub struct NoopPrivateVariables<C: Parameters>(PhantomData<C>);
 
-impl<C: Parameters> ProgramPrivateVariables<C> for NoopPrivateVariables<C> {
+impl<C: Parameters> PrivateVariables<C> for NoopPrivateVariables<C> {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -88,8 +88,8 @@ impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
     /// Executes the circuit, returning an proof.
     fn execute(
         &self,
-        public: &ProgramPublicVariables<C>,
-        _private: &dyn ProgramPrivateVariables<C>,
+        public: &PublicVariables<C>,
+        _private: &dyn PrivateVariables<C>,
     ) -> Result<<C::ProgramSNARK as SNARK>::Proof, CircuitError> {
         // Compute the proof.
         let rng = &mut rand::thread_rng();
@@ -109,7 +109,7 @@ impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
     }
 
     /// Returns true if the execution of the circuit is valid.
-    fn verify(&self, public: &ProgramPublicVariables<C>, proof: &<C::ProgramSNARK as SNARK>::Proof) -> bool {
+    fn verify(&self, public: &PublicVariables<C>, proof: &<C::ProgramSNARK as SNARK>::Proof) -> bool {
         <C::ProgramSNARK as SNARK>::verify(&self.verifying_key.clone().into(), public, proof)
             .expect("Failed to verify program execution proof")
     }
@@ -118,7 +118,7 @@ impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
 #[derive(Derivative)]
 #[derivative(Default(bound = "C: Parameters"), Debug(bound = "C: Parameters"))]
 struct NoopAllocatedCircuit<C: Parameters> {
-    public: ProgramPublicVariables<C>,
+    public: PublicVariables<C>,
 }
 
 impl<C: Parameters> ConstraintSynthesizer<C::InnerScalarField> for NoopAllocatedCircuit<C> {

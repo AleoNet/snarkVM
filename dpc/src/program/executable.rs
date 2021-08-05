@@ -18,10 +18,11 @@ use crate::{
     Execution,
     LocalData,
     NoopPrivateVariables,
+    NoopProgram,
     Parameters,
+    PrivateVariables,
     Program,
-    ProgramPrivateVariables,
-    ProgramPublicVariables,
+    PublicVariables,
 };
 
 use anyhow::Result;
@@ -30,18 +31,15 @@ use std::{ops::Deref, sync::Arc};
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
 pub enum Executable<C: Parameters> {
-    Noop(Arc<dyn Program<C>>, C::ProgramCircuitID),
-    Circuit(
-        Arc<dyn Program<C>>,
-        C::ProgramCircuitID,
-        Arc<dyn ProgramPrivateVariables<C>>,
-    ),
+    Noop(Arc<NoopProgram<C>>, C::ProgramCircuitID),
+    Circuit(Arc<dyn Program<C>>, C::ProgramCircuitID, Arc<dyn PrivateVariables<C>>),
 }
 
 impl<C: Parameters> Executable<C> {
+    /// Returns the execution of the executable given the public variables.
     pub fn execute(&self, record_position: u8, local_data: &LocalData<C>) -> Result<Execution<C>> {
         // Construct the public variables.
-        let public_variables = ProgramPublicVariables::new(record_position, local_data.root());
+        let public_variables = PublicVariables::new(record_position, local_data.root());
         // Execute the program circuit with the declared private variables.
         match self {
             Self::Noop(program, circuit_id) => {

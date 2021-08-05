@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{CircuitError, Execution, Parameters, ProgramError, ProgramPublicVariables};
+use crate::{CircuitError, Execution, Parameters, ProgramError, PublicVariables};
 use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, SNARK};
 
 use rand::{CryptoRng, Rng};
@@ -46,8 +46,8 @@ pub trait Program<C: Parameters>: Send + Sync {
     fn execute(
         &self,
         circuit_id: &C::ProgramCircuitID,
-        public: &ProgramPublicVariables<C>,
-        private: &dyn ProgramPrivateVariables<C>,
+        public: &PublicVariables<C>,
+        private: &dyn PrivateVariables<C>,
     ) -> Result<Execution<C>, ProgramError>;
 
     /// Returns the blank execution of the program, typically used for a SNARK setup.
@@ -57,8 +57,8 @@ pub trait Program<C: Parameters>: Send + Sync {
     fn evaluate(
         &self,
         _circuit_id: &C::ProgramCircuitID,
-        _public: &ProgramPublicVariables<C>,
-        _private: &dyn ProgramPrivateVariables<C>,
+        _public: &PublicVariables<C>,
+        _private: &dyn PrivateVariables<C>,
     ) -> bool {
         unimplemented!("The native evaluation of this program is unimplemented")
     }
@@ -87,22 +87,22 @@ pub trait ProgramCircuit<C: Parameters>: Send + Sync {
     /// Returns the execution of the circuit.
     fn execute(
         &self,
-        public: &ProgramPublicVariables<C>,
-        private: &dyn ProgramPrivateVariables<C>,
+        public: &PublicVariables<C>,
+        private: &dyn PrivateVariables<C>,
     ) -> Result<<C::ProgramSNARK as SNARK>::Proof, CircuitError>;
 
     /// Returns the blank execution of the circuit, typically used for a SNARK setup.
     fn execute_blank(&self) -> Result<<C::ProgramSNARK as SNARK>::Proof, CircuitError>;
 
     /// Returns true if the execution of the circuit is valid.
-    fn verify(&self, public: &ProgramPublicVariables<C>, proof: &<C::ProgramSNARK as SNARK>::Proof) -> bool;
+    fn verify(&self, public: &PublicVariables<C>, proof: &<C::ProgramSNARK as SNARK>::Proof) -> bool;
 
     /// Returns the native evaluation of the circuit on given public and private variables.
-    fn evaluate(&self, _public: &ProgramPublicVariables<C>, _private: &dyn ProgramPrivateVariables<C>) -> bool {
+    fn evaluate(&self, _public: &PublicVariables<C>, _private: &dyn PrivateVariables<C>) -> bool {
         unimplemented!("The native evaluation of this circuit is unimplemented")
     }
 }
 
-pub trait ProgramPrivateVariables<C: Parameters>: Send + Sync {
+pub trait PrivateVariables<C: Parameters>: Send + Sync {
     fn as_any(&self) -> &dyn std::any::Any;
 }

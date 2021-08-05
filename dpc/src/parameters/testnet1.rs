@@ -20,7 +20,7 @@ use crate::{
     Network,
     OuterCircuitVerifierInput,
     Parameters,
-    ProgramPublicVariables,
+    PublicVariables,
     Transaction,
     DPC,
 };
@@ -113,7 +113,7 @@ impl Parameters for Testnet1Parameters {
 
     type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet1Parameters>>;
 
-    type ProgramSNARK = Groth16<Self::InnerCurve, ProgramPublicVariables<Self>>;
+    type ProgramSNARK = Groth16<Self::InnerCurve, PublicVariables<Self>>;
     type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
 
     type AccountCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 33, 48>;

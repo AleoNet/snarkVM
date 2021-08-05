@@ -20,7 +20,7 @@ use crate::{
     Network,
     OuterCircuitVerifierInput,
     Parameters,
-    ProgramPublicVariables,
+    PublicVariables,
     Transaction,
     DPC,
 };
@@ -127,7 +127,7 @@ impl Parameters for Testnet2Parameters {
         MarlinKZG10<Self::InnerCurve>,
         FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>,
         MarlinTestnet2Mode,
-        ProgramPublicVariables<Self>,
+        PublicVariables<Self>,
     >;
     type ProgramSNARKGadget = MarlinVerificationGadget<
         Self::InnerScalarField,

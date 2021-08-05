@@ -15,17 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Parameters;
-use snarkvm_algorithms::{merkle_tree::MerklePath, SNARK};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
-
-/// Program index, path, verifying key, and proof.
-#[derive(Derivative)]
-#[derivative(Clone(bound = "C: Parameters"))]
-pub struct Execution<C: Parameters> {
-    pub program_path: MerklePath<C::ProgramCircuitTreeParameters>,
-    pub verifying_key: <C::ProgramSNARK as SNARK>::VerifyingKey,
-    pub proof: <C::ProgramSNARK as SNARK>::Proof,
-}
 
 #[derive(Derivative)]
 #[derivative(
@@ -33,22 +23,22 @@ pub struct Execution<C: Parameters> {
     Debug(bound = "C: Parameters"),
     Default(bound = "C: Parameters")
 )]
-pub struct ProgramPublicVariables<C: Parameters> {
-    pub local_data_root: C::LocalDataRoot,
+pub struct PublicVariables<C: Parameters> {
     pub record_position: u8,
+    pub local_data_root: C::LocalDataRoot,
 }
 
-impl<C: Parameters> ProgramPublicVariables<C> {
+impl<C: Parameters> PublicVariables<C> {
     pub fn new(record_position: u8, local_data_root: &C::LocalDataRoot) -> Self {
         Self {
-            local_data_root: local_data_root.clone(),
             record_position,
+            local_data_root: local_data_root.clone(),
         }
     }
 }
 
-/// Converts the program public variables into bytes and packs them into field elements.
-impl<C: Parameters> ToConstraintField<C::InnerScalarField> for ProgramPublicVariables<C> {
+/// Converts the public variables into bytes and packs them into field elements.
+impl<C: Parameters> ToConstraintField<C::InnerScalarField> for PublicVariables<C> {
     fn to_field_elements(&self) -> Result<Vec<C::InnerScalarField>, ConstraintFieldError> {
         let mut v = ToConstraintField::<C::InnerScalarField>::to_field_elements(&[self.record_position][..])?;
         v.extend_from_slice(&self.local_data_root.to_field_elements()?);

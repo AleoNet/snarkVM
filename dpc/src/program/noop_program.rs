@@ -18,12 +18,12 @@ use crate::{
     Execution,
     NoopCircuit,
     Parameters,
+    PrivateVariables,
     Program,
     ProgramCircuit,
     ProgramCircuitTree,
     ProgramError,
-    ProgramPrivateVariables,
-    ProgramPublicVariables,
+    PublicVariables,
 };
 use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, prelude::*};
 
@@ -82,8 +82,8 @@ impl<C: Parameters> Program<C> for NoopProgram<C> {
     fn execute(
         &self,
         circuit_id: &C::ProgramCircuitID,
-        public: &ProgramPublicVariables<C>,
-        private: &dyn ProgramPrivateVariables<C>,
+        public: &PublicVariables<C>,
+        private: &dyn PrivateVariables<C>,
     ) -> Result<Execution<C>, ProgramError> {
         // Fetch the circuit from the tree.
         let circuit = match self.circuits.get_circuit(circuit_id) {
