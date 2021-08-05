@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, Parameters, Payload, PrivateKey, Program, RecordError, RecordScheme};
+use crate::{Address, NoopProgram, Parameters, Payload, PrivateKey, Program, RecordError, RecordScheme};
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH, PRF};
 use snarkvm_utilities::{to_bytes_le, variable_length_integer::*, FromBytes, ToBytes, UniformRand};
 
@@ -53,11 +53,11 @@ pub struct Record<C: Parameters> {
 impl<C: Parameters> Record<C> {
     /// Returns a new noop input record.
     pub fn new_noop_input<R: Rng + CryptoRng>(
-        noop_program: &dyn Program<C>,
+        noop_program: &NoopProgram<C>,
         owner: Address<C>,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
-        Ok(Self::new_input(
+        Self::new_input(
             noop_program,
             owner,
             true,
@@ -65,18 +65,18 @@ impl<C: Parameters> Record<C> {
             Payload::default(),
             C::serial_number_nonce_crh().hash(&rng.gen::<[u8; 32]>())?,
             rng,
-        )?)
+        )
     }
 
     /// Returns a new noop output record.
     pub fn new_noop_output<R: Rng + CryptoRng>(
-        noop_program: &dyn Program<C>,
+        noop_program: &NoopProgram<C>,
         owner: Address<C>,
         position: u8,
         joint_serial_numbers: Vec<u8>,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
-        Ok(Self::new_output(
+        Self::new_output(
             noop_program,
             owner,
             true,
@@ -85,7 +85,7 @@ impl<C: Parameters> Record<C> {
             position,
             joint_serial_numbers,
             rng,
-        )?)
+        )
     }
 
     /// Returns a new input record.
@@ -102,7 +102,7 @@ impl<C: Parameters> Record<C> {
         // Sample a new record commitment randomness.
         let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
 
-        Ok(Self::from(
+        Self::from(
             &program.program_id().to_bytes_le()?,
             owner,
             is_dummy,
@@ -110,7 +110,7 @@ impl<C: Parameters> Record<C> {
             payload,
             serial_number_nonce,
             commitment_randomness,
-        )?)
+        )
     }
 
     /// Returns a new output record.
@@ -135,7 +135,7 @@ impl<C: Parameters> Record<C> {
         // Sample a new record commitment randomness.
         let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
 
-        Ok(Self::from(
+        Self::from(
             &program.program_id().to_bytes_le()?,
             owner,
             is_dummy,
@@ -143,7 +143,7 @@ impl<C: Parameters> Record<C> {
             payload,
             serial_number_nonce,
             commitment_randomness,
-        )?)
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
