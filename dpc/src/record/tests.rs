@@ -48,7 +48,7 @@ fn test_record_encryption() {
             let mut payload = [0u8; PAYLOAD_SIZE];
             rng.fill(&mut payload);
 
-            let given_record = Record::new(
+            let given_record = Record::new_input(
                 &noop_program,
                 dummy_account.address,
                 false,

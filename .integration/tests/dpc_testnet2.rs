@@ -74,7 +74,7 @@ fn dpc_testnet2_integration_test() {
     let mut joint_serial_numbers = vec![];
     let mut input_records = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-        let input_record = Record::new_input_noop(&dpc.noop_program, genesis_account.address, &mut rng).unwrap();
+        let input_record = Record::new_noop_input(&dpc.noop_program, genesis_account.address, &mut rng).unwrap();
 
         let (sn, _) = input_record.to_serial_number(&old_private_keys[i]).unwrap();
         joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());
@@ -211,7 +211,7 @@ fn test_testnet_2_transaction_authorization_serialization() {
     let mut joint_serial_numbers = vec![];
     let mut input_records = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-        let old_record = Record::new_input_noop(&dpc.noop_program, test_account.address, &mut rng).unwrap();
+        let old_record = Record::new_noop_input(&dpc.noop_program, test_account.address, &mut rng).unwrap();
 
         let (sn, _) = old_record.to_serial_number(&old_private_keys[i]).unwrap();
         joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());
@@ -284,7 +284,7 @@ fn test_testnet2_dpc_execute_constraints() {
     let mut joint_serial_numbers = vec![];
     let mut input_records = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-        let input_record = Record::new_input_noop(&alternate_noop_program, dummy_account.address, &mut rng).unwrap();
+        let input_record = Record::new_noop_input(&alternate_noop_program, dummy_account.address, &mut rng).unwrap();
 
         let (sn, _) = input_record.to_serial_number(&private_keys[i]).unwrap();
         joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());

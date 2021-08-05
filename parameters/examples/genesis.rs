@@ -59,7 +59,7 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
     let mut joint_serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
     let mut input_records = Vec::with_capacity(C::NUM_INPUT_RECORDS);
     for i in 0..C::NUM_INPUT_RECORDS {
-        let input_record = Record::new_input_noop(&dpc.noop_program, genesis_account.address, rng)?;
+        let input_record = Record::new_noop_input(&dpc.noop_program, genesis_account.address, rng)?;
 
         let (sn, _) = input_record.to_serial_number(&private_keys[i])?;
         joint_serial_numbers.extend_from_slice(&to_bytes_le![sn]?);
@@ -79,7 +79,7 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
         joint_serial_numbers.clone(),
         rng,
     )?);
-    output_records.push(Record::new_output_noop(
+    output_records.push(Record::new_noop_output(
         &dpc.noop_program,
         recipient,
         (C::NUM_INPUT_RECORDS + 1) as u8,
