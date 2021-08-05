@@ -97,4 +97,6 @@ pub trait ProgramCircuit<C: Parameters>: Send + Sync {
     }
 }
 
-pub trait ProgramPrivateVariables<C: Parameters>: Send + Sync {}
+pub trait ProgramPrivateVariables<C: Parameters>: Send + Sync {
+    fn as_any(&self) -> &dyn std::any::Any;
+}

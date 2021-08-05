@@ -24,7 +24,11 @@ use std::marker::PhantomData;
 
 pub struct NoopPrivateVariables<C: Parameters>(PhantomData<C>);
 
-impl<C: Parameters> ProgramPrivateVariables<C> for NoopPrivateVariables<C> {}
+impl<C: Parameters> ProgramPrivateVariables<C> for NoopPrivateVariables<C> {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
 
 impl<C: Parameters> NoopPrivateVariables<C> {
     pub fn new() -> Self {
