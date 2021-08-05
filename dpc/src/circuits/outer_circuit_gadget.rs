@@ -123,7 +123,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     inner_circuit_id: &C::InnerCircuitID,
 ) -> Result<(), SynthesisError> {
     // Declare public parameters.
-    let (program_id_commitment_parameters, program_id_crh, inner_circuit_id_crh) = {
+    let (program_id_commitment_parameters, program_circuit_id_crh, inner_circuit_id_crh) = {
         let cs = &mut cs.ns(|| "Declare Comm and CRH parameters");
 
         let program_id_commitment_parameters = C::ProgramCommitmentGadget::alloc_constant(
@@ -131,17 +131,21 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
             || Ok(C::program_commitment_scheme().clone()),
         )?;
 
-        let program_id_crh =
-            C::ProgramIDCRHGadget::alloc_constant(&mut cs.ns(|| "Declare program_id_crh_parameters"), || {
-                Ok(C::program_id_crh().clone())
-            })?;
+        let program_circuit_id_crh = C::ProgramCircuitIDCRHGadget::alloc_constant(
+            &mut cs.ns(|| "Declare program_circuit_id_crh_parameters"),
+            || Ok(C::program_circuit_id_crh().clone()),
+        )?;
 
         let inner_circuit_id_crh = C::InnerCircuitIDCRHGadget::alloc_constant(
             &mut cs.ns(|| "Declare inner_circuit_id_crh_parameters"),
             || Ok(C::inner_circuit_id_crh().clone()),
         )?;
 
-        (program_id_commitment_parameters, program_id_crh, inner_circuit_id_crh)
+        (
+            program_id_commitment_parameters,
+            program_circuit_id_crh,
+            inner_circuit_id_crh,
+        )
     };
 
     // ************************************************************************
@@ -275,7 +279,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
         let program_circuit_verifying_key_field_elements = program_circuit_verifying_key
             .to_constraint_field(cs.ns(|| "alloc_program_circuit_verifying_key_field_elements"))?;
 
-        let claimed_circuit_id = program_id_crh.check_evaluation_gadget_on_field_elements(
+        let claimed_circuit_id = program_circuit_id_crh.check_evaluation_gadget_on_field_elements(
             &mut cs.ns(|| "Compute circuit ID"),
             program_circuit_verifying_key_field_elements,
         )?;
@@ -283,14 +287,14 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
         let claimed_circuit_id_bytes =
             claimed_circuit_id.to_bytes(&mut cs.ns(|| "Convert death circuit ID to bytes"))?;
 
-        let death_program_merkle_path_gadget = MerklePathGadget::<_, C::ProgramIDCRHGadget, _>::alloc(
+        let death_program_merkle_path_gadget = MerklePathGadget::<_, C::ProgramCircuitIDCRHGadget, _>::alloc(
             &mut cs.ns(|| "Declare program path for circuit"),
             || Ok(&input.program_path),
         )?;
 
         let claimed_program_id = death_program_merkle_path_gadget.calculate_root(
             &mut cs.ns(|| "calculate_program_id"),
-            &program_id_crh,
+            &program_circuit_id_crh,
             claimed_circuit_id_bytes,
         )?;
 

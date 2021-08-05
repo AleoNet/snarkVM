@@ -54,6 +54,9 @@ pub enum RecordError {
     #[error("Attempted to build a record with an invalid commitment. Try `calculate_commitment()`")]
     InvalidCommitment,
 
+    #[error("Invalid output record position - {}", _0)]
+    InvalidOutputPosition(u8),
+
     #[error("Missing Record field: {0}")]
     MissingField(String),
 

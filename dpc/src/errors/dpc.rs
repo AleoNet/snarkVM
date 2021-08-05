@@ -83,6 +83,12 @@ pub enum DPCError {
     #[error("missing inner snark proving parameters")]
     MissingInnerSnarkProvingParameters,
 
+    #[error("Missing circuit - {}", _0)]
+    MissingCircuit(&'static str),
+
+    #[error("missing noop circuit")]
+    MissingNoopCircuit,
+
     #[error("missing outer snark proving parameters")]
     MissingOuterSnarkProvingParameters,
 

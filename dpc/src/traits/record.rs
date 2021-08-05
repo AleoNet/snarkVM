@@ -25,7 +25,6 @@ pub trait RecordScheme: Default + FromBytes + ToBytes {
     type Payload;
     type SerialNumberNonce;
     type SerialNumber: Clone + Eq + Hash + FromBytes + ToBytes;
-    type Value: FromBytes + ToBytes;
 
     /// Returns the program id of this record.
     fn program_id(&self) -> &[u8];
@@ -37,7 +36,7 @@ pub trait RecordScheme: Default + FromBytes + ToBytes {
     fn is_dummy(&self) -> bool;
 
     /// Returns the record value.
-    fn value(&self) -> Self::Value;
+    fn value(&self) -> u64;
 
     /// Returns the record payload.
     fn payload(&self) -> &Self::Payload;

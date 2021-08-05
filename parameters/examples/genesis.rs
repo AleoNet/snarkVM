@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::CRH;
 use snarkvm_dpc::{prelude::*, testnet1::*, testnet2::*};
 use snarkvm_ledger::{
     ledger::*,
@@ -29,9 +28,10 @@ use std::{
     io::{Result as IoResult, Write},
     path::Path,
     str::FromStr,
+    sync::Arc,
 };
 
-pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Vec<u8>, Vec<u8>), DPCError> {
+pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
     // TODO (howardwu): Deprecate this in favor of a simple struct with 2 Merkle trees.
@@ -58,29 +58,21 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
     let private_keys = vec![genesis_account.private_key.clone(); C::NUM_INPUT_RECORDS];
 
     let mut joint_serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-    let mut old_records = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+    let mut input_records = Vec::with_capacity(C::NUM_INPUT_RECORDS);
     for i in 0..C::NUM_INPUT_RECORDS {
-        let old_record = Record::new(
-            &dpc.noop_program,
-            genesis_account.address.clone(),
-            true, // The input record is a noop.
-            0,
-            Payload::default(),
-            C::serial_number_nonce_crh().hash(&[64u8 + (i as u8); 1])?,
-            rng,
-        )?;
+        let input_record = Record::new_noop_input(&dpc.noop_program, genesis_account.address, rng)?;
 
-        let (sn, _) = old_record.to_serial_number(&private_keys[i])?;
+        let (sn, _) = input_record.to_serial_number(&private_keys[i])?;
         joint_serial_numbers.extend_from_slice(&to_bytes_le![sn]?);
 
-        old_records.push(old_record);
+        input_records.push(input_record);
     }
 
-    // Construct the new records.
-    let mut new_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-    new_records.push(Record::new_full(
+    // Construct the output records.
+    let mut output_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+    output_records.push(Record::new_output(
         &dpc.noop_program,
-        recipient.clone(),
+        recipient,
         false,
         value,
         Payload::default(),
@@ -88,41 +80,29 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
         joint_serial_numbers.clone(),
         rng,
     )?);
-    new_records.push(Record::new_full(
+    output_records.push(Record::new_noop_output(
         &dpc.noop_program,
-        recipient.clone(),
-        true,
-        0,
-        Payload::default(),
+        recipient,
         (C::NUM_INPUT_RECORDS + 1) as u8,
         joint_serial_numbers.clone(),
         rng,
     )?);
 
     // Offline execution to generate a transaction authorization.
-    let authorization = dpc.authorize(&private_keys, old_records, new_records, None, rng)?;
+    let authorization = dpc.authorize(&private_keys, input_records, output_records, None, rng)?;
 
-    // Generate the local data.
-    let local_data = authorization.to_local_data(rng)?;
+    // Fetch the noop circuit ID.
+    let noop_circuit_id = dpc
+        .noop_program
+        .find_circuit_by_index(0)
+        .ok_or(DPCError::MissingNoopCircuit)?
+        .circuit_id();
 
-    // Generate the program proofs
-    let mut program_proofs = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
-    for i in 0..C::NUM_TOTAL_RECORDS {
-        let public_variables = ProgramPublicVariables::new(local_data.root(), i as u8);
-        program_proofs.push(
-            dpc.noop_program
-                .execute(0, &public_variables, &NoopPrivateVariables::new())?,
-        );
-    }
+    // Construct the executable.
+    let noop = Executable::Noop(Arc::new(dpc.noop_program.clone()), *noop_circuit_id);
+    let executables = vec![noop.clone(), noop.clone(), noop.clone(), noop];
 
-    let transaction = dpc.execute(
-        &private_keys,
-        authorization,
-        &local_data,
-        program_proofs,
-        &temporary_ledger,
-        rng,
-    )?;
+    let transaction = dpc.execute(&private_keys, authorization, executables, &temporary_ledger, rng)?;
 
     let transaction_bytes = transaction.to_bytes_le()?;
     let transaction_size = transaction_bytes.len();
@@ -180,7 +160,7 @@ pub fn main() {
 
     match args[1].as_str() {
         "testnet1" => {
-            let recipient = &Address::from_str(&args[2]).unwrap();
+            let recipient = Address::from_str(&args[2]).unwrap();
             let balance = args[3].parse::<u64>().unwrap();
             let genesis_header_file = &args[4];
             let transaction_file = &args[5];
@@ -190,7 +170,7 @@ pub fn main() {
             store(transaction_file, &transaction).unwrap();
         }
         "testnet2" => {
-            let recipient = &Address::from_str(&args[2]).unwrap();
+            let recipient = Address::from_str(&args[2]).unwrap();
             let balance = args[3].parse::<u64>().unwrap();
             let genesis_header_file = &args[4];
             let transaction_file = &args[5];

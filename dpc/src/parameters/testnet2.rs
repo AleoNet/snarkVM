@@ -20,7 +20,7 @@ use crate::{
     Network,
     OuterCircuitVerifierInput,
     Parameters,
-    ProgramPublicVariables,
+    PublicVariables,
     Transaction,
     DPC,
 };
@@ -83,7 +83,7 @@ pub type Testnet2Transaction = Transaction<Testnet2Parameters>;
 
 define_merkle_tree_parameters!(
     ProgramIDMerkleTreeParameters,
-    <Testnet2Parameters as Parameters>::ProgramIDCRH,
+    <Testnet2Parameters as Parameters>::ProgramCircuitIDCRH,
     8
 );
 
@@ -127,7 +127,7 @@ impl Parameters for Testnet2Parameters {
         MarlinKZG10<Self::InnerCurve>,
         FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>,
         MarlinTestnet2Mode,
-        ProgramPublicVariables<Self>,
+        PublicVariables<Self>,
     >;
     type ProgramSNARKGadget = MarlinVerificationGadget<
         Self::InnerScalarField,
@@ -169,10 +169,10 @@ impl Parameters for Testnet2Parameters {
     type ProgramCommitmentGadget = Blake2sCommitmentGadget;
     type ProgramCommitment = <Self::ProgramCommitmentScheme as CommitmentScheme>::Output;
 
-    type ProgramIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
-    type ProgramIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
-    type ProgramIDTreeDigest = <Self::ProgramIDCRH as CRH>::Output;
-    type ProgramIDTreeParameters = ProgramIDMerkleTreeParameters;
+    type ProgramCircuitIDCRH = PoseidonCryptoHash<Self::OuterScalarField, 4, false>;
+    type ProgramCircuitIDCRHGadget = PoseidonCryptoHashGadget<Self::OuterScalarField, 4, false>;
+    type ProgramCircuitID = <Self::ProgramCircuitIDCRH as CRH>::Output;
+    type ProgramCircuitTreeParameters = ProgramIDMerkleTreeParameters;
     
     type RecordCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 48, 50>;
     type RecordCommitmentGadget = BHPCompressedCommitmentGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 48, 50>;
@@ -198,7 +198,7 @@ impl Parameters for Testnet2Parameters {
     dpc_setup!{local_data_commitment_scheme, LOCAL_DATA_COMMITMENT_SCHEME, LocalDataCommitmentScheme, "AleoLocalDataCommitment0"} // TODO (howardwu): Rename to "AleoLocalDataCommitmentScheme0".
     dpc_setup!{local_data_crh, LOCAL_DATA_CRH, LocalDataCRH, "AleoLocalDataCRH0"}
     dpc_setup!{program_commitment_scheme, PROGRAM_COMMITMENT_SCHEME, ProgramCommitmentScheme, "AleoProgramIDCommitment0"} // TODO (howardwu): Rename to "AleoProgramCommitmentScheme0".
-    dpc_setup!{program_id_crh, PROGRAM_ID_CRH, ProgramIDCRH, "AleoProgramIDCRH0"}
+    dpc_setup!{program_circuit_id_crh, PROGRAM_CIRCUIT_ID_CRH, ProgramCircuitIDCRH, "AleoProgramIDCRH0"} // TODO (howardwu): Rename to "AleoProgramCircuitIDCRH0".
     dpc_setup!{record_commitment_scheme, RECORD_COMMITMENT_SCHEME, RecordCommitmentScheme, "AleoRecordCommitment0"} // TODO (howardwu): Rename to "AleoRecordCommitmentScheme0".
     dpc_setup!{record_commitment_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoLedgerMerkleTreeCRH0"} // TODO (howardwu): Rename to "AleoRecordCommitmentTreeCRH0".
     dpc_setup!{record_serial_number_tree_crh, RECORD_COMMITMENT_TREE_CRH, RecordCommitmentTreeCRH, "AleoRecordSerialNumberTreeCRH0"}
@@ -214,15 +214,20 @@ impl Parameters for Testnet2Parameters {
     dpc_snark_setup_with_mode!{Testnet2Parameters, inner_circuit_proving_key, INNER_CIRCUIT_PROVING_KEY, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
     dpc_snark_setup!{Testnet2Parameters, inner_circuit_verifying_key, INNER_CIRCUIT_VERIFYING_KEY, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
 
-    dpc_snark_setup!{Testnet2Parameters, noop_program_proving_key, NOOP_PROGRAM_PROVING_KEY, ProgramSNARK, ProvingKey, NoopProgramSNARKPKParameters, "noop program proving key"}
-    dpc_snark_setup!{Testnet2Parameters, noop_program_verifying_key, NOOP_PROGRAM_VERIFYING_KEY, ProgramSNARK, VerifyingKey, NoopProgramSNARKVKParameters, "noop program verifying key"}
+    fn noop_circuit_id() -> &'static Self::ProgramCircuitID {
+        static NOOP_CIRCUIT_ID: OnceCell<<Testnet2Parameters as Parameters>::InnerCircuitID> = OnceCell::new();
+        NOOP_CIRCUIT_ID.get_or_init(|| Self::program_circuit_id(Self::noop_circuit_verifying_key()).expect("Failed to hash noop circuit verifying key"))
+    }
+    
+    dpc_snark_setup!{Testnet2Parameters, noop_circuit_proving_key, NOOP_CIRCUIT_PROVING_KEY, ProgramSNARK, ProvingKey, NoopProgramSNARKPKParameters, "noop circuit proving key"}
+    dpc_snark_setup!{Testnet2Parameters, noop_circuit_verifying_key, NOOP_CIRCUIT_VERIFYING_KEY, ProgramSNARK, VerifyingKey, NoopProgramSNARKVKParameters, "noop circuit verifying key"}
 
     dpc_snark_setup_with_mode!{Testnet2Parameters, outer_circuit_proving_key, OUTER_CIRCUIT_PROVING_KEY, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
     dpc_snark_setup!{Testnet2Parameters, outer_circuit_verifying_key, OUTER_CIRCUIT_VERIFYING_KEY, OuterSNARK, VerifyingKey, OuterSNARKVKParameters, "outer circuit verifying key"}
     
-    fn program_id_tree_parameters() -> &'static Self::ProgramIDTreeParameters {
-        static PROGRAM_ID_TREE_PARAMETERS: OnceCell<<Testnet2Parameters as Parameters>::ProgramIDTreeParameters> = OnceCell::new();
-        PROGRAM_ID_TREE_PARAMETERS.get_or_init(|| Self::ProgramIDTreeParameters::from(Self::program_id_crh().clone()))
+    fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters {
+        static PROGRAM_ID_TREE_PARAMETERS: OnceCell<<Testnet2Parameters as Parameters>::ProgramCircuitTreeParameters> = OnceCell::new();
+        PROGRAM_ID_TREE_PARAMETERS.get_or_init(|| Self::ProgramCircuitTreeParameters::from(Self::program_circuit_id_crh().clone()))
     }
     
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters {

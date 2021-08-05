@@ -27,7 +27,9 @@ use utils::store;
 pub fn setup<C: Parameters>() -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
     let noop_program = NoopProgram::<C>::setup(rng)?;
-    let noop_circuit = noop_program.get_circuit(0)?;
+    let noop_circuit = noop_program
+        .find_circuit_by_index(0)
+        .ok_or(DPCError::MissingNoopCircuit)?;
     let noop_program_snark_pk = noop_circuit.proving_key().to_bytes_le()?;
     let noop_program_snark_vk = noop_circuit.verifying_key().to_bytes_le()?;
 
