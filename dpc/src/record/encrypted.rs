@@ -106,7 +106,7 @@ impl<C: Parameters> EncryptedRecord<C> {
         let mut cursor = Cursor::new(plaintext);
 
         // Program ID
-        let program_id_length = to_bytes_le!(<C::ProgramIDCRH as CRH>::Output::default())?.len();
+        let program_id_length = to_bytes_le!(C::ProgramCircuitID::default())?.len();
         let program_id = {
             let mut program_id = vec![0u8; program_id_length];
             cursor.read_exact(&mut program_id)?;
@@ -131,12 +131,7 @@ impl<C: Parameters> EncryptedRecord<C> {
         // Determine if the record is a dummy
         // TODO (raychu86) Establish `is_dummy` flag properly by checking that the value is 0 and the programs are equivalent to a global dummy
         let dummy_program = program_id.clone();
-
         let is_dummy = (value == 0) && (payload == Payload::default()) && (program_id == dummy_program);
-
-        // Calculate record commitment
-        let commitment_input = to_bytes_le![program_id, owner, is_dummy, value, payload, serial_number_nonce]?;
-        let commitment = C::record_commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
 
         Ok(Record::from(
             &program_id,
@@ -145,9 +140,8 @@ impl<C: Parameters> EncryptedRecord<C> {
             value,
             payload,
             serial_number_nonce,
-            commitment,
             commitment_randomness,
-        ))
+        )?)
     }
 
     /// Returns the encrypted record hash.
@@ -159,10 +153,7 @@ impl<C: Parameters> EncryptedRecord<C> {
 
 impl<C: Parameters> Default for EncryptedRecord<C> {
     fn default() -> Self {
-        let default_record = Record::<C>::default();
-        let mut rng = thread_rng();
-
-        let (record, _randomness) = Self::encrypt(&default_record, &mut rng).unwrap();
+        let (record, _randomness) = Self::encrypt(&Record::default(), &mut thread_rng()).unwrap();
         record
     }
 }

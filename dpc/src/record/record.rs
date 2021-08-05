@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, Parameters, Payload, PrivateKey, Program, RecordError, RecordScheme};
+use crate::{Address, NoopProgram, Parameters, Payload, PrivateKey, Program, RecordError, RecordScheme};
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH, PRF};
 use snarkvm_utilities::{to_bytes_le, variable_length_integer::*, FromBytes, ToBytes, UniformRand};
 
@@ -38,7 +38,7 @@ fn default_program_id<C: CRH>() -> Vec<u8> {
     Eq(bound = "C: Parameters")
 )]
 pub struct Record<C: Parameters> {
-    #[derivative(Default(value = "default_program_id::<C::ProgramIDCRH>()"))]
+    #[derivative(Default(value = "default_program_id::<C::ProgramCircuitIDCRH>()"))]
     pub(crate) program_id: Vec<u8>,
     pub(crate) owner: Address<C>,
     pub(crate) is_dummy: bool,
@@ -48,14 +48,74 @@ pub struct Record<C: Parameters> {
     pub(crate) serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
     pub(crate) commitment: C::RecordCommitment,
     pub(crate) commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
-
-    #[derivative(PartialEq = "ignore")]
-    pub(crate) position: Option<u8>,
 }
 
 impl<C: Parameters> Record<C> {
+    /// Returns a new noop input record.
+    pub fn new_noop_input<R: Rng + CryptoRng>(
+        noop_program: &NoopProgram<C>,
+        owner: Address<C>,
+        rng: &mut R,
+    ) -> Result<Self, RecordError> {
+        Self::new_input(
+            noop_program,
+            owner,
+            true,
+            0,
+            Payload::default(),
+            C::serial_number_nonce_crh().hash(&rng.gen::<[u8; 32]>())?,
+            rng,
+        )
+    }
+
+    /// Returns a new noop output record.
+    pub fn new_noop_output<R: Rng + CryptoRng>(
+        noop_program: &NoopProgram<C>,
+        owner: Address<C>,
+        position: u8,
+        joint_serial_numbers: Vec<u8>,
+        rng: &mut R,
+    ) -> Result<Self, RecordError> {
+        Self::new_output(
+            noop_program,
+            owner,
+            true,
+            0,
+            Payload::default(),
+            position,
+            joint_serial_numbers,
+            rng,
+        )
+    }
+
+    /// Returns a new input record.
     #[allow(clippy::too_many_arguments)]
-    pub fn new_full<R: Rng + CryptoRng>(
+    pub fn new_input<R: Rng + CryptoRng>(
+        program: &dyn Program<C>,
+        owner: Address<C>,
+        is_dummy: bool,
+        value: u64,
+        payload: Payload,
+        serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
+        rng: &mut R,
+    ) -> Result<Self, RecordError> {
+        // Sample a new record commitment randomness.
+        let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
+
+        Self::from(
+            &program.program_id().to_bytes_le()?,
+            owner,
+            is_dummy,
+            value,
+            payload,
+            serial_number_nonce,
+            commitment_randomness,
+        )
+    }
+
+    /// Returns a new output record.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_output<R: Rng + CryptoRng>(
         program: &dyn Program<C>,
         owner: Address<C>,
         is_dummy: bool,
@@ -65,53 +125,25 @@ impl<C: Parameters> Record<C> {
         joint_serial_numbers: Vec<u8>,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
-        let timer = start_timer!(|| "Generate record");
+        // Ensure the output record position is valid.
+        if (position as usize) < C::NUM_INPUT_RECORDS {
+            return Err(RecordError::InvalidOutputPosition(position));
+        }
+
+        // Compute the serial number nonce.
         let serial_number_nonce = C::serial_number_nonce_crh().hash(&to_bytes_le![position, joint_serial_numbers]?)?;
-        let mut record = Self::new(program, owner, is_dummy, value, payload, serial_number_nonce, rng)?;
-        record.position = Some(position);
-        end_timer!(timer);
-        Ok(record)
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn new<R: Rng + CryptoRng>(
-        program: &dyn Program<C>,
-        owner: Address<C>,
-        is_dummy: bool,
-        value: u64,
-        payload: Payload,
-        serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
-        rng: &mut R,
-    ) -> Result<Self, RecordError> {
-        let timer = start_timer!(|| "Generate record");
-        let program_id = program.program_id().to_bytes_le()?;
-
-        // Total = 48 + 32 + 1 + 8 + 128 + 32 = 249 bytes
-        let commitment_input = to_bytes_le![
-            program_id,          // 384 bits = 48 bytes
-            owner,               // 256 bits = 32 bytes
-            is_dummy,            // 1 bit = 1 byte
-            value,               // 64 bits = 8 bytes
-            payload,             // 1024 bits = 128 bytes
-            serial_number_nonce  // 256 bits = 32 bytes
-        ]?;
-
         // Sample a new record commitment randomness.
         let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::rand(rng);
-        // Compute the new record commitment.
-        let commitment = C::record_commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
-        end_timer!(timer);
 
-        Ok(Self::from(
-            &program_id,
+        Self::from(
+            &program.program_id().to_bytes_le()?,
             owner,
             is_dummy,
             value,
             payload,
             serial_number_nonce,
-            commitment,
             commitment_randomness,
-        ))
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -122,10 +154,22 @@ impl<C: Parameters> Record<C> {
         value: u64,
         payload: Payload,
         serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
-        commitment: C::RecordCommitment,
         commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, RecordError> {
+        // Total = 48 + 32 + 1 + 8 + 128 + 32 = 249 bytes
+        let commitment_input = to_bytes_le![
+            program_id,          // 384 bits = 48 bytes
+            owner,               // 256 bits = 32 bytes
+            is_dummy,            // 1 bit = 1 byte
+            value,               // 64 bits = 8 bytes
+            payload,             // 1024 bits = 128 bytes
+            serial_number_nonce  // 256 bits = 32 bytes
+        ]?;
+
+        // Compute the record commitment.
+        let commitment = C::record_commitment_scheme().commit(&commitment_input, &commitment_randomness)?;
+
+        Ok(Self {
             program_id: program_id.clone(),
             owner,
             is_dummy,
@@ -134,8 +178,7 @@ impl<C: Parameters> Record<C> {
             serial_number_nonce,
             commitment,
             commitment_randomness,
-            position: None,
-        }
+        })
     }
 
     // TODO (howardwu) - Change the private_key input to a signature_public_key.
@@ -175,7 +218,6 @@ impl<C: Parameters> RecordScheme for Record<C> {
     type Payload = Payload;
     type SerialNumber = <C::AccountSignatureScheme as SignatureScheme>::PublicKey;
     type SerialNumberNonce = <C::SerialNumberNonceCRH as CRH>::Output;
-    type Value = u64;
 
     fn program_id(&self) -> &[u8] {
         &self.program_id
@@ -189,7 +231,7 @@ impl<C: Parameters> RecordScheme for Record<C> {
         self.is_dummy
     }
 
-    fn value(&self) -> Self::Value {
+    fn value(&self) -> u64 {
         self.value
     }
 
@@ -254,7 +296,6 @@ impl<C: Parameters> FromBytes for Record<C> {
             serial_number_nonce,
             commitment,
             commitment_randomness,
-            position: None,
         })
     }
 }

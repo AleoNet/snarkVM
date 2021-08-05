@@ -14,20 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod executable;
-pub use executable::*;
+use crate::Parameters;
+use snarkvm_algorithms::{merkle_tree::MerklePath, SNARK};
 
-pub mod execution;
-pub use execution::*;
-
-pub mod noop_circuit;
-pub use noop_circuit::*;
-
-pub mod noop_program;
-pub use noop_program::*;
-
-pub mod program_circuit_tree;
-pub use program_circuit_tree::*;
-
-pub mod public_variables;
-pub use public_variables::*;
+/// Program index, path, verifying key, and proof.
+#[derive(Derivative)]
+#[derivative(Clone(bound = "C: Parameters"))]
+pub struct Execution<C: Parameters> {
+    pub program_path: MerklePath<C::ProgramCircuitTreeParameters>,
+    pub verifying_key: <C::ProgramSNARK as SNARK>::VerifyingKey,
+    pub proof: <C::ProgramSNARK as SNARK>::Proof,
+}

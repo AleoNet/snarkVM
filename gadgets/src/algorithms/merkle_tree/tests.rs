@@ -17,6 +17,7 @@
 use std::sync::Arc;
 
 use blake2::{digest::Digest, Blake2s};
+use rand::{thread_rng, Rng};
 
 use snarkvm_algorithms::{
     crh::{BHPCompressedCRH, PedersenCRH, PedersenCompressedCRH},
@@ -247,9 +248,12 @@ mod merkle_tree_pedersen_crh_on_projective {
 
     #[test]
     fn good_root_test() {
+        let mut rng = thread_rng();
         let mut leaves = Vec::new();
-        for i in 0..1 << EdwardsMerkleParameters::DEPTH {
-            let input = [i; 30];
+
+        for _ in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let mut input = [0u8; 30];
+            rng.fill(&mut input);
             leaves.push(input);
         }
         generate_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves, false);
@@ -258,9 +262,12 @@ mod merkle_tree_pedersen_crh_on_projective {
     #[should_panic]
     #[test]
     fn bad_root_test() {
+        let mut rng = thread_rng();
         let mut leaves = Vec::new();
-        for i in 0..1 << EdwardsMerkleParameters::DEPTH {
-            let input = [i; 30];
+
+        for _ in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let mut input = [0u8; 30];
+            rng.fill(&mut input);
             leaves.push(input);
         }
         generate_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves, true);
@@ -268,9 +275,12 @@ mod merkle_tree_pedersen_crh_on_projective {
 
     #[test]
     fn update_merkle_tree_test() {
+        let mut rng = thread_rng();
         let mut leaves = Vec::new();
-        for i in 0..1 << EdwardsMerkleParameters::DEPTH {
-            let input = [i; 30];
+
+        for _ in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let mut input = [0u8; 30];
+            rng.fill(&mut input);
             leaves.push(input);
         }
         update_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves);
@@ -293,9 +303,12 @@ mod merkle_tree_compressed_pedersen_crh_on_projective {
 
     #[test]
     fn good_root_test() {
+        let mut rng = thread_rng();
         let mut leaves = Vec::new();
-        for i in 0..1 << EdwardsMerkleParameters::DEPTH {
-            let input = [i; 30];
+
+        for _ in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let mut input = [0u8; 30];
+            rng.fill(&mut input);
             leaves.push(input);
         }
         generate_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves, false);
@@ -304,9 +317,12 @@ mod merkle_tree_compressed_pedersen_crh_on_projective {
     #[should_panic]
     #[test]
     fn bad_root_test() {
+        let mut rng = thread_rng();
         let mut leaves = Vec::new();
-        for i in 0..1 << EdwardsMerkleParameters::DEPTH {
-            let input = [i; 30];
+
+        for _ in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let mut input = [0u8; 30];
+            rng.fill(&mut input);
             leaves.push(input);
         }
         generate_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves, true);
@@ -314,9 +330,12 @@ mod merkle_tree_compressed_pedersen_crh_on_projective {
 
     #[test]
     fn good_masked_root_test() {
+        let mut rng = thread_rng();
         let mut leaves = Vec::new();
-        for i in 0..1 << EdwardsMerkleParameters::DEPTH {
-            let input = [i; 30];
+
+        for _ in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let mut input = [0u8; 30];
+            rng.fill(&mut input);
             leaves.push(input);
         }
         generate_masked_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves, false);
@@ -325,9 +344,12 @@ mod merkle_tree_compressed_pedersen_crh_on_projective {
     #[should_panic]
     #[test]
     fn bad_masked_root_test() {
+        let mut rng = thread_rng();
         let mut leaves = Vec::new();
-        for i in 0..1 << EdwardsMerkleParameters::DEPTH {
-            let input = [i; 30];
+
+        for _ in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let mut input = [0u8; 30];
+            rng.fill(&mut input);
             leaves.push(input);
         }
         generate_masked_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves, true);
@@ -335,9 +357,12 @@ mod merkle_tree_compressed_pedersen_crh_on_projective {
 
     #[test]
     fn update_merkle_tree_test() {
+        let mut rng = thread_rng();
         let mut leaves = Vec::new();
-        for i in 0..1 << EdwardsMerkleParameters::DEPTH {
-            let input = [i; 30];
+
+        for _ in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let mut input = [0u8; 30];
+            rng.fill(&mut input);
             leaves.push(input);
         }
         update_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves);
@@ -354,9 +379,12 @@ mod merkle_tree_bowe_hopwood_pedersen_compressed_crh_on_projective {
 
     #[test]
     fn good_root_test() {
+        let mut rng = thread_rng();
         let mut leaves = Vec::new();
-        for i in 0..1 << EdwardsMerkleParameters::DEPTH {
-            let input = [i; 30];
+
+        for _ in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let mut input = [0u8; 30];
+            rng.fill(&mut input);
             leaves.push(input);
         }
         generate_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves, false);
@@ -365,9 +393,12 @@ mod merkle_tree_bowe_hopwood_pedersen_compressed_crh_on_projective {
     #[should_panic]
     #[test]
     fn bad_root_test() {
+        let mut rng = thread_rng();
         let mut leaves = Vec::new();
-        for i in 0..1 << EdwardsMerkleParameters::DEPTH {
-            let input = [i; 30];
+
+        for _ in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let mut input = [0u8; 30];
+            rng.fill(&mut input);
             leaves.push(input);
         }
         generate_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves, true);
@@ -375,9 +406,12 @@ mod merkle_tree_bowe_hopwood_pedersen_compressed_crh_on_projective {
 
     #[test]
     fn update_merkle_tree_test() {
+        let mut rng = thread_rng();
         let mut leaves = Vec::new();
-        for i in 0..1 << EdwardsMerkleParameters::DEPTH {
-            let input = [i; 30];
+
+        for _ in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let mut input = [0u8; 30];
+            rng.fill(&mut input);
             leaves.push(input);
         }
         update_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves);
@@ -396,9 +430,12 @@ mod merkle_tree_poseidon {
 
     #[test]
     fn good_root_test() {
+        let mut rng = thread_rng();
         let mut leaves = Vec::new();
-        for i in 0..1 << EdwardsMerkleParameters::DEPTH {
-            let input = [i; 30];
+
+        for _ in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let mut input = [0u8; 30];
+            rng.fill(&mut input);
             leaves.push(input);
         }
         generate_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves, false);
@@ -407,9 +444,12 @@ mod merkle_tree_poseidon {
     #[should_panic]
     #[test]
     fn bad_root_test() {
+        let mut rng = thread_rng();
         let mut leaves = Vec::new();
-        for i in 0..1 << EdwardsMerkleParameters::DEPTH {
-            let input = [i; 30];
+
+        for _ in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let mut input = [0u8; 30];
+            rng.fill(&mut input);
             leaves.push(input);
         }
         generate_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves, true);
@@ -417,9 +457,12 @@ mod merkle_tree_poseidon {
 
     #[test]
     fn update_merkle_tree_test() {
+        let mut rng = thread_rng();
         let mut leaves = Vec::new();
-        for i in 0..1 << EdwardsMerkleParameters::DEPTH {
-            let input = [i; 30];
+
+        for _ in 0..1 << EdwardsMerkleParameters::DEPTH {
+            let mut input = [0u8; 30];
+            rng.fill(&mut input);
             leaves.push(input);
         }
         update_merkle_tree::<EdwardsMerkleParameters, Fr, HG>(&leaves);

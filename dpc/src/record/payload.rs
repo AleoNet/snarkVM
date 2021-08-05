@@ -24,6 +24,10 @@ pub const PAYLOAD_SIZE: usize = 128;
 pub struct Payload([u8; PAYLOAD_SIZE]);
 
 impl Payload {
+    pub fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     pub fn to_bytes(&self) -> &[u8] {
         &self.0[..]
     }
