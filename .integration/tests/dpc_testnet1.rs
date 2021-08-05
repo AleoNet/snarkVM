@@ -118,7 +118,7 @@ fn dpc_testnet1_integration_test() {
     // Generate the program proofs.
     let mut program_proofs = vec![];
     for i in 0..Testnet1Parameters::NUM_TOTAL_RECORDS {
-        let public_variables = ProgramPublicVariables::new(local_data.root(), i as u8);
+        let public_variables = ProgramPublicVariables::new(i as u8, local_data.root());
         program_proofs.push(
             dpc.noop_program
                 .execute(noop_circuit_id, &public_variables, &NoopPrivateVariables::new())
@@ -336,7 +336,7 @@ fn test_testnet1_dpc_execute_constraints() {
     // Generate the program proofs.
     let mut program_proofs = vec![];
     for i in 0..Testnet1Parameters::NUM_INPUT_RECORDS {
-        let public_variables = ProgramPublicVariables::new(local_data.root(), i as u8);
+        let public_variables = ProgramPublicVariables::new(i as u8, local_data.root());
         program_proofs.push(
             alternate_noop_program
                 .execute(
@@ -349,7 +349,7 @@ fn test_testnet1_dpc_execute_constraints() {
     }
     for j in 0..Testnet1Parameters::NUM_OUTPUT_RECORDS {
         let public_variables =
-            ProgramPublicVariables::new(local_data.root(), (Testnet1Parameters::NUM_INPUT_RECORDS + j) as u8);
+            ProgramPublicVariables::new((Testnet1Parameters::NUM_INPUT_RECORDS + j) as u8, local_data.root());
         program_proofs.push(
             dpc.noop_program
                 .execute(noop_circuit_id, &public_variables, &NoopPrivateVariables::new())

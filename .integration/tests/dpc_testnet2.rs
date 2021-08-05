@@ -69,14 +69,14 @@ fn dpc_testnet2_integration_test() {
     let dpc = setup_or_load_dpc(false, &mut rng);
 
     // Generate dummy input records having as address the genesis address.
-    let old_private_keys = vec![genesis_account.private_key.clone(); Testnet2Parameters::NUM_INPUT_RECORDS];
+    let private_keys = vec![genesis_account.private_key.clone(); Testnet2Parameters::NUM_INPUT_RECORDS];
 
     let mut joint_serial_numbers = vec![];
     let mut input_records = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
         let input_record = Record::new_noop_input(&dpc.noop_program, genesis_account.address, &mut rng).unwrap();
 
-        let (sn, _) = input_record.to_serial_number(&old_private_keys[i]).unwrap();
+        let (sn, _) = input_record.to_serial_number(&private_keys[i]).unwrap();
         joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());
 
         input_records.push(input_record);
@@ -102,7 +102,7 @@ fn dpc_testnet2_integration_test() {
 
     // Offline execution to generate a transaction authorization.
     let authorization = dpc
-        .authorize(&old_private_keys, input_records, output_records, None, &mut rng)
+        .authorize(&private_keys, input_records, output_records, None, &mut rng)
         .unwrap();
 
     // Generate the local data.
@@ -119,7 +119,7 @@ fn dpc_testnet2_integration_test() {
     // Generate the program proofs
     let mut program_proofs = vec![];
     for i in 0..Testnet2Parameters::NUM_TOTAL_RECORDS {
-        let public_variables = ProgramPublicVariables::new(local_data.root(), i as u8);
+        let public_variables = ProgramPublicVariables::new(i as u8, local_data.root());
         program_proofs.push(
             dpc.noop_program
                 .execute(noop_circuit_id, &public_variables, &NoopPrivateVariables::new())
@@ -131,7 +131,7 @@ fn dpc_testnet2_integration_test() {
 
     let transaction = dpc
         .execute(
-            &old_private_keys,
+            &private_keys,
             authorization,
             &local_data,
             program_proofs,
@@ -338,7 +338,7 @@ fn test_testnet2_dpc_execute_constraints() {
     // Generate the program proofs
     let mut program_proofs = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-        let public_variables = ProgramPublicVariables::new(local_data.root(), i as u8);
+        let public_variables = ProgramPublicVariables::new(i as u8, local_data.root());
         program_proofs.push(
             alternate_noop_program
                 .execute(
@@ -351,7 +351,7 @@ fn test_testnet2_dpc_execute_constraints() {
     }
     for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
         let public_variables =
-            ProgramPublicVariables::new(local_data.root(), (Testnet2Parameters::NUM_INPUT_RECORDS + j) as u8);
+            ProgramPublicVariables::new((Testnet2Parameters::NUM_INPUT_RECORDS + j) as u8, local_data.root());
         program_proofs.push(
             dpc.noop_program
                 .execute(noop_circuit_id, &public_variables, &NoopPrivateVariables::new())

@@ -39,7 +39,7 @@ pub struct ProgramPublicVariables<C: Parameters> {
 }
 
 impl<C: Parameters> ProgramPublicVariables<C> {
-    pub fn new(local_data_root: &C::LocalDataRoot, record_position: u8) -> Self {
+    pub fn new(record_position: u8, local_data_root: &C::LocalDataRoot) -> Self {
         Self {
             local_data_root: local_data_root.clone(),
             record_position,
