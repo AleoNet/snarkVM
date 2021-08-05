@@ -74,18 +74,7 @@ fn dpc_testnet2_integration_test() {
     let mut joint_serial_numbers = vec![];
     let mut input_records = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-        let input_record = Record::new(
-            &dpc.noop_program,
-            genesis_account.address,
-            true, // The input record is dummy
-            0,
-            Payload::default(),
-            <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
-                .hash(&[64u8 + (i as u8); 1])
-                .unwrap(),
-            &mut rng,
-        )
-        .unwrap();
+        let input_record = Record::new_input_noop(&dpc.noop_program, genesis_account.address, &mut rng).unwrap();
 
         let (sn, _) = input_record.to_serial_number(&old_private_keys[i]).unwrap();
         joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());
@@ -99,7 +88,7 @@ fn dpc_testnet2_integration_test() {
     let mut output_records = vec![];
     for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
         output_records.push(
-            Record::new_full(
+            Record::new_output(
                 &dpc.noop_program,
                 recipient.address,
                 false,
@@ -222,18 +211,7 @@ fn test_testnet_2_transaction_authorization_serialization() {
     let mut joint_serial_numbers = vec![];
     let mut input_records = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-        let old_record = Record::new(
-            &dpc.noop_program,
-            test_account.address,
-            true,
-            0,
-            Payload::default(),
-            <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
-                .hash(&[0u8; 1])
-                .unwrap(),
-            &mut rng,
-        )
-        .unwrap();
+        let old_record = Record::new_input_noop(&dpc.noop_program, test_account.address, &mut rng).unwrap();
 
         let (sn, _) = old_record.to_serial_number(&old_private_keys[i]).unwrap();
         joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());
@@ -247,7 +225,7 @@ fn test_testnet_2_transaction_authorization_serialization() {
     let mut output_records = vec![];
     for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
         output_records.push(
-            Record::new_full(
+            Record::new_output(
                 &dpc.noop_program,
                 test_account.address,
                 false,
@@ -306,18 +284,7 @@ fn test_testnet2_dpc_execute_constraints() {
     let mut joint_serial_numbers = vec![];
     let mut input_records = vec![];
     for i in 0..Testnet2Parameters::NUM_INPUT_RECORDS {
-        let input_record = Record::new(
-            &alternate_noop_program,
-            dummy_account.address,
-            true,
-            0,
-            Payload::default(),
-            <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
-                .hash(&[0u8; 1])
-                .unwrap(),
-            &mut rng,
-        )
-        .unwrap();
+        let input_record = Record::new_input_noop(&alternate_noop_program, dummy_account.address, &mut rng).unwrap();
 
         let (sn, _) = input_record.to_serial_number(&private_keys[i]).unwrap();
         joint_serial_numbers.extend_from_slice(&to_bytes_le![sn].unwrap());
@@ -334,7 +301,7 @@ fn test_testnet2_dpc_execute_constraints() {
     let mut output_records = vec![];
     for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
         output_records.push(
-            Record::new_full(
+            Record::new_output(
                 &dpc.noop_program,
                 new_account.address,
                 false,

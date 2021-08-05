@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::CRH;
 use snarkvm_dpc::{prelude::*, testnet1::*, testnet2::*};
 use snarkvm_ledger::{
     ledger::*,
@@ -31,7 +30,7 @@ use std::{
     str::FromStr,
 };
 
-pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Vec<u8>, Vec<u8>), DPCError> {
+pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec<u8>, Vec<u8>), DPCError> {
     let rng = &mut thread_rng();
 
     // TODO (howardwu): Deprecate this in favor of a simple struct with 2 Merkle trees.
@@ -58,29 +57,21 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
     let private_keys = vec![genesis_account.private_key.clone(); C::NUM_INPUT_RECORDS];
 
     let mut joint_serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-    let mut old_records = Vec::with_capacity(C::NUM_INPUT_RECORDS);
+    let mut input_records = Vec::with_capacity(C::NUM_INPUT_RECORDS);
     for i in 0..C::NUM_INPUT_RECORDS {
-        let old_record = Record::new(
-            &dpc.noop_program,
-            genesis_account.address,
-            true, // The input record is a noop.
-            0,
-            Payload::default(),
-            C::serial_number_nonce_crh().hash(&[64u8 + (i as u8); 1])?,
-            rng,
-        )?;
+        let input_record = Record::new_input_noop(&dpc.noop_program, genesis_account.address, rng)?;
 
-        let (sn, _) = old_record.to_serial_number(&private_keys[i])?;
+        let (sn, _) = input_record.to_serial_number(&private_keys[i])?;
         joint_serial_numbers.extend_from_slice(&to_bytes_le![sn]?);
 
-        old_records.push(old_record);
+        input_records.push(input_record);
     }
 
-    // Construct the new records.
-    let mut new_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-    new_records.push(Record::new_full(
+    // Construct the output records.
+    let mut output_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+    output_records.push(Record::new_output(
         &dpc.noop_program,
-        recipient.clone(),
+        recipient,
         false,
         value,
         Payload::default(),
@@ -88,19 +79,16 @@ pub fn generate<C: Parameters>(recipient: &Address<C>, value: u64) -> Result<(Ve
         joint_serial_numbers.clone(),
         rng,
     )?);
-    new_records.push(Record::new_full(
+    output_records.push(Record::new_output_noop(
         &dpc.noop_program,
-        recipient.clone(),
-        true,
-        0,
-        Payload::default(),
+        recipient,
         (C::NUM_INPUT_RECORDS + 1) as u8,
         joint_serial_numbers.clone(),
         rng,
     )?);
 
     // Offline execution to generate a transaction authorization.
-    let authorization = dpc.authorize(&private_keys, old_records, new_records, None, rng)?;
+    let authorization = dpc.authorize(&private_keys, input_records, output_records, None, rng)?;
 
     // Generate the local data.
     let local_data = authorization.to_local_data(rng)?;
@@ -188,7 +176,7 @@ pub fn main() {
 
     match args[1].as_str() {
         "testnet1" => {
-            let recipient = &Address::from_str(&args[2]).unwrap();
+            let recipient = Address::from_str(&args[2]).unwrap();
             let balance = args[3].parse::<u64>().unwrap();
             let genesis_header_file = &args[4];
             let transaction_file = &args[5];
@@ -198,7 +186,7 @@ pub fn main() {
             store(transaction_file, &transaction).unwrap();
         }
         "testnet2" => {
-            let recipient = &Address::from_str(&args[2]).unwrap();
+            let recipient = Address::from_str(&args[2]).unwrap();
             let balance = args[3].parse::<u64>().unwrap();
             let genesis_header_file = &args[4];
             let transaction_file = &args[5];

@@ -17,7 +17,7 @@
 use crate::{CircuitError, Parameters, ProgramCircuit, ProgramPrivateVariables, ProgramPublicVariables};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_gadgets::prelude::*;
-use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, ToConstraintField};
+use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
 
 use rand::{CryptoRng, Rng};
 use std::marker::PhantomData;
@@ -49,17 +49,13 @@ pub struct NoopCircuit<C: Parameters> {
 impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
     /// Initializes a new instance of the noop circuit.
     fn setup<R: Rng + CryptoRng>(rng: &mut R) -> Result<Self, CircuitError> {
-        let (proving_key, prepared_verifying_key) = <C::ProgramSNARK as SNARK>::setup(
+        let (proving_key, verifying_key) = <C::ProgramSNARK as SNARK>::setup(
             &NoopAllocatedCircuit::<C>::default(),
             &mut *C::program_srs::<R>(rng).borrow_mut(),
         )?;
-        let verifying_key: <C::ProgramSNARK as SNARK>::VerifyingKey = prepared_verifying_key.into();
-
-        // Compute the noop circuit ID.
-        let circuit_id = <C as Parameters>::program_circuit_id(&verifying_key)?;
 
         Ok(Self {
-            circuit_id,
+            circuit_id: <C as Parameters>::program_circuit_id(&verifying_key)?,
             proving_key,
             verifying_key,
         })
@@ -70,12 +66,8 @@ impl<C: Parameters> ProgramCircuit<C> for NoopCircuit<C> {
         let proving_key = C::noop_program_proving_key().clone();
         let verifying_key = C::noop_program_verifying_key().clone();
 
-        // Compute the circuit ID.
-        let circuit_id =
-            <C as Parameters>::program_circuit_id_crh().hash_field_elements(&verifying_key.to_field_elements()?)?;
-
         Ok(Self {
-            circuit_id,
+            circuit_id: <C as Parameters>::program_circuit_id(&verifying_key)?,
             proving_key,
             verifying_key,
         })

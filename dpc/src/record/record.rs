@@ -51,8 +51,43 @@ pub struct Record<C: Parameters> {
 }
 
 impl<C: Parameters> Record<C> {
+    pub fn new_input_noop<R: Rng + CryptoRng>(
+        noop_program: &dyn Program<C>,
+        owner: Address<C>,
+        rng: &mut R,
+    ) -> Result<Self, RecordError> {
+        Ok(Record::new(
+            noop_program,
+            owner,
+            true, // The input record is a noop.
+            0,
+            Payload::default(),
+            C::serial_number_nonce_crh().hash(&rng.gen::<[u8; 32]>())?,
+            rng,
+        )?)
+    }
+
+    pub fn new_output_noop<R: Rng + CryptoRng>(
+        noop_program: &dyn Program<C>,
+        owner: Address<C>,
+        position: u8,
+        joint_serial_numbers: Vec<u8>,
+        rng: &mut R,
+    ) -> Result<Self, RecordError> {
+        Ok(Record::new_output(
+            noop_program,
+            owner,
+            true, // The input record is a noop.
+            0,
+            Payload::default(),
+            position,
+            joint_serial_numbers,
+            rng,
+        )?)
+    }
+
     #[allow(clippy::too_many_arguments)]
-    pub fn new_full<R: Rng + CryptoRng>(
+    pub fn new_output<R: Rng + CryptoRng>(
         program: &dyn Program<C>,
         owner: Address<C>,
         is_dummy: bool,
