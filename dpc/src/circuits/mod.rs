@@ -17,8 +17,8 @@
 pub mod inner_circuit;
 pub use inner_circuit::*;
 
-pub mod inner_circuit_gadget;
-pub use inner_circuit_gadget::*;
+pub mod inner_private_variables;
+pub use inner_private_variables::*;
 
 pub mod inner_public_variables;
 pub use inner_public_variables::*;

@@ -238,7 +238,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             });
         }
 
-        // Construct the inner circuit public variables.
+        // Construct the inner circuit public and private variables.
         let inner_public_variables = InnerPublicVariables {
             kernel: kernel.clone(),
             ledger_digest: ledger_digest.clone(),
@@ -246,19 +246,19 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             program_commitment: Some(program_commitment.clone()),
             local_data_root: Some(local_data.root().clone()),
         };
+        let inner_private_variables = InnerPrivateVariables::new(
+            input_records,
+            old_witnesses,
+            private_keys.clone(),
+            output_records.clone(),
+            encrypted_record_randomizers,
+            program_randomness.clone(),
+            local_data.leaf_randomizers().clone(),
+        );
 
         // Compute the inner circuit proof.
         let inner_proof = {
-            let circuit = InnerCircuit::<C>::new(
-                inner_public_variables.clone(),
-                input_records,
-                old_witnesses,
-                private_keys.clone(),
-                output_records.clone(),
-                encrypted_record_randomizers,
-                program_randomness.clone(),
-                local_data.leaf_randomizers().clone(),
-            );
+            let circuit = InnerCircuit::<C>::new(inner_public_variables.clone(), inner_private_variables);
 
             let inner_proving_key = self
                 .inner_proving_key

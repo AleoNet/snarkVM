@@ -364,7 +364,7 @@ fn test_testnet1_dpc_execute_constraints() {
 
     //////////////////////////////////////////////////////////////////////////
 
-    // Construct the public variables.
+    // Construct the inner circuit public and private variables.
     let inner_public_variables = InnerPublicVariables {
         kernel,
         ledger_digest,
@@ -372,6 +372,15 @@ fn test_testnet1_dpc_execute_constraints() {
         program_commitment: Some(program_commitment),
         local_data_root: Some(local_data_root.clone()),
     };
+    let inner_private_variables = InnerPrivateVariables::new(
+        old_records.clone(),
+        old_witnesses,
+        private_keys.clone(),
+        new_records.clone(),
+        encrypted_record_randomizers,
+        program_randomness.clone(),
+        local_data.leaf_randomizers().clone(),
+    );
 
     // Check that the core check constraint system was satisfied.
     let mut inner_circuit_cs = TestConstraintSystem::<Fr>::new();
@@ -379,13 +388,7 @@ fn test_testnet1_dpc_execute_constraints() {
     execute_inner_circuit(
         &mut inner_circuit_cs.ns(|| "Inner circuit"),
         &inner_public_variables,
-        &old_records,
-        &old_witnesses,
-        &private_keys,
-        &new_records,
-        &encrypted_record_randomizers,
-        &program_randomness,
-        &local_data.leaf_randomizers(),
+        &inner_private_variables,
     )
     .unwrap();
 
@@ -420,16 +423,7 @@ fn test_testnet1_dpc_execute_constraints() {
 
     let inner_snark_proof = <Testnet1Parameters as Parameters>::InnerSNARK::prove(
         &inner_snark_parameters.0,
-        &InnerCircuit::new(
-            inner_public_variables.clone(),
-            old_records,
-            old_witnesses,
-            private_keys,
-            new_records,
-            encrypted_record_randomizers,
-            program_randomness,
-            local_data.leaf_randomizers().clone(),
-        ),
+        &InnerCircuit::new(inner_public_variables.clone(), inner_private_variables),
         &mut rng,
     )
     .unwrap();
