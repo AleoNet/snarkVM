@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Parameters, TransactionKernel};
+use crate::{AleoAmount, Parameters, TransactionKernel};
 use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, traits::CommitmentScheme};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
@@ -34,6 +34,24 @@ pub struct InnerPublicVariables<C: Parameters> {
     pub program_commitment: Option<<C::ProgramCommitmentScheme as CommitmentScheme>::Output>,
     /// Local data root
     pub local_data_root: Option<C::LocalDataRoot>,
+}
+
+impl<C: Parameters> InnerPublicVariables<C> {
+    pub fn blank() -> Self {
+        Self {
+            kernel: TransactionKernel {
+                network_id: C::NETWORK_ID,
+                serial_numbers: vec![C::AccountSignaturePublicKey::default(); C::NUM_INPUT_RECORDS],
+                commitments: vec![C::RecordCommitment::default(); C::NUM_OUTPUT_RECORDS],
+                value_balance: AleoAmount::ZERO,
+                memo: [0u8; 64],
+            },
+            ledger_digest: MerkleTreeDigest::<C::RecordCommitmentTreeParameters>::default(),
+            encrypted_record_hashes: vec![C::EncryptedRecordDigest::default(); C::NUM_OUTPUT_RECORDS],
+            program_commitment: Some(C::ProgramCommitment::default()),
+            local_data_root: Some(C::LocalDataRoot::default()),
+        }
+    }
 }
 
 impl<C: Parameters> ToConstraintField<C::InnerScalarField> for InnerPublicVariables<C>

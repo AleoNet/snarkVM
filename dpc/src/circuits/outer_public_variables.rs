@@ -21,18 +21,18 @@ use snarkvm_utilities::ToBits;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
-pub struct OuterCircuitVerifierInput<C: Parameters> {
+pub struct OuterPublicVariables<C: Parameters> {
     pub inner_public_variables: InnerPublicVariables<C>,
     pub inner_circuit_id: C::InnerCircuitID,
 }
 
-impl<C: Parameters> ToConstraintField<C::OuterScalarField> for OuterCircuitVerifierInput<C>
+impl<C: Parameters> ToConstraintField<C::OuterScalarField> for OuterPublicVariables<C>
 where
     MerkleTreeDigest<C::RecordCommitmentTreeParameters>: ToConstraintField<C::InnerScalarField>,
 {
     fn to_field_elements(&self) -> Result<Vec<C::OuterScalarField>, ConstraintFieldError> {
         // In the outer circuit, these two variables must be allocated as witness,
-        // as they are not included in the broadcasted transaction.
+        // as they are not included in the transaction.
         debug_assert!(self.inner_public_variables.program_commitment.is_none());
         debug_assert!(self.inner_public_variables.local_data_root.is_none());
 

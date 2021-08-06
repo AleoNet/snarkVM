@@ -90,7 +90,7 @@ pub enum DPCError {
     MissingNoopCircuit,
 
     #[error("missing outer snark proving parameters")]
-    MissingOuterSnarkProvingParameters,
+    MissingOuterProvingKey,
 
     #[error("{}", _0)]
     ParameterError(#[from] ParameterError),

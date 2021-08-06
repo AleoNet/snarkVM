@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{execute_outer_circuit, AleoAmount, Execution, Parameters, Transaction, TransactionScheme};
+use crate::{execute_outer_circuit, Execution, InnerPublicVariables, Parameters};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, SignatureScheme, SNARK},
+    traits::{CommitmentScheme, SNARK},
 };
 use snarkvm_fields::ToConstraintField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
@@ -25,14 +25,8 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSyst
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
 pub struct OuterCircuit<C: Parameters> {
-    // Inner snark verifier public inputs
-    ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
-    old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
-    new_commitments: Vec<C::RecordCommitment>,
-    new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
-    memo: <Transaction<C> as TransactionScheme>::Memo,
-    value_balance: AleoAmount,
-    network_id: u8,
+    /// Inner circuit public variables
+    inner_public_variables: InnerPublicVariables<C>,
 
     // Inner snark verifier private inputs
     inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
@@ -52,15 +46,6 @@ impl<C: Parameters> OuterCircuit<C> {
         inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
         program_snark_vk_and_proof: Execution<C>,
     ) -> Self {
-        let ledger_digest = MerkleTreeDigest::<C::RecordCommitmentTreeParameters>::default();
-        let old_serial_numbers =
-            vec![<C::AccountSignatureScheme as SignatureScheme>::PublicKey::default(); C::NUM_INPUT_RECORDS];
-        let new_commitments = vec![C::RecordCommitment::default(); C::NUM_OUTPUT_RECORDS];
-        let new_encrypted_record_hashes = vec![C::EncryptedRecordDigest::default(); C::NUM_OUTPUT_RECORDS];
-        let memo = [0u8; 64];
-        let value_balance = AleoAmount::ZERO;
-        let network_id = C::NETWORK_ID;
-
         let program_proofs = vec![program_snark_vk_and_proof.clone(); C::NUM_TOTAL_RECORDS];
         let program_commitment = <C::ProgramCommitmentScheme as CommitmentScheme>::Output::default();
         let program_randomness = <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default();
@@ -69,13 +54,7 @@ impl<C: Parameters> OuterCircuit<C> {
         let inner_circuit_id = C::InnerCircuitID::default();
 
         Self {
-            ledger_digest,
-            old_serial_numbers,
-            new_commitments,
-            memo,
-            new_encrypted_record_hashes,
-            value_balance,
-            network_id,
+            inner_public_variables: InnerPublicVariables::blank(),
             inner_snark_vk,
             inner_snark_proof,
             program_proofs,
@@ -88,14 +67,8 @@ impl<C: Parameters> OuterCircuit<C> {
 
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        // Inner SNARK public inputs
-        ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
-        old_serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
-        new_commitments: Vec<C::RecordCommitment>,
-        new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
-        memo: <Transaction<C> as TransactionScheme>::Memo,
-        value_balance: AleoAmount,
-        network_id: u8,
+        // Inner circuit public variables
+        inner_public_variables: InnerPublicVariables<C>,
 
         // Inner SNARK private inputs
         inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
@@ -112,17 +85,14 @@ impl<C: Parameters> OuterCircuit<C> {
         inner_circuit_id: C::InnerCircuitID,
     ) -> Self {
         assert_eq!(C::NUM_TOTAL_RECORDS, program_proofs.len());
-        assert_eq!(C::NUM_OUTPUT_RECORDS, new_commitments.len());
-        assert_eq!(C::NUM_OUTPUT_RECORDS, new_encrypted_record_hashes.len());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, inner_public_variables.kernel.commitments.len());
+        assert_eq!(
+            C::NUM_OUTPUT_RECORDS,
+            inner_public_variables.encrypted_record_hashes.len()
+        );
 
         Self {
-            ledger_digest,
-            old_serial_numbers,
-            new_commitments,
-            new_encrypted_record_hashes,
-            memo,
-            value_balance,
-            network_id,
+            inner_public_variables,
             inner_snark_vk,
             inner_snark_proof,
             program_proofs,
@@ -145,13 +115,7 @@ where
     ) -> Result<(), SynthesisError> {
         execute_outer_circuit::<C, CS>(
             cs,
-            &self.ledger_digest,
-            &self.old_serial_numbers,
-            &self.new_commitments,
-            &self.new_encrypted_record_hashes,
-            &self.memo,
-            self.value_balance,
-            self.network_id,
+            &self.inner_public_variables,
             &self.inner_snark_vk,
             &self.inner_snark_proof,
             &self.program_proofs,

@@ -14,11 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, Execution, Parameters, Transaction, TransactionScheme};
-use snarkvm_algorithms::{
-    merkle_tree::MerkleTreeDigest,
-    traits::{CommitmentScheme, SignatureScheme, SNARK},
-};
+use crate::{Execution, InnerPublicVariables, Parameters};
+use snarkvm_algorithms::traits::{CommitmentScheme, SNARK};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::MerklePathGadget,
@@ -99,14 +96,8 @@ fn alloc_program_snark_field_element<
 pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarField>>(
     cs: &mut CS,
 
-    // Inner snark verifier public inputs
-    ledger_digest: &MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
-    old_serial_numbers: &[<C::AccountSignatureScheme as SignatureScheme>::PublicKey],
-    new_commitments: &[C::RecordCommitment],
-    new_encrypted_record_hashes: &[C::EncryptedRecordDigest],
-    memo: &<Transaction<C> as TransactionScheme>::Memo,
-    value_balance: AleoAmount,
-    network_id: u8,
+    // Inner circuit public variables
+    inner_public: &InnerPublicVariables<C>,
 
     // Inner snark verifier private inputs (verifying key and proof)
     inner_snark_vk: &<C::InnerSNARK as SNARK>::VerifyingKey,
@@ -122,6 +113,11 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
 
     inner_circuit_id: &C::InnerCircuitID,
 ) -> Result<(), SynthesisError> {
+    // In the outer circuit, these two variables must be allocated as witness,
+    // as they are not included in the transaction.
+    debug_assert!(inner_public.program_commitment.is_none());
+    debug_assert!(inner_public.local_data_root.is_none());
+
     // Declare public parameters.
     let (program_id_commitment_parameters, program_circuit_id_crh, inner_circuit_id_crh) = {
         let cs = &mut cs.ns(|| "Declare Comm and CRH parameters");
@@ -154,11 +150,12 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
 
     // Declare inner circuit public variables as `CoreCheckF` field elements
 
-    let ledger_digest_fe = alloc_inner_snark_input_field_element::<C, _, _>(cs, ledger_digest, "ledger digest")?;
+    let ledger_digest_fe =
+        alloc_inner_snark_input_field_element::<C, _, _>(cs, &inner_public.ledger_digest, "ledger digest")?;
 
     let serial_number_fe = {
-        let mut serial_number_fe_vec = Vec::with_capacity(old_serial_numbers.len());
-        for (index, sn) in old_serial_numbers.iter().enumerate() {
+        let mut serial_number_fe_vec = Vec::with_capacity(inner_public.kernel.serial_numbers.len());
+        for (index, sn) in inner_public.kernel.serial_numbers.iter().enumerate() {
             let this_serial_number_fe =
                 alloc_inner_snark_input_field_element::<C, _, _>(cs, sn, &format!("serial number {}", index))?;
 
@@ -172,10 +169,13 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     };
 
     let commitment_and_encrypted_record_hash_fe = {
-        let mut commitment_and_encrypted_record_hash_fe_vec = Vec::with_capacity(new_commitments.len() * 2);
-        for (index, (cm, encrypted_record_hash)) in new_commitments
+        let mut commitment_and_encrypted_record_hash_fe_vec =
+            Vec::with_capacity(inner_public.kernel.commitments.len() * 2);
+        for (index, (cm, encrypted_record_hash)) in inner_public
+            .kernel
+            .commitments
             .iter()
-            .zip_eq(new_encrypted_record_hashes.iter())
+            .zip_eq(inner_public.encrypted_record_hashes.iter())
             .enumerate()
         {
             let commitment_fe =
@@ -196,12 +196,16 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
         )?
     };
 
-    let memo_fe = alloc_inner_snark_input_field_element::<C, _, _>(cs, memo, "memo")?;
+    let memo_fe = alloc_inner_snark_input_field_element::<C, _, _>(cs, &inner_public.kernel.memo, "memo")?;
 
-    let network_id_fe = alloc_inner_snark_input_field_element::<C, _, _>(cs, &[network_id], "network id")?;
+    let network_id_fe =
+        alloc_inner_snark_input_field_element::<C, _, _>(cs, &[inner_public.kernel.network_id], "network id")?;
 
-    let value_balance_fe =
-        alloc_inner_snark_input_field_element::<C, _, _>(cs, &value_balance.0.to_le_bytes(), "value balance")?;
+    let value_balance_fe = alloc_inner_snark_input_field_element::<C, _, _>(
+        cs,
+        &inner_public.kernel.value_balance.0.to_le_bytes(),
+        "value balance",
+    )?;
 
     let program_commitment_fe =
         alloc_inner_snark_field_element::<C, _, _>(cs, program_commitment, "program commitment")?;

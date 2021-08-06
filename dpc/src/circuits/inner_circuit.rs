@@ -14,17 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    execute_inner_circuit,
-    record::Record,
-    AleoAmount,
-    InnerPublicVariables,
-    Parameters,
-    PrivateKey,
-    TransactionKernel,
-};
+use crate::{execute_inner_circuit, record::Record, InnerPublicVariables, Parameters, PrivateKey};
 use snarkvm_algorithms::{
-    merkle_tree::{MerklePath, MerkleTreeDigest},
+    merkle_tree::MerklePath,
     traits::{CommitmentScheme, EncryptionScheme},
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
@@ -50,19 +42,7 @@ pub struct InnerCircuit<C: Parameters> {
 impl<C: Parameters> InnerCircuit<C> {
     pub fn blank() -> Self {
         // Construct the public variables.
-        let public = InnerPublicVariables {
-            kernel: TransactionKernel {
-                network_id: C::NETWORK_ID,
-                serial_numbers: vec![C::AccountSignaturePublicKey::default(); C::NUM_INPUT_RECORDS],
-                commitments: vec![C::RecordCommitment::default(); C::NUM_OUTPUT_RECORDS],
-                value_balance: AleoAmount::ZERO,
-                memo: [0u8; 64],
-            },
-            ledger_digest: MerkleTreeDigest::<C::RecordCommitmentTreeParameters>::default(),
-            encrypted_record_hashes: vec![C::EncryptedRecordDigest::default(); C::NUM_OUTPUT_RECORDS],
-            program_commitment: Some(C::ProgramCommitment::default()),
-            local_data_root: Some(C::LocalDataRoot::default()),
-        };
+        let public = InnerPublicVariables::blank();
 
         let old_records = vec![Record::default(); C::NUM_INPUT_RECORDS];
         let old_witnesses = vec![MerklePath::default(); C::NUM_INPUT_RECORDS];

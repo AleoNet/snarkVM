@@ -292,14 +292,13 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         );
 
         let transaction_proof = {
+            // These inner circuit public variables are allocated as private variables in the outer circuit,
+            // as they are not included in the transaction broadcasted to the ledger.
+            inner_public_variables.program_commitment = None;
+            inner_public_variables.local_data_root = None;
+
             let circuit = OuterCircuit::<C>::new(
-                ledger_digest.clone(),
-                serial_numbers.clone(),
-                commitments.clone(),
-                encrypted_record_hashes,
-                memo,
-                value_balance,
-                network_id,
+                inner_public_variables.clone(),
                 inner_snark_vk,
                 inner_proof,
                 executions.to_vec(),
@@ -309,31 +308,26 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 inner_circuit_id.clone(),
             );
 
-            let outer_snark_parameters = match &self.outer_snark_parameters.0 {
-                Some(outer_snark_parameters) => outer_snark_parameters,
-                None => return Err(DPCError::MissingOuterSnarkProvingParameters.into()),
-            };
+            let outer_proving_key = self
+                .outer_snark_parameters
+                .0
+                .as_ref()
+                .ok_or(DPCError::MissingOuterProvingKey)?;
 
-            C::OuterSNARK::prove(outer_snark_parameters, &circuit, rng)?
-        };
+            let outer_proof = C::OuterSNARK::prove(&outer_proving_key, &circuit, rng)?;
 
-        // Verify the outer circuit proof passes.
-        {
-            // These inner circuit public variables are allocated as private variables in the outer circuit,
-            // as they are not included in the final transaction broadcast to the ledger.
-            inner_public_variables.program_commitment = None;
-            inner_public_variables.local_data_root = None;
-
+            // Verify the outer circuit proof passes.
             assert!(C::OuterSNARK::verify(
                 &self.outer_snark_parameters.1,
-                &OuterCircuitVerifierInput {
+                &OuterPublicVariables {
                     inner_public_variables,
                     inner_circuit_id: inner_circuit_id.clone(),
                 },
-                &transaction_proof
+                &outer_proof
             )?);
-        }
 
+            outer_proof
+        };
         end_timer!(execution_timer);
 
         Ok(Self::Transaction::new(
@@ -454,10 +448,10 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             return false;
         }
 
-        let mut new_encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+        let mut encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
         for encrypted_record in transaction.encrypted_records() {
             match encrypted_record.to_hash() {
-                Ok(hash) => new_encrypted_record_hashes.push(hash),
+                Ok(hash) => encrypted_record_hashes.push(hash),
                 _ => {
                     eprintln!("Unable to hash encrypted record.");
                     return false;
@@ -468,27 +462,29 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         let inner_snark_input = InnerPublicVariables {
             kernel: transaction.to_kernel(),
             ledger_digest: transaction.ledger_digest().clone(),
-            encrypted_record_hashes: new_encrypted_record_hashes,
+            encrypted_record_hashes,
             program_commitment: None,
             local_data_root: None,
         };
 
-        let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = self.inner_snark_parameters.1.clone().into();
-        let inner_circuit_id = C::inner_circuit_id();
         debug_assert_eq!(
-            inner_circuit_id,
+            C::inner_circuit_id(),
             &C::inner_circuit_id_crh()
-                .hash_field_elements(&inner_snark_vk.to_field_elements().unwrap())
+                .hash_field_elements(&self.inner_snark_parameters.1.to_field_elements().unwrap())
                 .unwrap(),
             "The DPC-loaded and Parameters-saved inner circuit IDs do not match"
         );
 
-        let outer_snark_input = OuterCircuitVerifierInput {
+        let outer_public_variables = OuterPublicVariables {
             inner_public_variables: inner_snark_input,
-            inner_circuit_id: inner_circuit_id.clone(),
+            inner_circuit_id: C::inner_circuit_id().clone(),
         };
 
-        match C::OuterSNARK::verify(&self.outer_snark_parameters.1, &outer_snark_input, &transaction.proof) {
+        match C::OuterSNARK::verify(
+            &self.outer_snark_parameters.1,
+            &outer_public_variables,
+            &transaction.proof,
+        ) {
             Ok(is_valid) => {
                 if !is_valid {
                     eprintln!("Transaction proof failed to verify.");

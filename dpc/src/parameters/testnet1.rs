@@ -18,7 +18,7 @@ use crate::{
     account::{ACCOUNT_COMMITMENT_INPUT, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT},
     InnerPublicVariables,
     Network,
-    OuterCircuitVerifierInput,
+    OuterPublicVariables,
     Parameters,
     PublicVariables,
     Transaction,
@@ -111,7 +111,7 @@ impl Parameters for Testnet1Parameters {
     type InnerSNARK = Groth16<Self::InnerCurve, InnerPublicVariables<Testnet1Parameters>>;
     type InnerSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;
 
-    type OuterSNARK = Groth16<Self::OuterCurve, OuterCircuitVerifierInput<Testnet1Parameters>>;
+    type OuterSNARK = Groth16<Self::OuterCurve, OuterPublicVariables<Testnet1Parameters>>;
 
     type ProgramSNARK = Groth16<Self::InnerCurve, PublicVariables<Self>>;
     type ProgramSNARKGadget = Groth16VerifierGadget<Self::InnerCurve, PairingGadget>;

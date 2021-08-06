@@ -344,14 +344,6 @@ fn test_testnet1_dpc_execute_constraints() {
         signatures: _,
     } = authorization;
 
-    let TransactionKernel {
-        network_id,
-        serial_numbers,
-        commitments,
-        value_balance,
-        memo,
-    } = kernel.clone();
-
     let local_data_root = local_data.root();
 
     // Construct the ledger witnesses
@@ -373,7 +365,7 @@ fn test_testnet1_dpc_execute_constraints() {
     //////////////////////////////////////////////////////////////////////////
 
     // Construct the public variables.
-    let inner_public_variables = InnerPublicVariables {
+    let mut inner_public_variables = InnerPublicVariables {
         kernel,
         ledger_digest,
         encrypted_record_hashes: encrypted_record_hashes.clone(),
@@ -430,7 +422,7 @@ fn test_testnet1_dpc_execute_constraints() {
     let inner_snark_proof = <Testnet1Parameters as Parameters>::InnerSNARK::prove(
         &inner_snark_parameters.0,
         &InnerCircuit::new(
-            inner_public_variables,
+            inner_public_variables.clone(),
             old_records,
             old_witnesses,
             private_keys,
@@ -443,18 +435,17 @@ fn test_testnet1_dpc_execute_constraints() {
     )
     .unwrap();
 
+    // These inner circuit public variables are allocated as private variables in the outer circuit,
+    // as they are not included in the transaction broadcasted to the ledger.
+    inner_public_variables.program_commitment = None;
+    inner_public_variables.local_data_root = None;
+
     // Check that the proof check constraint system was satisfied.
     let mut outer_circuit_cs = TestConstraintSystem::<Fq>::new();
 
     execute_outer_circuit::<Testnet1Parameters, _>(
         &mut outer_circuit_cs.ns(|| "Outer circuit"),
-        &ledger_digest,
-        &serial_numbers,
-        &commitments,
-        &encrypted_record_hashes,
-        &memo,
-        value_balance,
-        network_id,
+        &inner_public_variables,
         &inner_snark_vk,
         &inner_snark_proof,
         &executions,
