@@ -584,6 +584,28 @@ impl<P: Fp2Parameters<Fp = F>, F: PrimeField> ThreeBitCondNegLookupGadget<F> for
 
 impl<P: Fp2Parameters<Fp = F>, F: PrimeField> AllocGadget<Fp2<P>, F> for Fp2Gadget<P, F> {
     #[inline]
+    fn alloc_constant<Fn, T, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
+    where
+        Fn: FnOnce() -> Result<T, SynthesisError>,
+        T: Borrow<Fp2<P>>,
+    {
+        let (c0, c1) = match value_gen() {
+            Ok(fe) => {
+                let fe = *fe.borrow();
+                (Ok(fe.c0), Ok(fe.c1))
+            }
+            Err(_) => (
+                Err(SynthesisError::AssignmentMissing),
+                Err(SynthesisError::AssignmentMissing),
+            ),
+        };
+
+        let c0 = FpGadget::alloc_constant(&mut cs.ns(|| "c0"), || c0)?;
+        let c1 = FpGadget::alloc_constant(&mut cs.ns(|| "c1"), || c1)?;
+        Ok(Self::new(c0, c1))
+    }
+
+    #[inline]
     fn alloc<Fn, T, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
     where
         Fn: FnOnce() -> Result<T, SynthesisError>,

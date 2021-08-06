@@ -58,7 +58,7 @@ fn dpc_testnet2_integration_test() {
             previous_block_hash: BlockHeaderHash([0u8; 32]),
             merkle_root_hash: MerkleRootHash([0u8; 32]),
             pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
-            proof: ProofOfSuccinctWork([0u8; 972]),
+            proof: ProofOfSuccinctWork::default(),
             time: 0,
             difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
             nonce: 0,
@@ -169,7 +169,7 @@ fn dpc_testnet2_integration_test() {
         difficulty_target: previous_block.header.difficulty_target,
         nonce: 0,
         pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
-        proof: ProofOfSuccinctWork([0u8; 972]),
+        proof: ProofOfSuccinctWork::default(),
     };
 
     assert!(dpc.verify_transactions(&transactions.0, &ledger));
@@ -254,7 +254,7 @@ fn test_testnet2_dpc_execute_constraints() {
             difficulty_target: 0xFFFF_FFFF_FFFF_FFFF_u64,
             nonce: 0,
             pedersen_merkle_root_hash: PedersenMerkleRootHash([0u8; 32]),
-            proof: ProofOfSuccinctWork([0u8; 972]),
+            proof: ProofOfSuccinctWork::default(),
         },
         transactions: Transactions::new(),
     };
@@ -494,7 +494,7 @@ fn test_testnet2_dpc_execute_constraints() {
         println!("=========================================================");
         let num_constraints = outer_circuit_cs.num_constraints();
         println!("Outer circuit num constraints: {:?}", num_constraints);
-        assert_eq!(878967, num_constraints);
+        assert_eq!(787899, num_constraints);
         println!("=========================================================");
     }
 

@@ -150,62 +150,41 @@ impl<TargetField: PrimeField> AHPForR1CS<TargetField> {
         // = a(gamma) - b(gamma) * (gamma g_2(gamma) + t(beta) / |K|)
         //
         // where
-        //   a(X) := sum_M (eta_M v_H(beta) v_H(alpha) val_M(X) prod_N (beta - row_N(X)) (alpha - col_N(X)))
-        //   b(X) := prod_M (beta - row_M(X)) (alpha - col_M(X))
-        //
-        // We define "n_denom" := prod_N (beta - row_N(X)) (alpha - col_N(X)))
+        //   a(X) := sum_M (eta_M v_H(beta) v_H(alpha) val_M(X))
+        //   b(X) := (beta - row(X)) (alpha - col(X))
         //
         // LinearCombination::new("g_2", vec![(F::one(), g_2)]);
         //
         // LinearCombination::new(
-        //     "a_denom".into(),
+        //     "denom".into(),
         //     vec![
         //         (alpha * beta, LCTerm::One),
-        //         (-alpha, "a_row"),
-        //         (-beta, "a_col"),
-        //         (F::one(), "a_row_col"),
-        // ]);
-        // LinearCombination::new(
-        //     "b_denom".into(),
-        //     vec![
-        //         (alpha * beta, LCTerm::One),
-        //         (-alpha, "b_row"),
-        //         (-beta, "b_col"),
-        //         (F::one(), "b_row_col"),
-        // ]);
-        // LinearCombination::new(
-        //     "c_denom".into(),
-        //     vec![
-        //         (alpha * beta, LCTerm::one()),
-        //         (-alpha, "c_row"),
-        //         (-beta, "c_col"),
-        //         (F::one(), "c_row_col"),
+        //         (-alpha, "row"),
+        //         (-beta, "col"),
+        //         (F::one(), "row_col"),
         // ]);
         //
         // LinearCombination::new(
         //     "a_poly".into(),
         //     vec![
-        //          (eta_a * b_denom_at_gamma * c_denom_at_gamma, "a_val".into()),
-        //          (eta_b * a_denom_at_gamma * c_denom_at_gamma, "b_val".into()),
-        //          (eta_c * b_denom_at_gamma * a_denom_at_gamma, "c_val".into()),
-        //     ],
-        // )
+        //          (eta_a * "a_val".into()),
+        //          (eta_b * "b_val".into()),
+        //          (eta_c * "c_val".into()),
+        //      ],
+        //  )
         //
         // let v_H_at_alpha = domain_h.evaluate_vanishing_polynomial(alpha);
         // let v_H_at_beta = domain_h.evaluate_vanishing_polynomial(beta);
         // let v_K_at_gamma = domain_k.evaluate_vanishing_polynomial(gamma);
         //
         // let a_poly_lc *= v_H_at_alpha * v_H_at_beta;
-        // let b_lc = LinearCombination::new("b_poly", vec![(a_denom_at_gamma * b_denom_at_gamma * c_denom_at_gamma, "one")]);
+        // let b_lc = denom
         // let h_lc = LinearCombination::new("b_poly", vec![(v_K_at_gamma, "h_2")]);
         //
         // // This LC is the only one that is evaluated:
         // let inner_sumcheck = a_poly_lc - (b_lc * (gamma * g_2_at_gamma + (t_at_beta / &k_size))) - h_lc
         // main_lc.set_label("inner_sumcheck");
         query_set.insert(("g_2".into(), ("gamma".into(), gamma)));
-        query_set.insert(("a_denom".into(), ("gamma".into(), gamma)));
-        query_set.insert(("b_denom".into(), ("gamma".into(), gamma)));
-        query_set.insert(("c_denom".into(), ("gamma".into(), gamma)));
         query_set.insert(("inner_sumcheck".into(), ("gamma".into(), gamma)));
 
         if with_vanishing {

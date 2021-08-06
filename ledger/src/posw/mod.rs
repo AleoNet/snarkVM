@@ -26,8 +26,10 @@ use crate::block::{
     PedersenMerkleRootHash,
     MASKED_TREE_DEPTH,
 };
+use blake2::Blake2s;
 use snarkvm_curves::{bls12_377::Bls12_377, traits::PairingEngine};
-use snarkvm_marlin::snark::MarlinTestnet1System;
+use snarkvm_marlin::{constraints::snark::MarlinSNARK, marlin::MarlinTestnet1Mode, FiatShamirChaChaRng};
+use snarkvm_polycommit::sonic_pc::SonicKZG10;
 
 /// PoSW instantiated over BLS12-377 with Marlin.
 pub type PoswMarlin = Posw<Marlin<Bls12_377>, Bls12_377>;
@@ -37,7 +39,14 @@ pub type PoswMarlin = Posw<Marlin<Bls12_377>, Bls12_377>;
 pub type Posw<S, E> = posw::Posw<S, <E as PairingEngine>::Fr, M, HG, 32>;
 
 /// Marlin proof system on PoSW
-pub type Marlin<E> = MarlinTestnet1System<E, Vec<<E as PairingEngine>::Fr>>;
+pub type Marlin<E> = MarlinSNARK<
+    <E as PairingEngine>::Fr,
+    <E as PairingEngine>::Fq,
+    SonicKZG10<E>,
+    FiatShamirChaChaRng<<E as PairingEngine>::Fr, <E as PairingEngine>::Fq, Blake2s>,
+    MarlinTestnet1Mode,
+    Vec<<E as PairingEngine>::Fr>,
+>;
 
 /// Subtree calculation
 pub fn txids_to_roots(transaction_ids: &[[u8; 32]]) -> (MerkleRootHash, PedersenMerkleRootHash, Vec<[u8; 32]>) {
@@ -77,7 +86,7 @@ mod tests {
 
         // run the trusted setup
         let max_degree = snarkvm_marlin::AHPForR1CS::<Fr>::max_degree(10000, 10000, 100000).unwrap();
-        let universal_srs = snarkvm_marlin::MarlinTestnet1::universal_setup(max_degree, &mut rng).unwrap();
+        let universal_srs = Marlin::<Bls12_377>::universal_setup(&max_degree, &mut rng).unwrap();
 
         // run the deterministic setup
         let posw = PoswMarlin::index::<_, ThreadRng>(&universal_srs).unwrap();
@@ -106,7 +115,7 @@ mod tests {
             .mine(&subroots, difficulty_target, &mut rng, std::u32::MAX)
             .unwrap();
 
-        assert_eq!(proof.len(), 972); // NOTE: Marlin proofs use compressed serialization
+        assert_eq!(proof.len(), 771); // NOTE: Marlin proofs use compressed serialization
 
         let proof = <Marlin<Bls12_377> as SNARK>::Proof::read_le(&proof[..]).unwrap();
         posw.verify(nonce, &proof, &pedersen_merkle_root).unwrap();

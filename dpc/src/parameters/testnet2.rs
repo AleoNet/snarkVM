@@ -61,7 +61,7 @@ use snarkvm_marlin::{
     PoseidonSponge,
 };
 use snarkvm_parameters::{testnet2::*, Parameter};
-use snarkvm_polycommit::marlin_pc::{marlin_kzg10::MarlinKZG10Gadget, MarlinKZG10};
+use snarkvm_polycommit::sonic_pc::{sonic_kzg10::SonicKZG10Gadget, SonicKZG10};
 use snarkvm_utilities::FromBytes;
 
 use once_cell::sync::OnceCell;
@@ -124,7 +124,7 @@ impl Parameters for Testnet2Parameters {
     type ProgramSNARK = MarlinSNARK<
         Self::InnerScalarField,
         Self::OuterScalarField,
-        MarlinKZG10<Self::InnerCurve>,
+        SonicKZG10<Self::InnerCurve>,
         FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField>>,
         MarlinTestnet2Mode,
         PublicVariables<Self>,
@@ -132,8 +132,8 @@ impl Parameters for Testnet2Parameters {
     type ProgramSNARKGadget = MarlinVerificationGadget<
         Self::InnerScalarField,
         Self::OuterScalarField,
-        MarlinKZG10<Self::InnerCurve>,
-        MarlinKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>,
+        SonicKZG10<Self::InnerCurve>,
+        SonicKZG10Gadget<Self::InnerCurve, Self::OuterCurve, PairingGadget>,
     >;
 
     type AccountCommitmentScheme = BHPCompressedCommitment<EdwardsBls12, 33, 48>;
@@ -186,10 +186,10 @@ impl Parameters for Testnet2Parameters {
     type RecordSerialNumberTreeCRH = BHPCompressedCRH<EdwardsBls12, 8, 32>;
     type RecordSerialNumberTreeDigest = <Self::RecordSerialNumberTreeCRH as CRH>::Output;
     type RecordSerialNumberTreeParameters = SerialNumberMerkleTreeParameters;
-    
+
     type SerialNumberNonceCRH = BHPCompressedCRH<EdwardsBls12, 32, 63>;
     type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
-    
+
     dpc_setup!{account_commitment_scheme, ACCOUNT_COMMITMENT_SCHEME, AccountCommitmentScheme, ACCOUNT_COMMITMENT_INPUT} // TODO (howardwu): Rename to "AleoAccountCommitmentScheme0".
     dpc_setup!{account_encryption_scheme, ACCOUNT_ENCRYPTION_SCHEME, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{account_signature_scheme, ACCOUNT_SIGNATURE_SCHEME, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
@@ -210,7 +210,7 @@ impl Parameters for Testnet2Parameters {
             .hash_field_elements(&Self::inner_circuit_verifying_key().to_field_elements().expect("Failed to convert inner circuit verifying key to elements"))
             .expect("Failed to hash inner circuit verifying key elements"))
     }
-    
+
     dpc_snark_setup_with_mode!{Testnet2Parameters, inner_circuit_proving_key, INNER_CIRCUIT_PROVING_KEY, InnerSNARK, ProvingKey, InnerSNARKPKParameters, "inner circuit proving key"}
     dpc_snark_setup!{Testnet2Parameters, inner_circuit_verifying_key, INNER_CIRCUIT_VERIFYING_KEY, InnerSNARK, VerifyingKey, InnerSNARKVKParameters, "inner circuit verifying key"}
 
@@ -224,12 +224,12 @@ impl Parameters for Testnet2Parameters {
 
     dpc_snark_setup_with_mode!{Testnet2Parameters, outer_circuit_proving_key, OUTER_CIRCUIT_PROVING_KEY, OuterSNARK, ProvingKey, OuterSNARKPKParameters, "outer circuit proving key"}
     dpc_snark_setup!{Testnet2Parameters, outer_circuit_verifying_key, OUTER_CIRCUIT_VERIFYING_KEY, OuterSNARK, VerifyingKey, OuterSNARKVKParameters, "outer circuit verifying key"}
-    
+
     fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters {
         static PROGRAM_ID_TREE_PARAMETERS: OnceCell<<Testnet2Parameters as Parameters>::ProgramCircuitTreeParameters> = OnceCell::new();
         PROGRAM_ID_TREE_PARAMETERS.get_or_init(|| Self::ProgramCircuitTreeParameters::from(Self::program_circuit_id_crh().clone()))
     }
-    
+
     fn record_commitment_tree_parameters() -> &'static Self::RecordCommitmentTreeParameters {
         static RECORD_COMMITMENT_TREE_PARAMETERS: OnceCell<<Testnet2Parameters as Parameters>::RecordCommitmentTreeParameters> = OnceCell::new();
         RECORD_COMMITMENT_TREE_PARAMETERS.get_or_init(|| Self::RecordCommitmentTreeParameters::from(Self::record_commitment_tree_crh().clone()))
@@ -249,14 +249,3 @@ impl Parameters for Testnet2Parameters {
         Rc::new(RefCell::new(SRS::<_, _>::Universal(universal_srs)))
     }
 }
-
-// This is currently unused.
-//
-// use snarkvm_marlin::{FiatShamirAlgebraicSpongeRngVar, PoseidonSpongeVar};
-//
-// pub type FSG = FiatShamirAlgebraicSpongeRngVar<
-//     Self::InnerScalarField,
-//     Self::OuterScalarField,
-//     PoseidonSponge<Self::OuterScalarField>,
-//     PoseidonSpongeVar<Self::OuterScalarField>,
-// >;

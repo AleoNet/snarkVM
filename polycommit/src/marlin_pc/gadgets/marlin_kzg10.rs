@@ -251,12 +251,10 @@ where
 
                             let value_bits =
                                 value.to_bits_le(cs.ns(|| format!("value_to_bits_le_{}_{}_{}", i, j, k)))?;
-                            let shift_power = prepared_verification_key
-                                .get_shift_power(
-                                    cs.ns(|| format!("prepared_vk_get_shift_power_{}_{}_{}", i, j, k)),
-                                    degree_bound,
-                                )
-                                .unwrap();
+                            let shift_power = prepared_verification_key.get_prepared_shift_power(
+                                cs.ns(|| format!("prepared_vk_get_shift_power_{}_{}_{}", i, j, k)),
+                                degree_bound,
+                            )?;
 
                             let mut shift_power_times_value =
                                 PG::G1Gadget::zero(cs.ns(|| format!("shift_power_times_value_zero{}_{}_{}", i, j, k)))?;
@@ -556,246 +554,6 @@ where
     type VerifierKeyVar = VerifierKeyVar<TargetCurve, BaseCurve, PG>;
 
     #[allow(clippy::type_complexity)]
-    fn batch_check_evaluations<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
-        mut cs: CS,
-        verification_key: &Self::VerifierKeyVar,
-        commitments: &[Self::LabeledCommitmentVar],
-        query_set: &QuerySetVar<<TargetCurve as PairingEngine>::Fr, <BaseCurve as PairingEngine>::Fr>,
-        evaluations: &EvaluationsVar<<TargetCurve as PairingEngine>::Fr, <BaseCurve as PairingEngine>::Fr>,
-        proofs: &[Self::ProofVar],
-        rand_data: &PCCheckRandomDataVar<<TargetCurve as PairingEngine>::Fr, <BaseCurve as PairingEngine>::Fr>,
-    ) -> Result<Boolean, SynthesisError> {
-        let mut batching_rands = rand_data.batching_rands.to_vec();
-        let mut batching_rands_bits = rand_data.batching_rands_bits.to_vec();
-
-        let commitments: BTreeMap<_, _> = commitments.iter().map(|c| (c.label.clone(), c)).collect();
-        let mut query_to_labels_map: BTreeMap<
-            <TargetCurve as PairingEngine>::Fr,
-            (
-                NonNativeFieldVar<<TargetCurve as PairingEngine>::Fr, <BaseCurve as PairingEngine>::Fr>,
-                BTreeSet<&String>,
-            ),
-        > = BTreeMap::new();
-
-        // Sort the query set to match the native impl.
-        let mut sorted_query_set_gadgets: Vec<_> = query_set.0.iter().collect();
-        sorted_query_set_gadgets.sort_by(|a, b| a.0.cmp(&b.0));
-
-        for (label, point) in sorted_query_set_gadgets.iter() {
-            // (raychu86): Changed entry `point.name` to `point.value` to preserve the same ordering,
-            // as the native implementation
-            let labels = query_to_labels_map
-                .entry(point.value.value()?)
-                .or_insert((point.value.clone(), BTreeSet::new()));
-            labels.1.insert(label);
-        }
-
-        // Accumulate commitments and evaluations for each query.
-        let mut combined_queries = Vec::new();
-        let mut combined_comms = Vec::new();
-        let mut combined_evals = Vec::new();
-        for (i, (_, (point, labels))) in query_to_labels_map.into_iter().enumerate() {
-            let mut comms_to_combine: Vec<Self::LabeledCommitmentVar> = Vec::new();
-            let mut values_to_combine = Vec::new();
-            for label in labels.into_iter() {
-                let commitment = &(*commitments.get(label).unwrap()).clone();
-                let degree_bound = commitment.degree_bound.clone();
-                assert_eq!(degree_bound.is_some(), commitment.commitment.shifted_comm.is_some());
-
-                let v_i = evaluations
-                    .0
-                    .get(&LabeledPointVar {
-                        name: label.clone(),
-                        value: point.clone(),
-                    })
-                    .unwrap();
-
-                comms_to_combine.push(commitment.clone());
-                values_to_combine.push(v_i.clone());
-            }
-
-            // Accumulate the commitments and evaluations corresponding to `query`.
-            let mut combined_comm = PG::G1Gadget::zero(cs.ns(|| format!("comm_zero_{}", i)))?;
-            let mut combined_eval = NonNativeFieldMulResultVar::<
-                <TargetCurve as PairingEngine>::Fr,
-                <BaseCurve as PairingEngine>::Fr,
-            >::zero();
-
-            let zero = PG::G1Gadget::zero(cs.ns(|| format!("g1_zero_{}", i)))?;
-
-            let mut opening_challenges_counter = 0;
-
-            for (j, (labeled_commitment, value)) in
-                comms_to_combine.into_iter().zip(values_to_combine.iter()).enumerate()
-            {
-                let challenge = rand_data.opening_challenges[opening_challenges_counter].clone();
-                let challenge_bits = rand_data.opening_challenges_bits[opening_challenges_counter].clone();
-                opening_challenges_counter += 1;
-
-                let LabeledCommitmentVar {
-                    commitment,
-                    degree_bound,
-                    ..
-                } = labeled_commitment;
-                let CommitmentVar { shifted_comm, .. } = commitment;
-
-                // To combine the commitments, we multiply each by one of the random challenges, and sum.
-                let temp = commitment.comm.mul_bits(
-                    cs.ns(|| format!("comm_mul_bits_{}_{}", i, j)),
-                    &zero,
-                    challenge_bits.into_iter(),
-                )?;
-                combined_comm = combined_comm.add(
-                    cs.ns(|| format!("combined_comm_plus_scalar_product_{}_{}", i, j)),
-                    &temp,
-                )?;
-
-                // Similarly, we add up the evaluations, multiplied with random challenges.
-                let value_times_challenge_unreduced =
-                    value.mul_without_reduce(cs.ns(|| format!("value_mul_without_reduce_{}_{}", i, j)), &challenge)?;
-
-                combined_eval = combined_eval.add(
-                    &mut cs.ns(|| format!("combined_eval_add_value_times_challenge_unreduced_{}_{}", i, j)),
-                    &value_times_challenge_unreduced,
-                )?;
-
-                // If the degree bound is specified, we include the adjusted degree-shifted commitment
-                // (that is, c_i' - v_i beta^{D - d_i} G), where d_i is the specific degree bound and
-                // v_i is the evaluation, in the cocmbined commitment,
-                if let Some(degree_bound) = degree_bound {
-                    let challenge_shifted_bits = rand_data.opening_challenges_bits[opening_challenges_counter].clone();
-                    opening_challenges_counter += 1;
-
-                    let shifted_comm = shifted_comm.as_ref().unwrap().clone();
-
-                    let value_bits = value.to_bits_le(cs.ns(|| format!("value_to_bits_le_{}_{}", i, j)))?;
-                    let shift_power = verification_key
-                        .get_shift_power(cs.ns(|| format!("get_shift_key_{}_{}", i, j)), &degree_bound)
-                        .unwrap();
-
-                    let shift_power_times_value = shift_power.mul_bits(
-                        cs.ns(|| format!("shift_power_mul_bits_{}_{}", i, j)),
-                        &zero,
-                        value_bits.into_iter(),
-                    )?;
-                    let mut adjusted_comm = shifted_comm;
-                    adjusted_comm = adjusted_comm.sub(
-                        &mut cs.ns(|| format!("adjusted_comm_minus_shift_power_times_value_{}_{}", i, j)),
-                        &shift_power_times_value,
-                    )?;
-
-                    let adjusted_comm_times_challenge = adjusted_comm.mul_bits(
-                        cs.ns(|| format!("adjusted_comm_mul_bits_{}_{}", i, j)),
-                        &zero,
-                        challenge_shifted_bits.into_iter(),
-                    )?;
-                    combined_comm = combined_comm.add(
-                        &mut cs.ns(|| format!("combined_comm_plus_adjusted_comm_times_challenge_{}_{}", i, j)),
-                        &adjusted_comm_times_challenge,
-                    )?;
-                }
-            }
-
-            combined_queries.push(point.clone());
-            combined_comms.push(combined_comm);
-            combined_evals.push(combined_eval);
-        }
-
-        // Perform the batch check.
-        {
-            let mut total_c = PG::G1Gadget::zero(cs.ns(|| "zero_c"))?;
-            let mut total_w = PG::G1Gadget::zero(cs.ns(|| "zero_w"))?;
-
-            let zero = PG::G1Gadget::zero(cs.ns(|| format!("batch_check_g1_zero")))?;
-
-            let mut g_multiplier = NonNativeFieldMulResultVar::<
-                <TargetCurve as PairingEngine>::Fr,
-                <BaseCurve as PairingEngine>::Fr,
-            >::zero();
-            for (i, (((c, z), v), proof)) in combined_comms
-                .iter()
-                .zip(combined_queries)
-                .zip(combined_evals)
-                .zip(proofs)
-                .enumerate()
-            {
-                let z_bits = z.to_bits_le(cs.ns(|| format!("z_to_bits_le_{}", i)))?;
-
-                let w_times_z =
-                    proof
-                        .w
-                        .mul_bits(cs.ns(|| format!("proof_w_mul_bits_{}", i)), &zero, z_bits.into_iter())?;
-                let mut c_plus_w_times_z = c.clone();
-                c_plus_w_times_z = c_plus_w_times_z.add(
-                    &mut cs.ns(|| format!("c_plus_w_times_z_plus_c_plus_w_times_z_{}", i)),
-                    &w_times_z,
-                )?;
-
-                let randomizer = batching_rands.remove(0);
-                let randomizer_bits = batching_rands_bits.remove(0);
-
-                let v_reduced = v.reduce(&mut cs.ns(|| format!("v_reduce_{}", i)))?;
-                let randomizer_times_v =
-                    randomizer.mul_without_reduce(cs.ns(|| format!("randomizer_times_v_{}", i)), &v_reduced)?;
-
-                g_multiplier = g_multiplier.add(
-                    &mut cs.ns(|| format!("g_multiplier_plus_randomizer_times_v_{}", i)),
-                    &randomizer_times_v,
-                )?;
-
-                let c_times_randomizer = c_plus_w_times_z.mul_bits(
-                    cs.ns(|| format!("c_plus_w_times_z_mul_bits_{}", i)),
-                    &zero,
-                    randomizer_bits.clone().into_iter(),
-                )?;
-                let w_times_randomizer = proof.w.mul_bits(
-                    cs.ns(|| format!("w_times_randomizer_mul_bits_{}", i)),
-                    &zero,
-                    randomizer_bits.into_iter(),
-                )?;
-                total_c = total_c.add(
-                    &mut cs.ns(|| format!("total_c_plus_c_times_randomizer_{}", i)),
-                    &c_times_randomizer,
-                )?;
-                total_w = total_w.add(
-                    &mut cs.ns(|| format!("total_w_plus_w_times_randomizer_{}", i)),
-                    &w_times_randomizer,
-                )?;
-            }
-
-            // Prepare each input to the pairing.
-            let (prepared_total_w, prepared_beta_h, prepared_total_c, prepared_h) = {
-                let g_multiplier_reduced = g_multiplier.reduce(&mut cs.ns(|| "g_multiplier_reduced"))?;
-                let g_multiplier_bits = g_multiplier_reduced.to_bits_le(cs.ns(|| "g_multiplier_reduced_to_bits_le"))?;
-
-                let g_times_mul = verification_key.g.mul_bits(
-                    cs.ns(|| "g_times_mul_mul_bits"),
-                    &zero,
-                    g_multiplier_bits.into_iter(),
-                )?;
-                total_c = total_c.sub(&mut cs.ns(|| "total_c_minus_g_times_mul"), &g_times_mul)?;
-                total_w = total_w.negate(cs.ns(|| "total_w_negate"))?;
-
-                let prepared_total_w = PG::prepare_g1(cs.ns(|| "prepared_total_w"), total_w)?;
-                let prepared_beta_h = PG::prepare_g2(cs.ns(|| "prepared_beta_h"), verification_key.beta_h.clone())?;
-                let prepared_total_c = PG::prepare_g1(cs.ns(|| "prepared_total_c"), total_c.clone())?;
-                let prepared_h = PG::prepare_g2(cs.ns(|| "prepared_h"), verification_key.h.clone())?;
-
-                (prepared_total_w, prepared_beta_h, prepared_total_c, prepared_h)
-            };
-
-            let lhs = PG::product_of_pairings(cs.ns(|| "lhs"), &[prepared_total_w, prepared_total_c], &[
-                prepared_beta_h,
-                prepared_h,
-            ])?;
-
-            let rhs = &PG::GTGadget::one(cs.ns(|| "rhs"))?;
-
-            lhs.is_eq(cs.ns(|| "lhs_is_eq_rhs"), &rhs)
-        }
-    }
-
-    #[allow(clippy::type_complexity)]
     fn prepared_check_combinations<CS: ConstraintSystem<<BaseCurve as PairingEngine>::Fr>>(
         mut cs: CS,
         prepared_verification_key: &Self::PreparedVerifierKeyVar,
@@ -857,7 +615,15 @@ where
                     };
 
                     if num_polys == 1 && cur_comm.degree_bound.is_some() {
-                        assert!(!negate);
+                        assert!(
+                            *coeff == LinearCombinationCoeffVar::One,
+                            "Coefficient must be one for degree-bounded equations"
+                        );
+                    } else if cur_comm.degree_bound.is_some() {
+                        eprintln!(
+                            "A commitment with a degree bound cannot be linearly combined with any other commitment."
+                        );
+                        return Err(SynthesisError::Unsatisfiable);
                     }
 
                     let coeff = match coeff {

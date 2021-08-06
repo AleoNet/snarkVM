@@ -166,7 +166,7 @@ impl Parameters for Testnet1Parameters {
     type RecordSerialNumberTreeCRH = BHPCompressedCRH<EdwardsBls12, 8, 32>;
     type RecordSerialNumberTreeDigest = <Self::RecordSerialNumberTreeCRH as CRH>::Output;
     type RecordSerialNumberTreeParameters = SerialNumberMerkleTreeParameters;
-    
+
     type SerialNumberNonceCRH = BHPCompressedCRH<EdwardsBls12, 32, 63>;
     type SerialNumberNonceCRHGadget = BHPCompressedCRHGadget<EdwardsBls12, Self::InnerScalarField, EdwardsBls12Gadget, 32, 63>;
     

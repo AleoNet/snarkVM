@@ -31,3 +31,8 @@ pub trait MergeGadget<F: PrimeField>: Clone {
         Ok(res)
     }
 }
+
+pub trait SumGadget<F: PrimeField>: Clone {
+    fn zero<CS: ConstraintSystem<F>>(cs: CS) -> Result<Self, SynthesisError>;
+    fn sum<CS: ConstraintSystem<F>>(cs: CS, elems: &[Self]) -> Result<Self, SynthesisError>;
+}

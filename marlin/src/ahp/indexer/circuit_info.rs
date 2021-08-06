@@ -18,8 +18,10 @@ use crate::ahp::AHPForR1CS;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{errors::SerializationError, serialize::*, ToBytes};
 
+use crate::Matrix;
 use core::marker::PhantomData;
 use derivative::Derivative;
+use std::collections::BTreeSet;
 
 /// Information about the circuit, including the field of definition, the number of
 /// variables, the number of constraints, and the maximum number of non-zero
@@ -32,11 +34,28 @@ pub struct CircuitInfo<F> {
     pub num_variables: usize,
     /// The number of constraints.
     pub num_constraints: usize,
-    /// The maximum number of non-zero entries in any constraint matrix.
+    /// The total number of non-zero entries in the sum of all constraint matrices.
     pub num_non_zero: usize,
 
     #[doc(hidden)]
     pub f: PhantomData<F>,
+}
+
+pub(crate) fn sum_matrices<F: PrimeField>(a: &Matrix<F>, b: &Matrix<F>, c: &Matrix<F>) -> Vec<Vec<usize>> {
+    a.iter()
+        .zip(b)
+        .zip(c)
+        .map(|((row_a, row_b), row_c)| {
+            row_a
+                .iter()
+                .map(|(_, i)| *i)
+                .chain(row_b.iter().map(|(_, i)| *i))
+                .chain(row_c.iter().map(|(_, i)| *i))
+                .collect::<BTreeSet<_>>()
+                .into_iter()
+                .collect()
+        })
+        .collect()
 }
 
 impl<F: PrimeField> CircuitInfo<F> {

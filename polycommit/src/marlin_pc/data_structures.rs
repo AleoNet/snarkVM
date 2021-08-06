@@ -159,13 +159,22 @@ pub struct PreparedVerifierKey<E: PairingEngine> {
     /// Information required to enforce degree bounds. Each pair
     /// is of the form `(degree_bound, shifting_advice)`.
     /// This is `None` if `self` does not support enforcing any degree bounds.
-    pub prepared_degree_bounds_and_shift_powers: Option<Vec<(usize, Vec<E::G1Affine>)>>,
+    pub degree_bounds_and_prepared_shift_powers: Option<Vec<(usize, Vec<E::G1Affine>)>>,
     /// The maximum degree supported by the `UniversalParams` `self` was derived
     /// from.
     pub max_degree: usize,
     /// The maximum degree supported by the trimmed parameters that `self` is
     /// a part of.
     pub supported_degree: usize,
+}
+
+impl<E: PairingEngine> PreparedVerifierKey<E> {
+    /// Find the appropriate shift for the degree bound.
+    pub fn get_prepared_shift_power(&self, bound: usize) -> Option<Vec<E::G1Affine>> {
+        self.degree_bounds_and_prepared_shift_powers
+            .as_ref()
+            .and_then(|v| v.binary_search_by(|(d, _)| d.cmp(&bound)).ok().map(|i| v[i].1.clone()))
+    }
 }
 
 impl<E: PairingEngine> Prepare<PreparedVerifierKey<E>> for VerifierKey<E> {
@@ -200,7 +209,7 @@ impl<E: PairingEngine> Prepare<PreparedVerifierKey<E>> for VerifierKey<E> {
 
         PreparedVerifierKey::<E> {
             prepared_vk,
-            prepared_degree_bounds_and_shift_powers,
+            degree_bounds_and_prepared_shift_powers: prepared_degree_bounds_and_shift_powers,
             max_degree: self.max_degree,
             supported_degree: self.supported_degree,
         }

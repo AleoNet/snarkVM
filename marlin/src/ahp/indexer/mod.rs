@@ -26,3 +26,10 @@ mod constraint_system;
 pub(crate) use constraint_system::*;
 
 mod indexer;
+
+/// Represents a matrix.
+pub(crate) type Matrix<F> = Vec<Vec<(F, usize)>>;
+
+pub(crate) fn num_non_zero(joint_matrix: &[Vec<usize>]) -> usize {
+    joint_matrix.iter().map(|row| row.len()).sum()
+}

@@ -32,6 +32,8 @@ use crate::{
         eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         fields::FieldGadget,
     },
+    CondSelectGadget,
+    SumGadget,
 };
 
 pub type G2Gadget<P> = AffineGadget<<P as Bls12Parameters>::G2Parameters, <P as Bls12Parameters>::Fp, Fp2G<P>>;
@@ -154,13 +156,26 @@ impl<P: Bls12Parameters> AllocGadget<G2Prepared<P>, <P as Bls12Parameters>::Fp> 
     ) -> Result<Self, SynthesisError> {
         let g2_prep = value_gen().map(|b| {
             let projective_coeffs = &b.borrow().ell_coeffs;
-            let mut z_s = projective_coeffs.iter().map(|(_, _, z)| *z).collect::<Vec<_>>();
-            batch_inversion(&mut z_s);
-            projective_coeffs
-                .iter()
-                .zip(z_s)
-                .map(|((x, y, _), z_inv)| (*x * z_inv, *y * z_inv))
-                .collect::<Vec<_>>()
+            match P::TWIST_TYPE {
+                TwistType::M => {
+                    let mut z_s = projective_coeffs.iter().map(|(_, _, z)| *z).collect::<Vec<_>>();
+                    batch_inversion(&mut z_s);
+                    projective_coeffs
+                        .iter()
+                        .zip(z_s)
+                        .map(|((x, y, _), z_inv)| (*x * z_inv, *y * z_inv))
+                        .collect::<Vec<_>>()
+                }
+                TwistType::D => {
+                    let mut z_s = projective_coeffs.iter().map(|(z, _, _)| *z).collect::<Vec<_>>();
+                    batch_inversion(&mut z_s);
+                    projective_coeffs
+                        .iter()
+                        .zip(z_s)
+                        .map(|((_, x, y), z_inv)| (*x * z_inv, *y * z_inv))
+                        .collect::<Vec<_>>()
+                }
+            }
         })?;
 
         let mut l = Vec::new();
@@ -190,13 +205,26 @@ impl<P: Bls12Parameters> AllocGadget<G2Prepared<P>, <P as Bls12Parameters>::Fp> 
     ) -> Result<Self, SynthesisError> {
         let g2_prep = value_gen().map(|b| {
             let projective_coeffs = &b.borrow().ell_coeffs;
-            let mut z_s = projective_coeffs.iter().map(|(_, _, z)| *z).collect::<Vec<_>>();
-            batch_inversion(&mut z_s);
-            projective_coeffs
-                .iter()
-                .zip(z_s)
-                .map(|((x, y, _), z_inv)| (*x * z_inv, *y * z_inv))
-                .collect::<Vec<_>>()
+            match P::TWIST_TYPE {
+                TwistType::M => {
+                    let mut z_s = projective_coeffs.iter().map(|(_, _, z)| *z).collect::<Vec<_>>();
+                    batch_inversion(&mut z_s);
+                    projective_coeffs
+                        .iter()
+                        .zip(z_s)
+                        .map(|((x, y, _), z_inv)| (*x * z_inv, *y * z_inv))
+                        .collect::<Vec<_>>()
+                }
+                TwistType::D => {
+                    let mut z_s = projective_coeffs.iter().map(|(z, _, _)| *z).collect::<Vec<_>>();
+                    batch_inversion(&mut z_s);
+                    projective_coeffs
+                        .iter()
+                        .zip(z_s)
+                        .map(|((_, x, y), z_inv)| (*x * z_inv, *y * z_inv))
+                        .collect::<Vec<_>>()
+                }
+            }
         })?;
 
         let mut l = Vec::new();
@@ -226,13 +254,26 @@ impl<P: Bls12Parameters> AllocGadget<G2Prepared<P>, <P as Bls12Parameters>::Fp> 
     ) -> Result<Self, SynthesisError> {
         let g2_prep = value_gen().map(|b| {
             let projective_coeffs = &b.borrow().ell_coeffs;
-            let mut z_s = projective_coeffs.iter().map(|(_, _, z)| *z).collect::<Vec<_>>();
-            batch_inversion(&mut z_s);
-            projective_coeffs
-                .iter()
-                .zip(z_s)
-                .map(|((x, y, _), z_inv)| (*x * z_inv, *y * z_inv))
-                .collect::<Vec<_>>()
+            match P::TWIST_TYPE {
+                TwistType::M => {
+                    let mut z_s = projective_coeffs.iter().map(|(_, _, z)| *z).collect::<Vec<_>>();
+                    batch_inversion(&mut z_s);
+                    projective_coeffs
+                        .iter()
+                        .zip(z_s)
+                        .map(|((x, y, _), z_inv)| (*x * z_inv, *y * z_inv))
+                        .collect::<Vec<_>>()
+                }
+                TwistType::D => {
+                    let mut z_s = projective_coeffs.iter().map(|(z, _, _)| *z).collect::<Vec<_>>();
+                    batch_inversion(&mut z_s);
+                    projective_coeffs
+                        .iter()
+                        .zip(z_s)
+                        .map(|((_, x, y), z_inv)| (*x * z_inv, *y * z_inv))
+                        .collect::<Vec<_>>()
+                }
+            }
         })?;
 
         let mut l = Vec::new();
@@ -280,5 +321,78 @@ impl<P: Bls12Parameters> ConditionalEqGadget<<P as Bls12Parameters>::Fp> for G2P
 
     fn cost() -> usize {
         unimplemented!()
+    }
+}
+
+impl<P: Bls12Parameters> SumGadget<<P as Bls12Parameters>::Fp> for G2PreparedGadget<P> {
+    fn zero<CS: ConstraintSystem<<P as Bls12Parameters>::Fp>>(mut cs: CS) -> Result<Self, SynthesisError> {
+        let zero = Fp2G::<P>::zero(cs.ns(|| "zero coeff entry element"))?;
+
+        let bit_iterator = BitIteratorBE::new(P::X);
+        let mut ell_coeffs = Vec::with_capacity(bit_iterator.len());
+
+        for i in bit_iterator.skip(1) {
+            ell_coeffs.push((zero.clone(), zero.clone()));
+            if i {
+                ell_coeffs.push((zero.clone(), zero.clone()));
+            }
+        }
+
+        Ok(Self { ell_coeffs })
+    }
+
+    fn sum<CS: ConstraintSystem<<P as Bls12Parameters>::Fp>>(
+        mut cs: CS,
+        elems: &[Self],
+    ) -> Result<Self, SynthesisError> {
+        let mut res = Self::zero(cs.ns(|| "zero"))?;
+        for (i, elem) in elems.iter().enumerate() {
+            for (j, (l_coeff, r_coeff)) in elem.ell_coeffs.iter().enumerate() {
+                res.ell_coeffs[j].0 = res.ell_coeffs[j]
+                    .0
+                    .add(cs.ns(|| format!("sum_{}_{}_entry_0", i, j)), l_coeff)?;
+                res.ell_coeffs[j].1 = res.ell_coeffs[j]
+                    .1
+                    .add(cs.ns(|| format!("sum_{}_{}_entry_1", i, j)), r_coeff)?;
+            }
+        }
+
+        Ok(res)
+    }
+}
+
+impl<P: Bls12Parameters> CondSelectGadget<<P as Bls12Parameters>::Fp> for G2PreparedGadget<P> {
+    fn conditionally_select<CS: ConstraintSystem<<P as Bls12Parameters>::Fp>>(
+        mut cs: CS,
+        cond: &Boolean,
+        first: &Self,
+        second: &Self,
+    ) -> Result<Self, SynthesisError> {
+        let mut res = Vec::with_capacity(first.ell_coeffs.len());
+
+        for (i, ((l0, l1), (r0, r1))) in first.ell_coeffs.iter().zip(second.ell_coeffs.iter()).enumerate() {
+            let s0 =
+                Fp2G::<P>::conditionally_select(cs.ns(|| format!("conditional_select_{}_entry_0", i)), cond, l0, r0)?;
+
+            let s1 =
+                Fp2G::<P>::conditionally_select(cs.ns(|| format!("conditional_select_{}_entry_1", i)), cond, l1, r1)?;
+
+            res.push((s0, s1));
+        }
+
+        Ok(Self { ell_coeffs: res })
+    }
+
+    fn cost() -> usize {
+        let mut cost = 0usize;
+        let bit_iterator = BitIteratorBE::new(P::X);
+        for i in bit_iterator.skip(1) {
+            cost += 2;
+            if i {
+                cost += 2;
+            }
+        }
+
+        <Fp2G<P> as CondSelectGadget<<P as Bls12Parameters>::Fp>>::cost() * cost
     }
 }
