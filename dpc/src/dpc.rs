@@ -218,14 +218,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             signatures,
         } = authorization;
 
-        let TransactionKernel {
-            network_id,
-            serial_numbers,
-            commitments,
-            value_balance,
-            memo,
-        } = kernel.clone();
-
         // Construct the ledger witnesses.
         let ledger_digest = ledger.latest_digest()?;
 
@@ -258,14 +250,16 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         // Compute the inner circuit proof.
         let inner_proof = {
-            let circuit = InnerCircuit::<C>::new(inner_public_variables.clone(), inner_private_variables);
-
             let inner_proving_key = self
                 .inner_proving_key
                 .as_ref()
                 .ok_or(DPCError::MissingInnerProvingKey)?;
 
-            C::InnerSNARK::prove(&inner_proving_key, &circuit, rng)?
+            C::InnerSNARK::prove(
+                &inner_proving_key,
+                &InnerCircuit::<C>::new(inner_public_variables.clone(), inner_private_variables),
+                rng,
+            )?
         };
 
         // Verify that the inner circuit proof passes.
@@ -293,14 +287,16 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 local_data.root().clone(),
             );
 
-            let circuit = OuterCircuit::<C>::new(outer_public_variables.clone(), outer_private_variables);
-
             let outer_proving_key = self
                 .outer_proving_key
                 .as_ref()
                 .ok_or(DPCError::MissingOuterProvingKey)?;
 
-            let outer_proof = C::OuterSNARK::prove(&outer_proving_key, &circuit, rng)?;
+            let outer_proof = C::OuterSNARK::prove(
+                &outer_proving_key,
+                &OuterCircuit::<C>::new(outer_public_variables.clone(), outer_private_variables),
+                rng,
+            )?;
 
             // Verify the outer circuit proof passes.
             assert!(C::OuterSNARK::verify(
@@ -312,6 +308,14 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             outer_proof
         };
         end_timer!(execution_timer);
+
+        let TransactionKernel {
+            network_id,
+            serial_numbers,
+            commitments,
+            value_balance,
+            memo,
+        } = kernel;
 
         Ok(Self::Transaction::new(
             Network::from_id(network_id),

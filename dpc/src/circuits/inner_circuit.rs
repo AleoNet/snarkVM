@@ -46,7 +46,6 @@ impl<C: Parameters> InnerCircuit<C> {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn new(public: InnerPublicVariables<C>, private: InnerPrivateVariables<C>) -> Self {
         assert_eq!(C::NUM_OUTPUT_RECORDS, public.encrypted_record_hashes.len());
         Self { public, private }
@@ -156,16 +155,16 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         || Ok(public.ledger_digest),
     )?;
 
-    let mut old_serial_numbers_gadgets = Vec::with_capacity(private.old_records.len());
-    let mut old_serial_numbers_bytes_gadgets = Vec::with_capacity(private.old_records.len() * 32); // Serial numbers are 32 bytes
-    let mut old_record_commitments_gadgets = Vec::with_capacity(private.old_records.len());
-    let mut old_program_ids_gadgets = Vec::with_capacity(private.old_records.len());
+    let mut old_serial_numbers_gadgets = Vec::with_capacity(private.input_records.len());
+    let mut old_serial_numbers_bytes_gadgets = Vec::with_capacity(private.input_records.len() * 32); // Serial numbers are 32 bytes
+    let mut old_record_commitments_gadgets = Vec::with_capacity(private.input_records.len());
+    let mut old_program_ids_gadgets = Vec::with_capacity(private.input_records.len());
 
     for (i, (((record, witness), account_private_key), given_serial_number)) in private
-        .old_records
+        .input_records
         .iter()
-        .zip(&private.old_witnesses)
-        .zip(&private.old_private_keys)
+        .zip(&private.input_witnesses)
+        .zip(&private.private_keys)
         .zip(&public.kernel.serial_numbers)
         .enumerate()
     {
@@ -444,14 +443,14 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         }
     }
 
-    let mut new_record_commitments_gadgets = Vec::with_capacity(private.new_records.len());
-    let mut new_program_ids_gadgets = Vec::with_capacity(private.new_records.len());
+    let mut new_record_commitments_gadgets = Vec::with_capacity(private.output_records.len());
+    let mut new_program_ids_gadgets = Vec::with_capacity(private.output_records.len());
 
     for (j, (((record, commitment), encryption_randomness), encrypted_record_hash)) in private
-        .new_records
+        .output_records
         .iter()
         .zip(&public.kernel.commitments)
-        .zip(&private.new_records_encryption_randomness)
+        .zip(&private.encrypted_record_randomizers)
         .zip(&public.encrypted_record_hashes)
         .enumerate()
     {
@@ -746,7 +745,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 C::InnerScalarField,
             >>::RandomnessGadget::alloc(
                 cs.ns(|| format!("Allocate old record local data commitment randomness {}", i)),
-                || Ok(&private.local_data_commitment_randomizers[i]),
+                || Ok(&private.local_data_leaf_randomizers[i]),
             )?;
 
             let commitment = local_data_commitment_parameters.check_commitment_gadget(
@@ -778,7 +777,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 C::InnerScalarField,
             >>::RandomnessGadget::alloc(
                 cs.ns(|| format!("Allocate new record local data commitment randomness {}", j)),
-                || Ok(&private.local_data_commitment_randomizers[C::NUM_INPUT_RECORDS + j]),
+                || Ok(&private.local_data_leaf_randomizers[C::NUM_INPUT_RECORDS + j]),
             )?;
 
             let commitment = local_data_commitment_parameters.check_commitment_gadget(
@@ -839,7 +838,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
         let mut candidate_value_balance = Int64::zero();
 
-        for (i, old_record) in private.old_records.iter().enumerate() {
+        for (i, old_record) in private.input_records.iter().enumerate() {
             let value = old_record.value as i64;
             let record_value = Int64::alloc(cs.ns(|| format!("old record {} value", i)), || Ok(value))?;
 
@@ -848,7 +847,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 .unwrap();
         }
 
-        for (j, new_record) in private.new_records.iter().enumerate() {
+        for (j, new_record) in private.output_records.iter().enumerate() {
             let value = new_record.value as i64;
             let record_value = Int64::alloc(cs.ns(|| format!("new record {} value", j)), || Ok(value))?;
 

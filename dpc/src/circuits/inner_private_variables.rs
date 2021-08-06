@@ -23,78 +23,61 @@ use snarkvm_algorithms::{
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
 pub struct InnerPrivateVariables<C: Parameters> {
-    // Inputs for old records.
-    pub(super) old_records: Vec<Record<C>>,
-    pub(super) old_witnesses: Vec<MerklePath<C::RecordCommitmentTreeParameters>>,
-    pub(super) old_private_keys: Vec<PrivateKey<C>>,
-    // Inputs for new records.
-    pub(super) new_records: Vec<Record<C>>,
-    // Inputs for encryption of new records.
-    pub(super) new_records_encryption_randomness: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
+    // Inputs records.
+    pub(super) input_records: Vec<Record<C>>,
+    pub(super) input_witnesses: Vec<MerklePath<C::RecordCommitmentTreeParameters>>,
+    pub(super) private_keys: Vec<PrivateKey<C>>,
+    // Output records.
+    pub(super) output_records: Vec<Record<C>>,
+    // Encryption of output records.
+    pub(super) encrypted_record_randomizers: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
     // Commitment to programs and local data.
     pub(super) program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-    pub(super) local_data_commitment_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
+    pub(super) local_data_leaf_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
 }
 
 impl<C: Parameters> InnerPrivateVariables<C> {
     pub fn blank() -> Self {
-        let old_records = vec![Record::default(); C::NUM_INPUT_RECORDS];
-        let old_witnesses = vec![MerklePath::default(); C::NUM_INPUT_RECORDS];
-        let old_private_keys = vec![PrivateKey::default(); C::NUM_INPUT_RECORDS];
-
-        let new_records = vec![Record::default(); C::NUM_OUTPUT_RECORDS];
-        let new_records_encryption_randomness =
-            vec![<C::AccountEncryptionScheme as EncryptionScheme>::Randomness::default(); C::NUM_OUTPUT_RECORDS];
-
-        let program_randomness = <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default();
-        let local_data_commitment_randomizers =
-            vec![<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::default(); C::NUM_TOTAL_RECORDS];
-
         Self {
-            // Input records
-            old_records,
-            old_witnesses,
-            old_private_keys,
-            // Output records
-            new_records,
-            new_records_encryption_randomness,
-            // Other stuff
-            program_randomness,
-            local_data_commitment_randomizers,
+            input_records: vec![Record::default(); C::NUM_INPUT_RECORDS],
+            input_witnesses: vec![MerklePath::default(); C::NUM_INPUT_RECORDS],
+            private_keys: vec![PrivateKey::default(); C::NUM_INPUT_RECORDS],
+            output_records: vec![Record::default(); C::NUM_OUTPUT_RECORDS],
+            encrypted_record_randomizers: vec![
+                <C::AccountEncryptionScheme as EncryptionScheme>::Randomness::default();
+                C::NUM_OUTPUT_RECORDS
+            ],
+            program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default(),
+            local_data_leaf_randomizers: vec![
+                <C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::default();
+                C::NUM_TOTAL_RECORDS
+            ],
         }
     }
 
     pub fn new(
-        // Old records
-        old_records: Vec<Record<C>>,
+        input_records: Vec<Record<C>>,
         old_witnesses: Vec<MerklePath<C::RecordCommitmentTreeParameters>>,
         old_private_keys: Vec<PrivateKey<C>>,
-        // New records
         new_records: Vec<Record<C>>,
         new_records_encryption_randomness: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
-        // Other stuff
         program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
         local_data_commitment_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
     ) -> Self {
-        assert_eq!(C::NUM_INPUT_RECORDS, old_records.len());
+        assert_eq!(C::NUM_INPUT_RECORDS, input_records.len());
         assert_eq!(C::NUM_INPUT_RECORDS, old_witnesses.len());
         assert_eq!(C::NUM_INPUT_RECORDS, old_private_keys.len());
-
         assert_eq!(C::NUM_OUTPUT_RECORDS, new_records.len());
         assert_eq!(C::NUM_OUTPUT_RECORDS, new_records_encryption_randomness.len());
-        // assert_eq!(C::NUM_OUTPUT_RECORDS, public.encrypted_record_hashes.len());
 
         Self {
-            // Input records
-            old_records,
-            old_witnesses,
-            old_private_keys,
-            // Output records
-            new_records,
-            new_records_encryption_randomness,
-            // Other stuff
+            input_records,
+            input_witnesses: old_witnesses,
+            private_keys: old_private_keys,
+            output_records: new_records,
+            encrypted_record_randomizers: new_records_encryption_randomness,
             program_randomness,
-            local_data_commitment_randomizers,
+            local_data_leaf_randomizers: local_data_commitment_randomizers,
         }
     }
 }
