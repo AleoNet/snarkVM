@@ -239,7 +239,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         }
 
         // Construct the inner circuit public variables.
-        let mut inner_public_variables = InnerPublicVariables {
+        let inner_public_variables = InnerPublicVariables {
             kernel: kernel.clone(),
             ledger_digest: ledger_digest.clone(),
             encrypted_record_hashes: encrypted_record_hashes.clone(),
@@ -282,16 +282,8 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 "The DPC-loaded and Parameters-saved inner circuit IDs do not match"
             );
 
-            // These inner circuit public variables are allocated as private variables in the outer circuit,
-            // as they are not included in the transaction broadcasted to the ledger.
-            inner_public_variables.program_commitment = None;
-            inner_public_variables.local_data_root = None;
-
             // Construct the outer circuit public variables.
-            let outer_public_variables = OuterPublicVariables {
-                inner_public_variables,
-                inner_circuit_id: C::inner_circuit_id().clone(),
-            };
+            let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, C::inner_circuit_id());
 
             let circuit = OuterCircuit::<C>::new(
                 outer_public_variables.clone(),
@@ -408,8 +400,8 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             transaction.memo()
         ] {
             Ok(message) => message,
-            _ => {
-                eprintln!("Unable to construct signature message.");
+            Err(error) => {
+                eprintln!("Unable to construct signature message - {}", error);
                 return false;
             }
         };
@@ -418,12 +410,12 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             match C::account_signature_scheme().verify(pk, &signature_message, sig) {
                 Ok(is_valid) => {
                     if !is_valid {
-                        eprintln!("Signature is invalid.");
+                        eprintln!("Signature is invalid");
                         return false;
                     }
                 }
-                _ => {
-                    eprintln!("Unable to verify signature.");
+                Err(error) => {
+                    eprintln!("Unable to verify signature - {}", error);
                     return false;
                 }
             }
@@ -439,25 +431,6 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             return false;
         }
 
-        let mut encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-        for encrypted_record in transaction.encrypted_records() {
-            match encrypted_record.to_hash() {
-                Ok(hash) => encrypted_record_hashes.push(hash),
-                _ => {
-                    eprintln!("Unable to hash encrypted record.");
-                    return false;
-                }
-            }
-        }
-
-        let inner_snark_input = InnerPublicVariables {
-            kernel: transaction.to_kernel(),
-            ledger_digest: transaction.ledger_digest().clone(),
-            encrypted_record_hashes,
-            program_commitment: None,
-            local_data_root: None,
-        };
-
         debug_assert_eq!(
             C::inner_circuit_id(),
             &C::inner_circuit_id_crh()
@@ -466,9 +439,12 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             "The DPC-loaded and Parameters-saved inner circuit IDs do not match"
         );
 
-        let outer_public_variables = OuterPublicVariables {
-            inner_public_variables: inner_snark_input,
-            inner_circuit_id: C::inner_circuit_id().clone(),
+        let outer_public_variables = match OuterPublicVariables::from(transaction) {
+            Ok(outer_public_variables) => outer_public_variables,
+            Err(error) => {
+                eprintln!("Unable to construct outer public variables - {}", error);
+                return false;
+            }
         };
 
         match C::OuterSNARK::verify(&self.outer_verifying_key, &outer_public_variables, &transaction.proof) {

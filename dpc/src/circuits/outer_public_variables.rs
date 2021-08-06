@@ -14,10 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerPublicVariables, Parameters};
+use crate::{InnerPublicVariables, Parameters, Transaction, TransactionScheme};
 use snarkvm_algorithms::merkle_tree::MerkleTreeDigest;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::ToBits;
+
+use anyhow::Result;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
@@ -28,10 +30,49 @@ pub struct OuterPublicVariables<C: Parameters> {
 
 impl<C: Parameters> OuterPublicVariables<C> {
     pub fn blank() -> Self {
+        // These inner circuit public variables are allocated as private variables in the outer circuit,
+        // as they are not included in the transaction broadcast to the ledger.
+        let mut inner_public_variables = InnerPublicVariables::blank();
+        inner_public_variables.program_commitment = None;
+        inner_public_variables.local_data_root = None;
+
         Self {
-            inner_public_variables: InnerPublicVariables::blank(),
+            inner_public_variables,
             inner_circuit_id: C::InnerCircuitID::default(),
         }
+    }
+
+    pub fn new(inner_public_variables: &InnerPublicVariables<C>, inner_circuit_id: &C::InnerCircuitID) -> Self {
+        // These inner circuit public variables are allocated as private variables in the outer circuit,
+        // as they are not included in the transaction broadcast to the ledger.
+        let mut inner_public_variables: InnerPublicVariables<C> = inner_public_variables.clone();
+        inner_public_variables.program_commitment = None;
+        inner_public_variables.local_data_root = None;
+
+        Self {
+            inner_public_variables,
+            inner_circuit_id: inner_circuit_id.clone(),
+        }
+    }
+
+    pub fn from(transaction: &Transaction<C>) -> Result<Self> {
+        let mut encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
+        for encrypted_record in transaction.encrypted_records().iter().take(C::NUM_OUTPUT_RECORDS) {
+            encrypted_record_hashes.push(encrypted_record.to_hash()?);
+        }
+
+        Ok(Self {
+            inner_public_variables: InnerPublicVariables {
+                kernel: transaction.to_kernel(),
+                ledger_digest: transaction.ledger_digest().clone(),
+                encrypted_record_hashes,
+                // These inner circuit public variables are allocated as private variables in the outer circuit,
+                // as they are not included in the transaction broadcast to the ledger.
+                program_commitment: None,
+                local_data_root: None,
+            },
+            inner_circuit_id: transaction.inner_circuit_id().clone(),
+        })
     }
 }
 

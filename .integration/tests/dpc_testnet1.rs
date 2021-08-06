@@ -435,15 +435,7 @@ fn test_testnet1_dpc_execute_constraints() {
     .unwrap();
 
     // Construct the outer circuit public variables.
-    let mut outer_public_variables = OuterPublicVariables {
-        inner_public_variables,
-        inner_circuit_id,
-    };
-
-    // These inner circuit public variables are allocated as private variables in the outer circuit,
-    // as they are not included in the transaction broadcast to the ledger.
-    outer_public_variables.inner_public_variables.program_commitment = None;
-    outer_public_variables.inner_public_variables.local_data_root = None;
+    let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, &inner_circuit_id);
 
     // Check that the proof check constraint system was satisfied.
     let mut outer_circuit_cs = TestConstraintSystem::<Fq>::new();
