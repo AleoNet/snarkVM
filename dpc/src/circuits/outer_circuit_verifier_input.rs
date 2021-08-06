@@ -31,6 +31,11 @@ where
     MerkleTreeDigest<C::RecordCommitmentTreeParameters>: ToConstraintField<C::InnerScalarField>,
 {
     fn to_field_elements(&self) -> Result<Vec<C::OuterScalarField>, ConstraintFieldError> {
+        // In the outer circuit, these two variables must be allocated as witness,
+        // as they are not included in the broadcasted transaction.
+        debug_assert!(self.inner_public_variables.program_commitment.is_none());
+        debug_assert!(self.inner_public_variables.local_data_root.is_none());
+
         let mut v = Vec::new();
 
         // Convert inner circuit public variables into `OuterField` field elements.

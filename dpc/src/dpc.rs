@@ -246,10 +246,8 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             });
         }
 
-        // TODO (howardwu): Change InnerCircuit::new() to take this as input.
-        //  Rename struct to `InnerCircuitPublicVariables`.
-        let mut inner_circuit_public_variables = InnerPublicVariables {
-            kernel,
+        let mut inner_public_variables = InnerPublicVariables {
+            kernel: kernel.clone(),
             ledger_digest: ledger_digest.clone(),
             encrypted_record_hashes: encrypted_record_hashes.clone(),
             program_commitment: Some(program_commitment.clone()),
@@ -259,22 +257,18 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         // Compute the inner circuit proof.
         let inner_proof = {
             let circuit = InnerCircuit::<C>::new(
+                kernel.clone(),
                 ledger_digest.clone(),
                 input_records,
                 old_witnesses,
                 private_keys.clone(),
-                serial_numbers.clone(),
                 output_records.clone(),
-                commitments.clone(),
                 encrypted_record_randomizers,
                 encrypted_record_hashes.clone(),
                 program_commitment.clone(),
                 program_randomness.clone(),
                 local_data.root().clone(),
                 local_data.leaf_randomizers().clone(),
-                memo,
-                value_balance,
-                network_id,
             );
 
             let inner_snark_parameters = match &self.inner_snark_parameters.0 {
@@ -288,7 +282,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         // Verify that the inner circuit proof passes.
         assert!(C::InnerSNARK::verify(
             &self.inner_snark_parameters.1,
-            &inner_circuit_public_variables,
+            &inner_public_variables,
             &inner_proof
         )?);
 
@@ -330,13 +324,13 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         {
             // These inner circuit public variables are allocated as private variables in the outer circuit,
             // as they are not included in the final transaction broadcast to the ledger.
-            inner_circuit_public_variables.program_commitment = None;
-            inner_circuit_public_variables.local_data_root = None;
+            inner_public_variables.program_commitment = None;
+            inner_public_variables.local_data_root = None;
 
             assert!(C::OuterSNARK::verify(
                 &self.outer_snark_parameters.1,
                 &OuterCircuitVerifierInput {
-                    inner_public_variables: inner_circuit_public_variables,
+                    inner_public_variables,
                     inner_circuit_id: inner_circuit_id.clone(),
                 },
                 &transaction_proof

@@ -352,7 +352,7 @@ fn test_testnet2_dpc_execute_constraints() {
         commitments,
         value_balance,
         memo,
-    } = kernel;
+    } = kernel.clone();
 
     let local_data_root = local_data.root();
 
@@ -436,22 +436,18 @@ fn test_testnet2_dpc_execute_constraints() {
     let inner_snark_proof = <Testnet2Parameters as Parameters>::InnerSNARK::prove(
         &inner_snark_parameters.0,
         &InnerCircuit::new(
+            kernel,
             ledger_digest,
             old_records,
             old_witnesses,
             private_keys,
-            serial_numbers.clone(),
             new_records,
-            commitments.clone(),
             encrypted_record_randomizers,
             encrypted_record_hashes.clone(),
             program_commitment,
             program_randomness,
             local_data_root.clone(),
             local_data.leaf_randomizers().clone(),
-            memo,
-            value_balance,
-            network_id,
         ),
         &mut rng,
     )
