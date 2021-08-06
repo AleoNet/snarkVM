@@ -120,37 +120,30 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     debug_assert!(inner_public.program_commitment.is_none());
     debug_assert!(inner_public.local_data_root.is_none());
 
+    // ************************************************************************
     // Declare public parameters.
-    let (program_id_commitment_parameters, program_circuit_id_crh, inner_circuit_id_crh) = {
-        let cs = &mut cs.ns(|| "Declare Comm and CRH parameters");
-
-        let program_id_commitment_parameters = C::ProgramCommitmentGadget::alloc_constant(
-            &mut cs.ns(|| "Declare program_id_commitment_parameters"),
-            || Ok(C::program_commitment_scheme().clone()),
-        )?;
-
-        let program_circuit_id_crh = C::ProgramCircuitIDCRHGadget::alloc_constant(
-            &mut cs.ns(|| "Declare program_circuit_id_crh_parameters"),
-            || Ok(C::program_circuit_id_crh().clone()),
-        )?;
-
-        let inner_circuit_id_crh = C::InnerCircuitIDCRHGadget::alloc_constant(
-            &mut cs.ns(|| "Declare inner_circuit_id_crh_parameters"),
-            || Ok(C::inner_circuit_id_crh().clone()),
-        )?;
-
-        (
-            program_id_commitment_parameters,
-            program_circuit_id_crh,
-            inner_circuit_id_crh,
-        )
-    };
-
-    // ************************************************************************
-    // Construct the InnerSNARK input
     // ************************************************************************
 
-    // Declare inner circuit public variables as `CoreCheckF` field elements
+    let program_id_commitment_parameters =
+        C::ProgramCommitmentGadget::alloc_constant(&mut cs.ns(|| "Declare program_id_commitment_parameters"), || {
+            Ok(C::program_commitment_scheme().clone())
+        })?;
+
+    let program_circuit_id_crh = C::ProgramCircuitIDCRHGadget::alloc_constant(
+        &mut cs.ns(|| "Declare program_circuit_id_crh_parameters"),
+        || Ok(C::program_circuit_id_crh().clone()),
+    )?;
+
+    let inner_circuit_id_crh =
+        C::InnerCircuitIDCRHGadget::alloc_constant(&mut cs.ns(|| "Declare inner_circuit_id_crh_parameters"), || {
+            Ok(C::inner_circuit_id_crh().clone())
+        })?;
+
+    // ************************************************************************
+    // Construct the inner circuit input.
+    // ************************************************************************
+
+    // Declare inner circuit public variables as inner circuit field elements
 
     let ledger_digest_fe =
         alloc_inner_snark_input_field_element::<C, _, _>(cs, &inner_public.ledger_digest, "ledger digest")?;
@@ -243,16 +236,16 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
         ])?;
 
     // ************************************************************************
-    // Verify the InnerSNARK proof
+    // Verify the inner circuit proof.
     // ************************************************************************
 
     let inner_snark_vk = <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
-        &mut cs.ns(|| "Allocate inner snark verifying key"),
+        &mut cs.ns(|| "Allocate inner circuit verifying key"),
         || Ok(inner_snark_vk),
     )?;
 
     let inner_snark_proof = <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
-        &mut cs.ns(|| "Allocate inner snark proof"),
+        &mut cs.ns(|| "Allocate inner circuit proof"),
         || Ok(inner_snark_proof),
     )?;
 
