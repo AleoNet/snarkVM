@@ -371,27 +371,29 @@ fn test_testnet1_dpc_execute_constraints() {
     }
 
     //////////////////////////////////////////////////////////////////////////
+
+    // Construct the public variables.
+    let inner_public_variables = InnerPublicVariables {
+        kernel,
+        ledger_digest,
+        encrypted_record_hashes: encrypted_record_hashes.clone(),
+        program_commitment: Some(program_commitment),
+        local_data_root: Some(local_data_root.clone()),
+    };
+
     // Check that the core check constraint system was satisfied.
     let mut inner_circuit_cs = TestConstraintSystem::<Fr>::new();
 
     execute_inner_circuit(
         &mut inner_circuit_cs.ns(|| "Inner circuit"),
-        &ledger_digest,
+        &inner_public_variables,
         &old_records,
         &old_witnesses,
         &private_keys,
-        &serial_numbers,
         &new_records,
-        &commitments,
         &encrypted_record_randomizers,
-        &encrypted_record_hashes,
-        &program_commitment,
         &program_randomness,
-        &local_data_root,
         &local_data.leaf_randomizers(),
-        &memo,
-        value_balance,
-        network_id,
     )
     .unwrap();
 
@@ -425,19 +427,10 @@ fn test_testnet1_dpc_execute_constraints() {
         .hash_field_elements(&inner_snark_vk.to_field_elements().unwrap())
         .unwrap();
 
-    // Construct the public variables.
-    let public = InnerPublicVariables {
-        kernel,
-        ledger_digest,
-        encrypted_record_hashes: encrypted_record_hashes.clone(),
-        program_commitment: Some(program_commitment),
-        local_data_root: Some(local_data_root.clone()),
-    };
-
     let inner_snark_proof = <Testnet1Parameters as Parameters>::InnerSNARK::prove(
         &inner_snark_parameters.0,
         &InnerCircuit::new(
-            public,
+            inner_public_variables,
             old_records,
             old_witnesses,
             private_keys,

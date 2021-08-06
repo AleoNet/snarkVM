@@ -105,16 +105,13 @@ impl<C: Parameters> InnerCircuit<C> {
         program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
         local_data_commitment_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
     ) -> Self {
-        let num_input_records = C::NUM_INPUT_RECORDS;
-        let num_output_records = C::NUM_OUTPUT_RECORDS;
+        assert_eq!(C::NUM_INPUT_RECORDS, old_records.len());
+        assert_eq!(C::NUM_INPUT_RECORDS, old_witnesses.len());
+        assert_eq!(C::NUM_INPUT_RECORDS, old_private_keys.len());
 
-        assert_eq!(num_input_records, old_records.len());
-        assert_eq!(num_input_records, old_witnesses.len());
-        assert_eq!(num_input_records, old_private_keys.len());
-
-        assert_eq!(num_output_records, new_records.len());
-        assert_eq!(num_output_records, new_records_encryption_randomness.len());
-        assert_eq!(num_output_records, public.encrypted_record_hashes.len());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, new_records.len());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, new_records_encryption_randomness.len());
+        assert_eq!(C::NUM_OUTPUT_RECORDS, public.encrypted_record_hashes.len());
 
         Self {
             public,
@@ -137,32 +134,19 @@ impl<C: Parameters> ConstraintSynthesizer<C::InnerScalarField> for InnerCircuit<
         &self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
-        // In the inner circuit, these two variables must be allocated as public inputs.
-        debug_assert!(self.public.program_commitment.is_some());
-        debug_assert!(self.public.local_data_root.is_some());
-
         execute_inner_circuit::<C, CS>(
             cs,
-            // Ledger
-            &self.public.ledger_digest,
+            &self.public,
             // Old records
             &self.old_records,
             &self.old_witnesses,
             &self.old_private_keys,
-            &self.public.kernel.serial_numbers,
             // New records
             &self.new_records,
-            &self.public.kernel.commitments,
             &self.new_records_encryption_randomness,
-            &self.public.encrypted_record_hashes,
             // Other stuff
-            &self.public.program_commitment.as_ref().unwrap(),
             &self.program_randomness,
-            &self.public.local_data_root.unwrap(),
             &self.local_data_commitment_randomizers,
-            &self.public.kernel.memo,
-            self.public.kernel.value_balance,
-            self.public.kernel.network_id,
         )?;
         Ok(())
     }
