@@ -18,12 +18,12 @@ use crate::{
     Execution,
     NoopCircuit,
     Parameters,
+    PrivateVariables,
     Program,
     ProgramCircuit,
     ProgramCircuitTree,
     ProgramError,
-    ProgramPrivateVariables,
-    ProgramPublicVariables,
+    PublicVariables,
 };
 use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, prelude::*};
 
@@ -33,7 +33,7 @@ use std::sync::Arc;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"), Debug(bound = "C: Parameters"))]
 pub struct NoopProgram<C: Parameters> {
-    circuit_tree: Arc<ProgramCircuitTree<C>>,
+    circuits: Arc<ProgramCircuitTree<C>>,
 }
 
 impl<C: Parameters> Program<C> for NoopProgram<C> {
@@ -44,7 +44,7 @@ impl<C: Parameters> Program<C> for NoopProgram<C> {
         circuit_tree.add_all(vec![Box::new(NoopCircuit::setup(rng)?)])?;
 
         Ok(Self {
-            circuit_tree: Arc::new(circuit_tree),
+            circuits: Arc::new(circuit_tree),
         })
     }
 
@@ -55,64 +55,71 @@ impl<C: Parameters> Program<C> for NoopProgram<C> {
         circuit_tree.add(Box::new(NoopCircuit::load()?))?;
 
         Ok(Self {
-            circuit_tree: Arc::new(circuit_tree),
+            circuits: Arc::new(circuit_tree),
         })
     }
 
     /// Returns the program ID.
-    fn program_id(&self) -> &MerkleTreeDigest<C::ProgramIDTreeParameters> {
-        self.circuit_tree.to_program_id()
+    fn program_id(&self) -> &MerkleTreeDigest<C::ProgramCircuitTreeParameters> {
+        self.circuits.to_program_id()
     }
 
-    fn get_circuit(&self, circuit_index: u8) -> Result<&Box<dyn ProgramCircuit<C>>, ProgramError> {
-        // Fetch the circuit from the tree.
-        match self.circuit_tree.get_circuit(circuit_index) {
-            Some(circuit) => Ok(circuit),
-            _ => Err(MerkleError::MissingLeafIndex(circuit_index as usize).into()),
-        }
+    /// Returns `true` if the given circuit ID exists in the program.
+    fn contains_circuit(&self, circuit_id: &C::ProgramCircuitID) -> bool {
+        self.circuits.contains_circuit(circuit_id)
+    }
+
+    /// Returns the circuit given the circuit ID, if it exists.
+    fn get_circuit(&self, circuit_id: &C::ProgramCircuitID) -> Option<&Box<dyn ProgramCircuit<C>>> {
+        self.circuits.get_circuit(circuit_id)
+    }
+
+    /// Returns the circuit given the circuit index, if it exists.
+    fn find_circuit_by_index(&self, circuit_index: u8) -> Option<&Box<dyn ProgramCircuit<C>>> {
+        self.circuits.find_circuit_by_index(circuit_index)
     }
 
     fn execute(
         &self,
-        circuit_index: u8,
-        public: &ProgramPublicVariables<C>,
-        private: &dyn ProgramPrivateVariables<C>,
+        circuit_id: &C::ProgramCircuitID,
+        public: &PublicVariables<C>,
+        private: &dyn PrivateVariables<C>,
     ) -> Result<Execution<C>, ProgramError> {
         // Fetch the circuit from the tree.
-        let circuit = match self.circuit_tree.get_circuit(circuit_index) {
+        let circuit = match self.circuits.get_circuit(circuit_id) {
             Some(circuit) => circuit,
-            _ => return Err(MerkleError::MissingLeafIndex(circuit_index as usize).into()),
+            _ => return Err(MerkleError::MissingLeaf(format!("{}", circuit_id)).into()),
         };
+        debug_assert_eq!(circuit.circuit_id(), circuit_id);
 
-        let program_path = self.circuit_tree.get_program_path(circuit_index)?;
-        debug_assert!(program_path.verify(self.program_id(), &circuit.circuit_id())?);
+        let program_path = self.circuits.get_program_path(circuit_id)?;
+        debug_assert!(program_path.verify(self.program_id(), circuit_id)?);
 
         let proof = circuit.execute(public, private)?;
         let verifying_key = circuit.verifying_key().clone();
 
         Ok(Execution {
-            circuit_index,
             program_path,
             verifying_key,
             proof,
         })
     }
 
-    fn execute_blank(&self, circuit_index: u8) -> Result<Execution<C>, ProgramError> {
+    fn execute_blank(&self, circuit_id: &C::ProgramCircuitID) -> Result<Execution<C>, ProgramError> {
         // Fetch the circuit from the tree.
-        let circuit = match self.circuit_tree.get_circuit(circuit_index) {
+        let circuit = match self.circuits.get_circuit(circuit_id) {
             Some(circuit) => circuit,
-            _ => return Err(MerkleError::MissingLeafIndex(circuit_index as usize).into()),
+            _ => return Err(MerkleError::MissingLeaf(format!("{}", circuit_id)).into()),
         };
+        debug_assert_eq!(circuit.circuit_id(), circuit_id);
 
-        let program_path = self.circuit_tree.get_program_path(circuit_index)?;
-        debug_assert!(program_path.verify(self.program_id(), &circuit.circuit_id())?);
+        let program_path = self.circuits.get_program_path(circuit_id)?;
+        debug_assert!(program_path.verify(self.program_id(), circuit_id)?);
 
         let proof = circuit.execute_blank()?;
         let verifying_key = circuit.verifying_key().clone();
 
         Ok(Execution {
-            circuit_index,
             program_path,
             verifying_key,
             proof,

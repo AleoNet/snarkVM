@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerCircuitVerifierInput, OuterCircuitVerifierInput, ProgramPublicVariables};
+use crate::{InnerCircuitVerifierInput, OuterCircuitVerifierInput, PublicVariables};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, ToConstraintField};
@@ -31,6 +31,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
+use anyhow::Result;
 use rand::{CryptoRng, Rng};
 use std::{cell::RefCell, rc::Rc};
 
@@ -68,7 +69,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type ProgramSNARK: SNARK<
         ScalarField = Self::InnerScalarField,
         BaseField = Self::OuterScalarField,
-        VerifierInput = ProgramPublicVariables<Self>,
+        VerifierInput = PublicVariables<Self>,
     >;
     /// Program SNARK verifier gadget for Aleo applications.
     type ProgramSNARKGadget: SNARKVerifierGadget<Self::ProgramSNARK>;
@@ -178,9 +179,9 @@ pub trait Parameters: 'static + Sized + Send + Sync {
         + Send;
 
     /// CRH for program ID hashing. Invoked only over `Self::OuterScalarField`.
-    type ProgramIDCRH: CRH;
-    type ProgramIDCRHGadget: CRHGadget<Self::ProgramIDCRH, Self::OuterScalarField>;
-    type ProgramIDTreeDigest: ToConstraintField<Self::OuterScalarField>
+    type ProgramCircuitIDCRH: CRH<Output = Self::ProgramCircuitID>;
+    type ProgramCircuitIDCRHGadget: CRHGadget<Self::ProgramCircuitIDCRH, Self::OuterScalarField>;
+    type ProgramCircuitID: ToConstraintField<Self::OuterScalarField>
         + Clone
         + Debug
         + Display
@@ -192,7 +193,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
         + Send
         + Sync
         + Copy;
-    type ProgramIDTreeParameters: LoadableMerkleParameters<H = Self::ProgramIDCRH>;
+    type ProgramCircuitTreeParameters: LoadableMerkleParameters<H = Self::ProgramCircuitIDCRH>;
 
     /// PRF for computing serial numbers. Invoked only over `Self::InnerScalarField`.
     type PRF: PRF;
@@ -254,17 +255,13 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
 
     fn encrypted_record_crh() -> &'static Self::EncryptedRecordCRH;
-
     fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
-
     fn local_data_commitment_scheme() -> &'static Self::LocalDataCommitmentScheme;
-
     fn local_data_crh() -> &'static Self::LocalDataCRH;
-
     fn program_commitment_scheme() -> &'static Self::ProgramCommitmentScheme;
 
-    fn program_id_crh() -> &'static Self::ProgramIDCRH;
-    fn program_id_tree_parameters() -> &'static Self::ProgramIDTreeParameters;
+    fn program_circuit_id_crh() -> &'static Self::ProgramCircuitIDCRH;
+    fn program_circuit_tree_parameters() -> &'static Self::ProgramCircuitTreeParameters;
 
     fn record_commitment_scheme() -> &'static Self::RecordCommitmentScheme;
 
@@ -280,11 +277,19 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     fn inner_circuit_proving_key(is_prover: bool) -> &'static Option<<Self::InnerSNARK as SNARK>::ProvingKey>;
     fn inner_circuit_verifying_key() -> &'static <Self::InnerSNARK as SNARK>::VerifyingKey;
 
-    fn noop_program_proving_key() -> &'static <Self::ProgramSNARK as SNARK>::ProvingKey;
-    fn noop_program_verifying_key() -> &'static <Self::ProgramSNARK as SNARK>::VerifyingKey;
+    fn noop_circuit_id() -> &'static Self::ProgramCircuitID;
+    fn noop_circuit_proving_key() -> &'static <Self::ProgramSNARK as SNARK>::ProvingKey;
+    fn noop_circuit_verifying_key() -> &'static <Self::ProgramSNARK as SNARK>::VerifyingKey;
 
     fn outer_circuit_proving_key(is_prover: bool) -> &'static Option<<Self::OuterSNARK as SNARK>::ProvingKey>;
     fn outer_circuit_verifying_key() -> &'static <Self::OuterSNARK as SNARK>::VerifyingKey;
+
+    /// Returns the program circuit ID given a program circuit verifying key.
+    fn program_circuit_id(
+        verifying_key: &<Self::ProgramSNARK as SNARK>::VerifyingKey,
+    ) -> Result<Self::ProgramCircuitID> {
+        Ok(Self::program_circuit_id_crh().hash_field_elements(&verifying_key.to_field_elements()?)?)
+    }
 
     /// Returns the program SRS for Aleo applications.
     fn program_srs<R: Rng + CryptoRng>(

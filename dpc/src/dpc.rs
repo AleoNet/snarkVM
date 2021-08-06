@@ -46,7 +46,10 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
         let noop_program = NoopProgram::setup(rng)?;
-        let noop_program_execution = noop_program.execute_blank(0)?;
+        let noop_circuit = noop_program
+            .find_circuit_by_index(0)
+            .ok_or(DPCError::MissingNoopCircuit)?;
+        let noop_program_execution = noop_program.execute_blank(noop_circuit.circuit_id())?;
         end_timer!(noop_program_timer);
 
         let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");
@@ -191,15 +194,23 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         &self,
         private_keys: &Vec<<Self::Account as AccountScheme>::PrivateKey>,
         authorization: Self::Authorization,
-        local_data: &LocalData<C>,
-        program_proofs: Vec<Self::Execution>,
+        executables: Vec<Executable<C>>,
         ledger: &L,
         rng: &mut R,
     ) -> Result<Self::Transaction> {
         assert_eq!(C::NUM_INPUT_RECORDS, private_keys.len());
-        assert_eq!(C::NUM_TOTAL_RECORDS, program_proofs.len());
+        assert_eq!(C::NUM_TOTAL_RECORDS, executables.len());
 
-        let execution_timer = start_timer!(|| "DPC::execute_online_phase");
+        let execution_timer = start_timer!(|| "DPC::execute");
+
+        // Generate the local data.
+        let local_data = authorization.to_local_data(rng)?;
+
+        // Execute the programs.
+        let mut executions = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
+        for (i, executable) in executables.iter().enumerate() {
+            executions.push(executable.execute(i as u8, &local_data).unwrap());
+        }
 
         // Compute the program commitment.
         let (program_commitment, program_randomness) = authorization.to_program_commitment(rng)?;
@@ -304,7 +315,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 network_id,
                 inner_snark_vk,
                 inner_proof,
-                program_proofs,
+                executions.to_vec(),
                 program_commitment.clone(),
                 program_randomness,
                 local_data.root().clone(),
