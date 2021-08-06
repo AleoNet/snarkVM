@@ -138,8 +138,12 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
         proof: proof.into(),
     };
     assert!(genesis_header.is_genesis());
+    println!("block header size - {}\n", BlockHeader::size());
 
-    println!("block size - {}\n", transaction_size + BlockHeader::size());
+    println!(
+        "block size - {}\n",
+        transaction_size + BlockHeader::size() + 1 /* variable_length_integer for number of transaction */
+    );
 
     Ok((genesis_header.serialize().to_vec(), transaction_bytes))
 }
