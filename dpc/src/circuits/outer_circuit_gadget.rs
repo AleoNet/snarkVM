@@ -152,7 +152,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     // Construct the InnerSNARK input
     // ************************************************************************
 
-    // Declare inner snark verifier inputs as `CoreCheckF` field elements
+    // Declare inner circuit public variables as `CoreCheckF` field elements
 
     let ledger_digest_fe = alloc_inner_snark_input_field_element::<C, _, _>(cs, ledger_digest, "ledger digest")?;
 

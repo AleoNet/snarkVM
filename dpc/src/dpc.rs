@@ -248,7 +248,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         // TODO (howardwu): Change InnerCircuit::new() to take this as input.
         //  Rename struct to `InnerCircuitPublicVariables`.
-        let mut inner_circuit_public_variables = InnerCircuitVerifierInput {
+        let mut inner_circuit_public_variables = InnerPublicVariables {
             kernel,
             ledger_digest: ledger_digest.clone(),
             encrypted_record_hashes: encrypted_record_hashes.clone(),
@@ -336,7 +336,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             assert!(C::OuterSNARK::verify(
                 &self.outer_snark_parameters.1,
                 &OuterCircuitVerifierInput {
-                    inner_snark_verifier_input: inner_circuit_public_variables,
+                    inner_public_variables: inner_circuit_public_variables,
                     inner_circuit_id: inner_circuit_id.clone(),
                 },
                 &transaction_proof
@@ -474,7 +474,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             }
         }
 
-        let inner_snark_input = InnerCircuitVerifierInput {
+        let inner_snark_input = InnerPublicVariables {
             kernel: transaction.to_kernel(),
             ledger_digest: transaction.ledger_digest().clone(),
             encrypted_record_hashes: new_encrypted_record_hashes,
@@ -493,7 +493,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         );
 
         let outer_snark_input = OuterCircuitVerifierInput {
-            inner_snark_verifier_input: inner_snark_input,
+            inner_public_variables: inner_snark_input,
             inner_circuit_id: inner_circuit_id.clone(),
         };
 

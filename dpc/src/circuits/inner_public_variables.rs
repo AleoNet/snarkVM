@@ -20,17 +20,7 @@ use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
-pub struct InnerCircuitVerifierInput<C: Parameters> {
-    // /// Network ID
-    // pub network_id: u8,
-    // /// Input record serial numbers
-    // pub serial_numbers: Vec<<C::AccountSignatureScheme as SignatureScheme>::PublicKey>,
-    // /// Output record commitments
-    // pub commitments: Vec<C::RecordCommitment>,
-    // /// Value balance
-    // pub value_balance: AleoAmount,
-    // /// Memo field
-    // pub memo: [u8; 64],
+pub struct InnerPublicVariables<C: Parameters> {
     /// Transaction kernel
     pub kernel: TransactionKernel<C>,
     /// Ledger digest
@@ -46,7 +36,7 @@ pub struct InnerCircuitVerifierInput<C: Parameters> {
     pub local_data_root: Option<C::LocalDataRoot>,
 }
 
-impl<C: Parameters> ToConstraintField<C::InnerScalarField> for InnerCircuitVerifierInput<C>
+impl<C: Parameters> ToConstraintField<C::InnerScalarField> for InnerPublicVariables<C>
 where
     MerkleTreeDigest<C::RecordCommitmentTreeParameters>: ToConstraintField<C::InnerScalarField>,
 {

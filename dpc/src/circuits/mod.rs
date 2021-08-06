@@ -20,8 +20,8 @@ pub use inner_circuit::*;
 pub mod inner_circuit_gadget;
 pub use inner_circuit_gadget::*;
 
-pub mod inner_circuit_verifier_input;
-pub use inner_circuit_verifier_input::*;
+pub mod inner_public_variables;
+pub use inner_public_variables::*;
 
 pub mod outer_circuit;
 pub use outer_circuit::*;

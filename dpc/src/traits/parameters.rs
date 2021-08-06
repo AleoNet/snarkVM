@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerCircuitVerifierInput, OuterCircuitVerifierInput, PublicVariables};
+use crate::{InnerPublicVariables, OuterCircuitVerifierInput, PublicVariables};
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
 use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, ToConstraintField};
@@ -53,7 +53,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type InnerSNARK: SNARK<
         ScalarField = Self::InnerScalarField,
         BaseField = Self::OuterScalarField,
-        VerifierInput = InnerCircuitVerifierInput<Self>,
+        VerifierInput = InnerPublicVariables<Self>,
     >;
     /// SNARK Verifier gadget for the inner circuit.
     type InnerSNARKGadget: SNARKVerifierGadget<Self::InnerSNARK>;
