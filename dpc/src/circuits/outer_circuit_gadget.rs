@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Execution, OuterPublicVariables, Parameters};
-use snarkvm_algorithms::traits::{CommitmentScheme, SNARK};
+use crate::{OuterPrivateVariables, OuterPublicVariables, Parameters};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::MerklePathGadget,
@@ -92,22 +91,10 @@ fn alloc_program_snark_field_element<
     )
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarField>>(
     cs: &mut CS,
     public: &OuterPublicVariables<C>,
-
-    // Inner snark verifier private inputs (verifying key and proof)
-    inner_snark_vk: &<C::InnerSNARK as SNARK>::VerifyingKey,
-    inner_snark_proof: &<C::InnerSNARK as SNARK>::Proof,
-
-    // Program verifying keys and proofs
-    program_proofs: &[Execution<C>],
-
-    // Rest
-    program_commitment: &<C::ProgramCommitmentScheme as CommitmentScheme>::Output,
-    program_randomness: &<C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-    local_data_root: &C::LocalDataRoot,
+    private: &OuterPrivateVariables<C>,
 ) -> Result<(), SynthesisError> {
     // Access the outer public variables.
     let OuterPublicVariables {
@@ -203,13 +190,13 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     )?;
 
     let program_commitment_fe =
-        alloc_inner_snark_field_element::<C, _, _>(cs, program_commitment, "program commitment")?;
+        alloc_inner_snark_field_element::<C, _, _>(cs, &private.program_commitment, "program commitment")?;
 
     let local_data_root_fe_inner_snark =
-        alloc_inner_snark_field_element::<C, _, _>(cs, local_data_root, "local data root inner snark")?;
+        alloc_inner_snark_field_element::<C, _, _>(cs, &private.local_data_root, "local data root inner snark")?;
 
     let local_data_root_fe_program_snark =
-        alloc_program_snark_field_element::<C, _, _>(cs, local_data_root, "local data root program snark")?;
+        alloc_program_snark_field_element::<C, _, _>(cs, &private.local_data_root, "local data root program snark")?;
 
     {
         // Construct inner snark input as bits
@@ -241,12 +228,12 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
 
     let inner_snark_vk = <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::VerificationKeyGadget::alloc(
         &mut cs.ns(|| "Allocate inner circuit verifying key"),
-        || Ok(inner_snark_vk),
+        || Ok(&private.inner_snark_vk),
     )?;
 
     let inner_snark_proof = <C::InnerSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
         &mut cs.ns(|| "Allocate inner circuit proof"),
-        || Ok(inner_snark_proof),
+        || Ok(&private.inner_snark_proof),
     )?;
 
     C::InnerSNARKGadget::check_verify(
@@ -261,7 +248,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     // ************************************************************************
 
     let mut program_ids = Vec::with_capacity(C::NUM_TOTAL_RECORDS);
-    for (index, input) in program_proofs.iter().enumerate().take(C::NUM_TOTAL_RECORDS) {
+    for (index, input) in private.program_proofs.iter().enumerate().take(C::NUM_TOTAL_RECORDS) {
         let cs = &mut cs.ns(|| format!("Check program for record {}", index));
 
         let program_circuit_proof = <C::ProgramSNARKGadget as SNARKVerifierGadget<_>>::ProofGadget::alloc(
@@ -332,13 +319,13 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
         let given_commitment_randomness =
             <C::ProgramCommitmentGadget as CommitmentGadget<_, C::OuterScalarField>>::RandomnessGadget::alloc(
                 &mut commitment_cs.ns(|| "Commitment randomness"),
-                || Ok(program_randomness),
+                || Ok(&private.program_randomness),
             )?;
 
         let given_commitment =
             <C::ProgramCommitmentGadget as CommitmentGadget<_, C::OuterScalarField>>::OutputGadget::alloc(
                 &mut commitment_cs.ns(|| "Commitment output"),
-                || Ok(program_commitment),
+                || Ok(&private.program_commitment),
             )?;
 
         let candidate_commitment = program_id_commitment_parameters.check_commitment_gadget(

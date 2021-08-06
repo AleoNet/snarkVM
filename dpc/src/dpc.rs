@@ -282,11 +282,9 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 "The DPC-loaded and Parameters-saved inner circuit IDs do not match"
             );
 
-            // Construct the outer circuit public variables.
+            // Construct the outer circuit public and private variables.
             let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, C::inner_circuit_id());
-
-            let circuit = OuterCircuit::<C>::new(
-                outer_public_variables.clone(),
+            let outer_private_variables = OuterPrivateVariables::new(
                 self.inner_verifying_key.clone(),
                 inner_proof,
                 executions.to_vec(),
@@ -294,6 +292,8 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
                 program_randomness,
                 local_data.root().clone(),
             );
+
+            let circuit = OuterCircuit::<C>::new(outer_public_variables.clone(), outer_private_variables);
 
             let outer_proving_key = self
                 .outer_proving_key

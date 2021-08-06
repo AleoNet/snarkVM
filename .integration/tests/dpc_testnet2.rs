@@ -440,8 +440,16 @@ fn test_testnet2_dpc_execute_constraints() {
     )
     .unwrap();
 
-    // Construct the outer circuit public variables.
+    // Construct the outer circuit public and private variables.
     let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, &inner_circuit_id);
+    let outer_private_variables = OuterPrivateVariables::new(
+        inner_snark_vk.clone(),
+        inner_snark_proof,
+        executions.to_vec(),
+        program_commitment.clone(),
+        program_randomness,
+        local_data_root.clone(),
+    );
 
     // Check that the proof check constraint system was satisfied.
     let mut outer_circuit_cs = TestConstraintSystem::<Fq>::new();
@@ -449,12 +457,7 @@ fn test_testnet2_dpc_execute_constraints() {
     execute_outer_circuit::<Testnet2Parameters, _>(
         &mut outer_circuit_cs.ns(|| "Outer circuit"),
         &outer_public_variables,
-        &inner_snark_vk,
-        &inner_snark_proof,
-        &executions,
-        &program_commitment,
-        &program_randomness,
-        &local_data_root,
+        &outer_private_variables,
     )
     .unwrap();
 

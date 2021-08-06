@@ -24,8 +24,8 @@ use anyhow::Result;
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
 pub struct OuterPublicVariables<C: Parameters> {
-    pub inner_public_variables: InnerPublicVariables<C>,
-    pub inner_circuit_id: C::InnerCircuitID,
+    pub(super) inner_public_variables: InnerPublicVariables<C>,
+    pub(super) inner_circuit_id: C::InnerCircuitID,
 }
 
 impl<C: Parameters> OuterPublicVariables<C> {
@@ -43,6 +43,12 @@ impl<C: Parameters> OuterPublicVariables<C> {
     }
 
     pub fn new(inner_public_variables: &InnerPublicVariables<C>, inner_circuit_id: &C::InnerCircuitID) -> Self {
+        assert_eq!(C::NUM_OUTPUT_RECORDS, inner_public_variables.kernel.commitments.len());
+        assert_eq!(
+            C::NUM_OUTPUT_RECORDS,
+            inner_public_variables.encrypted_record_hashes.len()
+        );
+
         // These inner circuit public variables are allocated as private variables in the outer circuit,
         // as they are not included in the transaction broadcast to the ledger.
         let mut inner_public_variables: InnerPublicVariables<C> = inner_public_variables.clone();
