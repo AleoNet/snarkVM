@@ -408,13 +408,11 @@ fn test_testnet2_dpc_execute_constraints() {
         println!("=========================================================");
     }
 
-    {
-        println!("=========================================================");
-        let num_constraints = inner_circuit_cs.num_constraints();
-        println!("Inner circuit num constraints: {:?}", num_constraints);
-        assert_eq!(283217, num_constraints);
-        println!("=========================================================");
-    }
+    println!("=========================================================");
+    let num_constraints = inner_circuit_cs.num_constraints();
+    println!("Inner circuit num constraints: {:?}", num_constraints);
+    assert_eq!(283217, num_constraints);
+    println!("=========================================================");
 
     assert!(inner_circuit_cs.is_satisfied());
 
@@ -433,20 +431,25 @@ fn test_testnet2_dpc_execute_constraints() {
         .hash_field_elements(&inner_snark_vk.to_field_elements().unwrap())
         .unwrap();
 
+    // Construct the public variables.
+    let public = InnerPublicVariables {
+        kernel,
+        ledger_digest,
+        encrypted_record_hashes: encrypted_record_hashes.clone(),
+        program_commitment: Some(program_commitment),
+        local_data_root: Some(local_data_root.clone()),
+    };
+
     let inner_snark_proof = <Testnet2Parameters as Parameters>::InnerSNARK::prove(
         &inner_snark_parameters.0,
         &InnerCircuit::new(
-            kernel,
-            ledger_digest,
+            public,
             old_records,
             old_witnesses,
             private_keys,
             new_records,
             encrypted_record_randomizers,
-            encrypted_record_hashes.clone(),
-            program_commitment,
             program_randomness,
-            local_data_root.clone(),
             local_data.leaf_randomizers().clone(),
         ),
         &mut rng,

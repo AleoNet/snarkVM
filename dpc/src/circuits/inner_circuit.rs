@@ -14,7 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{execute_inner_circuit, record::Record, AleoAmount, Parameters, PrivateKey, TransactionKernel};
+use crate::{
+    execute_inner_circuit,
+    record::Record,
+    AleoAmount,
+    InnerPublicVariables,
+    Parameters,
+    PrivateKey,
+    TransactionKernel,
+};
 use snarkvm_algorithms::{
     merkle_tree::{MerklePath, MerkleTreeDigest},
     traits::{CommitmentScheme, EncryptionScheme},
@@ -24,10 +32,8 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSyst
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
 pub struct InnerCircuit<C: Parameters> {
-    // Kernel
-    kernel: TransactionKernel<C>,
-    // Ledger
-    ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
+    public: InnerPublicVariables<C>,
+
     // Inputs for old records.
     old_records: Vec<Record<C>>,
     old_witnesses: Vec<MerklePath<C::RecordCommitmentTreeParameters>>,
@@ -36,25 +42,27 @@ pub struct InnerCircuit<C: Parameters> {
     new_records: Vec<Record<C>>,
     // Inputs for encryption of new records.
     new_records_encryption_randomness: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
-    new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
     // Commitment to programs and local data.
-    program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
     program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-    local_data_root: C::LocalDataRoot,
     local_data_commitment_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
 }
 
 impl<C: Parameters> InnerCircuit<C> {
     pub fn blank() -> Self {
-        let kernel = TransactionKernel {
-            network_id: C::NETWORK_ID,
-            serial_numbers: vec![C::AccountSignaturePublicKey::default(); C::NUM_INPUT_RECORDS],
-            commitments: vec![C::RecordCommitment::default(); C::NUM_OUTPUT_RECORDS],
-            value_balance: AleoAmount::ZERO,
-            memo: [0u8; 64],
+        // Construct the public variables.
+        let public = InnerPublicVariables {
+            kernel: TransactionKernel {
+                network_id: C::NETWORK_ID,
+                serial_numbers: vec![C::AccountSignaturePublicKey::default(); C::NUM_INPUT_RECORDS],
+                commitments: vec![C::RecordCommitment::default(); C::NUM_OUTPUT_RECORDS],
+                value_balance: AleoAmount::ZERO,
+                memo: [0u8; 64],
+            },
+            ledger_digest: MerkleTreeDigest::<C::RecordCommitmentTreeParameters>::default(),
+            encrypted_record_hashes: vec![C::EncryptedRecordDigest::default(); C::NUM_OUTPUT_RECORDS],
+            program_commitment: Some(C::ProgramCommitment::default()),
+            local_data_root: Some(C::LocalDataRoot::default()),
         };
-
-        let digest = MerkleTreeDigest::<C::RecordCommitmentTreeParameters>::default();
 
         let old_records = vec![Record::default(); C::NUM_INPUT_RECORDS];
         let old_witnesses = vec![MerklePath::default(); C::NUM_INPUT_RECORDS];
@@ -63,20 +71,13 @@ impl<C: Parameters> InnerCircuit<C> {
         let new_records = vec![Record::default(); C::NUM_OUTPUT_RECORDS];
         let new_records_encryption_randomness =
             vec![<C::AccountEncryptionScheme as EncryptionScheme>::Randomness::default(); C::NUM_OUTPUT_RECORDS];
-        let new_encrypted_record_hashes = vec![C::EncryptedRecordDigest::default(); C::NUM_OUTPUT_RECORDS];
 
-        let program_commitment = <C::ProgramCommitmentScheme as CommitmentScheme>::Output::default();
         let program_randomness = <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default();
-
-        let local_data_root = C::LocalDataRoot::default();
         let local_data_commitment_randomizers =
             vec![<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness::default(); C::NUM_TOTAL_RECORDS];
 
         Self {
-            // Kernel
-            kernel,
-            // Ledger
-            ledger_digest: digest,
+            public,
             // Input records
             old_records,
             old_witnesses,
@@ -84,21 +85,15 @@ impl<C: Parameters> InnerCircuit<C> {
             // Output records
             new_records,
             new_records_encryption_randomness,
-            new_encrypted_record_hashes,
             // Other stuff
-            program_commitment,
             program_randomness,
-            local_data_root,
             local_data_commitment_randomizers,
         }
     }
 
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        // Kernel
-        kernel: TransactionKernel<C>,
-        // Ledger
-        ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
+        public: InnerPublicVariables<C>,
         // Old records
         old_records: Vec<Record<C>>,
         old_witnesses: Vec<MerklePath<C::RecordCommitmentTreeParameters>>,
@@ -106,11 +101,8 @@ impl<C: Parameters> InnerCircuit<C> {
         // New records
         new_records: Vec<Record<C>>,
         new_records_encryption_randomness: Vec<<C::AccountEncryptionScheme as EncryptionScheme>::Randomness>,
-        new_encrypted_record_hashes: Vec<C::EncryptedRecordDigest>,
         // Other stuff
-        program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
         program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
-        local_data_root: C::LocalDataRoot,
         local_data_commitment_randomizers: Vec<<C::LocalDataCommitmentScheme as CommitmentScheme>::Randomness>,
     ) -> Self {
         let num_input_records = C::NUM_INPUT_RECORDS;
@@ -122,13 +114,10 @@ impl<C: Parameters> InnerCircuit<C> {
 
         assert_eq!(num_output_records, new_records.len());
         assert_eq!(num_output_records, new_records_encryption_randomness.len());
-        assert_eq!(num_output_records, new_encrypted_record_hashes.len());
+        assert_eq!(num_output_records, public.encrypted_record_hashes.len());
 
         Self {
-            // Kernel
-            kernel,
-            // Ledger
-            ledger_digest,
+            public,
             // Input records
             old_records,
             old_witnesses,
@@ -136,11 +125,8 @@ impl<C: Parameters> InnerCircuit<C> {
             // Output records
             new_records,
             new_records_encryption_randomness,
-            new_encrypted_record_hashes,
             // Other stuff
-            program_commitment,
             program_randomness,
-            local_data_root,
             local_data_commitment_randomizers,
         }
     }
@@ -151,28 +137,32 @@ impl<C: Parameters> ConstraintSynthesizer<C::InnerScalarField> for InnerCircuit<
         &self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
+        // In the inner circuit, these two variables must be allocated as public inputs.
+        debug_assert!(self.public.program_commitment.is_some());
+        debug_assert!(self.public.local_data_root.is_some());
+
         execute_inner_circuit::<C, CS>(
             cs,
             // Ledger
-            &self.ledger_digest,
+            &self.public.ledger_digest,
             // Old records
             &self.old_records,
             &self.old_witnesses,
             &self.old_private_keys,
-            &self.kernel.serial_numbers,
+            &self.public.kernel.serial_numbers,
             // New records
             &self.new_records,
-            &self.kernel.commitments,
+            &self.public.kernel.commitments,
             &self.new_records_encryption_randomness,
-            &self.new_encrypted_record_hashes,
+            &self.public.encrypted_record_hashes,
             // Other stuff
-            &self.program_commitment,
+            &self.public.program_commitment.as_ref().unwrap(),
             &self.program_randomness,
-            &self.local_data_root,
+            &self.public.local_data_root.unwrap(),
             &self.local_data_commitment_randomizers,
-            &self.kernel.memo,
-            self.kernel.value_balance,
-            self.kernel.network_id,
+            &self.public.kernel.memo,
+            self.public.kernel.value_balance,
+            self.public.kernel.network_id,
         )?;
         Ok(())
     }
