@@ -22,6 +22,11 @@ name = "noop_program"
 path = "benches/noop_program.rs"
 harness = false
 
+[[bench]]
+name = "transaction"
+path = "benches/transaction.rs"
+harness = false
+
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
 version = "0.7.5"
@@ -111,6 +116,10 @@ version = "0.9"
 
 [dependencies.thiserror]
 version = "1.0"
+
+[dev-dependencies.snarkvm-ledger]
+path = "../ledger"
+default-features = false
 
 [dev-dependencies.criterion]
 version = "0.3.4"
