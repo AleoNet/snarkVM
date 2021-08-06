@@ -26,9 +26,6 @@ pub use inner_public_variables::*;
 pub mod outer_circuit;
 pub use outer_circuit::*;
 
-pub mod outer_circuit_gadget;
-pub use outer_circuit_gadget::*;
-
 pub mod outer_private_variables;
 pub use outer_private_variables::*;
 

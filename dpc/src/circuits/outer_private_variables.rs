@@ -44,7 +44,6 @@ impl<C: Parameters> OuterPrivateVariables<C> {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
         inner_snark_proof: <C::InnerSNARK as SNARK>::Proof,
