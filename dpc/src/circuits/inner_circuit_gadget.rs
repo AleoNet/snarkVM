@@ -238,11 +238,10 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             )
         };
 
-        // ********************************************************************
+        // **********************************************************************************
         // Check that the commitment appears on the ledger,
-        // i.e., the membership witness is valid with respect to the
-        // transaction set digest.
-        // ********************************************************************
+        // i.e., the membership witness is valid with respect to the record commitment root.
+        // **********************************************************************************
         {
             let witness_cs = &mut cs.ns(|| "Check ledger membership witness");
 
@@ -606,7 +605,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             // Check serialization
 
             // *******************************************************************
-            // Convert serial number nonce, commitment_randomness, birth program id, death program id, value, and payload into bits
+            // Convert program id, value, payload, serial number nonce, and commitment randomness into bits.
 
             let plaintext_bytes = {
                 let mut res = vec![];
@@ -679,7 +678,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     // *******************************************************************
 
     // *******************************************************************
-    // Check that program commitment is well formed.
+    // Check that program commitment is well-formed.
     // *******************************************************************
     {
         let commitment_cs = &mut cs.ns(|| "Check that program commitment is well-formed");
@@ -688,7 +687,6 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         for id_gadget in old_program_ids_gadgets.iter().take(C::NUM_INPUT_RECORDS) {
             input.extend_from_slice(id_gadget);
         }
-
         for id_gadget in new_program_ids_gadgets.iter().take(C::NUM_OUTPUT_RECORDS) {
             input.extend_from_slice(id_gadget);
         }

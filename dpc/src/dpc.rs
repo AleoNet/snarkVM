@@ -232,7 +232,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             commitments,
             value_balance,
             memo,
-        } = kernel;
+        } = kernel.clone();
 
         // Construct the ledger witnesses.
         let ledger_digest = ledger.latest_digest()?;
@@ -249,15 +249,11 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         // TODO (howardwu): Change InnerCircuit::new() to take this as input.
         //  Rename struct to `InnerCircuitPublicVariables`.
         let mut inner_circuit_public_variables = InnerCircuitVerifierInput {
+            kernel,
             ledger_digest: ledger_digest.clone(),
-            old_serial_numbers: serial_numbers.clone(),
-            new_commitments: commitments.clone(),
-            new_encrypted_record_hashes: encrypted_record_hashes.clone(),
-            memo,
+            encrypted_record_hashes: encrypted_record_hashes.clone(),
             program_commitment: Some(program_commitment.clone()),
             local_data_root: Some(local_data.root().clone()),
-            value_balance,
-            network_id,
         };
 
         // Compute the inner circuit proof.
@@ -479,15 +475,11 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         }
 
         let inner_snark_input = InnerCircuitVerifierInput {
+            kernel: transaction.to_kernel(),
             ledger_digest: transaction.ledger_digest().clone(),
-            old_serial_numbers: transaction.serial_numbers().to_vec(),
-            new_commitments: transaction.commitments().to_vec(),
-            new_encrypted_record_hashes,
-            memo: *transaction.memo(),
+            encrypted_record_hashes: new_encrypted_record_hashes,
             program_commitment: None,
             local_data_root: None,
-            value_balance: transaction.value_balance(),
-            network_id: transaction.network_id(),
         };
 
         let inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey = self.inner_snark_parameters.1.clone().into();
