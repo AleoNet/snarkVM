@@ -81,7 +81,7 @@ pub enum DPCError {
     Message(String),
 
     #[error("missing inner snark proving parameters")]
-    MissingInnerSnarkProvingParameters,
+    MissingInnerProvingKey,
 
     #[error("Missing circuit - {}", _0)]
     MissingCircuit(&'static str),
