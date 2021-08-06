@@ -411,8 +411,7 @@ fn test_testnet1_dpc_execute_constraints() {
     )
     .unwrap();
 
-    let inner_snark_vk: <<Testnet1Parameters as Parameters>::InnerSNARK as SNARK>::VerifyingKey =
-        inner_snark_parameters.1.clone().into();
+    let inner_snark_vk = inner_snark_parameters.1.clone();
 
     // NOTE: Do not change this to `Testnet1Parameters::inner_circuit_id()` as that will load the *saved* inner circuit VK.
     let inner_circuit_id = <Testnet1Parameters as Parameters>::inner_circuit_id_crh()
@@ -440,19 +439,24 @@ fn test_testnet1_dpc_execute_constraints() {
     inner_public_variables.program_commitment = None;
     inner_public_variables.local_data_root = None;
 
+    // Construct the outer circuit public variables.
+    let outer_public_variables = OuterPublicVariables {
+        inner_public_variables,
+        inner_circuit_id,
+    };
+
     // Check that the proof check constraint system was satisfied.
     let mut outer_circuit_cs = TestConstraintSystem::<Fq>::new();
 
     execute_outer_circuit::<Testnet1Parameters, _>(
         &mut outer_circuit_cs.ns(|| "Outer circuit"),
-        &inner_public_variables,
+        &outer_public_variables,
         &inner_snark_vk,
         &inner_snark_proof,
         &executions,
         &program_commitment,
         &program_randomness,
         &local_data_root,
-        &inner_circuit_id,
     )
     .unwrap();
 
@@ -467,13 +471,11 @@ fn test_testnet1_dpc_execute_constraints() {
         println!("=========================================================");
     }
 
-    {
-        println!("=========================================================");
-        let num_constraints = outer_circuit_cs.num_constraints();
-        println!("Outer circuit num constraints: {:?}", num_constraints);
-        assert_eq!(422723, num_constraints);
-        println!("=========================================================");
-    }
+    println!("=========================================================");
+    let num_constraints = outer_circuit_cs.num_constraints();
+    println!("Outer circuit num constraints: {:?}", num_constraints);
+    assert_eq!(422723, num_constraints);
+    println!("=========================================================");
 
     assert!(outer_circuit_cs.is_satisfied());
 }

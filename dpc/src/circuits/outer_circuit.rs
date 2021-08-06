@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{execute_outer_circuit, Execution, InnerPublicVariables, Parameters};
+use crate::{execute_outer_circuit, Execution, OuterPublicVariables, Parameters};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{CommitmentScheme, SNARK},
@@ -25,8 +25,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSyst
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
 pub struct OuterCircuit<C: Parameters> {
-    /// Inner circuit public variables
-    inner_public_variables: InnerPublicVariables<C>,
+    public: OuterPublicVariables<C>,
 
     // Inner snark verifier private inputs
     inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
@@ -36,8 +35,6 @@ pub struct OuterCircuit<C: Parameters> {
     program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
     program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
     local_data_root: C::LocalDataRoot,
-
-    inner_circuit_id: C::InnerCircuitID,
 }
 
 impl<C: Parameters> OuterCircuit<C> {
@@ -51,24 +48,20 @@ impl<C: Parameters> OuterCircuit<C> {
         let program_randomness = <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness::default();
         let local_data_root = C::LocalDataRoot::default();
 
-        let inner_circuit_id = C::InnerCircuitID::default();
-
         Self {
-            inner_public_variables: InnerPublicVariables::blank(),
+            public: OuterPublicVariables::blank(),
             inner_snark_vk,
             inner_snark_proof,
             program_proofs,
             program_commitment,
             program_randomness,
             local_data_root,
-            inner_circuit_id,
         }
     }
 
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        // Inner circuit public variables
-        inner_public_variables: InnerPublicVariables<C>,
+        public: OuterPublicVariables<C>,
 
         // Inner SNARK private inputs
         inner_snark_vk: <C::InnerSNARK as SNARK>::VerifyingKey,
@@ -80,26 +73,25 @@ impl<C: Parameters> OuterCircuit<C> {
         program_commitment: <C::ProgramCommitmentScheme as CommitmentScheme>::Output,
         program_randomness: <C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
         local_data_root: C::LocalDataRoot,
-
-        // Inner circuit ID
-        inner_circuit_id: C::InnerCircuitID,
     ) -> Self {
         assert_eq!(C::NUM_TOTAL_RECORDS, program_proofs.len());
-        assert_eq!(C::NUM_OUTPUT_RECORDS, inner_public_variables.kernel.commitments.len());
         assert_eq!(
             C::NUM_OUTPUT_RECORDS,
-            inner_public_variables.encrypted_record_hashes.len()
+            public.inner_public_variables.kernel.commitments.len()
+        );
+        assert_eq!(
+            C::NUM_OUTPUT_RECORDS,
+            public.inner_public_variables.encrypted_record_hashes.len()
         );
 
         Self {
-            inner_public_variables,
+            public,
             inner_snark_vk,
             inner_snark_proof,
             program_proofs,
             program_commitment,
             program_randomness,
             local_data_root,
-            inner_circuit_id,
         }
     }
 }
@@ -115,14 +107,13 @@ where
     ) -> Result<(), SynthesisError> {
         execute_outer_circuit::<C, CS>(
             cs,
-            &self.inner_public_variables,
+            &self.public,
             &self.inner_snark_vk,
             &self.inner_snark_proof,
             &self.program_proofs,
             &self.program_commitment,
             &self.program_randomness,
             &self.local_data_root,
-            &self.inner_circuit_id,
         )?;
         Ok(())
     }

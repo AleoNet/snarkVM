@@ -26,6 +26,15 @@ pub struct OuterPublicVariables<C: Parameters> {
     pub inner_circuit_id: C::InnerCircuitID,
 }
 
+impl<C: Parameters> OuterPublicVariables<C> {
+    pub fn blank() -> Self {
+        Self {
+            inner_public_variables: InnerPublicVariables::blank(),
+            inner_circuit_id: C::InnerCircuitID::default(),
+        }
+    }
+}
+
 impl<C: Parameters> ToConstraintField<C::OuterScalarField> for OuterPublicVariables<C>
 where
     MerkleTreeDigest<C::RecordCommitmentTreeParameters>: ToConstraintField<C::InnerScalarField>,

@@ -275,28 +275,32 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             &inner_proof
         )?);
 
-        let inner_circuit_id = C::inner_circuit_id();
-        debug_assert_eq!(
-            inner_circuit_id,
-            &C::inner_circuit_id_crh().hash_field_elements(&self.inner_verifying_key.to_field_elements()?)?,
-            "The DPC-loaded and Parameters-saved inner circuit IDs do not match"
-        );
-
         let transaction_proof = {
+            debug_assert_eq!(
+                C::inner_circuit_id(),
+                &C::inner_circuit_id_crh().hash_field_elements(&self.inner_verifying_key.to_field_elements()?)?,
+                "The DPC-loaded and Parameters-saved inner circuit IDs do not match"
+            );
+
             // These inner circuit public variables are allocated as private variables in the outer circuit,
             // as they are not included in the transaction broadcasted to the ledger.
             inner_public_variables.program_commitment = None;
             inner_public_variables.local_data_root = None;
 
+            // Construct the outer circuit public variables.
+            let outer_public_variables = OuterPublicVariables {
+                inner_public_variables,
+                inner_circuit_id: C::inner_circuit_id().clone(),
+            };
+
             let circuit = OuterCircuit::<C>::new(
-                inner_public_variables.clone(),
+                outer_public_variables.clone(),
                 self.inner_verifying_key.clone(),
                 inner_proof,
                 executions.to_vec(),
                 program_commitment.clone(),
                 program_randomness,
                 local_data.root().clone(),
-                inner_circuit_id.clone(),
             );
 
             let outer_proving_key = self
@@ -309,10 +313,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             // Verify the outer circuit proof passes.
             assert!(C::OuterSNARK::verify(
                 &self.outer_verifying_key,
-                &OuterPublicVariables {
-                    inner_public_variables,
-                    inner_circuit_id: inner_circuit_id.clone(),
-                },
+                &outer_public_variables,
                 &outer_proof
             )?);
 
@@ -327,7 +328,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             value_balance,
             memo,
             ledger_digest,
-            inner_circuit_id.clone(),
+            C::inner_circuit_id().clone(),
             transaction_proof,
             signatures,
             encrypted_records,
@@ -417,7 +418,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
             match C::account_signature_scheme().verify(pk, &signature_message, sig) {
                 Ok(is_valid) => {
                     if !is_valid {
-                        eprintln!("Signature failed to verify.");
+                        eprintln!("Signature is invalid.");
                         return false;
                     }
                 }

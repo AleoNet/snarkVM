@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Execution, InnerPublicVariables, Parameters};
+use crate::{Execution, OuterPublicVariables, Parameters};
 use snarkvm_algorithms::traits::{CommitmentScheme, SNARK};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_gadgets::{
@@ -95,9 +95,7 @@ fn alloc_program_snark_field_element<
 #[allow(clippy::too_many_arguments)]
 pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarField>>(
     cs: &mut CS,
-
-    // Inner circuit public variables
-    inner_public: &InnerPublicVariables<C>,
+    public: &OuterPublicVariables<C>,
 
     // Inner snark verifier private inputs (verifying key and proof)
     inner_snark_vk: &<C::InnerSNARK as SNARK>::VerifyingKey,
@@ -110,9 +108,13 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
     program_commitment: &<C::ProgramCommitmentScheme as CommitmentScheme>::Output,
     program_randomness: &<C::ProgramCommitmentScheme as CommitmentScheme>::Randomness,
     local_data_root: &C::LocalDataRoot,
-
-    inner_circuit_id: &C::InnerCircuitID,
 ) -> Result<(), SynthesisError> {
+    // Access the outer public variables.
+    let OuterPublicVariables {
+        inner_public_variables: inner_public,
+        inner_circuit_id,
+    } = public;
+
     // In the outer circuit, these two variables must be allocated as witness,
     // as they are not included in the transaction.
     debug_assert!(inner_public.program_commitment.is_none());
@@ -170,7 +172,7 @@ pub fn execute_outer_circuit<C: Parameters, CS: ConstraintSystem<C::OuterScalarF
 
     let commitment_and_encrypted_record_hash_fe = {
         let mut commitment_and_encrypted_record_hash_fe_vec =
-            Vec::with_capacity(inner_public.kernel.commitments.len() * 2);
+            Vec::with_capacity(inner_public.kernel.commitments.len() * C::NUM_OUTPUT_RECORDS);
         for (index, (cm, encrypted_record_hash)) in inner_public
             .kernel
             .commitments
