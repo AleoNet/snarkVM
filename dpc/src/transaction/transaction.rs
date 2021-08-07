@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{record::*, AleoAmount, Network, Parameters, TransactionKernel, TransactionScheme};
-use snarkvm_algorithms::{
-    merkle_tree::MerkleTreeDigest,
-    traits::{SignatureScheme, SNARK},
-};
+use snarkvm_algorithms::{merkle_tree::MerkleTreeDigest, traits::SNARK};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
@@ -49,7 +46,7 @@ pub struct Transaction<C: Parameters> {
     #[derivative(Default(value = "[0u8; 64]"))]
     pub memo: [u8; 64],
     /// The signatures that authorized the transaction kernel.
-    pub signatures: Vec<<C::AccountSignatureScheme as SignatureScheme>::Signature>,
+    pub signatures: Vec<C::AccountSignature>,
     /// The root of the ledger commitment tree.
     pub ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
     /// The ID of the inner circuit used to execute this transaction.
@@ -70,7 +67,7 @@ impl<C: Parameters> Transaction<C> {
         commitments: Vec<<Self as TransactionScheme>::Commitment>,
         value_balance: AleoAmount,
         memo: <Self as TransactionScheme>::Memo,
-        signatures: Vec<<C::AccountSignatureScheme as SignatureScheme>::Signature>,
+        signatures: Vec<C::AccountSignature>,
         ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
         inner_circuit_id: C::InnerCircuitID,
         encrypted_records: Vec<EncryptedRecord<C>>,
@@ -98,7 +95,7 @@ impl<C: Parameters> Transaction<C> {
     /// Initializes an instance of `Transaction` from the given inputs.
     pub fn from(
         kernel: TransactionKernel<C>,
-        signatures: Vec<<C::AccountSignatureScheme as SignatureScheme>::Signature>,
+        signatures: Vec<C::AccountSignature>,
         ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
         inner_circuit_id: C::InnerCircuitID,
         encrypted_records: Vec<EncryptedRecord<C>>,
@@ -159,7 +156,7 @@ impl<C: Parameters> TransactionScheme for Transaction<C> {
     type InnerCircuitID = C::InnerCircuitID;
     type Memo = [u8; 64];
     type SerialNumber = C::AccountSignaturePublicKey;
-    type Signature = <C::AccountSignatureScheme as SignatureScheme>::Signature;
+    type Signature = C::AccountSignature;
     type ValueBalance = AleoAmount;
 
     /// Transaction ID = Hash(network ID || serial numbers || commitments || value balance || memo)

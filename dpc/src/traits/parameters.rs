@@ -93,7 +93,10 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
 
     /// Signature scheme for delegated compute. Invoked only over `Self::InnerScalarField`.
-    type AccountSignatureScheme: SignatureScheme<PublicKey = Self::AccountSignaturePublicKey>;
+    type AccountSignatureScheme: SignatureScheme<
+        PublicKey = Self::AccountSignaturePublicKey,
+        Signature = Self::AccountSignature,
+    >;
     type AccountSignatureGadget: SignatureGadget<Self::AccountSignatureScheme, Self::InnerScalarField>;
     type AccountSignaturePublicKey: ToConstraintField<Self::InnerScalarField>
         + Clone
@@ -107,6 +110,7 @@ pub trait Parameters: 'static + Sized + Send + Sync {
         + Sync
         + CanonicalSerialize
         + CanonicalDeserialize;
+    type AccountSignature: Clone + Debug + Default + ToBytes + FromBytes + Send + Sync + PartialEq + Eq;
 
     /// CRH for the encrypted record. Invoked only over `Self::InnerScalarField`.
     type EncryptedRecordCRH: CRH<Output = Self::EncryptedRecordDigest>;
