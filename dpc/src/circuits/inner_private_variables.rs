@@ -69,7 +69,8 @@ impl<C: Parameters> InnerPrivateVariables<C> {
         assert_eq!(C::NUM_INPUT_RECORDS, old_private_keys.len());
         assert_eq!(C::NUM_OUTPUT_RECORDS, new_records.len());
         assert_eq!(C::NUM_OUTPUT_RECORDS, new_records_encryption_randomness.len());
-
+        assert_eq!(C::NUM_TOTAL_RECORDS, local_data_commitment_randomizers.len());
+        
         Self {
             input_records,
             input_witnesses: old_witnesses,
