@@ -147,11 +147,10 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         )
     };
 
-    let zero_value = UInt8::alloc_vec(&mut cs.ns(|| "Declare a record zero value"), &(0u64).to_bytes_le()?)?;
-    let empty_payload = UInt8::alloc_vec(
-        &mut cs.ns(|| "Declare an empty record payload"),
-        &Payload::default().to_bytes(),
-    )?;
+    // Declares a constant for a 0 value in a record.
+    let zero_value = UInt8::constant_vec(&(0u64).to_bytes_le()?);
+    // Declares a constant for an empty payload in a record.
+    let empty_payload = UInt8::constant_vec(&Payload::default().to_bytes());
 
     let digest_gadget = <C::RecordCommitmentTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
         &mut cs.ns(|| "Declare ledger digest"),
