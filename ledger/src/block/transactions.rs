@@ -23,6 +23,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
+use anyhow::Result;
 use std::{
     io::{Read, Result as IoResult, Write},
     ops::{Deref, DerefMut},
@@ -48,7 +49,7 @@ impl<T: TransactionScheme> Transactions<T> {
     }
 
     /// Returns the transaction ids.
-    pub fn to_transaction_ids(&self) -> Result<Vec<[u8; 32]>, TransactionError> {
+    pub fn to_transaction_ids(&self) -> Result<Vec<[u8; 32]>> {
         self.0.iter().map(|tx| tx.transaction_id()).collect()
     }
 

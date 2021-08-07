@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::TransactionError;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use anyhow::Result;
 use std::hash::Hash;
 
 pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
@@ -30,7 +30,7 @@ pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     type Signature: Clone + Eq + FromBytes + ToBytes;
 
     /// Returns the transaction identifier.
-    fn transaction_id(&self) -> Result<[u8; 32], TransactionError>;
+    fn transaction_id(&self) -> Result<[u8; 32]>;
 
     /// Returns the network_id in the transaction.
     fn network_id(&self) -> u8;

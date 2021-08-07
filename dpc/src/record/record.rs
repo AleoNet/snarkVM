@@ -188,7 +188,7 @@ impl<C: Parameters> Record<C> {
         private_key: &PrivateKey<C>,
     ) -> Result<
         (
-            <C::AccountSignatureScheme as SignatureScheme>::PublicKey,
+            C::AccountSignaturePublicKey,
             <C::AccountSignatureScheme as SignatureScheme>::Randomizer,
         ),
         RecordError,
@@ -217,7 +217,7 @@ impl<C: Parameters> RecordScheme for Record<C> {
     type CommitmentRandomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness;
     type Owner = Address<C>;
     type Payload = Payload;
-    type SerialNumber = <C::AccountSignatureScheme as SignatureScheme>::PublicKey;
+    type SerialNumber = C::AccountSignaturePublicKey;
     type SerialNumberNonce = C::SerialNumberNonce;
 
     fn program_id(&self) -> &[u8] {
