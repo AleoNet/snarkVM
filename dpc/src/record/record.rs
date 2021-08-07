@@ -45,7 +45,7 @@ pub struct Record<C: Parameters> {
     // TODO (raychu86) use AleoAmount which will guard the value range
     pub(crate) value: u64,
     pub(crate) payload: Payload,
-    pub(crate) serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
+    pub(crate) serial_number_nonce: C::SerialNumberNonce,
     pub(crate) commitment: C::RecordCommitment,
     pub(crate) commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
 }
@@ -96,7 +96,7 @@ impl<C: Parameters> Record<C> {
         is_dummy: bool,
         value: u64,
         payload: Payload,
-        serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
+        serial_number_nonce: C::SerialNumberNonce,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
         // Sample a new record commitment randomness.
@@ -153,7 +153,7 @@ impl<C: Parameters> Record<C> {
         is_dummy: bool,
         value: u64,
         payload: Payload,
-        serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output,
+        serial_number_nonce: C::SerialNumberNonce,
         commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness,
     ) -> Result<Self, RecordError> {
         // Total = 48 + 32 + 1 + 8 + 128 + 32 = 249 bytes
@@ -217,7 +217,7 @@ impl<C: Parameters> RecordScheme for Record<C> {
     type Owner = Address<C>;
     type Payload = Payload;
     type SerialNumber = <C::AccountSignatureScheme as SignatureScheme>::PublicKey;
-    type SerialNumberNonce = <C::SerialNumberNonceCRH as CRH>::Output;
+    type SerialNumberNonce = C::SerialNumberNonce;
 
     fn program_id(&self) -> &[u8] {
         &self.program_id
@@ -282,7 +282,7 @@ impl<C: Parameters> FromBytes for Record<C> {
         let is_dummy: bool = FromBytes::read_le(&mut reader)?;
         let value: u64 = FromBytes::read_le(&mut reader)?;
         let payload: Payload = FromBytes::read_le(&mut reader)?;
-        let serial_number_nonce: <C::SerialNumberNonceCRH as CRH>::Output = FromBytes::read_le(&mut reader)?;
+        let serial_number_nonce: C::SerialNumberNonce = FromBytes::read_le(&mut reader)?;
         let commitment: C::RecordCommitment = FromBytes::read_le(&mut reader)?;
         let commitment_randomness: <C::RecordCommitmentScheme as CommitmentScheme>::Randomness =
             FromBytes::read_le(&mut reader)?;

@@ -247,8 +247,18 @@ pub trait Parameters: 'static + Sized + Send + Sync {
     type RecordSerialNumberTreeParameters: LoadableMerkleParameters<H = Self::RecordSerialNumberTreeCRH>;
 
     /// CRH for computing the serial number nonce. Invoked only over `Self::InnerScalarField`.
-    type SerialNumberNonceCRH: CRH;
+    type SerialNumberNonceCRH: CRH<Output = Self::SerialNumberNonce>;
     type SerialNumberNonceCRHGadget: CRHGadget<Self::SerialNumberNonceCRH, Self::InnerScalarField>;
+    type SerialNumberNonce: ToConstraintField<Self::InnerScalarField>
+        + Clone
+        + Debug
+        + Default
+        + Eq
+        + Hash
+        + ToBytes
+        + FromBytes
+        + Sync
+        + Send;
 
     fn account_commitment_scheme() -> &'static Self::AccountCommitmentScheme;
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;

@@ -1871,6 +1871,7 @@ dependencies = [
 name = "snarkvm-r1cs"
 version = "0.7.5"
 dependencies = [
+ "anyhow",
  "cfg-if 1.0.0",
  "fxhash",
  "indexmap",

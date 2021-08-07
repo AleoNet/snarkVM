@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerPrivateVariables, InnerPublicVariables, Parameters, RecordScheme};
+use crate::{InnerPrivateVariables, InnerPublicVariables, Parameters, Payload, RecordScheme};
 use snarkvm_algorithms::traits::*;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::merkle_path::MerklePathGadget,
@@ -29,7 +29,7 @@ use snarkvm_gadgets::{
     ToConstraintFieldGadget,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
-use snarkvm_utilities::{to_bytes_le, ToBytes};
+use snarkvm_utilities::ToBytes;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
@@ -47,7 +47,6 @@ impl<C: Parameters> InnerCircuit<C> {
     }
 
     pub fn new(public: InnerPublicVariables<C>, private: InnerPrivateVariables<C>) -> Self {
-        assert_eq!(C::NUM_OUTPUT_RECORDS, public.encrypted_record_hashes.len());
         Self { public, private }
     }
 }
@@ -148,7 +147,11 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         )
     };
 
-    let zero_value = UInt8::alloc_vec(&mut cs.ns(|| "Declare record zero value"), &to_bytes_le![0u64]?)?;
+    let zero_value = UInt8::alloc_vec(&mut cs.ns(|| "Declare a record zero value"), &(0u64).to_bytes_le()?)?;
+    let empty_payload = UInt8::alloc_vec(
+        &mut cs.ns(|| "Declare an empty record payload"),
+        &Payload::default().to_bytes(),
+    )?;
 
     let digest_gadget = <C::RecordCommitmentTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
         &mut cs.ns(|| "Declare ledger digest"),
@@ -173,11 +176,11 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         // Declare record contents
         let (
             given_program_id,
-            given_record_owner,
+            given_owner,
             given_is_dummy,
             given_value,
             given_payload,
-            given_serial_number_nonce,
+            given_serial_number_nonce_bytes,
             given_commitment,
             given_commitment_randomness,
         ) = {
@@ -191,7 +194,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             // are trusted, and so when we recompute these, the newly computed
             // values will always be in correct subgroup. If the input cm, pk
             // or hash is incorrect, then it will not match the computed equivalent.
-            let given_record_owner = <C::AccountEncryptionGadget as EncryptionGadget<
+            let given_owner = <C::AccountEncryptionGadget as EncryptionGadget<
                 C::AccountEncryptionScheme,
                 C::InnerScalarField,
             >>::PublicKeyGadget::alloc(
@@ -201,16 +204,13 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
             let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
 
-            let given_value = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &to_bytes_le![record.value()]?)?;
+            let given_value = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &record.value().to_bytes_le()?)?;
 
             let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes())?;
 
-            let given_serial_number_nonce = <C::SerialNumberNonceCRHGadget as CRHGadget<
-                C::SerialNumberNonceCRH,
-                C::InnerScalarField,
-            >>::OutputGadget::alloc(
-                &mut declare_cs.ns(|| "serial_number_nonce"),
-                || Ok(record.serial_number_nonce()),
+            let given_serial_number_nonce_bytes = UInt8::alloc_vec(
+                &mut declare_cs.ns(|| "given_serial_number_nonce_bytes"),
+                &record.serial_number_nonce().to_bytes_le()?,
             )?;
 
             let given_commitment = <C::RecordCommitmentGadget as CommitmentGadget<
@@ -231,11 +231,11 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
             (
                 given_program_id,
-                given_record_owner,
+                given_owner,
                 given_is_dummy,
                 given_value,
                 given_payload,
-                given_serial_number_nonce,
+                given_serial_number_nonce_bytes,
                 given_commitment,
                 given_commitment_randomness,
             )
@@ -350,7 +350,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
                 candidate_record_owner.enforce_equal(
                     &mut account_cs.ns(|| "Check that declared and computed addresses are equal"),
-                    &given_record_owner,
+                    &given_owner,
                 )?;
             }
 
@@ -361,17 +361,14 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         // ********************************************************************
         // Check that the serial number is derived correctly.
         // ********************************************************************
-        let serial_number_nonce_bytes = {
+        {
             let sn_cs = &mut cs.ns(|| "Check that sn is derived correctly");
-
-            let serial_number_nonce_bytes =
-                given_serial_number_nonce.to_bytes(&mut sn_cs.ns(|| "Convert nonce to bytes"))?;
 
             let prf_seed = sk_prf;
             let randomizer = <C::PRFGadget as PRFGadget<C::PRF, C::InnerScalarField>>::check_evaluation_gadget(
                 &mut sn_cs.ns(|| "Compute pk_sig randomizer"),
                 &prf_seed,
-                &serial_number_nonce_bytes,
+                &given_serial_number_nonce_bytes,
             )?;
             let randomizer_bytes = randomizer.to_bytes(&mut sn_cs.ns(|| "Convert randomizer to bytes"))?;
 
@@ -400,8 +397,6 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             old_serial_numbers_bytes_gadgets.extend_from_slice(&bytes);
 
             old_serial_numbers_gadgets.push(candidate_serial_number_gadget);
-
-            serial_number_nonce_bytes
         };
         // ********************************************************************
 
@@ -411,15 +406,21 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         {
             let commitment_cs = &mut cs.ns(|| "Check that record is well-formed");
 
+            // Perform noop safety checks.
             given_value.conditional_enforce_equal(
-                &mut commitment_cs
-                    .ns(|| format!("Enforce that if old record {} is a dummy, that it has a value of 0", i)),
+                &mut commitment_cs.ns(|| format!("If the input record {} is a noop, enforce it has a value of 0", i)),
                 &zero_value,
                 &given_is_dummy,
             )?;
+            given_payload.conditional_enforce_equal(
+                &mut commitment_cs
+                    .ns(|| format!("If the input record {} is a noop, enforce it has an empty payload", i)),
+                &empty_payload,
+                &given_is_dummy,
+            )?;
 
-            let record_owner_bytes =
-                given_record_owner.to_bytes(&mut commitment_cs.ns(|| "Convert record_owner to bytes"))?;
+            // Compute the record commitment and check that it matches the declared commitment.
+            let record_owner_bytes = given_owner.to_bytes(&mut commitment_cs.ns(|| "Convert record_owner to bytes"))?;
             let is_dummy_bytes = given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert is_dummy to bytes"))?;
 
             let mut commitment_input = Vec::new();
@@ -428,7 +429,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             commitment_input.extend_from_slice(&is_dummy_bytes);
             commitment_input.extend_from_slice(&given_value);
             commitment_input.extend_from_slice(&given_payload);
-            commitment_input.extend_from_slice(&serial_number_nonce_bytes);
+            commitment_input.extend_from_slice(&given_serial_number_nonce_bytes);
 
             let candidate_commitment = record_commitment_parameters.check_commitment_gadget(
                 &mut commitment_cs.ns(|| "Compute commitment"),
@@ -458,13 +459,12 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
         let (
             given_program_id,
-            given_record_owner,
+            given_owner,
             given_is_dummy,
             given_value,
             given_payload,
-            serial_number_nonce,
-            serial_number_nonce_bytes,
-            given_record_commitment,
+            given_serial_number_nonce,
+            given_serial_number_nonce_bytes,
             given_commitment,
             given_commitment_randomness,
         ) = {
@@ -473,7 +473,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             let given_program_id = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &record.program_id())?;
             new_program_ids_gadgets.push(given_program_id.clone());
 
-            let given_record_owner = <C::AccountEncryptionGadget as EncryptionGadget<
+            let given_owner = <C::AccountEncryptionGadget as EncryptionGadget<
                 C::AccountEncryptionScheme,
                 C::InnerScalarField,
             >>::PublicKeyGadget::alloc(
@@ -483,36 +483,44 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
             let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
 
-            let given_value = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &to_bytes_le![record.value()]?)?;
+            let given_value = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &record.value().to_bytes_le()?)?;
 
             let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes())?;
 
-            let serial_number_nonce = <C::SerialNumberNonceCRHGadget as CRHGadget<
+            let given_serial_number_nonce = <C::SerialNumberNonceCRHGadget as CRHGadget<
                 C::SerialNumberNonceCRH,
                 C::InnerScalarField,
             >>::OutputGadget::alloc(
-                &mut declare_cs.ns(|| "serial_number_nonce"),
+                &mut declare_cs.ns(|| "given_serial_number_nonce"),
                 || Ok(record.serial_number_nonce()),
             )?;
 
-            let serial_number_nonce_bytes =
-                serial_number_nonce.to_bytes(&mut declare_cs.ns(|| "Convert sn nonce to bytes"))?;
+            let given_serial_number_nonce_bytes =
+                given_serial_number_nonce.to_bytes(&mut declare_cs.ns(|| "Convert sn nonce to bytes"))?;
 
-            let given_record_commitment = <C::RecordCommitmentGadget as CommitmentGadget<
-                C::RecordCommitmentScheme,
-                C::InnerScalarField,
-            >>::OutputGadget::alloc(
-                &mut declare_cs.ns(|| "given_record_commitment"),
-                || Ok(record.commitment()),
-            )?;
-            new_record_commitments_gadgets.push(given_record_commitment.clone());
+            let given_commitment = {
+                let record_commitment = <C::RecordCommitmentGadget as CommitmentGadget<
+                    C::RecordCommitmentScheme,
+                    C::InnerScalarField,
+                >>::OutputGadget::alloc(
+                    &mut declare_cs.ns(|| "record_commitment"), || Ok(record.commitment())
+                )?;
 
-            let given_commitment = <C::RecordCommitmentGadget as CommitmentGadget<
-                C::RecordCommitmentScheme,
-                C::InnerScalarField,
-            >>::OutputGadget::alloc_input(
-                &mut declare_cs.ns(|| "given_commitment"), || Ok(commitment)
-            )?;
+                let public_commitment = <C::RecordCommitmentGadget as CommitmentGadget<
+                    C::RecordCommitmentScheme,
+                    C::InnerScalarField,
+                >>::OutputGadget::alloc_input(
+                    &mut declare_cs.ns(|| "public_commitment"), || Ok(commitment)
+                )?;
+
+                record_commitment.enforce_equal(
+                    &mut declare_cs.ns(|| "Check that record commitment matches the public commitment"),
+                    &public_commitment,
+                )?;
+
+                record_commitment
+            };
+            new_record_commitments_gadgets.push(given_commitment.clone());
 
             let given_commitment_randomness = <C::RecordCommitmentGadget as CommitmentGadget<
                 C::RecordCommitmentScheme,
@@ -524,13 +532,12 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
             (
                 given_program_id,
-                given_record_owner,
+                given_owner,
                 given_is_dummy,
                 given_value,
                 given_payload,
-                serial_number_nonce,
-                serial_number_nonce_bytes,
-                given_record_commitment,
+                given_serial_number_nonce,
+                given_serial_number_nonce_bytes,
                 given_commitment,
                 given_commitment_randomness,
             )
@@ -543,17 +550,18 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         {
             let sn_cs = &mut cs.ns(|| "Check that serial number nonce is computed correctly");
 
-            let current_record_number = UInt8::constant((C::NUM_INPUT_RECORDS + j) as u8);
-            let mut current_record_number_bytes_le = vec![current_record_number];
-            current_record_number_bytes_le.extend_from_slice(&old_serial_numbers_bytes_gadgets);
+            let record_position = UInt8::constant((C::NUM_INPUT_RECORDS + j) as u8);
+            let mut serial_number_nonce_input_bytes_le = vec![record_position];
+            serial_number_nonce_input_bytes_le.extend_from_slice(&old_serial_numbers_bytes_gadgets);
 
-            let sn_nonce_input = current_record_number_bytes_le;
+            let candidate_serial_number_nonce = serial_number_nonce_crh.check_evaluation_gadget(
+                &mut sn_cs.ns(|| "Compute serial number nonce"),
+                serial_number_nonce_input_bytes_le,
+            )?;
 
-            let candidate_sn_nonce = serial_number_nonce_crh
-                .check_evaluation_gadget(&mut sn_cs.ns(|| "Compute serial number nonce"), sn_nonce_input)?;
-            candidate_sn_nonce.enforce_equal(
+            candidate_serial_number_nonce.enforce_equal(
                 &mut sn_cs.ns(|| "Check that computed nonce matches provided nonce"),
-                &serial_number_nonce,
+                &given_serial_number_nonce,
             )?;
         }
         // *******************************************************************
@@ -564,24 +572,31 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         {
             let commitment_cs = &mut cs.ns(|| "Check that record is well-formed");
 
+            // Perform noop safety checks.
             given_value.conditional_enforce_equal(
-                &mut commitment_cs
-                    .ns(|| format!("Enforce that if new record {} is a dummy, that it has a value of 0", j)),
+                &mut commitment_cs.ns(|| format!("If the output record {} is a noop, enforce it has a value of 0", j)),
                 &zero_value,
                 &given_is_dummy,
             )?;
+            given_payload.conditional_enforce_equal(
+                &mut commitment_cs
+                    .ns(|| format!("If the output record {} is a noop, enforce it has an empty payload", j)),
+                &empty_payload,
+                &given_is_dummy,
+            )?;
 
-            let record_owner_bytes =
-                given_record_owner.to_bytes(&mut commitment_cs.ns(|| "Convert record_owner to bytes"))?;
-            let is_dummy_bytes = given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert is_dummy to bytes"))?;
+            // Compute the record commitment and check that it matches the declared commitment.
+            let given_owner_bytes = given_owner.to_bytes(&mut commitment_cs.ns(|| "Convert record_owner to bytes"))?;
+            let given_is_dummy_bytes =
+                given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert is_dummy to bytes"))?;
 
             let mut commitment_input = Vec::new();
             commitment_input.extend_from_slice(&given_program_id);
-            commitment_input.extend_from_slice(&record_owner_bytes);
-            commitment_input.extend_from_slice(&is_dummy_bytes);
+            commitment_input.extend_from_slice(&given_owner_bytes);
+            commitment_input.extend_from_slice(&given_is_dummy_bytes);
             commitment_input.extend_from_slice(&given_value);
             commitment_input.extend_from_slice(&given_payload);
-            commitment_input.extend_from_slice(&serial_number_nonce_bytes);
+            commitment_input.extend_from_slice(&given_serial_number_nonce_bytes);
 
             let candidate_commitment = record_commitment_parameters.check_commitment_gadget(
                 &mut commitment_cs.ns(|| "Compute record commitment"),
@@ -591,10 +606,6 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             candidate_commitment.enforce_equal(
                 &mut commitment_cs.ns(|| "Check that computed commitment matches public input"),
                 &given_commitment,
-            )?;
-            candidate_commitment.enforce_equal(
-                &mut commitment_cs.ns(|| "Check that computed commitment matches declared commitment"),
-                &given_record_commitment,
             )?;
         }
 
@@ -624,7 +635,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
                 res.extend_from_slice(&given_payload);
 
                 // Serial number nonce
-                res.extend_from_slice(&serial_number_nonce_bytes);
+                res.extend_from_slice(&given_serial_number_nonce_bytes);
 
                 // Commitment randomness
                 let given_commitment_randomness_bytes = given_commitment_randomness
@@ -648,7 +659,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
             let candidate_encrypted_record_gadget = account_encryption_parameters.check_encryption_gadget(
                 &mut encryption_cs.ns(|| format!("output record {} check_encryption_gadget", j)),
                 &encryption_randomness_gadget,
-                &given_record_owner,
+                &given_owner,
                 &plaintext_bytes,
             )?;
 
@@ -730,10 +741,10 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
         let network_id = UInt8::alloc_input_vec_le(cs.ns(|| "Allocate network id"), &[public.kernel.network_id])?;
 
         let mut old_record_commitment_bytes = vec![];
-        let mut input_bytes = vec![];
         for i in 0..C::NUM_INPUT_RECORDS {
             let mut cs = cs.ns(|| format!("Construct local data with input record {}", i));
 
+            let mut input_bytes = vec![];
             input_bytes.extend_from_slice(&[UInt8::constant(i as u8)]);
             input_bytes.extend_from_slice(&old_serial_numbers_gadgets[i].to_bytes(&mut cs.ns(|| "serial_number"))?);
             input_bytes.extend_from_slice(&old_record_commitments_gadgets[i].to_bytes(&mut cs.ns(|| "commitment"))?);
@@ -756,16 +767,13 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
             old_record_commitment_bytes
                 .extend_from_slice(&commitment.to_bytes(&mut cs.ns(|| "old_record_local_data"))?);
-
-            input_bytes.clear();
         }
-        drop(input_bytes);
 
         let mut new_record_commitment_bytes = Vec::new();
-        let mut input_bytes = vec![];
         for j in 0..C::NUM_OUTPUT_RECORDS {
             let mut cs = cs.ns(|| format!("Construct local data with output record {}", j));
 
+            let mut input_bytes = vec![];
             input_bytes.extend_from_slice(&[UInt8::constant((C::NUM_INPUT_RECORDS + j) as u8)]);
             input_bytes
                 .extend_from_slice(&new_record_commitments_gadgets[j].to_bytes(&mut cs.ns(|| "record_commitment"))?);
@@ -788,10 +796,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
             new_record_commitment_bytes
                 .extend_from_slice(&commitment.to_bytes(&mut cs.ns(|| "new_record_local_data"))?);
-
-            input_bytes.clear();
         }
-        drop(input_bytes);
 
         let inner1_commitment_hash = local_data_crh.check_evaluation_gadget(
             cs.ns(|| "Compute to local data commitment inner1 hash"),

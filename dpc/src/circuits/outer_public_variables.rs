@@ -62,14 +62,12 @@ impl<C: Parameters> OuterPublicVariables<C> {
     }
 
     pub fn from(transaction: &Transaction<C>) -> Result<Self> {
-        let mut encrypted_record_hashes = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-        for encrypted_record in transaction.encrypted_records().iter().take(C::NUM_OUTPUT_RECORDS) {
-            encrypted_record_hashes.push(encrypted_record.to_hash()?);
-        }
+        let kernel = transaction.to_kernel();
+        let encrypted_record_hashes = transaction.to_encrypted_record_hashes()?;
 
         Ok(Self {
             inner_public_variables: InnerPublicVariables {
-                kernel: transaction.to_kernel(),
+                kernel,
                 ledger_digest: transaction.ledger_digest().clone(),
                 encrypted_record_hashes,
                 // These inner circuit public variables are allocated as private variables in the outer circuit,

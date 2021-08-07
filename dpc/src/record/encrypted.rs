@@ -120,7 +120,7 @@ impl<C: Parameters> EncryptedRecord<C> {
         let payload = Payload::read_le(&mut cursor)?;
 
         // Serial number nonce
-        let serial_number_nonce = <C::SerialNumberNonceCRH as CRH>::Output::read_le(&mut cursor)?;
+        let serial_number_nonce = C::SerialNumberNonce::read_le(&mut cursor)?;
 
         // Commitment randomness
         let commitment_randomness = <C::RecordCommitmentScheme as CommitmentScheme>::Randomness::read_le(&mut cursor)?;
