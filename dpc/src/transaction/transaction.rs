@@ -62,6 +62,7 @@ pub struct Transaction<C: Parameters> {
 }
 
 impl<C: Parameters> Transaction<C> {
+    /// Initializes a new instance of `Transaction` from the given inputs.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         network: Network,
@@ -69,11 +70,11 @@ impl<C: Parameters> Transaction<C> {
         commitments: Vec<<Self as TransactionScheme>::Commitment>,
         value_balance: AleoAmount,
         memo: <Self as TransactionScheme>::Memo,
+        signatures: Vec<<C::AccountSignatureScheme as SignatureScheme>::Signature>,
         ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
         inner_circuit_id: C::InnerCircuitID,
-        proof: <C::OuterSNARK as SNARK>::Proof,
-        signatures: Vec<<C::AccountSignatureScheme as SignatureScheme>::Signature>,
         encrypted_records: Vec<EncryptedRecord<C>>,
+        proof: <C::OuterSNARK as SNARK>::Proof,
     ) -> Self {
         assert_eq!(C::NUM_INPUT_RECORDS, serial_numbers.len());
         assert_eq!(C::NUM_OUTPUT_RECORDS, commitments.len());
@@ -84,14 +85,45 @@ impl<C: Parameters> Transaction<C> {
             network,
             serial_numbers,
             commitments,
+            value_balance,
             memo,
+            signatures,
             ledger_digest,
             inner_circuit_id,
-            proof,
-            value_balance,
-            signatures,
             encrypted_records,
+            proof,
         }
+    }
+
+    /// Initializes an instance of `Transaction` from the given inputs.
+    pub fn from(
+        kernel: TransactionKernel<C>,
+        signatures: Vec<<C::AccountSignatureScheme as SignatureScheme>::Signature>,
+        ledger_digest: MerkleTreeDigest<C::RecordCommitmentTreeParameters>,
+        inner_circuit_id: C::InnerCircuitID,
+        encrypted_records: Vec<EncryptedRecord<C>>,
+        proof: <C::OuterSNARK as SNARK>::Proof,
+    ) -> Self {
+        let TransactionKernel {
+            network_id,
+            serial_numbers,
+            commitments,
+            value_balance,
+            memo,
+        } = kernel;
+
+        Self::new(
+            Network::from_id(network_id),
+            serial_numbers,
+            commitments,
+            value_balance,
+            memo,
+            signatures,
+            ledger_digest,
+            inner_circuit_id,
+            encrypted_records,
+            proof,
+        )
     }
 
     /// Returns the kernel of the transaction.

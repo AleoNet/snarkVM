@@ -35,26 +35,26 @@ pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
     /// Returns the network_id in the transaction.
     fn network_id(&self) -> u8;
 
-    /// Returns the ledger digest.
-    fn ledger_digest(&self) -> &Self::Digest;
-
-    /// Returns the inner circuit ID.
-    fn inner_circuit_id(&self) -> &Self::InnerCircuitID;
-
     /// Returns the old serial numbers.
     fn serial_numbers(&self) -> &[Self::SerialNumber];
 
     /// Returns the new commitments.
     fn commitments(&self) -> &[Self::Commitment];
 
-    /// Returns the memorandum.
-    fn memo(&self) -> &Self::Memo;
-
     /// Returns the value balance in the transaction.
     fn value_balance(&self) -> Self::ValueBalance;
 
+    /// Returns the memorandum.
+    fn memo(&self) -> &Self::Memo;
+
     /// Returns the signatures.
     fn signatures(&self) -> &[Self::Signature];
+
+    /// Returns the ledger digest.
+    fn ledger_digest(&self) -> &Self::Digest;
+
+    /// Returns the inner circuit ID.
+    fn inner_circuit_id(&self) -> &Self::InnerCircuitID;
 
     /// Returns the encrypted records
     fn encrypted_records(&self) -> &[Self::EncryptedRecord];

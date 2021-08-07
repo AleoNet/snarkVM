@@ -309,25 +309,13 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
         };
         end_timer!(execution_timer);
 
-        let TransactionKernel {
-            network_id,
-            serial_numbers,
-            commitments,
-            value_balance,
-            memo,
-        } = kernel;
-
-        Ok(Self::Transaction::new(
-            Network::from_id(network_id),
-            serial_numbers,
-            commitments,
-            value_balance,
-            memo,
+        Ok(Self::Transaction::from(
+            kernel,
+            signatures,
             ledger_digest,
             C::inner_circuit_id().clone(),
-            transaction_proof,
-            signatures,
             encrypted_records,
+            transaction_proof,
         ))
     }
 
