@@ -210,11 +210,7 @@ impl<C: Parameters> TransactionScheme for Transaction<C> {
 impl<C: Parameters> ToBytes for Transaction<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.network.write_le(&mut writer)?;
-        self.serial_numbers.write_le(&mut writer)?;
-        self.commitments.write_le(&mut writer)?;
-        self.value_balance.write_le(&mut writer)?;
-        self.memo.write_le(&mut writer)?;
+        self.to_kernel().write_le(&mut writer)?;
 
         for signature in &self.signatures {
             signature.write_le(&mut writer)?;
@@ -234,23 +230,8 @@ impl<C: Parameters> ToBytes for Transaction<C> {
 impl<C: Parameters> FromBytes for Transaction<C> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the network ID.
-        let network: Network = FromBytes::read_le(&mut reader)?;
-
-        // Read the serial numbers.
-        let mut serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
-        for _ in 0..C::NUM_INPUT_RECORDS {
-            serial_numbers.push(FromBytes::read_le(&mut reader)?);
-        }
-
-        // Read the commitments
-        let mut commitments = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
-        for _ in 0..C::NUM_OUTPUT_RECORDS {
-            commitments.push(FromBytes::read_le(&mut reader)?);
-        }
-
-        let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
-        let memo: <Self as TransactionScheme>::Memo = FromBytes::read_le(&mut reader)?;
+        // Read the transaction kernel.
+        let kernel: TransactionKernel<C> = FromBytes::read_le(&mut reader)?;
 
         // Read the signatures
         let mut signatures = Vec::with_capacity(C::NUM_INPUT_RECORDS);
@@ -269,18 +250,14 @@ impl<C: Parameters> FromBytes for Transaction<C> {
 
         let proof: <C::OuterSNARK as SNARK>::Proof = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self {
-            network,
-            serial_numbers,
-            commitments,
-            value_balance,
-            memo,
+        Ok(Self::from(
+            kernel,
             signatures,
             ledger_digest,
             inner_circuit_id,
             encrypted_records,
             proof,
-        })
+        ))
     }
 }
 

@@ -380,7 +380,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         // Returns false if the number of signatures in the transaction is incorrect.
         if transaction.signatures().len() != C::NUM_OUTPUT_RECORDS {
-            eprintln!("Transaction contains incorrect number of commitments");
+            eprintln!("Transaction contains incorrect number of signatures");
             return false;
         }
 
