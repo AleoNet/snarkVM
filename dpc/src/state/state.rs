@@ -17,7 +17,7 @@
 use crate::prelude::*;
 use snarkvm_utilities::ToBytes;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use std::sync::Arc;
 
@@ -38,20 +38,53 @@ impl<C: Parameters> State<C> {
 pub struct StateBuilder<C: Parameters> {
     inputs: Vec<Input<C>>,
     outputs: Vec<Output<C>>,
+    errors: Vec<String>,
 }
 
 impl<C: Parameters> StateBuilder<C> {
-    /// Returns a new instance of `StateBuilder`.
+    /// Initializes a new instance of `StateBuilder`.
     pub fn new() -> Self {
         Self {
             inputs: Vec::new(),
             outputs: Vec::new(),
+            errors: Vec::new(),
         }
+    }
+
+    /// Adds the given input into the builder.
+    pub fn add_input(mut self, input: Input<C>) -> Self {
+        // Ensure there are no outputs assigned yet, as the builder computes joint serial numbers.
+        if !self.outputs.is_empty() {
+            self.errors.push("Builder cannot add new inputs after outputs".into());
+        }
+
+        match self.inputs.len() < C::NUM_INPUT_RECORDS {
+            true => self.inputs.push(input),
+            false => self.errors.push("Builder exceeded maximum inputs".into()),
+        };
+        self
+    }
+
+    /// Adds the given output into the builder.
+    pub fn add_output(mut self, output: Output<C>) -> Self {
+        match self.outputs.len() < C::NUM_OUTPUT_RECORDS {
+            true => self.outputs.push(output),
+            false => self.errors.push("Builder exceeded maximum outputs".into()),
+        };
+        self
     }
 
     /// TODO (howardwu): TEMPORARY - `noop: Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
     /// Finalizes the builder and returns a new instance of `State`.
     pub fn build<R: Rng + CryptoRng>(&self, noop: Arc<NoopProgram<C>>, rng: &mut R) -> Result<State<C>> {
+        // Ensure there are no errors in the build process yet.
+        if !self.errors.is_empty() {
+            for error in &self.errors {
+                eprintln!("{}", error);
+            }
+            return Err(anyhow!("State builder encountered build errors: {:?}", self.errors));
+        }
+
         // Construct the inputs.
         let mut inputs = self.inputs.clone();
         // Pad the inputs with noop inputs if necessary.
