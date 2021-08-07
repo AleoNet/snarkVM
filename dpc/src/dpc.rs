@@ -42,10 +42,7 @@ impl<C: Parameters> DPCScheme<C> for DPC<C> {
 
         let noop_program_timer = start_timer!(|| "Noop program SNARK setup");
         let noop_program = NoopProgram::setup(rng)?;
-        let noop_circuit = noop_program
-            .find_circuit_by_index(0)
-            .ok_or(DPCError::MissingNoopCircuit)?;
-        let noop_program_execution = noop_program.execute_blank(noop_circuit.circuit_id())?;
+        let noop_program_execution = noop_program.execute_blank_noop()?;
         end_timer!(noop_program_timer);
 
         let snark_setup_time = start_timer!(|| "Execute inner SNARK setup");

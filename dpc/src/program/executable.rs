@@ -14,16 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    Execution,
-    LocalData,
-    NoopPrivateVariables,
-    NoopProgram,
-    Parameters,
-    PrivateVariables,
-    ProgramScheme,
-    PublicVariables,
-};
+use crate::{Execution, LocalData, NoopProgram, Parameters, PrivateVariables, ProgramScheme, PublicVariables};
 
 use anyhow::Result;
 use std::{ops::Deref, sync::Arc};
@@ -31,7 +22,8 @@ use std::{ops::Deref, sync::Arc};
 #[derive(Derivative)]
 #[derivative(Clone(bound = "C: Parameters"))]
 pub enum Executable<C: Parameters> {
-    Noop(Arc<NoopProgram<C>>, C::ProgramCircuitID),
+    /// TODO (howardwu): TEMPORARY - `Arc<NoopProgram<C>>` will be removed when `DPC::setup` and `DPC::load` are refactored.
+    Noop(Arc<NoopProgram<C>>),
     Circuit(
         Arc<dyn ProgramScheme<C>>,
         C::ProgramCircuitID,
@@ -44,14 +36,20 @@ impl<C: Parameters> Executable<C> {
     pub fn execute(&self, record_position: u8, local_data: &LocalData<C>) -> Result<Execution<C>> {
         // Construct the public variables.
         let public_variables = PublicVariables::new(record_position, local_data.root());
-        // Execute the program circuit with the declared private variables.
+        // Execute the program circuit with the declared variables.
         match self {
-            Self::Noop(program, circuit_id) => {
-                Ok(program.execute(circuit_id, &public_variables, &NoopPrivateVariables::new())?)
-            }
+            Self::Noop(program) => Ok(program.execute_noop(&public_variables)?),
             Self::Circuit(program, circuit_id, private_variables) => {
                 Ok(program.execute(circuit_id, &public_variables, private_variables.deref())?)
             }
+        }
+    }
+
+    /// Returns a reference to the executable program.
+    pub fn program(&self) -> &dyn ProgramScheme<C> {
+        match self {
+            Self::Noop(program) => program.deref().deref(),
+            Self::Circuit(program, _, _) => program.deref(),
         }
     }
 }

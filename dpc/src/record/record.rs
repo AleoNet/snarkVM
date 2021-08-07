@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, NoopProgram, Parameters, Payload, PrivateKey, ProgramScheme, RecordError, RecordScheme};
+use crate::{Address, Parameters, Payload, PrivateKey, ProgramScheme, RecordError, RecordScheme};
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH, PRF};
 use snarkvm_utilities::{to_bytes_le, variable_length_integer::*, FromBytes, ToBytes, UniformRand};
 
@@ -22,7 +22,6 @@ use rand::{CryptoRng, Rng};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
-    ops::Deref,
     str::FromStr,
 };
 
@@ -54,12 +53,13 @@ pub struct Record<C: Parameters> {
 impl<C: Parameters> Record<C> {
     /// Returns a new noop input record.
     pub fn new_noop_input<R: Rng + CryptoRng>(
-        noop_program: &NoopProgram<C>,
+        // TODO (howardwu): TEMPORARY - `noop_program: &dyn ProgramScheme<C>` will be removed when `DPC::setup` and `DPC::load` are refactored.
+        noop_program: &dyn ProgramScheme<C>,
         owner: Address<C>,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
         Self::new_input(
-            noop_program.deref(),
+            noop_program,
             owner,
             true,
             0,
@@ -71,14 +71,15 @@ impl<C: Parameters> Record<C> {
 
     /// Returns a new noop output record.
     pub fn new_noop_output<R: Rng + CryptoRng>(
-        noop_program: &NoopProgram<C>,
+        // TODO (howardwu): TEMPORARY - `noop_program: &dyn ProgramScheme<C>` will be removed when `DPC::setup` and `DPC::load` are refactored.
+        noop_program: &dyn ProgramScheme<C>,
         owner: Address<C>,
         position: u8,
         joint_serial_numbers: Vec<u8>,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
         Self::new_output(
-            noop_program.deref(),
+            noop_program,
             owner,
             true,
             0,
