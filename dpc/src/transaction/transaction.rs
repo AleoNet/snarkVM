@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{record::encrypted::*, AleoAmount, Network, Parameters, TransactionError, TransactionScheme};
+use crate::{record::*, AleoAmount, Network, Parameters, TransactionError, TransactionKernel, TransactionScheme};
 use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{SignatureScheme, SNARK},
@@ -96,6 +96,19 @@ impl<C: Parameters> Transaction<C> {
             signatures,
             encrypted_records,
         }
+    }
+
+    /// Returns the kernel of the transaction.
+    pub fn to_kernel(&self) -> TransactionKernel<C> {
+        let kernel = TransactionKernel {
+            network_id: self.network.id(),
+            serial_numbers: self.serial_numbers.clone(),
+            commitments: self.commitments.clone(),
+            value_balance: self.value_balance,
+            memo: self.memo,
+        };
+        debug_assert!(kernel.is_valid());
+        kernel
     }
 }
 

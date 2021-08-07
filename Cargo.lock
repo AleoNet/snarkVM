@@ -1694,6 +1694,7 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-gadgets",
+ "snarkvm-ledger",
  "snarkvm-marlin",
  "snarkvm-parameters",
  "snarkvm-polycommit",

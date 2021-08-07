@@ -344,14 +344,6 @@ fn test_testnet1_dpc_execute_constraints() {
         signatures: _,
     } = authorization;
 
-    let TransactionKernel {
-        network_id,
-        serial_numbers,
-        commitments,
-        value_balance,
-        memo,
-    } = kernel;
-
     let local_data_root = local_data.root();
 
     // Construct the ledger witnesses
@@ -371,27 +363,32 @@ fn test_testnet1_dpc_execute_constraints() {
     }
 
     //////////////////////////////////////////////////////////////////////////
+
+    // Construct the inner circuit public and private variables.
+    let inner_public_variables = InnerPublicVariables {
+        kernel,
+        ledger_digest,
+        encrypted_record_hashes: encrypted_record_hashes.clone(),
+        program_commitment: Some(program_commitment),
+        local_data_root: Some(local_data_root.clone()),
+    };
+    let inner_private_variables = InnerPrivateVariables::new(
+        old_records.clone(),
+        old_witnesses,
+        private_keys.clone(),
+        new_records.clone(),
+        encrypted_record_randomizers,
+        program_randomness.clone(),
+        local_data.leaf_randomizers().clone(),
+    );
+
     // Check that the core check constraint system was satisfied.
     let mut inner_circuit_cs = TestConstraintSystem::<Fr>::new();
 
     execute_inner_circuit(
         &mut inner_circuit_cs.ns(|| "Inner circuit"),
-        &ledger_digest,
-        &old_records,
-        &old_witnesses,
-        &private_keys,
-        &serial_numbers,
-        &new_records,
-        &commitments,
-        &encrypted_record_randomizers,
-        &encrypted_record_hashes,
-        &program_commitment,
-        &program_randomness,
-        &local_data_root,
-        &local_data.leaf_randomizers(),
-        &memo,
-        value_balance,
-        network_id,
+        &inner_public_variables,
+        &inner_private_variables,
     )
     .unwrap();
 
@@ -402,13 +399,11 @@ fn test_testnet1_dpc_execute_constraints() {
         println!("=========================================================");
     }
 
-    {
-        println!("=========================================================");
-        let num_constraints = inner_circuit_cs.num_constraints();
-        println!("Inner circuit num constraints: {:?}", num_constraints);
-        assert_eq!(283217, num_constraints);
-        println!("=========================================================");
-    }
+    println!("=========================================================");
+    let num_constraints = inner_circuit_cs.num_constraints();
+    println!("Inner circuit num constraints: {:?}", num_constraints);
+    assert_eq!(283217, num_constraints);
+    println!("=========================================================");
 
     assert!(inner_circuit_cs.is_satisfied());
 
@@ -419,8 +414,7 @@ fn test_testnet1_dpc_execute_constraints() {
     )
     .unwrap();
 
-    let inner_snark_vk: <<Testnet1Parameters as Parameters>::InnerSNARK as SNARK>::VerifyingKey =
-        inner_snark_parameters.1.clone().into();
+    let inner_snark_vk = inner_snark_parameters.1.clone();
 
     // NOTE: Do not change this to `Testnet1Parameters::inner_circuit_id()` as that will load the *saved* inner circuit VK.
     let inner_circuit_id = <Testnet1Parameters as Parameters>::inner_circuit_id_crh()
@@ -429,47 +423,29 @@ fn test_testnet1_dpc_execute_constraints() {
 
     let inner_snark_proof = <Testnet1Parameters as Parameters>::InnerSNARK::prove(
         &inner_snark_parameters.0,
-        &InnerCircuit::new(
-            ledger_digest,
-            old_records,
-            old_witnesses,
-            private_keys,
-            serial_numbers.clone(),
-            new_records,
-            commitments.clone(),
-            encrypted_record_randomizers,
-            encrypted_record_hashes.clone(),
-            program_commitment,
-            program_randomness,
-            local_data_root.clone(),
-            local_data.leaf_randomizers().clone(),
-            memo,
-            value_balance,
-            network_id,
-        ),
+        &InnerCircuit::new(inner_public_variables.clone(), inner_private_variables),
         &mut rng,
     )
     .unwrap();
+
+    // Construct the outer circuit public and private variables.
+    let outer_public_variables = OuterPublicVariables::new(&inner_public_variables, &inner_circuit_id);
+    let outer_private_variables = OuterPrivateVariables::new(
+        inner_snark_vk.clone(),
+        inner_snark_proof,
+        executions.to_vec(),
+        program_commitment.clone(),
+        program_randomness,
+        local_data_root.clone(),
+    );
 
     // Check that the proof check constraint system was satisfied.
     let mut outer_circuit_cs = TestConstraintSystem::<Fq>::new();
 
     execute_outer_circuit::<Testnet1Parameters, _>(
         &mut outer_circuit_cs.ns(|| "Outer circuit"),
-        &ledger_digest,
-        &serial_numbers,
-        &commitments,
-        &encrypted_record_hashes,
-        &memo,
-        value_balance,
-        network_id,
-        &inner_snark_vk,
-        &inner_snark_proof,
-        &executions,
-        &program_commitment,
-        &program_randomness,
-        &local_data_root,
-        &inner_circuit_id,
+        &outer_public_variables,
+        &outer_private_variables,
     )
     .unwrap();
 
@@ -484,13 +460,11 @@ fn test_testnet1_dpc_execute_constraints() {
         println!("=========================================================");
     }
 
-    {
-        println!("=========================================================");
-        let num_constraints = outer_circuit_cs.num_constraints();
-        println!("Outer circuit num constraints: {:?}", num_constraints);
-        assert_eq!(422723, num_constraints);
-        println!("=========================================================");
-    }
+    println!("=========================================================");
+    let num_constraints = outer_circuit_cs.num_constraints();
+    println!("Outer circuit num constraints: {:?}", num_constraints);
+    assert_eq!(422723, num_constraints);
+    println!("=========================================================");
 
     assert!(outer_circuit_cs.is_satisfied());
 }
