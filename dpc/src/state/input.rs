@@ -43,12 +43,51 @@ impl<C: Parameters> Input<C> {
         // Construct the noop input record.
         let record = Record::new_noop_input(executable.program(), noop_address, rng)?;
 
-        // Compute the serial numbers.
+        // Compute the serial number.
         let (serial_number, signature_randomizer) = record.to_serial_number(&noop_private_key)?;
 
         // Randomize the private key.
         let randomized_private_key =
             C::account_signature_scheme().randomize_private_key(&noop_private_key.sk_sig, &signature_randomizer)?;
+
+        Ok(Self {
+            executable,
+            record,
+            serial_number,
+            randomized_private_key,
+        })
+    }
+
+    /// Initializes a new instance of `Input`.
+    pub fn new<R: Rng + CryptoRng>(
+        private_key: PrivateKey<C>,
+        executable: Executable<C>,
+        is_dummy: bool,
+        value: u64,
+        payload: Payload,
+        serial_number_nonce: C::SerialNumberNonce,
+        rng: &mut R,
+    ) -> Result<Self> {
+        // Derive the account address.
+        let address = Address::from_private_key(&private_key)?;
+
+        // Construct the input record.
+        let record = Record::new_input(
+            executable.program(),
+            address,
+            is_dummy,
+            value,
+            payload,
+            serial_number_nonce,
+            rng,
+        )?;
+
+        // Compute the serial number.
+        let (serial_number, signature_randomizer) = record.to_serial_number(&private_key)?;
+
+        // Randomize the private key.
+        let randomized_private_key =
+            C::account_signature_scheme().randomize_private_key(&private_key.sk_sig, &signature_randomizer)?;
 
         Ok(Self {
             executable,

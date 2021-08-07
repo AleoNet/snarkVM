@@ -45,6 +45,32 @@ impl<C: Parameters> Output<C> {
         // Construct the noop output record.
         let record = Record::new_noop_output(executable.program(), noop_address, position, joint_serial_numbers, rng)?;
 
-        Ok(Self { record, executable })
+        Ok(Self { executable, record })
+    }
+
+    /// Initializes a new instance of `Output`.
+    pub fn new<R: Rng + CryptoRng>(
+        executable: Executable<C>,
+        address: Address<C>,
+        is_dummy: bool,
+        value: u64,
+        payload: Payload,
+        position: u8,
+        joint_serial_numbers: Vec<u8>,
+        rng: &mut R,
+    ) -> Result<Self> {
+        // Construct the output record.
+        let record = Record::new_output(
+            executable.program(),
+            address,
+            is_dummy,
+            value,
+            payload,
+            position,
+            joint_serial_numbers,
+            rng,
+        )?;
+
+        Ok(Self { executable, record })
     }
 }
