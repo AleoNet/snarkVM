@@ -150,7 +150,7 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
     // Declares a constant for a 0 value in a record.
     let zero_value = UInt8::constant_vec(&(0u64).to_bytes_le()?);
     // Declares a constant for an empty payload in a record.
-    let empty_payload = UInt8::constant_vec(&Payload::default().to_bytes());
+    let empty_payload = UInt8::constant_vec(&Payload::default().to_bytes_le()?);
 
     let digest_gadget = <C::RecordCommitmentTreeCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
         &mut cs.ns(|| "Declare ledger digest"),
@@ -205,7 +205,8 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
             let given_value = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &record.value().to_bytes_le()?)?;
 
-            let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes())?;
+            let given_payload =
+                UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
 
             let given_serial_number_nonce_bytes = UInt8::alloc_vec(
                 &mut declare_cs.ns(|| "given_serial_number_nonce_bytes"),
@@ -484,7 +485,8 @@ pub fn execute_inner_circuit<C: Parameters, CS: ConstraintSystem<C::InnerScalarF
 
             let given_value = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &record.value().to_bytes_le()?)?;
 
-            let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes())?;
+            let given_payload =
+                UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
 
             let given_serial_number_nonce = <C::SerialNumberNonceCRHGadget as CRHGadget<
                 C::SerialNumberNonceCRH,

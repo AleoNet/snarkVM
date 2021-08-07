@@ -23,7 +23,7 @@ use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use criterion::Criterion;
 use rand::thread_rng;
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 
 fn coinbase_transaction<C: Parameters>(
     dpc: &DPC<C>,
@@ -53,7 +53,7 @@ fn coinbase_transaction<C: Parameters>(
     // Construct the output records.
     let mut output_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
     output_records.push(Record::new_output(
-        &dpc.noop_program,
+        dpc.noop_program.deref(),
         recipient,
         false,
         value,

@@ -27,6 +27,7 @@ use crate::{
     PAYLOAD_SIZE,
 };
 use snarkvm_algorithms::traits::CRH;
+use snarkvm_utilities::FromBytes;
 
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
@@ -54,7 +55,7 @@ fn test_record_encryption() {
                 dummy_account.address,
                 false,
                 value,
-                Payload::from_bytes(&payload),
+                Payload::from_bytes_le(&payload).unwrap(),
                 <Testnet2Parameters as Parameters>::serial_number_nonce_crh()
                     .hash(&sn_nonce_input)
                     .unwrap(),

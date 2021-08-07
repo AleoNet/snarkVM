@@ -24,23 +24,26 @@ pub const PAYLOAD_SIZE: usize = 128;
 pub struct Payload([u8; PAYLOAD_SIZE]);
 
 impl Payload {
-    pub fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+    pub fn from(bytes: &[u8]) -> Self {
+        assert!(bytes.len() <= PAYLOAD_SIZE);
 
-    pub fn to_bytes(&self) -> &[u8] {
-        &self.0[..]
-    }
+        // Pad the bytes up to PAYLOAD_SIZE.
+        let mut buffer = bytes.to_vec();
+        buffer.resize(PAYLOAD_SIZE, 0u8);
 
-    pub fn from_bytes(bytes: &[u8]) -> Self {
+        // Copy exactly PAYLOAD_SIZE.
         let mut payload = [0u8; PAYLOAD_SIZE];
-        payload.copy_from_slice(&bytes);
+        payload.copy_from_slice(&buffer);
 
         Self(payload)
     }
 
-    pub fn size(&self) -> usize {
-        self.0.len()
+    pub fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    pub const fn size(&self) -> usize {
+        PAYLOAD_SIZE
     }
 }
 
