@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, NoopProgram, Parameters, Payload, PrivateKey, Program, RecordError, RecordScheme};
+use crate::{Address, NoopProgram, Parameters, Payload, PrivateKey, ProgramScheme, RecordError, RecordScheme};
 use snarkvm_algorithms::traits::{CommitmentScheme, SignatureScheme, CRH, PRF};
 use snarkvm_utilities::{to_bytes_le, variable_length_integer::*, FromBytes, ToBytes, UniformRand};
 
@@ -22,6 +22,7 @@ use rand::{CryptoRng, Rng};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
+    ops::Deref,
     str::FromStr,
 };
 
@@ -58,7 +59,7 @@ impl<C: Parameters> Record<C> {
         rng: &mut R,
     ) -> Result<Self, RecordError> {
         Self::new_input(
-            noop_program,
+            noop_program.deref(),
             owner,
             true,
             0,
@@ -77,7 +78,7 @@ impl<C: Parameters> Record<C> {
         rng: &mut R,
     ) -> Result<Self, RecordError> {
         Self::new_output(
-            noop_program,
+            noop_program.deref(),
             owner,
             true,
             0,
@@ -91,7 +92,7 @@ impl<C: Parameters> Record<C> {
     /// Returns a new input record.
     #[allow(clippy::too_many_arguments)]
     pub fn new_input<R: Rng + CryptoRng>(
-        program: &dyn Program<C>,
+        program: &dyn ProgramScheme<C>,
         owner: Address<C>,
         is_dummy: bool,
         value: u64,
@@ -116,7 +117,7 @@ impl<C: Parameters> Record<C> {
     /// Returns a new output record.
     #[allow(clippy::too_many_arguments)]
     pub fn new_output<R: Rng + CryptoRng>(
-        program: &dyn Program<C>,
+        program: &dyn ProgramScheme<C>,
         owner: Address<C>,
         is_dummy: bool,
         value: u64,

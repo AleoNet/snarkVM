@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::{crh::sha256::sha256, SNARK, SRS};
-use snarkvm_dpc::{DPCError, InnerCircuit, NoopProgram, OuterCircuit, Parameters, Program};
+use snarkvm_dpc::{DPCError, InnerCircuit, NoopProgram, OuterCircuit, Parameters, ProgramScheme};
 use snarkvm_parameters::{
     testnet1::{InnerSNARKPKParameters, InnerSNARKVKParameters},
     traits::Parameter,

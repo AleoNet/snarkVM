@@ -22,14 +22,15 @@ use crate::{
     NoopProgram,
     Parameters,
     Payload,
-    Program,
     Record,
     ViewKey,
     PAYLOAD_SIZE,
 };
+use snarkvm_algorithms::traits::CRH;
+
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
-use snarkvm_algorithms::traits::CRH;
+use std::ops::Deref;
 
 pub(crate) const ITERATIONS: usize = 5;
 
@@ -49,7 +50,7 @@ fn test_record_encryption() {
             rng.fill(&mut payload);
 
             let given_record = Record::new_input(
-                &noop_program,
+                noop_program.deref(),
                 dummy_account.address,
                 false,
                 value,

@@ -21,7 +21,7 @@ use crate::{
     NoopProgram,
     Parameters,
     PrivateVariables,
-    Program,
+    ProgramScheme,
     PublicVariables,
 };
 
@@ -32,7 +32,11 @@ use std::{ops::Deref, sync::Arc};
 #[derivative(Clone(bound = "C: Parameters"))]
 pub enum Executable<C: Parameters> {
     Noop(Arc<NoopProgram<C>>, C::ProgramCircuitID),
-    Circuit(Arc<dyn Program<C>>, C::ProgramCircuitID, Arc<dyn PrivateVariables<C>>),
+    Circuit(
+        Arc<dyn ProgramScheme<C>>,
+        C::ProgramCircuitID,
+        Arc<dyn PrivateVariables<C>>,
+    ),
 }
 
 impl<C: Parameters> Executable<C> {

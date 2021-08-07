@@ -26,6 +26,7 @@ use rand::thread_rng;
 use std::{
     fs::File,
     io::{Result as IoResult, Write},
+    ops::Deref,
     path::Path,
     str::FromStr,
     sync::Arc,
@@ -71,7 +72,7 @@ pub fn generate<C: Parameters>(recipient: Address<C>, value: u64) -> Result<(Vec
     // Construct the output records.
     let mut output_records = Vec::with_capacity(C::NUM_OUTPUT_RECORDS);
     output_records.push(Record::new_output(
-        &dpc.noop_program,
+        dpc.noop_program.deref(),
         recipient,
         false,
         value,

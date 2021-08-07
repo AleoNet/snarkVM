@@ -26,6 +26,7 @@ use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use std::{
+    ops::Deref,
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -90,7 +91,7 @@ fn dpc_testnet2_integration_test() {
     for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
         output_records.push(
             Record::new_output(
-                &dpc.noop_program,
+                dpc.noop_program.deref(),
                 recipient.address,
                 false,
                 10,
@@ -210,7 +211,7 @@ fn test_testnet_2_transaction_authorization_serialization() {
     for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
         output_records.push(
             Record::new_output(
-                &dpc.noop_program,
+                dpc.noop_program.deref(),
                 test_account.address,
                 false,
                 10,
@@ -286,7 +287,7 @@ fn test_testnet2_dpc_execute_constraints() {
     for j in 0..Testnet2Parameters::NUM_OUTPUT_RECORDS {
         output_records.push(
             Record::new_output(
-                &dpc.noop_program,
+                dpc.noop_program.deref(),
                 new_account.address,
                 false,
                 10,
