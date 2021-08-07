@@ -27,7 +27,7 @@ pub struct Input<C: Parameters> {
     executable: Executable<C>,
     record: Record<C>,
     serial_number: C::AccountSignaturePublicKey,
-    randomized_private_key: <C::AccountSignatureScheme as SignatureScheme>::RandomizedPrivateKey,
+    signature_randomizer: <C::AccountSignatureScheme as SignatureScheme>::Randomizer,
 }
 
 impl<C: Parameters> Input<C> {
@@ -46,20 +46,33 @@ impl<C: Parameters> Input<C> {
         // Compute the serial number.
         let (serial_number, signature_randomizer) = record.to_serial_number(&noop_private_key)?;
 
-        // Randomize the private key.
-        let randomized_private_key =
-            C::account_signature_scheme().randomize_private_key(&noop_private_key.sk_sig, &signature_randomizer)?;
+        Ok(Self {
+            executable,
+            record,
+            serial_number,
+            signature_randomizer,
+        })
+    }
+
+    /// Initializes a new instance of `Input`.
+    pub fn new(private_key: PrivateKey<C>, executable: Executable<C>, record: Record<C>) -> Result<Self> {
+        // Ensure the account address matches.
+        let address = Address::from_private_key(&private_key)?;
+        assert_eq!(&address, record.owner());
+
+        // Compute the serial number.
+        let (serial_number, signature_randomizer) = record.to_serial_number(&private_key)?;
 
         Ok(Self {
             executable,
             record,
             serial_number,
-            randomized_private_key,
+            signature_randomizer,
         })
     }
 
     /// Initializes a new instance of `Input`.
-    pub fn new(
+    pub fn new_full(
         private_key: PrivateKey<C>,
         executable: Executable<C>,
         is_dummy: bool,
@@ -85,15 +98,11 @@ impl<C: Parameters> Input<C> {
         // Compute the serial number.
         let (serial_number, signature_randomizer) = record.to_serial_number(&private_key)?;
 
-        // Randomize the private key.
-        let randomized_private_key =
-            C::account_signature_scheme().randomize_private_key(&private_key.sk_sig, &signature_randomizer)?;
-
         Ok(Self {
             executable,
             record,
             serial_number,
-            randomized_private_key,
+            signature_randomizer,
         })
     }
 
