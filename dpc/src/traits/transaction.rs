@@ -58,7 +58,4 @@ pub trait TransactionScheme: Clone + Eq + FromBytes + ToBytes + Send + Sync {
 
     /// Returns the encrypted records
     fn encrypted_records(&self) -> &[Self::EncryptedRecord];
-
-    /// Returns the transaction size in bytes.
-    fn size(&self) -> usize;
 }

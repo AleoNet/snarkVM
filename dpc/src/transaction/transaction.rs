@@ -19,12 +19,7 @@ use snarkvm_algorithms::{
     merkle_tree::MerkleTreeDigest,
     traits::{SignatureScheme, SNARK},
 };
-use snarkvm_utilities::{
-    serialize::{CanonicalDeserialize, CanonicalSerialize},
-    to_bytes_le,
-    FromBytes,
-    ToBytes,
-};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::Result;
 use blake2::{digest::Digest, Blake2s as b2s};
@@ -192,20 +187,13 @@ impl<C: Parameters> TransactionScheme for Transaction<C> {
     fn encrypted_records(&self) -> &[Self::EncryptedRecord] {
         &self.encrypted_records
     }
-
-    fn size(&self) -> usize {
-        let transaction_bytes = to_bytes_le![self].unwrap();
-        transaction_bytes.len()
-    }
 }
 
 impl<C: Parameters> ToBytes for Transaction<C> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.network.write_le(&mut writer)?;
-        for old_serial_number in &self.serial_numbers {
-            CanonicalSerialize::serialize(old_serial_number, &mut writer).unwrap();
-        }
+        self.serial_numbers.write_le(&mut writer)?;
         self.commitments.write_le(&mut writer)?;
         self.value_balance.write_le(&mut writer)?;
         self.memo.write_le(&mut writer)?;
@@ -234,7 +222,7 @@ impl<C: Parameters> FromBytes for Transaction<C> {
         // Read the serial numbers.
         let mut serial_numbers = Vec::with_capacity(C::NUM_INPUT_RECORDS);
         for _ in 0..C::NUM_INPUT_RECORDS {
-            serial_numbers.push(CanonicalDeserialize::deserialize(&mut reader).unwrap());
+            serial_numbers.push(FromBytes::read_le(&mut reader)?);
         }
 
         // Read the commitments
